@@ -1,7 +1,8 @@
 import { z } from 'zod'
 import { createPhotoRecord } from '@/lib/photos/service'
 import { storeImageDataUrl } from '@/lib/storage/images'
-import { analysisProvider, computePslScore } from './provider'
+import { analysisProvider } from './provider'
+import { computePslScore } from './scoring'
 import { saveAnalysisResult } from './service'
 
 export const analyzeAndSaveSchema = z.object({
@@ -77,7 +78,12 @@ export async function analyzeAndSave(input: AnalyzeAndSaveInput) {
     percentile: providerResult.percentile ?? null,
     tier: providerResult.tier ?? null,
     tierDescription: providerResult.tierDescription ?? null,
-    metrics: { metricScores: providerResult.metricScores },
+    metrics: {
+      symmetryScore: providerResult.symmetryScore ?? null,
+      proportionalityScore: providerResult.proportionalityScore ?? null,
+      averagenessScore: providerResult.averagenessScore ?? null,
+      metricScores: providerResult.metricScores,
+    },
     landmarks: providerResult.landmarks,
     model: analysisProvider.model,
     promptVersion: 'psl-kimi-v1',
