@@ -9,6 +9,11 @@ const envSchema = z
     GOOGLE_CLIENT_ID: z.string().optional(),
     GOOGLE_CLIENT_SECRET: z.string().optional(),
     NEXT_PUBLIC_SITE_URL: z.string().url().optional(),
+    IMAGE_STORAGE_DIR: z.string().min(1).optional(),
+    IMAGE_PUBLIC_BASE_URL: z.string().min(1).optional(),
+    MOONSHOT_API_KEY: z.string().min(1).optional(),
+    MOONSHOT_BASE_URL: z.string().url().default('https://api.moonshot.ai/v1'),
+    KIMI_ANALYSIS_MODEL: z.string().min(1).default('kimi-k2.5'),
   })
   .superRefine((env, ctx) => {
     if (env.NODE_ENV === 'production' && !env.NEXTAUTH_SECRET) {
@@ -36,4 +41,9 @@ export const env = envSchema.parse({
   GOOGLE_CLIENT_ID: process.env.GOOGLE_CLIENT_ID,
   GOOGLE_CLIENT_SECRET: process.env.GOOGLE_CLIENT_SECRET,
   NEXT_PUBLIC_SITE_URL: process.env.NEXT_PUBLIC_SITE_URL,
+  IMAGE_STORAGE_DIR: process.env.IMAGE_STORAGE_DIR,
+  IMAGE_PUBLIC_BASE_URL: process.env.IMAGE_PUBLIC_BASE_URL,
+  MOONSHOT_API_KEY: process.env.MOONSHOT_API_KEY,
+  MOONSHOT_BASE_URL: process.env.MOONSHOT_BASE_URL,
+  KIMI_ANALYSIS_MODEL: process.env.KIMI_ANALYSIS_MODEL,
 })

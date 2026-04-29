@@ -12,14 +12,14 @@ export const createPhotoRecordSchema = z.object({
   imageHash: z.string().min(32).max(128),
   name: z.string().min(1).max(120).nullable().optional(),
   caption: z.string().max(500).nullable().optional(),
-  gender: z.enum(['male', 'female', 'other']).default('other'),
-  source: z.enum(['user', 'seeded', 'instagram']).default('user'),
-  photoType: z.enum(['face', 'body', 'outfit']).default('face'),
+  gender: z.enum(['male', 'female', 'other']).optional().default('other'),
+  source: z.enum(['user', 'seeded', 'instagram']).optional().default('user'),
+  photoType: z.enum(['face', 'body', 'outfit']).optional().default('face'),
   position: z.string().max(80).nullable().optional(),
-  isPublic: z.boolean().default(true),
+  isPublic: z.boolean().optional().default(true),
 })
 
-export type CreatePhotoRecordInput = z.infer<typeof createPhotoRecordSchema>
+export type CreatePhotoRecordInput = z.input<typeof createPhotoRecordSchema>
 
 export async function createPhotoRecord(input: CreatePhotoRecordInput) {
   const data = createPhotoRecordSchema.parse(input)
@@ -69,4 +69,3 @@ export async function createPhotoRecord(input: CreatePhotoRecordInput) {
     deduped: false,
   }
 }
-
