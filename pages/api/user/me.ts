@@ -1,5 +1,5 @@
 import type { NextApiRequest, NextApiResponse } from 'next'
-import { ApiError, handleApiError, methodNotAllowed, parseBody } from '@/lib/api/http'
+import { ApiError, handleApiError, json, methodNotAllowed, parseBody } from '@/lib/api/http'
 import { getAuthSession } from '@/lib/auth/session'
 import {
   getCurrentUserDashboard,
@@ -17,7 +17,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   if (req.method === 'GET') {
     try {
       const dashboard = await getCurrentUserDashboard(session.user.id)
-      return res.status(200).json(dashboard)
+      return json(res, 200, dashboard)
     } catch (error) {
       return handleUserError(error, res)
     }
@@ -27,7 +27,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     try {
       const input = parseBody(updateUserProfileSchema, req.body)
       const user = await updateUserProfile(session.user.id, input)
-      return res.status(200).json({ user })
+      return json(res, 200, { user })
     } catch (error) {
       return handleUserError(error, res)
     }
@@ -43,4 +43,3 @@ function handleUserError(error: unknown, res: NextApiResponse) {
 
   return handleApiError(error, res)
 }
-

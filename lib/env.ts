@@ -11,9 +11,16 @@ const envSchema = z
     NEXT_PUBLIC_SITE_URL: z.string().url().optional(),
     IMAGE_STORAGE_DIR: z.string().min(1).optional(),
     IMAGE_PUBLIC_BASE_URL: z.string().min(1).optional(),
+    R2_ACCOUNT_ID: z.string().min(1).optional(),
+    R2_BUCKET_NAME: z.string().min(1).optional(),
+    R2_ACCESS_KEY_ID: z.string().min(1).optional(),
+    R2_SECRET_ACCESS_KEY: z.string().min(1).optional(),
+    R2_PUBLIC_BASE_URL: z.string().url().optional(),
     MOONSHOT_API_KEY: z.string().min(1).optional(),
     MOONSHOT_BASE_URL: z.string().url().default('https://api.moonshot.ai/v1'),
     KIMI_ANALYSIS_MODEL: z.string().min(1).default('kimi-k2.5'),
+    UPSTASH_REDIS_REST_URL: z.string().url().optional(),
+    UPSTASH_REDIS_REST_TOKEN: z.string().min(1).optional(),
   })
   .superRefine((env, ctx) => {
     if (env.NODE_ENV === 'production' && !env.NEXTAUTH_SECRET) {
@@ -31,6 +38,32 @@ const envSchema = z
         message: 'GOOGLE_CLIENT_ID and GOOGLE_CLIENT_SECRET must be configured together',
       })
     }
+
+    if (Boolean(env.UPSTASH_REDIS_REST_URL) !== Boolean(env.UPSTASH_REDIS_REST_TOKEN)) {
+      ctx.addIssue({
+        code: 'custom',
+        path: ['UPSTASH_REDIS_REST_URL'],
+        message: 'UPSTASH_REDIS_REST_URL and UPSTASH_REDIS_REST_TOKEN must be configured together',
+      })
+    }
+
+    const r2Values = [
+      env.R2_ACCOUNT_ID,
+      env.R2_BUCKET_NAME,
+      env.R2_ACCESS_KEY_ID,
+      env.R2_SECRET_ACCESS_KEY,
+      env.R2_PUBLIC_BASE_URL,
+    ]
+    const hasAnyR2 = r2Values.some(Boolean)
+    const hasAllR2 = r2Values.every(Boolean)
+
+    if (hasAnyR2 && !hasAllR2) {
+      ctx.addIssue({
+        code: 'custom',
+        path: ['R2_ACCOUNT_ID'],
+        message: 'All R2 environment variables must be configured together',
+      })
+    }
   })
 
 export const env = envSchema.parse({
@@ -43,7 +76,91 @@ export const env = envSchema.parse({
   NEXT_PUBLIC_SITE_URL: process.env.NEXT_PUBLIC_SITE_URL,
   IMAGE_STORAGE_DIR: process.env.IMAGE_STORAGE_DIR,
   IMAGE_PUBLIC_BASE_URL: process.env.IMAGE_PUBLIC_BASE_URL,
+  R2_ACCOUNT_ID: process.env.R2_ACCOUNT_ID,
+  R2_BUCKET_NAME: process.env.R2_BUCKET_NAME,
+  R2_ACCESS_KEY_ID: process.env.R2_ACCESS_KEY_ID,
+  R2_SECRET_ACCESS_KEY: process.env.R2_SECRET_ACCESS_KEY,
+  R2_PUBLIC_BASE_URL: process.env.R2_PUBLIC_BASE_URL,
   MOONSHOT_API_KEY: process.env.MOONSHOT_API_KEY,
   MOONSHOT_BASE_URL: process.env.MOONSHOT_BASE_URL,
   KIMI_ANALYSIS_MODEL: process.env.KIMI_ANALYSIS_MODEL,
+  UPSTASH_REDIS_REST_URL: process.env.UPSTASH_REDIS_REST_URL,
+  UPSTASH_REDIS_REST_TOKEN: process.env.UPSTASH_REDIS_REST_TOKEN,
 })
+
+export type RuntimeReadinessCheck = {
+  key: string
+  ok: boolean
+  required: boolean
+  message?: string
+}
+
+export function getRuntimeReadiness() {
+  const checks: RuntimeReadinessCheck[] = [
+    {
+      key: 'DATABASE_URL',
+      ok: Boolean(env.DATABASE_URL),
+      required: true,
+    },
+    {
+      key: 'NEXTAUTH_SECRET',
+      ok: Boolean(env.NEXTAUTH_SECRET),
+      required: env.NODE_ENV === 'production',
+      message: env.NODE_ENV === 'production' ? 'Required in production' : 'Recommended outside local development',
+    },
+    {
+      key: 'NEXTAUTH_URL',
+      ok: Boolean(env.NEXTAUTH_URL),
+      required: env.NODE_ENV === 'production',
+      message: env.NODE_ENV === 'production' ? 'Required for production auth callbacks' : 'Recommended for auth callback consistency',
+    },
+    {
+      key: 'GOOGLE_OAUTH',
+      ok: Boolean(env.GOOGLE_CLIENT_ID && env.GOOGLE_CLIENT_SECRET),
+      required: false,
+      message: 'Required only when Google login is enabled',
+    },
+    {
+      key: 'MOONSHOT_API_KEY',
+      ok: Boolean(env.MOONSHOT_API_KEY),
+      required: true,
+      message: 'Required for production image analysis',
+    },
+    {
+      key: 'KIMI_ANALYSIS_MODEL',
+      ok: Boolean(env.KIMI_ANALYSIS_MODEL),
+      required: true,
+    },
+    {
+      key: 'IMAGE_STORAGE',
+      ok: Boolean(isR2Configured() || env.IMAGE_STORAGE_DIR || env.IMAGE_PUBLIC_BASE_URL),
+      required: env.NODE_ENV === 'production',
+      message: env.NODE_ENV === 'production'
+        ? 'Configure R2 for production image storage'
+        : 'Defaults to local public/uploads in development',
+    },
+    {
+      key: 'UPSTASH_REDIS',
+      ok: Boolean(env.UPSTASH_REDIS_REST_URL && env.UPSTASH_REDIS_REST_TOKEN),
+      required: env.NODE_ENV === 'production',
+      message: env.NODE_ENV === 'production'
+        ? 'Required for durable production rate limiting'
+        : 'Falls back to in-memory rate limiting locally',
+    },
+  ]
+
+  return {
+    ok: checks.every((check) => check.ok || !check.required),
+    checks,
+  }
+}
+
+export function isR2Configured() {
+  return Boolean(
+    env.R2_ACCOUNT_ID &&
+      env.R2_BUCKET_NAME &&
+      env.R2_ACCESS_KEY_ID &&
+      env.R2_SECRET_ACCESS_KEY &&
+      env.R2_PUBLIC_BASE_URL
+  )
+}

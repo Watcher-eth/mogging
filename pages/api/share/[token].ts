@@ -1,5 +1,5 @@
 import type { NextApiRequest, NextApiResponse } from 'next'
-import { ApiError, handleApiError, methodNotAllowed } from '@/lib/api/http'
+import { ApiError, handleApiError, json, methodNotAllowed } from '@/lib/api/http'
 import { getShareByToken, SharingServiceError } from '@/lib/sharing/service'
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
@@ -10,7 +10,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     if (!token) throw new SharingServiceError(404, 'Share not found')
 
     const share = await getShareByToken(token)
-    return res.status(200).json(share)
+    return json(res, 200, share)
   } catch (error) {
     if (error instanceof SharingServiceError) {
       return handleApiError(new ApiError(error.status, error.message), res)
@@ -19,4 +19,3 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     return handleApiError(error, res)
   }
 }
-

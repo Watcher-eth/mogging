@@ -1,6 +1,7 @@
 import { z } from 'zod'
 import { createPhotoRecord } from '@/lib/photos/service'
 import { storeImageDataUrl } from '@/lib/storage/images'
+import { toAnalysisFailure } from './errors'
 import { analysisProvider } from './provider'
 import { computePslScore } from './scoring'
 import { saveAnalysisResult } from './service'
@@ -19,15 +20,49 @@ export type AnalyzeAndSaveInput = z.infer<typeof analyzeAndSaveSchema>
 
 export async function analyzeAndSave(input: AnalyzeAndSaveInput) {
   const data = analyzeAndSaveSchema.parse(input)
-  const [storedImage, providerResult] = await Promise.all([
-    storeImageDataUrl(data.imageData),
-    analysisProvider.analyzeFace({
+  const storedImagePromise = storeImageDataUrl(data.imageData)
+  const providerResultPromise = analysisProvider
+    .analyzeFace({
       imageDataUrl: data.imageData,
       gender: data.gender,
-    }),
-  ])
+    })
+    .then((result) => ({ ok: true as const, result }))
+    .catch((error: unknown) => ({ ok: false as const, error }))
 
-  if (!providerResult.faceDetected) {
+  const storedImage = await storedImagePromise
+  const providerResult = await providerResultPromise
+
+  if (!providerResult.ok) {
+    const photoResult = await createPhotoRecord({
+      userId: data.userId ?? null,
+      anonymousActorId: data.anonymousActorId ?? null,
+      imageUrl: storedImage.imageUrl,
+      imageStorageKey: storedImage.imageStorageKey,
+      imageHash: storedImage.imageHash,
+      name: data.name ?? null,
+      caption: data.caption ?? null,
+      gender: data.gender,
+      photoType: data.photoType,
+    })
+    const failure = toAnalysisFailure(providerResult.error)
+    const analysisResult = await saveAnalysisResult({
+      photoId: photoResult.photo.id,
+      status: 'failed',
+      metrics: failure.metrics,
+      landmarks: {},
+      model: analysisProvider.model,
+      promptVersion: 'psl-kimi-v1',
+      failureReason: failure.failureReason,
+    })
+
+    return {
+      photo: photoResult.photo,
+      analysis: analysisResult.analysis,
+      deduped: photoResult.deduped,
+    }
+  }
+
+  if (!providerResult.result.faceDetected) {
     const photoResult = await createPhotoRecord({
       userId: data.userId ?? null,
       anonymousActorId: data.anonymousActorId ?? null,
@@ -67,24 +102,25 @@ export async function analyzeAndSave(input: AnalyzeAndSaveInput) {
     gender: data.gender,
     photoType: data.photoType,
   })
-  const pslScore = computePslScore(providerResult)
+  const result = providerResult.result
+  const pslScore = computePslScore(result)
   const analysisResult = await saveAnalysisResult({
     photoId: photoResult.photo.id,
     status: 'complete',
     pslScore,
-    harmonyScore: providerResult.harmonyScore,
-    dimorphismScore: providerResult.dimorphismScore,
-    angularityScore: providerResult.angularityScore,
-    percentile: providerResult.percentile ?? null,
-    tier: providerResult.tier ?? null,
-    tierDescription: providerResult.tierDescription ?? null,
+    harmonyScore: result.harmonyScore,
+    dimorphismScore: result.dimorphismScore,
+    angularityScore: result.angularityScore,
+    percentile: result.percentile ?? null,
+    tier: result.tier ?? null,
+    tierDescription: result.tierDescription ?? null,
     metrics: {
-      symmetryScore: providerResult.symmetryScore ?? null,
-      proportionalityScore: providerResult.proportionalityScore ?? null,
-      averagenessScore: providerResult.averagenessScore ?? null,
-      metricScores: providerResult.metricScores,
+      symmetryScore: result.symmetryScore ?? null,
+      proportionalityScore: result.proportionalityScore ?? null,
+      averagenessScore: result.averagenessScore ?? null,
+      metricScores: result.metricScores,
     },
-    landmarks: providerResult.landmarks,
+    landmarks: result.landmarks,
     model: analysisProvider.model,
     promptVersion: 'psl-kimi-v1',
   })

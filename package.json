@@ -13,10 +13,18 @@
     "db:generate": "drizzle-kit generate",
     "db:migrate": "drizzle-kit migrate",
     "db:push": "drizzle-kit push",
-    "db:studio": "drizzle-kit studio"
+    "db:studio": "drizzle-kit studio",
+    "env:check": "bun run scripts/setup/check-env.ts",
+    "db:health": "bun run scripts/setup/db-health.ts",
+    "seed": "bun run scripts/admin/seed.ts",
+    "user:create": "bun run scripts/admin/create-test-user.ts",
+    "smoke:analysis": "bun run scripts/smoke/analyze.ts",
+    "admin:leaderboard": "bun run scripts/admin/leaderboard.ts"
   },
   "dependencies": {
     "@auth/drizzle-adapter": "^1.11.1",
+    "@aws-sdk/client-s3": "^3.1038.0",
+    "@upstash/redis": "^1.37.0",
     "bcryptjs": "^3.0.2",
     "drizzle-orm": "^0.44.6",
     "next": "^15.0.0",

@@ -157,6 +157,13 @@ export const photos = pgTable(
     personGroupIdx: index('photos_person_group_id_idx').on(table.personGroupId),
     sourceIdx: index('photos_source_idx').on(table.source),
     publicTypeIdx: index('photos_public_type_idx').on(table.isPublic, table.photoType),
+    publicTypeGenderCreatedAtIdx: index('photos_public_type_gender_created_at_idx').on(
+      table.isPublic,
+      table.photoType,
+      table.gender,
+      table.createdAt
+    ),
+    userPublicCreatedAtIdx: index('photos_user_public_created_at_idx').on(table.userId, table.isPublic, table.createdAt),
   })
 )
 
@@ -190,6 +197,7 @@ export const analyses = pgTable(
     statusIdx: index('analyses_status_idx').on(table.status),
     pslIdx: index('analyses_psl_score_idx').on(table.pslScore),
     createdAtIdx: index('analyses_created_at_idx').on(table.createdAt),
+    statusPslCreatedAtIdx: index('analyses_status_psl_created_at_idx').on(table.status, table.pslScore, table.createdAt),
   })
 )
 
@@ -207,6 +215,7 @@ export const analysisShares = pgTable(
       .notNull()
       .references(() => photos.id, { onDelete: 'cascade' }),
     ownerUserId: text('owner_user_id').references(() => users.id, { onDelete: 'cascade' }),
+    ownerAnonymousActorId: text('owner_anonymous_actor_id'),
     includeLeaderboard: boolean('include_leaderboard').notNull().default(false),
     leaderboardSnapshot: jsonb('leaderboard_snapshot').$type<Record<string, unknown> | null>(),
     createdAt: timestamp('created_at', { mode: 'date' }).notNull().defaultNow(),
@@ -217,6 +226,7 @@ export const analysisShares = pgTable(
     analysisIdx: index('analysis_shares_analysis_id_idx').on(table.analysisId),
     photoIdx: index('analysis_shares_photo_id_idx').on(table.photoId),
     ownerIdx: index('analysis_shares_owner_user_id_idx').on(table.ownerUserId),
+    anonymousOwnerIdx: index('analysis_shares_owner_anonymous_actor_id_idx').on(table.ownerAnonymousActorId),
   })
 )
 
@@ -240,6 +250,7 @@ export const photoRatings = pgTable(
   (table) => ({
     conservativeScoreIdx: index('photo_ratings_conservative_score_idx').on(table.conservativeScore),
     displayRatingIdx: index('photo_ratings_display_rating_idx').on(table.displayRating),
+    conservativeDisplayIdx: index('photo_ratings_conservative_display_idx').on(table.conservativeScore, table.displayRating),
   })
 )
 
@@ -274,6 +285,7 @@ export const comparisons = pgTable(
     winnerIdx: index('comparisons_winner_photo_id_idx').on(table.winnerPhotoId),
     loserIdx: index('comparisons_loser_photo_id_idx').on(table.loserPhotoId),
     voterIdx: index('comparisons_voter_user_id_idx').on(table.voterUserId),
+    anonymousActorIdx: index('comparisons_anonymous_actor_id_idx').on(table.anonymousActorId),
     createdAtIdx: index('comparisons_created_at_idx').on(table.createdAt),
   })
 )

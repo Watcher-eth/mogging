@@ -1,5 +1,5 @@
 import type { NextApiRequest, NextApiResponse } from 'next'
-import { handleApiError, methodNotAllowed } from '@/lib/api/http'
+import { handleApiError, json, methodNotAllowed } from '@/lib/api/http'
 import { getUserLeaderboard, userLeaderboardQuerySchema } from '@/lib/leaderboards/service'
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
@@ -8,9 +8,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   try {
     const query = userLeaderboardQuerySchema.parse(req.query)
     const leaderboard = await getUserLeaderboard(query)
-    return res.status(200).json(leaderboard)
+    return json(res, 200, leaderboard)
   } catch (error) {
     return handleApiError(error, res)
   }
 }
-

@@ -7,6 +7,7 @@ import { createShareToken } from './token'
 export const createAnalysisShareSchema = z.object({
   analysisId: z.string().min(1),
   ownerUserId: z.string().min(1).nullable().optional(),
+  ownerAnonymousActorId: z.string().min(1).nullable().optional(),
   includeLeaderboard: z.boolean().default(false),
 })
 
@@ -38,7 +39,7 @@ export async function createAnalysisShare(input: CreateAnalysisShareInput) {
     throw new SharingServiceError(400, 'Only completed analyses can be shared')
   }
 
-  if (!analysis.photo.isPublic && analysis.photo.userId !== data.ownerUserId) {
+  if (!canCreateShare(analysis.photo, data.ownerUserId ?? null, data.ownerAnonymousActorId ?? null)) {
     throw new SharingServiceError(403, 'You do not have access to this analysis')
   }
 
@@ -48,6 +49,9 @@ export async function createAnalysisShare(input: CreateAnalysisShareInput) {
       data.ownerUserId
         ? eq(schema.analysisShares.ownerUserId, data.ownerUserId)
         : isNull(schema.analysisShares.ownerUserId),
+      data.ownerAnonymousActorId
+        ? eq(schema.analysisShares.ownerAnonymousActorId, data.ownerAnonymousActorId)
+        : isNull(schema.analysisShares.ownerAnonymousActorId),
       eq(schema.analysisShares.includeLeaderboard, data.includeLeaderboard)
     ),
   })
@@ -70,6 +74,7 @@ export async function createAnalysisShare(input: CreateAnalysisShareInput) {
       analysisId: analysis.id,
       photoId: analysis.photoId,
       ownerUserId: data.ownerUserId ?? null,
+      ownerAnonymousActorId: data.ownerAnonymousActorId ?? null,
       includeLeaderboard: data.includeLeaderboard,
       leaderboardSnapshot,
     })
@@ -143,6 +148,17 @@ export async function getShareByToken(token: string) {
       createdAt: share.analysis.createdAt,
     },
   }
+}
+
+function canCreateShare(
+  photo: { userId: string | null; anonymousActorId: string | null; isPublic: boolean },
+  ownerUserId: string | null,
+  ownerAnonymousActorId: string | null
+) {
+  if (photo.userId) return photo.userId === ownerUserId
+  if (photo.anonymousActorId) return photo.anonymousActorId === ownerAnonymousActorId
+
+  return photo.isPublic
 }
 
 async function getLeaderboardSnapshot(gender: 'male' | 'female' | 'other') {

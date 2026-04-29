@@ -1,5 +1,7 @@
 import type { NextApiRequest, NextApiResponse } from 'next'
-import { ApiError, handleApiError, methodNotAllowed, parseBody } from '@/lib/api/http'
+import { ApiError, handleApiError, json, methodNotAllowed, parseBody } from '@/lib/api/http'
+import { enforceRateLimit } from '@/lib/api/rateLimit'
+import { getOrSetAnonymousActorId } from '@/lib/auth/anonymous'
 import { getAuthSession } from '@/lib/auth/session'
 import {
   pairSelectionSchema,
@@ -18,7 +20,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       })
       const pair = await selectComparisonPair(query)
 
-      return res.status(200).json(pair)
+      return json(res, 200, pair)
     } catch (error) {
       if (error instanceof RatingServiceError) {
         return handleApiError(new ApiError(error.status, error.message), res)
@@ -30,14 +32,17 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
   if (req.method === 'POST') {
     try {
+      await enforceRateLimit(req, res, { key: 'compare_vote', limit: 120, windowMs: 60 * 1000 })
       const session = await getAuthSession(req, res)
+      const anonymousActorId = session?.user?.id ? null : getOrSetAnonymousActorId(req, res)
       const body = parseBody(submitVoteSchema, {
         ...req.body,
         voterUserId: session?.user?.id ?? null,
+        anonymousActorId,
       })
       const result = await submitComparisonVote(body)
 
-      return res.status(200).json(result)
+      return json(res, 200, result)
     } catch (error) {
       if (error instanceof RatingServiceError) {
         return handleApiError(new ApiError(error.status, error.message), res)
