@@ -181,10 +181,10 @@ function PendingVoteBar({
       {pendingVote ? (
         <motion.div
           className="fixed inset-x-5 bottom-10 z-50 mx-auto max-w-[420px]"
-          initial={{ opacity: 0, y: 12 }}
-          animate={{ opacity: 1, y: 0 }}
-          exit={{ opacity: 0, y: 12 }}
-          transition={{ duration: 0.18, ease: [0.23, 1, 0.32, 1] }}
+          initial={{ filter: 'blur(8px)', opacity: 0, scale: 0.98, y: 30 }}
+          animate={{ filter: 'blur(0px)', opacity: 1, scale: 1, y: 0 }}
+          exit={{ filter: 'blur(6px)', opacity: 0, scale: 0.98, y: 18 }}
+          transition={{ type: 'spring', duration: 0.48, bounce: 0.08 }}
         >
           <div className="mb-3 flex justify-center">
             <button
@@ -247,14 +247,30 @@ function VoteCandidate({
 
       <div className={`grid min-h-0 place-items-center ${side === 'left' ? 'md:place-items-start' : 'md:place-items-end'}`}>
         <div className={`relative flex h-[42svh] max-h-[460px] min-h-[260px] w-full items-center gap-4 md:h-[58svh] md:max-h-[660px] ${side === 'left' ? 'justify-start' : 'justify-end'}`}>
-          {side === 'right' ? <LikeButton onVote={onVote} label={`Vote for ${displayName}`} pendingId={pendingVote?.id} state={voteState} /> : null}
+          {side === 'right' ? (
+            <LikeButton
+              onVote={onVote}
+              label={`Vote for ${displayName}`}
+              pendingId={pendingVote?.id}
+              shortcut="B"
+              state={voteState}
+            />
+          ) : null}
           <button className="relative h-full outline-none transition-transform duration-200 ease-out active:scale-[0.99]" onClick={onVote} type="button" aria-label={`Vote for ${displayName}`}>
             <div className="relative aspect-[2/3] h-full max-h-full overflow-hidden rounded-2xl border-[6px] border-white bg-white shadow-[0_22px_70px_rgba(15,23,42,0.13)] transition-transform duration-200 ease-out group-hover:scale-[1.01]">
               <img className="h-full w-full object-cover" src={photo.imageUrl} alt={displayName} />
               <div className="pointer-events-none absolute inset-x-0 bottom-0 h-1/5 bg-gradient-to-t from-white/75 via-white/30 to-transparent" />
             </div>
           </button>
-          {side === 'left' ? <LikeButton onVote={onVote} label={`Vote for ${displayName}`} pendingId={pendingVote?.id} state={voteState} /> : null}
+          {side === 'left' ? (
+            <LikeButton
+              onVote={onVote}
+              label={`Vote for ${displayName}`}
+              pendingId={pendingVote?.id}
+              shortcut="A"
+              state={voteState}
+            />
+          ) : null}
           <div className="pointer-events-none absolute bottom-[8%] h-6 w-[42%] rounded-full bg-black/10 blur-xl" />
         </div>
       </div>
@@ -266,20 +282,23 @@ function LikeButton({
   label,
   onVote,
   pendingId,
+  shortcut,
   state,
 }: {
   label: string
   onVote: () => void
   pendingId?: string
+  shortcut: 'A' | 'B'
   state: 'idle' | 'selected' | 'rejected'
 }) {
   const isSelected = state === 'selected'
   const isRejected = state === 'rejected'
+  const glyphTransition = { type: 'spring' as const, duration: 0.54, bounce: 0.16 }
 
   return (
     <button
       className={cn(
-        'relative grid size-16 shrink-0 place-items-center overflow-hidden rounded-2xl border-[3px] border-zinc-300 bg-white text-black shadow-[0_16px_45px_rgba(15,23,42,0.1)] transition-[border-color,box-shadow,transform] duration-150 ease-out group-hover:scale-[1.03] hover:scale-[1.03] active:scale-[0.97] md:size-20',
+        'relative grid size-16 shrink-0 place-items-center overflow-hidden rounded-2xl border border-zinc-300 bg-white text-black shadow-[0_16px_45px_rgba(15,23,42,0.1)] transition-[border-color,box-shadow,transform] duration-150 ease-out group-hover:scale-[1.03] hover:scale-[1.03] active:scale-[0.97] md:size-20',
         isSelected && 'border-emerald-500 shadow-[0_18px_50px_rgba(16,185,129,0.22)]',
         isRejected && 'border-zinc-200 text-zinc-500 shadow-[0_12px_34px_rgba(15,23,42,0.06)]',
       )}
@@ -296,27 +315,48 @@ function LikeButton({
           transition={{ duration: 4, ease: 'linear' }}
         />
       ) : null}
-      <span className={cn('relative z-10 grid place-items-center transition-colors duration-200', isSelected && 'text-white')}>
+      <span className="relative z-10 grid place-items-center">
         <AnimatePresence mode="wait" initial={false}>
-          {isRejected ? (
+          {isSelected ? (
             <motion.span
-              key="thumbs-down"
-              initial={{ opacity: 0, rotate: -28, scale: 0.74, y: -4 }}
-              animate={{ opacity: 1, rotate: 0, scale: 1, y: 0 }}
-              exit={{ opacity: 0, rotate: 22, scale: 0.82, y: 4 }}
-              transition={{ duration: 0.26, ease: [0.23, 1, 0.32, 1] }}
+              key="thumbs-up-selected"
+              className="relative grid size-7 place-items-center md:size-8"
+              initial={{ filter: 'blur(5px)', opacity: 0, rotate: -18, scale: 0.7, y: 6 }}
+              animate={{ filter: 'blur(0px)', opacity: 1, rotate: 0, scale: 1, y: 0 }}
+              exit={{ filter: 'blur(4px)', opacity: 0, rotate: 16, scale: 0.78, y: -4 }}
+              transition={glyphTransition}
+            >
+              <ThumbsUp className="absolute size-7 text-black md:size-8" aria-hidden="true" />
+              <motion.span
+                key={`selected-icon-${pendingId}`}
+                className="absolute grid size-7 place-items-center overflow-hidden text-white md:size-8"
+                initial={{ clipPath: 'inset(0 100% 0 0)' }}
+                animate={{ clipPath: 'inset(0 0% 0 0)' }}
+                transition={{ duration: 4, ease: 'linear' }}
+              >
+                <ThumbsUp className="size-7 md:size-8" aria-hidden="true" />
+              </motion.span>
+            </motion.span>
+          ) : isRejected ? (
+            <motion.span
+              key="thumbs-down-rejected"
+              initial={{ filter: 'blur(5px)', opacity: 0, rotate: -20, scale: 0.72, y: -6 }}
+              animate={{ filter: 'blur(0px)', opacity: 1, rotate: 0, scale: 1, y: 0 }}
+              exit={{ filter: 'blur(4px)', opacity: 0, rotate: 16, scale: 0.78, y: 5 }}
+              transition={glyphTransition}
             >
               <ThumbsDown className="size-7 md:size-8" aria-hidden="true" />
             </motion.span>
           ) : (
             <motion.span
-              key="thumbs-up"
-              initial={{ opacity: 0, rotate: 22, scale: 0.82, y: 4 }}
-              animate={{ opacity: 1, rotate: 0, scale: 1, y: 0 }}
-              exit={{ opacity: 0, rotate: -24, scale: 0.78, y: -4 }}
-              transition={{ duration: 0.22, ease: [0.23, 1, 0.32, 1] }}
+              key={`idle-${shortcut}`}
+              className="font-mono text-xl font-semibold tracking-[-0.04em] md:text-2xl"
+              initial={{ filter: 'blur(4px)', opacity: 0, rotate: 12, scale: 0.78, y: 5 }}
+              animate={{ filter: 'blur(0px)', opacity: 1, rotate: 0, scale: 1, y: 0 }}
+              exit={{ filter: 'blur(5px)', opacity: 0, rotate: shortcut === 'A' ? -18 : 18, scale: 0.68, y: shortcut === 'A' ? -6 : 6 }}
+              transition={glyphTransition}
             >
-              <ThumbsUp className="size-7 md:size-8" aria-hidden="true" />
+              {shortcut}
             </motion.span>
           )}
         </AnimatePresence>

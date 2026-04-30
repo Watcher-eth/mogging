@@ -12,7 +12,7 @@ type AppShellProps = {
 export function AppShell({ children }: AppShellProps) {
   const { data: session, status } = useSession()
   const router = useRouter()
-  const immersive = router.pathname === '/'
+  const immersive = router.pathname === '/' || router.pathname === '/analysis'
 
   return (
     <div className={immersive ? 'min-h-screen bg-white' : 'min-h-screen bg-background'}>

@@ -5,6 +5,7 @@ import {
   Check,
   Copy,
   CreditCard,
+  Gem,
   Loader2,
   Share2,
   Sparkles,
@@ -23,10 +24,19 @@ import {
 } from '@/lib/client/analysisDraft'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog'
 import { CameraSheet } from '@/components/analysis/camera-sheet'
 import { CaptureFrame } from '@/components/analysis/capture-frame'
+import { TextLoop } from '@/components/core/text-loop'
+import { TextShimmer } from '@/components/core/text-shimmer'
 
-type FlowStep = 'upload' | 'preview-analysis' | 'payment' | 'actual-analysis' | 'results'
+type FlowStep = 'intro' | 'upload' | 'preview-analysis' | 'payment' | 'actual-analysis' | 'results'
 
 type AnalysisResponse = {
   photo: {
@@ -71,17 +81,59 @@ const pseudoAnalysisItems = [
   'Mapping proportional landmarks',
   'Preparing private report',
 ]
+const previewPhotoUrl = '/model.png'
+const analysisTimeline = [
+  {
+    title: 'Preparing image geometry',
+    substeps: ['Normalizing crop', 'Checking frontal alignment', 'Reading image density'],
+  },
+  {
+    title: 'Mapping facial anchors',
+    substeps: ['Locating eye line', 'Resolving nose bridge', 'Tracing mouth axis', 'Estimating chin point'],
+  },
+  {
+    title: 'Measuring symmetry',
+    substeps: ['Comparing left-right landmarks', 'Checking eye and mouth reference lines', 'Weighting visible asymmetries'],
+  },
+  {
+    title: 'Scoring proportionality',
+    substeps: ['Estimating thirds and fifths', 'Comparing local feature ratios', 'Rejecting golden-ratio shortcuts'],
+  },
+  {
+    title: 'Evaluating averageness',
+    substeps: ['Checking population-typical ranges', 'Flagging extreme deviations', 'Balancing structural harmony'],
+  },
+  {
+    title: 'Assessing dimorphism',
+    substeps: ['Reading brow and jaw cues', 'Separating sex-typical shape from attractiveness', 'Applying gender scoring mode'],
+  },
+  {
+    title: 'Composing final report',
+    substeps: ['Calibrating PSL estimate', 'Writing evidence-weighted summary', 'Preparing shareable result'],
+  },
+]
+const mosaicPermutations = [
+  [0, 1, 2, 3, 4, 5, 6, 7, 8],
+  [1, 5, 2, 6, 4, 0, 3, 7, 8],
+  [6, 1, 3, 2, 4, 7, 0, 8, 5],
+  [8, 3, 0, 1, 4, 6, 7, 5, 2],
+  [2, 0, 5, 3, 4, 1, 8, 6, 7],
+]
 
 export default function AnalysisPage() {
   const router = useRouter()
   const uploadInputRef = useRef<HTMLInputElement | null>(null)
   const [images, setImages] = useState<AnalysisDraftImage[]>([])
+  const [selectedImageId, setSelectedImageId] = useState<string | null>(null)
   const [gender, setGender] = useState<'male' | 'female' | 'other'>('other')
-  const [step, setStep] = useState<FlowStep>('upload')
+  const [step, setStep] = useState<FlowStep>('intro')
   const [progress, setProgress] = useState(0)
   const [results, setResults] = useState<AnalysisResponse[]>([])
   const [error, setError] = useState<string | null>(null)
   const [cameraOpen, setCameraOpen] = useState(false)
+  const [analysisUnlocked, setAnalysisUnlocked] = useState(false)
+  const [paymentDialogOpen, setPaymentDialogOpen] = useState(false)
+  const [checkoutLoading, setCheckoutLoading] = useState(false)
   const [shareOpen, setShareOpen] = useState(false)
   const [shareUrl, setShareUrl] = useState<string | null>(null)
   const [shareLoading, setShareLoading] = useState(false)
@@ -90,14 +142,20 @@ export default function AnalysisPage() {
   const primaryScore = primaryResult?.analysis.pslScore ?? null
   const canStart = images.length > 0 && step === 'upload'
 
-  const previewImage = useMemo(() => images[0]?.dataUrl ?? null, [images])
+  const selectedImage = useMemo(
+    () => images.find((image) => image.id === selectedImageId) ?? images[images.length - 1] ?? null,
+    [images, selectedImageId],
+  )
+  const previewImage = selectedImage?.dataUrl ?? null
 
   async function handleFiles(event: ChangeEvent<HTMLInputElement>) {
     const files = Array.from(event.target.files || []).slice(0, 3 - images.length)
     if (files.length === 0) return
 
     const nextImages = await Promise.all(files.map(readImageFile))
-    setImages((current) => [...current, ...nextImages].slice(0, 3))
+    const visibleNextImages = nextImages.slice(0, Math.max(0, 3 - images.length))
+    setImages((current) => [...current, ...visibleNextImages].slice(0, 3))
+    setSelectedImageId(visibleNextImages[visibleNextImages.length - 1]?.id ?? null)
     event.target.value = ''
   }
 
@@ -105,19 +163,15 @@ export default function AnalysisPage() {
     if (!canStart) return
 
     setError(null)
-    setStep('preview-analysis')
-    setProgress(0)
-
-    for (let tick = 1; tick <= 50; tick += 1) {
-      await wait(100)
-      setProgress(tick * 2)
-    }
-
-    setStep('payment')
+    setAnalysisUnlocked(false)
+    setPaymentDialogOpen(false)
+    setProgress(18)
+    setStep('actual-analysis')
   }
 
   async function startCheckout() {
     try {
+      setCheckoutLoading(true)
       setError(null)
       await saveAnalysisDraft({
         images,
@@ -130,14 +184,17 @@ export default function AnalysisPage() {
       window.location.href = checkout.url
     } catch (checkoutError) {
       setError(checkoutError instanceof ApiClientError ? checkoutError.message : 'Unable to start payment')
+      setCheckoutLoading(false)
     }
   }
 
   const resumeAfterPayment = useCallback(async (sessionId: string) => {
     try {
       setError(null)
+      setAnalysisUnlocked(true)
+      setPaymentDialogOpen(false)
       setStep('actual-analysis')
-      setProgress(0)
+      setProgress(28)
 
       const [verification, draft] = await Promise.all([
         apiGet<VerifyPaymentResponse>(`/api/payments/verify?session_id=${encodeURIComponent(sessionId)}`),
@@ -157,11 +214,12 @@ export default function AnalysisPage() {
       }
 
       setImages(draft.images)
+      setSelectedImageId(draft.images[draft.images.length - 1]?.id ?? null)
       setGender(draft.gender)
 
       const analysisResults: AnalysisResponse[] = []
       for (const [index, image] of draft.images.entries()) {
-        setProgress(Math.round((index / draft.images.length) * 100))
+        setProgress(Math.round(28 + (index / draft.images.length) * 62))
         const result = await apiPost<AnalysisResponse>('/api/analyze', {
           imageData: image.dataUrl,
           gender: draft.gender,
@@ -177,7 +235,7 @@ export default function AnalysisPage() {
       await clearAnalysisDraft()
       void router.replace('/analysis', undefined, { shallow: true })
     } catch (analysisError) {
-      setStep('payment')
+      setStep('actual-analysis')
       setError(analysisError instanceof ApiClientError ? analysisError.message : 'Analysis failed after payment')
     }
   }, [router])
@@ -193,7 +251,9 @@ export default function AnalysisPage() {
 
   useEffect(() => {
     if (router.isReady && router.query.checkout === 'cancelled') {
-      setStep('payment')
+      setStep('actual-analysis')
+      setAnalysisUnlocked(false)
+      setPaymentDialogOpen(true)
       setError('Payment was cancelled. Your uploaded images are still ready.')
     }
   }, [router.isReady, router.query.checkout])
@@ -219,134 +279,130 @@ export default function AnalysisPage() {
   }
 
   function removeImage(id: string) {
-    setImages((current) => current.filter((image) => image.id !== id))
+    setImages((current) => {
+      const nextImages = current.filter((image) => image.id !== id)
+      setSelectedImageId((currentSelectedId) => {
+        if (currentSelectedId !== id) return currentSelectedId
+
+        return nextImages[nextImages.length - 1]?.id ?? null
+      })
+      return nextImages
+    })
   }
 
   function addCameraImage(image: { dataUrl: string; name: string }) {
-    setImages((current) => {
-      if (current.length >= 3) return current
+    if (images.length >= 3) {
+      setSelectedImageId(images[images.length - 1]?.id ?? null)
+      return
+    }
 
+    const imageId = crypto.randomUUID()
+    setImages((current) => {
       return [
         ...current,
         {
-          id: crypto.randomUUID(),
+          id: imageId,
           name: image.name,
           dataUrl: image.dataUrl,
         },
       ].slice(0, 3)
     })
+    setSelectedImageId(imageId)
   }
 
   return (
-    <div className="mx-auto grid min-h-[calc(100vh-8rem)] max-w-6xl gap-5 py-2 sm:py-6">
+    <div className="min-h-[calc(100svh-5rem)] w-full bg-white">
       <input ref={uploadInputRef} className="hidden" type="file" accept="image/*" multiple onChange={handleFiles} />
 
-      <section className="overflow-hidden rounded-lg border bg-card shadow-sm">
-        <div className="flex h-12 items-center justify-between border-b px-4 sm:px-5">
-          <div className="text-sm font-semibold tracking-tight">QOVES</div>
-          <div className="flex items-center gap-3 text-xs font-medium text-muted-foreground">
-            <span>Free facial assessment</span>
-            <span className="hidden sm:inline">Menu ▲</span>
-          </div>
-        </div>
-
-        <div className="grid min-h-[620px] gap-8 p-4 sm:p-5 lg:grid-cols-[0.78fr_1.22fr] lg:p-6">
-          <aside className="flex flex-col justify-between gap-8">
-            <div>
-              <div className="flex gap-6 font-mono text-[10px] uppercase tracking-wide text-muted-foreground">
-                <span className="underline underline-offset-4">What is it?</span>
-                <span className="underline underline-offset-4">All reports</span>
-              </div>
-
-              <div className="mt-20 sm:mt-28 lg:mt-40">
-                <h1 className="text-balance text-4xl font-semibold leading-[0.95] tracking-[-0.05em] sm:text-6xl">
-                  Introductory Facial Assessment
-                </h1>
-                <div className="mt-8 grid grid-cols-2 gap-4 font-mono text-[10px] uppercase text-muted-foreground sm:grid-cols-4">
-                  <Meta label="Edition" value="Introductory" />
-                  <Meta label="Pages" value="16" />
-                  <Meta label="Cost" value="$4.99" />
-                  <Meta label="Uploaded" value={`${images.length}/3`} />
-                </div>
-              </div>
-            </div>
-
-            <div>
-              <Button className="h-11 w-full justify-between rounded-sm font-mono text-[11px] uppercase" onClick={startPseudoAnalysis} disabled={!canStart}>
-                Begin assessment
-                <ArrowRight className="size-4" aria-hidden="true" />
-              </Button>
-              <p className="mt-6 max-w-sm text-xs leading-5 text-muted-foreground">
-                By clicking begin, you agree that the uploaded images can be used to generate your private report.
-              </p>
-            </div>
-          </aside>
-
-          <div className="grid min-h-[520px] place-items-center overflow-hidden rounded-sm bg-zinc-950 p-4 sm:p-8">
-            <CaptureFrame
-              imageSrc={previewImage}
-              imageAlt="Selected face preview"
-              title="Look straight ahead"
-              subtitle={previewImage ? 'Center your face in the frame' : 'Upload or take up to three photos'}
-            />
-          </div>
-        </div>
-      </section>
-
-      <section className="overflow-hidden rounded-lg border bg-card shadow-sm">
-        <div className="flex h-12 items-center justify-between border-b px-4 sm:px-5">
-          <div className="text-sm font-semibold tracking-tight">QOVES</div>
-          <div className="font-mono text-[10px] uppercase text-muted-foreground">
-            Step {stepIndex(step)} / 05
-          </div>
-        </div>
-
+      <section className="min-h-[calc(100svh-5rem)] overflow-hidden bg-white">
         <AnimatePresence mode="wait">
+          {step === 'intro' ? (
+            <ScreenMotion key="intro">
+              <IntroScreen onBegin={() => setStep('upload')} />
+            </ScreenMotion>
+          ) : null}
+
           {step === 'upload' ? (
-            <FlowPanel key="upload">
-              <UploadStep
-                gender={gender}
+            <ScreenMotion key="upload">
+              <UploadScreen
                 images={images}
+                previewImage={previewImage}
+                selectedImageId={selectedImage?.id ?? null}
+                canStart={canStart}
                 onCamera={() => setCameraOpen(true)}
-                onGenderChange={setGender}
                 onRemove={removeImage}
+                onSelect={setSelectedImageId}
+                onStart={startPseudoAnalysis}
                 onUpload={() => uploadInputRef.current?.click()}
               />
-            </FlowPanel>
+            </ScreenMotion>
           ) : null}
 
           {step === 'preview-analysis' ? (
-            <FlowPanel key="preview">
-              <PseudoAnalysisStep progress={progress} />
-            </FlowPanel>
+            <ScreenMotion key="preview-analysis">
+              <ActualAnalysisScreen
+                checkoutError={error}
+                checkoutLoading={checkoutLoading}
+                imageSrc={images[0]?.dataUrl ?? previewImage}
+                isUnlocked={analysisUnlocked}
+                paymentDialogOpen={paymentDialogOpen}
+                progress={progress}
+                onCheckout={startCheckout}
+                onPaymentDialogChange={setPaymentDialogOpen}
+                onPaymentRequired={() => setPaymentDialogOpen(true)}
+              />
+            </ScreenMotion>
           ) : null}
 
           {step === 'payment' ? (
-            <FlowPanel key="payment">
-              <PaymentStep error={error} imageCount={images.length} onCheckout={startCheckout} />
-            </FlowPanel>
+            <ScreenMotion key="payment">
+              <ActualAnalysisScreen
+                checkoutError={error}
+                checkoutLoading={checkoutLoading}
+                imageSrc={images[0]?.dataUrl ?? previewImage}
+                isUnlocked={analysisUnlocked}
+                paymentDialogOpen={paymentDialogOpen}
+                progress={progress}
+                onCheckout={startCheckout}
+                onPaymentDialogChange={setPaymentDialogOpen}
+                onPaymentRequired={() => setPaymentDialogOpen(true)}
+              />
+            </ScreenMotion>
           ) : null}
 
           {step === 'actual-analysis' ? (
-            <FlowPanel key="actual">
-              <ActualAnalysisStep progress={progress} />
-            </FlowPanel>
+            <ScreenMotion key="actual-analysis">
+              <ActualAnalysisScreen
+                checkoutError={error}
+                checkoutLoading={checkoutLoading}
+                imageSrc={images[0]?.dataUrl ?? previewImage}
+                isUnlocked={analysisUnlocked}
+                paymentDialogOpen={paymentDialogOpen}
+                progress={progress}
+                onCheckout={startCheckout}
+                onPaymentDialogChange={setPaymentDialogOpen}
+                onPaymentRequired={() => setPaymentDialogOpen(true)}
+              />
+            </ScreenMotion>
           ) : null}
 
           {step === 'results' ? (
-            <FlowPanel key="results">
-              <ResultsStep
-                primaryScore={primaryScore}
-                results={results}
-                onOpenShare={() => setShareOpen(true)}
-                onReset={() => {
-                  setImages([])
-                  setResults([])
-                  setStep('upload')
-                  setShareUrl(null)
-                }}
-              />
-            </FlowPanel>
+            <ScreenMotion key="results">
+              <ProcessScreen wide>
+                <ResultsStep
+                  primaryScore={primaryScore}
+                  results={results}
+                  onOpenShare={() => setShareOpen(true)}
+                  onReset={() => {
+                    setImages([])
+                    setSelectedImageId(null)
+                    setResults([])
+                    setStep('intro')
+                    setShareUrl(null)
+                  }}
+                />
+              </ProcessScreen>
+            </ScreenMotion>
           ) : null}
         </AnimatePresence>
       </section>
@@ -371,98 +427,210 @@ export default function AnalysisPage() {
   )
 }
 
-function UploadStep({
-  gender,
-  images,
-  onCamera,
-  onGenderChange,
-  onRemove,
-  onUpload,
-}: {
-  gender: 'male' | 'female' | 'other'
-  images: AnalysisDraftImage[]
-  onCamera: () => void
-  onGenderChange: (gender: 'male' | 'female' | 'other') => void
-  onRemove: (id: string) => void
-  onUpload: () => void
-}) {
+function ScreenMotion({ children }: { children: ReactNode }) {
   return (
-    <div className="grid min-h-[520px] gap-8 lg:grid-cols-[0.75fr_1fr_0.75fr]">
-      <div className="flex flex-col justify-center">
-        <h2 className="max-w-[220px] text-3xl font-semibold leading-none tracking-[-0.05em] sm:text-4xl">
-          Upload your image
-        </h2>
-        <p className="mt-5 max-w-[230px] text-sm leading-5 text-muted-foreground">
-          Use clear photos where you face the camera with neutral expression.
-        </p>
-        <div className="mt-6 flex flex-wrap gap-2">
-          <Button onClick={onUpload} variant="outline" disabled={images.length >= 3}>
-            <Upload className="size-4" aria-hidden="true" />
-            Upload
-          </Button>
-          <Button onClick={onCamera} variant="outline" disabled={images.length >= 3}>
-            <Camera className="size-4" aria-hidden="true" />
-            Camera
-          </Button>
-        </div>
-      </div>
+    <motion.div
+      className="min-h-[calc(100svh-5rem)]"
+      initial={{ opacity: 0, y: 18, scale: 0.992 }}
+      animate={{ opacity: 1, y: 0, scale: 1 }}
+      exit={{ opacity: 0, y: -14, scale: 0.992 }}
+      transition={{ duration: 0.34, ease: [0.23, 1, 0.32, 1] }}
+    >
+      {children}
+    </motion.div>
+  )
+}
 
-      <div className="grid content-center gap-3">
-        <div className="mx-auto w-full max-w-[320px] border p-1">
-          <div className="flex items-center justify-between border-b px-2 py-2 font-mono text-[10px] uppercase text-muted-foreground">
-            <span>Upload //</span>
-            <span>{images.length > 0 ? 'Image uploaded successfully' : 'Awaiting image'}</span>
+function IntroScreen({ onBegin }: { onBegin: () => void }) {
+  return (
+    <div className="grid min-h-[calc(100svh-5rem)] gap-10 px-5 py-6 sm:px-10 sm:py-8 lg:grid-cols-[1.08fr_0.92fr] lg:gap-16 xl:gap-24 2xl:gap-32">
+      <aside className="flex flex-col justify-between gap-10 lg:pr-16 xl:pr-24 2xl:pr-36">
+        <div>
+          <div className="flex gap-6 font-mono text-[10px] uppercase tracking-wide text-muted-foreground">
+            <span className="underline underline-offset-4">What is it?</span>
+            <span className="underline underline-offset-4">All reports</span>
           </div>
-          <div className="bg-black p-2">
-            <CaptureFrame
-              className="max-w-[300px] rounded-[34px]"
-              imageSrc={images[0]?.dataUrl}
-              imageAlt="Primary uploaded preview"
-              title="Look straight ahead"
-              subtitle={images[0] ? 'Center your face in the frame' : 'Upload or take a photo'}
-            />
+
+          <div className="mt-20 sm:mt-28 lg:mt-40">
+            <h1 className="text-balance text-4xl font-semibold leading-[0.95] tracking-[-0.05em] sm:text-6xl">
+              Introductory Facial Assessment
+            </h1>
+            <div className="mt-8 grid grid-cols-2 gap-4 font-mono text-[10px] uppercase text-muted-foreground sm:grid-cols-4">
+              <Meta label="Edition" value="Introductory" />
+              <Meta label="Pages" value="16" />
+              <Meta label="Cost" value="$4.99" />
+              <Meta label="Assessed today" value="210001" />
+            </div>
           </div>
         </div>
-
-        {images.length > 0 ? (
-          <div className="mx-auto grid w-full max-w-[320px] grid-cols-3 gap-2">
-            {images.map((image) => (
-              <button key={image.id} className="group relative aspect-square overflow-hidden rounded-sm border bg-muted" onClick={() => onRemove(image.id)} type="button">
-                <img className="h-full w-full object-cover" src={image.dataUrl} alt={image.name} />
-                <span className="absolute right-1 top-1 grid size-5 place-items-center rounded-full bg-background/90 opacity-0 shadow-sm transition-opacity group-hover:opacity-100">
-                  <X className="size-3" aria-hidden="true" />
-                </span>
-              </button>
-            ))}
-          </div>
-        ) : null}
-      </div>
-
-      <div className="flex flex-col justify-center gap-6 text-sm text-muted-foreground">
-        <ul className="grid gap-3">
-          <li>▪ Remove glasses</li>
-          <li>▪ Look directly at camera</li>
-          <li>▪ Pull hair back</li>
-          <li>▪ Keep neutral expression</li>
-        </ul>
 
         <div>
-          <p className="mb-2 font-mono text-[10px] uppercase tracking-wide">Gender scoring mode</p>
-          <div className="grid grid-cols-3 gap-2">
-            {(['male', 'female', 'other'] as const).map((option) => (
-              <button
-                key={option}
-                type="button"
-                onClick={() => onGenderChange(option)}
-                className={`rounded-md border px-3 py-2 text-xs font-medium capitalize transition-colors ${
-                  gender === option ? 'border-foreground bg-foreground text-background' : 'bg-background hover:bg-muted'
-                }`}
-              >
-                {option}
-              </button>
-            ))}
+          <Button className="h-11 w-full justify-between rounded-sm font-mono text-[11px] uppercase" onClick={onBegin}>
+            Begin assessment
+            <ArrowRight className="size-4" aria-hidden="true" />
+          </Button>
+          <p className="mt-6 max-w-sm text-xs leading-5 text-muted-foreground">
+            By clicking begin, you agree that the uploaded images can be used to generate your private report.
+          </p>
+        </div>
+      </aside>
+
+      <div className="relative min-h-[560px] overflow-hidden bg-zinc-200 lg:min-h-0">
+        <img className="absolute inset-0 h-full w-full object-cover object-center" src={previewPhotoUrl} alt="Facial assessment preview" />
+        <div className="absolute left-1/2 top-1/2 w-[min(42vw,300px)] -translate-x-1/2 -translate-y-1/2 border border-white/80 p-3 text-white shadow-[0_20px_80px_rgba(0,0,0,0.18)]">
+          <div className="text-balance text-xl font-medium leading-none tracking-[-0.04em]">
+            Facial
+            <br />
+            Aesthetic
+            <br />
+            Assessments
+          </div>
+          <div className="mt-40 grid grid-cols-4 gap-4 font-mono text-[9px] uppercase text-white/85">
+            <PreviewMeta label="Name" value="Preview" />
+            <PreviewMeta label="Age" value="24" />
+            <PreviewMeta label="Gender" value="Face" />
+            <PreviewMeta label="Descent" value="Global" />
           </div>
         </div>
+      </div>
+    </div>
+  )
+}
+
+function UploadScreen({
+  canStart,
+  images,
+  onCamera,
+  onRemove,
+  onSelect,
+  onStart,
+  onUpload,
+  previewImage,
+  selectedImageId,
+}: {
+  canStart: boolean
+  images: AnalysisDraftImage[]
+  onCamera: () => void
+  onRemove: (id: string) => void
+  onSelect: (id: string) => void
+  onStart: () => void
+  onUpload: () => void
+  previewImage: string | null
+  selectedImageId: string | null
+}) {
+  const uploadButtonClass = 'h-10 rounded-xl border border-zinc-300 bg-white px-5 text-sm font-medium text-black shadow-none hover:bg-zinc-50'
+
+  return (
+    <div className="grid min-h-[calc(100svh-5rem)] content-between px-5 py-6 sm:px-10 sm:py-8">
+      <div className="grid min-h-[calc(100svh-10rem)] gap-8 lg:grid-cols-[0.76fr_1fr_0.76fr]">
+        <div className="flex flex-col justify-center">
+          <h1 className="max-w-[240px] text-4xl font-semibold leading-[0.9] tracking-[-0.06em] sm:text-5xl">
+            Upload your image
+          </h1>
+          <p className="mt-5 max-w-[240px] text-sm leading-5 text-muted-foreground">
+            Take or upload up to three clear front-facing photos.
+          </p>
+          <div className="mt-7 flex flex-wrap gap-2">
+            <Button className={uploadButtonClass} onClick={onUpload} variant="outline" disabled={images.length >= 3}>
+              <Upload className="size-4" aria-hidden="true" />
+              Upload
+            </Button>
+            <Button className={uploadButtonClass} onClick={onCamera} variant="outline" disabled={images.length >= 3}>
+              <Camera className="size-4" aria-hidden="true" />
+              Camera
+            </Button>
+          </div>
+          <Button className="mt-4 h-11 w-full max-w-[260px] justify-between rounded-sm font-mono text-[11px] uppercase" onClick={onStart} disabled={!canStart}>
+            Continue
+            <ArrowRight className="size-4" aria-hidden="true" />
+          </Button>
+        </div>
+
+        <div className="grid content-center gap-4">
+          <div className="mx-auto w-full max-w-[390px] p-1">
+            <div className="bg-black p-2">
+              <AnimatePresence mode="wait">
+                <motion.div
+                  key={previewImage ?? 'empty-preview'}
+                  initial={{ opacity: 0, scale: 0.985, y: 8 }}
+                  animate={{ opacity: 1, scale: 1, y: 0 }}
+                  exit={{ opacity: 0, scale: 0.985, y: -8 }}
+                  transition={{ duration: 0.26, ease: [0.23, 1, 0.32, 1] }}
+                >
+                  <CaptureFrame
+                    className="max-w-[370px] rounded-[34px]"
+                    imageSrc={previewImage}
+                    imageAlt="Primary uploaded preview"
+                    showStepIndicator={false}
+                    stepLabel="Step 1 of 3"
+                    title="Look straight ahead"
+                    subtitle={previewImage ? 'Center your face in the frame' : 'Upload or take a photo'}
+                  />
+                </motion.div>
+              </AnimatePresence>
+            </div>
+          </div>
+
+          {images.length > 0 ? (
+            <div className="mx-auto grid w-full max-w-[390px] grid-cols-3 gap-2">
+              {images.map((image) => (
+                <button
+                  key={image.id}
+                  className={`group relative aspect-square overflow-hidden rounded-md border bg-muted transition-[border-color,box-shadow,transform] duration-200 ease-out hover:scale-[1.01] ${
+                    selectedImageId === image.id ? 'border-black shadow-[0_10px_30px_rgba(15,23,42,0.12)]' : 'border-zinc-200'
+                  }`}
+                  onClick={() => onSelect(image.id)}
+                  type="button"
+                >
+                  <img className="h-full w-full object-cover" src={image.dataUrl} alt={image.name} />
+                  <span
+                    className="absolute right-1 top-1 grid size-5 place-items-center rounded-full bg-background/90 opacity-0 shadow-sm transition-opacity group-hover:opacity-100"
+                    onClick={(event) => {
+                      event.stopPropagation()
+                      onRemove(image.id)
+                    }}
+                  >
+                    <X className="size-3" aria-hidden="true" />
+                  </span>
+                </button>
+              ))}
+            </div>
+          ) : null}
+        </div>
+
+        <div className="flex flex-col justify-center text-sm text-muted-foreground">
+          <ul className="grid gap-3">
+            <li>▪ Remove your glasses</li>
+            <li>▪ Look directly at camera</li>
+            <li>▪ Pull hair back</li>
+            <li>▪ Keep neutral expression</li>
+          </ul>
+        </div>
+      </div>
+
+      <StepRail active={1} />
+    </div>
+  )
+}
+
+function ProcessScreen({ children, wide = false }: { children: ReactNode; wide?: boolean }) {
+  return (
+    <div className="grid min-h-[calc(100svh-5rem)] place-items-center p-4 sm:p-8">
+      <div className={`w-full ${wide ? 'max-w-5xl' : 'max-w-xl'}`}>{children}</div>
+    </div>
+  )
+}
+
+function StepRail({ active }: { active: 1 | 2 | 3 }) {
+  return (
+    <div className="font-mono text-[10px] uppercase text-muted-foreground">
+      <div className="h-3 overflow-hidden rounded-sm bg-zinc-100">
+        <div className="h-full bg-zinc-400" style={{ width: `${(active / 3) * 100}%` }} />
+      </div>
+      <div className="mt-3 grid grid-cols-3">
+        <span>[ 001 ] Upload image</span>
+        <span className="text-center">[ 002 ] Payment</span>
+        <span className="text-right">[ 003 ] Finish</span>
       </div>
     </div>
   )
@@ -524,16 +692,209 @@ function PaymentStep({
   )
 }
 
-function ActualAnalysisStep({ progress }: { progress: number }) {
+function ActualAnalysisScreen({
+  checkoutError,
+  checkoutLoading,
+  imageSrc,
+  isUnlocked,
+  onCheckout,
+  onPaymentDialogChange,
+  onPaymentRequired,
+  paymentDialogOpen,
+  progress,
+}: {
+  checkoutError: string | null
+  checkoutLoading: boolean
+  imageSrc: string | null
+  isUnlocked: boolean
+  onCheckout: () => void
+  onPaymentDialogChange: (open: boolean) => void
+  onPaymentRequired: () => void
+  paymentDialogOpen: boolean
+  progress: number
+}) {
   return (
-    <CenteredStep
-      icon={<Loader2 className="size-6 animate-spin" aria-hidden="true" />}
-      eyebrow="Analysis"
-      title="Generating your results"
-      description="Payment is confirmed. Your private report is being generated now."
-    >
-      <ProgressBar progress={progress} />
-    </CenteredStep>
+    <>
+      <div className="grid min-h-[calc(100svh-5rem)] gap-10 px-5 py-6 sm:px-10 sm:py-8 lg:grid-cols-[0.92fr_1.08fr] lg:gap-16">
+        <div className="flex flex-col justify-center">
+          <p className="font-mono text-[10px] uppercase tracking-wide text-muted-foreground">Analysis //</p>
+          <h1 className="mt-3 max-w-xl text-4xl font-semibold leading-[0.92] tracking-[-0.06em] sm:text-6xl">
+            Generating your facial assessment
+          </h1>
+          <p className="mt-5 max-w-md text-sm leading-6 text-muted-foreground">
+            Your uploaded image is being evaluated against the research-weighted rubric.
+          </p>
+          <div className="mt-10">
+            <AnalysisTimeline
+              isUnlocked={isUnlocked}
+              onPaymentRequired={onPaymentRequired}
+            />
+          </div>
+          <div className="mt-10 max-w-xl">
+            <ProgressBar progress={isUnlocked ? progress : 24} />
+          </div>
+        </div>
+
+        <div className="grid place-items-center">
+          <MosaicImage imageSrc={imageSrc} />
+        </div>
+      </div>
+
+      <AnalysisPaymentDialog
+        error={checkoutError}
+        loading={checkoutLoading}
+        open={paymentDialogOpen}
+        onCheckout={onCheckout}
+        onOpenChange={onPaymentDialogChange}
+      />
+    </>
+  )
+}
+
+function AnalysisTimeline({
+  isUnlocked,
+  onPaymentRequired,
+}: {
+  isUnlocked: boolean
+  onPaymentRequired: () => void
+}) {
+  const [activeIndex, setActiveIndex] = useState(isUnlocked ? 2 : 0)
+  const [expandedIndex, setExpandedIndex] = useState(isUnlocked ? 2 : 0)
+  const paymentRequestedRef = useRef(false)
+
+  useEffect(() => {
+    const timer = setInterval(() => {
+      setActiveIndex((current) => {
+        const maxIndex = isUnlocked ? analysisTimeline.length - 1 : 1
+        return Math.min(current + 1, maxIndex)
+      })
+    }, 4_200)
+
+    return () => clearInterval(timer)
+  }, [isUnlocked])
+
+  useEffect(() => {
+    if (!isUnlocked || activeIndex >= 2) return
+
+    setActiveIndex(2)
+    setExpandedIndex(2)
+  }, [activeIndex, isUnlocked])
+
+  useEffect(() => {
+    if (isUnlocked || activeIndex < 1 || paymentRequestedRef.current) return
+
+    paymentRequestedRef.current = true
+    const timer = setTimeout(onPaymentRequired, 1_200)
+
+    return () => clearTimeout(timer)
+  }, [activeIndex, isUnlocked, onPaymentRequired])
+
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setExpandedIndex(activeIndex)
+    }, 1_200)
+
+    return () => clearTimeout(timer)
+  }, [activeIndex])
+
+  return (
+    <div className="relative grid gap-5">
+      <div className="absolute bottom-2 left-[5px] top-2 w-px bg-zinc-200" />
+      {analysisTimeline.map((step, index) => {
+        const isActive = index === activeIndex
+        const isVisible = index <= activeIndex
+        const isExpanded = index === expandedIndex && isVisible
+        const shouldShimmer = isActive || (index === expandedIndex && expandedIndex < activeIndex)
+
+        if (!isVisible) return null
+
+        return (
+          <motion.div
+            key={step.title}
+            className="relative pl-8"
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.34, ease: [0.23, 1, 0.32, 1] }}
+          >
+            <span className={`absolute left-0 top-1.5 size-2.5 rounded-full border ${isActive ? 'border-black bg-black' : 'border-zinc-300 bg-white'}`} />
+            {shouldShimmer ? (
+              <TextShimmer className="text-base font-medium tracking-[-0.025em] sm:text-lg" duration={1.1}>
+                {step.title}
+              </TextShimmer>
+            ) : (
+              <p className="text-base font-medium tracking-[-0.025em] text-black/78 sm:text-lg">{step.title}</p>
+            )}
+
+            <AnimatePresence initial={false}>
+              {isExpanded ? (
+                <motion.div
+                  key={`${step.title}-substeps`}
+                  className="mt-2 overflow-hidden pl-4 font-mono text-xs uppercase tracking-wide text-muted-foreground"
+                  initial={{ height: 0, opacity: 0, y: -8 }}
+                  animate={{ height: 'auto', opacity: 1, y: 0 }}
+                  exit={{ height: 0, opacity: 0, y: -10 }}
+                  transition={{ duration: 0.34, ease: [0.23, 1, 0.32, 1] }}
+                >
+                  <TextLoop interval={2.6} transition={{ duration: 0.42, ease: [0.23, 1, 0.32, 1] }}>
+                    {step.substeps.map((substep) => (
+                      <span key={substep}>{substep}</span>
+                    ))}
+                  </TextLoop>
+                </motion.div>
+              ) : null}
+            </AnimatePresence>
+          </motion.div>
+        )
+      })}
+    </div>
+  )
+}
+
+function MosaicImage({ imageSrc }: { imageSrc: string | null }) {
+  const [phase, setPhase] = useState(0)
+  const src = imageSrc || previewPhotoUrl
+  const permutation = mosaicPermutations[phase % mosaicPermutations.length]
+
+  useEffect(() => {
+    const timer = setInterval(() => {
+      setPhase((current) => current + 1)
+    }, 1_350)
+
+    return () => clearInterval(timer)
+  }, [])
+
+  return (
+    <div className="relative aspect-[4/5] w-full max-w-[620px] overflow-hidden bg-zinc-100">
+      {Array.from({ length: 9 }).map((_, sourceIndex) => {
+        const sourceColumn = sourceIndex % 3
+        const sourceRow = Math.floor(sourceIndex / 3)
+        const targetIndex = permutation[sourceIndex]
+        const targetColumn = targetIndex % 3
+        const targetRow = Math.floor(targetIndex / 3)
+
+        return (
+          <motion.div
+            key={sourceIndex}
+            className="absolute h-1/3 w-1/3 overflow-hidden border border-white/20 bg-cover bg-no-repeat"
+            animate={{
+              x: `${targetColumn * 100}%`,
+              y: `${targetRow * 100}%`,
+              opacity: sourceIndex === 4 ? 0.92 : 0.78,
+              scale: sourceIndex === 4 ? 1.02 : 1,
+            }}
+            transition={{ type: 'spring', duration: 1.05, bounce: 0.12 }}
+            style={{
+              backgroundImage: `url(${src})`,
+              backgroundPosition: `${sourceColumn * 50}% ${sourceRow * 50}%`,
+              backgroundSize: '300% 300%',
+              left: 0,
+              top: 0,
+            }}
+          />
+        )
+      })}
+      <div className="pointer-events-none absolute inset-0 bg-white/10" />
+    </div>
   )
 }
 
@@ -650,20 +1011,6 @@ function ShareSheet({
   )
 }
 
-function FlowPanel({ children }: { children: ReactNode }) {
-  return (
-    <motion.div
-      className="p-4 sm:p-6"
-      initial={{ opacity: 0, y: 8 }}
-      animate={{ opacity: 1, y: 0 }}
-      exit={{ opacity: 0, y: -8 }}
-      transition={{ duration: 0.18, ease: [0.23, 1, 0.32, 1] }}
-    >
-      {children}
-    </motion.div>
-  )
-}
-
 function CenteredStep({
   children,
   description,
@@ -713,6 +1060,15 @@ function Meta({ label, value }: { label: string; value: string }) {
   )
 }
 
+function PreviewMeta({ label, value }: { label: string; value: string }) {
+  return (
+    <div>
+      <div className="text-white/55">{label} /</div>
+      <div className="mt-1 text-white/90">{value}</div>
+    </div>
+  )
+}
+
 function Score({ label, value }: { label: string; value: number | null }) {
   return (
     <div className="rounded-md border bg-muted/30 p-2">
@@ -720,16 +1076,6 @@ function Score({ label, value }: { label: string; value: number | null }) {
       <div className="mt-1 text-sm font-semibold">{value?.toFixed(1) ?? '--'}</div>
     </div>
   )
-}
-
-function stepIndex(step: FlowStep) {
-  return {
-    upload: '01',
-    'preview-analysis': '02',
-    payment: '03',
-    'actual-analysis': '04',
-    results: '05',
-  }[step]
 }
 
 function wait(ms: number) {

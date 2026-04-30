@@ -7,6 +7,7 @@ type CaptureFrameProps = {
   imageAlt?: string
   imageSrc?: string | null
   muted?: boolean
+  showStepIndicator?: boolean
   stepLabel?: string
   subtitle?: string
   title?: string
@@ -19,6 +20,7 @@ export function CaptureFrame({
   imageAlt = 'Face alignment preview',
   imageSrc,
   muted = false,
+  showStepIndicator = true,
   stepLabel = 'Step 1 of 3',
   subtitle = 'Center your face in the frame',
   title = 'Look straight ahead',
@@ -42,23 +44,25 @@ export function CaptureFrame({
       )}
 
       <div className={`absolute inset-0 ${muted ? 'opacity-80' : ''}`}>
-        <div className="absolute inset-0 bg-[radial-gradient(ellipse_50%_35%_at_50%_48%,rgba(0,0,0,0)_0%,rgba(0,0,0,0)_48%,rgba(0,0,0,0.18)_58%,rgba(0,0,0,0.58)_100%)]" />
+        <div className="absolute inset-0 bg-[radial-gradient(ellipse_50%_35%_at_50%_45%,rgba(0,0,0,0)_0%,rgba(0,0,0,0)_48%,rgba(0,0,0,0.18)_58%,rgba(0,0,0,0.58)_100%)]" />
         <div className="absolute inset-x-0 top-0 h-44 bg-gradient-to-b from-black/60 via-black/24 to-transparent" />
         <div className="absolute inset-x-0 bottom-0 h-64 bg-gradient-to-t from-black/72 via-black/42 to-transparent" />
         <div className="absolute inset-y-0 left-0 w-16 bg-gradient-to-r from-black/48 to-transparent" />
         <div className="absolute inset-y-0 right-0 w-16 bg-gradient-to-l from-black/48 to-transparent" />
       </div>
 
-      <div className="pointer-events-none absolute inset-x-0 top-7 grid justify-items-center gap-3 text-white">
-        <div className="font-mono text-[13px] font-semibold uppercase tracking-[0.28em] text-white/80">{stepLabel}</div>
-        <div className="flex items-center gap-3">
-          <span className="h-1.5 w-12 rounded-full bg-white" />
-          <span className="h-1.5 w-12 rounded-full bg-white/25" />
-          <span className="h-1.5 w-12 rounded-full bg-white/25" />
+      {showStepIndicator ? (
+        <div className="pointer-events-none absolute inset-x-0 top-7 grid justify-items-center gap-3 text-white">
+          <div className="font-mono text-[13px] font-semibold uppercase tracking-[0.28em] text-white/80">{stepLabel}</div>
+          <div className="flex items-center gap-3">
+            <span className="h-1.5 w-12 rounded-full bg-white" />
+            <span className="h-1.5 w-12 rounded-full bg-white/25" />
+            <span className="h-1.5 w-12 rounded-full bg-white/25" />
+          </div>
         </div>
-      </div>
+      ) : null}
 
-      <svg className="pointer-events-none absolute left-1/2 top-[49%] h-[48%] w-[72%] -translate-x-1/2 -translate-y-1/2 overflow-visible" viewBox="0 0 260 340" aria-hidden="true">
+      <svg className="pointer-events-none absolute left-1/2 top-[45%] h-[48%] w-[72%] -translate-x-1/2 -translate-y-1/2 overflow-visible" viewBox="0 0 260 340" aria-hidden="true">
         <path
           d="M130 9C52 9 14 68 14 162c0 96 42 169 116 169s116-73 116-169C246 68 208 9 130 9Z"
           fill="none"
