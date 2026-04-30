@@ -277,6 +277,7 @@ const reportCategories: ReportCategory[] = [
     overlayLines: [{ x1: 50, y1: 30, x2: 35, y2: 43 }, { x1: 50, y1: 30, x2: 65, y2: 43 }, { x1: 50, y1: 30, x2: 50, y2: 81 }, { x1: 35, y1: 43, x2: 65, y2: 43 }, { x1: 39, y1: 66, x2: 62, y2: 66 }],
   },
 ]
+const reportOverlayYOffset = -6
 
 function wait(ms: number) {
   return new Promise((resolve) => setTimeout(resolve, ms))
@@ -813,8 +814,8 @@ function UploadScreen({
 
 function ProcessScreen({ children, wide = false }: { children: ReactNode; wide?: boolean }) {
   return (
-    <div className="grid min-h-[calc(100svh-5rem)] place-items-center p-4 sm:p-8">
-      <div className={`w-full ${wide ? 'max-w-5xl' : 'max-w-xl'}`}>{children}</div>
+    <div className={`grid min-h-[calc(100svh-5rem)] ${wide ? '' : 'place-items-center p-4 sm:p-8'}`}>
+      <div className={`w-full ${wide ? '' : 'max-w-xl'}`}>{children}</div>
     </div>
   )
 }
@@ -1398,32 +1399,15 @@ function ResultsStep({
   const [activeCategoryId, setActiveCategoryId] = useState(reportCategories[0]?.id ?? 'overall')
   const primaryResult = results[0]
   const activeCategory = reportCategories.find((category) => category.id === activeCategoryId) ?? reportCategories[0]
-  const activeIndex = reportCategories.findIndex((category) => category.id === activeCategory.id)
   const imageSrc = primaryResult?.photo.imageUrl ?? previewPhotoUrl
   const score = primaryScore ?? primaryResult?.analysis.pslScore ?? 0
   const categoryScore = getReportCategoryScore(activeCategory.id, primaryResult)
 
   return (
-    <div className="grid min-h-[calc(100svh-5rem)] gap-12 px-5 py-6 sm:px-10 sm:py-8 lg:grid-cols-[minmax(0,1fr)_360px] lg:items-start lg:justify-between lg:gap-20 xl:gap-28">
-      <section className="grid gap-6">
-        <AnimatePresence mode="wait">
-          <motion.div
-            key={activeCategory.id}
-            className="grid gap-4 lg:grid-cols-[minmax(0,0.98fr)_minmax(280px,0.72fr)] lg:items-stretch"
-            initial={{ opacity: 0, y: 18, filter: 'blur(8px)' }}
-            animate={{ opacity: 1, y: 0, filter: 'blur(0px)' }}
-            exit={{ opacity: 0, y: -14, filter: 'blur(8px)' }}
-            transition={{ duration: 0.56, ease: [0.23, 1, 0.32, 1] }}
-          >
-            <ReportImagePanel category={activeCategory} imageSrc={imageSrc} />
-            <ReportDetailPanel category={activeCategory} score={categoryScore} />
-          </motion.div>
-        </AnimatePresence>
-      </div>
-
-      <aside className="flex min-h-[calc(100svh-9rem)] flex-col justify-between bg-black p-5 text-white lg:sticky lg:top-24">
+    <div className="grid min-h-[calc(100svh-5rem)] gap-12 px-5 py-6 sm:px-10 sm:py-8 lg:grid-cols-[360px_minmax(0,1fr)] lg:items-start lg:justify-between lg:gap-20 xl:gap-28">
+      <aside className="flex min-h-[calc(100svh-9rem)] flex-col justify-between bg-white p-0 text-black lg:sticky lg:top-24">
         <div>
-          <p className="font-mono text-[10px] uppercase tracking-wide text-white/45">Final analysis //</p>
+          <p className="font-mono text-[10px] uppercase tracking-wide text-muted-foreground">Final analysis //</p>
           <h2 className="mt-3 text-5xl font-semibold leading-none tracking-[-0.06em]">Your Report</h2>
           <div className="mt-6 grid gap-1.5">
             {reportCategories.map((category, index) => {
@@ -1433,14 +1417,14 @@ function ResultsStep({
                 <button
                   key={category.id}
                   className={`group grid grid-cols-[64px_1fr_auto] items-center gap-3 px-3 py-2 text-left font-mono text-[11px] uppercase tracking-wide transition-colors duration-300 ${
-                    isActive ? 'bg-white text-black' : 'text-white/55 hover:bg-white/10 hover:text-white'
+                    isActive ? 'bg-black text-white' : 'text-muted-foreground hover:bg-zinc-100 hover:text-black'
                   }`}
                   onClick={() => setActiveCategoryId(category.id)}
                   type="button"
                 >
                   <span>[ {String(index + 1).padStart(3, '0')} ]</span>
                   <span>{category.title}</span>
-                  <span className={isActive ? 'text-black/50' : 'text-white/25'}>{category.id === 'overall' ? score.toFixed(1) : ''}</span>
+                  <span className={isActive ? 'text-white/55' : 'text-black/25'}>{category.id === 'overall' ? score.toFixed(1) : ''}</span>
                 </button>
               )
             })}
@@ -1448,15 +1432,15 @@ function ResultsStep({
         </div>
 
         <div className="grid gap-3">
-          <div className="border border-white/15 p-4">
-            <p className="font-mono text-[10px] uppercase tracking-wide text-white/45">Overall score</p>
+          <div className="border border-zinc-200 p-4">
+            <p className="font-mono text-[10px] uppercase tracking-wide text-muted-foreground">Overall score</p>
             <div className="mt-3 flex items-end justify-between">
               <span className="text-6xl font-semibold leading-none tracking-[-0.06em]">{score.toFixed(1)}</span>
-              <span className="pb-1 font-mono text-[10px] uppercase text-white/45">/ 10</span>
+              <span className="pb-1 font-mono text-[10px] uppercase text-muted-foreground">/ 10</span>
             </div>
           </div>
           <button
-            className="flex h-12 w-full items-center justify-between bg-white px-4 font-mono text-[11px] uppercase tracking-wide text-black transition-transform duration-200 ease-out hover:-translate-y-0.5 active:translate-y-0"
+            className="flex h-12 w-full items-center justify-between bg-black px-4 font-mono text-[11px] uppercase tracking-wide text-white transition-transform duration-200 ease-out hover:-translate-y-0.5 active:translate-y-0"
             onClick={onOpenShare}
             type="button"
           >
@@ -1464,7 +1448,7 @@ function ResultsStep({
             <Share2 className="size-4" aria-hidden="true" />
           </button>
           <button
-            className="h-10 text-left font-mono text-[10px] uppercase tracking-wide text-white/42 transition-colors hover:text-white/70"
+            className="h-10 text-left font-mono text-[10px] uppercase tracking-wide text-muted-foreground transition-colors hover:text-black"
             onClick={onReset}
             type="button"
           >
@@ -1472,16 +1456,28 @@ function ResultsStep({
           </button>
         </div>
       </aside>
+
+      <section className="grid min-h-[calc(100svh-9rem)] gap-6">
+        <div className="grid h-full gap-4 lg:grid-cols-[minmax(0,0.98fr)_minmax(280px,0.72fr)] lg:items-stretch">
+          <ReportImagePanel category={activeCategory} imageSrc={imageSrc} />
+          <ReportDetailPanel category={activeCategory} score={categoryScore} />
+        </div>
+      </section>
     </div>
   )
 }
 
 function ReportImagePanel({ category, imageSrc }: { category: ReportCategory; imageSrc: string }) {
   return (
-    <div className="relative min-h-[640px] overflow-hidden bg-zinc-100">
+    <div className="relative min-h-[520px] overflow-hidden bg-zinc-100 lg:h-full lg:min-h-0">
       <img className="absolute inset-0 h-full w-full object-cover object-center" src={imageSrc} alt={`${category.title} analysis image`} />
       <div className="absolute inset-0 bg-white/5" />
-      <ReportOverlay category={category} />
+      <AnimatePresence mode="wait">
+        <ReportFocusOverlay key={`${category.id}-focus`} category={category} />
+      </AnimatePresence>
+      <AnimatePresence mode="wait">
+        <ReportOverlay key={category.id} category={category} />
+      </AnimatePresence>
       <div className="absolute inset-x-4 top-4 flex items-center justify-between font-mono text-[10px] uppercase tracking-wide text-white drop-shadow-[0_1px_8px_rgba(0,0,0,0.35)]">
         <span>[ {category.title} ]</span>
         <span>Active measurement</span>
@@ -1490,45 +1486,149 @@ function ReportImagePanel({ category, imageSrc }: { category: ReportCategory; im
   )
 }
 
-function ReportOverlay({ category }: { category: ReportCategory }) {
+function ReportFocusOverlay({ category }: { category: ReportCategory }) {
+  if (category.id !== 'eyes' && category.id !== 'mouth') return null
+
+  const spotlightY = category.id === 'eyes' ? 39 + reportOverlayYOffset : 66 + reportOverlayYOffset
+  const spotlight = category.id === 'eyes'
+    ? `radial-gradient(ellipse_34%_15%_at_50%_${spotlightY}%,rgba(0,0,0,0)_0%,rgba(0,0,0,0)_58%,rgba(0,0,0,0.48)_78%,rgba(0,0,0,0.9)_100%)`
+    : `radial-gradient(ellipse_28%_13%_at_51%_${spotlightY}%,rgba(0,0,0,0)_0%,rgba(0,0,0,0)_55%,rgba(0,0,0,0.52)_76%,rgba(0,0,0,0.92)_100%)`
+
   return (
-    <svg className="absolute inset-0 h-full w-full" viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden="true">
-      {category.overlayLines.map((line, index) => (
-        <motion.line
-          key={`${category.id}-line-${index}`}
-          x1={line.x1}
-          y1={line.y1}
-          x2={line.x2}
-          y2={line.y2}
-          stroke="rgba(255,255,255,0.92)"
-          strokeDasharray="1"
-          strokeLinecap="round"
-          strokeWidth="0.28"
-          vectorEffect="non-scaling-stroke"
-          initial={{ pathLength: 0, opacity: 0 }}
-          animate={{ pathLength: 1, opacity: 1 }}
-          transition={{ delay: 0.12 + index * 0.08, duration: 0.82, ease: [0.23, 1, 0.32, 1] }}
-        />
-      ))}
-      {category.overlayPoints.map((point, index) => (
-        <motion.circle
-          key={`${category.id}-point-${index}`}
-          cx={point.x}
-          cy={point.y}
-          r="0.75"
-          fill="white"
-          initial={{ scale: 0, opacity: 0 }}
-          animate={{ scale: 1, opacity: 1 }}
-          transition={{ delay: index * 0.06, duration: 0.34, ease: [0.23, 1, 0.32, 1] }}
-        />
-      ))}
-    </svg>
+    <motion.div
+      key={`${category.id}-focus`}
+      className="absolute inset-0"
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      exit={{ opacity: 0 }}
+      transition={{ duration: 0.72, ease: [0.23, 1, 0.32, 1] }}
+      style={{ background: spotlight }}
+    />
   )
+}
+
+function ReportOverlay({ category }: { category: ReportCategory }) {
+  const label = getReportOverlayLabel(category)
+
+  return (
+    <motion.div
+      className="pointer-events-none absolute inset-0"
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      exit={{ opacity: 0 }}
+      transition={{ duration: 0.44, ease: [0.23, 1, 0.32, 1] }}
+    >
+      <svg className="absolute inset-0 h-full w-full" viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden="true">
+        {getReportGuideBoxes(category).map((box, index) => (
+          <motion.rect
+            key={`${category.id}-box-${index}`}
+            x={box.x}
+            y={box.y + reportOverlayYOffset}
+            width={box.width}
+            height={box.height}
+            fill="none"
+            stroke="rgba(255,255,255,0.85)"
+            strokeDasharray={box.dashed ? '1.2 1.2' : undefined}
+            strokeWidth="0.35"
+            vectorEffect="non-scaling-stroke"
+            initial={{ pathLength: 0, opacity: 0 }}
+            animate={{ pathLength: 1, opacity: 1 }}
+            transition={{ delay: 0.08 + index * 0.12, duration: 0.9, ease: [0.23, 1, 0.32, 1] }}
+          />
+        ))}
+        {category.overlayLines.map((line, index) => (
+          <motion.line
+            key={`${category.id}-line-${index}`}
+            x1={line.x1}
+            y1={line.y1 + reportOverlayYOffset}
+            x2={line.x2}
+            y2={line.y2 + reportOverlayYOffset}
+            stroke="rgba(255,255,255,0.88)"
+            strokeDasharray={category.id === 'face-shape' || category.id === 'dimorphism' ? '1.3 1.4' : undefined}
+            strokeLinecap="round"
+            strokeWidth="0.36"
+            vectorEffect="non-scaling-stroke"
+            initial={{ pathLength: 0, opacity: 0 }}
+            animate={{ pathLength: 1, opacity: 1 }}
+            transition={{ delay: 0.18 + index * 0.1, duration: 0.92, ease: [0.23, 1, 0.32, 1] }}
+          />
+        ))}
+        {category.overlayPoints.map((point, index) => (
+          <motion.g
+            key={`${category.id}-point-${index}`}
+            initial={{ scale: 0, opacity: 0 }}
+            animate={{ scale: 1, opacity: 1 }}
+            transition={{ delay: index * 0.07, duration: 0.42, ease: [0.23, 1, 0.32, 1] }}
+            style={{ transformBox: 'fill-box', transformOrigin: 'center' }}
+          >
+            <circle cx={point.x} cy={point.y + reportOverlayYOffset} r="1.6" fill="none" stroke="rgba(255,255,255,0.72)" strokeDasharray="0.7 0.7" strokeWidth="0.32" vectorEffect="non-scaling-stroke" />
+            <circle cx={point.x} cy={point.y + reportOverlayYOffset} r="0.55" fill="white" />
+          </motion.g>
+        ))}
+      </svg>
+      <motion.div
+        className="absolute grid gap-1 font-mono text-[12px] uppercase tracking-wide text-black"
+        initial={{ opacity: 0, x: -10 }}
+        animate={{ opacity: 1, x: 0 }}
+        exit={{ opacity: 0, x: 8 }}
+        transition={{ delay: 0.58, duration: 0.46, ease: [0.23, 1, 0.32, 1] }}
+        style={{ left: `${label.x}%`, top: `${label.y + reportOverlayYOffset}%` }}
+      >
+        <span className="w-fit bg-white px-2 py-1">{label.title}</span>
+        <span className="w-fit bg-white px-2 py-1">{label.value}</span>
+      </motion.div>
+    </motion.div>
+  )
+}
+
+function getReportGuideBoxes(category: ReportCategory) {
+  if (category.id === 'eyes') {
+    return [
+      { x: 29, y: 35, width: 18, height: 9 },
+      { x: 55, y: 35, width: 18, height: 9 },
+      { x: 45, y: 31, width: 10, height: 13, dashed: true },
+    ]
+  }
+
+  if (category.id === 'mouth') {
+    return [{ x: 39, y: 61, width: 25, height: 9 }]
+  }
+
+  if (category.id === 'nose') {
+    return [{ x: 45, y: 39, width: 12, height: 24, dashed: true }]
+  }
+
+  return []
+}
+
+function getReportOverlayLabel(category: ReportCategory) {
+  const labels: Record<string, { title: string; value: string; x: number; y: number }> = {
+    eyes: { title: 'Eyes distance', value: '[ 3 cm ]', x: 58, y: 46 },
+    nose: { title: 'Nose axis', value: '[ centered ]', x: 58, y: 52 },
+    mouth: { title: 'Lips fullness', value: '[ 5 cm ]', x: 66, y: 62 },
+    jaw: { title: 'Jaw angle', value: '[ defined ]', x: 60, y: 73 },
+    dimorphism: { title: 'Dimorphism', value: '[ balanced ]', x: 59, y: 48 },
+    'face-shape': { title: 'Face shape', value: '[ oval ]', x: 61, y: 34 },
+    'biological-age': { title: 'Age signal', value: '[ youthful ]', x: 59, y: 55 },
+    symmetry: { title: 'Symmetry', value: '[ high ]', x: 58, y: 46 },
+    overall: { title: 'Overall score', value: '[ calibrated ]', x: 58, y: 51 },
+  }
+
+  return labels[category.id] ?? labels.overall
 }
 
 function ReportDetailPanel({ category, score }: { category: ReportCategory; score: number }) {
   return (
-    <div className="grid content-start gap-3">
+    <div className="grid h-full gap-3">
+      <AnimatePresence mode="wait">
+        <motion.div
+          key={category.id}
+          className="grid h-full grid-rows-[auto_1fr_auto] gap-3"
+          initial={{ opacity: 0, y: 14 }}
+          animate={{ opacity: 1, y: 0 }}
+          exit={{ opacity: 0, y: -10 }}
+          transition={{ duration: 0.42, ease: [0.23, 1, 0.32, 1] }}
+        >
       <div className="border bg-white p-5">
         <p className="font-mono text-[10px] uppercase tracking-wide text-muted-foreground">{category.scoreLabel}</p>
         <div className="mt-14 flex items-end justify-between">
@@ -1542,28 +1642,30 @@ function ReportDetailPanel({ category, score }: { category: ReportCategory; scor
         {category.features.map((feature, index) => (
           <motion.div
             key={`${category.id}-${feature.label}`}
-            className="min-h-36 border bg-zinc-50 p-4"
+            className="flex min-h-0 flex-col justify-between border bg-zinc-50 p-4"
             initial={{ opacity: 0, y: 16 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.1 + index * 0.07, duration: 0.46, ease: [0.23, 1, 0.32, 1] }}
           >
             <p className="font-mono text-[10px] uppercase tracking-wide text-muted-foreground">{feature.label}</p>
-            <p className="mt-16 text-xl font-semibold tracking-[-0.04em]">{feature.value}</p>
+            <p className="pt-10 text-xl font-semibold tracking-[-0.04em]">{feature.value}</p>
           </motion.div>
         ))}
       </div>
 
       <motion.div
-        className="min-h-40 border bg-white p-4"
+        className="border bg-white p-4"
         initial={{ opacity: 0, y: 18 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ delay: 0.38, duration: 0.52, ease: [0.23, 1, 0.32, 1] }}
       >
         <p className="font-mono text-[10px] uppercase tracking-wide text-muted-foreground">Explanation</p>
-        <p className="mt-16 text-sm leading-6 text-muted-foreground">
+        <p className="mt-10 text-sm leading-6 text-muted-foreground">
           {category.title} is scored from visible proportions, local symmetry, and how the feature fits the full facial frame.
         </p>
       </motion.div>
+        </motion.div>
+      </AnimatePresence>
     </div>
   )
 }
