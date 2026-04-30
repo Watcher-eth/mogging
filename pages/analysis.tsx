@@ -82,6 +82,7 @@ const pseudoAnalysisItems = [
   'Preparing private report',
 ]
 const previewPhotoUrl = '/model.png'
+const paymentDialogImageUrl = 'https://cdn-blog.prose.com/1/2023/10/Untitled-1-4.jpg'
 const analysisTimeline = [
   {
     title: 'Preparing image geometry',
@@ -119,6 +120,193 @@ const mosaicPermutations = [
   [8, 3, 0, 1, 4, 6, 7, 5, 2],
   [2, 0, 5, 3, 4, 1, 8, 6, 7],
 ]
+const originalMosaicPermutation = mosaicPermutations[0]
+
+type ReportFeature = {
+  label: string
+  value: string
+}
+
+type ReportOverlayPoint = {
+  x: number
+  y: number
+}
+
+type ReportOverlayLine = {
+  x1: number
+  y1: number
+  x2: number
+  y2: number
+}
+
+type ReportCategory = {
+  id: string
+  title: string
+  subtitle: string
+  scoreLabel: string
+  features: ReportFeature[]
+  overlayPoints: ReportOverlayPoint[]
+  overlayLines: ReportOverlayLine[]
+}
+
+const reportCategories: ReportCategory[] = [
+  {
+    id: 'eyes',
+    title: 'Eyes',
+    subtitle: 'Periocular balance and eye-line structure',
+    scoreLabel: 'Eye area',
+    features: [
+      { label: 'Canthal tilt', value: 'Positive' },
+      { label: 'Spacing', value: 'Balanced' },
+      { label: 'Upper lid', value: 'Defined' },
+      { label: 'Symmetry', value: 'High' },
+    ],
+    overlayPoints: [{ x: 34, y: 39 }, { x: 46, y: 38 }, { x: 56, y: 38 }, { x: 68, y: 39 }],
+    overlayLines: [{ x1: 30, y1: 40, x2: 72, y2: 39 }],
+  },
+  {
+    id: 'nose',
+    title: 'Nose',
+    subtitle: 'Bridge alignment and central facial axis',
+    scoreLabel: 'Nasal balance',
+    features: [
+      { label: 'Bridge', value: 'Straight' },
+      { label: 'Tip position', value: 'Centered' },
+      { label: 'Width', value: 'Moderate' },
+      { label: 'Projection', value: 'Clean' },
+    ],
+    overlayPoints: [{ x: 51, y: 42 }, { x: 51, y: 52 }, { x: 51, y: 61 }],
+    overlayLines: [{ x1: 51, y1: 36, x2: 51, y2: 64 }],
+  },
+  {
+    id: 'mouth',
+    title: 'Mouth',
+    subtitle: 'Lip shape, width, and lower-third fit',
+    scoreLabel: 'Mouth harmony',
+    features: [
+      { label: 'Width', value: 'Proportional' },
+      { label: 'Cupid bow', value: 'Visible' },
+      { label: 'Lower lip', value: 'Full' },
+      { label: 'Resting line', value: 'Even' },
+    ],
+    overlayPoints: [{ x: 41, y: 66 }, { x: 51, y: 67 }, { x: 62, y: 66 }],
+    overlayLines: [{ x1: 38, y1: 66, x2: 65, y2: 66 }],
+  },
+  {
+    id: 'jaw',
+    title: 'Jaw',
+    subtitle: 'Mandible definition and chin support',
+    scoreLabel: 'Jawline',
+    features: [
+      { label: 'Gonial angle', value: 'Defined' },
+      { label: 'Chin height', value: 'Strong' },
+      { label: 'Mandible', value: 'Clear' },
+      { label: 'Neck transition', value: 'Clean' },
+    ],
+    overlayPoints: [{ x: 33, y: 72 }, { x: 50, y: 79 }, { x: 68, y: 72 }],
+    overlayLines: [{ x1: 31, y1: 70, x2: 50, y2: 80 }, { x1: 50, y1: 80, x2: 70, y2: 70 }],
+  },
+  {
+    id: 'dimorphism',
+    title: 'Dimorphism',
+    subtitle: 'Sex-typical cues weighted against harmony',
+    scoreLabel: 'Dimorphism',
+    features: [
+      { label: 'Brow frame', value: 'Moderate' },
+      { label: 'Midface', value: 'Refined' },
+      { label: 'Lower third', value: 'Structured' },
+      { label: 'Soft tissue', value: 'Balanced' },
+    ],
+    overlayPoints: [{ x: 34, y: 34 }, { x: 66, y: 34 }, { x: 50, y: 78 }],
+    overlayLines: [{ x1: 34, y1: 34, x2: 66, y2: 34 }, { x1: 50, y1: 43, x2: 50, y2: 78 }],
+  },
+  {
+    id: 'face-shape',
+    title: 'Face shape',
+    subtitle: 'Frame, thirds, and silhouette continuity',
+    scoreLabel: 'Face shape',
+    features: [
+      { label: 'Outline', value: 'Oval' },
+      { label: 'Upper third', value: 'Balanced' },
+      { label: 'Midface', value: 'Compact' },
+      { label: 'Lower third', value: 'Defined' },
+    ],
+    overlayPoints: [{ x: 31, y: 31 }, { x: 69, y: 31 }, { x: 72, y: 58 }, { x: 50, y: 82 }, { x: 28, y: 58 }],
+    overlayLines: [{ x1: 31, y1: 31, x2: 69, y2: 31 }, { x1: 69, y1: 31, x2: 72, y2: 58 }, { x1: 72, y1: 58, x2: 50, y2: 82 }, { x1: 50, y1: 82, x2: 28, y2: 58 }, { x1: 28, y1: 58, x2: 31, y2: 31 }],
+  },
+  {
+    id: 'biological-age',
+    title: 'Biological age',
+    subtitle: 'Visible youthfulness and skin presentation cues',
+    scoreLabel: 'Age signal',
+    features: [
+      { label: 'Skin texture', value: 'Smooth' },
+      { label: 'Under-eye', value: 'Fresh' },
+      { label: 'Facial fullness', value: 'Youthful' },
+      { label: 'Presentation', value: 'Clear' },
+    ],
+    overlayPoints: [{ x: 38, y: 46 }, { x: 62, y: 46 }, { x: 50, y: 55 }, { x: 50, y: 70 }],
+    overlayLines: [{ x1: 38, y1: 46, x2: 62, y2: 46 }, { x1: 50, y1: 45, x2: 50, y2: 70 }],
+  },
+  {
+    id: 'symmetry',
+    title: 'Symmetry',
+    subtitle: 'Left-right balance across visible landmarks',
+    scoreLabel: 'Symmetry',
+    features: [
+      { label: 'Eye level', value: 'Aligned' },
+      { label: 'Nose axis', value: 'Centered' },
+      { label: 'Mouth axis', value: 'Level' },
+      { label: 'Chin point', value: 'Centered' },
+    ],
+    overlayPoints: [{ x: 50, y: 31 }, { x: 50, y: 44 }, { x: 50, y: 66 }, { x: 50, y: 80 }],
+    overlayLines: [{ x1: 50, y1: 28, x2: 50, y2: 82 }, { x1: 30, y1: 43, x2: 70, y2: 43 }, { x1: 38, y1: 66, x2: 64, y2: 66 }],
+  },
+  {
+    id: 'overall',
+    title: 'Overall score',
+    subtitle: 'Final calibrated facial assessment',
+    scoreLabel: 'Overall',
+    features: [
+      { label: 'Harmony', value: 'High' },
+      { label: 'Structure', value: 'Strong' },
+      { label: 'Balance', value: 'Consistent' },
+      { label: 'Percentile', value: 'Upper range' },
+    ],
+    overlayPoints: [{ x: 50, y: 30 }, { x: 35, y: 43 }, { x: 65, y: 43 }, { x: 50, y: 66 }, { x: 50, y: 81 }],
+    overlayLines: [{ x1: 50, y1: 30, x2: 35, y2: 43 }, { x1: 50, y1: 30, x2: 65, y2: 43 }, { x1: 50, y1: 30, x2: 50, y2: 81 }, { x1: 35, y1: 43, x2: 65, y2: 43 }, { x1: 39, y1: 66, x2: 62, y2: 66 }],
+  },
+]
+
+function wait(ms: number) {
+  return new Promise((resolve) => setTimeout(resolve, ms))
+}
+
+function createPreviewAnalysisResult(image: AnalysisDraftImage, index: number): AnalysisResponse {
+  const baseScore = 7.6 - index * 0.2
+
+  return {
+    photo: {
+      id: `preview-photo-${image.id}`,
+      imageUrl: image.dataUrl,
+      imageHash: `preview-${image.id}`,
+    },
+    analysis: {
+      id: `preview-analysis-${image.id}`,
+      status: 'complete',
+      pslScore: baseScore,
+      harmonyScore: baseScore + 0.2,
+      dimorphismScore: baseScore - 0.1,
+      angularityScore: baseScore - 0.3,
+      percentile: 88 - index * 4,
+      tier: 'Preview report',
+      tierDescription: 'Temporary preview result for reviewing the analysis UI and motion flow before reconnecting checkout.',
+      metrics: {},
+      failureReason: null,
+    },
+    deduped: false,
+  }
+}
 
 export default function AnalysisPage() {
   const router = useRouter()
@@ -170,22 +358,32 @@ export default function AnalysisPage() {
   }
 
   async function startCheckout() {
-    try {
-      setCheckoutLoading(true)
-      setError(null)
-      await saveAnalysisDraft({
-        images,
-        gender,
-        savedAt: Date.now(),
-      })
-      const checkout = await apiPost<CheckoutResponse>('/api/payments/checkout', {
-        imageCount: images.length,
-      })
-      window.location.href = checkout.url
-    } catch (checkoutError) {
-      setError(checkoutError instanceof ApiClientError ? checkoutError.message : 'Unable to start payment')
-      setCheckoutLoading(false)
+    setCheckoutLoading(true)
+    setError(null)
+
+    await wait(320)
+
+    setCheckoutLoading(false)
+    setAnalysisUnlocked(true)
+    setPaymentDialogOpen(false)
+    setStep('actual-analysis')
+    setProgress(30)
+
+    void runPreviewAnalysis()
+  }
+
+  async function runPreviewAnalysis() {
+    const draftImages = images.length > 0 ? images : selectedImage ? [selectedImage] : []
+
+    for (const progressValue of [40, 52, 64, 76, 88, 100]) {
+      await wait(3_200)
+      setProgress(progressValue)
     }
+
+    if (draftImages.length === 0) return
+
+    setResults(draftImages.map(createPreviewAnalysisResult))
+    setStep('results')
   }
 
   const resumeAfterPayment = useCallback(async (sessionId: string) => {
@@ -715,27 +913,31 @@ function ActualAnalysisScreen({
 }) {
   return (
     <>
-      <div className="grid min-h-[calc(100svh-5rem)] gap-10 px-5 py-6 sm:px-10 sm:py-8 lg:grid-cols-[0.92fr_1.08fr] lg:gap-16">
-        <div className="flex flex-col justify-center">
-          <p className="font-mono text-[10px] uppercase tracking-wide text-muted-foreground">Analysis //</p>
-          <h1 className="mt-3 max-w-xl text-4xl font-semibold leading-[0.92] tracking-[-0.06em] sm:text-6xl">
-            Generating your facial assessment
-          </h1>
-          <p className="mt-5 max-w-md text-sm leading-6 text-muted-foreground">
-            Your uploaded image is being evaluated against the research-weighted rubric.
-          </p>
-          <div className="mt-10">
-            <AnalysisTimeline
-              isUnlocked={isUnlocked}
-              onPaymentRequired={onPaymentRequired}
-            />
-          </div>
-          <div className="mt-10 max-w-xl">
+      <div className="grid min-h-[calc(100svh-5rem)] gap-12 px-5 py-6 sm:px-10 sm:py-8 lg:grid-cols-[minmax(0,620px)_minmax(0,620px)] lg:items-center lg:justify-between lg:gap-20 xl:gap-28 2xl:gap-40">
+        <div className="grid place-items-center lg:justify-items-start">
+          <div className="flex aspect-[4/5] w-full max-w-[620px] flex-col">
+            <div>
+              <p className="font-mono text-[10px] uppercase tracking-wide text-muted-foreground">Analysis //</p>
+              <h1 className="mt-3 max-w-xl text-4xl font-semibold leading-[0.92] tracking-[-0.06em] sm:text-6xl">
+                Generating your facial assessment
+              </h1>
+              <p className="mt-5 max-w-md text-sm leading-6 text-muted-foreground">
+                Your uploaded image is being evaluated against the research-weighted rubric.
+              </p>
+            </div>
+
+            <div className="flex flex-1 items-start pt-10 pb-6">
+              <AnalysisTimeline
+                isUnlocked={isUnlocked}
+                onPaymentRequired={onPaymentRequired}
+              />
+            </div>
+
             <ProgressBar progress={isUnlocked ? progress : 24} />
           </div>
         </div>
 
-        <div className="grid place-items-center">
+        <div className="grid place-items-center lg:justify-items-end">
           <MosaicImage imageSrc={imageSrc} />
         </div>
       </div>
@@ -745,7 +947,9 @@ function ActualAnalysisScreen({
         loading={checkoutLoading}
         open={paymentDialogOpen}
         onCheckout={onCheckout}
-        onOpenChange={onPaymentDialogChange}
+        onOpenChange={(open) => {
+          if (open) onPaymentDialogChange(true)
+        }}
       />
     </>
   )
@@ -768,7 +972,7 @@ function AnalysisTimeline({
         const maxIndex = isUnlocked ? analysisTimeline.length - 1 : 1
         return Math.min(current + 1, maxIndex)
       })
-    }, 4_200)
+    }, 6_400)
 
     return () => clearInterval(timer)
   }, [isUnlocked])
@@ -792,7 +996,7 @@ function AnalysisTimeline({
   useEffect(() => {
     const timer = setTimeout(() => {
       setExpandedIndex(activeIndex)
-    }, 1_200)
+    }, 1_650)
 
     return () => clearTimeout(timer)
   }, [activeIndex])
@@ -811,10 +1015,11 @@ function AnalysisTimeline({
         return (
           <motion.div
             key={step.title}
+            layout
             className="relative pl-8"
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.34, ease: [0.23, 1, 0.32, 1] }}
+            transition={{ layout: { duration: 0.62, ease: [0.23, 1, 0.32, 1] }, duration: 0.44, ease: [0.23, 1, 0.32, 1] }}
           >
             <span className={`absolute left-0 top-1.5 size-2.5 rounded-full border ${isActive ? 'border-black bg-black' : 'border-zinc-300 bg-white'}`} />
             {shouldShimmer ? (
@@ -830,12 +1035,16 @@ function AnalysisTimeline({
                 <motion.div
                   key={`${step.title}-substeps`}
                   className="mt-2 overflow-hidden pl-4 font-mono text-xs uppercase tracking-wide text-muted-foreground"
-                  initial={{ height: 0, opacity: 0, y: -8 }}
+                  initial={{ height: 0, opacity: 0, y: -6 }}
                   animate={{ height: 'auto', opacity: 1, y: 0 }}
-                  exit={{ height: 0, opacity: 0, y: -10 }}
-                  transition={{ duration: 0.34, ease: [0.23, 1, 0.32, 1] }}
+                  exit={{ height: 0, opacity: 0, y: -4 }}
+                  transition={{
+                    height: { duration: 0.68, ease: [0.23, 1, 0.32, 1] },
+                    opacity: { duration: 0.42, ease: 'easeOut' },
+                    y: { duration: 0.52, ease: [0.23, 1, 0.32, 1] },
+                  }}
                 >
-                  <TextLoop interval={2.6} transition={{ duration: 0.42, ease: [0.23, 1, 0.32, 1] }}>
+                  <TextLoop interval={3.4} transition={{ duration: 0.58, ease: [0.23, 1, 0.32, 1] }}>
                     {step.substeps.map((substep) => (
                       <span key={substep}>{substep}</span>
                     ))}
@@ -852,8 +1061,11 @@ function AnalysisTimeline({
 
 function MosaicImage({ imageSrc }: { imageSrc: string | null }) {
   const [phase, setPhase] = useState(0)
+  const [mode, setMode] = useState<'shuffle' | 'assembled' | 'annotated'>('shuffle')
   const src = imageSrc || previewPhotoUrl
-  const permutation = mosaicPermutations[phase % mosaicPermutations.length]
+  const permutation = mode === 'shuffle'
+    ? mosaicPermutations[(phase % (mosaicPermutations.length - 1)) + 1]
+    : originalMosaicPermutation
 
   useEffect(() => {
     const timer = setInterval(() => {
@@ -862,6 +1074,37 @@ function MosaicImage({ imageSrc }: { imageSrc: string | null }) {
 
     return () => clearInterval(timer)
   }, [])
+
+  useEffect(() => {
+    if (mode !== 'shuffle') return
+
+    const timer = setTimeout(() => {
+      setMode('assembled')
+    }, 10_000)
+
+    return () => clearTimeout(timer)
+  }, [mode])
+
+  useEffect(() => {
+    if (mode !== 'assembled') return
+
+    const timer = setTimeout(() => {
+      setMode('annotated')
+    }, 1_050)
+
+    return () => clearTimeout(timer)
+  }, [mode])
+
+  useEffect(() => {
+    if (mode !== 'annotated') return
+
+    const timer = setTimeout(() => {
+      setPhase((current) => current + 1)
+      setMode('shuffle')
+    }, 5_900)
+
+    return () => clearTimeout(timer)
+  }, [mode])
 
   return (
     <div className="relative aspect-[4/5] w-full max-w-[620px] overflow-hidden bg-zinc-100">
@@ -879,8 +1122,8 @@ function MosaicImage({ imageSrc }: { imageSrc: string | null }) {
             animate={{
               x: `${targetColumn * 100}%`,
               y: `${targetRow * 100}%`,
-              opacity: sourceIndex === 4 ? 0.92 : 0.78,
-              scale: sourceIndex === 4 ? 1.02 : 1,
+              opacity: 1,
+              scale: 1,
             }}
             transition={{ type: 'spring', duration: 1.05, bounce: 0.12 }}
             style={{
@@ -893,8 +1136,251 @@ function MosaicImage({ imageSrc }: { imageSrc: string | null }) {
           />
         )
       })}
-      <div className="pointer-events-none absolute inset-0 bg-white/10" />
+      <AnimatePresence>
+        {mode === 'annotated' ? <MosaicAnnotations key="mosaic-annotations" /> : null}
+      </AnimatePresence>
     </div>
+  )
+}
+
+function MosaicAnnotations() {
+  return (
+    <motion.div
+      className="pointer-events-none absolute inset-0"
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      exit={{ opacity: 0 }}
+      transition={{ duration: 0.42, ease: [0.23, 1, 0.32, 1] }}
+    >
+      <MosaicCallout
+        className="left-[52%] top-[57%]"
+        height={88}
+        label="Chin height"
+        value="[ 5 CM ]"
+      />
+      <MosaicCallout
+        className="left-[29%] top-[32%]"
+        height={70}
+        label="Eye line"
+        value="[ balanced ]"
+      />
+      <MosaicCallout
+        className="left-[62%] top-[43%]"
+        height={62}
+        label="Nose axis"
+        value="[ centered ]"
+      />
+    </motion.div>
+  )
+}
+
+function MosaicCallout({
+  className,
+  height,
+  label,
+  textSide = 'right',
+  value,
+}: {
+  className: string
+  height: number
+  label: string
+  textSide?: 'left' | 'right'
+  value: string
+}) {
+  const textPositionClass = textSide === 'left'
+    ? 'right-7 justify-items-end text-right'
+    : 'left-7 justify-items-start text-left'
+
+  return (
+    <div className={`absolute ${className}`}>
+      <motion.span
+        className="absolute left-0 top-0 size-2 rounded-full bg-white shadow-[0_0_0_3px_rgba(0,0,0,0.18)]"
+        initial={{ scale: 0, opacity: 0 }}
+        animate={{ scale: 1, opacity: 1 }}
+        transition={{ duration: 0.24, ease: [0.23, 1, 0.32, 1] }}
+      />
+      <motion.span
+        className="absolute left-[3px] top-[7px] w-px origin-top bg-white shadow-[0_0_12px_rgba(0,0,0,0.2)]"
+        initial={{ scaleY: 0 }}
+        animate={{ scaleY: 1 }}
+        transition={{ delay: 0.18, duration: 0.72, ease: [0.23, 1, 0.32, 1] }}
+        style={{ height }}
+      />
+      <motion.span
+        className="absolute -left-[5px] block h-px w-4 bg-white"
+        initial={{ scaleX: 0 }}
+        animate={{ scaleX: 1 }}
+        transition={{ delay: 0.84, duration: 0.18, ease: [0.23, 1, 0.32, 1] }}
+        style={{ top: height + 6 }}
+      />
+      <span className={`absolute top-[48px] grid max-w-[min(38vw,150px)] gap-1 font-mono text-[11px] uppercase tracking-wide text-black ${textPositionClass}`}>
+        <span className="relative block overflow-hidden px-2 py-1">
+          <motion.span
+            className="absolute inset-0 origin-left bg-white"
+            initial={{ scaleX: 0 }}
+            animate={{ scaleX: 1 }}
+            transition={{ delay: 1.02, duration: 0.38, ease: [0.23, 1, 0.32, 1] }}
+          />
+          <motion.span
+            className="relative z-10 block whitespace-nowrap"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ delay: 1.24, duration: 0.2 }}
+          >
+            {label}
+          </motion.span>
+        </span>
+        <span className="relative block overflow-hidden px-2 py-1">
+          <motion.span
+            className="absolute inset-0 origin-left bg-white"
+            initial={{ scaleX: 0 }}
+            animate={{ scaleX: 1 }}
+            transition={{ delay: 1.16, duration: 0.38, ease: [0.23, 1, 0.32, 1] }}
+          />
+          <motion.span
+            className="relative z-10 block whitespace-nowrap"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ delay: 1.38, duration: 0.2 }}
+          >
+            {value}
+          </motion.span>
+        </span>
+      </span>
+    </div>
+  )
+}
+
+function AnalysisPaymentDialog({
+  error,
+  loading,
+  onCheckout,
+  onOpenChange,
+  open,
+}: {
+  error: string | null
+  loading: boolean
+  onCheckout: () => void
+  onOpenChange: (open: boolean) => void
+  open: boolean
+}) {
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="overflow-hidden rounded-[28px] border-0 bg-white p-0 shadow-[0_28px_90px_rgba(15,23,42,0.2)] sm:max-w-[500px]">
+        <div className="relative h-[330px] overflow-hidden bg-zinc-100">
+          <img className="absolute inset-0 h-full w-full object-cover object-center" src={paymentDialogImageUrl} alt="Analysis preview" />
+          <div className="absolute inset-0 bg-white/5" />
+          <PaymentFeatureCallout
+            label="Eye line"
+            labelX={8}
+            labelY={19}
+            lineEndX={22}
+            lineEndY={21}
+            pointX={18}
+            pointY={26}
+          />
+          <PaymentFeatureCallout
+            label="Nose curve"
+            labelX={63}
+            labelY={37}
+            lineEndX={63}
+            lineEndY={44}
+            pointX={55}
+            pointY={46}
+          />
+          <PaymentFeatureCallout
+            label="Mouth shape"
+            labelX={76}
+            labelY={60}
+            lineEndX={76}
+            lineEndY={63}
+            pointX={68}
+            pointY={62}
+          />
+        </div>
+
+        <div className="px-6 pb-6 pt-5">
+          <DialogHeader>
+            <DialogTitle className="text-3xl leading-none tracking-[-0.055em]">
+              Unlock the full facial analysis
+            </DialogTitle>
+            <DialogDescription className="max-w-md">
+              We found enough signal to continue. Complete checkout to run the private AI analysis and generate your results.
+            </DialogDescription>
+          </DialogHeader>
+
+          {error ? <p className="mt-4 text-sm text-destructive">{error}</p> : null}
+
+          <button
+            className="mt-6 flex h-14 w-full items-center justify-center gap-3 rounded-full border border-white bg-white px-5 text-base font-semibold shadow-[0_16px_40px_rgba(15,23,42,0.16),inset_0_0_0_1px_rgba(255,255,255,0.9)] transition-[box-shadow,transform] duration-150 ease-out hover:shadow-[0_20px_48px_rgba(15,23,42,0.18),inset_0_0_0_1px_rgba(255,255,255,0.95)] active:scale-[0.98] disabled:opacity-60"
+            disabled={loading}
+            onClick={onCheckout}
+            type="button"
+          >
+            <RainbowIcon />
+            <span className="bg-gradient-to-r from-sky-500 via-violet-500 to-orange-500 bg-clip-text text-transparent">
+              {loading ? 'Opening checkout...' : 'Get your Analysis now'}
+            </span>
+          </button>
+        </div>
+      </DialogContent>
+    </Dialog>
+  )
+}
+
+function PaymentFeatureCallout({
+  label,
+  labelX,
+  labelY,
+  lineEndX,
+  lineEndY,
+  pointX,
+  pointY,
+}: {
+  label: string
+  labelX: number
+  labelY: number
+  lineEndX: number
+  lineEndY: number
+  pointX: number
+  pointY: number
+}) {
+  return (
+    <div className="pointer-events-none absolute inset-0">
+      <svg className="absolute inset-0 h-full w-full" viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden="true">
+        <line x1={pointX} y1={pointY} x2={lineEndX} y2={lineEndY} stroke="rgba(255,255,255,0.9)" strokeWidth="0.35" vectorEffect="non-scaling-stroke" />
+      </svg>
+      <span
+        className="absolute size-2.5 -translate-x-1/2 -translate-y-1/2 rounded-full border border-white bg-white shadow-[0_0_0_5px_rgba(255,255,255,0.28),0_3px_10px_rgba(0,0,0,0.18)]"
+        style={{ left: `${pointX}%`, top: `${pointY}%` }}
+      />
+      <span
+        className="absolute -translate-y-1/2 whitespace-nowrap rounded-[5px] bg-white px-2.5 py-1.5 font-mono text-[10px] uppercase tracking-[0.08em] text-black shadow-[0_7px_18px_rgba(15,23,42,0.14)]"
+        style={{ left: `${labelX}%`, top: `${labelY}%` }}
+      >
+        {label}
+      </span>
+    </div>
+  )
+}
+
+function RainbowIcon() {
+  return (
+    <svg className="size-7 shrink-0" viewBox="0 0 28 28" fill="none" aria-hidden="true">
+      <defs>
+        <linearGradient id="analysis-rainbow-icon" x1="4" x2="25" y1="5" y2="24" gradientUnits="userSpaceOnUse">
+          <stop stopColor="#0EA5E9" />
+          <stop offset="0.46" stopColor="#7C3AED" />
+          <stop offset="1" stopColor="#F97316" />
+        </linearGradient>
+      </defs>
+      <path d="M9 5H6.8A1.8 1.8 0 0 0 5 6.8V9" stroke="url(#analysis-rainbow-icon)" strokeWidth="2.8" strokeLinecap="round" />
+      <path d="M19 5h2.2A1.8 1.8 0 0 1 23 6.8V9" stroke="url(#analysis-rainbow-icon)" strokeWidth="2.8" strokeLinecap="round" />
+      <path d="M9 23H6.8A1.8 1.8 0 0 1 5 21.2V19" stroke="url(#analysis-rainbow-icon)" strokeWidth="2.8" strokeLinecap="round" />
+      <path d="M14 11h5" stroke="url(#analysis-rainbow-icon)" strokeWidth="2.8" strokeLinecap="round" />
+      <path d="M10 16h8" stroke="url(#analysis-rainbow-icon)" strokeWidth="2.8" strokeLinecap="round" />
+      <path d="M22 16.5l.8 2.1 2.2.8-2.2.8-.8 2.1-.8-2.1-2.2-.8 2.2-.8.8-2.1Z" fill="url(#analysis-rainbow-icon)" />
+    </svg>
   )
 }
 
@@ -909,53 +1395,200 @@ function ResultsStep({
   onOpenShare: () => void
   onReset: () => void
 }) {
+  const [activeCategoryId, setActiveCategoryId] = useState(reportCategories[0]?.id ?? 'overall')
+  const primaryResult = results[0]
+  const activeCategory = reportCategories.find((category) => category.id === activeCategoryId) ?? reportCategories[0]
+  const activeIndex = reportCategories.findIndex((category) => category.id === activeCategory.id)
+  const imageSrc = primaryResult?.photo.imageUrl ?? previewPhotoUrl
+  const score = primaryScore ?? primaryResult?.analysis.pslScore ?? 0
+  const categoryScore = getReportCategoryScore(activeCategory.id, primaryResult)
+
   return (
-    <div className="grid min-h-[520px] gap-8 lg:grid-cols-[0.7fr_1.3fr]">
-      <div className="flex flex-col justify-center">
-        <p className="font-mono text-[10px] uppercase tracking-wide text-muted-foreground">Results //</p>
-        <h2 className="mt-3 text-5xl font-semibold tracking-[-0.06em] sm:text-7xl">
-          {primaryScore?.toFixed(1) ?? '--'}
-        </h2>
-        <p className="mt-4 max-w-xs text-sm leading-6 text-muted-foreground">
-          Your report is ready. Share the result or start a new assessment.
-        </p>
-        <div className="mt-6 flex flex-wrap gap-2">
-          <Button onClick={onOpenShare}>
-            <Share2 className="size-4" aria-hidden="true" />
-            Share result
-          </Button>
-          <Button variant="outline" onClick={onReset}>
-            New analysis
-          </Button>
-        </div>
+    <div className="grid min-h-[calc(100svh-5rem)] gap-12 px-5 py-6 sm:px-10 sm:py-8 lg:grid-cols-[minmax(0,1fr)_360px] lg:items-start lg:justify-between lg:gap-20 xl:gap-28">
+      <section className="grid gap-6">
+        <AnimatePresence mode="wait">
+          <motion.div
+            key={activeCategory.id}
+            className="grid gap-4 lg:grid-cols-[minmax(0,0.98fr)_minmax(280px,0.72fr)] lg:items-stretch"
+            initial={{ opacity: 0, y: 18, filter: 'blur(8px)' }}
+            animate={{ opacity: 1, y: 0, filter: 'blur(0px)' }}
+            exit={{ opacity: 0, y: -14, filter: 'blur(8px)' }}
+            transition={{ duration: 0.56, ease: [0.23, 1, 0.32, 1] }}
+          >
+            <ReportImagePanel category={activeCategory} imageSrc={imageSrc} />
+            <ReportDetailPanel category={activeCategory} score={categoryScore} />
+          </motion.div>
+        </AnimatePresence>
       </div>
 
-      <div className="grid gap-3">
-        {results.map((result, index) => (
-          <div key={result.analysis.id} className="grid gap-4 rounded-lg border bg-background p-4 sm:grid-cols-[112px_1fr]">
-            <img className="aspect-square w-full rounded-md object-cover sm:w-28" src={result.photo.imageUrl} alt={`Analyzed image ${index + 1}`} />
-            <div>
-              <div className="flex items-start justify-between gap-3">
-                <div>
-                  <p className="text-sm font-semibold">Image {index + 1}</p>
-                  <p className="text-sm text-muted-foreground">{result.analysis.tier || 'Assessment complete'}</p>
-                </div>
-                <Badge variant="secondary">{result.analysis.pslScore?.toFixed(1) ?? '--'}</Badge>
-              </div>
-              <div className="mt-4 grid grid-cols-3 gap-2 text-xs">
-                <Score label="Harmony" value={result.analysis.harmonyScore} />
-                <Score label="Dimorphism" value={result.analysis.dimorphismScore} />
-                <Score label="Angularity" value={result.analysis.angularityScore} />
-              </div>
-              {result.analysis.tierDescription ? (
-                <p className="mt-4 text-sm leading-6 text-muted-foreground">{result.analysis.tierDescription}</p>
-              ) : null}
+      <aside className="flex min-h-[calc(100svh-9rem)] flex-col justify-between bg-black p-5 text-white lg:sticky lg:top-24">
+        <div>
+          <p className="font-mono text-[10px] uppercase tracking-wide text-white/45">Final analysis //</p>
+          <h2 className="mt-3 text-5xl font-semibold leading-none tracking-[-0.06em]">Your Report</h2>
+          <div className="mt-6 grid gap-1.5">
+            {reportCategories.map((category, index) => {
+              const isActive = category.id === activeCategory.id
+
+              return (
+                <button
+                  key={category.id}
+                  className={`group grid grid-cols-[64px_1fr_auto] items-center gap-3 px-3 py-2 text-left font-mono text-[11px] uppercase tracking-wide transition-colors duration-300 ${
+                    isActive ? 'bg-white text-black' : 'text-white/55 hover:bg-white/10 hover:text-white'
+                  }`}
+                  onClick={() => setActiveCategoryId(category.id)}
+                  type="button"
+                >
+                  <span>[ {String(index + 1).padStart(3, '0')} ]</span>
+                  <span>{category.title}</span>
+                  <span className={isActive ? 'text-black/50' : 'text-white/25'}>{category.id === 'overall' ? score.toFixed(1) : ''}</span>
+                </button>
+              )
+            })}
+          </div>
+        </div>
+
+        <div className="grid gap-3">
+          <div className="border border-white/15 p-4">
+            <p className="font-mono text-[10px] uppercase tracking-wide text-white/45">Overall score</p>
+            <div className="mt-3 flex items-end justify-between">
+              <span className="text-6xl font-semibold leading-none tracking-[-0.06em]">{score.toFixed(1)}</span>
+              <span className="pb-1 font-mono text-[10px] uppercase text-white/45">/ 10</span>
             </div>
           </div>
-        ))}
+          <button
+            className="flex h-12 w-full items-center justify-between bg-white px-4 font-mono text-[11px] uppercase tracking-wide text-black transition-transform duration-200 ease-out hover:-translate-y-0.5 active:translate-y-0"
+            onClick={onOpenShare}
+            type="button"
+          >
+            Share your score
+            <Share2 className="size-4" aria-hidden="true" />
+          </button>
+          <button
+            className="h-10 text-left font-mono text-[10px] uppercase tracking-wide text-white/42 transition-colors hover:text-white/70"
+            onClick={onReset}
+            type="button"
+          >
+            New analysis
+          </button>
+        </div>
+      </aside>
+    </div>
+  )
+}
+
+function ReportImagePanel({ category, imageSrc }: { category: ReportCategory; imageSrc: string }) {
+  return (
+    <div className="relative min-h-[640px] overflow-hidden bg-zinc-100">
+      <img className="absolute inset-0 h-full w-full object-cover object-center" src={imageSrc} alt={`${category.title} analysis image`} />
+      <div className="absolute inset-0 bg-white/5" />
+      <ReportOverlay category={category} />
+      <div className="absolute inset-x-4 top-4 flex items-center justify-between font-mono text-[10px] uppercase tracking-wide text-white drop-shadow-[0_1px_8px_rgba(0,0,0,0.35)]">
+        <span>[ {category.title} ]</span>
+        <span>Active measurement</span>
       </div>
     </div>
   )
+}
+
+function ReportOverlay({ category }: { category: ReportCategory }) {
+  return (
+    <svg className="absolute inset-0 h-full w-full" viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden="true">
+      {category.overlayLines.map((line, index) => (
+        <motion.line
+          key={`${category.id}-line-${index}`}
+          x1={line.x1}
+          y1={line.y1}
+          x2={line.x2}
+          y2={line.y2}
+          stroke="rgba(255,255,255,0.92)"
+          strokeDasharray="1"
+          strokeLinecap="round"
+          strokeWidth="0.28"
+          vectorEffect="non-scaling-stroke"
+          initial={{ pathLength: 0, opacity: 0 }}
+          animate={{ pathLength: 1, opacity: 1 }}
+          transition={{ delay: 0.12 + index * 0.08, duration: 0.82, ease: [0.23, 1, 0.32, 1] }}
+        />
+      ))}
+      {category.overlayPoints.map((point, index) => (
+        <motion.circle
+          key={`${category.id}-point-${index}`}
+          cx={point.x}
+          cy={point.y}
+          r="0.75"
+          fill="white"
+          initial={{ scale: 0, opacity: 0 }}
+          animate={{ scale: 1, opacity: 1 }}
+          transition={{ delay: index * 0.06, duration: 0.34, ease: [0.23, 1, 0.32, 1] }}
+        />
+      ))}
+    </svg>
+  )
+}
+
+function ReportDetailPanel({ category, score }: { category: ReportCategory; score: number }) {
+  return (
+    <div className="grid content-start gap-3">
+      <div className="border bg-white p-5">
+        <p className="font-mono text-[10px] uppercase tracking-wide text-muted-foreground">{category.scoreLabel}</p>
+        <div className="mt-14 flex items-end justify-between">
+          <h3 className="text-4xl font-semibold leading-none tracking-[-0.055em]">{category.title}</h3>
+          <span className="font-mono text-xl">{score.toFixed(1)}</span>
+        </div>
+        <p className="mt-4 text-sm leading-6 text-muted-foreground">{category.subtitle}</p>
+      </div>
+
+      <div className="grid grid-cols-2 gap-3">
+        {category.features.map((feature, index) => (
+          <motion.div
+            key={`${category.id}-${feature.label}`}
+            className="min-h-36 border bg-zinc-50 p-4"
+            initial={{ opacity: 0, y: 16 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.1 + index * 0.07, duration: 0.46, ease: [0.23, 1, 0.32, 1] }}
+          >
+            <p className="font-mono text-[10px] uppercase tracking-wide text-muted-foreground">{feature.label}</p>
+            <p className="mt-16 text-xl font-semibold tracking-[-0.04em]">{feature.value}</p>
+          </motion.div>
+        ))}
+      </div>
+
+      <motion.div
+        className="min-h-40 border bg-white p-4"
+        initial={{ opacity: 0, y: 18 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ delay: 0.38, duration: 0.52, ease: [0.23, 1, 0.32, 1] }}
+      >
+        <p className="font-mono text-[10px] uppercase tracking-wide text-muted-foreground">Explanation</p>
+        <p className="mt-16 text-sm leading-6 text-muted-foreground">
+          {category.title} is scored from visible proportions, local symmetry, and how the feature fits the full facial frame.
+        </p>
+      </motion.div>
+    </div>
+  )
+}
+
+function getReportCategoryScore(categoryId: string, result?: AnalysisResponse) {
+  if (!result) return 0
+
+  const overall = result.analysis.pslScore ?? 0
+  const harmony = result.analysis.harmonyScore ?? overall
+  const dimorphism = result.analysis.dimorphismScore ?? overall
+  const angularity = result.analysis.angularityScore ?? overall
+
+  const scores: Record<string, number> = {
+    eyes: harmony + 0.1,
+    nose: harmony - 0.2,
+    mouth: harmony - 0.1,
+    jaw: angularity + 0.2,
+    dimorphism,
+    'face-shape': (harmony + angularity) / 2,
+    'biological-age': harmony + 0.3,
+    symmetry: harmony,
+    overall,
+  }
+
+  return Math.max(0, Math.min(10, scores[categoryId] ?? overall))
 }
 
 function ShareSheet({
@@ -1076,10 +1709,6 @@ function Score({ label, value }: { label: string; value: number | null }) {
       <div className="mt-1 text-sm font-semibold">{value?.toFixed(1) ?? '--'}</div>
     </div>
   )
-}
-
-function wait(ms: number) {
-  return new Promise((resolve) => setTimeout(resolve, ms))
 }
 
 function readImageFile(file: File) {
