@@ -21,6 +21,8 @@ const envSchema = z
     KIMI_ANALYSIS_MODEL: z.string().min(1).default('kimi-k2.5'),
     UPSTASH_REDIS_REST_URL: z.string().url().optional(),
     UPSTASH_REDIS_REST_TOKEN: z.string().min(1).optional(),
+    STRIPE_SECRET_KEY: z.string().min(1).optional(),
+    STRIPE_ANALYSIS_PRICE_CENTS: z.coerce.number().int().min(50).default(499),
   })
   .superRefine((env, ctx) => {
     if (env.NODE_ENV === 'production' && !env.NEXTAUTH_SECRET) {
@@ -86,6 +88,8 @@ export const env = envSchema.parse({
   KIMI_ANALYSIS_MODEL: process.env.KIMI_ANALYSIS_MODEL,
   UPSTASH_REDIS_REST_URL: process.env.UPSTASH_REDIS_REST_URL,
   UPSTASH_REDIS_REST_TOKEN: process.env.UPSTASH_REDIS_REST_TOKEN,
+  STRIPE_SECRET_KEY: process.env.STRIPE_SECRET_KEY,
+  STRIPE_ANALYSIS_PRICE_CENTS: process.env.STRIPE_ANALYSIS_PRICE_CENTS,
 })
 
 export type RuntimeReadinessCheck = {
@@ -146,6 +150,12 @@ export function getRuntimeReadiness() {
       message: env.NODE_ENV === 'production'
         ? 'Required for durable production rate limiting'
         : 'Falls back to in-memory rate limiting locally',
+    },
+    {
+      key: 'STRIPE_SECRET_KEY',
+      ok: Boolean(env.STRIPE_SECRET_KEY),
+      required: env.NODE_ENV === 'production',
+      message: 'Required for paid analysis checkout',
     },
   ]
 

@@ -1,5 +1,10 @@
 import { signIn } from 'next-auth/react'
 import { useState, type FormEvent } from 'react'
+import Link from 'next/link'
+import { apiPost, ApiClientError } from '@/lib/api/client'
+import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
+import { Label } from '@/components/ui/label'
 
 export default function RegisterPage() {
   const [name, setName] = useState('')
@@ -11,15 +16,10 @@ export default function RegisterPage() {
     event.preventDefault()
     setError(null)
 
-    const response = await fetch('/api/auth/register', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ name, email, password }),
-    })
-
-    if (!response.ok) {
-      const body = await response.json().catch(() => null)
-      setError(body?.error || 'Failed to register')
+    try {
+      await apiPost('/api/auth/register', { name, email, password })
+    } catch (error) {
+      setError(error instanceof ApiClientError ? error.message : 'Failed to register')
       return
     }
 
@@ -31,40 +31,56 @@ export default function RegisterPage() {
   }
 
   return (
-    <main className="shell shell-narrow">
-      <h1>Create account</h1>
-      <form className="form" onSubmit={handleRegister}>
-        <label className="field">
-          <span>Name</span>
-          <input
+    <section className="mx-auto grid min-h-[calc(100vh-8rem)] w-full max-w-sm content-center py-10">
+      <div className="mb-8">
+        <h1 className="text-3xl font-semibold tracking-tight">Create account</h1>
+        <p className="mt-2 text-sm text-muted-foreground">
+          Save analyses, shares, and ranking history.
+        </p>
+      </div>
+
+      <form className="grid gap-4" onSubmit={handleRegister}>
+        <div className="grid gap-2">
+          <Label htmlFor="name">Name</Label>
+          <Input
+            id="name"
             value={name}
             onChange={(event) => setName(event.target.value)}
           />
-        </label>
-        <label className="field">
-          <span>Email</span>
-          <input
+        </div>
+        <div className="grid gap-2">
+          <Label htmlFor="email">Email</Label>
+          <Input
+            id="email"
             type="email"
             value={email}
             onChange={(event) => setEmail(event.target.value)}
             required
           />
-        </label>
-        <label className="field">
-          <span>Password</span>
-          <input
+        </div>
+        <div className="grid gap-2">
+          <Label htmlFor="password">Password</Label>
+          <Input
+            id="password"
             type="password"
             value={password}
             onChange={(event) => setPassword(event.target.value)}
             minLength={8}
             required
           />
-        </label>
-        {error ? <p className="form-error">{error}</p> : null}
-        <button className="button button-primary button-full" type="submit">
+        </div>
+        {error ? <p className="text-sm text-destructive">{error}</p> : null}
+        <Button type="submit">
           Register
-        </button>
+        </Button>
       </form>
-    </main>
+
+      <p className="mt-6 text-center text-sm text-muted-foreground">
+        Already have an account?{' '}
+        <Link className="font-medium text-foreground underline-offset-4 hover:underline" href="/auth/login">
+          Login
+        </Link>
+      </p>
+    </section>
   )
 }

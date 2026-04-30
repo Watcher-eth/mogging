@@ -1,12 +1,20 @@
 import type { AppProps } from 'next/app'
 import { SessionProvider } from 'next-auth/react'
+import { SWRConfig } from 'swr'
+import { Toaster } from 'sonner'
+import { AppShell } from '@/components/app/app-shell'
+import { swrConfig } from '@/lib/swr'
 import '@/styles/globals.css'
 
 export default function App({ Component, pageProps: { session, ...pageProps } }: AppProps) {
   return (
     <SessionProvider session={session}>
-      <Component {...pageProps} />
+      <SWRConfig value={swrConfig}>
+        <AppShell>
+          <Component {...pageProps} />
+        </AppShell>
+        <Toaster richColors position="top-right" />
+      </SWRConfig>
     </SessionProvider>
   )
 }
-
