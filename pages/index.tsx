@@ -52,11 +52,11 @@ export default function VotingPage() {
     const previousPair = pair
 
     try {
-      const result = await apiPost<VoteResponse>('/api/compare', {
+      await apiPost<VoteResponse>('/api/compare', {
         winnerPhotoId: winner.id,
         loserPhotoId: loser.id,
       })
-      toast.success(`Vote counted. ${result.totalComparisons.toLocaleString()} total votes.`)
+      toast.success(`Registered your vote for ${winner.name || `${winner.gender} face`}`)
       void mutateGlobal(photoLeaderboardKey)
       void mutateGlobal('/api/leaderboard/me')
       await mutate()
@@ -360,8 +360,8 @@ function BattleCandidate({
       </button>
 
       <div className={`grid grid-cols-3 border-y border-zinc-300 py-3 ${side === 'right' ? 'sm:text-right' : ''}`}>
+        <Metric label="Score" value={formatVotingScore(photo.displayRating)} />
         <Metric label="PSL" value={formatPsl(photo.pslScore)} />
-        <Metric label="Votes" value={totalVotes.toLocaleString()} />
         <Metric label="Win" value={`${winRate}%`} />
       </div>
     </article>
@@ -478,4 +478,8 @@ function BattleState({
 function formatPsl(score?: number | null) {
   if (typeof score !== 'number') return '--'
   return score.toFixed(1)
+}
+
+function formatVotingScore(score: number) {
+  return Math.round(score).toLocaleString()
 }

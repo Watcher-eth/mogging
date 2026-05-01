@@ -12,6 +12,7 @@ import {
   Upload,
   X,
 } from 'lucide-react'
+import { useSession } from 'next-auth/react'
 import { useRouter } from 'next/router'
 import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties, type ChangeEvent, type ReactNode } from 'react'
 import { toast } from 'sonner'
@@ -33,6 +34,8 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog'
 import { CameraSheet } from '@/components/analysis/camera-sheet'
+import { LoginDialog } from '@/components/app/app-shell'
+import { SeoHead } from '@/components/app/seo-head'
 import { CaptureFrame } from '@/components/analysis/capture-frame'
 import { TextLoop } from '@/components/core/text-loop'
 import { TextShimmer } from '@/components/core/text-shimmer'
@@ -103,6 +106,13 @@ type VerifyPaymentResponse = {
 type ShareResponse = {
   share: {
     token: string
+  }
+}
+
+type PhotoPrivacyResponse = {
+  photo: {
+    id: string
+    isPublic: boolean
   }
 }
 
@@ -335,6 +345,7 @@ function wait(ms: number) {
 
 export default function AnalysisPage() {
   const router = useRouter()
+  const { status } = useSession()
   const uploadInputRef = useRef<HTMLInputElement | null>(null)
   const [images, setImages] = useState<AnalysisDraftImage[]>([])
   const [selectedImageId, setSelectedImageId] = useState<string | null>(null)
@@ -350,6 +361,9 @@ export default function AnalysisPage() {
   const [shareOpen, setShareOpen] = useState(false)
   const [shareUrl, setShareUrl] = useState<string | null>(null)
   const [shareLoading, setShareLoading] = useState(false)
+  const [loginOpen, setLoginOpen] = useState(false)
+  const [battleOptOutByPhotoId, setBattleOptOutByPhotoId] = useState<Record<string, boolean>>({})
+  const [battleOptOutSaving, setBattleOptOutSaving] = useState(false)
 
   const primaryResult = results[0]
   const primaryScore = primaryResult?.analysis.pslScore ?? null
@@ -374,6 +388,10 @@ export default function AnalysisPage() {
 
   async function startPseudoAnalysis() {
     if (!canStart) return
+    if (status !== 'authenticated') {
+      setLoginOpen(true)
+      return
+    }
 
     setError(null)
     setAnalysisUnlocked(false)
@@ -382,7 +400,21 @@ export default function AnalysisPage() {
     setStep('actual-analysis')
   }
 
+  function beginAssessment() {
+    if (status !== 'authenticated') {
+      setLoginOpen(true)
+      return
+    }
+
+    setStep('upload')
+  }
+
   async function startCheckout() {
+    if (status !== 'authenticated') {
+      setLoginOpen(true)
+      return
+    }
+
     setCheckoutLoading(true)
     setError(null)
 
@@ -426,6 +458,25 @@ export default function AnalysisPage() {
     } catch (analysisError) {
       setStep('actual-analysis')
       setError(analysisError instanceof ApiClientError ? analysisError.message : 'Analysis failed')
+    }
+  }
+
+  async function toggleBattleOptOut(photoId: string, optOut: boolean) {
+    const previousValue = battleOptOutByPhotoId[photoId] ?? false
+    setBattleOptOutByPhotoId((current) => ({ ...current, [photoId]: optOut }))
+    setBattleOptOutSaving(true)
+
+    try {
+      await apiPost<PhotoPrivacyResponse>('/api/photos/privacy', {
+        photoId,
+        isPublic: !optOut,
+      })
+      toast.success(optOut ? 'Removed from battle arena' : 'Added to battle arena')
+    } catch (privacyError) {
+      setBattleOptOutByPhotoId((current) => ({ ...current, [photoId]: previousValue }))
+      toast.error(privacyError instanceof ApiClientError ? privacyError.message : 'Unable to update battle setting')
+    } finally {
+      setBattleOptOutSaving(false)
     }
   }
 
@@ -564,13 +615,19 @@ export default function AnalysisPage() {
 
   return (
     <div className="min-h-[calc(100svh-5rem)] w-full bg-white">
+      <SeoHead
+        title="Mogging Analysis"
+        description="Upload your face photo and generate a private PSL report with facial feature annotations."
+        imagePath="/Og2.png"
+        path="/analysis"
+      />
       <input ref={uploadInputRef} className="hidden" type="file" accept="image/*" multiple onChange={handleFiles} />
 
       <section className="min-h-[calc(100svh-5rem)] overflow-hidden bg-white">
         <AnimatePresence mode="wait">
           {step === 'intro' ? (
             <ScreenMotion key="intro">
-              <IntroScreen onBegin={() => setStep('upload')} />
+              <IntroScreen onBegin={beginAssessment} />
             </ScreenMotion>
           ) : null}
 
@@ -652,8 +709,15 @@ export default function AnalysisPage() {
                     setImages([])
                     setSelectedImageId(null)
                     setResults([])
+                    setBattleOptOutByPhotoId({})
                     setStep('intro')
                     setShareUrl(null)
+                  }}
+                  battleOptOut={primaryResult ? (battleOptOutByPhotoId[primaryResult.photo.id] ?? false) : false}
+                  battleOptOutSaving={battleOptOutSaving}
+                  onBattleOptOutChange={(optOut) => {
+                    if (!primaryResult) return
+                    void toggleBattleOptOut(primaryResult.photo.id, optOut)
                   }}
                 />
               </ProcessScreen>
@@ -677,6 +741,11 @@ export default function AnalysisPage() {
           setCameraOpen(false)
           window.setTimeout(() => uploadInputRef.current?.click(), 160)
         }}
+      />
+      <LoginDialog
+        open={loginOpen}
+        onOpenChange={setLoginOpen}
+        callbackUrl={router.asPath || '/analysis'}
       />
     </div>
   )
@@ -1468,11 +1537,17 @@ function RainbowIcon() {
 }
 
 function ResultsStep({
+  battleOptOut,
+  battleOptOutSaving,
+  onBattleOptOutChange,
   primaryScore,
   results,
   onOpenShare,
   onReset,
 }: {
+  battleOptOut: boolean
+  battleOptOutSaving: boolean
+  onBattleOptOutChange: (optOut: boolean) => void
   primaryScore: number | null
   results: AnalysisResponse[]
   onOpenShare: () => void
@@ -1517,7 +1592,15 @@ function ResultsStep({
           </div>
         </div>
 
-        <ReportActions score={score} onOpenShare={onOpenShare} onReset={onReset} className="hidden lg:grid" />
+        <ReportActions
+          battleOptOut={battleOptOut}
+          battleOptOutSaving={battleOptOutSaving}
+          score={score}
+          onBattleOptOutChange={onBattleOptOutChange}
+          onOpenShare={onOpenShare}
+          onReset={onReset}
+          className="hidden lg:grid"
+        />
       </aside>
 
       <section className="grid gap-4 lg:min-h-[calc(100svh-9rem)] lg:gap-6">
@@ -1527,18 +1610,32 @@ function ResultsStep({
         </div>
       </section>
 
-      <ReportActions score={score} onOpenShare={onOpenShare} onReset={onReset} className="lg:hidden" />
+      <ReportActions
+        battleOptOut={battleOptOut}
+        battleOptOutSaving={battleOptOutSaving}
+        score={score}
+        onBattleOptOutChange={onBattleOptOutChange}
+        onOpenShare={onOpenShare}
+        onReset={onReset}
+        className="lg:hidden"
+      />
     </div>
   )
 }
 
 function ReportActions({
+  battleOptOut,
+  battleOptOutSaving,
   className = '',
+  onBattleOptOutChange,
   onOpenShare,
   onReset,
   score,
 }: {
+  battleOptOut: boolean
+  battleOptOutSaving: boolean
   className?: string
+  onBattleOptOutChange: (optOut: boolean) => void
   onOpenShare: () => void
   onReset: () => void
   score: number
@@ -1560,6 +1657,16 @@ function ReportActions({
         Share your score
         <Share2 className="size-4" aria-hidden="true" />
       </button>
+      <label className="flex items-start gap-3 border border-zinc-200 px-3 py-3 text-xs leading-5 text-zinc-500">
+        <input
+          checked={battleOptOut}
+          className="mt-0.5 size-4 shrink-0 accent-black"
+          disabled={battleOptOutSaving}
+          onChange={(event) => onBattleOptOutChange(event.target.checked)}
+          type="checkbox"
+        />
+        <span>I dont want my image to be added to the battle arena</span>
+      </label>
       <button
         className="h-10 text-left font-mono text-[10px] uppercase tracking-wide text-muted-foreground transition-colors hover:text-black"
         onClick={onReset}

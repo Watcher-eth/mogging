@@ -6,12 +6,12 @@ import { createPhotoRecord } from '../../lib/photos/service'
 import { conservativeScore, displayRating, initialSkillRating } from '../../lib/ratings/trueskill'
 
 const seedPhotos = [
-  { file: 'model.png', name: 'Vanta', gender: 'other' as const, pslScore: 7.8 },
+  { file: 'model.png', name: 'Vanta', gender: 'other' as const, pslScore: 7.9 },
   { file: 'model2.png', name: 'Kairo', gender: 'other' as const, pslScore: 7.4 },
   { file: 'model3.png', name: 'Sable', gender: 'other' as const, pslScore: 7.9 },
   { file: 'model4.png', name: 'Rook', gender: 'other' as const, pslScore: 7.7 },
-  { file: 'model5.png', name: 'Luma', gender: 'other' as const, pslScore: 8.0 },
-  { file: 'model6.png', name: 'Nero', gender: 'other' as const, pslScore: 7.6 },
+  { file: 'model5.png', name: 'Luma', gender: 'other' as const, pslScore: 7.6 },
+  { file: 'model6.png', name: 'Nero', gender: 'other' as const, pslScore: 7.9 },
   { file: 'model7.png', name: 'Iris', gender: 'other' as const, pslScore: 7.8 },
   { file: 'model8.png', name: 'Astra', gender: 'other' as const, pslScore: 7.5 },
   { file: 'model9.png', name: 'Ciel', gender: 'other' as const, pslScore: 7.3 },

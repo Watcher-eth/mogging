@@ -112,8 +112,8 @@ export default function LeaderboardPage() {
             <div className="grid grid-cols-[56px_minmax(0,1fr)_80px_92px] gap-4 border-b border-zinc-200 pb-3 font-mono text-[11px] uppercase tracking-[0.12em] text-zinc-500 sm:grid-cols-[64px_minmax(0,1fr)_96px_96px_120px]">
               <span>Rank</span>
               <span>Profile</span>
+              <span className="text-right">Score</span>
               <span className="text-right">PSL</span>
-              <span className="text-right">Votes</span>
               <span className="hidden text-right sm:block">Social</span>
             </div>
 
@@ -163,11 +163,11 @@ function TopEntry({ elevated, entry, index }: { elevated?: boolean; entry: Leade
           <div className="min-w-0">
             <h3 className="truncate text-xl font-semibold tracking-[-0.05em]">{entry.name || 'Anonymous'}</h3>
             <p className="mt-1 font-mono text-xs uppercase tracking-[0.12em] text-zinc-500">
-              {entry.tier || 'Ranked'} / {entry.gender || 'global'}
+              PSL / {formatPsl(entry.pslScore)}
             </p>
           </div>
           <div className="text-right text-3xl font-semibold tracking-[-0.06em]">
-            {formatScore(displayScore(entry))}
+            {formatVotingScore(displayScore(entry))}
           </div>
         </div>
         <div className="h-1 bg-zinc-100">
@@ -206,8 +206,8 @@ function RankRow({ entry, index }: { entry: LeaderboardEntry; index: number }) {
           </p>
         </div>
       </div>
-      <span className="text-right text-xl font-semibold tracking-[-0.05em]">{formatScore(displayScore(entry))}</span>
-      <span className="text-right font-mono text-xs text-zinc-500">{formatVotes(entry)}</span>
+      <span className="text-right text-xl font-semibold tracking-[-0.05em]">{formatVotingScore(displayScore(entry))}</span>
+      <span className="text-right font-mono text-xs text-zinc-500">{formatPsl(entry.pslScore)}</span>
       <span className="hidden truncate text-right text-sm text-zinc-500 sm:block">{entry.social || '-'}</span>
     </article>
   )
@@ -237,9 +237,9 @@ function CurrentUserRankBar({ entry }: { entry: LeaderboardEntry | null }) {
   )
 }
 
-function formatScore(score?: number | null) {
+function formatVotingScore(score?: number | null) {
   if (typeof score !== 'number') return '-'
-  return score.toFixed(1)
+  return Math.round(score).toLocaleString()
 }
 
 function formatSmallMetric(score?: number | null) {
@@ -247,17 +247,16 @@ function formatSmallMetric(score?: number | null) {
   return String(Math.round(score))
 }
 
-function formatVotes(entry: LeaderboardEntry) {
-  const votes = entry.comparisonCount ?? entry.winCount
-  if (typeof votes !== 'number') return '-'
-  return votes.toLocaleString()
+function formatPsl(score?: number | null) {
+  if (typeof score !== 'number') return '-'
+  return score.toFixed(1)
 }
 
 function displayScore(entry: LeaderboardEntry) {
-  return entry.pslScore ?? entry.displayRating
+  return entry.displayRating
 }
 
 function scorePercent(score?: number | null) {
   if (typeof score !== 'number') return 0
-  return Math.max(0, Math.min(100, (score / 8) * 100))
+  return Math.max(0, Math.min(100, (score / 2000) * 100))
 }

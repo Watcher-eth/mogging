@@ -72,7 +72,7 @@ export function AppShell({ children }: AppShellProps) {
   )
 }
 
-function LoginDialog({
+export function LoginDialog({
   callbackUrl,
   onOpenChange,
   open,
@@ -101,11 +101,11 @@ function LoginDialog({
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-h-[min(760px,calc(100svh-2rem))] max-w-[430px] overflow-hidden rounded-[34px] border border-white bg-white p-0 shadow-[0_32px_120px_rgba(15,23,42,0.24)]">
-        <div className="relative grid content-start gap-7 overflow-hidden px-7 pb-7 pt-5">
+        <div className="relative grid content-start gap-6 overflow-hidden px-7 pb-7 pt-5">
           <div className="pointer-events-none absolute inset-x-0 top-0 h-64 bg-[radial-gradient(ellipse_70%_48%_at_50%_10%,rgba(244,244,245,0.82)_0%,rgba(255,255,255,0)_72%)]" />
 
           <div className="relative">
-            <div className="relative mx-[-52px] mt-2 h-[242px]">
+            <div className="relative mx-[-52px] mt-1 h-[220px]">
               {modelImages.map((src, index) => {
                 const layout = bubbleLayout[index]
 
@@ -137,7 +137,7 @@ function LoginDialog({
               </div>
             </div>
 
-            <DialogHeader className="relative mx-auto mt-7 max-w-[330px] text-left">
+            <DialogHeader className="relative mx-auto mt-3 max-w-[330px] text-left">
               <DialogTitle className="text-4xl font-semibold leading-[1.08] tracking-[-0.06em]">
                 Enter Mogging.
                 <br />
