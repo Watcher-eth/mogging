@@ -8,7 +8,7 @@ import useSWR from 'swr'
 import { AppNav } from '@/components/app/nav'
 import { CameraSheet } from '@/components/analysis/camera-sheet'
 import { Button } from '@/components/ui/button'
-import { apiGet, apiPatch, apiPost, ApiClientError } from '@/lib/api/client'
+import { apiGet, apiPatch, ApiClientError } from '@/lib/api/client'
 import {
   Dialog,
   DialogContent,
@@ -35,12 +35,6 @@ type CurrentUserDashboard = {
     id: string
     status: 'pending' | 'processing' | 'complete' | 'failed'
   }>
-}
-
-type ShareResponse = {
-  share: {
-    token: string
-  }
 }
 
 export function AppShell({ children }: AppShellProps) {
@@ -97,12 +91,8 @@ export function AppShell({ children }: AppShellProps) {
 
     setAnalysisLoading(true)
     try {
-      const response = await apiPost<ShareResponse>('/api/share/analysis', {
-        analysisId: latestCompleteAnalysis.id,
-        includeLeaderboard: true,
-      })
       setAccountOpen(false)
-      void router.push(`/share/${response.share.token}`)
+      void router.push(`/analysis?analysisId=${encodeURIComponent(latestCompleteAnalysis.id)}`)
     } catch (error) {
       toast.error(error instanceof ApiClientError ? error.message : 'Unable to open your analysis')
     } finally {
@@ -143,7 +133,7 @@ export function AppShell({ children }: AppShellProps) {
                 </Button>
 
                 {accountOpen ? (
-                  <div className="absolute right-0 top-[calc(100%+0.5rem)] z-50 w-64 border border-zinc-200 bg-white p-2 text-black shadow-[0_22px_70px_rgba(15,23,42,0.16)]">
+                  <div className="absolute right-0 top-[calc(100%+0.5rem)] z-50 w-64 rounded-[24px] border border-zinc-200 bg-white p-2 text-black shadow-[0_22px_70px_rgba(15,23,42,0.16)]">
                     <div className="flex items-center gap-3 border-b border-zinc-100 px-2 py-3">
                       <span className="grid size-10 shrink-0 place-items-center overflow-hidden rounded-full bg-zinc-100 text-sm font-semibold uppercase text-black/70">
                         {profileImage ? <img className="h-full w-full object-cover" src={profileImage} alt="" /> : profileName.slice(0, 1)}

@@ -363,6 +363,7 @@ export default function AnalysisPage() {
   const [shareUrl, setShareUrl] = useState<string | null>(null)
   const [shareLoading, setShareLoading] = useState(false)
   const [loginOpen, setLoginOpen] = useState(false)
+  const loadedAnalysisIdRef = useRef<string | null>(null)
   const [battleOptOutByPhotoId, setBattleOptOutByPhotoId] = useState<Record<string, boolean>>({})
   const [battleOptOutSaving, setBattleOptOutSaving] = useState(false)
   const [landmarkPendingIds, setLandmarkPendingIds] = useState<Record<string, boolean>>({})
@@ -560,6 +561,34 @@ export default function AnalysisPage() {
       setError('Payment was cancelled. Your uploaded images are still ready.')
     }
   }, [router.isReady, router.query.checkout])
+
+  useEffect(() => {
+    if (!router.isReady) return
+
+    const analysisId = typeof router.query.analysisId === 'string' ? router.query.analysisId : null
+    if (!analysisId || loadedAnalysisIdRef.current === analysisId) return
+
+    loadedAnalysisIdRef.current = analysisId
+    setError(null)
+
+    void apiGet<AnalysisResponse>(`/api/analysis/${encodeURIComponent(analysisId)}`)
+      .then((result) => {
+        setResults([result])
+        setStep('results')
+        setImages([])
+        setSelectedImageId(null)
+        setShareUrl(null)
+        setBattleOptOutByPhotoId({
+          [result.photo.id]: false,
+        })
+      })
+      .catch((analysisError) => {
+        setStep('intro')
+        const message = analysisError instanceof ApiClientError ? analysisError.message : 'Unable to load analysis'
+        setError(message)
+        toast.error(message)
+      })
+  }, [router.isReady, router.query.analysisId])
 
   async function createShare() {
     if (!primaryResult) return null
