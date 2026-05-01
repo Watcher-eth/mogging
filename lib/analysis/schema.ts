@@ -14,7 +14,7 @@ export const metricCategorySchema = z.enum([
 
 export const metricScoreSchema = z.object({
   name: z.string(),
-  score: z.number().min(0).max(8),
+  score: z.number().min(0).max(10),
   category: metricCategorySchema,
   description: z.string().optional(),
 })
@@ -39,7 +39,7 @@ export const reportCategorySchema = z.object({
   title: z.string().min(1).max(80),
   subtitle: z.string().min(1).max(180),
   scoreLabel: z.string().min(1).max(80),
-  score: z.number().min(0).max(8),
+  score: z.number().min(0).max(10),
   features: z.array(reportFeatureSchema).min(2).max(6),
   explanation: z.string().min(1).max(700),
 })
@@ -52,12 +52,12 @@ export const analysisReportSchema = z.object({
 export const analysisProviderResultSchema = z.object({
   faceDetected: z.boolean(),
   pslScore: z.number().min(0).max(8).nullable().optional(),
-  harmonyScore: z.number().min(0).max(8),
-  symmetryScore: z.number().min(0).max(8).nullable().optional(),
-  proportionalityScore: z.number().min(0).max(8).nullable().optional(),
-  averagenessScore: z.number().min(0).max(8).nullable().optional(),
-  dimorphismScore: z.number().min(0).max(8),
-  angularityScore: z.number().min(0).max(8),
+  harmonyScore: z.number().min(0).max(10),
+  symmetryScore: z.number().min(0).max(10).nullable().optional(),
+  proportionalityScore: z.number().min(0).max(10).nullable().optional(),
+  averagenessScore: z.number().min(0).max(10).nullable().optional(),
+  dimorphismScore: z.number().min(0).max(10),
+  angularityScore: z.number().min(0).max(10),
   metricScores: z.array(metricScoreSchema).default([]),
   percentile: z.number().min(0).max(100).nullable().optional(),
   tier: z.string().nullable().optional(),

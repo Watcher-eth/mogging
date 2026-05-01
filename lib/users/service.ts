@@ -1,7 +1,8 @@
-import { and, count, desc, eq, ilike, sql } from 'drizzle-orm'
+import { and, count, desc, eq, ilike, isNull, sql } from 'drizzle-orm'
 import { z } from 'zod'
 import { db, schema } from '@/lib/db'
 import { conservativeScore, displayRating, initialSkillRating } from '@/lib/ratings/trueskill'
+import { storeImageDataUrl } from '@/lib/storage/images'
 
 const RECENT_PHOTO_LIMIT = 12
 const SEARCH_LIMIT = 20
@@ -13,6 +14,14 @@ const initialDisplayRating = displayRating(initialRating)
 export const updateUserProfileSchema = z.object({
   name: z.string().trim().min(1).max(100).nullable().optional(),
   bio: z.string().trim().max(500).nullable().optional(),
+  imageData: z.string().startsWith('data:image/').nullable().optional(),
+  instagramUsername: z
+    .string()
+    .trim()
+    .max(80)
+    .transform((value) => value.replace(/^@/, '').replace(/^https?:\/\/(www\.)?instagram\.com\//, '').replace(/\/$/, ''))
+    .nullable()
+    .optional(),
   state: z
     .string()
     .trim()
@@ -91,11 +100,14 @@ export async function getCurrentUserDashboard(userId: string) {
 
 export async function updateUserProfile(userId: string, input: UpdateUserProfileInput) {
   const data = updateUserProfileSchema.parse(input)
+  const storedAvatar = data.imageData ? await storeImageDataUrl(data.imageData) : null
   const [user] = await db
     .update(schema.users)
     .set({
       ...(data.name !== undefined ? { name: data.name } : null),
       ...(data.bio !== undefined ? { bio: data.bio } : null),
+      ...(storedAvatar ? { image: storedAvatar.imageUrl } : null),
+      ...(data.instagramUsername !== undefined ? { instagramUsername: data.instagramUsername || null } : null),
       ...(data.state !== undefined ? { state: data.state } : null),
       updatedAt: new Date(),
     })
@@ -107,6 +119,19 @@ export async function updateUserProfile(userId: string, input: UpdateUserProfile
   }
 
   return user
+}
+
+export async function updateUserAvatarIfMissing(userId: string, imageUrl: string) {
+  await db
+    .update(schema.users)
+    .set({
+      image: imageUrl,
+      updatedAt: new Date(),
+    })
+    .where(and(
+      eq(schema.users.id, userId),
+      isNull(schema.users.image)
+    ))
 }
 
 export async function searchUsers(input: SearchUsersInput) {
@@ -135,6 +160,7 @@ const publicUserQueryColumns = {
   id: true,
   name: true,
   image: true,
+  instagramUsername: true,
   bio: true,
   state: true,
   verified: true,
@@ -146,6 +172,7 @@ const publicUserReturningFields = {
   id: schema.users.id,
   name: schema.users.name,
   image: schema.users.image,
+  instagramUsername: schema.users.instagramUsername,
   bio: schema.users.bio,
   state: schema.users.state,
   verified: schema.users.verified,

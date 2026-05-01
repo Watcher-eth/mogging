@@ -33,6 +33,7 @@ export const users = pgTable(
     email: text('email').notNull(),
     emailVerified: timestamp('email_verified', { mode: 'date' }),
     image: text('image'),
+    instagramUsername: text('instagram_username'),
     passwordHash: text('password_hash'),
     bio: text('bio'),
     state: varchar('state', { length: 2 }),

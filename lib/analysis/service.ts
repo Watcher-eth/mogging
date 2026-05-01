@@ -2,15 +2,16 @@ import { eq } from 'drizzle-orm'
 import { z } from 'zod'
 import { db, schema } from '@/lib/db'
 
-const scoreSchema = z.number().min(0).max(8)
+const pslScoreSchema = z.number().min(0).max(8)
+const categoryScoreSchema = z.number().min(0).max(10)
 
 export const saveAnalysisResultSchema = z.object({
   photoId: z.string().min(1),
   status: z.enum(['pending', 'processing', 'complete', 'failed']).default('complete'),
-  pslScore: scoreSchema.nullable().optional(),
-  harmonyScore: scoreSchema.nullable().optional(),
-  dimorphismScore: scoreSchema.nullable().optional(),
-  angularityScore: scoreSchema.nullable().optional(),
+  pslScore: pslScoreSchema.nullable().optional(),
+  harmonyScore: categoryScoreSchema.nullable().optional(),
+  dimorphismScore: categoryScoreSchema.nullable().optional(),
+  angularityScore: categoryScoreSchema.nullable().optional(),
   percentile: z.number().min(0).max(100).nullable().optional(),
   tier: z.string().max(120).nullable().optional(),
   tierDescription: z.string().max(500).nullable().optional(),
@@ -78,4 +79,3 @@ export async function saveAnalysisResult(input: SaveAnalysisResultInput) {
 
   return { analysis, created: true }
 }
-

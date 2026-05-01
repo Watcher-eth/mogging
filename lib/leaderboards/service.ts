@@ -56,10 +56,12 @@ export async function getPhotoLeaderboard(input: PhotoLeaderboardQuery) {
       lossCount: sql<number>`coalesce(${schema.photoRatings.lossCount}, 0)`,
       comparisonCount: sql<number>`coalesce(${schema.photoRatings.comparisonCount}, 0)`,
       pslScore: schema.analyses.pslScore,
+      social: schema.users.instagramUsername,
     })
     .from(schema.photos)
     .leftJoin(schema.photoRatings, eq(schema.photoRatings.photoId, schema.photos.id))
     .leftJoin(schema.analyses, eq(schema.analyses.photoId, schema.photos.id))
+    .leftJoin(schema.users, eq(schema.users.id, schema.photos.userId))
     .where(where)
     .orderBy(photoSort(query.sort))
     .limit(query.limit)
@@ -84,10 +86,12 @@ export async function getCurrentUserPhotoRank(userId: string) {
       lossCount: sql<number>`coalesce(${schema.photoRatings.lossCount}, 0)`,
       comparisonCount: sql<number>`coalesce(${schema.photoRatings.comparisonCount}, 0)`,
       pslScore: schema.analyses.pslScore,
+      social: schema.users.instagramUsername,
     })
     .from(schema.photos)
     .innerJoin(schema.analyses, eq(schema.analyses.photoId, schema.photos.id))
     .leftJoin(schema.photoRatings, eq(schema.photoRatings.photoId, schema.photos.id))
+    .leftJoin(schema.users, eq(schema.users.id, schema.photos.userId))
     .where(and(
       eq(schema.photos.userId, userId),
       eq(schema.photos.isPublic, true),

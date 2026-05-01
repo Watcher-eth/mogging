@@ -364,10 +364,12 @@ export default function AnalysisPage() {
   const [loginOpen, setLoginOpen] = useState(false)
   const [battleOptOutByPhotoId, setBattleOptOutByPhotoId] = useState<Record<string, boolean>>({})
   const [battleOptOutSaving, setBattleOptOutSaving] = useState(false)
+  const [landmarkPendingIds, setLandmarkPendingIds] = useState<Record<string, boolean>>({})
 
   const primaryResult = results[0]
   const primaryScore = primaryResult?.analysis.pslScore ?? null
-  const canStart = images.length > 0 && step === 'upload'
+  const isPreparingUploads = Object.values(landmarkPendingIds).some(Boolean)
+  const canStart = images.length > 0 && step === 'upload' && !isPreparingUploads
 
   const selectedImage = useMemo(
     () => images.find((image) => image.id === selectedImageId) ?? images[images.length - 1] ?? null,
@@ -379,11 +381,18 @@ export default function AnalysisPage() {
     const files = Array.from(event.target.files || []).slice(0, 3 - images.length)
     if (files.length === 0) return
 
-    const nextImages = await Promise.all(files.map(readImageFileWithLandmarks))
+    const nextImages = await Promise.all(files.map(readImageFile))
     const visibleNextImages = nextImages.slice(0, Math.max(0, 3 - images.length))
     setImages((current) => [...current, ...visibleNextImages].slice(0, 3))
     setSelectedImageId(visibleNextImages[visibleNextImages.length - 1]?.id ?? null)
+    setLandmarkPendingIds((current) => ({
+      ...current,
+      ...Object.fromEntries(visibleNextImages.map((image) => [image.id, true])),
+    }))
     event.target.value = ''
+    visibleNextImages.forEach((image) => {
+      void enrichImageLandmarks(image)
+    })
   }
 
   async function startPseudoAnalysis() {
@@ -574,6 +583,10 @@ export default function AnalysisPage() {
   function removeImage(id: string) {
     setImages((current) => {
       const nextImages = current.filter((image) => image.id !== id)
+      setLandmarkPendingIds((currentPending) => {
+        const { [id]: _removed, ...nextPending } = currentPending
+        return nextPending
+      })
       setSelectedImageId((currentSelectedId) => {
         if (currentSelectedId !== id) return currentSelectedId
 
@@ -601,16 +614,24 @@ export default function AnalysisPage() {
       return [...current, nextImage].slice(0, 3)
     })
     setSelectedImageId(imageId)
+    setLandmarkPendingIds((current) => ({ ...current, [imageId]: true }))
     void enrichImageLandmarks(nextImage)
   }
 
   async function enrichImageLandmarks(image: AnalysisDraftImage) {
-    const landmarks = await extractFaceLandmarksFromDataUrl(image.dataUrl)
-    if (!landmarks) return
+    try {
+      const landmarks = await extractFaceLandmarksFromDataUrl(image.dataUrl)
+      if (!landmarks) return
 
-    setImages((current) => current.map((currentImage) => (
-      currentImage.id === image.id ? { ...currentImage, landmarks } : currentImage
-    )))
+      setImages((current) => current.map((currentImage) => (
+        currentImage.id === image.id ? { ...currentImage, landmarks } : currentImage
+      )))
+    } finally {
+      setLandmarkPendingIds((current) => {
+        const { [image.id]: _removed, ...nextPending } = current
+        return nextPending
+      })
+    }
   }
 
   return (
@@ -635,6 +656,7 @@ export default function AnalysisPage() {
             <ScreenMotion key="upload">
               <UploadScreen
                 images={images}
+                isPreparingUploads={isPreparingUploads}
                 previewImage={previewImage}
                 selectedImageId={selectedImage?.id ?? null}
                 canStart={canStart}
@@ -834,6 +856,7 @@ function IntroScreen({ onBegin }: { onBegin: () => void }) {
 function UploadScreen({
   canStart,
   images,
+  isPreparingUploads,
   onCamera,
   onRemove,
   onSelect,
@@ -844,6 +867,7 @@ function UploadScreen({
 }: {
   canStart: boolean
   images: AnalysisDraftImage[]
+  isPreparingUploads: boolean
   onCamera: () => void
   onRemove: (id: string) => void
   onSelect: (id: string) => void
@@ -875,8 +899,8 @@ function UploadScreen({
             </Button>
           </div>
           <Button className="mt-4 h-11 w-full max-w-[260px] justify-between rounded-sm font-mono text-[11px] uppercase" onClick={onStart} disabled={!canStart}>
-            Continue
-            <ArrowRight className="size-4" aria-hidden="true" />
+            {isPreparingUploads ? 'Uploading' : 'Continue'}
+            {isPreparingUploads ? <Loader2 className="size-4 animate-spin" aria-hidden="true" /> : <ArrowRight className="size-4" aria-hidden="true" />}
           </Button>
         </div>
 
@@ -2108,6 +2132,7 @@ function ReportDetailPanel({
   const subtitle = reportCategory?.subtitle ?? category.subtitle
   const scoreLabel = reportCategory?.scoreLabel ?? category.scoreLabel
   const features = reportCategory?.features?.length ? reportCategory.features : category.features
+  const scoreMax = category.id === 'overall' ? 8 : 10
   const explanation = reportCategory?.explanation
     ?? `${category.title} is scored from visible proportions, local symmetry, and how the feature fits the full facial frame.`
 
@@ -2126,7 +2151,7 @@ function ReportDetailPanel({
         <p className="font-mono text-[10px] uppercase tracking-wide text-muted-foreground">{scoreLabel}</p>
         <div className="mt-14 flex items-end justify-between">
           <h3 className="text-4xl font-semibold leading-none tracking-[-0.055em]">{title}</h3>
-          <span className="font-mono text-xl">{score.toFixed(1)}</span>
+          <span className="font-mono text-xl">{score.toFixed(1)} <span className="text-[10px] uppercase text-muted-foreground">/ {scoreMax}</span></span>
         </div>
         <p className="mt-4 text-sm leading-6 text-muted-foreground">{subtitle}</p>
       </div>
@@ -2166,7 +2191,9 @@ function ReportDetailPanel({
 function getReportCategoryScore(categoryId: string, result?: AnalysisResponse) {
   if (!result) return 0
   const reportCategory = getReportCategoryData(categoryId, result)
-  if (typeof reportCategory?.score === 'number') return Math.max(0, Math.min(8, reportCategory.score))
+  if (typeof reportCategory?.score === 'number') {
+    return Math.max(0, Math.min(categoryId === 'overall' ? 8 : 10, reportCategory.score))
+  }
 
   const overall = result.analysis.pslScore ?? 0
   const harmony = result.analysis.harmonyScore ?? overall
@@ -2185,7 +2212,7 @@ function getReportCategoryScore(categoryId: string, result?: AnalysisResponse) {
     overall,
   }
 
-  return Math.max(0, Math.min(8, scores[categoryId] ?? overall))
+  return Math.max(0, Math.min(categoryId === 'overall' ? 8 : 10, scores[categoryId] ?? overall))
 }
 
 function ShareSheet({
@@ -2327,13 +2354,4 @@ function readImageFile(file: File) {
     reader.onerror = () => reject(reader.error)
     reader.readAsDataURL(file)
   })
-}
-
-async function readImageFileWithLandmarks(file: File) {
-  const image = await readImageFile(file)
-
-  return {
-    ...image,
-    landmarks: await extractFaceLandmarksFromDataUrl(image.dataUrl),
-  }
 }

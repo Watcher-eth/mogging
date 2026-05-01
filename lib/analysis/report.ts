@@ -12,7 +12,11 @@ const reportCategoryIds = [
   'overall',
 ] as const
 
-function clampScore(score: number) {
+function clampCategoryScore(score: number) {
+  return Math.max(0, Math.min(10, Math.round(score * 10) / 10))
+}
+
+function clampPslScore(score: number) {
   return Math.max(0, Math.min(8, Math.round(score * 10) / 10))
 }
 
@@ -36,8 +40,8 @@ export function normalizeAnalysisReport(
     summary: report.summary,
     categories: categories.map((category) => (
       category!.id === 'overall'
-        ? { ...category!, score: clampScore(pslScore), title: 'Overall PSL', scoreLabel: 'PSL score' }
-        : { ...category!, score: clampScore(category!.score) }
+        ? { ...category!, score: clampPslScore(pslScore), title: 'Overall PSL', scoreLabel: 'PSL score' }
+        : { ...category!, score: clampCategoryScore(category!.score) }
     )),
   }
 }
@@ -58,7 +62,7 @@ export function createFallbackAnalysisReport(result: AnalysisProviderResult, psl
         title: 'Eyes',
         subtitle: 'Periocular balance and eye-line structure',
         scoreLabel: 'Eye area',
-        score: clampScore((harmony + symmetry + proportionality) / 3),
+        score: clampCategoryScore((harmony + symmetry + proportionality) / 3),
         features: [
           { label: 'Eye line', value: symmetry >= 5 ? 'Aligned' : 'Uneven' },
           { label: 'Spacing', value: proportionality >= 5 ? 'Balanced' : 'Offset' },
@@ -72,7 +76,7 @@ export function createFallbackAnalysisReport(result: AnalysisProviderResult, psl
         title: 'Nose',
         subtitle: 'Bridge alignment and central facial axis',
         scoreLabel: 'Nasal balance',
-        score: clampScore((proportionality + symmetry + harmony) / 3),
+        score: clampCategoryScore((proportionality + symmetry + harmony) / 3),
         features: [
           { label: 'Axis', value: symmetry >= 5 ? 'Centered' : 'Slight drift' },
           { label: 'Width', value: proportionality >= 5 ? 'Proportional' : 'Prominent' },
@@ -86,7 +90,7 @@ export function createFallbackAnalysisReport(result: AnalysisProviderResult, psl
         title: 'Mouth',
         subtitle: 'Lip shape, width, and lower-third fit',
         scoreLabel: 'Mouth harmony',
-        score: clampScore((harmony + proportionality + averageness) / 3),
+        score: clampCategoryScore((harmony + proportionality + averageness) / 3),
         features: [
           { label: 'Width', value: proportionality >= 5 ? 'Proportional' : 'Narrow' },
           { label: 'Resting line', value: symmetry >= 5 ? 'Even' : 'Uneven' },
@@ -100,7 +104,7 @@ export function createFallbackAnalysisReport(result: AnalysisProviderResult, psl
         title: 'Jaw',
         subtitle: 'Mandible definition and chin support',
         scoreLabel: 'Jawline',
-        score: clampScore((result.angularityScore + result.dimorphismScore + proportionality) / 3),
+        score: clampCategoryScore((result.angularityScore + result.dimorphismScore + proportionality) / 3),
         features: [
           { label: 'Mandible', value: result.angularityScore >= 5 ? 'Defined' : 'Soft' },
           { label: 'Chin support', value: proportionality >= 5 ? 'Balanced' : 'Limited' },
@@ -114,7 +118,7 @@ export function createFallbackAnalysisReport(result: AnalysisProviderResult, psl
         title: 'Dimorphism',
         subtitle: 'Sex-typical cues weighted against harmony',
         scoreLabel: 'Dimorphism',
-        score: clampScore(result.dimorphismScore),
+        score: clampCategoryScore(result.dimorphismScore),
         features: [
           { label: 'Brow frame', value: result.dimorphismScore >= 5 ? 'Present' : 'Subtle' },
           { label: 'Lower third', value: result.angularityScore >= 5 ? 'Structured' : 'Soft' },
@@ -128,7 +132,7 @@ export function createFallbackAnalysisReport(result: AnalysisProviderResult, psl
         title: 'Face shape',
         subtitle: 'Frame, thirds, and silhouette continuity',
         scoreLabel: 'Face shape',
-        score: clampScore((harmony + proportionality + result.angularityScore) / 3),
+        score: clampCategoryScore((harmony + proportionality + result.angularityScore) / 3),
         features: [
           { label: 'Outline', value: harmony >= 5 ? 'Coherent' : 'Irregular' },
           { label: 'Thirds', value: proportionality >= 5 ? 'Balanced' : 'Uneven' },
@@ -142,7 +146,7 @@ export function createFallbackAnalysisReport(result: AnalysisProviderResult, psl
         title: 'Biological age',
         subtitle: 'Visible youthfulness and skin presentation cues',
         scoreLabel: 'Age signal',
-        score: clampScore((skin + presentation + averageness) / 3),
+        score: clampCategoryScore((skin + presentation + averageness) / 3),
         features: [
           { label: 'Texture', value: skin >= 5 ? 'Clear' : 'Variable' },
           { label: 'Under-eye', value: presentation >= 5 ? 'Fresh' : 'Tired' },
@@ -156,7 +160,7 @@ export function createFallbackAnalysisReport(result: AnalysisProviderResult, psl
         title: 'Symmetry',
         subtitle: 'Left-right balance across visible landmarks',
         scoreLabel: 'Symmetry',
-        score: clampScore(symmetry),
+        score: clampCategoryScore(symmetry),
         features: [
           { label: 'Eye level', value: symmetry >= 5 ? 'Aligned' : 'Uneven' },
           { label: 'Nose axis', value: symmetry >= 5 ? 'Centered' : 'Offset' },
@@ -170,14 +174,14 @@ export function createFallbackAnalysisReport(result: AnalysisProviderResult, psl
         title: 'Overall PSL',
         subtitle: 'Final calibrated PSL assessment',
         scoreLabel: 'PSL score',
-        score: clampScore(pslScore),
+        score: clampPslScore(pslScore),
         features: [
           { label: 'Harmony', value: harmony.toFixed(1) },
           { label: 'Dimorphism', value: result.dimorphismScore.toFixed(1) },
           { label: 'Angularity', value: result.angularityScore.toFixed(1) },
           { label: 'Percentile', value: result.percentile == null ? 'Pending' : `${Math.round(result.percentile)}%` },
         ],
-        explanation: 'The overall PSL is the app-wide score used across the report, leaderboard, and battle context. It is calibrated on the same 0 to 8 PSL scale.',
+        explanation: 'The overall PSL is the app-wide score used across the report, leaderboard, and battle context. It is calibrated on the 0 to 8 PSL scale.',
       },
     ],
   }

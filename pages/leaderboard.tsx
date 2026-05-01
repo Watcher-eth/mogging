@@ -83,9 +83,8 @@ export default function LeaderboardPage() {
           className="border-b border-zinc-200 pb-10"
           style={{ animation: 'leaderboard-enter 560ms cubic-bezier(0.22, 1, 0.36, 1) both' }}
         >
-          <p className="font-mono text-xs uppercase tracking-[0.14em] text-zinc-500">Leaderboard //</p>
-          <h1 className="mt-6 max-w-4xl text-6xl font-semibold leading-[0.94] tracking-[-0.07em] sm:text-7xl lg:text-8xl">
-            Global mogging ranks
+          <h1 className="max-w-4xl text-4xl font-semibold leading-[0.94] tracking-[-0.07em] sm:text-6xl lg:text-7xl">
+            Global Leaderboard
           </h1>
         </header>
 

@@ -1,6 +1,7 @@
 import { z } from 'zod'
 import { createPhotoRecord } from '@/lib/photos/service'
 import { storeImageDataUrl } from '@/lib/storage/images'
+import { updateUserAvatarIfMissing } from '@/lib/users/service'
 import { toAnalysisFailure } from './errors'
 import { analysisProvider } from './provider'
 import { createFallbackAnalysisReport, normalizeAnalysisReport } from './report'
@@ -33,6 +34,9 @@ export async function analyzeAndSave(input: AnalyzeAndSaveInput) {
     .catch((error: unknown) => ({ ok: false as const, error }))
 
   const storedImage = await storedImagePromise
+  if (data.userId) {
+    await updateUserAvatarIfMissing(data.userId, storedImage.imageUrl)
+  }
   const providerResult = await providerResultPromise
 
   if (!providerResult.ok) {

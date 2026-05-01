@@ -14,7 +14,7 @@ export function computePslScore(
   >
 ) {
   if (typeof result.pslScore === 'number') {
-    return Math.round(result.pslScore * 10) / 10
+    return clampPsl(result.pslScore)
   }
 
   const categoryAverage = (category: MetricCategory, fallback: number) => {
@@ -45,5 +45,9 @@ export function computePslScore(
     skin * 0.08 +
     presentation * 0.06
 
-  return Math.round(raw * 10) / 10
+  return clampPsl(raw * 0.8)
+}
+
+function clampPsl(score: number) {
+  return Math.max(0, Math.min(8, Math.round(score * 10) / 10))
 }

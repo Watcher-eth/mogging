@@ -15,6 +15,13 @@
       "when": 1777473728681,
       "tag": "0001_fuzzy_grey_gargoyle",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1777647326769,
+      "tag": "0003_lyrical_christian_walker",
+      "breakpoints": true
     }
   ]
 }

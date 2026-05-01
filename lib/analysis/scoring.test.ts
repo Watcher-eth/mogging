@@ -19,7 +19,7 @@ test('computePslScore weights proportionality, averageness, and dimorphism above
     landmarks: {},
   }
 
-  assert.equal(computePslScore(result), 4.7)
+  assert.equal(computePslScore(result), 3.8)
 })
 
 test('computePslScore falls back to category averages when top-level optional scores are absent', () => {
@@ -37,13 +37,28 @@ test('computePslScore falls back to category averages when top-level optional sc
     landmarks: {},
   }
 
-  assert.equal(computePslScore(result), 4.5)
+  assert.equal(computePslScore(result), 3.6)
 })
 
-test('analysisProviderResultSchema rejects invalid metric categories and out-of-range scores', () => {
+test('computePslScore accepts provider PSL on the 0-8 scale', () => {
+  const result = {
+    faceDetected: true,
+    pslScore: 7.7,
+    harmonyScore: 9,
+    dimorphismScore: 7,
+    angularityScore: 8,
+    metricScores: [],
+    landmarks: {},
+  }
+
+  assert.equal(computePslScore(result), 7.7)
+})
+
+test('analysisProviderResultSchema rejects invalid metric categories and out-of-range PSL scores', () => {
   const result = analysisProviderResultSchema.safeParse({
     faceDetected: true,
-    harmonyScore: 9,
+    pslScore: 9,
+    harmonyScore: 8,
     dimorphismScore: 4,
     angularityScore: 4,
     metricScores: [
