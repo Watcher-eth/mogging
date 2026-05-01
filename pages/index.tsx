@@ -1,8 +1,8 @@
 import { Loader2, RefreshCw, X } from 'lucide-react'
 import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react'
-import useSWR from 'swr'
+import useSWR, { useSWRConfig } from 'swr'
 import { toast } from 'sonner'
-import { apiGet, apiPost, ApiClientError } from '@/lib/api/client'
+import { apiPost, ApiClientError } from '@/lib/api/client'
 
 type ComparisonPhoto = {
   id: string
@@ -15,6 +15,7 @@ type ComparisonPhoto = {
   conservativeScore: number
   winCount: number
   lossCount: number
+  pslScore: number | null
 }
 
 type ComparisonPair = {
@@ -37,15 +38,17 @@ type PendingVote = {
 }
 
 const pairKey = '/api/compare?photoType=face&gender=all'
+const photoLeaderboardKey = '/api/leaderboard/photos?limit=24&sort=rating'
 
 export default function VotingPage() {
+  const { mutate: mutateGlobal } = useSWRConfig()
   const { data: pair, error, isLoading, mutate } = useSWR<ComparisonPair>(pairKey)
   const visiblePair = pair ?? null
   const [pendingVote, setPendingVote] = useState<PendingVote | null>(null)
   const [transitionLoser, setTransitionLoser] = useState<{ id: string; side: 'left' | 'right' } | null>(null)
   const pendingTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
-  const submitVote = useCallback(async (winner: ComparisonPhoto, loser: ComparisonPhoto, winnerSide: 'left' | 'right') => {
+  const submitVote = useCallback(async (winner: ComparisonPhoto, loser: ComparisonPhoto) => {
     const previousPair = pair
 
     try {
@@ -54,10 +57,9 @@ export default function VotingPage() {
         loserPhotoId: loser.id,
       })
       toast.success(`Vote counted. ${result.totalComparisons.toLocaleString()} total votes.`)
-      const nextPair = await apiGet<ComparisonPair>(
-        `/api/compare?photoType=face&gender=all&keepPhotoId=${encodeURIComponent(winner.id)}&keepSide=${winnerSide}`
-      )
-      await mutate(nextPair, { revalidate: false })
+      void mutateGlobal(photoLeaderboardKey)
+      void mutateGlobal('/api/leaderboard/me')
+      await mutate()
     } catch (voteError) {
       await mutate(previousPair, { revalidate: false })
       toast.error(voteError instanceof ApiClientError ? voteError.message : 'Unable to submit vote')
@@ -74,11 +76,7 @@ export default function VotingPage() {
 
       setTimeout(() => {
         void (async () => {
-          await submitVote(
-            committedVote.winner,
-            committedVote.loser,
-            committedVote.loserSide === 'right' ? 'left' : 'right'
-          )
+          await submitVote(committedVote.winner, committedVote.loser)
           setTransitionLoser(null)
         })()
       }, 560)
@@ -362,7 +360,7 @@ function BattleCandidate({
       </button>
 
       <div className={`grid grid-cols-3 border-y border-zinc-300 py-3 ${side === 'right' ? 'sm:text-right' : ''}`}>
-        <Metric label="Score" value={formatRating(photo.displayRating)} />
+        <Metric label="PSL" value={formatPsl(photo.pslScore)} />
         <Metric label="Votes" value={totalVotes.toLocaleString()} />
         <Metric label="Win" value={`${winRate}%`} />
       </div>
@@ -477,7 +475,7 @@ function BattleState({
   )
 }
 
-function formatRating(rating: number) {
-  if (rating > 100) return Math.round(rating).toLocaleString()
-  return rating.toFixed(1)
+function formatPsl(score?: number | null) {
+  if (typeof score !== 'number') return '--'
+  return score.toFixed(1)
 }

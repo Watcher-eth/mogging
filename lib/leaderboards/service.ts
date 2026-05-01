@@ -68,6 +68,59 @@ export async function getPhotoLeaderboard(input: PhotoLeaderboardQuery) {
   return paginated(query, total, rows.map((row, index) => ({ rank: offset + index + 1, ...row })))
 }
 
+export async function getCurrentUserPhotoRank(userId: string) {
+  const [bestPhoto] = await db
+    .select({
+      id: schema.photos.id,
+      imageUrl: schema.photos.imageUrl,
+      name: schema.photos.name,
+      gender: schema.photos.gender,
+      photoType: schema.photos.photoType,
+      userId: schema.photos.userId,
+      createdAt: schema.photos.createdAt,
+      displayRating: sql<number>`coalesce(${schema.photoRatings.displayRating}, ${initialDisplayRating})`,
+      conservativeScore: sql<number>`coalesce(${schema.photoRatings.conservativeScore}, ${initialConservativeScore})`,
+      winCount: sql<number>`coalesce(${schema.photoRatings.winCount}, 0)`,
+      lossCount: sql<number>`coalesce(${schema.photoRatings.lossCount}, 0)`,
+      comparisonCount: sql<number>`coalesce(${schema.photoRatings.comparisonCount}, 0)`,
+      pslScore: schema.analyses.pslScore,
+    })
+    .from(schema.photos)
+    .innerJoin(schema.analyses, eq(schema.analyses.photoId, schema.photos.id))
+    .leftJoin(schema.photoRatings, eq(schema.photoRatings.photoId, schema.photos.id))
+    .where(and(
+      eq(schema.photos.userId, userId),
+      eq(schema.photos.isPublic, true),
+      eq(schema.analyses.status, 'complete')
+    ))
+    .orderBy(desc(sql`coalesce(${schema.photoRatings.conservativeScore}, ${initialConservativeScore})`))
+    .limit(1)
+
+  if (!bestPhoto) {
+    return {
+      entry: null,
+    }
+  }
+
+  const [{ higherCount }] = await db
+    .select({
+      higherCount: count(schema.photos.id),
+    })
+    .from(schema.photos)
+    .leftJoin(schema.photoRatings, eq(schema.photoRatings.photoId, schema.photos.id))
+    .where(and(
+      eq(schema.photos.isPublic, true),
+      sql`coalesce(${schema.photoRatings.conservativeScore}, ${initialConservativeScore}) > ${bestPhoto.conservativeScore}`
+    ))
+
+  return {
+    entry: {
+      rank: higherCount + 1,
+      ...bestPhoto,
+    },
+  }
+}
+
 export async function getPslLeaderboard(input: PslLeaderboardQuery) {
   const query = pslLeaderboardQuerySchema.parse(input)
   const offset = (query.page - 1) * query.limit
@@ -194,4 +247,3 @@ function photoSort(sort: PhotoLeaderboardQuery['sort']) {
   if (sort === 'recent') return desc(schema.photos.createdAt)
   return desc(sql`coalesce(${schema.photoRatings.conservativeScore}, ${initialConservativeScore})`)
 }
-

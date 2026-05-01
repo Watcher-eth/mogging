@@ -19,6 +19,7 @@ Use this research-weighted rubric:
 Return this JSON object exactly:
 {
   "faceDetected": true,
+  "pslScore": 3.5,
   "harmonyScore": 3.5,
   "symmetryScore": 3.5,
   "proportionalityScore": 3.5,
@@ -39,11 +40,146 @@ Return this JSON object exactly:
   "percentile": 70,
   "tier": "High-tier Normie",
   "tierDescription": "brief calibrated description",
+  "report": {
+    "summary": "brief overall summary grounded in visible facial structure and image limitations",
+    "categories": [
+      {
+        "id": "eyes",
+        "title": "Eyes",
+        "subtitle": "Periocular balance and eye-line structure",
+        "scoreLabel": "Eye area",
+        "score": 3.5,
+        "features": [
+          { "label": "Canthal tilt", "value": "short finding" },
+          { "label": "Spacing", "value": "short finding" },
+          { "label": "Upper lid", "value": "short finding" },
+          { "label": "Symmetry", "value": "short finding" }
+        ],
+        "explanation": "specific explanation for this category"
+      },
+      {
+        "id": "nose",
+        "title": "Nose",
+        "subtitle": "Bridge alignment and central facial axis",
+        "scoreLabel": "Nasal balance",
+        "score": 3.5,
+        "features": [
+          { "label": "Bridge", "value": "short finding" },
+          { "label": "Tip position", "value": "short finding" },
+          { "label": "Width", "value": "short finding" },
+          { "label": "Projection", "value": "short finding" }
+        ],
+        "explanation": "specific explanation for this category"
+      },
+      {
+        "id": "mouth",
+        "title": "Mouth",
+        "subtitle": "Lip shape, width, and lower-third fit",
+        "scoreLabel": "Mouth harmony",
+        "score": 3.5,
+        "features": [
+          { "label": "Width", "value": "short finding" },
+          { "label": "Cupid bow", "value": "short finding" },
+          { "label": "Lower lip", "value": "short finding" },
+          { "label": "Resting line", "value": "short finding" }
+        ],
+        "explanation": "specific explanation for this category"
+      },
+      {
+        "id": "jaw",
+        "title": "Jaw",
+        "subtitle": "Mandible definition and chin support",
+        "scoreLabel": "Jawline",
+        "score": 3.5,
+        "features": [
+          { "label": "Gonial angle", "value": "short finding" },
+          { "label": "Chin height", "value": "short finding" },
+          { "label": "Mandible", "value": "short finding" },
+          { "label": "Neck transition", "value": "short finding" }
+        ],
+        "explanation": "specific explanation for this category"
+      },
+      {
+        "id": "dimorphism",
+        "title": "Dimorphism",
+        "subtitle": "Sex-typical cues weighted against harmony",
+        "scoreLabel": "Dimorphism",
+        "score": 3.5,
+        "features": [
+          { "label": "Brow frame", "value": "short finding" },
+          { "label": "Midface", "value": "short finding" },
+          { "label": "Lower third", "value": "short finding" },
+          { "label": "Soft tissue", "value": "short finding" }
+        ],
+        "explanation": "specific explanation for this category"
+      },
+      {
+        "id": "face-shape",
+        "title": "Face shape",
+        "subtitle": "Frame, thirds, and silhouette continuity",
+        "scoreLabel": "Face shape",
+        "score": 3.5,
+        "features": [
+          { "label": "Outline", "value": "short finding" },
+          { "label": "Upper third", "value": "short finding" },
+          { "label": "Midface", "value": "short finding" },
+          { "label": "Lower third", "value": "short finding" }
+        ],
+        "explanation": "specific explanation for this category"
+      },
+      {
+        "id": "biological-age",
+        "title": "Biological age",
+        "subtitle": "Visible youthfulness and skin presentation cues",
+        "scoreLabel": "Age signal",
+        "score": 3.5,
+        "features": [
+          { "label": "Skin texture", "value": "short finding" },
+          { "label": "Under-eye", "value": "short finding" },
+          { "label": "Facial fullness", "value": "short finding" },
+          { "label": "Presentation", "value": "short finding" }
+        ],
+        "explanation": "specific explanation for this category"
+      },
+      {
+        "id": "symmetry",
+        "title": "Symmetry",
+        "subtitle": "Left-right balance across visible landmarks",
+        "scoreLabel": "Symmetry",
+        "score": 3.5,
+        "features": [
+          { "label": "Eye level", "value": "short finding" },
+          { "label": "Nose axis", "value": "short finding" },
+          { "label": "Mouth axis", "value": "short finding" },
+          { "label": "Chin point", "value": "short finding" }
+        ],
+        "explanation": "specific explanation for this category"
+      },
+      {
+        "id": "overall",
+        "title": "Overall PSL score",
+        "subtitle": "Final calibrated PSL assessment",
+        "scoreLabel": "PSL score",
+        "score": 3.5,
+        "features": [
+          { "label": "Harmony", "value": "short finding" },
+          { "label": "Structure", "value": "short finding" },
+          { "label": "Balance", "value": "short finding" },
+          { "label": "Percentile", "value": "short finding" }
+        ],
+        "explanation": "specific explanation for the final PSL score"
+      }
+    ]
+  },
   "landmarks": {}
 }
 
 Rules:
 - Every score must be between 0 and 8.
+- pslScore is the final app-wide overall score. It must be a calibrated PSL score on the same harsh 0-8 scale, not a generic attractiveness score.
+- The report.categories array must contain exactly one object for each id shown above, in the same order.
+- Each category score must be a calibrated 0-8 category score. The overall category score must equal pslScore.
+- Feature values must be short, concrete findings, not generic praise.
 - harmonyScore should summarize proportionality, averageness, symmetry, feature cohesion, and absence of distracting imbalance.
 - If the image is not frontal enough to judge a metric, give a conservative score and mention the limitation in the metric description.
 - Do not identify the person.

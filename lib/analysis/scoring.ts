@@ -10,8 +10,13 @@ export function computePslScore(
     | 'dimorphismScore'
     | 'angularityScore'
     | 'metricScores'
+    | 'pslScore'
   >
 ) {
+  if (typeof result.pslScore === 'number') {
+    return Math.round(result.pslScore * 10) / 10
+  }
+
   const categoryAverage = (category: MetricCategory, fallback: number) => {
     const scores = result.metricScores.filter((metric) => metric.category === category)
     if (scores.length === 0) return fallback

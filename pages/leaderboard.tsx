@@ -1,12 +1,18 @@
-import { useEffect, useMemo, useState } from 'react'
-import { apiGet } from '@/lib/api/client'
+import { useSession } from 'next-auth/react'
+import { useMemo } from 'react'
+import useSWR from 'swr'
 
 type LeaderboardResponse = {
   items: LeaderboardEntry[]
   total: number
 }
 
+type CurrentUserRankResponse = {
+  entry: LeaderboardEntry | null
+}
+
 type LeaderboardEntry = {
+  id?: string
   rank: number
   photoId?: string
   imageUrl?: string | null
@@ -25,40 +31,24 @@ type LeaderboardEntry = {
   social?: string | null
 }
 
-const fallbackEntries: LeaderboardEntry[] = [
-  { rank: 1, name: 'Vanta', imageUrl: '/model6.png', displayRating: 9.4, winCount: 982, comparisonCount: 1240, pslScore: 9.4, harmonyScore: 94, dimorphismScore: 91, angularityScore: 88, social: '@vanta' },
-  { rank: 2, name: 'Astra', imageUrl: '/model8.png', displayRating: 9.1, winCount: 871, comparisonCount: 1104, pslScore: 9.1, harmonyScore: 91, dimorphismScore: 87, angularityScore: 86, social: '@astra' },
-  { rank: 3, name: 'Rook', imageUrl: '/model4.png', displayRating: 8.9, winCount: 846, comparisonCount: 1068, pslScore: 8.9, harmonyScore: 89, dimorphismScore: 86, angularityScore: 90, social: '@rook' },
-  { rank: 4, name: 'Nero', imageUrl: '/model.png', displayRating: 8.6, winCount: 724, comparisonCount: 940, pslScore: 8.6, harmonyScore: 87, dimorphismScore: 84, angularityScore: 85 },
-  { rank: 5, name: 'Vale', imageUrl: '/model10.png', displayRating: 8.4, winCount: 690, comparisonCount: 902, pslScore: 8.4, harmonyScore: 85, dimorphismScore: 82, angularityScore: 83, social: '@vale' },
-  { rank: 6, name: 'Sol', imageUrl: '/model12.png', displayRating: 8.2, winCount: 642, comparisonCount: 866, pslScore: 8.2, harmonyScore: 83, dimorphismScore: 81, angularityScore: 82 },
-  { rank: 7, name: 'Kairo', imageUrl: '/model2.png', displayRating: 8.0, winCount: 598, comparisonCount: 840, pslScore: 8.0, harmonyScore: 81, dimorphismScore: 79, angularityScore: 80, social: '@kairo' },
-  { rank: 8, name: 'Mika', imageUrl: '/model14.png', displayRating: 7.8, winCount: 550, comparisonCount: 801, pslScore: 7.8, harmonyScore: 79, dimorphismScore: 78, angularityScore: 77 },
-]
-
+const leaderboardKey = '/api/leaderboard/photos?limit=24&sort=rating'
 const podiumOrder = [1, 0, 2]
 
 export default function LeaderboardPage() {
-  const [entries, setEntries] = useState<LeaderboardEntry[]>(fallbackEntries)
-
-  useEffect(() => {
-    let cancelled = false
-
-    apiGet<LeaderboardResponse>('/api/leaderboard/photos?limit=24&sort=rating')
-      .then((leaderboard) => {
-        if (cancelled || leaderboard.items.length === 0) return
-        setEntries(leaderboard.items)
-      })
-      .catch(() => {
-        if (!cancelled) {
-          setEntries(fallbackEntries)
-        }
-      })
-
-    return () => {
-      cancelled = true
+  const { status } = useSession()
+  const { data: leaderboard } = useSWR<LeaderboardResponse>(leaderboardKey, {
+    refreshInterval: 2_000,
+    revalidateOnFocus: true,
+  })
+  const { data: currentUserRank } = useSWR<CurrentUserRankResponse>(
+    status === 'authenticated' ? '/api/leaderboard/me' : null,
+    {
+      refreshInterval: 2_000,
+      revalidateOnFocus: true,
+      shouldRetryOnError: false,
     }
-  }, [])
+  )
+  const entries = leaderboard?.items ?? []
 
   const topThree = useMemo(() => entries.slice(0, 3), [entries])
   const rankedEntries = useMemo(() => entries.slice(3), [entries])
@@ -108,7 +98,7 @@ export default function LeaderboardPage() {
 
                 return (
                   <TopEntry
-                    key={entry.photoId || entry.rank}
+                    key={entry.id || entry.photoId || entry.rank}
                     entry={entry}
                     elevated={entry.rank === 1}
                     index={entryIndex}
@@ -122,19 +112,27 @@ export default function LeaderboardPage() {
             <div className="grid grid-cols-[56px_minmax(0,1fr)_80px_92px] gap-4 border-b border-zinc-200 pb-3 font-mono text-[11px] uppercase tracking-[0.12em] text-zinc-500 sm:grid-cols-[64px_minmax(0,1fr)_96px_96px_120px]">
               <span>Rank</span>
               <span>Profile</span>
-              <span className="text-right">Score</span>
+              <span className="text-right">PSL</span>
               <span className="text-right">Votes</span>
               <span className="hidden text-right sm:block">Social</span>
             </div>
 
             <div className="grid">
-              {rankedEntries.map((entry, index) => (
-                <RankRow key={entry.photoId || entry.rank} entry={entry} index={index} />
-              ))}
+              {rankedEntries.length > 0 ? (
+                rankedEntries.map((entry, index) => (
+                  <RankRow key={entry.id || entry.photoId || entry.rank} entry={entry} index={index} />
+                ))
+              ) : (
+                <div className="border-b border-zinc-200 py-10 text-sm text-zinc-500">
+                  No ranked photos yet.
+                </div>
+              )}
             </div>
           </section>
         </div>
       </div>
+
+      <CurrentUserRankBar entry={currentUserRank?.entry ?? null} />
     </section>
   )
 }
@@ -215,6 +213,30 @@ function RankRow({ entry, index }: { entry: LeaderboardEntry; index: number }) {
   )
 }
 
+function CurrentUserRankBar({ entry }: { entry: LeaderboardEntry | null }) {
+  if (!entry) return null
+
+  return (
+    <div className="fixed inset-x-5 bottom-5 z-40 mx-auto max-w-3xl border border-black bg-white px-4 py-3 text-black shadow-[0_18px_50px_rgba(15,23,42,0.12)] sm:bottom-6">
+      <div className="grid grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-4">
+        <img
+          alt=""
+          className="size-12 rounded-full object-cover grayscale-[0.1]"
+          src={entry.imageUrl || '/model.png'}
+        />
+        <div className="min-w-0">
+          <p className="font-mono text-[11px] uppercase tracking-[0.12em] text-zinc-500">Your rank</p>
+          <h2 className="mt-1 truncate text-lg font-semibold tracking-[-0.04em]">{entry.name || 'Your photo'}</h2>
+        </div>
+        <div className="text-right">
+          <p className="font-mono text-[11px] uppercase tracking-[0.12em] text-zinc-500">Rank</p>
+          <p className="mt-1 text-2xl font-semibold tracking-[-0.06em]">#{entry.rank}</p>
+        </div>
+      </div>
+    </div>
+  )
+}
+
 function formatScore(score?: number | null) {
   if (typeof score !== 'number') return '-'
   return score.toFixed(1)
@@ -237,5 +259,5 @@ function displayScore(entry: LeaderboardEntry) {
 
 function scorePercent(score?: number | null) {
   if (typeof score !== 'number') return 0
-  return Math.max(0, Math.min(100, (score / 10) * 100))
+  return Math.max(0, Math.min(100, (score / 8) * 100))
 }

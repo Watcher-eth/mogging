@@ -12,8 +12,6 @@ import {
 
 export const pairSelectionSchema = z.object({
   gender: z.enum(['male', 'female', 'other', 'all']).default('all'),
-  keepPhotoId: z.string().min(1).optional(),
-  keepSide: z.enum(['left', 'right']).default('left'),
   photoType: z.enum(['face', 'body', 'outfit']).default('face'),
 })
 
@@ -51,37 +49,12 @@ export async function selectComparisonPair(input: PairSelectionInput) {
     throw new RatingServiceError(400, 'Not enough photos to compare')
   }
 
-  if (params.keepPhotoId) {
-    const anchorFilters = [...filters, eq(schema.photos.id, params.keepPhotoId)].filter(Boolean) as SQL[]
-    const [anchor] = await db
-      .select(comparisonPhotoSelection)
-      .from(schema.photos)
-      .leftJoin(schema.photoRatings, eq(schema.photoRatings.photoId, schema.photos.id))
-      .where(and(...anchorFilters))
-      .limit(1)
-
-    if (!anchor) {
-      throw new RatingServiceError(404, 'Kept photo not found')
-    }
-
-    const challenger = await selectRandomComparisonPhoto(filters, anchor.photo.id)
-
-    return params.keepSide === 'right'
-      ? {
-          left: toComparisonPhoto(challenger),
-          right: toComparisonPhoto(anchor),
-        }
-      : {
-          left: toComparisonPhoto(anchor),
-          right: toComparisonPhoto(challenger),
-        }
-  }
-
   const firstOffset = Math.floor(Math.random() * total)
   const [first] = await db
     .select(comparisonPhotoSelection)
     .from(schema.photos)
     .leftJoin(schema.photoRatings, eq(schema.photoRatings.photoId, schema.photos.id))
+    .leftJoin(schema.analyses, eq(schema.analyses.photoId, schema.photos.id))
     .where(where)
     .offset(firstOffset)
     .limit(1)
@@ -112,6 +85,7 @@ async function selectRandomComparisonPhoto(filters: SQL[], excludedPhotoId: stri
     .select(comparisonPhotoSelection)
     .from(schema.photos)
     .leftJoin(schema.photoRatings, eq(schema.photoRatings.photoId, schema.photos.id))
+    .leftJoin(schema.analyses, eq(schema.analyses.photoId, schema.photos.id))
     .where(secondWhere)
     .offset(secondOffset)
     .limit(1)
@@ -244,6 +218,9 @@ const comparisonPhotoSelection = {
     winCount: schema.photoRatings.winCount,
     lossCount: schema.photoRatings.lossCount,
   },
+  analysis: {
+    pslScore: schema.analyses.pslScore,
+  },
 }
 
 type ComparisonPhotoRow = {
@@ -261,6 +238,9 @@ type ComparisonPhotoRow = {
     winCount: number
     lossCount: number
   } | null
+  analysis: {
+    pslScore: number | null
+  } | null
 }
 
 function toComparisonPhoto(row: ComparisonPhotoRow) {
@@ -275,6 +255,7 @@ function toComparisonPhoto(row: ComparisonPhotoRow) {
     conservativeScore: row.rating?.conservativeScore ?? conservativeScore(initialSkillRating()),
     winCount: row.rating?.winCount ?? 0,
     lossCount: row.rating?.lossCount ?? 0,
+    pslScore: row.analysis?.pslScore ?? null,
   }
 }
 

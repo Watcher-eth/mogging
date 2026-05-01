@@ -52,7 +52,7 @@ export class KimiAnalysisProvider implements AnalysisProvider {
         ],
         response_format: { type: 'json_object' },
         thinking: { type: 'disabled' },
-        max_tokens: 1800,
+        max_tokens: 4200,
       }),
     })
 

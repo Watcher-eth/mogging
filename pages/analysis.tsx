@@ -19,7 +19,6 @@ import { apiGet, apiPost, ApiClientError } from '@/lib/api/client'
 import {
   clearAnalysisDraft,
   loadAnalysisDraft,
-  saveAnalysisDraft,
   type AnalysisDraftImage,
 } from '@/lib/client/analysisDraft'
 import { extractFaceLandmarksFromDataUrl } from '@/lib/client/faceLandmarks'
@@ -56,15 +55,44 @@ type AnalysisResponse = {
     percentile: number | null
     tier: string | null
     tierDescription: string | null
-    metrics: Record<string, unknown>
+    metrics: AnalysisMetrics
     landmarks: Record<string, unknown>
     failureReason?: string | null
   }
   deduped: boolean
 }
 
-type CheckoutResponse = {
-  url: string
+type AnalysisMetrics = Record<string, unknown> & {
+  report?: AnalysisReport | null
+  metricScores?: Array<{
+    name: string
+    score: number
+    category: string
+    description?: string
+  }>
+  symmetryScore?: number | null
+  proportionalityScore?: number | null
+  averagenessScore?: number | null
+}
+
+type AnalysisReportFeature = {
+  label: string
+  value: string
+}
+
+type AnalysisReportCategory = {
+  id: string
+  title: string
+  subtitle: string
+  scoreLabel: string
+  score: number
+  features: AnalysisReportFeature[]
+  explanation: string
+}
+
+type AnalysisReport = {
+  summary: string
+  categories: AnalysisReportCategory[]
 }
 
 type VerifyPaymentResponse = {
@@ -282,9 +310,9 @@ const reportCategories: ReportCategory[] = [
   },
   {
     id: 'overall',
-    title: 'Overall score',
-    subtitle: 'Final calibrated facial assessment',
-    scoreLabel: 'Overall',
+    title: 'Overall PSL',
+    subtitle: 'Final calibrated PSL assessment',
+    scoreLabel: 'PSL score',
     features: [
       { label: 'Harmony', value: 'High' },
       { label: 'Structure', value: 'Strong' },
@@ -303,33 +331,6 @@ const reportOverlayCategoryYOffset: Record<string, number> = {
 
 function wait(ms: number) {
   return new Promise((resolve) => setTimeout(resolve, ms))
-}
-
-function createPreviewAnalysisResult(image: AnalysisDraftImage, index: number): AnalysisResponse {
-  const baseScore = 7.6 - index * 0.2
-
-  return {
-    photo: {
-      id: `preview-photo-${image.id}`,
-      imageUrl: image.dataUrl,
-      imageHash: `preview-${image.id}`,
-    },
-    analysis: {
-      id: `preview-analysis-${image.id}`,
-      status: 'complete',
-      pslScore: baseScore,
-      harmonyScore: baseScore + 0.2,
-      dimorphismScore: baseScore - 0.1,
-      angularityScore: baseScore - 0.3,
-      percentile: 88 - index * 4,
-      tier: 'Preview report',
-      tierDescription: 'Temporary preview result for reviewing the analysis UI and motion flow before reconnecting checkout.',
-      metrics: {},
-      landmarks: image.landmarks ?? {},
-      failureReason: null,
-    },
-    deduped: false,
-  }
 }
 
 export default function AnalysisPage() {
@@ -393,21 +394,39 @@ export default function AnalysisPage() {
     setStep('actual-analysis')
     setProgress(30)
 
-    void runPreviewAnalysis()
+    void runActualAnalysis()
   }
 
-  async function runPreviewAnalysis() {
-    const draftImages = images.length > 0 ? images : selectedImage ? [selectedImage] : []
-
-    for (const progressValue of [40, 52, 64, 76, 88, 100]) {
-      await wait(3_200)
-      setProgress(progressValue)
+  async function runActualAnalysis(draftImages = images) {
+    if (draftImages.length === 0) {
+      setStep('upload')
+      setError('Upload an image before starting analysis.')
+      return
     }
 
-    if (draftImages.length === 0) return
+    try {
+      const analysisResults: AnalysisResponse[] = []
 
-    setResults(draftImages.map(createPreviewAnalysisResult))
-    setStep('results')
+      for (const [index, image] of draftImages.entries()) {
+        setProgress(Math.round(30 + (index / draftImages.length) * 62))
+        const result = await apiPost<AnalysisResponse>('/api/analyze', {
+          imageData: image.dataUrl,
+          gender,
+          photoType: 'face',
+          name: image.name,
+          landmarks: image.landmarks ?? null,
+        })
+        analysisResults.push(result)
+      }
+
+      setProgress(100)
+      setResults(analysisResults)
+      setStep('results')
+      await clearAnalysisDraft()
+    } catch (analysisError) {
+      setStep('actual-analysis')
+      setError(analysisError instanceof ApiClientError ? analysisError.message : 'Analysis failed')
+    }
   }
 
   const resumeAfterPayment = useCallback(async (sessionId: string) => {
@@ -679,7 +698,7 @@ function ScreenMotion({ children }: { children: ReactNode }) {
 
 function IntroScreen({ onBegin }: { onBegin: () => void }) {
   return (
-    <div className="grid min-h-[calc(100svh-5rem)] gap-10 px-5 py-6 sm:px-10 sm:py-8 lg:grid-cols-[1.08fr_0.92fr] lg:gap-16 xl:gap-24 2xl:gap-32">
+    <div className="grid min-h-[calc(100svh-5rem)] gap-8 px-5 py-6 sm:px-10 sm:py-8 lg:grid-cols-[1.08fr_0.92fr] lg:gap-16 xl:gap-24 2xl:gap-32">
       <aside className="flex flex-col justify-between gap-10 lg:pr-16 xl:pr-24 2xl:pr-36">
         <div>
           <div className="flex gap-6 font-mono text-[10px] uppercase tracking-wide text-muted-foreground">
@@ -700,7 +719,7 @@ function IntroScreen({ onBegin }: { onBegin: () => void }) {
           </div>
         </div>
 
-        <div>
+        <div className="hidden lg:block">
           <Button className="h-11 w-full justify-between rounded-sm font-mono text-[11px] uppercase" onClick={onBegin}>
             Begin assessment
             <ArrowRight className="size-4" aria-hidden="true" />
@@ -711,7 +730,7 @@ function IntroScreen({ onBegin }: { onBegin: () => void }) {
         </div>
       </aside>
 
-      <div className="relative min-h-[560px] overflow-hidden bg-zinc-200 lg:min-h-0">
+      <div className="relative min-h-[420px] overflow-hidden bg-zinc-200 sm:min-h-[560px] lg:min-h-0">
         <img className="absolute inset-0 h-full w-full object-cover object-center" src={previewPhotoUrl} alt="Facial assessment preview" />
         <div className="absolute left-1/2 top-1/2 w-[min(42vw,300px)] -translate-x-1/2 -translate-y-1/2 border border-white/80 p-3 text-white shadow-[0_20px_80px_rgba(0,0,0,0.18)]">
           <div className="text-balance text-xl font-medium leading-none tracking-[-0.04em]">
@@ -728,6 +747,16 @@ function IntroScreen({ onBegin }: { onBegin: () => void }) {
             <PreviewMeta label="Descent" value="Global" />
           </div>
         </div>
+      </div>
+
+      <div className="lg:hidden">
+        <Button className="h-11 w-full justify-between rounded-sm font-mono text-[11px] uppercase" onClick={onBegin}>
+          Begin assessment
+          <ArrowRight className="size-4" aria-hidden="true" />
+        </Button>
+        <p className="mt-5 max-w-sm text-xs leading-5 text-muted-foreground">
+          By clicking begin, you agree that the uploaded images can be used to generate your private report.
+        </p>
       </div>
     </div>
   )
@@ -1456,16 +1485,19 @@ function ResultsStep({
   const landmarks = getReportLandmarks(primaryResult)
   const score = primaryScore ?? primaryResult?.analysis.pslScore ?? 0
   const categoryScore = getReportCategoryScore(activeCategory.id, primaryResult)
+  const activeReportCategory = getReportCategoryData(activeCategory.id, primaryResult)
 
   return (
-    <div className="grid min-h-[calc(100svh-5rem)] gap-12 px-5 py-6 sm:px-10 sm:py-8 lg:grid-cols-[360px_minmax(0,1fr)] lg:items-start lg:justify-between lg:gap-20 xl:gap-28">
-      <aside className="flex min-h-[calc(100svh-9rem)] flex-col justify-between bg-white p-0 text-black lg:sticky lg:top-24">
+    <div className="grid min-h-[calc(100svh-5rem)] gap-8 px-5 py-6 sm:px-10 sm:py-8 lg:grid-cols-[360px_minmax(0,1fr)] lg:items-start lg:justify-between lg:gap-20 xl:gap-28">
+      <aside className="flex flex-col justify-between bg-white p-0 text-black lg:sticky lg:top-24 lg:min-h-[calc(100svh-9rem)]">
         <div>
           <p className="font-mono text-[10px] uppercase tracking-wide text-muted-foreground">Final analysis //</p>
           <h2 className="mt-3 text-5xl font-semibold leading-none tracking-[-0.06em]">Your Report</h2>
           <div className="mt-6 grid gap-1.5">
             {reportCategories.map((category, index) => {
               const isActive = category.id === activeCategory.id
+              const reportCategory = getReportCategoryData(category.id, primaryResult)
+              const categoryTitle = reportCategory?.title ?? category.title
 
               return (
                 <button
@@ -1477,7 +1509,7 @@ function ResultsStep({
                   type="button"
                 >
                   <span>[ {String(index + 1).padStart(3, '0')} ]</span>
-                  <span>{category.title}</span>
+                  <span>{categoryTitle}</span>
                   <span className={isActive ? 'text-white/55' : 'text-black/25'}>{category.id === 'overall' ? score.toFixed(1) : ''}</span>
                 </button>
               )
@@ -1485,38 +1517,56 @@ function ResultsStep({
           </div>
         </div>
 
-        <div className="grid gap-3">
-          <div className="border border-zinc-200 p-4">
-            <p className="font-mono text-[10px] uppercase tracking-wide text-muted-foreground">Overall score</p>
-            <div className="mt-3 flex items-end justify-between">
-              <span className="text-6xl font-semibold leading-none tracking-[-0.06em]">{score.toFixed(1)}</span>
-              <span className="pb-1 font-mono text-[10px] uppercase text-muted-foreground">/ 10</span>
-            </div>
-          </div>
-          <button
-            className="flex h-12 w-full items-center justify-between bg-black px-4 font-mono text-[11px] uppercase tracking-wide text-white transition-transform duration-200 ease-out hover:-translate-y-0.5 active:translate-y-0"
-            onClick={onOpenShare}
-            type="button"
-          >
-            Share your score
-            <Share2 className="size-4" aria-hidden="true" />
-          </button>
-          <button
-            className="h-10 text-left font-mono text-[10px] uppercase tracking-wide text-muted-foreground transition-colors hover:text-black"
-            onClick={onReset}
-            type="button"
-          >
-            New analysis
-          </button>
-        </div>
+        <ReportActions score={score} onOpenShare={onOpenShare} onReset={onReset} className="hidden lg:grid" />
       </aside>
 
-      <section className="grid min-h-[calc(100svh-9rem)] gap-6">
+      <section className="grid gap-4 lg:min-h-[calc(100svh-9rem)] lg:gap-6">
         <div className="grid h-full gap-4 lg:grid-cols-[minmax(0,0.98fr)_minmax(280px,0.72fr)] lg:items-stretch">
           <ReportImagePanel category={activeCategory} imageSrc={imageSrc} landmarks={landmarks} />
-          <ReportDetailPanel category={activeCategory} score={categoryScore} />
+          <ReportDetailPanel category={activeCategory} reportCategory={activeReportCategory} score={categoryScore} />
         </div>
       </section>
+
+      <ReportActions score={score} onOpenShare={onOpenShare} onReset={onReset} className="lg:hidden" />
+    </div>
+  )
+}
+
+function ReportActions({
+  className = '',
+  onOpenShare,
+  onReset,
+  score,
+}: {
+  className?: string
+  onOpenShare: () => void
+  onReset: () => void
+  score: number
+}) {
+  return (
+    <div className={`grid gap-3 ${className}`}>
+      <div className="border border-zinc-200 p-4">
+        <p className="font-mono text-[10px] uppercase tracking-wide text-muted-foreground">PSL score</p>
+        <div className="mt-3 flex items-end justify-between">
+          <span className="text-6xl font-semibold leading-none tracking-[-0.06em]">{score.toFixed(1)}</span>
+          <span className="pb-1 font-mono text-[10px] uppercase text-muted-foreground">/ 8</span>
+        </div>
+      </div>
+      <button
+        className="flex h-12 w-full items-center justify-between bg-black px-4 font-mono text-[11px] uppercase tracking-wide text-white transition-transform duration-200 ease-out hover:-translate-y-0.5 active:translate-y-0"
+        onClick={onOpenShare}
+        type="button"
+      >
+        Share your score
+        <Share2 className="size-4" aria-hidden="true" />
+      </button>
+      <button
+        className="h-10 text-left font-mono text-[10px] uppercase tracking-wide text-muted-foreground transition-colors hover:text-black"
+        onClick={onReset}
+        type="button"
+      >
+        New analysis
+      </button>
     </div>
   )
 }
@@ -1838,7 +1888,7 @@ function getLandmarkOverlayGeometry(category: ReportCategory, landmarks: FaceLan
         ...(mouthLeft && mouthRight ? [{ x1: mouthLeft.x, y1: mouthLeft.y, x2: mouthRight.x, y2: mouthRight.y }] : []),
       ],
       points: compactPoints([forehead, nose, chin, leftEye, rightEye]),
-      label: { title: category.id === 'overall' ? 'Overall score' : 'Symmetry', value: '[ measured ]', x: Math.min(78, nose.x + 7), y: nose.y },
+      label: { title: category.id === 'overall' ? 'PSL score' : 'Symmetry', value: '[ measured ]', x: Math.min(78, nose.x + 7), y: nose.y },
     }
   }
 
@@ -1855,7 +1905,7 @@ function getReportOverlayLabel(category: ReportCategory) {
     'face-shape': { title: 'Face shape', value: '[ oval ]', x: 61, y: 34 },
     'biological-age': { title: 'Age signal', value: '[ youthful ]', x: 59, y: 55 },
     symmetry: { title: 'Symmetry', value: '[ high ]', x: 58, y: 46 },
-    overall: { title: 'Overall score', value: '[ calibrated ]', x: 58, y: 51 },
+    overall: { title: 'PSL score', value: '[ calibrated ]', x: 58, y: 51 },
   }
 
   return labels[category.id] ?? labels.overall
@@ -1923,7 +1973,37 @@ function getReportOverlayYOffset(categoryId: string) {
   return reportOverlayCategoryYOffset[categoryId] ?? reportOverlayYOffset
 }
 
-function ReportDetailPanel({ category, score }: { category: ReportCategory; score: number }) {
+function getAnalysisReport(result?: AnalysisResponse): AnalysisReport | null {
+  const report = result?.analysis.metrics?.report
+  if (!report || typeof report.summary !== 'string' || !Array.isArray(report.categories)) return null
+
+  return report
+}
+
+function getReportCategoryData(categoryId: string, result?: AnalysisResponse): AnalysisReportCategory | null {
+  const report = getAnalysisReport(result)
+  const category = report?.categories.find((item) => item.id === categoryId)
+  if (!category || !Array.isArray(category.features)) return null
+
+  return category
+}
+
+function ReportDetailPanel({
+  category,
+  reportCategory,
+  score,
+}: {
+  category: ReportCategory
+  reportCategory: AnalysisReportCategory | null
+  score: number
+}) {
+  const title = reportCategory?.title ?? category.title
+  const subtitle = reportCategory?.subtitle ?? category.subtitle
+  const scoreLabel = reportCategory?.scoreLabel ?? category.scoreLabel
+  const features = reportCategory?.features?.length ? reportCategory.features : category.features
+  const explanation = reportCategory?.explanation
+    ?? `${category.title} is scored from visible proportions, local symmetry, and how the feature fits the full facial frame.`
+
   return (
     <div className="grid h-full gap-3">
       <AnimatePresence mode="wait">
@@ -1936,16 +2016,16 @@ function ReportDetailPanel({ category, score }: { category: ReportCategory; scor
           transition={{ duration: 0.42, ease: [0.23, 1, 0.32, 1] }}
         >
       <div className="border bg-white p-5">
-        <p className="font-mono text-[10px] uppercase tracking-wide text-muted-foreground">{category.scoreLabel}</p>
+        <p className="font-mono text-[10px] uppercase tracking-wide text-muted-foreground">{scoreLabel}</p>
         <div className="mt-14 flex items-end justify-between">
-          <h3 className="text-4xl font-semibold leading-none tracking-[-0.055em]">{category.title}</h3>
+          <h3 className="text-4xl font-semibold leading-none tracking-[-0.055em]">{title}</h3>
           <span className="font-mono text-xl">{score.toFixed(1)}</span>
         </div>
-        <p className="mt-4 text-sm leading-6 text-muted-foreground">{category.subtitle}</p>
+        <p className="mt-4 text-sm leading-6 text-muted-foreground">{subtitle}</p>
       </div>
 
       <div className="grid grid-cols-2 gap-3">
-        {category.features.map((feature, index) => (
+        {features.map((feature, index) => (
           <motion.div
             key={`${category.id}-${feature.label}`}
             className="flex min-h-0 flex-col justify-between border bg-zinc-50 p-4"
@@ -1967,7 +2047,7 @@ function ReportDetailPanel({ category, score }: { category: ReportCategory; scor
       >
         <p className="font-mono text-[10px] uppercase tracking-wide text-muted-foreground">Explanation</p>
         <p className="mt-10 text-sm leading-6 text-muted-foreground">
-          {category.title} is scored from visible proportions, local symmetry, and how the feature fits the full facial frame.
+          {explanation}
         </p>
       </motion.div>
         </motion.div>
@@ -1978,6 +2058,8 @@ function ReportDetailPanel({ category, score }: { category: ReportCategory; scor
 
 function getReportCategoryScore(categoryId: string, result?: AnalysisResponse) {
   if (!result) return 0
+  const reportCategory = getReportCategoryData(categoryId, result)
+  if (typeof reportCategory?.score === 'number') return Math.max(0, Math.min(8, reportCategory.score))
 
   const overall = result.analysis.pslScore ?? 0
   const harmony = result.analysis.harmonyScore ?? overall
@@ -1996,7 +2078,7 @@ function getReportCategoryScore(categoryId: string, result?: AnalysisResponse) {
     overall,
   }
 
-  return Math.max(0, Math.min(10, scores[categoryId] ?? overall))
+  return Math.max(0, Math.min(8, scores[categoryId] ?? overall))
 }
 
 function ShareSheet({

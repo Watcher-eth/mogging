@@ -3,6 +3,7 @@ import { createPhotoRecord } from '@/lib/photos/service'
 import { storeImageDataUrl } from '@/lib/storage/images'
 import { toAnalysisFailure } from './errors'
 import { analysisProvider } from './provider'
+import { createFallbackAnalysisReport, normalizeAnalysisReport } from './report'
 import { computePslScore } from './scoring'
 import { saveAnalysisResult } from './service'
 import { faceLandmarksPayloadSchema } from './landmarks'
@@ -106,6 +107,7 @@ export async function analyzeAndSave(input: AnalyzeAndSaveInput) {
   })
   const result = providerResult.result
   const pslScore = computePslScore(result)
+  const report = normalizeAnalysisReport(result.report, pslScore) ?? createFallbackAnalysisReport(result, pslScore)
   const analysisResult = await saveAnalysisResult({
     photoId: photoResult.photo.id,
     status: 'complete',
@@ -117,6 +119,7 @@ export async function analyzeAndSave(input: AnalyzeAndSaveInput) {
     tier: result.tier ?? null,
     tierDescription: result.tierDescription ?? null,
     metrics: {
+      report,
       symmetryScore: result.symmetryScore ?? null,
       proportionalityScore: result.proportionalityScore ?? null,
       averagenessScore: result.averagenessScore ?? null,
