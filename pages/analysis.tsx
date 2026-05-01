@@ -1614,7 +1614,7 @@ function ResultsStep({
   const activeCategory = reportCategories.find((category) => category.id === activeCategoryId) ?? reportCategories[0]
   const imageSrc = primaryResult?.photo.imageUrl ?? previewPhotoUrl
   const landmarks = getReportLandmarks(primaryResult)
-  const score = primaryScore ?? primaryResult?.analysis.pslScore ?? 0
+  const score = getReportOverallScore(primaryResult, primaryScore)
   const categoryScore = getReportCategoryScore(activeCategory.id, primaryResult)
   const activeReportCategory = getReportCategoryData(activeCategory.id, primaryResult)
 
@@ -2149,6 +2149,16 @@ function getReportCategoryData(categoryId: string, result?: AnalysisResponse): A
   if (!category || !Array.isArray(category.features)) return null
 
   return category
+}
+
+function getReportOverallScore(result?: AnalysisResponse, fallbackScore?: number | null) {
+  const reportCategory = getReportCategoryData('overall', result)
+  if (typeof reportCategory?.score === 'number') {
+    return Math.max(0, Math.min(8, reportCategory.score))
+  }
+
+  const score = fallbackScore ?? result?.analysis.pslScore ?? 0
+  return Math.max(0, Math.min(8, score))
 }
 
 function ReportDetailPanel({
