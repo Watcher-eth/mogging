@@ -5,6 +5,7 @@ import { toAnalysisFailure } from './errors'
 import { analysisProvider } from './provider'
 import { computePslScore } from './scoring'
 import { saveAnalysisResult } from './service'
+import { faceLandmarksPayloadSchema } from './landmarks'
 
 export const analyzeAndSaveSchema = z.object({
   imageData: z.string().min(1),
@@ -14,6 +15,7 @@ export const analyzeAndSaveSchema = z.object({
   anonymousActorId: z.string().min(1).nullable().optional(),
   name: z.string().min(1).max(120).nullable().optional(),
   caption: z.string().max(500).nullable().optional(),
+  landmarks: faceLandmarksPayloadSchema.nullable().optional(),
 })
 
 export type AnalyzeAndSaveInput = z.infer<typeof analyzeAndSaveSchema>
@@ -49,7 +51,7 @@ export async function analyzeAndSave(input: AnalyzeAndSaveInput) {
       photoId: photoResult.photo.id,
       status: 'failed',
       metrics: failure.metrics,
-      landmarks: {},
+      landmarks: data.landmarks ?? {},
       model: analysisProvider.model,
       promptVersion: 'psl-kimi-v1',
       failureReason: failure.failureReason,
@@ -78,7 +80,7 @@ export async function analyzeAndSave(input: AnalyzeAndSaveInput) {
       photoId: photoResult.photo.id,
       status: 'failed',
       metrics: {},
-      landmarks: {},
+      landmarks: data.landmarks ?? {},
       model: analysisProvider.model,
       promptVersion: 'psl-kimi-v1',
       failureReason: 'No face detected',
@@ -120,7 +122,7 @@ export async function analyzeAndSave(input: AnalyzeAndSaveInput) {
       averagenessScore: result.averagenessScore ?? null,
       metricScores: result.metricScores,
     },
-    landmarks: result.landmarks,
+    landmarks: data.landmarks ?? result.landmarks,
     model: analysisProvider.model,
     promptVersion: 'psl-kimi-v1',
   })

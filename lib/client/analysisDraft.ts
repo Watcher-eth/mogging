@@ -1,3 +1,5 @@
+import type { FaceLandmarksPayload } from '@/lib/analysis/landmarks'
+
 const DB_NAME = 'mogging-analysis'
 const STORE_NAME = 'drafts'
 const DRAFT_KEY = 'current'
@@ -6,6 +8,7 @@ export type AnalysisDraftImage = {
   id: string
   name: string
   dataUrl: string
+  landmarks?: FaceLandmarksPayload | null
 }
 
 export type AnalysisDraft = {

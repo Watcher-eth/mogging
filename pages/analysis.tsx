@@ -13,7 +13,7 @@ import {
   X,
 } from 'lucide-react'
 import { useRouter } from 'next/router'
-import { useCallback, useEffect, useMemo, useRef, useState, type ChangeEvent, type ReactNode } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties, type ChangeEvent, type ReactNode } from 'react'
 import { toast } from 'sonner'
 import { apiGet, apiPost, ApiClientError } from '@/lib/api/client'
 import {
@@ -22,6 +22,8 @@ import {
   saveAnalysisDraft,
   type AnalysisDraftImage,
 } from '@/lib/client/analysisDraft'
+import { extractFaceLandmarksFromDataUrl } from '@/lib/client/faceLandmarks'
+import { parseFaceLandmarksPayload, type FaceLandmarksPayload, type NormalizedPoint } from '@/lib/analysis/landmarks'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import {
@@ -55,6 +57,7 @@ type AnalysisResponse = {
     tier: string | null
     tierDescription: string | null
     metrics: Record<string, unknown>
+    landmarks: Record<string, unknown>
     failureReason?: string | null
   }
   deduped: boolean
@@ -137,6 +140,21 @@ type ReportOverlayLine = {
   y1: number
   x2: number
   y2: number
+}
+
+type ReportGuideBox = {
+  x: number
+  y: number
+  width: number
+  height: number
+  dashed?: boolean
+}
+
+type ReportOverlayLabel = {
+  title: string
+  value: string
+  x: number
+  y: number
 }
 
 type ReportCategory = {
@@ -277,7 +295,11 @@ const reportCategories: ReportCategory[] = [
     overlayLines: [{ x1: 50, y1: 30, x2: 35, y2: 43 }, { x1: 50, y1: 30, x2: 65, y2: 43 }, { x1: 50, y1: 30, x2: 50, y2: 81 }, { x1: 35, y1: 43, x2: 65, y2: 43 }, { x1: 39, y1: 66, x2: 62, y2: 66 }],
   },
 ]
-const reportOverlayYOffset = -6
+const reportOverlayYOffset = -12
+const reportOverlayCategoryYOffset: Record<string, number> = {
+  eyes: -8,
+  mouth: -15,
+}
 
 function wait(ms: number) {
   return new Promise((resolve) => setTimeout(resolve, ms))
@@ -303,6 +325,7 @@ function createPreviewAnalysisResult(image: AnalysisDraftImage, index: number): 
       tier: 'Preview report',
       tierDescription: 'Temporary preview result for reviewing the analysis UI and motion flow before reconnecting checkout.',
       metrics: {},
+      landmarks: image.landmarks ?? {},
       failureReason: null,
     },
     deduped: false,
@@ -341,7 +364,7 @@ export default function AnalysisPage() {
     const files = Array.from(event.target.files || []).slice(0, 3 - images.length)
     if (files.length === 0) return
 
-    const nextImages = await Promise.all(files.map(readImageFile))
+    const nextImages = await Promise.all(files.map(readImageFileWithLandmarks))
     const visibleNextImages = nextImages.slice(0, Math.max(0, 3 - images.length))
     setImages((current) => [...current, ...visibleNextImages].slice(0, 3))
     setSelectedImageId(visibleNextImages[visibleNextImages.length - 1]?.id ?? null)
@@ -424,6 +447,7 @@ export default function AnalysisPage() {
           gender: draft.gender,
           photoType: 'face',
           name: image.name,
+          landmarks: image.landmarks ?? null,
         })
         analysisResults.push(result)
       }
@@ -496,17 +520,27 @@ export default function AnalysisPage() {
     }
 
     const imageId = crypto.randomUUID()
+    const nextImage: AnalysisDraftImage = {
+      id: imageId,
+      name: image.name,
+      dataUrl: image.dataUrl,
+      landmarks: null,
+    }
+
     setImages((current) => {
-      return [
-        ...current,
-        {
-          id: imageId,
-          name: image.name,
-          dataUrl: image.dataUrl,
-        },
-      ].slice(0, 3)
+      return [...current, nextImage].slice(0, 3)
     })
     setSelectedImageId(imageId)
+    void enrichImageLandmarks(nextImage)
+  }
+
+  async function enrichImageLandmarks(image: AnalysisDraftImage) {
+    const landmarks = await extractFaceLandmarksFromDataUrl(image.dataUrl)
+    if (!landmarks) return
+
+    setImages((current) => current.map((currentImage) => (
+      currentImage.id === image.id ? { ...currentImage, landmarks } : currentImage
+    )))
   }
 
   return (
@@ -544,6 +578,7 @@ export default function AnalysisPage() {
                 checkoutLoading={checkoutLoading}
                 imageSrc={images[0]?.dataUrl ?? previewImage}
                 isUnlocked={analysisUnlocked}
+                landmarks={selectedImage?.landmarks ?? images[0]?.landmarks ?? null}
                 paymentDialogOpen={paymentDialogOpen}
                 progress={progress}
                 onCheckout={startCheckout}
@@ -560,6 +595,7 @@ export default function AnalysisPage() {
                 checkoutLoading={checkoutLoading}
                 imageSrc={images[0]?.dataUrl ?? previewImage}
                 isUnlocked={analysisUnlocked}
+                landmarks={selectedImage?.landmarks ?? images[0]?.landmarks ?? null}
                 paymentDialogOpen={paymentDialogOpen}
                 progress={progress}
                 onCheckout={startCheckout}
@@ -576,6 +612,7 @@ export default function AnalysisPage() {
                 checkoutLoading={checkoutLoading}
                 imageSrc={images[0]?.dataUrl ?? previewImage}
                 isUnlocked={analysisUnlocked}
+                landmarks={selectedImage?.landmarks ?? images[0]?.landmarks ?? null}
                 paymentDialogOpen={paymentDialogOpen}
                 progress={progress}
                 onCheckout={startCheckout}
@@ -896,6 +933,7 @@ function ActualAnalysisScreen({
   checkoutLoading,
   imageSrc,
   isUnlocked,
+  landmarks,
   onCheckout,
   onPaymentDialogChange,
   onPaymentRequired,
@@ -906,6 +944,7 @@ function ActualAnalysisScreen({
   checkoutLoading: boolean
   imageSrc: string | null
   isUnlocked: boolean
+  landmarks: FaceLandmarksPayload | null
   onCheckout: () => void
   onPaymentDialogChange: (open: boolean) => void
   onPaymentRequired: () => void
@@ -939,7 +978,7 @@ function ActualAnalysisScreen({
         </div>
 
         <div className="grid place-items-center lg:justify-items-end">
-          <MosaicImage imageSrc={imageSrc} />
+          <MosaicImage imageSrc={imageSrc} landmarks={landmarks} />
         </div>
       </div>
 
@@ -1060,7 +1099,7 @@ function AnalysisTimeline({
   )
 }
 
-function MosaicImage({ imageSrc }: { imageSrc: string | null }) {
+function MosaicImage({ imageSrc, landmarks }: { imageSrc: string | null; landmarks: FaceLandmarksPayload | null }) {
   const [phase, setPhase] = useState(0)
   const [mode, setMode] = useState<'shuffle' | 'assembled' | 'annotated'>('shuffle')
   const src = imageSrc || previewPhotoUrl
@@ -1138,13 +1177,22 @@ function MosaicImage({ imageSrc }: { imageSrc: string | null }) {
         )
       })}
       <AnimatePresence>
-        {mode === 'annotated' ? <MosaicAnnotations key="mosaic-annotations" /> : null}
+        {mode === 'annotated' ? <MosaicAnnotations key="mosaic-annotations" landmarks={landmarks} /> : null}
       </AnimatePresence>
     </div>
   )
 }
 
-function MosaicAnnotations() {
+function MosaicAnnotations({ landmarks }: { landmarks: FaceLandmarksPayload | null }) {
+  const anchors = landmarks?.confidence && landmarks.confidence >= 0.5 ? landmarks.anchors : null
+  const leftEye = toPercentPoint(anchors?.leftEyeOuter)
+  const rightEye = toPercentPoint(anchors?.rightEyeOuter)
+  const noseTip = toPercentPoint(anchors?.noseTip)
+  const upperLip = toPercentPoint(anchors?.upperLip ?? anchors?.mouthCenter)
+  const chin = toPercentPoint(anchors?.chin)
+  const eyeMid = midpointPercent(leftEye, rightEye)
+  const chinHeight = upperLip && chin ? Math.max(48, Math.min(132, (chin.y - upperLip.y) * 5.2)) : 88
+
   return (
     <motion.div
       className="pointer-events-none absolute inset-0"
@@ -1154,21 +1202,24 @@ function MosaicAnnotations() {
       transition={{ duration: 0.42, ease: [0.23, 1, 0.32, 1] }}
     >
       <MosaicCallout
-        className="left-[52%] top-[57%]"
-        height={88}
+        className={upperLip ? '' : 'left-[52%] top-[57%]'}
+        height={chinHeight}
         label="Chin height"
+        style={upperLip ? { left: `${upperLip.x}%`, top: `${upperLip.y}%` } : undefined}
         value="[ 5 CM ]"
       />
       <MosaicCallout
-        className="left-[29%] top-[32%]"
+        className={eyeMid ? '' : 'left-[29%] top-[32%]'}
         height={70}
         label="Eye line"
+        style={eyeMid ? { left: `${eyeMid.x - 8}%`, top: `${eyeMid.y}%` } : undefined}
         value="[ balanced ]"
       />
       <MosaicCallout
-        className="left-[62%] top-[43%]"
+        className={noseTip ? '' : 'left-[62%] top-[43%]'}
         height={62}
         label="Nose axis"
+        style={noseTip ? { left: `${noseTip.x + 4}%`, top: `${noseTip.y - 8}%` } : undefined}
         value="[ centered ]"
       />
     </motion.div>
@@ -1179,12 +1230,14 @@ function MosaicCallout({
   className,
   height,
   label,
+  style,
   textSide = 'right',
   value,
 }: {
-  className: string
+  className?: string
   height: number
   label: string
+  style?: CSSProperties
   textSide?: 'left' | 'right'
   value: string
 }) {
@@ -1193,7 +1246,7 @@ function MosaicCallout({
     : 'left-7 justify-items-start text-left'
 
   return (
-    <div className={`absolute ${className}`}>
+    <div className={`absolute ${className ?? ''}`} style={style}>
       <motion.span
         className="absolute left-0 top-0 size-2 rounded-full bg-white shadow-[0_0_0_3px_rgba(0,0,0,0.18)]"
         initial={{ scale: 0, opacity: 0 }}
@@ -1400,6 +1453,7 @@ function ResultsStep({
   const primaryResult = results[0]
   const activeCategory = reportCategories.find((category) => category.id === activeCategoryId) ?? reportCategories[0]
   const imageSrc = primaryResult?.photo.imageUrl ?? previewPhotoUrl
+  const landmarks = getReportLandmarks(primaryResult)
   const score = primaryScore ?? primaryResult?.analysis.pslScore ?? 0
   const categoryScore = getReportCategoryScore(activeCategory.id, primaryResult)
 
@@ -1459,7 +1513,7 @@ function ResultsStep({
 
       <section className="grid min-h-[calc(100svh-9rem)] gap-6">
         <div className="grid h-full gap-4 lg:grid-cols-[minmax(0,0.98fr)_minmax(280px,0.72fr)] lg:items-stretch">
-          <ReportImagePanel category={activeCategory} imageSrc={imageSrc} />
+          <ReportImagePanel category={activeCategory} imageSrc={imageSrc} landmarks={landmarks} />
           <ReportDetailPanel category={activeCategory} score={categoryScore} />
         </div>
       </section>
@@ -1467,16 +1521,24 @@ function ResultsStep({
   )
 }
 
-function ReportImagePanel({ category, imageSrc }: { category: ReportCategory; imageSrc: string }) {
+function ReportImagePanel({
+  category,
+  imageSrc,
+  landmarks,
+}: {
+  category: ReportCategory
+  imageSrc: string
+  landmarks: FaceLandmarksPayload | null
+}) {
   return (
     <div className="relative min-h-[520px] overflow-hidden bg-zinc-100 lg:h-full lg:min-h-0">
       <img className="absolute inset-0 h-full w-full object-cover object-center" src={imageSrc} alt={`${category.title} analysis image`} />
       <div className="absolute inset-0 bg-white/5" />
       <AnimatePresence mode="wait">
-        <ReportFocusOverlay key={`${category.id}-focus`} category={category} />
+        <ReportFocusOverlay key={`${category.id}-focus`} category={category} landmarks={landmarks} />
       </AnimatePresence>
       <AnimatePresence mode="wait">
-        <ReportOverlay key={category.id} category={category} />
+        <ReportOverlay key={category.id} category={category} landmarks={landmarks} />
       </AnimatePresence>
       <div className="absolute inset-x-4 top-4 flex items-center justify-between font-mono text-[10px] uppercase tracking-wide text-white drop-shadow-[0_1px_8px_rgba(0,0,0,0.35)]">
         <span>[ {category.title} ]</span>
@@ -1486,13 +1548,16 @@ function ReportImagePanel({ category, imageSrc }: { category: ReportCategory; im
   )
 }
 
-function ReportFocusOverlay({ category }: { category: ReportCategory }) {
+function ReportFocusOverlay({ category, landmarks }: { category: ReportCategory; landmarks: FaceLandmarksPayload | null }) {
   if (category.id !== 'eyes' && category.id !== 'mouth') return null
 
-  const spotlightY = category.id === 'eyes' ? 39 + reportOverlayYOffset : 66 + reportOverlayYOffset
+  const focusCenter = getLandmarkFocusCenter(category.id, landmarks)
+  const yOffset = focusCenter ? 0 : getReportOverlayYOffset(category.id)
+  const spotlightX = focusCenter?.x ?? (category.id === 'eyes' ? 50 : 51)
+  const spotlightY = (focusCenter?.y ?? (category.id === 'eyes' ? 39 : 66)) + yOffset
   const spotlight = category.id === 'eyes'
-    ? `radial-gradient(ellipse_34%_15%_at_50%_${spotlightY}%,rgba(0,0,0,0)_0%,rgba(0,0,0,0)_58%,rgba(0,0,0,0.48)_78%,rgba(0,0,0,0.9)_100%)`
-    : `radial-gradient(ellipse_28%_13%_at_51%_${spotlightY}%,rgba(0,0,0,0)_0%,rgba(0,0,0,0)_55%,rgba(0,0,0,0.52)_76%,rgba(0,0,0,0.92)_100%)`
+    ? `radial-gradient(ellipse_34%_15%_at_${spotlightX}%_${spotlightY}%,rgba(0,0,0,0)_0%,rgba(0,0,0,0)_58%,rgba(0,0,0,0.48)_78%,rgba(0,0,0,0.9)_100%)`
+    : `radial-gradient(ellipse_28%_13%_at_${spotlightX}%_${spotlightY}%,rgba(0,0,0,0)_0%,rgba(0,0,0,0)_55%,rgba(0,0,0,0.52)_76%,rgba(0,0,0,0.92)_100%)`
 
   return (
     <motion.div
@@ -1507,8 +1572,10 @@ function ReportFocusOverlay({ category }: { category: ReportCategory }) {
   )
 }
 
-function ReportOverlay({ category }: { category: ReportCategory }) {
-  const label = getReportOverlayLabel(category)
+function ReportOverlay({ category, landmarks }: { category: ReportCategory; landmarks: FaceLandmarksPayload | null }) {
+  const geometry = getReportOverlayGeometry(category, landmarks)
+  const label = geometry.label
+  const yOffset = geometry.usesLandmarks ? 0 : getReportOverlayYOffset(category.id)
 
   return (
     <motion.div
@@ -1519,11 +1586,11 @@ function ReportOverlay({ category }: { category: ReportCategory }) {
       transition={{ duration: 0.44, ease: [0.23, 1, 0.32, 1] }}
     >
       <svg className="absolute inset-0 h-full w-full" viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden="true">
-        {getReportGuideBoxes(category).map((box, index) => (
+        {geometry.boxes.map((box, index) => (
           <motion.rect
             key={`${category.id}-box-${index}`}
             x={box.x}
-            y={box.y + reportOverlayYOffset}
+            y={box.y + yOffset}
             width={box.width}
             height={box.height}
             fill="none"
@@ -1536,13 +1603,13 @@ function ReportOverlay({ category }: { category: ReportCategory }) {
             transition={{ delay: 0.08 + index * 0.12, duration: 0.9, ease: [0.23, 1, 0.32, 1] }}
           />
         ))}
-        {category.overlayLines.map((line, index) => (
+        {geometry.lines.map((line, index) => (
           <motion.line
             key={`${category.id}-line-${index}`}
             x1={line.x1}
-            y1={line.y1 + reportOverlayYOffset}
+            y1={line.y1 + yOffset}
             x2={line.x2}
-            y2={line.y2 + reportOverlayYOffset}
+            y2={line.y2 + yOffset}
             stroke="rgba(255,255,255,0.88)"
             strokeDasharray={category.id === 'face-shape' || category.id === 'dimorphism' ? '1.3 1.4' : undefined}
             strokeLinecap="round"
@@ -1553,7 +1620,7 @@ function ReportOverlay({ category }: { category: ReportCategory }) {
             transition={{ delay: 0.18 + index * 0.1, duration: 0.92, ease: [0.23, 1, 0.32, 1] }}
           />
         ))}
-        {category.overlayPoints.map((point, index) => (
+        {geometry.points.map((point, index) => (
           <motion.g
             key={`${category.id}-point-${index}`}
             initial={{ scale: 0, opacity: 0 }}
@@ -1561,8 +1628,8 @@ function ReportOverlay({ category }: { category: ReportCategory }) {
             transition={{ delay: index * 0.07, duration: 0.42, ease: [0.23, 1, 0.32, 1] }}
             style={{ transformBox: 'fill-box', transformOrigin: 'center' }}
           >
-            <circle cx={point.x} cy={point.y + reportOverlayYOffset} r="1.6" fill="none" stroke="rgba(255,255,255,0.72)" strokeDasharray="0.7 0.7" strokeWidth="0.32" vectorEffect="non-scaling-stroke" />
-            <circle cx={point.x} cy={point.y + reportOverlayYOffset} r="0.55" fill="white" />
+            <circle cx={point.x} cy={point.y + yOffset} r="1.6" fill="none" stroke="rgba(255,255,255,0.72)" strokeDasharray="0.7 0.7" strokeWidth="0.32" vectorEffect="non-scaling-stroke" />
+            <circle cx={point.x} cy={point.y + yOffset} r="0.55" fill="white" />
           </motion.g>
         ))}
       </svg>
@@ -1572,7 +1639,7 @@ function ReportOverlay({ category }: { category: ReportCategory }) {
         animate={{ opacity: 1, x: 0 }}
         exit={{ opacity: 0, x: 8 }}
         transition={{ delay: 0.58, duration: 0.46, ease: [0.23, 1, 0.32, 1] }}
-        style={{ left: `${label.x}%`, top: `${label.y + reportOverlayYOffset}%` }}
+        style={{ left: `${label.x}%`, top: `${label.y + yOffset}%` }}
       >
         <span className="w-fit bg-white px-2 py-1">{label.title}</span>
         <span className="w-fit bg-white px-2 py-1">{label.value}</span>
@@ -1601,6 +1668,183 @@ function getReportGuideBoxes(category: ReportCategory) {
   return []
 }
 
+function getReportOverlayGeometry(category: ReportCategory, landmarks: FaceLandmarksPayload | null): {
+  boxes: ReportGuideBox[]
+  lines: ReportOverlayLine[]
+  points: ReportOverlayPoint[]
+  label: ReportOverlayLabel
+  usesLandmarks: boolean
+} {
+  const landmarkGeometry = landmarks ? getLandmarkOverlayGeometry(category, landmarks) : null
+  if (landmarkGeometry) return { ...landmarkGeometry, usesLandmarks: true }
+
+  return {
+    boxes: getReportGuideBoxes(category),
+    lines: category.overlayLines,
+    points: category.overlayPoints,
+    label: getReportOverlayLabel(category),
+    usesLandmarks: false,
+  }
+}
+
+function getLandmarkOverlayGeometry(category: ReportCategory, landmarks: FaceLandmarksPayload) {
+  const anchors = landmarks.anchors
+
+  if (landmarks.confidence < 0.5) return null
+
+  if (category.id === 'eyes') {
+    const leftOuter = toPercentPoint(anchors.leftEyeOuter)
+    const leftInner = toPercentPoint(anchors.leftEyeInner)
+    const rightInner = toPercentPoint(anchors.rightEyeInner)
+    const rightOuter = toPercentPoint(anchors.rightEyeOuter)
+    const leftPupil = toPercentPoint(anchors.leftPupil)
+    const rightPupil = toPercentPoint(anchors.rightPupil)
+    const eyePoints = compactPoints([leftOuter, leftInner, rightInner, rightOuter, leftPupil, rightPupil])
+    if (eyePoints.length < 4 || !leftOuter || !leftInner || !rightInner || !rightOuter) return null
+
+    const leftBox = boxFromPoints([leftOuter, leftInner], 6, 5)
+    const rightBox = boxFromPoints([rightInner, rightOuter], 6, 5)
+    const bridgeBox = boxFromPoints([leftInner, rightInner], 3, 7)
+
+    return {
+      boxes: [leftBox, rightBox, { ...bridgeBox, dashed: true }],
+      lines: [{ x1: leftOuter.x, y1: leftOuter.y, x2: rightOuter.x, y2: rightOuter.y }],
+      points: eyePoints,
+      label: { title: 'Eyes distance', value: '[ measured ]', x: Math.min(78, rightInner.x + 4), y: rightInner.y + 7 },
+    }
+  }
+
+  if (category.id === 'nose') {
+    const bridge = toPercentPoint(anchors.noseBridge)
+    const tip = toPercentPoint(anchors.noseTip)
+    if (!bridge || !tip) return null
+
+    return {
+      boxes: [{ ...boxFromPoints([bridge, tip], 5, 3), dashed: true }],
+      lines: [{ x1: bridge.x, y1: bridge.y - 4, x2: tip.x, y2: tip.y + 3 }],
+      points: [bridge, tip],
+      label: { title: 'Nose axis', value: '[ centered ]', x: Math.min(78, tip.x + 6), y: tip.y },
+    }
+  }
+
+  if (category.id === 'mouth') {
+    const left = toPercentPoint(anchors.mouthLeft)
+    const right = toPercentPoint(anchors.mouthRight)
+    const center = toPercentPoint(anchors.mouthCenter)
+    if (!left || !right) return null
+
+    return {
+      boxes: [boxFromPoints([left, right], 5, 5)],
+      lines: [{ x1: left.x, y1: left.y, x2: right.x, y2: right.y }],
+      points: compactPoints([left, center, right]),
+      label: { title: 'Lips fullness', value: '[ measured ]', x: Math.min(78, right.x + 4), y: right.y - 1 },
+    }
+  }
+
+  if (category.id === 'jaw') {
+    const left = toPercentPoint(anchors.jawLeft)
+    const chin = toPercentPoint(anchors.chin)
+    const right = toPercentPoint(anchors.jawRight)
+    if (!left || !chin || !right) return null
+
+    return {
+      boxes: [],
+      lines: [{ x1: left.x, y1: left.y, x2: chin.x, y2: chin.y }, { x1: chin.x, y1: chin.y, x2: right.x, y2: right.y }],
+      points: [left, chin, right],
+      label: { title: 'Jaw angle', value: '[ measured ]', x: Math.min(78, right.x + 2), y: right.y },
+    }
+  }
+
+  if (category.id === 'dimorphism') {
+    const leftBrow = toPercentPoint(anchors.leftBrow)
+    const rightBrow = toPercentPoint(anchors.rightBrow)
+    const leftJaw = toPercentPoint(anchors.jawLeft)
+    const rightJaw = toPercentPoint(anchors.jawRight)
+    const chin = toPercentPoint(anchors.chin)
+    const nose = toPercentPoint(anchors.noseTip)
+    if (!leftBrow || !rightBrow || !leftJaw || !rightJaw || !chin) return null
+
+    return {
+      boxes: [],
+      lines: [
+        { x1: leftBrow.x, y1: leftBrow.y, x2: rightBrow.x, y2: rightBrow.y },
+        { x1: leftJaw.x, y1: leftJaw.y, x2: chin.x, y2: chin.y },
+        { x1: chin.x, y1: chin.y, x2: rightJaw.x, y2: rightJaw.y },
+        ...(nose ? [{ x1: nose.x, y1: nose.y - 9, x2: nose.x, y2: chin.y }] : []),
+      ],
+      points: compactPoints([leftBrow, rightBrow, leftJaw, rightJaw, chin, nose]),
+      label: { title: 'Dimorphism', value: '[ measured ]', x: Math.min(78, rightBrow.x + 4), y: rightBrow.y + 8 },
+    }
+  }
+
+  if (category.id === 'face-shape') {
+    const forehead = toPercentPoint(anchors.forehead)
+    const leftJaw = toPercentPoint(anchors.jawLeft)
+    const rightJaw = toPercentPoint(anchors.jawRight)
+    const chin = toPercentPoint(anchors.chin)
+    const leftBrow = toPercentPoint(anchors.leftBrow)
+    const rightBrow = toPercentPoint(anchors.rightBrow)
+    if (!forehead || !leftJaw || !rightJaw || !chin) return null
+
+    return {
+      boxes: [],
+      lines: [
+        ...(leftBrow && rightBrow ? [{ x1: leftBrow.x, y1: leftBrow.y, x2: rightBrow.x, y2: rightBrow.y }] : []),
+        { x1: forehead.x, y1: forehead.y, x2: rightJaw.x, y2: rightJaw.y },
+        { x1: rightJaw.x, y1: rightJaw.y, x2: chin.x, y2: chin.y },
+        { x1: chin.x, y1: chin.y, x2: leftJaw.x, y2: leftJaw.y },
+        { x1: leftJaw.x, y1: leftJaw.y, x2: forehead.x, y2: forehead.y },
+      ],
+      points: compactPoints([forehead, leftJaw, rightJaw, chin, leftBrow, rightBrow]),
+      label: { title: 'Face shape', value: '[ measured ]', x: Math.min(78, rightJaw.x + 3), y: rightJaw.y - 5 },
+    }
+  }
+
+  if (category.id === 'biological-age') {
+    const leftEye = toPercentPoint(anchors.leftEyeInner)
+    const rightEye = toPercentPoint(anchors.rightEyeInner)
+    const nose = toPercentPoint(anchors.noseTip)
+    const mouth = toPercentPoint(anchors.mouthCenter)
+    const chin = toPercentPoint(anchors.chin)
+    if (!leftEye || !rightEye || !nose || !mouth) return null
+
+    return {
+      boxes: [boxFromPoints([leftEye, rightEye], 9, 6)],
+      lines: [
+        { x1: leftEye.x, y1: leftEye.y, x2: rightEye.x, y2: rightEye.y },
+        { x1: nose.x, y1: nose.y, x2: mouth.x, y2: mouth.y },
+        ...(chin ? [{ x1: mouth.x, y1: mouth.y, x2: chin.x, y2: chin.y }] : []),
+      ],
+      points: compactPoints([leftEye, rightEye, nose, mouth, chin]),
+      label: { title: 'Age signal', value: '[ measured ]', x: Math.min(78, rightEye.x + 6), y: rightEye.y + 8 },
+    }
+  }
+
+  if (category.id === 'symmetry' || category.id === 'overall') {
+    const forehead = toPercentPoint(anchors.forehead)
+    const nose = toPercentPoint(anchors.noseTip)
+    const chin = toPercentPoint(anchors.chin)
+    const mouthLeft = toPercentPoint(anchors.mouthLeft)
+    const mouthRight = toPercentPoint(anchors.mouthRight)
+    const leftEye = toPercentPoint(anchors.leftEyeOuter)
+    const rightEye = toPercentPoint(anchors.rightEyeOuter)
+    if (!forehead || !nose || !chin) return null
+
+    return {
+      boxes: [],
+      lines: [
+        { x1: forehead.x, y1: forehead.y, x2: chin.x, y2: chin.y },
+        ...(leftEye && rightEye ? [{ x1: leftEye.x, y1: leftEye.y, x2: rightEye.x, y2: rightEye.y }] : []),
+        ...(mouthLeft && mouthRight ? [{ x1: mouthLeft.x, y1: mouthLeft.y, x2: mouthRight.x, y2: mouthRight.y }] : []),
+      ],
+      points: compactPoints([forehead, nose, chin, leftEye, rightEye]),
+      label: { title: category.id === 'overall' ? 'Overall score' : 'Symmetry', value: '[ measured ]', x: Math.min(78, nose.x + 7), y: nose.y },
+    }
+  }
+
+  return null
+}
+
 function getReportOverlayLabel(category: ReportCategory) {
   const labels: Record<string, { title: string; value: string; x: number; y: number }> = {
     eyes: { title: 'Eyes distance', value: '[ 3 cm ]', x: 58, y: 46 },
@@ -1615,6 +1859,68 @@ function getReportOverlayLabel(category: ReportCategory) {
   }
 
   return labels[category.id] ?? labels.overall
+}
+
+function getReportLandmarks(result?: AnalysisResponse) {
+  return parseFaceLandmarksPayload(result?.analysis.landmarks)
+}
+
+function getLandmarkFocusCenter(categoryId: string, landmarks: FaceLandmarksPayload | null) {
+  if (!landmarks || landmarks.confidence < 0.5) return null
+
+  if (categoryId === 'eyes') {
+    return midpointPercent(toPercentPoint(landmarks.anchors.leftPupil), toPercentPoint(landmarks.anchors.rightPupil))
+      ?? midpointPercent(toPercentPoint(landmarks.anchors.leftEyeOuter), toPercentPoint(landmarks.anchors.rightEyeOuter))
+  }
+
+  if (categoryId === 'mouth') {
+    return toPercentPoint(landmarks.anchors.mouthCenter)
+      ?? midpointPercent(toPercentPoint(landmarks.anchors.mouthLeft), toPercentPoint(landmarks.anchors.mouthRight))
+  }
+
+  return null
+}
+
+function toPercentPoint(point?: NormalizedPoint): ReportOverlayPoint | null {
+  if (!point) return null
+
+  return {
+    x: point.x * 100,
+    y: point.y * 100,
+  }
+}
+
+function midpointPercent(a?: ReportOverlayPoint | null, b?: ReportOverlayPoint | null): ReportOverlayPoint | null {
+  if (!a || !b) return null
+
+  return {
+    x: (a.x + b.x) / 2,
+    y: (a.y + b.y) / 2,
+  }
+}
+
+function compactPoints(points: Array<ReportOverlayPoint | null | undefined>) {
+  return points.filter((point): point is ReportOverlayPoint => Boolean(point))
+}
+
+function boxFromPoints(points: ReportOverlayPoint[], paddingX: number, paddingY: number): ReportGuideBox {
+  const xs = points.map((point) => point.x)
+  const ys = points.map((point) => point.y)
+  const minX = Math.min(...xs)
+  const maxX = Math.max(...xs)
+  const minY = Math.min(...ys)
+  const maxY = Math.max(...ys)
+
+  return {
+    x: Math.max(0, minX - paddingX),
+    y: Math.max(0, minY - paddingY),
+    width: Math.min(100, maxX + paddingX) - Math.max(0, minX - paddingX),
+    height: Math.min(100, maxY + paddingY) - Math.max(0, minY - paddingY),
+  }
+}
+
+function getReportOverlayYOffset(categoryId: string) {
+  return reportOverlayCategoryYOffset[categoryId] ?? reportOverlayYOffset
 }
 
 function ReportDetailPanel({ category, score }: { category: ReportCategory; score: number }) {
@@ -1832,4 +2138,13 @@ function readImageFile(file: File) {
     reader.onerror = () => reject(reader.error)
     reader.readAsDataURL(file)
   })
+}
+
+async function readImageFileWithLandmarks(file: File) {
+  const image = await readImageFile(file)
+
+  return {
+    ...image,
+    landmarks: await extractFaceLandmarksFromDataUrl(image.dataUrl),
+  }
 }
