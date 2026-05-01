@@ -7,7 +7,9 @@ export const createPhotoRecordSchema = z.object({
   anonymousActorId: z.string().min(1).nullable().optional(),
   photoSetId: z.string().min(1).nullable().optional(),
   personGroupId: z.string().min(1).nullable().optional(),
-  imageUrl: z.string().url(),
+  imageUrl: z.string().refine((value) => value.startsWith('/') || z.url().safeParse(value).success, {
+    message: 'Image URL must be absolute or a root-relative public path',
+  }),
   imageStorageKey: z.string().min(1).nullable().optional(),
   imageHash: z.string().min(32).max(128),
   name: z.string().min(1).max(120).nullable().optional(),

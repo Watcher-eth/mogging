@@ -16,6 +16,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     try {
       const query = pairSelectionSchema.parse({
         gender: typeof req.query.gender === 'string' ? req.query.gender : 'all',
+        keepPhotoId: typeof req.query.keepPhotoId === 'string' ? req.query.keepPhotoId : undefined,
+        keepSide: typeof req.query.keepSide === 'string' ? req.query.keepSide : 'left',
         photoType: typeof req.query.photoType === 'string' ? req.query.photoType : 'face',
       })
       const pair = await selectComparisonPair(query)

@@ -1,4 +1,4 @@
-import { and, count, eq, ne, sql } from 'drizzle-orm'
+import { and, count, eq, ne, sql, type SQL } from 'drizzle-orm'
 import { z } from 'zod'
 import { db, schema } from '@/lib/db'
 import {
@@ -12,6 +12,8 @@ import {
 
 export const pairSelectionSchema = z.object({
   gender: z.enum(['male', 'female', 'other', 'all']).default('all'),
+  keepPhotoId: z.string().min(1).optional(),
+  keepSide: z.enum(['left', 'right']).default('left'),
   photoType: z.enum(['face', 'body', 'outfit']).default('face'),
 })
 
@@ -40,13 +42,39 @@ export async function selectComparisonPair(input: PairSelectionInput) {
     eq(schema.photos.isPublic, true),
     eq(schema.photos.photoType, params.photoType),
     params.gender === 'all' ? undefined : eq(schema.photos.gender, params.gender),
-  ].filter(Boolean)
+  ].filter(Boolean) as SQL[]
 
   const where = and(...filters)
   const [{ total }] = await db.select({ total: count() }).from(schema.photos).where(where)
 
   if (total < 2) {
     throw new RatingServiceError(400, 'Not enough photos to compare')
+  }
+
+  if (params.keepPhotoId) {
+    const anchorFilters = [...filters, eq(schema.photos.id, params.keepPhotoId)].filter(Boolean) as SQL[]
+    const [anchor] = await db
+      .select(comparisonPhotoSelection)
+      .from(schema.photos)
+      .leftJoin(schema.photoRatings, eq(schema.photoRatings.photoId, schema.photos.id))
+      .where(and(...anchorFilters))
+      .limit(1)
+
+    if (!anchor) {
+      throw new RatingServiceError(404, 'Kept photo not found')
+    }
+
+    const challenger = await selectRandomComparisonPhoto(filters, anchor.photo.id)
+
+    return params.keepSide === 'right'
+      ? {
+          left: toComparisonPhoto(challenger),
+          right: toComparisonPhoto(anchor),
+        }
+      : {
+          left: toComparisonPhoto(anchor),
+          right: toComparisonPhoto(challenger),
+        }
   }
 
   const firstOffset = Math.floor(Math.random() * total)
@@ -62,7 +90,16 @@ export async function selectComparisonPair(input: PairSelectionInput) {
     throw new RatingServiceError(400, 'Not enough photos to compare')
   }
 
-  const secondFilters = [...filters, ne(schema.photos.id, first.photo.id)].filter(Boolean)
+  const second = await selectRandomComparisonPhoto(filters, first.photo.id)
+
+  return {
+    left: toComparisonPhoto(first),
+    right: toComparisonPhoto(second),
+  }
+}
+
+async function selectRandomComparisonPhoto(filters: SQL[], excludedPhotoId: string) {
+  const secondFilters = [...filters, ne(schema.photos.id, excludedPhotoId)].filter(Boolean) as SQL[]
   const secondWhere = and(...secondFilters)
   const [{ total: secondTotal }] = await db.select({ total: count() }).from(schema.photos).where(secondWhere)
 
@@ -83,10 +120,7 @@ export async function selectComparisonPair(input: PairSelectionInput) {
     throw new RatingServiceError(400, 'Not enough photos to compare')
   }
 
-  return {
-    left: toComparisonPhoto(first),
-    right: toComparisonPhoto(second),
-  }
+  return second
 }
 
 export async function submitComparisonVote(input: SubmitVoteInput) {

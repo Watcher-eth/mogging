@@ -1,10 +1,8 @@
-import { AnimatePresence, motion } from 'motion/react'
-import { Crown, Loader2, RefreshCw, Star, ThumbsDown, ThumbsUp } from 'lucide-react'
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { Loader2, RefreshCw, X } from 'lucide-react'
+import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react'
 import useSWR from 'swr'
 import { toast } from 'sonner'
-import { apiPost, ApiClientError } from '@/lib/api/client'
-import { cn } from '@/lib/utils'
+import { apiGet, apiPost, ApiClientError } from '@/lib/api/client'
 
 type ComparisonPhoto = {
   id: string
@@ -33,61 +31,33 @@ type VoteResponse = {
 
 type PendingVote = {
   id: string
+  loserSide: 'left' | 'right'
   winner: ComparisonPhoto
   loser: ComparisonPhoto
 }
 
 const pairKey = '/api/compare?photoType=face&gender=all'
-const previewPhotoUrl = 'https://ia8cttci1ljr2atc.public.blob.vercel-storage.com/photos/cmmi2sj8s0009278h705nfdpc.jpeg'
-const previewPair: ComparisonPair = {
-  left: {
-    id: 'preview-left',
-    imageUrl: previewPhotoUrl,
-    name: 'Lucas Crespo',
-    gender: 'other',
-    photoType: 'face',
-    userId: null,
-    displayRating: 1184,
-    conservativeScore: 18.4,
-    winCount: 42,
-    lossCount: 18,
-  },
-  right: {
-    id: 'preview-right',
-    imageUrl: previewPhotoUrl,
-    name: 'The Explorer',
-    gender: 'other',
-    photoType: 'face',
-    userId: null,
-    displayRating: 1217,
-    conservativeScore: 19.1,
-    winCount: 51,
-    lossCount: 21,
-  },
-}
 
 export default function VotingPage() {
   const { data: pair, error, isLoading, mutate } = useSWR<ComparisonPair>(pairKey)
-  const visiblePair = pair ?? (!isLoading ? previewPair : null)
+  const visiblePair = pair ?? null
   const [pendingVote, setPendingVote] = useState<PendingVote | null>(null)
+  const [transitionLoser, setTransitionLoser] = useState<{ id: string; side: 'left' | 'right' } | null>(null)
   const pendingTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
-  const submitVote = useCallback(async (winner: ComparisonPhoto, loser: ComparisonPhoto) => {
-    if (winner.id.startsWith('preview-') || loser.id.startsWith('preview-')) {
-      toast.info('Preview vote only. Real voting starts once DB photos are seeded.')
-      return
-    }
-
+  const submitVote = useCallback(async (winner: ComparisonPhoto, loser: ComparisonPhoto, winnerSide: 'left' | 'right') => {
     const previousPair = pair
 
     try {
-      await mutate(undefined, { revalidate: false })
       const result = await apiPost<VoteResponse>('/api/compare', {
         winnerPhotoId: winner.id,
         loserPhotoId: loser.id,
       })
       toast.success(`Vote counted. ${result.totalComparisons.toLocaleString()} total votes.`)
-      await mutate()
+      const nextPair = await apiGet<ComparisonPair>(
+        `/api/compare?photoType=face&gender=all&keepPhotoId=${encodeURIComponent(winner.id)}&keepSide=${winnerSide}`
+      )
+      await mutate(nextPair, { revalidate: false })
     } catch (voteError) {
       await mutate(previousPair, { revalidate: false })
       toast.error(voteError instanceof ApiClientError ? voteError.message : 'Unable to submit vote')
@@ -98,8 +68,20 @@ export default function VotingPage() {
     if (!pendingVote) return
 
     pendingTimerRef.current = setTimeout(() => {
+      setTransitionLoser({ id: pendingVote.loser.id, side: pendingVote.loserSide })
       setPendingVote(null)
-      void submitVote(pendingVote.winner, pendingVote.loser)
+      const committedVote = pendingVote
+
+      setTimeout(() => {
+        void (async () => {
+          await submitVote(
+            committedVote.winner,
+            committedVote.loser,
+            committedVote.loserSide === 'right' ? 'left' : 'right'
+          )
+          setTransitionLoser(null)
+        })()
+      }, 560)
     }, 4_000)
 
     return () => {
@@ -110,13 +92,27 @@ export default function VotingPage() {
     }
   }, [pendingVote, submitVote])
 
-  function queueVote(winner: ComparisonPhoto, loser: ComparisonPhoto) {
+  const queueVote = useCallback((winner: ComparisonPhoto, loser: ComparisonPhoto, loserSide: 'left' | 'right') => {
     setPendingVote({
       id: `${winner.id}-${Date.now()}`,
+      loserSide,
       winner,
       loser,
     })
-  }
+  }, [])
+
+  useEffect(() => {
+    if (!visiblePair || pendingVote) return
+    const activePair = visiblePair
+
+    function onKeyDown(event: KeyboardEvent) {
+      if (event.key.toLowerCase() === 'a') queueVote(activePair.left, activePair.right, 'right')
+      if (event.key.toLowerCase() === 'b') queueVote(activePair.right, activePair.left, 'left')
+    }
+
+    window.addEventListener('keydown', onKeyDown)
+    return () => window.removeEventListener('keydown', onKeyDown)
+  }, [pendingVote, queueVote, visiblePair])
 
   function cancelPendingVote() {
     if (pendingTimerRef.current) {
@@ -127,44 +123,261 @@ export default function VotingPage() {
   }
 
   return (
-    <div className="min-h-[100svh] bg-white text-black">
-      <main className="min-h-[calc(100svh-5rem)] px-5 pb-5 pt-8 sm:px-10 sm:pb-8 sm:pt-10">
-        {isLoading ? (
-          <VotingState icon={<Loader2 className="size-5 animate-spin" aria-hidden="true" />} title="Loading matchup" />
-        ) : visiblePair ? (
-          <AnimatePresence mode="wait">
-            <motion.section
-              key={`${visiblePair.left.id}-${visiblePair.right.id}`}
-              className="grid min-h-[calc(100svh-7rem)] w-full content-start gap-10 md:grid-cols-[minmax(0,1fr)_360px_minmax(0,1fr)] md:gap-4"
-              initial={{ opacity: 0, y: 10 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -10 }}
-              transition={{ duration: 0.2, ease: [0.23, 1, 0.32, 1] }}
-            >
-              <VoteCandidate
-                photo={visiblePair.left}
-                pendingVote={pendingVote}
-                side="left"
-                onVote={() => queueVote(visiblePair.left, visiblePair.right)}
-              />
-              <VotePrompt />
-              <VoteCandidate
-                photo={visiblePair.right}
-                pendingVote={pendingVote}
-                side="right"
-                onVote={() => queueVote(visiblePair.right, visiblePair.left)}
-              />
-            </motion.section>
-          </AnimatePresence>
-        ) : (
-          <VotingState
-            icon={<RefreshCw className="size-5" aria-hidden="true" />}
-            title="No matchup ready"
-            description={error instanceof ApiClientError ? error.message : 'Add at least two public photos to begin voting.'}
-          />
-        )}
-      </main>
+    <section className="min-h-[calc(100vh-5rem)] bg-white px-5 py-14 text-black sm:px-10">
+      <style jsx global>{`
+        @keyframes battle-enter {
+          from {
+            opacity: 0;
+            transform: translateY(18px);
+          }
+
+          to {
+            opacity: 1;
+            transform: translateY(0);
+          }
+        }
+
+        @keyframes battle-progress {
+          from {
+            transform: scaleX(0);
+          }
+
+          to {
+            transform: scaleX(1);
+          }
+        }
+
+        @keyframes battle-toast-enter {
+          from {
+            opacity: 0;
+            transform: translateY(120%) scaleY(0.86);
+          }
+
+          to {
+            opacity: 1;
+            transform: translateY(0) scaleY(1);
+          }
+        }
+
+        @keyframes battle-toast-exit {
+          from {
+            opacity: 1;
+            transform: translateY(0) scaleY(1);
+          }
+
+          to {
+            opacity: 0;
+            transform: translateY(120%) scaleY(0.82);
+          }
+        }
+
+        @keyframes battle-candidate-enter-left {
+          from {
+            filter: blur(4px);
+            opacity: 0;
+            transform: translateX(-8%) translateY(14px) scale(0.985);
+          }
+
+          to {
+            filter: blur(0);
+            opacity: 1;
+            transform: translateX(0) translateY(0) scale(1);
+          }
+        }
+
+        @keyframes battle-candidate-enter-right {
+          from {
+            filter: blur(4px);
+            opacity: 0;
+            transform: translateX(8%) translateY(14px) scale(0.985);
+          }
+
+          to {
+            filter: blur(0);
+            opacity: 1;
+            transform: translateX(0) translateY(0) scale(1);
+          }
+        }
+
+        @keyframes battle-candidate-exit-left {
+          from {
+            filter: blur(0);
+            opacity: 1;
+            transform: translateX(0) scale(1);
+          }
+
+          to {
+            filter: blur(5px);
+            opacity: 0;
+            transform: translateX(-22%) scale(0.965);
+          }
+        }
+
+        @keyframes battle-candidate-exit-right {
+          from {
+            filter: blur(0);
+            opacity: 1;
+            transform: translateX(0) scale(1);
+          }
+
+          to {
+            filter: blur(5px);
+            opacity: 0;
+            transform: translateX(22%) scale(0.965);
+          }
+        }
+      `}</style>
+
+      {isLoading ? (
+        <BattleState icon={<Loader2 className="size-5 animate-spin" aria-hidden="true" />} title="Loading matchup" />
+      ) : visiblePair ? (
+        <main className="grid gap-12">
+          <header
+            className="border-b border-zinc-200 pb-10"
+            style={{ animation: 'battle-enter 560ms cubic-bezier(0.22, 1, 0.36, 1) both' }}
+          >
+            <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_auto] lg:items-end">
+              <h1 className="max-w-4xl text-5xl font-semibold leading-[0.94] tracking-[-0.07em] sm:text-6xl lg:text-7xl">
+                Who mogs harder?
+              </h1>
+              <div className="font-mono text-xs uppercase tracking-[0.12em] text-zinc-500 lg:text-right">
+                Press A or B
+              </div>
+            </div>
+          </header>
+
+          <div
+            className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_112px_minmax(0,1fr)] lg:items-stretch"
+            style={{ animation: 'battle-enter 620ms cubic-bezier(0.22, 1, 0.36, 1) 80ms both' }}
+          >
+            <BattleCandidate
+              key={visiblePair.left.id}
+              enterFrom="left"
+              photo={visiblePair.left}
+              pendingVote={pendingVote}
+              transitionLoser={transitionLoser}
+              side="left"
+              shortcut="A"
+              onVote={() => queueVote(visiblePair.left, visiblePair.right, 'right')}
+            />
+            <BattleDivider />
+            <BattleCandidate
+              key={visiblePair.right.id}
+              enterFrom="right"
+              photo={visiblePair.right}
+              pendingVote={pendingVote}
+              transitionLoser={transitionLoser}
+              side="right"
+              shortcut="B"
+              onVote={() => queueVote(visiblePair.right, visiblePair.left, 'left')}
+            />
+          </div>
+        </main>
+      ) : (
+        <BattleState
+          icon={<RefreshCw className="size-5" aria-hidden="true" />}
+          title="No matchup ready"
+          description={error instanceof ApiClientError ? error.message : 'Add at least two public photos to begin voting.'}
+        />
+      )}
+
       <PendingVoteBar pendingVote={pendingVote} onCancel={cancelPendingVote} />
+    </section>
+  )
+}
+
+function BattleCandidate({
+  enterFrom,
+  onVote,
+  pendingVote,
+  photo,
+  shortcut,
+  side,
+  transitionLoser,
+}: {
+  enterFrom: 'left' | 'right'
+  onVote: () => void
+  pendingVote: PendingVote | null
+  photo: ComparisonPhoto
+  shortcut: 'A' | 'B'
+  side: 'left' | 'right'
+  transitionLoser: { id: string; side: 'left' | 'right' } | null
+}) {
+  const totalVotes = photo.winCount + photo.lossCount
+  const winRate = totalVotes > 0 ? Math.round((photo.winCount / totalVotes) * 100) : 0
+  const displayName = photo.name || `${photo.gender} face`
+  const isSelected = pendingVote?.winner.id === photo.id
+  const isPendingLoser = pendingVote?.loser.id === photo.id
+  const isRejected = transitionLoser?.id === photo.id
+  const exitTo = transitionLoser?.side === 'right' ? 'left' : 'right'
+
+  return (
+    <article
+      className={[
+        'group grid gap-4 will-change-transform transition-opacity duration-500 ease-[cubic-bezier(0.22,1,0.36,1)]',
+        isSelected ? 'opacity-100' : '',
+        isPendingLoser ? 'opacity-45' : '',
+      ].join(' ')}
+      style={{
+        animation: isRejected
+          ? `battle-candidate-exit-${exitTo} 560ms cubic-bezier(0.55, 0.06, 0.68, 0.19) both`
+          : `battle-candidate-enter-${enterFrom} 720ms cubic-bezier(0.22, 1, 0.36, 1) both`,
+        pointerEvents: isRejected ? 'none' : 'auto',
+      }}
+    >
+      <div className={`flex items-end justify-between gap-5 ${side === 'right' ? 'sm:flex-row-reverse sm:text-right' : ''}`}>
+        <div className="min-w-0">
+          <p className="font-mono text-xs uppercase tracking-[0.14em] text-zinc-500">Rank / pending</p>
+          <h2 className="mt-2 truncate text-5xl font-semibold leading-none tracking-[-0.065em]">{displayName}</h2>
+        </div>
+        <div className="shrink-0 bg-white px-2 py-1 font-mono text-xs font-semibold">
+          [{shortcut}]
+        </div>
+      </div>
+
+      <button
+        aria-label={`Vote for ${displayName}`}
+        className={[
+          'relative aspect-[2.5/3] w-full max-w-[560px] overflow-hidden border bg-white text-left outline-none transition-[border-color,transform] duration-300 ease-[cubic-bezier(0.22,1,0.36,1)] hover:-translate-y-1 active:translate-y-0',
+          side === 'right' ? 'lg:ml-auto' : 'lg:mr-auto',
+          isSelected ? 'border-black' : 'border-zinc-200',
+        ].join(' ')}
+        onClick={onVote}
+        type="button"
+      >
+        <img
+          alt={displayName}
+          className="absolute inset-0 h-full w-full object-cover grayscale-[0.08] transition duration-700 ease-out group-hover:scale-[1.025]"
+          src={photo.imageUrl}
+        />
+        <div className="pointer-events-none absolute inset-0 bg-[linear-gradient(180deg,rgba(255,255,255,0)_34%,rgba(255,255,255,0.22)_58%,rgba(255,255,255,0.96)_100%)]" />
+        {isPendingLoser ? (
+          <div className="pointer-events-none absolute inset-0 bg-[linear-gradient(180deg,rgba(255,255,255,0.22)_0%,rgba(255,255,255,0.52)_48%,rgba(255,255,255,0.98)_100%)]" />
+        ) : null}
+        {isSelected ? (
+          <div className="absolute right-5 top-5 bg-black px-3 py-1.5 font-mono text-xs uppercase tracking-[0.12em] text-white">
+            Selected
+          </div>
+        ) : null}
+      </button>
+
+      <div className={`grid grid-cols-3 border-y border-zinc-300 py-3 ${side === 'right' ? 'sm:text-right' : ''}`}>
+        <Metric label="Score" value={formatRating(photo.displayRating)} />
+        <Metric label="Votes" value={totalVotes.toLocaleString()} />
+        <Metric label="Win" value={`${winRate}%`} />
+      </div>
+    </article>
+  )
+}
+
+function BattleDivider() {
+  return (
+    <div className="grid place-items-center border-y border-zinc-200 py-6 lg:border-x lg:border-y-0 lg:py-0">
+      <div className="grid justify-items-center gap-4">
+        <div className="h-16 w-px bg-zinc-200" />
+        <div className="font-mono text-xs uppercase tracking-[0.16em] text-zinc-500">VS</div>
+        <div className="h-16 w-px bg-zinc-200" />
+      </div>
     </div>
   )
 }
@@ -176,241 +389,85 @@ function PendingVoteBar({
   onCancel: () => void
   pendingVote: PendingVote | null
 }) {
-  return (
-    <AnimatePresence>
-      {pendingVote ? (
-        <motion.div
-          className="fixed inset-x-5 bottom-10 z-50 mx-auto max-w-[420px]"
-          initial={{ filter: 'blur(8px)', opacity: 0, scale: 0.98, y: 30 }}
-          animate={{ filter: 'blur(0px)', opacity: 1, scale: 1, y: 0 }}
-          exit={{ filter: 'blur(6px)', opacity: 0, scale: 0.98, y: 18 }}
-          transition={{ type: 'spring', duration: 0.48, bounce: 0.08 }}
-        >
-          <div className="mb-3 flex justify-center">
-            <button
-              className="rounded-lg border border-zinc-300 bg-white px-3 py-1.5 text-xs font-medium text-black shadow-[0_10px_30px_rgba(15,23,42,0.08)] transition-transform duration-150 ease-out hover:bg-zinc-50 active:scale-[0.97]"
-              onClick={onCancel}
-              type="button"
-            >
-              Cancel
-            </button>
-          </div>
-          <div className="h-2.5 overflow-hidden rounded-full border border-zinc-200 bg-white p-[2px] shadow-[0_14px_36px_rgba(15,23,42,0.1)]">
-            <motion.div
-              key={pendingVote.id}
-              className="h-full origin-center rounded-full bg-zinc-400"
-              initial={{ scaleX: 0 }}
-              animate={{ scaleX: 1 }}
-              transition={{ duration: 4, ease: 'linear' }}
-            />
-          </div>
-        </motion.div>
-      ) : null}
-    </AnimatePresence>
-  )
-}
+  const [renderedVote, setRenderedVote] = useState<PendingVote | null>(pendingVote)
+  const [isClosing, setIsClosing] = useState(false)
 
-function VotePrompt() {
-  return (
-    <div className="grid content-center justify-items-center py-2 text-center md:min-h-[58svh] md:pt-28">
-      <div>
-        <div className="font-mono text-[10px] uppercase tracking-[0.18em] text-black/35">Vote</div>
-        <h2 className="mt-2 max-w-[360px] text-5xl font-semibold leading-[0.9] tracking-[-0.065em] md:text-6xl">
-          Which one looks better?
-        </h2>
-      </div>
-    </div>
-  )
-}
+  useEffect(() => {
+    if (pendingVote) {
+      setRenderedVote(pendingVote)
+      setIsClosing(false)
+      return
+    }
 
-function VoteCandidate({
-  onVote,
-  pendingVote,
-  photo,
-  side,
-}: {
-  onVote: () => void
-  pendingVote: PendingVote | null
-  photo: ComparisonPhoto
-  side: 'left' | 'right'
-}) {
-  const totalVotes = photo.winCount + photo.lossCount
-  const winRate = totalVotes > 0 ? Math.round((photo.winCount / totalVotes) * 100) : 0
-  const displayName = photo.name || `${photo.gender} face`
-  const voteState = !pendingVote ? 'idle' : pendingVote.winner.id === photo.id ? 'selected' : 'rejected'
+    if (!renderedVote) return
+
+    setIsClosing(true)
+    const exitTimer = setTimeout(() => {
+      setRenderedVote(null)
+      setIsClosing(false)
+    }, 280)
+
+    return () => clearTimeout(exitTimer)
+  }, [pendingVote, renderedVote])
+
+  if (!renderedVote) return null
 
   return (
-    <div className="group relative grid content-start text-left">
-      <div className={`mb-4 ${side === 'right' ? 'md:text-right' : ''}`}>
-        <PersonMeta displayName={displayName} rating={photo.displayRating} totalVotes={totalVotes} winRate={winRate} side={side} />
-      </div>
-
-      <div className={`grid min-h-0 place-items-center ${side === 'left' ? 'md:place-items-start' : 'md:place-items-end'}`}>
-        <div className={`relative flex h-[42svh] max-h-[460px] min-h-[260px] w-full items-center gap-4 md:h-[58svh] md:max-h-[660px] ${side === 'left' ? 'justify-start' : 'justify-end'}`}>
-          {side === 'right' ? (
-            <LikeButton
-              onVote={onVote}
-              label={`Vote for ${displayName}`}
-              pendingId={pendingVote?.id}
-              shortcut="B"
-              state={voteState}
-            />
-          ) : null}
-          <button className="relative h-full outline-none transition-transform duration-200 ease-out active:scale-[0.99]" onClick={onVote} type="button" aria-label={`Vote for ${displayName}`}>
-            <div className="relative aspect-[2/3] h-full max-h-full overflow-hidden rounded-2xl border-[6px] border-white bg-white shadow-[0_22px_70px_rgba(15,23,42,0.13)] transition-transform duration-200 ease-out group-hover:scale-[1.01]">
-              <img className="h-full w-full object-cover" src={photo.imageUrl} alt={displayName} />
-              <div className="pointer-events-none absolute inset-x-0 bottom-0 h-1/5 bg-gradient-to-t from-white/75 via-white/30 to-transparent" />
-            </div>
-          </button>
-          {side === 'left' ? (
-            <LikeButton
-              onVote={onVote}
-              label={`Vote for ${displayName}`}
-              pendingId={pendingVote?.id}
-              shortcut="A"
-              state={voteState}
-            />
-          ) : null}
-          <div className="pointer-events-none absolute bottom-[8%] h-6 w-[42%] rounded-full bg-black/10 blur-xl" />
-        </div>
-      </div>
-    </div>
-  )
-}
-
-function LikeButton({
-  label,
-  onVote,
-  pendingId,
-  shortcut,
-  state,
-}: {
-  label: string
-  onVote: () => void
-  pendingId?: string
-  shortcut: 'A' | 'B'
-  state: 'idle' | 'selected' | 'rejected'
-}) {
-  const isSelected = state === 'selected'
-  const isRejected = state === 'rejected'
-  const glyphTransition = { type: 'spring' as const, duration: 0.54, bounce: 0.16 }
-
-  return (
-    <button
-      className={cn(
-        'relative grid size-16 shrink-0 place-items-center overflow-hidden rounded-2xl border border-zinc-300 bg-white text-black shadow-[0_16px_45px_rgba(15,23,42,0.1)] transition-[border-color,box-shadow,transform] duration-150 ease-out group-hover:scale-[1.03] hover:scale-[1.03] active:scale-[0.97] md:size-20',
-        isSelected && 'border-emerald-500 shadow-[0_18px_50px_rgba(16,185,129,0.22)]',
-        isRejected && 'border-zinc-200 text-zinc-500 shadow-[0_12px_34px_rgba(15,23,42,0.06)]',
-      )}
-      onClick={onVote}
-      type="button"
-      aria-label={label}
+    <div
+      className="fixed inset-x-5 bottom-8 z-50 mx-auto grid max-w-[460px] origin-bottom gap-3"
+      style={{
+        animation: isClosing
+          ? 'battle-toast-exit 280ms cubic-bezier(0.55, 0.06, 0.68, 0.19) both'
+          : 'battle-toast-enter 420ms cubic-bezier(0.22, 1, 0.36, 1) both',
+        pointerEvents: isClosing ? 'none' : 'auto',
+      }}
     >
-      {isSelected ? (
-        <motion.div
-          key={pendingId}
-          className="absolute inset-y-0 left-0 bg-emerald-500"
-          initial={{ width: '0%' }}
-          animate={{ width: '100%' }}
-          transition={{ duration: 4, ease: 'linear' }}
-        />
-      ) : null}
-      <span className="relative z-10 grid place-items-center">
-        <AnimatePresence mode="wait" initial={false}>
-          {isSelected ? (
-            <motion.span
-              key="thumbs-up-selected"
-              className="relative grid size-7 place-items-center md:size-8"
-              initial={{ filter: 'blur(5px)', opacity: 0, rotate: -18, scale: 0.7, y: 6 }}
-              animate={{ filter: 'blur(0px)', opacity: 1, rotate: 0, scale: 1, y: 0 }}
-              exit={{ filter: 'blur(4px)', opacity: 0, rotate: 16, scale: 0.78, y: -4 }}
-              transition={glyphTransition}
-            >
-              <ThumbsUp className="absolute size-7 text-black md:size-8" aria-hidden="true" />
-              <motion.span
-                key={`selected-icon-${pendingId}`}
-                className="absolute grid size-7 place-items-center overflow-hidden text-white md:size-8"
-                initial={{ clipPath: 'inset(0 100% 0 0)' }}
-                animate={{ clipPath: 'inset(0 0% 0 0)' }}
-                transition={{ duration: 4, ease: 'linear' }}
-              >
-                <ThumbsUp className="size-7 md:size-8" aria-hidden="true" />
-              </motion.span>
-            </motion.span>
-          ) : isRejected ? (
-            <motion.span
-              key="thumbs-down-rejected"
-              initial={{ filter: 'blur(5px)', opacity: 0, rotate: -20, scale: 0.72, y: -6 }}
-              animate={{ filter: 'blur(0px)', opacity: 1, rotate: 0, scale: 1, y: 0 }}
-              exit={{ filter: 'blur(4px)', opacity: 0, rotate: 16, scale: 0.78, y: 5 }}
-              transition={glyphTransition}
-            >
-              <ThumbsDown className="size-7 md:size-8" aria-hidden="true" />
-            </motion.span>
-          ) : (
-            <motion.span
-              key={`idle-${shortcut}`}
-              className="font-mono text-xl font-semibold tracking-[-0.04em] md:text-2xl"
-              initial={{ filter: 'blur(4px)', opacity: 0, rotate: 12, scale: 0.78, y: 5 }}
-              animate={{ filter: 'blur(0px)', opacity: 1, rotate: 0, scale: 1, y: 0 }}
-              exit={{ filter: 'blur(5px)', opacity: 0, rotate: shortcut === 'A' ? -18 : 18, scale: 0.68, y: shortcut === 'A' ? -6 : 6 }}
-              transition={glyphTransition}
-            >
-              {shortcut}
-            </motion.span>
-          )}
-        </AnimatePresence>
-      </span>
-    </button>
-  )
-}
-
-function PersonMeta({
-  displayName,
-  rating,
-  side,
-  totalVotes,
-  winRate,
-}: {
-  displayName: string
-  rating: number
-  side: 'left' | 'right'
-  totalVotes: number
-  winRate: number
-}) {
-  return (
-    <div className={`max-w-[360px] ${side === 'right' ? 'md:ml-auto' : ''}`}>
-      <div className="font-mono text-[10px] uppercase tracking-[0.18em] text-black/35">Rank / pending</div>
-      <h1 className={`mt-2 text-3xl font-semibold leading-none tracking-[-0.055em] transition-transform duration-200 ease-out sm:text-5xl ${side === 'left' ? 'group-hover:md:-translate-x-2' : 'group-hover:md:translate-x-2'}`}>{displayName}</h1>
-      <div className={`mt-4 flex gap-5 text-sm text-black/55 ${side === 'right' ? 'md:justify-end' : ''}`}>
-        <IconStat icon={<Star className="size-4" aria-hidden="true" />} value={String(rating)} />
-        <IconStat icon={<Crown className="size-4" aria-hidden="true" />} value={`${winRate}%`} />
-        <IconStat icon={<ThumbsUp className="size-4" aria-hidden="true" />} value={String(totalVotes)} />
+      <div className="flex items-center justify-between border border-zinc-200 bg-white px-4 py-3 shadow-[0_18px_50px_rgba(15,23,42,0.12)]">
+        <div>
+          <p className="text-lg font-semibold tracking-[-0.04em]">{renderedVote.winner.name || 'Selected face'}</p>
+        </div>
+        <button
+          aria-label="Cancel vote"
+          className="grid size-9 place-items-center rounded-full text-zinc-500 transition-colors duration-200 hover:bg-zinc-100 hover:text-black"
+          onClick={onCancel}
+          type="button"
+        >
+          <X className="size-4" aria-hidden="true" />
+        </button>
+      </div>
+      <div className="h-1 bg-zinc-200">
+        {!isClosing ? (
+          <div
+            key={renderedVote.id}
+            className="h-full origin-left bg-black"
+            style={{ animation: 'battle-progress 4s linear both' }}
+          />
+        ) : null}
       </div>
     </div>
   )
 }
 
-function IconStat({ icon, value }: { icon: React.ReactNode; value: string }) {
+function Metric({ label, value }: { label: string; value: string }) {
   return (
-    <span className="inline-flex items-center gap-1.5">
-      {icon}
-      <span>{value}</span>
-    </span>
+    <div>
+      <p className="font-mono text-[10px] uppercase tracking-[0.12em] text-zinc-500">{label}</p>
+      <p className="mt-1 text-lg font-semibold tracking-[-0.04em]">{value}</p>
+    </div>
   )
 }
 
-function VotingState({
+function BattleState({
   description,
   icon,
   title,
 }: {
   description?: string
-  icon: React.ReactNode
+  icon: ReactNode
   title: string
 }) {
   return (
-    <div className="grid min-h-[calc(100svh-8rem)] place-items-center text-center">
+    <div className="grid min-h-[calc(100vh-13rem)] place-items-center text-center">
       <div>
         <div className="mx-auto grid size-12 place-items-center text-black/50">{icon}</div>
         <h1 className="mt-4 text-2xl font-semibold tracking-[-0.04em]">{title}</h1>
@@ -418,4 +475,9 @@ function VotingState({
       </div>
     </div>
   )
+}
+
+function formatRating(rating: number) {
+  if (rating > 100) return Math.round(rating).toLocaleString()
+  return rating.toFixed(1)
 }
