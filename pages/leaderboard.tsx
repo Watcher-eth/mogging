@@ -142,11 +142,11 @@ export default function LeaderboardPage() {
           </section>
 
           <section aria-label="Full leaderboard" className="grid gap-4">
-            <div className="grid grid-cols-[56px_minmax(0,1fr)_80px_92px] gap-4 border-b border-zinc-200 pb-3 font-mono text-[11px] uppercase tracking-[0.12em] text-zinc-500 sm:grid-cols-[64px_minmax(0,1fr)_96px_96px_120px]">
+            <div className="grid grid-cols-[48px_minmax(0,1fr)_72px] gap-3 border-b border-zinc-200 pb-3 font-mono text-[11px] uppercase tracking-[0.12em] text-zinc-500 sm:grid-cols-[64px_minmax(0,1fr)_96px_96px_120px] sm:gap-4">
               <span>Rank</span>
               <span>Profile</span>
               <span className="text-right">Score</span>
-              <span className="text-right">PSL</span>
+              <span className="hidden text-right sm:block">PSL</span>
               <span className="hidden text-right sm:block">Social</span>
             </div>
 
@@ -238,28 +238,28 @@ function TopEntry({ elevated, entry, index }: { elevated?: boolean; entry: Leade
 function RankRow({ entry, index }: { entry: LeaderboardEntry; index: number }) {
   return (
     <article
-      className="group grid grid-cols-[56px_minmax(0,1fr)_80px_92px] items-center gap-4 border-b border-zinc-200 py-4 transition-colors duration-200 hover:bg-zinc-50 sm:grid-cols-[64px_minmax(0,1fr)_96px_96px_120px]"
+      className="group grid grid-cols-[48px_minmax(0,1fr)_72px] items-center gap-3 border-b border-zinc-200 py-4 transition-colors duration-200 hover:bg-zinc-50 sm:grid-cols-[64px_minmax(0,1fr)_96px_96px_120px] sm:gap-4"
       style={{
         animation: `leaderboard-enter 480ms cubic-bezier(0.22, 1, 0.36, 1) ${180 + index * 35}ms both`,
       }}
     >
       <span className="font-mono text-sm text-zinc-500">{String(entry.rank).padStart(2, '0')}</span>
-      <div className="flex min-w-0 items-center gap-4">
+      <div className="flex min-w-0 items-center gap-3 sm:gap-4">
         <img
           alt=""
           className="size-12 shrink-0 rounded-full object-cover grayscale-[0.1] transition-transform duration-300 ease-out group-hover:scale-105"
           src={entry.imageUrl || '/model.png'}
         />
         <div className="min-w-0">
-          <h3 className="truncate text-base font-semibold tracking-[-0.04em]">{entry.name || 'Anonymous'}</h3>
-          <p className="mt-1 truncate font-mono text-xs uppercase tracking-[0.1em] text-zinc-500">
+          <h3 className="text-base font-semibold tracking-[-0.04em] sm:truncate">{entry.name || 'Anonymous'}</h3>
+          <p className="mt-1 hidden truncate font-mono text-xs uppercase tracking-[0.1em] text-zinc-500 sm:block">
             H {formatSmallMetric(entry.harmonyScore)} / D {formatSmallMetric(entry.dimorphismScore)} / A {formatSmallMetric(entry.angularityScore)}
           </p>
           <MobileSocialLink social={entry.social} />
         </div>
       </div>
       <span className="text-right text-xl font-semibold tracking-[-0.05em]">{formatVotingScore(displayScore(entry))}</span>
-      <span className="text-right font-mono text-xs text-zinc-500">{formatPsl(entry.pslScore)}</span>
+      <span className="hidden text-right font-mono text-xs text-zinc-500 sm:block">{formatPsl(entry.pslScore)}</span>
       <SocialLink social={entry.social} />
     </article>
   )
