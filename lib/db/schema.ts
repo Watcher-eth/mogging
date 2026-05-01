@@ -37,6 +37,7 @@ export const users = pgTable(
     passwordHash: text('password_hash'),
     bio: text('bio'),
     state: varchar('state', { length: 2 }),
+    profileCompleted: boolean('profile_completed').notNull().default(false),
     verified: boolean('verified').notNull().default(false),
     verifiedAt: timestamp('verified_at', { mode: 'date' }),
     createdAt: timestamp('created_at', { mode: 'date' }).notNull().defaultNow(),

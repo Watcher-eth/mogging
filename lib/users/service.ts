@@ -18,8 +18,8 @@ export const updateUserProfileSchema = z.object({
   instagramUsername: z
     .string()
     .trim()
-    .max(80)
-    .transform((value) => value.replace(/^@/, '').replace(/^https?:\/\/(www\.)?instagram\.com\//, '').replace(/\/$/, ''))
+    .max(160)
+    .transform((value) => normalizeSocialValue(value))
     .nullable()
     .optional(),
   state: z
@@ -109,6 +109,7 @@ export async function updateUserProfile(userId: string, input: UpdateUserProfile
       ...(storedAvatar ? { image: storedAvatar.imageUrl } : null),
       ...(data.instagramUsername !== undefined ? { instagramUsername: data.instagramUsername || null } : null),
       ...(data.state !== undefined ? { state: data.state } : null),
+      profileCompleted: true,
       updatedAt: new Date(),
     })
     .where(eq(schema.users.id, userId))
@@ -163,6 +164,7 @@ const publicUserQueryColumns = {
   instagramUsername: true,
   bio: true,
   state: true,
+  profileCompleted: true,
   verified: true,
   verifiedAt: true,
   createdAt: true,
@@ -175,6 +177,7 @@ const publicUserReturningFields = {
   instagramUsername: schema.users.instagramUsername,
   bio: schema.users.bio,
   state: schema.users.state,
+  profileCompleted: schema.users.profileCompleted,
   verified: schema.users.verified,
   verifiedAt: schema.users.verifiedAt,
   createdAt: schema.users.createdAt,
@@ -275,4 +278,19 @@ const publicPhotoSelection = {
 
 function normalizePublicPhoto<TPhoto>(photo: TPhoto) {
   return photo
+}
+
+function normalizeSocialValue(value: string) {
+  const trimmed = value.trim()
+  if (!trimmed) return ''
+
+  if (/^https?:\/\/(www\.)?instagram\.com\//i.test(trimmed)) {
+    return trimmed.replace(/^https?:\/\/(www\.)?instagram\.com\//i, '').replace(/\/$/, '')
+  }
+
+  if (/^https?:\/\/(www\.)?tiktok\.com\//i.test(trimmed)) {
+    return trimmed
+  }
+
+  return trimmed.replace(/^@/, '')
 }

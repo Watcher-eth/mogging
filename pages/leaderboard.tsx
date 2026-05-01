@@ -1,6 +1,8 @@
 import { useSession } from 'next-auth/react'
-import { useMemo } from 'react'
+import { useEffect, useMemo, useRef } from 'react'
 import useSWR from 'swr'
+import useSWRInfinite from 'swr/infinite'
+import { apiGet } from '@/lib/api/client'
 
 type LeaderboardResponse = {
   items: LeaderboardEntry[]
@@ -31,14 +33,26 @@ type LeaderboardEntry = {
   social?: string | null
 }
 
-const leaderboardKey = '/api/leaderboard/photos?limit=24&sort=rating'
+const leaderboardPageSize = 15
 const podiumOrder = [1, 0, 2]
+const instagramLogoUrl = 'https://upload.wikimedia.org/wikipedia/commons/thumb/e/e7/Instagram_logo_2016.svg/3840px-Instagram_logo_2016.svg.png'
+const tiktokLogoUrl = 'https://cdn.simpleicons.org/tiktok/000000'
 
 export default function LeaderboardPage() {
   const { status } = useSession()
-  const { data: leaderboard } = useSWR<LeaderboardResponse>(leaderboardKey, {
-    refreshInterval: 2_000,
+  const loadMoreRef = useRef<HTMLDivElement | null>(null)
+  const {
+    data: leaderboardPages,
+    error: leaderboardError,
+    isValidating: isLeaderboardValidating,
+    setSize,
+    size,
+  } = useSWRInfinite<LeaderboardResponse>((pageIndex, previousPage) => {
+    if (previousPage && previousPage.items.length === 0) return null
+    return `/api/leaderboard/photos?limit=${leaderboardPageSize}&page=${pageIndex + 1}&sort=rating`
+  }, apiGet, {
     revalidateOnFocus: true,
+    revalidateFirstPage: false,
   })
   const { data: currentUserRank } = useSWR<CurrentUserRankResponse>(
     status === 'authenticated' ? '/api/leaderboard/me' : null,
@@ -48,10 +62,30 @@ export default function LeaderboardPage() {
       shouldRetryOnError: false,
     }
   )
-  const entries = leaderboard?.items ?? []
+  const entries = useMemo(() => leaderboardPages?.flatMap((page) => page.items) ?? [], [leaderboardPages])
+  const total = leaderboardPages?.[0]?.total ?? 0
+  const hasMore = entries.length < total
+  const isInitialLoading = !leaderboardPages && !leaderboardError
+  const isLoadingMore = isLeaderboardValidating && hasMore
 
   const topThree = useMemo(() => entries.slice(0, 3), [entries])
   const rankedEntries = useMemo(() => entries.slice(3), [entries])
+
+  useEffect(() => {
+    const node = loadMoreRef.current
+    if (!node || !hasMore) return
+
+    const observer = new IntersectionObserver(
+      (observedEntries) => {
+        if (!observedEntries[0]?.isIntersecting || isLeaderboardValidating) return
+        void setSize((currentSize) => currentSize + 1)
+      },
+      { rootMargin: '700px 0px' }
+    )
+
+    observer.observe(node)
+    return () => observer.disconnect()
+  }, [hasMore, isLeaderboardValidating, setSize, size])
 
   return (
     <section className="min-h-[calc(100vh-5rem)] bg-white px-5 py-14 text-black sm:px-10">
@@ -121,11 +155,29 @@ export default function LeaderboardPage() {
                 rankedEntries.map((entry, index) => (
                   <RankRow key={entry.id || entry.photoId || entry.rank} entry={entry} index={index} />
                 ))
+              ) : isInitialLoading ? (
+                <div className="border-b border-zinc-200 py-10 text-sm text-zinc-500">
+                  Loading ranks...
+                </div>
               ) : (
                 <div className="border-b border-zinc-200 py-10 text-sm text-zinc-500">
                   No ranked photos yet.
                 </div>
               )}
+              <div ref={loadMoreRef} className="grid min-h-16 place-items-center border-b border-zinc-200 py-5">
+                {hasMore ? (
+                  <button
+                    className="font-mono text-[11px] uppercase tracking-[0.12em] text-zinc-500 transition-colors hover:text-black disabled:opacity-50"
+                    disabled={isLoadingMore}
+                    onClick={() => void setSize((currentSize) => currentSize + 1)}
+                    type="button"
+                  >
+                    {isLoadingMore ? 'Loading more...' : 'Load more'}
+                  </button>
+                ) : entries.length > 0 ? (
+                  <span className="font-mono text-[11px] uppercase tracking-[0.12em] text-zinc-400">End of leaderboard</span>
+                ) : null}
+              </div>
             </div>
           </section>
         </div>
@@ -203,12 +255,50 @@ function RankRow({ entry, index }: { entry: LeaderboardEntry; index: number }) {
           <p className="mt-1 truncate font-mono text-xs uppercase tracking-[0.1em] text-zinc-500">
             H {formatSmallMetric(entry.harmonyScore)} / D {formatSmallMetric(entry.dimorphismScore)} / A {formatSmallMetric(entry.angularityScore)}
           </p>
+          <MobileSocialLink social={entry.social} />
         </div>
       </div>
       <span className="text-right text-xl font-semibold tracking-[-0.05em]">{formatVotingScore(displayScore(entry))}</span>
       <span className="text-right font-mono text-xs text-zinc-500">{formatPsl(entry.pslScore)}</span>
-      <span className="hidden truncate text-right text-sm text-zinc-500 sm:block">{entry.social || '-'}</span>
+      <SocialLink social={entry.social} />
     </article>
+  )
+}
+
+function SocialLink({ social }: { social?: string | null }) {
+  const parsed = parseSocial(social)
+
+  if (!parsed) {
+    return <span className="hidden text-right text-sm text-zinc-500 sm:block">-</span>
+  }
+
+  return (
+    <a
+      className="hidden min-w-0 items-center justify-end gap-2 text-right text-sm text-zinc-500 transition-colors hover:text-black sm:flex"
+      href={parsed.url}
+      rel="noopener noreferrer"
+      target="_blank"
+    >
+      <img className="size-4 shrink-0 object-contain" src={parsed.logoUrl} alt="" />
+      <span className="truncate">{parsed.username}</span>
+    </a>
+  )
+}
+
+function MobileSocialLink({ social }: { social?: string | null }) {
+  const parsed = parseSocial(social)
+  if (!parsed) return null
+
+  return (
+    <a
+      className="mt-2 flex min-w-0 items-center gap-1.5 text-xs text-zinc-500 transition-colors hover:text-black sm:hidden"
+      href={parsed.url}
+      rel="noopener noreferrer"
+      target="_blank"
+    >
+      <img className="size-3.5 shrink-0 object-contain" src={parsed.logoUrl} alt="" />
+      <span className="truncate">{parsed.username}</span>
+    </a>
   )
 }
 
@@ -249,6 +339,48 @@ function formatSmallMetric(score?: number | null) {
 function formatPsl(score?: number | null) {
   if (typeof score !== 'number') return '-'
   return score.toFixed(1)
+}
+
+function parseSocial(social?: string | null) {
+  const value = social?.trim()
+  if (!value) return null
+
+  const normalizedValue = value.replace(/^@/, '')
+  const lowerValue = normalizedValue.toLowerCase()
+
+  if (lowerValue.includes('tiktok.com') || lowerValue.startsWith('tiktok:')) {
+    const username = getSocialUsername(normalizedValue, 'tiktok') ?? normalizedValue
+    return {
+      platform: 'tiktok' as const,
+      username: `@${username.replace(/^@/, '')}`,
+      url: normalizedValue.startsWith('http') ? normalizedValue : `https://www.tiktok.com/@${username.replace(/^@/, '')}`,
+      logoUrl: tiktokLogoUrl,
+    }
+  }
+
+  if (lowerValue.includes('instagram.com') || lowerValue.startsWith('instagram:') || !lowerValue.includes('://')) {
+    const username = getSocialUsername(normalizedValue, 'instagram') ?? normalizedValue
+    return {
+      platform: 'instagram' as const,
+      username: `@${username.replace(/^@/, '')}`,
+      url: normalizedValue.startsWith('http') ? normalizedValue : `https://www.instagram.com/${username.replace(/^@/, '')}/`,
+      logoUrl: instagramLogoUrl,
+    }
+  }
+
+  return null
+}
+
+function getSocialUsername(value: string, platform: 'instagram' | 'tiktok') {
+  if (value.startsWith(`${platform}:`)) return value.slice(platform.length + 1).replace(/^@/, '')
+
+  try {
+    const url = new URL(value)
+    const pathPart = url.pathname.split('/').filter(Boolean)[0]
+    return pathPart?.replace(/^@/, '') || null
+  } catch {
+    return value.replace(/^@/, '')
+  }
 }
 
 function displayScore(entry: LeaderboardEntry) {

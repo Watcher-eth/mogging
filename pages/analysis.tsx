@@ -5,6 +5,7 @@ import {
   Check,
   Copy,
   CreditCard,
+  Download,
   Gem,
   Loader2,
   Share2,
@@ -561,7 +562,7 @@ export default function AnalysisPage() {
   }, [router.isReady, router.query.checkout])
 
   async function createShare() {
-    if (!primaryResult) return
+    if (!primaryResult) return null
 
     try {
       setShareLoading(true)
@@ -571,10 +572,10 @@ export default function AnalysisPage() {
       })
       const url = `${window.location.origin}/share/${response.share.token}`
       setShareUrl(url)
-      await navigator.clipboard.writeText(url).catch(() => null)
-      toast.success('Share link copied')
+      return url
     } catch (shareError) {
       toast.error(shareError instanceof ApiClientError ? shareError.message : 'Unable to create share link')
+      return null
     } finally {
       setShareLoading(false)
     }
@@ -750,6 +751,7 @@ export default function AnalysisPage() {
 
       <ShareSheet
         open={shareOpen}
+        result={primaryResult ?? null}
         shareUrl={shareUrl}
         loading={shareLoading}
         onClose={() => setShareOpen(false)}
@@ -1678,7 +1680,7 @@ function ReportActions({
         onClick={onOpenShare}
         type="button"
       >
-        Share your score
+        Share report
         <Share2 className="size-4" aria-hidden="true" />
       </button>
       <label className="flex items-start gap-3 border border-zinc-200 px-3 py-3 text-xs leading-5 text-zinc-500">
@@ -2215,57 +2217,431 @@ function getReportCategoryScore(categoryId: string, result?: AnalysisResponse) {
   return Math.max(0, Math.min(categoryId === 'overall' ? 8 : 10, scores[categoryId] ?? overall))
 }
 
+const instagramLogoUrl = 'https://upload.wikimedia.org/wikipedia/commons/thumb/e/e7/Instagram_logo_2016.svg/3840px-Instagram_logo_2016.svg.png'
+const xLogoUrl = 'https://upload.wikimedia.org/wikipedia/commons/thumb/b/b7/X_logo.jpg/1280px-X_logo.jpg'
+const shareFeatureCategoryIds = ['eyes', 'nose', 'jaw']
+
 function ShareSheet({
+  result,
   open,
   shareUrl,
   loading,
   onClose,
   onCreate,
 }: {
+  result: AnalysisResponse | null
   open: boolean
   shareUrl: string | null
   loading: boolean
   onClose: () => void
-  onCreate: () => void
+  onCreate: () => Promise<string | null>
 }) {
+  const [renderedImageUrl, setRenderedImageUrl] = useState<string | null>(null)
+  const [renderedImageBlob, setRenderedImageBlob] = useState<Blob | null>(null)
+  const [renderingImage, setRenderingImage] = useState(false)
+  const [shareActionLoading, setShareActionLoading] = useState<string | null>(null)
+  const hasRequestedShareRef = useRef(false)
+
+  useEffect(() => {
+    if (!open || !result) return
+
+    let cancelled = false
+    setRenderingImage(true)
+
+    void renderShareImage(result, shareUrl)
+      .then(({ blob, url }) => {
+        if (cancelled) {
+          URL.revokeObjectURL(url)
+          return
+        }
+
+        setRenderedImageBlob(blob)
+        setRenderedImageUrl((current) => {
+          if (current) URL.revokeObjectURL(current)
+          return url
+        })
+      })
+      .catch(() => {
+        if (!cancelled) toast.error('Unable to prepare share image')
+      })
+      .finally(() => {
+        if (!cancelled) setRenderingImage(false)
+      })
+
+    return () => {
+      cancelled = true
+    }
+  }, [open, result, shareUrl])
+
+  useEffect(() => {
+    return () => {
+      if (renderedImageUrl) URL.revokeObjectURL(renderedImageUrl)
+    }
+  }, [renderedImageUrl])
+
+  useEffect(() => {
+    if (!open) {
+      hasRequestedShareRef.current = false
+      return
+    }
+
+    if (shareUrl || loading || hasRequestedShareRef.current) return
+    hasRequestedShareRef.current = true
+    void onCreate()
+  }, [loading, onCreate, open, shareUrl])
+
+  async function ensureShareUrl() {
+    return shareUrl ?? await onCreate()
+  }
+
+  async function handleCopyLink() {
+    const url = await ensureShareUrl()
+    if (!url) return
+
+    await navigator.clipboard.writeText(url).catch(() => null)
+    toast.success('Share link copied')
+  }
+
+  async function handleNetworkShare(network: 'instagram' | 'x') {
+    const url = await ensureShareUrl()
+    if (!url || !result) return
+
+    setShareActionLoading(network)
+    try {
+      const file = renderedImageBlob
+        ? new File([renderedImageBlob], 'mogging-report.png', { type: 'image/png' })
+        : null
+      const canShareFile = Boolean(file && navigator.canShare?.({ files: [file] }))
+
+      if (canShareFile && file) {
+        await navigator.share({
+          title: 'My Mogging report',
+          text: `PSL score ${formatShareScore(result.analysis.pslScore)} / 8`,
+          url,
+          files: [file],
+        })
+        return
+      }
+
+      if (network === 'x') {
+        const text = `My Mogging report: PSL ${formatShareScore(result.analysis.pslScore)} / 8`
+        window.open(`https://twitter.com/intent/tweet?text=${encodeURIComponent(text)}&url=${encodeURIComponent(url)}`, '_blank', 'noopener,noreferrer')
+      }
+
+      if (renderedImageUrl) {
+        downloadShareImage(renderedImageUrl)
+        toast.success(network === 'instagram' ? 'Share image downloaded' : 'Share image downloaded for your post')
+      }
+    } finally {
+      setShareActionLoading(null)
+    }
+  }
+
   return (
     <AnimatePresence>
       {open ? (
         <motion.div className="fixed inset-0 z-50 bg-black/25" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
           <button className="absolute inset-0 cursor-default" onClick={onClose} aria-label="Close share sheet" type="button" />
           <motion.div
-            className="absolute inset-x-0 bottom-0 rounded-t-xl border bg-background p-5 shadow-2xl sm:left-auto sm:right-5 sm:top-20 sm:h-fit sm:w-[380px] sm:rounded-xl"
+            className="absolute inset-x-0 bottom-0 max-h-[92svh] overflow-y-auto border border-zinc-200 bg-white p-5 text-black shadow-2xl sm:left-auto sm:right-5 sm:top-20 sm:h-fit sm:w-[430px]"
             initial={{ y: 28, opacity: 0 }}
             animate={{ y: 0, opacity: 1 }}
             exit={{ y: 28, opacity: 0 }}
             transition={{ duration: 0.22, ease: [0.23, 1, 0.32, 1] }}
           >
             <div className="flex items-center justify-between">
-              <h2 className="text-lg font-semibold tracking-tight">Share result</h2>
+              <div>
+                <p className="font-mono text-[10px] uppercase tracking-wide text-muted-foreground">Share report //</p>
+                <h2 className="mt-2 text-3xl font-semibold leading-none tracking-[-0.055em]">Your Score Card</h2>
+              </div>
               <Button variant="ghost" size="icon" onClick={onClose}>
                 <X className="size-4" aria-hidden="true" />
               </Button>
             </div>
-            <p className="mt-2 text-sm leading-6 text-muted-foreground">
-              Create a public share link for the primary result.
-            </p>
-            {shareUrl ? (
-              <div className="mt-5 flex items-center gap-2 rounded-md border bg-muted p-2">
-                <span className="min-w-0 flex-1 truncate text-sm">{shareUrl}</span>
-                <Button size="icon" variant="outline" onClick={() => navigator.clipboard.writeText(shareUrl)}>
-                  <Copy className="size-4" aria-hidden="true" />
-                </Button>
-              </div>
+
+            <div className="mt-5 overflow-hidden border border-zinc-200 bg-zinc-100">
+              {renderedImageUrl ? (
+                <img className="aspect-[4/5] w-full object-cover" src={renderedImageUrl} alt="Shareable report card preview" />
+              ) : (
+                <div className="grid aspect-[4/5] place-items-center text-center">
+                  <div>
+                    <Loader2 className="mx-auto size-5 animate-spin text-zinc-500" aria-hidden="true" />
+                    <p className="mt-3 font-mono text-[10px] uppercase tracking-wide text-zinc-500">
+                      {renderingImage ? 'Rendering share image' : 'Preparing preview'}
+                    </p>
+                  </div>
+                </div>
+              )}
+            </div>
+
+            <div className="mt-4 flex items-center gap-2 border border-zinc-200 bg-zinc-50 px-3 py-2">
+              <span className="min-w-0 flex-1 truncate text-sm text-zinc-600">{shareUrl ?? 'Creating share link...'}</span>
+              {loading ? (
+                <Loader2 className="size-4 animate-spin text-zinc-500" aria-hidden="true" />
+              ) : (
+                <Copy className="size-4 text-zinc-500" aria-hidden="true" />
+              )}
+            </div>
+
+            <div className="mt-4 grid gap-2">
+              <ShareNetworkButton
+                disabled={loading || renderingImage}
+                loading={shareActionLoading === 'instagram'}
+                logoUrl={instagramLogoUrl}
+                onClick={() => void handleNetworkShare('instagram')}
+              >
+                Share to Instagram
+              </ShareNetworkButton>
+              <ShareNetworkButton
+                disabled={loading || renderingImage}
+                loading={shareActionLoading === 'x'}
+                logoUrl={xLogoUrl}
+                onClick={() => void handleNetworkShare('x')}
+              >
+                Share to X
+              </ShareNetworkButton>
+              <button
+                className="flex h-12 w-full items-center justify-between border border-zinc-200 bg-white px-4 text-left font-mono text-[11px] uppercase tracking-wide text-black transition-colors hover:bg-zinc-50 disabled:opacity-60"
+                disabled={loading}
+                onClick={() => void handleCopyLink()}
+                type="button"
+              >
+                <span className="flex items-center gap-3">
+                  <Copy className="size-5" aria-hidden="true" />
+                  Copy link
+                </span>
+                {loading ? <Loader2 className="size-4 animate-spin" aria-hidden="true" /> : null}
+              </button>
+            </div>
+
+            {renderedImageUrl ? (
+              <button
+                className="mt-3 flex w-full items-center justify-center gap-2 font-mono text-[10px] uppercase tracking-wide text-muted-foreground transition-colors hover:text-black"
+                onClick={() => downloadShareImage(renderedImageUrl)}
+                type="button"
+              >
+                <Download className="size-3.5" aria-hidden="true" />
+                Download image
+              </button>
             ) : null}
-            <Button className="mt-5 w-full" onClick={onCreate} disabled={loading}>
-              {loading ? <Loader2 className="size-4 animate-spin" aria-hidden="true" /> : <Share2 className="size-4" aria-hidden="true" />}
-              {shareUrl ? 'Copy again' : 'Create share link'}
-            </Button>
           </motion.div>
         </motion.div>
       ) : null}
     </AnimatePresence>
   )
+}
+
+function ShareNetworkButton({
+  children,
+  disabled,
+  loading,
+  logoUrl,
+  onClick,
+}: {
+  children: ReactNode
+  disabled?: boolean
+  loading?: boolean
+  logoUrl: string
+  onClick: () => void
+}) {
+  return (
+    <button
+      className="flex h-12 w-full items-center justify-between bg-black px-4 text-left font-mono text-[11px] uppercase tracking-wide text-white transition-transform duration-200 ease-out hover:-translate-y-0.5 active:translate-y-0 disabled:translate-y-0 disabled:opacity-60"
+      disabled={disabled || loading}
+      onClick={onClick}
+      type="button"
+    >
+      <span className="flex items-center gap-3">
+        <span className="grid size-6 shrink-0 place-items-center overflow-hidden bg-white">
+          <img className="size-full object-cover" src={logoUrl} alt="" />
+        </span>
+        {children}
+      </span>
+      {loading ? <Loader2 className="size-4 animate-spin" aria-hidden="true" /> : <Share2 className="size-4" aria-hidden="true" />}
+    </button>
+  )
+}
+
+async function renderShareImage(result: AnalysisResponse, shareUrl: string | null) {
+  const canvas = document.createElement('canvas')
+  canvas.width = 1080
+  canvas.height = 1350
+  const context = canvas.getContext('2d')
+  if (!context) throw new Error('Canvas unavailable')
+
+  const image = await loadShareImage(getCanvasSafeImageUrl(result.photo.imageUrl))
+  drawCoverImage(context, image, canvas.width, canvas.height)
+  drawShareImageOverlay(context, result, shareUrl, canvas.width, canvas.height)
+
+  const blob = await new Promise<Blob>((resolve, reject) => {
+    canvas.toBlob((nextBlob) => {
+      if (!nextBlob) {
+        reject(new Error('Unable to render share image'))
+        return
+      }
+
+      resolve(nextBlob)
+    }, 'image/png', 0.95)
+  })
+
+  return {
+    blob,
+    url: URL.createObjectURL(blob),
+  }
+}
+
+function getCanvasSafeImageUrl(imageUrl: string) {
+  if (imageUrl.startsWith('data:') || imageUrl.startsWith('/')) return imageUrl
+  return `/api/share/image-proxy?src=${encodeURIComponent(imageUrl)}`
+}
+
+function loadShareImage(src: string) {
+  return new Promise<HTMLImageElement>((resolve, reject) => {
+    const image = new Image()
+    image.crossOrigin = 'anonymous'
+    image.onload = () => resolve(image)
+    image.onerror = () => reject(new Error('Unable to load share image'))
+    image.src = src
+  })
+}
+
+function drawCoverImage(context: CanvasRenderingContext2D, image: HTMLImageElement, width: number, height: number) {
+  const scale = Math.max(width / image.naturalWidth, height / image.naturalHeight)
+  const drawWidth = image.naturalWidth * scale
+  const drawHeight = image.naturalHeight * scale
+  const x = (width - drawWidth) / 2
+  const y = (height - drawHeight) / 2
+  context.drawImage(image, x, y, drawWidth, drawHeight)
+}
+
+function drawShareImageOverlay(
+  context: CanvasRenderingContext2D,
+  result: AnalysisResponse,
+  shareUrl: string | null,
+  width: number,
+  height: number
+) {
+  const landmarks = getReportLandmarks(result)
+  const categories = shareFeatureCategoryIds
+    .map((categoryId) => reportCategories.find((category) => category.id === categoryId))
+    .filter((category): category is ReportCategory => Boolean(category))
+  const score = result.analysis.pslScore ?? 0
+
+  context.save()
+  const gradient = context.createLinearGradient(0, 0, 0, height)
+  gradient.addColorStop(0, 'rgba(0,0,0,0.28)')
+  gradient.addColorStop(0.5, 'rgba(0,0,0,0.02)')
+  gradient.addColorStop(1, 'rgba(0,0,0,0.82)')
+  context.fillStyle = gradient
+  context.fillRect(0, 0, width, height)
+
+  categories.forEach((category, index) => {
+    drawShareGeometry(context, getReportOverlayGeometry(category, landmarks), category, result, index, width, height)
+  })
+
+  context.fillStyle = 'rgba(255,255,255,0.92)'
+  context.font = '700 30px ui-monospace, SFMono-Regular, Menlo, monospace'
+  context.fillText('MOGGING REPORT', 52, 72)
+  context.font = '700 148px ui-sans-serif, system-ui, sans-serif'
+  context.fillText(score.toFixed(1), 52, height - 150)
+  context.font = '700 30px ui-monospace, SFMono-Regular, Menlo, monospace'
+  context.fillText('/ 8 PSL', 292, height - 164)
+  context.font = '700 28px ui-sans-serif, system-ui, sans-serif'
+  context.fillText(result.analysis.tier || 'Facial assessment', 56, height - 92)
+
+  const featureText = categories
+    .map((category) => {
+      const reportCategory = getReportCategoryData(category.id, result)
+      return `${reportCategory?.title ?? category.title}: ${reportCategory?.features?.[0]?.value ?? category.features[0]?.value ?? 'measured'}`
+    })
+    .join('  /  ')
+  context.font = '700 24px ui-monospace, SFMono-Regular, Menlo, monospace'
+  context.fillStyle = 'rgba(255,255,255,0.72)'
+  context.fillText(featureText.slice(0, 84), 56, height - 48)
+
+  if (shareUrl) {
+    context.textAlign = 'right'
+    context.font = '700 22px ui-monospace, SFMono-Regular, Menlo, monospace'
+    context.fillText(new URL(shareUrl).host.toUpperCase(), width - 52, height - 48)
+    context.textAlign = 'left'
+  }
+  context.restore()
+}
+
+function drawShareGeometry(
+  context: CanvasRenderingContext2D,
+  geometry: ReturnType<typeof getReportOverlayGeometry>,
+  category: ReportCategory,
+  result: AnalysisResponse,
+  index: number,
+  width: number,
+  height: number
+) {
+  const yOffset = geometry.usesLandmarks ? 0 : getReportOverlayYOffset(category.id)
+  const scaleX = width / 100
+  const scaleY = height / 100
+
+  context.save()
+  context.strokeStyle = 'rgba(255,255,255,0.88)'
+  context.fillStyle = 'rgba(255,255,255,0.98)'
+  context.lineWidth = 3
+  context.lineCap = 'round'
+
+  geometry.boxes.forEach((box) => {
+    if (box.dashed) context.setLineDash([10, 10])
+    context.strokeRect(box.x * scaleX, (box.y + yOffset) * scaleY, box.width * scaleX, box.height * scaleY)
+    context.setLineDash([])
+  })
+
+  geometry.lines.forEach((line) => {
+    context.beginPath()
+    context.moveTo(line.x1 * scaleX, (line.y1 + yOffset) * scaleY)
+    context.lineTo(line.x2 * scaleX, (line.y2 + yOffset) * scaleY)
+    context.stroke()
+  })
+
+  geometry.points.forEach((point) => {
+    const x = point.x * scaleX
+    const y = (point.y + yOffset) * scaleY
+    context.beginPath()
+    context.arc(x, y, 8, 0, Math.PI * 2)
+    context.stroke()
+    context.beginPath()
+    context.arc(x, y, 3.5, 0, Math.PI * 2)
+    context.fill()
+  })
+
+  const labelX = Math.min(width - 360, geometry.label.x * scaleX)
+  const labelY = Math.min(height - 250, Math.max(110, (geometry.label.y + yOffset) * scaleY))
+  const reportCategory = getReportCategoryData(category.id, result)
+  const labelTitle = reportCategory?.title ?? category.title
+  const labelValue = reportCategory?.features?.[0]?.value ?? (geometry.label.value.replace(/[[\]]/g, '').trim() || 'measured')
+
+  drawSharePill(context, `[ 00${index + 1} ] ${labelTitle}`, labelX, labelY)
+  drawSharePill(context, labelValue, labelX, labelY + 44)
+  context.restore()
+}
+
+function drawSharePill(context: CanvasRenderingContext2D, text: string, x: number, y: number) {
+  context.save()
+  context.font = '700 22px ui-monospace, SFMono-Regular, Menlo, monospace'
+  const metrics = context.measureText(text)
+  context.fillStyle = 'rgba(255,255,255,0.92)'
+  context.fillRect(x, y, metrics.width + 28, 34)
+  context.fillStyle = 'rgba(0,0,0,0.92)'
+  context.fillText(text.toUpperCase(), x + 14, y + 24)
+  context.restore()
+}
+
+function formatShareScore(score: number | null) {
+  return typeof score === 'number' ? score.toFixed(1) : '--'
+}
+
+function downloadShareImage(url: string) {
+  const anchor = document.createElement('a')
+  anchor.href = url
+  anchor.download = 'mogging-report.png'
+  anchor.click()
 }
 
 function CenteredStep({
