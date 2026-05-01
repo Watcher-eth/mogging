@@ -1,4 +1,5 @@
 import { ImagePlus } from 'lucide-react'
+import Image from 'next/image'
 import { type RefObject, type ReactNode } from 'react'
 
 type CaptureFrameProps = {
@@ -31,7 +32,7 @@ export function CaptureFrame({
   return (
     <div className={`relative mx-auto aspect-[9/16] w-full max-w-[390px] overflow-hidden rounded-[44px] bg-black shadow-2xl ${className}`}>
       {imageSrc ? (
-        <img className="absolute inset-0 h-full w-full object-cover" src={imageSrc} alt={imageAlt} />
+        <Image className="object-cover" src={imageSrc} alt={imageAlt} fill sizes="min(390px, 100vw)" />
       ) : videoRef ? (
         <video ref={videoRef} className="absolute inset-0 h-full w-full scale-x-[-1] object-cover" playsInline muted autoPlay />
       ) : (

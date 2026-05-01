@@ -1,5 +1,6 @@
 import type { GetServerSideProps } from 'next'
 import Link from 'next/link'
+import Image from 'next/image'
 import { ArrowLeft, Share2 } from 'lucide-react'
 import { getShareByToken } from '@/lib/sharing/service'
 import { Badge } from '@/components/ui/badge'
@@ -43,8 +44,8 @@ export default function SharePage({ share }: SharePageProps) {
             </Button>
           </div>
 
-          <div className="overflow-hidden rounded-md bg-muted">
-            <img className="aspect-[4/5] h-full w-full object-cover" src={share.photo.imageUrl} alt="Shared assessment photo" />
+          <div className="relative min-h-[420px] overflow-hidden rounded-md bg-muted">
+            <Image className="object-cover" src={share.photo.imageUrl} alt="Shared assessment photo" fill priority sizes="(min-width: 1024px) 42vw, 100vw" />
           </div>
         </div>
       </div>

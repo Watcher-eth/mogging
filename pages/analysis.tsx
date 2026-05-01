@@ -14,6 +14,7 @@ import {
   X,
 } from 'lucide-react'
 import { useSession } from 'next-auth/react'
+import Image from 'next/image'
 import { useRouter } from 'next/router'
 import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties, type ChangeEvent, type ReactNode } from 'react'
 import { toast } from 'sonner'
@@ -853,7 +854,7 @@ function IntroScreen({ onBegin }: { onBegin: () => void }) {
       </aside>
 
       <div className="relative min-h-[420px] overflow-hidden bg-zinc-200 sm:min-h-[560px] lg:min-h-0">
-        <img className="absolute inset-0 h-full w-full object-cover object-center" src={previewPhotoUrl} alt="Facial assessment preview" />
+        <Image className="object-cover object-center" src={previewPhotoUrl} alt="Facial assessment preview" fill priority sizes="(min-width: 1024px) 46vw, 100vw" />
         <div className="absolute left-1/2 top-1/2 w-[min(42vw,300px)] -translate-x-1/2 -translate-y-1/2 border border-white/80 p-3 text-white shadow-[0_20px_80px_rgba(0,0,0,0.18)]">
           <div className="text-balance text-xl font-medium leading-none tracking-[-0.04em]">
             Facial
@@ -971,7 +972,7 @@ function UploadScreen({
                   onClick={() => onSelect(image.id)}
                   type="button"
                 >
-                  <img className="h-full w-full object-cover" src={image.dataUrl} alt={image.name} />
+                  <Image className="object-cover" src={image.dataUrl} alt={image.name} fill sizes="126px" unoptimized />
                   <span
                     className="absolute right-1 top-1 grid size-5 place-items-center rounded-full bg-background/90 opacity-0 shadow-sm transition-opacity group-hover:opacity-100"
                     onClick={(event) => {
@@ -1475,7 +1476,7 @@ function AnalysisPaymentDialog({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="overflow-hidden rounded-[28px] border-0 bg-white p-0 shadow-[0_28px_90px_rgba(15,23,42,0.2)] sm:max-w-[500px]">
         <div className="relative h-[330px] overflow-hidden bg-zinc-100">
-          <img className="absolute inset-0 h-full w-full object-cover object-center" src={paymentDialogImageUrl} alt="Analysis preview" />
+          <Image className="object-cover object-center" src={paymentDialogImageUrl} alt="Analysis preview" fill sizes="500px" />
           <div className="absolute inset-0 bg-white/5" />
           <PaymentFeatureCallout
             label="Eye line"
@@ -1744,7 +1745,7 @@ function ReportImagePanel({
 }) {
   return (
     <div className="relative min-h-[520px] overflow-hidden bg-zinc-100 lg:h-full lg:min-h-0">
-      <img className="absolute inset-0 h-full w-full object-cover object-center" src={imageSrc} alt={`${category.title} analysis image`} />
+      <Image className="object-cover object-center" src={imageSrc} alt={`${category.title} analysis image`} fill priority sizes="(min-width: 1024px) 44vw, 100vw" />
       <div className="absolute inset-0 bg-white/5" />
       <AnimatePresence mode="wait">
         <ReportFocusOverlay key={`${category.id}-focus`} category={category} landmarks={landmarks} />
@@ -2390,7 +2391,7 @@ function ShareSheet({
 
             <div className="mt-5 overflow-hidden border border-zinc-200 bg-zinc-100">
               {renderedImageUrl ? (
-                <img className="aspect-[4/5] w-full object-cover" src={renderedImageUrl} alt="Shareable report card preview" />
+                <Image className="aspect-[4/5] w-full object-cover" src={renderedImageUrl} alt="Shareable report card preview" width={1080} height={1350} unoptimized />
               ) : (
                 <div className="grid aspect-[4/5] place-items-center text-center">
                   <div>
@@ -2482,7 +2483,7 @@ function ShareNetworkButton({
     >
       <span className="flex items-center gap-3">
         <span className="grid size-6 shrink-0 place-items-center overflow-hidden bg-white">
-          <img className="size-full object-cover" src={logoUrl} alt="" />
+          <Image className="object-cover" src={logoUrl} alt="" width={24} height={24} sizes="24px" />
         </span>
         {children}
       </span>
@@ -2526,7 +2527,7 @@ function getCanvasSafeImageUrl(imageUrl: string) {
 
 function loadShareImage(src: string) {
   return new Promise<HTMLImageElement>((resolve, reject) => {
-    const image = new Image()
+    const image = new window.Image()
     image.crossOrigin = 'anonymous'
     image.onload = () => resolve(image)
     image.onerror = () => reject(new Error('Unable to load share image'))

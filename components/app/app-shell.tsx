@@ -1,4 +1,5 @@
 import Link from 'next/link'
+import Image from 'next/image'
 import { useEffect, useRef, useState, type ChangeEvent } from 'react'
 import type { ReactNode } from 'react'
 import { useSession, signIn, signOut } from 'next-auth/react'
@@ -121,9 +122,9 @@ export function AppShell({ children }: AppShellProps) {
                   size="sm"
                   onClick={() => setAccountOpen((current) => !current)}
                 >
-                  <span className="grid size-5 place-items-center overflow-hidden rounded-full bg-zinc-100 text-[10px] uppercase text-black/70 sm:size-6 sm:text-[11px]">
+                  <span className="relative grid size-5 place-items-center overflow-hidden rounded-full bg-zinc-100 text-[10px] uppercase text-black/70 sm:size-6 sm:text-[11px]">
                     {profileImage ? (
-                      <img className="h-full w-full object-cover" src={profileImage} alt="" />
+                      <Image className="object-cover" src={profileImage} alt="" fill sizes="24px" />
                     ) : (
                       profileName.slice(0, 1)
                     )}
@@ -135,8 +136,8 @@ export function AppShell({ children }: AppShellProps) {
                 {accountOpen ? (
                   <div className="absolute right-0 top-[calc(100%+0.5rem)] z-50 w-64 rounded-[24px] border border-zinc-200 bg-white p-2 text-black shadow-[0_22px_70px_rgba(15,23,42,0.16)]">
                     <div className="flex items-center gap-3 border-b border-zinc-100 px-2 py-3">
-                      <span className="grid size-10 shrink-0 place-items-center overflow-hidden rounded-full bg-zinc-100 text-sm font-semibold uppercase text-black/70">
-                        {profileImage ? <img className="h-full w-full object-cover" src={profileImage} alt="" /> : profileName.slice(0, 1)}
+                      <span className="relative grid size-10 shrink-0 place-items-center overflow-hidden rounded-full bg-zinc-100 text-sm font-semibold uppercase text-black/70">
+                        {profileImage ? <Image className="object-cover" src={profileImage} alt="" fill sizes="40px" /> : profileName.slice(0, 1)}
                       </span>
                       <div className="min-w-0">
                         <p className="truncate text-sm font-semibold tracking-[-0.03em]">{profileName}</p>
@@ -314,7 +315,7 @@ function EditProfileDialog({
               type="button"
             >
               {avatarPreview ? (
-                <img className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-105" src={avatarPreview} alt="Profile avatar preview" />
+                <Image className="object-cover transition-transform duration-300 group-hover:scale-105" src={avatarPreview} alt="Profile avatar preview" fill sizes="128px" unoptimized={avatarPreview.startsWith('data:')} />
               ) : (
                 <span className="grid h-full w-full place-items-center font-mono text-[10px] uppercase tracking-[0.12em] text-zinc-500">Upload</span>
               )}
@@ -452,8 +453,8 @@ export function LoginDialog({
                       zIndex: layout.z,
                     }}
                   >
-                    <div className="relative h-full w-full overflow-hidden rounded-full bg-white/25 shadow-[inset_0_1px_1px_rgba(255,255,255,0.95),inset_10px_16px_28px_rgba(255,255,255,0.16),inset_-14px_-18px_30px_rgba(0,0,0,0.1),0_20px_44px_rgba(15,23,42,0.2)] ring-1 ring-white/85 backdrop-blur-md transition-transform duration-300 ease-[cubic-bezier(0.22,1,0.36,1)] group-hover:scale-[1.055]">
-                      <img className="h-full w-full scale-[1.04] object-cover saturate-[1.08]" src={src} alt="" aria-hidden="true" />
+                    <div className="relative h-full w-full overflow-hidden rounded-full bg-white/25 shadow-[inset_0_1px_1px_rgba(255,255,255,0.95),inset_10px_16px_28px_rgba(255,255,255,0.16),inset_-14px_-18px_30px_rgba(0,0,0,0.1),0_20px_44px_rgba(15,23,42,0.2)] ring-1 ring-white/85 backdrop-blur-md transition-transform duration-300 ease-out group-hover:scale-[1.055]">
+                      <Image className="scale-[1.04] object-cover saturate-[1.08]" src={src} alt="" aria-hidden="true" fill sizes="128px" priority={index < 8} />
                       <span className="pointer-events-none absolute inset-0 rounded-full bg-[linear-gradient(145deg,rgba(255,255,255,0.38)_0%,rgba(255,255,255,0.08)_28%,rgba(255,255,255,0)_48%,rgba(0,0,0,0.16)_100%)]" />
                       <span className="pointer-events-none absolute inset-[1px] rounded-full border-2 border-white/55" />
                       <span className="pointer-events-none absolute -inset-[16%] rounded-full bg-[radial-gradient(circle_at_76%_82%,rgba(255,255,255,0.24)_0%,rgba(255,255,255,0)_34%)]" />

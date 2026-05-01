@@ -1,4 +1,5 @@
 import { useSession } from 'next-auth/react'
+import Image from 'next/image'
 import { useEffect, useMemo, useRef } from 'react'
 import useSWR from 'swr'
 import useSWRInfinite from 'swr/infinite'
@@ -197,11 +198,14 @@ function TopEntry({ elevated, entry, index }: { elevated?: boolean; entry: Leade
       }}
     >
       <div className="relative mx-auto w-full max-w-[230px] overflow-hidden border border-zinc-200 bg-white">
-        <div className={elevated ? 'aspect-[3/4]' : 'aspect-[3/3.65]'}>
-          <img
+        <div className={elevated ? 'relative aspect-[3/4]' : 'relative aspect-[3/3.65]'}>
+          <Image
             alt=""
-            className="h-full w-full object-cover grayscale-[0.1] transition duration-500 ease-out group-hover:scale-[1.035]"
+            className="object-cover grayscale-[0.1] transition duration-500 ease-out group-hover:scale-[1.035]"
             src={entry.imageUrl || '/model.png'}
+            fill
+            priority={entry.rank <= 3}
+            sizes="(min-width: 640px) 230px, 80vw"
           />
         </div>
         <div className="absolute left-3 top-3 bg-white px-2 py-1 font-mono text-xs font-semibold">
@@ -245,10 +249,13 @@ function RankRow({ entry, index }: { entry: LeaderboardEntry; index: number }) {
     >
       <span className="font-mono text-sm text-zinc-500">{String(entry.rank).padStart(2, '0')}</span>
       <div className="flex min-w-0 items-center gap-3 sm:gap-4">
-        <img
+        <Image
           alt=""
-          className="size-12 shrink-0 rounded-full object-cover grayscale-[0.1] transition-transform duration-300 ease-out group-hover:scale-105"
+          className="shrink-0 rounded-full object-cover grayscale-[0.1] transition-transform duration-300 ease-out group-hover:scale-105"
           src={entry.imageUrl || '/model.png'}
+          width={48}
+          height={48}
+          sizes="48px"
         />
         <div className="min-w-0">
           <h3 className="text-base font-semibold tracking-[-0.04em] sm:truncate">{entry.name || 'Anonymous'}</h3>
@@ -279,7 +286,7 @@ function SocialLink({ social }: { social?: string | null }) {
       rel="noopener noreferrer"
       target="_blank"
     >
-      <img className="size-4 shrink-0 object-contain" src={parsed.logoUrl} alt="" />
+      <Image className="shrink-0 object-contain" src={parsed.logoUrl} alt="" width={16} height={16} sizes="16px" />
       <span className="truncate">{parsed.username}</span>
     </a>
   )
@@ -296,7 +303,7 @@ function MobileSocialLink({ social }: { social?: string | null }) {
       rel="noopener noreferrer"
       target="_blank"
     >
-      <img className="size-3.5 shrink-0 object-contain" src={parsed.logoUrl} alt="" />
+      <Image className="shrink-0 object-contain" src={parsed.logoUrl} alt="" width={14} height={14} sizes="14px" />
       <span className="truncate">{parsed.username}</span>
     </a>
   )
@@ -308,10 +315,13 @@ function CurrentUserRankBar({ entry }: { entry: LeaderboardEntry | null }) {
   return (
     <div className="fixed inset-x-5 bottom-5 z-40 mx-auto max-w-3xl border border-black bg-white px-4 py-3 text-black shadow-[0_18px_50px_rgba(15,23,42,0.12)] sm:bottom-6">
       <div className="grid grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-4">
-        <img
+        <Image
           alt=""
-          className="size-12 rounded-full object-cover grayscale-[0.1]"
+          className="rounded-full object-cover grayscale-[0.1]"
           src={entry.imageUrl || '/model.png'}
+          width={48}
+          height={48}
+          sizes="48px"
         />
         <div className="min-w-0">
           <p className="font-mono text-[11px] uppercase tracking-[0.12em] text-zinc-500">Your rank</p>

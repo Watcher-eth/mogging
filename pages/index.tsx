@@ -1,4 +1,5 @@
 import { Loader2, RefreshCw, X } from 'lucide-react'
+import Image from 'next/image'
 import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react'
 import useSWR, { useSWRConfig } from 'swr'
 import { toast } from 'sonner'
@@ -67,7 +68,7 @@ export default function VotingPage() {
       await mutate(previousPair, { revalidate: false })
       toast.error(voteError instanceof ApiClientError ? voteError.message : 'Unable to submit vote')
     }
-  }, [mutate, pair])
+  }, [mutate, mutateGlobal, pair])
 
   useEffect(() => {
     if (!pendingVote) return
@@ -315,7 +316,7 @@ function BattleCandidate({
   return (
     <article
       className={[
-        'group grid gap-4 will-change-transform transition-opacity duration-500 ease-[cubic-bezier(0.22,1,0.36,1)]',
+        'group grid gap-4 will-change-transform transition-opacity duration-500 ease-out',
         isSelected ? 'opacity-100' : '',
         isPendingLoser ? 'opacity-45' : '',
       ].join(' ')}
@@ -339,17 +340,20 @@ function BattleCandidate({
       <button
         aria-label={`Vote for ${displayName}`}
         className={[
-          'relative aspect-[2.5/3] w-full max-w-[560px] overflow-hidden border bg-white text-left outline-none transition-[border-color,transform] duration-300 ease-[cubic-bezier(0.22,1,0.36,1)] hover:-translate-y-1 active:translate-y-0',
+          'relative aspect-[2.5/3] w-full max-w-[560px] overflow-hidden border bg-white text-left outline-none transition-[border-color,transform] duration-300 ease-out hover:-translate-y-1 active:translate-y-0',
           side === 'right' ? 'lg:ml-auto' : 'lg:mr-auto',
           isSelected ? 'border-black' : 'border-zinc-200',
         ].join(' ')}
         onClick={onVote}
         type="button"
       >
-        <img
+        <Image
           alt={displayName}
-          className="absolute inset-0 h-full w-full object-cover grayscale-[0.08] transition duration-700 ease-out group-hover:scale-[1.025]"
+          className="object-cover grayscale-[0.08] transition duration-700 ease-out group-hover:scale-[1.025]"
           src={photo.imageUrl}
+          fill
+          priority
+          sizes="(min-width: 1024px) 50vw, 100vw"
         />
         <div className="pointer-events-none absolute inset-0 bg-[linear-gradient(180deg,rgba(255,255,255,0)_34%,rgba(255,255,255,0.22)_58%,rgba(255,255,255,0.96)_100%)]" />
         {isPendingLoser ? (
