@@ -37,12 +37,15 @@ type PendingVote = {
   loser: ComparisonPhoto
 }
 
-const pairKey = '/api/compare?photoType=face&gender=all'
 const photoLeaderboardKey = '/api/leaderboard/photos?limit=24&sort=rating'
 
 export default function VotingPage() {
   const { mutate: mutateGlobal } = useSWRConfig()
-  const { data: pair, error, isLoading, mutate } = useSWR<ComparisonPair>(pairKey)
+  const [pairKey] = useState(() => `/api/compare?photoType=face&gender=all&request=${Date.now()}-${Math.random().toString(36).slice(2)}`)
+  const { data: pair, error, isLoading, mutate } = useSWR<ComparisonPair>(pairKey, {
+    revalidateIfStale: false,
+    revalidateOnFocus: false,
+  })
   const visiblePair = pair ?? null
   const [pendingVote, setPendingVote] = useState<PendingVote | null>(null)
   const [transitionLoser, setTransitionLoser] = useState<{ id: string; side: 'left' | 'right' } | null>(null)
