@@ -26,8 +26,8 @@ export function AppShell({ children }: AppShellProps) {
   return (
     <div className={immersive ? 'min-h-screen bg-white' : 'min-h-screen bg-background'}>
       <header className="sticky top-0 z-40 bg-white/90 backdrop-blur-xl">
-        <div className="grid h-20 w-full grid-cols-[1fr_auto_1fr] items-center gap-4 px-5 sm:px-10">
-          <Link href="/" className="text-3xl font-semibold leading-none tracking-[-0.06em] text-black sm:text-4xl">
+        <div className="grid h-16 w-full grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-2 px-3 sm:h-20 sm:grid-cols-[1fr_auto_1fr] sm:gap-4 sm:px-10">
+          <Link href="/" className="text-xl font-semibold leading-none tracking-[-0.06em] text-black sm:text-4xl">
             Mogging
           </Link>
 
@@ -35,15 +35,15 @@ export function AppShell({ children }: AppShellProps) {
 
           <div className="flex justify-end">
             {status === 'loading' ? (
-              <div className="h-10 w-24 animate-pulse rounded-lg border border-zinc-200 bg-white" />
+              <div className="h-8 w-14 animate-pulse rounded-lg border border-zinc-200 bg-white sm:h-10 sm:w-24" />
             ) : session?.user ? (
               <Button
-                className="h-10 rounded-xl border border-zinc-300 bg-white px-3 text-sm font-medium text-black shadow-none hover:bg-zinc-50"
+                className="h-8 rounded-lg border border-zinc-300 bg-white px-2 text-xs font-medium text-black shadow-none hover:bg-zinc-50 sm:h-10 sm:rounded-xl sm:px-3 sm:text-sm"
                 variant="outline"
                 size="sm"
                 onClick={() => signOut({ callbackUrl: '/' })}
               >
-                <span className="grid size-6 place-items-center rounded-full bg-zinc-100 text-[11px] uppercase text-black/70">
+                <span className="grid size-5 place-items-center rounded-full bg-zinc-100 text-[10px] uppercase text-black/70 sm:size-6 sm:text-[11px]">
                   {session.user.name?.slice(0, 1) || session.user.email?.slice(0, 1) || 'U'}
                 </span>
                 <span className="hidden max-w-28 truncate sm:inline">
@@ -51,7 +51,7 @@ export function AppShell({ children }: AppShellProps) {
                 </span>
               </Button>
             ) : (
-              <Button className="h-10 rounded-xl border border-zinc-300 bg-white px-5 text-sm font-medium text-black shadow-none hover:bg-zinc-50" variant="outline" size="sm" onClick={() => setLoginOpen(true)}>
+              <Button className="h-8 rounded-lg border border-zinc-300 bg-white px-3 text-xs font-medium text-black shadow-none hover:bg-zinc-50 sm:h-10 sm:rounded-xl sm:px-5 sm:text-sm" variant="outline" size="sm" onClick={() => setLoginOpen(true)}>
                 Login
               </Button>
             )}

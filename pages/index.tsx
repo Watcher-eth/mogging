@@ -121,7 +121,7 @@ export default function VotingPage() {
   }
 
   return (
-    <section className="min-h-[calc(100vh-5rem)] bg-white px-5 py-14 text-black sm:px-10">
+    <section className="min-h-[calc(100vh-5rem)] bg-white px-5 py-7 text-black sm:px-10 sm:py-14">
       <style jsx global>{`
         @keyframes battle-enter {
           from {
@@ -229,13 +229,13 @@ export default function VotingPage() {
       {isLoading ? (
         <BattleState icon={<Loader2 className="size-5 animate-spin" aria-hidden="true" />} title="Loading matchup" />
       ) : visiblePair ? (
-        <main className="grid gap-12">
+        <main className="grid gap-7 sm:gap-12">
           <header
-            className="border-b border-zinc-200 pb-10"
+            className="border-b border-zinc-200 pb-5 sm:pb-10"
             style={{ animation: 'battle-enter 560ms cubic-bezier(0.22, 1, 0.36, 1) both' }}
           >
-            <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_auto] lg:items-end">
-              <h1 className="max-w-4xl text-5xl font-semibold leading-[0.94] tracking-[-0.07em] sm:text-6xl lg:text-7xl">
+            <div className="grid gap-3 sm:gap-6 lg:grid-cols-[minmax(0,1fr)_auto] lg:items-end">
+              <h1 className="max-w-4xl text-4xl font-semibold leading-[0.94] tracking-[-0.07em] sm:text-6xl lg:text-7xl">
                 Who mogs harder?
               </h1>
               <div className="font-mono text-xs uppercase tracking-[0.12em] text-zinc-500 lg:text-right">
@@ -370,11 +370,11 @@ function BattleCandidate({
 
 function BattleDivider() {
   return (
-    <div className="grid place-items-center border-y border-zinc-200 py-6 lg:border-x lg:border-y-0 lg:py-0">
-      <div className="grid justify-items-center gap-4">
-        <div className="h-16 w-px bg-zinc-200" />
-        <div className="font-mono text-xs uppercase tracking-[0.16em] text-zinc-500">VS</div>
-        <div className="h-16 w-px bg-zinc-200" />
+    <div className="grid place-items-center border-y border-zinc-200 py-3 lg:border-x lg:border-y-0 lg:py-0">
+      <div className="grid justify-items-center gap-2 lg:gap-4">
+        <div className="h-5 w-px bg-zinc-200 lg:h-16" />
+        <div className="font-mono text-[10px] uppercase tracking-[0.14em] text-zinc-500 lg:text-xs lg:tracking-[0.16em]">VS</div>
+        <div className="h-5 w-px bg-zinc-200 lg:h-16" />
       </div>
     </div>
   )
