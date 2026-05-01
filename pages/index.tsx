@@ -3,7 +3,7 @@ import Image from 'next/image'
 import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react'
 import useSWR, { useSWRConfig } from 'swr'
 import { toast } from 'sonner'
-import { apiPost, ApiClientError } from '@/lib/api/client'
+import { apiGet, apiPost, ApiClientError } from '@/lib/api/client'
 
 type ComparisonPhoto = {
   id: string
@@ -51,10 +51,9 @@ export default function VotingPage() {
   const [pendingVote, setPendingVote] = useState<PendingVote | null>(null)
   const [transitionLoser, setTransitionLoser] = useState<{ id: string; side: 'left' | 'right' } | null>(null)
   const pendingTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const nextPairRef = useRef<ComparisonPair | null>(null)
 
   const submitVote = useCallback(async (winner: ComparisonPhoto, loser: ComparisonPhoto) => {
-    const previousPair = pair
-
     try {
       await apiPost<VoteResponse>('/api/compare', {
         winnerPhotoId: winner.id,
@@ -63,27 +62,39 @@ export default function VotingPage() {
       toast.success(`Registered your vote for ${winner.name || `${winner.gender} face`}`)
       void mutateGlobal(photoLeaderboardKey)
       void mutateGlobal('/api/leaderboard/me')
-      await mutate()
     } catch (voteError) {
-      await mutate(previousPair, { revalidate: false })
       toast.error(voteError instanceof ApiClientError ? voteError.message : 'Unable to submit vote')
     }
-  }, [mutate, mutateGlobal, pair])
+  }, [mutateGlobal])
+
+  const prefetchNextPair = useCallback(async () => {
+    try {
+      nextPairRef.current = await apiGet<ComparisonPair>('/api/compare?photoType=face&gender=all')
+    } catch {
+      nextPairRef.current = null
+    }
+  }, [])
 
   useEffect(() => {
     if (!pendingVote) return
 
-    pendingTimerRef.current = setTimeout(() => {
-      setTransitionLoser({ id: pendingVote.loser.id, side: pendingVote.loserSide })
-      setPendingVote(null)
-      const committedVote = pendingVote
+    void prefetchNextPair()
 
-      setTimeout(() => {
-        void (async () => {
-          await submitVote(committedVote.winner, committedVote.loser)
-          setTransitionLoser(null)
-        })()
-      }, 560)
+    pendingTimerRef.current = setTimeout(() => {
+      const committedVote = pendingVote
+      const nextPair = nextPairRef.current
+
+      nextPairRef.current = null
+      setTransitionLoser(null)
+      setPendingVote(null)
+
+      if (nextPair) {
+        void mutate(nextPair, { revalidate: false })
+      } else {
+        void mutate()
+      }
+
+      void submitVote(committedVote.winner, committedVote.loser)
     }, 4_000)
 
     return () => {
@@ -92,7 +103,7 @@ export default function VotingPage() {
         pendingTimerRef.current = null
       }
     }
-  }, [pendingVote, submitVote])
+  }, [mutate, pendingVote, prefetchNextPair, submitVote])
 
   const queueVote = useCallback((winner: ComparisonPhoto, loser: ComparisonPhoto, loserSide: 'left' | 'right') => {
     setPendingVote({
@@ -121,6 +132,7 @@ export default function VotingPage() {
       clearTimeout(pendingTimerRef.current)
       pendingTimerRef.current = null
     }
+    nextPairRef.current = null
     setPendingVote(null)
   }
 

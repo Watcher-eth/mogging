@@ -249,14 +249,15 @@ function RankRow({ entry, index }: { entry: LeaderboardEntry; index: number }) {
     >
       <span className="font-mono text-sm text-zinc-500">{String(entry.rank).padStart(2, '0')}</span>
       <div className="flex min-w-0 items-center gap-3 sm:gap-4">
-        <Image
-          alt=""
-          className="shrink-0 rounded-full object-cover grayscale-[0.1] transition-transform duration-300 ease-out group-hover:scale-105"
-          src={entry.imageUrl || '/model.png'}
-          width={48}
-          height={48}
-          sizes="48px"
-        />
+        <span className="relative block size-12 shrink-0 overflow-hidden rounded-full bg-zinc-100">
+          <Image
+            alt=""
+            className="object-cover grayscale-[0.1] transition-transform duration-300 ease-out group-hover:scale-105"
+            src={entry.imageUrl || '/model.png'}
+            fill
+            sizes="48px"
+          />
+        </span>
         <div className="min-w-0">
           <h3 className="text-base font-semibold tracking-[-0.04em] sm:truncate">{entry.name || 'Anonymous'}</h3>
           <p className="mt-1 hidden truncate font-mono text-xs uppercase tracking-[0.1em] text-zinc-500 sm:block">
@@ -315,14 +316,15 @@ function CurrentUserRankBar({ entry }: { entry: LeaderboardEntry | null }) {
   return (
     <div className="fixed inset-x-5 bottom-5 z-40 mx-auto max-w-3xl border border-black bg-white px-4 py-3 text-black shadow-[0_18px_50px_rgba(15,23,42,0.12)] sm:bottom-6">
       <div className="grid grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-4">
-        <Image
-          alt=""
-          className="rounded-full object-cover grayscale-[0.1]"
-          src={entry.imageUrl || '/model.png'}
-          width={48}
-          height={48}
-          sizes="48px"
-        />
+        <span className="relative block size-12 shrink-0 overflow-hidden rounded-full bg-zinc-100">
+          <Image
+            alt=""
+            className="object-cover grayscale-[0.1]"
+            src={entry.imageUrl || '/model.png'}
+            fill
+            sizes="48px"
+          />
+        </span>
         <div className="min-w-0">
           <p className="font-mono text-[11px] uppercase tracking-[0.12em] text-zinc-500">Your rank</p>
           <h2 className="mt-1 truncate text-lg font-semibold tracking-[-0.04em]">{entry.name || 'Your photo'}</h2>
