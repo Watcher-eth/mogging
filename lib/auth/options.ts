@@ -39,6 +39,15 @@ const providers: NextAuthOptions['providers'] = [
               scope: 'public_profile,email',
             },
           },
+          profile(profile) {
+            const id = String(profile.id)
+            return {
+              id,
+              name: profile.name ?? null,
+              email: profile.email ?? `${id}@facebook.local`,
+              image: profile.picture?.data?.url ?? null,
+            }
+          },
         }),
       ]
     : []),
@@ -48,6 +57,22 @@ const providers: NextAuthOptions['providers'] = [
           clientId: xClientId,
           clientSecret: xClientSecret,
           version: '2.0',
+          profile(profile) {
+            const data = ('data' in profile ? profile.data : profile) as {
+              email?: string | null
+              id: string
+              name?: string | null
+              profile_image_url?: string | null
+              username?: string | null
+            }
+            const id = String(data.id)
+            return {
+              id,
+              name: data.name ?? data.username ?? null,
+              email: data.email ?? `${id}@x.local`,
+              image: data.profile_image_url ?? null,
+            }
+          },
         }),
       ]
     : []),
@@ -107,8 +132,8 @@ export const authOptions: NextAuthOptions = {
     },
   },
   pages: {
-    signIn: '/auth/login',
-    error: '/auth/login',
+    signIn: '/',
+    error: '/',
   },
   secret: env.NEXTAUTH_SECRET,
 }
