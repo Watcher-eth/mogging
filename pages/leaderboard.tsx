@@ -1,6 +1,6 @@
 import { useSession } from 'next-auth/react'
 import Image from 'next/image'
-import { useEffect, useMemo, useRef } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import useSWR from 'swr'
 import useSWRInfinite from 'swr/infinite'
 import { apiGet } from '@/lib/api/client'
@@ -38,10 +38,17 @@ const leaderboardPageSize = 15
 const podiumOrder = [1, 0, 2]
 const instagramLogoUrl = 'https://upload.wikimedia.org/wikipedia/commons/thumb/e/e7/Instagram_logo_2016.svg/3840px-Instagram_logo_2016.svg.png'
 const tiktokLogoUrl = 'https://cdn.simpleicons.org/tiktok/000000'
+const genderFilters = [
+  { label: 'Male', value: 'male' },
+  { label: 'Female', value: 'female' },
+  { label: 'All', value: 'all' },
+] as const
+type LeaderboardGender = (typeof genderFilters)[number]['value']
 
 export default function LeaderboardPage() {
   const { status } = useSession()
   const loadMoreRef = useRef<HTMLDivElement | null>(null)
+  const [gender, setGender] = useState<LeaderboardGender>('male')
   const {
     data: leaderboardPages,
     error: leaderboardError,
@@ -50,7 +57,7 @@ export default function LeaderboardPage() {
     size,
   } = useSWRInfinite<LeaderboardResponse>((pageIndex, previousPage) => {
     if (previousPage && previousPage.items.length === 0) return null
-    return `/api/leaderboard/photos?limit=${leaderboardPageSize}&page=${pageIndex + 1}&sort=rating`
+    return `/api/leaderboard/photos?limit=${leaderboardPageSize}&page=${pageIndex + 1}&sort=rating&gender=${gender}`
   }, apiGet, {
     revalidateOnFocus: true,
     revalidateFirstPage: false,
@@ -71,6 +78,10 @@ export default function LeaderboardPage() {
 
   const topThree = useMemo(() => entries.slice(0, 3), [entries])
   const rankedEntries = useMemo(() => entries.slice(3), [entries])
+
+  useEffect(() => {
+    void setSize(1)
+  }, [gender, setSize])
 
   useEffect(() => {
     const node = loadMoreRef.current
@@ -118,12 +129,30 @@ export default function LeaderboardPage() {
           className="border-b border-zinc-200 pb-10"
           style={{ animation: 'leaderboard-enter 560ms cubic-bezier(0.22, 1, 0.36, 1) both' }}
         >
-          <h1 className="max-w-4xl text-4xl font-semibold leading-[0.94] tracking-[-0.07em] sm:text-6xl lg:text-7xl">
-            Global Leaderboard
-          </h1>
+          <div className="flex flex-col gap-5 sm:flex-row sm:items-end sm:justify-between">
+            <h1 className="max-w-4xl text-4xl font-semibold leading-[0.94] tracking-[-0.07em] sm:text-6xl lg:text-7xl">
+              Global Leaderboard
+            </h1>
+            <div className="grid h-11 grid-cols-3 rounded-full border border-zinc-200 bg-zinc-50 p-1 sm:w-[260px]">
+              {genderFilters.map((filter) => (
+                <button
+                  key={filter.value}
+                  className={`rounded-full text-xs font-semibold transition-[background-color,color,box-shadow,transform] duration-300 ease-out ${
+                    gender === filter.value
+                      ? 'bg-white text-black shadow-[0_8px_22px_rgba(15,23,42,0.08)]'
+                      : 'text-zinc-500 hover:text-black'
+                  }`}
+                  onClick={() => setGender(filter.value)}
+                  type="button"
+                >
+                  {filter.label}
+                </button>
+              ))}
+            </div>
+          </div>
         </header>
 
-        <div className="grid gap-16">
+        <div key={gender} className="grid gap-16" style={{ animation: 'leaderboard-enter 420ms cubic-bezier(0.22, 1, 0.36, 1) both' }}>
           <section aria-label="Podium leaderboard entries" className="grid gap-6">
             <div className="grid min-h-[430px] grid-cols-1 items-end gap-6 sm:grid-cols-3">
               {podiumOrder.map((entryIndex) => {

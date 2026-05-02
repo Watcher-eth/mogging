@@ -13,6 +13,8 @@ export const anonymousProfileSchema = z.object({
     .transform((value) => value || null)
     .nullable()
     .optional(),
+  gender: z.enum(['male', 'female']).nullable().optional(),
+  age: z.coerce.number().int().min(13).max(120).nullable().optional(),
 })
 
 export type AnonymousProfileInput = z.infer<typeof anonymousProfileSchema>
@@ -34,6 +36,8 @@ export async function upsertAnonymousProfile(anonymousActorId: string, input: An
       image: storedAvatar?.imageUrl ?? null,
       name: data.name,
       social: data.social ?? null,
+      gender: data.gender ?? null,
+      age: data.age ?? null,
     })
     .onConflictDoUpdate({
       target: schema.anonymousProfiles.anonymousActorId,
@@ -41,6 +45,8 @@ export async function upsertAnonymousProfile(anonymousActorId: string, input: An
         ...(storedAvatar ? { image: storedAvatar.imageUrl } : null),
         name: data.name,
         social: data.social ?? null,
+        gender: data.gender ?? null,
+        age: data.age ?? null,
         updatedAt: new Date(),
       },
     })

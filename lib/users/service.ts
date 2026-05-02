@@ -22,6 +22,8 @@ export const updateUserProfileSchema = z.object({
     .transform((value) => normalizeSocialValue(value))
     .nullable()
     .optional(),
+  gender: z.enum(['male', 'female']).nullable().optional(),
+  age: z.coerce.number().int().min(13).max(120).nullable().optional(),
   state: z
     .string()
     .trim()
@@ -108,6 +110,8 @@ export async function updateUserProfile(userId: string, input: UpdateUserProfile
       ...(data.bio !== undefined ? { bio: data.bio } : null),
       ...(storedAvatar ? { image: storedAvatar.imageUrl } : null),
       ...(data.instagramUsername !== undefined ? { instagramUsername: data.instagramUsername || null } : null),
+      ...(data.gender !== undefined ? { gender: data.gender } : null),
+      ...(data.age !== undefined ? { age: data.age } : null),
       ...(data.state !== undefined ? { state: data.state } : null),
       profileCompleted: true,
       updatedAt: new Date(),
@@ -162,6 +166,8 @@ const publicUserQueryColumns = {
   name: true,
   image: true,
   instagramUsername: true,
+  gender: true,
+  age: true,
   bio: true,
   state: true,
   profileCompleted: true,
@@ -175,6 +181,8 @@ const publicUserReturningFields = {
   name: schema.users.name,
   image: schema.users.image,
   instagramUsername: schema.users.instagramUsername,
+  gender: schema.users.gender,
+  age: schema.users.age,
   bio: schema.users.bio,
   state: schema.users.state,
   profileCompleted: schema.users.profileCompleted,

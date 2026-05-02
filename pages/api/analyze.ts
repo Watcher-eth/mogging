@@ -1,10 +1,12 @@
 import type { NextApiRequest, NextApiResponse } from 'next'
+import { eq } from 'drizzle-orm'
 import { ApiError, handleApiError, json, methodNotAllowed, parseBody } from '@/lib/api/http'
 import { analyzeAndSave, analyzeAndSaveSchema } from '@/lib/analysis/analyze'
 import { getOrSetAnonymousActorId } from '@/lib/auth/anonymous'
 import { getAnonymousProfile } from '@/lib/auth/anonymousProfile'
 import { getAuthSession } from '@/lib/auth/session'
 import { enforceRateLimit } from '@/lib/api/rateLimit'
+import { db, schema } from '@/lib/db'
 import { env } from '@/lib/env'
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
@@ -20,10 +22,23 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     }
 
     const anonymousActorId = session?.user?.id ? null : getOrSetAnonymousActorId(req, res)
-    const anonymousProfile = anonymousActorId ? await getAnonymousProfile(anonymousActorId) : null
+    const [anonymousProfile, userProfile] = await Promise.all([
+      anonymousActorId ? getAnonymousProfile(anonymousActorId) : null,
+      session?.user?.id
+        ? db.query.users.findFirst({
+            where: eq(schema.users.id, session.user.id),
+            columns: {
+              gender: true,
+            },
+          })
+        : null,
+    ])
+    const profileGender = userProfile?.gender ?? anonymousProfile?.gender ?? null
+    const analysisGender = body.gender === 'other' && profileGender ? profileGender : body.gender
 
     const result = await analyzeAndSave({
       ...body,
+      gender: analysisGender,
       userId: session?.user?.id ?? null,
       anonymousActorId,
       name: body.name ?? anonymousProfile?.name ?? null,

@@ -30,6 +30,8 @@ type CurrentUserDashboard = {
     email?: string | null
     image: string | null
     instagramUsername: string | null
+    gender: 'male' | 'female' | null
+    age: number | null
     profileCompleted: boolean
   }
   recentAnalyses: Array<{
@@ -51,12 +53,16 @@ type AnonymousProfile = {
   name: string
   image: string | null
   social: string | null
+  gender: 'male' | 'female' | null
+  age: number | null
 }
 
 type ProfileDialogValues = {
   imageData?: string | null
   name: string
   social: string | null
+  gender: 'male' | 'female'
+  age: number | null
 }
 
 export function AppShell({ children }: AppShellProps) {
@@ -301,6 +307,8 @@ function EditProfileDialog({
     image: string | null
     name: string | null
     social: string | null
+    gender: 'male' | 'female' | null
+    age: number | null
   } | null
   onOpenChange: (open: boolean) => void
   onSaved: () => void
@@ -312,6 +320,8 @@ function EditProfileDialog({
   const [avatarDataUrl, setAvatarDataUrl] = useState<string | null>(null)
   const [displayName, setDisplayName] = useState('')
   const [socialLink, setSocialLink] = useState('')
+  const [gender, setGender] = useState<'male' | 'female'>('male')
+  const [age, setAge] = useState('')
   const [cameraOpen, setCameraOpen] = useState(false)
   const [saving, setSaving] = useState(false)
 
@@ -321,7 +331,19 @@ function EditProfileDialog({
     setAvatarDataUrl(null)
     setDisplayName(initialProfile?.name ?? dashboard?.user.name ?? '')
     setSocialLink(initialProfile?.social ?? dashboard?.user.instagramUsername ?? '')
-  }, [dashboard?.user.instagramUsername, dashboard?.user.name, initialProfile?.name, initialProfile?.social, open])
+    setGender(initialProfile?.gender ?? dashboard?.user.gender ?? 'male')
+    setAge(String(initialProfile?.age ?? dashboard?.user.age ?? ''))
+  }, [
+    dashboard?.user.age,
+    dashboard?.user.gender,
+    dashboard?.user.instagramUsername,
+    dashboard?.user.name,
+    initialProfile?.age,
+    initialProfile?.gender,
+    initialProfile?.name,
+    initialProfile?.social,
+    open,
+  ])
 
   async function handleAvatarFile(event: ChangeEvent<HTMLInputElement>) {
     const file = event.target.files?.[0]
@@ -341,10 +363,14 @@ function EditProfileDialog({
           ...(avatarDataUrl ? { imageData: avatarDataUrl } : null),
           name: displayName.trim(),
           social: socialLink.trim() || null,
+          gender,
+          age: age ? Number(age) : null,
         })
       } else {
         await apiPatch('/api/user/me', {
           ...(avatarDataUrl ? { imageData: avatarDataUrl } : null),
+          age: age ? Number(age) : null,
+          gender,
           instagramUsername: socialLink.trim() || null,
           name: displayName.trim(),
         })
@@ -360,6 +386,7 @@ function EditProfileDialog({
   }
 
   const avatarPreview = avatarDataUrl ?? initialProfile?.image ?? dashboard?.user.image ?? null
+  const ageOptions = Array.from({ length: 108 }, (_, index) => index + 13)
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -408,6 +435,42 @@ function EditProfileDialog({
               value={displayName}
             />
           </label>
+
+          <div className="relative grid grid-cols-2 gap-3">
+            <label className="grid gap-2">
+              <span className="font-mono text-[10px] uppercase tracking-[0.12em] text-zinc-500">Gender</span>
+              <div className="grid h-12 grid-cols-2 overflow-hidden rounded-2xl border border-zinc-200 bg-zinc-50 p-1">
+                {(['male', 'female'] as const).map((option) => (
+                  <button
+                    key={option}
+                    className={`rounded-[13px] text-sm font-semibold capitalize transition-[background-color,color,box-shadow] duration-200 ${
+                      gender === option ? 'bg-white text-black shadow-sm' : 'text-zinc-500 hover:text-black'
+                    }`}
+                    onClick={() => setGender(option)}
+                    type="button"
+                  >
+                    {option}
+                  </button>
+                ))}
+              </div>
+            </label>
+
+            <label className="grid gap-2">
+              <span className="font-mono text-[10px] uppercase tracking-[0.12em] text-zinc-500">Age</span>
+              <select
+                className="h-12 rounded-2xl border border-zinc-200 bg-white px-4 text-sm font-medium text-black outline-none transition-colors focus:border-black"
+                onChange={(event) => setAge(event.target.value)}
+                value={age}
+              >
+                <option value="">Age</option>
+                {ageOptions.map((option) => (
+                  <option key={option} value={option}>
+                    {option}
+                  </option>
+                ))}
+              </select>
+            </label>
+          </div>
 
           <label className="relative grid gap-2">
             <span className="font-mono text-[10px] uppercase tracking-[0.12em] text-zinc-500">Social link</span>
@@ -482,13 +545,19 @@ function AnonymousProfileDialog({
     <EditProfileDialog
       dashboard={null}
       description="Set the name, image, and social link people will see on rankings."
-      initialProfile={profile ? { image: profile.image, name: profile.name, social: profile.social } : null}
+      initialProfile={
+        profile
+          ? { age: profile.age, gender: profile.gender, image: profile.image, name: profile.name, social: profile.social }
+          : null
+      }
       open={open}
       onOpenChange={onOpenChange}
       onSaved={onSaved}
       onSaveProfile={(values) =>
         apiPatch('/api/auth/anonymous-profile', {
           ...(values.imageData ? { imageData: values.imageData } : null),
+          age: values.age,
+          gender: values.gender,
           name: values.name,
           social: values.social,
         })

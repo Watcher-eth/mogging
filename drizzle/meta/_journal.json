@@ -36,6 +36,13 @@
       "when": 1777710000000,
       "tag": "0005_anonymous_profiles",
       "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1777713600000,
+      "tag": "0006_profile_gender_age",
+      "breakpoints": true
     }
   ]
 }
