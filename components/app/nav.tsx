@@ -1,4 +1,5 @@
 import Link from 'next/link'
+import { motion } from 'motion/react'
 import { useRouter } from 'next/router'
 import { cn } from '@/lib/utils'
 
@@ -28,13 +29,19 @@ export function AppNav() {
             )}
           >
             <span>{item.label}</span>
-            <span
-              className={cn(
-                'absolute inset-x-0 bottom-0.5 mx-auto h-0.5 w-5 origin-center scale-x-0 rounded-full border border-zinc-300 bg-zinc-200 shadow-[inset_0_1px_0_rgba(255,255,255,0.85)] transition-transform duration-200 ease-out group-hover:scale-x-100 sm:h-1 sm:w-7',
-                active && 'scale-x-100'
-              )}
-              aria-hidden="true"
-            />
+            {active ? (
+              <motion.span
+                layoutId="app-nav-active-pill"
+                className="absolute inset-x-0 bottom-0.5 mx-auto h-0.5 w-5 rounded-full border border-zinc-300 bg-zinc-200 shadow-[inset_0_1px_0_rgba(255,255,255,0.85)] sm:h-1 sm:w-7"
+                transition={{ type: 'spring', stiffness: 420, damping: 34, mass: 0.7 }}
+                aria-hidden="true"
+              />
+            ) : (
+              <span
+                className="absolute inset-x-0 bottom-0.5 mx-auto h-0.5 w-5 origin-center scale-x-0 rounded-full border border-zinc-300 bg-zinc-200 shadow-[inset_0_1px_0_rgba(255,255,255,0.85)] transition-transform duration-200 ease-out group-hover:scale-x-100 sm:h-1 sm:w-7"
+                aria-hidden="true"
+              />
+            )}
           </Link>
         )
       })}

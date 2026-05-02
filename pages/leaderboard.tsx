@@ -1,3 +1,4 @@
+import { motion } from 'motion/react'
 import { useSession } from 'next-auth/react'
 import Image from 'next/image'
 import { useEffect, useMemo, useRef, useState } from 'react'
@@ -137,15 +138,20 @@ export default function LeaderboardPage() {
               {genderFilters.map((filter) => (
                 <button
                   key={filter.value}
-                  className={`rounded-full text-xs font-semibold transition-[background-color,color,box-shadow,transform] duration-300 ease-out ${
-                    gender === filter.value
-                      ? 'bg-white text-black shadow-[0_8px_22px_rgba(15,23,42,0.08)]'
-                      : 'text-zinc-500 hover:text-black'
+                  className={`relative isolate overflow-hidden rounded-full text-xs font-semibold transition-colors duration-200 ease-out ${
+                    gender === filter.value ? 'text-black' : 'text-zinc-500 hover:text-black'
                   }`}
                   onClick={() => setGender(filter.value)}
                   type="button"
                 >
-                  {filter.label}
+                  {gender === filter.value ? (
+                    <motion.span
+                      layoutId="leaderboard-gender-pill"
+                      className="absolute inset-0 -z-10 rounded-full bg-white shadow-[0_8px_22px_rgba(15,23,42,0.08)]"
+                      transition={{ type: 'spring', stiffness: 420, damping: 34, mass: 0.7 }}
+                    />
+                  ) : null}
+                  <span className="relative z-10">{filter.label}</span>
                 </button>
               ))}
             </div>

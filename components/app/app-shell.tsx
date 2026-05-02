@@ -1,5 +1,6 @@
 import Link from 'next/link'
 import Image from 'next/image'
+import { motion } from 'motion/react'
 import { useEffect, useRef, useState, type ChangeEvent } from 'react'
 import type { ReactNode } from 'react'
 import { getProviders, useSession, signIn, signOut } from 'next-auth/react'
@@ -144,7 +145,7 @@ export function AppShell({ children }: AppShellProps) {
     <div className={immersive ? 'min-h-screen bg-white' : 'min-h-screen bg-background'}>
       <header className="sticky top-0 z-40 bg-white/90 backdrop-blur-xl">
         <div className="grid h-16 w-full grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-2 px-3 sm:h-20 sm:grid-cols-[1fr_auto_1fr] sm:gap-4 sm:px-10">
-          <Link href="/" className="text-xl font-semibold leading-none tracking-[-0.06em] text-black sm:text-4xl">
+          <Link href="/" className="text-xl font-semibold leading-none tracking-[-0.06em] text-black transition-transform duration-200 ease-out hover:scale-[1.015] active:scale-[0.995] sm:text-4xl">
             Mogging
           </Link>
 
@@ -443,13 +444,20 @@ function EditProfileDialog({
                 {(['male', 'female'] as const).map((option) => (
                   <button
                     key={option}
-                    className={`rounded-[13px] text-sm font-semibold capitalize transition-[background-color,color,box-shadow] duration-200 ${
-                      gender === option ? 'bg-white text-black shadow-sm' : 'text-zinc-500 hover:text-black'
+                    className={`relative isolate overflow-hidden rounded-[13px] text-sm font-semibold capitalize transition-colors duration-200 ${
+                      gender === option ? 'text-black' : 'text-zinc-500 hover:text-black'
                     }`}
                     onClick={() => setGender(option)}
                     type="button"
                   >
-                    {option}
+                    {gender === option ? (
+                      <motion.span
+                        layoutId="profile-gender-pill"
+                        className="absolute inset-0 -z-10 rounded-[13px] bg-white shadow-sm"
+                        transition={{ type: 'spring', stiffness: 420, damping: 34, mass: 0.7 }}
+                      />
+                    ) : null}
+                    <span className="relative z-10">{option}</span>
                   </button>
                 ))}
               </div>
