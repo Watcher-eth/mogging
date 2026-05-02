@@ -2,9 +2,9 @@ import Link from 'next/link'
 import Image from 'next/image'
 import { useEffect, useRef, useState, type ChangeEvent } from 'react'
 import type { ReactNode } from 'react'
-import { useSession, signIn, signOut } from 'next-auth/react'
+import { getProviders, useSession, signIn, signOut } from 'next-auth/react'
 import { useRouter } from 'next/router'
-import { ChevronDown, FileText, Loader2, LogOut, Pencil } from 'lucide-react'
+import { ChevronDown, FileText, Loader2, LogOut, Pencil, Plus } from 'lucide-react'
 import useSWR from 'swr'
 import { AppNav } from '@/components/app/nav'
 import { CameraSheet } from '@/components/analysis/camera-sheet'
@@ -38,6 +38,27 @@ type CurrentUserDashboard = {
   }>
 }
 
+type AppConfig = {
+  features: {
+    authRequired: boolean
+    paidAnalysisRequired: boolean
+  }
+}
+
+type AnonymousProfile = {
+  id: string
+  anonymousActorId: string
+  name: string
+  image: string | null
+  social: string | null
+}
+
+type ProfileDialogValues = {
+  imageData?: string | null
+  name: string
+  social: string | null
+}
+
 export function AppShell({ children }: AppShellProps) {
   const { data: session, status } = useSession()
   const router = useRouter()
@@ -45,6 +66,7 @@ export function AppShell({ children }: AppShellProps) {
   const [loginOpen, setLoginOpen] = useState(false)
   const [accountOpen, setAccountOpen] = useState(false)
   const [editOpen, setEditOpen] = useState(false)
+  const [anonymousProfileOpen, setAnonymousProfileOpen] = useState(false)
   const [profileSetupOpen, setProfileSetupOpen] = useState(false)
   const [analysisLoading, setAnalysisLoading] = useState(false)
   const dismissedProfileSetupRef = useRef(false)
@@ -54,6 +76,17 @@ export function AppShell({ children }: AppShellProps) {
     apiGet,
     {
       revalidateOnFocus: true,
+      shouldRetryOnError: false,
+    }
+  )
+  const { data: appConfig } = useSWR<AppConfig>('/api/app-config', apiGet, {
+    shouldRetryOnError: false,
+  })
+  const authRequired = appConfig?.features.authRequired ?? false
+  const { data: anonymousProfileData, mutate: mutateAnonymousProfile } = useSWR<{ profile: AnonymousProfile | null }>(
+    status === 'unauthenticated' && !authRequired ? '/api/auth/anonymous-profile' : null,
+    apiGet,
+    {
       shouldRetryOnError: false,
     }
   )
@@ -170,9 +203,22 @@ export function AppShell({ children }: AppShellProps) {
                 ) : null}
               </div>
             ) : (
-              <Button className="h-8 rounded-lg border border-zinc-300 bg-white px-3 text-xs font-medium text-black shadow-none hover:bg-zinc-50 sm:h-10 sm:rounded-xl sm:px-5 sm:text-sm" variant="outline" size="sm" onClick={() => setLoginOpen(true)}>
-                Login
-              </Button>
+              <div className="flex items-center gap-2">
+                {!authRequired ? (
+                  <Button
+                    className="size-8 rounded-lg border border-zinc-300 bg-white p-0 text-black shadow-none hover:bg-zinc-50 sm:size-10 sm:rounded-xl"
+                    variant="outline"
+                    size="icon"
+                    onClick={() => setAnonymousProfileOpen(true)}
+                    aria-label="Set anonymous profile"
+                  >
+                    <Plus className="size-4" aria-hidden="true" />
+                  </Button>
+                ) : null}
+                <Button className="h-8 rounded-lg border border-zinc-300 bg-white px-3 text-xs font-medium text-black shadow-none hover:bg-zinc-50 sm:h-10 sm:rounded-xl sm:px-5 sm:text-sm" variant="outline" size="sm" onClick={() => setLoginOpen(true)}>
+                  Login
+                </Button>
+              </div>
             )}
           </div>
         </div>
@@ -192,6 +238,12 @@ export function AppShell({ children }: AppShellProps) {
         open={editOpen}
         onOpenChange={setEditOpen}
         onSaved={() => mutateDashboard()}
+      />
+      <AnonymousProfileDialog
+        open={anonymousProfileOpen}
+        onOpenChange={setAnonymousProfileOpen}
+        profile={anonymousProfileData?.profile ?? null}
+        onSaved={() => mutateAnonymousProfile()}
       />
       <ProfileSetupDialog
         dashboard={dashboard ?? null}
@@ -236,15 +288,23 @@ function AccountMenuButton({
 function EditProfileDialog({
   dashboard,
   description = 'Update the name, image, and social link shown around the app.',
+  initialProfile,
   onOpenChange,
   onSaved,
+  onSaveProfile,
   open,
   title = 'Edit profile.',
 }: {
   dashboard: CurrentUserDashboard | null
   description?: string
+  initialProfile?: {
+    image: string | null
+    name: string | null
+    social: string | null
+  } | null
   onOpenChange: (open: boolean) => void
   onSaved: () => void
+  onSaveProfile?: (values: ProfileDialogValues) => Promise<void>
   open: boolean
   title?: string
 }) {
@@ -259,9 +319,9 @@ function EditProfileDialog({
     if (!open) return
 
     setAvatarDataUrl(null)
-    setDisplayName(dashboard?.user.name ?? '')
-    setSocialLink(dashboard?.user.instagramUsername ?? '')
-  }, [dashboard?.user.instagramUsername, dashboard?.user.name, open])
+    setDisplayName(initialProfile?.name ?? dashboard?.user.name ?? '')
+    setSocialLink(initialProfile?.social ?? dashboard?.user.instagramUsername ?? '')
+  }, [dashboard?.user.instagramUsername, dashboard?.user.name, initialProfile?.name, initialProfile?.social, open])
 
   async function handleAvatarFile(event: ChangeEvent<HTMLInputElement>) {
     const file = event.target.files?.[0]
@@ -276,11 +336,19 @@ function EditProfileDialog({
 
     setSaving(true)
     try {
-      await apiPatch('/api/user/me', {
-        ...(avatarDataUrl ? { imageData: avatarDataUrl } : null),
-        instagramUsername: socialLink.trim() || null,
-        name: displayName.trim(),
-      })
+      if (onSaveProfile) {
+        await onSaveProfile({
+          ...(avatarDataUrl ? { imageData: avatarDataUrl } : null),
+          name: displayName.trim(),
+          social: socialLink.trim() || null,
+        })
+      } else {
+        await apiPatch('/api/user/me', {
+          ...(avatarDataUrl ? { imageData: avatarDataUrl } : null),
+          instagramUsername: socialLink.trim() || null,
+          name: displayName.trim(),
+        })
+      }
       await onSaved()
       toast.success('Profile updated')
       onOpenChange(false)
@@ -291,7 +359,7 @@ function EditProfileDialog({
     }
   }
 
-  const avatarPreview = avatarDataUrl ?? dashboard?.user.image ?? null
+  const avatarPreview = avatarDataUrl ?? initialProfile?.image ?? dashboard?.user.image ?? null
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -399,6 +467,37 @@ function ProfileSetupDialog({
   )
 }
 
+function AnonymousProfileDialog({
+  onOpenChange,
+  onSaved,
+  open,
+  profile,
+}: {
+  onOpenChange: (open: boolean) => void
+  onSaved: () => void
+  open: boolean
+  profile: AnonymousProfile | null
+}) {
+  return (
+    <EditProfileDialog
+      dashboard={null}
+      description="Set the name, image, and social link people will see on rankings."
+      initialProfile={profile ? { image: profile.image, name: profile.name, social: profile.social } : null}
+      open={open}
+      onOpenChange={onOpenChange}
+      onSaved={onSaved}
+      onSaveProfile={(values) =>
+        apiPatch('/api/auth/anonymous-profile', {
+          ...(values.imageData ? { imageData: values.imageData } : null),
+          name: values.name,
+          social: values.social,
+        })
+      }
+      title="Set your profile."
+    />
+  )
+}
+
 export function LoginDialog({
   callbackUrl,
   onOpenChange,
@@ -408,6 +507,7 @@ export function LoginDialog({
   onOpenChange: (open: boolean) => void
   open: boolean
 }) {
+  const [availableProviders, setAvailableProviders] = useState<Set<string> | null>(null)
   const modelImages = [
     '/model.png',
     '/model2.png',
@@ -425,9 +525,53 @@ export function LoginDialog({
     '/model14.png',
   ]
 
+  useEffect(() => {
+    if (!open) return
+
+    let cancelled = false
+
+    getProviders().then((providers) => {
+      if (cancelled) return
+      setAvailableProviders(new Set(Object.keys(providers ?? {})))
+    })
+
+    return () => {
+      cancelled = true
+    }
+  }, [open])
+
   function continueWithGoogle() {
     void signIn('google', { callbackUrl })
   }
+
+  function continueWithMeta() {
+    void signIn('facebook', { callbackUrl })
+  }
+
+  function continueWithX() {
+    void signIn('twitter', { callbackUrl })
+  }
+
+  const authButtons = [
+    {
+      id: 'google',
+      label: 'Continue with Google',
+      onClick: continueWithGoogle,
+      mark: <GoogleMark />,
+    },
+    {
+      id: 'facebook',
+      label: 'Continue with Meta',
+      onClick: continueWithMeta,
+      mark: <MetaMark />,
+    },
+    {
+      id: 'twitter',
+      label: 'Continue with X',
+      onClick: continueWithX,
+      mark: <XMark />,
+    },
+  ].filter((button) => availableProviders === null || availableProviders.has(button.id))
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -480,14 +624,19 @@ export function LoginDialog({
             </DialogHeader>
           </div>
 
-          <button
-            className="relative flex h-14 w-full items-center justify-center gap-4 rounded-full border border-zinc-200 bg-white px-5 text-base font-semibold text-black shadow-[0_14px_38px_rgba(15,23,42,0.08)] transition-[transform,box-shadow] duration-200 ease-out hover:-translate-y-0.5 hover:shadow-[0_18px_46px_rgba(15,23,42,0.11)] active:translate-y-0"
-            onClick={continueWithGoogle}
-            type="button"
-          >
-            <GoogleMark />
-            Continue with Google
-          </button>
+          <div className="grid gap-2">
+            {authButtons.map((button) => (
+              <button
+                key={button.id}
+                className="relative flex h-14 w-full items-center justify-center gap-4 rounded-full border border-zinc-200 bg-white px-5 text-base font-semibold text-black shadow-[0_14px_38px_rgba(15,23,42,0.08)] transition-[transform,box-shadow] duration-200 ease-out hover:-translate-y-0.5 hover:shadow-[0_18px_46px_rgba(15,23,42,0.11)] active:translate-y-0"
+                onClick={button.onClick}
+                type="button"
+              >
+                {button.mark}
+                {button.label}
+              </button>
+            ))}
+          </div>
         </div>
       </DialogContent>
     </Dialog>
@@ -535,6 +684,22 @@ function GoogleMark() {
       <path fill="#34A853" d="M12 22c2.7 0 4.97-.9 6.62-2.45l-3.24-2.51c-.9.6-2.04.96-3.38.96-2.6 0-4.81-1.76-5.6-4.12H3.06v2.59A10 10 0 0 0 12 22Z" />
       <path fill="#FBBC05" d="M6.4 13.88a6.02 6.02 0 0 1 0-3.76V7.53H3.06a10 10 0 0 0 0 8.94l3.34-2.59Z" />
       <path fill="#EA4335" d="M12 5.98c1.47 0 2.8.51 3.84 1.5l2.87-2.88C16.97 2.98 14.7 2 12 2a10 10 0 0 0-8.94 5.53l3.34 2.59C7.19 7.74 9.4 5.98 12 5.98Z" />
+    </svg>
+  )
+}
+
+function MetaMark() {
+  return (
+    <svg className="size-6" viewBox="0 0 24 24" aria-hidden="true">
+      <path fill="#0866FF" d="M22 12.06C22 6.5 17.52 2 12 2S2 6.5 2 12.06c0 5.02 3.66 9.18 8.44 9.94v-7.03H7.9v-2.9h2.54V9.84c0-2.52 1.5-3.92 3.77-3.92 1.1 0 2.24.2 2.24.2v2.48H15.2c-1.24 0-1.63.78-1.63 1.57v1.89h2.78l-.44 2.9h-2.34V22C18.34 21.24 22 17.08 22 12.06Z" />
+    </svg>
+  )
+}
+
+function XMark() {
+  return (
+    <svg className="size-5" viewBox="0 0 24 24" aria-hidden="true">
+      <path fill="currentColor" d="M18.9 2h3.4l-7.43 8.49L23.6 22h-6.84l-5.36-7.01L5.27 22H1.87l7.94-9.08L1.45 2h7.02l4.84 6.4L18.9 2Zm-1.2 17.98h1.88L7.45 3.92H5.43L17.7 19.98Z" />
     </svg>
   )
 }

@@ -11,6 +11,12 @@ type LoginPageProps = {
   providers: Record<LiteralUnion<BuiltInProviderType, string>, ClientSafeProvider> | null
 }
 
+const oauthProviders = [
+  { id: 'google', label: 'Continue with Google' },
+  { id: 'facebook', label: 'Continue with Meta' },
+  { id: 'twitter', label: 'Continue with X' },
+] as const
+
 export default function LoginPage({ providers }: LoginPageProps) {
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
@@ -71,16 +77,20 @@ export default function LoginPage({ providers }: LoginPageProps) {
         </Button>
       </form>
 
-      {providers?.google ? (
-        <Button
-          className="mt-3"
-          variant="outline"
-          onClick={() => signIn('google', { callbackUrl: '/' })}
-          type="button"
-        >
-          Continue with Google
-        </Button>
-      ) : null}
+      <div className="mt-3 grid gap-2">
+        {oauthProviders.map((provider) =>
+          providers?.[provider.id] ? (
+            <Button
+              key={provider.id}
+              variant="outline"
+              onClick={() => signIn(provider.id, { callbackUrl: '/' })}
+              type="button"
+            >
+              {provider.label}
+            </Button>
+          ) : null
+        )}
+      </div>
 
       <p className="mt-6 text-center text-sm text-muted-foreground">
         No account?{' '}

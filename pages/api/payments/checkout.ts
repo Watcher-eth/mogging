@@ -12,6 +12,10 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   if (req.method !== 'POST') return methodNotAllowed(res, ['POST'])
 
   try {
+    if (!env.PAID_ANALYSIS_REQUIRED) {
+      throw new ApiError(400, 'Payment is not required for analysis')
+    }
+
     if (!env.STRIPE_SECRET_KEY) {
       throw new ApiError(503, 'Payments are not configured')
     }

@@ -1,8 +1,11 @@
 import type { NextApiRequest, NextApiResponse } from 'next'
 import { ApiError, handleApiError, json, methodNotAllowed, parseBody } from '@/lib/api/http'
 import { analyzeAndSave, analyzeAndSaveSchema } from '@/lib/analysis/analyze'
+import { getOrSetAnonymousActorId } from '@/lib/auth/anonymous'
+import { getAnonymousProfile } from '@/lib/auth/anonymousProfile'
 import { getAuthSession } from '@/lib/auth/session'
 import { enforceRateLimit } from '@/lib/api/rateLimit'
+import { env } from '@/lib/env'
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   if (req.method !== 'POST') return methodNotAllowed(res, ['POST'])
@@ -12,14 +15,19 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     const sessionPromise = getAuthSession(req, res)
     const body = parseBody(analyzeAndSaveSchema, req.body)
     const session = await sessionPromise
-    if (!session?.user?.id) {
+    if (env.AUTH_REQUIRED && !session?.user?.id) {
       throw new ApiError(401, 'Authentication required')
     }
 
+    const anonymousActorId = session?.user?.id ? null : getOrSetAnonymousActorId(req, res)
+    const anonymousProfile = anonymousActorId ? await getAnonymousProfile(anonymousActorId) : null
+
     const result = await analyzeAndSave({
       ...body,
-      userId: session.user.id,
-      anonymousActorId: null,
+      userId: session?.user?.id ?? null,
+      anonymousActorId,
+      name: body.name ?? anonymousProfile?.name ?? null,
+      caption: body.caption ?? anonymousProfile?.social ?? null,
     })
 
     return json(res, result.deduped ? 200 : 201, result)

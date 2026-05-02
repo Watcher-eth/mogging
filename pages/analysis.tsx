@@ -18,10 +18,12 @@ import Image from 'next/image'
 import { useRouter } from 'next/router'
 import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties, type ChangeEvent, type ReactNode } from 'react'
 import { toast } from 'sonner'
+import useSWR from 'swr'
 import { apiGet, apiPost, ApiClientError } from '@/lib/api/client'
 import {
   clearAnalysisDraft,
   loadAnalysisDraft,
+  saveAnalysisDraft,
   type AnalysisDraftImage,
 } from '@/lib/client/analysisDraft'
 import { extractFaceLandmarksFromDataUrl } from '@/lib/client/faceLandmarks'
@@ -116,6 +118,17 @@ type PhotoPrivacyResponse = {
     id: string
     isPublic: boolean
   }
+}
+
+type AppConfig = {
+  features: {
+    authRequired: boolean
+    paidAnalysisRequired: boolean
+  }
+}
+
+type CheckoutResponse = {
+  url: string
 }
 
 const pseudoAnalysisItems = [
@@ -341,13 +354,14 @@ const reportOverlayCategoryYOffset: Record<string, number> = {
   mouth: -15,
 }
 
-function wait(ms: number) {
-  return new Promise((resolve) => setTimeout(resolve, ms))
-}
-
 export default function AnalysisPage() {
   const router = useRouter()
   const { status } = useSession()
+  const { data: appConfig } = useSWR<AppConfig>('/api/app-config', apiGet, {
+    shouldRetryOnError: false,
+  })
+  const authRequired = appConfig?.features.authRequired ?? false
+  const paidAnalysisRequired = appConfig?.features.paidAnalysisRequired ?? false
   const uploadInputRef = useRef<HTMLInputElement | null>(null)
   const [images, setImages] = useState<AnalysisDraftImage[]>([])
   const [selectedImageId, setSelectedImageId] = useState<string | null>(null)
@@ -400,20 +414,24 @@ export default function AnalysisPage() {
 
   async function startPseudoAnalysis() {
     if (!canStart) return
-    if (status !== 'authenticated') {
+    if (authRequired && status !== 'authenticated') {
       setLoginOpen(true)
       return
     }
 
     setError(null)
-    setAnalysisUnlocked(false)
+    setAnalysisUnlocked(!paidAnalysisRequired)
     setPaymentDialogOpen(false)
     setProgress(18)
     setStep('actual-analysis')
+
+    if (!paidAnalysisRequired) {
+      void runActualAnalysis()
+    }
   }
 
   function beginAssessment() {
-    if (status !== 'authenticated') {
+    if (authRequired && status !== 'authenticated') {
       setLoginOpen(true)
       return
     }
@@ -422,23 +440,37 @@ export default function AnalysisPage() {
   }
 
   async function startCheckout() {
-    if (status !== 'authenticated') {
+    if (authRequired && status !== 'authenticated') {
       setLoginOpen(true)
+      return
+    }
+
+    if (!paidAnalysisRequired) {
+      setAnalysisUnlocked(true)
+      setPaymentDialogOpen(false)
+      setStep('actual-analysis')
+      setProgress(30)
+      void runActualAnalysis()
       return
     }
 
     setCheckoutLoading(true)
     setError(null)
 
-    await wait(320)
-
-    setCheckoutLoading(false)
-    setAnalysisUnlocked(true)
-    setPaymentDialogOpen(false)
-    setStep('actual-analysis')
-    setProgress(30)
-
-    void runActualAnalysis()
+    try {
+      await saveAnalysisDraft({
+        gender,
+        images,
+        savedAt: Date.now(),
+      })
+      const response = await apiPost<CheckoutResponse>('/api/payments/checkout', {
+        imageCount: images.length,
+      })
+      window.location.href = response.url
+    } catch (checkoutError) {
+      setError(checkoutError instanceof ApiClientError ? checkoutError.message : 'Unable to open checkout')
+      setCheckoutLoading(false)
+    }
   }
 
   async function runActualAnalysis(draftImages = images) {
@@ -555,13 +587,13 @@ export default function AnalysisPage() {
   }, [resumeAfterPayment, router.isReady, router.query.checkout, router.query.session_id])
 
   useEffect(() => {
-    if (router.isReady && router.query.checkout === 'cancelled') {
+    if (paidAnalysisRequired && router.isReady && router.query.checkout === 'cancelled') {
       setStep('actual-analysis')
       setAnalysisUnlocked(false)
       setPaymentDialogOpen(true)
       setError('Payment was cancelled. Your uploaded images are still ready.')
     }
-  }, [router.isReady, router.query.checkout])
+  }, [paidAnalysisRequired, router.isReady, router.query.checkout])
 
   useEffect(() => {
     if (!router.isReady) return
@@ -712,7 +744,9 @@ export default function AnalysisPage() {
                 progress={progress}
                 onCheckout={startCheckout}
                 onPaymentDialogChange={setPaymentDialogOpen}
-                onPaymentRequired={() => setPaymentDialogOpen(true)}
+                onPaymentRequired={() => {
+                  if (paidAnalysisRequired) setPaymentDialogOpen(true)
+                }}
               />
             </ScreenMotion>
           ) : null}
@@ -729,7 +763,9 @@ export default function AnalysisPage() {
                 progress={progress}
                 onCheckout={startCheckout}
                 onPaymentDialogChange={setPaymentDialogOpen}
-                onPaymentRequired={() => setPaymentDialogOpen(true)}
+                onPaymentRequired={() => {
+                  if (paidAnalysisRequired) setPaymentDialogOpen(true)
+                }}
               />
             </ScreenMotion>
           ) : null}
@@ -746,7 +782,9 @@ export default function AnalysisPage() {
                 progress={progress}
                 onCheckout={startCheckout}
                 onPaymentDialogChange={setPaymentDialogOpen}
-                onPaymentRequired={() => setPaymentDialogOpen(true)}
+                onPaymentRequired={() => {
+                  if (paidAnalysisRequired) setPaymentDialogOpen(true)
+                }}
               />
             </ScreenMotion>
           ) : null}

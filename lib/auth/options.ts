@@ -2,7 +2,9 @@ import { DrizzleAdapter } from '@auth/drizzle-adapter'
 import { eq } from 'drizzle-orm'
 import type { NextAuthOptions } from 'next-auth'
 import CredentialsProvider from 'next-auth/providers/credentials'
+import FacebookProvider from 'next-auth/providers/facebook'
 import GoogleProvider from 'next-auth/providers/google'
+import TwitterProvider from 'next-auth/providers/twitter'
 import { z } from 'zod'
 import { db, schema } from '@/lib/db'
 import { env } from '@/lib/env'
@@ -13,12 +15,39 @@ const credentialSchema = z.object({
   password: z.string().min(1),
 })
 
+const metaClientId = env.META_CLIENT_ID || env.FACEBOOK_CLIENT_ID
+const metaClientSecret = env.META_CLIENT_SECRET || env.FACEBOOK_CLIENT_SECRET
+const xClientId = env.X_CLIENT_ID || env.TWITTER_CLIENT_ID
+const xClientSecret = env.X_CLIENT_SECRET || env.TWITTER_CLIENT_SECRET
+
 const providers: NextAuthOptions['providers'] = [
   ...(env.GOOGLE_CLIENT_ID && env.GOOGLE_CLIENT_SECRET
     ? [
         GoogleProvider({
           clientId: env.GOOGLE_CLIENT_ID,
           clientSecret: env.GOOGLE_CLIENT_SECRET,
+        }),
+      ]
+    : []),
+  ...(metaClientId && metaClientSecret
+    ? [
+        FacebookProvider({
+          clientId: metaClientId,
+          clientSecret: metaClientSecret,
+          authorization: {
+            params: {
+              scope: 'public_profile,email',
+            },
+          },
+        }),
+      ]
+    : []),
+  ...(xClientId && xClientSecret
+    ? [
+        TwitterProvider({
+          clientId: xClientId,
+          clientSecret: xClientSecret,
+          version: '2.0',
         }),
       ]
     : []),

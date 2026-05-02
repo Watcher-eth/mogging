@@ -96,6 +96,24 @@ export const verificationTokens = pgTable(
   })
 )
 
+export const anonymousProfiles = pgTable(
+  'anonymous_profiles',
+  {
+    id: text('id')
+      .primaryKey()
+      .$defaultFn(() => crypto.randomUUID()),
+    anonymousActorId: text('anonymous_actor_id').notNull(),
+    name: text('name').notNull(),
+    image: text('image'),
+    social: text('social'),
+    createdAt: timestamp('created_at', { mode: 'date' }).notNull().defaultNow(),
+    updatedAt: timestamp('updated_at', { mode: 'date' }).notNull().defaultNow(),
+  },
+  (table) => ({
+    anonymousActorIdx: uniqueIndex('anonymous_profiles_actor_unique').on(table.anonymousActorId),
+  })
+)
+
 export const personGroups = pgTable(
   'person_groups',
   {

@@ -17,7 +17,11 @@ Required for a working backend:
 
 Optional:
 
+- `AUTH_REQUIRED`: defaults to `false`. Set to `true` to require login before photo upload and analysis.
+- `PAID_ANALYSIS_REQUIRED`: defaults to `false`. Set to `true` to require Stripe checkout before the real analysis starts.
 - `GOOGLE_CLIENT_ID` and `GOOGLE_CLIENT_SECRET`: enable Google OAuth when both are present.
+- `META_CLIENT_ID` and `META_CLIENT_SECRET`: enable Meta/Facebook OAuth when both are present. `FACEBOOK_CLIENT_ID` and `FACEBOOK_CLIENT_SECRET` are also supported.
+- `X_CLIENT_ID` and `X_CLIENT_SECRET`: enable X OAuth when both are present. `TWITTER_CLIENT_ID` and `TWITTER_CLIENT_SECRET` are also supported.
 - `IMAGE_STORAGE_DIR` and `IMAGE_PUBLIC_BASE_URL`: default to local `public/uploads`.
 - `R2_ACCOUNT_ID`, `R2_BUCKET_NAME`, `R2_ACCESS_KEY_ID`, `R2_SECRET_ACCESS_KEY`, and `R2_PUBLIC_BASE_URL`: enable Cloudflare R2 image storage.
 - `UPSTASH_REDIS_REST_URL` and `UPSTASH_REDIS_REST_TOKEN`: enable durable shared rate limiting. Local dev falls back to memory.
