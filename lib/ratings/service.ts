@@ -1,6 +1,6 @@
 import { and, count, eq, ne, sql, type SQL } from 'drizzle-orm'
 import { z } from 'zod'
-import { ageBucketSchema, hairColorSchema } from '@/lib/appearance/types'
+import { ageBucketSchema, hairColorSchema, skinColorSchema } from '@/lib/appearance/types'
 import { db, schema } from '@/lib/db'
 import {
   conservativeScore,
@@ -15,6 +15,7 @@ export const pairSelectionSchema = z.object({
   ageBucket: ageBucketSchema.or(z.literal('all')).default('all'),
   gender: z.enum(['male', 'female', 'other', 'all']).default('all'),
   hairColor: hairColorSchema.or(z.literal('all')).default('all'),
+  skinColor: skinColorSchema.or(z.literal('all')).default('all'),
   photoType: z.enum(['face', 'body', 'outfit']).default('face'),
 })
 
@@ -44,6 +45,7 @@ export async function selectComparisonPair(input: PairSelectionInput) {
     eq(schema.photos.photoType, params.photoType),
     params.gender === 'all' ? undefined : eq(schema.photos.gender, params.gender),
     params.hairColor === 'all' ? undefined : eq(schema.photos.hairColor, params.hairColor),
+    params.skinColor === 'all' ? undefined : eq(schema.photos.skinColor, params.skinColor),
     params.ageBucket === 'all' ? undefined : ageBucketFilter(params.ageBucket),
   ].filter(Boolean) as SQL[]
 
@@ -216,6 +218,7 @@ const comparisonPhotoSelection = {
     gender: schema.photos.gender,
     age: schema.photos.age,
     hairColor: schema.photos.hairColor,
+    skinColor: schema.photos.skinColor,
     photoType: schema.photos.photoType,
     userId: schema.photos.userId,
   },
@@ -238,6 +241,7 @@ type ComparisonPhotoRow = {
     gender: 'male' | 'female' | 'other'
     age: number | null
     hairColor: string | null
+    skinColor: string | null
     photoType: 'face' | 'body' | 'outfit'
     userId: string | null
   }
@@ -260,6 +264,7 @@ function toComparisonPhoto(row: ComparisonPhotoRow) {
     gender: row.photo.gender,
     age: row.photo.age,
     hairColor: row.photo.hairColor,
+    skinColor: row.photo.skinColor,
     photoType: row.photo.photoType,
     userId: row.photo.userId,
     displayRating: row.rating?.displayRating ?? displayRating(initialSkillRating()),

@@ -1,6 +1,6 @@
 import { and, count, desc, eq, ilike, isNull, sql } from 'drizzle-orm'
 import { z } from 'zod'
-import { hairColorSchema } from '@/lib/appearance/types'
+import { hairColorSchema, skinColorSchema } from '@/lib/appearance/types'
 import { db, schema } from '@/lib/db'
 import { conservativeScore, displayRating, initialSkillRating } from '@/lib/ratings/trueskill'
 import { storeImageDataUrl } from '@/lib/storage/images'
@@ -26,6 +26,7 @@ export const updateUserProfileSchema = z.object({
   gender: z.enum(['male', 'female']).nullable().optional(),
   age: z.coerce.number().int().min(13).max(120).nullable().optional(),
   hairColor: hairColorSchema.nullable().optional(),
+  skinColor: skinColorSchema.nullable().optional(),
   state: z
     .string()
     .trim()
@@ -115,6 +116,7 @@ export async function updateUserProfile(userId: string, input: UpdateUserProfile
       ...(data.gender !== undefined ? { gender: data.gender } : null),
       ...(data.age !== undefined ? { age: data.age } : null),
       ...(data.hairColor !== undefined ? { hairColor: data.hairColor } : null),
+      ...(data.skinColor !== undefined ? { skinColor: data.skinColor } : null),
       ...(data.state !== undefined ? { state: data.state } : null),
       profileCompleted: true,
       updatedAt: new Date(),
@@ -172,6 +174,7 @@ const publicUserQueryColumns = {
   gender: true,
   age: true,
   hairColor: true,
+  skinColor: true,
   bio: true,
   state: true,
   profileCompleted: true,
@@ -188,6 +191,7 @@ const publicUserReturningFields = {
   gender: schema.users.gender,
   age: schema.users.age,
   hairColor: schema.users.hairColor,
+  skinColor: schema.users.skinColor,
   bio: schema.users.bio,
   state: schema.users.state,
   profileCompleted: schema.users.profileCompleted,

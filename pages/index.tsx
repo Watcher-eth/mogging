@@ -13,6 +13,7 @@ type ComparisonPhoto = {
   age: number | null
   gender: 'male' | 'female' | 'other'
   hairColor: string | null
+  skinColor: string | null
   photoType: 'face' | 'body' | 'outfit'
   userId: string | null
   displayRating: number
@@ -46,13 +47,15 @@ const decisionWindowMs = 4_500
 const ageFilters = ['all', '13-17', '18-24', '25-34', '35-44', '45+'] as const
 const genderFilters = ['all', 'male', 'female'] as const
 const hairColorFilters = ['all', 'black', 'brown', 'blond', 'red', 'gray', 'other'] as const
+const skinColorFilters = ['all', 'very_light', 'light', 'medium', 'tan', 'deep', 'very_deep'] as const
 
 export default function VotingPage() {
   const { mutate: mutateGlobal } = useSWRConfig()
   const [ageBucket, setAgeBucket] = useState<(typeof ageFilters)[number]>('all')
   const [gender, setGender] = useState<(typeof genderFilters)[number]>('all')
   const [hairColor, setHairColor] = useState<(typeof hairColorFilters)[number]>('all')
-  const pairKey = `/api/compare?photoType=face&gender=${gender}&ageBucket=${ageBucket}&hairColor=${hairColor}`
+  const [skinColor, setSkinColor] = useState<(typeof skinColorFilters)[number]>('all')
+  const pairKey = `/api/compare?photoType=face&gender=${gender}&ageBucket=${ageBucket}&hairColor=${hairColor}&skinColor=${skinColor}`
   const { data: pair, error, isLoading, mutate } = useSWR<ComparisonPair>(pairKey, {
     revalidateIfStale: false,
     revalidateOnFocus: false,
@@ -295,9 +298,11 @@ export default function VotingPage() {
               ageBucket={ageBucket}
               gender={gender}
               hairColor={hairColor}
+              skinColor={skinColor}
               onAgeBucketChange={setAgeBucket}
               onGenderChange={setGender}
               onHairColorChange={setHairColor}
+              onSkinColorChange={setSkinColor}
             />
           </header>
 
@@ -345,22 +350,27 @@ function BattleFilters({
   ageBucket,
   gender,
   hairColor,
+  skinColor,
   onAgeBucketChange,
   onGenderChange,
   onHairColorChange,
+  onSkinColorChange,
 }: {
   ageBucket: (typeof ageFilters)[number]
   gender: (typeof genderFilters)[number]
   hairColor: (typeof hairColorFilters)[number]
+  skinColor: (typeof skinColorFilters)[number]
   onAgeBucketChange: (value: (typeof ageFilters)[number]) => void
   onGenderChange: (value: (typeof genderFilters)[number]) => void
   onHairColorChange: (value: (typeof hairColorFilters)[number]) => void
+  onSkinColorChange: (value: (typeof skinColorFilters)[number]) => void
 }) {
   return (
     <div className="mt-6 flex flex-wrap gap-2">
       <FilterSelect label="Gender" value={gender} values={genderFilters} onChange={onGenderChange} />
       <FilterSelect label="Age" value={ageBucket} values={ageFilters} onChange={onAgeBucketChange} />
       <FilterSelect label="Hair" value={hairColor} values={hairColorFilters} onChange={onHairColorChange} />
+      <FilterSelect label="Skin" value={skinColor} values={skinColorFilters} onChange={onSkinColorChange} />
     </div>
   )
 }
@@ -386,12 +396,16 @@ function FilterSelect<TValue extends string>({
       >
         {values.map((option) => (
           <option key={option} value={option}>
-            {option}
+            {formatFilterOption(option)}
           </option>
         ))}
       </select>
     </label>
   )
+}
+
+function formatFilterOption(option: string) {
+  return option.replaceAll('_', ' ')
 }
 
 function DecisionTimer({

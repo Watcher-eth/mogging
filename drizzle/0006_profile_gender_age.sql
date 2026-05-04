@@ -6,7 +6,7 @@ ALTER TABLE "anonymous_profiles" ADD COLUMN IF NOT EXISTS "gender" "gender";
 --> statement-breakpoint
 ALTER TABLE "anonymous_profiles" ADD COLUMN IF NOT EXISTS "age" integer;
 --> statement-breakpoint
-UPDATE "photos" SET "name" = 'Naiomi', "updated_at" = now() WHERE "name" = 'Naiomo';
+UPDATE "photos" SET "name" = 'Naiomi', "updated_at" = now() WHERE "name" IN ('Naiomo', 'Naimo');
 --> statement-breakpoint
 UPDATE "photos"
 SET "gender" = 'female', "updated_at" = now()

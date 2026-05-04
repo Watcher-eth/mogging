@@ -24,6 +24,7 @@ type LeaderboardEntry = {
   age?: number | null
   gender?: string | null
   hairColor?: string | null
+  skinColor?: string | null
   displayRating?: number | null
   winCount?: number | null
   lossCount?: number | null
@@ -49,6 +50,7 @@ const genderFilters = [
 type LeaderboardGender = (typeof genderFilters)[number]['value']
 const leaderboardAgeFilters = ['all', '13-17', '18-24', '25-34', '35-44', '45+'] as const
 const leaderboardHairFilters = ['all', 'black', 'brown', 'blond', 'red', 'gray', 'other'] as const
+const leaderboardSkinFilters = ['all', 'very_light', 'light', 'medium', 'tan', 'deep', 'very_deep'] as const
 
 export default function LeaderboardPage() {
   const { status } = useSession()
@@ -56,6 +58,7 @@ export default function LeaderboardPage() {
   const [ageBucket, setAgeBucket] = useState<(typeof leaderboardAgeFilters)[number]>('all')
   const [gender, setGender] = useState<LeaderboardGender>('male')
   const [hairColor, setHairColor] = useState<(typeof leaderboardHairFilters)[number]>('all')
+  const [skinColor, setSkinColor] = useState<(typeof leaderboardSkinFilters)[number]>('all')
   const {
     data: leaderboardPages,
     error: leaderboardError,
@@ -64,7 +67,7 @@ export default function LeaderboardPage() {
     size,
   } = useSWRInfinite<LeaderboardResponse>((pageIndex, previousPage) => {
     if (previousPage && previousPage.items.length === 0) return null
-    return `/api/leaderboard/photos?limit=${leaderboardPageSize}&page=${pageIndex + 1}&sort=rating&gender=${gender}&ageBucket=${ageBucket}&hairColor=${hairColor}`
+    return `/api/leaderboard/photos?limit=${leaderboardPageSize}&page=${pageIndex + 1}&sort=rating&gender=${gender}&ageBucket=${ageBucket}&hairColor=${hairColor}&skinColor=${skinColor}`
   }, apiGet, {
     revalidateOnFocus: true,
     revalidateFirstPage: false,
@@ -88,7 +91,7 @@ export default function LeaderboardPage() {
 
   useEffect(() => {
     void setSize(1)
-  }, [ageBucket, gender, hairColor, setSize])
+  }, [ageBucket, gender, hairColor, skinColor, setSize])
 
   useEffect(() => {
     const node = loadMoreRef.current
@@ -165,10 +168,11 @@ export default function LeaderboardPage() {
           <div className="mt-6 flex flex-wrap justify-start gap-2 sm:justify-end">
             <LeaderboardFilterSelect label="Age" value={ageBucket} values={leaderboardAgeFilters} onChange={setAgeBucket} />
             <LeaderboardFilterSelect label="Hair" value={hairColor} values={leaderboardHairFilters} onChange={setHairColor} />
+            <LeaderboardFilterSelect label="Skin" value={skinColor} values={leaderboardSkinFilters} onChange={setSkinColor} />
           </div>
         </header>
 
-        <div key={`${gender}-${ageBucket}-${hairColor}`} className="grid gap-16" style={{ animation: 'leaderboard-enter 420ms cubic-bezier(0.22, 1, 0.36, 1) both' }}>
+        <div key={`${gender}-${ageBucket}-${hairColor}-${skinColor}`} className="grid gap-16" style={{ animation: 'leaderboard-enter 420ms cubic-bezier(0.22, 1, 0.36, 1) both' }}>
           <section aria-label="Podium leaderboard entries" className="grid gap-6">
             <div className="grid min-h-[430px] grid-cols-1 items-end gap-6 sm:grid-cols-3">
               {podiumOrder.map((entryIndex) => {
@@ -305,12 +309,16 @@ function LeaderboardFilterSelect<TValue extends string>({
       >
         {values.map((option) => (
           <option key={option} value={option}>
-            {option}
+            {formatFilterOption(option)}
           </option>
         ))}
       </select>
     </label>
   )
+}
+
+function formatFilterOption(option: string) {
+  return option.replaceAll('_', ' ')
 }
 
 function RankRow({ entry, index }: { entry: LeaderboardEntry; index: number }) {

@@ -6,7 +6,7 @@ import { getOrSetAnonymousActorId } from '@/lib/auth/anonymous'
 import { getAnonymousProfile } from '@/lib/auth/anonymousProfile'
 import { getAuthSession } from '@/lib/auth/session'
 import { enforceRateLimit } from '@/lib/api/rateLimit'
-import { hairColorSchema } from '@/lib/appearance/types'
+import { hairColorSchema, skinColorSchema } from '@/lib/appearance/types'
 import { db, schema } from '@/lib/db'
 import { env } from '@/lib/env'
 
@@ -31,6 +31,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
             columns: {
               age: true,
               gender: true,
+              skinColor: true,
             },
           })
         : null,
@@ -38,6 +39,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     const profileGender = userProfile?.gender ?? anonymousProfile?.gender ?? null
     const analysisGender = body.gender === 'other' && profileGender ? profileGender : body.gender
     const anonymousHairColor = hairColorSchema.safeParse(anonymousProfile?.hairColor).data ?? null
+    const anonymousSkinColor = skinColorSchema.safeParse(anonymousProfile?.skinColor).data ?? null
+    const userSkinColor = skinColorSchema.safeParse(userProfile?.skinColor).data ?? null
 
     const result = await analyzeAndSave({
       ...body,
@@ -48,6 +51,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       name: body.name ?? anonymousProfile?.name ?? null,
       caption: body.caption ?? anonymousProfile?.social ?? null,
       hairColor: body.hairColor ?? anonymousHairColor,
+      skinColor: body.skinColor ?? userSkinColor ?? anonymousSkinColor,
     })
 
     return json(res, result.deduped ? 200 : 201, result)

@@ -1,5 +1,5 @@
 import { z } from 'zod'
-import { hairColorSchema } from '@/lib/appearance/types'
+import { hairColorSchema, skinColorSchema } from '@/lib/appearance/types'
 import { createPhotoRecord } from '@/lib/photos/service'
 import { storeImageDataUrl } from '@/lib/storage/images'
 import { updateUserAvatarIfMissing } from '@/lib/users/service'
@@ -20,6 +20,7 @@ export const analyzeAndSaveSchema = z.object({
   caption: z.string().max(500).nullable().optional(),
   age: z.number().int().min(13).max(120).nullable().optional(),
   hairColor: hairColorSchema.nullable().optional(),
+  skinColor: skinColorSchema.nullable().optional(),
   landmarks: faceLandmarksPayloadSchema.nullable().optional(),
 })
 
@@ -54,6 +55,7 @@ export async function analyzeAndSave(input: AnalyzeAndSaveInput) {
       gender: data.gender,
       age: data.age ?? null,
       hairColor: data.hairColor ?? null,
+      skinColor: data.skinColor ?? null,
       photoType: data.photoType,
     })
     const failure = toAnalysisFailure(providerResult.error)
@@ -86,6 +88,7 @@ export async function analyzeAndSave(input: AnalyzeAndSaveInput) {
       gender: data.gender,
       age: data.age ?? null,
       hairColor: data.hairColor ?? null,
+      skinColor: data.skinColor ?? null,
       photoType: data.photoType,
     })
     const analysisResult = await saveAnalysisResult({
@@ -116,6 +119,7 @@ export async function analyzeAndSave(input: AnalyzeAndSaveInput) {
     gender: data.gender,
     age: data.age ?? null,
     hairColor: data.hairColor ?? null,
+    skinColor: data.skinColor ?? null,
     photoType: data.photoType,
   })
   const result = providerResult.result

@@ -1,6 +1,6 @@
 import { and, count, desc, eq, ilike, sql, type SQL } from 'drizzle-orm'
 import { z } from 'zod'
-import { ageBucketSchema, hairColorSchema } from '@/lib/appearance/types'
+import { ageBucketSchema, hairColorSchema, skinColorSchema } from '@/lib/appearance/types'
 import { db, schema } from '@/lib/db'
 import { conservativeScore, displayRating, initialSkillRating } from '@/lib/ratings/trueskill'
 
@@ -16,6 +16,7 @@ export const photoLeaderboardQuerySchema = paginationSchema.extend({
   ageBucket: ageBucketSchema.or(z.literal('all')).default('all'),
   gender: z.enum(['male', 'female', 'other', 'all']).default('all'),
   hairColor: hairColorSchema.or(z.literal('all')).default('all'),
+  skinColor: skinColorSchema.or(z.literal('all')).default('all'),
   photoType: z.enum(['face', 'body', 'outfit', 'all']).default('all'),
   sort: z.enum(['rating', 'display', 'psl', 'recent']).default('rating'),
   q: z.string().trim().max(120).optional(),
@@ -55,6 +56,7 @@ export async function getPhotoLeaderboard(input: PhotoLeaderboardQuery) {
       gender: schema.photos.gender,
       age: schema.photos.age,
       hairColor: schema.photos.hairColor,
+      skinColor: schema.photos.skinColor,
       photoType: schema.photos.photoType,
       userId: schema.photos.userId,
       createdAt: schema.photos.createdAt,
@@ -87,6 +89,7 @@ export async function getCurrentUserPhotoRank(userId: string) {
       gender: schema.photos.gender,
       age: schema.photos.age,
       hairColor: schema.photos.hairColor,
+      skinColor: schema.photos.skinColor,
       photoType: schema.photos.photoType,
       userId: schema.photos.userId,
       createdAt: schema.photos.createdAt,
@@ -251,6 +254,7 @@ function photoFilters(query: PhotoLeaderboardQuery): SQL[] {
     eq(schema.photos.isPublic, true),
     query.gender === 'all' ? undefined : eq(schema.photos.gender, query.gender),
     query.hairColor === 'all' ? undefined : eq(schema.photos.hairColor, query.hairColor),
+    query.skinColor === 'all' ? undefined : eq(schema.photos.skinColor, query.skinColor),
     query.ageBucket === 'all' ? undefined : ageBucketFilter(query.ageBucket),
     query.photoType === 'all' ? undefined : eq(schema.photos.photoType, query.photoType),
     query.q ? ilike(schema.photos.name, `%${query.q}%`) : undefined,

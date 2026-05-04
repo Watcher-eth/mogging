@@ -1,5 +1,5 @@
 import type { FaceLandmarksPayload } from '@/lib/analysis/landmarks'
-import type { HairColor } from '@/lib/appearance/types'
+import type { HairColor, SkinColor } from '@/lib/appearance/types'
 
 type Rgb = {
   r: number
@@ -46,6 +46,47 @@ export async function inferHairColorFromDataUrl(
 
     if (samples.length < 24) return null
     return bucketHairColor(samples)
+  } catch {
+    return null
+  }
+}
+
+export async function inferSkinColorFromDataUrl(
+  dataUrl: string,
+  landmarks?: FaceLandmarksPayload | null
+): Promise<SkinColor | null> {
+  if (typeof window === 'undefined' || !landmarks) return null
+
+  try {
+    const image = await loadImage(dataUrl)
+    const canvas = document.createElement('canvas')
+    const maxSide = 420
+    const scale = Math.min(1, maxSide / Math.max(image.naturalWidth, image.naturalHeight))
+    canvas.width = Math.max(1, Math.round(image.naturalWidth * scale))
+    canvas.height = Math.max(1, Math.round(image.naturalHeight * scale))
+
+    const context = canvas.getContext('2d', { willReadFrequently: true })
+    if (!context) return null
+
+    context.drawImage(image, 0, 0, canvas.width, canvas.height)
+    const points = getSkinSamplePoints(canvas.width, canvas.height, landmarks)
+    const samples: Rgb[] = []
+
+    for (const point of points) {
+      const rect = clampRect(point.x - 8, point.y - 8, 16, 16, canvas.width, canvas.height)
+      const imageData = context.getImageData(rect.x, rect.y, rect.width, rect.height)
+      for (let index = 0; index < imageData.data.length; index += 4 * 5) {
+        const pixel = {
+          r: imageData.data[index],
+          g: imageData.data[index + 1],
+          b: imageData.data[index + 2],
+        }
+        if (isLikelySkin(pixel)) samples.push(pixel)
+      }
+    }
+
+    if (samples.length < 12) return null
+    return bucketSkinColor(samples)
   } catch {
     return null
   }
@@ -105,6 +146,38 @@ function bucketHairColor(samples: Rgb[]): HairColor {
   return 'other'
 }
 
+function getSkinSamplePoints(width: number, height: number, landmarks: FaceLandmarksPayload) {
+  const anchors = landmarks.anchors
+  const leftCheek = midpointPixels(anchors.leftEyeOuter, anchors.mouthLeft, width, height)
+  const rightCheek = midpointPixels(anchors.rightEyeOuter, anchors.mouthRight, width, height)
+  const forehead = anchors.forehead
+    ? { x: anchors.forehead.x * width, y: Math.min(height - 1, (anchors.forehead.y + 0.035) * height) }
+    : null
+  const noseBridge = anchors.noseBridge
+    ? { x: anchors.noseBridge.x * width, y: anchors.noseBridge.y * height }
+    : null
+
+  return [leftCheek, rightCheek, forehead, noseBridge].filter(Boolean) as Array<{ x: number; y: number }>
+}
+
+function bucketSkinColor(samples: Rgb[]): SkinColor {
+  const luminanceValues = samples
+    .map((pixel) => 0.2126 * pixel.r + 0.7152 * pixel.g + 0.0722 * pixel.b)
+    .sort((a, b) => a - b)
+  const middle = luminanceValues.slice(
+    Math.floor(luminanceValues.length * 0.18),
+    Math.ceil(luminanceValues.length * 0.82)
+  )
+  const luminance = middle.reduce((sum, value) => sum + value, 0) / Math.max(1, middle.length)
+
+  if (luminance >= 202) return 'very_light'
+  if (luminance >= 172) return 'light'
+  if (luminance >= 138) return 'medium'
+  if (luminance >= 106) return 'tan'
+  if (luminance >= 74) return 'deep'
+  return 'very_deep'
+}
+
 function isLikelySkin({ r, g, b }: Rgb) {
   const max = Math.max(r, g, b)
   const min = Math.min(r, g, b)
@@ -115,6 +188,20 @@ function isLikelyBackground({ r, g, b }: Rgb) {
   const max = Math.max(r, g, b)
   const min = Math.min(r, g, b)
   return max > 238 && max - min < 16
+}
+
+function midpointPixels(
+  a: { x: number; y: number } | undefined,
+  b: { x: number; y: number } | undefined,
+  width: number,
+  height: number
+) {
+  if (!a || !b) return null
+
+  return {
+    x: ((a.x + b.x) / 2) * width,
+    y: ((a.y + b.y) / 2) * height,
+  }
 }
 
 function rgbToHsv({ r, g, b }: Rgb) {

@@ -1,6 +1,6 @@
 import { eq } from 'drizzle-orm'
 import { z } from 'zod'
-import { hairColorSchema } from '@/lib/appearance/types'
+import { hairColorSchema, skinColorSchema } from '@/lib/appearance/types'
 import { db, schema } from '@/lib/db'
 
 export const createPhotoRecordSchema = z.object({
@@ -18,6 +18,7 @@ export const createPhotoRecordSchema = z.object({
   gender: z.enum(['male', 'female', 'other']).optional().default('other'),
   age: z.number().int().min(13).max(120).nullable().optional(),
   hairColor: hairColorSchema.nullable().optional(),
+  skinColor: skinColorSchema.nullable().optional(),
   source: z.enum(['user', 'seeded', 'instagram']).optional().default('user'),
   photoType: z.enum(['face', 'body', 'outfit']).optional().default('face'),
   position: z.string().max(80).nullable().optional(),
@@ -60,6 +61,7 @@ export async function createPhotoRecord(input: CreatePhotoRecordInput) {
       gender: data.gender,
       age: data.age ?? null,
       hairColor: data.hairColor ?? null,
+      skinColor: data.skinColor ?? null,
       source: data.source,
       photoType: data.photoType,
       position: data.position ?? null,
