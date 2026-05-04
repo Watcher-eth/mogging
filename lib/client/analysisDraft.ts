@@ -1,4 +1,5 @@
 import type { FaceLandmarksPayload } from '@/lib/analysis/landmarks'
+import type { HairColor } from '@/lib/appearance/types'
 
 const DB_NAME = 'mogging-analysis'
 const STORE_NAME = 'drafts'
@@ -8,6 +9,7 @@ export type AnalysisDraftImage = {
   id: string
   name: string
   dataUrl: string
+  hairColor?: HairColor | null
   landmarks?: FaceLandmarksPayload | null
 }
 

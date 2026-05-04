@@ -1,5 +1,6 @@
 import { Loader2, RefreshCw, X } from 'lucide-react'
 import Image from 'next/image'
+import { motion } from 'motion/react'
 import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react'
 import useSWR, { useSWRConfig } from 'swr'
 import { toast } from 'sonner'
@@ -9,7 +10,9 @@ type ComparisonPhoto = {
   id: string
   imageUrl: string
   name: string | null
+  age: number | null
   gender: 'male' | 'female' | 'other'
+  hairColor: string | null
   photoType: 'face' | 'body' | 'outfit'
   userId: string | null
   displayRating: number
@@ -39,10 +42,17 @@ type PendingVote = {
 }
 
 const photoLeaderboardKey = '/api/leaderboard/photos?limit=24&sort=rating'
+const decisionWindowMs = 4_500
+const ageFilters = ['all', '13-17', '18-24', '25-34', '35-44', '45+'] as const
+const genderFilters = ['all', 'male', 'female'] as const
+const hairColorFilters = ['all', 'black', 'brown', 'blond', 'red', 'gray', 'other'] as const
 
 export default function VotingPage() {
   const { mutate: mutateGlobal } = useSWRConfig()
-  const [pairKey] = useState(() => `/api/compare?photoType=face&gender=all&request=${Date.now()}-${Math.random().toString(36).slice(2)}`)
+  const [ageBucket, setAgeBucket] = useState<(typeof ageFilters)[number]>('all')
+  const [gender, setGender] = useState<(typeof genderFilters)[number]>('all')
+  const [hairColor, setHairColor] = useState<(typeof hairColorFilters)[number]>('all')
+  const pairKey = `/api/compare?photoType=face&gender=${gender}&ageBucket=${ageBucket}&hairColor=${hairColor}`
   const { data: pair, error, isLoading, mutate } = useSWR<ComparisonPair>(pairKey, {
     revalidateIfStale: false,
     revalidateOnFocus: false,
@@ -50,8 +60,12 @@ export default function VotingPage() {
   const visiblePair = pair ?? null
   const [pendingVote, setPendingVote] = useState<PendingVote | null>(null)
   const [transitionLoser, setTransitionLoser] = useState<{ id: string; side: 'left' | 'right' } | null>(null)
-  const pendingTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const [decisionSeconds, setDecisionSeconds] = useState(5)
+  const decisionTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const decisionIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null)
   const nextPairRef = useRef<ComparisonPair | null>(null)
+  const pendingVoteRef = useRef<PendingVote | null>(null)
+  const pairTimerKey = visiblePair ? `${visiblePair.left.id}-${visiblePair.right.id}` : 'empty'
 
   const submitVote = useCallback(async (winner: ComparisonPhoto, loser: ComparisonPhoto) => {
     try {
@@ -59,7 +73,6 @@ export default function VotingPage() {
         winnerPhotoId: winner.id,
         loserPhotoId: loser.id,
       })
-      toast.success(`Registered your vote for ${winner.name || `${winner.gender} face`}`)
       void mutateGlobal(photoLeaderboardKey)
       void mutateGlobal('/api/leaderboard/me')
     } catch (voteError) {
@@ -69,41 +82,63 @@ export default function VotingPage() {
 
   const prefetchNextPair = useCallback(async () => {
     try {
-      nextPairRef.current = await apiGet<ComparisonPair>('/api/compare?photoType=face&gender=all')
+      nextPairRef.current = await apiGet<ComparisonPair>(pairKey)
     } catch {
       nextPairRef.current = null
     }
-  }, [])
+  }, [pairKey])
+
+  const advancePair = useCallback(async () => {
+    const committedVote = pendingVoteRef.current
+    const nextPair = nextPairRef.current
+
+    nextPairRef.current = null
+    pendingVoteRef.current = null
+    setTransitionLoser(null)
+    setPendingVote(null)
+
+    if (nextPair) {
+      await mutate(nextPair, { revalidate: false })
+    } else {
+      await mutate()
+    }
+
+    if (committedVote) {
+      toast.success(`Registered your vote for ${committedVote.winner.name || `${committedVote.winner.gender} face`}`)
+      void submitVote(committedVote.winner, committedVote.loser)
+    }
+  }, [mutate, submitVote])
 
   useEffect(() => {
-    if (!pendingVote) return
+    pendingVoteRef.current = pendingVote
+  }, [pendingVote])
 
+  useEffect(() => {
+    if (!visiblePair) return
+
+    const deadline = Date.now() + decisionWindowMs
+    setDecisionSeconds(5)
     void prefetchNextPair()
 
-    pendingTimerRef.current = setTimeout(() => {
-      const committedVote = pendingVote
-      const nextPair = nextPairRef.current
+    decisionIntervalRef.current = setInterval(() => {
+      setDecisionSeconds(Math.max(0, Math.ceil((deadline - Date.now()) / 1000)))
+    }, 100)
 
-      nextPairRef.current = null
-      setTransitionLoser(null)
-      setPendingVote(null)
-
-      if (nextPair) {
-        void mutate(nextPair, { revalidate: false })
-      } else {
-        void mutate()
-      }
-
-      void submitVote(committedVote.winner, committedVote.loser)
-    }, 4_000)
+    decisionTimerRef.current = setTimeout(() => {
+      void advancePair()
+    }, decisionWindowMs)
 
     return () => {
-      if (pendingTimerRef.current) {
-        clearTimeout(pendingTimerRef.current)
-        pendingTimerRef.current = null
+      if (decisionTimerRef.current) {
+        clearTimeout(decisionTimerRef.current)
+        decisionTimerRef.current = null
+      }
+      if (decisionIntervalRef.current) {
+        clearInterval(decisionIntervalRef.current)
+        decisionIntervalRef.current = null
       }
     }
-  }, [mutate, pendingVote, prefetchNextPair, submitVote])
+  }, [advancePair, pairTimerKey, prefetchNextPair, visiblePair])
 
   const queueVote = useCallback((winner: ComparisonPhoto, loser: ComparisonPhoto, loserSide: 'left' | 'right') => {
     setPendingVote({
@@ -128,11 +163,7 @@ export default function VotingPage() {
   }, [pendingVote, queueVote, visiblePair])
 
   function cancelPendingVote() {
-    if (pendingTimerRef.current) {
-      clearTimeout(pendingTimerRef.current)
-      pendingTimerRef.current = null
-    }
-    nextPairRef.current = null
+    pendingVoteRef.current = null
     setPendingVote(null)
   }
 
@@ -254,10 +285,20 @@ export default function VotingPage() {
               <h1 className="max-w-4xl text-4xl font-semibold leading-[0.94] tracking-[-0.07em] sm:text-6xl lg:text-7xl">
                 Who mogs harder?
               </h1>
-              <div className="font-mono text-xs uppercase tracking-[0.12em] text-zinc-500 lg:text-right">
-                Press A or B
-              </div>
+              <DecisionTimer
+                pending={Boolean(pendingVote)}
+                seconds={decisionSeconds}
+                timerKey={pairTimerKey}
+              />
             </div>
+            <BattleFilters
+              ageBucket={ageBucket}
+              gender={gender}
+              hairColor={hairColor}
+              onAgeBucketChange={setAgeBucket}
+              onGenderChange={setGender}
+              onHairColorChange={setHairColor}
+            />
           </header>
 
           <div
@@ -295,8 +336,93 @@ export default function VotingPage() {
         />
       )}
 
-      <PendingVoteBar pendingVote={pendingVote} onCancel={cancelPendingVote} />
+      <PendingVoteBar pendingVote={pendingVote} seconds={decisionSeconds} onCancel={cancelPendingVote} />
     </section>
+  )
+}
+
+function BattleFilters({
+  ageBucket,
+  gender,
+  hairColor,
+  onAgeBucketChange,
+  onGenderChange,
+  onHairColorChange,
+}: {
+  ageBucket: (typeof ageFilters)[number]
+  gender: (typeof genderFilters)[number]
+  hairColor: (typeof hairColorFilters)[number]
+  onAgeBucketChange: (value: (typeof ageFilters)[number]) => void
+  onGenderChange: (value: (typeof genderFilters)[number]) => void
+  onHairColorChange: (value: (typeof hairColorFilters)[number]) => void
+}) {
+  return (
+    <div className="mt-6 flex flex-wrap gap-2">
+      <FilterSelect label="Gender" value={gender} values={genderFilters} onChange={onGenderChange} />
+      <FilterSelect label="Age" value={ageBucket} values={ageFilters} onChange={onAgeBucketChange} />
+      <FilterSelect label="Hair" value={hairColor} values={hairColorFilters} onChange={onHairColorChange} />
+    </div>
+  )
+}
+
+function FilterSelect<TValue extends string>({
+  label,
+  onChange,
+  value,
+  values,
+}: {
+  label: string
+  onChange: (value: TValue) => void
+  value: TValue
+  values: readonly TValue[]
+}) {
+  return (
+    <label className="grid gap-1">
+      <span className="font-mono text-[9px] uppercase tracking-[0.14em] text-zinc-500">{label}</span>
+      <select
+        className="h-9 rounded-full border border-zinc-200 bg-white px-3 text-xs font-semibold capitalize text-black outline-none transition-colors hover:border-zinc-300"
+        onChange={(event) => onChange(event.target.value as TValue)}
+        value={value}
+      >
+        {values.map((option) => (
+          <option key={option} value={option}>
+            {option}
+          </option>
+        ))}
+      </select>
+    </label>
+  )
+}
+
+function DecisionTimer({
+  pending,
+  seconds,
+  timerKey,
+}: {
+  pending: boolean
+  seconds: number
+  timerKey: string
+}) {
+  return (
+    <div className="grid gap-2 justify-self-start lg:w-48 lg:justify-self-end lg:text-right">
+      <div className="flex items-end justify-between gap-4 lg:justify-end">
+        <div className="font-mono text-[10px] uppercase tracking-[0.14em] text-zinc-500">
+          {pending ? 'Vote locks in' : 'Press A or B'}
+        </div>
+        <div className="font-mono text-4xl font-semibold tabular-nums tracking-[-0.07em] text-black sm:text-5xl">
+          {String(seconds).padStart(2, '0')}
+        </div>
+      </div>
+      <div className="h-1 overflow-hidden rounded-full bg-zinc-200">
+        <motion.div
+          key={timerKey}
+          className="h-full origin-left rounded-full bg-black"
+          initial={{ scaleX: 1 }}
+          animate={{ scaleX: 0 }}
+          transition={{ duration: decisionWindowMs / 1000, ease: 'linear' }}
+        />
+      </div>
+    </div>
   )
 }
 
@@ -402,9 +528,11 @@ function BattleDivider() {
 function PendingVoteBar({
   onCancel,
   pendingVote,
+  seconds,
 }: {
   onCancel: () => void
   pendingVote: PendingVote | null
+  seconds: number
 }) {
   const [renderedVote, setRenderedVote] = useState<PendingVote | null>(pendingVote)
   const [isClosing, setIsClosing] = useState(false)
@@ -454,10 +582,12 @@ function PendingVoteBar({
       </div>
       <div className="h-1 bg-zinc-200">
         {!isClosing ? (
-          <div
+          <motion.div
             key={renderedVote.id}
             className="h-full origin-left bg-black"
-            style={{ animation: 'battle-progress 4s linear both' }}
+            animate={{ scaleX: seconds / 5 }}
+            initial={false}
+            transition={{ duration: 0.12, ease: 'linear' }}
           />
         ) : null}
       </div>

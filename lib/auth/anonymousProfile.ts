@@ -1,5 +1,6 @@
 import { eq } from 'drizzle-orm'
 import { z } from 'zod'
+import { hairColorSchema } from '@/lib/appearance/types'
 import { db, schema } from '@/lib/db'
 import { storeImageDataUrl } from '@/lib/storage/images'
 
@@ -15,9 +16,11 @@ export const anonymousProfileSchema = z.object({
     .optional(),
   gender: z.enum(['male', 'female']).nullable().optional(),
   age: z.coerce.number().int().min(13).max(120).nullable().optional(),
+  hairColor: hairColorSchema.nullable().optional(),
 })
 
 export type AnonymousProfileInput = z.infer<typeof anonymousProfileSchema>
+export type AnonymousProfile = Awaited<ReturnType<typeof getAnonymousProfile>>
 
 export async function getAnonymousProfile(anonymousActorId: string) {
   return db.query.anonymousProfiles.findFirst({
@@ -38,6 +41,7 @@ export async function upsertAnonymousProfile(anonymousActorId: string, input: An
       social: data.social ?? null,
       gender: data.gender ?? null,
       age: data.age ?? null,
+      hairColor: data.hairColor ?? null,
     })
     .onConflictDoUpdate({
       target: schema.anonymousProfiles.anonymousActorId,
@@ -47,6 +51,7 @@ export async function upsertAnonymousProfile(anonymousActorId: string, input: An
         social: data.social ?? null,
         gender: data.gender ?? null,
         age: data.age ?? null,
+        hairColor: data.hairColor ?? null,
         updatedAt: new Date(),
       },
     })

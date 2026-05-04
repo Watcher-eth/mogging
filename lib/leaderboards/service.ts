@@ -1,5 +1,6 @@
 import { and, count, desc, eq, ilike, sql, type SQL } from 'drizzle-orm'
 import { z } from 'zod'
+import { ageBucketSchema, hairColorSchema } from '@/lib/appearance/types'
 import { db, schema } from '@/lib/db'
 import { conservativeScore, displayRating, initialSkillRating } from '@/lib/ratings/trueskill'
 
@@ -12,7 +13,9 @@ export const paginationSchema = z.object({
 })
 
 export const photoLeaderboardQuerySchema = paginationSchema.extend({
+  ageBucket: ageBucketSchema.or(z.literal('all')).default('all'),
   gender: z.enum(['male', 'female', 'other', 'all']).default('all'),
+  hairColor: hairColorSchema.or(z.literal('all')).default('all'),
   photoType: z.enum(['face', 'body', 'outfit', 'all']).default('all'),
   sort: z.enum(['rating', 'display', 'psl', 'recent']).default('rating'),
   q: z.string().trim().max(120).optional(),
@@ -40,13 +43,18 @@ export async function getPhotoLeaderboard(input: PhotoLeaderboardQuery) {
   const offset = (query.page - 1) * query.limit
   const where = and(...photoFilters(query))
 
-  const [{ total }] = await db.select({ total: count() }).from(schema.photos).where(where)
+  const [{ total }] = await db
+    .select({ total: count() })
+    .from(schema.photos)
+    .where(where)
   const rows = await db
     .select({
       id: schema.photos.id,
       imageUrl: schema.photos.imageUrl,
       name: schema.photos.name,
       gender: schema.photos.gender,
+      age: schema.photos.age,
+      hairColor: schema.photos.hairColor,
       photoType: schema.photos.photoType,
       userId: schema.photos.userId,
       createdAt: schema.photos.createdAt,
@@ -77,6 +85,8 @@ export async function getCurrentUserPhotoRank(userId: string) {
       imageUrl: schema.photos.imageUrl,
       name: schema.photos.name,
       gender: schema.photos.gender,
+      age: schema.photos.age,
+      hairColor: schema.photos.hairColor,
       photoType: schema.photos.photoType,
       userId: schema.photos.userId,
       createdAt: schema.photos.createdAt,
@@ -240,9 +250,19 @@ function photoFilters(query: PhotoLeaderboardQuery): SQL[] {
   return [
     eq(schema.photos.isPublic, true),
     query.gender === 'all' ? undefined : eq(schema.photos.gender, query.gender),
+    query.hairColor === 'all' ? undefined : eq(schema.photos.hairColor, query.hairColor),
+    query.ageBucket === 'all' ? undefined : ageBucketFilter(query.ageBucket),
     query.photoType === 'all' ? undefined : eq(schema.photos.photoType, query.photoType),
     query.q ? ilike(schema.photos.name, `%${query.q}%`) : undefined,
   ].filter(Boolean) as SQL[]
+}
+
+function ageBucketFilter(ageBucket: Exclude<PhotoLeaderboardQuery['ageBucket'], 'all'>) {
+  if (ageBucket === '13-17') return sql`${schema.photos.age} between 13 and 17`
+  if (ageBucket === '18-24') return sql`${schema.photos.age} between 18 and 24`
+  if (ageBucket === '25-34') return sql`${schema.photos.age} between 25 and 34`
+  if (ageBucket === '35-44') return sql`${schema.photos.age} between 35 and 44`
+  return sql`${schema.photos.age} >= 45`
 }
 
 function photoSort(sort: PhotoLeaderboardQuery['sort']) {

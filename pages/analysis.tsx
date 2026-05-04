@@ -27,6 +27,7 @@ import {
   type AnalysisDraftImage,
 } from '@/lib/client/analysisDraft'
 import { extractFaceLandmarksFromDataUrl } from '@/lib/client/faceLandmarks'
+import { inferHairColorFromDataUrl } from '@/lib/client/appearance'
 import { parseFaceLandmarksPayload, type FaceLandmarksPayload, type NormalizedPoint } from '@/lib/analysis/landmarks'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -490,6 +491,7 @@ export default function AnalysisPage() {
           gender,
           photoType: 'face',
           name: image.name,
+          hairColor: image.hairColor ?? null,
           landmarks: image.landmarks ?? null,
         })
         analysisResults.push(result)
@@ -561,6 +563,7 @@ export default function AnalysisPage() {
           gender: draft.gender,
           photoType: 'face',
           name: image.name,
+          hairColor: image.hairColor ?? null,
           landmarks: image.landmarks ?? null,
         })
         analysisResults.push(result)
@@ -670,6 +673,7 @@ export default function AnalysisPage() {
       id: imageId,
       name: image.name,
       dataUrl: image.dataUrl,
+      hairColor: null,
       landmarks: null,
     }
 
@@ -684,10 +688,10 @@ export default function AnalysisPage() {
   async function enrichImageLandmarks(image: AnalysisDraftImage) {
     try {
       const landmarks = await extractFaceLandmarksFromDataUrl(image.dataUrl)
-      if (!landmarks) return
+      const hairColor = await inferHairColorFromDataUrl(image.dataUrl, landmarks)
 
       setImages((current) => current.map((currentImage) => (
-        currentImage.id === image.id ? { ...currentImage, landmarks } : currentImage
+        currentImage.id === image.id ? { ...currentImage, hairColor, landmarks } : currentImage
       )))
     } finally {
       setLandmarkPendingIds((current) => {
@@ -2803,6 +2807,7 @@ function readImageFile(file: File) {
         id: crypto.randomUUID(),
         name: file.name,
         dataUrl: reader.result,
+        hairColor: null,
       })
     }
     reader.onerror = () => reject(reader.error)

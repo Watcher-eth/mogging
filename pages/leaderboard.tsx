@@ -21,7 +21,9 @@ type LeaderboardEntry = {
   photoId?: string
   imageUrl?: string | null
   name?: string | null
+  age?: number | null
   gender?: string | null
+  hairColor?: string | null
   displayRating?: number | null
   winCount?: number | null
   lossCount?: number | null
@@ -45,11 +47,15 @@ const genderFilters = [
   { label: 'All', value: 'all' },
 ] as const
 type LeaderboardGender = (typeof genderFilters)[number]['value']
+const leaderboardAgeFilters = ['all', '13-17', '18-24', '25-34', '35-44', '45+'] as const
+const leaderboardHairFilters = ['all', 'black', 'brown', 'blond', 'red', 'gray', 'other'] as const
 
 export default function LeaderboardPage() {
   const { status } = useSession()
   const loadMoreRef = useRef<HTMLDivElement | null>(null)
+  const [ageBucket, setAgeBucket] = useState<(typeof leaderboardAgeFilters)[number]>('all')
   const [gender, setGender] = useState<LeaderboardGender>('male')
+  const [hairColor, setHairColor] = useState<(typeof leaderboardHairFilters)[number]>('all')
   const {
     data: leaderboardPages,
     error: leaderboardError,
@@ -58,7 +64,7 @@ export default function LeaderboardPage() {
     size,
   } = useSWRInfinite<LeaderboardResponse>((pageIndex, previousPage) => {
     if (previousPage && previousPage.items.length === 0) return null
-    return `/api/leaderboard/photos?limit=${leaderboardPageSize}&page=${pageIndex + 1}&sort=rating&gender=${gender}`
+    return `/api/leaderboard/photos?limit=${leaderboardPageSize}&page=${pageIndex + 1}&sort=rating&gender=${gender}&ageBucket=${ageBucket}&hairColor=${hairColor}`
   }, apiGet, {
     revalidateOnFocus: true,
     revalidateFirstPage: false,
@@ -82,7 +88,7 @@ export default function LeaderboardPage() {
 
   useEffect(() => {
     void setSize(1)
-  }, [gender, setSize])
+  }, [ageBucket, gender, hairColor, setSize])
 
   useEffect(() => {
     const node = loadMoreRef.current
@@ -156,9 +162,13 @@ export default function LeaderboardPage() {
               ))}
             </div>
           </div>
+          <div className="mt-6 flex flex-wrap justify-start gap-2 sm:justify-end">
+            <LeaderboardFilterSelect label="Age" value={ageBucket} values={leaderboardAgeFilters} onChange={setAgeBucket} />
+            <LeaderboardFilterSelect label="Hair" value={hairColor} values={leaderboardHairFilters} onChange={setHairColor} />
+          </div>
         </header>
 
-        <div key={gender} className="grid gap-16" style={{ animation: 'leaderboard-enter 420ms cubic-bezier(0.22, 1, 0.36, 1) both' }}>
+        <div key={`${gender}-${ageBucket}-${hairColor}`} className="grid gap-16" style={{ animation: 'leaderboard-enter 420ms cubic-bezier(0.22, 1, 0.36, 1) both' }}>
           <section aria-label="Podium leaderboard entries" className="grid gap-6">
             <div className="grid min-h-[430px] grid-cols-1 items-end gap-6 sm:grid-cols-3">
               {podiumOrder.map((entryIndex) => {
@@ -271,6 +281,35 @@ function TopEntry({ elevated, entry, index }: { elevated?: boolean; entry: Leade
         </div>
       </div>
     </article>
+  )
+}
+
+function LeaderboardFilterSelect<TValue extends string>({
+  label,
+  onChange,
+  value,
+  values,
+}: {
+  label: string
+  onChange: (value: TValue) => void
+  value: TValue
+  values: readonly TValue[]
+}) {
+  return (
+    <label className="grid gap-1">
+      <span className="font-mono text-[9px] uppercase tracking-[0.14em] text-zinc-500">{label}</span>
+      <select
+        className="h-9 rounded-full border border-zinc-200 bg-white px-3 text-xs font-semibold capitalize text-black outline-none transition-colors hover:border-zinc-300"
+        onChange={(event) => onChange(event.target.value as TValue)}
+        value={value}
+      >
+        {values.map((option) => (
+          <option key={option} value={option}>
+            {option}
+          </option>
+        ))}
+      </select>
+    </label>
   )
 }
 

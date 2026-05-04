@@ -11,6 +11,8 @@ import { AppNav } from '@/components/app/nav'
 import { CameraSheet } from '@/components/analysis/camera-sheet'
 import { Button } from '@/components/ui/button'
 import { apiGet, apiPatch, ApiClientError } from '@/lib/api/client'
+import { inferHairColorFromDataUrl } from '@/lib/client/appearance'
+import type { HairColor } from '@/lib/appearance/types'
 import {
   Dialog,
   DialogContent,
@@ -33,6 +35,7 @@ type CurrentUserDashboard = {
     instagramUsername: string | null
     gender: 'male' | 'female' | null
     age: number | null
+    hairColor: HairColor | null
     profileCompleted: boolean
   }
   recentAnalyses: Array<{
@@ -56,6 +59,7 @@ type AnonymousProfile = {
   social: string | null
   gender: 'male' | 'female' | null
   age: number | null
+  hairColor: HairColor | null
 }
 
 type ProfileDialogValues = {
@@ -64,6 +68,7 @@ type ProfileDialogValues = {
   social: string | null
   gender: 'male' | 'female'
   age: number | null
+  hairColor: HairColor | null
 }
 
 export function AppShell({ children }: AppShellProps) {
@@ -310,6 +315,7 @@ function EditProfileDialog({
     social: string | null
     gender: 'male' | 'female' | null
     age: number | null
+    hairColor: HairColor | null
   } | null
   onOpenChange: (open: boolean) => void
   onSaved: () => void
@@ -323,6 +329,7 @@ function EditProfileDialog({
   const [socialLink, setSocialLink] = useState('')
   const [gender, setGender] = useState<'male' | 'female'>('male')
   const [age, setAge] = useState('')
+  const [hairColor, setHairColor] = useState<HairColor | null>(null)
   const [cameraOpen, setCameraOpen] = useState(false)
   const [saving, setSaving] = useState(false)
 
@@ -334,6 +341,7 @@ function EditProfileDialog({
     setSocialLink(initialProfile?.social ?? dashboard?.user.instagramUsername ?? '')
     setGender(initialProfile?.gender ?? dashboard?.user.gender ?? 'male')
     setAge(String(initialProfile?.age ?? dashboard?.user.age ?? ''))
+    setHairColor(initialProfile?.hairColor ?? dashboard?.user.hairColor ?? null)
   }, [
     dashboard?.user.age,
     dashboard?.user.gender,
@@ -341,6 +349,7 @@ function EditProfileDialog({
     dashboard?.user.name,
     initialProfile?.age,
     initialProfile?.gender,
+    initialProfile?.hairColor,
     initialProfile?.name,
     initialProfile?.social,
     open,
@@ -351,7 +360,9 @@ function EditProfileDialog({
     event.target.value = ''
     if (!file) return
 
-    setAvatarDataUrl(await readFileAsDataUrl(file))
+    const dataUrl = await readFileAsDataUrl(file)
+    setAvatarDataUrl(dataUrl)
+    void inferHairColorFromDataUrl(dataUrl).then(setHairColor)
   }
 
   async function saveProfile() {
@@ -366,12 +377,14 @@ function EditProfileDialog({
           social: socialLink.trim() || null,
           gender,
           age: age ? Number(age) : null,
+          hairColor,
         })
       } else {
         await apiPatch('/api/user/me', {
           ...(avatarDataUrl ? { imageData: avatarDataUrl } : null),
           age: age ? Number(age) : null,
           gender,
+          hairColor,
           instagramUsername: socialLink.trim() || null,
           name: displayName.trim(),
         })
@@ -504,7 +517,10 @@ function EditProfileDialog({
       </DialogContent>
       <CameraSheet
         open={cameraOpen}
-        onCapture={(image) => setAvatarDataUrl(image.dataUrl)}
+        onCapture={(image) => {
+          setAvatarDataUrl(image.dataUrl)
+          void inferHairColorFromDataUrl(image.dataUrl).then(setHairColor)
+        }}
         onClose={() => setCameraOpen(false)}
         onUpload={() => {
           setCameraOpen(false)
@@ -555,7 +571,14 @@ function AnonymousProfileDialog({
       description="Set the name, image, and social link people will see on rankings."
       initialProfile={
         profile
-          ? { age: profile.age, gender: profile.gender, image: profile.image, name: profile.name, social: profile.social }
+          ? {
+              age: profile.age,
+              gender: profile.gender,
+              hairColor: profile.hairColor,
+              image: profile.image,
+              name: profile.name,
+              social: profile.social,
+            }
           : null
       }
       open={open}
@@ -566,6 +589,7 @@ function AnonymousProfileDialog({
           ...(values.imageData ? { imageData: values.imageData } : null),
           age: values.age,
           gender: values.gender,
+          hairColor: values.hairColor,
           name: values.name,
           social: values.social,
         })

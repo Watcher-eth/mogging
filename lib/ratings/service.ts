@@ -1,5 +1,6 @@
 import { and, count, eq, ne, sql, type SQL } from 'drizzle-orm'
 import { z } from 'zod'
+import { ageBucketSchema, hairColorSchema } from '@/lib/appearance/types'
 import { db, schema } from '@/lib/db'
 import {
   conservativeScore,
@@ -11,7 +12,9 @@ import {
 } from './trueskill'
 
 export const pairSelectionSchema = z.object({
+  ageBucket: ageBucketSchema.or(z.literal('all')).default('all'),
   gender: z.enum(['male', 'female', 'other', 'all']).default('all'),
+  hairColor: hairColorSchema.or(z.literal('all')).default('all'),
   photoType: z.enum(['face', 'body', 'outfit']).default('face'),
 })
 
@@ -40,6 +43,8 @@ export async function selectComparisonPair(input: PairSelectionInput) {
     eq(schema.photos.isPublic, true),
     eq(schema.photos.photoType, params.photoType),
     params.gender === 'all' ? undefined : eq(schema.photos.gender, params.gender),
+    params.hairColor === 'all' ? undefined : eq(schema.photos.hairColor, params.hairColor),
+    params.ageBucket === 'all' ? undefined : ageBucketFilter(params.ageBucket),
   ].filter(Boolean) as SQL[]
 
   const where = and(...filters)
@@ -209,6 +214,8 @@ const comparisonPhotoSelection = {
     imageUrl: schema.photos.imageUrl,
     name: schema.photos.name,
     gender: schema.photos.gender,
+    age: schema.photos.age,
+    hairColor: schema.photos.hairColor,
     photoType: schema.photos.photoType,
     userId: schema.photos.userId,
   },
@@ -229,6 +236,8 @@ type ComparisonPhotoRow = {
     imageUrl: string
     name: string | null
     gender: 'male' | 'female' | 'other'
+    age: number | null
+    hairColor: string | null
     photoType: 'face' | 'body' | 'outfit'
     userId: string | null
   }
@@ -249,6 +258,8 @@ function toComparisonPhoto(row: ComparisonPhotoRow) {
     imageUrl: row.photo.imageUrl,
     name: row.photo.name,
     gender: row.photo.gender,
+    age: row.photo.age,
+    hairColor: row.photo.hairColor,
     photoType: row.photo.photoType,
     userId: row.photo.userId,
     displayRating: row.rating?.displayRating ?? displayRating(initialSkillRating()),
@@ -257,6 +268,14 @@ function toComparisonPhoto(row: ComparisonPhotoRow) {
     lossCount: row.rating?.lossCount ?? 0,
     pslScore: row.analysis?.pslScore ?? null,
   }
+}
+
+function ageBucketFilter(ageBucket: Exclude<PairSelectionInput['ageBucket'], 'all'>) {
+  if (ageBucket === '13-17') return sql`${schema.photos.age} between 13 and 17`
+  if (ageBucket === '18-24') return sql`${schema.photos.age} between 18 and 24`
+  if (ageBucket === '25-34') return sql`${schema.photos.age} between 25 and 34`
+  if (ageBucket === '35-44') return sql`${schema.photos.age} between 35 and 44`
+  return sql`${schema.photos.age} >= 45`
 }
 
 function toSkillRating(rating: { mu: number; sigma: number }): SkillRating {
