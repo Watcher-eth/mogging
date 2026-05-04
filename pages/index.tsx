@@ -1,7 +1,8 @@
-import { Loader2, RefreshCw, X } from 'lucide-react'
+import { Loader2, RefreshCw, SlidersHorizontal, X } from 'lucide-react'
 import Image from 'next/image'
 import { motion } from 'motion/react'
-import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react'
+import { useCallback, useEffect, useRef, useState, type CSSProperties, type ReactNode } from 'react'
+import { createPortal } from 'react-dom'
 import useSWR, { useSWRConfig } from 'swr'
 import { toast } from 'sonner'
 import { apiGet, apiPost, ApiClientError } from '@/lib/api/client'
@@ -279,35 +280,35 @@ export default function VotingPage() {
       {isLoading ? (
         <BattleState icon={<Loader2 className="size-5 animate-spin" aria-hidden="true" />} title="Loading matchup" />
       ) : visiblePair ? (
-        <main className="grid gap-7 sm:gap-12">
+        <main className="isolate grid gap-7 sm:gap-12">
           <header
-            className="border-b border-zinc-200 pb-5 sm:pb-10"
+            className="relative z-[80] border-b border-zinc-200 bg-white pb-5 sm:pb-10"
             style={{ animation: 'battle-enter 560ms cubic-bezier(0.22, 1, 0.36, 1) both' }}
           >
             <div className="grid gap-3 sm:gap-6 lg:grid-cols-[minmax(0,1fr)_auto] lg:items-end">
               <h1 className="max-w-4xl text-4xl font-semibold leading-[0.94] tracking-[-0.07em] sm:text-6xl lg:text-7xl">
                 Who mogs harder?
               </h1>
-              <DecisionTimer
-                pending={Boolean(pendingVote)}
-                seconds={decisionSeconds}
-                timerKey={pairTimerKey}
-              />
+              <div className="hidden items-end gap-3 justify-self-start sm:flex lg:justify-self-end">
+                <BattleControls
+                  ageBucket={ageBucket}
+                  gender={gender}
+                  hairColor={hairColor}
+                  pendingVote={pendingVote}
+                  pairTimerKey={pairTimerKey}
+                  seconds={decisionSeconds}
+                  skinColor={skinColor}
+                  onAgeBucketChange={setAgeBucket}
+                  onGenderChange={setGender}
+                  onHairColorChange={setHairColor}
+                  onSkinColorChange={setSkinColor}
+                />
+              </div>
             </div>
-            <BattleFilters
-              ageBucket={ageBucket}
-              gender={gender}
-              hairColor={hairColor}
-              skinColor={skinColor}
-              onAgeBucketChange={setAgeBucket}
-              onGenderChange={setGender}
-              onHairColorChange={setHairColor}
-              onSkinColorChange={setSkinColor}
-            />
           </header>
 
           <div
-            className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_112px_minmax(0,1fr)] lg:items-stretch"
+            className="relative z-0 grid grid-cols-[minmax(0,1fr)_34px_minmax(0,1fr)] items-stretch gap-2 sm:gap-6 lg:grid-cols-[minmax(0,1fr)_112px_minmax(0,1fr)]"
             style={{ animation: 'battle-enter 620ms cubic-bezier(0.22, 1, 0.36, 1) 80ms both' }}
           >
             <BattleCandidate
@@ -332,6 +333,22 @@ export default function VotingPage() {
               onVote={() => queueVote(visiblePair.right, visiblePair.left, 'left')}
             />
           </div>
+
+          <div className="relative z-[70] flex items-end justify-between gap-3 sm:hidden">
+            <BattleControls
+              ageBucket={ageBucket}
+              gender={gender}
+              hairColor={hairColor}
+              pendingVote={pendingVote}
+              pairTimerKey={pairTimerKey}
+              seconds={decisionSeconds}
+              skinColor={skinColor}
+              onAgeBucketChange={setAgeBucket}
+              onGenderChange={setGender}
+              onHairColorChange={setHairColor}
+              onSkinColorChange={setSkinColor}
+            />
+          </div>
         </main>
       ) : (
         <BattleState
@@ -343,6 +360,52 @@ export default function VotingPage() {
 
       <PendingVoteBar pendingVote={pendingVote} seconds={decisionSeconds} onCancel={cancelPendingVote} />
     </section>
+  )
+}
+
+function BattleControls({
+  ageBucket,
+  gender,
+  hairColor,
+  pendingVote,
+  pairTimerKey,
+  seconds,
+  skinColor,
+  onAgeBucketChange,
+  onGenderChange,
+  onHairColorChange,
+  onSkinColorChange,
+}: {
+  ageBucket: (typeof ageFilters)[number]
+  gender: (typeof genderFilters)[number]
+  hairColor: (typeof hairColorFilters)[number]
+  pendingVote: PendingVote | null
+  pairTimerKey: string
+  seconds: number
+  skinColor: (typeof skinColorFilters)[number]
+  onAgeBucketChange: (value: (typeof ageFilters)[number]) => void
+  onGenderChange: (value: (typeof genderFilters)[number]) => void
+  onHairColorChange: (value: (typeof hairColorFilters)[number]) => void
+  onSkinColorChange: (value: (typeof skinColorFilters)[number]) => void
+}) {
+  return (
+    <>
+      <DecisionTimer
+        pending={Boolean(pendingVote)}
+        seconds={seconds}
+        timerKey={pairTimerKey}
+      />
+      <BattleFilters
+        ageBucket={ageBucket}
+        gender={gender}
+        hairColor={hairColor}
+        skinColor={skinColor}
+        onAgeBucketChange={onAgeBucketChange}
+        onGenderChange={onGenderChange}
+        onHairColorChange={onHairColorChange}
+        onSkinColorChange={onSkinColorChange}
+      />
+    </>
   )
 }
 
@@ -366,35 +429,116 @@ function BattleFilters({
   onSkinColorChange: (value: (typeof skinColorFilters)[number]) => void
 }) {
   return (
-    <div className="mt-6 flex flex-wrap gap-2">
-      <FilterSelect label="Gender" value={gender} values={genderFilters} onChange={onGenderChange} />
-      <FilterSelect label="Age" value={ageBucket} values={ageFilters} onChange={onAgeBucketChange} />
-      <FilterSelect label="Hair" value={hairColor} values={hairColorFilters} onChange={onHairColorChange} />
-      <FilterSelect label="Skin" value={skinColor} values={skinColorFilters} onChange={onSkinColorChange} />
+    <FilterMenu
+      align="right"
+      filters={[
+        { label: 'Gender', value: gender, values: genderFilters, onChange: (value) => onGenderChange(value as (typeof genderFilters)[number]) },
+        { label: 'Age', value: ageBucket, values: ageFilters, onChange: (value) => onAgeBucketChange(value as (typeof ageFilters)[number]) },
+        { label: 'Hair', value: hairColor, values: hairColorFilters, onChange: (value) => onHairColorChange(value as (typeof hairColorFilters)[number]) },
+        { label: 'Skin', value: skinColor, values: skinColorFilters, onChange: (value) => onSkinColorChange(value as (typeof skinColorFilters)[number]) },
+      ]}
+    />
+  )
+}
+
+type FilterMenuItem = {
+  label: string
+  value: string
+  values: readonly string[]
+  onChange: (value: string) => void
+}
+
+function FilterMenu({ align = 'right', filters }: { align?: 'left' | 'right'; filters: FilterMenuItem[] }) {
+  const [open, setOpen] = useState(false)
+  const [menuStyle, setMenuStyle] = useState<CSSProperties | null>(null)
+  const buttonRef = useRef<HTMLButtonElement | null>(null)
+  const panelRef = useRef<HTMLDivElement | null>(null)
+  const activeCount = filters.filter((filter) => filter.value !== 'all').length
+
+  useEffect(() => {
+    if (!open) return
+
+    function updateMenuPosition() {
+      const rect = buttonRef.current?.getBoundingClientRect()
+      if (!rect) return
+
+      const width = Math.min(window.innerWidth * 0.84, 320)
+      const preferredLeft = align === 'left' ? rect.left : rect.right - width
+      const left = Math.max(12, Math.min(window.innerWidth - width - 12, preferredLeft))
+      setMenuStyle({
+        left,
+        top: rect.bottom + 10,
+        width,
+      })
+    }
+
+    function handlePointerDown(event: PointerEvent) {
+      const target = event.target as Node
+      if (!buttonRef.current?.contains(target) && !panelRef.current?.contains(target)) {
+        setOpen(false)
+      }
+    }
+
+    updateMenuPosition()
+    document.addEventListener('pointerdown', handlePointerDown)
+    window.addEventListener('resize', updateMenuPosition)
+    window.addEventListener('scroll', updateMenuPosition, true)
+    return () => {
+      document.removeEventListener('pointerdown', handlePointerDown)
+      window.removeEventListener('resize', updateMenuPosition)
+      window.removeEventListener('scroll', updateMenuPosition, true)
+    }
+  }, [align, open])
+
+  return (
+    <div className="relative w-fit">
+      <button
+        ref={buttonRef}
+        aria-expanded={open}
+        aria-label="Open filters"
+        className="relative grid size-10 place-items-center rounded-full border border-zinc-200 bg-white text-black shadow-[0_10px_26px_rgba(15,23,42,0.06)] transition-[border-color,transform,box-shadow] duration-200 hover:-translate-y-0.5 hover:border-zinc-300 hover:shadow-[0_16px_34px_rgba(15,23,42,0.1)] active:translate-y-0"
+        onClick={() => setOpen((current) => !current)}
+        type="button"
+      >
+        <SlidersHorizontal className="size-4" aria-hidden="true" />
+        {activeCount > 0 ? (
+          <span className="absolute -right-1 -top-1 grid size-5 place-items-center rounded-full bg-black font-mono text-[10px] font-semibold text-white">
+            {activeCount}
+          </span>
+        ) : null}
+      </button>
+
+      {open && menuStyle && typeof document !== 'undefined' ? createPortal(
+        <motion.div
+          ref={panelRef}
+          className="fixed z-[9999] rounded-[24px] border border-zinc-200 bg-white p-3 shadow-[0_24px_70px_rgba(15,23,42,0.16)]"
+          style={menuStyle}
+          initial={{ opacity: 0, y: -6, scale: 0.98 }}
+          animate={{ opacity: 1, y: 0, scale: 1 }}
+          transition={{ duration: 0.18, ease: [0.22, 1, 0.36, 1] }}
+        >
+          <div className="grid gap-2">
+            {filters.map((filter) => (
+              <FilterMenuSelect key={filter.label} filter={filter} />
+            ))}
+          </div>
+        </motion.div>,
+        document.body
+      ) : null}
     </div>
   )
 }
 
-function FilterSelect<TValue extends string>({
-  label,
-  onChange,
-  value,
-  values,
-}: {
-  label: string
-  onChange: (value: TValue) => void
-  value: TValue
-  values: readonly TValue[]
-}) {
+function FilterMenuSelect({ filter }: { filter: FilterMenuItem }) {
   return (
-    <label className="grid gap-1">
-      <span className="font-mono text-[9px] uppercase tracking-[0.14em] text-zinc-500">{label}</span>
+    <label className="grid gap-1.5 rounded-2xl px-2 py-1.5 transition-colors hover:bg-zinc-50">
+      <span className="font-mono text-[9px] uppercase tracking-[0.14em] text-zinc-500">{filter.label}</span>
       <select
-        className="h-9 rounded-full border border-zinc-200 bg-white px-3 text-xs font-semibold capitalize text-black outline-none transition-colors hover:border-zinc-300"
-        onChange={(event) => onChange(event.target.value as TValue)}
-        value={value}
+        className="h-10 rounded-2xl border border-zinc-200 bg-white px-3 text-sm font-semibold capitalize text-black outline-none transition-colors hover:border-zinc-300 focus:border-black"
+        onChange={(event) => filter.onChange(event.target.value)}
+        value={filter.value}
       >
-        {values.map((option) => (
+        {filter.values.map((option) => (
           <option key={option} value={option}>
             {formatFilterOption(option)}
           </option>
@@ -468,7 +612,7 @@ function BattleCandidate({
   return (
     <article
       className={[
-        'group grid gap-4 will-change-transform transition-opacity duration-500 ease-out',
+        'group grid min-w-0 content-start gap-2 will-change-transform transition-opacity duration-500 ease-out sm:gap-4',
         isSelected ? 'opacity-100' : '',
         isPendingLoser ? 'opacity-45' : '',
       ].join(' ')}
@@ -479,12 +623,12 @@ function BattleCandidate({
         pointerEvents: isRejected ? 'none' : 'auto',
       }}
     >
-      <div className={`flex items-end justify-between gap-5 ${side === 'right' ? 'sm:flex-row-reverse sm:text-right' : ''}`}>
+      <div className={`flex min-w-0 items-end justify-between gap-2 sm:gap-5 ${side === 'right' ? 'sm:flex-row-reverse sm:text-right' : ''}`}>
         <div className="min-w-0">
-          <p className="font-mono text-xs uppercase tracking-[0.14em] text-zinc-500">Rank / pending</p>
-          <h2 className="mt-2 truncate text-5xl font-semibold leading-none tracking-[-0.065em]">{displayName}</h2>
+          <p className="font-mono text-[9px] uppercase tracking-[0.12em] text-zinc-500 sm:text-xs sm:tracking-[0.14em]">Rank</p>
+          <h2 className="mt-1 truncate text-2xl font-semibold leading-none tracking-[-0.055em] sm:mt-2 sm:text-5xl sm:tracking-[-0.065em]">{displayName}</h2>
         </div>
-        <div className="shrink-0 bg-white px-2 py-1 font-mono text-xs font-semibold">
+        <div className="shrink-0 bg-white px-1.5 py-1 font-mono text-[10px] font-semibold sm:px-2 sm:text-xs">
           [{shortcut}]
         </div>
       </div>
@@ -518,7 +662,7 @@ function BattleCandidate({
         ) : null}
       </button>
 
-      <div className={`grid grid-cols-3 border-y border-zinc-300 py-3 ${side === 'right' ? 'sm:text-right' : ''}`}>
+      <div className={`grid grid-cols-3 gap-1 border-y border-zinc-300 py-2 sm:gap-0 sm:py-3 ${side === 'right' ? 'sm:text-right' : ''}`}>
         <Metric label="Score" value={formatVotingScore(photo.displayRating)} />
         <Metric label="PSL" value={formatPsl(photo.pslScore)} />
         <Metric label="Win" value={`${winRate}%`} />
@@ -529,11 +673,11 @@ function BattleCandidate({
 
 function BattleDivider() {
   return (
-    <div className="grid place-items-center border-y border-zinc-200 py-3 lg:border-x lg:border-y-0 lg:py-0">
-      <div className="grid justify-items-center gap-2 lg:gap-4">
-        <div className="h-5 w-px bg-zinc-200 lg:h-16" />
-        <div className="font-mono text-[10px] uppercase tracking-[0.14em] text-zinc-500 lg:text-xs lg:tracking-[0.16em]">VS</div>
-        <div className="h-5 w-px bg-zinc-200 lg:h-16" />
+    <div className="grid place-items-center border-x border-zinc-200 px-1 lg:py-0">
+      <div className="grid justify-items-center gap-2 sm:gap-4">
+        <div className="h-10 w-px bg-zinc-200 sm:h-16" />
+        <div className="font-mono text-[9px] uppercase tracking-[0.12em] text-zinc-500 sm:text-xs sm:tracking-[0.16em]">VS</div>
+        <div className="h-10 w-px bg-zinc-200 sm:h-16" />
       </div>
     </div>
   )
@@ -611,9 +755,9 @@ function PendingVoteBar({
 
 function Metric({ label, value }: { label: string; value: string }) {
   return (
-    <div>
-      <p className="font-mono text-[10px] uppercase tracking-[0.12em] text-zinc-500">{label}</p>
-      <p className="mt-1 text-lg font-semibold tracking-[-0.04em]">{value}</p>
+    <div className="min-w-0">
+      <p className="truncate font-mono text-[8px] uppercase tracking-[0.08em] text-zinc-500 sm:text-[10px] sm:tracking-[0.12em]">{label}</p>
+      <p className="mt-1 truncate text-sm font-semibold tracking-[-0.04em] sm:text-lg">{value}</p>
     </div>
   )
 }

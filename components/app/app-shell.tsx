@@ -1,6 +1,5 @@
 import Link from 'next/link'
 import Image from 'next/image'
-import { motion } from 'motion/react'
 import { useEffect, useRef, useState, type ChangeEvent } from 'react'
 import type { ReactNode } from 'react'
 import { getProviders, useSession, signIn, signOut } from 'next-auth/react'
@@ -69,7 +68,7 @@ type ProfileDialogValues = {
   imageData?: string | null
   name: string
   social: string | null
-  gender: 'male' | 'female'
+  gender: 'male' | 'female' | null
   age: number | null
   hairColor: HairColor | null
   skinColor: SkinColor | null
@@ -332,8 +331,8 @@ function EditProfileDialog({
   const [avatarDataUrl, setAvatarDataUrl] = useState<string | null>(null)
   const [displayName, setDisplayName] = useState('')
   const [socialLink, setSocialLink] = useState('')
-  const [gender, setGender] = useState<'male' | 'female'>('male')
-  const [age, setAge] = useState('')
+  const [gender, setGender] = useState<'male' | 'female' | null>(null)
+  const [age, setAge] = useState<number | null>(null)
   const [hairColor, setHairColor] = useState<HairColor | null>(null)
   const [skinColor, setSkinColor] = useState<SkinColor | null>(null)
   const [cameraOpen, setCameraOpen] = useState(false)
@@ -345,8 +344,8 @@ function EditProfileDialog({
     setAvatarDataUrl(null)
     setDisplayName(initialProfile?.name ?? dashboard?.user.name ?? '')
     setSocialLink(initialProfile?.social ?? dashboard?.user.instagramUsername ?? '')
-    setGender(initialProfile?.gender ?? dashboard?.user.gender ?? 'male')
-    setAge(String(initialProfile?.age ?? dashboard?.user.age ?? ''))
+    setGender(initialProfile?.gender ?? dashboard?.user.gender ?? null)
+    setAge(initialProfile?.age ?? dashboard?.user.age ?? null)
     setHairColor(initialProfile?.hairColor ?? dashboard?.user.hairColor ?? null)
     setSkinColor(initialProfile?.skinColor ?? dashboard?.user.skinColor ?? null)
   }, [
@@ -402,14 +401,14 @@ function EditProfileDialog({
           name: displayName.trim(),
           social: socialLink.trim() || null,
           gender,
-          age: age ? Number(age) : null,
+          age,
           hairColor,
           skinColor,
         })
       } else {
         await apiPatch('/api/user/me', {
           ...(avatarDataUrl ? { imageData: avatarDataUrl } : null),
-          age: age ? Number(age) : null,
+          age,
           gender,
           hairColor,
           skinColor,
@@ -428,7 +427,6 @@ function EditProfileDialog({
   }
 
   const avatarPreview = avatarDataUrl ?? initialProfile?.image ?? dashboard?.user.image ?? null
-  const ageOptions = Array.from({ length: 108 }, (_, index) => index + 13)
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -477,49 +475,6 @@ function EditProfileDialog({
               value={displayName}
             />
           </label>
-
-          <div className="relative grid grid-cols-2 gap-3">
-            <label className="grid gap-2">
-              <span className="font-mono text-[10px] uppercase tracking-[0.12em] text-zinc-500">Gender</span>
-              <div className="grid h-12 grid-cols-2 overflow-hidden rounded-2xl border border-zinc-200 bg-zinc-50 p-1">
-                {(['male', 'female'] as const).map((option) => (
-                  <button
-                    key={option}
-                    className={`relative isolate overflow-hidden rounded-[13px] text-sm font-semibold capitalize transition-colors duration-200 ${
-                      gender === option ? 'text-black' : 'text-zinc-500 hover:text-black'
-                    }`}
-                    onClick={() => setGender(option)}
-                    type="button"
-                  >
-                    {gender === option ? (
-                      <motion.span
-                        layoutId="profile-gender-pill"
-                        className="absolute inset-0 -z-10 rounded-[13px] bg-white shadow-sm"
-                        transition={{ type: 'spring', stiffness: 420, damping: 34, mass: 0.7 }}
-                      />
-                    ) : null}
-                    <span className="relative z-10">{option}</span>
-                  </button>
-                ))}
-              </div>
-            </label>
-
-            <label className="grid gap-2">
-              <span className="font-mono text-[10px] uppercase tracking-[0.12em] text-zinc-500">Age</span>
-              <select
-                className="h-12 rounded-2xl border border-zinc-200 bg-white px-4 text-sm font-medium text-black outline-none transition-colors focus:border-black"
-                onChange={(event) => setAge(event.target.value)}
-                value={age}
-              >
-                <option value="">Age</option>
-                {ageOptions.map((option) => (
-                  <option key={option} value={option}>
-                    {option}
-                  </option>
-                ))}
-              </select>
-            </label>
-          </div>
 
           <label className="relative grid gap-2">
             <span className="font-mono text-[10px] uppercase tracking-[0.12em] text-zinc-500">Social link</span>

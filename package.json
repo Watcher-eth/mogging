@@ -33,6 +33,7 @@
     "@radix-ui/react-tabs": "^1.1.13",
     "@radix-ui/react-tooltip": "^1.2.8",
     "@upstash/redis": "^1.37.0",
+    "@web-kits/audio": "^0.1.0",
     "autoprefixer": "^10.5.0",
     "bcryptjs": "^3.0.2",
     "class-variance-authority": "^0.7.1",

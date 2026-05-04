@@ -1,7 +1,9 @@
 import { motion } from 'motion/react'
+import { SlidersHorizontal } from 'lucide-react'
 import { useSession } from 'next-auth/react'
 import Image from 'next/image'
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState, type CSSProperties } from 'react'
+import { createPortal } from 'react-dom'
 import useSWR from 'swr'
 import useSWRInfinite from 'swr/infinite'
 import { apiGet } from '@/lib/api/client'
@@ -134,45 +136,50 @@ export default function LeaderboardPage() {
           }
         }
       `}</style>
-      <div className="grid w-full gap-14">
+      <div className="isolate grid w-full gap-14">
         <header
-          className="border-b border-zinc-200 pb-10"
+          className="relative z-[80] border-b border-zinc-200 bg-white pb-10"
           style={{ animation: 'leaderboard-enter 560ms cubic-bezier(0.22, 1, 0.36, 1) both' }}
         >
           <div className="flex flex-col gap-5 sm:flex-row sm:items-end sm:justify-between">
             <h1 className="max-w-4xl text-4xl font-semibold leading-[0.94] tracking-[-0.07em] sm:text-6xl lg:text-7xl">
               Global Leaderboard
             </h1>
-            <div className="grid h-11 grid-cols-3 rounded-full border border-zinc-200 bg-zinc-50 p-1 sm:w-[260px]">
-              {genderFilters.map((filter) => (
-                <button
-                  key={filter.value}
-                  className={`relative isolate overflow-hidden rounded-full text-xs font-semibold transition-colors duration-200 ease-out ${
-                    gender === filter.value ? 'text-black' : 'text-zinc-500 hover:text-black'
-                  }`}
-                  onClick={() => setGender(filter.value)}
-                  type="button"
-                >
-                  {gender === filter.value ? (
-                    <motion.span
-                      layoutId="leaderboard-gender-pill"
-                      className="absolute inset-0 -z-10 rounded-full bg-white shadow-[0_8px_22px_rgba(15,23,42,0.08)]"
-                      transition={{ type: 'spring', stiffness: 420, damping: 34, mass: 0.7 }}
-                    />
-                  ) : null}
-                  <span className="relative z-10">{filter.label}</span>
-                </button>
-              ))}
+            <div className="flex items-center gap-2 self-start sm:self-auto">
+              <div className="grid h-11 grid-cols-3 rounded-full border border-zinc-200 bg-zinc-50 p-1 sm:w-[260px]">
+                {genderFilters.map((filter) => (
+                  <button
+                    key={filter.value}
+                    className={`relative isolate overflow-hidden rounded-full text-xs font-semibold transition-colors duration-200 ease-out ${
+                      gender === filter.value ? 'text-black' : 'text-zinc-500 hover:text-black'
+                    }`}
+                    onClick={() => setGender(filter.value)}
+                    type="button"
+                  >
+                    {gender === filter.value ? (
+                      <motion.span
+                        layoutId="leaderboard-gender-pill"
+                        className="absolute inset-0 -z-10 rounded-full bg-white shadow-[0_8px_22px_rgba(15,23,42,0.08)]"
+                        transition={{ type: 'spring', stiffness: 420, damping: 34, mass: 0.7 }}
+                      />
+                    ) : null}
+                    <span className="relative z-10">{filter.label}</span>
+                  </button>
+                ))}
+              </div>
+              <LeaderboardFilterMenu
+                ageBucket={ageBucket}
+                hairColor={hairColor}
+                skinColor={skinColor}
+                onAgeBucketChange={setAgeBucket}
+                onHairColorChange={setHairColor}
+                onSkinColorChange={setSkinColor}
+              />
             </div>
-          </div>
-          <div className="mt-6 flex flex-wrap justify-start gap-2 sm:justify-end">
-            <LeaderboardFilterSelect label="Age" value={ageBucket} values={leaderboardAgeFilters} onChange={setAgeBucket} />
-            <LeaderboardFilterSelect label="Hair" value={hairColor} values={leaderboardHairFilters} onChange={setHairColor} />
-            <LeaderboardFilterSelect label="Skin" value={skinColor} values={leaderboardSkinFilters} onChange={setSkinColor} />
           </div>
         </header>
 
-        <div key={`${gender}-${ageBucket}-${hairColor}-${skinColor}`} className="grid gap-16" style={{ animation: 'leaderboard-enter 420ms cubic-bezier(0.22, 1, 0.36, 1) both' }}>
+        <div key={`${gender}-${ageBucket}-${hairColor}-${skinColor}`} className="relative z-0 grid gap-16" style={{ animation: 'leaderboard-enter 420ms cubic-bezier(0.22, 1, 0.36, 1) both' }}>
           <section aria-label="Podium leaderboard entries" className="grid gap-6">
             <div className="grid min-h-[430px] grid-cols-1 items-end gap-6 sm:grid-cols-3">
               {podiumOrder.map((entryIndex) => {
@@ -288,26 +295,130 @@ function TopEntry({ elevated, entry, index }: { elevated?: boolean; entry: Leade
   )
 }
 
-function LeaderboardFilterSelect<TValue extends string>({
-  label,
-  onChange,
-  value,
-  values,
-}: {
+type LeaderboardFilterItem = {
   label: string
-  onChange: (value: TValue) => void
-  value: TValue
-  values: readonly TValue[]
+  value: string
+  values: readonly string[]
+  onChange: (value: string) => void
+}
+
+function LeaderboardFilterMenu({
+  ageBucket,
+  hairColor,
+  skinColor,
+  onAgeBucketChange,
+  onHairColorChange,
+  onSkinColorChange,
+}: {
+  ageBucket: (typeof leaderboardAgeFilters)[number]
+  hairColor: (typeof leaderboardHairFilters)[number]
+  skinColor: (typeof leaderboardSkinFilters)[number]
+  onAgeBucketChange: (value: (typeof leaderboardAgeFilters)[number]) => void
+  onHairColorChange: (value: (typeof leaderboardHairFilters)[number]) => void
+  onSkinColorChange: (value: (typeof leaderboardSkinFilters)[number]) => void
 }) {
   return (
-    <label className="grid gap-1">
-      <span className="font-mono text-[9px] uppercase tracking-[0.14em] text-zinc-500">{label}</span>
-      <select
-        className="h-9 rounded-full border border-zinc-200 bg-white px-3 text-xs font-semibold capitalize text-black outline-none transition-colors hover:border-zinc-300"
-        onChange={(event) => onChange(event.target.value as TValue)}
-        value={value}
+    <FilterMenu
+      filters={[
+        { label: 'Age', value: ageBucket, values: leaderboardAgeFilters, onChange: (value) => onAgeBucketChange(value as (typeof leaderboardAgeFilters)[number]) },
+        { label: 'Hair', value: hairColor, values: leaderboardHairFilters, onChange: (value) => onHairColorChange(value as (typeof leaderboardHairFilters)[number]) },
+        { label: 'Skin', value: skinColor, values: leaderboardSkinFilters, onChange: (value) => onSkinColorChange(value as (typeof leaderboardSkinFilters)[number]) },
+      ]}
+    />
+  )
+}
+
+function FilterMenu({ align = 'left', filters }: { align?: 'left' | 'right'; filters: LeaderboardFilterItem[] }) {
+  const [open, setOpen] = useState(false)
+  const [menuStyle, setMenuStyle] = useState<CSSProperties | null>(null)
+  const buttonRef = useRef<HTMLButtonElement | null>(null)
+  const panelRef = useRef<HTMLDivElement | null>(null)
+  const activeCount = filters.filter((filter) => filter.value !== 'all').length
+
+  useEffect(() => {
+    if (!open) return
+
+    function updateMenuPosition() {
+      const rect = buttonRef.current?.getBoundingClientRect()
+      if (!rect) return
+
+      const width = Math.min(window.innerWidth * 0.84, 320)
+      const preferredLeft = align === 'left' ? rect.left : rect.right - width
+      const left = Math.max(12, Math.min(window.innerWidth - width - 12, preferredLeft))
+      setMenuStyle({
+        left,
+        top: rect.bottom + 10,
+        width,
+      })
+    }
+
+    function handlePointerDown(event: PointerEvent) {
+      const target = event.target as Node
+      if (!buttonRef.current?.contains(target) && !panelRef.current?.contains(target)) {
+        setOpen(false)
+      }
+    }
+
+    updateMenuPosition()
+    document.addEventListener('pointerdown', handlePointerDown)
+    window.addEventListener('resize', updateMenuPosition)
+    window.addEventListener('scroll', updateMenuPosition, true)
+    return () => {
+      document.removeEventListener('pointerdown', handlePointerDown)
+      window.removeEventListener('resize', updateMenuPosition)
+      window.removeEventListener('scroll', updateMenuPosition, true)
+    }
+  }, [align, open])
+
+  return (
+    <div className="relative">
+      <button
+        ref={buttonRef}
+        aria-expanded={open}
+        aria-label="Open filters"
+        className="relative grid size-11 place-items-center rounded-full border border-zinc-200 bg-white text-black shadow-[0_10px_26px_rgba(15,23,42,0.06)] transition-[border-color,transform,box-shadow] duration-200 hover:-translate-y-0.5 hover:border-zinc-300 hover:shadow-[0_16px_34px_rgba(15,23,42,0.1)] active:translate-y-0"
+        onClick={() => setOpen((current) => !current)}
+        type="button"
       >
-        {values.map((option) => (
+        <SlidersHorizontal className="size-4" aria-hidden="true" />
+        {activeCount > 0 ? (
+          <span className="absolute -right-1 -top-1 grid size-5 place-items-center rounded-full bg-black font-mono text-[10px] font-semibold text-white">
+            {activeCount}
+          </span>
+        ) : null}
+      </button>
+
+      {open && menuStyle && typeof document !== 'undefined' ? createPortal(
+        <motion.div
+          ref={panelRef}
+          className="fixed z-[9999] rounded-[24px] border border-zinc-200 bg-white p-3 shadow-[0_24px_70px_rgba(15,23,42,0.16)]"
+          style={menuStyle}
+          initial={{ opacity: 0, y: -6, scale: 0.98 }}
+          animate={{ opacity: 1, y: 0, scale: 1 }}
+          transition={{ duration: 0.18, ease: [0.22, 1, 0.36, 1] }}
+        >
+          <div className="grid gap-2">
+            {filters.map((filter) => (
+              <LeaderboardFilterSelect key={filter.label} filter={filter} />
+            ))}
+          </div>
+        </motion.div>,
+        document.body
+      ) : null}
+    </div>
+  )
+}
+
+function LeaderboardFilterSelect({ filter }: { filter: LeaderboardFilterItem }) {
+  return (
+    <label className="grid gap-1.5 rounded-2xl px-2 py-1.5 transition-colors hover:bg-zinc-50">
+      <span className="font-mono text-[9px] uppercase tracking-[0.14em] text-zinc-500">{filter.label}</span>
+      <select
+        className="h-10 rounded-2xl border border-zinc-200 bg-white px-3 text-sm font-semibold capitalize text-black outline-none transition-colors hover:border-zinc-300 focus:border-black"
+        onChange={(event) => filter.onChange(event.target.value)}
+        value={filter.value}
+      >
+        {filter.values.map((option) => (
           <option key={option} value={option}>
             {formatFilterOption(option)}
           </option>
