@@ -6,10 +6,12 @@ import { getProviders, useSession, signIn, signOut } from 'next-auth/react'
 import { useRouter } from 'next/router'
 import { ChevronDown, FileText, Loader2, LogOut, Pencil, Plus } from 'lucide-react'
 import useSWR from 'swr'
+import { useSound } from '@web-kits/audio/react'
 import { AppNav } from '@/components/app/nav'
 import { CameraSheet } from '@/components/analysis/camera-sheet'
 import { Button } from '@/components/ui/button'
 import { apiGet, apiPatch, ApiClientError } from '@/lib/api/client'
+import { navSound } from '@/lib/audio/sounds'
 import { inferHairColorFromDataUrl, inferSkinColorFromDataUrl } from '@/lib/client/appearance'
 import { extractFaceLandmarksFromDataUrl } from '@/lib/client/faceLandmarks'
 import type { HairColor, SkinColor } from '@/lib/appearance/types'
@@ -76,6 +78,7 @@ type ProfileDialogValues = {
 
 export function AppShell({ children }: AppShellProps) {
   const { data: session, status } = useSession()
+  const playNav = useSound(navSound)
   const router = useRouter()
   const immersive = router.pathname === '/' || router.pathname === '/analysis' || router.pathname === '/leaderboard'
   const [loginOpen, setLoginOpen] = useState(false)
@@ -153,7 +156,7 @@ export function AppShell({ children }: AppShellProps) {
     <div className={immersive ? 'min-h-screen bg-white' : 'min-h-screen bg-background'}>
       <header className="sticky top-0 z-40 bg-white/90 backdrop-blur-xl">
         <div className="grid h-16 w-full grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-2 px-3 sm:h-20 sm:grid-cols-[1fr_auto_1fr] sm:gap-4 sm:px-10">
-          <Link href="/" className="text-xl font-semibold leading-none tracking-[-0.06em] text-black transition-transform duration-200 ease-out hover:scale-[1.015] active:scale-[0.995] sm:text-4xl">
+          <Link href="/" onClick={() => playNav()} className="text-xl font-semibold leading-none tracking-[-0.06em] text-black transition-transform duration-200 ease-out hover:scale-[1.015] active:scale-[0.995] sm:text-4xl">
             Mogging
           </Link>
 
@@ -224,13 +227,24 @@ export function AppShell({ children }: AppShellProps) {
                     className="size-8 rounded-lg border border-zinc-300 bg-white p-0 text-black shadow-none hover:bg-zinc-50 sm:size-10 sm:rounded-xl"
                     variant="outline"
                     size="icon"
-                    onClick={() => setAnonymousProfileOpen(true)}
+                    onClick={() => {
+                      playNav()
+                      setAnonymousProfileOpen(true)
+                    }}
                     aria-label="Set anonymous profile"
                   >
                     <Plus className="size-4" aria-hidden="true" />
                   </Button>
                 ) : null}
-                <Button className="h-8 rounded-lg border border-zinc-300 bg-white px-3 text-xs font-medium text-black shadow-none hover:bg-zinc-50 sm:h-10 sm:rounded-xl sm:px-5 sm:text-sm" variant="outline" size="sm" onClick={() => setLoginOpen(true)}>
+                <Button
+                  className="h-8 rounded-lg border border-zinc-300 bg-white px-3 text-xs font-medium text-black shadow-none hover:bg-zinc-50 sm:h-10 sm:rounded-xl sm:px-5 sm:text-sm"
+                  variant="outline"
+                  size="sm"
+                  onClick={() => {
+                    playNav()
+                    setLoginOpen(true)
+                  }}
+                >
                   Login
                 </Button>
               </div>

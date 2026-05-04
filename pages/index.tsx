@@ -3,9 +3,11 @@ import Image from 'next/image'
 import { motion } from 'motion/react'
 import { useCallback, useEffect, useRef, useState, type CSSProperties, type ReactNode } from 'react'
 import { createPortal } from 'react-dom'
+import { useSound } from '@web-kits/audio/react'
 import useSWR, { useSWRConfig } from 'swr'
 import { toast } from 'sonner'
 import { apiGet, apiPost, ApiClientError } from '@/lib/api/client'
+import { filterSound, selectSound, voteSound } from '@/lib/audio/sounds'
 
 type ComparisonPhoto = {
   id: string
@@ -52,6 +54,8 @@ const skinColorFilters = ['all', 'very_light', 'light', 'white', 'tan', 'brown',
 
 export default function VotingPage() {
   const { mutate: mutateGlobal } = useSWRConfig()
+  const playVote = useSound(voteSound)
+  const playSelect = useSound(selectSound)
   const [ageBucket, setAgeBucket] = useState<(typeof ageFilters)[number]>('all')
   const [gender, setGender] = useState<(typeof genderFilters)[number]>('all')
   const [hairColor, setHairColor] = useState<(typeof hairColorFilters)[number]>('all')
@@ -108,10 +112,11 @@ export default function VotingPage() {
     }
 
     if (committedVote) {
+      playVote()
       toast.success(`Registered your vote for ${committedVote.winner.name || `${committedVote.winner.gender} face`}`)
       void submitVote(committedVote.winner, committedVote.loser)
     }
-  }, [mutate, submitVote])
+  }, [mutate, playVote, submitVote])
 
   useEffect(() => {
     pendingVoteRef.current = pendingVote
@@ -145,13 +150,14 @@ export default function VotingPage() {
   }, [advancePair, pairTimerKey, prefetchNextPair, visiblePair])
 
   const queueVote = useCallback((winner: ComparisonPhoto, loser: ComparisonPhoto, loserSide: 'left' | 'right') => {
+    playSelect()
     setPendingVote({
       id: `${winner.id}-${Date.now()}`,
       loserSide,
       winner,
       loser,
     })
-  }, [])
+  }, [playSelect])
 
   useEffect(() => {
     if (!visiblePair || pendingVote) return
@@ -453,6 +459,7 @@ function FilterMenu({ align = 'right', filters }: { align?: 'left' | 'right'; fi
   const [menuStyle, setMenuStyle] = useState<CSSProperties | null>(null)
   const buttonRef = useRef<HTMLButtonElement | null>(null)
   const panelRef = useRef<HTMLDivElement | null>(null)
+  const playFilter = useSound(filterSound)
   const activeCount = filters.filter((filter) => filter.value !== 'all').length
 
   useEffect(() => {
@@ -497,7 +504,10 @@ function FilterMenu({ align = 'right', filters }: { align?: 'left' | 'right'; fi
         aria-expanded={open}
         aria-label="Open filters"
         className="relative grid size-10 place-items-center rounded-full border border-zinc-200 bg-white text-black shadow-[0_10px_26px_rgba(15,23,42,0.06)] transition-[border-color,transform,box-shadow] duration-200 hover:-translate-y-0.5 hover:border-zinc-300 hover:shadow-[0_16px_34px_rgba(15,23,42,0.1)] active:translate-y-0"
-        onClick={() => setOpen((current) => !current)}
+        onClick={() => {
+          playFilter()
+          setOpen((current) => !current)
+        }}
         type="button"
       >
         <SlidersHorizontal className="size-4" aria-hidden="true" />
@@ -530,12 +540,17 @@ function FilterMenu({ align = 'right', filters }: { align?: 'left' | 'right'; fi
 }
 
 function FilterMenuSelect({ filter }: { filter: FilterMenuItem }) {
+  const playFilter = useSound(filterSound)
+
   return (
     <label className="grid gap-1.5 rounded-2xl px-2 py-1.5 transition-colors hover:bg-zinc-50">
       <span className="font-mono text-[9px] uppercase tracking-[0.14em] text-zinc-500">{filter.label}</span>
       <select
         className="h-10 rounded-2xl border border-zinc-200 bg-white px-3 text-sm font-semibold capitalize text-black outline-none transition-colors hover:border-zinc-300 focus:border-black"
-        onChange={(event) => filter.onChange(event.target.value)}
+        onChange={(event) => {
+          playFilter()
+          filter.onChange(event.target.value)
+        }}
         value={filter.value}
       >
         {filter.values.map((option) => (

@@ -18,8 +18,10 @@ import Image from 'next/image'
 import { useRouter } from 'next/router'
 import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties, type ChangeEvent, type ReactNode } from 'react'
 import { toast } from 'sonner'
+import { useSound } from '@web-kits/audio/react'
 import useSWR from 'swr'
 import { apiGet, apiPost, ApiClientError } from '@/lib/api/client'
+import { selectSound } from '@/lib/audio/sounds'
 import {
   clearAnalysisDraft,
   loadAnalysisDraft,
@@ -358,6 +360,7 @@ const reportOverlayCategoryYOffset: Record<string, number> = {
 export default function AnalysisPage() {
   const router = useRouter()
   const { status } = useSession()
+  const playSelect = useSound(selectSound)
   const { data: appConfig } = useSWR<AppConfig>('/api/app-config', apiGet, {
     shouldRetryOnError: false,
   })
@@ -415,6 +418,7 @@ export default function AnalysisPage() {
 
   async function startPseudoAnalysis() {
     if (!canStart) return
+    playSelect()
     if (authRequired && status !== 'authenticated') {
       setLoginOpen(true)
       return

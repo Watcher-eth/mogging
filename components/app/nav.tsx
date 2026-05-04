@@ -1,6 +1,8 @@
 import Link from 'next/link'
 import { motion } from 'motion/react'
 import { useRouter } from 'next/router'
+import { useSound } from '@web-kits/audio/react'
+import { navSound } from '@/lib/audio/sounds'
 import { cn } from '@/lib/utils'
 
 const navItems = [
@@ -11,6 +13,7 @@ const navItems = [
 
 export function AppNav() {
   const router = useRouter()
+  const playNav = useSound(navSound)
 
   return (
     <nav className="flex min-w-0 items-center justify-center gap-2 sm:gap-8">
@@ -23,6 +26,7 @@ export function AppNav() {
           <Link
             key={item.href}
             href={item.href}
+            onClick={() => playNav()}
             className={cn(
               'group relative py-2 text-[11px] font-medium text-black/45 transition-[color,transform] duration-200 ease-out hover:-translate-y-0.5 hover:text-black active:scale-[0.98] sm:text-sm',
               active && 'text-black'
