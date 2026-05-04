@@ -3,7 +3,7 @@ import { z } from 'zod'
 export const hairColorSchema = z.enum(['black', 'brown', 'blond', 'red', 'gray', 'other'])
 export type HairColor = z.infer<typeof hairColorSchema>
 
-export const skinColorSchema = z.enum(['very_light', 'light', 'medium', 'tan', 'deep', 'very_deep'])
+export const skinColorSchema = z.enum(['very_light', 'light', 'white', 'tan', 'brown', 'black'])
 export type SkinColor = z.infer<typeof skinColorSchema>
 
 export const ageBucketSchema = z.enum(['13-17', '18-24', '25-34', '35-44', '45+'])

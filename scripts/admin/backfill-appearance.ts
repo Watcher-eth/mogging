@@ -15,10 +15,13 @@ type Rgb = {
 
 type BackfillOptions = {
   dryRun: boolean
+  fields: Set<AppearanceField>
   limit: number | null
   overwrite: boolean
   vision: boolean
 }
+
+type AppearanceField = 'age' | 'gender' | 'hair' | 'skin'
 
 const hairColorSchema = z.enum(['black', 'brown', 'blond', 'red', 'gray', 'other'])
 const genderSchema = z.enum(['male', 'female', 'other'])
@@ -53,10 +56,10 @@ for (const row of rows) {
     }
 
     const patch = {
-      ...(next.gender !== row.gender ? { gender: next.gender } : null),
-      ...(next.age !== row.age ? { age: next.age } : null),
-      ...(next.hairColor !== row.hairColor ? { hairColor: next.hairColor } : null),
-      ...(next.skinColor !== row.skinColor ? { skinColor: next.skinColor } : null),
+      ...(options.fields.has('gender') && next.gender !== row.gender ? { gender: next.gender } : null),
+      ...(options.fields.has('age') && next.age !== row.age ? { age: next.age } : null),
+      ...(options.fields.has('hair') && next.hairColor !== row.hairColor ? { hairColor: next.hairColor } : null),
+      ...(options.fields.has('skin') && next.skinColor !== row.skinColor ? { skinColor: next.skinColor } : null),
     }
 
     if (Object.keys(patch).length === 0) {
@@ -87,7 +90,9 @@ process.exit(failed > 0 ? 1 : 0)
 
 function parseOptions(args: string[]): BackfillOptions {
   const limitArg = args.find((arg) => arg.startsWith('--limit='))
+  const fieldsArg = args.find((arg) => arg.startsWith('--fields='))
   const limit = limitArg ? Number(limitArg.split('=')[1]) : null
+  const fields = parseFields(fieldsArg?.split('=')[1])
 
   if (limitArg && (!Number.isInteger(limit) || limit! < 1)) {
     throw new Error('--limit must be a positive integer')
@@ -95,10 +100,27 @@ function parseOptions(args: string[]): BackfillOptions {
 
   return {
     dryRun: args.includes('--dry-run'),
+    fields,
     limit,
     overwrite: args.includes('--overwrite'),
     vision: args.includes('--vision'),
   }
+}
+
+function parseFields(value?: string) {
+  const fields = new Set<AppearanceField>()
+  const requested = value ? value.split(',') : ['age', 'gender', 'hair', 'skin']
+
+  for (const field of requested) {
+    if (field === 'age' || field === 'gender' || field === 'hair' || field === 'skin') {
+      fields.add(field)
+      continue
+    }
+
+    throw new Error('--fields must contain only age,gender,hair,skin')
+  }
+
+  return fields
 }
 
 async function loadRows({ limit, overwrite }: BackfillOptions) {
@@ -106,10 +128,10 @@ async function loadRows({ limit, overwrite }: BackfillOptions) {
     ? [isNotNull(schema.photos.id)]
     : [
         or(
-          eq(schema.photos.gender, 'other'),
-          isNull(schema.photos.age),
-          isNull(schema.photos.hairColor),
-          isNull(schema.photos.skinColor)
+          options.fields.has('gender') ? eq(schema.photos.gender, 'other') : undefined,
+          options.fields.has('age') ? isNull(schema.photos.age) : undefined,
+          options.fields.has('hair') ? isNull(schema.photos.hairColor) : undefined,
+          options.fields.has('skin') ? isNull(schema.photos.skinColor) : undefined
         ),
       ]
 
@@ -179,7 +201,7 @@ function inferHairColor(data: Buffer, width: number, height: number): HairColor 
   for (const sampleRect of rects) {
     forEachPixel(data, width, sampleRect, (pixel, index) => {
       if (index % 7 !== 0) return
-      if (isLikelyBackground(pixel) || isLikelySkin(pixel)) return
+      if (isLikelyBackground(pixel)) return
       samples.push(pixel)
     })
   }
@@ -216,35 +238,30 @@ async function inferVisionAppearance(buffer: Buffer) {
 
   const imageDataUrl = `data:image/jpeg;base64,${(await sharp(buffer).jpeg({ quality: 82 }).toBuffer()).toString('base64')}`
 
-  const response = await fetch(`${env.MOONSHOT_BASE_URL}/chat/completions`, {
-    method: 'POST',
-    headers: {
-      Authorization: `Bearer ${env.MOONSHOT_API_KEY}`,
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify({
-      model: env.KIMI_ANALYSIS_MODEL,
-      messages: [
-        {
-          role: 'system',
-          content: 'Classify visible portrait metadata for leaderboard filters. Return strict JSON only. Skin color is a visible tone bucket, not ethnicity.',
-        },
-        {
-          role: 'user',
-          content: [
-            { type: 'image_url', image_url: { url: imageDataUrl } },
-            {
-              type: 'text',
-              text: 'Return {"gender":"male|female|other|null","age":number|null,"hairColor":"black|brown|blond|red|gray|other|null","skinColor":"very_light|light|medium|tan|deep|very_deep|null"}. Estimate age as an integer from visible apparent age. Use null if not reasonably visible.',
-            },
-          ],
-        },
-      ],
-      response_format: { type: 'json_object' },
-      thinking: { type: 'disabled' },
-      max_tokens: 300,
-    }),
+  const body = JSON.stringify({
+    model: env.KIMI_ANALYSIS_MODEL,
+    messages: [
+      {
+        role: 'system',
+        content: 'Classify visible portrait metadata for leaderboard filters. Return strict JSON only. Skin color is a visible tone bucket, not ethnicity.',
+      },
+      {
+        role: 'user',
+        content: [
+          { type: 'image_url', image_url: { url: imageDataUrl } },
+          {
+            type: 'text',
+            text: 'Return {"gender":"male|female|other|null","age":number|null,"hairColor":"black|brown|blond|red|gray|other|null","skinColor":"very_light|light|white|tan|brown|black|null"}. Estimate age as an integer from visible apparent age. Use null if not reasonably visible. Treat dirty blond and dark blond as blond, not brown.',
+          },
+        ],
+      },
+    ],
+    response_format: { type: 'json_object' },
+    thinking: { type: 'disabled' },
+    max_tokens: 300,
   })
+
+  const response = await fetchVisionWithRetry(body)
 
   if (!response.ok) {
     throw new Error(`Vision appearance request failed: ${response.status} ${await response.text()}`)
@@ -256,6 +273,32 @@ async function inferVisionAppearance(buffer: Buffer) {
   return visionAppearanceSchema.parse(JSON.parse(content))
 }
 
+async function fetchVisionWithRetry(body: string) {
+  let lastResponse: Response | null = null
+
+  for (let attempt = 0; attempt < 3; attempt += 1) {
+    const response = await fetch(`${env.MOONSHOT_BASE_URL}/chat/completions`, {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${env.MOONSHOT_API_KEY}`,
+        'Content-Type': 'application/json',
+      },
+      body,
+    })
+
+    if (response.ok || (response.status !== 429 && response.status < 500)) return response
+
+    lastResponse = response
+    await sleep(900 * (attempt + 1))
+  }
+
+  return lastResponse!
+}
+
+function sleep(ms: number) {
+  return new Promise((resolve) => setTimeout(resolve, ms))
+}
+
 function chooseValue<T>(currentValue: T, inferredValue: T | null | undefined, overwrite: boolean) {
   if (inferredValue === undefined || inferredValue === null) return currentValue
   if (overwrite) return inferredValue
@@ -265,13 +308,20 @@ function chooseValue<T>(currentValue: T, inferredValue: T | null | undefined, ov
 }
 
 function bucketHairColor(samples: Rgb[]): HairColor {
-  const rgb = average(samples)
+  const hairSamples = samples.filter((pixel) => !isLikelySkin(pixel) || isLikelyBlondPixel(pixel))
+  const usableSamples = hairSamples.length >= 24 ? hairSamples : samples
+  const blondSamples = usableSamples.filter(isLikelyBlondPixel)
+  const lightWarmRatio = blondSamples.length / usableSamples.length
+
+  if (blondSamples.length >= 10 && lightWarmRatio >= 0.16) return 'blond'
+
+  const rgb = average(usableSamples)
   const { h, s, v } = rgbToHsv(rgb)
 
   if (v < 46) return 'black'
   if (s < 0.18 && v > 150) return 'gray'
   if ((h < 26 || h > 345) && s > 0.28 && v > 55) return 'red'
-  if (h >= 26 && h <= 58 && s > 0.18 && v > 138) return 'blond'
+  if (h >= 28 && h <= 62 && s > 0.12 && v > 112) return 'blond'
   if (v < 138 && h >= 12 && h <= 52) return 'brown'
   if (v < 92) return 'black'
   return 'other'
@@ -289,10 +339,10 @@ function bucketSkinColor(samples: Rgb[]): SkinColor {
 
   if (luminance >= 202) return 'very_light'
   if (luminance >= 172) return 'light'
-  if (luminance >= 138) return 'medium'
+  if (luminance >= 138) return 'white'
   if (luminance >= 106) return 'tan'
-  if (luminance >= 74) return 'deep'
-  return 'very_deep'
+  if (luminance >= 74) return 'brown'
+  return 'black'
 }
 
 function average(samples: Rgb[]) {
@@ -316,6 +366,11 @@ function isLikelySkin({ r, g, b }: Rgb) {
   const max = Math.max(r, g, b)
   const min = Math.min(r, g, b)
   return r > 72 && g > 38 && b > 24 && max - min > 15 && r > g && g >= b * 0.72
+}
+
+function isLikelyBlondPixel(pixel: Rgb) {
+  const { h, s, v } = rgbToHsv(pixel)
+  return h >= 28 && h <= 64 && s >= 0.10 && s <= 0.68 && v >= 112 && pixel.r >= pixel.b + 22
 }
 
 function isLikelyBackground({ r, g, b }: Rgb) {

@@ -47,7 +47,7 @@ const decisionWindowMs = 4_500
 const ageFilters = ['all', '13-17', '18-24', '25-34', '35-44', '45+'] as const
 const genderFilters = ['all', 'male', 'female'] as const
 const hairColorFilters = ['all', 'black', 'brown', 'blond', 'red', 'gray', 'other'] as const
-const skinColorFilters = ['all', 'very_light', 'light', 'medium', 'tan', 'deep', 'very_deep'] as const
+const skinColorFilters = ['all', 'very_light', 'light', 'white', 'tan', 'brown', 'black'] as const
 
 export default function VotingPage() {
   const { mutate: mutateGlobal } = useSWRConfig()

@@ -39,7 +39,7 @@ export async function inferHairColorFromDataUrl(
           g: imageData.data[index + 1],
           b: imageData.data[index + 2],
         }
-        if (isLikelyBackground(pixel) || isLikelySkin(pixel)) continue
+        if (isLikelyBackground(pixel)) continue
         samples.push(pixel)
       }
     }
@@ -122,6 +122,26 @@ function getHairSampleRects(width: number, height: number, landmarks?: FaceLandm
 }
 
 function bucketHairColor(samples: Rgb[]): HairColor {
+  const hairSamples = samples.filter((pixel) => !isLikelySkin(pixel) || isLikelyBlondPixel(pixel))
+  const usableSamples = hairSamples.length >= 24 ? hairSamples : samples
+  const blondSamples = usableSamples.filter(isLikelyBlondPixel)
+  const lightWarmRatio = blondSamples.length / usableSamples.length
+
+  if (blondSamples.length >= 10 && lightWarmRatio >= 0.16) return 'blond'
+
+  const rgb = averageRgb(usableSamples)
+  const { h, s, v } = rgbToHsv(rgb)
+
+  if (v < 46) return 'black'
+  if (s < 0.18 && v > 150) return 'gray'
+  if ((h < 26 || h > 345) && s > 0.28 && v > 55) return 'red'
+  if (h >= 28 && h <= 62 && s > 0.12 && v > 112) return 'blond'
+  if (v < 138 && h >= 12 && h <= 52) return 'brown'
+  if (v < 92) return 'black'
+  return 'other'
+}
+
+function averageRgb(samples: Rgb[]) {
   const average = samples.reduce(
     (total, pixel) => ({
       r: total.r + pixel.r,
@@ -130,20 +150,12 @@ function bucketHairColor(samples: Rgb[]): HairColor {
     }),
     { r: 0, g: 0, b: 0 }
   )
-  const rgb = {
+
+  return {
     r: average.r / samples.length,
     g: average.g / samples.length,
     b: average.b / samples.length,
   }
-  const { h, s, v } = rgbToHsv(rgb)
-
-  if (v < 46) return 'black'
-  if (s < 0.18 && v > 150) return 'gray'
-  if ((h < 26 || h > 345) && s > 0.28 && v > 55) return 'red'
-  if (h >= 26 && h <= 58 && s > 0.18 && v > 138) return 'blond'
-  if (v < 138 && h >= 12 && h <= 52) return 'brown'
-  if (v < 92) return 'black'
-  return 'other'
 }
 
 function getSkinSamplePoints(width: number, height: number, landmarks: FaceLandmarksPayload) {
@@ -172,16 +184,21 @@ function bucketSkinColor(samples: Rgb[]): SkinColor {
 
   if (luminance >= 202) return 'very_light'
   if (luminance >= 172) return 'light'
-  if (luminance >= 138) return 'medium'
+  if (luminance >= 138) return 'white'
   if (luminance >= 106) return 'tan'
-  if (luminance >= 74) return 'deep'
-  return 'very_deep'
+  if (luminance >= 74) return 'brown'
+  return 'black'
 }
 
 function isLikelySkin({ r, g, b }: Rgb) {
   const max = Math.max(r, g, b)
   const min = Math.min(r, g, b)
   return r > 72 && g > 38 && b > 24 && max - min > 15 && r > g && g >= b * 0.72
+}
+
+function isLikelyBlondPixel(pixel: Rgb) {
+  const { h, s, v } = rgbToHsv(pixel)
+  return h >= 28 && h <= 64 && s >= 0.10 && s <= 0.68 && v >= 112 && pixel.r >= pixel.b + 22
 }
 
 function isLikelyBackground({ r, g, b }: Rgb) {

@@ -50,7 +50,7 @@ const genderFilters = [
 type LeaderboardGender = (typeof genderFilters)[number]['value']
 const leaderboardAgeFilters = ['all', '13-17', '18-24', '25-34', '35-44', '45+'] as const
 const leaderboardHairFilters = ['all', 'black', 'brown', 'blond', 'red', 'gray', 'other'] as const
-const leaderboardSkinFilters = ['all', 'very_light', 'light', 'medium', 'tan', 'deep', 'very_deep'] as const
+const leaderboardSkinFilters = ['all', 'very_light', 'light', 'white', 'tan', 'brown', 'black'] as const
 
 export default function LeaderboardPage() {
   const { status } = useSession()
