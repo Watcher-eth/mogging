@@ -364,7 +364,7 @@ export default function VotingPage() {
         />
       )}
 
-      <PendingVoteBar pendingVote={pendingVote} seconds={decisionSeconds} onCancel={cancelPendingVote} />
+      <PendingVoteBar pendingVote={pendingVote} onCancel={cancelPendingVote} />
     </section>
   )
 }
@@ -701,11 +701,9 @@ function BattleDivider() {
 function PendingVoteBar({
   onCancel,
   pendingVote,
-  seconds,
 }: {
   onCancel: () => void
   pendingVote: PendingVote | null
-  seconds: number
 }) {
   const [renderedVote, setRenderedVote] = useState<PendingVote | null>(pendingVote)
   const [isClosing, setIsClosing] = useState(false)
@@ -758,9 +756,9 @@ function PendingVoteBar({
           <motion.div
             key={renderedVote.id}
             className="h-full origin-left bg-black"
-            animate={{ scaleX: seconds / 5 }}
-            initial={false}
-            transition={{ duration: 0.12, ease: 'linear' }}
+            initial={{ scaleX: 1 }}
+            animate={{ scaleX: 0 }}
+            transition={{ duration: decisionWindowMs / 1000, ease: 'linear' }}
           />
         ) : null}
       </div>
