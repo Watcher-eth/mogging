@@ -68,9 +68,7 @@ export default function VotingPage() {
   const visiblePair = pair ?? null
   const [pendingVote, setPendingVote] = useState<PendingVote | null>(null)
   const [transitionLoser, setTransitionLoser] = useState<{ id: string; side: 'left' | 'right' } | null>(null)
-  const [decisionSeconds, setDecisionSeconds] = useState(5)
   const decisionTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
-  const decisionIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null)
   const nextPairRef = useRef<ComparisonPair | null>(null)
   const pendingVoteRef = useRef<PendingVote | null>(null)
   const pairTimerKey = visiblePair ? `${visiblePair.left.id}-${visiblePair.right.id}` : 'empty'
@@ -125,13 +123,7 @@ export default function VotingPage() {
   useEffect(() => {
     if (!visiblePair) return
 
-    const deadline = Date.now() + decisionWindowMs
-    setDecisionSeconds(5)
     void prefetchNextPair()
-
-    decisionIntervalRef.current = setInterval(() => {
-      setDecisionSeconds(Math.max(0, Math.ceil((deadline - Date.now()) / 1000)))
-    }, 100)
 
     decisionTimerRef.current = setTimeout(() => {
       void advancePair()
@@ -141,10 +133,6 @@ export default function VotingPage() {
       if (decisionTimerRef.current) {
         clearTimeout(decisionTimerRef.current)
         decisionTimerRef.current = null
-      }
-      if (decisionIntervalRef.current) {
-        clearInterval(decisionIntervalRef.current)
-        decisionIntervalRef.current = null
       }
     }
   }, [advancePair, pairTimerKey, prefetchNextPair, visiblePair])
@@ -302,7 +290,6 @@ export default function VotingPage() {
                   hairColor={hairColor}
                   pendingVote={pendingVote}
                   pairTimerKey={pairTimerKey}
-                  seconds={decisionSeconds}
                   skinColor={skinColor}
                   onAgeBucketChange={setAgeBucket}
                   onGenderChange={setGender}
@@ -347,7 +334,6 @@ export default function VotingPage() {
               hairColor={hairColor}
               pendingVote={pendingVote}
               pairTimerKey={pairTimerKey}
-              seconds={decisionSeconds}
               skinColor={skinColor}
               onAgeBucketChange={setAgeBucket}
               onGenderChange={setGender}
@@ -375,7 +361,6 @@ function BattleControls({
   hairColor,
   pendingVote,
   pairTimerKey,
-  seconds,
   skinColor,
   onAgeBucketChange,
   onGenderChange,
@@ -387,7 +372,6 @@ function BattleControls({
   hairColor: (typeof hairColorFilters)[number]
   pendingVote: PendingVote | null
   pairTimerKey: string
-  seconds: number
   skinColor: (typeof skinColorFilters)[number]
   onAgeBucketChange: (value: (typeof ageFilters)[number]) => void
   onGenderChange: (value: (typeof genderFilters)[number]) => void
@@ -398,7 +382,6 @@ function BattleControls({
     <>
       <DecisionTimer
         pending={Boolean(pendingVote)}
-        seconds={seconds}
         timerKey={pairTimerKey}
       />
       <BattleFilters
@@ -569,13 +552,24 @@ function formatFilterOption(option: string) {
 
 function DecisionTimer({
   pending,
-  seconds,
   timerKey,
 }: {
   pending: boolean
-  seconds: number
   timerKey: string
 }) {
+  const [seconds, setSeconds] = useState(Math.ceil(decisionWindowMs / 1000))
+
+  useEffect(() => {
+    const deadline = Date.now() + decisionWindowMs
+    setSeconds(Math.ceil(decisionWindowMs / 1000))
+
+    const interval = setInterval(() => {
+      setSeconds(Math.max(0, Math.ceil((deadline - Date.now()) / 1000)))
+    }, 100)
+
+    return () => clearInterval(interval)
+  }, [timerKey])
+
   return (
     <div className="grid gap-2 justify-self-start lg:w-48 lg:justify-self-end lg:text-right">
       <div className="flex items-end justify-between gap-4 lg:justify-end">

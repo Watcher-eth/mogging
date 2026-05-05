@@ -26,6 +26,13 @@ export function json<T>(res: NextApiResponse, status: number, data: T) {
   return res.status(status).json({ data })
 }
 
+export function publicCache(res: NextApiResponse, maxAgeSeconds: number, staleWhileRevalidateSeconds = maxAgeSeconds * 6) {
+  res.setHeader(
+    'Cache-Control',
+    `public, s-maxage=${maxAgeSeconds}, stale-while-revalidate=${staleWhileRevalidateSeconds}`
+  )
+}
+
 export function methodNotAllowed(res: NextApiResponse, allowed: string[]) {
   res.setHeader('Allow', allowed)
   return errorJson(res, 405, 'method_not_allowed', 'Method not allowed')

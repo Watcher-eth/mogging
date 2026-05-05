@@ -6,6 +6,7 @@ import { getProviders, useSession, signIn, signOut } from 'next-auth/react'
 import { useRouter } from 'next/router'
 import { ChevronDown, FileText, Loader2, LogOut, Pencil, Plus } from 'lucide-react'
 import useSWR from 'swr'
+import useSWRImmutable from 'swr/immutable'
 import { AppNav } from '@/components/app/nav'
 import { CameraSheet } from '@/components/analysis/camera-sheet'
 import { Button } from '@/components/ui/button'
@@ -94,7 +95,7 @@ export function AppShell({ children }: AppShellProps) {
       shouldRetryOnError: false,
     }
   )
-  const { data: appConfig } = useSWR<AppConfig>('/api/app-config', apiGet, {
+  const { data: appConfig } = useSWRImmutable<AppConfig>('/api/app-config', apiGet, {
     shouldRetryOnError: false,
   })
   const authRequired = appConfig?.features.authRequired ?? false
@@ -699,7 +700,7 @@ export function LoginDialog({
                     }}
                   >
                     <div className="relative h-full w-full overflow-hidden rounded-full bg-white/25 shadow-[inset_0_1px_1px_rgba(255,255,255,0.95),inset_10px_16px_28px_rgba(255,255,255,0.16),inset_-14px_-18px_30px_rgba(0,0,0,0.1),0_20px_44px_rgba(15,23,42,0.2)] ring-1 ring-white/85 backdrop-blur-md transition-transform duration-300 ease-out group-hover:scale-[1.055]">
-                      <Image className="scale-[1.04] object-cover saturate-[1.08]" src={src} alt="" aria-hidden="true" fill sizes="128px" priority={index < 8} />
+                      <Image className="scale-[1.04] object-cover saturate-[1.08]" src={src} alt="" aria-hidden="true" fill sizes="128px" />
                       <span className="pointer-events-none absolute inset-0 rounded-full bg-[linear-gradient(145deg,rgba(255,255,255,0.38)_0%,rgba(255,255,255,0.08)_28%,rgba(255,255,255,0)_48%,rgba(0,0,0,0.16)_100%)]" />
                       <span className="pointer-events-none absolute inset-[1px] rounded-full border-2 border-white/55" />
                       <span className="pointer-events-none absolute -inset-[16%] rounded-full bg-[radial-gradient(circle_at_76%_82%,rgba(255,255,255,0.24)_0%,rgba(255,255,255,0)_34%)]" />

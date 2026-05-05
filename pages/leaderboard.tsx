@@ -80,7 +80,7 @@ export default function LeaderboardPage() {
   const { data: currentUserRank } = useSWR<CurrentUserRankResponse>(
     status === 'authenticated' ? '/api/leaderboard/me' : null,
     {
-      refreshInterval: 2_000,
+      refreshInterval: 15_000,
       revalidateOnFocus: true,
       shouldRetryOnError: false,
     }
