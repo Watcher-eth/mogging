@@ -643,6 +643,10 @@ export function LoginDialog({
     void signIn('twitter', { callbackUrl })
   }
 
+  function continueWithTikTok() {
+    void signIn('tiktok', { callbackUrl })
+  }
+
   const authButtons = [
     {
       id: 'google',
@@ -661,6 +665,12 @@ export function LoginDialog({
       label: 'Continue with X',
       onClick: continueWithX,
       mark: <XMark />,
+    },
+    {
+      id: 'tiktok',
+      label: 'Continue with TikTok',
+      onClick: continueWithTikTok,
+      mark: <TikTokMark />,
     },
   ].filter((button) => availableProviders === null || availableProviders.has(button.id))
 
@@ -791,6 +801,16 @@ function XMark() {
   return (
     <svg className="size-5" viewBox="0 0 24 24" aria-hidden="true">
       <path fill="currentColor" d="M18.9 2h3.4l-7.43 8.49L23.6 22h-6.84l-5.36-7.01L5.27 22H1.87l7.94-9.08L1.45 2h7.02l4.84 6.4L18.9 2Zm-1.2 17.98h1.88L7.45 3.92H5.43L17.7 19.98Z" />
+    </svg>
+  )
+}
+
+function TikTokMark() {
+  return (
+    <svg className="size-6" viewBox="0 0 24 24" aria-hidden="true">
+      <path fill="#25F4EE" d="M10.53 9.64v-.78A7.03 7.03 0 0 0 9.52 8.79a5.42 5.42 0 1 0 4.91 7.72 5.38 5.38 0 0 1-3.9 1.67 5.42 5.42 0 0 1 0-10.84Z" />
+      <path fill="#FE2C55" d="M15.29 5.05a4.55 4.55 0 0 1-.12-.93h-2.9v11.58a2.52 2.52 0 0 1-4.6 1.42 2.51 2.51 0 0 0 4.43 1.62 2.49 2.49 0 0 0 .5-1.51V5.66a7.48 7.48 0 0 0 4.4 1.41V4.33a4.52 4.52 0 0 1-1.71-.72Z" />
+      <path fill="currentColor" d="M15.17 4.12c.19 1.28.94 2.38 1.99 3.03a4.56 4.56 0 0 0 2.36.65v2.95a7.5 7.5 0 0 1-4.39-1.41v6.42a5.43 5.43 0 0 1-8.88 4.2 5.42 5.42 0 0 0 9.2-3.88V9.66a7.49 7.49 0 0 0 4.4 1.41V8.12a4.56 4.56 0 0 1-2.36-.65 4.55 4.55 0 0 1-2.2-2.42 4.52 4.52 0 0 1-.12-.93Zm-4.64 7.95a2.52 2.52 0 1 0 2.06 4V4.12H9.64v7.99a2.54 2.54 0 0 1 .89-.04Z" />
     </svg>
   )
 }

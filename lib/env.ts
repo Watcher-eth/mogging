@@ -26,6 +26,8 @@ const envSchema = z
     X_CLIENT_SECRET: z.string().optional(),
     TWITTER_CLIENT_ID: z.string().optional(),
     TWITTER_CLIENT_SECRET: z.string().optional(),
+    TIKTOK_CLIENT_KEY: z.string().optional(),
+    TIKTOK_CLIENT_SECRET: z.string().optional(),
     NEXT_PUBLIC_SITE_URL: z.string().url().optional(),
     IMAGE_STORAGE_DIR: z.string().min(1).optional(),
     IMAGE_PUBLIC_BASE_URL: z.string().min(1).optional(),
@@ -91,6 +93,14 @@ const envSchema = z
       })
     }
 
+    if (Boolean(env.TIKTOK_CLIENT_KEY) !== Boolean(env.TIKTOK_CLIENT_SECRET)) {
+      ctx.addIssue({
+        code: 'custom',
+        path: ['TIKTOK_CLIENT_KEY'],
+        message: 'TIKTOK_CLIENT_KEY and TIKTOK_CLIENT_SECRET must be configured together',
+      })
+    }
+
     if (Boolean(env.UPSTASH_REDIS_REST_URL) !== Boolean(env.UPSTASH_REDIS_REST_TOKEN)) {
       ctx.addIssue({
         code: 'custom',
@@ -135,6 +145,8 @@ export const env = envSchema.parse({
   X_CLIENT_SECRET: process.env.X_CLIENT_SECRET,
   TWITTER_CLIENT_ID: process.env.TWITTER_CLIENT_ID,
   TWITTER_CLIENT_SECRET: process.env.TWITTER_CLIENT_SECRET,
+  TIKTOK_CLIENT_KEY: process.env.TIKTOK_CLIENT_KEY,
+  TIKTOK_CLIENT_SECRET: process.env.TIKTOK_CLIENT_SECRET,
   NEXT_PUBLIC_SITE_URL: process.env.NEXT_PUBLIC_SITE_URL,
   IMAGE_STORAGE_DIR: process.env.IMAGE_STORAGE_DIR,
   IMAGE_PUBLIC_BASE_URL: process.env.IMAGE_PUBLIC_BASE_URL,
@@ -201,6 +213,12 @@ export function getRuntimeReadiness() {
       ),
       required: false,
       message: 'Required only when X login is enabled',
+    },
+    {
+      key: 'TIKTOK_OAUTH',
+      ok: Boolean(env.TIKTOK_CLIENT_KEY && env.TIKTOK_CLIENT_SECRET),
+      required: false,
+      message: 'Required only when TikTok login is enabled',
     },
     {
       key: 'MOONSHOT_API_KEY',

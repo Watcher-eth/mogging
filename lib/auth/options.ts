@@ -9,6 +9,7 @@ import { z } from 'zod'
 import { db, schema } from '@/lib/db'
 import { env } from '@/lib/env'
 import { verifyPassword } from './password'
+import { TikTokProvider } from './tiktok-provider'
 
 const credentialSchema = z.object({
   email: z.string().email(),
@@ -19,6 +20,8 @@ const metaClientId = env.META_CLIENT_ID || env.FACEBOOK_CLIENT_ID
 const metaClientSecret = env.META_CLIENT_SECRET || env.FACEBOOK_CLIENT_SECRET
 const xClientId = env.X_CLIENT_ID || env.TWITTER_CLIENT_ID
 const xClientSecret = env.X_CLIENT_SECRET || env.TWITTER_CLIENT_SECRET
+const tiktokClientKey = env.TIKTOK_CLIENT_KEY
+const tiktokClientSecret = env.TIKTOK_CLIENT_SECRET
 
 const providers: NextAuthOptions['providers'] = [
   ...(env.GOOGLE_CLIENT_ID && env.GOOGLE_CLIENT_SECRET
@@ -73,6 +76,14 @@ const providers: NextAuthOptions['providers'] = [
               image: data.profile_image_url ?? null,
             }
           },
+        }),
+      ]
+    : []),
+  ...(tiktokClientKey && tiktokClientSecret
+    ? [
+        TikTokProvider({
+          clientId: tiktokClientKey,
+          clientSecret: tiktokClientSecret,
         }),
       ]
     : []),
