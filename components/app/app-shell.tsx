@@ -1,5 +1,6 @@
 import Link from 'next/link'
 import Image from 'next/image'
+import localFont from 'next/font/local'
 import { useEffect, useRef, useState, type ChangeEvent } from 'react'
 import type { ReactNode } from 'react'
 import { getProviders, useSession, signIn, signOut } from 'next-auth/react'
@@ -22,6 +23,12 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog'
 import { toast } from 'sonner'
+
+const fredokaSemiCondensed = localFont({
+  src: '../../public/fonts/Fredoka_SemiCondensed-SemiBold.ttf',
+  display: 'swap',
+  weight: '600',
+})
 
 type AppShellProps = {
   children: ReactNode
@@ -154,7 +161,7 @@ export function AppShell({ children }: AppShellProps) {
     <div className={immersive ? 'min-h-screen bg-white' : 'min-h-screen bg-background'}>
       <header className="sticky top-0 z-40 bg-white/90 backdrop-blur-xl">
         <div className="grid h-16 w-full grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-2 px-3 sm:h-20 sm:grid-cols-[1fr_auto_1fr] sm:gap-4 sm:px-10">
-          <Link href="/" className="text-xl font-semibold leading-none tracking-[-0.06em] text-black transition-transform duration-200 ease-out hover:scale-[1.015] active:scale-[0.995] sm:text-4xl">
+          <Link href="/" className={`${fredokaSemiCondensed.className} text-xl font-semibold leading-none tracking-normal text-black transition-transform duration-200 ease-out hover:scale-[1.015] active:scale-[0.995] sm:text-4xl`}>
             Mogging
           </Link>
 

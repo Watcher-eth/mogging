@@ -10,7 +10,7 @@ type SeoHeadProps = {
 
 const defaultTitle = 'Mogging'
 const defaultDescription = 'Battle faces, get a PSL analysis, and climb the global mogging leaderboard.'
-const defaultImagePath = '/Og1.png'
+const defaultImagePath = '/moggingOG2.png'
 
 export function SeoHead({
   title = defaultTitle,

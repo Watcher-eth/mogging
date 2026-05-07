@@ -7,6 +7,7 @@ import { createPortal } from 'react-dom'
 import { useSound } from '@web-kits/audio/react'
 import useSWR from 'swr'
 import useSWRInfinite from 'swr/infinite'
+import { SeoHead } from '@/components/app/seo-head'
 import { apiGet } from '@/lib/api/client'
 import { filterSound } from '@/lib/audio/sounds'
 
@@ -115,7 +116,14 @@ export default function LeaderboardPage() {
   }, [hasMore, isLeaderboardValidating, setSize, size])
 
   return (
-    <section className="min-h-[calc(100vh-5rem)] bg-white px-5 py-14 text-black sm:px-10">
+    <>
+      <SeoHead
+        title="Mogging Leaderboard"
+        description="See the top-ranked mogging photos and compare global leaderboard rankings."
+        imagePath="/leaderboard.png"
+        path="/leaderboard"
+      />
+      <section className="min-h-[calc(100vh-5rem)] bg-white px-5 py-14 text-black sm:px-10">
       <style jsx global>{`
         @keyframes leaderboard-enter {
           from {
@@ -247,7 +255,8 @@ export default function LeaderboardPage() {
       </div>
 
       <CurrentUserRankBar entry={currentUserRank?.entry ?? null} />
-    </section>
+      </section>
+    </>
   )
 }
 
