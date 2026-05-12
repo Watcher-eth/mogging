@@ -3,7 +3,7 @@ import path from 'path'
 import { and, eq, isNotNull, isNull, or } from 'drizzle-orm'
 import sharp from 'sharp'
 import { z } from 'zod'
-import { skinColorSchema, type HairColor, type SkinColor } from '../../lib/appearance/types'
+import { normalizeApparentAge, skinColorSchema, type HairColor, type SkinColor } from '../../lib/appearance/types'
 import { db, schema } from '../../lib/db'
 import { env } from '../../lib/env'
 
@@ -27,7 +27,7 @@ const hairColorSchema = z.enum(['black', 'brown', 'blond', 'red', 'gray', 'other
 const genderSchema = z.enum(['male', 'female', 'other'])
 const visionAppearanceSchema = z.object({
   gender: genderSchema.nullable().optional(),
-  age: z.number().int().min(13).max(120).nullable().optional(),
+  age: z.number().int().min(0).max(120).transform((age) => normalizeApparentAge(age)).nullable().optional(),
   hairColor: hairColorSchema.nullable().optional(),
   skinColor: skinColorSchema.nullable().optional(),
 })
@@ -251,7 +251,7 @@ async function inferVisionAppearance(buffer: Buffer) {
           { type: 'image_url', image_url: { url: imageDataUrl } },
           {
             type: 'text',
-            text: 'Return {"gender":"male|female|other|null","age":number|null,"hairColor":"black|brown|blond|red|gray|other|null","skinColor":"very_light|light|white|tan|brown|black|null"}. Estimate age as an integer from visible apparent age. Use null if not reasonably visible. Treat dirty blond and dark blond as blond, not brown.',
+            text: 'Return {"gender":"male|female|other|null","age":number|null,"hairColor":"black|brown|blond|red|gray|other|null","skinColor":"very_light|light|white|tan|brown|black|null"}. Estimate apparent adult age as an integer from visible cues, but never return an age below 18; use 18 for very youthful adult-looking faces. Use null if not reasonably visible. Treat dirty blond and dark blond as blond, not brown.',
           },
         ],
       },

@@ -276,7 +276,6 @@ function toComparisonPhoto(row: ComparisonPhotoRow) {
 }
 
 function ageBucketFilter(ageBucket: Exclude<PairSelectionInput['ageBucket'], 'all'>) {
-  if (ageBucket === '13-17') return sql`${schema.photos.age} between 13 and 17`
   if (ageBucket === '18-24') return sql`${schema.photos.age} between 18 and 24`
   if (ageBucket === '25-34') return sql`${schema.photos.age} between 25 and 34`
   if (ageBucket === '35-44') return sql`${schema.photos.age} between 35 and 44`

@@ -1,6 +1,6 @@
 import { and, count, desc, eq, ilike, isNull, sql } from 'drizzle-orm'
 import { z } from 'zod'
-import { hairColorSchema, skinColorSchema } from '@/lib/appearance/types'
+import { hairColorSchema, normalizeApparentAge, skinColorSchema } from '@/lib/appearance/types'
 import { db, schema } from '@/lib/db'
 import { conservativeScore, displayRating, initialSkillRating } from '@/lib/ratings/trueskill'
 import { storeImageDataUrl } from '@/lib/storage/images'
@@ -24,7 +24,7 @@ export const updateUserProfileSchema = z.object({
     .nullable()
     .optional(),
   gender: z.enum(['male', 'female']).nullable().optional(),
-  age: z.coerce.number().int().min(13).max(120).nullable().optional(),
+  age: z.coerce.number().int().min(18).max(120).nullable().optional(),
   hairColor: hairColorSchema.nullable().optional(),
   skinColor: skinColorSchema.nullable().optional(),
   state: z
@@ -114,7 +114,7 @@ export async function updateUserProfile(userId: string, input: UpdateUserProfile
       ...(storedAvatar ? { image: storedAvatar.imageUrl } : null),
       ...(data.instagramUsername !== undefined ? { instagramUsername: data.instagramUsername || null } : null),
       ...(data.gender !== undefined ? { gender: data.gender } : null),
-      ...(data.age !== undefined ? { age: data.age } : null),
+      ...(data.age !== undefined ? { age: normalizeApparentAge(data.age) } : null),
       ...(data.hairColor !== undefined ? { hairColor: data.hairColor } : null),
       ...(data.skinColor !== undefined ? { skinColor: data.skinColor } : null),
       ...(data.state !== undefined ? { state: data.state } : null),

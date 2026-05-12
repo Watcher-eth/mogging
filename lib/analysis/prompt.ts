@@ -184,6 +184,7 @@ Rules:
 - Each feature category score must be a calibrated 0-10 category score. The overall category score must equal pslScore and is the only report category that uses the 0-8 PSL scale.
 - Feature values must be short, concrete findings, not generic praise.
 - harmonyScore should summarize proportionality, averageness, symmetry, feature cohesion, and absence of distracting imbalance.
+- For biological-age wording, never classify or imply an apparent age below 18. If the face looks very youthful, describe adult youthful cues rather than minor age.
 - If the image is not frontal enough to judge a metric, give a conservative score and mention the limitation in the metric description.
 - Do not identify the person.
 - Do not claim objective health, fertility, morality, competence, or intelligence.

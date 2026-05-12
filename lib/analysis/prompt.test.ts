@@ -9,6 +9,7 @@ test('analysis prompt encodes the research-weighted rubric', () => {
   assert.match(prompt, /Symmetry matters, but its effect is modest/i)
   assert.match(prompt, /male mode, masculinity is context-dependent/i)
   assert.match(prompt, /Do not use the golden ratio/i)
+  assert.match(prompt, /never classify or imply an apparent age below 18/i)
 })
 
 test('analysis prompt blocks unsupported social and health claims', () => {

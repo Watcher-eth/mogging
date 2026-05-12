@@ -1,6 +1,6 @@
 import { eq } from 'drizzle-orm'
 import { z } from 'zod'
-import { hairColorSchema, skinColorSchema } from '@/lib/appearance/types'
+import { hairColorSchema, normalizeApparentAge, skinColorSchema } from '@/lib/appearance/types'
 import { db, schema } from '@/lib/db'
 import { storeImageDataUrl } from '@/lib/storage/images'
 
@@ -15,7 +15,7 @@ export const anonymousProfileSchema = z.object({
     .nullable()
     .optional(),
   gender: z.enum(['male', 'female']).nullable().optional(),
-  age: z.coerce.number().int().min(13).max(120).nullable().optional(),
+  age: z.coerce.number().int().min(18).max(120).nullable().optional(),
   hairColor: hairColorSchema.nullable().optional(),
   skinColor: skinColorSchema.nullable().optional(),
 })
@@ -41,7 +41,7 @@ export async function upsertAnonymousProfile(anonymousActorId: string, input: An
       name: data.name,
       social: data.social ?? null,
       gender: data.gender ?? null,
-      age: data.age ?? null,
+      age: normalizeApparentAge(data.age),
       hairColor: data.hairColor ?? null,
       skinColor: data.skinColor ?? null,
     })
@@ -52,7 +52,7 @@ export async function upsertAnonymousProfile(anonymousActorId: string, input: An
         name: data.name,
         social: data.social ?? null,
         gender: data.gender ?? null,
-        age: data.age ?? null,
+        age: normalizeApparentAge(data.age),
         hairColor: data.hairColor ?? null,
         skinColor: data.skinColor ?? null,
         updatedAt: new Date(),
