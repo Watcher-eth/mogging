@@ -1,13 +1,15 @@
 import { Loader2, RefreshCw, SlidersHorizontal, X } from 'lucide-react'
 import Image from 'next/image'
 import { motion } from 'motion/react'
+import NumberFlow from '@number-flow/react'
 import { useCallback, useEffect, useRef, useState, type CSSProperties, type ReactNode } from 'react'
 import { createPortal } from 'react-dom'
 import { useSound } from '@web-kits/audio/react'
+import type { VoiceHandle } from '@web-kits/audio'
 import useSWR, { useSWRConfig } from 'swr'
 import { toast } from 'sonner'
 import { apiGet, apiPost, ApiClientError } from '@/lib/api/client'
-import { filterSound, selectSound, voteSound } from '@/lib/audio/sounds'
+import { filterSound, selectSound, tickingSound, voteSound } from '@/lib/audio/sounds'
 
 type ComparisonPhoto = {
   id: string
@@ -46,7 +48,7 @@ type PendingVote = {
 }
 
 const photoLeaderboardKey = '/api/leaderboard/photos?limit=24&sort=rating'
-const decisionWindowMs = 4_500
+const decisionWindowMs = 3_400
 const ageFilters = ['all', '18-24', '25-34', '35-44', '45+'] as const
 const genderFilters = ['all', 'male', 'female'] as const
 const hairColorFilters = ['all', 'black', 'brown', 'blond', 'red', 'gray', 'other'] as const
@@ -56,6 +58,7 @@ export default function VotingPage() {
   const { mutate: mutateGlobal } = useSWRConfig()
   const playVote = useSound(voteSound)
   const playSelect = useSound(selectSound)
+  const playTicking = useSound(tickingSound)
   const [ageBucket, setAgeBucket] = useState<(typeof ageFilters)[number]>('all')
   const [gender, setGender] = useState<(typeof genderFilters)[number]>('all')
   const [hairColor, setHairColor] = useState<(typeof hairColorFilters)[number]>('all')
@@ -71,7 +74,18 @@ export default function VotingPage() {
   const decisionTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const nextPairRef = useRef<ComparisonPair | null>(null)
   const pendingVoteRef = useRef<PendingVote | null>(null)
+  const tickingVoiceRef = useRef<VoiceHandle | null>(null)
   const pairTimerKey = visiblePair ? `${visiblePair.left.id}-${visiblePair.right.id}` : 'empty'
+
+  const stopTicking = useCallback(() => {
+    tickingVoiceRef.current?.stop(0.08)
+    tickingVoiceRef.current = null
+  }, [])
+
+  const startTicking = useCallback(() => {
+    if (tickingVoiceRef.current) return
+    tickingVoiceRef.current = playTicking() ?? null
+  }, [playTicking])
 
   const submitVote = useCallback(async (winner: ComparisonPhoto, loser: ComparisonPhoto) => {
     try {
@@ -98,6 +112,7 @@ export default function VotingPage() {
     const committedVote = pendingVoteRef.current
     const nextPair = nextPairRef.current
 
+    stopTicking()
     nextPairRef.current = null
     pendingVoteRef.current = null
     setTransitionLoser(null)
@@ -114,7 +129,7 @@ export default function VotingPage() {
       toast.success(`Registered your vote for ${committedVote.winner.name || `${committedVote.winner.gender} face`}`)
       void submitVote(committedVote.winner, committedVote.loser)
     }
-  }, [mutate, playVote, submitVote])
+  }, [mutate, playVote, stopTicking, submitVote])
 
   useEffect(() => {
     pendingVoteRef.current = pendingVote
@@ -124,6 +139,7 @@ export default function VotingPage() {
     if (!visiblePair) return
 
     void prefetchNextPair()
+    startTicking()
 
     decisionTimerRef.current = setTimeout(() => {
       void advancePair()
@@ -134,18 +150,20 @@ export default function VotingPage() {
         clearTimeout(decisionTimerRef.current)
         decisionTimerRef.current = null
       }
+      stopTicking()
     }
-  }, [advancePair, pairTimerKey, prefetchNextPair, visiblePair])
+  }, [advancePair, pairTimerKey, prefetchNextPair, startTicking, stopTicking, visiblePair])
 
   const queueVote = useCallback((winner: ComparisonPhoto, loser: ComparisonPhoto, loserSide: 'left' | 'right') => {
     playSelect()
+    startTicking()
     setPendingVote({
       id: `${winner.id}-${Date.now()}`,
       loserSide,
       winner,
       loser,
     })
-  }, [playSelect])
+  }, [playSelect, startTicking])
 
   useEffect(() => {
     if (!visiblePair || pendingVote) return
@@ -280,9 +298,23 @@ export default function VotingPage() {
             style={{ animation: 'battle-enter 560ms cubic-bezier(0.22, 1, 0.36, 1) both' }}
           >
             <div className="grid gap-3 sm:gap-6 lg:grid-cols-[minmax(0,1fr)_auto] lg:items-end">
-              <h1 className="max-w-4xl text-4xl font-semibold leading-[0.94] tracking-[-0.07em] sm:text-6xl lg:text-7xl">
-                Who mogs harder?
-              </h1>
+              <div className="flex items-end justify-between gap-4 sm:block">
+                <h1 className="max-w-4xl text-4xl font-semibold leading-[0.94] tracking-[-0.07em] sm:text-6xl lg:text-7xl">
+                  Mog Off
+                </h1>
+                <div className="shrink-0 sm:hidden">
+                  <BattleFilters
+                    ageBucket={ageBucket}
+                    gender={gender}
+                    hairColor={hairColor}
+                    skinColor={skinColor}
+                    onAgeBucketChange={setAgeBucket}
+                    onGenderChange={setGender}
+                    onHairColorChange={setHairColor}
+                    onSkinColorChange={setSkinColor}
+                  />
+                </div>
+              </div>
               <div className="hidden items-end gap-3 justify-self-start sm:flex lg:justify-self-end">
                 <BattleControls
                   ageBucket={ageBucket}
@@ -327,18 +359,10 @@ export default function VotingPage() {
             />
           </div>
 
-          <div className="relative z-[70] flex items-end justify-between gap-3 sm:hidden">
-            <BattleControls
-              ageBucket={ageBucket}
-              gender={gender}
-              hairColor={hairColor}
-              pendingVote={pendingVote}
-              pairTimerKey={pairTimerKey}
-              skinColor={skinColor}
-              onAgeBucketChange={setAgeBucket}
-              onGenderChange={setGender}
-              onHairColorChange={setHairColor}
-              onSkinColorChange={setSkinColor}
+          <div className="relative z-[70] grid gap-3 sm:hidden">
+            <DecisionTimer
+              pending={Boolean(pendingVote)}
+              timerKey={pairTimerKey}
             />
           </div>
         </main>
@@ -567,11 +591,13 @@ function DecisionTimer({
       setSeconds(Math.max(0, Math.ceil((deadline - Date.now()) / 1000)))
     }, 100)
 
-    return () => clearInterval(interval)
+    return () => {
+      clearInterval(interval)
+    }
   }, [timerKey])
 
   return (
-    <div className="grid gap-2 justify-self-start lg:w-48 lg:justify-self-end lg:text-right">
+    <div className="grid w-full gap-2 justify-self-start lg:w-48 lg:justify-self-end lg:text-right">
       <div className="flex items-end justify-between gap-4 lg:justify-end">
         <div className="font-mono text-[10px] uppercase tracking-[0.14em] text-zinc-500">
           {pending ? 'Vote locks in' : 'Press A or B'}
@@ -617,6 +643,7 @@ function BattleCandidate({
   const isPendingLoser = pendingVote?.loser.id === photo.id
   const isRejected = transitionLoser?.id === photo.id
   const exitTo = transitionLoser?.side === 'right' ? 'left' : 'right'
+  const displayRating = photo.displayRating + (isSelected ? 18 : 0)
 
   return (
     <article
@@ -672,7 +699,7 @@ function BattleCandidate({
       </button>
 
       <div className={`grid grid-cols-3 gap-1 border-y border-zinc-300 py-2 sm:gap-0 sm:py-3 ${side === 'right' ? 'sm:text-right' : ''}`}>
-        <Metric label="Score" value={formatVotingScore(photo.displayRating)} />
+        <ScoreMetric value={displayRating} />
         <Metric label="PSL" value={formatPsl(photo.pslScore)} />
         <Metric label="Win" value={`${winRate}%`} />
       </div>
@@ -724,7 +751,7 @@ function PendingVoteBar({
 
   return (
     <div
-      className="fixed inset-x-5 bottom-8 z-50 mx-auto grid max-w-[460px] origin-bottom gap-3"
+      className="fixed inset-x-0 bottom-0 z-50 mx-auto grid max-w-none origin-bottom gap-3 sm:inset-x-5 sm:bottom-8 sm:max-w-[460px]"
       style={{
         animation: isClosing
           ? 'battle-toast-exit 280ms cubic-bezier(0.55, 0.06, 0.68, 0.19) both'
@@ -756,6 +783,24 @@ function PendingVoteBar({
           />
         ) : null}
       </div>
+    </div>
+  )
+}
+
+function ScoreMetric({ value }: { value: number }) {
+  return (
+    <div className="min-w-0">
+      <p className="truncate font-mono text-[8px] uppercase tracking-[0.08em] text-zinc-500 sm:text-[10px] sm:tracking-[0.12em]">Score</p>
+      <NumberFlow
+        className="mt-1 block truncate text-sm font-semibold tracking-[-0.04em] [font-variant-numeric:tabular-nums] sm:text-lg"
+        format={{ maximumFractionDigits: 0 }}
+        opacityTiming={{ duration: 180, easing: 'ease-out' }}
+        spinTiming={{ duration: 620, easing: 'cubic-bezier(0.22, 1, 0.36, 1)' }}
+        transformTiming={{ duration: 620, easing: 'cubic-bezier(0.22, 1, 0.36, 1)' }}
+        trend={1}
+        value={Math.round(value)}
+        willChange
+      />
     </div>
   )
 }
@@ -792,8 +837,4 @@ function BattleState({
 function formatPsl(score?: number | null) {
   if (typeof score !== 'number') return '--'
   return score.toFixed(1)
-}
-
-function formatVotingScore(score: number) {
-  return Math.round(score).toLocaleString()
 }

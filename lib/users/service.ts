@@ -27,6 +27,13 @@ export const updateUserProfileSchema = z.object({
   age: z.coerce.number().int().min(18).max(120).nullable().optional(),
   hairColor: hairColorSchema.nullable().optional(),
   skinColor: skinColorSchema.nullable().optional(),
+  country: z
+    .string()
+    .trim()
+    .length(2)
+    .transform((value) => value.toUpperCase())
+    .nullable()
+    .optional(),
   state: z
     .string()
     .trim()
@@ -117,6 +124,7 @@ export async function updateUserProfile(userId: string, input: UpdateUserProfile
       ...(data.age !== undefined ? { age: normalizeApparentAge(data.age) } : null),
       ...(data.hairColor !== undefined ? { hairColor: data.hairColor } : null),
       ...(data.skinColor !== undefined ? { skinColor: data.skinColor } : null),
+      ...(data.country !== undefined ? { country: data.country } : null),
       ...(data.state !== undefined ? { state: data.state } : null),
       profileCompleted: true,
       updatedAt: new Date(),
@@ -176,6 +184,7 @@ const publicUserQueryColumns = {
   hairColor: true,
   skinColor: true,
   bio: true,
+  country: true,
   state: true,
   profileCompleted: true,
   verified: true,
@@ -193,6 +202,7 @@ const publicUserReturningFields = {
   hairColor: schema.users.hairColor,
   skinColor: schema.users.skinColor,
   bio: schema.users.bio,
+  country: schema.users.country,
   state: schema.users.state,
   profileCompleted: schema.users.profileCompleted,
   verified: schema.users.verified,
