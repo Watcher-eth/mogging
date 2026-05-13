@@ -130,6 +130,20 @@ Return this JSON object exactly:
         "explanation": "specific explanation for this category"
       },
       {
+        "id": "facial-fat",
+        "title": "Facial fat",
+        "subtitle": "Visible facial leanness and soft-tissue fullness",
+        "scoreLabel": "Facial fat %",
+        "score": 5.0,
+        "features": [
+          { "label": "Cheeks", "value": "short finding" },
+          { "label": "Jaw blur", "value": "short finding" },
+          { "label": "Under-chin", "value": "short finding" },
+          { "label": "Estimate", "value": "short apparent percentage range" }
+        ],
+        "explanation": "specific explanation for this category"
+      },
+      {
         "id": "biological-age",
         "title": "Biological age",
         "subtitle": "Visible youthfulness and skin presentation cues",
@@ -185,6 +199,7 @@ Rules:
 - Feature values must be short, concrete findings, not generic praise.
 - harmonyScore should summarize proportionality, averageness, symmetry, feature cohesion, and absence of distracting imbalance.
 - For biological-age wording, never classify or imply an apparent age below 18. If the face looks very youthful, describe adult youthful cues rather than minor age.
+- Facial-fat percentage must be framed as an apparent visual estimate from facial soft-tissue cues, not a medical or whole-body body-fat measurement. Use a realistic percent range in the Estimate feature value.
 - If the image is not frontal enough to judge a metric, give a conservative score and mention the limitation in the metric description.
 - Do not identify the person.
 - Do not claim objective health, fertility, morality, competence, or intelligence.

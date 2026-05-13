@@ -32,6 +32,7 @@ export const reportCategorySchema = z.object({
     'jaw',
     'dimorphism',
     'face-shape',
+    'facial-fat',
     'biological-age',
     'symmetry',
     'overall',
@@ -46,7 +47,7 @@ export const reportCategorySchema = z.object({
 
 export const analysisReportSchema = z.object({
   summary: z.string().min(1).max(900),
-  categories: z.array(reportCategorySchema).min(9).max(9),
+  categories: z.array(reportCategorySchema).min(10).max(10),
 })
 
 export const analysisProviderResultSchema = z.object({

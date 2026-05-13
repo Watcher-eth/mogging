@@ -10,6 +10,8 @@ test('analysis prompt encodes the research-weighted rubric', () => {
   assert.match(prompt, /male mode, masculinity is context-dependent/i)
   assert.match(prompt, /Do not use the golden ratio/i)
   assert.match(prompt, /never classify or imply an apparent age below 18/i)
+  assert.match(prompt, /"id": "facial-fat"/i)
+  assert.match(prompt, /Facial-fat percentage must be framed as an apparent visual estimate/i)
 })
 
 test('analysis prompt blocks unsupported social and health claims', () => {

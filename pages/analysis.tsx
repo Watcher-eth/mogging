@@ -309,6 +309,20 @@ const reportCategories: ReportCategory[] = [
     overlayLines: [{ x1: 31, y1: 31, x2: 69, y2: 31 }, { x1: 69, y1: 31, x2: 72, y2: 58 }, { x1: 72, y1: 58, x2: 50, y2: 82 }, { x1: 50, y1: 82, x2: 28, y2: 58 }, { x1: 28, y1: 58, x2: 31, y2: 31 }],
   },
   {
+    id: 'facial-fat',
+    title: 'Facial fat',
+    subtitle: 'Visible facial leanness and soft-tissue fullness',
+    scoreLabel: 'Facial fat %',
+    features: [
+      { label: 'Cheeks', value: 'Balanced' },
+      { label: 'Jaw blur', value: 'Low' },
+      { label: 'Under-chin', value: 'Lean' },
+      { label: 'Estimate', value: '14-18%' },
+    ],
+    overlayPoints: [{ x: 36, y: 55 }, { x: 64, y: 55 }, { x: 37, y: 69 }, { x: 63, y: 69 }, { x: 50, y: 76 }],
+    overlayLines: [{ x1: 36, y1: 55, x2: 37, y2: 69 }, { x1: 64, y1: 55, x2: 63, y2: 69 }, { x1: 37, y1: 69, x2: 50, y2: 76 }, { x1: 50, y1: 76, x2: 63, y2: 69 }],
+  },
+  {
     id: 'biological-age',
     title: 'Biological age',
     subtitle: 'Visible youthfulness and skin presentation cues',
@@ -2070,6 +2084,27 @@ function getLandmarkOverlayGeometry(category: ReportCategory, landmarks: FaceLan
     }
   }
 
+  if (category.id === 'facial-fat') {
+    const leftCheek = toPercentPoint(anchors.leftCheek)
+    const rightCheek = toPercentPoint(anchors.rightCheek)
+    const leftJaw = toPercentPoint(anchors.jawLeft)
+    const rightJaw = toPercentPoint(anchors.jawRight)
+    const chin = toPercentPoint(anchors.chin)
+    if (!leftCheek || !rightCheek || !leftJaw || !rightJaw || !chin) return null
+
+    return {
+      boxes: [boxFromPoints([leftCheek, rightCheek, leftJaw, rightJaw], 8, 7)],
+      lines: [
+        { x1: leftCheek.x, y1: leftCheek.y, x2: leftJaw.x, y2: leftJaw.y },
+        { x1: rightCheek.x, y1: rightCheek.y, x2: rightJaw.x, y2: rightJaw.y },
+        { x1: leftJaw.x, y1: leftJaw.y, x2: chin.x, y2: chin.y },
+        { x1: chin.x, y1: chin.y, x2: rightJaw.x, y2: rightJaw.y },
+      ],
+      points: compactPoints([leftCheek, rightCheek, leftJaw, rightJaw, chin]),
+      label: { title: 'Facial fat %', value: '[ estimated ]', x: Math.min(76, rightCheek.x + 5), y: rightCheek.y + 6 },
+    }
+  }
+
   if (category.id === 'biological-age') {
     const leftEye = toPercentPoint(anchors.leftEyeInner)
     const rightEye = toPercentPoint(anchors.rightEyeInner)
@@ -2123,6 +2158,7 @@ function getReportOverlayLabel(category: ReportCategory) {
     jaw: { title: 'Jaw angle', value: '[ defined ]', x: 60, y: 73 },
     dimorphism: { title: 'Dimorphism', value: '[ balanced ]', x: 59, y: 48 },
     'face-shape': { title: 'Face shape', value: '[ oval ]', x: 61, y: 34 },
+    'facial-fat': { title: 'Facial fat %', value: '[ estimated ]', x: 59, y: 58 },
     'biological-age': { title: 'Age signal', value: '[ youthful ]', x: 59, y: 55 },
     symmetry: { title: 'Symmetry', value: '[ high ]', x: 58, y: 46 },
     overall: { title: 'PSL score', value: '[ calibrated ]', x: 58, y: 51 },
@@ -2306,6 +2342,7 @@ function getReportCategoryScore(categoryId: string, result?: AnalysisResponse) {
     jaw: angularity + 0.2,
     dimorphism,
     'face-shape': (harmony + angularity) / 2,
+    'facial-fat': Math.max(0, Math.min(10, harmony + (angularity >= 5 ? 0.2 : -0.4))),
     'biological-age': harmony + 0.3,
     symmetry: harmony,
     overall,

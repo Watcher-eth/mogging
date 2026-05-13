@@ -21,6 +21,8 @@ export type FaceLandmarkAnchors = {
   mouthCenter?: NormalizedPoint
   upperLip?: NormalizedPoint
   lowerLip?: NormalizedPoint
+  leftCheek?: NormalizedPoint
+  rightCheek?: NormalizedPoint
   chin?: NormalizedPoint
   jawLeft?: NormalizedPoint
   jawRight?: NormalizedPoint

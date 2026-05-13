@@ -7,6 +7,7 @@ const reportCategoryIds = [
   'jaw',
   'dimorphism',
   'face-shape',
+  'facial-fat',
   'biological-age',
   'symmetry',
   'overall',
@@ -140,6 +141,20 @@ export function createFallbackAnalysisReport(result: AnalysisProviderResult, psl
           { label: 'Continuity', value: averageness >= 5 ? 'Natural' : 'Distinct' },
         ],
         explanation: 'Face-shape scoring combines facial thirds, visible silhouette continuity, and how the frame supports the central features.',
+      },
+      {
+        id: 'facial-fat',
+        title: 'Facial fat',
+        subtitle: 'Visible facial leanness and soft-tissue fullness',
+        scoreLabel: 'Facial fat %',
+        score: clampCategoryScore((skin + presentation + averageness) / 3),
+        features: [
+          { label: 'Cheeks', value: averageness >= 5 ? 'Balanced' : 'Full' },
+          { label: 'Jaw blur', value: result.angularityScore >= 5 ? 'Low' : 'Moderate' },
+          { label: 'Under-chin', value: result.angularityScore >= 5.5 ? 'Lean' : 'Soft' },
+          { label: 'Estimate', value: result.angularityScore >= 6 ? '12-16%' : '18-24%' },
+        ],
+        explanation: 'Facial-fat percentage is an apparent visual estimate based on cheek fullness, jawline clarity, under-chin softness, and visible soft-tissue distribution. It is not a medical body-fat measurement.',
       },
       {
         id: 'biological-age',

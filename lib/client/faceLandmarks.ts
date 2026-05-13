@@ -46,6 +46,8 @@ export async function extractFaceLandmarksFromDataUrl(dataUrl: string): Promise<
         mouthCenter: pick(face, 13),
         upperLip: pick(face, 0),
         lowerLip: pick(face, 17),
+        leftCheek: pick(face, 234),
+        rightCheek: pick(face, 454),
         chin: pick(face, 152),
         jawLeft: pick(face, 172),
         jawRight: pick(face, 397),
