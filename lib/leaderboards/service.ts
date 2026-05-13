@@ -80,6 +80,66 @@ export async function getPhotoLeaderboard(input: PhotoLeaderboardQuery) {
   return paginated(query, total, rows.map((row, index) => ({ rank: offset + index + 1, ...row })))
 }
 
+export async function getLeaderboardProfile(photoId: string) {
+  const [selectedPhoto] = await db
+    .select(profilePhotoSelection)
+    .from(schema.photos)
+    .leftJoin(schema.photoRatings, eq(schema.photoRatings.photoId, schema.photos.id))
+    .leftJoin(schema.analyses, eq(schema.analyses.photoId, schema.photos.id))
+    .leftJoin(schema.users, eq(schema.users.id, schema.photos.userId))
+    .leftJoin(schema.anonymousProfiles, eq(schema.anonymousProfiles.anonymousActorId, schema.photos.anonymousActorId))
+    .where(and(eq(schema.photos.id, photoId), eq(schema.photos.isPublic, true)))
+    .limit(1)
+
+  if (!selectedPhoto) return null
+
+  const ownerFilter = selectedPhoto.userId
+    ? eq(schema.photos.userId, selectedPhoto.userId)
+    : selectedPhoto.anonymousActorId
+      ? eq(schema.photos.anonymousActorId, selectedPhoto.anonymousActorId)
+      : eq(schema.photos.id, selectedPhoto.id)
+
+  const [{ higherCount }] = await db
+    .select({ higherCount: count(schema.photos.id) })
+    .from(schema.photos)
+    .leftJoin(schema.photoRatings, eq(schema.photoRatings.photoId, schema.photos.id))
+    .where(and(
+      eq(schema.photos.isPublic, true),
+      sql`coalesce(${schema.photoRatings.conservativeScore}, ${initialConservativeScore}) > ${selectedPhoto.conservativeScore}`
+    ))
+
+  const photos = await db
+    .select(profilePhotoSelection)
+    .from(schema.photos)
+    .leftJoin(schema.photoRatings, eq(schema.photoRatings.photoId, schema.photos.id))
+    .leftJoin(schema.analyses, eq(schema.analyses.photoId, schema.photos.id))
+    .leftJoin(schema.users, eq(schema.users.id, schema.photos.userId))
+    .leftJoin(schema.anonymousProfiles, eq(schema.anonymousProfiles.anonymousActorId, schema.photos.anonymousActorId))
+    .where(and(ownerFilter, eq(schema.photos.isPublic, true)))
+    .orderBy(desc(sql`coalesce(${schema.photoRatings.conservativeScore}, ${initialConservativeScore})`), desc(schema.photos.createdAt))
+    .limit(12)
+
+  return {
+    profile: {
+      id: selectedPhoto.userId ?? selectedPhoto.anonymousActorId ?? selectedPhoto.id,
+      userId: selectedPhoto.userId,
+      name: selectedPhoto.profileName ?? selectedPhoto.name ?? 'Anonymous',
+      imageUrl: selectedPhoto.imageUrl,
+      gender: selectedPhoto.gender,
+      age: selectedPhoto.age,
+      hairColor: selectedPhoto.hairColor,
+      skinColor: selectedPhoto.skinColor,
+      country: selectedPhoto.country,
+      state: selectedPhoto.state,
+      social: selectedPhoto.social,
+      rank: higherCount + 1,
+      displayRating: selectedPhoto.displayRating,
+      pslScore: selectedPhoto.pslScore,
+    },
+    photos,
+  }
+}
+
 export async function getCurrentUserPhotoRank(userId: string) {
   const [bestPhoto] = await db
     .select({
@@ -273,4 +333,24 @@ function photoSort(sort: PhotoLeaderboardQuery['sort']) {
   if (sort === 'psl') return desc(sql`coalesce(${schema.analyses.pslScore}, 0)`)
   if (sort === 'recent') return desc(schema.photos.createdAt)
   return desc(sql`coalesce(${schema.photoRatings.conservativeScore}, ${initialConservativeScore})`)
+}
+
+const profilePhotoSelection = {
+  id: schema.photos.id,
+  imageUrl: schema.photos.imageUrl,
+  name: schema.photos.name,
+  userId: schema.photos.userId,
+  anonymousActorId: schema.photos.anonymousActorId,
+  gender: schema.photos.gender,
+  age: schema.photos.age,
+  hairColor: schema.photos.hairColor,
+  skinColor: schema.photos.skinColor,
+  createdAt: schema.photos.createdAt,
+  displayRating: sql<number>`coalesce(${schema.photoRatings.displayRating}, ${initialDisplayRating})`,
+  conservativeScore: sql<number>`coalesce(${schema.photoRatings.conservativeScore}, ${initialConservativeScore})`,
+  pslScore: schema.analyses.pslScore,
+  profileName: sql<string | null>`coalesce(${schema.users.name}, ${schema.anonymousProfiles.name}, ${schema.photos.name})`,
+  social: sql<string | null>`coalesce(${schema.users.instagramUsername}, ${schema.anonymousProfiles.social}, ${schema.photos.caption})`,
+  country: sql<string | null>`coalesce(${schema.users.country}, ${schema.anonymousProfiles.country})`,
+  state: sql<string | null>`coalesce(${schema.users.state}, ${schema.anonymousProfiles.state})`,
 }

@@ -7,6 +7,7 @@ import {
   upsertAnonymousProfile,
 } from '@/lib/auth/anonymousProfile'
 import { env } from '@/lib/env'
+import { getRequestLocation } from '@/lib/geo/request'
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   if (env.AUTH_REQUIRED) {
@@ -26,7 +27,11 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
   if (req.method === 'PATCH') {
     try {
-      const input = parseBody(anonymousProfileSchema, req.body)
+      const location = getRequestLocation(req)
+      const input = parseBody(anonymousProfileSchema, {
+        ...req.body,
+        ...(location.country ? location : null),
+      })
       const profile = await upsertAnonymousProfile(anonymousActorId, input)
       return json(res, 200, { profile })
     } catch (error) {

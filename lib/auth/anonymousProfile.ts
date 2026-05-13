@@ -18,6 +18,20 @@ export const anonymousProfileSchema = z.object({
   age: z.coerce.number().int().min(18).max(120).nullable().optional(),
   hairColor: hairColorSchema.nullable().optional(),
   skinColor: skinColorSchema.nullable().optional(),
+  country: z
+    .string()
+    .trim()
+    .length(2)
+    .transform((value) => value.toUpperCase())
+    .nullable()
+    .optional(),
+  state: z
+    .string()
+    .trim()
+    .length(2)
+    .transform((value) => value.toUpperCase())
+    .nullable()
+    .optional(),
 })
 
 export type AnonymousProfileInput = z.infer<typeof anonymousProfileSchema>
@@ -44,6 +58,8 @@ export async function upsertAnonymousProfile(anonymousActorId: string, input: An
       age: normalizeApparentAge(data.age),
       hairColor: data.hairColor ?? null,
       skinColor: data.skinColor ?? null,
+      country: data.country ?? null,
+      state: data.state ?? null,
     })
     .onConflictDoUpdate({
       target: schema.anonymousProfiles.anonymousActorId,
@@ -55,6 +71,8 @@ export async function upsertAnonymousProfile(anonymousActorId: string, input: An
         age: normalizeApparentAge(data.age),
         hairColor: data.hairColor ?? null,
         skinColor: data.skinColor ?? null,
+        country: data.country ?? null,
+        state: data.state ?? null,
         updatedAt: new Date(),
       },
     })

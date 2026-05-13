@@ -1,5 +1,6 @@
-import { motion } from 'motion/react'
-import { SlidersHorizontal } from 'lucide-react'
+import * as DialogPrimitive from '@radix-ui/react-dialog'
+import { AnimatePresence, LayoutGroup, motion } from 'motion/react'
+import { Calendar, LinkIcon, MapPin, Palette, SlidersHorizontal, Trophy, VenusAndMars, X } from 'lucide-react'
 import { useSession } from 'next-auth/react'
 import Image from 'next/image'
 import { useEffect, useMemo, useRef, useState, type CSSProperties } from 'react'
@@ -18,6 +19,31 @@ type LeaderboardResponse = {
 
 type CurrentUserRankResponse = {
   entry: LeaderboardEntry | null
+}
+
+type LeaderboardProfileResponse = {
+  profile: {
+    id: string
+    userId?: string | null
+    name?: string | null
+    imageUrl?: string | null
+    age?: number | null
+    gender?: string | null
+    hairColor?: string | null
+    skinColor?: string | null
+    country?: string | null
+    state?: string | null
+    social?: string | null
+    rank: number
+    displayRating?: number | null
+    pslScore?: number | null
+  }
+  photos: Array<{
+    id: string
+    imageUrl?: string | null
+    displayRating?: number | null
+    pslScore?: number | null
+  }>
 }
 
 type LeaderboardEntry = {
@@ -65,6 +91,7 @@ export default function LeaderboardPage() {
   const [gender, setGender] = useState<LeaderboardGender>('male')
   const [hairColor, setHairColor] = useState<(typeof leaderboardHairFilters)[number]>('all')
   const [skinColor, setSkinColor] = useState<(typeof leaderboardSkinFilters)[number]>('all')
+  const [selectedPhotoId, setSelectedPhotoId] = useState<string | null>(null)
   const {
     data: leaderboardPages,
     error: leaderboardError,
@@ -85,6 +112,11 @@ export default function LeaderboardPage() {
       revalidateOnFocus: true,
       shouldRetryOnError: false,
     }
+  )
+  const { data: selectedProfile, isLoading: selectedProfileLoading } = useSWR<LeaderboardProfileResponse>(
+    selectedPhotoId ? `/api/leaderboard/profile?photoId=${encodeURIComponent(selectedPhotoId)}` : null,
+    apiGet,
+    { revalidateOnFocus: false }
   )
   const entries = useMemo(() => leaderboardPages?.flatMap((page) => page.items) ?? [], [leaderboardPages])
   const total = leaderboardPages?.[0]?.total ?? 0
@@ -123,6 +155,7 @@ export default function LeaderboardPage() {
         imagePath="/leaderboard.png"
         path="/leaderboard"
       />
+      <LayoutGroup id="leaderboard-profile">
       <section className="min-h-[calc(100vh-5rem)] bg-white px-5 py-14 text-black sm:px-10">
       <style jsx global>{`
         @keyframes leaderboard-enter {
@@ -206,6 +239,7 @@ export default function LeaderboardPage() {
                     entry={entry}
                     elevated={entry.rank === 1}
                     index={entryIndex}
+                    onOpen={() => setSelectedPhotoId(entry.photoId ?? entry.id ?? null)}
                   />
                 )
               })}
@@ -224,7 +258,7 @@ export default function LeaderboardPage() {
             <div className="grid">
               {rankedEntries.length > 0 ? (
                 rankedEntries.map((entry, index) => (
-                  <RankRow key={entry.id || entry.photoId || entry.rank} entry={entry} index={index} />
+                  <RankRow key={entry.id || entry.photoId || entry.rank} entry={entry} index={index} onOpen={() => setSelectedPhotoId(entry.photoId ?? entry.id ?? null)} />
                 ))
               ) : isInitialLoading ? (
                 <div className="border-b border-zinc-200 py-10 text-sm text-zinc-500">
@@ -255,20 +289,42 @@ export default function LeaderboardPage() {
       </div>
 
       <CurrentUserRankBar entry={currentUserRank?.entry ?? null} />
+      <LeaderboardProfileDialog
+        fallbackEntry={entries.find((entry) => (entry.photoId ?? entry.id) === selectedPhotoId) ?? null}
+        loading={selectedProfileLoading}
+        onOpenChange={(open) => {
+          if (!open) setSelectedPhotoId(null)
+        }}
+        open={Boolean(selectedPhotoId)}
+        profile={selectedProfile ?? null}
+      />
       </section>
+      </LayoutGroup>
     </>
   )
 }
 
-function TopEntry({ elevated, entry, index }: { elevated?: boolean; entry: LeaderboardEntry; index: number }) {
+function TopEntry({ elevated, entry, index, onOpen }: { elevated?: boolean; entry: LeaderboardEntry; index: number; onOpen: () => void }) {
   return (
     <article
-      className={`group grid gap-4 ${elevated ? 'pb-10' : 'pb-0'}`}
+      className={`group grid cursor-pointer gap-4 ${elevated ? 'pb-10' : 'pb-0'}`}
+      onClick={onOpen}
+      onKeyDown={(event) => {
+        if (event.key === 'Enter' || event.key === ' ') onOpen()
+      }}
+      role="button"
+      tabIndex={0}
       style={{
         animation: `leaderboard-enter 620ms cubic-bezier(0.22, 1, 0.36, 1) ${80 + index * 80}ms both`,
       }}
     >
-      <div className="relative mx-auto w-full max-w-[230px] overflow-hidden border border-zinc-200 bg-white">
+      <motion.div
+        className="relative mx-auto w-full max-w-[230px] overflow-hidden border border-zinc-200 bg-white"
+        layoutId={`leaderboard-profile-image-${entry.photoId ?? entry.id ?? entry.rank}`}
+        layout="position"
+        style={{ borderRadius: 0 }}
+        transition={{ type: 'spring', stiffness: 260, damping: 28, mass: 0.9 }}
+      >
         <div className={elevated ? 'relative aspect-[3/4]' : 'relative aspect-[3/3.65]'}>
           <Image
             alt=""
@@ -282,7 +338,7 @@ function TopEntry({ elevated, entry, index }: { elevated?: boolean; entry: Leade
         <div className="absolute left-3 top-3 bg-white px-2 py-1 font-mono text-xs font-semibold">
           [{String(entry.rank).padStart(3, '0')}]
         </div>
-      </div>
+      </motion.div>
 
       <div className="grid gap-3 border-t border-zinc-200 pt-4">
         <div className="flex items-start justify-between gap-3">
@@ -456,17 +512,46 @@ function formatFilterOption(option: string) {
   return option.replaceAll('_', ' ')
 }
 
-function RankRow({ entry, index }: { entry: LeaderboardEntry; index: number }) {
+function formatProfileValue(value?: string | null) {
+  if (!value) return '-'
+  return value.replaceAll('_', ' ')
+}
+
+function formatSocialLabel(value?: string | null) {
+  return parseSocial(value)?.username ?? '-'
+}
+
+function formatLocation(country?: string | null, state?: string | null) {
+  if (!country) return '-'
+  const regionNames = typeof Intl !== 'undefined' && 'DisplayNames' in Intl
+    ? new Intl.DisplayNames(['en'], { type: 'region' })
+    : null
+  const countryName = regionNames?.of(country) ?? country
+  return country === 'US' && state ? `${state}, ${countryName}` : countryName
+}
+
+function RankRow({ entry, index, onOpen }: { entry: LeaderboardEntry; index: number; onOpen: () => void }) {
   return (
     <article
-      className="group grid grid-cols-[48px_minmax(0,1fr)_72px] items-center gap-3 border-b border-zinc-200 py-4 transition-colors duration-200 hover:bg-zinc-50 sm:grid-cols-[64px_minmax(0,1fr)_96px_96px_120px] sm:gap-4"
+      className="group grid cursor-pointer grid-cols-[48px_minmax(0,1fr)_72px] items-center gap-3 border-b border-zinc-200 py-4 transition-colors duration-200 hover:bg-zinc-50 sm:grid-cols-[64px_minmax(0,1fr)_96px_96px_120px] sm:gap-4"
+      onClick={onOpen}
+      onKeyDown={(event) => {
+        if (event.key === 'Enter' || event.key === ' ') onOpen()
+      }}
+      role="button"
+      tabIndex={0}
       style={{
         animation: `leaderboard-enter 480ms cubic-bezier(0.22, 1, 0.36, 1) ${180 + index * 35}ms both`,
       }}
     >
       <span className="font-mono text-sm text-zinc-500">{String(entry.rank).padStart(2, '0')}</span>
       <div className="flex min-w-0 items-center gap-3 sm:gap-4">
-        <span className="relative block size-12 shrink-0 overflow-hidden rounded-full bg-zinc-100">
+        <motion.span
+          className="relative block size-12 shrink-0 overflow-hidden rounded-full bg-zinc-100"
+          layoutId={`leaderboard-profile-image-${entry.photoId ?? entry.id ?? entry.rank}`}
+          layout="position"
+          transition={{ type: 'spring', stiffness: 260, damping: 28, mass: 0.9 }}
+        >
           <Image
             alt=""
             className="object-cover grayscale-[0.1] transition-transform duration-300 ease-out group-hover:scale-105"
@@ -474,7 +559,7 @@ function RankRow({ entry, index }: { entry: LeaderboardEntry; index: number }) {
             fill
             sizes="48px"
           />
-        </span>
+        </motion.span>
         <div className="min-w-0">
           <h3 className="text-base font-semibold tracking-[-0.04em] sm:truncate">{entry.name || 'Anonymous'}</h3>
           <p className="mt-1 hidden truncate font-mono text-xs uppercase tracking-[0.1em] text-zinc-500 sm:block">
@@ -501,6 +586,7 @@ function SocialLink({ social }: { social?: string | null }) {
     <a
       className="hidden min-w-0 items-center justify-end gap-2 text-right text-sm text-zinc-500 transition-colors hover:text-black sm:flex"
       href={parsed.url}
+      onClick={(event) => event.stopPropagation()}
       rel="noopener noreferrer"
       target="_blank"
     >
@@ -518,12 +604,178 @@ function MobileSocialLink({ social }: { social?: string | null }) {
     <a
       className="mt-2 flex min-w-0 items-center gap-1.5 text-xs text-zinc-500 transition-colors hover:text-black sm:hidden"
       href={parsed.url}
+      onClick={(event) => event.stopPropagation()}
       rel="noopener noreferrer"
       target="_blank"
     >
       <Image className="shrink-0 object-contain" src={parsed.logoUrl} alt="" width={14} height={14} sizes="14px" />
       <span className="truncate">{parsed.username}</span>
     </a>
+  )
+}
+
+function LeaderboardProfileDialog({
+  fallbackEntry,
+  loading,
+  onOpenChange,
+  open,
+  profile,
+}: {
+  fallbackEntry: LeaderboardEntry | null
+  loading: boolean
+  onOpenChange: (open: boolean) => void
+  open: boolean
+  profile: LeaderboardProfileResponse | null
+}) {
+  const selected = profile?.profile
+  const fallbackPhoto = fallbackEntry
+    ? {
+        id: fallbackEntry.photoId ?? fallbackEntry.id ?? 'fallback',
+        imageUrl: fallbackEntry.imageUrl,
+        displayRating: fallbackEntry.displayRating,
+        pslScore: fallbackEntry.pslScore,
+      }
+    : null
+  const photos = profile?.photos?.length ? profile.photos : fallbackPhoto ? [fallbackPhoto] : []
+  const heroImage = photos[0]?.imageUrl ?? selected?.imageUrl ?? fallbackEntry?.imageUrl ?? '/model.png'
+  const layoutId = fallbackEntry ? `leaderboard-profile-image-${fallbackEntry.photoId ?? fallbackEntry.id ?? fallbackEntry.rank}` : undefined
+  const name = selected?.name ?? fallbackEntry?.name ?? 'Anonymous'
+  const score = selected?.displayRating ?? fallbackEntry?.displayRating ?? null
+  const rows = [
+    { icon: VenusAndMars, label: 'Gender', value: formatProfileValue(selected?.gender ?? fallbackEntry?.gender) },
+    { icon: MapPin, label: 'Location', value: formatLocation(selected?.country, selected?.state) },
+    { icon: Palette, label: 'Hair color', value: formatProfileValue(selected?.hairColor ?? fallbackEntry?.hairColor) },
+    { icon: Calendar, label: 'Age', value: selected?.age ?? fallbackEntry?.age ? String(selected?.age ?? fallbackEntry?.age) : '-' },
+    { icon: LinkIcon, label: 'Socials', value: formatSocialLabel(selected?.social ?? fallbackEntry?.social) },
+    { icon: Trophy, label: 'Rank', value: selected?.rank ?? fallbackEntry?.rank ? `#${selected?.rank ?? fallbackEntry?.rank}` : '-' },
+  ]
+
+  return (
+    <DialogPrimitive.Root open={open} onOpenChange={onOpenChange}>
+      <AnimatePresence>
+        {open ? (
+          <DialogPrimitive.Portal forceMount>
+            <DialogPrimitive.Overlay asChild forceMount>
+              <motion.div
+                className="fixed inset-0 z-50 bg-black/28 backdrop-blur-[2px]"
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                transition={{ duration: 0.2, ease: [0.22, 1, 0.36, 1] }}
+              />
+            </DialogPrimitive.Overlay>
+            <DialogPrimitive.Content asChild forceMount onOpenAutoFocus={(event) => event.preventDefault()}>
+              <motion.div
+                className="fixed inset-0 z-50 grid place-items-center overflow-y-auto p-2 outline-none sm:p-4"
+                layoutRoot
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                transition={{ duration: 0.18, ease: [0.22, 1, 0.36, 1] }}
+              >
+                <motion.div
+                  className="relative w-full max-w-[1180px] overflow-hidden rounded-[10px] border border-white bg-white text-black shadow-[0_34px_120px_rgba(0,0,0,0.28)] sm:rounded-[12px]"
+                  layout
+                  style={{ borderRadius: 12 }}
+                  transition={{ layout: { type: 'spring', stiffness: 230, damping: 27, mass: 0.95 } }}
+                >
+                  <DialogPrimitive.Title className="sr-only">{name} profile</DialogPrimitive.Title>
+                  <DialogPrimitive.Close className="absolute right-4 top-4 z-20 grid size-9 place-items-center rounded-full bg-white/82 text-black/70 shadow-sm backdrop-blur-sm transition-colors hover:bg-white hover:text-black focus:outline-none focus:ring-2 focus:ring-black">
+                    <X className="size-4" aria-hidden="true" />
+                    <span className="sr-only">Close</span>
+                  </DialogPrimitive.Close>
+
+                  <motion.div
+                    className="grid gap-9 p-5 sm:p-9 lg:grid-cols-[minmax(300px,0.72fr)_minmax(360px,1fr)] lg:gap-14"
+                    initial={{ opacity: 0, y: 18 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0, y: 10 }}
+                    transition={{ duration: 0.28, ease: [0.22, 1, 0.36, 1] }}
+                  >
+                    <div className="grid content-start gap-6">
+                      <motion.div
+                        className="relative aspect-[1.02/1] overflow-hidden bg-zinc-100"
+                        layoutId={layoutId}
+                        layout="position"
+                        style={{ borderRadius: 8 }}
+                        transition={{ type: 'spring', stiffness: 230, damping: 27, mass: 0.95 }}
+                      >
+                        {loading && !profile ? (
+                          <div className="h-full w-full animate-pulse bg-zinc-200" />
+                        ) : (
+                          <Image className="object-cover grayscale-[0.06]" src={heroImage} alt={name} fill sizes="(min-width: 1024px) 42vw, 92vw" />
+                        )}
+                      </motion.div>
+
+                      {photos.length > 1 ? (
+                        <div className="grid grid-cols-3 gap-4 sm:gap-5">
+                          {photos.slice(1, 4).map((photo) => (
+                            <div key={photo.id} className="relative aspect-square overflow-hidden rounded-[4px] bg-zinc-100">
+                              <Image className="object-cover grayscale-[0.08]" src={photo.imageUrl || '/model.png'} alt="" fill sizes="140px" />
+                            </div>
+                          ))}
+                        </div>
+                      ) : null}
+
+                      <button
+                        className="relative h-16 bg-white px-5 text-base font-semibold tracking-[-0.02em] text-black transition-colors hover:bg-zinc-50"
+                        type="button"
+                      >
+                        <span className="absolute left-0 top-0 size-4 border-l border-t border-black" />
+                        <span className="absolute right-0 top-0 size-4 border-r border-t border-black" />
+                        <span className="absolute bottom-0 left-0 size-4 border-b border-l border-black" />
+                        <span className="absolute bottom-0 right-0 size-4 border-b border-r border-black" />
+                        View full report
+                      </button>
+                    </div>
+
+                    <div className="grid content-start gap-10 lg:pt-4">
+                      <div className="grid gap-4">
+                        <p className="font-mono text-[10px] uppercase tracking-[0.16em] text-zinc-400">Profile</p>
+                        <div className="grid grid-cols-[minmax(0,1fr)_auto] items-start gap-5">
+                          <div className="min-w-0">
+                            <h2 className="truncate text-4xl font-semibold leading-none tracking-[-0.075em] sm:text-7xl">{name}</h2>
+                          </div>
+                          <div className="shrink-0 text-right text-4xl font-semibold leading-none tracking-[-0.065em] text-zinc-600 sm:text-7xl">
+                            {formatVotingScore(score)}
+                          </div>
+                        </div>
+                      </div>
+
+                      <div className="grid gap-2 pt-1 sm:gap-3">
+                        {rows.map((row, index) => (
+                          <ProfileInfoRow key={row.label} {...row} index={index} />
+                        ))}
+                      </div>
+                    </div>
+                  </motion.div>
+                </motion.div>
+              </motion.div>
+            </DialogPrimitive.Content>
+          </DialogPrimitive.Portal>
+        ) : null}
+      </AnimatePresence>
+    </DialogPrimitive.Root>
+  )
+}
+
+function ProfileInfoRow({
+  icon: Icon,
+  index,
+  label,
+  value,
+}: {
+  icon: typeof Trophy
+  index: number
+  label: string
+  value: string
+}) {
+  return (
+    <div className={`grid grid-cols-[30px_minmax(0,1fr)_auto] items-center gap-3 rounded-[7px] px-3 py-4 sm:grid-cols-[34px_minmax(0,1fr)_auto] sm:gap-4 sm:px-4 ${index % 2 === 1 ? 'bg-zinc-50' : ''}`}>
+      <Icon className="size-5 text-zinc-400" aria-hidden="true" strokeWidth={1.8} />
+      <span className="truncate text-base font-medium tracking-[-0.03em] text-zinc-500 sm:text-xl">{label}</span>
+      <span className="min-w-0 max-w-[42vw] truncate text-right text-base font-semibold tracking-[-0.035em] text-black sm:max-w-[280px] sm:text-xl">{value}</span>
+    </div>
   )
 }
 

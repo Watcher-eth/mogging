@@ -7,6 +7,7 @@ import {
   updateUserProfileSchema,
   UserServiceError,
 } from '@/lib/users/service'
+import { getRequestLocation } from '@/lib/geo/request'
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   const session = await getAuthSession(req, res)
@@ -25,7 +26,11 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
   if (req.method === 'PATCH') {
     try {
-      const input = parseBody(updateUserProfileSchema, req.body)
+      const location = getRequestLocation(req)
+      const input = parseBody(updateUserProfileSchema, {
+        ...req.body,
+        ...(location.country ? location : null),
+      })
       const user = await updateUserProfile(session.user.id, input)
       return json(res, 200, { user })
     } catch (error) {

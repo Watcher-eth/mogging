@@ -7,6 +7,8 @@ export const registerSchema = z.object({
   name: z.string().trim().min(1).max(100).optional(),
   email: z.string().trim().email().max(255),
   password: z.string().min(8).max(128),
+  country: z.string().trim().length(2).nullable().optional(),
+  state: z.string().trim().length(2).nullable().optional(),
 })
 
 export class EmailAlreadyExistsError extends Error {
@@ -31,6 +33,8 @@ export async function registerUser(input: z.infer<typeof registerSchema>) {
       email: input.email.toLowerCase(),
       name: input.name || null,
       passwordHash: await hashPassword(input.password),
+      country: input.country?.toUpperCase() ?? null,
+      state: input.country?.toUpperCase() === 'US' ? input.state?.toUpperCase() ?? null : null,
     })
     .returning({
       id: schema.users.id,
