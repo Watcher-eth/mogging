@@ -36,12 +36,14 @@ type LeaderboardProfileResponse = {
     social?: string | null
     rank: number
     displayRating?: number | null
+    analysisId?: string | null
     pslScore?: number | null
   }
   photos: Array<{
     id: string
     imageUrl?: string | null
     displayRating?: number | null
+    analysisId?: string | null
     pslScore?: number | null
   }>
 }
@@ -633,6 +635,7 @@ function LeaderboardProfileDialog({
         id: fallbackEntry.photoId ?? fallbackEntry.id ?? 'fallback',
         imageUrl: fallbackEntry.imageUrl,
         displayRating: fallbackEntry.displayRating,
+        analysisId: null,
         pslScore: fallbackEntry.pslScore,
       }
     : null
@@ -641,6 +644,7 @@ function LeaderboardProfileDialog({
   const layoutId = fallbackEntry ? `leaderboard-profile-image-${fallbackEntry.photoId ?? fallbackEntry.id ?? fallbackEntry.rank}` : undefined
   const name = selected?.name ?? fallbackEntry?.name ?? 'Anonymous'
   const score = selected?.displayRating ?? fallbackEntry?.displayRating ?? null
+  const reportAnalysisId = selected?.analysisId ?? photos.find((photo) => photo.analysisId)?.analysisId ?? null
   const rows = [
     { icon: VenusAndMars, label: 'Gender', value: formatProfileValue(selected?.gender ?? fallbackEntry?.gender) },
     { icon: MapPin, label: 'Location', value: formatLocation(selected?.country, selected?.state) },
@@ -717,16 +721,18 @@ function LeaderboardProfileDialog({
                         </div>
                       ) : null}
 
-                      <button
-                        className="relative h-16 bg-white px-5 text-base font-semibold tracking-[-0.02em] text-black transition-colors hover:bg-zinc-50"
-                        type="button"
-                      >
-                        <span className="absolute left-0 top-0 size-4 border-l border-t border-black" />
-                        <span className="absolute right-0 top-0 size-4 border-r border-t border-black" />
-                        <span className="absolute bottom-0 left-0 size-4 border-b border-l border-black" />
-                        <span className="absolute bottom-0 right-0 size-4 border-b border-r border-black" />
-                        View full report
-                      </button>
+                      {reportAnalysisId ? (
+                        <a
+                          className="relative grid h-16 place-items-center bg-white px-5 text-base font-semibold tracking-[-0.02em] text-black transition-colors hover:bg-zinc-50"
+                          href={`/analysis?analysisId=${encodeURIComponent(reportAnalysisId)}`}
+                        >
+                          <span className="absolute left-0 top-0 size-4 border-l border-t border-black" />
+                          <span className="absolute right-0 top-0 size-4 border-r border-t border-black" />
+                          <span className="absolute bottom-0 left-0 size-4 border-b border-l border-black" />
+                          <span className="absolute bottom-0 right-0 size-4 border-b border-r border-black" />
+                          View full report
+                        </a>
+                      ) : null}
                     </div>
 
                     <div className="grid content-start gap-10 lg:pt-4">
@@ -771,10 +777,10 @@ function ProfileInfoRow({
   value: string
 }) {
   return (
-    <div className={`grid grid-cols-[30px_minmax(0,1fr)_auto] items-center gap-3 rounded-[7px] px-3 py-4 sm:grid-cols-[34px_minmax(0,1fr)_auto] sm:gap-4 sm:px-4 ${index % 2 === 1 ? 'bg-zinc-50' : ''}`}>
-      <Icon className="size-5 text-zinc-400" aria-hidden="true" strokeWidth={1.8} />
-      <span className="truncate text-base font-medium tracking-[-0.03em] text-zinc-500 sm:text-xl">{label}</span>
-      <span className="min-w-0 max-w-[42vw] truncate text-right text-base font-semibold tracking-[-0.035em] text-black sm:max-w-[280px] sm:text-xl">{value}</span>
+    <div className={`grid grid-cols-[28px_minmax(0,1fr)_auto] items-center gap-3 rounded-[6px] px-3 py-3 sm:grid-cols-[30px_minmax(0,1fr)_auto] sm:px-4 ${index % 2 === 1 ? 'bg-zinc-50' : ''}`}>
+      <Icon className="size-4 text-zinc-400" aria-hidden="true" strokeWidth={1.8} />
+      <span className="truncate text-sm font-medium tracking-[-0.02em] text-zinc-500 sm:text-base">{label}</span>
+      <span className="min-w-0 max-w-[42vw] truncate text-right text-sm font-semibold tracking-[-0.025em] text-black sm:max-w-[280px] sm:text-base">{value}</span>
     </div>
   )
 }
