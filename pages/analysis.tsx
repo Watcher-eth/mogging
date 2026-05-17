@@ -1110,7 +1110,7 @@ function UploadScreen({
           ) : null}
         </div>
 
-        <div className="flex flex-col justify-center text-sm text-muted-foreground">
+        <div className="flex flex-col justify-center pb-8 text-sm text-muted-foreground lg:pb-0">
           <ul className="grid gap-3">
             <li>▪ Remove your glasses</li>
             <li>▪ Look directly at camera</li>
