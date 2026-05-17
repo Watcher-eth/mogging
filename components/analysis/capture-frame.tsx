@@ -1,10 +1,11 @@
 import { ImagePlus } from 'lucide-react'
 import Image from 'next/image'
-import { useRef, type KeyboardEvent, type PointerEvent, type RefObject, type ReactNode } from 'react'
+import { useRef, type KeyboardEvent, type PointerEvent, type RefObject, type ReactNode, type WheelEvent } from 'react'
 
 export type CaptureFrameImagePosition = {
   x: number
   y: number
+  scale: number
 }
 
 type CaptureFrameProps = {
@@ -28,7 +29,7 @@ export function CaptureFrame({
   action,
   className = '',
   imageAlt = 'Face alignment preview',
-  imagePosition = { x: 50, y: 50 },
+  imagePosition = { x: 50, y: 50, scale: 1 },
   imageSrc,
   muted = false,
   onEmptyClick,
@@ -77,6 +78,7 @@ export function CaptureFrame({
     onImagePositionChange?.({
       x: clampPosition(dragState.startPosition.x - deltaX),
       y: clampPosition(dragState.startPosition.y - deltaY),
+      scale: dragState.startPosition.scale,
     })
   }
 
@@ -106,6 +108,17 @@ export function CaptureFrame({
     handleClick()
   }
 
+  function handleWheel(event: WheelEvent<HTMLDivElement>) {
+    if (!imageSrc || !onImagePositionChange) return
+
+    event.preventDefault()
+    const zoomDelta = event.deltaY > 0 ? -0.08 : 0.08
+    onImagePositionChange({
+      ...imagePosition,
+      scale: clampScale(imagePosition.scale + zoomDelta),
+    })
+  }
+
   return (
     <div
       className={`relative mx-auto aspect-[9/16] w-full max-w-[390px] overflow-hidden rounded-[44px] bg-black shadow-2xl ${imageSrc && onImagePositionChange ? 'cursor-grab touch-none active:cursor-grabbing' : ''} ${(!hasMedia && onEmptyClick) || (hasMedia && onMediaClick) ? 'cursor-pointer' : ''} ${className}`}
@@ -115,6 +128,7 @@ export function CaptureFrame({
       onPointerMove={handlePointerMove}
       onPointerUp={handlePointerUp}
       onKeyDown={(!hasMedia && onEmptyClick) || (hasMedia && onMediaClick) ? handleKeyDown : undefined}
+      onWheel={handleWheel}
       role={(!hasMedia && onEmptyClick) || (hasMedia && onMediaClick) ? 'button' : undefined}
       tabIndex={(!hasMedia && onEmptyClick) || (hasMedia && onMediaClick) ? 0 : undefined}
     >
@@ -125,7 +139,10 @@ export function CaptureFrame({
           alt={imageAlt}
           fill
           sizes="min(390px, 100vw)"
-          style={{ objectPosition: `${imagePosition.x}% ${imagePosition.y}%` }}
+          style={{
+            objectPosition: `${imagePosition.x}% ${imagePosition.y}%`,
+            transform: `scale(${imagePosition.scale})`,
+          }}
           draggable={false}
         />
       ) : videoRef ? (
@@ -181,4 +198,8 @@ export function CaptureFrame({
 
 function clampPosition(value: number) {
   return Math.max(0, Math.min(100, value))
+}
+
+function clampScale(value: number) {
+  return Math.max(1, Math.min(3, Math.round(value * 100) / 100))
 }

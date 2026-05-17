@@ -12,6 +12,8 @@ import {
   Sparkles,
   Upload,
   X,
+  ZoomIn,
+  ZoomOut,
 } from 'lucide-react'
 import { useSession } from 'next-auth/react'
 import Image from 'next/image'
@@ -135,6 +137,7 @@ type CheckoutResponse = {
 }
 
 type ImageFramePositions = Record<string, CaptureFrameImagePosition>
+const defaultFramePosition: CaptureFrameImagePosition = { x: 50, y: 50, scale: 1 }
 
 const pseudoAnalysisItems = [
   'Detecting facial reference lines',
@@ -425,7 +428,7 @@ export default function AnalysisPage() {
     setSelectedImageId(visibleNextImages[visibleNextImages.length - 1]?.id ?? null)
     setImageFramePositions((current) => ({
       ...current,
-      ...Object.fromEntries(visibleNextImages.map((image) => [image.id, { x: 50, y: 50 }])),
+      ...Object.fromEntries(visibleNextImages.map((image) => [image.id, defaultFramePosition])),
     }))
     setLandmarkPendingIds((current) => ({
       ...current,
@@ -717,7 +720,7 @@ export default function AnalysisPage() {
       return [...current, nextImage].slice(0, 3)
     })
     setSelectedImageId(imageId)
-    setImageFramePositions((current) => ({ ...current, [imageId]: { x: 50, y: 50 } }))
+    setImageFramePositions((current) => ({ ...current, [imageId]: defaultFramePosition }))
     setLandmarkPendingIds((current) => ({ ...current, [imageId]: true }))
     void enrichImageLandmarks(nextImage)
   }
@@ -770,7 +773,7 @@ export default function AnalysisPage() {
                 images={images}
                 isPreparingUploads={isPreparingUploads}
                 previewImage={previewImage}
-                imagePosition={selectedImage ? (imageFramePositions[selectedImage.id] ?? { x: 50, y: 50 }) : { x: 50, y: 50 }}
+                imagePosition={selectedImage ? (imageFramePositions[selectedImage.id] ?? defaultFramePosition) : defaultFramePosition}
                 selectedImageId={selectedImage?.id ?? null}
                 canStart={canStart}
                 onCamera={() => setCameraOpen(true)}
@@ -1027,7 +1030,7 @@ function UploadScreen({
               Camera
             </Button>
           </div>
-          <Button className="mt-4 h-11 w-full max-w-[260px] justify-between rounded-sm font-mono text-[11px] uppercase" onClick={onStart} disabled={!canStart}>
+          <Button className="mt-4 hidden h-11 w-full max-w-[260px] justify-between rounded-sm font-mono text-[11px] uppercase lg:flex" onClick={onStart} disabled={!canStart}>
             {isPreparingUploads ? 'Uploading' : 'Continue'}
             {isPreparingUploads ? <Loader2 className="size-4 animate-spin" aria-hidden="true" /> : <ArrowRight className="size-4" aria-hidden="true" />}
           </Button>
@@ -1061,6 +1064,37 @@ function UploadScreen({
               </AnimatePresence>
             </div>
           </div>
+
+          {previewImage ? (
+            <div className="mx-auto grid w-full max-w-[390px] grid-cols-[36px_minmax(0,1fr)_36px] items-center gap-3">
+              <button
+                aria-label="Zoom out"
+                className="grid size-9 place-items-center border border-zinc-200 text-zinc-600 transition-colors hover:border-zinc-300 hover:text-black"
+                onClick={() => onImagePositionChange({ ...imagePosition, scale: clampFrameScale(imagePosition.scale - 0.1) })}
+                type="button"
+              >
+                <ZoomOut className="size-4" aria-hidden="true" />
+              </button>
+              <input
+                aria-label="Image zoom"
+                className="h-1 w-full accent-black"
+                max="3"
+                min="1"
+                onChange={(event) => onImagePositionChange({ ...imagePosition, scale: Number(event.target.value) })}
+                step="0.01"
+                type="range"
+                value={imagePosition.scale}
+              />
+              <button
+                aria-label="Zoom in"
+                className="grid size-9 place-items-center border border-zinc-200 text-zinc-600 transition-colors hover:border-zinc-300 hover:text-black"
+                onClick={() => onImagePositionChange({ ...imagePosition, scale: clampFrameScale(imagePosition.scale + 0.1) })}
+                type="button"
+              >
+                <ZoomIn className="size-4" aria-hidden="true" />
+              </button>
+            </div>
+          ) : null}
 
           {images.length > 0 ? (
             <div className="mx-auto grid w-full max-w-[390px] grid-cols-3 gap-2">
@@ -1096,6 +1130,10 @@ function UploadScreen({
             <li>▪ Pull hair back</li>
             <li>▪ Keep neutral expression</li>
           </ul>
+          <Button className="mt-6 h-11 w-full justify-between rounded-sm font-mono text-[11px] uppercase lg:hidden" onClick={onStart} disabled={!canStart}>
+            {isPreparingUploads ? 'Uploading' : 'Continue'}
+            {isPreparingUploads ? <Loader2 className="size-4 animate-spin" aria-hidden="true" /> : <ArrowRight className="size-4" aria-hidden="true" />}
+          </Button>
         </div>
       </div>
 
@@ -2788,8 +2826,8 @@ function Score({ label, value }: { label: string; value: number | null }) {
 
 async function prepareImagesForAnalysis(images: AnalysisDraftImage[], framePositions: ImageFramePositions) {
   return Promise.all(images.map(async (image) => {
-    const position = framePositions[image.id] ?? { x: 50, y: 50 }
-    if (position.x === 50 && position.y === 50) return image
+    const position = framePositions[image.id] ?? defaultFramePosition
+    if (position.x === 50 && position.y === 50 && position.scale === 1) return image
 
     const dataUrl = await cropImageDataUrlToFrame(image.dataUrl, position)
     return {
@@ -2804,8 +2842,10 @@ async function cropImageDataUrlToFrame(dataUrl: string, position: CaptureFrameIm
   const image = await loadImageElement(dataUrl)
   const frameAspectRatio = 9 / 16
   const imageAspectRatio = image.naturalWidth / image.naturalHeight
-  const sourceWidth = imageAspectRatio > frameAspectRatio ? image.naturalHeight * frameAspectRatio : image.naturalWidth
-  const sourceHeight = imageAspectRatio > frameAspectRatio ? image.naturalHeight : image.naturalWidth / frameAspectRatio
+  const baseSourceWidth = imageAspectRatio > frameAspectRatio ? image.naturalHeight * frameAspectRatio : image.naturalWidth
+  const baseSourceHeight = imageAspectRatio > frameAspectRatio ? image.naturalHeight : image.naturalWidth / frameAspectRatio
+  const sourceWidth = baseSourceWidth / position.scale
+  const sourceHeight = baseSourceHeight / position.scale
   const sourceX = ((image.naturalWidth - sourceWidth) * position.x) / 100
   const sourceY = ((image.naturalHeight - sourceHeight) * position.y) / 100
   const canvas = document.createElement('canvas')
@@ -2818,6 +2858,10 @@ async function cropImageDataUrlToFrame(dataUrl: string, position: CaptureFrameIm
 
   context.drawImage(image, sourceX, sourceY, sourceWidth, sourceHeight, 0, 0, canvas.width, canvas.height)
   return canvas.toDataURL('image/jpeg', 0.92)
+}
+
+function clampFrameScale(value: number) {
+  return Math.max(1, Math.min(3, Math.round(value * 100) / 100))
 }
 
 function loadImageElement(src: string) {
