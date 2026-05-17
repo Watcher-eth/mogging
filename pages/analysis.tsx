@@ -43,7 +43,7 @@ import {
 import { CameraSheet } from '@/components/analysis/camera-sheet'
 import { LoginDialog } from '@/components/app/app-shell'
 import { SeoHead } from '@/components/app/seo-head'
-import { CaptureFrame } from '@/components/analysis/capture-frame'
+import { CaptureFrame, type CaptureFrameImagePosition } from '@/components/analysis/capture-frame'
 import { TextLoop } from '@/components/core/text-loop'
 import { TextShimmer } from '@/components/core/text-shimmer'
 
@@ -133,6 +133,8 @@ type AppConfig = {
 type CheckoutResponse = {
   url: string
 }
+
+type ImageFramePositions = Record<string, CaptureFrameImagePosition>
 
 const pseudoAnalysisItems = [
   'Detecting facial reference lines',
@@ -400,6 +402,7 @@ export default function AnalysisPage() {
   const [battleOptOutByPhotoId, setBattleOptOutByPhotoId] = useState<Record<string, boolean>>({})
   const [battleOptOutSaving, setBattleOptOutSaving] = useState(false)
   const [landmarkPendingIds, setLandmarkPendingIds] = useState<Record<string, boolean>>({})
+  const [imageFramePositions, setImageFramePositions] = useState<ImageFramePositions>({})
 
   const primaryResult = results[0]
   const primaryScore = primaryResult?.analysis.pslScore ?? null
@@ -420,6 +423,10 @@ export default function AnalysisPage() {
     const visibleNextImages = nextImages.slice(0, Math.max(0, 3 - images.length))
     setImages((current) => [...current, ...visibleNextImages].slice(0, 3))
     setSelectedImageId(visibleNextImages[visibleNextImages.length - 1]?.id ?? null)
+    setImageFramePositions((current) => ({
+      ...current,
+      ...Object.fromEntries(visibleNextImages.map((image) => [image.id, { x: 50, y: 50 }])),
+    }))
     setLandmarkPendingIds((current) => ({
       ...current,
       ...Object.fromEntries(visibleNextImages.map((image) => [image.id, true])),
@@ -438,6 +445,9 @@ export default function AnalysisPage() {
       return
     }
 
+    const preparedImages = await prepareImagesForAnalysis(images, imageFramePositions)
+
+    setImages(preparedImages)
     setError(null)
     setAnalysisUnlocked(!paidAnalysisRequired)
     setPaymentDialogOpen(false)
@@ -445,7 +455,7 @@ export default function AnalysisPage() {
     setStep('actual-analysis')
 
     if (!paidAnalysisRequired) {
-      void runActualAnalysis()
+      void runActualAnalysis(preparedImages)
     }
   }
 
@@ -633,6 +643,7 @@ export default function AnalysisPage() {
         setStep('results')
         setImages([])
         setSelectedImageId(null)
+        setImageFramePositions({})
         setShareUrl(null)
         setBattleOptOutByPhotoId({
           [result.photo.id]: false,
@@ -673,6 +684,10 @@ export default function AnalysisPage() {
         const { [id]: _removed, ...nextPending } = currentPending
         return nextPending
       })
+      setImageFramePositions((currentPositions) => {
+        const { [id]: _removed, ...nextPositions } = currentPositions
+        return nextPositions
+      })
       setSelectedImageId((currentSelectedId) => {
         if (currentSelectedId !== id) return currentSelectedId
 
@@ -702,6 +717,7 @@ export default function AnalysisPage() {
       return [...current, nextImage].slice(0, 3)
     })
     setSelectedImageId(imageId)
+    setImageFramePositions((current) => ({ ...current, [imageId]: { x: 50, y: 50 } }))
     setLandmarkPendingIds((current) => ({ ...current, [imageId]: true }))
     void enrichImageLandmarks(nextImage)
   }
@@ -754,9 +770,14 @@ export default function AnalysisPage() {
                 images={images}
                 isPreparingUploads={isPreparingUploads}
                 previewImage={previewImage}
+                imagePosition={selectedImage ? (imageFramePositions[selectedImage.id] ?? { x: 50, y: 50 }) : { x: 50, y: 50 }}
                 selectedImageId={selectedImage?.id ?? null}
                 canStart={canStart}
                 onCamera={() => setCameraOpen(true)}
+                onImagePositionChange={(position) => {
+                  if (!selectedImage) return
+                  setImageFramePositions((current) => ({ ...current, [selectedImage.id]: position }))
+                }}
                 onRemove={removeImage}
                 onSelect={setSelectedImageId}
                 onStart={startPseudoAnalysis}
@@ -832,6 +853,7 @@ export default function AnalysisPage() {
                   onReset={() => {
                     setImages([])
                     setSelectedImageId(null)
+                    setImageFramePositions({})
                     setResults([])
                     setBattleOptOutByPhotoId({})
                     setStep('intro')
@@ -958,9 +980,11 @@ function IntroScreen({ onBegin }: { onBegin: () => void }) {
 
 function UploadScreen({
   canStart,
+  imagePosition,
   images,
   isPreparingUploads,
   onCamera,
+  onImagePositionChange,
   onRemove,
   onSelect,
   onStart,
@@ -969,9 +993,11 @@ function UploadScreen({
   selectedImageId,
 }: {
   canStart: boolean
+  imagePosition: CaptureFrameImagePosition
   images: AnalysisDraftImage[]
   isPreparingUploads: boolean
   onCamera: () => void
+  onImagePositionChange: (position: CaptureFrameImagePosition) => void
   onRemove: (id: string) => void
   onSelect: (id: string) => void
   onStart: () => void
@@ -1022,6 +1048,10 @@ function UploadScreen({
                     className="max-w-[370px] rounded-[34px]"
                     imageSrc={previewImage}
                     imageAlt="Primary uploaded preview"
+                    imagePosition={imagePosition}
+                    onEmptyClick={images.length >= 3 ? undefined : onUpload}
+                    onImagePositionChange={previewImage ? onImagePositionChange : undefined}
+                    onMediaClick={images.length >= 3 ? undefined : onUpload}
                     showStepIndicator={false}
                     stepLabel="Step 1 of 3"
                     title="Look straight ahead"
@@ -2754,6 +2784,49 @@ function Score({ label, value }: { label: string; value: number | null }) {
       <div className="mt-1 text-sm font-semibold">{value?.toFixed(1) ?? '--'}</div>
     </div>
   )
+}
+
+async function prepareImagesForAnalysis(images: AnalysisDraftImage[], framePositions: ImageFramePositions) {
+  return Promise.all(images.map(async (image) => {
+    const position = framePositions[image.id] ?? { x: 50, y: 50 }
+    if (position.x === 50 && position.y === 50) return image
+
+    const dataUrl = await cropImageDataUrlToFrame(image.dataUrl, position)
+    return {
+      ...image,
+      dataUrl,
+      landmarks: null,
+    }
+  }))
+}
+
+async function cropImageDataUrlToFrame(dataUrl: string, position: CaptureFrameImagePosition) {
+  const image = await loadImageElement(dataUrl)
+  const frameAspectRatio = 9 / 16
+  const imageAspectRatio = image.naturalWidth / image.naturalHeight
+  const sourceWidth = imageAspectRatio > frameAspectRatio ? image.naturalHeight * frameAspectRatio : image.naturalWidth
+  const sourceHeight = imageAspectRatio > frameAspectRatio ? image.naturalHeight : image.naturalWidth / frameAspectRatio
+  const sourceX = ((image.naturalWidth - sourceWidth) * position.x) / 100
+  const sourceY = ((image.naturalHeight - sourceHeight) * position.y) / 100
+  const canvas = document.createElement('canvas')
+
+  canvas.width = 1080
+  canvas.height = 1920
+
+  const context = canvas.getContext('2d')
+  if (!context) return dataUrl
+
+  context.drawImage(image, sourceX, sourceY, sourceWidth, sourceHeight, 0, 0, canvas.width, canvas.height)
+  return canvas.toDataURL('image/jpeg', 0.92)
+}
+
+function loadImageElement(src: string) {
+  return new Promise<HTMLImageElement>((resolve, reject) => {
+    const image = new window.Image()
+    image.onload = () => resolve(image)
+    image.onerror = () => reject(new Error('Unable to load image for cropping'))
+    image.src = src
+  })
 }
 
 function readImageFile(file: File) {

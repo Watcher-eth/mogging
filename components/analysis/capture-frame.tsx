@@ -1,13 +1,22 @@
 import { ImagePlus } from 'lucide-react'
 import Image from 'next/image'
-import { type RefObject, type ReactNode } from 'react'
+import { useRef, type KeyboardEvent, type PointerEvent, type RefObject, type ReactNode } from 'react'
+
+export type CaptureFrameImagePosition = {
+  x: number
+  y: number
+}
 
 type CaptureFrameProps = {
   action?: ReactNode
   className?: string
   imageAlt?: string
+  imagePosition?: CaptureFrameImagePosition
   imageSrc?: string | null
   muted?: boolean
+  onEmptyClick?: () => void
+  onImagePositionChange?: (position: CaptureFrameImagePosition) => void
+  onMediaClick?: () => void
   showStepIndicator?: boolean
   stepLabel?: string
   subtitle?: string
@@ -19,8 +28,12 @@ export function CaptureFrame({
   action,
   className = '',
   imageAlt = 'Face alignment preview',
+  imagePosition = { x: 50, y: 50 },
   imageSrc,
   muted = false,
+  onEmptyClick,
+  onImagePositionChange,
+  onMediaClick,
   showStepIndicator = true,
   stepLabel = 'Step 1 of 3',
   subtitle = 'Center your face in the frame',
@@ -28,11 +41,93 @@ export function CaptureFrame({
   videoRef,
 }: CaptureFrameProps) {
   const hasMedia = Boolean(imageSrc || videoRef)
+  const clickSuppressedRef = useRef(false)
+  const dragStateRef = useRef<{
+    pointerId: number
+    startClientX: number
+    startClientY: number
+    startPosition: CaptureFrameImagePosition
+  } | null>(null)
+
+  function handlePointerDown(event: PointerEvent<HTMLDivElement>) {
+    if (!imageSrc || !onImagePositionChange) return
+
+    event.currentTarget.setPointerCapture(event.pointerId)
+    clickSuppressedRef.current = false
+    dragStateRef.current = {
+      pointerId: event.pointerId,
+      startClientX: event.clientX,
+      startClientY: event.clientY,
+      startPosition: imagePosition,
+    }
+  }
+
+  function handlePointerMove(event: PointerEvent<HTMLDivElement>) {
+    const dragState = dragStateRef.current
+    if (!dragState || dragState.pointerId !== event.pointerId) return
+
+    const rect = event.currentTarget.getBoundingClientRect()
+    const deltaX = ((event.clientX - dragState.startClientX) / rect.width) * 100
+    const deltaY = ((event.clientY - dragState.startClientY) / rect.height) * 100
+
+    if (Math.hypot(event.clientX - dragState.startClientX, event.clientY - dragState.startClientY) > 4) {
+      clickSuppressedRef.current = true
+    }
+
+    onImagePositionChange?.({
+      x: clampPosition(dragState.startPosition.x - deltaX),
+      y: clampPosition(dragState.startPosition.y - deltaY),
+    })
+  }
+
+  function handlePointerUp(event: PointerEvent<HTMLDivElement>) {
+    const dragState = dragStateRef.current
+    if (dragState?.pointerId === event.pointerId) {
+      dragStateRef.current = null
+    }
+  }
+
+  function handleClick() {
+    if (!hasMedia) {
+      onEmptyClick?.()
+      return
+    }
+
+    if (!clickSuppressedRef.current) {
+      onMediaClick?.()
+    }
+    clickSuppressedRef.current = false
+  }
+
+  function handleKeyDown(event: KeyboardEvent<HTMLDivElement>) {
+    if (event.key !== 'Enter' && event.key !== ' ') return
+
+    event.preventDefault()
+    handleClick()
+  }
 
   return (
-    <div className={`relative mx-auto aspect-[9/16] w-full max-w-[390px] overflow-hidden rounded-[44px] bg-black shadow-2xl ${className}`}>
+    <div
+      className={`relative mx-auto aspect-[9/16] w-full max-w-[390px] overflow-hidden rounded-[44px] bg-black shadow-2xl ${imageSrc && onImagePositionChange ? 'cursor-grab touch-none active:cursor-grabbing' : ''} ${(!hasMedia && onEmptyClick) || (hasMedia && onMediaClick) ? 'cursor-pointer' : ''} ${className}`}
+      onClick={(!hasMedia && onEmptyClick) || (hasMedia && onMediaClick) ? handleClick : undefined}
+      onPointerCancel={handlePointerUp}
+      onPointerDown={handlePointerDown}
+      onPointerMove={handlePointerMove}
+      onPointerUp={handlePointerUp}
+      onKeyDown={(!hasMedia && onEmptyClick) || (hasMedia && onMediaClick) ? handleKeyDown : undefined}
+      role={(!hasMedia && onEmptyClick) || (hasMedia && onMediaClick) ? 'button' : undefined}
+      tabIndex={(!hasMedia && onEmptyClick) || (hasMedia && onMediaClick) ? 0 : undefined}
+    >
       {imageSrc ? (
-        <Image className="object-cover" src={imageSrc} alt={imageAlt} fill sizes="min(390px, 100vw)" />
+        <Image
+          className="object-cover"
+          src={imageSrc}
+          alt={imageAlt}
+          fill
+          sizes="min(390px, 100vw)"
+          style={{ objectPosition: `${imagePosition.x}% ${imagePosition.y}%` }}
+          draggable={false}
+        />
       ) : videoRef ? (
         <video ref={videoRef} className="absolute inset-0 h-full w-full scale-x-[-1] object-cover" playsInline muted autoPlay />
       ) : (
@@ -63,7 +158,7 @@ export function CaptureFrame({
         </div>
       ) : null}
 
-      <svg className="pointer-events-none absolute left-1/2 top-[45%] h-[48%] w-[72%] -translate-x-1/2 -translate-y-1/2 overflow-visible" viewBox="0 0 260 340" aria-hidden="true">
+      <svg className="pointer-events-none absolute left-1/2 top-[45%] h-[54%] w-[80%] -translate-x-1/2 -translate-y-1/2 overflow-visible" viewBox="0 0 260 340" aria-hidden="true">
         <path
           d="M130 9C52 9 14 68 14 162c0 96 42 169 116 169s116-73 116-169C246 68 208 9 130 9Z"
           fill="none"
@@ -82,4 +177,8 @@ export function CaptureFrame({
       {action ? <div className="absolute inset-x-0 bottom-7 px-8">{action}</div> : null}
     </div>
   )
+}
+
+function clampPosition(value: number) {
+  return Math.max(0, Math.min(100, value))
 }
