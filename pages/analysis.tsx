@@ -12,8 +12,6 @@ import {
   Sparkles,
   Upload,
   X,
-  ZoomIn,
-  ZoomOut,
 } from 'lucide-react'
 import { useSession } from 'next-auth/react'
 import Image from 'next/image'
@@ -1066,33 +1064,22 @@ function UploadScreen({
           </div>
 
           {previewImage ? (
-            <div className="mx-auto grid w-full max-w-[390px] grid-cols-[36px_minmax(0,1fr)_36px] items-center gap-3">
-              <button
-                aria-label="Zoom out"
-                className="grid size-9 place-items-center border border-zinc-200 text-zinc-600 transition-colors hover:border-zinc-300 hover:text-black"
-                onClick={() => onImagePositionChange({ ...imagePosition, scale: clampFrameScale(imagePosition.scale - 0.1) })}
-                type="button"
-              >
-                <ZoomOut className="size-4" aria-hidden="true" />
-              </button>
+            <div className="mx-auto grid w-full max-w-[390px] gap-2">
+              <div className="flex items-center justify-between font-mono text-[10px] uppercase tracking-wide text-muted-foreground">
+                <span>Zoom</span>
+                <span>{Math.round(imagePosition.scale * 100)}%</span>
+              </div>
               <input
                 aria-label="Image zoom"
-                className="h-1 w-full accent-black"
+                className="analysis-zoom-slider w-full"
                 max="3"
                 min="1"
-                onChange={(event) => onImagePositionChange({ ...imagePosition, scale: Number(event.target.value) })}
+                onChange={(event) => onImagePositionChange({ ...imagePosition, scale: clampFrameScale(Number(event.target.value)) })}
                 step="0.01"
+                style={{ '--zoom-progress': `${((imagePosition.scale - 1) / 2) * 100}%` } as CSSProperties}
                 type="range"
                 value={imagePosition.scale}
               />
-              <button
-                aria-label="Zoom in"
-                className="grid size-9 place-items-center border border-zinc-200 text-zinc-600 transition-colors hover:border-zinc-300 hover:text-black"
-                onClick={() => onImagePositionChange({ ...imagePosition, scale: clampFrameScale(imagePosition.scale + 0.1) })}
-                type="button"
-              >
-                <ZoomIn className="size-4" aria-hidden="true" />
-              </button>
             </div>
           ) : null}
 

@@ -142,6 +142,7 @@ export function CaptureFrame({
           style={{
             objectPosition: `${imagePosition.x}% ${imagePosition.y}%`,
             transform: `scale(${imagePosition.scale})`,
+            transformOrigin: `${imagePosition.x}% ${imagePosition.y}%`,
           }}
           draggable={false}
         />
