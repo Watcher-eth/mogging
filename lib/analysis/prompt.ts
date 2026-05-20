@@ -187,7 +187,35 @@ Return this JSON object exactly:
       }
     ]
   },
-  "landmarks": {}
+  "landmarks": {
+    "version": 1,
+    "source": "kimi-vision-estimate",
+    "confidence": 0.75,
+    "image": { "width": 1000, "height": 1000 },
+    "anchors": {
+      "leftEyeOuter": { "x": 0.34, "y": 0.39 },
+      "leftEyeInner": { "x": 0.46, "y": 0.39 },
+      "rightEyeInner": { "x": 0.54, "y": 0.39 },
+      "rightEyeOuter": { "x": 0.66, "y": 0.39 },
+      "leftPupil": { "x": 0.40, "y": 0.39 },
+      "rightPupil": { "x": 0.60, "y": 0.39 },
+      "leftBrow": { "x": 0.40, "y": 0.34 },
+      "rightBrow": { "x": 0.60, "y": 0.34 },
+      "noseBridge": { "x": 0.50, "y": 0.44 },
+      "noseTip": { "x": 0.50, "y": 0.51 },
+      "mouthLeft": { "x": 0.43, "y": 0.61 },
+      "mouthRight": { "x": 0.57, "y": 0.61 },
+      "mouthCenter": { "x": 0.50, "y": 0.61 },
+      "upperLip": { "x": 0.50, "y": 0.59 },
+      "lowerLip": { "x": 0.50, "y": 0.64 },
+      "leftCheek": { "x": 0.34, "y": 0.52 },
+      "rightCheek": { "x": 0.66, "y": 0.52 },
+      "chin": { "x": 0.50, "y": 0.77 },
+      "jawLeft": { "x": 0.36, "y": 0.70 },
+      "jawRight": { "x": 0.64, "y": 0.70 },
+      "forehead": { "x": 0.50, "y": 0.25 }
+    }
+  }
 }
 
 Rules:
@@ -201,6 +229,9 @@ Rules:
 - For biological-age wording, never classify or imply an apparent age below 18. If the face looks very youthful, describe adult youthful cues rather than minor age.
 - Facial-fat percentage must be framed as an apparent visual estimate from facial soft-tissue cues, not a medical or whole-body body-fat measurement. Use a realistic percent range in the Estimate feature value.
 - If the image is not frontal enough to judge a metric, give a conservative score and mention the limitation in the metric description.
+- Return landmarks as normalized coordinates in the visible source image, where x and y are both between 0 and 1 from top-left to bottom-right.
+- Landmark image.width and image.height should reflect the approximate visible source image proportions. Use the actual perceived dimensions when possible; otherwise use 1000x1000 for normalized estimates.
+- If landmarks are uncertain but a face is detected, still return your best estimated anchors with confidence between 0.5 and 0.8. If no face is detected, return an empty anchors object and confidence 0.
 - Do not identify the person.
 - Do not claim objective health, fertility, morality, competence, or intelligence.
 - Do not include markdown or extra text.`

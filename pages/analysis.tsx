@@ -16,7 +16,7 @@ import {
 import { useSession } from 'next-auth/react'
 import Image from 'next/image'
 import { useRouter } from 'next/router'
-import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties, type ChangeEvent, type ReactNode } from 'react'
+import { memo, useCallback, useEffect, useMemo, useRef, useState, type CSSProperties, type ChangeEvent, type ReactNode } from 'react'
 import { toast } from 'sonner'
 import { useSound } from '@web-kits/audio/react'
 import useSWR from 'swr'
@@ -1084,27 +1084,15 @@ function UploadScreen({
           ) : null}
 
           {images.length > 0 ? (
-            <div className="mx-auto grid w-full max-w-[390px] grid-cols-3 gap-2">
+            <div className="mx-auto grid w-full max-w-[760px] grid-cols-[repeat(2,10rem)] justify-center gap-3 sm:grid-cols-[repeat(3,11.5rem)] sm:gap-4">
               {images.map((image) => (
-                <button
+                <UploadThumbnail
                   key={image.id}
-                  className={`group relative aspect-square overflow-hidden rounded-md border bg-muted transition-[border-color,box-shadow,transform] duration-200 ease-out hover:scale-[1.01] ${
-                    selectedImageId === image.id ? 'border-black shadow-[0_10px_30px_rgba(15,23,42,0.12)]' : 'border-zinc-200'
-                  }`}
-                  onClick={() => onSelect(image.id)}
-                  type="button"
-                >
-                  <Image className="object-cover" src={image.dataUrl} alt={image.name} fill sizes="126px" unoptimized />
-                  <span
-                    className="absolute right-1 top-1 grid size-5 place-items-center rounded-full bg-background/90 opacity-0 shadow-sm transition-opacity group-hover:opacity-100"
-                    onClick={(event) => {
-                      event.stopPropagation()
-                      onRemove(image.id)
-                    }}
-                  >
-                    <X className="size-3" aria-hidden="true" />
-                  </span>
-                </button>
+                  image={image}
+                  isSelected={selectedImageId === image.id}
+                  onRemove={onRemove}
+                  onSelect={onSelect}
+                />
               ))}
             </div>
           ) : null}
@@ -1128,6 +1116,46 @@ function UploadScreen({
     </div>
   )
 }
+
+const UploadThumbnail = memo(function UploadThumbnail({
+  image,
+  isSelected,
+  onRemove,
+  onSelect,
+}: {
+  image: AnalysisDraftImage
+  isSelected: boolean
+  onRemove: (id: string) => void
+  onSelect: (id: string) => void
+}) {
+  return (
+    <button
+      className={`group relative size-40 overflow-hidden rounded-md border bg-muted transition-[border-color,box-shadow,transform] duration-200 ease-out hover:scale-[1.01] sm:size-[11.5rem] ${
+        isSelected ? 'border-black shadow-[0_10px_30px_rgba(15,23,42,0.12)]' : 'border-zinc-200'
+      }`}
+      onClick={() => onSelect(image.id)}
+      type="button"
+    >
+      <img
+        alt={image.name}
+        className="h-full w-full object-cover"
+        decoding="async"
+        draggable={false}
+        loading="eager"
+        src={image.dataUrl}
+      />
+      <span
+        className="absolute right-2 top-2 grid size-7 place-items-center rounded-full bg-background/95 opacity-100 shadow-sm transition-colors hover:bg-white sm:opacity-0 sm:group-hover:opacity-100"
+        onClick={(event) => {
+          event.stopPropagation()
+          onRemove(image.id)
+        }}
+      >
+        <X className="size-3.5" aria-hidden="true" />
+      </span>
+    </button>
+  )
+})
 
 function ProcessScreen({ children, wide = false }: { children: ReactNode; wide?: boolean }) {
   return (

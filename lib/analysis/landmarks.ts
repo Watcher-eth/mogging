@@ -31,7 +31,7 @@ export type FaceLandmarkAnchors = {
 
 export type FaceLandmarksPayload = {
   version: 1
-  source: 'mediapipe-face-landmarker'
+  source: 'mediapipe-face-landmarker' | 'kimi-vision-estimate'
   confidence: number
   image: {
     width: number
@@ -47,7 +47,7 @@ const pointSchema = z.object({
 
 export const faceLandmarksPayloadSchema = z.object({
   version: z.literal(1),
-  source: z.literal('mediapipe-face-landmarker'),
+  source: z.enum(['mediapipe-face-landmarker', 'kimi-vision-estimate']),
   confidence: z.number().min(0).max(1),
   image: z.object({
     width: z.number().positive(),

@@ -9,6 +9,8 @@ import {
   type AnalyzeFaceInput,
 } from '../schema'
 
+const KIMI_ANALYSIS_TIMEOUT_MS = 42_000
+
 export class KimiAnalysisProvider implements AnalysisProvider {
   model = env.KIMI_ANALYSIS_MODEL
 
@@ -21,40 +23,59 @@ export class KimiAnalysisProvider implements AnalysisProvider {
       )
     }
 
-    const response = await fetch(`${env.MOONSHOT_BASE_URL}/chat/completions`, {
-      method: 'POST',
-      headers: {
-        Authorization: `Bearer ${env.MOONSHOT_API_KEY}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        model: env.KIMI_ANALYSIS_MODEL,
-        messages: [
-          {
-            role: 'system',
-            content: ANALYSIS_SYSTEM_PROMPT,
-          },
-          {
-            role: 'user',
-            content: [
-              {
-                type: 'image_url',
-                image_url: {
-                  url: input.imageDataUrl,
+    const controller = new AbortController()
+    const timeout = setTimeout(() => controller.abort(), KIMI_ANALYSIS_TIMEOUT_MS)
+
+    let response: Response
+    try {
+      response = await fetch(`${env.MOONSHOT_BASE_URL}/chat/completions`, {
+        method: 'POST',
+        signal: controller.signal,
+        headers: {
+          Authorization: `Bearer ${env.MOONSHOT_API_KEY}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          model: env.KIMI_ANALYSIS_MODEL,
+          messages: [
+            {
+              role: 'system',
+              content: ANALYSIS_SYSTEM_PROMPT,
+            },
+            {
+              role: 'user',
+              content: [
+                {
+                  type: 'image_url',
+                  image_url: {
+                    url: input.imageDataUrl,
+                  },
                 },
-              },
-              {
-                type: 'text',
-                text: buildAnalysisPrompt(input.gender),
-              },
-            ],
-          },
-        ],
-        response_format: { type: 'json_object' },
-        thinking: { type: 'disabled' },
-        max_tokens: 4200,
-      }),
-    })
+                {
+                  type: 'text',
+                  text: buildAnalysisPrompt(input.gender),
+                },
+              ],
+            },
+          ],
+          response_format: { type: 'json_object' },
+          thinking: { type: 'disabled' },
+          max_tokens: 4200,
+        }),
+      })
+    } catch (error) {
+      if (error instanceof Error && error.name === 'AbortError') {
+        throw new AnalysisProviderError(
+          'provider_unavailable',
+          'Image analysis provider timed out',
+          true
+        )
+      }
+
+      throw error
+    } finally {
+      clearTimeout(timeout)
+    }
 
     if (!response.ok) {
       const body = await response.text()
