@@ -9,7 +9,7 @@ import {
   type AnalyzeFaceInput,
 } from '../schema'
 
-const KIMI_ANALYSIS_TIMEOUT_MS = 55_000
+const KIMI_ANALYSIS_TIMEOUT_MS = 50_000
 
 export class KimiAnalysisProvider implements AnalysisProvider {
   model = env.KIMI_ANALYSIS_MODEL

@@ -13,10 +13,22 @@ import { env } from '@/lib/env'
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   if (req.method !== 'POST') return methodNotAllowed(res, ['POST'])
 
+  const requestIdHeader = req.headers['x-mogging-request-id']
+  const requestId = Array.isArray(requestIdHeader) ? requestIdHeader[0] : requestIdHeader || `web-${Date.now().toString(36)}`
+  const startedAt = Date.now()
+
   try {
     await enforceRateLimit(req, res, { key: 'analyze', limit: 10, windowMs: 60 * 60 * 1000 })
     const sessionPromise = getAuthSession(req, res)
     const body = parseBody(analyzeAndSaveSchema, req.body)
+    console.info('analyze:start', {
+      requestId,
+      contentLength: req.headers['content-length'] ?? null,
+      imageDataChars: body.imageData.length,
+      photoType: body.photoType,
+      gender: body.gender,
+      hasLandmarks: Boolean(body.landmarks),
+    })
     const session = await sessionPromise
     if (env.AUTH_REQUIRED && !session?.user?.id) {
       throw new ApiError(401, 'Authentication required')
@@ -54,8 +66,23 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       skinColor: body.skinColor ?? userSkinColor ?? anonymousSkinColor,
     })
 
+    console.info('analyze:finish', {
+      requestId,
+      elapsedMs: Date.now() - startedAt,
+      deduped: result.deduped,
+      analysisStatus: result.analysis.status,
+      failureReason: result.analysis.failureReason ?? null,
+      pslScore: result.analysis.pslScore ?? null,
+    })
+
     return json(res, result.deduped ? 200 : 201, result)
   } catch (error) {
+    console.error('analyze:error', {
+      requestId,
+      elapsedMs: Date.now() - startedAt,
+      message: error instanceof Error ? error.message : String(error),
+      name: error instanceof Error ? error.name : null,
+    })
     return handleApiError(error, res)
   }
 }
