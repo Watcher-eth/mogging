@@ -35,6 +35,7 @@ export const reportCategorySchema = z.object({
     'facial-fat',
     'biological-age',
     'symmetry',
+    'sun-damage',
     'overall',
   ]),
   title: z.string().min(1).max(80),
@@ -47,7 +48,7 @@ export const reportCategorySchema = z.object({
 
 export const analysisReportSchema = z.object({
   summary: z.string().min(1).max(900),
-  categories: z.array(reportCategorySchema).min(10).max(10),
+  categories: z.array(reportCategorySchema).min(11).max(11),
 })
 
 export const analysisProviderResultSchema = z.object({

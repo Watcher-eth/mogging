@@ -77,7 +77,7 @@ export async function analyzeAndSave(input: AnalyzeAndSaveInput) {
       metrics: failure.metrics,
       landmarks: data.landmarks ?? {},
       model: analysisProvider.model,
-      promptVersion: 'psl-kimi-v1',
+      promptVersion: 'psl-kimi-v2',
       failureReason: failure.failureReason,
     })
 
@@ -109,7 +109,7 @@ export async function analyzeAndSave(input: AnalyzeAndSaveInput) {
       metrics: {},
       landmarks: data.landmarks ?? {},
       model: analysisProvider.model,
-      promptVersion: 'psl-kimi-v1',
+      promptVersion: 'psl-kimi-v2',
       failureReason: 'No face detected',
     })
 
@@ -156,7 +156,7 @@ export async function analyzeAndSave(input: AnalyzeAndSaveInput) {
     },
     landmarks: data.landmarks ?? result.landmarks,
     model: analysisProvider.model,
-    promptVersion: 'psl-kimi-v1',
+    promptVersion: 'psl-kimi-v2',
   })
 
   return {
@@ -197,7 +197,7 @@ function createTransientAnalysisResult(
         metrics: failure.metrics,
         landmarks: data.landmarks ?? {},
         model: analysisProvider.model,
-        promptVersion: 'psl-kimi-v1',
+        promptVersion: 'psl-kimi-v2',
         failureReason: failure.failureReason,
         persistenceFailureReason,
       },
@@ -221,7 +221,7 @@ function createTransientAnalysisResult(
         metrics: {},
         landmarks: data.landmarks ?? {},
         model: analysisProvider.model,
-        promptVersion: 'psl-kimi-v1',
+        promptVersion: 'psl-kimi-v2',
         failureReason: 'No face detected',
         persistenceFailureReason,
       },
@@ -254,7 +254,7 @@ function createTransientAnalysisResult(
       },
       landmarks: data.landmarks ?? result.landmarks,
       model: analysisProvider.model,
-      promptVersion: 'psl-kimi-v1',
+      promptVersion: 'psl-kimi-v2',
       failureReason: null,
       persistenceFailureReason,
     },

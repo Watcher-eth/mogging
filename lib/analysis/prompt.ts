@@ -30,6 +30,143 @@ Return this compact JSON shape:
   "percentile": 70,
   "tier": "brief tier",
   "tierDescription": "brief calibrated description",
+  "report": {
+    "summary": "2-4 sentence personalized assessment based on this specific face image",
+    "categories": [
+      {
+        "id": "eyes",
+        "title": "Eyes",
+        "subtitle": "personalized short assessment of the eye area",
+        "scoreLabel": "Eye area",
+        "score": 5.0,
+        "features": [
+          { "label": "Eye line", "value": "Balanced" },
+          { "label": "Lid support", "value": "Defined" }
+        ],
+        "explanation": "Specific assessment of this person's visible eye spacing, tilt, lid support, and symmetry."
+      },
+      {
+        "id": "nose",
+        "title": "Nose",
+        "subtitle": "personalized short assessment of the nose and central axis",
+        "scoreLabel": "Nasal balance",
+        "score": 5.0,
+        "features": [
+          { "label": "Bridge", "value": "Straight" },
+          { "label": "Tip", "value": "Centered" }
+        ],
+        "explanation": "Specific assessment of this person's visible bridge, width, projection, and alignment with the facial center."
+      },
+      {
+        "id": "mouth",
+        "title": "Mouth",
+        "subtitle": "personalized short assessment of lip proportion",
+        "scoreLabel": "Mouth line",
+        "score": 5.0,
+        "features": [
+          { "label": "Width", "value": "Balanced" },
+          { "label": "Fullness", "value": "Moderate" }
+        ],
+        "explanation": "Specific assessment of this person's lip width, fullness, symmetry, and lower-midface fit."
+      },
+      {
+        "id": "jaw",
+        "title": "Jaw",
+        "subtitle": "personalized short assessment of jaw and chin structure",
+        "scoreLabel": "Jawline",
+        "score": 5.0,
+        "features": [
+          { "label": "Mandible", "value": "Defined" },
+          { "label": "Chin", "value": "Supported" }
+        ],
+        "explanation": "Specific assessment of this person's visible mandibular definition, chin support, and lower-third angularity."
+      },
+      {
+        "id": "dimorphism",
+        "title": "Dimorphism",
+        "subtitle": "personalized short assessment of feature contrast",
+        "scoreLabel": "Dimorphism",
+        "score": 5.0,
+        "features": [
+          { "label": "Brow", "value": "Moderate" },
+          { "label": "Angularity", "value": "Balanced" }
+        ],
+        "explanation": "Specific assessment of visible sex-typical structure, maturity, angularity, and soft-tissue contrast for the selected scoring mode."
+      },
+      {
+        "id": "face-shape",
+        "title": "Face shape",
+        "subtitle": "personalized short assessment of facial frame",
+        "scoreLabel": "Face shape",
+        "score": 5.0,
+        "features": [
+          { "label": "Outline", "value": "Oval" },
+          { "label": "Thirds", "value": "Balanced" }
+        ],
+        "explanation": "Specific assessment of this person's visible outline, cheekbone width, lower third, and silhouette continuity."
+      },
+      {
+        "id": "facial-fat",
+        "title": "Facial fat",
+        "subtitle": "personalized short visual estimate of leanness",
+        "scoreLabel": "Facial fat %",
+        "score": 5.0,
+        "features": [
+          { "label": "Cheeks", "value": "Balanced" },
+          { "label": "Jaw blur", "value": "Low" }
+        ],
+        "explanation": "Specific cosmetic visual estimate from this person's cheek fullness, under-chin area, and jaw clarity. Do not frame it as medical body-fat measurement."
+      },
+      {
+        "id": "biological-age",
+        "title": "Biological age",
+        "subtitle": "personalized short visible youthfulness signal",
+        "scoreLabel": "Age signal",
+        "score": 5.0,
+        "features": [
+          { "label": "Texture", "value": "Clear" },
+          { "label": "Under-eye", "value": "Stable" }
+        ],
+        "explanation": "Specific cosmetic assessment of visible texture, under-eye presentation, facial fullness, and image clarity. Do not classify or imply an apparent age below 18."
+      },
+      {
+        "id": "symmetry",
+        "title": "Symmetry",
+        "subtitle": "personalized short assessment of facial alignment",
+        "scoreLabel": "Symmetry",
+        "score": 5.0,
+        "features": [
+          { "label": "Eye line", "value": "Even" },
+          { "label": "Nose axis", "value": "Centered" }
+        ],
+        "explanation": "Specific assessment of this person's central axis, paired feature alignment, and visible left-right drift."
+      },
+      {
+        "id": "sun-damage",
+        "title": "Sun damage",
+        "subtitle": "personalized short cosmetic UV signal",
+        "scoreLabel": "Damage risk",
+        "score": 5.0,
+        "features": [
+          { "label": "Pigmentation", "value": "Low" },
+          { "label": "Texture", "value": "Stable" }
+        ],
+        "explanation": "Specific cosmetic assessment of this person's visible uneven tone, redness, pigmentation, and texture. Do not frame it as a medical diagnosis."
+      },
+      {
+        "id": "overall",
+        "title": "Overall score",
+        "subtitle": "personalized final facial assessment",
+        "scoreLabel": "PSL score",
+        "score": 5.0,
+        "features": [
+          { "label": "Harmony", "value": "5.0" },
+          { "label": "Percentile", "value": "70%" }
+        ],
+        "explanation": "Specific overall assessment tying this person's strongest visible features, limiting factors, and PSL calibration together."
+      }
+    ]
+  },
   "landmarks": {
     "version": 1,
     "source": "kimi-vision-estimate",
@@ -62,7 +199,13 @@ Return this compact JSON shape:
 }
 
 Rules:
-- Do not include a report object.
+- Include a report object with exactly the 11 listed category ids: eyes, nose, mouth, jaw, dimorphism, face-shape, facial-fat, biological-age, symmetry, sun-damage, overall.
+- Report explanations must be personalized to the visible face in this exact image. Do not use generic rubric explanations.
+- Report features must be concrete observed signals or concise score values, not placeholders.
+- Do not claim objective health, fertility, morality, competence, intelligence, or real-world social worth.
+- Do not use the golden ratio or claim mathematical perfection.
+- Facial-fat percentage must be framed as an apparent visual estimate only.
+- Never classify or imply an apparent age below 18.
 - Landmark coordinates must be normalized 0-1 within the visible source image.
 - Landmark image dimensions should match the visible source image proportions.
 - If a face is detected but landmarks are uncertain, return best estimates with confidence 0.5-0.8.`

@@ -10,6 +10,7 @@ const reportCategoryIds = [
   'facial-fat',
   'biological-age',
   'symmetry',
+  'sun-damage',
   'overall',
 ] as const
 
@@ -183,6 +184,20 @@ export function createFallbackAnalysisReport(result: AnalysisProviderResult, psl
           { label: 'Chin point', value: symmetry >= 5 ? 'Centered' : 'Shifted' },
         ],
         explanation: 'Symmetry is assessed from visible left-right alignment of the eye line, nose axis, mouth line, and chin position.',
+      },
+      {
+        id: 'sun-damage',
+        title: 'Sun damage',
+        subtitle: 'Visible UV exposure and pigmentation cues',
+        scoreLabel: 'Damage risk',
+        score: clampCategoryScore((skin + presentation) / 2),
+        features: [
+          { label: 'Pigmentation', value: skin >= 5 ? 'Low' : 'Visible' },
+          { label: 'Redness', value: presentation >= 5 ? 'Mild' : 'Uneven' },
+          { label: 'Texture', value: skin >= 5 ? 'Stable' : 'Variable' },
+          { label: 'Priority', value: 'SPF consistency' },
+        ],
+        explanation: 'Sun-damage signal is a cosmetic visual estimate from visible uneven tone, pigmentation, redness, and texture. It is not a medical diagnosis.',
       },
       {
         id: 'overall',
