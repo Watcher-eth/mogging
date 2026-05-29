@@ -155,7 +155,7 @@ Return this compact JSON shape:
       },
       {
         "id": "overall",
-        "title": "Overall score",
+        "title": "PSL Score",
         "subtitle": "personalized final facial assessment",
         "scoreLabel": "PSL score",
         "score": 5.0,

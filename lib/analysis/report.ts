@@ -42,7 +42,7 @@ export function normalizeAnalysisReport(
     summary: report.summary,
     categories: categories.map((category) => (
       category!.id === 'overall'
-        ? { ...category!, score: clampPslScore(pslScore), title: 'Overall PSL', scoreLabel: 'PSL score' }
+        ? { ...category!, score: clampPslScore(pslScore), title: 'PSL Score', scoreLabel: 'PSL score' }
         : { ...category!, score: clampCategoryScore(category!.score) }
     )),
   }
@@ -201,7 +201,7 @@ export function createFallbackAnalysisReport(result: AnalysisProviderResult, psl
       },
       {
         id: 'overall',
-        title: 'Overall PSL',
+        title: 'PSL Score',
         subtitle: 'Final calibrated PSL assessment',
         scoreLabel: 'PSL score',
         score: clampPslScore(pslScore),
