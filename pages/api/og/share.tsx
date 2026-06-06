@@ -1,6 +1,12 @@
 import { ImageResponse } from '@vercel/og'
 import type { NextApiRequest, NextApiResponse } from 'next'
-import { parseFaceLandmarksPayload, type FaceLandmarksPayload, type NormalizedPoint } from '@/lib/analysis/landmarks'
+import { parseFaceLandmarksPayload } from '@/lib/analysis/landmarks'
+import {
+  getReportCategoryById,
+  getReportOverlayGeometry,
+  getReportOverlayYOffset,
+  type ReportOverlayGeometry,
+} from '@/lib/analysis/report-overlays'
 import { getShareByToken } from '@/lib/sharing/service'
 
 export const config = {
@@ -10,6 +16,11 @@ export const config = {
 type CanvasSize = {
   width: number
   height: number
+}
+
+const storySize: CanvasSize = {
+  width: 1080,
+  height: 1920,
 }
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
@@ -28,13 +39,12 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   try {
     const share = await getShareByToken(token)
     const landmarks = parseFaceLandmarksPayload(share.analysis.landmarks)
-    const size = getShareImageSize(landmarks)
     const imageUrl = absoluteImageUrl(share.photo.imageUrl, req)
-    const geometry = getOverlayGeometry(landmarks, size)
-    const pslScore = typeof share.analysis.pslScore === 'number' ? share.analysis.pslScore.toFixed(1) : '--'
-    const displayName = (share.photo.name || share.owner?.name || 'Mogging report').toUpperCase()
-    const gender = share.photo.gender.toUpperCase()
-    const tier = (share.analysis.tier || 'FACIAL AESTHETIC').toUpperCase()
+    const category = getReportCategoryById(typeof req.query.overlay === 'string' ? req.query.overlay : 'overall')
+    const geometry = getReportOverlayGeometry(category, landmarks)
+    const yOffset = geometry.usesLandmarks ? 0 : getReportOverlayYOffset(category.id)
+    const pslScore = formatScore(share.analysis.pslScore)
+    const tier = (share.analysis.tier || 'Facial aesthetic').toUpperCase()
 
     const image = new ImageResponse(
       (
@@ -56,12 +66,13 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
               height: '100%',
               objectFit: 'cover',
               objectPosition: 'center',
+              transform: 'scale(1.14)',
               width: '100%',
             }}
           />
           <div
             style={{
-              background: 'linear-gradient(180deg, rgba(0,0,0,0.16) 0%, rgba(0,0,0,0.03) 35%, rgba(0,0,0,0.80) 100%)',
+              background: 'linear-gradient(180deg, rgba(0,0,0,0.14) 0%, rgba(0,0,0,0.02) 38%, rgba(0,0,0,0.76) 100%)',
               bottom: 0,
               display: 'flex',
               left: 0,
@@ -72,7 +83,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
           />
           <div
             style={{
-              background: 'linear-gradient(90deg, rgba(0,0,0,0.36) 0%, rgba(0,0,0,0) 36%, rgba(0,0,0,0.18) 100%)',
+              background: 'linear-gradient(90deg, rgba(0,0,0,0.34) 0%, rgba(0,0,0,0) 34%, rgba(0,0,0,0.18) 100%)',
               bottom: 0,
               display: 'flex',
               left: 0,
@@ -83,125 +94,103 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
           />
           <div
             style={{
-              border: '3px solid rgba(255,255,255,0.86)',
-              bottom: 58,
+              border: '3px solid rgba(255,255,255,0.84)',
+              bottom: 76,
               display: 'flex',
-              left: 52,
+              left: 54,
               position: 'absolute',
-              right: 52,
-              top: 58,
+              right: 54,
+              top: 76,
             }}
           />
 
-          {geometry ? (
-            <svg
-              height={size.height}
-              style={{ left: 0, position: 'absolute', top: 0 }}
-              viewBox={`0 0 ${size.width} ${size.height}`}
-              width={size.width}
-            >
-              <rect {...geometry.leftBox} fill="none" stroke="rgba(255,255,255,0.88)" strokeDasharray="7 8" strokeWidth="3" />
-              <rect {...geometry.rightBox} fill="none" stroke="rgba(255,255,255,0.88)" strokeDasharray="7 8" strokeWidth="3" />
-              <rect {...geometry.bridgeBox} fill="rgba(255,255,255,0.04)" stroke="rgba(255,255,255,0.58)" strokeDasharray="7 8" strokeWidth="3" />
-              <line x1={geometry.leftPupil.x} y1={geometry.leftPupil.y} x2={geometry.rightPupil.x} y2={geometry.rightPupil.y} stroke="rgba(255,255,255,0.74)" strokeWidth="3" />
-              <circle cx={geometry.leftPupil.x} cy={geometry.leftPupil.y} fill="none" r="12" stroke="rgba(255,255,255,0.94)" strokeDasharray="4 5" strokeWidth="3" />
-              <circle cx={geometry.rightPupil.x} cy={geometry.rightPupil.y} fill="none" r="12" stroke="rgba(255,255,255,0.94)" strokeDasharray="4 5" strokeWidth="3" />
-              <line x1={geometry.midline.top.x} y1={geometry.midline.top.y} x2={geometry.midline.bottom.x} y2={geometry.midline.bottom.y} stroke="rgba(255,255,255,0.50)" strokeDasharray="12 16" strokeWidth="3" />
-            </svg>
-          ) : null}
+          <ReportOverlaySvg categoryId={category.id} geometry={geometry} yOffset={yOffset} size={storySize} />
 
-          {geometry ? (
-            <div
-              style={{
-                alignItems: 'center',
-                background: 'rgba(255,255,255,0.94)',
-                color: '#171717',
-                display: 'flex',
-                fontSize: size.width === size.height ? 24 : 27,
-                fontWeight: 800,
-                height: size.width === size.height ? 38 : 42,
-                justifyContent: 'center',
-                left: geometry.leftLabel.x,
-                letterSpacing: '-1px',
-                position: 'absolute',
-                top: geometry.leftLabel.y,
-                width: size.width === size.height ? 194 : 220,
-              }}
-            >
-              EYES DISTANCE
-            </div>
-          ) : null}
+          <div
+            style={{
+              alignItems: 'center',
+              background: 'rgba(255,255,255,0.94)',
+              color: '#171717',
+              display: 'flex',
+              fontSize: 26,
+              fontWeight: 800,
+              height: 44,
+              justifyContent: 'center',
+              left: percentX(geometry.label.x),
+              letterSpacing: '-1px',
+              position: 'absolute',
+              top: percentY(geometry.label.y + yOffset),
+              width: geometry.label.title.length > 10 ? 250 : 220,
+            }}
+          >
+            {geometry.label.title.toUpperCase()}
+          </div>
 
-          {geometry ? (
-            <div
-              style={{
-                alignItems: 'center',
-                background: 'rgba(255,255,255,0.94)',
-                color: '#171717',
-                display: 'flex',
-                fontSize: size.width === size.height ? 23 : 26,
-                fontWeight: 800,
-                height: size.width === size.height ? 38 : 42,
-                justifyContent: 'center',
-                left: geometry.rightLabel.x,
-                letterSpacing: '-1px',
-                position: 'absolute',
-                top: geometry.rightLabel.y,
-                width: size.width === size.height ? 220 : 250,
-              }}
-            >
-              PSL CALIBRATION
-            </div>
-          ) : null}
+          <div
+            style={{
+              alignItems: 'center',
+              background: 'rgba(255,255,255,0.94)',
+              color: '#171717',
+              display: 'flex',
+              fontSize: 24,
+              fontWeight: 800,
+              height: 40,
+              justifyContent: 'center',
+              left: percentX(geometry.label.x),
+              letterSpacing: '-0.7px',
+              position: 'absolute',
+              top: percentY(geometry.label.y + yOffset) + 52,
+              width: 210,
+            }}
+          >
+            {geometry.label.value.toUpperCase()}
+          </div>
 
           <div
             style={{
               display: 'flex',
               flexDirection: 'column',
-              left: 86,
+              left: 78,
               position: 'absolute',
-              top: 92,
+              top: 104,
             }}
           >
-            <span style={{ fontSize: 24, fontWeight: 800, letterSpacing: '1.2px' }}>MOGGING REPORT</span>
-            <span style={{ fontSize: size.width === size.height ? 66 : 78, fontWeight: 800, letterSpacing: '-5px', lineHeight: 0.92, marginTop: 22, maxWidth: size.width === size.height ? 430 : 520 }}>
-              Facial Aesthetic Assessment
-            </span>
+            <span style={{ fontSize: 23, fontWeight: 800, letterSpacing: '1.2px' }}>MOGGING REPORT</span>
+            <span style={{ fontSize: 20, fontWeight: 700, letterSpacing: '0.6px', marginTop: 12, opacity: 0.76 }}>{tier}</span>
           </div>
 
           <div
             style={{
               alignItems: 'flex-end',
-              bottom: size.width === size.height ? 138 : 156,
+              bottom: 164,
               display: 'flex',
-              left: 86,
+              left: 78,
               lineHeight: 0.82,
               position: 'absolute',
             }}
           >
-            <span style={{ fontSize: size.width === size.height ? 128 : 158, fontWeight: 800, letterSpacing: '-9px' }}>{pslScore}</span>
-            <span style={{ fontSize: size.width === size.height ? 54 : 66, fontWeight: 800, letterSpacing: '-4px', marginBottom: 8, marginLeft: 12 }}>/8</span>
+            <span style={{ fontSize: 176, fontWeight: 800, letterSpacing: '-10px' }}>{pslScore}</span>
+            <span style={{ fontSize: 70, fontWeight: 800, letterSpacing: '-4px', marginBottom: 10, marginLeft: 12 }}>/8</span>
           </div>
 
           <div
             style={{
-              borderTop: '2px solid rgba(255,255,255,0.78)',
-              bottom: 82,
+              borderTop: '2px solid rgba(255,255,255,0.76)',
+              bottom: 92,
               display: 'flex',
-              gap: size.width === size.height ? 38 : 42,
-              left: 86,
+              justifyContent: 'space-between',
+              left: 78,
               paddingTop: 18,
               position: 'absolute',
-              right: 86,
+              right: 78,
             }}
           >
-            <MetaBlock label="NAME" value={displayName} width={size.width === size.height ? 190 : 230} />
-            <MetaBlock label="GENDER" value={gender} width={size.width === size.height ? 145 : 170} />
-            <MetaBlock label="TYPE" value={tier} width={size.width === size.height ? 270 : 340} />
+            <span style={{ fontSize: 21, fontWeight: 800, letterSpacing: '1px' }}>{category.title.toUpperCase()} OVERLAY</span>
+            <span style={{ color: 'rgba(255,255,255,0.72)', fontSize: 20, fontWeight: 700, letterSpacing: '0.8px' }}>MOGGING.COM</span>
           </div>
         </div>
       ),
-      size
+      storySize
     )
 
     const buffer = Buffer.from(await image.arrayBuffer())
@@ -214,23 +203,58 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   }
 }
 
-function MetaBlock({ label, value, width }: { label: string; value: string; width: number }) {
+function ReportOverlaySvg({
+  categoryId,
+  geometry,
+  size,
+  yOffset,
+}: {
+  categoryId: string
+  geometry: ReportOverlayGeometry
+  size: CanvasSize
+  yOffset: number
+}) {
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', width }}>
-      <span style={{ color: 'rgba(255,255,255,0.64)', fontSize: 24, fontWeight: 700, letterSpacing: '1px' }}>
-        {label} /
-      </span>
-      <span style={{ color: '#ffffff', fontSize: 30, fontWeight: 800, letterSpacing: '0.2px', marginTop: 10 }}>
-        {value}
-      </span>
-    </div>
+    <svg
+      height={size.height}
+      style={{ left: 0, position: 'absolute', top: 0 }}
+      viewBox={`0 0 ${size.width} ${size.height}`}
+      width={size.width}
+    >
+      {geometry.boxes.map((box, index) => (
+        <rect
+          key={`${categoryId}-box-${index}`}
+          x={percentX(box.x)}
+          y={percentY(box.y + yOffset)}
+          width={percentX(box.width)}
+          height={percentY(box.height)}
+          fill="none"
+          stroke="rgba(255,255,255,0.85)"
+          strokeDasharray={box.dashed ? '13 13' : undefined}
+          strokeWidth="4"
+        />
+      ))}
+      {geometry.lines.map((line, index) => (
+        <line
+          key={`${categoryId}-line-${index}`}
+          x1={percentX(line.x1)}
+          y1={percentY(line.y1 + yOffset)}
+          x2={percentX(line.x2)}
+          y2={percentY(line.y2 + yOffset)}
+          stroke="rgba(255,255,255,0.88)"
+          strokeDasharray={categoryId === 'overall' ? '12 14' : undefined}
+          strokeLinecap="round"
+          strokeWidth="4"
+        />
+      ))}
+      {geometry.points.map((point, index) => (
+        <g key={`${categoryId}-point-${index}`}>
+          <circle cx={percentX(point.x)} cy={percentY(point.y + yOffset)} r="17" fill="none" stroke="rgba(255,255,255,0.72)" strokeDasharray="7 7" strokeWidth="4" />
+          <circle cx={percentX(point.x)} cy={percentY(point.y + yOffset)} r="6" fill="white" />
+        </g>
+      ))}
+    </svg>
   )
-}
-
-function getShareImageSize(landmarks: FaceLandmarksPayload | null): CanvasSize {
-  const ratio = landmarks ? landmarks.image.width / landmarks.image.height : 0
-  if (ratio > 0.92 && ratio < 1.08) return { width: 1080, height: 1080 }
-  return { width: 1080, height: 1440 }
 }
 
 function absoluteImageUrl(src: string, req: NextApiRequest) {
@@ -241,73 +265,14 @@ function absoluteImageUrl(src: string, req: NextApiRequest) {
   return `${proto}://${host}${src.startsWith('/') ? src : `/${src}`}`
 }
 
-function getOverlayGeometry(landmarks: FaceLandmarksPayload | null, size: CanvasSize) {
-  if (!landmarks || landmarks.confidence < 0.5) return null
-
-  const leftOuter = projectPoint(landmarks.anchors.leftEyeOuter, landmarks, size)
-  const leftInner = projectPoint(landmarks.anchors.leftEyeInner, landmarks, size)
-  const rightInner = projectPoint(landmarks.anchors.rightEyeInner, landmarks, size)
-  const rightOuter = projectPoint(landmarks.anchors.rightEyeOuter, landmarks, size)
-  const leftPupil = projectPoint(landmarks.anchors.leftPupil ?? landmarks.anchors.leftEyeInner, landmarks, size)
-  const rightPupil = projectPoint(landmarks.anchors.rightPupil ?? landmarks.anchors.rightEyeInner, landmarks, size)
-  const forehead = projectPoint(landmarks.anchors.forehead, landmarks, size)
-  const chin = projectPoint(landmarks.anchors.chin, landmarks, size)
-
-  if (!leftOuter || !leftInner || !rightInner || !rightOuter || !leftPupil || !rightPupil) return null
-
-  const leftBox = boxFromPoints([leftOuter, leftInner, leftPupil], 26, 34, size)
-  const rightBox = boxFromPoints([rightInner, rightOuter, rightPupil], 26, 34, size)
-  const bridgeBox = boxFromPoints([leftInner, rightInner], 16, 46, size)
-
-  return {
-    leftBox,
-    rightBox,
-    bridgeBox,
-    leftPupil,
-    rightPupil,
-    leftLabel: {
-      x: Math.max(76, leftBox.x - 14),
-      y: leftBox.y + leftBox.height + 16,
-    },
-    rightLabel: {
-      x: Math.min(size.width - 336, rightBox.x + rightBox.width + 34),
-      y: Math.max(86, rightBox.y - 28),
-    },
-    midline: forehead && chin ? { top: forehead, bottom: chin } : { top: { x: size.width / 2, y: 90 }, bottom: { x: size.width / 2, y: size.height - 120 } },
-  }
+function formatScore(score: number | null) {
+  return typeof score === 'number' ? score.toFixed(1) : '--'
 }
 
-function projectPoint(point: NormalizedPoint | undefined, landmarks: FaceLandmarksPayload, size: CanvasSize) {
-  if (!point) return null
-
-  const sourceWidth = landmarks.image.width
-  const sourceHeight = landmarks.image.height
-  const scale = Math.max(size.width / sourceWidth, size.height / sourceHeight)
-  const renderedWidth = sourceWidth * scale
-  const renderedHeight = sourceHeight * scale
-  const offsetX = (size.width - renderedWidth) / 2
-  const offsetY = (size.height - renderedHeight) / 2
-
-  return {
-    x: offsetX + point.x * sourceWidth * scale,
-    y: offsetY + point.y * sourceHeight * scale,
-  }
+function percentX(value: number) {
+  return (value / 100) * storySize.width
 }
 
-function boxFromPoints(points: Array<{ x: number; y: number }>, paddingX: number, paddingY: number, size: CanvasSize) {
-  const xs = points.map((point) => point.x)
-  const ys = points.map((point) => point.y)
-  const minX = Math.min(...xs)
-  const maxX = Math.max(...xs)
-  const minY = Math.min(...ys)
-  const maxY = Math.max(...ys)
-  const left = Math.max(52, minX - paddingX)
-  const top = Math.max(52, minY - paddingY)
-
-  return {
-    x: left,
-    y: top,
-    width: Math.min(size.width - 104, maxX + paddingX) - left,
-    height: Math.min(size.height - 104, maxY + paddingY) - top,
-  }
+function percentY(value: number) {
+  return (value / 100) * storySize.height
 }
