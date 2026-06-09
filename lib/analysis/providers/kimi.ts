@@ -197,7 +197,7 @@ function coerceProviderResult(value: unknown) {
       reportRecord.categories = reportRecord.categories.map((category) => {
         if (!category || typeof category !== 'object') return category
         const categoryRecord = category as Record<string, unknown>
-        for (const key of ['id', 'title', 'subtitle', 'scoreLabel', 'explanation']) {
+        for (const key of ['id', 'title', 'subtitle', 'scoreLabel', 'explanation', 'recommendation']) {
           if (typeof categoryRecord[key] !== 'string' && categoryRecord[key] != null) {
             categoryRecord[key] = String(categoryRecord[key])
           }

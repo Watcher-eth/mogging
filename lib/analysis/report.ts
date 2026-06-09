@@ -22,6 +22,13 @@ function clampPslScore(score: number) {
   return Math.max(0, Math.min(8, Math.round(score * 10) / 10))
 }
 
+function estimateBiologicalAge(result: AnalysisProviderResult) {
+  const skin = categoryAverage(result, 'skin', result.harmonyScore)
+  const presentation = categoryAverage(result, 'presentation', result.harmonyScore)
+  const youthSignal = (skin + presentation + result.harmonyScore) / 3
+  return Math.max(18, Math.min(80, Math.round(34 - (youthSignal - 5) * 3.1)))
+}
+
 function categoryAverage(result: AnalysisProviderResult, category: MetricCategory, fallback: number) {
   const scores = result.metricScores.filter((metric) => metric.category === category)
   if (scores.length === 0) return fallback
@@ -40,11 +47,20 @@ export function normalizeAnalysisReport(
 
   return {
     summary: report.summary,
-    categories: categories.map((category) => (
-      category!.id === 'overall'
-        ? { ...category!, score: clampPslScore(pslScore), title: 'PSL Score', scoreLabel: 'PSL score' }
-        : { ...category!, score: clampCategoryScore(category!.score) }
-    )),
+    categories: categories.map((category) => {
+      if (category!.id === 'overall') {
+        return { ...category!, score: clampPslScore(pslScore), title: 'PSL Score', scoreLabel: 'PSL score' }
+      }
+      if (category!.id === 'biological-age') {
+        return {
+          ...category!,
+          title: 'Aging',
+          scoreLabel: 'Estimated age',
+          score: Math.max(18, Math.min(80, Math.round(category!.score))),
+        }
+      }
+      return { ...category!, score: clampCategoryScore(category!.score) }
+    }),
   }
 }
 
@@ -55,6 +71,7 @@ export function createFallbackAnalysisReport(result: AnalysisProviderResult, psl
   const averageness = result.averagenessScore ?? categoryAverage(result, 'averageness', harmony)
   const skin = categoryAverage(result, 'skin', harmony)
   const presentation = categoryAverage(result, 'presentation', harmony)
+  const estimatedAge = estimateBiologicalAge(result)
 
   return {
     summary: 'Calibrated PSL report generated from facial proportion, symmetry, averageness, dimorphism, angularity, skin, and presentation signals.',
@@ -69,9 +86,9 @@ export function createFallbackAnalysisReport(result: AnalysisProviderResult, psl
           { label: 'Eye line', value: symmetry >= 5 ? 'Aligned' : 'Uneven' },
           { label: 'Spacing', value: proportionality >= 5 ? 'Balanced' : 'Offset' },
           { label: 'Lid support', value: harmony >= 5 ? 'Defined' : 'Soft' },
-          { label: 'Impact', value: pslScore >= 5 ? 'Positive' : 'Limited' },
         ],
         explanation: 'The eye area is estimated from local symmetry, spacing, lid support, and how well the periocular region fits the full facial frame.',
+        recommendation: symmetry >= 6 ? 'Keep sleep consistent and reduce under-eye puffiness before considering any eye-area procedure.' : 'Start with sleep, hydration, and camera-neutral posture before judging eye-area interventions.',
       },
       {
         id: 'nose',
@@ -83,9 +100,9 @@ export function createFallbackAnalysisReport(result: AnalysisProviderResult, psl
           { label: 'Axis', value: symmetry >= 5 ? 'Centered' : 'Slight drift' },
           { label: 'Width', value: proportionality >= 5 ? 'Proportional' : 'Prominent' },
           { label: 'Bridge', value: harmony >= 5 ? 'Clean' : 'Variable' },
-          { label: 'Fit', value: averageness >= 5 ? 'Typical' : 'Distinctive' },
         ],
         explanation: 'Nasal balance is scored by central alignment, width relative to the midface, and how much the nose supports overall facial harmony.',
+        recommendation: 'If the nose remains the main limiter across photos, consult a conservative rhinoplasty specialist before doing filler.',
       },
       {
         id: 'mouth',
@@ -97,9 +114,9 @@ export function createFallbackAnalysisReport(result: AnalysisProviderResult, psl
           { label: 'Width', value: proportionality >= 5 ? 'Proportional' : 'Narrow' },
           { label: 'Resting line', value: symmetry >= 5 ? 'Even' : 'Uneven' },
           { label: 'Volume', value: averageness >= 5 ? 'Balanced' : 'Distinct' },
-          { label: 'Lower third', value: harmony >= 5 ? 'Supportive' : 'Weak' },
         ],
         explanation: 'The mouth score reflects lip width, resting symmetry, fullness, and how the feature sits within the lower third.',
+        recommendation: 'Prioritize dental alignment and lip hydration first; only consider subtle filler if proportion is still the bottleneck.',
       },
       {
         id: 'jaw',
@@ -111,9 +128,9 @@ export function createFallbackAnalysisReport(result: AnalysisProviderResult, psl
           { label: 'Mandible', value: result.angularityScore >= 5 ? 'Defined' : 'Soft' },
           { label: 'Chin support', value: proportionality >= 5 ? 'Balanced' : 'Limited' },
           { label: 'Angle', value: result.angularityScore >= 5.5 ? 'Sharp' : 'Moderate' },
-          { label: 'Frame', value: harmony >= 5 ? 'Coherent' : 'Mixed' },
         ],
         explanation: 'Jaw scoring weighs mandibular definition, chin support, angularity, and whether the lower-third frame strengthens the face.',
+        recommendation: result.angularityScore >= 6 ? 'Maintain leanness and neck posture; the jaw already has enough structure.' : 'Cut facial puffiness first, then evaluate orthodontics or chin/jaw consultation if the lower third still reads weak.',
       },
       {
         id: 'dimorphism',
@@ -125,9 +142,9 @@ export function createFallbackAnalysisReport(result: AnalysisProviderResult, psl
           { label: 'Brow frame', value: result.dimorphismScore >= 5 ? 'Present' : 'Subtle' },
           { label: 'Lower third', value: result.angularityScore >= 5 ? 'Structured' : 'Soft' },
           { label: 'Cue strength', value: result.dimorphismScore >= 6 ? 'Strong' : 'Moderate' },
-          { label: 'Balance', value: harmony >= 5 ? 'Controlled' : 'Uneven' },
         ],
         explanation: 'Dimorphism is scored from sex-typical facial cues while penalizing traits that overpower harmony or proportional balance.',
+        recommendation: 'Use grooming and body composition before invasive changes; dimorphism improves fastest when brows, hair, and lower-third leanness are aligned.',
       },
       {
         id: 'face-shape',
@@ -139,9 +156,9 @@ export function createFallbackAnalysisReport(result: AnalysisProviderResult, psl
           { label: 'Outline', value: harmony >= 5 ? 'Coherent' : 'Irregular' },
           { label: 'Thirds', value: proportionality >= 5 ? 'Balanced' : 'Uneven' },
           { label: 'Frame', value: result.angularityScore >= 5 ? 'Defined' : 'Soft' },
-          { label: 'Continuity', value: averageness >= 5 ? 'Natural' : 'Distinct' },
         ],
         explanation: 'Face-shape scoring combines facial thirds, visible silhouette continuity, and how the frame supports the central features.',
+        recommendation: 'Improve haircut and facial leanness first; those change the visible outline before any structural procedure.',
       },
       {
         id: 'facial-fat',
@@ -153,23 +170,23 @@ export function createFallbackAnalysisReport(result: AnalysisProviderResult, psl
           { label: 'Cheeks', value: averageness >= 5 ? 'Balanced' : 'Full' },
           { label: 'Jaw blur', value: result.angularityScore >= 5 ? 'Low' : 'Moderate' },
           { label: 'Under-chin', value: result.angularityScore >= 5.5 ? 'Lean' : 'Soft' },
-          { label: 'Estimate', value: result.angularityScore >= 6 ? '12-16%' : '18-24%' },
         ],
         explanation: 'Facial-fat percentage is an apparent visual estimate based on cheek fullness, jawline clarity, under-chin softness, and visible soft-tissue distribution. It is not a medical body-fat measurement.',
+        recommendation: 'Run a leaner baseline for 6-8 weeks with consistent sodium, sleep, and cardio before judging facial structure.',
       },
       {
         id: 'biological-age',
-        title: 'Biological age',
-        subtitle: 'Visible youthfulness and skin presentation cues',
-        scoreLabel: 'Age signal',
-        score: clampCategoryScore((skin + presentation + averageness) / 3),
+        title: 'Aging',
+        subtitle: 'Skin age and damage signals',
+        scoreLabel: 'Estimated age',
+        score: estimatedAge,
         features: [
-          { label: 'Texture', value: skin >= 5 ? 'Clear' : 'Variable' },
-          { label: 'Under-eye', value: presentation >= 5 ? 'Fresh' : 'Tired' },
-          { label: 'Fullness', value: averageness >= 5 ? 'Stable' : 'Reduced' },
-          { label: 'Presentation', value: presentation >= 5 ? 'Clean' : 'Noisy' },
+          { label: 'Estimated age', value: `${estimatedAge}` },
+          { label: 'Skin age', value: skin >= 6 ? 'Younger' : skin >= 5 ? 'On pace' : 'Elevated' },
+          { label: 'Skin damage', value: skin >= 6 ? 'Low' : skin >= 5 ? 'Moderate' : 'Visible' },
         ],
         explanation: 'Biological-age signal is estimated from visible skin quality, under-eye presentation, facial fullness, and image presentation quality.',
+        recommendation: 'Make daily SPF, retinoid at night, and sleep consistency the first anti-aging protocol before advanced treatments.',
       },
       {
         id: 'symmetry',
@@ -181,9 +198,9 @@ export function createFallbackAnalysisReport(result: AnalysisProviderResult, psl
           { label: 'Eye level', value: symmetry >= 5 ? 'Aligned' : 'Uneven' },
           { label: 'Nose axis', value: symmetry >= 5 ? 'Centered' : 'Offset' },
           { label: 'Mouth axis', value: symmetry >= 5 ? 'Level' : 'Tilted' },
-          { label: 'Chin point', value: symmetry >= 5 ? 'Centered' : 'Shifted' },
         ],
         explanation: 'Symmetry is assessed from visible left-right alignment of the eye line, nose axis, mouth line, and chin position.',
+        recommendation: 'Retake future scans straight-on and evaluate dental midline or bite if asymmetry repeats across neutral photos.',
       },
       {
         id: 'sun-damage',
@@ -195,9 +212,9 @@ export function createFallbackAnalysisReport(result: AnalysisProviderResult, psl
           { label: 'Pigmentation', value: skin >= 5 ? 'Low' : 'Visible' },
           { label: 'Redness', value: presentation >= 5 ? 'Mild' : 'Uneven' },
           { label: 'Texture', value: skin >= 5 ? 'Stable' : 'Variable' },
-          { label: 'Priority', value: 'SPF consistency' },
         ],
         explanation: 'Sun-damage signal is a cosmetic visual estimate from visible uneven tone, pigmentation, redness, and texture. It is not a medical diagnosis.',
+        recommendation: 'Use broad-spectrum SPF 50 every morning and add vitamin C or niacinamide before considering lasers or peels.',
       },
       {
         id: 'overall',
@@ -209,9 +226,9 @@ export function createFallbackAnalysisReport(result: AnalysisProviderResult, psl
           { label: 'Harmony', value: harmony.toFixed(1) },
           { label: 'Dimorphism', value: result.dimorphismScore.toFixed(1) },
           { label: 'Angularity', value: result.angularityScore.toFixed(1) },
-          { label: 'Percentile', value: result.percentile == null ? 'Pending' : `${Math.round(result.percentile)}%` },
         ],
         explanation: 'The overall PSL is the app-wide score used across the report, leaderboard, and battle context. It is calibrated on the 0 to 8 PSL scale.',
+        recommendation: 'Improve the lowest-scoring category first; one focused change beats scattered glow-up advice.',
       },
     ],
   }

@@ -69,16 +69,18 @@ Return one complete JSON object matching this schema:
   "tierDescription": string,
   "report": {
     "summary": string,
-    "categories": [{"id": string, "title": string, "subtitle": string, "scoreLabel": string, "score": number, "features": [{"label": string, "value": string}], "explanation": string}]
+    "categories": [{"id": string, "title": string, "subtitle": string, "scoreLabel": string, "score": number, "features": [{"label": string, "value": string}], "explanation": string, "recommendation": string}]
   },
   "landmarks": {"version": 1, "source": "kimi-vision-estimate", "confidence": number, "image": {"width": number, "height": number}, "anchors": {"anchorName": {"x": number, "y": number}}}
 }
 
 Hard requirements:
 - report.categories must contain exactly these 11 ids, in this order: ${CATEGORY_IDS.join(', ')}.
-- Every category must have exactly 2 features.
+- Every category must have exactly 3 features.
 - Every subtitle must be under 10 words.
 - Every explanation must be personalized to this visible face and ${explanationLength}.
+- Every recommendation must be the single highest-leverage next move for that category, personalized and concrete. It may mention skincare, dental work, orthodontics, supplements, grooming, fat loss, fillers, surgery, sleep, SPF, or training when relevant. Do not over-prescribe; keep it one action.
+- For biological-age, title it "Aging", scoreLabel must be "Estimated age", score must be a real apparent age in years from 18-80, and the three features must be Estimated age, Skin age, and Skin damage.
 - report.summary must be personalized and ${summaryLength}.
 - metricScores must contain 6 concise items.
 - landmarks.anchors should include these normalized 0-1 points when visible: ${LANDMARK_ANCHORS.join(', ')}.

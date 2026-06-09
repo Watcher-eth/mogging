@@ -41,9 +41,10 @@ export const reportCategorySchema = z.object({
   title: z.string().min(1).max(80),
   subtitle: z.string().min(1).max(180),
   scoreLabel: z.string().min(1).max(80),
-  score: z.number().min(0).max(10),
+  score: z.number().min(0).max(120),
   features: z.array(reportFeatureSchema).min(2).max(6),
   explanation: z.string().min(1).max(700),
+  recommendation: z.string().min(1).max(220).optional(),
 })
 
 export const analysisReportSchema = z.object({
