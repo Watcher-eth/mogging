@@ -9,6 +9,7 @@ import { enforceRateLimit } from '@/lib/api/rateLimit'
 import { hairColorSchema, normalizeApparentAge, skinColorSchema } from '@/lib/appearance/types'
 import { db, schema } from '@/lib/db'
 import { env } from '@/lib/env'
+import { createAnalysisShare } from '@/lib/sharing/service'
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   if (req.method !== 'POST') return methodNotAllowed(res, ['POST'])
@@ -65,6 +66,14 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       hairColor: body.hairColor ?? anonymousHairColor,
       skinColor: body.skinColor ?? userSkinColor ?? anonymousSkinColor,
     })
+    const shareResult =
+      result.analysis.status === 'complete'
+        ? await createDefaultShare({
+            analysisId: result.analysis.id,
+            ownerUserId: session?.user?.id ?? null,
+            ownerAnonymousActorId: anonymousActorId,
+          })
+        : null
 
     console.info('analyze:finish', {
       requestId,
@@ -73,9 +82,17 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       analysisStatus: result.analysis.status,
       failureReason: result.analysis.failureReason ?? null,
       pslScore: result.analysis.pslScore ?? null,
+      shareToken: shareResult?.share.token ?? null,
     })
 
-    return json(res, result.deduped ? 200 : 201, result)
+    return json(res, result.deduped ? 200 : 201, {
+      ...result,
+      share: shareResult?.share
+        ? {
+            token: shareResult.share.token,
+          }
+        : null,
+    })
   } catch (error) {
     console.error('analyze:error', {
       requestId,
@@ -84,6 +101,31 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       name: error instanceof Error ? error.name : null,
     })
     return handleApiError(error, res)
+  }
+}
+
+async function createDefaultShare({
+  analysisId,
+  ownerAnonymousActorId,
+  ownerUserId,
+}: {
+  analysisId: string
+  ownerAnonymousActorId: string | null
+  ownerUserId: string | null
+}) {
+  try {
+    return await createAnalysisShare({
+      analysisId,
+      ownerUserId,
+      ownerAnonymousActorId,
+      includeLeaderboard: false,
+    })
+  } catch (error) {
+    console.warn('analyze:share:create-failed', {
+      analysisId,
+      message: error instanceof Error ? error.message : String(error),
+    })
+    return null
   }
 }
 

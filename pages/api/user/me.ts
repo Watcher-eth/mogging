@@ -3,6 +3,7 @@ import { ApiError, handleApiError, json, methodNotAllowed, parseBody } from '@/l
 import { getAuthSession } from '@/lib/auth/session'
 import {
   getCurrentUserDashboard,
+  deleteUserProfile,
   updateUserProfile,
   updateUserProfileSchema,
   UserServiceError,
@@ -38,7 +39,16 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     }
   }
 
-  return methodNotAllowed(res, ['GET', 'PATCH'])
+  if (req.method === 'DELETE') {
+    try {
+      await deleteUserProfile(session.user.id)
+      return json(res, 200, { deleted: true })
+    } catch (error) {
+      return handleUserError(error, res)
+    }
+  }
+
+  return methodNotAllowed(res, ['GET', 'PATCH', 'DELETE'])
 }
 
 function handleUserError(error: unknown, res: NextApiResponse) {

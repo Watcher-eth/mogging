@@ -152,6 +152,19 @@ export async function updateUserAvatarIfMissing(userId: string, imageUrl: string
     ))
 }
 
+export async function deleteUserProfile(userId: string) {
+  const [deleted] = await db
+    .delete(schema.users)
+    .where(eq(schema.users.id, userId))
+    .returning({ id: schema.users.id })
+
+  if (!deleted) {
+    throw new UserServiceError(404, 'User not found')
+  }
+
+  return deleted
+}
+
 export async function searchUsers(input: SearchUsersInput) {
   const query = searchUsersSchema.parse(input)
   const rows = await db
