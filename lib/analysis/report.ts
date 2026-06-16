@@ -54,8 +54,8 @@ export function normalizeAnalysisReport(
       if (category!.id === 'biological-age') {
         return {
           ...category!,
-          title: 'Aging',
-          scoreLabel: 'Estimated age',
+          title: 'Human age',
+          scoreLabel: 'Human age',
           score: Math.max(18, Math.min(80, Math.round(category!.score))),
         }
       }
@@ -176,16 +176,16 @@ export function createFallbackAnalysisReport(result: AnalysisProviderResult, psl
       },
       {
         id: 'biological-age',
-        title: 'Aging',
-        subtitle: 'Skin age and damage signals',
-        scoreLabel: 'Estimated age',
+        title: 'Human age',
+        subtitle: 'Visible skin-age cues',
+        scoreLabel: 'Human age',
         score: estimatedAge,
         features: [
-          { label: 'Estimated age', value: `${estimatedAge}` },
+          { label: 'Human age', value: `${estimatedAge}` },
           { label: 'Skin age', value: skin >= 6 ? 'Younger' : skin >= 5 ? 'On pace' : 'Elevated' },
-          { label: 'Skin damage', value: skin >= 6 ? 'Low' : skin >= 5 ? 'Moderate' : 'Visible' },
+          { label: 'Texture cue', value: skin >= 6 ? 'Low' : skin >= 5 ? 'Moderate' : 'Visible' },
         ],
-        explanation: 'Biological-age signal is estimated from visible skin quality, under-eye presentation, facial fullness, and image presentation quality.',
+        explanation: 'Human-age signal is estimated from visible skin quality, under-eye presentation, facial fullness, and image presentation quality.',
         recommendation: 'Make daily SPF, retinoid at night, and sleep consistency the first anti-aging protocol before advanced treatments.',
       },
       {
@@ -204,16 +204,16 @@ export function createFallbackAnalysisReport(result: AnalysisProviderResult, psl
       },
       {
         id: 'sun-damage',
-        title: 'Sun damage',
+        title: 'UV context',
         subtitle: 'Visible UV exposure and pigmentation cues',
-        scoreLabel: 'Damage risk',
+        scoreLabel: 'UV context',
         score: clampCategoryScore((skin + presentation) / 2),
         features: [
           { label: 'Pigmentation', value: skin >= 5 ? 'Low' : 'Visible' },
           { label: 'Redness', value: presentation >= 5 ? 'Mild' : 'Uneven' },
           { label: 'Texture', value: skin >= 5 ? 'Stable' : 'Variable' },
         ],
-        explanation: 'Sun-damage signal is a cosmetic visual estimate from visible uneven tone, pigmentation, redness, and texture. It is not a medical diagnosis.',
+        explanation: 'UV-context signal is a cosmetic visual estimate from visible uneven tone, pigmentation, redness, and texture cues.',
         recommendation: 'Use broad-spectrum SPF 50 every morning and add vitamin C or niacinamide before considering lasers or peels.',
       },
       {

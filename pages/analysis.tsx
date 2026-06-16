@@ -327,9 +327,9 @@ const reportCategories: ReportCategory[] = [
   },
   {
     id: 'biological-age',
-    title: 'Biological age',
+    title: 'Human age',
     subtitle: 'Visible youthfulness and skin presentation cues',
-    scoreLabel: 'Age signal',
+    scoreLabel: 'Human age',
     features: [
       { label: 'Skin texture', value: 'Smooth' },
       { label: 'Under-eye', value: 'Fresh' },
@@ -1667,7 +1667,7 @@ function AnalysisPaymentDialog({
               Unlock the full facial analysis
             </DialogTitle>
             <DialogDescription className="max-w-md">
-              We found enough signal to continue. Complete checkout to run the private AI analysis and generate your results.
+              We found enough signal to continue. Complete checkout to run the private advanced analysis and generate your results.
             </DialogDescription>
           </DialogHeader>
 
@@ -2204,7 +2204,7 @@ function getLandmarkOverlayGeometry(category: ReportCategory, landmarks: FaceLan
         ...(chin ? [{ x1: mouth.x, y1: mouth.y, x2: chin.x, y2: chin.y }] : []),
       ],
       points: compactPoints([leftEye, rightEye, nose, mouth, chin]),
-      label: { title: 'Age signal', value: '[ measured ]', x: Math.min(78, rightEye.x + 6), y: rightEye.y + 8 },
+      label: { title: 'Human age', value: '[ measured ]', x: Math.min(78, rightEye.x + 6), y: rightEye.y + 8 },
     }
   }
 
@@ -2242,7 +2242,7 @@ function getReportOverlayLabel(category: ReportCategory) {
     dimorphism: { title: 'Dimorphism', value: '[ balanced ]', x: 59, y: 48 },
     'face-shape': { title: 'Face shape', value: '[ oval ]', x: 61, y: 34 },
     'facial-fat': { title: 'Facial fat %', value: '[ estimated ]', x: 59, y: 58 },
-    'biological-age': { title: 'Age signal', value: '[ youthful ]', x: 59, y: 55 },
+    'biological-age': { title: 'Human age', value: '[ youthful ]', x: 59, y: 55 },
     symmetry: { title: 'Symmetry', value: '[ high ]', x: 58, y: 46 },
     overall: { title: 'PSL score', value: '[ calibrated ]', x: 58, y: 51 },
   }

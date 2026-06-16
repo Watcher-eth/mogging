@@ -80,7 +80,7 @@ Hard requirements:
 - Every subtitle must be under 10 words.
 - Every explanation must be personalized to this visible face and ${explanationLength}.
 - Every recommendation must be the single highest-leverage next move for that category, personalized and concrete. It may mention skincare, dental work, orthodontics, supplements, grooming, fat loss, fillers, surgery, sleep, SPF, or training when relevant. Do not over-prescribe; keep it one action.
-- For biological-age, title it "Aging", scoreLabel must be "Estimated age", score must be a real apparent age in years from 18-80, and the three features must be Estimated age, Skin age, and Skin damage.
+- For biological-age, title it "Human age", scoreLabel must be "Human age", score must be a real apparent age in years from 18-80, and the three features must be Human age, Skin age, and Texture cue.
 - report.summary must be personalized and ${summaryLength}.
 - metricScores must contain 6 concise items.
 - landmarks.anchors should include these normalized 0-1 points when visible: ${LANDMARK_ANCHORS.join(', ')}.
