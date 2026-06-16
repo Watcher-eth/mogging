@@ -88,7 +88,7 @@ export function createFallbackAnalysisReport(result: AnalysisProviderResult, psl
           { label: 'Lid support', value: harmony >= 5 ? 'Defined' : 'Soft' },
         ],
         explanation: 'The eye area is estimated from local symmetry, spacing, lid support, and how well the periocular region fits the full facial frame.',
-        recommendation: symmetry >= 6 ? 'Keep sleep consistent and reduce under-eye puffiness before considering any eye-area procedure.' : 'Start with sleep, hydration, and camera-neutral posture before judging eye-area interventions.',
+        recommendation: symmetry >= 6 ? 'Retake under consistent lighting and a neutral expression before judging the eye area across reports.' : 'Start with camera-neutral posture before judging whether the eye-area signal repeats.',
       },
       {
         id: 'nose',
@@ -102,7 +102,7 @@ export function createFallbackAnalysisReport(result: AnalysisProviderResult, psl
           { label: 'Bridge', value: harmony >= 5 ? 'Clean' : 'Variable' },
         ],
         explanation: 'Nasal balance is scored by central alignment, width relative to the midface, and how much the nose supports overall facial harmony.',
-        recommendation: 'If the nose remains the main limiter across photos, consult a conservative rhinoplasty specialist before doing filler.',
+        recommendation: 'Compare several neutral front images before deciding whether nose balance is the main limiter.',
       },
       {
         id: 'mouth',
@@ -116,7 +116,7 @@ export function createFallbackAnalysisReport(result: AnalysisProviderResult, psl
           { label: 'Volume', value: averageness >= 5 ? 'Balanced' : 'Distinct' },
         ],
         explanation: 'The mouth score reflects lip width, resting symmetry, fullness, and how the feature sits within the lower third.',
-        recommendation: 'Prioritize dental alignment and lip hydration first; only consider subtle filler if proportion is still the bottleneck.',
+        recommendation: 'Use neutral expression consistency and simple grooming before judging mouth balance.',
       },
       {
         id: 'jaw',
@@ -130,7 +130,7 @@ export function createFallbackAnalysisReport(result: AnalysisProviderResult, psl
           { label: 'Angle', value: result.angularityScore >= 5.5 ? 'Sharp' : 'Moderate' },
         ],
         explanation: 'Jaw scoring weighs mandibular definition, chin support, angularity, and whether the lower-third frame strengthens the face.',
-        recommendation: result.angularityScore >= 6 ? 'Maintain leanness and neck posture; the jaw already has enough structure.' : 'Cut facial puffiness first, then evaluate orthodontics or chin/jaw consultation if the lower third still reads weak.',
+        recommendation: result.angularityScore >= 6 ? 'Keep neck posture consistent; the jaw already has enough visible structure.' : 'Track straight-on posture and repeat scans before judging lower-third structure.',
       },
       {
         id: 'dimorphism',
@@ -144,7 +144,7 @@ export function createFallbackAnalysisReport(result: AnalysisProviderResult, psl
           { label: 'Cue strength', value: result.dimorphismScore >= 6 ? 'Strong' : 'Moderate' },
         ],
         explanation: 'Dimorphism is scored from sex-typical facial cues while penalizing traits that overpower harmony or proportional balance.',
-        recommendation: 'Use grooming and body composition before invasive changes; dimorphism improves fastest when brows, hair, and lower-third leanness are aligned.',
+        recommendation: 'Use grooming and styling first; align brows, hair, and lower-third presentation before judging contrast.',
       },
       {
         id: 'face-shape',
@@ -158,7 +158,7 @@ export function createFallbackAnalysisReport(result: AnalysisProviderResult, psl
           { label: 'Frame', value: result.angularityScore >= 5 ? 'Defined' : 'Soft' },
         ],
         explanation: 'Face-shape scoring combines facial thirds, visible silhouette continuity, and how the frame supports the central features.',
-        recommendation: 'Improve haircut and facial leanness first; those change the visible outline before any structural procedure.',
+        recommendation: 'Improve haircut, framing, and camera posture first because those change the visible outline fastest.',
       },
       {
         id: 'facial-fat',
@@ -172,7 +172,7 @@ export function createFallbackAnalysisReport(result: AnalysisProviderResult, psl
           { label: 'Under-chin', value: result.angularityScore >= 5.5 ? 'Lean' : 'Soft' },
         ],
         explanation: 'Facial-fat percentage is an apparent visual estimate based on cheek fullness, jawline clarity, under-chin softness, and visible soft-tissue distribution. It is not a medical body-fat measurement.',
-        recommendation: 'Run a leaner baseline for 6-8 weeks with consistent sodium, sleep, and cardio before judging facial structure.',
+        recommendation: 'Retake future scans with the same lighting, posture, and camera distance before judging soft-tissue fullness.',
       },
       {
         id: 'biological-age',
@@ -186,7 +186,7 @@ export function createFallbackAnalysisReport(result: AnalysisProviderResult, psl
           { label: 'Texture cue', value: skin >= 6 ? 'Low' : skin >= 5 ? 'Moderate' : 'Visible' },
         ],
         explanation: 'Human-age signal is estimated from visible skin quality, under-eye presentation, facial fullness, and image presentation quality.',
-        recommendation: 'Make daily SPF, retinoid at night, and sleep consistency the first anti-aging protocol before advanced treatments.',
+        recommendation: 'Keep capture conditions consistent so future reports compare visible age cues fairly.',
       },
       {
         id: 'symmetry',
@@ -200,7 +200,7 @@ export function createFallbackAnalysisReport(result: AnalysisProviderResult, psl
           { label: 'Mouth axis', value: symmetry >= 5 ? 'Level' : 'Tilted' },
         ],
         explanation: 'Symmetry is assessed from visible left-right alignment of the eye line, nose axis, mouth line, and chin position.',
-        recommendation: 'Retake future scans straight-on and evaluate dental midline or bite if asymmetry repeats across neutral photos.',
+        recommendation: 'Retake future scans straight-on before judging whether the asymmetry is persistent.',
       },
       {
         id: 'sun-damage',
@@ -214,7 +214,7 @@ export function createFallbackAnalysisReport(result: AnalysisProviderResult, psl
           { label: 'Texture', value: skin >= 5 ? 'Stable' : 'Variable' },
         ],
         explanation: 'UV-context signal is a cosmetic visual estimate from visible uneven tone, pigmentation, redness, and texture cues.',
-        recommendation: 'Use broad-spectrum SPF 50 every morning and add vitamin C or niacinamide before considering lasers or peels.',
+        recommendation: 'Use consistent outdoor context and neutral lighting so future scans compare visible tone and texture fairly.',
       },
       {
         id: 'overall',

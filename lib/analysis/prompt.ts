@@ -41,6 +41,7 @@ const LANDMARK_ANCHORS = [
 export const ANALYSIS_SYSTEM_PROMPT = `You analyze face photos for an entertainment app.
 Return only valid JSON. No markdown. No prose outside JSON.
 Assess visible facial aesthetics only. Do not infer identity, ethnicity, morality, intelligence, health diagnosis, fertility, or real-world worth.
+Do not claim objective health, fertility, morality, competence, intelligence, or medical status from appearance.
 PSL is 0-8: ordinary faces 3.5-5.2, attractive 5.5-6.8, model-tier 7.0-7.9, 8.0 only near-ideal. Other scores are 0-10.
 If no real human face is visible, set faceDetected=false, use empty metricScores/categories, and return empty landmarks.`
 
@@ -75,18 +76,20 @@ Return one complete JSON object matching this schema:
 }
 
 Hard requirements:
+- Include a report object with exactly the 11 listed category ids.
+- Category id literals must include "id": "facial-fat", "id": "biological-age", and "id": "sun-damage".
 - report.categories must contain exactly these 11 ids, in this order: ${CATEGORY_IDS.join(', ')}.
 - Every category must have exactly 3 features.
 - Every subtitle must be under 10 words.
-- Every explanation must be personalized to this visible face and ${explanationLength}.
-- Every recommendation must be the single highest-leverage next move for that category, personalized and concrete. It may mention skincare, dental work, orthodontics, supplements, grooming, fat loss, fillers, surgery, sleep, SPF, or training when relevant. Do not over-prescribe; keep it one action.
+- Every explanation must be personalized to the visible face in this exact image and ${explanationLength}.
+- Every recommendation must be the single highest-leverage next move for that category, personalized and concrete. Keep recommendations cosmetic and non-medical. They may mention grooming, hairstyle, lighting, posture, expression, photo consistency, styling, and general non-treatment routine habits. Do not recommend procedures, medications, supplements, diagnoses, SPF, retinoids, fillers, surgery, orthodontics, dermatology care, or medical/health interventions.
 - For biological-age, title it "Human age", scoreLabel must be "Human age", score must be a real apparent age in years from 18-80, and the three features must be Human age, Skin age, and Texture cue.
 - report.summary must be personalized and ${summaryLength}.
 - metricScores must contain 6 concise items.
 - landmarks.anchors should include these normalized 0-1 points when visible: ${LANDMARK_ANCHORS.join(', ')}.
 - Landmark coordinates are normalized inside the source image, not the displayed crop.
 - Scores must be calibrated, not inflated.
-- Do not mention golden ratio, objective worth, medical diagnosis, or apparent age below 18.
-- Facial fat is a cosmetic visual estimate only.
+- Do not use the golden ratio, claim objective worth, or make a medical diagnosis; never classify or imply an apparent age below 18.
+- Facial-fat percentage must be framed as an apparent visual estimate. Facial fat is a cosmetic visual estimate only.
 - Finish the JSON. Prefer terse values over long text.`
 }

@@ -55,8 +55,9 @@ const sections: LegalSection[] = [
     body: [
       'When you consent to generate a face report, Mogging sends the selected face photo, any local face landmark points, the analysis prompt, and account or anonymous session identifiers to Mogging servers. Mogging then sends the face photo and prompt data to Moonshot/Kimi, our third-party analysis provider, which applies advanced learning and mathematical algorithms to generate the report response.',
       'We share this face data with Moonshot/Kimi only to provide the report feature you requested, improve request reliability, classify provider errors, and return the resulting cosmetic analysis to you. We do not ask the provider to identify you, verify your identity, infer sensitive traits, create a biometric template, or make medical diagnoses.',
-      'Service providers that receive personal data from Mogging, including third-party analysis, hosting, storage, database, authentication, analytics, security, and payment providers, are required to protect the data they process for us with the same or equivalent privacy and security protections required by our agreements and applicable law.',
-      'Moonshot/Kimi may process the submitted face photo and prompt data transiently to return the report output and may retain limited request logs as required by its service operations, security, abuse prevention, and legal obligations. Mogging does not authorize Moonshot/Kimi to use submitted face data to identify users or build biometric face profiles for Mogging.',
+      'Moonshot/Kimi may process and store submitted user content, including prompts, images, files, outputs, account information, device and usage information, and log data under the Kimi OpenPlatform Privacy Policy at https://platform.kimi.ai/docs/agreement/userprivacy.md. That policy states that information is stored as long as necessary to provide the services, fulfill the purposes in the policy, support legitimate business purposes such as service improvement, disputes, safety, or security, comply with legal obligations, and that account and input information may be retained while the API account is active. It also states that Kimi OpenPlatform stores collected information on secure servers in Singapore.',
+      'Mogging does not authorize Moonshot/Kimi to use submitted face data to identify users, build biometric face profiles for Mogging, verify identity, or make medical diagnoses. If you delete your Mogging profile or request deletion, Mogging deletes or de-identifies the copy held in Mogging systems as described below, but Moonshot/Kimi may continue to retain its own service logs or submitted user content according to its published policy and legal obligations.',
+      'Mogging also uses Vercel for hosting and serverless request processing, Cloudflare R2-compatible object storage for uploaded face photos and generated image assets, a Postgres database provider for report records, and authentication, payment, security, analytics, and support providers as needed. These providers may store face data only when their service is used to host, store, secure, process, or support the report feature you requested.',
     ],
   },
   {
@@ -64,7 +65,8 @@ const sections: LegalSection[] = [
     label: 'Sharing',
     title: 'When Information Is Shared',
     body: [
-      'We share information with service providers that help us run Mogging, including hosting, storage, database, authentication, analytics, security, and payment providers.',
+      'Face data may be shared with service providers only as needed to operate Mogging: Moonshot/Kimi for report generation, Vercel for hosting and request processing, Cloudflare R2-compatible storage for uploaded photos and generated image assets, our Postgres database provider for saved report records, and authentication, payment, security, analytics, and support providers when those services are involved in your account or request.',
+      'The reasons for sharing face data are limited to generating the requested report, storing your saved report history, creating share cards, serving share links, preventing abuse, securing the service, troubleshooting support issues, processing deletion requests, and complying with law.',
       'We may disclose information if required by law, to protect rights and safety, to investigate abuse, or as part of a merger, acquisition, financing, or sale of assets.',
     ],
   },
@@ -73,10 +75,12 @@ const sections: LegalSection[] = [
     label: 'Retention',
     title: 'Face Data Retention and Deletion',
     body: [
-      'Mogging does not retain Face ID data, TrueDepth data, biometric faceprints, or persistent biometric templates because the app does not collect those categories of face data.',
-      'Mogging stores face photos, landmark points, report outputs, and share links so you can view prior reports, compare changes over time, generate share cards, receive support, and prevent abuse. This report-related face data is retained while your profile or report remains active, and in any event no longer than 12 months after your last account activity unless a longer period is required for security, legal compliance, dispute resolution, or fraud prevention.',
-      'If you delete your profile in the app or request deletion at support@mogging.app, we delete or de-identify active account records, uploaded face photos, reports, landmarks, and share links tied to that profile. Active systems are targeted for deletion promptly after the request is processed, and backup copies are overwritten or removed on their normal cycle, generally within 90 days.',
-      'Temporary processing files, local caches, and generated share images are kept only as long as needed to complete the request, improve performance, or support a current share action, and may be cleared automatically by the app, operating system, or server cache.',
+      'Explicit face-data retention statement: Mogging does not retain Face ID data, TrueDepth data, biometric faceprints, or persistent biometric templates because the app does not collect those categories of face data. Mogging does retain report-related face data when you create, save, or share a report: uploaded face photos, local landmark points, report outputs, overlay data, share-card images, and share links.',
+      'Reasons for storing report-related face data: Mogging stores this data so you can view prior reports, compare changes over time, regenerate overlays, create and serve share cards, receive support, delete your profile, troubleshoot errors, secure the service, prevent abuse, resolve disputes, and comply with legal obligations.',
+      'Length of retention in Mogging systems: uploaded face photos, landmark points, report outputs, overlay data, and share links are retained while your profile or report remains active, and in any event no longer than 12 months after your last account activity unless a longer period is required for security, legal compliance, dispute resolution, or fraud prevention. We use this finite period because reports and share links are account-history features, while stale inactive data is not needed indefinitely.',
+      'Temporary processing files and generated share-image caches are kept only as long as needed to complete the request, improve performance, or support a current share action. Server or CDN caches for generated share images are normally short-lived and may persist for up to 24 hours before automatic expiry or replacement.',
+      'Deletion: if you delete your profile in the app or request deletion at support@mogging.app, we delete or de-identify active account records, uploaded face photos, reports, landmarks, and share links tied to that profile. Active systems are targeted for deletion promptly after the request is processed, and backup copies are overwritten or removed on their normal cycle, generally within 90 days.',
+      'Third-party retention: Moonshot/Kimi may retain submitted user content and related logs according to the Kimi OpenPlatform Privacy Policy, including while the API account is active and as long as necessary for service, safety, security, dispute, legitimate business, or legal purposes. Hosting, storage, database, authentication, payment, security, analytics, and support providers may retain service records according to their own processor obligations and backup cycles, but they are not authorized by Mogging to identify users from face data or create biometric templates for Mogging.',
     ],
   },
   {
@@ -104,7 +108,7 @@ export default function PrivacyPage() {
       eyebrow="Privacy"
       title="Privacy Policy"
       description="How Mogging handles account details, photos, analysis data, rankings, payments, device information, and support requests."
-      updated="June 14, 2026"
+      updated="June 16, 2026"
       path="/privacy"
       sections={sections}
     />
