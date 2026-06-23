@@ -43,6 +43,10 @@ const envSchema = z
     UPSTASH_REDIS_REST_TOKEN: z.string().min(1).optional(),
     STRIPE_SECRET_KEY: z.string().min(1).optional(),
     STRIPE_ANALYSIS_PRICE_CENTS: z.coerce.number().int().min(50).default(499),
+    STRIPE_MOBILE_MONTHLY_PRICE_ID: z.string().min(1).optional(),
+    STRIPE_MOBILE_YEARLY_PRICE_ID: z.string().min(1).optional(),
+    STRIPE_MOBILE_MONTHLY_PRICE_CENTS: z.coerce.number().int().min(50).default(999),
+    STRIPE_MOBILE_YEARLY_PRICE_CENTS: z.coerce.number().int().min(50).default(5999),
   })
   .superRefine((env, ctx) => {
     if (env.NODE_ENV === 'production' && !env.NEXTAUTH_SECRET) {
@@ -162,6 +166,10 @@ export const env = envSchema.parse({
   UPSTASH_REDIS_REST_TOKEN: process.env.UPSTASH_REDIS_REST_TOKEN,
   STRIPE_SECRET_KEY: process.env.STRIPE_SECRET_KEY,
   STRIPE_ANALYSIS_PRICE_CENTS: process.env.STRIPE_ANALYSIS_PRICE_CENTS,
+  STRIPE_MOBILE_MONTHLY_PRICE_ID: process.env.STRIPE_MOBILE_MONTHLY_PRICE_ID,
+  STRIPE_MOBILE_YEARLY_PRICE_ID: process.env.STRIPE_MOBILE_YEARLY_PRICE_ID,
+  STRIPE_MOBILE_MONTHLY_PRICE_CENTS: process.env.STRIPE_MOBILE_MONTHLY_PRICE_CENTS,
+  STRIPE_MOBILE_YEARLY_PRICE_CENTS: process.env.STRIPE_MOBILE_YEARLY_PRICE_CENTS,
 })
 
 export type RuntimeReadinessCheck = {

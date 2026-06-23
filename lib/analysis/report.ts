@@ -55,8 +55,26 @@ export function normalizeAnalysisReport(
         return {
           ...category!,
           title: 'Human age',
+          subtitle: 'Visible age cues',
           scoreLabel: 'Human age',
           score: Math.max(18, Math.min(80, Math.round(category!.score))),
+          features: category!.features.map((feature) => ({
+            ...feature,
+            label: /skin age/i.test(feature.label) ? 'Texture age cue' : feature.label,
+          })),
+        }
+      }
+      if (category!.id === 'facial-fat') {
+        return {
+          ...category!,
+          title: 'Soft tissue',
+          subtitle: 'Visible facial fullness',
+          scoreLabel: 'Soft tissue',
+          features: category!.features.map((feature) => ({
+            ...feature,
+            label: /facial fat|body fat|estimate/i.test(feature.label) ? 'Fullness cue' : feature.label,
+            value: /%/.test(feature.value) ? 'Visible' : feature.value,
+          })),
         }
       }
       return { ...category!, score: clampCategoryScore(category!.score) }
@@ -74,7 +92,7 @@ export function createFallbackAnalysisReport(result: AnalysisProviderResult, psl
   const estimatedAge = estimateBiologicalAge(result)
 
   return {
-    summary: 'Calibrated PSL report generated from facial proportion, symmetry, averageness, dimorphism, angularity, skin, and presentation signals.',
+    summary: 'Calibrated PSL report generated from facial proportion, symmetry, averageness, dimorphism, angularity, texture, and presentation signals.',
     categories: [
       {
         id: 'eyes',
@@ -162,27 +180,27 @@ export function createFallbackAnalysisReport(result: AnalysisProviderResult, psl
       },
       {
         id: 'facial-fat',
-        title: 'Facial fat',
-        subtitle: 'Visible facial leanness and soft-tissue fullness',
-        scoreLabel: 'Facial fat %',
+        title: 'Soft tissue',
+        subtitle: 'Visible facial fullness',
+        scoreLabel: 'Soft tissue',
         score: clampCategoryScore((skin + presentation + averageness) / 3),
         features: [
           { label: 'Cheeks', value: averageness >= 5 ? 'Balanced' : 'Full' },
           { label: 'Jaw blur', value: result.angularityScore >= 5 ? 'Low' : 'Moderate' },
           { label: 'Under-chin', value: result.angularityScore >= 5.5 ? 'Lean' : 'Soft' },
         ],
-        explanation: 'Facial-fat percentage is an apparent visual estimate based on cheek fullness, jawline clarity, under-chin softness, and visible soft-tissue distribution. It is not a medical body-fat measurement.',
+        explanation: 'Soft-tissue signal is an apparent visual estimate based on cheek fullness, jawline clarity, under-chin softness, and visible distribution.',
         recommendation: 'Retake future scans with the same lighting, posture, and camera distance before judging soft-tissue fullness.',
       },
       {
         id: 'biological-age',
         title: 'Human age',
-        subtitle: 'Visible skin-age cues',
+        subtitle: 'Visible age cues',
         scoreLabel: 'Human age',
         score: estimatedAge,
         features: [
           { label: 'Human age', value: `${estimatedAge}` },
-          { label: 'Skin age', value: skin >= 6 ? 'Younger' : skin >= 5 ? 'On pace' : 'Elevated' },
+          { label: 'Texture age cue', value: skin >= 6 ? 'Younger' : skin >= 5 ? 'On pace' : 'Elevated' },
           { label: 'Texture cue', value: skin >= 6 ? 'Low' : skin >= 5 ? 'Moderate' : 'Visible' },
         ],
         explanation: 'Human-age signal is estimated from visible skin quality, under-eye presentation, facial fullness, and image presentation quality.',
@@ -205,7 +223,7 @@ export function createFallbackAnalysisReport(result: AnalysisProviderResult, psl
       {
         id: 'sun-damage',
         title: 'UV context',
-        subtitle: 'Visible UV exposure and pigmentation cues',
+        subtitle: 'UV context and visible tone',
         scoreLabel: 'UV context',
         score: clampCategoryScore((skin + presentation) / 2),
         features: [

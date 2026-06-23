@@ -1,4 +1,4 @@
-import { and, count, eq, ne, sql, type SQL } from 'drizzle-orm'
+import { and, count, eq, inArray, ne, sql, type SQL } from 'drizzle-orm'
 import { z } from 'zod'
 import { ageBucketSchema, hairColorSchema, skinColorSchema } from '@/lib/appearance/types'
 import { db, schema } from '@/lib/db'
@@ -43,6 +43,7 @@ export async function selectComparisonPair(input: PairSelectionInput) {
   const filters = [
     eq(schema.photos.isPublic, true),
     eq(schema.photos.photoType, params.photoType),
+    inArray(schema.photos.source, ['seeded', 'instagram']),
     params.gender === 'all' ? undefined : eq(schema.photos.gender, params.gender),
     params.hairColor === 'all' ? undefined : eq(schema.photos.hairColor, params.hairColor),
     params.skinColor === 'all' ? undefined : eq(schema.photos.skinColor, params.skinColor),
@@ -60,6 +61,8 @@ export async function selectComparisonPair(input: PairSelectionInput) {
   const [first] = await db
     .select(comparisonPhotoSelection)
     .from(schema.photos)
+    .leftJoin(schema.users, eq(schema.users.id, schema.photos.userId))
+    .leftJoin(schema.anonymousProfiles, eq(schema.anonymousProfiles.anonymousActorId, schema.photos.anonymousActorId))
     .leftJoin(schema.photoRatings, eq(schema.photoRatings.photoId, schema.photos.id))
     .leftJoin(schema.analyses, eq(schema.analyses.photoId, schema.photos.id))
     .where(where)
@@ -91,6 +94,8 @@ async function selectRandomComparisonPhoto(filters: SQL[], excludedPhotoId: stri
   const [second] = await db
     .select(comparisonPhotoSelection)
     .from(schema.photos)
+    .leftJoin(schema.users, eq(schema.users.id, schema.photos.userId))
+    .leftJoin(schema.anonymousProfiles, eq(schema.anonymousProfiles.anonymousActorId, schema.photos.anonymousActorId))
     .leftJoin(schema.photoRatings, eq(schema.photoRatings.photoId, schema.photos.id))
     .leftJoin(schema.analyses, eq(schema.analyses.photoId, schema.photos.id))
     .where(secondWhere)
@@ -214,7 +219,7 @@ const comparisonPhotoSelection = {
   photo: {
     id: schema.photos.id,
     imageUrl: schema.photos.imageUrl,
-    name: schema.photos.name,
+    name: sql<string | null>`coalesce(${schema.users.name}, ${schema.anonymousProfiles.name}, ${schema.photos.name})`,
     gender: schema.photos.gender,
     age: schema.photos.age,
     hairColor: schema.photos.hairColor,

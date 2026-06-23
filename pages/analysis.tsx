@@ -313,14 +313,14 @@ const reportCategories: ReportCategory[] = [
   },
   {
     id: 'facial-fat',
-    title: 'Facial fat',
-    subtitle: 'Visible facial leanness and soft-tissue fullness',
-    scoreLabel: 'Facial fat %',
+    title: 'Soft tissue',
+    subtitle: 'Visible facial fullness',
+    scoreLabel: 'Soft tissue',
     features: [
       { label: 'Cheeks', value: 'Balanced' },
       { label: 'Jaw blur', value: 'Low' },
       { label: 'Under-chin', value: 'Lean' },
-      { label: 'Estimate', value: '14-18%' },
+      { label: 'Fullness cue', value: 'Low' },
     ],
     overlayPoints: [{ x: 36, y: 55 }, { x: 64, y: 55 }, { x: 37, y: 69 }, { x: 63, y: 69 }, { x: 50, y: 76 }],
     overlayLines: [{ x1: 36, y1: 55, x2: 37, y2: 69 }, { x1: 64, y1: 55, x2: 63, y2: 69 }, { x1: 37, y1: 69, x2: 50, y2: 76 }, { x1: 50, y1: 76, x2: 63, y2: 69 }],
@@ -328,7 +328,7 @@ const reportCategories: ReportCategory[] = [
   {
     id: 'biological-age',
     title: 'Human age',
-    subtitle: 'Visible youthfulness and skin presentation cues',
+    subtitle: 'Visible age and texture cues',
     scoreLabel: 'Human age',
     features: [
       { label: 'Skin texture', value: 'Smooth' },
@@ -2184,7 +2184,7 @@ function getLandmarkOverlayGeometry(category: ReportCategory, landmarks: FaceLan
         { x1: chin.x, y1: chin.y, x2: rightJaw.x, y2: rightJaw.y },
       ],
       points: compactPoints([leftCheek, rightCheek, leftJaw, rightJaw, chin]),
-      label: { title: 'Facial fat %', value: '[ estimated ]', x: Math.min(76, rightCheek.x + 5), y: rightCheek.y + 6 },
+      label: { title: 'Soft tissue', value: '[ estimated ]', x: Math.min(76, rightCheek.x + 5), y: rightCheek.y + 6 },
     }
   }
 
@@ -2241,7 +2241,7 @@ function getReportOverlayLabel(category: ReportCategory) {
     jaw: { title: 'Jaw angle', value: '[ defined ]', x: 60, y: 73 },
     dimorphism: { title: 'Dimorphism', value: '[ balanced ]', x: 59, y: 48 },
     'face-shape': { title: 'Face shape', value: '[ oval ]', x: 61, y: 34 },
-    'facial-fat': { title: 'Facial fat %', value: '[ estimated ]', x: 59, y: 58 },
+    'facial-fat': { title: 'Soft tissue', value: '[ estimated ]', x: 59, y: 58 },
     'biological-age': { title: 'Human age', value: '[ youthful ]', x: 59, y: 55 },
     symmetry: { title: 'Symmetry', value: '[ high ]', x: 58, y: 46 },
     overall: { title: 'PSL score', value: '[ calibrated ]', x: 58, y: 51 },

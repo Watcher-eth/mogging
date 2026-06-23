@@ -14,7 +14,7 @@ test('analysis prompt encodes the research-weighted rubric', () => {
   assert.match(prompt, /"id": "sun-damage"/i)
   assert.match(prompt, /Include a report object with exactly the 11 listed category ids/i)
   assert.match(prompt, /personalized to the visible face in this exact image/i)
-  assert.match(prompt, /Facial-fat percentage must be framed as an apparent visual estimate/i)
+  assert.match(prompt, /title it "Soft tissue"/i)
 })
 
 test('analysis prompt blocks unsupported social and health claims', () => {

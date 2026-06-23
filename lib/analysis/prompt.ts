@@ -83,13 +83,13 @@ Hard requirements:
 - Every subtitle must be under 10 words.
 - Every explanation must be personalized to the visible face in this exact image and ${explanationLength}.
 - Every recommendation must be the single highest-leverage next move for that category, personalized and concrete. Keep recommendations cosmetic and non-medical. They may mention grooming, hairstyle, lighting, posture, expression, photo consistency, styling, and general non-treatment routine habits. Do not recommend procedures, medications, supplements, diagnoses, SPF, retinoids, fillers, surgery, orthodontics, dermatology care, or medical/health interventions.
-- For biological-age, title it "Human age", scoreLabel must be "Human age", score must be a real apparent age in years from 18-80, and the three features must be Human age, Skin age, and Texture cue.
+- For biological-age, title it "Human age", subtitle must be "Visible age cues", scoreLabel must be "Human age", score must be a real apparent age in years from 18-80, and the three features must be Human age, Texture age cue, and Texture cue.
 - report.summary must be personalized and ${summaryLength}.
 - metricScores must contain 6 concise items.
 - landmarks.anchors should include these normalized 0-1 points when visible: ${LANDMARK_ANCHORS.join(', ')}.
 - Landmark coordinates are normalized inside the source image, not the displayed crop.
 - Scores must be calibrated, not inflated.
 - Do not use the golden ratio, claim objective worth, or make a medical diagnosis; never classify or imply an apparent age below 18.
-- Facial-fat percentage must be framed as an apparent visual estimate. Facial fat is a cosmetic visual estimate only.
+- For facial-fat, title it "Soft tissue", scoreLabel must be "Soft tissue", and never show a body-fat percentage. The category is a cosmetic soft-tissue fullness estimate only.
 - Finish the JSON. Prefer terse values over long text.`
 }
