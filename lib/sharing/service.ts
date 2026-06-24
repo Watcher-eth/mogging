@@ -167,10 +167,11 @@ function canCreateShare(
   ownerUserId: string | null,
   ownerAnonymousActorId: string | null
 ) {
+  if (photo.isPublic) return true
   if (photo.userId) return photo.userId === ownerUserId
   if (photo.anonymousActorId) return photo.anonymousActorId === ownerAnonymousActorId
 
-  return photo.isPublic
+  return false
 }
 
 async function getLeaderboardSnapshot(gender: 'male' | 'female' | 'other') {
