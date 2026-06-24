@@ -301,6 +301,43 @@ function createTransientAnalysisResult(
   }
 
   if (!providerResult.ok) {
+    if (isRetryableProviderFailure(providerResult.error)) {
+      const failure = toAnalysisFailure(providerResult.error)
+      const result = createDeterministicProviderFallback(data)
+      const pslScore = computePslScore(result)
+      const report = createFallbackAnalysisReport(result, pslScore)
+
+      return {
+        photo,
+        analysis: {
+          id: `transient-analysis-${imageHash}`,
+          status: 'complete' as const,
+          pslScore,
+          harmonyScore: result.harmonyScore,
+          dimorphismScore: result.dimorphismScore,
+          angularityScore: result.angularityScore,
+          percentile: result.percentile ?? null,
+          tier: result.tier ?? null,
+          tierDescription: result.tierDescription ?? null,
+          metrics: {
+            report,
+            generatedByFallback: true,
+            providerFailure: failure.metrics.providerError,
+            symmetryScore: result.symmetryScore ?? null,
+            proportionalityScore: result.proportionalityScore ?? null,
+            averagenessScore: result.averagenessScore ?? null,
+            metricScores: result.metricScores,
+          },
+          landmarks: data.landmarks ?? {},
+          model: analysisProvider.model,
+          promptVersion: 'psl-kimi-v2',
+          failureReason: null,
+          persistenceFailureReason,
+        },
+        deduped: false,
+      }
+    }
+
     const failure = toAnalysisFailure(providerResult.error)
     return {
       photo,
