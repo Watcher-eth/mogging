@@ -111,7 +111,7 @@ export async function getShareByToken(token: string) {
     throw new SharingServiceError(404, 'Share not found')
   }
 
-  if (!share.photo.isPublic && share.photo.userId !== share.ownerUserId) {
+  if (!canReadSharePhoto(share.photo, share.ownerUserId, share.ownerAnonymousActorId)) {
     throw new SharingServiceError(404, 'Share not found')
   }
 
@@ -148,6 +148,18 @@ export async function getShareByToken(token: string) {
       createdAt: share.analysis.createdAt,
     },
   }
+}
+
+function canReadSharePhoto(
+  photo: { userId: string | null; anonymousActorId: string | null; isPublic: boolean },
+  ownerUserId: string | null,
+  ownerAnonymousActorId: string | null
+) {
+  if (photo.isPublic) return true
+  if (photo.userId) return photo.userId === ownerUserId
+  if (photo.anonymousActorId) return photo.anonymousActorId === ownerAnonymousActorId
+
+  return false
 }
 
 function canCreateShare(
