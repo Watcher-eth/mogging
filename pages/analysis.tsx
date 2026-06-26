@@ -234,9 +234,9 @@ const reportCategories: ReportCategory[] = [
     scoreLabel: 'Eye area',
     features: [
       { label: 'Canthal tilt', value: 'Positive' },
-      { label: 'Spacing', value: 'Balanced' },
-      { label: 'Upper lid', value: 'Defined' },
-      { label: 'Symmetry', value: 'High' },
+      { label: 'Spacing', value: 'balanced width' },
+      { label: 'Upper lid', value: 'defined support' },
+      { label: 'Periocular match', value: 'strong signal' },
     ],
     overlayPoints: [{ x: 34, y: 39 }, { x: 46, y: 38 }, { x: 56, y: 38 }, { x: 68, y: 39 }],
     overlayLines: [{ x1: 30, y1: 40, x2: 72, y2: 39 }],
@@ -247,10 +247,10 @@ const reportCategories: ReportCategory[] = [
     subtitle: 'Bridge alignment and central facial axis',
     scoreLabel: 'Nasal balance',
     features: [
-      { label: 'Bridge', value: 'Straight' },
-      { label: 'Tip position', value: 'Centered' },
-      { label: 'Width', value: 'Moderate' },
-      { label: 'Projection', value: 'Clean' },
+      { label: 'Bridge', value: 'straight contour' },
+      { label: 'Midline drift', value: 'minimal drift' },
+      { label: 'Width', value: 'moderate width' },
+      { label: 'Bridge projection', value: 'clear contour' },
     ],
     overlayPoints: [{ x: 51, y: 42 }, { x: 51, y: 52 }, { x: 51, y: 61 }],
     overlayLines: [{ x1: 51, y1: 36, x2: 51, y2: 64 }],
@@ -261,10 +261,10 @@ const reportCategories: ReportCategory[] = [
     subtitle: 'Lip shape, width, and lower-third fit',
     scoreLabel: 'Mouth harmony',
     features: [
-      { label: 'Width', value: 'Proportional' },
-      { label: 'Cupid bow', value: 'Visible' },
-      { label: 'Lower lip', value: 'Full' },
-      { label: 'Resting line', value: 'Even' },
+      { label: 'Width', value: 'proportional width' },
+      { label: 'Cupid bow', value: 'visible contour' },
+      { label: 'Lower lip', value: 'balanced fullness' },
+      { label: 'Mouth line tilt', value: 'near level' },
     ],
     overlayPoints: [{ x: 41, y: 66 }, { x: 51, y: 67 }, { x: 62, y: 66 }],
     overlayLines: [{ x1: 38, y1: 66, x2: 65, y2: 66 }],
@@ -275,10 +275,10 @@ const reportCategories: ReportCategory[] = [
     subtitle: 'Mandible definition and chin support',
     scoreLabel: 'Jawline',
     features: [
-      { label: 'Gonial angle', value: 'Defined' },
-      { label: 'Chin height', value: 'Strong' },
-      { label: 'Mandible', value: 'Clear' },
-      { label: 'Neck transition', value: 'Clean' },
+      { label: 'Gonial angle', value: 'defined angle' },
+      { label: 'Chin height', value: 'strong support' },
+      { label: 'Mandible', value: 'clear edge definition' },
+      { label: 'Neck transition', value: 'clear contour' },
     ],
     overlayPoints: [{ x: 33, y: 72 }, { x: 50, y: 79 }, { x: 68, y: 72 }],
     overlayLines: [{ x1: 31, y1: 70, x2: 50, y2: 80 }, { x1: 50, y1: 80, x2: 70, y2: 70 }],
@@ -289,10 +289,10 @@ const reportCategories: ReportCategory[] = [
     subtitle: 'Sex-typical cues weighted against harmony',
     scoreLabel: 'Dimorphism',
     features: [
-      { label: 'Brow frame', value: 'Moderate' },
-      { label: 'Midface', value: 'Refined' },
-      { label: 'Lower third', value: 'Structured' },
-      { label: 'Soft tissue', value: 'Balanced' },
+      { label: 'Brow frame', value: 'moderate structure' },
+      { label: 'Midface', value: 'refined proportion' },
+      { label: 'Lower third', value: 'structured contour' },
+      { label: 'Soft tissue', value: 'balanced fullness' },
     ],
     overlayPoints: [{ x: 34, y: 34 }, { x: 66, y: 34 }, { x: 50, y: 78 }],
     overlayLines: [{ x1: 34, y1: 34, x2: 66, y2: 34 }, { x1: 50, y1: 43, x2: 50, y2: 78 }],
@@ -303,10 +303,10 @@ const reportCategories: ReportCategory[] = [
     subtitle: 'Frame, thirds, and silhouette continuity',
     scoreLabel: 'Face shape',
     features: [
-      { label: 'Outline', value: 'Oval' },
-      { label: 'Upper third', value: 'Balanced' },
-      { label: 'Midface', value: 'Compact' },
-      { label: 'Lower third', value: 'Defined' },
+      { label: 'Outline', value: 'oval tendency' },
+      { label: 'Upper third', value: 'balanced thirds' },
+      { label: 'Midface', value: 'compact proportion' },
+      { label: 'Lower third', value: 'defined frame' },
     ],
     overlayPoints: [{ x: 31, y: 31 }, { x: 69, y: 31 }, { x: 72, y: 58 }, { x: 50, y: 82 }, { x: 28, y: 58 }],
     overlayLines: [{ x1: 31, y1: 31, x2: 69, y2: 31 }, { x1: 69, y1: 31, x2: 72, y2: 58 }, { x1: 72, y1: 58, x2: 50, y2: 82 }, { x1: 50, y1: 82, x2: 28, y2: 58 }, { x1: 28, y1: 58, x2: 31, y2: 31 }],
@@ -317,10 +317,10 @@ const reportCategories: ReportCategory[] = [
     subtitle: 'Visible facial fullness',
     scoreLabel: 'Soft tissue',
     features: [
-      { label: 'Cheeks', value: 'Balanced' },
-      { label: 'Jaw blur', value: 'Low' },
-      { label: 'Under-chin', value: 'Lean' },
-      { label: 'Fullness cue', value: 'Low' },
+      { label: 'Cheeks', value: 'balanced fullness' },
+      { label: 'Jaw blur', value: 'low blur' },
+      { label: 'Under-chin', value: 'lean contour' },
+      { label: 'Fullness cue', value: 'low visible fullness' },
     ],
     overlayPoints: [{ x: 36, y: 55 }, { x: 64, y: 55 }, { x: 37, y: 69 }, { x: 63, y: 69 }, { x: 50, y: 76 }],
     overlayLines: [{ x1: 36, y1: 55, x2: 37, y2: 69 }, { x1: 64, y1: 55, x2: 63, y2: 69 }, { x1: 37, y1: 69, x2: 50, y2: 76 }, { x1: 50, y1: 76, x2: 63, y2: 69 }],
@@ -329,12 +329,12 @@ const reportCategories: ReportCategory[] = [
     id: 'biological-age',
     title: 'Human age',
     subtitle: 'Visible age and texture cues',
-    scoreLabel: 'Human age',
+    scoreLabel: 'Age signal',
     features: [
-      { label: 'Skin texture', value: 'Smooth' },
-      { label: 'Under-eye', value: 'Fresh' },
-      { label: 'Facial fullness', value: 'Youthful' },
-      { label: 'Presentation', value: 'Clear' },
+      { label: 'Texture age cue', value: 'low visible texture' },
+      { label: 'Under-eye cue', value: 'low shadowing' },
+      { label: 'Facial fullness', value: 'youthful fullness' },
+      { label: 'Presentation', value: 'clear capture' },
     ],
     overlayPoints: [{ x: 38, y: 46 }, { x: 62, y: 46 }, { x: 50, y: 55 }, { x: 50, y: 70 }],
     overlayLines: [{ x1: 38, y1: 46, x2: 62, y2: 46 }, { x1: 50, y1: 45, x2: 50, y2: 70 }],
@@ -345,24 +345,24 @@ const reportCategories: ReportCategory[] = [
     subtitle: 'Left-right balance across visible landmarks',
     scoreLabel: 'Symmetry',
     features: [
-      { label: 'Eye level', value: 'Aligned' },
-      { label: 'Nose axis', value: 'Centered' },
-      { label: 'Mouth axis', value: 'Level' },
-      { label: 'Chin point', value: 'Centered' },
+      { label: 'Eye line tilt', value: 'near level' },
+      { label: 'Nose midline', value: 'minimal drift' },
+      { label: 'Mouth line tilt', value: 'near level' },
+      { label: 'Chin axis', value: 'minor drift' },
     ],
     overlayPoints: [{ x: 50, y: 31 }, { x: 50, y: 44 }, { x: 50, y: 66 }, { x: 50, y: 80 }],
     overlayLines: [{ x1: 50, y1: 28, x2: 50, y2: 82 }, { x1: 30, y1: 43, x2: 70, y2: 43 }, { x1: 38, y1: 66, x2: 64, y2: 66 }],
   },
   {
     id: 'overall',
-    title: 'Overall PSL',
-    subtitle: 'Final calibrated PSL assessment',
-    scoreLabel: 'PSL score',
+    title: 'Overall',
+    subtitle: 'Final calibrated assessment',
+    scoreLabel: 'Overall score',
     features: [
-      { label: 'Harmony', value: 'High' },
-      { label: 'Structure', value: 'Strong' },
-      { label: 'Balance', value: 'Consistent' },
-      { label: 'Percentile', value: 'Upper range' },
+      { label: 'Harmony', value: 'strong signal' },
+      { label: 'Structure', value: 'strong signal' },
+      { label: 'Balance', value: 'consistent baseline' },
+      { label: 'Percentile', value: 'upper range' },
     ],
     overlayPoints: [{ x: 50, y: 30 }, { x: 35, y: 43 }, { x: 65, y: 43 }, { x: 50, y: 66 }, { x: 50, y: 81 }],
     overlayLines: [{ x1: 50, y1: 30, x2: 35, y2: 43 }, { x1: 50, y1: 30, x2: 65, y2: 43 }, { x1: 50, y1: 30, x2: 50, y2: 81 }, { x1: 35, y1: 43, x2: 65, y2: 43 }, { x1: 39, y1: 66, x2: 62, y2: 66 }],
@@ -1521,14 +1521,14 @@ function MosaicAnnotations({ landmarks }: { landmarks: FaceLandmarksPayload | nu
         height={70}
         label="Eye line"
         style={eyeMid ? { left: `${eyeMid.x - 8}%`, top: `${eyeMid.y}%` } : undefined}
-        value="[ balanced ]"
+        value="[ near level ]"
       />
       <MosaicCallout
         className={noseTip ? '' : 'left-[62%] top-[43%]'}
         height={62}
-        label="Nose axis"
+        label="Nose midline"
         style={noseTip ? { left: `${noseTip.x + 4}%`, top: `${noseTip.y - 8}%` } : undefined}
-        value="[ centered ]"
+        value="[ minimal drift ]"
       />
     </motion.div>
   )
@@ -1850,13 +1850,15 @@ function ReportActions({
   onReset: () => void
   score: number
 }) {
+  const displayScore = Math.max(0, Math.min(10, (score / 8) * 10))
+
   return (
     <div className={`grid gap-3 ${className}`}>
       <div className="border border-zinc-200 p-4">
-        <p className="font-mono text-[10px] uppercase tracking-wide text-muted-foreground">PSL score</p>
+        <p className="font-mono text-[10px] uppercase tracking-wide text-muted-foreground">Overall score</p>
         <div className="mt-3 flex items-end justify-between">
-          <span className="text-6xl font-semibold leading-none tracking-[-0.06em]">{score.toFixed(1)}</span>
-          <span className="pb-1 font-mono text-[10px] uppercase text-muted-foreground">/ 8</span>
+          <span className="text-6xl font-semibold leading-none tracking-[-0.06em]">{displayScore.toFixed(1)}</span>
+          <span className="pb-1 font-mono text-[10px] uppercase text-muted-foreground">/ 10</span>
         </div>
       </div>
       <button
@@ -2090,7 +2092,7 @@ function getLandmarkOverlayGeometry(category: ReportCategory, landmarks: FaceLan
       boxes: [{ ...boxFromPoints([bridge, tip], 5, 3), dashed: true }],
       lines: [{ x1: bridge.x, y1: bridge.y - 4, x2: tip.x, y2: tip.y + 3 }],
       points: [bridge, tip],
-      label: { title: 'Nose axis', value: '[ centered ]', x: Math.min(78, tip.x + 6), y: tip.y },
+      label: { title: 'Nose midline', value: '[ minimal drift ]', x: Math.min(78, tip.x + 6), y: tip.y },
     }
   }
 
@@ -2226,7 +2228,7 @@ function getLandmarkOverlayGeometry(category: ReportCategory, landmarks: FaceLan
         ...(mouthLeft && mouthRight ? [{ x1: mouthLeft.x, y1: mouthLeft.y, x2: mouthRight.x, y2: mouthRight.y }] : []),
       ],
       points: compactPoints([forehead, nose, chin, leftEye, rightEye]),
-      label: { title: category.id === 'overall' ? 'PSL score' : 'Symmetry', value: '[ measured ]', x: Math.min(78, nose.x + 7), y: nose.y },
+      label: { title: category.id === 'overall' ? 'Overall score' : 'Symmetry', value: '[ measured ]', x: Math.min(78, nose.x + 7), y: nose.y },
     }
   }
 
@@ -2236,7 +2238,7 @@ function getLandmarkOverlayGeometry(category: ReportCategory, landmarks: FaceLan
 function getReportOverlayLabel(category: ReportCategory) {
   const labels: Record<string, { title: string; value: string; x: number; y: number }> = {
     eyes: { title: 'Eyes distance', value: '[ 3 cm ]', x: 58, y: 46 },
-    nose: { title: 'Nose axis', value: '[ centered ]', x: 58, y: 52 },
+    nose: { title: 'Nose midline', value: '[ minimal drift ]', x: 58, y: 52 },
     mouth: { title: 'Lips fullness', value: '[ 5 cm ]', x: 66, y: 62 },
     jaw: { title: 'Jaw angle', value: '[ defined ]', x: 60, y: 73 },
     dimorphism: { title: 'Dimorphism', value: '[ balanced ]', x: 59, y: 48 },
@@ -2244,7 +2246,7 @@ function getReportOverlayLabel(category: ReportCategory) {
     'facial-fat': { title: 'Soft tissue', value: '[ estimated ]', x: 59, y: 58 },
     'biological-age': { title: 'Human age', value: '[ youthful ]', x: 59, y: 55 },
     symmetry: { title: 'Symmetry', value: '[ high ]', x: 58, y: 46 },
-    overall: { title: 'PSL score', value: '[ calibrated ]', x: 58, y: 51 },
+    overall: { title: 'Overall score', value: '[ calibrated ]', x: 58, y: 51 },
   }
 
   return labels[category.id] ?? labels.overall
@@ -2330,11 +2332,11 @@ function getReportCategoryData(categoryId: string, result?: AnalysisResponse): A
 function getReportOverallScore(result?: AnalysisResponse, fallbackScore?: number | null) {
   const reportCategory = getReportCategoryData('overall', result)
   if (typeof reportCategory?.score === 'number') {
-    return Math.max(0, Math.min(8, reportCategory.score))
+    return Math.max(0, Math.min(10, reportCategory.score))
   }
 
   const score = fallbackScore ?? result?.analysis.pslScore ?? 0
-  return Math.max(0, Math.min(8, score))
+  return Math.max(0, Math.min(10, (Math.max(0, Math.min(8, score)) / 8) * 10))
 }
 
 function ReportDetailPanel({
@@ -2350,7 +2352,7 @@ function ReportDetailPanel({
   const subtitle = reportCategory?.subtitle ?? category.subtitle
   const scoreLabel = reportCategory?.scoreLabel ?? category.scoreLabel
   const features = reportCategory?.features?.length ? reportCategory.features : category.features
-  const scoreMax = category.id === 'overall' ? 8 : 10
+  const scoreMax = 10
   const explanation = reportCategory?.explanation
     ?? `${category.title} is scored from visible proportions, local symmetry, and how the feature fits the full facial frame.`
 
@@ -2410,7 +2412,7 @@ function getReportCategoryScore(categoryId: string, result?: AnalysisResponse) {
   if (!result) return 0
   const reportCategory = getReportCategoryData(categoryId, result)
   if (typeof reportCategory?.score === 'number') {
-    return Math.max(0, Math.min(categoryId === 'overall' ? 8 : 10, reportCategory.score))
+    return Math.max(0, Math.min(10, reportCategory.score))
   }
 
   const overall = result.analysis.pslScore ?? 0
@@ -2431,7 +2433,8 @@ function getReportCategoryScore(categoryId: string, result?: AnalysisResponse) {
     overall,
   }
 
-  return Math.max(0, Math.min(categoryId === 'overall' ? 8 : 10, scores[categoryId] ?? overall))
+  const fallbackScore = categoryId === 'overall' ? (Math.max(0, Math.min(8, overall)) / 8) * 10 : scores[categoryId] ?? overall
+  return Math.max(0, Math.min(10, fallbackScore))
 }
 
 function ShareSheet({
@@ -2550,7 +2553,7 @@ function ShareSheet({
       if (canShareFile && file) {
         await navigator.share({
           title: 'My Mogging report',
-          text: `PSL score ${formatShareScore(result.analysis.pslScore)} / 8`,
+          text: `Overall score ${formatShareScore(getReportOverallScore(result))} / 10`,
           files: [file],
         })
         return
@@ -2729,7 +2732,7 @@ async function shareLinkFallback(target: 'instagram' | 'tiktok' | 'native', url:
   try {
     await navigator.share({
       title: 'My Mogging report',
-      text: `PSL score ${formatShareScore(result.analysis.pslScore)} / 8`,
+      text: `Overall score ${formatShareScore(getReportOverallScore(result))} / 10`,
       url,
     })
     return true

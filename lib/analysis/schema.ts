@@ -42,13 +42,21 @@ export const reportCategorySchema = z.object({
   subtitle: z.string().min(1).max(180),
   scoreLabel: z.string().min(1).max(80),
   score: z.number().min(0).max(120),
-  features: z.array(reportFeatureSchema).min(2).max(6),
+  features: z.array(reportFeatureSchema).min(4).max(6),
   explanation: z.string().min(1).max(700),
   recommendation: z.string().min(1).max(220).optional(),
 })
 
+export const reportPotentialSchema = z.object({
+  score: z.number().min(0).max(8),
+  label: z.string().min(1).max(80),
+  summary: z.string().min(1).max(360),
+  focusAreas: z.array(z.string().min(1).max(80)).min(1).max(4),
+})
+
 export const analysisReportSchema = z.object({
   summary: z.string().min(1).max(900),
+  potential: reportPotentialSchema.optional(),
   categories: z.array(reportCategorySchema).min(11).max(11),
 })
 

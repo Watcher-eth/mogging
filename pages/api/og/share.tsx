@@ -43,7 +43,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     const category = getReportCategoryById(typeof req.query.overlay === 'string' ? req.query.overlay : 'overall')
     const geometry = getReportOverlayGeometry(category, landmarks)
     const yOffset = geometry.usesLandmarks ? 0 : getReportOverlayYOffset(category.id)
-    const pslScore = formatScore(share.analysis.pslScore)
+    const pslScore = formatScore(toDisplayScore(share.analysis.pslScore))
+    const potential = readReportPotential(share.analysis.metrics, share.analysis.pslScore)
     const tier = (share.analysis.tier || 'Facial aesthetic').toUpperCase()
 
     const image = new ImageResponse(
@@ -170,7 +171,27 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
             }}
           >
             <span style={{ fontSize: 176, fontWeight: 800, letterSpacing: '-10px' }}>{pslScore}</span>
-            <span style={{ fontSize: 70, fontWeight: 800, letterSpacing: '-4px', marginBottom: 10, marginLeft: 12 }}>/8</span>
+            <span style={{ fontSize: 70, fontWeight: 800, letterSpacing: '-4px', marginBottom: 10, marginLeft: 12 }}>/10</span>
+          </div>
+
+          <div
+            style={{
+              alignItems: 'center',
+              background: 'rgba(255,255,255,0.94)',
+              bottom: 292,
+              color: '#171717',
+              display: 'flex',
+              fontSize: 24,
+              fontWeight: 800,
+              height: 46,
+              justifyContent: 'center',
+              left: 78,
+              letterSpacing: '-0.5px',
+              padding: '0 18px',
+              position: 'absolute',
+            }}
+          >
+            POTENTIAL {potential.score}/8 · {potential.label.toUpperCase()}
           </div>
 
           <div
@@ -267,6 +288,26 @@ function absoluteImageUrl(src: string, req: NextApiRequest) {
 
 function formatScore(score: number | null) {
   return typeof score === 'number' ? score.toFixed(1) : '--'
+}
+
+function toDisplayScore(score: number | null) {
+  return typeof score === 'number' ? Math.max(0, Math.min(10, (Math.max(0, Math.min(8, score)) / 8) * 10)) : null
+}
+
+function readReportPotential(metrics: unknown, pslScore: number | null) {
+  const report = metrics && typeof metrics === 'object' ? (metrics as Record<string, unknown>).report : null
+  const potential = report && typeof report === 'object' ? (report as Record<string, unknown>).potential : null
+  const score = potential && typeof potential === 'object' && typeof (potential as Record<string, unknown>).score === 'number'
+    ? Math.max(0, Math.min(8, Math.round(((potential as Record<string, number>).score) * 10) / 10))
+    : Math.max(0, Math.min(8, Math.round(((pslScore ?? 5) + 0.7) * 10) / 10))
+  const label = potential && typeof potential === 'object' && typeof (potential as Record<string, unknown>).label === 'string'
+    ? (potential as Record<string, string>).label
+    : 'Clear upside'
+
+  return {
+    score: score.toFixed(1),
+    label,
+  }
 }
 
 function percentX(value: number) {

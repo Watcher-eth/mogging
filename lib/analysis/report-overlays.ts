@@ -58,7 +58,7 @@ export const reportCategories: ReportCategory[] = [
       { label: 'Canthal tilt', value: 'Positive' },
       { label: 'Spacing', value: 'Balanced' },
       { label: 'Upper lid', value: 'Defined' },
-      { label: 'Symmetry', value: 'High' },
+      { label: 'Periocular match', value: 'strong signal' },
     ],
     overlayPoints: [{ x: 34, y: 39 }, { x: 46, y: 38 }, { x: 56, y: 38 }, { x: 68, y: 39 }],
     overlayLines: [{ x1: 30, y1: 40, x2: 72, y2: 39 }],
@@ -70,9 +70,9 @@ export const reportCategories: ReportCategory[] = [
     scoreLabel: 'Nasal balance',
     features: [
       { label: 'Bridge', value: 'Straight' },
-      { label: 'Tip position', value: 'Centered' },
+      { label: 'Midline drift', value: 'minimal drift' },
       { label: 'Width', value: 'Moderate' },
-      { label: 'Projection', value: 'Clean' },
+      { label: 'Bridge projection', value: 'clear contour' },
     ],
     overlayPoints: [{ x: 51, y: 42 }, { x: 51, y: 52 }, { x: 51, y: 61 }],
     overlayLines: [{ x1: 51, y1: 36, x2: 51, y2: 64 }],
@@ -100,18 +100,18 @@ export const reportCategories: ReportCategory[] = [
       { label: 'Gonial angle', value: 'Defined' },
       { label: 'Chin height', value: 'Strong' },
       { label: 'Mandible', value: 'Clear' },
-      { label: 'Neck transition', value: 'Clean' },
+      { label: 'Neck transition', value: 'clear contour' },
     ],
     overlayPoints: [{ x: 33, y: 72 }, { x: 50, y: 79 }, { x: 68, y: 72 }],
     overlayLines: [{ x1: 31, y1: 70, x2: 50, y2: 80 }, { x1: 50, y1: 80, x2: 70, y2: 70 }],
   },
   {
     id: 'overall',
-    title: 'Overall PSL',
+    title: 'Overall',
     subtitle: 'Final calibrated PSL assessment',
-    scoreLabel: 'PSL score',
+    scoreLabel: 'Overall score',
     features: [
-      { label: 'Harmony', value: 'High' },
+      { label: 'Harmony', value: 'strong signal' },
       { label: 'Structure', value: 'Strong' },
       { label: 'Balance', value: 'Consistent' },
       { label: 'Percentile', value: 'Upper range' },
@@ -199,7 +199,7 @@ function getLandmarkOverlayGeometry(category: ReportCategory, landmarks: FaceLan
       boxes: [{ ...boxFromPoints([bridge, tip], 5, 3), dashed: true }],
       lines: [{ x1: bridge.x, y1: bridge.y - 4, x2: tip.x, y2: tip.y + 3 }],
       points: [bridge, tip],
-      label: { title: 'Nose axis', value: '[ centered ]', x: Math.min(78, tip.x + 6), y: tip.y },
+      label: { title: 'Nose midline', value: '[ minimal drift ]', x: Math.min(78, tip.x + 6), y: tip.y },
     }
   }
 
@@ -255,7 +255,7 @@ function getLandmarkOverlayGeometry(category: ReportCategory, landmarks: FaceLan
 function getReportOverlayLabel(category: ReportCategory) {
   const labels: Record<string, ReportOverlayLabel> = {
     eyes: { title: 'Eyes distance', value: '[ 3 cm ]', x: 58, y: 46 },
-    nose: { title: 'Nose axis', value: '[ centered ]', x: 58, y: 52 },
+    nose: { title: 'Nose midline', value: '[ minimal drift ]', x: 58, y: 52 },
     mouth: { title: 'Lips fullness', value: '[ 5 cm ]', x: 66, y: 62 },
     jaw: { title: 'Jaw angle', value: '[ defined ]', x: 60, y: 73 },
     overall: { title: 'PSL score', value: '[ calibrated ]', x: 58, y: 51 },

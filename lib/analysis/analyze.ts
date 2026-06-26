@@ -188,7 +188,7 @@ export async function analyzeAndSave(input: AnalyzeAndSaveInput) {
   })
   const result = providerResult.result
   const pslScore = computePslScore(result)
-  const report = normalizeAnalysisReport(result.report, pslScore) ?? createFallbackAnalysisReport(result, pslScore)
+  const report = normalizeAnalysisReport(result.report, pslScore, result) ?? createFallbackAnalysisReport(result, pslScore)
   const analysisResult = await saveAnalysisResult({
     photoId: photoResult.photo.id,
     status: 'complete',
@@ -388,7 +388,7 @@ function createTransientAnalysisResult(
 
   const result = providerResult.result
   const pslScore = computePslScore(result)
-  const report = normalizeAnalysisReport(result.report, pslScore) ?? createFallbackAnalysisReport(result, pslScore)
+  const report = normalizeAnalysisReport(result.report, pslScore, result) ?? createFallbackAnalysisReport(result, pslScore)
 
   return {
     photo,

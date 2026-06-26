@@ -33,7 +33,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     const share = await getShareByToken(token)
     const landmarks = parseFaceLandmarksPayload(share.analysis.landmarks)
     const imageUrl = absoluteImageUrl(share.photo.imageUrl, req)
-    const pslScore = formatScore(share.analysis.pslScore)
+    const pslScore = formatScore(toDisplayScore(share.analysis.pslScore))
     const eyeOverlay = getEyeOverlay(landmarks, share.analysis.pslScore)
     const symmetryOverlay = getSymmetryOverlay(landmarks)
     const displayName = (share.photo.name || share.owner?.name || 'Mogging report').toUpperCase()
@@ -249,7 +249,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
             >
               <span style={{ fontSize: 118, fontWeight: 800, letterSpacing: '-8px' }}>{pslScore}</span>
               <span style={{ fontSize: 48, fontWeight: 800, letterSpacing: '-3px', marginBottom: 6, marginLeft: 10 }}>
-                /8
+                /10
               </span>
             </div>
             <div
@@ -317,6 +317,10 @@ function formatScore(score: number | null) {
   return typeof score === 'number' ? score.toFixed(1) : '--'
 }
 
+function toDisplayScore(score: number | null) {
+  return typeof score === 'number' ? Math.max(0, Math.min(10, (Math.max(0, Math.min(8, score)) / 8) * 10)) : null
+}
+
 function formatMetric(score: number | null) {
   return typeof score === 'number' ? score.toFixed(1) : '--'
 }
@@ -348,7 +352,8 @@ function getEyeOverlay(landmarks: FaceLandmarksPayload | null, pslScore: number 
   const leftBox = boxFromPoints([leftOuter, leftInner, leftPupil], 18, 22)
   const rightBox = boxFromPoints([rightInner, rightOuter, rightPupil], 18, 22)
   const bridgeBox = boxFromPoints([leftInner, rightInner], 10, 32)
-  const scoreLabel = typeof pslScore === 'number' ? `${pslScore.toFixed(1)} / 8` : 'MEASURED'
+  const displayScore = toDisplayScore(pslScore)
+  const scoreLabel = typeof displayScore === 'number' ? `${displayScore.toFixed(1)} / 10` : 'MEASURED'
 
   return {
     leftBox,
