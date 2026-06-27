@@ -43,7 +43,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     const category = getReportCategoryById(typeof req.query.overlay === 'string' ? req.query.overlay : 'overall')
     const geometry = getReportOverlayGeometry(category, landmarks)
     const yOffset = geometry.usesLandmarks ? 0 : getReportOverlayYOffset(category.id)
-    const pslScore = formatScore(toDisplayScore(share.analysis.pslScore))
+    const pslDisplayScore = toDisplayScore(share.analysis.pslScore)
+    const pslScore = formatScore(pslDisplayScore)
     const potential = readReportPotential(share.analysis.metrics, share.analysis.pslScore)
     const tier = (share.analysis.tier || 'Facial aesthetic').toUpperCase()
 
@@ -165,33 +166,15 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
               alignItems: 'flex-end',
               bottom: 164,
               display: 'flex',
+              justifyContent: 'space-between',
               left: 78,
               lineHeight: 0.82,
               position: 'absolute',
+              right: 78,
             }}
           >
-            <span style={{ fontSize: 176, fontWeight: 800, letterSpacing: '-10px' }}>{pslScore}</span>
-            <span style={{ fontSize: 70, fontWeight: 800, letterSpacing: '-4px', marginBottom: 10, marginLeft: 12 }}>/10</span>
-          </div>
-
-          <div
-            style={{
-              alignItems: 'center',
-              background: 'rgba(255,255,255,0.94)',
-              bottom: 292,
-              color: '#171717',
-              display: 'flex',
-              fontSize: 24,
-              fontWeight: 800,
-              height: 46,
-              justifyContent: 'center',
-              left: 78,
-              letterSpacing: '-0.5px',
-              padding: '0 18px',
-              position: 'absolute',
-            }}
-          >
-            POTENTIAL {potential.score}/8 · {potential.label.toUpperCase()}
+            <ScoreBlock align="left" label="PSL SCORE" score={pslScore} />
+            <ScoreBlock align="right" label="POTENTIAL" score={potential.score} />
           </div>
 
           <div
@@ -278,6 +261,24 @@ function ReportOverlaySvg({
   )
 }
 
+function ScoreBlock({ align, label, score }: { align: 'left' | 'right'; label: string; score: string }) {
+  return (
+    <div
+      style={{
+        alignItems: align === 'right' ? 'flex-end' : 'flex-start',
+        display: 'flex',
+        flexDirection: 'column',
+      }}
+    >
+      <span style={{ fontSize: 25, fontWeight: 800, letterSpacing: '1.3px', marginBottom: 18, opacity: 0.86 }}>{label}</span>
+      <div style={{ alignItems: 'flex-end', display: 'flex' }}>
+        <span style={{ fontSize: 176, fontWeight: 800, letterSpacing: '-10px' }}>{score}</span>
+        <span style={{ fontSize: 70, fontWeight: 800, letterSpacing: '-4px', marginBottom: 10, marginLeft: 12 }}>/10</span>
+      </div>
+    </div>
+  )
+}
+
 function absoluteImageUrl(src: string, req: NextApiRequest) {
   if (/^https?:\/\//i.test(src)) return src
 
@@ -297,15 +298,20 @@ function toDisplayScore(score: number | null) {
 function readReportPotential(metrics: unknown, pslScore: number | null) {
   const report = metrics && typeof metrics === 'object' ? (metrics as Record<string, unknown>).report : null
   const potential = report && typeof report === 'object' ? (report as Record<string, unknown>).potential : null
-  const score = potential && typeof potential === 'object' && typeof (potential as Record<string, unknown>).score === 'number'
+  const rawPotentialScore = potential && typeof potential === 'object' && typeof (potential as Record<string, unknown>).score === 'number'
     ? Math.max(0, Math.min(8, Math.round(((potential as Record<string, number>).score) * 10) / 10))
     : Math.max(0, Math.min(8, Math.round(((pslScore ?? 5) + 0.7) * 10) / 10))
+  const pslDisplayScore = toDisplayScore(pslScore)
+  const potentialDisplayScore = toDisplayScore(rawPotentialScore)
+  const score = potentialDisplayScore === null
+    ? null
+    : Math.min(10, Math.max(potentialDisplayScore, (pslDisplayScore ?? 0) + 0.2))
   const label = potential && typeof potential === 'object' && typeof (potential as Record<string, unknown>).label === 'string'
     ? (potential as Record<string, string>).label
     : 'Clear upside'
 
   return {
-    score: score.toFixed(1),
+    score: formatScore(score),
     label,
   }
 }
