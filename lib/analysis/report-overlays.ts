@@ -12,6 +12,12 @@ export type ReportOverlayLine = {
   y2: number
 }
 
+export type ReportOverlayPolyline = {
+  points: ReportOverlayPoint[]
+  closed?: boolean
+  dashed?: boolean
+}
+
 export type ReportGuideBox = {
   x: number
   y: number
@@ -43,6 +49,7 @@ export type ReportCategory = {
 export type ReportOverlayGeometry = {
   boxes: ReportGuideBox[]
   lines: ReportOverlayLine[]
+  polylines: ReportOverlayPolyline[]
   points: ReportOverlayPoint[]
   label: ReportOverlayLabel
   usesLandmarks: boolean
@@ -134,6 +141,7 @@ export function getReportOverlayGeometry(category: ReportCategory, landmarks: Fa
   return {
     boxes: getReportGuideBoxes(category),
     lines: category.overlayLines,
+    polylines: getReportFallbackPolylines(category),
     points: category.overlayPoints,
     label: getReportOverlayLabel(category),
     usesLandmarks: false,
@@ -157,10 +165,27 @@ function getReportGuideBoxes(category: ReportCategory) {
     ]
   }
 
-  if (category.id === 'mouth') return [{ x: 39, y: 61, width: 25, height: 9 }]
   if (category.id === 'nose') return [{ x: 45, y: 39, width: 12, height: 24, dashed: true }]
 
   return []
+}
+
+function getReportFallbackPolylines(category: ReportCategory): ReportOverlayPolyline[] {
+  if (category.id !== 'mouth') return []
+
+  return [{
+    closed: true,
+    points: [
+      { x: 40, y: 66 },
+      { x: 45, y: 64.2 },
+      { x: 51, y: 64.8 },
+      { x: 57, y: 64.2 },
+      { x: 63, y: 66 },
+      { x: 58, y: 68.9 },
+      { x: 51, y: 69.8 },
+      { x: 44, y: 68.9 },
+    ],
+  }]
 }
 
 function getLandmarkOverlayGeometry(category: ReportCategory, landmarks: FaceLandmarksPayload) {
@@ -185,6 +210,7 @@ function getLandmarkOverlayGeometry(category: ReportCategory, landmarks: FaceLan
     return {
       boxes: [leftBox, rightBox, { ...bridgeBox, dashed: true }],
       lines: [{ x1: leftOuter.x, y1: leftOuter.y, x2: rightOuter.x, y2: rightOuter.y }],
+      polylines: [],
       points: eyePoints,
       label: { title: 'Eyes distance', value: '[ measured ]', x: Math.min(78, rightInner.x + 4), y: rightInner.y + 7 },
     }
@@ -198,6 +224,7 @@ function getLandmarkOverlayGeometry(category: ReportCategory, landmarks: FaceLan
     return {
       boxes: [{ ...boxFromPoints([bridge, tip], 5, 3), dashed: true }],
       lines: [{ x1: bridge.x, y1: bridge.y - 4, x2: tip.x, y2: tip.y + 3 }],
+      polylines: [],
       points: [bridge, tip],
       label: { title: 'Nose midline', value: '[ minimal drift ]', x: Math.min(78, tip.x + 6), y: tip.y },
     }
@@ -207,12 +234,18 @@ function getLandmarkOverlayGeometry(category: ReportCategory, landmarks: FaceLan
     const left = toPercentPoint(anchors.mouthLeft)
     const right = toPercentPoint(anchors.mouthRight)
     const center = toPercentPoint(anchors.mouthCenter)
+    const upper = toPercentPoint(anchors.upperLip)
+    const lower = toPercentPoint(anchors.lowerLip)
+    const contour = compactPoints((landmarks.contours?.mouth ?? []).map(toPercentPoint))
     if (!left || !right) return null
 
+    const outlinePoints = contour.length >= 8 ? contour : compactPoints([left, upper, right, lower])
+
     return {
-      boxes: [boxFromPoints([left, right], 5, 5)],
+      boxes: [],
       lines: [{ x1: left.x, y1: left.y, x2: right.x, y2: right.y }],
-      points: compactPoints([left, center, right]),
+      polylines: outlinePoints.length >= 4 ? [{ points: outlinePoints, closed: true }] : [],
+      points: compactPoints([left, upper, center, lower, right]),
       label: { title: 'Lips fullness', value: '[ measured ]', x: Math.min(78, right.x + 4), y: right.y - 1 },
     }
   }
@@ -226,6 +259,7 @@ function getLandmarkOverlayGeometry(category: ReportCategory, landmarks: FaceLan
     return {
       boxes: [],
       lines: [{ x1: left.x, y1: left.y, x2: chin.x, y2: chin.y }, { x1: chin.x, y1: chin.y, x2: right.x, y2: right.y }],
+      polylines: [],
       points: [left, chin, right],
       label: { title: 'Jaw angle', value: '[ measured ]', x: Math.min(78, right.x + 2), y: right.y },
     }
@@ -247,8 +281,9 @@ function getLandmarkOverlayGeometry(category: ReportCategory, landmarks: FaceLan
       ...(leftEye && rightEye ? [{ x1: leftEye.x, y1: leftEye.y, x2: rightEye.x, y2: rightEye.y }] : []),
       ...(mouthLeft && mouthRight ? [{ x1: mouthLeft.x, y1: mouthLeft.y, x2: mouthRight.x, y2: mouthRight.y }] : []),
     ],
+    polylines: [],
     points: compactPoints([forehead, nose, chin, leftEye, rightEye]),
-    label: { title: 'PSL score', value: '[ calibrated ]', x: Math.min(78, nose.x + 7), y: nose.y },
+    label: { title: 'Total score', value: '[ measured ]', x: Math.min(78, nose.x + 7), y: nose.y },
   }
 }
 
@@ -258,7 +293,7 @@ function getReportOverlayLabel(category: ReportCategory) {
     nose: { title: 'Nose midline', value: '[ minimal drift ]', x: 58, y: 52 },
     mouth: { title: 'Lips fullness', value: '[ 5 cm ]', x: 66, y: 62 },
     jaw: { title: 'Jaw angle', value: '[ defined ]', x: 60, y: 73 },
-    overall: { title: 'PSL score', value: '[ calibrated ]', x: 58, y: 51 },
+    overall: { title: 'Total score', value: '[ measured ]', x: 58, y: 51 },
   }
 
   return labels[category.id] ?? labels.overall
