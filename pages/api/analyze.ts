@@ -9,6 +9,7 @@ import { enforceRateLimit } from '@/lib/api/rateLimit'
 import { hairColorSchema, normalizeApparentAge, skinColorSchema } from '@/lib/appearance/types'
 import { db, schema } from '@/lib/db'
 import { env } from '@/lib/env'
+import { assertEvaluationEntitlement, consumeEvaluationEntitlement } from '@/lib/payments/entitlements'
 import { createAnalysisShare } from '@/lib/sharing/service'
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
@@ -34,8 +35,16 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     if (env.AUTH_REQUIRED && !session?.user?.id) {
       throw new ApiError(401, 'Authentication required')
     }
-
+    const mobileInstallId = readMobileInstallId(req)
     const anonymousActorId = session?.user?.id ? null : getOrSetAnonymousActorId(req, res)
+    if (env.PAID_ANALYSIS_REQUIRED && mobileInstallId) {
+      await assertEvaluationEntitlement({
+        mobileInstallId,
+        userId: session?.user?.id ?? null,
+        anonymousActorId,
+      })
+    }
+
     const [anonymousProfile, userProfile] = await Promise.all([
       anonymousActorId ? getAnonymousProfile(anonymousActorId) : null,
       session?.user?.id
@@ -74,6 +83,14 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
             ownerAnonymousActorId: anonymousActorId,
           })
         : null
+    const entitlements =
+      env.PAID_ANALYSIS_REQUIRED && mobileInstallId && result.analysis.status === 'complete'
+        ? await consumeEvaluationEntitlement({
+            mobileInstallId,
+            userId: session?.user?.id ?? null,
+            anonymousActorId,
+          })
+        : null
 
     console.info('analyze:finish', {
       requestId,
@@ -83,10 +100,12 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       failureReason: result.analysis.failureReason ?? null,
       pslScore: result.analysis.pslScore ?? null,
       shareToken: shareResult?.share.token ?? null,
+      mobileInstallId,
     })
 
     return json(res, result.deduped ? 200 : 201, {
       ...result,
+      entitlements,
       share: shareResult?.share
         ? {
             token: shareResult.share.token,
@@ -102,6 +121,14 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     })
     return handleApiError(error, res)
   }
+}
+
+function readMobileInstallId(req: NextApiRequest) {
+  const header = req.headers['x-mogging-mobile-install-id']
+  const value = Array.isArray(header) ? header[0] : header
+  if (!value) return null
+  const trimmed = value.trim()
+  return trimmed.length >= 8 && trimmed.length <= 120 ? trimmed : null
 }
 
 async function createDefaultShare({

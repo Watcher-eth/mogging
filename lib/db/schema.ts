@@ -23,6 +23,15 @@ export const photoSetTypeEnum = pgEnum('photo_set_type', ['single', 'before_afte
 export const analysisStatusEnum = pgEnum('analysis_status', ['pending', 'processing', 'complete', 'failed'])
 export const ratingAlgorithmEnum = pgEnum('rating_algorithm', ['trueskill_v1'])
 
+export type PaymentProduct =
+  | 'evaluation'
+  | 'evaluation_pack_3'
+  | 'mobile_subscription_weekly'
+  | 'mobile_subscription_monthly'
+  | 'mobile_subscription_yearly'
+  | 'mobile_lifetime'
+  | 'extra_potential_image'
+
 export const users = pgTable(
   'users',
   {
@@ -333,6 +342,43 @@ export const siteStats = pgTable('site_stats', {
   updatedAt: timestamp('updated_at', { mode: 'date' }).notNull().defaultNow(),
 })
 
+export const paymentEntitlements = pgTable(
+  'payment_entitlements',
+  {
+    id: text('id')
+      .primaryKey()
+      .$defaultFn(() => crypto.randomUUID()),
+    mobileInstallId: text('mobile_install_id').notNull(),
+    userId: text('user_id').references(() => users.id, { onDelete: 'cascade' }),
+    anonymousActorId: text('anonymous_actor_id'),
+    stripeCheckoutSessionId: text('stripe_checkout_session_id').notNull(),
+    stripeCustomerId: text('stripe_customer_id'),
+    stripeSubscriptionId: text('stripe_subscription_id'),
+    stripePaymentIntentId: text('stripe_payment_intent_id'),
+    product: text('product').$type<PaymentProduct>().notNull(),
+    creditBalance: integer('credit_balance').notNull().default(0),
+    subscriptionStatus: text('subscription_status'),
+    currentPeriodEnd: timestamp('current_period_end', { mode: 'date' }),
+    source: text('source'),
+    metadata: jsonb('metadata').$type<Record<string, unknown>>().notNull().default({}),
+    createdAt: timestamp('created_at', { mode: 'date' }).notNull().defaultNow(),
+    updatedAt: timestamp('updated_at', { mode: 'date' }).notNull().defaultNow(),
+  },
+  (table) => ({
+    mobileInstallIdx: index('payment_entitlements_mobile_install_id_idx').on(table.mobileInstallId),
+    userIdx: index('payment_entitlements_user_id_idx').on(table.userId),
+    anonymousActorIdx: index('payment_entitlements_anonymous_actor_id_idx').on(table.anonymousActorId),
+    sessionIdx: uniqueIndex('payment_entitlements_checkout_session_unique').on(table.stripeCheckoutSessionId),
+    paymentIntentIdx: index('payment_entitlements_payment_intent_id_idx').on(table.stripePaymentIntentId),
+  })
+)
+
+export const stripeWebhookEvents = pgTable('stripe_webhook_events', {
+  id: text('id').primaryKey(),
+  type: text('type').notNull(),
+  createdAt: timestamp('created_at', { mode: 'date' }).notNull().defaultNow(),
+})
+
 export const usersRelations = relations(users, ({ many }) => ({
   accounts: many(accounts),
   sessions: many(sessions),
@@ -340,6 +386,14 @@ export const usersRelations = relations(users, ({ many }) => ({
   photoSets: many(photoSets),
   personGroups: many(personGroups),
   analysisShares: many(analysisShares),
+  paymentEntitlements: many(paymentEntitlements),
+}))
+
+export const paymentEntitlementsRelations = relations(paymentEntitlements, ({ one }) => ({
+  user: one(users, {
+    fields: [paymentEntitlements.userId],
+    references: [users.id],
+  }),
 }))
 
 export const accountsRelations = relations(accounts, ({ one }) => ({

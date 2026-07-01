@@ -11,7 +11,14 @@ type CheckoutResponse = {
   url: string
 }
 
-type BillingTier = 'monthly' | 'yearly'
+type FunnelProduct =
+  | 'evaluation'
+  | 'evaluation_pack_3'
+  | 'mobile_subscription_weekly'
+  | 'mobile_subscription_monthly'
+  | 'mobile_subscription_yearly'
+  | 'mobile_lifetime'
+  | 'extra_potential_image'
 
 const appStoreUrl = process.env.NEXT_PUBLIC_IOS_APP_STORE_URL || 'https://apps.apple.com/app/id6771414050'
 const baseDeepLink = process.env.NEXT_PUBLIC_APP_DEEP_LINK || 'mogging://reports'
@@ -19,51 +26,95 @@ const subscriptionStorageKey = 'mogging:web2app:subscription'
 const installClickedStorageKey = 'mogging:web2app:install-clicked'
 
 const tiers: Array<{
-  id: BillingTier
+  id: FunnelProduct
   label: string
   price: string
   cadence: string
   note: string
+  badge?: string
 }> = [
   {
-    id: 'monthly',
-    label: 'Monthly',
-    price: '$9.99',
-    cadence: '/month',
-    note: 'Start now, cancel when you want.',
+    id: 'evaluation',
+    label: 'Single',
+    price: '$4.99',
+    cadence: '/evaluation',
+    note: 'One private evaluation credit.',
+    badge: 'Web only',
   },
   {
-    id: 'yearly',
-    label: 'Yearly',
-    price: '$59.99',
+    id: 'evaluation_pack_3',
+    label: '3 Pack',
+    price: '$9.99',
+    cadence: '/3 evaluations',
+    note: 'Best for testing multiple photos.',
+    badge: 'Web only',
+  },
+  {
+    id: 'mobile_subscription_weekly',
+    label: 'Weekly Pro',
+    price: '$4.99',
+    cadence: '/week',
+    note: 'Full Pro access with a lower entry point.',
+  },
+  {
+    id: 'mobile_subscription_monthly',
+    label: 'Monthly Pro',
+    price: '$9.99',
+    cadence: '/month',
+    note: 'Regular evaluations and member extras.',
+  },
+  {
+    id: 'mobile_subscription_yearly',
+    label: 'Yearly Pro',
+    price: '$49.99',
     cadence: '/year',
     note: 'Best value for progress tracking.',
+  },
+  {
+    id: 'mobile_lifetime',
+    label: 'Lifetime',
+    price: '$49.99',
+    cadence: 'one-time',
+    note: 'Lifetime Pro access.',
+  },
+  {
+    id: 'extra_potential_image',
+    label: 'Potential',
+    price: '$4.99',
+    cadence: '/extra',
+    note: 'One potential-image generation extra.',
   },
 ]
 
 export default function AppFunnelPage() {
   const router = useRouter()
-  const [selectedTier, setSelectedTier] = useState<BillingTier>('yearly')
+  const [selectedProduct, setSelectedProduct] = useState<FunnelProduct>('evaluation')
   const [checkoutLoading, setCheckoutLoading] = useState(false)
   const [paid, setPaid] = useState(false)
   const [installClicked, setInstallClicked] = useState(false)
   const [openingApp, setOpeningApp] = useState(false)
   const source = useMemo(() => getSource(router.query.source, router.query.utm_source), [router.query.source, router.query.utm_source])
+  const installId = useMemo(() => firstQueryValue(router.query.install_id) || null, [router.query.install_id])
+  const sessionId = useMemo(() => firstQueryValue(router.query.session_id) || null, [router.query.session_id])
   const deepLink = useMemo(() => {
+    const deepLinkBase = installId ? 'mogging://generating' : baseDeepLink
     const params = new URLSearchParams({
       source,
-      tier: selectedTier,
+      product: selectedProduct,
       flow: 'web2app',
     })
+    if (installId) params.set('install_id', installId)
+    if (sessionId) params.set('session_id', sessionId)
+    if (router.query.checkout === 'success') params.set('checkout', 'success')
 
-    return `${baseDeepLink}${baseDeepLink.includes('?') ? '&' : '?'}${params.toString()}`
-  }, [selectedTier, source])
+    return `${deepLinkBase}${deepLinkBase.includes('?') ? '&' : '?'}${params.toString()}`
+  }, [installId, router.query.checkout, selectedProduct, sessionId, source])
 
   useEffect(() => {
     if (!router.isReady) return
 
-    const tier = router.query.tier === 'monthly' || router.query.tier === 'yearly' ? router.query.tier : null
-    if (tier) setSelectedTier(tier)
+    const product = readProduct(router.query.product)
+    if (product) setSelectedProduct(product)
 
     const storedSubscription = window.localStorage.getItem(subscriptionStorageKey)
     const storedInstallClicked = window.localStorage.getItem(installClickedStorageKey) === 'true'
@@ -71,13 +122,14 @@ export default function AppFunnelPage() {
 
     if (checkoutSucceeded) {
       window.localStorage.setItem(subscriptionStorageKey, JSON.stringify({
-        tier: tier || selectedTier,
+        product: product || selectedProduct,
         sessionId: typeof router.query.session_id === 'string' ? router.query.session_id : null,
+        installId,
         source,
         completedAt: new Date().toISOString(),
       }))
       setPaid(true)
-      toast.success('Subscription confirmed. Install the app to continue.')
+      toast.success('Purchase confirmed. Open the app to claim access.')
     } else {
       setPaid(Boolean(storedSubscription))
     }
@@ -87,13 +139,19 @@ export default function AppFunnelPage() {
     if (router.query.checkout === 'cancelled') {
       toast.error('Checkout was cancelled. Pick a plan when you are ready.')
     }
-  }, [router.isReady, router.query.checkout, router.query.session_id, router.query.tier, selectedTier, source])
+  }, [installId, router.isReady, router.query.checkout, router.query.product, router.query.session_id, selectedProduct, source])
 
-  async function startCheckout() {
+  async function startWebCheckout() {
+    if (!installId) {
+      toast.error('Open this checkout from the Mogging app so we can attach the purchase to your device.')
+      return
+    }
+
     setCheckoutLoading(true)
     try {
-      const response = await apiPost<CheckoutResponse>('/api/payments/mobile-subscription', {
-        tier: selectedTier,
+      const response = await apiPost<CheckoutResponse>('/api/payments/web-checkout', {
+        product: selectedProduct,
+        mobileInstallId: installId,
         source,
       })
       window.location.href = response.url
@@ -143,18 +201,18 @@ export default function AppFunnelPage() {
             <div className="border-b border-zinc-200 pb-8">
               <p className="font-mono text-[11px] font-bold uppercase tracking-normal text-zinc-500">TikTok / Instagram mobile funnel //</p>
               <h1 className="mt-5 max-w-4xl text-[4rem] font-semibold leading-[0.84] tracking-[-0.075em] text-black sm:text-[7rem] lg:text-[8.5rem]">
-                Get your score in the app.
+                Buy on web. Use in app.
               </h1>
               <p className="mt-6 max-w-2xl text-lg leading-7 text-zinc-500 sm:text-xl sm:leading-8">
-                Subscribe once on the web, install Mogging from the App Store, then return here and open directly into the mobile app.
+                Purchase evaluation credits, Pro access, or extras on mogging.com, then claim them inside the mobile app.
               </p>
             </div>
 
             <div className="grid gap-3 sm:grid-cols-3">
               {[
-                ['01', 'Pick a plan', 'Monthly or yearly subscription checkout.'],
-                ['02', 'Install app', 'The next button sends you to the App Store.'],
-                ['03', 'Open Mogging', 'Return here and launch the app with a deep link.'],
+                ['01', 'Pick access', 'Web-only credits, Pro, or extras.'],
+                ['02', 'Pay on web', 'Stripe checkout keeps attribution clean.'],
+                ['03', 'Open app', 'Claim access through the app deep link.'],
               ].map(([step, title, copy]) => (
                 <div key={step} className="min-h-36 border border-zinc-200 bg-white p-4">
                   <p className="font-mono text-[10px] font-bold uppercase text-zinc-500">[ {step} ]</p>
@@ -174,8 +232,8 @@ export default function AppFunnelPage() {
             <div className="border border-zinc-200 bg-white p-5 sm:p-6">
               <div className="flex items-start justify-between gap-4">
                 <div>
-                  <p className="font-mono text-[10px] font-bold uppercase text-zinc-500">Mogging Pro</p>
-                  <h2 className="mt-3 text-4xl font-semibold leading-none tracking-[-0.065em]">Mobile access</h2>
+                  <p className="font-mono text-[10px] font-bold uppercase text-zinc-500">Mogging checkout</p>
+                  <h2 className="mt-3 text-4xl font-semibold leading-none tracking-[-0.065em]">App access</h2>
                 </div>
                 <span className="grid size-12 place-items-center border border-zinc-200 bg-black text-white">
                   <Smartphone className="size-5" aria-hidden="true" />
@@ -184,12 +242,12 @@ export default function AppFunnelPage() {
 
               <div className="mt-7 grid gap-3">
                 {tiers.map((tier) => {
-                  const active = selectedTier === tier.id
+                  const active = selectedProduct === tier.id
                   return (
                     <button
                       key={tier.id}
                       type="button"
-                      onClick={() => setSelectedTier(tier.id)}
+                      onClick={() => setSelectedProduct(tier.id)}
                       className={cn(
                         'group grid min-h-24 grid-cols-[1fr_auto] items-center gap-4 border bg-white p-4 text-left transition duration-200 active:scale-[0.985]',
                         active ? 'border-black shadow-[inset_0_0_0_1px_#000]' : 'border-zinc-200 hover:border-zinc-400'
@@ -197,6 +255,7 @@ export default function AppFunnelPage() {
                     >
                       <span>
                         <span className="block font-mono text-[10px] font-bold uppercase text-zinc-500">{tier.label}</span>
+                        {tier.badge ? <span className="mt-2 inline-block border border-zinc-200 px-2 py-1 font-mono text-[10px] font-bold uppercase text-zinc-500">{tier.badge}</span> : null}
                         <span className="mt-2 block text-sm text-zinc-500">{tier.note}</span>
                       </span>
                       <span className="text-right">
@@ -209,7 +268,7 @@ export default function AppFunnelPage() {
               </div>
 
               <div className="mt-6 space-y-3 border-y border-zinc-200 py-5">
-                {['Private mobile reports', 'Face comparison and progress tracking', 'Share graphics and score overlays'].map((item) => (
+                {['Web-only single and 3-pack reports', 'Weekly, monthly, yearly, and lifetime Pro', 'Extras claimable inside the app'].map((item) => (
                   <div key={item} className="flex items-center gap-3 text-sm font-medium text-zinc-700">
                     <Check className="size-4 text-black" aria-hidden="true" />
                     <span>{item}</span>
@@ -219,12 +278,12 @@ export default function AppFunnelPage() {
 
               <button
                 type="button"
-                onClick={paid && installClicked ? openInstalledApp : paid ? openAppStore : startCheckout}
+                onClick={paid && installClicked ? openInstalledApp : paid ? openAppStore : installId ? startWebCheckout : openAppStore}
                 disabled={checkoutLoading || openingApp}
                 className="mt-6 flex h-14 w-full items-center justify-center gap-2 bg-black px-5 text-sm font-semibold text-white transition duration-200 hover:bg-zinc-800 active:scale-[0.985] disabled:cursor-not-allowed disabled:opacity-60"
               >
                 {checkoutLoading || openingApp ? <Loader2 className="size-4 animate-spin" aria-hidden="true" /> : paid ? <Sparkles className="size-4" aria-hidden="true" /> : <ShieldCheck className="size-4" aria-hidden="true" />}
-                {paid && installClicked ? 'Open in app' : paid ? 'Install from App Store' : `Continue ${selectedTier}`}
+                {paid && installClicked ? 'Open in app' : paid ? 'Install from App Store' : `Continue ${selectedProductLabel(selectedProduct)}`}
               </button>
 
               {paid ? (
@@ -240,7 +299,7 @@ export default function AppFunnelPage() {
               <p className="mt-4 text-center text-xs leading-5 text-zinc-500">
                 {paid
                   ? 'After installing, come back to this page and the primary button will open Mogging directly.'
-                  : 'Secure checkout is handled by Stripe. App access starts after subscription checkout.'}
+                  : installId ? 'Secure checkout is handled by Stripe. App access is claimed when you return to Mogging.' : 'Open this page from the app to attach purchases to your install.'}
               </p>
             </div>
           </motion.aside>
@@ -259,4 +318,27 @@ function getSource(source: string | string[] | undefined, utmSource: string | st
 
 function firstQueryValue(value: string | string[] | undefined) {
   return Array.isArray(value) ? value[0] : value
+}
+
+function readProduct(value: string | string[] | undefined): FunnelProduct | null {
+  const product = firstQueryValue(value)
+  return product === 'evaluation' ||
+    product === 'evaluation_pack_3' ||
+    product === 'mobile_subscription_weekly' ||
+    product === 'mobile_subscription_monthly' ||
+    product === 'mobile_subscription_yearly' ||
+    product === 'mobile_lifetime' ||
+    product === 'extra_potential_image'
+    ? product
+    : null
+}
+
+function selectedProductLabel(product: FunnelProduct) {
+  if (product === 'evaluation') return 'single evaluation'
+  if (product === 'evaluation_pack_3') return '3 pack'
+  if (product === 'mobile_subscription_weekly') return 'weekly Pro'
+  if (product === 'mobile_subscription_monthly') return 'monthly Pro'
+  if (product === 'mobile_subscription_yearly') return 'yearly Pro'
+  if (product === 'mobile_lifetime') return 'lifetime Pro'
+  return 'potential extra'
 }

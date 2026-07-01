@@ -11,5 +11,9 @@ export default function handler(req: NextApiRequest, res: NextApiResponse) {
       authRequired: env.AUTH_REQUIRED,
       paidAnalysisRequired: env.PAID_ANALYSIS_REQUIRED,
     },
+    app: {
+      iosAppStoreUrl: env.NEXT_PUBLIC_IOS_APP_STORE_URL || 'https://apps.apple.com/app/id6771414050',
+      deepLink: env.NEXT_PUBLIC_APP_DEEP_LINK || 'mogging://reports',
+    },
   })
 }

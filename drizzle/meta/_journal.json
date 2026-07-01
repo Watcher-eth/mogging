@@ -64,6 +64,13 @@
       "when": 1777807200000,
       "tag": "0009_profile_location",
       "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "7",
+      "when": 1782918000000,
+      "tag": "0010_payment_entitlements",
+      "breakpoints": true
     }
   ]
 }
