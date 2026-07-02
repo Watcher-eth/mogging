@@ -20,7 +20,7 @@ type FunnelProduct =
   | 'mobile_lifetime'
   | 'extra_potential_image'
 
-const appStoreUrl = process.env.NEXT_PUBLIC_IOS_APP_STORE_URL || 'https://apps.apple.com/us/app/mogging-face-rating/id6771414050'
+const appStoreUrl = 'https://apps.apple.com/us/app/mogging-face-rating/id6771414050'
 const baseDeepLink = process.env.NEXT_PUBLIC_APP_DEEP_LINK || 'mogging://reports'
 const subscriptionStorageKey = 'mogging:web2app:subscription'
 const installClickedStorageKey = 'mogging:web2app:install-clicked'
@@ -60,16 +60,16 @@ const tiers: Array<{
 
 const appScreenshots = [
   {
-    src: '/app-screenshots/for-you.png',
-    alt: 'Mogging For You timeline and skin check screen',
-  },
-  {
     src: '/app-screenshots/evaluation.png',
     alt: 'Mogging evaluation screen with face analysis overlays',
   },
   {
     src: '/app-screenshots/protocol.png',
     alt: 'Mogging personalized protocol report screen',
+  },
+  {
+    src: '/app-screenshots/for-you.png',
+    alt: 'Mogging For You timeline and skin check screen',
   },
 ]
 
@@ -210,7 +210,7 @@ export default function AppFunnelPage() {
           >
             <div className="flex gap-4 overflow-x-auto px-[max(0px,calc((100vw-80rem)/2))] pb-4 sm:justify-center sm:overflow-visible sm:px-0">
               {appScreenshots.map((screenshot) => (
-                <div key={screenshot.src} className="w-[74vw] min-w-[260px] max-w-[340px] shrink-0 overflow-hidden rounded-[2.25rem] bg-white shadow-[0_24px_80px_rgba(15,23,42,0.12)] ring-1 ring-zinc-200/80 sm:w-[30%]">
+                <div key={screenshot.src} className="w-[74vw] min-w-[260px] max-w-[340px] shrink-0 overflow-hidden rounded-[2.25rem] sm:w-[30%]">
                   <img
                     src={screenshot.src}
                     alt={screenshot.alt}
