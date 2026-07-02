@@ -1,7 +1,7 @@
 import Head from 'next/head'
 import { useRouter } from 'next/router'
 import { motion } from 'motion/react'
-import { Check, Loader2, ShieldCheck, Sparkles } from 'lucide-react'
+import { ClipboardList, Loader2, ScanFace, ShieldCheck, Sparkles, Swords } from 'lucide-react'
 import { useEffect, useMemo, useState } from 'react'
 import { toast } from 'sonner'
 import { apiPost, ApiClientError } from '@/lib/api/client'
@@ -70,6 +70,21 @@ const appScreenshots = [
   {
     src: '/app-screenshots/for-you.png',
     alt: 'Mogging For You timeline and skin check screen',
+  },
+]
+
+const featurePills = [
+  {
+    label: 'Unlimited app evaluations',
+    icon: ScanFace,
+  },
+  {
+    label: 'Protocol and report tracking',
+    icon: ClipboardList,
+  },
+  {
+    label: 'Battle and sharing tools',
+    icon: Swords,
   },
 ]
 
@@ -252,12 +267,15 @@ export default function AppFunnelPage() {
               </div>
 
               <div className="mx-auto mt-7 grid max-w-3xl gap-3 sm:grid-cols-3">
-                {['Unlimited app evaluations', 'Protocol and report tracking', 'Battle and sharing tools'].map((item) => (
-                  <div key={item} className="flex items-center justify-center gap-2 rounded-full border border-zinc-200 bg-zinc-50 px-4 py-3 text-sm font-medium text-zinc-700">
-                    <Check className="size-4 text-black" aria-hidden="true" />
-                    <span>{item}</span>
+                {featurePills.map((item) => {
+                  const Icon = item.icon
+                  return (
+                    <div key={item.label} className="flex items-center justify-center gap-2 rounded-full border border-zinc-200 bg-zinc-50 px-4 py-3 text-sm font-medium text-zinc-700">
+                      <Icon className="size-4 text-black" strokeWidth={2.25} aria-hidden="true" />
+                      <span>{item.label}</span>
                   </div>
-                ))}
+                  )
+                })}
               </div>
 
               <div className="mx-auto mt-7 max-w-md">
