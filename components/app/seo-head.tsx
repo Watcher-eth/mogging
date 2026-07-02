@@ -11,6 +11,7 @@ type SeoHeadProps = {
 const defaultTitle = 'Mogging'
 const defaultDescription = 'Battle faces, get a PSL analysis, and climb the global mogging leaderboard.'
 const defaultImagePath = '/moggingOG2.png'
+const iosAppStoreId = '6771414050'
 
 export function SeoHead({
   title = defaultTitle,
@@ -28,6 +29,7 @@ export function SeoHead({
     <Head>
       <title key="title">{title}</title>
       <meta key="description" name="description" content={description} />
+      <meta key="apple-itunes-app" name="apple-itunes-app" content={`app-id=${iosAppStoreId}, app-argument=${canonicalUrl}`} />
       <link key="canonical" rel="canonical" href={canonicalUrl} />
 
       <meta key="og:type" property="og:type" content="website" />

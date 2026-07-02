@@ -1,7 +1,7 @@
 import Head from 'next/head'
 import { useRouter } from 'next/router'
 import { motion } from 'motion/react'
-import { Check, Loader2, ShieldCheck, Smartphone, Sparkles } from 'lucide-react'
+import { Check, Loader2, ShieldCheck, Sparkles } from 'lucide-react'
 import { useEffect, useMemo, useState } from 'react'
 import { toast } from 'sonner'
 import { apiPost, ApiClientError } from '@/lib/api/client'
@@ -20,7 +20,7 @@ type FunnelProduct =
   | 'mobile_lifetime'
   | 'extra_potential_image'
 
-const appStoreUrl = process.env.NEXT_PUBLIC_IOS_APP_STORE_URL || 'https://apps.apple.com/app/id6771414050'
+const appStoreUrl = process.env.NEXT_PUBLIC_IOS_APP_STORE_URL || 'https://apps.apple.com/us/app/mogging-face-rating/id6771414050'
 const baseDeepLink = process.env.NEXT_PUBLIC_APP_DEEP_LINK || 'mogging://reports'
 const subscriptionStorageKey = 'mogging:web2app:subscription'
 const installClickedStorageKey = 'mogging:web2app:install-clicked'
@@ -34,61 +34,48 @@ const tiers: Array<{
   badge?: string
 }> = [
   {
-    id: 'evaluation',
-    label: 'Single',
-    price: '$4.99',
-    cadence: '/evaluation',
-    note: 'One private evaluation credit.',
-    badge: 'Web only',
-  },
-  {
-    id: 'evaluation_pack_3',
-    label: '3 Pack',
-    price: '$9.99',
-    cadence: '/3 evaluations',
-    note: 'Best for testing multiple photos.',
-    badge: 'Web only',
-  },
-  {
     id: 'mobile_subscription_weekly',
-    label: 'Weekly Pro',
+    label: 'Weekly',
     price: '$4.99',
     cadence: '/week',
-    note: 'Full Pro access with a lower entry point.',
+    note: 'Flexible access for a short reset.',
   },
   {
     id: 'mobile_subscription_monthly',
-    label: 'Monthly Pro',
+    label: 'Monthly',
     price: '$9.99',
     cadence: '/month',
-    note: 'Regular evaluations and member extras.',
+    note: 'Best for steady evaluation and tracking.',
+    badge: 'Popular',
   },
   {
     id: 'mobile_subscription_yearly',
-    label: 'Yearly Pro',
+    label: 'Yearly',
     price: '$49.99',
     cadence: '/year',
-    note: 'Best value for progress tracking.',
+    note: 'Lowest long-term price for full Pro.',
+    badge: 'Best value',
+  },
+]
+
+const appScreenshots = [
+  {
+    src: '/app-screenshots/for-you.png',
+    alt: 'Mogging For You timeline and skin check screen',
   },
   {
-    id: 'mobile_lifetime',
-    label: 'Lifetime',
-    price: '$49.99',
-    cadence: 'one-time',
-    note: 'Lifetime Pro access.',
+    src: '/app-screenshots/evaluation.png',
+    alt: 'Mogging evaluation screen with face analysis overlays',
   },
   {
-    id: 'extra_potential_image',
-    label: 'Potential',
-    price: '$4.99',
-    cadence: '/extra',
-    note: 'One potential-image generation extra.',
+    src: '/app-screenshots/protocol.png',
+    alt: 'Mogging personalized protocol report screen',
   },
 ]
 
 export default function AppFunnelPage() {
   const router = useRouter()
-  const [selectedProduct, setSelectedProduct] = useState<FunnelProduct>('evaluation')
+  const [selectedProduct, setSelectedProduct] = useState<FunnelProduct>('mobile_subscription_monthly')
   const [checkoutLoading, setCheckoutLoading] = useState(false)
   const [paid, setPaid] = useState(false)
   const [installClicked, setInstallClicked] = useState(false)
@@ -191,56 +178,51 @@ export default function AppFunnelPage() {
       </Head>
 
       <main className="min-h-[calc(100vh-5rem)] overflow-hidden bg-white text-black">
-        <section className="mx-auto grid min-h-[calc(100vh-5rem)] w-full max-w-7xl grid-cols-1 gap-10 px-5 py-7 sm:px-10 sm:py-12 lg:grid-cols-[minmax(0,1.02fr)_minmax(360px,0.78fr)] lg:items-center">
+        <section className="mx-auto flex min-h-[calc(100vh-5rem)] w-full max-w-7xl flex-col items-center px-5 py-8 sm:px-10 sm:py-12">
           <motion.div
             initial={{ opacity: 0, y: 18 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.45, ease: [0.16, 1, 0.3, 1] }}
-            className="flex flex-col gap-8"
+            className="flex w-full flex-col items-center"
           >
-            <div className="border-b border-zinc-200 pb-8">
-              <p className="font-mono text-[11px] font-bold uppercase tracking-normal text-zinc-500">TikTok / Instagram mobile funnel //</p>
-              <h1 className="mt-5 max-w-4xl text-[4rem] font-semibold leading-[0.84] tracking-[-0.075em] text-black sm:text-[7rem] lg:text-[8.5rem]">
-                Buy on web. Use in app.
-              </h1>
-              <p className="mt-6 max-w-2xl text-lg leading-7 text-zinc-500 sm:text-xl sm:leading-8">
-                Purchase evaluation credits, Pro access, or extras on mogging.com, then claim them inside the mobile app.
-              </p>
-            </div>
+            <a
+              href={appStoreUrl}
+              className="inline-flex items-center gap-3 rounded-full border border-zinc-200 bg-zinc-50 px-4 py-2 text-sm font-semibold text-black shadow-[0_10px_34px_rgba(15,23,42,0.08)] transition duration-200 hover:border-zinc-300 hover:bg-white active:scale-[0.985]"
+            >
+              <AppStoreMark className="size-7" />
+              <span>View Mogging on the App Store</span>
+            </a>
 
-            <div className="grid gap-3 sm:grid-cols-3">
-              {[
-                ['01', 'Pick access', 'Web-only credits, Pro, or extras.'],
-                ['02', 'Pay on web', 'Stripe checkout keeps attribution clean.'],
-                ['03', 'Open app', 'Claim access through the app deep link.'],
-              ].map(([step, title, copy]) => (
-                <div key={step} className="min-h-36 border border-zinc-200 bg-white p-4">
-                  <p className="font-mono text-[10px] font-bold uppercase text-zinc-500">[ {step} ]</p>
-                  <h2 className="mt-8 text-2xl font-semibold tracking-[-0.055em]">{title}</h2>
-                  <p className="mt-2 text-sm leading-5 text-zinc-500">{copy}</p>
-                </div>
-              ))}
-            </div>
+            <p className="mt-9 font-mono text-[11px] font-bold uppercase tracking-normal text-zinc-500">Mobile face analysis //</p>
+            <h1 className="mt-4 max-w-5xl text-center text-[3.4rem] font-semibold leading-[0.9] tracking-[-0.075em] text-black sm:text-[6.5rem] lg:text-[8rem]">
+              Subscribe on web. Use Mogging in app.
+            </h1>
+            <p className="mt-6 max-w-2xl text-center text-lg leading-7 text-zinc-500 sm:text-xl sm:leading-8">
+              Start Pro access from the web, then open the iOS app for evaluations, reports, protocol tracking, and score sharing.
+            </p>
           </motion.div>
 
-          <motion.aside
+          <motion.div
             initial={{ opacity: 0, y: 20, scale: 0.985 }}
             animate={{ opacity: 1, y: 0, scale: 1 }}
             transition={{ duration: 0.5, delay: 0.08, ease: [0.16, 1, 0.3, 1] }}
-            className="mx-auto w-full max-w-[440px] border border-zinc-200 bg-zinc-50 p-3 shadow-[0_26px_90px_rgba(15,23,42,0.10)]"
+            className="mt-12 w-full"
           >
-            <div className="border border-zinc-200 bg-white p-5 sm:p-6">
-              <div className="flex items-start justify-between gap-4">
-                <div>
-                  <p className="font-mono text-[10px] font-bold uppercase text-zinc-500">Mogging checkout</p>
-                  <h2 className="mt-3 text-4xl font-semibold leading-none tracking-[-0.065em]">App access</h2>
+            <div className="flex gap-4 overflow-x-auto px-[max(0px,calc((100vw-80rem)/2))] pb-4 sm:justify-center sm:overflow-visible sm:px-0">
+              {appScreenshots.map((screenshot) => (
+                <div key={screenshot.src} className="w-[74vw] min-w-[260px] max-w-[340px] shrink-0 overflow-hidden rounded-[2.25rem] bg-white shadow-[0_24px_80px_rgba(15,23,42,0.12)] ring-1 ring-zinc-200/80 sm:w-[30%]">
+                  <img
+                    src={screenshot.src}
+                    alt={screenshot.alt}
+                    className="block h-auto w-full"
+                    loading="eager"
+                  />
                 </div>
-                <span className="grid size-12 place-items-center border border-zinc-200 bg-black text-white">
-                  <Smartphone className="size-5" aria-hidden="true" />
-                </span>
-              </div>
+              ))}
+            </div>
 
-              <div className="mt-7 grid gap-3">
+            <div className="mx-auto mt-10 w-full max-w-5xl">
+              <div className="grid gap-3 md:grid-cols-3">
                 {tiers.map((tier) => {
                   const active = selectedProduct === tier.id
                   return (
@@ -249,60 +231,64 @@ export default function AppFunnelPage() {
                       type="button"
                       onClick={() => setSelectedProduct(tier.id)}
                       className={cn(
-                        'group grid min-h-24 grid-cols-[1fr_auto] items-center gap-4 border bg-white p-4 text-left transition duration-200 active:scale-[0.985]',
-                        active ? 'border-black shadow-[inset_0_0_0_1px_#000]' : 'border-zinc-200 hover:border-zinc-400'
+                        'group grid min-h-48 grid-rows-[1fr_auto] rounded-[2rem] border bg-white p-5 text-left transition duration-200 active:scale-[0.985]',
+                        active ? 'border-black shadow-[inset_0_0_0_1px_#000,0_18px_48px_rgba(15,23,42,0.10)]' : 'border-zinc-200 hover:border-zinc-400'
                       )}
                     >
                       <span>
-                        <span className="block font-mono text-[10px] font-bold uppercase text-zinc-500">{tier.label}</span>
-                        {tier.badge ? <span className="mt-2 inline-block border border-zinc-200 px-2 py-1 font-mono text-[10px] font-bold uppercase text-zinc-500">{tier.badge}</span> : null}
-                        <span className="mt-2 block text-sm text-zinc-500">{tier.note}</span>
+                        <span className="flex items-start justify-between gap-3">
+                          <span className="block font-mono text-[11px] font-bold uppercase text-zinc-500">{tier.label}</span>
+                          {tier.badge ? <span className="rounded-full bg-zinc-100 px-3 py-1 font-mono text-[10px] font-bold uppercase text-zinc-600">{tier.badge}</span> : null}
+                        </span>
+                        <span className="mt-5 block text-sm leading-5 text-zinc-500">{tier.note}</span>
                       </span>
-                      <span className="text-right">
-                        <span className="text-3xl font-semibold tracking-[-0.06em]">{tier.price}</span>
-                        <span className="block text-xs font-medium text-zinc-500">{tier.cadence}</span>
+                      <span className="mt-8 block">
+                        <span className="text-5xl font-semibold tracking-[-0.07em]">{tier.price}</span>
+                        <span className="ml-2 text-sm font-medium text-zinc-500">{tier.cadence}</span>
                       </span>
                     </button>
                   )
                 })}
               </div>
 
-              <div className="mt-6 space-y-3 border-y border-zinc-200 py-5">
-                {['Web-only single and 3-pack reports', 'Weekly, monthly, yearly, and lifetime Pro', 'Extras claimable inside the app'].map((item) => (
-                  <div key={item} className="flex items-center gap-3 text-sm font-medium text-zinc-700">
+              <div className="mx-auto mt-7 grid max-w-3xl gap-3 sm:grid-cols-3">
+                {['Unlimited app evaluations', 'Protocol and report tracking', 'Battle and sharing tools'].map((item) => (
+                  <div key={item} className="flex items-center justify-center gap-2 rounded-full border border-zinc-200 bg-zinc-50 px-4 py-3 text-sm font-medium text-zinc-700">
                     <Check className="size-4 text-black" aria-hidden="true" />
                     <span>{item}</span>
                   </div>
                 ))}
               </div>
 
-              <button
-                type="button"
-                onClick={paid && installClicked ? openInstalledApp : paid ? openAppStore : installId ? startWebCheckout : openAppStore}
-                disabled={checkoutLoading || openingApp}
-                className="mt-6 flex h-14 w-full items-center justify-center gap-2 bg-black px-5 text-sm font-semibold text-white transition duration-200 hover:bg-zinc-800 active:scale-[0.985] disabled:cursor-not-allowed disabled:opacity-60"
-              >
-                {checkoutLoading || openingApp ? <Loader2 className="size-4 animate-spin" aria-hidden="true" /> : paid ? <Sparkles className="size-4" aria-hidden="true" /> : <ShieldCheck className="size-4" aria-hidden="true" />}
-                {paid && installClicked ? 'Open in app' : paid ? 'Install from App Store' : `Continue ${selectedProductLabel(selectedProduct)}`}
-              </button>
-
-              {paid ? (
+              <div className="mx-auto mt-7 max-w-md">
                 <button
                   type="button"
-                  onClick={openInstalledApp}
-                  className="mt-3 h-11 w-full border border-zinc-200 bg-white px-4 text-sm font-semibold text-black transition duration-200 hover:bg-zinc-50 active:scale-[0.985]"
+                  onClick={paid && installClicked ? openInstalledApp : paid ? openAppStore : installId ? startWebCheckout : openAppStore}
+                  disabled={checkoutLoading || openingApp}
+                  className="flex h-14 w-full items-center justify-center gap-2 rounded-full bg-black px-5 text-sm font-semibold text-white transition duration-200 hover:bg-zinc-800 active:scale-[0.985] disabled:cursor-not-allowed disabled:opacity-60"
                 >
-                  Already installed? Open Mogging
+                  {checkoutLoading || openingApp ? <Loader2 className="size-4 animate-spin" aria-hidden="true" /> : paid ? <Sparkles className="size-4" aria-hidden="true" /> : <ShieldCheck className="size-4" aria-hidden="true" />}
+                  {paid && installClicked ? 'Open in app' : paid ? 'Install from App Store' : `Continue ${selectedProductLabel(selectedProduct)}`}
                 </button>
-              ) : null}
 
-              <p className="mt-4 text-center text-xs leading-5 text-zinc-500">
-                {paid
-                  ? 'After installing, come back to this page and the primary button will open Mogging directly.'
-                  : installId ? 'Secure checkout is handled by Stripe. App access is claimed when you return to Mogging.' : 'Open this page from the app to attach purchases to your install.'}
-              </p>
+                {paid ? (
+                  <button
+                    type="button"
+                    onClick={openInstalledApp}
+                    className="mt-3 h-11 w-full rounded-full border border-zinc-200 bg-white px-4 text-sm font-semibold text-black transition duration-200 hover:bg-zinc-50 active:scale-[0.985]"
+                  >
+                    Already installed? Open Mogging
+                  </button>
+                ) : null}
+
+                <p className="mt-4 text-center text-xs leading-5 text-zinc-500">
+                  {paid
+                    ? 'After installing, come back to this page and the primary button will open Mogging directly.'
+                    : installId ? 'Secure checkout is handled by Stripe. App access is claimed when you return to Mogging.' : 'Open this page from the app to attach purchases to your install.'}
+                </p>
+              </div>
             </div>
-          </motion.aside>
+          </motion.div>
         </section>
       </main>
     </>
@@ -322,23 +308,34 @@ function firstQueryValue(value: string | string[] | undefined) {
 
 function readProduct(value: string | string[] | undefined): FunnelProduct | null {
   const product = firstQueryValue(value)
-  return product === 'evaluation' ||
-    product === 'evaluation_pack_3' ||
-    product === 'mobile_subscription_weekly' ||
+  return product === 'mobile_subscription_weekly' ||
     product === 'mobile_subscription_monthly' ||
-    product === 'mobile_subscription_yearly' ||
-    product === 'mobile_lifetime' ||
-    product === 'extra_potential_image'
+    product === 'mobile_subscription_yearly'
     ? product
     : null
 }
 
 function selectedProductLabel(product: FunnelProduct) {
-  if (product === 'evaluation') return 'single evaluation'
-  if (product === 'evaluation_pack_3') return '3 pack'
   if (product === 'mobile_subscription_weekly') return 'weekly Pro'
   if (product === 'mobile_subscription_monthly') return 'monthly Pro'
   if (product === 'mobile_subscription_yearly') return 'yearly Pro'
-  if (product === 'mobile_lifetime') return 'lifetime Pro'
-  return 'potential extra'
+  return 'monthly Pro'
+}
+
+function AppStoreMark({ className }: { className?: string }) {
+  return (
+    <svg className={className} viewBox="0 0 48 48" aria-hidden="true" role="img">
+      <rect width="48" height="48" rx="12" fill="url(#app-store-mark-gradient)" />
+      <path
+        d="M19.75 31.9h-5.4a2 2 0 0 1 0-4h7.58l2.33-4.06-4.88-8.45a2 2 0 1 1 3.46-2l3.73 6.47 3.72-6.47a2 2 0 1 1 3.47 2L24.3 31.9a2.61 2.61 0 0 1-4.55 0Zm13.9 0h-5.43l2.31-4h3.12a2 2 0 1 1 0 4Zm-18.1 5.44a2 2 0 0 1-.74-2.73l1.26-2.18h4.62l-2.4 4.17a2 2 0 0 1-2.74.74Z"
+        fill="white"
+      />
+      <defs>
+        <linearGradient id="app-store-mark-gradient" x1="8" x2="42" y1="40" y2="7" gradientUnits="userSpaceOnUse">
+          <stop stopColor="#0A84FF" />
+          <stop offset="1" stopColor="#5AC8FA" />
+        </linearGradient>
+      </defs>
+    </svg>
+  )
 }
