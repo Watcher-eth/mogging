@@ -61,6 +61,8 @@ const envSchema = z
     STRIPE_MOBILE_MONTHLY_PRICE_CENTS: z.coerce.number().int().min(50).default(999),
     STRIPE_MOBILE_YEARLY_PRICE_CENTS: z.coerce.number().int().min(50).default(4999),
     STRIPE_MOBILE_LIFETIME_PRICE_CENTS: z.coerce.number().int().min(50).default(4999),
+    REVENUECAT_SECRET_API_KEY: z.string().min(1).optional(),
+    REVENUECAT_PRO_ENTITLEMENT_ID: z.string().min(1).default('pro'),
   })
   .superRefine((env, ctx) => {
     if (env.NODE_ENV === 'production' && !env.NEXTAUTH_SECRET) {
@@ -198,6 +200,8 @@ export const env = envSchema.parse({
   STRIPE_MOBILE_MONTHLY_PRICE_CENTS: process.env.STRIPE_MOBILE_MONTHLY_PRICE_CENTS,
   STRIPE_MOBILE_YEARLY_PRICE_CENTS: process.env.STRIPE_MOBILE_YEARLY_PRICE_CENTS,
   STRIPE_MOBILE_LIFETIME_PRICE_CENTS: process.env.STRIPE_MOBILE_LIFETIME_PRICE_CENTS,
+  REVENUECAT_SECRET_API_KEY: process.env.REVENUECAT_SECRET_API_KEY,
+  REVENUECAT_PRO_ENTITLEMENT_ID: process.env.REVENUECAT_PRO_ENTITLEMENT_ID,
 })
 
 export type RuntimeReadinessCheck = {

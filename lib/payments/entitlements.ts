@@ -3,6 +3,7 @@ import Stripe from 'stripe'
 import { ApiError } from '@/lib/api/http'
 import { db, schema } from '@/lib/db'
 import { env } from '@/lib/env'
+import { verifyRevenueCatPro } from '@/lib/payments/revenuecat'
 import { getStripe } from './stripe'
 import type { PaymentProduct } from '@/lib/db/schema'
 
@@ -43,6 +44,7 @@ type EntitlementOwner = {
   mobileInstallId: string
   userId?: string | null
   anonymousActorId?: string | null
+  revenueCatAppUserId?: string | null
 }
 
 export function getProductConfig(product: PaymentProduct): ProductConfig {
@@ -276,6 +278,7 @@ export async function getEntitlementSummary(ownerInput: string | EntitlementOwne
   const latestSubscription = activeSubscriptions
     .slice()
     .sort((a, b) => (b.currentPeriodEnd?.getTime() ?? 0) - (a.currentPeriodEnd?.getTime() ?? 0))[0]
+  const revenueCatSubscription = latestSubscription ? null : await getRevenueCatSubscription(owner)
 
   return {
     mobileInstallId: owner.mobileInstallId,
@@ -288,9 +291,9 @@ export async function getEntitlementSummary(ownerInput: string | EntitlementOwne
         .reduce((sum, row) => sum + readPotentialImageExtras(row.metadata), 0),
     },
     subscription: {
-      active: Boolean(latestSubscription),
-      status: latestSubscription?.subscriptionStatus ?? null,
-      currentPeriodEnd: latestSubscription?.currentPeriodEnd?.toISOString() ?? null,
+      active: Boolean(latestSubscription) || Boolean(revenueCatSubscription?.active),
+      status: latestSubscription?.subscriptionStatus ?? revenueCatSubscription?.status ?? null,
+      currentPeriodEnd: latestSubscription?.currentPeriodEnd?.toISOString() ?? revenueCatSubscription?.currentPeriodEnd?.toISOString() ?? null,
     },
   }
 }
@@ -340,6 +343,12 @@ function getOwnerWhere(owner: EntitlementOwner) {
   ].filter((filter) => filter !== null)
 
   return filters.length === 1 ? filters[0] : or(...filters)
+}
+
+async function getRevenueCatSubscription(owner: EntitlementOwner) {
+  const revenueCatAppUserId = owner.revenueCatAppUserId || owner.mobileInstallId
+  if (revenueCatAppUserId !== owner.mobileInstallId) return null
+  return verifyRevenueCatPro(revenueCatAppUserId)
 }
 
 function readPaymentProduct(value: unknown): PaymentProduct {

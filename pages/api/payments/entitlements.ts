@@ -22,9 +22,14 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         mobileInstallId: query.mobileInstallId,
         userId: session?.user?.id ?? null,
         anonymousActorId,
+        revenueCatAppUserId: readHeader(req.headers['x-mogging-revenuecat-app-user-id']),
       }),
     })
   } catch (error) {
     return handleApiError(error, res)
   }
+}
+
+function readHeader(value: string | string[] | undefined) {
+  return Array.isArray(value) ? value[0] : value
 }

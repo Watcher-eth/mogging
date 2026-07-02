@@ -42,6 +42,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         mobileInstallId,
         userId: session?.user?.id ?? null,
         anonymousActorId,
+        revenueCatAppUserId: readHeader(req.headers['x-mogging-revenuecat-app-user-id']),
       })
     }
 
@@ -89,6 +90,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
             mobileInstallId,
             userId: session?.user?.id ?? null,
             anonymousActorId,
+            revenueCatAppUserId: readHeader(req.headers['x-mogging-revenuecat-app-user-id']),
           })
         : null
 
@@ -129,6 +131,10 @@ function readMobileInstallId(req: NextApiRequest) {
   if (!value) return null
   const trimmed = value.trim()
   return trimmed.length >= 8 && trimmed.length <= 120 ? trimmed : null
+}
+
+function readHeader(value: string | string[] | undefined) {
+  return Array.isArray(value) ? value[0] : value
 }
 
 async function createDefaultShare({
