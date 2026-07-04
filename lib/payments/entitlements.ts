@@ -194,7 +194,13 @@ export async function grantEntitlementFromCheckoutSession({
   if (!mobileInstallId) {
     throw new ApiError(400, 'Checkout is missing mobile install id')
   }
-  if (expectedMobileInstallId && metadataInstallId && metadataInstallId !== expectedMobileInstallId) {
+  const canTransferWebCheckout = Boolean(
+    expectedMobileInstallId &&
+    metadataInstallId &&
+    metadataInstallId !== expectedMobileInstallId &&
+    metadataInstallId.startsWith('web_')
+  )
+  if (expectedMobileInstallId && metadataInstallId && metadataInstallId !== expectedMobileInstallId && !canTransferWebCheckout) {
     throw new ApiError(403, 'Checkout belongs to another app install')
   }
 
@@ -205,6 +211,18 @@ export async function grantEntitlementFromCheckoutSession({
   const currentPeriodEnd = readSubscriptionPeriodEnd(subscription)
   const credits = product === 'extra_potential_image' ? 0 : getProductConfig(product).credits
   const extras = product === 'extra_potential_image' ? 1 : 0
+
+  if (canTransferWebCheckout && expectedMobileInstallId) {
+    await db
+      .update(schema.paymentEntitlements)
+      .set({
+        mobileInstallId: expectedMobileInstallId,
+        userId: userId ?? readOptionalMetadata(session.metadata?.userId),
+        anonymousActorId: anonymousActorId ?? readOptionalMetadata(session.metadata?.anonymousActorId),
+        updatedAt: new Date(),
+      })
+      .where(eq(schema.paymentEntitlements.stripeCheckoutSessionId, session.id))
+  }
 
   await db
     .insert(schema.paymentEntitlements)
@@ -224,6 +242,8 @@ export async function grantEntitlementFromCheckoutSession({
       metadata: {
         checkoutMode: session.mode,
         stripePaymentStatus: session.payment_status,
+        originalMobileInstallId: metadataInstallId ?? null,
+        transferredFromWebInstall: canTransferWebCheckout,
         extras: {
           potentialImages: extras,
         },

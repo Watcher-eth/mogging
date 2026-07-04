@@ -38,6 +38,9 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     const mobileInstallId = readMobileInstallId(req)
     const adminMode = readHeader(req.headers['x-mogging-admin-code']) === '674523'
     const anonymousActorId = session?.user?.id ? null : getOrSetAnonymousActorId(req, res)
+    if (env.PAID_ANALYSIS_REQUIRED && !adminMode && !mobileInstallId) {
+      throw new ApiError(402, 'Buy an evaluation or subscription before generating this report')
+    }
     if (env.PAID_ANALYSIS_REQUIRED && mobileInstallId && !adminMode) {
       await assertEvaluationEntitlement({
         mobileInstallId,

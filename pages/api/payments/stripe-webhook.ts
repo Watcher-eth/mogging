@@ -70,6 +70,7 @@ async function handleStripeEvent(event: Stripe.Event) {
       const expanded = await getStripe().checkout.sessions.retrieve(session.id, {
         expand: ['subscription'],
       })
+      if (isLegacyCheckoutProduct(expanded.metadata?.product)) return
       await grantEntitlementFromCheckoutSession({ session: expanded })
       return
     }
@@ -101,6 +102,10 @@ async function handleStripeEvent(event: Stripe.Event) {
     default:
       return
   }
+}
+
+function isLegacyCheckoutProduct(product: string | null | undefined) {
+  return product === 'analysis' || product === 'mobile_subscription'
 }
 
 async function handleChargeRevocation(charge: string | Stripe.Charge | null, status: 'refunded' | 'disputed') {

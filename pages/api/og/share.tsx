@@ -18,6 +18,18 @@ type CanvasSize = {
   height: number
 }
 
+type ImageDimensions = {
+  width: number
+  height: number
+}
+
+type CoverFrame = {
+  x: number
+  y: number
+  width: number
+  height: number
+}
+
 const storySize: CanvasSize = {
   width: 1080,
   height: 1920,
@@ -41,7 +53,9 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     const landmarks = parseFaceLandmarksPayload(share.analysis.landmarks)
     const imageUrl = absoluteImageUrl(share.photo.imageUrl, req)
     const category = getReportCategoryById(typeof req.query.overlay === 'string' ? req.query.overlay : 'overall')
-    const geometry = getReportOverlayGeometry(category, landmarks)
+    const sourceGeometry = getReportOverlayGeometry(category, landmarks)
+    const imageFrame = getImageCoverFrame(landmarks?.image ?? null, storySize)
+    const geometry = mapLandmarkGeometryToStoryFrame(sourceGeometry, imageFrame, storySize)
     const yOffset = geometry.usesLandmarks ? 0 : getReportOverlayYOffset(category.id)
     const totalDisplayScore = readReportTotalScore(share.analysis.metrics, share.analysis.pslScore)
     const totalScore = formatScore(totalDisplayScore)
@@ -68,13 +82,12 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
               height: '100%',
               objectFit: 'cover',
               objectPosition: 'center',
-              transform: 'scale(1.14)',
               width: '100%',
             }}
           />
           <div
             style={{
-              background: 'linear-gradient(180deg, rgba(0,0,0,0.14) 0%, rgba(0,0,0,0.02) 38%, rgba(0,0,0,0.76) 100%)',
+              background: 'linear-gradient(180deg, rgba(0,0,0,0.32) 0%, rgba(0,0,0,0.08) 36%, rgba(0,0,0,0.82) 100%)',
               bottom: 0,
               display: 'flex',
               left: 0,
@@ -85,7 +98,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
           />
           <div
             style={{
-              background: 'linear-gradient(90deg, rgba(0,0,0,0.34) 0%, rgba(0,0,0,0) 34%, rgba(0,0,0,0.18) 100%)',
+              background: 'linear-gradient(90deg, rgba(0,0,0,0.4) 0%, rgba(12,34,28,0.12) 42%, rgba(0,0,0,0.28) 100%)',
               bottom: 0,
               display: 'flex',
               left: 0,
@@ -96,13 +109,13 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
           />
           <div
             style={{
-              border: '3px solid rgba(255,255,255,0.84)',
-              bottom: 76,
+              background: 'linear-gradient(140deg, rgba(226,205,164,0.12) 0%, rgba(20,42,34,0.14) 42%, rgba(0,0,0,0.24) 100%)',
+              bottom: 0,
               display: 'flex',
-              left: 54,
+              left: 0,
               position: 'absolute',
-              right: 54,
-              top: 76,
+              right: 0,
+              top: 0,
             }}
           />
 
@@ -179,17 +192,14 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
           <div
             style={{
-              borderTop: '2px solid rgba(255,255,255,0.76)',
               bottom: 92,
               display: 'flex',
-              justifyContent: 'space-between',
+              justifyContent: 'flex-end',
               left: 78,
-              paddingTop: 18,
               position: 'absolute',
               right: 78,
             }}
           >
-            <span style={{ fontSize: 21, fontWeight: 800, letterSpacing: '1px' }}>{category.title.toUpperCase()} OVERLAY</span>
             <span style={{ color: 'rgba(255,255,255,0.72)', fontSize: 20, fontWeight: 700, letterSpacing: '0.8px' }}>MOGGING.COM</span>
           </div>
         </div>
@@ -285,7 +295,6 @@ function ScoreBlock({ align, label, score }: { align: 'left' | 'right'; label: s
       <span style={{ fontSize: 25, fontWeight: 800, letterSpacing: '1.3px', marginBottom: 18, opacity: 0.86 }}>{label}</span>
       <div style={{ alignItems: 'flex-end', display: 'flex' }}>
         <span style={{ fontSize: 176, fontWeight: 800, letterSpacing: '-10px' }}>{score}</span>
-        <span style={{ fontSize: 70, fontWeight: 800, letterSpacing: '-4px', marginBottom: 10, marginLeft: 12 }}>/10</span>
       </div>
     </div>
   )
@@ -365,6 +374,75 @@ function readFiniteScore(value: unknown) {
 function normalizeReportCategoryScore(id: string, score: number) {
   if (id === 'overall' && score <= 8) return Math.round((score / 8) * 100) / 10
   return Math.max(0, Math.min(10, Math.round(score * 10) / 10))
+}
+
+function getImageCoverFrame(image: ImageDimensions | null, canvas: CanvasSize): CoverFrame | null {
+  if (!image || image.width <= 0 || image.height <= 0) return null
+
+  const scale = Math.max(canvas.width / image.width, canvas.height / image.height)
+  const width = image.width * scale
+  const height = image.height * scale
+
+  return {
+    x: (canvas.width - width) / 2,
+    y: (canvas.height - height) / 2,
+    width,
+    height,
+  }
+}
+
+function mapLandmarkGeometryToStoryFrame(
+  geometry: ReportOverlayGeometry,
+  imageFrame: CoverFrame | null,
+  canvas: CanvasSize
+): ReportOverlayGeometry {
+  if (!geometry.usesLandmarks || !imageFrame) return geometry
+
+  const point = (value: { x: number; y: number }) => mapImagePercentPointToCanvasPercent(value, imageFrame, canvas)
+  const line = (value: { x1: number; y1: number; x2: number; y2: number }) => {
+    const start = point({ x: value.x1, y: value.y1 })
+    const end = point({ x: value.x2, y: value.y2 })
+    return { x1: start.x, y1: start.y, x2: end.x, y2: end.y }
+  }
+  const box = (value: { x: number; y: number; width: number; height: number; dashed?: boolean }) => {
+    const start = point({ x: value.x, y: value.y })
+    const end = point({ x: value.x + value.width, y: value.y + value.height })
+    return {
+      x: Math.min(start.x, end.x),
+      y: Math.min(start.y, end.y),
+      width: Math.abs(end.x - start.x),
+      height: Math.abs(end.y - start.y),
+      dashed: value.dashed,
+    }
+  }
+  const label = point(geometry.label)
+
+  return {
+    ...geometry,
+    boxes: geometry.boxes.map(box),
+    lines: geometry.lines.map(line),
+    polylines: geometry.polylines.map((polyline) => ({
+      ...polyline,
+      points: polyline.points.map(point),
+    })),
+    points: geometry.points.map(point),
+    label: {
+      ...geometry.label,
+      x: clampPercent(label.x, 6, 78),
+      y: clampPercent(label.y, 6, 88),
+    },
+  }
+}
+
+function mapImagePercentPointToCanvasPercent(point: { x: number; y: number }, imageFrame: CoverFrame, canvas: CanvasSize) {
+  return {
+    x: ((imageFrame.x + (point.x / 100) * imageFrame.width) / canvas.width) * 100,
+    y: ((imageFrame.y + (point.y / 100) * imageFrame.height) / canvas.height) * 100,
+  }
+}
+
+function clampPercent(value: number, min: number, max: number) {
+  return Math.max(min, Math.min(max, value))
 }
 
 function percentX(value: number) {

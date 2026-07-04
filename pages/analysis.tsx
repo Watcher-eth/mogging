@@ -134,8 +134,21 @@ type CheckoutResponse = {
   url: string
 }
 
+type ClaimPaymentResponse = {
+  entitlements: {
+    mobileInstallId: string
+    evaluationCredits: number
+    subscription: {
+      active: boolean
+      status: string | null
+      currentPeriodEnd: string | null
+    }
+  }
+}
+
 type ImageFramePositions = Record<string, CaptureFrameImagePosition>
 const defaultFramePosition: CaptureFrameImagePosition = { x: 50, y: 50, scale: 1 }
+const analysisWebInstallStorageKey = 'mogging:analysis:web-install-id'
 
 const pseudoAnalysisItems = [
   'Detecting facial reference lines',
@@ -488,6 +501,7 @@ export default function AnalysisPage() {
     setError(null)
 
     try {
+      const paymentInstallId = ensureAnalysisWebInstallId()
       await saveAnalysisDraft({
         gender,
         images,
@@ -495,6 +509,7 @@ export default function AnalysisPage() {
       })
       const response = await apiPost<CheckoutResponse>('/api/payments/checkout', {
         imageCount: images.length,
+        mobileInstallId: paymentInstallId,
       })
       window.location.href = response.url
     } catch (checkoutError) {
@@ -503,10 +518,16 @@ export default function AnalysisPage() {
     }
   }
 
-  async function runActualAnalysis(draftImages = images) {
+  async function runActualAnalysis(draftImages = images, paymentInstallId: string | null = null) {
     if (draftImages.length === 0) {
       setStep('upload')
       setError('Upload an image before starting analysis.')
+      return
+    }
+    if (paidAnalysisRequired && !paymentInstallId) {
+      setStep('payment')
+      setPaymentDialogOpen(true)
+      setError('Complete checkout before generating your report.')
       return
     }
 
@@ -523,6 +544,8 @@ export default function AnalysisPage() {
           hairColor: image.hairColor ?? null,
           skinColor: image.skinColor ?? null,
           landmarks: image.landmarks ?? null,
+        }, {
+          headers: buildPaidAnalysisHeaders(paymentInstallId),
         })
         analysisResults.push(result)
       }
@@ -556,13 +579,14 @@ export default function AnalysisPage() {
     }
   }
 
-  const resumeAfterPayment = useCallback(async (sessionId: string) => {
+  const resumeAfterPayment = useCallback(async (sessionId: string, checkoutInstallId: string | null) => {
     try {
       setError(null)
       setAnalysisUnlocked(true)
       setPaymentDialogOpen(false)
       setStep('actual-analysis')
       setProgress(28)
+      const paymentInstallId = ensureAnalysisWebInstallId(checkoutInstallId)
 
       const [verification, draft] = await Promise.all([
         apiGet<VerifyPaymentResponse>(`/api/payments/verify?session_id=${encodeURIComponent(sessionId)}`),
@@ -581,6 +605,11 @@ export default function AnalysisPage() {
         return
       }
 
+      await apiPost<ClaimPaymentResponse>('/api/payments/claim', {
+        sessionId,
+        mobileInstallId: paymentInstallId,
+      })
+
       setImages(draft.images)
       setSelectedImageId(draft.images[draft.images.length - 1]?.id ?? null)
       setGender(draft.gender)
@@ -596,6 +625,8 @@ export default function AnalysisPage() {
           hairColor: image.hairColor ?? null,
           skinColor: image.skinColor ?? null,
           landmarks: image.landmarks ?? null,
+        }, {
+          headers: buildPaidAnalysisHeaders(paymentInstallId),
         })
         analysisResults.push(result)
       }
@@ -615,10 +646,11 @@ export default function AnalysisPage() {
     if (!router.isReady || router.query.checkout !== 'success') return
 
     const sessionId = typeof router.query.session_id === 'string' ? router.query.session_id : null
+    const checkoutInstallId = typeof router.query.install_id === 'string' ? router.query.install_id : null
     if (!sessionId) return
 
-    void resumeAfterPayment(sessionId)
-  }, [resumeAfterPayment, router.isReady, router.query.checkout, router.query.session_id])
+    void resumeAfterPayment(sessionId, checkoutInstallId)
+  }, [resumeAfterPayment, router.isReady, router.query.checkout, router.query.install_id, router.query.session_id])
 
   useEffect(() => {
     if (paidAnalysisRequired && router.isReady && router.query.checkout === 'cancelled') {
@@ -2876,6 +2908,29 @@ async function cropImageDataUrlToFrame(dataUrl: string, position: CaptureFrameIm
 
   context.drawImage(image, sourceX, sourceY, sourceWidth, sourceHeight, 0, 0, canvas.width, canvas.height)
   return canvas.toDataURL('image/jpeg', 0.92)
+}
+
+function ensureAnalysisWebInstallId(preferredInstallId?: string | null) {
+  const preferred = preferredInstallId?.trim()
+  if (preferred && preferred.length >= 8) {
+    window.localStorage.setItem(analysisWebInstallStorageKey, preferred)
+    return preferred
+  }
+
+  const existing = window.localStorage.getItem(analysisWebInstallStorageKey)
+  if (existing && existing.length >= 8) return existing
+
+  const next = `web_analysis_${crypto.randomUUID()}`
+  window.localStorage.setItem(analysisWebInstallStorageKey, next)
+  return next
+}
+
+function buildPaidAnalysisHeaders(paymentInstallId: string | null): HeadersInit | undefined {
+  return paymentInstallId
+    ? {
+        'x-mogging-mobile-install-id': paymentInstallId,
+      }
+    : undefined
 }
 
 function clampFrameScale(value: number) {

@@ -24,6 +24,7 @@ const appStoreUrl = 'https://apps.apple.com/us/app/mogging-face-rating/id6771414
 const baseDeepLink = process.env.NEXT_PUBLIC_APP_DEEP_LINK || 'mogging://reports'
 const subscriptionStorageKey = 'mogging:web2app:subscription'
 const installClickedStorageKey = 'mogging:web2app:install-clicked'
+const webInstallStorageKey = 'mogging:web2app:web-install-id'
 
 const tiers: Array<{
   id: FunnelProduct
@@ -95,25 +96,30 @@ export default function AppFunnelPage() {
   const [paid, setPaid] = useState(false)
   const [installClicked, setInstallClicked] = useState(false)
   const [openingApp, setOpeningApp] = useState(false)
+  const [webInstallId, setWebInstallId] = useState<string | null>(null)
   const source = useMemo(() => getSource(router.query.source, router.query.utm_source), [router.query.source, router.query.utm_source])
   const installId = useMemo(() => firstQueryValue(router.query.install_id) || null, [router.query.install_id])
+  const checkoutInstallId = installId ?? webInstallId
   const sessionId = useMemo(() => firstQueryValue(router.query.session_id) || null, [router.query.session_id])
   const deepLink = useMemo(() => {
-    const deepLinkBase = installId ? 'mogging://generating' : baseDeepLink
+    const deepLinkBase = sessionId ? 'mogging://generating' : baseDeepLink
     const params = new URLSearchParams({
       source,
       product: selectedProduct,
       flow: 'web2app',
     })
-    if (installId) params.set('install_id', installId)
+    if (checkoutInstallId) params.set('install_id', checkoutInstallId)
     if (sessionId) params.set('session_id', sessionId)
     if (router.query.checkout === 'success') params.set('checkout', 'success')
 
     return `${deepLinkBase}${deepLinkBase.includes('?') ? '&' : '?'}${params.toString()}`
-  }, [installId, router.query.checkout, selectedProduct, sessionId, source])
+  }, [checkoutInstallId, router.query.checkout, selectedProduct, sessionId, source])
 
   useEffect(() => {
     if (!router.isReady) return
+
+    const currentWebInstallId = ensureWebInstallId()
+    setWebInstallId(currentWebInstallId)
 
     const product = readProduct(router.query.product)
     if (product) setSelectedProduct(product)
@@ -126,7 +132,7 @@ export default function AppFunnelPage() {
       window.localStorage.setItem(subscriptionStorageKey, JSON.stringify({
         product: product || selectedProduct,
         sessionId: typeof router.query.session_id === 'string' ? router.query.session_id : null,
-        installId,
+        installId: installId ?? currentWebInstallId,
         source,
         completedAt: new Date().toISOString(),
       }))
@@ -144,16 +150,14 @@ export default function AppFunnelPage() {
   }, [installId, router.isReady, router.query.checkout, router.query.product, router.query.session_id, selectedProduct, source])
 
   async function startWebCheckout() {
-    if (!installId) {
-      toast.error('Open this checkout from the Mogging app so we can attach the purchase to your device.')
-      return
-    }
+    const nextInstallId = checkoutInstallId ?? ensureWebInstallId()
+    if (!checkoutInstallId) setWebInstallId(nextInstallId)
 
     setCheckoutLoading(true)
     try {
       const response = await apiPost<CheckoutResponse>('/api/payments/web-checkout', {
         product: selectedProduct,
-        mobileInstallId: installId,
+        mobileInstallId: nextInstallId,
         source,
       })
       window.location.href = response.url
@@ -190,6 +194,7 @@ export default function AppFunnelPage() {
       <Head>
         <title>Mogging App | Mobile Face Analysis</title>
         <meta name="description" content="Subscribe on the web, install Mogging, then open the mobile app to start your face analysis." />
+        <meta name="apple-itunes-app" content="app-id=6771414050, app-argument=https://mogging.com/app" />
       </Head>
 
       <main className="min-h-[calc(100vh-5rem)] overflow-hidden bg-white text-black">
@@ -281,7 +286,7 @@ export default function AppFunnelPage() {
               <div className="mx-auto mt-7 max-w-md">
                 <button
                   type="button"
-                  onClick={paid && installClicked ? openInstalledApp : paid ? openAppStore : installId ? startWebCheckout : openAppStore}
+                  onClick={paid && installClicked ? openInstalledApp : paid ? openAppStore : startWebCheckout}
                   disabled={checkoutLoading || openingApp}
                   className="flex h-14 w-full items-center justify-center gap-2 rounded-full bg-black px-5 text-sm font-semibold text-white transition duration-200 hover:bg-zinc-800 active:scale-[0.985] disabled:cursor-not-allowed disabled:opacity-60"
                 >
@@ -302,7 +307,7 @@ export default function AppFunnelPage() {
                 <p className="mt-4 text-center text-xs leading-5 text-zinc-500">
                   {paid
                     ? 'After installing, come back to this page and the primary button will open Mogging directly.'
-                    : installId ? 'Secure checkout is handled by Stripe. App access is claimed when you return to Mogging.' : 'Open this page from the app to attach purchases to your install.'}
+                    : 'Secure checkout is handled by Stripe. After payment, install Mogging and open it from this page to claim access.'}
                 </p>
               </div>
             </div>
@@ -322,6 +327,15 @@ function getSource(source: string | string[] | undefined, utmSource: string | st
 
 function firstQueryValue(value: string | string[] | undefined) {
   return Array.isArray(value) ? value[0] : value
+}
+
+function ensureWebInstallId() {
+  const existing = window.localStorage.getItem(webInstallStorageKey)
+  if (existing && existing.length >= 8) return existing
+
+  const next = `web_${crypto.randomUUID()}`
+  window.localStorage.setItem(webInstallStorageKey, next)
+  return next
 }
 
 function readProduct(value: string | string[] | undefined): FunnelProduct | null {

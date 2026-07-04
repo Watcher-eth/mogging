@@ -20,7 +20,7 @@ export function SeoHead({
   path,
 }: SeoHeadProps) {
   const router = useRouter()
-  const siteUrl = (process.env.NEXT_PUBLIC_SITE_URL || '').replace(/\/$/, '')
+  const siteUrl = (process.env.NEXT_PUBLIC_SITE_URL || 'https://mogging.com').replace(/\/$/, '')
   const currentPath = path ?? router.asPath?.split('?')[0] ?? '/'
   const canonicalUrl = siteUrl ? `${siteUrl}${currentPath === '/' ? '' : currentPath}` : currentPath
   const imageUrl = siteUrl ? `${siteUrl}${imagePath}` : imagePath
