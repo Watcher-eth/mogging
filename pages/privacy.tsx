@@ -39,6 +39,16 @@ const sections: LegalSection[] = [
     ],
   },
   {
+    id: 'subscriptions-payments',
+    label: 'Payments',
+    title: 'Subscriptions, Payments, and Web-to-App Access',
+    body: [
+      'Mogging offers paid evaluations, optional extras, and auto-renewable subscriptions. Purchases may be processed through Apple in-app purchase, RevenueCat, Stripe, or other payment infrastructure depending on where you start checkout.',
+      { items: ['For Apple in-app purchases, Apple processes your payment and may provide transaction identifiers, product identifiers, subscription status, renewal status, expiration dates, refund status, and related receipt information to Mogging or RevenueCat so we can unlock paid access and restore purchases.', 'For web checkout, Stripe processes payment details and may provide customer identifiers, checkout session IDs, subscription IDs, invoice status, refund status, chargeback status, email, billing country, and related checkout metadata. Mogging does not store full card numbers.', 'RevenueCat helps us sync subscription status, restore purchases, manage entitlements, and connect web purchases or in-app purchases to the app account or install that should receive access.', 'When you move from mogging.com to the app, we may use account identifiers, anonymous install identifiers, checkout session identifiers, referral parameters, campaign parameters, and device or browser context to attribute the purchase, prevent fraud, and grant the correct subscription or evaluation credits.'] },
+      'We use payment and entitlement data to complete checkout, unlock paid features, provide subscription access, restore purchases, support refunds or disputes, prevent abuse, measure campaign performance, and comply with tax, accounting, security, and legal obligations.',
+    ],
+  },
+  {
     id: 'face-use',
     label: 'Face Data Use',
     title: 'How We Use Face Data',
@@ -61,11 +71,21 @@ const sections: LegalSection[] = [
     ],
   },
   {
+    id: 'analytics-attribution',
+    label: 'Analytics',
+    title: 'Analytics, Attribution, and Cookies',
+    body: [
+      'We may use analytics, diagnostics, cookies, local storage, referral links, campaign parameters, and similar technologies to understand app and website performance, measure marketing attribution, remember sessions, prevent abuse, and troubleshoot checkout or entitlement issues.',
+      'If platform rules require permission for tracking or access to advertising identifiers, we request or respect that permission before using those identifiers for tracking. You can also adjust device, browser, and cookie settings to limit certain analytics or attribution signals.',
+    ],
+  },
+  {
     id: 'sharing',
     label: 'Sharing',
     title: 'When Information Is Shared',
     body: [
       'Face data may be shared with service providers only as needed to operate Mogging: Moonshot/Kimi for report generation, Vercel for hosting and request processing, Cloudflare R2-compatible storage for uploaded photos and generated image assets, our Postgres database provider for saved report records, and authentication, payment, security, analytics, and support providers when those services are involved in your account or request.',
+      'Payment and subscription information may be shared with Apple, RevenueCat, Stripe, fraud-prevention, accounting, tax, analytics, and support providers as needed to process purchases, grant access, restore purchases, resolve disputes, and comply with legal obligations.',
       'The reasons for sharing face data are limited to generating the requested report, storing your saved report history, creating share cards, serving share links, preventing abuse, securing the service, troubleshooting support issues, processing deletion requests, and complying with law.',
       'We may disclose information if required by law, to protect rights and safety, to investigate abuse, or as part of a merger, acquisition, financing, or sale of assets.',
     ],
@@ -81,6 +101,15 @@ const sections: LegalSection[] = [
       'Temporary processing files and generated share-image caches are kept only as long as needed to complete the request, improve performance, or support a current share action. Server or CDN caches for generated share images are normally short-lived and may persist for up to 24 hours before automatic expiry or replacement.',
       'Deletion: if you delete your profile in the app or request deletion at support@mogging.app, we delete or de-identify active account records, uploaded face photos, reports, landmarks, and share links tied to that profile. Active systems are targeted for deletion promptly after the request is processed, and backup copies are overwritten or removed on their normal cycle, generally within 90 days.',
       'Third-party retention: Moonshot/Kimi may retain submitted user content and related logs according to the Kimi OpenPlatform Privacy Policy, including while the API account is active and as long as necessary for service, safety, security, dispute, legitimate business, or legal purposes. Hosting, storage, database, authentication, payment, security, analytics, and support providers may retain service records according to their own processor obligations and backup cycles, but they are not authorized by Mogging to identify users from face data or create biometric templates for Mogging.',
+    ],
+  },
+  {
+    id: 'choices',
+    label: 'Choices',
+    title: 'Your Choices and Requests',
+    body: [
+      'You can request access, correction, deletion, or help with account data by emailing support@mogging.app. Include the account email, app install context, checkout email, or relevant share link when available so we can locate the right records.',
+      { items: ['You can manage or cancel Apple subscriptions in your Apple ID subscription settings.', 'You can request purchase support for web payments by contacting support@mogging.app with the checkout email and approximate purchase time.', 'You can delete your profile in the app where available or request deletion by email.', 'You can control camera, photo library, location, notification, tracking, and other device permissions in system settings.'] },
     ],
   },
   {
@@ -108,7 +137,7 @@ export default function PrivacyPage() {
       eyebrow="Privacy"
       title="Privacy Policy"
       description="How Mogging handles account details, photos, analysis data, rankings, payments, device information, and support requests."
-      updated="June 16, 2026"
+      updated="July 6, 2026"
       path="/privacy"
       sections={sections}
     />
