@@ -1,4 +1,4 @@
-import { and, count, desc, eq, ilike, isNull, sql } from 'drizzle-orm'
+import { and, count, desc, eq, ilike, inArray, isNull, or, sql } from 'drizzle-orm'
 import { z } from 'zod'
 import { hairColorSchema, normalizeApparentAge, skinColorSchema } from '@/lib/appearance/types'
 import { db, schema } from '@/lib/db'
@@ -163,6 +163,51 @@ export async function deleteUserProfile(userId: string) {
   }
 
   return deleted
+}
+
+export async function deleteAnonymousProfile(anonymousActorId: string) {
+  return db.transaction(async (tx) => {
+    const photoRows = await tx
+      .select({ id: schema.photos.id })
+      .from(schema.photos)
+      .where(eq(schema.photos.anonymousActorId, anonymousActorId))
+
+    const photoIds = photoRows.map((photo) => photo.id)
+
+    if (photoIds.length > 0) {
+      const analysisRows = await tx
+        .select({ id: schema.analyses.id })
+        .from(schema.analyses)
+        .where(inArray(schema.analyses.photoId, photoIds))
+
+      const analysisIds = analysisRows.map((analysis) => analysis.id)
+
+      if (analysisIds.length > 0) {
+        await tx.delete(schema.analysisShares).where(inArray(schema.analysisShares.analysisId, analysisIds))
+      }
+
+      await tx
+        .delete(schema.comparisons)
+        .where(
+          or(
+            eq(schema.comparisons.anonymousActorId, anonymousActorId),
+            inArray(schema.comparisons.winnerPhotoId, photoIds),
+            inArray(schema.comparisons.loserPhotoId, photoIds)
+          )
+        )
+
+      await tx.delete(schema.photos).where(inArray(schema.photos.id, photoIds))
+    } else {
+      await tx.delete(schema.comparisons).where(eq(schema.comparisons.anonymousActorId, anonymousActorId))
+    }
+
+    await tx.delete(schema.paymentEntitlements).where(eq(schema.paymentEntitlements.anonymousActorId, anonymousActorId))
+    await tx.delete(schema.photoSets).where(eq(schema.photoSets.anonymousActorId, anonymousActorId))
+    await tx.delete(schema.personGroups).where(eq(schema.personGroups.anonymousActorId, anonymousActorId))
+    await tx.delete(schema.anonymousProfiles).where(eq(schema.anonymousProfiles.anonymousActorId, anonymousActorId))
+
+    return { anonymousActorId }
+  })
 }
 
 export async function searchUsers(input: SearchUsersInput) {
