@@ -2,6 +2,7 @@ import type { NextApiRequest, NextApiResponse } from 'next'
 import Stripe from 'stripe'
 import { db, schema } from '@/lib/db'
 import { env } from '@/lib/env'
+import { sendPaymentActivationEmailForCheckoutSession } from '@/lib/payments/activation-email'
 import { grantEntitlementFromCheckoutSession, revokePaymentIntentEntitlement, updateSubscriptionEntitlement } from '@/lib/payments/entitlements'
 import { getStripe } from '@/lib/payments/stripe'
 
@@ -68,10 +69,13 @@ async function handleStripeEvent(event: Stripe.Event) {
     case 'checkout.session.completed': {
       const session = event.data.object as Stripe.Checkout.Session
       const expanded = await getStripe().checkout.sessions.retrieve(session.id, {
-        expand: ['subscription'],
+        expand: ['subscription', 'customer'],
       })
       if (isLegacyCheckoutProduct(expanded.metadata?.product)) return
       await grantEntitlementFromCheckoutSession({ session: expanded })
+      await sendPaymentActivationEmailForCheckoutSession({ session: expanded }).catch((error) => {
+        console.error('Payment activation email failed', expanded.id, error)
+      })
       return
     }
 

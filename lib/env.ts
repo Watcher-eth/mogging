@@ -61,6 +61,9 @@ const envSchema = z
     STRIPE_MOBILE_MONTHLY_PRICE_CENTS: z.coerce.number().int().min(50).default(999),
     STRIPE_MOBILE_YEARLY_PRICE_CENTS: z.coerce.number().int().min(50).default(4999),
     STRIPE_MOBILE_LIFETIME_PRICE_CENTS: z.coerce.number().int().min(50).default(4999),
+    RESEND_API_KEY: z.string().min(1).optional(),
+    PAYMENTS_EMAIL_FROM: z.string().min(1).default('Mogging <support@mogging.com>'),
+    PAYMENTS_EMAIL_REPLY_TO: z.string().min(1).optional(),
     REVENUECAT_SECRET_API_KEY: z.string().min(1).optional(),
     REVENUECAT_PRO_ENTITLEMENT_ID: z.string().min(1).default('pro'),
   })
@@ -200,6 +203,9 @@ export const env = envSchema.parse({
   STRIPE_MOBILE_MONTHLY_PRICE_CENTS: process.env.STRIPE_MOBILE_MONTHLY_PRICE_CENTS,
   STRIPE_MOBILE_YEARLY_PRICE_CENTS: process.env.STRIPE_MOBILE_YEARLY_PRICE_CENTS,
   STRIPE_MOBILE_LIFETIME_PRICE_CENTS: process.env.STRIPE_MOBILE_LIFETIME_PRICE_CENTS,
+  RESEND_API_KEY: process.env.RESEND_API_KEY,
+  PAYMENTS_EMAIL_FROM: process.env.PAYMENTS_EMAIL_FROM,
+  PAYMENTS_EMAIL_REPLY_TO: process.env.PAYMENTS_EMAIL_REPLY_TO,
   REVENUECAT_SECRET_API_KEY: process.env.REVENUECAT_SECRET_API_KEY,
   REVENUECAT_PRO_ENTITLEMENT_ID: process.env.REVENUECAT_PRO_ENTITLEMENT_ID,
 })

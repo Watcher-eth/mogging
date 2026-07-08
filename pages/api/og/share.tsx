@@ -351,9 +351,8 @@ function getLooksmaxRank(score: number | null, gender: 'male' | 'female' | 'othe
   const value = typeof score === 'number' && Number.isFinite(score) ? Math.max(0, Math.min(10, score)) : null
   if (value === null) return 'Unranked'
 
-  if (value >= 9.2) return 'God Tier'
-
   if (gender === 'female') {
+    if (value >= 9.2) return 'God Tier'
     if (value >= 8) return 'Stacy'
     if (value >= 7.55) return 'Stacy Lite'
     if (value >= 7) return 'HTB'
@@ -364,6 +363,8 @@ function getLooksmaxRank(score: number | null, gender: 'male' | 'female' | 'othe
   }
 
   if (gender === 'male') {
+    if (value >= 9.95) return 'True Adam'
+    if (value >= 9.2) return 'God Tier'
     if (value >= 8.5) return 'Chad'
     if (value >= 8) return 'Chadlite'
     if (value >= 7.35) return 'Mogging'
