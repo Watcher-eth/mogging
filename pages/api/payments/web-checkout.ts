@@ -83,9 +83,22 @@ async function validateCheckoutProduct(productId: string, product: ReturnType<ty
 
   if (!product.priceId) return
 
-  const price = await getStripe().prices.retrieve(product.priceId)
+  const priceEnvName = getStripePriceEnvName(productId)
+  if (!/^price_[A-Za-z0-9]+$/.test(product.priceId)) {
+    throw new ApiError(503, `${product.name} has an invalid Stripe price ID in ${priceEnvName}`)
+  }
+
+  const price = await getStripe().prices.retrieve(product.priceId).catch((error: unknown) => {
+    if (isMissingStripePriceError(error)) {
+      throw new ApiError(
+        503,
+        `${product.name} uses a Stripe price ID that does not exist for the configured STRIPE_SECRET_KEY. Update ${priceEnvName}.`
+      )
+    }
+    throw error
+  })
   if (!price.active) {
-    throw new ApiError(503, `${product.name} uses an inactive Stripe price`)
+    throw new ApiError(503, `${product.name} uses an inactive Stripe price in ${priceEnvName}`)
   }
 
   if (product.mode === 'subscription') {
@@ -101,6 +114,28 @@ async function validateCheckoutProduct(productId: string, product: ReturnType<ty
   if (price.recurring) {
     throw new ApiError(503, `${product.name} must use a one-time Stripe price`)
   }
+}
+
+function getStripePriceEnvName(productId: string) {
+  if (productId === 'evaluation') return 'STRIPE_EVALUATION_PRICE_ID'
+  if (productId === 'evaluation_pack_3') return 'STRIPE_EVALUATION_PACK_3_PRICE_ID'
+  if (productId === 'mobile_subscription_weekly') return 'STRIPE_MOBILE_WEEKLY_PRICE_ID'
+  if (productId === 'mobile_subscription_monthly') return 'STRIPE_MOBILE_MONTHLY_PRICE_ID'
+  if (productId === 'mobile_subscription_yearly') return 'STRIPE_MOBILE_YEARLY_PRICE_ID'
+  if (productId === 'mobile_lifetime') return 'STRIPE_MOBILE_LIFETIME_PRICE_ID'
+  if (productId === 'extra_potential_image') return 'STRIPE_EXTRA_POTENTIAL_IMAGE_PRICE_ID'
+  return 'STRIPE_*_PRICE_ID'
+}
+
+function isMissingStripePriceError(error: unknown) {
+  if (!error || typeof error !== 'object') return false
+  const record = error as { type?: unknown; code?: unknown; param?: unknown; statusCode?: unknown }
+  return (
+    record.type === 'StripeInvalidRequestError' &&
+    record.code === 'resource_missing' &&
+    record.param === 'price' &&
+    record.statusCode === 404
+  )
 }
 
 function getRequestOrigin(req: NextApiRequest) {
