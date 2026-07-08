@@ -26,6 +26,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     const anonymousActorId = session?.user?.id ? null : getOrSetAnonymousActorId(req, res)
     const origin = getRequestOrigin(req)
     const product = getProductConfig(input.product)
+    await validateCheckoutProduct(input.product, product)
     const source = input.source || 'web2app'
     const checkout = await getStripe().checkout.sessions.create({
       mode: product.mode,
@@ -64,6 +65,41 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     })
   } catch (error) {
     return handleApiError(error, res)
+  }
+}
+
+async function validateCheckoutProduct(productId: string, product: ReturnType<typeof getProductConfig>) {
+  if (!product.priceId && product.unitAmount < 50) {
+    throw new ApiError(503, `${product.name} is missing a valid checkout price`)
+  }
+
+  if (product.mode === 'subscription' && !product.interval && !product.priceId) {
+    throw new ApiError(503, `${product.name} is missing a subscription interval`)
+  }
+
+  if (process.env.NODE_ENV === 'production' && product.mode === 'subscription' && !product.priceId) {
+    throw new ApiError(503, `${product.name} is missing its Stripe price ID (${productId})`)
+  }
+
+  if (!product.priceId) return
+
+  const price = await getStripe().prices.retrieve(product.priceId)
+  if (!price.active) {
+    throw new ApiError(503, `${product.name} uses an inactive Stripe price`)
+  }
+
+  if (product.mode === 'subscription') {
+    if (!price.recurring) {
+      throw new ApiError(503, `${product.name} must use a recurring Stripe price`)
+    }
+    if (product.interval && price.recurring.interval !== product.interval) {
+      throw new ApiError(503, `${product.name} Stripe price must recur every ${product.interval}, not ${price.recurring.interval}`)
+    }
+    return
+  }
+
+  if (price.recurring) {
+    throw new ApiError(503, `${product.name} must use a one-time Stripe price`)
   }
 }
 
