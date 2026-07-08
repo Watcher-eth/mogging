@@ -355,9 +355,10 @@ function getLooksmaxRank(score: number | null, gender: 'male' | 'female' | 'othe
 
   if (gender === 'female') {
     if (value >= 8) return 'Stacy'
-    if (value >= 7.35) return 'Mogging'
-    if (value >= 6.6) return 'Ascending'
-    if (value >= 5.6) return 'Pretty'
+    if (value >= 7.55) return 'Stacy Lite'
+    if (value >= 7) return 'HTB'
+    if (value >= 6.15) return 'MTB'
+    if (value >= 5.35) return 'Pretty'
     if (value > 4) return 'Normie'
     return 'Gooner'
   }
