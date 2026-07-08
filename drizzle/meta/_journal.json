@@ -71,6 +71,13 @@
       "when": 1782918000000,
       "tag": "0010_payment_entitlements",
       "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "7",
+      "when": 1783548000000,
+      "tag": "0011_payment_activation_codes",
+      "breakpoints": true
     }
   ]
 }

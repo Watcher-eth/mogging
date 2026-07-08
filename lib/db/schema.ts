@@ -359,6 +359,9 @@ export const paymentEntitlements = pgTable(
     creditBalance: integer('credit_balance').notNull().default(0),
     subscriptionStatus: text('subscription_status'),
     currentPeriodEnd: timestamp('current_period_end', { mode: 'date' }),
+    activationCodeHash: text('activation_code_hash'),
+    activationCodeLast4: text('activation_code_last4'),
+    activationCodeRedeemedAt: timestamp('activation_code_redeemed_at', { mode: 'date' }),
     source: text('source'),
     metadata: jsonb('metadata').$type<Record<string, unknown>>().notNull().default({}),
     createdAt: timestamp('created_at', { mode: 'date' }).notNull().defaultNow(),
@@ -370,6 +373,7 @@ export const paymentEntitlements = pgTable(
     anonymousActorIdx: index('payment_entitlements_anonymous_actor_id_idx').on(table.anonymousActorId),
     sessionIdx: uniqueIndex('payment_entitlements_checkout_session_unique').on(table.stripeCheckoutSessionId),
     paymentIntentIdx: index('payment_entitlements_payment_intent_id_idx').on(table.stripePaymentIntentId),
+    activationCodeIdx: index('payment_entitlements_activation_code_hash_idx').on(table.activationCodeHash),
   })
 )
 

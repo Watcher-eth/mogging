@@ -60,6 +60,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     const totalDisplayScore = readReportTotalScore(share.analysis.metrics, share.analysis.pslScore)
     const totalScore = formatScore(totalDisplayScore)
     const potential = readReportPotential(share.analysis.metrics, share.analysis.pslScore, totalDisplayScore)
+    const rank = getLooksmaxRank(totalDisplayScore, share.photo.gender)
     const tier = (share.analysis.tier || 'Facial aesthetic').toUpperCase()
 
     const image = new ImageResponse(
@@ -120,6 +121,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
           />
 
           <ReportOverlaySvg categoryId={category.id} geometry={geometry} yOffset={yOffset} size={storySize} />
+
+          <RankBadge label={rank} />
 
           <div
             style={{
@@ -298,6 +301,83 @@ function ScoreBlock({ align, label, score }: { align: 'left' | 'right'; label: s
       </div>
     </div>
   )
+}
+
+function RankBadge({ label }: { label: string }) {
+  return (
+    <div
+      style={{
+        alignItems: 'center',
+        display: 'flex',
+        justifyContent: 'center',
+        left: 72,
+        position: 'absolute',
+        right: 72,
+        textAlign: 'center',
+        top: 254,
+      }}
+    >
+      <span
+        style={{
+          color: 'rgba(0,0,0,0.54)',
+          fontSize: 92,
+          fontWeight: 650,
+          letterSpacing: '-4.8px',
+          lineHeight: 0.92,
+          position: 'absolute',
+          transform: 'translate(0px, 5px)',
+          whiteSpace: 'nowrap',
+        }}
+      >
+        {label}
+      </span>
+      <span
+        style={{
+          color: 'rgba(255,255,255,0.96)',
+          fontSize: 92,
+          fontWeight: 650,
+          letterSpacing: '-4.8px',
+          lineHeight: 0.92,
+          whiteSpace: 'nowrap',
+        }}
+      >
+        {label}
+      </span>
+    </div>
+  )
+}
+
+function getLooksmaxRank(score: number | null, gender: 'male' | 'female' | 'other') {
+  const value = typeof score === 'number' && Number.isFinite(score) ? Math.max(0, Math.min(10, score)) : null
+  if (value === null) return 'Unranked'
+
+  if (value >= 9.2) return 'God Tier'
+
+  if (gender === 'female') {
+    if (value >= 8) return 'Stacy'
+    if (value >= 7.35) return 'Mogging'
+    if (value >= 6.6) return 'Ascending'
+    if (value >= 5.6) return 'Pretty'
+    if (value > 4) return 'Normie'
+    return 'Gooner'
+  }
+
+  if (gender === 'male') {
+    if (value >= 8.5) return 'Chad'
+    if (value >= 8) return 'Chadlite'
+    if (value >= 7.35) return 'Mogging'
+    if (value >= 6.6) return 'Ascending'
+    if (value >= 5.6) return 'Normie+'
+    if (value > 4) return 'Normie'
+    return 'Gooner'
+  }
+
+  if (value >= 8) return 'Elite'
+  if (value >= 7.35) return 'Mogging'
+  if (value >= 6.6) return 'Ascending'
+  if (value >= 5.6) return 'Normie+'
+  if (value > 4) return 'Normie'
+  return 'Gooner'
 }
 
 function absoluteImageUrl(src: string, req: NextApiRequest) {

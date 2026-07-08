@@ -4,7 +4,7 @@ import { ApiError, handleApiError, json, methodNotAllowed, parseBody } from '@/l
 import { getOrSetAnonymousActorId } from '@/lib/auth/anonymous'
 import { getAuthSession } from '@/lib/auth/session'
 import { env } from '@/lib/env'
-import { getCheckoutLineItem, getProductConfig, paymentProductSchemaValues } from '@/lib/payments/entitlements'
+import { generatePaymentActivationCode, getCheckoutLineItem, getProductConfig, paymentProductSchemaValues } from '@/lib/payments/entitlements'
 import { getStripe } from '@/lib/payments/stripe'
 
 const checkoutSchema = z.object({
@@ -28,6 +28,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     const product = getProductConfig(input.product)
     await validateCheckoutProduct(input.product, product)
     const source = input.source || 'web2app'
+    const activationCode = generatePaymentActivationCode()
     const checkout = await getStripe().checkout.sessions.create({
       mode: product.mode,
       payment_method_types: ['card'],
@@ -38,6 +39,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         product: input.product,
         mobileInstallId: input.mobileInstallId,
         source,
+        activationCode,
         userId: session?.user?.id ?? '',
         anonymousActorId: anonymousActorId ?? '',
       },
@@ -48,6 +50,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
                 product: input.product,
                 mobileInstallId: input.mobileInstallId,
                 source,
+                activationCode,
               },
             },
           }

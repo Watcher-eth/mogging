@@ -1,3 +1,4 @@
+import { randomInt, createHmac } from 'crypto'
 import { and, eq, gt, or, sql } from 'drizzle-orm'
 import Stripe from 'stripe'
 import { ApiError } from '@/lib/api/http'
@@ -147,6 +148,10 @@ export function getCheckoutLineItem(product: PaymentProduct) {
   }
 }
 
+export function generatePaymentActivationCode() {
+  return String(randomInt(0, 1_000_000)).padStart(6, '0')
+}
+
 export async function claimStripeCheckoutSession({
   mobileInstallId,
   sessionId,
@@ -211,6 +216,8 @@ export async function grantEntitlementFromCheckoutSession({
   const currentPeriodEnd = readSubscriptionPeriodEnd(subscription)
   const credits = product === 'extra_potential_image' ? 0 : getProductConfig(product).credits
   const extras = product === 'extra_potential_image' ? 1 : 0
+  const activationCode = readActivationCode(session.metadata?.activationCode)
+  const activationCodeHash = activationCode ? hashPaymentActivationCode(activationCode) : null
 
   if (canTransferWebCheckout && expectedMobileInstallId) {
     await db
@@ -219,6 +226,7 @@ export async function grantEntitlementFromCheckoutSession({
         mobileInstallId: expectedMobileInstallId,
         userId: userId ?? readOptionalMetadata(session.metadata?.userId),
         anonymousActorId: anonymousActorId ?? readOptionalMetadata(session.metadata?.anonymousActorId),
+        activationCodeRedeemedAt: new Date(),
         updatedAt: new Date(),
       })
       .where(eq(schema.paymentEntitlements.stripeCheckoutSessionId, session.id))
@@ -238,6 +246,8 @@ export async function grantEntitlementFromCheckoutSession({
       creditBalance: credits,
       subscriptionStatus,
       currentPeriodEnd,
+      activationCodeHash,
+      activationCodeLast4: activationCode ? activationCode.slice(-4) : null,
       source: session.metadata?.source ?? null,
       metadata: {
         checkoutMode: session.mode,
@@ -252,6 +262,45 @@ export async function grantEntitlementFromCheckoutSession({
     .onConflictDoNothing({
       target: schema.paymentEntitlements.stripeCheckoutSessionId,
     })
+}
+
+export async function redeemPaymentActivationCode({
+  code,
+  mobileInstallId,
+  userId,
+  anonymousActorId,
+}: {
+  code: string
+  mobileInstallId: string
+  userId?: string | null
+  anonymousActorId?: string | null
+}) {
+  const normalizedCode = normalizeActivationCode(code)
+  const codeHash = hashPaymentActivationCode(normalizedCode)
+  const entitlement = await db.query.paymentEntitlements.findFirst({
+    where: eq(schema.paymentEntitlements.activationCodeHash, codeHash),
+  })
+
+  if (!entitlement) {
+    throw new ApiError(404, 'Activation code not found')
+  }
+
+  if (!isRedeemableEntitlement(entitlement)) {
+    throw new ApiError(402, 'This activation code no longer has active access')
+  }
+
+  await db
+    .update(schema.paymentEntitlements)
+    .set({
+      mobileInstallId,
+      userId: userId ?? entitlement.userId,
+      anonymousActorId: anonymousActorId ?? entitlement.anonymousActorId,
+      activationCodeRedeemedAt: entitlement.activationCodeRedeemedAt ?? new Date(),
+      updatedAt: new Date(),
+    })
+    .where(eq(schema.paymentEntitlements.id, entitlement.id))
+
+  return getEntitlementSummary({ mobileInstallId, userId, anonymousActorId })
 }
 
 export async function updateSubscriptionEntitlement(subscription: Stripe.Subscription) {
@@ -378,6 +427,30 @@ function readPaymentProduct(value: unknown): PaymentProduct {
   throw new ApiError(400, 'Unsupported checkout product')
 }
 
+function readActivationCode(value: unknown) {
+  if (typeof value !== 'string') return null
+  const digits = value.replace(/\D/g, '')
+  return /^\d{6}$/.test(digits) ? digits : null
+}
+
+function normalizeActivationCode(value: string) {
+  const digits = value.replace(/\D/g, '')
+  if (!/^\d{6}$/.test(digits)) {
+    throw new ApiError(400, 'Activation code must be six digits')
+  }
+  return digits
+}
+
+function hashPaymentActivationCode(code: string) {
+  return createHmac('sha256', getActivationCodeSecret())
+    .update(`payment-activation:${normalizeActivationCode(code)}`)
+    .digest('hex')
+}
+
+function getActivationCodeSecret() {
+  return env.NEXTAUTH_SECRET || env.STRIPE_WEBHOOK_SECRET || env.DATABASE_URL
+}
+
 function readStripeId(value: string | { id: string } | null) {
   if (!value) return null
   if (typeof value === 'string') return value
@@ -398,6 +471,15 @@ function readPotentialImageExtras(metadata: Record<string, unknown>) {
   if (!extras || typeof extras !== 'object') return 0
   const potentialImages = (extras as Record<string, unknown>).potentialImages
   return typeof potentialImages === 'number' && Number.isFinite(potentialImages) ? potentialImages : 0
+}
+
+function isRedeemableEntitlement(row: typeof schema.paymentEntitlements.$inferSelect) {
+  if (row.creditBalance > 0) return true
+  if (row.product === 'extra_potential_image' && readPotentialImageExtras(row.metadata) > 0) return true
+  if (!isProAccessProduct(row.product)) return false
+  if (row.subscriptionStatus && !['active', 'trialing', 'complete'].includes(row.subscriptionStatus)) return false
+  if (row.product === 'mobile_lifetime') return true
+  return !row.currentPeriodEnd || row.currentPeriodEnd.getTime() > Date.now()
 }
 
 function isProAccessProduct(product: PaymentProduct) {

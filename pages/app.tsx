@@ -4,11 +4,16 @@ import { motion } from 'motion/react'
 import { ClipboardList, Loader2, ScanFace, ShieldCheck, Sparkles, Swords } from 'lucide-react'
 import { useEffect, useMemo, useState } from 'react'
 import { toast } from 'sonner'
-import { apiPost, ApiClientError } from '@/lib/api/client'
+import { apiGet, apiPost, ApiClientError } from '@/lib/api/client'
 import { cn } from '@/lib/utils'
 
 type CheckoutResponse = {
   url: string
+}
+
+type ActivationCodeResponse = {
+  activationCode: string
+  product: string | null
 }
 
 type FunnelProduct =
@@ -97,6 +102,8 @@ export default function AppFunnelPage() {
   const [installClicked, setInstallClicked] = useState(false)
   const [openingApp, setOpeningApp] = useState(false)
   const [webInstallId, setWebInstallId] = useState<string | null>(null)
+  const [activationCode, setActivationCode] = useState<string | null>(null)
+  const [activationCodeLoading, setActivationCodeLoading] = useState(false)
   const source = useMemo(() => getSource(router.query.source, router.query.utm_source), [router.query.source, router.query.utm_source])
   const installId = useMemo(() => firstQueryValue(router.query.install_id) || null, [router.query.install_id])
   const checkoutInstallId = installId ?? webInstallId
@@ -148,6 +155,30 @@ export default function AppFunnelPage() {
       toast.error('Checkout was cancelled. Pick a plan when you are ready.')
     }
   }, [installId, router.isReady, router.query.checkout, router.query.product, router.query.session_id, selectedProduct, source])
+
+  useEffect(() => {
+    if (!router.isReady || router.query.checkout !== 'success' || !sessionId) return
+
+    let cancelled = false
+    setActivationCodeLoading(true)
+
+    apiGet<ActivationCodeResponse>(`/api/payments/activation-code?session_id=${encodeURIComponent(sessionId)}`)
+      .then((response) => {
+        if (!cancelled) setActivationCode(response.activationCode)
+      })
+      .catch((error) => {
+        if (!cancelled) {
+          toast.error(error instanceof ApiClientError ? error.message : 'Unable to load activation code')
+        }
+      })
+      .finally(() => {
+        if (!cancelled) setActivationCodeLoading(false)
+      })
+
+    return () => {
+      cancelled = true
+    }
+  }, [router.isReady, router.query.checkout, sessionId])
 
   async function startWebCheckout() {
     const nextInstallId = checkoutInstallId ?? ensureWebInstallId()
@@ -286,27 +317,39 @@ export default function AppFunnelPage() {
               <div className="mx-auto mt-7 max-w-md">
                 <button
                   type="button"
-                  onClick={paid && installClicked ? openInstalledApp : paid ? openAppStore : startWebCheckout}
+                  onClick={paid ? openInstalledApp : startWebCheckout}
                   disabled={checkoutLoading || openingApp}
                   className="flex h-14 w-full items-center justify-center gap-2 rounded-full bg-black px-5 text-sm font-semibold text-white transition duration-200 hover:bg-zinc-800 active:scale-[0.985] disabled:cursor-not-allowed disabled:opacity-60"
                 >
                   {checkoutLoading || openingApp ? <Loader2 className="size-4 animate-spin" aria-hidden="true" /> : paid ? <Sparkles className="size-4" aria-hidden="true" /> : <ShieldCheck className="size-4" aria-hidden="true" />}
-                  {paid && installClicked ? 'Open in app' : paid ? 'Install from App Store' : `Continue ${selectedProductLabel(selectedProduct)}`}
+                  {paid ? 'Open in app' : `Continue ${selectedProductLabel(selectedProduct)}`}
                 </button>
 
                 {paid ? (
                   <button
                     type="button"
-                    onClick={openInstalledApp}
+                    onClick={openAppStore}
                     className="mt-3 h-11 w-full rounded-full border border-zinc-200 bg-white px-4 text-sm font-semibold text-black transition duration-200 hover:bg-zinc-50 active:scale-[0.985]"
                   >
-                    Already installed? Open Mogging
+                    Download from App Store
                   </button>
+                ) : null}
+
+                {paid ? (
+                  <div className="mt-4 rounded-[1.5rem] border border-zinc-200 bg-zinc-50 p-4 text-center">
+                    <p className="font-mono text-[10px] font-bold uppercase text-zinc-500">Backup activation code</p>
+                    <div className="mt-2 flex h-12 items-center justify-center rounded-2xl bg-white font-mono text-2xl font-bold tracking-[0.28em] text-black shadow-inner">
+                      {activationCodeLoading ? <Loader2 className="size-5 animate-spin text-zinc-400" aria-hidden="true" /> : activationCode ? activationCode : '------'}
+                    </div>
+                    <p className="mt-3 text-xs leading-5 text-zinc-500">
+                      If opening the app does not activate Pro, tap <span className="font-semibold text-zinc-700">Use Code</span> inside the app and enter this code.
+                    </p>
+                  </div>
                 ) : null}
 
                 <p className="mt-4 text-center text-xs leading-5 text-zinc-500">
                   {paid
-                    ? 'After installing, come back to this page and the primary button will open Mogging directly.'
+                    ? 'Open Mogging from this page to claim access. If the app is not installed yet, the open button will fall back to the App Store.'
                     : 'Secure checkout is handled by Stripe. After payment, install Mogging and open it from this page to claim access.'}
                 </p>
               </div>
