@@ -61,26 +61,26 @@ const tiers: Array<{
 
 const appScreenshots = [
   {
-    src: '/app-screenshots/evaluation.png',
-    alt: 'Mogging evaluation screen with face analysis overlays',
+    src: '/app-screenshots/appstore-mogging-4.png',
+    alt: 'Mogging soft tissue report screen with face analysis overlays',
   },
   {
-    src: '/app-screenshots/protocol.png',
-    alt: 'Mogging personalized protocol report screen',
+    src: '/app-screenshots/export-mogging-3.png',
+    alt: 'Mogging personalized protocol calendar screen',
   },
   {
-    src: '/app-screenshots/for-you.png',
-    alt: 'Mogging For You timeline and skin check screen',
+    src: '/app-screenshots/appstore-mogging-2.png',
+    alt: 'Mogging evaluation tracking chart screen',
   },
 ]
 
 const featurePills = [
   {
-    label: 'Unlimited app evaluations',
+    label: 'Frequent evaluations',
     icon: ScanFace,
   },
   {
-    label: 'Protocol and report tracking',
+    label: 'Personalized Protocol',
     icon: ClipboardList,
   },
   {
