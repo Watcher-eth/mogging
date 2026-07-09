@@ -124,8 +124,8 @@ function renderActivationEmailHtml({
     .split('')
     .map(
       (digit) => `
-        <td style="padding:0 4px;">
-          <div style="width:46px;height:54px;border-radius:16px;background:#f4f7fb;border:1px solid #dfe7f2;text-align:center;font-size:28px;line-height:54px;font-weight:800;color:#080b12;font-family:Inter,Arial,sans-serif;">
+        <td style="padding:0 5px;">
+          <div style="width:48px;height:56px;border-radius:8px;background:#ffffff;border:1px solid #111111;text-align:center;font-size:28px;line-height:56px;font-weight:800;color:#000000;font-family:'SF Pro Display',Inter,-apple-system,BlinkMacSystemFont,'Segoe UI',Arial,sans-serif;">
             ${escapeHtml(digit)}
           </div>
         </td>`
@@ -139,44 +139,81 @@ function renderActivationEmailHtml({
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>Your Mogging activation code</title>
   </head>
-  <body style="margin:0;background:#05070b;padding:32px 16px;font-family:Inter,-apple-system,BlinkMacSystemFont,'Segoe UI',Arial,sans-serif;color:#f8fafc;">
+  <body style="margin:0;background:#ffffff;padding:0;font-family:Inter,-apple-system,BlinkMacSystemFont,'SF Pro Display','Segoe UI',Arial,sans-serif;color:#000000;">
     <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="border-collapse:collapse;">
       <tr>
         <td align="center">
-          <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="max-width:560px;border-collapse:collapse;">
+          <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="max-width:620px;border-collapse:collapse;background:#ffffff;">
             <tr>
-              <td style="padding:0 0 18px;text-align:center;">
-                <div style="display:inline-block;border:1px solid rgba(255,255,255,0.14);border-radius:999px;padding:8px 14px;color:#cbd5e1;font-size:13px;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;">
-                  Mogging
+              <td style="padding:34px 28px 20px;border-bottom:1px solid #111111;">
+                <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="border-collapse:collapse;">
+                  <tr>
+                    <td style="font-size:14px;line-height:1;font-weight:800;letter-spacing:0.16em;text-transform:uppercase;color:#000000;font-family:'Courier New',Courier,monospace;">
+                      Mogging
+                    </td>
+                    <td align="right" style="font-size:12px;line-height:1;font-weight:800;letter-spacing:0.12em;text-transform:uppercase;color:#777777;font-family:'Courier New',Courier,monospace;">
+                      Web purchase
+                    </td>
+                  </tr>
+                </table>
+              </td>
+            </tr>
+            <tr>
+              <td style="padding:36px 28px 22px;">
+                <div style="font-size:12px;line-height:1;font-weight:800;letter-spacing:0.14em;text-transform:uppercase;color:#777777;font-family:'Courier New',Courier,monospace;margin-bottom:12px;">
+                  Activation code
+                </div>
+                <h1 style="margin:0;color:#000000;font-size:48px;line-height:0.96;font-weight:850;letter-spacing:0;font-family:'SF Pro Display',Inter,-apple-system,BlinkMacSystemFont,'Segoe UI',Arial,sans-serif;">
+                  Your scan access is ready.
+                </h1>
+                <p style="margin:18px 0 0;max-width:480px;color:#676767;font-size:21px;line-height:1.34;font-weight:700;">
+                  Unlock ${escapeHtml(productName)} in the app with the code below.
+                </p>
+              </td>
+            </tr>
+            <tr>
+              <td style="padding:0 28px 28px;">
+                <div style="border-top:1px solid #111111;border-bottom:1px solid #111111;padding:24px 0;text-align:center;">
+                  <table role="presentation" cellspacing="0" cellpadding="0" align="center" style="border-collapse:collapse;margin:0 auto;">
+                    <tr>${digits}</tr>
+                  </table>
                 </div>
               </td>
             </tr>
             <tr>
-              <td style="background:#10131a;border:1px solid #252a36;border-radius:28px;overflow:hidden;box-shadow:0 24px 80px rgba(0,0,0,0.42);">
-                <div style="padding:34px 30px 12px;text-align:center;background:linear-gradient(180deg,#151a24 0%,#10131a 76%);">
-                  <h1 style="margin:0;color:#ffffff;font-size:34px;line-height:1.06;font-weight:850;letter-spacing:0;">
-                    Your scan access is ready
-                  </h1>
-                  <p style="margin:16px auto 0;max-width:420px;color:#aeb7c7;font-size:17px;line-height:1.45;font-weight:600;">
-                    Use this activation code to unlock ${escapeHtml(productName)} in the app.
-                  </p>
-                </div>
-                <div style="padding:24px 30px 4px;text-align:center;">
-                  <table role="presentation" cellspacing="0" cellpadding="0" align="center" style="border-collapse:collapse;margin:0 auto 22px;">
-                    <tr>${digits}</tr>
-                  </table>
-                  <a href="${escapeHtml(appUrl)}" style="display:inline-block;background:#1688ff;color:#ffffff;text-decoration:none;border-radius:999px;padding:16px 26px;font-size:16px;font-weight:800;letter-spacing:0.02em;">
-                    Open Mogging
-                  </a>
-                </div>
-                <div style="padding:22px 30px 34px;">
-                  <div style="background:#0b0e14;border:1px solid #242a36;border-radius:20px;padding:18px 18px;color:#c5ccd8;font-size:15px;line-height:1.55;">
-                    <strong style="color:#ffffff;">Backup restore:</strong> open the app, tap <strong style="color:#ffffff;">Use Code</strong>, then enter the six digits above. Keep this email in case you install Mogging on another device.
-                  </div>
-                  <p style="margin:18px 0 0;color:#747d8d;font-size:12px;line-height:1.5;text-align:center;">
-                    This code is linked to your Stripe purchase. If you did not make this purchase, you can ignore this email.
-                  </p>
-                </div>
+              <td style="padding:0 28px 30px;">
+                <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="border-collapse:collapse;border-bottom:1px solid #d9d9d9;">
+                  <tr>
+                    <td style="padding:17px 0;border-top:1px solid #d9d9d9;font-size:12px;line-height:1;font-weight:800;letter-spacing:0.14em;text-transform:uppercase;color:#777777;font-family:'Courier New',Courier,monospace;">
+                      Product
+                    </td>
+                    <td align="right" style="padding:17px 0;border-top:1px solid #d9d9d9;font-size:17px;line-height:1.2;font-weight:800;color:#000000;">
+                      ${escapeHtml(productName)}
+                    </td>
+                  </tr>
+                  <tr>
+                    <td style="padding:17px 0;border-top:1px solid #d9d9d9;font-size:12px;line-height:1;font-weight:800;letter-spacing:0.14em;text-transform:uppercase;color:#777777;font-family:'Courier New',Courier,monospace;">
+                      Restore
+                    </td>
+                    <td align="right" style="padding:17px 0;border-top:1px solid #d9d9d9;font-size:17px;line-height:1.25;font-weight:800;color:#000000;">
+                      Tap Use Code in the app
+                    </td>
+                  </tr>
+                </table>
+              </td>
+            </tr>
+            <tr>
+              <td style="padding:0 28px 28px;">
+                <a href="${escapeHtml(appUrl)}" style="display:block;background:#000000;color:#ffffff;text-decoration:none;border-radius:0;padding:18px 22px;text-align:center;font-size:16px;font-weight:850;letter-spacing:0.06em;text-transform:uppercase;">
+                  Open Mogging
+                </a>
+              </td>
+            </tr>
+            <tr>
+              <td style="padding:0 28px 38px;">
+                <p style="margin:0;color:#777777;font-size:13px;line-height:1.55;font-weight:600;">
+                  Keep this email as a backup. The code is linked to your Stripe purchase and can activate your web purchase inside Mogging on a new device.
+                </p>
               </td>
             </tr>
           </table>

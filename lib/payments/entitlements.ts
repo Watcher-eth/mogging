@@ -218,6 +218,7 @@ export async function grantEntitlementFromCheckoutSession({
   const extras = product === 'extra_potential_image' ? 1 : 0
   const activationCode = readActivationCode(session.metadata?.activationCode)
   const activationCodeHash = activationCode ? hashPaymentActivationCode(activationCode) : null
+  const claimedAt = expectedMobileInstallId ? new Date() : null
 
   if (canTransferWebCheckout && expectedMobileInstallId) {
     await db
@@ -226,7 +227,7 @@ export async function grantEntitlementFromCheckoutSession({
         mobileInstallId: expectedMobileInstallId,
         userId: userId ?? readOptionalMetadata(session.metadata?.userId),
         anonymousActorId: anonymousActorId ?? readOptionalMetadata(session.metadata?.anonymousActorId),
-        activationCodeRedeemedAt: new Date(),
+        activationCodeRedeemedAt: claimedAt,
         updatedAt: new Date(),
       })
       .where(eq(schema.paymentEntitlements.stripeCheckoutSessionId, session.id))
@@ -248,6 +249,7 @@ export async function grantEntitlementFromCheckoutSession({
       currentPeriodEnd,
       activationCodeHash,
       activationCodeLast4: activationCode ? activationCode.slice(-4) : null,
+      activationCodeRedeemedAt: claimedAt,
       source: session.metadata?.source ?? null,
       metadata: {
         checkoutMode: session.mode,
@@ -262,6 +264,19 @@ export async function grantEntitlementFromCheckoutSession({
     .onConflictDoNothing({
       target: schema.paymentEntitlements.stripeCheckoutSessionId,
     })
+
+  if (expectedMobileInstallId) {
+    await db
+      .update(schema.paymentEntitlements)
+      .set({
+        mobileInstallId: expectedMobileInstallId,
+        userId: userId ?? readOptionalMetadata(session.metadata?.userId),
+        anonymousActorId: anonymousActorId ?? readOptionalMetadata(session.metadata?.anonymousActorId),
+        activationCodeRedeemedAt: claimedAt,
+        updatedAt: new Date(),
+      })
+      .where(eq(schema.paymentEntitlements.stripeCheckoutSessionId, session.id))
+  }
 }
 
 export async function redeemPaymentActivationCode({
@@ -283,6 +298,10 @@ export async function redeemPaymentActivationCode({
 
   if (!entitlement) {
     throw new ApiError(404, 'Activation code not found')
+  }
+
+  if (entitlement.activationCodeRedeemedAt) {
+    throw new ApiError(409, 'This activation code has already been used')
   }
 
   if (!isRedeemableEntitlement(entitlement)) {
