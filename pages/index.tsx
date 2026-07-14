@@ -1,840 +1,419 @@
-import { Loader2, RefreshCw, SlidersHorizontal, X } from 'lucide-react'
-import Image from 'next/image'
+import Head from 'next/head'
+import { useRouter } from 'next/router'
 import { motion } from 'motion/react'
-import NumberFlow from '@number-flow/react'
-import { useCallback, useEffect, useRef, useState, type CSSProperties, type ReactNode } from 'react'
-import { createPortal } from 'react-dom'
-import { useSound } from '@web-kits/audio/react'
-import type { VoiceHandle } from '@web-kits/audio'
-import useSWR, { useSWRConfig } from 'swr'
+import { ClipboardList, Loader2, ScanFace, ShieldCheck, Sparkles } from 'lucide-react'
+import { useEffect, useMemo, useState } from 'react'
 import { toast } from 'sonner'
 import { apiGet, apiPost, ApiClientError } from '@/lib/api/client'
-import { filterSound, selectSound, tickingSound, voteSound } from '@/lib/audio/sounds'
+import { cn } from '@/lib/utils'
 
-type ComparisonPhoto = {
-  id: string
-  imageUrl: string
-  name: string | null
-  age: number | null
-  gender: 'male' | 'female' | 'other'
-  hairColor: string | null
-  skinColor: string | null
-  photoType: 'face' | 'body' | 'outfit'
-  userId: string | null
-  displayRating: number
-  conservativeScore: number
-  winCount: number
-  lossCount: number
-  pslScore: number | null
+type CheckoutResponse = {
+  url: string
 }
 
-type ComparisonPair = {
-  left: ComparisonPhoto
-  right: ComparisonPhoto
+type ActivationCodeResponse = {
+  activationCode: string
+  product: string | null
 }
 
-type VoteResponse = {
-  comparisonId: string
-  winnerDisplayRating: number
-  loserDisplayRating: number
-  totalComparisons: number
-}
+type FunnelProduct =
+  | 'evaluation'
+  | 'evaluation_pack_3'
+  | 'mobile_subscription_weekly'
+  | 'mobile_subscription_monthly'
+  | 'mobile_subscription_yearly'
+  | 'mobile_lifetime'
+  | 'extra_potential_image'
 
-type PendingVote = {
-  id: string
-  loserSide: 'left' | 'right'
-  winner: ComparisonPhoto
-  loser: ComparisonPhoto
-}
+const appStoreUrl = 'https://apps.apple.com/us/app/mogging-face-rating/id6771414050'
+const baseDeepLink = process.env.NEXT_PUBLIC_APP_DEEP_LINK || 'mogging://reports'
+const subscriptionStorageKey = 'mogging:web2app:subscription'
+const installClickedStorageKey = 'mogging:web2app:install-clicked'
+const webInstallStorageKey = 'mogging:web2app:web-install-id'
 
-const photoLeaderboardKey = '/api/leaderboard/photos?limit=24&sort=rating'
-const decisionWindowMs = 3_400
-const ageFilters = ['all', '18-24', '25-34', '35-44', '45+'] as const
-const genderFilters = ['all', 'male', 'female'] as const
-const hairColorFilters = ['all', 'black', 'brown', 'blond', 'red', 'gray', 'other'] as const
-const skinColorFilters = ['all', 'very_light', 'light', 'white', 'tan', 'brown', 'black'] as const
+const tiers: Array<{
+  id: FunnelProduct
+  label: string
+  price: string
+  cadence: string
+  note: string
+  badge?: string
+}> = [
+  {
+    id: 'mobile_subscription_weekly',
+    label: 'Weekly',
+    price: '$4.99',
+    cadence: '/week',
+    note: 'Flexible access for a short reset.',
+  },
+  {
+    id: 'mobile_subscription_monthly',
+    label: 'Monthly',
+    price: '$9.99',
+    cadence: '/month',
+    note: 'Best for steady evaluation and tracking.',
+    badge: 'Popular',
+  },
+  {
+    id: 'mobile_subscription_yearly',
+    label: 'Yearly',
+    price: '$49.99',
+    cadence: '/year',
+    note: 'Lowest long-term price for full Pro.',
+    badge: 'Best value',
+  },
+]
 
-export default function VotingPage() {
-  const { mutate: mutateGlobal } = useSWRConfig()
-  const playVote = useSound(voteSound)
-  const playSelect = useSound(selectSound)
-  const playTicking = useSound(tickingSound)
-  const [ageBucket, setAgeBucket] = useState<(typeof ageFilters)[number]>('all')
-  const [gender, setGender] = useState<(typeof genderFilters)[number]>('all')
-  const [hairColor, setHairColor] = useState<(typeof hairColorFilters)[number]>('all')
-  const [skinColor, setSkinColor] = useState<(typeof skinColorFilters)[number]>('all')
-  const pairKey = `/api/compare?photoType=face&gender=${gender}&ageBucket=${ageBucket}&hairColor=${hairColor}&skinColor=${skinColor}`
-  const { data: pair, error, isLoading, mutate } = useSWR<ComparisonPair>(pairKey, {
-    revalidateIfStale: false,
-    revalidateOnFocus: false,
-  })
-  const visiblePair = pair ?? null
-  const [pendingVote, setPendingVote] = useState<PendingVote | null>(null)
-  const [transitionLoser, setTransitionLoser] = useState<{ id: string; side: 'left' | 'right' } | null>(null)
-  const decisionTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
-  const nextPairRef = useRef<ComparisonPair | null>(null)
-  const pendingVoteRef = useRef<PendingVote | null>(null)
-  const tickingVoiceRef = useRef<VoiceHandle | null>(null)
-  const pairTimerKey = visiblePair ? `${visiblePair.left.id}-${visiblePair.right.id}` : 'empty'
+const appScreenshots = [
+  {
+    src: '/app-screenshots/appstore-mogging-4.png',
+    alt: 'Mogging soft tissue report screen with face analysis overlays',
+  },
+  {
+    src: '/app-screenshots/export-mogging-3.png',
+    alt: 'Mogging personalized protocol calendar screen',
+  },
+  {
+    src: '/app-screenshots/appstore-mogging-2.png',
+    alt: 'Mogging evaluation tracking chart screen',
+  },
+]
 
-  const stopTicking = useCallback(() => {
-    tickingVoiceRef.current?.stop(0.08)
-    tickingVoiceRef.current = null
-  }, [])
+const featurePills = [
+  {
+    label: '66-measure scan',
+    icon: ScanFace,
+  },
+  {
+    label: 'Detailed face map',
+    icon: Sparkles,
+  },
+  {
+    label: 'Personalized Protocol',
+    icon: ClipboardList,
+  },
+]
 
-  const startTicking = useCallback(() => {
-    if (tickingVoiceRef.current) return
-    tickingVoiceRef.current = playTicking() ?? null
-  }, [playTicking])
+export default function AppFunnelPage() {
+  const router = useRouter()
+  const [selectedProduct, setSelectedProduct] = useState<FunnelProduct>('mobile_subscription_monthly')
+  const [checkoutLoading, setCheckoutLoading] = useState(false)
+  const [paid, setPaid] = useState(false)
+  const [installClicked, setInstallClicked] = useState(false)
+  const [openingApp, setOpeningApp] = useState(false)
+  const [webInstallId, setWebInstallId] = useState<string | null>(null)
+  const [activationCode, setActivationCode] = useState<string | null>(null)
+  const [activationCodeLoading, setActivationCodeLoading] = useState(false)
+  const source = useMemo(() => getSource(router.query.source, router.query.utm_source), [router.query.source, router.query.utm_source])
+  const installId = useMemo(() => firstQueryValue(router.query.install_id) || null, [router.query.install_id])
+  const checkoutInstallId = installId ?? webInstallId
+  const sessionId = useMemo(() => firstQueryValue(router.query.session_id) || null, [router.query.session_id])
+  const deepLink = useMemo(() => {
+    const deepLinkBase = sessionId ? 'mogging://generating' : baseDeepLink
+    const params = new URLSearchParams({
+      source,
+      product: selectedProduct,
+      flow: 'web2app',
+    })
+    if (checkoutInstallId) params.set('install_id', checkoutInstallId)
+    if (sessionId) params.set('session_id', sessionId)
+    if (router.query.checkout === 'success') params.set('checkout', 'success')
 
-  const submitVote = useCallback(async (winner: ComparisonPhoto, loser: ComparisonPhoto) => {
-    try {
-      await apiPost<VoteResponse>('/api/compare', {
-        winnerPhotoId: winner.id,
-        loserPhotoId: loser.id,
-      })
-      void mutateGlobal(photoLeaderboardKey)
-      void mutateGlobal('/api/leaderboard/me')
-    } catch (voteError) {
-      toast.error(voteError instanceof ApiClientError ? voteError.message : 'Unable to submit vote')
-    }
-  }, [mutateGlobal])
+    return `${deepLinkBase}${deepLinkBase.includes('?') ? '&' : '?'}${params.toString()}`
+  }, [checkoutInstallId, router.query.checkout, selectedProduct, sessionId, source])
 
-  const prefetchNextPair = useCallback(async () => {
-    try {
-      nextPairRef.current = await apiGet<ComparisonPair>(pairKey)
-    } catch {
-      nextPairRef.current = null
-    }
-  }, [pairKey])
+  useEffect(() => {
+    if (!router.isReady) return
 
-  const advancePair = useCallback(async () => {
-    const committedVote = pendingVoteRef.current
-    const nextPair = nextPairRef.current
+    const currentWebInstallId = ensureWebInstallId()
+    setWebInstallId(currentWebInstallId)
 
-    stopTicking()
-    nextPairRef.current = null
-    pendingVoteRef.current = null
-    setTransitionLoser(null)
-    setPendingVote(null)
+    const product = readProduct(router.query.product)
+    if (product) setSelectedProduct(product)
 
-    if (nextPair) {
-      await mutate(nextPair, { revalidate: false })
+    const storedSubscription = window.localStorage.getItem(subscriptionStorageKey)
+    const storedInstallClicked = window.localStorage.getItem(installClickedStorageKey) === 'true'
+    const checkoutSucceeded = router.query.checkout === 'success'
+
+    if (checkoutSucceeded) {
+      window.localStorage.setItem(subscriptionStorageKey, JSON.stringify({
+        product: product || selectedProduct,
+        sessionId: typeof router.query.session_id === 'string' ? router.query.session_id : null,
+        installId: installId ?? currentWebInstallId,
+        source,
+        completedAt: new Date().toISOString(),
+      }))
+      setPaid(true)
+      toast.success('Purchase confirmed. Open the app to claim access.')
     } else {
-      await mutate()
+      setPaid(Boolean(storedSubscription))
     }
 
-    if (committedVote) {
-      playVote()
-      toast.success(`Registered your vote for ${committedVote.winner.name || `${committedVote.winner.gender} face`}`)
-      void submitVote(committedVote.winner, committedVote.loser)
+    setInstallClicked(storedInstallClicked)
+
+    if (router.query.checkout === 'cancelled') {
+      toast.error('Checkout was cancelled. Pick a plan when you are ready.')
     }
-  }, [mutate, playVote, stopTicking, submitVote])
+  }, [installId, router.isReady, router.query.checkout, router.query.product, router.query.session_id, selectedProduct, source])
 
   useEffect(() => {
-    pendingVoteRef.current = pendingVote
-  }, [pendingVote])
+    if (!router.isReady || router.query.checkout !== 'success' || !sessionId) return
 
-  useEffect(() => {
-    if (!visiblePair) return
+    let cancelled = false
+    setActivationCodeLoading(true)
 
-    void prefetchNextPair()
-    startTicking()
-
-    decisionTimerRef.current = setTimeout(() => {
-      void advancePair()
-    }, decisionWindowMs)
+    apiGet<ActivationCodeResponse>(`/api/payments/activation-code?session_id=${encodeURIComponent(sessionId)}`)
+      .then((response) => {
+        if (!cancelled) setActivationCode(response.activationCode)
+      })
+      .catch((error) => {
+        if (!cancelled) {
+          toast.error(error instanceof ApiClientError ? error.message : 'Unable to load activation code')
+        }
+      })
+      .finally(() => {
+        if (!cancelled) setActivationCodeLoading(false)
+      })
 
     return () => {
-      if (decisionTimerRef.current) {
-        clearTimeout(decisionTimerRef.current)
-        decisionTimerRef.current = null
-      }
-      stopTicking()
+      cancelled = true
     }
-  }, [advancePair, pairTimerKey, prefetchNextPair, startTicking, stopTicking, visiblePair])
+  }, [router.isReady, router.query.checkout, sessionId])
 
-  const queueVote = useCallback((winner: ComparisonPhoto, loser: ComparisonPhoto, loserSide: 'left' | 'right') => {
-    playSelect()
-    startTicking()
-    setPendingVote({
-      id: `${winner.id}-${Date.now()}`,
-      loserSide,
-      winner,
-      loser,
-    })
-  }, [playSelect, startTicking])
+  async function startWebCheckout() {
+    const nextInstallId = checkoutInstallId ?? ensureWebInstallId()
+    if (!checkoutInstallId) setWebInstallId(nextInstallId)
 
-  useEffect(() => {
-    if (!visiblePair || pendingVote) return
-    const activePair = visiblePair
-
-    function onKeyDown(event: KeyboardEvent) {
-      if (event.key.toLowerCase() === 'a') queueVote(activePair.left, activePair.right, 'right')
-      if (event.key.toLowerCase() === 'b') queueVote(activePair.right, activePair.left, 'left')
+    setCheckoutLoading(true)
+    try {
+      const response = await apiPost<CheckoutResponse>('/api/payments/web-checkout', {
+        product: selectedProduct,
+        mobileInstallId: nextInstallId,
+        source,
+      })
+      window.location.href = response.url
+    } catch (error) {
+      toast.error(error instanceof ApiClientError ? error.message : 'Unable to open checkout')
+      setCheckoutLoading(false)
     }
+  }
 
-    window.addEventListener('keydown', onKeyDown)
-    return () => window.removeEventListener('keydown', onKeyDown)
-  }, [pendingVote, queueVote, visiblePair])
+  function openAppStore() {
+    window.localStorage.setItem(installClickedStorageKey, 'true')
+    setInstallClicked(true)
+    window.location.href = appStoreUrl
+  }
 
-  function cancelPendingVote() {
-    pendingVoteRef.current = null
-    setPendingVote(null)
+  function openInstalledApp() {
+    setOpeningApp(true)
+    const fallbackTimer = window.setTimeout(() => {
+      window.location.href = appStoreUrl
+    }, 1400)
+
+    const clearFallback = () => window.clearTimeout(fallbackTimer)
+    window.addEventListener('pagehide', clearFallback, { once: true })
+    window.addEventListener('blur', clearFallback, { once: true })
+    window.location.href = deepLink
+
+    window.setTimeout(() => {
+      setOpeningApp(false)
+    }, 1700)
   }
 
   return (
-    <section className="min-h-[calc(100vh-5rem)] bg-white px-5 py-7 text-black sm:px-10 sm:py-14">
-      <style jsx global>{`
-        @keyframes battle-enter {
-          from {
-            opacity: 0;
-            transform: translateY(18px);
-          }
+    <>
+      <Head>
+        <title>Mogging App | Face Analysis and Improvement Protocol</title>
+        <meta
+          name="description"
+          content="Mogging scans your face across 66 clinical-style measures, maps facial structure in detail, and builds a personalized protocol to track and improve your look over time."
+        />
+        <meta name="apple-itunes-app" content="app-id=6771414050, app-argument=https://mogging.com/" />
+      </Head>
 
-          to {
-            opacity: 1;
-            transform: translateY(0);
-          }
-        }
-
-        @keyframes battle-progress {
-          from {
-            transform: scaleX(0);
-          }
-
-          to {
-            transform: scaleX(1);
-          }
-        }
-
-        @keyframes battle-toast-enter {
-          from {
-            opacity: 0;
-            transform: translateY(120%) scaleY(0.86);
-          }
-
-          to {
-            opacity: 1;
-            transform: translateY(0) scaleY(1);
-          }
-        }
-
-        @keyframes battle-toast-exit {
-          from {
-            opacity: 1;
-            transform: translateY(0) scaleY(1);
-          }
-
-          to {
-            opacity: 0;
-            transform: translateY(120%) scaleY(0.82);
-          }
-        }
-
-        @keyframes battle-candidate-enter-left {
-          from {
-            filter: blur(4px);
-            opacity: 0;
-            transform: translateX(-8%) translateY(14px) scale(0.985);
-          }
-
-          to {
-            filter: blur(0);
-            opacity: 1;
-            transform: translateX(0) translateY(0) scale(1);
-          }
-        }
-
-        @keyframes battle-candidate-enter-right {
-          from {
-            filter: blur(4px);
-            opacity: 0;
-            transform: translateX(8%) translateY(14px) scale(0.985);
-          }
-
-          to {
-            filter: blur(0);
-            opacity: 1;
-            transform: translateX(0) translateY(0) scale(1);
-          }
-        }
-
-        @keyframes battle-candidate-exit-left {
-          from {
-            filter: blur(0);
-            opacity: 1;
-            transform: translateX(0) scale(1);
-          }
-
-          to {
-            filter: blur(5px);
-            opacity: 0;
-            transform: translateX(-22%) scale(0.965);
-          }
-        }
-
-        @keyframes battle-candidate-exit-right {
-          from {
-            filter: blur(0);
-            opacity: 1;
-            transform: translateX(0) scale(1);
-          }
-
-          to {
-            filter: blur(5px);
-            opacity: 0;
-            transform: translateX(22%) scale(0.965);
-          }
-        }
-      `}</style>
-
-      {isLoading ? (
-        <BattleState icon={<Loader2 className="size-5 animate-spin" aria-hidden="true" />} title="Loading matchup" />
-      ) : visiblePair ? (
-        <main className="isolate grid gap-7 sm:gap-12">
-          <header
-            className="relative z-[80] border-b border-zinc-200 bg-white pb-5 sm:pb-10"
-            style={{ animation: 'battle-enter 560ms cubic-bezier(0.22, 1, 0.36, 1) both' }}
+      <main className="min-h-[calc(100vh-5rem)] overflow-hidden bg-white text-black">
+        <section className="mx-auto flex min-h-[calc(100vh-5rem)] w-full max-w-7xl flex-col items-center px-5 py-8 sm:px-10 sm:py-12">
+          <motion.div
+            initial={{ opacity: 0, y: 18 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.45, ease: [0.16, 1, 0.3, 1] }}
+            className="flex w-full flex-col items-center"
           >
-            <div className="grid gap-3 sm:gap-6 lg:grid-cols-[minmax(0,1fr)_auto] lg:items-end">
-              <div className="flex items-end justify-between gap-4 sm:block">
-                <h1 className="max-w-4xl text-4xl font-semibold leading-[0.94] tracking-[-0.07em] sm:text-6xl lg:text-7xl">
-                  Mog Off
-                </h1>
-                <div className="shrink-0 sm:hidden">
-                  <BattleFilters
-                    ageBucket={ageBucket}
-                    gender={gender}
-                    hairColor={hairColor}
-                    skinColor={skinColor}
-                    onAgeBucketChange={setAgeBucket}
-                    onGenderChange={setGender}
-                    onHairColorChange={setHairColor}
-                    onSkinColorChange={setSkinColor}
+            <a
+              href={appStoreUrl}
+              className="inline-flex items-center gap-3 rounded-full border border-zinc-200 bg-zinc-50 px-5 py-2.5 text-base font-semibold text-black shadow-[0_10px_34px_rgba(15,23,42,0.08)] transition duration-200 hover:border-zinc-300 hover:bg-white active:scale-[0.985]"
+            >
+              <AppStoreMark className="size-8" />
+              <span>View Mogging on the App Store</span>
+            </a>
+
+            <p className="mt-10 font-mono text-sm font-bold uppercase tracking-normal text-zinc-500 sm:text-base">Mobile face analysis //</p>
+            <h1 className="mt-5 max-w-6xl text-center text-[3.6rem] font-semibold leading-[0.9] tracking-[-0.075em] text-black sm:text-[7rem] lg:text-[8.6rem]">
+              Your looks. Measured. Tracked. Improved.
+            </h1>
+            <p className="mt-7 max-w-3xl text-center text-xl leading-8 text-zinc-500 sm:text-2xl sm:leading-9">
+              Scan across 66 clinical-style facial measures, review a detailed face map, and follow a personalized protocol built to improve what your report finds over time.
+            </p>
+          </motion.div>
+
+          <motion.div
+            initial={{ opacity: 0, y: 20, scale: 0.985 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            transition={{ duration: 0.5, delay: 0.08, ease: [0.16, 1, 0.3, 1] }}
+            className="mt-12 w-full"
+          >
+            <div className="flex gap-4 overflow-x-auto px-[max(0px,calc((100vw-80rem)/2))] pb-4 sm:justify-center sm:overflow-visible sm:px-0">
+              {appScreenshots.map((screenshot) => (
+                <div key={screenshot.src} className="w-[74vw] min-w-[260px] max-w-[340px] shrink-0 overflow-hidden rounded-[2.25rem] sm:w-[30%]">
+                  <img
+                    src={screenshot.src}
+                    alt={screenshot.alt}
+                    className="block h-auto w-full"
+                    loading="eager"
                   />
                 </div>
+              ))}
+            </div>
+
+            <div className="mx-auto mt-10 w-full max-w-5xl">
+              <div className="grid gap-3 md:grid-cols-3">
+                {tiers.map((tier) => {
+                  const active = selectedProduct === tier.id
+                  return (
+                    <button
+                      key={tier.id}
+                      type="button"
+                      onClick={() => setSelectedProduct(tier.id)}
+                      className={cn(
+                        'group grid min-h-48 grid-rows-[1fr_auto] rounded-[2rem] border bg-white p-5 text-left transition duration-200 active:scale-[0.985]',
+                        active ? 'border-black shadow-[inset_0_0_0_1px_#000,0_18px_48px_rgba(15,23,42,0.10)]' : 'border-zinc-200 hover:border-zinc-400'
+                      )}
+                    >
+                      <span>
+                        <span className="flex items-start justify-between gap-3">
+                          <span className="block font-mono text-[11px] font-bold uppercase text-zinc-500">{tier.label}</span>
+                          {tier.badge ? <span className="rounded-full bg-zinc-100 px-3 py-1 font-mono text-[10px] font-bold uppercase text-zinc-600">{tier.badge}</span> : null}
+                        </span>
+                        <span className="mt-5 block text-sm leading-5 text-zinc-500">{tier.note}</span>
+                      </span>
+                      <span className="mt-8 block">
+                        <span className="text-5xl font-semibold tracking-[-0.07em]">{tier.price}</span>
+                        <span className="ml-2 text-sm font-medium text-zinc-500">{tier.cadence}</span>
+                      </span>
+                    </button>
+                  )
+                })}
               </div>
-              <div className="hidden items-end gap-3 justify-self-start sm:flex lg:justify-self-end">
-                <BattleControls
-                  ageBucket={ageBucket}
-                  gender={gender}
-                  hairColor={hairColor}
-                  pendingVote={pendingVote}
-                  pairTimerKey={pairTimerKey}
-                  skinColor={skinColor}
-                  onAgeBucketChange={setAgeBucket}
-                  onGenderChange={setGender}
-                  onHairColorChange={setHairColor}
-                  onSkinColorChange={setSkinColor}
-                />
+
+              <div className="mx-auto mt-7 grid max-w-3xl gap-3 sm:grid-cols-3">
+                {featurePills.map((item) => {
+                  const Icon = item.icon
+                  return (
+                    <div key={item.label} className="flex items-center justify-center gap-2 rounded-full border border-zinc-200 bg-zinc-50 px-4 py-3 text-sm font-medium text-zinc-700">
+                      <Icon className="size-4 text-black" strokeWidth={2.25} aria-hidden="true" />
+                      <span>{item.label}</span>
+                  </div>
+                  )
+                })}
+              </div>
+
+              <div className="mx-auto mt-7 max-w-md">
+                <button
+                  type="button"
+                  onClick={paid ? openInstalledApp : startWebCheckout}
+                  disabled={checkoutLoading || openingApp}
+                  className="flex h-14 w-full items-center justify-center gap-2 rounded-full bg-black px-5 text-sm font-semibold text-white transition duration-200 hover:bg-zinc-800 active:scale-[0.985] disabled:cursor-not-allowed disabled:opacity-60"
+                >
+                  {checkoutLoading || openingApp ? <Loader2 className="size-4 animate-spin" aria-hidden="true" /> : paid ? <Sparkles className="size-4" aria-hidden="true" /> : <ShieldCheck className="size-4" aria-hidden="true" />}
+                  {paid ? 'Open in app' : `Continue ${selectedProductLabel(selectedProduct)}`}
+                </button>
+
+                {paid ? (
+                  <button
+                    type="button"
+                    onClick={openAppStore}
+                    className="mt-3 h-11 w-full rounded-full border border-zinc-200 bg-white px-4 text-sm font-semibold text-black transition duration-200 hover:bg-zinc-50 active:scale-[0.985]"
+                  >
+                    Download from App Store
+                  </button>
+                ) : null}
+
+                {paid ? (
+                  <div className="mt-4 rounded-[1.5rem] border border-zinc-200 bg-zinc-50 p-4 text-center">
+                    <p className="font-mono text-[10px] font-bold uppercase text-zinc-500">Backup activation code</p>
+                    <div className="mt-2 flex h-12 items-center justify-center rounded-2xl bg-white font-mono text-2xl font-bold tracking-[0.28em] text-black shadow-inner">
+                      {activationCodeLoading ? <Loader2 className="size-5 animate-spin text-zinc-400" aria-hidden="true" /> : activationCode ? activationCode : '------'}
+                    </div>
+                    <p className="mt-3 text-xs leading-5 text-zinc-500">
+                      If opening the app does not activate Pro, tap <span className="font-semibold text-zinc-700">Use Code</span> inside the app and enter this code.
+                    </p>
+                  </div>
+                ) : null}
+
+                <p className="mt-4 text-center text-xs leading-5 text-zinc-500">
+                  {paid
+                    ? 'Open Mogging from this page to claim access. If the app is not installed yet, the open button will fall back to the App Store.'
+                    : 'Secure checkout is handled by Stripe. After payment, install Mogging and open it from this page to claim access.'}
+                </p>
               </div>
             </div>
-          </header>
-
-          <div
-            className="relative z-0 grid grid-cols-[minmax(0,1fr)_34px_minmax(0,1fr)] items-stretch gap-2 sm:gap-6 lg:grid-cols-[minmax(0,1fr)_112px_minmax(0,1fr)]"
-            style={{ animation: 'battle-enter 620ms cubic-bezier(0.22, 1, 0.36, 1) 80ms both' }}
-          >
-            <BattleCandidate
-              key={visiblePair.left.id}
-              enterFrom="left"
-              photo={visiblePair.left}
-              pendingVote={pendingVote}
-              transitionLoser={transitionLoser}
-              side="left"
-              shortcut="A"
-              onVote={() => queueVote(visiblePair.left, visiblePair.right, 'right')}
-            />
-            <BattleDivider />
-            <BattleCandidate
-              key={visiblePair.right.id}
-              enterFrom="right"
-              photo={visiblePair.right}
-              pendingVote={pendingVote}
-              transitionLoser={transitionLoser}
-              side="right"
-              shortcut="B"
-              onVote={() => queueVote(visiblePair.right, visiblePair.left, 'left')}
-            />
-          </div>
-
-          <div className="relative z-[70] grid gap-3 sm:hidden">
-            <DecisionTimer
-              pending={Boolean(pendingVote)}
-              timerKey={pairTimerKey}
-            />
-          </div>
-        </main>
-      ) : (
-        <BattleState
-          icon={<RefreshCw className="size-5" aria-hidden="true" />}
-          title="No matchup ready"
-          description={error instanceof ApiClientError ? error.message : 'Add at least two public photos to begin voting.'}
-        />
-      )}
-
-      <PendingVoteBar pendingVote={pendingVote} onCancel={cancelPendingVote} />
-    </section>
-  )
-}
-
-function BattleControls({
-  ageBucket,
-  gender,
-  hairColor,
-  pendingVote,
-  pairTimerKey,
-  skinColor,
-  onAgeBucketChange,
-  onGenderChange,
-  onHairColorChange,
-  onSkinColorChange,
-}: {
-  ageBucket: (typeof ageFilters)[number]
-  gender: (typeof genderFilters)[number]
-  hairColor: (typeof hairColorFilters)[number]
-  pendingVote: PendingVote | null
-  pairTimerKey: string
-  skinColor: (typeof skinColorFilters)[number]
-  onAgeBucketChange: (value: (typeof ageFilters)[number]) => void
-  onGenderChange: (value: (typeof genderFilters)[number]) => void
-  onHairColorChange: (value: (typeof hairColorFilters)[number]) => void
-  onSkinColorChange: (value: (typeof skinColorFilters)[number]) => void
-}) {
-  return (
-    <>
-      <DecisionTimer
-        pending={Boolean(pendingVote)}
-        timerKey={pairTimerKey}
-      />
-      <BattleFilters
-        ageBucket={ageBucket}
-        gender={gender}
-        hairColor={hairColor}
-        skinColor={skinColor}
-        onAgeBucketChange={onAgeBucketChange}
-        onGenderChange={onGenderChange}
-        onHairColorChange={onHairColorChange}
-        onSkinColorChange={onSkinColorChange}
-      />
+          </motion.div>
+        </section>
+      </main>
     </>
   )
 }
 
-function BattleFilters({
-  ageBucket,
-  gender,
-  hairColor,
-  skinColor,
-  onAgeBucketChange,
-  onGenderChange,
-  onHairColorChange,
-  onSkinColorChange,
-}: {
-  ageBucket: (typeof ageFilters)[number]
-  gender: (typeof genderFilters)[number]
-  hairColor: (typeof hairColorFilters)[number]
-  skinColor: (typeof skinColorFilters)[number]
-  onAgeBucketChange: (value: (typeof ageFilters)[number]) => void
-  onGenderChange: (value: (typeof genderFilters)[number]) => void
-  onHairColorChange: (value: (typeof hairColorFilters)[number]) => void
-  onSkinColorChange: (value: (typeof skinColorFilters)[number]) => void
-}) {
+function getSource(source: string | string[] | undefined, utmSource: string | string[] | undefined) {
+  const value = firstQueryValue(source) || firstQueryValue(utmSource)
+  if (!value) return 'web2app'
+
+  return value.toLowerCase().replace(/[^a-z0-9_-]/g, '').slice(0, 80) || 'web2app'
+}
+
+function firstQueryValue(value: string | string[] | undefined) {
+  return Array.isArray(value) ? value[0] : value
+}
+
+function ensureWebInstallId() {
+  const existing = window.localStorage.getItem(webInstallStorageKey)
+  if (existing && existing.length >= 8) return existing
+
+  const next = `web_${crypto.randomUUID()}`
+  window.localStorage.setItem(webInstallStorageKey, next)
+  return next
+}
+
+function readProduct(value: string | string[] | undefined): FunnelProduct | null {
+  const product = firstQueryValue(value)
+  return product === 'mobile_subscription_weekly' ||
+    product === 'mobile_subscription_monthly' ||
+    product === 'mobile_subscription_yearly'
+    ? product
+    : null
+}
+
+function selectedProductLabel(product: FunnelProduct) {
+  if (product === 'mobile_subscription_weekly') return 'weekly Pro'
+  if (product === 'mobile_subscription_monthly') return 'monthly Pro'
+  if (product === 'mobile_subscription_yearly') return 'yearly Pro'
+  return 'monthly Pro'
+}
+
+function AppStoreMark({ className }: { className?: string }) {
   return (
-    <FilterMenu
-      align="right"
-      filters={[
-        { label: 'Gender', value: gender, values: genderFilters, onChange: (value) => onGenderChange(value as (typeof genderFilters)[number]) },
-        { label: 'Age', value: ageBucket, values: ageFilters, onChange: (value) => onAgeBucketChange(value as (typeof ageFilters)[number]) },
-        { label: 'Hair', value: hairColor, values: hairColorFilters, onChange: (value) => onHairColorChange(value as (typeof hairColorFilters)[number]) },
-        { label: 'Skin', value: skinColor, values: skinColorFilters, onChange: (value) => onSkinColorChange(value as (typeof skinColorFilters)[number]) },
-      ]}
-    />
-  )
-}
-
-type FilterMenuItem = {
-  label: string
-  value: string
-  values: readonly string[]
-  onChange: (value: string) => void
-}
-
-function FilterMenu({ align = 'right', filters }: { align?: 'left' | 'right'; filters: FilterMenuItem[] }) {
-  const [open, setOpen] = useState(false)
-  const [menuStyle, setMenuStyle] = useState<CSSProperties | null>(null)
-  const buttonRef = useRef<HTMLButtonElement | null>(null)
-  const panelRef = useRef<HTMLDivElement | null>(null)
-  const playFilter = useSound(filterSound)
-  const activeCount = filters.filter((filter) => filter.value !== 'all').length
-
-  useEffect(() => {
-    if (!open) return
-
-    function updateMenuPosition() {
-      const rect = buttonRef.current?.getBoundingClientRect()
-      if (!rect) return
-
-      const width = Math.min(window.innerWidth * 0.84, 320)
-      const preferredLeft = align === 'left' ? rect.left : rect.right - width
-      const left = Math.max(12, Math.min(window.innerWidth - width - 12, preferredLeft))
-      setMenuStyle({
-        left,
-        top: rect.bottom + 10,
-        width,
-      })
-    }
-
-    function handlePointerDown(event: PointerEvent) {
-      const target = event.target as Node
-      if (!buttonRef.current?.contains(target) && !panelRef.current?.contains(target)) {
-        setOpen(false)
-      }
-    }
-
-    updateMenuPosition()
-    document.addEventListener('pointerdown', handlePointerDown)
-    window.addEventListener('resize', updateMenuPosition)
-    window.addEventListener('scroll', updateMenuPosition, true)
-    return () => {
-      document.removeEventListener('pointerdown', handlePointerDown)
-      window.removeEventListener('resize', updateMenuPosition)
-      window.removeEventListener('scroll', updateMenuPosition, true)
-    }
-  }, [align, open])
-
-  return (
-    <div className="relative w-fit">
-      <button
-        ref={buttonRef}
-        aria-expanded={open}
-        aria-label="Open filters"
-        className="relative grid size-10 place-items-center rounded-full border border-zinc-200 bg-white text-black shadow-[0_10px_26px_rgba(15,23,42,0.06)] transition-[border-color,transform,box-shadow] duration-200 hover:-translate-y-0.5 hover:border-zinc-300 hover:shadow-[0_16px_34px_rgba(15,23,42,0.1)] active:translate-y-0"
-        onClick={() => {
-          playFilter()
-          setOpen((current) => !current)
-        }}
-        type="button"
-      >
-        <SlidersHorizontal className="size-4" aria-hidden="true" />
-        {activeCount > 0 ? (
-          <span className="absolute -right-1 -top-1 grid size-5 place-items-center rounded-full bg-black font-mono text-[10px] font-semibold text-white">
-            {activeCount}
-          </span>
-        ) : null}
-      </button>
-
-      {open && menuStyle && typeof document !== 'undefined' ? createPortal(
-        <motion.div
-          ref={panelRef}
-          className="fixed z-[9999] rounded-[24px] border border-zinc-200 bg-white p-3 shadow-[0_24px_70px_rgba(15,23,42,0.16)]"
-          style={menuStyle}
-          initial={{ opacity: 0, y: -6, scale: 0.98 }}
-          animate={{ opacity: 1, y: 0, scale: 1 }}
-          transition={{ duration: 0.18, ease: [0.22, 1, 0.36, 1] }}
-        >
-          <div className="grid gap-2">
-            {filters.map((filter) => (
-              <FilterMenuSelect key={filter.label} filter={filter} />
-            ))}
-          </div>
-        </motion.div>,
-        document.body
-      ) : null}
-    </div>
-  )
-}
-
-function FilterMenuSelect({ filter }: { filter: FilterMenuItem }) {
-  const playFilter = useSound(filterSound)
-
-  return (
-    <label className="grid gap-1.5 rounded-2xl px-2 py-1.5 transition-colors hover:bg-zinc-50">
-      <span className="font-mono text-[9px] uppercase tracking-[0.14em] text-zinc-500">{filter.label}</span>
-      <select
-        className="h-10 rounded-2xl border border-zinc-200 bg-white px-3 text-sm font-semibold capitalize text-black outline-none transition-colors hover:border-zinc-300 focus:border-black"
-        onChange={(event) => {
-          playFilter()
-          filter.onChange(event.target.value)
-        }}
-        value={filter.value}
-      >
-        {filter.values.map((option) => (
-          <option key={option} value={option}>
-            {formatFilterOption(option)}
-          </option>
-        ))}
-      </select>
-    </label>
-  )
-}
-
-function formatFilterOption(option: string) {
-  return option.replaceAll('_', ' ')
-}
-
-function DecisionTimer({
-  pending,
-  timerKey,
-}: {
-  pending: boolean
-  timerKey: string
-}) {
-  const [seconds, setSeconds] = useState(Math.ceil(decisionWindowMs / 1000))
-
-  useEffect(() => {
-    const deadline = Date.now() + decisionWindowMs
-    setSeconds(Math.ceil(decisionWindowMs / 1000))
-
-    const interval = setInterval(() => {
-      setSeconds(Math.max(0, Math.ceil((deadline - Date.now()) / 1000)))
-    }, 100)
-
-    return () => {
-      clearInterval(interval)
-    }
-  }, [timerKey])
-
-  return (
-    <div className="grid w-full gap-2 justify-self-start lg:w-48 lg:justify-self-end lg:text-right">
-      <div className="flex items-end justify-between gap-4 lg:justify-end">
-        <div className="font-mono text-[10px] uppercase tracking-[0.14em] text-zinc-500">
-          {pending ? 'Vote locks in' : 'Press A or B'}
-        </div>
-        <div className="font-mono text-4xl font-semibold tabular-nums tracking-[-0.07em] text-black sm:text-5xl">
-          {String(seconds).padStart(2, '0')}
-        </div>
-      </div>
-      <div className="h-1 overflow-hidden rounded-full bg-zinc-200">
-        <motion.div
-          key={timerKey}
-          className="h-full origin-left rounded-full bg-black"
-          initial={{ scaleX: 1 }}
-          animate={{ scaleX: 0 }}
-          transition={{ duration: decisionWindowMs / 1000, ease: 'linear' }}
-        />
-      </div>
-    </div>
-  )
-}
-
-function BattleCandidate({
-  enterFrom,
-  onVote,
-  pendingVote,
-  photo,
-  shortcut,
-  side,
-  transitionLoser,
-}: {
-  enterFrom: 'left' | 'right'
-  onVote: () => void
-  pendingVote: PendingVote | null
-  photo: ComparisonPhoto
-  shortcut: 'A' | 'B'
-  side: 'left' | 'right'
-  transitionLoser: { id: string; side: 'left' | 'right' } | null
-}) {
-  const totalVotes = photo.winCount + photo.lossCount
-  const winRate = totalVotes > 0 ? Math.round((photo.winCount / totalVotes) * 100) : 0
-  const displayName = photo.name || `${photo.gender} face`
-  const isSelected = pendingVote?.winner.id === photo.id
-  const isPendingLoser = pendingVote?.loser.id === photo.id
-  const isRejected = transitionLoser?.id === photo.id
-  const exitTo = transitionLoser?.side === 'right' ? 'left' : 'right'
-  const displayRating = photo.displayRating + (isSelected ? 18 : 0)
-
-  return (
-    <article
-      className={[
-        'group grid min-w-0 content-start gap-2 will-change-transform transition-opacity duration-500 ease-out sm:gap-4',
-        isSelected ? 'opacity-100' : '',
-        isPendingLoser ? 'opacity-45' : '',
-      ].join(' ')}
-      style={{
-        animation: isRejected
-          ? `battle-candidate-exit-${exitTo} 560ms cubic-bezier(0.55, 0.06, 0.68, 0.19) both`
-          : `battle-candidate-enter-${enterFrom} 720ms cubic-bezier(0.22, 1, 0.36, 1) both`,
-        pointerEvents: isRejected ? 'none' : 'auto',
-      }}
-    >
-      <div className={`flex min-w-0 items-end justify-between gap-2 sm:gap-5 ${side === 'right' ? 'sm:flex-row-reverse sm:text-right' : ''}`}>
-        <div className="min-w-0">
-          <p className="font-mono text-[9px] uppercase tracking-[0.12em] text-zinc-500 sm:text-xs sm:tracking-[0.14em]">Rank</p>
-          <h2 className="mt-1 truncate text-2xl font-semibold leading-none tracking-[-0.055em] sm:mt-2 sm:text-5xl sm:tracking-[-0.065em]">{displayName}</h2>
-        </div>
-        <div className="shrink-0 bg-white px-1.5 py-1 font-mono text-[10px] font-semibold sm:px-2 sm:text-xs">
-          [{shortcut}]
-        </div>
-      </div>
-
-      <button
-        aria-label={`Vote for ${displayName}`}
-        className={[
-          'relative aspect-[2.5/3] w-full max-w-[560px] overflow-hidden border bg-white text-left outline-none transition-[border-color,transform] duration-300 ease-out hover:-translate-y-1 active:translate-y-0',
-          side === 'right' ? 'lg:ml-auto' : 'lg:mr-auto',
-          isSelected ? 'border-black' : 'border-zinc-200',
-        ].join(' ')}
-        onClick={onVote}
-        type="button"
-      >
-        <Image
-          alt={displayName}
-          className="object-cover grayscale-[0.08] transition duration-700 ease-out group-hover:scale-[1.025]"
-          src={photo.imageUrl}
-          fill
-          priority
-          sizes="(min-width: 1024px) 50vw, 100vw"
-        />
-        <div className="pointer-events-none absolute inset-0 bg-[linear-gradient(180deg,rgba(255,255,255,0)_34%,rgba(255,255,255,0.22)_58%,rgba(255,255,255,0.96)_100%)]" />
-        {isPendingLoser ? (
-          <div className="pointer-events-none absolute inset-0 bg-[linear-gradient(180deg,rgba(255,255,255,0.22)_0%,rgba(255,255,255,0.52)_48%,rgba(255,255,255,0.98)_100%)]" />
-        ) : null}
-        {isSelected ? (
-          <div className="absolute right-5 top-5 bg-black px-3 py-1.5 font-mono text-xs uppercase tracking-[0.12em] text-white">
-            Selected
-          </div>
-        ) : null}
-      </button>
-
-      <div className={`grid grid-cols-3 gap-1 border-y border-zinc-300 py-2 sm:gap-0 sm:py-3 ${side === 'right' ? 'sm:text-right' : ''}`}>
-        <ScoreMetric value={displayRating} />
-        <Metric label="PSL" value={formatPsl(photo.pslScore)} />
-        <Metric label="Win" value={`${winRate}%`} />
-      </div>
-    </article>
-  )
-}
-
-function BattleDivider() {
-  return (
-    <div className="grid place-items-center border-x border-zinc-200 px-1 lg:py-0">
-      <div className="grid justify-items-center gap-2 sm:gap-4">
-        <div className="h-10 w-px bg-zinc-200 sm:h-16" />
-        <div className="font-mono text-[9px] uppercase tracking-[0.12em] text-zinc-500 sm:text-xs sm:tracking-[0.16em]">VS</div>
-        <div className="h-10 w-px bg-zinc-200 sm:h-16" />
-      </div>
-    </div>
-  )
-}
-
-function PendingVoteBar({
-  onCancel,
-  pendingVote,
-}: {
-  onCancel: () => void
-  pendingVote: PendingVote | null
-}) {
-  const [renderedVote, setRenderedVote] = useState<PendingVote | null>(pendingVote)
-  const [isClosing, setIsClosing] = useState(false)
-
-  useEffect(() => {
-    if (pendingVote) {
-      setRenderedVote(pendingVote)
-      setIsClosing(false)
-      return
-    }
-
-    if (!renderedVote) return
-
-    setIsClosing(true)
-    const exitTimer = setTimeout(() => {
-      setRenderedVote(null)
-      setIsClosing(false)
-    }, 280)
-
-    return () => clearTimeout(exitTimer)
-  }, [pendingVote, renderedVote])
-
-  if (!renderedVote) return null
-
-  return (
-    <div
-      className="fixed inset-x-0 bottom-0 z-50 mx-auto grid max-w-none origin-bottom gap-3 sm:inset-x-5 sm:bottom-8 sm:max-w-[460px]"
-      style={{
-        animation: isClosing
-          ? 'battle-toast-exit 280ms cubic-bezier(0.55, 0.06, 0.68, 0.19) both'
-          : 'battle-toast-enter 420ms cubic-bezier(0.22, 1, 0.36, 1) both',
-        pointerEvents: isClosing ? 'none' : 'auto',
-      }}
-    >
-      <div className="flex items-center justify-between border border-zinc-200 bg-white px-4 py-3 shadow-[0_18px_50px_rgba(15,23,42,0.12)]">
-        <div>
-          <p className="text-lg font-semibold tracking-[-0.04em]">{renderedVote.winner.name || 'Selected face'}</p>
-        </div>
-        <button
-          aria-label="Cancel vote"
-          className="grid size-9 place-items-center rounded-full text-zinc-500 transition-colors duration-200 hover:bg-zinc-100 hover:text-black"
-          onClick={onCancel}
-          type="button"
-        >
-          <X className="size-4" aria-hidden="true" />
-        </button>
-      </div>
-      <div className="h-1 bg-zinc-200">
-        {!isClosing ? (
-          <motion.div
-            key={renderedVote.id}
-            className="h-full origin-left bg-black"
-            initial={{ scaleX: 1 }}
-            animate={{ scaleX: 0 }}
-            transition={{ duration: decisionWindowMs / 1000, ease: 'linear' }}
-          />
-        ) : null}
-      </div>
-    </div>
-  )
-}
-
-function ScoreMetric({ value }: { value: number }) {
-  return (
-    <div className="min-w-0">
-      <p className="truncate font-mono text-[8px] uppercase tracking-[0.08em] text-zinc-500 sm:text-[10px] sm:tracking-[0.12em]">Score</p>
-      <NumberFlow
-        className="mt-1 block truncate text-sm font-semibold tracking-[-0.04em] [font-variant-numeric:tabular-nums] sm:text-lg"
-        format={{ maximumFractionDigits: 0 }}
-        opacityTiming={{ duration: 180, easing: 'ease-out' }}
-        spinTiming={{ duration: 620, easing: 'cubic-bezier(0.22, 1, 0.36, 1)' }}
-        transformTiming={{ duration: 620, easing: 'cubic-bezier(0.22, 1, 0.36, 1)' }}
-        trend={1}
-        value={Math.round(value)}
-        willChange
+    <svg className={className} viewBox="0 0 48 48" aria-hidden="true" role="img">
+      <rect width="48" height="48" rx="12" fill="url(#app-store-mark-gradient)" />
+      <path
+        d="M19.75 31.9h-5.4a2 2 0 0 1 0-4h7.58l2.33-4.06-4.88-8.45a2 2 0 1 1 3.46-2l3.73 6.47 3.72-6.47a2 2 0 1 1 3.47 2L24.3 31.9a2.61 2.61 0 0 1-4.55 0Zm13.9 0h-5.43l2.31-4h3.12a2 2 0 1 1 0 4Zm-18.1 5.44a2 2 0 0 1-.74-2.73l1.26-2.18h4.62l-2.4 4.17a2 2 0 0 1-2.74.74Z"
+        fill="white"
       />
-    </div>
+      <defs>
+        <linearGradient id="app-store-mark-gradient" x1="8" x2="42" y1="40" y2="7" gradientUnits="userSpaceOnUse">
+          <stop stopColor="#0A84FF" />
+          <stop offset="1" stopColor="#5AC8FA" />
+        </linearGradient>
+      </defs>
+    </svg>
   )
-}
-
-function Metric({ label, value }: { label: string; value: string }) {
-  return (
-    <div className="min-w-0">
-      <p className="truncate font-mono text-[8px] uppercase tracking-[0.08em] text-zinc-500 sm:text-[10px] sm:tracking-[0.12em]">{label}</p>
-      <p className="mt-1 truncate text-sm font-semibold tracking-[-0.04em] sm:text-lg">{value}</p>
-    </div>
-  )
-}
-
-function BattleState({
-  description,
-  icon,
-  title,
-}: {
-  description?: string
-  icon: ReactNode
-  title: string
-}) {
-  return (
-    <div className="grid min-h-[calc(100vh-13rem)] place-items-center text-center">
-      <div>
-        <div className="mx-auto grid size-12 place-items-center text-black/50">{icon}</div>
-        <h1 className="mt-4 text-2xl font-semibold tracking-[-0.04em]">{title}</h1>
-        {description ? <p className="mt-2 max-w-sm text-sm leading-6 text-black/52">{description}</p> : null}
-      </div>
-    </div>
-  )
-}
-
-function formatPsl(score?: number | null) {
-  if (typeof score !== 'number') return '--'
-  return score.toFixed(1)
 }

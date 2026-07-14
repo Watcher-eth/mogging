@@ -4,9 +4,9 @@ import { useRouter } from 'next/router'
 import { cn } from '@/lib/utils'
 
 const navItems = [
-  { href: '/', label: 'Battle' },
-  { href: '/leaderboard', label: 'Leaderboard' },
   { href: '/analysis', label: 'Analysis' },
+  { href: '/leaderboard', label: 'Leaderboard' },
+  { href: '/battle', label: 'Battle' },
 ]
 
 export function AppNav() {
@@ -15,9 +15,7 @@ export function AppNav() {
   return (
     <nav className="flex min-w-0 items-center justify-center gap-2 sm:gap-8">
       {navItems.map((item) => {
-        const active = item.href === '/'
-          ? router.pathname === '/'
-          : router.pathname.startsWith(item.href)
+        const active = router.pathname.startsWith(item.href)
 
         return (
           <Link

@@ -55,8 +55,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
             },
           }
         : null),
-      success_url: `${origin}/app?checkout=success&product=${input.product}&source=${encodeURIComponent(source)}&install_id=${encodeURIComponent(input.mobileInstallId)}&session_id={CHECKOUT_SESSION_ID}`,
-      cancel_url: `${origin}/app?checkout=cancelled&product=${input.product}&source=${encodeURIComponent(source)}&install_id=${encodeURIComponent(input.mobileInstallId)}`,
+      success_url: `${origin}/?checkout=success&product=${input.product}&source=${encodeURIComponent(source)}&install_id=${encodeURIComponent(input.mobileInstallId)}&session_id={CHECKOUT_SESSION_ID}`,
+      cancel_url: `${origin}/?checkout=cancelled&product=${input.product}&source=${encodeURIComponent(source)}&install_id=${encodeURIComponent(input.mobileInstallId)}`,
     })
 
     if (!checkout.url) {

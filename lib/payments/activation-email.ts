@@ -78,7 +78,7 @@ function readPaymentProduct(value: unknown): PaymentProduct | null {
 
 function buildAppUrl(session: Stripe.Checkout.Session, product: PaymentProduct) {
   const siteUrl = env.NEXT_PUBLIC_SITE_URL || env.NEXTAUTH_URL || 'https://mogging.com'
-  const url = new URL('/app', siteUrl)
+  const url = new URL('/', siteUrl)
   url.searchParams.set('checkout', 'success')
   url.searchParams.set('product', product)
   url.searchParams.set('source', session.metadata?.source || 'web2app')

@@ -85,7 +85,7 @@ type ProfileDialogValues = {
 export function AppShell({ children }: AppShellProps) {
   const { data: session, status } = useSession()
   const router = useRouter()
-  const immersive = router.pathname === '/' || router.pathname === '/analysis' || router.pathname === '/leaderboard' || router.pathname === '/app'
+  const immersive = router.pathname === '/' || router.pathname === '/analysis' || router.pathname === '/leaderboard' || router.pathname === '/battle' || router.pathname === '/app'
   const [loginOpen, setLoginOpen] = useState(false)
   const [accountOpen, setAccountOpen] = useState(false)
   const [editOpen, setEditOpen] = useState(false)
