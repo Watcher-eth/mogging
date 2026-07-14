@@ -94,6 +94,30 @@ const featurePills = [
   },
 ]
 
+const reviewCards = [
+  {
+    title: 'Protocol actually made me consistent',
+    rating: 5,
+    age: '2mo ago',
+    author: 'ryanlooks',
+    body: 'The scan called out my jaw blur, posture and under-eye issues, then turned it into a daily protocol. I stuck to it for 6 weeks and my photos look way cleaner.',
+  },
+  {
+    title: 'Best glow up app if you follow it',
+    rating: 5,
+    age: '1mo ago',
+    author: 'marco.f',
+    body: 'I used to jump between random looksmaxing advice. Mogging made it obvious what to work on first: hair framing, skin texture, shoulder posture and debloat habits. Big difference.',
+  },
+  {
+    title: 'The report is brutally useful',
+    rating: 4,
+    age: '3w ago',
+    author: 'aidenbuilds',
+    body: 'The score was cool, but the protocol is why I kept using it. Same lighting, repeat scans, clear todos. My face looks more structured because I finally tracked the basics.',
+  },
+]
+
 export default function AppFunnelPage() {
   const router = useRouter()
   const [selectedProduct, setSelectedProduct] = useState<FunnelProduct>('mobile_subscription_monthly')
@@ -275,6 +299,8 @@ export default function AppFunnelPage() {
               ))}
             </div>
 
+            <ReviewsSection />
+
             <div className="mx-auto mt-10 w-full max-w-5xl">
               <div className="grid gap-3 md:grid-cols-3">
                 {tiers.map((tier) => {
@@ -361,6 +387,86 @@ export default function AppFunnelPage() {
         </section>
       </main>
     </>
+  )
+}
+
+function ReviewsSection() {
+  return (
+    <section className="mx-auto mt-10 w-full max-w-7xl rounded-[2rem] bg-white px-0 py-2 text-zinc-950">
+      <div className="mb-7 flex items-start justify-between gap-6 px-1">
+        <h2 className="text-[1.7rem] font-semibold leading-none tracking-[-0.04em] text-zinc-900 sm:text-[2rem]">
+          Ratings &amp; Reviews
+        </h2>
+        <a href={appStoreUrl} className="text-base font-semibold text-[#007aff] transition hover:text-[#0062cc] sm:text-lg">
+          See All
+        </a>
+      </div>
+
+      <div className="mb-9 grid gap-6 px-1 lg:grid-cols-[240px_1fr] lg:items-end">
+        <div className="flex items-end gap-3">
+          <span className="text-[5.6rem] font-semibold leading-[0.76] tracking-[-0.08em] text-zinc-500 sm:text-[6.5rem]">4.8</span>
+          <span className="pb-2 text-xl font-semibold text-zinc-500">out of 5</span>
+        </div>
+
+        <div className="grid gap-4 sm:grid-cols-[120px_1fr] sm:items-end">
+          <div className="text-left text-lg font-semibold text-zinc-500 sm:text-right">243 Ratings</div>
+          <RatingDistribution />
+        </div>
+      </div>
+
+      <div className="grid gap-5 lg:grid-cols-3">
+        {reviewCards.map((review) => (
+          <article key={review.title} className="min-h-[224px] rounded-[1.5rem] bg-zinc-100 p-6 text-zinc-700">
+            <div className="mb-2 grid grid-cols-[1fr_auto] gap-4">
+              <h3 className="text-lg font-semibold leading-6 text-zinc-700">{review.title}</h3>
+              <span className="text-base font-semibold text-zinc-500">{review.age}</span>
+            </div>
+            <div className="mb-5 grid grid-cols-[1fr_auto] items-center gap-4">
+              <StarRating rating={review.rating} />
+              <span className="text-base font-semibold text-zinc-500">{review.author}</span>
+            </div>
+            <p className="text-lg font-medium leading-7 text-zinc-700">{review.body}</p>
+          </article>
+        ))}
+      </div>
+    </section>
+  )
+}
+
+function RatingDistribution() {
+  const rows = [
+    { stars: 5, value: 0.82 },
+    { stars: 4, value: 0.13 },
+    { stars: 3, value: 0.04 },
+    { stars: 2, value: 0.01 },
+    { stars: 1, value: 0.02 },
+  ]
+
+  return (
+    <div className="grid gap-2">
+      {rows.map((row) => (
+        <div key={row.stars} className="grid grid-cols-[90px_1fr] items-center gap-3">
+          <div className="flex justify-end gap-0.5 text-[13px] leading-none text-zinc-500">
+            {Array.from({ length: row.stars }).map((_, index) => (
+              <span key={`${row.stars}-${index}`}>★</span>
+            ))}
+          </div>
+          <div className="h-1.5 overflow-hidden rounded-full bg-zinc-200">
+            <div className="h-full rounded-full bg-zinc-500" style={{ width: `${row.value * 100}%` }} />
+          </div>
+        </div>
+      ))}
+    </div>
+  )
+}
+
+function StarRating({ rating }: { rating: number }) {
+  return (
+    <div className="flex gap-1 text-[22px] leading-none text-[#ff8a1f]" aria-label={`${rating} out of 5 stars`}>
+      {Array.from({ length: 5 }).map((_, index) => (
+        <span key={index}>{index < rating ? '★' : '☆'}</span>
+      ))}
+    </div>
   )
 }
 

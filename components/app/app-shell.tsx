@@ -78,6 +78,7 @@ type ProfileDialogValues = {
 export function AppShell({ children }: AppShellProps) {
   const { data: session, status } = useSession()
   const router = useRouter()
+  const pendingAuthRedirect = getSafeAuthRedirect(router.query.next)
   const immersive = router.pathname === '/' || router.pathname === '/analysis' || router.pathname === '/leaderboard' || router.pathname === '/battle' || router.pathname === '/app'
   const [loginOpen, setLoginOpen] = useState(false)
   const [accountOpen, setAccountOpen] = useState(false)
@@ -114,6 +115,20 @@ export function AppShell({ children }: AppShellProps) {
     setLoginOpen(false)
     setProfileSetupOpen(true)
   }, [dashboard?.user, status])
+
+  useEffect(() => {
+    if (!router.isReady || router.query.login !== '1') return
+
+    if (status === 'unauthenticated') {
+      setLoginOpen(true)
+      return
+    }
+
+    if (status === 'authenticated' && pendingAuthRedirect) {
+      setLoginOpen(false)
+      void router.replace(pendingAuthRedirect)
+    }
+  }, [pendingAuthRedirect, router, router.isReady, router.query.login, status])
 
   useEffect(() => {
     if (!accountOpen) return
@@ -252,7 +267,7 @@ export function AppShell({ children }: AppShellProps) {
       <LoginDialog
         open={loginOpen}
         onOpenChange={setLoginOpen}
-        callbackUrl={router.asPath || '/'}
+        callbackUrl={pendingAuthRedirect ?? router.asPath ?? '/'}
       />
       <EditProfileDialog
         dashboard={dashboard ?? null}
@@ -280,6 +295,12 @@ export function AppShell({ children }: AppShellProps) {
       />
     </div>
   )
+}
+
+function getSafeAuthRedirect(value: string | string[] | undefined) {
+  const next = Array.isArray(value) ? value[0] : value
+  if (!next || !next.startsWith('/') || next.startsWith('//')) return null
+  return next
 }
 
 function AccountMenuButton({

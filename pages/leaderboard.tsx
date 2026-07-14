@@ -292,6 +292,7 @@ export default function LeaderboardPage() {
 
       <CurrentUserRankBar entry={currentUserRank?.entry ?? null} />
       <LeaderboardProfileDialog
+        authStatus={status}
         fallbackEntry={entries.find((entry) => (entry.photoId ?? entry.id) === selectedPhotoId) ?? null}
         loading={selectedProfileLoading}
         onOpenChange={(open) => {
@@ -617,12 +618,14 @@ function MobileSocialLink({ social }: { social?: string | null }) {
 }
 
 function LeaderboardProfileDialog({
+  authStatus,
   fallbackEntry,
   loading,
   onOpenChange,
   open,
   profile,
 }: {
+  authStatus: ReturnType<typeof useSession>['status']
   fallbackEntry: LeaderboardEntry | null
   loading: boolean
   onOpenChange: (open: boolean) => void
@@ -645,6 +648,10 @@ function LeaderboardProfileDialog({
   const name = selected?.name ?? fallbackEntry?.name ?? 'Anonymous'
   const score = selected?.displayRating ?? fallbackEntry?.displayRating ?? null
   const reportAnalysisId = selected?.analysisId ?? photos.find((photo) => photo.analysisId)?.analysisId ?? null
+  const reportHref = reportAnalysisId ? `/analysis?analysisId=${encodeURIComponent(reportAnalysisId)}` : null
+  const gatedReportHref = reportHref && authStatus === 'unauthenticated'
+    ? `/leaderboard?login=1&next=${encodeURIComponent(reportHref)}`
+    : reportHref
   const rows = [
     { icon: VenusAndMars, label: 'Gender', value: formatProfileValue(selected?.gender ?? fallbackEntry?.gender) },
     { icon: MapPin, label: 'Location', value: formatLocation(selected?.country, selected?.state) },
@@ -721,10 +728,10 @@ function LeaderboardProfileDialog({
                         </div>
                       ) : null}
 
-                      {reportAnalysisId ? (
+                      {gatedReportHref ? (
                         <a
                           className="relative grid h-16 place-items-center bg-white px-5 text-base font-semibold tracking-[-0.02em] text-black transition-colors hover:bg-zinc-50"
-                          href={`/analysis?analysisId=${encodeURIComponent(reportAnalysisId)}`}
+                          href={gatedReportHref}
                         >
                           <span className="absolute left-0 top-0 size-4 border-l border-t border-black" />
                           <span className="absolute right-0 top-0 size-4 border-r border-t border-black" />
