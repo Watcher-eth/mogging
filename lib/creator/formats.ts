@@ -11,7 +11,7 @@ export type CreatorSubmissionFormat = {
 export const CREATOR_SUBMISSION_FORMATS = [
   {
     id: 'general-creator-video-v1',
-    name: 'General creator video',
+    name: 'General Creator Video',
     shortDescription: 'An original short-form video that clearly demonstrates Mogging and ends with a direct call to action.',
     active: true,
     elements: [

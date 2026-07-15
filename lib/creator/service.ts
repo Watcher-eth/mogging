@@ -1,4 +1,4 @@
-import { and, desc, eq } from 'drizzle-orm'
+import { and, desc, eq, or, sql } from 'drizzle-orm'
 import { z } from 'zod'
 import { db, schema } from '@/lib/db'
 import { env } from '@/lib/env'
@@ -73,13 +73,14 @@ export type CreatorTikTokOAuthInput = CreatorAnalyticsEvidenceInput & {
 }
 
 export async function getCreatorDashboard(userId: string) {
+  const communityMetricsPromise = getCreatorCommunityMetrics()
   const profile = await getCreatorProfile(userId)
   const featureFlags = {
     creatorAccountRequiredForSubmission: env.CREATOR_ACCOUNT_REQUIRED_FOR_SUBMISSION,
   }
-  if (!profile) return { profile: null, submissions: [], payments: [], socialAccounts: [], featureFlags }
+  if (!profile) return { profile: null, submissions: [], payments: [], socialAccounts: [], communityMetrics: await communityMetricsPromise, featureFlags }
 
-  const [submissions, payments, socialAccounts] = await Promise.all([
+  const [submissions, payments, socialAccounts, communityMetrics] = await Promise.all([
     db.query.creatorSubmissions.findMany({
       where: eq(schema.creatorSubmissions.creatorProfileId, profile.id),
       orderBy: [desc(schema.creatorSubmissions.createdAt)],
@@ -92,9 +93,40 @@ export async function getCreatorDashboard(userId: string) {
       where: eq(schema.creatorSocialAccounts.creatorProfileId, profile.id),
       orderBy: [desc(schema.creatorSocialAccounts.createdAt)],
     }),
+    communityMetricsPromise,
   ])
 
-  return { profile, submissions, payments, socialAccounts, featureFlags }
+  return { profile, submissions, payments, socialAccounts, communityMetrics, featureFlags }
+}
+
+async function getCreatorCommunityMetrics() {
+  const [viewMetrics, paymentMetrics, submissionMetrics] = await Promise.all([
+    db
+      .select({
+        totalQualifiedViews: sql<number>`coalesce(sum(${schema.creatorAttributionMetrics.qualifiedViews}), 0)::float8`,
+        totalFirstTimePaidCustomers: sql<number>`coalesce(sum(${schema.creatorAttributionMetrics.firstTimePaidCustomers}), 0)::float8`,
+      })
+      .from(schema.creatorAttributionMetrics),
+    db
+      .select({
+        totalPaidCents: sql<number>`coalesce(sum(${schema.creatorPayments.amountCents}), 0)::float8`,
+        paidCreators: sql<number>`count(distinct ${schema.creatorPayments.creatorProfileId})::int`,
+      })
+      .from(schema.creatorPayments)
+      .where(eq(schema.creatorPayments.status, 'paid')),
+    db
+      .select({ approvedSubmissions: sql<number>`count(*)::int` })
+      .from(schema.creatorSubmissions)
+      .where(or(eq(schema.creatorSubmissions.status, 'approved'), eq(schema.creatorSubmissions.status, 'paid'))),
+  ])
+
+  return {
+    totalQualifiedViews: viewMetrics[0]?.totalQualifiedViews || 0,
+    totalFirstTimePaidCustomers: viewMetrics[0]?.totalFirstTimePaidCustomers || 0,
+    totalPaidCents: paymentMetrics[0]?.totalPaidCents || 0,
+    paidCreators: paymentMetrics[0]?.paidCreators || 0,
+    approvedSubmissions: submissionMetrics[0]?.approvedSubmissions || 0,
+  }
 }
 
 export function getCreatorProfile(userId: string) {

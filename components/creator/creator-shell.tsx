@@ -1,11 +1,12 @@
 import Link from 'next/link'
 import { useRouter } from 'next/router'
 import { useSession } from 'next-auth/react'
-import { BadgeCheck, Clapperboard, CreditCard, FileVideo, Loader2, Megaphone } from 'lucide-react'
+import { BadgeCheck, Clapperboard, CreditCard, FileVideo, LayoutDashboard, Loader2, Megaphone } from 'lucide-react'
 import type { ReactNode } from 'react'
 import { cn } from '@/lib/utils'
 
 const creatorNav = [
+  { href: '/creator', label: 'Overview', icon: LayoutDashboard },
   { href: '/creator/submit', label: 'Submit', icon: Clapperboard },
   { href: '/creator/submissions', label: 'Submissions', icon: FileVideo },
   { href: '/creator/accounts', label: 'Accounts', icon: BadgeCheck },
@@ -24,9 +25,9 @@ export function CreatorShell({ children, allowUnauthenticated = false }: { child
     return (
       <section className="mx-auto flex min-h-[55vh] max-w-xl flex-col items-center justify-center text-center">
         <span className="mb-5 grid size-12 place-items-center rounded-2xl border border-zinc-200 bg-white shadow-sm"><BadgeCheck className="size-5" /></span>
-        <h1 className="text-3xl font-semibold tracking-[-0.055em]">Creator access required</h1>
+        <h1 className="text-3xl font-semibold tracking-[-0.055em]">Creator Access Required</h1>
         <p className="mt-3 max-w-md text-sm leading-6 text-zinc-500">Sign in with your Mogging account to submit videos and track payments.</p>
-        <Link href="/creator/accounts" className="mt-7 rounded-xl bg-black px-5 py-3 text-sm font-semibold text-white transition-transform duration-150 ease-out active:scale-[0.97]">Continue to accounts</Link>
+        <Link href="/creator/accounts" className="mt-7 rounded-xl bg-black px-5 py-3 text-sm font-semibold text-white transition-transform duration-150 ease-out active:scale-[0.97]">Continue to Sign In</Link>
       </section>
     )
   }
@@ -35,8 +36,8 @@ export function CreatorShell({ children, allowUnauthenticated = false }: { child
     <div className="creator-enter w-full">
       <div className="mb-8 flex flex-col gap-4 border-b border-zinc-200 pb-5 sm:flex-row sm:items-end sm:justify-between">
         <div>
-          <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-zinc-400">Creator studio</p>
-          <p className="mt-1.5 text-sm text-zinc-600">Create. Submit. Get paid.</p>
+          <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-zinc-400">Creator Studio</p>
+          <p className="mt-1.5 text-sm text-zinc-600">Create. Submit. Get Paid.</p>
         </div>
         <nav className="flex max-w-full gap-1 overflow-x-auto rounded-2xl border border-zinc-200 bg-white p-1.5 shadow-[0_10px_35px_rgba(15,23,42,0.04)]">
           {creatorNav.map((item) => {

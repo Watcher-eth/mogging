@@ -66,6 +66,13 @@ export type CreatorDashboard = {
   submissions: CreatorSubmission[]
   payments: CreatorPayment[]
   socialAccounts: CreatorSocialAccount[]
+  communityMetrics: {
+    totalQualifiedViews: number
+    totalFirstTimePaidCustomers: number
+    totalPaidCents: number
+    paidCreators: number
+    approvedSubmissions: number
+  }
   featureFlags: {
     creatorAccountRequiredForSubmission: boolean
   }
