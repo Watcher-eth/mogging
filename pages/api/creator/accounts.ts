@@ -2,10 +2,13 @@ import type { NextApiRequest, NextApiResponse } from 'next'
 import { z } from 'zod'
 import { ApiError, handleApiError, json, methodNotAllowed, parseBody } from '@/lib/api/http'
 import { getAuthSession } from '@/lib/auth/session'
+import { revokeTikTokAccess } from '@/lib/auth/tiktok-api'
+import { env } from '@/lib/env'
 import {
   addCreatorSocialAccount,
   creatorSocialAccountSchema,
   getCreatorDashboard,
+  getCreatorTikTokAccessToken,
   removeCreatorSocialAccount,
 } from '@/lib/creator/service'
 
@@ -26,7 +29,14 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     }
     if (req.method === 'DELETE') {
       const input = parseBody(deleteAccountSchema, req.query)
-      return json(res, 200, { account: await removeCreatorSocialAccount(session.user.id, input.id) })
+      const accessToken = await getCreatorTikTokAccessToken(session.user.id, input.id)
+      const account = await removeCreatorSocialAccount(session.user.id, input.id)
+      if (accessToken && env.TIKTOK_CLIENT_KEY && env.TIKTOK_CLIENT_SECRET) {
+        await revokeTikTokAccess(env.TIKTOK_CLIENT_KEY, env.TIKTOK_CLIENT_SECRET, accessToken).catch((error) => {
+          console.warn('Could not revoke TikTok creator access', error instanceof Error ? error.message : error)
+        })
+      }
+      return json(res, 200, { account })
     }
     return methodNotAllowed(res, ['GET', 'POST', 'DELETE'])
   } catch (error) {

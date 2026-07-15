@@ -5,6 +5,7 @@ import { getSignedUrl } from '@aws-sdk/s3-request-presigner'
 import { env, isR2Configured } from '@/lib/env'
 
 export const MAX_CREATOR_VIDEO_BYTES = 500 * 1024 * 1024
+export const MAX_CREATOR_ANALYTICS_VIDEO_BYTES = 250 * 1024 * 1024
 export const CREATOR_VIDEO_TYPES = ['video/mp4', 'video/quicktime', 'video/webm'] as const
 export type CreatorVideoType = (typeof CREATOR_VIDEO_TYPES)[number]
 
@@ -16,6 +17,15 @@ const extensions: Record<CreatorVideoType, string> = {
 
 export async function createCreatorVideoUpload(userId: string, contentType: CreatorVideoType, sizeBytes: number) {
   const key = `creators/${userId}/${crypto.randomUUID()}.${extensions[contentType]}`
+  return createVideoUpload(key, contentType, sizeBytes)
+}
+
+export async function createCreatorAccountAnalyticsUpload(userId: string, contentType: CreatorVideoType, sizeBytes: number) {
+  const key = `creators/${userId}/account-analytics/${crypto.randomUUID()}.${extensions[contentType]}`
+  return createVideoUpload(key, contentType, sizeBytes)
+}
+
+async function createVideoUpload(key: string, contentType: CreatorVideoType, sizeBytes: number) {
   const publicUrl = isR2Configured()
     ? `${env.R2_PUBLIC_BASE_URL!.replace(/\/$/, '')}/${key}`
     : `${(env.IMAGE_PUBLIC_BASE_URL || '/uploads').replace(/\/$/, '')}/${key}`

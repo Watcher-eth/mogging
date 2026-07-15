@@ -11,6 +11,7 @@ export type CreatorProfile = {
 
 export type CreatorSubmission = {
   id: string
+  socialAccountId: string | null
   title: string
   platform: string
   caption: string | null
@@ -38,6 +39,16 @@ export type CreatorSocialAccount = {
   platform: 'tiktok' | 'instagram'
   handle: string
   profileUrl: string | null
+  avatarUrl: string | null
+  connectionMethod: string
+  providerAccountId: string | null
+  oauthVerifiedAt: string | null
+  analyticsVideoUrl: string | null
+  analyticsStorageKey: string | null
+  analyticsContentType: string | null
+  analyticsSizeBytes: number | null
+  analyticsPeriodDays: number | null
+  analyticsConfirmedAt: string | null
   status: 'pending' | 'approved' | 'missing_information'
   reviewNote: string | null
   createdAt: string

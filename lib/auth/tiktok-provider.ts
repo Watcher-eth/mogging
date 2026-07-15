@@ -1,34 +1,12 @@
-import type { Profile } from 'next-auth'
 import type { OAuthConfig, OAuthUserConfig } from 'next-auth/providers/oauth'
-
-type TikTokTokenResponse = {
-  access_token?: string
-  error?: string
-  error_description?: string
-  expires_in?: number
-  open_id?: string
-  refresh_expires_in?: number
-  refresh_token?: string
-  scope?: string
-  token_type?: string
-}
-
-type TikTokProfile = Profile & {
-  data?: {
-    user?: {
-      avatar_large_url?: string | null
-      avatar_url?: string | null
-      avatar_url_100?: string | null
-      display_name?: string | null
-      open_id?: string | null
-      union_id?: string | null
-    }
-  }
-  error?: {
-    code?: string
-    message?: string
-  }
-}
+import {
+  exchangeTikTokAuthorizationCode,
+  getTikTokUserInfo,
+  TIKTOK_AUTHORIZATION_URL,
+  TIKTOK_TOKEN_URL,
+  TIKTOK_USER_INFO_URL,
+  type TikTokProfile,
+} from './tiktok-api'
 
 const userInfoFields = [
   'open_id',
@@ -48,7 +26,7 @@ export function TikTokProvider(options: OAuthUserConfig<TikTokProfile>): OAuthCo
     clientId: options.clientId,
     clientSecret: options.clientSecret,
     authorization: {
-      url: 'https://www.tiktok.com/v2/auth/authorize/',
+      url: TIKTOK_AUTHORIZATION_URL,
       params: {
         client_key: options.clientId,
         response_type: 'code',
@@ -56,27 +34,14 @@ export function TikTokProvider(options: OAuthUserConfig<TikTokProfile>): OAuthCo
       },
     },
     token: {
-      url: 'https://open.tiktokapis.com/v2/oauth/token/',
+      url: TIKTOK_TOKEN_URL,
       async request({ params, provider }) {
-        const response = await fetch('https://open.tiktokapis.com/v2/oauth/token/', {
-          method: 'POST',
-          headers: {
-            'Cache-Control': 'no-cache',
-            'Content-Type': 'application/x-www-form-urlencoded',
-          },
-          body: new URLSearchParams({
-            client_key: provider.clientId ?? '',
-            client_secret: provider.clientSecret ?? '',
-            code: String(params.code ?? ''),
-            grant_type: 'authorization_code',
-            redirect_uri: provider.callbackUrl,
-          }),
+        const tokens = await exchangeTikTokAuthorizationCode({
+          clientKey: provider.clientId ?? '',
+          clientSecret: provider.clientSecret ?? '',
+          code: String(params.code ?? ''),
+          redirectUri: provider.callbackUrl,
         })
-        const tokens = (await response.json()) as TikTokTokenResponse
-
-        if (!response.ok || tokens.error || !tokens.access_token) {
-          throw new Error(tokens.error_description || tokens.error || 'TikTok token request failed')
-        }
 
         return {
           tokens: {
@@ -95,23 +60,9 @@ export function TikTokProvider(options: OAuthUserConfig<TikTokProfile>): OAuthCo
       },
     },
     userinfo: {
-      url: 'https://open.tiktokapis.com/v2/user/info/',
+      url: TIKTOK_USER_INFO_URL,
       async request({ tokens }) {
-        const response = await fetch(
-          `https://open.tiktokapis.com/v2/user/info/?fields=${encodeURIComponent(userInfoFields)}`,
-          {
-            headers: {
-              Authorization: `Bearer ${tokens.access_token}`,
-            },
-          }
-        )
-        const profile = (await response.json()) as TikTokProfile
-
-        if (!response.ok || (profile.error?.code && profile.error.code !== 'ok')) {
-          throw new Error(profile.error?.message || 'TikTok user info request failed')
-        }
-
-        return profile
+        return getTikTokUserInfo(String(tokens.access_token || ''), userInfoFields.split(','))
       },
     },
     profile(profile) {

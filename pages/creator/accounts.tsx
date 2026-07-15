@@ -1,6 +1,7 @@
-import { useMemo, useState, type FormEvent } from 'react'
+import { useEffect, useMemo, useRef, useState, type ChangeEvent, type FormEvent } from 'react'
+import { useRouter } from 'next/router'
 import { useSession } from 'next-auth/react'
-import { AlertCircle, Check, Loader2, Plus, Trash2 } from 'lucide-react'
+import { AlertCircle, Check, FileVideo, Loader2, Plus, ShieldCheck, Trash2, UploadCloud, X } from 'lucide-react'
 import useSWR from 'swr'
 import { toast } from 'sonner'
 import { Button } from '@/components/ui/button'
@@ -21,6 +22,7 @@ export default function CreatorAccountsPage() {
 }
 
 function AccountsContent() {
+  const router = useRouter()
   const { data, isLoading, mutate } = useSWR<CreatorDashboard>('/api/creator', apiGet)
   const [connectOpen, setConnectOpen] = useState(false)
   const [platform, setPlatform] = useState<'tiktok' | 'instagram'>('tiktok')
@@ -28,6 +30,26 @@ function AccountsContent() {
   const tiktokCount = accounts.filter((account) => account.platform === 'tiktok').length
   const instagramCount = accounts.filter((account) => account.platform === 'instagram').length
   const atLimit = accounts.length >= 10 || (platform === 'tiktok' ? tiktokCount : instagramCount) >= 5
+
+  useEffect(() => {
+    if (!router.isReady || typeof router.query.tiktok !== 'string') return
+    const result = router.query.tiktok
+    if (result === 'connected') {
+      toast.success('TikTok connected and sent for review')
+      void mutate()
+    } else if (result === 'cancelled') {
+      toast.error('TikTok connection was cancelled')
+    } else if (result === 'not_configured') {
+      toast.error('TikTok OAuth is not configured yet')
+    } else if (result === 'profile_scope_required') {
+      toast.error('TikTok profile permission is required to connect this account')
+    } else if (result === 'invalid_state') {
+      toast.error('TikTok connection expired. Please try again')
+    } else if (result !== 'auth_required') {
+      toast.error('Could not connect TikTok')
+    }
+    void router.replace('/creator/accounts', undefined, { shallow: true })
+  }, [mutate, router])
 
   async function removeAccount(account: CreatorSocialAccount) {
     try {
@@ -52,18 +74,86 @@ function AccountsContent() {
   )
 }
 
+const analyticsVideoTypes = ['video/mp4', 'video/quicktime', 'video/webm'] as const
+const maxAnalyticsVideoBytes = 250 * 1024 * 1024
+
+type AnalyticsEvidence = {
+  analyticsVideoUrl: string
+  analyticsStorageKey: string
+  analyticsContentType: (typeof analyticsVideoTypes)[number]
+  analyticsSizeBytes: number
+  analyticsPast28DaysConfirmed: true
+}
+
 function ConnectAccountDialog({ open, onOpenChange, platform, onPlatformChange, disabled, onConnected, counts }: { open: boolean; onOpenChange: (open: boolean) => void; platform: 'tiktok' | 'instagram'; onPlatformChange: (platform: 'tiktok' | 'instagram') => void; disabled: boolean; onConnected: () => Promise<void>; counts: { tiktok: number; instagram: number } }) {
   const [handle, setHandle] = useState('')
   const [profileUrl, setProfileUrl] = useState('')
+  const [analyticsFile, setAnalyticsFile] = useState<File | null>(null)
+  const [analyticsConfirmed, setAnalyticsConfirmed] = useState(false)
   const [saving, setSaving] = useState(false)
+  const [connectingOauth, setConnectingOauth] = useState(false)
+  const fileInputRef = useRef<HTMLInputElement>(null)
+
+  useEffect(() => {
+    if (open) return
+    setHandle('')
+    setProfileUrl('')
+    setAnalyticsFile(null)
+    setAnalyticsConfirmed(false)
+    setSaving(false)
+    setConnectingOauth(false)
+  }, [open])
+
+  function chooseAnalyticsVideo(event: ChangeEvent<HTMLInputElement>) {
+    const file = event.target.files?.[0] || null
+    event.target.value = ''
+    if (!file) return
+    if (!analyticsVideoTypes.includes(file.type as (typeof analyticsVideoTypes)[number])) {
+      toast.error('Choose an MP4, MOV, or WebM screen recording')
+      return
+    }
+    if (file.size > maxAnalyticsVideoBytes) {
+      toast.error('The analytics recording must be 250 MB or smaller')
+      return
+    }
+    setAnalyticsFile(file)
+  }
+
+  async function uploadAnalyticsVideo(): Promise<AnalyticsEvidence> {
+    if (!analyticsFile || !analyticsConfirmed) {
+      throw new ApiClientError(400, 'analytics_required', 'Add a screen recording and confirm it shows the past 28 days')
+    }
+    const contentType = analyticsFile.type as (typeof analyticsVideoTypes)[number]
+    const intent = await apiPost<{ key: string; publicUrl: string; uploadUrl: string; method: 'PUT' | 'POST' }>('/api/creator/accounts/analytics-upload-intent', {
+      contentType,
+      sizeBytes: analyticsFile.size,
+    })
+    const response = await fetch(intent.uploadUrl, {
+      method: intent.method,
+      headers: { 'Content-Type': contentType },
+      body: analyticsFile,
+    })
+    if (!response.ok) throw new ApiClientError(response.status, 'upload_failed', 'Analytics recording upload failed')
+    return {
+      analyticsVideoUrl: intent.publicUrl,
+      analyticsStorageKey: intent.key,
+      analyticsContentType: contentType,
+      analyticsSizeBytes: analyticsFile.size,
+      analyticsPast28DaysConfirmed: true,
+    }
+  }
 
   async function submit(event: FormEvent) {
     event.preventDefault()
+    if (platform === 'tiktok') return
     setSaving(true)
     try {
-      await apiPost('/api/creator/accounts', { platform, handle, profileUrl: profileUrl || null })
+      const analytics = await uploadAnalyticsVideo()
+      await apiPost('/api/creator/accounts', { platform, handle, profileUrl: profileUrl || null, ...analytics })
       setHandle('')
       setProfileUrl('')
+      setAnalyticsFile(null)
+      setAnalyticsConfirmed(false)
       await onConnected()
       toast.success('Account sent for review')
     } catch (error) {
@@ -71,11 +161,84 @@ function ConnectAccountDialog({ open, onOpenChange, platform, onPlatformChange, 
     } finally { setSaving(false) }
   }
 
-  return <Dialog open={open} onOpenChange={onOpenChange}><DialogContent className="max-w-lg rounded-[28px] border-zinc-200 bg-white p-0"><form onSubmit={submit} className="grid gap-6 p-6 sm:p-7"><DialogHeader><DialogTitle className="text-2xl">Connect an account</DialogTitle><DialogDescription>Add the public profile the Mogging team should review.</DialogDescription></DialogHeader><div className="grid grid-cols-2 gap-2">{(['tiktok', 'instagram'] as const).map((option) => <button key={option} type="button" onClick={() => onPlatformChange(option)} className={cn('rounded-xl border px-4 py-3 text-left text-sm font-medium capitalize transition-[border-color,background-color,transform] duration-150 ease-out active:scale-[0.98]', platform === option ? 'border-black bg-black text-white' : 'border-zinc-200 bg-white hover:bg-zinc-50')}>{option}<span className={cn('ml-2 text-xs', platform === option ? 'text-white/60' : 'text-zinc-400')}>{counts[option]}/5</span></button>)}</div>{disabled ? <div className="flex gap-2 rounded-xl bg-amber-50 px-3 py-2.5 text-xs leading-5 text-amber-800"><AlertCircle className="mt-0.5 size-4 shrink-0" />You’ve reached the five-account limit for this platform.</div> : null}<Field label="Username"><div className="relative"><span className="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 text-sm text-zinc-400">@</span><input className={cn(fieldClass, 'pl-8')} value={handle} onChange={(event) => setHandle(event.target.value)} placeholder="creatorname" required /></div></Field><Field label="Profile URL" hint="Optional"><input className={fieldClass} type="url" value={profileUrl} onChange={(event) => setProfileUrl(event.target.value)} placeholder={platform === 'tiktok' ? 'https://tiktok.com/@creatorname' : 'https://instagram.com/creatorname'} /></Field><Button className="h-11 rounded-xl" disabled={disabled || saving}>{saving ? <Loader2 className="animate-spin" /> : <Plus />}Send for review</Button></form></DialogContent></Dialog>
+  async function connectTikTok() {
+    setConnectingOauth(true)
+    try {
+      const analytics = await uploadAnalyticsVideo()
+      const { authorizeUrl } = await apiPost<{ authorizeUrl: string }>('/api/creator/oauth/tiktok/start', analytics)
+      window.location.assign(authorizeUrl)
+    } catch (error) {
+      toast.error(error instanceof ApiClientError ? error.message : 'Could not start TikTok connection')
+      setConnectingOauth(false)
+    }
+  }
+
+  const busy = saving || connectingOauth
+  const evidenceMissing = !analyticsFile || !analyticsConfirmed
+
+  return (
+    <Dialog open={open} onOpenChange={(nextOpen) => { if (!busy) onOpenChange(nextOpen) }}>
+      <DialogContent className="max-h-[90vh] max-w-lg overflow-y-auto rounded-[28px] border-zinc-200 bg-white p-0">
+        <form onSubmit={submit} className="grid gap-6 p-6 sm:p-7">
+          <DialogHeader>
+            <DialogTitle className="text-2xl">Connect an account</DialogTitle>
+            <DialogDescription>{platform === 'tiktok' ? 'Upload recent analytics, then authorize TikTok to verify that you own the account.' : 'Add the Instagram profile and recent analytics the Mogging team should review.'}</DialogDescription>
+          </DialogHeader>
+          <div className="grid grid-cols-2 gap-2">
+            {(['tiktok', 'instagram'] as const).map((option) => (
+              <button key={option} type="button" disabled={busy} onClick={() => onPlatformChange(option)} className={cn('rounded-xl border px-4 py-3 text-left text-sm font-medium capitalize transition-[border-color,background-color,transform] duration-150 ease-out active:scale-[0.98]', platform === option ? 'border-black bg-black text-white' : 'border-zinc-200 bg-white hover:bg-zinc-50')}>
+                {option}<span className={cn('ml-2 text-xs', platform === option ? 'text-white/60' : 'text-zinc-400')}>{counts[option]}/5</span>
+              </button>
+            ))}
+          </div>
+          {disabled ? <div className="flex gap-2 rounded-xl bg-amber-50 px-3 py-2.5 text-xs leading-5 text-amber-800"><AlertCircle className="mt-0.5 size-4 shrink-0" />You’ve reached the five-account limit for this platform.</div> : null}
+
+          <Field label="Analytics screen recording" hint="Required · past 28 days">
+            <input ref={fileInputRef} className="sr-only" type="file" accept="video/mp4,video/quicktime,video/webm,.mov" onChange={chooseAnalyticsVideo} />
+            {analyticsFile ? (
+              <div className="flex items-center gap-3 rounded-2xl border border-zinc-200 bg-zinc-50 p-3.5">
+                <span className="grid size-10 shrink-0 place-items-center rounded-xl bg-white text-zinc-700 shadow-sm"><FileVideo className="size-4" /></span>
+                <div className="min-w-0 flex-1"><p className="truncate text-sm font-medium">{analyticsFile.name}</p><p className="mt-0.5 text-xs text-zinc-500">{formatBytes(analyticsFile.size)} · ready to upload</p></div>
+                <button type="button" disabled={busy} onClick={() => setAnalyticsFile(null)} className="grid size-8 place-items-center rounded-full text-zinc-400 transition-colors hover:bg-white hover:text-black" aria-label="Remove analytics recording"><X className="size-4" /></button>
+              </div>
+            ) : (
+              <button type="button" disabled={busy} onClick={() => fileInputRef.current?.click()} className="group grid min-h-28 w-full place-items-center rounded-2xl border border-dashed border-zinc-300 bg-zinc-50/70 px-5 text-center transition-[border-color,background-color,transform] hover:border-zinc-400 hover:bg-zinc-50 active:scale-[0.99]">
+                <span><UploadCloud className="mx-auto size-5 text-zinc-500 transition-transform group-hover:-translate-y-0.5" /><span className="mt-2 block text-sm font-medium">Choose screen recording</span><span className="mt-1 block text-xs text-zinc-500">MP4, MOV, or WebM · up to 250 MB</span></span>
+              </button>
+            )}
+          </Field>
+          <label className="flex cursor-pointer items-start gap-3 rounded-2xl border border-zinc-200 p-3.5 text-xs leading-5 text-zinc-600">
+            <input type="checkbox" className="mt-0.5 size-4 rounded border-zinc-300 accent-black" checked={analyticsConfirmed} onChange={(event) => setAnalyticsConfirmed(event.target.checked)} required />
+            <span>I confirm this recording shows this account’s analytics for the most recent 28 days.</span>
+          </label>
+
+          {platform === 'tiktok' ? (
+            <div className="rounded-2xl border border-zinc-200 bg-zinc-50 p-5 text-center">
+              <span className="mx-auto grid size-12 place-items-center rounded-2xl bg-black text-white"><TikTokMark /></span>
+              <h3 className="mt-4 text-sm font-semibold">Verify with TikTok</h3>
+              <p className="mx-auto mt-2 max-w-sm text-xs leading-5 text-zinc-500">TikTok will confirm your username and public profile. Your account will still enter the normal Mogging review queue.</p>
+              <Button type="button" className="mt-5 h-11 w-full rounded-xl" disabled={disabled || busy || evidenceMissing} onClick={() => void connectTikTok()}>{connectingOauth ? <Loader2 className="animate-spin" /> : <TikTokMark />}{connectingOauth ? 'Uploading analytics…' : 'Continue with TikTok'}</Button>
+              <p className="mt-3 flex items-center justify-center gap-1.5 text-[11px] text-zinc-400"><ShieldCheck className="size-3.5" />Secure OAuth · username and profile access only</p>
+            </div>
+          ) : (
+            <>
+              <Field label="Username"><div className="relative"><span className="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 text-sm text-zinc-400">@</span><input className={cn(fieldClass, 'pl-8')} value={handle} onChange={(event) => setHandle(event.target.value)} placeholder="creatorname" required /></div></Field>
+              <Field label="Profile URL" hint="Optional"><input className={fieldClass} type="url" value={profileUrl} onChange={(event) => setProfileUrl(event.target.value)} placeholder="https://instagram.com/creatorname" /></Field>
+              <Button className="h-11 rounded-xl" disabled={disabled || busy || evidenceMissing}>{saving ? <Loader2 className="animate-spin" /> : <Plus />}{saving ? 'Uploading analytics…' : 'Send for review'}</Button>
+            </>
+          )}
+        </form>
+      </DialogContent>
+    </Dialog>
+  )
+}
+
+function formatBytes(bytes: number) {
+  return bytes >= 1024 * 1024 ? `${(bytes / (1024 * 1024)).toFixed(1)} MB` : `${Math.ceil(bytes / 1024)} KB`
 }
 
 function ConnectedAccountCard({ account, onRemove }: { account: CreatorSocialAccount; onRemove: () => void }) {
-  return <div className="flex items-center gap-4 rounded-2xl border border-zinc-200 bg-white p-4 shadow-[0_8px_30px_rgba(15,23,42,0.035)]"><span className="grid size-11 shrink-0 place-items-center rounded-xl bg-zinc-100">{account.platform === 'instagram' ? <InstagramMark /> : <TikTokMark />}</span><div className="min-w-0 flex-1"><p className="truncate text-sm font-semibold">@{account.handle}</p><p className="mt-1 text-xs capitalize text-zinc-500">{account.platform}</p>{account.reviewNote ? <p className="mt-2 text-xs text-amber-700">{account.reviewNote}</p> : null}</div><AccountStatus status={account.status} /><button type="button" onClick={onRemove} className="grid size-9 shrink-0 place-items-center rounded-full text-zinc-400 transition-[background-color,color,transform] duration-150 ease-out hover:bg-zinc-100 hover:text-black active:scale-[0.96]" aria-label={`Remove @${account.handle}`}><Trash2 className="size-4" /></button></div>
+  return <div className="flex items-center gap-4 rounded-2xl border border-zinc-200 bg-white p-4 shadow-[0_8px_30px_rgba(15,23,42,0.035)]"><span className="grid size-11 shrink-0 place-items-center rounded-xl bg-zinc-100">{account.platform === 'instagram' ? <InstagramMark /> : <TikTokMark />}</span><div className="min-w-0 flex-1"><p className="truncate text-sm font-semibold">@{account.handle}</p><p className="mt-1 flex items-center gap-2 text-xs capitalize text-zinc-500"><span>{account.platform}</span>{account.connectionMethod === 'oauth' ? <span className="inline-flex items-center gap-1 font-medium text-emerald-700"><ShieldCheck className="size-3" />OAuth verified</span> : null}</p>{account.reviewNote ? <p className="mt-2 text-xs text-amber-700">{account.reviewNote}</p> : null}</div><AccountStatus status={account.status} /><button type="button" onClick={onRemove} className="grid size-9 shrink-0 place-items-center rounded-full text-zinc-400 transition-[background-color,color,transform] duration-150 ease-out hover:bg-zinc-100 hover:text-black active:scale-[0.96]" aria-label={`Remove @${account.handle}`}><Trash2 className="size-4" /></button></div>
 }
 
 function AccountStatus({ status }: { status: CreatorSocialAccount['status'] }) {

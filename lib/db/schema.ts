@@ -439,6 +439,7 @@ export const creatorSubmissions = pgTable(
     creatorProfileId: text('creator_profile_id')
       .notNull()
       .references(() => creatorProfiles.id, { onDelete: 'cascade' }),
+    socialAccountId: text('social_account_id').references(() => creatorSocialAccounts.id, { onDelete: 'set null' }),
     title: text('title').notNull(),
     platform: text('platform').notNull(),
     caption: text('caption'),
@@ -454,6 +455,7 @@ export const creatorSubmissions = pgTable(
   },
   (table) => ({
     creatorIdx: index('creator_submissions_creator_profile_id_idx').on(table.creatorProfileId),
+    socialAccountIdx: index('creator_submissions_social_account_id_idx').on(table.socialAccountId),
     statusIdx: index('creator_submissions_status_idx').on(table.status),
     createdAtIdx: index('creator_submissions_created_at_idx').on(table.createdAt),
   })
@@ -471,6 +473,16 @@ export const creatorSocialAccounts = pgTable(
     platform: creatorSocialPlatformEnum('platform').notNull(),
     handle: text('handle').notNull(),
     profileUrl: text('profile_url'),
+    avatarUrl: text('avatar_url'),
+    connectionMethod: text('connection_method').notNull().default('manual'),
+    providerAccountId: text('provider_account_id'),
+    oauthVerifiedAt: timestamp('oauth_verified_at', { mode: 'date' }),
+    analyticsVideoUrl: text('analytics_video_url'),
+    analyticsStorageKey: text('analytics_storage_key'),
+    analyticsContentType: text('analytics_content_type'),
+    analyticsSizeBytes: integer('analytics_size_bytes'),
+    analyticsPeriodDays: integer('analytics_period_days'),
+    analyticsConfirmedAt: timestamp('analytics_confirmed_at', { mode: 'date' }),
     status: creatorSocialAccountStatusEnum('status').notNull().default('pending'),
     reviewNote: text('review_note'),
     createdAt: timestamp('created_at', { mode: 'date' }).notNull().defaultNow(),
@@ -483,6 +495,10 @@ export const creatorSocialAccounts = pgTable(
       table.creatorProfileId,
       table.platform,
       table.handle
+    ),
+    uniqueProviderAccountIdx: uniqueIndex('creator_social_accounts_platform_provider_account_unique').on(
+      table.platform,
+      table.providerAccountId
     ),
   })
 )
@@ -513,6 +529,31 @@ export const creatorPayments = pgTable(
   })
 )
 
+export const creatorAttributionMetrics = pgTable(
+  'creator_attribution_metrics',
+  {
+    submissionId: text('submission_id')
+      .primaryKey()
+      .references(() => creatorSubmissions.id, { onDelete: 'cascade' }),
+    qualifiedViews: integer('qualified_views').notNull().default(0),
+    linkClicks: integer('link_clicks').notNull().default(0),
+    installs: integer('installs').notNull().default(0),
+    firstTimePaidCustomers: integer('first_time_paid_customers').notNull().default(0),
+    createdAt: timestamp('created_at', { mode: 'date' }).notNull().defaultNow(),
+    updatedAt: timestamp('updated_at', { mode: 'date' }).notNull().defaultNow(),
+  }
+)
+
+export const creatorProgramSettings = pgTable(
+  'creator_program_settings',
+  {
+    id: text('id').primaryKey().default('default'),
+    monthlySubscriptionCents: integer('monthly_subscription_cents').notNull().default(999),
+    ninetyDayContributionMarginCents: integer('ninety_day_contribution_margin_cents').notNull().default(0),
+    updatedAt: timestamp('updated_at', { mode: 'date' }).notNull().defaultNow(),
+  }
+)
+
 export const usersRelations = relations(users, ({ one, many }) => ({
   accounts: many(accounts),
   sessions: many(sessions),
@@ -534,11 +575,12 @@ export const creatorProfilesRelations = relations(creatorProfiles, ({ one, many 
   socialAccounts: many(creatorSocialAccounts),
 }))
 
-export const creatorSocialAccountsRelations = relations(creatorSocialAccounts, ({ one }) => ({
+export const creatorSocialAccountsRelations = relations(creatorSocialAccounts, ({ one, many }) => ({
   creatorProfile: one(creatorProfiles, {
     fields: [creatorSocialAccounts.creatorProfileId],
     references: [creatorProfiles.id],
   }),
+  submissions: many(creatorSubmissions),
 }))
 
 export const creatorSubmissionsRelations = relations(creatorSubmissions, ({ one, many }) => ({
@@ -546,7 +588,19 @@ export const creatorSubmissionsRelations = relations(creatorSubmissions, ({ one,
     fields: [creatorSubmissions.creatorProfileId],
     references: [creatorProfiles.id],
   }),
+  socialAccount: one(creatorSocialAccounts, {
+    fields: [creatorSubmissions.socialAccountId],
+    references: [creatorSocialAccounts.id],
+  }),
+  attributionMetrics: one(creatorAttributionMetrics),
   payments: many(creatorPayments),
+}))
+
+export const creatorAttributionMetricsRelations = relations(creatorAttributionMetrics, ({ one }) => ({
+  submission: one(creatorSubmissions, {
+    fields: [creatorAttributionMetrics.submissionId],
+    references: [creatorSubmissions.id],
+  }),
 }))
 
 export const creatorPaymentsRelations = relations(creatorPayments, ({ one }) => ({
