@@ -454,6 +454,8 @@ export const creatorSubmissions = pgTable(
     analyticsStorageKey: text('analytics_storage_key'),
     analyticsContentType: text('analytics_content_type'),
     analyticsSizeBytes: integer('analytics_size_bytes'),
+    viewCountThreshold: integer('view_count_threshold'),
+    usAudiencePercent: real('us_audience_percent'),
     status: creatorSubmissionStatusEnum('status').notNull().default('pending'),
     reviewNote: text('review_note'),
     createdAt: timestamp('created_at', { mode: 'date' }).notNull().defaultNow(),

@@ -124,6 +124,8 @@ export async function getCreatorAdminDashboard() {
         analyticsScreenshotUrl: schema.creatorSubmissions.analyticsScreenshotUrl,
         analyticsContentType: schema.creatorSubmissions.analyticsContentType,
         analyticsSizeBytes: schema.creatorSubmissions.analyticsSizeBytes,
+        viewCountThreshold: schema.creatorSubmissions.viewCountThreshold,
+        usAudiencePercent: schema.creatorSubmissions.usAudiencePercent,
         status: schema.creatorSubmissions.status,
         reviewNote: schema.creatorSubmissions.reviewNote,
         createdAt: schema.creatorSubmissions.createdAt,

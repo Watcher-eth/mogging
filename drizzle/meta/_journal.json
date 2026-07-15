@@ -134,6 +134,13 @@
       "when": 1784152800000,
       "tag": "0019_submission_analytics_screenshot",
       "breakpoints": true
+    },
+    {
+      "idx": 19,
+      "version": "7",
+      "when": 1784160000000,
+      "tag": "0020_submission_analytics_claims",
+      "breakpoints": true
     }
   ]
 }

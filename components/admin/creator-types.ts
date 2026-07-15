@@ -56,6 +56,8 @@ export type AdminSubmission = {
   analyticsScreenshotUrl: string | null
   analyticsContentType: string | null
   analyticsSizeBytes: number | null
+  viewCountThreshold: number | null
+  usAudiencePercent: number | null
   status: SubmissionStatus
   reviewNote: string | null
   createdAt: string

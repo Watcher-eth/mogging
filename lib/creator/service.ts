@@ -31,6 +31,8 @@ export const creatorSubmissionSchema = z.object({
   analyticsStorageKey: z.string().min(1),
   analyticsContentType: z.enum(['image/jpeg', 'image/png', 'image/webp']),
   analyticsSizeBytes: z.number().int().positive().max(10 * 1024 * 1024),
+  viewCountThreshold: z.number().int().positive().max(2_000_000_000),
+  usAudiencePercent: z.number().min(22.5).max(40).multipleOf(2.5).optional().nullable(),
 })
 
 export const creatorAnalyticsEvidenceSchema = z.object({
@@ -342,6 +344,8 @@ export async function createCreatorSubmission(userId: string, input: CreatorSubm
       analyticsStorageKey: input.analyticsStorageKey,
       analyticsContentType: input.analyticsContentType,
       analyticsSizeBytes: input.analyticsSizeBytes,
+      viewCountThreshold: input.viewCountThreshold,
+      usAudiencePercent: input.usAudiencePercent ?? null,
     })
     .returning()
 

@@ -24,6 +24,8 @@ export type CreatorSubmission = {
   analyticsScreenshotUrl: string | null
   analyticsContentType: string | null
   analyticsSizeBytes: number | null
+  viewCountThreshold: number | null
+  usAudiencePercent: number | null
   status: 'pending' | 'in_review' | 'approved' | 'rejected' | 'paid'
   reviewNote: string | null
   createdAt: string

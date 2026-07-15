@@ -63,12 +63,12 @@ function AccountsContent() {
 
   return (
     <>
-      <CreatorHeader eyebrow="Connected channels" title="Accounts" description="Connect the TikTok and Instagram profiles you use for Mogging content. Each account is reviewed before it becomes eligible for submissions." action={<Button className="h-10 rounded-xl" onClick={() => setConnectOpen(true)} disabled={accounts.length >= 10}><Plus />Connect account</Button>} />
+      <CreatorHeader eyebrow="Connected Channels" title="Accounts" description="Connect the TikTok and Instagram profiles you use for Mogging content. Each account is reviewed before it becomes eligible for submissions." action={<Button className="h-10 rounded-xl" onClick={() => setConnectOpen(true)} disabled={accounts.length >= 10}><Plus />Connect Account</Button>} />
       <div className="mb-6 grid gap-3 sm:grid-cols-2">
         <AccountLimitCard platform="TikTok" count={tiktokCount} />
         <AccountLimitCard platform="Instagram" count={instagramCount} />
       </div>
-      {isLoading ? <div className="grid min-h-64 place-items-center"><Loader2 className="size-5 animate-spin text-zinc-400" /></div> : accounts.length ? <div className="grid gap-3">{accounts.map((account) => <ConnectedAccountCard key={account.id} account={account} onRemove={() => void removeAccount(account)} />)}</div> : <div className="grid min-h-72 place-items-center rounded-[28px] border border-dashed border-zinc-300 bg-white p-8 text-center"><div><span className="mx-auto grid size-12 place-items-center rounded-2xl bg-zinc-100"><Plus className="size-5" /></span><h2 className="mt-4 text-sm font-semibold">No creator accounts connected</h2><p className="mt-2 max-w-sm text-sm leading-6 text-zinc-500">Add a TikTok or Instagram profile to begin the review process.</p><Button className="mt-6 h-10 rounded-xl" onClick={() => setConnectOpen(true)}>Connect your first account</Button></div></div>}
+      {isLoading ? <div className="grid min-h-64 place-items-center"><Loader2 className="size-5 animate-spin text-zinc-400" /></div> : accounts.length ? <div className="grid gap-3">{accounts.map((account) => <ConnectedAccountCard key={account.id} account={account} onRemove={() => void removeAccount(account)} />)}</div> : <div className="grid min-h-72 place-items-center rounded-[28px] border border-dashed border-zinc-300 bg-white p-8 text-center"><div><span className="mx-auto grid size-12 place-items-center rounded-2xl bg-zinc-100"><Plus className="size-5" /></span><h2 className="mt-4 text-sm font-semibold">No Creator Accounts Connected</h2><p className="mt-2 max-w-sm text-sm leading-6 text-zinc-500">Add a TikTok or Instagram profile to begin the review process.</p><Button className="mt-6 h-10 rounded-xl" onClick={() => setConnectOpen(true)}>Connect Your First Account</Button></div></div>}
       <ConnectAccountDialog open={connectOpen} onOpenChange={setConnectOpen} platform={platform} onPlatformChange={setPlatform} disabled={atLimit} onConnected={async () => { await mutate(); setConnectOpen(false) }} counts={{ tiktok: tiktokCount, instagram: instagramCount }} />
     </>
   )
@@ -181,7 +181,7 @@ function ConnectAccountDialog({ open, onOpenChange, platform, onPlatformChange, 
       <DialogContent className="max-h-[90vh] max-w-lg overflow-y-auto rounded-[28px] border-zinc-200 bg-white p-0">
         <form onSubmit={submit} className="grid gap-6 p-6 sm:p-7">
           <DialogHeader>
-            <DialogTitle className="text-2xl">Connect an account</DialogTitle>
+            <DialogTitle className="text-2xl">Connect an Account</DialogTitle>
             <DialogDescription>{platform === 'tiktok' ? 'Upload recent analytics, then authorize TikTok to verify that you own the account.' : 'Add the Instagram profile and recent analytics the Mogging team should review.'}</DialogDescription>
           </DialogHeader>
           <div className="grid grid-cols-2 gap-2">
@@ -193,7 +193,7 @@ function ConnectAccountDialog({ open, onOpenChange, platform, onPlatformChange, 
           </div>
           {disabled ? <div className="flex gap-2 rounded-xl bg-amber-50 px-3 py-2.5 text-xs leading-5 text-amber-800"><AlertCircle className="mt-0.5 size-4 shrink-0" />You’ve reached the five-account limit for this platform.</div> : null}
 
-          <Field label="Analytics screen recording" hint="Required · past 28 days">
+          <Field label="Analytics Screen Recording" hint="Required · past 28 days">
             <input ref={fileInputRef} className="sr-only" type="file" accept="video/mp4,video/quicktime,video/webm,.mov" onChange={chooseAnalyticsVideo} />
             {analyticsFile ? (
               <div className="flex items-center gap-3 rounded-2xl border border-zinc-200 bg-zinc-50 p-3.5">
@@ -203,7 +203,7 @@ function ConnectAccountDialog({ open, onOpenChange, platform, onPlatformChange, 
               </div>
             ) : (
               <button type="button" disabled={busy} onClick={() => fileInputRef.current?.click()} className="group grid min-h-28 w-full place-items-center rounded-2xl border border-dashed border-zinc-300 bg-zinc-50/70 px-5 text-center transition-[border-color,background-color,transform] hover:border-zinc-400 hover:bg-zinc-50 active:scale-[0.99]">
-                <span><UploadCloud className="mx-auto size-5 text-zinc-500 transition-transform group-hover:-translate-y-0.5" /><span className="mt-2 block text-sm font-medium">Choose screen recording</span><span className="mt-1 block text-xs text-zinc-500">MP4, MOV, or WebM · up to 250 MB</span></span>
+                <span><UploadCloud className="mx-auto size-5 text-zinc-500 transition-transform group-hover:-translate-y-0.5" /><span className="mt-2 block text-sm font-medium">Choose Screen Recording</span><span className="mt-1 block text-xs text-zinc-500">MP4, MOV, or WebM · up to 250 MB</span></span>
               </button>
             )}
           </Field>
@@ -218,13 +218,13 @@ function ConnectAccountDialog({ open, onOpenChange, platform, onPlatformChange, 
               <h3 className="mt-4 text-sm font-semibold">Verify with TikTok</h3>
               <p className="mx-auto mt-2 max-w-sm text-xs leading-5 text-zinc-500">TikTok will confirm your username and public profile. Your account will still enter the normal Mogging review queue.</p>
               <Button type="button" className="mt-5 h-11 w-full rounded-xl" disabled={disabled || busy || evidenceMissing} onClick={() => void connectTikTok()}>{connectingOauth ? <Loader2 className="animate-spin" /> : <TikTokMark />}{connectingOauth ? 'Uploading analytics…' : 'Continue with TikTok'}</Button>
-              <p className="mt-3 flex items-center justify-center gap-1.5 text-[11px] text-zinc-400"><ShieldCheck className="size-3.5" />Secure OAuth · username and profile access only</p>
+              <p className="mt-3 flex items-center justify-center gap-1.5 text-[11px] text-zinc-400"><ShieldCheck className="size-3.5" />Secure OAuth · Username and Profile Access Only</p>
             </div>
           ) : (
             <>
               <Field label="Username"><div className="relative"><span className="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 text-sm text-zinc-400">@</span><input className={cn(fieldClass, 'pl-8')} value={handle} onChange={(event) => setHandle(event.target.value)} placeholder="creatorname" required /></div></Field>
               <Field label="Profile URL" hint="Optional"><input className={fieldClass} type="url" value={profileUrl} onChange={(event) => setProfileUrl(event.target.value)} placeholder="https://instagram.com/creatorname" /></Field>
-              <Button className="h-11 rounded-xl" disabled={disabled || busy || evidenceMissing}>{saving ? <Loader2 className="animate-spin" /> : <Plus />}{saving ? 'Uploading analytics…' : 'Send for review'}</Button>
+              <Button className="h-11 rounded-xl" disabled={disabled || busy || evidenceMissing}>{saving ? <Loader2 className="animate-spin" /> : <Plus />}{saving ? 'Uploading analytics…' : 'Send for Review'}</Button>
             </>
           )}
         </form>
@@ -242,9 +242,9 @@ function ConnectedAccountCard({ account, onRemove }: { account: CreatorSocialAcc
 }
 
 function AccountStatus({ status }: { status: CreatorSocialAccount['status'] }) {
-  return <span className={cn('hidden shrink-0 items-center gap-1.5 rounded-full px-2.5 py-1 text-[11px] font-semibold sm:flex', status === 'approved' && 'bg-emerald-50 text-emerald-700', status === 'pending' && 'bg-amber-50 text-amber-700', status === 'missing_information' && 'bg-red-50 text-red-700')}>{status === 'approved' ? <Check className="size-3" /> : <AlertCircle className="size-3" />}{status === 'missing_information' ? 'Missing information' : status.slice(0, 1).toUpperCase() + status.slice(1)}</span>
+  return <span className={cn('hidden shrink-0 items-center gap-1.5 rounded-full px-2.5 py-1 text-[11px] font-semibold sm:flex', status === 'approved' && 'bg-emerald-50 text-emerald-700', status === 'pending' && 'bg-amber-50 text-amber-700', status === 'missing_information' && 'bg-red-50 text-red-700')}>{status === 'approved' ? <Check className="size-3" /> : <AlertCircle className="size-3" />}{status === 'missing_information' ? 'Missing Information' : status.slice(0, 1).toUpperCase() + status.slice(1)}</span>
 }
 
-function AccountLimitCard({ platform, count }: { platform: string; count: number }) { return <div className="rounded-2xl border border-zinc-200 bg-white p-4"><div className="flex items-center justify-between"><p className="text-sm font-medium">{platform} accounts</p><span className="text-xs font-semibold text-zinc-500">{count} / 5</span></div><div className="mt-3 h-1.5 overflow-hidden rounded-full bg-zinc-100"><div className="h-full rounded-full bg-black transition-transform duration-200 ease-out" style={{ transform: `scaleX(${count / 5})`, transformOrigin: 'left' }} /></div></div> }
+function AccountLimitCard({ platform, count }: { platform: string; count: number }) { return <div className="rounded-2xl border border-zinc-200 bg-white p-4"><div className="flex items-center justify-between"><p className="text-sm font-medium">{platform} Accounts</p><span className="text-xs font-semibold text-zinc-500">{count} / 5</span></div><div className="mt-3 h-1.5 overflow-hidden rounded-full bg-zinc-100"><div className="h-full rounded-full bg-black transition-transform duration-200 ease-out" style={{ transform: `scaleX(${count / 5})`, transformOrigin: 'left' }} /></div></div> }
 function TikTokMark() { return <span className="text-sm font-black tracking-[-0.08em]">♪</span> }
 function InstagramMark() { return <span className="grid size-5 place-items-center rounded-[6px] border-2 border-current text-[10px] leading-none">●</span> }
