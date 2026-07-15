@@ -161,7 +161,7 @@ function ResourceSection({ eyebrow, title, description, children }: { eyebrow: s
 function SubmissionList({ items, payments, onSelect }: { items: AdminSubmission[]; payments: AdminPayment[]; onSelect: (target: ReviewTarget) => void }) {
   const paymentIds = new Set(payments.map((payment) => payment.submissionId))
   if (!items.length) return <EmptyState title="No video submissions" description="Creator uploads will appear here." />
-  return <div className="grid gap-3">{items.map((item) => <ResourceRow key={item.id} icon={FileVideo} title={item.title} subtitle={`${item.creatorName} · ${item.socialHandle ? `@${item.socialHandle}` : item.platform} · ${formatDate(item.createdAt)}`} status={item.status} meta={paymentIds.has(item.id) ? 'Payment created' : 'No payment'} onClick={() => onSelect({ resource: 'submission', item })} />)}</div>
+  return <div className="grid gap-3">{items.map((item) => <ResourceRow key={item.id} icon={FileVideo} title={item.title} subtitle={`${item.creatorName} · ${item.socialHandle ? `@${item.socialHandle}` : 'No connected account'} · ${formatDate(item.createdAt)}${item.socialAccountStatus !== 'approved' ? ' · Account not approved' : ''}`} status={item.status} meta={paymentIds.has(item.id) ? 'Payment created' : 'No payment'} onClick={() => onSelect({ resource: 'submission', item })} />)}</div>
 }
 
 function AccountList({ items, onSelect }: { items: AdminAccount[]; onSelect: (target: ReviewTarget) => void }) {
@@ -185,7 +185,7 @@ function ResourceRow({ icon: Icon, title, subtitle, status, meta, onClick }: { i
 
 function QueueRow({ target, onClick }: { target: Exclude<ReviewTarget, { resource: 'payment' }>; onClick: () => void }) {
   const title = target.resource === 'submission' ? target.item.title : target.resource === 'account' ? `@${target.item.handle}` : target.item.displayName
-  const subtitle = target.resource === 'creator' ? target.item.email : `${target.item.creatorName} · ${target.resource === 'submission' ? 'Video submission' : `${capitalize(target.item.platform)} account`}`
+  const subtitle = target.resource === 'creator' ? target.item.email : `${target.item.creatorName} · ${target.resource === 'submission' ? `Video submission${target.item.socialAccountStatus !== 'approved' ? ' · Account not approved' : ''}` : `${capitalize(target.item.platform)} account`}`
   const Icon = target.resource === 'submission' ? FileVideo : target.resource === 'account' ? BadgeCheck : UserRound
   return <ResourceRow icon={Icon} title={title} subtitle={subtitle} status="pending" meta={formatDate(target.item.createdAt)} onClick={onClick} />
 }
@@ -218,7 +218,39 @@ function ReviewDialog({ target, payments, metrics, open, onOpenChange, onRefresh
     }
   }
 
-  return <Dialog open={open} onOpenChange={onOpenChange}><DialogContent className="max-h-[90vh] max-w-2xl overflow-y-auto rounded-[28px] border-zinc-200 bg-white p-0">{target.resource === 'submission' ? <div className="aspect-video overflow-hidden rounded-t-[27px] bg-black"><video className="size-full object-contain" src={target.item.videoUrl} controls preload="metadata" /></div> : null}<div className="p-5 sm:p-7"><DialogHeader><div className="flex items-center gap-2"><StatusPill status={initialStatus} /><span className="text-xs text-zinc-400">{formatDate(target.item.createdAt)}</span></div><DialogTitle className="pt-2 text-2xl">{reviewTitle(target)}</DialogTitle><DialogDescription>{reviewSubtitle(target)}</DialogDescription></DialogHeader><ReviewDetails target={target} />{target.resource === 'submission' ? <AttributionEditor submission={target.item} metrics={metrics.find((item) => item.submissionId === target.item.id)} onSaved={onRefresh} /> : null}<div className="mt-6 grid gap-2"><span className="text-sm font-medium">Review status</span><Select value={status} onValueChange={(value) => setStatus(value as typeof status)}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent>{statusOptions(target.resource).map((option) => <SelectItem key={option} value={option}>{statusLabel(option)}</SelectItem>)}</SelectContent></Select></div>{target.resource === 'account' || target.resource === 'submission' ? <label className="mt-5 grid gap-2 text-sm font-medium">Review note<textarea value={reviewNote} onChange={(event) => setReviewNote(event.target.value.slice(0, 1000))} className="min-h-24 resize-y rounded-xl border border-zinc-200 p-3 text-sm outline-none transition-[border-color,box-shadow] duration-150 ease-out focus:border-zinc-400 focus:ring-4 focus:ring-zinc-100" placeholder="Visible to the creator" /></label> : null}{target.resource === 'payment' ? <div className="mt-5 grid gap-4 sm:grid-cols-2"><label className="grid gap-2 text-sm font-medium">Amount (USD)<input type="number" min="0" step="0.01" value={amount} onChange={(event) => setAmount(event.target.value)} className="h-12 rounded-xl border border-zinc-200 px-3.5 outline-none focus:border-zinc-400 focus:ring-4 focus:ring-zinc-100" /></label><label className="grid gap-2 text-sm font-medium">Provider reference<input value={providerReference} onChange={(event) => setProviderReference(event.target.value)} className="h-12 rounded-xl border border-zinc-200 px-3.5 outline-none focus:border-zinc-400 focus:ring-4 focus:ring-zinc-100" placeholder="Transaction ID" /></label></div> : null}{target.resource === 'submission' && !existingPayment ? <CreatePayment submission={target.item} onCreated={onSaved} /> : null}{target.resource === 'submission' && existingPayment ? <button className="mt-5 flex w-full items-center justify-between rounded-2xl border border-zinc-200 p-4 text-left" onClick={() => onOpenChange(false)}><span><span className="block text-sm font-semibold">Payment scheduled</span><span className="mt-1 block text-xs text-zinc-500">{formatMoney(existingPayment.amountCents, existingPayment.currency)} · {statusLabel(existingPayment.status)}</span></span><CircleDollarSign className="size-5 text-zinc-400" /></button> : null}<div className="mt-7 flex justify-end gap-2"><Button variant="ghost" className="rounded-xl" onClick={() => onOpenChange(false)}>Cancel</Button><Button className="rounded-xl" onClick={() => void save()} disabled={saving}>{saving ? <Loader2 className="animate-spin" /> : <ShieldCheck />}{saving ? 'Saving…' : 'Save review'}</Button></div></div></DialogContent></Dialog>
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="max-h-[90vh] max-w-2xl overflow-y-auto rounded-[28px] border-zinc-200 bg-white p-0">
+        {target.resource === 'submission' ? <AdminSubmissionEvidence submission={target.item} /> : null}
+        <div className="p-5 sm:p-7">
+          <DialogHeader>
+            <div className="flex items-center gap-2"><StatusPill status={initialStatus} /><span className="text-xs text-zinc-400">{formatDate(target.item.createdAt)}</span></div>
+            <DialogTitle className="pt-2 text-2xl">{reviewTitle(target)}</DialogTitle>
+            <DialogDescription>{reviewSubtitle(target)}</DialogDescription>
+          </DialogHeader>
+          <ReviewDetails target={target} />
+          {target.resource === 'submission' ? <AttributionEditor submission={target.item} metrics={metrics.find((item) => item.submissionId === target.item.id)} onSaved={onRefresh} /> : null}
+          <div className="mt-6 grid gap-2">
+            <span className="text-sm font-medium">Review status</span>
+            <Select value={status} onValueChange={(value) => setStatus(value as typeof status)}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent>{statusOptions(target.resource).map((option) => <SelectItem key={option} value={option}>{statusLabel(option)}</SelectItem>)}</SelectContent></Select>
+          </div>
+          {target.resource === 'account' || target.resource === 'submission' ? <label className="mt-5 grid gap-2 text-sm font-medium">Review note<textarea value={reviewNote} onChange={(event) => setReviewNote(event.target.value.slice(0, 1000))} className="min-h-24 resize-y rounded-xl border border-zinc-200 p-3 text-sm outline-none transition-[border-color,box-shadow] duration-150 ease-out focus:border-zinc-400 focus:ring-4 focus:ring-zinc-100" placeholder="Visible to the creator" /></label> : null}
+          {target.resource === 'payment' ? <div className="mt-5 grid gap-4 sm:grid-cols-2"><label className="grid gap-2 text-sm font-medium">Amount (USD)<input type="number" min="0" step="0.01" value={amount} onChange={(event) => setAmount(event.target.value)} className="h-12 rounded-xl border border-zinc-200 px-3.5 outline-none focus:border-zinc-400 focus:ring-4 focus:ring-zinc-100" /></label><label className="grid gap-2 text-sm font-medium">Provider reference<input value={providerReference} onChange={(event) => setProviderReference(event.target.value)} className="h-12 rounded-xl border border-zinc-200 px-3.5 outline-none focus:border-zinc-400 focus:ring-4 focus:ring-zinc-100" placeholder="Transaction ID" /></label></div> : null}
+          {target.resource === 'submission' && !existingPayment ? <CreatePayment submission={target.item} onCreated={onSaved} /> : null}
+          {target.resource === 'submission' && existingPayment ? <button className="mt-5 flex w-full items-center justify-between rounded-2xl border border-zinc-200 p-4 text-left" onClick={() => onOpenChange(false)}><span><span className="block text-sm font-semibold">Payment scheduled</span><span className="mt-1 block text-xs text-zinc-500">{formatMoney(existingPayment.amountCents, existingPayment.currency)} · {statusLabel(existingPayment.status)}</span></span><CircleDollarSign className="size-5 text-zinc-400" /></button> : null}
+          <div className="mt-7 flex justify-end gap-2"><Button variant="ghost" className="rounded-xl" onClick={() => onOpenChange(false)}>Cancel</Button><Button className="rounded-xl" onClick={() => void save()} disabled={saving}>{saving ? <Loader2 className="animate-spin" /> : <ShieldCheck />}{saving ? 'Saving…' : 'Save review'}</Button></div>
+        </div>
+      </DialogContent>
+    </Dialog>
+  )
+}
+
+function AdminSubmissionEvidence({ submission }: { submission: AdminSubmission }) {
+  if (submission.analyticsScreenshotUrl) {
+    return <div role="img" aria-label="Submitted video analytics screenshot" className="aspect-video rounded-t-[27px] bg-zinc-950 bg-contain bg-center bg-no-repeat" style={{ backgroundImage: `url(${JSON.stringify(submission.analyticsScreenshotUrl)})` }} />
+  }
+  if (submission.videoUrl) return <div className="aspect-video overflow-hidden rounded-t-[27px] bg-black"><video className="size-full object-contain" src={submission.videoUrl} controls preload="metadata" /></div>
+  return null
 }
 
 function AttributionEditor({ submission, metrics, onSaved }: { submission: AdminSubmission; metrics?: AdminAttributionMetrics; onSaved: () => Promise<void> }) {
@@ -267,7 +299,10 @@ function CreatePayment({ submission, onCreated }: { submission: AdminSubmission;
 function ReviewDetails({ target }: { target: ReviewTarget }) {
   if (target.resource === 'creator') return <Details rows={[['Primary contact', target.item.primaryContact || 'Not provided'], ['Payout method', target.item.paymentOption === 'paypal' ? 'PayPal' : target.item.cryptoNetwork || 'Crypto'], ['Payout destination', target.item.paymentOption === 'paypal' ? target.item.paypalEmail || 'Not provided' : target.item.cryptoWalletAddress || 'Not provided']]} />
   if (target.resource === 'account') return <>{target.item.analyticsVideoUrl ? <div className="mt-6 overflow-hidden rounded-2xl bg-black"><div className="flex items-center justify-between bg-zinc-900 px-4 py-2.5 text-xs text-white"><span className="font-medium">28-day analytics recording</span><span className="text-white/50">{target.item.analyticsSizeBytes ? formatBytes(target.item.analyticsSizeBytes) : null}</span></div><video className="aspect-video w-full object-contain" src={target.item.analyticsVideoUrl} controls preload="metadata" /></div> : null}<Details rows={[['Creator', target.item.creatorName], ['Platform', capitalize(target.item.platform)], ['Handle', `@${target.item.handle}`], ['Connection', target.item.connectionMethod === 'oauth' ? 'OAuth verified' : 'Manual'], ['Analytics window', target.item.analyticsPeriodDays ? `Past ${target.item.analyticsPeriodDays} days` : 'Not provided'], ['Recording size', target.item.analyticsSizeBytes ? formatBytes(target.item.analyticsSizeBytes) : 'Not provided'], ['Profile', target.item.profileUrl || 'Not provided']]} links={target.item.profileUrl ? { 6: target.item.profileUrl } : undefined} /></>
-  if (target.resource === 'submission') return <Details rows={[['Creator', target.item.creatorName], ['Account', target.item.socialHandle ? `@${target.item.socialHandle}` : target.item.platform], ['File size', formatBytes(target.item.videoSizeBytes)], ['Published post', target.item.postUrl || 'Not provided']]} links={target.item.postUrl ? { 3: target.item.postUrl } : undefined} />
+  if (target.resource === 'submission') {
+    const evidenceSize = target.item.analyticsSizeBytes || target.item.videoSizeBytes
+    return <Details rows={[['Creator', target.item.creatorName], ['Format', target.item.title], ['Requirements', target.item.requirementsConfirmedAt ? `Confirmed ${formatDate(target.item.requirementsConfirmedAt)}` : 'Not recorded'], ['Account', target.item.socialHandle ? `@${target.item.socialHandle}` : 'Not connected'], ['Account eligibility', target.item.socialAccountStatus === 'approved' ? 'Approved' : 'Not connected to an approved account'], ['Evidence', target.item.analyticsScreenshotUrl ? 'Analytics screenshot' : target.item.videoUrl ? 'Legacy video' : 'Not provided'], ['Evidence size', evidenceSize ? formatBytes(evidenceSize) : 'Not recorded'], ['Published post', target.item.postUrl || 'Not provided']]} links={target.item.postUrl ? { 7: target.item.postUrl } : undefined} />
+  }
   return <Details rows={[['Creator', target.item.creatorName], ['Submission', target.item.submissionTitle || 'Manual payment'], ['Method', target.item.paymentOption === 'paypal' ? 'PayPal' : 'Crypto'], ['Reference', target.item.providerReference || 'Not provided']]} />
 }
 

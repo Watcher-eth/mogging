@@ -43,13 +43,19 @@ export type AdminSubmission = {
   creatorEmail: string
   socialAccountId: string | null
   socialHandle: string | null
+  socialAccountStatus: AccountStatus | null
+  formatId: string | null
+  requirementsConfirmedAt: string | null
   title: string
   platform: string
   caption: string | null
   postUrl: string | null
-  videoUrl: string
-  videoContentType: string
-  videoSizeBytes: number
+  videoUrl: string | null
+  videoContentType: string | null
+  videoSizeBytes: number | null
+  analyticsScreenshotUrl: string | null
+  analyticsContentType: string | null
+  analyticsSizeBytes: number | null
   status: SubmissionStatus
   reviewNote: string | null
   createdAt: string

@@ -1,6 +1,8 @@
 import { and, desc, eq } from 'drizzle-orm'
 import { z } from 'zod'
 import { db, schema } from '@/lib/db'
+import { env } from '@/lib/env'
+import { getCreatorSubmissionFormat } from '@/lib/creator/formats'
 
 export const creatorProfileSchema = z
   .object({
@@ -21,14 +23,14 @@ export const creatorProfileSchema = z
   })
 
 export const creatorSubmissionSchema = z.object({
-  title: z.string().trim().min(2).max(120),
-  socialAccountId: z.string().uuid(),
-  caption: z.string().trim().max(2200).optional().nullable(),
-  postUrl: z.union([z.literal(''), z.string().url()]).optional().nullable(),
-  videoUrl: z.string().min(1),
-  videoStorageKey: z.string().min(1),
-  videoContentType: z.enum(['video/mp4', 'video/quicktime', 'video/webm']),
-  videoSizeBytes: z.number().int().positive().max(500 * 1024 * 1024),
+  formatId: z.string().trim().min(1).max(80),
+  requirementsConfirmed: z.literal(true),
+  socialAccountId: z.string().uuid().optional().nullable(),
+  postUrl: z.string().url(),
+  analyticsScreenshotUrl: z.string().min(1),
+  analyticsStorageKey: z.string().min(1),
+  analyticsContentType: z.enum(['image/jpeg', 'image/png', 'image/webp']),
+  analyticsSizeBytes: z.number().int().positive().max(10 * 1024 * 1024),
 })
 
 export const creatorAnalyticsEvidenceSchema = z.object({
@@ -70,7 +72,10 @@ export type CreatorTikTokOAuthInput = CreatorAnalyticsEvidenceInput & {
 
 export async function getCreatorDashboard(userId: string) {
   const profile = await getCreatorProfile(userId)
-  if (!profile) return { profile: null, submissions: [], payments: [], socialAccounts: [] }
+  const featureFlags = {
+    creatorAccountRequiredForSubmission: env.CREATOR_ACCOUNT_REQUIRED_FOR_SUBMISSION,
+  }
+  if (!profile) return { profile: null, submissions: [], payments: [], socialAccounts: [], featureFlags }
 
   const [submissions, payments, socialAccounts] = await Promise.all([
     db.query.creatorSubmissions.findMany({
@@ -87,7 +92,7 @@ export async function getCreatorDashboard(userId: string) {
     }),
   ])
 
-  return { profile, submissions, payments, socialAccounts }
+  return { profile, submissions, payments, socialAccounts, featureFlags }
 }
 
 export function getCreatorProfile(userId: string) {
@@ -299,34 +304,44 @@ async function getOrCreateCreatorProfile(userId: string) {
 }
 
 export async function createCreatorSubmission(userId: string, input: CreatorSubmissionInput) {
-  const profile = await getCreatorProfile(userId)
-  if (!profile) throw new CreatorServiceError(409, 'Connect a TikTok or Instagram account before submitting')
-  if (!input.videoStorageKey.startsWith(`creators/${userId}/`)) {
-    throw new CreatorServiceError(400, 'Invalid video upload')
+  const format = getCreatorSubmissionFormat(input.formatId)
+  if (!format) throw new CreatorServiceError(409, 'Choose an available submission format')
+  const profile = await getOrCreateCreatorProfile(userId)
+  if (!input.analyticsStorageKey.startsWith(`creators/${userId}/submission-analytics/`)) {
+    throw new CreatorServiceError(400, 'Invalid analytics screenshot upload')
   }
-  const socialAccount = await db.query.creatorSocialAccounts.findFirst({
+  const socialAccount = input.socialAccountId ? await db.query.creatorSocialAccounts.findFirst({
     where: and(
       eq(schema.creatorSocialAccounts.id, input.socialAccountId),
       eq(schema.creatorSocialAccounts.creatorProfileId, profile.id)
     ),
-  })
-  if (!socialAccount) {
+  }) : null
+  if (input.socialAccountId && !socialAccount) {
     throw new CreatorServiceError(409, 'Select one of your connected TikTok or Instagram accounts')
+  }
+  if (env.CREATOR_ACCOUNT_REQUIRED_FOR_SUBMISSION && !socialAccount) {
+    throw new CreatorServiceError(409, 'Connect a TikTok or Instagram account before submitting')
   }
 
   const [submission] = await db
     .insert(schema.creatorSubmissions)
     .values({
       creatorProfileId: profile.id,
-      socialAccountId: socialAccount.id,
-      title: input.title,
-      platform: socialAccount.platform === 'tiktok' ? 'TikTok' : 'Instagram Reels',
-      caption: input.caption || null,
-      postUrl: input.postUrl || null,
-      videoUrl: input.videoUrl,
-      videoStorageKey: input.videoStorageKey,
-      videoContentType: input.videoContentType,
-      videoSizeBytes: input.videoSizeBytes,
+      socialAccountId: socialAccount?.id || null,
+      formatId: format.id,
+      requirementsConfirmedAt: new Date(),
+      title: format.name,
+      platform: socialAccount ? (socialAccount.platform === 'tiktok' ? 'TikTok' : 'Instagram Reels') : 'Unlinked',
+      caption: null,
+      postUrl: input.postUrl,
+      videoUrl: null,
+      videoStorageKey: null,
+      videoContentType: null,
+      videoSizeBytes: null,
+      analyticsScreenshotUrl: input.analyticsScreenshotUrl,
+      analyticsStorageKey: input.analyticsStorageKey,
+      analyticsContentType: input.analyticsContentType,
+      analyticsSizeBytes: input.analyticsSizeBytes,
     })
     .returning()
 

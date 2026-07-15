@@ -120,6 +120,20 @@
       "when": 1784090400000,
       "tag": "0017_creator_account_analytics",
       "breakpoints": true
+    },
+    {
+      "idx": 17,
+      "version": "7",
+      "when": 1784145600000,
+      "tag": "0018_creator_submission_formats",
+      "breakpoints": true
+    },
+    {
+      "idx": 18,
+      "version": "7",
+      "when": 1784152800000,
+      "tag": "0019_submission_analytics_screenshot",
+      "breakpoints": true
     }
   ]
 }

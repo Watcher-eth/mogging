@@ -12,13 +12,18 @@ export type CreatorProfile = {
 export type CreatorSubmission = {
   id: string
   socialAccountId: string | null
+  formatId: string | null
+  requirementsConfirmedAt: string | null
   title: string
   platform: string
   caption: string | null
   postUrl: string | null
-  videoUrl: string
-  videoContentType: string
-  videoSizeBytes: number
+  videoUrl: string | null
+  videoContentType: string | null
+  videoSizeBytes: number | null
+  analyticsScreenshotUrl: string | null
+  analyticsContentType: string | null
+  analyticsSizeBytes: number | null
   status: 'pending' | 'in_review' | 'approved' | 'rejected' | 'paid'
   reviewNote: string | null
   createdAt: string
@@ -59,4 +64,7 @@ export type CreatorDashboard = {
   submissions: CreatorSubmission[]
   payments: CreatorPayment[]
   socialAccounts: CreatorSocialAccount[]
+  featureFlags: {
+    creatorAccountRequiredForSubmission: boolean
+  }
 }

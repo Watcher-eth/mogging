@@ -1,6 +1,6 @@
 import Link from 'next/link'
 import { useMemo, useState } from 'react'
-import { ArrowUpRight, CircleDollarSign, Clock3, FileVideo, Loader2 } from 'lucide-react'
+import { ArrowUpRight, CircleAlert, CircleDollarSign, Clock3, FileVideo, Loader2 } from 'lucide-react'
 import useSWR from 'swr'
 import { Button } from '@/components/ui/button'
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog'
@@ -29,6 +29,7 @@ function SubmissionsContent() {
   const submissions = useMemo(() => data?.submissions || [], [data?.submissions])
   const visible = useMemo(() => filter === 'all' ? submissions : submissions.filter((item) => item.status === filter), [filter, submissions])
   const paymentBySubmission = useMemo(() => new Map((data?.payments || []).filter((payment) => payment.submissionId).map((payment) => [payment.submissionId, payment])), [data?.payments])
+  const accountStatusById = useMemo(() => new Map((data?.socialAccounts || []).map((account) => [account.id, account.status])), [data?.socialAccounts])
 
   return (
     <>
@@ -39,17 +40,17 @@ function SubmissionsContent() {
           return <button key={item.value} onClick={() => setFilter(item.value)} className={cn('flex shrink-0 items-center gap-2 rounded-xl px-3 py-2 text-xs font-medium text-zinc-500 transition-[background-color,color,transform] duration-150 ease-out active:scale-[0.98]', filter === item.value && 'bg-black text-white')}><span>{item.label}</span><span className={cn('text-[10px]', filter === item.value ? 'text-white/60' : 'text-zinc-400')}>{count}</span></button>
         })}
       </div>
-      {isLoading ? <div className="grid min-h-64 place-items-center"><Loader2 className="size-5 animate-spin text-zinc-400" /></div> : visible.length ? <div className="grid gap-3">{visible.map((submission, index) => <SubmissionCard key={submission.id} submission={submission} payment={paymentBySubmission.get(submission.id)} onClick={() => setSelected(submission)} style={{ animationDelay: `${Math.min(index * 45, 180)}ms` }} />)}</div> : <EmptyState filtered={filter !== 'all'} />}
-      <SubmissionDialog submission={selected} payment={selected ? paymentBySubmission.get(selected.id) : undefined} open={Boolean(selected)} onOpenChange={(open) => { if (!open) setSelected(null) }} />
+      {isLoading ? <div className="grid min-h-64 place-items-center"><Loader2 className="size-5 animate-spin text-zinc-400" /></div> : visible.length ? <div className="grid gap-3">{visible.map((submission, index) => <SubmissionCard key={submission.id} submission={submission} payment={paymentBySubmission.get(submission.id)} linkedToApprovedAccount={Boolean(submission.socialAccountId && accountStatusById.get(submission.socialAccountId) === 'approved')} onClick={() => setSelected(submission)} style={{ animationDelay: `${Math.min(index * 45, 180)}ms` }} />)}</div> : <EmptyState filtered={filter !== 'all'} />}
+      <SubmissionDialog submission={selected} payment={selected ? paymentBySubmission.get(selected.id) : undefined} linkedToApprovedAccount={Boolean(selected?.socialAccountId && accountStatusById.get(selected.socialAccountId) === 'approved')} open={Boolean(selected)} onOpenChange={(open) => { if (!open) setSelected(null) }} />
     </>
   )
 }
 
-function SubmissionCard({ submission, payment, onClick, style }: { submission: CreatorSubmission; payment?: CreatorPayment; onClick: () => void; style: React.CSSProperties }) {
+function SubmissionCard({ submission, payment, linkedToApprovedAccount, onClick, style }: { submission: CreatorSubmission; payment?: CreatorPayment; linkedToApprovedAccount: boolean; onClick: () => void; style: React.CSSProperties }) {
   return (
     <button onClick={onClick} style={style} className="creator-list-item group flex w-full items-center gap-4 rounded-2xl border border-zinc-200 bg-white p-4 text-left shadow-[0_8px_30px_rgba(15,23,42,0.035)] transition-[border-color,box-shadow,transform] duration-200 ease-out hover:-translate-y-0.5 hover:border-zinc-300 hover:shadow-[0_14px_40px_rgba(15,23,42,0.07)] active:scale-[0.995]">
       <span className="grid size-11 shrink-0 place-items-center rounded-xl bg-zinc-100"><FileVideo className="size-5" /></span>
-      <span className="min-w-0 flex-1"><span className="block truncate text-sm font-semibold tracking-[-0.02em]">{submission.title}</span><span className="mt-1 flex items-center gap-2 text-xs text-zinc-500"><span>{submission.platform}</span><span>·</span><span>{formatDate(submission.createdAt)}</span></span></span>
+      <span className="min-w-0 flex-1"><span className="block truncate text-sm font-semibold tracking-[-0.02em]">{submission.title}</span><span className="mt-1 flex flex-wrap items-center gap-2 text-xs text-zinc-500"><span>{submission.platform}</span><span>·</span><span>{formatDate(submission.createdAt)}</span>{!linkedToApprovedAccount ? <span className="inline-flex items-center gap-1 rounded-full bg-amber-50 px-2 py-0.5 font-medium text-amber-700"><CircleAlert className="size-3" />Account not approved</span> : null}</span></span>
       <span className="hidden text-right sm:block">{payment ? <><span className="block text-sm font-semibold">{formatMoney(payment.amountCents, payment.currency)}</span><span className="mt-1 block text-xs capitalize text-zinc-500">{payment.status}</span></> : <span className="text-xs text-zinc-400">No payment yet</span>}</span>
       <StatusPill status={submission.status} />
       <ArrowUpRight className="size-4 shrink-0 text-zinc-300 transition-[color,transform] duration-150 ease-out group-hover:-translate-y-0.5 group-hover:translate-x-0.5 group-hover:text-black" />
@@ -57,8 +58,45 @@ function SubmissionCard({ submission, payment, onClick, style }: { submission: C
   )
 }
 
-function SubmissionDialog({ submission, payment, open, onOpenChange }: { submission: CreatorSubmission | null; payment?: CreatorPayment; open: boolean; onOpenChange: (open: boolean) => void }) {
-  return <Dialog open={open} onOpenChange={onOpenChange}><DialogContent className="max-h-[90vh] max-w-2xl overflow-y-auto rounded-[28px] border-zinc-200 bg-white p-0"><div className="aspect-video overflow-hidden rounded-t-[27px] bg-black">{submission ? <video className="size-full object-contain" src={submission.videoUrl} controls preload="metadata" /> : null}</div>{submission ? <div className="p-5 sm:p-7"><DialogHeader><div className="flex items-center gap-2"><StatusPill status={submission.status} /><span className="text-xs text-zinc-400">{formatDate(submission.createdAt)}</span></div><DialogTitle className="pt-2 text-2xl">{submission.title}</DialogTitle><DialogDescription>{submission.platform}</DialogDescription></DialogHeader><div className="mt-6 grid gap-3 rounded-2xl bg-zinc-50 p-4 text-sm"><Detail label="Review status" value={statusLabel(submission.status)} /><Detail label="Payment" value={payment ? `${formatMoney(payment.amountCents, payment.currency)} · ${payment.status}` : 'Not scheduled'} /><Detail label="Payment method" value={payment ? (payment.paymentOption === 'paypal' ? 'PayPal' : 'Crypto') : '—'} /><Detail label="File size" value={formatBytes(submission.videoSizeBytes)} /></div>{submission.caption ? <div className="mt-6"><p className="text-xs font-semibold uppercase tracking-[0.15em] text-zinc-400">Caption</p><p className="mt-2 whitespace-pre-wrap text-sm leading-6 text-zinc-600">{submission.caption}</p></div> : null}{submission.reviewNote ? <div className="mt-6 rounded-2xl border border-zinc-200 p-4"><p className="text-xs font-semibold uppercase tracking-[0.15em] text-zinc-400">Team note</p><p className="mt-2 text-sm leading-6 text-zinc-600">{submission.reviewNote}</p></div> : null}{submission.postUrl ? <Button asChild variant="outline" className="mt-6 h-10 rounded-xl"><a href={submission.postUrl} target="_blank" rel="noreferrer">Open published post <ArrowUpRight /></a></Button> : null}</div> : null}</DialogContent></Dialog>
+function SubmissionDialog({ submission, payment, linkedToApprovedAccount, open, onOpenChange }: { submission: CreatorSubmission | null; payment?: CreatorPayment; linkedToApprovedAccount: boolean; open: boolean; onOpenChange: (open: boolean) => void }) {
+  const evidenceSize = submission?.analyticsSizeBytes || submission?.videoSizeBytes
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="max-h-[90vh] max-w-2xl overflow-y-auto rounded-[28px] border-zinc-200 bg-white p-0">
+        {submission ? <SubmissionEvidence submission={submission} /> : null}
+        {submission ? (
+          <div className="p-5 sm:p-7">
+            <DialogHeader>
+              <div className="flex items-center gap-2"><StatusPill status={submission.status} /><span className="text-xs text-zinc-400">{formatDate(submission.createdAt)}</span></div>
+              <DialogTitle className="pt-2 text-2xl">{submission.title}</DialogTitle>
+              <DialogDescription>{submission.platform}</DialogDescription>
+            </DialogHeader>
+            {!linkedToApprovedAccount ? <div className="mt-6 flex gap-3 rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm leading-6 text-amber-950"><CircleAlert className="mt-0.5 size-4 shrink-0 text-amber-600" /><p><strong className="font-semibold">Account not approved.</strong> This video is not currently connected to an approved TikTok or Instagram account.</p></div> : null}
+            <div className="mt-6 grid gap-3 rounded-2xl bg-zinc-50 p-4 text-sm">
+              <Detail label="Review status" value={statusLabel(submission.status)} />
+              <Detail label="Account eligibility" value={linkedToApprovedAccount ? 'Approved account' : 'Not approved'} />
+              <Detail label="Evidence" value={submission.analyticsScreenshotUrl ? 'Analytics screenshot' : submission.videoUrl ? 'Legacy video' : 'Not provided'} />
+              <Detail label="Evidence size" value={evidenceSize ? formatBytes(evidenceSize) : 'Not recorded'} />
+              <Detail label="Payment" value={payment ? `${formatMoney(payment.amountCents, payment.currency)} · ${payment.status}` : 'Not scheduled'} />
+              <Detail label="Payment method" value={payment ? (payment.paymentOption === 'paypal' ? 'PayPal' : 'Crypto') : '—'} />
+            </div>
+            {submission.caption ? <div className="mt-6"><p className="text-xs font-semibold uppercase tracking-[0.15em] text-zinc-400">Caption</p><p className="mt-2 whitespace-pre-wrap text-sm leading-6 text-zinc-600">{submission.caption}</p></div> : null}
+            {submission.reviewNote ? <div className="mt-6 rounded-2xl border border-zinc-200 p-4"><p className="text-xs font-semibold uppercase tracking-[0.15em] text-zinc-400">Team note</p><p className="mt-2 text-sm leading-6 text-zinc-600">{submission.reviewNote}</p></div> : null}
+            {submission.postUrl ? <Button asChild variant="outline" className="mt-6 h-10 rounded-xl"><a href={submission.postUrl} target="_blank" rel="noreferrer">Open published post <ArrowUpRight /></a></Button> : null}
+          </div>
+        ) : null}
+      </DialogContent>
+    </Dialog>
+  )
+}
+
+function SubmissionEvidence({ submission }: { submission: CreatorSubmission }) {
+  if (submission.analyticsScreenshotUrl) {
+    return <div role="img" aria-label="Submitted video analytics screenshot" className="aspect-video rounded-t-[27px] bg-zinc-950 bg-contain bg-center bg-no-repeat" style={{ backgroundImage: `url(${JSON.stringify(submission.analyticsScreenshotUrl)})` }} />
+  }
+  if (submission.videoUrl) return <div className="aspect-video overflow-hidden rounded-t-[27px] bg-black"><video className="size-full object-contain" src={submission.videoUrl} controls preload="metadata" /></div>
+  return <div className="grid aspect-video place-items-center rounded-t-[27px] bg-zinc-950 text-sm text-white/50">No media evidence</div>
 }
 
 function StatusPill({ status }: { status: CreatorSubmission['status'] }) { return <span className={cn('shrink-0 rounded-full px-2.5 py-1 text-[11px] font-semibold', status === 'paid' && 'bg-emerald-50 text-emerald-700', status === 'approved' && 'bg-blue-50 text-blue-700', (status === 'pending' || status === 'in_review') && 'bg-amber-50 text-amber-700', status === 'rejected' && 'bg-red-50 text-red-700')}>{statusLabel(status)}</span> }
