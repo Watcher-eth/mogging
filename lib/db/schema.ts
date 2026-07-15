@@ -22,6 +22,28 @@ export const photoSourceEnum = pgEnum('photo_source', ['user', 'seeded', 'instag
 export const photoSetTypeEnum = pgEnum('photo_set_type', ['single', 'before_after', 'multi_angle'])
 export const analysisStatusEnum = pgEnum('analysis_status', ['pending', 'processing', 'complete', 'failed'])
 export const ratingAlgorithmEnum = pgEnum('rating_algorithm', ['trueskill_v1'])
+export const creatorAuthStatusEnum = pgEnum('creator_auth_status', ['pending', 'verified', 'suspended'])
+export const creatorPaymentOptionEnum = pgEnum('creator_payment_option', ['paypal', 'crypto'])
+export const creatorSubmissionStatusEnum = pgEnum('creator_submission_status', [
+  'pending',
+  'in_review',
+  'approved',
+  'rejected',
+  'paid',
+])
+export const creatorPaymentStatusEnum = pgEnum('creator_payment_status', [
+  'pending',
+  'processing',
+  'paid',
+  'failed',
+  'cancelled',
+])
+export const creatorSocialPlatformEnum = pgEnum('creator_social_platform', ['tiktok', 'instagram'])
+export const creatorSocialAccountStatusEnum = pgEnum('creator_social_account_status', [
+  'pending',
+  'approved',
+  'missing_information',
+])
 
 export type PaymentProduct =
   | 'evaluation'
@@ -383,7 +405,156 @@ export const stripeWebhookEvents = pgTable('stripe_webhook_events', {
   createdAt: timestamp('created_at', { mode: 'date' }).notNull().defaultNow(),
 })
 
-export const usersRelations = relations(users, ({ many }) => ({
+export const creatorProfiles = pgTable(
+  'creator_profiles',
+  {
+    id: text('id')
+      .primaryKey()
+      .$defaultFn(() => crypto.randomUUID()),
+    userId: text('user_id')
+      .notNull()
+      .references(() => users.id, { onDelete: 'cascade' }),
+    displayName: text('display_name').notNull(),
+    socialHandle: text('social_handle'),
+    authStatus: creatorAuthStatusEnum('auth_status').notNull().default('pending'),
+    paymentOption: creatorPaymentOptionEnum('payment_option').notNull().default('paypal'),
+    paypalEmail: text('paypal_email'),
+    cryptoNetwork: text('crypto_network'),
+    cryptoWalletAddress: text('crypto_wallet_address'),
+    createdAt: timestamp('created_at', { mode: 'date' }).notNull().defaultNow(),
+    updatedAt: timestamp('updated_at', { mode: 'date' }).notNull().defaultNow(),
+  },
+  (table) => ({
+    userIdx: uniqueIndex('creator_profiles_user_id_unique').on(table.userId),
+    authStatusIdx: index('creator_profiles_auth_status_idx').on(table.authStatus),
+  })
+)
+
+export const creatorSubmissions = pgTable(
+  'creator_submissions',
+  {
+    id: text('id')
+      .primaryKey()
+      .$defaultFn(() => crypto.randomUUID()),
+    creatorProfileId: text('creator_profile_id')
+      .notNull()
+      .references(() => creatorProfiles.id, { onDelete: 'cascade' }),
+    socialAccountId: text('social_account_id').references(() => creatorSocialAccounts.id, { onDelete: 'set null' }),
+    title: text('title').notNull(),
+    platform: text('platform').notNull(),
+    caption: text('caption'),
+    postUrl: text('post_url'),
+    videoUrl: text('video_url').notNull(),
+    videoStorageKey: text('video_storage_key').notNull(),
+    videoContentType: text('video_content_type').notNull(),
+    videoSizeBytes: integer('video_size_bytes').notNull(),
+    status: creatorSubmissionStatusEnum('status').notNull().default('pending'),
+    reviewNote: text('review_note'),
+    createdAt: timestamp('created_at', { mode: 'date' }).notNull().defaultNow(),
+    updatedAt: timestamp('updated_at', { mode: 'date' }).notNull().defaultNow(),
+  },
+  (table) => ({
+    creatorIdx: index('creator_submissions_creator_profile_id_idx').on(table.creatorProfileId),
+    socialAccountIdx: index('creator_submissions_social_account_id_idx').on(table.socialAccountId),
+    statusIdx: index('creator_submissions_status_idx').on(table.status),
+    createdAtIdx: index('creator_submissions_created_at_idx').on(table.createdAt),
+  })
+)
+
+export const creatorSocialAccounts = pgTable(
+  'creator_social_accounts',
+  {
+    id: text('id')
+      .primaryKey()
+      .$defaultFn(() => crypto.randomUUID()),
+    creatorProfileId: text('creator_profile_id')
+      .notNull()
+      .references(() => creatorProfiles.id, { onDelete: 'cascade' }),
+    platform: creatorSocialPlatformEnum('platform').notNull(),
+    handle: text('handle').notNull(),
+    profileUrl: text('profile_url'),
+    avatarUrl: text('avatar_url'),
+    connectionMethod: text('connection_method').notNull().default('manual'),
+    providerAccountId: text('provider_account_id'),
+    oauthVerifiedAt: timestamp('oauth_verified_at', { mode: 'date' }),
+    analyticsVideoUrl: text('analytics_video_url'),
+    analyticsStorageKey: text('analytics_storage_key'),
+    analyticsContentType: text('analytics_content_type'),
+    analyticsSizeBytes: integer('analytics_size_bytes'),
+    analyticsPeriodDays: integer('analytics_period_days'),
+    analyticsConfirmedAt: timestamp('analytics_confirmed_at', { mode: 'date' }),
+    status: creatorSocialAccountStatusEnum('status').notNull().default('pending'),
+    reviewNote: text('review_note'),
+    createdAt: timestamp('created_at', { mode: 'date' }).notNull().defaultNow(),
+    updatedAt: timestamp('updated_at', { mode: 'date' }).notNull().defaultNow(),
+  },
+  (table) => ({
+    creatorIdx: index('creator_social_accounts_creator_profile_id_idx').on(table.creatorProfileId),
+    statusIdx: index('creator_social_accounts_status_idx').on(table.status),
+    uniqueAccountIdx: uniqueIndex('creator_social_accounts_creator_platform_handle_unique').on(
+      table.creatorProfileId,
+      table.platform,
+      table.handle
+    ),
+    uniqueProviderAccountIdx: uniqueIndex('creator_social_accounts_platform_provider_account_unique').on(
+      table.platform,
+      table.providerAccountId
+    ),
+  })
+)
+
+export const creatorPayments = pgTable(
+  'creator_payments',
+  {
+    id: text('id')
+      .primaryKey()
+      .$defaultFn(() => crypto.randomUUID()),
+    creatorProfileId: text('creator_profile_id')
+      .notNull()
+      .references(() => creatorProfiles.id, { onDelete: 'cascade' }),
+    submissionId: text('submission_id').references(() => creatorSubmissions.id, { onDelete: 'set null' }),
+    amountCents: integer('amount_cents').notNull(),
+    currency: varchar('currency', { length: 3 }).notNull().default('USD'),
+    status: creatorPaymentStatusEnum('status').notNull().default('pending'),
+    paymentOption: creatorPaymentOptionEnum('payment_option').notNull(),
+    providerReference: text('provider_reference'),
+    paidAt: timestamp('paid_at', { mode: 'date' }),
+    createdAt: timestamp('created_at', { mode: 'date' }).notNull().defaultNow(),
+    updatedAt: timestamp('updated_at', { mode: 'date' }).notNull().defaultNow(),
+  },
+  (table) => ({
+    creatorIdx: index('creator_payments_creator_profile_id_idx').on(table.creatorProfileId),
+    submissionIdx: index('creator_payments_submission_id_idx').on(table.submissionId),
+    statusIdx: index('creator_payments_status_idx').on(table.status),
+  })
+)
+
+export const creatorAttributionMetrics = pgTable(
+  'creator_attribution_metrics',
+  {
+    submissionId: text('submission_id')
+      .primaryKey()
+      .references(() => creatorSubmissions.id, { onDelete: 'cascade' }),
+    qualifiedViews: integer('qualified_views').notNull().default(0),
+    linkClicks: integer('link_clicks').notNull().default(0),
+    installs: integer('installs').notNull().default(0),
+    firstTimePaidCustomers: integer('first_time_paid_customers').notNull().default(0),
+    createdAt: timestamp('created_at', { mode: 'date' }).notNull().defaultNow(),
+    updatedAt: timestamp('updated_at', { mode: 'date' }).notNull().defaultNow(),
+  }
+)
+
+export const creatorProgramSettings = pgTable(
+  'creator_program_settings',
+  {
+    id: text('id').primaryKey().default('default'),
+    monthlySubscriptionCents: integer('monthly_subscription_cents').notNull().default(999),
+    ninetyDayContributionMarginCents: integer('ninety_day_contribution_margin_cents').notNull().default(0),
+    updatedAt: timestamp('updated_at', { mode: 'date' }).notNull().defaultNow(),
+  }
+)
+
+export const usersRelations = relations(users, ({ one, many }) => ({
   accounts: many(accounts),
   sessions: many(sessions),
   photos: many(photos),
@@ -391,6 +562,56 @@ export const usersRelations = relations(users, ({ many }) => ({
   personGroups: many(personGroups),
   analysisShares: many(analysisShares),
   paymentEntitlements: many(paymentEntitlements),
+  creatorProfile: one(creatorProfiles),
+}))
+
+export const creatorProfilesRelations = relations(creatorProfiles, ({ one, many }) => ({
+  user: one(users, {
+    fields: [creatorProfiles.userId],
+    references: [users.id],
+  }),
+  submissions: many(creatorSubmissions),
+  payments: many(creatorPayments),
+  socialAccounts: many(creatorSocialAccounts),
+}))
+
+export const creatorSocialAccountsRelations = relations(creatorSocialAccounts, ({ one, many }) => ({
+  creatorProfile: one(creatorProfiles, {
+    fields: [creatorSocialAccounts.creatorProfileId],
+    references: [creatorProfiles.id],
+  }),
+  submissions: many(creatorSubmissions),
+}))
+
+export const creatorSubmissionsRelations = relations(creatorSubmissions, ({ one, many }) => ({
+  creatorProfile: one(creatorProfiles, {
+    fields: [creatorSubmissions.creatorProfileId],
+    references: [creatorProfiles.id],
+  }),
+  socialAccount: one(creatorSocialAccounts, {
+    fields: [creatorSubmissions.socialAccountId],
+    references: [creatorSocialAccounts.id],
+  }),
+  attributionMetrics: one(creatorAttributionMetrics),
+  payments: many(creatorPayments),
+}))
+
+export const creatorAttributionMetricsRelations = relations(creatorAttributionMetrics, ({ one }) => ({
+  submission: one(creatorSubmissions, {
+    fields: [creatorAttributionMetrics.submissionId],
+    references: [creatorSubmissions.id],
+  }),
+}))
+
+export const creatorPaymentsRelations = relations(creatorPayments, ({ one }) => ({
+  creatorProfile: one(creatorProfiles, {
+    fields: [creatorPayments.creatorProfileId],
+    references: [creatorProfiles.id],
+  }),
+  submission: one(creatorSubmissions, {
+    fields: [creatorPayments.submissionId],
+    references: [creatorSubmissions.id],
+  }),
 }))
 
 export const paymentEntitlementsRelations = relations(paymentEntitlements, ({ one }) => ({

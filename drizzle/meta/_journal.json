@@ -78,6 +78,48 @@
       "when": 1783548000000,
       "tag": "0011_payment_activation_codes",
       "breakpoints": true
+    },
+    {
+      "idx": 11,
+      "version": "7",
+      "when": 1784066527447,
+      "tag": "0012_creator_dashboard",
+      "breakpoints": true
+    },
+    {
+      "idx": 12,
+      "version": "7",
+      "when": 1784072400000,
+      "tag": "0013_creator_social_accounts",
+      "breakpoints": true
+    },
+    {
+      "idx": 13,
+      "version": "7",
+      "when": 1784076000000,
+      "tag": "0014_submission_social_account",
+      "breakpoints": true
+    },
+    {
+      "idx": 14,
+      "version": "7",
+      "when": 1784083200000,
+      "tag": "0015_creator_attribution_metrics",
+      "breakpoints": true
+    },
+    {
+      "idx": 15,
+      "version": "7",
+      "when": 1784086800000,
+      "tag": "0016_creator_tiktok_oauth",
+      "breakpoints": true
+    },
+    {
+      "idx": 16,
+      "version": "7",
+      "when": 1784090400000,
+      "tag": "0017_creator_account_analytics",
+      "breakpoints": true
     }
   ]
 }
