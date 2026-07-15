@@ -67,16 +67,16 @@ const tiers: Array<{
 
 const appScreenshots = [
   {
+    src: '/app-screenshots/report-potential.png',
+    alt: 'Mogging facial report showing overall and potential scores',
+  },
+  {
     src: '/app-screenshots/protocol-ascend.png',
     alt: 'Mogging personalized protocol timeline with daily improvement tasks',
   },
   {
     src: '/app-screenshots/tracking-baseline.png',
     alt: 'Mogging evaluation history showing symmetry progress over time',
-  },
-  {
-    src: '/app-screenshots/potential-report.png',
-    alt: 'Mogging facial report showing overall and potential scores',
   },
 ]
 
@@ -287,9 +287,9 @@ export default function AppFunnelPage() {
             transition={{ duration: 0.5, delay: 0.08, ease: [0.16, 1, 0.3, 1] }}
             className="mt-16 w-full sm:mt-20"
           >
-            <div className="flex gap-5 overflow-x-auto px-[max(0px,calc((100vw-80rem)/2))] pb-4 sm:justify-center sm:gap-6 sm:overflow-visible sm:px-0">
+            <div className="flex snap-x snap-mandatory gap-5 overflow-x-auto pb-4 pr-5 sm:justify-center sm:gap-6 sm:overflow-visible sm:pr-0">
               {appScreenshots.map((screenshot) => (
-                <div key={screenshot.src} className="w-[74vw] min-w-[260px] max-w-[340px] shrink-0 overflow-hidden rounded-[2rem] border border-zinc-200 bg-white sm:w-[30%] sm:rounded-[2.25rem]">
+                <div key={screenshot.src} className="w-[74vw] min-w-[260px] max-w-[340px] shrink-0 snap-start overflow-hidden rounded-[2rem] border border-zinc-200 bg-white sm:w-[30%] sm:rounded-[2.25rem]">
                   <Image
                     src={screenshot.src}
                     alt={screenshot.alt}
