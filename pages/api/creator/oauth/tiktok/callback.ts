@@ -62,7 +62,6 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       username: user.username,
       profileUrl: user.profile_deep_link || `https://www.tiktok.com/@${user.username}`,
       avatarUrl: user.avatar_large_url || user.avatar_url_100 || user.avatar_url,
-      ...statePayload.analytics,
     })
     return redirect('connected')
   } catch (error) {

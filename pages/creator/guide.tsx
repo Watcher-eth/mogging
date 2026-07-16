@@ -73,23 +73,26 @@ export default function CreatorProgramGuidePage() {
       <GuideSection id="account-analytics" eyebrow="Section 02" title="Account Analytics" description="Account review confirms ownership and helps the team understand the audience behind your content.">
         <div className="grid gap-4 lg:grid-cols-[minmax(0,0.85fr)_minmax(0,1.15fr)]">
           <div className="rounded-2xl border border-zinc-200 bg-white p-5 sm:p-6">
-            <div className="flex items-start gap-4"><span className="grid size-11 shrink-0 place-items-center rounded-2xl bg-zinc-100"><BadgeCheck className="size-5" /></span><div><h3 className="text-lg font-semibold tracking-[-0.025em]">Connect and Verify</h3><p className="mt-2 text-sm leading-6 text-zinc-500">You can add up to five TikTok and five Instagram accounts. Each account enters review after connection.</p></div></div>
-            <div className="mt-6 grid gap-2 sm:grid-cols-3 lg:grid-cols-1 xl:grid-cols-3">
-              <StatusExample label="Pending" className="bg-amber-50 text-amber-700" description="Waiting for review" />
+            <div className="flex items-start gap-4"><span className="grid size-11 shrink-0 place-items-center rounded-2xl bg-zinc-100"><BadgeCheck className="size-5" /></span><div><h3 className="text-lg font-semibold tracking-[-0.025em]">Connect, Verify, Then Review</h3><p className="mt-2 text-sm leading-6 text-zinc-500">You can add up to five TikTok and five Instagram accounts. Connect the profile first, then submit its analytics verification recording.</p></div></div>
+            <div className="mt-6 grid gap-2 sm:grid-cols-2">
+              <StatusExample label="Needs Verification" className="bg-red-50 text-red-700" description="Connected, but analytics evidence is still required" />
+              <StatusExample label="Pending Review" className="bg-amber-50 text-amber-700" description="Verification recording submitted" />
               <StatusExample label="Approved" className="bg-emerald-50 text-emerald-700" description="Ready for verified posts" />
               <StatusExample label="Missing Information" className="bg-red-50 text-red-700" description="More evidence needed" />
             </div>
             <Button asChild variant="outline" className="mt-6 h-10 rounded-xl"><Link href="/creator/accounts">Manage Accounts<ArrowRight /></Link></Button>
           </div>
           <div className="rounded-2xl border border-zinc-200 bg-white p-5 sm:p-6">
-            <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-zinc-400">28-Day Screen Recording</p>
+            <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-zinc-400">Account Requirements</p>
             <h3 className="mt-2 text-lg font-semibold tracking-[-0.025em]">Show Recent, Verifiable Analytics</h3>
-            <p className="mt-2 text-sm leading-6 text-zinc-500">Record directly inside the platform’s analytics view. Keep the account identity visible and move slowly enough for the team to review each screen.</p>
+            <p className="mt-2 text-sm leading-6 text-zinc-500">Use a second phone or camera to film your physical phone while navigating the platform’s analytics. The recording must be one continuous, unedited take.</p>
             <div className="mt-6 grid gap-3 sm:grid-cols-2">
-              <AnalyticsCheck title="Account Identity" description="Username and profile details match the account being connected." />
-              <AnalyticsCheck title="Reach and Views" description="Recent performance from the most recent 28-day period is visible." />
-              <AnalyticsCheck title="Audience Geography" description="Top countries or territories are clear enough to verify audience quality." />
-              <AnalyticsCheck title="Traffic Sources" description="Discovery and traffic-source screens are included when the platform provides them." />
+              <AnalyticsCheck title="Physical Recording" description="Your hand and main phone remain visible. Native screen recordings are not accepted." />
+              <AnalyticsCheck title="Account Identity" description="The username remains visible and matches the connected account." />
+              <AnalyticsCheck title="Recent Analytics" description="The most recent 28-day window, or the closest platform option, is visible." />
+              <AnalyticsCheck title="Audience Geography" description="Open Locations and show the complete country or territory list." />
+              <AnalyticsCheck title="One Continuous Take" description="No cuts, edits, hidden screens, or altered analytics are allowed." />
+              <AnalyticsCheck title="Readable Evidence" description="Move slowly enough for every screen and value to be reviewed." />
             </div>
           </div>
         </div>

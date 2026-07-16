@@ -1,6 +1,5 @@
 import { createHmac, randomBytes, timingSafeEqual } from 'node:crypto'
 import type { NextApiRequest, NextApiResponse } from 'next'
-import type { CreatorAnalyticsEvidenceInput } from '@/lib/creator/service'
 import { env } from '@/lib/env'
 
 export const CREATOR_TIKTOK_STATE_COOKIE = 'mogging_creator_tiktok_oauth'
@@ -10,16 +9,14 @@ type OAuthStatePayload = {
   state: string
   userId: string
   expiresAt: number
-  analytics: CreatorAnalyticsEvidenceInput
 }
 
-export function createCreatorTikTokState(userId: string, analytics: CreatorAnalyticsEvidenceInput) {
+export function createCreatorTikTokState(userId: string) {
   const state = randomBytes(32).toString('base64url')
   const payload: OAuthStatePayload = {
     state,
     userId,
     expiresAt: Date.now() + OAUTH_STATE_MAX_AGE_SECONDS * 1000,
-    analytics,
   }
   const encoded = Buffer.from(JSON.stringify(payload)).toString('base64url')
   return { state, cookieValue: `${encoded}.${sign(encoded)}` }
@@ -31,7 +28,7 @@ export function readCreatorTikTokState(cookieValue: string | undefined, state: s
   if (!encoded || !signature || !safeEqual(signature, sign(encoded))) return null
   try {
     const payload = JSON.parse(Buffer.from(encoded, 'base64url').toString('utf8')) as OAuthStatePayload
-    return payload.state === state && payload.userId === userId && payload.expiresAt > Date.now() && payload.analytics
+    return payload.state === state && payload.userId === userId && payload.expiresAt > Date.now()
       ? payload
       : null
   } catch {

@@ -53,14 +53,18 @@ export const creatorSocialAccountSchema = z.object({
     .transform((value) => value.replace(/^@/, '').toLowerCase())
     .refine((value) => /^[a-z0-9._]+$/.test(value), 'Enter a valid username'),
   profileUrl: z.union([z.literal(''), z.string().url()]).optional().nullable(),
-}).extend(creatorAnalyticsEvidenceSchema.shape)
+})
+
+export const creatorAccountAnalyticsSubmissionSchema = creatorAnalyticsEvidenceSchema.extend({
+  accountId: z.string().uuid(),
+})
 
 export type CreatorProfileInput = z.infer<typeof creatorProfileSchema>
 export type CreatorSubmissionInput = z.infer<typeof creatorSubmissionSchema>
 export type CreatorSocialAccountInput = z.infer<typeof creatorSocialAccountSchema>
 export type CreatorAnalyticsEvidenceInput = z.infer<typeof creatorAnalyticsEvidenceSchema>
 
-export type CreatorTikTokOAuthInput = CreatorAnalyticsEvidenceInput & {
+export type CreatorTikTokOAuthInput = {
   accessToken: string
   expiresIn?: number
   openId: string
@@ -157,7 +161,6 @@ export async function saveCreatorProfile(userId: string, input: CreatorProfileIn
 }
 
 export async function addCreatorSocialAccount(userId: string, input: CreatorSocialAccountInput) {
-  validateCreatorAnalyticsEvidence(userId, input)
   const profile = await getOrCreateCreatorProfile(userId)
   const accounts = await db.query.creatorSocialAccounts.findMany({
     where: eq(schema.creatorSocialAccounts.creatorProfileId, profile.id),
@@ -177,14 +180,12 @@ export async function addCreatorSocialAccount(userId: string, input: CreatorSoci
       platform: input.platform,
       handle: input.handle,
       profileUrl: input.profileUrl || null,
-      ...creatorAnalyticsEvidenceValues(input),
     })
     .returning()
   return account
 }
 
 export async function addCreatorTikTokOAuthAccount(userId: string, input: CreatorTikTokOAuthInput) {
-  validateCreatorAnalyticsEvidence(userId, input)
   const profile = await getOrCreateCreatorProfile(userId)
   const normalizedHandle = input.username.replace(/^@/, '').trim().toLowerCase()
   if (!/^[a-z0-9._]{2,40}$/.test(normalizedHandle)) {
@@ -245,7 +246,6 @@ export async function addCreatorTikTokOAuthAccount(userId: string, input: Creato
       connectionMethod: 'oauth',
       providerAccountId: input.openId,
       oauthVerifiedAt: new Date(),
-      ...creatorAnalyticsEvidenceValues(input),
       updatedAt: new Date(),
     }
     if (accountToUpdate) {
@@ -259,6 +259,27 @@ export async function addCreatorTikTokOAuthAccount(userId: string, input: Creato
     }).returning()
     return account
   })
+}
+
+export async function submitCreatorAccountAnalyticsEvidence(userId: string, input: z.infer<typeof creatorAccountAnalyticsSubmissionSchema>) {
+  validateCreatorAnalyticsEvidence(userId, input)
+  const profile = await getCreatorProfile(userId)
+  if (!profile) throw new CreatorServiceError(404, 'Creator profile not found')
+  const [account] = await db
+    .update(schema.creatorSocialAccounts)
+    .set({
+      ...creatorAnalyticsEvidenceValues(input),
+      status: 'pending',
+      reviewNote: null,
+      updatedAt: new Date(),
+    })
+    .where(and(
+      eq(schema.creatorSocialAccounts.id, input.accountId),
+      eq(schema.creatorSocialAccounts.creatorProfileId, profile.id)
+    ))
+    .returning()
+  if (!account) throw new CreatorServiceError(404, 'Connected account not found')
+  return account
 }
 
 function validateCreatorAnalyticsEvidence(userId: string, input: z.infer<typeof creatorAnalyticsEvidenceSchema>) {

@@ -6,10 +6,12 @@ import { revokeTikTokAccess } from '@/lib/auth/tiktok-api'
 import { env } from '@/lib/env'
 import {
   addCreatorSocialAccount,
+  creatorAccountAnalyticsSubmissionSchema,
   creatorSocialAccountSchema,
   getCreatorDashboard,
   getCreatorTikTokAccessToken,
   removeCreatorSocialAccount,
+  submitCreatorAccountAnalyticsEvidence,
 } from '@/lib/creator/service'
 
 const deleteAccountSchema = z.object({ id: z.string().uuid() })
@@ -27,6 +29,10 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       const input = parseBody(creatorSocialAccountSchema, req.body)
       return json(res, 201, { account: await addCreatorSocialAccount(session.user.id, input) })
     }
+    if (req.method === 'PATCH') {
+      const input = parseBody(creatorAccountAnalyticsSubmissionSchema, req.body)
+      return json(res, 200, { account: await submitCreatorAccountAnalyticsEvidence(session.user.id, input) })
+    }
     if (req.method === 'DELETE') {
       const input = parseBody(deleteAccountSchema, req.query)
       const accessToken = await getCreatorTikTokAccessToken(session.user.id, input.id)
@@ -38,7 +44,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       }
       return json(res, 200, { account })
     }
-    return methodNotAllowed(res, ['GET', 'POST', 'DELETE'])
+    return methodNotAllowed(res, ['GET', 'POST', 'PATCH', 'DELETE'])
   } catch (error) {
     return handleApiError(error, res)
   }

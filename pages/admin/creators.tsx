@@ -166,7 +166,7 @@ function SubmissionList({ items, payments, onSelect }: { items: AdminSubmission[
 
 function AccountList({ items, onSelect }: { items: AdminAccount[]; onSelect: (target: ReviewTarget) => void }) {
   if (!items.length) return <EmptyState title="No connected accounts" description="TikTok and Instagram account requests will appear here." />
-  return <div className="grid gap-3">{items.map((item) => <ResourceRow key={item.id} icon={BadgeCheck} title={`@${item.handle}`} subtitle={`${item.creatorName} · ${capitalize(item.platform)} · ${formatDate(item.createdAt)}`} status={item.status} meta={item.creatorEmail} onClick={() => onSelect({ resource: 'account', item })} />)}</div>
+  return <div className="grid gap-3">{items.map((item) => <ResourceRow key={item.id} icon={BadgeCheck} title={`@${item.handle}`} subtitle={`${item.creatorName} · ${capitalize(item.platform)} · ${formatDate(item.createdAt)}`} status={item.analyticsConfirmedAt ? item.status : 'needs_verification'} meta={item.creatorEmail} onClick={() => onSelect({ resource: 'account', item })} />)}</div>
 }
 
 function PaymentList({ items, onSelect }: { items: AdminPayment[]; onSelect: (target: ReviewTarget) => void }) {
@@ -311,7 +311,7 @@ function Details({ rows, links }: { rows: Array<[string, string]>; links?: Recor
 }
 
 function StatusPill({ status }: { status: string }) {
-  return <span className={cn('shrink-0 rounded-full px-2.5 py-1 text-[11px] font-semibold', (status === 'approved' || status === 'verified' || status === 'paid') && 'bg-emerald-50 text-emerald-700', (status === 'pending' || status === 'in_review' || status === 'processing') && 'bg-amber-50 text-amber-700', (status === 'rejected' || status === 'failed' || status === 'suspended' || status === 'cancelled' || status === 'missing_information') && 'bg-red-50 text-red-700')}>{statusLabel(status)}</span>
+  return <span className={cn('shrink-0 rounded-full px-2.5 py-1 text-[11px] font-semibold', (status === 'approved' || status === 'verified' || status === 'paid') && 'bg-emerald-50 text-emerald-700', (status === 'pending' || status === 'in_review' || status === 'processing') && 'bg-amber-50 text-amber-700', (status === 'rejected' || status === 'failed' || status === 'suspended' || status === 'cancelled' || status === 'missing_information' || status === 'needs_verification') && 'bg-red-50 text-red-700')}>{statusLabel(status)}</span>
 }
 
 function EmptyState({ title, description }: { title: string; description: string }) { return <div className="grid min-h-64 place-items-center rounded-[28px] border border-dashed border-zinc-300 bg-white p-8 text-center"><div><span className="mx-auto grid size-12 place-items-center rounded-2xl bg-zinc-100"><ShieldCheck className="size-5" /></span><h3 className="mt-4 text-sm font-semibold">{title}</h3><p className="mt-2 text-sm text-zinc-500">{description}</p></div></div> }

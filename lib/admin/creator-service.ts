@@ -223,6 +223,15 @@ export async function reviewCreatorResource(input: CreatorAdminReviewInput) {
   }
 
   if (input.resource === 'account') {
+    if (input.status === 'approved') {
+      const account = await db.query.creatorSocialAccounts.findFirst({
+        where: eq(schema.creatorSocialAccounts.id, input.id),
+      })
+      if (!account) throw new ApiError(404, 'Creator account not found')
+      if (!account.analyticsConfirmedAt || !account.analyticsVideoUrl) {
+        throw new ApiError(409, 'Account verification recording is required before approval')
+      }
+    }
     const [record] = await db.update(schema.creatorSocialAccounts).set({ status: input.status, reviewNote: input.reviewNote || null, updatedAt: now }).where(eq(schema.creatorSocialAccounts.id, input.id)).returning()
     if (!record) throw new ApiError(404, 'Creator account not found')
     return record
