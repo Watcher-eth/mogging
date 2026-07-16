@@ -149,6 +149,8 @@ type ClaimPaymentResponse = {
 type ImageFramePositions = Record<string, CaptureFrameImagePosition>
 const defaultFramePosition: CaptureFrameImagePosition = { x: 50, y: 50, scale: 1 }
 const analysisWebInstallStorageKey = 'mogging:analysis:web-install-id'
+const initialAssessedToday = 1842
+const assessmentCountDelayRangeMs = { min: 8_000, max: 16_000 }
 
 const pseudoAnalysisItems = [
   'Detecting facial reference lines',
@@ -946,6 +948,25 @@ function ScreenMotion({ children }: { children: ReactNode }) {
 }
 
 function IntroScreen({ onBegin }: { onBegin: () => void }) {
+  const [assessedToday, setAssessedToday] = useState(initialAssessedToday)
+
+  useEffect(() => {
+    let timeoutId: number
+
+    function scheduleIncrement() {
+      const { min, max } = assessmentCountDelayRangeMs
+      const delay = Math.round(min + Math.random() * (max - min))
+
+      timeoutId = window.setTimeout(() => {
+        setAssessedToday((current) => current + 1)
+        scheduleIncrement()
+      }, delay)
+    }
+
+    scheduleIncrement()
+    return () => window.clearTimeout(timeoutId)
+  }, [])
+
   return (
     <div className="grid min-h-[calc(100svh-5rem)] gap-8 px-5 py-6 sm:px-10 sm:py-8 lg:grid-cols-[1.08fr_0.92fr] lg:gap-16 xl:gap-24 2xl:gap-32">
       <aside className="flex flex-col justify-between gap-10 lg:pr-16 xl:pr-24 2xl:pr-36">
@@ -961,9 +982,9 @@ function IntroScreen({ onBegin }: { onBegin: () => void }) {
             </h1>
             <div className="mt-8 grid grid-cols-2 gap-4 font-mono text-[10px] uppercase text-muted-foreground sm:grid-cols-4">
               <Meta label="Edition" value="Introductory" />
-              <Meta label="Pages" value="16" />
+              <Meta label="Features analysed" value="40" />
               <Meta label="Cost" value="$4.99" />
-              <Meta label="Assessed today" value="210001" />
+              <Meta label="Assessed today" value={assessedToday.toLocaleString()} />
             </div>
           </div>
         </div>
@@ -981,7 +1002,7 @@ function IntroScreen({ onBegin }: { onBegin: () => void }) {
 
       <div className="relative min-h-[420px] overflow-hidden bg-zinc-200 sm:min-h-[560px] lg:min-h-0">
         <Image className="object-cover object-center" src={previewPhotoUrl} alt="Facial assessment preview" fill priority sizes="(min-width: 1024px) 46vw, 100vw" />
-        <div className="absolute left-1/2 top-1/2 w-[min(42vw,300px)] -translate-x-1/2 -translate-y-1/2 border border-white/80 p-3 text-white shadow-[0_20px_80px_rgba(0,0,0,0.18)]">
+        <div className="absolute left-1/2 top-1/2 w-[min(60vw,300px)] -translate-x-1/2 -translate-y-1/2 border border-white/80 p-3 text-white shadow-[0_20px_80px_rgba(0,0,0,0.18)] sm:w-[min(42vw,300px)]">
           <div className="text-balance text-xl font-medium leading-none tracking-[-0.04em]">
             Facial
             <br />
@@ -989,11 +1010,11 @@ function IntroScreen({ onBegin }: { onBegin: () => void }) {
             <br />
             Assessments
           </div>
-          <div className="mt-40 grid grid-cols-4 gap-4 font-mono text-[9px] uppercase text-white/85">
-            <PreviewMeta label="Name" value="Preview" />
-            <PreviewMeta label="Age" value="24" />
-            <PreviewMeta label="Gender" value="Face" />
-            <PreviewMeta label="Descent" value="Global" />
+          <div className="mt-28 grid grid-cols-2 gap-x-4 gap-y-3 font-mono text-[9px] uppercase text-white/85 sm:mt-40 sm:grid-cols-4 sm:gap-y-4">
+            <PreviewMeta label="Eyes" value="Canthal tilt" />
+            <PreviewMeta label="Jaw" value="Gonial angle" />
+            <PreviewMeta label="Symmetry" value="Eye line tilt" />
+            <PreviewMeta label="Face shape" value="Upper third" />
           </div>
         </div>
       </div>

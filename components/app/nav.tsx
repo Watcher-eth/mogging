@@ -7,7 +7,6 @@ const navItems = [
   { href: '/analysis', label: 'Analysis' },
   { href: '/leaderboard', label: 'Leaderboard' },
   { href: '/battle', label: 'Battle' },
-  { href: '/creator', label: 'Creators' },
 ]
 
 export function AppNav() {
