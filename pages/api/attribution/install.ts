@@ -14,9 +14,9 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   try {
     const input = parseBody(installSchema, req.body)
     const session = await getAuthSession(req, res)
-    const event = await recordCreatorInstall({ token: input.attributionToken, mobileInstallId: input.mobileInstallId, userId: session?.user?.id || null })
-    if (!event) throw new ApiError(400, 'Invalid or expired creator attribution token')
-    return json(res, 201, { attributed: true })
+    const result = await recordCreatorInstall({ token: input.attributionToken, mobileInstallId: input.mobileInstallId, userId: session?.user?.id || null })
+    if (!result) throw new ApiError(400, 'Invalid or expired creator attribution token')
+    return json(res, result.created ? 201 : 200, { attributed: true })
   } catch (error) {
     return handleApiError(error, res)
   }

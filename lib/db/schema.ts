@@ -44,6 +44,14 @@ export const creatorSocialAccountStatusEnum = pgEnum('creator_social_account_sta
   'approved',
   'missing_information',
 ])
+export const creatorAttributionEventTypeEnum = pgEnum('creator_attribution_event_type', [
+  'signup',
+  'install',
+  'checkout',
+  'payment',
+  'refund',
+  'dispute',
+])
 
 export type PaymentProduct =
   | 'evaluation'
@@ -511,6 +519,91 @@ export const creatorSocialAccounts = pgTable(
   })
 )
 
+export const creatorTrackingLinks = pgTable(
+  'creator_tracking_links',
+  {
+    id: text('id')
+      .primaryKey()
+      .$defaultFn(() => crypto.randomUUID()),
+    socialAccountId: text('social_account_id')
+      .notNull()
+      .references(() => creatorSocialAccounts.id),
+    slug: text('slug').notNull(),
+    publicUrl: text('public_url').notNull(),
+    deepLinkBaseUrl: text('deep_link_base_url').notNull(),
+    iosAppStoreUrl: text('ios_app_store_url').notNull(),
+    androidAppStoreUrl: text('android_app_store_url'),
+    isActive: boolean('is_active').notNull().default(true),
+    createdAt: timestamp('created_at', { mode: 'date' }).notNull().defaultNow(),
+    updatedAt: timestamp('updated_at', { mode: 'date' }).notNull().defaultNow(),
+  },
+  (table) => ({
+    socialAccountIdx: uniqueIndex('creator_tracking_links_social_account_unique').on(table.socialAccountId),
+    slugIdx: uniqueIndex('creator_tracking_links_slug_unique').on(table.slug),
+  })
+)
+
+export const creatorAttributionClicks = pgTable(
+  'creator_attribution_clicks',
+  {
+    id: text('id')
+      .primaryKey()
+      .$defaultFn(() => crypto.randomUUID()),
+    trackingLinkId: text('tracking_link_id')
+      .notNull()
+      .references(() => creatorTrackingLinks.id, { onDelete: 'cascade' }),
+    anonymousActorId: text('anonymous_actor_id'),
+    referrer: text('referrer'),
+    userAgent: text('user_agent'),
+    isBot: boolean('is_bot').notNull().default(false),
+    createdAt: timestamp('created_at', { mode: 'date' }).notNull().defaultNow(),
+  },
+  (table) => ({
+    trackingLinkIdx: index('creator_attribution_clicks_link_id_idx').on(table.trackingLinkId),
+    anonymousActorIdx: index('creator_attribution_clicks_anonymous_actor_id_idx').on(table.anonymousActorId),
+    createdAtIdx: index('creator_attribution_clicks_created_at_idx').on(table.createdAt),
+  })
+)
+
+export const creatorAttributionEvents = pgTable(
+  'creator_attribution_events',
+  {
+    id: text('id')
+      .primaryKey()
+      .$defaultFn(() => crypto.randomUUID()),
+    trackingLinkId: text('tracking_link_id')
+      .notNull()
+      .references(() => creatorTrackingLinks.id, { onDelete: 'cascade' }),
+    clickId: text('click_id').references(() => creatorAttributionClicks.id, { onDelete: 'set null' }),
+    firstTrackingLinkId: text('first_tracking_link_id').references(() => creatorTrackingLinks.id, { onDelete: 'set null' }),
+    firstClickId: text('first_click_id').references(() => creatorAttributionClicks.id, { onDelete: 'set null' }),
+    eventType: creatorAttributionEventTypeEnum('event_type').notNull(),
+    attributionKey: text('attribution_key').notNull(),
+    userId: text('user_id').references(() => users.id, { onDelete: 'set null' }),
+    anonymousActorId: text('anonymous_actor_id'),
+    mobileInstallId: text('mobile_install_id'),
+    stripeCheckoutSessionId: text('stripe_checkout_session_id'),
+    stripeSubscriptionId: text('stripe_subscription_id'),
+    stripePaymentIntentId: text('stripe_payment_intent_id'),
+    amountCents: integer('amount_cents').notNull().default(0),
+    currency: varchar('currency', { length: 3 }).notNull().default('USD'),
+    dedupeKey: text('dedupe_key').notNull(),
+    metadata: jsonb('metadata').$type<Record<string, unknown>>().notNull().default({}),
+    createdAt: timestamp('created_at', { mode: 'date' }).notNull().defaultNow(),
+  },
+  (table) => ({
+    trackingLinkIdx: index('creator_attribution_events_link_id_idx').on(table.trackingLinkId),
+    clickIdx: index('creator_attribution_events_click_id_idx').on(table.clickId),
+    firstTrackingLinkIdx: index('creator_attribution_events_first_link_id_idx').on(table.firstTrackingLinkId),
+    userIdx: index('creator_attribution_events_user_id_idx').on(table.userId),
+    mobileInstallIdx: index('creator_attribution_events_mobile_install_id_idx').on(table.mobileInstallId),
+    checkoutSessionIdx: index('creator_attribution_events_checkout_session_id_idx').on(table.stripeCheckoutSessionId),
+    subscriptionIdx: index('creator_attribution_events_subscription_id_idx').on(table.stripeSubscriptionId),
+    paymentIntentIdx: index('creator_attribution_events_payment_intent_id_idx').on(table.stripePaymentIntentId),
+    dedupeKeyIdx: uniqueIndex('creator_attribution_events_dedupe_key_unique').on(table.dedupeKey),
+  })
+)
+
 export const creatorPayments = pgTable(
   'creator_payments',
   {
@@ -589,6 +682,53 @@ export const creatorSocialAccountsRelations = relations(creatorSocialAccounts, (
     references: [creatorProfiles.id],
   }),
   submissions: many(creatorSubmissions),
+  trackingLink: one(creatorTrackingLinks),
+}))
+
+export const creatorTrackingLinksRelations = relations(creatorTrackingLinks, ({ one, many }) => ({
+  socialAccount: one(creatorSocialAccounts, {
+    fields: [creatorTrackingLinks.socialAccountId],
+    references: [creatorSocialAccounts.id],
+  }),
+  clicks: many(creatorAttributionClicks),
+  events: many(creatorAttributionEvents, { relationName: 'creator_attribution_event_tracking_link' }),
+  firstTouchEvents: many(creatorAttributionEvents, { relationName: 'creator_attribution_event_first_tracking_link' }),
+}))
+
+export const creatorAttributionClicksRelations = relations(creatorAttributionClicks, ({ one, many }) => ({
+  trackingLink: one(creatorTrackingLinks, {
+    fields: [creatorAttributionClicks.trackingLinkId],
+    references: [creatorTrackingLinks.id],
+  }),
+  events: many(creatorAttributionEvents, { relationName: 'creator_attribution_event_click' }),
+  firstTouchEvents: many(creatorAttributionEvents, { relationName: 'creator_attribution_event_first_click' }),
+}))
+
+export const creatorAttributionEventsRelations = relations(creatorAttributionEvents, ({ one }) => ({
+  trackingLink: one(creatorTrackingLinks, {
+    fields: [creatorAttributionEvents.trackingLinkId],
+    references: [creatorTrackingLinks.id],
+    relationName: 'creator_attribution_event_tracking_link',
+  }),
+  firstTrackingLink: one(creatorTrackingLinks, {
+    fields: [creatorAttributionEvents.firstTrackingLinkId],
+    references: [creatorTrackingLinks.id],
+    relationName: 'creator_attribution_event_first_tracking_link',
+  }),
+  click: one(creatorAttributionClicks, {
+    fields: [creatorAttributionEvents.clickId],
+    references: [creatorAttributionClicks.id],
+    relationName: 'creator_attribution_event_click',
+  }),
+  firstClick: one(creatorAttributionClicks, {
+    fields: [creatorAttributionEvents.firstClickId],
+    references: [creatorAttributionClicks.id],
+    relationName: 'creator_attribution_event_first_click',
+  }),
+  user: one(users, {
+    fields: [creatorAttributionEvents.userId],
+    references: [users.id],
+  }),
 }))
 
 export const creatorSubmissionsRelations = relations(creatorSubmissions, ({ one, many }) => ({

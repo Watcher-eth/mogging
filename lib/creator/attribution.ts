@@ -168,7 +168,8 @@ export async function recordCreatorSignup(input: { req: Pick<NextApiRequest, 'he
 export async function recordCreatorInstall(input: { token: string; mobileInstallId: string; userId?: string | null }) {
   const context = await resolveCreatorAttribution({ token: input.token, owner: { mobileInstallId: input.mobileInstallId, userId: input.userId } })
   if (!context) return null
-  return insertAttributionEvent({ ...context, eventType: 'install', dedupeKey: `creator-install:${input.mobileInstallId}` })
+  const event = await insertAttributionEvent({ ...context, eventType: 'install', dedupeKey: `creator-install:${input.mobileInstallId}` })
+  return { created: Boolean(event), event }
 }
 
 export async function recordCreatorCheckout(context: CreatorAttributionContext | null, session: Stripe.Checkout.Session) {
@@ -391,7 +392,7 @@ function getAttributionKey(owner: AttributionOwner, fallbackActorId: string | nu
 
 function buildIosAppStoreUrl(slug: string) {
   const url = new URL(env.NEXT_PUBLIC_IOS_APP_STORE_URL || DEFAULT_IOS_APP_STORE_URL)
-  url.searchParams.set('ct', slug.slice(0, 40))
+  url.searchParams.set('ct', slug.slice(0, 30))
   if (env.APPLE_APP_STORE_PROVIDER_TOKEN) url.searchParams.set('pt', env.APPLE_APP_STORE_PROVIDER_TOKEN)
   return url.toString()
 }
