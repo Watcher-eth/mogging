@@ -6,7 +6,7 @@ import { db, schema } from '@/lib/db'
 import { env } from '@/lib/env'
 
 export const CREATOR_ATTRIBUTION_COOKIE = 'mogging_creator_attribution'
-export const CREATOR_LINK_BASE_URL = 'https://mogging.com'
+export const CREATOR_LINK_BASE_URL = 'https://www.mogging.com'
 const ATTRIBUTION_MAX_AGE_SECONDS = 60 * 60 * 24 * 30
 const DEFAULT_IOS_APP_STORE_URL = 'https://apps.apple.com/us/app/mogging-face-rating/id6771414050'
 
@@ -30,9 +30,14 @@ export async function ensureCreatorTrackingLink(socialAccountId: string) {
     where: eq(schema.creatorTrackingLinks.socialAccountId, socialAccountId),
   })
   if (existing) {
-    if (!existing.isActive) {
-      const [reactivated] = await db.update(schema.creatorTrackingLinks).set({ isActive: true, updatedAt: new Date() }).where(eq(schema.creatorTrackingLinks.id, existing.id)).returning()
-      return reactivated
+    const publicUrl = `${CREATOR_LINK_BASE_URL}/r/${existing.slug}`
+    if (!existing.isActive || existing.publicUrl !== publicUrl) {
+      const [updated] = await db.update(schema.creatorTrackingLinks).set({
+        isActive: true,
+        publicUrl,
+        updatedAt: new Date(),
+      }).where(eq(schema.creatorTrackingLinks.id, existing.id)).returning()
+      return updated
     }
     return existing
   }

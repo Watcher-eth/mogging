@@ -4,7 +4,7 @@ import { ApiError, handleApiError, json, methodNotAllowed, parseBody } from '@/l
 import { analyzeAndSave, analyzeAndSaveSchema } from '@/lib/analysis/analyze'
 import { getOrSetAnonymousActorId } from '@/lib/auth/anonymous'
 import { getAnonymousProfile } from '@/lib/auth/anonymousProfile'
-import { getAuthSession } from '@/lib/auth/session'
+import { getRequestUserId } from '@/lib/auth/mobile-session'
 import { enforceRateLimit } from '@/lib/api/rateLimit'
 import { hairColorSchema, normalizeApparentAge, skinColorSchema } from '@/lib/appearance/types'
 import { db, schema } from '@/lib/db'
@@ -21,7 +21,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
   try {
     await enforceRateLimit(req, res, { key: 'analyze', limit: 10, windowMs: 60 * 60 * 1000 })
-    const sessionPromise = getAuthSession(req, res)
+    const userIdPromise = getRequestUserId(req, res)
     const body = parseBody(analyzeAndSaveSchema, req.body)
     console.info('analyze:start', {
       requestId,
@@ -31,20 +31,20 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       gender: body.gender,
       hasLandmarks: Boolean(body.landmarks),
     })
-    const session = await sessionPromise
-    if (env.AUTH_REQUIRED && !session?.user?.id) {
+    const userId = await userIdPromise
+    if (env.AUTH_REQUIRED && !userId) {
       throw new ApiError(401, 'Authentication required')
     }
     const mobileInstallId = readMobileInstallId(req)
     const adminMode = readHeader(req.headers['x-mogging-admin-code']) === '674523'
-    const anonymousActorId = session?.user?.id ? null : getOrSetAnonymousActorId(req, res)
+    const anonymousActorId = userId ? null : getOrSetAnonymousActorId(req, res)
     if (env.PAID_ANALYSIS_REQUIRED && !adminMode && !mobileInstallId) {
       throw new ApiError(402, 'Buy an evaluation or subscription before generating this report')
     }
     if (env.PAID_ANALYSIS_REQUIRED && mobileInstallId && !adminMode) {
       await assertEvaluationEntitlement({
         mobileInstallId,
-        userId: session?.user?.id ?? null,
+        userId,
         anonymousActorId,
         revenueCatAppUserId: readHeader(req.headers['x-mogging-revenuecat-app-user-id']),
       })
@@ -52,9 +52,9 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
     const [anonymousProfile, userProfile] = await Promise.all([
       anonymousActorId ? getAnonymousProfile(anonymousActorId) : null,
-      session?.user?.id
+      userId
         ? db.query.users.findFirst({
-            where: eq(schema.users.id, session.user.id),
+            where: eq(schema.users.id, userId),
             columns: {
               age: true,
               gender: true,
@@ -72,7 +72,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     const result = await analyzeAndSave({
       ...body,
       gender: analysisGender,
-      userId: session?.user?.id ?? null,
+      userId,
       anonymousActorId,
       age: normalizeApparentAge(body.age ?? userProfile?.age ?? anonymousProfile?.age ?? null),
       name: body.name ?? anonymousProfile?.name ?? null,
@@ -84,7 +84,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       result.analysis.status === 'complete'
         ? await createDefaultShare({
             analysisId: result.analysis.id,
-            ownerUserId: session?.user?.id ?? null,
+            ownerUserId: userId,
             ownerAnonymousActorId: anonymousActorId,
           })
         : null
@@ -92,7 +92,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       env.PAID_ANALYSIS_REQUIRED && mobileInstallId && !adminMode && result.analysis.status === 'complete'
         ? await consumeEvaluationEntitlement({
             mobileInstallId,
-            userId: session?.user?.id ?? null,
+            userId,
             anonymousActorId,
             revenueCatAppUserId: readHeader(req.headers['x-mogging-revenuecat-app-user-id']),
           })

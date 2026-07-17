@@ -223,14 +223,16 @@ export default function AppFunnelPage() {
     }
   }
 
-  function openAppStore() {
+  async function openAppStore() {
     window.localStorage.setItem(installClickedStorageKey, 'true')
     setInstallClicked(true)
+    await navigator.clipboard?.writeText(deepLink).catch(() => null)
     window.location.href = appStoreUrl
   }
 
-  function openInstalledApp() {
+  async function openInstalledApp() {
     setOpeningApp(true)
+    await navigator.clipboard?.writeText(deepLink).catch(() => null)
     const fallbackTimer = window.setTimeout(() => {
       window.location.href = appStoreUrl
     }, 1400)
@@ -253,7 +255,7 @@ export default function AppFunnelPage() {
           name="description"
           content="Mogging scans your face across 66 clinical-style measures, maps facial structure in detail, and builds a personalized protocol to track and improve your look over time."
         />
-        <meta name="apple-itunes-app" content="app-id=6771414050, app-argument=https://mogging.com/" />
+        <meta name="apple-itunes-app" content="app-id=6771414050, app-argument=https://www.mogging.com/" />
       </Head>
 
       <main className="min-h-[calc(100vh-5rem)] overflow-hidden bg-white text-black">
@@ -350,7 +352,7 @@ export default function AppFunnelPage() {
               <div className="mx-auto mt-7 max-w-md">
                 <button
                   type="button"
-                  onClick={paid ? openInstalledApp : startWebCheckout}
+                  onClick={paid ? () => void openInstalledApp() : startWebCheckout}
                   disabled={checkoutLoading || openingApp}
                   className="flex h-14 w-full items-center justify-center gap-2 rounded-full bg-black px-5 text-sm font-semibold text-white transition duration-200 hover:bg-zinc-800 active:scale-[0.985] disabled:cursor-not-allowed disabled:opacity-60"
                 >
@@ -361,7 +363,7 @@ export default function AppFunnelPage() {
                 {paid ? (
                   <button
                     type="button"
-                    onClick={openAppStore}
+                    onClick={() => void openAppStore()}
                     className="mt-3 h-11 w-full rounded-full border border-zinc-200 bg-white px-4 text-sm font-semibold text-black transition duration-200 hover:bg-zinc-50 active:scale-[0.985]"
                   >
                     Download from App Store

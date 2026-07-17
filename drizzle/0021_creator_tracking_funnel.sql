@@ -67,7 +67,7 @@ SELECT
 	gen_random_uuid()::text,
 	account."id",
 	account."platform"::text || '-' || account."handle" || '-' || left(account."id", 8),
-	'https://mogging.com/r/' || account."platform"::text || '-' || account."handle" || '-' || left(account."id", 8),
+	'https://www.mogging.com/r/' || account."platform"::text || '-' || account."handle" || '-' || left(account."id", 8),
 	'mogging://attribution',
 	'https://apps.apple.com/us/app/mogging-face-rating/id6771414050?ct=' || left(account."platform"::text || '-' || account."handle" || '-' || left(account."id", 8), 40),
 	true

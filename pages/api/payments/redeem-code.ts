@@ -2,7 +2,7 @@ import type { NextApiRequest, NextApiResponse } from 'next'
 import { z } from 'zod'
 import { handleApiError, json, methodNotAllowed, parseBody } from '@/lib/api/http'
 import { getOrSetAnonymousActorId } from '@/lib/auth/anonymous'
-import { getAuthSession } from '@/lib/auth/session'
+import { getRequestUserId } from '@/lib/auth/mobile-session'
 import { redeemPaymentActivationCode } from '@/lib/payments/entitlements'
 
 const redeemCodeSchema = z.object({
@@ -15,13 +15,13 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
   try {
     const input = parseBody(redeemCodeSchema, req.body)
-    const session = await getAuthSession(req, res)
-    const anonymousActorId = session?.user?.id ? null : getOrSetAnonymousActorId(req, res)
+    const userId = await getRequestUserId(req, res)
+    const anonymousActorId = userId ? null : getOrSetAnonymousActorId(req, res)
 
     const entitlements = await redeemPaymentActivationCode({
       code: input.code,
       mobileInstallId: input.mobileInstallId,
-      userId: session?.user?.id ?? null,
+      userId,
       anonymousActorId,
     })
 

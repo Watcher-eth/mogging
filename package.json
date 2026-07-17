@@ -19,6 +19,7 @@
     "seed": "bun run scripts/admin/seed.ts",
     "user:create": "bun run scripts/admin/create-test-user.ts",
     "smoke:analysis": "bun run scripts/smoke/analyze.ts",
+    "smoke:attribution": "bun run scripts/smoke/attribution-entitlements.ts",
     "admin:leaderboard": "bun run scripts/admin/leaderboard.ts"
   },
   "dependencies": {
@@ -42,6 +43,7 @@
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
     "drizzle-orm": "^0.44.6",
+    "jose": "^4.15.9",
     "lucide-react": "^1.14.0",
     "motion": "^12.38.0",
     "next": "^15.0.0",

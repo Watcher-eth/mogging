@@ -2,6 +2,11 @@ import type { NextApiRequest, NextApiResponse } from 'next'
 import Stripe from 'stripe'
 import { db, schema } from '@/lib/db'
 import { env } from '@/lib/env'
+import {
+  recordCreatorCheckoutPayment,
+  recordCreatorInvoicePayment,
+  recordCreatorPaymentReversal,
+} from '@/lib/creator/attribution'
 import { sendPaymentActivationEmailForCheckoutSession } from '@/lib/payments/activation-email'
 import { grantEntitlementFromCheckoutSession, revokePaymentIntentEntitlement, updateSubscriptionEntitlement } from '@/lib/payments/entitlements'
 import { getStripe } from '@/lib/payments/stripe'
@@ -73,6 +78,7 @@ async function handleStripeEvent(event: Stripe.Event) {
       })
       if (isLegacyCheckoutProduct(expanded.metadata?.product)) return
       await grantEntitlementFromCheckoutSession({ session: expanded })
+      await recordCreatorCheckoutPayment(expanded)
       await sendPaymentActivationEmailForCheckoutSession({ session: expanded }).catch((error) => {
         console.error('Payment activation email failed', expanded.id, error)
       })
@@ -85,6 +91,7 @@ async function handleStripeEvent(event: Stripe.Event) {
       if (!subscriptionId) return
       const subscription = await getStripe().subscriptions.retrieve(subscriptionId)
       await updateSubscriptionEntitlement(subscription)
+      await recordCreatorInvoicePayment(invoice, subscription)
       return
     }
 
@@ -118,6 +125,13 @@ async function handleChargeRevocation(charge: string | Stripe.Charge | null, sta
   if (!paymentIntentId) return
 
   await revokePaymentIntentEntitlement({ paymentIntentId, status })
+  await recordCreatorPaymentReversal({
+    eventId: chargeObject?.id || paymentIntentId,
+    paymentIntentId,
+    eventType: status === 'refunded' ? 'refund' : 'dispute',
+    amountCents: chargeObject?.amount_refunded || chargeObject?.amount || 0,
+    currency: chargeObject?.currency || 'usd',
+  })
 }
 
 function readPaymentIntentId(paymentIntent: string | Stripe.PaymentIntent | null | undefined) {

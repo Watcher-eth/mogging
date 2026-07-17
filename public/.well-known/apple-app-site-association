@@ -1,0 +1,21 @@
+{
+  "applinks": {
+    "details": [
+      {
+        "appIDs": [
+          "PC925LQ278.app.mogging.scan"
+        ],
+        "components": [
+          {
+            "/": "/r/*",
+            "comment": "Creator and social attribution links"
+          },
+          {
+            "/": "/app",
+            "comment": "Web purchase and account handoff"
+          }
+        ]
+      }
+    ]
+  }
+}

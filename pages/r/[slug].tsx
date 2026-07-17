@@ -27,15 +27,12 @@ export default function CreatorLinkPage(props: CreatorLinkPageProps) {
       return
     }
     window.location.assign(props.deepLinkUrl)
-    const fallbackUrl = isAndroid ? props.androidAppStoreUrl || props.webUrl : props.iosAppStoreUrl
-    const timer = window.setTimeout(() => window.location.assign(fallbackUrl), 1200)
-    const cancelFallback = () => { if (document.hidden) window.clearTimeout(timer) }
-    document.addEventListener('visibilitychange', cancelFallback, { once: true })
-    return () => {
-      window.clearTimeout(timer)
-      document.removeEventListener('visibilitychange', cancelFallback)
-    }
-  }, [props.androidAppStoreUrl, props.deepLinkUrl, props.iosAppStoreUrl, props.isBot, props.webUrl])
+  }, [props.deepLinkUrl, props.isBot, props.webUrl])
+
+  async function installWithAttribution() {
+    await navigator.clipboard?.writeText(props.deepLinkUrl).catch(() => null)
+    window.location.assign(props.iosAppStoreUrl)
+  }
 
   return (
     <section className="mx-auto grid min-h-[70vh] w-full max-w-lg place-items-center py-12 text-center">
@@ -46,7 +43,7 @@ export default function CreatorLinkPage(props: CreatorLinkPageProps) {
         <p className="mx-auto mt-3 max-w-sm text-sm leading-6 text-zinc-500">If the app isn’t installed, we’ll take you to the App Store. Your visit stays credited to this {props.platform === 'tiktok' ? 'TikTok' : 'Instagram'} account.</p>
         <div className="mt-7 grid gap-2">
           <Button asChild className="h-12 rounded-xl"><a href={props.deepLinkUrl}><ExternalLink />Open in Mogging</a></Button>
-          <Button asChild variant="outline" className="h-12 rounded-xl"><a href={props.iosAppStoreUrl}><Download />Get the app</a></Button>
+          <Button type="button" variant="outline" className="h-12 rounded-xl" onClick={() => void installWithAttribution()}><Download />Get the app &amp; keep credit</Button>
           <Button asChild variant="ghost" className="h-11 rounded-xl"><a href={props.webUrl}>Continue on the website<ArrowRight /></a></Button>
         </div>
       </div>
@@ -65,7 +62,7 @@ export const getServerSideProps: GetServerSideProps<CreatorLinkPageProps> = asyn
   })
   if (!attribution) return { notFound: true }
   setCreatorAttributionCookie(res as NextApiResponse, attribution.token)
-  const webUrl = new URL('/', 'https://mogging.com')
+  const webUrl = new URL('/', 'https://www.mogging.com')
   const account = await import('@/lib/db').then(({ db, schema }) => db.query.creatorSocialAccounts.findFirst({
     where: (accounts, { eq }) => eq(accounts.id, attribution.link.socialAccountId),
     columns: { handle: true, platform: true },

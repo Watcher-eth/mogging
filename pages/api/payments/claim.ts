@@ -2,7 +2,7 @@ import type { NextApiRequest, NextApiResponse } from 'next'
 import { z } from 'zod'
 import { ApiError, handleApiError, json, methodNotAllowed, parseBody } from '@/lib/api/http'
 import { getOrSetAnonymousActorId } from '@/lib/auth/anonymous'
-import { getAuthSession } from '@/lib/auth/session'
+import { getRequestUserId } from '@/lib/auth/mobile-session'
 import { env } from '@/lib/env'
 import { claimStripeCheckoutSession } from '@/lib/payments/entitlements'
 
@@ -20,12 +20,12 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     }
 
     const input = parseBody(claimSchema, req.body)
-    const session = await getAuthSession(req, res)
-    const anonymousActorId = session?.user?.id ? null : getOrSetAnonymousActorId(req, res)
+    const userId = await getRequestUserId(req, res)
+    const anonymousActorId = userId ? null : getOrSetAnonymousActorId(req, res)
     const entitlements = await claimStripeCheckoutSession({
       sessionId: input.sessionId,
       mobileInstallId: input.mobileInstallId,
-      userId: session?.user?.id ?? null,
+      userId,
       anonymousActorId,
     })
 

@@ -4,6 +4,7 @@ import { ApiError, handleApiError, json, methodNotAllowed, parseBody } from '@/l
 import { getOrSetAnonymousActorId } from '@/lib/auth/anonymous'
 import { getAuthSession } from '@/lib/auth/session'
 import { env } from '@/lib/env'
+import { recordCreatorCheckout, resolveCreatorAttribution, stripeAttributionMetadata } from '@/lib/creator/attribution'
 import { generatePaymentActivationCode, getCheckoutLineItem, getProductConfig, paymentProductSchemaValues } from '@/lib/payments/entitlements'
 import { getStripe } from '@/lib/payments/stripe'
 
@@ -29,6 +30,15 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     await validateCheckoutProduct(input.product, product)
     const source = input.source || 'web2app'
     const activationCode = generatePaymentActivationCode()
+    const attribution = await resolveCreatorAttribution({
+      req,
+      owner: {
+        userId: session?.user?.id ?? null,
+        anonymousActorId,
+        mobileInstallId: input.mobileInstallId,
+      },
+    })
+    const attributionMetadata = stripeAttributionMetadata(attribution)
     const checkout = await getStripe().checkout.sessions.create({
       mode: product.mode,
       payment_method_types: ['card'],
@@ -42,6 +52,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         activationCode,
         userId: session?.user?.id ?? '',
         anonymousActorId: anonymousActorId ?? '',
+        ...attributionMetadata,
       },
       ...(product.mode === 'subscription'
         ? {
@@ -51,6 +62,9 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
                 mobileInstallId: input.mobileInstallId,
                 source,
                 activationCode,
+                userId: session?.user?.id ?? '',
+                anonymousActorId: anonymousActorId ?? '',
+                ...attributionMetadata,
               },
             },
           }
@@ -62,6 +76,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     if (!checkout.url) {
       throw new ApiError(500, 'Failed to create checkout session')
     }
+
+    await recordCreatorCheckout(attribution, checkout)
 
     return json(res, 200, {
       url: checkout.url,

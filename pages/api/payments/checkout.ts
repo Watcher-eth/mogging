@@ -4,6 +4,7 @@ import { ApiError, handleApiError, json, methodNotAllowed, parseBody } from '@/l
 import { getOrSetAnonymousActorId } from '@/lib/auth/anonymous'
 import { getAuthSession } from '@/lib/auth/session'
 import { env } from '@/lib/env'
+import { recordCreatorCheckout, resolveCreatorAttribution, stripeAttributionMetadata } from '@/lib/creator/attribution'
 import { getCheckoutLineItem, getProductConfig } from '@/lib/payments/entitlements'
 import { getStripe } from '@/lib/payments/stripe'
 import type { PaymentProduct } from '@/lib/db/schema'
@@ -32,6 +33,14 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     const productId: PaymentProduct = input.imageCount > 1 ? 'evaluation_pack_3' : 'evaluation'
     const product = getProductConfig(productId)
     const stripe = getStripe()
+    const attribution = await resolveCreatorAttribution({
+      req,
+      owner: {
+        userId: authSession?.user?.id ?? null,
+        anonymousActorId,
+        mobileInstallId: input.mobileInstallId,
+      },
+    })
     const checkout = await stripe.checkout.sessions.create({
       mode: product.mode,
       payment_method_types: ['card'],
@@ -45,6 +54,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         imageCount: String(input.imageCount),
         userId: authSession?.user?.id ?? '',
         anonymousActorId: anonymousActorId ?? '',
+        ...stripeAttributionMetadata(attribution),
       },
       success_url: `${origin}/analysis?checkout=success&product=${productId}&install_id=${encodeURIComponent(input.mobileInstallId)}&session_id={CHECKOUT_SESSION_ID}`,
       cancel_url: `${origin}/analysis?checkout=cancelled`,
@@ -53,6 +63,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     if (!checkout.url) {
       throw new ApiError(500, 'Failed to create checkout session')
     }
+
+    await recordCreatorCheckout(attribution, checkout)
 
     return json(res, 200, {
       url: checkout.url,
