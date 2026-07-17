@@ -5,22 +5,25 @@ import {
   BadgeCheck,
   BarChart3,
   BookOpenText,
+  CalendarDays,
   Check,
   CircleDollarSign,
   Eye,
   FileVideo2,
   ImageIcon,
+  Link2,
   ShieldCheck,
   Smartphone,
   TriangleAlert,
   UsersRound,
 } from 'lucide-react'
 import { CreatorHeader, CreatorShell } from '@/components/creator/creator-shell'
+import { CreatorPayoutCalculator } from '@/components/creator/payout-calculator'
 import { Button } from '@/components/ui/button'
 import { ACTIVE_CREATOR_SUBMISSION_FORMATS } from '@/lib/creator/formats'
 
 const viewThresholds = ['40K', '100K', '250K', '500K', '750K', '+1M']
-const audienceTiers = ['Default 20%', '22.5%', '25%', '27.5%', '30%', '32.5%', '35%', '37.5%', '40%']
+const audienceTiers = ['20%+ combined Tier-1', '22.5% US', '25% US', '27.5% US', '30% US', '32.5% US', '35% US', '37.5% US', '40%+ US']
 
 export default function CreatorProgramGuidePage() {
   return (
@@ -96,22 +99,56 @@ export default function CreatorProgramGuidePage() {
             </div>
           </div>
         </div>
+        <div className="mt-4 grid gap-4 lg:grid-cols-[minmax(0,1.15fr)_minmax(320px,0.85fr)]">
+          <article className="rounded-2xl border border-zinc-200 bg-white p-5 sm:p-6">
+            <div className="flex items-start gap-4">
+              <span className="grid size-11 shrink-0 place-items-center rounded-2xl bg-zinc-100"><CalendarDays className="size-5" /></span>
+              <div>
+                <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-zinc-400">Recommended Publishing Cadence</p>
+                <h3 className="mt-2 text-lg font-semibold tracking-[-0.025em]">Post Daily on Both Platforms</h3>
+                <p className="mt-2 text-sm leading-6 text-zinc-500">Publish each video to both Instagram and TikTok whenever possible. The two posts count separately, giving the same video the potential to earn twice.</p>
+              </div>
+            </div>
+            <div className="mt-6 grid gap-3 sm:grid-cols-3">
+              <PostingMetric value="1+" label="Video per day minimum" />
+              <PostingMetric value="2x" label="Potential from posting on both platforms" />
+              <PostingMetric value="6–12" label="Daily posts from top editors" />
+            </div>
+            <p className="mt-5 text-xs leading-5 text-zinc-500">Consistent, high-volume posting is strongly rewarded by current TikTok and Instagram algorithms. More videos generally create more opportunities for reach, but quality still matters.</p>
+          </article>
+
+          <aside className="rounded-2xl border border-zinc-200 bg-zinc-950 p-5 text-white sm:p-6">
+            <div className="flex items-start justify-between gap-5">
+              <span className="grid size-11 place-items-center rounded-2xl bg-white/10"><Link2 className="size-5" /></span>
+              <span className="rounded-full bg-white px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.12em] text-zinc-950">Required</span>
+            </div>
+            <p className="mt-6 text-[11px] font-semibold uppercase tracking-[0.16em] text-white/40">Bio &amp; Attribution Link</p>
+            <h3 className="mt-2 text-xl font-semibold tracking-[-0.035em]">Set Up Every Account Bio</h3>
+            <div className="mt-5 rounded-2xl border border-white/10 bg-white/[0.06] p-4 text-sm leading-6 text-white/80">
+              <p>🧬 Get your Mogging Scan. Ascend in 90 days</p>
+              <p>📱 Download Mogging on the App Store</p>
+            </div>
+            <p className="mt-5 text-xs leading-5 text-white/50">Add the personalized attribution link assigned to that specific account. Every connected account receives its own link—even before verification—and the matching link must remain in its bio while posting for the program.</p>
+          </aside>
+        </div>
       </GuideSection>
 
       <GuideSection id="audience-tiers" eyebrow="Section 03" title="Targeted Audience Tiers for Payment" description="Declare the view threshold and audience tier shown in your post analytics. The review team verifies both before approving payment.">
-        <div className="grid gap-4 xl:grid-cols-[minmax(0,1.15fr)_minmax(320px,0.85fr)]">
+        <CreatorPayoutCalculator />
+        <div className="mt-4 grid gap-4 xl:grid-cols-[minmax(0,1.15fr)_minmax(320px,0.85fr)]">
           <div className="rounded-2xl border border-zinc-200 bg-white p-5 sm:p-6">
             <div className="flex items-start justify-between gap-5"><div><p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-zinc-400">Qualified Performance</p><h3 className="mt-2 text-lg font-semibold tracking-[-0.025em]">View Count Thresholds</h3></div><Eye className="size-5 text-zinc-300" /></div>
             <div className="mt-5 grid grid-cols-3 gap-2 sm:grid-cols-6">{viewThresholds.map((threshold) => <span key={threshold} className="rounded-xl bg-zinc-100 px-2 py-3 text-center text-sm font-semibold">{threshold}</span>)}</div>
-            <div className="mt-7 flex items-start justify-between gap-5"><div><p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-zinc-400">Audience Quality</p><h3 className="mt-2 text-lg font-semibold tracking-[-0.025em]">Tier 1 Audience Options</h3></div><UsersRound className="size-5 text-zinc-300" /></div>
+            <div className="mt-7 flex items-start justify-between gap-5"><div><p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-zinc-400">Audience Quality</p><h3 className="mt-2 text-lg font-semibold tracking-[-0.025em]">Tier-1 Eligibility &amp; U.S. Rate Boosts</h3></div><UsersRound className="size-5 text-zinc-300" /></div>
             <div className="mt-5 flex flex-wrap gap-2">{audienceTiers.map((tier, index) => <span key={tier} className={index === 0 ? 'rounded-full bg-black px-3 py-2 text-xs font-semibold text-white' : 'rounded-full border border-zinc-200 bg-white px-3 py-2 text-xs font-semibold text-zinc-600'}>{tier}</span>)}</div>
-            <p className="mt-5 text-xs leading-5 text-zinc-500">If no higher percentage is selected, the submission uses the Default 20% Tier 1 Audience. Higher tiers should be clearly supported by the uploaded analytics screenshot.</p>
+            <p className="mt-5 text-xs leading-5 text-zinc-500"><span className="font-semibold text-zinc-700">Tier-1 countries:</span> United States, Canada, United Kingdom, Australia, Germany, France, Netherlands, Sweden, Denmark, Switzerland, New Zealand, Poland, Italy, and South Korea.</p>
+            <p className="mt-3 text-xs leading-5 text-zinc-500">A video needs at least 20% combined audience from any mix of these countries to earn the base payout. Enhanced rates only begin when the United States alone represents at least 22.5% of the audience.</p>
           </div>
           <aside className="rounded-2xl border border-dashed border-zinc-300 bg-zinc-50/60 p-5 sm:p-6">
             <span className="grid size-11 place-items-center rounded-2xl bg-white shadow-sm"><CircleDollarSign className="size-5" /></span>
-            <p className="mt-6 text-[11px] font-semibold uppercase tracking-[0.16em] text-zinc-400">Payment Schedule</p>
-            <h3 className="mt-2 text-xl font-semibold tracking-[-0.035em]">Payout Rates Coming Next</h3>
-            <p className="mt-3 text-sm leading-6 text-zinc-500">This space is ready for the finalized payout table that maps verified view thresholds and audience tiers to creator compensation.</p>
+            <p className="mt-6 text-[11px] font-semibold uppercase tracking-[0.16em] text-zinc-400">Payment Rules</p>
+            <h3 className="mt-2 text-xl font-semibold tracking-[-0.035em]">Verified Performance Determines Payout</h3>
+            <p className="mt-3 text-sm leading-6 text-zinc-500">The review team confirms the selected view threshold and U.S. audience percentage from the submitted analytics. The approved milestone is the cumulative payout for that video.</p>
             <div className="mt-6 rounded-2xl border border-zinc-200 bg-white p-4"><p className="text-sm font-semibold">Before Funds Are Released</p><p className="mt-2 text-xs leading-5 text-zinc-500">Add a valid PayPal or crypto destination under Payout Information. You may submit content before completing this step.</p></div>
             <Button asChild variant="outline" className="mt-6 h-10 rounded-xl bg-white"><Link href="/creator/payout-information">Set Up Payouts<ArrowRight /></Link></Button>
           </aside>
@@ -143,4 +180,8 @@ function StatusExample({ label, className, description }: { label: string; class
 
 function AnalyticsCheck({ title, description }: { title: string; description: string }) {
   return <div className="flex items-start gap-3 rounded-2xl bg-zinc-50 p-4"><span className="mt-0.5 grid size-5 shrink-0 place-items-center rounded-full bg-emerald-100 text-emerald-700"><Check className="size-3" /></span><div><p className="text-sm font-semibold">{title}</p><p className="mt-1 text-xs leading-5 text-zinc-500">{description}</p></div></div>
+}
+
+function PostingMetric({ value, label }: { value: string; label: string }) {
+  return <div className="rounded-2xl bg-zinc-50 p-4"><p className="text-xl font-semibold tracking-[-0.04em]">{value}</p><p className="mt-2 text-xs leading-5 text-zinc-500">{label}</p></div>
 }
