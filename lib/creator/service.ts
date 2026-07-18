@@ -3,6 +3,7 @@ import { z } from 'zod'
 import { db, schema } from '@/lib/db'
 import { env } from '@/lib/env'
 import { getCreatorSubmissionFormat } from '@/lib/creator/formats'
+import { ensureCreatorTrackingLink } from '@/lib/creator/attribution'
 
 export const creatorProfileSchema = z
   .object({
@@ -96,11 +97,17 @@ export async function getCreatorDashboard(userId: string) {
     db.query.creatorSocialAccounts.findMany({
       where: eq(schema.creatorSocialAccounts.creatorProfileId, profile.id),
       orderBy: [desc(schema.creatorSocialAccounts.createdAt)],
+      with: { trackingLink: true },
     }),
     communityMetricsPromise,
   ])
 
-  return { profile, submissions, payments, socialAccounts, communityMetrics, featureFlags }
+  const socialAccountsWithLinks = await Promise.all(socialAccounts.map(async (account) => {
+    if (account.trackingLink?.isActive) return account
+    return { ...account, trackingLink: await ensureCreatorTrackingLink(account.id) }
+  }))
+
+  return { profile, submissions, payments, socialAccounts: socialAccountsWithLinks, communityMetrics, featureFlags }
 }
 
 async function getCreatorCommunityMetrics() {
@@ -182,7 +189,7 @@ export async function addCreatorSocialAccount(userId: string, input: CreatorSoci
       profileUrl: input.profileUrl || null,
     })
     .returning()
-  return account
+  return { ...account, trackingLink: await ensureCreatorTrackingLink(account.id) }
 }
 
 export async function addCreatorTikTokOAuthAccount(userId: string, input: CreatorTikTokOAuthInput) {
@@ -192,7 +199,7 @@ export async function addCreatorTikTokOAuthAccount(userId: string, input: Creato
     throw new CreatorServiceError(400, 'TikTok returned an invalid username')
   }
 
-  return db.transaction(async (tx) => {
+  const account = await db.transaction(async (tx) => {
     const accounts = await tx.query.creatorSocialAccounts.findMany({
       where: eq(schema.creatorSocialAccounts.creatorProfileId, profile.id),
     })
@@ -259,6 +266,7 @@ export async function addCreatorTikTokOAuthAccount(userId: string, input: Creato
     }).returning()
     return account
   })
+  return { ...account, trackingLink: await ensureCreatorTrackingLink(account.id) }
 }
 
 export async function submitCreatorAccountAnalyticsEvidence(userId: string, input: z.infer<typeof creatorAccountAnalyticsSubmissionSchema>) {
@@ -302,13 +310,18 @@ function creatorAnalyticsEvidenceValues(input: z.infer<typeof creatorAnalyticsEv
 export async function removeCreatorSocialAccount(userId: string, accountId: string) {
   const profile = await getCreatorProfile(userId)
   if (!profile) throw new CreatorServiceError(404, 'Creator profile not found')
-  const [account] = await db
-    .delete(schema.creatorSocialAccounts)
-    .where(and(
-      eq(schema.creatorSocialAccounts.id, accountId),
-      eq(schema.creatorSocialAccounts.creatorProfileId, profile.id)
-    ))
-    .returning()
+  const account = await db.transaction(async (tx) => {
+    const existing = await tx.query.creatorSocialAccounts.findFirst({
+      where: and(
+        eq(schema.creatorSocialAccounts.id, accountId),
+        eq(schema.creatorSocialAccounts.creatorProfileId, profile.id)
+      ),
+    })
+    if (!existing) return null
+    await tx.delete(schema.creatorTrackingLinks).where(eq(schema.creatorTrackingLinks.socialAccountId, accountId))
+    const [deleted] = await tx.delete(schema.creatorSocialAccounts).where(eq(schema.creatorSocialAccounts.id, accountId)).returning()
+    return deleted
+  })
   if (!account) throw new CreatorServiceError(404, 'Connected account not found')
   if (account.platform === 'tiktok' && account.connectionMethod === 'oauth' && account.providerAccountId) {
     await db.delete(schema.accounts).where(and(

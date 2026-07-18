@@ -2,6 +2,7 @@ import { desc, eq } from 'drizzle-orm'
 import { z } from 'zod'
 import { ApiError } from '@/lib/api/http'
 import { db, schema } from '@/lib/db'
+import { ensureCreatorTrackingLink } from '@/lib/creator/attribution'
 
 export const creatorAdminReviewSchema = z.discriminatedUnion('resource', [
   z.object({
@@ -61,7 +62,7 @@ export type CreatorAdminReviewInput = z.infer<typeof creatorAdminReviewSchema>
 export type CreatorAdminPaymentInput = z.infer<typeof creatorAdminPaymentSchema>
 
 export async function getCreatorAdminDashboard() {
-  const [creators, accounts, submissions, payments, attributionMetrics, settingsRecord] = await Promise.all([
+  const [creators, accountRows, submissions, payments, attributionMetrics, settingsRecord] = await Promise.all([
     db
       .select({
         id: schema.creatorProfiles.id,
@@ -97,11 +98,15 @@ export async function getCreatorAdminDashboard() {
         analyticsConfirmedAt: schema.creatorSocialAccounts.analyticsConfirmedAt,
         status: schema.creatorSocialAccounts.status,
         reviewNote: schema.creatorSocialAccounts.reviewNote,
+        trackingLinkUrl: schema.creatorTrackingLinks.publicUrl,
+        trackingLinkSlug: schema.creatorTrackingLinks.slug,
+        trackingLinkActive: schema.creatorTrackingLinks.isActive,
         createdAt: schema.creatorSocialAccounts.createdAt,
       })
       .from(schema.creatorSocialAccounts)
       .innerJoin(schema.creatorProfiles, eq(schema.creatorSocialAccounts.creatorProfileId, schema.creatorProfiles.id))
       .innerJoin(schema.users, eq(schema.creatorProfiles.userId, schema.users.id))
+      .leftJoin(schema.creatorTrackingLinks, eq(schema.creatorTrackingLinks.socialAccountId, schema.creatorSocialAccounts.id))
       .orderBy(desc(schema.creatorSocialAccounts.createdAt)),
     db
       .select({
@@ -161,6 +166,17 @@ export async function getCreatorAdminDashboard() {
       where: eq(schema.creatorProgramSettings.id, 'default'),
     }),
   ])
+
+  const accounts = await Promise.all(accountRows.map(async (account) => {
+    if (account.trackingLinkUrl && account.trackingLinkActive) return account
+    const trackingLink = await ensureCreatorTrackingLink(account.id)
+    return {
+      ...account,
+      trackingLinkUrl: trackingLink.publicUrl,
+      trackingLinkSlug: trackingLink.slug,
+      trackingLinkActive: trackingLink.isActive,
+    }
+  }))
 
   const settings = settingsRecord || {
     id: 'default',

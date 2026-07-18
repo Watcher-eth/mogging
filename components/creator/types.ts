@@ -59,6 +59,12 @@ export type CreatorSocialAccount = {
   status: 'pending' | 'approved' | 'missing_information'
   reviewNote: string | null
   createdAt: string
+  trackingLink: {
+    id: string
+    slug: string
+    publicUrl: string
+    isActive: boolean
+  } | null
 }
 
 export type CreatorDashboard = {

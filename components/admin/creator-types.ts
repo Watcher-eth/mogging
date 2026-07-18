@@ -33,6 +33,9 @@ export type AdminAccount = {
   analyticsConfirmedAt: string | null
   status: AccountStatus
   reviewNote: string | null
+  trackingLinkUrl: string | null
+  trackingLinkSlug: string | null
+  trackingLinkActive: boolean | null
   createdAt: string
 }
 

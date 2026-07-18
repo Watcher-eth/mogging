@@ -141,6 +141,20 @@
       "when": 1784160000000,
       "tag": "0020_submission_analytics_claims",
       "breakpoints": true
+    },
+    {
+      "idx": 20,
+      "version": "7",
+      "when": 1784170000000,
+      "tag": "0021_creator_tracking_funnel",
+      "breakpoints": true
+    },
+    {
+      "idx": 21,
+      "version": "7",
+      "when": 1784476800000,
+      "tag": "0022_all_creator_account_links",
+      "breakpoints": true
     }
   ]
 }
