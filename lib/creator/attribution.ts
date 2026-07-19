@@ -182,6 +182,18 @@ export async function recordCreatorInstall(input: { token: string; mobileInstall
   return { created: Boolean(event), event, context: publicCreatorAttributionContext(context) }
 }
 
+export async function recordCreatorPaywallView(input: { token: string; mobileInstallId: string; userId?: string | null }) {
+  const context = await resolveMobileCreatorAttribution(input)
+  if (!context) return null
+  const event = await insertAttributionEvent({
+    ...context,
+    eventType: 'paywall_view',
+    dedupeKey: `creator-paywall:${input.mobileInstallId}`,
+    metadata: { source: 'mobile_paywall' },
+  })
+  return { created: Boolean(event), event, context: publicCreatorAttributionContext(context) }
+}
+
 export async function resolveMobileCreatorAttribution(input: { token: string; mobileInstallId: string; userId?: string | null }) {
   const direct = await resolveCreatorAttribution({
     token: input.token,
@@ -496,6 +508,7 @@ export async function getCreatorAttributionReport() {
       trackingLinkId: schema.creatorAttributionEvents.trackingLinkId,
       signups: sql<number>`count(*) filter (where ${schema.creatorAttributionEvents.eventType} = 'signup')::int`,
       installs: sql<number>`count(*) filter (where ${schema.creatorAttributionEvents.eventType} = 'install')::int`,
+      paywallViews: sql<number>`count(*) filter (where ${schema.creatorAttributionEvents.eventType} = 'paywall_view')::int`,
       checkouts: sql<number>`count(*) filter (where ${schema.creatorAttributionEvents.eventType} = 'checkout')::int`,
       purchases: sql<number>`count(*) filter (where ${schema.creatorAttributionEvents.eventType} = 'payment' and ${schema.creatorAttributionEvents.amountCents} > 0)::int`,
       paidCustomers: sql<number>`count(distinct ${schema.creatorAttributionEvents.attributionKey}) filter (where ${schema.creatorAttributionEvents.eventType} = 'payment' and ${schema.creatorAttributionEvents.amountCents} > 0)::int`,
@@ -506,12 +519,14 @@ export async function getCreatorAttributionReport() {
       revenueCents: sql<number>`coalesce(sum(${schema.creatorAttributionEvents.amountCents}) filter (where ${schema.creatorAttributionEvents.eventType} in ('payment', 'refund', 'dispute')), 0)::int`,
       recentSignups: sql<number>`count(*) filter (where ${schema.creatorAttributionEvents.eventType} = 'signup' and ${schema.creatorAttributionEvents.createdAt} >= now() - interval '30 days')::int`,
       recentInstalls: sql<number>`count(*) filter (where ${schema.creatorAttributionEvents.eventType} = 'install' and ${schema.creatorAttributionEvents.createdAt} >= now() - interval '30 days')::int`,
+      recentPaywallViews: sql<number>`count(*) filter (where ${schema.creatorAttributionEvents.eventType} = 'paywall_view' and ${schema.creatorAttributionEvents.createdAt} >= now() - interval '30 days')::int`,
       recentPaidCustomers: sql<number>`count(distinct ${schema.creatorAttributionEvents.attributionKey}) filter (where ${schema.creatorAttributionEvents.eventType} = 'payment' and ${schema.creatorAttributionEvents.amountCents} > 0 and ${schema.creatorAttributionEvents.createdAt} >= now() - interval '30 days')::int`,
       recentRevenueCents: sql<number>`coalesce(sum(${schema.creatorAttributionEvents.amountCents}) filter (where ${schema.creatorAttributionEvents.eventType} in ('payment', 'refund', 'dispute') and ${schema.creatorAttributionEvents.createdAt} >= now() - interval '30 days'), 0)::int`,
     }).from(schema.creatorAttributionEvents).groupBy(schema.creatorAttributionEvents.trackingLinkId),
     db.select({
       trackingLinkId: schema.creatorAttributionEvents.firstTrackingLinkId,
       firstTouchSignups: sql<number>`count(*) filter (where ${schema.creatorAttributionEvents.eventType} = 'signup')::int`,
+      firstTouchPaywallViews: sql<number>`count(*) filter (where ${schema.creatorAttributionEvents.eventType} = 'paywall_view')::int`,
       firstTouchPaidCustomers: sql<number>`count(distinct ${schema.creatorAttributionEvents.attributionKey}) filter (where ${schema.creatorAttributionEvents.eventType} = 'payment' and ${schema.creatorAttributionEvents.amountCents} > 0)::int`,
       firstTouchRevenueCents: sql<number>`coalesce(sum(${schema.creatorAttributionEvents.amountCents}) filter (where ${schema.creatorAttributionEvents.eventType} in ('payment', 'refund', 'dispute')), 0)::int`,
     }).from(schema.creatorAttributionEvents)
@@ -529,6 +544,7 @@ export async function getCreatorAttributionReport() {
     recentClicks: clicksByLink.get(link.trackingLinkId)?.recentClicks || 0,
     signups: eventsByLink.get(link.trackingLinkId)?.signups || 0,
     installs: eventsByLink.get(link.trackingLinkId)?.installs || 0,
+    paywallViews: eventsByLink.get(link.trackingLinkId)?.paywallViews || 0,
     checkouts: eventsByLink.get(link.trackingLinkId)?.checkouts || 0,
     purchases: eventsByLink.get(link.trackingLinkId)?.purchases || 0,
     paidCustomers: eventsByLink.get(link.trackingLinkId)?.paidCustomers || 0,
@@ -539,9 +555,11 @@ export async function getCreatorAttributionReport() {
     revenueCents: eventsByLink.get(link.trackingLinkId)?.revenueCents || 0,
     recentSignups: eventsByLink.get(link.trackingLinkId)?.recentSignups || 0,
     recentInstalls: eventsByLink.get(link.trackingLinkId)?.recentInstalls || 0,
+    recentPaywallViews: eventsByLink.get(link.trackingLinkId)?.recentPaywallViews || 0,
     recentPaidCustomers: eventsByLink.get(link.trackingLinkId)?.recentPaidCustomers || 0,
     recentRevenueCents: eventsByLink.get(link.trackingLinkId)?.recentRevenueCents || 0,
     firstTouchSignups: firstEventsByLink.get(link.trackingLinkId)?.firstTouchSignups || 0,
+    firstTouchPaywallViews: firstEventsByLink.get(link.trackingLinkId)?.firstTouchPaywallViews || 0,
     firstTouchPaidCustomers: firstEventsByLink.get(link.trackingLinkId)?.firstTouchPaidCustomers || 0,
     firstTouchRevenueCents: firstEventsByLink.get(link.trackingLinkId)?.firstTouchRevenueCents || 0,
   }))
@@ -569,7 +587,7 @@ async function contextFromStripeMetadata(metadata: Record<string, unknown> | nul
 }
 
 async function insertAttributionEvent(input: CreatorAttributionContext & {
-  eventType: 'signup' | 'install' | 'checkout' | 'payment' | 'refund' | 'dispute' | 'subscription_cancellation' | 'subscription_expiration' | 'subscription_billing_issue' | 'subscription_reactivation'
+  eventType: 'signup' | 'install' | 'paywall_view' | 'checkout' | 'payment' | 'refund' | 'dispute' | 'subscription_cancellation' | 'subscription_expiration' | 'subscription_billing_issue' | 'subscription_reactivation'
   dedupeKey: string
   amountCents?: number
   currency?: string

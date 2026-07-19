@@ -47,6 +47,7 @@ export const creatorSocialAccountStatusEnum = pgEnum('creator_social_account_sta
 export const creatorAttributionEventTypeEnum = pgEnum('creator_attribution_event_type', [
   'signup',
   'install',
+  'paywall_view',
   'checkout',
   'payment',
   'refund',

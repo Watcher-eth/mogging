@@ -162,6 +162,13 @@
       "when": 1784480400000,
       "tag": "0023_mobile_creator_attribution",
       "breakpoints": true
+    },
+    {
+      "idx": 23,
+      "version": "7",
+      "when": 1784484000000,
+      "tag": "0024_creator_paywall_view",
+      "breakpoints": true
     }
   ]
 }

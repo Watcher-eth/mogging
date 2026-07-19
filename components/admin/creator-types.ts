@@ -9,6 +9,7 @@ export type AdminAttributionReport = {
   botClicks: number
   signups: number
   installs: number
+  paywallViews: number
   checkouts: number
   purchases: number
   paidCustomers: number
@@ -18,11 +19,13 @@ export type AdminAttributionReport = {
   reversedRevenueCents: number
   revenueCents: number
   firstTouchSignups: number
+  firstTouchPaywallViews: number
   firstTouchPaidCustomers: number
   firstTouchRevenueCents: number
   recentClicks: number
   recentSignups: number
   recentInstalls: number
+  recentPaywallViews: number
   recentPaidCustomers: number
   recentRevenueCents: number
 }
