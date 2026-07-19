@@ -73,6 +73,7 @@ const envSchema = z
     PAYMENTS_EMAIL_FROM: z.string().min(1).default('Mogging <support@mogging.com>'),
     PAYMENTS_EMAIL_REPLY_TO: z.string().min(1).optional(),
     REVENUECAT_SECRET_API_KEY: z.string().min(1).optional(),
+    REVENUECAT_WEBHOOK_AUTH_TOKEN: z.string().min(16).optional(),
     REVENUECAT_PRO_ENTITLEMENT_ID: z.string().min(1).default('pro'),
   })
   .superRefine((env, ctx) => {
@@ -223,6 +224,7 @@ export const env = envSchema.parse({
   PAYMENTS_EMAIL_FROM: process.env.PAYMENTS_EMAIL_FROM,
   PAYMENTS_EMAIL_REPLY_TO: process.env.PAYMENTS_EMAIL_REPLY_TO,
   REVENUECAT_SECRET_API_KEY: process.env.REVENUECAT_SECRET_API_KEY,
+  REVENUECAT_WEBHOOK_AUTH_TOKEN: process.env.REVENUECAT_WEBHOOK_AUTH_TOKEN,
   REVENUECAT_PRO_ENTITLEMENT_ID: process.env.REVENUECAT_PRO_ENTITLEMENT_ID,
 })
 

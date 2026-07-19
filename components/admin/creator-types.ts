@@ -3,6 +3,30 @@ export type AccountStatus = 'pending' | 'approved' | 'missing_information'
 export type SubmissionStatus = 'pending' | 'in_review' | 'approved' | 'rejected' | 'paid'
 export type PaymentStatus = 'pending' | 'processing' | 'paid' | 'failed' | 'cancelled'
 
+export type AdminAttributionReport = {
+  clicks: number
+  uniqueClicks: number
+  botClicks: number
+  signups: number
+  installs: number
+  checkouts: number
+  purchases: number
+  paidCustomers: number
+  refunds: number
+  disputes: number
+  grossRevenueCents: number
+  reversedRevenueCents: number
+  revenueCents: number
+  firstTouchSignups: number
+  firstTouchPaidCustomers: number
+  firstTouchRevenueCents: number
+  recentClicks: number
+  recentSignups: number
+  recentInstalls: number
+  recentPaidCustomers: number
+  recentRevenueCents: number
+}
+
 export type AdminCreator = {
   id: string
   displayName: string
@@ -14,6 +38,8 @@ export type AdminCreator = {
   paypalEmail: string | null
   cryptoNetwork: string | null
   cryptoWalletAddress: string | null
+  accountCount: number
+  attribution: AdminAttributionReport
   createdAt: string
 }
 
@@ -36,6 +62,7 @@ export type AdminAccount = {
   trackingLinkUrl: string | null
   trackingLinkSlug: string | null
   trackingLinkActive: boolean | null
+  attribution: AdminAttributionReport
   createdAt: string
 }
 

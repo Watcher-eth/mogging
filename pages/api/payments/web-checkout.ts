@@ -4,7 +4,7 @@ import { ApiError, handleApiError, json, methodNotAllowed, parseBody } from '@/l
 import { getOrSetAnonymousActorId } from '@/lib/auth/anonymous'
 import { getAuthSession } from '@/lib/auth/session'
 import { env } from '@/lib/env'
-import { recordCreatorCheckout, resolveCreatorAttribution, stripeAttributionMetadata } from '@/lib/creator/attribution'
+import { getStoredMobileCreatorAttribution, recordCreatorCheckout, resolveCreatorAttribution, stripeAttributionMetadata } from '@/lib/creator/attribution'
 import { generatePaymentActivationCode, getCheckoutLineItem, getProductConfig, paymentProductSchemaValues } from '@/lib/payments/entitlements'
 import { getStripe } from '@/lib/payments/stripe'
 
@@ -37,6 +37,10 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         anonymousActorId,
         mobileInstallId: input.mobileInstallId,
       },
+    }) || await getStoredMobileCreatorAttribution({
+      mobileInstallId: input.mobileInstallId,
+      userId: session?.user?.id ?? null,
+      anonymousActorId,
     })
     const attributionMetadata = stripeAttributionMetadata(attribution)
     const checkout = await getStripe().checkout.sessions.create({

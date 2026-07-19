@@ -2,7 +2,7 @@ import { desc, eq } from 'drizzle-orm'
 import { z } from 'zod'
 import { ApiError } from '@/lib/api/http'
 import { db, schema } from '@/lib/db'
-import { ensureCreatorTrackingLink } from '@/lib/creator/attribution'
+import { ensureCreatorTrackingLink, getCreatorAttributionReport } from '@/lib/creator/attribution'
 
 export const creatorAdminReviewSchema = z.discriminatedUnion('resource', [
   z.object({
@@ -62,7 +62,7 @@ export type CreatorAdminReviewInput = z.infer<typeof creatorAdminReviewSchema>
 export type CreatorAdminPaymentInput = z.infer<typeof creatorAdminPaymentSchema>
 
 export async function getCreatorAdminDashboard() {
-  const [creators, accountRows, submissions, payments, attributionMetrics, settingsRecord] = await Promise.all([
+  const [creatorRows, accountRows, submissions, payments, attributionMetrics, settingsRecord, accountAttributionRows] = await Promise.all([
     db
       .select({
         id: schema.creatorProfiles.id,
@@ -165,17 +165,31 @@ export async function getCreatorAdminDashboard() {
     db.query.creatorProgramSettings.findFirst({
       where: eq(schema.creatorProgramSettings.id, 'default'),
     }),
+    getCreatorAttributionReport(),
   ])
 
+  const attributionByAccountId = new Map(accountAttributionRows.map((report) => [report.socialAccountId, report]))
   const accounts = await Promise.all(accountRows.map(async (account) => {
-    if (account.trackingLinkUrl && account.trackingLinkActive) return account
-    const trackingLink = await ensureCreatorTrackingLink(account.id)
+    const trackingLink = account.trackingLinkUrl && account.trackingLinkActive ? null : await ensureCreatorTrackingLink(account.id)
     return {
       ...account,
-      trackingLinkUrl: trackingLink.publicUrl,
-      trackingLinkSlug: trackingLink.slug,
-      trackingLinkActive: trackingLink.isActive,
+      trackingLinkUrl: trackingLink?.publicUrl || account.trackingLinkUrl,
+      trackingLinkSlug: trackingLink?.slug || account.trackingLinkSlug,
+      trackingLinkActive: trackingLink?.isActive ?? account.trackingLinkActive,
+      attribution: attributionReportValues(attributionByAccountId.get(account.id)),
     }
+  }))
+  const attributionByCreatorId = new Map<string, ReturnType<typeof emptyAttributionReport>>()
+  const accountCountByCreatorId = new Map<string, number>()
+  for (const account of accounts) {
+    accountCountByCreatorId.set(account.creatorProfileId, (accountCountByCreatorId.get(account.creatorProfileId) || 0) + 1)
+    const current = attributionByCreatorId.get(account.creatorProfileId) || emptyAttributionReport()
+    attributionByCreatorId.set(account.creatorProfileId, addAttributionReports(current, account.attribution))
+  }
+  const creators = creatorRows.map((creator) => ({
+    ...creator,
+    accountCount: accountCountByCreatorId.get(creator.id) || 0,
+    attribution: attributionByCreatorId.get(creator.id) || emptyAttributionReport(),
   }))
 
   const settings = settingsRecord || {
@@ -197,6 +211,45 @@ export async function getCreatorAdminDashboard() {
       conversionBonusCapRate: CREATOR_CONVERSION_BONUS_CAP_RATE,
     },
   }
+}
+
+function emptyAttributionReport() {
+  return {
+    clicks: 0,
+    uniqueClicks: 0,
+    botClicks: 0,
+    signups: 0,
+    installs: 0,
+    checkouts: 0,
+    purchases: 0,
+    paidCustomers: 0,
+    refunds: 0,
+    disputes: 0,
+    grossRevenueCents: 0,
+    reversedRevenueCents: 0,
+    revenueCents: 0,
+    firstTouchSignups: 0,
+    firstTouchPaidCustomers: 0,
+    firstTouchRevenueCents: 0,
+    recentClicks: 0,
+    recentSignups: 0,
+    recentInstalls: 0,
+    recentPaidCustomers: 0,
+    recentRevenueCents: 0,
+  }
+}
+
+function attributionReportValues(report: Awaited<ReturnType<typeof getCreatorAttributionReport>>[number] | undefined) {
+  if (!report) return emptyAttributionReport()
+  const values = emptyAttributionReport()
+  for (const key of Object.keys(values) as Array<keyof typeof values>) values[key] = report[key]
+  return values
+}
+
+function addAttributionReports(left: ReturnType<typeof emptyAttributionReport>, right: ReturnType<typeof emptyAttributionReport>) {
+  const total = emptyAttributionReport()
+  for (const key of Object.keys(total) as Array<keyof typeof total>) total[key] = left[key] + right[key]
+  return total
 }
 
 export async function saveCreatorAttributionMetrics(input: z.infer<typeof creatorAttributionMetricsSchema>) {

@@ -604,6 +604,39 @@ export const creatorAttributionEvents = pgTable(
   })
 )
 
+export const mobileCreatorAttributions = pgTable(
+  'mobile_creator_attributions',
+  {
+    id: text('id')
+      .primaryKey()
+      .$defaultFn(() => crypto.randomUUID()),
+    mobileInstallId: text('mobile_install_id').notNull(),
+    trackingLinkId: text('tracking_link_id')
+      .notNull()
+      .references(() => creatorTrackingLinks.id, { onDelete: 'cascade' }),
+    clickId: text('click_id')
+      .notNull()
+      .references(() => creatorAttributionClicks.id, { onDelete: 'cascade' }),
+    firstTrackingLinkId: text('first_tracking_link_id')
+      .notNull()
+      .references(() => creatorTrackingLinks.id, { onDelete: 'cascade' }),
+    firstClickId: text('first_click_id')
+      .notNull()
+      .references(() => creatorAttributionClicks.id, { onDelete: 'cascade' }),
+    attributionKey: text('attribution_key').notNull(),
+    userId: text('user_id').references(() => users.id, { onDelete: 'set null' }),
+    createdAt: timestamp('created_at', { mode: 'date' }).notNull().defaultNow(),
+    updatedAt: timestamp('updated_at', { mode: 'date' }).notNull().defaultNow(),
+  },
+  (table) => ({
+    installClickUnique: uniqueIndex('mobile_creator_attributions_install_click_unique').on(table.mobileInstallId, table.clickId),
+    mobileInstallIdx: index('mobile_creator_attributions_mobile_install_id_idx').on(table.mobileInstallId),
+    trackingLinkIdx: index('mobile_creator_attributions_link_id_idx').on(table.trackingLinkId),
+    clickIdx: index('mobile_creator_attributions_click_id_idx').on(table.clickId),
+    userIdx: index('mobile_creator_attributions_user_id_idx').on(table.userId),
+  })
+)
+
 export const creatorPayments = pgTable(
   'creator_payments',
   {

@@ -4,6 +4,7 @@ import { useMemo, useState, type FormEvent } from 'react'
 import {
   ArrowUpRight,
   BadgeCheck,
+  ChartNoAxesCombined,
   CircleDollarSign,
   FileVideo,
   Gauge,
@@ -25,9 +26,11 @@ import { getAuthSession } from '@/lib/auth/session'
 import { isCreatorAdminEmail } from '@/lib/admin/creator-auth'
 import { cn } from '@/lib/utils'
 import { CreatorEconomicsDashboard } from '@/components/admin/creator-economics-dashboard'
+import { AccountAttributionReport, CreatorAttributionDashboard, CreatorAttributionReport } from '@/components/admin/creator-attribution-dashboard'
 import { AccountTrackingLink } from '@/components/creator/account-tracking-link'
 import type {
   AdminAccount,
+  AdminAttributionReport,
   AdminAttributionMetrics,
   AdminCreator,
   AdminDashboard,
@@ -39,6 +42,7 @@ import type {
 const tabs = [
   { value: 'overview', label: 'Overview', icon: LayoutDashboard },
   { value: 'metrics', label: 'Metrics', icon: Gauge },
+  { value: 'attribution', label: 'Attribution', icon: ChartNoAxesCombined },
   { value: 'submissions', label: 'Videos', icon: FileVideo },
   { value: 'accounts', label: 'Accounts', icon: BadgeCheck },
   { value: 'payments', label: 'Payments', icon: CircleDollarSign },
@@ -120,6 +124,7 @@ function AdminPasswordGate({ onUnlocked }: { onUnlocked: () => void }) {
 
 function DashboardView({ tab, data, onSelect, onRefresh }: { tab: Tab; data: AdminDashboard; onSelect: (target: ReviewTarget) => void; onRefresh: () => Promise<void> }) {
   if (tab === 'metrics') return <CreatorEconomicsDashboard data={data} onSelectSubmission={(item) => onSelect({ resource: 'submission', item })} onRefresh={onRefresh} />
+  if (tab === 'attribution') return <CreatorAttributionDashboard data={data} onSelectCreator={(item) => onSelect({ resource: 'creator', item })} onSelectAccount={(item) => onSelect({ resource: 'account', item })} />
   if (tab === 'submissions') return <ResourceSection eyebrow="Content review" title="Video submissions" description="Inspect uploaded content, published posts, and review notes."><SubmissionList items={data.submissions} payments={data.payments} onSelect={onSelect} /></ResourceSection>
   if (tab === 'accounts') return <ResourceSection eyebrow="Account review" title="Social accounts" description="Approve connected TikTok and Instagram identities or request missing information."><AccountList items={data.accounts} onSelect={onSelect} /></ResourceSection>
   if (tab === 'payments') return <ResourceSection eyebrow="Money movement" title="Creator payments" description="Track scheduled, processing, completed, and failed payouts."><PaymentList items={data.payments} onSelect={onSelect} /></ResourceSection>
@@ -302,8 +307,8 @@ function CreatePayment({ submission, onCreated }: { submission: AdminSubmission;
 }
 
 function ReviewDetails({ target }: { target: ReviewTarget }) {
-  if (target.resource === 'creator') return <Details rows={[['Primary contact', target.item.primaryContact || 'Not provided'], ['Payout method', target.item.paymentOption === 'paypal' ? 'PayPal' : target.item.cryptoNetwork || 'Crypto'], ['Payout destination', target.item.paymentOption === 'paypal' ? target.item.paypalEmail || 'Not provided' : target.item.cryptoWalletAddress || 'Not provided']]} />
-  if (target.resource === 'account') return <>{target.item.analyticsVideoUrl ? <div className="mt-6 overflow-hidden rounded-2xl bg-black"><div className="flex items-center justify-between bg-zinc-900 px-4 py-2.5 text-xs text-white"><span className="font-medium">28-day analytics recording</span><span className="text-white/50">{target.item.analyticsSizeBytes ? formatBytes(target.item.analyticsSizeBytes) : null}</span></div><video className="aspect-video w-full object-contain" src={target.item.analyticsVideoUrl} controls preload="metadata" /></div> : null}<AccountTrackingLink url={target.item.trackingLinkUrl} className="mt-6" /><Details rows={[['Creator', target.item.creatorName], ['Platform', capitalize(target.item.platform)], ['Handle', `@${target.item.handle}`], ['Connection', target.item.connectionMethod === 'oauth' ? 'OAuth verified' : 'Manual'], ['Analytics window', target.item.analyticsPeriodDays ? `Past ${target.item.analyticsPeriodDays} days` : 'Not provided'], ['Recording size', target.item.analyticsSizeBytes ? formatBytes(target.item.analyticsSizeBytes) : 'Not provided'], ['Profile', target.item.profileUrl || 'Not provided']]} links={target.item.profileUrl ? { 6: target.item.profileUrl } : undefined} /></>
+  if (target.resource === 'creator') return <><CreatorAttributionReport report={target.item.attribution} accountCount={target.item.accountCount} /><Details rows={[['Primary contact', target.item.primaryContact || 'Not provided'], ['Payout method', target.item.paymentOption === 'paypal' ? 'PayPal' : target.item.cryptoNetwork || 'Crypto'], ['Payout destination', target.item.paymentOption === 'paypal' ? target.item.paypalEmail || 'Not provided' : target.item.cryptoWalletAddress || 'Not provided']]} /></>
+  if (target.resource === 'account') return <>{target.item.analyticsVideoUrl ? <div className="mt-6 overflow-hidden rounded-2xl bg-black"><div className="flex items-center justify-between bg-zinc-900 px-4 py-2.5 text-xs text-white"><span className="font-medium">28-day analytics recording</span><span className="text-white/50">{target.item.analyticsSizeBytes ? formatBytes(target.item.analyticsSizeBytes) : null}</span></div><video className="aspect-video w-full object-contain" src={target.item.analyticsVideoUrl} controls preload="metadata" /></div> : null}<AccountTrackingLink url={target.item.trackingLinkUrl} className="mt-6" /><AccountAttributionReport report={target.item.attribution} /><Details rows={[['Creator', target.item.creatorName], ['Platform', capitalize(target.item.platform)], ['Handle', `@${target.item.handle}`], ['Connection', target.item.connectionMethod === 'oauth' ? 'OAuth verified' : 'Manual'], ['Analytics window', target.item.analyticsPeriodDays ? `Past ${target.item.analyticsPeriodDays} days` : 'Not provided'], ['Recording size', target.item.analyticsSizeBytes ? formatBytes(target.item.analyticsSizeBytes) : 'Not provided'], ['Profile', target.item.profileUrl || 'Not provided']]} links={target.item.profileUrl ? { 6: target.item.profileUrl } : undefined} /></>
   if (target.resource === 'submission') {
     const evidenceSize = target.item.analyticsSizeBytes || target.item.videoSizeBytes
     return <Details rows={[['Creator', target.item.creatorName], ['Format', target.item.title], ['Requirements', target.item.requirementsConfirmedAt ? `Confirmed ${formatDate(target.item.requirementsConfirmedAt)}` : 'Not recorded'], ['Account', target.item.socialHandle ? `@${target.item.socialHandle}` : 'Not connected'], ['Account Eligibility', target.item.socialAccountStatus === 'approved' ? 'Approved' : 'Not connected to an approved account'], ['Evidence', target.item.analyticsScreenshotUrl ? 'Analytics screenshot' : target.item.videoUrl ? 'Legacy video' : 'Not provided'], ['Evidence Size', evidenceSize ? formatBytes(evidenceSize) : 'Not recorded'], ['View Count Threshold', target.item.viewCountThreshold ? `${formatViewCount(target.item.viewCountThreshold)} views` : 'Not recorded'], ['U.S. Audience', target.item.usAudiencePercent !== null ? `${target.item.usAudiencePercent}%` : 'Default 20% Tier 1 Audience'], ['Published Post', target.item.postUrl || 'Not provided']]} links={target.item.postUrl ? { 9: target.item.postUrl } : undefined} />
@@ -334,6 +339,8 @@ function formatViewCount(views: number) { return views === 1_000_000 ? '+1M' : n
 function normalizeAdminDashboard(data: AdminDashboard): AdminDashboard {
   return {
     ...data,
+    creators: data.creators.map((creator) => ({ ...creator, accountCount: creator.accountCount || 0, attribution: normalizeAttributionReport(creator.attribution) })),
+    accounts: data.accounts.map((account) => ({ ...account, attribution: normalizeAttributionReport(account.attribution) })),
     attributionMetrics: data.attributionMetrics || [],
     settings: data.settings || {
       id: 'default',
@@ -345,6 +352,32 @@ function normalizeAdminDashboard(data: AdminDashboard): AdminDashboard {
       compensationCapRate: 0.35,
       conversionBonusCapRate: 0.25,
     },
+  }
+}
+
+function normalizeAttributionReport(report?: Partial<AdminAttributionReport>): AdminAttributionReport {
+  return {
+    clicks: report?.clicks || 0,
+    uniqueClicks: report?.uniqueClicks || 0,
+    botClicks: report?.botClicks || 0,
+    signups: report?.signups || 0,
+    installs: report?.installs || 0,
+    checkouts: report?.checkouts || 0,
+    purchases: report?.purchases || 0,
+    paidCustomers: report?.paidCustomers || 0,
+    refunds: report?.refunds || 0,
+    disputes: report?.disputes || 0,
+    grossRevenueCents: report?.grossRevenueCents || 0,
+    reversedRevenueCents: report?.reversedRevenueCents || 0,
+    revenueCents: report?.revenueCents || 0,
+    firstTouchSignups: report?.firstTouchSignups || 0,
+    firstTouchPaidCustomers: report?.firstTouchPaidCustomers || 0,
+    firstTouchRevenueCents: report?.firstTouchRevenueCents || 0,
+    recentClicks: report?.recentClicks || 0,
+    recentSignups: report?.recentSignups || 0,
+    recentInstalls: report?.recentInstalls || 0,
+    recentPaidCustomers: report?.recentPaidCustomers || 0,
+    recentRevenueCents: report?.recentRevenueCents || 0,
   }
 }
 
