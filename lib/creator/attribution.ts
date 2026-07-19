@@ -615,8 +615,8 @@ function buildIosAppStoreUrl(slug: string) {
 
 function buildDeepLinkUrl(base: string, token: string, slug: string) {
   const url = new URL(base)
+  if (url.protocol === 'mogging:' && url.hostname === 'r') url.pathname = `/${slug}`
   url.searchParams.set('attribution_token', token)
-  url.searchParams.set('creator', slug)
   return url.toString()
 }
 
