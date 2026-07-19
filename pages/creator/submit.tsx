@@ -11,11 +11,10 @@ import { CreatorHeader, CreatorShell, Field, fieldClass } from '@/components/cre
 import type { CreatorDashboard } from '@/components/creator/types'
 import { apiGet, apiPost, ApiClientError } from '@/lib/api/client'
 import { ACTIVE_CREATOR_SUBMISSION_FORMATS, type CreatorSubmissionFormat } from '@/lib/creator/formats'
+import { calculateCreatorPayout, CREATOR_US_AUDIENCE_TIERS, CREATOR_VIEW_THRESHOLDS } from '@/lib/creator/payouts'
 import { cn } from '@/lib/utils'
 
 const analyticsImageTypes = ['image/jpeg', 'image/png', 'image/webp']
-const viewCountThresholds = [40_000, 100_000, 250_000, 500_000, 750_000, 1_000_000] as const
-const usAudiencePercentages = [22.5, 25, 27.5, 30, 32.5, 35, 37.5, 40] as const
 
 export default function CreatorSubmitPage() {
   return <CreatorShell><SubmitContent /></CreatorShell>
@@ -86,6 +85,9 @@ function SubmitContent() {
   const selectedFormat = ACTIVE_CREATOR_SUBMISSION_FORMATS.find((format) => format.id === formatId)
   const platform = selectedAccount ? (selectedAccount.platform === 'instagram' ? 'Instagram Reels' : 'TikTok') : 'Unlinked'
   const linkedToApprovedAccount = selectedAccount?.status === 'approved'
+  const potentialEarnings = viewCountThreshold
+    ? calculateCreatorPayout(Number(viewCountThreshold), true, usAudiencePercent ? Number(usAudiencePercent) : null).payout
+    : null
 
   return (
     <>
@@ -110,9 +112,14 @@ function SubmitContent() {
               {analyticsScreenshot ? <div className="flex items-center gap-3 rounded-2xl border border-zinc-200 bg-zinc-50 p-3"><span className="grid size-11 shrink-0 place-items-center rounded-xl bg-white shadow-sm"><ImageIcon className="size-5" /></span><div className="min-w-0 flex-1"><p className="truncate text-sm font-medium">{analyticsScreenshot.name}</p><p className="mt-0.5 text-xs text-zinc-500">{formatBytes(analyticsScreenshot.size)} · analytics evidence</p></div><button type="button" className="grid size-9 place-items-center rounded-full text-zinc-500 transition-[background-color,color,transform] duration-150 ease-out hover:bg-white hover:text-black active:scale-[0.96]" onClick={() => { setAnalyticsScreenshot(null); if (inputRef.current) inputRef.current.value = '' }} aria-label="Remove analytics screenshot"><X className="size-4" /></button></div> : <button type="button" onClick={() => inputRef.current?.click()} className="group grid min-h-44 place-items-center rounded-2xl border border-dashed border-zinc-300 bg-zinc-50/50 p-6 text-center transition-[border-color,background-color,transform] duration-150 ease-out hover:border-zinc-400 hover:bg-zinc-50 active:scale-[0.995]"><span><span className="mx-auto grid size-11 place-items-center rounded-xl border border-zinc-200 bg-white shadow-sm transition-transform duration-200 ease-out group-hover:-translate-y-0.5"><UploadCloud className="size-5" /></span><span className="mt-4 block text-sm font-medium">Choose analytics screenshot</span><span className="mt-1 block max-w-md text-xs leading-5 text-zinc-500">Include traffic sources and audience location so the team can verify where views came from.</span></span></button>}
             </Field>
             <div className="grid gap-5 sm:grid-cols-2">
-              <Field label="View Count Threshold" hint="Required"><Select value={viewCountThreshold || undefined} onValueChange={setViewCountThreshold} required><SelectTrigger><SelectValue placeholder="Choose a Threshold" /></SelectTrigger><SelectContent>{viewCountThresholds.map((threshold) => <SelectItem key={threshold} value={String(threshold)}>{formatViewCount(threshold)} views</SelectItem>)}</SelectContent></Select></Field>
-              <Field label="U.S. Audience" hint="Optional · based on screenshot"><Select value={usAudiencePercent || undefined} onValueChange={(value) => setUsAudiencePercent(value === 'not_provided' ? '' : value)}><SelectTrigger><SelectValue placeholder="Default 20% Tier 1 Audience" /></SelectTrigger><SelectContent><SelectItem value="not_provided">Default 20% Tier 1 Audience</SelectItem>{usAudiencePercentages.map((percentage) => <SelectItem key={percentage} value={String(percentage)}>{percentage}%</SelectItem>)}</SelectContent></Select></Field>
+              <Field label="View Count Threshold" hint="Required"><Select value={viewCountThreshold || undefined} onValueChange={setViewCountThreshold} required><SelectTrigger><SelectValue placeholder="Choose a Threshold" /></SelectTrigger><SelectContent>{CREATOR_VIEW_THRESHOLDS.map((threshold) => <SelectItem key={threshold.views} value={String(threshold.views)}>{threshold.label} views</SelectItem>)}</SelectContent></Select></Field>
+              <div className="grid gap-2">
+                <div className="flex items-center justify-between text-sm font-medium"><label htmlFor="submission-audience-tier">Audience Tier</label><span className="text-xs font-normal text-zinc-400">Based on screenshot</span></div>
+                <Select value={usAudiencePercent || 'base'} onValueChange={(value) => setUsAudiencePercent(value === 'base' ? '' : value)}><SelectTrigger id="submission-audience-tier"><SelectValue /></SelectTrigger><SelectContent><SelectItem value="base">20%+ combined Tier-1 · base rate</SelectItem>{CREATOR_US_AUDIENCE_TIERS.map((percentage) => <SelectItem key={percentage} value={String(percentage)}>{percentage === 40 ? '40%+ U.S.' : `${percentage}% U.S.`}</SelectItem>)}</SelectContent></Select>
+                <p className="text-[11px] leading-5 text-zinc-500">Choose the U.S. percentage shown in your analytics. If it is below 22.5%, use the combined Tier-1 base rate. <Link href="/creator/guide#audience-tiers" className="font-semibold text-zinc-700 underline decoration-zinc-300 underline-offset-4 transition-colors hover:text-black">See audience eligibility in the guide.</Link></p>
+              </div>
             </div>
+            <div className="flex flex-wrap items-baseline gap-x-2 gap-y-1 border-t border-zinc-100 pt-4 text-sm" aria-live="polite"><span className="font-medium text-zinc-500">Potential Earnings:</span><strong className="font-semibold tabular-nums text-black">{potentialEarnings === null ? 'Choose a view threshold' : `$${potentialEarnings}`}</strong>{potentialEarnings !== null ? <span className="text-xs text-zinc-400">estimated after verification</span> : null}</div>
             <div className="flex flex-col-reverse gap-2 sm:flex-row sm:justify-between"><Button type="button" variant="ghost" className="h-11 rounded-xl" onClick={() => setStep(1)}><ChevronLeft />Back to post details</Button><Button className="h-11 rounded-xl px-5">Review submission</Button></div>
           </form>
         </section>
