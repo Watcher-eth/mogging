@@ -1,3 +1,13 @@
+ALTER TYPE "public"."creator_attribution_event_type" ADD VALUE IF NOT EXISTS 'subscription_cancellation';
+--> statement-breakpoint
+ALTER TYPE "public"."creator_attribution_event_type" ADD VALUE IF NOT EXISTS 'subscription_expiration';
+--> statement-breakpoint
+ALTER TYPE "public"."creator_attribution_event_type" ADD VALUE IF NOT EXISTS 'subscription_billing_issue';
+--> statement-breakpoint
+ALTER TYPE "public"."creator_attribution_event_type" ADD VALUE IF NOT EXISTS 'subscription_reactivation';
+--> statement-breakpoint
+UPDATE "creator_tracking_links" SET "deep_link_base_url" = 'mogging://r' WHERE "deep_link_base_url" <> 'mogging://r';
+--> statement-breakpoint
 CREATE TABLE "mobile_creator_attributions" (
 	"id" text PRIMARY KEY NOT NULL,
 	"mobile_install_id" text NOT NULL,

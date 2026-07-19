@@ -21,6 +21,12 @@ const webhookSchema = z.object({
     price: z.number().finite().nullable().optional(),
     currency: z.string().max(10).nullable().optional(),
     environment: z.string().max(40).nullable().optional(),
+    store: z.string().max(40).nullable().optional(),
+    cancel_reason: z.string().max(100).nullable().optional(),
+    expiration_reason: z.string().max(100).nullable().optional(),
+    purchased_at_ms: z.number().int().nonnegative().nullable().optional(),
+    expiration_at_ms: z.number().int().nonnegative().nullable().optional(),
+    grace_period_expiration_at_ms: z.number().int().nonnegative().nullable().optional(),
     subscriber_attributes: z.record(z.string(), subscriberAttributeSchema).optional(),
   }).passthrough(),
 })
@@ -43,6 +49,12 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       price: event.price_in_purchased_currency ?? event.price,
       currency: event.currency,
       environment: event.environment,
+      store: event.store,
+      cancelReason: event.cancel_reason,
+      expirationReason: event.expiration_reason,
+      purchasedAtMs: event.purchased_at_ms,
+      expirationAtMs: event.expiration_at_ms,
+      gracePeriodExpirationAtMs: event.grace_period_expiration_at_ms,
       subscriberAttributes: event.subscriber_attributes,
     })
     return json(res, 200, { received: true })

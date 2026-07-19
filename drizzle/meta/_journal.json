@@ -155,6 +155,13 @@
       "when": 1784476800000,
       "tag": "0022_all_creator_account_links",
       "breakpoints": true
+    },
+    {
+      "idx": 22,
+      "version": "7",
+      "when": 1784480400000,
+      "tag": "0023_mobile_creator_attribution",
+      "breakpoints": true
     }
   ]
 }

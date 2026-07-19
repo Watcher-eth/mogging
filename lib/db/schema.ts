@@ -51,6 +51,10 @@ export const creatorAttributionEventTypeEnum = pgEnum('creator_attribution_event
   'payment',
   'refund',
   'dispute',
+  'subscription_cancellation',
+  'subscription_expiration',
+  'subscription_billing_issue',
+  'subscription_reactivation',
 ])
 
 export type PaymentProduct =

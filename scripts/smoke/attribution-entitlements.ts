@@ -45,7 +45,7 @@ try {
     socialAccountId: socialAccount.id,
     slug,
     publicUrl: `https://www.mogging.com/r/${slug}`,
-    deepLinkBaseUrl: 'mogging://attribution',
+    deepLinkBaseUrl: 'mogging://r',
     iosAppStoreUrl: 'https://apps.apple.com/us/app/mogging-face-rating/id6771414050',
   }).returning({ id: schema.creatorTrackingLinks.id, slug: schema.creatorTrackingLinks.slug })
   trackingLinkId = trackingLink.id

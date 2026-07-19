@@ -7,6 +7,7 @@ import { env } from '@/lib/env'
 
 export const CREATOR_ATTRIBUTION_COOKIE = 'mogging_creator_attribution'
 export const CREATOR_LINK_BASE_URL = 'https://www.mogging.com'
+export const CREATOR_APP_DEEP_LINK = 'mogging://r'
 const ATTRIBUTION_MAX_AGE_SECONDS = 60 * 60 * 24 * 30
 const DEFAULT_IOS_APP_STORE_URL = 'https://apps.apple.com/us/app/mogging-face-rating/id6771414050'
 
@@ -34,10 +35,11 @@ export async function ensureCreatorTrackingLink(socialAccountId: string) {
   })
   if (existing) {
     const publicUrl = `${CREATOR_LINK_BASE_URL}/r/${existing.slug}`
-    if (!existing.isActive || existing.publicUrl !== publicUrl) {
+    if (!existing.isActive || existing.publicUrl !== publicUrl || existing.deepLinkBaseUrl !== CREATOR_APP_DEEP_LINK) {
       const [updated] = await db.update(schema.creatorTrackingLinks).set({
         isActive: true,
         publicUrl,
+        deepLinkBaseUrl: CREATOR_APP_DEEP_LINK,
         updatedAt: new Date(),
       }).where(eq(schema.creatorTrackingLinks.id, existing.id)).returning()
       return updated
@@ -57,12 +59,12 @@ export async function ensureCreatorTrackingLink(socialAccountId: string) {
     socialAccountId,
     slug,
     publicUrl: `${CREATOR_LINK_BASE_URL}/r/${slug}`,
-    deepLinkBaseUrl: env.NEXT_PUBLIC_ATTRIBUTION_DEEP_LINK || 'mogging://attribution',
+    deepLinkBaseUrl: CREATOR_APP_DEEP_LINK,
     iosAppStoreUrl,
     androidAppStoreUrl: env.NEXT_PUBLIC_ANDROID_APP_STORE_URL || null,
   }).onConflictDoUpdate({
     target: schema.creatorTrackingLinks.socialAccountId,
-    set: { isActive: true, updatedAt: new Date() },
+    set: { isActive: true, publicUrl: `${CREATOR_LINK_BASE_URL}/r/${slug}`, deepLinkBaseUrl: CREATOR_APP_DEEP_LINK, updatedAt: new Date() },
   }).returning()
   return link
 }
@@ -278,7 +280,31 @@ export type RevenueCatCreatorEvent = {
   price?: number | null
   currency?: string | null
   environment?: string | null
+  store?: string | null
+  cancelReason?: string | null
+  expirationReason?: string | null
+  purchasedAtMs?: number | null
+  expirationAtMs?: number | null
+  gracePeriodExpirationAtMs?: number | null
   subscriberAttributes?: Record<string, { value?: unknown }>
+}
+
+type RevenueCatAttributionEventMapping = {
+  eventType: 'payment' | 'refund' | 'subscription_cancellation' | 'subscription_expiration' | 'subscription_billing_issue' | 'subscription_reactivation'
+  dedupeCategory: 'payment' | 'refund' | 'lifecycle'
+  amountMultiplier: -1 | 0 | 1
+}
+
+export function mapRevenueCatAttributionEvent(type: string): RevenueCatAttributionEventMapping | null {
+  if (['INITIAL_PURCHASE', 'RENEWAL', 'NON_RENEWING_PURCHASE', 'REFUND_REVERSED'].includes(type)) {
+    return { eventType: 'payment', dedupeCategory: 'payment', amountMultiplier: 1 }
+  }
+  if (type === 'REFUND') return { eventType: 'refund', dedupeCategory: 'refund', amountMultiplier: -1 }
+  if (type === 'CANCELLATION') return { eventType: 'subscription_cancellation', dedupeCategory: 'lifecycle', amountMultiplier: 0 }
+  if (type === 'EXPIRATION') return { eventType: 'subscription_expiration', dedupeCategory: 'lifecycle', amountMultiplier: 0 }
+  if (type === 'BILLING_ISSUE') return { eventType: 'subscription_billing_issue', dedupeCategory: 'lifecycle', amountMultiplier: 0 }
+  if (type === 'UNCANCELLATION') return { eventType: 'subscription_reactivation', dedupeCategory: 'lifecycle', amountMultiplier: 0 }
+  return null
 }
 
 export async function recordRevenueCatCreatorEvent(event: RevenueCatCreatorEvent) {
@@ -307,6 +333,8 @@ export async function recordRevenueCatCreatorEvent(event: RevenueCatCreatorEvent
     userId: touch.userId,
   }
   const amountCents = Math.max(0, Math.round((event.price || 0) * 100))
+  const mapping = mapRevenueCatAttributionEvent(event.type)
+  if (!mapping) return null
   const metadata = {
     provider: 'revenuecat',
     revenueCatEventType: event.type,
@@ -314,29 +342,22 @@ export async function recordRevenueCatCreatorEvent(event: RevenueCatCreatorEvent
     transactionId: event.transactionId || null,
     originalTransactionId: event.originalTransactionId || null,
     environment: event.environment || null,
+    store: event.store || null,
+    cancelReason: event.cancelReason || null,
+    expirationReason: event.expirationReason || null,
+    purchasedAtMs: event.purchasedAtMs || null,
+    expirationAtMs: event.expirationAtMs || null,
+    gracePeriodExpirationAtMs: event.gracePeriodExpirationAtMs || null,
   }
 
-  if (['INITIAL_PURCHASE', 'RENEWAL', 'NON_RENEWING_PURCHASE', 'REFUND_REVERSED'].includes(event.type)) {
-    return insertAttributionEvent({
-      ...context,
-      eventType: 'payment',
-      dedupeKey: `creator-payment:revenuecat:${event.id}`,
-      amountCents,
-      currency: event.currency || 'USD',
-      metadata,
-    })
-  }
-  if (event.type === 'REFUND') {
-    return insertAttributionEvent({
-      ...context,
-      eventType: 'refund',
-      dedupeKey: `creator-refund:revenuecat:${event.id}`,
-      amountCents: -amountCents,
-      currency: event.currency || 'USD',
-      metadata,
-    })
-  }
-  return null
+  return insertAttributionEvent({
+    ...context,
+    eventType: mapping.eventType,
+    dedupeKey: `creator-${mapping.dedupeCategory}:revenuecat:${event.id}`,
+    amountCents: amountCents * mapping.amountMultiplier,
+    currency: event.currency || 'USD',
+    metadata,
+  })
 }
 
 export function publicCreatorAttributionContext(context: CreatorAttributionContext): PublicCreatorAttributionContext {
@@ -548,7 +569,7 @@ async function contextFromStripeMetadata(metadata: Record<string, unknown> | nul
 }
 
 async function insertAttributionEvent(input: CreatorAttributionContext & {
-  eventType: 'signup' | 'install' | 'checkout' | 'payment' | 'refund' | 'dispute'
+  eventType: 'signup' | 'install' | 'checkout' | 'payment' | 'refund' | 'dispute' | 'subscription_cancellation' | 'subscription_expiration' | 'subscription_billing_issue' | 'subscription_reactivation'
   dedupeKey: string
   amountCents?: number
   currency?: string
