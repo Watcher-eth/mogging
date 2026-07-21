@@ -418,6 +418,56 @@ export const stripeWebhookEvents = pgTable('stripe_webhook_events', {
   createdAt: timestamp('created_at', { mode: 'date' }).notNull().defaultNow(),
 })
 
+export const paymentHandoffs = pgTable(
+  'payment_handoffs',
+  {
+    id: text('id')
+      .primaryKey()
+      .$defaultFn(() => crypto.randomUUID()),
+    tokenHash: text('token_hash').notNull(),
+    userId: text('user_id')
+      .notNull()
+      .references(() => users.id, { onDelete: 'cascade' }),
+    stripeCheckoutSessionId: text('stripe_checkout_session_id').notNull(),
+    expiresAt: timestamp('expires_at', { mode: 'date' }).notNull(),
+    consumedAt: timestamp('consumed_at', { mode: 'date' }),
+    consumedByInstallId: text('consumed_by_install_id'),
+    createdAt: timestamp('created_at', { mode: 'date' }).notNull().defaultNow(),
+  },
+  (table) => ({
+    tokenHashIdx: uniqueIndex('payment_handoffs_token_hash_unique').on(table.tokenHash),
+    sessionIdx: uniqueIndex('payment_handoffs_checkout_session_unique').on(table.stripeCheckoutSessionId),
+    userIdx: index('payment_handoffs_user_id_idx').on(table.userId),
+    expiresAtIdx: index('payment_handoffs_expires_at_idx').on(table.expiresAt),
+  })
+)
+
+export const analyticsEvents = pgTable(
+  'analytics_events',
+  {
+    id: text('id')
+      .primaryKey()
+      .$defaultFn(() => crypto.randomUUID()),
+    eventId: text('event_id').notNull(),
+    eventName: text('event_name').notNull(),
+    accountId: text('account_id').references(() => users.id, { onDelete: 'set null' }),
+    mobileInstallId: text('mobile_install_id'),
+    anonymousId: text('anonymous_id'),
+    sessionId: text('session_id'),
+    platform: text('platform').notNull(),
+    source: text('source'),
+    properties: jsonb('properties').$type<Record<string, unknown>>().notNull().default({}),
+    occurredAt: timestamp('occurred_at', { mode: 'date' }).notNull(),
+    receivedAt: timestamp('received_at', { mode: 'date' }).notNull().defaultNow(),
+  },
+  (table) => ({
+    eventIdIdx: uniqueIndex('analytics_events_event_id_unique').on(table.eventId),
+    accountIdx: index('analytics_events_account_id_idx').on(table.accountId),
+    nameOccurredIdx: index('analytics_events_name_occurred_at_idx').on(table.eventName, table.occurredAt),
+    installIdx: index('analytics_events_mobile_install_id_idx').on(table.mobileInstallId),
+  })
+)
+
 export const creatorProfiles = pgTable(
   'creator_profiles',
   {

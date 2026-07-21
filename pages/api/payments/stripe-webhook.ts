@@ -1,4 +1,5 @@
 import type { NextApiRequest, NextApiResponse } from 'next'
+import { eq } from 'drizzle-orm'
 import Stripe from 'stripe'
 import { db, schema } from '@/lib/db'
 import { env } from '@/lib/env'
@@ -10,6 +11,7 @@ import {
 import { sendPaymentActivationEmailForCheckoutSession } from '@/lib/payments/activation-email'
 import { grantEntitlementFromCheckoutSession, revokePaymentIntentEntitlement, updateSubscriptionEntitlement } from '@/lib/payments/entitlements'
 import { getStripe } from '@/lib/payments/stripe'
+import { recordServerEvent } from '@/lib/analytics/events'
 
 export const config = {
   api: {
@@ -41,22 +43,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     return res.status(400).json({ error: { code: 'bad_request', message: 'Invalid Stripe webhook signature' } })
   }
 
-  const existing = await db.query.stripeWebhookEvents.findFirst({
-    where: (events, { eq }) => eq(events.id, event.id),
-  })
-
-  if (existing) {
-    return res.status(200).json({ received: true, duplicate: true })
-  }
-
-  try {
-    await handleStripeEvent(event)
-  } catch (error) {
-    console.error('Stripe webhook handling failed', event.id, event.type, error)
-    return res.status(500).json({ error: { code: 'internal_error', message: 'Webhook handling failed' } })
-  }
-
-  await db
+  const [reservation] = await db
     .insert(schema.stripeWebhookEvents)
     .values({
       id: event.id,
@@ -65,6 +52,19 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     .onConflictDoNothing({
       target: schema.stripeWebhookEvents.id,
     })
+    .returning({ id: schema.stripeWebhookEvents.id })
+
+  if (!reservation) {
+    return res.status(200).json({ received: true, duplicate: true })
+  }
+
+  try {
+    await handleStripeEvent(event)
+  } catch (error) {
+    console.error('Stripe webhook handling failed', event.id, event.type, error)
+    await db.delete(schema.stripeWebhookEvents).where(eq(schema.stripeWebhookEvents.id, event.id))
+    return res.status(500).json({ error: { code: 'internal_error', message: 'Webhook handling failed' } })
+  }
 
   return res.status(200).json({ received: true })
 }
@@ -78,6 +78,16 @@ async function handleStripeEvent(event: Stripe.Event) {
       })
       if (isLegacyCheckoutProduct(expanded.metadata?.product)) return
       await grantEntitlementFromCheckoutSession({ session: expanded })
+      await recordServerEvent({
+        eventName: 'checkout_completed',
+        accountId: expanded.metadata?.accountId || expanded.metadata?.userId,
+        sessionId: expanded.id,
+        source: 'stripe_webhook',
+        properties: {
+          product: expanded.metadata?.product || 'unknown',
+          mode: expanded.mode || 'unknown',
+        },
+      })
       await recordCreatorCheckoutPayment(expanded)
       await sendPaymentActivationEmailForCheckoutSession({ session: expanded }).catch((error) => {
         console.error('Payment activation email failed', expanded.id, error)

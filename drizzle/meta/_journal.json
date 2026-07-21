@@ -169,6 +169,13 @@
       "when": 1784484000000,
       "tag": "0024_creator_paywall_view",
       "breakpoints": true
+    },
+    {
+      "idx": 24,
+      "version": "7",
+      "when": 1784563200000,
+      "tag": "0025_account_payment_handoffs",
+      "breakpoints": true
     }
   ]
 }

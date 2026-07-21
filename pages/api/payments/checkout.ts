@@ -1,8 +1,7 @@
 import type { NextApiRequest, NextApiResponse } from 'next'
 import { z } from 'zod'
 import { ApiError, handleApiError, json, methodNotAllowed, parseBody } from '@/lib/api/http'
-import { getOrSetAnonymousActorId } from '@/lib/auth/anonymous'
-import { getAuthSession } from '@/lib/auth/session'
+import { getRequestUserId } from '@/lib/auth/mobile-session'
 import { env } from '@/lib/env'
 import { recordCreatorCheckout, resolveCreatorAttribution, stripeAttributionMetadata } from '@/lib/creator/attribution'
 import { getCheckoutLineItem, getProductConfig } from '@/lib/payments/entitlements'
@@ -27,8 +26,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     }
 
     const input = parseBody(checkoutSchema, req.body)
-    const authSession = await getAuthSession(req, res)
-    const anonymousActorId = authSession?.user?.id ? null : getOrSetAnonymousActorId(req, res)
+    const accountId = await getRequestUserId(req, res)
+    if (!accountId) throw new ApiError(401, 'Sign in before starting checkout')
     const origin = getRequestOrigin(req)
     const productId: PaymentProduct = input.imageCount > 1 ? 'evaluation_pack_3' : 'evaluation'
     const product = getProductConfig(productId)
@@ -36,8 +35,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     const attribution = await resolveCreatorAttribution({
       req,
       owner: {
-        userId: authSession?.user?.id ?? null,
-        anonymousActorId,
+        userId: accountId,
+        anonymousActorId: null,
         mobileInstallId: input.mobileInstallId,
       },
     })
@@ -45,18 +44,18 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       mode: product.mode,
       payment_method_types: ['card'],
       allow_promotion_codes: true,
-      client_reference_id: input.mobileInstallId,
+      client_reference_id: accountId,
       line_items: [getCheckoutLineItem(productId)],
       metadata: {
         product: productId,
         mobileInstallId: input.mobileInstallId,
         source: 'web_analysis',
         imageCount: String(input.imageCount),
-        userId: authSession?.user?.id ?? '',
-        anonymousActorId: anonymousActorId ?? '',
+        accountId,
+        userId: accountId,
         ...stripeAttributionMetadata(attribution),
       },
-      success_url: `${origin}/analysis?checkout=success&product=${productId}&install_id=${encodeURIComponent(input.mobileInstallId)}&session_id={CHECKOUT_SESSION_ID}`,
+      success_url: `${origin}/app/handoff?session_id={CHECKOUT_SESSION_ID}`,
       cancel_url: `${origin}/analysis?checkout=cancelled`,
     })
 

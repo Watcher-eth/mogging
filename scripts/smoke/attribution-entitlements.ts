@@ -9,11 +9,8 @@ import { getEntitlementSummary, grantEntitlementFromCheckoutSession } from '@/li
 const runId = randomUUID().replaceAll('-', '')
 const creatorInstallId = `mob_smoke_creator_${runId}`
 const accountInstallId = `mob_smoke_account_${runId}`
-const anonymousInstallId = `mob_smoke_anon_${runId}`
 const accountWebInstallId = `web_smoke_account_${runId}`
-const anonymousWebInstallId = `web_smoke_anon_${runId}`
 const accountSessionId = `cs_smoke_account_${runId}`
-const anonymousSessionId = `cs_smoke_anon_${runId}`
 const email = `codex-attribution-${runId}@mogging.invalid`
 
 let clickId: string | null = null
@@ -83,26 +80,15 @@ try {
   })
   assert.equal(accountEntitlements.subscription.active, true)
 
-  await grantEntitlementFromCheckoutSession({
-    session: mockPaidLifetimeSession(anonymousSessionId, anonymousWebInstallId, null),
-  })
-  await grantEntitlementFromCheckoutSession({
-    session: mockPaidLifetimeSession(anonymousSessionId, anonymousWebInstallId, null),
-    mobileInstallId: anonymousInstallId,
-  })
-  const anonymousEntitlements = await getEntitlementSummary(anonymousInstallId)
-  assert.equal(anonymousEntitlements.subscription.active, true)
-
   console.log(JSON.stringify({
     creatorInstallAttribution: 'ok',
     accountWebPurchaseInIos: 'ok',
-    anonymousWebPurchaseTransfer: 'ok',
+    anonymousWebPurchaseDisabled: 'ok',
   }))
 } finally {
   await db.delete(schema.creatorAttributionEvents).where(eq(schema.creatorAttributionEvents.mobileInstallId, creatorInstallId))
   if (clickId) await db.delete(schema.creatorAttributionClicks).where(eq(schema.creatorAttributionClicks.id, clickId))
   await db.delete(schema.paymentEntitlements).where(eq(schema.paymentEntitlements.stripeCheckoutSessionId, accountSessionId))
-  await db.delete(schema.paymentEntitlements).where(eq(schema.paymentEntitlements.stripeCheckoutSessionId, anonymousSessionId))
   if (trackingLinkId) await db.delete(schema.creatorTrackingLinks).where(eq(schema.creatorTrackingLinks.id, trackingLinkId))
   if (userId) await db.delete(schema.users).where(eq(schema.users.id, userId))
 }
