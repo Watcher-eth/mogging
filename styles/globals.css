@@ -107,10 +107,95 @@
   animation: creator-enter 220ms cubic-bezier(0.22, 1, 0.36, 1) both;
 }
 
+@keyframes cta-scan {
+  from { transform: translateY(0); opacity: 0.72; }
+  to { transform: translateY(calc(100cqh - 4px)); opacity: 0.94; }
+}
+
+.cta-scan-line {
+  animation: cta-scan 2100ms cubic-bezier(0.65, 0, 0.35, 1) infinite alternate;
+}
+
+@keyframes cta-template-enter {
+  from { opacity: 0; transform: scale(0.985); }
+  to { opacity: 1; transform: scale(1); }
+}
+
+@keyframes cta-template-item-enter {
+  from { opacity: 0; transform: translateY(8px); filter: blur(2px); }
+  to { opacity: 1; transform: translateY(0); filter: blur(0); }
+}
+
+@keyframes cta-overlay-draw {
+  from { opacity: 0; stroke-dashoffset: 1; }
+  to { opacity: 1; stroke-dashoffset: 0; }
+}
+
+@keyframes cta-overlay-point-enter {
+  from { opacity: 0; transform: scale(0.92); }
+  to { opacity: 1; transform: scale(1); }
+}
+
+@keyframes cta-overlay-fade {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+.cta-template-enter {
+  animation: cta-template-enter 260ms cubic-bezier(0.23, 1, 0.32, 1) both;
+}
+
+.cta-template-item {
+  opacity: 0;
+  animation: cta-template-item-enter 520ms cubic-bezier(0.23, 1, 0.32, 1) both;
+}
+
+.cta-overlay-draw {
+  opacity: 0;
+  stroke-dasharray: 1;
+  stroke-dashoffset: 1;
+  animation-name: cta-overlay-draw;
+  animation-timing-function: cubic-bezier(0.16, 1, 0.3, 1);
+  animation-fill-mode: both;
+}
+
+.cta-overlay-point {
+  opacity: 0;
+  transform-box: fill-box;
+  transform-origin: center;
+  animation-name: cta-overlay-point-enter;
+  animation-timing-function: cubic-bezier(0.2, 0.9, 0.22, 1);
+  animation-fill-mode: both;
+}
+
+.cta-overlay-fade {
+  opacity: 0;
+  animation-name: cta-overlay-fade;
+  animation-timing-function: cubic-bezier(0.16, 1, 0.3, 1);
+  animation-fill-mode: both;
+}
+
 @media (prefers-reduced-motion: reduce) {
   .creator-enter,
   .creator-list-item {
     animation: none;
+  }
+
+  .cta-scan-line {
+    animation: none;
+    top: 46%;
+  }
+
+  .cta-template-enter,
+  .cta-template-item,
+  .cta-overlay-draw,
+  .cta-overlay-point,
+  .cta-overlay-fade {
+    animation: none;
+    filter: none;
+    opacity: 1;
+    transform: none;
+    stroke-dashoffset: 0;
   }
 }
 
