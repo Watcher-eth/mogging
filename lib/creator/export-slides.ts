@@ -1,6 +1,6 @@
 import type { ContentSlide, GeneratorImage } from './content-generator'
 import { getOverlayPreset } from './content-generator'
-import { resolveOverlayPreset, type ResolvedPrimitive } from '../../../MoggingMobile/src/overlay-engine/resolve'
+import { resolveOverlayPreset, type ResolvedPrimitive } from '@/lib/creator/mobile-overlay-engine/resolve'
 
 type RenderArgs = { slide: ContentSlide; images: GeneratorImage[]; width: number; height: number }
 

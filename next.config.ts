@@ -21,11 +21,6 @@ const immutableAssetPaths = [
 
 const nextConfig: NextConfig = {
   reactStrictMode: true,
-  // The creator generator reuses the canonical pure-TypeScript overlay engine
-  // from the sibling mobile project so web and mobile resolve identical geometry.
-  experimental: {
-    externalDir: true,
-  },
   async headers() {
     return [
       {

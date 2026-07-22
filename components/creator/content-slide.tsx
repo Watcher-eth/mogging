@@ -3,7 +3,7 @@ import { useEffect, useMemo, useRef, useState, type CSSProperties, type ReactNod
 import type { FaceLandmarksPayload } from '@/lib/analysis/landmarks'
 import type { ContentSlide, GeneratorImage, SlideTemplateId } from '@/lib/creator/content-generator'
 import { getOverlayPreset } from '@/lib/creator/content-generator'
-import { resolveOverlayPreset, type ResolvedPrimitive } from '../../../MoggingMobile/src/overlay-engine/resolve'
+import { resolveOverlayPreset, type ResolvedPrimitive } from '@/lib/creator/mobile-overlay-engine/resolve'
 
 type Size = { width: number; height: number }
 

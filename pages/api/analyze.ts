@@ -167,7 +167,7 @@ async function createDefaultShare({
 }
 
 export const config = {
-  maxDuration: 60,
+  maxDuration: 120,
   api: {
     bodyParser: {
       sizeLimit: '12mb',
