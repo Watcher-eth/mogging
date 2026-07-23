@@ -4,7 +4,9 @@ import { useMemo, useState, type FormEvent } from 'react'
 import {
   ArrowUpRight,
   BadgeCheck,
+  BookOpen,
   ChartNoAxesCombined,
+  CheckCircle2,
   CircleDollarSign,
   FileVideo,
   Gauge,
@@ -15,10 +17,12 @@ import {
   ShieldCheck,
   UserRound,
   UsersRound,
+  XCircle,
 } from 'lucide-react'
 import useSWR from 'swr'
 import { toast } from 'sonner'
 import { Button } from '@/components/ui/button'
+import type { CreatorCtaLibraryItem } from '@/lib/creator/cta-library'
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { apiGet, apiPatch, apiPost, apiRequest, ApiClientError } from '@/lib/api/client'
@@ -44,6 +48,7 @@ const tabs = [
   { value: 'metrics', label: 'Metrics', icon: Gauge },
   { value: 'attribution', label: 'Attribution', icon: ChartNoAxesCombined },
   { value: 'submissions', label: 'Videos', icon: FileVideo },
+  { value: 'cta-library', label: 'CTA Library', icon: BookOpen },
   { value: 'accounts', label: 'Accounts', icon: BadgeCheck },
   { value: 'payments', label: 'Payments', icon: CircleDollarSign },
   { value: 'creators', label: 'Registrations', icon: UsersRound },
@@ -126,10 +131,37 @@ function DashboardView({ tab, data, onSelect, onRefresh }: { tab: Tab; data: Adm
   if (tab === 'metrics') return <CreatorEconomicsDashboard data={data} onSelectSubmission={(item) => onSelect({ resource: 'submission', item })} onRefresh={onRefresh} />
   if (tab === 'attribution') return <CreatorAttributionDashboard data={data} onSelectCreator={(item) => onSelect({ resource: 'creator', item })} onSelectAccount={(item) => onSelect({ resource: 'account', item })} />
   if (tab === 'submissions') return <ResourceSection eyebrow="Content review" title="Video submissions" description="Inspect uploaded content, published posts, and review notes."><SubmissionList items={data.submissions} payments={data.payments} onSelect={onSelect} /></ResourceSection>
+  if (tab === 'cta-library') return <CtaLibraryAdminPanel />
   if (tab === 'accounts') return <ResourceSection eyebrow="Account review" title="Social accounts" description="Approve connected TikTok and Instagram identities or request missing information."><AccountList items={data.accounts} onSelect={onSelect} /></ResourceSection>
   if (tab === 'payments') return <ResourceSection eyebrow="Money movement" title="Creator payments" description="Track scheduled, processing, completed, and failed payouts."><PaymentList items={data.payments} onSelect={onSelect} /></ResourceSection>
   if (tab === 'creators') return <ResourceSection eyebrow="Creator access" title="Registrations" description="Review creator identities and their selected payout destinations."><CreatorList items={data.creators} onSelect={onSelect} /></ResourceSection>
   return <Overview data={data} onSelect={onSelect} />
+}
+
+function CtaLibraryAdminPanel() {
+  const { data, isLoading, mutate } = useSWR<{ items: CreatorCtaLibraryItem[] }>('/api/admin/creator/cta-library', apiGet)
+  if (isLoading || !data) return <CenteredLoader />
+  const pending = data.items.filter((item) => item.status === 'pending')
+  return <ResourceSection eyebrow="Sample moderation" title="CTA library" description="Approve creator-generated samples before they become downloadable across the creator dashboard."><div className="mb-5 flex items-center gap-2 text-xs text-zinc-500"><span className="rounded-full bg-amber-50 px-2.5 py-1 font-semibold text-amber-700">{pending.length} pending</span><span>{data.items.length} total submissions</span></div>{data.items.length ? <div className="grid gap-4 lg:grid-cols-2">{data.items.map((item) => <CtaReviewCard key={item.id} item={item} onSaved={async () => { await mutate() }} />)}</div> : <EmptyState title="No CTA samples" description="Creator submissions from the CTA generator will appear here." />}</ResourceSection>
+}
+
+function CtaReviewCard({ item, onSaved }: { item: CreatorCtaLibraryItem; onSaved: () => Promise<void> }) {
+  const [reviewNote, setReviewNote] = useState(item.reviewNote || '')
+  const [saving, setSaving] = useState<'approved' | 'rejected' | null>(null)
+  const video = item.assetContentType === 'video/mp4'
+  async function review(status: 'approved' | 'rejected') {
+    setSaving(status)
+    try {
+      await apiPatch('/api/admin/creator/cta-library', { id: item.id, status, reviewNote: reviewNote || null })
+      toast.success(status === 'approved' ? 'CTA added to the creator library' : 'CTA submission rejected')
+      await onSaved()
+    } catch (error) {
+      toast.error(error instanceof ApiClientError ? error.message : 'Could not review CTA submission')
+    } finally {
+      setSaving(null)
+    }
+  }
+  return <article className="overflow-hidden rounded-2xl border border-zinc-200 bg-white shadow-[0_8px_30px_rgba(15,23,42,0.035)]"><div className="aspect-video bg-zinc-950">{video ? <video className="size-full object-contain" src={item.assetUrl} controls preload="metadata" /> : <div role="img" aria-label={item.title} className="size-full bg-contain bg-center bg-no-repeat" style={{ backgroundImage: `url(${JSON.stringify(item.assetUrl)})` }} />}</div><div className="p-5"><div className="flex items-start justify-between gap-3"><div className="min-w-0"><h3 className="truncate text-base font-semibold">{item.title}</h3><p className="mt-1 text-xs text-zinc-500">{item.creatorName} · {video ? 'Video (MP4)' : 'Screenshot (PNG)'} · {formatDate(String(item.createdAt))}</p></div><StatusPill status={item.status} /></div><div className="mt-4 grid grid-cols-2 gap-2 rounded-xl bg-zinc-50 p-3 text-xs"><span><span className="block text-zinc-400">Template</span><span className="mt-1 block font-medium">{item.templateId}</span></span><span><span className="block text-zinc-400">Canvas</span><span className="mt-1 block font-medium">{item.formatId}</span></span></div><label className="mt-4 grid gap-2 text-xs font-medium">Review note<textarea className="min-h-20 resize-y rounded-xl border border-zinc-200 p-3 text-sm outline-none focus:border-zinc-400 focus:ring-4 focus:ring-zinc-100" value={reviewNote} maxLength={1000} placeholder="Optional feedback visible to the creator" onChange={(event) => setReviewNote(event.target.value)} /></label><div className="mt-4 grid grid-cols-2 gap-2"><Button variant="outline" className="rounded-xl" disabled={saving !== null} onClick={() => void review('rejected')}>{saving === 'rejected' ? <Loader2 className="animate-spin" /> : <XCircle />}Reject</Button><Button className="rounded-xl" disabled={saving !== null} onClick={() => void review('approved')}>{saving === 'approved' ? <Loader2 className="animate-spin" /> : <CheckCircle2 />}Approve</Button></div></div></article>
 }
 
 function Overview({ data, onSelect }: { data: AdminDashboard; onSelect: (target: ReviewTarget) => void }) {

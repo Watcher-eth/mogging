@@ -9,12 +9,33 @@ type Size = { width: number; height: number }
 
 export function ContentSlidePreview({ slide, images, format }: { slide: ContentSlide; images: GeneratorImage[]; format: Size }) {
   const image = images.find((item) => item.id === slide.imageId) ?? images[0]
+  if (slide.templateId === 'cta') {
+    return (
+      <div className="cta-template-enter relative w-full overflow-hidden bg-[#070909] text-white shadow-[0_24px_80px_rgba(0,0,0,0.2)]" style={{ aspectRatio: `${format.width} / ${format.height}` }}>
+        <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_24%,rgba(45,212,191,0.11),transparent_38%)]" />
+        {image ? <CircularPortrait slide={slide} image={image} /> : null}
+        <TemplateContent slide={slide} />
+      </div>
+    )
+  }
   return (
     <div className="cta-template-enter relative w-full overflow-hidden bg-[#09090b] text-white shadow-[0_24px_80px_rgba(0,0,0,0.2)]" style={{ aspectRatio: `${format.width} / ${format.height}` }}>
       {image ? <div className="absolute inset-0"><Image alt="Creator upload" className="object-cover object-center" fill priority sizes="(min-width:1024px) 45vw,100vw" src={image.dataUrl} unoptimized /></div> : null}
       <div className="absolute inset-0 bg-gradient-to-b from-black/45 via-black/5 to-black/95" />
-      {image ? <CanonicalOverlay slide={slide} image={image} /> : null}
+      {image ? <CanonicalOverlay slide={slide} image={image} annotationMode="score" /> : null}
       <TemplateContent slide={slide} />
+    </div>
+  )
+}
+
+function CircularPortrait({ slide, image }: { slide: ContentSlide; image: GeneratorImage }) {
+  return (
+    <div className="absolute left-1/2 top-[17%] aspect-square w-[52%] -translate-x-1/2">
+      <div className="cta-template-item absolute inset-0 overflow-hidden rounded-full border border-cyan-200/30 bg-zinc-800 shadow-[0_0_50px_rgba(45,212,191,0.18)] [animation-delay:720ms]">
+        <Image alt="Creator upload" className="object-cover object-center" fill priority sizes="26vw" src={image.dataUrl} unoptimized />
+        <div className="absolute inset-0 bg-gradient-to-b from-black/5 via-transparent to-black/25" />
+        <CanonicalOverlay slide={slide} image={image} annotationMode="hidden" />
+      </div>
     </div>
   )
 }
@@ -47,7 +68,18 @@ function ScoreRowsTemplate({ slide }: { slide: ContentSlide }) {
 }
 
 function CtaTemplate({ slide }: { slide: ContentSlide }) {
-  return <TemplateFrame eyebrow={slide.eyebrow} template="CTA"><div className="absolute inset-x-[7%] bottom-[7%]"><div className="cta-template-item mb-[5%] grid size-[clamp(42px,11vw,104px)] place-items-center bg-white font-mono text-[clamp(16px,4vw,38px)] font-black text-black [animation-delay:820ms]">M</div><h2 className="cta-template-item max-w-[92%] text-[clamp(28px,7vw,76px)] font-semibold leading-[0.94] tracking-[-0.065em] [animation-delay:1000ms]">{slide.headline}</h2><p className="cta-template-item mt-[4%] max-w-[78%] text-[clamp(9px,2vw,20px)] leading-[1.45] text-white/65 [animation-delay:1160ms]">{slide.supportingCopy}</p><div className="cta-template-item mt-[6%] inline-flex bg-white px-[5%] py-[3%] font-mono text-[clamp(8px,1.7vw,14px)] font-semibold uppercase tracking-[0.12em] text-black [animation-delay:1320ms]">Open Mogging →</div></div></TemplateFrame>
+  return (
+    <div className="absolute inset-0">
+      <div className="cta-template-item absolute inset-x-0 top-[4%] text-center [animation-delay:560ms]">
+        <p className="font-mono text-[clamp(7px,1.5vw,13px)] uppercase tracking-[0.24em] text-cyan-100/55">Face analysis</p>
+        <h2 className="mt-[1%] text-[clamp(31px,8.5vw,86px)] font-black leading-none tracking-[-0.065em]">Mogging</h2>
+      </div>
+      <div className="absolute inset-x-[5%] top-[60%] grid grid-cols-2 gap-[2%]">
+        <ScoreCard label="Current" value={slide.currentScore} accent="lime" delay={1120} />
+        <ScoreCard label="Potential" value={slide.potentialScore} accent="cyan" delay={1280} />
+      </div>
+    </div>
+  )
 }
 
 function TemplateFrame({ eyebrow, template, children }: { eyebrow: string; template: string; children: ReactNode }) {
@@ -64,25 +96,25 @@ function ScoreCard({ label, value, accent, delay, borderless = false }: { label:
 }
 
 function ScoreRow({ label, value, delay }: { label: string; value: string; delay: number }) {
-  return <div className="cta-template-item grid grid-cols-[minmax(68px,0.45fr)_1fr_auto] items-center gap-[3%]" style={{ animationDelay: `${delay}ms` }}><span className="truncate text-[clamp(9px,2vw,19px)] font-medium">{label}</span><div className="h-[clamp(5px,1.3vw,12px)] overflow-hidden rounded-full bg-white/18"><div className="h-full origin-left rounded-full bg-white" style={{ transform: `scaleX(${scoreRatio(value)})` }} /></div><span className="w-[2ch] text-right font-mono text-[clamp(9px,2vw,19px)] font-semibold">{displayScore(value)}</span></div>
+  return <div className="cta-template-item grid grid-cols-[minmax(68px,0.45fr)_1fr_auto] items-center gap-[3%]" style={{ animationDelay: `${delay}ms` }}><span className="truncate text-[clamp(9px,2vw,19px)] font-medium">{label}</span><div className="h-[clamp(5px,1.3vw,12px)] overflow-hidden rounded-full bg-white/18"><div className="cta-score-bar-fill h-full origin-left rounded-full bg-white" style={{ '--cta-score-ratio': scoreRatio(value), animationDelay: `${delay + 150}ms` } as CSSProperties} /></div><span className="w-[2ch] text-right font-mono text-[clamp(9px,2vw,19px)] font-semibold">{displayScore(value)}</span></div>
 }
 
 function ScoreBar({ value, accentClass }: { value: string; accentClass: string }) {
-  return <div className="mt-[10%] h-[clamp(5px,1.3vw,12px)] overflow-hidden rounded-full bg-white/18"><div className={`h-full origin-left rounded-full ${accentClass}`} style={{ transform: `scaleX(${scoreRatio(value)})` }} /></div>
+  return <div className="mt-[10%] h-[clamp(5px,1.3vw,12px)] overflow-hidden rounded-full bg-white/18"><div className={`cta-score-bar-fill h-full origin-left rounded-full ${accentClass}`} style={{ '--cta-score-ratio': scoreRatio(value), animationDelay: '1450ms' } as CSSProperties} /></div>
 }
 
-function CanonicalOverlay({ slide, image }: { slide: ContentSlide; image: GeneratorImage }) {
+function CanonicalOverlay({ slide, image, annotationMode }: { slide: ContentSlide; image: GeneratorImage; annotationMode: 'score' | 'hidden' }) {
   const containerRef = useRef<HTMLDivElement>(null)
   const [viewport, setViewport] = useState<Size>({ width: 0, height: 0 })
   useEffect(() => { const element = containerRef.current; if (!element) return; const update = () => setViewport({ width: element.clientWidth, height: element.clientHeight }); update(); const observer = new ResizeObserver(update); observer.observe(element); return () => observer.disconnect() }, [])
   const overlay = useMemo(() => viewport.width && viewport.height ? resolveOverlayPreset({ preset: getOverlayPreset(slide), landmarks: image.landmarks as FaceLandmarksPayload, viewport, imageSize: { width: image.width, height: image.height }, fit: 'cover' }) : null, [image, slide, viewport])
-  return <div ref={containerRef} className="pointer-events-none absolute inset-0">{overlay ? <ResolvedOverlay primitives={overlay.primitives} viewport={viewport} footer={overlay.footer} /> : null}</div>
+  return <div ref={containerRef} className="pointer-events-none absolute inset-0">{overlay ? <ResolvedOverlay primitives={overlay.primitives} viewport={viewport} footer={overlay.footer} annotationMode={annotationMode} scoreValue={`${displayScore(scoreForSlide(slide))} / 10`} /> : null}</div>
 }
 
-function ResolvedOverlay({ primitives, viewport, footer }: { primitives: ResolvedPrimitive[]; viewport: Size; footer: string }) {
+function ResolvedOverlay({ primitives, viewport, footer, annotationMode, scoreValue }: { primitives: ResolvedPrimitive[]; viewport: Size; footer: string; annotationMode: 'score' | 'hidden'; scoreValue: string }) {
   const drawings = primitives.filter((primitive) => primitive.kind !== 'label')
-  const labels = primitives.filter((primitive): primitive is Extract<ResolvedPrimitive, { kind: 'label' }> => primitive.kind === 'label')
-  return <><svg className="absolute inset-0 size-full" viewBox={`0 0 ${viewport.width} ${viewport.height}`} aria-hidden="true">{drawings.map((primitive) => <OverlayPrimitive key={primitive.id} primitive={primitive} />)}</svg>{labels.map((label) => <OverlayLabel key={label.id} label={label} viewport={viewport} />)}{footer ? <span className="cta-template-item absolute bottom-3 left-3 bg-white/85 px-2.5 py-1.5 font-mono text-[9px] font-semibold text-zinc-500 [animation-delay:1450ms]">{footer}</span> : null}</>
+  const labels = annotationMode === 'score' ? primitives.filter((primitive): primitive is Extract<ResolvedPrimitive, { kind: 'label' }> => primitive.kind === 'label') : []
+  return <><svg className="absolute inset-0 size-full" viewBox={`0 0 ${viewport.width} ${viewport.height}`} aria-hidden="true">{drawings.map((primitive) => <OverlayPrimitive key={primitive.id} primitive={primitive} />)}</svg>{labels.map((label) => <OverlayLabel key={label.id} label={label} viewport={viewport} value={scoreValue} />)}{annotationMode === 'score' && footer ? <span className="cta-template-item absolute bottom-3 left-3 bg-white/85 px-2.5 py-1.5 font-mono text-[9px] font-semibold text-zinc-500 [animation-delay:1450ms]">{footer}</span> : null}</>
 }
 
 function OverlayPrimitive({ primitive }: { primitive: Exclude<ResolvedPrimitive, Extract<ResolvedPrimitive, { kind: 'label' }>> }) {
@@ -96,12 +128,13 @@ function OverlayPrimitive({ primitive }: { primitive: Exclude<ResolvedPrimitive,
   return closed ? <polygon className="cta-overlay-fade" points={points} {...common} fill={primitive.kind === 'region' ? `rgba(255,255,255,${primitive.fillOpacity ?? 0.08})` : 'none'} style={animationStyle} /> : <polyline className={primitive.dashed ? 'cta-overlay-fade' : 'cta-overlay-draw'} pathLength="1" points={points} {...common} style={animationStyle} />
 }
 
-function OverlayLabel({ label, viewport }: { label: Extract<ResolvedPrimitive, { kind: 'label' }>; viewport: Size }) {
+function OverlayLabel({ label, viewport, value }: { label: Extract<ResolvedPrimitive, { kind: 'label' }>; viewport: Size; value: string }) {
   const width = 118, height = 44, outsideOffset = width * 0.28, side = label.align === 'right' || (label.align !== 'left' && label.point.x >= viewport.width / 2) ? 'right' : 'left', centerDeadZone = viewport.width * 0.26, edgeLeft = side === 'right' ? viewport.width - width + outsideOffset : -outsideOffset, centerLimitLeft = side === 'right' ? viewport.width / 2 + centerDeadZone / 2 : viewport.width / 2 - centerDeadZone / 2 - width, alignedLeft = side === 'right' ? Math.max(edgeLeft, centerLimitLeft) : Math.min(edgeLeft, centerLimitLeft), left = label.align ? clamp(alignedLeft, -outsideOffset, Math.max(-outsideOffset, viewport.width - width + outsideOffset)) : clamp(label.point.x, 10, Math.max(10, viewport.width - width - 10)), top = label.align ? clamp(label.point.y - height * 0.36, 10, Math.max(10, viewport.height - height - 10)) : clamp(label.point.y, 10, Math.max(10, viewport.height - height - 10))
-  return <div className="cta-template-item absolute grid gap-[3px] font-mono text-[10px] font-semibold uppercase leading-[13px]" style={{ left, top, animationDelay: `${label.animation?.delay ?? 0}ms`, animationDuration: `${label.animation?.duration ?? 720}ms` }}><span className="w-fit bg-white/80 px-2 py-1 text-zinc-500">{label.title}</span>{label.value ? <span className="w-fit bg-white/80 px-2 py-1 text-black">{label.value}</span> : null}</div>
+  return <div className="cta-template-item absolute grid gap-[3px] font-mono text-[10px] font-semibold uppercase leading-[13px]" style={{ left, top, animationDelay: `${label.animation?.delay ?? 0}ms`, animationDuration: `${label.animation?.duration ?? 720}ms` }}><span className="w-fit bg-white/80 px-2 py-1 text-zinc-500">{label.title}</span><span className="w-fit bg-white/80 px-2 py-1 text-black">{value}</span></div>
 }
 
 function displayScore(value: string) { return value.trim() || '—' }
+function scoreForSlide(slide: ContentSlide) { return slide.categoryScores.find((score) => score.categoryId === slide.categoryId)?.value || slide.currentScore }
 function scoreRatio(value: string) { const score = Number(value); return Number.isFinite(score) ? Math.max(0, Math.min(1, score / 10)) : 0 }
 function cornerPath(x: number, y: number, width: number, height: number, length: number) { return `M ${x} ${y + length} L ${x} ${y} L ${x + length} ${y} M ${x + width - length} ${y} L ${x + width} ${y} L ${x + width} ${y + length} M ${x + width} ${y + height - length} L ${x + width} ${y + height} L ${x + width - length} ${y + height} M ${x + length} ${y + height} L ${x} ${y + height} L ${x} ${y + height - length}` }
 function clamp(value: number, min: number, max: number) { return Math.max(min, Math.min(max, value)) }

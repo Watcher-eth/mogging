@@ -169,6 +169,13 @@
       "when": 1784484000000,
       "tag": "0024_creator_paywall_view",
       "breakpoints": true
+    },
+    {
+      "idx": 24,
+      "version": "7",
+      "when": 1784675941154,
+      "tag": "0025_creator_cta_library",
+      "breakpoints": true
     }
   ]
 }

@@ -354,7 +354,7 @@ export async function getCreatorTikTokAccessToken(userId: string, accountId: str
   return tokenAccount?.access_token || null
 }
 
-async function getOrCreateCreatorProfile(userId: string) {
+export async function getOrCreateCreatorProfile(userId: string) {
   const existing = await getCreatorProfile(userId)
   if (existing) return existing
   const user = await db.query.users.findFirst({ where: eq(schema.users.id, userId) })

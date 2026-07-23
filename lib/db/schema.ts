@@ -31,6 +31,7 @@ export const creatorSubmissionStatusEnum = pgEnum('creator_submission_status', [
   'rejected',
   'paid',
 ])
+export const creatorCtaLibraryStatusEnum = pgEnum('creator_cta_library_status', ['pending', 'approved', 'rejected'])
 export const creatorPaymentStatusEnum = pgEnum('creator_payment_status', [
   'pending',
   'processing',
@@ -482,6 +483,37 @@ export const creatorSubmissions = pgTable(
   })
 )
 
+export const creatorCtaLibraryItems = pgTable(
+  'creator_cta_library_items',
+  {
+    id: text('id')
+      .primaryKey()
+      .$defaultFn(() => crypto.randomUUID()),
+    creatorProfileId: text('creator_profile_id')
+      .notNull()
+      .references(() => creatorProfiles.id, { onDelete: 'cascade' }),
+    title: text('title').notNull(),
+    templateId: text('template_id').notNull(),
+    formatId: text('format_id').notNull(),
+    assetUrl: text('asset_url').notNull(),
+    assetStorageKey: text('asset_storage_key').notNull(),
+    assetContentType: text('asset_content_type').notNull(),
+    assetSizeBytes: integer('asset_size_bytes').notNull(),
+    status: creatorCtaLibraryStatusEnum('status').notNull().default('pending'),
+    reviewNote: text('review_note'),
+    reviewedByEmail: text('reviewed_by_email'),
+    reviewedAt: timestamp('reviewed_at', { mode: 'date' }),
+    createdAt: timestamp('created_at', { mode: 'date' }).notNull().defaultNow(),
+    updatedAt: timestamp('updated_at', { mode: 'date' }).notNull().defaultNow(),
+  },
+  (table) => ({
+    creatorIdx: index('creator_cta_library_items_creator_profile_id_idx').on(table.creatorProfileId),
+    assetStorageKeyIdx: uniqueIndex('creator_cta_library_items_asset_storage_key_unique').on(table.assetStorageKey),
+    statusIdx: index('creator_cta_library_items_status_idx').on(table.status),
+    createdAtIdx: index('creator_cta_library_items_created_at_idx').on(table.createdAt),
+  })
+)
+
 export const creatorSocialAccounts = pgTable(
   'creator_social_accounts',
   {
@@ -712,6 +744,14 @@ export const creatorProfilesRelations = relations(creatorProfiles, ({ one, many 
   submissions: many(creatorSubmissions),
   payments: many(creatorPayments),
   socialAccounts: many(creatorSocialAccounts),
+  ctaLibraryItems: many(creatorCtaLibraryItems),
+}))
+
+export const creatorCtaLibraryItemsRelations = relations(creatorCtaLibraryItems, ({ one }) => ({
+  creatorProfile: one(creatorProfiles, {
+    fields: [creatorCtaLibraryItems.creatorProfileId],
+    references: [creatorProfiles.id],
+  }),
 }))
 
 export const creatorSocialAccountsRelations = relations(creatorSocialAccounts, ({ one, many }) => ({

@@ -67,7 +67,7 @@ export const templateOptions: Array<{ id: SlideTemplateId; label: string; descri
   { id: 'score-potential', label: 'Current + potential', description: 'Selected category with two score cards' },
   { id: 'psl', label: 'PSL comparison', description: 'PSL headline with current and potential' },
   { id: 'score-rows', label: 'Category scorecard', description: 'Rows for each selected report category' },
-  { id: 'cta', label: 'Final CTA', description: 'Closing link-in-bio template' },
+  { id: 'cta', label: 'Mogging score reveal', description: 'Circular portrait with current and potential scores' },
 ]
 
 const hooks: Record<CampaignGoal, Record<Tone, string[]>> = {
@@ -116,6 +116,9 @@ export function generateSlides({
   offer,
   seed,
   primaryCategory,
+  currentScore = '',
+  potentialScore = '',
+  scoreValues = {},
 }: {
   campaignGoal: CampaignGoal
   tone: Tone
@@ -124,6 +127,9 @@ export function generateSlides({
   offer: string
   seed: number
   primaryCategory?: string
+  currentScore?: string
+  potentialScore?: string
+  scoreValues?: Record<string, string>
 }): ContentSlide[] {
   const readyImages = images.filter((image) => image.status === 'ready')
   if (!readyImages.length) return []
@@ -134,30 +140,32 @@ export function generateSlides({
   const categoryScores = selectedCategories.map((categoryId) => ({
     categoryId,
     label: categoryOptions.find((item) => item.id === categoryId)?.label.replace(' analysis', '') ?? categoryId,
-    value: '',
+    value: scoreValues[categoryId] ?? '',
   }))
   const cta = adaptCta(campaignGoal, offer)
-  const shared = { currentScore: '', potentialScore: '', categoryScores }
+  const metricScore = scoreValues[featuredCategory] || currentScore
+  const metricValue = metricScore ? `${metricScore} / 10` : '— / 10'
+  const shared = { currentScore, potentialScore, categoryScores }
   return [
     {
       id: makeId('editorial'), templateId: 'editorial', imageId: readyImages[0].id, categoryId: featuredCategory,
-      eyebrow: 'Mogging // face report', headline: hook, supportingCopy: supportByCategory[featuredCategory] ?? 'Real facial landmarks. One clear visual breakdown.', metricLabel: categoryLabel, metricValue: '[ measured ]', cta: '', ...shared,
+      eyebrow: 'Mogging // face report', headline: hook, supportingCopy: supportByCategory[featuredCategory] ?? 'Real facial landmarks. One clear visual breakdown.', metricLabel: categoryLabel, metricValue, cta: '', ...shared,
     },
     {
       id: makeId('score-potential'), templateId: 'score-potential', imageId: readyImages[1 % readyImages.length].id, categoryId: featuredCategory,
-      eyebrow: `Category // ${categoryLabel}`, headline: categoryTitle[featuredCategory] ?? 'Visible structure, mapped', supportingCopy: supportByCategory[featuredCategory] ?? 'Mapped from visible facial landmarks.', metricLabel: categoryLabel, metricValue: '[ measured ]', cta: '', ...shared,
+      eyebrow: `Category // ${categoryLabel}`, headline: categoryTitle[featuredCategory] ?? 'Visible structure, mapped', supportingCopy: supportByCategory[featuredCategory] ?? 'Mapped from visible facial landmarks.', metricLabel: categoryLabel, metricValue, cta: '', ...shared,
     },
     {
       id: makeId('psl'), templateId: 'psl', imageId: readyImages[2 % readyImages.length].id, categoryId: featuredCategory,
-      eyebrow: 'Mogging // PSL', headline: 'PSL', supportingCopy: 'Current and creator-entered potential, shown against the mapped face.', metricLabel: categoryLabel, metricValue: '[ mapped ]', cta: '', ...shared,
+      eyebrow: 'Mogging // PSL', headline: 'PSL', supportingCopy: 'Current and creator-entered potential, shown against the mapped face.', metricLabel: categoryLabel, metricValue, cta: '', ...shared,
     },
     {
       id: makeId('score-rows'), templateId: 'score-rows', imageId: readyImages[3 % readyImages.length].id, categoryId: featuredCategory,
-      eyebrow: 'Mogging // scorecard', headline: 'Feature breakdown', supportingCopy: 'Selected report categories in one shareable scorecard.', metricLabel: categoryLabel, metricValue: '[ mapped ]', cta: '', ...shared,
+      eyebrow: 'Mogging // scorecard', headline: 'Feature breakdown', supportingCopy: 'Selected report categories in one shareable scorecard.', metricLabel: categoryLabel, metricValue, cta: '', ...shared,
     },
     {
       id: makeId('cta'), templateId: 'cta', imageId: readyImages.at(-1)?.id ?? readyImages[0].id, categoryId: featuredCategory,
-      eyebrow: 'Your turn', headline: cta, supportingCopy: 'Upload one photo. Get your full Mogging breakdown.', metricLabel: categoryLabel, metricValue: '[ mapped ]', cta, ...shared,
+      eyebrow: 'Mogging', headline: cta, supportingCopy: 'Current and creator-entered potential scores.', metricLabel: categoryLabel, metricValue: '[ mapped ]', cta, ...shared,
     },
   ]
 }

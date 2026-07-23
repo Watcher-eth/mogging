@@ -141,6 +141,11 @@
   to { opacity: 1; }
 }
 
+@keyframes cta-score-bar-load {
+  from { transform: scaleX(0); }
+  to { transform: scaleX(var(--cta-score-ratio, 0)); }
+}
+
 .cta-template-enter {
   animation: cta-template-enter 260ms cubic-bezier(0.23, 1, 0.32, 1) both;
 }
@@ -175,6 +180,12 @@
   animation-fill-mode: both;
 }
 
+.cta-score-bar-fill {
+  transform: scaleX(0);
+  animation: cta-score-bar-load 720ms cubic-bezier(0.16, 1, 0.3, 1) both;
+  will-change: transform;
+}
+
 @media (prefers-reduced-motion: reduce) {
   .creator-enter,
   .creator-list-item {
@@ -190,7 +201,8 @@
   .cta-template-item,
   .cta-overlay-draw,
   .cta-overlay-point,
-  .cta-overlay-fade {
+  .cta-overlay-fade,
+  .cta-score-bar-fill {
     animation: none;
     filter: none;
     opacity: 1;

@@ -65,10 +65,13 @@ describe('canonical creator overlay projection', () => {
 
   test('rotates multiple usable uploads through selected report categories', () => {
     const usableImages: GeneratorImage[] = ['a', 'b'].map((id) => ({ id, name: `${id}.jpg`, dataUrl: 'data:', width: 1600, height: 900, landmarks: fixture as never, status: 'ready' }))
-    const slides = generateSlides({ campaignGoal: 'traffic', tone: 'curious', selectedCategories: ['eyes', 'nose', 'mouth'], images: usableImages, offer: 'Mogging', seed: 1 })
+    const slides = generateSlides({ campaignGoal: 'traffic', tone: 'curious', selectedCategories: ['eyes', 'nose', 'mouth'], images: usableImages, offer: 'Mogging', seed: 1, currentScore: '6.7', potentialScore: '8.4', scoreValues: { eyes: '7.1', nose: '6.2', mouth: '7.6' } })
     expect(slides.map((slide) => slide.templateId)).toEqual(['editorial', 'score-potential', 'psl', 'score-rows', 'cta'])
     expect(slides.map((slide) => slide.imageId)).toEqual(['a', 'b', 'a', 'b', 'b'])
     expect(slides.at(-1)?.templateId).toBe('cta')
+    expect(slides.slice(0, 4).every((slide) => slide.metricValue === '7.1 / 10')).toBe(true)
+    expect(slides.every((slide) => slide.currentScore === '6.7' && slide.potentialScore === '8.4')).toBe(true)
+    expect(slides[0].categoryScores.map((score) => score.value)).toEqual(['7.1', '6.2', '7.6'])
   })
 
   for (const viewport of [{ width: 1080, height: 1920 }, { width: 1080, height: 1350 }, { width: 1080, height: 1080 }]) {
