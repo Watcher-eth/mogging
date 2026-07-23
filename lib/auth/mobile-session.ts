@@ -4,6 +4,7 @@ import type { NextApiRequest, NextApiResponse } from 'next'
 import { createRemoteJWKSet, jwtVerify, type JWTPayload } from 'jose'
 import { ApiError } from '@/lib/api/http'
 import { db, schema } from '@/lib/db'
+import { verifyPassword } from './password'
 import { getAuthSession } from './session'
 
 const APPLE_ISSUER = 'https://appleid.apple.com'
@@ -25,6 +26,27 @@ export async function createMobileSessionFromApple(input: {
 }) {
   const identity = await verifyAppleIdentity(input.identityToken, input.nonce)
   const userId = await findOrCreateAppleUser(identity, input.name)
+  return createMobileSessionForUser(userId)
+}
+
+export async function createMobileSessionFromCredentials(input: {
+  email: string
+  password: string
+}) {
+  const email = input.email.trim().toLowerCase()
+  const user = await db.query.users.findFirst({
+    where: eq(schema.users.email, email),
+    columns: { id: true, passwordHash: true },
+  })
+
+  if (!user?.passwordHash || !(await verifyPassword(input.password, user.passwordHash))) {
+    throw new ApiError(401, 'Invalid email or password')
+  }
+
+  return createMobileSessionForUser(user.id)
+}
+
+export async function createMobileSessionForUser(userId: string) {
   const sessionToken = randomBytes(32).toString('base64url')
   const expires = new Date(Date.now() + MOBILE_SESSION_MAX_AGE_MS)
 

@@ -51,6 +51,13 @@ export function buildAnalysisPrompt(
 ) {
   const explanationLength = options.compact ? '8-14 words' : '12-22 words'
   const summaryLength = options.compact ? 'one sentence' : 'two short sentences'
+  const featureCount = options.compact ? 'exactly 4' : 'at least 4 and at most 6'
+  const compactRequirements = options.compact
+    ? `
+- Keep every feature label under 4 words and every feature value under 7 words.
+- Keep every recommendation under 12 words and every metric description under 10 words.
+- Use no whitespace outside JSON string values.`
+    : ''
 
   return `Analyze this frontal face image. Gender scoring mode: ${gender}.
 
@@ -80,7 +87,7 @@ Hard requirements:
 - Include a report object with exactly the 11 listed category ids.
 - Category id literals must include "id": "facial-fat", "id": "biological-age", and "id": "sun-damage".
 - report.categories must contain exactly these 11 ids, in this order: ${CATEGORY_IDS.join(', ')}.
-- Every category must have at least 4 and at most 6 features.
+- Every category must have ${featureCount} features.
 - Every category "score" must be a 0-10 number. Do not use apparent age in years, percentages, or PSL /8 as a category score.
 - Feature labels and values must be approachable but precise. Prefer values like "7.2/10", "mild right drift", "slight downward tilt", "balanced width", or "low visible texture" over vague values like "aligned", "centered", "clean", "high", "measured", or "good".
 - Eye feature values should explain eye-line level, spacing, and lid support in plain terms.
@@ -98,5 +105,5 @@ Hard requirements:
 - Scores must be calibrated, not inflated.
 - Do not use the golden ratio, claim objective worth, or make a medical diagnosis; never classify or imply an apparent age below 18.
 - For facial-fat, title it "Soft tissue", scoreLabel must be "Soft tissue", and never show a body-fat percentage. The category is a cosmetic soft-tissue fullness estimate only.
-- Finish the JSON. Prefer terse values over long text.`
+- Finish the JSON. Prefer terse values over long text.${compactRequirements}`
 }

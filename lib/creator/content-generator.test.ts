@@ -1,8 +1,8 @@
 import { describe, expect, test } from 'bun:test'
-import { getImageTransform, projectImagePoint } from '../../../MoggingMobile/src/overlay-engine/layout'
-import { reportOverlayPresets } from '../../../MoggingMobile/src/overlay-engine/report-presets'
-import { resolveOverlayPreset } from '../../../MoggingMobile/src/overlay-engine/resolve'
-import type { FaceLandmarksPayload } from '../../../MoggingMobile/src/overlay-engine/landmarks'
+import { getImageTransform, projectImagePoint } from '@/lib/creator/mobile-overlay-engine/layout'
+import { reportOverlayPresets } from '@/lib/creator/mobile-overlay-engine/report-presets'
+import { resolveOverlayPreset } from '@/lib/creator/mobile-overlay-engine/resolve'
+import type { FaceLandmarksPayload } from '@/lib/creator/mobile-overlay-engine/landmarks'
 import { generateSlides, type GeneratorImage } from './content-generator'
 
 const fixture: FaceLandmarksPayload = {

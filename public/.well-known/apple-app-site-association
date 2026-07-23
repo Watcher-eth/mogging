@@ -9,6 +9,10 @@
           {
             "/": "/app",
             "comment": "Web purchase and account handoff"
+          },
+          {
+            "/": "/app/handoff",
+            "comment": "Signed one-time payment handoff"
           }
         ]
       }

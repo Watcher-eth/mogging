@@ -38,12 +38,12 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     const mobileInstallId = readMobileInstallId(req)
     const adminMode = readHeader(req.headers['x-mogging-admin-code']) === '674523'
     const anonymousActorId = userId ? null : getOrSetAnonymousActorId(req, res)
-    if (env.PAID_ANALYSIS_REQUIRED && !adminMode && !mobileInstallId) {
-      throw new ApiError(402, 'Buy an evaluation or subscription before generating this report')
+    if (env.PAID_ANALYSIS_REQUIRED && !adminMode && !userId) {
+      throw new ApiError(401, 'Sign in before generating a paid report')
     }
-    if (env.PAID_ANALYSIS_REQUIRED && mobileInstallId && !adminMode) {
+    if (env.PAID_ANALYSIS_REQUIRED && userId && !adminMode) {
       await assertEvaluationEntitlement({
-        mobileInstallId,
+        mobileInstallId: mobileInstallId ?? undefined,
         userId,
         anonymousActorId,
         revenueCatAppUserId: readHeader(req.headers['x-mogging-revenuecat-app-user-id']),
@@ -89,9 +89,9 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
           })
         : null
     const entitlements =
-      env.PAID_ANALYSIS_REQUIRED && mobileInstallId && !adminMode && result.analysis.status === 'complete'
+      env.PAID_ANALYSIS_REQUIRED && userId && !adminMode && result.analysis.status === 'complete'
         ? await consumeEvaluationEntitlement({
-            mobileInstallId,
+            mobileInstallId: mobileInstallId ?? undefined,
             userId,
             anonymousActorId,
             revenueCatAppUserId: readHeader(req.headers['x-mogging-revenuecat-app-user-id']),
@@ -167,7 +167,7 @@ async function createDefaultShare({
 }
 
 export const config = {
-  maxDuration: 60,
+  maxDuration: 120,
   api: {
     bodyParser: {
       sizeLimit: '12mb',

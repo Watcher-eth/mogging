@@ -1,4 +1,4 @@
-import { reportOverlayPresets } from '../../../MoggingMobile/src/overlay-engine/report-presets'
+import { reportOverlayPresets } from '@/lib/creator/mobile-overlay-engine/report-presets'
 
 export const outputFormats = {
   vertical: { label: 'TikTok / Reels / Stories', width: 1080, height: 1920 },

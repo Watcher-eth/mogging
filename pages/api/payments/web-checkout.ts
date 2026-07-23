@@ -1,8 +1,8 @@
 import type { NextApiRequest, NextApiResponse } from 'next'
 import { z } from 'zod'
 import { ApiError, handleApiError, json, methodNotAllowed, parseBody } from '@/lib/api/http'
-import { getOrSetAnonymousActorId } from '@/lib/auth/anonymous'
-import { getAuthSession } from '@/lib/auth/session'
+import { getRequestUserId } from '@/lib/auth/mobile-session'
+import { recordServerEvent } from '@/lib/analytics/events'
 import { env } from '@/lib/env'
 import { getStoredMobileCreatorAttribution, recordCreatorCheckout, resolveCreatorAttribution, stripeAttributionMetadata } from '@/lib/creator/attribution'
 import { generatePaymentActivationCode, getCheckoutLineItem, getProductConfig, paymentProductSchemaValues } from '@/lib/payments/entitlements'
@@ -23,8 +23,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     }
 
     const input = parseBody(checkoutSchema, req.body)
-    const session = await getAuthSession(req, res)
-    const anonymousActorId = session?.user?.id ? null : getOrSetAnonymousActorId(req, res)
+    const accountId = await getRequestUserId(req, res)
+    if (!accountId) throw new ApiError(401, 'Sign in before starting checkout')
     const origin = getRequestOrigin(req)
     const product = getProductConfig(input.product)
     await validateCheckoutProduct(input.product, product)
@@ -33,29 +33,29 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     const attribution = await resolveCreatorAttribution({
       req,
       owner: {
-        userId: session?.user?.id ?? null,
-        anonymousActorId,
+        userId: accountId,
+        anonymousActorId: null,
         mobileInstallId: input.mobileInstallId,
       },
     }) || await getStoredMobileCreatorAttribution({
       mobileInstallId: input.mobileInstallId,
-      userId: session?.user?.id ?? null,
-      anonymousActorId,
+      userId: accountId,
+      anonymousActorId: null,
     })
     const attributionMetadata = stripeAttributionMetadata(attribution)
     const checkout = await getStripe().checkout.sessions.create({
       mode: product.mode,
       payment_method_types: ['card'],
       allow_promotion_codes: true,
-      client_reference_id: input.mobileInstallId,
+      client_reference_id: accountId,
       line_items: [getCheckoutLineItem(input.product)],
       metadata: {
         product: input.product,
         mobileInstallId: input.mobileInstallId,
         source,
         activationCode,
-        userId: session?.user?.id ?? '',
-        anonymousActorId: anonymousActorId ?? '',
+        accountId,
+        userId: accountId,
         ...attributionMetadata,
       },
       ...(product.mode === 'subscription'
@@ -66,15 +66,15 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
                 mobileInstallId: input.mobileInstallId,
                 source,
                 activationCode,
-                userId: session?.user?.id ?? '',
-                anonymousActorId: anonymousActorId ?? '',
+                accountId,
+                userId: accountId,
                 ...attributionMetadata,
               },
             },
           }
         : null),
-      success_url: `${origin}/?checkout=success&product=${input.product}&source=${encodeURIComponent(source)}&install_id=${encodeURIComponent(input.mobileInstallId)}&session_id={CHECKOUT_SESSION_ID}`,
-      cancel_url: `${origin}/?checkout=cancelled&product=${input.product}&source=${encodeURIComponent(source)}&install_id=${encodeURIComponent(input.mobileInstallId)}`,
+      success_url: `${origin}/app/handoff?session_id={CHECKOUT_SESSION_ID}`,
+      cancel_url: `${origin}/?checkout=cancelled&product=${input.product}`,
     })
 
     if (!checkout.url) {
@@ -82,6 +82,16 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     }
 
     await recordCreatorCheckout(attribution, checkout)
+    await recordServerEvent({
+      eventName: 'checkout_started',
+      accountId,
+      sessionId: checkout.id,
+      source,
+      properties: {
+        product: input.product,
+        mobileInstallId: input.mobileInstallId,
+      },
+    })
 
     return json(res, 200, {
       url: checkout.url,

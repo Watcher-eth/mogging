@@ -79,7 +79,7 @@ export function AppShell({ children }: AppShellProps) {
   const { data: session, status } = useSession()
   const router = useRouter()
   const pendingAuthRedirect = getSafeAuthRedirect(router.query.next)
-  const immersive = router.pathname === '/' || router.pathname === '/analysis' || router.pathname === '/leaderboard' || router.pathname === '/battle' || router.pathname === '/app'
+  const immersive = router.pathname === '/' || router.pathname === '/analysis' || router.pathname === '/leaderboard' || router.pathname === '/battle' || router.pathname === '/app' || router.pathname === '/app/handoff'
   const [loginOpen, setLoginOpen] = useState(false)
   const [accountOpen, setAccountOpen] = useState(false)
   const [editOpen, setEditOpen] = useState(false)

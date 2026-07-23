@@ -1,11 +1,10 @@
 import { randomInt, createHmac } from 'crypto'
-import { and, eq, gt, or, sql } from 'drizzle-orm'
+import { and, eq, gt, isNull, sql } from 'drizzle-orm'
 import Stripe from 'stripe'
 import { ApiError } from '@/lib/api/http'
 import { db, schema } from '@/lib/db'
 import { env } from '@/lib/env'
 import { verifyRevenueCatPro } from '@/lib/payments/revenuecat'
-import { getStripe } from './stripe'
 import type { PaymentProduct } from '@/lib/db/schema'
 
 export const paymentProductSchemaValues = [
@@ -42,7 +41,7 @@ export type EntitlementSummary = {
 }
 
 type EntitlementOwner = {
-  mobileInstallId: string
+  mobileInstallId?: string
   userId?: string | null
   anonymousActorId?: string | null
   revenueCatAppUserId?: string | null
@@ -152,62 +151,20 @@ export function generatePaymentActivationCode() {
   return String(randomInt(0, 1_000_000)).padStart(6, '0')
 }
 
-export async function claimStripeCheckoutSession({
-  mobileInstallId,
-  sessionId,
-  userId,
-  anonymousActorId,
-}: {
-  mobileInstallId: string
-  sessionId: string
-  userId: string | null
-  anonymousActorId: string | null
-}) {
-  const stripe = getStripe()
-  const session = await stripe.checkout.sessions.retrieve(sessionId, {
-    expand: ['subscription'],
-  })
-
-  await grantEntitlementFromCheckoutSession({
-    session,
-    mobileInstallId,
-    userId,
-    anonymousActorId,
-  })
-
-  return getEntitlementSummary({ mobileInstallId, userId, anonymousActorId })
-}
-
 export async function grantEntitlementFromCheckoutSession({
   session,
-  mobileInstallId: expectedMobileInstallId,
-  userId,
-  anonymousActorId,
 }: {
   session: Stripe.Checkout.Session
-  mobileInstallId?: string | null
-  userId?: string | null
-  anonymousActorId?: string | null
 }) {
   if (session.payment_status !== 'paid' && session.status !== 'complete') {
     throw new ApiError(402, 'Checkout has not completed')
   }
 
   const product = readPaymentProduct(session.metadata?.product)
-  const metadataInstallId = session.metadata?.mobileInstallId
-  const mobileInstallId = expectedMobileInstallId || metadataInstallId
-  if (!mobileInstallId) {
-    throw new ApiError(400, 'Checkout is missing mobile install id')
-  }
-  const canTransferWebCheckout = Boolean(
-    expectedMobileInstallId &&
-    metadataInstallId &&
-    metadataInstallId !== expectedMobileInstallId &&
-    metadataInstallId.startsWith('web_')
-  )
-  if (expectedMobileInstallId && metadataInstallId && metadataInstallId !== expectedMobileInstallId && !canTransferWebCheckout) {
-    throw new ApiError(403, 'Checkout belongs to another app install')
-  }
+  const accountId = readOptionalMetadata(session.metadata?.accountId || session.metadata?.userId)
+  if (!accountId) throw new ApiError(400, 'Checkout is missing account id')
+  const metadataInstallId = readOptionalMetadata(session.metadata?.mobileInstallId)
+  const mobileInstallId = metadataInstallId || `account_${accountId}`
 
   const subscription = typeof session.subscription === 'object' && session.subscription
     ? session.subscription
@@ -218,27 +175,13 @@ export async function grantEntitlementFromCheckoutSession({
   const extras = product === 'extra_potential_image' ? 1 : 0
   const activationCode = readActivationCode(session.metadata?.activationCode)
   const activationCodeHash = activationCode ? hashPaymentActivationCode(activationCode) : null
-  const claimedAt = expectedMobileInstallId ? new Date() : null
-
-  if (canTransferWebCheckout && expectedMobileInstallId) {
-    await db
-      .update(schema.paymentEntitlements)
-      .set({
-        mobileInstallId: expectedMobileInstallId,
-        userId: userId ?? readOptionalMetadata(session.metadata?.userId),
-        anonymousActorId: anonymousActorId ?? readOptionalMetadata(session.metadata?.anonymousActorId),
-        activationCodeRedeemedAt: claimedAt,
-        updatedAt: new Date(),
-      })
-      .where(eq(schema.paymentEntitlements.stripeCheckoutSessionId, session.id))
-  }
 
   await db
     .insert(schema.paymentEntitlements)
     .values({
       mobileInstallId,
-      userId: userId ?? readOptionalMetadata(session.metadata?.userId),
-      anonymousActorId: anonymousActorId ?? readOptionalMetadata(session.metadata?.anonymousActorId),
+      userId: accountId,
+      anonymousActorId: null,
       stripeCheckoutSessionId: session.id,
       stripeCustomerId: readStripeId(session.customer),
       stripeSubscriptionId: readStripeId(session.subscription),
@@ -249,13 +192,13 @@ export async function grantEntitlementFromCheckoutSession({
       currentPeriodEnd,
       activationCodeHash,
       activationCodeLast4: activationCode ? activationCode.slice(-4) : null,
-      activationCodeRedeemedAt: claimedAt,
+      activationCodeRedeemedAt: null,
       source: session.metadata?.source ?? null,
       metadata: {
         checkoutMode: session.mode,
         stripePaymentStatus: session.payment_status,
         originalMobileInstallId: metadataInstallId ?? null,
-        transferredFromWebInstall: canTransferWebCheckout,
+        accountId,
         extras: {
           potentialImages: extras,
         },
@@ -265,61 +208,43 @@ export async function grantEntitlementFromCheckoutSession({
       target: schema.paymentEntitlements.stripeCheckoutSessionId,
     })
 
-  if (expectedMobileInstallId) {
-    await db
-      .update(schema.paymentEntitlements)
-      .set({
-        mobileInstallId: expectedMobileInstallId,
-        userId: userId ?? readOptionalMetadata(session.metadata?.userId),
-        anonymousActorId: anonymousActorId ?? readOptionalMetadata(session.metadata?.anonymousActorId),
-        activationCodeRedeemedAt: claimedAt,
-        updatedAt: new Date(),
-      })
-      .where(eq(schema.paymentEntitlements.stripeCheckoutSessionId, session.id))
-  }
 }
 
 export async function redeemPaymentActivationCode({
   code,
   mobileInstallId,
   userId,
-  anonymousActorId,
 }: {
   code: string
   mobileInstallId: string
-  userId?: string | null
-  anonymousActorId?: string | null
+  userId: string
 }) {
   const normalizedCode = normalizeActivationCode(code)
   const codeHash = hashPaymentActivationCode(normalizedCode)
-  const entitlement = await db.query.paymentEntitlements.findFirst({
-    where: eq(schema.paymentEntitlements.activationCodeHash, codeHash),
+  await db.transaction(async (tx) => {
+    const entitlement = await tx.query.paymentEntitlements.findFirst({
+      where: and(
+        eq(schema.paymentEntitlements.activationCodeHash, codeHash),
+        eq(schema.paymentEntitlements.userId, userId)
+      ),
+    })
+    if (!entitlement) throw new ApiError(404, 'Activation code not found for this account')
+    if (entitlement.activationCodeRedeemedAt) throw new ApiError(409, 'This activation code has already been used')
+    if (!isRedeemableEntitlement(entitlement)) throw new ApiError(402, 'This activation code no longer has active access')
+
+    const [claimed] = await tx
+      .update(schema.paymentEntitlements)
+      .set({ mobileInstallId, activationCodeRedeemedAt: new Date(), updatedAt: new Date() })
+      .where(and(
+        eq(schema.paymentEntitlements.id, entitlement.id),
+        eq(schema.paymentEntitlements.userId, userId),
+        isNull(schema.paymentEntitlements.activationCodeRedeemedAt)
+      ))
+      .returning({ id: schema.paymentEntitlements.id })
+    if (!claimed) throw new ApiError(409, 'This activation code has already been used')
   })
 
-  if (!entitlement) {
-    throw new ApiError(404, 'Activation code not found')
-  }
-
-  if (entitlement.activationCodeRedeemedAt) {
-    throw new ApiError(409, 'This activation code has already been used')
-  }
-
-  if (!isRedeemableEntitlement(entitlement)) {
-    throw new ApiError(402, 'This activation code no longer has active access')
-  }
-
-  await db
-    .update(schema.paymentEntitlements)
-    .set({
-      mobileInstallId,
-      userId: userId ?? entitlement.userId,
-      anonymousActorId: anonymousActorId ?? entitlement.anonymousActorId,
-      activationCodeRedeemedAt: entitlement.activationCodeRedeemedAt ?? new Date(),
-      updatedAt: new Date(),
-    })
-    .where(eq(schema.paymentEntitlements.id, entitlement.id))
-
-  return getEntitlementSummary({ mobileInstallId, userId, anonymousActorId })
+  return getEntitlementSummary({ mobileInstallId, userId })
 }
 
 export async function updateSubscriptionEntitlement(subscription: Stripe.Subscription) {
@@ -369,7 +294,7 @@ export async function getEntitlementSummary(ownerInput: string | EntitlementOwne
   const revenueCatSubscription = latestSubscription ? null : await getRevenueCatSubscription(owner)
 
   return {
-    mobileInstallId: owner.mobileInstallId,
+    mobileInstallId: owner.mobileInstallId || (owner.userId ? `account_${owner.userId}` : 'account'),
     evaluationCredits: rows
       .filter((row) => row.product !== 'extra_potential_image')
       .reduce((sum, row) => sum + row.creditBalance, 0),
@@ -424,18 +349,15 @@ function normalizeEntitlementOwner(owner: string | EntitlementOwner): Entitlemen
 }
 
 function getOwnerWhere(owner: EntitlementOwner) {
-  const filters = [
-    eq(schema.paymentEntitlements.mobileInstallId, owner.mobileInstallId),
-    owner.userId ? eq(schema.paymentEntitlements.userId, owner.userId) : null,
-    owner.anonymousActorId ? eq(schema.paymentEntitlements.anonymousActorId, owner.anonymousActorId) : null,
-  ].filter((filter) => filter !== null)
-
-  return filters.length === 1 ? filters[0] : or(...filters)
+  if (owner.userId) return eq(schema.paymentEntitlements.userId, owner.userId)
+  if (owner.mobileInstallId) return eq(schema.paymentEntitlements.mobileInstallId, owner.mobileInstallId)
+  if (owner.anonymousActorId) return eq(schema.paymentEntitlements.anonymousActorId, owner.anonymousActorId)
+  throw new ApiError(401, 'An account is required')
 }
 
 async function getRevenueCatSubscription(owner: EntitlementOwner) {
-  const revenueCatAppUserId = owner.revenueCatAppUserId || owner.mobileInstallId
-  if (revenueCatAppUserId !== owner.mobileInstallId) return null
+  const revenueCatAppUserId = owner.revenueCatAppUserId || owner.userId || owner.mobileInstallId
+  if (!revenueCatAppUserId) return null
   return verifyRevenueCatPro(revenueCatAppUserId)
 }
 
@@ -492,7 +414,7 @@ function readPotentialImageExtras(metadata: Record<string, unknown>) {
   return typeof potentialImages === 'number' && Number.isFinite(potentialImages) ? potentialImages : 0
 }
 
-function isRedeemableEntitlement(row: typeof schema.paymentEntitlements.$inferSelect) {
+export function isRedeemableEntitlement(row: typeof schema.paymentEntitlements.$inferSelect) {
   if (row.creditBalance > 0) return true
   if (row.product === 'extra_potential_image' && readPotentialImageExtras(row.metadata) > 0) return true
   if (!isProAccessProduct(row.product)) return false

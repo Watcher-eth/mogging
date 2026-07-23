@@ -9,8 +9,8 @@ import {
   type AnalyzeFaceInput,
 } from '../schema'
 
-const KIMI_ANALYSIS_TIMEOUT_MS = 38_000
-const KIMI_ANALYSIS_MAX_TOKENS = 6_500
+const KIMI_ANALYSIS_TIMEOUT_MS = 110_000
+const KIMI_ANALYSIS_MAX_TOKENS = 2_800
 
 export class KimiAnalysisProvider implements AnalysisProvider {
   model = env.KIMI_ANALYSIS_MODEL
@@ -26,7 +26,7 @@ export class KimiAnalysisProvider implements AnalysisProvider {
 
     const firstAttempt = await requestKimiAnalysis({
       input,
-      prompt: buildAnalysisPrompt(input.gender),
+      prompt: buildAnalysisPrompt(input.gender, { compact: true }),
       maxTokens: KIMI_ANALYSIS_MAX_TOKENS,
     })
 

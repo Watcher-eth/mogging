@@ -1,7 +1,6 @@
 import type { NextApiRequest, NextApiResponse } from 'next'
 import { z } from 'zod'
-import { handleApiError, json, methodNotAllowed } from '@/lib/api/http'
-import { getOrSetAnonymousActorId } from '@/lib/auth/anonymous'
+import { ApiError, handleApiError, json, methodNotAllowed } from '@/lib/api/http'
 import { getRequestUserId } from '@/lib/auth/mobile-session'
 import { getEntitlementSummary } from '@/lib/payments/entitlements'
 
@@ -15,21 +14,16 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   try {
     const query = querySchema.parse(req.query)
     const userId = await getRequestUserId(req, res)
-    const anonymousActorId = userId ? null : getOrSetAnonymousActorId(req, res)
+    if (!userId) throw new ApiError(401, 'Sign in to load payment access')
 
     return json(res, 200, {
       entitlements: await getEntitlementSummary({
         mobileInstallId: query.mobileInstallId,
         userId,
-        anonymousActorId,
-        revenueCatAppUserId: readHeader(req.headers['x-mogging-revenuecat-app-user-id']),
+        revenueCatAppUserId: userId,
       }),
     })
   } catch (error) {
     return handleApiError(error, res)
   }
-}
-
-function readHeader(value: string | string[] | undefined) {
-  return Array.isArray(value) ? value[0] : value
 }
