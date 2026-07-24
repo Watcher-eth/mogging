@@ -10,12 +10,14 @@ import {
   Loader2,
   LockKeyhole,
   LogOut,
+  Power,
   ShieldCheck,
   Ticket,
+  Trash2,
   UserPlus,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
-import { apiGet, apiPost, apiRequest, ApiClientError } from '@/lib/api/client'
+import { apiGet, apiPatch, apiPost, apiRequest, ApiClientError } from '@/lib/api/client'
 import type { InviteCodeDashboardItem } from '@/lib/payments/invite-codes'
 import type { InviteCodeKind } from '@/lib/db/schema'
 
@@ -78,7 +80,7 @@ export default function InviteAdminPage() {
             </div>
             <span className="rounded-full bg-zinc-100 px-3 py-1.5 text-xs font-semibold text-zinc-600">{data?.inviteCodes.length ?? 0} total</span>
           </div>
-          {isLoading || !data ? <CenteredLoader compact /> : <InviteCodeTable items={data.inviteCodes} />}
+          {isLoading || !data ? <CenteredLoader compact /> : <InviteCodeTable items={data.inviteCodes} onChanged={async () => { await mutate() }} />}
         </section>
       </div>
     </main>
@@ -269,11 +271,11 @@ function CreatedCode({ code }: { code: string }) {
   )
 }
 
-function InviteCodeTable({ items }: { items: InviteCodeDashboardItem[] }) {
+function InviteCodeTable({ items, onChanged }: { items: InviteCodeDashboardItem[]; onChanged: () => Promise<void> }) {
   if (!items.length) return <EmptyState />
   return (
     <div className="overflow-x-auto">
-      <table className="w-full min-w-[760px] border-separate border-spacing-y-2 text-left">
+      <table className="w-full min-w-[860px] border-separate border-spacing-y-2 text-left">
         <thead>
           <tr className="text-[11px] font-semibold uppercase tracking-[0.16em] text-zinc-400">
             <th className="px-3 py-2">Code</th>
@@ -281,27 +283,90 @@ function InviteCodeTable({ items }: { items: InviteCodeDashboardItem[] }) {
             <th className="px-3 py-2">Attribution</th>
             <th className="px-3 py-2">Usage</th>
             <th className="px-3 py-2">Created</th>
+            <th className="px-3 py-2 text-right">Actions</th>
           </tr>
         </thead>
         <tbody>
           {items.map((item) => (
-            <tr key={item.id} className="rounded-2xl bg-zinc-50 text-sm">
-              <td className="rounded-l-2xl px-3 py-3">
-                <div className="font-semibold">{item.label}</div>
-                <div className="mt-1 font-mono text-xs text-zinc-500">••{item.codeLast4} · {item.kind}</div>
-              </td>
-              <td className="px-3 py-3 text-zinc-700">{formatScope(item.scope)}</td>
-              <td className="px-3 py-3 text-zinc-500">{item.attribution || 'None'}</td>
-              <td className="px-3 py-3">
-                <span className="font-semibold">{item.redemptionCount}</span>
-                <span className="text-zinc-400"> / {item.maxRedemptions ?? '∞'}</span>
-              </td>
-              <td className="rounded-r-2xl px-3 py-3 text-zinc-500">{formatDate(item.createdAt)}</td>
-            </tr>
+            <InviteCodeRow key={item.id} item={item} onChanged={onChanged} />
           ))}
         </tbody>
       </table>
     </div>
+  )
+}
+
+function InviteCodeRow({ item, onChanged }: { item: InviteCodeDashboardItem; onChanged: () => Promise<void> }) {
+  const [busyAction, setBusyAction] = useState<'toggle' | 'delete' | null>(null)
+
+  async function toggleActive() {
+    setBusyAction('toggle')
+    try {
+      await apiPatch(`/api/admin/invites/${item.id}`, { active: !item.active })
+      toast.success(item.active ? 'Code disabled' : 'Code enabled')
+      await onChanged()
+    } catch (error) {
+      toast.error(error instanceof ApiClientError ? error.message : 'Could not update invite code')
+    } finally {
+      setBusyAction(null)
+    }
+  }
+
+  async function deleteCode() {
+    if (!window.confirm(`Delete "${item.label}"? This removes the code from the dashboard and prevents future redemption. Existing redeemed access is not revoked.`)) return
+    setBusyAction('delete')
+    try {
+      await apiRequest(`/api/admin/invites/${item.id}`, { method: 'DELETE' })
+      toast.success('Code deleted')
+      await onChanged()
+    } catch (error) {
+      toast.error(error instanceof ApiClientError ? error.message : 'Could not delete invite code')
+    } finally {
+      setBusyAction(null)
+    }
+  }
+
+  return (
+    <tr className={`rounded-2xl text-sm ${item.active ? 'bg-zinc-50' : 'bg-zinc-100 text-zinc-400'}`}>
+      <td className="rounded-l-2xl px-3 py-3">
+        <div className="flex items-center gap-2">
+          <span className="font-semibold text-zinc-950">{item.label}</span>
+          <span className={`rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.12em] ${item.active ? 'bg-emerald-100 text-emerald-700' : 'bg-zinc-200 text-zinc-500'}`}>
+            {item.active ? 'Active' : 'Disabled'}
+          </span>
+        </div>
+        <div className="mt-1 font-mono text-xs text-zinc-500">••{item.codeLast4} · {item.kind}</div>
+      </td>
+      <td className="px-3 py-3 text-zinc-700">{formatScope(item.scope)}</td>
+      <td className="px-3 py-3 text-zinc-500">{item.attribution || 'None'}</td>
+      <td className="px-3 py-3">
+        <span className="font-semibold">{item.redemptionCount}</span>
+        <span className="text-zinc-400"> / {item.maxRedemptions ?? '∞'}</span>
+      </td>
+      <td className="px-3 py-3 text-zinc-500">{formatDate(item.createdAt)}</td>
+      <td className="rounded-r-2xl px-3 py-3">
+        <div className="flex justify-end gap-2">
+          <button
+            type="button"
+            onClick={() => void toggleActive()}
+            disabled={busyAction !== null}
+            className="inline-flex h-9 items-center gap-1.5 rounded-xl border border-zinc-200 bg-white px-3 text-xs font-semibold text-zinc-700 shadow-sm transition-[background-color,transform] duration-150 ease-out hover:bg-zinc-50 active:scale-[0.97] disabled:opacity-50"
+          >
+            {busyAction === 'toggle' ? <Loader2 className="size-3.5 animate-spin" /> : <Power className="size-3.5" />}
+            {item.active ? 'Disable' : 'Enable'}
+          </button>
+          <button
+            type="button"
+            onClick={() => void deleteCode()}
+            disabled={busyAction !== null}
+            className="inline-flex h-9 items-center gap-1.5 rounded-xl border border-red-100 bg-white px-3 text-xs font-semibold text-red-600 shadow-sm transition-[background-color,transform] duration-150 ease-out hover:bg-red-50 active:scale-[0.97] disabled:opacity-50"
+          >
+            {busyAction === 'delete' ? <Loader2 className="size-3.5 animate-spin" /> : <Trash2 className="size-3.5" />}
+            Delete
+          </button>
+        </div>
+      </td>
+    </tr>
   )
 }
 

@@ -57,6 +57,26 @@ export async function listInviteCodes(): Promise<InviteCodeDashboardItem[]> {
   return rows.map(serializeInviteCode)
 }
 
+export async function setInviteCodeActive(id: string, active: boolean) {
+  const [row] = await db
+    .update(schema.inviteCodes)
+    .set({ active, updatedAt: new Date() })
+    .where(eq(schema.inviteCodes.id, id))
+    .returning()
+
+  if (!row) throw new ApiError(404, 'Invite code not found')
+  return serializeInviteCode(row)
+}
+
+export async function deleteInviteCode(id: string) {
+  const [row] = await db
+    .delete(schema.inviteCodes)
+    .where(eq(schema.inviteCodes.id, id))
+    .returning({ id: schema.inviteCodes.id })
+
+  if (!row) throw new ApiError(404, 'Invite code not found')
+}
+
 export async function createInviteCode(input: CreateInviteCodeInput & { createdBy?: string | null }) {
   const normalized = createInviteCodeSchema.parse(input)
   const code = normalized.code || await generateUniqueInviteCode()
