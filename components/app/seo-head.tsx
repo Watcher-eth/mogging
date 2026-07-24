@@ -31,6 +31,8 @@ export function SeoHead({
       <meta key="description" name="description" content={description} />
       <meta key="apple-itunes-app" name="apple-itunes-app" content={`app-id=${iosAppStoreId}, app-argument=${canonicalUrl}`} />
       <link key="canonical" rel="canonical" href={canonicalUrl} />
+      <link key="favicon" rel="icon" type="image/png" href="/favicon.png" />
+      <link key="apple-touch-icon" rel="apple-touch-icon" href="/favicon.png" />
 
       <meta key="og:type" property="og:type" content="website" />
       <meta key="og:site_name" property="og:site_name" content="Mogging" />

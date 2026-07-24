@@ -68,6 +68,13 @@ export type PaymentProduct =
   | 'mobile_lifetime'
   | 'extra_potential_image'
 
+export type InviteCodeKind = 'invite' | 'referral'
+export type InviteCodeScope = {
+  evaluationCredits?: number
+  unlimitedEvaluations?: boolean
+  durationDays?: number | null
+}
+
 export const users = pgTable(
   'users',
   {
@@ -410,6 +417,57 @@ export const paymentEntitlements = pgTable(
     sessionIdx: uniqueIndex('payment_entitlements_checkout_session_unique').on(table.stripeCheckoutSessionId),
     paymentIntentIdx: index('payment_entitlements_payment_intent_id_idx').on(table.stripePaymentIntentId),
     activationCodeIdx: index('payment_entitlements_activation_code_hash_idx').on(table.activationCodeHash),
+  })
+)
+
+export const inviteCodes = pgTable(
+  'invite_codes',
+  {
+    id: text('id')
+      .primaryKey()
+      .$defaultFn(() => crypto.randomUUID()),
+    codeHash: text('code_hash').notNull(),
+    codeLast4: text('code_last4').notNull(),
+    label: text('label').notNull(),
+    kind: text('kind').$type<InviteCodeKind>().notNull().default('invite'),
+    attribution: text('attribution'),
+    scope: jsonb('scope').$type<InviteCodeScope>().notNull().default({}),
+    maxRedemptions: integer('max_redemptions'),
+    redemptionCount: integer('redemption_count').notNull().default(0),
+    active: boolean('active').notNull().default(true),
+    expiresAt: timestamp('expires_at', { mode: 'date' }),
+    createdBy: text('created_by'),
+    metadata: jsonb('metadata').$type<Record<string, unknown>>().notNull().default({}),
+    createdAt: timestamp('created_at', { mode: 'date' }).notNull().defaultNow(),
+    updatedAt: timestamp('updated_at', { mode: 'date' }).notNull().defaultNow(),
+  },
+  (table) => ({
+    codeHashIdx: uniqueIndex('invite_codes_code_hash_unique').on(table.codeHash),
+    kindIdx: index('invite_codes_kind_idx').on(table.kind),
+    activeIdx: index('invite_codes_active_idx').on(table.active),
+    createdAtIdx: index('invite_codes_created_at_idx').on(table.createdAt),
+  })
+)
+
+export const inviteCodeRedemptions = pgTable(
+  'invite_code_redemptions',
+  {
+    id: text('id')
+      .primaryKey()
+      .$defaultFn(() => crypto.randomUUID()),
+    inviteCodeId: text('invite_code_id')
+      .notNull()
+      .references(() => inviteCodes.id, { onDelete: 'cascade' }),
+    userId: text('user_id').references(() => users.id, { onDelete: 'cascade' }),
+    mobileInstallId: text('mobile_install_id').notNull(),
+    paymentEntitlementId: text('payment_entitlement_id').references(() => paymentEntitlements.id, { onDelete: 'set null' }),
+    createdAt: timestamp('created_at', { mode: 'date' }).notNull().defaultNow(),
+  },
+  (table) => ({
+    inviteCodeIdx: index('invite_code_redemptions_invite_code_id_idx').on(table.inviteCodeId),
+    userIdx: index('invite_code_redemptions_user_id_idx').on(table.userId),
+    mobileInstallIdx: index('invite_code_redemptions_mobile_install_id_idx').on(table.mobileInstallId),
+    userCodeUnique: uniqueIndex('invite_code_redemptions_user_code_unique').on(table.inviteCodeId, table.userId),
   })
 )
 
@@ -786,6 +844,7 @@ export const usersRelations = relations(users, ({ one, many }) => ({
   personGroups: many(personGroups),
   analysisShares: many(analysisShares),
   paymentEntitlements: many(paymentEntitlements),
+  inviteCodeRedemptions: many(inviteCodeRedemptions),
   creatorProfile: one(creatorProfiles),
 }))
 
@@ -893,10 +952,30 @@ export const creatorPaymentsRelations = relations(creatorPayments, ({ one }) => 
   }),
 }))
 
-export const paymentEntitlementsRelations = relations(paymentEntitlements, ({ one }) => ({
+export const paymentEntitlementsRelations = relations(paymentEntitlements, ({ one, many }) => ({
   user: one(users, {
     fields: [paymentEntitlements.userId],
     references: [users.id],
+  }),
+  inviteCodeRedemptions: many(inviteCodeRedemptions),
+}))
+
+export const inviteCodesRelations = relations(inviteCodes, ({ many }) => ({
+  redemptions: many(inviteCodeRedemptions),
+}))
+
+export const inviteCodeRedemptionsRelations = relations(inviteCodeRedemptions, ({ one }) => ({
+  inviteCode: one(inviteCodes, {
+    fields: [inviteCodeRedemptions.inviteCodeId],
+    references: [inviteCodes.id],
+  }),
+  user: one(users, {
+    fields: [inviteCodeRedemptions.userId],
+    references: [users.id],
+  }),
+  paymentEntitlement: one(paymentEntitlements, {
+    fields: [inviteCodeRedemptions.paymentEntitlementId],
+    references: [paymentEntitlements.id],
   }),
 }))
 
