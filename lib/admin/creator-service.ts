@@ -3,6 +3,21 @@ import { z } from 'zod'
 import { ApiError } from '@/lib/api/http'
 import { db, schema } from '@/lib/db'
 import { ensureCreatorTrackingLink, getCreatorAttributionReport } from '@/lib/creator/attribution'
+import {
+  creatorSubmissionReviewResultsSchema,
+  validateCreatorSubmissionReviewResults,
+} from '@/lib/creator/submission-review'
+import {
+  calculateCreatorPayout,
+  isCreatorUsAudienceTier,
+  isCreatorViewThreshold,
+} from '@/lib/creator/payouts'
+
+const creatorViewThresholdSchema = z.number().int().refine(isCreatorViewThreshold, 'Choose a supported view threshold')
+const creatorUsAudienceSchema = z.union([
+  z.null(),
+  z.number().refine(isCreatorUsAudienceTier, 'Choose a supported audience tier'),
+])
 
 export const creatorAdminReviewSchema = z.discriminatedUnion('resource', [
   z.object({
@@ -21,6 +36,9 @@ export const creatorAdminReviewSchema = z.discriminatedUnion('resource', [
     id: z.string().min(1),
     status: z.enum(['pending', 'in_review', 'approved', 'rejected', 'paid']),
     reviewNote: z.string().trim().max(1000).optional().nullable(),
+    reviewChecklist: creatorSubmissionReviewResultsSchema,
+    adminViewCountThreshold: creatorViewThresholdSchema,
+    adminUsAudiencePercent: creatorUsAudienceSchema,
   }),
   z.object({
     resource: z.literal('payment'),
@@ -33,7 +51,8 @@ export const creatorAdminReviewSchema = z.discriminatedUnion('resource', [
 
 export const creatorAdminPaymentSchema = z.object({
   submissionId: z.string().min(1),
-  amountCents: z.number().int().positive().max(100_000_000),
+  adminViewCountThreshold: creatorViewThresholdSchema,
+  adminUsAudiencePercent: creatorUsAudienceSchema,
   status: z.enum(['pending', 'processing', 'paid', 'failed', 'cancelled']).default('pending'),
   providerReference: z.string().trim().max(180).optional().nullable(),
 })
@@ -131,8 +150,11 @@ export async function getCreatorAdminDashboard() {
         analyticsSizeBytes: schema.creatorSubmissions.analyticsSizeBytes,
         viewCountThreshold: schema.creatorSubmissions.viewCountThreshold,
         usAudiencePercent: schema.creatorSubmissions.usAudiencePercent,
+        adminViewCountThreshold: schema.creatorSubmissions.adminViewCountThreshold,
+        adminUsAudiencePercent: schema.creatorSubmissions.adminUsAudiencePercent,
         status: schema.creatorSubmissions.status,
         reviewNote: schema.creatorSubmissions.reviewNote,
+        reviewChecklist: schema.creatorSubmissions.reviewChecklist,
         createdAt: schema.creatorSubmissions.createdAt,
       })
       .from(schema.creatorSubmissions)
@@ -310,7 +332,26 @@ export async function reviewCreatorResource(input: CreatorAdminReviewInput) {
   }
 
   if (input.resource === 'submission') {
-    const [record] = await db.update(schema.creatorSubmissions).set({ status: input.status, reviewNote: input.reviewNote || null, updatedAt: now }).where(eq(schema.creatorSubmissions.id, input.id)).returning()
+    const submission = await db.query.creatorSubmissions.findFirst({
+      where: eq(schema.creatorSubmissions.id, input.id),
+    })
+    if (!submission) throw new ApiError(404, 'Creator submission not found')
+    const reviewChecklist = input.reviewChecklist.map((item) => ({
+      id: item.id,
+      met: item.met,
+      note: item.note || null,
+    }))
+    if (!validateCreatorSubmissionReviewResults(submission.formatId, reviewChecklist)) {
+      throw new ApiError(400, 'Complete every creator-guide review item before saving')
+    }
+    const [record] = await db.update(schema.creatorSubmissions).set({
+      status: input.status,
+      reviewNote: input.reviewNote || null,
+      reviewChecklist,
+      adminViewCountThreshold: input.adminViewCountThreshold,
+      adminUsAudiencePercent: input.adminUsAudiencePercent,
+      updatedAt: now,
+    }).where(eq(schema.creatorSubmissions.id, input.id)).returning()
     if (!record) throw new ApiError(404, 'Creator submission not found')
     return record
   }
@@ -343,14 +384,26 @@ export async function createCreatorPayment(input: CreatorAdminPaymentInput) {
   if (existing) throw new ApiError(409, 'A payment already exists for this submission')
 
   const now = new Date()
-  const [payment] = await db.insert(schema.creatorPayments).values({
-    creatorProfileId: profile.id,
-    submissionId: submission.id,
-    amountCents: input.amountCents,
-    status: input.status,
-    paymentOption: profile.paymentOption,
-    providerReference: input.providerReference || null,
-    paidAt: input.status === 'paid' ? now : null,
-  }).returning()
-  return payment
+  const estimate = calculateCreatorPayout(
+    input.adminViewCountThreshold,
+    true,
+    input.adminUsAudiencePercent
+  )
+  return db.transaction(async (tx) => {
+    await tx.update(schema.creatorSubmissions).set({
+      adminViewCountThreshold: input.adminViewCountThreshold,
+      adminUsAudiencePercent: input.adminUsAudiencePercent,
+      updatedAt: now,
+    }).where(eq(schema.creatorSubmissions.id, submission.id))
+    const [payment] = await tx.insert(schema.creatorPayments).values({
+      creatorProfileId: profile.id,
+      submissionId: submission.id,
+      amountCents: estimate.payout * 100,
+      status: input.status,
+      paymentOption: profile.paymentOption,
+      providerReference: input.providerReference || null,
+      paidAt: input.status === 'paid' ? now : null,
+    }).returning()
+    return payment
+  })
 }

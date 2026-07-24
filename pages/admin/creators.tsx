@@ -1,4 +1,5 @@
 import type { GetServerSideProps } from 'next'
+import Image from 'next/image'
 import Link from 'next/link'
 import { useMemo, useState, type FormEvent } from 'react'
 import {
@@ -18,6 +19,8 @@ import {
   UserRound,
   UsersRound,
   XCircle,
+  ZoomIn,
+  ZoomOut,
 } from 'lucide-react'
 import useSWR from 'swr'
 import { toast } from 'sonner'
@@ -32,6 +35,8 @@ import { cn } from '@/lib/utils'
 import { CreatorEconomicsDashboard } from '@/components/admin/creator-economics-dashboard'
 import { AccountAttributionReport, CreatorAttributionDashboard, CreatorAttributionReport } from '@/components/admin/creator-attribution-dashboard'
 import { AccountTrackingLink } from '@/components/creator/account-tracking-link'
+import { calculateCreatorPayout, CREATOR_US_AUDIENCE_TIERS, CREATOR_VIEW_THRESHOLDS } from '@/lib/creator/payouts'
+import { mergeCreatorSubmissionReviewResults } from '@/lib/creator/submission-review'
 import type {
   AdminAccount,
   AdminAttributionReport,
@@ -238,10 +243,24 @@ function ReviewDialog({ target, payments, metrics, open, onOpenChange, onRefresh
   const [reviewNote, setReviewNote] = useState(target.resource === 'account' || target.resource === 'submission' ? target.item.reviewNote || '' : '')
   const [amount, setAmount] = useState(target.resource === 'payment' ? (target.item.amountCents / 100).toFixed(2) : '')
   const [providerReference, setProviderReference] = useState(target.resource === 'payment' ? target.item.providerReference || '' : '')
+  const [reviewChecklist, setReviewChecklist] = useState(() => target.resource === 'submission'
+    ? mergeCreatorSubmissionReviewResults(target.item.formatId, target.item.reviewChecklist)
+    : [])
+  const [adminViewCountThreshold, setAdminViewCountThreshold] = useState(() => target.resource === 'submission'
+    ? String(target.item.adminViewCountThreshold ?? target.item.viewCountThreshold ?? '')
+    : '')
+  const [adminUsAudiencePercent, setAdminUsAudiencePercent] = useState(() => target.resource === 'submission'
+    ? String(target.item.adminUsAudiencePercent ?? target.item.usAudiencePercent ?? 'base')
+    : 'base')
   const [saving, setSaving] = useState(false)
   const existingPayment = target.resource === 'submission' ? payments.find((payment) => payment.submissionId === target.item.id) : undefined
+  const adminPayoutSelection = {
+    viewCountThreshold: Number(adminViewCountThreshold),
+    usAudiencePercent: adminUsAudiencePercent === 'base' ? null : Number(adminUsAudiencePercent),
+  }
 
   async function save() {
+    if (target.resource === 'submission' && !adminViewCountThreshold) return toast.error('Choose the final view count')
     setSaving(true)
     try {
       await apiPatch('/api/admin/creator/review', {
@@ -249,6 +268,11 @@ function ReviewDialog({ target, payments, metrics, open, onOpenChange, onRefresh
         id: target.item.id,
         status,
         ...(target.resource === 'account' || target.resource === 'submission' ? { reviewNote: reviewNote || null } : null),
+        ...(target.resource === 'submission' ? {
+          reviewChecklist: reviewChecklist.map(({ id, met, note }) => ({ id, met, note: note || null })),
+          adminViewCountThreshold: adminPayoutSelection.viewCountThreshold,
+          adminUsAudiencePercent: adminPayoutSelection.usAudiencePercent,
+        } : null),
         ...(target.resource === 'payment' ? { amountCents: Math.round(Number(amount) * 100), providerReference: providerReference || null } : null),
       })
       toast.success('Review saved')
@@ -272,13 +296,15 @@ function ReviewDialog({ target, payments, metrics, open, onOpenChange, onRefresh
           </DialogHeader>
           <ReviewDetails target={target} />
           {target.resource === 'submission' ? <AttributionEditor submission={target.item} metrics={metrics.find((item) => item.submissionId === target.item.id)} onSaved={onRefresh} /> : null}
+          {target.resource === 'submission' ? <AdminPayoutDecision submission={target.item} selection={adminPayoutSelection} onViewCountChange={setAdminViewCountThreshold} onAudienceChange={setAdminUsAudiencePercent} /> : null}
+          {target.resource === 'submission' ? <SubmissionRequirementsReview items={reviewChecklist} onChange={setReviewChecklist} /> : null}
           <div className="mt-6 grid gap-2">
             <span className="text-sm font-medium">Review status</span>
             <Select value={status} onValueChange={(value) => setStatus(value as typeof status)}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent>{statusOptions(target.resource).map((option) => <SelectItem key={option} value={option}>{statusLabel(option)}</SelectItem>)}</SelectContent></Select>
           </div>
           {target.resource === 'account' || target.resource === 'submission' ? <label className="mt-5 grid gap-2 text-sm font-medium">Review note<textarea value={reviewNote} onChange={(event) => setReviewNote(event.target.value.slice(0, 1000))} className="min-h-24 resize-y rounded-xl border border-zinc-200 p-3 text-sm outline-none transition-[border-color,box-shadow] duration-150 ease-out focus:border-zinc-400 focus:ring-4 focus:ring-zinc-100" placeholder="Visible to the creator" /></label> : null}
           {target.resource === 'payment' ? <div className="mt-5 grid gap-4 sm:grid-cols-2"><label className="grid gap-2 text-sm font-medium">Amount (USD)<input type="number" min="0" step="0.01" value={amount} onChange={(event) => setAmount(event.target.value)} className="h-12 rounded-xl border border-zinc-200 px-3.5 outline-none focus:border-zinc-400 focus:ring-4 focus:ring-zinc-100" /></label><label className="grid gap-2 text-sm font-medium">Provider reference<input value={providerReference} onChange={(event) => setProviderReference(event.target.value)} className="h-12 rounded-xl border border-zinc-200 px-3.5 outline-none focus:border-zinc-400 focus:ring-4 focus:ring-zinc-100" placeholder="Transaction ID" /></label></div> : null}
-          {target.resource === 'submission' && !existingPayment ? <CreatePayment submission={target.item} onCreated={onSaved} /> : null}
+          {target.resource === 'submission' && !existingPayment ? <CreatePayment submission={target.item} selection={adminPayoutSelection} onCreated={onSaved} /> : null}
           {target.resource === 'submission' && existingPayment ? <button className="mt-5 flex w-full items-center justify-between rounded-2xl border border-zinc-200 p-4 text-left" onClick={() => onOpenChange(false)}><span><span className="block text-sm font-semibold">Payment scheduled</span><span className="mt-1 block text-xs text-zinc-500">{formatMoney(existingPayment.amountCents, existingPayment.currency)} · {statusLabel(existingPayment.status)}</span></span><CircleDollarSign className="size-5 text-zinc-400" /></button> : null}
           <div className="mt-7 flex justify-end gap-2"><Button variant="ghost" className="rounded-xl" onClick={() => onOpenChange(false)}>Cancel</Button><Button className="rounded-xl" onClick={() => void save()} disabled={saving}>{saving ? <Loader2 className="animate-spin" /> : <ShieldCheck />}{saving ? 'Saving…' : 'Save review'}</Button></div>
         </div>
@@ -288,11 +314,54 @@ function ReviewDialog({ target, payments, metrics, open, onOpenChange, onRefresh
 }
 
 function AdminSubmissionEvidence({ submission }: { submission: AdminSubmission }) {
+  const [open, setOpen] = useState(false)
+  const [zoom, setZoom] = useState(1)
   if (submission.analyticsScreenshotUrl) {
-    return <div role="img" aria-label="Submitted video analytics screenshot" className="aspect-video rounded-t-[27px] bg-zinc-950 bg-contain bg-center bg-no-repeat" style={{ backgroundImage: `url(${JSON.stringify(submission.analyticsScreenshotUrl)})` }} />
+    return <>
+      <button type="button" className="group relative block aspect-video w-full overflow-hidden rounded-t-[27px] bg-zinc-950" onClick={() => { setZoom(1); setOpen(true) }} aria-label="Zoom analytics screenshot">
+        <Image src={submission.analyticsScreenshotUrl} alt="Submitted video analytics screenshot" fill unoptimized className="object-contain" sizes="672px" />
+        <span className="absolute bottom-3 right-3 flex items-center gap-2 rounded-full bg-black/75 px-3 py-2 text-xs font-semibold text-white shadow-lg backdrop-blur-sm transition-transform duration-150 ease-out group-active:scale-[0.97]"><ZoomIn className="size-3.5" />Zoom screenshot</span>
+      </button>
+      <Dialog open={open} onOpenChange={setOpen}>
+        <DialogContent className="flex h-[92vh] max-w-[96vw] flex-col overflow-hidden rounded-[28px] border-zinc-200 bg-zinc-950 p-0 text-white sm:max-w-[96vw]">
+          <DialogHeader className="flex-row items-center justify-between gap-4 border-b border-white/10 px-5 py-4 text-left">
+            <div><DialogTitle className="text-base text-white">Analytics screenshot</DialogTitle><DialogDescription className="mt-1 text-xs text-white/50">Zoom in to verify views and audience details.</DialogDescription></div>
+            <div className="mr-8 flex items-center gap-1 rounded-xl bg-white/10 p-1">
+              <button type="button" className="grid size-9 place-items-center rounded-lg text-white/70 transition-[background-color,color,transform] duration-150 ease-out hover:bg-white/10 hover:text-white active:scale-[0.96]" onClick={() => setZoom((value) => Math.max(1, value - 0.25))} aria-label="Zoom out"><ZoomOut className="size-4" /></button>
+              <span className="w-12 text-center text-xs font-semibold tabular-nums">{Math.round(zoom * 100)}%</span>
+              <button type="button" className="grid size-9 place-items-center rounded-lg text-white/70 transition-[background-color,color,transform] duration-150 ease-out hover:bg-white/10 hover:text-white active:scale-[0.96]" onClick={() => setZoom((value) => Math.min(3, value + 0.25))} aria-label="Zoom in"><ZoomIn className="size-4" /></button>
+            </div>
+          </DialogHeader>
+          <div className="min-h-0 flex-1 overflow-auto p-4 sm:p-6">
+            <Image src={submission.analyticsScreenshotUrl} alt="Submitted video analytics screenshot enlarged" width={2000} height={2000} unoptimized className="mx-auto h-auto max-w-none rounded-xl object-contain shadow-2xl" style={{ width: `${zoom * 100}%` }} />
+          </div>
+          <div className="flex items-center justify-between border-t border-white/10 px-5 py-3 text-xs text-white/45"><span>Use the controls to inspect fine print.</span><a href={submission.analyticsScreenshotUrl} target="_blank" rel="noreferrer" className="font-semibold text-white underline decoration-white/30 underline-offset-4">Open original</a></div>
+        </DialogContent>
+      </Dialog>
+    </>
   }
   if (submission.videoUrl) return <div className="aspect-video overflow-hidden rounded-t-[27px] bg-black"><video className="size-full object-contain" src={submission.videoUrl} controls preload="metadata" /></div>
   return null
+}
+
+function SubmissionRequirementsReview({
+  items,
+  onChange,
+}: {
+  items: ReturnType<typeof mergeCreatorSubmissionReviewResults>
+  onChange: (items: ReturnType<typeof mergeCreatorSubmissionReviewResults>) => void
+}) {
+  const metCount = items.filter((item) => item.met).length
+  return <section className="mt-6 rounded-2xl border border-zinc-200 bg-white p-4">
+    <div className="flex items-start justify-between gap-4"><div><p className="text-sm font-semibold">Creator-guide requirements</p><p className="mt-1 text-xs leading-5 text-zinc-500">Check every item the video satisfied. Unchecked items and explanations are returned to the creator.</p></div><span className="shrink-0 rounded-full bg-zinc-100 px-2.5 py-1 text-[11px] font-semibold tabular-nums text-zinc-600">{metCount}/{items.length}</span></div>
+    <Link href="/creator/guide#video-requirements" target="_blank" className="mt-3 inline-flex items-center gap-1 text-xs font-semibold text-zinc-600 underline decoration-zinc-300 underline-offset-4 hover:text-black">Open video requirements <ArrowUpRight className="size-3.5" /></Link>
+    <div className="mt-4 grid gap-2">
+      {items.map((item, index) => <div key={item.id} className={cn('rounded-xl border p-3 transition-[border-color,background-color] duration-150 ease-out', item.met ? 'border-emerald-200 bg-emerald-50/70' : 'border-zinc-200 bg-zinc-50')}>
+        <label className="flex cursor-pointer items-start gap-3"><input type="checkbox" className="mt-0.5 size-4 shrink-0 rounded border-zinc-300 accent-emerald-600" checked={item.met} onChange={(event) => onChange(items.map((current, itemIndex) => itemIndex === index ? { ...current, met: event.target.checked } : current))} /><span><span className="block text-sm font-semibold">{item.label}</span><span className="mt-1 block text-[11px] leading-5 text-zinc-500">{item.detail}</span></span></label>
+        {!item.met ? <textarea value={item.note || ''} maxLength={500} onChange={(event) => onChange(items.map((current, itemIndex) => itemIndex === index ? { ...current, note: event.target.value } : current))} className="mt-3 min-h-16 w-full resize-y rounded-lg border border-zinc-200 bg-white p-2.5 text-xs leading-5 outline-none transition-[border-color,box-shadow] duration-150 ease-out focus:border-zinc-400 focus:ring-4 focus:ring-zinc-100" placeholder="Optional: explain why this item did not receive full marks" /> : null}
+      </div>)}
+    </div>
+  </section>
 }
 
 function AttributionEditor({ submission, metrics, onSaved }: { submission: AdminSubmission; metrics?: AdminAttributionMetrics; onSaved: () => Promise<void> }) {
@@ -318,15 +387,47 @@ function AttributionEditor({ submission, metrics, onSaved }: { submission: Admin
 
 function MetricInput({ label, value, onChange }: { label: string; value: number; onChange: (value: number) => void }) { return <label className="grid gap-1.5"><span className="text-[11px] font-medium text-zinc-500">{label}</span><input type="number" min="0" step="1" value={value} onChange={(event) => onChange(Math.max(0, Math.round(Number(event.target.value) || 0)))} className="h-10 min-w-0 rounded-xl border border-zinc-200 bg-white px-3 text-sm outline-none focus:border-zinc-400 focus:ring-4 focus:ring-zinc-100" /></label> }
 
-function CreatePayment({ submission, onCreated }: { submission: AdminSubmission; onCreated: () => Promise<void> }) {
-  const [amount, setAmount] = useState('')
+type AdminPayoutSelection = {
+  viewCountThreshold: number
+  usAudiencePercent: number | null
+}
+
+function AdminPayoutDecision({
+  submission,
+  selection,
+  onViewCountChange,
+  onAudienceChange,
+}: {
+  submission: AdminSubmission
+  selection: AdminPayoutSelection
+  onViewCountChange: (value: string) => void
+  onAudienceChange: (value: string) => void
+}) {
+  const estimate = getSubmissionPayoutEstimate(selection)
+  return <section className="mt-6 rounded-2xl border border-zinc-200 bg-white p-4">
+    <div className="flex items-start justify-between gap-4"><div><p className="text-sm font-semibold">Final payout decision</p><p className="mt-1 text-xs leading-5 text-zinc-500">Verify the screenshot, then choose the values that determine what the creator receives.</p></div>{estimate ? <div className="text-right"><p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-zinc-400">Final payment</p><p className="mt-1 text-2xl font-semibold tracking-[-0.045em]">{formatMoney(estimate.payout * 100, 'USD')}</p></div> : null}</div>
+    <div className="mt-4 rounded-xl bg-zinc-50 p-3"><p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-zinc-400">Creator submitted</p><div className="mt-2 flex flex-wrap gap-x-5 gap-y-1 text-xs text-zinc-600"><span><strong className="font-semibold text-zinc-900">{submission.viewCountThreshold ? formatViewCount(submission.viewCountThreshold) : 'Not recorded'}</strong> views</span><span><strong className="font-semibold text-zinc-900">{submission.usAudiencePercent !== null ? `${submission.usAudiencePercent}% U.S.` : '20%+ combined Tier-1'}</strong> audience</span></div></div>
+    <div className="mt-4 grid gap-3 sm:grid-cols-2">
+      <label className="grid gap-2 text-xs font-semibold text-zinc-700">Admin-approved views<Select value={selection.viewCountThreshold ? String(selection.viewCountThreshold) : undefined} onValueChange={onViewCountChange}><SelectTrigger aria-label="Admin-approved view count"><SelectValue placeholder="Choose final views" /></SelectTrigger><SelectContent>{CREATOR_VIEW_THRESHOLDS.map((threshold) => <SelectItem key={threshold.views} value={String(threshold.views)}>{threshold.label} views</SelectItem>)}</SelectContent></Select></label>
+      <label className="grid gap-2 text-xs font-semibold text-zinc-700">Admin-approved audience<Select value={selection.usAudiencePercent === null ? 'base' : String(selection.usAudiencePercent)} onValueChange={onAudienceChange}><SelectTrigger aria-label="Admin-approved audience"><SelectValue /></SelectTrigger><SelectContent><SelectItem value="base">20%+ combined Tier-1 · base</SelectItem>{CREATOR_US_AUDIENCE_TIERS.map((percentage) => <SelectItem key={percentage} value={String(percentage)}>{percentage === 40 ? '40%+ U.S.' : `${percentage}% U.S.`}</SelectItem>)}</SelectContent></Select></label>
+    </div>
+    <p className="mt-3 text-[11px] leading-5 text-zinc-500">These admin-approved values override the creator’s selection for payment.{estimate?.isCapped ? ' The $325 payout cap is applied.' : ''}</p>
+  </section>
+}
+
+function CreatePayment({ submission, selection, onCreated }: { submission: AdminSubmission; selection: AdminPayoutSelection; onCreated: () => Promise<void> }) {
+  const estimate = getSubmissionPayoutEstimate(selection)
   const [creating, setCreating] = useState(false)
   async function create() {
-    const amountCents = Math.round(Number(amount) * 100)
-    if (!Number.isFinite(amountCents) || amountCents <= 0) return toast.error('Enter a payout amount')
+    if (!estimate) return toast.error('Choose the final payout values')
     setCreating(true)
     try {
-      await apiPost('/api/admin/creator/payments', { submissionId: submission.id, amountCents, status: 'pending' })
+      await apiPost('/api/admin/creator/payments', {
+        submissionId: submission.id,
+        adminViewCountThreshold: selection.viewCountThreshold,
+        adminUsAudiencePercent: selection.usAudiencePercent,
+        status: 'pending',
+      })
       toast.success('Payment created')
       await onCreated()
     } catch (error) {
@@ -335,7 +436,7 @@ function CreatePayment({ submission, onCreated }: { submission: AdminSubmission;
       setCreating(false)
     }
   }
-  return <div className="mt-5 rounded-2xl border border-zinc-200 bg-zinc-50 p-4"><p className="text-sm font-semibold">Create payment</p><p className="mt-1 text-xs leading-5 text-zinc-500">Schedule a payout using the creator’s saved payment method.</p><div className="mt-4 flex gap-2"><input type="number" min="0" step="0.01" value={amount} onChange={(event) => setAmount(event.target.value)} className="h-10 min-w-0 flex-1 rounded-xl border border-zinc-200 bg-white px-3 text-sm outline-none focus:border-zinc-400 focus:ring-4 focus:ring-zinc-100" placeholder="Amount in USD" /><Button variant="outline" className="h-10 rounded-xl bg-white" onClick={() => void create()} disabled={creating}>{creating ? <Loader2 className="animate-spin" /> : <CircleDollarSign />}Schedule</Button></div></div>
+  return <div className="mt-5 rounded-2xl border border-zinc-200 bg-zinc-50 p-4"><div className="flex items-center justify-between gap-4"><div><p className="text-sm font-semibold">Create payment</p><p className="mt-1 text-xs leading-5 text-zinc-500">The amount is locked to the admin-approved calculator result.</p></div><p className="text-2xl font-semibold tracking-[-0.045em]">{estimate ? formatMoney(estimate.payout * 100, 'USD') : '—'}</p></div>{estimate ? <p className="mt-3 rounded-xl bg-white px-3 py-2 text-[11px] leading-5 text-zinc-500">{formatViewCount(selection.viewCountThreshold)} approved views · {selection.usAudiencePercent !== null ? `${selection.usAudiencePercent}% U.S. audience` : '20%+ combined Tier-1 base rate'}{estimate.isCapped ? ' · payout cap applied' : ''}</p> : <p className="mt-3 text-xs text-amber-700">Choose the final views and audience tier above before creating payment.</p>}<Button variant="outline" className="mt-4 h-10 w-full rounded-xl bg-white" onClick={() => void create()} disabled={creating || !estimate}>{creating ? <Loader2 className="animate-spin" /> : <CircleDollarSign />}{creating ? 'Creating…' : 'Schedule calculated payment'}</Button></div>
 }
 
 function ReviewDetails({ target }: { target: ReviewTarget }) {
@@ -343,7 +444,7 @@ function ReviewDetails({ target }: { target: ReviewTarget }) {
   if (target.resource === 'account') return <>{target.item.analyticsVideoUrl ? <div className="mt-6 overflow-hidden rounded-2xl bg-black"><div className="flex items-center justify-between bg-zinc-900 px-4 py-2.5 text-xs text-white"><span className="font-medium">28-day analytics recording</span><span className="text-white/50">{target.item.analyticsSizeBytes ? formatBytes(target.item.analyticsSizeBytes) : null}</span></div><video className="aspect-video w-full object-contain" src={target.item.analyticsVideoUrl} controls preload="metadata" /></div> : null}<AccountTrackingLink url={target.item.trackingLinkUrl} className="mt-6" /><AccountAttributionReport report={target.item.attribution} /><Details rows={[['Creator', target.item.creatorName], ['Platform', capitalize(target.item.platform)], ['Handle', `@${target.item.handle}`], ['Connection', target.item.connectionMethod === 'oauth' ? 'OAuth verified' : 'Manual'], ['Analytics window', target.item.analyticsPeriodDays ? `Past ${target.item.analyticsPeriodDays} days` : 'Not provided'], ['Recording size', target.item.analyticsSizeBytes ? formatBytes(target.item.analyticsSizeBytes) : 'Not provided'], ['Profile', target.item.profileUrl || 'Not provided']]} links={target.item.profileUrl ? { 6: target.item.profileUrl } : undefined} /></>
   if (target.resource === 'submission') {
     const evidenceSize = target.item.analyticsSizeBytes || target.item.videoSizeBytes
-    return <Details rows={[['Creator', target.item.creatorName], ['Format', target.item.title], ['Requirements', target.item.requirementsConfirmedAt ? `Confirmed ${formatDate(target.item.requirementsConfirmedAt)}` : 'Not recorded'], ['Account', target.item.socialHandle ? `@${target.item.socialHandle}` : 'Not connected'], ['Account Eligibility', target.item.socialAccountStatus === 'approved' ? 'Approved' : 'Not connected to an approved account'], ['Evidence', target.item.analyticsScreenshotUrl ? 'Analytics screenshot' : target.item.videoUrl ? 'Legacy video' : 'Not provided'], ['Evidence Size', evidenceSize ? formatBytes(evidenceSize) : 'Not recorded'], ['View Count Threshold', target.item.viewCountThreshold ? `${formatViewCount(target.item.viewCountThreshold)} views` : 'Not recorded'], ['U.S. Audience', target.item.usAudiencePercent !== null ? `${target.item.usAudiencePercent}%` : 'Default 20% Tier 1 Audience'], ['Published Post', target.item.postUrl || 'Not provided']]} links={target.item.postUrl ? { 9: target.item.postUrl } : undefined} />
+    return <Details rows={[['Creator', target.item.creatorName], ['Format', target.item.title], ['Requirements', target.item.requirementsConfirmedAt ? `Confirmed ${formatDate(target.item.requirementsConfirmedAt)}` : 'Not recorded'], ['Account', target.item.socialHandle ? `@${target.item.socialHandle}` : 'Not connected'], ['Account Eligibility', target.item.socialAccountStatus === 'approved' ? 'Approved' : 'Not connected to an approved account'], ['Evidence', target.item.analyticsScreenshotUrl ? 'Analytics screenshot' : target.item.videoUrl ? 'Legacy video' : 'Not provided'], ['Evidence Size', evidenceSize ? formatBytes(evidenceSize) : 'Not recorded'], ['Creator-submitted views', target.item.viewCountThreshold ? `${formatViewCount(target.item.viewCountThreshold)} views` : 'Not recorded'], ['Creator-submitted audience', target.item.usAudiencePercent !== null ? `${target.item.usAudiencePercent}% U.S.` : '20%+ combined Tier-1'], ['Published Post', target.item.postUrl || 'Not provided']]} links={target.item.postUrl ? { 9: target.item.postUrl } : undefined} />
   }
   return <Details rows={[['Creator', target.item.creatorName], ['Submission', target.item.submissionTitle || 'Manual payment'], ['Method', target.item.paymentOption === 'paypal' ? 'PayPal' : 'Crypto'], ['Reference', target.item.providerReference || 'Not provided']]} />
 }
@@ -367,6 +468,10 @@ function formatMoney(cents: number, currency: string) { return new Intl.NumberFo
 function formatDate(value: string) { return new Intl.DateTimeFormat('en-US', { month: 'short', day: 'numeric', year: 'numeric' }).format(new Date(value)) }
 function formatBytes(bytes: number) { return `${(bytes / 1024 / 1024).toFixed(1)} MB` }
 function formatViewCount(views: number) { return views === 1_000_000 ? '+1M' : new Intl.NumberFormat('en-US', { notation: views >= 10_000 ? 'compact' : 'standard', maximumFractionDigits: 0 }).format(views) }
+function getSubmissionPayoutEstimate(selection: AdminPayoutSelection) {
+  if (!selection.viewCountThreshold || !CREATOR_VIEW_THRESHOLDS.some((item) => item.views === selection.viewCountThreshold)) return null
+  return calculateCreatorPayout(selection.viewCountThreshold, true, selection.usAudiencePercent)
+}
 
 function normalizeAdminDashboard(data: AdminDashboard): AdminDashboard {
   return {

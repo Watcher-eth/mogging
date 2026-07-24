@@ -1,12 +1,13 @@
 import Link from 'next/link'
 import { useMemo, useState } from 'react'
-import { ArrowUpRight, CircleAlert, CircleDollarSign, Clock3, FileVideo, Loader2 } from 'lucide-react'
+import { ArrowUpRight, CheckCircle2, CircleAlert, CircleDollarSign, Clock3, FileVideo, Loader2, XCircle } from 'lucide-react'
 import useSWR from 'swr'
 import { Button } from '@/components/ui/button'
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { CreatorHeader, CreatorShell } from '@/components/creator/creator-shell'
 import type { CreatorDashboard, CreatorPayment, CreatorSubmission } from '@/components/creator/types'
 import { apiGet } from '@/lib/api/client'
+import { mergeCreatorSubmissionReviewResults } from '@/lib/creator/submission-review'
 import { cn } from '@/lib/utils'
 
 const filters = [
@@ -84,6 +85,7 @@ function SubmissionDialog({ submission, payment, linkedToApprovedAccount, open, 
               <Detail label="Payment Method" value={payment ? (payment.paymentOption === 'paypal' ? 'PayPal' : 'Crypto') : '—'} />
             </div>
             {submission.caption ? <div className="mt-6"><p className="text-xs font-semibold uppercase tracking-[0.15em] text-zinc-400">Caption</p><p className="mt-2 whitespace-pre-wrap text-sm leading-6 text-zinc-600">{submission.caption}</p></div> : null}
+            {submission.reviewChecklist?.length ? <CreatorReviewChecklist submission={submission} /> : null}
             {submission.reviewNote ? <div className="mt-6 rounded-2xl border border-zinc-200 p-4"><p className="text-xs font-semibold uppercase tracking-[0.15em] text-zinc-400">Team Note</p><p className="mt-2 text-sm leading-6 text-zinc-600">{submission.reviewNote}</p></div> : null}
             {submission.postUrl ? <Button asChild variant="outline" className="mt-6 h-10 rounded-xl"><a href={submission.postUrl} target="_blank" rel="noreferrer">Open Published Post <ArrowUpRight /></a></Button> : null}
           </div>
@@ -91,6 +93,12 @@ function SubmissionDialog({ submission, payment, linkedToApprovedAccount, open, 
       </DialogContent>
     </Dialog>
   )
+}
+
+function CreatorReviewChecklist({ submission }: { submission: CreatorSubmission }) {
+  const items = mergeCreatorSubmissionReviewResults(submission.formatId, submission.reviewChecklist)
+  const metCount = items.filter((item) => item.met).length
+  return <section className="mt-6 rounded-2xl border border-zinc-200 p-4"><div className="flex items-start justify-between gap-4"><div><p className="text-xs font-semibold uppercase tracking-[0.15em] text-zinc-400">Requirements review</p><p className="mt-2 text-sm font-semibold">Creator-guide results</p><p className="mt-1 text-xs leading-5 text-zinc-500">See what your video satisfied and where the review team found a gap.</p></div><span className="shrink-0 rounded-full bg-zinc-100 px-2.5 py-1 text-[11px] font-semibold tabular-nums text-zinc-600">{metCount}/{items.length}</span></div><div className="mt-4 grid gap-2">{items.map((item) => <div key={item.id} className={cn('flex items-start gap-3 rounded-xl p-3', item.met ? 'bg-emerald-50 text-emerald-950' : 'bg-red-50 text-red-950')}>{item.met ? <CheckCircle2 className="mt-0.5 size-4 shrink-0 text-emerald-600" /> : <XCircle className="mt-0.5 size-4 shrink-0 text-red-600" />}<div><p className="text-sm font-semibold">{item.label}</p><p className={cn('mt-1 text-[11px] leading-5', item.met ? 'text-emerald-800' : 'text-red-800')}>{item.note || (item.met ? 'Requirement satisfied.' : 'This requirement was not marked as satisfied.')}</p></div></div>)}</div></section>
 }
 
 function SubmissionEvidence({ submission }: { submission: CreatorSubmission }) {
