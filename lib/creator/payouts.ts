@@ -14,6 +14,14 @@ const US_RATE_BOOST_START_PERCENT = 22.5
 const MAXIMUM_PAYABLE_AUDIENCE_PERCENT = 40
 const MAXIMUM_PAYOUT_DOLLARS = 325
 
+export function isCreatorViewThreshold(value: number): value is (typeof CREATOR_VIEW_THRESHOLDS)[number]['views'] {
+  return CREATOR_VIEW_THRESHOLDS.some((option) => option.views === value)
+}
+
+export function isCreatorUsAudienceTier(value: number): value is (typeof CREATOR_US_AUDIENCE_TIERS)[number] {
+  return CREATOR_US_AUDIENCE_TIERS.some((percentage) => percentage === value)
+}
+
 export function calculateCreatorPayout(totalViews: number, tier1AudienceEligible: boolean, usAudiencePercentage: number | null) {
   const threshold = CREATOR_VIEW_THRESHOLDS.find((option) => option.views === totalViews)
 

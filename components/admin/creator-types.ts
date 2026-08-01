@@ -2,6 +2,7 @@ export type CreatorStatus = 'pending' | 'verified' | 'suspended'
 export type AccountStatus = 'pending' | 'approved' | 'missing_information'
 export type SubmissionStatus = 'pending' | 'in_review' | 'approved' | 'rejected' | 'paid'
 export type PaymentStatus = 'pending' | 'processing' | 'paid' | 'failed' | 'cancelled'
+export type SubmissionReviewResult = { id: string; met: boolean; note: string | null }
 
 export type AdminAttributionReport = {
   clicks: number
@@ -91,8 +92,11 @@ export type AdminSubmission = {
   analyticsSizeBytes: number | null
   viewCountThreshold: number | null
   usAudiencePercent: number | null
+  adminViewCountThreshold: number | null
+  adminUsAudiencePercent: number | null
   status: SubmissionStatus
   reviewNote: string | null
+  reviewChecklist: SubmissionReviewResult[] | null
   createdAt: string
 }
 

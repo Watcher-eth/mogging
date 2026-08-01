@@ -26,8 +26,11 @@ export type CreatorSubmission = {
   analyticsSizeBytes: number | null
   viewCountThreshold: number | null
   usAudiencePercent: number | null
+  adminViewCountThreshold: number | null
+  adminUsAudiencePercent: number | null
   status: 'pending' | 'in_review' | 'approved' | 'rejected' | 'paid'
   reviewNote: string | null
+  reviewChecklist: Array<{ id: string; met: boolean; note: string | null }> | null
   createdAt: string
 }
 
