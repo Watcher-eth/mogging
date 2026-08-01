@@ -1907,13 +1907,7 @@ function ReportActions({
 
   return (
     <div className={`grid gap-3 ${className}`}>
-      <div className="border border-zinc-200 p-4">
-        <p className="font-mono text-[10px] uppercase tracking-wide text-muted-foreground">Overall score</p>
-        <div className="mt-3 flex items-end justify-between">
-          <span className="text-6xl font-semibold leading-none tracking-[-0.06em]">{displayScore.toFixed(1)}</span>
-          <span className="pb-1 font-mono text-[10px] uppercase text-muted-foreground">/ 10</span>
-        </div>
-      </div>
+      <GradedScoreSlab score={displayScore} />
       <button
         className="flex h-12 w-full items-center justify-between bg-black px-4 font-mono text-[11px] uppercase tracking-wide text-white transition-transform duration-200 ease-out hover:-translate-y-0.5 active:translate-y-0"
         onClick={onOpenShare}
@@ -1939,6 +1933,38 @@ function ReportActions({
       >
         New analysis
       </button>
+    </div>
+  )
+}
+
+function GradedScoreSlab({ score }: { score: number }) {
+  const serial = String(Math.round(score * 10_000)).padStart(6, '0')
+
+  return (
+    <div
+      aria-label={`Mogging overall grade ${score.toFixed(1)} out of 10`}
+      className="report-grade-slab relative isolate overflow-hidden rounded-[18px] border-[5px] border-[#e21d2f] bg-[#f8fbf8] p-2 shadow-[0_18px_45px_rgba(66,9,17,0.18),inset_0_0_0_1px_rgba(255,255,255,0.9)]"
+    >
+      <span className="report-grade-foil pointer-events-none absolute -inset-y-1 -left-1/2 z-20 w-[210%]" aria-hidden="true" />
+      <span className="pointer-events-none absolute inset-[3px] z-10 rounded-[11px] border border-white/80 shadow-[inset_0_0_18px_rgba(255,255,255,0.9)]" aria-hidden="true" />
+      <div className="relative z-0 grid min-h-28 grid-cols-[minmax(0,1fr)_84px] divide-x divide-zinc-300 border border-zinc-300 bg-[#f6faf6]/95">
+        <div className="grid content-between gap-3 p-3">
+          <div>
+            <p className="font-mono text-[9px] font-semibold uppercase tracking-[0.18em] text-zinc-500">Mogging facial report</p>
+            <p className="mt-1 text-sm font-bold uppercase leading-tight tracking-[-0.02em] text-black">Overall grade</p>
+          </div>
+          <div className="flex items-end justify-between gap-3 font-mono text-[9px] uppercase tracking-[0.12em] text-zinc-500">
+            <span>Verified analysis</span>
+            <span>#{serial}</span>
+          </div>
+        </div>
+        <div className="grid place-items-center bg-white/55 p-2 text-center">
+          <div>
+            <span className="block text-4xl font-black leading-none tracking-[-0.09em] text-[#d7192d]">{score.toFixed(1)}</span>
+            <span className="mt-2 block font-mono text-[9px] font-semibold uppercase tracking-[0.16em] text-zinc-500">/ 10</span>
+          </div>
+        </div>
+      </div>
     </div>
   )
 }

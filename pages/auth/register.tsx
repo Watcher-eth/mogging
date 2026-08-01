@@ -5,11 +5,16 @@ import { apiPost, ApiClientError } from '@/lib/api/client'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
+import { useRouter } from 'next/router'
+import { countryOptions, usRegionOptions } from '@/lib/geo/regions'
 
 export default function RegisterPage() {
+  const router = useRouter()
   const [name, setName] = useState('')
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
+  const [country, setCountry] = useState('US')
+  const [state, setState] = useState('')
   const [error, setError] = useState<string | null>(null)
 
   async function handleRegister(event: FormEvent<HTMLFormElement>) {
@@ -17,16 +22,24 @@ export default function RegisterPage() {
     setError(null)
 
     try {
-      await apiPost('/api/auth/register', { name, email, password })
+      await apiPost('/api/auth/register', {
+        name,
+        email,
+        password,
+        country,
+        state: country === 'US' ? state : null,
+      })
     } catch (error) {
       setError(error instanceof ApiClientError ? error.message : 'Failed to register')
       return
     }
 
+    const requestedNext = Array.isArray(router.query.next) ? router.query.next[0] : router.query.next
+    const callbackUrl = requestedNext?.startsWith('/') && !requestedNext.startsWith('//') ? requestedNext : '/'
     await signIn('credentials', {
       email,
       password,
-      callbackUrl: '/',
+      callbackUrl,
     })
   }
 
@@ -47,6 +60,36 @@ export default function RegisterPage() {
             value={name}
             onChange={(event) => setName(event.target.value)}
           />
+        </div>
+        <div className="grid grid-cols-[minmax(0,1fr)_minmax(0,1.3fr)] gap-3">
+          <div className="grid gap-2">
+            <Label htmlFor="country">Country</Label>
+            <select
+              id="country"
+              className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+              onChange={(event) => {
+                setCountry(event.target.value)
+                if (event.target.value !== 'US') setState('')
+              }}
+              value={country}
+            >
+              {countryOptions.map((option) => <option key={option.code} value={option.code}>{option.label}</option>)}
+            </select>
+          </div>
+          <div className="grid gap-2">
+            <Label htmlFor="state">State / region</Label>
+            <select
+              id="state"
+              className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm disabled:opacity-50"
+              disabled={country !== 'US'}
+              onChange={(event) => setState(event.target.value)}
+              required={country === 'US'}
+              value={state}
+            >
+              <option value="">Select</option>
+              {usRegionOptions.map(([code, label]) => <option key={code} value={code}>{label}</option>)}
+            </select>
+          </div>
         </div>
         <div className="grid gap-2">
           <Label htmlFor="email">Email</Label>

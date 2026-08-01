@@ -16,9 +16,12 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     try {
       const query = pairSelectionSchema.parse({
         ageBucket: typeof req.query.ageBucket === 'string' ? req.query.ageBucket : 'all',
-        gender: typeof req.query.gender === 'string' ? req.query.gender : 'all',
+        gender: typeof req.query.gender === 'string' ? req.query.gender : 'female',
         hairColor: typeof req.query.hairColor === 'string' ? req.query.hairColor : 'all',
         skinColor: typeof req.query.skinColor === 'string' ? req.query.skinColor : 'all',
+        state: typeof req.query.state === 'string' && req.query.state.toLowerCase() !== 'all'
+          ? req.query.state.toUpperCase()
+          : 'all',
         photoType: typeof req.query.photoType === 'string' ? req.query.photoType : 'face',
       })
       const pair = await selectComparisonPair(query)

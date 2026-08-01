@@ -29,8 +29,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     try {
       const location = getRequestLocation(req)
       const input = parseBody(anonymousProfileSchema, {
-        ...req.body,
         ...(location.country ? location : null),
+        ...req.body,
       })
       const profile = await upsertAnonymousProfile(anonymousActorId, input)
       return json(res, 200, { profile })

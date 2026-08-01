@@ -10,6 +10,7 @@ import useSWR, { useSWRConfig } from 'swr'
 import { toast } from 'sonner'
 import { apiGet, apiPost, ApiClientError } from '@/lib/api/client'
 import { filterSound, selectSound, tickingSound, voteSound } from '@/lib/audio/sounds'
+import { formatProfileLocation, usRegionOptions } from '@/lib/geo/regions'
 
 type ComparisonPhoto = {
   id: string
@@ -21,6 +22,8 @@ type ComparisonPhoto = {
   skinColor: string | null
   photoType: 'face' | 'body' | 'outfit'
   userId: string | null
+  country: string | null
+  state: string | null
   displayRating: number
   conservativeScore: number
   winCount: number
@@ -53,6 +56,7 @@ const ageFilters = ['all', '18-24', '25-34', '35-44', '45+'] as const
 const genderFilters = ['all', 'male', 'female'] as const
 const hairColorFilters = ['all', 'black', 'brown', 'blond', 'red', 'gray', 'other'] as const
 const skinColorFilters = ['all', 'very_light', 'light', 'white', 'tan', 'brown', 'black'] as const
+const stateFilters = ['all', ...usRegionOptions.map(([code]) => code)] as const
 
 export default function VotingPage() {
   const { mutate: mutateGlobal } = useSWRConfig()
@@ -60,10 +64,11 @@ export default function VotingPage() {
   const playSelect = useSound(selectSound)
   const playTicking = useSound(tickingSound)
   const [ageBucket, setAgeBucket] = useState<(typeof ageFilters)[number]>('all')
-  const [gender, setGender] = useState<(typeof genderFilters)[number]>('all')
+  const [gender, setGender] = useState<(typeof genderFilters)[number]>('female')
   const [hairColor, setHairColor] = useState<(typeof hairColorFilters)[number]>('all')
   const [skinColor, setSkinColor] = useState<(typeof skinColorFilters)[number]>('all')
-  const pairKey = `/api/compare?photoType=face&gender=${gender}&ageBucket=${ageBucket}&hairColor=${hairColor}&skinColor=${skinColor}`
+  const [state, setState] = useState<(typeof stateFilters)[number]>('all')
+  const pairKey = `/api/compare?photoType=face&gender=${gender}&ageBucket=${ageBucket}&hairColor=${hairColor}&skinColor=${skinColor}&state=${state}`
   const { data: pair, error, isLoading, mutate } = useSWR<ComparisonPair>(pairKey, {
     revalidateIfStale: false,
     revalidateOnFocus: false,
@@ -308,10 +313,12 @@ export default function VotingPage() {
                     gender={gender}
                     hairColor={hairColor}
                     skinColor={skinColor}
+                    state={state}
                     onAgeBucketChange={setAgeBucket}
                     onGenderChange={setGender}
                     onHairColorChange={setHairColor}
                     onSkinColorChange={setSkinColor}
+                    onStateChange={setState}
                   />
                 </div>
               </div>
@@ -323,10 +330,12 @@ export default function VotingPage() {
                   pendingVote={pendingVote}
                   pairTimerKey={pairTimerKey}
                   skinColor={skinColor}
+                  state={state}
                   onAgeBucketChange={setAgeBucket}
                   onGenderChange={setGender}
                   onHairColorChange={setHairColor}
                   onSkinColorChange={setSkinColor}
+                  onStateChange={setState}
                 />
               </div>
             </div>
@@ -386,10 +395,12 @@ function BattleControls({
   pendingVote,
   pairTimerKey,
   skinColor,
+  state,
   onAgeBucketChange,
   onGenderChange,
   onHairColorChange,
   onSkinColorChange,
+  onStateChange,
 }: {
   ageBucket: (typeof ageFilters)[number]
   gender: (typeof genderFilters)[number]
@@ -397,10 +408,12 @@ function BattleControls({
   pendingVote: PendingVote | null
   pairTimerKey: string
   skinColor: (typeof skinColorFilters)[number]
+  state: (typeof stateFilters)[number]
   onAgeBucketChange: (value: (typeof ageFilters)[number]) => void
   onGenderChange: (value: (typeof genderFilters)[number]) => void
   onHairColorChange: (value: (typeof hairColorFilters)[number]) => void
   onSkinColorChange: (value: (typeof skinColorFilters)[number]) => void
+  onStateChange: (value: (typeof stateFilters)[number]) => void
 }) {
   return (
     <>
@@ -413,10 +426,12 @@ function BattleControls({
         gender={gender}
         hairColor={hairColor}
         skinColor={skinColor}
+        state={state}
         onAgeBucketChange={onAgeBucketChange}
         onGenderChange={onGenderChange}
         onHairColorChange={onHairColorChange}
         onSkinColorChange={onSkinColorChange}
+        onStateChange={onStateChange}
       />
     </>
   )
@@ -427,19 +442,23 @@ function BattleFilters({
   gender,
   hairColor,
   skinColor,
+  state,
   onAgeBucketChange,
   onGenderChange,
   onHairColorChange,
   onSkinColorChange,
+  onStateChange,
 }: {
   ageBucket: (typeof ageFilters)[number]
   gender: (typeof genderFilters)[number]
   hairColor: (typeof hairColorFilters)[number]
   skinColor: (typeof skinColorFilters)[number]
+  state: (typeof stateFilters)[number]
   onAgeBucketChange: (value: (typeof ageFilters)[number]) => void
   onGenderChange: (value: (typeof genderFilters)[number]) => void
   onHairColorChange: (value: (typeof hairColorFilters)[number]) => void
   onSkinColorChange: (value: (typeof skinColorFilters)[number]) => void
+  onStateChange: (value: (typeof stateFilters)[number]) => void
 }) {
   return (
     <FilterMenu
@@ -449,6 +468,7 @@ function BattleFilters({
         { label: 'Age', value: ageBucket, values: ageFilters, onChange: (value) => onAgeBucketChange(value as (typeof ageFilters)[number]) },
         { label: 'Hair', value: hairColor, values: hairColorFilters, onChange: (value) => onHairColorChange(value as (typeof hairColorFilters)[number]) },
         { label: 'Skin', value: skinColor, values: skinColorFilters, onChange: (value) => onSkinColorChange(value as (typeof skinColorFilters)[number]) },
+        { label: 'Location', value: state, values: stateFilters, onChange: (value) => onStateChange(value as (typeof stateFilters)[number]) },
       ]}
     />
   )
@@ -562,7 +582,7 @@ function FilterMenuSelect({ filter }: { filter: FilterMenuItem }) {
       >
         {filter.values.map((option) => (
           <option key={option} value={option}>
-            {formatFilterOption(option)}
+            {formatFilterOption(option, filter.label)}
           </option>
         ))}
       </select>
@@ -570,7 +590,10 @@ function FilterMenuSelect({ filter }: { filter: FilterMenuItem }) {
   )
 }
 
-function formatFilterOption(option: string) {
+function formatFilterOption(option: string, label: string) {
+  if (label === 'Gender' && option === 'female') return 'Girls'
+  if (label === 'Gender' && option === 'male') return 'Boys'
+  if (label === 'Gender' && option === 'all') return 'Mixed'
   return option.replaceAll('_', ' ')
 }
 
@@ -644,6 +667,7 @@ function BattleCandidate({
   const isRejected = transitionLoser?.id === photo.id
   const exitTo = transitionLoser?.side === 'right' ? 'left' : 'right'
   const displayRating = photo.displayRating + (isSelected ? 18 : 0)
+  const location = formatProfileLocation(photo.country, photo.state)
 
   return (
     <article
@@ -663,6 +687,7 @@ function BattleCandidate({
         <div className="min-w-0">
           <p className="font-mono text-[9px] uppercase tracking-[0.12em] text-zinc-500 sm:text-xs sm:tracking-[0.14em]">Rank</p>
           <h2 className="mt-1 truncate text-2xl font-semibold leading-none tracking-[-0.055em] sm:mt-2 sm:text-5xl sm:tracking-[-0.065em]">{displayName}</h2>
+          {location ? <p className="mt-1 truncate font-mono text-[9px] uppercase tracking-[0.12em] text-zinc-500 sm:mt-2 sm:text-[11px]">{location}</p> : null}
         </div>
         <div className="shrink-0 bg-white px-1.5 py-1 font-mono text-[10px] font-semibold sm:px-2 sm:text-xs">
           [{shortcut}]

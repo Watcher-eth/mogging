@@ -13,9 +13,10 @@ import {
 
 export const pairSelectionSchema = z.object({
   ageBucket: ageBucketSchema.or(z.literal('all')).default('all'),
-  gender: z.enum(['male', 'female', 'other', 'all']).default('all'),
+  gender: z.enum(['male', 'female', 'other', 'all']).default('female'),
   hairColor: hairColorSchema.or(z.literal('all')).default('all'),
   skinColor: skinColorSchema.or(z.literal('all')).default('all'),
+  state: z.union([z.literal('all'), z.string().trim().regex(/^[A-Z]{2}$/)]).default('all'),
   photoType: z.enum(['face', 'body', 'outfit']).default('face'),
 })
 
@@ -47,11 +48,19 @@ export async function selectComparisonPair(input: PairSelectionInput) {
     params.gender === 'all' ? undefined : eq(schema.photos.gender, params.gender),
     params.hairColor === 'all' ? undefined : eq(schema.photos.hairColor, params.hairColor),
     params.skinColor === 'all' ? undefined : eq(schema.photos.skinColor, params.skinColor),
+    params.state === 'all'
+      ? undefined
+      : sql`coalesce(${schema.users.state}, ${schema.anonymousProfiles.state}) = ${params.state}`,
     params.ageBucket === 'all' ? undefined : ageBucketFilter(params.ageBucket),
   ].filter(Boolean) as SQL[]
 
   const where = and(...filters)
-  const [{ total }] = await db.select({ total: count() }).from(schema.photos).where(where)
+  const [{ total }] = await db
+    .select({ total: count() })
+    .from(schema.photos)
+    .leftJoin(schema.users, eq(schema.users.id, schema.photos.userId))
+    .leftJoin(schema.anonymousProfiles, eq(schema.anonymousProfiles.anonymousActorId, schema.photos.anonymousActorId))
+    .where(where)
 
   if (total < 2) {
     throw new RatingServiceError(400, 'Not enough photos to compare')
@@ -84,7 +93,12 @@ export async function selectComparisonPair(input: PairSelectionInput) {
 async function selectRandomComparisonPhoto(filters: SQL[], excludedPhotoId: string) {
   const secondFilters = [...filters, ne(schema.photos.id, excludedPhotoId)].filter(Boolean) as SQL[]
   const secondWhere = and(...secondFilters)
-  const [{ total: secondTotal }] = await db.select({ total: count() }).from(schema.photos).where(secondWhere)
+  const [{ total: secondTotal }] = await db
+    .select({ total: count() })
+    .from(schema.photos)
+    .leftJoin(schema.users, eq(schema.users.id, schema.photos.userId))
+    .leftJoin(schema.anonymousProfiles, eq(schema.anonymousProfiles.anonymousActorId, schema.photos.anonymousActorId))
+    .where(secondWhere)
 
   if (secondTotal < 1) {
     throw new RatingServiceError(400, 'Not enough photos to compare')
@@ -226,6 +240,8 @@ const comparisonPhotoSelection = {
     skinColor: schema.photos.skinColor,
     photoType: schema.photos.photoType,
     userId: schema.photos.userId,
+    country: sql<string | null>`coalesce(${schema.users.country}, ${schema.anonymousProfiles.country})`,
+    state: sql<string | null>`coalesce(${schema.users.state}, ${schema.anonymousProfiles.state})`,
   },
   rating: {
     displayRating: schema.photoRatings.displayRating,
@@ -249,6 +265,8 @@ type ComparisonPhotoRow = {
     skinColor: string | null
     photoType: 'face' | 'body' | 'outfit'
     userId: string | null
+    country: string | null
+    state: string | null
   }
   rating: {
     displayRating: number
@@ -272,6 +290,8 @@ function toComparisonPhoto(row: ComparisonPhotoRow) {
     skinColor: row.photo.skinColor,
     photoType: row.photo.photoType,
     userId: row.photo.userId,
+    country: row.photo.country,
+    state: row.photo.state,
     displayRating: row.rating?.displayRating ?? displayRating(initialSkillRating()),
     conservativeScore: row.rating?.conservativeScore ?? conservativeScore(initialSkillRating()),
     winCount: row.rating?.winCount ?? 0,

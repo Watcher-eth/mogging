@@ -55,8 +55,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     try {
       const location = getRequestLocation(req)
       const input = parseBody(updateUserProfileSchema, {
-        ...req.body,
         ...(location.country ? location : null),
+        ...req.body,
       })
       const user = await updateUserProfile(session.user.id, input)
       return json(res, 200, { user })

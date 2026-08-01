@@ -11,7 +11,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   try {
     await enforceRateLimit(req, res, { key: 'auth_register', limit: 10, windowMs: 60 * 60 * 1000 })
     const input = parseBody(registerSchema, req.body)
-    const user = await registerUser({ ...input, ...getRequestLocation(req) })
+    const user = await registerUser({ ...getRequestLocation(req), ...input })
     return json(res, 201, { user })
   } catch (error) {
     if (error instanceof EmailAlreadyExistsError) {
