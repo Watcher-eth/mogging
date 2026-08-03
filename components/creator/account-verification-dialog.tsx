@@ -132,7 +132,7 @@ export function AccountVerificationDialog({ account, open, onOpenChange, onSubmi
 
   return (
     <Dialog open={open} onOpenChange={(nextOpen) => { if (!saving) onOpenChange(nextOpen) }}>
-      <DialogContent className="max-h-[92vh] max-w-5xl overflow-y-auto rounded-[28px] border-zinc-200 bg-white p-0">
+      <DialogContent className="creator-dialog max-h-[92vh] max-w-5xl overflow-y-auto rounded-[26px] border-white/70 bg-white/95 p-0">
         <div className="border-b border-zinc-200 px-6 py-5 sm:px-7">
           <DialogHeader>
             <div className="flex items-start gap-3 pr-8">

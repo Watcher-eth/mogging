@@ -87,6 +87,7 @@ export function AppShell({ children }: AppShellProps) {
   const router = useRouter()
   const pendingAuthRedirect = getSafeAuthRedirect(router.query.next)
   const immersive = router.pathname === '/' || router.pathname === '/analysis' || router.pathname === '/leaderboard' || router.pathname === '/battle' || router.pathname === '/app' || router.pathname === '/app/handoff'
+  const creatorPortal = router.pathname.startsWith('/creator')
   const [loginOpen, setLoginOpen] = useState(false)
   const [accountOpen, setAccountOpen] = useState(false)
   const [editOpen, setEditOpen] = useState(false)
@@ -180,7 +181,7 @@ export function AppShell({ children }: AppShellProps) {
             Mogging
           </Link>
 
-          <AppNav />
+          <div className={creatorPortal ? 'hidden sm:block' : ''}><AppNav /></div>
 
           <div className="flex justify-end">
             {status === 'loading' ? (
@@ -673,12 +674,7 @@ export function LoginDialog({
   onOpenChange: (open: boolean) => void
   open: boolean
 }) {
-  const router = useRouter()
   const [availableProviders, setAvailableProviders] = useState<Set<string> | null>(null)
-  const [email, setEmail] = useState('')
-  const [password, setPassword] = useState('')
-  const [credentialsLoading, setCredentialsLoading] = useState(false)
-  const [credentialsError, setCredentialsError] = useState<string | null>(null)
   const modelImages = [
     '/model.png',
     '/model2.png',
@@ -725,27 +721,6 @@ export function LoginDialog({
 
   function continueWithTikTok() {
     void signIn('tiktok', { callbackUrl })
-  }
-
-  async function continueWithEmail() {
-    if (credentialsLoading) return
-    setCredentialsLoading(true)
-    setCredentialsError(null)
-    const result = await signIn('credentials', {
-      email,
-      password,
-      redirect: false,
-      callbackUrl,
-    })
-    setCredentialsLoading(false)
-
-    if (!result?.ok) {
-      setCredentialsError('Email or password is incorrect.')
-      return
-    }
-
-    onOpenChange(false)
-    await router.push(callbackUrl)
   }
 
   const authButtons = [
@@ -840,54 +815,6 @@ export function LoginDialog({
             ))}
           </div>
 
-          <div className="flex items-center gap-3 text-[10px] font-semibold uppercase tracking-[0.14em] text-zinc-400">
-            <span className="h-px flex-1 bg-zinc-200" />
-            Or use email
-            <span className="h-px flex-1 bg-zinc-200" />
-          </div>
-
-          <form
-            className="grid gap-2"
-            onSubmit={(event) => {
-              event.preventDefault()
-              void continueWithEmail()
-            }}
-          >
-            <input
-              autoComplete="email"
-              className="h-12 rounded-full border border-zinc-200 bg-white px-5 text-sm outline-none transition-colors focus:border-black"
-              onChange={(event) => setEmail(event.target.value)}
-              placeholder="Email"
-              required
-              type="email"
-              value={email}
-            />
-            <input
-              autoComplete="current-password"
-              className="h-12 rounded-full border border-zinc-200 bg-white px-5 text-sm outline-none transition-colors focus:border-black"
-              minLength={8}
-              onChange={(event) => setPassword(event.target.value)}
-              placeholder="Password"
-              required
-              type="password"
-              value={password}
-            />
-            {credentialsError ? <p className="px-2 text-sm text-red-600">{credentialsError}</p> : null}
-            <button
-              className="h-12 rounded-full bg-black px-5 text-sm font-semibold text-white transition-transform duration-150 ease-out active:scale-[0.98] disabled:opacity-55"
-              disabled={credentialsLoading}
-              type="submit"
-            >
-              {credentialsLoading ? 'Signing in…' : 'Sign in with email'}
-            </button>
-            <Link
-              className="py-2 text-center text-sm font-semibold text-zinc-600 transition-colors hover:text-black"
-              href={{ pathname: '/auth/register', query: { next: callbackUrl } }}
-              onClick={() => onOpenChange(false)}
-            >
-              New here? Create an account
-            </Link>
-          </form>
         </div>
       </DialogContent>
     </Dialog>

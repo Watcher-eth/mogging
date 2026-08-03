@@ -32,7 +32,7 @@ export default function CreatorProgramGuidePage() {
         eyebrow="Creator Resources"
         title="Creator Program Guide"
         description="Use this guide before publishing to understand what the team reviews for account approval, video approval, and payment eligibility."
-        action={<Button asChild className="h-10 rounded-xl"><Link href="/creator/submit">Submit a Video<ArrowRight /></Link></Button>}
+        action={<Button asChild className="h-11 rounded-full px-5"><Link href="/creator/submit">Submit a Video<ArrowRight /></Link></Button>}
       />
 
       <section className="grid gap-3 md:grid-cols-3">
@@ -45,7 +45,7 @@ export default function CreatorProgramGuidePage() {
         <div className="grid gap-4 xl:grid-cols-[minmax(0,1.2fr)_minmax(320px,0.8fr)]">
           <div className="space-y-4">
             {ACTIVE_CREATOR_SUBMISSION_FORMATS.map((format) => (
-              <article key={format.id} className="rounded-2xl border border-zinc-200 bg-white p-5 sm:p-6">
+              <article key={format.id} className="creator-surface p-5 sm:p-6">
                 <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
                   <div><p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-zinc-400">Active Format</p><h3 className="mt-2 text-xl font-semibold tracking-[-0.035em]">{format.name}</h3><p className="mt-2 max-w-2xl text-sm leading-6 text-zinc-500">{format.shortDescription}</p></div>
                   <span className="w-fit rounded-full bg-emerald-50 px-2.5 py-1 text-[11px] font-semibold text-emerald-700">Accepting Submissions</span>
@@ -159,11 +159,11 @@ export default function CreatorProgramGuidePage() {
 }
 
 function GuideAnchor({ href, icon: Icon, number, title, description }: { href: string; icon: typeof BookOpenText; number: string; title: string; description: string }) {
-  return <a href={href} className="group flex min-h-36 flex-col rounded-2xl border border-zinc-200 bg-white p-5 transition-[border-color,background-color,transform] duration-150 ease-out hover:border-zinc-300 hover:bg-zinc-50 active:scale-[0.995]"><div className="flex items-start justify-between gap-4"><span className="grid size-10 place-items-center rounded-xl bg-zinc-100"><Icon className="size-4" /></span><span className="text-[11px] font-semibold tabular-nums text-zinc-300">{number}</span></div><p className="mt-5 text-sm font-semibold">{title}</p><p className="mt-2 text-xs leading-5 text-zinc-500">{description}</p></a>
+  return <a href={href} className="creator-surface group flex min-h-36 flex-col p-5 transition-[border-color,background-color,transform] duration-150 hover:border-[#0071e3]/20 hover:bg-white active:scale-[0.99]"><div className="flex items-start justify-between gap-4"><span className="grid size-10 place-items-center rounded-[14px] bg-[#e8f2ff] text-[#0071e3]"><Icon className="size-4" /></span><span className="text-[11px] font-semibold tabular-nums text-[#c7c7cc]">{number}</span></div><p className="mt-5 text-sm font-semibold">{title}</p><p className="mt-2 text-xs leading-5 text-[#6e6e73]">{description}</p></a>
 }
 
 function GuideSection({ id, eyebrow, title, description, children }: { id: string; eyebrow: string; title: string; description: string; children: ReactNode }) {
-  return <section id={id} className="mt-12 scroll-mt-6"><div className="mb-5 max-w-2xl"><p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-zinc-400">{eyebrow}</p><h2 className="mt-2 text-2xl font-semibold tracking-[-0.045em] sm:text-3xl">{title}</h2><p className="mt-3 text-sm leading-6 text-zinc-500">{description}</p></div>{children}</section>
+  return <section id={id} className="mt-12 scroll-mt-24"><div className="mb-5 max-w-2xl"><p className="text-[11px] font-semibold uppercase tracking-[0.13em] text-[#86868b]">{eyebrow}</p><h2 className="mt-2 text-2xl font-semibold tracking-[-0.045em] sm:text-3xl">{title}</h2><p className="mt-3 text-sm leading-6 text-[#6e6e73]">{description}</p></div>{children}</section>
 }
 
 function RequirementList({ title, items, icon }: { title: string; items: ReadonlyArray<string>; icon: 'check' | 'alert' }) {
