@@ -9,6 +9,7 @@ import { useSound } from '@web-kits/audio/react'
 import useSWR from 'swr'
 import useSWRInfinite from 'swr/infinite'
 import { SeoHead } from '@/components/app/seo-head'
+import { socialPlatformLogoUrls } from '@/components/brand/social-platform-logo'
 import { apiGet } from '@/lib/api/client'
 import { filterSound } from '@/lib/audio/sounds'
 
@@ -73,8 +74,8 @@ type LeaderboardEntry = {
 
 const leaderboardPageSize = 15
 const podiumOrder = [1, 0, 2]
-const instagramLogoUrl = 'https://upload.wikimedia.org/wikipedia/commons/thumb/e/e7/Instagram_logo_2016.svg/3840px-Instagram_logo_2016.svg.png'
-const tiktokLogoUrl = 'https://cdn.simpleicons.org/tiktok/000000'
+const instagramLogoUrl = socialPlatformLogoUrls.instagram
+const tiktokLogoUrl = socialPlatformLogoUrls.tiktok
 const genderFilters = [
   { label: 'Male', value: 'male' },
   { label: 'Female', value: 'female' },

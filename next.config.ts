@@ -76,6 +76,10 @@ const nextConfig: NextConfig = {
       },
       {
         protocol: 'https',
+        hostname: 'img.magnific.com',
+      },
+      {
+        protocol: 'https',
         hostname: 'cdn.simpleicons.org',
       },
       {
