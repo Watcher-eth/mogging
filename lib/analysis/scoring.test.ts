@@ -40,7 +40,7 @@ test('computePslScore falls back to category averages when top-level optional sc
   assert.equal(computePslScore(result), 3.6)
 })
 
-test('computePslScore accepts provider PSL on the 0-8 scale', () => {
+test('computePslScore grounds an optimistic provider PSL against facial signals', () => {
   const result = {
     faceDetected: true,
     pslScore: 7.7,
@@ -51,7 +51,7 @@ test('computePslScore accepts provider PSL on the 0-8 scale', () => {
     landmarks: {},
   }
 
-  assert.equal(computePslScore(result), 7.7)
+  assert.equal(computePslScore(result), 6.9)
 })
 
 test('analysisProviderResultSchema rejects invalid metric categories and out-of-range PSL scores', () => {

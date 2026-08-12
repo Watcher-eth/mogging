@@ -62,6 +62,34 @@ function createFeature(label: string, value: string) {
   return { label, value }
 }
 
+function averageScores(...scores: number[]) {
+  return clampCategoryScore(scores.reduce((sum, score) => sum + score, 0) / scores.length)
+}
+
+function createOverallFeatureGrid(
+  categoryScore: (id: string, fallback: number) => number,
+  fallback: number,
+) {
+  const eyes = categoryScore('eyes', fallback)
+  const nose = categoryScore('nose', fallback)
+  const mouth = categoryScore('mouth', fallback)
+  const jaw = categoryScore('jaw', fallback)
+  const faceShape = categoryScore('face-shape', fallback)
+  const dimorphism = categoryScore('dimorphism', fallback)
+  const symmetry = categoryScore('symmetry', fallback)
+  const skinAge = categoryScore('biological-age', fallback)
+  const uvContext = categoryScore('sun-damage', fallback)
+
+  return [
+    createFeature('Eye area', `${eyes.toFixed(1)}/10`),
+    createFeature('Jaw & chin', `${jaw.toFixed(1)}/10`),
+    createFeature('Cheekbone structure', `${averageScores(faceShape, dimorphism).toFixed(1)}/10`),
+    createFeature('Facial thirds', `${averageScores(faceShape, nose, mouth, jaw).toFixed(1)}/10`),
+    createFeature('Symmetry', `${symmetry.toFixed(1)}/10`),
+    createFeature('Skin quality', `${averageScores(skinAge, uvContext).toFixed(1)}/10`),
+  ]
+}
+
 function ensureCategoryFeatures(
   categoryId: string,
   features: Array<{ label: string; value: string }>,
@@ -82,8 +110,6 @@ function ensureCategoryFeatures(
     add('Fullness cue', 'visible fullness')
   } else if (categoryId === 'sun-damage') {
     add('UV sensitivity', 'tracked context')
-  } else if (categoryId === 'overall') {
-    add('Potential PSL', result ? `${createPotentialRubric(result, clampPslScore(result.pslScore ?? 5)).score.toFixed(1)}/8` : 'tracked')
   }
 
   const fallbackFeatures: Record<string, Array<{ label: string; value: string }>> = {
@@ -97,7 +123,7 @@ function ensureCategoryFeatures(
     'biological-age': [createFeature('Presentation', 'tracked clarity'), createFeature('Under-eye cue', 'tracked shadowing')],
     symmetry: [createFeature('Chin axis', 'tracked midline'), createFeature('Paired points', 'tracked drift')],
     'sun-damage': [createFeature('Tone evenness', 'tracked tone'), createFeature('Texture signal', 'tracked texture')],
-    overall: [createFeature('Percentile', `${result?.percentile ?? 50}%`), createFeature('Consistency', 'tracked baseline')],
+    overall: [createFeature('Eye area', 'tracked'), createFeature('Jaw & chin', 'tracked')],
   }
 
   for (const feature of fallbackFeatures[categoryId] ?? fallbackFeatures.overall) {
@@ -159,20 +185,26 @@ export function normalizeAnalysisReport(
   const categories = reportCategoryIds.map((id) => report.categories.find((category) => category.id === id))
   if (categories.some((category) => !category)) return null
 
+  const categoryScore = (id: string, fallback: number) => {
+    const score = report.categories.find((category) => category.id === id)?.score
+    if (id === 'biological-age' && typeof score === 'number' && score > 10) {
+      return result ? visibleAgeSignalScore(result) : fallback
+    }
+    return typeof score === 'number' ? clampCategoryScore(score) : fallback
+  }
+
   return {
     summary: report.summary,
     potential: report.potential ?? (result ? createPotentialRubric(result, clampPslScore(pslScore)) : undefined),
     categories: categories.map((category) => {
       if (category!.id === 'overall') {
+        const overallScore = pslToCategoryScore(pslScore)
         return {
           ...category!,
-          score: pslToCategoryScore(pslScore),
+          score: overallScore,
           title: 'Overall',
           scoreLabel: 'Overall score',
-          features: ensureCategoryFeatures(category!.id, [
-            { label: 'PSL calibration', value: `${clampPslScore(pslScore).toFixed(1)}/8` },
-            ...category!.features,
-          ], result),
+          features: createOverallFeatureGrid(categoryScore, overallScore),
         }
       }
       if (category!.id === 'biological-age') {
@@ -195,9 +227,9 @@ export function normalizeAnalysisReport(
       if (category!.id === 'facial-fat') {
         return {
           ...category!,
-          title: 'Soft tissue',
-          subtitle: 'Visible facial fullness',
-          scoreLabel: 'Soft tissue',
+          title: 'Facial definition',
+          subtitle: 'Cheek and lower-face clarity',
+          scoreLabel: 'Definition score',
           features: ensureCategoryFeatures(category!.id, category!.features.map((feature) => ({
             ...feature,
             label: /facial fat|body fat|estimate/i.test(feature.label) ? 'Fullness cue' : feature.label,
@@ -315,9 +347,9 @@ export function createFallbackAnalysisReport(result: AnalysisProviderResult, psl
       },
       {
         id: 'facial-fat',
-        title: 'Soft tissue',
-        subtitle: 'Visible facial fullness',
-        scoreLabel: 'Soft tissue',
+        title: 'Facial definition',
+        subtitle: 'Cheek and lower-face clarity',
+        scoreLabel: 'Definition score',
         score: clampCategoryScore((skin + presentation + averageness) / 3),
         features: [
           { label: 'Cheeks', value: averageness >= 5 ? 'balanced fullness' : 'visible fullness' },
@@ -380,11 +412,20 @@ export function createFallbackAnalysisReport(result: AnalysisProviderResult, psl
         scoreLabel: 'Overall score',
         score: pslToCategoryScore(pslScore),
         features: [
-          { label: 'PSL calibration', value: `${clampPslScore(pslScore).toFixed(1)}/8` },
-          { label: 'Harmony', value: harmony.toFixed(1) },
-          { label: 'Dimorphism', value: result.dimorphismScore.toFixed(1) },
-          { label: 'Angularity', value: result.angularityScore.toFixed(1) },
-          { label: 'Potential PSL', value: `${createPotentialRubric(result, pslScore).score.toFixed(1)}/8` },
+          ...createOverallFeatureGrid((id, fallback) => {
+            const scores: Record<string, number> = {
+              eyes: (harmony + symmetry + proportionality) / 3,
+              nose: (proportionality + symmetry + harmony) / 3,
+              mouth: (harmony + proportionality + averageness) / 3,
+              jaw: (result.angularityScore + result.dimorphismScore + proportionality) / 3,
+              dimorphism: result.dimorphismScore,
+              'face-shape': (harmony + proportionality + result.angularityScore) / 3,
+              'biological-age': visibleAgeSignalScore(result),
+              symmetry,
+              'sun-damage': (skin + presentation) / 2,
+            }
+            return clampCategoryScore(scores[id] ?? fallback)
+          }, pslToCategoryScore(pslScore)),
         ],
         explanation: 'The overall score is the public report score on a 0 to 10 scale. PSL calibration remains a secondary rubric signal for comparison contexts.',
         recommendation: 'Improve the lowest-scoring category first; one focused change beats scattered glow-up advice.',

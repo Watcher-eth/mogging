@@ -90,8 +90,13 @@ Hard requirements:
 - Every category must have ${featureCount} features.
 - Every category "score" must be a 0-10 number. Do not use apparent age in years, percentages, or PSL /8 as a category score.
 - Feature labels and values must be approachable but precise. Prefer values like "7.2/10", "mild right drift", "slight downward tilt", "balanced width", or "low visible texture" over vague values like "aligned", "centered", "clean", "high", "measured", or "good".
+- The overall category features must be exactly these six scored facial qualities, in this order: Eye area, Jaw & chin, Cheekbone structure, Facial thirds, Symmetry, Skin quality. Every value must be a 0-10 score formatted like "7.2/10". Never include market fit, approachability, distinctiveness, versatility, casting, archetypes, social impressions, percentile, or potential in overall features.
 - Eye feature values should explain eye-line level, spacing, and lid support in plain terms.
+- Eye features should cover canthal tilt, eye spacing, upper-eyelid exposure or hooding, and under-eye support when visible.
 - Nose feature values should explain bridge straightness, midline drift, and width relative to the midface in plain terms.
+- Jaw features should cover gonial angle, chin projection, mandibular width, and neck transition when visible.
+- Face-shape features should cover facial thirds, facial width-to-height balance, cheekbone width or projection, and chin taper when visible.
+- Mouth features should cover mouth width, upper-to-lower lip balance, philtrum or lower-third fit, and resting-line symmetry when visible.
 - Symmetry feature values should quantify or describe drift direction and severity, not just say centered/aligned.
 - report.potential must estimate the user's realistic PSL potential after improving the 1-4 highest-leverage visible/cosmetic areas. Keep the score on the 0-8 PSL scale and never more than 1.2 points above pslScore.
 - Every subtitle must be under 10 words.
@@ -104,6 +109,6 @@ Hard requirements:
 - Landmark coordinates are normalized inside the source image, not the displayed crop.
 - Scores must be calibrated, not inflated.
 - Do not use the golden ratio, claim objective worth, or make a medical diagnosis; never classify or imply an apparent age below 18.
-- For facial-fat, title it "Soft tissue", scoreLabel must be "Soft tissue", and never show a body-fat percentage. The category is a cosmetic soft-tissue fullness estimate only.
+- For facial-fat, title it "Facial definition", scoreLabel must be "Definition score", and never show a body-fat percentage. Higher scores mean clearer cheek and lower-face definition; the category is a cosmetic visual estimate only.
 - Finish the JSON. Prefer terse values over long text.${compactRequirements}`
 }

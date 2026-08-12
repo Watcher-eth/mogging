@@ -17,7 +17,11 @@ test('analysis prompt encodes the research-weighted rubric', () => {
   assert.match(prompt, /report\.potential must estimate/i)
   assert.match(prompt, /never more than 1\.2 points above pslScore/i)
   assert.match(prompt, /personalized to the visible face in this exact image/i)
-  assert.match(prompt, /title it "Soft tissue"/i)
+  assert.match(prompt, /title it "Facial definition"/i)
+  assert.match(prompt, /overall category features must be exactly these six scored facial qualities/i)
+  assert.match(prompt, /Never include market fit, approachability, distinctiveness, versatility/i)
+  assert.match(prompt, /canthal tilt, eye spacing/i)
+  assert.match(prompt, /gonial angle, chin projection/i)
 })
 
 test('analysis prompt blocks unsupported social and health claims', () => {

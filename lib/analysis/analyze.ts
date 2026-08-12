@@ -25,6 +25,8 @@ export const analyzeAndSaveSchema = z.object({
   hairColor: hairColorSchema.nullable().optional(),
   skinColor: skinColorSchema.nullable().optional(),
   landmarks: faceLandmarksPayloadSchema.nullable().optional(),
+  latitude: z.number().min(-90).max(90).nullable().optional(),
+  longitude: z.number().min(-180).max(180).nullable().optional(),
 })
 
 export type AnalyzeAndSaveInput = z.infer<typeof analyzeAndSaveSchema>
@@ -71,6 +73,8 @@ export async function analyzeAndSave(input: AnalyzeAndSaveInput) {
       hairColor: data.hairColor ?? null,
       skinColor: data.skinColor ?? null,
       photoType: data.photoType,
+      latitude: data.latitude ?? null,
+      longitude: data.longitude ?? null,
     })
     const failure = toAnalysisFailure(providerResult.error)
     const analysisResult = await saveAnalysisResult({
@@ -104,6 +108,8 @@ export async function analyzeAndSave(input: AnalyzeAndSaveInput) {
       hairColor: data.hairColor ?? null,
       skinColor: data.skinColor ?? null,
       photoType: data.photoType,
+      latitude: data.latitude ?? null,
+      longitude: data.longitude ?? null,
     })
     const failure = toAnalysisFailure(providerResult.error)
     const analysisResult = await saveAnalysisResult({
@@ -137,6 +143,8 @@ export async function analyzeAndSave(input: AnalyzeAndSaveInput) {
       hairColor: data.hairColor ?? null,
       skinColor: data.skinColor ?? null,
       photoType: data.photoType,
+      latitude: data.latitude ?? null,
+      longitude: data.longitude ?? null,
     })
     const analysisResult = await saveAnalysisResult({
       photoId: photoResult.photo.id,
@@ -168,6 +176,8 @@ export async function analyzeAndSave(input: AnalyzeAndSaveInput) {
     hairColor: data.hairColor ?? null,
     skinColor: data.skinColor ?? null,
     photoType: data.photoType,
+    latitude: data.latitude ?? null,
+    longitude: data.longitude ?? null,
   })
   const result = providerResult.result
   const pslScore = computePslScore(result)

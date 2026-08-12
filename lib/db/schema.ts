@@ -232,6 +232,8 @@ export const photos = pgTable(
     source: photoSourceEnum('source').notNull().default('user'),
     photoType: photoTypeEnum('photo_type').notNull().default('face'),
     position: text('position'),
+    latitude: real('latitude'),
+    longitude: real('longitude'),
     isPublic: boolean('is_public').notNull().default(true),
     createdAt: timestamp('created_at', { mode: 'date' }).notNull().defaultNow(),
     updatedAt: timestamp('updated_at', { mode: 'date' }).notNull().defaultNow(),
@@ -246,6 +248,7 @@ export const photos = pgTable(
     hairColorIdx: index('photos_hair_color_idx').on(table.hairColor),
     skinColorIdx: index('photos_skin_color_idx').on(table.skinColor),
     ageIdx: index('photos_age_idx').on(table.age),
+    coordinatesIdx: index('photos_coordinates_idx').on(table.latitude, table.longitude),
     publicTypeGenderCreatedAtIdx: index('photos_public_type_gender_created_at_idx').on(
       table.isPublic,
       table.photoType,

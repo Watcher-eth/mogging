@@ -22,6 +22,8 @@ export const createPhotoRecordSchema = z.object({
   source: z.enum(['user', 'seeded', 'instagram']).optional().default('user'),
   photoType: z.enum(['face', 'body', 'outfit']).optional().default('face'),
   position: z.string().max(80).nullable().optional(),
+  latitude: z.number().min(-90).max(90).nullable().optional(),
+  longitude: z.number().min(-180).max(180).nullable().optional(),
   isPublic: z.boolean().optional().default(true),
 })
 
@@ -65,6 +67,8 @@ export async function createPhotoRecord(input: CreatePhotoRecordInput) {
       source: data.source,
       photoType: data.photoType,
       position: data.position ?? null,
+      latitude: data.latitude ?? null,
+      longitude: data.longitude ?? null,
       isPublic: data.isPublic,
     })
     .returning({

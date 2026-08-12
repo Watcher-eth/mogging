@@ -23,6 +23,10 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
           ? req.query.state.toUpperCase()
           : 'all',
         photoType: typeof req.query.photoType === 'string' ? req.query.photoType : 'face',
+        region: typeof req.query.region === 'string' ? req.query.region : 'global',
+        latitude: typeof req.query.latitude === 'string' ? req.query.latitude : undefined,
+        longitude: typeof req.query.longitude === 'string' ? req.query.longitude : undefined,
+        radiusKm: typeof req.query.radiusKm === 'string' ? req.query.radiusKm : 100,
       })
       const pair = await selectComparisonPair(query)
 

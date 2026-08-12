@@ -18,6 +18,14 @@ export const pairSelectionSchema = z.object({
   skinColor: skinColorSchema.or(z.literal('all')).default('all'),
   state: z.union([z.literal('all'), z.string().trim().regex(/^[A-Z]{2}$/)]).default('all'),
   photoType: z.enum(['face', 'body', 'outfit']).default('face'),
+  region: z.enum(['global', 'north-america', 'europe', 'asia', 'south-america', 'africa', 'oceania', 'nearby']).default('global'),
+  latitude: z.coerce.number().min(-90).max(90).optional(),
+  longitude: z.coerce.number().min(-180).max(180).optional(),
+  radiusKm: z.coerce.number().min(1).max(500).default(100),
+}).superRefine((value, context) => {
+  if (value.region === 'nearby' && (value.latitude === undefined || value.longitude === undefined)) {
+    context.addIssue({ code: 'custom', message: 'Location is required for nearby comparisons' })
+  }
 })
 
 export const submitVoteSchema = z.object({
@@ -44,7 +52,7 @@ export async function selectComparisonPair(input: PairSelectionInput) {
   const filters = [
     eq(schema.photos.isPublic, true),
     eq(schema.photos.photoType, params.photoType),
-    inArray(schema.photos.source, ['seeded', 'instagram']),
+    inArray(schema.photos.source, params.region === 'nearby' ? ['seeded', 'instagram', 'user'] : ['seeded', 'instagram']),
     params.gender === 'all' ? undefined : eq(schema.photos.gender, params.gender),
     params.hairColor === 'all' ? undefined : eq(schema.photos.hairColor, params.hairColor),
     params.skinColor === 'all' ? undefined : eq(schema.photos.skinColor, params.skinColor),
@@ -52,6 +60,7 @@ export async function selectComparisonPair(input: PairSelectionInput) {
       ? undefined
       : sql`coalesce(${schema.users.state}, ${schema.anonymousProfiles.state}) = ${params.state}`,
     params.ageBucket === 'all' ? undefined : ageBucketFilter(params.ageBucket),
+    regionFilter(params),
   ].filter(Boolean) as SQL[]
 
   const where = and(...filters)
@@ -305,6 +314,29 @@ function ageBucketFilter(ageBucket: Exclude<PairSelectionInput['ageBucket'], 'al
   if (ageBucket === '25-34') return sql`${schema.photos.age} between 25 and 34`
   if (ageBucket === '35-44') return sql`${schema.photos.age} between 35 and 44`
   return sql`${schema.photos.age} >= 45`
+}
+
+const regionCountries: Record<Exclude<PairSelectionInput['region'], 'global' | 'nearby'>, string[]> = {
+  'north-america': ['CA', 'MX', 'US'],
+  europe: ['AT', 'BE', 'CH', 'CZ', 'DE', 'DK', 'ES', 'FI', 'FR', 'GB', 'GR', 'IE', 'IT', 'NL', 'NO', 'PL', 'PT', 'RO', 'SE', 'UA'],
+  asia: ['AE', 'CN', 'HK', 'ID', 'IN', 'JP', 'KR', 'MY', 'PH', 'SG', 'TH', 'TW', 'VN'],
+  'south-america': ['AR', 'BO', 'BR', 'CL', 'CO', 'EC', 'PE', 'PY', 'UY', 'VE'],
+  africa: ['DZ', 'EG', 'ET', 'GH', 'KE', 'MA', 'NG', 'TN', 'TZ', 'UG', 'ZA'],
+  oceania: ['AU', 'FJ', 'NZ', 'PG'],
+}
+
+function regionFilter(params: PairSelectionInput): SQL | undefined {
+  if (params.region === 'global') return undefined
+  if (params.region !== 'nearby') {
+    return inArray(sql<string>`coalesce(${schema.users.country}, ${schema.anonymousProfiles.country})`, regionCountries[params.region])
+  }
+
+  const latitude = params.latitude!
+  const longitude = params.longitude!
+  return sql`${schema.photos.latitude} is not null and ${schema.photos.longitude} is not null and
+    6371 * acos(least(1, cos(radians(${latitude})) * cos(radians(${schema.photos.latitude})) *
+    cos(radians(${schema.photos.longitude}) - radians(${longitude})) + sin(radians(${latitude})) *
+    sin(radians(${schema.photos.latitude})))) <= ${params.radiusKm}`
 }
 
 function toSkillRating(rating: { mu: number; sigma: number }): SkillRating {
