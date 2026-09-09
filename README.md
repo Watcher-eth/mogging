@@ -13,7 +13,7 @@ Required for a working backend:
 - `NEXTAUTH_URL`: required in production for auth callbacks.
 - `MOONSHOT_API_KEY`: required for image analysis.
 - `MOONSHOT_BASE_URL`: defaults to `https://api.moonshot.ai/v1`.
-- `KIMI_ANALYSIS_MODEL`: defaults to `kimi-k2.5`.
+- `KIMI_ANALYSIS_MODEL`: defaults to `kimi-k2.6`.
 
 Optional:
 

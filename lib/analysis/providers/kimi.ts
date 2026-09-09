@@ -11,9 +11,10 @@ import {
 
 const KIMI_ANALYSIS_TIMEOUT_MS = 110_000
 const KIMI_ANALYSIS_MAX_TOKENS = 2_800
+const KIMI_ANALYSIS_MODEL = env.KIMI_ANALYSIS_MODEL === 'kimi-k2.5' ? 'kimi-k2.6' : env.KIMI_ANALYSIS_MODEL
 
 export class KimiAnalysisProvider implements AnalysisProvider {
-  model = env.KIMI_ANALYSIS_MODEL
+  model = KIMI_ANALYSIS_MODEL
 
   async analyzeFace(input: AnalyzeFaceInput): Promise<AnalysisProviderResult> {
     if (!env.MOONSHOT_API_KEY) {
@@ -63,7 +64,7 @@ async function requestKimiAnalysis({
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        model: env.KIMI_ANALYSIS_MODEL,
+        model: KIMI_ANALYSIS_MODEL,
         messages: [
           {
             role: 'system',
@@ -250,6 +251,16 @@ const kimiChatCompletionSchema = z.object({
 
 function classifyKimiError(status: number, body: string) {
   const raw = body.slice(0, 1000)
+
+  if (status === 404 && /model|permission denied/i.test(body)) {
+    return new AnalysisProviderError(
+      'provider_auth',
+      'Image analysis model is unavailable',
+      false,
+      status,
+      raw
+    )
+  }
 
   if (status === 401 || status === 403) {
     return new AnalysisProviderError(

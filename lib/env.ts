@@ -48,7 +48,7 @@ const envSchema = z
     R2_PUBLIC_BASE_URL: z.string().url().optional(),
     MOONSHOT_API_KEY: z.string().min(1).optional(),
     MOONSHOT_BASE_URL: z.string().url().default('https://api.moonshot.ai/v1'),
-    KIMI_ANALYSIS_MODEL: z.string().min(1).default('kimi-k2.5'),
+    KIMI_ANALYSIS_MODEL: z.string().min(1).default('kimi-k2.6'),
     OPENAI_API_KEY: z.string().min(1).optional(),
     OPENAI_IMAGE_MODEL: z.string().min(1).default('gpt-image-2'),
     UPSTASH_REDIS_REST_URL: z.string().url().optional(),
