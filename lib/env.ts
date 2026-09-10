@@ -75,6 +75,8 @@ const envSchema = z
     PAYMENTS_EMAIL_REPLY_TO: z.string().min(1).optional(),
     REVENUECAT_SECRET_API_KEY: z.string().min(1).optional(),
     REVENUECAT_WEBHOOK_AUTH_TOKEN: z.string().min(16).optional(),
+    REVENUECAT_SCAN_PRODUCT_ID: z.string().min(1).default('mogging.evaluation'),
+    REVENUECAT_SCAN_PACK_PRODUCT_ID: z.string().min(1).default('mogging.evaluation.pack3'),
     REVENUECAT_PRO_ENTITLEMENT_ID: z.string().min(1).default('pro'),
   })
   .superRefine((env, ctx) => {
@@ -227,6 +229,8 @@ export const env = envSchema.parse({
   PAYMENTS_EMAIL_REPLY_TO: process.env.PAYMENTS_EMAIL_REPLY_TO,
   REVENUECAT_SECRET_API_KEY: process.env.REVENUECAT_SECRET_API_KEY,
   REVENUECAT_WEBHOOK_AUTH_TOKEN: process.env.REVENUECAT_WEBHOOK_AUTH_TOKEN,
+  REVENUECAT_SCAN_PRODUCT_ID: process.env.REVENUECAT_SCAN_PRODUCT_ID,
+  REVENUECAT_SCAN_PACK_PRODUCT_ID: process.env.REVENUECAT_SCAN_PACK_PRODUCT_ID,
   REVENUECAT_PRO_ENTITLEMENT_ID: process.env.REVENUECAT_PRO_ENTITLEMENT_ID,
 })
 

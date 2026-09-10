@@ -405,7 +405,7 @@ function readReportTotalScore(metrics: unknown, pslScore: number | null) {
     category && typeof category === 'object' && (category as Record<string, unknown>).id === 'overall'
   ))
   const rawScore = overall && typeof overall === 'object' ? readFiniteScore((overall as Record<string, unknown>).score) : undefined
-  if (typeof rawScore === 'number') return normalizeReportCategoryScore('overall', rawScore)
+  if (typeof rawScore === 'number') return normalizeReportCategoryScore(rawScore)
 
   return toDisplayScore(pslScore)
 }
@@ -453,8 +453,7 @@ function readFiniteScore(value: unknown) {
   return typeof value === 'number' && Number.isFinite(value) ? value : undefined
 }
 
-function normalizeReportCategoryScore(id: string, score: number) {
-  if (id === 'overall' && score <= 8) return Math.round((score / 8) * 100) / 10
+function normalizeReportCategoryScore(score: number) {
   return Math.max(0, Math.min(10, Math.round(score * 10) / 10))
 }
 

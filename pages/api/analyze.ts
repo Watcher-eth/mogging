@@ -46,7 +46,6 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         mobileInstallId: mobileInstallId ?? undefined,
         userId,
         anonymousActorId,
-        revenueCatAppUserId: readHeader(req.headers['x-mogging-revenuecat-app-user-id']),
       })
     }
 
@@ -94,7 +93,6 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
             mobileInstallId: mobileInstallId ?? undefined,
             userId,
             anonymousActorId,
-            revenueCatAppUserId: readHeader(req.headers['x-mogging-revenuecat-app-user-id']),
           })
         : null
 

@@ -1,10 +1,10 @@
 import { randomInt, createHmac } from 'crypto'
-import { and, eq, gt, isNull, sql } from 'drizzle-orm'
+import { and, eq, gt, isNull, inArray, sql } from 'drizzle-orm'
 import Stripe from 'stripe'
 import { ApiError } from '@/lib/api/http'
 import { db, schema } from '@/lib/db'
 import { env } from '@/lib/env'
-import { verifyRevenueCatPro } from '@/lib/payments/revenuecat'
+import { fetchRevenueCatSubscriber, readRevenueCatPro, readRevenueCatScanPurchases, type RevenueCatSubscriber } from '@/lib/payments/revenuecat'
 import type { PaymentProduct } from '@/lib/db/schema'
 
 export const paymentProductSchemaValues = [
@@ -44,7 +44,6 @@ type EntitlementOwner = {
   mobileInstallId?: string
   userId?: string | null
   anonymousActorId?: string | null
-  revenueCatAppUserId?: string | null
 }
 
 export function getProductConfig(product: PaymentProduct): ProductConfig {
@@ -276,8 +275,10 @@ export async function revokePaymentIntentEntitlement({
     .where(eq(schema.paymentEntitlements.stripePaymentIntentId, paymentIntentId))
 }
 
-export async function getEntitlementSummary(ownerInput: string | EntitlementOwner): Promise<EntitlementSummary> {
+export async function getEntitlementSummary(ownerInput: string | EntitlementOwner, verifiedSubscriber?: RevenueCatSubscriber | null): Promise<EntitlementSummary> {
   const owner = normalizeEntitlementOwner(ownerInput)
+  const subscriber = verifiedSubscriber !== undefined ? verifiedSubscriber : owner.userId ? await fetchRevenueCatSubscriber(owner.userId) : null
+  if (subscriber && owner.userId) await creditRevenueCatScans(owner.userId, owner.mobileInstallId, subscriber)
   const rows = await db.query.paymentEntitlements.findMany({
     where: getOwnerWhere(owner),
   })
@@ -291,7 +292,7 @@ export async function getEntitlementSummary(ownerInput: string | EntitlementOwne
   const latestSubscription = activeSubscriptions
     .slice()
     .sort((a, b) => (b.currentPeriodEnd?.getTime() ?? 0) - (a.currentPeriodEnd?.getTime() ?? 0))[0]
-  const revenueCatSubscription = latestSubscription ? null : await getRevenueCatSubscription(owner)
+  const revenueCatSubscription = latestSubscription ? null : readRevenueCatPro(subscriber)
 
   return {
     mobileInstallId: owner.mobileInstallId || (owner.userId ? `account_${owner.userId}` : 'account'),
@@ -316,19 +317,25 @@ export async function consumeEvaluationEntitlement(ownerInput: string | Entitlem
   const summary = await getEntitlementSummary(owner)
   if (summary.subscription.active) return summary
 
-  const [updated] = await db
-    .update(schema.paymentEntitlements)
-    .set({
-      creditBalance: sql`${schema.paymentEntitlements.creditBalance} - 1`,
-      updatedAt: new Date(),
-    })
-    .where(
-      and(
+  const updated = await db.transaction(async (tx) => {
+    // Lock one pack. A scan must never spend one credit from every pack.
+    const [pack] = await tx.select({ id: schema.paymentEntitlements.id })
+      .from(schema.paymentEntitlements)
+      .where(and(
         getOwnerWhere(owner),
-        gt(schema.paymentEntitlements.creditBalance, 0)
-      )
-    )
-    .returning({ id: schema.paymentEntitlements.id })
+        inArray(schema.paymentEntitlements.product, ['evaluation', 'evaluation_pack_3']),
+        gt(schema.paymentEntitlements.creditBalance, 0),
+      ))
+      .orderBy(schema.paymentEntitlements.createdAt)
+      .limit(1)
+      .for('update')
+    if (!pack) return null
+    const [spent] = await tx.update(schema.paymentEntitlements)
+      .set({ creditBalance: sql`${schema.paymentEntitlements.creditBalance} - 1`, updatedAt: new Date() })
+      .where(and(eq(schema.paymentEntitlements.id, pack.id), gt(schema.paymentEntitlements.creditBalance, 0)))
+      .returning({ id: schema.paymentEntitlements.id })
+    return spent
+  })
 
   if (!updated) {
     throw new ApiError(402, 'Buy an evaluation or subscription before generating this report')
@@ -355,11 +362,6 @@ function getOwnerWhere(owner: EntitlementOwner) {
   throw new ApiError(401, 'An account is required')
 }
 
-async function getRevenueCatSubscription(owner: EntitlementOwner) {
-  const revenueCatAppUserId = owner.revenueCatAppUserId || owner.userId || owner.mobileInstallId
-  if (!revenueCatAppUserId) return null
-  return verifyRevenueCatPro(revenueCatAppUserId)
-}
 
 function readPaymentProduct(value: unknown): PaymentProduct {
   if (typeof value === 'string' && paymentProductSchemaValues.includes(value as PaymentProduct)) {
@@ -425,4 +427,33 @@ export function isRedeemableEntitlement(row: typeof schema.paymentEntitlements.$
 
 function isProAccessProduct(product: PaymentProduct) {
   return product.startsWith('mobile_subscription') || product === 'mobile_lifetime'
+}
+
+// Called only with a server-fetched subscriber, never client-supplied receipts or balances.
+export async function creditRevenueCatScans(userId: string, mobileInstallId: string | undefined, subscriber: RevenueCatSubscriber) {
+  const purchases = readRevenueCatScanPurchases(subscriber)
+  if (!purchases.length) return
+  await db.insert(schema.paymentEntitlements).values(purchases.map((purchase) => ({
+    userId,
+    mobileInstallId: mobileInstallId || `account_${userId}`,
+    stripeCheckoutSessionId: purchase.key,
+    product: purchase.product,
+    creditBalance: purchase.refunded ? 0 : purchase.credits,
+    source: 'revenuecat',
+    subscriptionStatus: purchase.refunded ? 'refunded' : null,
+    metadata: { transactionId: purchase.transactionId, productId: purchase.productId, sandbox: purchase.sandbox },
+  }))).onConflictDoNothing({ target: schema.paymentEntitlements.stripeCheckoutSessionId })
+  const refundedKeys = purchases.filter((purchase) => purchase.refunded).map((purchase) => purchase.key)
+  if (refundedKeys.length) {
+    await db.update(schema.paymentEntitlements)
+      .set({ creditBalance: 0, subscriptionStatus: 'refunded', updatedAt: new Date() })
+      .where(inArray(schema.paymentEntitlements.stripeCheckoutSessionId, refundedKeys))
+  }
+}
+
+export async function syncRevenueCatScans(userId: string, mobileInstallId?: string) {
+  const subscriber = await fetchRevenueCatSubscriber(userId, true)
+  if (!subscriber) throw new ApiError(503, 'Unable to verify purchases.')
+  await creditRevenueCatScans(userId, mobileInstallId, subscriber)
+  return subscriber
 }

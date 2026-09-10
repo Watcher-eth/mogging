@@ -20,7 +20,6 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       entitlements: await getEntitlementSummary({
         mobileInstallId: query.mobileInstallId,
         userId,
-        revenueCatAppUserId: userId,
       }),
     })
   } catch (error) {

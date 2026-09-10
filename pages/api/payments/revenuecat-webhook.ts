@@ -3,6 +3,10 @@ import type { NextApiRequest, NextApiResponse } from 'next'
 import { z } from 'zod'
 import { ApiError, handleApiError, json, methodNotAllowed, parseBody } from '@/lib/api/http'
 import { recordRevenueCatCreatorEvent } from '@/lib/creator/attribution'
+import { eq, sql } from 'drizzle-orm'
+import { db, schema } from '@/lib/db'
+import { syncRevenueCatScans } from '@/lib/payments/entitlements'
+import { scanProducts } from '@/lib/payments/revenuecat'
 import { env } from '@/lib/env'
 
 const subscriberAttributeSchema = z.object({ value: z.unknown().optional() }).passthrough()
@@ -57,6 +61,20 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       gracePeriodExpirationAtMs: event.grace_period_expiration_at_ms,
       subscriberAttributes: event.subscriber_attributes,
     })
+    if (scanProducts.some((product) => product.productId === event.product_id)
+      && ['NON_RENEWING_PURCHASE', 'CANCELLATION'].includes(event.type)) {
+      const user = await db.query.users.findFirst({
+        where: eq(schema.users.id, event.app_user_id),
+        columns: { id: true },
+      })
+      if (user) await syncRevenueCatScans(user.id)
+      if (event.type === 'CANCELLATION' && event.transaction_id) {
+        await db.update(schema.paymentEntitlements)
+          .set({ creditBalance: 0, subscriptionStatus: 'refunded', updatedAt: new Date() })
+          .where(sql`${schema.paymentEntitlements.source} = 'revenuecat'
+            and ${schema.paymentEntitlements.metadata}->>'transactionId' = ${event.transaction_id}`)
+      }
+    }
     return json(res, 200, { received: true })
   } catch (error) {
     return handleApiError(error, res)
