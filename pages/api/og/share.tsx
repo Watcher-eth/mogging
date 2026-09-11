@@ -445,8 +445,11 @@ function readReportPotential(metrics: unknown, pslScore: number | null, totalDis
 }
 
 function readReportObject(metrics: unknown) {
-  const report = metrics && typeof metrics === 'object' ? (metrics as Record<string, unknown>).report : null
-  return report && typeof report === 'object' ? (report as Record<string, unknown>) : null
+  if (!metrics || typeof metrics !== 'object') return null
+  const record = metrics as Record<string, unknown>
+  const report = record.report
+  if (report && typeof report === 'object' && Array.isArray((report as Record<string, unknown>).categories)) return report as Record<string, unknown>
+  return Array.isArray(record.categories) ? record : null
 }
 
 function readFiniteScore(value: unknown) {
