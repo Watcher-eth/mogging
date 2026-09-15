@@ -1,3 +1,4 @@
+import { creditReferralSignup } from '@/lib/referrals/service'
 import { createHash, randomBytes } from 'crypto'
 import { and, eq, gt } from 'drizzle-orm'
 import type { NextApiRequest, NextApiResponse } from 'next'
@@ -20,12 +21,14 @@ type AppleIdentity = {
 }
 
 export async function createMobileSessionFromApple(input: {
+  referralTicket?: string
   identityToken: string
   nonce: string
   name?: string | null
 }) {
   const identity = await verifyAppleIdentity(input.identityToken, input.nonce)
   const userId = await findOrCreateAppleUser(identity, input.name)
+  await creditReferralSignup(userId, input.referralTicket)
   return createMobileSessionForUser(userId)
 }
 

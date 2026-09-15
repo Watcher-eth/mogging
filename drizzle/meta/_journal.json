@@ -204,6 +204,13 @@
       "when": 1786500000000,
       "tag": "0029_photo_coordinates",
       "breakpoints": true
+    },
+    {
+      "idx": 29,
+      "version": "7",
+      "when": 1789500000000,
+      "tag": "0030_referral_links",
+      "breakpoints": true
     }
   ]
 }

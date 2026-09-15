@@ -58,6 +58,13 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     const geometry = mapLandmarkGeometryToStoryFrame(sourceGeometry, imageFrame, storySize)
     const yOffset = geometry.usesLandmarks ? 0 : getReportOverlayYOffset(category.id)
     const totalDisplayScore = readReportTotalScore(share.analysis.metrics, share.analysis.pslScore)
+    if (geometry.label.title === 'Total score') {
+      geometry.label = {
+        ...geometry.label,
+        title: 'PSL',
+        value: totalDisplayScore === null ? '— / 8' : `${Math.max(1, Math.min(8, totalDisplayScore * 0.8)).toFixed(1)} / 8`,
+      }
+    }
     const totalScore = formatScore(totalDisplayScore)
     const potential = readReportPotential(share.analysis.metrics, share.analysis.pslScore, totalDisplayScore)
     const rank = getLooksmaxRank(totalDisplayScore, share.photo.gender)

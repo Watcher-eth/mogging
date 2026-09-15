@@ -13,6 +13,14 @@
           {
             "/": "/app/handoff",
             "comment": "Signed one-time payment handoff"
+          },
+          {
+            "/": "/??????????????????",
+            "comment": "Personal referral links"
+          },
+          {
+            "/": "/app/tiktok",
+            "comment": "TikTok Share Kit return URL"
           }
         ]
       }

@@ -1078,3 +1078,8 @@ export const comparisonsRelations = relations(comparisons, ({ one }) => ({
     references: [users.id],
   }),
 }))
+
+export const referralLinks = pgTable('referral_links', {
+  userId: text('user_id').primaryKey().references(() => users.id, { onDelete: 'cascade' }),
+  code: text('code').notNull().unique(),
+})

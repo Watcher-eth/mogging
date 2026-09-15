@@ -1,3 +1,5 @@
+import type { GetServerSideProps } from 'next'
+import { readReferralTicket, referralCookie, REFERRAL_COOKIE } from '@/lib/referrals/service'
 import Head from 'next/head'
 import { useRouter } from 'next/router'
 import { signIn, useSession } from 'next-auth/react'
@@ -60,4 +62,11 @@ export default function MobileAuthPage() {
       </main>
     </>
   )
+}
+
+export const getServerSideProps: GetServerSideProps = async ({ query, req, res }) => {
+  if (typeof query.referral === 'string' && readReferralTicket(query.referral) && !readReferralTicket(req.cookies[REFERRAL_COOKIE])) {
+    res.setHeader('Set-Cookie', referralCookie(query.referral))
+  }
+  return { props: {} }
 }

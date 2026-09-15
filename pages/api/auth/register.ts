@@ -1,3 +1,4 @@
+import { creditReferralSignup, REFERRAL_COOKIE } from '@/lib/referrals/service'
 import type { NextApiRequest, NextApiResponse } from 'next'
 import { ApiError } from '@/lib/api/http'
 import { handleApiError, json, methodNotAllowed, parseBody } from '@/lib/api/http'
@@ -12,6 +13,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     await enforceRateLimit(req, res, { key: 'auth_register', limit: 10, windowMs: 60 * 60 * 1000 })
     const input = parseBody(registerSchema, req.body)
     const user = await registerUser({ ...getRequestLocation(req), ...input })
+    await creditReferralSignup(user.id, req.cookies[REFERRAL_COOKIE])
     return json(res, 201, { user })
   } catch (error) {
     if (error instanceof EmailAlreadyExistsError) {
