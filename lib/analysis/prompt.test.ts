@@ -30,3 +30,18 @@ test('analysis prompt blocks unsupported social and health claims', () => {
   assert.match(prompt, /Do not infer identity, ethnicity, morality, intelligence, health diagnosis, fertility, or real-world worth/i)
   assert.match(prompt, /Do not claim objective health, fertility, morality, competence, intelligence/i)
 })
+
+test('both prompt modes require finding-specific, score-aware category actions', () => {
+  for (const compact of [true, false]) {
+    const prompt = buildAnalysisPrompt('female', { compact })
+    assert.match(prompt, /BOTH the category score and its feature findings/)
+    assert.match(prompt, /Different findings must produce different advice even at identical scores/)
+    assert.match(prompt, /SPF 50\+/)
+    assert.match(prompt, /every two hours outdoors/)
+    assert.doesNotMatch(prompt, /Do not recommend[^\n]*SPF/)
+    assert.doesNotMatch(prompt, /recommendation under 12 words/)
+    for (const id of ['eyes', 'nose', 'mouth', 'jaw', 'dimorphism', 'face-shape', 'facial-fat', 'biological-age', 'sun-damage', 'symmetry', 'overall']) {
+      assert.ok(prompt.includes(`* ${id}:`), id)
+    }
+  }
+})

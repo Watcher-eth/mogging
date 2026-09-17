@@ -3,9 +3,9 @@ import type { NextApiRequest, NextApiResponse } from 'next'
 import { z } from 'zod'
 import { ApiError, handleApiError, json, methodNotAllowed, parseBody } from '@/lib/api/http'
 import { recordRevenueCatCreatorEvent } from '@/lib/creator/attribution'
-import { eq, sql } from 'drizzle-orm'
+import { eq } from 'drizzle-orm'
 import { db, schema } from '@/lib/db'
-import { syncRevenueCatScans } from '@/lib/payments/entitlements'
+import { syncRevenueCatScans, revokeRevenueCatPurchase } from '@/lib/payments/entitlements'
 import { scanProducts } from '@/lib/payments/revenuecat'
 import { env } from '@/lib/env'
 
@@ -67,13 +67,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         where: eq(schema.users.id, event.app_user_id),
         columns: { id: true },
       })
+      if (event.type === 'CANCELLATION' && event.transaction_id) await revokeRevenueCatPurchase(event.transaction_id)
       if (user) await syncRevenueCatScans(user.id)
-      if (event.type === 'CANCELLATION' && event.transaction_id) {
-        await db.update(schema.paymentEntitlements)
-          .set({ creditBalance: 0, subscriptionStatus: 'refunded', updatedAt: new Date() })
-          .where(sql`${schema.paymentEntitlements.source} = 'revenuecat'
-            and ${schema.paymentEntitlements.metadata}->>'transactionId' = ${event.transaction_id}`)
-      }
     }
     return json(res, 200, { received: true })
   } catch (error) {

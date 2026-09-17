@@ -211,7 +211,7 @@ export function normalizeAnalysisReport(
         const apparentAge = readApparentAge(category!.features, category!.score > 10 ? category!.score : 24)
         return {
           ...category!,
-          title: 'Human age',
+          title: 'Skin Age',
           subtitle: 'Visible age cues',
           scoreLabel: 'Age signal',
           score: category!.score > 10 ? (result ? visibleAgeSignalScore(result) : clampCategoryScore(8.8 - Math.abs(apparentAge - 24) * 0.16)) : clampCategoryScore(category!.score),
@@ -362,7 +362,7 @@ export function createFallbackAnalysisReport(result: AnalysisProviderResult, psl
       },
       {
         id: 'biological-age',
-        title: 'Human age',
+        title: 'Skin Age',
         subtitle: 'Visible age cues',
         scoreLabel: 'Age signal',
         score: visibleAgeSignalScore(result),

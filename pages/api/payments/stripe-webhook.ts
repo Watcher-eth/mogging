@@ -71,12 +71,14 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
 async function handleStripeEvent(event: Stripe.Event) {
   switch (event.type) {
+    case 'checkout.session.async_payment_succeeded':
     case 'checkout.session.completed': {
       const session = event.data.object as Stripe.Checkout.Session
       const expanded = await getStripe().checkout.sessions.retrieve(session.id, {
         expand: ['subscription', 'customer'],
       })
       if (isLegacyCheckoutProduct(expanded.metadata?.product)) return
+      if (!['paid', 'no_payment_required'].includes(expanded.payment_status)) return
       await grantEntitlementFromCheckoutSession({ session: expanded })
       await recordServerEvent({
         eventName: 'checkout_completed',
@@ -108,7 +110,7 @@ async function handleStripeEvent(event: Stripe.Event) {
     case 'customer.subscription.updated':
     case 'customer.subscription.deleted': {
       const subscription = event.data.object as Stripe.Subscription
-      await updateSubscriptionEntitlement(subscription)
+      await updateSubscriptionEntitlement(await getStripe().subscriptions.retrieve(subscription.id))
       return
     }
 
@@ -150,7 +152,8 @@ function readPaymentIntentId(paymentIntent: string | Stripe.PaymentIntent | null
 }
 
 function readInvoiceSubscriptionId(invoice: Stripe.Invoice) {
-  const subscription = (invoice as Stripe.Invoice & { subscription?: string | Stripe.Subscription | null }).subscription
+  const subscription = invoice.parent?.subscription_details?.subscription
+    ?? (invoice as Stripe.Invoice & { subscription?: string | Stripe.Subscription | null }).subscription
   if (!subscription) return null
   return typeof subscription === 'string' ? subscription : subscription.id
 }

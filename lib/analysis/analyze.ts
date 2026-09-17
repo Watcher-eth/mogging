@@ -31,7 +31,7 @@ export const analyzeAndSaveSchema = z.object({
 
 export type AnalyzeAndSaveInput = z.infer<typeof analyzeAndSaveSchema>
 
-export async function analyzeAndSave(input: AnalyzeAndSaveInput) {
+export async function analyzeAndSave(input: AnalyzeAndSaveInput, reservationId?: string) {
   const data = analyzeAndSaveSchema.parse(input)
   const storedImagePromise = storeImageDataUrl(data.imageData)
     .then((storedImage) => ({ ok: true as const, storedImage }))
@@ -85,7 +85,7 @@ export async function analyzeAndSave(input: AnalyzeAndSaveInput) {
       model: analysisProvider.model,
       promptVersion: 'psl-kimi-v2',
       failureReason: failure.failureReason,
-    })
+    }, reservationId ? { id: reservationId, photo: photoResult.photo, deduped: photoResult.deduped } : undefined)
 
     return {
       photo: photoResult.photo,
@@ -120,7 +120,7 @@ export async function analyzeAndSave(input: AnalyzeAndSaveInput) {
       model: analysisProvider.model,
       promptVersion: 'psl-kimi-v2',
       failureReason: failure.failureReason,
-    })
+    }, reservationId ? { id: reservationId, photo: photoResult.photo, deduped: photoResult.deduped } : undefined)
 
     return {
       photo: photoResult.photo,
@@ -154,7 +154,7 @@ export async function analyzeAndSave(input: AnalyzeAndSaveInput) {
       model: analysisProvider.model,
       promptVersion: 'psl-kimi-v2',
       failureReason: 'No face detected',
-    })
+    }, reservationId ? { id: reservationId, photo: photoResult.photo, deduped: photoResult.deduped } : undefined)
 
     return {
       photo: photoResult.photo,
@@ -202,7 +202,7 @@ export async function analyzeAndSave(input: AnalyzeAndSaveInput) {
     landmarks: data.landmarks ?? result.landmarks,
     model: analysisProvider.model,
     promptVersion: 'psl-kimi-v2',
-  })
+  }, reservationId ? { id: reservationId, photo: photoResult.photo, deduped: photoResult.deduped } : undefined)
 
   return {
     photo: photoResult.photo,

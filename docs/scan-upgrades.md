@@ -1,39 +1,51 @@
-# Scan upgrades
+# Scan allowances and purchases
 
-Settings opens an upgrade sheet immediately. It restores the account session or offers the same Apple/Google sign-in controls as onboarding. Successful sign-in continues inside the sheet.
+The server owns the scan balance. An active Pro flag alone never authorizes a scan.
 
-The app loads scan products and localized prices directly from the native RevenueCat/App Store SDK. Unavailable products cannot be purchased. Existing Pro users see that evaluations are included.
-
-## Store configuration required before release
-
-Create/import two **consumable** App Store products into the existing RevenueCat project:
-
-| Default product ID | Credits | Server setting |
+| Access | Allowance | Expiry |
 | --- | --- | --- |
-| `mogging.evaluation` | 1 | `REVENUECAT_SCAN_PRODUCT_ID` |
-| `mogging.evaluation.pack3` | 3 | `REVENUECAT_SCAN_PACK_PRODUCT_ID` |
+| Weekly | 1 scan per paid billing period | End of that week |
+| Monthly | 2 scans per paid billing period | End of that month |
+| Yearly | 2 scans in each monthly window anchored to the paid year's start | End of each monthly window |
+| Single / three-scan purchase | 1 / 3 scans | Six calendar months after the verified purchase |
 
-Use actual existing IDs via these settings if products already exist. Match the mobile EXPO_PUBLIC_SCAN_PRODUCT_ID and EXPO_PUBLIC_SCAN_PACK_PRODUCT_ID settings to the server IDs when overriding defaults. Configure pricing, localizations and availability in App Store Connect. Do not attach consumables to the Pro entitlement.
+Calendar arithmetic uses UTC and clamps short months without drifting (January 31 → February 28/29 → March 31). Unused subscription scans never roll over. Skipped months do not accumulate. Subscription credits are spent first; purchased packs then spend in expiry order. Cancellation at the end of a paid period retains that period's access; expired/refunded subscriptions cannot supply new scans.
 
-Set `REVENUECAT_SECRET_API_KEY` on the API server and `REVENUECAT_WEBHOOK_AUTH_TOKEN` for `/api/payments/revenuecat-webhook`. The Pro entitlement defaults to `pro`. Deploy the API before shipping the app changes. No database migration is needed.
+The existing admin code, activation codes, referral/invite credits, time-limited unlimited codes and lifetime access retain their access behavior.
 
-The inspected local environment had no RevenueCat server key or scan product IDs. Live purchasing remains to be verified with configured products and an Apple sandbox account.
+## App behavior
 
-## Purchase behavior
+“New” in Evaluations fetches a fresh server balance before opening the person picker or scanner. An exhausted balance opens the existing buy-more-scans sheet. A failed balance check offers an error instead of assuming access. The server checks again when generating, so another device or a period boundary cannot bypass the limit. A server 402 also opens the sheet.
 
-- Purchases stay inside the native App Store flow. POST `/api/payments/upgrades` verifies transactions and syncs credits using the authenticated account ID. The app checks this service before opening a chargeable purchase; it never redirects scan checkout to the website.
-- Client transaction IDs only identify what to confirm. They cannot grant a product, credit amount or another account ownership.
-- The existing payment ledger stores RevenueCat purchase IDs with a `revenuecat:` prefix in its unique checkout-session key. Repeated sync, webhooks and restore cannot duplicate a grant or refill spent credits.
-- The app applies the server balance after verification. A delayed verification offers **Retry purchase sync**, which never starts another purchase.
-- Account startup, foreground refresh and webhooks recover purchases if the app closes before sync finishes.
-- Refunds clear remaining credits. One evaluation spends one credit from one locked scan pack; potential-image extras are excluded. Pro access does not spend scan credits.
+Native purchases and restores apply the verified server balance. SDK Pro status cannot mint credits. Purchase confirmation failures retain the sheet's retry-sync path without charging again. Transport retries within a scan submission reuse its request ID; confirmed failed analyses use a new ID for a new attempt.
 
-Reference: [RevenueCat consumables](https://www.revenuecat.com/docs/platform-resources/non-subscriptions), [Customer API](https://www.revenuecat.com/docs/api-v1/customers).
+## Ledger guarantees
+
+- Verified RevenueCat purchase IDs and billing transactions are bound once across aliases and restores. Account deletion preserves transaction tombstones so recreating an account cannot refill old purchases.
+- Stripe subscription dates come from the current subscription item. Balance reads reconcile Stripe subscription state, including missed or out-of-order webhooks. Unpaid checkout completion does not grant access.
+- One database transaction locks and reserves a credit before model work. Concurrent requests cannot spend the same last credit.
+- The analysis and durable retry result commit together. A lost response replays the existing result without charging again.
+- Confirmed failures return one credit to the original bucket, retaining its expiry. Abandoned reservations are returned after five minutes on the next balance/read request. A late worker cannot save a report after that reservation has been returned.
+- Refunds revoke remaining credits. RevenueCat refund tombstones also cover refunds delivered before the purchase sync. A failed in-flight scan cannot restore a refunded balance.
+- Successful reports from the current period before this migration count against its initial allowance. No past-period allowance is backfilled.
+
+## Release requirements
+
+1. Apply `0031_scan_allowances.sql` through `bun run db:migrate` before deploying this backend. It adds credit expiry, billing starts, reservations and the historical usage cutoff, and retains purchase identities after account deletion. It does not alter invite/referral-code expiry.
+2. Deploy the backend before releasing the mobile build. Scan enforcement no longer depends on the old `PAID_ANALYSIS_REQUIRED` flag.
+3. Configure `REVENUECAT_SECRET_API_KEY`, `REVENUECAT_WEBHOOK_AUTH_TOKEN`, and the Pro entitlement (`REVENUECAT_PRO_ENTITLEMENT_ID`, default `pro`). Subscription products are `mogging.pro.weekly`, `mogging.pro.monthly`, and `mogging.pro.yearly`.
+4. Configure consumable products `mogging.evaluation` and `mogging.evaluation.pack3`. Server overrides are `REVENUECAT_SCAN_PRODUCT_ID` and `REVENUECAT_SCAN_PACK_PRODUCT_ID`; match the mobile `EXPO_PUBLIC_SCAN_PRODUCT_ID` / `EXPO_PUBLIC_SCAN_PACK_PRODUCT_ID` values. Do not attach consumables to Pro.
+5. Perform native sandbox QA: onboarding purchase, allowance exhaustion, New → upgrade sheet, consumable purchase, interrupted purchase sync, restore/reinstall, and subscription renewal. This code review does not certify App Store configuration or a live deployment.
+
+Historical RevenueCat packs are initially blocked until the next server sync restores their actual purchase-based expiry without changing their remaining balance. Historical Stripe packs use their stored creation date. New Stripe packs use the verified charge date.
 
 ## Verification
 
-Run `bun run scripts/smoke/scan-credits.ts` with `SCAN_CREDIT_TEST=1`, `REVENUECAT_SECRET_API_KEY=local-test-key` and `DATABASE_URL` pointing at a disposable local PostgreSQL database. The script refuses non-local databases and mocks only RevenueCat HTTP responses.
+- `bun --no-env-file test` with a dummy `DATABASE_URL` runs backend unit tests without loading live integration settings.
+- `SCAN_TEST_DATABASE_URL=postgres://...@127.0.0.1:55439/postgres bun run scripts/tests/scan-allowances.ts` runs the isolated database suite. It creates/drops its own schema, applies the real migration, mocks payment providers and refuses remote databases.
+- The original `scripts/smoke/scan-credits.ts` command delegates to that suite.
+- Run `bun run typecheck` in both repositories and `bun run test` in the mobile repository.
 
-It covers the authenticated catalog and purchase API, fabricated transactions, replay/restore, account isolation, repeat purchases, concurrent spending, extras isolation, refunds, subscriptions and provider failure.
+The database suite covers limits, concurrency, request replay, refunds, six-month expiry, historical usage, atomic report persistence, abandoned-request recovery, purchase/refund ordering, account aliases/deletion, preserved code access, forged client inputs and Stripe billing dates/renewals.
 
-The sign-in sheet was opened and visually checked in iOS Simulator. Signed-in store UI and actual App Store purchasing require the configuration above.
+Provider field references: [RevenueCat customer API](https://www.revenuecat.com/docs/api-v1/customers), [Stripe subscription items](https://docs.stripe.com/api/subscription_items/object).

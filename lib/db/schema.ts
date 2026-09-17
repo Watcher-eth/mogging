@@ -97,6 +97,7 @@ export const users = pgTable(
     profileCompleted: boolean('profile_completed').notNull().default(false),
     verified: boolean('verified').notNull().default(false),
     verifiedAt: timestamp('verified_at', { mode: 'date' }),
+    scanCreditPolicyStartedAt: timestamp('scan_credit_policy_started_at', { mode: 'date' }).notNull().defaultNow(),
     createdAt: timestamp('created_at', { mode: 'date' }).notNull().defaultNow(),
     updatedAt: timestamp('updated_at', { mode: 'date' }).notNull().defaultNow(),
   },
@@ -395,7 +396,7 @@ export const paymentEntitlements = pgTable(
       .primaryKey()
       .$defaultFn(() => crypto.randomUUID()),
     mobileInstallId: text('mobile_install_id').notNull(),
-    userId: text('user_id').references(() => users.id, { onDelete: 'cascade' }),
+    userId: text('user_id').references(() => users.id, { onDelete: 'set null' }),
     anonymousActorId: text('anonymous_actor_id'),
     stripeCheckoutSessionId: text('stripe_checkout_session_id').notNull(),
     stripeCustomerId: text('stripe_customer_id'),
@@ -405,6 +406,8 @@ export const paymentEntitlements = pgTable(
     creditBalance: integer('credit_balance').notNull().default(0),
     subscriptionStatus: text('subscription_status'),
     currentPeriodEnd: timestamp('current_period_end', { mode: 'date' }),
+    currentPeriodStart: timestamp('current_period_start', { mode: 'date' }),
+    creditExpiresAt: timestamp('credit_expires_at', { mode: 'date' }),
     activationCodeHash: text('activation_code_hash'),
     activationCodeLast4: text('activation_code_last4'),
     activationCodeRedeemedAt: timestamp('activation_code_redeemed_at', { mode: 'date' }),
@@ -422,6 +425,19 @@ export const paymentEntitlements = pgTable(
     activationCodeIdx: index('payment_entitlements_activation_code_hash_idx').on(table.activationCodeHash),
   })
 )
+
+// A durable reservation makes spending and request retries atomic.
+export const scanReservations = pgTable('scan_reservations', {
+  id: text('id').primaryKey(),
+  userId: text('user_id').notNull().references(() => users.id, { onDelete: 'cascade' }),
+  entitlementId: text('entitlement_id').notNull().references(() => paymentEntitlements.id),
+  requestHash: text('request_hash').notNull(),
+  result: jsonb('result').$type<Record<string, unknown>>(),
+  status: text('status').$type<'pending' | 'complete' | 'failed'>().notNull().default('pending'),
+  createdAt: timestamp('created_at', { mode: 'date' }).notNull().defaultNow(),
+}, table => ({
+  userStatusCreatedIdx: index('scan_reservations_user_status_created_idx').on(table.userId, table.status, table.createdAt),
+}))
 
 export const inviteCodes = pgTable(
   'invite_codes',

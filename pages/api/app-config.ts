@@ -8,8 +8,8 @@ export default function handler(req: NextApiRequest, res: NextApiResponse) {
   publicCache(res, 60, 300)
   return json(res, 200, {
     features: {
-      authRequired: env.AUTH_REQUIRED,
-      paidAnalysisRequired: env.PAID_ANALYSIS_REQUIRED,
+      authRequired: true,
+      paidAnalysisRequired: true,
     },
     app: {
       iosAppStoreUrl: env.NEXT_PUBLIC_IOS_APP_STORE_URL || 'https://apps.apple.com/us/app/mogging-face-rating/id6771414050',

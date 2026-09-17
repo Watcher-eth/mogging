@@ -1,3 +1,4 @@
+import { createHash, randomUUID } from 'crypto'
 import type { NextApiRequest, NextApiResponse } from 'next'
 import { eq } from 'drizzle-orm'
 import { ApiError, handleApiError, json, methodNotAllowed, parseBody } from '@/lib/api/http'
@@ -9,15 +10,17 @@ import { enforceRateLimit } from '@/lib/api/rateLimit'
 import { hairColorSchema, normalizeApparentAge, skinColorSchema } from '@/lib/appearance/types'
 import { db, schema } from '@/lib/db'
 import { env } from '@/lib/env'
-import { assertEvaluationEntitlement, consumeEvaluationEntitlement } from '@/lib/payments/entitlements'
+import { reserveEvaluation, finishEvaluation } from '@/lib/payments/entitlements'
 import { createAnalysisShare } from '@/lib/sharing/service'
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   if (req.method !== 'POST') return methodNotAllowed(res, ['POST'])
 
   const requestIdHeader = req.headers['x-mogging-request-id']
-  const requestId = Array.isArray(requestIdHeader) ? requestIdHeader[0] : requestIdHeader || `web-${Date.now().toString(36)}`
+  const requestId = Array.isArray(requestIdHeader) ? requestIdHeader[0] : requestIdHeader || randomUUID()
   const startedAt = Date.now()
+  let reservation: Awaited<ReturnType<typeof reserveEvaluation>> | null = null
+  let generationReturned = false
 
   try {
     await enforceRateLimit(req, res, { key: 'analyze', limit: 10, windowMs: 60 * 60 * 1000 })
@@ -38,16 +41,10 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     const mobileInstallId = readMobileInstallId(req)
     const adminMode = readHeader(req.headers['x-mogging-admin-code']) === '674523'
     const anonymousActorId = userId ? null : getOrSetAnonymousActorId(req, res)
-    if (env.PAID_ANALYSIS_REQUIRED && !adminMode && !userId) {
+    if (!adminMode && !userId) {
       throw new ApiError(401, 'Sign in before generating a paid report')
     }
-    if (env.PAID_ANALYSIS_REQUIRED && userId && !adminMode) {
-      await assertEvaluationEntitlement({
-        mobileInstallId: mobileInstallId ?? undefined,
-        userId,
-        anonymousActorId,
-      })
-    }
+    if (requestId.length > 200) throw new ApiError(400, 'Invalid scan request ID')
 
     const [anonymousProfile, userProfile] = await Promise.all([
       anonymousActorId ? getAnonymousProfile(anonymousActorId) : null,
@@ -68,6 +65,12 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     const anonymousSkinColor = skinColorSchema.safeParse(anonymousProfile?.skinColor).data ?? null
     const userSkinColor = skinColorSchema.safeParse(userProfile?.skinColor).data ?? null
 
+    if (userId && !adminMode) {
+      reservation = await reserveEvaluation({ userId, mobileInstallId: mobileInstallId ?? undefined }, requestId,
+        createHash('sha256').update(JSON.stringify(body)).digest('hex'))
+      if (reservation.result) return json(res, 200, { ...reservation.result, entitlements: reservation.summary })
+    }
+
     const result = await analyzeAndSave({
       ...body,
       gender: analysisGender,
@@ -78,7 +81,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       caption: body.caption ?? anonymousProfile?.social ?? null,
       hairColor: body.hairColor ?? anonymousHairColor,
       skinColor: body.skinColor ?? userSkinColor ?? anonymousSkinColor,
-    })
+    }, reservation?.id)
+    generationReturned = true
     const shareResult =
       result.analysis.status === 'complete'
         ? await createDefaultShare({
@@ -87,14 +91,13 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
             ownerAnonymousActorId: anonymousActorId,
           })
         : null
-    const entitlements =
-      env.PAID_ANALYSIS_REQUIRED && userId && !adminMode && result.analysis.status === 'complete'
-        ? await consumeEvaluationEntitlement({
-            mobileInstallId: mobileInstallId ?? undefined,
-            userId,
-            anonymousActorId,
-          })
-        : null
+    const successful = result.analysis.status === 'complete'
+    const entitlements = reservation ? {
+      ...reservation.summary,
+      evaluationCredits: Math.min(Number.MAX_SAFE_INTEGER, reservation.summary.evaluationCredits + (successful ? 0 : 1)),
+    } : null
+    const response = { ...result, entitlements, share: shareResult?.share ? { token: shareResult.share.token } : null }
+    if (reservation) await finishEvaluation(reservation.id, response, successful)
 
     console.info('analyze:finish', {
       requestId,
@@ -107,16 +110,12 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       mobileInstallId,
     })
 
-    return json(res, result.deduped ? 200 : 201, {
-      ...result,
-      entitlements,
-      share: shareResult?.share
-        ? {
-            token: shareResult.share.token,
-          }
-        : null,
-    })
+    return json(res, result.deduped ? 200 : 201, response)
   } catch (error) {
+    if (reservation && !generationReturned) {
+      await finishEvaluation(reservation.id, { analysis: { status: 'failed', failureReason: 'Unable to generate report. Please retry.' } }, false)
+        .catch(refundError => console.error('analyze:credit-return-failed', reservation?.id, refundError))
+    }
     console.error('analyze:error', {
       requestId,
       elapsedMs: Date.now() - startedAt,

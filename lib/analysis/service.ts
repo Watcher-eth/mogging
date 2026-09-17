@@ -1,6 +1,6 @@
-import { eq } from 'drizzle-orm'
 import { z } from 'zod'
 import { db, schema } from '@/lib/db'
+import { finishEvaluation, lockEvaluationReservation } from '@/lib/payments/entitlements'
 
 const pslScoreSchema = z.number().min(0).max(8)
 const categoryScoreSchema = z.number().min(0).max(10)
@@ -24,42 +24,16 @@ export const saveAnalysisResultSchema = z.object({
 
 export type SaveAnalysisResultInput = z.infer<typeof saveAnalysisResultSchema>
 
-export async function saveAnalysisResult(input: SaveAnalysisResultInput) {
+export async function saveAnalysisResult(input: SaveAnalysisResultInput, scan?: {
+  id: string
+  photo: Record<string, unknown>
+  deduped: boolean
+}) {
   const data = saveAnalysisResultSchema.parse(input)
 
-  const existing = await db.query.analyses.findFirst({
-    where: eq(schema.analyses.photoId, data.photoId),
-    columns: { id: true },
-  })
-
-  if (existing) {
-    const [analysis] = await db
-      .update(schema.analyses)
-      .set({
-        status: data.status,
-        pslScore: data.pslScore ?? null,
-        harmonyScore: data.harmonyScore ?? null,
-        dimorphismScore: data.dimorphismScore ?? null,
-        angularityScore: data.angularityScore ?? null,
-        percentile: data.percentile ?? null,
-        tier: data.tier ?? null,
-        tierDescription: data.tierDescription ?? null,
-        metrics: data.metrics,
-        landmarks: data.landmarks,
-        model: data.model ?? null,
-        promptVersion: data.promptVersion ?? null,
-        failureReason: data.failureReason ?? null,
-        updatedAt: new Date(),
-      })
-      .where(eq(schema.analyses.id, existing.id))
-      .returning()
-
-    return { analysis, created: false }
-  }
-
-  const [analysis] = await db
-    .insert(schema.analyses)
-    .values({
+  return db.transaction(async tx => {
+    if (scan) await lockEvaluationReservation(tx, scan.id)
+    const values = {
       photoId: data.photoId,
       status: data.status,
       pslScore: data.pslScore ?? null,
@@ -74,8 +48,12 @@ export async function saveAnalysisResult(input: SaveAnalysisResultInput) {
       model: data.model ?? null,
       promptVersion: data.promptVersion ?? null,
       failureReason: data.failureReason ?? null,
-    })
-    .returning()
+    }
+    const [analysis] = await tx.insert(schema.analyses).values(values)
+      .onConflictDoUpdate({ target: schema.analyses.photoId, set: { ...values, updatedAt: new Date() } })
+      .returning()
 
-  return { analysis, created: true }
+    if (scan) await finishEvaluation(scan.id, { photo: scan.photo, analysis, deduped: scan.deduped }, data.status === 'complete', tx)
+    return { analysis }
+  })
 }
