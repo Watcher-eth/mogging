@@ -1,4 +1,5 @@
 import type { AppProps } from 'next/app'
+import { useRouter } from 'next/router'
 import { useState } from 'react'
 import { SessionProvider } from 'next-auth/react'
 import { SWRConfig } from 'swr'
@@ -10,6 +11,7 @@ import { swrConfig } from '@/lib/swr'
 import '@/styles/globals.css'
 
 export default function App({ Component, pageProps: { session, ...pageProps } }: AppProps) {
+  const router = useRouter()
   const [soundEnabled, setSoundEnabled] = useState(true)
   const [soundVolume, setSoundVolume] = useState(0.82)
 
@@ -22,7 +24,10 @@ export default function App({ Component, pageProps: { session, ...pageProps } }:
           onEnabledChange={setSoundEnabled}
           onVolumeChange={setSoundVolume}
         >
-          <SeoHead />
+          <SeoHead
+            title={router.pathname === '/battle' ? 'Mog Battle: Compare Photos | Mogging' : undefined}
+            description={router.pathname === '/battle' ? 'Compare photos in Mogging battles and see how community votes shape the leaderboard. Rankings reflect voter preferences.' : undefined}
+          />
           <AppShell>
             <Component {...pageProps} />
           </AppShell>

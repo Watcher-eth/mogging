@@ -50,7 +50,6 @@ export default function MobileAuthPage() {
     <>
       <Head>
         <title>Continue to Mogging</title>
-        <meta name="robots" content="noindex,nofollow" />
       </Head>
       <main className="mx-auto flex min-h-[calc(100vh-5rem)] w-full max-w-xl items-center px-6 py-12">
         <section className="w-full border-y border-zinc-200 py-12 text-center">

@@ -1,7 +1,8 @@
-import Head from 'next/head'
+import Link from 'next/link'
+import { SeoHead } from '@/components/app/seo-head'
+import { appStoreUrl, siteUrl } from '@/lib/seo'
 import Image from 'next/image'
 import { useRouter } from 'next/router'
-import { motion } from 'motion/react'
 import { ClipboardList, Loader2, ScanFace, ShieldCheck, Sparkles } from 'lucide-react'
 import { useEffect, useMemo, useState } from 'react'
 import { toast } from 'sonner'
@@ -26,7 +27,6 @@ type FunnelProduct =
   | 'mobile_lifetime'
   | 'extra_potential_image'
 
-const appStoreUrl = 'https://apps.apple.com/us/app/mogging-face-rating/id6771414050'
 const baseDeepLink = process.env.NEXT_PUBLIC_APP_DEEP_LINK || 'mogging://reports'
 const subscriptionStorageKey = 'mogging:web2app:subscription'
 const installClickedStorageKey = 'mogging:web2app:install-clicked'
@@ -92,30 +92,6 @@ const featurePills = [
   {
     label: 'Personalized Protocol',
     icon: ClipboardList,
-  },
-]
-
-const reviewCards = [
-  {
-    title: 'Protocol actually made me consistent',
-    rating: 5,
-    age: '2mo ago',
-    author: 'ryanlooks',
-    body: 'The scan called out my jaw blur, posture and under-eye issues, then turned it into a daily protocol. I stuck to it for 6 weeks and my photos look way cleaner.',
-  },
-  {
-    title: 'Best glow up app if you follow it',
-    rating: 5,
-    age: '1mo ago',
-    author: 'marco.f',
-    body: 'I used to jump between random looksmaxing advice. Mogging made it obvious what to work on first: hair framing, skin texture, shoulder posture and debloat habits. Big difference.',
-  },
-  {
-    title: 'The report is brutally useful',
-    rating: 4,
-    age: '3w ago',
-    author: 'aidenbuilds',
-    body: 'The score was cool, but the protocol is why I kept using it. Same lighting, repeat scans, clear todos. My face looks more structured because I finally tracked the basics.',
   },
 ]
 
@@ -249,21 +225,22 @@ export default function AppFunnelPage() {
 
   return (
     <>
-      <Head>
-        <title>Mogging App | Face Analysis and Improvement Protocol</title>
-        <meta
-          name="description"
-          content="Mogging scans your face across 66 clinical-style measures, maps facial structure in detail, and builds a personalized protocol to track and improve your look over time."
-        />
-        <meta name="apple-itunes-app" content="app-id=6771414050, app-argument=https://www.mogging.com/" />
-      </Head>
+      <SeoHead
+        title="Mogging: Meaning, Face Analysis & the Mogging App"
+        description="Learn what mogging means, explore AI face analysis, and discover the Mogging app for facial reports, personalized routines, and progress tracking."
+        path="/"
+        structuredData={{
+          '@context': 'https://schema.org',
+          '@graph': [
+            { '@type': 'WebSite', '@id': `${siteUrl}/#website`, name: 'Mogging', url: `${siteUrl}/` },
+            { '@type': 'Organization', '@id': `${siteUrl}/#organization`, name: 'Mogging', url: `${siteUrl}/`, logo: `${siteUrl}/favicon.png`, sameAs: [appStoreUrl] },
+          ],
+        }}
+      />
 
       <main className="min-h-[calc(100vh-5rem)] overflow-hidden bg-white text-black">
         <section className="mx-auto flex min-h-[calc(100vh-5rem)] w-full max-w-7xl flex-col items-center px-5 py-8 sm:px-10 sm:py-12">
-          <motion.div
-            initial={{ opacity: 0, y: 18 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.45, ease: [0.16, 1, 0.3, 1] }}
+          <div
             className="flex w-full flex-col items-center"
           >
             <a
@@ -274,23 +251,24 @@ export default function AppFunnelPage() {
               <span>View Mogging on the App Store</span>
             </a>
 
-            <p className="mt-10 font-mono text-sm font-bold uppercase tracking-normal text-zinc-500 sm:text-base">Mobile face analysis //</p>
+            <p className="mt-10 font-mono text-sm font-bold uppercase tracking-normal text-zinc-500 sm:text-base">Mogging · AI face analysis</p>
             <h1 className="mt-5 max-w-6xl text-center text-[3.6rem] font-semibold leading-[0.9] tracking-[-0.075em] text-black sm:text-[7rem] lg:text-[8.6rem]">
-              Your looks. Measured. Tracked. Improved.
+              Mogging. Your face, in focus.
             </h1>
             <p className="mt-7 max-w-3xl text-center text-xl leading-8 text-zinc-500 sm:text-2xl sm:leading-9">
-              Scan across 66 clinical-style facial measures, review a detailed face map, and follow a personalized protocol built to improve what your report finds over time.
+              Explore your facial features with an AI report, a detailed face map, and a personalized routine. Keep track of your photos and progress in the Mogging app.
             </p>
-          </motion.div>
+            <p className="mt-6 max-w-2xl text-center text-base leading-7 text-zinc-600">
+              Looking for the meaning? Mogging is internet slang for outshining someone, often in appearance.{' '}
+              <Link href="/what-is-mogging" className="font-medium text-black underline underline-offset-4">Read the mogging guide</Link>.
+            </p>
+          </div>
 
-          <motion.div
-            initial={{ opacity: 0, y: 20, scale: 0.985 }}
-            animate={{ opacity: 1, y: 0, scale: 1 }}
-            transition={{ duration: 0.5, delay: 0.08, ease: [0.16, 1, 0.3, 1] }}
+          <div
             className="mt-16 w-full sm:mt-20"
           >
             <div className="flex snap-x snap-mandatory gap-5 overflow-x-auto pb-4 pr-5 sm:justify-center sm:gap-6 sm:overflow-visible sm:pr-0">
-              {appScreenshots.map((screenshot) => (
+              {appScreenshots.map((screenshot, index) => (
                 <div key={screenshot.src} className="w-[74vw] min-w-[260px] max-w-[340px] shrink-0 snap-start overflow-hidden rounded-[2rem] border border-zinc-200 bg-white sm:w-[30%] sm:rounded-[2.25rem]">
                   <Image
                     src={screenshot.src}
@@ -299,13 +277,15 @@ export default function AppFunnelPage() {
                     height={2688}
                     sizes="(max-width: 639px) 74vw, 30vw"
                     className="block h-auto w-full"
-                    priority
+                    priority={index === 0}
                   />
                 </div>
               ))}
             </div>
 
-            <ReviewsSection />
+            <p className="mt-8 text-center text-sm text-zinc-600">
+              <a href={appStoreUrl} className="underline underline-offset-4">Read current ratings and reviews on the App Store</a>
+            </p>
 
             <div className="mx-auto mt-16 w-full max-w-5xl sm:mt-20">
               <div className="grid gap-3 md:grid-cols-3">
@@ -389,90 +369,23 @@ export default function AppFunnelPage() {
                 </p>
               </div>
             </div>
-          </motion.div>
+          </div>
+        </section>
+        <section aria-labelledby="about-mogging" className="mx-auto max-w-5xl space-y-10 px-5 py-16 sm:px-10">
+          <div>
+            <h2 id="about-mogging" className="text-3xl font-semibold tracking-tight sm:text-4xl">What is mogging?</h2>
+            <p className="mt-5 text-lg leading-8 text-zinc-600">Mogging means standing out in comparison with someone else. In memes and social media comments, it often refers to looks, height, physique, or style. “Mog” is the verb; “mogged” describes being outshone. These are subjective slang terms, not scientific measurements.</p>
+            <Link href="/what-is-mogging" className="mt-4 inline-block font-medium underline underline-offset-4">Mogging meaning, origin, and examples</Link>
+          </div>
+          <div>
+            <h2 className="text-3xl font-semibold tracking-tight sm:text-4xl">What does the Mogging app do?</h2>
+            <p className="mt-5 text-lg leading-8 text-zinc-600">Mogging turns a face photo into an AI-generated report with feature breakdowns. The mobile app brings reports, personalized routines, and evaluation history together. You can also try <Link href="/analysis" className="text-black underline underline-offset-4">face analysis on the web</Link>, explore <Link href="/battle" className="text-black underline underline-offset-4">mog battles</Link>, or view the <Link href="/leaderboard" className="text-black underline underline-offset-4">leaderboard</Link>.</p>
+            <p className="mt-4 text-lg leading-8 text-zinc-600">A photo-based score is an estimate influenced by lighting, pose, and image quality. It is not a diagnosis or an objective measure of your attractiveness. Repeated photos are most useful when taken under similar conditions.</p>
+            <Link href="/how-face-analysis-works" className="mt-4 inline-block font-medium underline underline-offset-4">How our face analysis works and its limitations</Link>
+          </div>
         </section>
       </main>
     </>
-  )
-}
-
-function ReviewsSection() {
-  return (
-    <section className="mx-auto mt-16 w-full max-w-7xl rounded-[2rem] bg-white px-0 py-2 text-zinc-950 sm:mt-20">
-      <div className="mb-7 flex items-start justify-between gap-6 px-1">
-        <h2 className="text-[1.7rem] font-semibold leading-none tracking-[-0.04em] text-zinc-900 sm:text-[2rem]">
-          Ratings &amp; Reviews
-        </h2>
-        <a href={appStoreUrl} className="text-base font-semibold text-[#007aff] transition hover:text-[#0062cc] sm:text-lg">
-          See All
-        </a>
-      </div>
-
-      <div className="mb-9 grid gap-6 px-1 lg:grid-cols-[240px_1fr] lg:items-end">
-        <div className="flex items-end gap-3">
-          <span className="text-[5.6rem] font-semibold leading-[0.76] tracking-[-0.08em] text-zinc-500 sm:text-[6.5rem]">4.8</span>
-          <span className="pb-2 text-xl font-semibold text-zinc-500">out of 5</span>
-        </div>
-
-        <div className="grid gap-4 sm:grid-cols-[120px_1fr] sm:items-end">
-          <div className="text-left text-lg font-semibold text-zinc-500 sm:text-right">243 Ratings</div>
-          <RatingDistribution />
-        </div>
-      </div>
-
-      <div className="grid gap-5 lg:grid-cols-3">
-        {reviewCards.map((review) => (
-          <article key={review.title} className="min-h-[224px] rounded-[1.5rem] bg-zinc-100 p-6 text-zinc-700">
-            <div className="mb-2 grid grid-cols-[1fr_auto] gap-4">
-              <h3 className="text-lg font-semibold leading-6 text-zinc-700">{review.title}</h3>
-              <span className="text-base font-semibold text-zinc-500">{review.age}</span>
-            </div>
-            <div className="mb-5 grid grid-cols-[1fr_auto] items-center gap-4">
-              <StarRating rating={review.rating} />
-              <span className="text-base font-semibold text-zinc-500">{review.author}</span>
-            </div>
-            <p className="text-lg font-medium leading-7 text-zinc-700">{review.body}</p>
-          </article>
-        ))}
-      </div>
-    </section>
-  )
-}
-
-function RatingDistribution() {
-  const rows = [
-    { stars: 5, value: 0.82 },
-    { stars: 4, value: 0.13 },
-    { stars: 3, value: 0.04 },
-    { stars: 2, value: 0.01 },
-    { stars: 1, value: 0.02 },
-  ]
-
-  return (
-    <div className="grid gap-2">
-      {rows.map((row) => (
-        <div key={row.stars} className="grid grid-cols-[90px_1fr] items-center gap-3">
-          <div className="flex justify-end gap-0.5 text-[13px] leading-none text-zinc-500">
-            {Array.from({ length: row.stars }).map((_, index) => (
-              <span key={`${row.stars}-${index}`}>★</span>
-            ))}
-          </div>
-          <div className="h-1.5 overflow-hidden rounded-full bg-zinc-200">
-            <div className="h-full rounded-full bg-zinc-500" style={{ width: `${row.value * 100}%` }} />
-          </div>
-        </div>
-      ))}
-    </div>
-  )
-}
-
-function StarRating({ rating }: { rating: number }) {
-  return (
-    <div className="flex gap-1 text-[22px] leading-none text-[#ff8a1f]" aria-label={`${rating} out of 5 stars`}>
-      {Array.from({ length: 5 }).map((_, index) => (
-        <span key={index}>{index < rating ? '★' : '☆'}</span>
-      ))}
-    </div>
   )
 }
 

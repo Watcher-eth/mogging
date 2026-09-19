@@ -66,7 +66,6 @@ export default function PaymentHandoffPage() {
     <>
       <Head>
         <title>Open Mogging</title>
-        <meta name="robots" content="noindex,nofollow" />
       </Head>
       <main className="mx-auto flex min-h-[calc(100vh-5rem)] w-full max-w-3xl items-center px-5 py-12 sm:px-10">
         <section className="w-full border-y border-zinc-200 py-10 sm:py-14">

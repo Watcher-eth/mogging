@@ -1,11 +1,13 @@
 import Head from 'next/head'
 import { useRouter } from 'next/router'
+import { canonicalUrl as getCanonicalUrl, robotsForPath, serializeJsonLd, siteUrl } from '@/lib/seo'
 
 type SeoHeadProps = {
   title?: string
   description?: string
   imagePath?: string
   path?: string
+  structuredData?: Record<string, unknown>
 }
 
 const defaultTitle = 'Mogging'
@@ -18,15 +20,20 @@ export function SeoHead({
   description = defaultDescription,
   imagePath = defaultImagePath,
   path,
+  structuredData,
 }: SeoHeadProps) {
   const router = useRouter()
-  const siteUrl = (process.env.NEXT_PUBLIC_SITE_URL || 'https://mogging.com').replace(/\/$/, '')
-  const currentPath = path ?? router.asPath?.split('?')[0] ?? '/'
-  const canonicalUrl = siteUrl ? `${siteUrl}${currentPath === '/' ? '' : currentPath}` : currentPath
-  const imageUrl = siteUrl ? `${siteUrl}${imagePath}` : imagePath
+  const currentPath = path ?? router.asPath ?? '/'
+  const canonicalUrl = getCanonicalUrl(currentPath)
+  const imageUrl = new URL(imagePath, siteUrl).href
+
 
   return (
     <Head>
+      <meta key="robots" name="robots" content={robotsForPath(router.pathname)} />
+      {structuredData ? (
+        <script key="structured-data" type="application/ld+json" dangerouslySetInnerHTML={{ __html: serializeJsonLd(structuredData) }} />
+      ) : null}
       <title key="title">{title}</title>
       <meta key="description" name="description" content={description} />
       <meta key="apple-itunes-app" name="apple-itunes-app" content={`app-id=${iosAppStoreId}, app-argument=${canonicalUrl}`} />
