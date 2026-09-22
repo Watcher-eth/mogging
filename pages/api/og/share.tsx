@@ -1,12 +1,7 @@
 import { ImageResponse } from '@vercel/og'
 import type { NextApiRequest, NextApiResponse } from 'next'
 import { parseFaceLandmarksPayload } from '@/lib/analysis/landmarks'
-import {
-  getReportCategoryById,
-  getReportOverlayGeometry,
-  getReportOverlayYOffset,
-  type ReportOverlayGeometry,
-} from '@/lib/analysis/report-overlays'
+import { ShareOverallOverlay } from '@/lib/sharing/overall-overlay'
 import { getShareByToken } from '@/lib/sharing/service'
 
 export const config = {
@@ -14,18 +9,6 @@ export const config = {
 }
 
 type CanvasSize = {
-  width: number
-  height: number
-}
-
-type ImageDimensions = {
-  width: number
-  height: number
-}
-
-type CoverFrame = {
-  x: number
-  y: number
   width: number
   height: number
 }
@@ -52,19 +35,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     const share = await getShareByToken(token)
     const landmarks = parseFaceLandmarksPayload(share.analysis.landmarks)
     const imageUrl = absoluteImageUrl(share.photo.imageUrl, req)
-    const category = getReportCategoryById(typeof req.query.overlay === 'string' ? req.query.overlay : 'overall')
-    const sourceGeometry = getReportOverlayGeometry(category, landmarks)
-    const imageFrame = getImageCoverFrame(landmarks?.image ?? null, storySize)
-    const geometry = mapLandmarkGeometryToStoryFrame(sourceGeometry, imageFrame, storySize)
-    const yOffset = geometry.usesLandmarks ? 0 : getReportOverlayYOffset(category.id)
     const totalDisplayScore = readReportTotalScore(share.analysis.metrics, share.analysis.pslScore)
-    if (geometry.label.title === 'Total score') {
-      geometry.label = {
-        ...geometry.label,
-        title: 'PSL',
-        value: totalDisplayScore === null ? '— / 8' : `${Math.max(1, Math.min(8, totalDisplayScore * 0.8)).toFixed(1)} / 8`,
-      }
-    }
     const totalScore = formatScore(totalDisplayScore)
     const potential = readReportPotential(share.analysis.metrics, share.analysis.pslScore, totalDisplayScore)
     const rank = getLooksmaxRank(totalDisplayScore, share.photo.gender)
@@ -127,49 +98,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
             }}
           />
 
-          <ReportOverlaySvg categoryId={category.id} geometry={geometry} yOffset={yOffset} size={storySize} />
-
-          <RankBadge label={rank} />
-
-          <div
-            style={{
-              alignItems: 'center',
-              background: 'rgba(255,255,255,0.94)',
-              color: '#171717',
-              display: 'flex',
-              fontSize: 26,
-              fontWeight: 800,
-              height: 44,
-              justifyContent: 'center',
-              left: percentX(geometry.label.x),
-              letterSpacing: '-1px',
-              position: 'absolute',
-              top: percentY(geometry.label.y + yOffset),
-              width: geometry.label.title.length > 10 ? 250 : 220,
-            }}
-          >
-            {geometry.label.title.toUpperCase()}
-          </div>
-
-          <div
-            style={{
-              alignItems: 'center',
-              background: 'rgba(255,255,255,0.94)',
-              color: '#171717',
-              display: 'flex',
-              fontSize: 24,
-              fontWeight: 800,
-              height: 40,
-              justifyContent: 'center',
-              left: percentX(geometry.label.x),
-              letterSpacing: '-0.7px',
-              position: 'absolute',
-              top: percentY(geometry.label.y + yOffset) + 52,
-              width: 210,
-            }}
-          >
-            {geometry.label.value.toUpperCase()}
-          </div>
+          <ShareOverallOverlay landmarks={landmarks} {...storySize} />
 
           <div
             style={{
@@ -180,14 +109,19 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
               top: 104,
             }}
           >
-            <span style={{ fontSize: 23, fontWeight: 800, letterSpacing: '1.2px' }}>MOGGING REPORT</span>
-            <span style={{ fontSize: 20, fontWeight: 700, letterSpacing: '0.6px', marginTop: 12, opacity: 0.76 }}>{tier}</span>
+            <span style={{ fontSize: 25, fontWeight: 800, letterSpacing: '1.2px' }}>MOGGING.COM</span>
+            <span style={{ fontSize: 22, fontWeight: 700, letterSpacing: '0.6px', marginTop: 12, opacity: 0.76 }}>{tier}</span>
+          </div>
+
+          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', right: 78, position: 'absolute', top: 104 }}>
+            <span style={{ fontSize: 25, fontWeight: 800, letterSpacing: '1.2px' }}>RANK</span>
+            <span style={{ fontSize: 22, fontWeight: 700, letterSpacing: '0.6px', marginTop: 12, opacity: 0.76 }}>{rank.toUpperCase()}</span>
           </div>
 
           <div
             style={{
               alignItems: 'flex-end',
-              bottom: 164,
+              bottom: 92,
               display: 'flex',
               justifyContent: 'space-between',
               left: 78,
@@ -198,19 +132,6 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
           >
             <ScoreBlock align="left" label="TOTAL SCORE" score={totalScore} />
             <ScoreBlock align="right" label="POTENTIAL" score={potential.score} />
-          </div>
-
-          <div
-            style={{
-              bottom: 92,
-              display: 'flex',
-              justifyContent: 'flex-end',
-              left: 78,
-              position: 'absolute',
-              right: 78,
-            }}
-          >
-            <span style={{ color: 'rgba(255,255,255,0.72)', fontSize: 20, fontWeight: 700, letterSpacing: '0.8px' }}>MOGGING.COM</span>
           </div>
         </div>
       ),
@@ -227,72 +148,6 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   }
 }
 
-function ReportOverlaySvg({
-  categoryId,
-  geometry,
-  size,
-  yOffset,
-}: {
-  categoryId: string
-  geometry: ReportOverlayGeometry
-  size: CanvasSize
-  yOffset: number
-}) {
-  return (
-    <svg
-      height={size.height}
-      style={{ left: 0, position: 'absolute', top: 0 }}
-      viewBox={`0 0 ${size.width} ${size.height}`}
-      width={size.width}
-    >
-      {geometry.boxes.map((box, index) => (
-        <rect
-          key={`${categoryId}-box-${index}`}
-          x={percentX(box.x)}
-          y={percentY(box.y + yOffset)}
-          width={percentX(box.width)}
-          height={percentY(box.height)}
-          fill="none"
-          stroke="rgba(255,255,255,0.85)"
-          strokeDasharray={box.dashed ? '13 13' : undefined}
-          strokeWidth="4"
-        />
-      ))}
-      {geometry.lines.map((line, index) => (
-        <line
-          key={`${categoryId}-line-${index}`}
-          x1={percentX(line.x1)}
-          y1={percentY(line.y1 + yOffset)}
-          x2={percentX(line.x2)}
-          y2={percentY(line.y2 + yOffset)}
-          stroke="rgba(255,255,255,0.88)"
-          strokeDasharray={categoryId === 'overall' ? '12 14' : undefined}
-          strokeLinecap="round"
-          strokeWidth="4"
-        />
-      ))}
-      {geometry.polylines.map((polyline, index) => (
-        <path
-          key={`${categoryId}-polyline-${index}`}
-          d={toSvgPath(polyline.points, yOffset, Boolean(polyline.closed))}
-          fill={polyline.closed ? 'rgba(255,255,255,0.08)' : 'none'}
-          stroke="rgba(255,255,255,0.9)"
-          strokeDasharray={polyline.dashed ? '12 14' : undefined}
-          strokeLinecap="round"
-          strokeLinejoin="round"
-          strokeWidth="4"
-        />
-      ))}
-      {geometry.points.map((point, index) => (
-        <g key={`${categoryId}-point-${index}`}>
-          <circle cx={percentX(point.x)} cy={percentY(point.y + yOffset)} r="17" fill="none" stroke="rgba(255,255,255,0.72)" strokeDasharray="7 7" strokeWidth="4" />
-          <circle cx={percentX(point.x)} cy={percentY(point.y + yOffset)} r="6" fill="white" />
-        </g>
-      ))}
-    </svg>
-  )
-}
-
 function ScoreBlock({ align, label, score }: { align: 'left' | 'right'; label: string; score: string }) {
   return (
     <div
@@ -304,52 +159,8 @@ function ScoreBlock({ align, label, score }: { align: 'left' | 'right'; label: s
     >
       <span style={{ fontSize: 25, fontWeight: 800, letterSpacing: '1.3px', marginBottom: 18, opacity: 0.86 }}>{label}</span>
       <div style={{ alignItems: 'flex-end', display: 'flex' }}>
-        <span style={{ fontSize: 176, fontWeight: 800, letterSpacing: '-10px' }}>{score}</span>
+        <span style={{ fontSize: 176, fontWeight: 800, letterSpacing: 0, marginLeft: align === 'left' ? -8 : 0, marginRight: align === 'right' ? -20 : 0, opacity: align === 'right' ? 0.8 : 1 }}>{score}</span>
       </div>
-    </div>
-  )
-}
-
-function RankBadge({ label }: { label: string }) {
-  return (
-    <div
-      style={{
-        alignItems: 'center',
-        display: 'flex',
-        justifyContent: 'center',
-        left: 72,
-        position: 'absolute',
-        right: 72,
-        textAlign: 'center',
-        top: 254,
-      }}
-    >
-      <span
-        style={{
-          color: 'rgba(0,0,0,0.54)',
-          fontSize: 92,
-          fontWeight: 650,
-          letterSpacing: '-4.8px',
-          lineHeight: 0.92,
-          position: 'absolute',
-          transform: 'translate(0px, 5px)',
-          whiteSpace: 'nowrap',
-        }}
-      >
-        {label}
-      </span>
-      <span
-        style={{
-          color: 'rgba(255,255,255,0.96)',
-          fontSize: 92,
-          fontWeight: 650,
-          letterSpacing: '-4.8px',
-          lineHeight: 0.92,
-          whiteSpace: 'nowrap',
-        }}
-      >
-        {label}
-      </span>
     </div>
   )
 }
@@ -364,7 +175,7 @@ function getLooksmaxRank(score: number | null, gender: 'male' | 'female' | 'othe
     if (value >= 7.55) return 'Stacy Lite'
     if (value >= 7) return 'HTB'
     if (value >= 6.15) return 'MTB'
-    if (value >= 5.35) return 'Pretty'
+    if (value >= 5.35) return 'LTB'
     if (value > 4) return 'Normie'
     return 'Gooner'
   }
@@ -465,91 +276,4 @@ function readFiniteScore(value: unknown) {
 
 function normalizeReportCategoryScore(score: number) {
   return Math.max(0, Math.min(10, Math.round(score * 10) / 10))
-}
-
-function getImageCoverFrame(image: ImageDimensions | null, canvas: CanvasSize): CoverFrame | null {
-  if (!image || image.width <= 0 || image.height <= 0) return null
-
-  const scale = Math.max(canvas.width / image.width, canvas.height / image.height)
-  const width = image.width * scale
-  const height = image.height * scale
-
-  return {
-    x: (canvas.width - width) / 2,
-    y: (canvas.height - height) / 2,
-    width,
-    height,
-  }
-}
-
-function mapLandmarkGeometryToStoryFrame(
-  geometry: ReportOverlayGeometry,
-  imageFrame: CoverFrame | null,
-  canvas: CanvasSize
-): ReportOverlayGeometry {
-  if (!geometry.usesLandmarks || !imageFrame) return geometry
-
-  const point = (value: { x: number; y: number }) => mapImagePercentPointToCanvasPercent(value, imageFrame, canvas)
-  const line = (value: { x1: number; y1: number; x2: number; y2: number }) => {
-    const start = point({ x: value.x1, y: value.y1 })
-    const end = point({ x: value.x2, y: value.y2 })
-    return { x1: start.x, y1: start.y, x2: end.x, y2: end.y }
-  }
-  const box = (value: { x: number; y: number; width: number; height: number; dashed?: boolean }) => {
-    const start = point({ x: value.x, y: value.y })
-    const end = point({ x: value.x + value.width, y: value.y + value.height })
-    return {
-      x: Math.min(start.x, end.x),
-      y: Math.min(start.y, end.y),
-      width: Math.abs(end.x - start.x),
-      height: Math.abs(end.y - start.y),
-      dashed: value.dashed,
-    }
-  }
-  const label = point(geometry.label)
-
-  return {
-    ...geometry,
-    boxes: geometry.boxes.map(box),
-    lines: geometry.lines.map(line),
-    polylines: geometry.polylines.map((polyline) => ({
-      ...polyline,
-      points: polyline.points.map(point),
-    })),
-    points: geometry.points.map(point),
-    label: {
-      ...geometry.label,
-      x: clampPercent(label.x, 6, 78),
-      y: clampPercent(label.y, 6, 88),
-    },
-  }
-}
-
-function mapImagePercentPointToCanvasPercent(point: { x: number; y: number }, imageFrame: CoverFrame, canvas: CanvasSize) {
-  return {
-    x: ((imageFrame.x + (point.x / 100) * imageFrame.width) / canvas.width) * 100,
-    y: ((imageFrame.y + (point.y / 100) * imageFrame.height) / canvas.height) * 100,
-  }
-}
-
-function clampPercent(value: number, min: number, max: number) {
-  return Math.max(min, Math.min(max, value))
-}
-
-function percentX(value: number) {
-  return (value / 100) * storySize.width
-}
-
-function percentY(value: number) {
-  return (value / 100) * storySize.height
-}
-
-function toSvgPath(points: Array<{ x: number; y: number }>, yOffset: number, closed: boolean) {
-  if (points.length === 0) return ''
-  const [first, ...rest] = points
-  const path = [
-    `M ${percentX(first.x)} ${percentY(first.y + yOffset)}`,
-    ...rest.map((point) => `L ${percentX(point.x)} ${percentY(point.y + yOffset)}`),
-  ].join(' ')
-  return closed ? `${path} Z` : path
 }

@@ -2568,7 +2568,7 @@ function ShareSheet({
     setShareImageBlob(null)
     setShareImageSize(null)
 
-    void fetch(`/api/og/share?token=${encodeURIComponent(token)}`, { signal: controller.signal })
+    void fetch(`/api/og/share?token=${encodeURIComponent(token)}&render=story-overall-v9`, { signal: controller.signal })
       .then(async (response) => {
         if (!response.ok) throw new Error('Unable to prepare share image')
         const blob = await response.blob()
