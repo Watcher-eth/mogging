@@ -1099,3 +1099,21 @@ export const referralLinks = pgTable('referral_links', {
   userId: text('user_id').primaryKey().references(() => users.id, { onDelete: 'cascade' }),
   code: text('code').notNull().unique(),
 })
+
+export const pushDevices = pgTable('push_devices', {
+  installId: text('install_id').primaryKey(),
+  userId: text('user_id').notNull().references(() => users.id, { onDelete: 'cascade' }),
+  token: text('token').notNull().unique(),
+  environment: text('environment').notNull(),
+  timezone: text('timezone').notNull(),
+  sessionExpiresAt: timestamp('session_expires_at', { withTimezone: true }).notNull(),
+  protocolDays: jsonb('protocol_days').$type<import('../push/schedule').ProtocolDay[]>().notNull().default([]),
+  updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
+}, table => [index('push_devices_user_idx').on(table.userId)])
+
+export const pushDeliveries = pgTable('push_deliveries', {
+  userId: text('user_id').notNull().references(() => users.id, { onDelete: 'cascade' }),
+  kind: text('kind').notNull(),
+  slot: text('slot').notNull(),
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+}, table => [primaryKey({ columns: [table.userId, table.kind, table.slot] })])
