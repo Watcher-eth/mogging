@@ -1,3 +1,5 @@
+import { enrichFaceLandmarks } from './mobile-overlay-engine/enrich-landmarks'
+import { createReportOverlay } from './report-overlay'
 import { describe, expect, test } from 'bun:test'
 import { getImageTransform, projectImagePoint } from '@/lib/creator/mobile-overlay-engine/layout'
 import { reportOverlayPresets } from '@/lib/creator/mobile-overlay-engine/report-presets'
@@ -95,3 +97,51 @@ function snapshotGeometry(primitives: ReturnType<typeof resolveOverlayPreset>['p
 function roundPoint(point: { x: number; y: number }) {
   return { x: Math.round(point.x * 1000) / 1000, y: Math.round(point.y * 1000) / 1000 }
 }
+
+describe('mobile report overlay parity', () => {
+  test('normalizes raw detector contours before resolving every category', () => {
+    const raw = { ...fixture, contours: { ...fixture.contours, leftEye: [{ x: .3, y: .3 }, { x: .4, y: .3 }, { x: .4, y: .4 }, { x: .3, y: .4 }] } }
+    const enriched = enrichFaceLandmarks(raw)!
+    expect(enriched.contours?.leftEye).toHaveLength(16)
+    expect(enriched.contours?.leftEye?.at(-1)?.x).toBeCloseTo(enriched.contours!.leftEye![0].x)
+    expect(enriched.contours?.leftEye?.at(-1)?.y).toBeCloseTo(enriched.contours!.leftEye![0].y)
+    expect(enrichFaceLandmarks(enriched)).toEqual(enriched)
+    const image: GeneratorImage = { id: 'fit', name: 'fit', dataUrl: '', width: 1600, height: 900, landmarks: { ...raw, source: 'mediapipe-face-landmarker' }, status: 'ready' }
+    for (const category of Object.keys(reportOverlayPresets)) {
+      const slide = generateSlides({ campaignGoal: 'traffic', tone: 'direct', selectedCategories: [category], primaryCategory: category, images: [image], offer: '', seed: 0 })[0]
+      const preview = createReportOverlay(slide, image, { width: 360, height: 640 })
+      const png = createReportOverlay(slide, image, { width: 1080, height: 1920 })
+      expect(preview).toEqual(png)
+      expect(preview.primitives).toEqual(resolveOverlayPreset({ preset: reportOverlayPresets[category], landmarks: enriched, viewport: preview.size, imageSize: raw.image, fit: 'cover' }).primitives)
+    }
+  })
+
+  test('full face map uses the mobile decorative samples with consistent export scaling', () => {
+    const image: GeneratorImage = { id: 'map', name: 'map', dataUrl: '', width: 1600, height: 900, landmarks: { ...fixture, source: 'mediapipe-face-landmarker' }, status: 'ready' }
+    const base = generateSlides({ campaignGoal: 'traffic', tone: 'direct', selectedCategories: ['overall'], images: [image], offer: '', seed: 0 })[0]
+    const slide = { ...base, overlayStyle: 'face-map' as const }
+    const preview = createReportOverlay(slide, image, { width: 360, height: 360 })
+    expect(preview.dots).toHaveLength(160)
+    expect(preview.primitives).toEqual([])
+    expect(preview.dots.every((point) => Number.isFinite(point.x) && Number.isFinite(point.y) && point.band >= 0 && point.band < 18)).toBe(true)
+    expect(createReportOverlay(slide, image, { width: 1080, height: 1080 })).toEqual(preview)
+    expect(createReportOverlay(slide, { ...image, landmarks: null }, { width: 360, height: 360 }).dots).toEqual([])
+  })
+
+  test('does not draw guessed points or bridge missing contours', () => {
+    const missing = { ...fixture, anchors: {}, contours: {} }
+    expect(resolveOverlayPreset({ preset: reportOverlayPresets.overall, landmarks: missing, viewport: { width: 360, height: 640 } }).primitives).toEqual([])
+    const invalid = enrichFaceLandmarks({ ...fixture, contours: { leftEye: [{ x: .3, y: .3 }, { x: NaN, y: .4 }, { x: .4, y: .4 }] } })
+    expect(invalid?.contours?.leftEye).toBeUndefined()
+  })
+
+  test('rotates face-relative offsets in image pixels on non-square images', () => {
+    const face = { ...fixture, image: { width: 1000, height: 2000 }, anchors: { ...fixture.anchors, leftPupil: { x: .3, y: .3 }, rightPupil: { x: .51, y: .405 }, noseTip: { x: .5, y: .5 } } }
+    const result = resolveOverlayPreset({ preset: { id: 'offset', footer: '', primitives: [{ id: 'point', kind: 'point', at: { anchor: 'noseTip', offset: { x: .1, y: .05 } } }] }, landmarks: face, viewport: face.image })
+    const point = result.primitives[0]
+    expect(point.kind).toBe('point')
+    if (point.kind !== 'point') throw new Error('Expected point')
+    expect(point.point.x).toBeCloseTo(550)
+    expect(point.point.y).toBeCloseTo(1150)
+  })
+})

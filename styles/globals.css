@@ -306,21 +306,6 @@
   to { opacity: 1; transform: translateY(0); filter: blur(0); }
 }
 
-@keyframes cta-overlay-draw {
-  from { opacity: 0; stroke-dashoffset: 1; }
-  to { opacity: 1; stroke-dashoffset: 0; }
-}
-
-@keyframes cta-overlay-point-enter {
-  from { opacity: 0; transform: scale(0.92); }
-  to { opacity: 1; transform: scale(1); }
-}
-
-@keyframes cta-overlay-fade {
-  from { opacity: 0; }
-  to { opacity: 1; }
-}
-
 @keyframes cta-score-bar-load {
   from { transform: scaleX(0); }
   to { transform: scaleX(var(--cta-score-ratio, 0)); }
@@ -368,31 +353,6 @@
   animation: cta-template-item-enter 520ms cubic-bezier(0.23, 1, 0.32, 1) both;
 }
 
-.cta-overlay-draw {
-  opacity: 0;
-  stroke-dasharray: 1;
-  stroke-dashoffset: 1;
-  animation-name: cta-overlay-draw;
-  animation-timing-function: cubic-bezier(0.16, 1, 0.3, 1);
-  animation-fill-mode: both;
-}
-
-.cta-overlay-point {
-  opacity: 0;
-  transform-box: fill-box;
-  transform-origin: center;
-  animation-name: cta-overlay-point-enter;
-  animation-timing-function: cubic-bezier(0.2, 0.9, 0.22, 1);
-  animation-fill-mode: both;
-}
-
-.cta-overlay-fade {
-  opacity: 0;
-  animation-name: cta-overlay-fade;
-  animation-timing-function: cubic-bezier(0.16, 1, 0.3, 1);
-  animation-fill-mode: both;
-}
-
 .cta-score-bar-fill {
   transform: scaleX(0);
   animation: cta-score-bar-load 720ms cubic-bezier(0.16, 1, 0.3, 1) both;
@@ -420,9 +380,6 @@
 
   .cta-template-enter,
   .cta-template-item,
-  .cta-overlay-draw,
-  .cta-overlay-point,
-  .cta-overlay-fade,
   .cta-score-bar-fill {
     animation: none;
     filter: none;

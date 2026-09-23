@@ -19,8 +19,8 @@ const storySize: CanvasSize = {
 }
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
-  if (req.method !== 'GET') {
-    res.setHeader('Allow', 'GET')
+  if (req.method !== 'GET' && req.method !== 'POST') {
+    res.setHeader('Allow', 'GET, POST')
     res.status(405).end('Method not allowed')
     return
   }
@@ -33,7 +33,12 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
   try {
     const share = await getShareByToken(token)
-    const landmarks = parseFaceLandmarksPayload(share.analysis.landmarks)
+    const suppliedLandmarks = req.method === 'POST' ? req.body?.landmarks : share.analysis.landmarks
+    const landmarks = parseFaceLandmarksPayload(suppliedLandmarks)
+    if (req.method === 'POST' && suppliedLandmarks !== null && !landmarks) {
+      res.status(400).end('Invalid landmarks')
+      return
+    }
     const imageUrl = absoluteImageUrl(share.photo.imageUrl, req)
     const totalDisplayScore = readReportTotalScore(share.analysis.metrics, share.analysis.pslScore)
     const totalScore = formatScore(totalDisplayScore)
@@ -139,7 +144,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     )
 
     const buffer = Buffer.from(await image.arrayBuffer())
-    res.setHeader('Cache-Control', 'public, s-maxage=3600, stale-while-revalidate=86400')
+    res.setHeader('Cache-Control', 'no-store')
     res.setHeader('Content-Type', 'image/png')
     res.status(200).send(buffer)
   } catch (error) {

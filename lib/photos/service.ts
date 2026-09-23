@@ -24,7 +24,7 @@ export const createPhotoRecordSchema = z.object({
   position: z.string().max(80).nullable().optional(),
   latitude: z.number().min(-90).max(90).nullable().optional(),
   longitude: z.number().min(-180).max(180).nullable().optional(),
-  isPublic: z.boolean().optional().default(true),
+  isPublic: z.boolean().optional().default(false),
 })
 
 export type CreatePhotoRecordInput = z.input<typeof createPhotoRecordSchema>
@@ -38,6 +38,7 @@ export async function createPhotoRecord(input: CreatePhotoRecordInput) {
       id: true,
       imageUrl: true,
       imageHash: true,
+      isPublic: true,
     },
   })
 
@@ -75,6 +76,7 @@ export async function createPhotoRecord(input: CreatePhotoRecordInput) {
       id: schema.photos.id,
       imageUrl: schema.photos.imageUrl,
       imageHash: schema.photos.imageHash,
+      isPublic: schema.photos.isPublic,
     })
 
   return {

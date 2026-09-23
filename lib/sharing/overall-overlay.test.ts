@@ -29,3 +29,14 @@ test('unusable landmarks never produce guessed share geometry', () => {
   expect(resolveShareOverallOverlay(null, 1080, 1920)).toEqual([])
   expect(resolveShareOverallOverlay({ ...face, confidence: .1 }, 1080, 1920)).toEqual([])
 })
+
+test('rejects collapsed geometry even when Vision reports high confidence', () => {
+  const collapsed = {
+    ...face,
+    source: 'apple-vision' as const,
+    quality: { score: .99, faceCoverage: .144 },
+    contours: { faceOutline: face.contours!.faceOutline!.map(p => ({ x: .53 + p.x * .1, y: .4 + p.y * .1 })) },
+  }
+  expect(resolveShareOverallOverlay(collapsed, 1080, 1920)).toEqual([])
+  expect(resolveShareOverallOverlay({ ...face, quality: { score: .99, faceCoverage: .144 } }, 1080, 1920).length).toBeGreaterThan(0)
+})

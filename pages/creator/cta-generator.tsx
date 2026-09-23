@@ -1,11 +1,13 @@
+import Image from 'next/image'
 import { useEffect, useRef, useState } from 'react'
 import { BookOpen, Check, CheckCircle2, Download, FileArchive, Film, ImagePlus, Loader2, RefreshCw, Send, Sparkles, Trash2, UploadCloud } from 'lucide-react'
 import useSWR from 'swr'
 import { toast } from 'sonner'
 import { Button } from '@/components/ui/button'
 import { ContentSlidePreview } from '@/components/creator/content-slide'
+import { ContentRequirementsNote } from '@/components/creator/content-guidelines'
 import { CreatorHeader, CreatorShell, Field, areaClass, fieldClass } from '@/components/creator/creator-shell'
-import { extractFaceLandmarksFromDataUrl } from '@/lib/client/faceLandmarks'
+import { detectFaceLandmarksFromDataUrl } from '@/lib/client/faceLandmarks'
 import { apiGet, apiPost, ApiClientError } from '@/lib/api/client'
 import { buildZip, downloadBlob, renderSlideMp4, renderSlidePng } from '@/lib/creator/export-slides'
 import type { CreatorCtaLibraryItem } from '@/lib/creator/cta-library'
@@ -28,6 +30,7 @@ export default function CtaGeneratorPage() {
   const [offer, setOffer] = useState('Mogging')
   const [selectedCategories, setSelectedCategories] = useState<string[]>(['eyes', 'jaw', 'symmetry', 'overall'])
   const [featuredCategory, setFeaturedCategory] = useState('eyes')
+  const [overlayStyle, setOverlayStyle] = useState<'category' | 'face-map'>('category')
   const [currentScore, setCurrentScore] = useState('')
   const [potentialScore, setPotentialScore] = useState('')
   const [categoryScoreValues, setCategoryScoreValues] = useState<Record<string, string>>({})
@@ -56,24 +59,28 @@ export default function CtaGeneratorPage() {
 
   async function handleFiles(files: FileList | null) {
     if (!files?.length) return
-    const accepted = Array.from(files).filter((file) => file.type.startsWith('image/'))
+    const accepted = Array.from(files).filter((file) => ['image/jpeg', 'image/png', 'image/webp'].includes(file.type))
     if (!accepted.length) return toast.error('Choose a JPG, PNG, or WebP image')
     for (const file of accepted) {
-      const dataUrl = await readFile(file)
-      const dimensions = await readDimensions(dataUrl)
-      const id = `${file.name}-${file.lastModified}-${Math.random().toString(36).slice(2, 6)}`
-      setImages((current) => [...current, { id, name: file.name, dataUrl, ...dimensions, landmarks: null, status: 'detecting' }])
-      void detectImage(id, dataUrl, dimensions)
+      try {
+        const dataUrl = await readFile(file)
+        const dimensions = await readDimensions(dataUrl)
+        const id = `${file.name}-${file.lastModified}-${Math.random().toString(36).slice(2, 6)}`
+        setImages((current) => [...current, { id, name: file.name, dataUrl, ...dimensions, landmarks: null, status: 'detecting' }])
+        void detectImage(id, dataUrl, dimensions)
+      } catch { toast.error(`Could not read ${file.name}. Try a JPG, PNG, or WebP image.`) }
     }
   }
 
   async function detectImage(id: string, dataUrl: string, dimensions: { width: number; height: number }) {
-    const landmarks = await extractFaceLandmarksFromDataUrl(dataUrl)
+    setImages((current) => current.map((image) => image.id === id ? { ...image, status: 'detecting', landmarks: null, warning: undefined } : image))
+    const result = await detectFaceLandmarksFromDataUrl(dataUrl)
     setImages((current) => current.map((image) => {
       if (image.id !== id) return image
-      if (!landmarks) return { ...image, status: 'no-face', warning: 'No usable face was detected. Try a clear, front-facing image.' }
+      if (result.status !== 'detected') return { ...image, landmarks: null, status: result.status === 'no-face' ? 'no-face' : 'warning', warning: result.message }
+      const landmarks = result.landmarks
       const score = Math.min(landmarks.confidence, landmarks.quality?.score ?? landmarks.confidence)
-      if (score < 0.58 || Object.values(landmarks.anchors).filter(Boolean).length < 8) return { ...image, landmarks: { ...landmarks, image: dimensions }, status: 'warning', warning: `Landmark confidence is ${Math.round(score * 100)}%. Use a clearer image before generating.` }
+      if (score < 0.58 || Object.values(landmarks.anchors).filter(Boolean).length < 20 || (landmarks.quality?.contourPointCount ?? 0) < 90) return { ...image, landmarks: { ...landmarks, image: dimensions }, status: 'warning', warning: 'The face map is incomplete or unstable. Use a clearer, front-facing photo with the forehead and chin visible.' }
       const warnings = landmarks.quality?.warnings ?? []
       return { ...image, landmarks: { ...landmarks, image: dimensions }, status: 'ready', warning: warnings.length ? formatWarnings(warnings) : undefined }
     }))
@@ -86,7 +93,7 @@ export default function CtaGeneratorPage() {
     const missingCategory = selectedCategories.find((categoryId) => !categoryScoreValues[categoryId])
     if (missingCategory) return toast.error(`Enter a score for ${categoryOptions.find((item) => item.id === missingCategory)?.label ?? missingCategory}`)
     const nextSeed = seed + 1
-    const generated = generateSlides({ campaignGoal: 'traffic', tone, selectedCategories, images, offer, seed: nextSeed, primaryCategory: featuredCategory, currentScore, potentialScore, scoreValues: categoryScoreValues })
+    const generated = generateSlides({ campaignGoal: 'traffic', tone, selectedCategories, images, offer, seed: nextSeed, primaryCategory: featuredCategory, currentScore, potentialScore, scoreValues: categoryScoreValues }).map((slide) => ({ ...slide, overlayStyle }))
     setSeed(nextSeed)
     setSlides(generated)
     setSelectedSlideId(generated[0]?.id ?? null)
@@ -192,13 +199,14 @@ export default function CtaGeneratorPage() {
   return (
     <CreatorShell>
       <CreatorHeader eyebrow="Creator Tools" title="CTA Studio" description="Turn creator photos and real scores into five ready-to-publish Mogging templates. Images and face mapping stay in your browser." action={slides.length ? <Button className="h-11 rounded-full px-5" disabled={exporting} onClick={() => void downloadAll()}>{exporting ? <Loader2 className="animate-spin" /> : <FileArchive />}Download Set</Button> : null} />
+      <ContentRequirementsNote />
 
       <div className="grid gap-5 xl:grid-cols-[minmax(280px,0.72fr)_minmax(380px,1.28fr)]">
         <section className="creator-surface h-fit p-5 sm:p-6">
           <SectionTitle icon={UploadCloud} title="1. Add creator images" detail="Local face mapping only" />
           <input ref={fileInputRef} className="sr-only" type="file" accept="image/*" multiple onChange={(event) => void handleFiles(event.target.files)} />
-          <button type="button" onClick={() => fileInputRef.current?.click()} className="mt-5 grid min-h-36 w-full place-items-center rounded-[18px] border border-dashed border-black/15 bg-[#f5f5f7]/70 p-5 text-center transition-[border-color,background-color,transform] duration-150 hover:border-[#0071e3]/40 hover:bg-[#f5f5f7] active:scale-[0.99]"><span><ImagePlus className="mx-auto size-5 text-[#0071e3]" /><span className="mt-3 block text-sm font-semibold">Upload Photos</span><span className="mt-1 block text-xs leading-5 text-[#86868b]">Portrait, landscape, or square · JPG, PNG, WebP</span></span></button>
-          <div className="mt-4 grid gap-2">{images.map((image) => <ImageStatus key={image.id} image={image} onRemove={() => setImages((current) => current.filter((item) => item.id !== image.id))} />)}</div>
+          <button type="button" onClick={() => fileInputRef.current?.click()} className="mt-5 grid min-h-36 w-full place-items-center rounded-[18px] border border-dashed border-black/15 bg-[#f5f5f7]/70 p-5 text-center transition-[border-color,background-color,transform] duration-150 hover:border-[#0071e3]/40 hover:bg-[#f5f5f7] active:scale-[0.99]"><span><ImagePlus className="mx-auto size-5 text-[#0071e3]" /><span className="mt-3 block text-sm font-semibold">Upload Photos</span><span className="mt-1 block text-xs leading-5 text-[#86868b]">One clear face · JPG, PNG, WebP</span></span></button>
+          <div className="mt-4 grid gap-2">{images.map((image) => <ImageStatus key={image.id} image={image} onRetry={() => void detectImage(image.id, image.dataUrl, image)} onRemove={() => setImages((current) => current.filter((item) => item.id !== image.id))} />)}</div>
 
           <div className="my-6 h-px bg-zinc-100" />
           <SectionTitle icon={Sparkles} title="2. Shape the series" detail="Deterministic copy" />
@@ -207,6 +215,7 @@ export default function CtaGeneratorPage() {
             <Field label="Tone"><select className={fieldClass} value={tone} onChange={(event) => setTone(event.target.value as Tone)}><option value="curious">Curious</option><option value="direct">Direct</option><option value="educational">Educational</option></select></Field>
             <Field label="Product or offer"><input className={fieldClass} value={offer} onChange={(event) => setOffer(event.target.value)} /></Field>
             <Field label="Featured category"><select className={fieldClass} value={featuredCategory} onChange={(event) => { const value = event.target.value; setFeaturedCategory(value); setSelectedCategories((current) => current.includes(value) ? current : [value, ...current]) }}>{categoryOptions.map((item) => <option key={item.id} value={item.id}>{item.label}</option>)}</select></Field>
+            <Field label="Overlay style"><select className={fieldClass} value={overlayStyle} onChange={(event) => { const value = event.target.value as 'category' | 'face-map'; setOverlayStyle(value); setSlides((current) => current.map((slide) => ({ ...slide, overlayStyle: value }))) }}><option value="category">Mobile report · category lines</option><option value="face-map">Mobile report · full face map</option></select></Field>
             <fieldset><legend className="text-sm font-medium">Values to show</legend><div className="mt-2 grid grid-cols-2 gap-2">{categoryOptions.map((item) => { const active = selectedCategories.includes(item.id); return <button key={item.id} type="button" aria-pressed={active} onClick={() => setSelectedCategories((current) => active ? current.filter((id) => id !== item.id) : [...current, item.id])} className={cn('flex min-h-12 items-center gap-2 rounded-[14px] border px-3 text-left text-xs font-medium transition-[border-color,background-color,box-shadow,transform] duration-150 active:scale-[0.98]', active ? 'border-[#0071e3]/30 bg-[#e8f2ff] text-[#0071e3] shadow-[0_0_0_2px_rgba(0,113,227,0.06)]' : 'border-black/[0.08] bg-white text-[#6e6e73] hover:bg-[#f5f5f7]')}><span className={cn('grid size-4 shrink-0 place-items-center rounded-full border', active ? 'border-[#0071e3] bg-[#0071e3] text-white' : 'border-black/20')}>{active ? <Check className="size-2.5" /> : null}</span>{item.label}</button> })}</div></fieldset>
           </div>
         </section>
@@ -223,7 +232,7 @@ export default function CtaGeneratorPage() {
             <div className="grid grid-cols-2 gap-2"><ScoreField label="Current score" value={currentScore} onChange={updateCurrentScore} /><ScoreField label="Potential" value={potentialScore} onChange={updatePotentialScore} /></div>
             <div className="grid gap-2"><p className="text-xs font-semibold uppercase tracking-[0.14em] text-zinc-400">Category scores</p>{selectedCategories.map((categoryId) => <ScoreField key={categoryId} label={categoryOptions.find((item) => item.id === categoryId)?.label.replace(' analysis', '') ?? categoryId} value={categoryScoreValues[categoryId] ?? ''} onChange={(value) => updateCategoryScore(categoryId, value)} />)}</div>
             <Button className="h-12 rounded-full" onClick={createCampaign}><RefreshCw />Generate 5 Templates</Button>
-            {selectedSlide ? <><div className="h-px bg-zinc-100" /><div><p className="text-xs font-semibold uppercase tracking-[0.14em] text-zinc-400">Selected template copy</p><p className="mt-1 text-[11px] leading-4 text-zinc-400">Fine-tune copy after generation. Scores above stay shared.</p></div><Field label="Eyebrow"><input className={fieldClass} value={selectedSlide.eyebrow} onChange={(event) => updateSlide({ eyebrow: event.target.value })} /></Field><Field label="Headline"><textarea className={areaClass} value={selectedSlide.headline} onChange={(event) => updateSlide({ headline: event.target.value.slice(0, 120) })} /></Field><Field label="Supporting copy"><textarea className={areaClass} value={selectedSlide.supportingCopy} onChange={(event) => updateSlide({ supportingCopy: event.target.value.slice(0, 220) })} /></Field><div className="grid gap-2"><Button className="h-11 rounded-xl" disabled={videoProgress !== null} onClick={() => void downloadVideo()}>{videoProgress !== null ? <Loader2 className="animate-spin" /> : <Film />}{videoProgress !== null ? `${Math.round(videoProgress * 100)}%` : 'Video (MP4)'}</Button><Button className="h-11 rounded-xl" variant="outline" onClick={() => void downloadSlide(selectedSlide, slides.indexOf(selectedSlide))}><Download />Screenshot (PNG)</Button></div>{submittedSlides[selectedSlide.id] ? <SubmissionConfirmation title={submittedSlides[selectedSlide.id]} /> : <div className="rounded-2xl border border-zinc-200 bg-zinc-50 p-4"><div className="flex items-center gap-2"><BookOpen className="size-4" /><p className="text-sm font-semibold">Submit to CTA library</p></div><p className="mt-1 text-[11px] leading-4 text-zinc-500">This also saves the CTA to your personal library. Admins review it before other creators can see it.</p><div className="mt-4 grid gap-3"><Field label="Library title"><input className={fieldClass} value={libraryTitle} maxLength={100} placeholder={selectedSlide.headline || 'Mogging CTA'} onChange={(event) => setLibraryTitle(event.target.value)} /></Field><Field label="Asset format"><select className={fieldClass} value={libraryAssetType} onChange={(event) => setLibraryAssetType(event.target.value as 'video/mp4' | 'image/png')}><option value="video/mp4">Video (MP4) · default</option><option value="image/png">Screenshot (PNG)</option></select></Field><Button className="h-11 rounded-xl" variant="outline" disabled={librarySubmitting} onClick={() => void submitToLibrary()}>{librarySubmitting ? <Loader2 className="animate-spin" /> : <Send />}{librarySubmitting ? (libraryProgress === null ? 'Uploading…' : `Rendering ${Math.round(libraryProgress * 100)}%`) : 'Submit for approval'}</Button></div></div>}</> : <p className="rounded-2xl bg-zinc-50 p-4 text-xs leading-5 text-zinc-500">Enter every score above, then generate the templates. Canonical overlay geometry remains locked.</p>}
+            {selectedSlide ? <><div className="h-px bg-zinc-100" /><div><p className="text-xs font-semibold uppercase tracking-[0.14em] text-zinc-400">Selected template copy</p><p className="mt-1 text-[11px] leading-4 text-zinc-400">Fine-tune copy after generation. Scores above stay shared.</p></div><Field label="Eyebrow"><input className={fieldClass} value={selectedSlide.eyebrow} onChange={(event) => updateSlide({ eyebrow: event.target.value })} /></Field><Field label="Headline"><textarea className={areaClass} value={selectedSlide.headline} onChange={(event) => updateSlide({ headline: event.target.value.slice(0, 120) })} /></Field><Field label="Supporting copy"><textarea className={areaClass} value={selectedSlide.supportingCopy} onChange={(event) => updateSlide({ supportingCopy: event.target.value.slice(0, 220) })} /></Field><div className="grid gap-2"><Button className="h-11 rounded-xl" disabled={videoProgress !== null} onClick={() => void downloadVideo()}>{videoProgress !== null ? <Loader2 className="animate-spin" /> : <Film />}{videoProgress !== null ? `${Math.round(videoProgress * 100)}%` : 'Video (MP4)'}</Button><Button className="h-11 rounded-xl" variant="outline" onClick={() => void downloadSlide(selectedSlide, slides.indexOf(selectedSlide))}><Download />Screenshot (PNG)</Button></div>{submittedSlides[selectedSlide.id] ? <SubmissionConfirmation title={submittedSlides[selectedSlide.id]} /> : <div className="rounded-2xl border border-zinc-200 bg-zinc-50 p-4"><div className="flex items-center gap-2"><BookOpen className="size-4" /><p className="text-sm font-semibold">Submit to CTA library</p></div><p className="mt-1 text-[11px] leading-4 text-zinc-500">This also saves the CTA to your personal library. Admins review it before other creators can see it.</p><div className="mt-4 grid gap-3"><Field label="Library title"><input className={fieldClass} value={libraryTitle} maxLength={100} placeholder={selectedSlide.headline || 'Mogging CTA'} onChange={(event) => setLibraryTitle(event.target.value)} /></Field><Field label="Asset format"><select className={fieldClass} value={libraryAssetType} onChange={(event) => setLibraryAssetType(event.target.value as 'video/mp4' | 'image/png')}><option value="video/mp4">Video (MP4) · default</option><option value="image/png">Screenshot (PNG)</option></select></Field><Button className="h-11 rounded-xl" variant="outline" disabled={librarySubmitting} onClick={() => void submitToLibrary()}>{librarySubmitting ? <Loader2 className="animate-spin" /> : <Send />}{librarySubmitting ? (libraryProgress === null ? 'Uploading…' : `Rendering ${Math.round(libraryProgress * 100)}%`) : 'Submit for approval'}</Button></div></div>}</> : <p className="rounded-2xl bg-zinc-50 p-4 text-xs leading-5 text-zinc-500">Enter every score above, then generate the templates. Overlays match the mobile report. Review eye, nose and jaw alignment before exporting.</p>}
           </div>
         </aside>
       </div>
@@ -242,9 +251,41 @@ function ScoreField({ label, value, onChange }: { label: string; value: string; 
 function SubmissionConfirmation({ title }: { title: string }) { return <div role="status" className="rounded-2xl border border-emerald-200 bg-emerald-50 p-4 text-emerald-950"><div className="flex items-start gap-3"><span className="grid size-8 shrink-0 place-items-center rounded-full bg-emerald-600 text-white"><CheckCircle2 className="size-4" /></span><div><p className="text-sm font-semibold">Submitted for approval</p><p className="mt-1 text-[11px] leading-5 text-emerald-800"><span className="font-semibold">{title}</span> is saved in My CTA Library. You can download and reuse it while the admin review is pending.</p></div></div></div> }
 function CtaLibraryCard({ item, variant }: { item: CreatorCtaLibraryItem; variant: 'approved' | 'owned' }) { const video = item.assetContentType === 'video/mp4'; const owned = variant === 'owned'; return <article className="overflow-hidden rounded-2xl border border-zinc-200 bg-white shadow-[0_8px_30px_rgba(15,23,42,0.035)]"><div className="aspect-[4/3] bg-zinc-950">{video ? <video className="size-full object-contain" src={item.assetUrl} controls preload="metadata" /> : <div role="img" aria-label={item.title} className="size-full bg-contain bg-center bg-no-repeat" style={{ backgroundImage: `url(${JSON.stringify(item.assetUrl)})` }} />}</div><div className="p-4"><div className="flex items-start justify-between gap-3"><div className="min-w-0"><h3 className="truncate text-sm font-semibold">{item.title}</h3><p className="mt-1 text-[11px] text-zinc-400">{item.creatorName} · {video ? 'Video (MP4)' : 'Screenshot (PNG)'}</p></div>{owned ? <LibraryStatus status={item.status} /> : null}</div>{owned && item.reviewNote ? <p className="mt-3 rounded-xl bg-zinc-50 p-3 text-xs leading-5 text-zinc-500">{item.reviewNote}</p> : null}<a className="mt-4 flex h-10 items-center justify-center gap-2 rounded-xl bg-black px-3 text-xs font-semibold text-white transition-transform duration-150 ease-out active:scale-[0.98]" href={item.assetUrl} download><Download className="size-3.5" />Download to reuse</a></div></article> }
 function LibraryStatus({ status }: { status: CreatorCtaLibraryItem['status'] }) { const classes = status === 'approved' ? 'bg-emerald-50 text-emerald-700' : status === 'rejected' ? 'bg-red-50 text-red-700' : 'bg-amber-50 text-amber-700'; return <span className={cn('shrink-0 rounded-full px-2 py-1 text-[9px] font-semibold capitalize', classes)}>{status}</span> }
-function ImageStatus({ image, onRemove }: { image: GeneratorImage; onRemove: () => void }) { const color = image.status === 'ready' ? 'bg-emerald-500' : image.status === 'detecting' ? 'bg-amber-400' : 'bg-red-500'; return <div className="rounded-xl border border-zinc-200 p-3"><div className="flex items-center gap-3"><span className={cn('size-2 shrink-0 rounded-full', color)} /><span className="min-w-0 flex-1 truncate text-xs font-medium">{image.name}</span><span className="text-[10px] capitalize text-zinc-400">{image.status.replace('-', ' ')}</span><button type="button" aria-label={`Remove ${image.name}`} onClick={onRemove} className="grid size-7 place-items-center rounded-lg text-zinc-400 hover:bg-zinc-100 hover:text-black"><Trash2 className="size-3" /></button></div>{image.warning ? <p className="mt-2 pl-5 text-[11px] leading-4 text-zinc-500">{image.warning}</p> : null}{image.status === 'detecting' ? <div className="mt-2 ml-5 h-1 overflow-hidden rounded-full bg-zinc-100"><div className="h-full w-1/2 animate-pulse rounded-full bg-zinc-400" /></div> : null}</div> }
+function ImageStatus({ image, onRemove, onRetry }: { image: GeneratorImage; onRemove: () => void; onRetry: () => void }) {
+  const color = image.status === 'ready' ? 'bg-emerald-500' : image.status === 'detecting' ? 'bg-amber-400' : 'bg-red-500'
+  return (
+    <div className="rounded-xl border border-zinc-200 p-3">
+      <div className="flex items-center gap-3">
+        <span className={cn('size-2 shrink-0 rounded-full', color)} />
+        <span className="min-w-0 flex-1 truncate text-xs font-medium">{image.name}</span>
+        <span className="text-[10px] capitalize text-zinc-400" role="status">{image.status.replace('-', ' ')}</span>
+        <button type="button" aria-label={`Remove ${image.name}`} onClick={onRemove} className="grid size-7 place-items-center rounded-lg text-zinc-400 hover:bg-zinc-100 hover:text-black"><Trash2 className="size-3" /></button>
+      </div>
+      {image.warning ? <p className="mt-2 pl-5 text-[11px] leading-4 text-zinc-500">{image.warning}</p> : null}
+      {image.status === 'warning' || image.status === 'no-face' ? <button type="button" className="mt-2 ml-5 text-xs font-medium text-[#0071e3]" onClick={onRetry}>Retry detection</button> : null}
+      {image.status === 'ready' && image.landmarks ? (
+        <details className="mt-2">
+          <summary className="cursor-pointer text-xs font-medium text-[#0071e3]">Review face alignment</summary>
+          <div className="relative mt-3 overflow-hidden rounded-lg bg-zinc-100" style={{ aspectRatio: `${image.width} / ${image.height}` }}>
+            <Image src={image.dataUrl} alt="Face alignment review" fill sizes="360px" unoptimized className="object-contain" />
+            <svg className="pointer-events-none absolute inset-0 size-full" viewBox={`0 0 ${image.width} ${image.height}`} aria-hidden="true">
+              {Object.entries(image.landmarks.contours ?? {}).map(([key, points]) => (
+                <polyline key={key} points={points?.map((point) => `${point.x * image.width},${point.y * image.height}`).join(' ')} fill="none" stroke="white" strokeWidth={image.width / 400} />
+              ))}
+              {Object.entries(image.landmarks.anchors).map(([key, point]) => point ? (
+                <circle key={key} cx={point.x * image.width} cy={point.y * image.height} r={image.width / 180} fill="#67e8f9" stroke="#09090b" strokeWidth={image.width / 800} />
+              ) : null)}
+            </svg>
+          </div>
+          <p className="mt-2 text-[11px] leading-4 text-zinc-500">Check that points follow the eyes, nose, lips and chin. If they miss, remove this photo and upload a sharper, front-facing crop.</p>
+        </details>
+      ) : null}
+      {image.status === 'detecting' ? <div className="mt-2 ml-5 h-1 overflow-hidden rounded-full bg-zinc-100"><div className="h-full w-1/2 animate-pulse rounded-full bg-zinc-400" /></div> : null}
+    </div>
+  )
+}
 function readFile(file: File) { return new Promise<string>((resolve, reject) => { const reader = new FileReader(); reader.onload = () => resolve(String(reader.result)); reader.onerror = () => reject(reader.error); reader.readAsDataURL(file) }) }
-function readDimensions(src: string) { return new Promise<{ width: number; height: number }>((resolve, reject) => { const image = new Image(); image.onload = () => resolve({ width: image.naturalWidth, height: image.naturalHeight }); image.onerror = reject; image.src = src }) }
+function readDimensions(src: string) { return new Promise<{ width: number; height: number }>((resolve, reject) => { const image = new window.Image(); image.onload = () => resolve({ width: image.naturalWidth, height: image.naturalHeight }); image.onerror = reject; image.src = src }) }
 function filenameFor(index: number, slide: ContentSlide, formatId: OutputFormatId) { return `mogging-${String(index + 1).padStart(2, '0')}-${slide.templateId}-${formatId}.png` }
 function formatMetricScore(value: string) { return value ? `${value} / 10` : '— / 10' }
 function formatWarnings(warnings: string[]) { const labels: Record<string, string> = { 'small-face': 'The face is small in frame.', 'tilted-face': 'The face is noticeably tilted.', 'sparse-contours': 'Some contours may be incomplete.', 'partial-anchors': 'Some anchors may be incomplete.', 'asymmetric-anchor-fit': 'Landmark fit may be less stable.' }; return warnings.map((warning) => labels[warning] ?? warning).join(' ') }

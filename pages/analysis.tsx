@@ -50,10 +50,12 @@ import { TextShimmer } from '@/components/core/text-shimmer'
 type FlowStep = 'intro' | 'upload' | 'preview-analysis' | 'payment' | 'actual-analysis' | 'results'
 
 type AnalysisResponse = {
+  canManage?: boolean;
   photo: {
     id: string
     imageUrl: string
     imageHash: string
+    isPublic?: boolean
   }
   analysis: {
     id: string
@@ -563,7 +565,7 @@ export default function AnalysisPage() {
   }
 
   async function toggleBattleOptOut(photoId: string, optOut: boolean) {
-    const previousValue = battleOptOutByPhotoId[photoId] ?? false
+    const previousValue = battleOptOutByPhotoId[photoId] ?? !results.find((result) => result.photo.id === photoId)?.photo.isPublic
     setBattleOptOutByPhotoId((current) => ({ ...current, [photoId]: optOut }))
     setBattleOptOutSaving(true)
 
@@ -572,7 +574,7 @@ export default function AnalysisPage() {
         photoId,
         isPublic: !optOut,
       })
-      toast.success(optOut ? 'Removed from battle arena' : 'Added to battle arena')
+      toast.success(optOut ? 'Removed from battle arena and leaderboard' : 'Published to battle arena and leaderboard')
     } catch (privacyError) {
       setBattleOptOutByPhotoId((current) => ({ ...current, [photoId]: previousValue }))
       toast.error(privacyError instanceof ApiClientError ? privacyError.message : 'Unable to update battle setting')
@@ -670,10 +672,12 @@ export default function AnalysisPage() {
     if (!analysisId || loadedAnalysisIdRef.current === analysisId) return
 
     loadedAnalysisIdRef.current = analysisId
+    let cancelled = false
     setError(null)
 
     void apiGet<AnalysisResponse>(`/api/analysis/${encodeURIComponent(analysisId)}`)
       .then((result) => {
+        if (cancelled) return
         setResults([result])
         setStep('results')
         setImages([])
@@ -681,15 +685,17 @@ export default function AnalysisPage() {
         setImageFramePositions({})
         setShareUrl(null)
         setBattleOptOutByPhotoId({
-          [result.photo.id]: false,
+          [result.photo.id]: !result.photo.isPublic,
         })
       })
       .catch((analysisError) => {
+        if (cancelled) return
         setStep('intro')
         const message = analysisError instanceof ApiClientError ? analysisError.message : 'Unable to load analysis'
         setError(message)
         toast.error(message)
       })
+    return () => { cancelled = true; loadedAnalysisIdRef.current = null }
   }, [router.isReady, router.query.analysisId])
 
   async function createShare() {
@@ -894,8 +900,8 @@ export default function AnalysisPage() {
                     setStep('intro')
                     setShareUrl(null)
                   }}
-                  battleOptOut={primaryResult ? (battleOptOutByPhotoId[primaryResult.photo.id] ?? false) : false}
-                  battleOptOutSaving={battleOptOutSaving}
+                  battleOptOut={primaryResult ? (battleOptOutByPhotoId[primaryResult.photo.id] ?? !primaryResult.photo.isPublic) : true}
+                  battleOptOutSaving={battleOptOutSaving || primaryResult?.canManage === false}
                   onBattleOptOutChange={(optOut) => {
                     if (!primaryResult) return
                     void toggleBattleOptOut(primaryResult.photo.id, optOut)
@@ -1918,13 +1924,13 @@ function ReportActions({
       </button>
       <label className="flex items-start gap-3 border border-zinc-200 px-3 py-3 text-xs leading-5 text-zinc-500">
         <input
-          checked={battleOptOut}
+          checked={!battleOptOut}
           className="mt-0.5 size-4 shrink-0 accent-black"
           disabled={battleOptOutSaving}
-          onChange={(event) => onBattleOptOutChange(event.target.checked)}
+          onChange={(event) => onBattleOptOutChange(!event.target.checked)}
           type="checkbox"
         />
-        <span>I dont want my image to be added to the battle arena</span>
+        <span>Make my image public in the battle arena and leaderboard</span>
       </label>
       <button
         className="h-10 text-left font-mono text-[10px] uppercase tracking-wide text-muted-foreground transition-colors hover:text-black"
@@ -2568,7 +2574,7 @@ function ShareSheet({
     setShareImageBlob(null)
     setShareImageSize(null)
 
-    void fetch(`/api/og/share?token=${encodeURIComponent(token)}&render=story-overall-v9`, { signal: controller.signal })
+    void fetch(`/api/og/share?token=${encodeURIComponent(token)}&render=story-overall-v10`, { signal: controller.signal })
       .then(async (response) => {
         if (!response.ok) throw new Error('Unable to prepare share image')
         const blob = await response.blob()

@@ -5,6 +5,14 @@ import { resolveOverlayPreset } from '@/lib/creator/mobile-overlay-engine/resolv
 
 export function resolveShareOverallOverlay(landmarks: FaceLandmarksPayload | null, width: number, height: number) {
   if (!isFaceLandmarksUsable(landmarks, 0.48)) return []
+  // Older simulator Vision results reported high confidence despite collapsed geometry.
+  const outline = landmarks?.contours?.faceOutline
+  const coverage = landmarks?.quality?.faceCoverage
+  if (outline?.length && coverage) {
+    const width = Math.max(...outline.map(p => p.x)) - Math.min(...outline.map(p => p.x))
+    const height = Math.max(...outline.map(p => p.y)) - Math.min(...outline.map(p => p.y))
+    if (width * height < coverage * 0.25) return []
+  }
   return resolveOverlayPreset({ preset: reportOverlayPresets.overall, landmarks, viewport: { width, height }, imageSize: landmarks!.image, fit: 'cover' })
     .primitives.filter(primitive => primitive.kind !== 'label')
 }

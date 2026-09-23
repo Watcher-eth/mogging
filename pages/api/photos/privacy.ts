@@ -2,7 +2,7 @@ import { and, eq } from 'drizzle-orm'
 import { z } from 'zod'
 import type { NextApiRequest, NextApiResponse } from 'next'
 import { ApiError, handleApiError, json, methodNotAllowed, parseBody } from '@/lib/api/http'
-import { getAuthSession } from '@/lib/auth/session'
+import { getRequestUserId } from '@/lib/auth/mobile-session'
 import { db, schema } from '@/lib/db'
 
 const photoPrivacySchema = z.object({
@@ -14,8 +14,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   if (req.method !== 'POST') return methodNotAllowed(res, ['POST'])
 
   try {
-    const session = await getAuthSession(req, res)
-    if (!session?.user?.id) {
+    const userId = await getRequestUserId(req, res)
+    if (!userId) {
       throw new ApiError(401, 'Authentication required')
     }
 
@@ -28,7 +28,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       })
       .where(and(
         eq(schema.photos.id, body.photoId),
-        eq(schema.photos.userId, session.user.id)
+        eq(schema.photos.userId, userId)
       ))
       .returning({
         id: schema.photos.id,

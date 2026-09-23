@@ -31,6 +31,7 @@ export type GeneratorImage = {
 export type ContentSlide = {
   id: string
   templateId: SlideTemplateId
+  overlayStyle?: 'category' | 'face-map'
   imageId: string | null
   categoryId: string
   eyebrow: string

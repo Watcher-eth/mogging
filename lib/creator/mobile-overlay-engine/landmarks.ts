@@ -73,6 +73,7 @@ export type FaceLandmarkQuality = {
 
 export type FaceLandmarksPayload = {
   version: 1;
+  detectorRevision?: string;
   source: "mediapipe-face-landmarker" | "apple-vision" | "kimi-vision-estimate" | "demo-static";
   confidence: number;
   image: {
@@ -102,11 +103,12 @@ export function clampPoint(point: NormalizedPoint): NormalizedPoint {
 }
 
 export function isFaceLandmarksUsable(landmarks: FaceLandmarksPayload | null | undefined, minScore = 0.58) {
-  if (!landmarks) return false;
+  if (!landmarks || landmarks.source === "kimi-vision-estimate") return false;
+  if (landmarks.source === "apple-vision" && landmarks.detectorRevision !== "vision-face-local-v6") return false;
   if (landmarks.source === "demo-static") return true;
-  if (landmarks.confidence < minScore) return false;
+  if (!Number.isFinite(landmarks.confidence) || landmarks.confidence < minScore) return false;
   if (typeof landmarks.quality?.score === "number" && landmarks.quality.score < minScore) return false;
-  return Object.values(landmarks.anchors).filter(Boolean).length >= 8;
+  return Object.values(landmarks.anchors).filter((point) => point && Number.isFinite(point.x) && Number.isFinite(point.y) && point.x >= 0 && point.x <= 1 && point.y >= 0 && point.y <= 1).length >= 8;
 }
 
 function clamp01(value: number) {

@@ -1,4 +1,6 @@
 import Link from 'next/link'
+import dynamic from 'next/dynamic'
+import { useRouter } from 'next/router'
 import { useState, type ReactNode } from 'react'
 import {
   ArrowRight,
@@ -21,14 +23,18 @@ import {
 } from 'lucide-react'
 import { CreatorHeader, CreatorShell } from '@/components/creator/creator-shell'
 import { CreatorPayoutCalculator } from '@/components/creator/payout-calculator'
+import { ContentGuidelines, accountReviewPolicy } from '@/components/creator/content-guidelines'
 import { Button } from '@/components/ui/button'
 import { ACTIVE_CREATOR_SUBMISSION_FORMATS } from '@/lib/creator/formats'
 import { cn } from '@/lib/utils'
 
-type GuideTopic = 'video' | 'account' | 'payout'
+const GuideExamples = dynamic(() => import('@/components/creator/guide-examples'), { loading: () => <p className="p-6 text-sm text-[#6e6e73]" role="status">Loading reference examples…</p> })
+
+type GuideTopic = 'video' | 'examples' | 'account' | 'payout'
 
 const guideTopics = [
   { id: 'video', label: 'Create a Video', detail: 'Formats and evidence', icon: FileVideo2 },
+  { id: 'examples', label: 'See Examples', detail: 'What works and why', icon: ImageIcon },
   { id: 'account', label: 'Verify an Account', detail: 'Analytics and bio link', icon: BadgeCheck },
   { id: 'payout', label: 'Understand Payouts', detail: 'Audience and earnings', icon: CircleDollarSign },
 ] as const
@@ -53,7 +59,8 @@ const tierOneCountries = ['United States', 'Canada', 'United Kingdom', 'Australi
 const payoutThresholds = ['40K', '100K', '250K', '500K', '750K', '+1M']
 
 export default function CreatorProgramGuidePage() {
-  const [topic, setTopic] = useState<GuideTopic>('video')
+  const router = useRouter()
+  const topic = guideTopics.find((item) => item.id === router.query.topic)?.id ?? 'video'
 
   return (
     <CreatorShell>
@@ -65,10 +72,11 @@ export default function CreatorProgramGuidePage() {
       />
 
       <QuickStart />
-      <TopicPicker selected={topic} onSelect={setTopic} />
+      <TopicPicker selected={topic} onSelect={(nextTopic) => { void router.push({ pathname: '/creator/guide', query: { topic: nextTopic } }, undefined, { shallow: true, scroll: false }) }} />
 
       <div className="mt-5">
         {topic === 'video' ? <VideoGuide /> : null}
+        {topic === 'examples' ? <GuideExamples /> : null}
         {topic === 'account' ? <AccountGuide /> : null}
         {topic === 'payout' ? <PayoutGuide /> : null}
       </div>
@@ -105,7 +113,7 @@ function TopicPicker({ selected, onSelect }: { selected: GuideTopic; onSelect: (
   return (
     <div className="mt-8">
       <p className="mb-3 text-[11px] font-semibold uppercase tracking-[0.13em] text-[#86868b]">What do you need help with?</p>
-      <div className="grid gap-2 sm:grid-cols-3" role="tablist" aria-label="Creator guide topics">
+      <div className="grid gap-2 sm:grid-cols-2 xl:grid-cols-4" role="tablist" aria-label="Creator guide topics">
         {guideTopics.map((item) => {
           const active = selected === item.id
           const Icon = item.icon
@@ -114,9 +122,19 @@ function TopicPicker({ selected, onSelect }: { selected: GuideTopic; onSelect: (
               key={item.id}
               type="button"
               role="tab"
+              id={`guide-tab-${item.id}`}
+              tabIndex={active ? 0 : -1}
               aria-selected={active}
               aria-controls={`guide-panel-${item.id}`}
               onClick={() => onSelect(item.id)}
+              onKeyDown={(event) => {
+                const index = guideTopics.findIndex((entry) => entry.id === item.id)
+                const nextIndex = event.key === 'ArrowRight' ? (index + 1) % guideTopics.length : event.key === 'ArrowLeft' ? (index + guideTopics.length - 1) % guideTopics.length : event.key === 'Home' ? 0 : event.key === 'End' ? guideTopics.length - 1 : null
+                if (nextIndex === null) return
+                event.preventDefault()
+                onSelect(guideTopics[nextIndex].id)
+                document.getElementById(`guide-tab-${guideTopics[nextIndex].id}`)?.focus()
+              }}
               className={cn('flex items-center gap-3 rounded-[16px] border p-3.5 text-left transition-[border-color,background-color,box-shadow,transform] duration-150 active:scale-[0.98]', active ? 'border-[#0071e3]/30 bg-[#e8f2ff] text-[#0071e3] shadow-[0_0_0_3px_rgba(0,113,227,0.06)]' : 'border-black/[0.07] bg-white/80 text-[#6e6e73] hover:bg-white')}
             >
               <span className={cn('grid size-9 shrink-0 place-items-center rounded-[12px]', active ? 'bg-white' : 'bg-[#f5f5f7]')}><Icon className="size-[17px]" /></span>
@@ -135,8 +153,9 @@ function VideoGuide() {
   if (!format) return null
 
   return (
-    <section id="guide-panel-video" role="tabpanel" className="creator-surface overflow-hidden">
+    <section id="guide-panel-video" role="tabpanel" aria-labelledby="guide-tab-video" className="creator-surface overflow-hidden">
       <GuidePanelHeader icon={FileVideo2} eyebrow="Create a Video" title="Choose one active format" description="Build the post around a single brief, then submit the published link and a clear analytics screenshot." />
+      <ContentGuidelines />
 
       <div className="grid gap-6 p-5 sm:p-6 lg:grid-cols-[220px_minmax(0,1fr)]">
         <div>
@@ -185,7 +204,7 @@ function VideoGuide() {
 
 function AccountGuide() {
   return (
-    <section id="guide-panel-account" role="tabpanel" className="creator-surface overflow-hidden">
+    <section id="guide-panel-account" role="tabpanel" aria-labelledby="guide-tab-account" className="creator-surface overflow-hidden">
       <GuidePanelHeader icon={BadgeCheck} eyebrow="Verify an Account" title="Connect first. Verify second." description="Every TikTok or Instagram account gets its own creator link. Analytics verification makes it eligible for reviewed submissions." action={<Button asChild variant="outline" className="h-10 rounded-full border-black/10 bg-white px-4 text-[#0071e3]"><Link href="/creator/accounts">Manage Accounts<ArrowRight /></Link></Button>} />
 
       <div className="grid gap-5 p-5 sm:p-6 lg:grid-cols-[minmax(0,1.15fr)_minmax(280px,0.85fr)]">
@@ -197,6 +216,9 @@ function AccountGuide() {
           </ol>
 
           <div className="mt-5 grid gap-2">
+            <GuideDisclosure title="Moderator reviews and genuine evidence" meta="Required">
+              <p className="text-sm leading-6 text-[#6e6e73]">{accountReviewPolicy}</p>
+            </GuideDisclosure>
             <GuideDisclosure title="Analytics recording checklist" meta="6 checks">
               <div className="grid gap-3 sm:grid-cols-2">{accountChecks.map(([title, detail]) => <div key={title} className="flex items-start gap-3"><span className="mt-0.5 grid size-5 shrink-0 place-items-center rounded-full bg-[#e5f7ea] text-[#248a3d]"><Check className="size-3" /></span><div><p className="text-sm font-semibold">{title}</p><p className="mt-1 text-xs leading-5 text-[#6e6e73]">{detail}</p></div></div>)}</div>
             </GuideDisclosure>
@@ -225,7 +247,7 @@ function PayoutGuide() {
   const [calculatorOpen, setCalculatorOpen] = useState(false)
 
   return (
-    <section id="guide-panel-payout" role="tabpanel" className="creator-surface overflow-hidden">
+    <section id="guide-panel-payout" role="tabpanel" aria-labelledby="guide-tab-payout" className="creator-surface overflow-hidden">
       <GuidePanelHeader icon={CircleDollarSign} eyebrow="Understand Payouts" title="Views qualify. Audience quality sets the rate." description="Choose the view threshold and audience tier shown in your post analytics. The review team verifies both before approving payment." action={<Button asChild variant="outline" className="h-10 rounded-full border-black/10 bg-white px-4 text-[#0071e3]"><Link href="/creator/payout-information">Set Up Payouts<ArrowRight /></Link></Button>} />
 
       <div className="grid gap-3 p-5 sm:grid-cols-3 sm:p-6">
@@ -243,6 +265,9 @@ function PayoutGuide() {
         {calculatorOpen ? <div className="mt-4"><CreatorPayoutCalculator /></div> : null}
 
         <div className="mt-5 grid gap-2">
+          <GuideDisclosure title="Content eligibility and review holds" meta="Before payment" tone="warning">
+            <p className="text-sm leading-6 text-[#6e6e73]">Reaching a view milestone does not make unrelated content payable. Every post must meet the complete Mogging content brief, and account and analytics checks must be resolved before approval. {accountReviewPolicy}</p>
+          </GuideDisclosure>
           <GuideDisclosure title="View milestones" meta="6 thresholds">
             <div className="grid grid-cols-3 gap-2 sm:grid-cols-6">{payoutThresholds.map((threshold) => <span key={threshold} className="rounded-[12px] bg-[#f5f5f7] px-2 py-3 text-center text-sm font-semibold">{threshold}</span>)}</div>
             <p className="mt-3 text-xs leading-5 text-[#6e6e73]">Milestones are cumulative totals, not stacked bonuses. The view count verified during review becomes the payout snapshot.</p>

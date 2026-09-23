@@ -1,5 +1,6 @@
 import {
   boolean,
+  check,
   index,
   integer,
   jsonb,
@@ -12,7 +13,7 @@ import {
   uniqueIndex,
   varchar,
 } from 'drizzle-orm/pg-core'
-import { relations } from 'drizzle-orm'
+import { relations, sql } from 'drizzle-orm'
 
 type AccountType = 'email' | 'oauth' | 'oidc' | 'webauthn'
 
@@ -235,7 +236,7 @@ export const photos = pgTable(
     position: text('position'),
     latitude: real('latitude'),
     longitude: real('longitude'),
-    isPublic: boolean('is_public').notNull().default(true),
+    isPublic: boolean('is_public').notNull().default(false),
     createdAt: timestamp('created_at', { mode: 'date' }).notNull().defaultNow(),
     updatedAt: timestamp('updated_at', { mode: 'date' }).notNull().defaultNow(),
   },
@@ -1099,6 +1100,15 @@ export const referralLinks = pgTable('referral_links', {
   userId: text('user_id').primaryKey().references(() => users.id, { onDelete: 'cascade' }),
   code: text('code').notNull().unique(),
 })
+
+export const referralSignups = pgTable('referral_signups', {
+  referredUserId: text('referred_user_id').primaryKey().references(() => users.id, { onDelete: 'cascade' }),
+  inviterUserId: text('inviter_user_id').notNull().references(() => users.id, { onDelete: 'cascade' }),
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+}, table => [
+  index('referral_signups_inviter_idx').on(table.inviterUserId),
+  check('referral_signups_not_self', sql`${table.referredUserId} <> ${table.inviterUserId}`),
+])
 
 export const pushDevices = pgTable('push_devices', {
   installId: text('install_id').primaryKey(),

@@ -1,10 +1,12 @@
 import { createHmac, randomBytes, timingSafeEqual } from 'crypto'
-import { eq } from 'drizzle-orm'
+import { count, eq } from 'drizzle-orm'
 import { db, schema } from '@/lib/db'
 import { env } from '@/lib/env'
 
 export const REFERRAL_COOKIE = 'mogging_referral'
 const TTL = 30 * 24 * 60 * 60 * 1000
+const REQUIRED_SIGNUPS = 3
+const rewardKey = (userId: string) => `referral_reward:${userId}`
 
 function signature(payload: string) {
   if (!env.NEXTAUTH_SECRET) throw new Error('NEXTAUTH_SECRET is required for referrals')
@@ -14,7 +16,20 @@ function signature(payload: string) {
 export async function getReferralLink(userId: string) {
   await db.insert(schema.referralLinks).values({ userId, code: randomBytes(9).toString('hex') }).onConflictDoNothing({ target: schema.referralLinks.userId })
   const [link] = await db.select().from(schema.referralLinks).where(eq(schema.referralLinks.userId, userId))
-  return { code: link.code, url: `https://www.mogging.com/${link.code}` }
+  const [[progress], [reward]] = await Promise.all([
+    db.select({ completed: count() }).from(schema.referralSignups).where(eq(schema.referralSignups.inviterUserId, userId)),
+    db.select({ balance: schema.paymentEntitlements.creditBalance }).from(schema.paymentEntitlements)
+      .where(eq(schema.paymentEntitlements.stripeCheckoutSessionId, rewardKey(userId))),
+  ])
+  return {
+    code: link.code, url: `https://www.mogging.com/${link.code}`,
+    reward: {
+      completed: reward ? REQUIRED_SIGNUPS : Math.min(progress.completed, REQUIRED_SIGNUPS),
+      required: REQUIRED_SIGNUPS,
+      granted: Boolean(reward),
+      available: Boolean(reward && reward.balance > 0),
+    },
+  }
 }
 
 export async function createReferralTicket(code: string) {
@@ -34,7 +49,8 @@ export function readReferralTicket(ticket: unknown, now = Date.now()) {
   return { code, issuedAt }
 }
 
-// The unique entitlement key makes retries and concurrent auth callbacks idempotent.
+// One new account can qualify once. Serialize on the inviter so simultaneous
+// signups cannot miss the threshold; grant the one-time reward in the same transaction.
 export async function creditReferralSignup(userId: string, ticket: unknown) {
   const referral = readReferralTicket(ticket)
   if (!referral) return
@@ -42,15 +58,28 @@ export async function creditReferralSignup(userId: string, ticket: unknown) {
   if (!link || link.userId === userId) return
   const user = await db.query.users.findFirst({ where: eq(schema.users.id, userId), columns: { createdAt: true } })
   if (!user || user.createdAt.getTime() < referral.issuedAt) return
-  await db.insert(schema.paymentEntitlements).values({
-    userId: link.userId,
-    mobileInstallId: `account_${link.userId}`,
-    stripeCheckoutSessionId: `referral_signup:${userId}`,
-    product: 'evaluation',
-    creditBalance: 1,
-    source: 'referral_signup',
-    metadata: { referredUserId: userId, referralCode: link.code },
-  }).onConflictDoNothing({ target: schema.paymentEntitlements.stripeCheckoutSessionId })
+  await db.transaction(async tx => {
+    const [locked] = await tx.select().from(schema.referralLinks).where(eq(schema.referralLinks.userId, link.userId)).for('update')
+    if (!locked) return
+    // Previous per-signup rewards remain valid, but cannot count a second time.
+    const [legacy] = await tx.select({ id: schema.paymentEntitlements.id }).from(schema.paymentEntitlements)
+      .where(eq(schema.paymentEntitlements.stripeCheckoutSessionId, `referral_signup:${userId}`))
+    if (legacy) return
+    await tx.insert(schema.referralSignups).values({ referredUserId: userId, inviterUserId: link.userId })
+      .onConflictDoNothing({ target: schema.referralSignups.referredUserId })
+    const [progress] = await tx.select({ completed: count() }).from(schema.referralSignups)
+      .where(eq(schema.referralSignups.inviterUserId, link.userId))
+    if (progress.completed < REQUIRED_SIGNUPS) return
+    await tx.insert(schema.paymentEntitlements).values({
+      userId: link.userId,
+      mobileInstallId: `account_${link.userId}`,
+      stripeCheckoutSessionId: rewardKey(link.userId),
+      product: 'evaluation',
+      creditBalance: 1,
+      source: 'referral_reward',
+      metadata: { requiredSignups: REQUIRED_SIGNUPS },
+    }).onConflictDoNothing({ target: schema.paymentEntitlements.stripeCheckoutSessionId })
+  })
 }
 
 export function referralCookie(ticket: string) {

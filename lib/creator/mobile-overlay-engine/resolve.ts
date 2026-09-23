@@ -76,8 +76,13 @@ function resolvePrimitive(
     if (resolvedBoxPoints.length < 2) return null;
 
     const padding = primitive.padding ?? { x: 0.035, y: 0.035 };
-    const paddingX = padding.x * imageSize.width * transform.scale;
-    const paddingY = padding.y * imageSize.height * transform.scale;
+    const leftEye = landmarks?.anchors.leftPupil;
+    const rightEye = landmarks?.anchors.rightPupil;
+    const faceScale = leftEye && rightEye
+      ? Math.hypot((rightEye.x - leftEye.x) * imageSize.width, (rightEye.y - leftEye.y) * imageSize.height) / (imageSize.width * 0.21)
+      : 0;
+    const paddingX = padding.x * imageSize.width * transform.scale * faceScale;
+    const paddingY = padding.y * imageSize.height * transform.scale * faceScale;
     const minX = Math.min(...resolvedBoxPoints.map((point) => point.x));
     const maxX = Math.max(...resolvedBoxPoints.map((point) => point.x));
     const minY = Math.min(...resolvedBoxPoints.map((point) => point.y));
@@ -94,7 +99,7 @@ function resolvePrimitive(
     .map((point) => resolvePoint(point, landmarks, imageSize, transform))
     .filter((point): point is PixelPoint => Boolean(point));
 
-  if (pixelPoints.length < 2) return null;
+  if (pixelPoints.length < 2 || pixelPoints.length !== primitive.points.length) return null;
   return { ...primitive, pixelPoints };
 }
 
@@ -112,15 +117,23 @@ function resolvePoint(
 
 function getNormalizedPoint(ref: OverlayPointRef, landmarks: FaceLandmarksPayload | null): NormalizedPoint | null {
   const base = "anchor" in ref
-    ? landmarks?.anchors[ref.anchor] ?? ref.fallback
+    ? landmarks?.anchors[ref.anchor] ?? (landmarks?.source === "demo-static" ? ref.fallback : undefined)
     : "contour" in ref
-      ? landmarks?.contours?.[ref.contour]?.[ref.index] ?? ref.fallback
+      ? landmarks?.contours?.[ref.contour]?.[ref.index] ?? (landmarks?.source === "demo-static" ? ref.fallback : undefined)
       : ref.point;
-  if (!base) return null;
+  if (!base || !Number.isFinite(base.x) || !Number.isFinite(base.y)) return null;
 
   const offset = ref.offset ?? { x: 0, y: 0 };
-  return {
-    x: base.x + offset.x,
-    y: base.y + offset.y,
-  };
+  const left = landmarks?.anchors.leftPupil;
+  const right = landmarks?.anchors.rightPupil;
+  const image = landmarks?.image;
+  if (left && right && image && image.width > 0 && image.height > 0) {
+    // Preset offsets were authored for a face with 21% image-width eye spacing.
+    // Scale and rotate them with this face, in pixel space (not stretched UV space).
+    const dx = (right.x - left.x) / 0.21;
+    const dy = (right.y - left.y) / 0.21;
+    return { x: base.x + offset.x * dx - offset.y * dy * image.height / image.width,
+      y: base.y + offset.x * dy + offset.y * dx * image.width / image.height };
+  }
+  return base;
 }

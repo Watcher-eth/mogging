@@ -11,6 +11,7 @@ import { AccountVerificationDialog } from '@/components/creator/account-verifica
 import { AccountTrackingLink } from '@/components/creator/account-tracking-link'
 import { SocialPlatformLogo, type SocialPlatform } from '@/components/brand/social-platform-logo'
 import { CreatorHeader, CreatorShell, Field, fieldClass } from '@/components/creator/creator-shell'
+import { AccountReviewNote } from '@/components/creator/content-guidelines'
 import type { CreatorDashboard, CreatorSocialAccount } from '@/components/creator/types'
 import { apiGet, apiPost, apiRequest, ApiClientError } from '@/lib/api/client'
 import { cn } from '@/lib/utils'
@@ -68,6 +69,7 @@ function AccountsContent() {
   return (
     <>
       <CreatorHeader eyebrow="Connected Channels" title="Accounts" description="Connect the TikTok and Instagram profiles you use for Mogging content. Each account is reviewed before it becomes eligible for submissions." action={<Button className="h-11 rounded-full px-5" onClick={() => setConnectOpen(true)} disabled={accounts.length >= 10}><Plus />Connect Account</Button>} />
+      <AccountReviewNote />
       <div className="mb-6 grid gap-3 sm:grid-cols-2">
         <AccountLimitCard platform="tiktok" count={tiktokCount} />
         <AccountLimitCard platform="instagram" count={instagramCount} />

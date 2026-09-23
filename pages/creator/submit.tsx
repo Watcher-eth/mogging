@@ -8,6 +8,7 @@ import { Button } from '@/components/ui/button'
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { CreatorHeader, CreatorShell, Field, fieldClass } from '@/components/creator/creator-shell'
+import { ContentRequirementsNote } from '@/components/creator/content-guidelines'
 import type { CreatorDashboard } from '@/components/creator/types'
 import { apiGet, apiPost, ApiClientError } from '@/lib/api/client'
 import { ACTIVE_CREATOR_SUBMISSION_FORMATS, type CreatorSubmissionFormat } from '@/lib/creator/formats'
@@ -93,6 +94,7 @@ function SubmitContent() {
     <>
       <CreatorHeader eyebrow="New Submission" title="Submit a video" description="Share the published post and its analytics evidence. We’ll keep review and payment status together in your dashboard." />
       <PayoutSetupNote />
+      <ContentRequirementsNote />
       <SubmissionStepper step={step} />
       <div className="t-page-slide min-h-[720px] sm:min-h-[650px]" data-page={step}>
         <section className="t-page" data-page-id="1">

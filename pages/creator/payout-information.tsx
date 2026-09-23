@@ -5,6 +5,7 @@ import { Check, Loader2, MessageCircle, ShieldCheck, WalletCards, Zap } from 'lu
 import useSWR from 'swr'
 import { toast } from 'sonner'
 import { Button } from '@/components/ui/button'
+import { AccountReviewNote } from '@/components/creator/content-guidelines'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { CreatorAuthPrompt } from '@/components/creator/creator-auth-prompt'
 import { CreatorHeader, CreatorShell, Field, fieldClass } from '@/components/creator/creator-shell'
@@ -62,6 +63,7 @@ function PayoutInformation({ email }: { email: string }) {
   return (
     <>
       <CreatorHeader eyebrow="Payment Destination" title="Payout Information" description="Confirm your creator identity and choose where approved payments should be sent." action={<Button asChild variant="outline" className="h-11 rounded-full border-black/10 bg-white/80 px-5 text-[#0071e3] shadow-sm hover:bg-white"><a href={discordContactUrl} target="_blank" rel="noreferrer"><MessageCircle />Get Help on Discord</a></Button>} />
+      <AccountReviewNote />
       {profile ? <div className="creator-surface mb-5 flex items-center gap-3 px-4 py-3 text-sm"><span className={cn('grid size-8 place-items-center rounded-full', profile.authStatus === 'verified' ? 'bg-[#e5f7ea] text-[#248a3d]' : 'bg-[#fff4ce] text-[#8a5a00]')}><Check className="size-4" /></span><div><p className="font-medium">{profile.authStatus === 'verified' ? 'Creator Verified' : 'Profile Received'}</p><p className="text-xs text-[#6e6e73]">{profile.authStatus === 'verified' ? 'Your creator access is verified.' : 'Your identity is saved and awaiting team verification.'}</p></div></div> : null}
       <form onSubmit={save} className="creator-surface grid gap-8 p-5 sm:p-7">
         <section className="grid gap-5">

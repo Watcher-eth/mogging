@@ -1,7 +1,7 @@
 import type { FaceLandmarksPayload, NormalizedPoint } from '@/lib/analysis/landmarks'
 
 const wasmBaseUrl = 'https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.35/wasm'
-const modelAssetPath = 'https://storage.googleapis.com/mediapipe-models/face_landmarker/face_landmarker/float16/latest/face_landmarker.task'
+const modelAssetPath = 'https://storage.googleapis.com/mediapipe-models/face_landmarker/face_landmarker/float16/1/face_landmarker.task'
 
 const faceOutlineIndices = [10, 338, 297, 332, 284, 251, 389, 356, 454, 323, 361, 288, 397, 365, 379, 378, 400, 377, 152, 148, 176, 149, 150, 136, 172, 58, 132, 93, 234, 127, 162, 21, 54, 103, 67, 109, 10]
 const leftEyeIndices = [33, 246, 161, 160, 159, 158, 157, 173, 133, 155, 154, 153, 145, 144, 163, 7, 33]
@@ -20,81 +20,91 @@ type FaceLandmarkerInstance = {
   }
 }
 
-let landmarkerPromise: Promise<FaceLandmarkerInstance | null> | null = null
+let landmarkerPromise: Promise<FaceLandmarkerInstance> | null = null
 
+export type FaceDetectionResult =
+  | { status: 'detected'; landmarks: FaceLandmarksPayload }
+  | { status: 'no-face' | 'multiple-faces' | 'unavailable'; message: string }
+
+// Existing photo uploads retain their nullable API; the creator UI can show
+// actionable failures instead of treating a blocked model download as no face.
 export async function extractFaceLandmarksFromDataUrl(dataUrl: string): Promise<FaceLandmarksPayload | null> {
-  if (typeof window === 'undefined') return null
+  const result = await detectFaceLandmarksFromDataUrl(dataUrl)
+  return result.status === 'detected' ? result.landmarks : null
+}
 
+export async function detectFaceLandmarksFromDataUrl(dataUrl: string): Promise<FaceDetectionResult> {
   try {
     const [image, landmarker] = await Promise.all([loadImage(dataUrl), getFaceLandmarker()])
-    if (!landmarker) return null
-
     const result = landmarker.detect(image)
-    const face = result.faceLandmarks?.[0]
-    if (!face) return null
-
-    const anchors = {
-      leftEyeOuter: pick(face, 33),
-      leftEyeInner: pick(face, 133),
-      rightEyeInner: pick(face, 362),
-      rightEyeOuter: pick(face, 263),
-      leftPupil: pick(face, 468) ?? midpoint(pick(face, 33), pick(face, 133)),
-      rightPupil: pick(face, 473) ?? midpoint(pick(face, 362), pick(face, 263)),
-      leftBrow: pick(face, 105),
-      rightBrow: pick(face, 334),
-      noseBridge: pick(face, 168),
-      noseTip: pick(face, 1),
-      mouthLeft: pick(face, 61),
-      mouthRight: pick(face, 291),
-      mouthCenter: pick(face, 13),
-      upperLip: pick(face, 0),
-      lowerLip: pick(face, 17),
-      leftCheek: pick(face, 234),
-      rightCheek: pick(face, 454),
-      chin: pick(face, 152),
-      jawLeft: pick(face, 172),
-      jawRight: pick(face, 397),
-      forehead: pick(face, 10),
-    }
-    const contours = {
-      faceOutline: pickMany(face, faceOutlineIndices),
-      leftEye: pickMany(face, leftEyeIndices),
-      rightEye: pickMany(face, rightEyeIndices),
-      leftBrow: pickMany(face, leftBrowIndices),
-      rightBrow: pickMany(face, rightBrowIndices),
-      noseBridge: pickMany(face, noseBridgeIndices),
-      noseBase: pickMany(face, noseBaseIndices),
-      mouth: pickMany(face, mouthIndices),
-      jawline: pickMany(face, jawlineIndices),
-      cheekbones: pickMany(face, cheekboneIndices),
-    }
-    const quality = computeLandmarkQuality(anchors, contours)
-
-    return {
-      version: 1,
-      source: 'mediapipe-face-landmarker',
-      confidence: quality.score,
-      image: {
-        width: image.naturalWidth,
-        height: image.naturalHeight,
-      },
-      anchors,
-      contours,
-      quality,
-    }
+    return landmarksFromFaces(result.faceLandmarks ?? [], { width: image.naturalWidth, height: image.naturalHeight })
   } catch {
-    return null
+    return { status: 'unavailable', message: 'Face detection could not load. Check your connection and retry, or try another browser.' }
   }
+}
+
+export function landmarksFromFaces(faces: Array<Array<{ x: number; y: number }>>, image: { width: number; height: number }): FaceDetectionResult {
+  if (faces.length > 1) return { status: 'multiple-faces', message: 'More than one face detected. Crop the image to one person and upload it again.' }
+  const face = faces[0]
+  if (!face) return { status: 'no-face', message: 'No usable face detected. Try a clear, front-facing photo with the whole face visible.' }
+
+  const anchors = {
+    leftEyeOuter: pick(face, 33),
+    leftEyeInner: pick(face, 133),
+    rightEyeInner: pick(face, 362),
+    rightEyeOuter: pick(face, 263),
+    leftPupil: pick(face, 468) ?? midpoint(pick(face, 33), pick(face, 133)),
+    rightPupil: pick(face, 473) ?? midpoint(pick(face, 362), pick(face, 263)),
+    leftBrow: pick(face, 105),
+    rightBrow: pick(face, 334),
+    noseBridge: pick(face, 168),
+    noseTip: pick(face, 1),
+    mouthLeft: pick(face, 61),
+    mouthRight: pick(face, 291),
+    mouthCenter: pick(face, 13),
+    upperLip: pick(face, 0),
+    lowerLip: pick(face, 17),
+    leftCheek: pick(face, 234),
+    rightCheek: pick(face, 454),
+    chin: pick(face, 152),
+    jawLeft: pick(face, 172),
+    jawRight: pick(face, 397),
+    forehead: pick(face, 10),
+  }
+  const contours = {
+    faceOutline: pickMany(face, faceOutlineIndices),
+    leftEye: pickMany(face, leftEyeIndices),
+    rightEye: pickMany(face, rightEyeIndices),
+    leftBrow: pickMany(face, leftBrowIndices),
+    rightBrow: pickMany(face, rightBrowIndices),
+    noseBridge: pickMany(face, noseBridgeIndices),
+    noseBase: pickMany(face, noseBaseIndices),
+    mouth: pickMany(face, mouthIndices),
+    jawline: pickMany(face, jawlineIndices),
+    cheekbones: pickMany(face, cheekboneIndices),
+  }
+  const quality = computeLandmarkQuality(anchors, contours, image)
+
+  return { status: 'detected', landmarks: {
+    version: 1,
+    source: 'mediapipe-face-landmarker',
+    confidence: quality.score,
+    image,
+    anchors,
+    contours,
+    quality,
+  } }
 }
 
 function computeLandmarkQuality(
   anchors: FaceLandmarksPayload['anchors'],
   contours: NonNullable<FaceLandmarksPayload['contours']>,
+  image: { width: number; height: number },
 ): NonNullable<FaceLandmarksPayload['quality']> {
   const anchorCount = Object.values(anchors).filter(Boolean).length
   const contourPointCount = Object.values(contours).reduce((sum, points) => sum + (points?.length ?? 0), 0)
   const faceCoverage = getFaceCoverage(contours.faceOutline)
-  const rollRadians = getRollRadians(anchors.leftPupil ?? anchors.leftEyeOuter, anchors.rightPupil ?? anchors.rightEyeOuter)
+  const rollRadians = getRollRadians(anchors.leftPupil ?? anchors.leftEyeOuter, anchors.rightPupil ?? anchors.rightEyeOuter, image)
   const symmetryError = getSymmetryError(anchors)
   const warnings: string[] = []
   if (anchorCount < 16) warnings.push('partial-anchors')
@@ -124,9 +134,9 @@ function getFaceCoverage(points: NormalizedPoint[] | undefined) {
   return Math.max(0, maxX - minX) * Math.max(0, maxY - minY)
 }
 
-function getRollRadians(left?: NormalizedPoint, right?: NormalizedPoint) {
+function getRollRadians(left: NormalizedPoint | undefined, right: NormalizedPoint | undefined, image: { width: number; height: number }) {
   if (!left || !right) return 0
-  return Math.atan2(right.y - left.y, right.x - left.x)
+  return Math.atan2((right.y - left.y) * image.height, (right.x - left.x) * image.width)
 }
 
 function getSymmetryError(anchors: FaceLandmarksPayload['anchors']) {
@@ -140,36 +150,34 @@ function getSymmetryError(anchors: FaceLandmarksPayload['anchors']) {
 }
 
 function pickMany(points: Array<{ x: number; y: number }>, indices: number[]): NormalizedPoint[] {
-  return indices
-    .map((index) => pick(points, index))
-    .filter((point): point is NormalizedPoint => Boolean(point))
+  const selected = indices.map((index) => pick(points, index))
+  // Never collapse gaps: contour indices carry anatomical meaning.
+  return selected.every((point): point is NormalizedPoint => Boolean(point)) ? selected : []
 }
 
 async function getFaceLandmarker() {
   if (!landmarkerPromise) {
-    landmarkerPromise = createFaceLandmarker()
+    landmarkerPromise = createFaceLandmarker().catch((error) => {
+      landmarkerPromise = null
+      throw error
+    })
   }
-
   return landmarkerPromise
 }
 
-async function createFaceLandmarker(): Promise<FaceLandmarkerInstance | null> {
-  try {
-    const { FaceLandmarker, FilesetResolver } = await import('@mediapipe/tasks-vision')
-    const vision = await FilesetResolver.forVisionTasks(wasmBaseUrl)
-    return await FaceLandmarker.createFromOptions(vision, {
-      baseOptions: {
-        modelAssetPath,
-        delegate: 'GPU',
-      },
-      runningMode: 'IMAGE',
-      numFaces: 1,
-      outputFaceBlendshapes: false,
-      outputFacialTransformationMatrixes: false,
-    })
-  } catch {
-    return null
-  }
+async function createFaceLandmarker(): Promise<FaceLandmarkerInstance> {
+  const { FaceLandmarker, FilesetResolver } = await import('@mediapipe/tasks-vision')
+  const vision = await FilesetResolver.forVisionTasks(wasmBaseUrl)
+  const create = (delegate: 'GPU' | 'CPU') => FaceLandmarker.createFromOptions(vision, {
+    baseOptions: { modelAssetPath, delegate },
+    runningMode: 'IMAGE',
+    numFaces: 2,
+    minFaceDetectionConfidence: .6,
+    minFacePresenceConfidence: .6,
+    outputFaceBlendshapes: false,
+    outputFacialTransformationMatrixes: false,
+  })
+  try { return await create('GPU') } catch { return await create('CPU') }
 }
 
 function loadImage(dataUrl: string) {
@@ -183,11 +191,11 @@ function loadImage(dataUrl: string) {
 
 function pick(points: Array<{ x: number; y: number }>, index: number): NormalizedPoint | undefined {
   const point = points[index]
-  if (!point) return undefined
+  if (!point || !Number.isFinite(point.x) || !Number.isFinite(point.y) || point.x < 0 || point.x > 1 || point.y < 0 || point.y > 1) return undefined
 
   return {
-    x: clamp01(point.x),
-    y: clamp01(point.y),
+    x: point.x,
+    y: point.y,
   }
 }
 

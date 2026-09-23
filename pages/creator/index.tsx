@@ -84,7 +84,7 @@ function OverviewContent() {
             <span className="grid size-10 place-items-center rounded-[14px] bg-[#e8f2ff] text-[#0071e3]"><BookOpenText className="size-[18px]" /></span>
             <p className="mt-5 text-[11px] font-semibold uppercase tracking-[0.13em] text-[#86868b]">Program Guide</p>
             <h2 className="mt-2 text-xl font-semibold tracking-[-0.035em]">Publish with confidence</h2>
-            <p className="mt-2 text-sm leading-5 text-[#6e6e73]">Review formats, audience rules, and evidence requirements before posting.</p>
+            <p className="mt-2 text-sm leading-5 text-[#6e6e73]">Review the looks-focused content rules, annotated examples, audience eligibility, and evidence requirements before posting.</p>
             <Link href="/creator/guide" className="group mt-auto inline-flex items-center gap-1.5 pt-5 text-sm font-semibold text-[#0071e3]">Open the guide<ArrowRight className="size-4 transition-transform duration-150 group-hover:translate-x-0.5" /></Link>
           </section>
 

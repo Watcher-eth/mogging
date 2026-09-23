@@ -207,8 +207,8 @@ exports[`canonical creator overlay projection keeps report and category visual g
       "id": "eyes-label",
       "kind": "label",
       "point": {
-        "x": 847.2,
-        "y": 883.2,
+        "x": 843.949,
+        "y": 982.044,
       },
     },
   ],
@@ -425,7 +425,7 @@ exports[`canonical creator overlay projection keeps report and category visual g
       "id": "overall-label",
       "kind": "label",
       "point": {
-        "x": 813.067,
+        "x": 807.378,
         "y": 1017.6,
       },
     },
@@ -640,8 +640,8 @@ exports[`canonical creator overlay projection keeps report and category visual g
       "id": "eyes-label",
       "kind": "label",
       "point": {
-        "x": 756,
-        "y": 621,
+        "x": 753.714,
+        "y": 690.5,
       },
     },
   ],
@@ -858,7 +858,7 @@ exports[`canonical creator overlay projection keeps report and category visual g
       "id": "overall-label",
       "kind": "label",
       "point": {
-        "x": 732,
+        "x": 728,
         "y": 715.5,
       },
     },
@@ -1073,8 +1073,8 @@ exports[`canonical creator overlay projection keeps report and category visual g
       "id": "eyes-label",
       "kind": "label",
       "point": {
-        "x": 712.8,
-        "y": 496.8,
+        "x": 710.971,
+        "y": 552.4,
       },
     },
   ],
@@ -1291,7 +1291,7 @@ exports[`canonical creator overlay projection keeps report and category visual g
       "id": "overall-label",
       "kind": "label",
       "point": {
-        "x": 693.6,
+        "x": 690.4,
         "y": 572.4,
       },
     },

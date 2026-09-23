@@ -1,0 +1,695 @@
+{
+  "reviewedAt": "2026-09-22",
+  "method": "Subjective visual review of the current imported portrait, independent of Battle results. Not an objective or biometric measurement.",
+  "rubric": "1–8 scale: 4 average presentation, 5 above average, 6 strong facial balance/definition, 7 exceptional, 8 reserved upper bound. Review facial balance, proportion, apparent symmetry and definition; do not score fame, body, ethnicity or Battle results. Single-photo estimates; lighting, pose, styling and occlusion reduce confidence.",
+  "reviews": [
+    {
+      "photoId": "8a441547-3d50-4fc8-ae67-674e967044cc",
+      "name": "Clavicular",
+      "imageUrl": "https://pub-5d08741c541340c2b446a6609cd36e29.r2.dev/9aeed684fb2407dd1d79161e845e99a04da133f7fddeb80937135b234d9329fe.png",
+      "pslScore": 6.7,
+      "confidence": "moderate",
+      "rationale": "Balanced proportions, defined jaw and cheekbones; mild facial length."
+    },
+    {
+      "photoId": "ffa691eb-f2ba-4eda-b943-8e756b9fdbe3",
+      "name": "Androgenic",
+      "imageUrl": "https://pub-5d08741c541340c2b446a6609cd36e29.r2.dev/13b5806729b7d07d078d100a860f2007459af89b6fde5f9865f201490bf9ba87.png",
+      "pslScore": 6.6,
+      "confidence": "low",
+      "rationale": "Strong eye framing and lower-face definition; hair obscures forehead."
+    },
+    {
+      "photoId": "8db0008c-cd44-46a9-8552-722b1bde7b50",
+      "name": "Dillon Latham",
+      "imageUrl": "https://pub-5d08741c541340c2b446a6609cd36e29.r2.dev/71d59905b6ae6901a1855a42d86a46c704f958a4fd37c50b15ac11980a91bf07.png",
+      "pslScore": 6.6,
+      "confidence": "moderate",
+      "rationale": "Defined jaw profile and nose-to-chin balance; angled view limits symmetry review."
+    },
+    {
+      "photoId": "98460194-781b-4e82-bd12-5167781f511c",
+      "name": "Romulus",
+      "imageUrl": "https://pub-5d08741c541340c2b446a6609cd36e29.r2.dev/3914476e07880ff09c2eec8751e112d87ee0d9eeb5f8c2ada5d6e2c25c949946.png",
+      "pslScore": 6.4,
+      "confidence": "moderate",
+      "rationale": "Balanced eyes and lips; long midface and narrow lower third."
+    },
+    {
+      "photoId": "8460518f-8d1a-4307-82a4-2841d3591f36",
+      "name": "ASU Fratleader Varis",
+      "imageUrl": "https://pub-5d08741c541340c2b446a6609cd36e29.r2.dev/784a94697d5dc957e16bf7e1f5942a355faa26612b3b8ebc609835d25c77f933.png",
+      "pslScore": 5.8,
+      "confidence": "moderate",
+      "rationale": "Balanced smile and proportions; softer jaw definition in this expression."
+    },
+    {
+      "photoId": "974f58cd-27e2-4ccb-b5d3-1dbfb3828f66",
+      "name": "Zeta",
+      "imageUrl": "https://pub-5d08741c541340c2b446a6609cd36e29.r2.dev/221532d5c95af8a3b86f1acbc2e894670a2936b50c8648c405d9e68568157226.png",
+      "pslScore": 6.9,
+      "confidence": "moderate",
+      "rationale": "Strong eye framing, jaw definition and facial balance; slight head tilt."
+    },
+    {
+      "photoId": "8467e9ef-a869-4277-9cdf-a6f4a58becca",
+      "name": "Vmogsu",
+      "imageUrl": "https://pub-5d08741c541340c2b446a6609cd36e29.r2.dev/0647c673e7337572f2a86c9bb9a173ed23deb565d34106748e7380318c097e38.png",
+      "pslScore": 6.5,
+      "confidence": "moderate",
+      "rationale": "Defined cheekbones and lower face; downward angle affects proportions."
+    },
+    {
+      "photoId": "1b4696cb-d593-4a75-a08c-c81e1e333cca",
+      "name": "Lizka",
+      "imageUrl": "https://pub-5d08741c541340c2b446a6609cd36e29.r2.dev/81dd584d5f8fd6bcaab84e1e1b789e28c6f1de25a2e91536e2197dcd811d5762.png",
+      "pslScore": 6.4,
+      "confidence": "moderate",
+      "rationale": "Balanced features and clear facial outline; posed lips and presentation limit precision."
+    },
+    {
+      "photoId": "4abae3cf-6eed-44ed-9dfb-7e114f573e91",
+      "name": "Salludon",
+      "imageUrl": "https://pub-5d08741c541340c2b446a6609cd36e29.r2.dev/ede37c73713a2b35b7e622beb0bb381e8f321ceaea900859fa91ef44a870596a.png",
+      "pslScore": 6.8,
+      "confidence": "low",
+      "rationale": "Strong brow-eye framing and lower-face balance; beard obscures chin contour."
+    },
+    {
+      "photoId": "9dd331c1-68d3-4a8c-a2aa-e4cc634a84dd",
+      "name": "Bass",
+      "imageUrl": "https://pub-5d08741c541340c2b446a6609cd36e29.r2.dev/0a6865fbb1823f62b24ecdeed8df4551e7adeb04971876d98ca4368e6208dd36.jpg",
+      "pslScore": 6.1,
+      "confidence": "low",
+      "rationale": "Defined cheek and jaw silhouette; hair and low resolution obscure features."
+    },
+    {
+      "photoId": "773da132-05a7-4615-9be0-cfd14efa88b6",
+      "name": "Trevor Larcom",
+      "imageUrl": "https://pub-5d08741c541340c2b446a6609cd36e29.r2.dev/28e04023780f5872b5ed3b0b07af189cc33b08b25b7a554f128dd9586797ebe8.png",
+      "pslScore": 6.0,
+      "confidence": "moderate",
+      "rationale": "Good eye-mouth balance and jaw definition; elevated camera angle."
+    },
+    {
+      "photoId": "e631f483-b490-411c-80d5-591939d30e02",
+      "name": "Derb",
+      "imageUrl": "https://pub-5d08741c541340c2b446a6609cd36e29.r2.dev/285d446fdcea68304f9877196dedd4d8e75db2865f4b15a2cf9bb931070e5c9a.jpg",
+      "pslScore": 6.2,
+      "confidence": "moderate",
+      "rationale": "Defined cheekbones and relatively balanced features; longer lower third."
+    },
+    {
+      "photoId": "9f112551-e6ed-463f-b78d-3258e3094025",
+      "name": "K Shami",
+      "imageUrl": "https://pub-5d08741c541340c2b446a6609cd36e29.r2.dev/2ce85308b5d53b90c4d21b67f5860504ad475eec297ebd031e104d637f525553.jpg",
+      "pslScore": 6.1,
+      "confidence": "moderate",
+      "rationale": "Balanced lower face and lips; glasses and mirror angle limit eye assessment."
+    },
+    {
+      "photoId": "8d7eff4f-c8ad-469e-9269-96c0e3aeb53c",
+      "name": "Marlon",
+      "imageUrl": "https://pub-5d08741c541340c2b446a6609cd36e29.r2.dev/77fcf82392c849e679c87cfd8d93a806e70a73560793bd2aa5c434688e8eabe9.png",
+      "pslScore": 6.0,
+      "confidence": "moderate",
+      "rationale": "Balanced smile and face shape; cap and turned pose limit detail."
+    },
+    {
+      "photoId": "148fad61-1101-44f2-9ba9-0156c24e6300",
+      "name": "Bojack",
+      "imageUrl": "https://pub-5d08741c541340c2b446a6609cd36e29.r2.dev/b2cd046c38285884da7168084723ec498ef6631d5bf0b41511a5915c9967a03f.jpg",
+      "pslScore": 5.8,
+      "confidence": "moderate",
+      "rationale": "Fairly balanced frontal features; hood, image softness and long midface."
+    },
+    {
+      "photoId": "955a8341-88fd-41e6-be24-4fe797bdb69e",
+      "name": "Aman",
+      "imageUrl": "https://pub-5d08741c541340c2b446a6609cd36e29.r2.dev/d8d307c936ac113d05fe9201c9a7db84b34a5224a6f89bded3b1d209d358f022.png",
+      "pslScore": 6.5,
+      "confidence": "moderate",
+      "rationale": "Strong jaw-cheek balance and eye framing; smoothed image limits detail."
+    },
+    {
+      "photoId": "aa8749cc-2e89-4bb3-a6f5-38b9a76dbf95",
+      "name": "Matis Mallie",
+      "imageUrl": "https://pub-5d08741c541340c2b446a6609cd36e29.r2.dev/ffbc8da1ece98f63fc1bac96dd523023a07ebbae93a8e22b68d131ef85a6cad2.png",
+      "pslScore": 5.8,
+      "confidence": "low",
+      "rationale": "Defined lower face; glasses and directional low light obscure symmetry."
+    },
+    {
+      "photoId": "95e45c43-c65f-4fa0-bf9c-d8f8cdb7f702",
+      "name": "CookieKing",
+      "imageUrl": "https://pub-5d08741c541340c2b446a6609cd36e29.r2.dev/0302cab4c8d958dcc6e1b8829a7405a590a66a83abf4677efb092e61c3abdb2e.jpg",
+      "pslScore": 6.3,
+      "confidence": "moderate",
+      "rationale": "Defined facial outline and eye framing; strong contrast limits texture detail."
+    },
+    {
+      "photoId": "66d546af-f7b1-42db-a01d-6663e9d9a0c8",
+      "name": "Orbital",
+      "imageUrl": "https://pub-5d08741c541340c2b446a6609cd36e29.r2.dev/2e5effab777a361a0088c6e87ec9d49a73fc8257c077fc6e7fdcdbfdf85d5726.png",
+      "pslScore": 5.9,
+      "confidence": "low",
+      "rationale": "Balanced mouth and eye spacing; blurry image limits confident assessment."
+    },
+    {
+      "photoId": "9f621da3-caa6-4bb7-a0ac-8e1003b9fa2d",
+      "name": "Archie Cranch",
+      "imageUrl": "https://pub-5d08741c541340c2b446a6609cd36e29.r2.dev/86fafb3136b345fbe21a7f768d86449d635489f0165fc6879cef620443e21878.png",
+      "pslScore": 6.5,
+      "confidence": "moderate",
+      "rationale": "Strong cheekbones, jaw and lip balance; mild elongated midface."
+    },
+    {
+      "photoId": "c518b16c-a369-439d-b6a7-06ec733a6498",
+      "name": "Haskell",
+      "imageUrl": "https://pub-5d08741c541340c2b446a6609cd36e29.r2.dev/528ea9bdbdd9d3f1f116adc47a45c572752317710feefd7ce79940007bf5d6bf.png",
+      "pslScore": 5.8,
+      "confidence": "low",
+      "rationale": "Balanced lips and lower face; eyes obscured by hair and low light."
+    },
+    {
+      "photoId": "e5f350c6-d888-4d5b-b0bc-9bb7ac5b3d12",
+      "name": "Brev",
+      "imageUrl": "https://pub-5d08741c541340c2b446a6609cd36e29.r2.dev/6de25f46d04ca9baeee5b943f3174f0f8da809584765a129fa04fff04c870c50.png",
+      "pslScore": 6.2,
+      "confidence": "moderate",
+      "rationale": "Balanced frontal structure with defined jaw; face occupies little image area."
+    },
+    {
+      "photoId": "d4635dbd-87bf-48e8-9e21-c165e77f7dbf",
+      "name": "Lance Baker",
+      "imageUrl": "https://pub-5d08741c541340c2b446a6609cd36e29.r2.dev/2964df770a9e071a957ef0885ed7a158431ca062288acb37364b327ec724f969.png",
+      "pslScore": 5.9,
+      "confidence": "moderate",
+      "rationale": "Balanced eye and mouth placement; close camera and beard affect lower-face shape."
+    },
+    {
+      "photoId": "373e3827-3e7e-4312-9a9b-214039c9dd3e",
+      "name": "Dorian Sarachi",
+      "imageUrl": "https://pub-5d08741c541340c2b446a6609cd36e29.r2.dev/9daf8495d332b118989c84381c7a11f8dd0c6e737c939b856cda36081300d587.jpg",
+      "pslScore": 6.1,
+      "confidence": "moderate",
+      "rationale": "Defined side profile; full-body framing and turn limit frontal assessment."
+    },
+    {
+      "photoId": "c5e0cd29-8319-4f56-a560-d7a1d906a57c",
+      "name": "Erik Harding",
+      "imageUrl": "https://pub-5d08741c541340c2b446a6609cd36e29.r2.dev/6ae50cd084e9d3208d1ac206c45f083a0219f3401faefae227d21fb9d9e7810e.png",
+      "pslScore": 6.2,
+      "confidence": "moderate",
+      "rationale": "Defined facial outline and balanced lips; harsh sunlight and angle affect eye area."
+    },
+    {
+      "photoId": "73939f63-3d08-4e7e-a646-4f92703f6518",
+      "name": "Sunshine",
+      "imageUrl": "https://pub-5d08741c541340c2b446a6609cd36e29.r2.dev/12bdb95f15976b96a3c961ff8adfc3fbd4275f624a1ed4467c47b46451c1d385.png",
+      "pslScore": 5.7,
+      "confidence": "moderate",
+      "rationale": "Reasonable frontal balance; softer jaw and close-camera distortion."
+    },
+    {
+      "photoId": "2af2a5c5-9bc6-46f2-bb9e-a8a8bedd081f",
+      "name": "Geno",
+      "imageUrl": "https://pub-5d08741c541340c2b446a6609cd36e29.r2.dev/d3321d6a73f21502e15190ccd0cfee59124bca86ecbf48349db2720fdccd6e52.png",
+      "pslScore": 6.1,
+      "confidence": "moderate",
+      "rationale": "Balanced eye spacing and defined outline; longer midface."
+    },
+    {
+      "photoId": "e52914ed-b562-48f4-a551-4bc476c2c3c7",
+      "name": "Aurora",
+      "imageUrl": "https://pub-5d08741c541340c2b446a6609cd36e29.r2.dev/30df0baeea20dbf225ab938628fc8f09b33f45ccb547b6f81047fa62bb4d0b91.png",
+      "pslScore": 6.2,
+      "confidence": "moderate",
+      "rationale": "Balanced eye-lip proportions; rotated, sunlit portrait limits comparison."
+    },
+    {
+      "photoId": "729f8b94-9939-438e-ae93-783ddb4b5410",
+      "name": "Brae",
+      "imageUrl": "https://pub-5d08741c541340c2b446a6609cd36e29.r2.dev/0cbfa074703c141dfde9c2979d42b39765839021393db46035f41108945fda59.png",
+      "pslScore": 6.4,
+      "confidence": "low",
+      "rationale": "Strong jaw and cheekbone balance; low resolution and turn limit precision."
+    },
+    {
+      "photoId": "b50b4dec-a4ce-46f8-9a3c-c603574c6683",
+      "name": "Jawad",
+      "imageUrl": "https://pub-5d08741c541340c2b446a6609cd36e29.r2.dev/c90684ba35449fe10d04e1377fbd0960efe25a24d6138a7207020b834a996a39.png",
+      "pslScore": 5.9,
+      "confidence": "low",
+      "rationale": "Balanced visible features; hair, smoothing and angle obscure structure."
+    },
+    {
+      "photoId": "bdf4aa7e-2866-4763-ae1a-b034b8d3d99b",
+      "name": "Ehren",
+      "imageUrl": "https://pub-5d08741c541340c2b446a6609cd36e29.r2.dev/e6bf363b5f694f8ca5e50fa647f23129fa1ade151e79461e5c87ab27a2ec71be.png",
+      "pslScore": 6.3,
+      "confidence": "low",
+      "rationale": "Defined jaw and eye framing; darkness and low resolution limit detail."
+    },
+    {
+      "photoId": "64133f1d-1911-49e5-9c12-51c1da73b80d",
+      "name": "Don Starke",
+      "imageUrl": "https://pub-5d08741c541340c2b446a6609cd36e29.r2.dev/a9c333bf22a1e0673e291669019b8ebb4e1fc90a19a9db1db7be09570dca2264.png",
+      "pslScore": 6.2,
+      "confidence": "moderate",
+      "rationale": "Defined cheekbones and jaw; squinting and harsh light affect eye assessment."
+    },
+    {
+      "photoId": "ea31a99d-abb7-476b-a6d9-2be744554940",
+      "name": "Zmax",
+      "imageUrl": "https://pub-5d08741c541340c2b446a6609cd36e29.r2.dev/858750d203d6abd88c62698c4a8d49c623297e561e3210c1d8efaad43a196faa.png",
+      "pslScore": 6.1,
+      "confidence": "moderate",
+      "rationale": "Good lip and eye balance; close camera and grooming affect proportions."
+    },
+    {
+      "photoId": "7bd2fec9-7735-49e3-8674-24058a7143cd",
+      "name": "Unc Sky",
+      "imageUrl": "https://pub-5d08741c541340c2b446a6609cd36e29.r2.dev/00d63c1a232ba9fe2ab7c4cad690c4c36bbb0bfbe9bc0b736c3ef6a181eb38ae.png",
+      "pslScore": 6.0,
+      "confidence": "low",
+      "rationale": "Defined lower face; low-resolution turned portrait limits symmetry review."
+    },
+    {
+      "photoId": "4a7dff71-ffcf-4f7d-a720-052fb282094b",
+      "name": "Manu",
+      "imageUrl": "https://pub-5d08741c541340c2b446a6609cd36e29.r2.dev/a1f0694913c6b6084c9e1e986d2304ea75c2ca72e0209955522d691ca39b63d7.png",
+      "pslScore": 5.7,
+      "confidence": "low",
+      "rationale": "Balanced visible lower face; sunglasses hide the eye region."
+    },
+    {
+      "photoId": "9d2807af-e0ba-400e-846c-ddda25542c61",
+      "name": "Joseph Shin",
+      "imageUrl": "https://pub-5d08741c541340c2b446a6609cd36e29.r2.dev/8b5a878418bbcea8e303c7103d1b23a2a110644cd3fb9df9ba19cf0d18721b5f.png",
+      "pslScore": 6.0,
+      "confidence": "low",
+      "rationale": "Defined nose-to-chin profile; small side-on face limits overall assessment."
+    },
+    {
+      "photoId": "d227a572-8a8f-43db-a434-942f19e82e18",
+      "name": "Justice Johnson",
+      "imageUrl": "https://pub-5d08741c541340c2b446a6609cd36e29.r2.dev/ed7419eafb6a8599e6e3cfd67d6f679dccb29c1ca1bbd451f0e8e8acf0953e4d.png",
+      "pslScore": 5.9,
+      "confidence": "moderate",
+      "rationale": "Balanced lips and lower face; close camera exaggerates the central face."
+    },
+    {
+      "photoId": "ebca29d2-c4e5-4e46-a8ce-3f003c1a7701",
+      "name": "Jynxzi",
+      "imageUrl": "https://pub-5d08741c541340c2b446a6609cd36e29.r2.dev/4237095bc09eda39c8205c6118c1d22906353798b33587e4cfb4de899b903480.png",
+      "pslScore": 4.6,
+      "confidence": "low",
+      "rationale": "Reasonable overall proportions; softer jaw and uneven eye framing in a blurry image."
+    },
+    {
+      "photoId": "8657c033-427a-4d92-ac78-9c4f3878fdca",
+      "name": "Louis",
+      "imageUrl": "https://pub-5d08741c541340c2b446a6609cd36e29.r2.dev/b01c01bd197156af7ae93a8abcebdb745929b6f6d709130f0e9ea7195002d0f3.png",
+      "pslScore": 6.3,
+      "confidence": "moderate",
+      "rationale": "Broad jaw, defined cheeks and balanced eye spacing; strong flash affects detail."
+    },
+    {
+      "photoId": "52d9b2fc-4429-40b5-9e5f-0f456d331deb",
+      "name": "Cizzle",
+      "imageUrl": "https://pub-5d08741c541340c2b446a6609cd36e29.r2.dev/0999813049db4251dad62168d4b7d06fa642afd51e3aaa76a17141d120039561.png",
+      "pslScore": 6.5,
+      "confidence": "low",
+      "rationale": "Strong jaw projection and profile balance; only one side is visible."
+    },
+    {
+      "photoId": "b6c2ad12-5698-4519-b121-dca0c5c20189",
+      "name": "Missof",
+      "imageUrl": "https://pub-5d08741c541340c2b446a6609cd36e29.r2.dev/69b41f07ec84010e809ff98f39f31f9c25460223f5a28f4896941b41929ef1c3.png",
+      "pslScore": 6.2,
+      "confidence": "moderate",
+      "rationale": "Defined cheek and jaw contours; head tilt, makeup and stylized lighting limit precision."
+    },
+    {
+      "photoId": "bc36a480-1198-4811-82b9-a9b8132c2aab",
+      "name": "Nocturnal Kent",
+      "imageUrl": "https://pub-5d08741c541340c2b446a6609cd36e29.r2.dev/4fd860f8c3077b49cf1fe9e99ffe29d21c6a4fc31d5ee1064c4215b140892667.jpg",
+      "pslScore": 6.4,
+      "confidence": "moderate",
+      "rationale": "Balanced frontal eye-mouth placement and defined jaw; mild lower-face length."
+    },
+    {
+      "photoId": "ed459407-93c0-45a9-a24b-d655dfe943f3",
+      "name": "Adoxy",
+      "imageUrl": "https://pub-5d08741c541340c2b446a6609cd36e29.r2.dev/f856738e8ecedfe2c74134e28d45c009cf72b2d1442cdacd9534b768bc583a52.png",
+      "pslScore": 5.8,
+      "confidence": "moderate",
+      "rationale": "Good eye and lip balance; close-angle image softens jaw assessment."
+    },
+    {
+      "photoId": "832371e4-2426-43c5-9a1a-ccd4880ce38b",
+      "name": "Dustin Wayne",
+      "imageUrl": "https://pub-5d08741c541340c2b446a6609cd36e29.r2.dev/9c7a2107563876a491125f3e7f3ef9bc728f487e63c40b9f8b29bc9fd7a64b43.png",
+      "pslScore": 6.0,
+      "confidence": "low",
+      "rationale": "Balanced eye spacing and defined chin; distant hooded view limits detail."
+    },
+    {
+      "photoId": "a9f583d6-df70-493b-8a45-ca09e3bbe00c",
+      "name": "AK Pilled",
+      "imageUrl": "https://pub-5d08741c541340c2b446a6609cd36e29.r2.dev/a7e3d499097ce5740c535f7369c4f56490f2cc525483d5d9443f2fbd31173e5b.png",
+      "pslScore": 5.9,
+      "confidence": "moderate",
+      "rationale": "Balanced eyes and lips; softer lower-face definition and close camera."
+    },
+    {
+      "photoId": "7ac83d7b-cd8b-44d8-8036-ebacfdddcf7b",
+      "name": "Jesse Wilson",
+      "imageUrl": "https://pub-5d08741c541340c2b446a6609cd36e29.r2.dev/5042904c1f60545278a031ef448dd211c525f5bd27dd8d93238dd12665b43184.png",
+      "pslScore": 5.8,
+      "confidence": "low",
+      "rationale": "Defined visible outline; dark image and angle obscure detail."
+    },
+    {
+      "photoId": "da234c11-b8fe-4df7-babd-ad2b4a7cb822",
+      "name": "Jenna Ortega",
+      "imageUrl": "https://pub-5d08741c541340c2b446a6609cd36e29.r2.dev/abf9f24b8d6bd1f04773d5aa27ed939b108b7bc8a3631ac44f574bd7178be583.jpg",
+      "pslScore": 6.3,
+      "confidence": "moderate",
+      "rationale": "Defined cheeks and jaw with balanced eye-lip proportions; strong makeup."
+    },
+    {
+      "photoId": "b90de483-4bce-4ebd-8a32-d688faa220eb",
+      "name": "Millie Bobby Brown",
+      "imageUrl": "https://pub-5d08741c541340c2b446a6609cd36e29.r2.dev/f495514bcb2f1d7a40627d0210ec2cfe178321f3733d425789c55ee100f331e3.png",
+      "pslScore": 5.9,
+      "confidence": "moderate",
+      "rationale": "Balanced features and smile; three-quarter angle limits symmetry assessment."
+    },
+    {
+      "photoId": "8a210024-c474-4883-b4b4-ee000df65b18",
+      "name": "Sadie Sink",
+      "imageUrl": "https://pub-5d08741c541340c2b446a6609cd36e29.r2.dev/57261257048b6838230858e8c4af860fde4c6b4037e0d551b3c392c39fa50789.jpg",
+      "pslScore": 6.1,
+      "confidence": "moderate",
+      "rationale": "Balanced frontal spacing and soft facial harmony; limited jaw definition."
+    },
+    {
+      "photoId": "47f68f0e-ac78-4d61-aa03-2664d6ba0891",
+      "name": "Sydney Sweeney",
+      "imageUrl": "https://pub-5d08741c541340c2b446a6609cd36e29.r2.dev/78dc4c3b08ccffa4bf29c275977b824a536adfc1a25a8e44909b59c6a2fb08de.jpg",
+      "pslScore": 6.3,
+      "confidence": "moderate",
+      "rationale": "Balanced lips and lower face; slight eye asymmetry and posed angle."
+    },
+    {
+      "photoId": "492ba2bf-9565-4835-ba25-64e4477ad276",
+      "name": "Florence Pugh",
+      "imageUrl": "https://pub-5d08741c541340c2b446a6609cd36e29.r2.dev/67f6c017f8aa2e53427b7c10b9f441c6b7c2ed0800f855b6ed2556f14429016b.jpg",
+      "pslScore": 5.8,
+      "confidence": "moderate",
+      "rationale": "Balanced midface and lips; broader lower third and softer jaw contours."
+    },
+    {
+      "photoId": "ad348a16-ef0c-42b1-a89f-525161182bd8",
+      "name": "Anya Taylor-Joy",
+      "imageUrl": "https://pub-5d08741c541340c2b446a6609cd36e29.r2.dev/43196b6a67ba559ced57875e45ac11ad49248bb791b4190dc37a346a8194b014.jpg",
+      "pslScore": 6.4,
+      "confidence": "moderate",
+      "rationale": "Pronounced cheekbones and eye framing; wider eye spacing and long midface."
+    },
+    {
+      "photoId": "a54601d8-0e61-4beb-862a-0b972be401c2",
+      "name": "Zendaya",
+      "imageUrl": "https://pub-5d08741c541340c2b446a6609cd36e29.r2.dev/4441c1fb631da835055b55876ee9a4818bd86531d7fd42d8f43429719cf71f2a.jpg",
+      "pslScore": 6.7,
+      "confidence": "moderate",
+      "rationale": "Strong cheekbone definition and overall proportion balance; turned view."
+    },
+    {
+      "photoId": "9ab69d49-a32c-4565-978d-39926d8f0ebf",
+      "name": "Ayo Edebiri",
+      "imageUrl": "https://pub-5d08741c541340c2b446a6609cd36e29.r2.dev/080b8f2af64d315159af08d444a1afe19f588089ecfdbc4a03d4f0e0dfb85949.jpg",
+      "pslScore": 5.8,
+      "confidence": "moderate",
+      "rationale": "Balanced smile and features; longer midface and softer lower-face definition."
+    },
+    {
+      "photoId": "023159b9-c5dd-4bb0-8832-be8611bd8a03",
+      "name": "Emma Myers",
+      "imageUrl": "https://pub-5d08741c541340c2b446a6609cd36e29.r2.dev/8af4cfdb3683a12798c78ca31148bd5288ec90b5df76ff1992cb73222805f86d.png",
+      "pslScore": 5.9,
+      "confidence": "low",
+      "rationale": "Balanced eye-mouth placement; distant portrait limits structural detail."
+    },
+    {
+      "photoId": "2ca04fac-ce7a-48e9-816c-f194a3fb9ee1",
+      "name": "Rachel Zegler",
+      "imageUrl": "https://pub-5d08741c541340c2b446a6609cd36e29.r2.dev/7e877d4ee3b62f148cfb7b4687d7de37ff7c63a01a10dd6b39b1b91590a33fe1.jpg",
+      "pslScore": 6.2,
+      "confidence": "moderate",
+      "rationale": "Defined jaw and balanced proportions; three-quarter view limits symmetry assessment."
+    },
+    {
+      "photoId": "04b39979-6cc7-4ee7-aba4-5a692751efb8",
+      "name": "Isabela Merced",
+      "imageUrl": "https://pub-5d08741c541340c2b446a6609cd36e29.r2.dev/87809adddbfa4aab7dc957083ab2a73eca96df2aa70e508a25d3d987dd00052d.jpg",
+      "pslScore": 6.2,
+      "confidence": "moderate",
+      "rationale": "Balanced features and good lower-face definition; slight upward angle."
+    },
+    {
+      "photoId": "21da42d8-02b3-4098-b58c-7af7f0b6afbf",
+      "name": "Cailee Spaeny",
+      "imageUrl": "https://pub-5d08741c541340c2b446a6609cd36e29.r2.dev/a81a871eb2ab0b1b37b2888de0065db06f11e06f0fc1596801016bbc2d4ec5a6.jpg",
+      "pslScore": 6.1,
+      "confidence": "moderate",
+      "rationale": "Balanced frontal proportions and eye framing; softer jaw shape."
+    },
+    {
+      "photoId": "4cdbc9d9-29f7-44ed-a8fe-316236185017",
+      "name": "Hunter Schafer",
+      "imageUrl": "https://pub-5d08741c541340c2b446a6609cd36e29.r2.dev/94a848a6a80f09adbf66ce5dae4da4867f05a1951a9a467382899a55d34f0311.jpg",
+      "pslScore": 6.5,
+      "confidence": "moderate",
+      "rationale": "Defined cheekbones and jaw with strong eye framing; directional light."
+    },
+    {
+      "photoId": "371d619d-247e-4b47-b534-425407b9edc5",
+      "name": "Maya Hawke",
+      "imageUrl": "https://pub-5d08741c541340c2b446a6609cd36e29.r2.dev/0dfb7ff83e3901d88113501241cd9beee57d248f201b75016845cf2181d8dda5.jpg",
+      "pslScore": 6.0,
+      "confidence": "moderate",
+      "rationale": "Balanced eye and lip placement; longer midface and angled pose."
+    },
+    {
+      "photoId": "d2d75558-aa5e-4e38-98ea-15fda0fbf155",
+      "name": "Sophie Thatcher",
+      "imageUrl": "https://pub-5d08741c541340c2b446a6609cd36e29.r2.dev/32137538212e67a6abe3345945e6eddeaecb75ae3d27ed6dc5bc07264633c871.jpg",
+      "pslScore": 5.9,
+      "confidence": "low",
+      "rationale": "Balanced facial outline; downward tilt and hair obscure forehead and eye area."
+    },
+    {
+      "photoId": "ae05c29c-d327-44bf-b3c5-d5fd89f09b62",
+      "name": "Margaret Qualley",
+      "imageUrl": "https://pub-5d08741c541340c2b446a6609cd36e29.r2.dev/5900054db88b4b921d18fa675487f95f97957ecc351c73a0f17c59a41e450a48.jpg",
+      "pslScore": 6.4,
+      "confidence": "moderate",
+      "rationale": "Defined jaw, balanced facial thirds and smile; mild eye asymmetry."
+    },
+    {
+      "photoId": "b7219212-bd99-4970-b905-835bca48d543",
+      "name": "Daisy Edgar-Jones",
+      "imageUrl": "https://pub-5d08741c541340c2b446a6609cd36e29.r2.dev/d6ecbc293b1c8a8fd8ab0195bb13a062d08b8a680090a744df108eea12988ba2.jpg",
+      "pslScore": 6.1,
+      "confidence": "moderate",
+      "rationale": "Balanced eye and lip proportions; turned smiling pose affects symmetry."
+    },
+    {
+      "photoId": "807d1512-e70e-4ad4-a4bd-29e3da4d55a6",
+      "name": "Ella Purnell",
+      "imageUrl": "https://pub-5d08741c541340c2b446a6609cd36e29.r2.dev/2410c239b30434889a1ff16e94d6f1dd76ee4176d25d9292d327d582c3679a3e.png",
+      "pslScore": 6.4,
+      "confidence": "moderate",
+      "rationale": "Strong eye framing and balanced lower face; broad smile changes proportions."
+    },
+    {
+      "photoId": "5eb481b3-78c2-4e07-82fe-10d0bb3e8d85",
+      "name": "Victoria Pedretti",
+      "imageUrl": "https://pub-5d08741c541340c2b446a6609cd36e29.r2.dev/0435a3b1072f96f2ee49c0ccd207b12e95d74b21d0cabad2b292b3a2c6e80b8d.jpg",
+      "pslScore": 6.0,
+      "confidence": "moderate",
+      "rationale": "Balanced features and defined cheek contour; slight eye and mouth asymmetry."
+    },
+    {
+      "photoId": "f892c2bb-a837-4073-9a08-7618a345db21",
+      "name": "Naomi Scott",
+      "imageUrl": "https://pub-5d08741c541340c2b446a6609cd36e29.r2.dev/3be6b5f132f8a6c940cfce94843b2390bd64cfd5f80322571d16f29792e1dde2.jpg",
+      "pslScore": 6.5,
+      "confidence": "moderate",
+      "rationale": "Balanced eye spacing, cheekbones and lower-face proportions; directional lighting."
+    },
+    {
+      "photoId": "06445e86-3eee-4ffb-942e-92ce322f37a9",
+      "name": "Kiernan Shipka",
+      "imageUrl": "https://pub-5d08741c541340c2b446a6609cd36e29.r2.dev/d858801bb073d0ccdc2d3580b8d25f72f1ba85306861f7e59bdec134e5e9a972.jpg",
+      "pslScore": 6.0,
+      "confidence": "moderate",
+      "rationale": "Balanced features and smile; narrow lower third and expressive asymmetry."
+    },
+    {
+      "photoId": "5ef35a94-4a7f-43ef-8e03-447357160cb5",
+      "name": "Madelyn Cline",
+      "imageUrl": "https://pub-5d08741c541340c2b446a6609cd36e29.r2.dev/6625eae2dca60beff11ebc2066e891e01d58007277dd0f3dea05d80750a7d90d.jpg",
+      "pslScore": 6.2,
+      "confidence": "moderate",
+      "rationale": "Balanced lips and cheek-jaw contours; angled pose limits frontal comparison."
+    },
+    {
+      "photoId": "e9d9c658-691f-4de2-b94b-7f2d89a1c02d",
+      "name": "Halle Bailey",
+      "imageUrl": "https://pub-5d08741c541340c2b446a6609cd36e29.r2.dev/5e266900d668d109436fbded456336b4e59a64503667a9a26a9b44cc7dfa0d0d.jpg",
+      "pslScore": 6.0,
+      "confidence": "low",
+      "rationale": "Balanced smile and facial outline; distant image limits precision."
+    },
+    {
+      "photoId": "519a57b8-c736-453b-ae45-19c0c0e80175",
+      "name": "Joey King",
+      "imageUrl": "https://pub-5d08741c541340c2b446a6609cd36e29.r2.dev/e2d19d8ef4fad0d68e9944b50b8045f32763553651992f3f6effa3ce6623a7fd.jpg",
+      "pslScore": 5.8,
+      "confidence": "moderate",
+      "rationale": "Reasonable profile balance; side view limits eye spacing and frontal assessment."
+    },
+    {
+      "photoId": "ff18702e-56bb-4592-8e48-7ee19e50fc9f",
+      "name": "Kathryn Newton",
+      "imageUrl": "https://pub-5d08741c541340c2b446a6609cd36e29.r2.dev/33795cf1553a8046273f1d7e3e8ba5619c832756dd851295c1dec127fb7250e5.jpg",
+      "pslScore": 6.2,
+      "confidence": "moderate",
+      "rationale": "Balanced eyes, lips and facial thirds; soft lighting limits contour detail."
+    },
+    {
+      "photoId": "e9498ce5-2ecf-4dc8-9122-2ea868d5029c",
+      "name": "Lili Reinhart",
+      "imageUrl": "https://pub-5d08741c541340c2b446a6609cd36e29.r2.dev/e64bb9f070d010734485ae85e34d6dfcc4467c9fd724ae9501e3c9f2d2275cb0.jpg",
+      "pslScore": 6.2,
+      "confidence": "moderate",
+      "rationale": "Balanced features and cheek definition; expressive, turned view."
+    },
+    {
+      "photoId": "f3f9fb0b-1565-4222-88ce-0556d6784675",
+      "name": "Camila Mendes",
+      "imageUrl": "https://pub-5d08741c541340c2b446a6609cd36e29.r2.dev/d811792a0d33dc3e6918ef9c12636044175f62290d3e1a2307a7f39fcb410eed.jpg",
+      "pslScore": 6.4,
+      "confidence": "moderate",
+      "rationale": "Defined jaw and cheekbones with balanced visible proportions; turned pose."
+    },
+    {
+      "photoId": "fda09202-9435-4a95-8c0e-c4a3ceff3c6a",
+      "name": "Timothée Chalamet",
+      "imageUrl": "https://pub-5d08741c541340c2b446a6609cd36e29.r2.dev/a999d2a8f772e2b647f8009b60bdf6fbbc6e5fad74899c776707fc7c9a2c0ac9.jpg",
+      "pslScore": 6.4,
+      "confidence": "moderate",
+      "rationale": "Strong cheekbones and jaw definition; narrow lower face and slight asymmetry."
+    },
+    {
+      "photoId": "1bb27d25-0d5d-4fed-9726-7d24355ccff0",
+      "name": "Paul Mescal",
+      "imageUrl": "https://pub-5d08741c541340c2b446a6609cd36e29.r2.dev/e794ecbdbe3cb02724e07ca6b7935ca8e92d1c5d1eeadb9b8dcde75b321e73e5.jpg",
+      "pslScore": 5.8,
+      "confidence": "moderate",
+      "rationale": "Balanced eyes and lower face; broader midface and softer cheek definition."
+    },
+    {
+      "photoId": "39921e5f-1340-435c-badf-1b020574ede5",
+      "name": "Jacob Elordi",
+      "imageUrl": "https://pub-5d08741c541340c2b446a6609cd36e29.r2.dev/26e62940d7e8e2df06c00b32cc4391124ce38e4a3e3c91f19d4fc950f9c94de7.png",
+      "pslScore": 6.5,
+      "confidence": "moderate",
+      "rationale": "Strong jaw and cheekbone structure with balanced proportions; mild facial length."
+    },
+    {
+      "photoId": "511da398-d3ca-4484-b1d1-80589b14465f",
+      "name": "Tom Holland",
+      "imageUrl": "https://pub-5d08741c541340c2b446a6609cd36e29.r2.dev/edd12614f3ca9eef38527358c8b687ecf0f85c95c3d7d35236c67e4cd5370cd5.jpg",
+      "pslScore": 5.7,
+      "confidence": "moderate",
+      "rationale": "Balanced smile and overall face shape; softer jaw and eye-area asymmetry."
+    },
+    {
+      "photoId": "f0718355-90bc-48f3-9efd-1fe59613d43e",
+      "name": "Harris Dickinson",
+      "imageUrl": "https://pub-5d08741c541340c2b446a6609cd36e29.r2.dev/01f0428cb29d062f0ab5cf07b3b857b5a1c209d9ccdc691b848a36c13c9aa5d0.jpg",
+      "pslScore": 5.8,
+      "confidence": "moderate",
+      "rationale": "Balanced eye-mouth placement and defined outline; longer midface."
+    },
+    {
+      "photoId": "865c5dac-514b-4b05-a1c0-57aef6fa2ac0",
+      "name": "Barry Keoghan",
+      "imageUrl": "https://pub-5d08741c541340c2b446a6609cd36e29.r2.dev/9cbd6c2a823471c2b70432be6944e8fc89e469b338640448eebf3768ad841d22.jpg",
+      "pslScore": 5.3,
+      "confidence": "moderate",
+      "rationale": "Distinct cheek structure; uneven eye framing and compressed midface in this portrait."
+    },
+    {
+      "photoId": "b8c82582-f3d4-46b5-9086-5ba05805dd6e",
+      "name": "Hero Fiennes Tiffin",
+      "imageUrl": "https://pub-5d08741c541340c2b446a6609cd36e29.r2.dev/a3f69a53a41a336c05164f48e25fa8956cfe4b4b5e10a65bcd1488773a15deb6.png",
+      "pslScore": 6.0,
+      "confidence": "low",
+      "rationale": "Balanced frontal structure and defined jaw; distant, soft image."
+    },
+    {
+      "photoId": "af95c6f6-67f9-4208-b4b7-0927600dfcfb",
+      "name": "Louis Partridge",
+      "imageUrl": "https://pub-5d08741c541340c2b446a6609cd36e29.r2.dev/0c4bbe2f03ad226d5f8e1fc9b21a182fcedddabb47ccba47038abd52bb229160.jpg",
+      "pslScore": 6.3,
+      "confidence": "moderate",
+      "rationale": "Defined jaw and balanced profile; turned smiling pose limits symmetry review."
+    },
+    {
+      "photoId": "c68325e2-9578-47cd-a5d1-97561555bcb9",
+      "name": "Kit Connor",
+      "imageUrl": "https://pub-5d08741c541340c2b446a6609cd36e29.r2.dev/953bd630038f093ee6fb54873bb66331a6eb93503d208c319a3925a8945b3bb6.jpg",
+      "pslScore": 5.9,
+      "confidence": "moderate",
+      "rationale": "Balanced frontal proportions; softer cheek and jaw definition."
+    },
+    {
+      "photoId": "62f21d4f-1e58-4ee9-a526-87c527b2f427",
+      "name": "Tanner Buchanan",
+      "imageUrl": "https://pub-5d08741c541340c2b446a6609cd36e29.r2.dev/628b4afdd145671f6d00e7d1e6a1eadc97935310c3d179c2272443bc895ef50c.jpg",
+      "pslScore": 6.2,
+      "confidence": "moderate",
+      "rationale": "Balanced eyes and lips with a defined jaw; flash flattens detail."
+    },
+    {
+      "photoId": "1e60419e-efce-4ee4-b9f9-c5c41cfe58d7",
+      "name": "Mason Gooding",
+      "imageUrl": "https://pub-5d08741c541340c2b446a6609cd36e29.r2.dev/67af6e6bf3d65e1d67d5acd388e9082b528368fe4cee4a43640318fac528793a.jpg",
+      "pslScore": 6.1,
+      "confidence": "low",
+      "rationale": "Defined profile and balanced visible proportions; cap and small face limit review."
+    },
+    {
+      "photoId": "f36b9a9c-792f-42a4-b47e-627798c5dda5",
+      "name": "Nicholas Galitzine",
+      "imageUrl": "https://pub-5d08741c541340c2b446a6609cd36e29.r2.dev/eb5fd3d44a9d77a1cd573f7391eced121721729797dd10d81499cd65fe794ce3.jpg",
+      "pslScore": 6.2,
+      "confidence": "low",
+      "rationale": "Strong visible cheek-jaw contours; sunglasses prevent full eye-region assessment."
+    },
+    {
+      "photoId": "d6a2f697-6d3e-4976-b5b9-85f7bf502437",
+      "name": "Maude Apatow",
+      "imageUrl": "https://pub-5d08741c541340c2b446a6609cd36e29.r2.dev/988149b1977db76a0100a728ea365b22d018b57529380a86ebcde07136ff2e01.jpg",
+      "pslScore": 6.0,
+      "confidence": "low",
+      "rationale": "Balanced facial outline and smile; distant turned portrait limits detail."
+    }
+  ]
+}
