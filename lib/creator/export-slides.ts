@@ -87,6 +87,7 @@ async function prepareCanvas({ slide, images, width, height }: RenderArgs) {
 }
 
 async function drawSlideFrame(ctx: CanvasRenderingContext2D, slide: ContentSlide, image: HTMLImageElement | null, overlay: ReportOverlay | null, width: number, height: number, timeMs: number) {
+  ctx.textBaseline = 'top'
   ctx.clearRect(0, 0, width, height); ctx.fillStyle = '#09090b'; ctx.fillRect(0, 0, width, height)
   if (slide.templateId === 'cta') {
     const glow = ctx.createRadialGradient(width / 2, height * .26, 0, width / 2, height * .26, width * .58); glow.addColorStop(0, 'rgba(45,212,191,.12)'); glow.addColorStop(1, 'rgba(7,9,9,0)'); ctx.fillStyle = glow; ctx.fillRect(0, 0, width, height)

@@ -1,3 +1,4 @@
+import { estimatedPopulationTopPercent } from '@/lib/sharing/population-percentile'
 import { ImageResponse } from '@vercel/og'
 import type { NextApiRequest, NextApiResponse } from 'next'
 import { parseFaceLandmarksPayload } from '@/lib/analysis/landmarks'
@@ -42,6 +43,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     const imageUrl = absoluteImageUrl(share.photo.imageUrl, req)
     const totalDisplayScore = readReportTotalScore(share.analysis.metrics, share.analysis.pslScore)
     const totalScore = formatScore(totalDisplayScore)
+    const topPercent = estimatedPopulationTopPercent(Number(totalScore))
     const potential = readReportPotential(share.analysis.metrics, share.analysis.pslScore, totalDisplayScore)
     const rank = getLooksmaxRank(totalDisplayScore, share.photo.gender)
     const tier = (share.analysis.tier || 'Facial aesthetic').toUpperCase()
@@ -114,13 +116,22 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
               top: 104,
             }}
           >
-            <span style={{ fontSize: 25, fontWeight: 800, letterSpacing: '1.2px' }}>MOGGING.COM</span>
-            <span style={{ fontSize: 22, fontWeight: 700, letterSpacing: '0.6px', marginTop: 12, opacity: 0.76 }}>{tier}</span>
+            <span style={{ fontSize: 28, fontWeight: 800, letterSpacing: '1.2px' }}>MOGGING.COM</span>
+            <span style={{ fontSize: 24, fontWeight: 700, letterSpacing: '0.6px', marginTop: 12, opacity: 0.76 }}>{tier}</span>
           </div>
 
+          {topPercent !== null && (
+            <div style={{ position: 'absolute', top: 100, left: 410, width: 260, height: 82,
+              display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
+              borderRadius: 48, border: '1px solid rgba(255,255,255,0.35)', background: 'rgba(255,255,255,0.14)' }}>
+              <span style={{ fontSize: 28, fontWeight: 800 }}>Top {topPercent}%</span>
+              <span style={{ fontSize: 16, letterSpacing: '1px', marginTop: 5, opacity: 0.72 }}>ESTIMATED</span>
+            </div>
+          )}
+
           <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', right: 78, position: 'absolute', top: 104 }}>
-            <span style={{ fontSize: 25, fontWeight: 800, letterSpacing: '1.2px' }}>RANK</span>
-            <span style={{ fontSize: 22, fontWeight: 700, letterSpacing: '0.6px', marginTop: 12, opacity: 0.76 }}>{rank.toUpperCase()}</span>
+            <span style={{ fontSize: 28, fontWeight: 800, letterSpacing: '1.2px' }}>RANK</span>
+            <span style={{ fontSize: 24, fontWeight: 700, letterSpacing: '0.6px', marginTop: 12, opacity: 0.76 }}>{rank.toUpperCase()}</span>
           </div>
 
           <div
