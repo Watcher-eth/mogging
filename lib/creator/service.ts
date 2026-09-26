@@ -1,3 +1,4 @@
+import { creatorAssetPublicUrl } from '@/lib/storage/videos'
 import { and, desc, eq, or, sql } from 'drizzle-orm'
 import { z } from 'zod'
 import { db, schema } from '@/lib/db'
@@ -248,7 +249,7 @@ function validateCreatorAnalyticsEvidence(userId: string, input: z.infer<typeof 
 
 function creatorAnalyticsEvidenceValues(input: z.infer<typeof creatorAnalyticsEvidenceSchema>) {
   return {
-    analyticsVideoUrl: input.analyticsVideoUrl,
+    analyticsVideoUrl: creatorAssetPublicUrl(input.analyticsStorageKey),
     analyticsStorageKey: input.analyticsStorageKey,
     analyticsContentType: input.analyticsContentType,
     analyticsSizeBytes: input.analyticsSizeBytes,
@@ -360,7 +361,7 @@ export async function createCreatorSubmission(userId: string, input: CreatorSubm
       videoStorageKey: null,
       videoContentType: null,
       videoSizeBytes: null,
-      analyticsScreenshotUrl: input.analyticsScreenshotUrl,
+      analyticsScreenshotUrl: creatorAssetPublicUrl(input.analyticsStorageKey),
       analyticsStorageKey: input.analyticsStorageKey,
       analyticsContentType: input.analyticsContentType,
       analyticsSizeBytes: input.analyticsSizeBytes,

@@ -1,10 +1,11 @@
 import Link from 'next/link'
 import { useMemo, useState } from 'react'
-import { ArrowUpRight, CheckCircle2, CircleAlert, CircleDollarSign, Clock3, FileVideo, Loader2, XCircle } from 'lucide-react'
+import { ArrowUpRight, CheckCircle2, CircleAlert, Clock3, Loader2, XCircle } from 'lucide-react'
 import useSWR from 'swr'
 import { Button } from '@/components/ui/button'
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { CreatorHeader, CreatorShell } from '@/components/creator/creator-shell'
+import { CreatorIcon } from '@/components/creator/creator-icon'
 import type { CreatorDashboard, CreatorPayment, CreatorSubmission } from '@/components/creator/types'
 import { apiGet } from '@/lib/api/client'
 import { mergeCreatorSubmissionReviewResults } from '@/lib/creator/submission-review'
@@ -35,12 +36,7 @@ function SubmissionsContent() {
   return (
     <>
       <CreatorHeader eyebrow="History & Payments" title="Submissions" description="Follow every video from review through approval and payout." action={<Button asChild className="h-11 rounded-full px-5"><Link href="/creator/submit">New Submission</Link></Button>} />
-      <div className="mb-5 flex gap-1 overflow-x-auto rounded-[16px] bg-black/[0.045] p-1">
-        {filters.map((item) => {
-          const count = item.value === 'all' ? submissions.length : submissions.filter((submission) => submission.status === item.value).length
-          return <button key={item.value} onClick={() => setFilter(item.value)} className={cn('flex shrink-0 items-center gap-2 rounded-[12px] px-3 py-2 text-xs font-medium text-[#6e6e73] transition-[background-color,color,box-shadow,transform] duration-150 active:scale-[0.98]', filter === item.value && 'bg-white text-[#1d1d1f] shadow-sm')}><span>{item.label}</span><span className={cn('text-[10px]', filter === item.value ? 'text-[#0071e3]' : 'text-[#aeaeb2]')}>{count}</span></button>
-        })}
-      </div>
+      <label className="mb-5 flex items-center gap-3 text-sm font-medium">Status<select className="creator-field max-w-xs" value={filter} onChange={(event) => setFilter(event.target.value as typeof filter)}>{filters.map((item) => <option key={item.value} value={item.value}>{item.label} ({item.value === 'all' ? submissions.length : submissions.filter((submission) => submission.status === item.value).length})</option>)}</select></label>
       {isLoading ? <div className="grid min-h-64 place-items-center"><Loader2 className="size-5 animate-spin text-zinc-400" /></div> : visible.length ? <div className="grid gap-3">{visible.map((submission, index) => <SubmissionCard key={submission.id} submission={submission} payment={paymentBySubmission.get(submission.id)} linkedToApprovedAccount={Boolean(submission.socialAccountId && accountStatusById.get(submission.socialAccountId) === 'approved')} onClick={() => setSelected(submission)} style={{ animationDelay: `${Math.min(index * 45, 180)}ms` }} />)}</div> : <EmptyState filtered={filter !== 'all'} />}
       <SubmissionDialog submission={selected} payment={selected ? paymentBySubmission.get(selected.id) : undefined} linkedToApprovedAccount={Boolean(selected?.socialAccountId && accountStatusById.get(selected.socialAccountId) === 'approved')} open={Boolean(selected)} onOpenChange={(open) => { if (!open) setSelected(null) }} />
     </>
@@ -49,10 +45,10 @@ function SubmissionsContent() {
 
 function SubmissionCard({ submission, payment, linkedToApprovedAccount, onClick, style }: { submission: CreatorSubmission; payment?: CreatorPayment; linkedToApprovedAccount: boolean; onClick: () => void; style: React.CSSProperties }) {
   return (
-    <button onClick={onClick} style={style} className="creator-list-item creator-surface group flex w-full items-center gap-4 p-4 text-left transition-[border-color,box-shadow,transform] duration-200 hover:-translate-y-0.5 hover:border-black/10 hover:shadow-[0_16px_40px_rgba(0,0,0,0.06)] active:scale-[0.99]">
-      <span className="grid size-11 shrink-0 place-items-center rounded-[14px] bg-[#e8f2ff] text-[#0071e3]"><FileVideo className="size-5" /></span>
+    <button onClick={onClick} style={style} className="creator-list-item creator-surface group flex w-full flex-wrap items-center gap-3 p-4 text-left transition-[border-color,box-shadow,transform] duration-200 hover:-translate-y-0.5 hover:border-black/10 hover:shadow-[0_16px_40px_rgba(0,0,0,0.06)] active:scale-[0.99]">
+      <CreatorIcon name="video-submissions" className="size-12" />
       <span className="min-w-0 flex-1"><span className="block truncate text-sm font-semibold tracking-[-0.02em]">{submission.title}</span><span className="mt-1 flex flex-wrap items-center gap-2 text-xs text-zinc-500"><span>{submission.platform}</span><span>·</span><span>{formatDate(submission.createdAt)}</span>{!linkedToApprovedAccount ? <span className="inline-flex items-center gap-1 rounded-full bg-amber-50 px-2 py-0.5 font-medium text-amber-700"><CircleAlert className="size-3" />Account Not Approved</span> : null}</span></span>
-      <span className="hidden text-right sm:block">{payment ? <><span className="block text-sm font-semibold">{formatMoney(payment.amountCents, payment.currency)}</span><span className="mt-1 block text-xs capitalize text-zinc-500">{payment.status}</span></> : <span className="text-xs text-zinc-400">No Payment Yet</span>}</span>
+      <span className="w-full text-sm sm:w-auto sm:text-right">{payment ? <><span className="block text-sm font-semibold">{formatMoney(payment.amountCents, payment.currency)}</span><span className="mt-1 block text-xs capitalize text-zinc-500">{payment.status}</span></> : <span className="text-xs text-zinc-400">No Payment Yet</span>}</span>
       <StatusPill status={submission.status} />
       <ArrowUpRight className="size-4 shrink-0 text-zinc-300 transition-[color,transform] duration-150 ease-out group-hover:-translate-y-0.5 group-hover:translate-x-0.5 group-hover:text-black" />
     </button>
@@ -110,7 +106,7 @@ function SubmissionEvidence({ submission }: { submission: CreatorSubmission }) {
 }
 
 function StatusPill({ status }: { status: CreatorSubmission['status'] }) { return <span className={cn('shrink-0 rounded-full px-2.5 py-1 text-[11px] font-semibold', status === 'paid' && 'bg-[#e5f7ea] text-[#248a3d]', status === 'approved' && 'bg-[#e8f2ff] text-[#0071e3]', (status === 'pending' || status === 'in_review') && 'bg-[#fff4ce] text-[#8a5a00]', status === 'rejected' && 'bg-[#ffebea] text-[#d70015]')}>{statusLabel(status)}</span> }
-function EmptyState({ filtered }: { filtered: boolean }) { return <div className="creator-surface grid min-h-72 place-items-center p-8 text-center"><div><span className="mx-auto grid size-12 place-items-center rounded-[16px] bg-[#f5f5f7] text-[#0071e3]">{filtered ? <Clock3 className="size-5" /> : <CircleDollarSign className="size-5" />}</span><h2 className="mt-4 text-sm font-semibold">{filtered ? 'Nothing in This Status' : 'No Submissions Yet'}</h2><p className="mt-2 text-sm text-[#6e6e73]">{filtered ? 'Choose another filter to see more videos.' : 'Your submitted videos and payments will appear here.'}</p>{!filtered ? <Button asChild className="mt-6 h-10 rounded-full px-4"><Link href="/creator/submit">Submit Your First Video</Link></Button> : null}</div></div> }
+function EmptyState({ filtered }: { filtered: boolean }) { return <div className="creator-surface grid min-h-72 place-items-center p-8 text-center"><div>{filtered ? <span className="mx-auto grid size-12 place-items-center rounded-[16px] bg-[#f5f5f7] text-[#0071e3]"><Clock3 className="size-5" /></span> : <CreatorIcon name="video-submissions" className="mx-auto size-20" />}<h2 className="mt-4 text-sm font-semibold">{filtered ? 'Nothing in This Status' : 'No Submissions Yet'}</h2><p className="mt-2 text-sm text-[#6e6e73]">{filtered ? 'Choose another filter to see more videos.' : 'Your submitted videos and payments will appear here.'}</p>{!filtered ? <Button asChild className="mt-6 h-10 rounded-full px-4"><Link href="/creator/submit">Submit Your First Video</Link></Button> : null}</div></div> }
 function Detail({ label, value }: { label: string; value: string }) { return <div className="flex items-center justify-between gap-4"><span className="text-zinc-500">{label}</span><span className="text-right font-medium capitalize">{value}</span></div> }
 function statusLabel(status: CreatorSubmission['status']) { return status === 'in_review' ? 'In Review' : status.slice(0, 1).toUpperCase() + status.slice(1) }
 function formatMoney(cents: number, currency: string) { return new Intl.NumberFormat('en-US', { style: 'currency', currency }).format(cents / 100) }

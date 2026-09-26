@@ -1,3 +1,4 @@
+import { CreatorStepper } from './creator-stepper'
 import * as Avatar from '@radix-ui/react-avatar'
 import { creatorAccountLabel } from '@/components/creator/types'
 import { useEffect, useRef, useState, type ChangeEvent } from 'react'
@@ -48,6 +49,7 @@ type AnalyticsEvidence = {
 }
 
 export function AccountVerificationDialog({ account, open, onOpenChange, onSubmitted }: { account: CreatorSocialAccount | null; open: boolean; onOpenChange: (open: boolean) => void; onSubmitted: () => Promise<void> }) {
+  const [step, setStep] = useState<1 | 2 | 3>(1)
   const [analyticsFile, setAnalyticsFile] = useState<File | null>(null)
   const [previewUrl, setPreviewUrl] = useState<string | null>(null)
   const [analyticsConfirmed, setAnalyticsConfirmed] = useState(false)
@@ -67,6 +69,7 @@ export function AccountVerificationDialog({ account, open, onOpenChange, onSubmi
 
   useEffect(() => {
     if (open) return
+    setStep(1)
     setAnalyticsFile(null)
     setAnalyticsConfirmed(false)
     setRecordingConfirmed(false)
@@ -135,9 +138,9 @@ export function AccountVerificationDialog({ account, open, onOpenChange, onSubmi
 
   return (
     <Dialog open={open} onOpenChange={(nextOpen) => { if (!saving) onOpenChange(nextOpen) }}>
-      <DialogContent className="creator-dialog max-h-[92vh] max-w-5xl overflow-y-auto rounded-[26px] border-white/70 bg-white/95 p-0">
+      <DialogContent className="creator-dialog creator-verification max-h-[92dvh] max-w-5xl overflow-y-auto rounded-[26px] border-white/70 bg-white/95 p-0">
         <div className="border-b border-zinc-200 px-6 py-5 sm:px-7">
-          <DialogHeader>
+          <DialogHeader className="text-left">
             <div className="flex items-start gap-3 pr-8">
               <span className="relative size-11 shrink-0">
                 <Avatar.Root className="grid size-11 overflow-hidden rounded-full bg-sky-50">
@@ -151,7 +154,13 @@ export function AccountVerificationDialog({ account, open, onOpenChange, onSubmi
           </DialogHeader>
         </div>
 
-        <div className="grid gap-6 p-6 sm:p-7 lg:grid-cols-[minmax(0,1.15fr)_minmax(280px,0.85fr)]">
+        <div className="px-5"><CreatorStepper step={step} labels={['Prepare', 'Record', 'Upload']} /></div>
+        {step === 1 ? <>
+        <div className="mx-6 rounded-2xl border border-red-200 bg-red-50 p-5 sm:mx-7 sm:p-6">
+          <div className="flex items-start gap-3"><span className="grid size-9 shrink-0 place-items-center rounded-xl bg-red-100 text-red-700"><AlertTriangle className="size-4" /></span><div><p className="text-sm font-semibold text-red-950">Physical Recording Required</p><p className="mt-2 text-xs leading-5 text-red-800">Use a second phone, tablet, or camera to film your main phone or TikTok on a desktop or laptop while you navigate through every required analytics screen. If you only have one phone, use it to film TikTok on your computer. Screen recordings, cuts, edits, hidden usernames, and altered analytics are not accepted.</p><ul className="mt-3 grid gap-1.5 text-xs leading-5 text-red-800"><li>• The physical phone, tablet, or computer screen being filmed must remain visible.</li><li>• Record one continuous take with no cuts or edits.</li><li>• Keep the account username and analytics values readable.</li></ul></div></div>
+        </div>        <div className="px-6 pb-6"><Button className="h-11 w-full" onClick={() => setStep(2)}>See Recording Steps</Button></div></> : null}
+        {step === 2 ? <div className="px-6 pb-6">
+
           <section>
             <div className="flex items-center gap-3"><span className="h-px flex-1 bg-zinc-200" /><p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-zinc-400">Follow These Steps</p><span className="h-px flex-1 bg-zinc-200" /></div>
             <ol className="mt-6">
@@ -164,8 +173,11 @@ export function AccountVerificationDialog({ account, open, onOpenChange, onSubmi
             </ol>
             <p className="mt-4 flex items-center gap-2 text-xs text-zinc-500"><FileVideo className="size-4" />MP4, MOV, or WebM · up to 250 MB</p>
           </section>
-
-          <section>
+          <div className="mt-6 flex gap-3"><Button variant="outline" className="h-11" onClick={() => setStep(1)}>Back</Button><Button className="h-11 flex-1" onClick={() => setStep(3)}>I Have My Recording</Button></div>
+        </div> : null}
+        {step === 3 ? <>
+          <section className="px-6">
+            <p className="mb-4 text-sm text-zinc-600">Upload your continuous physical recording. MP4, MOV, or WebM · up to 250 MB.</p>
             <input ref={fileInputRef} className="sr-only" type="file" accept="video/mp4,video/quicktime,video/webm,.mov" onChange={chooseAnalyticsVideo} />
             {previewUrl ? (
               <div className="overflow-hidden rounded-[24px] border border-zinc-200 bg-black">
@@ -173,25 +185,22 @@ export function AccountVerificationDialog({ account, open, onOpenChange, onSubmi
                 <div className="flex items-center gap-3 bg-zinc-950 p-3 text-white"><FileVideo className="size-4 shrink-0" /><div className="min-w-0 flex-1"><p className="truncate text-xs font-medium">{analyticsFile?.name}</p><p className="mt-0.5 text-[11px] text-white/45">Ready to upload</p></div><button type="button" disabled={saving} onClick={() => setAnalyticsFile(null)} className="grid size-8 place-items-center rounded-full text-white/50 transition-colors hover:bg-white/10 hover:text-white" aria-label="Remove analytics recording"><X className="size-4" /></button></div>
               </div>
             ) : (
-              <button type="button" disabled={saving} onClick={() => fileInputRef.current?.click()} className="group grid min-h-[420px] w-full place-items-center rounded-[24px] border border-dashed border-zinc-300 bg-zinc-50/70 p-6 text-center transition-[border-color,background-color,transform] duration-150 ease-out hover:border-zinc-400 hover:bg-zinc-50 active:scale-[0.995]">
+              <button type="button" disabled={saving} onClick={() => fileInputRef.current?.click()} className="group grid min-h-[180px] sm:min-h-[260px] w-full place-items-center rounded-[24px] border border-dashed border-zinc-300 bg-zinc-50/70 p-6 text-center transition-[border-color,background-color,transform] duration-150 ease-out hover:border-zinc-400 hover:bg-zinc-50 active:scale-[0.995]">
                 <span><span className="mx-auto grid size-12 place-items-center rounded-2xl bg-white shadow-sm"><Play className="size-5" /></span><span className="mt-4 block text-sm font-semibold">Choose Verification Recording</span><span className="mt-2 block text-xs leading-5 text-zinc-500">Film the complete analytics walkthrough in one continuous take.</span></span>
               </button>
             )}
           </section>
-        </div>
 
-        <div className="mx-6 rounded-2xl border border-red-200 bg-red-50 p-5 sm:mx-7 sm:p-6">
-          <div className="flex items-start gap-3"><span className="grid size-9 shrink-0 place-items-center rounded-xl bg-red-100 text-red-700"><AlertTriangle className="size-4" /></span><div><p className="text-sm font-semibold text-red-950">Physical Recording Required</p><p className="mt-2 text-xs leading-5 text-red-800">Use a second phone, tablet, or camera to film your main phone or TikTok on a desktop or laptop while you navigate through every required analytics screen. If you only have one phone, use it to film TikTok on your computer. Screen recordings, cuts, edits, hidden usernames, and altered analytics are not accepted.</p><ul className="mt-3 grid gap-1.5 text-xs leading-5 text-red-800"><li>• The physical phone, tablet, or computer screen being filmed must remain visible.</li><li>• Record one continuous take with no cuts or edits.</li><li>• Keep the account username and analytics values readable.</li></ul></div></div>
-        </div>
 
         <div className="grid gap-3 px-6 py-6 sm:px-7">
           <label className="flex cursor-pointer items-start gap-3 rounded-2xl border border-zinc-200 p-3.5 text-xs leading-5 text-zinc-600"><input type="checkbox" className="mt-0.5 size-4 rounded border-zinc-300 accent-black" checked={analyticsConfirmed} onChange={(event) => setAnalyticsConfirmed(event.target.checked)} /><span>I confirm the recording shows this account’s recent analytics and complete audience location data.</span></label>
           <label className="flex cursor-pointer items-start gap-3 rounded-2xl border border-zinc-200 p-3.5 text-xs leading-5 text-zinc-600"><input type="checkbox" className="mt-0.5 size-4 rounded border-zinc-300 accent-black" checked={recordingConfirmed} onChange={(event) => setRecordingConfirmed(event.target.checked)} /><span>I confirm this is an unedited physical recording taken with a second device.</span></label>
           <div className="mt-2 flex flex-col-reverse gap-2 sm:flex-row sm:justify-between">
-            <Button type="button" variant="ghost" className="h-11 rounded-xl" disabled={saving} onClick={() => onOpenChange(false)}>Cancel</Button>
+            <Button type="button" variant="ghost" className="h-11 rounded-xl" disabled={saving} onClick={() => setStep(2)}>Back to Steps</Button>
             {analyticsFile ? <Button type="button" className="h-11 rounded-xl sm:min-w-56" disabled={saving || !ready} onClick={() => void submitVerification()}>{saving ? <Loader2 className="animate-spin" /> : <UploadCloud />}{saving ? 'Uploading Verification…' : 'Submit for Review'}</Button> : <Button type="button" className="h-11 rounded-xl sm:min-w-56" disabled={saving} onClick={() => fileInputRef.current?.click()}><Smartphone />Choose Recording</Button>}
           </div>
         </div>
+        </> : null}
       </DialogContent>
     </Dialog>
   )

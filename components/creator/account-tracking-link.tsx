@@ -30,7 +30,7 @@ export function AccountTrackingLink({ url, accountName, avatarUrl, className }: 
         <p className="truncate text-[10px] font-semibold text-zinc-400">{accountName || 'Creator Link'}</p>
         {url ? <a href={url} target="_blank" rel="noreferrer" className="mt-0.5 flex w-fit max-w-full items-center gap-1 truncate text-xs font-medium text-[#0071e3] hover:opacity-70"><span className="truncate">{url}</span><ArrowUpRight className="size-3.5 shrink-0" /></a> : <p className="mt-0.5 text-xs text-[#6e6e73]">Generating link…</p>}
       </div>
-      {url ? <Button type="button" variant="outline" size="sm" className="h-8 shrink-0 rounded-lg bg-white px-2.5 text-xs" onClick={() => void copyLink()}>{copied ? <Check /> : <Copy />}{copied ? 'Copied' : 'Copy'}</Button> : null}
+      {url ? <Button type="button" variant="outline" size="sm" className="h-11 shrink-0 rounded-lg bg-white px-2.5 text-xs" onClick={() => void copyLink()}>{copied ? <Check /> : <Copy />}{copied ? 'Copied' : 'Copy'}</Button> : null}
     </div>
   )
 }

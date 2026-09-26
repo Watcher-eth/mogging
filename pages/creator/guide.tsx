@@ -4,18 +4,14 @@ import { useRouter } from 'next/router'
 import { useState, type ReactNode } from 'react'
 import {
   ArrowRight,
-  BadgeCheck,
   BarChart3,
   Calculator,
   CalendarDays,
   Check,
   ChevronDown,
-  CircleDollarSign,
   ExternalLink,
-  FileVideo2,
   ImageIcon,
   Link2,
-  LockKeyhole,
   ShieldCheck,
   Smartphone,
   TriangleAlert,
@@ -27,20 +23,21 @@ import { ContentGuidelines, accountReviewPolicy } from '@/components/creator/con
 import { Button } from '@/components/ui/button'
 import { ACTIVE_CREATOR_SUBMISSION_FORMATS } from '@/lib/creator/formats'
 import { cn } from '@/lib/utils'
+import { CreatorIcon, type CreatorIconName } from '@/components/creator/creator-icon'
 
 const GuideExamples = dynamic(() => import('@/components/creator/guide-examples'), { loading: () => <p className="p-6 text-sm text-[#6e6e73]" role="status">Loading reference examples…</p> })
 
 type GuideTopic = 'video' | 'examples' | 'account' | 'payout'
 
 const guideTopics = [
-  { id: 'video', label: 'Create a Video', detail: 'Formats and evidence', icon: FileVideo2 },
-  { id: 'examples', label: 'See Examples', detail: 'What works and why', icon: ImageIcon },
-  { id: 'account', label: 'Verify an Account', detail: 'Analytics and bio link', icon: BadgeCheck },
-  { id: 'payout', label: 'Understand Payouts', detail: 'Audience and earnings', icon: CircleDollarSign },
-] as const
+  { id: 'video', label: 'Create a Video', detail: 'Formats and evidence', icon: 'video-submissions' },
+  { id: 'examples', label: 'See Examples', detail: 'What works and why', icon: 'guide' },
+  { id: 'account', label: 'Verify an Account', detail: 'Analytics and bio link', icon: 'accounts' },
+  { id: 'payout', label: 'Understand Payouts', detail: 'Audience and earnings', icon: 'payouts' },
+] as const satisfies ReadonlyArray<{ id: GuideTopic; label: string; detail: string; icon: CreatorIconName }>
 
 const accountChecks = [
-  ['Physical recording', 'Use a second phone or camera. Native screen recordings are not accepted.'],
+  ['Physical recording', 'Use a second phone, tablet, or camera to film your phone or TikTok on a computer. Native screen recordings are not accepted.'],
   ['Visible identity', 'Keep the connected username readable throughout the recording.'],
   ['Recent analytics', 'Show the most recent 28-day window, or the closest platform option.'],
   ['Audience geography', 'Open Locations and show the complete country or territory list.'],
@@ -66,14 +63,14 @@ export default function CreatorProgramGuidePage() {
     <CreatorShell>
       <CreatorHeader
         eyebrow="Creator Resources"
-        title="Creator Program Guide"
+        title="Creator Guide"
         description="Choose what you’re working on. We’ll show only the information you need for that step."
         action={<Button asChild className="h-11 rounded-full px-5"><Link href="/creator/submit">Submit a Video<ArrowRight /></Link></Button>}
       />
 
-      <QuickStart />
       <TopicPicker selected={topic} onSelect={(nextTopic) => { void router.push({ pathname: '/creator/guide', query: { topic: nextTopic } }, undefined, { shallow: true, scroll: false }) }} />
 
+      <details className="mt-4"><summary className="min-h-11 cursor-pointer py-3 text-sm font-semibold">New here? See the three-step overview</summary><QuickStart /></details>
       <div className="mt-5">
         {topic === 'video' ? <VideoGuide /> : null}
         {topic === 'examples' ? <GuideExamples /> : null}
@@ -113,10 +110,9 @@ function TopicPicker({ selected, onSelect }: { selected: GuideTopic; onSelect: (
   return (
     <div className="mt-8">
       <p className="mb-3 text-[11px] font-semibold uppercase tracking-[0.13em] text-[#86868b]">What do you need help with?</p>
-      <div className="grid gap-2 sm:grid-cols-2 xl:grid-cols-4" role="tablist" aria-label="Creator guide topics">
+      <div className="grid grid-cols-2 gap-2 xl:grid-cols-4" role="tablist" aria-label="Creator guide topics">
         {guideTopics.map((item) => {
           const active = selected === item.id
-          const Icon = item.icon
           return (
             <button
               key={item.id}
@@ -137,7 +133,7 @@ function TopicPicker({ selected, onSelect }: { selected: GuideTopic; onSelect: (
               }}
               className={cn('flex items-center gap-3 rounded-[16px] border p-3.5 text-left transition-[border-color,background-color,box-shadow,transform] duration-150 active:scale-[0.98]', active ? 'border-[#0071e3]/30 bg-[#e8f2ff] text-[#0071e3] shadow-[0_0_0_3px_rgba(0,113,227,0.06)]' : 'border-black/[0.07] bg-white/80 text-[#6e6e73] hover:bg-white')}
             >
-              <span className={cn('grid size-9 shrink-0 place-items-center rounded-[12px]', active ? 'bg-white' : 'bg-[#f5f5f7]')}><Icon className="size-[17px]" /></span>
+              <CreatorIcon name={item.icon} className="size-11" />
               <span><span className="block text-sm font-semibold text-[#1d1d1f]">{item.label}</span><span className="mt-0.5 block text-[11px]">{item.detail}</span></span>
             </button>
           )
@@ -154,7 +150,7 @@ function VideoGuide() {
 
   return (
     <section id="guide-panel-video" role="tabpanel" aria-labelledby="guide-tab-video" className="creator-surface overflow-hidden">
-      <GuidePanelHeader icon={FileVideo2} eyebrow="Create a Video" title="Choose one active format" description="Build the post around a single brief, then submit the published link and a clear analytics screenshot." />
+      <GuidePanelHeader icon="video-submissions" eyebrow="Create a Video" title="Choose one active format" description="Build the post around a single brief, then submit the published link and a clear analytics screenshot." />
       <ContentGuidelines />
 
       <div className="grid gap-6 p-5 sm:p-6 lg:grid-cols-[220px_minmax(0,1fr)]">
@@ -205,7 +201,7 @@ function VideoGuide() {
 function AccountGuide() {
   return (
     <section id="guide-panel-account" role="tabpanel" aria-labelledby="guide-tab-account" className="creator-surface overflow-hidden">
-      <GuidePanelHeader icon={BadgeCheck} eyebrow="Verify an Account" title="Connect first. Verify second." description="Every TikTok or Instagram account gets its own creator link. Analytics verification makes it eligible for reviewed submissions." action={<Button asChild variant="outline" className="h-10 rounded-full border-black/10 bg-white px-4 text-[#0071e3]"><Link href="/creator/accounts">Manage Accounts<ArrowRight /></Link></Button>} />
+      <GuidePanelHeader icon="accounts" eyebrow="Verify an Account" title="Connect first. Verify second." description="Every TikTok or Instagram account gets its own creator link. Analytics verification makes it eligible for reviewed submissions." action={<Button asChild variant="outline" className="h-10 rounded-full border-black/10 bg-white px-4 text-[#0071e3]"><Link href="/creator/accounts">Manage Accounts<ArrowRight /></Link></Button>} />
 
       <div className="grid gap-5 p-5 sm:p-6 lg:grid-cols-[minmax(0,1.15fr)_minmax(280px,0.85fr)]">
         <div>
@@ -248,7 +244,7 @@ function PayoutGuide() {
 
   return (
     <section id="guide-panel-payout" role="tabpanel" aria-labelledby="guide-tab-payout" className="creator-surface overflow-hidden">
-      <GuidePanelHeader icon={CircleDollarSign} eyebrow="Understand Payouts" title="Views qualify. Audience quality sets the rate." description="Choose the view threshold and audience tier shown in your post analytics. The review team verifies both before approving payment." action={<Button asChild variant="outline" className="h-10 rounded-full border-black/10 bg-white px-4 text-[#0071e3]"><Link href="/creator/payout-information">Set Up Payouts<ArrowRight /></Link></Button>} />
+      <GuidePanelHeader icon="payouts" eyebrow="Understand Payouts" title="Views qualify. Audience quality sets the rate." description="Choose the view threshold and audience tier shown in your post analytics. The review team verifies both before approving payment." action={<Button asChild variant="outline" className="h-10 rounded-full border-black/10 bg-white px-4 text-[#0071e3]"><Link href="/creator/payout-information">Set Up Payouts<ArrowRight /></Link></Button>} />
 
       <div className="grid gap-3 p-5 sm:grid-cols-3 sm:p-6">
         <PayoutFact value="20%+" label="Combined Tier-1 audience for base eligibility" />
@@ -279,15 +275,15 @@ function PayoutGuide() {
         </div>
       </div>
 
-      <div className="flex items-start gap-3 border-t border-black/[0.055] bg-[#f5f5f7]/70 p-5 sm:p-6"><LockKeyhole className="mt-0.5 size-5 shrink-0 text-[#0071e3]" /><div><p className="text-sm font-semibold">Add a payout destination before funds are released.</p><p className="mt-1 text-xs leading-5 text-[#6e6e73]">You may submit content before choosing PayPal or crypto. The destination only needs to be ready before payment is processed.</p></div></div>
+      <div className="flex items-start gap-3 border-t border-black/[0.055] bg-[#f5f5f7]/70 p-5 sm:p-6"><CreatorIcon name="lock" className="size-11" /><div><p className="text-sm font-semibold">Add a payout destination before funds are released.</p><p className="mt-1 text-xs leading-5 text-[#6e6e73]">You may submit content before choosing PayPal or crypto. The destination only needs to be ready before payment is processed.</p></div></div>
     </section>
   )
 }
 
-function GuidePanelHeader({ icon: Icon, eyebrow, title, description, action }: { icon: typeof FileVideo2; eyebrow: string; title: string; description: string; action?: ReactNode }) {
+function GuidePanelHeader({ icon, eyebrow, title, description, action }: { icon: CreatorIconName; eyebrow: string; title: string; description: string; action?: ReactNode }) {
   return (
     <header className="flex flex-col gap-4 border-b border-black/[0.055] p-5 sm:flex-row sm:items-center sm:justify-between sm:p-6">
-      <div className="flex items-start gap-4"><span className="grid size-11 shrink-0 place-items-center rounded-[15px] bg-[#e8f2ff] text-[#0071e3]"><Icon className="size-5" /></span><div><p className="text-[11px] font-semibold uppercase tracking-[0.13em] text-[#86868b]">{eyebrow}</p><h2 className="mt-1 text-2xl font-semibold tracking-[-0.04em]">{title}</h2><p className="mt-2 max-w-2xl text-sm leading-6 text-[#6e6e73]">{description}</p></div></div>
+      <div className="flex items-start gap-4"><CreatorIcon name={icon} className="size-14" /><div><p className="text-[11px] font-semibold uppercase tracking-[0.13em] text-[#86868b]">{eyebrow}</p><h2 className="mt-1 text-2xl font-semibold tracking-[-0.04em]">{title}</h2><p className="mt-2 max-w-2xl text-sm leading-6 text-[#6e6e73]">{description}</p></div></div>
       {action ? <div className="shrink-0">{action}</div> : null}
     </header>
   )

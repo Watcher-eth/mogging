@@ -1,9 +1,10 @@
+import { CreatorStepper } from '@/components/creator/creator-stepper'
 import { creatorPostUrlSchema, creatorPostPlatform } from '@/lib/creator/validation'
 import { creatorAccountLabel } from '@/components/creator/types'
 import Link from 'next/link'
 import { useRef, useState, type ChangeEvent, type FormEvent } from 'react'
 import { useRouter } from 'next/router'
-import { Check, CheckCircle2, ChevronLeft, CircleAlert, Eye, ImageIcon, Loader2, LockKeyhole, ShieldCheck, UploadCloud, X } from 'lucide-react'
+import { Check, CheckCircle2, ChevronLeft, CircleAlert, Eye, ImageIcon, Loader2, ShieldCheck, UploadCloud, X } from 'lucide-react'
 import useSWR from 'swr'
 import { toast } from 'sonner'
 import { Button } from '@/components/ui/button'
@@ -16,6 +17,7 @@ import { apiGet, apiPost, ApiClientError } from '@/lib/api/client'
 import { ACTIVE_CREATOR_SUBMISSION_FORMATS, type CreatorSubmissionFormat } from '@/lib/creator/formats'
 import { calculateCreatorPayout, CREATOR_US_AUDIENCE_TIERS, CREATOR_VIEW_THRESHOLDS } from '@/lib/creator/payouts'
 import { cn } from '@/lib/utils'
+import { CreatorIcon } from '@/components/creator/creator-icon'
 
 const analyticsImageTypes = ['image/jpeg', 'image/png', 'image/webp']
 
@@ -100,18 +102,16 @@ function SubmitContent() {
 
   return (
     <>
-      <CreatorHeader eyebrow="New Submission" title="Submit a video" description="Share the published post and its analytics evidence. We’ll keep review and payment status together in your dashboard." />
-      <PayoutSetupNote />
-      <ContentRequirementsNote />
-      <SubmissionStepper step={step} />
-      <div className="t-page-slide min-h-[720px] sm:min-h-[650px]" data-page={step}>
+      <CreatorHeader eyebrow="New Submission" title="Submit a video" description="Add your published post, then its analytics evidence." />
+      <CreatorStepper step={step} labels={['Post Details', 'Analytics', 'Review']} />
+      <div className="t-page-slide" data-page={step}>
         <section className="t-page" data-page-id="1" inert={step !== 1} aria-hidden={step !== 1}>
           <form onSubmit={continueToAnalytics} className="creator-surface grid gap-7 p-5 sm:p-7">
             <FormatPicker selectedId={formatId} onSelect={(nextFormatId) => { setFormatId(nextFormatId); setRequirementsConfirmed(false) }} onPreview={setPreviewFormat} />
             <Field label="Published From" hint={accountRequired ? 'Required' : 'Optional for now'}><Select value={socialAccountId || undefined} onValueChange={(value) => setSocialAccountId(value === 'unlinked' ? '' : value)} required={accountRequired}><SelectTrigger><SelectValue placeholder="No connected account" /></SelectTrigger><SelectContent>{!accountRequired ? <SelectItem value="unlinked">No connected account</SelectItem> : null}{data.socialAccounts.map((account) => <SelectItem key={account.id} value={account.id}>{creatorAccountLabel(account)} · {account.platform === 'tiktok' ? 'TikTok' : 'Instagram'} · {account.status === 'approved' ? 'Approved' : 'Not approved'}</SelectItem>)}</SelectContent></Select></Field>
             {!linkedToApprovedAccount ? <div className="flex gap-3 rounded-[16px] bg-[#fff4ce] px-4 py-3 text-sm leading-6 text-[#6b4f00]"><CircleAlert className="mt-0.5 size-4 shrink-0 text-[#8a5a00]" /><p><strong className="font-semibold">Account not approved yet.</strong> You can submit now, but the video stays flagged until its social account is approved.</p></div> : null}
             <Field label="Published Post URL" hint="Required"><input className={fieldClass} type="url" maxLength={2048} value={postUrl} onChange={(event) => setPostUrl(event.target.value)} placeholder="https://www.tiktok.com/… or https://www.instagram.com/…" required /></Field>
-            <div className="flex justify-end"><Button className="h-11 rounded-full px-5">Continue to Analytics</Button></div>
+            <div className="creator-actions flex justify-end"><Button className="h-11 rounded-full px-5">Continue to Analytics</Button></div>
           </form>
         </section>
         <section className="t-page" data-page-id="2" inert={step !== 2} aria-hidden={step !== 2}>
@@ -130,7 +130,7 @@ function SubmitContent() {
               </div>
             </div>
             <div className="flex flex-wrap items-baseline gap-x-2 gap-y-1 border-t border-zinc-100 pt-4 text-sm" aria-live="polite"><span className="font-medium text-zinc-500">Potential Earnings:</span><strong className="font-semibold tabular-nums text-black">{potentialEarnings === null ? 'Choose a view threshold' : `$${potentialEarnings}`}</strong>{potentialEarnings !== null ? <span className="text-xs text-zinc-400">estimated after verification</span> : null}</div>
-            <div className="flex flex-col-reverse gap-2 sm:flex-row sm:justify-between"><Button type="button" variant="ghost" className="h-11 rounded-full" onClick={() => setStep(1)}><ChevronLeft />Back to Post Details</Button><Button className="h-11 rounded-full px-5">Review Submission</Button></div>
+            <div className="creator-actions flex flex-col-reverse gap-2 sm:flex-row sm:justify-between"><Button type="button" variant="ghost" className="h-11 rounded-full" onClick={() => setStep(1)}><ChevronLeft />Back to Post Details</Button><Button className="h-11 rounded-full px-5">Review Submission</Button></div>
           </form>
         </section>
         <section className="t-page" data-page-id="3" inert={step !== 3} aria-hidden={step !== 3}>
@@ -139,10 +139,11 @@ function SubmitContent() {
             <div className="mt-7 grid gap-3 rounded-2xl bg-zinc-50 p-4 text-sm"><ReviewRow label="Format" value={selectedFormat?.name || ''} /><ReviewRow label="Account" value={selectedAccount ? creatorAccountLabel(selectedAccount) : 'Not connected'} /><ReviewRow label="Account Eligibility" value={linkedToApprovedAccount ? 'Approved' : 'Not approved'} /><ReviewRow label="Published Post" value={postUrl} /><ReviewRow label="Analytics Screenshot" value={analyticsScreenshot?.name || ''} /><ReviewRow label="View Count Threshold" value={`${formatViewCount(Number(viewCountThreshold))} views`} /><ReviewRow label="U.S. Audience" value={usAudiencePercent ? `${usAudiencePercent}%` : 'Default 20% Tier 1 Audience'} /><ReviewRow label="Status" value="Not submitted" /></div>
             {!linkedToApprovedAccount ? <div className="mt-5 flex gap-3 rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm leading-6 text-amber-950"><CircleAlert className="mt-0.5 size-4 shrink-0 text-amber-600" /><p>This submission will be marked as <strong className="font-semibold">not connected to an approved account</strong>.</p></div> : null}
             <label className={cn('mt-6 flex cursor-pointer items-start gap-3 rounded-2xl border p-4 transition-[border-color,background-color,transform] duration-150 ease-out active:scale-[0.995]', requirementsConfirmed ? 'border-emerald-200 bg-emerald-50/70' : 'border-zinc-200 bg-white')}><input type="checkbox" className="mt-0.5 size-4 rounded border-zinc-300 accent-emerald-600" checked={requirementsConfirmed} onChange={(event) => setRequirementsConfirmed(event.target.checked)} /><span><span className="block text-sm font-semibold">I checked the {selectedFormat?.name} requirements</span><span className="mt-1 block text-xs leading-5 text-zinc-500">I confirm this video follows the complete format brief and is ready for review.</span></span></label>
-            <div className="mt-8 flex flex-col-reverse gap-2 sm:flex-row sm:justify-between"><Button variant="ghost" className="h-11 rounded-full" onClick={() => setStep(2)} disabled={submitting}><ChevronLeft />Back to Analytics</Button><Button className="h-11 rounded-full px-5" onClick={() => void submit()} disabled={submitting || !requirementsConfirmed}>{submitting ? <Loader2 className="animate-spin" /> : <Check />} {submitting ? 'Uploading Analytics…' : 'Submit Video'}</Button></div>
+            <div className="creator-actions mt-8 flex flex-col-reverse gap-2 sm:flex-row sm:justify-between"><Button variant="ghost" className="h-11 rounded-full" onClick={() => setStep(2)} disabled={submitting}><ChevronLeft />Back to Analytics</Button><Button className="h-11 rounded-full px-5" onClick={() => void submit()} disabled={submitting || !requirementsConfirmed}>{submitting ? <Loader2 className="animate-spin" /> : <Check />} {submitting ? 'Uploading Analytics…' : 'Submit Video'}</Button></div>
           </div>
         </section>
       </div>
+      <div className="mt-6"><PayoutSetupNote /><ContentRequirementsNote /></div>
       <SubmissionGuidance accountRequired={accountRequired} selectedFormat={selectedFormat} />
       <FormatBriefDialog format={previewFormat} open={Boolean(previewFormat)} onOpenChange={(open) => { if (!open) setPreviewFormat(null) }} />
     </>
@@ -152,11 +153,11 @@ function SubmitContent() {
 function FormatPicker({ selectedId, onSelect, onPreview }: { selectedId: string; onSelect: (formatId: string) => void; onPreview: (format: CreatorSubmissionFormat) => void }) {
   return (
     <section>
-      <div className="mb-3 flex items-end justify-between gap-4"><div><h2 className="text-sm font-semibold">Choose a Format</h2><p className="mt-1 text-xs leading-5 text-zinc-500">Select the brief this video was created for.</p></div><span className="text-xs text-zinc-400">Required</span></div>
+      <div className="mb-3 flex items-end justify-between gap-4"><div className="flex items-center gap-3"><CreatorIcon name="formats" className="size-12" /><div><h2 className="text-sm font-semibold">Choose a Format</h2><p className="mt-1 text-xs leading-5 text-zinc-500">Select the brief this video was created for.</p></div></div><span className="text-xs text-zinc-400">Required</span></div>
       <div className="grid gap-3 sm:grid-cols-2">
         {ACTIVE_CREATOR_SUBMISSION_FORMATS.map((format) => {
           const selected = selectedId === format.id
-          return <div key={format.id} className={cn('rounded-[18px] border p-4 transition-[border-color,background-color,box-shadow] duration-150', selected ? 'border-[#0071e3]/40 bg-[#f2f7ff] shadow-[0_0_0_3px_rgba(0,113,227,0.08)]' : 'border-black/[0.08] bg-white')}><button type="button" className="flex w-full items-start gap-3 text-left" onClick={() => onSelect(format.id)}><span className={cn('mt-0.5 grid size-5 shrink-0 place-items-center rounded-full border transition-colors', selected ? 'border-[#0071e3] bg-[#0071e3] text-white' : 'border-black/20 bg-white')}>{selected ? <Check className="size-3" /> : null}</span><span className="min-w-0"><span className="block text-sm font-semibold">{format.name}</span><span className="mt-1.5 block text-xs leading-5 text-[#6e6e73]">{format.shortDescription}</span></span></button><button type="button" className="mt-4 inline-flex items-center gap-1.5 text-xs font-semibold text-[#0071e3] transition-opacity hover:opacity-70" onClick={() => onPreview(format)}><Eye className="size-3.5" />Preview Requirements</button></div>
+          return <div key={format.id} className={cn('rounded-[18px] border p-4 transition-[border-color,background-color,box-shadow] duration-150', selected ? 'border-[#0071e3]/40 bg-[#f2f7ff] shadow-[0_0_0_3px_rgba(0,113,227,0.08)]' : 'border-black/[0.08] bg-white')}><button type="button" className="flex min-h-11 w-full items-start gap-3 text-left" onClick={() => onSelect(format.id)}><span className={cn('mt-0.5 grid size-5 shrink-0 place-items-center rounded-full border transition-colors', selected ? 'border-[#0071e3] bg-[#0071e3] text-white' : 'border-black/20 bg-white')}>{selected ? <Check className="size-3" /> : null}</span><span className="min-w-0"><span className="block text-sm font-semibold">{format.name}</span><span className="mt-1.5 hidden text-xs leading-5 text-[#6e6e73] sm:block">{format.shortDescription}</span></span></button><button type="button" className="mt-2 inline-flex min-h-11 items-center gap-1.5 text-xs font-semibold text-[#0071e3] transition-opacity hover:opacity-70" onClick={() => onPreview(format)}><Eye className="size-3.5" />Preview Requirements</button></div>
         })}
       </div>
     </section>
@@ -180,11 +181,11 @@ function SubmissionGuidance({ accountRequired, selectedFormat }: { accountRequir
   return (
     <div className="mt-6 grid gap-4 sm:grid-cols-2">
       <section className="creator-surface p-5">
-        <div className="flex items-center gap-2.5"><span className="grid size-8 place-items-center rounded-xl bg-zinc-100"><ShieldCheck className="size-4" /></span><h2 className="text-sm font-semibold">{selectedFormat ? `${selectedFormat.name} requirements` : 'Format requirements'}</h2></div>
+        <div className="flex items-center gap-2.5"><CreatorIcon name="formats" className="size-10" /><h2 className="text-sm font-semibold">{selectedFormat ? `${selectedFormat.name} requirements` : 'Format requirements'}</h2></div>
         <ul className="mt-4 grid gap-3">{requirements.map((requirement) => <li key={requirement} className="flex gap-2.5 text-sm leading-5 text-zinc-600"><Check className="mt-0.5 size-4 shrink-0 text-emerald-600" /><span>{requirement}</span></li>)}</ul>
       </section>
       <section className="creator-surface p-5">
-        <div className="flex items-center gap-2.5"><span className="grid size-8 place-items-center rounded-xl bg-zinc-100"><LockKeyhole className="size-4" /></span><h2 className="text-sm font-semibold">Payout lock</h2></div>
+        <div className="flex items-center gap-2.5"><CreatorIcon name="lock" className="size-10" /><h2 className="text-sm font-semibold">Payout lock</h2></div>
         <p className="mt-4 text-sm leading-6 text-zinc-600">Submit only when you’re satisfied with the post’s performance. The view count used during review becomes the payout snapshot and <strong className="font-semibold text-black">will not update afterward.</strong> Payout information must be set up before funds can be released.</p>
       </section>
     </div>
@@ -195,10 +196,6 @@ function PayoutSetupNote() {
   return <div className="mb-5 flex flex-col gap-3 rounded-[16px] bg-[#e8f2ff] px-4 py-3 text-sm text-[#234f7d] sm:flex-row sm:items-center sm:justify-between"><p><strong className="font-semibold text-[#173f69]">Payout setup is optional.</strong> Add it before payment is released to receive your earnings.</p><Link href="/creator/payout-information" className="shrink-0 font-semibold text-[#0071e3] transition-opacity hover:opacity-70">Set Up Payouts</Link></div>
 }
 
-function SubmissionStepper({ step }: { step: 1 | 2 | 3 }) {
-  const labels = ['Post Details', 'Analytics', 'Review']
-  return <div className="mb-5 grid grid-cols-3 rounded-[16px] bg-black/[0.045] p-1" aria-label={`Submission step ${step} of 3`}>{labels.map((label, index) => { const number = index + 1; const active = number === step; const complete = number < step; return <div key={label} className={cn('flex items-center justify-center gap-2 rounded-[12px] px-2 py-2 text-[11px] font-semibold transition-[background-color,color,box-shadow] duration-200', active ? 'bg-white text-[#1d1d1f] shadow-sm' : complete ? 'text-[#248a3d]' : 'text-[#86868b]')}><span className={cn('grid size-5 place-items-center rounded-full text-[10px]', active ? 'bg-[#0071e3] text-white' : complete ? 'bg-[#e5f7ea]' : 'bg-black/[0.05]')}>{complete ? <Check className="size-3" /> : number}</span><span className="hidden sm:inline">{label}</span></div> })}</div>
-}
 
 function ReviewRow({ label, value }: { label: string; value: string }) { return <div className="flex items-center justify-between gap-4"><span className="text-zinc-500">{label}</span><span className="truncate font-medium">{value}</span></div> }
 function formatViewCount(views: number) { return views === 1_000_000 ? '+1M' : new Intl.NumberFormat('en-US', { notation: views >= 10_000 ? 'compact' : 'standard', maximumFractionDigits: 0 }).format(views) }

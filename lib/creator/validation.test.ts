@@ -10,7 +10,7 @@ describe('creator input validation', () => {
   })
   test('profile links must match platform and normalized username', () => {
     expect(creatorSocialAccountSchema.safeParse({platform:'instagram', handle:' @Nate ', profileUrl:'https://www.instagram.com/nate/'}).success).toBe(true)
-    for (const profileUrl of ['https://example.com/nate', 'https://instagram.com/other', 'https://instagram.com/p/nate', 'http://instagram.com/nate']) expect(creatorSocialAccountSchema.safeParse({platform:'instagram', handle:'nate', profileUrl}).success).toBe(false)
+    for (const profileUrl of ['not a url', 'https://example.com/nate', 'https://instagram.com/other', 'https://instagram.com/p/nate', 'http://instagram.com/nate']) expect(creatorSocialAccountSchema.safeParse({platform:'instagram', handle:'nate', profileUrl}).success).toBe(false)
     expect(creatorSocialAccountSchema.safeParse({platform:'instagram', handle:'@', profileUrl:null}).success).toBe(false)
   })
   test('requires real profile fields and network-appropriate address syntax', () => {

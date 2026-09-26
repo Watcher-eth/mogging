@@ -1,8 +1,6 @@
 import Link from 'next/link'
 import {
   ArrowRight,
-  BadgeCheck,
-  BookOpenText,
   Check,
   CircleDollarSign,
   Clapperboard,
@@ -10,7 +8,6 @@ import {
   FileCheck2,
   Loader2,
   UsersRound,
-  WalletCards,
 } from 'lucide-react'
 import useSWR from 'swr'
 import { Button } from '@/components/ui/button'
@@ -18,6 +15,7 @@ import { CreatorHeader, CreatorShell } from '@/components/creator/creator-shell'
 import type { CreatorDashboard, CreatorSubmission } from '@/components/creator/types'
 import { apiGet } from '@/lib/api/client'
 import { cn } from '@/lib/utils'
+import { CreatorIcon, type CreatorIconName } from '@/components/creator/creator-icon'
 
 export default function CreatorOverviewPage() {
   return <CreatorShell><OverviewContent /></CreatorShell>
@@ -30,11 +28,11 @@ function OverviewContent() {
   if (!data) return <div className="grid min-h-[45vh] place-items-center text-sm text-[#86868b]">Could not load your creator overview.</div>
 
   const payoutReady = Boolean(data.profile && (data.profile.paymentOption === 'paypal' ? data.profile.paypalEmail : data.profile.cryptoNetwork && data.profile.cryptoWalletAddress))
-  const tasks = [
-    { title: 'Connect a social account', description: 'Add the TikTok or Instagram account you publish from.', href: '/creator/accounts', complete: data.socialAccounts.length > 0, icon: BadgeCheck },
-    { title: 'Add payout information', description: 'Choose PayPal or crypto for approved earnings.', href: '/creator/payout-information', complete: payoutReady, icon: WalletCards },
-    { title: 'Submit your first video', description: 'Share a published post and its analytics evidence.', href: '/creator/submit', complete: data.submissions.length > 0, icon: Clapperboard },
-    { title: 'Get your first approval', description: 'Follow review status and address any team notes.', href: '/creator/submissions', complete: data.submissions.some((submission) => submission.status === 'approved' || submission.status === 'paid'), icon: FileCheck2 },
+  const tasks: SetupTaskItem[] = [
+    { title: 'Connect a social account', description: 'Add the TikTok or Instagram account you publish from.', href: '/creator/accounts', complete: data.socialAccounts.length > 0, icon: 'accounts' },
+    { title: 'Add payout information', description: 'Choose PayPal or crypto for approved earnings.', href: '/creator/payout-information', complete: payoutReady, icon: 'payouts' },
+    { title: 'Submit your first video', description: 'Share a published post and its analytics evidence.', href: '/creator/submit', complete: data.submissions.length > 0, icon: 'video-submissions' },
+    { title: 'Get your first approval', description: 'Follow review status and address any team notes.', href: '/creator/submissions', complete: data.submissions.some((submission) => submission.status === 'approved' || submission.status === 'paid'), icon: 'video-submissions' },
   ]
   const completedTasks = tasks.filter((task) => task.complete).length
   const paidEarningsCents = data.payments.filter((payment) => payment.status === 'paid').reduce((total, payment) => total + payment.amountCents, 0)
@@ -50,11 +48,15 @@ function OverviewContent() {
       <CreatorHeader
         eyebrow="Overview"
         title={firstName ? `Good to see you, ${firstName}` : 'Your creator workspace'}
-        description="Everything important is here: what to do next, what is under review, and what you have earned."
-        action={<Button asChild className="h-11 rounded-full px-5 shadow-[0_5px_16px_rgba(0,113,227,0.2)]"><Link href="/creator/submit"><Clapperboard />Submit Video</Link></Button>}
+        description="Your next step, reviews, and earnings."
       />
 
-      <section className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4" aria-label="Your creator summary">
+          <section className="creator-surface mb-4 p-4 sm:p-6">
+            <p className="text-[11px] font-semibold uppercase tracking-[0.13em] text-[#86868b]">Next Up</p>
+            {nextTask ? <><h2 className="mt-2 text-xl font-semibold tracking-[-0.035em]">{nextTask.title}</h2><p className="mt-2 text-sm leading-5 text-[#6e6e73]">{nextTask.description}</p><Link href={nextTask.href} className="group mt-3 inline-flex min-h-11 items-center gap-1.5 text-sm font-semibold text-[#0071e3]">Continue<ArrowRight className="size-4 transition-transform duration-150 group-hover:translate-x-0.5" /></Link></> : <><h2 className="mt-2 text-xl font-semibold tracking-[-0.035em]">You’re all set</h2><p className="mt-2 text-sm leading-5 text-[#6e6e73]">Your creator setup is complete. Keep publishing and checking reviews here.</p></>}
+          </section>
+
+      <section className="grid grid-cols-2 gap-3 xl:grid-cols-4" aria-label="Your creator summary">
         <MetricCard label="Paid Earnings" value={formatMoney(paidEarningsCents)} detail="Completed payouts" />
         <MetricCard label="In Review" value={formatNumber(activeSubmissions)} detail="Active submissions" />
         <MetricCard label="Approved" value={formatNumber(approvedSubmissions)} detail="Videos accepted" />
@@ -81,17 +83,14 @@ function OverviewContent() {
 
         <div className="grid gap-5 sm:grid-cols-2 xl:grid-cols-1">
           <section className="creator-surface flex min-h-52 flex-col p-5 sm:p-6">
-            <span className="grid size-10 place-items-center rounded-[14px] bg-[#e8f2ff] text-[#0071e3]"><BookOpenText className="size-[18px]" /></span>
+            <CreatorIcon name="guide" className="size-14" />
             <p className="mt-5 text-[11px] font-semibold uppercase tracking-[0.13em] text-[#86868b]">Program Guide</p>
             <h2 className="mt-2 text-xl font-semibold tracking-[-0.035em]">Publish with confidence</h2>
             <p className="mt-2 text-sm leading-5 text-[#6e6e73]">Review the looks-focused content rules, annotated examples, audience eligibility, and evidence requirements before posting.</p>
             <Link href="/creator/guide" className="group mt-auto inline-flex items-center gap-1.5 pt-5 text-sm font-semibold text-[#0071e3]">Open the guide<ArrowRight className="size-4 transition-transform duration-150 group-hover:translate-x-0.5" /></Link>
           </section>
 
-          <section className="creator-surface p-5 sm:p-6">
-            <p className="text-[11px] font-semibold uppercase tracking-[0.13em] text-[#86868b]">Next Up</p>
-            {nextTask ? <><h2 className="mt-2 text-xl font-semibold tracking-[-0.035em]">{nextTask.title}</h2><p className="mt-2 text-sm leading-5 text-[#6e6e73]">{nextTask.description}</p><Link href={nextTask.href} className="group mt-5 inline-flex items-center gap-1.5 text-sm font-semibold text-[#0071e3]">Continue<ArrowRight className="size-4 transition-transform duration-150 group-hover:translate-x-0.5" /></Link></> : <><h2 className="mt-2 text-xl font-semibold tracking-[-0.035em]">You’re all set</h2><p className="mt-2 text-sm leading-5 text-[#6e6e73]">Your creator setup is complete. Keep publishing and checking reviews here.</p></>}
-          </section>
+
         </div>
       </div>
 
@@ -103,7 +102,7 @@ function OverviewContent() {
         {latestSubmission ? <LatestSubmission submission={latestSubmission} /> : <EmptySubmission />}
       </section>
 
-      <section className="mt-9">
+      <details className="mt-6"><summary className="min-h-11 cursor-pointer py-3 text-sm font-semibold">Program-wide activity</summary>
         <div className="mb-4"><p className="text-[11px] font-semibold uppercase tracking-[0.13em] text-[#86868b]">Program Activity</p><h2 className="mt-2 text-xl font-semibold tracking-[-0.035em]">Across Mogging Creators</h2></div>
         <div className="grid overflow-hidden rounded-[22px] border border-black/[0.055] bg-white/80 sm:grid-cols-2 xl:grid-cols-4">
           <CommunityMetric label="Qualified Views" value={formatNumber(community.totalQualifiedViews)} detail="Reviewed creator views" icon={Eye} />
@@ -111,26 +110,25 @@ function OverviewContent() {
           <CommunityMetric label="Approved Videos" value={formatNumber(community.approvedSubmissions)} detail="Accepted submissions" icon={FileCheck2} />
           <CommunityMetric label="Customers Driven" value={formatNumber(community.totalFirstTimePaidCustomers)} detail="First-time paid customers" icon={UsersRound} />
         </div>
-      </section>
+      </details>
     </>
   )
 }
 
-type SetupTaskItem = { title: string; description: string; href: string; complete: boolean; icon: typeof BadgeCheck }
+type SetupTaskItem = { title: string; description: string; href: string; complete: boolean; icon: CreatorIconName }
 
 function LoadingState() {
   return <div className="grid min-h-[45vh] place-items-center"><div className="flex items-center gap-2.5 text-sm font-medium text-[#86868b]"><Loader2 className="size-4 animate-spin" />Loading overview</div></div>
 }
 
 function MetricCard({ label, value, detail }: { label: string; value: string; detail: string }) {
-  return <article className="creator-surface p-5"><p className="text-[13px] font-medium text-[#6e6e73]">{label}</p><p className="mt-3 text-[1.8rem] font-semibold leading-none tabular-nums tracking-[-0.05em]">{value}</p><p className="mt-2 text-[11px] text-[#86868b]">{detail}</p></article>
+  return <article className="creator-surface p-4 sm:p-5"><p className="text-[13px] font-medium text-[#6e6e73]">{label}</p><p className="mt-3 text-[1.8rem] font-semibold leading-none tabular-nums tracking-[-0.05em]">{value}</p><p className="mt-2 text-[11px] text-[#86868b]">{detail}</p></article>
 }
 
 function SetupTask({ task }: { task: SetupTaskItem }) {
-  const Icon = task.icon
   return (
     <Link href={task.href} className="group flex items-center gap-3.5 rounded-[16px] px-2 py-4 transition-[background-color,transform] duration-150 active:scale-[0.99] hover:bg-black/[0.025]">
-      <span className={cn('grid size-9 shrink-0 place-items-center rounded-full', task.complete ? 'bg-[#e5f7ea] text-[#248a3d]' : 'bg-[#f0f0f2] text-[#6e6e73]')}>{task.complete ? <Check className="size-4" /> : <Icon className="size-4" />}</span>
+      <span className={cn('grid size-10 shrink-0 place-items-center rounded-full', task.complete && 'bg-[#e5f7ea] text-[#248a3d]')}>{task.complete ? <Check className="size-4" /> : <CreatorIcon name={task.icon} className="size-9" />}</span>
       <span className="min-w-0 flex-1"><span className="block text-sm font-semibold tracking-[-0.01em]">{task.title}</span><span className="mt-1 block text-xs leading-5 text-[#6e6e73]">{task.description}</span></span>
       <span className={cn('hidden text-xs font-medium sm:block', task.complete ? 'text-[#248a3d]' : 'text-[#86868b]')}>{task.complete ? 'Complete' : 'Continue'}</span>
       <ArrowRight className="size-4 shrink-0 text-[#c7c7cc] transition-[color,transform] duration-150 group-hover:translate-x-0.5 group-hover:text-[#0071e3]" />
@@ -139,7 +137,7 @@ function SetupTask({ task }: { task: SetupTaskItem }) {
 }
 
 function LatestSubmission({ submission }: { submission: CreatorSubmission }) {
-  return <Link href="/creator/submissions" className="group mt-5 flex flex-col gap-3 rounded-[18px] bg-[#f5f5f7] p-4 transition-[background-color,transform] duration-150 active:scale-[0.99] hover:bg-[#eeeeF0] sm:flex-row sm:items-center"><span className="grid size-10 shrink-0 place-items-center rounded-[13px] bg-white text-[#0071e3] shadow-sm"><Clapperboard className="size-[18px]" /></span><span className="min-w-0 flex-1"><span className="block truncate text-sm font-semibold">{submission.title}</span><span className="mt-1 block text-xs text-[#6e6e73]">{submission.platform} · Submitted {formatDate(submission.createdAt)}</span></span><StatusPill status={submission.status} /><ArrowRight className="size-4 shrink-0 text-[#c7c7cc] transition-transform duration-150 group-hover:translate-x-0.5" /></Link>
+  return <Link href="/creator/submissions" className="group mt-5 flex flex-col gap-3 rounded-[18px] bg-[#f5f5f7] p-4 transition-[background-color,transform] duration-150 active:scale-[0.99] hover:bg-[#eeeeF0] sm:flex-row sm:items-center"><CreatorIcon name="video-submissions" className="size-12" /><span className="min-w-0 flex-1"><span className="block truncate text-sm font-semibold">{submission.title}</span><span className="mt-1 block text-xs text-[#6e6e73]">{submission.platform} · Submitted {formatDate(submission.createdAt)}</span></span><StatusPill status={submission.status} /><ArrowRight className="size-4 shrink-0 text-[#c7c7cc] transition-transform duration-150 group-hover:translate-x-0.5" /></Link>
 }
 
 function EmptySubmission() {

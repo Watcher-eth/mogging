@@ -12,43 +12,94 @@ export async function renderSlidePng(args: RenderArgs) {
 
 export async function renderSlideMp4(args: RenderArgs, onProgress?: (progress: number) => void) {
   await document.fonts.ready
-  if (typeof VideoEncoder === 'undefined' || typeof VideoFrame === 'undefined') throw new Error('MP4 export requires a browser with WebCodecs support')
+  const prepared = await prepareCanvas(args)
+  try {
+    return await encodeMp4(args, prepared, onProgress)
+  } catch (error) {
+    const mimeType = typeof MediaRecorder !== 'undefined'
+      ? ['video/mp4;codecs=avc1.42E028', 'video/mp4'].find((type) => MediaRecorder.isTypeSupported(type))
+      : undefined
+    if (!mimeType || typeof prepared.canvas.captureStream !== 'function') throw error
+    onProgress?.(0)
+    return recordMp4(args, prepared, mimeType, onProgress)
+  }
+}
+
+type PreparedCanvas = Awaited<ReturnType<typeof prepareCanvas>>
+
+async function encodeMp4(args: RenderArgs, prepared: PreparedCanvas, onProgress?: (progress: number) => void) {
+  if (typeof VideoEncoder === 'undefined' || typeof VideoFrame === 'undefined') throw new Error('Video export is not supported in this browser. Open this page in an up-to-date Safari or Chrome browser and try again.')
   const frameRate = 30
-  const durationMs = 4000
-  const frameCount = Math.round(durationMs / 1000 * frameRate)
-  const configCandidates: VideoEncoderConfig[] = [
-    { codec: 'avc1.42001f', width: args.width, height: args.height, bitrate: 8_000_000, framerate: frameRate, avc: { format: 'avc' } },
-    { codec: 'avc1.4d002a', width: args.width, height: args.height, bitrate: 8_000_000, framerate: frameRate, avc: { format: 'avc' } },
-  ]
+  const frameCount = 120
   let supportedConfig: VideoEncoderConfig | null = null
-  for (const candidate of configCandidates) {
+  // Level 4 supports all three 1080px output formats at 30fps; level 3.1 does not.
+  for (const codec of ['avc1.420028', 'avc1.4d002a']) {
+    const candidate: VideoEncoderConfig = { codec, width: args.width, height: args.height, bitrate: 8_000_000, framerate: frameRate, avc: { format: 'avc' } }
     const result = await VideoEncoder.isConfigSupported(candidate)
     if (result.supported) { supportedConfig = result.config ?? candidate; break }
   }
-  if (!supportedConfig) throw new Error('This browser cannot encode H.264 MP4 video')
+  if (!supportedConfig) throw new Error('This browser cannot export MP4. Open this page in an up-to-date Safari or Chrome browser and try again.')
 
-  const [{ Muxer, ArrayBufferTarget }, prepared] = await Promise.all([import('mp4-muxer'), prepareCanvas(args)])
+  const { Muxer, ArrayBufferTarget } = await import('mp4-muxer')
   const target = new ArrayBufferTarget()
   const muxer = new Muxer({ target, video: { codec: 'avc', width: args.width, height: args.height, frameRate }, fastStart: 'in-memory' })
   let encoderError: Error | null = null
   const encoder = new VideoEncoder({ output: (chunk, metadata) => muxer.addVideoChunk(chunk, metadata), error: (error) => { encoderError = error } })
-  encoder.configure(supportedConfig)
-  const frameDuration = 1_000_000 / frameRate
-
-  for (let index = 0; index < frameCount; index += 1) {
-    const timeMs = index / frameRate * 1000
-    await drawSlideFrame(prepared.ctx, args.slide, prepared.image, prepared.overlay, args.width, args.height, timeMs)
-    const frame = new VideoFrame(prepared.canvas, { timestamp: Math.round(index * frameDuration), duration: Math.round(frameDuration) })
-    encoder.encode(frame, { keyFrame: index % (frameRate * 2) === 0 })
-    frame.close()
-    if (index % 8 === 0) { onProgress?.(index / frameCount); await new Promise<void>((resolve) => window.setTimeout(resolve, 0)) }
+  try {
+    encoder.configure(supportedConfig)
+    const frameDuration = 1_000_000 / frameRate
+    for (let index = 0; index < frameCount; index += 1) {
+      if (encoderError) throw encoderError
+      await drawSlideFrame(prepared.ctx, args.slide, prepared.image, prepared.overlay, args.width, args.height, index / frameRate * 1000)
+      const frame = new VideoFrame(prepared.canvas, { timestamp: Math.round(index * frameDuration), duration: Math.round(frameDuration) })
+      try { encoder.encode(frame, { keyFrame: index % (frameRate * 2) === 0 }) } finally { frame.close() }
+      // Keep queued full-resolution frames bounded on phones and slower encoders.
+      if (encoder.encodeQueueSize >= 8) await encoder.flush()
+      if (index % 8 === 0) { onProgress?.(index / frameCount); await new Promise<void>((resolve) => window.setTimeout(resolve, 0)) }
+    }
+    await encoder.flush()
+    if (encoderError) throw encoderError
+    muxer.finalize()
+    onProgress?.(1)
+    return new Blob([target.buffer], { type: 'video/mp4' })
+  } finally {
+    if (encoder.state !== 'closed') encoder.close()
   }
-  await encoder.flush()
-  encoder.close()
-  if (encoderError) throw encoderError
-  muxer.finalize()
-  onProgress?.(1)
-  return new Blob([target.buffer], { type: 'video/mp4' })
+}
+
+async function recordMp4(args: RenderArgs, prepared: PreparedCanvas, mimeType: string, onProgress?: (progress: number) => void) {
+  await drawSlideFrame(prepared.ctx, args.slide, prepared.image, prepared.overlay, args.width, args.height, 0)
+  const stream = prepared.canvas.captureStream(30)
+  let recorder: MediaRecorder | undefined
+  try {
+    recorder = new MediaRecorder(stream, { mimeType, videoBitsPerSecond: 8_000_000 })
+    const chunks: Blob[] = []
+    let recordingError: Error | null = null
+    recorder.ondataavailable = (event) => { if (event.data.size) chunks.push(event.data) }
+    recorder.onerror = () => { recordingError = new Error('Video recording failed. Try again in Safari or Chrome.') }
+    const stopped = new Promise<void>((resolve) => { recorder!.onstop = () => resolve() })
+    recorder.start()
+    const start = performance.now()
+    let elapsed = 0
+    while (elapsed < 4000) {
+      if (recordingError) throw recordingError
+      if (recorder.state === 'inactive') throw new Error('Video recording stopped before it finished. Keep this tab open and try again.')
+      await drawSlideFrame(prepared.ctx, args.slide, prepared.image, prepared.overlay, args.width, args.height, elapsed)
+      onProgress?.(Math.min(elapsed / 4000, .99))
+      await new Promise<void>((resolve) => window.setTimeout(resolve, 1000 / 30))
+      elapsed = performance.now() - start
+    }
+    recorder.stop()
+    await stopped
+    if (recordingError) throw recordingError
+    const blob = new Blob(chunks, { type: 'video/mp4' })
+    if (!blob.size) throw new Error('The video was empty. Try again in Safari or Chrome.')
+    onProgress?.(1)
+    return blob
+  } finally {
+    if (recorder && recorder.state !== 'inactive') recorder.stop()
+    stream.getTracks().forEach((track) => track.stop())
+  }
 }
 
 export function downloadBlob(blob: Blob, filename: string) {
@@ -56,8 +107,10 @@ export function downloadBlob(blob: Blob, filename: string) {
   const anchor = document.createElement('a')
   anchor.href = url
   anchor.download = filename
+  document.body.appendChild(anchor)
   anchor.click()
-  window.setTimeout(() => URL.revokeObjectURL(url), 1000)
+  anchor.remove()
+  window.setTimeout(() => URL.revokeObjectURL(url), 60_000)
 }
 
 export function buildZip(files: Array<{ name: string; data: Uint8Array }>) {

@@ -2,17 +2,17 @@ import dynamic from 'next/dynamic'
 import Image from 'next/image'
 import { useEffect, useState, type ReactNode } from 'react'
 import { useReducedMotion } from 'motion/react'
-import { Clapperboard, CircleDollarSign, Users } from 'lucide-react'
+import { CreatorIcon, type CreatorIconName } from './creator-icon'
 
 const MeshGradient = dynamic(
   () => import('@paper-design/shaders-react').then((module) => module.MeshGradient),
   { ssr: false },
 )
 const colors = ['#ffffff', '#eeeeef', '#fafafa', '#e4e5e7', '#ffffff']
-const features = [
-  { label: 'Accounts', icon: Users },
-  { label: 'Submissions', icon: Clapperboard },
-  { label: 'Payouts', icon: CircleDollarSign },
+const features: ReadonlyArray<{ label: string; icon: CreatorIconName }> = [
+  { label: 'Accounts', icon: 'accounts' },
+  { label: 'Submissions', icon: 'video-submissions' },
+  { label: 'Payouts', icon: 'payouts' },
 ]
 
 export function CreatorAuthSurface({ children }: { children: ReactNode }) {
@@ -42,7 +42,7 @@ export function CreatorAuthSurface({ children }: { children: ReactNode }) {
       </div>
 
       <ul className="mt-8 flex flex-wrap justify-center gap-x-6 gap-y-3 text-xs font-medium text-[#6e6e73]">
-        {features.map(({ label, icon: Icon }) => <li key={label} className="flex items-center gap-2"><Icon className="size-3.5" aria-hidden="true" />{label}</li>)}
+        {features.map(({ label, icon }) => <li key={label} className="flex items-center gap-2"><CreatorIcon name={icon} className="size-6" />{label}</li>)}
       </ul>
     </section>
   )
