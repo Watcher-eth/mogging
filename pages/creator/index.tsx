@@ -32,7 +32,7 @@ function OverviewContent() {
     { title: 'Connect a social account', description: 'Add the TikTok or Instagram account you publish from.', href: '/creator/accounts', complete: data.socialAccounts.length > 0, icon: 'accounts' },
     { title: 'Add payout information', description: 'Choose PayPal or crypto for approved earnings.', href: '/creator/payout-information', complete: payoutReady, icon: 'payouts' },
     { title: 'Submit your first video', description: 'Share a published post and its analytics evidence.', href: '/creator/submit', complete: data.submissions.length > 0, icon: 'video-submissions' },
-    { title: 'Get your first approval', description: 'Follow review status and address any team notes.', href: '/creator/submissions', complete: data.submissions.some((submission) => submission.status === 'approved' || submission.status === 'paid'), icon: 'video-submissions' },
+    { title: 'Get your first approval', description: 'Follow review status and address any team notes.', href: '/creator/submissions', complete: data.submissions.some((submission) => submission.status === 'approved' || submission.status === 'paid'), icon: 'submissions' },
   ]
   const completedTasks = tasks.filter((task) => task.complete).length
   const paidEarningsCents = data.payments.filter((payment) => payment.status === 'paid').reduce((total, payment) => total + payment.amountCents, 0)
@@ -137,7 +137,7 @@ function SetupTask({ task }: { task: SetupTaskItem }) {
 }
 
 function LatestSubmission({ submission }: { submission: CreatorSubmission }) {
-  return <Link href="/creator/submissions" className="group mt-5 flex flex-col gap-3 rounded-[18px] bg-[#f5f5f7] p-4 transition-[background-color,transform] duration-150 active:scale-[0.99] hover:bg-[#eeeeF0] sm:flex-row sm:items-center"><CreatorIcon name="video-submissions" className="size-12" /><span className="min-w-0 flex-1"><span className="block truncate text-sm font-semibold">{submission.title}</span><span className="mt-1 block text-xs text-[#6e6e73]">{submission.platform} · Submitted {formatDate(submission.createdAt)}</span></span><StatusPill status={submission.status} /><ArrowRight className="size-4 shrink-0 text-[#c7c7cc] transition-transform duration-150 group-hover:translate-x-0.5" /></Link>
+  return <Link href="/creator/submissions" className="group mt-5 flex flex-col gap-3 rounded-[18px] bg-[#f5f5f7] p-4 transition-[background-color,transform] duration-150 active:scale-[0.99] hover:bg-[#eeeeF0] sm:flex-row sm:items-center"><CreatorIcon name="submissions" className="size-12" /><span className="min-w-0 flex-1"><span className="block truncate text-sm font-semibold">{submission.title}</span><span className="mt-1 block text-xs text-[#6e6e73]">{submission.platform} · Submitted {formatDate(submission.createdAt)}</span></span><StatusPill status={submission.status} /><ArrowRight className="size-4 shrink-0 text-[#c7c7cc] transition-transform duration-150 group-hover:translate-x-0.5" /></Link>
 }
 
 function EmptySubmission() {

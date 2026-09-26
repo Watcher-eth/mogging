@@ -11,7 +11,7 @@ const MeshGradient = dynamic(
 const colors = ['#ffffff', '#eeeeef', '#fafafa', '#e4e5e7', '#ffffff']
 const features: ReadonlyArray<{ label: string; icon: CreatorIconName }> = [
   { label: 'Accounts', icon: 'accounts' },
-  { label: 'Submissions', icon: 'video-submissions' },
+  { label: 'Submissions', icon: 'submissions' },
   { label: 'Payouts', icon: 'payouts' },
 ]
 

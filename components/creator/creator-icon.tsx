@@ -8,6 +8,7 @@ const creatorIconSources = {
   guide: '/creator-icons/guide.png',
   lock: '/creator-icons/lock.png',
   payouts: '/creator-icons/payouts.png',
+  submissions: '/creator-icons/submissions.png',
   'video-submissions': '/creator-icons/video-submissions.png',
 } as const
 

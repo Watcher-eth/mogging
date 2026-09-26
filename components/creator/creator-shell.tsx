@@ -5,7 +5,7 @@ import {
   LayoutDashboard,
   Loader2,
 } from 'lucide-react'
-import { useState, type ReactNode } from 'react'
+import { useEffect, useRef, useState, type ReactNode } from 'react'
 import { MoreHorizontal, LogOut } from 'lucide-react'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog'
 import { cn } from '@/lib/utils'
@@ -17,7 +17,7 @@ type CreatorNavItem = { href: string; label: string; icon?: typeof LayoutDashboa
 const creatorNav: ReadonlyArray<CreatorNavItem> = [
   { href: '/creator', label: 'Overview', icon: LayoutDashboard },
   { href: '/creator/submit', label: 'Submit', asset: 'video-submissions' },
-  { href: '/creator/submissions', label: 'Submissions', asset: 'video-submissions' },
+  { href: '/creator/submissions', label: 'Submissions', asset: 'submissions' },
   { href: '/creator/accounts', label: 'Accounts', asset: 'accounts' },
   { href: '/creator/payout-information', label: 'Payouts', asset: 'payouts' },
   { href: '/creator/cta-generator', label: 'CTA Studio', asset: 'cta' },
@@ -34,6 +34,12 @@ export function CreatorShell({ children, allowUnauthenticated = false }: { child
   const router = useRouter()
   const [moreOpen, setMoreOpen] = useState(false)
   const { status } = useSession()
+  const mobileNavRef = useRef<HTMLElement>(null)
+  useEffect(() => {
+    const nav = mobileNavRef.current
+    const active = nav?.querySelector<HTMLElement>('[aria-current="page"]')
+    if (nav && active) nav.scrollLeft = active.offsetLeft - nav.offsetLeft - (nav.clientWidth - active.clientWidth) / 2
+  }, [router.pathname, status])
 
   if (status === 'loading') {
     return (
@@ -83,11 +89,10 @@ export function CreatorShell({ children, allowUnauthenticated = false }: { child
         <button type="button" onClick={() => setMoreOpen(true)} aria-label="Creator menu" className="grid size-11 place-items-center rounded-full hover:bg-zinc-100"><MoreHorizontal className="size-5" /></button>
       </header>
 
-      <nav aria-label="Mobile creator navigation" className="creator-bottom-nav">
-        {creatorNav.slice(0, 3).map((item) => <Link key={item.href} href={item.href} aria-current={router.pathname === item.href ? 'page' : undefined} className={cn('grid min-h-14 place-content-center justify-items-center gap-1 text-xs', router.pathname === item.href ? 'font-semibold text-[#0071e3]' : 'text-zinc-600')}><CreatorNavIcon item={item} className="size-6" active={router.pathname === item.href} />{item.label === 'Overview' ? 'Home' : item.label}</Link>)}
-        <button type="button" onClick={() => setMoreOpen(true)} aria-haspopup="dialog" className={cn('grid min-h-14 place-content-center justify-items-center gap-1 text-xs', creatorNav.slice(3).some((item) => item.href === router.pathname) ? 'font-semibold text-[#0071e3]' : 'text-zinc-600')}><MoreHorizontal className="size-5" />More</button>
+      <nav ref={mobileNavRef} aria-label="Mobile creator navigation" className="creator-bottom-nav">
+        {creatorNav.map((item) => <Link key={item.href} href={item.href} aria-current={router.pathname === item.href ? 'page' : undefined} className={cn('creator-toolbar-item', router.pathname === item.href && 'creator-toolbar-item-active')}><CreatorNavIcon item={item} className="size-[22px]" active={router.pathname === item.href} /><span>{item.label}</span></Link>)}
       </nav>
-      <Dialog open={moreOpen} onOpenChange={setMoreOpen}><DialogContent className="creator-dialog p-5"><DialogHeader className="text-left"><DialogTitle>Creator Studio</DialogTitle><DialogDescription>Tools, accounts, and help.</DialogDescription></DialogHeader><nav aria-label="More creator pages" className="grid gap-1">{creatorNav.slice(3).map((item) => <Link key={item.href} href={item.href} onClick={() => setMoreOpen(false)} aria-current={router.pathname === item.href ? 'page' : undefined} className={cn('flex min-h-12 items-center gap-3 rounded-xl px-3 text-sm', router.pathname === item.href ? 'bg-blue-50 font-semibold text-blue-700' : 'hover:bg-zinc-50')}><CreatorNavIcon item={item} className="size-8" active={router.pathname === item.href} />{item.label}</Link>)}</nav><div className="flex items-center justify-between border-t pt-3 text-sm"><Link href="/support" onClick={() => setMoreOpen(false)} className="p-3">Support</Link><button className="flex min-h-11 items-center gap-2 px-3" onClick={() => void signOut({ callbackUrl: '/' })}><LogOut className="size-4" />Sign out</button></div></DialogContent></Dialog>
+      <Dialog open={moreOpen} onOpenChange={setMoreOpen}><DialogContent className="creator-dialog p-5"><DialogHeader className="text-left"><DialogTitle>Creator Studio</DialogTitle><DialogDescription>Account and support.</DialogDescription></DialogHeader><div className="flex items-center justify-between border-t pt-3 text-sm"><Link href="/support" onClick={() => setMoreOpen(false)} className="p-3">Support</Link><button className="flex min-h-11 items-center gap-2 px-3" onClick={() => void signOut({ callbackUrl: '/' })}><LogOut className="size-4" />Sign out</button></div></DialogContent></Dialog>
       <main className="creator-page creator-enter" key={router.pathname}>{children}</main>
     </div>
   )
