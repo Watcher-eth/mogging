@@ -226,8 +226,8 @@ export default function AppFunnelPage() {
   return (
     <>
       <SeoHead
-        title="Mogging App | AI Face Analysis & Personalized Routines"
-        description="Discover Mogging, the AI face analysis app. Get detailed facial reports, personalized routines, and track your progress. Download Mogging for iPhone."
+        title="Mogging App | Face Analysis & Personalized Routines"
+        description="Discover Mogging, the comprehensive face analysis app. Get detailed facial reports, personalized routines, and track your progress. Download Mogging for iPhone."
         path="/"
         structuredData={{
           '@context': 'https://schema.org',
@@ -251,12 +251,12 @@ export default function AppFunnelPage() {
               <span>View Mogging on the App Store</span>
             </a>
 
-            <p className="mt-10 font-mono text-sm font-bold uppercase tracking-normal text-zinc-500 sm:text-base">Mogging · AI face analysis</p>
+            <p className="mt-10 font-mono text-sm font-bold uppercase tracking-normal text-zinc-500 sm:text-base">Mogging · Comprehensive face analysis</p>
             <h1 className="mt-5 max-w-6xl text-center text-[3.6rem] font-semibold leading-[0.9] tracking-[-0.075em] text-black sm:text-[7rem] lg:text-[8.6rem]">
               Mogging. Your face, in focus.
             </h1>
             <p className="mt-7 max-w-3xl text-center text-xl leading-8 text-zinc-500 sm:text-2xl sm:leading-9">
-              Explore your facial features with an AI report, a detailed face map, and a personalized routine. Keep track of your photos and progress in the Mogging app.
+              Explore your facial features with a comprehensive report, a detailed face map, and a personalized routine. Keep track of your photos and progress in the Mogging app.
             </p>
           </div>
 
@@ -370,7 +370,7 @@ export default function AppFunnelPage() {
         <section aria-labelledby="about-mogging" className="mx-auto max-w-5xl space-y-10 px-5 py-16 sm:px-10">
           <div>
             <h2 id="about-mogging" className="text-3xl font-semibold tracking-tight sm:text-4xl">What does the Mogging app do?</h2>
-            <p className="mt-5 text-lg leading-8 text-zinc-600">Mogging turns a face photo into an AI-generated report with feature breakdowns. The mobile app brings reports, personalized routines, and evaluation history together. You can also try <Link href="/analysis" className="text-black underline underline-offset-4">face analysis on the web</Link>, explore <Link href="/battle" className="text-black underline underline-offset-4">mog battles</Link>, or view the <Link href="/leaderboard" className="text-black underline underline-offset-4">leaderboard</Link>.</p>
+            <p className="mt-5 text-lg leading-8 text-zinc-600">Mogging turns a face photo into a comprehensive report with feature breakdowns. The mobile app brings reports, personalized routines, and evaluation history together. You can also try <Link href="/analysis" className="text-black underline underline-offset-4">face analysis on the web</Link>, explore <Link href="/battle" className="text-black underline underline-offset-4">mog battles</Link>, or view the <Link href="/leaderboard" className="text-black underline underline-offset-4">leaderboard</Link>.</p>
             <p className="mt-4 text-lg leading-8 text-zinc-600">A photo-based score is an estimate influenced by lighting, pose, and image quality. It is not a diagnosis or an objective measure of your attractiveness. Repeated photos are most useful when taken under similar conditions.</p>
             <Link href="/how-face-analysis-works" className="mt-4 inline-block font-medium underline underline-offset-4">How our face analysis works and its limitations</Link>
           </div>
