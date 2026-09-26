@@ -1,3 +1,4 @@
+import * as Avatar from '@radix-ui/react-avatar'
 import { creatorAccountLabel } from '@/components/creator/types'
 import { useEffect, useRef, useState, type ChangeEvent } from 'react'
 import {
@@ -5,7 +6,7 @@ import {
   FileVideo,
   Loader2,
   Play,
-  ShieldCheck,
+  Check,
   Smartphone,
   UploadCloud,
   X,
@@ -137,7 +138,13 @@ export function AccountVerificationDialog({ account, open, onOpenChange, onSubmi
         <div className="border-b border-zinc-200 px-6 py-5 sm:px-7">
           <DialogHeader>
             <div className="flex items-start gap-3 pr-8">
-              <span className="grid size-11 shrink-0 place-items-center rounded-2xl bg-zinc-950 text-white"><ShieldCheck className="size-5" /></span>
+              <span className="relative size-11 shrink-0">
+                <Avatar.Root className="grid size-11 overflow-hidden rounded-full bg-sky-50">
+                  <Avatar.Image src={account.avatarUrl || undefined} alt={`${creatorAccountLabel(account)} profile photo`} className="size-full object-cover" />
+                  <Avatar.Fallback className="grid size-full place-items-center text-sm font-semibold text-sky-600">{creatorAccountLabel(account).replace(/^@/, '').charAt(0).toUpperCase()}</Avatar.Fallback>
+                </Avatar.Root>
+                <span aria-hidden="true" className="absolute -bottom-0.5 -left-0.5 grid size-5 place-items-center rounded-full border-2 border-white bg-sky-400 text-white"><Check className="size-3" strokeWidth={3} /></span>
+              </span>
               <div><DialogTitle className="text-2xl">Verify {creatorAccountLabel(account)}</DialogTitle><DialogDescription className="mt-1">Audience verification for your connected {platformLabel} account.</DialogDescription></div>
             </div>
           </DialogHeader>
@@ -173,7 +180,7 @@ export function AccountVerificationDialog({ account, open, onOpenChange, onSubmi
         </div>
 
         <div className="mx-6 rounded-2xl border border-red-200 bg-red-50 p-5 sm:mx-7 sm:p-6">
-          <div className="flex items-start gap-3"><span className="grid size-9 shrink-0 place-items-center rounded-xl bg-red-100 text-red-700"><AlertTriangle className="size-4" /></span><div><p className="text-sm font-semibold text-red-950">Physical Recording Required</p><p className="mt-2 text-xs leading-5 text-red-800">Use a second phone or camera to film your main phone while your hand navigates through every required analytics screen. Screen recordings, cuts, edits, hidden usernames, and altered analytics are not accepted.</p><ul className="mt-3 grid gap-1.5 text-xs leading-5 text-red-800"><li>• Your hand and physical phone must remain visible.</li><li>• Record one continuous take with no cuts or edits.</li><li>• Keep the account username and analytics values readable.</li></ul></div></div>
+          <div className="flex items-start gap-3"><span className="grid size-9 shrink-0 place-items-center rounded-xl bg-red-100 text-red-700"><AlertTriangle className="size-4" /></span><div><p className="text-sm font-semibold text-red-950">Physical Recording Required</p><p className="mt-2 text-xs leading-5 text-red-800">Use a second phone, tablet, or camera to film your main phone or TikTok on a desktop or laptop while you navigate through every required analytics screen. If you only have one phone, use it to film TikTok on your computer. Screen recordings, cuts, edits, hidden usernames, and altered analytics are not accepted.</p><ul className="mt-3 grid gap-1.5 text-xs leading-5 text-red-800"><li>• The physical phone, tablet, or computer screen being filmed must remain visible.</li><li>• Record one continuous take with no cuts or edits.</li><li>• Keep the account username and analytics values readable.</li></ul></div></div>
         </div>
 
         <div className="grid gap-3 px-6 py-6 sm:px-7">
