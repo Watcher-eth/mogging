@@ -185,6 +185,7 @@ function loadImage(dataUrl: string) {
     const image = new Image()
     image.onload = () => resolve(image)
     image.onerror = () => reject(new Error('Unable to load image for landmark extraction'))
+    image.crossOrigin = 'anonymous'
     image.src = dataUrl
   })
 }

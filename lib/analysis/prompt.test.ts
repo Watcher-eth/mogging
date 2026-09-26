@@ -6,7 +6,7 @@ test('analysis prompt encodes the research-weighted rubric', () => {
   const prompt = buildAnalysisPrompt('male')
 
   assert.match(prompt, /Gender scoring mode: male/i)
-  assert.match(ANALYSIS_SYSTEM_PROMPT, /PSL is internally calibrated on 0-8/i)
+  assert.match(ANALYSIS_SYSTEM_PROMPT, /PSL is internally calibrated on 1-8/i)
   assert.match(prompt, /Do not use the golden ratio/i)
   assert.match(prompt, /never classify or imply an apparent age below 18/i)
   assert.match(prompt, /"id": "facial-fat"/i)

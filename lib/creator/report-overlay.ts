@@ -26,7 +26,7 @@ export function createReportOverlay(slide: ContentSlide, image: GeneratorImage, 
   return { size, primitives, dots, value: `${score.trim() || '—'} / 10` }
 }
 
-export type ReportOverlay = ReturnType<typeof createReportOverlay>
+export type ReportOverlay = Omit<ReturnType<typeof createReportOverlay>, 'value'> & { value?: string }
 
 export function drawReportOverlay(ctx: CanvasRenderingContext2D, overlay: ReportOverlay, width: number, timeMs: number, labels = true) {
   ctx.save()
@@ -77,7 +77,7 @@ export function drawReportOverlay(ctx: CanvasRenderingContext2D, overlay: Report
       circle(ctx, 2.2 * scale)
       ctx.fill()
     } else {
-      const paths = primitivePaths(primitive)
+      const paths = preparedPaths(primitive)
       if (primitive.kind === 'region' || (primitive.kind === 'box' && primitive.fillOpacity)) {
         ctx.globalAlpha *= progress
         ctx.fillStyle = `rgba(255,255,255,${primitive.fillOpacity ?? .08})`
@@ -122,15 +122,36 @@ function primitivePaths(primitive: Drawing): PixelPoint[][] {
   return [primitive.kind === 'region' || primitive.closed ? [...points, points[0]] : points]
 }
 
-// Reveal by physical path length, like Skia's Path.end, rather than vertex count.
-function tracePaths(ctx: CanvasRenderingContext2D, paths: PixelPoint[][], progress: number) {
-  let remaining = paths.reduce((sum, points) => sum + points.slice(1).reduce((length, point, index) => length + Math.hypot(point.x - points[index].x, point.y - points[index].y), 0), 0) * progress
-  for (const points of paths) {
+type PreparedPaths = { paths: { points: PixelPoint[]; lengths: number[] }[]; length: number }
+const pathCache = new WeakMap<Drawing, PreparedPaths>()
+
+function preparedPaths(primitive: Drawing): PreparedPaths {
+  const cached = pathCache.get(primitive)
+  if (cached) return cached
+  let length = 0
+  const paths = primitivePaths(primitive).map((points) => {
+    const lengths = points.slice(1).map((point, index) => {
+      const segment = Math.hypot(point.x - points[index].x, point.y - points[index].y)
+      length += segment
+      return segment
+    })
+    return { points, lengths }
+  })
+  const prepared = { paths, length }
+  pathCache.set(primitive, prepared)
+  return prepared
+}
+
+// Reveal by physical path length, like Skia's Path.end. Geometry is immutable
+// between resizes, so each segment length is calculated once, not every frame.
+function tracePaths(ctx: CanvasRenderingContext2D, prepared: PreparedPaths, progress: number) {
+  let remaining = prepared.length * progress
+  for (const { points, lengths } of prepared.paths) {
     if (!points.length || remaining <= 0) break
     ctx.moveTo(points[0].x, points[0].y)
     for (let index = 1; index < points.length; index++) {
       const from = points[index - 1], to = points[index]
-      const length = Math.hypot(to.x - from.x, to.y - from.y)
+      const length = lengths[index - 1]
       const fraction = length ? Math.min(1, remaining / length) : 1
       ctx.lineTo(from.x + (to.x - from.x) * fraction, from.y + (to.y - from.y) * fraction)
       remaining -= length
@@ -147,15 +168,21 @@ function drawLabel(ctx: CanvasRenderingContext2D, label: Extract<ResolvedPrimiti
   let x = clamp(label.point.x - (variant === 'node' ? width / 2 : 0), 10, Math.max(10, overlay.size.width - width - 10))
   let y = clamp(label.point.y - (variant === 'node' ? height / 2 : 0), 10, Math.max(10, overlay.size.height - height - 10))
   if (variant === 'tag' && label.align) {
-    const outside = width * .28
-    const edge = right ? overlay.size.width - width + outside : -outside
-    const limit = right ? overlay.size.width * .63 : overlay.size.width * .37 - width
-    x = clamp(right ? Math.max(edge, limit) : Math.min(edge, limit), -outside, overlay.size.width - width + outside)
     y = clamp(label.point.y - height * .36, 10, Math.max(10, overlay.size.height - height - 10))
   }
   const duration = clamp(label.animation?.duration ?? 720, 680, 980)
   const direction = variant === 'tag' && !label.align ? -1 : right ? 1 : -1
-  const rows = [label.title, overlay.value]
+  const rows = [label.title, overlay.value ?? label.value].filter((row): row is string => Boolean(row))
+  // Keep the text readable inside narrow web panels even when the mobile tag
+  // alignment deliberately pushes its background beyond the image edge.
+  if (variant === 'tag') {
+    const rowWidth = Math.max(...rows.map((row, index) => {
+      ctx.font = `600 ${index ? 11 : 10}px -apple-system, BlinkMacSystemFont, Arial, sans-serif`
+      return Math.min(140, ctx.measureText(row.toUpperCase()).width + 16)
+    }))
+    const rightEdge = Math.max(10, overlay.size.width - rowWidth - 10)
+    x = label.align ? right ? rightEdge : 10 : clamp(x, 10, rightEdge)
+  }
   rows.forEach((row, index) => {
     const delay = (label.animation?.delay ?? 0) + index * 150
     const progress = enter(time, delay, duration)

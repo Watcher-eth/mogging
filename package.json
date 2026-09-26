@@ -28,6 +28,7 @@
     "@aws-sdk/s3-request-presigner": "3.1038.0",
     "@mediapipe/tasks-vision": "^0.10.35",
     "@number-flow/react": "^0.6.0",
+    "@paper-design/shaders-react": "^0.0.81",
     "@radix-ui/react-avatar": "^1.1.11",
     "@radix-ui/react-dialog": "^1.1.15",
     "@radix-ui/react-label": "^2.1.8",

@@ -1,3 +1,4 @@
+import { pslToOverallScore } from '@/lib/analysis/score-scale'
 import { estimatedPopulationTopPercent } from '@/lib/sharing/population-percentile'
 import { ImageResponse } from '@vercel/og'
 import type { NextApiRequest, NextApiResponse } from 'next'
@@ -229,7 +230,7 @@ function formatScore(score: number | null) {
 }
 
 function toDisplayScore(score: number | null) {
-  return typeof score === 'number' ? Math.max(0, Math.min(10, (Math.max(0, Math.min(8, score)) / 8) * 10)) : null
+  return typeof score === 'number' ? pslToOverallScore(score) : null
 }
 
 function readReportTotalScore(metrics: unknown, pslScore: number | null) {

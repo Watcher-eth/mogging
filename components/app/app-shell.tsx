@@ -87,6 +87,7 @@ export function AppShell({ children }: AppShellProps) {
   const { data: session, status } = useSession()
   const router = useRouter()
   const pendingAuthRedirect = getSafeAuthRedirect(router.query.next)
+  const creatorSignIn = router.pathname.startsWith('/creator') && status === 'unauthenticated'
   const immersive = router.pathname === '/' || router.pathname === '/analysis' || router.pathname === '/leaderboard' || router.pathname === '/battle' || router.pathname === '/app' || router.pathname === '/app/handoff'
   const [loginOpen, setLoginOpen] = useState(false)
   const [accountOpen, setAccountOpen] = useState(false)
@@ -174,7 +175,7 @@ export function AppShell({ children }: AppShellProps) {
   }
 
   return (
-    <div className={immersive ? 'min-h-screen bg-white' : 'min-h-screen bg-background'}>
+    <div className={creatorSignIn ? 'flex min-h-dvh flex-col bg-background' : immersive ? 'min-h-screen bg-white' : 'min-h-screen bg-background'}>
       <header className="sticky top-0 z-40 bg-white/90 backdrop-blur-xl">
         <div className="grid h-16 w-full grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-2 px-5 sm:h-20 sm:grid-cols-[1fr_auto_1fr] sm:gap-4 sm:px-10">
           <Link href="/" className="text-xl font-semibold leading-none tracking-normal text-black transition-transform duration-200 ease-out hover:scale-[1.015] active:scale-[0.995] sm:text-4xl">
@@ -268,7 +269,7 @@ export function AppShell({ children }: AppShellProps) {
         </div>
       </header>
 
-      <main className={immersive ? 'w-full' : 'mx-auto w-full max-w-6xl px-4 py-8 sm:px-6'}>
+      <main className={creatorSignIn ? 'flex w-full flex-1 flex-col' : immersive ? 'w-full' : 'mx-auto w-full max-w-6xl px-4 py-8 sm:px-6'}>
         {children}
       </main>
 

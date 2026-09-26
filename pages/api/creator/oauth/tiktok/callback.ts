@@ -1,3 +1,4 @@
+import { creatorTikTokFields } from '@/lib/creator/tiktok-permissions'
 import type { NextApiRequest, NextApiResponse } from 'next'
 import { exchangeTikTokAuthorizationCode, getTikTokUserInfo } from '@/lib/auth/tiktok-api'
 import { getAuthSession } from '@/lib/auth/session'
@@ -10,17 +11,6 @@ import {
   readCreatorTikTokState,
 } from '@/lib/creator/tiktok-oauth'
 import { env } from '@/lib/env'
-
-const creatorProfileFields = [
-  'open_id',
-  'union_id',
-  'avatar_url',
-  'avatar_url_100',
-  'avatar_large_url',
-  'display_name',
-  'username',
-  'profile_deep_link',
-] as const
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   if (req.method !== 'GET') return res.status(405).end()
@@ -48,9 +38,9 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       code,
       redirectUri: getCreatorTikTokRedirectUri(req),
     })
-    const profile = await getTikTokUserInfo(tokens.access_token, creatorProfileFields)
+    const profile = await getTikTokUserInfo(tokens.access_token, creatorTikTokFields(tokens.scope))
     const user = profile.data?.user
-    if (!user?.username) return redirect('profile_scope_required')
+    if (!user) return redirect('error')
 
     await addCreatorTikTokOAuthAccount(session.user.id, {
       accessToken: tokens.access_token,
@@ -59,11 +49,11 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       refreshToken: tokens.refresh_token,
       scope: tokens.scope,
       tokenType: tokens.token_type,
-      username: user.username,
-      profileUrl: user.profile_deep_link || `https://www.tiktok.com/@${user.username}`,
+      username: user.username || undefined,
+      profileUrl: user.profile_deep_link || undefined,
       avatarUrl: user.avatar_large_url || user.avatar_url_100 || user.avatar_url,
     })
-    return redirect('connected')
+    return redirect(user.username ? 'connected' : 'basic_connected')
   } catch (error) {
     console.error('TikTok creator OAuth failed', error instanceof Error ? error.message : error)
     return redirect('error')

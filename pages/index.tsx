@@ -226,8 +226,8 @@ export default function AppFunnelPage() {
   return (
     <>
       <SeoHead
-        title="Mogging: Meaning, Face Analysis & the Mogging App"
-        description="Learn what mogging means, explore AI face analysis, and discover the Mogging app for facial reports, personalized routines, and progress tracking."
+        title="Mogging App | AI Face Analysis & Personalized Routines"
+        description="Discover Mogging, the AI face analysis app. Get detailed facial reports, personalized routines, and track your progress. Download Mogging for iPhone."
         path="/"
         structuredData={{
           '@context': 'https://schema.org',
@@ -257,10 +257,6 @@ export default function AppFunnelPage() {
             </h1>
             <p className="mt-7 max-w-3xl text-center text-xl leading-8 text-zinc-500 sm:text-2xl sm:leading-9">
               Explore your facial features with an AI report, a detailed face map, and a personalized routine. Keep track of your photos and progress in the Mogging app.
-            </p>
-            <p className="mt-6 max-w-2xl text-center text-base leading-7 text-zinc-600">
-              Looking for the meaning? Mogging is internet slang for outshining someone, often in appearance.{' '}
-              <Link href="/what-is-mogging" className="font-medium text-black underline underline-offset-4">Read the mogging guide</Link>.
             </p>
           </div>
 
@@ -373,12 +369,7 @@ export default function AppFunnelPage() {
         </section>
         <section aria-labelledby="about-mogging" className="mx-auto max-w-5xl space-y-10 px-5 py-16 sm:px-10">
           <div>
-            <h2 id="about-mogging" className="text-3xl font-semibold tracking-tight sm:text-4xl">What is mogging?</h2>
-            <p className="mt-5 text-lg leading-8 text-zinc-600">Mogging means standing out in comparison with someone else. In memes and social media comments, it often refers to looks, height, physique, or style. “Mog” is the verb; “mogged” describes being outshone. These are subjective slang terms, not scientific measurements.</p>
-            <Link href="/what-is-mogging" className="mt-4 inline-block font-medium underline underline-offset-4">Mogging meaning, origin, and examples</Link>
-          </div>
-          <div>
-            <h2 className="text-3xl font-semibold tracking-tight sm:text-4xl">What does the Mogging app do?</h2>
+            <h2 id="about-mogging" className="text-3xl font-semibold tracking-tight sm:text-4xl">What does the Mogging app do?</h2>
             <p className="mt-5 text-lg leading-8 text-zinc-600">Mogging turns a face photo into an AI-generated report with feature breakdowns. The mobile app brings reports, personalized routines, and evaluation history together. You can also try <Link href="/analysis" className="text-black underline underline-offset-4">face analysis on the web</Link>, explore <Link href="/battle" className="text-black underline underline-offset-4">mog battles</Link>, or view the <Link href="/leaderboard" className="text-black underline underline-offset-4">leaderboard</Link>.</p>
             <p className="mt-4 text-lg leading-8 text-zinc-600">A photo-based score is an estimate influenced by lighting, pose, and image quality. It is not a diagnosis or an objective measure of your attractiveness. Repeated photos are most useful when taken under similar conditions.</p>
             <Link href="/how-face-analysis-works" className="mt-4 inline-block font-medium underline underline-offset-4">How our face analysis works and its limitations</Link>

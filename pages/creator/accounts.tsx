@@ -42,6 +42,10 @@ function AccountsContent() {
     if (result === 'connected') {
       toast.success('TikTok connected. Add analytics to verify it')
       void mutate()
+    } else if (result === 'basic_connected') {
+      toast.success('TikTok authorized. Add your profile link to continue verification')
+      setPlatform('tiktok')
+      setConnectOpen(true)
     } else if (result === 'cancelled') {
       toast.error('TikTok connection was cancelled')
     } else if (result === 'not_configured') {

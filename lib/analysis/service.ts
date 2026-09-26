@@ -2,7 +2,8 @@ import { z } from 'zod'
 import { db, schema } from '@/lib/db'
 import { finishEvaluation, lockEvaluationReservation } from '@/lib/payments/entitlements'
 
-const pslScoreSchema = z.number().min(0).max(8)
+import { pslScoreSchema } from './schema'
+
 const categoryScoreSchema = z.number().min(0).max(10)
 
 export const saveAnalysisResultSchema = z.object({

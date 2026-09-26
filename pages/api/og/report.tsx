@@ -1,3 +1,4 @@
+import { pslToOverallScore } from '@/lib/analysis/score-scale'
 import { ImageResponse } from '@vercel/og'
 import type { NextApiRequest, NextApiResponse } from 'next'
 import { parseFaceLandmarksPayload, type FaceLandmarksPayload, type NormalizedPoint } from '@/lib/analysis/landmarks'
@@ -33,7 +34,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     const share = await getShareByToken(token)
     const landmarks = parseFaceLandmarksPayload(share.analysis.landmarks)
     const imageUrl = absoluteImageUrl(share.photo.imageUrl, req)
-    const pslScore = formatScore(toDisplayScore(share.analysis.pslScore))
+    const overallScore = formatScore(toDisplayScore(share.analysis.pslScore))
     const eyeOverlay = getEyeOverlay(landmarks, share.analysis.pslScore)
     const symmetryOverlay = getSymmetryOverlay(landmarks)
     const displayName = (share.photo.name || share.owner?.name || 'Mogging report').toUpperCase()
@@ -212,7 +213,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
                   width: 192,
                 }}
               >
-                PSL CALIBRATION
+                MOGGING OVERALL
               </div>
             ) : null}
             {eyeOverlay ? (
@@ -247,7 +248,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
                 position: 'absolute',
               }}
             >
-              <span style={{ fontSize: 118, fontWeight: 800, letterSpacing: '-8px' }}>{pslScore}</span>
+              <span style={{ fontSize: 118, fontWeight: 800, letterSpacing: '-8px' }}>{overallScore}</span>
               <span style={{ fontSize: 48, fontWeight: 800, letterSpacing: '-3px', marginBottom: 6, marginLeft: 10 }}>
                 /10
               </span>
@@ -318,7 +319,7 @@ function formatScore(score: number | null) {
 }
 
 function toDisplayScore(score: number | null) {
-  return typeof score === 'number' ? Math.max(0, Math.min(10, (Math.max(0, Math.min(8, score)) / 8) * 10)) : null
+  return typeof score === 'number' ? pslToOverallScore(score) : null
 }
 
 function formatMetric(score: number | null) {

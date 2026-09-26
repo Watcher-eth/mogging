@@ -1,3 +1,4 @@
+import { clampPslScore } from '@/lib/analysis/score-scale'
 import { Loader2, RefreshCw, SlidersHorizontal, X } from 'lucide-react'
 import Image from 'next/image'
 import { motion } from 'motion/react'
@@ -725,7 +726,7 @@ function BattleCandidate({
 
       <div className={`grid grid-cols-3 gap-1 border-y border-zinc-300 py-2 sm:gap-0 sm:py-3 ${side === 'right' ? 'sm:text-right' : ''}`}>
         <ScoreMetric value={displayRating} />
-        <Metric label="PSL" value={formatPsl(photo.pslScore)} />
+        <Metric label="PSL / 8" value={formatPsl(photo.pslScore)} />
         <Metric label="Win" value={`${winRate}%`} />
       </div>
     </article>
@@ -860,6 +861,6 @@ function BattleState({
 }
 
 function formatPsl(score?: number | null) {
-  if (typeof score !== 'number') return '--'
-  return score.toFixed(1)
+  if (typeof score !== 'number' || !Number.isFinite(score)) return '--'
+  return clampPslScore(score).toFixed(1)
 }

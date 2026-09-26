@@ -42,8 +42,8 @@ export const ANALYSIS_SYSTEM_PROMPT = `You analyze face photos for an entertainm
 Return only valid JSON. No markdown. No prose outside JSON.
 Assess visible facial aesthetics only. Do not infer identity, ethnicity, morality, intelligence, health diagnosis, fertility, or real-world worth.
 Do not claim objective health, fertility, morality, competence, intelligence, or medical status from appearance.
-PSL is internally calibrated on 0-8: ordinary faces 3.5-5.2, attractive 5.5-6.8, model-tier 7.0-7.9, 8.0 only near-ideal. All report category "score" values, including overall, must be 0-10 display scores.
-If no real human face is visible, set faceDetected=false, use empty metricScores/categories, and return empty landmarks.`
+PSL is internally calibrated on 1-8: ordinary faces 3.5-5.2, attractive 5.5-6.8, model-tier 7.0-7.9, 8.0 only near-ideal. All report category "score" values, including overall, must be 0-10 display scores.
+If no real human face is visible, set faceDetected=false and pslScore=null, use empty metricScores/categories, and return empty landmarks.`
 
 export function buildAnalysisPrompt(
   gender: AnalyzeFaceInput['gender'],
@@ -98,7 +98,7 @@ Hard requirements:
 - Face-shape features should cover facial thirds, facial width-to-height balance, cheekbone width or projection, and chin taper when visible.
 - Mouth features should cover mouth width, upper-to-lower lip balance, philtrum or lower-third fit, and resting-line symmetry when visible.
 - Symmetry feature values should quantify or describe drift direction and severity, not just say centered/aligned.
-- report.potential must estimate the user's realistic PSL potential after improving the 1-4 highest-leverage visible/cosmetic areas. Keep the score on the 0-8 PSL scale and never more than 1.2 points above pslScore.
+- report.potential must estimate the user's realistic PSL potential after improving the 1-4 highest-leverage visible/cosmetic areas. Keep the score on the 1-8 PSL scale and never more than 1.2 points above pslScore.
 - Every subtitle must be under 10 words.
 - Every explanation must be personalized to the visible face in this exact image and ${explanationLength}.
 - Every recommendation must name a specific feature or finding from that category in this image and give one or two concrete actions suited to it. Stay under 220 characters. Say what to do and how or when; never merely repeat the explanation or tell everyone to retake photos.

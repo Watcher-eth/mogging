@@ -1,3 +1,4 @@
+import { clampPslScore } from '@/lib/analysis/score-scale'
 import * as DialogPrimitive from '@radix-ui/react-dialog'
 import { AnimatePresence, LayoutGroup, motion } from 'motion/react'
 import { Calendar, LinkIcon, MapPin, Palette, SlidersHorizontal, Trophy, VenusAndMars, X } from 'lucide-react'
@@ -254,7 +255,7 @@ export default function LeaderboardPage() {
               <span>Rank</span>
               <span>Profile</span>
               <span className="text-right">Score</span>
-              <span className="hidden text-right sm:block">PSL</span>
+              <span className="hidden text-right sm:block">PSL / 8</span>
               <span className="hidden text-right sm:block">Social</span>
             </div>
 
@@ -348,7 +349,7 @@ function TopEntry({ elevated, entry, index, onOpen }: { elevated?: boolean; entr
           <div className="min-w-0">
             <h3 className="truncate text-xl font-semibold tracking-[-0.05em]">{entry.name || 'Anonymous'}</h3>
             <p className="mt-1 font-mono text-xs uppercase tracking-[0.12em] text-zinc-500">
-              PSL / {formatPsl(entry.pslScore)}
+              PSL {formatPsl(entry.pslScore)} / 8
             </p>
           </div>
           <div className="text-right text-3xl font-semibold tracking-[-0.06em]">
@@ -670,9 +671,9 @@ function LeaderboardProfileDialog({
                 transition={{ duration: 0.2, ease: [0.22, 1, 0.36, 1] }}
               />
             </DialogPrimitive.Overlay>
-            <DialogPrimitive.Content asChild forceMount onOpenAutoFocus={(event) => event.preventDefault()}>
+            <DialogPrimitive.Content asChild forceMount aria-describedby={undefined}>
               <motion.div
-                className="fixed inset-0 z-50 grid place-items-center overflow-y-auto p-2 outline-none sm:p-4"
+                className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto overscroll-contain p-2 pb-[max(0.5rem,env(safe-area-inset-bottom))] outline-none sm:p-4"
                 layoutRoot
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
@@ -680,7 +681,7 @@ function LeaderboardProfileDialog({
                 transition={{ duration: 0.18, ease: [0.22, 1, 0.36, 1] }}
               >
                 <motion.div
-                  className="relative w-full max-w-[1180px] overflow-hidden rounded-[10px] border border-white bg-white text-black shadow-[0_34px_120px_rgba(0,0,0,0.28)] sm:rounded-[12px]"
+                  className="relative my-auto w-full max-w-[1180px] shrink-0 overflow-hidden rounded-[10px] border border-white bg-white text-black shadow-[0_34px_120px_rgba(0,0,0,0.28)] sm:rounded-[12px]"
                   layout
                   style={{ borderRadius: 12 }}
                   transition={{ layout: { type: 'spring', stiffness: 230, damping: 27, mass: 0.95 } }}
@@ -709,7 +710,7 @@ function LeaderboardProfileDialog({
                         {loading && !profile ? (
                           <div className="h-full w-full animate-pulse bg-zinc-200" />
                         ) : (
-                          <Image className="object-cover grayscale-[0.06]" src={heroImage} alt={name} fill sizes="(min-width: 1024px) 42vw, 92vw" />
+                          <Image className="object-contain grayscale-[0.06]" src={heroImage} alt={name} fill sizes="(min-width: 1024px) 42vw, 92vw" />
                         )}
                       </motion.div>
 
@@ -826,8 +827,8 @@ function formatSmallMetric(score?: number | null) {
 }
 
 function formatPsl(score?: number | null) {
-  if (typeof score !== 'number') return '-'
-  return score.toFixed(1)
+  if (typeof score !== 'number' || !Number.isFinite(score)) return '-'
+  return clampPslScore(score).toFixed(1)
 }
 
 function parseSocial(social?: string | null) {

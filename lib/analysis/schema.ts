@@ -1,5 +1,7 @@
 import { z } from 'zod'
 
+export const pslScoreSchema = z.number().min(1).max(8)
+
 export const metricCategorySchema = z.enum([
   'symmetry',
   'proportionality',
@@ -48,7 +50,7 @@ export const reportCategorySchema = z.object({
 })
 
 export const reportPotentialSchema = z.object({
-  score: z.number().min(0).max(8),
+  score: pslScoreSchema,
   label: z.string().min(1).max(80),
   summary: z.string().min(1).max(360),
   focusAreas: z.array(z.string().min(1).max(80)).min(1).max(4),
@@ -62,7 +64,7 @@ export const analysisReportSchema = z.object({
 
 export const analysisProviderResultSchema = z.object({
   faceDetected: z.boolean(),
-  pslScore: z.number().min(0).max(8).nullable().optional(),
+  pslScore: pslScoreSchema.nullable().optional(),
   harmonyScore: z.number().min(0).max(10),
   symmetryScore: z.number().min(0).max(10).nullable().optional(),
   proportionalityScore: z.number().min(0).max(10).nullable().optional(),

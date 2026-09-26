@@ -1,3 +1,4 @@
+import { creatorTikTokScopes } from '@/lib/creator/tiktok-permissions'
 import type { NextApiRequest, NextApiResponse } from 'next'
 import { ApiError, handleApiError, json, methodNotAllowed } from '@/lib/api/http'
 import { getAuthSession } from '@/lib/auth/session'
@@ -22,7 +23,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     const authorizeUrl = new URL(TIKTOK_AUTHORIZATION_URL)
     authorizeUrl.searchParams.set('client_key', env.TIKTOK_CLIENT_KEY)
     authorizeUrl.searchParams.set('response_type', 'code')
-    authorizeUrl.searchParams.set('scope', 'user.info.basic,user.info.profile')
+    authorizeUrl.searchParams.set('scope', creatorTikTokScopes())
     authorizeUrl.searchParams.set('redirect_uri', getCreatorTikTokRedirectUri(req))
     authorizeUrl.searchParams.set('state', state)
     return json(res, 200, { authorizeUrl: authorizeUrl.toString() })

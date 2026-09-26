@@ -72,8 +72,8 @@ export type CreatorTikTokOAuthInput = {
   refreshToken?: string
   scope?: string
   tokenType?: string
-  username: string
-  profileUrl: string
+  username?: string
+  profileUrl?: string
   avatarUrl?: string | null
 }
 
@@ -194,8 +194,8 @@ export async function addCreatorSocialAccount(userId: string, input: CreatorSoci
 
 export async function addCreatorTikTokOAuthAccount(userId: string, input: CreatorTikTokOAuthInput) {
   const profile = await getOrCreateCreatorProfile(userId)
-  const normalizedHandle = input.username.replace(/^@/, '').trim().toLowerCase()
-  if (!/^[a-z0-9._]{2,40}$/.test(normalizedHandle)) {
+  const normalizedHandle = input.username?.replace(/^@/, '').trim().toLowerCase()
+  if (normalizedHandle !== undefined && !/^[a-z0-9._]{2,40}$/.test(normalizedHandle)) {
     throw new CreatorServiceError(400, 'TikTok returned an invalid username')
   }
 
@@ -246,9 +246,12 @@ export async function addCreatorTikTokOAuthAccount(userId: string, input: Creato
       set: tokenValues,
     })
 
+    // Basic scope proves the provider identity, not ownership of a typed handle.
+    if (!normalizedHandle) return null
+
     const socialValues = {
       handle: normalizedHandle,
-      profileUrl: input.profileUrl,
+      profileUrl: input.profileUrl || `https://www.tiktok.com/@${normalizedHandle}`,
       avatarUrl: input.avatarUrl || null,
       connectionMethod: 'oauth',
       providerAccountId: input.openId,
@@ -266,7 +269,7 @@ export async function addCreatorTikTokOAuthAccount(userId: string, input: Creato
     }).returning()
     return account
   })
-  return { ...account, trackingLink: await ensureCreatorTrackingLink(account.id) }
+  return account ? { ...account, trackingLink: await ensureCreatorTrackingLink(account.id) } : null
 }
 
 export async function submitCreatorAccountAnalyticsEvidence(userId: string, input: z.infer<typeof creatorAccountAnalyticsSubmissionSchema>) {

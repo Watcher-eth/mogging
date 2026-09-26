@@ -1,3 +1,4 @@
+import { clampPslScore, pslToOverallScore } from './score-scale'
 import type { AnalysisProviderResult, AnalysisReport, MetricCategory } from './schema'
 
 const reportCategoryIds = [
@@ -16,14 +17,6 @@ const reportCategoryIds = [
 
 function clampCategoryScore(score: number) {
   return Math.max(0, Math.min(10, Math.round(score * 10) / 10))
-}
-
-function clampPslScore(score: number) {
-  return Math.max(0, Math.min(8, Math.round(score * 10) / 10))
-}
-
-function pslToCategoryScore(score: number) {
-  return clampCategoryScore((clampPslScore(score) / 8) * 10)
 }
 
 function visibleAgeSignalScore(result: AnalysisProviderResult) {
@@ -198,7 +191,7 @@ export function normalizeAnalysisReport(
     potential: report.potential ?? (result ? createPotentialRubric(result, clampPslScore(pslScore)) : undefined),
     categories: categories.map((category) => {
       if (category!.id === 'overall') {
-        const overallScore = pslToCategoryScore(pslScore)
+        const overallScore = pslToOverallScore(pslScore)
         return {
           ...category!,
           score: overallScore,
@@ -410,7 +403,7 @@ export function createFallbackAnalysisReport(result: AnalysisProviderResult, psl
         title: 'Overall',
         subtitle: 'Final calibrated assessment',
         scoreLabel: 'Overall score',
-        score: pslToCategoryScore(pslScore),
+        score: pslToOverallScore(pslScore),
         features: [
           ...createOverallFeatureGrid((id, fallback) => {
             const scores: Record<string, number> = {
@@ -425,7 +418,7 @@ export function createFallbackAnalysisReport(result: AnalysisProviderResult, psl
               'sun-damage': (skin + presentation) / 2,
             }
             return clampCategoryScore(scores[id] ?? fallback)
-          }, pslToCategoryScore(pslScore)),
+          }, pslToOverallScore(pslScore)),
         ],
         explanation: 'The overall score is the public report score on a 0 to 10 scale. PSL calibration remains a secondary rubric signal for comparison contexts.',
         recommendation: 'Improve the lowest-scoring category first; one focused change beats scattered glow-up advice.',

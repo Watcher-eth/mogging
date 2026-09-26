@@ -145,3 +145,22 @@ describe('mobile report overlay parity', () => {
     expect(point.point.y).toBeCloseTo(1150)
   })
 })
+
+describe('responsive report anchoring', () => {
+  for (const image of [{ width: 900, height: 1600 }, { width: 1600, height: 900 }]) {
+    for (const viewport of [{ width: 350, height: 520 }, { width: 640, height: 800 }, { width: 760, height: 420 }]) {
+      test(`eye line follows cover crop: ${image.width}x${image.height} into ${viewport.width}x${viewport.height}`, () => {
+        const landmarks = enrichFaceLandmarks({ ...fixture, image })
+        const overlay = resolveOverlayPreset({ preset: reportOverlayPresets.eyes, landmarks, viewport, imageSize: image, fit: 'cover' })
+        const line = overlay.primitives.find((primitive) => primitive.id === 'eye-line')
+        if (line?.kind !== 'line') throw new Error('Missing detected eye line')
+        const scale = Math.max(viewport.width / image.width, viewport.height / image.height)
+        const eye = fixture.anchors.leftEyeOuter!
+        expect(line.fromPoint.x).toBeCloseTo((viewport.width - image.width * scale) / 2 + eye.x * image.width * scale)
+        expect(line.fromPoint.y).toBeCloseTo((viewport.height - image.height * scale) / 2 + eye.y * image.height * scale)
+        // The old report incorrectly used percentages of the viewport itself.
+        expect(Math.abs(line.fromPoint.x - eye.x * viewport.width) + Math.abs(line.fromPoint.y - eye.y * viewport.height)).toBeGreaterThan(0.1)
+      })
+    }
+  }
+})

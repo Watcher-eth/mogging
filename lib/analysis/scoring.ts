@@ -1,3 +1,4 @@
+import { clampPslScore } from './score-scale'
 import type { AnalysisProviderResult, MetricCategory } from './schema'
 
 export function computePslScore(
@@ -42,16 +43,12 @@ export function computePslScore(
     presentation * 0.06
 
   const signalScore = raw * 0.8
-  if (typeof result.pslScore !== 'number') return clampPsl(signalScore)
+  if (typeof result.pslScore !== 'number') return clampPslScore(signalScore)
 
   // Vision models tend to compress ratings into the attractive end of the
   // scale. Anchor their estimate to the independently weighted signals so a
   // high score still requires broad agreement across the face.
   const blended = result.pslScore * 0.45 + signalScore * 0.55
   const highTailGrounded = blended <= 6.5 ? blended : 6.5 + (blended - 6.5) * 0.55
-  return clampPsl(highTailGrounded)
-}
-
-function clampPsl(score: number) {
-  return Math.max(0, Math.min(8, Math.round(score * 10) / 10))
+  return clampPslScore(highTailGrounded)
 }
