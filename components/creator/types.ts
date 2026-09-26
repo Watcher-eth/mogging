@@ -47,7 +47,8 @@ export type CreatorPayment = {
 export type CreatorSocialAccount = {
   id: string
   platform: 'tiktok' | 'instagram'
-  handle: string
+  handle: string | null
+  displayName?: string | null
   profileUrl: string | null
   avatarUrl: string | null
   connectionMethod: string
@@ -85,4 +86,8 @@ export type CreatorDashboard = {
   featureFlags: {
     creatorAccountRequiredForSubmission: boolean
   }
+}
+
+export function creatorAccountLabel(account: Pick<CreatorSocialAccount, 'handle' | 'displayName' | 'platform'>) {
+  return account.handle ? `@${account.handle}` : account.displayName || (account.platform === 'tiktok' ? 'TikTok account' : 'Instagram account')
 }

@@ -655,7 +655,8 @@ export const creatorSocialAccounts = pgTable(
       .notNull()
       .references(() => creatorProfiles.id, { onDelete: 'cascade' }),
     platform: creatorSocialPlatformEnum('platform').notNull(),
-    handle: text('handle').notNull(),
+    handle: text('handle'),
+    displayName: text('display_name'),
     profileUrl: text('profile_url'),
     avatarUrl: text('avatar_url'),
     connectionMethod: text('connection_method').notNull().default('manual'),

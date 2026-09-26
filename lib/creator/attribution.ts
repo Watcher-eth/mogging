@@ -52,7 +52,7 @@ export async function ensureCreatorTrackingLink(socialAccountId: string) {
   })
   if (!account) throw new Error('Creator social account not found')
 
-  const safeHandle = account.handle.toLowerCase().replace(/[^a-z0-9._-]+/g, '-').replace(/^-+|-+$/g, '')
+  const safeHandle = (account.handle || 'account').toLowerCase().replace(/[^a-z0-9._-]+/g, '-').replace(/^-+|-+$/g, '')
   const slug = `${account.platform}-${safeHandle}-${account.id.slice(0, 8)}`
   const iosAppStoreUrl = buildIosAppStoreUrl(slug)
   const [link] = await db.insert(schema.creatorTrackingLinks).values({

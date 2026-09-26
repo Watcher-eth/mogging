@@ -53,7 +53,8 @@ export type AdminAccount = {
   creatorName: string
   creatorEmail: string
   platform: 'tiktok' | 'instagram'
-  handle: string
+  handle: string | null
+  displayName?: string | null
   profileUrl: string | null
   connectionMethod: 'manual' | 'oauth'
   analyticsVideoUrl: string | null

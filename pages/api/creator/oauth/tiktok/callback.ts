@@ -50,10 +50,11 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       scope: tokens.scope,
       tokenType: tokens.token_type,
       username: user.username || undefined,
+      displayName: user.display_name || undefined,
       profileUrl: user.profile_deep_link || undefined,
       avatarUrl: user.avatar_large_url || user.avatar_url_100 || user.avatar_url,
     })
-    return redirect(user.username ? 'connected' : 'basic_connected')
+    return redirect('connected')
   } catch (error) {
     console.error('TikTok creator OAuth failed', error instanceof Error ? error.message : error)
     return redirect('error')

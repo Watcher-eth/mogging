@@ -1,3 +1,4 @@
+import { creatorAccountLabel } from '@/components/creator/types'
 import { useEffect, useRef, useState, type ChangeEvent } from 'react'
 import {
   AlertTriangle,
@@ -118,7 +119,7 @@ export function AccountVerificationDialog({ account, open, onOpenChange, onSubmi
       await apiPatch('/api/creator/accounts', { accountId: account.id, ...analytics })
       await onSubmitted()
       onOpenChange(false)
-      toast.success(`@${account.handle} verification submitted`)
+      toast.success(`${creatorAccountLabel(account)} verification submitted`)
     } catch (error) {
       toast.error(error instanceof ApiClientError ? error.message : 'Could not submit account verification')
     } finally {
@@ -137,7 +138,7 @@ export function AccountVerificationDialog({ account, open, onOpenChange, onSubmi
           <DialogHeader>
             <div className="flex items-start gap-3 pr-8">
               <span className="grid size-11 shrink-0 place-items-center rounded-2xl bg-zinc-950 text-white"><ShieldCheck className="size-5" /></span>
-              <div><DialogTitle className="text-2xl">Verify @{account.handle}</DialogTitle><DialogDescription className="mt-1">Audience verification for your connected {platformLabel} account.</DialogDescription></div>
+              <div><DialogTitle className="text-2xl">Verify {creatorAccountLabel(account)}</DialogTitle><DialogDescription className="mt-1">Audience verification for your connected {platformLabel} account.</DialogDescription></div>
             </div>
           </DialogHeader>
         </div>

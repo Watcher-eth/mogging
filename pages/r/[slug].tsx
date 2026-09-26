@@ -65,17 +65,17 @@ export const getServerSideProps: GetServerSideProps<CreatorLinkPageProps> = asyn
   const webUrl = new URL('/', 'https://www.mogging.com')
   const account = await import('@/lib/db').then(({ db, schema }) => db.query.creatorSocialAccounts.findFirst({
     where: (accounts, { eq }) => eq(accounts.id, attribution.link.socialAccountId),
-    columns: { handle: true, platform: true },
+    columns: { handle: true, displayName: true, platform: true },
   }))
   if (!account) return { notFound: true }
   webUrl.searchParams.set('utm_source', account.platform)
   webUrl.searchParams.set('utm_medium', attribution.click.isBot ? 'preview' : 'creator')
   webUrl.searchParams.set('utm_campaign', attribution.link.slug)
-  webUrl.searchParams.set('utm_content', account.handle)
+  webUrl.searchParams.set('utm_content', account.handle || attribution.link.socialAccountId)
   webUrl.searchParams.set('attribution_token', attribution.token)
   return {
     props: {
-      creator: account.handle,
+      creator: account.handle || account.displayName || 'TikTok creator',
       platform: account.platform,
       deepLinkUrl: attribution.deepLinkUrl,
       iosAppStoreUrl: attribution.link.iosAppStoreUrl,

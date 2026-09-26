@@ -1,3 +1,4 @@
+import { creatorAccountLabel } from '@/components/creator/types'
 import { useEffect, useMemo, useState, type FormEvent } from 'react'
 import { useRouter } from 'next/router'
 import { useSession } from 'next-auth/react'
@@ -39,13 +40,9 @@ function AccountsContent() {
   useEffect(() => {
     if (!router.isReady || typeof router.query.tiktok !== 'string') return
     const result = router.query.tiktok
-    if (result === 'connected') {
+    if (result === 'connected' || result === 'basic_connected') {
       toast.success('TikTok connected. Add analytics to verify it')
       void mutate()
-    } else if (result === 'basic_connected') {
-      toast.success('TikTok authorized. Add your profile link to continue verification')
-      setPlatform('tiktok')
-      setConnectOpen(true)
     } else if (result === 'cancelled') {
       toast.error('TikTok connection was cancelled')
     } else if (result === 'not_configured') {
@@ -64,7 +61,7 @@ function AccountsContent() {
     try {
       await apiRequest(`/api/creator/accounts?id=${encodeURIComponent(account.id)}`, { method: 'DELETE' })
       await mutate()
-      toast.success(`@${account.handle} removed`)
+      toast.success(`${creatorAccountLabel(account)} removed`)
     } catch (error) {
       toast.error(error instanceof ApiClientError ? error.message : 'Could not remove account')
     }
@@ -149,9 +146,9 @@ function ConnectAccountDialog({ open, onOpenChange, platform, onPlatformChange, 
             <div className="rounded-[18px] bg-[#f5f5f7] p-5 text-center">
               <span className="mx-auto grid size-12 place-items-center overflow-hidden rounded-[16px] bg-white shadow-sm"><SocialPlatformLogo platform="tiktok" className="size-9" /></span>
               <h3 className="mt-4 text-sm font-semibold">Connect With TikTok</h3>
-              <p className="mx-auto mt-2 max-w-sm text-xs leading-5 text-zinc-500">Log in with TikTok to connect your username and public profile. Analytics verification happens after connection.</p>
+              <p className="mx-auto mt-2 max-w-sm text-xs leading-5 text-zinc-500">Log in with TikTok to connect your account. Analytics verification happens after connection.</p>
               <Button type="button" className="mt-5 h-11 w-full rounded-full" disabled={disabled || busy} onClick={() => void connectTikTok()}>{connectingOauth ? <Loader2 className="animate-spin" /> : <SocialPlatformLogo platform="tiktok" className="size-5" />}{connectingOauth ? 'Connecting…' : 'Continue With TikTok'}</Button>
-              <p className="mt-3 flex items-center justify-center gap-1.5 text-[11px] text-zinc-400"><ShieldCheck className="size-3.5" />Secure OAuth · Username and Profile Access Only</p>
+              <p className="mt-3 flex items-center justify-center gap-1.5 text-[11px] text-zinc-400"><ShieldCheck className="size-3.5" />Secure OAuth · Profile and Engagement Statistics</p>
             </div>
           ) : (
             <>
@@ -168,7 +165,7 @@ function ConnectAccountDialog({ open, onOpenChange, platform, onPlatformChange, 
 
 function ConnectedAccountCard({ account, onVerify, onRemove }: { account: CreatorSocialAccount; onVerify: () => void; onRemove: () => void }) {
   const needsVerification = !account.analyticsConfirmedAt
-  return <article className="creator-surface p-4"><div className="flex flex-col gap-4 sm:flex-row sm:items-center"><span className="grid size-11 shrink-0 place-items-center overflow-hidden rounded-[14px] bg-[#f5f5f7]"><SocialPlatformLogo platform={account.platform} className="size-7" /></span><div className="min-w-0 flex-1"><p className="truncate text-sm font-semibold">@{account.handle}</p><p className="mt-1 flex items-center gap-2 text-xs capitalize text-[#6e6e73]"><span>{account.platform}</span>{account.connectionMethod === 'oauth' ? <span className="inline-flex items-center gap-1 font-medium text-[#248a3d]"><ShieldCheck className="size-3" />OAuth Connected</span> : <span className="font-medium">Profile Connected</span>}</p>{account.reviewNote ? <p className="mt-2 text-xs text-[#8a5a00]">{account.reviewNote}</p> : null}</div><div className="flex items-center gap-2"><AccountStatus status={account.status} needsVerification={needsVerification} />{needsVerification || account.status === 'missing_information' ? <Button type="button" className="h-9 rounded-full px-4" onClick={onVerify}><ShieldCheck />{needsVerification ? 'Verify Account' : 'Update Verification'}</Button> : null}<button type="button" onClick={onRemove} className="grid size-9 shrink-0 place-items-center rounded-full text-[#86868b] transition-[background-color,color,transform] duration-150 hover:bg-black/[0.05] hover:text-[#d70015] active:scale-[0.96]" aria-label={`Remove @${account.handle}`}><Trash2 className="size-4" /></button></div></div><AccountTrackingLink url={account.trackingLink?.publicUrl} className="mt-4" /><p className="mt-2 text-[11px] leading-5 text-[#86868b]">Use this account-specific link in @{account.handle}’s bio. It works while verification is pending.</p></article>
+  return <article className="creator-surface p-4"><div className="flex flex-col gap-4 sm:flex-row sm:items-center"><span className="grid size-11 shrink-0 place-items-center overflow-hidden rounded-[14px] bg-[#f5f5f7]"><SocialPlatformLogo platform={account.platform} className="size-7" /></span><div className="min-w-0 flex-1"><p className="truncate text-sm font-semibold">{creatorAccountLabel(account)}</p><p className="mt-1 flex items-center gap-2 text-xs capitalize text-[#6e6e73]"><span>{account.platform}</span>{account.connectionMethod === 'oauth' ? <span className="inline-flex items-center gap-1 font-medium text-[#248a3d]"><ShieldCheck className="size-3" />OAuth Connected</span> : <span className="font-medium">Profile Connected</span>}</p>{account.reviewNote ? <p className="mt-2 text-xs text-[#8a5a00]">{account.reviewNote}</p> : null}</div><div className="flex items-center gap-2"><AccountStatus status={account.status} needsVerification={needsVerification} />{needsVerification || account.status === 'missing_information' ? <Button type="button" className="h-9 rounded-full px-4" onClick={onVerify}><ShieldCheck />{needsVerification ? 'Verify Account' : 'Update Verification'}</Button> : null}<button type="button" onClick={onRemove} className="grid size-9 shrink-0 place-items-center rounded-full text-[#86868b] transition-[background-color,color,transform] duration-150 hover:bg-black/[0.05] hover:text-[#d70015] active:scale-[0.96]" aria-label={`Remove ${creatorAccountLabel(account)}`}><Trash2 className="size-4" /></button></div></div><AccountTrackingLink url={account.trackingLink?.publicUrl} className="mt-4" /><p className="mt-2 text-[11px] leading-5 text-[#86868b]">Use this account-specific link in {creatorAccountLabel(account)}’s bio. It works while verification is pending.</p></article>
 }
 
 function AccountStatus({ status, needsVerification }: { status: CreatorSocialAccount['status']; needsVerification: boolean }) {

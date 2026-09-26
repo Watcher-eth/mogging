@@ -239,6 +239,13 @@
       "when": 1790208000000,
       "tag": "0034_referral_scan_reward",
       "breakpoints": true
+    },
+    {
+      "idx": 34,
+      "version": "7",
+      "when": 1790395753141,
+      "tag": "0034_creator_oauth_identity",
+      "breakpoints": true
     }
   ]
 }

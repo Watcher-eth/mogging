@@ -73,6 +73,7 @@ export type CreatorTikTokOAuthInput = {
   scope?: string
   tokenType?: string
   username?: string
+  displayName?: string
   profileUrl?: string
   avatarUrl?: string | null
 }
@@ -213,7 +214,10 @@ export async function addCreatorTikTokOAuthAccount(userId: string, input: Creato
       throw new CreatorServiceError(409, 'This TikTok account is already connected to another creator')
     }
 
-    const handleAccount = accounts.find((account) => account.platform === 'tiktok' && account.handle === normalizedHandle)
+    const handleAccount = normalizedHandle ? accounts.find((account) => account.platform === 'tiktok' && account.handle === normalizedHandle) : undefined
+    if (handleAccount?.providerAccountId && handleAccount.providerAccountId !== input.openId) {
+      throw new CreatorServiceError(409, 'This username is connected to a different TikTok account')
+    }
     const accountToUpdate = existingSocialAccount || handleAccount
     const tiktokAccounts = accounts.filter((account) => account.platform === 'tiktok')
     if (!accountToUpdate && (accounts.length >= 10 || tiktokAccounts.length >= 5)) {
@@ -246,12 +250,12 @@ export async function addCreatorTikTokOAuthAccount(userId: string, input: Creato
       set: tokenValues,
     })
 
-    // Basic scope proves the provider identity, not ownership of a typed handle.
-    if (!normalizedHandle) return null
-
     const socialValues = {
-      handle: normalizedHandle,
-      profileUrl: input.profileUrl || `https://www.tiktok.com/@${normalizedHandle}`,
+      // OAuth proves the provider identity even when profile scope is unavailable.
+      // Preserve known handles on reconnect; never invent a username from display_name.
+      handle: normalizedHandle || accountToUpdate?.handle || null,
+      displayName: input.displayName || accountToUpdate?.displayName || null,
+      profileUrl: input.profileUrl || (normalizedHandle ? `https://www.tiktok.com/@${normalizedHandle}` : accountToUpdate?.profileUrl || null),
       avatarUrl: input.avatarUrl || null,
       connectionMethod: 'oauth',
       providerAccountId: input.openId,
@@ -269,7 +273,7 @@ export async function addCreatorTikTokOAuthAccount(userId: string, input: Creato
     }).returning()
     return account
   })
-  return account ? { ...account, trackingLink: await ensureCreatorTrackingLink(account.id) } : null
+  return { ...account, trackingLink: await ensureCreatorTrackingLink(account.id) }
 }
 
 export async function submitCreatorAccountAnalyticsEvidence(userId: string, input: z.infer<typeof creatorAccountAnalyticsSubmissionSchema>) {
