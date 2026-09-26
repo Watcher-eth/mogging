@@ -156,7 +156,6 @@ export default function LeaderboardPage() {
       <SeoHead
         title="Mogging Leaderboard"
         description="See the top-ranked mogging photos and compare global leaderboard rankings."
-        imagePath="/leaderboard.png"
         path="/leaderboard"
       />
       <LayoutGroup id="leaderboard-profile">

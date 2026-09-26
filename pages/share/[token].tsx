@@ -12,7 +12,6 @@ type SharePageProps = {
 }
 
 export default function SharePage({ share }: SharePageProps) {
-  const ogImagePath = `/api/og/report?token=${encodeURIComponent(share.token)}`
   const title = `${share.photo.name || 'Mogging'} PSL ${share.analysis.pslScore?.toFixed(1) ?? '--'} / 8`
 
   return (
@@ -20,7 +19,6 @@ export default function SharePage({ share }: SharePageProps) {
       <SeoHead
         title={title}
         description={share.analysis.tierDescription || 'A Mogging PSL report with facial feature annotations.'}
-        imagePath={ogImagePath}
         path={`/share/${share.token}`}
       />
 

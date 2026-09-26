@@ -1,5 +1,14 @@
 import { describe, expect, test } from 'bun:test'
-import { canonicalUrl, publicPaths, robotsForPath, serializeJsonLd } from './seo'
+import { canonicalUrl, publicPaths, robotsForPath, serializeJsonLd, socialImageForPath } from './seo'
+
+test('all routes use Og1 except the leaderboard', () => {
+  for (const path of [...publicPaths.filter(path => path !== '/leaderboard'), '/creator/cta-generator', '/share/[token]', '/404', '/new-route']) {
+    expect(socialImageForPath(path)).toEqual({ path: '/Og1.png', width: 862, height: 644 })
+  }
+  for (const path of ['/leaderboard', '/leaderboard/', '/leaderboard?period=week']) {
+    expect(socialImageForPath(path).path).toBe('/leaderboard.png')
+  }
+})
 
 describe('search indexing policy', () => {
   test('consolidates tracking, fragments, trailing slashes and the app alias', () => {

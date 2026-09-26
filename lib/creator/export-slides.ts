@@ -139,7 +139,7 @@ export async function prepareCanvas({ slide, images, width, height }: RenderArgs
   const ctx = canvas.getContext('2d', { alpha: false }); if (!ctx) throw new Error('Canvas export is unavailable')
   const source = images.find((item) => item.id === slide.imageId && item.status === 'ready')
   if (!source) throw new Error('This template’s photo is no longer available. Add a clear photo and generate the set again.')
-  const [image, brand] = await Promise.all([loadImage(source.dataUrl), slide.templateId === 'cta' || slide.templateId === 'psl' ? loadRevealBrand() : null, slide.templateId === 'score-potential' ? loadShareFont() : null])
+  const [image, brand] = await Promise.all([loadImage(source.dataUrl), ['editorial', 'cta', 'psl'].includes(slide.templateId) ? loadRevealBrand() : null, slide.templateId === 'score-potential' ? loadShareFont() : null])
   const viewport = slide.templateId === 'cta' ? { width: REVEAL_PORTRAIT_SIZE, height: REVEAL_PORTRAIT_SIZE } : { width, height }
   const overlay = slide.templateId === 'score-potential'
     ? { size: { width, height }, primitives: resolveShareOverallOverlay(enrichFaceLandmarks(source.landmarks), width, height), dots: [], value: '' }
@@ -168,22 +168,29 @@ export function drawSlideFrame(ctx: CanvasRenderingContext2D, slide: ContentSlid
 function drawTemplate(ctx: CanvasRenderingContext2D, slide: ContentSlide, width: number, height: number, timeMs: number, brand: RevealBrand | null) {
   const margin = width * 0.07
   if (slide.templateId === 'score-rows') drawHeader(ctx, slide.eyebrow, slide.templateId, margin, width, height, enter(timeMs, 580, 520))
-  if (slide.templateId === 'editorial') drawEditorial(ctx, slide, width, height, timeMs)
+  if (slide.templateId === 'editorial') drawEditorial(ctx, slide, width, height, timeMs, brand)
   else if (slide.templateId === 'psl') drawPsl(ctx, slide, width, height, timeMs, brand)
   else if (slide.templateId === 'score-rows') drawScoreRows(ctx, slide, width, height, timeMs)
 }
 
-function drawEditorial(ctx: CanvasRenderingContext2D, slide: ContentSlide, width: number, height: number, timeMs: number) {
-  const margin = width * .07, size = width * .095
+function drawEditorial(ctx: CanvasRenderingContext2D, slide: ContentSlide, width: number, height: number, timeMs: number, brand: RevealBrand | null) {
+  drawBrandPair(ctx, brand, width, height, timeMs)
+  const size = width * .085
   const headline = slide.headline.trim() && slide.headline.length <= 48 ? slide.headline : 'Time to ascend.'
   const lines = wrapText(ctx, headline, width * .86, `700 ${size}px Arial`).slice(0, 2)
   withEnter(ctx, enter(timeMs, 850, 520), () => {
-    ctx.fillStyle = '#fff'; ctx.font = `700 ${size}px Arial`
-    lines.forEach((line, index) => ctx.fillText(line, margin, height * .88 - lines.length * size * 1.04 + index * size * 1.04))
+    ctx.fillStyle = '#fff'; ctx.font = `700 ${size}px Arial`; ctx.textAlign = 'center'
+    lines.forEach((line, index) => ctx.fillText(line, width / 2, height * .78 - lines.length * size * 1.04 + index * size * 1.04))
   })
   withEnter(ctx, enter(timeMs, 1050, 520), () => {
-    ctx.font = `600 ${width * .03}px Arial`; ctx.fillStyle = 'rgba(255,255,255,.8)'
-    ctx.fillText('mogging.com', margin, height * .91)
+    ctx.textAlign = 'center'
+    for (const [index, score] of [slide.currentScore, slide.potentialScore].entries()) {
+      const x = width * (index === 0 ? .3 : .7)
+      ctx.font = `600 ${width * .025}px Arial`; ctx.fillStyle = 'rgba(255,255,255,.7)'
+      ctx.fillText(index === 0 ? 'CURRENT' : 'POTENTIAL', x, height * .825)
+      ctx.font = `700 ${width * .105}px Arial`; ctx.fillStyle = index === 0 ? '#fff' : '#67e8f9'
+      ctx.fillText(displayScore(score), x, height * .855)
+    }
   })
 }
 
@@ -216,8 +223,9 @@ function drawMobileShare(ctx: CanvasRenderingContext2D, slide: ContentSlide, ove
     if (percent !== null) {
       ctx.fillStyle = 'rgba(255,255,255,.14)'; ctx.strokeStyle = 'rgba(255,255,255,.35)'; ctx.lineWidth = scale
       roundedRect(ctx, 410 * scale, 100 * scale, 260 * scale, 82 * scale, 48 * scale); ctx.fill(); ctx.stroke()
-      text(`Top ${percent}%`, width / 2, 112 * scale, 28, 'center')
-      text('ESTIMATED', width / 2, 149 * scale, 16, 'center', .72)
+      ctx.textBaseline = 'middle'
+      text(`Top ${percent}%`, width / 2, 141 * scale, 28, 'center')
+      ctx.textBaseline = 'top'
     }
   })
   const valueTop = height - (shareCardLayout.footerBottom + shareCardLayout.scoreSize * .82) * scale
@@ -231,14 +239,22 @@ function drawMobileShare(ctx: CanvasRenderingContext2D, slide: ContentSlide, ove
 
 function formatShareScore(value: string) { return value.trim() && Number.isFinite(Number(value)) ? Number(value).toFixed(1) : '--' }
 
-function drawPsl(ctx: CanvasRenderingContext2D, slide: ContentSlide, width: number, height: number, timeMs: number, brand: RevealBrand | null) {
+function drawBrandPair(ctx: CanvasRenderingContext2D, brand: RevealBrand | null, width: number, height: number, timeMs: number) {
   withEnter(ctx, enter(timeMs, 420, 520), () => {
     const size = width * .085, gap = width * .025
-    ctx.font = `700 ${width * .072}px Arial`
-    const groupWidth = size + gap + ctx.measureText('PSL').width
-    const x = (width - groupWidth) / 2, y = height * .065
-    if (brand) ctx.drawImage(brand.logo, x, y, size, size)
-    ctx.fillStyle = '#fff'; ctx.textBaseline = 'middle'; ctx.fillText('PSL', x + size + gap, y + size / 2); ctx.textBaseline = 'top'
+    const x = (width - size * 2 - gap) / 2, y = height * .055
+    if (brand) {
+      ctx.drawImage(brand.logo, x, y, size, size)
+      ctx.drawImage(brand.appStore, x + size + gap, y, size, size)
+    }
+  })
+}
+
+function drawPsl(ctx: CanvasRenderingContext2D, slide: ContentSlide, width: number, height: number, timeMs: number, brand: RevealBrand | null) {
+  drawBrandPair(ctx, brand, width, height, timeMs)
+  withEnter(ctx, enter(timeMs, 580, 520), () => {
+    ctx.font = `700 ${width * .042}px Arial`; ctx.fillStyle = '#fff'; ctx.textAlign = 'center'
+    ctx.fillText('Mogging: Face Rating', width / 2, height * .055 + width * .11)
   })
   const x = width * .05, y = height * .76, cardWidth = width * .45, cardHeight = height * .19
   const psl = slide.categoryScores.find(score => score.categoryId === 'psl')?.value || toPsl(slide.currentScore)

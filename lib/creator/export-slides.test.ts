@@ -55,14 +55,16 @@ test('polished templates omit technical headers and category tags', () => {
   const texts: string[] = []
   const ctx = new Proxy({}, { get: (_target, key) => key === 'fillText' ? (text: string) => texts.push(text) : key === 'measureText' ? () => ({ width: 30 }) : key === 'createLinearGradient' ? () => ({ addColorStop() {} }) : () => {} }) as CanvasRenderingContext2D
   drawSlideFrame(ctx, { ...slide, headline: 'Time to ascend.' }, null, null, 1080, 1920, 4000, null)
-  expect(texts).toEqual(['Time to ascend.', 'mogging.com'])
+  expect(texts).toEqual(['Time to ascend.', 'CURRENT', '7', 'POTENTIAL', '8'])
   texts.length = 0
   drawSlideFrame(ctx, { ...slide, templateId: 'score-potential' }, null, null, 1080, 1920, 4000, null)
   expect(texts).toContain('TOTAL SCORE')
   expect(texts).toContain('POTENTIAL')
+  expect(texts).not.toContain('ESTIMATED')
   expect(texts.some(text => /ACTIVE CATEGORY|CURRENT|EYES|\[/.test(text))).toBe(false)
   texts.length = 0
   drawSlideFrame(ctx, { ...slide, templateId: 'psl' }, null, null, 1080, 1920, 4000, null)
-  expect(texts.filter(text => text === 'PSL')).toHaveLength(2)
+  expect(texts).toContain('Mogging: Face Rating')
+  expect(texts.filter(text => text === 'PSL')).toHaveLength(1)
   expect(texts.some(text => /FACE REPORT|\[|^M$/.test(text))).toBe(false)
 })

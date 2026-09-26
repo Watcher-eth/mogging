@@ -744,7 +744,6 @@ export default function AnalysisPage() {
       <SeoHead
         title="Mogging Analysis"
         description="Upload your face photo and generate a private PSL report with facial feature annotations."
-        imagePath="/Og2.png"
         path="/analysis"
       />
       <input ref={uploadInputRef} className="hidden" type="file" accept="image/*" multiple onChange={handleFiles} />

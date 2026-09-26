@@ -1,31 +1,29 @@
 import Head from 'next/head'
 import { useRouter } from 'next/router'
-import { canonicalUrl as getCanonicalUrl, robotsForPath, serializeJsonLd, siteUrl } from '@/lib/seo'
+import { canonicalUrl as getCanonicalUrl, robotsForPath, serializeJsonLd, siteUrl, socialImageForPath } from '@/lib/seo'
 
 type SeoHeadProps = {
   title?: string
   description?: string
-  imagePath?: string
   path?: string
   structuredData?: Record<string, unknown>
 }
 
 const defaultTitle = 'Mogging'
 const defaultDescription = 'Battle faces, get a PSL analysis, and climb the global mogging leaderboard.'
-const defaultImagePath = '/moggingOG2.png'
 const iosAppStoreId = '6771414050'
 
 export function SeoHead({
   title = defaultTitle,
   description = defaultDescription,
-  imagePath = defaultImagePath,
   path,
   structuredData,
 }: SeoHeadProps) {
   const router = useRouter()
   const currentPath = path ?? router.asPath ?? '/'
   const canonicalUrl = getCanonicalUrl(currentPath)
-  const imageUrl = new URL(imagePath, siteUrl).href
+  const image = socialImageForPath(router.pathname)
+  const imageUrl = new URL(image.path, siteUrl).href
 
 
   return (
@@ -47,8 +45,8 @@ export function SeoHead({
       <meta key="og:description" property="og:description" content={description} />
       <meta key="og:url" property="og:url" content={canonicalUrl} />
       <meta key="og:image" property="og:image" content={imageUrl} />
-      <meta key="og:image:width" property="og:image:width" content="1200" />
-      <meta key="og:image:height" property="og:image:height" content="630" />
+      <meta key="og:image:width" property="og:image:width" content={String(image.width)} />
+      <meta key="og:image:height" property="og:image:height" content={String(image.height)} />
       <meta key="og:image:alt" property="og:image:alt" content={title} />
 
       <meta key="twitter:card" name="twitter:card" content="summary_large_image" />
