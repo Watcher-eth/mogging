@@ -1,20 +1,15 @@
 import Image from 'next/image'
 import { useEffect, useRef, type CSSProperties, type ReactNode } from 'react'
-import type { ContentSlide, GeneratorImage, SlideTemplateId } from '@/lib/creator/content-generator'
+import { categoryScoreMax, type ContentSlide, type GeneratorImage, type SlideTemplateId } from '@/lib/creator/content-generator'
 import { createReportOverlay, drawReportOverlay } from '@/lib/creator/report-overlay'
+import { ScoreRevealPreview } from './score-reveal-preview'
 
 type Size = { width: number; height: number }
 
 export function ContentSlidePreview({ slide, images, format }: { slide: ContentSlide; images: GeneratorImage[]; format: Size }) {
   const image = images.find((item) => item.id === slide.imageId && item.status === 'ready')
   if (slide.templateId === 'cta') {
-    return (
-      <div className="cta-template-enter [container-type:inline-size] relative w-full overflow-hidden bg-[#070909] text-white shadow-[0_24px_80px_rgba(0,0,0,0.2)]" style={{ aspectRatio: `${format.width} / ${format.height}` }}>
-        <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_24%,rgba(45,212,191,0.11),transparent_38%)]" />
-        {image ? <CircularPortrait slide={slide} image={image} /> : null}
-        <TemplateContent slide={slide} />
-      </div>
-    )
+    return <ScoreRevealPreview slide={slide} image={image} format={format} />
   }
   return (
     <div className="cta-template-enter [container-type:inline-size] relative w-full overflow-hidden bg-[#09090b] text-white shadow-[0_24px_80px_rgba(0,0,0,0.2)]" style={{ aspectRatio: `${format.width} / ${format.height}` }}>
@@ -26,25 +21,13 @@ export function ContentSlidePreview({ slide, images, format }: { slide: ContentS
   )
 }
 
-function CircularPortrait({ slide, image }: { slide: ContentSlide; image: GeneratorImage }) {
-  return (
-    <div className="absolute left-1/2 top-[17%] aspect-square w-[52%] -translate-x-1/2">
-      <div className="cta-template-item absolute inset-0 overflow-hidden rounded-full border border-cyan-200/30 bg-zinc-800 shadow-[0_0_50px_rgba(45,212,191,0.18)] [animation-delay:720ms]">
-        <Image alt="Creator upload" className="object-cover object-center" fill priority sizes="26vw" src={image.dataUrl} unoptimized />
-        <div className="absolute inset-0 bg-gradient-to-b from-black/5 via-transparent to-black/25" />
-        <CanonicalOverlay slide={slide} image={image} annotationMode="hidden" />
-      </div>
-    </div>
-  )
-}
-
 function TemplateContent({ slide }: { slide: ContentSlide }) {
   const templates: Record<SlideTemplateId, ReactNode> = {
     editorial: <EditorialTemplate slide={slide} />,
     'score-potential': <ScorePotentialTemplate slide={slide} />,
     psl: <PslTemplate slide={slide} />,
     'score-rows': <ScoreRowsTemplate slide={slide} />,
-    cta: <CtaTemplate slide={slide} />,
+    cta: null,
   }
   return templates[slide.templateId] ?? templates.editorial
 }
@@ -62,22 +45,7 @@ function PslTemplate({ slide }: { slide: ContentSlide }) {
 }
 
 function ScoreRowsTemplate({ slide }: { slide: ContentSlide }) {
-  return <TemplateFrame eyebrow="Selected values" template="Scorecard"><div className="absolute inset-x-[5%] bottom-[4%] rounded-[clamp(16px,4cqw,36px)] border border-white/20 bg-black/78 p-[5%] backdrop-blur-md"><div className="cta-template-item mb-[4%] flex items-end justify-between [animation-delay:760ms]"><div><p className="font-mono text-[clamp(7px,1.6cqw,14px)] uppercase tracking-[0.14em] text-white/45">Overall</p><p className="mt-1 text-[clamp(32px,9cqw,88px)] font-semibold leading-none tracking-[-0.06em]">{displayScore(slide.currentScore)}</p></div><div className="text-right"><p className="font-mono text-[clamp(7px,1.6cqw,14px)] uppercase tracking-[0.14em] text-white/45">Potential</p><p className="mt-1 text-[clamp(32px,9cqw,88px)] font-semibold leading-none tracking-[-0.06em] text-cyan-300">{displayScore(slide.potentialScore)}</p></div></div><div className="grid gap-[clamp(8px,2cqw,18px)]">{slide.categoryScores.map((score, index) => <ScoreRow key={score.categoryId} label={score.label} value={score.value} delay={920 + index * 90} />)}</div></div></TemplateFrame>
-}
-
-function CtaTemplate({ slide }: { slide: ContentSlide }) {
-  return (
-    <div className="absolute inset-0">
-      <div className="cta-template-item absolute inset-x-0 top-[4%] text-center [animation-delay:560ms]">
-        <p className="font-mono text-[clamp(7px,1.5cqw,13px)] uppercase tracking-[0.24em] text-cyan-100/55">Face analysis</p>
-        <h2 className="mt-[1%] text-[clamp(31px,8.5cqw,86px)] font-black leading-none tracking-[-0.065em]">Mogging</h2>
-      </div>
-      <div className="absolute inset-x-[5%] top-[60%] grid grid-cols-2 gap-[2%]">
-        <ScoreCard label="Current" value={slide.currentScore} accent="lime" delay={1120} />
-        <ScoreCard label="Potential" value={slide.potentialScore} accent="cyan" delay={1280} />
-      </div>
-    </div>
-  )
+  return <TemplateFrame eyebrow="Selected values" template="Scorecard"><div className="absolute inset-x-[5%] bottom-[4%] rounded-[clamp(16px,4cqw,36px)] border border-white/20 bg-black/78 p-[5%] backdrop-blur-md"><div className="cta-template-item mb-[4%] flex items-end justify-between [animation-delay:760ms]"><div><p className="font-mono text-[clamp(7px,1.6cqw,14px)] uppercase tracking-[0.14em] text-white/45">Overall</p><p className="mt-1 text-[clamp(32px,9cqw,88px)] font-semibold leading-none tracking-[-0.06em]">{displayScore(slide.currentScore)}</p></div><div className="text-right"><p className="font-mono text-[clamp(7px,1.6cqw,14px)] uppercase tracking-[0.14em] text-white/45">Potential</p><p className="mt-1 text-[clamp(32px,9cqw,88px)] font-semibold leading-none tracking-[-0.06em] text-cyan-300">{displayScore(slide.potentialScore)}</p></div></div><div className="grid gap-[clamp(8px,2cqw,18px)]" style={slide.categoryScores.length > 8 ? { gap: '1cqw' } : undefined}>{slide.categoryScores.map((score, index) => <ScoreRow key={score.categoryId} label={score.label} value={score.value} maximum={categoryScoreMax(score.categoryId)} delay={920 + index * 60} />)}</div></div></TemplateFrame>
 }
 
 function TemplateFrame({ eyebrow, template, children }: { eyebrow: string; template: string; children: ReactNode }) {
@@ -93,8 +61,8 @@ function ScoreCard({ label, value, accent, delay, borderless = false }: { label:
   return <div className={`cta-template-item bg-black/72 p-[9%] backdrop-blur-md ${borderless ? '' : 'rounded-[clamp(14px,3cqw,30px)] border border-white/25'}`} style={{ animationDelay: `${delay}ms` }}><p className="font-mono text-[clamp(8px,1.9cqw,17px)] font-semibold uppercase tracking-[0.12em] text-white/55">{label}</p><p className="mt-[8%] text-[clamp(34px,10cqw,96px)] font-semibold leading-none tracking-[-0.07em]">{displayScore(value)}</p><ScoreBar value={value} accentClass={accentClass} /></div>
 }
 
-function ScoreRow({ label, value, delay }: { label: string; value: string; delay: number }) {
-  return <div className="cta-template-item grid grid-cols-[minmax(68px,0.45fr)_1fr_auto] items-center gap-[3%]" style={{ animationDelay: `${delay}ms` }}><span className="truncate text-[clamp(9px,2cqw,19px)] font-medium">{label}</span><div className="h-[clamp(5px,1.3cqw,12px)] overflow-hidden rounded-full bg-white/18"><div className="cta-score-bar-fill h-full origin-left rounded-full bg-white" style={{ '--cta-score-ratio': scoreRatio(value), animationDelay: `${delay + 150}ms` } as CSSProperties} /></div><span className="w-[2ch] text-right font-mono text-[clamp(9px,2cqw,19px)] font-semibold">{displayScore(value)}</span></div>
+function ScoreRow({ label, value, delay, maximum }: { label: string; value: string; delay: number; maximum: number }) {
+  return <div className="cta-template-item grid grid-cols-[minmax(68px,0.45fr)_1fr_auto] items-center gap-[3%]" style={{ animationDelay: `${delay}ms` }}><span className="truncate text-[clamp(9px,2cqw,19px)] font-medium">{label}</span><div className="h-[clamp(5px,1.3cqw,12px)] overflow-hidden rounded-full bg-white/18"><div className="cta-score-bar-fill h-full origin-left rounded-full bg-white" style={{ '--cta-score-ratio': scoreRatio(value, maximum), animationDelay: `${delay + 150}ms` } as CSSProperties} /></div><span className="whitespace-nowrap text-right font-mono text-[clamp(9px,2cqw,19px)] font-semibold">{displayScore(value)}/{maximum}</span></div>
 }
 
 function ScoreBar({ value, accentClass }: { value: string; accentClass: string }) {
@@ -137,4 +105,4 @@ function CanonicalOverlay({ slide, image, annotationMode }: { slide: ContentSlid
 }
 
 function displayScore(value: string) { return value.trim() || '—' }
-function scoreRatio(value: string) { const score = Number(value); return Number.isFinite(score) ? Math.max(0, Math.min(1, score / 10)) : 0 }
+function scoreRatio(value: string, maximum = 10) { const score = Number(value); return Number.isFinite(score) ? Math.max(0, Math.min(1, score / maximum)) : 0 }

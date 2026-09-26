@@ -46,10 +46,10 @@ const accountChecks = [
 ] as const
 
 const statusItems = [
-  ['Needs Verification', 'Connected, but analytics evidence is still required.', 'danger'],
+  ['Needs Verification', 'Connected, but analytics evidence is still required.', 'warning'],
   ['Pending Review', 'Verification was submitted and is being checked.', 'warning'],
   ['Approved', 'The account is ready for eligible creator posts.', 'success'],
-  ['Missing Information', 'The team needs clearer or additional evidence.', 'danger'],
+  ['Missing Information', 'The team needs clearer or additional evidence.', 'warning'],
 ] as const
 
 const tierOneCountries = ['United States', 'Canada', 'United Kingdom', 'Australia', 'Germany', 'France', 'Netherlands', 'Sweden', 'Denmark', 'Switzerland', 'New Zealand', 'Poland', 'Italy', 'South Korea']
@@ -178,8 +178,8 @@ function VideoGuide() {
             <GuideDisclosure title="Full requirements" meta={`${format.requirements.length} items`}>
               <Checklist items={format.requirements} />
             </GuideDisclosure>
-            <GuideDisclosure title="What is not allowed" meta={`${format.notAllowed.length} items`} tone="warning">
-              <Checklist items={format.notAllowed} warning />
+            <GuideDisclosure title="What is not allowed" meta={`${format.notAllowed.length} items`} tone="danger">
+              <Checklist items={format.notAllowed} prohibited />
             </GuideDisclosure>
           </div>
         </div>
@@ -289,11 +289,11 @@ function GuidePanelHeader({ icon, eyebrow, title, description, action }: { icon:
   )
 }
 
-function GuideDisclosure({ title, meta, children, tone = 'default' }: { title: string; meta: string; children: ReactNode; tone?: 'default' | 'warning' }) {
+function GuideDisclosure({ title, meta, children, tone = 'default' }: { title: string; meta: string; children: ReactNode; tone?: 'default' | 'warning' | 'danger' }) {
   return (
-    <details className={cn('guide-disclosure rounded-[16px] border bg-white', tone === 'warning' ? 'border-[#f2d78a]' : 'border-black/[0.07]')}>
+    <details className={cn('guide-disclosure rounded-[16px] border', tone === 'danger' ? 'border-red-200 bg-red-50' : tone === 'warning' ? 'border-[#f2d78a] bg-[#fff4ce]/40' : 'border-black/[0.07] bg-white')}>
       <summary className="flex cursor-pointer list-none items-center gap-3 px-4 py-3.5 text-sm font-semibold marker:content-none">
-        {tone === 'warning' ? <TriangleAlert className="size-4 shrink-0 text-[#8a5a00]" /> : <Check className="size-4 shrink-0 text-[#248a3d]" />}
+        {tone === 'danger' ? <TriangleAlert className="size-4 shrink-0 text-red-700" /> : tone === 'warning' ? <TriangleAlert className="size-4 shrink-0 text-[#8a5a00]" /> : <Check className="size-4 shrink-0 text-[#248a3d]" />}
         <span className="min-w-0 flex-1">{title}</span>
         <span className="text-[11px] font-normal text-[#86868b]">{meta}</span>
         <ChevronDown className="guide-disclosure-chevron size-4 shrink-0 text-[#86868b]" />
@@ -303,8 +303,8 @@ function GuideDisclosure({ title, meta, children, tone = 'default' }: { title: s
   )
 }
 
-function Checklist({ items, warning = false }: { items: ReadonlyArray<string>; warning?: boolean }) {
-  return <ul className="grid gap-3 sm:grid-cols-2">{items.map((item) => <li key={item} className="flex items-start gap-2.5 text-sm leading-6 text-[#6e6e73]">{warning ? <TriangleAlert className="mt-1 size-4 shrink-0 text-[#8a5a00]" /> : <Check className="mt-1 size-4 shrink-0 text-[#248a3d]" />}<span>{item}</span></li>)}</ul>
+function Checklist({ items, prohibited = false }: { items: ReadonlyArray<string>; prohibited?: boolean }) {
+  return <ul className="grid gap-3 sm:grid-cols-2">{items.map((item) => <li key={item} className="flex items-start gap-2.5 text-sm leading-6 text-[#6e6e73]">{prohibited ? <TriangleAlert className="mt-1 size-4 shrink-0 text-red-700" /> : <Check className="mt-1 size-4 shrink-0 text-[#248a3d]" />}<span>{item}</span></li>)}</ul>
 }
 
 function Evidence({ icon: Icon, title, detail }: { icon: typeof Smartphone; title: string; detail: string }) {

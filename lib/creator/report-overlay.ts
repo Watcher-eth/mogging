@@ -1,4 +1,4 @@
-import { getOverlayPreset, type ContentSlide, type GeneratorImage } from './content-generator'
+import { categoryScoreMax, getOverlayPreset, type ContentSlide, type GeneratorImage } from './content-generator'
 import { buildFaceMapPoints } from './mobile-overlay-engine/face-map-points'
 import { getImageTransform, projectImagePoint } from './mobile-overlay-engine/layout'
 import { enrichFaceLandmarks } from './mobile-overlay-engine/enrich-landmarks'
@@ -23,7 +23,7 @@ export function createReportOverlay(slide: ContentSlide, image: GeneratorImage, 
   const top = Math.min(...samples.map((point) => point.y))
   const bottom = Math.max(...samples.map((point) => point.y))
   const dots = samples.map((point) => ({ ...projectImagePoint(point, image, transform), band: Math.min(17, Math.floor((point.y - top) / Math.max(.001, bottom - top) * 18)) }))
-  return { size, primitives, dots, value: `${score.trim() || '—'} / 10` }
+  return { size, primitives, dots, value: `${score.trim() || '—'} / ${categoryScoreMax(slide.categoryId)}` }
 }
 
 export type ReportOverlay = Omit<ReturnType<typeof createReportOverlay>, 'value'> & { value?: string }

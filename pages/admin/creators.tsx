@@ -10,7 +10,6 @@ import {
   ChartNoAxesCombined,
   CheckCircle2,
   CircleDollarSign,
-  FileVideo,
   Gauge,
   LayoutDashboard,
   Loader2,
@@ -38,6 +37,7 @@ import { AccountAttributionReport, CreatorAttributionDashboard, CreatorAttributi
 import { AccountTrackingLink } from '@/components/creator/account-tracking-link'
 import { calculateCreatorPayout, CREATOR_US_AUDIENCE_TIERS, CREATOR_VIEW_THRESHOLDS } from '@/lib/creator/payouts'
 import { mergeCreatorSubmissionReviewResults } from '@/lib/creator/submission-review'
+import { CreatorIcon, type CreatorIconName } from '@/components/creator/creator-icon'
 import type {
   AdminAccount,
   AdminAttributionReport,
@@ -53,7 +53,7 @@ const tabs = [
   { value: 'overview', label: 'Overview', icon: LayoutDashboard },
   { value: 'metrics', label: 'Metrics', icon: Gauge },
   { value: 'attribution', label: 'Attribution', icon: ChartNoAxesCombined },
-  { value: 'submissions', label: 'Videos', icon: FileVideo },
+  { value: 'submissions', label: 'Videos', asset: 'submissions' },
   { value: 'cta-library', label: 'CTA Library', icon: BookOpen },
   { value: 'accounts', label: 'Accounts', icon: BadgeCheck },
   { value: 'payments', label: 'Payments', icon: CircleDollarSign },
@@ -90,8 +90,8 @@ export default function CreatorAdminPage() {
 
       <nav className="mb-6 flex max-w-full gap-1 overflow-x-auto rounded-2xl border border-zinc-200 bg-white p-1.5 shadow-[0_10px_35px_rgba(15,23,42,0.04)]">
         {tabs.map((item) => {
-          const Icon = item.icon
-          return <button key={item.value} onClick={() => setTab(item.value)} className={cn('flex shrink-0 items-center gap-2 rounded-xl px-3 py-2 text-xs font-medium text-zinc-500 transition-[background-color,color,transform] duration-150 ease-out hover:bg-zinc-100 hover:text-black active:scale-[0.98] sm:text-sm', tab === item.value && 'bg-black text-white hover:bg-black hover:text-white')}><Icon className="size-4" />{item.label}</button>
+          const Icon = 'icon' in item ? item.icon : null
+          return <button key={item.value} onClick={() => setTab(item.value)} className={cn('flex shrink-0 items-center gap-2 rounded-xl px-3 py-2 text-xs font-medium text-zinc-500 transition-[background-color,color,transform] duration-150 ease-out hover:bg-zinc-100 hover:text-black active:scale-[0.98] sm:text-sm', tab === item.value && 'bg-black text-white hover:bg-black hover:text-white')}>{'asset' in item ? <CreatorIcon name={item.asset} className="size-6" /> : Icon ? <Icon className="size-4" /> : null}{item.label}</button>
         })}
       </nav>
 
@@ -182,7 +182,7 @@ function Overview({ data, onSelect }: { data: AdminDashboard; onSelect: (target:
     <>
       <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
         <Metric label="Creators" value={data.creators.length} detail={`${data.creators.filter((item) => item.authStatus === 'pending').length} pending`} icon={UsersRound} />
-        <Metric label="Videos" value={data.submissions.length} detail={`${data.submissions.filter((item) => item.status === 'pending').length} awaiting review`} icon={FileVideo} />
+        <Metric label="Videos" value={data.submissions.length} detail={`${data.submissions.filter((item) => item.status === 'pending').length} awaiting review`} asset="submissions" />
         <Metric label="Accounts" value={data.accounts.length} detail={`${data.accounts.filter((item) => item.status === 'pending').length} awaiting review`} icon={BadgeCheck} />
         <Metric label="Outstanding" value={formatMoney(outstandingCents, 'USD')} detail={`${data.payments.filter((item) => item.status === 'pending' || item.status === 'processing').length} payments`} icon={CircleDollarSign} />
       </div>
@@ -194,8 +194,8 @@ function Overview({ data, onSelect }: { data: AdminDashboard; onSelect: (target:
   )
 }
 
-function Metric({ label, value, detail, icon: Icon }: { label: string; value: string | number; detail: string; icon: typeof UsersRound }) {
-  return <div className="rounded-2xl border border-zinc-200 bg-white p-5 shadow-[0_8px_30px_rgba(15,23,42,0.035)]"><div className="flex items-center justify-between"><p className="text-sm font-medium text-zinc-500">{label}</p><span className="grid size-9 place-items-center rounded-xl bg-zinc-100"><Icon className="size-4" /></span></div><p className="mt-5 text-3xl font-semibold tracking-[-0.055em]">{value}</p><p className="mt-1 text-xs text-zinc-400">{detail}</p></div>
+function Metric({ label, value, detail, icon: Icon, asset }: { label: string; value: string | number; detail: string; icon?: typeof UsersRound; asset?: CreatorIconName }) {
+  return <div className="rounded-2xl border border-zinc-200 bg-white p-5 shadow-[0_8px_30px_rgba(15,23,42,0.035)]"><div className="flex items-center justify-between"><p className="text-sm font-medium text-zinc-500">{label}</p>{asset ? <CreatorIcon name={asset} className="size-10" /> : Icon ? <span className="grid size-9 place-items-center rounded-xl bg-zinc-100"><Icon className="size-4" /></span> : null}</div><p className="mt-5 text-3xl font-semibold tracking-[-0.055em]">{value}</p><p className="mt-1 text-xs text-zinc-400">{detail}</p></div>
 }
 
 function ResourceSection({ eyebrow, title, description, children }: { eyebrow: string; title: string; description: string; children: React.ReactNode }) {
@@ -205,7 +205,7 @@ function ResourceSection({ eyebrow, title, description, children }: { eyebrow: s
 function SubmissionList({ items, payments, onSelect }: { items: AdminSubmission[]; payments: AdminPayment[]; onSelect: (target: ReviewTarget) => void }) {
   const paymentIds = new Set(payments.map((payment) => payment.submissionId))
   if (!items.length) return <EmptyState title="No video submissions" description="Creator uploads will appear here." />
-  return <div className="grid gap-3">{items.map((item) => <ResourceRow key={item.id} icon={FileVideo} title={item.title} subtitle={`${item.creatorName} · ${item.socialHandle ? `@${item.socialHandle}` : 'No connected account'} · ${formatDate(item.createdAt)}${item.socialAccountStatus !== 'approved' ? ' · Account not approved' : ''}`} status={item.status} meta={paymentIds.has(item.id) ? 'Payment created' : 'No payment'} onClick={() => onSelect({ resource: 'submission', item })} />)}</div>
+  return <div className="grid gap-3">{items.map((item) => <ResourceRow key={item.id} asset="submissions" title={item.title} subtitle={`${item.creatorName} · ${item.socialHandle ? `@${item.socialHandle}` : 'No connected account'} · ${formatDate(item.createdAt)}${item.socialAccountStatus !== 'approved' ? ' · Account not approved' : ''}`} status={item.status} meta={paymentIds.has(item.id) ? 'Payment created' : 'No payment'} onClick={() => onSelect({ resource: 'submission', item })} />)}</div>
 }
 
 function AccountList({ items, onSelect }: { items: AdminAccount[]; onSelect: (target: ReviewTarget) => void }) {
@@ -227,15 +227,15 @@ function CreatorList({ items, onSelect }: { items: AdminCreator[]; onSelect: (ta
   return <div className="grid gap-3">{items.map((item) => <ResourceRow key={item.id} icon={UserRound} title={item.displayName} subtitle={`${item.email} · Joined ${formatDate(item.createdAt)}`} status={item.authStatus} meta={item.paymentOption === 'paypal' ? 'PayPal' : item.cryptoNetwork || 'Crypto'} onClick={() => onSelect({ resource: 'creator', item })} />)}</div>
 }
 
-function ResourceRow({ icon: Icon, title, subtitle, status, meta, onClick }: { icon: typeof FileVideo; title: string; subtitle: string; status: string; meta: string; onClick: () => void }) {
-  return <button onClick={onClick} className="group flex w-full items-center gap-4 rounded-2xl border border-zinc-200 bg-white p-4 text-left shadow-[0_8px_30px_rgba(15,23,42,0.035)] transition-[border-color,box-shadow,transform] duration-150 ease-out hover:-translate-y-0.5 hover:border-zinc-300 hover:shadow-[0_14px_40px_rgba(15,23,42,0.07)] active:scale-[0.995]"><span className="grid size-11 shrink-0 place-items-center rounded-xl bg-zinc-100"><Icon className="size-5" /></span><span className="min-w-0 flex-1"><span className="block truncate text-sm font-semibold tracking-[-0.02em]">{title}</span><span className="mt-1 block truncate text-xs text-zinc-500">{subtitle}</span></span><span className="hidden max-w-48 truncate text-xs text-zinc-400 md:block">{meta}</span><StatusPill status={status} /><ArrowUpRight className="size-4 shrink-0 text-zinc-300 transition-[color,transform] duration-150 ease-out group-hover:-translate-y-0.5 group-hover:translate-x-0.5 group-hover:text-black" /></button>
+function ResourceRow({ icon: Icon, asset, title, subtitle, status, meta, onClick }: { icon?: typeof UserRound; asset?: CreatorIconName; title: string; subtitle: string; status: string; meta: string; onClick: () => void }) {
+  return <button onClick={onClick} className="group flex w-full items-center gap-4 rounded-2xl border border-zinc-200 bg-white p-4 text-left shadow-[0_8px_30px_rgba(15,23,42,0.035)] transition-[border-color,box-shadow,transform] duration-150 ease-out hover:-translate-y-0.5 hover:border-zinc-300 hover:shadow-[0_14px_40px_rgba(15,23,42,0.07)] active:scale-[0.995]">{asset ? <CreatorIcon name={asset} className="size-12" /> : Icon ? <span className="grid size-11 shrink-0 place-items-center rounded-xl bg-zinc-100"><Icon className="size-5" /></span> : null}<span className="min-w-0 flex-1"><span className="block truncate text-sm font-semibold tracking-[-0.02em]">{title}</span><span className="mt-1 block truncate text-xs text-zinc-500">{subtitle}</span></span><span className="hidden max-w-48 truncate text-xs text-zinc-400 md:block">{meta}</span><StatusPill status={status} /><ArrowUpRight className="size-4 shrink-0 text-zinc-300 transition-[color,transform] duration-150 ease-out group-hover:-translate-y-0.5 group-hover:translate-x-0.5 group-hover:text-black" /></button>
 }
 
 function QueueRow({ target, onClick }: { target: Exclude<ReviewTarget, { resource: 'payment' }>; onClick: () => void }) {
   const title = target.resource === 'submission' ? target.item.title : target.resource === 'account' ? creatorAccountLabel(target.item) : target.item.displayName
   const subtitle = target.resource === 'creator' ? target.item.email : `${target.item.creatorName} · ${target.resource === 'submission' ? `Video submission${target.item.socialAccountStatus !== 'approved' ? ' · Account not approved' : ''}` : `${capitalize(target.item.platform)} account`}`
-  const Icon = target.resource === 'submission' ? FileVideo : target.resource === 'account' ? BadgeCheck : UserRound
-  return <ResourceRow icon={Icon} title={title} subtitle={subtitle} status="pending" meta={formatDate(target.item.createdAt)} onClick={onClick} />
+  const Icon = target.resource === 'account' ? BadgeCheck : UserRound
+  return <ResourceRow icon={target.resource === 'submission' ? undefined : Icon} asset={target.resource === 'submission' ? 'submissions' : undefined} title={title} subtitle={subtitle} status="pending" meta={formatDate(target.item.createdAt)} onClick={onClick} />
 }
 
 function ReviewDialog({ target, payments, metrics, open, onOpenChange, onRefresh, onSaved }: { target: ReviewTarget; payments: AdminPayment[]; metrics: AdminAttributionMetrics[]; open: boolean; onOpenChange: (open: boolean) => void; onRefresh: () => Promise<void>; onSaved: () => Promise<void> }) {

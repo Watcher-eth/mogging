@@ -190,5 +190,5 @@ function ConnectedAccountCard({ account, onVerify, onRemove }: { account: Creato
 
 function AccountStatus({ status, needsVerification }: { status: CreatorSocialAccount['status']; needsVerification: boolean }) {
   const label = needsVerification ? 'Needs Verification' : status === 'pending' ? 'Pending Review' : status === 'missing_information' ? 'Missing Information' : 'Approved'
-  return <span className={cn('inline-flex shrink-0 items-center gap-1.5 rounded-full px-2.5 py-1 text-[11px] font-semibold sm:flex', status === 'approved' && !needsVerification && 'bg-emerald-50 text-emerald-700', status === 'pending' && !needsVerification && 'bg-amber-50 text-amber-700', (status === 'missing_information' || needsVerification) && 'bg-red-50 text-red-700')}>{status === 'approved' && !needsVerification ? <Check className="size-3" /> : <AlertCircle className="size-3" />}{label}</span>
+  return <span className={cn('inline-flex shrink-0 items-center gap-1.5 rounded-full px-2.5 py-1 text-[11px] font-semibold sm:flex', status === 'approved' && !needsVerification ? 'bg-emerald-50 text-emerald-700' : 'bg-amber-50 text-amber-700')}>{status === 'approved' && !needsVerification ? <Check className="size-3" /> : <AlertCircle className="size-3" />}{label}</span>
 }

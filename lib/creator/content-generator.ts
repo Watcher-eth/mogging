@@ -1,4 +1,4 @@
-import { reportOverlayPresets } from '@/lib/creator/mobile-overlay-engine/report-presets'
+import { getReportOverlayPreset } from '@/lib/creator/mobile-overlay-engine/report-presets'
 
 export const outputFormats = {
   vertical: { label: 'TikTok / Reels / Stories', width: 1080, height: 1920 },
@@ -24,7 +24,7 @@ export type GeneratorImage = {
   width: number
   height: number
   landmarks: import('@/lib/analysis/landmarks').FaceLandmarksPayload | null
-  status: 'detecting' | 'ready' | 'warning' | 'no-face'
+  status: 'loading' | 'detecting' | 'ready' | 'warning' | 'no-face'
   warning?: string
 }
 
@@ -58,17 +58,26 @@ export const categoryOptions = [
   { id: 'nose', label: 'Nose analysis' },
   { id: 'mouth', label: 'Mouth / lip analysis' },
   { id: 'jaw', label: 'Jaw analysis' },
+  { id: 'dimorphism', label: 'Dimorphism' },
+  { id: 'skin-age', label: 'Skin Age' },
+  { id: 'sun-damage', label: 'UV context' },
+  { id: 'facial-fat', label: 'Facial definition' },
+  { id: 'cheekbones', label: 'Cheekbone structure' },
+  { id: 'skin-quality', label: 'Skin quality' },
+  { id: 'psl', label: 'PSL score' },
   { id: 'symmetry', label: 'Symmetry analysis' },
   { id: 'face-shape', label: 'Face-shape analysis' },
   { id: 'overall', label: 'Overall report' },
 ] as const
+
+export function categoryScoreMax(categoryId: string) { return categoryId === 'psl' ? 8 : 10 }
 
 export const templateOptions: Array<{ id: SlideTemplateId; label: string; description: string }> = [
   { id: 'editorial', label: 'Editorial report', description: 'Current image-first Mogging layout' },
   { id: 'score-potential', label: 'Current + potential', description: 'Selected category with two score cards' },
   { id: 'psl', label: 'PSL comparison', description: 'PSL headline with current and potential' },
   { id: 'score-rows', label: 'Category scorecard', description: 'Rows for each selected report category' },
-  { id: 'cta', label: 'Mogging score reveal', description: 'Circular portrait with current and potential scores' },
+  { id: 'cta', label: 'Mogging score reveal', description: 'Animated category score rings and report stats' },
 ]
 
 const hooks: Record<CampaignGoal, Record<Tone, string[]>> = {
@@ -97,6 +106,13 @@ const supportByCategory: Record<string, string> = {
   symmetry: 'Comparing visible left-right alignment across the face map.',
   'face-shape': 'Tracing the facial outline, cheekbone width, and jaw frame.',
   overall: 'Bringing every mapped region into one structured report.',
+  dimorphism: 'Mapping brow, jaw, and facial structure contrast.',
+  'skin-age': 'Reviewing visible texture and age cues from your report.',
+  'sun-damage': 'Reviewing UV context and visible skin tone from your report.',
+  'facial-fat': 'Mapping cheek fullness and lower-face definition.',
+  cheekbones: 'Tracing cheekbone structure and the facial frame.',
+  'skin-quality': 'Reviewing visible skin texture and tone from your report.',
+  psl: 'Your report’s PSL calibration on its original eight-point scale.',
 }
 
 const categoryTitle: Record<string, string> = {
@@ -145,7 +161,7 @@ export function generateSlides({
   }))
   const cta = adaptCta(campaignGoal, offer)
   const metricScore = scoreValues[featuredCategory] || currentScore
-  const metricValue = metricScore ? `${metricScore} / 10` : '— / 10'
+  const metricValue = `${metricScore || '—'} / ${categoryScoreMax(featuredCategory)}`
   const shared = { currentScore, potentialScore, categoryScores }
   return [
     {
@@ -166,13 +182,14 @@ export function generateSlides({
     },
     {
       id: makeId('cta'), templateId: 'cta', imageId: readyImages.at(-1)?.id ?? readyImages[0].id, categoryId: featuredCategory,
-      eyebrow: 'Mogging', headline: cta, supportingCopy: 'Current and creator-entered potential scores.', metricLabel: categoryLabel, metricValue: '[ mapped ]', cta, ...shared,
+      eyebrow: 'Mogging', headline: 'Get your score on mogging.com', supportingCopy: 'Current and creator-entered potential scores.', metricLabel: categoryLabel, metricValue: '[ mapped ]', cta: 'Get your score on mogging.com', ...shared,
     },
   ]
 }
 
 export function getOverlayPreset(slide: ContentSlide) {
-  return reportOverlayPresets[slide.categoryId] ?? reportOverlayPresets.overall
+  const aliases: Record<string, string> = { cheekbones: 'face-shape', 'skin-quality': 'skin-age', psl: 'overall' }
+  return getReportOverlayPreset(aliases[slide.categoryId] ?? slide.categoryId)
 }
 
 function adaptCta(goal: CampaignGoal, offer: string) {

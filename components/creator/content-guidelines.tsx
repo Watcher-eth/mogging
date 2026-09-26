@@ -11,14 +11,14 @@ export function ContentGuidelines() {
       <p className="mt-3 max-w-3xl text-sm leading-6 text-[#6e6e73]">Mogging pays for access to an audience interested in their appearance. Your framing determines who watches: a celebrity montage can attract fans, a song meme can attract music listeners, and a feature breakdown can attract people who want to understand their own face. High views alone do not make a video eligible.</p>
       <div className="mt-5 grid gap-3 sm:grid-cols-2">
         <div className="rounded-2xl bg-[#e5f7ea]/60 p-4"><h4 className="text-sm font-semibold">What we want</h4><p className="mt-2 text-sm leading-6 text-[#41604a]">Clear feature analysis, genuine before-and-after transformations, explicit attractiveness comparisons, or looks-potential edits. Show Mogging clearly and end by inviting viewers to try it.</p></div>
-        <div className="rounded-2xl bg-[#fff4ce]/60 p-4"><h4 className="text-sm font-semibold">What we reject</h4><p className="mt-2 text-sm leading-6 text-[#75612e]">Engagement bait, unrelated captions, excluded niches, and fan edits whose looks connection exists only in your intent. Adding a Mogging CTA at the end does not rescue unrelated content.</p></div>
+        <div className="rounded-2xl bg-red-50 p-4"><h4 className="text-sm font-semibold text-red-800">What we reject</h4><p className="mt-2 text-sm leading-6 text-red-800">Engagement bait, unrelated captions, excluded niches, and fan edits whose looks connection exists only in your intent. Adding a Mogging CTA at the end does not rescue unrelated content.</p></div>
       </div>
       <div className="mt-4 grid gap-2">
         <RuleDetail title="Celebrity edits and the Smallville exception">
           <p>Tom Welling, Marlon, Damon, and other attractive celebrities are not automatically eligible. Emphasize their appearance with a specific looks-focused premise. A compilation about fame, a character, a scene, or the show attracts the wrong audience.</p>
           <p>Smallville clips that highlight the show are excluded. Solo Tom Welling edits from the show can qualify when his attractiveness is clearly the subject. These edits can perform very well when framed correctly; do not mistake permission to use a subject for approval of every edit of that subject.</p>
         </RuleDetail>
-        <RuleDetail title="Engagement farms: exact examples to avoid">
+        <RuleDetail title="Engagement farms: exact examples to avoid" prohibited>
           <p>Do not make appearance or confidence depend on interacting with a post. Looks-related vocabulary does not make an engagement farm acceptable.</p>
           <ul className="list-disc space-y-2 pl-5">
             <li>“May your hair and jawline treat you the way you treat this video”</li>
@@ -28,7 +28,7 @@ export function ContentGuidelines() {
           </ul>
           <p>A relevant invitation to try Mogging is the required product CTA. Promising a glow-up for likes, “claim” comments, shares, or sound use is engagement bait.</p>
         </RuleDetail>
-        <RuleDetail title="Unrelated captions and excluded niches">
+        <RuleDetail title="Unrelated captions and excluded niches" prohibited>
           <p>Rejected caption examples: “When you hear this song”; “mfs after rejecting a girl for the first time”; “mood because summer is in 4 months”; “how summer feels with that one bro”. An attractive face behind this text does not change the subject.</p>
           <p>Currently excluded: anime, cartoons and animated content, MMA, NBA and sports generally, animal edits, and Smallville story clips. These are current restrictions, not promises that a niche will become eligible later.</p>
         </RuleDetail>
@@ -43,8 +43,8 @@ export function ContentGuidelines() {
   )
 }
 
-function RuleDetail({ title, children }: { title: string; children: React.ReactNode }) {
-  return <details className="rounded-2xl border border-black/[0.07] bg-white"><summary className="cursor-pointer px-4 py-4 text-sm font-semibold">{title}</summary><div className="space-y-3 border-t border-black/[0.055] p-4 text-sm leading-6 text-[#6e6e73]">{children}</div></details>
+function RuleDetail({ title, children, prohibited = false }: { title: string; children: React.ReactNode; prohibited?: boolean }) {
+  return <details className={prohibited ? "rounded-2xl border border-red-200 bg-red-50 text-red-800" : "rounded-2xl border border-black/[0.07] bg-white"}><summary className="cursor-pointer px-4 py-4 text-sm font-semibold">{title}</summary><div className="space-y-3 border-t border-black/[0.055] p-4 text-sm leading-6 text-[#6e6e73]">{children}</div></details>
 }
 
 export function ContentRequirementsNote() {
