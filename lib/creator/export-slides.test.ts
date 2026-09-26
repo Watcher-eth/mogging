@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, expect, mock, test } from 'bun:test'
 import type { ContentSlide } from './content-generator'
-import { renderSlideMp4 } from './export-slides'
+import { drawSlideFrame, renderSlideMp4 } from './export-slides'
 
 const slide: ContentSlide = { id:'test', templateId:'editorial', imageId:'image', categoryId:'eyes', eyebrow:'Test', headline:'Test export', supportingCopy:'Test', metricLabel:'Eyes', metricValue:'7', cta:'Test', currentScore:'7', potentialScore:'8', categoryScores:[] }
 const args = { slide, images:[{id:'image', name:'test', dataUrl:'data:image/png;base64,', width:1080,height:1920,landmarks:null,status:'ready' as const}], width:1080,height:1920 }
@@ -49,4 +49,20 @@ test('releases capture tracks if recorder construction fails', async()=>{
 })
 test('missing restored photo produces actionable error before encoding',async()=>{
   await expect(renderSlideMp4({...args,images:[]})).rejects.toThrow('Add a clear photo')
+})
+
+test('polished templates omit technical headers and category tags', () => {
+  const texts: string[] = []
+  const ctx = new Proxy({}, { get: (_target, key) => key === 'fillText' ? (text: string) => texts.push(text) : key === 'measureText' ? () => ({ width: 30 }) : key === 'createLinearGradient' ? () => ({ addColorStop() {} }) : () => {} }) as CanvasRenderingContext2D
+  drawSlideFrame(ctx, { ...slide, headline: 'Time to ascend.' }, null, null, 1080, 1920, 4000, null)
+  expect(texts).toEqual(['Time to ascend.', 'mogging.com'])
+  texts.length = 0
+  drawSlideFrame(ctx, { ...slide, templateId: 'score-potential' }, null, null, 1080, 1920, 4000, null)
+  expect(texts).toContain('TOTAL SCORE')
+  expect(texts).toContain('POTENTIAL')
+  expect(texts.some(text => /ACTIVE CATEGORY|CURRENT|EYES|\[/.test(text))).toBe(false)
+  texts.length = 0
+  drawSlideFrame(ctx, { ...slide, templateId: 'psl' }, null, null, 1080, 1920, 4000, null)
+  expect(texts.filter(text => text === 'PSL')).toHaveLength(2)
+  expect(texts.some(text => /FACE REPORT|\[|^M$/.test(text))).toBe(false)
 })
