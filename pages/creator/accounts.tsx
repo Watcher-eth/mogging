@@ -1,3 +1,4 @@
+import { creatorSocialAccountSchema } from '@/lib/creator/validation'
 import { creatorAccountLabel } from '@/components/creator/types'
 import { useEffect, useMemo, useState, type FormEvent } from 'react'
 import { useRouter } from 'next/router'
@@ -99,9 +100,11 @@ function ConnectAccountDialog({ open, onOpenChange, platform, onPlatformChange, 
   async function submit(event: FormEvent) {
     event.preventDefault()
     if (platform === 'tiktok') return
+    const input = creatorSocialAccountSchema.safeParse({ platform, handle, profileUrl: profileUrl || null })
+    if (!input.success) return toast.error(input.error.issues[0].message)
     setSaving(true)
     try {
-      await apiPost('/api/creator/accounts', { platform, handle, profileUrl: profileUrl || null })
+      await apiPost('/api/creator/accounts', input.data)
       setHandle('')
       setProfileUrl('')
       await onConnected()

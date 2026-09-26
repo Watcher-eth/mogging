@@ -1,3 +1,4 @@
+import { creatorProfileSchema } from '@/lib/creator/validation'
 import { useEffect, useState, type FormEvent } from 'react'
 import Image from 'next/image'
 import { useSession } from 'next-auth/react'
@@ -48,9 +49,11 @@ function PayoutInformation({ email }: { email: string }) {
 
   async function save(event: FormEvent) {
     event.preventDefault()
+    const input = creatorProfileSchema.safeParse({ displayName, socialHandle, paymentOption, paypalEmail: paymentOption === 'paypal' ? paypalEmail : null, cryptoNetwork: paymentOption === 'crypto' ? cryptoNetwork : null, cryptoWalletAddress: paymentOption === 'crypto' ? cryptoWalletAddress : null })
+    if (!input.success) return toast.error(input.error.issues[0].message)
     setSaving(true)
     try {
-      await apiPatch('/api/creator', { displayName, socialHandle, paymentOption, paypalEmail: paypalEmail || null, cryptoNetwork: cryptoNetwork || null, cryptoWalletAddress: cryptoWalletAddress || null })
+      await apiPatch('/api/creator', input.data)
       await mutate()
       toast.success('Payout information saved')
     } catch (error) {
@@ -68,14 +71,14 @@ function PayoutInformation({ email }: { email: string }) {
       <form onSubmit={save} className="creator-surface grid gap-8 p-5 sm:p-7">
         <section className="grid gap-5">
           <div className="flex items-center gap-3"><span className="grid size-9 place-items-center rounded-xl bg-zinc-100"><ShieldCheck className="size-4" /></span><div><h2 className="font-semibold tracking-[-0.025em]">Identity</h2><p className="text-xs text-zinc-500">Used by the Mogging creator team for payout records.</p></div></div>
-          <div className="grid gap-5 sm:grid-cols-2"><Field label="Creator Name"><input className={fieldClass} value={displayName} onChange={(event) => setDisplayName(event.target.value)} placeholder="Your creator name" required /></Field><Field label="Primary Contact"><input className={fieldClass} value={socialHandle} onChange={(event) => setSocialHandle(event.target.value)} placeholder="Phone number or @handle" /></Field></div>
+          <div className="grid gap-5 sm:grid-cols-2"><Field label="Creator Name"><input className={fieldClass} minLength={2} maxLength={80} value={displayName} onChange={(event) => setDisplayName(event.target.value)} placeholder="Your creator name" required /></Field><Field label="Primary Contact"><input className={fieldClass} maxLength={120} value={socialHandle} onChange={(event) => setSocialHandle(event.target.value)} placeholder="Phone number or @handle" /></Field></div>
         </section>
         <div className="h-px bg-zinc-100" />
         <section className="grid gap-5">
           <div className="flex items-center gap-3"><span className="grid size-9 place-items-center rounded-xl bg-zinc-100"><WalletCards className="size-4" /></span><div><h2 className="font-semibold tracking-[-0.025em]">Payment Method</h2><p className="text-xs text-zinc-500">You can change this before a payment is processed.</p></div></div>
           <div className="flex items-start gap-2 rounded-[14px] bg-[#f5f5f7] px-3 py-2.5 text-xs leading-5 text-[#6e6e73]"><Zap className="mt-0.5 size-4 shrink-0 text-[#0071e3]" /><span><strong className="text-[#1d1d1f]">Crypto is the faster payout method.</strong> PayPal processing times may vary by region and account.</span></div>
           <div className="grid grid-cols-2 gap-2">{(['paypal', 'crypto'] as const).map((option) => <button key={option} type="button" onClick={() => setPaymentOption(option)} className={cn('flex items-center gap-3 rounded-[16px] border px-3 py-3 text-left text-sm font-medium transition-[border-color,background-color,box-shadow,transform] duration-150 active:scale-[0.98]', paymentOption === option ? 'border-[#0071e3]/35 bg-[#f2f7ff] text-[#0071e3] shadow-[0_0_0_3px_rgba(0,113,227,0.07)]' : 'border-black/[0.08] bg-white hover:bg-[#f5f5f7]')}><span className="grid size-9 shrink-0 place-items-center overflow-hidden rounded-full border border-black/[0.08] bg-white shadow-sm"><Image src={option === 'paypal' ? '/brands/paypal.png' : '/brands/usdc.svg'} alt="" width={option === 'paypal' ? 24 : 28} height={option === 'paypal' ? 24 : 28} /></span><span>{option === 'paypal' ? 'PayPal' : 'Crypto'}</span>{paymentOption === option ? <Check className="ml-auto size-4" /> : null}</button>)}</div>
-          {paymentOption === 'paypal' ? <Field label="PayPal Email"><input className={fieldClass} type="email" value={paypalEmail} onChange={(event) => setPaypalEmail(event.target.value)} required /></Field> : <div className="grid gap-5 sm:grid-cols-2"><Field label="Network"><Select value={selectedCryptoNetwork} onValueChange={(value) => setCryptoNetwork(value === 'Other' ? '' : value)}><SelectTrigger aria-label="Crypto Network"><SelectValue placeholder="Choose a Network" /></SelectTrigger><SelectContent>{cryptoNetworks.map((network) => <SelectItem key={network} value={network}>{network}</SelectItem>)}<SelectItem value="Other">Other</SelectItem></SelectContent></Select></Field><Field label="Wallet Address"><input className={fieldClass} value={cryptoWalletAddress} onChange={(event) => setCryptoWalletAddress(event.target.value)} placeholder="Wallet address" required /></Field>{selectedCryptoNetwork === 'Other' ? <div className="sm:col-span-2"><Field label="Other Network"><input className={fieldClass} value={cryptoNetwork} onChange={(event) => setCryptoNetwork(event.target.value)} placeholder="Enter network name" required /></Field></div> : null}</div>}
+          {paymentOption === 'paypal' ? <Field label="PayPal Email"><input className={fieldClass} type="email" value={paypalEmail} onChange={(event) => setPaypalEmail(event.target.value)} required /></Field> : <div className="grid gap-5 sm:grid-cols-2"><Field label="Network"><Select value={selectedCryptoNetwork} onValueChange={(value) => setCryptoNetwork(value === 'Other' ? '' : value)}><SelectTrigger aria-label="Crypto Network"><SelectValue placeholder="Choose a Network" /></SelectTrigger><SelectContent>{cryptoNetworks.map((network) => <SelectItem key={network} value={network}>{network}</SelectItem>)}<SelectItem value="Other">Other</SelectItem></SelectContent></Select></Field><Field label="Wallet Address"><input className={fieldClass} maxLength={180} value={cryptoWalletAddress} onChange={(event) => setCryptoWalletAddress(event.target.value)} placeholder="Wallet address" required /></Field>{selectedCryptoNetwork === 'Other' ? <div className="sm:col-span-2"><Field label="Other Network"><input className={fieldClass} value={cryptoNetwork} onChange={(event) => setCryptoNetwork(event.target.value)} placeholder="Enter network name" required /></Field></div> : null}</div>}
         </section>
         <div className="flex justify-end"><Button className="h-11 rounded-full px-5" disabled={saving}>{saving ? <Loader2 className="animate-spin" /> : null}{profile ? 'Save Changes' : 'Save Payout Information'}</Button></div>
       </form>

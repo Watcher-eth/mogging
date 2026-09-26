@@ -1,3 +1,4 @@
+import { creatorPostUrlSchema, creatorPostPlatform } from '@/lib/creator/validation'
 import { creatorAccountLabel } from '@/components/creator/types'
 import Link from 'next/link'
 import { useRef, useState, type ChangeEvent, type FormEvent } from 'react'
@@ -40,7 +41,9 @@ function SubmitContent() {
 
   function chooseAnalyticsScreenshot(event: ChangeEvent<HTMLInputElement>) {
     const next = event.target.files?.[0] || null
+    event.target.value = ''
     if (!next) return
+    if (!next.size) return toast.error('Choose a non-empty screenshot')
     if (!analyticsImageTypes.includes(next.type)) return toast.error('Choose a JPEG, PNG, or WebP screenshot')
     if (next.size > 10 * 1024 * 1024) return toast.error('Analytics screenshot must be 10 MB or smaller')
     setAnalyticsScreenshot(next)
@@ -50,7 +53,11 @@ function SubmitContent() {
     event.preventDefault()
     if (!formatId) return toast.error('Choose a submission format')
     if (accountRequired && !socialAccountId) return toast.error('Choose the account this video belongs to')
-    if (!postUrl) return toast.error('Add the published post URL')
+    const parsedUrl = creatorPostUrlSchema.safeParse(postUrl)
+    if (!parsedUrl.success) return toast.error(parsedUrl.error.issues[0].message)
+    const account = data?.socialAccounts.find((account) => account.id === socialAccountId)
+    if (account && creatorPostPlatform(parsedUrl.data) !== account.platform) return toast.error('The post link must match the selected account’s platform')
+    setPostUrl(parsedUrl.data)
     setStep(2)
   }
 
@@ -98,16 +105,16 @@ function SubmitContent() {
       <ContentRequirementsNote />
       <SubmissionStepper step={step} />
       <div className="t-page-slide min-h-[720px] sm:min-h-[650px]" data-page={step}>
-        <section className="t-page" data-page-id="1">
+        <section className="t-page" data-page-id="1" inert={step !== 1} aria-hidden={step !== 1}>
           <form onSubmit={continueToAnalytics} className="creator-surface grid gap-7 p-5 sm:p-7">
             <FormatPicker selectedId={formatId} onSelect={(nextFormatId) => { setFormatId(nextFormatId); setRequirementsConfirmed(false) }} onPreview={setPreviewFormat} />
             <Field label="Published From" hint={accountRequired ? 'Required' : 'Optional for now'}><Select value={socialAccountId || undefined} onValueChange={(value) => setSocialAccountId(value === 'unlinked' ? '' : value)} required={accountRequired}><SelectTrigger><SelectValue placeholder="No connected account" /></SelectTrigger><SelectContent>{!accountRequired ? <SelectItem value="unlinked">No connected account</SelectItem> : null}{data.socialAccounts.map((account) => <SelectItem key={account.id} value={account.id}>{creatorAccountLabel(account)} · {account.platform === 'tiktok' ? 'TikTok' : 'Instagram'} · {account.status === 'approved' ? 'Approved' : 'Not approved'}</SelectItem>)}</SelectContent></Select></Field>
             {!linkedToApprovedAccount ? <div className="flex gap-3 rounded-[16px] bg-[#fff4ce] px-4 py-3 text-sm leading-6 text-[#6b4f00]"><CircleAlert className="mt-0.5 size-4 shrink-0 text-[#8a5a00]" /><p><strong className="font-semibold">Account not approved yet.</strong> You can submit now, but the video stays flagged until its social account is approved.</p></div> : null}
-            <Field label="Published Post URL" hint="Required"><input className={fieldClass} type="url" value={postUrl} onChange={(event) => setPostUrl(event.target.value)} placeholder="https://www.tiktok.com/… or https://www.instagram.com/…" required /></Field>
+            <Field label="Published Post URL" hint="Required"><input className={fieldClass} type="url" maxLength={2048} value={postUrl} onChange={(event) => setPostUrl(event.target.value)} placeholder="https://www.tiktok.com/… or https://www.instagram.com/…" required /></Field>
             <div className="flex justify-end"><Button className="h-11 rounded-full px-5">Continue to Analytics</Button></div>
           </form>
         </section>
-        <section className="t-page" data-page-id="2">
+        <section className="t-page" data-page-id="2" inert={step !== 2} aria-hidden={step !== 2}>
           <form onSubmit={review} className="creator-surface grid gap-7 p-5 sm:p-7">
             <div><p className="text-xs font-semibold uppercase tracking-[0.15em] text-zinc-400">Analytics Evidence</p><h2 className="mt-2 text-2xl font-semibold tracking-[-0.04em]">Confirm the Performance Snapshot</h2><p className="mt-2 max-w-2xl text-sm leading-6 text-zinc-500">Choose the threshold you are submitting for and upload the screenshot we should use to confirm the view count, traffic sources, and audience location.</p></div>
             <Field label="Video Analytics Screenshot" hint="Required · JPEG, PNG or WebP · max 10 MB">
@@ -126,7 +133,7 @@ function SubmitContent() {
             <div className="flex flex-col-reverse gap-2 sm:flex-row sm:justify-between"><Button type="button" variant="ghost" className="h-11 rounded-full" onClick={() => setStep(1)}><ChevronLeft />Back to Post Details</Button><Button className="h-11 rounded-full px-5">Review Submission</Button></div>
           </form>
         </section>
-        <section className="t-page" data-page-id="3">
+        <section className="t-page" data-page-id="3" inert={step !== 3} aria-hidden={step !== 3}>
           <div className="creator-surface p-5 sm:p-7">
             <div className="flex items-start justify-between gap-4"><div><p className="text-xs font-semibold uppercase tracking-[0.15em] text-zinc-400">Ready to Submit</p><h2 className="mt-2 text-2xl font-semibold tracking-[-0.04em]">{selectedFormat?.name}</h2></div><span className="rounded-full bg-zinc-100 px-3 py-1.5 text-xs font-medium">{platform}</span></div>
             <div className="mt-7 grid gap-3 rounded-2xl bg-zinc-50 p-4 text-sm"><ReviewRow label="Format" value={selectedFormat?.name || ''} /><ReviewRow label="Account" value={selectedAccount ? creatorAccountLabel(selectedAccount) : 'Not connected'} /><ReviewRow label="Account Eligibility" value={linkedToApprovedAccount ? 'Approved' : 'Not approved'} /><ReviewRow label="Published Post" value={postUrl} /><ReviewRow label="Analytics Screenshot" value={analyticsScreenshot?.name || ''} /><ReviewRow label="View Count Threshold" value={`${formatViewCount(Number(viewCountThreshold))} views`} /><ReviewRow label="U.S. Audience" value={usAudiencePercent ? `${usAudiencePercent}%` : 'Default 20% Tier 1 Audience'} /><ReviewRow label="Status" value="Not submitted" /></div>

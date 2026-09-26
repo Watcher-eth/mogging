@@ -77,6 +77,7 @@ export function AccountVerificationDialog({ account, open, onOpenChange, onSubmi
     const file = event.target.files?.[0] || null
     event.target.value = ''
     if (!file) return
+    if (!file.size) return toast.error('Choose a non-empty recording')
     if (!analyticsVideoTypes.includes(file.type as (typeof analyticsVideoTypes)[number])) {
       toast.error('Choose an MP4, MOV, or WebM recording')
       return
@@ -143,7 +144,7 @@ export function AccountVerificationDialog({ account, open, onOpenChange, onSubmi
                   <Avatar.Image src={account.avatarUrl || undefined} alt={`${creatorAccountLabel(account)} profile photo`} className="size-full object-cover" />
                   <Avatar.Fallback className="grid size-full place-items-center text-sm font-semibold text-sky-600">{creatorAccountLabel(account).replace(/^@/, '').charAt(0).toUpperCase()}</Avatar.Fallback>
                 </Avatar.Root>
-                <span aria-hidden="true" className="absolute -bottom-0.5 -left-0.5 grid size-5 place-items-center rounded-full border-2 border-white bg-sky-400 text-white"><Check className="size-3" strokeWidth={3} /></span>
+                <span aria-hidden="true" className="absolute -bottom-1 -right-0.5 grid size-5 place-items-center rounded-full border-2 border-white bg-sky-400 text-white"><Check className="size-3" strokeWidth={3} /></span>
               </span>
               <div><DialogTitle className="text-2xl">Verify {creatorAccountLabel(account)}</DialogTitle><DialogDescription className="mt-1">Audience verification for your connected {platformLabel} account.</DialogDescription></div>
             </div>
@@ -153,11 +154,11 @@ export function AccountVerificationDialog({ account, open, onOpenChange, onSubmi
         <div className="grid gap-6 p-6 sm:p-7 lg:grid-cols-[minmax(0,1.15fr)_minmax(280px,0.85fr)]">
           <section>
             <div className="flex items-center gap-3"><span className="h-px flex-1 bg-zinc-200" /><p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-zinc-400">Follow These Steps</p><span className="h-px flex-1 bg-zinc-200" /></div>
-            <ol className="mt-5 grid gap-2.5">
+            <ol className="mt-6">
               {instructions[account.platform].map((instruction, index) => (
-                <li key={instruction} className="flex items-center gap-3 rounded-2xl border border-zinc-200 bg-white p-3.5 text-sm leading-6 text-zinc-700">
-                  <span className="grid size-8 shrink-0 place-items-center rounded-full bg-zinc-950 text-xs font-semibold text-white">{index + 1}</span>
-                  {instruction}
+                <li key={instruction} className="relative flex gap-4 pb-6 text-sm leading-6 text-zinc-700 last:pb-0">
+                  <span className="relative w-5 shrink-0 text-center text-xs font-medium tabular-nums leading-6 text-zinc-400">{index + 1}{index < instructions[account.platform].length - 1 ? <span aria-hidden="true" className="absolute left-1/2 top-7 -bottom-5 w-px bg-zinc-200" /> : null}</span>
+                  <span>{instruction}</span>
                 </li>
               ))}
             </ol>
