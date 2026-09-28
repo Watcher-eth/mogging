@@ -316,10 +316,14 @@ export async function getOrCreateCreatorProfile(userId: string) {
       userId,
       displayName: user.name || user.email.split('@')[0],
       socialHandle: user.instagramUsername,
-      paypalEmail: user.email,
     })
+    .onConflictDoNothing({ target: schema.creatorProfiles.userId })
     .returning()
-  return profile
+  // Concurrent Studio visits or account connections share the same registration.
+  if (profile) return profile
+  const registered = await getCreatorProfile(userId)
+  if (!registered) throw new CreatorServiceError(500, 'Could not register creator')
+  return registered
 }
 
 export async function createCreatorSubmission(userId: string, input: CreatorSubmissionInput) {

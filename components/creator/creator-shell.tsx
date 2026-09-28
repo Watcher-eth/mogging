@@ -1,6 +1,8 @@
 import Link from 'next/link'
 import { useRouter } from 'next/router'
 import { signOut, useSession } from 'next-auth/react'
+import useSWRImmutable from 'swr/immutable'
+import { apiPost } from '@/lib/api/client'
 import {
   LayoutDashboard,
   Loader2,
@@ -33,7 +35,12 @@ function CreatorNavIcon({ item, className, active = false }: { item: CreatorNavI
 export function CreatorShell({ children, allowUnauthenticated = false }: { children: ReactNode; allowUnauthenticated?: boolean }) {
   const router = useRouter()
   const [moreOpen, setMoreOpen] = useState(false)
-  const { status } = useSession()
+  const { data: session, status } = useSession()
+  useSWRImmutable(
+    status === 'authenticated' && session.user?.id ? ['/api/creator', session.user.id] : null,
+    ([path]) => apiPost(path),
+    { errorRetryCount: 3 },
+  )
   const mobileNavRef = useRef<HTMLElement>(null)
   useEffect(() => {
     const nav = mobileNavRef.current

@@ -109,7 +109,7 @@ function DashboardView({ tab, data, onSelect, onRefresh }: { tab: Tab; data: Adm
   if (tab === 'cta-library') return <CtaLibraryAdminPanel />
   if (tab === 'accounts') return <ResourceSection eyebrow="Account review" title="Social accounts" description="Approve connected TikTok and Instagram identities or request missing information."><AccountList items={data.accounts} onSelect={onSelect} /></ResourceSection>
   if (tab === 'payments') return <ResourceSection eyebrow="Money movement" title="Creator payments" description="Track scheduled, processing, completed, and failed payouts."><PaymentList items={data.payments} onSelect={onSelect} /></ResourceSection>
-  if (tab === 'creators') return <ResourceSection eyebrow="Creator access" title="Registrations" description="Review creator identities and their selected payout destinations."><CreatorList items={data.creators} onSelect={onSelect} /></ResourceSection>
+  if (tab === 'creators') return <ResourceSection eyebrow="Creator access" title="Registrations" description="Creators are registered on their first signed-in Studio visit, even before connecting an account. Existing creator profiles are included."><div className="mb-5"><CreatorRegistrationMetrics creators={data.creators} /></div><CreatorList items={data.creators} onSelect={onSelect} /></ResourceSection>
   return <Overview data={data} onSelect={onSelect} />
 }
 
@@ -149,8 +149,8 @@ function Overview({ data, onSelect }: { data: AdminDashboard; onSelect: (target:
 
   return (
     <>
-      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-        <Metric label="Creators" value={data.creators.length} detail={`${data.creators.filter((item) => item.authStatus === 'pending').length} pending`} icon={UsersRound} />
+      <div className="mb-3"><CreatorRegistrationMetrics creators={data.creators} /></div>
+      <div className="grid gap-3 sm:grid-cols-3">
         <Metric label="Videos" value={data.submissions.length} detail={`${data.submissions.filter((item) => item.status === 'pending').length} awaiting review`} asset="submissions" />
         <Metric label="Accounts" value={data.accounts.length} detail={`${data.accounts.filter((item) => item.status === 'pending').length} awaiting review`} icon={BadgeCheck} />
         <Metric label="Outstanding" value={formatMoney(outstandingCents, 'USD')} detail={`${data.payments.filter((item) => item.status === 'pending' || item.status === 'processing').length} payments`} icon={CircleDollarSign} />
@@ -161,6 +161,15 @@ function Overview({ data, onSelect }: { data: AdminDashboard; onSelect: (target:
       </section>
     </>
   )
+}
+
+function CreatorRegistrationMetrics({ creators }: { creators: AdminCreator[] }) {
+  const connected = creators.filter((creator) => creator.accountCount > 0).length
+  return <div className="grid gap-3 sm:grid-cols-3">
+    <Metric label="Total creators" value={creators.length} detail="Unique creator registrations" icon={UsersRound} />
+    <Metric label="No account connected" value={creators.length - connected} detail="Registered, awaiting connection" icon={UserRound} />
+    <Metric label="Account connected" value={connected} detail="Creators with at least one account" icon={BadgeCheck} />
+  </div>
 }
 
 function Metric({ label, value, detail, icon: Icon, asset }: { label: string; value: string | number; detail: string; icon?: typeof UsersRound; asset?: CreatorIconName }) {
