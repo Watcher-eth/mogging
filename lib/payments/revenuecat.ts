@@ -8,6 +8,7 @@ export const scanProducts = [
 ]
 
 export type RevenueCatSubscriber = {
+  original_app_user_id?: string
   entitlements?: Record<string, { expires_date?: string | null; product_identifier?: string | null }>
   subscriptions?: Record<string, {
     purchase_date?: string | null

@@ -11,7 +11,8 @@ function replace(name: string, value: unknown) { originals.set(name, Object.getO
 beforeEach(() => {
   tracksStopped = recorderStopped = 0
   const ctx = new Proxy({}, {get: (_target, key) => key === 'measureText' ? () => ({width:30}) : key === 'createLinearGradient' ? () => ({addColorStop(){}}) : () => {}})
-  replace('document', {fonts:{ready:Promise.resolve()},createElement:()=>({getContext:()=>ctx,captureStream:()=>({getTracks:()=>[{stop(){tracksStopped++}}]})})})
+  replace('document', {fonts:{ready:Promise.resolve(),add(){}},createElement:()=>({getContext:()=>ctx,captureStream:()=>({getTracks:()=>[{stop(){tracksStopped++}}]})})})
+  replace('FontFace', class { async load() { return this } })
   replace('Image', class {width=1080;height=1920;onload=()=>{};set src(_value:string){queueMicrotask(()=>this.onload())}})
   replace('window', {setTimeout:(fn:()=>void)=>setTimeout(fn,0)})
   let time=0
@@ -55,7 +56,7 @@ test('polished templates omit technical headers and category tags', () => {
   const texts: string[] = []
   const ctx = new Proxy({}, { get: (_target, key) => key === 'fillText' ? (text: string) => texts.push(text) : key === 'measureText' ? () => ({ width: 30 }) : key === 'createLinearGradient' ? () => ({ addColorStop() {} }) : () => {} }) as CanvasRenderingContext2D
   drawSlideFrame(ctx, { ...slide, headline: 'Time to ascend.' }, null, null, 1080, 1920, 4000, null)
-  expect(texts).toEqual(['Time to ascend.', 'CURRENT', '7', 'POTENTIAL', '8'])
+  expect(texts).toEqual(['Time to ascend.', '7.0', 'TOTAL SCORE', '8.0', 'POTENTIAL'])
   texts.length = 0
   drawSlideFrame(ctx, { ...slide, templateId: 'score-potential' }, null, null, 1080, 1920, 4000, null)
   expect(texts).toContain('TOTAL SCORE')
@@ -67,4 +68,11 @@ test('polished templates omit technical headers and category tags', () => {
   expect(texts).toContain('Mogging: Face Rating')
   expect(texts.filter(text => text === 'PSL')).toHaveLength(1)
   expect(texts.some(text => /FACE REPORT|\[|^M$/.test(text))).toBe(false)
+  texts.length = 0
+  const categoryScores = ['jaw', 'nose', 'mouth', 'eyes', 'overall'].map(categoryId => ({ categoryId, label: categoryId, value: '7' }))
+  drawSlideFrame(ctx, { ...slide, templateId: 'score-rows', categoryScores }, null, null, 1080, 1920, 4000, null)
+  expect(texts).toContain('SCORE')
+  expect(texts).toContain('POTENTIAL')
+  expect(texts).toContain('eyes')
+  expect(texts.filter(text => categoryScores.some(row => row.label === text))).toEqual(['eyes', 'jaw', 'nose'])
 })

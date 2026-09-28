@@ -12,6 +12,8 @@ import { sendPaymentActivationEmailForCheckoutSession } from '@/lib/payments/act
 import { grantEntitlementFromCheckoutSession, revokePaymentIntentEntitlement, updateSubscriptionEntitlement } from '@/lib/payments/entitlements'
 import { getStripe } from '@/lib/payments/stripe'
 import { recordServerEvent } from '@/lib/analytics/events'
+import { processBillingWebhook } from '@/lib/payments/billing-ledger'
+import { recordStripeLifecycle } from '@/lib/payments/stripe-lifecycle'
 
 export const config = {
   api: {
@@ -43,26 +45,15 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     return res.status(400).json({ error: { code: 'bad_request', message: 'Invalid Stripe webhook signature' } })
   }
 
-  const [reservation] = await db
-    .insert(schema.stripeWebhookEvents)
-    .values({
-      id: event.id,
-      type: event.type,
-    })
-    .onConflictDoNothing({
-      target: schema.stripeWebhookEvents.id,
-    })
-    .returning({ id: schema.stripeWebhookEvents.id })
-
-  if (!reservation) {
-    return res.status(200).json({ received: true, duplicate: true })
-  }
-
   try {
-    await handleStripeEvent(event)
+    const legacy = await db.query.stripeWebhookEvents.findFirst({ where: eq(schema.stripeWebhookEvents.id, event.id) })
+    if (legacy) return res.status(200).json({ received: true, duplicate: true })
+    await processBillingWebhook('stripe', event.id, async () => {
+      await handleStripeEvent(event)
+      await recordStripeLifecycle(event)
+    })
   } catch (error) {
     console.error('Stripe webhook handling failed', event.id, event.type, error)
-    await db.delete(schema.stripeWebhookEvents).where(eq(schema.stripeWebhookEvents.id, event.id))
     return res.status(500).json({ error: { code: 'internal_error', message: 'Webhook handling failed' } })
   }
 

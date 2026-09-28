@@ -139,7 +139,7 @@ export async function prepareCanvas({ slide, images, width, height }: RenderArgs
   const ctx = canvas.getContext('2d', { alpha: false }); if (!ctx) throw new Error('Canvas export is unavailable')
   const source = images.find((item) => item.id === slide.imageId && item.status === 'ready')
   if (!source) throw new Error('This template’s photo is no longer available. Add a clear photo and generate the set again.')
-  const [image, brand] = await Promise.all([loadImage(source.dataUrl), ['editorial', 'cta', 'psl'].includes(slide.templateId) ? loadRevealBrand() : null, slide.templateId === 'score-potential' ? loadShareFont() : null])
+  const [image, brand] = await Promise.all([loadImage(source.dataUrl), ['editorial', 'cta', 'psl'].includes(slide.templateId) ? loadRevealBrand() : null, ['editorial', 'score-potential'].includes(slide.templateId) ? loadShareFont() : null])
   const viewport = slide.templateId === 'cta' ? { width: REVEAL_PORTRAIT_SIZE, height: REVEAL_PORTRAIT_SIZE } : { width, height }
   const overlay = slide.templateId === 'score-potential'
     ? { size: { width, height }, primitives: resolveShareOverallOverlay(enrichFaceLandmarks(source.landmarks), width, height), dots: [], value: '' }
@@ -177,19 +177,22 @@ function drawEditorial(ctx: CanvasRenderingContext2D, slide: ContentSlide, width
   drawBrandPair(ctx, brand, width, height, timeMs)
   const size = width * .085
   const headline = slide.headline.trim() && slide.headline.length <= 48 ? slide.headline : 'Time to ascend.'
-  const lines = wrapText(ctx, headline, width * .86, `700 ${size}px Arial`).slice(0, 2)
+  const lines = wrapText(ctx, headline, width * .86, `500 ${size}px Arial`).slice(0, 2)
   withEnter(ctx, enter(timeMs, 850, 520), () => {
-    ctx.fillStyle = '#fff'; ctx.font = `700 ${size}px Arial`; ctx.textAlign = 'center'
-    lines.forEach((line, index) => ctx.fillText(line, width / 2, height * .78 - lines.length * size * 1.04 + index * size * 1.04))
+    ctx.fillStyle = '#fff'; ctx.font = `500 ${size}px Arial`; ctx.textAlign = 'center'
+    lines.forEach((line, index) => ctx.fillText(line, width / 2, height * .81 - lines.length * size * 1.04 + index * size * 1.04))
   })
   withEnter(ctx, enter(timeMs, 1050, 520), () => {
-    ctx.textAlign = 'center'
+    const scale = width / shareCardLayout.width
+    const labelY = height - shareCardLayout.footerBottom * scale
+    const valueY = labelY - (shareCardLayout.scoreSize + 12) * scale
     for (const [index, score] of [slide.currentScore, slide.potentialScore].entries()) {
-      const x = width * (index === 0 ? .3 : .7)
-      ctx.font = `600 ${width * .025}px Arial`; ctx.fillStyle = 'rgba(255,255,255,.7)'
-      ctx.fillText(index === 0 ? 'CURRENT' : 'POTENTIAL', x, height * .825)
-      ctx.font = `700 ${width * .105}px Arial`; ctx.fillStyle = index === 0 ? '#fff' : '#67e8f9'
-      ctx.fillText(displayScore(score), x, height * .855)
+      const x = index === 0 ? shareCardLayout.inset * scale : width - shareCardLayout.inset * scale
+      ctx.textAlign = index === 0 ? 'left' : 'right'
+      ctx.font = `800 ${shareCardLayout.scoreSize * scale}px "Mogging Share", Arial`; ctx.fillStyle = index === 0 ? '#fff' : 'rgba(255,255,255,.8)'
+      ctx.fillText(formatShareScore(score), x, valueY)
+      ctx.font = `800 ${shareCardLayout.scoreLabelSize * scale}px "Mogging Share", Arial`; ctx.fillStyle = 'rgba(255,255,255,.86)'
+      ctx.fillText(index === 0 ? 'TOTAL SCORE' : 'POTENTIAL', x, labelY)
     }
   })
 }
@@ -264,17 +267,39 @@ function drawPsl(ctx: CanvasRenderingContext2D, slide: ContentSlide, width: numb
 
 function toPsl(value: string) { return value.trim() ? (Number(value) * .8).toFixed(1) : '' }
 
+function drawHeader(ctx: CanvasRenderingContext2D, eyebrow: string, template: string, margin: number, width: number, height: number, progress: number) { withEnter(ctx, progress, () => { ctx.font = `600 ${Math.round(width * .021)}px monospace`; ctx.fillStyle = 'rgba(255,255,255,.78)'; ctx.fillText(eyebrow.toUpperCase(), margin, height * .04); ctx.textAlign = 'right'; ctx.fillText(`[ ${template.toUpperCase()} ]`, width - margin, height * .04); ctx.textAlign = 'left' }) }
+
 function drawScoreRows(ctx: CanvasRenderingContext2D, slide: ContentSlide, width: number, height: number, timeMs: number) {
-  const rowCount = slide.categoryScores.length
-  const boxHeight = Math.min(height * .78, height * .22 + rowCount * height * .034)
+  const rows = slide.categoryScores.filter(row => row.categoryId !== 'overall')
+    .toSorted((a, b) => Number(b.categoryId === slide.categoryId) - Number(a.categoryId === slide.categoryId)).slice(0, 3)
+  const padding = width * .04, rowHeight = width * .065
+  const boxHeight = width * .18 + rows.length * rowHeight
   const x = width * .05, y = height * .96 - boxHeight, boxWidth = width * .9
   ctx.fillStyle = 'rgba(0,0,0,.78)'; roundedRect(ctx, x, y, boxWidth, boxHeight, width * .025); ctx.fill()
-  withEnter(ctx, enter(timeMs, 760, 520), () => { ctx.fillStyle = '#fff'; ctx.font = `600 ${width * .075}px Arial`; ctx.fillText(displayScore(slide.currentScore), x + width * .04, y + height * .055); ctx.textAlign = 'right'; ctx.fillStyle = '#67e8f9'; ctx.fillText(displayScore(slide.potentialScore), x + boxWidth - width * .04, y + height * .055); ctx.textAlign = 'left' })
-  const rows = slide.categoryScores, rowStart = y + height * .17, rowHeight = Math.min(height * .047, (boxHeight - height * .19) / Math.max(1, rows.length))
-  rows.forEach((row, index) => { const delay = 920 + index * 60, barProgress = enter(timeMs, delay + 150, 720, [0.16, 1, 0.3, 1]); withEnter(ctx, enter(timeMs, delay, 480), () => { const rowY = rowStart + rowHeight * index; ctx.fillStyle = '#fff'; ctx.font = `500 ${width * .022}px Arial`; ctx.fillText(row.label, x + width * .04, rowY, width * .28); const barX = x + width * .34, barWidth = boxWidth * .39; ctx.fillStyle = 'rgba(255,255,255,.18)'; roundedRect(ctx, barX, rowY, barWidth, height * .007, height * .004); ctx.fill(); ctx.fillStyle = '#fff'; roundedRect(ctx, barX, rowY, barWidth * scoreRatio(row.value, categoryScoreMax(row.categoryId)) * barProgress, height * .007, height * .004); ctx.fill(); ctx.textAlign = 'right'; ctx.font = `600 ${width * .021}px monospace`; ctx.fillText(`${displayScore(row.value)}/${categoryScoreMax(row.categoryId)}`, x + boxWidth - width * .04, rowY - height * .004); ctx.textAlign = 'left' }) })
+  withEnter(ctx, enter(timeMs, 760, 520), () => {
+    for (const [index, score] of [slide.currentScore, slide.potentialScore].entries()) {
+      const scoreX = index === 0 ? x + padding : x + boxWidth - padding
+      ctx.textAlign = index === 0 ? 'left' : 'right'
+      ctx.fillStyle = 'rgba(255,255,255,.7)'; ctx.font = `600 ${width * .022}px Arial`
+      ctx.fillText(index === 0 ? 'SCORE' : 'POTENTIAL', scoreX, y + padding * .7)
+      ctx.fillStyle = index === 0 ? '#fff' : '#67e8f9'; ctx.font = `600 ${width * .06}px Arial`
+      ctx.fillText(displayScore(score), scoreX, y + padding * 1.4)
+    }
+  })
+  rows.forEach((row, index) => {
+    const delay = 920 + index * 60
+    withEnter(ctx, enter(timeMs, delay, 480), () => {
+      const rowY = y + width * .155 + index * rowHeight
+      ctx.textAlign = 'left'; ctx.fillStyle = '#fff'; ctx.font = `500 ${width * .022}px Arial`
+      ctx.fillText(row.label, x + padding, rowY, width * .28)
+      const barX = x + width * .34, barWidth = boxWidth * .39, barHeight = width * .009
+      ctx.fillStyle = 'rgba(255,255,255,.18)'; roundedRect(ctx, barX, rowY + width * .008, barWidth, barHeight, barHeight / 2); ctx.fill()
+      ctx.fillStyle = '#fff'; roundedRect(ctx, barX, rowY + width * .008, barWidth * scoreRatio(row.value, categoryScoreMax(row.categoryId)) * enter(timeMs, delay + 150, 720), barHeight, barHeight / 2); ctx.fill()
+      ctx.textAlign = 'right'; ctx.font = `600 ${width * .021}px monospace`
+      ctx.fillText(`${displayScore(row.value)}/${categoryScoreMax(row.categoryId)}`, x + boxWidth - padding, rowY)
+    })
+  })
 }
-
-function drawHeader(ctx: CanvasRenderingContext2D, eyebrow: string, template: string, margin: number, width: number, height: number, progress: number) { withEnter(ctx, progress, () => { ctx.font = `600 ${Math.round(width * .021)}px monospace`; ctx.fillStyle = 'rgba(255,255,255,.78)'; ctx.fillText(eyebrow.toUpperCase(), margin, height * .04); ctx.textAlign = 'right'; ctx.fillText(`[ ${template.toUpperCase()} ]`, width - margin, height * .04); ctx.textAlign = 'left' }) }
 function drawScoreCard(ctx: CanvasRenderingContext2D, label: string, value: string, x: number, y: number, width: number, height: number, accent: string, progress: number) { withEnter(ctx, progress, () => { ctx.fillStyle = 'rgba(0,0,0,.72)'; roundedRect(ctx, x, y, width, height, width * .025); ctx.fill(); ctx.strokeStyle = 'rgba(255,255,255,.25)'; ctx.stroke(); ctx.fillStyle = 'rgba(255,255,255,.55)'; ctx.font = `600 ${width * .055}px monospace`; ctx.fillText(label.toUpperCase(), x + width * .09, y + height * .12); ctx.fillStyle = '#fff'; ctx.font = `600 ${width * .2}px Arial`; ctx.fillText(displayScore(value), x + width * .09, y + height * .34); ctx.fillStyle = 'rgba(255,255,255,.18)'; roundedRect(ctx, x + width * .09, y + height * .76, width * .82, height * .055, height * .03); ctx.fill(); ctx.fillStyle = accent; roundedRect(ctx, x + width * .09, y + height * .76, width * .82 * scoreRatio(value, 8) * progress, height * .055, height * .03); ctx.fill() }) }
 
 function withEnter(ctx: CanvasRenderingContext2D, progress: number, draw: () => void) { if (progress <= 0) return; ctx.save(); ctx.globalAlpha = progress; ctx.translate(0, (1 - progress) * 8); draw(); ctx.restore() }

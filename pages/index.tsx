@@ -8,6 +8,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { toast } from 'sonner'
 import { apiGet, apiPost, ApiClientError } from '@/lib/api/client'
 import { cn } from '@/lib/utils'
+import { trackWebEvent, flushWebAnalytics } from '@/lib/analytics/client'
 
 type CheckoutResponse = {
   url: string
@@ -182,6 +183,8 @@ export default function AppFunnelPage() {
   }, [router.isReady, router.query.checkout, sessionId])
 
   async function startWebCheckout() {
+    trackWebEvent('landing_cta_clicked', { destination: 'web_checkout', plan: selectedProduct })
+    void flushWebAnalytics()
     const nextInstallId = checkoutInstallId ?? ensureWebInstallId()
     if (!checkoutInstallId) setWebInstallId(nextInstallId)
 
@@ -200,6 +203,8 @@ export default function AppFunnelPage() {
   }
 
   async function openAppStore() {
+    trackWebEvent('app_store_redirected', { destination: 'app_store', placement: 'activation' })
+    void flushWebAnalytics()
     window.localStorage.setItem(installClickedStorageKey, 'true')
     setInstallClicked(true)
     await navigator.clipboard?.writeText(deepLink).catch(() => null)
@@ -207,6 +212,7 @@ export default function AppFunnelPage() {
   }
 
   async function openInstalledApp() {
+    trackWebEvent('destination_selected', { destination: 'installed_app' })
     setOpeningApp(true)
     await navigator.clipboard?.writeText(deepLink).catch(() => null)
     const fallbackTimer = window.setTimeout(() => {
@@ -245,6 +251,7 @@ export default function AppFunnelPage() {
           >
             <a
               href={appStoreUrl}
+              onClick={() => { trackWebEvent('app_store_redirected', { destination: 'app_store', placement: 'hero' }); void flushWebAnalytics() }}
               className="inline-flex items-center gap-3 rounded-full border border-zinc-200 bg-zinc-50 px-5 py-2.5 text-base font-semibold text-black shadow-[0_10px_34px_rgba(15,23,42,0.08)] transition duration-200 hover:border-zinc-300 hover:bg-white active:scale-[0.985]"
             >
               <AppStoreMark className="size-8" />
@@ -280,7 +287,7 @@ export default function AppFunnelPage() {
             </div>
 
             <p className="mt-8 text-center text-sm text-zinc-600">
-              <a href={appStoreUrl} className="underline underline-offset-4">Read current ratings and reviews on the App Store</a>
+              <a href={appStoreUrl} onClick={() => { trackWebEvent('app_store_redirected', { destination: 'app_store', placement: 'reviews' }); void flushWebAnalytics() }} className="underline underline-offset-4">Read current ratings and reviews on the App Store</a>
             </p>
 
             <div className="mx-auto mt-16 w-full max-w-5xl sm:mt-20">
@@ -291,7 +298,7 @@ export default function AppFunnelPage() {
                     <button
                       key={tier.id}
                       type="button"
-                      onClick={() => setSelectedProduct(tier.id)}
+                      onClick={() => { trackWebEvent('plan_selected', { plan: tier.id, surface: 'landing' }); setSelectedProduct(tier.id) }}
                       className={cn(
                         'group grid min-h-48 grid-rows-[1fr_auto] rounded-[2rem] border bg-white p-5 text-left transition duration-200 active:scale-[0.985]',
                         active ? 'border-black shadow-[inset_0_0_0_1px_#000,0_18px_48px_rgba(15,23,42,0.10)]' : 'border-zinc-200 hover:border-zinc-400'

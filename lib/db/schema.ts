@@ -3,6 +3,7 @@ import {
   check,
   index,
   integer,
+  numeric,
   jsonb,
   pgTable,
   pgEnum,
@@ -497,6 +498,44 @@ export const stripeWebhookEvents = pgTable('stripe_webhook_events', {
   createdAt: timestamp('created_at', { mode: 'date' }).notNull().defaultNow(),
 })
 
+export const billingWebhookReceipts = pgTable('billing_webhook_receipts', {
+  id: text('id').primaryKey(),
+  leaseId: text('lease_id'),
+  leasedAt: timestamp('leased_at', { mode: 'date' }),
+  processedAt: timestamp('processed_at', { mode: 'date' }),
+  receivedAt: timestamp('received_at', { mode: 'date' }).notNull().defaultNow(),
+})
+
+export const subscriptionEvents = pgTable('subscription_events', {
+  id: text('id').primaryKey().$defaultFn(() => crypto.randomUUID()),
+  provider: text('provider').notNull(), providerEventId: text('provider_event_id').notNull(),
+  providerType: text('provider_type').notNull(), environment: text('environment').notNull(),
+  eventName: text('event_name').notNull(), externalUserId: text('external_user_id'),
+  accountId: text('account_id').references(() => users.id, { onDelete: 'set null' }),
+  subscriptionId: text('subscription_id'), transactionId: text('transaction_id'), productId: text('product_id'),
+  amount: numeric('amount', { precision: 20, scale: 6 }), currency: text('currency'),
+  properties: jsonb('properties').$type<Record<string, unknown>>().notNull().default({}),
+  occurredAt: timestamp('occurred_at', { mode: 'date' }).notNull(),
+  receivedAt: timestamp('received_at', { mode: 'date' }).notNull().defaultNow(),
+  exportedAt: timestamp('exported_at', { mode: 'date' }),
+}, table => ({
+  providerUnique: uniqueIndex('subscription_events_provider_event_unique').on(table.provider, table.providerEventId),
+  accountTime: index('subscription_events_account_time_idx').on(table.accountId, table.occurredAt),
+  subscriptionTime: index('subscription_events_subscription_time_idx').on(table.provider, table.subscriptionId, table.occurredAt),
+  eventTime: index('subscription_events_event_time_idx').on(table.environment, table.eventName, table.occurredAt),
+  externalUser: index('subscription_events_external_user_idx').on(table.provider, table.externalUserId),
+  transaction: index('subscription_events_transaction_idx').on(table.provider, table.transactionId),
+  reporting: index('subscription_events_environment_time_idx').on(table.environment, table.occurredAt),
+  pendingExport: index('subscription_events_pending_export_idx').on(table.receivedAt).where(sql`${table.exportedAt} is null`),
+}))
+
+export const analyticsIdentityLinks = pgTable('analytics_identity_links', {
+  accountId: text('account_id').notNull().references(() => users.id, { onDelete: 'cascade' }),
+  anonymousId: text('anonymous_id').notNull(),
+  platform: text('platform').notNull(),
+  linkedAt: timestamp('linked_at', { mode: 'date' }).notNull().defaultNow(),
+}, table => ({ pk: primaryKey({ columns: [table.accountId, table.anonymousId] }) }))
+
 export const paymentHandoffs = pgTable(
   'payment_handoffs',
   {
@@ -529,6 +568,10 @@ export const analyticsEvents = pgTable(
       .$defaultFn(() => crypto.randomUUID()),
     eventId: text('event_id').notNull(),
     eventName: text('event_name').notNull(),
+    schemaVersion: integer('schema_version').notNull().default(1),
+    environment: text('environment').notNull().default('production'),
+    appVersion: text('app_version'),
+    exportedAt: timestamp('exported_at', { mode: 'date' }),
     accountId: text('account_id').references(() => users.id, { onDelete: 'set null' }),
     mobileInstallId: text('mobile_install_id'),
     anonymousId: text('anonymous_id'),
@@ -544,6 +587,8 @@ export const analyticsEvents = pgTable(
     accountIdx: index('analytics_events_account_id_idx').on(table.accountId),
     nameOccurredIdx: index('analytics_events_name_occurred_at_idx').on(table.eventName, table.occurredAt),
     installIdx: index('analytics_events_mobile_install_id_idx').on(table.mobileInstallId),
+    pendingExportIdx: index('analytics_events_pending_export_idx').on(table.receivedAt).where(sql`${table.exportedAt} is null`),
+    reportingIdx: index('analytics_events_environment_time_idx').on(table.environment, table.occurredAt),
   })
 )
 

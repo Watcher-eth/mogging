@@ -20,4 +20,8 @@ describe('RevenueCat creator attribution lifecycle mapping', () => {
     expect(mapRevenueCatAttributionEvent('TEST')).toBeNull()
     expect(mapRevenueCatAttributionEvent('PRODUCT_CHANGE')).toBeNull()
   })
+  test('customer-support cancellation records refunded revenue', () => {
+    expect(mapRevenueCatAttributionEvent('CANCELLATION', 'CUSTOMER_SUPPORT')).toMatchObject({ eventType: 'refund', amountMultiplier: -1 })
+    expect(mapRevenueCatAttributionEvent('CANCELLATION', 'UNSUBSCRIBE')).toMatchObject({ eventType: 'subscription_cancellation', amountMultiplier: 0 })
+  })
 })

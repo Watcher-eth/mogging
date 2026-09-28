@@ -5,6 +5,7 @@ import { ApiError } from '@/lib/api/http'
 import { db, schema } from '@/lib/db'
 import { env } from '@/lib/env'
 import { fetchRevenueCatSubscriber, readRevenueCatPro, readRevenueCatScanPurchases, readRevenueCatScanSubscription, type RevenueCatSubscriber } from '@/lib/payments/revenuecat'
+import { linkRevenueCatIdentity } from '@/lib/payments/billing-ledger'
 import { addCalendarMonths, scanPeriod } from './scan-periods'
 import { getStripe } from './stripe'
 import type { PaymentProduct } from '@/lib/db/schema'
@@ -306,6 +307,11 @@ async function loadScanAccess(owner: EntitlementOwner, verifiedSubscriber?: Reve
   if (!owner.userId) throw new ApiError(401, 'An account is required')
   await releaseAbandonedEvaluations(owner.userId)
   const subscriber = verifiedSubscriber !== undefined ? verifiedSubscriber : await fetchRevenueCatSubscriber(owner.userId)
+  if (subscriber?.original_app_user_id) {
+    // Reuses the required provider verification; analytics failure must not deny paid access.
+    try { await linkRevenueCatIdentity(owner.userId, subscriber.original_app_user_id) }
+    catch { console.error('RevenueCat analytics identity linking failed') }
+  }
   if (subscriber) await creditRevenueCatScans(owner.userId, owner.mobileInstallId, subscriber)
   let rows = await db.query.paymentEntitlements.findMany({ where: getOwnerWhere(owner) })
   // Reconcile provider state, including pre-migration rows and missed webhooks.

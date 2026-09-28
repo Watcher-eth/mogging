@@ -24,6 +24,7 @@ import { Button } from '@/components/ui/button'
 import { ACTIVE_CREATOR_SUBMISSION_FORMATS } from '@/lib/creator/formats'
 import { cn } from '@/lib/utils'
 import { CreatorIcon, type CreatorIconName } from '@/components/creator/creator-icon'
+import { CreatorReferralLinks } from '@/components/creator/referral-links'
 
 const GuideExamples = dynamic(() => import('@/components/creator/guide-examples'), { loading: () => <p className="p-6 text-sm text-[#6e6e73]" role="status">Loading reference examples…</p> })
 
@@ -68,6 +69,7 @@ export default function CreatorProgramGuidePage() {
         action={<Button asChild className="h-11 rounded-full px-5"><Link href="/creator/submit">Submit a Video<ArrowRight /></Link></Button>}
       />
 
+      <CreatorReferralLinks />
       <TopicPicker selected={topic} onSelect={(nextTopic) => { void router.push({ pathname: '/creator/guide', query: { topic: nextTopic } }, undefined, { shallow: true, scroll: false }) }} />
 
       <details className="mt-4"><summary className="min-h-11 cursor-pointer py-3 text-sm font-semibold">New here? See the three-step overview</summary><QuickStart /></details>

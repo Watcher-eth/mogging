@@ -1,34 +1,7 @@
 import { z } from 'zod'
 import { db, schema } from '@/lib/db'
-
-export const analyticsEventNames = [
-  'app_opened',
-  'account_auth_started',
-  'account_authenticated',
-  'attribution_link_received',
-  'attribution_resolved',
-  'paywall_viewed',
-  'plan_selected',
-  'checkout_started',
-  'checkout_completed',
-  'handoff_created',
-  'handoff_opened',
-  'handoff_consumed',
-  'purchase_started',
-  'purchase_completed',
-  'purchase_failed',
-  'purchase_restored',
-  'activation_code_redeemed',
-  'evaluation_started',
-  'evaluation_completed',
-] as const
-
-export type AnalyticsEventName = (typeof analyticsEventNames)[number]
-
-const scalarSchema = z.union([z.string(), z.number(), z.boolean(), z.null()])
-const propertyValueSchema: z.ZodType<unknown> = z.lazy(() =>
-  z.union([scalarSchema, z.array(propertyValueSchema), z.record(z.string(), propertyValueSchema)])
-)
+import { analyticsEventNames, sanitizeProperties, type AnalyticsEventName } from './contract'
+export { analyticsEventNames, type AnalyticsEventName } from './contract'
 
 export const analyticsEventSchema = z.object({
   eventId: z.string().uuid(),
@@ -39,8 +12,21 @@ export const analyticsEventSchema = z.object({
   sessionId: z.string().min(1).max(200).optional(),
   platform: z.enum(['web', 'ios', 'android', 'server']),
   source: z.string().min(1).max(120).optional(),
-  properties: z.record(z.string(), propertyValueSchema).default({}),
+  schemaVersion: z.literal(1).default(1),
+  environment: z.enum(['production', 'development', 'test']).default('production'),
+  appVersion: z.string().max(80).optional(),
+  properties: z.record(z.string(), z.unknown()).default({}).transform(sanitizeProperties),
   occurredAt: z.string().datetime(),
+}).superRefine((event, ctx) => {
+  const required = event.eventName.startsWith('onboarding_step_') ? 'step'
+    : ['screen_viewed', 'screen_exited'].includes(event.eventName) ? 'screen'
+    : event.eventName.startsWith('permission_') ? 'permission' : null
+  if (required && (typeof event.properties[required] !== 'string' || !event.properties[required])) {
+    ctx.addIssue({ code: 'custom', path: ['properties', required], message: `Missing ${required}` })
+  }
+  if (event.eventName === 'screen_exited' && (typeof event.properties.duration_ms !== 'number' || event.properties.duration_ms < 0)) {
+    ctx.addIssue({ code: 'custom', path: ['properties', 'duration_ms'], message: 'Invalid screen duration' })
+  }
 })
 
 export type AnalyticsEventInput = z.infer<typeof analyticsEventSchema>
@@ -59,6 +45,9 @@ export async function recordAnalyticsEvents(events: AnalyticsEventInput[]) {
       sessionId: event.sessionId,
       platform: event.platform,
       source: event.source,
+      schemaVersion: event.schemaVersion,
+      environment: event.environment,
+      appVersion: event.appVersion,
       properties: event.properties,
       occurredAt: new Date(event.occurredAt),
     })))
@@ -85,6 +74,7 @@ export async function recordServerEvent({
       accountId: accountId || undefined,
       sessionId: sessionId || undefined,
       platform: 'server',
+      environment: process.env.NODE_ENV === 'production' ? 'production' : 'development',
       source,
       properties,
       occurredAt: new Date().toISOString(),

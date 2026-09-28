@@ -20,6 +20,7 @@ const immutableAssetPaths = [
 ]
 
 const nextConfig: NextConfig = {
+  distDir: process.env.NEXT_DIST_DIR || '.next',
   reactStrictMode: true,
   async headers() {
     return [

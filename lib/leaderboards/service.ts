@@ -39,10 +39,19 @@ const initialRating = initialSkillRating()
 const initialConservativeScore = conservativeScore(initialRating)
 const initialDisplayRating = displayRating(initialRating)
 
-export async function getPhotoLeaderboard(input: PhotoLeaderboardQuery) {
+export async function getPhotoLeaderboard(input: PhotoLeaderboardQuery, friendsOf?: string) {
   const query = photoLeaderboardQuerySchema.parse(input)
   const offset = (query.page - 1) * query.limit
-  const where = and(...photoFilters(query))
+  const filters = photoFilters(query)
+  if (friendsOf) {
+    // Only public photos from the caller and their direct invite connections.
+    filters.push(sql`(${schema.photos.userId} = ${friendsOf} or ${schema.photos.userId} in (
+      select case when inviter_user_id = ${friendsOf} then referred_user_id else inviter_user_id end
+      from referral_signups
+      where inviter_user_id = ${friendsOf} or referred_user_id = ${friendsOf}
+    ))`)
+  }
+  const where = and(...filters)
 
   const [{ total }] = await db
     .select({ total: count() })

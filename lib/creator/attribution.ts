@@ -1,5 +1,5 @@
 import { createHmac, timingSafeEqual } from 'crypto'
-import { and, asc, desc, eq, gte, inArray, sql } from 'drizzle-orm'
+import { and, asc, desc, eq, gte, inArray, or, sql } from 'drizzle-orm'
 import type { NextApiRequest, NextApiResponse } from 'next'
 import type Stripe from 'stripe'
 import { db, schema } from '@/lib/db'
@@ -83,6 +83,8 @@ export async function createCreatorAttributionClick(input: {
     where: and(eq(schema.creatorTrackingLinks.slug, input.slug), eq(schema.creatorTrackingLinks.isActive, true)),
   })
   if (!link) return null
+  // Apply current campaign configuration to existing links without rewriting their destination.
+  link.iosAppStoreUrl = buildIosAppStoreUrl(link.slug, link.iosAppStoreUrl)
   const isBot = isLinkPreviewOrBot(input.userAgent || '')
   const [click] = await db.insert(schema.creatorAttributionClicks).values({
     trackingLinkId: link.id,
@@ -307,11 +309,11 @@ type RevenueCatAttributionEventMapping = {
   amountMultiplier: -1 | 0 | 1
 }
 
-export function mapRevenueCatAttributionEvent(type: string): RevenueCatAttributionEventMapping | null {
+export function mapRevenueCatAttributionEvent(type: string, cancelReason?: string | null): RevenueCatAttributionEventMapping | null {
   if (['INITIAL_PURCHASE', 'RENEWAL', 'NON_RENEWING_PURCHASE', 'REFUND_REVERSED'].includes(type)) {
     return { eventType: 'payment', dedupeCategory: 'payment', amountMultiplier: 1 }
   }
-  if (type === 'REFUND') return { eventType: 'refund', dedupeCategory: 'refund', amountMultiplier: -1 }
+  if (type === 'REFUND' || (type === 'CANCELLATION' && cancelReason === 'CUSTOMER_SUPPORT')) return { eventType: 'refund', dedupeCategory: 'refund', amountMultiplier: -1 }
   if (type === 'CANCELLATION') return { eventType: 'subscription_cancellation', dedupeCategory: 'lifecycle', amountMultiplier: 0 }
   if (type === 'EXPIRATION') return { eventType: 'subscription_expiration', dedupeCategory: 'lifecycle', amountMultiplier: 0 }
   if (type === 'BILLING_ISSUE') return { eventType: 'subscription_billing_issue', dedupeCategory: 'lifecycle', amountMultiplier: 0 }
@@ -326,10 +328,11 @@ export async function recordRevenueCatCreatorEvent(event: RevenueCatCreatorEvent
   if (candidates.length === 0) return null
 
   const attributeClickId = readSubscriberAttribute(event.subscriberAttributes, 'creator_click_id')
+  const identityMatch = or(inArray(schema.mobileCreatorAttributions.mobileInstallId, candidates), inArray(schema.mobileCreatorAttributions.userId, candidates))
   const touch = await db.query.mobileCreatorAttributions.findFirst({
     where: attributeClickId
-      ? and(inArray(schema.mobileCreatorAttributions.mobileInstallId, candidates), eq(schema.mobileCreatorAttributions.clickId, attributeClickId))
-      : inArray(schema.mobileCreatorAttributions.mobileInstallId, candidates),
+      ? and(identityMatch, eq(schema.mobileCreatorAttributions.clickId, attributeClickId))
+      : identityMatch,
     orderBy: [desc(schema.mobileCreatorAttributions.updatedAt)],
   })
   if (!touch) return null
@@ -344,8 +347,8 @@ export async function recordRevenueCatCreatorEvent(event: RevenueCatCreatorEvent
     mobileInstallId: touch.mobileInstallId,
     userId: touch.userId,
   }
-  const amountCents = Math.max(0, Math.round((event.price || 0) * 100))
-  const mapping = mapRevenueCatAttributionEvent(event.type)
+  const amountCents = Math.round(Math.abs(event.price || 0) * 100)
+  const mapping = mapRevenueCatAttributionEvent(event.type, event.cancelReason)
   if (!mapping) return null
   const metadata = {
     provider: 'revenuecat',
@@ -624,8 +627,8 @@ function getAttributionKey(owner: AttributionOwner, fallbackActorId: string | nu
   return `click:${clickId}`
 }
 
-function buildIosAppStoreUrl(slug: string) {
-  const url = new URL(env.NEXT_PUBLIC_IOS_APP_STORE_URL || DEFAULT_IOS_APP_STORE_URL)
+function buildIosAppStoreUrl(slug: string, base?: string) {
+  const url = new URL(base || env.NEXT_PUBLIC_IOS_APP_STORE_URL || DEFAULT_IOS_APP_STORE_URL)
   url.searchParams.set('ct', slug.slice(0, 30))
   if (env.APPLE_APP_STORE_PROVIDER_TOKEN) url.searchParams.set('pt', env.APPLE_APP_STORE_PROVIDER_TOKEN)
   return url.toString()
@@ -642,12 +645,16 @@ function buildDeferredDeepLinkUrl(link: typeof schema.creatorTrackingLinks.$infe
   const deepLink = buildDeepLinkUrl(link.deepLinkBaseUrl, token, link.slug)
   const template = env.CREATOR_DEFERRED_DEEP_LINK_TEMPLATE
   if (!template) return deepLink
-  return template
+  const target = template
     .replaceAll('{token}', encodeURIComponent(token))
     .replaceAll('{creator}', encodeURIComponent(link.slug))
     .replaceAll('{deep_link}', encodeURIComponent(deepLink))
     .replaceAll('{ios_url}', encodeURIComponent(link.iosAppStoreUrl))
     .replaceAll('{android_url}', encodeURIComponent(link.androidAppStoreUrl || CREATOR_LINK_BASE_URL))
+  const url = new URL(target)
+  url.searchParams.set('deep_link_sub1', token)
+  url.searchParams.set('deep_link_value', link.slug)
+  return url.toString()
 }
 
 function signClickId(clickId: string) {

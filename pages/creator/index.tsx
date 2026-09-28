@@ -16,6 +16,7 @@ import type { CreatorDashboard, CreatorSubmission } from '@/components/creator/t
 import { apiGet } from '@/lib/api/client'
 import { cn } from '@/lib/utils'
 import { CreatorIcon, type CreatorIconName } from '@/components/creator/creator-icon'
+import { CreatorReferralLinks } from '@/components/creator/referral-links'
 
 export default function CreatorOverviewPage() {
   return <CreatorShell><OverviewContent /></CreatorShell>
@@ -51,6 +52,8 @@ function OverviewContent() {
         description="Your next step, reviews, and earnings."
       />
 
+      {data.socialAccounts.length > 0 ? <CreatorReferralLinks /> : null}
+
           <section className="creator-surface mb-4 p-4 sm:p-6">
             <p className="text-[11px] font-semibold uppercase tracking-[0.13em] text-[#86868b]">Next Up</p>
             {nextTask ? <><h2 className="mt-2 text-xl font-semibold tracking-[-0.035em]">{nextTask.title}</h2><p className="mt-2 text-sm leading-5 text-[#6e6e73]">{nextTask.description}</p><Link href={nextTask.href} className="group mt-3 inline-flex min-h-11 items-center gap-1.5 text-sm font-semibold text-[#0071e3]">Continue<ArrowRight className="size-4 transition-transform duration-150 group-hover:translate-x-0.5" /></Link></> : <><h2 className="mt-2 text-xl font-semibold tracking-[-0.035em]">You’re all set</h2><p className="mt-2 text-sm leading-5 text-[#6e6e73]">Your creator setup is complete. Keep publishing and checking reviews here.</p></>}
@@ -82,12 +85,12 @@ function OverviewContent() {
         </section>
 
         <div className="grid gap-5 sm:grid-cols-2 xl:grid-cols-1">
-          <section className="creator-surface flex min-h-52 flex-col p-5 sm:p-6">
+          <section className="creator-surface flex min-h-52 flex-col p-5 text-white sm:p-6" style={{ backgroundColor: '#007AFF' }}>
             <CreatorIcon name="guide" className="size-14" />
-            <p className="mt-5 text-[11px] font-semibold uppercase tracking-[0.13em] text-[#86868b]">Program Guide</p>
+            <p className="mt-5 text-[11px] font-semibold uppercase tracking-[0.13em]">Program Guide</p>
             <h2 className="mt-2 text-xl font-semibold tracking-[-0.035em]">Publish with confidence</h2>
-            <p className="mt-2 text-sm leading-5 text-[#6e6e73]">Review the looks-focused content rules, annotated examples, audience eligibility, and evidence requirements before posting.</p>
-            <Link href="/creator/guide" className="group mt-auto inline-flex items-center gap-1.5 pt-5 text-sm font-semibold text-[#0071e3]">Open the guide<ArrowRight className="size-4 transition-transform duration-150 group-hover:translate-x-0.5" /></Link>
+            <p className="mt-2 text-sm leading-5">Review the looks-focused content rules, annotated examples, audience eligibility, and evidence requirements before posting.</p>
+            <Link href="/creator/guide" className="group mt-auto inline-flex items-center gap-1.5 pt-5 text-sm font-semibold">Open the guide<ArrowRight className="size-4 transition-transform duration-150 group-hover:translate-x-0.5" /></Link>
           </section>
 
 

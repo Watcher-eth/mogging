@@ -1,4 +1,5 @@
 import { pslToOverallScore } from '@/lib/analysis/score-scale'
+import { trackWebEvent } from '@/lib/analytics/client'
 import { AnimatePresence, motion } from 'motion/react'
 import {
   ArrowRight,
@@ -357,6 +358,13 @@ export default function AnalysisPage() {
   const [selectedImageId, setSelectedImageId] = useState<string | null>(null)
   const [gender, setGender] = useState<'male' | 'female' | 'other'>('other')
   const [step, setStep] = useState<FlowStep>('intro')
+  const analyticsFlow = useRef<string>('')
+  useEffect(() => {
+    analyticsFlow.current ||= crypto.randomUUID()
+    trackWebEvent('onboarding_step_viewed', { step, flow_id: analyticsFlow.current, surface: 'web_analysis' })
+    if (step === 'payment') trackWebEvent('paywall_viewed', { surface: 'web_analysis', paywall_id: 'web_analysis', paywall_version: '1', flow_id: analyticsFlow.current })
+    if (step === 'results') trackWebEvent('report_viewed', { surface: 'web_analysis', flow_id: analyticsFlow.current })
+  }, [step])
   const [progress, setProgress] = useState(0)
   const [results, setResults] = useState<AnalysisResponse[]>([])
   const [error, setError] = useState<string | null>(null)
@@ -487,6 +495,9 @@ export default function AnalysisPage() {
       return
     }
 
+    const analyticsStarted = Date.now()
+    const attemptId = crypto.randomUUID()
+    trackWebEvent('evaluation_started', { attempt_id: attemptId, flow_id: analyticsFlow.current, surface: 'web_analysis' })
     try {
       const analysisResults: AnalysisResponse[] = []
 
@@ -508,9 +519,11 @@ export default function AnalysisPage() {
 
       setProgress(100)
       setResults(analysisResults)
+      trackWebEvent('evaluation_completed', { attempt_id: attemptId, flow_id: analyticsFlow.current, duration_ms: Date.now() - analyticsStarted, surface: 'web_analysis' })
       setStep('results')
       await clearAnalysisDraft()
     } catch (analysisError) {
+      trackWebEvent('evaluation_failed', { attempt_id: attemptId, flow_id: analyticsFlow.current, duration_ms: Date.now() - analyticsStarted, reason_code: 'request_failed', surface: 'web_analysis' })
       setStep('actual-analysis')
       setError(analysisError instanceof ApiClientError ? analysisError.message : 'Analysis failed')
     }

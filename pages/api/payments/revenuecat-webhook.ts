@@ -8,31 +8,12 @@ import { db, schema } from '@/lib/db'
 import { syncRevenueCatScans, revokeRevenueCatPurchase } from '@/lib/payments/entitlements'
 import { scanProducts } from '@/lib/payments/revenuecat'
 import { env } from '@/lib/env'
+import { revenueCatEventSchema } from '@/lib/payments/subscription-events'
+import { processBillingWebhook, recordRevenueCatLifecycle } from '@/lib/payments/billing-ledger'
 
-const subscriberAttributeSchema = z.object({ value: z.unknown().optional() }).passthrough()
 const webhookSchema = z.object({
   api_version: z.string(),
-  event: z.object({
-    id: z.string().min(1).max(200),
-    type: z.string().min(1).max(100),
-    app_user_id: z.string().min(1).max(200),
-    original_app_user_id: z.string().max(200).nullable().optional(),
-    aliases: z.array(z.string().max(200)).optional(),
-    transaction_id: z.string().max(300).nullable().optional(),
-    original_transaction_id: z.string().max(300).nullable().optional(),
-    product_id: z.string().max(300).nullable().optional(),
-    price_in_purchased_currency: z.number().finite().nullable().optional(),
-    price: z.number().finite().nullable().optional(),
-    currency: z.string().max(10).nullable().optional(),
-    environment: z.string().max(40).nullable().optional(),
-    store: z.string().max(40).nullable().optional(),
-    cancel_reason: z.string().max(100).nullable().optional(),
-    expiration_reason: z.string().max(100).nullable().optional(),
-    purchased_at_ms: z.number().int().nonnegative().nullable().optional(),
-    expiration_at_ms: z.number().int().nonnegative().nullable().optional(),
-    grace_period_expiration_at_ms: z.number().int().nonnegative().nullable().optional(),
-    subscriber_attributes: z.record(z.string(), subscriberAttributeSchema).optional(),
-  }).passthrough(),
+  event: revenueCatEventSchema,
 })
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
@@ -41,36 +22,40 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     verifyAuthorization(req)
     const payload = parseBody(webhookSchema, req.body)
     const event = payload.event
-    await recordRevenueCatCreatorEvent({
-      id: event.id,
-      type: event.type,
-      appUserId: event.app_user_id,
-      originalAppUserId: event.original_app_user_id,
-      aliases: event.aliases,
-      transactionId: event.transaction_id,
-      originalTransactionId: event.original_transaction_id,
-      productId: event.product_id,
-      price: event.price_in_purchased_currency ?? event.price,
-      currency: event.currency,
-      environment: event.environment,
-      store: event.store,
-      cancelReason: event.cancel_reason,
-      expirationReason: event.expiration_reason,
-      purchasedAtMs: event.purchased_at_ms,
-      expirationAtMs: event.expiration_at_ms,
-      gracePeriodExpirationAtMs: event.grace_period_expiration_at_ms,
-      subscriberAttributes: event.subscriber_attributes,
-    })
-    if (scanProducts.some((product) => product.productId === event.product_id)
-      && ['NON_RENEWING_PURCHASE', 'CANCELLATION'].includes(event.type)) {
-      const user = await db.query.users.findFirst({
-        where: eq(schema.users.id, event.app_user_id),
-        columns: { id: true },
+    const processed = await processBillingWebhook('revenuecat', event.id, async () => {
+      await recordRevenueCatLifecycle(event)
+      if (!event.app_user_id || event.type === 'TEST') return
+      if (event.environment === 'PRODUCTION') await recordRevenueCatCreatorEvent({
+        id: event.id,
+        type: event.type,
+        appUserId: event.app_user_id,
+        originalAppUserId: event.original_app_user_id,
+        aliases: event.aliases,
+        transactionId: event.transaction_id,
+        originalTransactionId: event.original_transaction_id,
+        productId: event.product_id,
+        price: event.price_in_purchased_currency ?? event.price,
+        currency: event.price_in_purchased_currency != null ? event.currency : 'USD',
+        environment: event.environment,
+        store: event.store,
+        cancelReason: event.cancel_reason,
+        expirationReason: event.expiration_reason,
+        purchasedAtMs: event.purchased_at_ms,
+        expirationAtMs: event.expiration_at_ms,
+        gracePeriodExpirationAtMs: event.grace_period_expiration_at_ms,
+        subscriberAttributes: event.subscriber_attributes,
       })
-      if (event.type === 'CANCELLATION' && event.transaction_id) await revokeRevenueCatPurchase(event.transaction_id)
-      if (user) await syncRevenueCatScans(user.id)
-    }
-    return json(res, 200, { received: true })
+      if (scanProducts.some((product) => product.productId === event.product_id)
+        && ['NON_RENEWING_PURCHASE', 'CANCELLATION'].includes(event.type)) {
+        const user = await db.query.users.findFirst({
+          where: eq(schema.users.id, event.app_user_id),
+          columns: { id: true },
+        })
+        if (event.type === 'CANCELLATION' && event.cancel_reason === 'CUSTOMER_SUPPORT' && event.transaction_id) await revokeRevenueCatPurchase(event.transaction_id)
+        if (user) await syncRevenueCatScans(user.id)
+      }
+    })
+    return json(res, 200, { received: true, duplicate: !processed })
   } catch (error) {
     return handleApiError(error, res)
   }

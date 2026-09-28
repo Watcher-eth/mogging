@@ -4,9 +4,12 @@ import { handleApiError, json, methodNotAllowed, parseBody } from '@/lib/api/htt
 import { enforceRateLimit } from '@/lib/api/rateLimit'
 import { analyticsEventSchema, recordAnalyticsEvents } from '@/lib/analytics/events'
 import { getRequestUserId } from '@/lib/auth/mobile-session'
+import { db, schema } from '@/lib/db'
+
+export const config = { api: { bodyParser: { sizeLimit: '192kb' } } }
 
 const requestSchema = z.object({
-  events: z.array(analyticsEventSchema).min(1).max(50),
+  events: z.array(z.unknown()).min(1).max(50),
 })
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
@@ -20,13 +23,24 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     })
     const input = parseBody(requestSchema, req.body)
     const accountId = await getRequestUserId(req, res)
-    const events = input.events.map((event) => ({
+    const now = Date.now()
+    const valid = input.events.map(event => analyticsEventSchema.safeParse(event)).flatMap(result => result.success ? [result.data] : [])
+    const events = valid.filter(event => event.platform !== 'server'
+      && !/^(revenuecat|stripe):/.test(event.anonymousId || '')
+      && !['checkout_completed', 'handoff_created', 'handoff_consumed', 'activation_code_redeemed'].includes(event.eventName)
+      && Date.parse(event.occurredAt) >= now - 30 * 86400_000
+      && Date.parse(event.occurredAt) <= now + 300_000).map((event) => ({
       ...event,
-      accountId: accountId || undefined,
+      // A queued event from a previous account must never be relabelled on account switch.
+      accountId: accountId && event.accountId === accountId ? accountId : undefined,
+      source: event.platform === 'web' ? 'web' : 'mobile',
     }))
 
     await recordAnalyticsEvents(events)
-    return json(res, 202, { accepted: events.length })
+    const links = events.filter(event => event.eventName === 'identity_linked' && event.accountId && event.anonymousId)
+      .map(event => ({ accountId: event.accountId!, anonymousId: event.anonymousId!, platform: event.platform }))
+    if (links.length) await db.insert(schema.analyticsIdentityLinks).values(links).onConflictDoNothing()
+    return json(res, 202, { accepted: events.length, rejected: input.events.length - events.length })
   } catch (error) {
     return handleApiError(error, res)
   }

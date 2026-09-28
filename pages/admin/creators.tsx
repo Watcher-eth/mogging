@@ -2,7 +2,7 @@ import { creatorAccountLabel } from '@/components/creator/types'
 import type { GetServerSideProps } from 'next'
 import Image from 'next/image'
 import Link from 'next/link'
-import { useMemo, useState, type FormEvent } from 'react'
+import { useMemo, useState } from 'react'
 import {
   ArrowUpRight,
   BadgeCheck,
@@ -13,7 +13,6 @@ import {
   Gauge,
   LayoutDashboard,
   Loader2,
-  LockKeyhole,
   LogOut,
   ShieldCheck,
   UserRound,
@@ -25,6 +24,7 @@ import {
 import useSWR from 'swr'
 import { toast } from 'sonner'
 import { Button } from '@/components/ui/button'
+import { AdminPasswordGate } from '@/components/admin/admin-password-gate'
 import type { CreatorCtaLibraryItem } from '@/lib/creator/cta-library'
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
@@ -83,6 +83,7 @@ export default function CreatorAdminPage() {
         <div>
           <div className="flex items-center gap-2 text-[11px] font-semibold uppercase tracking-[0.18em] text-zinc-400"><ShieldCheck className="size-3.5" />Private workspace</div>
           <h1 className="mt-2 text-3xl font-semibold tracking-[-0.055em] sm:text-4xl">Creator admin</h1>
+          <Link href="/admin/analytics" className="mt-3 inline-block text-sm font-medium underline underline-offset-4">Product & revenue analytics →</Link>
           <p className="mt-3 text-sm text-zinc-500">Review registrations, social accounts, videos, and payouts from one place.</p>
         </div>
         <div className="flex items-center gap-2"><span className="hidden text-xs text-zinc-400 sm:block">{access.email}</span><Button variant="outline" className="h-10 rounded-xl" onClick={() => void lockDashboard()}><LogOut />Lock dashboard</Button></div>
@@ -98,38 +99,6 @@ export default function CreatorAdminPage() {
       {isLoading || !dashboard ? <CenteredLoader /> : <DashboardView tab={tab} data={dashboard} onSelect={setSelected} onRefresh={async () => { await mutate() }} />}
       {selected ? <ReviewDialog key={`${selected.resource}-${selected.item.id}`} target={selected} payments={dashboard?.payments || []} metrics={dashboard?.attributionMetrics || []} open onOpenChange={(open) => { if (!open) setSelected(null) }} onRefresh={async () => { await mutate() }} onSaved={async () => { await mutate(); setSelected(null) }} /> : null}
     </div>
-  )
-}
-
-function AdminPasswordGate({ onUnlocked }: { onUnlocked: () => void }) {
-  const [password, setPassword] = useState('')
-  const [submitting, setSubmitting] = useState(false)
-
-  async function unlock(event: FormEvent) {
-    event.preventDefault()
-    setSubmitting(true)
-    try {
-      await apiPost('/api/admin/creator/session', { password })
-      setPassword('')
-      onUnlocked()
-    } catch (error) {
-      toast.error(error instanceof ApiClientError ? error.message : 'Could not unlock the admin dashboard')
-    } finally {
-      setSubmitting(false)
-    }
-  }
-
-  return (
-    <section className="mx-auto grid min-h-[65vh] max-w-md place-items-center">
-      <form onSubmit={unlock} className="w-full rounded-[28px] border border-zinc-200 bg-white p-6 shadow-[0_24px_80px_rgba(15,23,42,0.08)] sm:p-8">
-        <span className="grid size-12 place-items-center rounded-2xl bg-black text-white"><LockKeyhole className="size-5" /></span>
-        <p className="mt-7 text-[11px] font-semibold uppercase tracking-[0.18em] text-zinc-400">Admin verification</p>
-        <h1 className="mt-2 text-3xl font-semibold tracking-[-0.055em]">Unlock creator admin</h1>
-        <p className="mt-3 text-sm leading-6 text-zinc-500">Enter the separate admin password. Access automatically locks after eight hours.</p>
-        <label className="mt-7 grid gap-2 text-sm font-medium">Admin password<input autoFocus required type="password" autoComplete="current-password" value={password} onChange={(event) => setPassword(event.target.value)} className="h-12 rounded-xl border border-zinc-200 bg-white px-3.5 text-sm outline-none transition-[border-color,box-shadow] duration-150 ease-out focus:border-zinc-400 focus:ring-4 focus:ring-zinc-100" placeholder="Enter your admin password" /></label>
-        <Button className="mt-5 h-12 w-full rounded-xl" disabled={submitting}>{submitting ? <Loader2 className="animate-spin" /> : <ShieldCheck />}{submitting ? 'Verifying…' : 'Unlock dashboard'}</Button>
-      </form>
-    </section>
   )
 }
 

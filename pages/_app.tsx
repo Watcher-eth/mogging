@@ -9,6 +9,8 @@ import { AppShell } from '@/components/app/app-shell'
 import { SeoHead } from '@/components/app/seo-head'
 import { swrConfig } from '@/lib/swr'
 import '@/styles/globals.css'
+import dynamic from 'next/dynamic'
+const Analytics = dynamic(() => import('@/components/app/analytics').then(module => module.Analytics), { ssr: false })
 
 export default function App({ Component, pageProps: { session, ...pageProps } }: AppProps) {
   const router = useRouter()
@@ -17,6 +19,7 @@ export default function App({ Component, pageProps: { session, ...pageProps } }:
 
   return (
     <SessionProvider session={session}>
+      <Analytics />
       <SWRConfig value={swrConfig}>
         <SoundProvider
           enabled={soundEnabled}
