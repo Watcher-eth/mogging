@@ -109,6 +109,7 @@ export async function getCreatorAdminDashboard() {
         platform: schema.creatorSocialAccounts.platform,
         handle: schema.creatorSocialAccounts.handle,
         displayName: schema.creatorSocialAccounts.displayName,
+        avatarUrl: schema.creatorSocialAccounts.avatarUrl,
         profileUrl: schema.creatorSocialAccounts.profileUrl,
         connectionMethod: schema.creatorSocialAccounts.connectionMethod,
         analyticsVideoUrl: schema.creatorSocialAccounts.analyticsVideoUrl,

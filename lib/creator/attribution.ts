@@ -4,6 +4,7 @@ import type { NextApiRequest, NextApiResponse } from 'next'
 import type Stripe from 'stripe'
 import { db, schema } from '@/lib/db'
 import { env } from '@/lib/env'
+import { buildCreatorDeepLink } from './link-routing'
 
 export const CREATOR_ATTRIBUTION_COOKIE = 'mogging_creator_attribution'
 export const CREATOR_LINK_BASE_URL = 'https://www.mogging.com'
@@ -98,7 +99,7 @@ export async function createCreatorAttributionClick(input: {
     link,
     click,
     token,
-    deepLinkUrl: buildDeferredDeepLinkUrl(link, token),
+    deepLinkUrl: buildCreatorDeepLink(link.slug, token),
     isBot,
   }
 }
@@ -631,29 +632,6 @@ function buildIosAppStoreUrl(slug: string, base?: string) {
   const url = new URL(base || env.NEXT_PUBLIC_IOS_APP_STORE_URL || DEFAULT_IOS_APP_STORE_URL)
   url.searchParams.set('ct', slug.slice(0, 30))
   if (env.APPLE_APP_STORE_PROVIDER_TOKEN) url.searchParams.set('pt', env.APPLE_APP_STORE_PROVIDER_TOKEN)
-  return url.toString()
-}
-
-function buildDeepLinkUrl(base: string, token: string, slug: string) {
-  const url = new URL(base)
-  if (url.protocol === 'mogging:' && url.hostname === 'r') url.pathname = `/${slug}`
-  url.searchParams.set('attribution_token', token)
-  return url.toString()
-}
-
-function buildDeferredDeepLinkUrl(link: typeof schema.creatorTrackingLinks.$inferSelect, token: string) {
-  const deepLink = buildDeepLinkUrl(link.deepLinkBaseUrl, token, link.slug)
-  const template = env.CREATOR_DEFERRED_DEEP_LINK_TEMPLATE
-  if (!template) return deepLink
-  const target = template
-    .replaceAll('{token}', encodeURIComponent(token))
-    .replaceAll('{creator}', encodeURIComponent(link.slug))
-    .replaceAll('{deep_link}', encodeURIComponent(deepLink))
-    .replaceAll('{ios_url}', encodeURIComponent(link.iosAppStoreUrl))
-    .replaceAll('{android_url}', encodeURIComponent(link.androidAppStoreUrl || CREATOR_LINK_BASE_URL))
-  const url = new URL(target)
-  url.searchParams.set('deep_link_sub1', token)
-  url.searchParams.set('deep_link_value', link.slug)
   return url.toString()
 }
 

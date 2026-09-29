@@ -9,14 +9,14 @@ import { toast } from 'sonner'
 import { Button } from '@/components/ui/button'
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { CreatorAuthPrompt } from '@/components/creator/creator-auth-prompt'
-import { AccountVerificationDialog } from '@/components/creator/account-verification-dialog'
+import { AccountVerificationDialog, type AnalyticsEvidence } from '@/components/creator/account-verification-dialog'
 import { AccountTrackingLink } from '@/components/creator/account-tracking-link'
 import { SocialPlatformLogo, type SocialPlatform } from '@/components/brand/social-platform-logo'
 import { CreatorHeader, CreatorShell, Field, fieldClass } from '@/components/creator/creator-shell'
 import { CreatorIcon } from '@/components/creator/creator-icon'
 import { AccountReviewNote } from '@/components/creator/content-guidelines'
 import type { CreatorDashboard, CreatorSocialAccount } from '@/components/creator/types'
-import { apiGet, apiPost, apiRequest, ApiClientError } from '@/lib/api/client'
+import { apiGet, apiPatch, apiPost, apiRequest, ApiClientError } from '@/lib/api/client'
 import { cn } from '@/lib/utils'
 
 export default function CreatorAccountsPage() {
@@ -43,8 +43,10 @@ function AccountsContent() {
     if (!router.isReady || typeof router.query.tiktok !== 'string') return
     const result = router.query.tiktok
     if (result === 'connected' || result === 'basic_connected') {
-      toast.success('TikTok connected. Add analytics to verify it')
+      toast.success('TikTok connected and submitted for review')
       void mutate()
+    } else if (result === 'account_mismatch') {
+      toast.error('The TikTok login did not match the username on your recording. Connect the matching account.')
     } else if (result === 'cancelled') {
       toast.error('TikTok connection was cancelled')
     } else if (result === 'not_configured') {
@@ -76,7 +78,7 @@ function AccountsContent() {
       <div className="mt-5 flex gap-4 text-sm text-zinc-500"><span>TikTok {tiktokCount}/5</span><span>Instagram {instagramCount}/5</span></div>
       <div className="mt-5"><AccountReviewNote /></div>
       <ConnectAccountDialog open={connectOpen} onOpenChange={setConnectOpen} platform={platform} onPlatformChange={setPlatform} disabled={atLimit} onConnected={async () => { await mutate(); setConnectOpen(false) }} counts={{ tiktok: tiktokCount, instagram: instagramCount }} />
-      <AccountVerificationDialog account={verificationAccount} open={Boolean(verificationAccount)} onOpenChange={(open) => { if (!open) setVerificationAccount(null) }} onSubmitted={async () => { await mutate() }} />
+      <AccountVerificationDialog account={verificationAccount} open={Boolean(verificationAccount)} onOpenChange={(open) => { if (!open) setVerificationAccount(null) }} onSubmitEvidence={async (evidence) => { if (!verificationAccount) return; await apiPatch('/api/creator/accounts', { accountId: verificationAccount.id, ...evidence }); await mutate(); toast.success('Audience recording submitted for review') }} />
     </>
   )
 }
@@ -86,6 +88,7 @@ function ConnectAccountDialog({ open, onOpenChange, platform, onPlatformChange, 
   const [profileUrl, setProfileUrl] = useState('')
   const [saving, setSaving] = useState(false)
   const [connectingOauth, setConnectingOauth] = useState(false)
+  const [verifying, setVerifying] = useState(false)
 
   useEffect(() => {
     if (open) return
@@ -93,37 +96,37 @@ function ConnectAccountDialog({ open, onOpenChange, platform, onPlatformChange, 
     setProfileUrl('')
     setSaving(false)
     setConnectingOauth(false)
+    setVerifying(false)
   }, [open])
 
-  async function submit(event: FormEvent) {
+  function submit(event: FormEvent) {
     event.preventDefault()
-    if (platform === 'tiktok') return
     const input = creatorSocialAccountSchema.safeParse({ platform, handle, profileUrl: profileUrl || null })
     if (!input.success) return toast.error(input.error.issues[0].message)
-    setSaving(true)
-    try {
-      await apiPost('/api/creator/accounts', input.data)
-      setHandle('')
-      setProfileUrl('')
-      await onConnected()
-      toast.success('Instagram connected. Add analytics to verify it')
-    } catch (error) {
-      toast.error(error instanceof ApiClientError ? error.message : 'Could not connect account')
-    } finally { setSaving(false) }
+    setHandle(input.data.handle)
+    setVerifying(true)
   }
 
-  async function connectTikTok() {
-    setConnectingOauth(true)
-    try {
-      const { authorizeUrl } = await apiPost<{ authorizeUrl: string }>('/api/creator/oauth/tiktok/start', {})
-      window.location.assign(authorizeUrl)
-    } catch (error) {
-      toast.error(error instanceof ApiClientError ? error.message : 'Could not start TikTok connection')
-      setConnectingOauth(false)
+  async function connectWithEvidence(evidence: AnalyticsEvidence) {
+    const input = { ...creatorSocialAccountSchema.parse({ platform, handle, profileUrl: profileUrl || null }), ...evidence }
+    if (platform === 'tiktok') {
+      setConnectingOauth(true)
+      try {
+        const { authorizeUrl } = await apiPost<{ authorizeUrl: string }>('/api/creator/oauth/tiktok/start', input)
+        window.location.assign(authorizeUrl)
+      } finally { setConnectingOauth(false) }
+    } else {
+      setSaving(true)
+      try {
+        await apiPost('/api/creator/accounts', input)
+        await onConnected()
+        toast.success('Instagram connected and submitted for review')
+      } finally { setSaving(false) }
     }
   }
 
   const busy = saving || connectingOauth
+  if (verifying) return <AccountVerificationDialog account={{ platform, handle, displayName: null, avatarUrl: null }} open={open} onOpenChange={(nextOpen) => { if (!nextOpen) setVerifying(false) }} onSubmitEvidence={connectWithEvidence} />
 
   return (
     <Dialog open={open} onOpenChange={(nextOpen) => { if (!busy) onOpenChange(nextOpen) }}>
@@ -131,7 +134,7 @@ function ConnectAccountDialog({ open, onOpenChange, platform, onPlatformChange, 
         <form onSubmit={submit} className="grid gap-6 p-6 sm:p-7">
           <DialogHeader>
             <DialogTitle className="text-2xl">Connect an Account</DialogTitle>
-            <DialogDescription>Connect your profile first. After it appears in Accounts, you’ll submit its analytics recording for verification.</DialogDescription>
+            <DialogDescription>Enter your profile, then upload the required audience recording. Your account is only connected and sent for review after the upload is complete.</DialogDescription>
           </DialogHeader>
           <div className="grid grid-cols-2 gap-2">
             {(['tiktok', 'instagram'] as const).map((option) => (
@@ -143,21 +146,10 @@ function ConnectAccountDialog({ open, onOpenChange, platform, onPlatformChange, 
           </div>
           {disabled ? <div className="flex gap-2 rounded-xl bg-amber-50 px-3 py-2.5 text-xs leading-5 text-amber-800"><AlertCircle className="mt-0.5 size-4 shrink-0" />You’ve reached the five-account limit for this platform.</div> : null}
 
-          {platform === 'tiktok' ? (
-            <div className="rounded-[18px] bg-[#f5f5f7] p-5 text-center">
-              <span className="mx-auto grid size-12 place-items-center overflow-hidden rounded-[16px] bg-white shadow-sm"><SocialPlatformLogo platform="tiktok" className="size-9" /></span>
-              <h3 className="mt-4 text-sm font-semibold">Connect With TikTok</h3>
-              <p className="mx-auto mt-2 max-w-sm text-xs leading-5 text-zinc-500">Log in with TikTok to connect your account. Analytics verification happens after connection.</p>
-              <Button type="button" className="mt-5 h-11 w-full rounded-full" disabled={disabled || busy} onClick={() => void connectTikTok()}>{connectingOauth ? <Loader2 className="animate-spin" /> : <SocialPlatformLogo platform="tiktok" className="size-5" />}{connectingOauth ? 'Connecting…' : 'Continue With TikTok'}</Button>
-              <p className="mt-3 flex items-center justify-center gap-1.5 text-[11px] text-zinc-400"><ShieldCheck className="size-3.5" />Secure OAuth · Profile and Engagement Statistics</p>
-            </div>
-          ) : (
-            <>
-              <Field label="Username"><div className="relative"><span className="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 text-sm text-zinc-400">@</span><input className={cn(fieldClass, 'pl-8')} value={handle} onChange={(event) => setHandle(event.target.value)} placeholder="creatorname" required /></div></Field>
-              <Field label="Profile URL" hint="Optional"><input className={fieldClass} type="url" value={profileUrl} onChange={(event) => setProfileUrl(event.target.value)} placeholder="https://instagram.com/creatorname" /></Field>
-              <Button className="h-11 rounded-full" disabled={disabled || busy}>{saving ? <Loader2 className="animate-spin" /> : <SocialPlatformLogo platform="instagram" className="size-5" />}{saving ? 'Connecting…' : 'Connect Instagram Account'}</Button>
-            </>
-          )}
+          <Field label="Username"><div className="relative"><span className="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 text-sm text-zinc-400">@</span><input className={cn(fieldClass, 'pl-8')} value={handle} onChange={(event) => setHandle(event.target.value)} placeholder="creatorname" required /></div></Field>
+          <Field label="Profile URL" hint="Optional; generated from your username"><input className={fieldClass} type="url" value={profileUrl} onChange={(event) => setProfileUrl(event.target.value)} placeholder={`https://www.${platform}.com/${platform === 'tiktok' ? '@' : ''}creatorname`} /></Field>
+          {platform === 'tiktok' ? <p className="text-xs leading-5 text-zinc-500">After uploading, sign in to the same TikTok account to confirm ownership.</p> : null}
+          <Button className="h-11 rounded-full" disabled={disabled || busy}>Continue to Required Recording</Button>
         </form>
       </DialogContent>
     </Dialog>

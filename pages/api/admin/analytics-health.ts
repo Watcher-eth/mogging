@@ -25,7 +25,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     return json(res, 200, { ...health, configured: {
       posthog: Boolean(process.env.POSTHOG_PROJECT_KEY), scheduler: Boolean(process.env.CRON_SECRET),
       appleCampaignProvider: Boolean(process.env.APPLE_APP_STORE_PROVIDER_TOKEN),
-      deferredLink: Boolean(process.env.CREATOR_DEFERRED_DEEP_LINK_TEMPLATE),
+      firstPartyCreatorLinks: true,
     } })
   } catch (error) { return handleApiError(error, res) }
 }

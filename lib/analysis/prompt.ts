@@ -78,7 +78,7 @@ Return one complete JSON object matching this schema:
   "report": {
     "summary": string,
     "potential": {"score": number, "label": string, "summary": string, "focusAreas": [string]},
-    "categories": [{"id": string, "title": string, "subtitle": string, "scoreLabel": string, "score": number, "features": [{"label": string, "value": string}], "explanation": string, "recommendation": string}]
+    "categories": [{"id": string, "title": string, "subtitle": string, "scoreLabel": string, "score": number, "eyeColor": "blue"|"gray"|"green"|"hazel"|"amber"|"brown"|"dark brown" (eyes only, omit if uncertain), "features": [{"label": string, "value": string, "measurement": string (when measurable)}], "explanation": string, "recommendation": string}]
   },
   "landmarks": {"version": 1, "source": "kimi-vision-estimate", "confidence": number, "image": {"width": number, "height": number}, "anchors": {"anchorName": {"x": number, "y": number}}}
 }
@@ -90,6 +90,8 @@ Hard requirements:
 - Every category must have ${featureCount} features.
 - Every category "score" must be a 0-10 number. Do not use apparent age in years, percentages, or PSL /8 as a category score.
 - Feature labels and values must be approachable but precise. Prefer values like "7.2/10", "mild right drift", "slight downward tilt", "balanced width", or "low visible texture" over vague values like "aligned", "centered", "clean", "high", "measured", or "good".
+- For every feature whose label names a measurable dimension (including angle, tilt, width, height, spacing, length, distance, ratio, projection, or thirds), include a separate measurement alongside its descriptive value. Use degrees for angles/tilts and a dimensionless ratio to a named facial reference for distances or proportions (for example "0.48× face width"). Base estimates on visible landmarks, not assumed real-world millimeters or centimeters. Omit the measurement only if the relevant points are not visible; explain that uncertainty in the value. Do not put a bare score in measurement.
+- On the eyes category only, set eyeColor to the best visible iris color from the listed options. Omit it when lighting, resolution, or occlusion makes the iris color uncertain. Do not infer eye color from skin tone or ethnicity.
 - The overall category features must be exactly these six scored facial qualities, in this order: Eye area, Jaw & chin, Cheekbone structure, Facial thirds, Symmetry, Skin quality. Every value must be a 0-10 score formatted like "7.2/10". Never include market fit, approachability, distinctiveness, versatility, casting, archetypes, social impressions, percentile, or potential in overall features.
 - Eye feature values should explain eye-line level, spacing, and lid support in plain terms.
 - Eye features should cover canthal tilt, eye spacing, upper-eyelid exposure or hooding, and under-eye support when visible.

@@ -1,3 +1,4 @@
+import * as Avatar from '@radix-ui/react-avatar'
 import { creatorAccountLabel } from '@/components/creator/types'
 import type { GetServerSideProps } from 'next'
 import Image from 'next/image'
@@ -33,8 +34,7 @@ import { getAuthSession } from '@/lib/auth/session'
 import { isCreatorAdminEmail } from '@/lib/admin/creator-auth'
 import { cn } from '@/lib/utils'
 import { CreatorEconomicsDashboard } from '@/components/admin/creator-economics-dashboard'
-import { AccountAttributionReport, CreatorAttributionDashboard, CreatorAttributionReport } from '@/components/admin/creator-attribution-dashboard'
-import { AccountTrackingLink } from '@/components/creator/account-tracking-link'
+import { CreatorAttributionDashboard, CreatorAttributionReport } from '@/components/admin/creator-attribution-dashboard'
 import { calculateCreatorPayout, CREATOR_US_AUDIENCE_TIERS, CREATOR_VIEW_THRESHOLDS } from '@/lib/creator/payouts'
 import { mergeCreatorSubmissionReviewResults } from '@/lib/creator/submission-review'
 import { CreatorIcon, type CreatorIconName } from '@/components/creator/creator-icon'
@@ -142,7 +142,7 @@ function CtaReviewCard({ item, onSaved }: { item: CreatorCtaLibraryItem; onSaved
 function Overview({ data, onSelect }: { data: AdminDashboard; onSelect: (target: ReviewTarget) => void }) {
   const attention = useMemo(() => [
     ...data.submissions.filter((item) => item.status === 'pending').map((item) => ({ resource: 'submission' as const, item })),
-    ...data.accounts.filter((item) => item.status === 'pending').map((item) => ({ resource: 'account' as const, item })),
+    ...data.accounts.filter((item) => item.status === 'pending' && item.analyticsVideoUrl && item.analyticsConfirmedAt).map((item) => ({ resource: 'account' as const, item })),
     ...data.creators.filter((item) => item.authStatus === 'pending').map((item) => ({ resource: 'creator' as const, item })),
   ].slice(0, 8), [data])
   const outstandingCents = data.payments.filter((payment) => payment.status === 'pending' || payment.status === 'processing').reduce((total, payment) => total + payment.amountCents, 0)
@@ -152,7 +152,7 @@ function Overview({ data, onSelect }: { data: AdminDashboard; onSelect: (target:
       <div className="mb-3"><CreatorRegistrationMetrics creators={data.creators} /></div>
       <div className="grid gap-3 sm:grid-cols-3">
         <Metric label="Videos" value={data.submissions.length} detail={`${data.submissions.filter((item) => item.status === 'pending').length} awaiting review`} asset="submissions" />
-        <Metric label="Accounts" value={data.accounts.length} detail={`${data.accounts.filter((item) => item.status === 'pending').length} awaiting review`} icon={BadgeCheck} />
+        <Metric label="Accounts" value={data.accounts.length} detail={`${data.accounts.filter((item) => item.status === 'pending' && item.analyticsVideoUrl && item.analyticsConfirmedAt).length} awaiting review`} icon={BadgeCheck} />
         <Metric label="Outstanding" value={formatMoney(outstandingCents, 'USD')} detail={`${data.payments.filter((item) => item.status === 'pending' || item.status === 'processing').length} payments`} icon={CircleDollarSign} />
       </div>
       <section className="mt-7">
@@ -187,12 +187,32 @@ function SubmissionList({ items, payments, onSelect }: { items: AdminSubmission[
 }
 
 function AccountList({ items, onSelect }: { items: AdminAccount[]; onSelect: (target: ReviewTarget) => void }) {
-  if (!items.length) return <EmptyState title="No connected accounts" description="TikTok and Instagram account requests will appear here." />
-  return <div className="grid gap-3">{items.map((item) => <AccountRow key={item.id} item={item} onClick={() => onSelect({ resource: 'account', item })} />)}</div>
+  const reviewable = items.filter((item) => item.analyticsVideoUrl && item.analyticsConfirmedAt)
+  if (!reviewable.length) return <EmptyState title="No accounts ready for review" description="Accounts appear here only after their audience recording is submitted." />
+  return <div className="grid gap-3">{reviewable.map((item) => <AccountRow key={item.id} item={item} onClick={() => onSelect({ resource: 'account', item })} />)}</div>
+}
+
+function AccountAvatar({ account }: { account: AdminAccount }) {
+  return <Avatar.Root className="grid size-11 shrink-0 overflow-hidden rounded-full bg-zinc-100">
+    <Avatar.Image src={account.avatarUrl || undefined} alt={`${creatorAccountLabel(account)} profile photo`} className="size-full object-cover" />
+    <Avatar.Fallback className="grid size-full place-items-center text-sm font-semibold text-zinc-500">{creatorAccountLabel(account).replace(/^@/, '').charAt(0).toUpperCase()}</Avatar.Fallback>
+  </Avatar.Root>
+}
+
+function accountProfileUrl(account: AdminAccount) {
+  return account.profileUrl || (account.handle ? `https://www.${account.platform}.com/${account.platform === 'tiktok' ? '@' : ''}${account.handle}` : null)
 }
 
 function AccountRow({ item, onClick }: { item: AdminAccount; onClick: () => void }) {
-  return <article className="rounded-2xl border border-zinc-200 bg-white p-3 shadow-[0_8px_30px_rgba(15,23,42,0.035)]"><button onClick={onClick} className="group flex w-full items-center gap-4 rounded-xl p-1 text-left transition-transform duration-150 ease-out active:scale-[0.995]"><span className="grid size-11 shrink-0 place-items-center rounded-xl bg-zinc-100"><BadgeCheck className="size-5" /></span><span className="min-w-0 flex-1"><span className="block truncate text-sm font-semibold tracking-[-0.02em]">{creatorAccountLabel(item)}</span><span className="mt-1 block truncate text-xs text-zinc-500">{item.creatorName} · {capitalize(item.platform)} · {formatDate(item.createdAt)}</span></span><span className="hidden max-w-48 truncate text-xs text-zinc-400 md:block">{item.creatorEmail}</span><StatusPill status={item.analyticsConfirmedAt ? item.status : 'needs_verification'} /><ArrowUpRight className="size-4 shrink-0 text-zinc-300 transition-[color,transform] duration-150 ease-out group-hover:-translate-y-0.5 group-hover:translate-x-0.5 group-hover:text-black" /></button><AccountTrackingLink url={item.trackingLinkUrl} className="mt-3" /></article>
+  const profileUrl = accountProfileUrl(item)
+  return <article className="min-w-0 rounded-2xl border border-zinc-200 bg-white p-4">
+    <button onClick={onClick} className="flex w-full min-w-0 items-center gap-3 text-left">
+      <AccountAvatar account={item} />
+      <span className="min-w-0 flex-1"><span className="block truncate text-sm font-semibold">{creatorAccountLabel(item)}</span><span className="mt-1 block truncate text-xs text-zinc-500">{item.creatorName} · {capitalize(item.platform)} · {formatDate(item.createdAt)}</span></span>
+      <StatusPill status={item.status} /><ArrowUpRight className="size-4 shrink-0 text-zinc-400" />
+    </button>
+    {profileUrl ? <a href={profileUrl} target="_blank" rel="noopener noreferrer" className="mt-3 inline-flex min-h-11 max-w-full items-center gap-2 text-sm font-medium text-blue-600 underline underline-offset-4"><span className="[overflow-wrap:anywhere]">{profileUrl}</span><ArrowUpRight className="size-4 shrink-0" /></a> : <p className="mt-3 text-sm text-amber-700">Profile URL unavailable. Request the account’s username before review.</p>}
+  </article>
 }
 
 function PaymentList({ items, onSelect }: { items: AdminPayment[]; onSelect: (target: ReviewTarget) => void }) {
@@ -265,13 +285,13 @@ function ReviewDialog({ target, payments, metrics, open, onOpenChange, onRefresh
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-h-[90vh] max-w-2xl overflow-y-auto rounded-[28px] border-zinc-200 bg-white p-0">
+      <DialogContent className="max-h-[90dvh] max-w-4xl grid-cols-[minmax(0,1fr)] overflow-y-auto rounded-[28px] border-zinc-200 bg-white p-0">
         {target.resource === 'submission' ? <AdminSubmissionEvidence submission={target.item} /> : null}
-        <div className="p-5 sm:p-7">
-          <DialogHeader>
+        <div className="min-w-0 p-5 sm:p-7">
+          <DialogHeader className="min-w-0 pr-8 text-left">
             <div className="flex items-center gap-2"><StatusPill status={initialStatus} /><span className="text-xs text-zinc-400">{formatDate(target.item.createdAt)}</span></div>
-            <DialogTitle className="pt-2 text-2xl">{reviewTitle(target)}</DialogTitle>
-            <DialogDescription>{reviewSubtitle(target)}</DialogDescription>
+            <div className="flex min-w-0 items-center gap-3 pt-2">{target.resource === 'account' ? <AccountAvatar account={target.item} /> : null}<DialogTitle className="min-w-0 break-words text-2xl">{reviewTitle(target)}</DialogTitle></div>
+            <DialogDescription className="[overflow-wrap:anywhere]">{reviewSubtitle(target)}</DialogDescription>
           </DialogHeader>
           <ReviewDetails target={target} />
           {target.resource === 'submission' ? <AttributionEditor submission={target.item} metrics={metrics.find((item) => item.submissionId === target.item.id)} onSaved={onRefresh} /> : null}
@@ -279,7 +299,7 @@ function ReviewDialog({ target, payments, metrics, open, onOpenChange, onRefresh
           {target.resource === 'submission' ? <SubmissionRequirementsReview items={reviewChecklist} onChange={setReviewChecklist} /> : null}
           <div className="mt-6 grid gap-2">
             <span className="text-sm font-medium">Review status</span>
-            <Select value={status} onValueChange={(value) => setStatus(value as typeof status)}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent>{statusOptions(target.resource).map((option) => <SelectItem key={option} value={option}>{statusLabel(option)}</SelectItem>)}</SelectContent></Select>
+            <Select value={status} onValueChange={(value) => setStatus(value as typeof status)}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent>{statusOptions(target.resource).map((option) => <SelectItem key={option} value={option} disabled={target.resource === 'account' && option === 'approved' && (!target.item.analyticsVideoUrl || !target.item.analyticsConfirmedAt)}>{statusLabel(option)}</SelectItem>)}</SelectContent></Select>
           </div>
           {target.resource === 'account' || target.resource === 'submission' ? <label className="mt-5 grid gap-2 text-sm font-medium">Review note<textarea value={reviewNote} onChange={(event) => setReviewNote(event.target.value.slice(0, 1000))} className="min-h-24 resize-y rounded-xl border border-zinc-200 p-3 text-sm outline-none transition-[border-color,box-shadow] duration-150 ease-out focus:border-zinc-400 focus:ring-4 focus:ring-zinc-100" placeholder="Visible to the creator" /></label> : null}
           {target.resource === 'payment' ? <div className="mt-5 grid gap-4 sm:grid-cols-2"><label className="grid gap-2 text-sm font-medium">Amount (USD)<input type="number" min="0" step="0.01" value={amount} onChange={(event) => setAmount(event.target.value)} className="h-12 rounded-xl border border-zinc-200 px-3.5 outline-none focus:border-zinc-400 focus:ring-4 focus:ring-zinc-100" /></label><label className="grid gap-2 text-sm font-medium">Provider reference<input value={providerReference} onChange={(event) => setProviderReference(event.target.value)} className="h-12 rounded-xl border border-zinc-200 px-3.5 outline-none focus:border-zinc-400 focus:ring-4 focus:ring-zinc-100" placeholder="Transaction ID" /></label></div> : null}
@@ -418,9 +438,40 @@ function CreatePayment({ submission, selection, onCreated }: { submission: Admin
   return <div className="mt-5 rounded-2xl border border-zinc-200 bg-zinc-50 p-4"><div className="flex items-center justify-between gap-4"><div><p className="text-sm font-semibold">Create payment</p><p className="mt-1 text-xs leading-5 text-zinc-500">The amount is locked to the admin-approved calculator result.</p></div><p className="text-2xl font-semibold tracking-[-0.045em]">{estimate ? formatMoney(estimate.payout * 100, 'USD') : '—'}</p></div>{estimate ? <p className="mt-3 rounded-xl bg-white px-3 py-2 text-[11px] leading-5 text-zinc-500">{formatViewCount(selection.viewCountThreshold)} approved views · {selection.usAudiencePercent !== null ? `${selection.usAudiencePercent}% U.S. audience` : '20%+ combined Tier-1 base rate'}{estimate.isCapped ? ' · payout cap applied' : ''}</p> : <p className="mt-3 text-xs text-amber-700">Choose the final views and audience tier above before creating payment.</p>}<Button variant="outline" className="mt-4 h-10 w-full rounded-xl bg-white" onClick={() => void create()} disabled={creating || !estimate}>{creating ? <Loader2 className="animate-spin" /> : <CircleDollarSign />}{creating ? 'Creating…' : 'Schedule calculated payment'}</Button></div>
 }
 
+function AccountAudienceEvidence({ account }: { account: AdminAccount }) {
+  const [playbackFailed, setPlaybackFailed] = useState(false)
+  return <section className="mt-6 min-w-0 rounded-2xl border border-zinc-200 p-4 sm:p-5" aria-label="Audience verification recording">
+    <h3 className="text-base font-semibold">Audience verification recording</h3>
+    <p className="mt-1 text-sm leading-6 text-zinc-500">Review the past 28 days of audience analytics and top countries before approving this account.</p>
+    {account.analyticsVideoUrl ? <>
+      <video key={account.analyticsVideoUrl} className="mt-4 block max-h-[55dvh] w-full min-w-0 rounded-xl bg-black object-contain" src={account.analyticsVideoUrl} controls playsInline preload="metadata" onError={() => setPlaybackFailed(true)} aria-label="Uploaded audience analytics recording" />
+      <div className="mt-3 flex flex-wrap items-center justify-between gap-3 text-sm">
+        <a href={account.analyticsVideoUrl} target="_blank" rel="noopener noreferrer" className="inline-flex min-h-11 items-center gap-1 font-medium underline underline-offset-4">Open recording<ArrowUpRight className="size-4" /></a>
+        {account.analyticsSizeBytes ? <span className="text-zinc-500">{formatBytes(account.analyticsSizeBytes)}</span> : null}
+      </div>
+      {playbackFailed ? <p role="alert" className="mt-2 text-sm text-amber-700">The recording could not play here. Open it in a new tab to view or download it. If it is unavailable, request a new upload.</p> : null}
+      {!account.analyticsConfirmedAt ? <p className="mt-2 text-sm text-amber-700">The creator has not confirmed the required analytics period. Request completed verification before approval.</p> : null}
+    </> : <div className="mt-4 rounded-xl bg-amber-50 p-4 text-sm text-amber-900">
+      <p className="font-semibold">No audience recording uploaded</p>
+      <p className="mt-1 leading-6">Connecting a social account does not submit its audience evidence. Set the review to Missing information and ask the creator to upload their 28-day audience recording from Accounts → Verify account.</p>
+    </div>}
+  </section>
+}
+
 function ReviewDetails({ target }: { target: ReviewTarget }) {
   if (target.resource === 'creator') return <><CreatorAttributionReport report={target.item.attribution} accountCount={target.item.accountCount} /><Details rows={[['Primary contact', target.item.primaryContact || 'Not provided'], ['Payout method', target.item.paymentOption === 'paypal' ? 'PayPal' : target.item.cryptoNetwork || 'Crypto'], ['Payout destination', target.item.paymentOption === 'paypal' ? target.item.paypalEmail || 'Not provided' : target.item.cryptoWalletAddress || 'Not provided']]} /></>
-  if (target.resource === 'account') return <>{target.item.analyticsVideoUrl ? <div className="mt-6 overflow-hidden rounded-2xl bg-black"><div className="flex items-center justify-between bg-zinc-900 px-4 py-2.5 text-xs text-white"><span className="font-medium">28-day analytics recording</span><span className="text-white/50">{target.item.analyticsSizeBytes ? formatBytes(target.item.analyticsSizeBytes) : null}</span></div><video className="aspect-video w-full object-contain" src={target.item.analyticsVideoUrl} controls preload="metadata" /></div> : null}<AccountTrackingLink url={target.item.trackingLinkUrl} className="mt-6" /><AccountAttributionReport report={target.item.attribution} /><Details rows={[['Creator', target.item.creatorName], ['Platform', capitalize(target.item.platform)], ['Handle', creatorAccountLabel(target.item)], ['Connection', target.item.connectionMethod === 'oauth' ? 'OAuth verified' : 'Manual'], ['Analytics window', target.item.analyticsPeriodDays ? `Past ${target.item.analyticsPeriodDays} days` : 'Not provided'], ['Recording size', target.item.analyticsSizeBytes ? formatBytes(target.item.analyticsSizeBytes) : 'Not provided'], ['Profile', target.item.profileUrl || 'Not provided']]} links={target.item.profileUrl ? { 6: target.item.profileUrl } : undefined} /></>
+  if (target.resource === 'account') return <>
+    <AccountAudienceEvidence account={target.item} />
+    <Details rows={[
+      ['Creator', target.item.creatorName],
+      ['Platform', capitalize(target.item.platform)],
+      ['Handle', creatorAccountLabel(target.item)],
+      ['Connection', target.item.connectionMethod === 'oauth' ? 'OAuth connected' : 'Manual'],
+      ['Analytics window', target.item.analyticsPeriodDays ? `Past ${target.item.analyticsPeriodDays} days` : 'Not provided'],
+      ['Evidence submitted', target.item.analyticsConfirmedAt ? formatDate(target.item.analyticsConfirmedAt) : 'Not submitted'],
+      ['Profile', accountProfileUrl(target.item) || 'Not provided'],
+    ]} links={accountProfileUrl(target.item) ? { 6: accountProfileUrl(target.item)! } : undefined} />
+  </>
   if (target.resource === 'submission') {
     const evidenceSize = target.item.analyticsSizeBytes || target.item.videoSizeBytes
     return <Details rows={[['Creator', target.item.creatorName], ['Format', target.item.title], ['Requirements', target.item.requirementsConfirmedAt ? `Confirmed ${formatDate(target.item.requirementsConfirmedAt)}` : 'Not recorded'], ['Account', target.item.socialHandle ? `@${target.item.socialHandle}` : 'Not connected'], ['Account Eligibility', target.item.socialAccountStatus === 'approved' ? 'Approved' : 'Not connected to an approved account'], ['Evidence', target.item.analyticsScreenshotUrl ? 'Analytics screenshot' : target.item.videoUrl ? 'Legacy video' : 'Not provided'], ['Evidence Size', evidenceSize ? formatBytes(evidenceSize) : 'Not recorded'], ['Creator-submitted views', target.item.viewCountThreshold ? `${formatViewCount(target.item.viewCountThreshold)} views` : 'Not recorded'], ['Creator-submitted audience', target.item.usAudiencePercent !== null ? `${target.item.usAudiencePercent}% U.S.` : '20%+ combined Tier-1'], ['Published Post', target.item.postUrl || 'Not provided']]} links={target.item.postUrl ? { 9: target.item.postUrl } : undefined} />
@@ -429,7 +480,7 @@ function ReviewDetails({ target }: { target: ReviewTarget }) {
 }
 
 function Details({ rows, links }: { rows: Array<[string, string]>; links?: Record<number, string> }) {
-  return <div className="mt-6 grid gap-3 rounded-2xl bg-zinc-50 p-4 text-sm">{rows.map(([label, value], index) => <div key={label} className="flex items-center justify-between gap-4"><span className="text-zinc-500">{label}</span>{links?.[index] ? <Link className="flex min-w-0 items-center gap-1 truncate font-medium underline decoration-zinc-300 underline-offset-4" href={links[index]} target="_blank">Open <ArrowUpRight className="size-3.5" /></Link> : <span className="max-w-[65%] truncate text-right font-medium">{value}</span>}</div>)}</div>
+  return <div className="mt-6 grid gap-3 rounded-2xl bg-zinc-50 p-4 text-sm">{rows.map(([label, value], index) => <div key={label} className="flex min-w-0 items-start justify-between gap-4"><span className="shrink-0 text-zinc-500">{label}</span>{links?.[index] ? <Link className="flex min-w-0 items-center gap-1 truncate font-medium underline decoration-zinc-300 underline-offset-4" href={links[index]} target="_blank">Open <ArrowUpRight className="size-3.5" /></Link> : <span className="min-w-0 max-w-[65%] text-right font-medium [overflow-wrap:anywhere]">{value}</span>}</div>)}</div>
 }
 
 function StatusPill({ status }: { status: string }) {

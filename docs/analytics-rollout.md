@@ -17,8 +17,8 @@ This change implements the week 1–3 data foundation and core semantic instrume
 1. Review and apply `drizzle/0035_analytics_billing.sql` through the existing migration workflow. The migration adds billing receipts, immutable lifecycle facts, identity links, analytics metadata, and export indexes; it does not delete existing data.
 2. Configure server variables below. `POSTHOG_PROJECT_KEY` absent disables export while local ingestion continues. Existing clients remain compatible with defaulted metadata.
 3. Deploy the web/API. Verify `/api/admin/analytics-health` while signed in and unlocked as an administrator.
-4. Configure RevenueCat/Stripe webhook delivery and OneLink, then test in sandbox. Sandbox financial rows stay in the ledger and are excluded from production creator totals/export.
-5. Build and release mobile. `EXPO_PUBLIC_` variables are baked into the build. The new `app.config.ts` adds the configured OneLink associated domain; regenerate native configuration/build entitlements before shipping that domain. Existing manually checked-in iOS native projects need the resulting entitlement change included in the build.
+4. Configure RevenueCat/Stripe webhook delivery, then test in sandbox. Sandbox financial rows stay in the ledger and are excluded from production creator totals/export. Creator routing is now first-party and requires no OneLink subscription.
+5. Deploy the creator-code exchange API first; build and release the mobile handler/code UI before enabling `/r/*` Universal Links and store redirects. `app.config.js` is the single Expo dynamic configuration. The existing iOS entitlements include both Mogging domains. See the mobile `docs/creator-attribution.md` for staged rollout and device checks.
 6. Check production health after the first real transaction and after one export interval. Inspect a consenting test account from anonymous session through authentication, onboarding, purchase, evaluation, and cancellation.
 
 ## Configuration required
@@ -32,18 +32,16 @@ Server:
 | `CRON_SECRET` | Existing scheduler bearer secret, configured in the deployment environment |
 | `REVENUECAT_WEBHOOK_AUTH_TOKEN` | Exact webhook Authorization secret in RevenueCat |
 | `APPLE_APP_STORE_PROVIDER_TOKEN` | Actual App Store Connect provider token for campaign links |
-| `CREATOR_DEFERRED_DEEP_LINK_TEMPLATE` | Actual AppsFlyer OneLink URL; existing template placeholders remain supported |
 
 Mobile:
 
 - `EXPO_PUBLIC_APPSFLYER_DEV_KEY`
 - `EXPO_PUBLIC_APPSFLYER_APP_ID` (numeric Apple app ID)
-- `EXPO_PUBLIC_APPSFLYER_ONELINK_DOMAIN` (hostname only)
 
 AppsFlyer/RevenueCat:
 
 - Reserve `deep_link_sub1` for Mogging's signed attribution token and `deep_link_sub2` for creative metadata.
-- Verify the OneLink iOS/Android app mapping and associated-domain verification. Test direct and deferred delivery separately; deterministic deferred matching remains subject to the provider/platform flow.
+- Verify first-party associated domains and direct opening. A fresh iPhone install requires reopening the creator link or explicitly entering the code/link before purchase; do not claim automatic deferred attribution or count manual claims as verified installs.
 - Configure RevenueCat's AppsFlyer integration if revenue forwarding is wanted. `$appsflyerId` is attached when available. The app no longer mirrors general behavior into AppsFlyer, which avoids client/server purchase double counting.
 - Do not enable an ATT prompt solely for internal analytics. The SDK no longer waits ten seconds for a prompt the app does not present.
 
@@ -125,6 +123,22 @@ Use sequential funnels and unique people/flow IDs. A daily count of different mi
 - At the end of local verification, production migration/deployment were still pending. The subsequent deployment is recorded below. Provider configuration, real-device attribution tests, and native performance comparison remain pending.
 
 ## Production deployment record (2026-09-28)
+
+### First-party creator exchange: API-only rollout
+
+Live verification after activation: `www.mogging.com` serves AASA with `/r/*` (200), and an iPhone browser request to the branded creator link returns an App Store 307 with private/no-store. The bare `mogging.com` AASA request still receives the existing domain-level 307, so use generated canonical `https://www.mogging.com/r/...` links; bare-domain Universal Links are not verified.
+
+**Subsequent routing activation:** At the user's explicit request to enable links before their own device testing, promoted `https://mogging-6k9kinrdn-glimpseback.vercel.app` on 2026-09-28. This preserves the API-only release and adds the creator route, shared link-routing helper, provider-free link builder, and `/r/*` AASA rules. Production build and mocked routing checks passed; staged iPhone requests returned 307 to the App Store, and Instagram requests retained the app/code/store fallback. Real-device testing remains pending. TestFlight build 60 contains the required handler; public users still need an App Store update. Fresh installs must reopen the creator link or enter the code—automatic deferred-install attribution is not provided. Apple/device association caches can delay activation. Rollback target: `https://mogging-dq92k03i1-glimpseback.vercel.app`.
+
+- Promoted `dpl_34F2uqJWyCAbAtPvND8ou9zwKfS5` (`https://mogging-dq92k03i1-glimpseback.vercel.app`) after staging and verification. Source: production commit `0d9dcc17d56e47241e05d0dde6ac3c8189118bf7` plus only `pages/api/attribution/link.ts`; unrelated working-tree changes were excluded.
+- Verified GET 405, malformed POST 400, inactive code 404, rate-limit headers and private/no-store responses. A live POST using Mogging's own creator link returned 200 and a signed `mogging:` URL. This recorded one QA click with user agent `MoggingReleaseVerification/1.0`; no install, purchase, or commission was created.
+- Production AASA still excludes creator `/r/*` routes, and the existing creator landing route is unchanged. Do not deploy the pending AASA/store-redirect changes until the new mobile build is released and real-device tests pass.
+- Mobile automated checks: 65 tests passed plus the first-party runtime integration script and TypeScript. The Release simulator build installed/launched, and an inactive creator URL displayed the expected error alert. This is not real-device attribution or purchase verification.
+- Signed iPhone archive succeeded at `/private/tmp/mogging-creator-link-release.xcarchive`; both root/www associated-domain entitlements were verified. App Store Connect upload succeeded on 2026-09-28 at 22:24 UTC for version `0.1.56`, build `60` (Xcode automatically incremented archived build `59`). Apple reported processing, not TestFlight availability or App Store publication. Distribution logs: `/private/var/folders/b5/bypf54694xz5_4h0qn1qpws80000gn/T/moggingscan_2026-09-28_16-22-26.409.xcdistributionlogs`.
+- Upload warning: the archive lacks the Hermes framework dSYM for UUID `B99B4F0D-1B56-3D94-940F-383F4F00C905`; upload succeeded, but Hermes crash symbolication is incomplete. Real-device attribution/purchase testing and native performance comparison remain pending. The user will connect an iPhone after deployment.
+- API-only rollback target: `https://mogging-782y2j1rk-glimpseback.vercel.app` (`dpl_55KtEkm4gW7tRiSco8bFqFFFuJwN`). No migration was required for this endpoint.
+
+### Earlier analytics deployment
 
 - Promoted `dpl_Fyp6XfzZqLCt3yLsowEM2gyLVJuB` (`https://mogging-83670814d-glimpseback.vercel.app`) to mogging.com after a production-target build with domain assignment deferred. Release source: HEAD `a14b689` plus the analytics changes and the five creator files already present in the preceding production release. Unrelated in-progress leaderboard changes were excluded.
 - Reviewed and applied the four pending journal entries through `0035_analytics_billing` in one transaction, with a two-second lock timeout and 30-second per-statement timeout. This included the prior private-photo default, referral-signup table, and idempotent creator identity changes. Normal Drizzle migration hashes/timestamps were recorded. Existing analytics data was preserved.

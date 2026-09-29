@@ -60,8 +60,8 @@ export const creatorSubmissionSchema = z.object({
 })
 
 export const creatorAnalyticsEvidenceSchema = z.object({
-  analyticsVideoUrl: z.string().min(1),
-  analyticsStorageKey: z.string().min(1),
+  analyticsVideoUrl: z.string().min(1).max(2048),
+  analyticsStorageKey: z.string().min(1).max(300),
   analyticsContentType: z.enum(['video/mp4', 'video/quicktime', 'video/webm']),
   analyticsSizeBytes: z.number().int().positive().max(250 * 1024 * 1024),
   analyticsPast28DaysConfirmed: z.literal(true),
@@ -88,12 +88,14 @@ export const creatorSocialAccountSchema = z.object({
   }
 })
 
+export const creatorAccountConnectionSchema = creatorSocialAccountSchema.safeExtend(creatorAnalyticsEvidenceSchema.shape)
+
 export const creatorAccountAnalyticsSubmissionSchema = creatorAnalyticsEvidenceSchema.extend({
   accountId: z.string().uuid(),
 })
 
 export type CreatorProfileInput = z.infer<typeof creatorProfileSchema>
 export type CreatorSubmissionInput = z.infer<typeof creatorSubmissionSchema>
-export type CreatorSocialAccountInput = z.infer<typeof creatorSocialAccountSchema>
+export type CreatorSocialAccountInput = z.infer<typeof creatorAccountConnectionSchema>
 export type CreatorAnalyticsEvidenceInput = z.infer<typeof creatorAnalyticsEvidenceSchema>
 

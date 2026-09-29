@@ -1,4 +1,4 @@
-import { creatorAssetPublicUrl } from '@/lib/storage/videos'
+import { creatorAssetPublicUrl, verifyCreatorRecordingUpload } from '@/lib/storage/videos'
 import { and, desc, eq, or, sql } from 'drizzle-orm'
 import { z } from 'zod'
 import { db, schema } from '@/lib/db'
@@ -6,7 +6,7 @@ import { env } from '@/lib/env'
 import { getCreatorSubmissionFormat } from '@/lib/creator/formats'
 import { ensureCreatorTrackingLink } from '@/lib/creator/attribution'
 
-export { creatorProfileSchema, creatorSubmissionSchema, creatorSocialAccountSchema, creatorAccountAnalyticsSubmissionSchema } from './validation'
+export { creatorProfileSchema, creatorSubmissionSchema, creatorAccountConnectionSchema, creatorAccountAnalyticsSubmissionSchema } from './validation'
 import { creatorPostPlatform, creatorAnalyticsEvidenceSchema, creatorAccountAnalyticsSubmissionSchema, type CreatorProfileInput, type CreatorSubmissionInput, type CreatorSocialAccountInput, type CreatorAnalyticsEvidenceInput } from './validation'
 
 export type CreatorTikTokOAuthInput = {
@@ -113,6 +113,7 @@ export async function saveCreatorProfile(userId: string, input: CreatorProfileIn
 }
 
 export async function addCreatorSocialAccount(userId: string, input: CreatorSocialAccountInput) {
+  await validateCreatorAnalyticsEvidence(userId, input)
   const profile = await getOrCreateCreatorProfile(userId)
   const accounts = await db.query.creatorSocialAccounts.findMany({
     where: eq(schema.creatorSocialAccounts.creatorProfileId, profile.id),
@@ -131,13 +132,15 @@ export async function addCreatorSocialAccount(userId: string, input: CreatorSoci
       creatorProfileId: profile.id,
       platform: input.platform,
       handle: input.handle,
-      profileUrl: input.profileUrl || null,
+      profileUrl: input.profileUrl || `https://www.${input.platform}.com/${input.platform === 'tiktok' ? '@' : ''}${input.handle}`,
+      ...creatorAnalyticsEvidenceValues(input),
     })
     .returning()
   return { ...account, trackingLink: await ensureCreatorTrackingLink(account.id) }
 }
 
-export async function addCreatorTikTokOAuthAccount(userId: string, input: CreatorTikTokOAuthInput) {
+export async function addCreatorTikTokOAuthAccount(userId: string, input: CreatorTikTokOAuthInput, evidence: z.infer<typeof creatorAnalyticsEvidenceSchema>) {
+  await validateCreatorAnalyticsEvidence(userId, evidence)
   const profile = await getOrCreateCreatorProfile(userId)
   const normalizedHandle = input.username?.replace(/^@/, '').trim().toLowerCase()
   if (normalizedHandle !== undefined && !/^[a-z0-9._]{2,40}$/.test(normalizedHandle)) {
@@ -195,6 +198,9 @@ export async function addCreatorTikTokOAuthAccount(userId: string, input: Creato
     })
 
     const socialValues = {
+      ...creatorAnalyticsEvidenceValues(evidence),
+      status: 'pending' as const,
+      reviewNote: null,
       // OAuth proves the provider identity even when profile scope is unavailable.
       // Preserve known handles on reconnect; never invent a username from display_name.
       handle: normalizedHandle || accountToUpdate?.handle || null,
@@ -221,7 +227,7 @@ export async function addCreatorTikTokOAuthAccount(userId: string, input: Creato
 }
 
 export async function submitCreatorAccountAnalyticsEvidence(userId: string, input: z.infer<typeof creatorAccountAnalyticsSubmissionSchema>) {
-  validateCreatorAnalyticsEvidence(userId, input)
+  await validateCreatorAnalyticsEvidence(userId, input)
   const profile = await getCreatorProfile(userId)
   if (!profile) throw new CreatorServiceError(404, 'Creator profile not found')
   const [account] = await db
@@ -241,9 +247,16 @@ export async function submitCreatorAccountAnalyticsEvidence(userId: string, inpu
   return account
 }
 
-function validateCreatorAnalyticsEvidence(userId: string, input: z.infer<typeof creatorAnalyticsEvidenceSchema>) {
-  if (!input.analyticsStorageKey.startsWith(`creators/${userId}/account-analytics/`)) {
+export async function validateCreatorAnalyticsEvidence(userId: string, input: z.infer<typeof creatorAnalyticsEvidenceSchema>) {
+  input = creatorAnalyticsEvidenceSchema.parse(input)
+  const prefix = `creators/${userId}/account-analytics/`
+  if (!input.analyticsStorageKey.startsWith(prefix) || !/^[0-9a-f-]{36}\.(mp4|mov|webm)$/.test(input.analyticsStorageKey.slice(prefix.length))) {
     throw new CreatorServiceError(400, 'Invalid analytics recording upload')
+  }
+  try {
+    await verifyCreatorRecordingUpload(input.analyticsStorageKey, input.analyticsSizeBytes, input.analyticsContentType)
+  } catch {
+    throw new CreatorServiceError(400, 'Upload the complete audience recording before connecting or submitting this account')
   }
 }
 

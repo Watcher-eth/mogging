@@ -448,8 +448,9 @@
   .creator-verification { width: 100%; height: 100dvh; max-height: 100dvh; border-radius: 0; }
 }
 
-.creator-page .t-page[aria-hidden="true"] { display: none; }
-.creator-page .t-page[aria-hidden="false"] { position: relative; inset: auto; }
+/* Overlay primitives temporarily change aria-hidden; only the wizard owns inert. */
+.creator-page .t-page[inert] { display: none; }
+.creator-page .t-page:not([inert]) { position: relative; inset: auto; }
 .creator-verification { align-content: start; }
 
 @media (max-width: 767px) {

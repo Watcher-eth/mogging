@@ -1,5 +1,5 @@
 import { describe, expect, test } from 'bun:test'
-import { creatorPostUrlSchema, creatorProfileSchema, creatorSocialAccountSchema, creatorSubmissionSchema } from './validation'
+import { creatorPostUrlSchema, creatorProfileSchema, creatorSocialAccountSchema, creatorAccountConnectionSchema, creatorSubmissionSchema } from './validation'
 
 describe('creator input validation', () => {
   test('accepts supported published posts and short TikTok links', () => {
@@ -24,4 +24,15 @@ describe('creator input validation', () => {
     expect(creatorSubmissionSchema.safeParse(input).success).toBe(true)
     for (const patch of [{viewCountThreshold:1}, {requirementsConfirmed:false}, {analyticsSizeBytes:0}, {analyticsSizeBytes:10485761}, {analyticsContentType:'text/html'}, {usAudiencePercent:99}]) expect(creatorSubmissionSchema.safeParse({...input,...patch}).success).toBe(false)
   })
+})
+
+
+test('connecting an account requires complete confirmed video evidence', () => {
+  const profile = { platform: 'instagram', handle: 'nate' }
+  const evidence = { analyticsVideoUrl: '/recording.mp4', analyticsStorageKey: 'creators/user/account-analytics/recording.mp4', analyticsContentType: 'video/mp4', analyticsSizeBytes: 100, analyticsPast28DaysConfirmed: true }
+  expect(creatorAccountConnectionSchema.safeParse(profile).success).toBe(false)
+  expect(creatorAccountConnectionSchema.safeParse({ ...profile, ...evidence }).success).toBe(true)
+  for (const patch of [{analyticsSizeBytes:0}, {analyticsSizeBytes:262144001}, {analyticsPast28DaysConfirmed:false}, {analyticsContentType:'image/png'}]) {
+    expect(creatorAccountConnectionSchema.safeParse({ ...profile, ...evidence, ...patch }).success).toBe(false)
+  }
 })

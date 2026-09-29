@@ -24,6 +24,7 @@ export const metricScoreSchema = z.object({
 export const reportFeatureSchema = z.object({
   label: z.string().min(1).max(80),
   value: z.string().min(1).max(160),
+  measurement: z.string().min(1).max(80).optional(),
 })
 
 export const reportCategorySchema = z.object({
@@ -45,6 +46,7 @@ export const reportCategorySchema = z.object({
   scoreLabel: z.string().min(1).max(80),
   score: z.number().min(0).max(120),
   features: z.array(reportFeatureSchema).min(4).max(6),
+  eyeColor: z.enum(['blue', 'gray', 'green', 'hazel', 'amber', 'brown', 'dark brown']).optional(),
   explanation: z.string().min(1).max(700),
   recommendation: z.string().min(1).max(220).optional(),
 })

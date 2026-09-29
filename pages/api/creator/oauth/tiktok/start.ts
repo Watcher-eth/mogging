@@ -1,6 +1,8 @@
+import { creatorAccountConnectionSchema } from '@/lib/creator/validation'
+import { validateCreatorAnalyticsEvidence } from '@/lib/creator/service'
 import { creatorTikTokScopes } from '@/lib/creator/tiktok-permissions'
 import type { NextApiRequest, NextApiResponse } from 'next'
-import { ApiError, handleApiError, json, methodNotAllowed } from '@/lib/api/http'
+import { ApiError, handleApiError, json, methodNotAllowed, parseBody } from '@/lib/api/http'
 import { getAuthSession } from '@/lib/auth/session'
 import { TIKTOK_AUTHORIZATION_URL } from '@/lib/auth/tiktok-api'
 import {
@@ -18,7 +20,10 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     if (!env.TIKTOK_CLIENT_KEY || !env.TIKTOK_CLIENT_SECRET) {
       throw new ApiError(503, 'TikTok OAuth is not configured yet')
     }
-    const { state, cookieValue } = createCreatorTikTokState(session.user.id)
+    const connection = parseBody(creatorAccountConnectionSchema, req.body)
+    if (connection.platform !== 'tiktok') throw new ApiError(400, 'Choose a TikTok profile')
+    await validateCreatorAnalyticsEvidence(session.user.id, connection)
+    const { state, cookieValue } = createCreatorTikTokState(session.user.id, connection)
     setCreatorTikTokStateCookie(res, cookieValue)
     const authorizeUrl = new URL(TIKTOK_AUTHORIZATION_URL)
     authorizeUrl.searchParams.set('client_key', env.TIKTOK_CLIENT_KEY)

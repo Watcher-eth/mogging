@@ -203,14 +203,14 @@ function VideoGuide() {
 function AccountGuide() {
   return (
     <section id="guide-panel-account" role="tabpanel" aria-labelledby="guide-tab-account" className="creator-surface overflow-hidden">
-      <GuidePanelHeader icon="accounts" eyebrow="Verify an Account" title="Connect first. Verify second." description="Every TikTok or Instagram account gets its own creator link. Analytics verification makes it eligible for reviewed submissions." action={<Button asChild variant="outline" className="h-10 rounded-full border-black/10 bg-white px-4 text-[#0071e3]"><Link href="/creator/accounts">Manage Accounts<ArrowRight /></Link></Button>} />
+      <GuidePanelHeader icon="accounts" eyebrow="Verify an Account" title="Recording required to connect." description="Upload the account’s audience recording before completing connection. Only complete submissions enter the review queue." action={<Button asChild variant="outline" className="h-10 rounded-full border-black/10 bg-white px-4 text-[#0071e3]"><Link href="/creator/accounts">Manage Accounts<ArrowRight /></Link></Button>} />
 
       <div className="grid gap-5 p-5 sm:p-6 lg:grid-cols-[minmax(0,1.15fr)_minmax(280px,0.85fr)]">
         <div>
           <ol className="grid gap-3 sm:grid-cols-3">
-            <AccountStep number="1" icon={Link2} title="Connect" detail="Add up to five accounts per platform." />
-            <AccountStep number="2" icon={Smartphone} title="Record" detail="Film the analytics walkthrough with a second device." />
-            <AccountStep number="3" icon={ShieldCheck} title="Review" detail="Submit the recording and follow its status." />
+            <AccountStep number="1" icon={Link2} title="Profile" detail="Enter the username of the account you want to connect." />
+            <AccountStep number="2" icon={Smartphone} title="Recording" detail="Film with a second device and upload the required audience walkthrough." />
+            <AccountStep number="3" icon={ShieldCheck} title="Connect" detail="Complete account connection and submit for review. TikTok requires matching OAuth login." />
           </ol>
 
           <div className="mt-5 grid gap-2">

@@ -1,5 +1,6 @@
 import { createHmac, randomBytes, timingSafeEqual } from 'node:crypto'
 import type { NextApiRequest, NextApiResponse } from 'next'
+import { creatorAccountConnectionSchema, type CreatorSocialAccountInput } from '@/lib/creator/validation'
 import { env } from '@/lib/env'
 
 export const CREATOR_TIKTOK_STATE_COOKIE = 'mogging_creator_tiktok_oauth'
@@ -7,19 +8,23 @@ const OAUTH_STATE_MAX_AGE_SECONDS = 10 * 60
 
 type OAuthStatePayload = {
   state: string
+  connection: CreatorSocialAccountInput
   userId: string
   expiresAt: number
 }
 
-export function createCreatorTikTokState(userId: string) {
+export function createCreatorTikTokState(userId: string, connection: CreatorSocialAccountInput) {
   const state = randomBytes(32).toString('base64url')
   const payload: OAuthStatePayload = {
     state,
+    connection: creatorAccountConnectionSchema.parse(connection),
     userId,
     expiresAt: Date.now() + OAUTH_STATE_MAX_AGE_SECONDS * 1000,
   }
   const encoded = Buffer.from(JSON.stringify(payload)).toString('base64url')
-  return { state, cookieValue: `${encoded}.${sign(encoded)}` }
+  const cookieValue = `${encoded}.${sign(encoded)}`
+  if (cookieValue.length > 3800) throw new Error('Connection data is too large')
+  return { state, cookieValue }
 }
 
 export function readCreatorTikTokState(cookieValue: string | undefined, state: string, userId: string) {
@@ -28,7 +33,7 @@ export function readCreatorTikTokState(cookieValue: string | undefined, state: s
   if (!encoded || !signature || !safeEqual(signature, sign(encoded))) return null
   try {
     const payload = JSON.parse(Buffer.from(encoded, 'base64url').toString('utf8')) as OAuthStatePayload
-    return payload.state === state && payload.userId === userId && payload.expiresAt > Date.now()
+    return payload.state === state && payload.userId === userId && payload.expiresAt > Date.now() && creatorAccountConnectionSchema.safeParse(payload.connection).success
       ? payload
       : null
   } catch {

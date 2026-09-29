@@ -7,6 +7,16 @@
         ],
         "components": [
           {
+            "/": "/r/*",
+            "?": { "fallback": "1" },
+            "exclude": true,
+            "comment": "Explicit browser fallback for creator links"
+          },
+          {
+            "/": "/r/*",
+            "comment": "Creator links; requires the native creator-code exchange handler"
+          },
+          {
             "/": "/app",
             "comment": "Web purchase and account handoff"
           },

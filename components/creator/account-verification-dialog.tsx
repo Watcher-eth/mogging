@@ -16,7 +16,7 @@ import { toast } from 'sonner'
 import { Button } from '@/components/ui/button'
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import type { CreatorSocialAccount } from '@/components/creator/types'
-import { apiPatch, apiPost, ApiClientError } from '@/lib/api/client'
+import { apiPost, ApiClientError } from '@/lib/api/client'
 
 const analyticsVideoTypes = ['video/mp4', 'video/quicktime', 'video/webm'] as const
 const maxAnalyticsVideoBytes = 250 * 1024 * 1024
@@ -40,7 +40,7 @@ const instructions = {
   ],
 } as const
 
-type AnalyticsEvidence = {
+export type AnalyticsEvidence = {
   analyticsVideoUrl: string
   analyticsStorageKey: string
   analyticsContentType: (typeof analyticsVideoTypes)[number]
@@ -48,7 +48,12 @@ type AnalyticsEvidence = {
   analyticsPast28DaysConfirmed: true
 }
 
-export function AccountVerificationDialog({ account, open, onOpenChange, onSubmitted }: { account: CreatorSocialAccount | null; open: boolean; onOpenChange: (open: boolean) => void; onSubmitted: () => Promise<void> }) {
+export function AccountVerificationDialog({ account, open, onOpenChange, onSubmitEvidence }: {
+  account: Pick<CreatorSocialAccount, 'platform' | 'handle' | 'displayName' | 'avatarUrl'> | null
+  open: boolean
+  onOpenChange: (open: boolean) => void
+  onSubmitEvidence: (evidence: AnalyticsEvidence) => Promise<void>
+}) {
   const [step, setStep] = useState<1 | 2 | 3>(1)
   const [analyticsFile, setAnalyticsFile] = useState<File | null>(null)
   const [previewUrl, setPreviewUrl] = useState<string | null>(null)
@@ -121,10 +126,8 @@ export function AccountVerificationDialog({ account, open, onOpenChange, onSubmi
     setSaving(true)
     try {
       const analytics = await uploadAnalyticsVideo()
-      await apiPatch('/api/creator/accounts', { accountId: account.id, ...analytics })
-      await onSubmitted()
+      await onSubmitEvidence(analytics)
       onOpenChange(false)
-      toast.success(`${creatorAccountLabel(account)} verification submitted`)
     } catch (error) {
       toast.error(error instanceof ApiClientError ? error.message : 'Could not submit account verification')
     } finally {
@@ -149,7 +152,7 @@ export function AccountVerificationDialog({ account, open, onOpenChange, onSubmi
                 </Avatar.Root>
                 <span aria-hidden="true" className="absolute -bottom-1 -right-0.5 grid size-5 place-items-center rounded-full border-2 border-white bg-sky-400 text-white"><Check className="size-3" strokeWidth={3} /></span>
               </span>
-              <div><DialogTitle className="text-2xl">Verify {creatorAccountLabel(account)}</DialogTitle><DialogDescription className="mt-1">Audience verification for your connected {platformLabel} account.</DialogDescription></div>
+              <div><DialogTitle className="text-2xl">Verify {creatorAccountLabel(account)}</DialogTitle><DialogDescription className="mt-1">Required audience evidence for your {platformLabel} account.</DialogDescription></div>
             </div>
           </DialogHeader>
         </div>

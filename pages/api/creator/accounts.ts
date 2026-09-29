@@ -7,7 +7,7 @@ import { env } from '@/lib/env'
 import {
   addCreatorSocialAccount,
   creatorAccountAnalyticsSubmissionSchema,
-  creatorSocialAccountSchema,
+  creatorAccountConnectionSchema,
   getCreatorDashboard,
   getCreatorTikTokAccessToken,
   removeCreatorSocialAccount,
@@ -26,7 +26,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       return json(res, 200, { socialAccounts: dashboard.socialAccounts })
     }
     if (req.method === 'POST') {
-      const input = parseBody(creatorSocialAccountSchema, req.body)
+      const input = parseBody(creatorAccountConnectionSchema, req.body)
       return json(res, 201, { account: await addCreatorSocialAccount(session.user.id, input) })
     }
     if (req.method === 'PATCH') {

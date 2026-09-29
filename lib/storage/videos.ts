@@ -1,6 +1,6 @@
-import { mkdir, writeFile } from 'fs/promises'
+import { mkdir, writeFile, stat } from 'fs/promises'
 import path from 'path'
-import { PutObjectCommand, S3Client } from '@aws-sdk/client-s3'
+import { HeadObjectCommand, PutObjectCommand, S3Client } from '@aws-sdk/client-s3'
 import { getSignedUrl } from '@aws-sdk/s3-request-presigner'
 import { env, isR2Configured } from '@/lib/env'
 
@@ -96,6 +96,19 @@ export async function storeCreatorAsset(key: string, body: Buffer, contentType: 
     ContentType: contentType,
     ContentLength: body.byteLength,
   }))
+}
+
+export async function verifyCreatorRecordingUpload(key: string, sizeBytes: number, contentType: string) {
+  if (isR2Configured()) {
+    const object = await getR2Client().send(new HeadObjectCommand({ Bucket: env.R2_BUCKET_NAME, Key: key }))
+    if (object.ContentLength !== sizeBytes || object.ContentType !== contentType) throw new Error('Recording metadata does not match upload')
+    return
+  }
+  const root = path.resolve(env.IMAGE_STORAGE_DIR || './public/uploads')
+  const target = path.resolve(root, key)
+  if (!target.startsWith(`${root}${path.sep}`)) throw new Error('Invalid recording path')
+  const file = await stat(target)
+  if (!file.isFile() || file.size !== sizeBytes) throw new Error('Recording upload is incomplete')
 }
 
 let r2Client: S3Client | null = null

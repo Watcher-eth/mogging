@@ -56,6 +56,7 @@ export type AdminAccount = {
   handle: string | null
   displayName?: string | null
   profileUrl: string | null
+  avatarUrl: string | null
   connectionMethod: 'manual' | 'oauth'
   analyticsVideoUrl: string | null
   analyticsContentType: string | null

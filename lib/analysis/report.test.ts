@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
-import { createFallbackAnalysisReport } from './report'
+import { createFallbackAnalysisReport, normalizeAnalysisReport } from './report'
 
 test('overall report uses scored facial qualities instead of social pseudo-metrics', () => {
   const report = createFallbackAnalysisReport({
@@ -30,4 +30,24 @@ test('overall report uses scored facial qualities instead of social pseudo-metri
   ])
   assert.ok(overall?.features.every((feature) => /^\d+\.\d\/10$/.test(feature.value)))
   assert.doesNotMatch(JSON.stringify(overall), /market fit|approachability|distinctiveness|versatility|archetype/i)
+})
+
+test('normalization keeps eye color and measured feature values', () => {
+  const input = createFallbackAnalysisReport({
+    faceDetected: true,
+    pslScore: 5.8,
+    harmonyScore: 6.4,
+    dimorphismScore: 5.9,
+    angularityScore: 6.3,
+    metricScores: [],
+    landmarks: {},
+  }, 5.8)
+  const eyes = input.categories.find((category) => category.id === 'eyes')!
+  eyes.eyeColor = 'green'
+  eyes.features[0].measurement = '3.2°'
+
+  const normalized = normalizeAnalysisReport(input, 5.8)
+  const output = normalized?.categories.find((category) => category.id === 'eyes')
+  assert.equal(output?.eyeColor, 'green')
+  assert.equal(output?.features[0].measurement, '3.2°')
 })

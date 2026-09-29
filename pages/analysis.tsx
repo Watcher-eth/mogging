@@ -93,6 +93,7 @@ type AnalysisMetrics = Record<string, unknown> & {
 type AnalysisReportFeature = {
   label: string
   value: string
+  measurement?: string
 }
 
 type AnalysisReportCategory = {
@@ -102,6 +103,7 @@ type AnalysisReportCategory = {
   scoreLabel: string
   score: number
   features: AnalysisReportFeature[]
+  eyeColor?: string
   explanation: string
 }
 
@@ -207,6 +209,7 @@ const originalMosaicPermutation = mosaicPermutations[0]
 type ReportFeature = {
   label: string
   value: string
+  measurement?: string
 }
 
 type ReportOverlayPoint = {
@@ -1794,6 +1797,9 @@ function ResultsStep({
   const score = getReportOverallScore(primaryResult, primaryScore)
   const categoryScore = getReportCategoryScore(activeCategory.id, primaryResult)
   const activeReportCategory = getReportCategoryData(activeCategory.id, primaryResult)
+  const overlayValue = activeCategory.id === 'overall'
+    ? primaryScore == null ? undefined : `${primaryScore.toFixed(1)} / 8`
+    : `${categoryScore.toFixed(1)} / 10`
 
   return (
     <div className="grid min-h-[calc(100svh-5rem)] gap-8 px-5 py-6 sm:px-10 sm:py-8 lg:grid-cols-[360px_minmax(0,1fr)] lg:items-start lg:justify-between lg:gap-20 xl:gap-28">
@@ -1838,7 +1844,13 @@ function ResultsStep({
 
       <section className="grid gap-4 lg:min-h-[calc(100svh-9rem)] lg:gap-6">
         <div className="grid h-full gap-4 lg:grid-cols-[minmax(0,0.98fr)_minmax(280px,0.72fr)] lg:items-stretch">
-          <ReportImagePanel key={imageSrc} category={activeCategory} imageSrc={imageSrc} landmarks={landmarks} value={categoryScore == null ? undefined : `${categoryScore} / 10`} />
+          <ReportImagePanel
+            key={imageSrc}
+            category={activeCategory}
+            imageSrc={imageSrc}
+            landmarks={landmarks}
+            value={overlayValue}
+          />
           <ReportDetailPanel category={activeCategory} reportCategory={activeReportCategory} score={categoryScore} />
         </div>
       </section>
@@ -1928,7 +1940,7 @@ function GradedScoreSlab({ score }: { score: number }) {
         </div>
         <div className="grid place-items-center bg-white/55 p-2 text-center">
           <div>
-            <span className="block text-4xl font-black leading-none tracking-[-0.09em] text-[#d7192d]">{score.toFixed(1)}</span>
+            <span className="block text-4xl font-semibold leading-none tracking-[-0.06em] text-black">{score.toFixed(1)}</span>
             <span className="mt-2 block font-mono text-[9px] font-semibold uppercase tracking-[0.16em] text-zinc-500">/ 10</span>
           </div>
         </div>
@@ -2021,6 +2033,8 @@ function ReportDetailPanel({
         <p className="mt-4 text-sm leading-6 text-muted-foreground">{subtitle}</p>
       </div>
 
+      {category.id === 'eyes' && reportCategory?.eyeColor && <EyeColorPalette color={reportCategory.eyeColor} />}
+
       <div className="grid grid-cols-2 gap-3">
         {features.map((feature, index) => (
           <motion.div
@@ -2031,7 +2045,10 @@ function ReportDetailPanel({
             transition={{ delay: 0.1 + index * 0.07, duration: 0.46, ease: [0.23, 1, 0.32, 1] }}
           >
             <p className="font-mono text-[10px] uppercase tracking-wide text-muted-foreground">{feature.label}</p>
-            <p className="pt-10 text-xl font-semibold tracking-[-0.04em]">{feature.value}</p>
+            <div className="pt-10">
+              {feature.measurement && <p className="font-mono text-sm tabular-nums text-muted-foreground">{feature.measurement}</p>}
+              <p className="text-xl font-semibold tracking-[-0.04em]">{feature.value}</p>
+            </div>
           </motion.div>
         ))}
       </div>
@@ -2051,6 +2068,32 @@ function ReportDetailPanel({
       </AnimatePresence>
     </div>
   )
+}
+
+const eyePalette = [
+  { name: 'blue', hex: '#3974b9' },
+  { name: 'gray', hex: '#8996a1' },
+  { name: 'green', hex: '#5a9458' },
+  { name: 'hazel', hex: '#827c4d' },
+  { name: 'amber', hex: '#ae813f' },
+  { name: 'brown', hex: '#745b42' },
+  { name: 'dark brown', hex: '#3f322c' },
+] as const
+
+function EyeColorPalette({ color }: { color: string }) {
+  const selected = eyePalette.find((shade) => shade.name === color.toLowerCase())
+  if (!selected) return null
+  const shades = [...eyePalette.filter((shade) => shade !== selected).slice(0, 3), selected, ...eyePalette.filter((shade) => shade !== selected).slice(3)]
+
+  return <div className="border bg-white p-4" aria-label={`Eye color: ${selected.name}`}>
+    <div className="flex items-center justify-between gap-3">
+      <p className="font-mono text-[10px] uppercase tracking-wide text-muted-foreground">Eye color</p>
+      <p className="text-sm font-semibold capitalize">{selected.name}</p>
+    </div>
+    <div className="mt-4 flex h-16 items-center justify-center gap-1.5" aria-hidden="true">
+      {shades.map((shade) => <span key={shade.name} className="min-w-0 flex-1 rounded-sm" style={{ height: shade === selected ? 64 : 46, backgroundColor: shade.hex }} />)}
+    </div>
+  </div>
 }
 
 function getReportCategoryScore(categoryId: string, result?: AnalysisResponse) {
