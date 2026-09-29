@@ -9,13 +9,13 @@ const navItems = [
   { href: '/battle', label: 'Battle' },
 ]
 
-export function AppNav() {
+export function AppNav({ activePath }: { activePath?: string }) {
   const router = useRouter()
 
   return (
     <nav className="flex min-w-0 items-center justify-center gap-2 sm:gap-8">
       {navItems.map((item) => {
-        const active = router.pathname.startsWith(item.href)
+        const active = (activePath ?? router.pathname).startsWith(item.href)
 
         return (
           <Link

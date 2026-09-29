@@ -7,7 +7,7 @@ import { useRouter } from 'next/router'
 import { ChevronDown, FileText, Loader2, LogOut, Pencil, Plus } from 'lucide-react'
 import useSWR from 'swr'
 import useSWRImmutable from 'swr/immutable'
-import { AppNav } from '@/components/app/nav'
+import { AppHeader } from '@/components/app/app-header'
 import { SocialPlatformLogo } from '@/components/brand/social-platform-logo'
 import { CameraSheet } from '@/components/analysis/camera-sheet'
 import { Button } from '@/components/ui/button'
@@ -177,15 +177,7 @@ export function AppShell({ children }: AppShellProps) {
 
   return (
     <div className={creatorSignIn ? 'flex min-h-dvh flex-col bg-background' : immersive ? 'min-h-screen bg-white' : 'min-h-screen bg-background'}>
-      {!creatorRoute ? <header className="sticky top-0 z-40 bg-white/90 backdrop-blur-xl">
-        <div className="grid h-16 w-full grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-2 px-5 sm:h-20 sm:grid-cols-[1fr_auto_1fr] sm:gap-4 sm:px-10">
-          <Link href="/" className="text-xl font-semibold leading-none tracking-normal text-black transition-transform duration-200 ease-out hover:scale-[1.015] active:scale-[0.995] sm:text-4xl">
-            Mogging
-          </Link>
-
-          <AppNav />
-
-          <div className="flex justify-end">
+      {!creatorRoute ? <AppHeader>
             {status === 'loading' ? (
               <div className="h-8 w-14 animate-pulse rounded-lg border border-zinc-200 bg-white sm:h-10 sm:w-24" />
             ) : session?.user ? (
@@ -266,9 +258,7 @@ export function AppShell({ children }: AppShellProps) {
                 </Button>
               </div>
             )}
-          </div>
-        </div>
-      </header> : null}
+      </AppHeader> : null}
 
       <main className={creatorSignIn ? 'flex w-full flex-1 flex-col' : creatorRoute ? 'mx-auto w-full max-w-6xl px-4 sm:px-6' : immersive ? 'w-full' : 'mx-auto w-full max-w-6xl px-4 py-8 sm:px-6'}>
         {children}
