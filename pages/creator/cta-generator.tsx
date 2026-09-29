@@ -1,3 +1,6 @@
+import { MockReportGenerator } from '@/components/creator/mock-report-generator'
+import { RandomScoreControl } from '@/components/creator/random-score-control'
+import { randomScore, randomScorePair } from '@/lib/creator/random-scores'
 import { FaceAlignmentEditor } from '@/components/creator/face-alignment-editor'
 import { CreatorStepper } from '@/components/creator/creator-stepper'
 import Image from 'next/image'
@@ -27,6 +30,7 @@ const approvedExamples = [
 type CtaLibraryResponse = { approved: CreatorCtaLibraryItem[]; mine: CreatorCtaLibraryItem[] }
 
 export default function CtaGeneratorPage() {
+  const [mode, setMode] = useState<'cta' | 'mock'>('cta')
   const [step, setStep] = useState<1 | 2 | 3>(1)
   const fileInputRef = useRef<HTMLInputElement>(null)
   const photoUrls = useRef(new Set<string>())
@@ -220,8 +224,14 @@ export default function CtaGeneratorPage() {
 
   return (
     <CreatorShell>
-      <CreatorHeader eyebrow="Creator Tools" title="CTA Studio" description="Create a CTA with your photos and report scores." action={step === 3 && slides.length ? <Button className="h-11 rounded-full px-5" disabled={exporting} onClick={() => void downloadAll()}>{exporting ? <Loader2 className="animate-spin" /> : <FileArchive />}Download Set</Button> : null} />
-      <CreatorStepper step={step} labels={['Photos', 'Details & Scores', 'Preview & Export']} />
+      <CreatorHeader eyebrow="Creator Tools" title="CTA Studio" description="Create a CTA with your photos and report scores." action={mode === 'cta' && step === 3 && slides.length ? <Button className="h-11 rounded-full px-5" disabled={exporting} onClick={() => void downloadAll()}>{exporting ? <Loader2 className="animate-spin" /> : <FileArchive />}Download Set</Button> : null} />
+      <div className="mb-6 flex gap-2" role="tablist" aria-label="Generator">
+        {([{ id: 'cta', label: 'CTA generator' }, { id: 'mock', label: 'Mock reports' }] as const).map(tab => <button key={tab.id} id={`generator-tab-${tab.id}`} role="tab" aria-selected={mode === tab.id} tabIndex={mode === tab.id ? 0 : -1} onKeyDown={event => { if (!['ArrowLeft', 'ArrowRight', 'Home', 'End'].includes(event.key)) return; event.preventDefault(); const next = event.key === 'Home' ? 'cta' : event.key === 'End' ? 'mock' : mode === 'cta' ? 'mock' : 'cta'; setMode(next); document.getElementById(`generator-tab-${next}`)?.focus() }} aria-controls={`generator-panel-${tab.id}`} type="button" onClick={() => setMode(tab.id)} className={cn('min-h-11 rounded-full px-5 text-sm font-semibold transition-colors', mode === tab.id ? 'bg-black text-white' : 'bg-white text-zinc-500 hover:bg-zinc-100')}>{tab.label}</button>)}
+      </div>
+      {mode === 'cta' ? <CreatorStepper step={step} labels={['Photos', 'Details & Scores', 'Preview & Export']} /> : null}
+      <div id="generator-panel-mock" role="tabpanel" aria-labelledby="generator-tab-mock" hidden={mode !== 'mock' || step === 1}>
+        <MockReportGenerator images={usableImages} active={mode === 'mock' && step !== 1} onBack={() => setStep(1)} />
+      </div>
       {step === 1 ? <section className="creator-surface p-5 sm:p-6">
         <SectionTitle icon={UploadCloud} title="Add creator photos" detail="Upload a clear, front-facing photo. Face mapping stays in your browser." />
           <input ref={fileInputRef} className="sr-only" type="file" accept="image/*" multiple onChange={(event) => void handleFiles(event.target.files)} />
@@ -233,11 +243,18 @@ export default function CtaGeneratorPage() {
             <button type="button" onClick={() => fileInputRef.current?.click()} className={cn("grid w-full place-items-center rounded-xl p-4 text-center transition-colors hover:bg-white", images.length ? "mt-3 min-h-11" : "min-h-36")}><span><ImagePlus className="mx-auto size-5 text-[#0071e3]" /><span className="mt-2 block text-sm font-semibold">{images.length ? 'Add more photos' : 'Upload Photos'}</span>{!images.length ? <span className="mt-1 block text-xs leading-5 text-[#86868b]">One clear face · JPG, PNG, WebP</span> : null}</span></button>
           </div>
 
-        <div className="mt-6 flex justify-end"><Button className="h-11 rounded-full px-6" disabled={!usableImages.length || images.some((image) => image.status === 'loading' || image.status === 'detecting')} onClick={() => setStep(2)}>Continue to Details</Button></div>
+        <div className="mt-6 flex justify-end"><Button className="h-11 rounded-full px-6" disabled={!usableImages.length || images.some((image) => image.status === 'loading' || image.status === 'detecting')} onClick={() => setStep(2)}>{mode === 'mock' ? 'Continue to Mock Reports' : 'Continue to Details'}</Button></div>
       </section> : null}
+      <div id="generator-panel-cta" role="tabpanel" aria-labelledby="generator-tab-cta" hidden={mode !== 'cta'}>
       {step === 2 ? <section className="creator-surface p-5 sm:p-6">
-        <SectionTitle asset="formats" title="Set up your templates" detail="Choose the format and enter real scores from your report." />
+        <SectionTitle asset="formats" title="Set up your templates" detail="Choose the format and enter scores, or randomize values for a mock CTA." />
         <div className="mt-5 grid content-start gap-4">
+            <RandomScoreControl onRandomize={range => {
+              const pair = randomScorePair(range)
+              updateCurrentScore(pair.current)
+              updatePotentialScore(pair.potential)
+              selectedCategories.forEach(id => updateCategoryScore(id, randomScore(range, categoryScoreMax(id))))
+            }} />
             <Field label="Featured category"><select className={fieldClass} value={featuredCategory} onChange={(event) => { const value = event.target.value; setFeaturedCategory(value); setSelectedCategories((current) => current.includes(value) ? current : [value, ...current]) }}>{categoryOptions.map((item) => <option key={item.id} value={item.id}>{item.label}</option>)}</select></Field>
             <div className="grid grid-cols-2 gap-2"><ScoreField label="Current score" value={currentScore} onChange={updateCurrentScore} /><ScoreField label="Potential" value={potentialScore} onChange={updatePotentialScore} /></div>
             <p className="text-xs leading-5 text-zinc-500">The Mogging score reveal pairs your featured category’s score with the potential entered above. Selected report values appear underneath as animated stats.</p>
@@ -258,7 +275,7 @@ export default function CtaGeneratorPage() {
         <div className="grid items-start gap-5 lg:grid-cols-2">
         <section className="min-w-0">
           <div className="mb-3 flex items-end justify-between"><div><p className="text-sm font-semibold">Template preview</p><p className="mt-1 text-xs text-zinc-400">{slides.length ? `5 templates · ${format.width} × ${format.height}` : 'Your generated templates will appear here'}</p></div></div>
-          {selectedSlide ? <div className="mx-auto" style={{ maxWidth: `min(100%, ${64 * format.width / format.height}dvh)` }}><ContentSlidePreview key={selectedSlide.id} slide={selectedSlide} images={images} format={format} /></div> : <div className="grid min-h-[620px] place-items-center border border-dashed border-zinc-300 bg-zinc-50/50 text-center" style={{ aspectRatio: `${format.width} / ${format.height}` }}><div><ImagePlus className="mx-auto size-6 text-zinc-300" /><p className="mt-3 text-sm font-semibold text-zinc-500">No templates yet</p><p className="mt-1 text-xs text-zinc-400">Upload a clear face and generate templates.</p></div></div>}
+          {selectedSlide && mode === 'cta' ? <div className="mx-auto" style={{ maxWidth: `min(100%, ${64 * format.width / format.height}dvh)` }}><ContentSlidePreview key={selectedSlide.id} slide={selectedSlide} images={images} format={format} /></div> : <div className="grid min-h-[620px] place-items-center border border-dashed border-zinc-300 bg-zinc-50/50 text-center" style={{ aspectRatio: `${format.width} / ${format.height}` }}><div><ImagePlus className="mx-auto size-6 text-zinc-300" /><p className="mt-3 text-sm font-semibold text-zinc-500">No templates yet</p><p className="mt-1 text-xs text-zinc-400">Upload a clear face and generate templates.</p></div></div>}
           {slides.length ? <div className="mt-4 flex gap-2 overflow-x-auto pb-2">{templateOptions.map((template, index) => { const slide = slides.find((item) => item.templateId === template.id); if (!slide) return null; return <button type="button" key={template.id} onClick={() => setSelectedSlideId(slide.id)} className={cn('min-h-11 min-w-28 flex-1 rounded-xl border p-3 text-left transition-[border-color,background-color,transform] duration-150 ease-out active:scale-[0.98]', selectedSlide?.templateId === template.id ? 'border-black bg-black text-white' : 'border-zinc-200 bg-white')}><span className="block font-mono text-[9px] uppercase opacity-50">Template {index + 1}</span><span className="mt-2 block text-[11px] font-semibold leading-4">{template.label}</span></button> })}</div> : null}
         </section>
 
@@ -287,6 +304,7 @@ export default function CtaGeneratorPage() {
           </> : null}
         </DialogContent>
       </Dialog>
+      </div>
     </CreatorShell>
   )
 }

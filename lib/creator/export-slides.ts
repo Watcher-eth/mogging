@@ -6,6 +6,8 @@ import { estimatedPopulationTopPercent } from '@/lib/sharing/population-percenti
 import { getLooksmaxRank, shareCardLayout } from '@/lib/sharing/share-card'
 import { enrichFaceLandmarks } from './mobile-overlay-engine/enrich-landmarks'
 
+import { drawMockReport, mockReportSize, mockReportHeroHeight, loadMockReportSymbols } from './mock-report'
+
 type RenderArgs = { slide: ContentSlide; images: GeneratorImage[]; width: number; height: number }
 
 export async function renderSlidePng(args: RenderArgs) {
@@ -139,15 +141,23 @@ export async function prepareCanvas({ slide, images, width, height }: RenderArgs
   const ctx = canvas.getContext('2d', { alpha: false }); if (!ctx) throw new Error('Canvas export is unavailable')
   const source = images.find((item) => item.id === slide.imageId && item.status === 'ready')
   if (!source) throw new Error('This template’s photo is no longer available. Add a clear photo and generate the set again.')
-  const [image, brand] = await Promise.all([loadImage(source.dataUrl), ['editorial', 'cta', 'psl'].includes(slide.templateId) ? loadRevealBrand() : null, ['editorial', 'score-potential'].includes(slide.templateId) ? loadShareFont() : null])
-  const viewport = slide.templateId === 'cta' ? { width: REVEAL_PORTRAIT_SIZE, height: REVEAL_PORTRAIT_SIZE } : { width, height }
-  const overlay = slide.templateId === 'score-potential'
+  const [image, brand] = await Promise.all([loadImage(source.dataUrl), ['editorial', 'cta', 'psl'].includes(slide.templateId) ? loadRevealBrand() : null, ['editorial', 'score-potential'].includes(slide.templateId) ? loadShareFont() : null, slide.templateId === 'mock-report' ? loadMockReportSymbols() : null])
+  const viewport = slide.templateId === 'mock-report' ? { width: mockReportSize.width, height: mockReportHeroHeight } : slide.templateId === 'cta' ? { width: REVEAL_PORTRAIT_SIZE, height: REVEAL_PORTRAIT_SIZE } : { width, height }
+  const overlay: ReportOverlay = slide.templateId === 'score-potential'
     ? { size: { width, height }, primitives: resolveShareOverallOverlay(enrichFaceLandmarks(source.landmarks), width, height), dots: [], value: '' }
-    : createReportOverlay(slide, source, viewport)
+    : createReportOverlay(slide, source, viewport, slide.templateId === 'mock-report' ? mockReportSize.width : 360)
+  if (slide.templateId === 'mock-report') {
+    overlay.labelLayout = 'mobile'
+    overlay.value = slide.categoryId === 'overall' ? `${(Number(slide.currentScore) * .8).toFixed(1)} / 8` : `${Number(slide.categoryScores[0]?.value ?? slide.currentScore).toFixed(1)} / 10`
+  }
   return { canvas, ctx, image, overlay, brand }
 }
 
 export function drawSlideFrame(ctx: CanvasRenderingContext2D, slide: ContentSlide, image: HTMLImageElement | null, overlay: ReportOverlay | null, width: number, height: number, timeMs: number, brand: RevealBrand | null) {
+  if (slide.templateId === 'mock-report') {
+    drawMockReport(ctx, slide, image, overlay, width, height, timeMs)
+    return
+  }
   if (slide.templateId === 'cta') {
     drawScoreReveal(ctx, slide, image, overlay, brand, width, height, timeMs)
     return

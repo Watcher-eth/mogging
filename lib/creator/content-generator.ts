@@ -9,7 +9,7 @@ export const outputFormats = {
 export type OutputFormatId = keyof typeof outputFormats
 export type CampaignGoal = 'conversion' | 'engagement' | 'traffic'
 export type Tone = 'direct' | 'curious' | 'educational'
-export type SlideTemplateId = 'editorial' | 'score-potential' | 'psl' | 'score-rows' | 'cta'
+export type SlideTemplateId = 'editorial' | 'score-potential' | 'psl' | 'score-rows' | 'cta' | 'mock-report'
 
 export type CategoryScore = {
   categoryId: string
@@ -43,6 +43,7 @@ export type ContentSlide = {
   currentScore: string
   potentialScore: string
   categoryScores: CategoryScore[]
+  mockReport?: { category: import('./mobile-overlay-engine/report-data').ReportCategory; scroll: number }
 }
 
 export type SavedCampaign = {

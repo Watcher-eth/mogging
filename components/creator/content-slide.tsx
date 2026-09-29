@@ -21,11 +21,13 @@ export function ContentSlidePreview({ slide, images, format }: { slide: ContentS
       const start = performance.now()
       draw = () => {
         cancelAnimationFrame(frame)
-        const time = reduced.matches ? 4000 : Math.min(4000, performance.now() - start)
+        if (document.hidden) return
+        const time = reduced.matches ? 4000 : slide.templateId === 'mock-report' ? performance.now() - start : Math.min(4000, performance.now() - start)
         drawSlideFrame(ctx, slide, prepared.image, prepared.overlay, format.width, format.height, time, prepared.brand)
-        if (time < 4000) frame = requestAnimationFrame(draw!)
+        if (!reduced.matches && (slide.templateId === 'mock-report' || time < 4000)) frame = requestAnimationFrame(draw!)
       }
       reduced.addEventListener('change', draw)
+      document.addEventListener('visibilitychange', draw)
       draw()
     }).catch((reason: unknown) => {
       if (!disposed) setError(reason instanceof Error ? reason.message : 'Could not load the preview.')
@@ -33,7 +35,10 @@ export function ContentSlidePreview({ slide, images, format }: { slide: ContentS
     return () => {
       disposed = true
       cancelAnimationFrame(frame)
-      if (draw) reduced.removeEventListener('change', draw)
+      if (draw) {
+        reduced.removeEventListener('change', draw)
+        document.removeEventListener('visibilitychange', draw)
+      }
     }
   }, [slide, images, format, replay])
   return <div>
@@ -41,6 +46,6 @@ export function ContentSlidePreview({ slide, images, format }: { slide: ContentS
       <canvas ref={canvasRef} className="block size-full" role="img" aria-label={`Mogging ${slide.metricLabel}. Current ${slide.currentScore}, potential ${slide.potentialScore}.`} />
       {error ? <p role="alert" className="absolute inset-0 grid place-items-center p-6 text-center text-sm text-white">{error}</p> : null}
     </div>
-    <button type="button" className="mt-2 min-h-11 w-full rounded-lg text-xs font-medium text-zinc-500 transition-colors hover:bg-zinc-100 hover:text-zinc-900" onClick={() => setReplay(value => value + 1)}>Replay animation</button>
+    {slide.templateId !== 'mock-report' ? <button type="button" className="mt-2 min-h-11 w-full rounded-lg text-xs font-medium text-zinc-500 transition-colors hover:bg-zinc-100 hover:text-zinc-900" onClick={() => setReplay(value => value + 1)}>Replay animation</button> : null}
   </div>
 }

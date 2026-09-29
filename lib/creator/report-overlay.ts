@@ -10,8 +10,8 @@ type Drawing = Exclude<ResolvedPrimitive, { kind: 'label' | 'point' }>
 
 // Mobile report styles use logical points. One reference viewport keeps the
 // preview and high-resolution exports identical, including stroke weights.
-export function createReportOverlay(slide: ContentSlide, image: GeneratorImage, viewport: Size) {
-  const size = { width: 360, height: viewport.height / viewport.width * 360 }
+export function createReportOverlay(slide: ContentSlide, image: GeneratorImage, viewport: Size, referenceWidth = 360) {
+  const size = { width: referenceWidth, height: viewport.height / viewport.width * referenceWidth }
   const landmarks = enrichFaceLandmarks(image.landmarks)
   const usable = isFaceLandmarksUsable(landmarks, 0.58)
   const primitives = usable && slide.overlayStyle !== 'face-map'
@@ -26,7 +26,7 @@ export function createReportOverlay(slide: ContentSlide, image: GeneratorImage, 
   return { size, primitives, dots, value: `${score.trim() || '—'} / ${categoryScoreMax(slide.categoryId)}` }
 }
 
-export type ReportOverlay = Omit<ReturnType<typeof createReportOverlay>, 'value'> & { value?: string }
+export type ReportOverlay = Omit<ReturnType<typeof createReportOverlay>, 'value'> & { value?: string; labelLayout?: 'mobile' }
 
 export function drawReportOverlay(ctx: CanvasRenderingContext2D, overlay: ReportOverlay, width: number, timeMs: number, labels = true) {
   ctx.save()
@@ -175,7 +175,12 @@ function drawLabel(ctx: CanvasRenderingContext2D, label: Extract<ResolvedPrimiti
   const rows = [label.title, overlay.value ?? label.value].filter((row): row is string => Boolean(row))
   // Keep the text readable inside narrow web panels even when the mobile tag
   // alignment deliberately pushes its background beyond the image edge.
-  if (variant === 'tag') {
+  if (variant === 'tag' && overlay.labelLayout === 'mobile' && label.align) {
+    const outsideOffset = width * .28
+    const edge = right ? overlay.size.width - width + outsideOffset : -outsideOffset
+    const centerLimit = right ? overlay.size.width * .63 : overlay.size.width * .37 - width
+    x = clamp(right ? Math.max(edge, centerLimit) : Math.min(edge, centerLimit), -outsideOffset, overlay.size.width - width + outsideOffset)
+  } else if (variant === 'tag' && overlay.labelLayout !== 'mobile') {
     const rowWidth = Math.max(...rows.map((row, index) => {
       ctx.font = `600 ${index ? 11 : 10}px -apple-system, BlinkMacSystemFont, Arial, sans-serif`
       return Math.min(140, ctx.measureText(row.toUpperCase()).width + 16)
@@ -189,7 +194,7 @@ function drawLabel(ctx: CanvasRenderingContext2D, label: Extract<ResolvedPrimiti
     ctx.save()
     ctx.globalAlpha *= enter(time, delay, duration * .82)
     ctx.translate(x + (1 - progress) * 42 * direction, y + index * (variant === 'tag' ? 24 : 13))
-    const fontSize = variant === 'node' ? 8 : index ? 11 : 10
+    const fontSize = variant === 'node' ? 8 : variant === 'text' ? 10 : index ? 11 : 10
     ctx.font = `600 ${fontSize}px -apple-system, BlinkMacSystemFont, Arial, sans-serif`
     const text = row.toUpperCase()
     if (variant === 'tag') {
