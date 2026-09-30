@@ -14,7 +14,7 @@ import { CreatorHeader, CreatorShell, Field, fieldClass } from '@/components/cre
 import { ContentRequirementsNote } from '@/components/creator/content-guidelines'
 import type { CreatorDashboard } from '@/components/creator/types'
 import { apiGet, apiPost, ApiClientError } from '@/lib/api/client'
-import { ACTIVE_CREATOR_SUBMISSION_FORMATS, type CreatorSubmissionFormat } from '@/lib/creator/formats'
+import { type CreatorSubmissionFormat } from '@/lib/creator/formats'
 import { calculateCreatorPayout, CREATOR_US_AUDIENCE_TIERS, CREATOR_VIEW_THRESHOLDS } from '@/lib/creator/payouts'
 import { cn } from '@/lib/utils'
 import { CreatorIcon } from '@/components/creator/creator-icon'
@@ -93,7 +93,8 @@ function SubmitContent() {
   }
 
   const selectedAccount = data.socialAccounts.find((account) => account.id === socialAccountId)
-  const selectedFormat = ACTIVE_CREATOR_SUBMISSION_FORMATS.find((format) => format.id === formatId)
+  const availableFormats = data?.availableFormats ?? []
+  const selectedFormat = availableFormats.find((format) => format.id === formatId)
   const platform = selectedAccount ? (selectedAccount.platform === 'instagram' ? 'Instagram Reels' : 'TikTok') : 'Unlinked'
   const linkedToApprovedAccount = selectedAccount?.status === 'approved'
   const potentialEarnings = viewCountThreshold
@@ -107,7 +108,7 @@ function SubmitContent() {
       <div className="t-page-slide" data-page={step}>
         <section className="t-page" data-page-id="1" inert={step !== 1} aria-hidden={step !== 1}>
           <form onSubmit={continueToAnalytics} className="creator-surface grid gap-7 p-5 sm:p-7">
-            <FormatPicker selectedId={formatId} onSelect={(nextFormatId) => { setFormatId(nextFormatId); setRequirementsConfirmed(false) }} onPreview={setPreviewFormat} />
+            <FormatPicker formats={availableFormats} selectedId={formatId} onSelect={(nextFormatId) => { setFormatId(nextFormatId); setRequirementsConfirmed(false) }} onPreview={setPreviewFormat} />
             <Field label="Published From" hint={accountRequired ? 'Required' : 'Optional for now'}><Select value={socialAccountId || undefined} onValueChange={(value) => setSocialAccountId(value === 'unlinked' ? '' : value)} required={accountRequired}><SelectTrigger><SelectValue placeholder="No connected account" /></SelectTrigger><SelectContent>{!accountRequired ? <SelectItem value="unlinked">No connected account</SelectItem> : null}{data.socialAccounts.map((account) => <SelectItem key={account.id} value={account.id}>{creatorAccountLabel(account)} · {account.platform === 'tiktok' ? 'TikTok' : 'Instagram'} · {account.status === 'approved' ? 'Approved' : 'Not approved'}</SelectItem>)}</SelectContent></Select></Field>
             {!linkedToApprovedAccount ? <div className="flex gap-3 rounded-[16px] bg-[#fff4ce] px-4 py-3 text-sm leading-6 text-[#6b4f00]"><CircleAlert className="mt-0.5 size-4 shrink-0 text-[#8a5a00]" /><p><strong className="font-semibold">Account not approved yet.</strong> You can submit now, but the video stays flagged until its social account is approved.</p></div> : null}
             <Field label="Published Post URL" hint="Required"><input className={fieldClass} type="url" maxLength={2048} value={postUrl} onChange={(event) => setPostUrl(event.target.value)} placeholder="https://www.tiktok.com/… or https://www.instagram.com/…" required /></Field>
@@ -150,12 +151,12 @@ function SubmitContent() {
   )
 }
 
-function FormatPicker({ selectedId, onSelect, onPreview }: { selectedId: string; onSelect: (formatId: string) => void; onPreview: (format: CreatorSubmissionFormat) => void }) {
+function FormatPicker({ formats, selectedId, onSelect, onPreview }: { formats: CreatorSubmissionFormat[]; selectedId: string; onSelect: (formatId: string) => void; onPreview: (format: CreatorSubmissionFormat) => void }) {
   return (
     <section>
       <div className="mb-3 flex items-end justify-between gap-4"><div className="flex items-center gap-3"><CreatorIcon name="formats" className="size-12" /><div><h2 className="text-sm font-semibold">Choose a Format</h2><p className="mt-1 text-xs leading-5 text-zinc-500">Select the brief this video was created for.</p></div></div><span className="text-xs text-zinc-400">Required</span></div>
       <div className="grid gap-3 sm:grid-cols-2">
-        {ACTIVE_CREATOR_SUBMISSION_FORMATS.map((format) => {
+        {formats.map((format) => {
           const selected = selectedId === format.id
           return <div key={format.id} className={cn('rounded-[18px] border p-4 transition-[border-color,background-color,box-shadow] duration-150', selected ? 'border-[#0071e3]/40 bg-[#f2f7ff] shadow-[0_0_0_3px_rgba(0,113,227,0.08)]' : 'border-black/[0.08] bg-white')}><button type="button" className="flex min-h-11 w-full items-start gap-3 text-left" onClick={() => onSelect(format.id)}><span className={cn('mt-0.5 grid size-5 shrink-0 place-items-center rounded-full border transition-colors', selected ? 'border-[#0071e3] bg-[#0071e3] text-white' : 'border-black/20 bg-white')}>{selected ? <Check className="size-3" /> : null}</span><span className="min-w-0"><span className="block text-sm font-semibold">{format.name}</span><span className="mt-1.5 hidden text-xs leading-5 text-[#6e6e73] sm:block">{format.shortDescription}</span></span></button><button type="button" className="mt-2 inline-flex min-h-11 items-center gap-1.5 text-xs font-semibold text-[#0071e3] transition-opacity hover:opacity-70" onClick={() => onPreview(format)}><Eye className="size-3.5" />Preview Requirements</button></div>
         })}

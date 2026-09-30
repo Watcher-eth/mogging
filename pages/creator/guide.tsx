@@ -21,7 +21,9 @@ import { CreatorHeader, CreatorShell } from '@/components/creator/creator-shell'
 import { CreatorPayoutCalculator } from '@/components/creator/payout-calculator'
 import { ContentGuidelines, accountReviewPolicy } from '@/components/creator/content-guidelines'
 import { Button } from '@/components/ui/button'
-import { ACTIVE_CREATOR_SUBMISSION_FORMATS } from '@/lib/creator/formats'
+import useSWR from 'swr'
+import { apiGet } from '@/lib/api/client'
+import type { CreatorDashboard } from '@/components/creator/types'
 import { cn } from '@/lib/utils'
 import { CreatorIcon, type CreatorIconName } from '@/components/creator/creator-icon'
 import { CreatorReferralLinks } from '@/components/creator/referral-links'
@@ -146,8 +148,10 @@ function TopicPicker({ selected, onSelect }: { selected: GuideTopic; onSelect: (
 }
 
 function VideoGuide() {
-  const [formatId, setFormatId] = useState(ACTIVE_CREATOR_SUBMISSION_FORMATS[0]?.id ?? '')
-  const format = ACTIVE_CREATOR_SUBMISSION_FORMATS.find((item) => item.id === formatId) ?? ACTIVE_CREATOR_SUBMISSION_FORMATS[0]
+  const { data } = useSWR<CreatorDashboard>('/api/creator', apiGet)
+  const formats = data?.availableFormats ?? []
+  const [formatId, setFormatId] = useState('')
+  const format = formats.find((item) => item.id === formatId) ?? formats[0]
   if (!format) return null
 
   return (
@@ -159,7 +163,7 @@ function VideoGuide() {
         <div>
           <p className="text-xs font-semibold text-[#6e6e73]">Active formats</p>
           <div className="mt-2 grid gap-2">
-            {ACTIVE_CREATOR_SUBMISSION_FORMATS.map((item) => {
+            {formats.map((item) => {
               const active = item.id === format.id
               return <button key={item.id} type="button" onClick={() => setFormatId(item.id)} className={cn('rounded-[14px] px-3.5 py-3 text-left text-sm font-semibold transition-[background-color,color,transform] duration-150 active:scale-[0.98]', active ? 'bg-[#1d1d1f] text-white' : 'bg-[#f5f5f7] text-[#6e6e73] hover:text-[#1d1d1f]')}>{item.name}</button>
             })}

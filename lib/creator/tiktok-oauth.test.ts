@@ -18,3 +18,15 @@ test('expired OAuth state is rejected', () => {
     expect(readCreatorTikTokState(cookieValue, state, 'user')).toBeNull()
   } finally { Date.now = now }
 })
+
+test('setup destination is signed into OAuth state without accepting an arbitrary return URL', () => {
+  const { state, cookieValue } = createCreatorTikTokState('user', 'setup')
+  expect(readCreatorTikTokState(cookieValue, state, 'user')?.destination).toBe('setup')
+  const [encoded, signature] = cookieValue.split('.')
+  const payload = JSON.parse(Buffer.from(encoded, 'base64url').toString('utf8'))
+  payload.destination = 'accounts'
+  const tampered = `${Buffer.from(JSON.stringify(payload)).toString('base64url')}.${signature}`
+  expect(readCreatorTikTokState(tampered, state, 'user')).toBeNull()
+  const accountState = createCreatorTikTokState('user')
+  expect(readCreatorTikTokState(accountState.cookieValue, accountState.state, 'user')?.destination).toBe('accounts')
+})

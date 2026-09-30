@@ -4,7 +4,7 @@ import { and, desc, eq, or, sql } from 'drizzle-orm'
 import { z } from 'zod'
 import { db, schema } from '@/lib/db'
 import { env } from '@/lib/env'
-import { getCreatorSubmissionFormat } from '@/lib/creator/formats'
+import { getAvailableCreatorSubmissionFormats } from '@/lib/creator/format-access'
 import { ensureCreatorTrackingLink } from '@/lib/creator/attribution'
 
 export { creatorProfileSchema, creatorSubmissionSchema, creatorSocialAccountSchema, creatorAccountAnalyticsSubmissionSchema } from './validation'
@@ -23,10 +23,11 @@ export type CreatorTikTokOAuthInput = {
 export async function getCreatorDashboard(userId: string) {
   const communityMetricsPromise = getCreatorCommunityMetrics()
   const profile = await getCreatorProfile(userId)
+  const availableFormats = getAvailableCreatorSubmissionFormats(profile)
   const featureFlags = {
     creatorAccountRequiredForSubmission: env.CREATOR_ACCOUNT_REQUIRED_FOR_SUBMISSION,
   }
-  if (!profile) return { profile: null, submissions: [], payments: [], socialAccounts: [], communityMetrics: await communityMetricsPromise, featureFlags }
+  if (!profile) return { profile: null, submissions: [], payments: [], socialAccounts: [], communityMetrics: await communityMetricsPromise, featureFlags, availableFormats }
 
   const [submissions, payments, socialAccounts, communityMetrics] = await Promise.all([
     db.query.creatorSubmissions.findMany({
@@ -50,7 +51,7 @@ export async function getCreatorDashboard(userId: string) {
     return { ...account, trackingLink: await ensureCreatorTrackingLink(account.id) }
   }))
 
-  return { profile, submissions, payments, socialAccounts: socialAccountsWithLinks, communityMetrics, featureFlags }
+  return { profile, submissions, payments, socialAccounts: socialAccountsWithLinks, communityMetrics, featureFlags, availableFormats }
 }
 
 async function getCreatorCommunityMetrics() {
@@ -334,9 +335,9 @@ export async function getOrCreateCreatorProfile(userId: string) {
 }
 
 export async function createCreatorSubmission(userId: string, input: CreatorSubmissionInput) {
-  const format = getCreatorSubmissionFormat(input.formatId)
-  if (!format) throw new CreatorServiceError(409, 'Choose an available submission format')
   const profile = await getOrCreateCreatorProfile(userId)
+  const format = getAvailableCreatorSubmissionFormats(profile).find((format) => format.id === input.formatId)
+  if (!format) throw new CreatorServiceError(403, 'This submission format is not available for your account')
   if (!input.analyticsStorageKey.startsWith(`creators/${userId}/submission-analytics/`)) {
     throw new CreatorServiceError(400, 'Invalid analytics screenshot upload')
   }
