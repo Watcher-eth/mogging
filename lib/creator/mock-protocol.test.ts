@@ -10,11 +10,11 @@ describe('mock weekly protocol', () => {
     expect(new Set(days.flatMap(day => day.items.map(task => task.id))).size).toBe(19)
   })
 
-  test('keeps selected focus in every day and varies supporting tasks', () => {
+  test('rotates relevant tasks for the selected focus rather than repeating a single exercise', () => {
     const eyes = buildMockProtocol('eyes', '2026-09-30')
     const jaw = buildMockProtocol('jaw', '2026-09-30')
-    expect(eyes.every(day => day.items.some(task => task.title === 'Depuff eye area'))).toBe(true)
-    expect(jaw.every(day => day.items.some(task => task.title === 'Sharpen lower third'))).toBe(true)
+    expect(eyes.every(day => day.items.some(task => task.focusIds.includes('eyes')))).toBe(true)
+    expect(jaw.every(day => day.items.some(task => task.focusIds.includes('jaw')))).toBe(true)
     expect(eyes[0].items.map(task => task.id)).not.toEqual(eyes[1].items.map(task => task.id))
     expect(protocolFocusAreas.some(area => area.id === 'symmetry')).toBe(true)
   })
@@ -33,4 +33,15 @@ describe('mock weekly protocol', () => {
     expect(() => buildMockProtocol('unknown', '2026-09-30')).toThrow()
     for (const date of ['', '2026-02-30', 'not-a-date']) expect(() => buildMockProtocol('eyes', date)).toThrow()
   })
+})
+
+test('mock and mobile share the same task selector and optional product rules', async () => {
+  const { selectProtocolTasks } = await import('./protocol-tasks')
+  const products = ['cleanser', 'moisturizer', 'uv-protection', 'retinol'] as const
+  const days = buildMockProtocol('skin-age', '2026-09-30', [...products])
+  for (const day of days) {
+    expect(day.items.map(task => task.key)).toEqual(selectProtocolTasks({ focusIds: ['skin-age'], date: day.date, count: day.items.length, skinProducts: products }).map(task => task.key))
+    expect(day.items.filter(task => task.family === 'skin-active').length).toBeLessThanOrEqual(1)
+  }
+  expect(days.flatMap(day => day.items).filter(task => task.key === 'retinol')).toHaveLength(2)
 })

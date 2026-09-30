@@ -5,10 +5,12 @@ import { toast } from 'sonner'
 import { Button } from '@/components/ui/button'
 import { Field, fieldClass } from './creator-shell'
 import { buildMockProtocol, getScheduledRoutineItems, localDate, protocolFocusAreas, protocolSize, type MockProtocolDay, type RoutineItem } from '@/lib/creator/mock-protocol'
+import { protocolProductOptions, protocolDefaultProducts, protocolActiveProducts, type ProtocolProductId } from '@/lib/creator/protocol-tasks'
 import { downloadBlob, encodeCanvasMp4 } from '@/lib/creator/export-slides'
 
 export function MockProtocolGenerator() {
   const [focusId, setFocusId] = useState('eyes')
+  const [activeProduct, setActiveProduct] = useState<ProtocolProductId | ''>('')
   const [startDate, setStartDate] = useState(() => localDate(new Date()))
   const [days, setDays] = useState<MockProtocolDay[]>([])
   const [selectedDay, setSelectedDay] = useState(0)
@@ -30,7 +32,7 @@ export function MockProtocolGenerator() {
 
   function generate() {
     try {
-      setDays(buildMockProtocol(focusId, startDate))
+      setDays(buildMockProtocol(focusId, startDate, [...protocolDefaultProducts, ...(activeProduct ? [activeProduct] : [])]))
       setCompleted(new Set()); setSelectedDay(0); setScroll(0); setOpenedTask(null)
     } catch (error) { toast.error(error instanceof Error ? error.message : 'Could not generate protocol') }
   }
@@ -82,6 +84,8 @@ export function MockProtocolGenerator() {
       <fieldset disabled={exporting} className="grid gap-4">
         <Field label="Focus area"><select aria-label="Protocol focus area" className={fieldClass} value={focusId} onChange={event => { setFocusId(event.target.value); setDays([]); setOpenedTask(null) }}>{protocolFocusAreas.map(area => <option key={area.id} value={area.id}>{area.label}</option>)}</select></Field>
         <Field label="Week starts"><input aria-label="Protocol week starts" className={fieldClass} type="date" value={startDate} onChange={event => { setStartDate(event.target.value); setDays([]); setOpenedTask(null) }} /></Field>
+        <Field label="Optional skincare active" hint="Choose one product you already tolerate"><select aria-label="Protocol skincare active" className={fieldClass} value={activeProduct} onChange={event => { setActiveProduct(event.target.value as ProtocolProductId | ''); setDays([]); setOpenedTask(null) }}><option value="">Basic care only</option>{protocolProductOptions.filter(option => protocolActiveProducts.includes(option.id)).map(option => <option key={option.id} value={option.id}>{option.label}</option>)}</select></Field>
+        {activeProduct ? <p className="text-xs leading-5 text-zinc-500">Introduce one active at a time and follow its label. Skip irritated skin. Avoid retinoids during pregnancy or while trying to conceive; ask a clinician about breastfeeding or use under 18.</p> : null}
         <Button className="h-11 rounded-full" onClick={generate}>{days.length ? 'Regenerate mock protocol' : 'Generate mock protocol'}</Button>
       </fieldset>
       {day ? <fieldset disabled={exporting} className="grid gap-4"><legend className="mb-3 text-sm font-semibold">Edit {day.label} · {day.date}</legend>
