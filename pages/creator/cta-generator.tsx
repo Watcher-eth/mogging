@@ -6,7 +6,7 @@ import { FaceAlignmentEditor } from '@/components/creator/face-alignment-editor'
 import { CreatorStepper } from '@/components/creator/creator-stepper'
 import Image from 'next/image'
 import { useEffect, useRef, useState } from 'react'
-import { BookOpen, Check, CheckCircle2, Download, FileArchive, Film, ImagePlus, Loader2, RefreshCw, Send, Trash2, UploadCloud, type LucideIcon } from 'lucide-react'
+import { BookOpen, CalendarCheck2, FileChartColumn, Megaphone, Check, CheckCircle2, Download, FileArchive, Film, ImagePlus, Loader2, RefreshCw, Send, Trash2, UploadCloud, type LucideIcon } from 'lucide-react'
 import useSWR from 'swr'
 import { toast } from 'sonner'
 import { Button } from '@/components/ui/button'
@@ -22,7 +22,11 @@ import { categoryOptions, categoryScoreMax, generateSlides, outputFormats, templ
 import { cn } from '@/lib/utils'
 import { CreatorIcon, type CreatorIconName } from '@/components/creator/creator-icon'
 
-const generatorTabs = [{ id: 'cta', label: 'CTA generator' }, { id: 'mock', label: 'Mock reports' }, { id: 'protocol', label: 'Mock Protocol' }] as const
+const generatorTabs = [
+  { id: 'cta', label: 'CTA generator', icon: Megaphone },
+  { id: 'mock', label: 'Mock reports', icon: FileChartColumn },
+  { id: 'protocol', label: 'Mock Protocol', icon: CalendarCheck2 },
+] as const
 
 const STORAGE_KEY = 'mogging:creator-content:v2'
 const approvedExamples = [
@@ -228,8 +232,8 @@ export default function CtaGeneratorPage() {
   return (
     <CreatorShell>
       <CreatorHeader eyebrow="Creator Tools" title="CTA Studio" description="Create a CTA with your photos and report scores." action={mode === 'cta' && step === 3 && slides.length ? <Button className="h-11 rounded-full px-5" disabled={exporting} onClick={() => void downloadAll()}>{exporting ? <Loader2 className="animate-spin" /> : <FileArchive />}Download Set</Button> : null} />
-      <div className="mb-6 flex flex-wrap gap-2" role="tablist" aria-label="Generator">
-        {generatorTabs.map(tab => <button key={tab.id} id={`generator-tab-${tab.id}`} role="tab" aria-selected={mode === tab.id} tabIndex={mode === tab.id ? 0 : -1} onKeyDown={event => { if (!['ArrowLeft', 'ArrowRight', 'Home', 'End'].includes(event.key)) return; event.preventDefault(); const index = generatorTabs.findIndex(item => item.id === mode); const next = generatorTabs[event.key === 'Home' ? 0 : event.key === 'End' ? generatorTabs.length - 1 : (index + (event.key === 'ArrowRight' ? 1 : -1) + generatorTabs.length) % generatorTabs.length].id; setMode(next); document.getElementById(`generator-tab-${next}`)?.focus() }} aria-controls={`generator-panel-${tab.id}`} type="button" onClick={() => setMode(tab.id)} className={cn('min-h-11 rounded-full px-5 text-sm font-semibold transition-colors', mode === tab.id ? 'bg-black text-white' : 'bg-white text-zinc-500 hover:bg-zinc-100')}>{tab.label}</button>)}
+      <div className="mb-6 flex w-fit max-w-full flex-wrap gap-2 rounded-[26px] border border-zinc-200 bg-zinc-100/80 p-2" role="tablist" aria-label="Generator">
+        {generatorTabs.map(tab => <button key={tab.id} id={`generator-tab-${tab.id}`} role="tab" aria-selected={mode === tab.id} tabIndex={mode === tab.id ? 0 : -1} onKeyDown={event => { if (!['ArrowLeft', 'ArrowRight', 'Home', 'End'].includes(event.key)) return; event.preventDefault(); const index = generatorTabs.findIndex(item => item.id === mode); const next = generatorTabs[event.key === 'Home' ? 0 : event.key === 'End' ? generatorTabs.length - 1 : (index + (event.key === 'ArrowRight' ? 1 : -1) + generatorTabs.length) % generatorTabs.length].id; setMode(next); document.getElementById(`generator-tab-${next}`)?.focus() }} aria-controls={`generator-panel-${tab.id}`} type="button" onClick={() => setMode(tab.id)} className={cn('inline-flex min-h-12 items-center justify-center gap-2.5 rounded-full border px-5 text-sm font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#0071e3] focus-visible:ring-offset-2', mode === tab.id ? 'border-black bg-black text-white shadow-sm' : 'border-zinc-300 bg-white text-zinc-800 shadow-sm hover:border-zinc-400 hover:bg-zinc-50')}><tab.icon aria-hidden="true" className={cn('size-5 shrink-0', mode === tab.id ? 'text-white' : 'text-[#0071e3]')} strokeWidth={2} />{tab.label}</button>)}
       </div>
       {mode === 'cta' ? <CreatorStepper step={step} labels={['Photos', 'Details & Scores', 'Preview & Export']} /> : null}
       <div id="generator-panel-mock" role="tabpanel" aria-labelledby="generator-tab-mock" hidden={mode !== 'mock' || step === 1}>
