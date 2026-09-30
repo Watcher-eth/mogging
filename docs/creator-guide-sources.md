@@ -20,7 +20,7 @@ Updated September 23, 2026 from the supplied announcement, June 2026 spreadsheet
 ## Adaptation decisions
 
 - All app references in authored guidance use Mogging. PSL remains only as appearance-rating vocabulary.
-- Preserve hook within 3 seconds, clear Mogging product moment, closing CTA, @mogging tag, original public posts, 30-day submission window, and connected-account requirement when available.
+- Preserve hook within 3 seconds, clear Mogging product moment, closing CTA, @moggingcom tag, original public posts, 30-day submission window, and connected-account requirement when available.
 - Preserve physical second-device analytics recordings, visible username, recent 28-day window, full geography list, unedited continuous take, readable evidence, and account-specific bio attribution link.
 - Preserve existing geography thresholds, countries, view milestones, payout cap, cumulative milestone treatment, review snapshot, and payout-destination rules. Posting daily on both platforms remains optional guidance.
 - Adopt the supplied looks relevance, engagement farming, excluded-niche, celebrity-edit, account-review, and anti-bot rules as requested guidance. This does not implement a new automatic fraud-detection or payout-forfeiture system.

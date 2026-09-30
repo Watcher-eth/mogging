@@ -3,23 +3,17 @@ import path from 'path'
 import { HeadObjectCommand, PutObjectCommand, S3Client } from '@aws-sdk/client-s3'
 import { getSignedUrl } from '@aws-sdk/s3-request-presigner'
 import { env, isR2Configured } from '@/lib/env'
+import { CREATOR_VIDEO_EXTENSIONS, type CreatorVideoType } from '@/lib/creator/video-types'
+export { CREATOR_VIDEO_TYPES, type CreatorVideoType } from '@/lib/creator/video-types'
 
 export const MAX_CREATOR_VIDEO_BYTES = 500 * 1024 * 1024
 export const MAX_CREATOR_ANALYTICS_VIDEO_BYTES = 250 * 1024 * 1024
 export const MAX_CREATOR_SUBMISSION_ANALYTICS_BYTES = 10 * 1024 * 1024
-export const CREATOR_VIDEO_TYPES = ['video/mp4', 'video/quicktime', 'video/webm'] as const
 export const CREATOR_ANALYTICS_IMAGE_TYPES = ['image/jpeg', 'image/png', 'image/webp'] as const
 export const CREATOR_CTA_LIBRARY_TYPES = ['video/mp4', 'image/png'] as const
 export const MAX_CREATOR_CTA_LIBRARY_BYTES = 100 * 1024 * 1024
-export type CreatorVideoType = (typeof CREATOR_VIDEO_TYPES)[number]
 export type CreatorAnalyticsImageType = (typeof CREATOR_ANALYTICS_IMAGE_TYPES)[number]
 export type CreatorCtaLibraryType = (typeof CREATOR_CTA_LIBRARY_TYPES)[number]
-
-const extensions: Record<CreatorVideoType, string> = {
-  'video/mp4': 'mp4',
-  'video/quicktime': 'mov',
-  'video/webm': 'webm',
-}
 
 const analyticsImageExtensions: Record<CreatorAnalyticsImageType, string> = {
   'image/jpeg': 'jpg',
@@ -28,12 +22,12 @@ const analyticsImageExtensions: Record<CreatorAnalyticsImageType, string> = {
 }
 
 export async function createCreatorVideoUpload(userId: string, contentType: CreatorVideoType, sizeBytes: number) {
-  const key = `creators/${userId}/${crypto.randomUUID()}.${extensions[contentType]}`
+  const key = `creators/${userId}/${crypto.randomUUID()}.${CREATOR_VIDEO_EXTENSIONS[contentType]}`
   return createVideoUpload(key, contentType, sizeBytes)
 }
 
 export async function createCreatorAccountAnalyticsUpload(userId: string, contentType: CreatorVideoType, sizeBytes: number) {
-  const key = `creators/${userId}/account-analytics/${crypto.randomUUID()}.${extensions[contentType]}`
+  const key = `creators/${userId}/account-analytics/${crypto.randomUUID()}.${CREATOR_VIDEO_EXTENSIONS[contentType]}`
   return createVideoUpload(key, contentType, sizeBytes)
 }
 

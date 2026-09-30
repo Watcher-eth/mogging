@@ -25,7 +25,7 @@ describe('creator submission review checklist', () => {
 
   test('the expanded content policy fits review submission limits and preserves existing review IDs', () => {
     const items = getCreatorSubmissionReviewItems('general-creator-video-v1')
-    expect(items.find((item) => item.id === 'requirement-1')?.label).toBe('Tag @mogging in the post or caption')
+    expect(items.find((item) => item.id === 'requirement-1')?.label).toBe('Tag @moggingcom in the post or caption')
     expect(items.find((item) => item.id === 'requirement-4')?.label).toBe('Use a connected account when one is available')
     expect(items.find((item) => item.id === 'restriction-3')?.label).toBe('Avoided: Obscured app footage or unreadable on-screen text')
     expect(items.some((item) => item.label.includes('entire video'))).toBe(true)
@@ -36,7 +36,7 @@ describe('creator submission review checklist', () => {
   test('builds the checklist from the creator guide format', () => {
     const items = getCreatorSubmissionReviewItems('general-creator-video-v1')
     expect(items.map((item) => item.label)).toContain('Opening hook')
-    expect(items.map((item) => item.label)).toContain('Tag @mogging in the post or caption')
+    expect(items.map((item) => item.label)).toContain('Tag @moggingcom in the post or caption')
     expect(items.some((item) => item.label.startsWith('Avoided: False or misleading claims'))).toBe(true)
   })
 

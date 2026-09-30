@@ -1,19 +1,9 @@
-export const ANALYTICS_VIDEO_TYPES = ['video/mp4', 'video/quicktime', 'video/webm'] as const
-export type AnalyticsVideoType = (typeof ANALYTICS_VIDEO_TYPES)[number]
-
-export function analyticsVideoContentType(file: Pick<File, 'type' | 'name'>): AnalyticsVideoType | null {
-  const type = file.type.toLowerCase().split(';')[0].trim()
-  if (ANALYTICS_VIDEO_TYPES.includes(type as AnalyticsVideoType)) return type as AnalyticsVideoType
-  // Some mobile file pickers omit the MIME type or return a generic binary type.
-  if (type && type !== 'application/octet-stream') return null
-  const extension = file.name.split('.').pop()?.toLowerCase()
-  return extension === 'mp4' ? 'video/mp4' : extension === 'mov' ? 'video/quicktime' : extension === 'webm' ? 'video/webm' : null
-}
+import type { CreatorVideoType } from './video-types'
 
 export function uploadAnalyticsRecording(
   intent: { uploadUrl: string; method: 'PUT' | 'POST' },
   file: File,
-  contentType: AnalyticsVideoType,
+  contentType: CreatorVideoType,
   onProgress: (percent: number) => void,
 ): Promise<void> {
   return new Promise((resolve, reject) => {

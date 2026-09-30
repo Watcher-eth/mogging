@@ -1,7 +1,7 @@
 import { CreatorStepper } from './creator-stepper'
 import * as Avatar from '@radix-ui/react-avatar'
 import { creatorAccountLabel } from '@/components/creator/types'
-import { useEffect, useRef, useState, type ChangeEvent } from 'react'
+import { useEffect, useRef, useState, type ChangeEvent, type ReactNode } from 'react'
 import {
   AlertTriangle,
   FileVideo,
@@ -18,7 +18,8 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } f
 import type { CreatorSocialAccount } from '@/components/creator/types'
 import { apiPost, ApiClientError } from '@/lib/api/client'
 
-import { analyticsVideoContentType, uploadAnalyticsRecording, type AnalyticsVideoType } from '@/lib/creator/analytics-upload'
+import { uploadAnalyticsRecording } from '@/lib/creator/analytics-upload'
+import { creatorVideoContentType, CREATOR_VIDEO_ACCEPT, type CreatorVideoType } from '@/lib/creator/video-types'
 const maxAnalyticsVideoBytes = 250 * 1024 * 1024
 
 const instructions = {
@@ -43,12 +44,13 @@ const instructions = {
 export type AnalyticsEvidence = {
   analyticsVideoUrl: string
   analyticsStorageKey: string
-  analyticsContentType: AnalyticsVideoType
+  analyticsContentType: CreatorVideoType
   analyticsSizeBytes: number
   analyticsPast28DaysConfirmed: true
 }
 
-export function AccountVerificationDialog({ account, open, onOpenChange, onSubmitEvidence }: {
+export function AccountVerificationDialog({ account, open, onOpenChange, onSubmitEvidence, presentation = 'dialog' }: {
+  presentation?: 'dialog' | 'page'
   account: Pick<CreatorSocialAccount, 'platform' | 'handle' | 'displayName' | 'avatarUrl'> | null
   open: boolean
   onOpenChange: (open: boolean) => void
@@ -92,8 +94,8 @@ export function AccountVerificationDialog({ account, open, onOpenChange, onSubmi
     event.target.value = ''
     if (!file) return
     if (!file.size) return toast.error('Choose a non-empty recording')
-    if (!analyticsVideoContentType(file)) {
-      toast.error('Choose an MP4, MOV, or WebM recording')
+    if (!creatorVideoContentType(file)) {
+      toast.error('Choose an MP4, MOV, M4V, or WebM recording')
       return
     }
     if (file.size > maxAnalyticsVideoBytes) {
@@ -111,8 +113,8 @@ export function AccountVerificationDialog({ account, open, onOpenChange, onSubmi
       throw new ApiClientError(400, 'analytics_required', 'Add the required recording and confirm both requirements')
     }
     if (uploadedRecording.current?.file === analyticsFile) return uploadedRecording.current.evidence
-    const contentType = analyticsVideoContentType(analyticsFile)
-    if (!contentType) throw new Error('Choose an MP4, MOV, or WebM recording')
+    const contentType = creatorVideoContentType(analyticsFile)
+    if (!contentType) throw new Error('Choose an MP4, MOV, M4V, or WebM recording')
     const intent = await apiPost<{ key: string; publicUrl: string; uploadUrl: string; method: 'PUT' | 'POST' }>('/api/creator/accounts/analytics-upload-intent', {
       contentType,
       sizeBytes: analyticsFile.size,
@@ -149,9 +151,8 @@ export function AccountVerificationDialog({ account, open, onOpenChange, onSubmi
   const ready = Boolean(analyticsFile && analyticsConfirmed && recordingConfirmed)
 
   return (
-    <Dialog open={open} onOpenChange={(nextOpen) => { if (!saving) onOpenChange(nextOpen) }}>
-      <DialogContent className="creator-dialog creator-verification max-h-[92dvh] max-w-5xl overflow-y-auto rounded-[26px] border-white/70 bg-white/95 p-0">
-        <div className="border-b border-zinc-200 px-6 py-5 sm:px-7">
+    <VerificationFrame presentation={presentation} open={open} onOpenChange={(nextOpen) => { if (!saving) onOpenChange(nextOpen) }}>
+        {presentation === 'dialog' ? <div className="border-b border-zinc-200 px-6 py-5 sm:px-7">
           <DialogHeader className="text-left">
             <div className="flex items-start gap-3 pr-8">
               <span className="relative size-11 shrink-0">
@@ -164,14 +165,14 @@ export function AccountVerificationDialog({ account, open, onOpenChange, onSubmi
               <div><DialogTitle className="text-2xl">Verify {creatorAccountLabel(account)}</DialogTitle><DialogDescription className="mt-1">Step 2 of 2: Upload audience evidence for your connected {platformLabel} account.</DialogDescription></div>
             </div>
           </DialogHeader>
-        </div>
+        </div> : null}
 
-        <div className="px-5"><CreatorStepper step={step} labels={['Prepare', 'Record', 'Upload']} /></div>
-        {step === 1 ? <>
+        {presentation === 'dialog' ? <div className="px-5"><CreatorStepper step={step} labels={['Prepare', 'Record', 'Upload']} /></div> : null}
+        {presentation === 'page' || step === 1 ? <>
         <div className="mx-6 rounded-2xl border border-red-200 bg-red-50 p-5 sm:mx-7 sm:p-6">
           <div className="flex items-start gap-3"><span className="grid size-9 shrink-0 place-items-center rounded-xl bg-red-100 text-red-700"><AlertTriangle className="size-4" /></span><div><p className="text-sm font-semibold text-red-950">Physical Recording Required</p><p className="mt-2 text-xs leading-5 text-red-800">Use a second phone, tablet, or camera to film your main phone or TikTok on a desktop or laptop while you navigate through every required analytics screen. If you only have one phone, use it to film TikTok on your computer. Screen recordings, cuts, edits, hidden usernames, and altered analytics are not accepted.</p><ul className="mt-3 grid gap-1.5 text-xs leading-5 text-red-800"><li>• The physical phone, tablet, or computer screen being filmed must remain visible.</li><li>• Record one continuous take with no cuts or edits.</li><li>• Keep the account username and analytics values readable.</li></ul></div></div>
-        </div>        <div className="px-6 pb-6"><Button className="h-11 w-full" onClick={() => setStep(2)}>See Recording Steps</Button></div></> : null}
-        {step === 2 ? <div className="px-6 pb-6">
+        </div>        {presentation === 'dialog' ? <div className="px-6 pb-6"><Button className="h-11 w-full" onClick={() => setStep(2)}>See Recording Steps</Button></div> : null}</> : null}
+        {presentation === 'page' || step === 2 ? <div className="px-6 pb-6">
 
           <section>
             <div className="flex items-center gap-3"><span className="h-px flex-1 bg-zinc-200" /><p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-zinc-400">Follow These Steps</p><span className="h-px flex-1 bg-zinc-200" /></div>
@@ -183,14 +184,14 @@ export function AccountVerificationDialog({ account, open, onOpenChange, onSubmi
                 </li>
               ))}
             </ol>
-            <p className="mt-4 flex items-center gap-2 text-xs text-zinc-500"><FileVideo className="size-4" />MP4, MOV, or WebM · up to 250 MB</p>
+            <p className="mt-4 flex items-center gap-2 text-xs text-zinc-500"><FileVideo className="size-4" />MP4, MOV, M4V, or WebM · up to 250 MB</p>
           </section>
-          <div className="mt-6 flex gap-3"><Button variant="outline" className="h-11" onClick={() => setStep(1)}>Back</Button><Button className="h-11 flex-1" onClick={() => setStep(3)}>I Have My Recording</Button></div>
+          {presentation === 'dialog' ? <div className="mt-6 flex gap-3"><Button variant="outline" className="h-11" onClick={() => setStep(1)}>Back</Button><Button className="h-11 flex-1" onClick={() => setStep(3)}>I Have My Recording</Button></div> : null}
         </div> : null}
-        {step === 3 ? <>
+        {presentation === 'page' || step === 3 ? <>
           <section className="px-6">
-            <p className="mb-4 text-sm text-zinc-600">Upload your continuous physical recording. MP4, MOV, or WebM · up to 250 MB.</p>
-            <input ref={fileInputRef} className="sr-only" type="file" accept="video/mp4,video/quicktime,video/webm,.mp4,.mov,.webm" onChange={chooseAnalyticsVideo} />
+            <p className="mb-4 text-sm text-zinc-600">Upload your continuous physical recording. MP4, MOV, M4V, or WebM · up to 250 MB.</p>
+            <input ref={fileInputRef} className="sr-only" type="file" accept={CREATOR_VIDEO_ACCEPT} onChange={chooseAnalyticsVideo} />
             {previewUrl ? (
               <div className="overflow-hidden rounded-[24px] border border-zinc-200 bg-black">
                 <video className="aspect-[9/16] max-h-[520px] w-full object-contain" src={previewUrl} controls preload="metadata" />
@@ -208,12 +209,16 @@ export function AccountVerificationDialog({ account, open, onOpenChange, onSubmi
           <label className="flex cursor-pointer items-start gap-3 rounded-2xl border border-zinc-200 p-3.5 text-xs leading-5 text-zinc-600"><input type="checkbox" className="mt-0.5 size-4 rounded border-zinc-300 accent-black" checked={analyticsConfirmed} onChange={(event) => setAnalyticsConfirmed(event.target.checked)} /><span>I confirm the recording shows this account’s recent analytics and complete audience location data.</span></label>
           <label className="flex cursor-pointer items-start gap-3 rounded-2xl border border-zinc-200 p-3.5 text-xs leading-5 text-zinc-600"><input type="checkbox" className="mt-0.5 size-4 rounded border-zinc-300 accent-black" checked={recordingConfirmed} onChange={(event) => setRecordingConfirmed(event.target.checked)} /><span>I confirm this is an unedited physical recording taken with a second device.</span></label>
           <div className="mt-2 flex flex-col-reverse gap-2 sm:flex-row sm:justify-between">
-            <Button type="button" variant="ghost" className="h-11 rounded-xl" disabled={saving} onClick={() => setStep(2)}>Back to Steps</Button>
-            {analyticsFile ? <Button type="button" className="h-11 rounded-xl sm:min-w-56" disabled={saving || !ready} onClick={() => void submitVerification()}>{saving ? <Loader2 className="animate-spin" /> : <UploadCloud />}{saving ? uploadComplete ? 'Submitting for Review…' : `Uploading ${uploadPercent}%…` : uploadComplete ? 'Retry Verification' : 'Submit for Review'}</Button> : <Button type="button" className="h-11 rounded-xl sm:min-w-56" disabled={saving} onClick={() => fileInputRef.current?.click()}><Smartphone />Choose Recording</Button>}
+            {presentation === 'dialog' ? <Button type="button" variant="ghost" className="h-11 rounded-xl" disabled={saving} onClick={() => setStep(2)}>Back to Steps</Button> : null}
+            {analyticsFile ? <Button type="button" className="h-11 rounded-xl sm:min-w-56" disabled={saving || !ready} onClick={() => void submitVerification()}>{saving ? <Loader2 className="animate-spin" /> : <UploadCloud />}{saving ? uploadComplete ? 'Submitting for Review…' : `Uploading ${uploadPercent}%…` : uploadComplete ? 'Retry Verification' : presentation === 'page' ? 'Submit recording and continue' : 'Submit for Review'}</Button> : <Button type="button" className="h-11 rounded-xl sm:min-w-56" disabled={saving} onClick={() => fileInputRef.current?.click()}><Smartphone />Choose Recording</Button>}
           </div>
         </div>
         </> : null}
-      </DialogContent>
-    </Dialog>
+    </VerificationFrame>
   )
+}
+
+function VerificationFrame({ presentation, open, onOpenChange, children }: { presentation: 'dialog' | 'page'; open: boolean; onOpenChange: (open: boolean) => void; children: ReactNode }) {
+  if (presentation === 'page') return <div className="creator-surface grid gap-6 py-6">{children}</div>
+  return <Dialog open={open} onOpenChange={onOpenChange}><DialogContent className="creator-dialog creator-verification max-h-[92dvh] max-w-5xl overflow-y-auto rounded-[26px] border-white/70 bg-white/95 p-0">{children}</DialogContent></Dialog>
 }

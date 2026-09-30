@@ -9,7 +9,7 @@ export type CreatorSubmissionFormat = {
 }
 
 const SHARED_REQUIREMENTS = [
-  'Tag @mogging in the post or caption',
+  'Tag @moggingcom in the post or caption',
   'Keep the post public and the content original',
   'Submit within 30 days of publishing',
   'Use a connected account when one is available',

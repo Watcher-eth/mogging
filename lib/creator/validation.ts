@@ -1,3 +1,4 @@
+import { CREATOR_VIDEO_TYPES } from './video-types'
 import { z } from 'zod'
 import { isCreatorViewThreshold } from './payouts'
 
@@ -69,7 +70,7 @@ export const creatorSubmissionSchema = z.object({
 export const creatorAnalyticsEvidenceSchema = z.object({
   analyticsVideoUrl: z.string().min(1).max(2048),
   analyticsStorageKey: z.string().min(1).max(300),
-  analyticsContentType: z.enum(['video/mp4', 'video/quicktime', 'video/webm']),
+  analyticsContentType: z.enum(CREATOR_VIDEO_TYPES),
   analyticsSizeBytes: z.number().int().positive().max(250 * 1024 * 1024),
   analyticsPast28DaysConfirmed: z.literal(true),
 })

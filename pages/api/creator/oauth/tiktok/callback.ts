@@ -14,20 +14,22 @@ import { env } from '@/lib/env'
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   if (req.method !== 'GET') return res.status(405).end()
+  let destination: 'accounts' | 'setup' = 'accounts'
   const redirect = (result: string, accountId?: string) => {
     clearCreatorTikTokStateCookie(res)
-    return res.redirect(302, getCreatorAccountsUrl(req, result, accountId))
+    return res.redirect(302, getCreatorAccountsUrl(req, result, accountId, destination))
   }
 
   try {
     const session = await getAuthSession(req, res)
     if (!session?.user?.id) return redirect('auth_required')
     if (!env.TIKTOK_CLIENT_KEY || !env.TIKTOK_CLIENT_SECRET) return redirect('not_configured')
-    if (typeof req.query.error === 'string') return redirect('cancelled')
 
     const state = typeof req.query.state === 'string' ? req.query.state : ''
     const code = typeof req.query.code === 'string' ? req.query.code : ''
     const statePayload = readCreatorTikTokState(req.cookies[CREATOR_TIKTOK_STATE_COOKIE], state, session.user.id)
+    if (statePayload?.destination === 'setup') destination = 'setup'
+    if (typeof req.query.error === 'string' && statePayload) return redirect('cancelled')
     if (!code || !statePayload) {
       return redirect('invalid_state')
     }

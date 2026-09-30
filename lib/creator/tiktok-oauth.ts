@@ -8,14 +8,16 @@ const OAUTH_STATE_MAX_AGE_SECONDS = 10 * 60
 type OAuthStatePayload = {
   state: string
   userId: string
+  destination?: 'accounts' | 'setup'
   expiresAt: number
 }
 
-export function createCreatorTikTokState(userId: string) {
+export function createCreatorTikTokState(userId: string, destination: 'accounts' | 'setup' = 'accounts') {
   const state = randomBytes(32).toString('base64url')
   const payload: OAuthStatePayload = {
     state,
     userId,
+    destination,
     expiresAt: Date.now() + OAUTH_STATE_MAX_AGE_SECONDS * 1000,
   }
   const encoded = Buffer.from(JSON.stringify(payload)).toString('base64url')
@@ -52,8 +54,8 @@ export function getCreatorTikTokRedirectUri(req: NextApiRequest) {
   return new URL('/api/creator/oauth/tiktok/callback', getRequestOrigin(req)).toString()
 }
 
-export function getCreatorAccountsUrl(req: NextApiRequest, result?: string, accountId?: string) {
-  const url = new URL('/creator/accounts', getRequestOrigin(req))
+export function getCreatorAccountsUrl(req: NextApiRequest, result?: string, accountId?: string, destination: 'accounts' | 'setup' = 'accounts') {
+  const url = new URL(destination === 'setup' ? '/creator/setup' : '/creator/accounts', getRequestOrigin(req))
   if (result) url.searchParams.set('tiktok', result)
   if (accountId) url.searchParams.set('verify', accountId)
   return url.toString()

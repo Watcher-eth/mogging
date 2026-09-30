@@ -11,7 +11,7 @@ import { useEffect, useRef, useState, type ReactNode } from 'react'
 import { MoreHorizontal, LogOut } from 'lucide-react'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog'
 import { cn } from '@/lib/utils'
-import { CreatorAuthSurface } from './creator-auth-surface'
+import { CreatorAuthPrompt } from './creator-auth-prompt'
 import { CreatorIcon, type CreatorIconName } from './creator-icon'
 
 type CreatorNavItem = { href: string; label: string; icon?: typeof LayoutDashboard; asset?: CreatorIconName }
@@ -62,12 +62,10 @@ export function CreatorShell({ children, allowUnauthenticated = false }: { child
   if (status === 'unauthenticated' && allowUnauthenticated) return <>{children}</>
 
   if (status === 'unauthenticated') {
-    return (
-      <CreatorAuthSurface>
-        <Link href="/creator/accounts" className="creator-primary-button gap-2">Sign in<span aria-hidden="true">↗</span></Link>
-      </CreatorAuthSurface>
-    )
+    return <CreatorAuthPrompt callbackUrl={router.asPath} />
   }
+
+  if (router.pathname === '/creator/setup') return <>{children}</>
 
   return (
     <div className="creator-portal w-full">

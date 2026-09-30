@@ -1,12 +1,46 @@
 import { afterEach, expect, test } from 'bun:test'
-import { analyticsVideoContentType, uploadAnalyticsRecording } from './analytics-upload'
+import { uploadAnalyticsRecording } from './analytics-upload'
+import { creatorVideoContentType } from './video-types'
+import { creatorAccountAnalyticsSubmissionSchema } from './validation'
 
 test('accepts supported phone videos when the file picker omits MIME metadata', () => {
-  expect(analyticsVideoContentType({ name: 'IMG_1234.MOV', type: '' })).toBe('video/quicktime')
-  expect(analyticsVideoContentType({ name: 'recording.mp4', type: 'application/octet-stream' })).toBe('video/mp4')
-  expect(analyticsVideoContentType({ name: 'recording', type: 'video/webm' })).toBe('video/webm')
-  expect(analyticsVideoContentType({ name: 'fake.mp4', type: 'text/html' })).toBeNull()
-  expect(analyticsVideoContentType({ name: 'unknown.bin', type: '' })).toBeNull()
+  expect(creatorVideoContentType({ name: 'IMG_1234.MOV', type: '' })).toBe('video/quicktime')
+  expect(creatorVideoContentType({ name: 'recording.mp4', type: 'application/octet-stream' })).toBe('video/mp4')
+  expect(creatorVideoContentType({ name: 'recording', type: 'video/webm' })).toBe('video/webm')
+  expect(creatorVideoContentType({ name: 'fake.mp4', type: 'text/html' })).toBeNull()
+  expect(creatorVideoContentType({ name: 'unknown.bin', type: '' })).toBeNull()
+})
+
+test('normalizes Apple video aliases and codec metadata into server-supported containers', () => {
+  const examples = [
+    ['export.M4V', '', 'video/mp4'],
+    ['export.m4v', 'video/x-m4v', 'video/mp4'],
+    ['export.m4v', 'video/m4v', 'video/mp4'],
+    ['recording.mp4', 'application/mp4', 'video/mp4'],
+    ['recording.mp4', 'video/x-mp4', 'video/mp4'],
+    ['recording.MOV', 'video/x-quicktime', 'video/quicktime'],
+    ['recording.mov', 'video/mov', 'video/quicktime'],
+    ['recording.qt', 'application/octet-stream', 'video/quicktime'],
+    ['recording.mov', 'video/hevc', 'video/quicktime'],
+    ['recording.mp4', 'video/h264', 'video/mp4'],
+    ['recording.mp4', 'Video/MP4; codecs="hvc1"', 'video/mp4'],
+  ] as const
+  for (const [name, type, expected] of examples) {
+    const contentType = creatorVideoContentType({ name, type })
+    expect(contentType).toBe(expected)
+    expect(creatorAccountAnalyticsSubmissionSchema.safeParse({
+      accountId: '00000000-0000-4000-8000-000000000002',
+      analyticsVideoUrl: '/recording', analyticsStorageKey: 'creators/user/account-analytics/recording',
+      analyticsContentType: contentType, analyticsSizeBytes: 100, analyticsPast28DaysConfirmed: true,
+    }).success).toBe(true)
+  }
+})
+
+test('does not treat unrelated or unrecognizable files as video recordings', () => {
+  for (const [name, type] of [
+    ['fake.m4v', 'text/html'], ['fake.mov', 'application/pdf'], ['audio.m4a', 'audio/mp4'],
+    ['unknown.bin', 'video/hevc'], ['recording.mkv', 'video/x-matroska'], ['constructor', 'constructor'],
+  ]) expect(creatorVideoContentType({ name, type })).toBeNull()
 })
 
 const OriginalXHR = globalThis.XMLHttpRequest

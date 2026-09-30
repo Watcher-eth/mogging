@@ -88,6 +88,7 @@ export function AppShell({ children }: AppShellProps) {
   const router = useRouter()
   const pendingAuthRedirect = getSafeAuthRedirect(router.query.next)
   const creatorRoute = router.pathname === '/creator' || router.pathname.startsWith('/creator/')
+  const creatorSetup = router.pathname === '/creator/setup'
   const creatorSignIn = router.pathname.startsWith('/creator') && status === 'unauthenticated'
   const immersive = router.pathname === '/' || router.pathname === '/analysis' || router.pathname === '/leaderboard' || router.pathname === '/battle' || router.pathname === '/app' || router.pathname === '/app/handoff'
   const [loginOpen, setLoginOpen] = useState(false)
@@ -176,7 +177,7 @@ export function AppShell({ children }: AppShellProps) {
   }
 
   return (
-    <div className={creatorSignIn ? 'flex min-h-dvh flex-col bg-background' : immersive ? 'min-h-screen bg-white' : 'min-h-screen bg-background'}>
+    <div className={creatorSignIn || creatorSetup ? 'flex min-h-dvh flex-col bg-background' : immersive ? 'min-h-screen bg-white' : 'min-h-screen bg-background'}>
       {!creatorRoute ? <AppHeader>
             {status === 'loading' ? (
               <div className="h-8 w-14 animate-pulse rounded-lg border border-zinc-200 bg-white sm:h-10 sm:w-24" />
@@ -260,11 +261,11 @@ export function AppShell({ children }: AppShellProps) {
             )}
       </AppHeader> : null}
 
-      <main className={creatorSignIn ? 'flex w-full flex-1 flex-col' : creatorRoute ? 'mx-auto w-full max-w-6xl px-4 sm:px-6' : immersive ? 'w-full' : 'mx-auto w-full max-w-6xl px-4 py-8 sm:px-6'}>
+      <main className={creatorSignIn || creatorSetup ? 'flex w-full flex-1 flex-col' : creatorRoute ? 'mx-auto w-full max-w-6xl px-4 sm:px-6' : immersive ? 'w-full' : 'mx-auto w-full max-w-6xl px-4 py-8 sm:px-6'}>
         {children}
       </main>
 
-      <footer className={`${creatorRoute ? 'pb-28 md:pb-8' : ''} border-t border-zinc-200 bg-white px-5 py-8 text-sm text-zinc-600 sm:px-10`}>
+      {!creatorSetup ? <footer className={`${creatorRoute ? 'pb-28 md:pb-8' : ''} border-t border-zinc-200 bg-white px-5 py-8 text-sm text-zinc-600 sm:px-10`}>
         <nav aria-label="Resources and legal" className="mx-auto flex max-w-6xl flex-wrap gap-x-6 gap-y-4">
           <Link href="/what-is-mogging" className="hover:text-black">What is mogging?</Link>
           <Link href="/how-face-analysis-works" className="hover:text-black">How face analysis works</Link>
@@ -272,7 +273,7 @@ export function AppShell({ children }: AppShellProps) {
           <Link href="/privacy" className="hover:text-black">Privacy</Link>
           <Link href="/tos" className="hover:text-black">Terms</Link>
         </nav>
-      </footer>
+      </footer> : null}
 
       <LoginDialog
         open={loginOpen}

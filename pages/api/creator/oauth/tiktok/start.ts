@@ -18,7 +18,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     if (!env.TIKTOK_CLIENT_KEY || !env.TIKTOK_CLIENT_SECRET) {
       throw new ApiError(503, 'TikTok OAuth is not configured yet')
     }
-    const { state, cookieValue } = createCreatorTikTokState(session.user.id)
+    const { state, cookieValue } = createCreatorTikTokState(session.user.id, req.body?.destination === 'setup' ? 'setup' : 'accounts')
     setCreatorTikTokStateCookie(res, cookieValue)
     const authorizeUrl = new URL(TIKTOK_AUTHORIZATION_URL)
     authorizeUrl.searchParams.set('client_key', env.TIKTOK_CLIENT_KEY)
