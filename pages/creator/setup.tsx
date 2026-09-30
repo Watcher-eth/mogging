@@ -71,6 +71,7 @@ function SetupContent() {
         {step > 1 ? <Button variant="ghost" className="mt-6 h-11 rounded-full" onClick={() => void goToStep(step === 2 ? 'connect' : 'recording')}><ArrowLeft />{step === 2 ? 'Back to account' : 'Back to recording'}</Button> : null}
       </>}
     </main>
+    <footer className="flex items-center justify-center gap-2 border-t border-black/[0.06] px-5 py-5 text-xs font-medium text-[#86868b]"><Clock3 className="size-4" />Takes less than 5 minutes</footer>
     <Dialog open={router.isReady && router.query.welcome === '1'} onOpenChange={(open) => { if (!open) dismissWelcome() }}>
       <DialogContent className="creator-dialog max-w-md overflow-hidden rounded-[28px] border-white/70 bg-white p-7 sm:p-9">
         <div className="flex justify-center gap-3 rounded-[22px] bg-[#f5f5f7] py-8" aria-hidden="true"><CreatorIcon name="accounts" className="size-16" /><CreatorIcon name="submissions" className="size-16" /><CreatorIcon name="payouts" className="size-16" /></div>

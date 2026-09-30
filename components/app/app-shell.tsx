@@ -120,12 +120,12 @@ export function AppShell({ children }: AppShellProps) {
   )
 
   useEffect(() => {
-    if (status !== 'authenticated' || !dashboard?.user || dismissedProfileSetupRef.current) return
+    if (creatorRoute || status !== 'authenticated' || !dashboard?.user || dismissedProfileSetupRef.current) return
     if (dashboard.user.profileCompleted) return
 
     setLoginOpen(false)
     setProfileSetupOpen(true)
-  }, [dashboard?.user, status])
+  }, [creatorRoute, dashboard?.user, status])
 
   useEffect(() => {
     if (!router.isReady || router.query.login !== '1') return
@@ -294,7 +294,7 @@ export function AppShell({ children }: AppShellProps) {
       />
       <ProfileSetupDialog
         dashboard={dashboard ?? null}
-        open={profileSetupOpen}
+        open={profileSetupOpen && !creatorRoute}
         onOpenChange={(nextOpen) => {
           if (!nextOpen) dismissedProfileSetupRef.current = true
           setProfileSetupOpen(nextOpen)
@@ -669,10 +669,12 @@ function AnonymousProfileDialog({
 }
 
 export function LoginDialog({
+  audience = 'app',
   callbackUrl,
   onOpenChange,
   open,
 }: {
+  audience?: 'app' | 'creator'
   callbackUrl: string
   onOpenChange: (open: boolean) => void
   open: boolean
@@ -751,7 +753,7 @@ export function LoginDialog({
       onClick: continueWithTikTok,
       mark: <TikTokMark />,
     },
-  ].filter((button) => availableProviders === null || availableProviders.has(button.id))
+  ].filter((button) => audience === 'creator' ? ['google', 'tiktok', 'facebook'].includes(button.id) : availableProviders === null || availableProviders.has(button.id))
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -808,7 +810,9 @@ export function LoginDialog({
             {authButtons.map((button) => (
               <button
                 key={button.id}
-                className="relative flex h-12 w-full items-center justify-center gap-4 rounded-full border border-zinc-200 bg-white px-5 text-sm font-semibold text-black shadow-[0_14px_38px_rgba(15,23,42,0.08)] transition-[transform,box-shadow] duration-200 ease-out hover:-translate-y-0.5 hover:shadow-[0_18px_46px_rgba(15,23,42,0.11)] active:translate-y-0"
+                className="relative flex h-12 w-full items-center justify-center gap-4 rounded-full border border-zinc-200 bg-white px-5 text-sm font-semibold text-black shadow-[0_14px_38px_rgba(15,23,42,0.08)] transition-[transform,box-shadow] duration-200 ease-out hover:-translate-y-0.5 hover:shadow-[0_18px_46px_rgba(15,23,42,0.11)] active:translate-y-0 disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:translate-y-0"
+                disabled={audience === 'creator' && (availableProviders === null || !availableProviders.has(button.id))}
+                title={audience === 'creator' && availableProviders !== null && !availableProviders.has(button.id) ? 'Currently unavailable' : undefined}
                 onClick={button.onClick}
                 type="button"
               >
@@ -817,7 +821,7 @@ export function LoginDialog({
               </button>
             ))}
           </div>
-
+          {audience === 'creator' && availableProviders !== null && authButtons.some((button) => !availableProviders.has(button.id)) ? <p className="text-center text-xs text-zinc-500">Some sign-in options are currently unavailable.</p> : null}
         </div>
       </DialogContent>
     </Dialog>

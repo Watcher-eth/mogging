@@ -51,7 +51,7 @@ export function ConnectAccountForm({ platform, onPlatformChange, disabled, onCon
             <SocialPlatformLogo platform="tiktok" className="mx-auto size-10" />
             <h3 className="mt-4 text-sm font-semibold">Connect With TikTok</h3>
             <p className="mx-auto mt-2 max-w-sm text-xs leading-5 text-zinc-500">Sign in securely to share your account details. Then upload your audience recording to complete verification.</p>
-            <Button type="button" className="mt-5 h-11 w-full rounded-full" disabled={disabled || busy} onClick={() => void connectTikTok()}>{busy ? <Loader2 className="animate-spin" /> : <SocialPlatformLogo platform="tiktok" className="size-5" />}{busy ? 'Connecting…' : 'Continue With TikTok'}</Button>
+            <Button type="button" className="mt-5 h-11 w-full rounded-full bg-black text-white hover:bg-black/85" disabled={disabled || busy} onClick={() => void connectTikTok()}>{busy ? <Loader2 className="animate-spin" /> : <SocialPlatformLogo platform="tiktok" className="size-5" />}{busy ? 'Connecting…' : 'Continue With TikTok'}</Button>
           </div> : <form onSubmit={connectInstagram} className="grid gap-4">
             <Field label="Username"><div className="relative"><span className="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 text-sm text-zinc-400">@</span><input className={cn(fieldClass, 'pl-8')} value={handle} onChange={(event) => setHandle(event.target.value)} placeholder="creatorname" required disabled={busy} /></div></Field>
             <Field label="Profile URL" hint="Optional"><input className={fieldClass} type="url" value={profileUrl} onChange={(event) => setProfileUrl(event.target.value)} placeholder="https://instagram.com/creatorname" disabled={busy} /></Field>

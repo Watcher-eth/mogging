@@ -16,7 +16,7 @@ export function CreatorAuthPrompt({ callbackUrl }: { callbackUrl: string }) {
           <Button variant="outline" className="h-12 rounded-full border-black/10 bg-white/80 px-6" onClick={() => { setAuthDestination(callbackUrl); setLoginOpen(true) }}>Sign in to existing account</Button>
         </div>
       </CreatorAuthSurface>
-      <LoginDialog open={loginOpen} onOpenChange={setLoginOpen} callbackUrl={authDestination} />
+      <LoginDialog audience="creator" open={loginOpen} onOpenChange={setLoginOpen} callbackUrl={authDestination} />
     </>
   )
 }
