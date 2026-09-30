@@ -95,6 +95,16 @@ test('Instagram connects manually before the recording upload', async () => {
   expect(account.analyticsConfirmedAt).toBeUndefined()
 })
 
+test('manual TikTok connection does not verify the audience or skip recording review', async () => {
+  const account = await addCreatorSocialAccount('user', { platform: 'tiktok', handle: 'nate', profileUrl: 'https://www.tiktok.com/@nate' })
+  expect(account.status).toBe('pending')
+  expect(account.analyticsConfirmedAt).toBeUndefined()
+  expect(account.analyticsVideoUrl).toBeUndefined()
+  expect(account.oauthVerifiedAt).toBeUndefined()
+  expect(writes[0].values).not.toHaveProperty('analyticsConfirmedAt')
+  expect(writes[0].values).not.toHaveProperty('analyticsVideoUrl')
+})
+
 test('evidence updates reject absent uploads before writing', async () => {
   uploadExists = false
   await expect(submitCreatorAccountAnalyticsEvidence('user', { accountId: '00000000-0000-4000-8000-000000000002', ...evidence })).rejects.toThrow('complete audience recording')
