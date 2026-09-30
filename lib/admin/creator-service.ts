@@ -9,14 +9,14 @@ import {
 } from '@/lib/creator/submission-review'
 import {
   calculateCreatorPayout,
-  isCreatorUsAudienceTier,
+  isCreatorTier1AudienceTier,
   isCreatorViewThreshold,
 } from '@/lib/creator/payouts'
 
 const creatorViewThresholdSchema = z.number().int().refine(isCreatorViewThreshold, 'Choose a supported view threshold')
 const creatorUsAudienceSchema = z.union([
   z.null(),
-  z.number().refine(isCreatorUsAudienceTier, 'Choose a supported audience tier'),
+  z.number().refine(isCreatorTier1AudienceTier, 'Choose a supported audience tier'),
 ])
 
 export const creatorAdminReviewSchema = z.discriminatedUnion('resource', [

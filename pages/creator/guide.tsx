@@ -56,7 +56,7 @@ const statusItems = [
 ] as const
 
 const tierOneCountries = ['United States', 'Canada', 'United Kingdom', 'Australia', 'Germany', 'France', 'Netherlands', 'Sweden', 'Denmark', 'Switzerland', 'New Zealand', 'Poland', 'Italy', 'South Korea']
-const payoutThresholds = ['40K', '100K', '250K', '500K', '750K', '+1M']
+const payoutThresholds = ['20K', '40K', '100K', '250K', '500K', '750K', '+1M']
 
 export default function CreatorProgramGuidePage() {
   const router = useRouter()
@@ -254,7 +254,7 @@ function PayoutGuide() {
 
       <div className="grid gap-3 p-5 sm:grid-cols-3 sm:p-6">
         <PayoutFact value="20%+" label="Combined Tier-1 audience for base eligibility" />
-        <PayoutFact value="22.5%" label="U.S. audience where enhanced rates begin" />
+        <PayoutFact value="22.5%" label="Tier 1 audience where enhanced rates begin" />
         <PayoutFact value="$325" label="Maximum payout for one video" />
       </div>
 
@@ -270,13 +270,13 @@ function PayoutGuide() {
           <GuideDisclosure title="Content eligibility and review holds" meta="Before payment" tone="warning">
             <p className="text-sm leading-6 text-[#6e6e73]">Reaching a view milestone does not make unrelated content payable. Every post must meet the complete Mogging content brief, and account and analytics checks must be resolved before approval. {accountReviewPolicy}</p>
           </GuideDisclosure>
-          <GuideDisclosure title="View milestones" meta="6 thresholds">
+          <GuideDisclosure title="View milestones" meta={`${payoutThresholds.length} thresholds`}>
             <div className="grid grid-cols-3 gap-2 sm:grid-cols-6">{payoutThresholds.map((threshold) => <span key={threshold} className="rounded-[12px] bg-[#f5f5f7] px-2 py-3 text-center text-sm font-semibold">{threshold}</span>)}</div>
             <p className="mt-3 text-xs leading-5 text-[#6e6e73]">Milestones are cumulative totals, not stacked bonuses. The view count verified during review becomes the payout snapshot.</p>
           </GuideDisclosure>
           <GuideDisclosure title="Eligible Tier-1 countries" meta={`${tierOneCountries.length} countries`}>
             <div className="flex flex-wrap gap-2">{tierOneCountries.map((country) => <span key={country} className="rounded-full bg-[#f5f5f7] px-3 py-1.5 text-xs font-medium text-[#6e6e73]">{country}</span>)}</div>
-            <p className="mt-3 text-xs leading-5 text-[#6e6e73]">Any mix of these countries may satisfy the 20% base requirement. Enhanced rates require the United States alone to reach at least 22.5%.</p>
+            <p className="mt-3 text-xs leading-5 text-[#6e6e73]">Any mix of these countries may satisfy the 20% base requirement. Enhanced rates begin when the combined Tier 1 audience reaches 22.5%.</p>
           </GuideDisclosure>
         </div>
       </div>

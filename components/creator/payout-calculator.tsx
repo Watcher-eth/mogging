@@ -4,21 +4,21 @@ import { useState } from 'react'
 import NumberFlow from '@number-flow/react'
 import { Calculator, Check, Sparkles } from 'lucide-react'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
-import { calculateCreatorPayout, CREATOR_US_AUDIENCE_TIERS, CREATOR_VIEW_THRESHOLDS } from '@/lib/creator/payouts'
+import { calculateCreatorPayout, CREATOR_TIER1_AUDIENCE_TIERS, CREATOR_VIEW_THRESHOLDS } from '@/lib/creator/payouts'
 
 const payoutRules = [
   'At least 20% combined Tier-1 audience is required for the base payout.',
   'The 20% may be any combination of the eligible Tier-1 countries.',
-  'Only U.S. audience at 22.5% or higher unlocks increased U.S. CPM rates.',
-  'U.S. audience is capped at 40% and earnings at $325 per video.',
+  'Tier 1 audience at 22.5% or higher unlocks increased rates.',
+  'Tier 1 audience is capped at 40%; 20K views pay $10–$15, with a $325 maximum across all thresholds.',
   'Milestones are cumulative totals—not stacked bonuses.',
 ]
 
 export function CreatorPayoutCalculator() {
-  const [totalViews, setTotalViews] = useState(40_000)
+  const [totalViews, setTotalViews] = useState(20_000)
   const [tier1AudienceEligible, setTier1AudienceEligible] = useState(true)
-  const [usAudiencePercentage, setUsAudiencePercentage] = useState<number | null>(null)
-  const estimate = calculateCreatorPayout(totalViews, tier1AudienceEligible, usAudiencePercentage)
+  const [tier1AudiencePercentage, setTier1AudiencePercentage] = useState<number | null>(null)
+  const estimate = calculateCreatorPayout(totalViews, tier1AudienceEligible, tier1AudiencePercentage)
 
   return (
     <section className="overflow-hidden rounded-2xl border border-zinc-200 bg-white">
@@ -29,7 +29,7 @@ export function CreatorPayoutCalculator() {
             <div>
               <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-zinc-400">Earnings Calculator</p>
               <h3 className="mt-2 text-xl font-semibold tracking-[-0.035em]">Estimate Your Video Payout</h3>
-              <p className="mt-2 text-sm leading-6 text-zinc-500">Confirm Tier-1 eligibility, then add the U.S.-specific audience shown in your analytics.</p>
+              <p className="mt-2 text-sm leading-6 text-zinc-500">Confirm eligibility, then add the combined Tier 1 audience shown in your analytics.</p>
             </div>
           </div>
 
@@ -43,18 +43,18 @@ export function CreatorPayoutCalculator() {
             </div>
             <div>
               <label className="text-xs font-semibold text-zinc-700" htmlFor="payout-tier1-eligibility">Combined Tier-1 Audience</label>
-              <Select value={tier1AudienceEligible ? 'eligible' : 'ineligible'} onValueChange={(value) => { const isEligible = value === 'eligible'; setTier1AudienceEligible(isEligible); if (!isEligible) setUsAudiencePercentage(null) }}>
+              <Select value={tier1AudienceEligible ? 'eligible' : 'ineligible'} onValueChange={(value) => { const isEligible = value === 'eligible'; setTier1AudienceEligible(isEligible); if (!isEligible) setTier1AudiencePercentage(null) }}>
                 <SelectTrigger id="payout-tier1-eligibility" className="mt-2" aria-label="Combined Tier-1 Audience"><SelectValue /></SelectTrigger>
                 <SelectContent><SelectItem value="eligible">20%+ · eligible</SelectItem><SelectItem value="ineligible">Below 20% · no payout</SelectItem></SelectContent>
               </Select>
             </div>
             <div className="sm:col-span-2">
-              <label className="text-xs font-semibold text-zinc-700" htmlFor="payout-us-audience">U.S.-Specific Audience</label>
-              <Select disabled={!tier1AudienceEligible} value={usAudiencePercentage === null ? 'base' : String(usAudiencePercentage)} onValueChange={(value) => setUsAudiencePercentage(value === 'base' ? null : Number(value))}>
-                <SelectTrigger id="payout-us-audience" className="mt-2" aria-label="U.S.-Specific Audience"><SelectValue /></SelectTrigger>
-                <SelectContent><SelectItem value="base">Below 22.5% · base rate</SelectItem>{CREATOR_US_AUDIENCE_TIERS.map((percentage) => <SelectItem key={percentage} value={String(percentage)}>{percentage === 40 ? '40%+' : `${percentage}%`}{percentage === 22.5 ? ' · enhanced rates begin' : ''}</SelectItem>)}</SelectContent>
+              <label className="text-xs font-semibold text-zinc-700" htmlFor="payout-tier1-audience">Tier 1 Audience</label>
+              <Select disabled={!tier1AudienceEligible} value={tier1AudiencePercentage === null ? 'base' : String(tier1AudiencePercentage)} onValueChange={(value) => setTier1AudiencePercentage(value === 'base' ? null : Number(value))}>
+                <SelectTrigger id="payout-tier1-audience" className="mt-2" aria-label="Tier 1 Audience"><SelectValue /></SelectTrigger>
+                <SelectContent><SelectItem value="base">20% · base rate</SelectItem>{CREATOR_TIER1_AUDIENCE_TIERS.map((percentage) => <SelectItem key={percentage} value={String(percentage)}>{percentage === 40 ? '40%+' : `${percentage}%`}{percentage === 22.5 ? ' · enhanced rates begin' : ''}</SelectItem>)}</SelectContent>
               </Select>
-              <p className="mt-2 text-[11px] leading-5 text-zinc-400">U.S. audience must independently reach 22.5% before an enhanced rate applies.</p>
+              <p className="mt-2 text-[11px] leading-5 text-zinc-400">Combine the eligible Tier 1 countries in your analytics. Enhanced rates begin at 22.5%.</p>
             </div>
           </div>
 
@@ -70,7 +70,7 @@ export function CreatorPayoutCalculator() {
           <div>
             <div className="flex items-center justify-between gap-4">
               <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-white/40">Potential Earnings</p>
-              {!estimate.isEligible ? <span className="rounded-full bg-amber-300 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.12em] text-amber-950">Not Eligible</span> : estimate.isCapped ? <span className="rounded-full bg-amber-300 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.12em] text-amber-950">Maximum Reached</span> : estimate.hasUsRateBoost ? <span className="rounded-full bg-emerald-300 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.12em] text-emerald-950">U.S. Rate Boost</span> : <Sparkles className="size-4 text-white/30" />}
+              {!estimate.isEligible ? <span className="rounded-full bg-amber-300 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.12em] text-amber-950">Not Eligible</span> : estimate.isCapped ? <span className="rounded-full bg-amber-300 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.12em] text-amber-950">Maximum Reached</span> : estimate.hasTier1RateBoost ? <span className="rounded-full bg-emerald-300 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.12em] text-emerald-950">Tier 1 Rate Boost</span> : <Sparkles className="size-4 text-white/30" />}
             </div>
             <NumberFlow
               className="mt-3 block text-5xl font-semibold tracking-[-0.07em] sm:text-6xl"
@@ -86,10 +86,10 @@ export function CreatorPayoutCalculator() {
           <div>
             <div className="grid grid-cols-2 gap-px overflow-hidden rounded-2xl bg-white/10 sm:grid-cols-3">
               <ResultMetric label="Tier-1 Eligibility" value={estimate.isEligible ? '20%+ met' : 'Below 20%'} />
-              <ResultMetric label="U.S. Audience" value={estimate.hasUsRateBoost ? `${estimate.audiencePercentage}%` : 'Base rate'} />
-              <ResultMetric className="col-span-2 sm:col-span-1" label="U.S. CPM" value={estimate.usCpm === null ? 'Not applied' : `$${estimate.usCpm.toFixed(3)}`} />
+              <ResultMetric label="Tier 1 Audience" value={estimate.hasTier1RateBoost ? `${estimate.audiencePercentage}%` : 'Base rate'} />
+              <ResultMetric className="col-span-2 sm:col-span-1" label="Tier 1 CPM" value={estimate.tier1Cpm === null ? 'Not applied' : `$${estimate.tier1Cpm.toFixed(3)}`} />
             </div>
-            <p className="mt-5 text-[11px] leading-5 text-white/35">{estimate.hasUsRateBoost && estimate.estimatedUsViews !== null ? `${estimate.estimatedUsViews.toLocaleString('en-US')} estimated U.S. views × U.S. CPM ÷ 1,000. U.S. audience is capped at 40%.` : 'The base ladder applies after reaching 20% combined Tier-1 audience. U.S.-specific rate increases begin at 22.5% U.S. audience.'}</p>
+            <p className="mt-5 text-[11px] leading-5 text-white/35">{estimate.hasTier1RateBoost && estimate.estimatedTier1Views !== null ? `${estimate.estimatedTier1Views.toLocaleString('en-US')} estimated Tier 1 views × Tier 1 CPM ÷ 1,000. Tier 1 audience is capped at 40%.` : 'The base ladder applies after reaching 20% combined Tier-1 audience. Tier 1 rate increases begin at 22.5% combined Tier 1 audience.'}</p>
           </div>
         </div>
       </div>

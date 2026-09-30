@@ -31,6 +31,7 @@ describe('creator input validation', () => {
   test('rejects tampered thresholds, missing confirmation and invalid file metadata', () => {
     const input = {formatId:'general', requirementsConfirmed:true, postUrl:'https://www.tiktok.com/@nate/video/123', analyticsScreenshotUrl:'/test.png', analyticsStorageKey:'test', analyticsContentType:'image/png', analyticsSizeBytes:100, viewCountThreshold:40000, usAudiencePercent:40}
     expect(creatorSubmissionSchema.safeParse(input).success).toBe(true)
+    expect(creatorSubmissionSchema.safeParse({...input, viewCountThreshold:20000}).success).toBe(true)
     for (const patch of [{viewCountThreshold:1}, {requirementsConfirmed:false}, {analyticsSizeBytes:0}, {analyticsSizeBytes:10485761}, {analyticsContentType:'text/html'}, {usAudiencePercent:99}]) expect(creatorSubmissionSchema.safeParse({...input,...patch}).success).toBe(false)
   })
 })

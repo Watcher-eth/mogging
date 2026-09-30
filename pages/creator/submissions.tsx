@@ -76,7 +76,7 @@ function SubmissionDialog({ submission, payment, linkedToApprovedAccount, open, 
               <Detail label="Evidence" value={submission.analyticsScreenshotUrl ? 'Analytics screenshot' : submission.videoUrl ? 'Legacy video' : 'Not provided'} />
               <Detail label="Evidence Size" value={evidenceSize ? formatBytes(evidenceSize) : 'Not recorded'} />
               <Detail label="View Count Threshold" value={submission.viewCountThreshold ? `${formatViewCount(submission.viewCountThreshold)} views` : 'Not recorded'} />
-              <Detail label="U.S. Audience" value={submission.usAudiencePercent !== null ? `${submission.usAudiencePercent}%` : 'Default 20% Tier 1 Audience'} />
+              <Detail label="Tier 1 Audience" value={submission.usAudiencePercent !== null ? `${submission.usAudiencePercent}%` : 'Default 20% Tier 1 Audience'} />
               <Detail label="Payment" value={payment ? `${formatMoney(payment.amountCents, payment.currency)} · ${payment.status}` : 'Not scheduled'} />
               <Detail label="Payment Method" value={payment ? (payment.paymentOption === 'paypal' ? 'PayPal' : 'Crypto') : '—'} />
             </div>
