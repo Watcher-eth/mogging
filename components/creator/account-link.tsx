@@ -1,9 +1,10 @@
 import { useState } from 'react'
 import * as Avatar from '@radix-ui/react-avatar'
-import { ArrowUpRight, Check, Copy, Link2 } from 'lucide-react'
+import { ArrowUpRight, Check, Copy } from 'lucide-react'
 import { toast } from 'sonner'
 import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
+import { CreatorIcon } from './creator-icon'
 
 export function AccountLink({ url, accountName, avatarUrl, emptyMessage = 'Link unavailable', className }: { url: string | null | undefined; accountName?: string; avatarUrl?: string | null; emptyMessage?: string; className?: string }) {
   const [copied, setCopied] = useState(false)
@@ -24,7 +25,7 @@ export function AccountLink({ url, accountName, avatarUrl, emptyMessage = 'Link 
     <div className={cn('flex min-w-0 items-center gap-3 rounded-[14px] bg-[#f5f5f7] px-3 py-2.5', className)}>
       <Avatar.Root className="grid size-8 shrink-0 place-items-center overflow-hidden rounded-[10px] bg-white text-[#0071e3] shadow-sm">
         <Avatar.Image src={avatarUrl || undefined} alt={accountName ? `${accountName} profile photo` : 'Account profile photo'} className="size-full object-cover" />
-        <Avatar.Fallback className="grid size-full place-items-center text-xs font-semibold">{accountName ? accountName.replace(/^@/, '').charAt(0).toUpperCase() : <Link2 className="size-4" />}</Avatar.Fallback>
+        <Avatar.Fallback className="grid size-full place-items-center"><CreatorIcon name="link" className="size-6" /></Avatar.Fallback>
       </Avatar.Root>
       <div className="min-w-0 flex-1">
         <p className="truncate text-[10px] font-semibold text-zinc-400">{accountName || 'Creator Link'}</p>

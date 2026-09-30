@@ -2,9 +2,11 @@ import { CreatorStepper } from '@/components/creator/creator-stepper'
 import { creatorPostUrlSchema, creatorPostPlatform } from '@/lib/creator/validation'
 import { creatorAccountLabel } from '@/components/creator/types'
 import Link from 'next/link'
+import * as Avatar from '@radix-ui/react-avatar'
+import { SocialPlatformLogo } from '@/components/brand/social-platform-logo'
 import { useRef, useState, type ChangeEvent, type FormEvent } from 'react'
 import { useRouter } from 'next/router'
-import { Check, CheckCircle2, ChevronLeft, CircleAlert, Eye, ImageIcon, Loader2, ShieldCheck, UploadCloud, X } from 'lucide-react'
+import { BadgeCheck, Check, CheckCircle2, ChevronLeft, CircleAlert, Eye, ImageIcon, Loader2, ShieldCheck, UploadCloud, X } from 'lucide-react'
 import useSWR from 'swr'
 import { toast } from 'sonner'
 import { Button } from '@/components/ui/button'
@@ -12,7 +14,7 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } f
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { CreatorHeader, CreatorShell, Field, fieldClass } from '@/components/creator/creator-shell'
 import { ContentRequirementsNote } from '@/components/creator/content-guidelines'
-import type { CreatorDashboard } from '@/components/creator/types'
+import type { CreatorDashboard, CreatorSocialAccount } from '@/components/creator/types'
 import { apiGet, apiPost, ApiClientError } from '@/lib/api/client'
 import { type CreatorSubmissionFormat } from '@/lib/creator/formats'
 import { calculateCreatorPayout, CREATOR_TIER1_AUDIENCE_TIERS, CREATOR_VIEW_THRESHOLDS } from '@/lib/creator/payouts'
@@ -33,12 +35,13 @@ function SubmitContent() {
   const [formatId, setFormatId] = useState('')
   const [previewFormat, setPreviewFormat] = useState<CreatorSubmissionFormat | null>(null)
   const [requirementsConfirmed, setRequirementsConfirmed] = useState(false)
-  const [socialAccountId, setSocialAccountId] = useState('')
+  const [accountSelection, setAccountSelection] = useState<string | null>(null)
   const [postUrl, setPostUrl] = useState('')
   const [analyticsScreenshot, setAnalyticsScreenshot] = useState<File | null>(null)
   const [viewCountThreshold, setViewCountThreshold] = useState('')
   const [usAudiencePercent, setUsAudiencePercent] = useState('')
   const [submitting, setSubmitting] = useState(false)
+  const socialAccountId = accountSelection ?? data?.socialAccounts.find((account) => account.status === 'approved')?.id ?? ''
   const accountRequired = data?.featureFlags.creatorAccountRequiredForSubmission ?? false
 
   function chooseAnalyticsScreenshot(event: ChangeEvent<HTMLInputElement>) {
@@ -109,7 +112,7 @@ function SubmitContent() {
         <section className="t-page" data-page-id="1" inert={step !== 1} aria-hidden={step !== 1}>
           <form onSubmit={continueToAnalytics} className="creator-surface grid gap-7 p-5 sm:p-7">
             <FormatPicker formats={availableFormats} selectedId={formatId} onSelect={(nextFormatId) => { setFormatId(nextFormatId); setRequirementsConfirmed(false) }} onPreview={setPreviewFormat} />
-            <Field label="Published From" hint={accountRequired ? 'Required' : 'Optional for now'}><Select value={socialAccountId || undefined} onValueChange={(value) => setSocialAccountId(value === 'unlinked' ? '' : value)} required={accountRequired}><SelectTrigger><SelectValue placeholder="No connected account" /></SelectTrigger><SelectContent>{!accountRequired ? <SelectItem value="unlinked">No connected account</SelectItem> : null}{data.socialAccounts.map((account) => <SelectItem key={account.id} value={account.id}>{creatorAccountLabel(account)} · {account.platform === 'tiktok' ? 'TikTok' : 'Instagram'} · {account.status === 'approved' ? 'Approved' : 'Not approved'}</SelectItem>)}</SelectContent></Select></Field>
+            <Field label="Published From" hint={accountRequired ? 'Required' : 'Optional for now'}><Select value={socialAccountId || (accountRequired ? undefined : 'unlinked')} onValueChange={(value) => setAccountSelection(value === 'unlinked' ? '' : value)} required={accountRequired}><SelectTrigger><SelectValue placeholder="No connected account" /></SelectTrigger><SelectContent>{!accountRequired ? <SelectItem value="unlinked">No connected account</SelectItem> : null}{data.socialAccounts.map((account) => <SelectItem key={account.id} value={account.id} textValue={creatorAccountLabel(account)}><PublishedAccount account={account} /></SelectItem>)}</SelectContent></Select></Field>
             {!linkedToApprovedAccount ? <div className="flex gap-3 rounded-[16px] bg-[#fff4ce] px-4 py-3 text-sm leading-6 text-[#6b4f00]"><CircleAlert className="mt-0.5 size-4 shrink-0 text-[#8a5a00]" /><p><strong className="font-semibold">Account not approved yet.</strong> You can submit now, but the video stays flagged until its social account is approved.</p></div> : null}
             <Field label="Published Post URL" hint="Required"><input className={fieldClass} type="url" maxLength={2048} value={postUrl} onChange={(event) => setPostUrl(event.target.value)} placeholder="https://www.tiktok.com/… or https://www.instagram.com/…" required /></Field>
             <div className="creator-actions flex justify-end"><Button className="h-11 rounded-full px-5">Continue to Analytics</Button></div>
@@ -148,6 +151,22 @@ function SubmitContent() {
       <SubmissionGuidance accountRequired={accountRequired} selectedFormat={selectedFormat} />
       <FormatBriefDialog format={previewFormat} open={Boolean(previewFormat)} onOpenChange={(open) => { if (!open) setPreviewFormat(null) }} />
     </>
+  )
+}
+
+function PublishedAccount({ account }: { account: CreatorSocialAccount }) {
+  const name = creatorAccountLabel(account)
+  return (
+    <span className="inline-flex max-w-full items-center gap-2 align-middle">
+      <Avatar.Root className="grid size-6 shrink-0 overflow-hidden rounded-full bg-zinc-100">
+        <Avatar.Image src={account.avatarUrl || undefined} alt="" className="size-full object-cover" />
+        <Avatar.Fallback className="grid size-full place-items-center text-[10px] font-semibold text-zinc-500">{name.replace(/^@/, '').charAt(0).toUpperCase()}</Avatar.Fallback>
+      </Avatar.Root>
+      <span className="truncate">{name}</span>
+      <SocialPlatformLogo platform={account.platform} className="size-4" />
+      <span className="sr-only">{account.platform === 'tiktok' ? 'TikTok' : 'Instagram'} · {account.status === 'approved' ? 'Approved' : 'Not approved'}</span>
+      {account.status === 'approved' ? <BadgeCheck className="size-4 shrink-0 fill-[#0071e3] text-white" aria-hidden="true" /> : null}
+    </span>
   )
 }
 

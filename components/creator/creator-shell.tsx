@@ -4,7 +4,6 @@ import { signOut, useSession } from 'next-auth/react'
 import useSWRImmutable from 'swr/immutable'
 import { apiPost } from '@/lib/api/client'
 import {
-  LayoutDashboard,
   Loader2,
 } from 'lucide-react'
 import { useEffect, useRef, useState, type ReactNode } from 'react'
@@ -14,10 +13,10 @@ import { cn } from '@/lib/utils'
 import { CreatorAuthPrompt } from './creator-auth-prompt'
 import { CreatorIcon, type CreatorIconName } from './creator-icon'
 
-type CreatorNavItem = { href: string; label: string; icon?: typeof LayoutDashboard; asset?: CreatorIconName }
+type CreatorNavItem = { href: string; label: string; asset: CreatorIconName }
 
 const creatorNav: ReadonlyArray<CreatorNavItem> = [
-  { href: '/creator', label: 'Overview', icon: LayoutDashboard },
+  { href: '/creator', label: 'Overview', asset: 'overview' },
   { href: '/creator/submit', label: 'Submit', asset: 'video-submissions' },
   { href: '/creator/submissions', label: 'Submissions', asset: 'submissions' },
   { href: '/creator/accounts', label: 'Accounts', asset: 'accounts' },
@@ -25,12 +24,6 @@ const creatorNav: ReadonlyArray<CreatorNavItem> = [
   { href: '/creator/cta-generator', label: 'CTA Studio', asset: 'cta' },
   { href: '/creator/guide', label: 'Guide', asset: 'guide' },
 ]
-
-function CreatorNavIcon({ item, className, active = false }: { item: CreatorNavItem; className: string; active?: boolean }) {
-  if (item.asset) return <CreatorIcon name={item.asset} className={className} />
-  const Icon = item.icon
-  return Icon ? <Icon className={className} strokeWidth={active ? 2.25 : 1.8} aria-hidden="true" /> : null
-}
 
 export function CreatorShell({ children, allowUnauthenticated = false }: { children: ReactNode; allowUnauthenticated?: boolean }) {
   const router = useRouter()
@@ -85,7 +78,7 @@ export function CreatorShell({ children, allowUnauthenticated = false }: { child
                 className={cn('creator-toolbar-item', active && 'creator-toolbar-item-active')}
                 aria-current={active ? 'page' : undefined}
               >
-                <CreatorNavIcon item={item} className="size-[22px]" active={active} />
+                <CreatorIcon name={item.asset} className="size-[22px]" />
                 <span>{item.label}</span>
               </Link>
             )
@@ -95,7 +88,7 @@ export function CreatorShell({ children, allowUnauthenticated = false }: { child
       </header>
 
       <nav ref={mobileNavRef} aria-label="Mobile creator navigation" className="creator-bottom-nav">
-        {creatorNav.map((item) => <Link key={item.href} href={item.href} aria-current={router.pathname === item.href ? 'page' : undefined} className={cn('creator-toolbar-item', router.pathname === item.href && 'creator-toolbar-item-active')}><CreatorNavIcon item={item} className="size-[22px]" active={router.pathname === item.href} /><span>{item.label}</span></Link>)}
+        {creatorNav.map((item) => <Link key={item.href} href={item.href} aria-current={router.pathname === item.href ? 'page' : undefined} className={cn('creator-toolbar-item', router.pathname === item.href && 'creator-toolbar-item-active')}><CreatorIcon name={item.asset} className="size-[22px]" /><span>{item.label}</span></Link>)}
       </nav>
       <Dialog open={moreOpen} onOpenChange={setMoreOpen}><DialogContent className="creator-dialog p-5"><DialogHeader className="text-left"><DialogTitle>Creator Studio</DialogTitle><DialogDescription>Account and support.</DialogDescription></DialogHeader><div className="flex items-center justify-between border-t pt-3 text-sm"><Link href="/support" onClick={() => setMoreOpen(false)} className="p-3">Support</Link><button className="flex min-h-11 items-center gap-2 px-3" onClick={() => void signOut({ callbackUrl: '/' })}><LogOut className="size-4" />Sign out</button></div></DialogContent></Dialog>
       <main className="creator-page creator-enter" key={router.pathname}>{children}</main>

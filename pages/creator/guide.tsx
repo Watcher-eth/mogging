@@ -234,7 +234,7 @@ function AccountGuide() {
         </div>
 
         <aside className="h-fit rounded-[18px] bg-[#f5f5f7] p-5">
-          <span className="grid size-10 place-items-center rounded-[14px] bg-white text-[#0071e3] shadow-sm"><Link2 className="size-[18px]" /></span>
+          <CreatorIcon name="link" className="size-10" />
           <p className="mt-5 text-[11px] font-semibold uppercase tracking-[0.13em] text-[#86868b]">Required in every bio</p>
           <h3 className="mt-2 text-lg font-semibold tracking-[-0.03em]">Use the account’s personal link</h3>
           <div className="mt-4 rounded-[14px] bg-white p-4 text-sm leading-6 shadow-sm"><p>🧬 Get your Mogging Scan. Ascend in 90 days</p><p>📱 Download Mogging on the App Store</p></div>

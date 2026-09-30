@@ -1,3 +1,4 @@
+import { canManuallyConnectTikTok } from '@/lib/creator/manual-account-access'
 import type { NextApiRequest, NextApiResponse } from 'next'
 import { z } from 'zod'
 import { ApiError, handleApiError, json, methodNotAllowed, parseBody } from '@/lib/api/http'
@@ -27,7 +28,10 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     }
     if (req.method === 'POST') {
       const input = parseBody(creatorSocialAccountSchema, req.body)
-      if (input.platform !== 'instagram') throw new ApiError(400, 'Connect TikTok using TikTok authentication')
+      if (input.platform === 'tiktok') {
+        if (!canManuallyConnectTikTok(session.user.email)) throw new ApiError(403, 'Connect TikTok using TikTok authentication')
+        if (!input.profileUrl) throw new ApiError(400, 'Enter your TikTok profile URL')
+      }
       return json(res, 201, { account: await addCreatorSocialAccount(session.user.id, input) })
     }
     if (req.method === 'PATCH') {
