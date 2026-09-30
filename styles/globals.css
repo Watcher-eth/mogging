@@ -2,6 +2,13 @@
 @tailwind components;
 @tailwind utilities;
 
+.mogging-wordmark {
+  font-weight: 600;
+  font-style: normal;
+  font-synthesis: none;
+  letter-spacing: 0;
+}
+
 @layer base {
   :root {
     --background: 0 0% 98%;

@@ -52,8 +52,6 @@ function OverviewContent() {
         description="Your next step, reviews, and earnings."
       />
 
-      {data.socialAccounts.length > 0 ? <CreatorReferralLinks /> : null}
-
           <section className="creator-surface mb-4 p-4 sm:p-6">
             <p className="text-[11px] font-semibold uppercase tracking-[0.13em] text-[#86868b]">Next Up</p>
             {nextTask ? <><h2 className="mt-2 text-xl font-semibold tracking-[-0.035em]">{nextTask.title}</h2><p className="mt-2 text-sm leading-5 text-[#6e6e73]">{nextTask.description}</p><Link href={nextTask.href} className="group mt-3 inline-flex min-h-11 items-center gap-1.5 text-sm font-semibold text-[#0071e3]">Continue<ArrowRight className="size-4 transition-transform duration-150 group-hover:translate-x-0.5" /></Link></> : <><h2 className="mt-2 text-xl font-semibold tracking-[-0.035em]">You’re all set</h2><p className="mt-2 text-sm leading-5 text-[#6e6e73]">Your creator setup is complete. Keep publishing and checking reviews here.</p></>}
@@ -96,6 +94,8 @@ function OverviewContent() {
 
         </div>
       </div>
+
+      {data.socialAccounts.length > 0 ? <div className="mt-5"><CreatorReferralLinks /></div> : null}
 
       <section className="creator-surface mt-5 p-5 sm:p-6">
         <div className="flex items-end justify-between gap-5">

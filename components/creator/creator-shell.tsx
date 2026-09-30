@@ -1,3 +1,4 @@
+import { MoggingWordmark } from '@/components/brand/mogging-wordmark'
 import Link from 'next/link'
 import { useRouter } from 'next/router'
 import { signOut, useSession } from 'next-auth/react'
@@ -64,7 +65,7 @@ export function CreatorShell({ children, allowUnauthenticated = false }: { child
     <div className="creator-portal w-full">
       <header className="creator-toolbar">
         <div className="shrink-0 px-1">
-          <p className="text-[13px] font-semibold tracking-[-0.015em] text-[#1d1d1f]"><Link href="/creator">Mogging <span className="font-normal text-zinc-500">/ Creator Studio</span></Link></p>
+          <p className="text-[13px] font-semibold tracking-[-0.015em] text-[#1d1d1f]"><Link href="/creator"><MoggingWordmark /> <span className="font-normal text-zinc-500">/ Creator Studio</span></Link></p>
 
         </div>
 

@@ -1,3 +1,4 @@
+import { MoggingWordmark } from '@/components/brand/mogging-wordmark'
 import Image from 'next/image'
 import Link from 'next/link'
 import { useRouter } from 'next/router'
@@ -58,7 +59,7 @@ function SetupContent() {
 
   return <div className="creator-portal flex min-h-dvh flex-col bg-[#fafafa]">
     <header className="flex items-center justify-between border-b border-black/[0.06] px-5 py-4 sm:px-8">
-      <Link href="/creator" className="flex min-h-11 items-center gap-2.5 text-sm font-semibold"><Image src="/favicon.png" width={32} height={32} alt="" className="rounded-[9px]" />Mogging <span className="font-normal text-[#86868b]">/ Creator setup</span></Link>
+      <Link href="/creator" className="flex min-h-11 items-center gap-2.5 text-sm font-semibold"><Image src="/favicon.png" width={32} height={32} alt="" className="rounded-[9px]" /><MoggingWordmark /> <span className="font-normal text-[#86868b]">/ Creator setup</span></Link>
       <span className="text-xs font-medium text-[#86868b]">Step {step} of 3</span>
     </header>
     <main className="mx-auto w-full max-w-3xl flex-1 px-5 py-8 sm:py-12">
