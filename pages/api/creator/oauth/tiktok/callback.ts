@@ -14,9 +14,9 @@ import { env } from '@/lib/env'
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   if (req.method !== 'GET') return res.status(405).end()
-  const redirect = (result: string) => {
+  const redirect = (result: string, accountId?: string) => {
     clearCreatorTikTokStateCookie(res)
-    return res.redirect(302, getCreatorAccountsUrl(req, result))
+    return res.redirect(302, getCreatorAccountsUrl(req, result, accountId))
   }
 
   try {
@@ -42,21 +42,16 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     const user = profile.data?.user
     if (!user) return redirect('error')
 
-    if (user.username && user.username.toLowerCase() !== statePayload.connection.handle) return redirect('account_mismatch')
-
-    await addCreatorTikTokOAuthAccount(session.user.id, {
+    const account = await addCreatorTikTokOAuthAccount(session.user.id, {
       accessToken: tokens.access_token,
       expiresIn: tokens.expires_in,
       openId: user.open_id || tokens.open_id,
       refreshToken: tokens.refresh_token,
       scope: tokens.scope,
       tokenType: tokens.token_type,
-      username: user.username || statePayload.connection.handle,
-      displayName: user.display_name || undefined,
-      profileUrl: user.profile_deep_link || undefined,
-      avatarUrl: user.avatar_large_url || user.avatar_url_100 || user.avatar_url,
-    }, statePayload.connection)
-    return redirect('connected')
+      profile: user,
+    })
+    return redirect('connected', account.id)
   } catch (error) {
     console.error('TikTok creator OAuth failed', error instanceof Error ? error.message : error)
     return redirect('error')

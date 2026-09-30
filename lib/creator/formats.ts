@@ -8,6 +8,18 @@ export type CreatorSubmissionFormat = {
   notAllowed: ReadonlyArray<string>
 }
 
+const SHARED_REQUIREMENTS = [
+  'Tag @mogging in the post or caption',
+  'Keep the post public and the content original',
+  'Submit within 30 days of publishing',
+  'Use a connected account when one is available',
+  'Make the entire video, on-screen text, and caption clearly looksmaxxing, BP, or transformation related: emphasize appearance, attractiveness, facial features, improvement, or potential',
+  'Make the looks focus obvious without a reviewer having to infer it; a celebrity or attractive person alone does not qualify',
+  'Use genuine views and engagement, provide accurate analytics, and comply with moderator account reviews',
+] as const
+
+const CLOSING_CTA = { title: 'Closing CTA', detail: 'End with a clear invitation for viewers to try Mogging.' } as const
+
 export const CREATOR_SUBMISSION_FORMATS = [
   {
     id: 'general-creator-video-v1',
@@ -17,17 +29,9 @@ export const CREATOR_SUBMISSION_FORMATS = [
     elements: [
       { title: 'Opening hook', detail: 'Introduce the problem, result, or transformation within the first 3 seconds.' },
       { title: 'Product moment', detail: 'Show Mogging clearly enough for viewers to understand what the app does.' },
-      { title: 'Closing CTA', detail: 'End with a clear invitation for viewers to try Mogging.' },
+      CLOSING_CTA,
     ],
-    requirements: [
-      'Tag @mogging in the post or caption',
-      'Keep the post public and the content original',
-      'Submit within 30 days of publishing',
-      'Use a connected account when one is available',
-      'Make the entire video, on-screen text, and caption clearly looksmaxxing, BP, or transformation related: emphasize appearance, attractiveness, facial features, improvement, or potential',
-      'Make the looks focus obvious without a reviewer having to infer it; a celebrity or attractive person alone does not qualify',
-      'Use genuine views and engagement, provide accurate analytics, and comply with moderator account reviews',
-    ],
+    requirements: SHARED_REQUIREMENTS,
     notAllowed: [
       'False or misleading claims about results',
       'Reused content that was not created for Mogging',
@@ -38,6 +42,15 @@ export const CREATOR_SUBMISSION_FORMATS = [
       'Smallville story clips or celebrity fan compilations without an explicit looks focus; solo Tom Welling looks edits may qualify',
       'Botted views, purchased or fabricated engagement, or altered analytics evidence',
     ],
+  },
+  {
+    id: 'custom-video-v1',
+    name: 'Custom format',
+    shortDescription: 'Create your own looks-focused video and end with a clear invitation to try Mogging.',
+    active: true,
+    elements: [CLOSING_CTA],
+    requirements: SHARED_REQUIREMENTS,
+    notAllowed: [],
   },
 ] as const satisfies ReadonlyArray<CreatorSubmissionFormat>
 

@@ -95,14 +95,12 @@ export const creatorSocialAccountSchema = z.object({
   }
 })
 
-export const creatorAccountConnectionSchema = creatorSocialAccountSchema.safeExtend(creatorAnalyticsEvidenceSchema.shape)
-
 export const creatorAccountAnalyticsSubmissionSchema = creatorAnalyticsEvidenceSchema.extend({
   accountId: z.string().uuid(),
 })
 
 export type CreatorProfileInput = z.infer<typeof creatorProfileSchema>
 export type CreatorSubmissionInput = z.infer<typeof creatorSubmissionSchema>
-export type CreatorSocialAccountInput = z.infer<typeof creatorAccountConnectionSchema>
+export type CreatorSocialAccountInput = z.infer<typeof creatorSocialAccountSchema>
 export type CreatorAnalyticsEvidenceInput = z.infer<typeof creatorAnalyticsEvidenceSchema>
 

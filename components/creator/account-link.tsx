@@ -5,7 +5,7 @@ import { toast } from 'sonner'
 import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
 
-export function AccountTrackingLink({ url, accountName, avatarUrl, className }: { url: string | null | undefined; accountName?: string; avatarUrl?: string | null; className?: string }) {
+export function AccountLink({ url, accountName, avatarUrl, emptyMessage = 'Link unavailable', className }: { url: string | null | undefined; accountName?: string; avatarUrl?: string | null; emptyMessage?: string; className?: string }) {
   const [copied, setCopied] = useState(false)
 
   async function copyLink() {
@@ -13,10 +13,10 @@ export function AccountTrackingLink({ url, accountName, avatarUrl, className }: 
     try {
       await navigator.clipboard.writeText(url)
       setCopied(true)
-      toast.success('Creator link copied')
+      toast.success('Link copied')
       window.setTimeout(() => setCopied(false), 1800)
     } catch {
-      toast.error('Could not copy the creator link')
+      toast.error('Could not copy the link')
     }
   }
 
@@ -28,7 +28,7 @@ export function AccountTrackingLink({ url, accountName, avatarUrl, className }: 
       </Avatar.Root>
       <div className="min-w-0 flex-1">
         <p className="truncate text-[10px] font-semibold text-zinc-400">{accountName || 'Creator Link'}</p>
-        {url ? <a href={url} target="_blank" rel="noreferrer" className="mt-0.5 flex w-fit max-w-full items-center gap-1 truncate text-xs font-medium text-[#0071e3] hover:opacity-70"><span className="truncate">{url}</span><ArrowUpRight className="size-3.5 shrink-0" /></a> : <p className="mt-0.5 text-xs text-[#6e6e73]">Generating link…</p>}
+        {url ? <a href={url} target="_blank" rel="noreferrer" className="mt-0.5 flex w-fit max-w-full items-center gap-1 truncate text-xs font-medium text-[#0071e3] hover:opacity-70"><span className="truncate">{url}</span><ArrowUpRight className="size-3.5 shrink-0" /></a> : <p className="mt-0.5 text-xs text-[#6e6e73]">{emptyMessage}</p>}
       </div>
       {url ? <Button type="button" variant="outline" size="sm" className="h-11 shrink-0 rounded-lg bg-white px-2.5 text-xs" onClick={() => void copyLink()}>{copied ? <Check /> : <Copy />}{copied ? 'Copied' : 'Copy'}</Button> : null}
     </div>

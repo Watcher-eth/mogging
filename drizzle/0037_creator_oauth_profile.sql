@@ -1,0 +1,1 @@
+ALTER TABLE "creator_social_accounts" ADD COLUMN "oauth_profile" jsonb;

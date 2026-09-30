@@ -17,19 +17,25 @@ export type TikTokTokenResponse = {
   token_type?: string
 }
 
+export type TikTokUserInfo = {
+  avatar_large_url?: string | null
+  avatar_url?: string | null
+  avatar_url_100?: string | null
+  display_name?: string | null
+  open_id?: string | null
+  union_id?: string | null
+  username?: string | null
+  profile_deep_link?: string | null
+  bio_description?: string | null
+  is_verified?: boolean
+  follower_count?: number
+  following_count?: number
+  likes_count?: number
+  video_count?: number
+}
+
 export type TikTokProfile = Profile & {
-  data?: {
-    user?: {
-      avatar_large_url?: string | null
-      avatar_url?: string | null
-      avatar_url_100?: string | null
-      display_name?: string | null
-      open_id?: string | null
-      union_id?: string | null
-      username?: string | null
-      profile_deep_link?: string | null
-    }
-  }
+  data?: { user?: TikTokUserInfo }
   error?: {
     code?: string
     message?: string

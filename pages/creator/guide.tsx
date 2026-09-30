@@ -153,7 +153,7 @@ function VideoGuide() {
   return (
     <section id="guide-panel-video" role="tabpanel" aria-labelledby="guide-tab-video" className="creator-surface overflow-hidden">
       <GuidePanelHeader icon="video-submissions" eyebrow="Create a Video" title="Choose one active format" description="Build the post around a single brief, then submit the published link and a clear analytics screenshot." />
-      <ContentGuidelines />
+      {format.notAllowed.length > 0 ? <ContentGuidelines /> : null}
 
       <div className="grid gap-6 p-5 sm:p-6 lg:grid-cols-[220px_minmax(0,1fr)]">
         <div>
@@ -180,9 +180,9 @@ function VideoGuide() {
             <GuideDisclosure title="Full requirements" meta={`${format.requirements.length} items`}>
               <Checklist items={format.requirements} />
             </GuideDisclosure>
-            <GuideDisclosure title="What is not allowed" meta={`${format.notAllowed.length} items`} tone="danger">
+            {format.notAllowed.length > 0 ? <GuideDisclosure title="What is not allowed" meta={`${format.notAllowed.length} items`} tone="danger">
               <Checklist items={format.notAllowed} prohibited />
-            </GuideDisclosure>
+            </GuideDisclosure> : null}
           </div>
         </div>
       </div>

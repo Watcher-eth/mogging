@@ -1,3 +1,4 @@
+import type { TikTokUserInfo } from '@/lib/auth/tiktok-api'
 import { creatorAssetPublicUrl, verifyCreatorRecordingUpload } from '@/lib/storage/videos'
 import { and, desc, eq, or, sql } from 'drizzle-orm'
 import { z } from 'zod'
@@ -6,7 +7,7 @@ import { env } from '@/lib/env'
 import { getCreatorSubmissionFormat } from '@/lib/creator/formats'
 import { ensureCreatorTrackingLink } from '@/lib/creator/attribution'
 
-export { creatorProfileSchema, creatorSubmissionSchema, creatorAccountConnectionSchema, creatorAccountAnalyticsSubmissionSchema } from './validation'
+export { creatorProfileSchema, creatorSubmissionSchema, creatorSocialAccountSchema, creatorAccountAnalyticsSubmissionSchema } from './validation'
 import { creatorPostPlatform, creatorAnalyticsEvidenceSchema, creatorAccountAnalyticsSubmissionSchema, type CreatorProfileInput, type CreatorSubmissionInput, type CreatorSocialAccountInput, type CreatorAnalyticsEvidenceInput } from './validation'
 
 export type CreatorTikTokOAuthInput = {
@@ -16,10 +17,7 @@ export type CreatorTikTokOAuthInput = {
   refreshToken?: string
   scope?: string
   tokenType?: string
-  username?: string
-  displayName?: string
-  profileUrl?: string
-  avatarUrl?: string | null
+  profile: TikTokUserInfo
 }
 
 export async function getCreatorDashboard(userId: string) {
@@ -114,7 +112,6 @@ export async function saveCreatorProfile(userId: string, input: CreatorProfileIn
 }
 
 export async function addCreatorSocialAccount(userId: string, input: CreatorSocialAccountInput) {
-  await validateCreatorAnalyticsEvidence(userId, input)
   const profile = await getOrCreateCreatorProfile(userId)
   const accounts = await db.query.creatorSocialAccounts.findMany({
     where: eq(schema.creatorSocialAccounts.creatorProfileId, profile.id),
@@ -134,16 +131,14 @@ export async function addCreatorSocialAccount(userId: string, input: CreatorSoci
       platform: input.platform,
       handle: input.handle,
       profileUrl: input.profileUrl || `https://www.${input.platform}.com/${input.platform === 'tiktok' ? '@' : ''}${input.handle}`,
-      ...creatorAnalyticsEvidenceValues(input),
     })
     .returning()
   return { ...account, trackingLink: await ensureCreatorTrackingLink(account.id) }
 }
 
-export async function addCreatorTikTokOAuthAccount(userId: string, input: CreatorTikTokOAuthInput, evidence: z.infer<typeof creatorAnalyticsEvidenceSchema>) {
-  await validateCreatorAnalyticsEvidence(userId, evidence)
+export async function addCreatorTikTokOAuthAccount(userId: string, input: CreatorTikTokOAuthInput) {
   const profile = await getOrCreateCreatorProfile(userId)
-  const normalizedHandle = input.username?.replace(/^@/, '').trim().toLowerCase()
+  const normalizedHandle = input.profile.username?.replace(/^@/, '').trim().toLowerCase()
   if (normalizedHandle !== undefined && !/^[a-z0-9._]{2,40}$/.test(normalizedHandle)) {
     throw new CreatorServiceError(400, 'TikTok returned an invalid username')
   }
@@ -199,15 +194,13 @@ export async function addCreatorTikTokOAuthAccount(userId: string, input: Creato
     })
 
     const socialValues = {
-      ...creatorAnalyticsEvidenceValues(evidence),
-      status: 'pending' as const,
-      reviewNote: null,
       // OAuth proves the provider identity even when profile scope is unavailable.
       // Preserve known handles on reconnect; never invent a username from display_name.
       handle: normalizedHandle || accountToUpdate?.handle || null,
-      displayName: input.displayName || accountToUpdate?.displayName || null,
-      profileUrl: input.profileUrl || (normalizedHandle ? `https://www.tiktok.com/@${normalizedHandle}` : accountToUpdate?.profileUrl || null),
-      avatarUrl: input.avatarUrl || null,
+      displayName: input.profile.display_name || accountToUpdate?.displayName || null,
+      profileUrl: input.profile.profile_deep_link || (normalizedHandle ? `https://www.tiktok.com/@${normalizedHandle}` : accountToUpdate?.profileUrl || null),
+      avatarUrl: input.profile.avatar_large_url || input.profile.avatar_url_100 || input.profile.avatar_url || accountToUpdate?.avatarUrl || null,
+      oauthProfile: { ...accountToUpdate?.oauthProfile, ...input.profile },
       connectionMethod: 'oauth',
       providerAccountId: input.openId,
       oauthVerifiedAt: new Date(),

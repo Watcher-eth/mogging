@@ -1,6 +1,5 @@
 import { createHmac, randomBytes, timingSafeEqual } from 'node:crypto'
 import type { NextApiRequest, NextApiResponse } from 'next'
-import { creatorAccountConnectionSchema, type CreatorSocialAccountInput } from '@/lib/creator/validation'
 import { env } from '@/lib/env'
 
 export const CREATOR_TIKTOK_STATE_COOKIE = 'mogging_creator_tiktok_oauth'
@@ -8,16 +7,14 @@ const OAUTH_STATE_MAX_AGE_SECONDS = 10 * 60
 
 type OAuthStatePayload = {
   state: string
-  connection: CreatorSocialAccountInput
   userId: string
   expiresAt: number
 }
 
-export function createCreatorTikTokState(userId: string, connection: CreatorSocialAccountInput) {
+export function createCreatorTikTokState(userId: string) {
   const state = randomBytes(32).toString('base64url')
   const payload: OAuthStatePayload = {
     state,
-    connection: creatorAccountConnectionSchema.parse(connection),
     userId,
     expiresAt: Date.now() + OAUTH_STATE_MAX_AGE_SECONDS * 1000,
   }
@@ -33,7 +30,7 @@ export function readCreatorTikTokState(cookieValue: string | undefined, state: s
   if (!encoded || !signature || !safeEqual(signature, sign(encoded))) return null
   try {
     const payload = JSON.parse(Buffer.from(encoded, 'base64url').toString('utf8')) as OAuthStatePayload
-    return payload.state === state && payload.userId === userId && payload.expiresAt > Date.now() && creatorAccountConnectionSchema.safeParse(payload.connection).success
+    return payload.state === state && payload.userId === userId && payload.expiresAt > Date.now()
       ? payload
       : null
   } catch {
@@ -55,9 +52,10 @@ export function getCreatorTikTokRedirectUri(req: NextApiRequest) {
   return new URL('/api/creator/oauth/tiktok/callback', getRequestOrigin(req)).toString()
 }
 
-export function getCreatorAccountsUrl(req: NextApiRequest, result?: string) {
+export function getCreatorAccountsUrl(req: NextApiRequest, result?: string, accountId?: string) {
   const url = new URL('/creator/accounts', getRequestOrigin(req))
   if (result) url.searchParams.set('tiktok', result)
+  if (accountId) url.searchParams.set('verify', accountId)
   return url.toString()
 }
 

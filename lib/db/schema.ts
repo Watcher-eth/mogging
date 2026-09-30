@@ -708,6 +708,7 @@ export const creatorSocialAccounts = pgTable(
     connectionMethod: text('connection_method').notNull().default('manual'),
     providerAccountId: text('provider_account_id'),
     oauthVerifiedAt: timestamp('oauth_verified_at', { mode: 'date' }),
+    oauthProfile: jsonb('oauth_profile').$type<Record<string, unknown>>(),
     analyticsVideoUrl: text('analytics_video_url'),
     analyticsStorageKey: text('analytics_storage_key'),
     analyticsContentType: text('analytics_content_type'),

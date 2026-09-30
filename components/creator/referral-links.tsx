@@ -3,7 +3,7 @@ import useSWR from 'swr'
 import { ArrowRight, Link2 } from 'lucide-react'
 import { apiGet } from '@/lib/api/client'
 import { Button } from '@/components/ui/button'
-import { AccountTrackingLink } from './account-tracking-link'
+import { AccountLink } from './account-link'
 import { creatorAccountLabel, type CreatorDashboard } from './types'
 
 export function CreatorReferralLinks() {
@@ -25,7 +25,7 @@ export function CreatorReferralLinks() {
       ) : accounts.length ? (
         <div className="mt-4 grid grid-cols-1 gap-3">
           {accounts.map(account => <div key={account.id} className="min-w-0">
-            {account.trackingLink?.isActive && account.trackingLink.publicUrl ? <AccountTrackingLink url={account.trackingLink.publicUrl} accountName={`${account.platform === 'tiktok' ? 'TikTok' : 'Instagram'} · ${creatorAccountLabel(account)}`} avatarUrl={account.avatarUrl} /> : <p className="rounded-xl bg-[#f5f5f7] p-4 text-sm">The link for {creatorAccountLabel(account)} isn’t available. <Link href="/creator/accounts" className="font-semibold text-[#0071e3] underline">Check this account</Link>.</p>}
+            {account.trackingLink?.isActive && account.trackingLink.publicUrl ? <AccountLink url={account.trackingLink.publicUrl} accountName={`${account.platform === 'tiktok' ? 'TikTok' : 'Instagram'} · ${creatorAccountLabel(account)}`} avatarUrl={account.avatarUrl} /> : <p className="rounded-xl bg-[#f5f5f7] p-4 text-sm">The link for {creatorAccountLabel(account)} isn’t available. <Link href="/creator/accounts" className="font-semibold text-[#0071e3] underline">Check this account</Link>.</p>}
           </div>)}
         </div>
       ) : (

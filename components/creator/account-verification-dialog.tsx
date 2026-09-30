@@ -18,7 +18,7 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } f
 import type { CreatorSocialAccount } from '@/components/creator/types'
 import { apiPost, ApiClientError } from '@/lib/api/client'
 
-const analyticsVideoTypes = ['video/mp4', 'video/quicktime', 'video/webm'] as const
+import { analyticsVideoContentType, uploadAnalyticsRecording, type AnalyticsVideoType } from '@/lib/creator/analytics-upload'
 const maxAnalyticsVideoBytes = 250 * 1024 * 1024
 
 const instructions = {
@@ -43,7 +43,7 @@ const instructions = {
 export type AnalyticsEvidence = {
   analyticsVideoUrl: string
   analyticsStorageKey: string
-  analyticsContentType: (typeof analyticsVideoTypes)[number]
+  analyticsContentType: AnalyticsVideoType
   analyticsSizeBytes: number
   analyticsPast28DaysConfirmed: true
 }
@@ -60,6 +60,9 @@ export function AccountVerificationDialog({ account, open, onOpenChange, onSubmi
   const [analyticsConfirmed, setAnalyticsConfirmed] = useState(false)
   const [recordingConfirmed, setRecordingConfirmed] = useState(false)
   const [saving, setSaving] = useState(false)
+  const [uploadPercent, setUploadPercent] = useState(0)
+  const [uploadComplete, setUploadComplete] = useState(false)
+  const uploadedRecording = useRef<{ file: File; evidence: AnalyticsEvidence } | null>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
 
   useEffect(() => {
@@ -79,6 +82,9 @@ export function AccountVerificationDialog({ account, open, onOpenChange, onSubmi
     setAnalyticsConfirmed(false)
     setRecordingConfirmed(false)
     setSaving(false)
+    setUploadPercent(0)
+    setUploadComplete(false)
+    uploadedRecording.current = null
   }, [open])
 
   function chooseAnalyticsVideo(event: ChangeEvent<HTMLInputElement>) {
@@ -86,7 +92,7 @@ export function AccountVerificationDialog({ account, open, onOpenChange, onSubmi
     event.target.value = ''
     if (!file) return
     if (!file.size) return toast.error('Choose a non-empty recording')
-    if (!analyticsVideoTypes.includes(file.type as (typeof analyticsVideoTypes)[number])) {
+    if (!analyticsVideoContentType(file)) {
       toast.error('Choose an MP4, MOV, or WebM recording')
       return
     }
@@ -95,30 +101,32 @@ export function AccountVerificationDialog({ account, open, onOpenChange, onSubmi
       return
     }
     setAnalyticsFile(file)
+    uploadedRecording.current = null
+    setUploadPercent(0)
+    setUploadComplete(false)
   }
 
   async function uploadAnalyticsVideo(): Promise<AnalyticsEvidence> {
     if (!analyticsFile || !analyticsConfirmed || !recordingConfirmed) {
       throw new ApiClientError(400, 'analytics_required', 'Add the required recording and confirm both requirements')
     }
-    const contentType = analyticsFile.type as (typeof analyticsVideoTypes)[number]
+    if (uploadedRecording.current?.file === analyticsFile) return uploadedRecording.current.evidence
+    const contentType = analyticsVideoContentType(analyticsFile)
+    if (!contentType) throw new Error('Choose an MP4, MOV, or WebM recording')
     const intent = await apiPost<{ key: string; publicUrl: string; uploadUrl: string; method: 'PUT' | 'POST' }>('/api/creator/accounts/analytics-upload-intent', {
       contentType,
       sizeBytes: analyticsFile.size,
     })
-    const response = await fetch(intent.uploadUrl, {
-      method: intent.method,
-      headers: { 'Content-Type': contentType },
-      body: analyticsFile,
-    })
-    if (!response.ok) throw new ApiClientError(response.status, 'upload_failed', 'Analytics recording upload failed')
-    return {
+    await uploadAnalyticsRecording(intent, analyticsFile, contentType, setUploadPercent)
+    const evidence: AnalyticsEvidence = {
       analyticsVideoUrl: intent.publicUrl,
       analyticsStorageKey: intent.key,
       analyticsContentType: contentType,
       analyticsSizeBytes: analyticsFile.size,
       analyticsPast28DaysConfirmed: true,
     }
+    uploadedRecording.current = { file: analyticsFile, evidence }
+    return evidence
   }
 
   async function submitVerification() {
@@ -126,10 +134,11 @@ export function AccountVerificationDialog({ account, open, onOpenChange, onSubmi
     setSaving(true)
     try {
       const analytics = await uploadAnalyticsVideo()
+      setUploadComplete(true)
       await onSubmitEvidence(analytics)
       onOpenChange(false)
     } catch (error) {
-      toast.error(error instanceof ApiClientError ? error.message : 'Could not submit account verification')
+      toast.error(error instanceof Error ? error.message : 'Could not submit account verification')
     } finally {
       setSaving(false)
     }
@@ -152,7 +161,7 @@ export function AccountVerificationDialog({ account, open, onOpenChange, onSubmi
                 </Avatar.Root>
                 <span aria-hidden="true" className="absolute -bottom-1 -right-0.5 grid size-5 place-items-center rounded-full border-2 border-white bg-sky-400 text-white"><Check className="size-3" strokeWidth={3} /></span>
               </span>
-              <div><DialogTitle className="text-2xl">Verify {creatorAccountLabel(account)}</DialogTitle><DialogDescription className="mt-1">Required audience evidence for your {platformLabel} account.</DialogDescription></div>
+              <div><DialogTitle className="text-2xl">Verify {creatorAccountLabel(account)}</DialogTitle><DialogDescription className="mt-1">Step 2 of 2: Upload audience evidence for your connected {platformLabel} account.</DialogDescription></div>
             </div>
           </DialogHeader>
         </div>
@@ -181,11 +190,11 @@ export function AccountVerificationDialog({ account, open, onOpenChange, onSubmi
         {step === 3 ? <>
           <section className="px-6">
             <p className="mb-4 text-sm text-zinc-600">Upload your continuous physical recording. MP4, MOV, or WebM · up to 250 MB.</p>
-            <input ref={fileInputRef} className="sr-only" type="file" accept="video/mp4,video/quicktime,video/webm,.mov" onChange={chooseAnalyticsVideo} />
+            <input ref={fileInputRef} className="sr-only" type="file" accept="video/mp4,video/quicktime,video/webm,.mp4,.mov,.webm" onChange={chooseAnalyticsVideo} />
             {previewUrl ? (
               <div className="overflow-hidden rounded-[24px] border border-zinc-200 bg-black">
                 <video className="aspect-[9/16] max-h-[520px] w-full object-contain" src={previewUrl} controls preload="metadata" />
-                <div className="flex items-center gap-3 bg-zinc-950 p-3 text-white"><FileVideo className="size-4 shrink-0" /><div className="min-w-0 flex-1"><p className="truncate text-xs font-medium">{analyticsFile?.name}</p><p className="mt-0.5 text-[11px] text-white/45">Ready to upload</p></div><button type="button" disabled={saving} onClick={() => setAnalyticsFile(null)} className="grid size-8 place-items-center rounded-full text-white/50 transition-colors hover:bg-white/10 hover:text-white" aria-label="Remove analytics recording"><X className="size-4" /></button></div>
+                <div className="flex items-center gap-3 bg-zinc-950 p-3 text-white"><FileVideo className="size-4 shrink-0" /><div className="min-w-0 flex-1"><p className="truncate text-xs font-medium">{analyticsFile?.name}</p><p className="mt-0.5 text-[11px] text-white/45">{saving ? uploadComplete ? 'Recording uploaded. Completing verification…' : `Uploading ${uploadPercent}%` : uploadComplete ? 'Uploaded — ready to retry verification' : 'Ready to upload'}</p></div><button type="button" disabled={saving} onClick={() => setAnalyticsFile(null)} className="grid size-8 place-items-center rounded-full text-white/50 transition-colors hover:bg-white/10 hover:text-white" aria-label="Remove analytics recording"><X className="size-4" /></button></div>
               </div>
             ) : (
               <button type="button" disabled={saving} onClick={() => fileInputRef.current?.click()} className="group grid min-h-[180px] sm:min-h-[260px] w-full place-items-center rounded-[24px] border border-dashed border-zinc-300 bg-zinc-50/70 p-6 text-center transition-[border-color,background-color,transform] duration-150 ease-out hover:border-zinc-400 hover:bg-zinc-50 active:scale-[0.995]">
@@ -200,7 +209,7 @@ export function AccountVerificationDialog({ account, open, onOpenChange, onSubmi
           <label className="flex cursor-pointer items-start gap-3 rounded-2xl border border-zinc-200 p-3.5 text-xs leading-5 text-zinc-600"><input type="checkbox" className="mt-0.5 size-4 rounded border-zinc-300 accent-black" checked={recordingConfirmed} onChange={(event) => setRecordingConfirmed(event.target.checked)} /><span>I confirm this is an unedited physical recording taken with a second device.</span></label>
           <div className="mt-2 flex flex-col-reverse gap-2 sm:flex-row sm:justify-between">
             <Button type="button" variant="ghost" className="h-11 rounded-xl" disabled={saving} onClick={() => setStep(2)}>Back to Steps</Button>
-            {analyticsFile ? <Button type="button" className="h-11 rounded-xl sm:min-w-56" disabled={saving || !ready} onClick={() => void submitVerification()}>{saving ? <Loader2 className="animate-spin" /> : <UploadCloud />}{saving ? 'Uploading Verification…' : 'Submit for Review'}</Button> : <Button type="button" className="h-11 rounded-xl sm:min-w-56" disabled={saving} onClick={() => fileInputRef.current?.click()}><Smartphone />Choose Recording</Button>}
+            {analyticsFile ? <Button type="button" className="h-11 rounded-xl sm:min-w-56" disabled={saving || !ready} onClick={() => void submitVerification()}>{saving ? <Loader2 className="animate-spin" /> : <UploadCloud />}{saving ? uploadComplete ? 'Submitting for Review…' : `Uploading ${uploadPercent}%…` : uploadComplete ? 'Retry Verification' : 'Submit for Review'}</Button> : <Button type="button" className="h-11 rounded-xl sm:min-w-56" disabled={saving} onClick={() => fileInputRef.current?.click()}><Smartphone />Choose Recording</Button>}
           </div>
         </div>
         </> : null}

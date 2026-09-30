@@ -260,6 +260,13 @@
       "when": 1790713107493,
       "tag": "0036_creator_review_details",
       "breakpoints": true
+    },
+    {
+      "idx": 37,
+      "version": "7",
+      "when": 1790783728046,
+      "tag": "0037_creator_oauth_profile",
+      "breakpoints": true
     }
   ]
 }

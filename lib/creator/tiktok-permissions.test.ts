@@ -14,3 +14,15 @@ test('profile fields follow granted permissions, including partial consent', () 
   expect(creatorTikTokFields('user.info.basic,user.info.profile')).toContain('username')
   expect(creatorTikTokFields('user.info.basic user.info.profile')).toContain('profile_deep_link')
 })
+
+test('all profile and statistics fields are requested only when their scopes are granted', () => {
+  for (const field of ['bio_description', 'is_verified', 'username', 'profile_deep_link']) {
+    expect(creatorTikTokFields('user.info.basic,user.info.profile')).toContain(field)
+    expect(creatorTikTokFields('user.info.basic')).not.toContain(field)
+  }
+  for (const field of ['follower_count', 'following_count', 'likes_count', 'video_count']) {
+    expect(creatorTikTokFields('user.info.basic,user.info.stats')).toContain(field)
+    expect(creatorTikTokFields('user.info.basic')).not.toContain(field)
+    expect(creatorTikTokFields('user.info.stats.extra')).not.toContain(field)
+  }
+})

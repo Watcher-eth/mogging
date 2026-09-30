@@ -143,7 +143,7 @@ function SubmitContent() {
           </div>
         </section>
       </div>
-      <div className="mt-6"><PayoutSetupNote /><ContentRequirementsNote /></div>
+      <div className="mt-6"><PayoutSetupNote />{!selectedFormat || selectedFormat.notAllowed.length > 0 ? <ContentRequirementsNote /> : null}</div>
       <SubmissionGuidance accountRequired={accountRequired} selectedFormat={selectedFormat} />
       <FormatBriefDialog format={previewFormat} open={Boolean(previewFormat)} onOpenChange={(open) => { if (!open) setPreviewFormat(null) }} />
     </>
@@ -169,6 +169,7 @@ function FormatBriefDialog({ format, open, onOpenChange }: { format: CreatorSubm
 }
 
 function BriefList({ eyebrow, items, prohibited = false }: { eyebrow: string; items: ReadonlyArray<{ title: string; detail?: string }>; prohibited?: boolean }) {
+  if (items.length === 0) return null
   return <section className={prohibited ? "rounded-2xl border border-red-200 bg-red-50 p-4" : undefined}><p className={cn("text-[11px] font-semibold uppercase tracking-[0.18em]", prohibited ? "text-red-800" : "text-zinc-400")}>{eyebrow}</p><ol className="mt-4 grid gap-4">{items.map((item, index) => <li key={item.title} className="grid grid-cols-[1.75rem_1fr] gap-3"><span className="pt-0.5 text-xs font-medium tabular-nums text-zinc-300">{String(index + 1).padStart(2, '0')}</span><span><span className="block text-sm font-medium text-zinc-800">{item.title}</span>{item.detail ? <span className="mt-1 block text-sm leading-6 text-zinc-500">{item.detail}</span> : null}</span></li>)}</ol></section>
 }
 
