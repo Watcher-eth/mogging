@@ -35,13 +35,18 @@ export async function renderSlideMp4(args: RenderArgs, onProgress?: (progress: n
 type PreparedCanvas = Awaited<ReturnType<typeof prepareCanvas>>
 
 async function encodeMp4(args: RenderArgs, prepared: PreparedCanvas, onProgress?: (progress: number) => void) {
+  return encodeCanvasMp4(prepared.canvas, time => drawSlideFrame(prepared.ctx, args.slide, prepared.image, prepared.overlay, args.width, args.height, time, prepared.brand), args.slide.templateId === 'cta' ? REVEAL_DURATION_MS : 4000, onProgress)
+}
+
+export async function encodeCanvasMp4(canvas: HTMLCanvasElement, drawFrame: (timeMs: number) => void, durationMs: number, onProgress?: (progress: number) => void) {
   if (typeof VideoEncoder === 'undefined' || typeof VideoFrame === 'undefined') throw new Error('Video export is not supported in this browser. Open this page in an up-to-date Safari or Chrome browser and try again.')
   const frameRate = 30
-  const frameCount = (args.slide.templateId === 'cta' ? REVEAL_DURATION_MS : 4000) / 1000 * frameRate
+  const frameCount = Math.ceil(durationMs / 1000 * frameRate)
   let supportedConfig: VideoEncoderConfig | null = null
-  // Level 4 supports all three 1080px output formats at 30fps; level 3.1 does not.
-  for (const codec of ['avc1.420028', 'avc1.4d002a']) {
-    const candidate: VideoEncoderConfig = { codec, width: args.width, height: args.height, bitrate: 8_000_000, framerate: frameRate, avc: { format: 'avc' } }
+  // 3× iPhone exports exceed Level 4’s frame-size limit.
+  const codecs = canvas.width * canvas.height > 2_097_152 ? ['avc1.420033', 'avc1.4d0033'] : ['avc1.420028', 'avc1.4d002a']
+  for (const codec of codecs) {
+    const candidate: VideoEncoderConfig = { codec, width: canvas.width, height: canvas.height, bitrate: 8_000_000, framerate: frameRate, avc: { format: 'avc' } }
     const result = await VideoEncoder.isConfigSupported(candidate)
     if (result.supported) { supportedConfig = result.config ?? candidate; break }
   }
@@ -49,7 +54,7 @@ async function encodeMp4(args: RenderArgs, prepared: PreparedCanvas, onProgress?
 
   const { Muxer, ArrayBufferTarget } = await import('mp4-muxer')
   const target = new ArrayBufferTarget()
-  const muxer = new Muxer({ target, video: { codec: 'avc', width: args.width, height: args.height, frameRate }, fastStart: 'in-memory' })
+  const muxer = new Muxer({ target, video: { codec: 'avc', width: canvas.width, height: canvas.height, frameRate }, fastStart: 'in-memory' })
   let encoderError: Error | null = null
   const encoder = new VideoEncoder({ output: (chunk, metadata) => muxer.addVideoChunk(chunk, metadata), error: (error) => { encoderError = error } })
   try {
@@ -57,8 +62,8 @@ async function encodeMp4(args: RenderArgs, prepared: PreparedCanvas, onProgress?
     const frameDuration = 1_000_000 / frameRate
     for (let index = 0; index < frameCount; index += 1) {
       if (encoderError) throw encoderError
-      await drawSlideFrame(prepared.ctx, args.slide, prepared.image, prepared.overlay, args.width, args.height, index / frameRate * 1000, prepared.brand)
-      const frame = new VideoFrame(prepared.canvas, { timestamp: Math.round(index * frameDuration), duration: Math.round(frameDuration) })
+      drawFrame(index / frameRate * 1000)
+      const frame = new VideoFrame(canvas, { timestamp: Math.round(index * frameDuration), duration: Math.round(frameDuration) })
       try { encoder.encode(frame, { keyFrame: index % (frameRate * 2) === 0 }) } finally { frame.close() }
       // Keep queued full-resolution frames bounded on phones and slower encoders.
       if (encoder.encodeQueueSize >= 8) await encoder.flush()

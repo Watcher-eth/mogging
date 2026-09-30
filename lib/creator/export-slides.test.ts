@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, expect, mock, test } from 'bun:test'
 import type { ContentSlide } from './content-generator'
-import { drawSlideFrame, renderSlideMp4 } from './export-slides'
+import { drawSlideFrame, renderSlideMp4, encodeCanvasMp4 } from './export-slides'
 
 const slide: ContentSlide = { id:'test', templateId:'editorial', imageId:'image', categoryId:'eyes', eyebrow:'Test', headline:'Test export', supportingCopy:'Test', metricLabel:'Eyes', metricValue:'7', cta:'Test', currentScore:'7', potentialScore:'8', categoryScores:[] }
 const args = { slide, images:[{id:'image', name:'test', dataUrl:'data:image/png;base64,', width:1080,height:1920,landmarks:null,status:'ready' as const}], width:1080,height:1920 }
@@ -75,4 +75,12 @@ test('polished templates omit technical headers and category tags', () => {
   expect(texts).toContain('POTENTIAL')
   expect(texts).toContain('eyes')
   expect(texts.filter(text => categoryScores.some(row => row.label === text))).toEqual(['eyes', 'jaw', 'nose'])
+})
+
+test('3× iPhone MP4 requests a codec level that supports its frame size', async () => {
+  const codecs: string[] = []
+  replace('VideoEncoder', class { static async isConfigSupported(config: VideoEncoderConfig) { codecs.push(config.codec); return { supported: false } } })
+  replace('VideoFrame', class {})
+  await expect(encodeCanvasMp4({ width: 1170, height: 2532 } as HTMLCanvasElement, () => {}, 14000)).rejects.toThrow('cannot export MP4')
+  expect(codecs).toEqual(['avc1.420033', 'avc1.4d0033'])
 })

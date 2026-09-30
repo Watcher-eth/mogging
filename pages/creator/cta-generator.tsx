@@ -1,3 +1,4 @@
+import { MockProtocolGenerator } from '@/components/creator/mock-protocol-generator'
 import { MockReportGenerator } from '@/components/creator/mock-report-generator'
 import { RandomScoreControl } from '@/components/creator/random-score-control'
 import { randomScore, randomScorePair } from '@/lib/creator/random-scores'
@@ -21,6 +22,8 @@ import { categoryOptions, categoryScoreMax, generateSlides, outputFormats, templ
 import { cn } from '@/lib/utils'
 import { CreatorIcon, type CreatorIconName } from '@/components/creator/creator-icon'
 
+const generatorTabs = [{ id: 'cta', label: 'CTA generator' }, { id: 'mock', label: 'Mock reports' }, { id: 'protocol', label: 'Mock Protocol' }] as const
+
 const STORAGE_KEY = 'mogging:creator-content:v2'
 const approvedExamples = [
   { id: 'approved-report', label: 'Feature breakdown', detail: 'Hook → mapped feature → CTA', category: 'Report series', status: 'Approved format' },
@@ -30,7 +33,7 @@ const approvedExamples = [
 type CtaLibraryResponse = { approved: CreatorCtaLibraryItem[]; mine: CreatorCtaLibraryItem[] }
 
 export default function CtaGeneratorPage() {
-  const [mode, setMode] = useState<'cta' | 'mock'>('cta')
+  const [mode, setMode] = useState<(typeof generatorTabs)[number]['id']>('cta')
   const [step, setStep] = useState<1 | 2 | 3>(1)
   const fileInputRef = useRef<HTMLInputElement>(null)
   const photoUrls = useRef(new Set<string>())
@@ -225,14 +228,15 @@ export default function CtaGeneratorPage() {
   return (
     <CreatorShell>
       <CreatorHeader eyebrow="Creator Tools" title="CTA Studio" description="Create a CTA with your photos and report scores." action={mode === 'cta' && step === 3 && slides.length ? <Button className="h-11 rounded-full px-5" disabled={exporting} onClick={() => void downloadAll()}>{exporting ? <Loader2 className="animate-spin" /> : <FileArchive />}Download Set</Button> : null} />
-      <div className="mb-6 flex gap-2" role="tablist" aria-label="Generator">
-        {([{ id: 'cta', label: 'CTA generator' }, { id: 'mock', label: 'Mock reports' }] as const).map(tab => <button key={tab.id} id={`generator-tab-${tab.id}`} role="tab" aria-selected={mode === tab.id} tabIndex={mode === tab.id ? 0 : -1} onKeyDown={event => { if (!['ArrowLeft', 'ArrowRight', 'Home', 'End'].includes(event.key)) return; event.preventDefault(); const next = event.key === 'Home' ? 'cta' : event.key === 'End' ? 'mock' : mode === 'cta' ? 'mock' : 'cta'; setMode(next); document.getElementById(`generator-tab-${next}`)?.focus() }} aria-controls={`generator-panel-${tab.id}`} type="button" onClick={() => setMode(tab.id)} className={cn('min-h-11 rounded-full px-5 text-sm font-semibold transition-colors', mode === tab.id ? 'bg-black text-white' : 'bg-white text-zinc-500 hover:bg-zinc-100')}>{tab.label}</button>)}
+      <div className="mb-6 flex flex-wrap gap-2" role="tablist" aria-label="Generator">
+        {generatorTabs.map(tab => <button key={tab.id} id={`generator-tab-${tab.id}`} role="tab" aria-selected={mode === tab.id} tabIndex={mode === tab.id ? 0 : -1} onKeyDown={event => { if (!['ArrowLeft', 'ArrowRight', 'Home', 'End'].includes(event.key)) return; event.preventDefault(); const index = generatorTabs.findIndex(item => item.id === mode); const next = generatorTabs[event.key === 'Home' ? 0 : event.key === 'End' ? generatorTabs.length - 1 : (index + (event.key === 'ArrowRight' ? 1 : -1) + generatorTabs.length) % generatorTabs.length].id; setMode(next); document.getElementById(`generator-tab-${next}`)?.focus() }} aria-controls={`generator-panel-${tab.id}`} type="button" onClick={() => setMode(tab.id)} className={cn('min-h-11 rounded-full px-5 text-sm font-semibold transition-colors', mode === tab.id ? 'bg-black text-white' : 'bg-white text-zinc-500 hover:bg-zinc-100')}>{tab.label}</button>)}
       </div>
       {mode === 'cta' ? <CreatorStepper step={step} labels={['Photos', 'Details & Scores', 'Preview & Export']} /> : null}
       <div id="generator-panel-mock" role="tabpanel" aria-labelledby="generator-tab-mock" hidden={mode !== 'mock' || step === 1}>
         <MockReportGenerator images={usableImages} active={mode === 'mock' && step !== 1} onBack={() => setStep(1)} />
       </div>
-      {step === 1 ? <section className="creator-surface p-5 sm:p-6">
+      <div id="generator-panel-protocol" role="tabpanel" aria-labelledby="generator-tab-protocol" hidden={mode !== 'protocol'}><MockProtocolGenerator /></div>
+      {step === 1 && mode !== 'protocol' ? <section className="creator-surface p-5 sm:p-6">
         <SectionTitle icon={UploadCloud} title="Add creator photos" detail="Upload a clear, front-facing photo. Face mapping stays in your browser." />
           <input ref={fileInputRef} className="sr-only" type="file" accept="image/*" multiple onChange={(event) => void handleFiles(event.target.files)} />
           <div className={cn("mt-5", !images.length && "rounded-[18px] border border-dashed border-black/15 bg-[#f5f5f7]/70 p-3 sm:p-4")}>
