@@ -58,6 +58,7 @@ export const creatorAdminPaymentSchema = z.object({
 })
 
 export const creatorAttributionMetricsSchema = z.object({
+  postedAt: z.string().datetime().refine((value) => Date.parse(value) <= Date.now(), 'Posting date cannot be in the future').optional().nullable(),
   submissionId: z.string().min(1),
   qualifiedViews: z.number().int().nonnegative().max(2_000_000_000),
   linkClicks: z.number().int().nonnegative().max(2_000_000_000),
@@ -93,6 +94,7 @@ export async function getCreatorAdminDashboard() {
         authStatus: schema.creatorProfiles.authStatus,
         paymentOption: schema.creatorProfiles.paymentOption,
         paypalEmail: schema.creatorProfiles.paypalEmail,
+        paypalMeUrl: schema.creatorProfiles.paypalMeUrl,
         cryptoNetwork: schema.creatorProfiles.cryptoNetwork,
         cryptoWalletAddress: schema.creatorProfiles.cryptoWalletAddress,
         createdAt: schema.creatorProfiles.createdAt,
@@ -287,6 +289,7 @@ export async function saveCreatorAttributionMetrics(input: z.infer<typeof creato
 
   const values = {
     submissionId: input.submissionId,
+    ...(input.postedAt !== undefined ? { postedAt: input.postedAt ? new Date(input.postedAt) : null } : {}),
     qualifiedViews: input.qualifiedViews,
     linkClicks: input.linkClicks,
     installs: input.installs,

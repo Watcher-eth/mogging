@@ -98,6 +98,7 @@ export async function saveCreatorProfile(userId: string, input: CreatorProfileIn
     socialHandle: input.socialHandle || null,
     paymentOption: input.paymentOption,
     paypalEmail: input.paymentOption === 'paypal' ? input.paypalEmail : null,
+    paypalMeUrl: input.paymentOption === 'paypal' ? input.paypalMeUrl || null : null,
     cryptoNetwork: input.paymentOption === 'crypto' ? input.cryptoNetwork : null,
     cryptoWalletAddress: input.paymentOption === 'crypto' ? input.cryptoWalletAddress : null,
     updatedAt: new Date(),

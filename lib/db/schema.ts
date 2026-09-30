@@ -606,6 +606,7 @@ export const creatorProfiles = pgTable(
     authStatus: creatorAuthStatusEnum('auth_status').notNull().default('pending'),
     paymentOption: creatorPaymentOptionEnum('payment_option').notNull().default('paypal'),
     paypalEmail: text('paypal_email'),
+    paypalMeUrl: text('paypal_me_url'),
     cryptoNetwork: text('crypto_network'),
     cryptoWalletAddress: text('crypto_wallet_address'),
     createdAt: timestamp('created_at', { mode: 'date' }).notNull().defaultNow(),
@@ -883,6 +884,7 @@ export const creatorAttributionMetrics = pgTable(
     submissionId: text('submission_id')
       .primaryKey()
       .references(() => creatorSubmissions.id, { onDelete: 'cascade' }),
+    postedAt: timestamp('posted_at', { mode: 'date' }),
     qualifiedViews: integer('qualified_views').notNull().default(0),
     linkClicks: integer('link_clicks').notNull().default(0),
     installs: integer('installs').notNull().default(0),

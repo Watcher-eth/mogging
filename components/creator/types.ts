@@ -5,6 +5,7 @@ export type CreatorProfile = {
   authStatus: 'pending' | 'verified' | 'suspended'
   paymentOption: 'paypal' | 'crypto'
   paypalEmail: string | null
+  paypalMeUrl?: string | null
   cryptoNetwork: string | null
   cryptoWalletAddress: string | null
 }

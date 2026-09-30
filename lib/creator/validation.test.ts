@@ -19,6 +19,15 @@ describe('creator input validation', () => {
     expect(creatorProfileSchema.safeParse({displayName:'Nate', paymentOption:'crypto', cryptoNetwork:'BASE', cryptoWalletAddress:'garbage'}).success).toBe(false)
     expect(creatorProfileSchema.safeParse({displayName:'Nate', paymentOption:'crypto', cryptoNetwork:'BASE', cryptoWalletAddress:'0x'+'a'.repeat(40)}).success).toBe(true)
   })
+  test('accepts optional PayPal profile links and rejects spoofed destinations', () => {
+    const profile = { displayName: 'Nate', paymentOption: 'paypal', paypalEmail: 'nate@example.com' }
+    for (const paypalMeUrl of [undefined, null, '', 'https://paypal.me/nate']) {
+      expect(creatorProfileSchema.safeParse({ ...profile, paypalMeUrl }).success).toBe(true)
+    }
+    for (const paypalMeUrl of ['http://paypal.me/nate', 'https://paypal.me.evil.com/nate', 'https://evil@paypal.me/nate', 'https://paypal.me/nate?redirect=evil', 'javascript:alert(1)']) {
+      expect(creatorProfileSchema.safeParse({ ...profile, paypalMeUrl }).success).toBe(false)
+    }
+  })
   test('rejects tampered thresholds, missing confirmation and invalid file metadata', () => {
     const input = {formatId:'general', requirementsConfirmed:true, postUrl:'https://www.tiktok.com/@nate/video/123', analyticsScreenshotUrl:'/test.png', analyticsStorageKey:'test', analyticsContentType:'image/png', analyticsSizeBytes:100, viewCountThreshold:40000, usAudiencePercent:40}
     expect(creatorSubmissionSchema.safeParse(input).success).toBe(true)

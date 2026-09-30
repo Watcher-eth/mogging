@@ -1,5 +1,5 @@
 import { describe, expect, test } from 'bun:test'
-import { creatorAdminPaymentSchema } from './creator-service'
+import { creatorAdminPaymentSchema, creatorAttributionMetricsSchema } from './creator-service'
 
 describe('creator admin payment selection', () => {
   test('accepts calculator-supported admin values', () => {
@@ -31,4 +31,13 @@ describe('creator admin payment selection', () => {
       adminUsAudiencePercent: 31,
     }).success).toBe(false)
   })
+})
+
+test('video attribution accepts a posting date but rejects future or invalid dates', () => {
+  const metrics = { submissionId: 'video', qualifiedViews: 100, linkClicks: 20, installs: 5, firstTimePaidCustomers: 1 }
+  expect(creatorAttributionMetricsSchema.safeParse({ ...metrics, postedAt: '2026-01-01T00:00:00Z' }).success).toBe(true)
+  expect(creatorAttributionMetricsSchema.safeParse({ ...metrics, postedAt: null }).success).toBe(true)
+  expect(creatorAttributionMetricsSchema.safeParse(metrics).success).toBe(true)
+  expect(creatorAttributionMetricsSchema.safeParse({ ...metrics, postedAt: 'garbage' }).success).toBe(false)
+  expect(creatorAttributionMetricsSchema.safeParse({ ...metrics, postedAt: new Date(Date.now() + 86_400_000).toISOString() }).success).toBe(false)
 })

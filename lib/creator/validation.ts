@@ -24,6 +24,13 @@ export const creatorProfileSchema = z
     socialHandle: z.string().trim().max(120).optional().nullable(),
     paymentOption: z.enum(['paypal', 'crypto']),
     paypalEmail: z.string().trim().email().optional().nullable(),
+    paypalMeUrl: z.string().trim().max(2048).refine((value) => {
+      if (!value) return true
+      try {
+        const url = new URL(value)
+        return url.protocol === 'https:' && !url.username && !url.password && !url.port && ['paypal.me', 'www.paypal.me'].includes(url.hostname) && /^\/[a-zA-Z0-9_-]+\/?$/.test(url.pathname) && !url.search && !url.hash
+      } catch { return false }
+    }, 'Enter your PayPal.Me profile link beginning with https://paypal.me/').optional().nullable(),
     cryptoNetwork: z.string().trim().max(40).optional().nullable(),
     cryptoWalletAddress: z.string().trim().max(180).optional().nullable(),
   })

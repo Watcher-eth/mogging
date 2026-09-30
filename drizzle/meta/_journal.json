@@ -253,6 +253,13 @@
       "when": 1790467200000,
       "tag": "0035_analytics_billing",
       "breakpoints": true
+    },
+    {
+      "idx": 36,
+      "version": "7",
+      "when": 1790713107493,
+      "tag": "0036_creator_review_details",
+      "breakpoints": true
     }
   ]
 }

@@ -40,6 +40,7 @@ export type AdminCreator = {
   authStatus: CreatorStatus
   paymentOption: 'paypal' | 'crypto'
   paypalEmail: string | null
+  paypalMeUrl?: string | null
   cryptoNetwork: string | null
   cryptoWalletAddress: string | null
   accountCount: number
@@ -119,6 +120,7 @@ export type AdminPayment = {
 }
 
 export type AdminAttributionMetrics = {
+  postedAt?: string | null
   submissionId: string
   qualifiedViews: number
   linkClicks: number
