@@ -8,7 +8,7 @@ The mobile app persists incoming handoffs and starts consumption on cold launch,
 
 Stripe access does not depend on RevenueCat SDK initialization or a successful RevenueCat network response. A failed Stripe refresh retains only the last verified, unexpired billing period; it does not extend periods or create extra allowances. Successful reconciliation applies cancellations. Refund/dispute state cannot be replaced by an active subscription refresh within the same billing period; a later verified billing period can restore access. Expired or revoked purchases cannot issue handoffs or redeem codes.
 
-The explicit `mogging://app/handoff` open action works from the website's own Safari domain. Both HTTPS associated domains and the native scheme are configured. Activation emails and old homepage receipt links lead to the same verified return page; local storage and query parameters are no longer treated as proof of payment.
+The explicit `mogging://app/handoff` open action works from the website's own Safari domain. Both HTTPS associated domains and the native scheme are configured. Activation emails and old homepage receipt links lead to the same verified return page; local storage and query parameters are no longer treated as proof of payment. Missing account history is guarded so a partial account-summary response cannot crash the confirmation page.
 
 This follows [Stripe's fulfillment guidance](https://docs.stripe.com/checkout/fulfillment?payment-ui=stripe-hosted): retain webhooks and also trigger idempotent fulfillment from the return page to recover delayed delivery.
 

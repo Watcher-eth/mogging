@@ -157,7 +157,7 @@ export function AppShell({ children }: AppShellProps) {
   const profileUser = dashboard?.user ?? session?.user
   const profileName = profileUser?.name || session?.user?.email || 'Profile'
   const profileImage = profileUser?.image || session?.user?.image || null
-  const latestCompleteAnalysis = dashboard?.recentAnalyses.find((analysis) => analysis.status === 'complete') ?? null
+  const latestCompleteAnalysis = dashboard?.recentAnalyses?.find((analysis) => analysis.status === 'complete') ?? null
 
   async function openLatestAnalysis() {
     if (!latestCompleteAnalysis) {
