@@ -10,7 +10,7 @@ export function socialImageForPath(path: string) {
 }
 
 export const publicPaths = [
-  '/', '/what-is-mogging', '/how-face-analysis-works',
+  '/', '/faq', '/what-is-mogging', '/how-face-analysis-works',
   '/analysis', '/battle', '/leaderboard', '/privacy', '/support', '/tos',
 ] as const
 

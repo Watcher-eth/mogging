@@ -307,6 +307,10 @@ export default function AppFunnelPage() {
               ))}
             </div>
 
+            <div className="mt-1 text-center">
+              <Link href="/faq" className="inline-flex min-h-11 items-center px-3 text-[11px] leading-4 text-zinc-500 hover:text-zinc-700 focus-visible:rounded focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-zinc-500">FAQ</Link>
+            </div>
+
             <ReviewsSection />
 
             <div className="mx-auto mt-16 w-full max-w-5xl sm:mt-20">
@@ -391,14 +395,6 @@ export default function AppFunnelPage() {
                 </p>
               </div>
             </div>
-          </div>
-        </section>
-        <section aria-labelledby="about-mogging" className="mx-auto max-w-5xl space-y-10 px-5 py-16 sm:px-10">
-          <div>
-            <h2 id="about-mogging" className="text-3xl font-semibold tracking-tight sm:text-4xl">What does the Mogging app do?</h2>
-            <p className="mt-5 text-lg leading-8 text-zinc-600">Mogging turns a face photo into a comprehensive report with feature breakdowns. The mobile app brings reports, personalized routines, and evaluation history together. You can also try <Link href="/analysis" className="text-black underline underline-offset-4">face analysis on the web</Link>, explore <Link href="/battle" className="text-black underline underline-offset-4">mog battles</Link>, or view the <Link href="/leaderboard" className="text-black underline underline-offset-4">leaderboard</Link>.</p>
-            <p className="mt-4 text-lg leading-8 text-zinc-600">A photo-based score is an estimate influenced by lighting, pose, and image quality. It is not a diagnosis or an objective measure of your attractiveness. Repeated photos are most useful when taken under similar conditions.</p>
-            <Link href="/how-face-analysis-works" className="mt-4 inline-block font-medium underline underline-offset-4">How our face analysis works and its limitations</Link>
           </div>
         </section>
       </main>
