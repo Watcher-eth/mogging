@@ -4,7 +4,7 @@ import Image from 'next/image'
 import Link from 'next/link'
 import { useRouter } from 'next/router'
 import { useSession } from 'next-auth/react'
-import { useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import * as Avatar from '@radix-ui/react-avatar'
 import { ArrowRight, Check, Loader2 } from 'lucide-react'
 import { LoginDialog } from '@/components/app/app-shell'
@@ -16,6 +16,7 @@ import { CREATOR_INVITE_PROGRESS, type CreatorInvitePreview } from '@/lib/creato
 import { siteUrl } from '@/lib/seo'
 
 type Props = { invite: CreatorInvitePreview; token: string; url: string; imageUrl: string }
+const pendingClaimKey = 'creator-invite-claim'
 
 export default function CreatorInvitePage({ invite, token, url, imageUrl }: Props) {
   const router = useRouter()
@@ -27,8 +28,12 @@ export default function CreatorInvitePage({ invite, token, url, imageUrl }: Prop
   const title = ready ? `${invite.displayName}, your creator setup is ${CREATOR_INVITE_PROGRESS}% complete` : 'Your Mogging creator invitation'
   const description = ready ? 'Your TikTok account and analytics are verified. Claim your account and choose your payout method to finish setup.' : 'Continue in Creator Studio or contact our team on Discord for a new invitation.'
 
-  async function claim() {
-    if (!session?.user?.id) { setLoginOpen(true); return }
+  const claim = useCallback(async () => {
+    if (!session?.user?.id) {
+      sessionStorage.setItem(pendingClaimKey, token)
+      setLoginOpen(true)
+      return
+    }
     setBusy(true)
     setError('')
     try {
@@ -37,7 +42,13 @@ export default function CreatorInvitePage({ invite, token, url, imageUrl }: Prop
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : 'Could not claim your invitation. Please try again.')
     } finally { setBusy(false) }
-  }
+  }, [session?.user?.id, token, router])
+
+  useEffect(() => {
+    if (status !== 'authenticated' || !ready || sessionStorage.getItem(pendingClaimKey) !== token) return
+    sessionStorage.removeItem(pendingClaimKey)
+    void claim()
+  }, [status, ready, token, claim])
 
   return <>
     <Head>
@@ -84,7 +95,10 @@ export default function CreatorInvitePage({ invite, token, url, imageUrl }: Prop
         </div>
       </section>
     </main>
-    <LoginDialog audience="creator" open={loginOpen} onOpenChange={setLoginOpen} callbackUrl={`/creator/invite/${token}`} />
+    <LoginDialog audience="creator" open={loginOpen} onOpenChange={(open) => {
+      setLoginOpen(open)
+      if (!open) sessionStorage.removeItem(pendingClaimKey)
+    }} callbackUrl={`/creator/invite/${token}`} />
   </>
 }
 

@@ -20,7 +20,7 @@ export const creatorInviteSchema = z.object({
     try {
       const url = new URL(value)
       return url.protocol === 'https:' && !url.username && !url.password && !url.port &&
-        url.hostname === 'discord.com' && /^\/channels\/\d+\/\d+\/\d+$/.test(url.pathname)
+        url.hostname === 'discord.com' && /^\/channels\/(?:@me|\d+)\/\d+\/\d+$/.test(url.pathname)
     } catch { return false }
   }, 'Enter the Discord message link containing the reviewed analytics'),
   verificationConfirmed: z.literal(true),

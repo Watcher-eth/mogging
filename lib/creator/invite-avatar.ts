@@ -1,4 +1,6 @@
 import { isCreatorAvatarUrl } from './invite-validation'
+import { env } from '@/lib/env'
+import { creatorAssetPublicUrl, storeCreatorAsset } from '@/lib/storage/videos'
 
 // Fetch only the canonical TikTok profile and known image CDNs; never follow redirects.
 export async function resolveTikTokAvatar(handle: string): Promise<string | null> {
@@ -17,7 +19,8 @@ export async function resolveTikTokAvatar(handle: string): Promise<string | null
 }
 
 export async function creatorAvatarDataUrl(url: string | null) {
-  if (!url || !isCreatorAvatarUrl(url)) return null
+  const storedAvatarBase = env.R2_PUBLIC_BASE_URL ? `${env.R2_PUBLIC_BASE_URL.replace(/\/$/, '')}/creator/avatars/` : null
+  if (!url || (!isCreatorAvatarUrl(url) && !(storedAvatarBase && url.startsWith(storedAvatarBase)))) return null
   try {
     const response = await fetch(url, { redirect: 'error', signal: AbortSignal.timeout(4000) })
     const type = response.headers.get('content-type')?.split(';')[0]
@@ -25,6 +28,18 @@ export async function creatorAvatarDataUrl(url: string | null) {
     const data = await readLimited(response, 2 * 1024 * 1024, true)
     return `data:${type};base64,${Buffer.from(data).toString('base64')}`
   } catch { return null }
+}
+
+export async function preserveCreatorAvatar(url: string) {
+  if (!env.R2_PUBLIC_BASE_URL) return url
+  const dataUrl = await creatorAvatarDataUrl(url)
+  if (!dataUrl) return url
+  const [header, data] = dataUrl.split(',')
+  const contentType = header.slice(5).split(';')[0]
+  const extension = contentType === 'image/jpeg' ? 'jpeg' : contentType.split('/')[1]
+  const key = `creator/avatars/${crypto.randomUUID()}.${extension}`
+  await storeCreatorAsset(key, Buffer.from(data, 'base64'), contentType)
+  return creatorAssetPublicUrl(key)
 }
 
 async function readLimited(response: Response, limit: number, binary?: false): Promise<string>

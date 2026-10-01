@@ -9,6 +9,10 @@ test('normalizes matching TikTok profiles', () => {
   expect(invite.profileUrl).toBe('https://www.tiktok.com/@alex.creator')
 })
 
+test('accepts analytics evidence shared in a Discord direct message', () => {
+  expect(creatorInviteSchema.safeParse({ ...input, evidenceUrl: 'https://discord.com/channels/@me/1555046510406934528/1555265856517316688' }).success).toBe(true)
+})
+
 test('verification requires reviewed evidence and an explicit confirmation', () => {
   for (const change of [{ verificationConfirmed: false }, { evidenceUrl: '' }, { evidenceUrl: 'https://discord.com.evil.test/channels/123/456/789' }, { evidenceUrl: 'https://discord.com/channels/123/456' }, { profileUrl: 'https://www.tiktok.com/@someone.else' }, { profileUrl: 'https://example.com/@Alex.Creator' }]) {
     expect(creatorInviteSchema.safeParse({ ...input, ...change }).success).toBe(false)

@@ -3,7 +3,7 @@ import { and, eq, gt, isNull, sql } from 'drizzle-orm'
 import { db, schema } from '@/lib/db'
 import { ApiError } from '@/lib/api/http'
 import { creatorInviteSchema, creatorInviteTokenSchema, type CreatorInviteInput, type CreatorInvitePreview } from './invite-validation'
-import { resolveTikTokAvatar } from './invite-avatar'
+import { preserveCreatorAvatar, resolveTikTokAvatar } from './invite-avatar'
 
 const invites = schema.creatorOnboardingInvites
 const tokenHash = (token: string) => createHash('sha256').update(creatorInviteTokenSchema.parse(token)).digest('hex')
@@ -11,7 +11,8 @@ const tokenHash = (token: string) => createHash('sha256').update(creatorInviteTo
 export async function createCreatorInvite(input: CreatorInviteInput, adminEmail: string) {
   input = creatorInviteSchema.parse(input)
   const token = randomBytes(32).toString('hex')
-  const avatarUrl = input.avatarUrl || await resolveTikTokAvatar(input.handle)
+  const sourceAvatar = input.avatarUrl || await resolveTikTokAvatar(input.handle)
+  const avatarUrl = sourceAvatar ? await preserveCreatorAvatar(sourceAvatar) : null
   const invite = await db.transaction(async (tx) => {
     await tx.execute(sql`select pg_advisory_xact_lock(hashtext(${`creator-invite:${input.handle}`}))`)
     const connected = await tx.query.creatorSocialAccounts.findFirst({ where: and(eq(schema.creatorSocialAccounts.platform, 'tiktok'), eq(schema.creatorSocialAccounts.handle, input.handle)) })

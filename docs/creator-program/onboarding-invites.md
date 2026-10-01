@@ -14,7 +14,7 @@ The admin panel shows the actual generated 1200 × 630 PNG. Its background is th
 
 ## Creator workflow
 
-The link opens a personalized invitation. The creator signs up or signs in through the existing creator login options. Authentication returns to the same invitation, where **Claim your account** confirms the signed-in identity receiving the prepared setup. This uses the authenticated session, never a user ID supplied by the client.
+The link opens a personalized invitation. Clicking **Claim your account** starts the existing creator login flow and remembers the claim in that browser tab. After authentication, the invitation automatically claims the prepared setup for the signed-in identity and opens payout setup. Closing the login dialog cancels the pending claim. This uses the authenticated session, never a user ID supplied by the client. Saving the payout method opens the creator dashboard.
 
 Claiming the invitation creates or reuses their creator profile, sets creator verification to verified, and adds their TikTok account as an approved manual account with analytics already reviewed. The profile photo and Discord evidence reference are preserved. This is team verification; it does not grant TikTok OAuth credentials or fabricate an OAuth verification timestamp. Admins can open the original Discord evidence from the account review dialog.
 
