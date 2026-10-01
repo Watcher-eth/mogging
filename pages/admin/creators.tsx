@@ -28,6 +28,7 @@ import useSWR from 'swr'
 import { toast } from 'sonner'
 import { Button } from '@/components/ui/button'
 import { AdminPasswordGate } from '@/components/admin/admin-password-gate'
+import { CreatorInvitesPanel } from '@/components/admin/creator-invites-panel'
 import type { CreatorCtaLibraryItem } from '@/lib/creator/cta-library'
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
@@ -61,6 +62,7 @@ const tabs = [
   { value: 'accounts', label: 'Accounts', icon: BadgeCheck },
   { value: 'payments', label: 'Payments', icon: CircleDollarSign },
   { value: 'creators', label: 'Creators', icon: UsersRound },
+  { value: 'invites', label: 'Invitations', icon: UsersRound },
 ] as const
 
 type Tab = (typeof tabs)[number]['value']
@@ -106,6 +108,7 @@ export default function CreatorAdminPage() {
 }
 
 function DashboardView({ tab, data, onSelect, onRefresh }: { tab: Tab; data: AdminDashboard; onSelect: (target: ReviewTarget) => void; onRefresh: () => Promise<void> }) {
+  if (tab === 'invites') return <CreatorInvitesPanel />
   if (tab === 'metrics') return <CreatorEconomicsDashboard data={data} onSelectSubmission={(item) => onSelect({ resource: 'submission', item })} onRefresh={onRefresh} />
   if (tab === 'attribution') return <CreatorAttributionDashboard data={data} onSelectCreator={(item) => onSelect({ resource: 'creator', item })} onSelectAccount={(item) => onSelect({ resource: 'account', item })} />
   if (tab === 'submissions') return <ResourceSection eyebrow="Content review" title="Video submissions" description="Inspect uploaded content, published posts, and review notes."><SubmissionList items={data.submissions} payments={data.payments} onSelect={onSelect} /></ResourceSection>
@@ -466,13 +469,14 @@ function CreatePayment({ submission, selection, onCreated }: { submission: Admin
 
 function AccountAudienceEvidence({ account }: { account: AdminAccount }) {
   const [playbackFailed, setPlaybackFailed] = useState(false)
+  const discordEvidence = account.analyticsVideoUrl?.startsWith('https://discord.com/channels/')
   return <section className="mt-6 min-w-0 rounded-2xl border border-zinc-200 p-4 sm:p-5" aria-label="Audience verification recording">
     <h3 className="text-base font-semibold">Audience verification recording</h3>
     <p className="mt-1 text-sm leading-6 text-zinc-500">Review the past 28 days of audience analytics and top countries before approving this account.</p>
     {account.analyticsVideoUrl ? <>
-      <video key={account.analyticsVideoUrl} className="mt-4 block max-h-[55dvh] w-full min-w-0 rounded-xl bg-black object-contain" src={account.analyticsVideoUrl} controls playsInline preload="metadata" onError={() => setPlaybackFailed(true)} aria-label="Uploaded audience analytics recording" />
+      {discordEvidence ? <p className="mt-4 rounded-xl bg-zinc-50 p-4 text-sm text-zinc-600">Ownership and audience analytics were reviewed by our team on Discord. Open the original message to inspect the evidence.</p> : <video key={account.analyticsVideoUrl} className="mt-4 block max-h-[55dvh] w-full min-w-0 rounded-xl bg-black object-contain" src={account.analyticsVideoUrl} controls playsInline preload="metadata" onError={() => setPlaybackFailed(true)} aria-label="Uploaded audience analytics recording" />}
       <div className="mt-3 flex flex-wrap items-center justify-between gap-3 text-sm">
-        <a href={account.analyticsVideoUrl} target="_blank" rel="noopener noreferrer" className="inline-flex min-h-11 items-center gap-1 font-medium underline underline-offset-4">Open recording<ArrowUpRight className="size-4" /></a>
+        <a href={account.analyticsVideoUrl} target="_blank" rel="noopener noreferrer" className="inline-flex min-h-11 items-center gap-1 font-medium underline underline-offset-4">{discordEvidence ? 'Open Discord evidence' : 'Open recording'}<ArrowUpRight className="size-4" /></a>
         {account.analyticsSizeBytes ? <span className="text-zinc-500">{formatBytes(account.analyticsSizeBytes)}</span> : null}
       </div>
       {playbackFailed ? <p role="alert" className="mt-2 text-sm text-amber-700">The recording could not play here. Open it in a new tab to view or download it. If it is unavailable, request a new upload.</p> : null}

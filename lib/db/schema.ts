@@ -618,6 +618,23 @@ export const creatorProfiles = pgTable(
   })
 )
 
+export const creatorOnboardingInvites = pgTable('creator_onboarding_invites', {
+  id: text('id').primaryKey().$defaultFn(() => crypto.randomUUID()),
+  tokenHash: text('token_hash').notNull().unique(),
+  displayName: text('display_name').notNull(),
+  handle: text('handle').notNull(),
+  profileUrl: text('profile_url').notNull(),
+  avatarUrl: text('avatar_url'),
+  evidenceUrl: text('evidence_url').notNull(),
+  verifiedBy: text('verified_by').notNull(),
+  verifiedAt: timestamp('verified_at', { mode: 'date' }).notNull().defaultNow(),
+  expiresAt: timestamp('expires_at', { mode: 'date' }).notNull(),
+  claimedByUserId: text('claimed_by_user_id').references(() => users.id),
+  claimedAt: timestamp('claimed_at', { mode: 'date' }),
+  revokedAt: timestamp('revoked_at', { mode: 'date' }),
+  createdAt: timestamp('created_at', { mode: 'date' }).notNull().defaultNow(),
+})
+
 export const creatorSubmissions = pgTable(
   'creator_submissions',
   {

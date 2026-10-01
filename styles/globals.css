@@ -477,3 +477,18 @@
 
 .creator-discord-support { width: fit-content; height: 32px; gap: 7px; border-radius: 999px; background: #f5f6f7; padding-inline: 12px; color: #52565c; font-size: 12px; }
 .group[data-state="collapsed"] .creator-navigation .creator-discord-support { padding: 8px; }
+
+.creator-invite-progress {
+  transform-origin: left center;
+  animation: creator-invite-progress-drift 3.5s cubic-bezier(.45, 0, .55, 1) infinite;
+}
+
+@keyframes creator-invite-progress-drift {
+  0%, 100% { transform: scaleX(1); }
+  25% { transform: scaleX(1.025); }
+  75% { transform: scaleX(.975); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .creator-invite-progress { animation: none; }
+}
