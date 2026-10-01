@@ -46,15 +46,15 @@ export function ConnectAccountForm({ platform, onPlatformChange, disabled, onCon
         <div className="grid gap-6 p-6 sm:p-7">
           <div className="grid grid-cols-2 gap-2">
             {(['tiktok', 'instagram'] as const).map((option) => (
-              <button key={option} type="button" disabled={busy} onClick={() => onPlatformChange(option)} className={cn('flex items-center gap-2 rounded-[14px] border px-4 py-3 text-left text-sm font-medium capitalize transition-[border-color,background-color,box-shadow,transform] duration-150 active:scale-[0.98]', platform === option ? 'border-[#0071e3]/30 bg-[#e8f2ff] text-[#0071e3] shadow-[0_0_0_3px_rgba(0,113,227,0.06)]' : 'border-black/[0.08] bg-white hover:bg-[#f5f5f7]')}>
+              <button key={option} type="button" disabled={busy} onClick={() => onPlatformChange(option)} className={cn('flex items-center gap-2 rounded-[14px] border px-4 py-3 text-left text-sm font-medium capitalize transition-[border-color,background-color,box-shadow,transform] duration-150 active:scale-[0.98]', platform === option ? 'creator-choice-selected' : 'border-black/[0.08] bg-white hover:bg-[#f7f8f9]')}>
                 <SocialPlatformLogo platform={option} className="size-5" />
-                <span>{option}</span><span className={cn('ml-auto text-xs', platform === option ? 'text-[#0071e3]/60' : 'text-[#86868b]')}>{counts[option]}/5</span>
+                <span>{option}</span><span className={cn('ml-auto text-xs', platform === option ? 'text-[#00A8EF]/60' : 'text-[#858a91]')}>{counts[option]}/5</span>
               </button>
             ))}
           </div>
-          {disabled ? <div className="flex gap-2 rounded-xl bg-amber-50 px-3 py-2.5 text-xs leading-5 text-amber-800"><AlertCircle className="mt-0.5 size-4 shrink-0" />You’ve reached the five-account limit for this platform.</div> : null}
+          {disabled ? <div className="flex gap-2 rounded-xl bg-zinc-100 px-3 py-2.5 text-xs leading-5 text-zinc-600"><AlertCircle className="mt-0.5 size-4 shrink-0" />You’ve reached the five-account limit for this platform.</div> : null}
 
-          {platform === 'tiktok' && !manualTikTok ? <div className="rounded-[18px] bg-[#f5f5f7] p-5 text-center">
+          {platform === 'tiktok' && !manualTikTok ? <div className="rounded-[18px] bg-[#f7f8f9] p-5 text-center">
             <SocialPlatformLogo platform="tiktok" className="mx-auto size-10" />
             <h3 className="mt-4 text-sm font-semibold">Connect With TikTok</h3>
             <p className="mx-auto mt-2 max-w-sm text-xs leading-5 text-zinc-500">Sign in securely to share your account details. Then upload your audience recording to complete verification.</p>

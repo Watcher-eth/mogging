@@ -1,32 +1,31 @@
-import Image from 'next/image'
+import { BadgeCheck, BookOpen, Files, Layers, LayoutDashboard, Link2, ScanFace, ShieldCheck, UsersRound, Video, Wallet } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
-const creatorIconSources = {
-  accounts: '/creator-icons/accounts.png',
-  cta: '/creator-icons/cta.png',
-  formats: '/creator-icons/formats.png',
-  guide: '/creator-icons/guide.png',
-  link: '/creator-icons/link.png',
-  lock: '/creator-icons/lock.png',
-  overview: '/creator-icons/overview.png',
-  payouts: '/creator-icons/payouts.png',
-  submissions: '/creator-icons/submissions.png',
-  'video-submissions': '/creator-icons/video-submissions.png',
+const creatorIcons = {
+  accounts: UsersRound,
+  cta: ScanFace,
+  formats: Layers,
+  guide: BookOpen,
+  link: Link2,
+  lock: ShieldCheck,
+  overview: LayoutDashboard,
+  payouts: Wallet,
+  submissions: Files,
+  'video-submissions': Video,
 } as const
 
-export type CreatorIconName = keyof typeof creatorIconSources
+export type CreatorIconName = keyof typeof creatorIcons
 
 export function CreatorIcon({ name, className }: { name: CreatorIconName; className?: string }) {
+  const Icon = creatorIcons[name]
+  return <Icon className={cn('creator-icon shrink-0', className)} strokeWidth={1.6} aria-hidden="true" />
+}
+
+export function CreatorStatusIcon({ name, verified }: { name: CreatorIconName; verified: boolean }) {
   return (
-    <Image
-      src={creatorIconSources[name]}
-      alt=""
-      width={1254}
-      height={1254}
-      sizes="80px"
-      className={cn('shrink-0 object-contain', className)}
-      aria-hidden="true"
-      draggable={false}
-    />
+    <span className="relative grid size-10 shrink-0 place-items-center">
+      <CreatorIcon name={name} className="size-9" />
+      {verified ? <BadgeCheck className="absolute bottom-0 right-0 size-[18px] fill-[#00A8EF] text-white" aria-hidden="true" /> : null}
+    </span>
   )
 }

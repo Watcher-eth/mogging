@@ -5,6 +5,7 @@ import { randomScore, randomScorePair } from '@/lib/creator/random-scores'
 import { FaceAlignmentEditor } from '@/components/creator/face-alignment-editor'
 import { CreatorStepper } from '@/components/creator/creator-stepper'
 import Image from 'next/image'
+import { LayoutGroup, MotionConfig, motion, useReducedMotion } from 'motion/react'
 import { useEffect, useRef, useState } from 'react'
 import { BookOpen, CalendarCheck2, FileChartColumn, Megaphone, Check, CheckCircle2, Download, FileArchive, Film, ImagePlus, Loader2, RefreshCw, Send, Trash2, UploadCloud, type LucideIcon } from 'lucide-react'
 import useSWR from 'swr'
@@ -28,6 +29,8 @@ const generatorTabs = [
   { id: 'protocol', label: 'Mock Protocol', icon: CalendarCheck2 },
 ] as const
 
+const generatorTransition = { duration: 0.24, ease: [0.22, 1, 0.36, 1] as const }
+
 const STORAGE_KEY = 'mogging:creator-content:v2'
 const approvedExamples = [
   { id: 'approved-report', label: 'Feature breakdown', detail: 'Hook → mapped feature → CTA', category: 'Report series', status: 'Approved format' },
@@ -37,6 +40,8 @@ const approvedExamples = [
 type CtaLibraryResponse = { approved: CreatorCtaLibraryItem[]; mine: CreatorCtaLibraryItem[] }
 
 export default function CtaGeneratorPage() {
+  const reducedMotion = useReducedMotion()
+  const transition = reducedMotion ? { duration: 0 } : generatorTransition
   const [mode, setMode] = useState<(typeof generatorTabs)[number]['id']>('cta')
   const [step, setStep] = useState<1 | 2 | 3>(1)
   const fileInputRef = useRef<HTMLInputElement>(null)
@@ -231,29 +236,69 @@ export default function CtaGeneratorPage() {
 
   return (
     <CreatorShell>
-      <CreatorHeader eyebrow="Creator Tools" title="CTA Studio" description="Create a CTA with your photos and report scores." action={mode === 'cta' && step === 3 && slides.length ? <Button className="h-11 rounded-full px-5" disabled={exporting} onClick={() => void downloadAll()}>{exporting ? <Loader2 className="animate-spin" /> : <FileArchive />}Download Set</Button> : null} />
-      <div className="mb-6 flex w-fit max-w-full flex-wrap gap-2 rounded-[26px] border border-zinc-200 bg-zinc-100/80 p-2" role="tablist" aria-label="Generator">
-        {generatorTabs.map(tab => <button key={tab.id} id={`generator-tab-${tab.id}`} role="tab" aria-selected={mode === tab.id} tabIndex={mode === tab.id ? 0 : -1} onKeyDown={event => { if (!['ArrowLeft', 'ArrowRight', 'Home', 'End'].includes(event.key)) return; event.preventDefault(); const index = generatorTabs.findIndex(item => item.id === mode); const next = generatorTabs[event.key === 'Home' ? 0 : event.key === 'End' ? generatorTabs.length - 1 : (index + (event.key === 'ArrowRight' ? 1 : -1) + generatorTabs.length) % generatorTabs.length].id; setMode(next); document.getElementById(`generator-tab-${next}`)?.focus() }} aria-controls={`generator-panel-${tab.id}`} type="button" onClick={() => setMode(tab.id)} className={cn('inline-flex min-h-12 items-center justify-center gap-2.5 rounded-full border px-5 text-sm font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#0071e3] focus-visible:ring-offset-2', mode === tab.id ? 'border-black bg-black text-white shadow-sm' : 'border-zinc-300 bg-white text-zinc-800 shadow-sm hover:border-zinc-400 hover:bg-zinc-50')}><tab.icon aria-hidden="true" className={cn('size-5 shrink-0', mode === tab.id ? 'text-white' : 'text-[#0071e3]')} strokeWidth={2} />{tab.label}</button>)}
-      </div>
+      <MotionConfig reducedMotion="user" transition={transition}>
+      <LayoutGroup id="creator-studio">
+      <CreatorHeader
+        eyebrow="Creator Tools"
+        title="CTA Studio"
+        description="Create a CTA with your photos and report scores."
+        action={
+          <div className="creator-generator-actions flex flex-col gap-3">
+            <div className="grid grid-cols-3 gap-1 rounded-[16px] bg-black/[0.045] p-1" role="tablist" aria-label="Generator">
+              {generatorTabs.map(tab => {
+                const active = mode === tab.id
+                return (
+                  <button
+                    key={tab.id}
+                    id={`generator-tab-${tab.id}`}
+                    role="tab"
+                    aria-selected={active}
+                    tabIndex={active ? 0 : -1}
+                    onKeyDown={event => {
+                      if (!['ArrowLeft', 'ArrowRight', 'Home', 'End'].includes(event.key)) return
+                      event.preventDefault()
+                      const index = generatorTabs.findIndex(item => item.id === mode)
+                      const next = generatorTabs[event.key === 'Home' ? 0 : event.key === 'End' ? generatorTabs.length - 1 : (index + (event.key === 'ArrowRight' ? 1 : -1) + generatorTabs.length) % generatorTabs.length].id
+                      setMode(next)
+                      document.getElementById(`generator-tab-${next}`)?.focus()
+                    }}
+                    aria-controls={`generator-panel-${tab.id}`}
+                    type="button"
+                    onClick={() => setMode(tab.id)}
+                    className={cn('relative inline-flex min-h-11 items-center justify-center gap-2 rounded-[12px] px-3 text-xs font-semibold focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#00A8EF] focus-visible:ring-offset-2', active ? 'text-zinc-950' : 'text-zinc-500')}
+                  >
+                    {active ? <motion.span layoutId="generator-selection" className="absolute inset-0 rounded-[12px] bg-white shadow-sm" aria-hidden="true" /> : null}
+                    <tab.icon aria-hidden="true" className="relative size-4 shrink-0 text-[#00A8EF]" strokeWidth={2} />
+                    <span className="relative whitespace-nowrap">{tab.label}</span>
+                  </button>
+                )
+              })}
+            </div>
+            {mode === 'cta' && step === 3 && slides.length ? <Button className="h-11 self-end rounded-full px-5" disabled={exporting} onClick={() => void downloadAll()}>{exporting ? <Loader2 className="animate-spin" /> : <FileArchive />}Download Set</Button> : null}
+          </div>
+        }
+      />
+      <motion.div layout={!reducedMotion} layoutDependency={`${mode}:${step}`}>
+      <motion.div layout="position" layoutDependency={`${mode}:${step}`}>
       {mode === 'cta' ? <CreatorStepper step={step} labels={['Photos', 'Details & Scores', 'Preview & Export']} /> : null}
-      <div id="generator-panel-mock" role="tabpanel" aria-labelledby="generator-tab-mock" hidden={mode !== 'mock' || step === 1}>
+      <motion.div id="generator-panel-mock" role="tabpanel" aria-labelledby="generator-tab-mock" hidden={mode !== 'mock' || step === 1} initial={false} animate={{ opacity: mode === 'mock' ? 1 : 0 }}>
         <MockReportGenerator images={usableImages} active={mode === 'mock' && step !== 1} onBack={() => setStep(1)} />
-      </div>
-      <div id="generator-panel-protocol" role="tabpanel" aria-labelledby="generator-tab-protocol" hidden={mode !== 'protocol'}><MockProtocolGenerator /></div>
-      {step === 1 && mode !== 'protocol' ? <section className="creator-surface p-5 sm:p-6">
+      </motion.div>
+      <motion.div id="generator-panel-protocol" role="tabpanel" aria-labelledby="generator-tab-protocol" hidden={mode !== 'protocol'} initial={false} animate={{ opacity: mode === 'protocol' ? 1 : 0 }}><MockProtocolGenerator /></motion.div>
+      {step === 1 && mode !== 'protocol' ? <motion.section layout="position" layoutDependency={mode} className="creator-surface p-5 sm:p-6">
         <SectionTitle icon={UploadCloud} title="Add creator photos" detail="Upload a clear, front-facing photo. Face mapping stays in your browser." />
           <input ref={fileInputRef} className="sr-only" type="file" accept="image/*" multiple onChange={(event) => void handleFiles(event.target.files)} />
-          <div className={cn("mt-5", !images.length && "rounded-[18px] border border-dashed border-black/15 bg-[#f5f5f7]/70 p-3 sm:p-4")}>
+          <div className={cn("mt-5", !images.length && "rounded-[18px] border border-dashed border-black/15 bg-[#f7f8f9]/70 p-3 sm:p-4")}>
             {images.length ? <div className="flex flex-wrap items-start justify-center gap-8">{images.map(image => <ImageStatus key={image.id} image={image}
               onChange={landmarks => setImages(current => current.map(item => item.id === image.id ? { ...item, landmarks } : item))}
               onRetry={() => void detectImage(image.id, image.dataUrl, image)}
               onRemove={() => { URL.revokeObjectURL(image.dataUrl); photoUrls.current.delete(image.dataUrl); setImages(current => current.filter(item => item.id !== image.id)) }} />)}</div> : null}
-            <button type="button" onClick={() => fileInputRef.current?.click()} className={cn("grid w-full place-items-center rounded-xl p-4 text-center transition-colors hover:bg-white", images.length ? "mt-3 min-h-11" : "min-h-36")}><span><ImagePlus className="mx-auto size-5 text-[#0071e3]" /><span className="mt-2 block text-sm font-semibold">{images.length ? 'Add more photos' : 'Upload Photos'}</span>{!images.length ? <span className="mt-1 block text-xs leading-5 text-[#86868b]">One clear face · JPG, PNG, WebP</span> : null}</span></button>
+            <button type="button" onClick={() => fileInputRef.current?.click()} className={cn("grid w-full place-items-center rounded-xl p-4 text-center transition-colors hover:bg-white", images.length ? "mt-3 min-h-11" : "min-h-36")}><span><ImagePlus className="mx-auto size-5 text-[#00A8EF]" /><span className="mt-2 block text-sm font-semibold">{images.length ? 'Add more photos' : 'Upload Photos'}</span>{!images.length ? <span className="mt-1 block text-xs leading-5 text-[#858a91]">One clear face · JPG, PNG, WebP</span> : null}</span></button>
           </div>
 
         <div className="mt-6 flex justify-end"><Button className="h-11 rounded-full px-6" disabled={!usableImages.length || images.some((image) => image.status === 'loading' || image.status === 'detecting')} onClick={() => setStep(2)}>{mode === 'mock' ? 'Continue to Mock Reports' : 'Continue to Details'}</Button></div>
-      </section> : null}
-      <div id="generator-panel-cta" role="tabpanel" aria-labelledby="generator-tab-cta" hidden={mode !== 'cta'}>
+      </motion.section> : null}
+      <motion.div id="generator-panel-cta" role="tabpanel" aria-labelledby="generator-tab-cta" hidden={mode !== 'cta'} initial={false} animate={{ opacity: mode === 'cta' ? 1 : 0 }}>
       {step === 2 ? <section className="creator-surface p-5 sm:p-6">
         <SectionTitle asset="formats" title="Set up your templates" detail="Choose the format and enter scores, or randomize values for a mock CTA." />
         <div className="mt-5 grid content-start gap-4">
@@ -273,7 +318,7 @@ export default function CtaGeneratorPage() {
             <Field label="Format"><select className={fieldClass} value={formatId} onChange={(event) => setFormatId(event.target.value as OutputFormatId)}>{Object.entries(outputFormats).map(([id, item]) => <option key={id} value={id}>{item.label} · {item.width}×{item.height}</option>)}</select></Field>
             <Field label="Tone"><select className={fieldClass} value={tone} onChange={(event) => setTone(event.target.value as Tone)}><option value="curious">Curious</option><option value="direct">Direct</option><option value="educational">Educational</option></select></Field>
             <Field label="Overlay style"><select className={fieldClass} value={overlayStyle} onChange={(event) => { const value = event.target.value as 'category' | 'face-map'; setOverlayStyle(value); setSlides((current) => current.map((slide) => ({ ...slide, overlayStyle: value }))) }}><option value="category">Mobile report · category lines</option><option value="face-map">Mobile report · full face map</option></select></Field>
-            <fieldset><legend className="text-sm font-medium">Values to show</legend><div className="mt-2 grid grid-cols-2 gap-2">{categoryOptions.map((item) => { const active = selectedCategories.includes(item.id); return <button key={item.id} type="button" aria-pressed={active} onClick={() => setSelectedCategories((current) => active ? current.filter((id) => id !== item.id) : [...current, item.id])} className={cn('flex min-h-12 items-center gap-2 rounded-[14px] border px-3 text-left text-xs font-medium transition-[border-color,background-color,box-shadow,transform] duration-150 active:scale-[0.98]', active ? 'border-[#0071e3]/30 bg-[#e8f2ff] text-[#0071e3] shadow-[0_0_0_2px_rgba(0,113,227,0.06)]' : 'border-black/[0.08] bg-white text-[#6e6e73] hover:bg-[#f5f5f7]')}><span className={cn('grid size-4 shrink-0 place-items-center rounded-full border', active ? 'border-[#0071e3] bg-[#0071e3] text-white' : 'border-black/20')}>{active ? <Check className="size-2.5" /> : null}</span>{item.label}</button> })}</div></fieldset>
+            <fieldset><legend className="text-sm font-medium">Values to show</legend><div className="mt-2 grid grid-cols-2 gap-2">{categoryOptions.map((item) => { const active = selectedCategories.includes(item.id); return <button key={item.id} type="button" aria-pressed={active} onClick={() => setSelectedCategories((current) => active ? current.filter((id) => id !== item.id) : [...current, item.id])} className={cn('flex min-h-12 items-center gap-2 rounded-[14px] border px-3 text-left text-xs font-medium transition-[border-color,background-color,box-shadow,transform] duration-150 active:scale-[0.98]', active ? 'creator-choice-selected' : 'border-black/[0.08] bg-white text-[#73777d] hover:bg-[#f7f8f9]')}><span className={cn('grid size-4 shrink-0 place-items-center rounded-full border', active ? 'border-transparent creator-tone-blue text-white' : 'border-black/20')}>{active ? <Check className="size-2.5" /> : null}</span>{item.label}</button> })}</div></fieldset>
           </div>
         </details>
         <div className="creator-actions mt-6 flex flex-wrap justify-between gap-3"><Button variant="outline" className="h-11 rounded-full px-6" onClick={() => setStep(1)}>Back to Photos</Button><Button className="h-11 rounded-full px-6" onClick={createCampaign}><RefreshCw />{slides.length ? 'Regenerate 5 Templates' : 'Generate 5 Templates'}</Button></div>
@@ -284,7 +329,7 @@ export default function CtaGeneratorPage() {
         <section className="min-w-0">
           <div className="mb-3 flex items-end justify-between"><div><p className="text-sm font-semibold">Template preview</p><p className="mt-1 text-xs text-zinc-400">{slides.length ? `5 templates · ${format.width} × ${format.height}` : 'Your generated templates will appear here'}</p></div></div>
           {selectedSlide && mode === 'cta' ? <div className="mx-auto" style={{ maxWidth: `min(100%, ${64 * format.width / format.height}dvh)` }}><ContentSlidePreview key={selectedSlide.id} slide={selectedSlide} images={images} format={format} /></div> : <div className="grid min-h-[620px] place-items-center border border-dashed border-zinc-300 bg-zinc-50/50 text-center" style={{ aspectRatio: `${format.width} / ${format.height}` }}><div><ImagePlus className="mx-auto size-6 text-zinc-300" /><p className="mt-3 text-sm font-semibold text-zinc-500">No templates yet</p><p className="mt-1 text-xs text-zinc-400">Upload a clear face and generate templates.</p></div></div>}
-          {slides.length ? <div className="mt-4 flex gap-2 overflow-x-auto pb-2">{templateOptions.map((template, index) => { const slide = slides.find((item) => item.templateId === template.id); if (!slide) return null; return <button type="button" key={template.id} onClick={() => setSelectedSlideId(slide.id)} className={cn('min-h-11 min-w-28 flex-1 rounded-xl border p-3 text-left transition-[border-color,background-color,transform] duration-150 ease-out active:scale-[0.98]', selectedSlide?.templateId === template.id ? 'border-black bg-black text-white' : 'border-zinc-200 bg-white')}><span className="block font-mono text-[9px] uppercase opacity-50">Template {index + 1}</span><span className="mt-2 block text-[11px] font-semibold leading-4">{template.label}</span></button> })}</div> : null}
+          {slides.length ? <div className="mt-4 flex gap-2 overflow-x-auto pb-2">{templateOptions.map((template, index) => { const slide = slides.find((item) => item.templateId === template.id); if (!slide) return null; return <button type="button" key={template.id} onClick={() => setSelectedSlideId(slide.id)} className={cn('min-h-11 min-w-28 flex-1 rounded-xl border p-3 text-left transition-[border-color,background-color,transform] duration-150 ease-out active:scale-[0.98]', selectedSlide?.templateId === template.id ? 'creator-choice-selected' : 'border-zinc-200 bg-white')}><span className="block font-mono text-[9px] uppercase opacity-50">Template {index + 1}</span><span className="mt-2 block text-[11px] font-semibold leading-4">{template.label}</span></button> })}</div> : null}
         </section>
 
         <section className="creator-surface grid gap-4 p-5 sm:p-6">
@@ -293,10 +338,10 @@ export default function CtaGeneratorPage() {
       </> : null}
       <div className="mt-6"><ContentRequirementsNote /></div>
       <details className="creator-surface mt-6 p-5 sm:p-6"><summary className="cursor-pointer text-sm font-semibold">Your CTA libraries, examples & history</summary>
-      <section className="mt-10"><div className="flex items-end justify-between gap-4"><div><p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-zinc-400">Personal collection</p><h2 className="mt-2 text-2xl font-semibold tracking-[-0.045em]">My CTA library</h2><p className="mt-2 text-sm text-zinc-500">Your stored CTAs stay available here to download and reuse. Only approved submissions also appear in the shared library.</p></div><BookOpen className="size-5 text-zinc-300" /></div>{library?.mine.length ? <div className="mt-5 grid gap-3 md:grid-cols-2 xl:grid-cols-3">{library.mine.map((item) => <CtaLibraryCard key={item.id} item={item} variant="owned" />)}</div> : <div className="mt-5 rounded-2xl border border-dashed border-zinc-300 p-6 text-sm text-zinc-400">Submit a generated CTA and it will be stored here for you automatically.</div>}</section>
-      <section className="mt-10"><div className="flex items-end justify-between gap-4"><div><p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-zinc-400">Creator resources</p><h2 className="mt-2 text-2xl font-semibold tracking-[-0.045em]">Approved CTA library</h2><p className="mt-2 text-sm text-zinc-500">Ready-to-use samples reviewed by the Mogging team.</p></div><BookOpen className="size-5 text-zinc-300" /></div>{library?.approved.length ? <div className="mt-5 grid gap-3 md:grid-cols-2 xl:grid-cols-3">{library.approved.map((item) => <CtaLibraryCard key={item.id} item={item} variant="approved" />)}</div> : <div className="mt-5 rounded-2xl border border-dashed border-zinc-300 p-6 text-sm text-zinc-400">Approved creator samples will appear here.</div>}</section>
+      <section className="mt-10"><div className="flex items-end justify-between gap-4"><div><p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-zinc-400">Personal collection</p><h2 className="mt-2 text-2xl font-semibold tracking-[-0.045em]">My CTA library</h2><p className="mt-0.5 text-sm text-zinc-500">Your stored CTAs stay available here to download and reuse. Only approved submissions also appear in the shared library.</p></div><BookOpen className="size-5 text-zinc-300" /></div>{library?.mine.length ? <div className="mt-5 grid gap-3 md:grid-cols-2 xl:grid-cols-3">{library.mine.map((item) => <CtaLibraryCard key={item.id} item={item} variant="owned" />)}</div> : <div className="mt-5 rounded-2xl border border-dashed border-zinc-300 p-6 text-sm text-zinc-400">Submit a generated CTA and it will be stored here for you automatically.</div>}</section>
+      <section className="mt-10"><div className="flex items-end justify-between gap-4"><div><p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-zinc-400">Creator resources</p><h2 className="mt-2 text-2xl font-semibold tracking-[-0.045em]">Approved CTA library</h2><p className="mt-0.5 text-sm text-zinc-500">Ready-to-use samples reviewed by the Mogging team.</p></div><BookOpen className="size-5 text-zinc-300" /></div>{library?.approved.length ? <div className="mt-5 grid gap-3 md:grid-cols-2 xl:grid-cols-3">{library.approved.map((item) => <CtaLibraryCard key={item.id} item={item} variant="approved" />)}</div> : <div className="mt-5 rounded-2xl border border-dashed border-zinc-300 p-6 text-sm text-zinc-400">Approved creator samples will appear here.</div>}</section>
 
-      <section className="mt-10"><div><p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-zinc-400">Proven starting points</p><h2 className="mt-2 text-2xl font-semibold tracking-[-0.045em]">Approved examples</h2><p className="mt-2 text-sm text-zinc-500">Formats approved to work in the creator program.</p></div><div className="mt-5 grid gap-3 md:grid-cols-3">{approvedExamples.map((example) => <article key={example.id} className="rounded-2xl border border-zinc-200 bg-zinc-950 p-5 text-white"><div className="flex items-center justify-between"><span className="font-mono text-[9px] uppercase tracking-[0.14em] text-white/40">{example.category}</span><span className="rounded-full bg-emerald-400/15 px-2 py-1 text-[9px] font-semibold text-emerald-300">{example.status}</span></div><h3 className="mt-8 text-xl font-semibold tracking-[-0.04em]">{example.label}</h3><p className="mt-2 text-xs leading-5 text-white/50">{example.detail}</p></article>)}</div></section>
+      <section className="mt-10"><div><p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-zinc-400">Proven starting points</p><h2 className="mt-2 text-2xl font-semibold tracking-[-0.045em]">Approved examples</h2><p className="mt-0.5 text-sm text-zinc-500">Formats approved to work in the creator program.</p></div><div className="mt-5 grid gap-3 md:grid-cols-3">{approvedExamples.map((example) => <article key={example.id} className="rounded-2xl border border-zinc-200 bg-zinc-950 p-5 text-white"><div className="flex items-center justify-between"><span className="font-mono text-[9px] uppercase tracking-[0.14em] text-white/40">{example.category}</span><span className="rounded-full creator-tone-green px-2 py-1 text-[9px] font-semibold text-[#29CE53]">{example.status}</span></div><h3 className="mt-8 text-xl font-semibold tracking-[-0.04em]">{example.label}</h3><p className="mt-0.5 text-xs leading-5 text-white/50">{example.detail}</p></article>)}</div></section>
       <section className="mt-10"><div className="flex items-end justify-between"><div><p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-zinc-400">Local library</p><h2 className="mt-2 text-2xl font-semibold tracking-[-0.045em]">Previously generated</h2></div>{savedCampaigns.length ? <button type="button" onClick={() => { localStorage.removeItem(STORAGE_KEY); setSavedCampaigns([]) }} className="text-xs font-medium text-zinc-400 hover:text-black">Clear history</button> : null}</div>{savedCampaigns.length ? <div className="mt-5 grid gap-3 md:grid-cols-2 xl:grid-cols-3">{savedCampaigns.map((campaign) => <button key={campaign.id} type="button" onClick={() => { setStep(1); const restored = campaign.slides[0]; const restoredCategories = restored?.categoryScores.map((score) => score.categoryId) ?? []; setFormatId(campaign.formatId); setSlides(campaign.slides); setSelectedSlideId(restored?.id ?? null); setCurrentScore(restored?.currentScore ?? ''); setPotentialScore(restored?.potentialScore ?? ''); setSelectedCategories(restoredCategories); setFeaturedCategory(restored?.categoryId ?? 'eyes'); setOverlayStyle(restored?.overlayStyle ?? 'category'); setCategoryScoreValues(Object.fromEntries((restored?.categoryScores ?? []).map((score) => [score.categoryId, score.value]))); toast.message('Sequence restored. Add the original photos and generate again to preview and export.') }} className="rounded-2xl border border-zinc-200 bg-white p-4 text-left transition-[border-color,transform] duration-150 ease-out hover:border-zinc-300 active:scale-[0.99]"><span className="font-mono text-[9px] uppercase tracking-[0.12em] text-zinc-400">{new Date(campaign.createdAt).toLocaleDateString()} · {campaign.slides.length} slides</span><span className="mt-3 block text-sm font-semibold capitalize">{campaign.name}</span><span className="mt-1 block text-xs text-zinc-400">{outputFormats[campaign.formatId].label}</span></button>)}</div> : <div className="mt-5 rounded-2xl border border-dashed border-zinc-300 p-6 text-sm text-zinc-400">Generated sequences will be saved here. Uploaded photos are not persisted.</div>}</section>
       </details>
       <Dialog open={Boolean(exportedVideo)} onOpenChange={(open) => { if (!open) setExportedVideo(null) }}>
@@ -312,16 +357,20 @@ export default function CtaGeneratorPage() {
           </> : null}
         </DialogContent>
       </Dialog>
-      </div>
+      </motion.div>
+      </motion.div>
+      </motion.div>
+      </LayoutGroup>
+      </MotionConfig>
     </CreatorShell>
   )
 }
 
 function SectionTitle({ icon: Icon, asset, title, detail }: { icon?: LucideIcon; asset?: CreatorIconName; title: string; detail: string }) { return <div className="flex items-center gap-3">{asset ? <CreatorIcon name={asset} className="size-11" /> : Icon ? <span className="grid size-9 place-items-center rounded-xl bg-zinc-100"><Icon className="size-4" /></span> : null}<div><h2 className="text-sm font-semibold tracking-[-0.015em]">{title}</h2><p className="mt-0.5 text-xs text-zinc-400">{detail}</p></div></div> }
 function ScoreField({ label, value, onChange, maximum = 10 }: { label: string; value: string; onChange: (value: string) => void; maximum?: number }) { return <Field label={label} hint={`0–${maximum}`}><input className={fieldClass} inputMode="decimal" min="0" max={maximum} step="0.1" type="number" value={value} placeholder="—" onChange={(event) => onChange(clampScoreInput(event.target.value, maximum))} /></Field> }
-function SubmissionConfirmation({ title }: { title: string }) { return <div role="status" className="rounded-2xl border border-emerald-200 bg-emerald-50 p-4 text-emerald-950"><div className="flex items-start gap-3"><span className="grid size-8 shrink-0 place-items-center rounded-full bg-emerald-600 text-white"><CheckCircle2 className="size-4" /></span><div><p className="text-sm font-semibold">Submitted for approval</p><p className="mt-1 text-[11px] leading-5 text-emerald-800"><span className="font-semibold">{title}</span> is saved in My CTA Library. You can download and reuse it while the admin review is pending.</p></div></div></div> }
-function CtaLibraryCard({ item, variant }: { item: CreatorCtaLibraryItem; variant: 'approved' | 'owned' }) { const video = item.assetContentType === 'video/mp4'; const owned = variant === 'owned'; return <article className="overflow-hidden rounded-2xl border border-zinc-200 bg-white shadow-[0_8px_30px_rgba(15,23,42,0.035)]"><div className="aspect-[4/3] bg-zinc-950">{video ? <video className="size-full object-contain" src={item.assetUrl} controls preload="metadata" /> : <div role="img" aria-label={item.title} className="size-full bg-contain bg-center bg-no-repeat" style={{ backgroundImage: `url(${JSON.stringify(item.assetUrl)})` }} />}</div><div className="p-4"><div className="flex items-start justify-between gap-3"><div className="min-w-0"><h3 className="truncate text-sm font-semibold">{item.title}</h3><p className="mt-1 text-[11px] text-zinc-400">{item.creatorName} · {video ? 'Video (MP4)' : 'Screenshot (PNG)'}</p></div>{owned ? <LibraryStatus status={item.status} /> : null}</div>{owned && item.reviewNote ? <p className="mt-3 rounded-xl bg-zinc-50 p-3 text-xs leading-5 text-zinc-500">{item.reviewNote}</p> : null}<a className="mt-4 flex h-10 items-center justify-center gap-2 rounded-xl bg-black px-3 text-xs font-semibold text-white transition-transform duration-150 ease-out active:scale-[0.98]" href={item.assetUrl} download><Download className="size-3.5" />Download to reuse</a></div></article> }
-function LibraryStatus({ status }: { status: CreatorCtaLibraryItem['status'] }) { const classes = status === 'approved' ? 'bg-emerald-50 text-emerald-700' : status === 'rejected' ? 'bg-red-50 text-red-700' : 'bg-amber-50 text-amber-700'; return <span className={cn('shrink-0 rounded-full px-2 py-1 text-[9px] font-semibold capitalize', classes)}>{status}</span> }
+function SubmissionConfirmation({ title }: { title: string }) { return <div role="status" className="rounded-2xl border border-transparent creator-tone-green p-4 text-zinc-700"><div className="flex items-start gap-3"><span className="grid size-8 shrink-0 place-items-center rounded-full creator-tone-green text-white"><CheckCircle2 className="size-4" /></span><div><p className="text-sm font-semibold">Submitted for approval</p><p className="mt-1 text-[11px] leading-5 text-zinc-700"><span className="font-semibold">{title}</span> is saved in My CTA Library. You can download and reuse it while the admin review is pending.</p></div></div></div> }
+function CtaLibraryCard({ item, variant }: { item: CreatorCtaLibraryItem; variant: 'approved' | 'owned' }) { const video = item.assetContentType === 'video/mp4'; const owned = variant === 'owned'; return <article className="overflow-hidden rounded-2xl border border-zinc-200 bg-white shadow-[0_8px_30px_rgba(15,23,42,0.035)]"><div className="aspect-[4/3] bg-zinc-950">{video ? <video className="size-full object-contain" src={item.assetUrl} controls preload="metadata" /> : <div role="img" aria-label={item.title} className="size-full bg-contain bg-center bg-no-repeat" style={{ backgroundImage: `url(${JSON.stringify(item.assetUrl)})` }} />}</div><div className="p-4"><div className="flex items-start justify-between gap-3"><div className="min-w-0"><h3 className="truncate text-sm font-semibold">{item.title}</h3><p className="mt-0.5 text-[11px] text-zinc-400">{item.creatorName} · {video ? 'Video (MP4)' : 'Screenshot (PNG)'}</p></div>{owned ? <LibraryStatus status={item.status} /> : null}</div>{owned && item.reviewNote ? <p className="mt-3 rounded-xl bg-zinc-50 p-3 text-xs leading-5 text-zinc-500">{item.reviewNote}</p> : null}<a className="mt-4 flex h-10 items-center justify-center gap-2 rounded-xl bg-black px-3 text-xs font-semibold text-white transition-transform duration-150 ease-out active:scale-[0.98]" href={item.assetUrl} download><Download className="size-3.5" />Download to reuse</a></div></article> }
+function LibraryStatus({ status }: { status: CreatorCtaLibraryItem['status'] }) { const classes = status === 'approved' ? 'creator-tone-green text-zinc-700' : status === 'rejected' ? 'creator-tone-red text-red-700' : 'bg-zinc-100 text-zinc-600'; return <span className={cn('shrink-0 rounded-full px-2 py-1 text-[9px] font-semibold capitalize', classes)}>{status}</span> }
 function ImageStatus({ image, onRemove, onRetry, onChange }: { image: GeneratorImage; onRemove: () => void; onRetry: () => void; onChange: (landmarks: NonNullable<GeneratorImage['landmarks']>) => void }) {
   const busy = image.status === 'loading' || image.status === 'detecting'
   return <div className="w-full min-w-0 max-w-sm">
@@ -333,9 +382,9 @@ function ImageStatus({ image, onRemove, onRetry, onChange }: { image: GeneratorI
       <span className="min-w-0 flex-1 truncate text-xs font-medium">{image.name}</span>
       <button type="button" aria-label={`Remove ${image.name}`} onClick={onRemove} className="grid size-11 shrink-0 place-items-center rounded-lg text-zinc-500 hover:bg-zinc-100"><Trash2 className="size-4" /></button>
     </div>
-    <p role="status" className={cn("flex items-center gap-2 text-xs", image.status === 'ready' ? "text-emerald-700" : "text-amber-700")}>{busy ? <Loader2 className="size-3 motion-safe:animate-spin" /> : null}{image.status === 'loading' ? 'Preparing photo…' : image.status === 'detecting' ? 'Mapping your face…' : image.status === 'ready' ? 'Ready' : 'Needs another look'}</p>
+    <p role="status" className={cn("flex items-center gap-2 text-xs", image.status === 'ready' ? "text-zinc-700" : "text-zinc-600")}>{busy ? <Loader2 className="size-3 motion-safe:animate-spin" /> : null}{image.status === 'loading' ? 'Preparing photo…' : image.status === 'detecting' ? 'Mapping your face…' : image.status === 'ready' ? 'Ready' : 'Needs another look'}</p>
     {image.warning ? <p className="mt-2 text-xs leading-5 text-zinc-600">{image.warning}</p> : null}
-    {(image.status === 'warning' || image.status === 'no-face') && image.width > 0 ? <button type="button" className="mt-2 min-h-11 text-xs font-medium text-[#0071e3]" onClick={onRetry}>Retry detection</button> : null}
+    {(image.status === 'warning' || image.status === 'no-face') && image.width > 0 ? <button type="button" className="mt-2 min-h-11 text-xs font-medium text-[#00A8EF]" onClick={onRetry}>Retry detection</button> : null}
     <style jsx>{`
       .photo-shimmer { animation: photo-shimmer 1.4s linear infinite; }
       @keyframes photo-shimmer { from { transform: translateX(-100%); } to { transform: translateX(100%); } }

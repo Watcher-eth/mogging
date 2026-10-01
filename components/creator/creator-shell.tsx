@@ -1,4 +1,4 @@
-import { MoggingWordmark } from '@/components/brand/mogging-wordmark'
+import Image from 'next/image'
 import Link from 'next/link'
 import { useRouter } from 'next/router'
 import { signOut, useSession } from 'next-auth/react'
@@ -45,7 +45,7 @@ export function CreatorShell({ children, allowUnauthenticated = false }: { child
   if (status === 'loading') {
     return (
       <div className="creator-portal grid min-h-[55vh] place-items-center">
-        <div className="flex items-center gap-2.5 text-sm font-medium text-[#6e6e73]">
+        <div className="flex items-center gap-2.5 text-sm font-medium text-[#73777d]">
           <Loader2 className="size-4 animate-spin" />
           Opening Creator Studio
         </div>
@@ -62,14 +62,22 @@ export function CreatorShell({ children, allowUnauthenticated = false }: { child
   if (router.pathname === '/creator/setup') return <>{children}</>
 
   return (
-    <div className="creator-portal w-full">
+    <div className="creator-portal flex w-full flex-1 flex-col">
       <header className="creator-toolbar">
         <div className="shrink-0 px-1">
-          <p className="text-[13px] font-semibold tracking-[-0.015em] text-[#1d1d1f]"><Link href="/creator"><MoggingWordmark /> <span className="font-normal text-zinc-500">/ Creator Studio</span></Link></p>
+          <Link href="/creator" className="flex min-h-11 items-center gap-2.5 text-[13px] font-semibold tracking-[-0.015em] text-[#181a1d]"><Image src="/favicon.png" width={32} height={32} alt="" className="rounded-[9px]" priority /><span>Creator Studio</span></Link>
 
         </div>
 
-        <nav className="creator-toolbar-nav hidden md:flex" aria-label="Creator Studio navigation">
+        <button type="button" onClick={() => setMoreOpen(true)} aria-label="Creator menu" className="grid size-11 place-items-center rounded-full hover:bg-zinc-100"><MoreHorizontal className="size-5" /></button>
+      </header>
+
+      <nav ref={mobileNavRef} aria-label="Mobile creator navigation" className="creator-bottom-nav">
+        {creatorNav.map((item) => <Link key={item.href} href={item.href} aria-current={router.pathname === item.href ? 'page' : undefined} className={cn('creator-toolbar-item', router.pathname === item.href && 'creator-toolbar-item-active')}><CreatorIcon name={item.asset} className="size-[22px]" /><span>{item.label}</span></Link>)}
+      </nav>
+      <Dialog open={moreOpen} onOpenChange={setMoreOpen}><DialogContent className="creator-dialog p-5"><DialogHeader className="text-left"><DialogTitle>Creator Studio</DialogTitle><DialogDescription>Account and support.</DialogDescription></DialogHeader><div className="flex items-center justify-between border-t pt-3 text-sm"><Link href="/support" onClick={() => setMoreOpen(false)} className="p-3">Support</Link><button className="flex min-h-11 items-center gap-2 px-3" onClick={() => void signOut({ callbackUrl: '/' })}><LogOut className="size-4" />Sign out</button></div></DialogContent></Dialog>
+      <div className="creator-workspace flex-1">
+        <nav className="creator-sidebar hidden md:flex" aria-label="Creator Studio navigation">
           {creatorNav.map((item) => {
             const active = router.pathname === item.href
             return (
@@ -85,25 +93,19 @@ export function CreatorShell({ children, allowUnauthenticated = false }: { child
             )
           })}
         </nav>
-        <button type="button" onClick={() => setMoreOpen(true)} aria-label="Creator menu" className="grid size-11 place-items-center rounded-full hover:bg-zinc-100"><MoreHorizontal className="size-5" /></button>
-      </header>
-
-      <nav ref={mobileNavRef} aria-label="Mobile creator navigation" className="creator-bottom-nav">
-        {creatorNav.map((item) => <Link key={item.href} href={item.href} aria-current={router.pathname === item.href ? 'page' : undefined} className={cn('creator-toolbar-item', router.pathname === item.href && 'creator-toolbar-item-active')}><CreatorIcon name={item.asset} className="size-[22px]" /><span>{item.label}</span></Link>)}
-      </nav>
-      <Dialog open={moreOpen} onOpenChange={setMoreOpen}><DialogContent className="creator-dialog p-5"><DialogHeader className="text-left"><DialogTitle>Creator Studio</DialogTitle><DialogDescription>Account and support.</DialogDescription></DialogHeader><div className="flex items-center justify-between border-t pt-3 text-sm"><Link href="/support" onClick={() => setMoreOpen(false)} className="p-3">Support</Link><button className="flex min-h-11 items-center gap-2 px-3" onClick={() => void signOut({ callbackUrl: '/' })}><LogOut className="size-4" />Sign out</button></div></DialogContent></Dialog>
-      <main className="creator-page creator-enter" key={router.pathname}>{children}</main>
+        <main className="creator-page creator-enter" key={router.pathname}>{children}</main>
+      </div>
     </div>
   )
 }
 
-export function CreatorHeader({ eyebrow, title, description, action }: { eyebrow: string; title: string; description: string; action?: ReactNode }) {
+export function CreatorHeader({ eyebrow, title, description, action, titleAccessory }: { eyebrow: string; title: string; description: string; action?: ReactNode; titleAccessory?: ReactNode }) {
   return (
     <header className="creator-page-header">
-      <div className="min-w-0">
-        <p className="hidden text-[11px] font-semibold uppercase sm:block tracking-[0.13em] text-[#86868b]">{eyebrow}</p>
-        <h1 className="mt-2 text-[1.75rem] font-semibold leading-[1.08] tracking-[-0.05em] text-[#1d1d1f] sm:text-[2.65rem]">{title}</h1>
-        <p className="mt-2 max-w-2xl text-sm leading-5 sm:text-[15px] sm:leading-6 text-[#6e6e73]">{description}</p>
+      <div className={cn("min-w-0", titleAccessory && "flex-1")}>
+        <p className="hidden text-[11px] font-semibold uppercase sm:block tracking-[0.13em] text-[#858a91]">{eyebrow}</p>
+        <div className="mt-2 flex items-center justify-between gap-3"><h1 className="text-[1.75rem] font-medium leading-[1.15] tracking-[-0.035em] text-[#181a1d] sm:text-[2.25rem]">{title}</h1>{titleAccessory}</div>
+        <p className="mt-0.5 max-w-2xl text-sm leading-5 sm:text-[15px] sm:leading-6 text-[#73777d]">{description}</p>
       </div>
       {action ? <div className="creator-header-action">{action}</div> : null}
     </header>
@@ -118,7 +120,7 @@ export function Field({ label, hint, children }: { label: string; hint?: string;
     <label className="grid gap-2">
       <span className="flex items-center justify-between gap-4 text-[13px] font-semibold text-[#3a3a3c]">
         <span>{label}</span>
-        {hint ? <span className="text-right text-[11px] font-normal leading-4 text-[#86868b]">{hint}</span> : null}
+        {hint ? <span className="text-right text-[11px] font-normal leading-4 text-[#858a91]">{hint}</span> : null}
       </span>
       {children}
     </label>

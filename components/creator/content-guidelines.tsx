@@ -11,13 +11,13 @@ export function AnalyticsVerificationHelp() {
 export function ContentGuidelines() {
   return (
     <section id="video-requirements" className="scroll-mt-52 border-b border-black/[0.055] p-5 sm:p-6" aria-labelledby="content-standard-title">
-      <p className="text-xs font-semibold text-[#0071e3]">The content standard</p>
+      <p className="text-xs font-semibold text-[#00A8EF]">The content standard</p>
       <h3 id="content-standard-title" className="mt-2 text-xl font-semibold tracking-tight">The looks focus must be unmistakable.</h3>
-      <p className="mt-3 max-w-3xl text-sm leading-6 text-[#6e6e73]">Every video must clearly emphasize the improvement, attractiveness, features, transformation, or potential of someone’s looks. This applies to the footage, on-screen text, and caption. Looksmaxxing, BP (blackpill), or transformation labels alone do not qualify a post. If a moderator has to question whether it is about looks, it is rejected.</p>
-      <p className="mt-3 max-w-3xl text-sm leading-6 text-[#6e6e73]">Mogging pays for access to an audience interested in their appearance. Your framing determines who watches: a celebrity montage can attract fans, a song meme can attract music listeners, and a feature breakdown can attract people who want to understand their own face. High views alone do not make a video eligible.</p>
+      <p className="mt-3 max-w-3xl text-sm leading-6 text-[#73777d]">Every video must clearly emphasize the improvement, attractiveness, features, transformation, or potential of someone’s looks. This applies to the footage, on-screen text, and caption. Looksmaxxing, BP (blackpill), or transformation labels alone do not qualify a post. If a moderator has to question whether it is about looks, it is rejected.</p>
+      <p className="mt-3 max-w-3xl text-sm leading-6 text-[#73777d]">Mogging pays for access to an audience interested in their appearance. Your framing determines who watches: a celebrity montage can attract fans, a song meme can attract music listeners, and a feature breakdown can attract people who want to understand their own face. High views alone do not make a video eligible.</p>
       <div className="mt-5 grid gap-3 sm:grid-cols-2">
-        <div className="rounded-2xl bg-[#e5f7ea]/60 p-4"><h4 className="text-sm font-semibold">What we want</h4><p className="mt-2 text-sm leading-6 text-[#41604a]">Clear feature analysis, genuine before-and-after transformations, explicit attractiveness comparisons, or looks-potential edits. Show Mogging clearly and end by inviting viewers to try it.</p></div>
-        <div className="rounded-2xl bg-red-50 p-4"><h4 className="text-sm font-semibold text-red-800">What we reject</h4><p className="mt-2 text-sm leading-6 text-red-800">Engagement bait, unrelated captions, excluded niches, and fan edits whose looks connection exists only in your intent. Adding a Mogging CTA at the end does not rescue unrelated content.</p></div>
+        <div className="rounded-2xl creator-notice p-4"><h4 className="text-sm font-semibold">What we want</h4><p className="mt-2 text-sm leading-6 text-zinc-600">Clear feature analysis, genuine before-and-after transformations, explicit attractiveness comparisons, or looks-potential edits. Show Mogging clearly and end by inviting viewers to try it.</p></div>
+        <div className="rounded-2xl creator-warning p-4"><h4 className="text-sm font-semibold text-red-800">What we reject</h4><p className="mt-2 text-sm leading-6 text-red-800">Engagement bait, unrelated captions, excluded niches, and fan edits whose looks connection exists only in your intent. Adding a Mogging CTA at the end does not rescue unrelated content.</p></div>
       </div>
       <div className="mt-4 grid gap-2">
         <RuleDetail title="Celebrity edits and the Smallville exception">
@@ -44,19 +44,19 @@ export function ContentGuidelines() {
         </RuleDetail>
         <RuleDetail title="Account reviews, fraud, and payout holds"><p>{accountReviewPolicy}</p><p>Keep evidence genuine and readable. For each video submission, film the post’s analytics with a second device in one continuous take. Show the screen, username, post, views, traffic sources, and audience locations. Screenshots, native screen recordings, cuts, and edits are not accepted. Follow the account-verification recording requirements and provide additional evidence when requested. Content eligibility, account approval, audience geography, view milestones, and payout setup are separate checks; passing one does not waive the others.</p><AnalyticsVerificationHelp /></RuleDetail>
       </div>
-      <Link href="/creator/guide?topic=examples" className="mt-5 inline-flex min-h-11 items-center text-sm font-semibold text-[#0071e3] underline underline-offset-4">Explore screenshots, explanations, and June video references →</Link>
+      <Link href="/creator/guide?topic=examples" className="mt-5 inline-flex min-h-11 items-center text-sm font-semibold text-[#00A8EF] underline underline-offset-4">Explore screenshots, explanations, and June video references →</Link>
     </section>
   )
 }
 
 function RuleDetail({ title, children, prohibited = false }: { title: string; children: React.ReactNode; prohibited?: boolean }) {
-  return <details className={prohibited ? "rounded-2xl border border-red-200 bg-red-50 text-red-800" : "rounded-2xl border border-black/[0.07] bg-white"}><summary className="cursor-pointer px-4 py-4 text-sm font-semibold">{title}</summary><div className="space-y-3 border-t border-black/[0.055] p-4 text-sm leading-6 text-[#6e6e73]">{children}</div></details>
+  return <details className={prohibited ? "rounded-2xl creator-warning text-red-800" : "rounded-2xl border border-black/[0.07] bg-white"}><summary className="cursor-pointer px-4 py-4 text-sm font-semibold">{title}</summary><div className="space-y-3 border-t border-black/[0.055] p-4 text-sm leading-6 text-[#73777d]">{children}</div></details>
 }
 
 export function ContentRequirementsNote() {
-  return <aside className="mb-5 rounded-2xl border border-[#0071e3]/15 bg-[#e8f2ff]/60 p-4 text-sm leading-6"><strong>Make the whole video about looks.</strong><span className="text-[#52677c]"> Footage, text, and captions must explicitly focus on appearance, features, potential, or transformation. No engagement farms or unrelated fan edits. </span><Link href="/creator/guide#video-requirements" className="font-semibold text-[#0071e3] underline underline-offset-4">Read the rules</Link><span className="text-[#52677c]"> · </span><Link href="/creator/guide?topic=examples" className="font-semibold text-[#0071e3] underline underline-offset-4">See examples</Link></aside>
+  return <aside className="creator-notice mb-5 rounded-2xl p-4 text-sm leading-6"><strong>Make the whole video about looks.</strong><span className="text-zinc-600"> Footage, text, and captions must explicitly focus on appearance, features, potential, or transformation. No engagement farms or unrelated fan edits. </span><Link href="/creator/guide#video-requirements" className="font-semibold text-[#00A8EF] underline underline-offset-4">Read the rules</Link><span className="text-zinc-600"> · </span><Link href="/creator/guide?topic=examples" className="font-semibold text-[#00A8EF] underline underline-offset-4">See examples</Link></aside>
 }
 
 export function AccountReviewNote() {
-  return <details className="creator-surface mb-5 p-4"><summary className="cursor-pointer text-sm font-semibold">Account reviews and payout eligibility</summary><p className="mt-3 text-sm leading-6 text-[#6e6e73]">{accountReviewPolicy}</p><Link href="/creator/guide?topic=payout" className="mt-2 inline-flex min-h-11 items-center text-sm font-semibold text-[#0071e3] underline underline-offset-4">Read the payout and audience requirements</Link></details>
+  return <details className="creator-notice mb-5 rounded-2xl p-4"><summary className="cursor-pointer text-sm font-semibold">Account reviews and payout eligibility</summary><p className="mt-3 text-sm leading-6 text-[#73777d]">{accountReviewPolicy}</p><Link href="/creator/guide?topic=payout" className="mt-2 inline-flex min-h-11 items-center text-sm font-semibold text-[#00A8EF] underline underline-offset-4">Read the payout and audience requirements</Link></details>
 }

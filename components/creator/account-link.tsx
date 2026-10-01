@@ -22,14 +22,14 @@ export function AccountLink({ url, accountName, avatarUrl, emptyMessage = 'Link 
   }
 
   return (
-    <div className={cn('flex min-w-0 items-center gap-3 rounded-[14px] bg-[#f5f5f7] px-3 py-2.5', className)}>
-      <Avatar.Root className="grid size-8 shrink-0 place-items-center overflow-hidden rounded-[10px] bg-white text-[#0071e3] shadow-sm">
+    <div className={cn('flex min-w-0 items-center gap-3 rounded-[14px] bg-[#f7f8f9] px-3 py-2.5', className)}>
+      <Avatar.Root className="grid size-8 shrink-0 place-items-center overflow-hidden rounded-[10px] bg-white text-[#00A8EF] shadow-sm">
         <Avatar.Image src={avatarUrl || undefined} alt={accountName ? `${accountName} profile photo` : 'Account profile photo'} className="size-full object-cover" />
         <Avatar.Fallback className="grid size-full place-items-center"><CreatorIcon name="link" className="size-6" /></Avatar.Fallback>
       </Avatar.Root>
       <div className="min-w-0 flex-1">
         <p className="truncate text-[10px] font-semibold text-zinc-400">{accountName || 'Creator Link'}</p>
-        {url ? <a href={url} target="_blank" rel="noreferrer" className="mt-0.5 flex w-fit max-w-full items-center gap-1 truncate text-xs font-medium text-[#0071e3] hover:opacity-70"><span className="truncate">{url}</span><ArrowUpRight className="size-3.5 shrink-0" /></a> : <p className="mt-0.5 text-xs text-[#6e6e73]">{emptyMessage}</p>}
+        {url ? <a href={url} target="_blank" rel="noreferrer" className="mt-0.5 flex w-fit max-w-full items-center gap-1 truncate text-xs font-medium text-[#00A8EF] hover:opacity-70"><span className="truncate">{url}</span><ArrowUpRight className="size-3.5 shrink-0" /></a> : <p className="mt-0.5 text-xs text-[#73777d]">{emptyMessage}</p>}
       </div>
       {url ? <Button type="button" variant="outline" size="sm" className="h-11 shrink-0 rounded-lg bg-white px-2.5 text-xs" onClick={() => void copyLink()}>{copied ? <Check /> : <Copy />}{copied ? 'Copied' : 'Copy'}</Button> : null}
     </div>

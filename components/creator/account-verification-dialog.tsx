@@ -170,8 +170,8 @@ export function AccountVerificationDialog({ account, open, onOpenChange, onSubmi
 
         {presentation === 'dialog' ? <div className="px-5"><CreatorStepper step={step} labels={['Prepare', 'Record', 'Upload']} /></div> : null}
         {presentation === 'page' || step === 1 ? <>
-        <div className="mx-6 rounded-2xl border border-red-200 bg-red-50 p-5 sm:mx-7 sm:p-6">
-          <div className="flex items-start gap-3"><span className="grid size-9 shrink-0 place-items-center rounded-xl bg-red-100 text-red-700"><AlertTriangle className="size-4" /></span><div><p className="text-sm font-semibold text-red-950">Physical Recording Required</p><p className="mt-2 text-xs leading-5 text-red-800">Use a second phone, tablet, or camera to film your main phone or TikTok on a desktop or laptop while you navigate through every required analytics screen. If you only have one phone, use it to film TikTok on your computer. Screen recordings, cuts, edits, hidden usernames, and altered analytics are not accepted.</p><AnalyticsVerificationHelp /><ul className="mt-3 grid gap-1.5 text-xs leading-5 text-red-800"><li>• The physical phone, tablet, or computer screen being filmed must remain visible.</li><li>• Record one continuous take with no cuts or edits.</li><li>• Keep the account username and analytics values readable.</li></ul></div></div>
+        <div className="mx-6 rounded-2xl creator-warning p-5 sm:mx-7 sm:p-6">
+          <div className="flex items-start gap-3"><span className="grid size-9 shrink-0 place-items-center rounded-xl creator-tone-red text-red-700"><AlertTriangle className="size-4" /></span><div><p className="text-sm font-semibold text-red-950">Physical Recording Required</p><p className="mt-2 text-xs leading-5 text-red-800">Use a second phone, tablet, or camera to film your main phone or TikTok on a desktop or laptop while you navigate through every required analytics screen. If you only have one phone, use it to film TikTok on your computer. Screen recordings, cuts, edits, hidden usernames, and altered analytics are not accepted.</p><AnalyticsVerificationHelp /><ul className="mt-3 grid gap-1.5 text-xs leading-5 text-red-800"><li>• The physical phone, tablet, or computer screen being filmed must remain visible.</li><li>• Record one continuous take with no cuts or edits.</li><li>• Keep the account username and analytics values readable.</li></ul></div></div>
         </div>        {presentation === 'dialog' ? <div className="px-6 pb-6"><Button className="h-11 w-full" onClick={() => setStep(2)}>See Recording Steps</Button></div> : null}</> : null}
         {presentation === 'page' || step === 2 ? <div className="px-6 pb-6">
 
@@ -221,5 +221,5 @@ export function AccountVerificationDialog({ account, open, onOpenChange, onSubmi
 
 function VerificationFrame({ presentation, open, onOpenChange, children }: { presentation: 'dialog' | 'page'; open: boolean; onOpenChange: (open: boolean) => void; children: ReactNode }) {
   if (presentation === 'page') return <div className="creator-surface grid gap-6 py-6">{children}</div>
-  return <Dialog open={open} onOpenChange={onOpenChange}><DialogContent className="creator-dialog creator-verification max-h-[92dvh] max-w-5xl overflow-y-auto rounded-[26px] border-white/70 bg-white/95 p-0">{children}</DialogContent></Dialog>
+  return <Dialog open={open} onOpenChange={onOpenChange}><DialogContent className="creator-dialog creator-verification max-h-[92dvh] max-w-5xl overflow-y-auto rounded-[26px] border-zinc-200 bg-white p-0">{children}</DialogContent></Dialog>
 }

@@ -177,7 +177,7 @@ export function AppShell({ children }: AppShellProps) {
   }
 
   return (
-    <div className={creatorSignIn || creatorSetup ? 'flex min-h-dvh flex-col bg-background' : immersive ? 'min-h-screen bg-white' : 'min-h-screen bg-background'}>
+    <div className={creatorRoute ? 'creator-app flex min-h-dvh flex-col' : immersive ? 'min-h-screen bg-white' : 'min-h-screen bg-background'}>
       {!creatorRoute ? <AppHeader>
             {status === 'loading' ? (
               <div className="h-8 w-14 animate-pulse rounded-lg border border-zinc-200 bg-white sm:h-10 sm:w-24" />
@@ -261,7 +261,7 @@ export function AppShell({ children }: AppShellProps) {
             )}
       </AppHeader> : null}
 
-      <main className={creatorSignIn || creatorSetup ? 'flex w-full flex-1 flex-col' : creatorRoute ? 'mx-auto w-full max-w-6xl px-4 sm:px-6' : immersive ? 'w-full' : 'mx-auto w-full max-w-6xl px-4 py-8 sm:px-6'}>
+      <main className={creatorSignIn || creatorSetup ? 'flex w-full flex-1 flex-col' : creatorRoute ? 'mx-auto flex w-full max-w-[1440px] flex-1 flex-col px-4 sm:px-8' : immersive ? 'w-full' : 'mx-auto w-full max-w-6xl px-4 py-8 sm:px-6'}>
         {children}
       </main>
 

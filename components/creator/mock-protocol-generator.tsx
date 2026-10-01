@@ -80,7 +80,7 @@ export function MockProtocolGenerator() {
   const day = days[selectedDay]
   return <div className="grid items-start gap-6 lg:grid-cols-2">
     <section className="creator-surface grid gap-5 p-5 sm:p-6">
-      <div><h2 className="text-lg font-semibold">Mock Protocol</h2><p className="mt-1 text-sm text-zinc-500">Choose a focus area to create a week of daily tasks in the mobile Protocol layout.</p></div>
+      <div><h2 className="text-lg font-semibold">Mock Protocol</h2><p className="mt-0.5 text-sm text-zinc-500">Choose a focus area to create a week of daily tasks in the mobile Protocol layout.</p></div>
       <fieldset disabled={exporting} className="grid gap-4">
         <Field label="Focus area"><select aria-label="Protocol focus area" className={fieldClass} value={focusId} onChange={event => { setFocusId(event.target.value); setDays([]); setOpenedTask(null) }}>{protocolFocusAreas.map(area => <option key={area.id} value={area.id}>{area.label}</option>)}</select></Field>
         <Field label="Week starts"><input aria-label="Protocol week starts" className={fieldClass} type="date" value={startDate} onChange={event => { setStartDate(event.target.value); setDays([]); setOpenedTask(null) }} /></Field>
@@ -97,7 +97,7 @@ export function MockProtocolGenerator() {
       </fieldset> : null}
     </section>
     <section className="grid min-w-0 gap-4 lg:sticky lg:top-28">
-      <div><h2 className="text-sm font-semibold">iPhone protocol preview</h2><p className="mt-1 text-xs text-zinc-500">390 × 844 points · exported at 3× resolution</p></div>
+      <div><h2 className="text-sm font-semibold">iPhone protocol preview</h2><p className="mt-0.5 text-xs text-zinc-500">390 × 844 points · exported at 3× resolution</p></div>
       <div className="mx-auto w-full max-w-[402px] overflow-hidden rounded-[42px] border-[6px] border-zinc-900 bg-white shadow-xl">
         <div ref={frameRef} className="relative w-full" style={{ aspectRatio: '390/844' }}>
           <div ref={captureRef} data-protocol-screen style={{ position: 'absolute', width: 390, height: 844, transform: `scale(${scale})`, transformOrigin: 'top left', background: '#fff', color: '#070709', fontFamily: '-apple-system, BlinkMacSystemFont, "Helvetica Neue", Arial, sans-serif', overflow: 'clip', textAlign: 'left' }}>

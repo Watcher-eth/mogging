@@ -85,7 +85,7 @@ export function FaceAlignmentEditor({ src, landmarks, onChange }: {
     </div>
     <div className="mt-3 flex items-center justify-between gap-3 text-xs">
       <span className="text-zinc-500" role="status">{selected ? selected.replace(/([A-Z])/g, ' $1') : 'Select a point to adjust'}</span>
-      <button type="button" className="min-h-11 shrink-0 font-medium text-[#0071e3]" onClick={() => { setDraft(original.current); onChange(original.current); setSelected(null) }}>Reset alignment</button>
+      <button type="button" className="min-h-11 shrink-0 font-medium text-[#00A8EF]" onClick={() => { setDraft(original.current); onChange(original.current); setSelected(null) }}>Reset alignment</button>
     </div>
   </div>
 }

@@ -99,7 +99,7 @@ export function MockReportGenerator({ images, active, onBack }: { images: Genera
   {desktopReport ? <DesktopMockReport key={desktopReport.id} report={desktopReport} open={desktopOpen && active} onClose={closeDesktop} /> : null}
   <div className="grid items-start gap-6 lg:grid-cols-2">
     <section className="creator-surface grid gap-5 p-5 sm:p-6">
-      <div><h2 className="text-lg font-semibold">Mock report details</h2><p className="mt-1 text-sm text-zinc-500">Choose an iPhone or desktop report and edit its values before generating.</p></div>
+      <div><h2 className="text-lg font-semibold">Mock report details</h2><p className="mt-0.5 text-sm text-zinc-500">Choose an iPhone or desktop report and edit its values before generating.</p></div>
       <Button variant="outline" className="justify-self-start rounded-full" onClick={onBack}>Back to photos</Button>
       <fieldset><legend className="mb-2 text-sm font-medium">Report format</legend><div className="grid grid-cols-2 gap-2">
         {([{ id: 'iphone', label: 'iPhone', icon: Smartphone }, { id: 'desktop', label: 'Desktop', icon: Monitor }] as const).map(option => <label key={option.id} className={`flex min-h-12 cursor-pointer items-center justify-center gap-2 rounded-xl border px-3 text-sm font-semibold transition-colors ${layout === option.id ? 'border-black bg-black text-white' : 'border-zinc-200 bg-white text-zinc-600 hover:bg-zinc-50'} has-[:focus-visible]:ring-2 has-[:focus-visible]:ring-blue-500 has-[:focus-visible]:ring-offset-2`}>
@@ -133,11 +133,11 @@ export function MockReportGenerator({ images, active, onBack }: { images: Genera
     </section>
     {layout === 'desktop' ? <section className="creator-surface grid gap-5 p-6 lg:sticky lg:top-28">
       <Monitor className="size-8 text-zinc-400" />
-      <div><h2 className="text-lg font-semibold">{desktopReport ? 'Desktop report ready' : 'Fullscreen desktop report'}</h2><p className="mt-2 text-sm leading-6 text-zinc-500">Generate to open the analysis page layout with your photo, scores and feature values. Browse categories from the sidebar. Share report saves a PNG.</p></div>
+      <div><h2 className="text-lg font-semibold">{desktopReport ? 'Desktop report ready' : 'Fullscreen desktop report'}</h2><p className="mt-0.5 text-sm leading-6 text-zinc-500">Generate to open the analysis page layout with your photo, scores and feature values. Browse categories from the sidebar. Share report saves a PNG.</p></div>
       {desktopReport ? <Button className="rounded-full" onClick={openDesktop}><Maximize2 className="size-4" />Open fullscreen report</Button> : null}
       <p className="text-xs text-zinc-500">Press Escape or Back to editor to return. Edit values and generate again to update the report.</p>
     </section> : <section className="grid min-w-0 gap-4 lg:sticky lg:top-28">
-      <div><h2 className="text-sm font-semibold">iPhone report preview</h2><p className="mt-1 text-xs text-zinc-500">390 × 844 points · exported at 3× resolution</p></div>
+      <div><h2 className="text-sm font-semibold">iPhone report preview</h2><p className="mt-0.5 text-xs text-zinc-500">390 × 844 points · exported at 3× resolution</p></div>
       {slide ? <>
         <div className="mx-auto w-full max-w-[390px] overflow-hidden rounded-[42px] border-[6px] border-zinc-900 bg-zinc-900 shadow-xl">{active ? <ContentSlidePreview slide={slide} images={images} format={mockReportFormat} /> : null}</div>
         <Field label="Report scroll position" hint="Scroll to the feature grid or Growth Opportunities before exporting"><input aria-label="Report scroll position" className="w-full accent-black" type="range" min={0} max={scrollMax} step={1} value={slide.mockReport?.scroll ?? 0} onChange={event => setSlide({ ...slide, mockReport: { ...slide.mockReport!, scroll: Number(event.target.value) } })} /></Field>
