@@ -1,3 +1,4 @@
+import { SidebarProvider } from '@/components/ui/sidebar'
 import Link from 'next/link'
 import Image from 'next/image'
 import { useEffect, useRef, useState, type ChangeEvent } from 'react'
@@ -262,10 +263,10 @@ export function AppShell({ children }: AppShellProps) {
       </AppHeader> : null}
 
       <main className={creatorSignIn || creatorSetup ? 'flex w-full flex-1 flex-col' : creatorRoute ? 'mx-auto flex w-full max-w-[1440px] flex-1 flex-col px-4 sm:px-8' : immersive ? 'w-full' : 'mx-auto w-full max-w-6xl px-4 py-8 sm:px-6'}>
-        {children}
+        {creatorRoute && !creatorSignIn && !creatorSetup ? <SidebarProvider className="min-h-0 flex-1 flex-col">{children}</SidebarProvider> : children}
       </main>
 
-      {!creatorSetup ? <footer className={`${creatorRoute ? 'pb-28 md:pb-8' : ''} border-t border-zinc-200 bg-white px-5 py-8 text-sm text-zinc-600 sm:px-10`}>
+      {!creatorSetup ? <footer className={`border-t border-zinc-200 bg-white px-5 py-8 text-sm text-zinc-600 sm:px-10`}>
         <nav aria-label="Resources and legal" className="mx-auto flex max-w-6xl flex-wrap gap-x-6 gap-y-4">
           <Link href="/what-is-mogging" className="hover:text-black">What is mogging?</Link>
           <Link href="/how-face-analysis-works" className="hover:text-black">How face analysis works</Link>

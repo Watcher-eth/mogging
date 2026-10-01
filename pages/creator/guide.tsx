@@ -1,25 +1,26 @@
+import { creatorGuideTopics, creatorGuideTopic, creatorGuideHref, type CreatorGuideTopic } from '@/lib/creator/guide-navigation'
 import Link from 'next/link'
 import dynamic from 'next/dynamic'
 import { useRouter } from 'next/router'
 import { useState, type ReactNode } from 'react'
 import {
   ArrowRight,
-  BarChart3,
+  ArrowLeft,
+  Clock3,
+  MessageCircle,
   Calculator,
   CalendarDays,
   Check,
   ChevronDown,
   ExternalLink,
-  ImageIcon,
   Link2,
   ShieldCheck,
   Smartphone,
   TriangleAlert,
-  UsersRound,
 } from 'lucide-react'
 import { CreatorHeader, CreatorShell } from '@/components/creator/creator-shell'
 import { CreatorPayoutCalculator } from '@/components/creator/payout-calculator'
-import { ContentGuidelines, accountReviewPolicy, AnalyticsVerificationHelp } from '@/components/creator/content-guidelines'
+import { ContentGuidelines, accountReviewPolicy, AnalyticsVerificationHelp, discordContactUrl } from '@/components/creator/content-guidelines'
 import { Button } from '@/components/ui/button'
 import useSWR from 'swr'
 import { apiGet } from '@/lib/api/client'
@@ -29,15 +30,6 @@ import { CreatorIcon, type CreatorIconName } from '@/components/creator/creator-
 import { CreatorReferralLinks } from '@/components/creator/referral-links'
 
 const GuideExamples = dynamic(() => import('@/components/creator/guide-examples'), { loading: () => <p className="p-6 text-sm text-[#73777d]" role="status">Loading reference examples…</p> })
-
-type GuideTopic = 'video' | 'examples' | 'account' | 'payout'
-
-const guideTopics = [
-  { id: 'video', label: 'Create a Video', detail: 'Formats and evidence', icon: 'video-submissions' },
-  { id: 'examples', label: 'See Examples', detail: 'What works and why', icon: 'guide' },
-  { id: 'account', label: 'Verify an Account', detail: 'Analytics and bio link', icon: 'accounts' },
-  { id: 'payout', label: 'Understand Payouts', detail: 'Audience and earnings', icon: 'payouts' },
-] as const satisfies ReadonlyArray<{ id: GuideTopic; label: string; detail: string; icon: CreatorIconName }>
 
 const accountChecks = [
   ['Physical recording', 'Use a second phone, tablet, or camera to film your phone or TikTok on a computer. Native screen recordings are not accepted.'],
@@ -49,10 +41,10 @@ const accountChecks = [
 ] as const
 
 const statusItems = [
-  ['Needs Verification', 'Connected, but analytics evidence is still required.', 'warning'],
+  ['Needs Verification', 'Connected, but analytics evidence is still required.', 'neutral'],
   ['Pending Review', 'Verification was submitted and is being checked.', 'warning'],
   ['Approved', 'The account is ready for eligible creator posts.', 'success'],
-  ['Missing Information', 'The team needs clearer or additional evidence.', 'warning'],
+  ['Missing Information', 'The team needs clearer or additional evidence.', 'danger'],
 ] as const
 
 const tierOneCountries = ['United States', 'Canada', 'United Kingdom', 'Australia', 'Germany', 'France', 'Netherlands', 'Sweden', 'Denmark', 'Switzerland', 'New Zealand', 'Poland', 'Italy', 'South Korea']
@@ -60,29 +52,73 @@ const payoutThresholds = ['20K', '40K', '100K', '250K', '500K', '750K', '+1M']
 
 export default function CreatorProgramGuidePage() {
   const router = useRouter()
-  const topic = guideTopics.find((item) => item.id === router.query.topic)?.id ?? 'video'
+  const topic = creatorGuideTopic(router.query.topic, router.asPath)
+  const selectedTopic = creatorGuideTopics.find((item) => item.id === topic)!
 
   return (
     <CreatorShell>
-      <CreatorHeader
-        eyebrow="Creator Resources"
-        title="Creator Guide"
-        description="Choose what you’re working on. We’ll show only the information you need for that step."
-        action={<Button asChild className="h-11 rounded-full px-5"><Link href="/creator/submit">Submit a Video<ArrowRight /></Link></Button>}
-      />
-
-      <CreatorReferralLinks />
-      <TopicPicker selected={topic} onSelect={(nextTopic) => { void router.push({ pathname: '/creator/guide', query: { topic: nextTopic } }, undefined, { shallow: true, scroll: false }) }} />
-
-      <details className="mt-4"><summary className="min-h-11 cursor-pointer py-3 text-sm font-semibold">New here? See the three-step overview</summary><QuickStart /></details>
-      <div className="mt-5">
+      {topic === 'start' ? <>
+        <CreatorHeader eyebrow="Creator Guide" title="Let’s make your next great video." description="Start with what matters. Go deeper when you need to." />
+        <GuideHome />
+      </> : <div className="creator-guide-article w-full">
+        <nav aria-label="Guide breadcrumb" className="mb-7 flex items-center gap-2 text-xs text-[#73777d]"><Link href="/creator/guide" className="inline-flex min-h-11 items-center gap-1.5 hover:text-[#00A8EF]"><ArrowLeft className="size-3.5" />Creator guide</Link><span>/</span><span className="text-[#181a1d]">{selectedTopic.label}</span></nav>
         {topic === 'video' ? <VideoGuide /> : null}
+        {topic === 'improve' ? <ImproveGuide /> : null}
+        {topic === 'rules' ? <RulesGuide /> : null}
         {topic === 'examples' ? <GuideExamples /> : null}
-        {topic === 'account' ? <AccountGuide /> : null}
         {topic === 'payout' ? <PayoutGuide /> : null}
-      </div>
+        {topic === 'account' ? <AccountGuide /> : null}
+        {topic === 'referrals' ? <><GuidePanelHeader eyebrow="Share your link" title="Turn viewers into downloads." description="Use the personal link for the account you publish from so referrals go to the right account." /><CreatorReferralLinks /></> : null}
+        <div className="mt-10 flex flex-wrap items-center justify-between gap-3 border-t border-[#eceef0] pt-5 text-sm"><Link href="/creator/guide" className="inline-flex min-h-11 items-center gap-2 font-medium"><ArrowLeft className="size-4" />All guides</Link><a href={discordContactUrl} target="_blank" rel="noreferrer" className="inline-flex min-h-11 items-center gap-2 text-[#00A8EF]"><MessageCircle className="size-4" />Ask us on Discord</a></div>
+      </div>}
     </CreatorShell>
   )
+}
+
+const startingQuestions = [
+  { topic: 'video', icon: 'video-submissions', title: 'What kind of content should I make?', answer: 'Make an original video about looks: a feature breakdown, transformation, or clear comparison. Show Mogging and finish with a direct call to action.', link: 'Find your format' },
+  { topic: 'improve', icon: 'cta', title: 'How can I improve my content?', answer: 'Start with a clear hook, make the product easy to understand, and check who your content attracts. Learn from examples before your next edit.', link: 'Make a better video' },
+  { topic: 'payout', icon: 'payouts', title: 'How much / when do I get paid?', answer: 'Earnings depend on verified views and audience geography, up to $325 per video. Allow 3–5 days for payouts after approval.', link: 'Understand your earnings' },
+] as const
+
+function GuideHome() {
+  const resources = [
+    ['rules', 'Content rules', 'What qualifies, what gets rejected, and why.'],
+    ['examples', 'Examples & references', 'Real footage, hooks, audience comments, and takeaways.'],
+    ['referrals', 'Your referral links', 'Share the right link before you publish.'],
+    ['account', 'Account verification', 'Record your analytics and understand review status.'],
+  ] as const
+
+  return <>
+    <section aria-label="Start with these questions" className="grid gap-3 lg:grid-cols-3">
+      {startingQuestions.map((item) => <Link key={item.topic} href={creatorGuideHref(item.topic)} className="group flex flex-col rounded-[20px] bg-[#f5f6f7] p-5 transition-colors hover:bg-[#eef0f2] sm:p-6"><CreatorIcon name={item.icon} className="mb-5 size-6 text-[#00A8EF]" /><h2 className="text-lg font-semibold leading-6 tracking-[-0.03em]">{item.title}</h2><p className="mt-3 text-sm leading-6 text-[#73777d]">{item.answer}</p><span className="mt-auto flex items-center justify-between gap-3 pt-6 text-xs font-semibold text-[#00A8EF]">{item.link}<ArrowRight className="size-4 transition-transform duration-150 group-hover:translate-x-0.5" /></span></Link>)}
+    </section>
+    <section className="mt-10" aria-labelledby="explore-guide-title"><p className="text-[11px] font-semibold uppercase tracking-[0.13em] text-[#858a91]">Go a little deeper</p><h2 id="explore-guide-title" className="mt-2 text-xl font-semibold tracking-[-0.03em]">Find exactly what you need.</h2><div className="mt-5 grid gap-x-8 sm:grid-cols-2">{resources.map(([id, title, detail]) => <Link key={id} href={creatorGuideHref(id)} className="group flex items-center justify-between gap-3 border-t border-[#eceef0] py-5"><span><span className="block text-sm font-semibold">{title}</span><span className="mt-1 block text-xs leading-5 text-[#73777d]">{detail}</span></span><ArrowRight className="size-4 shrink-0 text-[#858a91] transition-[color,transform] duration-150 group-hover:translate-x-0.5 group-hover:text-[#00A8EF]" /></Link>)}</div></section>
+    <details className="mt-6 border-t border-[#eceef0] pt-3"><summary className="min-h-11 cursor-pointer py-3 text-sm font-medium">Brand new? See the three-step overview</summary><QuickStart /></details>
+    <div className="mt-8 flex flex-wrap items-center justify-between gap-4 rounded-[16px] bg-[#f5f6f7] px-5 py-4"><div><p className="text-sm font-semibold">A question we haven’t answered?</p><p className="mt-0.5 text-xs text-[#73777d]">We’ll help you figure out your next step.</p></div><a href={discordContactUrl} target="_blank" rel="noreferrer" className="inline-flex min-h-11 items-center gap-2 text-sm font-semibold text-[#00A8EF]">Ask us on Discord<ArrowRight className="size-4" /></a></div>
+  </>
+}
+
+function ImproveGuide() {
+  return <section aria-label="Improve your content">
+    <GuidePanelHeader eyebrow="Improve your content" title="Make every part of your edit count." description="A strong video makes its looks focus clear, shows the product, and attracts people who want to improve their own appearance." />
+    <ol className="divide-y divide-[#eceef0]">{[
+      ['Win the first three seconds', 'Introduce the problem, result, or transformation immediately. Make the hook match the footage and the caption.'],
+      ['Show the product clearly', 'Let viewers understand what Mogging does. Use your own scan, report, or protocol to connect the product to the story.'],
+      ['Give viewers a next step', 'Finish with a direct invitation to try Mogging. Keep the matching account’s personal referral link in its bio.'],
+      ['Read the comments', 'Your framing determines who watches. Look for an audience interested in their own looks, rather than unrelated celebrity fans or music listeners.'],
+    ].map(([title, detail], index) => <li key={title} className="flex gap-5 py-5"><span className="pt-0.5 text-xs tabular-nums text-[#858a91]">0{index + 1}</span><div><h3 className="text-sm font-semibold">{title}</h3><p className="mt-1 text-sm leading-6 text-[#73777d]">{detail}</p></div></li>)}</ol>
+    <GuideDisclosure title="Recommended publishing cadence" meta="Optional guidance"><div className="flex items-start gap-3"><CalendarDays className="mt-0.5 size-5 shrink-0 text-[#00A8EF]" /><div><p className="text-sm font-semibold">Post daily on both platforms when possible.</p><p className="mt-1 text-xs leading-5 text-[#73777d]">The same creative posted to TikTok and Instagram counts as two separate posts and can earn separately. Top editors may publish 6–12 times daily, but quality still matters.</p></div></div></GuideDisclosure>
+    <div className="mt-6 grid gap-3 sm:grid-cols-2"><GuideNext topic="examples" title="Learn from real examples" detail="Inspect the hook, footage, and audience." /><Link href="/creator/cta-generator" className="rounded-[16px] bg-[#f5f6f7] p-5"><h3 className="text-sm font-semibold">Build a clearer product moment</h3><p className="mt-1 text-xs leading-5 text-[#73777d]">Create CTAs, mock reports, and protocols in CTA Studio.</p><ArrowRight className="mt-4 size-4 text-[#00A8EF]" /></Link></div>
+  </section>
+}
+
+function RulesGuide() {
+  return <section aria-label="Content rules"><GuidePanelHeader eyebrow="Content rules" title="Make the looks focus unmistakable." description="Check these standards before publishing. A high view count does not make unrelated content eligible for payment." /><ContentGuidelines /></section>
+}
+
+function GuideNext({ topic, title, detail }: { topic: CreatorGuideTopic; title: string; detail: string }) {
+  return <Link href={creatorGuideHref(topic)} className="group flex items-start justify-between gap-4 rounded-[16px] bg-[#f5f6f7] p-5"><div><h3 className="text-sm font-semibold">{title}</h3><p className="mt-1 text-xs leading-5 text-[#73777d]">{detail}</p></div><ArrowRight className="mt-0.5 size-4 shrink-0 text-[#00A8EF] transition-transform duration-150 group-hover:translate-x-0.5" /></Link>
 }
 
 function QuickStart() {
@@ -110,69 +146,24 @@ function QuickStart() {
   )
 }
 
-function TopicPicker({ selected, onSelect }: { selected: GuideTopic; onSelect: (topic: GuideTopic) => void }) {
-  return (
-    <div className="mt-8">
-      <p className="mb-3 text-[11px] font-semibold uppercase tracking-[0.13em] text-[#858a91]">What do you need help with?</p>
-      <div className="creator-guide-topics grid grid-cols-2 gap-2 xl:grid-cols-4" role="tablist" aria-label="Creator guide topics">
-        {guideTopics.map((item) => {
-          const active = selected === item.id
-          return (
-            <button
-              key={item.id}
-              type="button"
-              role="tab"
-              id={`guide-tab-${item.id}`}
-              tabIndex={active ? 0 : -1}
-              aria-selected={active}
-              aria-controls={`guide-panel-${item.id}`}
-              onClick={() => onSelect(item.id)}
-              onKeyDown={(event) => {
-                const index = guideTopics.findIndex((entry) => entry.id === item.id)
-                const nextIndex = event.key === 'ArrowRight' ? (index + 1) % guideTopics.length : event.key === 'ArrowLeft' ? (index + guideTopics.length - 1) % guideTopics.length : event.key === 'Home' ? 0 : event.key === 'End' ? guideTopics.length - 1 : null
-                if (nextIndex === null) return
-                event.preventDefault()
-                onSelect(guideTopics[nextIndex].id)
-                document.getElementById(`guide-tab-${guideTopics[nextIndex].id}`)?.focus()
-              }}
-              className={cn('flex items-center gap-3 rounded-[10px] border p-3.5 text-left transition-[border-color,background-color] duration-150', active ? 'creator-choice-selected' : 'border-black/[0.07] bg-white/80 text-[#73777d] hover:bg-white')}
-            >
-              <CreatorIcon name={item.icon} className="size-11" />
-              <span><span className="block text-sm font-semibold text-[#181a1d]">{item.label}</span><span className="mt-0.5 block text-[11px]">{item.detail}</span></span>
-            </button>
-          )
-        })}
-      </div>
-    </div>
-  )
-}
-
 function VideoGuide() {
-  const { data } = useSWR<CreatorDashboard>('/api/creator', apiGet)
+  const { data, isLoading, error } = useSWR<CreatorDashboard>('/api/creator', apiGet)
   const formats = data?.availableFormats ?? []
   const [formatId, setFormatId] = useState('')
   const format = formats.find((item) => item.id === formatId) ?? formats[0]
-  if (!format) return null
+  if (!format) return <section><GuidePanelHeader eyebrow="Create content" title="What kind of content should I make?" description="Start with an active brief, then follow its requirements." /><p className="text-sm text-[#73777d]" role="status">{isLoading ? 'Loading active formats…' : error ? 'Formats could not load. Please refresh to try again.' : 'No formats are accepting submissions right now.'}</p></section>
 
   return (
-    <section id="guide-panel-video" role="tabpanel" aria-labelledby="guide-tab-video" className="creator-surface overflow-hidden">
-      <GuidePanelHeader icon="video-submissions" eyebrow="Create a Video" title="Choose one active format" description="Build the post around a single brief, then submit the published link and a continuous analytics recording filmed with a second device." />
-      {format.notAllowed.length > 0 ? <ContentGuidelines /> : null}
+    <section id="guide-panel-video" aria-label="Create content">
+      <GuidePanelHeader eyebrow="Create a Video" title="What kind of content should I make?" description="Build the post around a single brief, then submit the published link and a continuous analytics recording filmed with a second device." />
+      <div className="mb-6"><GuideNext topic="rules" title="Know what qualifies before you edit" detail="Read the looks-focused standards and examples of rejected content." /></div>
 
-      <div className="grid gap-6 p-5 sm:p-6 lg:grid-cols-[220px_minmax(0,1fr)]">
-        <div>
-          <p className="text-xs font-semibold text-[#73777d]">Active formats</p>
-          <div className="mt-2 grid gap-2">
-            {formats.map((item) => {
-              const active = item.id === format.id
-              return <button key={item.id} type="button" onClick={() => setFormatId(item.id)} className={cn('rounded-[14px] px-3.5 py-3 text-left text-sm font-semibold transition-[background-color,color,transform] duration-150 active:scale-[0.98]', active ? 'creator-choice-selected' : 'bg-[#f7f8f9] text-[#73777d] hover:text-[#181a1d]')}>{item.name}</button>
-            })}
-          </div>
-        </div>
+      <div className="grid gap-6">
+        {formats.length > 1 ? <label className="grid gap-2 text-xs font-semibold text-[#73777d]">Active format<select className="creator-field max-w-sm text-sm font-normal text-[#181a1d]" value={format.id} onChange={(event) => setFormatId(event.target.value)}>{formats.map((item) => <option key={item.id} value={item.id}>{item.name}</option>)}</select></label> : null}
 
         <div className="min-w-0">
           <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-            <div><h3 className="text-2xl font-semibold tracking-[-0.04em]">{format.name}</h3><p className="mt-0.5 max-w-2xl text-sm leading-6 text-[#73777d]">{format.shortDescription}</p></div>
+            <div><h3 className="text-2xl font-semibold tracking-[-0.04em]">{format.name}</h3><p className="mt-0.5 text-sm leading-6 text-[#73777d]">{format.shortDescription}</p></div>
             <span className="w-fit shrink-0 rounded-full creator-tone-green px-2.5 py-1 text-[11px] font-semibold text-[#29CE53]">Accepting Submissions</span>
           </div>
 
@@ -191,14 +182,14 @@ function VideoGuide() {
         </div>
       </div>
 
-      <div className="border-t border-black/[0.055] bg-[#f7f8f9]/70 p-5 sm:p-6">
+      <div className="mt-8 border-t border-[#eceef0] pt-6">
         <h3 className="text-sm font-semibold">What you’ll submit</h3>
         <div className="mt-4 grid gap-3 sm:grid-cols-3">
           <Evidence icon={ExternalLink} title="Published Post URL" detail="A public TikTok or Instagram link." />
-          <Evidence icon={ImageIcon} title="Analytics Screenshot" detail="Views, traffic sources, and audience location." />
+          <Evidence icon={Smartphone} title="Physical Analytics Recording" detail="Film with a second device: views, traffic sources, and complete audience location data." />
           <Evidence icon={ShieldCheck} title="Final Confirmation" detail="Confirm the video follows the selected brief." />
         </div>
-        <p className="mt-4 text-xs leading-5 text-[#858a91]">Submit within 30 days of publishing and keep the post public while it is under review.</p>
+        <p className="mt-4 text-xs leading-5 text-[#858a91]">Submit within 30 days of publishing and keep the post public while it is under review.</p><AnalyticsVerificationHelp />
       </div>
     </section>
   )
@@ -206,15 +197,15 @@ function VideoGuide() {
 
 function AccountGuide() {
   return (
-    <section id="guide-panel-account" role="tabpanel" aria-labelledby="guide-tab-account" className="creator-surface overflow-hidden">
-      <GuidePanelHeader icon="accounts" eyebrow="Verify an Account" title="Recording required to connect." description="Upload the account’s audience recording before completing connection. Only complete submissions enter the review queue." action={<Button asChild variant="outline" className="h-10 rounded-full border-black/10 bg-white px-4 text-[#00A8EF]"><Link href="/creator/accounts">Manage Accounts<ArrowRight /></Link></Button>} />
+    <section id="guide-panel-account" aria-label="Account verification">
+      <GuidePanelHeader eyebrow="Verify an Account" title="Recording required to connect." description="Upload the account’s audience recording before completing connection. Only complete submissions enter the review queue." action={<Button asChild variant="outline" className="h-10 rounded-full border-black/10 bg-white px-4 text-[#00A8EF]"><Link href="/creator/accounts">Manage Accounts<ArrowRight /></Link></Button>} />
 
-      <div className="grid gap-5 p-5 sm:p-6 lg:grid-cols-[minmax(0,1.15fr)_minmax(280px,0.85fr)]">
+      <div className="grid gap-5">
         <div>
           <ol className="grid gap-3 sm:grid-cols-3">
             <AccountStep number="1" icon={Link2} title="Profile" detail="Enter the username of the account you want to connect." />
             <AccountStep number="2" icon={Smartphone} title="Recording" detail="Film with a second device and upload the required audience walkthrough." />
-            <AccountStep number="3" icon={ShieldCheck} title="Connect" detail="Complete account connection and submit for review. TikTok requires matching OAuth login." />
+            <AccountStep number="3" icon={ShieldCheck} title="Connect" detail="Complete account connection and submit for review. TikTok normally requires matching OAuth login; creators manually enabled by the team can submit their handle and profile URL instead. Recording is still required." />
           </ol>
 
           <div className="mt-5 grid gap-2">
@@ -228,19 +219,10 @@ function AccountGuide() {
             <GuideDisclosure title="What each review status means" meta="4 statuses">
               <div className="grid gap-2 sm:grid-cols-2">{statusItems.map(([label, detail, tone]) => <StatusRow key={label} label={label} detail={detail} tone={tone} />)}</div>
             </GuideDisclosure>
-            <GuideDisclosure title="Recommended publishing cadence" meta="Optional guidance">
-              <div className="flex items-start gap-3"><CalendarDays className="mt-0.5 size-5 shrink-0 text-[#00A8EF]" /><div><p className="text-sm font-semibold">Post daily on both platforms when possible.</p><p className="mt-1 text-xs leading-5 text-[#73777d]">The same creative posted to TikTok and Instagram counts as two separate posts and can earn separately. Top editors may publish 6–12 times daily, but quality still matters.</p></div></div>
-            </GuideDisclosure>
           </div>
         </div>
 
-        <aside className="h-fit rounded-[18px] bg-[#f7f8f9] p-5">
-          <CreatorIcon name="link" className="size-10" />
-          <p className="mt-5 text-[11px] font-semibold uppercase tracking-[0.13em] text-[#858a91]">Required in every bio</p>
-          <h3 className="mt-2 text-lg font-semibold tracking-[-0.03em]">Use the account’s personal link</h3>
-          <div className="mt-4 rounded-[14px] bg-white p-4 text-sm leading-6 shadow-sm"><p>🧬 Get your Mogging Scan. Ascend in 90 days</p><p>📱 Download Mogging on the App Store</p></div>
-          <p className="mt-4 text-xs leading-5 text-[#73777d]">Each connected account receives a different attribution link. Keep the matching link in that account’s bio while posting for the program.</p>
-        </aside>
+
       </div>
     </section>
   )
@@ -250,18 +232,19 @@ function PayoutGuide() {
   const [calculatorOpen, setCalculatorOpen] = useState(false)
 
   return (
-    <section id="guide-panel-payout" role="tabpanel" aria-labelledby="guide-tab-payout" className="creator-surface overflow-hidden">
-      <GuidePanelHeader icon="payouts" eyebrow="Understand Payouts" title="Views qualify. Audience quality sets the rate." description="Choose the view threshold and audience tier shown in your post analytics. The review team verifies both before approving payment." action={<Button asChild variant="outline" className="h-10 rounded-full border-black/10 bg-white px-4 text-[#00A8EF]"><Link href="/creator/payout-information">Set Up Payouts<ArrowRight /></Link></Button>} />
+    <section id="guide-panel-payout" aria-label="Earnings and payouts">
+      <GuidePanelHeader eyebrow="Understand Payouts" title="How much / when do I get paid?" description="Choose the view threshold and audience tier shown in your post analytics. The review team verifies both before approving payment." action={<Button asChild variant="outline" className="h-10 rounded-full border-black/10 bg-white px-4 text-[#00A8EF]"><Link href="/creator/payout-information">Set Up Payouts<ArrowRight /></Link></Button>} />
 
-      <div className="grid gap-3 p-5 sm:grid-cols-3 sm:p-6">
+      <div className="mb-6 flex items-start gap-3 rounded-[16px] bg-[#f5f6f7] p-4"><Clock3 className="mt-0.5 size-4 shrink-0 text-[#00A8EF]" /><div><h3 className="text-sm font-semibold">Allow 3–5 days for payouts after approval.</h3><p className="mt-1 text-xs leading-5 text-[#73777d]">Crypto is the faster payout method. PayPal processing times may vary by region and account. Track pending and sent payments in the Payouts tab.</p></div></div>
+      <div className="grid gap-3 sm:grid-cols-3">
         <PayoutFact value="20%+" label="Combined Tier-1 audience for base eligibility" />
         <PayoutFact value="22.5%" label="Tier 1 audience where enhanced rates begin" />
         <PayoutFact value="$325" label="Maximum payout for one video" />
       </div>
 
-      <div className="border-t border-black/[0.055] p-5 sm:p-6">
-        <button type="button" onClick={() => setCalculatorOpen((open) => !open)} aria-expanded={calculatorOpen} className="flex w-full items-center gap-4 rounded-[18px] creator-tone-blue p-4 text-left text-[#00A8EF] transition-[background-color,transform] duration-150 hover:creator-tone-blue active:scale-[0.99]">
-          <span className="grid size-10 shrink-0 place-items-center rounded-[14px] bg-white"><Calculator className="size-[18px]" /></span>
+      <div className="mt-6">
+        <button type="button" onClick={() => setCalculatorOpen((open) => !open)} aria-expanded={calculatorOpen} className="flex w-full items-center gap-4 rounded-[16px] bg-[#f5f6f7] p-4 text-left transition-[background-color,transform] duration-150 hover:bg-[#eef0f2] active:scale-[0.99]">
+          <span className="grid size-10 shrink-0 place-items-center rounded-[14px] bg-white text-[#00A8EF]"><Calculator className="size-[18px]" /></span>
           <span className="min-w-0 flex-1"><span className="block text-sm font-semibold text-[#181a1d]">Earnings Calculator</span><span className="mt-0.5 block text-xs text-[#73777d]">Estimate a payout from your actual analytics.</span></span>
           <span className="text-sm font-semibold">{calculatorOpen ? 'Hide' : 'Open'}</span>
         </button>
@@ -275,22 +258,22 @@ function PayoutGuide() {
             <div className="grid grid-cols-3 gap-2 sm:grid-cols-6">{payoutThresholds.map((threshold) => <span key={threshold} className="rounded-[12px] bg-[#f7f8f9] px-2 py-3 text-center text-sm font-semibold">{threshold}</span>)}</div>
             <p className="mt-3 text-xs leading-5 text-[#73777d]">Milestones are cumulative totals, not stacked bonuses. The view count verified during review becomes the payout snapshot.</p>
           </GuideDisclosure>
-          <GuideDisclosure title="Eligible Tier-1 countries" meta={`${tierOneCountries.length} countries`}>
+          <div id="audience-tiers" className="scroll-mt-6"><GuideDisclosure title="Eligible Tier-1 countries" meta={`${tierOneCountries.length} countries`}>
             <div className="flex flex-wrap gap-2">{tierOneCountries.map((country) => <span key={country} className="rounded-full bg-[#f7f8f9] px-3 py-1.5 text-xs font-medium text-[#73777d]">{country}</span>)}</div>
             <p className="mt-3 text-xs leading-5 text-[#73777d]">Any mix of these countries may satisfy the 20% base requirement. Enhanced rates begin when the combined Tier 1 audience reaches 22.5%.</p>
-          </GuideDisclosure>
+          </GuideDisclosure></div>
         </div>
       </div>
 
-      <div className="flex items-start gap-3 border-t border-black/[0.055] bg-[#f7f8f9]/70 p-5 sm:p-6"><CreatorIcon name="lock" className="size-11" /><div><p className="text-sm font-semibold">Add a payout destination before funds are released.</p><p className="mt-1 text-xs leading-5 text-[#73777d]">You may submit content before choosing PayPal or crypto. The destination only needs to be ready before payment is processed.</p></div></div>
+      <div className="mt-6 flex items-start gap-3 rounded-[16px] bg-[#f7f8f9] p-5 sm:p-6"><CreatorIcon name="lock" className="size-11" /><div><p className="text-sm font-semibold">Add a payout destination before funds are released.</p><p className="mt-1 text-xs leading-5 text-[#73777d]">You may submit content before choosing PayPal or crypto. The destination only needs to be ready before payment is processed.</p></div></div>
     </section>
   )
 }
 
-function GuidePanelHeader({ icon, eyebrow, title, description, action }: { icon: CreatorIconName; eyebrow: string; title: string; description: string; action?: ReactNode }) {
+function GuidePanelHeader({ eyebrow, title, description, action }: { eyebrow: string; title: string; description: string; action?: ReactNode }) {
   return (
-    <header className="flex flex-col gap-4 border-b border-black/[0.055] p-5 sm:flex-row sm:items-center sm:justify-between sm:p-6">
-      <div className="flex items-start gap-4"><CreatorIcon name={icon} className="size-14" /><div><p className="text-[11px] font-semibold uppercase tracking-[0.13em] text-[#858a91]">{eyebrow}</p><h2 className="mt-1 text-2xl font-semibold tracking-[-0.04em]">{title}</h2><p className="mt-0.5 max-w-2xl text-sm leading-6 text-[#73777d]">{description}</p></div></div>
+    <header className="mb-7 flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+      <div className="min-w-0"><div><p className="text-[11px] font-semibold uppercase tracking-[0.13em] text-[#858a91]">{eyebrow}</p><h1 className="mt-1 text-[28px] font-medium leading-tight tracking-[-0.04em] sm:text-[32px]">{title}</h1><p className="mt-0.5 text-sm leading-6 text-[#73777d]">{description}</p></div></div>
       {action ? <div className="shrink-0">{action}</div> : null}
     </header>
   )
@@ -298,9 +281,9 @@ function GuidePanelHeader({ icon, eyebrow, title, description, action }: { icon:
 
 function GuideDisclosure({ title, meta, children, tone = 'default' }: { title: string; meta: string; children: ReactNode; tone?: 'default' | 'warning' | 'danger' }) {
   return (
-    <details className={cn('guide-disclosure rounded-[16px] border', tone === 'danger' || tone === 'warning' ? 'creator-warning' : 'creator-notice')}>
+    <details className={cn('guide-disclosure rounded-[16px] border', tone === 'danger' || tone === 'warning' ? 'creator-warning' : 'border-[#eceef0] bg-white')}>
       <summary className="flex cursor-pointer list-none items-center gap-3 px-4 py-3.5 text-sm font-semibold marker:content-none">
-        {tone === 'danger' ? <TriangleAlert className="size-4 shrink-0 text-red-700" /> : tone === 'warning' ? <TriangleAlert className="size-4 shrink-0 text-[#52565c]" /> : <Check className="size-4 shrink-0 text-[#29CE53]" />}
+        {tone === 'danger' ? <TriangleAlert className="size-4 shrink-0 text-red-700" /> : tone === 'warning' ? <TriangleAlert className="size-4 shrink-0 text-[#52565c]" /> : null}
         <span className="min-w-0 flex-1">{title}</span>
         <span className="text-[11px] font-normal text-[#858a91]">{meta}</span>
         <ChevronDown className="guide-disclosure-chevron size-4 shrink-0 text-[#858a91]" />
@@ -322,8 +305,8 @@ function AccountStep({ number, icon: Icon, title, detail }: { number: string; ic
   return <li className="rounded-[16px] bg-[#f7f8f9] p-4"><div className="flex items-center justify-between"><span className="grid size-9 place-items-center rounded-[12px] bg-white text-[#00A8EF] shadow-sm"><Icon className="size-4" /></span><span className="text-[10px] font-semibold text-[#aeaeb2]">{number.padStart(2, '0')}</span></div><p className="mt-4 text-sm font-semibold">{title}</p><p className="mt-1 text-xs leading-5 text-[#73777d]">{detail}</p></li>
 }
 
-function StatusRow({ label, detail, tone }: { label: string; detail: string; tone: 'danger' | 'warning' | 'success' }) {
-  const classes = tone === 'success' ? 'creator-tone-green text-[#29CE53]' : tone === 'warning' ? 'bg-[#f5f6f7] text-[#52565c]' : 'creator-tone-red text-[#F33232]'
+function StatusRow({ label, detail, tone }: { label: string; detail: string; tone: 'danger' | 'warning' | 'success' | 'neutral' }) {
+  const classes = tone === 'success' ? 'bg-[#29CE53] text-white' : tone === 'warning' ? 'bg-[#F5B800] text-white' : tone === 'danger' ? 'bg-[#F33232] text-white' : 'bg-[#52565c] text-white'
   return <div className="rounded-[14px] bg-[#f7f8f9] p-3"><span className={cn('inline-flex rounded-full px-2.5 py-1 text-[11px] font-semibold', classes)}>{label}</span><p className="mt-2 text-xs leading-5 text-[#73777d]">{detail}</p></div>
 }
 

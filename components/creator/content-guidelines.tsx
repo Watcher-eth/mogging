@@ -10,9 +10,8 @@ export function AnalyticsVerificationHelp() {
 
 export function ContentGuidelines() {
   return (
-    <section id="video-requirements" className="scroll-mt-52 border-b border-black/[0.055] p-5 sm:p-6" aria-labelledby="content-standard-title">
-      <p className="text-xs font-semibold text-[#00A8EF]">The content standard</p>
-      <h3 id="content-standard-title" className="mt-2 text-xl font-semibold tracking-tight">The looks focus must be unmistakable.</h3>
+    <section id="video-requirements" className="scroll-mt-6" aria-labelledby="content-standard-title">
+      <h2 id="content-standard-title" className="text-lg font-semibold tracking-tight">Before you publish</h2>
       <p className="mt-3 max-w-3xl text-sm leading-6 text-[#73777d]">Every video must clearly emphasize the improvement, attractiveness, features, transformation, or potential of someone’s looks. This applies to the footage, on-screen text, and caption. Looksmaxxing, BP (blackpill), or transformation labels alone do not qualify a post. If a moderator has to question whether it is about looks, it is rejected.</p>
       <p className="mt-3 max-w-3xl text-sm leading-6 text-[#73777d]">Mogging pays for access to an audience interested in their appearance. Your framing determines who watches: a celebrity montage can attract fans, a song meme can attract music listeners, and a feature breakdown can attract people who want to understand their own face. High views alone do not make a video eligible.</p>
       <div className="mt-5 grid gap-3 sm:grid-cols-2">

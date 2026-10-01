@@ -18,21 +18,21 @@ export default function GuideExamples() {
   const examples = classification === 'acceptable' ? positiveExamples : negativeExamples
 
   return (
-    <section id="guide-panel-examples" role="tabpanel" aria-labelledby="guide-tab-examples" className="creator-surface overflow-hidden">
-      <header className="border-b border-black/[0.055] p-5 sm:p-6">
+    <section id="guide-panel-examples" aria-label="Examples and references" className="overflow-hidden">
+      <header className="border-b border-[#eceef0] pb-6">
         <p className="text-xs font-semibold text-[#00A8EF]">Learn from the references</p>
-        <h2 className="mt-2 text-2xl font-semibold tracking-tight">What we want. What we don’t.</h2>
+        <h1 className="mt-1 text-[28px] font-medium leading-tight tracking-[-0.04em] sm:text-[32px]">Examples & references</h1>
         <p className="mt-3 max-w-3xl text-sm leading-6 text-[#73777d]">Read the hook, look at the footage, then look at the comments. The supplied examples show how those choices attract different audiences. Expand one example at a time for its screenshot, explanation, and a Mogging takeaway.</p>
-        <p className="mt-3 max-w-3xl text-xs leading-5 text-[#73777d]">These are historical content-relevance references, not blanket approval for Mogging or permission to repost someone else’s work. All current requirements still apply: original content, clear product footage, CTA, account verification, and eligible analytics. Explanations and suggested rewrites below are Mogging guidance.</p>
+        <details className="mt-3 text-xs text-[#73777d]"><summary className="cursor-pointer py-2 font-medium">How to use these references</summary><p className="mt-2 max-w-3xl leading-5">These are historical content-relevance references, not blanket approval for Mogging or permission to repost someone else’s work. All current requirements still apply: original content, clear product footage, CTA, account verification, and eligible analytics. Explanations and suggested rewrites below are Mogging guidance.</p></details>
         <div className="mt-5 flex flex-wrap gap-2" aria-label="Example classification">
           {(['acceptable', 'not-acceptable'] as const).map((value) => <button key={value} type="button" aria-pressed={classification === value} onClick={() => setClassification(value)} className={cn('min-h-11 rounded-full border px-4 text-sm font-semibold transition-colors', classification === value ? 'creator-choice-selected' : 'border-black/10 bg-white text-[#73777d] hover:bg-[#f7f8f9]')}>{value === 'acceptable' ? 'What we want' : 'What we don’t want'}</button>)}
         </div>
         <a href="#june-index-title" className="mt-3 inline-flex min-h-11 items-center text-sm font-semibold text-[#00A8EF] underline underline-offset-4">Browse the June video index ↓</a>
       </header>
-      <div className="p-5 sm:p-6" key={classification}>
+      <div className="py-6" key={classification}>
         <div className="mb-4 flex flex-wrap items-center justify-between gap-2"><h3 className="text-sm font-semibold">{examples.length} explained examples</h3><a href={sourceDocs[classification]} target="_blank" rel="noreferrer" className="inline-flex min-h-11 items-center gap-1 text-xs font-semibold text-[#00A8EF]">Original reference document<ExternalLink className="size-3.5" /></a></div>
         <div className="grid gap-2">
-          {examples.map((example, index) => <details key={example.id} name="creator-reference-example" open={index === (classification === 'acceptable' ? 2 : 1)} className="overflow-hidden rounded-2xl border border-black/[0.07]" id={example.id}>
+          {examples.map((example, index) => <details key={example.id} name="creator-reference-example" className="overflow-hidden rounded-2xl border border-black/[0.07]" id={example.id}>
             <summary className="cursor-pointer px-4 py-4 text-sm font-semibold"><span className="mr-3 text-xs tabular-nums text-[#858a91]">{String(index + 1).padStart(2, '0')}</span>{example.title}</summary>
             <div className="border-t border-black/[0.055] p-4 sm:p-5">
               <p className="creator-notice mb-4 rounded-xl p-4 text-sm font-medium leading-6">Source hook: “{example.hook}”</p>

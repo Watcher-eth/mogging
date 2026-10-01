@@ -1,3 +1,5 @@
+import { Sidebar, SidebarContent, SidebarHeader, SidebarFooter, SidebarGroup, SidebarGroupLabel, SidebarGroupContent, SidebarMenu, SidebarMenuItem, SidebarMenuButton, SidebarInset, SidebarTrigger, useSidebar } from '@/components/ui/sidebar'
+import { creatorGuideTopics, creatorGuideTopic, creatorGuideHref } from '@/lib/creator/guide-navigation'
 import Image from 'next/image'
 import Link from 'next/link'
 import { useRouter } from 'next/router'
@@ -7,8 +9,8 @@ import { apiPost } from '@/lib/api/client'
 import {
   Loader2,
 } from 'lucide-react'
-import { useEffect, useRef, useState, type ReactNode } from 'react'
-import { MoreHorizontal, LogOut } from 'lucide-react'
+import { useState, type ReactNode } from 'react'
+import { MoreHorizontal, LogOut, X, MessageCircle } from 'lucide-react'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog'
 import { cn } from '@/lib/utils'
 import { CreatorAuthPrompt } from './creator-auth-prompt'
@@ -23,7 +25,6 @@ const creatorNav: ReadonlyArray<CreatorNavItem> = [
   { href: '/creator/accounts', label: 'Accounts', asset: 'accounts' },
   { href: '/creator/payout-information', label: 'Payouts', asset: 'payouts' },
   { href: '/creator/cta-generator', label: 'CTA Studio', asset: 'cta' },
-  { href: '/creator/guide', label: 'Guide', asset: 'guide' },
 ]
 
 export function CreatorShell({ children, allowUnauthenticated = false }: { children: ReactNode; allowUnauthenticated?: boolean }) {
@@ -35,13 +36,6 @@ export function CreatorShell({ children, allowUnauthenticated = false }: { child
     ([path]) => apiPost(path),
     { errorRetryCount: 3 },
   )
-  const mobileNavRef = useRef<HTMLElement>(null)
-  useEffect(() => {
-    const nav = mobileNavRef.current
-    const active = nav?.querySelector<HTMLElement>('[aria-current="page"]')
-    if (nav && active) nav.scrollLeft = active.offsetLeft - nav.offsetLeft - (nav.clientWidth - active.clientWidth) / 2
-  }, [router.pathname, status])
-
   if (status === 'loading') {
     return (
       <div className="creator-portal grid min-h-[55vh] place-items-center">
@@ -64,36 +58,18 @@ export function CreatorShell({ children, allowUnauthenticated = false }: { child
   return (
     <div className="creator-portal flex w-full flex-1 flex-col">
       <header className="creator-toolbar">
-        <div className="shrink-0 px-1">
+        <div className="flex items-center gap-2"><SidebarTrigger className="size-11" /><div className="shrink-0 px-1">
           <Link href="/creator" className="flex min-h-11 items-center gap-2.5 text-[13px] font-semibold tracking-[-0.015em] text-[#181a1d]"><Image src="/favicon.png" width={32} height={32} alt="" className="rounded-[9px]" priority /><span>Creator Studio</span></Link>
 
-        </div>
+        </div></div>
 
         <button type="button" onClick={() => setMoreOpen(true)} aria-label="Creator menu" className="grid size-11 place-items-center rounded-full hover:bg-zinc-100"><MoreHorizontal className="size-5" /></button>
       </header>
 
-      <nav ref={mobileNavRef} aria-label="Mobile creator navigation" className="creator-bottom-nav">
-        {creatorNav.map((item) => <Link key={item.href} href={item.href} aria-current={router.pathname === item.href ? 'page' : undefined} className={cn('creator-toolbar-item', router.pathname === item.href && 'creator-toolbar-item-active')}><CreatorIcon name={item.asset} className="size-[22px]" /><span>{item.label}</span></Link>)}
-      </nav>
       <Dialog open={moreOpen} onOpenChange={setMoreOpen}><DialogContent className="creator-dialog p-5"><DialogHeader className="text-left"><DialogTitle>Creator Studio</DialogTitle><DialogDescription>Account and support.</DialogDescription></DialogHeader><div className="flex items-center justify-between border-t pt-3 text-sm"><Link href="/support" onClick={() => setMoreOpen(false)} className="p-3">Support</Link><button className="flex min-h-11 items-center gap-2 px-3" onClick={() => void signOut({ callbackUrl: '/' })}><LogOut className="size-4" />Sign out</button></div></DialogContent></Dialog>
-      <div className="creator-workspace flex-1">
-        <nav className="creator-sidebar hidden md:flex" aria-label="Creator Studio navigation">
-          {creatorNav.map((item) => {
-            const active = router.pathname === item.href
-            return (
-              <Link
-                key={item.href}
-                href={item.href}
-                className={cn('creator-toolbar-item', active && 'creator-toolbar-item-active')}
-                aria-current={active ? 'page' : undefined}
-              >
-                <CreatorIcon name={item.asset} className="size-[22px]" />
-                <span>{item.label}</span>
-              </Link>
-            )
-          })}
-        </nav>
-        <main className="creator-page creator-enter" key={router.pathname}>{children}</main>
+      <div className="creator-workspace flex min-w-0 flex-1">
+        <CreatorNavigation />
+        <SidebarInset className="creator-page creator-enter min-w-0 bg-white" key={router.pathname}>{children}</SidebarInset>
       </div>
     </div>
   )
@@ -124,5 +100,33 @@ export function Field({ label, hint, children }: { label: string; hint?: string;
       </span>
       {children}
     </label>
+  )
+}
+
+function CreatorNavigation() {
+  const router = useRouter()
+  const { setOpenMobile } = useSidebar()
+  const inGuide = router.pathname === '/creator/guide'
+  const topic = creatorGuideTopic(router.query.topic, router.asPath)
+
+  return (
+    <Sidebar collapsible="icon" className="creator-navigation">
+      <SidebarHeader className="flex-row items-center justify-between border-b border-[#eceef0] p-4 md:hidden"><span className="text-sm font-semibold">Creator Studio</span><button type="button" aria-label="Close navigation" onClick={() => setOpenMobile(false)} className="grid size-10 place-items-center rounded-xl hover:bg-[#f7f8f9]"><X className="size-5" /></button></SidebarHeader>
+      <SidebarContent className="pt-6">
+        <SidebarGroup>
+          <SidebarGroupLabel>Creator Studio</SidebarGroupLabel>
+          <SidebarGroupContent><SidebarMenu aria-label="Creator Studio navigation">
+            {creatorNav.map((item) => <SidebarMenuItem key={item.href}><SidebarMenuButton asChild isActive={router.pathname === item.href} tooltip={item.label} className="creator-nav-link"><Link href={item.href} aria-label={item.label} aria-current={router.pathname === item.href ? 'page' : undefined} onClick={() => setOpenMobile(false)}><CreatorIcon name={item.asset} className="size-5" /><span>{item.label}</span></Link></SidebarMenuButton></SidebarMenuItem>)}
+          </SidebarMenu></SidebarGroupContent>
+        </SidebarGroup>
+        <SidebarGroup>
+          <SidebarGroupLabel>Creator guide</SidebarGroupLabel>
+          <SidebarGroupContent><SidebarMenu aria-label="Guide topics">
+            {creatorGuideTopics.map((item) => <SidebarMenuItem key={item.id}><SidebarMenuButton asChild isActive={inGuide && topic === item.id} tooltip={item.label} className="creator-guide-nav-link"><Link href={creatorGuideHref(item.id)} aria-label={item.label} aria-current={inGuide && topic === item.id ? 'page' : undefined} onClick={() => setOpenMobile(false)}><CreatorIcon name={item.icon} className="size-4" /><span>{item.label}</span></Link></SidebarMenuButton></SidebarMenuItem>)}
+          </SidebarMenu></SidebarGroupContent>
+        </SidebarGroup>
+      </SidebarContent>
+      <SidebarFooter><SidebarMenu><SidebarMenuItem><SidebarMenuButton asChild tooltip="Discord Support" className="creator-discord-support"><a href="https://discord.gg/rxFDGQPhpX" target="_blank" rel="noreferrer" aria-label="Discord Support" onClick={() => setOpenMobile(false)}><MessageCircle className="size-4" /><span>Discord Support</span></a></SidebarMenuButton></SidebarMenuItem></SidebarMenu></SidebarFooter>
+    </Sidebar>
   )
 }
