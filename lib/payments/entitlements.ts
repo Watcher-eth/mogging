@@ -278,6 +278,7 @@ export async function updateSubscriptionEntitlement(subscription: Stripe.Subscri
   const product = interval && ['week', 'month', 'year'].includes(interval)
     ? ({ week: 'mobile_subscription_weekly', month: 'mobile_subscription_monthly', year: 'mobile_subscription_yearly' } as const)[interval as 'week' | 'month' | 'year']
     : undefined
+  const periodStart = readSubscriptionPeriodStart(subscription)
   await db
     .update(schema.paymentEntitlements)
     .set({
@@ -288,7 +289,15 @@ export async function updateSubscriptionEntitlement(subscription: Stripe.Subscri
       stripeCustomerId: readStripeId(subscription.customer),
       updatedAt: new Date(),
     })
-    .where(eq(schema.paymentEntitlements.stripeSubscriptionId, subscription.id))
+    .where(and(
+      eq(schema.paymentEntitlements.stripeSubscriptionId, subscription.id),
+      // A provider refresh cannot revive a refunded/disputed billing period.
+      // A later paid period may restore this subscription's access.
+      or(
+        sql`coalesce(${schema.paymentEntitlements.subscriptionStatus}, '') not in ('refunded', 'disputed')`,
+        periodStart ? lt(schema.paymentEntitlements.currentPeriodStart, periodStart) : sql`false`
+      )
+    ))
 }
 
 export async function revokePaymentIntentEntitlement({
@@ -331,10 +340,10 @@ async function loadScanAccess(owner: EntitlementOwner, verifiedSubscriber?: Reve
   let rows = await db.query.paymentEntitlements.findMany({ where: getOwnerWhere(owner) })
   // Reconcile provider state, including pre-migration rows and missed webhooks.
   const stripeIds = [...new Set(rows.flatMap(row => row.stripeSubscriptionId ? [row.stripeSubscriptionId] : []))]
-  for (const id of stripeIds) {
+  await Promise.all(stripeIds.map(async (id) => {
     try { await updateSubscriptionEntitlement(await getStripe().subscriptions.retrieve(id)) }
     catch { console.error('Stripe subscription refresh failed; using the last verified billing period', id) }
-  }
+  }))
   if (stripeIds.length) rows = await db.query.paymentEntitlements.findMany({ where: getOwnerWhere(owner) })
   const now = new Date()
   const active = rows.filter(row => activePro(row, now))

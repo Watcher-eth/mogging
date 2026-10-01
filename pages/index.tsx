@@ -87,7 +87,7 @@ const featurePills = [
     icon: Sparkles,
   },
   {
-    label: 'Personalized Improvement Protocol',
+    label: 'Personalized Protocol',
     icon: ClipboardList,
   },
 ]
@@ -205,6 +205,10 @@ export default function AppFunnelPage() {
                   />
                 </div>
               ))}
+            </div>
+
+            <div className="mt-1 text-center">
+              <Link href="/faq" className="inline-flex min-h-11 items-center px-3 text-[11px] leading-4 text-zinc-500 hover:text-zinc-700 focus-visible:rounded focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-zinc-500">FAQ</Link>
             </div>
 
             <ReviewsSection />

@@ -152,6 +152,17 @@ try {
   assert.equal((await getEntitlementSummary(owner)).evaluationCredits, 4, 'provider outage retains verified, unexpired access')
   assert.ok((await create(monthly.id)).token, 'already confirmed receipt works during Stripe outage')
   stripeAvailable = true
+  await sql`UPDATE payment_entitlements SET stripe_payment_intent_id = 'pi_test_subscription_refund' WHERE stripe_checkout_session_id = ${monthly.id}`
+  await revokePaymentIntentEntitlement({ paymentIntentId: 'pi_test_subscription_refund', status: 'refunded' })
+  assert.equal((await getEntitlementSummary(owner)).evaluationCredits, 2, 'subscription refresh cannot revive a refunded period')
+  await assert.rejects(create(monthly.id), /no longer provides active access/)
+  subscription.items.data[0].current_period_start = now + 1
+  subscription.items.data[0].current_period_end = now + 30 * 86400 + 1
+  // Move the fixture back into a currently paid period after proving the guarded update.
+  const { updateSubscriptionEntitlement } = await import('../../lib/payments/entitlements')
+  await updateSubscriptionEntitlement(subscription as any)
+  const [restoredPeriod] = await sql`SELECT subscription_status FROM payment_entitlements WHERE stripe_checkout_session_id = ${monthly.id}`
+  assert.equal(restoredPeriod.subscription_status, 'active', 'later billing period can restore the subscription')
   subscription.status = 'canceled'
   assert.equal((await getEntitlementSummary(owner)).evaluationCredits, 2, 'cancellation cannot spend stale subscription allowances')
   await assert.rejects(create(monthly.id), /no longer provides active access/)

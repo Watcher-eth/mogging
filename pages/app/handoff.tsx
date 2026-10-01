@@ -35,7 +35,7 @@ export default function PaymentHandoffPage() {
 
     async function createHandoff() {
       try {
-        const result = await apiPost<HandoffResponse>('/api/payments/handoff/create', { sessionId })
+        const result = await apiPost<HandoffResponse>('/api/payments/handoff/create', { sessionId }, { signal: AbortSignal.timeout(20_000) })
         if (cancelled) return
         setHandoff(result)
         timer = setTimeout(() => setRetry(value => value + 1), Math.max(1000, Date.parse(result.expiresAt) - Date.now() + 100))
@@ -71,6 +71,8 @@ export default function PaymentHandoffPage() {
     <>
       <Head>
         <title>Open Mogging</title>
+        <meta name="robots" content="noindex, nofollow" />
+        <meta name="referrer" content="no-referrer" />
       </Head>
       <main className="mx-auto flex min-h-[calc(100vh-5rem)] w-full max-w-3xl items-center px-5 py-12 sm:px-10">
         <section className="w-full border-y border-zinc-200 py-10 sm:py-14">
