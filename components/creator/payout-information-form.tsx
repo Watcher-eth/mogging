@@ -5,7 +5,7 @@ import { Check, Loader2, MessageCircle, Zap } from 'lucide-react'
 import useSWR from 'swr'
 import { toast } from 'sonner'
 import { Button } from '@/components/ui/button'
-import { AccountReviewNote } from '@/components/creator/content-guidelines'
+import { AccountReviewNote, discordContactUrl } from '@/components/creator/content-guidelines'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Field, fieldClass } from '@/components/creator/creator-shell'
 import { CreatorIcon } from '@/components/creator/creator-icon'
@@ -14,7 +14,6 @@ import { apiGet, apiPatch, ApiClientError } from '@/lib/api/client'
 import { cn } from '@/lib/utils'
 
 const cryptoNetworks = ['USDC on Solana', 'BASE', 'Ethereum'] as const
-const discordContactUrl = process.env.NEXT_PUBLIC_CREATOR_DISCORD_CONTACT_URL || 'https://discord.com/users/1526677788638056569'
 
 export function PayoutInformation({ email, onSaved }: { email: string; onSaved?: () => Promise<void> }) {
   const { data, mutate } = useSWR<CreatorDashboard>('/api/creator', apiGet)

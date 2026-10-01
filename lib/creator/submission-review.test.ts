@@ -7,10 +7,10 @@ import {
 } from './submission-review'
 
 describe('creator submission review checklist', () => {
-  test('custom submissions require only the closing CTA and seven shared requirements', () => {
+  test('custom submissions require only the closing CTA and eight shared requirements', () => {
     const items = getCreatorSubmissionReviewItems('custom-video-v1')
     const generalItems = getCreatorSubmissionReviewItems('general-creator-video-v1')
-    expect(items).toHaveLength(8)
+    expect(items).toHaveLength(9)
     expect(items[0]).toEqual({
       id: 'element-1',
       label: 'Closing CTA',
@@ -31,6 +31,7 @@ describe('creator submission review checklist', () => {
     expect(items.some((item) => item.label.includes('entire video'))).toBe(true)
     expect(items.some((item) => item.label.includes('Engagement farms'))).toBe(true)
     expect(items.some((item) => item.label.includes('Botted views'))).toBe(true)
+    expect(items.find(item => item.id === 'requirement-8')?.label).toContain('second device')
     expect(creatorSubmissionReviewResultsSchema.safeParse(items.map(({ id }) => ({ id, met: true, note: null }))).success).toBe(true)
   })
   test('builds the checklist from the creator guide format', () => {

@@ -338,6 +338,9 @@ function ReviewDialog({ target, payments, metrics, open, onOpenChange, onRefresh
 function AdminSubmissionEvidence({ submission }: { submission: AdminSubmission }) {
   const [open, setOpen] = useState(false)
   const [zoom, setZoom] = useState(1)
+  if (submission.analyticsScreenshotUrl && submission.analyticsContentType?.startsWith('video/')) {
+    return <div className="bg-zinc-950 p-4"><video src={submission.analyticsScreenshotUrl} controls playsInline preload="metadata" className="max-h-[600px] w-full" /><p className="mt-3 text-xs leading-5 text-white/70">Verify this is one continuous physical recording filmed with a second device. The screen, account username, post, views, traffic sources, and audience locations must be readable.</p></div>
+  }
   if (submission.analyticsScreenshotUrl) {
     return <>
       <button type="button" className="group relative block aspect-video w-full overflow-hidden rounded-t-[27px] bg-zinc-950" onClick={() => { setZoom(1); setOpen(true) }} aria-label="Zoom analytics screenshot">
@@ -427,7 +430,7 @@ function AdminPayoutDecision({
 }) {
   const estimate = getSubmissionPayoutEstimate(selection)
   return <section className="mt-6 rounded-2xl border border-zinc-200 bg-white p-4">
-    <div className="flex items-start justify-between gap-4"><div><p className="text-sm font-semibold">Final payout decision</p><p className="mt-1 text-xs leading-5 text-zinc-500">Verify the screenshot, then choose the values that determine what the creator receives.</p></div>{estimate ? <div className="text-right"><p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-zinc-400">Final payment</p><p className="mt-1 text-2xl font-semibold tracking-[-0.045em]">{formatMoney(estimate.payout * 100, 'USD')}</p></div> : null}</div>
+    <div className="flex items-start justify-between gap-4"><div><p className="text-sm font-semibold">Final payout decision</p><p className="mt-1 text-xs leading-5 text-zinc-500">Verify the analytics evidence, then choose the values that determine what the creator receives.</p></div>{estimate ? <div className="text-right"><p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-zinc-400">Final payment</p><p className="mt-1 text-2xl font-semibold tracking-[-0.045em]">{formatMoney(estimate.payout * 100, 'USD')}</p></div> : null}</div>
     <div className="mt-4 rounded-xl bg-zinc-50 p-3"><p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-zinc-400">Creator submitted</p><div className="mt-2 flex flex-wrap gap-x-5 gap-y-1 text-xs text-zinc-600"><span><strong className="font-semibold text-zinc-900">{submission.viewCountThreshold ? formatViewCount(submission.viewCountThreshold) : 'Not recorded'}</strong> views</span><span><strong className="font-semibold text-zinc-900">{submission.usAudiencePercent !== null ? `${submission.usAudiencePercent}% Tier 1` : '20%+ combined Tier-1'}</strong> audience</span></div></div>
     <div className="mt-4 grid gap-3 sm:grid-cols-2">
       <label className="grid gap-2 text-xs font-semibold text-zinc-700">Admin-approved views<Select value={selection.viewCountThreshold ? String(selection.viewCountThreshold) : undefined} onValueChange={onViewCountChange}><SelectTrigger aria-label="Admin-approved view count"><SelectValue placeholder="Choose final views" /></SelectTrigger><SelectContent>{CREATOR_VIEW_THRESHOLDS.map((threshold) => <SelectItem key={threshold.views} value={String(threshold.views)}>{threshold.label} views</SelectItem>)}</SelectContent></Select></label>

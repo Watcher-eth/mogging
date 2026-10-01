@@ -4,13 +4,13 @@ import { ApiError, handleApiError, json, methodNotAllowed, parseBody } from '@/l
 import { getAuthSession } from '@/lib/auth/session'
 import {
   createCreatorSubmissionAnalyticsUpload,
-  CREATOR_ANALYTICS_IMAGE_TYPES,
-  MAX_CREATOR_SUBMISSION_ANALYTICS_BYTES,
+  CREATOR_VIDEO_TYPES,
+  MAX_CREATOR_ANALYTICS_VIDEO_BYTES,
 } from '@/lib/storage/videos'
 
 const uploadIntentSchema = z.object({
-  contentType: z.enum(CREATOR_ANALYTICS_IMAGE_TYPES),
-  sizeBytes: z.number().int().positive().max(MAX_CREATOR_SUBMISSION_ANALYTICS_BYTES),
+  contentType: z.enum(CREATOR_VIDEO_TYPES),
+  sizeBytes: z.number().int().positive().max(MAX_CREATOR_ANALYTICS_VIDEO_BYTES),
 })
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {

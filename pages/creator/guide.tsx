@@ -19,7 +19,7 @@ import {
 } from 'lucide-react'
 import { CreatorHeader, CreatorShell } from '@/components/creator/creator-shell'
 import { CreatorPayoutCalculator } from '@/components/creator/payout-calculator'
-import { ContentGuidelines, accountReviewPolicy } from '@/components/creator/content-guidelines'
+import { ContentGuidelines, accountReviewPolicy, AnalyticsVerificationHelp } from '@/components/creator/content-guidelines'
 import { Button } from '@/components/ui/button'
 import useSWR from 'swr'
 import { apiGet } from '@/lib/api/client'
@@ -156,7 +156,7 @@ function VideoGuide() {
 
   return (
     <section id="guide-panel-video" role="tabpanel" aria-labelledby="guide-tab-video" className="creator-surface overflow-hidden">
-      <GuidePanelHeader icon="video-submissions" eyebrow="Create a Video" title="Choose one active format" description="Build the post around a single brief, then submit the published link and a clear analytics screenshot." />
+      <GuidePanelHeader icon="video-submissions" eyebrow="Create a Video" title="Choose one active format" description="Build the post around a single brief, then submit the published link and a continuous analytics recording filmed with a second device." />
       {format.notAllowed.length > 0 ? <ContentGuidelines /> : null}
 
       <div className="grid gap-6 p-5 sm:p-6 lg:grid-cols-[220px_minmax(0,1fr)]">
@@ -223,6 +223,7 @@ function AccountGuide() {
             </GuideDisclosure>
             <GuideDisclosure title="Analytics recording checklist" meta="6 checks">
               <div className="grid gap-3 sm:grid-cols-2">{accountChecks.map(([title, detail]) => <div key={title} className="flex items-start gap-3"><span className="mt-0.5 grid size-5 shrink-0 place-items-center rounded-full bg-[#e5f7ea] text-[#248a3d]"><Check className="size-3" /></span><div><p className="text-sm font-semibold">{title}</p><p className="mt-1 text-xs leading-5 text-[#6e6e73]">{detail}</p></div></div>)}</div>
+              <AnalyticsVerificationHelp />
             </GuideDisclosure>
             <GuideDisclosure title="What each review status means" meta="4 statuses">
               <div className="grid gap-2 sm:grid-cols-2">{statusItems.map(([label, detail, tone]) => <StatusRow key={label} label={label} detail={detail} tone={tone} />)}</div>

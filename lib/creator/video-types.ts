@@ -1,3 +1,4 @@
+export const MAX_CREATOR_ANALYTICS_VIDEO_BYTES = 250 * 1024 * 1024
 export const CREATOR_VIDEO_TYPES = ['video/mp4', 'video/quicktime', 'video/webm'] as const
 export type CreatorVideoType = (typeof CREATOR_VIDEO_TYPES)[number]
 

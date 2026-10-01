@@ -16,6 +16,7 @@ const SHARED_REQUIREMENTS = [
   'Make the entire video, on-screen text, and caption clearly looksmaxxing, BP, or transformation related: emphasize appearance, attractiveness, facial features, improvement, or potential',
   'Make the looks focus obvious without a reviewer having to infer it; a celebrity or attractive person alone does not qualify',
   'Use genuine views and engagement, provide accurate analytics, and comply with moderator account reviews',
+  'Provide one continuous physical recording of this post’s analytics filmed with a second device; show the screen, username, post, views, traffic sources, and audience locations without cuts or edits',
 ] as const
 
 const CLOSING_CTA = { title: 'Closing CTA', detail: 'End with a clear invitation for viewers to try Mogging.' } as const

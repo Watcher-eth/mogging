@@ -1,4 +1,4 @@
-import { CREATOR_VIDEO_TYPES } from './video-types'
+import { CREATOR_VIDEO_TYPES, MAX_CREATOR_ANALYTICS_VIDEO_BYTES } from './video-types'
 import { z } from 'zod'
 import { isCreatorViewThreshold } from './payouts'
 
@@ -59,10 +59,11 @@ export const creatorSubmissionSchema = z.object({
   requirementsConfirmed: z.literal(true),
   socialAccountId: z.string().uuid().optional().nullable(),
   postUrl: creatorPostUrlSchema,
-  analyticsScreenshotUrl: z.string().min(1),
+  analyticsVideoUrl: z.string().min(1).max(2048),
+  analyticsPhysicalRecordingConfirmed: z.literal(true),
   analyticsStorageKey: z.string().min(1),
-  analyticsContentType: z.enum(['image/jpeg', 'image/png', 'image/webp']),
-  analyticsSizeBytes: z.number().int().positive().max(10 * 1024 * 1024),
+  analyticsContentType: z.enum(CREATOR_VIDEO_TYPES),
+  analyticsSizeBytes: z.number().int().positive().max(MAX_CREATOR_ANALYTICS_VIDEO_BYTES),
   viewCountThreshold: z.number().refine(isCreatorViewThreshold, 'Choose an available view threshold'),
   usAudiencePercent: z.number().min(22.5).max(40).multipleOf(2.5).optional().nullable(),
 })

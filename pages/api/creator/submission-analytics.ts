@@ -3,8 +3,8 @@ import { ApiError, handleApiError, json, methodNotAllowed } from '@/lib/api/http
 import { getAuthSession } from '@/lib/auth/session'
 import { isR2Configured } from '@/lib/env'
 import {
-  CREATOR_ANALYTICS_IMAGE_TYPES,
-  MAX_CREATOR_SUBMISSION_ANALYTICS_BYTES,
+  CREATOR_VIDEO_TYPES,
+  MAX_CREATOR_ANALYTICS_VIDEO_BYTES,
   storeLocalCreatorVideo,
 } from '@/lib/storage/videos'
 
@@ -20,8 +20,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     const key = Array.isArray(req.query.key) ? req.query.key[0] : req.query.key
     if (!key?.startsWith(`creators/${session.user.id}/submission-analytics/`)) throw new ApiError(400, 'Invalid upload key')
     const contentType = req.headers['content-type']?.split(';')[0]
-    if (!CREATOR_ANALYTICS_IMAGE_TYPES.includes(contentType as (typeof CREATOR_ANALYTICS_IMAGE_TYPES)[number])) {
-      throw new ApiError(400, 'Unsupported screenshot format')
+    if (!CREATOR_VIDEO_TYPES.includes(contentType as (typeof CREATOR_VIDEO_TYPES)[number])) {
+      throw new ApiError(400, 'Choose an MP4, MOV, or WebM recording')
     }
 
     const chunks: Buffer[] = []
@@ -29,10 +29,10 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     for await (const chunk of req) {
       const buffer = Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk)
       size += buffer.byteLength
-      if (size > MAX_CREATOR_SUBMISSION_ANALYTICS_BYTES) throw new ApiError(413, 'Analytics screenshot must be 10 MB or smaller')
+      if (size > MAX_CREATOR_ANALYTICS_VIDEO_BYTES) throw new ApiError(413, 'Analytics recording must be 250 MB or smaller')
       chunks.push(buffer)
     }
-    if (!size) throw new ApiError(400, 'Analytics screenshot is empty')
+    if (!size) throw new ApiError(400, 'Analytics recording is empty')
     await storeLocalCreatorVideo(key, Buffer.concat(chunks))
     return json(res, 201, { uploaded: true })
   } catch (error) {

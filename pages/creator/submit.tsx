@@ -6,14 +6,14 @@ import * as Avatar from '@radix-ui/react-avatar'
 import { SocialPlatformLogo } from '@/components/brand/social-platform-logo'
 import { useRef, useState, type ChangeEvent, type FormEvent } from 'react'
 import { useRouter } from 'next/router'
-import { BadgeCheck, Check, CheckCircle2, ChevronLeft, CircleAlert, Eye, ImageIcon, Loader2, ShieldCheck, UploadCloud, X } from 'lucide-react'
+import { BadgeCheck, Check, CheckCircle2, ChevronLeft, CircleAlert, Eye, FileVideo, Loader2, ShieldCheck, UploadCloud, X } from 'lucide-react'
 import useSWR from 'swr'
 import { toast } from 'sonner'
 import { Button } from '@/components/ui/button'
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { CreatorHeader, CreatorShell, Field, fieldClass } from '@/components/creator/creator-shell'
-import { ContentRequirementsNote } from '@/components/creator/content-guidelines'
+import { ContentRequirementsNote, AnalyticsVerificationHelp } from '@/components/creator/content-guidelines'
 import type { CreatorDashboard, CreatorSocialAccount } from '@/components/creator/types'
 import { apiGet, apiPost, ApiClientError } from '@/lib/api/client'
 import { type CreatorSubmissionFormat } from '@/lib/creator/formats'
@@ -21,7 +21,8 @@ import { calculateCreatorPayout, CREATOR_TIER1_AUDIENCE_TIERS, CREATOR_VIEW_THRE
 import { cn } from '@/lib/utils'
 import { CreatorIcon } from '@/components/creator/creator-icon'
 
-const analyticsImageTypes = ['image/jpeg', 'image/png', 'image/webp']
+import { creatorVideoContentType, CREATOR_VIDEO_ACCEPT, MAX_CREATOR_ANALYTICS_VIDEO_BYTES } from '@/lib/creator/video-types'
+import { uploadAnalyticsRecording } from '@/lib/creator/analytics-upload'
 
 export default function CreatorSubmitPage() {
   return <CreatorShell><SubmitContent /></CreatorShell>
@@ -37,21 +38,24 @@ function SubmitContent() {
   const [requirementsConfirmed, setRequirementsConfirmed] = useState(false)
   const [accountSelection, setAccountSelection] = useState<string | null>(null)
   const [postUrl, setPostUrl] = useState('')
-  const [analyticsScreenshot, setAnalyticsScreenshot] = useState<File | null>(null)
+  const [analyticsRecording, setAnalyticsRecording] = useState<File | null>(null)
   const [viewCountThreshold, setViewCountThreshold] = useState('')
   const [usAudiencePercent, setUsAudiencePercent] = useState('')
   const [submitting, setSubmitting] = useState(false)
+  const [recordingConfirmed, setRecordingConfirmed] = useState(false)
+  const [uploadPercent, setUploadPercent] = useState(0)
   const socialAccountId = accountSelection ?? data?.socialAccounts.find((account) => account.status === 'approved')?.id ?? ''
   const accountRequired = data?.featureFlags.creatorAccountRequiredForSubmission ?? false
 
-  function chooseAnalyticsScreenshot(event: ChangeEvent<HTMLInputElement>) {
+  function chooseAnalyticsRecording(event: ChangeEvent<HTMLInputElement>) {
     const next = event.target.files?.[0] || null
     event.target.value = ''
     if (!next) return
-    if (!next.size) return toast.error('Choose a non-empty screenshot')
-    if (!analyticsImageTypes.includes(next.type)) return toast.error('Choose a JPEG, PNG, or WebP screenshot')
-    if (next.size > 10 * 1024 * 1024) return toast.error('Analytics screenshot must be 10 MB or smaller')
-    setAnalyticsScreenshot(next)
+    if (!next.size) return toast.error('Choose a non-empty recording')
+    if (!creatorVideoContentType(next)) return toast.error('Choose an MP4, MOV, M4V, or WebM recording')
+    if (next.size > MAX_CREATOR_ANALYTICS_VIDEO_BYTES) return toast.error('Analytics recording must be 250 MB or smaller')
+    setRecordingConfirmed(false)
+    setAnalyticsRecording(next)
   }
 
   function continueToAnalytics(event: FormEvent) {
@@ -68,20 +72,23 @@ function SubmitContent() {
 
   function review(event: FormEvent) {
     event.preventDefault()
-    if (!analyticsScreenshot) return toast.error('Add an analytics screenshot to continue')
+    if (!analyticsRecording) return toast.error('Add a physical analytics recording to continue')
+    if (!recordingConfirmed) return toast.error('Confirm the recording was filmed with a second device')
     if (!viewCountThreshold) return toast.error('Choose the view threshold for this submission')
     setRequirementsConfirmed(false)
     setStep(3)
   }
 
   async function submit() {
-    if (!analyticsScreenshot || !formatId || !postUrl || !viewCountThreshold || !requirementsConfirmed) return
+    if (!analyticsRecording || !formatId || !postUrl || !viewCountThreshold || !requirementsConfirmed || !recordingConfirmed) return
+    const contentType = creatorVideoContentType(analyticsRecording)
+    if (!contentType) return toast.error('Choose a supported recording')
     setSubmitting(true)
+    setUploadPercent(0)
     try {
-      const intent = await apiPost<{ key: string; publicUrl: string; uploadUrl: string; method: 'PUT' | 'POST' }>('/api/creator/submission-analytics-upload-intent', { contentType: analyticsScreenshot.type, sizeBytes: analyticsScreenshot.size })
-      const response = await fetch(intent.uploadUrl, { method: intent.method, headers: { 'Content-Type': analyticsScreenshot.type }, body: analyticsScreenshot })
-      if (!response.ok) throw new Error('Analytics screenshot upload failed')
-      await apiPost('/api/creator/submissions', { formatId, requirementsConfirmed: true, socialAccountId: socialAccountId || null, postUrl, analyticsScreenshotUrl: intent.publicUrl, analyticsStorageKey: intent.key, analyticsContentType: analyticsScreenshot.type, analyticsSizeBytes: analyticsScreenshot.size, viewCountThreshold: Number(viewCountThreshold), usAudiencePercent: usAudiencePercent ? Number(usAudiencePercent) : null })
+      const intent = await apiPost<{ key: string; publicUrl: string; uploadUrl: string; method: 'PUT' | 'POST' }>('/api/creator/submission-analytics-upload-intent', { contentType, sizeBytes: analyticsRecording.size })
+      await uploadAnalyticsRecording(intent, analyticsRecording, contentType, setUploadPercent)
+      await apiPost('/api/creator/submissions', { formatId, requirementsConfirmed: true, socialAccountId: socialAccountId || null, postUrl, analyticsVideoUrl: intent.publicUrl, analyticsPhysicalRecordingConfirmed: true, analyticsStorageKey: intent.key, analyticsContentType: contentType, analyticsSizeBytes: analyticsRecording.size, viewCountThreshold: Number(viewCountThreshold), usAudiencePercent: usAudiencePercent ? Number(usAudiencePercent) : null })
       toast.success('Video submitted for review')
       void router.push('/creator/submissions')
     } catch (error) {
@@ -120,15 +127,17 @@ function SubmitContent() {
         </section>
         <section className="t-page" data-page-id="2" inert={step !== 2} aria-hidden={step !== 2}>
           <form onSubmit={review} className="creator-surface grid gap-7 p-5 sm:p-7">
-            <div><p className="text-xs font-semibold uppercase tracking-[0.15em] text-zinc-400">Analytics Evidence</p><h2 className="mt-2 text-2xl font-semibold tracking-[-0.04em]">Confirm the Performance Snapshot</h2><p className="mt-2 max-w-2xl text-sm leading-6 text-zinc-500">Choose the threshold you are submitting for and upload the screenshot we should use to confirm the view count, traffic sources, and audience location.</p></div>
-            <Field label="Video Analytics Screenshot" hint="Required · JPEG, PNG or WebP · max 10 MB">
-              <input ref={inputRef} className="sr-only" type="file" accept="image/jpeg,image/png,image/webp" onChange={chooseAnalyticsScreenshot} />
-              {analyticsScreenshot ? <div className="flex items-center gap-3 rounded-[16px] bg-[#f5f5f7] p-3"><span className="grid size-11 shrink-0 place-items-center rounded-[13px] bg-white text-[#0071e3] shadow-sm"><ImageIcon className="size-5" /></span><div className="min-w-0 flex-1"><p className="truncate text-sm font-medium">{analyticsScreenshot.name}</p><p className="mt-0.5 text-xs text-[#6e6e73]">{formatBytes(analyticsScreenshot.size)} · analytics evidence</p></div><button type="button" className="grid size-9 place-items-center rounded-full text-[#86868b] transition-[background-color,color,transform] duration-150 hover:bg-white hover:text-[#1d1d1f] active:scale-[0.96]" onClick={() => { setAnalyticsScreenshot(null); if (inputRef.current) inputRef.current.value = '' }} aria-label="Remove analytics screenshot"><X className="size-4" /></button></div> : <button type="button" onClick={() => inputRef.current?.click()} className="group grid min-h-44 place-items-center rounded-[18px] border border-dashed border-black/15 bg-[#f5f5f7]/70 p-6 text-center transition-[border-color,background-color,transform] duration-150 hover:border-[#0071e3]/40 hover:bg-[#f5f5f7] active:scale-[0.99]"><span><span className="mx-auto grid size-11 place-items-center rounded-[14px] bg-white text-[#0071e3] shadow-sm transition-transform duration-200 group-hover:-translate-y-0.5"><UploadCloud className="size-5" /></span><span className="mt-4 block text-sm font-semibold">Choose Analytics Screenshot</span><span className="mt-1 block max-w-md text-xs leading-5 text-[#6e6e73]">Include traffic sources and audience location so the team can verify where views came from.</span></span></button>}
+            <div><p className="text-xs font-semibold uppercase tracking-[0.15em] text-zinc-400">Analytics Evidence</p><h2 className="mt-2 text-2xl font-semibold tracking-[-0.04em]">Confirm the Performance Snapshot</h2><p className="mt-2 max-w-2xl text-sm leading-6 text-zinc-500">Choose the threshold you are submitting for and upload one continuous recording filmed with a second device. Show the published post, account username, view count, traffic sources, and complete audience location breakdown.</p></div>
+            <div className="rounded-2xl border border-red-200 bg-red-50 p-4 text-sm leading-6 text-red-900"><p className="font-semibold">Physical recording required for every submission</p><p className="mt-2">Use a second phone, tablet, or camera to film your analytics screen. If you have one phone, use it to film the analytics on your computer. Keep the physical screen, account username, post identity, and analytics values readable in one continuous take. Screenshots, native screen recordings, cuts, edits, and altered analytics are not accepted.</p><AnalyticsVerificationHelp /></div>
+            <Field label="Video Analytics Recording" hint="Required · MP4, MOV, M4V or WebM · max 250 MB">
+              <input ref={inputRef} className="sr-only" type="file" accept={CREATOR_VIDEO_ACCEPT} onChange={chooseAnalyticsRecording} />
+              {analyticsRecording ? <div className="flex items-center gap-3 rounded-[16px] bg-[#f5f5f7] p-3"><span className="grid size-11 shrink-0 place-items-center rounded-[13px] bg-white text-[#0071e3] shadow-sm"><FileVideo className="size-5" /></span><div className="min-w-0 flex-1"><p className="truncate text-sm font-medium">{analyticsRecording.name}</p><p className="mt-0.5 text-xs text-[#6e6e73]">{formatBytes(analyticsRecording.size)} · analytics evidence</p></div><button type="button" className="grid size-9 place-items-center rounded-full text-[#86868b] transition-[background-color,color,transform] duration-150 hover:bg-white hover:text-[#1d1d1f] active:scale-[0.96]" onClick={() => { setAnalyticsRecording(null); if (inputRef.current) inputRef.current.value = '' }} aria-label="Remove analytics recording"><X className="size-4" /></button></div> : <button type="button" onClick={() => inputRef.current?.click()} className="group grid min-h-44 place-items-center rounded-[18px] border border-dashed border-black/15 bg-[#f5f5f7]/70 p-6 text-center transition-[border-color,background-color,transform] duration-150 hover:border-[#0071e3]/40 hover:bg-[#f5f5f7] active:scale-[0.99]"><span><span className="mx-auto grid size-11 place-items-center rounded-[14px] bg-white text-[#0071e3] shadow-sm transition-transform duration-200 group-hover:-translate-y-0.5"><UploadCloud className="size-5" /></span><span className="mt-4 block text-sm font-semibold">Choose Analytics Recording</span><span className="mt-1 block max-w-md text-xs leading-5 text-[#6e6e73]">Film your phone, tablet, or computer screen with another device while opening the post’s analytics.</span></span></button>}
             </Field>
+            <label className="flex cursor-pointer items-start gap-3 rounded-2xl border border-zinc-200 p-4 text-sm leading-6 text-zinc-600"><input type="checkbox" checked={recordingConfirmed} onChange={(event) => setRecordingConfirmed(event.target.checked)} className="mt-1 size-4 shrink-0 accent-black" /><span>I confirm this is an unedited physical recording filmed with a second device, showing this post’s analytics and complete audience location data.</span></label>
             <div className="grid gap-5 sm:grid-cols-2">
               <Field label="View Count Threshold" hint="Required"><Select value={viewCountThreshold || undefined} onValueChange={setViewCountThreshold} required><SelectTrigger><SelectValue placeholder="Choose a Threshold" /></SelectTrigger><SelectContent>{CREATOR_VIEW_THRESHOLDS.map((threshold) => <SelectItem key={threshold.views} value={String(threshold.views)}>{threshold.label} views</SelectItem>)}</SelectContent></Select></Field>
               <div className="grid gap-2">
-                <div className="flex items-center justify-between text-sm font-medium"><label htmlFor="submission-audience-tier">Tier 1 Audience</label><span className="text-xs font-normal text-zinc-400">Based on screenshot</span></div>
+                <div className="flex items-center justify-between text-sm font-medium"><label htmlFor="submission-audience-tier">Tier 1 Audience</label><span className="text-xs font-normal text-zinc-400">Based on recording</span></div>
                 <Select value={usAudiencePercent || 'base'} onValueChange={(value) => setUsAudiencePercent(value === 'base' ? '' : value)}><SelectTrigger id="submission-audience-tier"><SelectValue /></SelectTrigger><SelectContent><SelectItem value="base">20%+ combined Tier-1 · base rate</SelectItem>{CREATOR_TIER1_AUDIENCE_TIERS.map((percentage) => <SelectItem key={percentage} value={String(percentage)}>{percentage === 40 ? '40%+ Tier 1' : `${percentage}% Tier 1`}</SelectItem>)}</SelectContent></Select>
                 <p className="text-[11px] leading-5 text-zinc-500">Choose the combined Tier 1 percentage shown in your analytics. If it is below 22.5%, use the combined Tier-1 base rate. <Link href="/creator/guide#audience-tiers" className="font-semibold text-zinc-700 underline decoration-zinc-300 underline-offset-4 transition-colors hover:text-black">See audience eligibility in the guide.</Link></p>
               </div>
@@ -140,10 +149,10 @@ function SubmitContent() {
         <section className="t-page" data-page-id="3" inert={step !== 3} aria-hidden={step !== 3}>
           <div className="creator-surface p-5 sm:p-7">
             <div className="flex items-start justify-between gap-4"><div><p className="text-xs font-semibold uppercase tracking-[0.15em] text-zinc-400">Ready to Submit</p><h2 className="mt-2 text-2xl font-semibold tracking-[-0.04em]">{selectedFormat?.name}</h2></div><span className="rounded-full bg-zinc-100 px-3 py-1.5 text-xs font-medium">{platform}</span></div>
-            <div className="mt-7 grid gap-3 rounded-2xl bg-zinc-50 p-4 text-sm"><ReviewRow label="Format" value={selectedFormat?.name || ''} /><ReviewRow label="Account" value={selectedAccount ? creatorAccountLabel(selectedAccount) : 'Not connected'} /><ReviewRow label="Account Eligibility" value={linkedToApprovedAccount ? 'Approved' : 'Not approved'} /><ReviewRow label="Published Post" value={postUrl} /><ReviewRow label="Analytics Screenshot" value={analyticsScreenshot?.name || ''} /><ReviewRow label="View Count Threshold" value={`${formatViewCount(Number(viewCountThreshold))} views`} /><ReviewRow label="Tier 1 Audience" value={usAudiencePercent ? `${usAudiencePercent}%` : 'Default 20% Tier 1 Audience'} /><ReviewRow label="Status" value="Not submitted" /></div>
+            <div className="mt-7 grid gap-3 rounded-2xl bg-zinc-50 p-4 text-sm"><ReviewRow label="Format" value={selectedFormat?.name || ''} /><ReviewRow label="Account" value={selectedAccount ? creatorAccountLabel(selectedAccount) : 'Not connected'} /><ReviewRow label="Account Eligibility" value={linkedToApprovedAccount ? 'Approved' : 'Not approved'} /><ReviewRow label="Published Post" value={postUrl} /><ReviewRow label="Analytics Recording" value={analyticsRecording?.name || ''} /><ReviewRow label="View Count Threshold" value={`${formatViewCount(Number(viewCountThreshold))} views`} /><ReviewRow label="Tier 1 Audience" value={usAudiencePercent ? `${usAudiencePercent}%` : 'Default 20% Tier 1 Audience'} /><ReviewRow label="Status" value="Not submitted" /></div>
             {!linkedToApprovedAccount ? <div className="mt-5 flex gap-3 rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm leading-6 text-amber-950"><CircleAlert className="mt-0.5 size-4 shrink-0 text-amber-600" /><p>This submission will be marked as <strong className="font-semibold">not connected to an approved account</strong>.</p></div> : null}
             <label className={cn('mt-6 flex cursor-pointer items-start gap-3 rounded-2xl border p-4 transition-[border-color,background-color,transform] duration-150 ease-out active:scale-[0.995]', requirementsConfirmed ? 'border-emerald-200 bg-emerald-50/70' : 'border-zinc-200 bg-white')}><input type="checkbox" className="mt-0.5 size-4 rounded border-zinc-300 accent-emerald-600" checked={requirementsConfirmed} onChange={(event) => setRequirementsConfirmed(event.target.checked)} /><span><span className="block text-sm font-semibold">I checked the {selectedFormat?.name} requirements</span><span className="mt-1 block text-xs leading-5 text-zinc-500">I confirm this video follows the complete format brief and is ready for review.</span></span></label>
-            <div className="creator-actions mt-8 flex flex-col-reverse gap-2 sm:flex-row sm:justify-between"><Button variant="ghost" className="h-11 rounded-full" onClick={() => setStep(2)} disabled={submitting}><ChevronLeft />Back to Analytics</Button><Button className="h-11 rounded-full px-5" onClick={() => void submit()} disabled={submitting || !requirementsConfirmed}>{submitting ? <Loader2 className="animate-spin" /> : <Check />} {submitting ? 'Uploading Analytics…' : 'Submit Video'}</Button></div>
+            <div className="creator-actions mt-8 flex flex-col-reverse gap-2 sm:flex-row sm:justify-between"><Button variant="ghost" className="h-11 rounded-full" onClick={() => setStep(2)} disabled={submitting}><ChevronLeft />Back to Analytics</Button><Button className="h-11 rounded-full px-5" onClick={() => void submit()} disabled={submitting || !requirementsConfirmed}>{submitting ? <Loader2 className="animate-spin" /> : <Check />} {submitting ? `Uploading Analytics ${uploadPercent}%…` : 'Submit Video'}</Button></div>
           </div>
         </section>
       </div>

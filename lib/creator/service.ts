@@ -8,7 +8,7 @@ import { getAvailableCreatorSubmissionFormats } from '@/lib/creator/format-acces
 import { ensureCreatorTrackingLink } from '@/lib/creator/attribution'
 
 export { creatorProfileSchema, creatorSubmissionSchema, creatorSocialAccountSchema, creatorAccountAnalyticsSubmissionSchema } from './validation'
-import { creatorPostPlatform, creatorAnalyticsEvidenceSchema, creatorAccountAnalyticsSubmissionSchema, type CreatorProfileInput, type CreatorSubmissionInput, type CreatorSocialAccountInput, type CreatorAnalyticsEvidenceInput } from './validation'
+import { creatorSubmissionSchema, creatorPostPlatform, creatorAnalyticsEvidenceSchema, creatorAccountAnalyticsSubmissionSchema, type CreatorProfileInput, type CreatorSubmissionInput, type CreatorSocialAccountInput, type CreatorAnalyticsEvidenceInput } from './validation'
 
 export type CreatorTikTokOAuthInput = {
   accessToken: string
@@ -335,11 +335,18 @@ export async function getOrCreateCreatorProfile(userId: string) {
 }
 
 export async function createCreatorSubmission(userId: string, input: CreatorSubmissionInput) {
+  input = creatorSubmissionSchema.parse(input)
   const profile = await getOrCreateCreatorProfile(userId)
   const format = getAvailableCreatorSubmissionFormats(profile).find((format) => format.id === input.formatId)
   if (!format) throw new CreatorServiceError(403, 'This submission format is not available for your account')
-  if (!input.analyticsStorageKey.startsWith(`creators/${userId}/submission-analytics/`)) {
-    throw new CreatorServiceError(400, 'Invalid analytics screenshot upload')
+  const prefix = `creators/${userId}/submission-analytics/`
+  if (!input.analyticsStorageKey.startsWith(prefix) || !/^[0-9a-f-]{36}\.(mp4|mov|webm)$/.test(input.analyticsStorageKey.slice(prefix.length))) {
+    throw new CreatorServiceError(400, 'Invalid analytics recording upload')
+  }
+  try {
+    await verifyCreatorRecordingUpload(input.analyticsStorageKey, input.analyticsSizeBytes, input.analyticsContentType)
+  } catch {
+    throw new CreatorServiceError(400, 'Upload the complete physical analytics recording before submitting this video')
   }
   const socialAccount = input.socialAccountId ? await db.query.creatorSocialAccounts.findFirst({
     where: and(
@@ -373,6 +380,7 @@ export async function createCreatorSubmission(userId: string, input: CreatorSubm
       videoStorageKey: null,
       videoContentType: null,
       videoSizeBytes: null,
+      // Retain the existing evidence column so historical screenshots stay viewable.
       analyticsScreenshotUrl: creatorAssetPublicUrl(input.analyticsStorageKey),
       analyticsStorageKey: input.analyticsStorageKey,
       analyticsContentType: input.analyticsContentType,

@@ -2,6 +2,12 @@ import Link from 'next/link'
 
 export const accountReviewPolicy = 'Complete any account review requested by the moderation team. Payouts are held until requested evidence is provided and the review is resolved. Confirmed botting on even one video puts all earnings at risk.'
 
+export const discordContactUrl = process.env.NEXT_PUBLIC_CREATOR_DISCORD_CONTACT_URL || 'https://discord.com/users/1526677788638056569'
+
+export function AnalyticsVerificationHelp() {
+  return <p className="mt-3 text-xs leading-5">Don’t have two devices? <a href={discordContactUrl} target="_blank" rel="noreferrer" className="font-semibold underline underline-offset-4">Message us on Discord</a> and we’ll arrange a video call to verify your analytics live.</p>
+}
+
 export function ContentGuidelines() {
   return (
     <section id="video-requirements" className="scroll-mt-52 border-b border-black/[0.055] p-5 sm:p-6" aria-labelledby="content-standard-title">
@@ -36,7 +42,7 @@ export function ContentGuidelines() {
           <p>The strongest signal in the reference material is viewers discussing their own looks: asking about potential, ratings / PSL, or specific facial features, sometimes sharing their own photos. PSL here is appearance-rating terminology; the app creators should promote is Mogging.</p>
           <p>Song requests, plot discussions, school jokes, tagging friends, and repetitive “claim” comments suggest a different audience. Use this feedback to improve the next edit. Comments are a diagnostic signal, not a required quota or a guarantee of approval; the video still has to meet every rule. Never fabricate the desired comments.</p>
         </RuleDetail>
-        <RuleDetail title="Account reviews, fraud, and payout holds"><p>{accountReviewPolicy}</p><p>Keep evidence genuine and readable. Follow the account-verification recording requirements and provide additional evidence when requested. Content eligibility, account approval, audience geography, view milestones, and payout setup are separate checks; passing one does not waive the others.</p></RuleDetail>
+        <RuleDetail title="Account reviews, fraud, and payout holds"><p>{accountReviewPolicy}</p><p>Keep evidence genuine and readable. For each video submission, film the post’s analytics with a second device in one continuous take. Show the screen, username, post, views, traffic sources, and audience locations. Screenshots, native screen recordings, cuts, and edits are not accepted. Follow the account-verification recording requirements and provide additional evidence when requested. Content eligibility, account approval, audience geography, view milestones, and payout setup are separate checks; passing one does not waive the others.</p><AnalyticsVerificationHelp /></RuleDetail>
       </div>
       <Link href="/creator/guide?topic=examples" className="mt-5 inline-flex min-h-11 items-center text-sm font-semibold text-[#0071e3] underline underline-offset-4">Explore screenshots, explanations, and June video references →</Link>
     </section>
