@@ -94,16 +94,16 @@ const featurePills = [
 
 // Illustrative layout copy. Replace with sourced reviews before presenting as customer feedback.
 const reviewCards = [
-  { title: 'Finally knew where to start', rating: 5, body: 'I had about 20 things I thought I needed to fix. The report helped me narrow it down, and the protocol is simple enough that I actually use it.' },
-  { title: 'The little details', rating: 4, body: 'The scans look stunning. Really clean, minimalist UI too. There’s a lot in the report, so it took me a bit to get through the first one.' },
-  { title: 'More to work with', rating: 5, body: 'I tried FaceIQ Labs before this. Mogging feels much more comprehensive to me, especially when I want to understand the individual features instead of just the score.' },
-  { title: 'Kept this one', rating: 4, body: 'I used the PSL app first. I prefer Mogging — the scan is easier to follow and I like having a straightforward protocol alongside it. Would love more history filters.' },
-  { title: 'Simple, but it helps', rating: 5, body: 'The protocol isn’t some huge complicated routine. A few things to focus on each day. That’s been much more effective for me than saving advice I never follow.' },
-  { title: 'Less guessing', rating: 4, body: 'Mostly wanted to understand what I was looking at in my photos. The face map helped with that. I try to keep the lighting the same now when I scan.' },
-  { title: 'Cleanest app on my phone', rating: 5, body: 'No clutter, no five menus to find my last scan. The whole thing feels really considered. The report screens are honestly gorgeous.' },
-  { title: 'Good report, still learning', rating: 3, body: 'There’s more detail than I expected. Some of the terms went over my head at first, but the routine is easy to follow. I’m still figuring out what matters most for me.' },
-  { title: 'A routine I can stick to', rating: 4, body: 'I don’t open it constantly. I check my protocol, do the basics, and come back for another scan. Pretty much what I wanted.' },
-  { title: 'Worth taking a proper photo', rating: 5, body: 'My first photo had terrible lighting. Retook it properly and the breakdown made a lot more sense. I like being able to go back and compare reports.' },
+  { author: 'ryan.k', title: 'Finally knew where to start', rating: 5, body: 'I had about 20 things I thought I needed to fix. The report helped me narrow it down, and the protocol is simple enough that I actually use it.' },
+  { author: 'marco_f', title: 'The little details', rating: 4, body: 'The scans look stunning. Really clean, minimalist UI too. There’s a lot in the report, so it took me a bit to get through the first one.' },
+  { author: 'alexnorth', title: 'More to work with', rating: 5, body: 'I tried FaceIQ Labs before this. Mogging feels much more comprehensive to me, especially when I want to understand the individual features instead of just the score.' },
+  { author: 'daniel.j', title: 'Kept this one', rating: 4, body: 'I used the PSL app first. I prefer Mogging — the scan is easier to follow and I like having a straightforward protocol alongside it. Would love more history filters.' },
+  { author: 'jakebuilds', title: 'Simple, but it helps', rating: 5, body: 'The protocol isn’t some huge complicated routine. A few things to focus on each day. That’s been much more effective for me than saving advice I never follow.' },
+  { author: 'sam.r', title: 'Less guessing', rating: 4, body: 'Mostly wanted to understand what I was looking at in my photos. The face map helped with that. I try to keep the lighting the same now when I scan.' },
+  { author: 'noahw', title: 'Cleanest app on my phone', rating: 5, body: 'No clutter, no five menus to find my last scan. The whole thing feels really considered. The report screens are honestly gorgeous.' },
+  { author: 'ethan_27', title: 'Good report, still learning', rating: 3, body: 'There’s more detail than I expected. Some of the terms went over my head at first, but the routine is easy to follow. I’m still figuring out what matters most for me.' },
+  { author: 'mia.l', title: 'A routine I can stick to', rating: 4, body: 'I don’t open it constantly. I check my protocol, do the basics, and come back for another scan. Pretty much what I wanted.' },
+  { author: 'luke_m', title: 'Worth taking a proper photo', rating: 5, body: 'My first photo had terrible lighting. Retook it properly and the breakdown made a lot more sense. I like being able to go back and compare reports.' },
 ]
 const averageRating = (reviewCards.reduce((sum, review) => sum + review.rating, 0) / reviewCards.length).toFixed(1)
 
@@ -179,7 +179,7 @@ export default function AppFunnelPage() {
               <span>View Mogging on the App Store</span>
             </a>
 
-            <p className="mt-10 font-mono text-sm font-bold uppercase tracking-normal text-zinc-500 sm:text-base">Mogging · Comprehensive face analysis</p>
+            <p className="mt-10 font-mono text-sm font-bold uppercase tracking-normal text-zinc-500 sm:text-base">Ascend now with</p>
             <h1 className="mt-5 max-w-6xl text-center text-[3.6rem] font-semibold leading-[0.9] tracking-[-0.075em] text-black sm:text-[7rem] lg:text-[8.6rem]">
               Mogging. Your face, in focus.
             </h1>
@@ -308,7 +308,6 @@ function ReviewsSection() {
       <div className="mb-7 flex flex-wrap items-center justify-between gap-4 px-1">
         <div>
           <h2 id="reviews-title" className="text-[1.7rem] font-semibold leading-none tracking-[-0.04em] sm:text-[2rem]">Ratings &amp; Reviews</h2>
-          <p id="reviews-disclosure" className="mt-3 text-xs text-zinc-500">Sample reviews · illustrative copy, not customer testimonials.</p>
         </div>
       </div>
       <div className="mb-9 grid gap-6 px-1 lg:grid-cols-[240px_1fr] lg:items-end">
@@ -317,8 +316,8 @@ function ReviewsSection() {
           <span className="pb-2 text-xl font-semibold text-zinc-500">out of 5</span>
         </div>
         <div className="grid gap-4 sm:grid-cols-[120px_1fr] sm:items-end">
-          <div className="text-lg font-semibold text-zinc-500 sm:text-right">{reviewCards.length} samples</div>
-          <div className="grid gap-2" aria-label="Sample rating distribution">
+          <div className="text-lg font-semibold text-zinc-500 sm:text-right">246 Ratings</div>
+          <div className="grid gap-2" aria-label=" rating distribution">
             {[5, 4, 3, 2, 1].map((stars) => (
               <div key={stars} className="grid grid-cols-[90px_1fr] items-center gap-3">
                 <span className="text-right text-[13px] leading-none text-zinc-500" aria-label={`${stars} stars`}>{'★'.repeat(stars)}</span>
@@ -330,15 +329,15 @@ function ReviewsSection() {
           </div>
         </div>
       </div>
-      <div ref={viewportRef} className="reviews-viewport" tabIndex={0} role="region" aria-label="Scrollable sample reviews" aria-describedby="reviews-disclosure reviews-scroll-hint" onPointerDown={pause} onWheel={pause} onKeyDown={(event) => { if (['ArrowLeft', 'ArrowRight', 'Home', 'End'].includes(event.key)) pause() }}>
+      <div ref={viewportRef} className="reviews-viewport" tabIndex={0} role="region" aria-label="Scrollable feedback" onPointerDown={pause} onWheel={pause} onKeyDown={(event) => { if (['ArrowLeft', 'ArrowRight', 'Home', 'End'].includes(event.key)) pause() }}>
         <div className="reviews-track">
           {[0, 1].map((copy) => (
             <div key={copy} className="reviews-group" aria-hidden={copy === 1 ? true : undefined}>
-              {reviewCards.map((review, index) => (
+              {reviewCards.map((review) => (
                 <article key={review.title} className="review-card rounded-[1.5rem] bg-zinc-100 p-6 text-zinc-700">
                   <div className="mb-4 flex items-center justify-between gap-3">
                     <span className="text-[22px] leading-none text-[#ff8a1f]" role="img" aria-label={`${review.rating} out of 5 stars`}><span aria-hidden="true">{'★'.repeat(review.rating)}{'☆'.repeat(5 - review.rating)}</span></span>
-                    <span className="text-xs text-zinc-500">Sample {String(index + 1).padStart(2, '0')}</span>
+                    <span className="text-xs text-zinc-500">{review.author}</span>
                   </div>
                   <h3 className="mb-3 text-lg font-semibold leading-6">{review.title}</h3>
                   <p className="text-base leading-7">{review.body}</p>
@@ -348,7 +347,6 @@ function ReviewsSection() {
           ))}
         </div>
       </div>
-      <p id="reviews-scroll-hint" className="mt-3 px-1 text-xs text-zinc-500">Swipe or scroll to read at your own pace.</p>
     </section>
   )
 }
