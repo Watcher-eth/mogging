@@ -4,7 +4,7 @@ import { ApiError, handleApiError, json, methodNotAllowed, parseBody } from '@/l
 import { enforceRateLimit } from '@/lib/api/rateLimit'
 import { createCreatorAttributionClick } from '@/lib/creator/attribution'
 
-const inputSchema = z.object({ slug: z.string().trim().toLowerCase().min(3).max(200).regex(/^[a-z0-9._-]+$/) })
+const inputSchema = z.object({ slug: z.string().trim().toLowerCase().min(1).max(200).regex(/^[a-z0-9._-]+$/) })
 
 // Public creator codes are not credentials. Only the server can mint signed click tokens.
 // This records an explicit referral touch, never an inferred or deferred install.

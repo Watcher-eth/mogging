@@ -35,7 +35,7 @@ export async function ensureCreatorTrackingLink(socialAccountId: string) {
     where: eq(schema.creatorTrackingLinks.socialAccountId, socialAccountId),
   })
   if (existing) {
-    const publicUrl = `${CREATOR_LINK_BASE_URL}/r/${existing.slug}`
+    const publicUrl = existing.publicUrl || `${CREATOR_LINK_BASE_URL}/r/${existing.slug}`
     if (!existing.isActive || existing.publicUrl !== publicUrl || existing.deepLinkBaseUrl !== CREATOR_APP_DEEP_LINK) {
       const [updated] = await db.update(schema.creatorTrackingLinks).set({
         isActive: true,
@@ -43,9 +43,9 @@ export async function ensureCreatorTrackingLink(socialAccountId: string) {
         deepLinkBaseUrl: CREATOR_APP_DEEP_LINK,
         updatedAt: new Date(),
       }).where(eq(schema.creatorTrackingLinks.id, existing.id)).returning()
-      return updated
+      return syncCreatorTrackingLinkHandle(updated)
     }
-    return existing
+    return syncCreatorTrackingLinkHandle(existing)
   }
 
   const account = await db.query.creatorSocialAccounts.findFirst({
@@ -67,7 +67,34 @@ export async function ensureCreatorTrackingLink(socialAccountId: string) {
     target: schema.creatorTrackingLinks.socialAccountId,
     set: { isActive: true, publicUrl: `${CREATOR_LINK_BASE_URL}/r/${slug}`, deepLinkBaseUrl: CREATOR_APP_DEEP_LINK, updatedAt: new Date() },
   }).returning()
-  return link
+  return syncCreatorTrackingLinkHandle(link)
+}
+
+export async function syncCreatorTrackingLinkHandle(link: typeof schema.creatorTrackingLinks.$inferSelect) {
+  return db.transaction(async (tx) => {
+    // Serialize updates for this link, without reassigning any previously published alias.
+    await tx.execute(sql`select id from creator_tracking_links where id = ${link.id} for update`)
+    const account = await tx.query.creatorSocialAccounts.findFirst({
+      where: eq(schema.creatorSocialAccounts.id, link.socialAccountId),
+    })
+    if (!account) throw new Error('Creator social account not found')
+    const handle = account.handle?.trim().replace(/^@/, '').toLowerCase()
+    if (!handle || !/^[a-z0-9._]{1,40}$/.test(handle)) return link
+    const candidates = [handle, `${handle}-${account.platform}`, `${handle}-${account.platform}-${account.id}`]
+    for (const slug of candidates) {
+      const canonical = await tx.query.creatorTrackingLinks.findFirst({ where: eq(schema.creatorTrackingLinks.slug, slug) })
+      if (canonical && canonical.id !== link.id) continue
+      await tx.insert(schema.creatorTrackingLinkAliases).values({ slug, trackingLinkId: link.id }).onConflictDoNothing()
+      const alias = await tx.query.creatorTrackingLinkAliases.findFirst({ where: eq(schema.creatorTrackingLinkAliases.slug, slug) })
+      if (alias?.trackingLinkId !== link.id) continue
+      const publicUrl = `${CREATOR_LINK_BASE_URL}/r/${slug}`
+      if (link.publicUrl === publicUrl) return link
+      const [updated] = await tx.update(schema.creatorTrackingLinks).set({ publicUrl, updatedAt: new Date() })
+        .where(eq(schema.creatorTrackingLinks.id, link.id)).returning()
+      return updated
+    }
+    throw new Error('Could not reserve a unique creator referral handle')
+  })
 }
 
 export async function setCreatorTrackingLinkActive(socialAccountId: string, isActive: boolean) {
@@ -80,10 +107,16 @@ export async function createCreatorAttributionClick(input: {
   referrer?: string | null
   userAgent?: string | null
 }) {
-  const link = await db.query.creatorTrackingLinks.findFirst({
-    where: and(eq(schema.creatorTrackingLinks.slug, input.slug), eq(schema.creatorTrackingLinks.isActive, true)),
+  let link = await db.query.creatorTrackingLinks.findFirst({
+    where: eq(schema.creatorTrackingLinks.slug, input.slug),
   })
-  if (!link) return null
+  if (!link) {
+    const alias = await db.query.creatorTrackingLinkAliases.findFirst({
+      where: eq(schema.creatorTrackingLinkAliases.slug, input.slug),
+    })
+    if (alias) link = await db.query.creatorTrackingLinks.findFirst({ where: eq(schema.creatorTrackingLinks.id, alias.trackingLinkId) })
+  }
+  if (!link?.isActive) return null
   // Apply current campaign configuration to existing links without rewriting their destination.
   link.iosAppStoreUrl = buildIosAppStoreUrl(link.slug, link.iosAppStoreUrl)
   const isBot = isLinkPreviewOrBot(input.userAgent || '')

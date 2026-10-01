@@ -759,6 +759,13 @@ export const creatorTrackingLinks = pgTable(
   })
 )
 
+// Public URLs can change while attribution keeps the original tracking-link identity.
+export const creatorTrackingLinkAliases = pgTable('creator_tracking_link_aliases', {
+  slug: text('slug').primaryKey(),
+  trackingLinkId: text('tracking_link_id').notNull().references(() => creatorTrackingLinks.id, { onDelete: 'cascade' }),
+  createdAt: timestamp('created_at', { mode: 'date' }).notNull().defaultNow(),
+}, table => [index('creator_tracking_link_aliases_link_idx').on(table.trackingLinkId)])
+
 export const creatorAttributionClicks = pgTable(
   'creator_attribution_clicks',
   {
