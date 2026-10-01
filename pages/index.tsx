@@ -71,6 +71,10 @@ const appScreenshots = [
     src: '/app-screenshots/tracking-baseline.png',
     alt: 'Mogging evaluation history showing symmetry progress over time',
   },
+  {
+    src: '/app-screenshots/leaderboard-global.png',
+    alt: 'Mogging global leaderboard with rankings and a top-three podium',
+  },
 ]
 
 const featurePills = [
@@ -83,7 +87,7 @@ const featurePills = [
     icon: Sparkles,
   },
   {
-    label: 'Personalized Protocol',
+    label: 'Personalized Improvement Protocol',
     icon: ClipboardList,
   },
 ]
@@ -185,17 +189,17 @@ export default function AppFunnelPage() {
           </div>
 
           <div
-            className="mt-16 w-full sm:mt-20"
+            className="mx-auto mt-16 w-full max-w-6xl sm:mt-20"
           >
-            <div className="flex snap-x snap-mandatory gap-5 overflow-x-auto pb-4 pr-5 sm:justify-center sm:gap-6 sm:overflow-visible sm:pr-0">
+            <div className="flex snap-x snap-mandatory gap-5 overflow-x-auto pb-4 sm:gap-6 lg:grid lg:grid-cols-4 lg:overflow-visible">
               {appScreenshots.map((screenshot, index) => (
-                <div key={screenshot.src} className="w-[74vw] min-w-[260px] max-w-[340px] shrink-0 snap-start overflow-hidden rounded-[2rem] border border-zinc-200 bg-white sm:w-[30%] sm:rounded-[2.25rem]">
+                <div key={screenshot.src} className="w-[74vw] min-w-[260px] max-w-[340px] shrink-0 snap-start overflow-hidden rounded-[2rem] border border-zinc-200 bg-white sm:w-[280px] sm:rounded-[2.25rem] lg:w-auto lg:min-w-0 lg:max-w-none">
                   <Image
                     src={screenshot.src}
                     alt={screenshot.alt}
                     width={1242}
                     height={2688}
-                    sizes="(max-width: 639px) 74vw, 30vw"
+                    sizes="(max-width: 639px) 74vw, (max-width: 1023px) 280px, (max-width: 1279px) 23vw, 270px"
                     className="block h-auto w-full"
                     priority={index === 0}
                   />
@@ -296,7 +300,7 @@ function ReviewsSection() {
   }
 
   return (
-    <section aria-labelledby="reviews-title" className="mx-auto mt-16 w-full max-w-7xl py-2 text-zinc-950 sm:mt-20">
+    <section aria-labelledby="reviews-title" className="mx-auto mt-16 w-full py-2 text-zinc-950 sm:mt-20">
       <div className="mb-7 flex flex-wrap items-center justify-between gap-4 px-1">
         <div>
           <h2 id="reviews-title" className="text-[1.7rem] font-semibold leading-none tracking-[-0.04em] sm:text-[2rem]">Ratings &amp; Reviews</h2>

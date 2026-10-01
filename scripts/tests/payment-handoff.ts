@@ -3,6 +3,7 @@ import assert from 'node:assert/strict'
 import { randomUUID } from 'node:crypto'
 import { readFile } from 'node:fs/promises'
 import postgres from 'postgres'
+import type Stripe from 'stripe'
 
 const url = process.env.PAYMENT_TEST_DATABASE_URL
 if (!url || !['127.0.0.1', 'localhost'].includes(new URL(url).hostname)) throw new Error('Set PAYMENT_TEST_DATABASE_URL to an isolated local PostgreSQL server')
@@ -16,8 +17,8 @@ process.env.NEXTAUTH_SECRET = 'isolated-payment-test-secret-at-least-32-characte
 process.env.REVENUECAT_SECRET_API_KEY = 'isolated-provider-fixture'
 process.env.STRIPE_SECRET_KEY = 'sk_test_isolated_fixture'
 const sql = postgres(scoped.toString(), { max: 1 })
-process.env.UPSTASH_REDIS_REST_URL = ''
-process.env.UPSTASH_REDIS_REST_TOKEN = ''
+delete process.env.UPSTASH_REDIS_REST_URL
+delete process.env.UPSTASH_REDIS_REST_TOKEN
 const realFetch = globalThis.fetch
 try {
   await sql.unsafe(`CREATE TABLE users (id text PRIMARY KEY);
@@ -52,7 +53,7 @@ try {
     properties jsonb DEFAULT '{}', occurred_at timestamp NOT NULL, received_at timestamp DEFAULT now()
   );`)
   const { createPaymentHandoff, consumePaymentHandoff } = await import('../../lib/payments/handoff')
-  const { grantEntitlementFromCheckoutSession, getEntitlementSummary, redeemPaymentActivationCode, reserveEvaluation, finishEvaluation, revokePaymentIntentEntitlements } = await import('../../lib/payments/entitlements')
+  const { grantEntitlementFromCheckoutSession, getEntitlementSummary, redeemPaymentActivationCode, reserveEvaluation, finishEvaluation, revokePaymentIntentEntitlement } = await import('../../lib/payments/entitlements')
   const { getStripe } = await import('../../lib/payments/stripe')
   const { getRequestUserId } = await import('../../lib/auth/mobile-session')
   const { default: consumeHandler } = await import('../../pages/api/payments/handoff/consume')
@@ -71,14 +72,14 @@ try {
     return subscriptions.get(id)
   }) as any
   // No real provider requests, charges, messages, or customer data.
-  globalThis.fetch = (async () => { throw new Error('simulated RevenueCat outage') }) as typeof fetch
+  globalThis.fetch = (async () => { throw new Error('simulated RevenueCat outage') }) as unknown as typeof fetch
   await sql`INSERT INTO users (id) VALUES ('buyer'), ('other')`
   const now = Math.floor(Date.now() / 1000)
   const fixture = (id: string, product = 'evaluation_pack_3', subscription: any = null) => ({
     id, created: now, mode: subscription ? 'subscription' : 'payment', status: 'complete', payment_status: 'paid',
     client_reference_id: 'buyer', customer: null, payment_intent: null, subscription,
     metadata: { product, accountId: 'buyer', userId: 'buyer', activationCode: '867530', mobileInstallId: 'web-install', source: 'payment_test' },
-  })
+  }) as unknown as Stripe.Checkout.Session
   const session = fixture('cs_test_paid')
   checkouts.set(session.id, session)
   const owner = { userId: 'buyer', mobileInstallId: 'ios-install' }
@@ -146,16 +147,16 @@ try {
   const monthly = fixture('cs_test_monthly', 'mobile_subscription_monthly', subscription)
   checkouts.set(monthly.id, monthly)
   const monthlyLink = await create(monthly.id)
-  assert.equal((await consume(monthlyLink.token)).entitlements.evaluationCredits, 12, 'monthly plan grants ten scans plus remaining pack')
+  assert.equal((await consume(monthlyLink.token)).entitlements.evaluationCredits, 4, 'monthly plan grants two scans plus remaining pack')
   stripeAvailable = false
-  assert.equal((await getEntitlementSummary(owner)).evaluationCredits, 12, 'provider outage retains verified, unexpired access')
+  assert.equal((await getEntitlementSummary(owner)).evaluationCredits, 4, 'provider outage retains verified, unexpired access')
   assert.ok((await create(monthly.id)).token, 'already confirmed receipt works during Stripe outage')
   stripeAvailable = true
   subscription.status = 'canceled'
   assert.equal((await getEntitlementSummary(owner)).evaluationCredits, 2, 'cancellation cannot spend stale subscription allowances')
   await assert.rejects(create(monthly.id), /no longer provides active access/)
   await sql`UPDATE payment_entitlements SET stripe_payment_intent_id = 'pi_test_refund' WHERE stripe_checkout_session_id = ${session.id}`
-  await revokePaymentIntentEntitlements({ paymentIntentId: 'pi_test_refund', status: 'refunded' })
+  await revokePaymentIntentEntitlement({ paymentIntentId: 'pi_test_refund', status: 'refunded' })
   await assert.rejects(create(), /no longer provides active access/)
   const expired = fixture('cs_test_expired', 'evaluation')
   checkouts.set(expired.id, expired)

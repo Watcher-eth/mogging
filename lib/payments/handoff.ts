@@ -82,7 +82,7 @@ export async function createPaymentHandoff({
     accountId,
     sessionId,
     source: 'payment_handoff',
-  }).catch(() => console.error('Payment handoff analytics failed'))
+  })
 
   return { token, expiresAt: handoff.expiresAt.toISOString() }
 }
@@ -171,7 +171,7 @@ export async function consumePaymentHandoff({
     sessionId: verified.sessionId,
     source: 'payment_handoff',
     properties: { mobileInstallId },
-  }).catch(() => console.error('Payment handoff analytics failed'))
+  })
   return { accountId, entitlements }
 }
 
