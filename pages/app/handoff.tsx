@@ -21,10 +21,13 @@ export default function PaymentHandoffPage() {
   const suppliedToken = singleQueryValue(router.query.token)
   const [handoff, setHandoff] = useState<HandoffResponse | null>(null)
   const [error, setError] = useState<string | null>(null)
+  const [retry, setRetry] = useState(0)
 
   useEffect(() => {
-    if (!router.isReady || suppliedToken) return
+    if (!router.isReady) return
     if (!sessionId || status !== 'authenticated') return
+    setError(null)
+    setHandoff(null)
 
     let cancelled = false
     let timer: ReturnType<typeof setTimeout> | undefined
@@ -35,12 +38,13 @@ export default function PaymentHandoffPage() {
         const result = await apiPost<HandoffResponse>('/api/payments/handoff/create', { sessionId })
         if (cancelled) return
         setHandoff(result)
+        timer = setTimeout(() => setRetry(value => value + 1), Math.max(1000, Date.parse(result.expiresAt) - Date.now() + 100))
         trackWebEvent('handoff_created', { stripeCheckoutSessionId: sessionId })
       } catch (caught) {
         if (cancelled) return
-        if (caught instanceof ApiClientError && caught.status === 409 && attempts < 12) {
+        if ((!(caught instanceof ApiClientError) || caught.status === 409 || caught.status >= 500) && attempts < 6) {
           attempts += 1
-          timer = setTimeout(createHandoff, 1500)
+          timer = setTimeout(createHandoff, Math.min(1000 * 2 ** attempts, 10000))
           return
         }
         setError(caught instanceof Error ? caught.message : 'Unable to prepare your app access')
@@ -52,12 +56,13 @@ export default function PaymentHandoffPage() {
       cancelled = true
       if (timer) clearTimeout(timer)
     }
-  }, [router.isReady, sessionId, status, suppliedToken])
+  }, [router.isReady, sessionId, status, retry])
 
-  const token = suppliedToken || handoff?.token || null
+  const token = handoff?.token || (!sessionId || status === 'unauthenticated' ? suppliedToken : null)
   const appUrl = useMemo(() => {
-    if (!token || typeof window === 'undefined') return null
-    const url = new URL('/app/handoff', window.location.origin)
+    if (!token) return null
+    // An explicit scheme also opens the app from Safari on this same domain.
+    const url = new URL('mogging://app/handoff')
     url.searchParams.set('token', token)
     return url.toString()
   }, [token])
@@ -69,16 +74,16 @@ export default function PaymentHandoffPage() {
       </Head>
       <main className="mx-auto flex min-h-[calc(100vh-5rem)] w-full max-w-3xl items-center px-5 py-12 sm:px-10">
         <section className="w-full border-y border-zinc-200 py-10 sm:py-14">
-          <p className="font-mono text-xs font-semibold uppercase text-zinc-500">Payment confirmed</p>
+          <p className="font-mono text-xs font-semibold uppercase text-zinc-500">{token ? 'Payment confirmed' : 'Purchase activation'}</p>
           <h1 className="mt-5 max-w-2xl text-4xl font-semibold tracking-normal text-black sm:text-6xl">
-            Your Mogging access is ready.
+            {token ? 'Your Mogging access is ready.' : 'Continue your Mogging purchase.'}
           </h1>
           <p className="mt-5 max-w-xl text-lg leading-8 text-zinc-600">
-            Open the app to attach this purchase to your account and continue your evaluation.
+            Open the app to continue your evaluation. You can also sign in to the app with the same account you used at checkout to restore your purchase.
           </p>
 
           <div className="mt-10 border-t border-zinc-200 pt-8">
-            {status === 'loading' || (!token && !error && status === 'authenticated') ? (
+            {status === 'loading' || (!token && !error && !!sessionId && status === 'authenticated') ? (
               <div className="flex items-center gap-3 text-sm font-medium text-zinc-600">
                 <Loader2 className="h-5 w-5 animate-spin" />
                 Securing your one-time app handoff
@@ -98,14 +103,18 @@ export default function PaymentHandoffPage() {
             ) : null}
 
             {error ? (
-              <div className="border-l-2 border-red-500 pl-4 text-sm text-red-700">{error}</div>
+              <div>
+                <p role="alert" className="border-l-2 border-red-500 pl-4 text-sm text-red-700">{error}</p>
+                <button type="button" onClick={() => setRetry(value => value + 1)} className="mt-4 inline-flex h-12 items-center rounded-full bg-black px-6 text-sm font-semibold text-white">Try again</button>
+              </div>
             ) : null}
+            {!sessionId && !suppliedToken ? <p role="alert" className="text-sm text-zinc-600">Reopen the confirmation page from your purchase email, or sign in to Mogging with the account used at checkout.</p> : null}
 
             {appUrl ? (
               <div className="grid gap-3 sm:grid-cols-2">
                 <a
                   href={appUrl}
-                  onClick={() => trackWebEvent('handoff_opened', { destination: 'universal_link' })}
+                  onClick={() => trackWebEvent('handoff_opened', { destination: 'installed_app' })}
                   className="inline-flex h-14 items-center justify-center gap-2 bg-black px-6 text-sm font-semibold text-white"
                 >
                   <Check className="h-5 w-5" /> Open Mogging

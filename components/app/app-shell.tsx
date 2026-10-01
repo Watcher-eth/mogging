@@ -269,6 +269,7 @@ export function AppShell({ children }: AppShellProps) {
         <nav aria-label="Resources and legal" className="mx-auto flex max-w-6xl flex-wrap gap-x-6 gap-y-4">
           <Link href="/what-is-mogging" className="hover:text-black">What is mogging?</Link>
           <Link href="/how-face-analysis-works" className="hover:text-black">How face analysis works</Link>
+          <Link href="/faq" className="hover:text-black">FAQ</Link>
           <Link href="/support" className="hover:text-black">Support</Link>
           <Link href="/privacy" className="hover:text-black">Privacy</Link>
           <Link href="/tos" className="hover:text-black">Terms</Link>

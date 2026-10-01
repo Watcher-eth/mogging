@@ -153,6 +153,23 @@ export function generatePaymentActivationCode() {
   return String(randomInt(0, 1_000_000)).padStart(6, '0')
 }
 
+// Both the redirect and webhook grant the same checkout exactly once.
+export async function confirmCheckoutForAccount(sessionId: string, accountId: string) {
+  const existing = await db.query.paymentEntitlements.findFirst({
+    where: and(eq(schema.paymentEntitlements.stripeCheckoutSessionId, sessionId), eq(schema.paymentEntitlements.userId, accountId)),
+  })
+  if (existing) return
+  const session = await getStripe().checkout.sessions.retrieve(sessionId, { expand: ['subscription', 'customer'] })
+  const owner = session.metadata?.accountId || session.metadata?.userId
+  if (owner !== accountId || (session.client_reference_id && session.client_reference_id !== accountId)) {
+    throw new ApiError(403, 'Sign in with the account used at checkout')
+  }
+  if (session.status !== 'complete' || !['paid', 'no_payment_required'].includes(session.payment_status)) {
+    throw new ApiError(409, 'Payment confirmation is still processing')
+  }
+  await grantEntitlementFromCheckoutSession({ session })
+}
+
 export async function grantEntitlementFromCheckoutSession({
   session,
 }: {
@@ -240,10 +257,9 @@ export async function redeemPaymentActivationCode({
       ),
     })
     if (!entitlement) throw new ApiError(404, 'Activation code not found for this account')
-    if (entitlement.activationCodeRedeemedAt) throw new ApiError(409, 'This activation code has already been used')
     if (!isRedeemableEntitlement(entitlement)) throw new ApiError(402, 'This activation code no longer has active access')
 
-    const [claimed] = await tx
+    await tx
       .update(schema.paymentEntitlements)
       .set({ mobileInstallId, activationCodeRedeemedAt: new Date(), updatedAt: new Date() })
       .where(and(
@@ -251,8 +267,7 @@ export async function redeemPaymentActivationCode({
         eq(schema.paymentEntitlements.userId, userId),
         isNull(schema.paymentEntitlements.activationCodeRedeemedAt)
       ))
-      .returning({ id: schema.paymentEntitlements.id })
-    if (!claimed) throw new ApiError(409, 'This activation code has already been used')
+    // A retry by the same authenticated owner does not grant more credits.
   })
 
   return getEntitlementSummary({ mobileInstallId, userId })
@@ -306,7 +321,7 @@ function activePro(row: EntitlementRow, now: Date) {
 async function loadScanAccess(owner: EntitlementOwner, verifiedSubscriber?: RevenueCatSubscriber | null) {
   if (!owner.userId) throw new ApiError(401, 'An account is required')
   await releaseAbandonedEvaluations(owner.userId)
-  const subscriber = verifiedSubscriber !== undefined ? verifiedSubscriber : await fetchRevenueCatSubscriber(owner.userId)
+  const subscriber = verifiedSubscriber !== undefined ? verifiedSubscriber : await fetchRevenueCatSubscriber(owner.userId).catch(() => null)
   if (subscriber?.original_app_user_id) {
     // Reuses the required provider verification; analytics failure must not deny paid access.
     try { await linkRevenueCatIdentity(owner.userId, subscriber.original_app_user_id) }
@@ -316,7 +331,10 @@ async function loadScanAccess(owner: EntitlementOwner, verifiedSubscriber?: Reve
   let rows = await db.query.paymentEntitlements.findMany({ where: getOwnerWhere(owner) })
   // Reconcile provider state, including pre-migration rows and missed webhooks.
   const stripeIds = [...new Set(rows.flatMap(row => row.stripeSubscriptionId ? [row.stripeSubscriptionId] : []))]
-  for (const id of stripeIds) await updateSubscriptionEntitlement(await getStripe().subscriptions.retrieve(id))
+  for (const id of stripeIds) {
+    try { await updateSubscriptionEntitlement(await getStripe().subscriptions.retrieve(id)) }
+    catch { console.error('Stripe subscription refresh failed; using the last verified billing period', id) }
+  }
   if (stripeIds.length) rows = await db.query.paymentEntitlements.findMany({ where: getOwnerWhere(owner) })
   const now = new Date()
   const active = rows.filter(row => activePro(row, now))
@@ -558,12 +576,13 @@ function readPotentialImageExtras(metadata: Record<string, unknown>) {
 }
 
 export function isRedeemableEntitlement(row: typeof schema.paymentEntitlements.$inferSelect) {
-  if (row.creditBalance > 0) return true
+  if (['refunded', 'disputed'].includes(row.subscriptionStatus || '')) return false
+  if (row.creditBalance > 0 && (!row.creditExpiresAt || row.creditExpiresAt.getTime() > Date.now())) return true
   if (row.product === 'extra_potential_image' && readPotentialImageExtras(row.metadata) > 0) return true
   if (!isProAccessProduct(row.product)) return false
-  if (row.subscriptionStatus && !['active', 'trialing', 'complete'].includes(row.subscriptionStatus)) return false
+  if (!row.subscriptionStatus || !['active', 'trialing', 'complete'].includes(row.subscriptionStatus)) return false
   if (row.product === 'mobile_lifetime') return true
-  return !row.currentPeriodEnd || row.currentPeriodEnd.getTime() > Date.now()
+  return Boolean(row.currentPeriodEnd && row.currentPeriodEnd.getTime() > Date.now())
 }
 
 function isProAccessProduct(product: PaymentProduct) {

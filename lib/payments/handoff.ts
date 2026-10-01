@@ -1,10 +1,10 @@
 import { createHash, randomUUID } from 'crypto'
-import { and, eq, gt, isNull } from 'drizzle-orm'
+import { and, eq, gt, isNull, sql } from 'drizzle-orm'
 import { jwtVerify, SignJWT } from 'jose'
 import { ApiError } from '@/lib/api/http'
 import { db, schema } from '@/lib/db'
 import { env } from '@/lib/env'
-import { getEntitlementSummary, isRedeemableEntitlement } from '@/lib/payments/entitlements'
+import { confirmCheckoutForAccount, getEntitlementSummary, isRedeemableEntitlement } from '@/lib/payments/entitlements'
 import { recordServerEvent } from '@/lib/analytics/events'
 
 const HANDOFF_ISSUER = 'mogging.com'
@@ -23,7 +23,9 @@ export async function createPaymentHandoff({
   sessionId: string
   accountId: string
 }) {
+  await confirmCheckoutForAccount(sessionId, accountId)
   const handoff = await db.transaction(async (tx) => {
+    await tx.execute(sql`select pg_advisory_xact_lock(hashtextextended(${`handoff:${sessionId}`}, 0))`)
     const entitlement = await tx.query.paymentEntitlements.findFirst({
       where: and(
         eq(schema.paymentEntitlements.stripeCheckoutSessionId, sessionId),
@@ -40,7 +42,7 @@ export async function createPaymentHandoff({
         eq(schema.paymentHandoffs.userId, accountId)
       ),
     })
-    if (existing) return existing
+    if (existing && !existing.consumedAt && existing.expiresAt.getTime() > Date.now()) return existing
 
     const createdAt = new Date()
     const expiresAt = new Date(createdAt.getTime() + HANDOFF_TTL_MS)
@@ -53,33 +55,18 @@ export async function createPaymentHandoff({
       expiresAt,
     })
 
-    const [created] = await tx
-      .insert(schema.paymentHandoffs)
-      .values({
-        id,
-        tokenHash: hashToken(token),
-        userId: accountId,
-        stripeCheckoutSessionId: sessionId,
-        createdAt,
-        expiresAt,
-      })
-      .onConflictDoNothing({ target: schema.paymentHandoffs.stripeCheckoutSessionId })
-      .returning()
-
-    if (created) return created
-
-    const raced = await tx.query.paymentHandoffs.findFirst({
-      where: and(
-        eq(schema.paymentHandoffs.stripeCheckoutSessionId, sessionId),
-        eq(schema.paymentHandoffs.userId, accountId)
-      ),
-    })
-    if (!raced) throw new ApiError(409, 'Unable to create payment handoff')
-    return raced
+    const values = {
+      id, tokenHash: hashToken(token), userId: accountId,
+      stripeCheckoutSessionId: sessionId, createdAt, expiresAt,
+      consumedAt: null, consumedByInstallId: null,
+    }
+    // Only the signed-in buyer can rotate an expired or previously used link.
+    // Rotation invalidates the old token without granting another evaluation.
+    const [created] = existing
+      ? await tx.update(schema.paymentHandoffs).set(values).where(eq(schema.paymentHandoffs.id, existing.id)).returning()
+      : await tx.insert(schema.paymentHandoffs).values(values).returning()
+    return created
   })
-
-  if (handoff.consumedAt) throw new ApiError(409, 'This payment handoff has already been used')
-  if (handoff.expiresAt.getTime() <= Date.now()) throw new ApiError(410, 'This payment handoff has expired')
 
   const token = await signHandoffToken({
     id: handoff.id,
@@ -95,7 +82,7 @@ export async function createPaymentHandoff({
     accountId,
     sessionId,
     source: 'payment_handoff',
-  })
+  }).catch(() => console.error('Payment handoff analytics failed'))
 
   return { token, expiresAt: handoff.expiresAt.toISOString() }
 }
@@ -112,6 +99,7 @@ export async function consumePaymentHandoff({
   const tokenHash = hashToken(token)
 
   await db.transaction(async (tx) => {
+    await tx.execute(sql`select pg_advisory_xact_lock(hashtextextended(${`handoff:${verified.sessionId}`}, 0))`)
     const [handoff] = await tx
       .update(schema.paymentHandoffs)
       .set({ consumedAt: new Date(), consumedByInstallId: mobileInstallId })
@@ -146,7 +134,6 @@ export async function consumePaymentHandoff({
       if (
         !claimed ||
         !claimed.activationCodeRedeemedAt ||
-        claimed.mobileInstallId !== mobileInstallId ||
         !isRedeemableEntitlement(claimed)
       ) {
         throw new ApiError(409, 'This payment handoff has already been used')
@@ -162,7 +149,7 @@ export async function consumePaymentHandoff({
       throw new ApiError(402, 'This purchase no longer provides active access')
     }
 
-    const [claimed] = await tx
+    await tx
       .update(schema.paymentEntitlements)
       .set({
         mobileInstallId,
@@ -174,18 +161,17 @@ export async function consumePaymentHandoff({
         eq(schema.paymentEntitlements.userId, accountId),
         isNull(schema.paymentEntitlements.activationCodeRedeemedAt)
       ))
-      .returning({ id: schema.paymentEntitlements.id })
-    if (!claimed) throw new ApiError(409, 'This purchase has already been activated')
+    // Already activated by this account (including Use Code) is a safe retry.
   })
 
-  const entitlements = await getEntitlementSummary({ userId: accountId, mobileInstallId })
+  const entitlements = await getEntitlementSummary({ userId: accountId, mobileInstallId }, null)
   await recordServerEvent({
     eventName: 'handoff_consumed',
     accountId,
     sessionId: verified.sessionId,
     source: 'payment_handoff',
     properties: { mobileInstallId },
-  })
+  }).catch(() => console.error('Payment handoff analytics failed'))
   return { accountId, entitlements }
 }
 
@@ -227,6 +213,7 @@ async function signHandoffToken({
 async function verifyHandoffToken(token: string) {
   try {
     const { payload } = await jwtVerify(token, getHandoffSecret(), {
+      algorithms: ['HS256'],
       issuer: HANDOFF_ISSUER,
       audience: HANDOFF_AUDIENCE,
     })

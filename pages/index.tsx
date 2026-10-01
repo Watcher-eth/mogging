@@ -4,19 +4,14 @@ import { appStoreUrl, siteUrl } from '@/lib/seo'
 import Image from 'next/image'
 import { useRouter } from 'next/router'
 import { ClipboardList, Loader2, ScanFace, ShieldCheck, Sparkles } from 'lucide-react'
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { toast } from 'sonner'
-import { apiGet, apiPost, ApiClientError } from '@/lib/api/client'
+import { apiPost, ApiClientError } from '@/lib/api/client'
 import { cn } from '@/lib/utils'
 import { trackWebEvent, flushWebAnalytics } from '@/lib/analytics/client'
 
 type CheckoutResponse = {
   url: string
-}
-
-type ActivationCodeResponse = {
-  activationCode: string
-  product: string | null
 }
 
 type FunnelProduct =
@@ -28,9 +23,6 @@ type FunnelProduct =
   | 'mobile_lifetime'
   | 'extra_potential_image'
 
-const baseDeepLink = process.env.NEXT_PUBLIC_APP_DEEP_LINK || 'mogging://reports'
-const subscriptionStorageKey = 'mogging:web2app:subscription'
-const installClickedStorageKey = 'mogging:web2app:install-clicked'
 const webInstallStorageKey = 'mogging:web2app:web-install-id'
 
 const tiers: Array<{
@@ -96,112 +88,43 @@ const featurePills = [
   },
 ]
 
+// Illustrative layout copy. Replace with sourced reviews before presenting as customer feedback.
 const reviewCards = [
-  {
-    title: 'Protocol actually made me consistent',
-    rating: 5,
-    author: 'ryanlooks',
-    body: 'The scan called out my jaw blur, posture and under-eye issues, then turned it into a daily protocol. I stuck to it for 6 weeks and my photos look way cleaner.',
-  },
-  {
-    title: 'Best glow up app if you follow it',
-    rating: 5,
-    author: 'marco.f',
-    body: 'I used to jump between random looksmaxing advice. Mogging made it obvious what to work on first: hair framing, skin texture, shoulder posture and debloat habits. Big difference.',
-  },
-  {
-    title: 'The report is brutally useful',
-    rating: 4,
-    author: 'aidenbuilds',
-    body: 'The score was cool, but the protocol is why I kept using it. Same lighting, repeat scans, clear todos. My face looks more structured because I finally tracked the basics.',
-  },
+  { title: 'Finally knew where to start', rating: 5, body: 'I had about 20 things I thought I needed to fix. The report helped me narrow it down, and the protocol is simple enough that I actually use it.' },
+  { title: 'The little details', rating: 4, body: 'The scans look stunning. Really clean, minimalist UI too. There’s a lot in the report, so it took me a bit to get through the first one.' },
+  { title: 'More to work with', rating: 5, body: 'I tried FaceIQ Labs before this. Mogging feels much more comprehensive to me, especially when I want to understand the individual features instead of just the score.' },
+  { title: 'Kept this one', rating: 4, body: 'I used the PSL app first. I prefer Mogging — the scan is easier to follow and I like having a straightforward protocol alongside it. Would love more history filters.' },
+  { title: 'Simple, but it helps', rating: 5, body: 'The protocol isn’t some huge complicated routine. A few things to focus on each day. That’s been much more effective for me than saving advice I never follow.' },
+  { title: 'Less guessing', rating: 4, body: 'Mostly wanted to understand what I was looking at in my photos. The face map helped with that. I try to keep the lighting the same now when I scan.' },
+  { title: 'Cleanest app on my phone', rating: 5, body: 'No clutter, no five menus to find my last scan. The whole thing feels really considered. The report screens are honestly gorgeous.' },
+  { title: 'Good report, still learning', rating: 3, body: 'There’s more detail than I expected. Some of the terms went over my head at first, but the routine is easy to follow. I’m still figuring out what matters most for me.' },
+  { title: 'A routine I can stick to', rating: 4, body: 'I don’t open it constantly. I check my protocol, do the basics, and come back for another scan. Pretty much what I wanted.' },
+  { title: 'Worth taking a proper photo', rating: 5, body: 'My first photo had terrible lighting. Retook it properly and the breakdown made a lot more sense. I like being able to go back and compare reports.' },
 ]
+const averageRating = (reviewCards.reduce((sum, review) => sum + review.rating, 0) / reviewCards.length).toFixed(1)
+
 
 export default function AppFunnelPage() {
   const router = useRouter()
   const [selectedProduct, setSelectedProduct] = useState<FunnelProduct>('mobile_subscription_monthly')
   const [checkoutLoading, setCheckoutLoading] = useState(false)
-  const [paid, setPaid] = useState(false)
-  const [installClicked, setInstallClicked] = useState(false)
-  const [openingApp, setOpeningApp] = useState(false)
   const [webInstallId, setWebInstallId] = useState<string | null>(null)
-  const [activationCode, setActivationCode] = useState<string | null>(null)
-  const [activationCodeLoading, setActivationCodeLoading] = useState(false)
   const source = useMemo(() => getSource(router.query.source, router.query.utm_source), [router.query.source, router.query.utm_source])
   const installId = useMemo(() => firstQueryValue(router.query.install_id) || null, [router.query.install_id])
   const checkoutInstallId = installId ?? webInstallId
   const sessionId = useMemo(() => firstQueryValue(router.query.session_id) || null, [router.query.session_id])
-  const deepLink = useMemo(() => {
-    const deepLinkBase = sessionId ? 'mogging://generating' : baseDeepLink
-    const params = new URLSearchParams({
-      source,
-      product: selectedProduct,
-      flow: 'web2app',
-    })
-    if (checkoutInstallId) params.set('install_id', checkoutInstallId)
-    if (sessionId) params.set('session_id', sessionId)
-    if (router.query.checkout === 'success') params.set('checkout', 'success')
-
-    return `${deepLinkBase}${deepLinkBase.includes('?') ? '&' : '?'}${params.toString()}`
-  }, [checkoutInstallId, router.query.checkout, selectedProduct, sessionId, source])
-
   useEffect(() => {
     if (!router.isReady) return
-
-    const currentWebInstallId = ensureWebInstallId()
-    setWebInstallId(currentWebInstallId)
-
+    setWebInstallId(ensureWebInstallId())
     const product = readProduct(router.query.product)
     if (product) setSelectedProduct(product)
-
-    const storedSubscription = window.localStorage.getItem(subscriptionStorageKey)
-    const storedInstallClicked = window.localStorage.getItem(installClickedStorageKey) === 'true'
-    const checkoutSucceeded = router.query.checkout === 'success'
-
-    if (checkoutSucceeded) {
-      window.localStorage.setItem(subscriptionStorageKey, JSON.stringify({
-        product: product || selectedProduct,
-        sessionId: typeof router.query.session_id === 'string' ? router.query.session_id : null,
-        installId: installId ?? currentWebInstallId,
-        source,
-        completedAt: new Date().toISOString(),
-      }))
-      setPaid(true)
-      toast.success('Purchase confirmed. Open the app to claim access.')
-    } else {
-      setPaid(Boolean(storedSubscription))
-    }
-
-    setInstallClicked(storedInstallClicked)
-
-    if (router.query.checkout === 'cancelled') {
+    // Older receipts used the homepage. Keep one verified activation flow.
+    if (router.query.checkout === 'success' && sessionId) {
+      void router.replace(`/app/handoff?session_id=${encodeURIComponent(sessionId)}`)
+    } else if (router.query.checkout === 'cancelled') {
       toast.error('Checkout was cancelled. Pick a plan when you are ready.')
     }
-  }, [installId, router.isReady, router.query.checkout, router.query.product, router.query.session_id, selectedProduct, source])
-
-  useEffect(() => {
-    if (!router.isReady || router.query.checkout !== 'success' || !sessionId) return
-
-    let cancelled = false
-    setActivationCodeLoading(true)
-
-    apiGet<ActivationCodeResponse>(`/api/payments/activation-code?session_id=${encodeURIComponent(sessionId)}`)
-      .then((response) => {
-        if (!cancelled) setActivationCode(response.activationCode)
-      })
-      .catch((error) => {
-        if (!cancelled) {
-          toast.error(error instanceof ApiClientError ? error.message : 'Unable to load activation code')
-        }
-      })
-      .finally(() => {
-        if (!cancelled) setActivationCodeLoading(false)
-      })
-
-    return () => {
-      cancelled = true
-    }
-  }, [router.isReady, router.query.checkout, sessionId])
+  }, [router, router.isReady, router.query.checkout, router.query.product, sessionId])
 
   async function startWebCheckout() {
     trackWebEvent('landing_cta_clicked', { destination: 'web_checkout', plan: selectedProduct })
@@ -221,33 +144,6 @@ export default function AppFunnelPage() {
       toast.error(error instanceof ApiClientError ? error.message : 'Unable to open checkout')
       setCheckoutLoading(false)
     }
-  }
-
-  async function openAppStore() {
-    trackWebEvent('app_store_redirected', { destination: 'app_store', placement: 'activation' })
-    void flushWebAnalytics()
-    window.localStorage.setItem(installClickedStorageKey, 'true')
-    setInstallClicked(true)
-    await navigator.clipboard?.writeText(deepLink).catch(() => null)
-    window.location.href = appStoreUrl
-  }
-
-  async function openInstalledApp() {
-    trackWebEvent('destination_selected', { destination: 'installed_app' })
-    setOpeningApp(true)
-    await navigator.clipboard?.writeText(deepLink).catch(() => null)
-    const fallbackTimer = window.setTimeout(() => {
-      window.location.href = appStoreUrl
-    }, 1400)
-
-    const clearFallback = () => window.clearTimeout(fallbackTimer)
-    window.addEventListener('pagehide', clearFallback, { once: true })
-    window.addEventListener('blur', clearFallback, { once: true })
-    window.location.href = deepLink
-
-    window.setTimeout(() => {
-      setOpeningApp(false)
-    }, 1700)
   }
 
   return (
@@ -307,10 +203,6 @@ export default function AppFunnelPage() {
               ))}
             </div>
 
-            <div className="mt-1 text-center">
-              <Link href="/faq" className="inline-flex min-h-11 items-center px-3 text-[11px] leading-4 text-zinc-500 hover:text-zinc-700 focus-visible:rounded focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-zinc-500">FAQ</Link>
-            </div>
-
             <ReviewsSection />
 
             <div className="mx-auto mt-16 w-full max-w-5xl sm:mt-20">
@@ -330,7 +222,7 @@ export default function AppFunnelPage() {
                       <span>
                         <span className="flex items-start justify-between gap-3">
                           <span className="block font-mono text-[11px] font-bold uppercase text-zinc-500">{tier.label}</span>
-                          {tier.badge ? <span className="rounded-full bg-zinc-100 px-3 py-1 font-mono text-[10px] font-bold uppercase text-zinc-600">{tier.badge}</span> : null}
+                          {tier.badge ? <span className={cn("rounded-full px-3 py-1 font-mono text-[10px] font-bold uppercase", tier.id === "mobile_subscription_monthly" ? "bg-[#e5f1ff] text-[#007aff]" : "bg-[#e8f8ec] text-[#248a3d]")}>{tier.badge}</span> : null}
                         </span>
                         <span className="mt-5 block text-sm leading-5 text-zinc-500">{tier.note}</span>
                       </span>
@@ -358,40 +250,16 @@ export default function AppFunnelPage() {
               <div className="mx-auto mt-7 max-w-md">
                 <button
                   type="button"
-                  onClick={paid ? () => void openInstalledApp() : startWebCheckout}
-                  disabled={checkoutLoading || openingApp}
+                  onClick={startWebCheckout}
+                  disabled={checkoutLoading}
                   className="flex h-14 w-full items-center justify-center gap-2 rounded-full bg-black px-5 text-sm font-semibold text-white transition duration-200 hover:bg-zinc-800 active:scale-[0.985] disabled:cursor-not-allowed disabled:opacity-60"
                 >
-                  {checkoutLoading || openingApp ? <Loader2 className="size-4 animate-spin" aria-hidden="true" /> : paid ? <Sparkles className="size-4" aria-hidden="true" /> : <ShieldCheck className="size-4" aria-hidden="true" />}
-                  {paid ? 'Open in app' : `Continue ${selectedProductLabel(selectedProduct)}`}
+                  {checkoutLoading ? <Loader2 className="size-4 animate-spin" aria-hidden="true" /> : <ShieldCheck className="size-4" aria-hidden="true" />}
+                  {`Continue ${selectedProductLabel(selectedProduct)}`}
                 </button>
 
-                {paid ? (
-                  <button
-                    type="button"
-                    onClick={() => void openAppStore()}
-                    className="mt-3 h-11 w-full rounded-full border border-zinc-200 bg-white px-4 text-sm font-semibold text-black transition duration-200 hover:bg-zinc-50 active:scale-[0.985]"
-                  >
-                    Download from App Store
-                  </button>
-                ) : null}
-
-                {paid ? (
-                  <div className="mt-4 rounded-[1.5rem] border border-zinc-200 bg-zinc-50 p-4 text-center">
-                    <p className="font-mono text-[10px] font-bold uppercase text-zinc-500">Backup activation code</p>
-                    <div className="mt-2 flex h-12 items-center justify-center rounded-2xl bg-white font-mono text-2xl font-bold tracking-[0.28em] text-black shadow-inner">
-                      {activationCodeLoading ? <Loader2 className="size-5 animate-spin text-zinc-400" aria-hidden="true" /> : activationCode ? activationCode : '------'}
-                    </div>
-                    <p className="mt-3 text-xs leading-5 text-zinc-500">
-                      If opening the app does not activate Pro, tap <span className="font-semibold text-zinc-700">Use Code</span> inside the app and enter this code.
-                    </p>
-                  </div>
-                ) : null}
-
                 <p className="mt-4 text-center text-xs leading-5 text-zinc-500">
-                  {paid
-                    ? 'Open Mogging from this page to claim access. If the app is not installed yet, the open button will fall back to the App Store.'
-                    : 'Secure checkout is handled by Stripe. After payment, install Mogging and open it from this page to claim access.'}
+                  Secure checkout is handled by Stripe. After payment, install Mogging and open it from the confirmation page to continue your evaluation.
                 </p>
               </div>
             </div>
@@ -403,65 +271,77 @@ export default function AppFunnelPage() {
 }
 
 function ReviewsSection() {
+  const viewportRef = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    const viewport = viewportRef.current
+    if (!viewport) return
+    const observer = new IntersectionObserver(([entry]) => {
+      viewport.dataset.visible = String(entry.isIntersecting)
+    })
+    observer.observe(viewport)
+    return () => observer.disconnect()
+  }, [])
+
+  function pause() {
+    const viewport = viewportRef.current
+    const track = viewport?.firstElementChild
+    if (!viewport || !track || viewport.dataset.paused === 'true') return
+    const transform = getComputedStyle(track).transform
+    const offset = transform === 'none' ? 0 : -new DOMMatrixReadOnly(transform).m41
+    // Transfer the compositor position to native scrolling once, when someone interacts.
+    const scrollLeft = viewport.scrollLeft + offset
+    viewport.dataset.paused = 'true'
+    viewport.scrollLeft = scrollLeft
+  }
+
   return (
-    <section aria-labelledby="reviews-title" className="mx-auto mt-16 w-full max-w-7xl rounded-[2rem] bg-white px-0 py-2 text-zinc-950 sm:mt-20">
-      <h2 id="reviews-title" className="mb-7 px-1 text-[1.7rem] font-semibold leading-none tracking-[-0.04em] text-zinc-900 sm:text-[2rem]">
-        Ratings &amp; Reviews
-      </h2>
+    <section aria-labelledby="reviews-title" className="mx-auto mt-16 w-full max-w-7xl py-2 text-zinc-950 sm:mt-20">
+      <div className="mb-7 flex flex-wrap items-center justify-between gap-4 px-1">
+        <div>
+          <h2 id="reviews-title" className="text-[1.7rem] font-semibold leading-none tracking-[-0.04em] sm:text-[2rem]">Ratings &amp; Reviews</h2>
+          <p id="reviews-disclosure" className="mt-3 text-xs text-zinc-500">Sample reviews · illustrative copy, not customer testimonials.</p>
+        </div>
+      </div>
       <div className="mb-9 grid gap-6 px-1 lg:grid-cols-[240px_1fr] lg:items-end">
         <div className="flex items-end gap-3">
-          <span className="text-[5.6rem] font-semibold leading-[0.76] tracking-[-0.08em] text-zinc-500 sm:text-[6.5rem]">4.8</span>
+          <span className="text-[5.6rem] font-semibold leading-[0.76] tracking-[-0.08em] text-zinc-500 sm:text-[6.5rem]">{averageRating}</span>
           <span className="pb-2 text-xl font-semibold text-zinc-500">out of 5</span>
         </div>
-
         <div className="grid gap-4 sm:grid-cols-[120px_1fr] sm:items-end">
-          <div className="text-left text-lg font-semibold text-zinc-500 sm:text-right">243 Ratings</div>
-          <RatingDistribution />
-        </div>
-      </div>
-
-      <div className="grid gap-5 lg:grid-cols-3">
-        {reviewCards.map((review) => (
-          <article key={review.title} className="min-h-[224px] rounded-[1.5rem] bg-zinc-100 p-6 text-zinc-700">
-            <h3 className="mb-2 text-lg font-semibold leading-6 text-zinc-700">{review.title}</h3>
-            <div className="mb-5 grid grid-cols-[1fr_auto] items-center gap-4">
-              <div className="flex gap-1 text-[22px] leading-none text-[#ff8a1f]" role="img" aria-label={`${review.rating} out of 5 stars`}>
-                <span aria-hidden="true">{'★'.repeat(review.rating)}{'☆'.repeat(5 - review.rating)}</span>
+          <div className="text-lg font-semibold text-zinc-500 sm:text-right">{reviewCards.length} samples</div>
+          <div className="grid gap-2" aria-label="Sample rating distribution">
+            {[5, 4, 3, 2, 1].map((stars) => (
+              <div key={stars} className="grid grid-cols-[90px_1fr] items-center gap-3">
+                <span className="text-right text-[13px] leading-none text-zinc-500" aria-label={`${stars} stars`}>{'★'.repeat(stars)}</span>
+                <div className="h-1.5 overflow-hidden rounded-full bg-zinc-200">
+                  <div className="h-full rounded-full bg-zinc-500" style={{ width: `${reviewCards.filter(review => review.rating === stars).length / reviewCards.length * 100}%` }} />
+                </div>
               </div>
-              <span className="text-base font-semibold text-zinc-500">{review.author}</span>
-            </div>
-            <p className="text-lg font-medium leading-7 text-zinc-700">{review.body}</p>
-          </article>
-        ))}
-      </div>
-    </section>
-  )
-}
-
-function RatingDistribution() {
-  const rows = [
-    { stars: 5, value: 0.82 },
-    { stars: 4, value: 0.13 },
-    { stars: 3, value: 0.04 },
-    { stars: 2, value: 0.01 },
-    { stars: 1, value: 0.02 },
-  ]
-
-  return (
-    <div className="grid gap-2">
-      {rows.map((row) => (
-        <div key={row.stars} className="grid grid-cols-[90px_1fr] items-center gap-3">
-          <div className="flex justify-end gap-0.5 text-[13px] leading-none text-zinc-500">
-            {Array.from({ length: row.stars }).map((_, index) => (
-              <span key={`${row.stars}-${index}`}>★</span>
             ))}
           </div>
-          <div className="h-1.5 overflow-hidden rounded-full bg-zinc-200">
-            <div className="h-full rounded-full bg-zinc-500" style={{ width: `${row.value * 100}%` }} />
-          </div>
         </div>
-      ))}
-    </div>
+      </div>
+      <div ref={viewportRef} className="reviews-viewport" tabIndex={0} role="region" aria-label="Scrollable sample reviews" aria-describedby="reviews-disclosure reviews-scroll-hint" onPointerDown={pause} onWheel={pause} onKeyDown={(event) => { if (['ArrowLeft', 'ArrowRight', 'Home', 'End'].includes(event.key)) pause() }}>
+        <div className="reviews-track">
+          {[0, 1].map((copy) => (
+            <div key={copy} className="reviews-group" aria-hidden={copy === 1 ? true : undefined}>
+              {reviewCards.map((review, index) => (
+                <article key={review.title} className="review-card rounded-[1.5rem] bg-zinc-100 p-6 text-zinc-700">
+                  <div className="mb-4 flex items-center justify-between gap-3">
+                    <span className="text-[22px] leading-none text-[#ff8a1f]" role="img" aria-label={`${review.rating} out of 5 stars`}><span aria-hidden="true">{'★'.repeat(review.rating)}{'☆'.repeat(5 - review.rating)}</span></span>
+                    <span className="text-xs text-zinc-500">Sample {String(index + 1).padStart(2, '0')}</span>
+                  </div>
+                  <h3 className="mb-3 text-lg font-semibold leading-6">{review.title}</h3>
+                  <p className="text-base leading-7">{review.body}</p>
+                </article>
+              ))}
+            </div>
+          ))}
+        </div>
+      </div>
+      <p id="reviews-scroll-hint" className="mt-3 px-1 text-xs text-zinc-500">Swipe or scroll to read at your own pace.</p>
+    </section>
   )
 }
 

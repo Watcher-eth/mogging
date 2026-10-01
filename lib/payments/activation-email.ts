@@ -19,7 +19,7 @@ export async function sendPaymentActivationEmailForCheckoutSession({ session }: 
   }
 
   const productConfig = getProductConfig(product)
-  const appUrl = buildAppUrl(session, product)
+  const appUrl = buildAppUrl(session)
   const subject = `Your Mogging activation code: ${activationCode}`
   const response = await fetch('https://api.resend.com/emails', {
     method: 'POST',
@@ -76,16 +76,10 @@ function readPaymentProduct(value: unknown): PaymentProduct | null {
   return null
 }
 
-function buildAppUrl(session: Stripe.Checkout.Session, product: PaymentProduct) {
+function buildAppUrl(session: Stripe.Checkout.Session) {
   const siteUrl = env.NEXT_PUBLIC_SITE_URL || env.NEXTAUTH_URL || 'https://mogging.com'
-  const url = new URL('/', siteUrl)
-  url.searchParams.set('checkout', 'success')
-  url.searchParams.set('product', product)
-  url.searchParams.set('source', session.metadata?.source || 'web2app')
+  const url = new URL('/app/handoff', siteUrl)
   url.searchParams.set('session_id', session.id)
-
-  const installId = session.metadata?.mobileInstallId
-  if (installId) url.searchParams.set('install_id', installId)
 
   return url.toString()
 }
