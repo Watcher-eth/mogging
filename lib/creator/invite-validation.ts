@@ -19,10 +19,12 @@ export const creatorInviteSchema = z.object({
   evidenceUrl: z.string().trim().url().max(2048).refine((value) => {
     try {
       const url = new URL(value)
-      return url.protocol === 'https:' && !url.username && !url.password && !url.port &&
-        url.hostname === 'discord.com' && /^\/channels\/(?:@me|\d+)\/\d+\/\d+$/.test(url.pathname)
+      return url.protocol === 'https:' && !url.username && !url.password && !url.port && (
+        (url.hostname === 'discord.com' && /^\/channels\/(?:@me|\d+)\/\d+\/\d+$/.test(url.pathname)) ||
+        (url.hostname === 'cdn.discordapp.com' && /^\/attachments\/\d+\/\d+\/[^/]+\.(?:mov|mp4|webm)$/i.test(url.pathname))
+      )
     } catch { return false }
-  }, 'Enter the Discord message link containing the reviewed analytics'),
+  }, 'Enter the Discord message or recording link containing the reviewed analytics'),
   verificationConfirmed: z.literal(true),
 }).transform((value, ctx) => {
   const account = creatorSocialAccountSchema.safeParse({ platform: 'tiktok', handle: value.handle, profileUrl: value.profileUrl })

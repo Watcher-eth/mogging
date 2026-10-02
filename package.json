@@ -9,6 +9,7 @@
     "start": "next start",
     "lint": "next lint",
     "test": "bun test",
+    "test:courses": "bun run scripts/tests/courses.ts",
     "typecheck": "tsc --noEmit",
     "db:generate": "drizzle-kit generate",
     "db:migrate": "drizzle-kit migrate",

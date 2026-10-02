@@ -101,22 +101,27 @@ export async function setCreatorTrackingLinkActive(socialAccountId: string, isAc
   await db.update(schema.creatorTrackingLinks).set({ isActive, updatedAt: new Date() }).where(eq(schema.creatorTrackingLinks.socialAccountId, socialAccountId))
 }
 
+export async function findCreatorTrackingLink(slug: string) {
+  let link = await db.query.creatorTrackingLinks.findFirst({
+    where: eq(schema.creatorTrackingLinks.slug, slug),
+  })
+  if (!link) {
+    const alias = await db.query.creatorTrackingLinkAliases.findFirst({
+      where: eq(schema.creatorTrackingLinkAliases.slug, slug),
+    })
+    if (alias) link = await db.query.creatorTrackingLinks.findFirst({ where: eq(schema.creatorTrackingLinks.id, alias.trackingLinkId) })
+  }
+  return link?.isActive ? link : null
+}
+
 export async function createCreatorAttributionClick(input: {
   slug: string
   anonymousActorId: string | null
   referrer?: string | null
   userAgent?: string | null
 }) {
-  let link = await db.query.creatorTrackingLinks.findFirst({
-    where: eq(schema.creatorTrackingLinks.slug, input.slug),
-  })
-  if (!link) {
-    const alias = await db.query.creatorTrackingLinkAliases.findFirst({
-      where: eq(schema.creatorTrackingLinkAliases.slug, input.slug),
-    })
-    if (alias) link = await db.query.creatorTrackingLinks.findFirst({ where: eq(schema.creatorTrackingLinks.id, alias.trackingLinkId) })
-  }
-  if (!link?.isActive) return null
+  const link = await findCreatorTrackingLink(input.slug)
+  if (!link) return null
   // Apply current campaign configuration to existing links without rewriting their destination.
   link.iosAppStoreUrl = buildIosAppStoreUrl(link.slug, link.iosAppStoreUrl)
   const isBot = isLinkPreviewOrBot(input.userAgent || '')

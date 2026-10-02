@@ -281,6 +281,13 @@
       "when": 1790886291359,
       "tag": "0039_creator_onboarding_invites",
       "breakpoints": true
+    },
+    {
+      "idx": 40,
+      "version": "7",
+      "when": 1790904988468,
+      "tag": "0040_course_platform",
+      "breakpoints": true
     }
   ]
 }

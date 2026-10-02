@@ -20,7 +20,14 @@ export async function resolveTikTokAvatar(handle: string): Promise<string | null
 
 export async function creatorAvatarDataUrl(url: string | null) {
   const storedAvatarBase = env.R2_PUBLIC_BASE_URL ? `${env.R2_PUBLIC_BASE_URL.replace(/\/$/, '')}/creator/avatars/` : null
-  if (!url || (!isCreatorAvatarUrl(url) && !(storedAvatarBase && url.startsWith(storedAvatarBase)))) return null
+  if (!url) return null
+  let instagramPhoto = false
+  try {
+    const parsed = new URL(url)
+    instagramPhoto = parsed.protocol === 'https:' && !parsed.username && !parsed.password && !parsed.port &&
+      ['cdninstagram.com', 'fbcdn.net'].some(host => parsed.hostname === host || parsed.hostname.endsWith(`.${host}`))
+  } catch { return null }
+  if (!isCreatorAvatarUrl(url) && !instagramPhoto && !(storedAvatarBase && url.startsWith(storedAvatarBase))) return null
   try {
     const response = await fetch(url, { redirect: 'error', signal: AbortSignal.timeout(4000) })
     const type = response.headers.get('content-type')?.split(';')[0]

@@ -2,5 +2,6 @@ User-agent: *
 Allow: /
 Disallow: /api/
 Allow: /api/og/creator-invite
+Allow: /api/og/creator-referral
 
 Sitemap: https://www.mogging.com/sitemap.xml

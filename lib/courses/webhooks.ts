@@ -1,0 +1,53 @@
+import { createHmac, timingSafeEqual } from 'node:crypto'
+import type { NextApiRequest } from 'next'
+import type Stripe from 'stripe'
+import { and, eq, sql } from 'drizzle-orm'
+import { db } from '@/lib/db'
+import { ApiError } from '@/lib/api/http'
+import { processBillingWebhook } from '@/lib/payments/billing-ledger'
+import { courseOrders, courseSellers } from './schema'
+import { syncOrder, reference } from './commerce'
+import { syncSeller } from './sellers'
+
+export async function rawBody(req: NextApiRequest) {
+  const chunks: Buffer[] = []; let size = 0
+  for await (const chunk of req) {
+    const bytes = Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk)
+    size += bytes.length
+    if (size > 1024 * 1024) throw new ApiError(413, 'Webhook too large')
+    chunks.push(bytes)
+  }
+  return Buffer.concat(chunks)
+}
+export function verifyBunnySignature(body: Buffer, signature: unknown, version: unknown, algorithm: unknown, key: string) {
+  if (version !== 'v1' || algorithm !== 'hmac-sha256' || typeof signature !== 'string' || !/^[0-9a-f]{64}$/.test(signature)) return false
+  return timingSafeEqual(Buffer.from(signature, 'hex'), createHmac('sha256', key).update(body).digest())
+}
+export async function connectEvent(event: Stripe.Event) {
+  const accountId = event.account
+  if (!accountId) throw new ApiError(400, 'A connected-account event is required')
+  await processBillingWebhook('stripe-course', `${event.livemode}:${accountId}:${event.id}`, async () => {
+    const seller = await db.query.courseSellers.findFirst({ where: and(eq(courseSellers.stripeAccountId, accountId), eq(courseSellers.stripeLivemode, event.livemode)) })
+    if (!seller) return
+    if (event.type === 'account.application.deauthorized') {
+      await db.update(courseSellers).set({ stripeConnected: false, chargesEnabled: false, payoutsEnabled: false, stripeSyncedAt: new Date(), updatedAt: new Date() }).where(eq(courseSellers.id, seller.id))
+      return
+    }
+    if (event.type === 'account.updated') { await syncSeller(seller); return }
+    const object = event.data.object as unknown as { id: string; object: string; metadata?: Record<string, string>; payment_intent?: string | { id: string } | null; charge?: string | { id: string } | null }
+    let orderId = object.metadata?.moggingCourseOrderId
+    if (!orderId && object.object === 'dispute' && object.charge) {
+      const order = await db.query.courseOrders.findFirst({ where: and(eq(courseOrders.stripeAccountId, accountId), eq(courseOrders.livemode, event.livemode), eq(courseOrders.stripeChargeId, reference(object.charge)!)) }); orderId = order?.id
+    }
+    if (!orderId && object.payment_intent) {
+      const order = await db.query.courseOrders.findFirst({ where: and(eq(courseOrders.stripeAccountId, accountId), eq(courseOrders.livemode, event.livemode), eq(courseOrders.stripePaymentIntentId, reference(object.payment_intent)!)) }); orderId = order?.id
+    }
+    if (!orderId) return
+    const order = await db.query.courseOrders.findFirst({ where: and(eq(courseOrders.id, orderId), eq(courseOrders.stripeAccountId, accountId), eq(courseOrders.livemode, event.livemode)) })
+    if (!order) throw new ApiError(503, 'Order has not been persisted yet; retry')
+    if (object.object === 'checkout.session' && !order.stripeCheckoutId) {
+      await db.update(courseOrders).set({ stripeCheckoutId: object.id }).where(and(eq(courseOrders.id, order.id), sql`${courseOrders.stripeCheckoutId} is null`))
+    }
+    await syncOrder(order.id)
+  })
+}

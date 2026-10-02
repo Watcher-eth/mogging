@@ -54,7 +54,7 @@ export function CreatorInvitesPanel() {
         { name: 'handle', label: 'TikTok handle', placeholder: '@creator', required: true, max: 33 },
         { name: 'profileUrl', label: 'TikTok profile URL', placeholder: 'https://www.tiktok.com/@creator', required: true, max: 2048 },
         { name: 'avatarUrl', label: 'Profile-photo URL (optional)', placeholder: 'TikTok CDN URL; otherwise fetched automatically', required: false, max: 2048 },
-        { name: 'evidenceUrl', label: 'Reviewed Discord analytics message', placeholder: 'https://discord.com/channels/…/…/…', required: true, max: 2048 },
+        { name: 'evidenceUrl', label: 'Reviewed Discord analytics message or recording', placeholder: 'https://discord.com/channels/…/…/…', required: true, max: 2048 },
       ].map((field) => <label key={field.name} className="grid gap-2 text-sm"><span className="font-medium">{field.label}</span><input name={field.name} type={field.name.endsWith('Url') ? 'url' : 'text'} required={field.required} maxLength={field.max} placeholder={field.placeholder} className="creator-field w-full" /></label>)}
       <label className="flex items-start gap-3 text-sm leading-6 sm:col-span-2"><input name="verified" type="checkbox" required className="mt-1 size-4 accent-black" /><span>I verified ownership of this TikTok account and reviewed its audience analytics for the past 28 days in Discord.</span></label>
       {message ? <p role="alert" className="text-sm text-red-600 sm:col-span-2">{message}</p> : null}

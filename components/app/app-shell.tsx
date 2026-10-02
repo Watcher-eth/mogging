@@ -90,6 +90,7 @@ export function AppShell({ children }: AppShellProps) {
   const pendingAuthRedirect = getSafeAuthRedirect(router.query.next)
   const creatorRoute = router.pathname === '/creator' || router.pathname.startsWith('/creator/')
   const creatorSetup = router.pathname === '/creator/setup'
+  const creatorReferral = router.pathname === '/r/[slug]'
   const creatorSignIn = router.pathname.startsWith('/creator') && status === 'unauthenticated'
   const immersive = router.pathname === '/' || router.pathname === '/analysis' || router.pathname === '/leaderboard' || router.pathname === '/battle' || router.pathname === '/app' || router.pathname === '/app/handoff'
   const [loginOpen, setLoginOpen] = useState(false)
@@ -179,7 +180,7 @@ export function AppShell({ children }: AppShellProps) {
 
   return (
     <div className={creatorRoute ? 'creator-app flex min-h-dvh flex-col' : immersive ? 'min-h-screen bg-white' : 'min-h-screen bg-background'}>
-      {!creatorRoute ? <AppHeader>
+      {!creatorRoute && !creatorReferral ? <AppHeader>
             {status === 'loading' ? (
               <div className="h-8 w-14 animate-pulse rounded-lg border border-zinc-200 bg-white sm:h-10 sm:w-24" />
             ) : session?.user ? (
@@ -262,11 +263,11 @@ export function AppShell({ children }: AppShellProps) {
             )}
       </AppHeader> : null}
 
-      <main className={creatorSignIn || creatorSetup ? 'flex w-full flex-1 flex-col' : creatorRoute ? 'mx-auto flex w-full max-w-[1440px] flex-1 flex-col px-4 sm:px-8' : immersive ? 'w-full' : 'mx-auto w-full max-w-6xl px-4 py-8 sm:px-6'}>
+      <main className={creatorSignIn || creatorSetup || creatorReferral ? 'flex w-full flex-1 flex-col' : creatorRoute ? 'mx-auto flex w-full max-w-[1440px] flex-1 flex-col px-4 sm:px-8' : immersive ? 'w-full' : 'mx-auto w-full max-w-6xl px-4 py-8 sm:px-6'}>
         {creatorRoute && !creatorSignIn && !creatorSetup ? <SidebarProvider className="min-h-0 flex-1 flex-col">{children}</SidebarProvider> : children}
       </main>
 
-      {!creatorSetup ? <footer className={`border-t border-zinc-200 bg-white px-5 py-8 text-sm text-zinc-600 sm:px-10`}>
+      {!creatorSetup && !creatorReferral ? <footer className={`border-t border-zinc-200 bg-white px-5 py-8 text-sm text-zinc-600 sm:px-10`}>
         <nav aria-label="Resources and legal" className="mx-auto flex max-w-6xl flex-wrap gap-x-6 gap-y-4">
           <Link href="/what-is-mogging" className="hover:text-black">What is mogging?</Link>
           <Link href="/how-face-analysis-works" className="hover:text-black">How face analysis works</Link>
@@ -296,7 +297,7 @@ export function AppShell({ children }: AppShellProps) {
       />
       <ProfileSetupDialog
         dashboard={dashboard ?? null}
-        open={profileSetupOpen && !creatorRoute}
+        open={profileSetupOpen && !creatorRoute && !creatorReferral}
         onOpenChange={(nextOpen) => {
           if (!nextOpen) dismissedProfileSetupRef.current = true
           setProfileSetupOpen(nextOpen)

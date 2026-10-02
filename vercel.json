@@ -1,6 +1,7 @@
 {
   "crons": [
     { "path": "/api/cron/push-reminders", "schedule": "* * * * *" },
-    { "path": "/api/cron/analytics-export", "schedule": "* * * * *" }
+    { "path": "/api/cron/analytics-export", "schedule": "* * * * *" },
+    { "path": "/api/cron/courses", "schedule": "*/5 * * * *" }
   ]
 }
