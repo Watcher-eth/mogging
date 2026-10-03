@@ -188,6 +188,7 @@ export function normalizeAnalysisReport(
 
   return {
     summary: report.summary,
+    protocolContext: report.protocolContext,
     potential: report.potential ?? (result ? createPotentialRubric(result, clampPslScore(pslScore)) : undefined),
     categories: categories.map((category) => {
       if (category!.id === 'overall') {

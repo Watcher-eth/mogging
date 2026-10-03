@@ -1,10 +1,10 @@
-import { and, eq, desc, sql, gte, lt, isNull } from 'drizzle-orm'
+import { and, eq, desc, sql, gte, lt, isNull, getTableColumns } from 'drizzle-orm'
 import { z } from 'zod'
 import { users } from '@/lib/db/schema'
 import { db } from '@/lib/db'
 import { ApiError } from '@/lib/api/http'
 import { getStripe } from '@/lib/payments/stripe'
-import { courseOrders, courseEnrollments, courses, courseSellers } from './schema'
+import { courseOrders, courseEnrollments, courses, courseSellers, courseRefunds } from './schema'
 
 const pageSchema = z.object({ page: z.coerce.number().int().min(1).max(1000).default(1), limit: z.coerce.number().int().min(1).max(100).default(25), from: z.iso.datetime().optional(), to: z.iso.datetime().optional(), courseId: z.uuid().optional() })
 export async function creatorDashboard(sellerId: string, query: unknown) {
@@ -14,7 +14,7 @@ export async function creatorDashboard(sellerId: string, query: unknown) {
   if (input.courseId) conditions.push(eq(courseOrders.courseId, input.courseId))
   const [totals, orders, studentCount] = await Promise.all([
     db.select({ currency: courseOrders.currency, orders: sql<number>`count(*) filter (where ${courseOrders.paidAt} is not null)::int`, courseSales: sql<string>`coalesce(sum(${courseOrders.amount}) filter (where ${courseOrders.paidAt} is not null),0)::text`, collected: sql<string>`coalesce(sum(${courseOrders.totalAmount}) filter (where ${courseOrders.paidAt} is not null),0)::text`, refunds: sql<string>`coalesce(sum(${courseOrders.refundedAmount}),0)::text`, disputes: sql<number>`count(*) filter (where ${courseOrders.disputed})::int` }).from(courseOrders).where(and(...conditions)).groupBy(courseOrders.currency),
-    db.select().from(courseOrders).where(and(...conditions)).orderBy(desc(courseOrders.createdAt), courseOrders.id).limit(input.limit + 1).offset((input.page - 1) * input.limit),
+    db.select({ ...getTableColumns(courseOrders), pendingRefundKey: sql<string | null>`(select r.request_key from ${courseRefunds} r where r.order_id = "course_orders"."id" and r.state in ('requested', 'pending') order by r.created_at limit 1)` }).from(courseOrders).where(and(...conditions)).orderBy(desc(courseOrders.createdAt), courseOrders.id).limit(input.limit + 1).offset((input.page - 1) * input.limit),
     db.select({ active: sql<number>`count(*)::int` }).from(courseEnrollments).innerJoin(courses, eq(courseEnrollments.courseId, courses.id)).where(and(eq(courses.sellerId, sellerId), isNull(courseEnrollments.revokedAt), gte(courseEnrollments.expiresAt, new Date()))),
   ])
   const fees = await db.select({ currency: courseOrders.feeCurrency, amount: sql<string>`sum(${courseOrders.processingFee})::text` }).from(courseOrders).where(and(...conditions)).groupBy(courseOrders.feeCurrency)

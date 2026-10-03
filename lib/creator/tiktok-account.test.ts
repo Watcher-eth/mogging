@@ -7,6 +7,7 @@ let tokenAccount: any = undefined
 let writes: any[] = []
 let uploadExists = true
 const tx = {
+  execute: async () => undefined,
   query: {
     creatorSocialAccounts: { findMany: async () => rows, findFirst: async () => providerAccount },
     accounts: { findFirst: async () => tokenAccount },
@@ -88,16 +89,16 @@ test('new basic identities still obey account limits', async () => {
 })
 
 
-test('Instagram connects manually before the recording upload', async () => {
+test('Instagram connects without account audience verification', async () => {
   const account = await addCreatorSocialAccount('user', { platform: 'instagram', handle: 'nate' })
   expect(account.platform).toBe('instagram')
   expect(account.handle).toBe('nate')
   expect(account.analyticsConfirmedAt).toBeUndefined()
 })
 
-test('manual TikTok connection does not verify the audience or skip recording review', async () => {
+test('manual TikTok connects without claiming audience analytics verification', async () => {
   const account = await addCreatorSocialAccount('user', { platform: 'tiktok', handle: 'nate', profileUrl: 'https://www.tiktok.com/@nate' })
-  expect(account.status).toBe('pending')
+  expect(account.status).toBe('approved')
   expect(account.analyticsConfirmedAt).toBeUndefined()
   expect(account.analyticsVideoUrl).toBeUndefined()
   expect(account.oauthVerifiedAt).toBeUndefined()

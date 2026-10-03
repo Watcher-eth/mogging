@@ -1,3 +1,4 @@
+import { sprintPhase, sprintFormat } from './sprints'
 import type { TikTokUserInfo } from '@/lib/auth/tiktok-api'
 import { creatorAssetPublicUrl, verifyCreatorRecordingUpload } from '@/lib/storage/videos'
 import { and, desc, eq, or, sql } from 'drizzle-orm'
@@ -47,7 +48,7 @@ export async function getCreatorDashboard(userId: string) {
   ])
 
   const socialAccountsWithLinks = await Promise.all(socialAccounts.map(async (account) => {
-    if (account.trackingLink?.isActive) return account
+    if (account.trackingLink?.isActive && account.trackingLink.publicUrl.startsWith('https://www.mogging.com/r/mogging-')) return account
     return { ...account, trackingLink: await ensureCreatorTrackingLink(account.id) }
   }))
 
@@ -114,26 +115,18 @@ export async function saveCreatorProfile(userId: string, input: CreatorProfileIn
 
 export async function addCreatorSocialAccount(userId: string, input: CreatorSocialAccountInput) {
   const profile = await getOrCreateCreatorProfile(userId)
-  const accounts = await db.query.creatorSocialAccounts.findMany({
-    where: eq(schema.creatorSocialAccounts.creatorProfileId, profile.id),
+  if (profile.authStatus === 'suspended') throw new CreatorServiceError(403, 'Your creator account is suspended')
+  const account = await db.transaction(async tx => {
+    // Serialize both account-limit checks and handle claims across concurrent requests.
+    await tx.execute(sql`select id from creator_profiles where id = ${profile.id} for update`)
+    await tx.execute(sql`select pg_advisory_xact_lock(hashtextextended(${`${input.platform}:${input.handle}`}, 0))`)
+    const claimed = await tx.query.creatorSocialAccounts.findFirst({ where: and(eq(schema.creatorSocialAccounts.platform, input.platform), eq(schema.creatorSocialAccounts.handle, input.handle)) })
+    if (claimed) throw new CreatorServiceError(409, 'This profile is already connected')
+    const accounts = await tx.query.creatorSocialAccounts.findMany({ where: eq(schema.creatorSocialAccounts.creatorProfileId, profile.id) })
+    if (accounts.length >= 10 || accounts.filter(item => item.platform === input.platform).length >= 5) throw new CreatorServiceError(409, 'You can connect up to five accounts per platform')
+    const [created] = await tx.insert(schema.creatorSocialAccounts).values({ creatorProfileId: profile.id, platform: input.platform, status: 'approved', handle: input.handle, profileUrl: input.profileUrl || `https://www.${input.platform}.com/${input.platform === 'tiktok' ? '@' : ''}${input.handle}` }).returning()
+    return created
   })
-  const platformAccounts = accounts.filter((account) => account.platform === input.platform)
-  if (accounts.length >= 10 || platformAccounts.length >= 5) {
-    throw new CreatorServiceError(409, `You can connect up to 5 ${input.platform === 'tiktok' ? 'TikTok' : 'Instagram'} accounts`)
-  }
-  if (platformAccounts.some((account) => account.handle === input.handle)) {
-    throw new CreatorServiceError(409, 'This account is already connected')
-  }
-
-  const [account] = await db
-    .insert(schema.creatorSocialAccounts)
-    .values({
-      creatorProfileId: profile.id,
-      platform: input.platform,
-      handle: input.handle,
-      profileUrl: input.profileUrl || `https://www.${input.platform}.com/${input.platform === 'tiktok' ? '@' : ''}${input.handle}`,
-    })
-    .returning()
   return { ...account, trackingLink: await ensureCreatorTrackingLink(account.id) }
 }
 
@@ -337,8 +330,14 @@ export async function getOrCreateCreatorProfile(userId: string) {
 export async function createCreatorSubmission(userId: string, input: CreatorSubmissionInput) {
   input = creatorSubmissionSchema.parse(input)
   const profile = await getOrCreateCreatorProfile(userId)
-  const format = getAvailableCreatorSubmissionFormats(profile).find((format) => format.id === input.formatId)
-  if (!format) throw new CreatorServiceError(403, 'This submission format is not available for your account')
+  if (profile.authStatus === 'suspended') throw new CreatorServiceError(403, 'Your creator account is suspended')
+  const sprint = await db.query.creatorSprints.findFirst({ where: eq(schema.creatorSprints.id, input.sprintId) })
+  if (!sprint || sprintPhase({ ...sprint, startsAt: sprint.startsAt.toISOString(), endsAt: sprint.endsAt.toISOString() }) !== 'active') throw new CreatorServiceError(409, 'Choose an active campaign')
+  const format = sprintFormat(sprint.terms, input.formatId)
+  if (!format) throw new CreatorServiceError(400, 'Choose a format offered by this campaign')
+  if (!sprint.terms.platforms.includes(creatorPostPlatform(input.postUrl)!)) throw new CreatorServiceError(400, 'This platform is not accepted by the campaign')
+  const postedAt = new Date(input.postedAt)
+  if (postedAt < sprint.startsAt || postedAt > sprint.endsAt || Date.now() - postedAt.getTime() > sprint.terms.submissionWindowHours * 3600000) throw new CreatorServiceError(409, 'The publication time is outside this campaign’s submission window')
   const prefix = `creators/${userId}/submission-analytics/`
   if (!input.analyticsStorageKey.startsWith(prefix) || !/^[0-9a-f-]{36}\.(mp4|mov|webm)$/.test(input.analyticsStorageKey.slice(prefix.length))) {
     throw new CreatorServiceError(400, 'Invalid analytics recording upload')
@@ -365,15 +364,26 @@ export async function createCreatorSubmission(userId: string, input: CreatorSubm
     throw new CreatorServiceError(400, 'The post link must match the selected account’s platform')
   }
 
-  const [submission] = await db
+  return db.transaction(async tx => {
+    await tx.execute(sql`select pg_advisory_xact_lock(hashtextextended(${input.postUrl}, 0))`)
+    const previousPost = await tx.query.creatorSubmissions.findFirst({ where: eq(schema.creatorSubmissions.postUrl, input.postUrl) })
+    if (previousPost) throw new CreatorServiceError(409, 'This video has already been submitted')
+    const [currentSprint] = await tx.select().from(schema.creatorSprints).where(eq(schema.creatorSprints.id, sprint.id)).for('update')
+    if (!currentSprint || currentSprint.updatedAt.getTime() !== sprint.updatedAt.getTime() || sprintPhase({ ...currentSprint, startsAt: currentSprint.startsAt.toISOString(), endsAt: currentSprint.endsAt.toISOString() }) !== 'active') throw new CreatorServiceError(409, 'Campaign changed. Refresh its terms before submitting')
+    const [used] = await tx.select({ cents: sql<number>`coalesce(sum(${schema.creatorSubmissions.approvedAmountCents}),0)::float8` }).from(schema.creatorSubmissions).where(and(eq(schema.creatorSubmissions.sprintId, sprint.id), or(eq(schema.creatorSubmissions.status, 'approved'), eq(schema.creatorSubmissions.status, 'paid'))))
+    if (used.cents >= currentSprint.budgetCents) throw new CreatorServiceError(409, 'This campaign’s budget is fully committed')
+  const [submission] = await tx
     .insert(schema.creatorSubmissions)
     .values({
       creatorProfileId: profile.id,
       socialAccountId: socialAccount?.id || null,
+      sprintId: sprint.id,
+      sprintTerms: sprint.terms,
+      postedAt,
       formatId: format.id,
       requirementsConfirmedAt: new Date(),
       title: format.name,
-      platform: socialAccount ? (socialAccount.platform === 'tiktok' ? 'TikTok' : 'Instagram Reels') : 'Unlinked',
+      platform: creatorPostPlatform(input.postUrl) === 'tiktok' ? 'TikTok' : 'Instagram Reels',
       caption: null,
       postUrl: input.postUrl,
       videoUrl: null,
@@ -390,7 +400,8 @@ export async function createCreatorSubmission(userId: string, input: CreatorSubm
     })
     .returning()
 
-  return submission
+    return submission
+  })
 }
 
 export async function getSubmissionForCreator(userId: string, submissionId: string) {

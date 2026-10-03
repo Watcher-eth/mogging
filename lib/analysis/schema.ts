@@ -1,4 +1,5 @@
 import { z } from 'zod'
+import { protocolFaceShapes, protocolHairTextures, protocolVisibleConcerns } from '@/lib/creator/protocol-tasks'
 
 export const pslScoreSchema = z.number().min(1).max(8)
 
@@ -58,8 +59,15 @@ export const reportPotentialSchema = z.object({
   focusAreas: z.array(z.string().min(1).max(80)).min(1).max(4),
 })
 
+export const protocolContextSchema = z.object({
+  faceShape: z.enum(protocolFaceShapes).optional(),
+  hairTexture: z.enum(protocolHairTextures).optional(),
+  visibleConcerns: z.array(z.enum(protocolVisibleConcerns)).max(9).default([]),
+})
+
 export const analysisReportSchema = z.object({
   summary: z.string().min(1).max(900),
+  protocolContext: protocolContextSchema.optional().catch(undefined),
   potential: reportPotentialSchema.optional(),
   categories: z.array(reportCategorySchema).min(11).max(11),
 })

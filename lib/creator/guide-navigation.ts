@@ -7,8 +7,8 @@ export const creatorGuideTopics = [
   { id: 'payout', label: 'Earnings & payouts', icon: 'payouts' },
   { id: 'rules', label: 'Content rules', icon: 'lock' },
   { id: 'examples', label: 'Examples & references', icon: 'formats' },
-  { id: 'referrals', label: 'Referral links', icon: 'link' },
-  { id: 'account', label: 'Account verification', icon: 'accounts' },
+  { id: 'referrals', label: 'Referral codes', icon: 'link' },
+  { id: 'account', label: 'Connect an account', icon: 'accounts' },
 ] as const satisfies ReadonlyArray<{ id: string; label: string; icon: CreatorIconName }>
 
 export type CreatorGuideTopic = (typeof creatorGuideTopics)[number]['id']

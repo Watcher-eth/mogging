@@ -25,23 +25,23 @@ async function connect(body: Record<string, unknown>) {
   await handler({ method: 'POST', body } as any, res)
   return res
 }
-const tiktok = { platform: 'tiktok', handle: '@creator', profileUrl: 'https://www.tiktok.com/@creator' }
+const tiktok = { platform: 'tiktok', identity: '@creator' }
 beforeEach(() => {
   session = { user: { id: 'creator-user', email: 'mohummadtaha12345@gmail.com' } }
   addAccount.mockClear()
 })
 
-test('approved creator can manually connect TikTok using the authenticated identity', async () => {
+test('creator can manually connect TikTok using the authenticated identity', async () => {
   const res = await connect({ ...tiktok, userId: 'spoofed' })
   expect(res.statusCode).toBe(201)
-  expect(addAccount).toHaveBeenCalledWith('creator-user', { ...tiktok, handle: 'creator' })
+  expect(addAccount).toHaveBeenCalledWith('creator-user', { platform: 'tiktok', handle: 'creator' })
 })
 
-test('other creators cannot gain manual TikTok access through request fields', async () => {
+test('manual TikTok is available to other signed-in creators', async () => {
   session!.user.email = 'other@gmail.com'
   const res = await connect({ ...tiktok, email: 'mohummadtaha12345@gmail.com', manualTikTokAllowed: true })
-  expect(res.statusCode).toBe(403)
-  expect(addAccount).not.toHaveBeenCalled()
+  expect(res.statusCode).toBe(201)
+  expect(addAccount).toHaveBeenCalledWith('creator-user', { platform: 'tiktok', handle: 'creator' })
 })
 
 test('anonymous users cannot connect accounts', async () => {
@@ -50,15 +50,15 @@ test('anonymous users cannot connect accounts', async () => {
   expect(addAccount).not.toHaveBeenCalled()
 })
 
-test('manual TikTok requires a matching HTTPS profile URL', async () => {
-  for (const profileUrl of ['', null, 'https://www.tiktok.com/@other', 'https://example.com/@creator']) {
-    expect((await connect({ ...tiktok, profileUrl })).statusCode).toBe(400)
+test('manual TikTok rejects unsafe and mismatched profile URLs', async () => {
+  for (const identity of ['https://instagram.com/creator', 'https://www.tiktok.com/@other/video/123', 'https://example.com/@creator']) {
+    expect((await connect({ ...tiktok, identity })).statusCode).toBe(400)
   }
   expect(addAccount).not.toHaveBeenCalled()
 })
 
 test('Instagram manual connection remains available to other creators', async () => {
   session!.user.email = 'other@gmail.com'
-  expect((await connect({ platform: 'instagram', handle: 'creator', profileUrl: null })).statusCode).toBe(201)
+  expect((await connect({ platform: 'instagram', identity: 'creator' })).statusCode).toBe(201)
   expect(addAccount).toHaveBeenCalledTimes(1)
 })

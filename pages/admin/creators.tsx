@@ -1,3 +1,5 @@
+import { CreatorSprintsPanel } from '@/components/admin/creator-sprints-panel'
+import { sprintPayoutCents, sprintReviewItems } from '@/lib/creator/sprints'
 import * as Avatar from '@radix-ui/react-avatar'
 import { creatorAccountLabel } from '@/components/creator/types'
 import type { GetServerSideProps } from 'next'
@@ -57,6 +59,7 @@ const tabs = [
   { value: 'overview', label: 'Overview', icon: LayoutDashboard },
   { value: 'metrics', label: 'Metrics', icon: Gauge },
   { value: 'attribution', label: 'Attribution', icon: ChartNoAxesCombined },
+  { value: 'sprints', label: 'Campaigns', icon: Gauge },
   { value: 'submissions', label: 'Videos', asset: 'submissions' },
   { value: 'cta-library', label: 'CTA Library', icon: BookOpen },
   { value: 'accounts', label: 'Accounts', icon: BadgeCheck },
@@ -108,6 +111,7 @@ export default function CreatorAdminPage() {
 }
 
 function DashboardView({ tab, data, onSelect, onRefresh }: { tab: Tab; data: AdminDashboard; onSelect: (target: ReviewTarget) => void; onRefresh: () => Promise<void> }) {
+  if (tab === 'sprints') return <CreatorSprintsPanel />
   if (tab === 'invites') return <CreatorInvitesPanel />
   if (tab === 'metrics') return <CreatorEconomicsDashboard data={data} onSelectSubmission={(item) => onSelect({ resource: 'submission', item })} onRefresh={onRefresh} />
   if (tab === 'attribution') return <CreatorAttributionDashboard data={data} onSelectCreator={(item) => onSelect({ resource: 'creator', item })} onSelectAccount={(item) => onSelect({ resource: 'account', item })} />
@@ -268,7 +272,7 @@ function ReviewDialog({ target, payments, metrics, open, onOpenChange, onRefresh
   const [amount, setAmount] = useState(target.resource === 'payment' ? (target.item.amountCents / 100).toFixed(2) : '')
   const [providerReference, setProviderReference] = useState(target.resource === 'payment' ? target.item.providerReference || '' : '')
   const [reviewChecklist, setReviewChecklist] = useState(() => target.resource === 'submission'
-    ? mergeCreatorSubmissionReviewResults(target.item.formatId, target.item.reviewChecklist)
+    ? target.item.sprintTerms ? sprintReviewItems(target.item.sprintTerms, target.item.formatId || '').map(item => ({ ...item, met: target.item.reviewChecklist?.find(row => row.id === item.id)?.met || false, note: target.item.reviewChecklist?.find(row => row.id === item.id)?.note || null })) : mergeCreatorSubmissionReviewResults(target.item.formatId, target.item.reviewChecklist)
     : [])
   const [adminViewCountThreshold, setAdminViewCountThreshold] = useState(() => target.resource === 'submission'
     ? String(target.item.adminViewCountThreshold ?? target.item.viewCountThreshold ?? '')
@@ -325,7 +329,7 @@ function ReviewDialog({ target, payments, metrics, open, onOpenChange, onRefresh
           {target.resource === 'submission' ? <SubmissionRequirementsReview items={reviewChecklist} onChange={setReviewChecklist} /> : null}
           {canReview ? <div className="mt-6 grid gap-2">
             <span className="text-sm font-medium">{target.resource === 'creator' ? 'Payment method approval' : 'Review status'}</span>
-            <Select value={status} onValueChange={(value) => setStatus(value as typeof status)}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent>{statusOptions(target.resource).map((option) => <SelectItem key={option} value={option} disabled={target.resource === 'account' && option === 'approved' && (!target.item.analyticsVideoUrl || !target.item.analyticsConfirmedAt)}>{target.resource === 'creator' && option === 'verified' ? 'Approved' : statusLabel(option)}</SelectItem>)}</SelectContent></Select>
+            <Select value={status} onValueChange={(value) => setStatus(value as typeof status)}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent>{statusOptions(target.resource).map((option) => <SelectItem key={option} value={option} disabled={target.resource === 'submission' && !!target.item.sprintId && option === 'paid'}>{target.resource === 'creator' && option === 'verified' ? 'Approved' : statusLabel(option)}</SelectItem>)}</SelectContent></Select>
           </div> : null}
           {target.resource === 'account' || target.resource === 'submission' ? <label className="mt-5 grid gap-2 text-sm font-medium">Review note<textarea value={reviewNote} onChange={(event) => setReviewNote(event.target.value.slice(0, 1000))} className="min-h-24 resize-y rounded-xl border border-zinc-200 p-3 text-sm outline-none transition-[border-color,box-shadow] duration-150 ease-out focus:border-zinc-400 focus:ring-4 focus:ring-zinc-100" placeholder="Visible to the creator" /></label> : null}
           {target.resource === 'payment' ? <div className="mt-5 grid gap-4 sm:grid-cols-2"><label className="grid gap-2 text-sm font-medium">Amount (USD)<input type="number" min="0" step="0.01" value={amount} onChange={(event) => setAmount(event.target.value)} className="h-12 rounded-xl border border-zinc-200 px-3.5 outline-none focus:border-zinc-400 focus:ring-4 focus:ring-zinc-100" /></label><label className="grid gap-2 text-sm font-medium">Provider reference<input value={providerReference} onChange={(event) => setProviderReference(event.target.value)} className="h-12 rounded-xl border border-zinc-200 px-3.5 outline-none focus:border-zinc-400 focus:ring-4 focus:ring-zinc-100" placeholder="Transaction ID" /></label></div> : null}
@@ -431,20 +435,20 @@ function AdminPayoutDecision({
   onViewCountChange: (value: string) => void
   onAudienceChange: (value: string) => void
 }) {
-  const estimate = getSubmissionPayoutEstimate(selection)
+  const estimate = getSubmissionPayoutEstimate(selection, submission)
   return <section className="mt-6 rounded-2xl border border-zinc-200 bg-white p-4">
     <div className="flex items-start justify-between gap-4"><div><p className="text-sm font-semibold">Final payout decision</p><p className="mt-1 text-xs leading-5 text-zinc-500">Verify the analytics evidence, then choose the values that determine what the creator receives.</p></div>{estimate ? <div className="text-right"><p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-zinc-400">Final payment</p><p className="mt-1 text-2xl font-semibold tracking-[-0.045em]">{formatMoney(estimate.payout * 100, 'USD')}</p></div> : null}</div>
     <div className="mt-4 rounded-xl bg-zinc-50 p-3"><p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-zinc-400">Creator submitted</p><div className="mt-2 flex flex-wrap gap-x-5 gap-y-1 text-xs text-zinc-600"><span><strong className="font-semibold text-zinc-900">{submission.viewCountThreshold ? formatViewCount(submission.viewCountThreshold) : 'Not recorded'}</strong> views</span><span><strong className="font-semibold text-zinc-900">{submission.usAudiencePercent !== null ? `${submission.usAudiencePercent}% Tier 1` : '20%+ combined Tier-1'}</strong> audience</span></div></div>
     <div className="mt-4 grid gap-3 sm:grid-cols-2">
-      <label className="grid gap-2 text-xs font-semibold text-zinc-700">Admin-approved views<Select value={selection.viewCountThreshold ? String(selection.viewCountThreshold) : undefined} onValueChange={onViewCountChange}><SelectTrigger aria-label="Admin-approved view count"><SelectValue placeholder="Choose final views" /></SelectTrigger><SelectContent>{CREATOR_VIEW_THRESHOLDS.map((threshold) => <SelectItem key={threshold.views} value={String(threshold.views)}>{threshold.label} views</SelectItem>)}</SelectContent></Select></label>
-      <label className="grid gap-2 text-xs font-semibold text-zinc-700">Admin-approved audience<Select value={selection.usAudiencePercent === null ? 'base' : String(selection.usAudiencePercent)} onValueChange={onAudienceChange}><SelectTrigger aria-label="Admin-approved audience"><SelectValue /></SelectTrigger><SelectContent><SelectItem value="base">20%+ combined Tier-1 · base</SelectItem>{CREATOR_TIER1_AUDIENCE_TIERS.map((percentage) => <SelectItem key={percentage} value={String(percentage)}>{percentage === 40 ? '40%+ Tier 1' : `${percentage}% Tier 1`}</SelectItem>)}</SelectContent></Select></label>
+      <label className="grid gap-2 text-xs font-semibold text-zinc-700">Admin-approved views{submission.sprintTerms ? <input type="number" min="0" max="2000000000" className="creator-field" value={selection.viewCountThreshold} onChange={event => onViewCountChange(event.target.value)} /> : <Select value={selection.viewCountThreshold ? String(selection.viewCountThreshold) : undefined} onValueChange={onViewCountChange}><SelectTrigger aria-label="Admin-approved view count"><SelectValue placeholder="Choose final views" /></SelectTrigger><SelectContent>{CREATOR_VIEW_THRESHOLDS.map((threshold) => <SelectItem key={threshold.views} value={String(threshold.views)}>{threshold.label} views</SelectItem>)}</SelectContent></Select>}</label>
+      <label className="grid gap-2 text-xs font-semibold text-zinc-700">Admin-approved audience{submission.sprintTerms ? <input type="number" min="0" max="100" step="0.1" className="creator-field" value={selection.usAudiencePercent ?? 0} onChange={event => onAudienceChange(event.target.value)} /> : <Select value={selection.usAudiencePercent === null ? 'base' : String(selection.usAudiencePercent)} onValueChange={onAudienceChange}><SelectTrigger aria-label="Admin-approved audience"><SelectValue /></SelectTrigger><SelectContent><SelectItem value="base">20%+ combined Tier-1 · base</SelectItem>{CREATOR_TIER1_AUDIENCE_TIERS.map((percentage) => <SelectItem key={percentage} value={String(percentage)}>{percentage === 40 ? '40%+ Tier 1' : `${percentage}% Tier 1`}</SelectItem>)}</SelectContent></Select>}</label>
     </div>
     <p className="mt-3 text-[11px] leading-5 text-zinc-500">These admin-approved values override the creator’s selection for payment.{estimate?.isCapped ? ' The $325 payout cap is applied.' : ''}</p>
   </section>
 }
 
 function CreatePayment({ submission, selection, onCreated }: { submission: AdminSubmission; selection: AdminPayoutSelection; onCreated: () => Promise<void> }) {
-  const estimate = getSubmissionPayoutEstimate(selection)
+  const estimate = getSubmissionPayoutEstimate(selection, submission)
   const [creating, setCreating] = useState(false)
   async function create() {
     if (!estimate) return toast.error('Choose the final payout values')
@@ -464,7 +468,7 @@ function CreatePayment({ submission, selection, onCreated }: { submission: Admin
       setCreating(false)
     }
   }
-  return <div className="mt-5 rounded-2xl border border-zinc-200 bg-zinc-50 p-4"><div className="flex items-center justify-between gap-4"><div><p className="text-sm font-semibold">Create payment</p><p className="mt-1 text-xs leading-5 text-zinc-500">The amount is locked to the admin-approved calculator result.</p></div><p className="text-2xl font-semibold tracking-[-0.045em]">{estimate ? formatMoney(estimate.payout * 100, 'USD') : '—'}</p></div>{estimate ? <p className="mt-3 rounded-xl bg-white px-3 py-2 text-[11px] leading-5 text-zinc-500">{formatViewCount(selection.viewCountThreshold)} approved views · {selection.usAudiencePercent !== null ? `${selection.usAudiencePercent}% Tier 1 audience` : '20%+ combined Tier-1 base rate'}{estimate.isCapped ? ' · payout cap applied' : ''}</p> : <p className="mt-3 text-xs text-amber-700">Choose the final views and audience tier above before creating payment.</p>}<Button variant="outline" className="mt-4 h-10 w-full rounded-xl bg-white" onClick={() => void create()} disabled={creating || !estimate}>{creating ? <Loader2 className="animate-spin" /> : <CircleDollarSign />}{creating ? 'Creating…' : 'Schedule calculated payment'}</Button></div>
+  return <div className="mt-5 rounded-2xl border border-zinc-200 bg-zinc-50 p-4"><div className="flex items-center justify-between gap-4"><div><p className="text-sm font-semibold">Create payment</p><p className="mt-1 text-xs leading-5 text-zinc-500">The amount is locked to the admin-approved calculator result.</p></div><p className="text-2xl font-semibold tracking-[-0.045em]">{estimate ? formatMoney(estimate.payout * 100, 'USD') : '—'}</p></div>{estimate ? <p className="mt-3 rounded-xl bg-white px-3 py-2 text-[11px] leading-5 text-zinc-500">{formatViewCount(selection.viewCountThreshold)} approved views · {selection.usAudiencePercent !== null ? `${selection.usAudiencePercent}% Tier 1 audience` : '20%+ combined Tier-1 base rate'}{estimate.isCapped ? ' · payout cap applied' : ''}</p> : <p className="mt-3 text-xs text-amber-700">Choose the final views and audience tier above before creating payment.</p>}<Button variant="outline" className="mt-4 h-10 w-full rounded-xl bg-white" onClick={() => void create()} disabled={creating || !estimate || (Boolean(submission.sprintId) && (submission.status !== 'approved' || selection.viewCountThreshold !== submission.adminViewCountThreshold || selection.usAudiencePercent !== submission.adminUsAudiencePercent))}>{creating ? <Loader2 className="animate-spin" /> : <CircleDollarSign />}{creating ? 'Creating…' : 'Schedule calculated payment'}</Button></div>
 }
 
 function AccountAudienceEvidence({ account }: { account: AdminAccount }) {
@@ -524,7 +528,7 @@ function ReviewDetails({ target }: { target: ReviewTarget }) {
     <h3 className="mt-6 text-base font-semibold">Account metrics</h3>
     <CreatorAttributionReport report={target.item.attribution} accountCount={1} />
     <p className="mt-2 text-xs text-zinc-500">Follower counts and platform audience metrics are available in the recording below.</p>
-    <AccountAudienceEvidence account={target.item} />
+    {target.item.analyticsVideoUrl ? <AccountAudienceEvidence account={target.item} /> : <p className="mt-4 text-sm text-zinc-500">Connected by handle. Account audience verification is no longer required; each video has its own analytics evidence.</p>}
   </>
   if (target.resource === 'submission') {
     return <Details rows={[
@@ -558,7 +562,8 @@ function formatMoney(cents: number, currency: string) { return new Intl.NumberFo
 function formatDate(value: string) { return new Intl.DateTimeFormat('en-US', { month: 'short', day: 'numeric', year: 'numeric' }).format(new Date(value)) }
 function formatBytes(bytes: number) { return `${(bytes / 1024 / 1024).toFixed(1)} MB` }
 function formatViewCount(views: number) { return views === 1_000_000 ? '+1M' : new Intl.NumberFormat('en-US', { notation: views >= 10_000 ? 'compact' : 'standard', maximumFractionDigits: 0 }).format(views) }
-function getSubmissionPayoutEstimate(selection: AdminPayoutSelection) {
+function getSubmissionPayoutEstimate(selection: AdminPayoutSelection, submission?: AdminSubmission) {
+  if (submission?.sprintTerms) return { payout: sprintPayoutCents(submission.sprintTerms, selection.viewCountThreshold, selection.usAudiencePercent) / 100, isCapped: false }
   if (!selection.viewCountThreshold || !CREATOR_VIEW_THRESHOLDS.some((item) => item.views === selection.viewCountThreshold)) return null
   return calculateCreatorPayout(selection.viewCountThreshold, true, selection.usAudiencePercent)
 }

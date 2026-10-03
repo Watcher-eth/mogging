@@ -1,6 +1,5 @@
 import { CREATOR_VIDEO_TYPES, MAX_CREATOR_ANALYTICS_VIDEO_BYTES } from './video-types'
 import { z } from 'zod'
-import { isCreatorViewThreshold } from './payouts'
 
 export function creatorPostPlatform(value: string): 'tiktok' | 'instagram' | null {
   try {
@@ -55,6 +54,8 @@ export const creatorProfileSchema = z
   })
 
 export const creatorSubmissionSchema = z.object({
+  sprintId: z.string().uuid(),
+  postedAt: z.string().datetime().refine(value => Date.parse(value) <= Date.now(), "Publication time cannot be in the future"),
   formatId: z.string().trim().min(1).max(80),
   requirementsConfirmed: z.literal(true),
   socialAccountId: z.string().uuid().optional().nullable(),
@@ -64,8 +65,8 @@ export const creatorSubmissionSchema = z.object({
   analyticsStorageKey: z.string().min(1),
   analyticsContentType: z.enum(CREATOR_VIDEO_TYPES),
   analyticsSizeBytes: z.number().int().positive().max(MAX_CREATOR_ANALYTICS_VIDEO_BYTES),
-  viewCountThreshold: z.number().refine(isCreatorViewThreshold, 'Choose an available view threshold'),
-  usAudiencePercent: z.number().min(22.5).max(40).multipleOf(2.5).optional().nullable(),
+  viewCountThreshold: z.number().int().nonnegative().max(2_000_000_000),
+  usAudiencePercent: z.number().min(0).max(100),
 })
 
 export const creatorAnalyticsEvidenceSchema = z.object({

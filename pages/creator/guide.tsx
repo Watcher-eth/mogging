@@ -19,7 +19,6 @@ import {
   TriangleAlert,
 } from 'lucide-react'
 import { CreatorHeader, CreatorShell } from '@/components/creator/creator-shell'
-import { CreatorPayoutCalculator } from '@/components/creator/payout-calculator'
 import { ContentGuidelines, accountReviewPolicy, AnalyticsVerificationHelp, discordContactUrl } from '@/components/creator/content-guidelines'
 import { Button } from '@/components/ui/button'
 import useSWR from 'swr'
@@ -31,24 +30,7 @@ import { CreatorReferralLinks } from '@/components/creator/referral-links'
 
 const GuideExamples = dynamic(() => import('@/components/creator/guide-examples'), { loading: () => <p className="p-6 text-sm text-[#73777d]" role="status">Loading reference examples…</p> })
 
-const accountChecks = [
-  ['Physical recording', 'Use a second phone, tablet, or camera to film your phone or TikTok on a computer. Native screen recordings are not accepted.'],
-  ['Visible identity', 'Keep the connected username readable throughout the recording.'],
-  ['Recent analytics', 'Show the most recent 28-day window, or the closest platform option.'],
-  ['Audience geography', 'Open Locations and show the complete country or territory list.'],
-  ['One continuous take', 'Do not cut, edit, hide screens, or alter analytics.'],
-  ['Readable evidence', 'Move slowly enough for every screen and value to be reviewed.'],
-] as const
-
-const statusItems = [
-  ['Needs Verification', 'Connected, but analytics evidence is still required.', 'neutral'],
-  ['Pending Review', 'Verification was submitted and is being checked.', 'warning'],
-  ['Approved', 'The account is ready for eligible creator posts.', 'success'],
-  ['Missing Information', 'The team needs clearer or additional evidence.', 'danger'],
-] as const
-
 const tierOneCountries = ['United States', 'Canada', 'United Kingdom', 'Australia', 'Germany', 'France', 'Netherlands', 'Sweden', 'Denmark', 'Switzerland', 'New Zealand', 'Poland', 'Italy', 'South Korea']
-const payoutThresholds = ['20K', '40K', '100K', '250K', '500K', '750K', '+1M']
 
 export default function CreatorProgramGuidePage() {
   const router = useRouter()
@@ -86,7 +68,7 @@ function GuideHome() {
     ['rules', 'Content rules', 'What qualifies, what gets rejected, and why.'],
     ['examples', 'Examples & references', 'Real footage, hooks, audience comments, and takeaways.'],
     ['referrals', 'Your referral links', 'Share the right link before you publish.'],
-    ['account', 'Account verification', 'Record your analytics and understand review status.'],
+    ['account', 'Connect an account', 'Add your publishing profile and get your code.'],
   ] as const
 
   return <>
@@ -173,7 +155,7 @@ function VideoGuide() {
 
           <div className="mt-5 grid gap-2">
             <GuideDisclosure title="Full requirements" meta={`${format.requirements.length} items`}>
-              <Checklist items={format.requirements} />
+              <Checklist items={format.requirements.filter(item => !item.startsWith('Submit within'))} />
             </GuideDisclosure>
             {format.notAllowed.length > 0 ? <GuideDisclosure title="What is not allowed" meta={`${format.notAllowed.length} items`} tone="danger">
               <Checklist items={format.notAllowed} prohibited />
@@ -189,85 +171,18 @@ function VideoGuide() {
           <Evidence icon={Smartphone} title="Physical Analytics Recording" detail="Film with a second device: views, traffic sources, and complete audience location data." />
           <Evidence icon={ShieldCheck} title="Final Confirmation" detail="Confirm the video follows the selected brief." />
         </div>
-        <p className="mt-4 text-xs leading-5 text-[#858a91]">Submit within 30 days of publishing and keep the post public while it is under review.</p><AnalyticsVerificationHelp />
+        <p className="mt-4 text-xs leading-5 text-[#858a91]">Follow the submission window and brief shown in your selected campaign, and keep the post public while it is under review.</p><AnalyticsVerificationHelp />
       </div>
     </section>
   )
 }
 
 function AccountGuide() {
-  return (
-    <section id="guide-panel-account" aria-label="Account verification">
-      <GuidePanelHeader eyebrow="Verify an Account" title="Recording required to connect." description="Upload the account’s audience recording before completing connection. Only complete submissions enter the review queue." action={<Button asChild variant="outline" className="h-10 rounded-full border-black/10 bg-white px-4 text-[#00A8EF]"><Link href="/creator/accounts">Manage Accounts<ArrowRight /></Link></Button>} />
-
-      <div className="grid gap-5">
-        <div>
-          <ol className="grid gap-3 sm:grid-cols-3">
-            <AccountStep number="1" icon={Link2} title="Profile" detail="Enter the username of the account you want to connect." />
-            <AccountStep number="2" icon={Smartphone} title="Recording" detail="Film with a second device and upload the required audience walkthrough." />
-            <AccountStep number="3" icon={ShieldCheck} title="Connect" detail="Complete account connection and submit for review. TikTok normally requires matching OAuth login; creators manually enabled by the team can submit their handle and profile URL instead. Recording is still required." />
-          </ol>
-
-          <div className="mt-5 grid gap-2">
-            <GuideDisclosure title="Moderator reviews and genuine evidence" meta="Required">
-              <p className="text-sm leading-6 text-[#73777d]">{accountReviewPolicy}</p>
-            </GuideDisclosure>
-            <GuideDisclosure title="Analytics recording checklist" meta="6 checks">
-              <div className="grid gap-3 sm:grid-cols-2">{accountChecks.map(([title, detail]) => <div key={title} className="flex items-start gap-3"><span className="mt-0.5 grid size-5 shrink-0 place-items-center rounded-full creator-tone-green text-[#29CE53]"><Check className="size-3" /></span><div><p className="text-sm font-semibold">{title}</p><p className="mt-1 text-xs leading-5 text-[#73777d]">{detail}</p></div></div>)}</div>
-              <AnalyticsVerificationHelp />
-            </GuideDisclosure>
-            <GuideDisclosure title="What each review status means" meta="4 statuses">
-              <div className="grid gap-2 sm:grid-cols-2">{statusItems.map(([label, detail, tone]) => <StatusRow key={label} label={label} detail={detail} tone={tone} />)}</div>
-            </GuideDisclosure>
-          </div>
-        </div>
-
-
-      </div>
-    </section>
-  )
+  return <section id="guide-panel-account" aria-label="Connecting accounts"><GuidePanelHeader eyebrow="Publishing profiles" title="Connect once. Share your code." description="Enter your TikTok or Instagram handle or profile URL. Your permanent referral code appears immediately after connecting." action={<Button asChild><Link href="/creator/accounts">Manage accounts<ArrowRight /></Link></Button>} /><ol className="grid gap-3 sm:grid-cols-3"><AccountStep number="1" icon={Link2} title="Add your profile" detail="Choose TikTok or Instagram and enter one handle or profile URL." /><AccountStep number="2" icon={ShieldCheck} title="Copy your code" detail="Your permanent code stays connected to that publishing profile and its attribution history." /><AccountStep number="3" icon={Smartphone} title="Create & submit" detail="Follow an active campaign’s brief. Every video submission still needs its own second-device analytics recording." /></ol><p className="mt-5 rounded-2xl bg-[#f5f6f7] p-5 text-sm leading-6 text-zinc-500">Account connection no longer requires OAuth or an audience recording. Video analytics are verified separately during submission review.</p></section>
 }
 
 function PayoutGuide() {
-  const [calculatorOpen, setCalculatorOpen] = useState(false)
-
-  return (
-    <section id="guide-panel-payout" aria-label="Earnings and payouts">
-      <GuidePanelHeader eyebrow="Understand Payouts" title="How much / when do I get paid?" description="Choose the view threshold and audience tier shown in your post analytics. The review team verifies both before approving payment." action={<Button asChild variant="outline" className="h-10 rounded-full border-black/10 bg-white px-4 text-[#00A8EF]"><Link href="/creator/payout-information">Set Up Payouts<ArrowRight /></Link></Button>} />
-
-      <div className="mb-6 flex items-start gap-3 rounded-[16px] bg-[#f5f6f7] p-4"><Clock3 className="mt-0.5 size-4 shrink-0 text-[#00A8EF]" /><div><h3 className="text-sm font-semibold">Allow 3–5 days for payouts after approval.</h3><p className="mt-1 text-xs leading-5 text-[#73777d]">Crypto is the faster payout method. PayPal processing times may vary by region and account. Track pending and sent payments in the Payouts tab.</p></div></div>
-      <div className="grid gap-3 sm:grid-cols-3">
-        <PayoutFact value="20%+" label="Combined Tier-1 audience for base eligibility" />
-        <PayoutFact value="22.5%" label="Tier 1 audience where enhanced rates begin" />
-        <PayoutFact value="$325" label="Maximum payout for one video" />
-      </div>
-
-      <div className="mt-6">
-        <button type="button" onClick={() => setCalculatorOpen((open) => !open)} aria-expanded={calculatorOpen} className="flex w-full items-center gap-4 rounded-[16px] bg-[#f5f6f7] p-4 text-left transition-[background-color,transform] duration-150 hover:bg-[#eef0f2] active:scale-[0.99]">
-          <span className="grid size-10 shrink-0 place-items-center rounded-[14px] bg-white text-[#00A8EF]"><Calculator className="size-[18px]" /></span>
-          <span className="min-w-0 flex-1"><span className="block text-sm font-semibold text-[#181a1d]">Earnings Calculator</span><span className="mt-0.5 block text-xs text-[#73777d]">Estimate a payout from your actual analytics.</span></span>
-          <span className="text-sm font-semibold">{calculatorOpen ? 'Hide' : 'Open'}</span>
-        </button>
-        {calculatorOpen ? <div className="mt-4"><CreatorPayoutCalculator /></div> : null}
-
-        <div className="mt-5 grid gap-2">
-          <GuideDisclosure title="Content eligibility and review holds" meta="Before payment" tone="warning">
-            <p className="text-sm leading-6 text-[#73777d]">Reaching a view milestone does not make unrelated content payable. Every post must meet the complete Mogging content brief, and account and analytics checks must be resolved before approval. {accountReviewPolicy}</p>
-          </GuideDisclosure>
-          <GuideDisclosure title="View milestones" meta={`${payoutThresholds.length} thresholds`}>
-            <div className="grid grid-cols-3 gap-2 sm:grid-cols-6">{payoutThresholds.map((threshold) => <span key={threshold} className="rounded-[12px] bg-[#f7f8f9] px-2 py-3 text-center text-sm font-semibold">{threshold}</span>)}</div>
-            <p className="mt-3 text-xs leading-5 text-[#73777d]">Milestones are cumulative totals, not stacked bonuses. The view count verified during review becomes the payout snapshot.</p>
-          </GuideDisclosure>
-          <div id="audience-tiers" className="scroll-mt-6"><GuideDisclosure title="Eligible Tier-1 countries" meta={`${tierOneCountries.length} countries`}>
-            <div className="flex flex-wrap gap-2">{tierOneCountries.map((country) => <span key={country} className="rounded-full bg-[#f7f8f9] px-3 py-1.5 text-xs font-medium text-[#73777d]">{country}</span>)}</div>
-            <p className="mt-3 text-xs leading-5 text-[#73777d]">Any mix of these countries may satisfy the 20% base requirement. Enhanced rates begin when the combined Tier 1 audience reaches 22.5%.</p>
-          </GuideDisclosure></div>
-        </div>
-      </div>
-
-      <div className="mt-6 flex items-start gap-3 rounded-[16px] bg-[#f7f8f9] p-5 sm:p-6"><CreatorIcon name="lock" className="size-11" /><div><p className="text-sm font-semibold">Add a payout destination before funds are released.</p><p className="mt-1 text-xs leading-5 text-[#73777d]">You may submit content before choosing PayPal or crypto. The destination only needs to be ready before payment is processed.</p></div></div>
-    </section>
-  )
+  return <section id="guide-panel-payout" aria-label="Earnings and payouts"><GuidePanelHeader eyebrow="Campaigns & Money" title="How much / when do I get paid?" description="Each campaign sets its own budget, milestones, audience thresholds and requirements. Check the campaign before you create." action={<Button asChild><Link href="/creator/sprints">Explore campaigns<ArrowRight /></Link></Button>} /><div className="grid gap-3 sm:grid-cols-3"><PayoutFact value="Campaigns" label="Each campaign has its own rates and budget" /><PayoutFact value="Verified" label="Your recording determines eligible views and audience" /><PayoutFact value="3–5 days" label="Typical payment processing after approval" /></div><div className="mt-6 grid gap-3"><GuideDisclosure title="How campaign earnings work" meta="Rates & budget"><p className="text-sm leading-6 text-zinc-500">The milestone amounts displayed in a campaign are its maximum Tier 1 payouts. Your verified audience determines the payout using the campaign’s audience tiers or scaling rules. You must reach its minimum views and audience threshold. Milestones are total payouts, not stacked bonuses. Approval is subject to available campaign budget. The campaign terms saved when you submit remain attached to that video.</p></GuideDisclosure><GuideDisclosure title="Where to track your money" meta="Wallet, cashouts, earnings"><p className="text-sm leading-6 text-zinc-500">Wallet shows your approved unpaid balance once you select a payout method. Earnings lists eligible reviewed videos awaiting payment. Cashouts lists payments actually sent. Add or update PayPal or crypto in Payout methods.</p><Link href="/creator/money" className="mt-3 inline-block text-sm text-[#00A8EF]">Open Money →</Link></GuideDisclosure><GuideDisclosure title="Content eligibility and review holds" meta="Before payment" tone="warning"><p className="text-sm leading-6 text-zinc-500">Every post must satisfy its campaign brief and rules. Provide genuine, readable second-device analytics evidence and resolve any requested moderation checks. {accountReviewPolicy}</p><AnalyticsVerificationHelp /></GuideDisclosure><div id="audience-tiers"><GuideDisclosure title="Tier 1 countries" meta={`${tierOneCountries.length} countries`}><div className="flex flex-wrap gap-2">{tierOneCountries.map(country => <span key={country} className="rounded-full bg-[#f5f6f7] px-3 py-1.5 text-xs">{country}</span>)}</div><p className="mt-3 text-xs text-zinc-500">Combine the audience share from these countries. Minimum and maximum percentages are defined by your campaign.</p></GuideDisclosure></div></div><p className="mt-6 rounded-2xl bg-[#f5f6f7] p-5 text-sm text-zinc-500">Choose a payout destination before payment is released. Historical submissions keep their original payout terms.</p></section>
 }
 
 function GuidePanelHeader({ eyebrow, title, description, action }: { eyebrow: string; title: string; description: string; action?: ReactNode }) {
@@ -303,11 +218,6 @@ function Evidence({ icon: Icon, title, detail }: { icon: typeof Smartphone; titl
 
 function AccountStep({ number, icon: Icon, title, detail }: { number: string; icon: typeof Link2; title: string; detail: string }) {
   return <li className="rounded-[16px] bg-[#f7f8f9] p-4"><div className="flex items-center justify-between"><span className="grid size-9 place-items-center rounded-[12px] bg-white text-[#00A8EF] shadow-sm"><Icon className="size-4" /></span><span className="text-[10px] font-semibold text-[#aeaeb2]">{number.padStart(2, '0')}</span></div><p className="mt-4 text-sm font-semibold">{title}</p><p className="mt-1 text-xs leading-5 text-[#73777d]">{detail}</p></li>
-}
-
-function StatusRow({ label, detail, tone }: { label: string; detail: string; tone: 'danger' | 'warning' | 'success' | 'neutral' }) {
-  const classes = tone === 'success' ? 'bg-[#29CE53] text-white' : tone === 'warning' ? 'bg-[#F5B800] text-white' : tone === 'danger' ? 'bg-[#F33232] text-white' : 'bg-[#52565c] text-white'
-  return <div className="rounded-[14px] bg-[#f7f8f9] p-3"><span className={cn('inline-flex rounded-full px-2.5 py-1 text-[11px] font-semibold', classes)}>{label}</span><p className="mt-2 text-xs leading-5 text-[#73777d]">{detail}</p></div>
 }
 
 function PayoutFact({ value, label }: { value: string; label: string }) {

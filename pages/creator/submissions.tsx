@@ -9,6 +9,8 @@ import { CreatorIcon } from '@/components/creator/creator-icon'
 import type { CreatorDashboard, CreatorPayment, CreatorSubmission } from '@/components/creator/types'
 import { apiGet } from '@/lib/api/client'
 import { mergeCreatorSubmissionReviewResults } from '@/lib/creator/submission-review'
+import { sprintReviewItems } from '@/lib/creator/sprints'
+import { creatorEarnedCents } from '@/lib/creator/money'
 import { cn } from '@/lib/utils'
 
 const filters = [
@@ -47,8 +49,8 @@ function SubmissionCard({ submission, payment, linkedToApprovedAccount, onClick,
   return (
     <button onClick={onClick} style={style} className="creator-list-item creator-surface group flex w-full flex-wrap items-center gap-3 p-4 text-left transition-[border-color,box-shadow,transform] duration-200 hover:-translate-y-0.5 hover:border-black/10 hover:shadow-[0_16px_40px_rgba(0,0,0,0.06)] active:scale-[0.99]">
       <CreatorIcon name="submissions" className="size-12" />
-      <span className="min-w-0 flex-1"><span className="block truncate text-sm font-semibold tracking-[-0.02em]">{submission.title}</span><span className="mt-1 flex flex-wrap items-center gap-2 text-xs text-zinc-500"><span>{submission.platform}</span><span>·</span><span>{formatDate(submission.createdAt)}</span>{!linkedToApprovedAccount ? <span className="inline-flex items-center gap-1 rounded-full bg-zinc-100 px-2 py-0.5 font-medium text-zinc-600"><CircleAlert className="size-3" />Account Not Approved</span> : null}</span></span>
-      <span className="w-full text-sm sm:w-auto sm:text-right">{payment ? <><span className="block text-sm font-semibold">{formatMoney(payment.amountCents, payment.currency)}</span><span className="mt-1 block text-xs capitalize text-zinc-500">{payment.status}</span></> : <span className="text-xs text-zinc-400">No Payment Yet</span>}</span>
+      <span className="min-w-0 flex-1"><span className="block truncate text-sm font-semibold tracking-[-0.02em]">{submission.title}</span><span className="mt-1 flex flex-wrap items-center gap-2 text-xs text-zinc-500"><span>{submission.platform}</span><span>·</span><span>{formatDate(submission.createdAt)}</span>{!linkedToApprovedAccount && !submission.sprintId ? <span className="inline-flex items-center gap-1 rounded-full bg-zinc-100 px-2 py-0.5 font-medium text-zinc-600"><CircleAlert className="size-3" />Account Not Approved</span> : null}</span></span>
+      <span className="w-full text-sm sm:w-auto sm:text-right">{payment ? <><span className="block text-sm font-semibold">{formatMoney(payment.amountCents, payment.currency)}</span><span className="mt-1 block text-xs capitalize text-zinc-500">{payment.status}</span></> : submission.status === 'approved' ? <span className="font-semibold">{formatMoney(creatorEarnedCents(submission), 'USD')}</span> : <span className="text-xs text-zinc-400">No Payment Yet</span>}</span>
       <StatusPill status={submission.status} />
       <ArrowUpRight className="size-4 shrink-0 text-zinc-300 transition-[color,transform] duration-150 ease-out group-hover:-translate-y-0.5 group-hover:translate-x-0.5 group-hover:text-black" />
     </button>
@@ -69,11 +71,11 @@ function SubmissionDialog({ submission, payment, linkedToApprovedAccount, open, 
               <DialogTitle className="pt-2 text-2xl">{submission.title}</DialogTitle>
               <DialogDescription>{submission.platform}</DialogDescription>
             </DialogHeader>
-            {!linkedToApprovedAccount ? <div className="mt-6 flex gap-3 rounded-2xl creator-warning px-4 py-3 text-sm leading-6"><CircleAlert className="mt-0.5 size-4 shrink-0 text-zinc-600" /><p><strong className="font-semibold">Account Not Approved.</strong> This video is not currently connected to an approved TikTok or Instagram account.</p></div> : null}
+            {!linkedToApprovedAccount && !submission.sprintId ? <div className="mt-6 flex gap-3 rounded-2xl creator-warning px-4 py-3 text-sm leading-6"><CircleAlert className="mt-0.5 size-4 shrink-0 text-zinc-600" /><p><strong className="font-semibold">Account Not Approved.</strong> This video is not currently connected to an approved TikTok or Instagram account.</p></div> : null}
             <div className="mt-6 grid gap-3 rounded-2xl bg-zinc-50 p-4 text-sm">
               <Detail label="Review Status" value={statusLabel(submission.status)} />
-              <Detail label="Account Eligibility" value={linkedToApprovedAccount ? 'Approved account' : 'Not approved'} />
-              <Detail label="Evidence" value={submission.analyticsScreenshotUrl ? 'Analytics screenshot' : submission.videoUrl ? 'Legacy video' : 'Not provided'} />
+              {!submission.sprintId ? <Detail label="Account Eligibility" value={linkedToApprovedAccount ? 'Approved account' : 'Not approved'} /> : null}
+              <Detail label="Evidence" value={submission.analyticsContentType?.startsWith('video/') ? 'Second-device analytics recording' : submission.analyticsScreenshotUrl ? 'Analytics screenshot' : submission.videoUrl ? 'Legacy video' : 'Not provided'} />
               <Detail label="Evidence Size" value={evidenceSize ? formatBytes(evidenceSize) : 'Not recorded'} />
               <Detail label="View Count Threshold" value={submission.viewCountThreshold ? `${formatViewCount(submission.viewCountThreshold)} views` : 'Not recorded'} />
               <Detail label="Tier 1 Audience" value={submission.usAudiencePercent !== null ? `${submission.usAudiencePercent}%` : 'Default 20% Tier 1 Audience'} />
@@ -92,12 +94,15 @@ function SubmissionDialog({ submission, payment, linkedToApprovedAccount, open, 
 }
 
 function CreatorReviewChecklist({ submission }: { submission: CreatorSubmission }) {
-  const items = mergeCreatorSubmissionReviewResults(submission.formatId, submission.reviewChecklist)
+  const items = submission.sprintTerms
+    ? sprintReviewItems(submission.sprintTerms, submission.formatId || '').map(item => ({ ...item, met: submission.reviewChecklist?.find(result => result.id === item.id)?.met || false, note: submission.reviewChecklist?.find(result => result.id === item.id)?.note || null }))
+    : mergeCreatorSubmissionReviewResults(submission.formatId, submission.reviewChecklist)
   const metCount = items.filter((item) => item.met).length
   return <section className="mt-6 rounded-2xl border border-zinc-200 p-4"><div className="flex items-start justify-between gap-4"><div><p className="text-xs font-semibold uppercase tracking-[0.15em] text-zinc-400">Requirements review</p><p className="mt-2 text-sm font-semibold">Creator-guide results</p><p className="mt-1 text-xs leading-5 text-zinc-500">See what your video satisfied and where the review team found a gap.</p></div><span className="shrink-0 rounded-full bg-zinc-100 px-2.5 py-1 text-[11px] font-semibold tabular-nums text-zinc-600">{metCount}/{items.length}</span></div><div className="mt-4 grid gap-2">{items.map((item) => <div key={item.id} className={cn('flex items-start gap-3 rounded-xl p-3', item.met ? 'creator-tone-green text-zinc-700' : 'creator-tone-red text-red-950')}>{item.met ? <CheckCircle2 className="mt-0.5 size-4 shrink-0 text-[#29CE53]" /> : <XCircle className="mt-0.5 size-4 shrink-0 text-red-600" />}<div><p className="text-sm font-semibold">{item.label}</p><p className={cn('mt-1 text-[11px] leading-5', item.met ? 'text-zinc-700' : 'text-red-800')}>{item.note || (item.met ? 'Requirement satisfied.' : 'This requirement was not marked as satisfied.')}</p></div></div>)}</div></section>
 }
 
 function SubmissionEvidence({ submission }: { submission: CreatorSubmission }) {
+  if (submission.analyticsScreenshotUrl && submission.analyticsContentType?.startsWith('video/')) return <div className="aspect-video overflow-hidden rounded-t-[27px] bg-black"><video className="size-full object-contain" src={submission.analyticsScreenshotUrl} controls preload="metadata" /></div>
   if (submission.analyticsScreenshotUrl) {
     return <div role="img" aria-label="Submitted video analytics screenshot" className="aspect-video rounded-t-[27px] bg-zinc-950 bg-contain bg-center bg-no-repeat" style={{ backgroundImage: `url(${JSON.stringify(submission.analyticsScreenshotUrl)})` }} />
   }

@@ -11,3 +11,4 @@ out
 
 public/uploads
 .vercel
+.local/

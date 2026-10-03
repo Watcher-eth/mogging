@@ -1,8 +1,10 @@
 import { z } from 'zod'
+import { courseCategoryIds } from './categories'
 
 export const courseIdSchema = z.uuid()
 export const courseSlugSchema = z.string().trim().toLowerCase().regex(/^[a-z0-9]+(?:-[a-z0-9]+)*$/).min(3).max(60)
 const optionalUrl = z.url().refine(value => value.startsWith('https://'), 'HTTPS required').nullable().default(null)
+export const courseCategorySchema = z.enum([...courseCategoryIds, 'grooming', 'style', 'skincare', 'general'])
 const lessonSchema = z.object({
   id: courseIdSchema,
   title: z.string().trim().min(1).max(160),
@@ -20,7 +22,7 @@ export const courseContentSchema = z.object({
   summary: z.string().trim().max(500).default(''),
   description: z.string().max(20_000).default(''),
   coverUrl: optionalUrl,
-  category: z.enum(['grooming', 'style', 'fitness', 'skincare', 'general']).default('general'),
+  category: courseCategorySchema.default('looksmaxxing'),
   language: z.enum(['en', 'de', 'fr', 'es', 'it', 'pt', 'nl']).default('en'),
   outcomes: z.array(z.string().trim().min(1).max(300)).max(20).default([]),
   refundPolicy: z.string().trim().max(5000).default(''),
@@ -58,7 +60,10 @@ export const uploadSchema = z.discriminatedUnion('kind', [
   z.object({ kind: z.literal('video'), title: z.string().trim().min(1).max(160), contentType: z.enum(['video/mp4', 'video/quicktime', 'video/webm']), sizeBytes: z.number().int().positive().max(5 * 1024 ** 3), durationSeconds: z.number().int().positive().max(7200) }).strict(),
   z.object({ kind: z.literal('resource'), title: z.string().trim().min(1).max(160), contentType: z.enum(['application/pdf', 'text/plain', 'image/png', 'image/jpeg']), sizeBytes: z.number().int().positive().max(100 * 1024 ** 2) }).strict(),
 ])
-export const progressSchema = z.object({ positionSeconds: z.number().int().min(0).max(7200), completed: z.boolean() }).strict()
+export const progressSchema = z.object({
+  positionSeconds: z.number().int().min(0).max(7200), completed: z.boolean(),
+  watchedRanges: z.array(z.tuple([z.number().finite().min(0).max(7200), z.number().finite().min(0).max(7200)]).refine(([start, end]) => end > start, 'Invalid watch range')).max(1000).default([]),
+}).strict()
 export const refundSchema = z.object({ amount: z.number().int().positive().optional() }).strict()
 export const reviewSchema = z.object({ version: z.number().int().min(1), decision: z.enum(['approve', 'reject']), note: z.string().trim().max(5000).default('') }).strict()
 export const sellerDecisionSchema = z.object({ status: z.enum(['enabled', 'suspended', 'pending']) }).strict()

@@ -12,6 +12,10 @@ export const protocolProductOptions = [
   { id: 'niacinamide', label: 'Niacinamide' },
   { id: 'benzoyl-peroxide', label: 'Benzoyl peroxide for acne' },
   { id: 'exfoliant', label: 'Gentle exfoliant' },
+  { id: 'silicone-scar-care', label: 'Silicone for a healed raised scar' },
+  { id: 'sunless-tanner', label: 'Sunless tanning lotion / mousse' },
+  { id: 'collagen', label: 'Optional oral collagen supplement' },
+  { id: 'makeup', label: 'Light makeup / contour products' },
 ] as const
 export type ProtocolProductId = (typeof protocolProductOptions)[number]['id']
 export const protocolDefaultProducts: readonly ProtocolProductId[] = ['cleanser', 'moisturizer', 'uv-protection']
@@ -33,6 +37,214 @@ export type ProtocolTask = {
   product?: ProtocolProductId
   family?: string
   role?: 'maintenance' | 'assessment' | 'practice'
+  requiresBeard?: boolean
+  concerns?: readonly ProtocolConcern[]
+  equipment?: readonly ProtocolEquipment[]
+  minutes?: number
+  reason?: string
+  evidence?: string
+}
+
+
+export const protocolConcernOptions = [
+  { id: 'blackheads', label: 'Blackheads / clogged pores', focus: 'nose' },
+  { id: 'pimples', label: 'Pimples', focus: 'skin-age' },
+  { id: 'marks', label: 'Post-acne marks / uneven tone', focus: 'skin-age' },
+  { id: 'dryness', label: 'Dry / rough skin', focus: 'skin-age' },
+  { id: 'fine-lines', label: 'Texture / fine lines', focus: 'skin-age' },
+  { id: 'raised-scar', label: 'Healed raised scar with an agreed treatment', focus: 'skin-age' },
+  { id: 'puffy-eyes', label: 'Morning eye puffiness', focus: 'eyes' },
+  { id: 'itchy-eyes', label: 'Recurring itchy eyes / allergies', focus: 'eyes' },
+  { id: 'sparse-brows', label: 'Sparse / overplucked brows', focus: 'eyes' },
+  { id: 'brow-shape', label: 'Unruly brows', focus: 'eyes' },
+  { id: 'posture', label: 'Head and shoulder posture', focus: 'jaw' },
+  { id: 'frame-strength', label: 'Back / shoulder development', focus: 'dimorphism' },
+  { id: 'jaw-tension', label: 'Jaw tension / clenching', focus: 'jaw' },
+  { id: 'facial-practice', label: 'Optional gentle facial / tongue-rest practice', focus: 'jaw' },
+  { id: 'hair-framing', label: 'Hair that frames my face', focus: 'face-shape' },
+  { id: 'hair-thinning', label: 'Hair thinning', focus: 'face-shape' },
+  { id: 'scalp-flakes', label: 'Scalp flakes', focus: 'face-shape' },
+  { id: 'razor-bumps', label: 'Shaving irritation', focus: 'jaw' },
+  { id: 'tooth-colour', label: 'Tooth colour', focus: 'mouth' },
+  { id: 'alignment', label: 'Tooth / bite alignment', focus: 'mouth' },
+  { id: 'dry-lips', label: 'Dry lips', focus: 'mouth' },
+  { id: 'nose-grooming', label: 'Visible nostril hairs', focus: 'nose' },
+  { id: 'nose-dryness', label: 'Nasal dryness', focus: 'nose' },
+  { id: 'nose-blockage', label: 'Persistent nasal blockage', focus: 'nose' },
+] as const
+export type ProtocolConcern = typeof protocolConcernOptions[number]['id']
+export const protocolEquipmentOptions = [
+  { id: 'band', label: 'Resistance band' }, { id: 'dumbbells', label: 'Light dumbbells' },
+  { id: 'trimmer', label: 'Guarded trimmer' }, { id: 'hair-tools', label: 'Comb / styling tools' },
+] as const
+export type ProtocolEquipment = typeof protocolEquipmentOptions[number]['id']
+export const protocolFaceShapes = ['unsure', 'oval', 'round', 'square', 'oblong', 'heart', 'diamond'] as const
+export const protocolHairTextures = ['unsure', 'straight', 'wavy', 'curly', 'coily'] as const
+export const protocolFeedbackOptions = [
+  { id: 'done', label: 'Done' }, { id: 'too-difficult', label: 'Too difficult' },
+  { id: 'discomfort', label: 'Pain / irritation' }, { id: 'not-relevant', label: 'Not relevant' },
+  { id: 'missing-equipment', label: 'Missing tool / product' },
+] as const
+export type ProtocolFeedback = { date: string; taskKey: string; outcome: typeof protocolFeedbackOptions[number]['id']; reps?: number; resistance?: string }
+export type ProtocolCheckIn = { date: string; effort: 'manageable' | 'too-much'; change: 'improving' | 'same' | 'worse'; skinComfort: 'comfortable' | 'irritated' }
+export type ProtocolProfile = {
+  concerns: ProtocolConcern[]; focusIds: string[]; products: ProtocolProductId[]; equipment: ProtocolEquipment[]
+  faceShape: typeof protocolFaceShapes[number]; hairTexture: typeof protocolHairTextures[number]
+  minutes: 5 | 15 | 30; experience: 'beginner' | 'regular'; budget: 'existing' | 'flexible'
+  ageGroup: 'unknown' | 'under-18' | 'adult'; retinoidsSuitable: boolean; sensitiveSkin: boolean
+  complexion: 'unspecified' | 'very-light' | 'light' | 'medium' | 'deep'
+  tanning: 'none' | 'lotion' | 'spray'; makeup: boolean; collagen: boolean
+  dentalPlan: 'none' | 'whitening' | 'retainer' | 'aligners'; startedOn: string | null; confirmed: boolean; evaluationDerived?: boolean
+}
+export const defaultProtocolProfile: ProtocolProfile = {
+  concerns: [], focusIds: [], products: [], equipment: [], faceShape: 'unsure', hairTexture: 'unsure',
+  minutes: 15, experience: 'beginner', budget: 'existing', ageGroup: 'unknown', retinoidsSuitable: false,
+  sensitiveSkin: false, complexion: 'unspecified', tanning: 'none', makeup: false, collagen: false,
+  dentalPlan: 'none', startedOn: null, confirmed: false,
+}
+export function normalizeProtocolProfile(value?: Partial<ProtocolProfile> | null): ProtocolProfile {
+  const result = { ...defaultProtocolProfile, ...value }
+  const knownConcerns = new Set<string>(protocolConcernOptions.map(option => option.id))
+  const knownEquipment = new Set<string>(protocolEquipmentOptions.map(option => option.id))
+  result.concerns = [...new Set((Array.isArray(value?.concerns) ? value.concerns : []).filter(id => knownConcerns.has(id)))]
+  result.equipment = [...new Set((Array.isArray(value?.equipment) ? value.equipment : []).filter(id => knownEquipment.has(id)))]
+  result.products = normalizeProtocolProducts(Array.isArray(value?.products) ? value.products : [])
+  result.focusIds = [...new Set((Array.isArray(value?.focusIds) ? value.focusIds : []).filter(id => focusAliases.some(([focus]) => focus === id)))].slice(0, 3)
+  if (!protocolFaceShapes.includes(result.faceShape)) result.faceShape = 'unsure'
+  if (!protocolHairTextures.includes(result.hairTexture)) result.hairTexture = 'unsure'
+  if (![5, 15, 30].includes(result.minutes)) result.minutes = 15
+  if (!['unknown', 'under-18', 'adult'].includes(result.ageGroup)) result.ageGroup = 'unknown'
+  if (!['none', 'lotion', 'spray'].includes(result.tanning)) result.tanning = 'none'
+  if (!['none', 'whitening', 'retainer', 'aligners'].includes(result.dentalPlan)) result.dentalPlan = 'none'
+  if (!['beginner', 'regular'].includes(result.experience)) result.experience = 'beginner'
+  if (!['existing', 'flexible'].includes(result.budget)) result.budget = 'existing'
+  if (!['unspecified', 'very-light', 'light', 'medium', 'deep'].includes(result.complexion)) result.complexion = 'unspecified'
+  for (const key of ['retinoidsSuitable', 'sensitiveSkin', 'makeup', 'collagen', 'confirmed'] as const) result[key] = result[key] === true
+  if (result.startedOn && !isProtocolDate(result.startedOn)) result.startedOn = null
+  return result
+}
+// Observations the evaluation can support visually. Symptoms, product ownership,
+// treatment suitability and cosmetic preferences never come from a photo.
+export const protocolVisibleConcerns = ['dryness', 'fine-lines', 'marks', 'pimples', 'blackheads', 'sparse-brows', 'brow-shape', 'hair-thinning', 'dry-lips'] as const
+export function deriveProtocolProfile({ report, preferences, onboarding, startedOn }: {
+  report: Record<string, unknown> | null
+  preferences?: Partial<ProtocolProfile>
+  onboarding?: { ageRange: string | null; commitment: string | null; experience: string | null; methods: readonly string[]; goals: readonly string[] }
+  startedOn?: string
+}): ProtocolProfile {
+  const categories = Array.isArray(report?.categories) ? report.categories : []
+  const potential = record(report?.potential)
+  const focusIds = rankProtocolFocus(categories, Array.isArray(potential?.focusAreas) ? potential.focusAreas.filter((value): value is string => typeof value === 'string') : [])
+  const goalFocus: Record<string, string> = { 'A sharper jawline': 'jaw', 'Clearer, healthier skin': 'skin-age', 'Better facial harmony': 'symmetry', 'Stronger eye area': 'eyes', 'Facial Weight Loss / Debloat': 'facial-fat' }
+  const goals = onboarding?.goals.map(goal => goalFocus[goal]).filter(Boolean) ?? []
+  // Existing goals break ties among the report's actionable priorities.
+  focusIds.sort((a, b) => Number(goals.includes(b)) - Number(goals.includes(a)))
+  const context = record(report?.protocolContext)
+  const concerns: ProtocolConcern[] = Array.isArray(context?.visibleConcerns)
+    ? context.visibleConcerns.filter((value): value is typeof protocolVisibleConcerns[number] => protocolVisibleConcerns.includes(value as typeof protocolVisibleConcerns[number])) : []
+  if (!context) {
+    const legacyFindings: Array<[ProtocolConcern, RegExp, RegExp]> = [
+      ['dryness', /skin|texture|dry/i, /\b(dry|flaky|flaking|rough skin)\b/i],
+      ['fine-lines', /skin|texture|lines|wrinkle/i, /\b(fine lines|wrinkles|creases)\b/i],
+      ['marks', /tone|pigment|skin|marks/i, /\b(uneven tone|post.acne marks|dark spots)\b/i],
+      ['pimples', /skin|acne|blemish|spots/i, /\b(pimples|inflamed spots|visible blemishes)\b/i],
+      ['blackheads', /pores|skin|nose/i, /\b(blackheads|clogged pores)\b/i],
+      ['sparse-brows', /brow/i, /\b(sparse|overplucked|patchy)\b/i],
+      ['brow-shape', /brow/i, /\b(unruly|stray hairs)\b/i],
+      ['dry-lips', /lip/i, /\b(dry|chapped|flaky)\b/i],
+      ['hair-thinning', /hair|scalp/i, /\b(thinning|sparse coverage)\b/i],
+    ]
+    for (const category of categories) {
+      const entry = record(category)
+      if (!Array.isArray(entry?.features)) continue
+      for (const feature of entry.features) {
+        const item = record(feature)
+        if (typeof item?.label !== 'string' || typeof item.value !== 'string' || /\b(no|none|without|absent|not|uncertain|unavailable|obscured)\b|not visible|tracked|low visible signal/i.test(item.value)) continue
+        for (const [concern, label, value] of legacyFindings) if (label.test(item.label) && value.test(item.value)) concerns.push(concern)
+      }
+    }
+  }
+  const visibleFocus = new Set(concerns.map(id => protocolConcernOptions.find(option => option.id === id)!.focus))
+  // A concrete visible finding is actionable even when its category scores well.
+  // Only categories actually present in this report can become priorities.
+  const availableFocus = new Set(categories.map(category => record(category)?.id === 'biological-age' ? 'skin-age' : record(category)?.id))
+  focusIds.splice(0, focusIds.length, ...new Set([...[...visibleFocus].filter(id => availableFocus.has(id)), ...focusIds]))
+  focusIds.splice(3)
+  let faceShape = context?.faceShape as ProtocolProfile['faceShape']
+  let hairTexture = context?.hairTexture as ProtocolProfile['hairTexture']
+  // Older reports can still supply explicitly named shape / texture features.
+  // Do not interpret scores or generic fallback text as a diagnosis.
+  for (const category of categories) {
+    const entry = record(category)
+    if (entry?.id !== 'face-shape' || !Array.isArray(entry.features)) continue
+    for (const feature of entry.features) {
+      const item = record(feature)
+      if (typeof item?.label !== 'string' || typeof item.value !== 'string') continue
+      if (/shape|outline|silhouette/i.test(item.label) && !faceShape) faceShape = protocolFaceShapes.find(shape => shape !== 'unsure' && new RegExp(`\\b${shape}\\b`, 'i').test(item.value as string)) ?? 'unsure'
+      if (/hair.*texture/i.test(item.label) && !hairTexture) hairTexture = protocolHairTextures.find(texture => texture !== 'unsure' && new RegExp(`\\b${texture}\\b`, 'i').test(item.value as string)) ?? 'unsure'
+    }
+  }
+  if (focusIds.some(id => ['face-shape', 'jaw', 'facial-fat', 'symmetry', 'dimorphism'].includes(id))) concerns.push('hair-framing')
+  if (focusIds.some(id => ['jaw', 'facial-fat'].includes(id))) concerns.push('posture')
+  if (focusIds.includes('dimorphism')) concerns.push('frame-strength')
+  if (onboarding?.methods.includes('Exercise')) concerns.push('frame-strength', 'posture')
+  if (onboarding?.methods.includes('Mewing')) concerns.push('facial-practice')
+  if (preferences?.dentalPlan === 'whitening') concerns.push('tooth-colour')
+  if (preferences?.dentalPlan === 'retainer' || preferences?.dentalPlan === 'aligners') concerns.push('alignment')
+  const automatic = normalizeProtocolProfile({
+    focusIds, concerns, faceShape, hairTexture, startedOn: startedOn ?? null,
+    ageGroup: onboarding?.ageRange === 'Under 18' ? 'under-18' : onboarding?.ageRange ? 'adult' : 'unknown',
+    minutes: onboarding?.commitment === '5 minutes a day' ? 5 : onboarding?.commitment === 'Whatever it takes' ? 30 : 15,
+    experience: onboarding?.experience === 'I’m actively improving' ? 'regular' : 'beginner',
+    evaluationDerived: Boolean(report),
+  })
+  // Only explicitly saved adjustments override evaluation-derived fields.
+  return normalizeProtocolProfile({ ...automatic, ...preferences,
+    concerns: [...automatic.concerns, ...(preferences?.concerns ?? [])],
+    focusIds: automatic.focusIds.length ? automatic.focusIds : preferences?.focusIds ?? [],
+    startedOn: preferences?.startedOn ?? automatic.startedOn,
+    evaluationDerived: Boolean(report),
+  })
+}
+function record(value: unknown) {
+  return value && typeof value === 'object' ? value as Record<string, unknown> : null
+}
+export function isProtocolDate(value: string) {
+  const date = new Date(`${value}T12:00:00`)
+  return /^\d{4}-\d{2}-\d{2}$/.test(value) && Number.isFinite(date.getTime()) && formatProtocolDate(date) === value
+}
+const taskRequirements: Record<string, Partial<ProtocolTask>> = {
+  'neck-posture': { concerns: ['posture'], minutes: 2 }, 'chin-nod': { concerns: ['posture'], minutes: 2 },
+  'neck-isometric': { concerns: ['posture'], minutes: 3 }, 'thoracic-extension': { concerns: ['posture'], minutes: 2 },
+  'wall-slides': { concerns: ['posture'], minutes: 2 }, 'chest-stretch': { concerns: ['posture'], minutes: 2 },
+  'band-pull-apart': { concerns: ['frame-strength'], equipment: ['band'], minutes: 5 },
+  'frame-strength-a': { concerns: ['frame-strength'], minutes: 25 }, 'frame-strength-b': { concerns: ['frame-strength'], minutes: 25 },
+  'strength-progress': { concerns: ['frame-strength'], minutes: 2 },
+  'jaw-habit': { concerns: ['jaw-tension'] }, 'jaw-massage': { concerns: ['jaw-tension'], minutes: 1 },
+  'bite-assessment': { concerns: ['jaw-tension', 'alignment'] },
+  'tongue-rest': { concerns: ['facial-practice'], minutes: 1 }, 'cheek-lifter': { concerns: ['facial-practice'], minutes: 1 }, 'cheek-smile': { concerns: ['facial-practice'], minutes: 1 },
+  'hair-root-volume': { concerns: ['hair-framing'], equipment: ['hair-tools'], minutes: 5 },
+  'hair-face-frame': { concerns: ['hair-framing'], minutes: 2 },
+  'haircut-plan': { concerns: ['hair-framing'] }, 'hair-condition': { concerns: ['hair-framing'] },
+  'hair-fibers': { concerns: ['hair-thinning'] }, 'hair-loss-assessment': { concerns: ['hair-thinning'] },
+  'scalp-flakes': { concerns: ['scalp-flakes'] }, 'traction-release': { concerns: ['hair-framing'] },
+  'grooming-edges': { equipment: ['trimmer'] }, 'beard-taper': { equipment: ['trimmer'] }, 'stubble-length': { equipment: ['trimmer'] },
+  'shave-grain': { concerns: ['razor-bumps'] }, 'moustache-line': { equipment: ['trimmer'] },
+  'brow-set': { minutes: 1 },
+  'nose-groom': { concerns: ['nose-grooming'] },
+  'brow-preserve': { concerns: ['sparse-brows'] }, 'brow-pencil': { concerns: ['sparse-brows'] },
+  'brow-groom': { concerns: ['brow-shape'] }, 'brow-strays': { concerns: ['brow-shape'] },
+  'eye-depuff': { concerns: ['puffy-eyes'], minutes: 5 }, 'eye-allergy-review': { concerns: ['itchy-eyes'] },
+  'glasses-fit': { concerns: [] }, 'lip-mouth': { concerns: ['dry-lips'] },
+  'whitening-plan': { concerns: ['tooth-colour'] }, 'smile-alignment': { concerns: ['alignment'] },
+  'nose-saline': { concerns: ['nose-dryness'] }, 'nose-assessment': { concerns: ['nose-blockage'] },
+  'nose-oil': { concerns: ['blackheads'] },
+  'vitamin-c': { concerns: ['marks', 'fine-lines'] }, 'retinol': { concerns: ['fine-lines', 'pimples'] },
+  'salicylic-acid': { concerns: ['blackheads'] }, 'azelaic-acid': { concerns: ['marks', 'pimples'] },
+  'niacinamide': { concerns: ['marks', 'dryness', 'fine-lines'] }, 'benzoyl-peroxide': { concerns: ['pimples'] },
+  'exfoliant': { concerns: ['fine-lines', 'blackheads'] }, 'pimple-patch': { concerns: ['pimples'] },
+  'hair-product-swap': { concerns: ['pimples'] }, 'silicone-scar-care': { concerns: ['raised-scar'] },
+  'skin-plan': { concerns: ['pimples', 'blackheads', 'marks', 'fine-lines'] }, 'pigment-plan': { concerns: ['marks'] },
 }
 
 const icons = {
@@ -47,8 +259,8 @@ const icons = {
   recovery: { ios: 'sparkles', android: 'auto_awesome' },
 }
 function task(key: string, title: string, detail: string, tips: string[], focusIds: string[], kind: keyof typeof icons, time: ProtocolTask['time'], extra: Partial<ProtocolTask> = {}): ProtocolTask {
-  const colors = { posture: '#32c48d', strength: '#26b86b', skin: '#48c7ff', sun: '#f5b73f', eyes: '#8c7cff', mouth: '#ff6f9f', nose: '#00a8ef', grooming: '#111113', recovery: '#ef5da8' }
-  return { key, title, detail, tips, focusIds, time, hour: time === 'Morning' ? 8 : time === 'Evening' ? 16 : 12, icon: icons[kind], color: colors[kind], priority: 60, ...extra }
+  const colors = { posture: '#32c48d', strength: '#26b86b', skin: '#48c7ff', sun: '#f5b73f', eyes: '#48c7ff', mouth: '#ff6f9f', nose: '#00a8ef', grooming: '#ff8a66', recovery: '#ef5da8' }
+  return { ...taskRequirements[key], key, title, detail, tips, focusIds, time, hour: time === 'Morning' ? 8 : time === 'Evening' ? 16 : 12, icon: icons[kind], color: colors[kind], priority: 60, ...extra }
 }
 const skinFocus = ['skin-age', 'skin-quality', 'sun-damage', 'overall']
 const definitionFocus = ['jaw', 'facial-fat', 'cheekbones', 'face-shape', 'overall']
@@ -65,6 +277,10 @@ export const protocolTasks: ProtocolTask[] = [
   task('strength-progress', 'Set next week’s resistance', 'Open your training log. If you completed every set at 12 controlled reps in both sessions with 2 reps to spare, increase by the smallest available resistance next week; otherwise repeat the current level.', ['Record the exact band, dumbbell weight, or push-up incline, not just workout minutes.', 'Change only one variable at a time; return to 8 reps after increasing resistance.', 'Progressive overload builds muscle. Do not add heavy neck loading or jaw resistance devices.'], [...definitionFocus, 'dimorphism', 'overall'], 'strength', 'Anytime', { weekdays: [0], family: 'strength-progression' }),
   task('jaw-habit', 'Break a clenching habit', 'If you catch yourself clenching, set three brief reminders today to release your teeth and shoulders. Replace nail biting or prolonged gum chewing with a hands-free break.', ['Keep your jaw relaxed without pushing your tongue or forcing your bite.', 'Keep prescribed splint use unchanged unless your dentist advises otherwise.', 'For pain, locking, or new bite changes, arrange a dental assessment.'], ['jaw', 'mouth', 'symmetry'], 'mouth', 'Midday', { weekdays: [1, 4], family: 'jaw-comfort', role: 'maintenance' }),
 
+  task('band-pull-apart', '2 sets of band pull-aparts', 'Hold a light resistance band at shoulder height with softly straight elbows. Pull your hands apart through a comfortable range, pause for 3 seconds, then return slowly. Do 2 sets of 10, resting a minute.', ['Inspect the band for damage first. Keep it below your face and never stretch beyond its rated limit.', 'Keep your ribs relaxed and shoulders away from your ears. Start with one set and stop for pain.', 'Trains the upper-back and rear-shoulder frame. Record the band and reps; use a slightly stronger band only when every rep is comfortable.'], ['dimorphism', 'face-shape', 'symmetry', 'overall'], 'strength', 'Midday', { weekdays: [1, 4], family: 'shoulder-strength' }),
+  task('thoracic-extension', '6 supported upper-back extensions', 'Sit on a stable chair with a back reaching your mid-back and feet flat. Cross your arms over your chest, gently extend your upper back over the chair, then return upright. Repeat 6 times slowly.', ['Use a comfortable small range; keep your neck supported by its own muscles without throwing your head back.', 'Do not force the lower back to arch. Skip after spinal injury or surgery unless cleared by your clinician; stop for pain or dizziness.', 'Works on upper-back mobility for the head-and-shoulder frame. It does not alter facial bones or guarantee a change in jaw projection.'], ['jaw', 'face-shape', 'dimorphism', 'symmetry', 'overall'], 'posture', 'Midday', { family: 'thoracic-mobility' }),
+  task('jaw-massage', '1-minute gentle jaw massage', 'If your jaw muscles feel tense, relax your teeth apart and use clean fingertips outside the mouth to make gentle circles over the cheek muscle near the jaw angle and the temples for about one minute.', ['Use light pressure on the muscles, avoiding the jaw joint and irritated skin. No tools, scraping, intraoral pulling, or deep pressure.', 'Stop if discomfort increases. Locking, persistent pain, swelling, or a changed bite needs a dental assessment.', 'A comfort technique for tension, not a way to shrink masseters, drain facial fat, or create hollow cheeks. Skip when there is no tension.'], ['jaw', 'mouth', 'symmetry'], 'mouth', 'Evening', { weekdays: [0, 3, 6], family: 'jaw-comfort' }),
+
   // Optional facial practice. Evidence for cosmetic effects is limited; never apply
   // force to teeth, the palate, eyelids, or a painful joint to chase a score.
   task('tongue-rest', 'Mewing: pressure-free rest', 'For one minute, sit comfortably with relaxed shoulders. Say N to find a light tongue-tip resting point behind the upper front teeth, then relax. Let your lips meet only if comfortable and keep your teeth apart.', ['Use no force or prolonged suction. Do not push on teeth, clench, tape your mouth, or pull inside the mouth.', 'Breathe comfortably; stop if tongue positioning restricts breathing, causes strain, or changes your bite. Persistent difficulty needs an assessment.', 'This is optional oral-rest awareness, not a proven way to grow the maxilla, sharpen the jaw, or fix asymmetry.'], ['jaw', 'mouth', 'overall'], 'mouth', 'Morning', { weekdays: [1, 4], family: 'facial-practice', role: 'practice' }),
@@ -72,13 +288,14 @@ export const protocolTasks: ProtocolTask[] = [
   task('cheek-smile', 'Controlled closed-lip smile', 'For an optional cheek-muscle drill, bring your lips together gently and lift the cheeks into a comfortable closed-lip smile. Hold up to 20 seconds, relax completely, and repeat twice without pulling at the mouth.', ['Use comfortable effort rather than a maximal grin; keep the forehead relaxed and do not squint hard.', 'Stop for jaw pain, skin irritation, or fatigue. Skip around a recent procedure unless cleared.', 'Cosmetic benefit remains uncertain. The small facial-exercise study tested a 20-week full program, not this drill alone; fuller cheeks are different from a leaner face.'], ['skin-age', 'cheekbones', 'face-shape', 'overall'], 'recovery', 'Evening', { weekdays: [2, 5], family: 'facial-practice', role: 'practice' }),
 
   // Grooming changes the visible frame immediately; it is not bone remodeling.
-  task('grooming-edges', 'Refine your beard neckline', 'If you have a beard, comb it downward and use a guarded trimmer to clear stray hairs below your existing neckline. Take one light pass, then check both sides.', ['Keep the boundary gradual rather than carving a high line across the underside of the jaw.', 'Use your barber’s established line if unsure; skip irritated skin.', 'A tidier lower-face outline is a grooming effect, not a change to chin projection.'], ['jaw', 'dimorphism', 'face-shape', 'facial-fat', 'overall'], 'grooming', 'Morning', { weekdays: [0, 4], family: 'beard-shape' }),
-  task('beard-taper', 'Blend beard sides into chin', 'If your beard is dense enough, keep your current chin length and use a guard one step longer than you think you need on the sides. Blend downward with light passes, reducing length only if you like the result.', ['Start conservatively: hair can be shortened later, but not put back.', 'Use equal passes and preserve your natural cheek line; ask a barber for the first taper if needed.', 'Redistributes beard bulk around the lower face; skip if you prefer a clean shave.'], ['jaw', 'face-shape', 'dimorphism', 'symmetry', 'facial-fat'], 'grooming', 'Morning', { weekdays: [6], family: 'beard-shape' }),
-  task('stubble-length', 'Even out patchy stubble', 'If your facial hair looks patchy, use a guarded trimmer to bring the fuller areas to the same short length as the surrounding stubble. Try a longer guard first.', ['Work with your growth pattern instead of outlining bare patches.', 'Clean the guard and avoid repeated passes over irritated skin.', 'Creates a more uniform visible texture; it does not stimulate new follicles.'], ['jaw', 'dimorphism', 'symmetry', 'face-shape', 'overall'], 'grooming', 'Morning', { weekdays: [2], family: 'beard-shape' }),
-  task('shave-grain', 'Shave with your growth pattern', 'If shaving today, soften the hair with warm water, apply shaving gel, then take light strokes in the direction the hair grows. Rinse the razor after each stroke.', ['Map the growth direction on your cheeks and neck separately; it can change across the face.', 'Do not stretch the skin or shave over inflamed bumps. A guarded electric trim is an alternative.', 'Finish with a tolerated moisturizer. Cleaner technique can reduce visible razor irritation.'], ['jaw', 'mouth', 'skin-age', 'skin-quality', 'dimorphism', 'overall'], 'grooming', 'Morning', { weekdays: [1, 5], family: 'shaving' }),
-  task('moustache-line', 'Trim hairs crossing the lip', 'If you have a moustache, comb it downward and trim only hairs hanging across the upper lip using a guarded trimmer or small grooming scissors.', ['Keep your mouth relaxed and work slowly away from the lip.', 'Preserve the main shape; remove a little at a time.', 'Makes the lip border more visible without changing lip size.'], ['mouth', 'dimorphism', 'symmetry'], 'grooming', 'Morning', { weekdays: [3], family: 'beard-shape' }),
+  task('grooming-edges', 'Refine your beard neckline', 'If you have a beard, comb it downward and use a guarded trimmer to clear stray hairs below your existing neckline. Take one light pass, then check both sides.', ['Keep the boundary gradual rather than carving a high line across the underside of the jaw.', 'Use your barber’s established line if unsure; skip irritated skin.', 'A tidier lower-face outline is a grooming effect, not a change to chin projection.'], ['jaw', 'dimorphism', 'face-shape', 'facial-fat', 'overall'], 'grooming', 'Morning', { requiresBeard: true, weekdays: [0, 4], family: 'beard-shape' }),
+  task('beard-taper', 'Blend beard sides into chin', 'If your beard is dense enough, keep your current chin length and use a guard one step longer than you think you need on the sides. Blend downward with light passes, reducing length only if you like the result.', ['Start conservatively: hair can be shortened later, but not put back.', 'Use equal passes and preserve your natural cheek line; ask a barber for the first taper if needed.', 'Redistributes beard bulk around the lower face; skip if you prefer a clean shave.'], ['jaw', 'face-shape', 'dimorphism', 'symmetry', 'facial-fat'], 'grooming', 'Morning', { requiresBeard: true, weekdays: [6], family: 'beard-shape' }),
+  task('stubble-length', 'Even out patchy stubble', 'If your facial hair looks patchy, use a guarded trimmer to bring the fuller areas to the same short length as the surrounding stubble. Try a longer guard first.', ['Work with your growth pattern instead of outlining bare patches.', 'Clean the guard and avoid repeated passes over irritated skin.', 'Creates a more uniform visible texture; it does not stimulate new follicles.'], ['jaw', 'dimorphism', 'symmetry', 'face-shape', 'overall'], 'grooming', 'Morning', { requiresBeard: true, weekdays: [2], family: 'beard-shape' }),
+  task('shave-grain', 'Shave with your growth pattern', 'If shaving today, soften the hair with warm water, apply shaving gel, then take light strokes in the direction the hair grows. Rinse the razor after each stroke.', ['Map the growth direction on your cheeks and neck separately; it can change across the face.', 'Do not stretch the skin or shave over inflamed bumps. A guarded electric trim is an alternative.', 'Finish with a tolerated moisturizer. Cleaner technique can reduce visible razor irritation.'], ['jaw', 'mouth', 'skin-age', 'skin-quality', 'dimorphism', 'overall'], 'grooming', 'Morning', { requiresBeard: true, weekdays: [1, 5], family: 'shaving' }),
+  task('moustache-line', 'Trim hairs crossing the lip', 'If you have a moustache, comb it downward and trim only hairs hanging across the upper lip using a guarded trimmer or small grooming scissors.', ['Keep your mouth relaxed and work slowly away from the lip.', 'Preserve the main shape; remove a little at a time.', 'Makes the lip border more visible without changing lip size.'], ['mouth', 'dimorphism', 'symmetry'], 'grooming', 'Morning', { requiresBeard: true, weekdays: [3], family: 'beard-shape' }),
   task('hair-root-volume', 'Practice controlled root volume', 'On wash day, lift the front and crown roots with your fingers or a vent brush while drying on the lowest heat setting. Use a small amount of styling product, keeping it away from facial skin.', ['For a long-looking face, keep the height modest and retain side fullness; for a rounder outline, try controlled height with less side bulk.', 'Follow your hair texture and preference rather than treating a report score as a mandatory haircut.', 'Changes the hair silhouette immediately. Keep airflow moving and stop if the scalp feels hot.'], ['face-shape', 'dimorphism', 'facial-fat', 'cheekbones', 'overall'], 'grooming', 'Morning', { family: 'hair-styling' }),
   task('hair-face-frame', 'Style a face-framing part', 'Use a comb to place your part, then direct the front sections into a side sweep or soft fringe. Keep hair clear of the eyes and use a small amount of product to hold the shape.', ['Try less exposed forehead if you prefer a shorter-looking upper third, or an open front if you prefer more height.', 'Use loose styling without pulling at the temples; a hairstyle changes framing, not the nose or skull.', 'Keep the product off the forehead, and choose non-comedogenic styling products if acne-prone.'], ['face-shape', 'symmetry', 'nose', 'eyes', 'dimorphism', 'overall'], 'grooming', 'Morning', { family: 'hair-styling' }),
+  task('hair-fibers', 'Apply a subtle hair-fiber layer', 'If you want temporary coverage for thinning hair, choose cosmetic fibers matching your existing hair. Finish styling and let the hair dry, then apply a small amount only where existing strands can hold it. Tap gently to distribute.', ['Follow the product label, keep powder away from eyes and breathing passages, and stop for scalp irritation.', 'Use less at the front edge to preserve a natural outline. Do not use scalp fibers on brows or bare patches without anchoring hair.', 'This is optional cosmetic coverage, not hair regrowth. Wash out as labeled and keep any prescribed scalp treatment on its own instructions. Skip if coverage is not wanted.'], ['face-shape', 'dimorphism', 'overall'], 'grooming', 'Morning', { weekdays: [2, 6], family: 'hair-styling' }),
   task('hair-condition', 'Condition and detangle ends', 'When washing your hair, apply a conditioner suited to your texture mainly to the lengths and ends. Detangle gently from the ends upward with a suitable comb, then rinse as labeled.', ['Skip this step if it is not wash day; curly or coily hair may need a different wash schedule.', 'Do not tug knots from the roots. Use a leave-in detangler if needed and tolerated.', 'Reduces frizz and breakage so the hair frame stays neater; it does not regrow a receding hairline.'], ['face-shape', 'dimorphism', 'overall'], 'grooming', 'Evening', { weekdays: [3, 6], family: 'hair-care' }),
   task('haircut-plan', 'Book a face-framing haircut', 'If a cut is due, book a barber or stylist and request a specific change: less side bulk, retained temple fullness, a softer fringe, or less height on top. Choose one change you want.', ['Ask which option works with your texture, growth pattern, and daily styling time.', 'Keep the natural hairline; avoid pushing it back to make a sharper edge.', 'Haircut choices are aesthetic preferences, not a formula for correcting bone proportions. Skip if your current cut already works.'], ['face-shape', 'dimorphism', 'symmetry', 'nose', 'facial-fat', 'overall'], 'grooming', 'Anytime', { monthDays: [1], family: 'hair-assessment', role: 'assessment' }),
   task('traction-release', 'Release tension at the temples', 'If your hairstyle pulls at the temples or hairline, loosen the tie, braids, or extensions and switch to a pain-free style today.', ['Tenderness, broken hairs, or thinning at the edges are reasons to reduce tension.', 'Persistent thinning needs a dermatologist rather than tighter styling or oils marketed as regrowth treatments.', 'Protects the existing hairline from repeated pulling. Skip if your style is already loose.'], ['face-shape', 'symmetry', 'dimorphism'], 'grooming', 'Anytime', { weekdays: [0], family: 'hair-care' }),
@@ -94,9 +311,11 @@ export const protocolTasks: ProtocolTask[] = [
   task('eye-depuff', '5-minute cool eye compress', 'If your eyelids are puffy, rest a clean cloth cooled with water over closed eyes for 5 minutes, using light contact and no pressure.', ['Use cool water, not frozen material or ice directly on skin.', 'Pain, marked redness, or vision changes need prompt care.', 'May temporarily reduce puffiness; it cannot correct genetic hollows or change eye shape. Skip if not puffy.'], ['eyes'], 'eyes', 'Morning', { family: 'eye-comfort', role: 'maintenance' }),
   task('eye-allergy-review', 'Address recurring itchy eyes', 'If itching, watery eyes, and congestion keep returning, ask a pharmacist or eye-care clinician whether allergy treatment is appropriate. Write down triggers and any drops you already use.', ['Avoid rubbing the eyelids or starting cosmetic brightening drops to hide symptoms.', 'Do not self-treat eye pain or vision changes as an allergy.', 'Managing an actual trigger can help irritation-related redness and puffiness; a facial score cannot diagnose it. Skip without symptoms.'], ['eyes', 'nose'], 'eyes', 'Anytime', { monthDays: [22], family: 'eye-assessment', role: 'assessment' }),
 
+  task('brow-pencil', 'Define sparse brows with light strokes', 'If you want temporary brow definition, use a pencil labeled for eyebrows in a shade close to the existing hair. Make a few short hair-like strokes only in gaps, then blend gently with a clean spoolie.', ['Stay within the natural outline and keep the product away from the eyelid margin. Do not try to redraw the brow bone or make both sides perfectly identical.', 'Use clean hands and your own applicator. Remove as labeled; stop for irritation and avoid use on inflamed skin or during an eye infection.', 'Optional cosmetic definition, not new hair growth. Do not substitute scalp hair dye, castor-oil growth claims, or minoxidil around the eyes.'], ['eyes', 'symmetry', 'dimorphism', 'overall'], 'grooming', 'Morning', { weekdays: [2, 5], family: 'brow-shape' }),
+
   // Smile and lips. Treatments are planned individually, not auto-prescribed.
   task('dental-brush', '2-minute gumline brush', 'Use a soft manual or electric brush with fluoride toothpaste. Spend about 30 seconds in each quadrant, cleaning the outer, inner, and chewing surfaces; repeat morning and before bed.', ['Guide an electric brush slowly tooth by tooth instead of scrubbing. Keep pressure gentle at the gumline.', 'Spit after brushing and do not immediately rinse the fluoride away.', 'This supports clean teeth and gums. It does not whiten crowns or move teeth.'], ['mouth', 'jaw', 'overall'], 'mouth', 'Evening', { family: 'oral-care', role: 'maintenance' }),
-  task('interdental', 'Clean each interdental space', 'Once today, use correctly sized interdental brushes without forcing them. For tight contacts, curve floss around each tooth in a C-shape and slide it gently below the gumline.', ['Clean both surfaces at each gap; avoid snapping floss into the gums.', 'Ask a dentist or hygienist to fit brush sizes if unsure, especially around dental work.', 'Persistent bleeding or pain needs assessment. This removes plaque a toothbrush misses.'], ['mouth', 'overall'], 'mouth', 'Evening', { family: 'oral-care', role: 'maintenance' }),
+  task('interdental', 'Clean each interdental space', 'Once today, use correctly sized interdental brushes without forcing them. For tight contacts, curve floss around each tooth in a C-shape and slide it gently below the gumline.', ['Clean both surfaces at each gap; avoid snapping floss into the gums.', 'Ask a dentist or hygienist to fit brush sizes if unsure, especially around dental work.', 'Persistent bleeding or pain needs assessment. This removes plaque a toothbrush misses.'], ['mouth', 'overall'], 'mouth', 'Evening', { family: 'interdental-care', role: 'maintenance' }),
   task('lip-mouth', 'Repair rough lip edges', 'If your lips are dry, apply plain fragrance-free petrolatum after washing and again before bed. Leave loose skin alone instead of scrubbing or peeling it.', ['Keep balm at hand to replace lip licking with a thin application.', 'Use a tolerated SPF 30+ lip balm outdoors and reapply as labeled.', 'Helps the lip surface recover; it does not permanently plump the lips.'], ['mouth'], 'mouth', 'Evening', { family: 'lip-care' }),
   task('whitening-plan', 'Choose dentist-guided whitening', 'If you are an adult considering lighter natural teeth, book a dental check first. Ask whether surface-stain removal or a dentist-supervised peroxide tray treatment fits your teeth and gums.', ['Do not whiten under 18, during pregnancy or breastfeeding, or with untreated dental disease.', 'Crowns, veneers, fillings, and implants do not bleach like natural teeth. Follow the dentist’s schedule and stop for sensitivity.', 'Avoid lemon, charcoal scrubs, household peroxide, and repeated bleaching outside the plan. Skip if you do not want whitening.'], ['mouth', 'overall'], 'mouth', 'Anytime', { monthDays: [1], family: 'smile-assessment', role: 'assessment' }),
   task('smile-alignment', 'Plan an alignment consultation', 'If crowding, gaps, or an uneven bite bother you, arrange a dentist or orthodontist consultation. Ask about braces or supervised aligners, gum health, expected duration, cost, and retention.', ['An examination determines whether treatment makes sense; a low facial score is not a diagnosis.', 'Do not use DIY bands, mail-order bite changes without appropriate assessment, or one-sided chewing to move teeth.', 'If you already have treatment, follow your existing plan rather than booking again.'], ['mouth', 'jaw', 'symmetry'], 'mouth', 'Anytime', { monthDays: [15], family: 'smile-assessment', role: 'assessment' }),
@@ -112,7 +331,7 @@ export const protocolTasks: ProtocolTask[] = [
   // Targeted skin treatment remains opt-in; basic care does not fill the calendar.
   task('gentle-cleanser', 'Remove the day’s buildup', 'Use your gentle cleanser with fingertips to remove sunscreen and makeup, rinse with lukewarm water, and pat dry. Avoid gritty scrubs and pore-extraction tools.', ['Keep cleansing gentle around nose folds and irritated areas.', 'Continue tolerated moisturizer and daytime broad-spectrum SPF 30+ as part of your daily routine.', 'Cleans surface residue; more scrubbing does not permanently shrink pores.'], [...skinFocus, 'nose'], 'skin', 'Evening', { product: 'cleanser', family: 'skin-basic', role: 'maintenance' }),
   task('skin-barrier', 'Ceramide care for rough patches', 'Apply your fragrance-free moisturizer with ceramides or glycerin to slightly damp skin, including dry cheeks and nose folds. Use a light non-comedogenic formula if acne-prone.', ['Do not stack irritating actives on stinging or peeling skin.', 'Maintain gentle cleansing and daytime broad-spectrum SPF 30+ even when these basics are not separate cards.', 'Supports the barrier and dry surface texture; it does not alter facial fullness.'], skinFocus, 'skin', 'Evening', { product: 'moisturizer', family: 'skin-basic', role: 'maintenance' }),
-  task('uv-spf', 'Protect face, ears + neck', 'Apply your broad-spectrum water-resistant SPF 30+ to exposed face, ears, and neck before outdoor time. Cover the nose, hairline, and other easy-to-miss areas.', ['Use the label’s amount and reapply every 2 hours outdoors and after swimming or sweating.', 'Use shade, a hat, and UV-protective sunglasses alongside sunscreen.', 'Daily prevention remains part of your routine even when it is not a calendar card.'], [...skinFocus, 'nose'], 'sun', 'Morning', { product: 'uv-protection', family: 'uv-protection', role: 'maintenance', priority: 80 }),
+  task('uv-spf', 'Protect face, ears + neck', 'Apply your broad-spectrum water-resistant SPF 30+ to exposed face, ears, and neck before outdoor time. Cover the nose, hairline, and other easy-to-miss areas. On high-UV days, choose SPF 50+ and combine it with shade and protective clothing.', ['Use the label’s amount and reapply every 2 hours outdoors and after swimming or sweating.', 'Use shade, a hat, and UV-protective sunglasses alongside sunscreen.', 'Daily prevention remains part of your routine even when it is not a calendar card.'], [...skinFocus, 'nose'], 'sun', 'Morning', { product: 'uv-protection', family: 'uv-protection', role: 'maintenance', priority: 80 }),
   task('uv-shade', 'Fit your hat + UV sunglasses', 'Choose a hat that shades the nose, ears, and neck and UV-protective sunglasses with a comfortable fit. Put both with your outdoor belongings and use shade when UV is high.', ['Look for UV protection on the eyewear label rather than lens darkness alone.', 'Cover remaining exposed skin with tolerated broad-spectrum SPF 30+; clothing complements sunscreen.', 'Prevents further exposure; it does not reverse old pigmentation or change eye shape.'], ['sun-damage', 'skin-age', 'eyes', 'nose'], 'sun', 'Morning', { family: 'uv-protection', role: 'maintenance' }),
   task('vitamin-c', 'Vitamin C for uneven tone', 'If this is your selected and tolerated active, apply your vitamin C product as labeled, followed by moisturizer and daytime broad-spectrum SPF 30+.', ['Keep it away from eyelids and lip edges; introduce one new active at a time.', 'Follow storage instructions and replace a degraded product rather than layering extra serum.', 'May help uneven tone over time. Expect weeks of consistency, not an instant score change.'], skinFocus, 'skin', 'Morning', { product: 'vitamin-c', weekdays: [1, 4], family: 'skin-active' }),
   task('retinol', 'Retinol for texture + fine lines', 'If appropriate for you, apply your chosen retinol as labeled to dry facial skin, then moisturize. This starter schedule uses two separated nights weekly; a prescription schedule takes priority.', ['Avoid during pregnancy or while trying to conceive; ask your clinician about breastfeeding.', 'Use daytime SPF. Avoid eyelids and lip/nose creases; skip irritated skin, exfoliating acids, and other retinoids that night.', 'If under 18 or treating acne, ask a clinician which treatment fits. Improvement takes months; follow prescribed dosing rather than adding more.'], skinFocus, 'skin', 'Evening', { product: 'retinol', weekdays: [1, 4], family: 'skin-active' }),
@@ -125,6 +344,20 @@ export const protocolTasks: ProtocolTask[] = [
   task('hair-product-swap', 'Keep styling oils off your face', 'If breakouts cluster near your hairline, check your styling products for oil-free or non-comedogenic labeling. Replace the likely oily product and keep leave-in products on the hair rather than facial skin.', ['Wash residue from combs, hats, and pillowcases that contact those areas.', 'Give the change several weeks instead of swapping products every few days.', 'This addresses a possible product trigger; persistent or severe acne needs a clinician. Skip if this does not apply.'], ['skin-quality', 'skin-age', 'overall'], 'skin', 'Anytime', { weekdays: [6], family: 'skin-trigger' }),
   task('skin-plan', 'Match one active to your concern', 'If you want to start a treatment, choose one concern first: blackheads, pimples, post-acne marks, or texture. Ask a pharmacist or dermatologist which single active fits, then select only that product in your protocol settings.', ['Examples to discuss: salicylic acid for clogged pores, benzoyl peroxide for mild pimples, azelaic acid for acne marks, or a suitable retinoid.', 'Patch-test a new product using its instructions and introduce it gradually; keep cleanser, moisturizer, and daytime SPF.', 'Skip if you already have a working plan. Do not diagnose acne or pigmentation from your facial score.'], [...skinFocus, 'nose'], 'skin', 'Anytime', { monthDays: [1, 15], family: 'skin-assessment', role: 'assessment' }),
   task('pigment-plan', 'Plan care for persistent marks', 'If uneven pigmentation persists, book a dermatologist consultation. List when it started, products already tried, irritation, medications, and whether it followed acne or another skin problem.', ['Ask whether an appropriate topical treatment or clinician-performed procedure fits your actual concern.', 'Do not use home chemical peels, skin-bleaching mixtures, or microneedling over active acne.', 'Treatment and timelines depend on the cause and skin type; a low UV-context score is not a diagnosis. Skip without a concern.'], ['sun-damage', 'skin-age', 'skin-quality'], 'skin', 'Anytime', { monthDays: [22], family: 'skin-assessment', role: 'assessment' }),
+  task('silicone-scar-care', 'Follow your silicone scar plan', 'If a clinician has recommended silicone for a healed raised scar, clean and dry the fully closed skin, then apply your silicone gel or sheet using the product’s directions and agreed wear schedule.', ['Do not apply to an open, scabbed, infected, or irritated wound, or near the eyes. Stop for a rash or skin breakdown.', 'Keep the prescribed daily schedule on other days too; this card is a reminder, not a change in dosing. Do not put other actives under the silicone unless instructed.', 'Can help some raised scars over months. It does not erase scars or fill depressed acne scars; a growing scar needs assessment. Select only if this plan applies to you.'], ['skin-quality', 'skin-age', 'overall'], 'skin', 'Evening', { product: 'silicone-scar-care', family: 'scar-care' }),
+  task('skin-friction', 'Keep cleansing gentle', 'Wash with clean hands and lukewarm water, using your tolerated cleanser if you already have one. Pat dry with a clean soft towel; leave scrubs, cleansing brushes and picking out of this wash.', ['Keep the water comfortable, not hot.', 'This supports comfortable skin care; it does not diagnose or treat a skin condition.', 'Avoid adding extra washes just to complete a card.'], ['skin-age', 'skin-quality', 'sun-damage', 'nose', 'overall'], 'skin', 'Evening', { family: 'skin-friction', minutes: 1 }),
+  task('clean-grooming-tools', 'Clean the tools touching your face', 'Clean the comb, brow brush or other grooming tool you use today according to its care instructions, and let it dry completely. If you style with your fingers, wash your hands before touching your face instead.', ['Keep personal tools separate; do not share eye-area applicators.', 'Do not put household disinfectants on your skin or into your eyes.', 'Use this as preparation for grooming, not as a substitute for normal skin care.'], ['eyes', 'skin-age', 'skin-quality', 'nose', 'mouth', 'overall'], 'grooming', 'Morning', { weekdays: [2, 5], family: 'grooming-hygiene', minutes: 1 }),
+  task('skin-touch-habit', 'Leave spots and flaky patches alone', 'During your usual skin care, keep fingernails away from spots, pores and flaky patches. Use a clean tissue or soft towel to blot only if needed; remove rough rubbing and squeezing from today’s routine.', ['Do not scrape, squeeze or extract skin at home.', 'Keep any tolerated prescribed routine unchanged.', 'For a persistent painful or changing area, seek professional advice.'], ['skin-age', 'skin-quality', 'nose', 'overall'], 'skin', 'Anytime', { concerns: ['pimples', 'blackheads', 'dryness'], weekdays: [0, 3, 6], family: 'skin-touch', minutes: 1 }),
+  task('progress-review', 'Review your progress and comfort', 'Review your confirmed concern, routine start date, products used, and recent feedback. If the concern is worsening or has not improved after a consistent trial, discuss the next step with an appropriate clinician or professional instead of adding intensity.', ['Pain, worsening irritation, bite changes, or persistent swelling need individual assessment; do not keep repeating an uncomfortable action.', 'Bring your actual routine and symptom history. Different treatments and concerns have different timelines.', 'This is a planning review, not a diagnosis or a promise that every concern should improve within eight weeks.'], ['overall', 'eyes', 'jaw', 'mouth', 'nose', 'skin-age', 'face-shape', 'symmetry', 'dimorphism', 'facial-fat', 'cheekbones', 'sun-damage'], 'recovery', 'Anytime', { family: 'progress-review', role: 'assessment', minutes: 2 }),
+  task('sunless-lotion', 'Build a subtle sunless tone', 'If you want a warmer appearance, use a gradual sunless lotion or mousse approved for the intended skin area. Start with a small labeled application after a tolerated patch test and blend sparingly at hairlines and joints.', ['Choose the lightest suitable shade and follow the label’s development and repeat interval; do not reapply just because a card appears.', 'Keep DHA away from the entire eye area, lips, nostrils, and broken skin. Wash your hands or use the labeled applicator.', 'Temporary colour only. Continue SPF; no UV tanning or tanning beds. A light complexion does not need correction.'], ['skin-age', 'dimorphism', 'overall'], 'skin', 'Evening', { product: 'sunless-tanner', weekdays: [6], family: 'sunless-tan', minutes: 5, evidence: 'Temporary cosmetic effect' }),
+  task('spray-tan-plan', 'Plan a protected spray tan', 'If you prefer a professional spray tan, ask the provider how they protect the entire eye area, lips, nostrils, and breathing passages from DHA mist. Choose a subtle shade and proceed only if those protections can be provided.', ['Ask to see the product label and tell the provider about skin reactions. A lotion is an alternative that avoids inhaling mist.', 'Skip if eye, mucosal, or inhalation protection cannot be provided; an all-over DHA spray is not FDA-approved for those exposures.', 'Optional temporary colour, not sun protection. Keep daytime SPF and avoid UV tanning.'], ['skin-age', 'dimorphism', 'overall'], 'skin', 'Anytime', { monthDays: [1, 15], family: 'sunless-tan', role: 'assessment', minutes: 5, evidence: 'Temporary cosmetic effect' }),
+  task('collagen-routine', 'Review your optional collagen routine', 'If you already chose an oral collagen supplement with your clinician or pharmacist, follow that product’s directions today. Check its source and ingredients for allergies and record whether you tolerate it.', ['Benefits for skin are uncertain: studies vary in quality and funding. Do not expect facial bone growth or a guaranteed change in wrinkles.', 'Skip if under 18, pregnant, breastfeeding, or advised to avoid it; ask about compatibility with your conditions and medicines.', 'Optional supplement, not an essential purchase or a replacement for ordinary nutrition, SPF, or treatment. Stop for a reaction.'], skinFocus, 'skin', 'Morning', { product: 'collagen', weekdays: [3], family: 'supplement', role: 'practice', minutes: 1, evidence: 'Mixed / limited evidence' }),
+  task('light-base', 'Blend a light complexion base', 'If you like makeup, apply a small amount of your tolerated non-comedogenic skin tint or concealer only where you want coverage. Blend the edges with clean fingers or a clean applicator and keep the finish light.', ['Choose a shade close to your skin tone. Product use is optional and does not imply your complexion needs changing.', 'Use eye-area products only where the label permits. Skip irritated skin; remove makeup gently before bed.', 'Temporary cosmetic coverage. Keep skincare and sunscreen on their own instructions.'], ['skin-age', 'symmetry', 'overall'], 'grooming', 'Morning', { product: 'makeup', weekdays: [2, 6], family: 'makeup', minutes: 3, evidence: 'Temporary cosmetic effect' }),
+  task('soft-contour', 'Blend a soft face-framing contour', 'Use a small amount of your tolerated matte contour product near the outer cheek or jaw, then blend until no sharp edge remains. Keep colour subtle and choose the placement you prefer.', ['For a rounder outline, try a little shading at the outer cheeks; for a longer outline, keep cheek shading horizontal and avoid extending it downward.', 'For square features, soften the outer jaw corners if wanted; for a heart or diamond outline, keep temple and cheek shading light. These are style preferences.', 'Temporary makeup, not anatomical correction. Use clean tools, avoid irritated skin, and remove gently at night.'], ['face-shape', 'cheekbones', 'jaw', 'symmetry', 'overall'], 'grooming', 'Morning', { product: 'makeup', weekdays: [1, 4], family: 'makeup', minutes: 5, evidence: 'Temporary cosmetic effect' }),
+  task('whitening-follow-plan', 'Follow your agreed whitening session', 'If your dentist has cleared whitening and provided a schedule, use the agreed product for exactly its labeled or prescribed wear time. Keep the gel or strip off your gums and record any sensitivity.', ['Follow the real treatment schedule, including days without a card. Never lengthen wear time or combine whitening products to chase faster results.', 'Stop for gum irritation or sensitivity and contact your dentist. Whitening does not change the colour of fillings, crowns, or veneers.', 'Adults only in this protocol; do not use during pregnancy or breastfeeding without professional advice. No household acids, abrasives, or peroxide mixtures.'], ['mouth', 'overall'], 'mouth', 'Evening', { family: 'dental-treatment', minutes: 2, concerns: ['tooth-colour'], evidence: 'Follow an established dental plan' }),
+  task('orthodontic-wear', 'Follow your prescribed appliance schedule', 'Use your prescribed retainer or aligners for your orthodontist’s agreed wear time today. Clean them using the supplied instructions, and check that they fit comfortably.', ['Daily wear continues even when there is no reminder card. Do not force a tight appliance or change stages early.', 'Contact your orthodontist for pain, damage, or a changed fit; no DIY tooth movement.', 'Maintains or follows a professionally planned smile treatment.'], ['mouth', 'symmetry', 'jaw'], 'mouth', 'Evening', { family: 'dental-treatment', minutes: 2, evidence: 'Follow an established dental plan' }),
+  task('tinted-spf', 'Use your tone-matched tinted SPF', 'If dark marks are your concern and you have a suitable tinted sunscreen containing iron oxides, apply your broad-spectrum SPF 30+ before outdoor exposure and follow its labeled amount.', ['Iron oxides add protection from visible light that can worsen pigmentation. Select a shade and formula you tolerate.', 'Reapply as labeled, usually every 2 hours outdoors and after swimming or sweating. Pair with shade and protective clothing.', 'Daily protection continues on days without a card. This is prevention and support for pigmentation care, not instant removal of marks.'], skinFocus, 'sun', 'Morning', { product: 'uv-protection', family: 'uv-protection', concerns: ['marks'], minutes: 2, role: 'maintenance', evidence: 'Dermatology guidance' }),
+
 ]
 
 export function normalizeProtocolProducts(products: readonly ProtocolProductId[]): ProtocolProductId[] {
@@ -134,49 +367,132 @@ export function normalizeProtocolProducts(products: readonly ProtocolProductId[]
   return unique.filter(product => !protocolActiveProducts.includes(product) || product === active)
 }
 
-export function selectProtocolTasks({ focusIds, date, count = 3, skinProducts = [], uvIndex = 0 }: {
-  focusIds: readonly string[]; date: string; count?: number; skinProducts?: readonly ProtocolProductId[]; uvIndex?: number
-}): ProtocolTask[] {
+export type ProtocolPerson = { gender?: 'male' | 'female' | 'other' | null; hasBeard?: boolean }
+
+const focusAliases: [string, RegExp][] = [
+  ['eyes', /\b(eyes?|brows?|eyebrows?|under[ -]?eye|eyelids?)\b/i],
+  ['jaw', /\b(jaw(?:line)?|chin|beard|lower[ -]face)\b/i],
+  ['mouth', /\b(mouth|lips?|smile|teeth|dental)\b/i],
+  ['nose', /\b(nose|nasal|nostril)\b/i],
+  ['symmetry', /\b(asymmetry|symmetry|symmetric|uneven features)\b/i],
+  ['cheekbones', /\bcheekbones?\b/i],
+  ['skin-quality', /\bskin[ -]quality\b/i],
+  ['face-shape', /\b(face[ -]shape|facial[ -]thirds|proportions?|cheekbones?|forehead|face[ -]framing)\b/i],
+  ['facial-fat', /\b(facial[ -](?:fat|definition)|fullness|definition)\b/i],
+  ['skin-age', /\b(skin|texture|fine lines?|wrinkles?|complexion|acne|pigment(?:ation)?|dryness)\b/i],
+  ['sun-damage', /\b(sun[ -]damage|uv|sun protection)\b/i],
+  ['dimorphism', /\b(dimorphism|feature contrast|masculine|feminine)\b/i],
+]
+
+/** Use the report's named growth areas first, then its lowest valid scores.
+ * Never turn fixture values or apparent age in years into personalized findings. */
+export function rankProtocolFocus(categories: readonly unknown[], potentialAreas: readonly string[] = []): string[] {
+  const metrics = categories.flatMap(category => {
+    if (!category || typeof category !== 'object') return []
+    const metric = category as Record<string, unknown>
+    if (typeof metric.id !== 'string' || typeof metric.score !== 'number') return []
+    return [{ id: metric.id === 'biological-age' ? 'skin-age' : metric.id, score: metric.score }]
+  })
+    .filter(metric => metric.id !== 'overall' && Number.isFinite(metric.score) && metric.score >= 0 && metric.score <= 10 && focusAliases.some(([id]) => id === metric.id))
+    .sort((a, b) => a.score - b.score)
+  const available = new Set(metrics.map(metric => metric.id))
+  const named = potentialAreas.flatMap(area => {
+    if (/\b(photo|lighting|camera|capture|scan)\b/i.test(area)) return []
+    return focusAliases.filter(([id, pattern]) => available.has(id) && (area === id || pattern.test(area))).map(([id]) => id)
+  })
+  const low = metrics.filter(metric => metric.score <= 7.4)
+  return [...new Set([...named, ...(low.length ? low : metrics.slice(0, 2)).map(metric => metric.id)])].slice(0, 3)
+}
+
+type ProtocolSelection = {
+  focusIds: readonly string[]; date: string; skinProducts?: readonly ProtocolProductId[]; uvIndex?: number
+  profile?: ProtocolProfile; feedback?: readonly ProtocolFeedback[]; checkIns?: readonly ProtocolCheckIn[]
+} & ProtocolPerson
+export function selectProtocolTasks(options: ProtocolSelection): ProtocolTask[] {
+  const previousDate = new Date(`${options.date}T12:00:00`)
+  previousDate.setDate(previousDate.getDate() - 1)
+  const previous = Number.isFinite(previousDate.getTime()) ? selectProtocolDay({ ...options, date: formatProtocolDate(previousDate), uvIndex: 0 }) : []
+  return selectProtocolDay(options, previous)
+}
+function selectProtocolDay({ focusIds, date, skinProducts = [], uvIndex = 0, gender, hasBeard = false, profile, feedback = [], checkIns = [] }: ProtocolSelection, previous: readonly ProtocolTask[] = []): ProtocolTask[] {
   const calendarDate = new Date(`${date}T12:00:00`)
   if (!/^\d{4}-\d{2}-\d{2}$/.test(date) || !Number.isFinite(calendarDate.getTime()) || formatProtocolDate(calendarDate) !== date) throw new Error('Choose a valid protocol date')
   const weekday = calendarDate.getDay()
   const ordinal = Math.floor(Date.UTC(calendarDate.getFullYear(), calendarDate.getMonth(), calendarDate.getDate()) / 86_400_000)
-  const products = new Set(normalizeProtocolProducts(skinProducts))
+  const settings = profile ? normalizeProtocolProfile(profile) : undefined
+  const history = feedback.filter(event => event.date < date)
+  const checkIn = [...checkIns].filter(item => item.date < date).sort((a, b) => b.date.localeCompare(a.date))[0]
+  const reduced = checkIn?.effort === 'too-much' || checkIn?.change === 'worse' || history.some(event => event.outcome === 'too-difficult' && daysBetween(event.date, date) <= 7)
+  const dailyLimit = reduced ? 1 : 3
+  const cadence = [2, 3, 2, 1][((ordinal % 4) + 4) % 4]
+  const requested = Math.max(cadence, previous.length === 1 ? 2 : 1)
+  const count = Math.min(dailyLimit, Math.max(requested, uvIndex >= 3 ? 2 : 1))
+  const products = new Set(normalizeProtocolProducts(settings?.products ?? skinProducts))
   const knownFocus = new Set(protocolTasks.flatMap(task => task.focusIds))
-  const focus = new Set(focusIds.filter(id => knownFocus.has(id)))
-  if (!focus.size) focus.add('overall')
-  const candidates = protocolTasks.filter(task => (!task.weekdays || task.weekdays.includes(weekday)) && (!task.monthDays || task.monthDays.includes(calendarDate.getDate())) && (!task.product || products.has(task.product)))
-  const focused = candidates.filter(task => task.focusIds.some(id => focus.has(id)))
+  const focus = [...new Set([...(settings?.focusIds.length ? settings.focusIds : settings?.concerns.map(id => protocolConcernOptions.find(option => option.id === id)!.focus) ?? []), ...focusIds].filter(id => knownFocus.has(id)))].slice(0, 3)
+  if (!focus.length) focus.push('overall')
+  // Four days for the biggest opportunity, two for the next, one for the third.
+  const focusCycle = [0, 0, 1, 0, 2, 1, 0]
+  const primary = focus[focusCycle[((ordinal % 7) + 7) % 7]] ?? focus[0]
+  const latestFeedback = new Map<string, ProtocolFeedback>()
+  for (const event of [...history].sort((a, b) => a.date.localeCompare(b.date))) latestFeedback.set(event.taskKey, event)
+  const discomfortFamilies = new Set([...latestFeedback.values()].filter(event => event.outcome === 'discomfort').map(event => protocolTasks.find(item => item.key === event.taskKey)?.family).filter(Boolean))
+  const candidates = protocolTasks.filter(task => (!task.weekdays || task.weekdays.includes(weekday))
+    && (!task.monthDays || task.monthDays.includes(calendarDate.getDate()))
+    && (!task.product || products.has(task.product))
+    && (!task.requiresBeard || (hasBeard === true && (settings ? true : gender !== 'female')))
+    && isTaskEligible(task, settings, latestFeedback, discomfortFamilies, checkIn, date))
   const selected: ProtocolTask[] = []
   const add = (task: ProtocolTask | undefined) => {
-    if (!task || selected.length >= count || selected.some(item => item.key === task.key || (task.family && item.family === task.family))) return
-    if (task.role && selected.some(item => item.role === task.role)) return
+    if (!task || (settings && selected.reduce((total, item) => total + taskMinutes(item, settings, history, date), 0) + taskMinutes(task, settings, history, date) > settings.minutes) || selected.length >= count || selected.some(item => item.key === task.key || (task.family && item.family === task.family))) return
+    if (task.role && selected.some(item => item.role)) {
+      const sparse = settings && candidates.filter(item => !item.role && focus.some(id => item.focusIds.includes(id))).length < 2
+      if (!sparse || task.role !== 'maintenance' || selected.some(item => item.role && item.role !== 'maintenance') || selected.filter(item => item.role === 'maintenance').length >= 2) return
+    }
     selected.push(task)
   }
   const rotate = (items: ProtocolTask[]) => {
-    const offset = ((ordinal % Math.max(1, items.length)) + items.length) % Math.max(1, items.length)
-    return [...items.slice(offset), ...items.slice(0, offset)]
+    const rotation = ordinal
+    const offset = ((rotation % Math.max(1, items.length)) + items.length) % Math.max(1, items.length)
+    const rotated = [...items.slice(offset), ...items.slice(0, offset)]
+    return settings ? rotated.sort((a, b) => Number(Boolean(b.concerns?.some(id => settings.concerns.includes(id)))) - Number(Boolean(a.concerns?.some(id => settings.concerns.includes(id)))) || Number(previous.some(item => item.key === a.key)) - Number(previous.some(item => item.key === b.key))) : rotated
   }
-  // Keep treatment and training days consistent; never randomize progression.
+  const forFocus = (id: string) => candidates.filter(task => task.focusIds.includes(id))
+  const targeted = forFocus(primary)
+  const active = candidates.find(task => task.family === 'skin-active')
+  if (settings) add(candidates.find(task => task.key === 'progress-review'))
   if (uvIndex >= 3) add(candidates.find(task => task.key === 'uv-spf') ?? candidates.find(task => task.key === 'uv-shade'))
-  add(focused.find(task => task.family === 'skin-active'))
-  add(focused.find(task => task.family === 'strength-session'))
-  // Give each report focus a turn before filling remaining slots. Maintenance,
-  // consultations, and limited-evidence practice can each take at most one card.
-  for (const id of focus) {
-    const pool = rotate(focused.filter(task => task.focusIds.includes(id) && task.role !== 'maintenance'))
-    for (const task of pool) {
+  // Reserve a targeted action before baseline care. Treatment and progressive
+  // training stay on their established weekdays when relevant to this focus.
+  add(targeted.find(task => task.family === 'skin-active') ?? targeted.find(task => task.family === 'strength-session'))
+  if (!selected.some(task => task.focusIds.includes(primary) && (task.role !== 'maintenance' || primary === 'sun-damage'))) {
+    for (const task of rotate(targeted.filter(task => task.role !== 'maintenance'))) {
       const before = selected.length
       add(task)
       if (selected.length > before) break
     }
   }
-  for (const task of rotate(focused.filter(task => task.role !== 'maintenance'))) add(task)
-  for (const task of rotate(focused.filter(task => task.role === 'maintenance'))) add(task)
-  // Some anatomical areas have few genuine home interventions. Fill only with
-  // concrete general actions rather than inventing a nose or bone exercise.
+  if (settings && !selected.some(task => task.focusIds.includes(primary))) add(rotate(targeted.filter(task => task.role === 'maintenance'))[0])
+  add(active)
+  const optional = candidates.filter(task => ['sunless-tan', 'supplement', 'makeup', 'dental-treatment'].includes(task.family ?? ''))
+  for (const task of rotate(optional)) add(task)
+  // Relevant eye care and occasional basic skin care complement the main work;
+  // they do not replace it or expand the calendar beyond its daily limit.
+  if ([0, 3, 6].includes(weekday)) {
+    const care = candidates.filter(task => task.family === 'skin-basic' || task.key === 'uv-spf' || (focus.includes('eyes') && task.key === 'eye-depuff'))
+    for (const task of rotate(care)) {
+      const before = selected.length
+      add(task)
+      if (selected.length > before) break
+    }
+  }
+  for (const id of [primary, ...focus.filter(id => id !== primary)]) {
+    for (const task of rotate(forFocus(id).filter(task => task.role !== 'maintenance'))) add(task)
+  }
+  for (const id of focus) for (const task of rotate(forFocus(id).filter(task => task.role === 'maintenance'))) add(task)
+  // Sparse anatomical areas get concrete general support, not invented exercises.
   for (const task of rotate(candidates.filter(task => task.focusIds.includes('overall') && !task.role))) add(task)
-  return selected
+  return selected.map(item => settings ? personalizeTask(item, { ...settings, focusIds: focus }, history, date) : item)
 }
 
 export function formatProtocolDate(date: Date) {
@@ -187,10 +503,90 @@ export function formatProtocolDate(date: Date) {
 export function scheduleProtocolTasks<T extends ProtocolTask>(items: T[], startHour: number) {
   const preferredHour = (item: T) => Math.max(7, Math.min(16, Math.round(item.hour)))
   const sorted = [...items].sort((a, b) => preferredHour(a) - preferredHour(b) || b.priority - a.priority)
-  const slots = sorted.length <= 1 ? [10] : sorted.length === 2 ? [7, 16] : sorted.length === 3 ? [7, 12, 16] : [7, 10, 13, 16]
+  const slots = sorted.length <= 1 ? sorted.map(preferredHour) : sorted.length === 2 ? [7, 16] : [7, 12, 16]
   return sorted.map((item, index) => {
     const hour = Math.max(startHour, slots[index] ?? 16)
     const nextHour = slots[index + 1] ?? 19
     return { item, hour, durationHours: Math.min(1.35, Math.max(0.78, nextHour - hour - 0.18)) }
   })
+}
+
+
+function daysBetween(start: string, end: string) {
+  return Math.floor((Date.parse(`${end}T12:00:00Z`) - Date.parse(`${start}T12:00:00Z`)) / 86_400_000)
+}
+function taskMinutes(task: ProtocolTask, profile: ProtocolProfile, history: readonly ProtocolFeedback[], date: string) {
+  if (task.family === 'strength-session' && profile.minutes === 5) return 3
+  if (task.family === 'strength-session' && (profile.minutes < 30 || profile.experience === 'beginner' || history.some(event => event.taskKey === task.key && event.outcome === 'too-difficult' && daysBetween(event.date, date) <= 14))) return 5
+  return task.minutes ?? 2
+}
+function isTaskEligible(task: ProtocolTask, profile: ProtocolProfile | undefined, latestByTask: ReadonlyMap<string, ProtocolFeedback>, discomfortFamilies: ReadonlySet<string | undefined>, checkIn?: ProtocolCheckIn, date?: string) {
+  const optional = ['skin-friction', 'clean-grooming-tools', 'skin-touch-habit', 'progress-review', 'sunless-lotion', 'spray-tan-plan', 'collagen-routine', 'light-base', 'soft-contour', 'whitening-follow-plan', 'orthodontic-wear', 'tinted-spf']
+  if (!profile) return !optional.includes(task.key)
+  if (task.key === 'progress-review') return Boolean(date && checkIn && daysBetween(checkIn.date, date) === 1 && (checkIn.change === 'worse' || (checkIn.change === 'same' && protocolWeek(profile, date) >= 8)))
+  if (task.concerns?.length && !task.concerns.some(id => profile.concerns.includes(id))) return false
+  if (task.equipment?.some(id => !profile.equipment.includes(id))) return false
+  const latest = latestByTask.get(task.key)
+  if (latest && ['not-relevant', 'missing-equipment', 'discomfort'].includes(latest.outcome)) return false
+  if (task.family && discomfortFamilies.has(task.family)) return false
+  const irritated = checkIn?.skinComfort === 'irritated'
+  if (irritated && ['skin-active', 'sunless-tan', 'makeup', 'facial-practice'].includes(task.family ?? '')) return false
+  if (task.key === 'retinol' && (profile.ageGroup !== 'adult' || !profile.retinoidsSuitable)) return false
+  if (task.key === 'exfoliant' && profile.sensitiveSkin) return false
+  if (task.key === 'sunless-lotion') return profile.tanning === 'lotion'
+  if (task.key === 'spray-tan-plan') return profile.tanning === 'spray'
+  if (task.key === 'collagen-routine') return profile.collagen && profile.ageGroup === 'adult'
+  if (task.family === 'makeup' || task.key === 'brow-pencil') return profile.makeup && profile.products.includes('makeup')
+  if (task.key === 'whitening-follow-plan') return profile.dentalPlan === 'whitening' && profile.ageGroup === 'adult'
+  if (task.key === 'orthodontic-wear' || task.key === 'retainer-check') return profile.dentalPlan === 'retainer' || profile.dentalPlan === 'aligners'
+  if (task.key === 'glasses-fit') return false // No eyewear confirmation yet; never assume glasses from an eye score.
+  if (profile.budget === 'existing' && ['hair-fibers'].includes(task.key)) return false
+  return true
+}
+const hairShapeAdvice: Record<ProtocolProfile['faceShape'], string> = {
+  unsure: 'Choose the silhouette you like; confirm your preferred face shape in your profile for more specific styling.',
+  oval: 'Try a balanced silhouette; choose forehead exposure and volume to suit your preference.',
+  round: 'If you want a longer-looking outline, try modest crown height with controlled side bulk.',
+  square: 'If you prefer a softer outline, try texture or a loose side sweep instead of a sharp straight fringe.',
+  oblong: 'If you prefer a shorter-looking outline, retain side fullness and keep crown height modest; a soft fringe is an option.',
+  heart: 'If you want balance around the lower face, try a soft fringe or fullness nearer the jaw; keep temple volume modest.',
+  diamond: 'If you want a gentler cheekbone frame, try a soft side part with some temple fullness.',
+}
+function personalizeTask(task: ProtocolTask, profile: ProtocolProfile, history: readonly ProtocolFeedback[], date: string): ProtocolTask {
+  const concern = protocolConcernOptions.find(option => task.concerns?.includes(option.id) && profile.concerns.includes(option.id))
+  const minutes = taskMinutes(task, profile, history, date)
+  let detail = task.detail
+  const tips = [...task.tips]
+  let reason = concern ? `${profile.evaluationDerived ? (protocolVisibleConcerns.includes(concern.id as typeof protocolVisibleConcerns[number]) ? 'Matched to ' + concern.label.toLowerCase() + ' noted in your evaluation' : 'Supports your ' + concern.label.toLowerCase() + ' goal alongside your evaluation priorities') : 'Chosen for your ' + concern.label.toLowerCase() + ' goal'}.` : `Supports your ${profile.evaluationDerived ? 'evaluation’s' : 'selected'} ${task.focusIds.find(id => profile.focusIds.includes(id))?.replaceAll('-', ' ') ?? 'appearance'} focus.`
+  if (task.product) reason += ' Uses a product you selected.'
+  if (task.key === 'sunless-lotion' || task.key === 'spray-tan-plan') reason = `You chose optional sunless colour${profile.complexion === 'very-light' ? ' for a very light complexion; start with a subtle shade' : ''}.`
+  if (task.family === 'hair-styling' || task.key === 'haircut-plan') {
+    if (task.key === 'hair-root-volume') detail = hairShapeAdvice[profile.faceShape] + ' On wash day, style the roots gently using your comb or brush. If drying, use the lowest comfortable heat and keep airflow moving; adjust the volume to your preferred silhouette.'
+    else if (task.key === 'hair-face-frame') detail = hairShapeAdvice[profile.faceShape] + ' Use clean fingers or your comb to place a loose part or soft fringe and guide the front sections away from the eyes. Apply a small amount of your tolerated styling product if needed.'
+    else detail = hairShapeAdvice[profile.faceShape] + ' ' + detail
+    if (profile.hairTexture === 'curly' || profile.hairTexture === 'coily') tips.unshift('Work with your natural curl pattern; use gentle detangling and low tension. Skip brushing dry curls if that disrupts them.')
+    reason = `${profile.evaluationDerived ? 'Your evaluation indicates' : 'You selected'} ${profile.faceShape === 'unsure' ? 'hair framing' : `a ${profile.faceShape} face shape`}${profile.hairTexture === 'unsure' ? '' : ` and ${profile.hairTexture} hair`}. Styling is a preference, not a diagnosis.`
+  }
+  if (task.family === 'strength-session') {
+    const recent = history.filter(event => event.taskKey === task.key && event.outcome === 'done' && daysBetween(event.date, date) <= 28).sort((a, b) => a.date.localeCompare(b.date))
+    const difficult = history.some(event => event.taskKey === task.key && event.outcome === 'too-difficult' && daysBetween(event.date, date) <= 14)
+    const sets = profile.experience === 'beginner' || difficult || profile.minutes < 30 ? 1 : 2
+    const row = profile.equipment.includes('band') ? 'band rows with a rated anchor' : profile.equipment.includes('dumbbells') ? 'light supported dumbbell rows' : 'controlled wall slides'
+    detail = `Use a stable surface. Do ${sets} set${sets === 1 ? '' : 's'} each of ${profile.minutes === 5 ? `incline push-ups and ${row}` : `chair squats, incline push-ups, and ${row}`}: 8–12 comfortable repetitions with rest as needed. ${sets === 1 ? 'Keep this a short starter session; stop before strain.' : 'Warm up first and keep two comfortable reps in reserve.'}`
+    if (recent.length >= 2 && recent.slice(-2).every(event => (event.reps ?? 0) >= 12 && event.resistance?.trim()) && recent.at(-1)?.resistance?.trim() === recent.at(-2)?.resistance?.trim() && !difficult) tips.unshift('Your last two logged sessions reached 12 comfortable reps. If form and comfort are unchanged, try the smallest resistance increase; otherwise repeat. Do not increase neck loading.')
+    else tips.unshift(`Repeat this exercise version and log your reps${profile.equipment.length ? ' and resistance' : ''}. Progress follows comfortable completion, not the calendar alone.`)
+    reason += difficult ? ' Reduced after you reported difficulty.' : ` Matched to your ${profile.minutes}-minute budget and equipment.`
+  }
+  if (task.family === 'skin-active' && profile.startedOn) {
+    const week = Math.max(1, Math.floor(daysBetween(profile.startedOn, date) / 7) + 1)
+    tips.unshift(`Week ${week} of your routine: follow the product or prescribed frequency. Check comfort weekly; do not add strength or extra applications because time has passed.`)
+  }
+  return { ...task, detail, tips, minutes, reason }
+}
+export function protocolWeek(profile: ProtocolProfile, date: string) {
+  return profile.startedOn ? Math.max(1, Math.floor(daysBetween(profile.startedOn, date) / 7) + 1) : 1
+}
+export function protocolCheckInDue(checkIns: readonly ProtocolCheckIn[], date: string) {
+  const latest = checkIns.filter(item => item.date <= date).sort((a, b) => b.date.localeCompare(a.date))[0]
+  return !latest || daysBetween(latest.date, date) >= 7
 }

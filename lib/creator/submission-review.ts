@@ -17,7 +17,7 @@ export const creatorSubmissionReviewResultsSchema = z.array(z.object({
   id: z.string().min(1).max(120),
   met: z.boolean(),
   note: z.string().trim().max(500).optional().nullable(),
-})).max(24)
+})).max(64)
 
 export function getCreatorSubmissionReviewItems(formatId: string | null) {
   const format = formatId ? getCreatorSubmissionFormat(formatId) : ACTIVE_CREATOR_SUBMISSION_FORMATS[0]

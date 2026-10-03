@@ -45,3 +45,13 @@ test('both prompt modes require finding-specific, score-aware category actions',
     }
   }
 })
+
+
+test('protocol context uses visible findings without requiring user setup', () => {
+  for (const compact of [true, false]) {
+    const prompt = buildAnalysisPrompt('male', { compact })
+    assert.match(prompt, /report.protocolContext supports the automatic weekly protocol/)
+    assert.match(prompt, /A low category score alone is not a visible concern/)
+    assert.match(prompt, /Never infer symptoms, product ownership, age, treatment suitability, preferences, or a need to tan/)
+  }
+})

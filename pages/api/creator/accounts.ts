@@ -1,4 +1,4 @@
-import { canManuallyConnectTikTok } from '@/lib/creator/manual-account-access'
+import { creatorConnectAccountSchema } from '@/lib/creator/account-identity'
 import type { NextApiRequest, NextApiResponse } from 'next'
 import { z } from 'zod'
 import { ApiError, handleApiError, json, methodNotAllowed, parseBody } from '@/lib/api/http'
@@ -7,12 +7,9 @@ import { revokeTikTokAccess } from '@/lib/auth/tiktok-api'
 import { env } from '@/lib/env'
 import {
   addCreatorSocialAccount,
-  creatorAccountAnalyticsSubmissionSchema,
-  creatorSocialAccountSchema,
   getCreatorDashboard,
   getCreatorTikTokAccessToken,
   removeCreatorSocialAccount,
-  submitCreatorAccountAnalyticsEvidence,
 } from '@/lib/creator/service'
 
 const deleteAccountSchema = z.object({ id: z.string().uuid() })
@@ -27,17 +24,10 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       return json(res, 200, { socialAccounts: dashboard.socialAccounts })
     }
     if (req.method === 'POST') {
-      const input = parseBody(creatorSocialAccountSchema, req.body)
-      if (input.platform === 'tiktok') {
-        if (!canManuallyConnectTikTok(session.user.email)) throw new ApiError(403, 'Connect TikTok using TikTok authentication')
-        if (!input.profileUrl) throw new ApiError(400, 'Enter your TikTok profile URL')
-      }
+      const input = parseBody(creatorConnectAccountSchema, req.body)
       return json(res, 201, { account: await addCreatorSocialAccount(session.user.id, input) })
     }
-    if (req.method === 'PATCH') {
-      const input = parseBody(creatorAccountAnalyticsSubmissionSchema, req.body)
-      return json(res, 200, { account: await submitCreatorAccountAnalyticsEvidence(session.user.id, input) })
-    }
+    if (req.method === 'PATCH') throw new ApiError(410, 'Account audience verification is no longer required')
     if (req.method === 'DELETE') {
       const input = parseBody(deleteAccountSchema, req.query)
       const accessToken = await getCreatorTikTokAccessToken(session.user.id, input.id)

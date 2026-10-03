@@ -47,7 +47,25 @@ export async function ensureCheckout(order: typeof courseOrders.$inferSelect) {
   if (order.livemode && !env.COURSE_LIVE_PAYMENTS_ENABLED) throw new ApiError(503, 'Live course payments are disabled')
   const metadata = { moggingCourseOrderId: order.id }
   try {
-    const session = await getStripe().checkout.sessions.create({ mode: 'payment', customer_email: order.buyerEmail, client_reference_id: order.id, line_items: [{ price: order.stripePriceId, quantity: 1 }], success_url: `${siteUrl()}/courses/library?order=${order.id}`, cancel_url: `${siteUrl()}/courses?checkout=cancelled&course=${order.courseId}`, expires_at: Math.floor(order.expiresAt.getTime() / 1000), metadata, payment_intent_data: { metadata }, automatic_tax: { enabled: order.automaticTax } }, { stripeAccount: order.stripeAccountId, idempotencyKey: `course-checkout-${order.id}` })
+    const session = await getStripe().checkout.sessions.create({
+      mode: 'payment',
+      ui_mode: 'hosted_page',
+      billing_address_collection: 'auto',
+      phone_number_collection: { enabled: false },
+      allow_promotion_codes: false,
+      submit_type: 'auto',
+      integration_identifier: 'hosted_web_0001',
+      origin_context: 'web',
+      customer_email: order.buyerEmail,
+      client_reference_id: order.id,
+      line_items: [{ price: order.stripePriceId, quantity: 1 }],
+      success_url: `${siteUrl()}/courses/library?order=${order.id}`,
+      cancel_url: `${siteUrl()}/courses?checkout=cancelled&course=${order.courseId}`,
+      expires_at: Math.floor(order.expiresAt.getTime() / 1000),
+      metadata,
+      payment_intent_data: { metadata },
+      automatic_tax: { enabled: order.automaticTax },
+    }, { stripeAccount: order.stripeAccountId, idempotencyKey: `course-checkout-${order.id}` })
     await db.update(courseOrders).set({ stripeCheckoutId: session.id, updatedAt: new Date() }).where(eq(courseOrders.id, order.id))
     return { orderId: order.id, url: session.url, expiresAt: order.expiresAt }
   } catch (error) {

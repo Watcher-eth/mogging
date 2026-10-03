@@ -11,7 +11,11 @@ import { reviewSchema, sellerDecisionSchema } from '@/lib/courses/validation'
 import { getLesson, assetAccess } from '@/lib/courses/access'
 export default courseApi(async (req, res) => {
   const { session } = await requireCreatorAdmin(req, res), actorId = session.user.id, path = pathOf(req), method = req.method
-  if (!path.length && method === 'GET') return json(res, 200, await db.select().from(courses).where(isNotNull(courses.submittedVersion)).orderBy(courses.updatedAt).limit(100))
+  if (!path.length && method === 'GET') {
+    const input = z.object({ status: z.enum(['review', 'published', 'archived']).default('review'), page: z.coerce.number().int().min(1).max(1000).default(1) }).parse(req.query)
+    const rows = await db.select().from(courses).where(input.status === 'review' ? isNotNull(courses.submittedVersion) : eq(courses.status, input.status)).orderBy(desc(courses.updatedAt), courses.id).limit(51).offset((input.page - 1) * 50)
+    return json(res, 200, { items: rows.slice(0, 50), page: input.page, hasMore: rows.length > 50 })
+  }
   if (path[0] === 'sellers') {
     if (path.length === 1 && method === 'GET') {
       const page = z.coerce.number().int().min(1).max(1000).parse(req.query.page || 1)

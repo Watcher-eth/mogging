@@ -35,7 +35,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   try {
     const signature = req.headers['stripe-signature']
     const body = await readRawBody(req)
-    event = getStripe().webhooks.constructEvent(
+    event = await getStripe().webhooks.constructEventAsync(
       body,
       Array.isArray(signature) ? signature[0] : signature ?? '',
       env.STRIPE_WEBHOOK_SECRET

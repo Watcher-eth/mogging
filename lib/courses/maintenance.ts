@@ -9,7 +9,7 @@ import { assetIdsOf } from './validation'
 
 export async function maintainCourses() {
   const deadline = Date.now() + 40_000
-  const result = { orders: 0, refunds: 0, assets: 0, emails: 0, failures: 0 }
+  const result = { orders: 0, refunds: 0, assets: 0, emails: 0, emailDeferred: !process.env.RESEND_API_KEY, failures: 0 }
   // Bounded work keeps each scheduled run predictable; failures remain eligible for retry.
   const orders = await db.select().from(courseOrders).where(or(and(eq(courseOrders.state, 'pending'), lt(courseOrders.updatedAt, new Date(Date.now() - 120_000))), and(eq(courseOrders.state, 'paid'), lt(courseOrders.updatedAt, new Date(Date.now() - 86400_000))))).orderBy(courseOrders.updatedAt).limit(3)
   for (const order of orders) {
@@ -43,10 +43,12 @@ export async function maintainCourses() {
         if (abandoned) await purgeAsset({ ...asset, state: 'deleted' })
         else if (asset.state !== 'failed') await syncAsset(asset)
       } else if (asset.state !== 'failed') await syncAsset(asset)
+      // Referenced failed uploads must not monopolize the oldest-work batch.
+      await db.update(courseAssets).set({ updatedAt: new Date() }).where(eq(courseAssets.id, asset.id))
       result.assets++
     } catch { result.failures++; await db.update(courseAssets).set({ updatedAt: new Date() }).where(eq(courseAssets.id, asset.id)) }
   }
-  const emails = await db.select().from(courseEmails).where(and(isNull(courseEmails.sentAt), lt(courseEmails.nextAttemptAt, new Date()))).orderBy(courseEmails.nextAttemptAt).limit(3)
+  const emails = result.emailDeferred ? [] : await db.select().from(courseEmails).where(and(isNull(courseEmails.sentAt), lt(courseEmails.nextAttemptAt, new Date()))).orderBy(courseEmails.nextAttemptAt).limit(3)
   for (const email of emails) {
     if (Date.now() > deadline) break
     try {

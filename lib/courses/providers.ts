@@ -3,6 +3,7 @@ import { S3Client, PutObjectCommand, HeadObjectCommand, GetObjectCommand, Delete
 import { getSignedUrl } from '@aws-sdk/s3-request-presigner'
 import { ApiError } from '@/lib/api/http'
 import { env } from '@/lib/env'
+import { signCdnUrl } from './cdn-token'
 
 export function bunnyConfig() {
   const libraryId = env.BUNNY_STREAM_LIBRARY_ID, key = env.BUNNY_STREAM_API_KEY
@@ -27,22 +28,33 @@ export function videoUploadHeaders(videoId: string, expires: number) {
 export function videoPlayback(videoId: string) {
   const { libraryId, tokenKey } = bunnyConfig(), expires = Math.floor(Date.now() / 1000) + 900
   const token = createHash('sha256').update(`${tokenKey}${videoId}${expires}`).digest('hex')
-  return { url: `https://player.mediadelivery.net/embed/${libraryId}/${videoId}?token=${token}&expires=${expires}`, expiresAt: new Date(expires * 1000).toISOString() }
+  return { url: `https://player.mediadelivery.net/embed/${libraryId}/${videoId}?token=${token}&expires=${expires}&autoplay=false`, expiresAt: new Date(expires * 1000).toISOString() }
+}
+export async function videoThumbnailUrl(videoId: string) {
+  const query = new URL(videoPlayback(videoId).url).searchParams.toString()
+  const data = await bunny<{ thumbnailUrl: string; tokenAuthEnabled: boolean }>(`/${videoId}/play?${query}`)
+  const url = new URL(data.thumbnailUrl)
+  if (url.protocol !== 'https:' || !url.hostname.endsWith('.b-cdn.net')) throw new ApiError(502, 'Video thumbnail is unavailable')
+  if (data.tokenAuthEnabled) {
+    if (!env.BUNNY_STREAM_CDN_TOKEN_KEY) throw new ApiError(503, 'Video thumbnail signing is not configured')
+    return signCdnUrl(url.toString(), env.BUNNY_STREAM_CDN_TOKEN_KEY, Math.floor(Date.now() / 1000) + 900)
+  }
+  return url.toString()
 }
 let storage: S3Client | undefined
-function r2() {
+export function courseStorage() {
   if (!env.R2_ACCOUNT_ID || !env.R2_ACCESS_KEY_ID || !env.R2_SECRET_ACCESS_KEY || !env.COURSE_R2_BUCKET_NAME) throw new ApiError(503, 'Private course storage is not configured')
   if (env.COURSE_R2_BUCKET_NAME === env.R2_BUCKET_NAME) throw new ApiError(503, 'Course resources need a separate private bucket')
   storage ??= new S3Client({ region: 'auto', endpoint: `https://${env.R2_ACCOUNT_ID}.r2.cloudflarestorage.com`, credentials: { accessKeyId: env.R2_ACCESS_KEY_ID, secretAccessKey: env.R2_SECRET_ACCESS_KEY } })
   return { client: storage, Bucket: env.COURSE_R2_BUCKET_NAME }
 }
 export async function resourceUpload(key: string, type: string, size: number) {
-  const { client, Bucket } = r2()
+  const { client, Bucket } = courseStorage()
   return getSignedUrl(client, new PutObjectCommand({ Bucket, Key: key, ContentType: type, ContentLength: size }), { expiresIn: 900 })
 }
-export async function resourceHead(key: string) { const { client, Bucket } = r2(); return client.send(new HeadObjectCommand({ Bucket, Key: key })) }
+export async function resourceHead(key: string) { const { client, Bucket } = courseStorage(); return client.send(new HeadObjectCommand({ Bucket, Key: key })) }
 export async function resourceDownload(key: string, title: string) {
-  const { client, Bucket } = r2()
+  const { client, Bucket } = courseStorage()
   return { url: await getSignedUrl(client, new GetObjectCommand({ Bucket, Key: key, ResponseContentDisposition: `attachment; filename*=UTF-8''${encodeURIComponent(title)}`, ResponseContentType: 'application/octet-stream' }), { expiresIn: 300 }), expiresAt: new Date(Date.now() + 300_000).toISOString() }
 }
-export async function resourceDelete(key: string) { const { client, Bucket } = r2(); await client.send(new DeleteObjectCommand({ Bucket, Key: key })) }
+export async function resourceDelete(key: string) { const { client, Bucket } = courseStorage(); await client.send(new DeleteObjectCommand({ Bucket, Key: key })) }

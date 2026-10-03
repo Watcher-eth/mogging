@@ -1,11 +1,11 @@
-import { and, eq, inArray, desc, sql } from 'drizzle-orm'
+import { and, or, eq, inArray, desc, sql, type SQL } from 'drizzle-orm'
 import { z } from 'zod'
 import { db } from '@/lib/db'
 import { ApiError } from '@/lib/api/http'
 import { getStripe } from '@/lib/payments/stripe'
-import { courses, courseAssets, courseAudit, courseSellers } from './schema'
+import { courses, courseAssets, courseAudit, courseSellers, courseEnrollments } from './schema'
 import { sellerForUser } from './sellers'
-import { createCourseSchema, saveCourseSchema, assetIdsOf, lessonsOf, validatePublication, publicCourseContent, type CourseContent } from './validation'
+import { createCourseSchema, saveCourseSchema, assetIdsOf, lessonsOf, validatePublication, publicCourseContent, courseCategorySchema, type CourseContent } from './validation'
 
 export async function ownedCourse(userId: string, id: string) {
   const seller = await sellerForUser(userId)
@@ -81,18 +81,26 @@ export async function reviewCourse(id: string, version: number, decision: 'appro
     return updated
   })
 }
-const browseSchema = z.object({ page: z.coerce.number().int().min(1).max(1000).default(1), limit: z.coerce.number().int().min(1).max(48).default(24), seller: z.string().max(60).optional(), category: z.enum(['grooming', 'style', 'fitness', 'skincare', 'general']).optional(), q: z.string().trim().max(100).optional() })
+const browseSchema = z.object({ page: z.coerce.number().int().min(1).max(1000).default(1), limit: z.coerce.number().int().min(1).max(48).default(24), seller: z.string().max(60).optional(), category: courseCategorySchema.optional(), q: z.string().trim().max(100).optional() })
 export async function catalog(query: unknown) {
   const input = browseSchema.parse(query)
   const conditions = [eq(courses.status, 'published'), eq(courses.contentBlocked, false), eq(courses.listed, true), eq(courses.salesEnabled, true), eq(courseSellers.status, 'enabled')]
   if (input.seller) conditions.push(eq(courseSellers.slug, input.seller))
   if (input.category) conditions.push(sql`${courses.catalog}->>'category' = ${input.category}`)
-  if (input.q) conditions.push(sql`strpos(lower(${courses.catalog}->>'title'), lower(${input.q})) > 0`)
+  if (input.q) conditions.push(sql`strpos(lower(concat_ws(' ', ${courses.catalog}->>'title', ${courses.catalog}->>'summary', ${courseSellers.slug}, ${courses.catalog}->>'category')), lower(${input.q})) > 0`)
   const rows = await db.select({ id: courses.id, slug: courses.slug, content: courses.catalog, seller: { slug: courseSellers.slug, bio: courseSellers.bio }, publishedAt: courses.publishedAt }).from(courses).innerJoin(courseSellers, eq(courses.sellerId, courseSellers.id)).where(and(...conditions)).orderBy(desc(courses.publishedAt), courses.id).limit(input.limit + 1).offset((input.page - 1) * input.limit)
   return { page: input.page, hasMore: rows.length > input.limit, items: rows.slice(0, input.limit).map(row => ({ ...row, content: row.content! })) }
 }
 export async function publicCourse(sellerSlug: string, slug: string) {
-  const [row] = await db.select({ id: courses.id, slug: courses.slug, content: courses.catalog, seller: { slug: courseSellers.slug, bio: courseSellers.bio, supportEmail: courseSellers.supportEmail } }).from(courses).innerJoin(courseSellers, eq(courses.sellerId, courseSellers.id)).where(and(eq(courseSellers.slug, sellerSlug), eq(courses.slug, slug), eq(courses.status, 'published'), eq(courses.contentBlocked, false), eq(courses.salesEnabled, true), eq(courseSellers.status, 'enabled'))).limit(1)
+  return courseDetails(and(eq(courseSellers.slug, sellerSlug), eq(courses.slug, slug))!)
+}
+export async function courseOverview(id: string, userId?: string | null) {
+  return courseDetails(eq(courses.id, id), userId)
+}
+async function courseDetails(identity: SQL, userId?: string | null) {
+  const available = and(eq(courses.status, 'published'), eq(courses.salesEnabled, true), eq(courseSellers.status, 'enabled'))
+  const enrolled = userId ? sql`exists (select 1 from ${courseEnrollments} where ${courseEnrollments.courseId} = ${courses.id} and ${courseEnrollments.userId} = ${userId} and ${courseEnrollments.revokedAt} is null and ${courseEnrollments.expiresAt} > now())` : undefined
+  const [row] = await db.select({ id: courses.id, slug: courses.slug, content: courses.catalog, seller: { slug: courseSellers.slug, bio: courseSellers.bio, supportEmail: courseSellers.supportEmail } }).from(courses).innerJoin(courseSellers, eq(courses.sellerId, courseSellers.id)).where(and(identity, eq(courses.contentBlocked, false), or(available, enrolled))).limit(1)
   if (!row?.content) throw new ApiError(404, 'Course not found')
   return { ...row, content: row.content }
 }

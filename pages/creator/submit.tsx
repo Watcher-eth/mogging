@@ -1,231 +1,152 @@
-import { CreatorStepper } from '@/components/creator/creator-stepper'
-import { creatorPostUrlSchema, creatorPostPlatform } from '@/lib/creator/validation'
-import { creatorAccountLabel } from '@/components/creator/types'
 import Link from 'next/link'
-import * as Avatar from '@radix-ui/react-avatar'
-import { SocialPlatformLogo } from '@/components/brand/social-platform-logo'
-import { useRef, useState, type ChangeEvent, type FormEvent } from 'react'
 import { useRouter } from 'next/router'
-import { BadgeCheck, Check, CheckCircle2, ChevronLeft, CircleAlert, Eye, FileVideo, Loader2, ShieldCheck, UploadCloud, X } from 'lucide-react'
+import { useState } from 'react'
+import dynamic from 'next/dynamic'
+import { ArrowRight, Plus } from 'lucide-react'
 import useSWR from 'swr'
-import { toast } from 'sonner'
-import { Button } from '@/components/ui/button'
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog'
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
-import { CreatorHeader, CreatorShell, Field, fieldClass } from '@/components/creator/creator-shell'
-import { ContentRequirementsNote, AnalyticsVerificationHelp } from '@/components/creator/content-guidelines'
-import type { CreatorDashboard, CreatorSocialAccount } from '@/components/creator/types'
-import { apiGet, apiPost, ApiClientError } from '@/lib/api/client'
-import { type CreatorSubmissionFormat } from '@/lib/creator/formats'
-import { calculateCreatorPayout, CREATOR_TIER1_AUDIENCE_TIERS, CREATOR_VIEW_THRESHOLDS } from '@/lib/creator/payouts'
-import { cn } from '@/lib/utils'
+import { apiGet } from '@/lib/api/client'
+import type { CreatorDashboard } from '@/components/creator/types'
 import { CreatorIcon } from '@/components/creator/creator-icon'
-
-import { creatorVideoContentType, CREATOR_VIDEO_ACCEPT, MAX_CREATOR_ANALYTICS_VIDEO_BYTES } from '@/lib/creator/video-types'
-import { uploadAnalyticsRecording } from '@/lib/creator/analytics-upload'
-
-export default function CreatorSubmitPage() {
-  return <CreatorShell><SubmitContent /></CreatorShell>
+import { CreatorHeader, CreatorShell } from '@/components/creator/creator-shell'
+import { Button } from '@/components/ui/button'
+const SubmissionDialog = dynamic(
+  () =>
+    import('@/components/creator/submission-dialog').then(
+      (module) => module.SubmissionDialog,
+    ),
+  { ssr: false },
+)
+export default function SubmitPage() {
+  return (
+    <CreatorShell>
+      <SubmitContent />
+    </CreatorShell>
+  )
 }
-
 function SubmitContent() {
   const router = useRouter()
-  const inputRef = useRef<HTMLInputElement>(null)
-  const { data, isLoading } = useSWR<CreatorDashboard>('/api/creator', apiGet)
-  const [step, setStep] = useState<1 | 2 | 3>(1)
-  const [formatId, setFormatId] = useState('')
-  const [previewFormat, setPreviewFormat] = useState<CreatorSubmissionFormat | null>(null)
-  const [requirementsConfirmed, setRequirementsConfirmed] = useState(false)
-  const [accountSelection, setAccountSelection] = useState<string | null>(null)
-  const [postUrl, setPostUrl] = useState('')
-  const [analyticsRecording, setAnalyticsRecording] = useState<File | null>(null)
-  const [viewCountThreshold, setViewCountThreshold] = useState('')
-  const [usAudiencePercent, setUsAudiencePercent] = useState('')
-  const [submitting, setSubmitting] = useState(false)
-  const [recordingConfirmed, setRecordingConfirmed] = useState(false)
-  const [uploadPercent, setUploadPercent] = useState(0)
-  const socialAccountId = accountSelection ?? data?.socialAccounts.find((account) => account.status === 'approved')?.id ?? ''
-  const accountRequired = data?.featureFlags.creatorAccountRequiredForSubmission ?? false
-
-  function chooseAnalyticsRecording(event: ChangeEvent<HTMLInputElement>) {
-    const next = event.target.files?.[0] || null
-    event.target.value = ''
-    if (!next) return
-    if (!next.size) return toast.error('Choose a non-empty recording')
-    if (!creatorVideoContentType(next)) return toast.error('Choose an MP4, MOV, M4V, or WebM recording')
-    if (next.size > MAX_CREATOR_ANALYTICS_VIDEO_BYTES) return toast.error('Analytics recording must be 250 MB or smaller')
-    setRecordingConfirmed(false)
-    setAnalyticsRecording(next)
-  }
-
-  function continueToAnalytics(event: FormEvent) {
-    event.preventDefault()
-    if (!formatId) return toast.error('Choose a submission format')
-    if (accountRequired && !socialAccountId) return toast.error('Choose the account this video belongs to')
-    const parsedUrl = creatorPostUrlSchema.safeParse(postUrl)
-    if (!parsedUrl.success) return toast.error(parsedUrl.error.issues[0].message)
-    const account = data?.socialAccounts.find((account) => account.id === socialAccountId)
-    if (account && creatorPostPlatform(parsedUrl.data) !== account.platform) return toast.error('The post link must match the selected account’s platform')
-    setPostUrl(parsedUrl.data)
-    setStep(2)
-  }
-
-  function review(event: FormEvent) {
-    event.preventDefault()
-    if (!analyticsRecording) return toast.error('Add a physical analytics recording to continue')
-    if (!recordingConfirmed) return toast.error('Confirm the recording was filmed with a second device')
-    if (!viewCountThreshold) return toast.error('Choose the view threshold for this submission')
-    setRequirementsConfirmed(false)
-    setStep(3)
-  }
-
-  async function submit() {
-    if (!analyticsRecording || !formatId || !postUrl || !viewCountThreshold || !requirementsConfirmed || !recordingConfirmed) return
-    const contentType = creatorVideoContentType(analyticsRecording)
-    if (!contentType) return toast.error('Choose a supported recording')
-    setSubmitting(true)
-    setUploadPercent(0)
-    try {
-      const intent = await apiPost<{ key: string; publicUrl: string; uploadUrl: string; method: 'PUT' | 'POST' }>('/api/creator/submission-analytics-upload-intent', { contentType, sizeBytes: analyticsRecording.size })
-      await uploadAnalyticsRecording(intent, analyticsRecording, contentType, setUploadPercent)
-      await apiPost('/api/creator/submissions', { formatId, requirementsConfirmed: true, socialAccountId: socialAccountId || null, postUrl, analyticsVideoUrl: intent.publicUrl, analyticsPhysicalRecordingConfirmed: true, analyticsStorageKey: intent.key, analyticsContentType: contentType, analyticsSizeBytes: analyticsRecording.size, viewCountThreshold: Number(viewCountThreshold), usAudiencePercent: usAudiencePercent ? Number(usAudiencePercent) : null })
-      toast.success('Video submitted for review')
-      void router.push('/creator/submissions')
-    } catch (error) {
-      toast.error(error instanceof ApiClientError ? error.message : error instanceof Error ? error.message : 'Could not submit video')
-    } finally { setSubmitting(false) }
-  }
-
-  if (isLoading) return <div className="grid min-h-[40vh] place-items-center"><Loader2 className="size-5 animate-spin text-zinc-400" /></div>
-  if (!data) return <div className="grid min-h-[40vh] place-items-center text-sm text-zinc-500">Could not load submission settings.</div>
-  const payoutReady = Boolean(data.profile && (data.profile.paymentOption === 'paypal' ? data.profile.paypalEmail : data.profile.cryptoNetwork && data.profile.cryptoWalletAddress))
-  if (accountRequired && !data.socialAccounts.length) {
-    return <><CreatorHeader eyebrow="New Submission" title="Submit a video" description="Upload finished creator content and track its review in your dashboard." /><div className="creator-surface p-10 text-center"><span className="mx-auto grid size-12 place-items-center rounded-[16px] creator-tone-blue text-[#00A8EF]"><ShieldCheck className="size-5" /></span><p className="mt-5 text-base font-semibold">Connect a social account first</p><p className="mx-auto mt-2 max-w-md text-sm leading-6 text-[#73777d]">You need at least one TikTok or Instagram account so every video can be matched to the account that published it.</p><Button asChild className="mt-6 h-11 rounded-full px-5"><Link href="/creator/accounts">Connect Account</Link></Button></div>{!payoutReady ? <PayoutSetupNote /> : null}<SubmissionGuidance accountRequired /></>
-  }
-
-  const selectedAccount = data.socialAccounts.find((account) => account.id === socialAccountId)
-  const availableFormats = data?.availableFormats ?? []
-  const selectedFormat = availableFormats.find((format) => format.id === formatId)
-  const platform = selectedAccount ? (selectedAccount.platform === 'instagram' ? 'Instagram Reels' : 'TikTok') : 'Unlinked'
-  const linkedToApprovedAccount = selectedAccount?.status === 'approved'
-  const potentialEarnings = viewCountThreshold
-    ? calculateCreatorPayout(Number(viewCountThreshold), true, usAudiencePercent ? Number(usAudiencePercent) : null).payout
-    : null
-
+  const [open, setOpen] = useState(false)
+  const { data, error, isLoading, mutate } = useSWR<CreatorDashboard>(
+    '/api/creator',
+    apiGet,
+    { refreshInterval: 30_000 },
+  )
   return (
     <>
-      <CreatorHeader eyebrow="New Submission" title="Submit a video" description="Add your published post, then its analytics evidence." />
-      <CreatorStepper step={step} labels={['Post Details', 'Analytics', 'Review']} />
-      <div className="t-page-slide" data-page={step}>
-        <section className="t-page" data-page-id="1" inert={step !== 1} aria-hidden={step !== 1}>
-          <form onSubmit={continueToAnalytics} className="creator-surface grid gap-7 p-5 sm:p-7">
-            <FormatPicker formats={availableFormats} selectedId={formatId} onSelect={(nextFormatId) => { setFormatId(nextFormatId); setRequirementsConfirmed(false) }} onPreview={setPreviewFormat} />
-            <Field label="Published From" hint={accountRequired ? 'Required' : 'Optional for now'}><Select value={socialAccountId || (accountRequired ? undefined : 'unlinked')} onValueChange={(value) => setAccountSelection(value === 'unlinked' ? '' : value)} required={accountRequired}><SelectTrigger><SelectValue placeholder="No connected account" /></SelectTrigger><SelectContent className="creator-select-content">{!accountRequired ? <SelectItem value="unlinked">No connected account</SelectItem> : null}{data.socialAccounts.map((account) => <SelectItem key={account.id} value={account.id} textValue={creatorAccountLabel(account)}><PublishedAccount account={account} /></SelectItem>)}</SelectContent></Select></Field>
-            <Field label="Published Post URL" hint="Required"><input className={fieldClass} type="url" maxLength={2048} value={postUrl} onChange={(event) => setPostUrl(event.target.value)} placeholder="https://www.tiktok.com/… or https://www.instagram.com/…" required /></Field>
-            <div className="creator-actions flex justify-end"><Button className="h-11 rounded-full px-5">Continue to Analytics</Button></div>
-          </form>
-        </section>
-        <section className="t-page" data-page-id="2" inert={step !== 2} aria-hidden={step !== 2}>
-          <form onSubmit={review} className="creator-surface grid gap-7 p-5 sm:p-7">
-            <div><p className="text-xs font-semibold uppercase tracking-[0.15em] text-zinc-400">Analytics Evidence</p><h2 className="mt-2 text-2xl font-semibold tracking-[-0.04em]">Confirm the Performance Snapshot</h2><p className="mt-0.5 max-w-2xl text-sm leading-6 text-zinc-500">Choose the threshold you are submitting for and upload one continuous recording filmed with a second device. Show the published post, account username, view count, traffic sources, and complete audience location breakdown.</p></div>
-            <div className="rounded-2xl creator-warning p-4 text-sm leading-6 text-red-900"><p className="font-semibold">Physical recording required for every submission</p><p className="mt-2">Use a second phone, tablet, or camera to film your analytics screen. If you have one phone, use it to film the analytics on your computer. Keep the physical screen, account username, post identity, and analytics values readable in one continuous take. Screenshots, native screen recordings, cuts, edits, and altered analytics are not accepted.</p><AnalyticsVerificationHelp /></div>
-            <Field label="Video Analytics Recording" hint="Required · MP4, MOV, M4V or WebM · max 250 MB">
-              <input ref={inputRef} className="sr-only" type="file" accept={CREATOR_VIDEO_ACCEPT} onChange={chooseAnalyticsRecording} />
-              {analyticsRecording ? <div className="flex items-center gap-3 rounded-[16px] bg-[#f7f8f9] p-3"><span className="grid size-11 shrink-0 place-items-center rounded-[13px] bg-white text-[#00A8EF] shadow-sm"><FileVideo className="size-5" /></span><div className="min-w-0 flex-1"><p className="truncate text-sm font-medium">{analyticsRecording.name}</p><p className="mt-0.5 text-xs text-[#73777d]">{formatBytes(analyticsRecording.size)} · analytics evidence</p></div><button type="button" className="grid size-9 place-items-center rounded-full text-[#858a91] transition-[background-color,color,transform] duration-150 hover:bg-white hover:text-[#181a1d] active:scale-[0.96]" onClick={() => { setAnalyticsRecording(null); if (inputRef.current) inputRef.current.value = '' }} aria-label="Remove analytics recording"><X className="size-4" /></button></div> : <button type="button" onClick={() => inputRef.current?.click()} className="group grid min-h-44 place-items-center rounded-[18px] border border-dashed border-black/15 bg-[#f7f8f9]/70 p-6 text-center transition-[border-color,background-color,transform] duration-150 hover:border-transparent hover:bg-[#f7f8f9] active:scale-[0.99]"><span><span className="mx-auto grid size-11 place-items-center rounded-[14px] bg-white text-[#00A8EF] shadow-sm transition-transform duration-200 group-hover:-translate-y-0.5"><UploadCloud className="size-5" /></span><span className="mt-4 block text-sm font-semibold">Choose Analytics Recording</span><span className="mt-1 block max-w-md text-xs leading-5 text-[#73777d]">Film your phone, tablet, or computer screen with another device while opening the post’s analytics.</span></span></button>}
-            </Field>
-            <label className="flex cursor-pointer items-start gap-3 rounded-2xl border border-zinc-200 p-4 text-sm leading-6 text-zinc-600"><input type="checkbox" checked={recordingConfirmed} onChange={(event) => setRecordingConfirmed(event.target.checked)} className="mt-1 size-4 shrink-0 accent-black" /><span>I confirm this is an unedited physical recording filmed with a second device, showing this post’s analytics and complete audience location data.</span></label>
-            <div className="grid gap-5 sm:grid-cols-2">
-              <Field label="View Count Threshold" hint="Required"><Select value={viewCountThreshold || undefined} onValueChange={setViewCountThreshold} required><SelectTrigger><SelectValue placeholder="Choose a Threshold" /></SelectTrigger><SelectContent className="creator-select-content">{CREATOR_VIEW_THRESHOLDS.map((threshold) => <SelectItem key={threshold.views} value={String(threshold.views)}>{threshold.label} views</SelectItem>)}</SelectContent></Select></Field>
-              <div className="grid gap-2">
-                <div className="flex items-center justify-between text-sm font-medium"><label htmlFor="submission-audience-tier">Tier 1 Audience</label><span className="text-xs font-normal text-zinc-400">Based on recording</span></div>
-                <Select value={usAudiencePercent || 'base'} onValueChange={(value) => setUsAudiencePercent(value === 'base' ? '' : value)}><SelectTrigger id="submission-audience-tier"><SelectValue /></SelectTrigger><SelectContent className="creator-select-content"><SelectItem value="base">20%+ combined Tier-1 · base rate</SelectItem>{CREATOR_TIER1_AUDIENCE_TIERS.map((percentage) => <SelectItem key={percentage} value={String(percentage)}>{percentage === 40 ? '40%+ Tier 1' : `${percentage}% Tier 1`}</SelectItem>)}</SelectContent></Select>
-                <p className="text-[11px] leading-5 text-zinc-500">Choose the combined Tier 1 percentage shown in your analytics. If it is below 22.5%, use the combined Tier-1 base rate. <Link href="/creator/guide#audience-tiers" className="font-semibold text-zinc-700 underline decoration-zinc-300 underline-offset-4 transition-colors hover:text-black">See audience eligibility in the guide.</Link></p>
+      <CreatorHeader
+        eyebrow="Creator videos"
+        title="Submit a video"
+        description="Choose a campaign, follow its brief and submit your published post with analytics evidence."
+        action={
+          <Button onClick={() => setOpen(true)}>
+            <Plus />
+            New submission
+          </Button>
+        }
+      />
+      {error ? (
+        <p role="alert" className="text-sm text-zinc-500">
+          Could not load submissions.{' '}
+          <button
+            type="button"
+            className="text-[#00A8EF]"
+            onClick={() => void mutate()}
+          >
+            Try again
+          </button>
+        </p>
+      ) : data?.submissions.length ? (
+        <ul className="grid gap-3" aria-label="Your submissions">
+          {data.submissions.map((submission) => (
+            <li key={submission.id}>
+              <Link
+                href="/creator/submissions"
+                className="creator-surface group flex items-center gap-4 p-5"
+              >
+                <CreatorIcon
+                  name="video-submissions"
+                  className="size-8 text-zinc-500"
+                />
+                <span className="min-w-0 flex-1">
+                  <span className="block truncate text-sm font-semibold">
+                    {submission.title}
+                  </span>
+                  <span className="mt-1 block text-xs text-zinc-500">
+                    {submission.platform} ·{' '}
+                    {new Date(submission.createdAt).toLocaleDateString(
+                      'en-US',
+                      { month: 'short', day: 'numeric' },
+                    )}
+                  </span>
+                </span>
+                <span className="rounded-[12px] bg-[#f5f6f7] px-3 py-1 text-xs font-medium capitalize text-zinc-600">
+                  {submission.status.replace('_', ' ')}
+                </span>
+                <ArrowRight className="size-4 shrink-0 text-zinc-400 transition-transform group-hover:translate-x-0.5 group-hover:text-[#00A8EF]" />
+              </Link>
+            </li>
+          ))}
+        </ul>
+      ) : (
+        <div
+          aria-label={isLoading ? 'Loading submissions' : 'No submissions yet'}
+        >
+          <p className="sr-only">
+            {isLoading
+              ? 'Loading submissions.'
+              : 'Your submissions will appear here after you submit your first video.'}
+          </p>
+          <div className="grid gap-3" aria-hidden="true">
+            {[0, 1, 2].map((row) => (
+              <div
+                key={row}
+                className="creator-surface flex items-center gap-4 p-5"
+              >
+                <div
+                  className="size-11 shrink-0 animate-pulse rounded-xl bg-[#eef0f2] motion-reduce:animate-none"
+                  style={{ animationDelay: `${row * 180}ms` }}
+                />
+                <div className="flex-1 space-y-3">
+                  <div
+                    className="h-3 w-2/5 animate-pulse rounded-full bg-[#eef0f2] motion-reduce:animate-none"
+                    style={{ animationDelay: `${row * 180}ms` }}
+                  />
+                  <div
+                    className="h-2.5 w-1/4 animate-pulse rounded-full bg-[#f5f6f7] motion-reduce:animate-none"
+                    style={{ animationDelay: `${row * 180}ms` }}
+                  />
+                </div>
+                <div
+                  className="h-6 w-16 animate-pulse rounded-full bg-[#f5f6f7] motion-reduce:animate-none"
+                  style={{ animationDelay: `${row * 180}ms` }}
+                />
               </div>
-            </div>
-            <div className="flex flex-wrap items-baseline gap-x-2 gap-y-1 border-t border-zinc-100 pt-4 text-sm" aria-live="polite"><span className="font-medium text-zinc-500">Potential Earnings:</span><strong className="font-semibold tabular-nums text-black">{potentialEarnings === null ? 'Choose a view threshold' : `$${potentialEarnings}`}</strong>{potentialEarnings !== null ? <span className="text-xs text-zinc-400">estimated after verification</span> : null}</div>
-            <div className="creator-actions flex flex-col-reverse gap-2 sm:flex-row sm:justify-between"><Button type="button" variant="ghost" className="h-11 rounded-full" onClick={() => setStep(1)}><ChevronLeft />Back to Post Details</Button><Button className="h-11 rounded-full px-5">Review Submission</Button></div>
-          </form>
-        </section>
-        <section className="t-page" data-page-id="3" inert={step !== 3} aria-hidden={step !== 3}>
-          <div className="creator-surface p-5 sm:p-7">
-            <div className="flex items-start justify-between gap-4"><div><p className="text-xs font-semibold uppercase tracking-[0.15em] text-zinc-400">Ready to Submit</p><h2 className="mt-2 text-2xl font-semibold tracking-[-0.04em]">{selectedFormat?.name}</h2></div><span className="rounded-full bg-zinc-100 px-3 py-1.5 text-xs font-medium">{platform}</span></div>
-            <div className="mt-7 grid gap-3 rounded-2xl bg-zinc-50 p-4 text-sm"><ReviewRow label="Format" value={selectedFormat?.name || ''} /><ReviewRow label="Account" value={selectedAccount ? creatorAccountLabel(selectedAccount) : 'Not connected'} /><ReviewRow label="Account Eligibility" value={linkedToApprovedAccount ? 'Approved' : 'Not approved'} /><ReviewRow label="Published Post" value={postUrl} /><ReviewRow label="Analytics Recording" value={analyticsRecording?.name || ''} /><ReviewRow label="View Count Threshold" value={`${formatViewCount(Number(viewCountThreshold))} views`} /><ReviewRow label="Tier 1 Audience" value={usAudiencePercent ? `${usAudiencePercent}%` : 'Default 20% Tier 1 Audience'} /><ReviewRow label="Status" value="Not submitted" /></div>
-            <label className={cn('mt-6 flex cursor-pointer items-start gap-3 rounded-2xl border p-4 transition-[border-color,background-color,transform] duration-150 ease-out active:scale-[0.995]', requirementsConfirmed ? 'creator-choice-selected' : 'border-zinc-200 bg-white')}><input type="checkbox" className="mt-0.5 size-4 rounded border-zinc-300 accent-[#29CE53]" checked={requirementsConfirmed} onChange={(event) => setRequirementsConfirmed(event.target.checked)} /><span><span className="block text-sm font-semibold">I checked the {selectedFormat?.name} requirements</span><span className="mt-1 block text-xs leading-5 text-zinc-500">I confirm this video follows the complete format brief and is ready for review.</span></span></label>
-            <div className="creator-actions mt-8 flex flex-col-reverse gap-2 sm:flex-row sm:justify-between"><Button variant="ghost" className="h-11 rounded-full" onClick={() => setStep(2)} disabled={submitting}><ChevronLeft />Back to Analytics</Button><Button className="h-11 rounded-full px-5" onClick={() => void submit()} disabled={submitting || !requirementsConfirmed}>{submitting ? <Loader2 className="animate-spin" /> : <Check />} {submitting ? `Uploading Analytics ${uploadPercent}%…` : 'Submit Video'}</Button></div>
+            ))}
           </div>
-        </section>
+        </div>
+      )}
+      <div className="mt-6 flex justify-center">
+        <Button asChild variant="outline" className="rounded-[24px] px-5">
+          <Link href="/creator/sprints">
+            Explore campaigns
+            <ArrowRight className="size-4" />
+          </Link>
+        </Button>
       </div>
-      <div className="mt-6">{!linkedToApprovedAccount ? <div className="mb-5 flex gap-3 rounded-[16px] creator-warning px-4 py-3 text-sm leading-6"><CircleAlert className="mt-0.5 size-4 shrink-0 text-[#52565c]" /><p><strong className="font-semibold">Account not approved yet.</strong> You can submit now, but the video stays flagged until its social account is approved.</p></div> : null}{!payoutReady ? <PayoutSetupNote /> : null}{!selectedFormat || selectedFormat.notAllowed.length > 0 ? <ContentRequirementsNote /> : null}</div>
-      <SubmissionGuidance accountRequired={accountRequired} selectedFormat={selectedFormat} />
-      <FormatBriefDialog format={previewFormat} open={Boolean(previewFormat)} onOpenChange={(open) => { if (!open) setPreviewFormat(null) }} />
+      {open ? (
+        <SubmissionDialog
+          open
+          onOpenChange={setOpen}
+          initialSprintId={
+            typeof router.query.sprint === 'string'
+              ? router.query.sprint
+              : undefined
+          }
+          onSubmitted={async () => {
+            await router.push('/creator/submissions')
+          }}
+        />
+      ) : null}
     </>
   )
 }
-
-function PublishedAccount({ account }: { account: CreatorSocialAccount }) {
-  const name = creatorAccountLabel(account)
-  return (
-    <span className="inline-flex max-w-full items-center gap-2 align-middle">
-      <Avatar.Root className="grid size-6 shrink-0 overflow-hidden rounded-full bg-zinc-100">
-        <Avatar.Image src={account.avatarUrl || undefined} alt="" className="size-full object-cover" />
-        <Avatar.Fallback className="grid size-full place-items-center text-[10px] font-semibold text-zinc-500">{name.replace(/^@/, '').charAt(0).toUpperCase()}</Avatar.Fallback>
-      </Avatar.Root>
-      <span className="truncate">{name}</span>
-      <SocialPlatformLogo platform={account.platform} className="size-4" />
-      <span className="sr-only">{account.platform === 'tiktok' ? 'TikTok' : 'Instagram'} · {account.status === 'approved' ? 'Approved' : 'Not approved'}</span>
-      {account.status === 'approved' ? <BadgeCheck className="size-4 shrink-0 fill-[#00A8EF] text-white" aria-hidden="true" /> : null}
-    </span>
-  )
-}
-
-function FormatPicker({ formats, selectedId, onSelect, onPreview }: { formats: CreatorSubmissionFormat[]; selectedId: string; onSelect: (formatId: string) => void; onPreview: (format: CreatorSubmissionFormat) => void }) {
-  return (
-    <section>
-      <div className="mb-3 flex items-end justify-between gap-4"><div className="flex items-center gap-3"><CreatorIcon name="formats" className="size-12" /><div><h2 className="text-sm font-semibold">Choose a Format</h2><p className="mt-0.5 text-xs leading-5 text-zinc-500">Select the brief this video was created for.</p></div></div><span className="text-xs text-zinc-400">Required</span></div>
-      <div className="grid gap-3 sm:grid-cols-2">
-        {formats.map((format) => {
-          const selected = selectedId === format.id
-          return <div key={format.id} className={cn('rounded-[18px] border p-4 transition-[border-color,background-color,box-shadow] duration-150', selected ? 'creator-choice-selected' : 'border-black/[0.08] bg-white')}><button type="button" className="flex min-h-11 w-full items-start gap-3 text-left" onClick={() => onSelect(format.id)}><span className={cn('mt-0.5 grid size-5 shrink-0 place-items-center rounded-full border transition-colors', selected ? 'border-transparent creator-tone-blue text-white' : 'border-black/20 bg-white')}>{selected ? <Check className="size-3" /> : null}</span><span className="min-w-0"><span className="block text-sm font-semibold">{format.name}</span><span className="mt-1.5 hidden text-xs leading-5 text-[#73777d] sm:block">{format.shortDescription}</span></span></button><button type="button" className="mt-2 inline-flex min-h-11 items-center gap-1.5 text-xs font-semibold text-[#00A8EF] transition-opacity hover:opacity-70" onClick={() => onPreview(format)}><Eye className="size-3.5" />Preview Requirements</button></div>
-        })}
-      </div>
-    </section>
-  )
-}
-
-function FormatBriefDialog({ format, open, onOpenChange }: { format: CreatorSubmissionFormat | null; open: boolean; onOpenChange: (open: boolean) => void }) {
-  return <Dialog open={open} onOpenChange={onOpenChange}><DialogContent className="creator-dialog max-h-[90vh] max-w-2xl overflow-y-auto rounded-[26px] border-zinc-200 bg-white p-0">{format ? <><DialogHeader className="border-b border-black/[0.06] p-6 pr-14 sm:p-7"><p className="text-[11px] font-semibold uppercase tracking-[0.13em] text-[#858a91]">Format Brief</p><DialogTitle className="text-2xl">{format.name}</DialogTitle><DialogDescription>{format.shortDescription}</DialogDescription></DialogHeader><div className="grid gap-8 p-6 sm:p-7"><BriefList eyebrow="Throughout the video" items={format.elements.map((item) => ({ title: item.title, detail: item.detail }))} /><BriefList eyebrow="Requirements" items={format.requirements.map((item) => ({ title: item }))} /><BriefList prohibited eyebrow="Not allowed" items={format.notAllowed.map((item) => ({ title: item }))} /><div className="flex gap-3 rounded-[16px] creator-notice p-4"><CheckCircle2 className="mt-0.5 size-5 shrink-0 text-[#29CE53]" /><div><p className="text-sm font-semibold text-zinc-900">One confirmation at review</p><p className="mt-1 text-xs leading-5 text-zinc-600">You’ll confirm once that your finished video follows this complete brief before submitting.</p></div></div></div></> : null}</DialogContent></Dialog>
-}
-
-function BriefList({ eyebrow, items, prohibited = false }: { eyebrow: string; items: ReadonlyArray<{ title: string; detail?: string }>; prohibited?: boolean }) {
-  if (items.length === 0) return null
-  return <section className={prohibited ? "rounded-2xl creator-warning p-4" : undefined}><p className={cn("text-[11px] font-semibold uppercase tracking-[0.18em]", prohibited ? "text-red-800" : "text-zinc-400")}>{eyebrow}</p><ol className="mt-4 grid gap-4">{items.map((item, index) => <li key={item.title} className="grid grid-cols-[1.75rem_1fr] gap-3"><span className="pt-0.5 text-xs font-medium tabular-nums text-zinc-300">{String(index + 1).padStart(2, '0')}</span><span><span className="block text-sm font-medium text-zinc-800">{item.title}</span>{item.detail ? <span className="mt-1 block text-sm leading-6 text-zinc-500">{item.detail}</span> : null}</span></li>)}</ol></section>
-}
-
-function SubmissionGuidance({ accountRequired, selectedFormat }: { accountRequired: boolean; selectedFormat?: CreatorSubmissionFormat }) {
-  const requirements = selectedFormat?.requirements || [
-    'Choose a format to see its complete requirements',
-    accountRequired ? 'Connect at least one TikTok or Instagram account' : 'Account connection is optional while early submissions are enabled',
-  ]
-
-  return (
-    <div className="mt-6 grid gap-4 sm:grid-cols-2">
-      <section className="creator-surface p-5">
-        <div className="flex items-center gap-2.5"><CreatorIcon name="formats" className="size-10" /><h2 className="text-sm font-semibold">{selectedFormat ? `${selectedFormat.name} requirements` : 'Format requirements'}</h2></div>
-        <ul className="mt-4 grid gap-3">{requirements.map((requirement) => <li key={requirement} className="flex gap-2.5 text-sm leading-5 text-zinc-600"><Check className="mt-0.5 size-4 shrink-0 text-[#29CE53]" /><span>{requirement}</span></li>)}</ul>
-      </section>
-      <section className="creator-surface p-5">
-        <div className="flex items-center gap-2.5"><CreatorIcon name="lock" className="size-10" /><h2 className="text-sm font-semibold">Payout lock</h2></div>
-        <p className="mt-4 text-sm leading-6 text-zinc-600">Submit only when you’re satisfied with the post’s performance. The view count used during review becomes the payout snapshot and <strong className="font-semibold text-black">will not update afterward.</strong> Payout information must be set up before funds can be released.</p>
-      </section>
-    </div>
-  )
-}
-
-function PayoutSetupNote() {
-  return <div className="mb-5 flex flex-col gap-3 rounded-[16px] creator-notice px-4 py-3 text-sm text-zinc-600 sm:flex-row sm:items-center sm:justify-between"><p><strong className="font-semibold text-zinc-900">Payout setup is optional.</strong> Add it before payment is released to receive your earnings.</p><Link href="/creator/payout-information" className="shrink-0 font-semibold text-[#00A8EF] transition-opacity hover:opacity-70">Set Up Payouts</Link></div>
-}
-
-
-function ReviewRow({ label, value }: { label: string; value: string }) { return <div className="flex items-center justify-between gap-4"><span className="text-zinc-500">{label}</span><span className="truncate font-medium">{value}</span></div> }
-function formatViewCount(views: number) { return views === 1_000_000 ? '+1M' : new Intl.NumberFormat('en-US', { notation: views >= 10_000 ? 'compact' : 'standard', maximumFractionDigits: 0 }).format(views) }
-function formatBytes(bytes: number) { return bytes >= 1024 * 1024 ? `${(bytes / 1024 / 1024).toFixed(1)} MB` : `${Math.ceil(bytes / 1024)} KB` }

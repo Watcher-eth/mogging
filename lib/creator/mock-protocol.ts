@@ -1,4 +1,4 @@
-import { selectProtocolTasks, protocolDefaultProducts, type ProtocolProductId, type ProtocolTask } from './protocol-tasks'
+import { deriveProtocolProfile, selectProtocolTasks, protocolDefaultProducts, type ProtocolPerson, type ProtocolProductId, type ProtocolTask, type ProtocolProfile, type ProtocolFeedback, type ProtocolCheckIn } from './protocol-tasks'
 // Mobile task catalog and focus scheduling are synced from protocol-tasks.ts.
 import { reportCategories } from './mobile-overlay-engine/report-data'
 
@@ -10,15 +10,15 @@ export type RoutineItem = ProtocolTask & { id: string; cadence: string; dayOffse
 
 export { scheduleProtocolTasks as getScheduledRoutineItems } from './protocol-tasks'
 
-export function buildMockProtocol(focusId: string, startDate: string, skinProducts: readonly ProtocolProductId[] = protocolDefaultProducts): MockProtocolDay[] {
+export function buildMockProtocol(focusId: string, startDate: string, skinProducts: readonly ProtocolProductId[] = protocolDefaultProducts, person: ProtocolPerson = {}, personalization: { profile?: ProtocolProfile; feedback?: readonly ProtocolFeedback[]; checkIns?: readonly ProtocolCheckIn[] } = {}): MockProtocolDay[] {
   if (!protocolFocusAreas.some(area => area.id === focusId)) throw new Error('Choose a protocol focus area')
   const start = new Date(`${startDate}T12:00:00`)
   if (!/^\d{4}-\d{2}-\d{2}$/.test(startDate) || !Number.isFinite(start.getTime()) || localDate(start) !== startDate) throw new Error('Choose a valid start date')
+  const profile = personalization.profile ? deriveProtocolProfile({ report: { categories: [{ id: focusId === 'skin-age' ? 'biological-age' : focusId, score: 5 }] }, preferences: personalization.profile, startedOn: startDate }) : undefined
   return Array.from({ length: 7 }, (_, offset) => {
     const date = new Date(start)
     date.setDate(start.getDate() + offset)
-    const count = [2, 3, 2, 3, 2, 4, 3][offset]
-    const items = selectProtocolTasks({ focusIds: [focusId], date: localDate(date), count, skinProducts }).map(task => ({
+    const items = selectProtocolTasks({ focusIds: [focusId], date: localDate(date), skinProducts, ...person, ...personalization, profile }).map(task => ({
       ...task, id: `looks-${task.key}-p${offset}`, dayOffset: offset, cadence: 'Personalized protocol',
     }))
     return { date: localDate(date), label: offset === 0 ? 'Today' : ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'][date.getDay()], dayNumber: date.getDate(), items }

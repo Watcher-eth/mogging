@@ -635,6 +635,18 @@ export const creatorOnboardingInvites = pgTable('creator_onboarding_invites', {
   createdAt: timestamp('created_at', { mode: 'date' }).notNull().defaultNow(),
 })
 
+export const creatorSprints = pgTable('creator_sprints', {
+  id: text('id').primaryKey().$defaultFn(() => crypto.randomUUID()),
+  name: text('name').notNull(), description: text('description').notNull(),
+  status: text('status').$type<'draft' | 'published' | 'ended'>().notNull().default('draft'),
+  budgetCents: integer('budget_cents').notNull(),
+  startsAt: timestamp('starts_at', { mode: 'date' }).notNull(),
+  endsAt: timestamp('ends_at', { mode: 'date' }).notNull(),
+  terms: jsonb('terms').$type<import('../creator/sprints').SprintTerms>().notNull(),
+  createdAt: timestamp('created_at', { mode: 'date' }).notNull().defaultNow(),
+  updatedAt: timestamp('updated_at', { mode: 'date' }).notNull().defaultNow(),
+})
+
 export const creatorSubmissions = pgTable(
   'creator_submissions',
   {
@@ -645,6 +657,10 @@ export const creatorSubmissions = pgTable(
       .notNull()
       .references(() => creatorProfiles.id, { onDelete: 'cascade' }),
     socialAccountId: text('social_account_id').references(() => creatorSocialAccounts.id, { onDelete: 'set null' }),
+    sprintId: text('sprint_id').references(() => creatorSprints.id),
+    sprintTerms: jsonb('sprint_terms').$type<import('../creator/sprints').SprintTerms>(),
+    approvedAmountCents: integer('approved_amount_cents'),
+    postedAt: timestamp('posted_at', { mode: 'date' }),
     formatId: text('format_id'),
     requirementsConfirmedAt: timestamp('requirements_confirmed_at', { mode: 'date' }),
     title: text('title').notNull(),
@@ -671,6 +687,7 @@ export const creatorSubmissions = pgTable(
   },
   (table) => ({
     creatorIdx: index('creator_submissions_creator_profile_id_idx').on(table.creatorProfileId),
+    sprintIdx: index('creator_submissions_sprint_id_idx').on(table.sprintId),
     socialAccountIdx: index('creator_submissions_social_account_id_idx').on(table.socialAccountId),
     statusIdx: index('creator_submissions_status_idx').on(table.status),
     createdAtIdx: index('creator_submissions_created_at_idx').on(table.createdAt),

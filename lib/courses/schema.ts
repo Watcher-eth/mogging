@@ -1,7 +1,8 @@
-import { bigint, boolean, check, index, integer, jsonb, pgTable, primaryKey, text, timestamp, uniqueIndex } from 'drizzle-orm/pg-core'
+import { bigint, boolean, check, doublePrecision, index, integer, jsonb, pgTable, primaryKey, text, timestamp, uniqueIndex } from 'drizzle-orm/pg-core'
 import { sql } from 'drizzle-orm'
 import { creatorProfiles, users } from '@/lib/db/schema'
 import type { CourseContent, PublicCourseContent } from './validation'
+import type { WatchRange } from './watch-progress'
 
 const id = () => text('id').primaryKey().$defaultFn(() => crypto.randomUUID())
 const createdAt = () => timestamp('created_at', { withTimezone: true }).notNull().defaultNow()
@@ -41,7 +42,7 @@ export const courses = pgTable('courses', {
 export const courseAssets = pgTable('course_assets', {
   id: id(), courseId: text('course_id').notNull().references(() => courses.id),
   kind: text('kind', { enum: ['video', 'resource'] }).notNull(), title: text('title').notNull(), contentType: text('content_type').notNull(),
-  sizeBytes: bigint('size_bytes', { mode: 'number' }).notNull(), durationSeconds: integer('duration_seconds').notNull().default(0),
+  sizeBytes: bigint('size_bytes', { mode: 'number' }).notNull(), durationSeconds: doublePrecision('duration_seconds').notNull().default(0),
   state: text('state', { enum: ['pending', 'processing', 'ready', 'failed', 'deleted'] }).notNull().default('pending'),
   bunnyVideoId: text('bunny_video_id'), bunnyLibraryId: text('bunny_library_id'), storageKey: text('storage_key'),
   uploadExpiresAt: timestamp('upload_expires_at', { withTimezone: true }).notNull(), createdAt: createdAt(), updatedAt: updatedAt(),
@@ -77,6 +78,7 @@ export const courseEnrollments = pgTable('course_enrollments', {
 export const courseProgress = pgTable('course_progress', {
   userId: text('user_id').notNull().references(() => users.id), courseId: text('course_id').notNull().references(() => courses.id), lessonId: text('lesson_id').notNull(),
   positionSeconds: integer('position_seconds').notNull().default(0), completed: boolean('completed').notNull().default(false), updatedAt: updatedAt(),
+  videoAssetId: text('video_asset_id').references(() => courseAssets.id), watchedRanges: jsonb('watched_ranges').$type<WatchRange[]>().notNull().default([]),
 }, table => [primaryKey({ columns: [table.userId, table.courseId, table.lessonId] }), check('course_progress_position_valid', sql`${table.positionSeconds} >= 0`)])
 
 export const courseRefunds = pgTable('course_refunds', {

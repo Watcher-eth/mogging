@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
+import { analysisReportSchema, protocolContextSchema } from './schema'
 import { createFallbackAnalysisReport, normalizeAnalysisReport } from './report'
 
 test('overall report uses scored facial qualities instead of social pseudo-metrics', () => {
@@ -50,4 +51,14 @@ test('normalization keeps eye color and measured feature values', () => {
   const output = normalized?.categories.find((category) => category.id === 'eyes')
   assert.equal(output?.eyeColor, 'green')
   assert.equal(output?.features[0].measurement, '3.2°')
+})
+
+
+test('normalization preserves optional visual context for the automatic protocol', () => {
+  const input = createFallbackAnalysisReport({ faceDetected: true, pslScore: 5.8, harmonyScore: 6.4, dimorphismScore: 5.9, angularityScore: 6.3, metricScores: [], landmarks: {} }, 5.8)
+  input.protocolContext = { faceShape: 'round', hairTexture: 'curly', visibleConcerns: ['sparse-brows'] }
+  assert.deepEqual(normalizeAnalysisReport(input, 5.8)?.protocolContext, input.protocolContext)
+  assert.equal(protocolContextSchema.safeParse({ visibleConcerns: ['jaw-tension'] }).success, false)
+  assert.equal(analysisReportSchema.shape.protocolContext.parse({ visibleConcerns: ['jaw-tension'] }), undefined)
+  assert.equal(protocolContextSchema.safeParse({ faceShape: 'round', visibleConcerns: ['dry-lips'] }).success, true)
 })

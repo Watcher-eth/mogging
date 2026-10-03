@@ -263,7 +263,7 @@ export function AppShell({ children }: AppShellProps) {
             )}
       </AppHeader> : null}
 
-      <main className={creatorSignIn || creatorSetup || creatorReferral ? 'flex w-full flex-1 flex-col' : creatorRoute ? 'mx-auto flex w-full max-w-[1440px] flex-1 flex-col px-4 sm:px-8' : immersive ? 'w-full' : 'mx-auto w-full max-w-6xl px-4 py-8 sm:px-6'}>
+      <main className={creatorSignIn || creatorSetup || creatorReferral ? 'flex w-full flex-1 flex-col' : creatorRoute ? 'mx-auto flex w-full max-w-[1440px] flex-1 flex-col px-4 sm:px-[19px]' : immersive ? 'w-full' : 'mx-auto w-full max-w-6xl px-4 py-8 sm:px-6'}>
         {creatorRoute && !creatorSignIn && !creatorSetup ? <SidebarProvider className="min-h-0 flex-1 flex-col">{children}</SidebarProvider> : children}
       </main>
 
@@ -676,11 +676,13 @@ export function LoginDialog({
   callbackUrl,
   onOpenChange,
   open,
+  children,
 }: {
   audience?: 'app' | 'creator'
   callbackUrl: string
   onOpenChange: (open: boolean) => void
   open: boolean
+  children?: ReactNode
 }) {
   const [availableProviders, setAvailableProviders] = useState<Set<string> | null>(null)
   const modelImages = [
@@ -825,6 +827,7 @@ export function LoginDialog({
             ))}
           </div>
           {audience === 'creator' && availableProviders !== null && authButtons.some((button) => !availableProviders.has(button.id)) ? <p className="text-center text-xs text-zinc-500">Some sign-in options are currently unavailable.</p> : null}
+          {children}
         </div>
       </DialogContent>
     </Dialog>

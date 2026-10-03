@@ -54,7 +54,7 @@ export async function ensureCreatorTrackingLink(socialAccountId: string) {
   if (!account) throw new Error('Creator social account not found')
 
   const safeHandle = (account.handle || 'account').toLowerCase().replace(/[^a-z0-9._-]+/g, '-').replace(/^-+|-+$/g, '')
-  const slug = `${account.platform}-${safeHandle}-${account.id.slice(0, 8)}`
+  const slug = `mogging-${safeHandle}-${account.id.slice(0, 8)}`
   const iosAppStoreUrl = buildIosAppStoreUrl(slug)
   const [link] = await db.insert(schema.creatorTrackingLinks).values({
     socialAccountId,
@@ -78,9 +78,8 @@ export async function syncCreatorTrackingLinkHandle(link: typeof schema.creatorT
       where: eq(schema.creatorSocialAccounts.id, link.socialAccountId),
     })
     if (!account) throw new Error('Creator social account not found')
-    const handle = account.handle?.trim().replace(/^@/, '').toLowerCase()
-    if (!handle || !/^[a-z0-9._]{1,40}$/.test(handle)) return link
-    const candidates = [handle, `${handle}-${account.platform}`, `${handle}-${account.platform}-${account.id}`]
+    const handle = account.handle?.trim().replace(/^@/, '').toLowerCase().replace(/[^a-z0-9._-]+/g, '-').replace(/^-+|-+$/g, '') || `creator-${account.id.slice(0, 8)}`
+    const candidates = [`mogging-${handle}`, `mogging-${handle}-${account.id.slice(0, 8)}`, `mogging-${handle}-${account.id}`]
     for (const slug of candidates) {
       const canonical = await tx.query.creatorTrackingLinks.findFirst({ where: eq(schema.creatorTrackingLinks.slug, slug) })
       if (canonical && canonical.id !== link.id) continue

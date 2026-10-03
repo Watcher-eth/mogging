@@ -9,11 +9,16 @@ import { AppShell } from '@/components/app/app-shell'
 import { SeoHead } from '@/components/app/seo-head'
 import { swrConfig } from '@/lib/swr'
 import '@/styles/globals.css'
+import '@/styles/courses.css'
 import dynamic from 'next/dynamic'
 const Analytics = dynamic(() => import('@/components/app/analytics').then(module => module.Analytics), { ssr: false })
 
 export default function App({ Component, pageProps: { session, ...pageProps } }: AppProps) {
   const router = useRouter()
+  const courseRoute = router.pathname === '/courses'
+    || router.pathname.startsWith('/courses/')
+    || router.pathname === '/creator/courses'
+    || router.pathname.startsWith('/creator/courses/')
   const [soundEnabled, setSoundEnabled] = useState(true)
   const [soundVolume, setSoundVolume] = useState(0.82)
 
@@ -31,9 +36,11 @@ export default function App({ Component, pageProps: { session, ...pageProps } }:
             title={router.pathname === '/battle' ? 'Mog Battle: Compare Photos | Mogging' : undefined}
             description={router.pathname === '/battle' ? 'Compare photos in Mogging battles and see how community votes shape the leaderboard. Rankings reflect voter preferences.' : undefined}
           />
-          <AppShell>
+          {courseRoute ? (
             <Component {...pageProps} />
-          </AppShell>
+          ) : (
+            <AppShell><Component {...pageProps} /></AppShell>
+          )}
           <Toaster
             position="top-center"
             icons={{

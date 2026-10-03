@@ -1,3 +1,4 @@
+import { ANALYSIS_PROMPT_VERSION } from './prompt'
 import { z } from 'zod'
 import { hairColorSchema, normalizeApparentAge, skinColorSchema } from '@/lib/appearance/types'
 import { computeImageHash } from '@/lib/photos/imageHash'
@@ -83,7 +84,7 @@ export async function analyzeAndSave(input: AnalyzeAndSaveInput, reservationId?:
       metrics: failure.metrics,
       landmarks: data.landmarks ?? {},
       model: analysisProvider.model,
-      promptVersion: 'psl-kimi-v2',
+      promptVersion: ANALYSIS_PROMPT_VERSION,
       failureReason: failure.failureReason,
     }, reservationId ? { id: reservationId, photo: photoResult.photo, deduped: photoResult.deduped } : undefined)
 
@@ -118,7 +119,7 @@ export async function analyzeAndSave(input: AnalyzeAndSaveInput, reservationId?:
       metrics: failure.metrics,
       landmarks: data.landmarks ?? {},
       model: analysisProvider.model,
-      promptVersion: 'psl-kimi-v2',
+      promptVersion: ANALYSIS_PROMPT_VERSION,
       failureReason: failure.failureReason,
     }, reservationId ? { id: reservationId, photo: photoResult.photo, deduped: photoResult.deduped } : undefined)
 
@@ -152,7 +153,7 @@ export async function analyzeAndSave(input: AnalyzeAndSaveInput, reservationId?:
       metrics: {},
       landmarks: data.landmarks ?? {},
       model: analysisProvider.model,
-      promptVersion: 'psl-kimi-v2',
+      promptVersion: ANALYSIS_PROMPT_VERSION,
       failureReason: 'No face detected',
     }, reservationId ? { id: reservationId, photo: photoResult.photo, deduped: photoResult.deduped } : undefined)
 
@@ -201,7 +202,7 @@ export async function analyzeAndSave(input: AnalyzeAndSaveInput, reservationId?:
     },
     landmarks: data.landmarks ?? result.landmarks,
     model: analysisProvider.model,
-    promptVersion: 'psl-kimi-v2',
+    promptVersion: ANALYSIS_PROMPT_VERSION,
   }, reservationId ? { id: reservationId, photo: photoResult.photo, deduped: photoResult.deduped } : undefined)
 
   return {
@@ -248,7 +249,7 @@ function createTransientAnalysisResult(
           metrics: failure.metrics,
           landmarks: data.landmarks ?? {},
           model: analysisProvider.model,
-          promptVersion: 'psl-kimi-v2',
+          promptVersion: ANALYSIS_PROMPT_VERSION,
           failureReason: failure.failureReason,
           persistenceFailureReason,
         },
@@ -272,7 +273,7 @@ function createTransientAnalysisResult(
         metrics: failure.metrics,
         landmarks: data.landmarks ?? {},
         model: analysisProvider.model,
-        promptVersion: 'psl-kimi-v2',
+        promptVersion: ANALYSIS_PROMPT_VERSION,
         failureReason: failure.failureReason,
         persistenceFailureReason,
       },
@@ -296,7 +297,7 @@ function createTransientAnalysisResult(
         metrics: {},
         landmarks: data.landmarks ?? {},
         model: analysisProvider.model,
-        promptVersion: 'psl-kimi-v2',
+        promptVersion: ANALYSIS_PROMPT_VERSION,
         failureReason: 'No face detected',
         persistenceFailureReason,
       },
@@ -329,7 +330,7 @@ function createTransientAnalysisResult(
       },
       landmarks: data.landmarks ?? result.landmarks,
       model: analysisProvider.model,
-      promptVersion: 'psl-kimi-v2',
+      promptVersion: ANALYSIS_PROMPT_VERSION,
       failureReason: null,
       persistenceFailureReason,
     },

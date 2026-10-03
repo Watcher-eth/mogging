@@ -195,7 +195,7 @@
   .creator-primary-button:hover { background: #00A8EF; filter: brightness(.96); }
 }
 @media (min-width: 768px) {
-  .creator-page { padding: 36px 0 64px 36px; }
+  .creator-page { padding: 36px 0 64px 22px; }
   .creator-page-header { flex-direction: row; align-items: flex-end; justify-content: space-between; }
   .creator-header-action > * { width: auto; }
 }
@@ -461,9 +461,9 @@
 }
 .creator-sidebar-sheet { font-family: Inter, ui-sans-serif, system-ui, sans-serif; }
 .creator-navigation { position: sticky; top: 0; bottom: auto; left: auto; height: calc(100dvh - 88px); border-color: #eceef0; }
-.creator-nav-link { height: 38px; gap: 12px; border-radius: 999px; color: #73777d; font-size: 13px; }
+.creator-nav-link { height: 38px; gap: 12px; border-radius: 13px; color: #73777d; font-size: 13px; }
 .creator-portal .creator-nav-link[data-active="true"], .creator-sidebar-sheet .creator-nav-link[data-active="true"] { background: #00A8EF; color: white; }
-.creator-guide-nav-link { min-height: 32px; border-radius: 999px; gap: 10px; color: #73777d; font-size: 12px; }
+.creator-guide-nav-link { min-height: 32px; border-radius: 11px; gap: 10px; color: #73777d; font-size: 12px; }
 .creator-guide-nav-link[data-active="true"] { background: #f5f6f7; color: #181a1d; }
 .creator-guide-nav-link[data-active="true"] .creator-icon { color: #00A8EF; }
 @media (prefers-reduced-motion: reduce) { [data-sidebar], .creator-navigation { transition: none !important; } }
@@ -492,3 +492,9 @@
 @media (prefers-reduced-motion: reduce) {
   .creator-invite-progress { animation: none; }
 }
+
+/* Keep the creator navigation compact without changing its touch targets. */
+:is(.creator-navigation, .creator-sidebar-sheet) [data-sidebar="group"],
+:is(.creator-navigation, .creator-sidebar-sheet) [data-sidebar="footer"] { padding-inline: 5px; }
+:is(.creator-navigation, .creator-sidebar-sheet) [data-sidebar="group-label"] { padding-inline: 5px; }
+:is(.creator-navigation, .creator-sidebar-sheet) :is(.creator-nav-link, .creator-guide-nav-link) { padding-inline: 5px; }

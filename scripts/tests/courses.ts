@@ -3,6 +3,8 @@ import assert from 'node:assert/strict'
 import { mock } from 'bun:test'
 import postgres from 'postgres'
 import { eq } from 'drizzle-orm'
+import Stripe from 'stripe'
+import { Readable } from 'node:stream'
 
 const testUrl = process.env.COURSE_TEST_DATABASE_URL
 if (!testUrl) throw new Error('Set COURSE_TEST_DATABASE_URL to an empty disposable local database named mogging_courses_test')
@@ -14,6 +16,7 @@ process.env.COURSE_LIVE_PAYMENTS_ENABLED = 'false'
 process.env.COURSE_STRIPE_TAX_ENABLED = 'true'
 process.env.NEXTAUTH_URL = 'http://localhost:3000'
 process.env.STRIPE_SECRET_KEY = 'sk_test_course_mock'
+process.env.STRIPE_CONNECT_WEBHOOK_SECRET = 'whsec_course_mock'
 process.env.RESEND_API_KEY = 'course_mock'
 process.env.BUNNY_STREAM_LIBRARY_ID = '123'
 process.env.BUNNY_STREAM_API_KEY = 'course_mock'
@@ -27,7 +30,7 @@ assert.equal(count, 0, 'Test database must be empty; this script never drops exi
 const exported = Bun.spawnSync(['bunx', '--no-install', 'drizzle-kit', 'export', '--dialect', 'postgresql', '--schema', './lib/db/schema.ts'], { cwd: process.cwd(), stdout: 'pipe', stderr: 'pipe' })
 assert.equal(exported.exitCode, 0, exported.stderr.toString())
 await setup.unsafe(exported.stdout.toString())
-const migration = await Bun.file('drizzle/0040_course_platform.sql').text()
+const migration = await Bun.file('drizzle/0040_course_platform.sql').text() + '\n--> statement-breakpoint\n' + await Bun.file('drizzle/0042_course_watch_progress.sql').text()
 for (const statement of migration.split('--> statement-breakpoint')) if (statement.trim()) await setup.unsafe(statement)
 console.log('PASS: new migration applies against the existing schema')
 await setup.end()
@@ -36,8 +39,10 @@ type Session = { id: string; url: string; status: string; payment_status: string
 const sessions = new Map<string, Session>(), sessionKeys = new Map<string, string>(), charges = new Map<string, any>(), intents = new Map<string, any>(), disputes = new Map<string, any[]>(), refundKeys = new Map<string, any>()
 let checkoutCreates = 0, refundCreates = 0, outboundEmails = 0, verificationCode = '', loseCheckoutResponse = false, expandedReads = false
 let paymentReads = 0
+let loseRefundResponse = false
 let database: typeof import('@/lib/db')
 const provider = {
+  webhooks: new Stripe('sk_test_course_mock').webhooks,
   checkout: { sessions: {
     create: async (input: any, options: any) => {
       assert.equal(options.stripeAccount, 'acct_course_seller'); assert.ok(options.idempotencyKey)
@@ -72,7 +77,9 @@ const provider = {
     const charge = charges.get(intents.get(input.payment_intent).latest_charge)
     assert.ok(charge.amount_refunded + input.amount <= charge.amount)
     charge.amount_refunded += input.amount
-    const refund = { id: `re_${refundCreates}`, amount: input.amount, status: 'succeeded' }; refundKeys.set(options.idempotencyKey, refund); return refund
+    const refund = { id: `re_${refundCreates}`, amount: input.amount, status: 'succeeded' }; refundKeys.set(options.idempotencyKey, refund)
+    if (loseRefundResponse) { loseRefundResponse = false; throw new Error('Simulated response lost after Stripe refunded') }
+    return refund
   } },
 }
 mock.module('@/lib/payments/stripe', () => ({ getStripe: () => provider }))
@@ -154,7 +161,12 @@ await hooks.connectEvent({ ...event, id: 'evt_other_account', account: 'acct_unk
 console.log('PASS: durable webhook deduplication and account isolation')
 
 const refundKey = crypto.randomUUID()
+loseRefundResponse = true
+await assert.rejects(commerce.refundOrder(seller.id, first.orderId!, refundKey, 1000))
+const reporting = await import('@/lib/courses/reporting')
+assert.equal((await reporting.creatorDashboard(seller.id, {})).orders.find(order => order.id === first.orderId)!.pendingRefundKey, refundKey)
 await commerce.refundOrder(seller.id, first.orderId!, refundKey, 1000)
+assert.equal((await reporting.creatorDashboard(seller.id, {})).orders.find(order => order.id === first.orderId)!.pendingRefundKey, null)
 await commerce.refundOrder(seller.id, first.orderId!, refundKey, 1000)
 assert.equal(refundCreates, 1); assert.ok(await access.enrollment(buyer, course.id))
 await db.update(tables.courseRefunds).set({ createdAt: new Date(Date.now() - 25 * 3600_000) }).where(eq(tables.courseRefunds.requestKey, refundKey))
@@ -186,8 +198,19 @@ console.log('PASS: old refunded orders cannot revoke new purchases; dispute reso
 const assetUpload = await media.startUpload(creator, course.id, { kind: 'video', title: 'Lesson video', contentType: 'video/mp4', sizeBytes: 10000, durationSeconds: 120 })
 assert.equal(assetUpload.protocol, 'tus'); assert.ok(!JSON.stringify(assetUpload).includes('course_mock'))
 const asset = await db.query.courseAssets.findFirst({ where: eq(courseAssets.id, assetUpload.assetId) })
+const reservedCount = (await db.select().from(courseAssets)).length
+const retryInput = { kind: 'video', title: 'Lesson video', contentType: 'video/mp4', sizeBytes: 10000, durationSeconds: 120 }
+assert.equal((await media.resumeUpload(creator, course.id, asset!.id, retryInput)).assetId, asset!.id)
+assert.equal((await db.select().from(courseAssets)).length, reservedCount)
+await assert.rejects(media.resumeUpload(outsider, course.id, asset!.id, retryInput))
+await assert.rejects(media.resumeUpload(creator, course.id, asset!.id, { ...retryInput, sizeBytes: 10001 }))
+console.log('PASS: interrupted upload resumes the existing reservation; ownership and original file identity are enforced')
 const video = videos.get(asset!.bunnyVideoId!)!; video.status = 3; video.length = 119; video.storageSize = 20000
+assert.equal((await media.finishUpload(creator, course.id, asset!.id))!.state, 'processing')
+video.status = 4; video.length = 119.5
 assert.equal((await media.finishUpload(creator, course.id, asset!.id))!.state, 'ready')
+await assert.rejects(media.resumeUpload(creator, course.id, asset!.id, retryInput))
+assert.equal((await db.query.courseAssets.findFirst({ where: eq(courseAssets.id, asset!.id) }))!.durationSeconds, 119.5)
 const nextContent = { ...content, sections: [{ id: sectionId, title: 'Introduction', lessons: [{ id: lessonId, title: 'Video lesson', kind: 'video', videoAssetId: asset!.id }] }] }
 const videoDraft = await catalog.saveCourse(creator, course.id, { version: draft.version, content: nextContent })
 await assert.rejects(media.deleteAsset(creator, course.id, asset!.id))
@@ -195,11 +218,24 @@ await catalog.submitCourse(creator, course.id, videoDraft.version)
 await catalog.reviewCourse(course.id, videoDraft.version, 'approve', '', creator)
 await assert.rejects(access.assetAccess(outsider, course.id, lessonId, asset!.id))
 assert.ok((await access.assetAccess(buyer, course.id, lessonId, asset!.id)).url.includes('token='))
+assert.equal((await access.saveProgress(buyer, course.id, lessonId, { positionSeconds: 119, completed: true })).completed, false, 'A playhead or client completion flag is not watched coverage')
+await assert.rejects(access.saveProgress(buyer, course.id, lessonId, { positionSeconds: 10, completed: false, watchedRanges: [[30, 10]] }))
+await Promise.all([
+  access.saveProgress(buyer, course.id, lessonId, { positionSeconds: 60, completed: false, watchedRanges: [[0, 60]] }),
+  access.saveProgress(buyer, course.id, lessonId, { positionSeconds: 114, completed: false, watchedRanges: [[60, 114]] }),
+])
+const watched = await db.query.courseProgress.findFirst({ where: eq(tables.courseProgress.lessonId, lessonId) })
+assert.equal(watched!.completed, true); assert.deepEqual(watched!.watchedRanges, [[0, 114]])
+assert.equal((await access.saveProgress(buyer, course.id, lessonId, { positionSeconds: 0, completed: false })).completed, true)
+console.log('PASS: fractional video duration, server-derived 95% completion and concurrent durable watch coverage')
 await catalog.archiveCourse(creator, course.id, videoDraft.version)
 await assert.rejects(commerce.checkout({ id: outsider, email: 'outsider@example.com', emailVerified: new Date() }, course.id))
 assert.ok(await access.getLesson(buyer, course.id, lessonId))
+assert.equal((await catalog.courseOverview(course.id, buyer)).id, course.id)
+await assert.rejects(catalog.courseOverview(course.id, outsider))
 await db.update(courses).set({ contentBlocked: true }).where(eq(courses.id, course.id))
 await assert.rejects(access.getLesson(buyer, course.id, lessonId))
+await assert.rejects(catalog.courseOverview(course.id, buyer))
 console.log('PASS: verified video uploads, reference-safe deletion, signed playback, archive access and takedowns')
 
 const second = await catalog.createCourse(creator, { slug: 'second-course', content })
@@ -237,6 +273,33 @@ assert.equal((await request(['library'], 'GET', null)).status, 401)
 assert.equal((await request([second.id, 'checkout'], 'POST', buyer, 'https://attacker.example')).status, 403)
 assert.equal((await request(['orders', first.orderId!], 'GET', outsider)).status, 404)
 console.log('PASS: HTTP authentication, cross-site write rejection and order ownership')
+const connectHandler = (await import('../../pages/api/payments/stripe-connect-webhook')).default
+const eventBody = JSON.stringify({ id: 'evt_signature_test', type: 'account.updated', account: 'acct_unknown', livemode: false, data: { object: {} } })
+const eventSignature = await provider.webhooks.generateTestHeaderStringAsync({ payload: eventBody, secret: process.env.STRIPE_CONNECT_WEBHOOK_SECRET! })
+const webhookRequest = async (body: string, signature: string) => {
+  const req = Object.assign(Readable.from([Buffer.from(body)]), { method: 'POST', headers: { 'stripe-signature': signature } })
+  let status = 0
+  const res = { setHeader() {}, status(code: number) { status = code; return this }, json() { return this } }
+  await connectHandler(req as any, res as any)
+  return status
+}
+assert.equal(await webhookRequest(eventBody, eventSignature), 200)
+assert.equal(await webhookRequest(eventBody, eventSignature), 200)
+assert.equal(await webhookRequest(eventBody.replace('acct_unknown', 'acct_tampered'), eventSignature), 400)
+assert.equal(await webhookRequest(eventBody, 'invalid'), 400)
+console.log('PASS: real Stripe SDK asynchronous webhook signature verification, duplicate delivery and tamper rejection under Bun')
+const reservations = await db.select().from(courseAssets)
+await assert.rejects(media.startUpload(creator, second.id, { kind: 'resource', title: 'File', contentType: 'text/plain', sizeBytes: 20 }))
+assert.equal((await db.select().from(courseAssets)).length, reservations.length, 'Missing storage configuration must not reserve quota')
+const pendingEmails = await db.select().from(courseEmails)
+const beforeEmails = outboundEmails
+delete process.env.RESEND_API_KEY
+const maintenance = await import('@/lib/courses/maintenance')
+const deferred = await maintenance.maintainCourses()
+assert.equal(deferred.emailDeferred, true); assert.equal(deferred.emails, 0); assert.equal(outboundEmails, beforeEmails)
+assert.deepEqual(await db.select().from(courseEmails), pendingEmails, 'Deferred email must remain queued without failed attempts')
+process.env.RESEND_API_KEY = 'course_mock'
+console.log('PASS: missing R2 fails before reserving quota; maintenance defers unconfigured email without consuming retries')
 globalThis.fetch = realFetch
 await (globalThis as any).postgresClient?.end()
 console.log('All course backend integration checks passed. Providers were mocked; no live credentials were used.')

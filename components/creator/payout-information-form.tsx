@@ -22,8 +22,6 @@ const cryptoNetworks = [
 export function PayoutInformation({ email, onSaved, embedded = false }: { email: string; onSaved?: () => Promise<void>; embedded?: boolean }) {
   const { data, mutate } = useSWR<CreatorDashboard>('/api/creator', apiGet)
   const profile = data?.profile
-  const [displayName, setDisplayName] = useState('')
-  const [socialHandle, setSocialHandle] = useState('')
   const [paymentOption, setPaymentOption] = useState<'paypal' | 'crypto'>('paypal')
   const [paypalEmail, setPaypalEmail] = useState(email)
   const [paypalMeUrl, setPaypalMeUrl] = useState('')
@@ -33,8 +31,6 @@ export function PayoutInformation({ email, onSaved, embedded = false }: { email:
 
   useEffect(() => {
     if (!profile) return
-    setDisplayName(profile.displayName)
-    setSocialHandle(profile.socialHandle || '')
     setPaymentOption(profile.paymentOption)
     setPaypalEmail(profile.paypalEmail || email)
     setPaypalMeUrl(profile.paypalMeUrl || '')
@@ -44,7 +40,7 @@ export function PayoutInformation({ email, onSaved, embedded = false }: { email:
 
   async function save(event: FormEvent) {
     event.preventDefault()
-    const input = creatorProfileSchema.safeParse({ displayName, socialHandle, paymentOption, paypalEmail: paymentOption === 'paypal' ? paypalEmail : null, paypalMeUrl: paymentOption === 'paypal' ? paypalMeUrl : null, cryptoNetwork: paymentOption === 'crypto' ? cryptoNetwork : null, cryptoWalletAddress: paymentOption === 'crypto' ? cryptoWalletAddress : null })
+    const input = creatorProfileSchema.safeParse({ displayName: profile?.displayName || 'Creator', socialHandle: profile?.socialHandle, paymentOption, paypalEmail: paymentOption === 'paypal' ? paypalEmail : null, paypalMeUrl: paymentOption === 'paypal' ? paypalMeUrl : null, cryptoNetwork: paymentOption === 'crypto' ? cryptoNetwork : null, cryptoWalletAddress: paymentOption === 'crypto' ? cryptoWalletAddress : null })
     if (!input.success) return toast.error(input.error.issues[0].message)
     setSaving(true)
     try {
@@ -64,11 +60,6 @@ export function PayoutInformation({ email, onSaved, embedded = false }: { email:
 
       {!embedded && profile ? <div className="mb-4 flex items-center gap-3 text-sm"><CreatorStatusIcon name="payouts" verified={profile.authStatus === 'verified'} /><div><p className="font-medium">{profile.authStatus === 'verified' ? 'Payment Method Approved' : 'Payout Information'}</p><p className="text-xs text-[#73777d]">{profile.authStatus === 'verified' ? 'Your payment destination is approved.' : (profile.paymentOption === 'paypal' ? profile.paypalEmail : profile.cryptoNetwork && profile.cryptoWalletAddress) ? 'Your payment destination is awaiting review.' : 'Add a payment destination to receive earnings.'}</p></div></div> : null}
       <form onSubmit={save} className={cn('grid gap-8', !embedded && 'creator-surface p-5 sm:p-7')}>
-        <section className="grid gap-5">
-          <div className="flex items-center gap-3"><CreatorIcon name="accounts" className="size-11" /><div><h2 className="font-semibold tracking-[-0.025em]">Identity</h2><p className="text-xs text-zinc-500">Used by the Mogging creator team for payout records.</p></div></div>
-          <div className="grid gap-5 sm:grid-cols-2"><Field label="Creator Name"><input className={fieldClass} minLength={2} maxLength={80} value={displayName} onChange={(event) => setDisplayName(event.target.value)} placeholder="Your creator name" required /></Field><Field label="Primary Contact"><input className={fieldClass} maxLength={120} value={socialHandle} onChange={(event) => setSocialHandle(event.target.value)} placeholder="Phone number, email, or Discord handle" /></Field></div>
-        </section>
-        <div className="h-px bg-zinc-100" />
         <section className="grid gap-5">
           <div className="flex items-center gap-3"><CreatorIcon name="payouts" className="size-11" /><div><h2 className="font-semibold tracking-[-0.025em]">Payment Method</h2><p className="text-xs text-zinc-500">You can change this before a payment is processed.</p></div></div>
           <div className="flex items-start gap-2 rounded-[14px] bg-[#f7f8f9] px-3 py-2.5 text-xs leading-5 text-[#73777d]"><Zap className="mt-0.5 size-4 shrink-0 text-[#00A8EF]" /><span><strong className="text-[#181a1d]">Crypto is the faster payout method.</strong> PayPal processing times may vary by region and account.</span></div>

@@ -1,3 +1,5 @@
+export const ANALYSIS_PROMPT_VERSION = 'psl-kimi-v3'
+
 import type { AnalyzeFaceInput } from './schema'
 
 const CATEGORY_IDS = [
@@ -77,6 +79,7 @@ Return one complete JSON object matching this schema:
   "tierDescription": string,
   "report": {
     "summary": string,
+    "protocolContext": {"faceShape": "unsure"|"oval"|"round"|"square"|"oblong"|"heart"|"diamond", "hairTexture": "unsure"|"straight"|"wavy"|"curly"|"coily", "visibleConcerns": ["dryness"|"fine-lines"|"marks"|"pimples"|"blackheads"|"sparse-brows"|"brow-shape"|"hair-thinning"|"dry-lips"]},
     "potential": {"score": number, "label": string, "summary": string, "focusAreas": [string]},
     "categories": [{"id": string, "title": string, "subtitle": string, "scoreLabel": string, "score": number, "eyeColor": "blue"|"gray"|"green"|"hazel"|"amber"|"brown"|"dark brown" (eyes only, omit if uncertain), "features": [{"label": string, "value": string, "measurement": string (when measurable)}], "explanation": string, "recommendation": string}]
   },
@@ -119,6 +122,7 @@ Hard requirements:
   * overall: prioritize the lowest-scoring actionable category and reuse its finding-specific next step, not a generic glow-up checklist.
 - Sunscreen and gentle moisturizer are allowed general skin-care recommendations. Do not recommend procedures, medications, supplements, retinoids, fillers, surgery, orthodontics, diagnoses, or medical treatment. Do not invent allergies, skin type, skincare history, habits, or symptoms. If a feature is not visible, state that no specific action is supported rather than inventing a concern.
 - For biological-age, title it "Skin Age", subtitle must be "Visible age cues", scoreLabel must be "Age signal", score must be a 0-10 visible-age-presentation score, and features must include Apparent age, Texture age cue, Under-eye cue, and Skin damage. Put the apparent age in years only in the Apparent age feature value.
+- report.protocolContext supports the automatic weekly protocol. Include only clearly visible findings consistent with report feature values, and use an empty visibleConcerns array when unsupported. Use unsure for obscured or uncertain face shape or hair texture. These are cosmetic observations, never diagnoses: marks means visible uneven tone; pimples/blackheads require clearly visible spots or clogged pores; hair-thinning requires clearly visible sparse scalp coverage. Never infer symptoms, product ownership, age, treatment suitability, preferences, or a need to tan from the photo. A low category score alone is not a visible concern.
 - report.summary must be personalized and ${summaryLength}.
 - metricScores must contain 6 concise items.
 - landmarks.anchors should include these normalized 0-1 points when visible: ${LANDMARK_ANCHORS.join(', ')}.

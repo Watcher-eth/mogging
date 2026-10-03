@@ -15,15 +15,17 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } f
 import { cn } from '@/lib/utils'
 import { CreatorAuthPrompt } from './creator-auth-prompt'
 import { CreatorIcon, type CreatorIconName } from './creator-icon'
+import { CreatorSetupChecklist } from './setup-checklist'
 
 type CreatorNavItem = { href: string; label: string; asset: CreatorIconName }
 
 const creatorNav: ReadonlyArray<CreatorNavItem> = [
   { href: '/creator', label: 'Overview', asset: 'overview' },
+  { href: '/creator/sprints', label: 'Campaigns', asset: 'submissions' },
   { href: '/creator/submit', label: 'Submit', asset: 'video-submissions' },
   { href: '/creator/submissions', label: 'Submissions', asset: 'submissions' },
   { href: '/creator/accounts', label: 'Accounts', asset: 'accounts' },
-  { href: '/creator/payout-information', label: 'Payouts', asset: 'payouts' },
+  { href: '/creator/money', label: 'Money', asset: 'payouts' },
   { href: '/creator/cta-generator', label: 'CTA Studio', asset: 'cta' },
 ]
 
@@ -71,6 +73,7 @@ export function CreatorShell({ children, allowUnauthenticated = false }: { child
         <CreatorNavigation />
         <SidebarInset className="creator-page creator-enter min-w-0 bg-white" key={router.pathname}>{children}</SidebarInset>
       </div>
+      <CreatorSetupChecklist />
     </div>
   )
 }
