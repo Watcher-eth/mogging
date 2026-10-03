@@ -3,12 +3,12 @@ import type Stripe from 'stripe'
 import { db } from '@/lib/db'
 import { creatorProfiles } from '@/lib/db/schema'
 import { getOrCreateCreatorProfile } from '@/lib/creator/service'
-import { env } from '@/lib/env'
 import { getStripe } from '@/lib/payments/stripe'
 import { ApiError } from '@/lib/api/http'
 import { courseSellers, courseAudit } from './schema'
 import { siteUrl } from './http'
 import { sellerSchema } from './validation'
+import { courseStripeOptions } from './stripe'
 
 export async function sellerForUser(userId: string) {
   const [seller] = await db.select({ seller: courseSellers }).from(courseSellers).innerJoin(creatorProfiles, eq(courseSellers.creatorProfileId, creatorProfiles.id)).where(eq(creatorProfiles.userId, userId)).limit(1)
@@ -24,14 +24,20 @@ export async function saveSeller(userId: string, body: unknown) {
     return seller
   })
 }
-export function accountEligible(account: Stripe.Account) {
-  return account.controller?.stripe_dashboard?.type === 'full' && account.controller?.fees?.payer === 'account' && account.controller?.losses?.payments === 'stripe'
+export function retrieveSellerAccount(id: string) {
+  return getStripe().v2.core.accounts.retrieve(id, { include: ['configuration.merchant', 'defaults', 'identity', 'requirements'] }, courseStripeOptions)
+}
+export function accountEligible(account: Stripe.V2.Core.Account) {
+  return account.dashboard === 'full' && account.defaults?.responsibilities?.fees_collector === 'stripe' && account.defaults?.responsibilities?.losses_collector === 'stripe'
 }
 export async function syncSeller(seller: typeof courseSellers.$inferSelect) {
   if (!seller.stripeAccountId || !seller.stripeConnected) return seller
-  const account = await getStripe().accounts.retrieve(seller.stripeAccountId)
-  const eligible = accountEligible(account)
-  const [updated] = await db.update(courseSellers).set({ chargesEnabled: eligible && account.charges_enabled, payoutsEnabled: eligible && account.payouts_enabled, requirements: account.requirements?.currently_due || [], stripeSyncedAt: new Date(), updatedAt: new Date() }).where(and(eq(courseSellers.id, seller.id), eq(courseSellers.stripeAccountId, account.id))).returning()
+  const account = await retrieveSellerAccount(seller.stripeAccountId)
+  if (account.livemode !== seller.stripeLivemode) throw new ApiError(409, 'Stripe account environment does not match this seller')
+  const eligible = accountEligible(account) && account.identity?.country?.toUpperCase() === seller.country
+  const capabilities = account.configuration?.merchant?.capabilities
+  const requirements = [...new Set(account.requirements?.entries?.filter(entry => entry.awaiting_action_from === 'user').map(entry => entry.description) || [])]
+  const [updated] = await db.update(courseSellers).set({ chargesEnabled: eligible && capabilities?.card_payments?.status === 'active', payoutsEnabled: eligible && capabilities?.stripe_balance?.payouts?.status === 'active', requirements, stripeSyncedAt: new Date(), updatedAt: new Date() }).where(and(eq(courseSellers.id, seller.id), eq(courseSellers.stripeAccountId, account.id), eq(courseSellers.stripeConnected, true))).returning()
   if (!updated) throw new ApiError(409, 'Seller connection changed; retry')
   return updated
 }
@@ -40,13 +46,15 @@ export async function onboarding(userId: string, email: string) {
   if (seller.status === 'suspended') throw new ApiError(403, 'Seller is suspended')
   if (!seller.stripeAccountId) {
     // Stable idempotency key recovers an account after a crash before DB persistence.
-    const account = await getStripe().accounts.create({ country: seller.country, email, controller: { fees: { payer: 'account' }, losses: { payments: 'stripe' }, requirement_collection: 'stripe', stripe_dashboard: { type: 'full' } }, capabilities: { card_payments: { requested: true }, transfers: { requested: true } }, metadata: { moggingCourseSellerId: seller.id } }, { idempotencyKey: `course-account-${seller.id}` })
-    const [connected] = await db.update(courseSellers).set({ stripeAccountId: account.id, stripeConnected: true, stripeLivemode: env.STRIPE_SECRET_KEY?.startsWith('sk_live_') || false, updatedAt: new Date() }).where(and(eq(courseSellers.id, seller.id), sql`${courseSellers.stripeAccountId} is null`)).returning()
+    // Collect real identity and terms in Stripe's hosted flow; no demo KYC values in production.
+    const account = await getStripe().v2.core.accounts.create({ contact_email: email, display_name: seller.slug, dashboard: 'full', identity: { country: seller.country.toLowerCase() }, defaults: { responsibilities: { fees_collector: 'stripe', losses_collector: 'stripe' } }, configuration: { merchant: { capabilities: { card_payments: { requested: true } } } }, include: ['configuration.merchant', 'identity', 'requirements'], metadata: { moggingCourseSellerId: seller.id } }, { ...courseStripeOptions, idempotencyKey: `course-account-v2-${seller.id}` })
+    const [connected] = await db.update(courseSellers).set({ stripeAccountId: account.id, stripeConnected: true, stripeLivemode: account.livemode, updatedAt: new Date() }).where(and(eq(courseSellers.id, seller.id), sql`${courseSellers.stripeAccountId} is null`)).returning()
     if (!connected) throw new ApiError(409, 'Another Stripe connection finished; reload your seller profile')
-    seller.stripeAccountId = account.id
+    Object.assign(seller, connected)
   }
-  const link = await getStripe().accountLinks.create({ account: seller.stripeAccountId!, type: 'account_onboarding', refresh_url: `${siteUrl()}/creator/courses?connect=refresh`, return_url: `${siteUrl()}/creator/courses?connect=returned` })
-  return { url: link.url, expiresAt: new Date(link.expires_at * 1000).toISOString() }
+  if (!seller.stripeConnected) throw new ApiError(409, 'Reconnect the same Stripe account before continuing onboarding')
+  const link = await getStripe().v2.core.accountLinks.create({ account: seller.stripeAccountId!, use_case: { type: 'account_onboarding', account_onboarding: { configurations: ['merchant'], refresh_url: `${siteUrl()}/creator/courses?connect=refresh`, return_url: `${siteUrl()}/creator/courses?connect=returned` } } }, courseStripeOptions)
+  return { url: link.url, expiresAt: link.expires_at }
 }
 export async function changeSellerStatus(id: string, status: 'enabled' | 'pending' | 'suspended', actorUserId: string) {
   return db.transaction(async tx => {

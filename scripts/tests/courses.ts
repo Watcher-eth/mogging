@@ -17,6 +17,7 @@ process.env.COURSE_STRIPE_TAX_ENABLED = 'true'
 process.env.NEXTAUTH_URL = 'http://localhost:3000'
 process.env.STRIPE_SECRET_KEY = 'sk_test_course_mock'
 process.env.STRIPE_CONNECT_WEBHOOK_SECRET = 'whsec_course_mock'
+process.env.STRIPE_CONNECT_ACCOUNT_WEBHOOK_SECRET = 'whsec_course_account_mock'
 process.env.RESEND_API_KEY = 'course_mock'
 process.env.BUNNY_STREAM_LIBRARY_ID = '123'
 process.env.BUNNY_STREAM_API_KEY = 'course_mock'
@@ -24,6 +25,13 @@ process.env.BUNNY_STREAM_TOKEN_KEY = 'course_mock_token'
 process.env.BUNNY_STREAM_READ_ONLY_KEY = 'course_mock_readonly'
 delete process.env.UPSTASH_REDIS_REST_URL
 delete process.env.UPSTASH_REDIS_REST_TOKEN
+// Local provider setup must not leak into this fully mocked test process.
+delete process.env.COURSE_R2_BUCKET_NAME
+delete process.env.R2_ACCOUNT_ID
+delete process.env.R2_ACCESS_KEY_ID
+delete process.env.R2_SECRET_ACCESS_KEY
+delete process.env.R2_BUCKET_NAME
+delete process.env.R2_PUBLIC_BASE_URL
 const setup = postgres(testUrl, { max: 1, prepare: false, onnotice: () => {} })
 const [{ count }] = await setup<{ count: number }[]>`select count(*)::int as count from information_schema.tables where table_schema = 'public'`
 assert.equal(count, 0, 'Test database must be empty; this script never drops existing data')
@@ -41,11 +49,44 @@ let checkoutCreates = 0, refundCreates = 0, outboundEmails = 0, verificationCode
 let paymentReads = 0
 let loseRefundResponse = false
 let database: typeof import('@/lib/db')
+const stripeSdk = new Stripe('sk_test_course_mock')
+const stripeAccounts = new Map<string, any>()
+const accountState = (id: string, country = 'US') => ({ id, object: 'v2.core.account', livemode: false, dashboard: 'full', identity: { country }, defaults: { responsibilities: { fees_collector: 'stripe', losses_collector: 'stripe' } }, configuration: { merchant: { capabilities: { card_payments: { status: 'active' }, stripe_balance: { payouts: { status: 'active' } } } } }, requirements: { entries: [] } })
+stripeAccounts.set('acct_course_seller', accountState('acct_course_seller'))
+let accountCreates = 0, accountReads = 0
 const provider = {
-  webhooks: new Stripe('sk_test_course_mock').webhooks,
+  webhooks: stripeSdk.webhooks,
+  parseEventNotificationAsync: stripeSdk.parseEventNotificationAsync.bind(stripeSdk),
+  v2: { core: {
+    accounts: {
+      create: async (input: any, options: any) => {
+        assert.equal(options.apiVersion, '2026-08-26.dahlia'); assert.ok(options.idempotencyKey)
+        assert.equal(input.dashboard, 'full'); assert.deepEqual(input.defaults.responsibilities, { fees_collector: 'stripe', losses_collector: 'stripe' })
+        assert.deepEqual(input.configuration, { merchant: { capabilities: { card_payments: { requested: true } } } })
+        assert.deepEqual(input.identity, { country: 'us' }); assert.ok(input.contact_email)
+        assert.ok(!JSON.stringify(input).includes('simulate_accept_tos')); assert.equal(input.configuration.customer, undefined)
+        accountCreates++
+        const account = accountState('acct_course_onboarding')
+        stripeAccounts.set(account.id, account)
+        return account
+      },
+      retrieve: async (id: string, params: any, options: any) => {
+        assert.equal(options.apiVersion, '2026-08-26.dahlia')
+        assert.deepEqual(params.include, ['configuration.merchant', 'defaults', 'identity', 'requirements'])
+        accountReads++
+        return structuredClone(stripeAccounts.get(id))
+      },
+    },
+    accountLinks: { create: async (input: any, options: any) => {
+      assert.equal(options.apiVersion, '2026-08-26.dahlia'); assert.equal(input.use_case.type, 'account_onboarding')
+      assert.deepEqual(input.use_case.account_onboarding.configurations, ['merchant'])
+      assert.equal(input.use_case.account_onboarding.return_url, 'http://localhost:3000/creator/courses?connect=returned')
+      return { url: 'https://connect.stripe.com/mock-onboarding', expires_at: new Date(Date.now() + 300_000).toISOString() }
+    } },
+  } },
   checkout: { sessions: {
     create: async (input: any, options: any) => {
-      assert.equal(options.stripeAccount, 'acct_course_seller'); assert.ok(options.idempotencyKey)
+      assert.equal(options.stripeAccount, 'acct_course_seller'); assert.ok(options.idempotencyKey); assert.equal(options.apiVersion, '2026-08-26.dahlia')
       assert.equal(input.payment_intent_data.application_fee_amount, undefined)
       if (sessionKeys.has(options.idempotencyKey)) return sessions.get(sessionKeys.get(options.idempotencyKey)!)
       checkoutCreates++
@@ -288,6 +329,25 @@ assert.equal(await webhookRequest(eventBody, eventSignature), 200)
 assert.equal(await webhookRequest(eventBody.replace('acct_unknown', 'acct_tampered'), eventSignature), 400)
 assert.equal(await webhookRequest(eventBody, 'invalid'), 400)
 console.log('PASS: real Stripe SDK asynchronous webhook signature verification, duplicate delivery and tamper rejection under Bun')
+const freeCourses = []
+for (const title of ['Pagination first', 'Pagination second']) {
+  const record = await catalog.createCourse(creator, { slug: title.toLowerCase().replaceAll(' ', '-'), content: { ...content, title, price: { ...content.price, amount: 0 } } })
+  await catalog.submitCourse(creator, record.id, 1)
+  await catalog.reviewCourse(record.id, 1, 'approve', '', creator)
+  await commerce.checkout(customer, record.id)
+  freeCourses.push(record)
+}
+const catalogFirst = await catalog.catalog({ limit: 1, q: 'pagination' })
+const catalogNext = await catalog.catalog({ limit: 1, page: 2, q: 'pagination' })
+assert.equal(catalogFirst.hasMore, true); assert.equal(catalogNext.hasMore, false)
+assert.notEqual(catalogFirst.items[0].id, catalogNext.items[0].id)
+assert.equal((await catalog.catalog({ q: 'PAGINATION SECOND' })).items[0].id, freeCourses[1].id)
+assert.equal((await catalog.catalog({ q: 'pagination', category: 'dating' })).items.length, 0)
+const libraryFirst = await access.library(buyer, { limit: 1 }), libraryNext = await access.library(buyer, { limit: 1, page: 2 })
+assert.equal(libraryFirst.hasMore, true); assert.notEqual(libraryFirst.items[0].id, libraryNext.items[0].id)
+assert.equal((await reporting.courseStudents(seller.id, freeCourses[0].id, {})).students.length, 1)
+await assert.rejects(reporting.courseStudents(crypto.randomUUID(), freeCourses[0].id, {}))
+console.log('PASS: complete catalog search/category filtering, stable catalog/library pagination and private creator student lists')
 const reservations = await db.select().from(courseAssets)
 await assert.rejects(media.startUpload(creator, second.id, { kind: 'resource', title: 'File', contentType: 'text/plain', sizeBytes: 20 }))
 assert.equal((await db.select().from(courseAssets)).length, reservations.length, 'Missing storage configuration must not reserve quota')
@@ -300,6 +360,62 @@ assert.equal(deferred.emailDeferred, true); assert.equal(deferred.emails, 0); as
 assert.deepEqual(await db.select().from(courseEmails), pendingEmails, 'Deferred email must remain queued without failed attempts')
 process.env.RESEND_API_KEY = 'course_mock'
 console.log('PASS: missing R2 fails before reserving quota; maintenance defers unconfigured email without consuming retries')
+
+const onboardingSeller = await sellers.saveSeller(outsider, { slug: 'onboarding-check', country: 'US', supportEmail: 'outsider@example.com' })
+const onboardingLink = await sellers.onboarding(outsider, 'outsider@example.com')
+assert.ok(onboardingLink.url.startsWith('https://connect.stripe.com/'))
+assert.ok(new Date(onboardingLink.expiresAt).getTime() > Date.now())
+await sellers.onboarding(outsider, 'outsider@example.com')
+assert.equal(accountCreates, 1, 'Renewing an onboarding link must not create another account')
+let connectedSeller = await sellers.sellerForUser(outsider)
+assert.equal(connectedSeller.stripeAccountId, 'acct_course_onboarding'); assert.equal(connectedSeller.stripeLivemode, false)
+const account = stripeAccounts.get('acct_course_onboarding')
+account.configuration.merchant.capabilities.stripe_balance.payouts.status = 'restricted'
+account.requirements.entries = [{ awaiting_action_from: 'user', description: 'Payout account' }, { awaiting_action_from: 'stripe', description: 'Verification pending' }]
+connectedSeller = await sellers.syncSeller(connectedSeller)
+assert.equal(connectedSeller.chargesEnabled, true); assert.equal(connectedSeller.payoutsEnabled, false)
+assert.deepEqual(connectedSeller.requirements, ['Payout account'])
+account.configuration.merchant.capabilities.card_payments.status = 'restricted'
+connectedSeller = await sellers.syncSeller(connectedSeller)
+assert.equal(connectedSeller.chargesEnabled, false)
+account.defaults.responsibilities.losses_collector = 'application'
+assert.equal(sellers.accountEligible(account), false)
+account.defaults.responsibilities.losses_collector = 'stripe'
+account.livemode = true
+await assert.rejects(sellers.syncSeller(connectedSeller), /environment does not match/)
+account.livemode = false
+console.log('PASS: Accounts v2 merchant-only onboarding, stable account identity, exact API version, capability gating, requirements and environment isolation')
+
+const accountHandler = (await import('../../pages/api/payments/stripe-connect-account-webhook')).default
+const accountNotification = { id: 'evt_v2_capability', object: 'v2.core.event', type: 'v2.core.account[configuration.merchant].capability_status_updated', livemode: false, created: new Date().toISOString(), related_object: { id: 'acct_course_onboarding', type: 'v2.core.account', url: '/v2/core/accounts/acct_course_onboarding' } }
+const accountBody = JSON.stringify(accountNotification)
+const accountSignature = await provider.webhooks.generateTestHeaderStringAsync({ payload: accountBody, secret: process.env.STRIPE_CONNECT_ACCOUNT_WEBHOOK_SECRET! })
+const accountWebhookRequest = async (body: string, signature: string) => {
+  const req = Object.assign(Readable.from([Buffer.from(body)]), { method: 'POST', headers: { 'stripe-signature': signature } })
+  let status = 0
+  const res = { setHeader() {}, status(code: number) { status = code; return this }, json() { return this } }
+  await accountHandler(req as any, res as any)
+  return status
+}
+account.configuration.merchant.capabilities.card_payments.status = 'active'
+account.configuration.merchant.capabilities.stripe_balance.payouts.status = 'active'
+account.requirements.entries = []
+const readsBefore = accountReads
+assert.equal(await accountWebhookRequest(accountBody, accountSignature), 200)
+assert.equal(await accountWebhookRequest(accountBody, accountSignature), 200)
+assert.equal(accountReads, readsBefore + 1, 'Thin-event replay must not fetch or process the account twice')
+assert.equal((await sellers.sellerForUser(outsider)).payoutsEnabled, true)
+assert.equal(await accountWebhookRequest(accountBody.replace('acct_course_onboarding', 'acct_tampered'), accountSignature), 400)
+assert.equal(await accountWebhookRequest(accountBody, eventSignature), 400, 'Snapshot destination secret must not validate thin events')
+const wrongMode = await stripeSdk.parseEventNotificationAsync(JSON.stringify({ ...accountNotification, id: 'evt_v2_wrong_mode', livemode: true }), await provider.webhooks.generateTestHeaderStringAsync({ payload: JSON.stringify({ ...accountNotification, id: 'evt_v2_wrong_mode', livemode: true }), secret: process.env.STRIPE_CONNECT_ACCOUNT_WEBHOOK_SECRET! }), process.env.STRIPE_CONNECT_ACCOUNT_WEBHOOK_SECRET!)
+await hooks.connectAccountEvent(wrongMode)
+assert.equal(accountReads, readsBefore + 1)
+const closedBody = JSON.stringify({ ...accountNotification, id: 'evt_v2_closed', type: 'v2.core.account.closed' })
+assert.equal(await accountWebhookRequest(closedBody, await provider.webhooks.generateTestHeaderStringAsync({ payload: closedBody, secret: process.env.STRIPE_CONNECT_ACCOUNT_WEBHOOK_SECRET! })), 200)
+const closedSeller = await sellers.sellerForUser(outsider)
+assert.equal(closedSeller.stripeConnected, false); assert.equal(closedSeller.chargesEnabled, false); assert.equal(closedSeller.payoutsEnabled, false)
+assert.equal(closedSeller.id, onboardingSeller.id)
+console.log('PASS: signed thin-event processing, distinct secrets, duplicate/tamper rejection, wrong-mode isolation and account closure')
 globalThis.fetch = realFetch
 await (globalThis as any).postgresClient?.end()
 console.log('All course backend integration checks passed. Providers were mocked; no live credentials were used.')

@@ -30,6 +30,17 @@ if (published) {
   assert.ok(!JSON.stringify(outline.content).includes('resourceAssetIds'))
   const text = published.published.sections.flatMap((section: any) => section.lessons).find((lesson: any) => lesson.kind === 'text')
   if (text) assert.equal((await fetch(`${courseTestOrigin}/api/courses/${published.id}/lessons/${text.id}`)).status, text.preview ? 200 : 403)
+  const video = published.published.sections.flatMap((section: any) => section.lessons).find((lesson: any) => lesson.kind === 'video' && lesson.videoAssetId)
+  if (video && process.env.BUNNY_STREAM_CDN_TOKEN_KEY) {
+    const path = `/api/courses/${published.id}/lessons/${video.id}/thumbnail`
+    const thumbnail = await buyer.request(path)
+    assert.equal(thumbnail.status, 200); assert.equal(thumbnail.headers.get('content-type'), 'image/jpeg')
+    assert.ok(thumbnail.headers.get('cache-control')?.startsWith('private,')); assert.ok((await thumbnail.arrayBuffer()).byteLength > 0)
+    assert.equal((await fetch(`${courseTestOrigin}${path}`)).status, video.preview ? 200 : 403)
+    assert.equal((await creator.request(`/api/creator/courses/${published.id}/assets/${video.videoAssetId}/thumbnail`)).status, 200)
+    assert.equal((await buyer.request(`/api/creator/courses/${published.id}/assets/${video.videoAssetId}/thumbnail`)).status, 404)
+    console.log('PASS: real protected Bunny thumbnails, private caching and learner/owner access boundaries')
+  }
   const original = published.listed
   try {
     await creator.api(`/api/admin/courses/${published.id}`, 'PATCH', { listed: false })

@@ -30,16 +30,30 @@ export function videoPlayback(videoId: string) {
   const token = createHash('sha256').update(`${tokenKey}${videoId}${expires}`).digest('hex')
   return { url: `https://player.mediadelivery.net/embed/${libraryId}/${videoId}?token=${token}&expires=${expires}&autoplay=false`, expiresAt: new Date(expires * 1000).toISOString() }
 }
-export async function videoThumbnailUrl(videoId: string) {
+export async function videoThumbnail(videoId: string) {
   const query = new URL(videoPlayback(videoId).url).searchParams.toString()
   const data = await bunny<{ thumbnailUrl: string; tokenAuthEnabled: boolean }>(`/${videoId}/play?${query}`)
   const url = new URL(data.thumbnailUrl)
   if (url.protocol !== 'https:' || !url.hostname.endsWith('.b-cdn.net')) throw new ApiError(502, 'Video thumbnail is unavailable')
+  let target = url.toString()
   if (data.tokenAuthEnabled) {
     if (!env.BUNNY_STREAM_CDN_TOKEN_KEY) throw new ApiError(503, 'Video thumbnail signing is not configured')
-    return signCdnUrl(url.toString(), env.BUNNY_STREAM_CDN_TOKEN_KEY, Math.floor(Date.now() / 1000) + 900)
+    target = signCdnUrl(target, env.BUNNY_STREAM_CDN_TOKEN_KEY, Math.floor(Date.now() / 1000) + 900)
   }
-  return url.toString()
+  // Stream's linked Pull Zone can restrict referrers to its own player.
+  const response = await fetch(target, { headers: { Referer: 'https://player.mediadelivery.net/' }, redirect: 'error', signal: AbortSignal.timeout(15_000) })
+  const type = response.headers.get('content-type')?.split(';')[0]
+  if (!response.ok || !type || !['image/jpeg', 'image/png', 'image/webp'].includes(type) || !response.body) throw new ApiError(502, 'Video thumbnail is unavailable')
+  const reader = response.body.getReader(), chunks: Uint8Array[] = []
+  let size = 0
+  for (;;) {
+    const { done, value } = await reader.read()
+    if (done) break
+    size += value.byteLength
+    if (size > 2 * 1024 * 1024) { await reader.cancel(); throw new ApiError(502, 'Video thumbnail is too large') }
+    chunks.push(value)
+  }
+  return { body: Buffer.concat(chunks), type }
 }
 let storage: S3Client | undefined
 export function courseStorage() {

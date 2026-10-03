@@ -8,6 +8,7 @@ import { getStripe } from '@/lib/payments/stripe'
 import { courseOrders, courses, courseSellers, courseEnrollments, courseEmails, courseRefunds } from './schema'
 import { enrollment } from './access'
 import { syncSeller } from './sellers'
+import { courseStripeOptions } from './stripe'
 import { buyerIdentity } from './identity'
 import { siteUrl } from './http'
 
@@ -37,7 +38,7 @@ export async function checkout(user: { id: string; email: string; emailVerified:
     return created
   })
   if (order.stripeCheckoutId) {
-    const session = await getStripe().checkout.sessions.retrieve(order.stripeCheckoutId, {}, { stripeAccount: order.stripeAccountId })
+    const session = await getStripe().checkout.sessions.retrieve(order.stripeCheckoutId, {}, { ...courseStripeOptions, stripeAccount: order.stripeAccountId })
     if (session.status !== 'open') { await syncOrder(order.id); throw new ApiError(409, 'Previous checkout finished; refresh your library and try again') }
     return { orderId: order.id, url: session.url, expiresAt: order.expiresAt }
   }
@@ -65,7 +66,7 @@ export async function ensureCheckout(order: typeof courseOrders.$inferSelect) {
       metadata,
       payment_intent_data: { metadata },
       automatic_tax: { enabled: order.automaticTax },
-    }, { stripeAccount: order.stripeAccountId, idempotencyKey: `course-checkout-${order.id}` })
+    }, { ...courseStripeOptions, stripeAccount: order.stripeAccountId, idempotencyKey: `course-checkout-${order.id}` })
     await db.update(courseOrders).set({ stripeCheckoutId: session.id, updatedAt: new Date() }).where(eq(courseOrders.id, order.id))
     return { orderId: order.id, url: session.url, expiresAt: order.expiresAt }
   } catch (error) {
@@ -83,7 +84,7 @@ export async function syncOrder(id: string) {
   return db.transaction(async tx => {
     const [order] = await tx.select().from(courseOrders).where(eq(courseOrders.id, id)).for('update')
     if (!order?.stripeCheckoutId) return order
-    const stripe = getStripe(), options = { stripeAccount: order.stripeAccountId }
+    const stripe = getStripe(), options = { ...courseStripeOptions, stripeAccount: order.stripeAccountId }
     const session = await stripe.checkout.sessions.retrieve(order.stripeCheckoutId, { expand: ['payment_intent.latest_charge.balance_transaction'] }, options)
     if (session.metadata?.moggingCourseOrderId !== order.id || session.client_reference_id !== order.id || session.livemode !== order.livemode || session.currency !== order.currency || session.amount_subtotal !== order.amount) throw new ApiError(502, 'Payment does not match the order')
     const paymentIntentId = reference(session.payment_intent)
@@ -138,7 +139,7 @@ export async function refundOrder(sellerId: string, orderId: string, requestKey:
     const [created] = await tx.insert(courseRefunds).values({ orderId: order.id, requestKey: key, amount: value }).returning()
     return created
   })
-  const options = { stripeAccount: order.stripeAccountId }
+  const options = { ...courseStripeOptions, stripeAccount: order.stripeAccountId }
   // Known refunds are retrieved, never recreated after Stripe's idempotency retention expires.
   if (!request.stripeRefundId && Date.now() - request.createdAt.getTime() > 23 * 3600_000) throw new ApiError(409, 'Unknown refund outcome requires Stripe reconciliation before retry')
   const refund = request.stripeRefundId

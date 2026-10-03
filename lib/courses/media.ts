@@ -5,7 +5,7 @@ import { ApiError } from '@/lib/api/http'
 import { courseAssets, courses, courseSellers } from './schema'
 import { ownedCourse } from './catalog'
 import { uploadSchema, assetIdsOf } from './validation'
-import { bunny, bunnyConfig, courseStorage, videoUploadHeaders, videoThumbnailUrl, resourceUpload, resourceHead, resourceDelete, type BunnyVideo } from './providers'
+import { bunny, bunnyConfig, courseStorage, videoUploadHeaders, videoThumbnail, resourceUpload, resourceHead, resourceDelete, type BunnyVideo } from './providers'
 
 export async function startUpload(userId: string, courseId: string, body: unknown) {
   const input = uploadSchema.parse(body), { seller } = await ownedCourse(userId, courseId)
@@ -109,5 +109,5 @@ export async function assetThumbnail(userId: string, courseId: string, assetId: 
   await ownedCourse(userId, courseId)
   const asset = await db.query.courseAssets.findFirst({ where: and(eq(courseAssets.id, assetId), eq(courseAssets.courseId, courseId), eq(courseAssets.kind, 'video'), eq(courseAssets.state, 'ready')) })
   if (!asset?.bunnyVideoId) throw new ApiError(404, 'Video thumbnail is unavailable')
-  return videoThumbnailUrl(asset.bunnyVideoId)
+  return videoThumbnail(asset.bunnyVideoId)
 }

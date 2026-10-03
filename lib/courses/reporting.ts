@@ -5,6 +5,7 @@ import { db } from '@/lib/db'
 import { ApiError } from '@/lib/api/http'
 import { getStripe } from '@/lib/payments/stripe'
 import { courseOrders, courseEnrollments, courses, courseSellers, courseRefunds } from './schema'
+import { courseStripeOptions } from './stripe'
 
 const pageSchema = z.object({ page: z.coerce.number().int().min(1).max(1000).default(1), limit: z.coerce.number().int().min(1).max(100).default(25), from: z.iso.datetime().optional(), to: z.iso.datetime().optional(), courseId: z.uuid().optional() })
 export async function creatorDashboard(sellerId: string, query: unknown) {
@@ -23,7 +24,7 @@ export async function creatorDashboard(sellerId: string, query: unknown) {
 export async function payoutBalance(sellerId: string) {
   const seller = await db.query.courseSellers.findFirst({ where: eq(courseSellers.id, sellerId) })
   if (!seller?.stripeAccountId) throw new ApiError(409, 'Connect Stripe first')
-  const balance = await getStripe().balance.retrieve({}, { stripeAccount: seller.stripeAccountId })
+  const balance = await getStripe().balance.retrieve({}, { ...courseStripeOptions, stripeAccount: seller.stripeAccountId })
   return { available: balance.available.map(({ amount, currency }) => ({ amount, currency })), pending: balance.pending.map(({ amount, currency }) => ({ amount, currency })), scope: 'entire_stripe_account', dashboardUrl: 'https://dashboard.stripe.com' }
 }
 export async function courseStudents(sellerId: string, courseId: string, query: unknown) {

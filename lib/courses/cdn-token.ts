@@ -7,7 +7,7 @@ export function signCdnUrl(value: string, key: string, expires: number) {
   url.searchParams.delete('token'); url.searchParams.delete('expires')
   url.searchParams.sort()
   const parameters = [...url.searchParams].map(([name, value]) => `${name}=${value}`).join('&')
-  const token = createHmac('sha256', key).update(`${decodeURIComponent(url.pathname)}${expires}${parameters}`).digest('base64url')
+  const token = createHmac('sha256', key).update(`${url.pathname}${expires}${parameters}`).digest('base64url')
   url.searchParams.set('token', `HS256-${token}`)
   url.searchParams.set('expires', String(expires))
   return url.toString()

@@ -51,3 +51,25 @@ export async function connectEvent(event: Stripe.Event) {
     await syncOrder(order.id)
   })
 }
+
+// Accounts v2 thin events belong to the platform's "Your account" destination.
+export const courseAccountEventTypes = new Set([
+  'v2.core.account.created', 'v2.core.account.updated', 'v2.core.account.closed',
+  'v2.core.account[configuration.merchant].capability_status_updated',
+  'v2.core.account[configuration.merchant].updated', 'v2.core.account[defaults].updated',
+  'v2.core.account[identity].updated', 'v2.core.account[requirements].updated',
+])
+export async function connectAccountEvent(event: Stripe.V2.Core.EventNotification) {
+  if (!courseAccountEventTypes.has(event.type) || !('related_object' in event) || event.related_object.type !== 'v2.core.account') return
+  const accountId = event.related_object.id
+  await processBillingWebhook('stripe-course-account', `${event.livemode}:${accountId}:${event.id}`, async () => {
+    const seller = await db.query.courseSellers.findFirst({ where: and(eq(courseSellers.stripeAccountId, accountId), eq(courseSellers.stripeLivemode, event.livemode)) })
+    if (!seller) return
+    if (event.type === 'v2.core.account.closed') {
+      await db.update(courseSellers).set({ stripeConnected: false, chargesEnabled: false, payoutsEnabled: false, stripeSyncedAt: new Date(), updatedAt: new Date() }).where(eq(courseSellers.id, seller.id))
+      return
+    }
+    // Fetch current included capabilities instead of trusting a stale event payload.
+    await syncSeller(seller)
+  })
+}

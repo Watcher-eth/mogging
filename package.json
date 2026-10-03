@@ -24,7 +24,8 @@
     "admin:leaderboard": "bun run scripts/admin/leaderboard.ts",
     "dev:courses": "bun run scripts/setup/course-server.ts",
     "setup:courses-dev": "bun run scripts/setup/courses-dev.ts",
-    "test:courses-http": "bun run scripts/tests/courses-http.ts"
+    "test:courses-http": "bun run scripts/tests/courses-http.ts",
+    "test:courses-r2": "bun run scripts/tests/courses-r2.ts"
   },
   "dependencies": {
     "@auth/drizzle-adapter": "^1.11.1",

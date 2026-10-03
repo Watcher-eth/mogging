@@ -3,7 +3,7 @@ import { z } from 'zod'
 import { json, methodNotAllowed } from '@/lib/api/http'
 import { enforceRateLimit } from '@/lib/api/rateLimit'
 import { db } from '@/lib/db'
-import { courseApi, courseUser, pathOf, siteUrl } from '@/lib/courses/http'
+import { courseApi, courseUser, pathOf, siteUrl, sendThumbnail } from '@/lib/courses/http'
 import { courses } from '@/lib/courses/schema'
 import { sellerForUser, saveSeller, onboarding, syncSeller } from '@/lib/courses/sellers'
 import { oauthStart, oauthComplete } from '@/lib/courses/identity'
@@ -52,7 +52,7 @@ export default courseApi(async (req, res) => {
     await ownedCourse(user.id, id)
     if (path.length === 2 && method === 'GET') return json(res, 200, await assetsForCourse(id))
     const assetId = z.uuid().parse(path[2])
-    if (path.length === 4 && path[3] === 'thumbnail' && method === 'GET') return res.redirect(302, await assetThumbnail(user.id, id, assetId))
+    if (path.length === 4 && path[3] === 'thumbnail' && method === 'GET') return sendThumbnail(res, await assetThumbnail(user.id, id, assetId))
     if (path.length === 3 && method === 'DELETE') { await deleteAsset(user.id, id, assetId); return json(res, 200, { deleted: true }) }
     if (path.length === 4 && path[3] === 'complete' && method === 'POST') return json(res, 200, await finishUpload(user.id, id, assetId))
     if (path.length === 4 && path[3] === 'resume' && method === 'POST') return json(res, 200, await resumeUpload(user.id, id, assetId, req.body))

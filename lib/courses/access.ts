@@ -5,7 +5,7 @@ import { z } from 'zod'
 import { creatorProfiles } from '@/lib/db/schema'
 import { courseEnrollments, courses, courseSellers, courseAssets, courseProgress } from './schema'
 import { progressSchema, type CourseLesson } from './validation'
-import { videoPlayback, videoThumbnailUrl, resourceDownload } from './providers'
+import { videoPlayback, videoThumbnail, resourceDownload } from './providers'
 import { mergeWatchRanges, watchedEnough } from './watch-progress'
 
 export async function enrollment(userId: string, courseId: string) {
@@ -66,7 +66,7 @@ export async function lessonThumbnail(userId: string | null, courseId: string, l
   const { lesson } = await lessonAccess(userId, courseId, lessonId, draft)
   const asset = lesson.videoAssetId ? await db.query.courseAssets.findFirst({ where: and(eq(courseAssets.id, lesson.videoAssetId), eq(courseAssets.courseId, courseId), eq(courseAssets.state, 'ready')) }) : undefined
   if (!asset?.bunnyVideoId) throw new ApiError(404, 'Video thumbnail is unavailable')
-  return videoThumbnailUrl(asset.bunnyVideoId)
+  return videoThumbnail(asset.bunnyVideoId)
 }
 export async function library(userId: string, query: unknown = {}) {
   const { page, limit } = z.object({ page: z.coerce.number().int().min(1).max(1000).default(1), limit: z.coerce.number().int().min(1).max(100).default(24) }).parse(query)

@@ -5,6 +5,7 @@ import { ApiError } from '@/lib/api/http'
 import { getStripe } from '@/lib/payments/stripe'
 import { courses, courseAssets, courseAudit, courseSellers, courseEnrollments } from './schema'
 import { sellerForUser } from './sellers'
+import { courseStripeOptions } from './stripe'
 import { createCourseSchema, saveCourseSchema, assetIdsOf, lessonsOf, validatePublication, publicCourseContent, courseCategorySchema, type CourseContent } from './validation'
 
 export async function ownedCourse(userId: string, id: string) {
@@ -66,7 +67,7 @@ export async function reviewCourse(id: string, version: number, decision: 'appro
     if (!seller || seller.status !== 'enabled') throw new ApiError(409, 'Enable the seller before publishing')
     if (course.draft.price.amount > 0) {
       if (!seller.stripeAccountId || !seller.chargesEnabled) throw new ApiError(409, 'Seller Stripe onboarding is incomplete')
-      const options = { stripeAccount: seller.stripeAccountId }
+      const options = { ...courseStripeOptions, stripeAccount: seller.stripeAccountId }
       stripeProductId = (await getStripe().products.create({ name: course.draft.title, metadata: { moggingCourseId: id, version: String(version) } }, { ...options, idempotencyKey: `course-product-${id}-${version}` })).id
       const price = await getStripe().prices.create({ product: stripeProductId, currency: course.draft.price.currency, unit_amount: course.draft.price.amount }, { ...options, idempotencyKey: `course-price-${id}-${version}` })
       stripePriceId = price.id

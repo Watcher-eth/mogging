@@ -31,6 +31,8 @@ COURSE_R2_BUCKET_NAME=mogging-course-resources
 
 Do not change `R2_BUCKET_NAME` or `R2_PUBLIC_BASE_URL`: those are for the existing app images. Videos go to Bunny Stream; this bucket is for PDF, TXT, PNG and JPEG lesson attachments. No Worker or public CDN is needed for these downloads.
 
+Verified October 2, 2026 using real R2 uploads/downloads, normal local app authentication, and a browser upload/reload/download. `bun run test:courses-r2` runs the provider checks against the isolated app at `127.0.0.1:3003` and local test accounts. It creates only synthetic courses/files, validates access and expired signatures, removes its completed test objects, and checks the existing photo helper with a unique synthetic image. Never point these fixture checks at production. Before deployment, copy the same required environment settings into the deployment environment and retest uploads from its exact HTTPS origin; local `.env.local` settings do not configure the deployment.
+
 ## Transactional email
 
 Keep the existing `gabe@mogging.com` and `w@mogging.com` mailboxes. A transactional sender does **not** need its own paid mailbox.
@@ -53,10 +55,20 @@ Restart `bun run dev:courses` after changing environment variables. Domain verif
 
 ## Bunny playback security
 
-Signed embed playback was tested against library 768882: signed requests succeeded and unsigned requests were rejected. Its playback metadata currently reports CDN token authentication disabled. In **Stream → library → Security**, keep embed token authentication enabled and enable **CDN Token Authentication** before selling access; embed protection alone does not protect direct video files. These settings use different keys. Allow `mogging.com`, `www.mogging.com`, and the development hosts while testing. See [Bunny Stream security options](https://bunny.net/docs/stream/security-options).
+Library **768882** now has CDN token authentication enabled. Signed embedded playback works, and unsigned direct thumbnails and playlists return 403.
+
+Keep `BUNNY_STREAM_TOKEN_KEY` for embedded player signing. For protected lesson thumbnails, open **Stream → library 768882 → API → Pull Zone → Manage → Security → Token authentication** and copy that zone's Token Authentication Key into `.env.local`:
+
+```dotenv
+BUNNY_STREAM_CDN_TOKEN_KEY=replace-in-your-local-file
+```
+
+These keys protect different layers. Do not replace the working embed key. Signed thumbnails were verified against the actual Pull Zone **6733935** (`vz-2cd7d640-d1d.b-cdn.net`). That zone restricts direct requests by referrer, so the app retrieves signed thumbnails server-side using Bunny's player referrer, after checking course ownership or lesson access. Only raster images up to 2 MiB are accepted, with five-minute private browser caching. Video streaming still goes directly through Bunny's player. See [Bunny Stream security](https://github.com/BunnyWay/documentation/blob/main/stream/security.mdx) and [CDN signing](https://github.com/BunnyWay/BunnyCDN.TokenAuthentication).
 
 ## Isolated development
 
 `bun run setup:courses-dev` creates fixtures in the dedicated local `mogging_courses_dev` database (the local PostgreSQL server must be running on port 55432). `bun run dev:courses` serves them at **http://127.0.0.1:3003**, with separate cookies and build output. Credentials are saved only in ignored `.local/course-accounts.json`. The normal app continues using its original database and has courses disabled. Do not run fixture setup against staging or production.
 
-Forward sandbox connected-account events to `127.0.0.1:3003/api/payments/stripe-connect-webhook`. The CLI listener signing secret differs from the deployed Dashboard destination secret. Before launch, apply the course migration in staging, use staging origins and secrets, complete seller onboarding, and verify a real sandbox checkout/refund, attachment upload/download, and transactional email delivery. Keep live course payments disabled until these pass.
+Forward sandbox connected-account events to `127.0.0.1:3003/api/payments/stripe-connect-webhook`. The CLI listener signing secret differs from the deployed Dashboard destination secret. Before launch, apply migrations **0040_course_platform** and **0042_course_watch_progress** in staging, use staging origins and secrets, complete seller onboarding, and verify a real sandbox checkout/refund, attachment upload/download, and transactional email delivery. Keep live course payments disabled until these pass.
+
+`CRON_SECRET` protects `/api/cron/courses`; configure it in the deployment as well as locally. Maintenance reconciles payments, polls video processing, cleans abandoned uploads, and retries receipt delivery. Without `RESEND_API_KEY`, receipts remain queued without consuming retry attempts; other maintenance continues. Verify the existing scheduler against the staging deployment before launch.

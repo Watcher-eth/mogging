@@ -29,7 +29,7 @@ export function StripeConnection({ seller, changed }: { seller: CourseSeller; ch
     <h3>Payments directly to your account.</h3>
     <p>Free hosting. No platform commission. Stripe processing fees apply.</p>
     <div className="c-stripe-banner-bottom"><div>
-      {seller.chargesEnabled ? <span>Payments enabled · {seller.payoutsEnabled ? 'payouts enabled' : 'payout setup required'}</span> : <button disabled={busy} onClick={() => void connect(false)}>{busy ? 'Opening…' : seller.stripeAccountId ? 'Finish Stripe setup' : 'Set up Stripe'}</button>}
+      {seller.chargesEnabled && seller.payoutsEnabled ? <span>Payments enabled · payouts enabled</span> : <button disabled={busy} onClick={() => void connect(false)}>{busy ? 'Opening…' : seller.stripeAccountId ? 'Finish Stripe setup' : 'Set up Stripe'}</button>}
       {!seller.stripeAccountId && <button disabled={busy} onClick={() => void connect(true)}>Connect existing account ↗</button>}
       {seller.stripeAccountId && <button disabled={busy} onClick={() => void refresh()}>Refresh status</button>}
     </div><div><a href="https://stripe.com/legal/connect-account" target="_blank" rel="noopener noreferrer">Stripe terms ↗</a><a href="https://stripe.com/privacy" target="_blank" rel="noopener noreferrer">Privacy ↗</a></div></div>

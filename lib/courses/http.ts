@@ -35,3 +35,10 @@ export function courseApi(handler: (req: NextApiRequest, res: NextApiResponse) =
   }
 }
 export function pathOf(req: NextApiRequest) { return Array.isArray(req.query.path) ? req.query.path : [] }
+export function sendThumbnail(res: NextApiResponse, thumbnail: { body: Buffer; type: string }) {
+  res.setHeader('Content-Type', thumbnail.type)
+  res.setHeader('X-Content-Type-Options', 'nosniff')
+  res.setHeader('Cache-Control', 'private, max-age=300')
+  res.setHeader('Vary', 'Cookie')
+  return res.status(200).send(thumbnail.body)
+}

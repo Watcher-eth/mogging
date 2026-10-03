@@ -4,7 +4,7 @@ import { json, ApiError, methodNotAllowed } from '@/lib/api/http'
 import { enforceRateLimit } from '@/lib/api/rateLimit'
 import { getAuthSession } from '@/lib/auth/session'
 import { db } from '@/lib/db'
-import { courseApi, courseUser, pathOf } from '@/lib/courses/http'
+import { courseApi, courseUser, pathOf, sendThumbnail } from '@/lib/courses/http'
 import { catalog, publicCourse, courseOverview } from '@/lib/courses/catalog'
 import { library, getLesson, assetAccess, saveProgress, enrollment, lessonThumbnail } from '@/lib/courses/access'
 import { checkout, syncOrder } from '@/lib/courses/commerce'
@@ -63,7 +63,7 @@ export default courseApi(async (req, res) => {
     if (method === 'GET') {
       const session = await getAuthSession(req, res), userId = session?.user?.id || null
       if (path.length === 3) return json(res, 200, await getLesson(userId, courseId, lessonId, draft))
-      if (path.length === 4 && path[3] === 'thumbnail') return res.redirect(302, await lessonThumbnail(userId, courseId, lessonId, draft))
+      if (path.length === 4 && path[3] === 'thumbnail') return sendThumbnail(res, await lessonThumbnail(userId, courseId, lessonId, draft))
       if (path.length === 5 && path[3] === 'assets') return json(res, 200, await assetAccess(userId, courseId, lessonId, z.uuid().parse(path[4]), draft))
     }
     if (path.length === 4 && path[3] === 'progress' && method === 'PUT') return json(res, 200, await saveProgress((await courseUser(req, res)).id, courseId, lessonId, req.body))
