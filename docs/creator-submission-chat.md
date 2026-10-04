@@ -1,6 +1,6 @@
 # Submission conversations
 
-Creators open any submission in `/creator/submissions` to see Messages first, with Details for evidence, requirements and payments. Admins open a submission and choose Messages. Blue bubbles are your own messages; grey bubbles are replies. Messages refresh every ten seconds while the conversation is open.
+Creators open any submission in `/creator/submissions` to see Messages first, with Details for evidence, requirements and payments. Admins open a submission and use five focused tabs: Video (post/evidence/details), Review (status and requirements), Earnings (verified metrics and payment), Attribution (conversion metrics), and Messages (comments and replies). General review comments are sent through Messages; per-requirement guidance and feedback are collapsed in the checklist. Checklist, payout and attribution drafts survive tab switches. Blue bubbles are your own messages; grey bubbles are replies. Messages refresh every ten seconds while the conversation is open.
 
 Review notes are still the latest saved review summary. A changed nonempty note appends a team message in the same transaction as the review; saving an identical note does not duplicate it. Clearing a review note does not delete conversation history. Migration `0043_submission_chat` carries existing notes into their conversations using the submission's last update time (the old system did not record note timestamps or prior revisions).
 

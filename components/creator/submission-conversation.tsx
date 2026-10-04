@@ -8,7 +8,7 @@ import { cn } from '@/lib/utils'
 type Message = { id: string; authorRole: 'creator' | 'team'; body: string; createdAt: string }
 type Thread = { submission: { status: string; unreadMessages: number }; messages: Message[]; nextCursor: string | null }
 
-export function SubmissionConversation({ submissionId, viewerRole }: { submissionId: string; viewerRole: Message['authorRole'] }) {
+export function SubmissionConversation({ submissionId, viewerRole, className }: { className?: string; submissionId: string; viewerRole: Message['authorRole'] }) {
   const endpoint = `/api/${viewerRole === 'team' ? 'admin/creator' : 'creator'}/submissions/${encodeURIComponent(submissionId)}/messages`
   const { data, error, isLoading, isValidating, size, setSize, mutate } = useSWRInfinite<Thread>((index, previous) => index === 0 ? endpoint : previous?.nextCursor ? `${endpoint}?cursor=${encodeURIComponent(previous.nextCursor)}` : null, apiGet, { refreshInterval: 10_000 })
   const { mutate: refreshDashboard } = useSWRConfig()
@@ -66,7 +66,7 @@ export function SubmissionConversation({ submissionId, viewerRole }: { submissio
     finally { setSending(false) }
   }
 
-  return <section className="flex h-[min(60dvh,520px)] min-h-[300px] flex-col bg-white" aria-label="Submission conversation">
+  return <section className={cn('flex h-[min(60dvh,520px)] min-h-[300px] flex-col bg-white', className)} aria-label="Submission conversation">
     <div className="border-b border-zinc-100 px-5 py-3 text-center"><p className="text-sm font-semibold">{viewerRole === 'creator' ? 'Mogging team' : 'Creator conversation'}</p><p className="mt-0.5 text-xs capitalize text-zinc-500">{data?.[0]?.submission.status.replaceAll('_', ' ') || 'Review & feedback'}</p></div>
     <div ref={scroll} onScroll={() => { const el = scroll.current; if (el) setAtBottom(el.scrollHeight - el.scrollTop - el.clientHeight < 80) }} className="flex-1 overflow-y-auto overscroll-contain px-4 py-5 sm:px-6" role="log" aria-label="Messages" aria-live="polite">
       {data?.[size - 1]?.nextCursor ? <button className="mx-auto mb-5 block min-h-11 text-xs font-medium text-[#007aff]" disabled={isValidating} onClick={() => { previousHeight.current = scroll.current?.scrollHeight ?? null; void setSize(size + 1) }}>Load earlier messages</button> : null}
