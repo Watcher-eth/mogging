@@ -1,6 +1,7 @@
+import { SubmissionConversation } from '@/components/creator/submission-conversation'
 import Link from 'next/link'
 import { useMemo, useState } from 'react'
-import { ArrowUpRight, CheckCircle2, CircleAlert, Clock3, Loader2, XCircle } from 'lucide-react'
+import { ArrowUpRight, Camera, MessageCircle, CheckCircle2, CircleAlert, Clock3, Loader2, XCircle } from 'lucide-react'
 import useSWR from 'swr'
 import { Button } from '@/components/ui/button'
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog'
@@ -29,7 +30,8 @@ export default function CreatorSubmissionsPage() {
 function SubmissionsContent() {
   const { data, isLoading } = useSWR<CreatorDashboard>('/api/creator', apiGet, { refreshInterval: 30_000 })
   const [filter, setFilter] = useState<(typeof filters)[number]['value']>('all')
-  const [selected, setSelected] = useState<CreatorSubmission | null>(null)
+  const [selectedId, setSelectedId] = useState<string | null>(null)
+  const selected = data?.submissions.find(item => item.id === selectedId) || null
   const submissions = useMemo(() => data?.submissions || [], [data?.submissions])
   const visible = useMemo(() => filter === 'all' ? submissions : submissions.filter((item) => item.status === filter), [filter, submissions])
   const paymentBySubmission = useMemo(() => new Map((data?.payments || []).filter((payment) => payment.submissionId).map((payment) => [payment.submissionId, payment])), [data?.payments])
@@ -39,38 +41,44 @@ function SubmissionsContent() {
     <>
       <CreatorHeader eyebrow="History & Payments" title="Submissions" description="Follow every video from review through approval and payout." action={<Button asChild className="h-11 rounded-full px-5"><Link href="/creator/submit">New Submission</Link></Button>} />
       <label className="mb-5 flex items-center gap-3 text-sm font-medium">Status<select className="creator-field max-w-xs" value={filter} onChange={(event) => setFilter(event.target.value as typeof filter)}>{filters.map((item) => <option key={item.value} value={item.value}>{item.label} ({item.value === 'all' ? submissions.length : submissions.filter((submission) => submission.status === item.value).length})</option>)}</select></label>
-      {isLoading ? <div className="grid min-h-64 place-items-center"><Loader2 className="size-5 animate-spin text-zinc-400" /></div> : visible.length ? <div className="grid gap-3">{visible.map((submission, index) => <SubmissionCard key={submission.id} submission={submission} payment={paymentBySubmission.get(submission.id)} linkedToApprovedAccount={Boolean(submission.socialAccountId && accountStatusById.get(submission.socialAccountId) === 'approved')} onClick={() => setSelected(submission)} style={{ animationDelay: `${Math.min(index * 45, 180)}ms` }} />)}</div> : <EmptyState filtered={filter !== 'all'} />}
-      <SubmissionDialog submission={selected} payment={selected ? paymentBySubmission.get(selected.id) : undefined} linkedToApprovedAccount={Boolean(selected?.socialAccountId && accountStatusById.get(selected.socialAccountId) === 'approved')} open={Boolean(selected)} onOpenChange={(open) => { if (!open) setSelected(null) }} />
+      {isLoading ? <div className="grid min-h-64 place-items-center"><Loader2 className="size-5 animate-spin text-zinc-400" /></div> : visible.length ? <div className="grid gap-3">{visible.map((submission, index) => <SubmissionCard key={submission.id} submission={submission} payment={paymentBySubmission.get(submission.id)} onClick={() => setSelectedId(submission.id)} style={{ animationDelay: `${Math.min(index * 45, 180)}ms` }} />)}</div> : <EmptyState filtered={filter !== 'all'} />}
+      <SubmissionDialog key={selected?.id || "closed"} submission={selected} payment={selected ? paymentBySubmission.get(selected.id) : undefined} linkedToApprovedAccount={Boolean(selected?.socialAccountId && accountStatusById.get(selected.socialAccountId) === 'approved')} open={Boolean(selected)} onOpenChange={(open) => { if (!open) setSelectedId(null) }} />
     </>
   )
 }
 
-function SubmissionCard({ submission, payment, linkedToApprovedAccount, onClick, style }: { submission: CreatorSubmission; payment?: CreatorPayment; linkedToApprovedAccount: boolean; onClick: () => void; style: React.CSSProperties }) {
+function SubmissionCard({ submission, payment, onClick, style }: { submission: CreatorSubmission; payment?: CreatorPayment; onClick: () => void; style: React.CSSProperties }) {
+  const amount = payment ? formatMoney(payment.amountCents, payment.currency) : submission.status === 'approved' ? formatMoney(creatorEarnedCents(submission), 'USD') : null
   return (
-    <button onClick={onClick} style={style} className="creator-list-item creator-surface group flex w-full flex-wrap items-center gap-3 p-4 text-left transition-[border-color,box-shadow,transform] duration-200 hover:-translate-y-0.5 hover:border-black/10 hover:shadow-[0_16px_40px_rgba(0,0,0,0.06)] active:scale-[0.99]">
-      <CreatorIcon name="submissions" className="size-12" />
-      <span className="min-w-0 flex-1"><span className="block truncate text-sm font-semibold tracking-[-0.02em]">{submission.title}</span><span className="mt-1 flex flex-wrap items-center gap-2 text-xs text-zinc-500"><span>{submission.platform}</span><span>·</span><span>{formatDate(submission.createdAt)}</span>{!linkedToApprovedAccount && !submission.sprintId ? <span className="inline-flex items-center gap-1 rounded-full bg-zinc-100 px-2 py-0.5 font-medium text-zinc-600"><CircleAlert className="size-3" />Account Not Approved</span> : null}</span></span>
-      <span className="w-full text-sm sm:w-auto sm:text-right">{payment ? <><span className="block text-sm font-semibold">{formatMoney(payment.amountCents, payment.currency)}</span><span className="mt-1 block text-xs capitalize text-zinc-500">{payment.status}</span></> : submission.status === 'approved' ? <span className="font-semibold">{formatMoney(creatorEarnedCents(submission), 'USD')}</span> : <span className="text-xs text-zinc-400">No Payment Yet</span>}</span>
-      <StatusPill status={submission.status} />
-      <ArrowUpRight className="size-4 shrink-0 text-zinc-300 transition-[color,transform] duration-150 ease-out group-hover:-translate-y-0.5 group-hover:translate-x-0.5 group-hover:text-black" />
+    <button onClick={onClick} style={style} className="creator-list-item creator-surface group grid w-full grid-cols-[40px_minmax(0,1fr)_auto] items-center gap-3 p-4 text-left transition-[border-color,box-shadow,transform] duration-200 hover:-translate-y-0.5 hover:border-black/10 hover:shadow-[0_16px_40px_rgba(0,0,0,0.06)] active:scale-[0.99]">
+      <span className="grid size-10 place-items-center rounded-full bg-zinc-50"><Camera className="size-5 text-zinc-700" aria-hidden="true" /></span>
+      <span className="min-w-0"><span className="block truncate text-sm font-semibold tracking-[-0.02em]">{submission.title}</span><span className="mt-1 block text-xs text-zinc-500">{formatDate(submission.createdAt)}</span></span>
+      <span className="flex flex-wrap items-center justify-end gap-2">
+        {amount ? <span className="text-sm font-semibold">{amount}</span> : null}
+        {submission.unreadMessages ? <span aria-label={`${submission.unreadMessages} new messages`} className="inline-flex items-center gap-1 rounded-full bg-[#007aff] px-2 py-1 text-[11px] font-semibold text-white"><MessageCircle className="size-3" aria-hidden="true" />{submission.unreadMessages}</span> : null}
+        <StatusPill status={submission.status} />
+      </span>
     </button>
   )
 }
 
 function SubmissionDialog({ submission, payment, linkedToApprovedAccount, open, onOpenChange }: { submission: CreatorSubmission | null; payment?: CreatorPayment; linkedToApprovedAccount: boolean; open: boolean; onOpenChange: (open: boolean) => void }) {
+  const [tab, setTab] = useState<'conversation' | 'details'>('conversation')
   const evidenceSize = submission?.analyticsSizeBytes || submission?.videoSizeBytes
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="creator-dialog max-h-[90vh] max-w-2xl overflow-y-auto rounded-[26px] border-zinc-200 bg-white p-0">
-        {submission ? <SubmissionEvidence submission={submission} /> : null}
+      <DialogContent className="creator-dialog max-h-[90vh] max-w-2xl overflow-y-auto !rounded-[32px] border-zinc-200 bg-white p-0">
+        {submission && tab === 'details' ? <SubmissionEvidence submission={submission} /> : null}
         {submission ? (
           <div className="p-5 sm:p-7">
-            <DialogHeader>
+            <DialogHeader className="pr-10">
               <div className="flex items-center gap-2"><StatusPill status={submission.status} /><span className="text-xs text-zinc-400">{formatDate(submission.createdAt)}</span></div>
               <DialogTitle className="pt-2 text-2xl">{submission.title}</DialogTitle>
               <DialogDescription>{submission.platform}</DialogDescription>
             </DialogHeader>
+            <div className="mt-4 flex gap-1 rounded-full bg-zinc-100 p-1" aria-label="Submission view">{(['conversation', 'details'] as const).map(value => <button key={value} aria-pressed={tab === value} className={cn('min-h-10 flex-1 rounded-full text-sm font-medium capitalize', tab === value ? 'bg-white shadow-sm' : 'text-zinc-500')} onClick={() => setTab(value)}>{value === 'conversation' ? <>Messages{submission.unreadMessages ? <span className="ml-2 inline-flex min-w-5 items-center justify-center rounded-full bg-[#007aff] px-1.5 py-0.5 text-[10px] text-white">{submission.unreadMessages}</span> : null}</> : 'Details'}</button>)}</div>
+            {tab === 'conversation' ? <SubmissionConversation submissionId={submission.id} viewerRole="creator" /> : <>
             {!linkedToApprovedAccount && !submission.sprintId ? <div className="mt-6 flex gap-3 rounded-2xl creator-warning px-4 py-3 text-sm leading-6"><CircleAlert className="mt-0.5 size-4 shrink-0 text-zinc-600" /><p><strong className="font-semibold">Account Not Approved.</strong> This video is not currently connected to an approved TikTok or Instagram account.</p></div> : null}
             <div className="mt-6 grid gap-3 rounded-2xl bg-zinc-50 p-4 text-sm">
               <Detail label="Review Status" value={statusLabel(submission.status)} />
@@ -84,8 +92,8 @@ function SubmissionDialog({ submission, payment, linkedToApprovedAccount, open, 
             </div>
             {submission.caption ? <div className="mt-6"><p className="text-xs font-semibold uppercase tracking-[0.15em] text-zinc-400">Caption</p><p className="mt-2 whitespace-pre-wrap text-sm leading-6 text-zinc-600">{submission.caption}</p></div> : null}
             {submission.reviewChecklist?.length ? <CreatorReviewChecklist submission={submission} /> : null}
-            {submission.reviewNote ? <div className="mt-6 rounded-2xl border border-zinc-200 p-4"><p className="text-xs font-semibold uppercase tracking-[0.15em] text-zinc-400">Team Note</p><p className="mt-2 text-sm leading-6 text-zinc-600">{submission.reviewNote}</p></div> : null}
             {submission.postUrl ? <Button asChild variant="outline" className="mt-6 h-10 rounded-xl"><a href={submission.postUrl} target="_blank" rel="noreferrer">Open Published Post <ArrowUpRight /></a></Button> : null}
+            </>}
           </div>
         ) : null}
       </DialogContent>
@@ -102,12 +110,12 @@ function CreatorReviewChecklist({ submission }: { submission: CreatorSubmission 
 }
 
 function SubmissionEvidence({ submission }: { submission: CreatorSubmission }) {
-  if (submission.analyticsScreenshotUrl && submission.analyticsContentType?.startsWith('video/')) return <div className="aspect-video overflow-hidden rounded-t-[27px] bg-black"><video className="size-full object-contain" src={submission.analyticsScreenshotUrl} controls preload="metadata" /></div>
+  if (submission.analyticsScreenshotUrl && submission.analyticsContentType?.startsWith('video/')) return <div className="aspect-video overflow-hidden rounded-t-[31px] bg-black"><video className="size-full object-contain" src={submission.analyticsScreenshotUrl} controls preload="metadata" /></div>
   if (submission.analyticsScreenshotUrl) {
-    return <div role="img" aria-label="Submitted video analytics screenshot" className="aspect-video rounded-t-[27px] bg-zinc-950 bg-contain bg-center bg-no-repeat" style={{ backgroundImage: `url(${JSON.stringify(submission.analyticsScreenshotUrl)})` }} />
+    return <div role="img" aria-label="Submitted video analytics screenshot" className="aspect-video rounded-t-[31px] bg-zinc-950 bg-contain bg-center bg-no-repeat" style={{ backgroundImage: `url(${JSON.stringify(submission.analyticsScreenshotUrl)})` }} />
   }
-  if (submission.videoUrl) return <div className="aspect-video overflow-hidden rounded-t-[27px] bg-black"><video className="size-full object-contain" src={submission.videoUrl} controls preload="metadata" /></div>
-  return <div className="grid aspect-video place-items-center rounded-t-[27px] bg-zinc-950 text-sm text-white/50">No Media Evidence</div>
+  if (submission.videoUrl) return <div className="aspect-video overflow-hidden rounded-t-[31px] bg-black"><video className="size-full object-contain" src={submission.videoUrl} controls preload="metadata" /></div>
+  return <div className="grid aspect-video place-items-center rounded-t-[31px] bg-zinc-950 text-sm text-white/50">No Media Evidence</div>
 }
 
 function StatusPill({ status }: { status: CreatorSubmission['status'] }) { return <span className={cn('shrink-0 rounded-full px-2.5 py-1 text-[11px] font-semibold', status === 'paid' && 'creator-tone-green text-[#29CE53]', status === 'approved' && 'creator-tone-blue text-[#00A8EF]', (status === 'pending' || status === 'in_review') && 'bg-[#f5f6f7] text-[#52565c]', status === 'rejected' && 'creator-tone-red text-[#F33232]')}>{statusLabel(status)}</span> }

@@ -53,6 +53,8 @@ export const creatorProfileSchema = z
     }
   })
 
+export const MINIMUM_SUBMISSION_VIEWS = 20_000
+
 export const creatorSubmissionSchema = z.object({
   sprintId: z.string().uuid(),
   postedAt: z.string().datetime().refine(value => Date.parse(value) <= Date.now(), "Publication time cannot be in the future"),
@@ -65,7 +67,7 @@ export const creatorSubmissionSchema = z.object({
   analyticsStorageKey: z.string().min(1),
   analyticsContentType: z.enum(CREATOR_VIDEO_TYPES),
   analyticsSizeBytes: z.number().int().positive().max(MAX_CREATOR_ANALYTICS_VIDEO_BYTES),
-  viewCountThreshold: z.number().int().nonnegative().max(2_000_000_000),
+  viewCountThreshold: z.number().int().min(MINIMUM_SUBMISSION_VIEWS, "Your post has not reached the minimum views yet. Wait until it has at least 20,000 views, then resubmit.").max(2_000_000_000),
   usAudiencePercent: z.number().min(0).max(100),
 })
 

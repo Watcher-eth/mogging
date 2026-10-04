@@ -6,9 +6,9 @@ import { handleApiError, json, methodNotAllowed, parseBody } from '@/lib/api/htt
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   try {
     if (req.method !== 'PATCH') return methodNotAllowed(res, ['PATCH'])
-    await requireCreatorAdmin(req, res)
+    const { session } = await requireCreatorAdmin(req, res)
     const input = parseBody(creatorAdminReviewSchema, req.body)
-    return json(res, 200, { record: await reviewCreatorResource(input) })
+    return json(res, 200, { record: await reviewCreatorResource(input, session.user.id) })
   } catch (error) {
     return handleApiError(error, res)
   }

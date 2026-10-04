@@ -13,6 +13,7 @@ export type CreatorProfile = {
 }
 
 export type CreatorSubmission = {
+  unreadMessages?: number
   sprintId?: string | null
   sprintTerms?: import('@/lib/creator/sprints').SprintTerms | null
   approvedAmountCents?: number | null

@@ -33,7 +33,7 @@ describe('creator input validation', () => {
     expect(creatorSubmissionSchema.safeParse(input).success).toBe(true)
     expect(creatorSubmissionSchema.safeParse({...input, postUrl:'https://www.tiktok.com/@nate/photo/123'}).success).toBe(true)
     expect(creatorSubmissionSchema.safeParse({...input, viewCountThreshold:20000}).success).toBe(true)
-    for (const patch of [{viewCountThreshold:-1}, {requirementsConfirmed:false}, {analyticsSizeBytes:0}, {analyticsSizeBytes:262144001}, {analyticsPhysicalRecordingConfirmed:false}, {analyticsContentType:'image/png'}, {analyticsContentType:'text/html'}, {usAudiencePercent:101}]) expect(creatorSubmissionSchema.safeParse({...input,...patch}).success).toBe(false)
+    for (const patch of [{viewCountThreshold:0}, {viewCountThreshold:4999}, {viewCountThreshold:19999}, {viewCountThreshold:-1}, {requirementsConfirmed:false}, {analyticsSizeBytes:0}, {analyticsSizeBytes:262144001}, {analyticsPhysicalRecordingConfirmed:false}, {analyticsContentType:'image/png'}, {analyticsContentType:'text/html'}, {usAudiencePercent:101}]) expect(creatorSubmissionSchema.safeParse({...input,...patch}).success).toBe(false)
   })
 })
 

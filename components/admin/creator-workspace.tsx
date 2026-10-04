@@ -1,3 +1,4 @@
+import { SubmissionConversation } from '@/components/creator/submission-conversation'
 import { CreatorSprintsPanel } from '@/components/admin/creator-sprints-panel'
 import { sprintPayoutCents, sprintReviewItems } from '@/lib/creator/sprints'
 import * as Avatar from '@radix-ui/react-avatar'
@@ -60,6 +61,7 @@ export default function CreatorAdminPage() {
   const page = adminPage(router.pathname)
   const tab = (page?.section || 'overview') as Tab
   const [selected, setSelected] = useState<ReviewTarget | null>(null)
+  const reviewTarget = selected?.resource === 'submission' ? { resource: 'submission' as const, item: dashboard?.submissions.find(item => item.id === selected.item.id) || selected.item } : selected
 
   if (accessError) return <p role="alert" className="admin-notice">Could not verify admin access. Reload to retry.</p>
   if (accessLoading) return <CenteredLoader />
@@ -70,7 +72,7 @@ export default function CreatorAdminPage() {
       <CreatorHeader eyebrow="Creator program" title={page?.title || 'Review queue'} description={page?.description || 'The next approvals that need your attention.'} />
 
       {error ? <p role="alert" className="admin-notice">Could not load the workspace. <button className="underline" onClick={() => void mutate()}>Try again</button></p> : isLoading || !dashboard ? <CenteredLoader /> : <DashboardView tab={tab} data={dashboard} onSelect={setSelected} onRefresh={async () => { await mutate() }} />}
-      {selected ? <ReviewDialog key={`${selected.resource}-${selected.item.id}`} target={selected} payments={dashboard?.payments || []} metrics={dashboard?.attributionMetrics || []} open onOpenChange={(open) => { if (!open) setSelected(null) }} onRefresh={async () => { await mutate() }} onSaved={async () => { await mutate(); setSelected(null) }} /> : null}
+      {selected ? <ReviewDialog key={`${selected.resource}-${selected.item.id}`} target={reviewTarget!} payments={dashboard?.payments || []} metrics={dashboard?.attributionMetrics || []} open onOpenChange={(open) => { if (!open) setSelected(null) }} onRefresh={async () => { await mutate() }} onSaved={async () => { await mutate(); setSelected(null) }} /> : null}
     </div>
   )
 }
@@ -167,7 +169,7 @@ function ResourceSection({ title, children }: { title: string; children: React.R
 function SubmissionList({ items, payments, onSelect }: { items: AdminSubmission[]; payments: AdminPayment[]; onSelect: (target: ReviewTarget) => void }) {
   const paymentIds = new Set(payments.map((payment) => payment.submissionId))
   if (!items.length) return <EmptyState title="No video submissions" description="Creator uploads will appear here." />
-  return <div className="admin-list">{items.map((item) => <ResourceRow key={item.id} asset="submissions" title={item.title} subtitle={`${item.creatorName} · ${item.socialHandle ? `@${item.socialHandle}` : 'No connected account'} · ${formatDate(item.createdAt)}${item.socialAccountStatus !== 'approved' ? ' · Account not approved' : ''}`} status={item.status} meta={paymentIds.has(item.id) ? 'Payment created' : 'No payment'} onClick={() => onSelect({ resource: 'submission', item })} />)}</div>
+  return <div className="admin-list">{items.map((item) => <ResourceRow key={item.id} asset="submissions" title={item.title} subtitle={`${item.creatorName} · ${item.socialHandle ? `@${item.socialHandle}` : 'No connected account'} · ${formatDate(item.createdAt)}${item.socialAccountStatus !== 'approved' ? ' · Account not approved' : ''}`} status={item.status} unreadMessages={item.unreadMessages} meta={paymentIds.has(item.id) ? 'Payment created' : 'No payment'} onClick={() => onSelect({ resource: 'submission', item })} />)}</div>
 }
 
 function AccountList({ items, onSelect }: { items: AdminAccount[]; onSelect: (target: ReviewTarget) => void }) {
@@ -209,8 +211,8 @@ function CreatorList({ items, onSelect }: { items: AdminCreator[]; onSelect: (ta
   return <div className="admin-list">{items.map((item) => <ResourceRow key={item.id} icon={UserRound} title={item.displayName} subtitle={`${item.email} · Joined ${formatDate(item.createdAt)}`} status={hasPayoutDestination(item) ? item.authStatus === 'verified' ? 'approved' : item.authStatus : 'registered'} meta={hasPayoutDestination(item) ? item.paymentOption === 'paypal' ? 'PayPal' : item.cryptoNetwork || 'Crypto' : 'No payment method'} onClick={() => onSelect({ resource: 'creator', item })} />)}</div>
 }
 
-function ResourceRow({ icon: Icon, asset, title, subtitle, status, meta, onClick }: { icon?: typeof UserRound; asset?: CreatorIconName; title: string; subtitle: string; status: string; meta: string; onClick: () => void }) {
-  return <button onClick={onClick} className="admin-resource-row group flex w-full items-center gap-4 text-left">{asset ? <CreatorIcon name={asset} className="size-12" /> : Icon ? <span className="grid size-11 shrink-0 place-items-center rounded-xl bg-zinc-100"><Icon className="size-5" /></span> : null}<span className="min-w-0 flex-1"><span className="block truncate text-sm font-semibold tracking-[-0.02em]">{title}</span><span className="mt-1 block truncate text-xs text-zinc-500">{subtitle}</span></span><span className="hidden max-w-48 truncate text-xs text-zinc-400 md:block">{meta}</span><StatusPill status={status} /><ArrowUpRight className="size-4 shrink-0 text-zinc-300 transition-[color,transform] duration-150 ease-out group-hover:-translate-y-0.5 group-hover:translate-x-0.5 group-hover:text-black" /></button>
+function ResourceRow({ icon: Icon, asset, title, subtitle, status, meta, unreadMessages, onClick }: { unreadMessages?: number; icon?: typeof UserRound; asset?: CreatorIconName; title: string; subtitle: string; status: string; meta: string; onClick: () => void }) {
+  return <button onClick={onClick} className="admin-resource-row group flex w-full items-center gap-4 text-left">{asset ? <CreatorIcon name={asset} className="size-12" /> : Icon ? <span className="grid size-11 shrink-0 place-items-center rounded-xl bg-zinc-100"><Icon className="size-5" /></span> : null}<span className="min-w-0 flex-1"><span className="block truncate text-sm font-semibold tracking-[-0.02em]">{title}</span><span className="mt-1 block truncate text-xs text-zinc-500">{subtitle}</span></span><span className="hidden max-w-48 truncate text-xs text-zinc-400 md:block">{meta}</span>{unreadMessages ? <span className="rounded-full bg-[#007aff] px-2 py-1 text-[11px] text-white">{unreadMessages} new</span> : null}<StatusPill status={status} /><ArrowUpRight className="size-4 shrink-0 text-zinc-300 transition-[color,transform] duration-150 ease-out group-hover:-translate-y-0.5 group-hover:translate-x-0.5 group-hover:text-black" /></button>
 }
 
 function ApprovalBadge({ target }: { target: Exclude<ReviewTarget, { resource: 'payment' }> }) {
@@ -246,6 +248,7 @@ function ReviewDialog({ target, payments, metrics, open, onOpenChange, onRefresh
   const [adminUsAudiencePercent, setAdminUsAudiencePercent] = useState(() => target.resource === 'submission'
     ? String(target.item.adminUsAudiencePercent ?? target.item.usAudiencePercent ?? 'base')
     : 'base')
+  const [tab, setTab] = useState<'review' | 'messages'>('review')
   const [saving, setSaving] = useState(false)
   const existingPayment = target.resource === 'submission' ? payments.find((payment) => payment.submissionId === target.item.id) : undefined
   const adminPayoutSelection = {
@@ -287,6 +290,8 @@ function ReviewDialog({ target, payments, metrics, open, onOpenChange, onRefresh
             <div className="flex min-w-0 items-center gap-3 pt-2">{target.resource === 'account' ? <AccountAvatar account={target.item} /> : null}<DialogTitle className="min-w-0 break-words text-2xl">{reviewTitle(target)}</DialogTitle></div>
             <DialogDescription className="[overflow-wrap:anywhere]">{reviewSubtitle(target)}</DialogDescription>
           </DialogHeader>
+          {target.resource === 'submission' ? <div className="mt-5 flex gap-1 rounded-full bg-zinc-100 p-1">{(['review', 'messages'] as const).map(value => <button key={value} className={cn('min-h-10 flex-1 rounded-full text-sm font-medium capitalize', tab === value ? 'bg-white shadow-sm' : 'text-zinc-500')} onClick={() => setTab(value)}>{value}{value === 'messages' && target.item.unreadMessages ? <span className="ml-2 rounded-full bg-[#007aff] px-1.5 py-0.5 text-[10px] text-white">{target.item.unreadMessages}</span> : null}</button>)}</div> : null}
+          {target.resource === 'submission' && tab === 'messages' ? <SubmissionConversation submissionId={target.item.id} viewerRole="team" /> : <>
           {target.resource === 'submission' ? <SubmissionVideo submission={target.item} /> : null}
           <ReviewDetails target={target} />
           {target.resource === 'submission' && target.item.analyticsScreenshotUrl ? <section className="mt-6 overflow-hidden rounded-2xl border border-zinc-200"><h3 className="p-4 text-sm font-semibold">Submitted analytics evidence</h3><AdminSubmissionEvidence submission={target.item} /></section> : null}
@@ -297,11 +302,12 @@ function ReviewDialog({ target, payments, metrics, open, onOpenChange, onRefresh
             <span className="text-sm font-medium">{target.resource === 'creator' ? 'Payment method approval' : 'Review status'}</span>
             <Select value={status} onValueChange={(value) => setStatus(value as typeof status)}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent>{statusOptions(target.resource).map((option) => <SelectItem key={option} value={option} disabled={target.resource === 'submission' && !!target.item.sprintId && option === 'paid'}>{target.resource === 'creator' && option === 'verified' ? 'Approved' : statusLabel(option)}</SelectItem>)}</SelectContent></Select>
           </div> : null}
-          {target.resource === 'account' || target.resource === 'submission' ? <label className="mt-5 grid gap-2 text-sm font-medium">Review note<textarea value={reviewNote} onChange={(event) => setReviewNote(event.target.value.slice(0, 1000))} className="min-h-24 resize-y rounded-xl border border-zinc-200 p-3 text-sm outline-none transition-[border-color,box-shadow] duration-150 ease-out focus:border-zinc-400 focus:ring-4 focus:ring-zinc-100" placeholder="Visible to the creator" /></label> : null}
+          {target.resource === 'account' || target.resource === 'submission' ? <label className="mt-5 grid gap-2 text-sm font-medium">Review note<textarea value={reviewNote} onChange={(event) => setReviewNote(event.target.value.slice(0, 1000))} className="min-h-24 resize-y rounded-xl border border-zinc-200 p-3 text-sm outline-none transition-[border-color,box-shadow] duration-150 ease-out focus:border-zinc-400 focus:ring-4 focus:ring-zinc-100" placeholder={target.resource === 'submission' ? "Sent to the conversation when you save this review" : "Visible to the creator"} /></label> : null}
           {target.resource === 'payment' ? <div className="mt-5 grid gap-4 sm:grid-cols-2"><label className="grid gap-2 text-sm font-medium">Amount (USD)<input type="number" min="0" step="0.01" value={amount} onChange={(event) => setAmount(event.target.value)} className="h-12 rounded-xl border border-zinc-200 px-3.5 outline-none focus:border-zinc-400 focus:ring-4 focus:ring-zinc-100" /></label><label className="grid gap-2 text-sm font-medium">Provider reference<input value={providerReference} onChange={(event) => setProviderReference(event.target.value)} className="h-12 rounded-xl border border-zinc-200 px-3.5 outline-none focus:border-zinc-400 focus:ring-4 focus:ring-zinc-100" placeholder="Transaction ID" /></label></div> : null}
           {target.resource === 'submission' && !existingPayment ? <CreatePayment submission={target.item} selection={adminPayoutSelection} onCreated={onSaved} /> : null}
           {target.resource === 'submission' && existingPayment ? <button className="mt-5 flex w-full items-center justify-between rounded-2xl border border-zinc-200 p-4 text-left" onClick={() => onOpenChange(false)}><span><span className="block text-sm font-semibold">Payment scheduled</span><span className="mt-1 block text-xs text-zinc-500">{formatMoney(existingPayment.amountCents, existingPayment.currency)} · {statusLabel(existingPayment.status)}</span></span><CircleDollarSign className="size-5 text-zinc-400" /></button> : null}
           <div className="mt-7 flex justify-end gap-2"><Button variant="ghost" className="rounded-xl" onClick={() => onOpenChange(false)}>Cancel</Button>{canReview ? <Button className="rounded-xl" onClick={() => void save()} disabled={saving}>{saving ? <Loader2 className="animate-spin" /> : <ShieldCheck />}{saving ? 'Saving…' : 'Save review'}</Button> : null}</div>
+          </>}
         </div>
       </DialogContent>
     </Dialog>

@@ -38,8 +38,10 @@ const DialogContent = React.forwardRef<
       {...props}
     >
       {children}
-      <DialogPrimitive.Close className="absolute right-4 top-4 rounded-full bg-white/80 p-1.5 text-black/70 shadow-sm backdrop-blur-sm transition-colors hover:bg-white focus:outline-none focus:ring-2 focus:ring-ring">
-        <X className="size-4" aria-hidden="true" />
+      <DialogPrimitive.Close className="group absolute right-3 top-3 grid size-11 place-items-center !rounded-full p-0 text-black/70 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
+        <span className="grid size-8 place-items-center rounded-full bg-white/80 shadow-sm backdrop-blur-sm transition-colors group-hover:bg-white">
+          <X className="size-4" aria-hidden="true" />
+        </span>
         <span className="sr-only">Close</span>
       </DialogPrimitive.Close>
     </DialogPrimitive.Content>

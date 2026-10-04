@@ -302,6 +302,13 @@
       "when": 1790990261515,
       "tag": "0042_course_watch_progress",
       "breakpoints": true
+    },
+    {
+      "idx": 43,
+      "version": "7",
+      "when": 1791139881666,
+      "tag": "0043_submission_chat",
+      "breakpoints": true
     }
   ]
 }

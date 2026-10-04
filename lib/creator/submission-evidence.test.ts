@@ -56,3 +56,15 @@ test('another user’s upload, account evidence, images, and malformed paths can
 
 test('closed sprints cannot accept new submissions', async () => { sprintActive = false; await expect(createCreatorSubmission('user', input)).rejects.toThrow('active campaign'); expect(inserted).toHaveLength(0) })
 test('a submission stores a snapshot of campaign terms', async () => { const submission = await createCreatorSubmission('user', input); expect(submission.sprintId).toBe(sprint.id); expect(submission.sprintTerms).toEqual(sprint.terms) })
+
+test('posts below 20,000 views cannot be inserted or trigger recording verification', async () => {
+  for (const viewCountThreshold of [0, 4999, 19999]) {
+    await expect(createCreatorSubmission('user', { ...input, viewCountThreshold })).rejects.toThrow('at least 20,000 views')
+  }
+  expect(inserted).toHaveLength(0)
+  expect(verified).toHaveLength(0)
+})
+test('exactly 20,000 views meets the submission minimum', async () => {
+  await createCreatorSubmission('user', { ...input, viewCountThreshold: 20000 })
+  expect(inserted).toHaveLength(1)
+})

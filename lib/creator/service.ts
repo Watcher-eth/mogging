@@ -1,7 +1,8 @@
+import { submissionUnreadCount } from '@/lib/creator/submission-messages'
 import { sprintPhase, sprintFormat } from './sprints'
 import type { TikTokUserInfo } from '@/lib/auth/tiktok-api'
 import { creatorAssetPublicUrl, verifyCreatorRecordingUpload } from '@/lib/storage/videos'
-import { and, desc, eq, or, sql } from 'drizzle-orm'
+import { and, desc, eq, getTableColumns, or, sql } from 'drizzle-orm'
 import { z } from 'zod'
 import { db, schema } from '@/lib/db'
 import { env } from '@/lib/env'
@@ -31,10 +32,8 @@ export async function getCreatorDashboard(userId: string) {
   if (!profile) return { profile: null, submissions: [], payments: [], socialAccounts: [], communityMetrics: await communityMetricsPromise, featureFlags, availableFormats }
 
   const [submissions, payments, socialAccounts, communityMetrics] = await Promise.all([
-    db.query.creatorSubmissions.findMany({
-      where: eq(schema.creatorSubmissions.creatorProfileId, profile.id),
-      orderBy: [desc(schema.creatorSubmissions.createdAt)],
-    }),
+    db.select({ ...getTableColumns(schema.creatorSubmissions), unreadMessages: submissionUnreadCount('creator') })
+      .from(schema.creatorSubmissions).where(eq(schema.creatorSubmissions.creatorProfileId, profile.id)).orderBy(desc(schema.creatorSubmissions.createdAt)),
     db.query.creatorPayments.findMany({
       where: eq(schema.creatorPayments.creatorProfileId, profile.id),
       orderBy: [desc(schema.creatorPayments.createdAt)],

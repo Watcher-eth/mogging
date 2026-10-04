@@ -680,6 +680,8 @@ export const creatorSubmissions = pgTable(
     adminViewCountThreshold: integer('admin_view_count_threshold'),
     adminUsAudiencePercent: real('admin_us_audience_percent'),
     status: creatorSubmissionStatusEnum('status').notNull().default('pending'),
+    creatorMessagesReadAt: timestamp('creator_messages_read_at', { mode: 'date' }),
+    teamMessagesReadAt: timestamp('team_messages_read_at', { mode: 'date' }),
     reviewNote: text('review_note'),
     reviewChecklist: jsonb('review_checklist').$type<Array<{ id: string; met: boolean; note: string | null }> | null>(),
     createdAt: timestamp('created_at', { mode: 'date' }).notNull().defaultNow(),
@@ -693,6 +695,19 @@ export const creatorSubmissions = pgTable(
     createdAtIdx: index('creator_submissions_created_at_idx').on(table.createdAt),
   })
 )
+
+export const creatorSubmissionMessages = pgTable('creator_submission_messages', {
+  id: text('id').primaryKey().$defaultFn(() => crypto.randomUUID()),
+  submissionId: text('submission_id').notNull().references(() => creatorSubmissions.id, { onDelete: 'cascade' }),
+  authorUserId: text('author_user_id').references(() => users.id, { onDelete: 'set null' }),
+  authorRole: text('author_role').$type<'creator' | 'team'>().notNull(),
+  body: text('body').notNull(),
+  createdAt: timestamp('created_at', { mode: 'date' }).notNull().defaultNow(),
+}, table => ({
+  threadIdx: index('creator_submission_messages_thread_idx').on(table.submissionId, table.createdAt, table.id),
+  roleCheck: check('creator_submission_messages_role_check', sql`${table.authorRole} in ('creator', 'team')`),
+  bodyCheck: check('creator_submission_messages_body_check', sql`length(trim(${table.body})) > 0`),
+}))
 
 export const creatorCtaLibraryItems = pgTable(
   'creator_cta_library_items',

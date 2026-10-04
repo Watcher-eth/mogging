@@ -1,3 +1,4 @@
+import { submissionUnreadCount } from '@/lib/creator/submission-messages'
 import { sprintPayoutCents, sprintReviewItems } from '@/lib/creator/sprints'
 import { and, desc, eq, inArray, sql } from 'drizzle-orm'
 import { z } from 'zod'
@@ -129,6 +130,7 @@ export async function getCreatorAdminDashboard() {
     db
       .select({
         id: schema.creatorSubmissions.id,
+        unreadMessages: submissionUnreadCount('team'),
         creatorProfileId: schema.creatorSubmissions.creatorProfileId,
         creatorName: schema.creatorProfiles.displayName,
         creatorEmail: schema.users.email,
@@ -310,7 +312,7 @@ export async function saveCreatorProgramSettings(input: z.infer<typeof creatorPr
   return settings
 }
 
-export async function reviewCreatorResource(input: CreatorAdminReviewInput) {
+export async function reviewCreatorResource(input: CreatorAdminReviewInput, reviewerId?: string) {
   const now = new Date()
 
   if (input.resource === 'creator') {
@@ -326,30 +328,33 @@ export async function reviewCreatorResource(input: CreatorAdminReviewInput) {
   }
 
   if (input.resource === 'submission') {
-    const submission = await db.query.creatorSubmissions.findFirst({
-      where: eq(schema.creatorSubmissions.id, input.id),
+    const current = await db.query.creatorSubmissions.findFirst({ where: eq(schema.creatorSubmissions.id, input.id) })
+    if (current?.sprintId && current.sprintTerms) return reviewSprintSubmission(input, reviewerId)
+    return db.transaction(async tx => {
+      const [submission] = await tx.select().from(schema.creatorSubmissions).where(eq(schema.creatorSubmissions.id, input.id)).for('update')
+      if (!submission) throw new ApiError(404, 'Creator submission not found')
+
+      if (!isCreatorViewThreshold(input.adminViewCountThreshold) || (input.adminUsAudiencePercent !== null && !isCreatorTier1AudienceTier(input.adminUsAudiencePercent))) throw new ApiError(400, 'Choose supported historical payout values')
+      const reviewChecklist = input.reviewChecklist.map((item) => ({
+        id: item.id,
+        met: item.met,
+        note: item.note || null,
+      }))
+      if (!validateCreatorSubmissionReviewResults(submission.formatId, reviewChecklist)) {
+        throw new ApiError(400, 'Complete every creator-guide review item before saving')
+      }
+      const [record] = await tx.update(schema.creatorSubmissions).set({
+        status: input.status,
+        reviewNote: input.reviewNote || null,
+        reviewChecklist,
+        adminViewCountThreshold: input.adminViewCountThreshold,
+        adminUsAudiencePercent: input.adminUsAudiencePercent,
+        updatedAt: now,
+      }).where(eq(schema.creatorSubmissions.id, input.id)).returning()
+      if (!record) throw new ApiError(404, 'Creator submission not found')
+      await appendReviewMessage(tx, submission, input.reviewNote, reviewerId)
+      return record
     })
-    if (!submission) throw new ApiError(404, 'Creator submission not found')
-    if (submission.sprintId && submission.sprintTerms) return reviewSprintSubmission(input)
-    if (!isCreatorViewThreshold(input.adminViewCountThreshold) || (input.adminUsAudiencePercent !== null && !isCreatorTier1AudienceTier(input.adminUsAudiencePercent))) throw new ApiError(400, 'Choose supported historical payout values')
-    const reviewChecklist = input.reviewChecklist.map((item) => ({
-      id: item.id,
-      met: item.met,
-      note: item.note || null,
-    }))
-    if (!validateCreatorSubmissionReviewResults(submission.formatId, reviewChecklist)) {
-      throw new ApiError(400, 'Complete every creator-guide review item before saving')
-    }
-    const [record] = await db.update(schema.creatorSubmissions).set({
-      status: input.status,
-      reviewNote: input.reviewNote || null,
-      reviewChecklist,
-      adminViewCountThreshold: input.adminViewCountThreshold,
-      adminUsAudiencePercent: input.adminUsAudiencePercent,
-      updatedAt: now,
-    }).where(eq(schema.creatorSubmissions.id, input.id)).returning()
-    if (!record) throw new ApiError(404, 'Creator submission not found')
-    return record
   }
 
   return db.transaction(async tx => {
@@ -407,7 +412,7 @@ export async function createCreatorPayment(input: CreatorAdminPaymentInput) {
   })
 }
 
-async function reviewSprintSubmission(input: Extract<CreatorAdminReviewInput, { resource: 'submission' }>) {
+async function reviewSprintSubmission(input: Extract<CreatorAdminReviewInput, { resource: 'submission' }>, reviewerId?: string) {
   return db.transaction(async tx => {
     const [submission] = await tx.select().from(schema.creatorSubmissions).where(eq(schema.creatorSubmissions.id, input.id)).for('update')
     if (!submission?.sprintId || !submission.sprintTerms) throw new ApiError(404, 'Sprint submission not found')
@@ -425,6 +430,7 @@ async function reviewSprintSubmission(input: Extract<CreatorAdminReviewInput, { 
     const previous = submission.status === 'approved' ? submission.approvedAmountCents || 0 : 0
     if (used.cents - previous + (amountCents || 0) > sprint.budgetCents) throw new ApiError(409, 'This approval would exceed the sprint budget')
     const [record] = await tx.update(schema.creatorSubmissions).set({ status: input.status, approvedAmountCents: amountCents, adminViewCountThreshold: input.adminViewCountThreshold, adminUsAudiencePercent: input.adminUsAudiencePercent, reviewChecklist: input.reviewChecklist.map(item => ({ ...item, note: item.note || null })), reviewNote: input.reviewNote || null, updatedAt: new Date() }).where(eq(schema.creatorSubmissions.id, submission.id)).returning()
+    await appendReviewMessage(tx, submission, input.reviewNote, reviewerId)
     return record
   })
 }
@@ -441,4 +447,11 @@ async function createSprintPayment(input: CreatorAdminPaymentInput) {
     if (input.status === 'paid') await tx.update(schema.creatorSubmissions).set({ status: 'paid', updatedAt: new Date() }).where(eq(schema.creatorSubmissions.id, submission.id))
     return payment
   })
+}
+
+async function appendReviewMessage(tx: Parameters<Parameters<typeof db.transaction>[0]>[0], submission: { id: string; reviewNote: string | null }, note: string | null | undefined, reviewerId?: string) {
+  const body = note?.trim()
+  if (body && body !== submission.reviewNote?.trim()) {
+    await tx.insert(schema.creatorSubmissionMessages).values({ submissionId: submission.id, authorRole: 'team', authorUserId: reviewerId || null, body })
+  }
 }

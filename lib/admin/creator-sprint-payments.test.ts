@@ -25,6 +25,7 @@ let payment: any
 let budget = 1000
 let used = 0
 let locks: unknown[] = []
+let messages: any[] = []
 const query = {
   creatorSubmissions: { findFirst: async () => submission },
   creatorPayments: { findFirst: async () => payment },
@@ -70,8 +71,8 @@ const tx = {
       }),
     }),
   }),
-  insert: () => ({
-    values: (values: any) => ({
+  insert: (table: unknown) => ({
+    values: (values: any) => table === schema.creatorSubmissionMessages ? Promise.resolve(messages.push(values)) : ({
       returning: async () => {
         payment = { id: 'payment', ...values }
         return [payment]
@@ -115,6 +116,7 @@ beforeEach(() => {
   budget = 1000
   used = 0
   locks = []
+  messages = []
 })
 test('approval reserves saved sprint rates and locks the budget and submission', async () => {
   const result = await reviewCreatorResource(review)
@@ -193,4 +195,14 @@ test('sent payments complete the video and cannot be reversed or edited', async 
       amountCents: 999,
     }),
   ).rejects.toThrow('cannot be changed')
+})
+
+test('review feedback enters the conversation once and clearing notes keeps history', async () => {
+  await reviewCreatorResource({ ...review, reviewNote: 'Minimum views are 20k.' }, 'admin')
+  expect(messages).toHaveLength(1)
+  expect(messages[0]).toMatchObject({ submissionId: 'submission', authorRole: 'team', authorUserId: 'admin', body: 'Minimum views are 20k.' })
+  await reviewCreatorResource({ ...review, reviewNote: 'Minimum views are 20k.' }, 'admin')
+  expect(messages).toHaveLength(1)
+  await reviewCreatorResource({ ...review, reviewNote: null }, 'admin')
+  expect(messages).toHaveLength(1)
 })

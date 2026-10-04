@@ -1,3 +1,4 @@
+import { MinimumViewsDialog } from './minimum-views-dialog'
 import { campaignRegionRates } from '@/lib/creator/sprint-defaults'
 import { useEffect, useRef, useState, type FormEvent } from 'react'
 import { AnimatePresence, motion, useReducedMotion } from 'motion/react'
@@ -25,6 +26,7 @@ import { SocialPlatformLogo } from '@/components/brand/social-platform-logo'
 import { creatorAccountLabel, type CreatorDashboard } from './types'
 import { apiGet, apiPost, ApiClientError } from '@/lib/api/client'
 import {
+  MINIMUM_SUBMISSION_VIEWS,
   creatorPostPlatform,
   creatorPostUrlSchema,
 } from '@/lib/creator/validation'
@@ -85,6 +87,7 @@ export function SubmissionDialog({
   const [recording, setRecording] = useState<File | null>(null)
   const [physicalConfirmed, setPhysicalConfirmed] = useState(false)
   const [views, setViews] = useState('')
+  const [rejectedViews, setRejectedViews] = useState<number | null>(null)
   const [audience, setAudience] = useState('')
   const [confirmed, setConfirmed] = useState<string[]>([])
   const [busy, setBusy] = useState(false)
@@ -114,6 +117,19 @@ export function SubmissionDialog({
       : []
   const accountRequired =
     data?.featureFlags.creatorAccountRequiredForSubmission || false
+  function checkMinimumViews() {
+    const count = Number(views)
+    if (
+      views.trim() &&
+      Number.isInteger(count) &&
+      count >= 0 &&
+      count < MINIMUM_SUBMISSION_VIEWS
+    ) {
+      setRejectedViews(count)
+      return false
+    }
+    return true
+  }
   function next(event: FormEvent) {
     event.preventDefault()
     if (
@@ -151,6 +167,7 @@ export function SubmissionDialog({
           'Publication time must be within the campaign’s submission window',
         )
     }
+    if (step === 4 && !checkMinimumViews()) return
     if (step === 4 && (!recording || !physicalConfirmed || !views || !audience))
       return toast.error(
         'Add your recording and analytics, and confirm it was filmed with a second device',
@@ -159,6 +176,7 @@ export function SubmissionDialog({
   }
   async function submit(event: FormEvent) {
     event.preventDefault()
+    if (!checkMinimumViews()) return
     if (
       !recording ||
       !physicalConfirmed ||
@@ -220,7 +238,10 @@ export function SubmissionDialog({
     <Dialog
       open={open}
       onOpenChange={(value) => {
-        if (!busy) onOpenChange(value)
+        if (!busy) {
+          if (!value) setRejectedViews(null)
+          onOpenChange(value)
+        }
       }}
     >
       <DialogContent className="creator-dialog flex max-h-[92dvh] w-[calc(100%-2rem)] max-w-3xl flex-col overflow-hidden p-0">
@@ -542,6 +563,9 @@ export function SubmissionDialog({
                             onChange={(e) => setViews(e.target.value)}
                             required
                           />
+                          <p className="mt-1 text-xs text-zinc-500">
+                            At least 20,000 views are required to submit.
+                          </p>
                         </Field>
                         <Field label="Combined Tier 1 audience (%)">
                           <input
@@ -669,6 +693,10 @@ export function SubmissionDialog({
           </form>
         )}
       </DialogContent>
+      <MinimumViewsDialog
+        views={rejectedViews}
+        onClose={() => setRejectedViews(null)}
+      />
     </Dialog>
   )
 }
