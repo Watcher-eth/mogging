@@ -56,8 +56,7 @@ export function ConnectAccountForm({
           </span>
           <h3 className="font-semibold">Your account is connected</h3>
           <p className="mt-1 text-sm text-zinc-500">
-            Share your permanent referral code in your bio, captions and pinned
-            comments.
+            Include your permanent referral code in your post captions.
           </p>
         </div>
         <div className="flex items-center justify-between gap-3 rounded-2xl bg-[#f5f6f7] p-4">

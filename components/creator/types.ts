@@ -1,5 +1,3 @@
-import type { CreatorSubmissionFormat } from '@/lib/creator/formats'
-
 export type CreatorProfile = {
   id: string
   displayName: string
@@ -80,7 +78,6 @@ export type CreatorSocialAccount = {
 }
 
 export type CreatorDashboard = {
-  availableFormats: CreatorSubmissionFormat[]
   profile: CreatorProfile | null
   submissions: CreatorSubmission[]
   payments: CreatorPayment[]

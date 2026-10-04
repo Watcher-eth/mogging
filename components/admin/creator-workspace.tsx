@@ -15,6 +15,7 @@ import {
   BadgeCheck,
   CheckCircle2,
   CircleDollarSign,
+  Camera,
   Loader2,
   ShieldCheck,
   UserRound,
@@ -79,7 +80,7 @@ export default function CreatorAdminPage() {
 }
 
 function DashboardView({ tab, data, onSelect, onRefresh }: { tab: Tab; data: AdminDashboard; onSelect: (target: ReviewTarget) => void; onRefresh: () => Promise<void> }) {
-  if (tab === 'sprints') return <CreatorSprintsPanel />
+  if (tab === 'sprints') return <CreatorSprintsPanel submissions={data.submissions} onSelectSubmission={(item) => onSelect({ resource: 'submission', item })} />
   if (tab === 'invites') return <CreatorInvitesPanel />
   if (tab === 'metrics') return <CreatorEconomicsDashboard data={data} onSelectSubmission={(item) => onSelect({ resource: 'submission', item })} />
   if (tab === 'settings') return <CreatorProgramSettings data={data} onRefresh={onRefresh} />
@@ -170,7 +171,12 @@ function ResourceSection({ title, children }: { title: string; children: React.R
 function SubmissionList({ items, payments, onSelect }: { items: AdminSubmission[]; payments: AdminPayment[]; onSelect: (target: ReviewTarget) => void }) {
   const paymentIds = new Set(payments.map((payment) => payment.submissionId))
   if (!items.length) return <EmptyState title="No video submissions" description="Creator uploads will appear here." />
-  return <div className="admin-list">{items.map((item) => <ResourceRow key={item.id} asset="submissions" title={item.title} subtitle={`${item.creatorName} · ${item.socialHandle ? `@${item.socialHandle}` : 'No connected account'} · ${formatDate(item.createdAt)}${item.socialAccountStatus !== 'approved' ? ' · Account not approved' : ''}`} status={item.status} unreadMessages={item.unreadMessages} meta={paymentIds.has(item.id) ? 'Payment created' : 'No payment'} onClick={() => onSelect({ resource: 'submission', item })} />)}</div>
+  return <div className="admin-list">{items.map((item) => <ResourceRow key={item.id} leading={
+    <Avatar.Root className="grid size-11 shrink-0 overflow-hidden rounded-full bg-zinc-100">
+      <Avatar.Image src={item.creatorAvatarUrl || undefined} alt={`${item.creatorName} profile photo`} className="size-full object-cover" />
+      <Avatar.Fallback className="grid size-full place-items-center text-zinc-500"><Camera className="size-5" /></Avatar.Fallback>
+    </Avatar.Root>
+  } title={item.creatorName} subtitle={`${item.title} · ${formatDate(item.createdAt)}`} status={item.status} unreadMessages={item.unreadMessages} meta={paymentIds.has(item.id) ? 'Payment created' : ''} onClick={() => onSelect({ resource: 'submission', item })} />)}</div>
 }
 
 function AccountList({ items, onSelect }: { items: AdminAccount[]; onSelect: (target: ReviewTarget) => void }) {
@@ -212,8 +218,8 @@ function CreatorList({ items, onSelect }: { items: AdminCreator[]; onSelect: (ta
   return <div className="admin-list">{items.map((item) => <ResourceRow key={item.id} icon={UserRound} title={item.displayName} subtitle={`${item.email} · Joined ${formatDate(item.createdAt)}`} status={hasPayoutDestination(item) ? item.authStatus === 'verified' ? 'approved' : item.authStatus : 'registered'} meta={hasPayoutDestination(item) ? item.paymentOption === 'paypal' ? 'PayPal' : item.cryptoNetwork || 'Crypto' : 'No payment method'} onClick={() => onSelect({ resource: 'creator', item })} />)}</div>
 }
 
-function ResourceRow({ icon: Icon, asset, title, subtitle, status, meta, unreadMessages, onClick }: { unreadMessages?: number; icon?: typeof UserRound; asset?: CreatorIconName; title: string; subtitle: string; status: string; meta: string; onClick: () => void }) {
-  return <button onClick={onClick} className="admin-resource-row group flex w-full items-center gap-4 text-left">{asset ? <CreatorIcon name={asset} className="size-12" /> : Icon ? <span className="grid size-11 shrink-0 place-items-center rounded-xl bg-zinc-100"><Icon className="size-5" /></span> : null}<span className="min-w-0 flex-1"><span className="block truncate text-sm font-semibold tracking-[-0.02em]">{title}</span><span className="mt-1 block truncate text-xs text-zinc-500">{subtitle}</span></span><span className="hidden max-w-48 truncate text-xs text-zinc-400 md:block">{meta}</span>{unreadMessages ? <span className="rounded-full bg-[#007aff] px-2 py-1 text-[11px] text-white">{unreadMessages} new</span> : null}<StatusPill status={status} /><ArrowUpRight className="size-4 shrink-0 text-zinc-300 transition-[color,transform] duration-150 ease-out group-hover:-translate-y-0.5 group-hover:translate-x-0.5 group-hover:text-black" /></button>
+function ResourceRow({ icon: Icon, asset, leading, title, subtitle, status, meta, unreadMessages, onClick }: { leading?: React.ReactNode; unreadMessages?: number; icon?: typeof UserRound; asset?: CreatorIconName; title: string; subtitle: string; status: string; meta: string; onClick: () => void }) {
+  return <button onClick={onClick} className="admin-resource-row group flex w-full items-center gap-4 text-left">{leading || (asset ? <CreatorIcon name={asset} className="size-12" /> : Icon ? <span className="grid size-11 shrink-0 place-items-center rounded-xl bg-zinc-100"><Icon className="size-5" /></span> : null)}<span className="min-w-0 flex-1"><span className="block truncate text-sm font-semibold tracking-[-0.02em]">{title}</span><span className="mt-1 block truncate text-xs text-zinc-500">{subtitle}</span></span><span className="hidden max-w-48 truncate text-xs text-zinc-400 md:block">{meta}</span>{unreadMessages ? <span className="rounded-full bg-[#007aff] px-2 py-1 text-[11px] text-white">{unreadMessages} new</span> : null}<StatusPill status={status} /><ArrowUpRight className="size-4 shrink-0 text-zinc-300 transition-[color,transform] duration-150 ease-out group-hover:-translate-y-0.5 group-hover:translate-x-0.5 group-hover:text-black" /></button>
 }
 
 function ApprovalBadge({ target }: { target: Exclude<ReviewTarget, { resource: 'payment' }> }) {

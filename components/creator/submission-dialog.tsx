@@ -1,4 +1,5 @@
 import { MinimumViewsDialog } from './minimum-views-dialog'
+import Link from 'next/link'
 import { campaignRegionRates } from '@/lib/creator/sprint-defaults'
 import { useEffect, useRef, useState, type FormEvent } from 'react'
 import { AnimatePresence, motion, useReducedMotion } from 'motion/react'
@@ -83,7 +84,6 @@ export function SubmissionDialog({
   const [accountId, setAccountId] = useState('')
   const [platform, setPlatform] = useState<'tiktok' | 'instagram'>('tiktok')
   const [postUrl, setPostUrl] = useState('')
-  const [postedAt, setPostedAt] = useState('')
   const [recording, setRecording] = useState<File | null>(null)
   const [physicalConfirmed, setPhysicalConfirmed] = useState(false)
   const [views, setViews] = useState('')
@@ -154,18 +154,7 @@ export function SubmissionDialog({
         return toast.error('Choose the publishing account')
       if (account && account.platform !== platform)
         return toast.error('The account must match the post platform')
-      const date = new Date(postedAt).getTime()
-      if (
-        !sprint ||
-        !Number.isFinite(date) ||
-        date > Date.now() ||
-        date < Date.parse(sprint.startsAt) ||
-        date > Date.parse(sprint.endsAt) ||
-        Date.now() - date > sprint.terms.submissionWindowHours * 3600000
-      )
-        return toast.error(
-          'Publication time must be within the campaign’s submission window',
-        )
+
     }
     if (step === 4 && !checkMinimumViews()) return
     if (step === 4 && (!recording || !physicalConfirmed || !views || !audience))
@@ -210,7 +199,6 @@ export function SubmissionDialog({
         requirementsConfirmed: true,
         socialAccountId: accountId || null,
         postUrl,
-        postedAt: new Date(postedAt).toISOString(),
         analyticsVideoUrl: intent.publicUrl,
         analyticsPhysicalRecordingConfirmed: true,
         analyticsStorageKey: intent.key,
@@ -389,6 +377,12 @@ export function SubmissionDialog({
                                 Read the brief
                               </summary>
                               <div className="mt-3 space-y-3">
+                                <Link href="/creator/cta-generator" target="_blank" className="inline-block text-xs font-medium text-[#00A8EF] underline underline-offset-4">
+                                  Create mock reports in the CTA generator ↗
+                                </Link>
+                                <Link href="/creator/guide?topic=rules#video-requirements" target="_blank" className="block text-xs font-medium text-[#00A8EF] underline underline-offset-4">
+                                  Celebrity edits and audience rules ↗
+                                </Link>
                                 {item.elements.map((element) => (
                                   <p key={element.title}>
                                     <strong>{element.title}</strong>
@@ -469,20 +463,7 @@ export function SubmissionDialog({
                           required
                         />
                       </Field>
-                      <Field label="Published at" hint="Your local time">
-                        <input
-                          className={fieldClass}
-                          type="datetime-local"
-                          value={postedAt}
-                          onChange={(e) => setPostedAt(e.target.value)}
-                          required
-                        />
-                      </Field>
-                      <p className="text-xs text-zinc-500">
-                        Submit within {sprint?.terms.submissionWindowHours}{' '}
-                        hours of publishing. Your post must be public and
-                        published during this campaign.
-                      </p>
+
                     </>
                   ) : null}
                   {step === 4 ? (

@@ -53,17 +53,12 @@ export function defaultCreatorSprintTerms(): SprintTerms {
     }),
     minimumTier1Percent: 0,
     maximumTier1Percent: 40,
-    submissionWindowHours: 3 * 24,
     platforms: ['tiktok', 'instagram'],
-    rules: ['Videos and slideshows are both welcome. Choose what historically works best for your audience; keep the whole post clearly looksmaxxing or ascension focused.', 'Include your Mogging referral code in your bio and caption.'],
+    rules: ['Videos and slideshows are both welcome. Choose what historically works best for your audience; keep the whole post clearly looksmaxxing or ascension focused.', 'Include your Mogging referral code in your caption.'],
     formats: ACTIVE_CREATOR_SUBMISSION_FORMATS.map((format) => ({
       ...format,
       elements: format.elements.map((element) => ({ ...element })),
-      requirements: format.requirements.map((rule) =>
-        rule === 'Submit within 30 days of publishing'
-          ? 'Submit within 3 days of publishing'
-          : rule,
-      ),
+      requirements: [...format.requirements],
       notAllowed: [...format.notAllowed],
     })),
   }

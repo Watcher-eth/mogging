@@ -4,7 +4,7 @@ import * as schema from '@/lib/db/schema'
 let uploadExists = true
 let sprintActive = true
 const now = new Date()
-const sprint = { id: '00000000-0000-4000-8000-000000000004', status: 'published', startsAt: new Date(now.getTime()-86400000), endsAt: new Date(now.getTime()+86400000), updatedAt: now, budgetCents: 10000, terms: { milestones: [{ views: 5000, amountCents: 1000 }], minimumTier1Percent: 20, maximumTier1Percent: 40, submissionWindowHours: 24, platforms: ['tiktok' as const], rules: ['Keep public'], formats: [{ id: 'general-creator-video-v1', name: 'Video', shortDescription: 'Show Mogging', active: true, elements: [{ title: 'Hook', detail: 'Introduce the app' }], requirements: ['Keep public'], notAllowed: [] }] } }
+const sprint = { id: '00000000-0000-4000-8000-000000000004', status: 'published', startsAt: new Date(now.getTime()-86400000), endsAt: new Date(now.getTime()+86400000), updatedAt: now, budgetCents: 10000, terms: { milestones: [{ views: 5000, amountCents: 1000 }], minimumTier1Percent: 20, maximumTier1Percent: 40, platforms: ['tiktok' as const], rules: ['Keep public'], formats: [{ id: 'general-creator-video-v1', name: 'Video', shortDescription: 'Show Mogging', active: true, elements: [{ title: 'Hook', detail: 'Introduce the app' }], requirements: ['Keep public'], notAllowed: [] }] } }
 let inserted: any[] = []
 let verified: any[] = []
 mock.module('@/lib/db', () => ({ schema, db: {
@@ -19,7 +19,7 @@ mock.module('@/lib/storage/videos', () => ({
 }))
 const { createCreatorSubmission } = await import('./service')
 const input = {
-  sprintId: sprint.id, postedAt: new Date(now.getTime()-60000).toISOString(), usAudiencePercent: 40,
+  sprintId: sprint.id, usAudiencePercent: 40,
   formatId: 'general-creator-video-v1', requirementsConfirmed: true as const,
   postUrl: 'https://www.tiktok.com/@nate/video/123',
   analyticsVideoUrl: 'https://untrusted.example/recording.mp4',
@@ -67,4 +67,14 @@ test('posts below 20,000 views cannot be inserted or trigger recording verificat
 test('exactly 20,000 views meets the submission minimum', async () => {
   await createCreatorSubmission('user', { ...input, viewCountThreshold: 20000 })
   expect(inserted).toHaveLength(1)
+})
+
+test('submission does not require or invent a publication timestamp', async () => {
+  const submission = await createCreatorSubmission('user', input)
+  expect(submission.postedAt).toBeUndefined()
+})
+test('legacy clients can submit old posts without a publication-age restriction', async () => {
+  await createCreatorSubmission('user', { ...input, postedAt: '2020-01-01T00:00:00.000Z' } as any)
+  expect(inserted).toHaveLength(1)
+  expect(inserted[0].postedAt).toBeUndefined()
 })

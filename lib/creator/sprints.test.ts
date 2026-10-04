@@ -1,6 +1,9 @@
+import { defaultCreatorSprintTerms } from './sprint-defaults'
 import { expect, test } from 'bun:test'
 import {
   sprintTermsSchema,
+  creatorCampaignFormats,
+  type CreatorSprint,
   sprintInputSchema,
   sprintPayoutCents,
   sprintPhase,
@@ -17,7 +20,6 @@ const terms: SprintTerms = {
   ],
   minimumTier1Percent: 20,
   maximumTier1Percent: 40,
-  submissionWindowHours: 24,
   platforms: ['tiktok'],
   rules: ['Keep post public'],
   formats: [
@@ -177,7 +179,6 @@ test('grouped campaign rates preserve maximum milestones and enforce each audien
   expect(sprintPayoutCents(campaign, 100000, 22.5)).toBe(4225)
   expect(sprintPayoutCents(campaign, 100000, 0)).toBe(1300)
   expect(campaignRegionRates(campaign)).toContain('Tier D 20%')
-  expect(campaign.submissionWindowHours).toBe(72)
   expect(
     campaign.formats[0].requirements.some((rule) =>
       rule.includes('second device'),
@@ -187,4 +188,67 @@ test('grouped campaign rates preserve maximum milestones and enforce each audien
   const invalid = structuredClone(campaign)
   invalid.milestones[0].audienceRates!.reverse()
   expect(sprintTermsSchema.safeParse(invalid).success).toBe(false)
+})
+
+test('obsolete deadlines are excluded from historical reviews without renumbering decisions', () => {
+  const historical = structuredClone(terms)
+  historical.formats[0].requirements = ['Submit within 3 days of publishing', 'Show product']
+  historical.rules = ['Submit within 72 hours of publishing', 'Keep post public']
+  const items = sprintReviewItems(historical, 'f')
+  expect(items.find(item => item.label === 'Show product')?.id).toBe('requirement-2')
+  expect(items.find(item => item.label === 'Keep post public')?.id).toBe('sprint-rule-2')
+  expect(items.some(item => item.label.startsWith('Submit within'))).toBe(false)
+})
+
+
+test('saved bio rules become caption-only without changing review IDs or saved terms', () => {
+  const saved = { ...terms, rules: ['Include your Mogging referral code in your bio and caption.', 'Keep the post public'] }
+  const before = structuredClone(saved)
+  const items = sprintReviewItems(saved, 'f')
+  expect(items.find(item => item.id === 'sprint-rule-1')?.label).toBe('Include your Mogging referral code in your caption.')
+  expect(items.find(item => item.id === 'sprint-rule-2')?.label).toBe('Keep the post public')
+  expect(saved).toEqual(before)
+})
+
+
+test('the format guide follows live campaign briefs and keeps reused format IDs distinct', () => {
+  const now = Date.parse('2026-10-04T12:00:00Z')
+  const campaign: CreatorSprint = {
+    id: 'first', name: 'First campaign', description: 'Brief', status: 'published',
+    budgetCents: 10000, usedCents: 0,
+    startsAt: new Date(now - 86400000).toISOString(), endsAt: new Date(now + 86400000).toISOString(),
+    terms, counts: { pending: 0, in_review: 0, approved: 0, rejected: 0, paid: 0 },
+  }
+  const second = { ...campaign, id: 'second', name: 'Second campaign', terms: { ...terms, formats: [
+    { ...terms.formats[0], name: 'Different brief with same format ID' },
+    { ...terms.formats[0], id: 'slideshow', name: 'Slideshow' },
+    { ...terms.formats[0], id: 'disabled', active: false },
+  ] } }
+  const available = creatorCampaignFormats([
+    campaign, second,
+    { ...campaign, id: 'draft', status: 'draft' },
+    { ...campaign, id: 'ended', status: 'ended' },
+    { ...campaign, id: 'expired', endsAt: new Date(now).toISOString() },
+    { ...campaign, id: 'scheduled', startsAt: new Date(now + 1000).toISOString() },
+    { ...campaign, id: 'spent', usedCents: 10000 },
+  ], now)
+  expect(available.map(item => item.key)).toEqual(['first:f', 'second:f', 'second:slideshow'])
+  expect(available[1].format.name).toBe('Different brief with same format ID')
+  expect(creatorCampaignFormats([], now)).toEqual([])
+})
+
+test('the guide leads with the face scan and custom formats before transformation briefs', () => {
+  const now = Date.now()
+  const campaign: CreatorSprint = {
+    id: 'live', name: 'Live', description: 'Brief', status: 'published', budgetCents: 10000, usedCents: 0,
+    startsAt: new Date(now - 1000).toISOString(), endsAt: new Date(now + 86400000).toISOString(),
+    counts: { pending: 0, in_review: 0, approved: 0, rejected: 0, paid: 0 },
+    terms: { ...terms, formats: [
+      { ...terms.formats[0], id: 'before-after-transformation-v1', name: 'Before → Mock Report → After' },
+      ...defaultCreatorSprintTerms().formats,
+    ] },
+  }
+  expect(creatorCampaignFormats([campaign], now).map(item => item.format.name)).toEqual([
+    'General Mogging Face Scan', 'Custom format', 'Before → Mock Report → After',
+  ])
 })

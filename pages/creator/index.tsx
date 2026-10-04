@@ -103,8 +103,20 @@ function OverviewContent() {
       </section>
       <section aria-label="Announcements" className="mt-8">
         <h2 className="text-sm font-semibold">Announcements</h2>
-        <Link
-          href="/creator/sprints"
+        {[
+          {
+            id: '8592a794-9b27-455a-8121-393e39c85ba2',
+            title: 'Our first campaign: Mogging Face Analysis is live',
+            description: '$3,000 budget · Create original, looks-focused videos or slideshows showcasing Mogging’s face analysis. Read the brief to get started.',
+          },
+          {
+            id: 'a9b2aed6-4d87-4b1d-989e-7d9489829f2c',
+            title: 'New campaign: Before & After Transformations is live',
+            description: '$2,000 budget · Before → CTA-generator mock report → After. Videos and slideshows welcome. Read the brief to get started.',
+          },
+        ].map((announcement) => <Link
+          key={announcement.id}
+          href={`/creator/sprints?id=${announcement.id}`}
           className="group mt-3 flex items-center gap-4 rounded-2xl border border-[#e8ebee] p-5 transition-colors hover:bg-[#fafbfc]"
         >
           <span className="grid size-10 shrink-0 place-items-center rounded-xl bg-[#eef9ff] text-[#00A8EF]">
@@ -112,17 +124,17 @@ function OverviewContent() {
           </span>
           <span className="min-w-0 flex-1">
             <span className="block text-sm font-semibold">
-              Campaigns are live
+              {announcement.title}
             </span>
             <span className="mt-1 block text-sm text-[#73777d]">
-              Submit your video to get your share of the payouts.
+              {announcement.description}
             </span>
           </span>
           <ArrowRight
             className="size-4 shrink-0 text-[#00A8EF] transition-transform group-hover:translate-x-1 motion-reduce:transition-none"
             aria-hidden="true"
           />
-        </Link>
+        </Link>)}
       </section>
     </>
   )

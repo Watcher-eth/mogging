@@ -58,7 +58,7 @@ if (live || staging) await check(`${live ? 'live' : 'sandbox'} HTTPS Connect des
   assert.ok(env.NEXTAUTH_URL)
   const origin = new URL(env.NEXTAUTH_URL).origin
   assert.equal(new URL(origin).protocol, 'https:')
-  const destinations = await getCourseStripe().v2.core.eventDestinations.list({}, courseStripeOptions).autoPagingToArray({ limit: 1000 })
+  const destinations = await getCourseStripe().v2.core.eventDestinations.list({ include: ['webhook_endpoint.url'] }, courseStripeOptions).autoPagingToArray({ limit: 1000 })
   const snapshot = destinations.find(item => item.webhook_endpoint?.url === `${origin}/api/payments/stripe-connect-webhook` && item.event_payload === 'snapshot' && item.events_from?.includes('@accounts') && item.status === 'enabled' && item.livemode === live)
   const thin = destinations.find(item => item.webhook_endpoint?.url === `${origin}/api/payments/stripe-connect-account-webhook` && item.event_payload === 'thin' && item.events_from?.includes('@self') && item.status === 'enabled' && item.livemode === live)
   assert.equal(snapshot?.snapshot_api_version, courseStripeOptions.apiVersion)
@@ -77,7 +77,8 @@ await check('Bunny video API and protected signed thumbnail', async () => {
   const unsigned = new URL(playback.thumbnailUrl)
   assert.ok(unsigned.hostname.endsWith('.b-cdn.net'))
   unsigned.search = ''
-  assert.ok([401, 403].includes((await fetch(unsigned, { headers: { Referer: 'https://player.mediadelivery.net/' }, signal: AbortSignal.timeout(15_000) })).status))
+  const referer = new URL('/', env.NEXTAUTH_URL || env.NEXT_PUBLIC_SITE_URL || 'https://mogging.com').toString()
+  assert.ok([401, 403].includes((await fetch(unsigned, { headers: { Referer: referer }, signal: AbortSignal.timeout(15_000) })).status))
 })
 await check('private course bucket credentials and browser upload CORS', async () => {
   assert.ok(resourceKey, 'Upload a private verification resource before running the release check')

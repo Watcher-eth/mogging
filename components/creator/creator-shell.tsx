@@ -10,12 +10,13 @@ import {
   Loader2,
 } from 'lucide-react'
 import { useState, type ReactNode } from 'react'
-import { MoreHorizontal, LogOut, X, MessageCircle } from 'lucide-react'
+import { MoreHorizontal, LogOut, X } from 'lucide-react'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog'
 import { cn } from '@/lib/utils'
 import { CreatorAuthPrompt } from './creator-auth-prompt'
 import { CreatorIcon, type CreatorIconName } from './creator-icon'
 import { CreatorSetupChecklist } from './setup-checklist'
+import { DiscordSupport } from './discord-support'
 
 type CreatorNavItem = { href: string; label: string; asset: CreatorIconName }
 
@@ -129,7 +130,7 @@ function CreatorNavigation() {
           </SidebarMenu></SidebarGroupContent>
         </SidebarGroup>
       </SidebarContent>
-      <SidebarFooter><SidebarMenu><SidebarMenuItem><SidebarMenuButton asChild tooltip="Discord Support" className="creator-discord-support"><a href="https://discord.gg/rxFDGQPhpX" target="_blank" rel="noreferrer" aria-label="Discord Support" onClick={() => setOpenMobile(false)}><MessageCircle className="size-4" /><span>Discord Support</span></a></SidebarMenuButton></SidebarMenuItem></SidebarMenu></SidebarFooter>
+      <SidebarFooter><SidebarMenu><SidebarMenuItem><DiscordSupport /></SidebarMenuItem></SidebarMenu></SidebarFooter>
     </Sidebar>
   )
 }

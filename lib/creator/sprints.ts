@@ -25,7 +25,6 @@ export const sprintTermsSchema = z
       .max(12),
     minimumTier1Percent: z.number().min(0).max(100),
     maximumTier1Percent: z.number().positive().max(100),
-    submissionWindowHours: z.number().positive().max(720),
     rules: z.array(paragraph).min(1).max(20),
     formats: z
       .array(
@@ -151,6 +150,16 @@ export function sprintPhase(
     return 'past'
   return Date.parse(sprint.startsAt) > now ? 'scheduled' : 'active'
 }
+export function creatorCampaignFormats(campaigns: CreatorSprint[], now = Date.now()) {
+  const order: Record<string, number> = { 'general-creator-video-v1': 0, 'custom-video-v1': 1 }
+  return campaigns
+    .filter((campaign) => sprintPhase(campaign, now) === 'active' && campaign.usedCents < campaign.budgetCents)
+    .flatMap((campaign) => campaign.terms.formats
+      .filter((format) => format.active)
+      .map((format) => ({ key: `${campaign.id}:${format.id}`, campaignId: campaign.id, campaignName: campaign.name, format })))
+    .sort((a, b) => (order[a.format.id] ?? 2) - (order[b.format.id] ?? 2))
+}
+
 // Milestones are total payouts, not cumulative awards. Tier-1 shares scale against the advertised maximum.
 export function sprintPayoutCents(
   terms: SprintTerms,
@@ -208,10 +217,12 @@ export function sprintReviewItems(terms: SprintTerms, id: string) {
     })),
     ...terms.rules.map((label, i) => ({
       id: `sprint-rule-${i + 1}`,
-      label,
+      label: label === 'Include your Mogging referral code in your bio and caption.'
+        ? 'Include your Mogging referral code in your caption.'
+        : label,
       detail: 'Campaign rule',
     })),
-  ]
+  ].filter((item) => !item.label.startsWith('Submit within'))
 }
 export function referralCode(
   link: { slug: string; publicUrl: string } | null | undefined,

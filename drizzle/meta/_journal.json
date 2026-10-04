@@ -309,6 +309,27 @@
       "when": 1791139881666,
       "tag": "0043_submission_chat",
       "breakpoints": true
+    },
+    {
+      "idx": 44,
+      "version": "7",
+      "when": 1791141783847,
+      "tag": "0044_canonical_creator_tracking_urls",
+      "breakpoints": true
+    },
+    {
+      "idx": 45,
+      "version": "7",
+      "when": 1791146013487,
+      "tag": "0045_remove_creator_submission_deadline",
+      "breakpoints": true
+    },
+    {
+      "idx": 46,
+      "version": "7",
+      "when": 1791148649809,
+      "tag": "0046_name_general_mogging_face_scan",
+      "breakpoints": true
     }
   ]
 }

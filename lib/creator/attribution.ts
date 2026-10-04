@@ -79,7 +79,7 @@ export async function syncCreatorTrackingLinkHandle(link: typeof schema.creatorT
     })
     if (!account) throw new Error('Creator social account not found')
     const handle = account.handle?.trim().replace(/^@/, '').toLowerCase().replace(/[^a-z0-9._-]+/g, '-').replace(/^-+|-+$/g, '') || `creator-${account.id.slice(0, 8)}`
-    const candidates = [`mogging-${handle}`, `mogging-${handle}-${account.id.slice(0, 8)}`, `mogging-${handle}-${account.id}`]
+    const candidates = [`mogging-${handle}`, `mogging-${handle}-${account.platform}`, `mogging-${handle}-${account.id}`]
     for (const slug of candidates) {
       const canonical = await tx.query.creatorTrackingLinks.findFirst({ where: eq(schema.creatorTrackingLinks.slug, slug) })
       if (canonical && canonical.id !== link.id) continue

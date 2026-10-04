@@ -160,21 +160,24 @@ const envSchema = z
       })
     }
 
-    const r2Values = [
+    const r2Credentials = [
       env.R2_ACCOUNT_ID,
-      env.R2_BUCKET_NAME,
       env.R2_ACCESS_KEY_ID,
       env.R2_SECRET_ACCESS_KEY,
-      env.R2_PUBLIC_BASE_URL,
     ]
-    const hasAnyR2 = r2Values.some(Boolean)
-    const hasAllR2 = r2Values.every(Boolean)
-
-    if (hasAnyR2 && !hasAllR2) {
+    const photoStorage = Boolean(env.R2_BUCKET_NAME || env.R2_PUBLIC_BASE_URL)
+    if ((r2Credentials.some(Boolean) || photoStorage || env.COURSE_R2_BUCKET_NAME) && !r2Credentials.every(Boolean)) {
       ctx.addIssue({
         code: 'custom',
         path: ['R2_ACCOUNT_ID'],
-        message: 'All R2 environment variables must be configured together',
+        message: 'All R2 credentials must be configured together',
+      })
+    }
+    if (photoStorage && !(env.R2_BUCKET_NAME && env.R2_PUBLIC_BASE_URL)) {
+      ctx.addIssue({
+        code: 'custom',
+        path: ['R2_BUCKET_NAME'],
+        message: 'Photo storage requires R2_BUCKET_NAME and R2_PUBLIC_BASE_URL together',
       })
     }
   })

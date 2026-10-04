@@ -29,7 +29,7 @@ describe('creator input validation', () => {
     }
   })
   test('rejects tampered thresholds, missing confirmation and invalid file metadata', () => {
-    const input = {sprintId:'00000000-0000-4000-8000-000000000004', postedAt:new Date(Date.now()-60000).toISOString(), formatId:'general', requirementsConfirmed:true, postUrl:'https://www.tiktok.com/@nate/video/123', analyticsVideoUrl:'/test.mp4', analyticsPhysicalRecordingConfirmed:true, analyticsStorageKey:'test', analyticsContentType:'video/mp4', analyticsSizeBytes:100, viewCountThreshold:40000, usAudiencePercent:40}
+    const input = {sprintId:'00000000-0000-4000-8000-000000000004', formatId:'general', requirementsConfirmed:true, postUrl:'https://www.tiktok.com/@nate/video/123', analyticsVideoUrl:'/test.mp4', analyticsPhysicalRecordingConfirmed:true, analyticsStorageKey:'test', analyticsContentType:'video/mp4', analyticsSizeBytes:100, viewCountThreshold:40000, usAudiencePercent:40}
     expect(creatorSubmissionSchema.safeParse(input).success).toBe(true)
     expect(creatorSubmissionSchema.safeParse({...input, postUrl:'https://www.tiktok.com/@nate/photo/123'}).success).toBe(true)
     expect(creatorSubmissionSchema.safeParse({...input, viewCountThreshold:20000}).success).toBe(true)

@@ -23,7 +23,7 @@ import { ContentGuidelines, accountReviewPolicy, AnalyticsVerificationHelp, disc
 import { Button } from '@/components/ui/button'
 import useSWR from 'swr'
 import { apiGet } from '@/lib/api/client'
-import type { CreatorDashboard } from '@/components/creator/types'
+import { creatorCampaignFormats, type CreatorSprint } from '@/lib/creator/sprints'
 import { cn } from '@/lib/utils'
 import { CreatorIcon, type CreatorIconName } from '@/components/creator/creator-icon'
 import { CreatorReferralLinks } from '@/components/creator/referral-links'
@@ -87,7 +87,7 @@ function ImproveGuide() {
     <ol className="divide-y divide-[#eceef0]">{[
       ['Make the opening count', 'Introduce the problem, result, or transformation in the first few seconds or opening slide. Make the hook match the video footage or slideshow images and caption.'],
       ['Show the product clearly', 'Let viewers understand what Mogging does. Use your own scan, report, or protocol to connect the product to the story.'],
-      ['Give viewers a next step', 'Finish with a direct invitation to try Mogging. Include your matching account’s referral code in the bio and caption.'],
+      ['Give viewers a next step', 'Finish with a direct invitation to try Mogging. Include your matching account’s referral code in the caption.'],
       ['Read the comments', 'Your framing determines who watches. Look for an audience interested in their own looks, rather than unrelated celebrity fans or music listeners.'],
     ].map(([title, detail], index) => <li key={title} className="flex gap-5 py-5"><span className="pt-0.5 text-xs tabular-nums text-[#858a91]">0{index + 1}</span><div><h3 className="text-sm font-semibold">{title}</h3><p className="mt-1 text-sm leading-6 text-[#73777d]">{detail}</p></div></li>)}</ol>
     <GuideDisclosure title="Recommended publishing cadence" meta="Optional guidance"><div className="flex items-start gap-3"><CalendarDays className="mt-0.5 size-5 shrink-0 text-[#00A8EF]" /><div><p className="text-sm font-semibold">Post daily on both platforms when possible.</p><p className="mt-1 text-xs leading-5 text-[#73777d]">The same creative posted to TikTok and Instagram counts as two separate posts and can earn separately. Top editors may publish 6–12 times daily, but quality still matters.</p></div></div></GuideDisclosure>
@@ -129,10 +129,11 @@ function QuickStart() {
 }
 
 function VideoGuide() {
-  const { data, isLoading, error } = useSWR<CreatorDashboard>('/api/creator', apiGet)
-  const formats = data?.availableFormats ?? []
+  const { data, isLoading, error } = useSWR<{ sprints: CreatorSprint[] }>('/api/creator/sprints', apiGet)
+  const formats = creatorCampaignFormats(data?.sprints ?? [])
   const [formatId, setFormatId] = useState('')
-  const format = formats.find((item) => item.id === formatId) ?? formats[0]
+  const selected = formats.find((item) => item.key === formatId) ?? formats[0]
+  const format = selected?.format
   if (!format) return <section><GuidePanelHeader eyebrow="Create content" title="What kind of content should I make?" description="Start with an active brief, then follow its requirements." /><p className="text-sm text-[#73777d]" role="status">{isLoading ? 'Loading active formats…' : error ? 'Formats could not load. Please refresh to try again.' : 'No formats are accepting submissions right now.'}</p></section>
 
   return (
@@ -141,7 +142,7 @@ function VideoGuide() {
       <div className="mb-6"><GuideNext topic="rules" title="Know what qualifies before you edit" detail="Read the looks-focused standards and examples of rejected content." /></div>
 
       <div className="grid gap-6">
-        {formats.length > 1 ? <label className="grid gap-2 text-xs font-semibold text-[#73777d]">Active format<select className="creator-field max-w-sm text-sm font-normal text-[#181a1d]" value={format.id} onChange={(event) => setFormatId(event.target.value)}>{formats.map((item) => <option key={item.id} value={item.id}>{item.name}</option>)}</select></label> : null}
+        {formats.length > 1 ? <label className="grid gap-2 text-xs font-semibold text-[#73777d]">Active format<select className="creator-field max-w-sm text-sm font-normal text-[#181a1d]" value={selected.key} onChange={(event) => setFormatId(event.target.value)}>{formats.map((item) => <option key={item.key} value={item.key}>{item.campaignName} · {item.format.name}</option>)}</select></label> : null}
 
         <div className="min-w-0">
           <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
@@ -155,7 +156,7 @@ function VideoGuide() {
 
           <div className="mt-5 grid gap-2">
             <GuideDisclosure title="Full requirements" meta={`${format.requirements.length} items`}>
-              <Checklist items={format.requirements.filter(item => !item.startsWith('Submit within'))} />
+              <Checklist items={format.requirements} />
             </GuideDisclosure>
             {format.notAllowed.length > 0 ? <GuideDisclosure title="What is not allowed" meta={`${format.notAllowed.length} items`} tone="danger">
               <Checklist items={format.notAllowed} prohibited />
@@ -171,14 +172,14 @@ function VideoGuide() {
           <Evidence icon={Smartphone} title="Physical Analytics Recording" detail="Film with a second device: views, traffic sources, and complete audience location data." />
           <Evidence icon={ShieldCheck} title="Final Confirmation" detail="Confirm the video or slideshow follows the selected brief." />
         </div>
-        <p className="mt-4 text-xs leading-5 text-[#858a91]">Follow the submission window and brief shown in your selected campaign, and keep the post public while it is under review.</p><AnalyticsVerificationHelp />
+        <p className="mt-4 text-xs leading-5 text-[#858a91]">Follow the brief shown in your selected campaign, and keep the post public while it is under review.</p><AnalyticsVerificationHelp />
       </div>
     </section>
   )
 }
 
 function AccountGuide() {
-  return <section id="guide-panel-account" aria-label="Connecting accounts"><GuidePanelHeader eyebrow="Publishing profiles" title="Connect once. Share your code." description="Enter your TikTok or Instagram handle or profile URL. Your permanent referral code appears immediately after connecting." action={<Button asChild><Link href="/creator/accounts">Manage accounts<ArrowRight /></Link></Button>} /><ol className="grid gap-3 sm:grid-cols-3"><AccountStep number="1" icon={Link2} title="Add your profile" detail="Choose TikTok or Instagram and enter one handle or profile URL." /><AccountStep number="2" icon={ShieldCheck} title="Copy your code" detail="Your permanent code stays connected to that publishing profile and its attribution history." /><AccountStep number="3" icon={Smartphone} title="Create & submit" detail="Follow an active campaign’s brief. Every video or slideshow submission needs its own second-device analytics recording." /></ol><p className="mt-5 rounded-2xl bg-[#f5f6f7] p-5 text-sm leading-6 text-zinc-500">Account connection no longer requires OAuth or an audience recording. Post analytics are verified separately during submission review.</p></section>
+  return <section id="guide-panel-account" aria-label="Connecting accounts"><GuidePanelHeader eyebrow="Publishing profiles" title="Connect once. Share your code." description="Enter your TikTok or Instagram handle or profile URL. Your permanent referral code appears immediately after connecting." action={<Button asChild><Link href="/creator/accounts">Manage accounts<ArrowRight /></Link></Button>} /><ol className="grid gap-3 sm:grid-cols-3"><AccountStep number="1" icon={Link2} title="Add your profile" detail="Choose TikTok or Instagram and enter one handle or profile URL." /><AccountStep number="2" icon={ShieldCheck} title="Copy your code" detail="Your permanent code stays connected to that publishing profile and its attribution history." /><AccountStep number="3" icon={Smartphone} title="Create & submit" detail="Follow an active campaign’s brief. Every video or slideshow submission needs its own second-device analytics recording." /></ol></section>
 }
 
 function PayoutGuide() {

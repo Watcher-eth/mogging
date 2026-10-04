@@ -45,7 +45,7 @@ export function CreatorReferralLinks() {
         ) : null}
       </div>
       <p className="mt-3 text-sm leading-6 text-zinc-500">
-        Use the code for the account you post from in your bio and caption.
+        Use the code for the account you post from in your caption.
         Existing referral links continue to work.
       </p>
       {isLoading ? (

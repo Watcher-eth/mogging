@@ -136,6 +136,7 @@ export async function getCreatorAdminDashboard() {
         creatorEmail: schema.users.email,
         socialAccountId: schema.creatorSubmissions.socialAccountId,
         socialHandle: schema.creatorSocialAccounts.handle,
+        creatorAvatarUrl: sql<string | null>`coalesce(nullif(${schema.creatorSocialAccounts.avatarUrl}, ''), ${schema.users.image})`,
         socialAccountStatus: schema.creatorSocialAccounts.status,
         sprintId: schema.creatorSubmissions.sprintId,
         sprintTerms: schema.creatorSubmissions.sprintTerms,

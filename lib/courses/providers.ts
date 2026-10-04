@@ -5,6 +5,8 @@ import { ApiError } from '@/lib/api/http'
 import { env } from '@/lib/env'
 import { signCdnUrl } from './cdn-token'
 
+const videoReferer = new URL('/', env.NEXTAUTH_URL || env.NEXT_PUBLIC_SITE_URL || 'https://mogging.com').toString()
+
 export function bunnyConfig() {
   const libraryId = env.BUNNY_STREAM_LIBRARY_ID, key = env.BUNNY_STREAM_API_KEY
   if (!libraryId || !key || !env.BUNNY_STREAM_TOKEN_KEY) throw new ApiError(503, 'Course video hosting is not configured')
@@ -14,7 +16,7 @@ export type BunnyVideo = { guid: string; videoLibraryId: number; status: number;
 export async function bunny<T>(path: string, method = 'GET', body?: unknown): Promise<T> {
   const { libraryId, key } = bunnyConfig()
   const response = await fetch(`https://video.bunnycdn.com/library/${libraryId}/videos${path}`, {
-    method, headers: { AccessKey: key, 'Content-Type': 'application/json' },
+    method, headers: { AccessKey: key, 'Content-Type': 'application/json', Referer: videoReferer },
     ...(body === undefined ? {} : { body: JSON.stringify(body) }), signal: AbortSignal.timeout(15_000),
   })
   if (method === 'DELETE' && (response.ok || response.status === 404)) return undefined as T
@@ -40,8 +42,7 @@ export async function videoThumbnail(videoId: string) {
     if (!env.BUNNY_STREAM_CDN_TOKEN_KEY) throw new ApiError(503, 'Video thumbnail signing is not configured')
     target = signCdnUrl(target, env.BUNNY_STREAM_CDN_TOKEN_KEY, Math.floor(Date.now() / 1000) + 900)
   }
-  // Stream's linked Pull Zone can restrict referrers to its own player.
-  const response = await fetch(target, { headers: { Referer: 'https://player.mediadelivery.net/' }, redirect: 'error', signal: AbortSignal.timeout(15_000) })
+  const response = await fetch(target, { headers: { Referer: videoReferer }, redirect: 'error', signal: AbortSignal.timeout(15_000) })
   const type = response.headers.get('content-type')?.split(';')[0]
   if (!response.ok || !type || !['image/jpeg', 'image/png', 'image/webp'].includes(type) || !response.body) throw new ApiError(502, 'Video thumbnail is unavailable')
   const reader = response.body.getReader(), chunks: Uint8Array[] = []

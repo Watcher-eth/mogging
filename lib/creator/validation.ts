@@ -57,7 +57,6 @@ export const MINIMUM_SUBMISSION_VIEWS = 20_000
 
 export const creatorSubmissionSchema = z.object({
   sprintId: z.string().uuid(),
-  postedAt: z.string().datetime().refine(value => Date.parse(value) <= Date.now(), "Publication time cannot be in the future"),
   formatId: z.string().trim().min(1).max(80),
   requirementsConfirmed: z.literal(true),
   socialAccountId: z.string().uuid().optional().nullable(),

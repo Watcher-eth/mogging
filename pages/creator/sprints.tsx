@@ -1,3 +1,4 @@
+import { SprintBudget, SprintStatus } from '@/components/creator/campaign-summary'
 import Link from 'next/link'
 import Head from 'next/head'
 import type { GetServerSideProps } from 'next'
@@ -323,6 +324,12 @@ function SprintDetail({ sprint }: { sprint: CreatorSprint }) {
                             {format.shortDescription}
                           </DialogDescription>
                         </DialogHeader>
+                        <Link href="/creator/cta-generator" target="_blank" className="text-xs font-medium text-[#00A8EF] underline underline-offset-4">
+                          Create mock reports in the CTA generator ↗
+                        </Link>
+                        <Link href="/creator/guide?topic=rules#video-requirements" target="_blank" className="text-xs font-medium text-[#00A8EF] underline underline-offset-4">
+                          Celebrity edits and audience rules ↗
+                        </Link>
                         <section className="mt-3 space-y-4">
                           <h3 className="text-sm font-semibold">
                             Video instructions
@@ -366,7 +373,6 @@ function SprintDetail({ sprint }: { sprint: CreatorSprint }) {
                 <h2 className="mb-3 text-sm font-semibold">Rules</h2>
                 <ul className="space-y-2">
                   {[
-                    `Submit within ${sprint.terms.submissionWindowHours % 24 === 0 ? `${sprint.terms.submissionWindowHours / 24} days` : `${sprint.terms.submissionWindowHours} hours`} of publishing, during the campaign dates.`,
                     campaignRegionRates(sprint.terms),
                     'A continuous analytics recording filmed with a second device is required.',
                     ...sprint.terms.rules,
@@ -434,56 +440,5 @@ function SprintDetail({ sprint }: { sprint: CreatorSprint }) {
         </StudioTabContent>
       </StudioTabs>
     </>
-  )
-}
-function SprintStatus({ sprint }: { sprint: CreatorSprint }) {
-  const phase = sprintPhase(sprint)
-  return (
-    <span
-      className={`rounded-full px-3 py-1 text-xs font-medium ${phase === 'active' ? 'bg-[#29CE53] text-white' : 'bg-[#f5f6f7] text-zinc-600'}`}
-    >
-      {phase === 'past'
-        ? 'Ended'
-        : phase === 'scheduled'
-          ? 'Scheduled'
-          : 'Active'}
-    </span>
-  )
-}
-export function SprintBudget({ sprint }: { sprint: CreatorSprint }) {
-  const percent = Math.min(
-    100,
-    Math.round((sprint.usedCents / sprint.budgetCents) * 100),
-  )
-  return (
-    <div>
-      <div className="flex items-end justify-between gap-3">
-        <div>
-          <p className="text-[10px] font-semibold uppercase tracking-widest text-zinc-400">
-            Budget committed
-          </p>
-          <p className="mt-1 text-xl font-semibold tabular-nums">{percent}%</p>
-        </div>
-        <p className="text-sm text-zinc-500">
-          <strong className="font-medium text-zinc-900">
-            {sprintMoney(sprint.usedCents)}
-          </strong>{' '}
-          / {sprintMoney(sprint.budgetCents)}
-        </p>
-      </div>
-      <div
-        role="progressbar"
-        aria-label="Budget committed"
-        aria-valuenow={percent}
-        aria-valuemin={0}
-        aria-valuemax={100}
-        className="mt-3 h-1.5 overflow-hidden rounded-full bg-zinc-100"
-      >
-        <div
-          className="h-full rounded-full bg-[#00A8EF]"
-          style={{ width: `${percent}%` }}
-        />
-      </div>
-    </div>
   )
 }

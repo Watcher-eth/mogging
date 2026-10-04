@@ -83,7 +83,7 @@ export default function CreatorInvitePage({ invite, token, url, imageUrl }: Prop
           <p className="mt-3 text-sm leading-6 text-[#73777d]">{description}</p>
           {ready ? <>
             <div className="mt-7 flex items-center justify-between gap-4 text-sm"><span className="text-[#73777d]">Creator setup</span><span className="text-lg font-medium text-[#00A8EF]">{CREATOR_INVITE_PROGRESS}% complete</span></div>
-            <div role="progressbar" aria-label="Creator setup" aria-valuenow={CREATOR_INVITE_PROGRESS} aria-valuemin={0} aria-valuemax={100} className="mt-3 h-3 overflow-hidden rounded-full bg-[#eeeeef]"><div className="creator-invite-progress h-full rounded-full bg-[#00A8EF]" style={{ width: `${CREATOR_INVITE_PROGRESS}%` }} /></div>
+            <div role="progressbar" aria-label="Creator setup" aria-valuenow={CREATOR_INVITE_PROGRESS} aria-valuemin={0} aria-valuemax={100} className="mt-3 h-3 overflow-hidden rounded-full bg-[#eeeeef]"><div className="creator-progress h-full rounded-full bg-[#00A8EF]" style={{ width: `${CREATOR_INVITE_PROGRESS}%` }} /></div>
             <ul className="my-7 space-y-4 text-sm">
               {(['Account connected', 'Audience analytics verified'] as const).map((label) => <li key={label} className="flex items-center gap-3"><span className="grid size-7 place-items-center rounded-full bg-[#00A8EF] text-white"><Check className="size-4" strokeWidth={2.75} /></span>{label}</li>)}
               <li className="flex items-center gap-3 text-[#73777d]"><CreatorIcon name="payouts" className="size-7" />Choose your payout method</li>

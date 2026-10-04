@@ -11,7 +11,6 @@ export type CreatorSubmissionFormat = {
 const SHARED_REQUIREMENTS = [
   'Tag @moggingcom in the post or caption',
   'Keep the post public and the content original',
-  'Submit within 30 days of publishing',
   'Use a connected account when one is available',
   'Make the entire video or slideshow, on-screen text, and caption clearly looksmaxxing, ascension, or transformation focused: emphasize appearance, attractiveness, facial features, improvement, or potential',
   'Make the looks focus obvious without a reviewer having to infer it; a celebrity or attractive person alone does not qualify',
@@ -24,7 +23,7 @@ const CLOSING_CTA = { title: 'Closing CTA', detail: 'End with a clear invitation
 export const CREATOR_SUBMISSION_FORMATS = [
   {
     id: 'general-creator-video-v1',
-    name: 'General Creator Content',
+    name: 'General Mogging Face Scan',
     shortDescription: 'An original looksmaxxing or ascension-focused video or slideshow that shows Mogging and invites viewers to try it. Choose the format that historically works best for your audience; you have creative freedom over the approach.',
     active: true,
     elements: [

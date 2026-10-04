@@ -6,7 +6,6 @@ import { and, desc, eq, getTableColumns, or, sql } from 'drizzle-orm'
 import { z } from 'zod'
 import { db, schema } from '@/lib/db'
 import { env } from '@/lib/env'
-import { getAvailableCreatorSubmissionFormats } from '@/lib/creator/format-access'
 import { ensureCreatorTrackingLink } from '@/lib/creator/attribution'
 
 export { creatorProfileSchema, creatorSubmissionSchema, creatorSocialAccountSchema, creatorAccountAnalyticsSubmissionSchema } from './validation'
@@ -25,11 +24,10 @@ export type CreatorTikTokOAuthInput = {
 export async function getCreatorDashboard(userId: string) {
   const communityMetricsPromise = getCreatorCommunityMetrics()
   const profile = await getCreatorProfile(userId)
-  const availableFormats = getAvailableCreatorSubmissionFormats(profile)
   const featureFlags = {
     creatorAccountRequiredForSubmission: env.CREATOR_ACCOUNT_REQUIRED_FOR_SUBMISSION,
   }
-  if (!profile) return { profile: null, submissions: [], payments: [], socialAccounts: [], communityMetrics: await communityMetricsPromise, featureFlags, availableFormats }
+  if (!profile) return { profile: null, submissions: [], payments: [], socialAccounts: [], communityMetrics: await communityMetricsPromise, featureFlags }
 
   const [submissions, payments, socialAccounts, communityMetrics] = await Promise.all([
     db.select({ ...getTableColumns(schema.creatorSubmissions), unreadMessages: submissionUnreadCount('creator') })
@@ -51,7 +49,7 @@ export async function getCreatorDashboard(userId: string) {
     return { ...account, trackingLink: await ensureCreatorTrackingLink(account.id) }
   }))
 
-  return { profile, submissions, payments, socialAccounts: socialAccountsWithLinks, communityMetrics, featureFlags, availableFormats }
+  return { profile, submissions, payments, socialAccounts: socialAccountsWithLinks, communityMetrics, featureFlags }
 }
 
 async function getCreatorCommunityMetrics() {
@@ -335,8 +333,6 @@ export async function createCreatorSubmission(userId: string, input: CreatorSubm
   const format = sprintFormat(sprint.terms, input.formatId)
   if (!format) throw new CreatorServiceError(400, 'Choose a format offered by this campaign')
   if (!sprint.terms.platforms.includes(creatorPostPlatform(input.postUrl)!)) throw new CreatorServiceError(400, 'This platform is not accepted by the campaign')
-  const postedAt = new Date(input.postedAt)
-  if (postedAt < sprint.startsAt || postedAt > sprint.endsAt || Date.now() - postedAt.getTime() > sprint.terms.submissionWindowHours * 3600000) throw new CreatorServiceError(409, 'The publication time is outside this campaign’s submission window')
   const prefix = `creators/${userId}/submission-analytics/`
   if (!input.analyticsStorageKey.startsWith(prefix) || !/^[0-9a-f-]{36}\.(mp4|mov|webm)$/.test(input.analyticsStorageKey.slice(prefix.length))) {
     throw new CreatorServiceError(400, 'Invalid analytics recording upload')
@@ -378,7 +374,6 @@ export async function createCreatorSubmission(userId: string, input: CreatorSubm
       socialAccountId: socialAccount?.id || null,
       sprintId: sprint.id,
       sprintTerms: sprint.terms,
-      postedAt,
       formatId: format.id,
       requirementsConfirmedAt: new Date(),
       title: format.name,

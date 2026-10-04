@@ -5,7 +5,6 @@ const terms: SprintTerms = {
   milestones: [{ views: 5000, amountCents: 1000 }],
   minimumTier1Percent: 20,
   maximumTier1Percent: 40,
-  submissionWindowHours: 24,
   platforms: ['tiktok'],
   rules: ['Keep public'],
   formats: [
