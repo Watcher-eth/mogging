@@ -1,3 +1,4 @@
+import { monitorBackend } from '@/lib/reliability/monitor'
 import type { NextApiRequest, NextApiResponse } from 'next'
 import { z } from 'zod'
 import { ApiError, handleApiError, json, methodNotAllowed, parseBody } from '@/lib/api/http'
@@ -15,7 +16,7 @@ const uploadIntentSchema = z.object({
   sizeBytes: z.number().int().positive().max(MAX_CREATOR_VIDEO_BYTES),
 })
 
-export default async function handler(req: NextApiRequest, res: NextApiResponse) {
+async function handler(req: NextApiRequest, res: NextApiResponse) {
   try {
     if (req.method !== 'POST') return methodNotAllowed(res, ['POST'])
     const session = await getAuthSession(req, res)
@@ -30,3 +31,5 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     return handleApiError(error, res)
   }
 }
+
+export default monitorBackend('creator/upload-intent',handler)

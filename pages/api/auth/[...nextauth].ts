@@ -1,9 +1,10 @@
+import { monitorBackend } from '@/lib/reliability/monitor'
 import NextAuth from 'next-auth'
 import type { NextApiRequest, NextApiResponse } from 'next'
 import { authOptions } from '@/lib/auth/options'
 import { creditReferralSignup, REFERRAL_COOKIE } from '@/lib/referrals/service'
 
-export default function handler(req: NextApiRequest, res: NextApiResponse) {
+function handler(req: NextApiRequest, res: NextApiResponse) {
   return NextAuth(req, res, {
     ...authOptions,
     events: {
@@ -12,3 +13,5 @@ export default function handler(req: NextApiRequest, res: NextApiResponse) {
     },
   })
 }
+
+export default monitorBackend('auth/[...nextauth]',handler)

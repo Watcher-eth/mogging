@@ -1,3 +1,4 @@
+import { monitorBackend } from '@/lib/reliability/monitor'
 import type { NextApiRequest, NextApiResponse } from 'next'
 import { and, eq, gt } from 'drizzle-orm'
 import { z } from 'zod'
@@ -18,7 +19,7 @@ const registration = identity.extend({
   })).max(40).optional(),
 })
 
-export default async function handler(req: NextApiRequest, res: NextApiResponse) {
+async function handler(req: NextApiRequest, res: NextApiResponse) {
   res.setHeader('Cache-Control', 'no-store')
   try {
     if (req.method !== 'PUT' && req.method !== 'DELETE') return methodNotAllowed(res, ['PUT', 'DELETE'])
@@ -47,3 +48,5 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     return json(res, 200, { ok: true })
   } catch (error) { return handleApiError(error, res) }
 }
+
+export default monitorBackend('push/device',handler)

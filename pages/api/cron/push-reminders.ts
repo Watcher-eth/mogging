@@ -1,3 +1,4 @@
+import { monitorBackend } from '@/lib/reliability/monitor'
 import type { NextApiRequest, NextApiResponse } from 'next'
 import { timingSafeEqual } from 'node:crypto'
 import { and, asc, desc, eq, gt, lt, sql } from 'drizzle-orm'
@@ -8,7 +9,7 @@ import { prepareApplePush, sendApplePush } from '@/lib/push/apns'
 
 export const config = { maxDuration: 60 }
 
-export default async function handler(req: NextApiRequest, res: NextApiResponse) {
+async function handler(req: NextApiRequest, res: NextApiResponse) {
   res.setHeader('Cache-Control', 'no-store')
   try {
     if (req.method !== 'GET') return methodNotAllowed(res, ['GET'])
@@ -71,3 +72,4 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     return json(res, failed ? 502 : 200, { sent, failed, partial })
   } catch (error) { return handleApiError(error, res) }
 }
+export default monitorBackend('cron/push-reminders',handler)

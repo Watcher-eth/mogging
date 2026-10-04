@@ -1,3 +1,4 @@
+import { monitorBackend } from '@/lib/reliability/monitor'
 import type { NextApiRequest, NextApiResponse } from 'next'
 import { timingSafeEqual } from 'node:crypto'
 import { and, asc, eq, inArray, isNull } from 'drizzle-orm'
@@ -5,7 +6,7 @@ import { db, schema } from '@/lib/db'
 import { sendPostHogBatch, toPostHogEvent } from '@/lib/analytics/posthog'
 export const config = { maxDuration: 60 }
 
-export default async function handler(req: NextApiRequest, res: NextApiResponse) {
+async function handler(req: NextApiRequest, res: NextApiResponse) {
   res.setHeader('Cache-Control', 'no-store')
   if (req.method !== 'GET') return res.status(405).end()
   const expected = Buffer.from(`Bearer ${process.env.CRON_SECRET || ''}`)
@@ -48,3 +49,4 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     return res.status(502).json({ exported, error: 'export_failed' })
   }
 }
+export default monitorBackend('cron/analytics-export',handler)

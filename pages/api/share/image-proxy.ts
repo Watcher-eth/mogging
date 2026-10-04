@@ -1,10 +1,11 @@
+import { monitorBackend } from '@/lib/reliability/monitor'
 import type { NextApiRequest, NextApiResponse } from 'next'
 import { ApiError, handleApiError, methodNotAllowed } from '@/lib/api/http'
 
 const MAX_IMAGE_BYTES = 12 * 1024 * 1024
 const ALLOWED_CONTENT_TYPES = new Set(['image/jpeg', 'image/png', 'image/webp', 'image/gif'])
 
-export default async function handler(req: NextApiRequest, res: NextApiResponse) {
+async function handler(req: NextApiRequest, res: NextApiResponse) {
   if (req.method !== 'GET') return methodNotAllowed(res, ['GET'])
 
   try {
@@ -35,3 +36,5 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     return handleApiError(error, res)
   }
 }
+
+export default monitorBackend('share/image-proxy',handler)

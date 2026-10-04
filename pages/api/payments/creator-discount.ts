@@ -1,3 +1,4 @@
+import { monitorBackend } from '@/lib/reliability/monitor'
 import type { NextApiRequest, NextApiResponse } from 'next'
 import { z } from 'zod'
 import { ApiError, handleApiError, json, methodNotAllowed, parseBody } from '@/lib/api/http'
@@ -9,7 +10,7 @@ import { enforceRateLimit } from '@/lib/api/rateLimit'
 
 const inputSchema = z.object({ mobileInstallId: z.string().trim().min(8).max(120), attributionToken: z.string().min(40).max(200) })
 
-export default async function handler(req: NextApiRequest, res: NextApiResponse) {
+async function handler(req: NextApiRequest, res: NextApiResponse) {
   if (req.method !== 'POST') return methodNotAllowed(res, ['POST'])
   res.setHeader('Cache-Control', 'no-store')
   try {
@@ -29,3 +30,5 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     })
   } catch (error) { return handleApiError(error, res) }
 }
+
+export default monitorBackend('payments/creator-discount',handler)

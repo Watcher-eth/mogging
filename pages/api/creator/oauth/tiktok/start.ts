@@ -1,8 +1,9 @@
+import { monitorBackend } from '@/lib/reliability/monitor'
 import type { NextApiRequest, NextApiResponse } from 'next'
 import { ApiError, handleApiError, methodNotAllowed } from '@/lib/api/http'
 import { getAuthSession } from '@/lib/auth/session'
 
-export default async function handler(req: NextApiRequest, res: NextApiResponse) {
+async function handler(req: NextApiRequest, res: NextApiResponse) {
   try {
     if (req.method !== 'POST') return methodNotAllowed(res, ['POST'])
     const session = await getAuthSession(req, res)
@@ -12,3 +13,5 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     return handleApiError(error, res)
   }
 }
+
+export default monitorBackend('creator/oauth/tiktok/start',handler)

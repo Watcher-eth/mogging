@@ -1,7 +1,7 @@
 import Link from 'next/link'
 import { useRouter } from 'next/router'
 import { useState } from 'react'
-import useSWR from 'swr'
+import useSWR, { useSWRConfig } from 'swr'
 import { RefreshCw } from 'lucide-react'
 import { AdminPasswordGate } from './admin-password-gate'
 import { CreatorHeader } from '@/components/creator/creator-shell'
@@ -14,7 +14,8 @@ import { AnalyticsChart, chartColors as colors, type ChartMetric } from './analy
 import { EventReport, DimensionReport, TrackingCoverage } from './tracking-report'
 import { OperationalReport } from './operational-report'
 import { AnalyticsSelect } from './analytics-select'
-import { Bars, DataDetails, Notice, Panel, Stat, Table, count, label, money, percent } from './analytics-ui'
+import { ReliabilityReport } from './reliability-report'
+import { Bars, ComparisonBars, DataDetails, Notice, Panel, Stat, Table, count, label, money, percent } from './analytics-ui'
 
 const activityMetrics: ChartMetric[] = [
   { key: 'actors', label: 'Active devices', color: colors.blue },
@@ -48,10 +49,11 @@ export default function AnalyticsAdminPage() {
   const router = useRouter()
   const page = adminPage(router.pathname)
   const tab = page?.section || 'Overview'
+  const { mutate } = useSWRConfig()
   const days = ['7', '30', '90'].includes(String(router.query.days)) ? String(router.query.days) : '30'
   const platform = ['all', 'web', 'ios', 'android'].includes(String(router.query.platform)) ? String(router.query.platform) : 'all'
   const access = useSWR<{ unlocked: boolean }>('/api/admin/creator/session', apiGet, { shouldRetryOnError: false })
-  const report = useSWR<AnalyticsDashboard>(access.data?.unlocked ? `/api/admin/analytics?days=${days}&platform=${platform}` : null, apiGet,
+  const report = useSWR<AnalyticsDashboard>(access.data?.unlocked && tab !== 'Reliability' ? `/api/admin/analytics?days=${days}&platform=${platform}` : null, apiGet,
     { dedupingInterval: 60_000, revalidateOnFocus: false, shouldRetryOnError: false })
   const expired = report.error instanceof ApiClientError && report.error.status === 401
   if (access.error) return <Notice>Admin access could not be verified. Reload or sign in with an authorized account.</Notice>
@@ -66,13 +68,13 @@ export default function AnalyticsAdminPage() {
     <div className="admin-report-toolbar">
       <div className="flex flex-wrap items-center gap-3">
         <AnalyticsSelect label="Period" value={days} onChange={value => filter('days', value)} options={[7,30,90].map(day => ({value:String(day),label:`Last ${day} days`}))} />
-        <AnalyticsSelect label="Platform" value={platform} onChange={value => filter('platform', value)} options={['all','web','ios','android'].map(value => ({value,label:value === 'all' ? 'All platforms' : value === 'ios' ? 'iOS' : label(value)}))} />
-        <Button variant="ghost" className="size-10 p-0 text-[#73777d]" aria-label="Refresh analytics" disabled={report.isValidating} onClick={() => void report.mutate()}><RefreshCw className={`size-4 ${report.isValidating ? 'animate-spin' : ''}`} /></Button>
+        {tab !== 'Reliability'?<AnalyticsSelect label="Platform" value={platform} onChange={value => filter('platform', value)} options={['all','web','ios','android'].map(value => ({value,label:value === 'all' ? 'All platforms' : value === 'ios' ? 'iOS' : label(value)}))}/>:null}
+        <Button variant="ghost" className="size-10 p-0 text-[#73777d]" aria-label="Refresh analytics" disabled={report.isValidating} onClick={() => void (tab === 'Reliability'?mutate(`/api/admin/reliability?days=${days}`):report.mutate())}><RefreshCw className={`size-4 ${report.isValidating ? 'animate-spin' : ''}`} /></Button>
       </div>
       <p className="text-xs text-[#858a91]" aria-live="polite">{data ? `Updated ${new Date(data.generatedAt).toLocaleTimeString('en-GB', { timeZone: 'UTC', hour: '2-digit', minute: '2-digit' })} UTC` : 'UTC reporting'} · Production</p>
     </div>
     {report.error ? <Notice>Analytics could not load. <button className="underline" onClick={() => void report.mutate()}>Try again</button>. Missing data is never shown as zero.</Notice> : null}
-    {!data ? !report.error ? <Notice>Loading reporting snapshot…</Notice> : null : <>
+    {tab === 'Reliability'?<ReliabilityReport days={Number(days)}/>:!data ? !report.error ? <Notice>Loading reporting snapshot…</Notice> : null : <>
       {!data.summary.events ? <Notice>No production behavior events in this window. Check ingestion and the released app version; billing may still be available.</Notice> : null}
       {tab === 'Overview' ? <Overview data={data} days={Number(days)} /> : null}
       {tab === 'Acquisition' ? <Acquisition data={data} days={Number(days)} /> : null}
@@ -86,9 +88,12 @@ export default function AnalyticsAdminPage() {
 }
 function Activity({ data, days, section }: { data: AnalyticsDashboard; days: number; section: string }) {
   const daily = section === 'Scans' ? [{ key: 'scan_starts', label: 'Scans started', color: colors.ink }, { key: 'evaluations', label: 'Completed', color: colors.blue }, { key: 'failures', label: 'Failed', color: colors.orange }]
-    : section === 'Purchases' ? onboardingMetrics : section === 'Engagement' ? valueMetrics : null
+    : section === 'Purchases' ? onboardingMetrics : section === 'Engagement' ? valueMetrics
+    : section === 'Authentication' ? [{key:'auth_starts',label:'Sign-in starts',color:colors.ink},{key:'auth_successes',label:'Authenticated',color:colors.blue},{key:'auth_failures',label:'Failed',color:colors.orange}]
+    : section === 'Referrals' ? [{key:'referral_invites',label:'Invites created',color:colors.blue},{key:'referral_redemptions',label:'Invites redeemed',color:colors.green}]
+    : section === 'Notifications' ? [{key:'push_opens',label:'Push opens',color:colors.blue}] : null
   return <>
-    {daily ? <DailyChart data={data} days={days} title={section === 'Scans' ? 'Scan outcomes' : section === 'Purchases' ? 'Paywall activity' : 'Value-building activity'} metrics={daily} /> : null}
+    {daily ? <DailyChart data={data} days={days} title={section === 'Scans' ? 'Scan outcomes' : section === 'Purchases' ? 'Paywall activity' : section === 'Authentication' ? 'Authentication outcomes' : section === 'Referrals' ? 'Referral activity' : section === 'Notifications' ? 'Notification engagement' : 'Value-building activity'} metrics={daily} /> : null}
     {section === 'Purchases' ? <Funnel title="Paywall conversion" rows={data.paywall} /> : null}
     {section !== 'AttributionLedger' ? <EventReport data={data} section={section as 'Authentication' | 'Purchases' | 'Scans' | 'Engagement' | 'Referrals' | 'Notifications'} /> : null}
     {['Authentication','Purchases','Referrals','Notifications','AttributionLedger'].includes(section) ? <OperationalReport days={days} section={section} /> : null}
@@ -126,7 +131,9 @@ function Onboarding({ data, days }: { data: AnalyticsDashboard; days: number }) 
     continuation: percent(Number(row.continued), Number(row.viewed)), drop_off: percent(Number(row.dropped), Number(row.mature)),
   }))
   return <>
-    <Panel title="Onboarding screens" description="Every tracked screen in app order, including the path to the paywall." note="Optional screens only count users who actually see them. Awaiting data means no screen views have been recorded for the selected period and platform. Conversion and drop-off rates remain blank until their denominators are available."><Table rows={screens} columns={['screen','status','viewed','continued','continuation','drop_off']} /><DataDetails><Table rows={screens} columns={['screen','pending','mature','dropped','median_ms','back_actions']} /></DataDetails></Panel>
+    <DailyChart data={data} days={days} title="Onboarding activity" metrics={[{key:'onboarding_starts',label:'Started',color:colors.ink},{key:'onboarding_completions',label:'Completed',color:colors.green},{key:'paywall_views',label:'Paywall views',color:colors.blue}]}/>
+    <div className="admin-section-grid"><Funnel title="Onboarding → first value" rows={data.onboarding}/><Panel title="Screen reach" description="All tracked screens, in their app order." note="Observed first views and continuation per flow, not one joined cohort. Optional screens have their own audiences; their counts can differ from neighboring steps. Recent views can still continue. Empty screens remain visible as awaiting data."><ComparisonBars series={[{label:'Viewed',color:colors.blue},{label:'Continued',color:colors.green}]} rows={screens.map(row=>({label:String(row.screen),values:[Number(row.viewed),Number(row.continued)],detail:Number(row.viewed)>0?`${row.continuation} continued`:'Awaiting data'}))}/></Panel></div>
+    <Panel title="Onboarding screens" description="Exact counts and rates for each screen." note="Optional screens only count users who actually see them. Awaiting data means no screen views have been recorded for the selected period and platform. Conversion and drop-off rates remain blank until their denominators are available."><DataDetails><Table rows={screens} columns={['screen','status','viewed','continued','continuation','drop_off']} /><Table rows={screens} columns={['screen','pending','mature','dropped','median_ms','back_actions']} /></DataDetails></Panel>
     <div><Panel title="Where users leave" description="Drop-off among screen views at least seven days old." note="Counts a device's first screen view per flow. Continued means reaching a later screen or completing an evaluation within seven days. Optional skips do not create false drop-off. Recent views are pending. Requires the new mobile tracking release."><Bars maximum={100} format={value => `${value.toFixed(1)}%`} rows={screens.filter(row => Number(row.mature) > 0).map(row => ({ label: String(row.screen), value: Number(row.dropped) / Number(row.mature) * 100, detail: `${count(row.dropped)} of ${count(row.mature)} mature views · ${count(row.pending)} pending` }))} /></Panel></div>
     <EventReport data={data} section="Onboarding" />
     <Panel title="Friction signals" description="Permission refusals, cancelled purchases, and safe error codes." note="Signals do not prove an error caused drop-off. No questionnaire answers, photos, or scan scores are recorded."><Table rows={data.onboardingFriction ?? []} columns={['screen','event','reason','affected_devices','events']} /></Panel>

@@ -1,3 +1,4 @@
+import { monitorBackend } from '@/lib/reliability/monitor'
 import { creditReferralSignup, REFERRAL_COOKIE } from '@/lib/referrals/service'
 import type { NextApiRequest, NextApiResponse } from 'next'
 import { ApiError } from '@/lib/api/http'
@@ -6,7 +7,7 @@ import { enforceRateLimit } from '@/lib/api/rateLimit'
 import { EmailAlreadyExistsError, registerSchema, registerUser } from '@/lib/auth/register'
 import { getRequestLocation } from '@/lib/geo/request'
 
-export default async function handler(req: NextApiRequest, res: NextApiResponse) {
+async function handler(req: NextApiRequest, res: NextApiResponse) {
   if (req.method !== 'POST') return methodNotAllowed(res, ['POST'])
 
   try {
@@ -23,3 +24,5 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     return handleApiError(error, res)
   }
 }
+
+export default monitorBackend('auth/register',handler)

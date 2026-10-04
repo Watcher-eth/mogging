@@ -1,3 +1,4 @@
+import { monitorBackend } from '@/lib/reliability/monitor'
 import type { NextApiRequest, NextApiResponse } from 'next'
 import { getAuthSession } from '@/lib/auth/session'
 import {
@@ -7,7 +8,7 @@ import {
   methodNotAllowed,
 } from '@/lib/api/http'
 import { listCreatorSprints } from '@/lib/creator/sprint-service'
-export default async function handler(
+async function handler(
   req: NextApiRequest,
   res: NextApiResponse,
 ) {
@@ -20,3 +21,5 @@ export default async function handler(
     return handleApiError(error, res)
   }
 }
+
+export default monitorBackend('creator/sprints',handler)

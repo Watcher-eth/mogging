@@ -1,3 +1,4 @@
+import { monitorBackend } from '@/lib/reliability/monitor'
 import { and, eq } from 'drizzle-orm'
 import { z } from 'zod'
 import type { NextApiRequest, NextApiResponse } from 'next'
@@ -10,7 +11,7 @@ const photoPrivacySchema = z.object({
   isPublic: z.boolean(),
 })
 
-export default async function handler(req: NextApiRequest, res: NextApiResponse) {
+async function handler(req: NextApiRequest, res: NextApiResponse) {
   if (req.method !== 'POST') return methodNotAllowed(res, ['POST'])
 
   try {
@@ -44,3 +45,5 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     return handleApiError(error, res)
   }
 }
+
+export default monitorBackend('photos/privacy',handler)

@@ -1,3 +1,4 @@
+import { monitorBackend } from '@/lib/reliability/monitor'
 import type { NextApiRequest, NextApiResponse } from 'next'
 import { z } from 'zod'
 import { ApiError, handleApiError, json, methodNotAllowed, parseBody } from '@/lib/api/http'
@@ -8,7 +9,7 @@ const inputSchema = z.object({ slug: z.string().trim().toLowerCase().min(1).max(
 
 // Public creator codes are not credentials. Only the server can mint signed click tokens.
 // This records an explicit referral touch, never an inferred or deferred install.
-export default async function handler(req: NextApiRequest, res: NextApiResponse) {
+async function handler(req: NextApiRequest, res: NextApiResponse) {
   res.setHeader('Cache-Control', 'private, no-store')
   if (req.method !== 'POST') return methodNotAllowed(res, ['POST'])
   try {
@@ -20,3 +21,5 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     return json(res, 200, { url: attribution.deepLinkUrl })
   } catch (error) { return handleApiError(error, res) }
 }
+
+export default monitorBackend('attribution/link',handler)

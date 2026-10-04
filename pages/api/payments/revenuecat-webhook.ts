@@ -1,3 +1,4 @@
+import { monitorBackend } from '@/lib/reliability/monitor'
 import { timingSafeEqual } from 'crypto'
 import type { NextApiRequest, NextApiResponse } from 'next'
 import { z } from 'zod'
@@ -16,7 +17,7 @@ const webhookSchema = z.object({
   event: revenueCatEventSchema,
 })
 
-export default async function handler(req: NextApiRequest, res: NextApiResponse) {
+async function handler(req: NextApiRequest, res: NextApiResponse) {
   if (req.method !== 'POST') return methodNotAllowed(res, ['POST'])
   try {
     verifyAuthorization(req)
@@ -71,3 +72,5 @@ function verifyAuthorization(req: NextApiRequest) {
   const right = Buffer.from(expected)
   if (left.length !== right.length || !timingSafeEqual(left, right)) throw new ApiError(401, 'Invalid RevenueCat webhook authorization')
 }
+
+export default monitorBackend('payments/revenuecat-webhook',handler)

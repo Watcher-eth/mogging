@@ -25,6 +25,7 @@ export const adminNavigation = [
     { href: '/admin/analytics/notifications', title: 'Notifications', description: 'Push opens, registered devices, and reminder records.', section: 'Notifications', icon: 'overview' },
     { href: '/admin/analytics/attribution', title: 'Attribution ledger', description: 'Creator link credit, lifecycle events, and currency-separated revenue.', section: 'AttributionLedger', icon: 'accounts' },
     { href: '/admin/analytics/quality', title: 'Data health', description: 'Monitor delivery, failures, and release quality.', section: 'Quality', icon: 'overview' },
+    { href: '/admin/analytics/reliability', title: 'Backend reliability', description: 'Catch outages, broken features, and failed evaluations.', section: 'Reliability', icon: 'overview' },
   ] },
   { label: 'Manage', items: [
     { href: '/admin/program-settings', title: 'Program settings', description: 'Set the assumptions used in creator profitability calculations.', section: 'settings', icon: 'payouts' },

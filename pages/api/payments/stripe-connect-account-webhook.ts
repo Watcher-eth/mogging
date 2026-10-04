@@ -1,3 +1,4 @@
+import { monitorBackend } from '@/lib/reliability/monitor'
 import { getCourseStripe } from '@/lib/courses/stripe'
 import type { NextApiRequest, NextApiResponse } from 'next'
 import { ApiError, handleApiError, methodNotAllowed, json } from '@/lib/api/http'
@@ -5,7 +6,7 @@ import { env } from '@/lib/env'
 import { rawBody, connectAccountEvent } from '@/lib/courses/webhooks'
 
 export const config = { api: { bodyParser: false } }
-export default async function handler(req: NextApiRequest, res: NextApiResponse) {
+async function handler(req: NextApiRequest, res: NextApiResponse) {
   res.setHeader('Cache-Control', 'no-store')
   if (req.method !== 'POST') return methodNotAllowed(res, ['POST'])
   try {
@@ -19,3 +20,5 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     return json(res, 200, { received: true })
   } catch (error) { return handleApiError(error, res) }
 }
+
+export default monitorBackend('payments/stripe-connect-account-webhook',handler)

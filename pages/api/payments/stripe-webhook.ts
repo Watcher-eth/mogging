@@ -1,3 +1,4 @@
+import { monitorBackend } from '@/lib/reliability/monitor'
 import type { NextApiRequest, NextApiResponse } from 'next'
 import { eq } from 'drizzle-orm'
 import Stripe from 'stripe'
@@ -21,7 +22,7 @@ export const config = {
   },
 }
 
-export default async function handler(req: NextApiRequest, res: NextApiResponse) {
+async function handler(req: NextApiRequest, res: NextApiResponse) {
   if (req.method !== 'POST') {
     res.setHeader('Allow', ['POST'])
     return res.status(405).json({ error: { code: 'method_not_allowed', message: 'Method not allowed' } })
@@ -156,3 +157,5 @@ async function readRawBody(req: NextApiRequest) {
   }
   return Buffer.concat(chunks)
 }
+
+export default monitorBackend('payments/stripe-webhook',handler)

@@ -1,3 +1,4 @@
+import { monitorBackend } from '@/lib/reliability/monitor'
 import type { NextApiRequest, NextApiResponse } from 'next'
 import { ApiError, handleApiError, json, methodNotAllowed } from '@/lib/api/http'
 import { getAuthSession } from '@/lib/auth/session'
@@ -6,7 +7,7 @@ import { CREATOR_VIDEO_TYPES, MAX_CREATOR_VIDEO_BYTES, storeLocalCreatorVideo } 
 
 export const config = { api: { bodyParser: false } }
 
-export default async function handler(req: NextApiRequest, res: NextApiResponse) {
+async function handler(req: NextApiRequest, res: NextApiResponse) {
   try {
     if (req.method !== 'POST') return methodNotAllowed(res, ['POST'])
     if (isR2Configured()) throw new ApiError(404, 'Local upload endpoint unavailable')
@@ -35,3 +36,5 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     return handleApiError(error, res)
   }
 }
+
+export default monitorBackend('creator/video',handler)

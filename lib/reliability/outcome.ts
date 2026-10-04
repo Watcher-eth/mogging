@@ -8,9 +8,10 @@ const object = (value: unknown): Record<string, unknown> => value && typeof valu
 
 // Read only known scalar fields. Never retain a response body, provider raw text or user data.
 export function backendOutcome(status: number, body: unknown): BackendOutcome {
+  const root = object(body)
+  if (object(root.error).code === 'provider_error') return {outcome:'failed',code:`provider_http_${status}`,alert:true}
   if (status >= 500) return { outcome: 'failed', code: `http_${status}`, alert: true }
   if (status >= 400) return { outcome: 'rejected', code: `http_${status}`, alert: false }
-  const root = object(body)
   const analysis = object(object(root.data).analysis)
   if (analysis.status === 'failed') {
     const provider = object(object(analysis.metrics).providerError)

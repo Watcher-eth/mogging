@@ -1,3 +1,4 @@
+import { monitorBackend } from '@/lib/reliability/monitor'
 import type { NextApiRequest, NextApiResponse } from 'next'
 import { z } from 'zod'
 import { and, eq } from 'drizzle-orm'
@@ -8,7 +9,7 @@ import { courseAssets } from '@/lib/courses/schema'
 import { rawBody, verifyBunnySignature } from '@/lib/courses/webhooks'
 import { syncAsset } from '@/lib/courses/media'
 export const config = { api: { bodyParser: false } }
-export default async function handler(req: NextApiRequest, res: NextApiResponse) {
+async function handler(req: NextApiRequest, res: NextApiResponse) {
   if (req.method !== 'POST') return methodNotAllowed(res, ['POST'])
   try {
     if (!env.COURSES_ENABLED || !env.BUNNY_STREAM_READ_ONLY_KEY) throw new ApiError(503, 'Video webhook is not configured')
@@ -21,3 +22,5 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     return json(res, 200, { received: true })
   } catch (error) { return handleApiError(error, res) }
 }
+
+export default monitorBackend('courses/bunny-webhook',handler)

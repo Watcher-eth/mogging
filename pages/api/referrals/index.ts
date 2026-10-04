@@ -1,10 +1,11 @@
+import { monitorBackend } from '@/lib/reliability/monitor'
 import type { NextApiRequest, NextApiResponse } from 'next'
 import { ApiError, handleApiError, json, methodNotAllowed } from '@/lib/api/http'
 import { getRequestUserId } from '@/lib/auth/mobile-session'
 import { createReferralTicket, getReferralLink } from '@/lib/referrals/service'
 import { enforceRateLimit } from '@/lib/api/rateLimit'
 
-export default async function handler(req: NextApiRequest, res: NextApiResponse) {
+async function handler(req: NextApiRequest, res: NextApiResponse) {
   res.setHeader('Cache-Control', 'no-store')
   try {
     if (req.method === 'GET') {
@@ -21,3 +22,5 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     return methodNotAllowed(res, ['GET', 'POST'])
   } catch (error) { return handleApiError(error, res) }
 }
+
+export default monitorBackend('referrals',handler)

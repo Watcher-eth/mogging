@@ -1,3 +1,4 @@
+import { monitorBackend } from '@/lib/reliability/monitor'
 import { creatorTikTokFields } from '@/lib/creator/tiktok-permissions'
 import type { NextApiRequest, NextApiResponse } from 'next'
 import { exchangeTikTokAuthorizationCode, getTikTokUserInfo } from '@/lib/auth/tiktok-api'
@@ -12,7 +13,7 @@ import {
 } from '@/lib/creator/tiktok-oauth'
 import { env } from '@/lib/env'
 
-export default async function handler(req: NextApiRequest, res: NextApiResponse) {
+async function handler(req: NextApiRequest, res: NextApiResponse) {
   if (req.method !== 'GET') return res.status(405).end()
   let destination: 'accounts' | 'setup' = 'accounts'
   const redirect = (result: string, accountId?: string) => {
@@ -59,3 +60,5 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     return redirect('error')
   }
 }
+
+export default monitorBackend('creator/oauth/tiktok/callback',handler)

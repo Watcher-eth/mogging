@@ -1,3 +1,4 @@
+import { markEvaluationStarted, monitorBackend } from '@/lib/reliability/monitor'
 import { createHash, randomUUID } from 'crypto'
 import type { NextApiRequest, NextApiResponse } from 'next'
 import { eq } from 'drizzle-orm'
@@ -13,7 +14,7 @@ import { env } from '@/lib/env'
 import { reserveEvaluation, finishEvaluation } from '@/lib/payments/entitlements'
 import { createAnalysisShare } from '@/lib/sharing/service'
 
-export default async function handler(req: NextApiRequest, res: NextApiResponse) {
+async function handler(req: NextApiRequest, res: NextApiResponse) {
   if (req.method !== 'POST') return methodNotAllowed(res, ['POST'])
 
   const requestIdHeader = req.headers['x-mogging-request-id']
@@ -71,6 +72,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       if (reservation.result) return json(res, 200, { ...reservation.result, entitlements: reservation.summary })
     }
 
+    markEvaluationStarted(res)
     const result = await analyzeAndSave({
       ...body,
       gender: analysisGender,
@@ -171,3 +173,5 @@ export const config = {
     },
   },
 }
+
+export default monitorBackend('analyze',handler)

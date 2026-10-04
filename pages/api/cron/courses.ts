@@ -1,3 +1,4 @@
+import { monitorBackend } from '@/lib/reliability/monitor'
 import { createHash, timingSafeEqual } from 'node:crypto'
 import type { NextApiRequest, NextApiResponse } from 'next'
 import { ApiError, json, methodNotAllowed, handleApiError } from '@/lib/api/http'
@@ -5,7 +6,7 @@ import { env } from '@/lib/env'
 import { processBillingWebhook } from '@/lib/payments/billing-ledger'
 import { maintainCourses } from '@/lib/courses/maintenance'
 export const config = { maxDuration: 60 }
-export default async function handler(req: NextApiRequest, res: NextApiResponse) {
+async function handler(req: NextApiRequest, res: NextApiResponse) {
   res.setHeader('Cache-Control', 'no-store')
   if (!['GET', 'POST'].includes(req.method || '')) return methodNotAllowed(res, ['GET', 'POST'])
   try {
@@ -19,3 +20,4 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     return json(res, 200, { processed, result })
   } catch (error) { return handleApiError(error, res) }
 }
+export default monitorBackend('cron/courses',handler)

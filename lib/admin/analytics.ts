@@ -59,7 +59,7 @@ export function analyticsQuery(filters: AnalyticsFilters, now: Date) {
     ), reported_events as materialized (
       select * from e union all
       select event_name, occurred_at, account_id, platform, app_version, properties, session_id, source, schema_version, received_at, null::text as actor
-      from analytics_events where environment = 'production' and platform = 'server'
+      from analytics_events where environment = 'production' and platform = 'server' and source is distinct from 'backend'
         and occurred_at >= ${start}::timestamp and occurred_at < ${end}::timestamp
     ), event_definitions(section, event) as (values ${sql.join(trackingDefinitions.map(({section, event}) => sql`(${section}::text, ${event}::text)`), sql`,`)}),
     event_metrics as (
@@ -112,6 +112,14 @@ export function analyticsQuery(filters: AnalyticsFilters, now: Date) {
       select to_char(occurred_at, 'YYYY-MM-DD') as day, count(distinct actor) as actors,
         count(*) filter (where event_name = 'evaluation_completed') as evaluations,
         count(*) filter (where event_name = 'evaluation_started') as scan_starts,
+        count(*) filter (where event_name = 'onboarding_started') as onboarding_starts,
+        count(*) filter (where event_name = 'onboarding_completed') as onboarding_completions,
+        count(*) filter (where event_name = 'account_auth_started') as auth_starts,
+        count(*) filter (where event_name = 'account_authenticated') as auth_successes,
+        count(*) filter (where event_name = 'account_auth_failed') as auth_failures,
+        count(*) filter (where event_name = 'referral_invite_created') as referral_invites,
+        count(*) filter (where event_name = 'referral_invite_redeemed') as referral_redemptions,
+        count(*) filter (where event_name = 'push_opened') as push_opens,
         count(*) filter (where event_name = 'purchase_completed') as purchase_completions,
         count(distinct actor) filter (where event_name = 'app_first_open') as first_opens,
         count(*) filter (where event_name = 'app_store_redirected') as store_redirects,

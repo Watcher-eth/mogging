@@ -1,3 +1,4 @@
+import { monitorBackend } from '@/lib/reliability/monitor'
 import type { NextApiRequest, NextApiResponse } from 'next'
 import { ApiError, handleApiError, json, methodNotAllowed, parseBody } from '@/lib/api/http'
 import { clearAnonymousActorCookie, getAnonymousActorId } from '@/lib/auth/anonymous'
@@ -12,7 +13,7 @@ import {
 } from '@/lib/users/service'
 import { getRequestLocation } from '@/lib/geo/request'
 
-export default async function handler(req: NextApiRequest, res: NextApiResponse) {
+async function handler(req: NextApiRequest, res: NextApiResponse) {
   const session = await getAuthSession(req, res)
 
   if (req.method === 'DELETE') {
@@ -75,3 +76,5 @@ function handleUserError(error: unknown, res: NextApiResponse) {
 
   return handleApiError(error, res)
 }
+
+export default monitorBackend('user/me',handler)

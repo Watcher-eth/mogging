@@ -30,6 +30,13 @@ export function Table({ rows, columns }: { rows: MetricRow[]; columns: string[] 
 export function DataDetails({ children }: { children: ReactNode }) {
   return <details className="admin-data-details"><summary>View underlying data</summary><div className="mt-4">{children}</div></details>
 }
+export function ComparisonBars({rows,series}:{rows:Array<{label:string;values:number[];detail?:string}>;series:Array<{label:string;color:string}>}) {
+  const max=Math.max(1,...rows.flatMap(row=>row.values))
+  return <div>
+    <div className="mb-6 flex flex-wrap gap-5 text-xs text-[#73777d]">{series.map(item=><span key={item.label} className="flex items-center gap-2"><span className="size-2 rounded-full" style={{background:item.color}}/>{item.label}</span>)}</div>
+    <ul className="grid gap-4">{rows.map(row=><li key={row.label} className="grid grid-cols-[minmax(90px,1fr)_minmax(120px,3fr)] items-center gap-4 text-xs"><span className="leading-5 text-[#52565c]">{row.label}</span><div className="grid gap-1.5">{series.map((item,index)=><div key={item.label} className="flex items-center gap-2" aria-label={`${row.label}: ${item.label} ${count(row.values[index])}`}><div className="h-2 flex-1 rounded-full bg-[#f3f5f7]"><div className="h-full rounded-full" style={{width:`${row.values[index]/max*100}%`,background:item.color}}/></div><span className="w-9 text-right tabular-nums text-[#73777d]">{count(row.values[index])}</span></div>)}{row.detail?<span className="text-[10px] text-[#92979e]">{row.detail}</span>:null}</div></li>)}</ul>
+  </div>
+}
 export function Bars({ rows, format = count, maximum }: { rows: Array<{ label: string; value: number | null; detail?: string }>; format?: (value: number) => string; maximum?: number }) {
   const max = maximum ?? Math.max(1, ...rows.map(row => Math.abs(row.value ?? 0)))
   if (!rows.length) return <p className="admin-empty">No observations in this window.</p>

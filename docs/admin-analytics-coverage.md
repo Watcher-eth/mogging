@@ -21,6 +21,7 @@ including all 19 onboarding screens in their display order.
 | Creator milestones and subscription lifecycle, direct/first-touch link credit by currency | Attribution ledger; Creator attribution retains its account drilldown |
 | Verified billing lifecycle, provider/product/currency totals, trials, cancellation and expiry reasons, offers | Revenue |
 | Mature return cohorts | Retention |
+| Backend feature outcomes, latency, safe errors, traces, unfinished evaluations, health checks and alert records | Backend reliability |
 | Complete event catalog, identifier coverage, release/schema delivery delay, clock skew, processing/export health | Data health |
 
 ## Interpretation and limits
@@ -31,7 +32,7 @@ including all 19 onboarding screens in their display order.
 - Reports expose 67 allowlisted scalar context fields and aggregate coverage for eight identifier fields. Raw identifiers, tokens, provider payloads, photos and questionnaire answers are not exposed. Context tables retain the top 20 values per dimension/section; origin breakdowns cap at 300 groups, operational attribution tables at 200 groups, and billing/product/release tables at 100 groups.
 - Missing money remains unknown. Empty windows retain the milestone catalog. “Awaiting data” means no observations in the selected slice, not proof of healthy instrumentation. Event totals are not sequential conversion funnels.
 - Delivery delay includes batching, offline queues and clock differences; it is not API latency. Negative delays appear as clock skew.
-- Existing admin allowlist/password protection applies to every page and API. Responses are private/no-store; queries are aggregate-only, read-only and limited to eight seconds. No migration or mobile instrumentation changes are required for these reports.
+- Existing admin allowlist/password protection applies to every page and API. Responses are private/no-store; queries are read-only and limited to eight seconds. Reliability includes generated service trace IDs for log lookup. No migration or mobile instrumentation changes are required for these reports. See [backend reliability](backend-reliability.md) for collection and alert activation.
 
 ## Verification
 

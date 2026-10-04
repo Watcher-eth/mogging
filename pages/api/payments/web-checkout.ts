@@ -1,3 +1,4 @@
+import { monitorBackend } from '@/lib/reliability/monitor'
 import type { NextApiRequest, NextApiResponse } from 'next'
 import { z } from 'zod'
 import { sql } from 'drizzle-orm'
@@ -17,7 +18,7 @@ const checkoutSchema = z.object({
   source: z.string().trim().max(80).optional(),
 })
 
-export default async function handler(req: NextApiRequest, res: NextApiResponse) {
+async function handler(req: NextApiRequest, res: NextApiResponse) {
   if (req.method !== 'POST') return methodNotAllowed(res, ['POST'])
 
   try {
@@ -209,3 +210,5 @@ function getRequestOrigin(req: NextApiRequest) {
 
   return `${protocol}://${host}`
 }
+
+export default monitorBackend('payments/web-checkout',handler)

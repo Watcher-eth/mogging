@@ -1,9 +1,10 @@
+import { monitorBackend } from '@/lib/reliability/monitor'
 import type { NextApiRequest, NextApiResponse } from 'next'
 import { handleApiError, json, methodNotAllowed, parseBody } from '@/lib/api/http'
 import { enforceRateLimit } from '@/lib/api/rateLimit'
 import { generatePotentialImage, potentialImageInputSchema } from '@/lib/analysis/potential-image'
 
-export default async function handler(req: NextApiRequest, res: NextApiResponse) {
+async function handler(req: NextApiRequest, res: NextApiResponse) {
   if (req.method !== 'POST') return methodNotAllowed(res, ['POST'])
 
   const startedAt = Date.now()
@@ -36,3 +37,5 @@ export const config = {
     },
   },
 }
+
+export default monitorBackend('analysis/potential-image',handler)

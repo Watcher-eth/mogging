@@ -1,3 +1,4 @@
+import { monitorBackend } from '@/lib/reliability/monitor'
 import type { NextApiRequest, NextApiResponse } from 'next'
 import { ApiError, handleApiError, json, methodNotAllowed, parseBody } from '@/lib/api/http'
 import { getOrSetAnonymousActorId } from '@/lib/auth/anonymous'
@@ -9,7 +10,7 @@ import {
 import { env } from '@/lib/env'
 import { getRequestLocation } from '@/lib/geo/request'
 
-export default async function handler(req: NextApiRequest, res: NextApiResponse) {
+async function handler(req: NextApiRequest, res: NextApiResponse) {
   if (env.AUTH_REQUIRED) {
     return handleApiError(new ApiError(404, 'Anonymous profiles are disabled'), res)
   }
@@ -49,3 +50,5 @@ export const config = {
     },
   },
 }
+
+export default monitorBackend('auth/anonymous-profile',handler)
