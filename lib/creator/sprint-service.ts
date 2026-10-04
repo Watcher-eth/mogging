@@ -7,6 +7,23 @@ import {
   type SprintProof,
 } from './sprints'
 import type { z } from 'zod'
+import type { CampaignPreview } from './campaign-preview'
+
+export async function getCampaignPreview(id: string): Promise<CampaignPreview | null> {
+  const [row] = await db.select({
+    id: schema.creatorSprints.id,
+    name: schema.creatorSprints.name,
+    description: schema.creatorSprints.description,
+    status: schema.creatorSprints.status,
+    budgetCents: schema.creatorSprints.budgetCents,
+    startsAt: schema.creatorSprints.startsAt,
+    endsAt: schema.creatorSprints.endsAt,
+  }).from(schema.creatorSprints).where(and(
+    eq(schema.creatorSprints.id, id),
+    inArray(schema.creatorSprints.status, ['published', 'ended']),
+  )).limit(1)
+  return row ? { ...row, startsAt: row.startsAt.toISOString(), endsAt: row.endsAt.toISOString() } : null
+}
 
 export async function listCreatorSprints(
   admin = false,

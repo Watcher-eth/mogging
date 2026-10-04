@@ -1,6 +1,7 @@
 import { sql, type SQL } from 'drizzle-orm'
 import { z } from 'zod'
 import { db } from '@/lib/db'
+import { ONBOARDING_ANALYTICS_VERSION, onboardingAnalyticsSteps } from '@/lib/analytics/onboarding'
 
 export const analyticsFilters = z.object({
   days: z.enum(['7', '30', '90']).default('30'),
@@ -15,6 +16,7 @@ export type AnalyticsDashboard = {
   paywall: Array<{ name: string; actors: number }>
   web: Array<{ name: string; actors: number }>
   daily: MetricRow[]; acquisition: MetricRow[]; steps: MetricRow[]; screens: MetricRow[]
+  onboardingScreens: MetricRow[]; onboardingFriction: MetricRow[]
   billing: MetricRow[]; revenue: MetricRow[]; retention: MetricRow[]; cancellations: MetricRow[]
   actions: MetricRow[]; releases: MetricRow[]
 }
@@ -69,6 +71,63 @@ export function analyticsQuery(filters: AnalyticsFilters, now: Date) {
         count(distinct actor) filter (where event_name = 'app_store_redirected') as store_redirects,
         count(distinct actor) filter (where event_name = 'purchase_completed') as purchase_actors
       from e group by 1,2 order by actors desc limit 50
+    ), onboarding_definitions(step, label, position) as (values ${sql.join(onboardingAnalyticsSteps.map(([step, label], index) => sql`(${step}::text, ${label}::text, ${index}::integer)`), sql`,`)}),
+    onboarding_observations as materialized (
+      select e.actor, e.properties->>'flow_id' as flow_id, d.step, d.position, e.occurred_at,
+        e.event_name, case when jsonb_typeof(e.properties->'duration_ms') = 'number'
+          then (e.properties->>'duration_ms')::numeric end as duration_ms
+      from e join onboarding_definitions d on d.step = e.properties->>'step'
+      where e.platform in ('ios','android') and e.actor is not null
+        and nullif(e.properties->>'flow_id', '') is not null
+        and e.properties->>'onboarding_version' = ${ONBOARDING_ANALYTICS_VERSION}
+        and e.event_name in ('onboarding_step_viewed','onboarding_step_exited','onboarding_step_back')
+    ), onboarding_forward_events as materialized (
+      select actor, flow_id, position, occurred_at as at from onboarding_observations
+      where event_name = 'onboarding_step_viewed'
+      union all
+      select actor, properties->>'flow_id', ${onboardingAnalyticsSteps.length}::integer, occurred_at from e
+      where event_name = 'evaluation_completed' and platform in ('ios','android')
+        and properties->>'onboarding_version' = ${ONBOARDING_ANALYTICS_VERSION}
+        and actor is not null and nullif(properties->>'flow_id', '') is not null
+    ), onboarding_timelines as (
+      select actor, flow_id, array_agg(position) as positions, array_agg(at) as times
+      from onboarding_forward_events group by actor, flow_id
+    ), onboarding_progress as (
+      select t.actor, t.flow_id, d.step, v.at, exists (
+        select 1 from unnest(t.positions, t.times) n(position, at)
+        where n.position > v.position and n.at >= v.at and n.at <= v.at + interval '7 days'
+      ) as continued
+      from onboarding_timelines t cross join lateral (
+        select position, min(at) as at from unnest(t.positions, t.times) n(position, at)
+        where position < ${onboardingAnalyticsSteps.length} group by position
+      ) v join onboarding_definitions d on d.position = v.position
+    ), onboarding_totals as (
+      select step, count(*) as viewed, count(*) filter (where continued) as continued,
+        count(*) filter (where not continued and at > ${end}::timestamp - interval '7 days') as pending,
+        count(*) filter (where at <= ${end}::timestamp - interval '7 days') as mature,
+        count(*) filter (where not continued and at <= ${end}::timestamp - interval '7 days') as dropped
+      from onboarding_progress group by step
+    ), onboarding_durations as (
+      select step, round((percentile_cont(0.5) within group (order by duration_ms)
+        filter (where event_name = 'onboarding_step_exited' and duration_ms between 0 and 1800000))::numeric) as median_ms,
+        count(*) filter (where event_name = 'onboarding_step_back') as back_actions
+      from onboarding_observations group by step
+    ), onboarding_screens as (
+      select d.step, d.label as screen, coalesce(t.viewed, 0) as viewed, coalesce(t.continued, 0) as continued,
+        coalesce(t.pending, 0) as pending, coalesce(t.mature, 0) as mature, coalesce(t.dropped, 0) as dropped,
+        m.median_ms, coalesce(m.back_actions, 0) as back_actions
+      from onboarding_definitions d left join onboarding_totals t using(step)
+        left join onboarding_durations m using(step) order by d.position
+    ), onboarding_friction as (
+      select d.label as screen, e.event_name as event,
+        coalesce(e.properties->>'reason_code', e.properties->>'permission', 'unknown') as reason,
+        count(distinct e.actor) as affected_devices, count(*) as events
+      from e join onboarding_definitions d on d.step = e.properties->>'step'
+      where e.platform in ('ios','android') and e.properties->>'onboarding_version' = ${ONBOARDING_ANALYTICS_VERSION}
+        and (e.event_name in ('photo_validation_failed','account_auth_failed','purchase_failed','purchase_cancelled','restore_failed','evaluation_failed')
+          or (e.event_name = 'permission_result' and e.properties->>'result' = 'denied')
+          or (e.event_name = 'consent_result' and e.properties->>'result' = 'declined'))
+      group by d.position, d.label, e.event_name, 3 order by d.position, affected_devices desc limit 50
     ), steps as (
       select properties->>'step' as step,
         count(distinct actor) filter (where event_name = 'onboarding_step_viewed') as viewed,
@@ -137,7 +196,7 @@ export function analyticsQuery(filters: AnalyticsFilters, now: Date) {
         'failures', count(*) filter (where event_name = 'evaluation_failed'), 'latest_event', max(occurred_at)) from e),
       'onboarding', ${onboarding.result}, 'paywall', ${paywall.result}, 'web', ${web.result},
       'daily', ${rows('daily')}, 'acquisition', ${rows('acquisition')}, 'steps', ${rows('steps')},
-      'screens', ${rows('screens')}, 'billing', ${rows('billing')}, 'revenue', ${rows('revenue')},
+      'onboardingScreens', ${rows('onboarding_screens')}, 'onboardingFriction', ${rows('onboarding_friction')}, 'screens', ${rows('screens')}, 'billing', ${rows('billing')}, 'revenue', ${rows('revenue')},
       'retention', ${rows('retention')}, 'cancellations', ${rows('cancellations')},
       'actions', ${rows('actions')}, 'releases', ${rows('releases')}
     ) as data`

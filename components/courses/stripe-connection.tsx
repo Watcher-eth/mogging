@@ -33,6 +33,6 @@ export function StripeConnection({ seller, changed }: { seller: CourseSeller; ch
       {!seller.stripeAccountId && <button disabled={busy} onClick={() => void connect(true)}>Connect existing account ↗</button>}
       {seller.stripeAccountId && <button disabled={busy} onClick={() => void refresh()}>Refresh status</button>}
     </div><div><a href="https://stripe.com/legal/connect-account" target="_blank" rel="noopener noreferrer">Stripe terms ↗</a><a href="https://stripe.com/privacy" target="_blank" rel="noopener noreferrer">Privacy ↗</a></div></div>
-    {!!seller.requirements?.length && <p>Stripe needs: {seller.requirements.join(', ')}</p>}
+    {!!seller.requirements?.length && <p>Stripe needs a few more details. Finish setup to review them.</p>}
   </section>
 }

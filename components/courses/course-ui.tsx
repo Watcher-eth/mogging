@@ -98,7 +98,6 @@ export function CourseLayout({
             <div>
               <Link href="/tos">Terms</Link>
               <Link href="/privacy">Privacy</Link>
-              <span>Design preview</span>
             </div>
           </footer>
         )}

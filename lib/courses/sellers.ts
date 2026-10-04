@@ -27,7 +27,9 @@ export async function saveSeller(userId: string, body: unknown) {
 export function retrieveSellerAccount(id: string) {
   return getStripe().v2.core.accounts.retrieve(id, { include: ['configuration.merchant', 'defaults', 'identity', 'requirements'] }, courseStripeOptions)
 }
-export function accountEligible(account: Stripe.V2.Core.Account) {
+export function accountEligible(account: Stripe.V2.Core.Account | Stripe.Account) {
+  // Existing-account OAuth remains an Accounts v1 authentication flow.
+  if (account.object === 'account') return account.controller?.stripe_dashboard?.type === 'full' && account.controller?.fees?.payer === 'account' && account.controller?.losses?.payments === 'stripe'
   return account.dashboard === 'full' && account.defaults?.responsibilities?.fees_collector === 'stripe' && account.defaults?.responsibilities?.losses_collector === 'stripe'
 }
 export async function syncSeller(seller: typeof courseSellers.$inferSelect) {
@@ -53,7 +55,10 @@ export async function onboarding(userId: string, email: string) {
     Object.assign(seller, connected)
   }
   if (!seller.stripeConnected) throw new ApiError(409, 'Reconnect the same Stripe account before continuing onboarding')
-  const link = await getStripe().v2.core.accountLinks.create({ account: seller.stripeAccountId!, use_case: { type: 'account_onboarding', account_onboarding: { configurations: ['merchant'], refresh_url: `${siteUrl()}/creator/courses?connect=refresh`, return_url: `${siteUrl()}/creator/courses?connect=returned` } } }, courseStripeOptions)
+  const account = await retrieveSellerAccount(seller.stripeAccountId!)
+  if (account.livemode !== seller.stripeLivemode) throw new ApiError(409, 'Stripe account environment does not match this seller')
+  // Legacy accounts can also have recipient/customer configurations; Stripe requires an exact match.
+  const link = await getStripe().v2.core.accountLinks.create({ account: account.id, use_case: { type: 'account_onboarding', account_onboarding: { configurations: account.applied_configurations, refresh_url: `${siteUrl()}/creator/courses?connect=refresh`, return_url: `${siteUrl()}/creator/courses?connect=returned` } } }, courseStripeOptions)
   return { url: link.url, expiresAt: link.expires_at }
 }
 export async function changeSellerStatus(id: string, status: 'enabled' | 'pending' | 'suspended', actorUserId: string) {

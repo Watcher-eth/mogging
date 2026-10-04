@@ -53,6 +53,7 @@ const envSchema = z
     UPSTASH_REDIS_REST_URL: z.string().url().optional(),
     UPSTASH_REDIS_REST_TOKEN: z.string().min(1).optional(),
     COURSES_ENABLED: booleanEnv,
+    COURSE_PUBLIC_LAUNCH_ENABLED: booleanEnv,
     COURSE_LIVE_PAYMENTS_ENABLED: booleanEnv,
     COURSE_STRIPE_TAX_ENABLED: booleanEnv,
     STRIPE_CONNECT_WEBHOOK_SECRET: z.string().min(1).optional(),
@@ -221,6 +222,7 @@ export const env = envSchema.parse({
   UPSTASH_REDIS_REST_URL: process.env.UPSTASH_REDIS_REST_URL,
   UPSTASH_REDIS_REST_TOKEN: process.env.UPSTASH_REDIS_REST_TOKEN,
   COURSES_ENABLED: process.env.COURSES_ENABLED || undefined,
+  COURSE_PUBLIC_LAUNCH_ENABLED: process.env.COURSE_PUBLIC_LAUNCH_ENABLED || undefined,
   COURSE_LIVE_PAYMENTS_ENABLED: process.env.COURSE_LIVE_PAYMENTS_ENABLED || undefined,
   COURSE_STRIPE_TAX_ENABLED: process.env.COURSE_STRIPE_TAX_ENABLED || undefined,
   STRIPE_CONNECT_WEBHOOK_SECRET: process.env.STRIPE_CONNECT_WEBHOOK_SECRET || undefined,
@@ -267,6 +269,23 @@ export type RuntimeReadinessCheck = {
   ok: boolean
   required: boolean
   message?: string
+}
+
+export function getCourseReadinessChecks(config = env): RuntimeReadinessCheck[] {
+  const required = config.COURSES_ENABLED
+  const live = config.COURSE_LIVE_PAYMENTS_ENABLED
+  const keys = [
+    'STRIPE_SECRET_KEY', 'STRIPE_CONNECT_CLIENT_ID', 'STRIPE_CONNECT_WEBHOOK_SECRET', 'STRIPE_CONNECT_ACCOUNT_WEBHOOK_SECRET',
+    'BUNNY_STREAM_LIBRARY_ID', 'BUNNY_STREAM_API_KEY', 'BUNNY_STREAM_READ_ONLY_KEY', 'BUNNY_STREAM_TOKEN_KEY', 'BUNNY_STREAM_CDN_TOKEN_KEY',
+    'R2_ACCOUNT_ID', 'R2_ACCESS_KEY_ID', 'R2_SECRET_ACCESS_KEY', 'COURSE_R2_BUCKET_NAME', 'CRON_SECRET',
+  ] as const
+  return [
+    ...keys.map(key => ({ key, ok: Boolean(config[key]), required, message: 'Required for course hosting' })),
+    { key: 'COURSE_BUCKET_ISOLATION', ok: Boolean(config.COURSE_R2_BUCKET_NAME && config.COURSE_R2_BUCKET_NAME !== config.R2_BUCKET_NAME), required, message: 'Private course resources must use a separate bucket from public app photos' },
+    { key: 'COURSE_LAUNCH_GATE', ok: !(config.COURSE_PUBLIC_LAUNCH_ENABLED || live) || required, required: true, message: 'Course launch and live payments require COURSES_ENABLED' },
+    { key: 'COURSE_STRIPE_LIVE_KEY', ok: Boolean(config.STRIPE_SECRET_KEY?.startsWith('sk_live_') || config.STRIPE_SECRET_KEY?.startsWith('rk_live_')), required: live, message: 'Live course payments require a live Stripe key' },
+    { key: 'COURSE_EMAIL', ok: Boolean(config.RESEND_API_KEY && config.PAYMENTS_EMAIL_FROM), required: live, message: 'Live sales require transactional email; verify the sender domain with Resend' },
+  ]
 }
 
 export function getRuntimeReadiness() {
@@ -361,6 +380,7 @@ export function getRuntimeReadiness() {
     },
   ]
 
+  checks.push(...getCourseReadinessChecks())
   return {
     ok: checks.every((check) => check.ok || !check.required),
     checks,

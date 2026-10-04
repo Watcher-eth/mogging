@@ -1,48 +1,65 @@
-# Course Checkout integration
+# Course Stripe integration
 
-The existing course checkout in [lib/courses/commerce.ts](lib/courses/commerce.ts) uses hosted Stripe Checkout on the creator's connected account. This configuration applies to courses; existing analysis/mobile checkout settings are separate.
+The Stripe-generated Accounts v2 blueprint is adapted to Mogging's free-hosting, no-commission model. The example Cookie product, €1.23 application fee, €10/month creator subscription, customer tax capability and simulated identity/terms values are intentionally omitted. Real paid course products/prices are created automatically on each creator's connected account when a course is approved.
 
-## Local setup status — October 2, 2026
+## Implemented
 
-The ignored `.env.local` contains sandbox credentials. The normal app keeps courses disabled and its original database. `bun run dev:courses` starts an isolated course server at `http://127.0.0.1:3003`; live course payments stay disabled. The current CLI listener forwards connected-account snapshot events to `127.0.0.1:3003/api/payments/stripe-connect-webhook` and its signing secret is saved only in the ignored environment file.
+- Merchant-only Accounts v2 creation and Stripe-hosted account links, with stable account IDs and idempotent creation.
+- Existing accounts resume onboarding with their actual applied configurations. Stripe requires an exact match, including legacy recipient configurations; new course accounts remain merchant-only.
+- Full Stripe dashboard access; Stripe collects processing fees and payment losses.
+- Real merchant card-payment and payout capability checks, outstanding requirements, and live/test account isolation.
+- Existing-account OAuth uses v1 authentication, then refreshes the same account ID through v2.
+- One-time hosted Checkout direct charges, immutable local orders, verified provider reconciliation, enrollment, refunds/disputes and receipt outbox. No platform application fee or creator subscription is charged.
+- Signed, deduplicated snapshot purchase events and separate thin account events. Main-app scan payments retain their existing webhook and SDK version.
+- Course API requests explicitly use `2026-08-26.dahlia`. No dependency upgrade or database migration is needed for Accounts v2; existing account identifiers are retained.
+- The creator can continue onboarding until both payments and payouts are enabled.
 
-The real course UI now uses authenticated backend APIs. Database-backed editor saves, Bunny uploads/protected playback, admin publication, free enrollment, private lesson access, library membership, and automatic completion were verified. Backend integration tests pass with mocked payments/refunds/webhooks. A new sandbox connected account was created, but charges/payouts remain disabled until hosted onboarding is completed. A real paid purchase/refund is still required.
+## Required webhook destinations
 
-Remaining: rotate the secret key pasted into chat; confirm the platform business country (Stripe returns `DE`, whereas the original plan assumed US); complete seller onboarding, private R2 configuration, email delivery, Bunny CDN protection, and staging purchase/refund verification. See [provider setup](docs/courses-provider-setup.md). The CLI listener must remain running for local delivery; after restarting it, use its new signing secret and restart the isolated course server.
+| Purpose | Events from / format | Endpoint | Environment secret |
+| --- | --- | --- | --- |
+| Course purchases/refunds | Connected accounts / snapshot, version `2026-08-26.dahlia` | `/api/payments/stripe-connect-webhook` | `STRIPE_CONNECT_WEBHOOK_SECRET` |
+| Creator account readiness | Your account / thin | `/api/payments/stripe-connect-account-webhook` | `STRIPE_CONNECT_ACCOUNT_WEBHOOK_SECRET` |
 
-## Values to replace
+Use the exact event lists in [backend setup](docs/courses-backend.md#stripe). The live URL prefix is `https://mogging.com`, assuming that is the deployment's canonical origin. Thin account events belong to **Your account**, even though the resource represents a creator connected to Mogging.
 
-There are no placeholder mode, return URLs, or Price IDs in the course Checkout call. One-time payment mode is already set. Return URLs use the configured site origin; Price IDs come from the creator-account Products/Prices created when a paid course is approved. Do not manually create one platform Price per course.
+For local account notifications, use:
 
-## Configured parameters
+```sh
+stripe listen --events-from @self --all-thin --forward-to http://127.0.0.1:3003/api/payments/stripe-connect-account-webhook
+```
 
-| Parameter | Value |
-| --- | --- |
-| `mode` | `payment` |
-| `ui_mode` | `hosted_page` (installed Stripe SDK: 22.1.0) |
-| `billing_address_collection` | `auto` |
-| `phone_number_collection.enabled` | `false` |
-| `allow_promotion_codes` | `false` |
-| `submit_type` | `auto` |
-| `integration_identifier` | `hosted_web_0001` |
-| `origin_context` | `web` |
-| `automatic_tax.enabled` | Order snapshot of `COURSE_STRIPE_TAX_ENABLED`, default `false` |
+Save that listener's signing secret only in `.env.local` as `STRIPE_CONNECT_ACCOUNT_WEBHOOK_SECRET`. Keep the connected-account snapshot listener running separately. The sandbox thin-event listener was started and configured during verification; signing secrets were never printed in chat.
 
-`payment_method_collection` is omitted for one-time payments. The existing tax toggle is preserved so explicitly enabled tax collection is not silently disabled. Order metadata, buyer reference, expiry, creator account routing, and idempotency are retained for payment reconciliation and course access. The client continues to use the installed SDK's default API version.
+## Verified — October 2, 2026
 
-## Setup and next steps
+- Production build and targeted ESLint pass. The authenticated creator pricing page refreshes real Accounts v2 requirements and keeps onboarding available while payments or payouts are disabled.
+- Full disposable-database course regressions with mocked payment/refund providers, plus Accounts v2 onboarding, capabilities, requirements, environment checks, account closure, thin-event signatures/deduplication and OAuth replay/country checks.
+- Real sandbox merchant creation, hosted account links and capability refresh of the existing local creator without changing its account ID.
+- Brave browser verification found and fixed legacy-account link configuration matching. The existing test creator now reaches Stripe's hosted signup form; password creation remains a user handoff before identity/terms and paid checkout verification.
+- Real thin-event delivery through Stripe CLI to the local endpoint returned HTTP 200. Real snapshot delivery was verified earlier.
+- R2 uploads/private downloads and Bunny protected playback/thumbnails were verified separately; see [course verification](docs/courses-ui-preview.md).
 
-1. Rotate the test secret key pasted into chat at [Stripe API keys](https://dashboard.stripe.com/test/apikeys). Save its replacement as `STRIPE_SECRET_KEY` in `.env.local` and the matching deployment environment. Never add secrets to source code or public environment variables.
-2. Configure Connect separately from Checkout. Enable existing-account OAuth at [test OAuth settings](https://dashboard.stripe.com/test/settings/connect/onboarding-options/oauth), and set `STRIPE_CONNECT_CLIENT_ID`. Register the exact callback `${NEXTAUTH_URL}/api/creator/courses/connect/callback` for the environment. New accounts use the existing hosted onboarding flow.
-3. Create a webhook destination for **connected accounts** at `${NEXTAUTH_URL}/api/payments/stripe-connect-webhook` and set `STRIPE_CONNECT_WEBHOOK_SECRET`. Use the installed SDK's API version and the event list in [the backend setup guide](docs/courses-backend.md#stripe). Existing scan payments use their separate webhook secret and endpoint.
-4. Set `NEXTAUTH_URL` to the application's origin. Enable `COURSES_ENABLED` only in the intended test environment; keep `COURSE_LIVE_PAYMENTS_ENABLED=false`. Use `COURSE_STRIPE_TAX_ENABLED=false` to match this Checkout Studio configuration.
-5. The course UI is connected to server APIs. Verify checkout/order/enrollment behavior with a fully onboarded sandbox seller before exposing course routes in production.
-6. In staging, onboard a test creator, approve a paid test course, and purchase it using Stripe test card `4242 4242 4242 4242`, any future expiry, and any three-digit CVC. Use test mode only. Verify return URLs, repeated requests, webhook delivery, paid access, delayed/failed payments, and refunds. Returning from Checkout alone must never grant access; verified provider state does that.
+## Verified — October 3, 2026
 
-The flow is buyer request → immutable local order → creator-account Checkout → signed Connect webhook/provider reconciliation → enrollment and purchase-email outbox. No application fee or transfer is created. No new payment route or dependency was needed; this change adds only this checklist and updates the existing course Checkout parameters.
+- Created a separate synthetic sandbox merchant, using Stripe's documented successful test identity values. The user completed Stripe-hosted account setup with test bank details. Accounts v2 reports both card payments and payouts active, with no outstanding requirements. The original creator/account was preserved.
+- Published an unlisted €10 course on a separate local fixture creator through normal creator submission and administrator review. Stripe Product/Price and hosted Checkout were created on that seller's account. Retrying checkout reused its pending order/session.
+- Completed the actual hosted Checkout in Brave with Stripe's test card. Genuine Stripe CLI snapshot delivery marked the local order paid and granted the private lesson. Provider data confirms no application fee or transfer; creator reporting showed €10 sales and one active student.
+- Refunded €3 through the authenticated creator API: access remained. Refunded the remaining €7: access was revoked and reporting showed €10 refunds and zero active students. Retrying both request keys returned the same two refunds. Genuine partial/full refund webhook delivery was separately confirmed.
+- Replayed the real paid event after payment and after full refund: duplicate processing was acknowledged without duplicate enrollment/receipt records or restoration of revoked access. The receipt remains queued because Resend is deferred.
+- Verified the cancel return URL grants no access, and an actually expired Stripe Checkout becomes expired locally while private access stays denied.
+- Completed real declined-card and 3D Secure challenge/success Checkouts. Declines and pending authentication did not grant paid access; authenticated success did. Genuine payment-failed and paid events were processed.
+- Triggered actual sandbox disputes with Stripe's documented dispute test card and submitted synthetic winning/losing evidence. Open disputes denied private access; a won dispute restored it with the original expiry; a lost dispute kept it denied. Genuine closed-dispute events were recorded as processed.
+- The authenticated HTTP suite passed against the isolated app, including cookie identity, separate administrator unlock, version conflicts, cross-site write protection, publication/private projections, pagination and maintenance with email deferred.
+- These checks used the isolated local course database and sandbox credentials. No live purchase, production deployment, or real-money payout was performed.
 
-## Validation
+## Still required before live selling
 
-Course typecheck, targeted unit tests, and full local backend integration tests pass. Real provider/browser checks are documented in [course verification](docs/courses-ui-preview.md). Paid provider responses in the integration tests were mocked; successful free enrollment does not establish paid checkout or refund readiness.
+1. Verify the deployed integration with live settings and a reviewed creator pilot. The local sandbox purchase, cancellation/expiry, partial/full refund, decline, 3DS, won/lost dispute, webhook delivery, reporting and access checks passed. The original local creator still has separate onboarding requirements; its state does not block these fixture checks.
+2. The existing Stripe account is a German personal account. A new US business account is intended; confirm legal-entity eligibility, create/activate the account and configure Connect. The shared main-app/course Stripe key must be separated or migrated deliberately before changing production credentials, preserving existing payments and refunds. The local sandbox remains German.
+3. Put the correct live platform `STRIPE_SECRET_KEY`, live OAuth `STRIPE_CONNECT_CLIENT_ID`, and both live destination secrets into the deployment's encrypted environment settings. Register `${NEXTAUTH_URL}/api/creator/courses/connect/callback`. Keep sandbox keys local; rotate the previously pasted sandbox secret. Each environment needs its own correct configuration.
+4. Use production creator profiles/accounts and publish actual course prices; do not import sandbox account, product, price or order IDs into production.
+5. Follow [production release steps](docs/courses-release.md): apply both course migrations, configure production media and HTTPS destinations, and verify tax settings. Production pages now require the explicit `COURSE_PUBLIC_LAUNCH_ENABLED` gate, which defaults to false. Keep `COURSE_LIVE_PAYMENTS_ENABLED=false` until the release checks pass. The read-only `bun run check:courses-release --live` command checks configuration, migration hashes and provider readiness without enabling sales.
+6. Finish deferred Resend configuration and receipt/verification delivery testing. Then enable live purchases for the initial creator pilot.
 
-References: [Checkout API](https://docs.stripe.com/api/checkout/sessions/create), [Connect OAuth](https://docs.stripe.com/connect/oauth-standard-accounts), [Stripe testing](https://docs.stripe.com/testing), [Stripe support](https://support.stripe.com).
+References: [Accounts v2](https://docs.stripe.com/connect/accounts-v2), [existing-account compatibility and event routing](https://docs.stripe.com/connect/accounts-v2/migrate-integration), [event formats](https://docs.stripe.com/event-destinations), [Connect testing](https://docs.stripe.com/connect/testing).

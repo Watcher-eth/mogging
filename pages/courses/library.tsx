@@ -5,7 +5,7 @@ import { useSession } from 'next-auth/react'
 import useSWR from 'swr'
 import { CourseLayout, CourseTile, EmptyCourse } from '@/components/courses/course-ui'
 import { CourseSignIn } from '@/components/courses/course-sign-in'
-import { coursePreviewProps } from '@/lib/courses/preview'
+import { coursePageProps } from '@/lib/courses/pages'
 import { courseRequest } from '@/lib/courses/client'
 import { courseView } from '@/lib/courses/view'
 import type { PublicCourseContent } from '@/lib/courses/validation'
@@ -41,4 +41,4 @@ export default function CourseLibraryPage() {
     </>}
   </CourseLayout>
 }
-export const getServerSideProps = coursePreviewProps
+export const getServerSideProps = coursePageProps

@@ -1,5 +1,5 @@
 import { CourseSignIn } from '@/components/courses/course-sign-in'
-import { coursePreviewProps } from '@/lib/courses/preview'
+import { coursePageProps } from '@/lib/courses/pages'
 import { useEffect, useRef, useState } from 'react'
 import useSWR from 'swr'
 import { useSession } from 'next-auth/react'
@@ -797,4 +797,4 @@ export default function CourseBuilderPage() {
   if (!record.data || !seller.data) return <CourseLayout studio><div className="c-loading">Opening your studio…</div></CourseLayout>
   return <CourseBuilder key={record.data.id} record={record.data} seller={seller.data} sellerChanged={() => void seller.mutate()} />
 }
-export const getServerSideProps = coursePreviewProps
+export const getServerSideProps = coursePageProps

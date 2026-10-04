@@ -276,7 +276,7 @@ export async function getStoredMobileCreatorAttribution(input: { mobileInstallId
     where: eq(schema.mobileCreatorAttributions.mobileInstallId, input.mobileInstallId),
     orderBy: [desc(schema.mobileCreatorAttributions.updatedAt)],
   })
-  if (!touch) return null
+  if (!touch || (touch.userId && input.userId && touch.userId !== input.userId)) return null
   return {
     token: '',
     clickId: touch.clickId,

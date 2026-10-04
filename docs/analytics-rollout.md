@@ -146,3 +146,33 @@ Live verification after activation: `www.mogging.com` serves AASA with `/r/*` (2
 - Read-only dashboard queries succeeded against production for 7/30/90-day ranges. End-to-end timings from the development machine were approximately 1,850/876/896 ms, including network/transaction overhead; these are not database-only timings or mobile performance measurements. The existing one-minute dashboard cache remains enabled.
 - PostHog, Apple campaign provider token, and deferred-link template were absent from the production environment inventory. The first-party dashboard does not require PostHog. New mobile metrics depend on shipping the instrumented mobile build; historical billing and onboarding data were not backfilled.
 - Rollback target, if needed: `https://mogging-knwkxfr6q-glimpseback.vercel.app` (`dpl_HsfkhsaHFTDsdPo3ZYnXS7o97vKQ`). The additive schema can remain in place when rolling back application code.
+
+
+## Per-screen mobile onboarding (tracking revision 2)
+
+The Onboarding tab now includes screens in their display order: introduction, Protocol preview,
+each personalization question (including optional methods), the plan bridge, hold-to-commit,
+before/after, sign-in, location, photo/camera, scan preview, paywall plans/account, and evaluation processing.
+A single focus-aware hook owns logical screen views/exits, replacing duplicate navigation-level views.
+Permission refusals and safe failure/cancellation codes inherit the current logical step for the friction table.
+No selected answers, face images, scores, or other demographics are added to analytics.
+
+Views are deduplicated by device + flow + step. Continued means a later screen view or completed
+evaluation after that view, within seven days. Forward progression can skip optional screens;
+backward navigation alone is not continuation. Recent non-continuers are pending, not confirmed losses.
+Drop-off = mature non-continuers / mature views, where mature means at least seven days observed.
+All events must be in the selected window. Median duration uses recorded exits and foreground time;
+force-quit may omit an exit. This shows where users stall and possible blockers, not causal reasons.
+
+The new table uses `onboarding_version=2` only so incomplete older instrumentation cannot create
+false losses. Existing totals remain visible below. Deploy the backend contract/dashboard before
+shipping the mobile build; old events cannot be reconstructed into this screen-level history.
+No database migration or new analytics SDK is required. The mobile queue still caps at 500 events,
+sends 50 at a time, persists with the existing one-second debounce, and schedules background delivery.
+Enqueue does no synchronous disk/network work and views are never emitted per frame/render.
+
+Checks: mobile `bun run scripts/tests/onboarding-analytics.ts`, queue tests, both typechecks,
+and `scripts/tests/admin-analytics.ts` against the disposable localhost `analytics_test` database.
+The SQL fixtures cover optional paths, duplicates, ordering, seven-day boundaries, cross-flow isolation,
+resumed forward navigation, maturation, friction, completion, legacy exclusion, and 20k onboarding views.
+The desktop enqueue benchmark is synthetic; physical-device frame/startup performance is not measured.

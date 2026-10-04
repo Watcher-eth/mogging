@@ -9,7 +9,7 @@ import { toast } from 'sonner'
 import { Plus, ChevronRight } from 'lucide-react'
 import { CourseLayout, EmptyCourse } from '@/components/courses/course-ui'
 import { StripeConnection } from '@/components/courses/stripe-connection'
-import { coursePreviewProps } from '@/lib/courses/preview'
+import { coursePageProps } from '@/lib/courses/pages'
 import { courseRequest, CourseRequestError, newCourseContent, type CourseRecord, type CourseSeller } from '@/lib/courses/client'
 import { sellerSchema, lessonsOf } from '@/lib/courses/validation'
 
@@ -119,4 +119,4 @@ export default function CreatorCoursesPage() {
       </>}
   </div></CourseLayout>
 }
-export const getServerSideProps = coursePreviewProps
+export const getServerSideProps = coursePageProps

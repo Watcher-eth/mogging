@@ -55,7 +55,7 @@ export function defaultCreatorSprintTerms(): SprintTerms {
     maximumTier1Percent: 40,
     submissionWindowHours: 3 * 24,
     platforms: ['tiktok', 'instagram'],
-    rules: ['Include your Mogging referral code in your bio and caption.'],
+    rules: ['Videos and slideshows are both welcome. Choose what historically works best for your audience; keep the whole post clearly looksmaxxing or ascension focused.', 'Include your Mogging referral code in your bio and caption.'],
     formats: ACTIVE_CREATOR_SUBMISSION_FORMATS.map((format) => ({
       ...format,
       elements: format.elements.map((element) => ({ ...element })),

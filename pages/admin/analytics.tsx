@@ -79,6 +79,15 @@ export default function AnalyticsAdminPage() {
       </div> : null}
       {tab === 'Onboarding' ? <div className="grid gap-6">
         <Funnel title="Paywall conversion" rows={data.paywall} />
+        <Panel title="Onboarding screen drop-off" note="In display order. Each device’s first view of a screen is counted once per flow; continued means reaching any later screen or completing an evaluation within 7 days, so optional questions and location skips do not create false drop-offs. Pending users have not continued yet but still have time. Drop-off uses only views at least 7 days old. This requires the new mobile tracking release; older events remain in Step activity below.">
+          <Table rows={(data.onboardingScreens ?? []).map(row => ({ ...row,
+            continuation: percent(Number(row.continued), Number(row.viewed)),
+            drop_off: percent(Number(row.dropped), Number(row.mature)),
+          }))} columns={['screen','viewed','continued','continuation','pending','mature','dropped','drop_off','median_ms','back_actions']} />
+        </Panel>
+        <Panel title="Onboarding friction" note="Permission refusals, cancelled purchases, and safe error codes tied to the screen where they happened. These are clues to investigate, not proof that an error caused a drop-off. No questionnaire answers, images, or scores are recorded.">
+          <Table rows={data.onboardingFriction ?? []} columns={['screen','event','reason','affected_devices','events']} />
+        </Panel>
         <Panel title="Step activity" note="Unique devices per milestone in this window—not a sequential completion rate. Resumed flows can complete without a view inside the window."><Table rows={data.steps} columns={['step','viewed','completed','skipped','back_actions']} /></Panel>
         <Panel title="Screen exposure" note="Foreground exposure on recorded exits, not active attention. App termination may omit exits. Durations cap at 30 minutes; most-observed 30 screens."><Table rows={data.screens} columns={['screen','exits','median_ms','p90_ms']} /></Panel>
       </div> : null}

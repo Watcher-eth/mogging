@@ -1,4 +1,4 @@
-import { coursePreviewProps } from '@/lib/courses/preview'
+import { coursePageProps, type CoursePageProps } from '@/lib/courses/pages'
 import { useRouter } from 'next/router'
 import Link from 'next/link'
 import Image from 'next/image'
@@ -139,11 +139,11 @@ function CourseTileImage({
   )
 }
 
-export default function CourseDetailPage() {
+export default function CourseDetailPage({ allowSamples }: CoursePageProps) {
   const router = useRouter()
   const key = router.isReady && typeof router.query.creator === 'string' && typeof router.query.slug === 'string' ? `/api/courses/lookup/${encodeURIComponent(router.query.creator)}/${encodeURIComponent(router.query.slug)}` : null
   const record = useSWR<CourseOverview>(key, courseRequest, { shouldRetryOnError: false })
-  const sample = demoCourses.find(item => item.handle === router.query.creator && item.slug === router.query.slug)
+  const sample = allowSamples ? demoCourses.find(item => item.handle === router.query.creator && item.slug === router.query.slug) : undefined
   const course = record.data ? courseView(record.data) : record.error ? sample : undefined
   if (!router.isReady || record.isLoading)
     return (
@@ -165,4 +165,4 @@ export default function CourseDetailPage() {
   return <CourseDetail key={course.id} course={course} sample={!record.data} />
 }
 
-export const getServerSideProps = coursePreviewProps
+export const getServerSideProps = coursePageProps

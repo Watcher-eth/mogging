@@ -5,7 +5,7 @@ import useSWR from 'swr'
 import { toast } from 'sonner'
 import { CourseLayout } from '@/components/courses/course-ui'
 import { BunnyPlayer } from '@/components/courses/bunny-player'
-import { coursePreviewProps } from '@/lib/courses/preview'
+import { coursePageProps } from '@/lib/courses/pages'
 import { courseRequest, type CourseRecord, type CourseSeller } from '@/lib/courses/client'
 import { lessonsOf } from '@/lib/courses/validation'
 const MarkdownContent = dynamic(() => import('@/components/courses/markdown-content'))
@@ -65,4 +65,4 @@ export default function CourseReviews() {
     </>}
   </div></CourseLayout>
 }
-export const getServerSideProps = coursePreviewProps
+export const getServerSideProps = coursePageProps

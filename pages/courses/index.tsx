@@ -1,4 +1,4 @@
-import { coursePreviewProps } from '@/lib/courses/preview'
+import { coursePageProps, type CoursePageProps } from '@/lib/courses/pages'
 import { useEffect, useState } from 'react'
 import Link from 'next/link'
 import { AnimatePresence, motion } from 'motion/react'
@@ -19,7 +19,7 @@ import { courseCategoryIds, courseCategoryLabel } from '@/lib/courses/categories
 
 const categories = ['all', ...courseCategoryIds]
 
-export default function CoursesPage() {
+export default function CoursesPage({ allowSamples }: CoursePageProps) {
   const [featured, setFeatured] = useState(0)
   const [category, setCategory] = useState('all')
   const [query, setQuery] = useState('')
@@ -29,7 +29,7 @@ export default function CoursesPage() {
     return () => clearTimeout(timer)
   }, [query])
   const catalog = useSWR<{ items: CourseOverview[]; hasMore: boolean }>('/api/courses?limit=3', courseRequest)
-  const sample = !catalog.data?.items.length && !catalog.error
+  const sample = allowSamples && catalog.data?.items.length === 0 && !catalog.error
   const browse = useSWRInfinite<{ items: CourseOverview[]; hasMore: boolean }>(
     (index, previous) => {
       if (sample || previous && !previous.hasMore) return null
@@ -39,7 +39,9 @@ export default function CoursesPage() {
       return `/api/courses?${params}`
     }, courseRequest, { revalidateFirstPage: false },
   )
-  const featuredCourses = catalog.data?.items.length ? catalog.data.items.map(courseView) : demoCourses.slice(0, 3)
+  const featuredCourses = catalog.data?.items.map(courseView) || []
+  const highlights = sample ? demoCourses.slice(0, 3) : featuredCourses
+  const activeHighlight = highlights.length ? highlights[featured % highlights.length] : undefined
   const courses = sample ? demoCourses : browse.data?.flatMap(page => page.items.map(courseView)) || []
   const filtered = sample ? courses.filter(course =>
     (category === 'all' || course.content.category === category) &&
@@ -60,20 +62,20 @@ export default function CoursesPage() {
           Learn from people who know their craft.
         </p>
       </div>
-      <div className="c-featured">
+      {activeHighlight && <div className="c-featured">
         <AnimatePresence initial={false} mode="wait">
           <motion.div
-            key={featuredCourses[featured % featuredCourses.length].id}
+            key={activeHighlight.id}
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             transition={{ duration: 0.18 }}
           >
-            <CourseHero course={featuredCourses[featured % featuredCourses.length]} />
+            <CourseHero course={activeHighlight} />
           </motion.div>
         </AnimatePresence>
         <div className="c-carousel-dots" aria-label="Featured courses">
-          {featuredCourses.map((course, index) => (
+          {highlights.map((course, index) => (
             <button
               key={course.id}
               aria-label={`Feature ${course.content.title}`}
@@ -83,7 +85,7 @@ export default function CoursesPage() {
             />
           ))}
         </div>
-      </div>
+      </div>}
       <div className="c-discovery-tools">
         <div className="c-filter-tabs" aria-label="Course categories">
           {categories.map((item) => (
@@ -148,14 +150,15 @@ export default function CoursesPage() {
         </section>
       ) : (
         <>
-          <CourseShelf
-            title="Made for your next chapter."
-            subtitle="Thoughtful courses. Practical changes."
-          >
-            {courses.map((course) => (
-              <CourseTile key={course.id} course={course} />
-            ))}
-          </CourseShelf>
+          {!sample && !browse.data && !browse.error ? (
+            <p className="c-preview-note" role="status">Loading courses…</p>
+          ) : courses.length === 0 && !browse.error ? (
+            <EmptyCourse><h2>No courses available yet.</h2><p>Check back soon.</p></EmptyCourse>
+          ) : (
+            <CourseShelf title="Made for your next chapter." subtitle="Thoughtful courses. Practical changes.">
+              {courses.map(course => <CourseTile key={course.id} course={course} />)}
+            </CourseShelf>
+          )}
           <section className="c-editorial">
             <div>
               <span className="c-eyebrow">
@@ -198,11 +201,9 @@ export default function CoursesPage() {
       )}
       {!sample && browse.data?.at(-1)?.hasMore && <div className="c-preview-note"><button className="c-button c-button-light" disabled={browse.isValidating} onClick={() => void browse.setSize(browse.size + 1)}>{browse.isValidating ? 'Loading…' : 'Load more courses'}</button></div>}
       {(catalog.error || browse.error) && <p className="c-preview-note" role="alert">Courses could not be loaded. <button onClick={() => { void catalog.mutate(); void browse.mutate() }}>Try again</button></p>}
-      <div className="c-preview-note">
-        {sample ? "Sample courses and creators for design preview. Purchases are disabled." : "Development storefront · not publicly launched."}
-      </div>
+      {allowSamples && <div className="c-preview-note">{sample ? "Sample courses and creators for design preview. Purchases are disabled." : "Development storefront · not publicly launched."}</div>}
     </CourseLayout>
   )
 }
 
-export const getServerSideProps = coursePreviewProps
+export const getServerSideProps = coursePageProps

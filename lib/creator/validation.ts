@@ -5,7 +5,7 @@ export function creatorPostPlatform(value: string): 'tiktok' | 'instagram' | nul
   try {
     const url = new URL(value)
     if (url.protocol !== 'https:' || url.username || url.password || url.port) return null
-    if (['www.tiktok.com', 'tiktok.com', 'm.tiktok.com'].includes(url.hostname) && /^\/@[\w.]+\/video\/\d+\/?$/.test(url.pathname)) return 'tiktok'
+    if (['www.tiktok.com', 'tiktok.com', 'm.tiktok.com'].includes(url.hostname) && /^\/@[\w.]+\/(video|photo)\/\d+\/?$/.test(url.pathname)) return 'tiktok'
     if (['vm.tiktok.com', 'vt.tiktok.com'].includes(url.hostname) && /^\/[a-zA-Z0-9]+\/?$/.test(url.pathname)) return 'tiktok'
     if (['www.tiktok.com', 'tiktok.com'].includes(url.hostname) && /^\/t\/[a-zA-Z0-9]+\/?$/.test(url.pathname)) return 'tiktok'
     if (['www.instagram.com', 'instagram.com'].includes(url.hostname) && /^\/(reel|reels|p)\/[a-zA-Z0-9_-]+\/?$/.test(url.pathname)) return 'instagram'
@@ -106,4 +106,3 @@ export type CreatorProfileInput = z.infer<typeof creatorProfileSchema>
 export type CreatorSubmissionInput = z.infer<typeof creatorSubmissionSchema>
 export type CreatorSocialAccountInput = z.infer<typeof creatorSocialAccountSchema>
 export type CreatorAnalyticsEvidenceInput = z.infer<typeof creatorAnalyticsEvidenceSchema>
-

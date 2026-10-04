@@ -19,7 +19,7 @@ Implemented features:
 - Creator student lists, orders, revenue/refund totals by currency, actual processing fees separately by fee currency, and whole-account Stripe available/pending balances.
 - Email verification, a purchase-email outbox, periodic reconciliation, abandoned-upload cleanup and audit records for admin decisions.
 
-The first release uses one-time USD/EUR purchases with 1–3,650 days of access. Subscriptions, installments, coupons, affiliate commissions, automated instructor tax reporting, certificates, quizzes, communities, student exports, video captions/AI features, and custom domains are future scope. There is no frontend yet. Text lesson bodies should be rendered as safe Markdown/plain text; sanitize any HTML renderer.
+The first release uses one-time USD/EUR purchases with 1–3,650 days of access. Subscriptions, installments, coupons, affiliate commissions, automated instructor tax reporting, certificates, quizzes, communities, student exports, video captions/AI features, and custom domains are future scope. The connected frontend renders safe Markdown lesson content. See [production release steps](courses-release.md) for deployment configuration and outstanding checks.
 
 ## Services and credentials
 
@@ -27,7 +27,9 @@ Reuse existing accounts/keys wherever available. Put secrets in local `.env.loca
 
 ### Stripe
 
-Use the existing US Stripe business. Enable Connect, choose **Standard/full-dashboard accounts**, and support the actual countries you will onboard. The API allowlist includes US, Germany, EU countries, UK, Switzerland and Norway; Stripe availability/capabilities still govern onboarding.
+Use the intended Mogging Stripe business account. The existing account is a German personal account; a new US business account is intended, subject to legal-entity eligibility and activation. The local sandbox reports `DE`. The main app and courses currently share one Stripe client/key, so separate course credentials or a reviewed migration is required before switching production to another account. Enable Connect, choose **Platform**, full-dashboard accounts and direct charges. The API allowlist includes US, Germany, EU countries, UK, Switzerland and Norway; Stripe availability/capabilities still govern onboarding.
+
+New creators use Accounts v2 with the `merchant` configuration, Stripe-hosted onboarding, and Stripe collecting processing fees and payment losses. Hosting is free: no application fee, creator subscription, customer billing configuration, simulated KYC or programmatic terms acceptance is created. Readiness comes from the included merchant `card_payments` and `stripe_balance.payouts` capability statuses. Existing connected-account IDs remain valid. Existing-account OAuth continues to authenticate through v1, with subsequent v2 status refreshes. All course resource requests use blueprint API version `2026-08-26.dahlia`; the shared Stripe client's main-app API version remains unchanged.
 
 Required configuration:
 
@@ -36,7 +38,8 @@ Required configuration:
 - Register the exact OAuth redirect URI: `https://mogging.com/api/creator/courses/connect/callback` (and your staging equivalent).
 - Create a **connected-account** webhook endpoint at `https://mogging.com/api/payments/stripe-connect-webhook` and store its secret in `STRIPE_CONNECT_WEBHOOK_SECRET`. This is separate from the existing scan-payment webhook and `STRIPE_WEBHOOK_SECRET`.
 - Subscribe to `account.updated`, `account.application.deauthorized`, `checkout.session.completed`, `checkout.session.async_payment_succeeded`, `checkout.session.async_payment_failed`, `checkout.session.expired`, `payment_intent.succeeded`, `payment_intent.payment_failed`, `charge.refunded`, `charge.updated`, `charge.dispute.created`, `charge.dispute.updated`, `charge.dispute.closed`, `refund.created`, `refund.updated`, and `refund.failed`.
-- Use the installed Stripe SDK's API version (`2026-04-22.dahlia`) for this endpoint. Accounts v1/controller properties are deliberately used rather than a preview Accounts API.
+- Use `2026-08-26.dahlia` for the connected-account snapshot destination, matching the course integration's explicit API version.
+- Create a second destination for **Your account**, **thin events**, at `https://mogging.com/api/payments/stripe-connect-account-webhook`, and store its separate signing secret in `STRIPE_CONNECT_ACCOUNT_WEBHOOK_SECRET`. Select `v2.core.account.created`, `v2.core.account.updated`, `v2.core.account.closed`, `v2.core.account[configuration.merchant].capability_status_updated`, `v2.core.account[configuration.merchant].updated`, `v2.core.account[defaults].updated`, `v2.core.account[identity].updated`, and `v2.core.account[requirements].updated`. Thin events are unversioned; account resource reads use the explicit course API version. This destination refreshes current capabilities and requirements, deduplicates delivery, checks the account and live/test environment, and disables disconnected/closed sellers. It does not fulfill course purchases; those remain on the connected-account snapshot destination.
 - Creators must finish KYC, enable card payments/payouts, and configure their public business/support details. They manage bank accounts and payouts in Stripe's own dashboard.
 - Have a tax adviser establish who is responsible for US sales tax and EU VAT/digital-service taxes, including whether Mogging has marketplace obligations. Creators need appropriate registrations/settings before sales. `COURSE_STRIPE_TAX_ENABLED=true` enables automatic tax in Checkout, billed/configured on each connected account. It does not create tax registrations, remit every tax, or make legal responsibility disappear. Leave live purchases disabled until this has been resolved and staging has passed.
 
@@ -50,6 +53,7 @@ Create one shared Stream library, choose **Volume Network**, and disable expensi
 - `BUNNY_STREAM_API_KEY`: library write API key, server only.
 - `BUNNY_STREAM_READ_ONLY_KEY`: library read-only API key, used to verify webhook HMAC signatures.
 - `BUNNY_STREAM_TOKEN_KEY`: player token authentication key, server only.
+- `BUNNY_STREAM_CDN_TOKEN_KEY`: linked Pull Zone's URL token authentication key, used for protected thumbnails.
 - Configure the library webhook URL as `https://mogging.com/api/courses/bunny-webhook`.
 - Enable player token authentication and the CDN token protection required for paid content. Disable direct play, public original downloads, MP4 fallback downloads, and early/original playback. Restrict allowed embedding origins to Mogging/staging.
 - Verify **both** unsigned iframe access and raw CDN playlist/original URLs are denied. A signed iframe alone is not sufficient proof that a paid video cannot be fetched directly. This remains a live-provider staging check.
@@ -70,7 +74,7 @@ Reuse the existing Cloudflare account/S3 credentials if appropriately scoped, bu
 
 ### Existing application services
 
-- PostgreSQL: reuse `DATABASE_URL`; apply `drizzle/0040_course_platform.sql` through the normal migration process after staging review. No production migration has been run by this task.
+- PostgreSQL: reuse `DATABASE_URL`; apply `0040_course_platform` and `0042_course_watch_progress` through the scoped migration process after staging review. No production migration has been run by this task.
 - Authentication: reuse NextAuth, `NEXTAUTH_SECRET`, `NEXTAUTH_URL` and existing accounts. Purchasing/free enrollment requires a verified deliverable email; the backend can send and consume a one-time verification code. Social-login users with placeholder email addresses can verify a separate course contact email without altering their login identity.
 - Resend: reuse `RESEND_API_KEY`, a verified sending domain and `PAYMENTS_EMAIL_FROM`; optionally `PAYMENTS_EMAIL_REPLY_TO`. No marketing automation is required.
 - Upstash: reuse `UPSTASH_REDIS_REST_URL` and `UPSTASH_REDIS_REST_TOKEN` in production so rate limits work across server instances. The existing in-memory fallback is suitable for local development, not a distributed production limit.
@@ -80,7 +84,9 @@ Reuse the existing Cloudflare account/S3 credentials if appropriately scoped, bu
 ## Feature flags and quotas
 
 - `COURSES_ENABLED=false` by default. Course APIs return 404 until enabled; webhooks are unavailable until configured.
+- `COURSE_PUBLIC_LAUNCH_ENABLED=false` by default. Production course pages remain hidden until this and `COURSES_ENABLED` are true; sample content is development-only.
 - `COURSE_LIVE_PAYMENTS_ENABLED=false` by default. Keep false during sandbox/staging.
+- `STRIPE_CONNECT_ACCOUNT_WEBHOOK_SECRET` is required for the Accounts v2 thin-event destination; it is separate from both the Connect snapshot secret and the main app's scan-payment webhook secret.
 - `COURSE_STRIPE_TAX_ENABLED=false` by default. Set explicitly based on approved tax setup before accepting live payments.
 - `COURSE_VIDEO_QUOTA_SECONDS=72000`: 20 hours per seller, counting reserved/processing uploads.
 - `COURSE_RESOURCE_QUOTA_BYTES=2147483648`: 2 GiB of attachments per seller.
@@ -215,9 +221,9 @@ Rollout:
 3. Upload a real TUS video and private resource. Verify unsigned iframe/CDN/original access and unauthorized resource reads are denied; test token expiry and CORS.
 4. Publish a test course; purchase it, repeat webhooks, interrupt/retry Checkout, test a delayed payment, partial/full refunds and a dispute. Confirm existing scan payments still work on their separate endpoint.
 5. Verify Stripe Tax settings, contractual/refund terms, email deliverability, cron authorization/retries, Redis limits, backups and provider budget alerts.
-6. Build the frontend against these APIs and run the complete real-browser flow. Only then enable live course payments and approved creators.
+6. Follow [production release steps](courses-release.md), verify the connected frontend in staging, and open the production page gate for the reviewed pilot. Enable live course payments only after provider and email checks pass.
 
-Creator handles/course slugs already identify tenants without separate deployments. The frontend can map `mogging.com/<creator>/courses/<course>` or `mogging.com/courses/<creator>/<course>` to the same lookup API. Subdomains can later use wildcard DNS/TLS and host rewrites, with explicit auth/cookie/callback handling; this backend does not provision DNS or claim those URLs already exist. Checkout returns target `/courses/library` and `/courses`; onboarding returns target `/creator/courses`, which the frontend phase must implement.
+Creator handles/course slugs identify tenants at `mogging.com/courses/<creator>/<course>`. Subdomains can later use wildcard DNS/TLS and host rewrites, with explicit auth/cookie/callback handling; this backend does not provision DNS. Checkout returns target `/courses/library` and `/courses`; onboarding returns target `/creator/courses`. These pages are implemented behind the production launch gate.
 
 Provider references: [Stripe controller properties](https://docs.stripe.com/connect/migrate-to-controller-properties), [Standard account OAuth](https://docs.stripe.com/connect/oauth-standard-accounts), [Bunny TUS uploads](https://bunny.net/docs/stream/tus-resumable-uploads), [Bunny player authentication](https://bunny.net/docs/stream/token-authentication), [Bunny signed webhooks](https://bunny.net/docs/stream/webhooks).
 

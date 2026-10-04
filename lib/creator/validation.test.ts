@@ -3,10 +3,10 @@ import { creatorPostUrlSchema, creatorProfileSchema, creatorSocialAccountSchema,
 
 describe('creator input validation', () => {
   test('accepts supported published posts and short TikTok links', () => {
-    for (const url of ['https://www.tiktok.com/@nate/video/123456789', 'https://vm.tiktok.com/Ab123/', 'https://www.tiktok.com/t/Ab123/?share=1', 'https://instagram.com/reel/ABC_123/', 'https://www.instagram.com/p/ABC-123/']) expect(creatorPostUrlSchema.safeParse(url).success).toBe(true)
+    for (const url of ['https://www.tiktok.com/@nate/video/123456789', 'https://www.tiktok.com/@nate/photo/123456789', 'https://vm.tiktok.com/Ab123/', 'https://www.tiktok.com/t/Ab123/?share=1', 'https://instagram.com/reel/ABC_123/', 'https://www.instagram.com/p/ABC-123/']) expect(creatorPostUrlSchema.safeParse(url).success).toBe(true)
   })
   test('rejects malformed, unsafe, unrelated, profile-only and spoofed links', () => {
-    for (const url of ['garbage', 'javascript:alert(1)', 'http://www.tiktok.com/@nate/video/123', 'https://example.com/test', 'https://www.tiktok.com/@nate', 'https://tiktok.com.evil.com/@nate/video/123', 'https://evil@www.tiktok.com/@nate/video/123', 'https://instagram.com/reel/', 'https://www.tiktok.com:444/@nate/video/123']) expect(creatorPostUrlSchema.safeParse(url).success).toBe(false)
+    for (const url of ['garbage', 'javascript:alert(1)', 'http://www.tiktok.com/@nate/video/123', 'https://example.com/test', 'https://www.tiktok.com/@nate', 'https://tiktok.com.evil.com/@nate/video/123', 'https://tiktok.com.evil.com/@nate/photo/123', 'https://www.tiktok.com/@nate/photo/not-a-post', 'https://evil@www.tiktok.com/@nate/video/123', 'https://instagram.com/reel/', 'https://www.tiktok.com:444/@nate/video/123']) expect(creatorPostUrlSchema.safeParse(url).success).toBe(false)
   })
   test('profile links must match platform and normalized username', () => {
     expect(creatorSocialAccountSchema.safeParse({platform:'instagram', handle:' @Nate ', profileUrl:'https://www.instagram.com/nate/'}).success).toBe(true)
@@ -31,6 +31,7 @@ describe('creator input validation', () => {
   test('rejects tampered thresholds, missing confirmation and invalid file metadata', () => {
     const input = {sprintId:'00000000-0000-4000-8000-000000000004', postedAt:new Date(Date.now()-60000).toISOString(), formatId:'general', requirementsConfirmed:true, postUrl:'https://www.tiktok.com/@nate/video/123', analyticsVideoUrl:'/test.mp4', analyticsPhysicalRecordingConfirmed:true, analyticsStorageKey:'test', analyticsContentType:'video/mp4', analyticsSizeBytes:100, viewCountThreshold:40000, usAudiencePercent:40}
     expect(creatorSubmissionSchema.safeParse(input).success).toBe(true)
+    expect(creatorSubmissionSchema.safeParse({...input, postUrl:'https://www.tiktok.com/@nate/photo/123'}).success).toBe(true)
     expect(creatorSubmissionSchema.safeParse({...input, viewCountThreshold:20000}).success).toBe(true)
     for (const patch of [{viewCountThreshold:-1}, {requirementsConfirmed:false}, {analyticsSizeBytes:0}, {analyticsSizeBytes:262144001}, {analyticsPhysicalRecordingConfirmed:false}, {analyticsContentType:'image/png'}, {analyticsContentType:'text/html'}, {usAudiencePercent:101}]) expect(creatorSubmissionSchema.safeParse({...input,...patch}).success).toBe(false)
   })

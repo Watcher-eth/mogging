@@ -46,16 +46,16 @@ const labels = ['Campaign', 'Format', 'Link', 'Analytics', 'Review']
 const titles = [
   'Pick a campaign',
   'Pick a format',
-  'Add your published video',
+  'Add your published video or slideshow',
   'Verify your analytics',
   'Review and submit',
 ]
 const descriptions = [
-  'Choose the campaign this video should earn against.',
+  'Choose the campaign this video or slideshow should earn against.',
   'Read the brief, then choose the structure you followed.',
   'Link the public post and the account you published from.',
   'Upload one continuous recording filmed with a second device.',
-  'Confirm the campaign requirements before sending your video for review.',
+  'Confirm the campaign requirements before sending your post for review.',
 ]
 export function SubmissionDialog({
   open,
@@ -109,7 +109,7 @@ export function SubmissionDialog({
       ? [
           ...format.requirements,
           ...sprint.terms.rules,
-          ...format.notAllowed.map((item) => `My video avoids: ${item}`),
+          ...format.notAllowed.map((item) => `My post avoids: ${item}`),
         ]
       : []
   const accountRequired =
@@ -132,12 +132,12 @@ export function SubmissionDialog({
         creatorPostPlatform(parsed.data) !== platform ||
         !sprint?.terms.platforms.includes(platform)
       )
-        return toast.error('The video link must match an accepted platform')
+        return toast.error('The post link must match an accepted platform')
       const account = data?.socialAccounts.find((item) => item.id === accountId)
       if (accountRequired && !account)
         return toast.error('Choose the publishing account')
       if (account && account.platform !== platform)
-        return toast.error('The account must match the video platform')
+        return toast.error('The account must match the post platform')
       const date = new Date(postedAt).getTime()
       if (
         !sprint ||
@@ -226,7 +226,7 @@ export function SubmissionDialog({
       <DialogContent className="creator-dialog flex max-h-[92dvh] w-[calc(100%-2rem)] max-w-3xl flex-col overflow-hidden p-0">
         <DialogHeader className="shrink-0 border-b border-zinc-100 px-5 py-5 text-left sm:px-7">
           <p className="text-[10px] font-semibold uppercase tracking-widest text-zinc-400">
-            Submit a video · Step {step} of 5
+            Submit a post · Step {step} of 5
           </p>
           <DialogTitle className="pr-7 text-xl">{titles[step - 1]}</DialogTitle>
           <DialogDescription>{descriptions[step - 1]}</DialogDescription>
@@ -660,7 +660,7 @@ export function SubmissionDialog({
                     Uploading {progress}%
                   </>
                 ) : step === 5 ? (
-                  'Submit video'
+                  'Submit post'
                 ) : (
                   'Continue'
                 )}

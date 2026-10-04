@@ -3,7 +3,7 @@ import type Stripe from 'stripe'
 import { z } from 'zod'
 import { db } from '@/lib/db'
 import { ApiError } from '@/lib/api/http'
-import { env } from '@/lib/env'
+import { env, getCourseReadinessChecks } from '@/lib/env'
 import { getStripe } from '@/lib/payments/stripe'
 import { courseOrders, courses, courseSellers, courseEnrollments, courseEmails, courseRefunds } from './schema'
 import { enrollment } from './access'
@@ -13,6 +13,11 @@ import { buyerIdentity } from './identity'
 import { siteUrl } from './http'
 
 export function reference(value: string | { id: string } | null | undefined) { return typeof value === 'string' ? value : value?.id ?? null }
+function assertLivePaymentsReady(livemode: boolean) {
+  if (!livemode) return
+  if (!env.COURSE_LIVE_PAYMENTS_ENABLED) throw new ApiError(503, 'Live course payments are disabled')
+  if (getCourseReadinessChecks().some(check => check.required && !check.ok)) throw new ApiError(503, 'Live course payment setup is incomplete')
+}
 export async function checkout(user: { id: string; email: string; emailVerified: Date | null }, courseId: string) {
   user = await buyerIdentity(user)
   if (await enrollment(user.id, courseId)) throw new ApiError(409, 'You already have access to this course')
@@ -28,7 +33,7 @@ export async function checkout(user: { id: string; email: string; emailVerified:
   if (!seller.stripeAccountId || !course.stripePriceId) throw new ApiError(409, 'Seller has not completed payment setup')
   if (!seller.stripeSyncedAt || Date.now() - seller.stripeSyncedAt.getTime() > 60_000) seller = await syncSeller(seller)
   if (!seller.stripeConnected || !seller.chargesEnabled || !seller.payoutsEnabled) throw new ApiError(409, 'Seller payments are unavailable')
-  if (seller.stripeLivemode && !env.COURSE_LIVE_PAYMENTS_ENABLED) throw new ApiError(503, 'Live course payments have not been enabled')
+  assertLivePaymentsReady(seller.stripeLivemode === true)
   const snapshot = course.published, accountId = seller.stripeAccountId!
   const order = await db.transaction(async tx => {
     await tx.execute(sql`select pg_advisory_xact_lock(hashtextextended(${`course-checkout:${user.id}:${courseId}`}, 0))`)
@@ -45,7 +50,7 @@ export async function checkout(user: { id: string; email: string; emailVerified:
   return ensureCheckout(order)
 }
 export async function ensureCheckout(order: typeof courseOrders.$inferSelect) {
-  if (order.livemode && !env.COURSE_LIVE_PAYMENTS_ENABLED) throw new ApiError(503, 'Live course payments are disabled')
+  assertLivePaymentsReady(order.livemode)
   const metadata = { moggingCourseOrderId: order.id }
   try {
     const session = await getStripe().checkout.sessions.create({

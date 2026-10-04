@@ -1,5 +1,8 @@
 import type { NextApiRequest, NextApiResponse } from 'next'
 import { z } from 'zod'
+import { sql } from 'drizzle-orm'
+import { db } from '@/lib/db'
+import { CREATOR_MONTHLY_COUPON, getCreatorStripeCustomer, isCreatorDiscountEligible } from '@/lib/payments/creator-discount'
 import { ApiError, handleApiError, json, methodNotAllowed, parseBody } from '@/lib/api/http'
 import { getRequestUserId } from '@/lib/auth/mobile-session'
 import { recordServerEvent } from '@/lib/analytics/events'
@@ -43,38 +46,65 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       anonymousActorId: null,
     })
     const attributionMetadata = stripeAttributionMetadata(attribution)
-    const checkout = await getStripe().checkout.sessions.create({
-      mode: product.mode,
-      payment_method_types: ['card'],
-      allow_promotion_codes: true,
-      client_reference_id: accountId,
-      line_items: [getCheckoutLineItem(input.product)],
-      metadata: {
-        product: input.product,
-        mobileInstallId: input.mobileInstallId,
-        source,
-        activationCode,
-        accountId,
-        userId: accountId,
-        ...attributionMetadata,
-      },
-      ...(product.mode === 'subscription'
-        ? {
-            subscription_data: {
-              metadata: {
-                product: input.product,
-                mobileInstallId: input.mobileInstallId,
-                source,
-                activationCode,
-                accountId,
-                userId: accountId,
-                ...attributionMetadata,
-              },
-            },
+    const checkout = await db.transaction(async (tx) => {
+      // Serialize this account's eligibility check and session creation, including retries.
+      await tx.execute(sql`select pg_advisory_xact_lock(hashtextextended(${`creator-discount:${accountId}`}, 0))`)
+      const customer = product.mode === 'subscription' ? await getCreatorStripeCustomer(accountId) : undefined
+      let discounted = false
+      if (input.product === 'mobile_subscription_monthly' && attribution) {
+        discounted = await isCreatorDiscountEligible(accountId, attribution)
+        if (discounted) {
+          const subscriptions = await getStripe().subscriptions.list({ customer: customer!, status: 'all', limit: 1 })
+          discounted = subscriptions.data.length === 0
+          if (discounted) {
+            const sessions = await getStripe().checkout.sessions.list({ customer: customer!, status: 'open', limit: 100 })
+            const pending = sessions.data.filter(session => session.metadata?.creatorDiscount === CREATOR_MONTHLY_COUPON && session.url)
+            for (const session of pending) {
+              if (session.metadata?.creatorClickId === attribution.clickId && session.metadata?.mobileInstallId === input.mobileInstallId) return session
+              // A changed creator or installation must not inherit the previous checkout's credit.
+              await getStripe().checkout.sessions.expire(session.id)
+            }
+            const coupon = await getStripe().coupons.retrieve(CREATOR_MONTHLY_COUPON)
+            if (!coupon.valid || coupon.percent_off !== 10 || coupon.duration !== 'once') throw new ApiError(503, 'Creator discount is temporarily unavailable')
           }
-        : null),
-      success_url: `${origin}/app/handoff?session_id={CHECKOUT_SESSION_ID}`,
-      cancel_url: `${origin}/?checkout=cancelled&product=${input.product}`,
+        }
+      }
+      return getStripe().checkout.sessions.create({
+        mode: product.mode,
+        payment_method_types: ['card'],
+        ...(discounted ? { discounts: [{ coupon: CREATOR_MONTHLY_COUPON }] } : { allow_promotion_codes: true }),
+        ...(customer ? { customer } : {}),
+        client_reference_id: accountId,
+        line_items: [getCheckoutLineItem(input.product)],
+        metadata: {
+          product: input.product,
+          mobileInstallId: input.mobileInstallId,
+          source,
+          activationCode,
+          accountId,
+          userId: accountId,
+          ...attributionMetadata,
+          ...(discounted ? { creatorDiscount: CREATOR_MONTHLY_COUPON } : {}),
+        },
+        ...(product.mode === 'subscription'
+          ? {
+              subscription_data: {
+                metadata: {
+                  product: input.product,
+                  mobileInstallId: input.mobileInstallId,
+                  source,
+                  activationCode,
+                  accountId,
+                  userId: accountId,
+                  ...attributionMetadata,
+                  ...(discounted ? { creatorDiscount: CREATOR_MONTHLY_COUPON } : {}),
+                },
+              },
+            }
+          : null),
+        success_url: `${origin}/app/handoff?session_id={CHECKOUT_SESSION_ID}`,
+        cancel_url: `${origin}/?checkout=cancelled&product=${input.product}`,
+      })
     })
 
     if (!checkout.url) {

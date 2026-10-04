@@ -5,7 +5,7 @@ export const analyticsEventNames = [
   'account_auth_started', 'account_authenticated', 'account_auth_failed', 'identity_linked',
   'attribution_link_received', 'attribution_resolved', 'attribution_diagnostic',
   'onboarding_started', 'onboarding_step_viewed', 'onboarding_step_completed', 'onboarding_step_back',
-  'onboarding_step_skipped', 'onboarding_completed', 'permission_prompted', 'permission_result',
+  'onboarding_step_exited', 'onboarding_step_skipped', 'onboarding_completed', 'permission_prompted', 'permission_result',
   'photo_source_selected', 'photo_selected', 'photo_validation_failed', 'consent_result',
   'paywall_viewed', 'paywall_dismissed', 'paywall_products_loaded', 'plan_selected',
   'checkout_started', 'checkout_completed', 'handoff_created', 'handoff_opened', 'handoff_consumed',
@@ -23,7 +23,7 @@ export type AnalyticsProperties = Record<string, string | number | boolean | nul
 // Allowlist protects both ingestion and transport. No URLs, tokens, free-form errors, images,
 // demographics, coordinates, user input, or report scores leave the product.
 const propertyKeys = new Set([
-  'screen', 'previous_screen', 'step', 'step_index', 'step_count', 'flow_id', 'attempt_id',
+  'screen', 'previous_screen', 'step', 'step_index', 'step_count', 'onboarding_version', 'flow_id', 'attempt_id',
   'duration_ms', 'surface', 'plan', 'product', 'productId', 'product_id', 'offering',
   'paywall_id', 'paywall_version', 'default_plan', 'product_count', 'products_loaded',
   'channel', 'provider', 'status', 'reason_code', 'error_code', 'active', 'launch', 'launchState',

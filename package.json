@@ -25,7 +25,9 @@
     "dev:courses": "bun run scripts/setup/course-server.ts",
     "setup:courses-dev": "bun run scripts/setup/courses-dev.ts",
     "test:courses-http": "bun run scripts/tests/courses-http.ts",
-    "test:courses-r2": "bun run scripts/tests/courses-r2.ts"
+    "test:courses-r2": "bun run scripts/tests/courses-r2.ts",
+    "test:courses-stripe": "bun run scripts/tests/courses-stripe.ts",
+    "check:courses-release": "bun run scripts/setup/check-courses-release.ts"
   },
   "dependencies": {
     "@auth/drizzle-adapter": "^1.11.1",

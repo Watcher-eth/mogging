@@ -1,4 +1,9 @@
 import Link from 'next/link'
+import Head from 'next/head'
+import type { GetServerSideProps } from 'next'
+import { getCampaignPreview } from '@/lib/creator/sprint-service'
+import { campaignTimeLabel, type CampaignPreview } from '@/lib/creator/campaign-preview'
+import { siteUrl } from '@/lib/seo'
 import { campaignRegionRates } from '@/lib/creator/sprint-defaults'
 import { useRouter } from 'next/router'
 import { useState } from 'react'
@@ -24,11 +29,44 @@ import {
   type CreatorSprint,
   type SprintProof,
 } from '@/lib/creator/sprints'
-export default function SprintsPage() {
+type Props = { campaign: CampaignPreview | null; timeLabel: string | null }
+
+export const getServerSideProps: GetServerSideProps<Props> = async ({ query, res }) => {
+  res.setHeader('Cache-Control', 'private, no-store')
+  const campaign = typeof query.id === 'string' ? await getCampaignPreview(query.id) : null
+  if (query.id && !campaign) return { notFound: true }
+  return { props: { campaign, timeLabel: campaign ? campaignTimeLabel(campaign) : null } }
+}
+
+export default function SprintsPage({ campaign, timeLabel }: Props) {
+  const url = campaign ? `${siteUrl}/creator/sprints?id=${encodeURIComponent(campaign.id)}` : `${siteUrl}/creator/sprints`
+  const title = campaign ? `${campaign.name} | Mogging Creators` : 'Campaigns | Mogging Creators'
+  const description = campaign ? `${sprintMoney(campaign.budgetCents)} campaign budget · ${timeLabel}. ${campaign.description}` : 'Explore Mogging creator campaigns, budgets, and briefs.'
+  const imageUrl = campaign ? `${siteUrl}/api/og/campaign?id=${encodeURIComponent(campaign.id)}` : null
   return (
-    <CreatorShell>
-      <SprintsContent />
-    </CreatorShell>
+    <>
+      <Head>
+        <title key="title">{title}</title>
+        <meta key="description" name="description" content={description} />
+        <link key="canonical" rel="canonical" href={url} />
+        <meta key="og:title" property="og:title" content={title} />
+        <meta key="og:description" property="og:description" content={description} />
+        <meta key="og:url" property="og:url" content={url} />
+        <meta key="twitter:title" name="twitter:title" content={title} />
+        <meta key="twitter:description" name="twitter:description" content={description} />
+        {campaign && imageUrl ? <>
+          <meta key="og:image" property="og:image" content={imageUrl} />
+          <meta key="og:image:width" property="og:image:width" content="1200" />
+          <meta key="og:image:height" property="og:image:height" content="630" />
+          <meta key="og:image:alt" property="og:image:alt" content={`${campaign.name} — ${sprintMoney(campaign.budgetCents)} campaign budget, ${timeLabel}`} />
+          <meta key="twitter:card" name="twitter:card" content="summary_large_image" />
+          <meta key="twitter:image" name="twitter:image" content={imageUrl} />
+        </> : null}
+      </Head>
+      <CreatorShell>
+        <SprintsContent />
+      </CreatorShell>
+    </>
   )
 }
 function SprintsContent() {

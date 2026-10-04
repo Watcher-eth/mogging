@@ -38,6 +38,7 @@ export async function fetchRevenueCatSubscriber(appUserId: string, required = fa
     signal: AbortSignal.timeout(15_000),
     cache: 'no-store',
   })
+  if (response.status === 404) return null
   if (!response.ok) {
     if (required) throw new ApiError(503, 'Your purchase could not be verified yet. Please retry.')
     return null
@@ -74,6 +75,7 @@ export function readRevenueCatScanPurchases(subscriber: RevenueCatSubscriber) {
 const subscriptionProducts: Record<string, ScanPlan> = {
   'mogging.pro.weekly': 'weekly',
   'mogging.pro.monthly': 'monthly',
+  'mogging.pro.monthly.creator': 'monthly',
   'mogging.pro.yearly': 'yearly',
 }
 

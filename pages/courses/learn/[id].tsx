@@ -1,4 +1,4 @@
-import { coursePreviewProps } from '@/lib/courses/preview'
+import { coursePageProps } from '@/lib/courses/pages'
 import { useRouter } from 'next/router'
 import Link from 'next/link'
 import { useCallback, useEffect, useRef, useState } from 'react'
@@ -226,4 +226,4 @@ export default function CoursePlayerPage() {
   const course = 'draft' in record.data ? courseView({ ...record.data, content: record.data.draft, seller: { slug: '' } }) : courseView(record.data)
   return <CoursePlayer key={`${id}-${draft}`} course={course} draft={draft} />
 }
-export const getServerSideProps = coursePreviewProps
+export const getServerSideProps = coursePageProps

@@ -18,6 +18,7 @@ process.env.NEXTAUTH_URL = 'http://localhost:3000'
 process.env.STRIPE_SECRET_KEY = 'sk_test_course_mock'
 process.env.STRIPE_CONNECT_WEBHOOK_SECRET = 'whsec_course_mock'
 process.env.STRIPE_CONNECT_ACCOUNT_WEBHOOK_SECRET = 'whsec_course_account_mock'
+process.env.STRIPE_CONNECT_CLIENT_ID = 'ca_course_mock'
 process.env.RESEND_API_KEY = 'course_mock'
 process.env.BUNNY_STREAM_LIBRARY_ID = '123'
 process.env.BUNNY_STREAM_API_KEY = 'course_mock'
@@ -51,12 +52,19 @@ let loseRefundResponse = false
 let database: typeof import('@/lib/db')
 const stripeSdk = new Stripe('sk_test_course_mock')
 const stripeAccounts = new Map<string, any>()
-const accountState = (id: string, country = 'US') => ({ id, object: 'v2.core.account', livemode: false, dashboard: 'full', identity: { country }, defaults: { responsibilities: { fees_collector: 'stripe', losses_collector: 'stripe' } }, configuration: { merchant: { capabilities: { card_payments: { status: 'active' }, stripe_balance: { payouts: { status: 'active' } } } } }, requirements: { entries: [] } })
+const accountState = (id: string, country = 'US') => ({ id, object: 'v2.core.account', applied_configurations: ['merchant'], livemode: false, dashboard: 'full', identity: { country }, defaults: { responsibilities: { fees_collector: 'stripe', losses_collector: 'stripe' } }, configuration: { merchant: { capabilities: { card_payments: { status: 'active' }, stripe_balance: { payouts: { status: 'active' } } } } }, requirements: { entries: [] } })
 stripeAccounts.set('acct_course_seller', accountState('acct_course_seller'))
 let accountCreates = 0, accountReads = 0
+let linkedConfigurations: string[] = []
 const provider = {
   webhooks: stripeSdk.webhooks,
   parseEventNotificationAsync: stripeSdk.parseEventNotificationAsync.bind(stripeSdk),
+  oauth: { token: async (_params: any, options: any) => { assert.equal(options.apiVersion, '2026-08-26.dahlia'); return { stripe_user_id: 'acct_course_oauth', livemode: false } } },
+  accounts: { retrieve: async (id: string, _params: any, options: any) => {
+    assert.equal(options.apiVersion, '2026-08-26.dahlia')
+    const account = stripeAccounts.get(id)
+    return { id, object: 'account', country: account.identity.country, controller: { stripe_dashboard: { type: account.dashboard }, fees: { payer: 'account' }, losses: { payments: 'stripe' } } }
+  } },
   v2: { core: {
     accounts: {
       create: async (input: any, options: any) => {
@@ -79,7 +87,8 @@ const provider = {
     },
     accountLinks: { create: async (input: any, options: any) => {
       assert.equal(options.apiVersion, '2026-08-26.dahlia'); assert.equal(input.use_case.type, 'account_onboarding')
-      assert.deepEqual(input.use_case.account_onboarding.configurations, ['merchant'])
+      linkedConfigurations = input.use_case.account_onboarding.configurations
+      assert.deepEqual(linkedConfigurations, stripeAccounts.get(input.account).applied_configurations)
       assert.equal(input.use_case.account_onboarding.return_url, 'http://localhost:3000/creator/courses?connect=returned')
       return { url: 'https://connect.stripe.com/mock-onboarding', expires_at: new Date(Date.now() + 300_000).toISOString() }
     } },
@@ -370,6 +379,11 @@ assert.equal(accountCreates, 1, 'Renewing an onboarding link must not create ano
 let connectedSeller = await sellers.sellerForUser(outsider)
 assert.equal(connectedSeller.stripeAccountId, 'acct_course_onboarding'); assert.equal(connectedSeller.stripeLivemode, false)
 const account = stripeAccounts.get('acct_course_onboarding')
+assert.deepEqual(linkedConfigurations, ['merchant'])
+account.applied_configurations = ['merchant', 'recipient']
+await sellers.onboarding(outsider, 'outsider@example.com')
+assert.deepEqual(linkedConfigurations, ['merchant', 'recipient'], 'Legacy account links must include the existing recipient configuration')
+assert.equal(accountCreates, 1, 'Legacy onboarding must preserve the connected account')
 account.configuration.merchant.capabilities.stripe_balance.payouts.status = 'restricted'
 account.requirements.entries = [{ awaiting_action_from: 'user', description: 'Payout account' }, { awaiting_action_from: 'stripe', description: 'Verification pending' }]
 connectedSeller = await sellers.syncSeller(connectedSeller)
@@ -416,6 +430,19 @@ const closedSeller = await sellers.sellerForUser(outsider)
 assert.equal(closedSeller.stripeConnected, false); assert.equal(closedSeller.chargesEnabled, false); assert.equal(closedSeller.payoutsEnabled, false)
 assert.equal(closedSeller.id, onboardingSeller.id)
 console.log('PASS: signed thin-event processing, distinct secrets, duplicate/tamper rejection, wrong-mode isolation and account closure')
+
+const oauthUser = crypto.randomUUID()
+await db.insert(schema.users).values({ id: oauthUser, email: 'oauth@example.com', emailVerified: new Date() })
+await sellers.saveSeller(oauthUser, { slug: 'existing-account-check', country: 'US', supportEmail: 'oauth@example.com' })
+stripeAccounts.set('acct_course_oauth', accountState('acct_course_oauth', 'DE'))
+const oauthQuery = async () => ({ state: new URL((await identity.oauthStart(oauthUser)).url).searchParams.get('state'), code: 'test-authorization-code' })
+await assert.rejects(identity.oauthComplete(oauthUser, await oauthQuery()), /selected country/)
+stripeAccounts.set('acct_course_oauth', accountState('acct_course_oauth'))
+const query = await oauthQuery()
+const oauthSeller = await identity.oauthComplete(oauthUser, query)
+assert.equal(oauthSeller.stripeAccountId, 'acct_course_oauth'); assert.equal(oauthSeller.chargesEnabled, true); assert.equal(oauthSeller.payoutsEnabled, true)
+await assert.rejects(identity.oauthComplete(oauthUser, query), /invalid or expired/)
+console.log('PASS: existing-account OAuth retains v1 authentication, v2 capability refresh, country checks and single-use authorization state')
 globalThis.fetch = realFetch
 await (globalThis as any).postgresClient?.end()
 console.log('All course backend integration checks passed. Providers were mocked; no live credentials were used.')
