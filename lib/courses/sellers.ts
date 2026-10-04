@@ -3,12 +3,11 @@ import type Stripe from 'stripe'
 import { db } from '@/lib/db'
 import { creatorProfiles } from '@/lib/db/schema'
 import { getOrCreateCreatorProfile } from '@/lib/creator/service'
-import { getStripe } from '@/lib/payments/stripe'
 import { ApiError } from '@/lib/api/http'
 import { courseSellers, courseAudit } from './schema'
 import { siteUrl } from './http'
 import { sellerSchema } from './validation'
-import { courseStripeOptions } from './stripe'
+import { getCourseStripe, courseStripeOptions } from './stripe'
 
 export async function sellerForUser(userId: string) {
   const [seller] = await db.select({ seller: courseSellers }).from(courseSellers).innerJoin(creatorProfiles, eq(courseSellers.creatorProfileId, creatorProfiles.id)).where(eq(creatorProfiles.userId, userId)).limit(1)
@@ -25,7 +24,7 @@ export async function saveSeller(userId: string, body: unknown) {
   })
 }
 export function retrieveSellerAccount(id: string) {
-  return getStripe().v2.core.accounts.retrieve(id, { include: ['configuration.merchant', 'defaults', 'identity', 'requirements'] }, courseStripeOptions)
+  return getCourseStripe().v2.core.accounts.retrieve(id, { include: ['configuration.merchant', 'defaults', 'identity', 'requirements'] }, courseStripeOptions)
 }
 export function accountEligible(account: Stripe.V2.Core.Account | Stripe.Account) {
   // Existing-account OAuth remains an Accounts v1 authentication flow.
@@ -49,7 +48,7 @@ export async function onboarding(userId: string, email: string) {
   if (!seller.stripeAccountId) {
     // Stable idempotency key recovers an account after a crash before DB persistence.
     // Collect real identity and terms in Stripe's hosted flow; no demo KYC values in production.
-    const account = await getStripe().v2.core.accounts.create({ contact_email: email, display_name: seller.slug, dashboard: 'full', identity: { country: seller.country.toLowerCase() }, defaults: { responsibilities: { fees_collector: 'stripe', losses_collector: 'stripe' } }, configuration: { merchant: { capabilities: { card_payments: { requested: true } } } }, include: ['configuration.merchant', 'identity', 'requirements'], metadata: { moggingCourseSellerId: seller.id } }, { ...courseStripeOptions, idempotencyKey: `course-account-v2-${seller.id}` })
+    const account = await getCourseStripe().v2.core.accounts.create({ contact_email: email, display_name: seller.slug, dashboard: 'full', identity: { country: seller.country.toLowerCase() }, defaults: { responsibilities: { fees_collector: 'stripe', losses_collector: 'stripe' } }, configuration: { merchant: { capabilities: { card_payments: { requested: true } } } }, include: ['configuration.merchant', 'identity', 'requirements'], metadata: { moggingCourseSellerId: seller.id } }, { ...courseStripeOptions, idempotencyKey: `course-account-v2-${seller.id}` })
     const [connected] = await db.update(courseSellers).set({ stripeAccountId: account.id, stripeConnected: true, stripeLivemode: account.livemode, updatedAt: new Date() }).where(and(eq(courseSellers.id, seller.id), sql`${courseSellers.stripeAccountId} is null`)).returning()
     if (!connected) throw new ApiError(409, 'Another Stripe connection finished; reload your seller profile')
     Object.assign(seller, connected)
@@ -58,7 +57,7 @@ export async function onboarding(userId: string, email: string) {
   const account = await retrieveSellerAccount(seller.stripeAccountId!)
   if (account.livemode !== seller.stripeLivemode) throw new ApiError(409, 'Stripe account environment does not match this seller')
   // Legacy accounts can also have recipient/customer configurations; Stripe requires an exact match.
-  const link = await getStripe().v2.core.accountLinks.create({ account: account.id, use_case: { type: 'account_onboarding', account_onboarding: { configurations: account.applied_configurations, refresh_url: `${siteUrl()}/creator/courses?connect=refresh`, return_url: `${siteUrl()}/creator/courses?connect=returned` } } }, courseStripeOptions)
+  const link = await getCourseStripe().v2.core.accountLinks.create({ account: account.id, use_case: { type: 'account_onboarding', account_onboarding: { configurations: account.applied_configurations, refresh_url: `${siteUrl()}/creator/courses?connect=refresh`, return_url: `${siteUrl()}/creator/courses?connect=returned` } } }, courseStripeOptions)
   return { url: link.url, expiresAt: link.expires_at }
 }
 export async function changeSellerStatus(id: string, status: 'enabled' | 'pending' | 'suspended', actorUserId: string) {

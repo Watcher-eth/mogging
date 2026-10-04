@@ -3,10 +3,12 @@ import Link from 'next/link'
 import dynamic from 'next/dynamic'
 import useSWR from 'swr'
 import { toast } from 'sonner'
-import { CourseLayout } from '@/components/courses/course-ui'
+import { CreatorHeader } from '@/components/creator/creator-shell'
+import { AdminPasswordGate } from '@/components/admin/admin-password-gate'
+import { apiGet } from '@/lib/api/client'
 import { BunnyPlayer } from '@/components/courses/bunny-player'
-import { coursePageProps } from '@/lib/courses/pages'
-import { courseRequest, type CourseRecord, type CourseSeller } from '@/lib/courses/client'
+import { adminCoursePageProps } from '@/lib/admin/page'
+import { courseRequest, CourseRequestError, type CourseRecord } from '@/lib/courses/client'
 import { lessonsOf } from '@/lib/courses/validation'
 const MarkdownContent = dynamic(() => import('@/components/courses/markdown-content'))
 function ReviewVideo({ courseId, lessonId, assetId }: { courseId: string; lessonId: string; assetId: string }) {
@@ -50,19 +52,18 @@ function CourseModeration({ course, changed }: { course: CourseRecord; changed: 
 }
 export default function CourseReviews() {
   const [view, setView] = useState<'review' | 'published' | 'archived'>('review'), [page, setPage] = useState(1)
-  const queue = useSWR<{ items: CourseRecord[]; hasMore: boolean }>(`/api/admin/courses?status=${view}&page=${page}`, courseRequest, { shouldRetryOnError: false })
-  const sellers = useSWR<CourseSeller[]>(queue.data ? '/api/admin/courses/sellers' : null, courseRequest)
-  const approveSeller = async (id: string) => {
-    try { await courseRequest(`/api/admin/courses/sellers/${id}`, 'PATCH', { status: 'enabled' }); await sellers.mutate(); toast.success('Seller enabled') }
-    catch (error) { toast.error((error as Error).message) }
-  }
-  return <CourseLayout title="Course review" studio><div className="c-studio-container"><div className="c-page-heading"><h1>Course management</h1></div><div className="c-filter-tabs">{(['review', 'published', 'archived'] as const).map(tab => <button key={tab} aria-pressed={view === tab} className={view === tab ? 'is-active' : ''} onClick={() => { setView(tab); setPage(1) }}>{tab === 'review' ? 'Awaiting review' : tab === 'published' ? 'Published' : 'Archived'}</button>)}</div>
+  const access = useSWR<{ unlocked: boolean }>('/api/admin/creator/session', apiGet)
+  const queue = useSWR<{ items: CourseRecord[]; hasMore: boolean }>(access.data?.unlocked ? `/api/admin/courses?status=${view}&page=${page}` : null, courseRequest, { shouldRetryOnError: false })
+
+  if (access.error) return <p role="alert" className="admin-notice">Admin access could not be verified.</p>
+  if (access.isLoading) return <p className="admin-empty">Checking admin access…</p>
+  if (!access.data?.unlocked || (queue.error instanceof CourseRequestError && queue.error.status === 401)) return <AdminPasswordGate onUnlocked={() => { void access.mutate(); void queue.mutate() }} />
+  return <><CreatorHeader eyebrow="Manage" title="Courses" description="Review submitted lessons and manage published courses." /><div className="course-app admin-course-content"><div className="c-studio-container"><div className="c-filter-tabs">{(['review', 'published', 'archived'] as const).map(tab => <button key={tab} aria-pressed={view === tab} className={view === tab ? 'is-active' : ''} onClick={() => { setView(tab); setPage(1) }}>{tab === 'review' ? 'Awaiting review' : tab === 'published' ? 'Published' : 'Archived'}</button>)}</div>
     {queue.error ? <div role="alert"><p>{queue.error.message}</p><Link href="/admin/creators" className="c-button c-button-dark">Unlock admin access</Link></div> : !queue.data ? <p>Loading review queue…</p> : <>
-      {sellers.data?.filter(seller => seller.status === 'pending').map(seller => <div key={seller.id} className="c-studio-course"><div className="c-studio-course-title"><h2>{seller.slug}</h2><p>{seller.country} · {seller.supportEmail}</p><p>{seller.bio}</p></div><button className="c-button c-button-light" onClick={() => void approveSeller(seller.id)}>Approve seller</button></div>)}
       {queue.data.items.map(course => view === 'review' ? <CourseReview key={`${course.id}-${course.version}`} course={course} changed={() => queue.mutate()} /> : <CourseModeration key={course.id} course={course} changed={() => queue.mutate()} />)}
       {!queue.data.items.length && <p className="c-muted">No courses in this view.</p>}
       {(page > 1 || queue.data.hasMore) && <div className="c-media-actions"><button className="c-button c-button-light" disabled={page === 1} onClick={() => setPage(page - 1)}>Previous</button><span>Page {page}</span><button className="c-button c-button-light" disabled={!queue.data.hasMore} onClick={() => setPage(page + 1)}>Next</button></div>}
     </>}
-  </div></CourseLayout>
+  </div></div></>
 }
-export const getServerSideProps = coursePageProps
+export const getServerSideProps = adminCoursePageProps

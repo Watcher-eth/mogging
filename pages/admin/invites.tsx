@@ -1,3 +1,5 @@
+import { CreatorHeader } from '@/components/creator/creator-shell'
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog'
 import { useMemo, useState, type FormEvent } from 'react'
 import useSWR from 'swr'
 import { toast } from 'sonner'
@@ -9,7 +11,6 @@ import {
   KeyRound,
   Loader2,
   LockKeyhole,
-  LogOut,
   Power,
   ShieldCheck,
   Ticket,
@@ -39,6 +40,7 @@ type ScopeMode = 'one' | 'credits' | 'unlimited' | 'timed'
 type DurationPreset = '1' | '7' | '30' | 'custom'
 
 export default function InviteAdminPage() {
+  const [createOpen, setCreateOpen] = useState(false)
   const { data: session, isLoading: sessionLoading, mutate: mutateSession } = useSWR<InviteSession>('/api/admin/invites/session', apiGet)
   const { data, isLoading, mutate } = useSWR<InviteCodesResponse>(session?.unlocked ? '/api/admin/invites' : null, apiGet, { refreshInterval: 20_000 })
 
@@ -46,33 +48,12 @@ export default function InviteAdminPage() {
   if (!session?.configured) return <UnavailableState />
   if (!session.unlocked) return <InviteAdminGate onUnlocked={() => void mutateSession()} />
 
-  async function lock() {
-    await apiRequest('/api/admin/invites/session', { method: 'DELETE' })
-    await mutateSession()
-  }
-
   return (
-    <main className="creator-enter mx-auto w-full max-w-6xl px-1 pb-12">
-      <header className="mb-7 flex flex-col gap-5 border-b border-zinc-200 pb-6 sm:flex-row sm:items-end sm:justify-between">
-        <div>
-          <div className="flex items-center gap-2 text-[11px] font-semibold uppercase tracking-[0.18em] text-zinc-400">
-            <ShieldCheck className="size-3.5" />
-            Private admin
-          </div>
-          <h1 className="mt-2 text-3xl font-semibold tracking-[-0.055em] sm:text-4xl">Invite codes</h1>
-          <p className="mt-3 max-w-2xl text-sm leading-6 text-zinc-500">
-            Create scoped paywall unlock codes for creators, testers, referrals, and one-off grants. Codes redeem inside the mobile paywall through the existing Use Code flow.
-          </p>
-        </div>
-        <Button variant="outline" className="h-10 rounded-xl" onClick={() => void lock()}>
-          <LogOut className="size-4" />
-          Lock dashboard
-        </Button>
-      </header>
-
-      <div className="grid gap-6 lg:grid-cols-[390px_1fr]">
-        <CreateInviteCodePanel onCreated={async () => { await mutate() }} />
-        <section className="min-w-0 rounded-[28px] border border-zinc-200 bg-white p-4 shadow-[0_20px_70px_rgba(15,23,42,0.06)] sm:p-5">
+    <div className="w-full">
+      <CreatorHeader eyebrow="Manage" title="Access codes" description="Create scoped grants for app access, testing, and referrals." action={<Button onClick={() => setCreateOpen(true)}>New access code</Button>} />
+      <Dialog open={createOpen} onOpenChange={setCreateOpen}><DialogContent className="creator-dialog max-h-[85dvh] overflow-y-auto p-5 sm:max-w-xl"><DialogHeader><DialogTitle>New access code</DialogTitle><DialogDescription>Choose access, usage limits, and optional attribution.</DialogDescription></DialogHeader><CreateInviteCodePanel onCreated={async () => { await mutate() }} /></DialogContent></Dialog>
+      <div>
+        <section className="admin-section">
           <div className="mb-5 flex items-start justify-between gap-3">
             <div>
               <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-zinc-400">Recent codes</p>
@@ -83,7 +64,7 @@ export default function InviteAdminPage() {
           {isLoading || !data ? <CenteredLoader compact /> : <InviteCodeTable items={data.inviteCodes} onChanged={async () => { await mutate() }} />}
         </section>
       </div>
-    </main>
+    </div>
   )
 }
 
@@ -108,7 +89,7 @@ function InviteAdminGate({ onUnlocked }: { onUnlocked: () => void }) {
   return (
     <section className="mx-auto grid min-h-[65vh] max-w-md place-items-center">
       <form onSubmit={unlock} className="w-full rounded-[28px] border border-zinc-200 bg-white p-6 shadow-[0_24px_80px_rgba(15,23,42,0.08)] sm:p-8">
-        <span className="grid size-12 place-items-center rounded-2xl bg-black text-white"><LockKeyhole className="size-5" /></span>
+        <span className="grid size-12 place-items-center rounded-2xl bg-[#00A8EF] text-white"><LockKeyhole className="size-5" /></span>
         <p className="mt-7 text-[11px] font-semibold uppercase tracking-[0.18em] text-zinc-400">Admin verification</p>
         <h1 className="mt-2 text-3xl font-semibold tracking-[-0.055em]">Unlock invites</h1>
         <p className="mt-3 text-sm leading-6 text-zinc-500">Enter the invite admin code. Access locks automatically after eight hours.</p>
@@ -178,10 +159,8 @@ function CreateInviteCodePanel({ onCreated }: { onCreated: () => Promise<void> }
   }
 
   return (
-    <section className="rounded-[28px] border border-zinc-200 bg-white p-5 shadow-[0_20px_70px_rgba(15,23,42,0.06)]">
+    <section className="py-2">
       <div className="mb-5">
-        <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-zinc-400">Create code</p>
-        <h2 className="mt-1 text-2xl font-semibold tracking-[-0.045em]">New grant</h2>
       </div>
       <form onSubmit={createCode} className="grid gap-4">
         <label className="grid gap-2 text-sm font-medium">
@@ -231,7 +210,7 @@ function CreateInviteCodePanel({ onCreated }: { onCreated: () => Promise<void> }
 
         <label className="flex items-center justify-between gap-3 rounded-2xl border border-zinc-200 bg-zinc-50 px-4 py-3 text-sm font-medium">
           Multi-use code
-          <input type="checkbox" checked={multiUse} onChange={(event) => setMultiUse(event.target.checked)} className="size-5 accent-black" />
+          <input type="checkbox" checked={multiUse} onChange={(event) => setMultiUse(event.target.checked)} className="size-5 accent-[#00A8EF]" />
         </label>
 
         {multiUse ? (
@@ -275,7 +254,7 @@ function InviteCodeTable({ items, onChanged }: { items: InviteCodeDashboardItem[
   if (!items.length) return <EmptyState />
   return (
     <div className="overflow-x-auto">
-      <table className="w-full min-w-[860px] border-separate border-spacing-y-2 text-left">
+      <table className="admin-table min-w-[860px]">
         <thead>
           <tr className="text-[11px] font-semibold uppercase tracking-[0.16em] text-zinc-400">
             <th className="px-3 py-2">Code</th>
@@ -375,7 +354,7 @@ function SegmentButton({ active, icon: Icon, label, onClick }: { active: boolean
     <button
       type="button"
       onClick={onClick}
-      className={`flex h-11 items-center justify-center gap-2 rounded-xl border text-sm font-semibold transition-[background-color,color,transform,border-color] duration-150 ease-out active:scale-[0.97] ${active ? 'border-black bg-black text-white' : 'border-zinc-200 bg-zinc-50 text-zinc-600 hover:border-zinc-300 hover:bg-white hover:text-black'}`}
+      className={`flex h-11 items-center justify-center gap-2 rounded-xl border text-sm font-semibold transition-[background-color,color,transform,border-color] duration-150 ease-out active:scale-[0.97] ${active ? 'border-[#00A8EF] bg-[#00A8EF] text-white' : 'border-zinc-200 bg-zinc-50 text-zinc-600 hover:border-zinc-300 hover:bg-white hover:text-black'}`}
     >
       <Icon className="size-4" />
       {label}

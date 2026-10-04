@@ -32,13 +32,7 @@ export function CreatorSprintsPanel() {
   const [editing, setEditing] = useState<CreatorSprint | 'new' | null>(null)
   return (
     <>
-      <div className="mb-5 flex items-center justify-between gap-4">
-        <div>
-          <h2 className="text-xl font-semibold">Campaigns</h2>
-          <p className="mt-1 text-sm text-zinc-500">
-            Configure campaign budgets, schedules, rates and creative briefs.
-          </p>
-        </div>
+      <div className="mb-5 flex justify-end">
         <Button onClick={() => setEditing('new')}>
           <Plus />
           New campaign
@@ -52,12 +46,12 @@ export function CreatorSprintsPanel() {
           <button onClick={() => void mutate()}>Retry</button>
         </p>
       ) : data?.sprints.length ? (
-        <div className="grid gap-3">
+        <div className="admin-list">
           {data.sprints.map((sprint) => (
             <button
               key={sprint.id}
               onClick={() => setEditing(sprint)}
-              className="flex items-center justify-between gap-3 rounded-2xl border border-zinc-200 p-5 text-left"
+              className="admin-resource-row flex items-center justify-between gap-3 text-left"
             >
               <div>
                 <h3 className="font-semibold">{sprint.name}</h3>

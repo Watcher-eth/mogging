@@ -1,6 +1,7 @@
 import { sql, type SQL } from 'drizzle-orm'
 import { z } from 'zod'
 import { db } from '@/lib/db'
+import { trackingDefinitions, trackingDimensions } from './tracking'
 import { ONBOARDING_ANALYTICS_VERSION, onboardingAnalyticsSteps } from '@/lib/analytics/onboarding'
 
 export const analyticsFilters = z.object({
@@ -17,8 +18,9 @@ export type AnalyticsDashboard = {
   web: Array<{ name: string; actors: number }>
   daily: MetricRow[]; acquisition: MetricRow[]; steps: MetricRow[]; screens: MetricRow[]
   onboardingScreens: MetricRow[]; onboardingFriction: MetricRow[]
-  billing: MetricRow[]; revenue: MetricRow[]; retention: MetricRow[]; cancellations: MetricRow[]
+  billing: MetricRow[]; revenue: MetricRow[]; revenueDaily: MetricRow[]; retention: MetricRow[]; cancellations: MetricRow[]
   actions: MetricRow[]; releases: MetricRow[]
+  eventMetrics: MetricRow[]; eventPlatforms: MetricRow[]; dimensions: MetricRow[]; billingProducts: MetricRow[]; billingDimensions: MetricRow[]; contextCoverage: MetricRow[]; eventDelivery: MetricRow[]
 }
 
 // All identifiers here are constants owned by this module, never request input.
@@ -48,12 +50,60 @@ export function analyticsQuery(filters: AnalyticsFilters, now: Date) {
   const web = funnel('web', ['page_viewed', 'landing_cta_clicked', 'app_store_redirected'], sql`platform = 'web'`)
   const rows = (name: string) => sql`coalesce((select json_agg(r) from ${sql.identifier(name)} r), '[]'::json)`
   return sql`with e as materialized (
-      select event_name, occurred_at, account_id, platform, app_version, properties,
+      select event_name, occurred_at, account_id, platform, app_version, properties, session_id, source, schema_version, received_at,
         coalesce('install:' || mobile_install_id, 'anonymous:' || anonymous_id, 'account:' || account_id) as actor
       from analytics_events where environment = 'production'
         and platform in ('web','ios','android')
         and coalesce(properties->>'path', '') not like '/admin%'
         and occurred_at >= ${start}::timestamp and occurred_at < ${end}::timestamp and ${platform}
+    ), reported_events as materialized (
+      select * from e union all
+      select event_name, occurred_at, account_id, platform, app_version, properties, session_id, source, schema_version, received_at, null::text as actor
+      from analytics_events where environment = 'production' and platform = 'server'
+        and occurred_at >= ${start}::timestamp and occurred_at < ${end}::timestamp
+    ), event_definitions(section, event) as (values ${sql.join(trackingDefinitions.map(({section, event}) => sql`(${section}::text, ${event}::text)`), sql`,`)}),
+    event_metrics as (
+      select event_name as event, count(*) as events, count(distinct actor) as actors,
+        count(distinct account_id) as accounts, count(distinct session_id) as sessions,
+        count(distinct properties->>'attempt_id') as attempts, count(distinct properties->>'flow_id') as flows,
+        max(occurred_at) as latest_event,
+        round((percentile_cont(0.5) within group (order by case when jsonb_typeof(properties->'duration_ms') = 'number'
+          then (properties->>'duration_ms')::numeric end) filter (where jsonb_typeof(properties->'duration_ms') = 'number'
+          and (properties->>'duration_ms')::numeric between 0 and 1800000))::numeric) as median_ms,
+        round((percentile_cont(0.9) within group (order by case when jsonb_typeof(properties->'duration_ms') = 'number'
+          then (properties->>'duration_ms')::numeric end) filter (where jsonb_typeof(properties->'duration_ms') = 'number'
+          and (properties->>'duration_ms')::numeric between 0 and 1800000))::numeric) as p90_ms
+      from reported_events group by event_name order by events desc
+    ), event_platforms as (
+      select event_name as event, platform, coalesce(source,'unknown') as source, count(*) as events,
+        count(distinct actor) as actors, count(distinct account_id) as accounts
+      from reported_events group by 1,2,3 order by events desc limit 300
+    ), event_delivery as (
+      select platform,coalesce(app_version,'unknown') as release,schema_version,count(*) as events,
+        count(*) filter(where received_at < occurred_at) as clock_skew_events,
+        round((percentile_cont(0.5) within group(order by extract(epoch from (received_at-occurred_at))*1000)
+          filter(where received_at >= occurred_at))::numeric) as median_ms,
+        round((percentile_cont(0.9) within group(order by extract(epoch from (received_at-occurred_at))*1000)
+          filter(where received_at >= occurred_at))::numeric) as p90_ms
+      from reported_events group by 1,2,3 order by events desc limit 100
+    ), dimension_counts as (
+      select case when p.key like '%utm_%' or p.key in ('campaign_id','creative_id','paidMedia','referrer_host') then 'Acquisition' else d.section end as section, e.event_name as event, p.key as dimension, p.value, count(*) as events, count(distinct e.actor) as actors
+      from reported_events e join event_definitions d on d.event = e.event_name
+        cross join lateral jsonb_each_text(e.properties) p
+      where p.key in (${sql.join(trackingDimensions.map(key => sql`${key}`), sql`,`)}) and p.value is not null
+        and jsonb_typeof(e.properties->p.key) in ('string','number','boolean')
+      group by 1,2,3,4
+    ), dimensions as (
+      select section, event, dimension, value, events, actors from (
+        select *, row_number() over (partition by section, dimension order by events desc, event, value) as rank
+        from dimension_counts
+      ) ranked where rank <= 20 order by section, dimension, events desc, event, value
+    ), context_coverage as (
+      select f.field, count(*) filter(where nullif(e.properties->>f.field,'') is not null) as events,
+        count(distinct e.actor) filter(where nullif(e.properties->>f.field,'') is not null) as actors,
+        count(distinct e.properties->>f.field) as unique_ids
+      from (values ('appsflyer_id'),('creator_click_id'),('creator_tracking_link_id'),('creator_first_tracking_link_id'),('flow_id'),('attempt_id'),('report_id'),('evaluation_id')) f(field)
+      left join e on true group by f.field order by f.field
     ), b as materialized (
       select * from subscription_events where environment = 'production'
         and occurred_at >= ${start}::timestamp and occurred_at < ${end}::timestamp
@@ -61,7 +111,15 @@ export function analyticsQuery(filters: AnalyticsFilters, now: Date) {
     daily as (
       select to_char(occurred_at, 'YYYY-MM-DD') as day, count(distinct actor) as actors,
         count(*) filter (where event_name = 'evaluation_completed') as evaluations,
-        count(*) filter (where event_name = 'purchase_completed') as purchase_completions
+        count(*) filter (where event_name = 'evaluation_started') as scan_starts,
+        count(*) filter (where event_name = 'purchase_completed') as purchase_completions,
+        count(distinct actor) filter (where event_name = 'app_first_open') as first_opens,
+        count(*) filter (where event_name = 'app_store_redirected') as store_redirects,
+        count(*) filter (where event_name = 'paywall_viewed') as paywall_views,
+        count(*) filter (where event_name = 'purchase_started') as purchase_starts,
+        count(*) filter (where event_name = 'evaluation_failed') as failures,
+        count(*) filter (where event_name = 'report_viewed') as report_views,
+        count(*) filter (where event_name = 'protocol_task_completed') as protocol_tasks
       from e group by 1 order by 1
     ), acquisition as (
       select coalesce(nullif(properties->>'creator_first_tracking_link_id', ''), nullif(properties->>'first_utm_source', ''), 'unknown') as source,
@@ -145,9 +203,27 @@ export function analyticsQuery(filters: AnalyticsFilters, now: Date) {
         and (case when jsonb_typeof(properties->'duration_ms') = 'number' then (properties->>'duration_ms')::numeric end) between 0 and 1800000
       group by 1 order by exits desc limit 30
     ), billing as (
-      select provider, event_name as event, count(*) as events,
+      select provider, provider_type, event_name as event, count(*) as events,
         count(distinct coalesce(account_id, external_user_id)) as customers
-      from b group by 1,2 order by events desc limit 50
+      from b group by 1,2,3 order by events desc limit 100
+    ), billing_products as (
+      select provider, coalesce(product_id,'Unknown product') as product, coalesce(currency,'UNKNOWN') as currency,
+        count(*) as events, count(distinct coalesce(account_id, external_user_id)) as customers,
+        count(distinct subscription_id) as subscriptions, count(*) filter (where account_id is null) as unlinked_events,
+        case when count(amount) > 0 then coalesce(sum(amount) filter(where amount > 0),0)::text end as gross,
+        case when count(amount) > 0 then coalesce(-sum(amount) filter(where amount < 0),0)::text end as refunds,
+        sum(amount)::text as net, count(*) filter(where amount is null) as missing_amount_events
+      from b group by 1,2,3 order by events desc limit 100
+    ), billing_dimension_counts as (
+      select provider, event_name as event, p.key as dimension, p.value, count(*) as events
+      from b cross join lateral jsonb_each_text(properties) p
+      where p.key in ('period_type','trial_conversion','store','country','cancel_reason','expiration_reason','new_product_id','offering','offer_code','commission_percentage','tax_percentage','timestamp_estimated')
+        and p.value is not null and jsonb_typeof(properties->p.key) in ('string','number','boolean')
+      group by 1,2,3,4
+    ), billing_dimensions as (
+      select provider,event,dimension,value,events from (
+        select *,row_number() over(partition by dimension order by events desc,provider,event,value) as rank from billing_dimension_counts
+      ) ranked where rank <= 20 order by dimension,events desc
     ), revenue as (
       select coalesce(currency, 'UNKNOWN') as currency,
         coalesce(sum(amount) filter (where amount > 0), 0)::text as gross,
@@ -155,6 +231,13 @@ export function analyticsQuery(filters: AnalyticsFilters, now: Date) {
         coalesce(sum(amount), 0)::text as net,
         count(*) filter (where amount is null) as missing_amount_events
       from b group by 1 order by 1
+    ), revenue_daily as (
+      select to_char(occurred_at, 'YYYY-MM-DD') as day, coalesce(currency, 'UNKNOWN') as currency,
+        case when count(amount) > 0 then coalesce(sum(amount) filter (where amount > 0), 0)::text end as gross,
+        case when count(amount) > 0 then coalesce(-sum(amount) filter (where amount < 0), 0)::text end as refunds,
+        sum(amount)::text as net,
+        count(*) filter (where amount is null) as missing_amount_events
+      from b group by 1,2 order by 1,2
     ), activated as (
       select account_id, min(occurred_at) as at from e
       where event_name = 'evaluation_completed' and account_id is not null group by 1
@@ -197,8 +280,10 @@ export function analyticsQuery(filters: AnalyticsFilters, now: Date) {
       'onboarding', ${onboarding.result}, 'paywall', ${paywall.result}, 'web', ${web.result},
       'daily', ${rows('daily')}, 'acquisition', ${rows('acquisition')}, 'steps', ${rows('steps')},
       'onboardingScreens', ${rows('onboarding_screens')}, 'onboardingFriction', ${rows('onboarding_friction')}, 'screens', ${rows('screens')}, 'billing', ${rows('billing')}, 'revenue', ${rows('revenue')},
-      'retention', ${rows('retention')}, 'cancellations', ${rows('cancellations')},
-      'actions', ${rows('actions')}, 'releases', ${rows('releases')}
+      'revenueDaily', ${rows('revenue_daily')}, 'retention', ${rows('retention')}, 'cancellations', ${rows('cancellations')},
+      'actions', ${rows('actions')}, 'releases', ${rows('releases')},
+      'eventMetrics', ${rows('event_metrics')}, 'eventPlatforms', ${rows('event_platforms')}, 'dimensions', ${rows('dimensions')},
+      'eventDelivery', ${rows('event_delivery')}, 'contextCoverage', ${rows('context_coverage')}, 'billingProducts', ${rows('billing_products')}, 'billingDimensions', ${rows('billing_dimensions')}
     ) as data`
 }
 

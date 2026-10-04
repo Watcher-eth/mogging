@@ -4,11 +4,10 @@ import { z } from 'zod'
 import { db } from '@/lib/db'
 import { ApiError } from '@/lib/api/http'
 import { env, getCourseReadinessChecks } from '@/lib/env'
-import { getStripe } from '@/lib/payments/stripe'
 import { courseOrders, courses, courseSellers, courseEnrollments, courseEmails, courseRefunds } from './schema'
 import { enrollment } from './access'
 import { syncSeller } from './sellers'
-import { courseStripeOptions } from './stripe'
+import { getCourseStripe, courseStripeOptions } from './stripe'
 import { buyerIdentity } from './identity'
 import { siteUrl } from './http'
 
@@ -43,7 +42,7 @@ export async function checkout(user: { id: string; email: string; emailVerified:
     return created
   })
   if (order.stripeCheckoutId) {
-    const session = await getStripe().checkout.sessions.retrieve(order.stripeCheckoutId, {}, { ...courseStripeOptions, stripeAccount: order.stripeAccountId })
+    const session = await getCourseStripe().checkout.sessions.retrieve(order.stripeCheckoutId, {}, { ...courseStripeOptions, stripeAccount: order.stripeAccountId })
     if (session.status !== 'open') { await syncOrder(order.id); throw new ApiError(409, 'Previous checkout finished; refresh your library and try again') }
     return { orderId: order.id, url: session.url, expiresAt: order.expiresAt }
   }
@@ -53,7 +52,7 @@ export async function ensureCheckout(order: typeof courseOrders.$inferSelect) {
   assertLivePaymentsReady(order.livemode)
   const metadata = { moggingCourseOrderId: order.id }
   try {
-    const session = await getStripe().checkout.sessions.create({
+    const session = await getCourseStripe().checkout.sessions.create({
       mode: 'payment',
       ui_mode: 'hosted_page',
       billing_address_collection: 'auto',
@@ -89,7 +88,7 @@ export async function syncOrder(id: string) {
   return db.transaction(async tx => {
     const [order] = await tx.select().from(courseOrders).where(eq(courseOrders.id, id)).for('update')
     if (!order?.stripeCheckoutId) return order
-    const stripe = getStripe(), options = { ...courseStripeOptions, stripeAccount: order.stripeAccountId }
+    const stripe = getCourseStripe(), options = { ...courseStripeOptions, stripeAccount: order.stripeAccountId }
     const session = await stripe.checkout.sessions.retrieve(order.stripeCheckoutId, { expand: ['payment_intent.latest_charge.balance_transaction'] }, options)
     if (session.metadata?.moggingCourseOrderId !== order.id || session.client_reference_id !== order.id || session.livemode !== order.livemode || session.currency !== order.currency || session.amount_subtotal !== order.amount) throw new ApiError(502, 'Payment does not match the order')
     const paymentIntentId = reference(session.payment_intent)
@@ -148,8 +147,8 @@ export async function refundOrder(sellerId: string, orderId: string, requestKey:
   // Known refunds are retrieved, never recreated after Stripe's idempotency retention expires.
   if (!request.stripeRefundId && Date.now() - request.createdAt.getTime() > 23 * 3600_000) throw new ApiError(409, 'Unknown refund outcome requires Stripe reconciliation before retry')
   const refund = request.stripeRefundId
-    ? await getStripe().refunds.retrieve(request.stripeRefundId, {}, options)
-    : await getStripe().refunds.create({ payment_intent: order.stripePaymentIntentId, amount: request.amount, metadata: { moggingCourseOrderId: order.id, moggingCourseRefundId: request.id } }, { ...options, idempotencyKey: `course-refund-${request.id}` })
+    ? await getCourseStripe().refunds.retrieve(request.stripeRefundId, {}, options)
+    : await getCourseStripe().refunds.create({ payment_intent: order.stripePaymentIntentId, amount: request.amount, metadata: { moggingCourseOrderId: order.id, moggingCourseRefundId: request.id } }, { ...options, idempotencyKey: `course-refund-${request.id}` })
   await db.update(courseRefunds).set({ stripeRefundId: refund.id, state: 'pending', updatedAt: new Date() }).where(eq(courseRefunds.id, request.id))
   await syncOrder(order.id)
   await db.update(courseRefunds).set({ state: refund.status || 'pending', updatedAt: new Date() }).where(eq(courseRefunds.id, request.id))

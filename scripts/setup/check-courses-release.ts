@@ -3,12 +3,14 @@ import assert from 'node:assert/strict'
 import postgres from 'postgres'
 import { readMigrationFiles } from 'drizzle-orm/migrator'
 import { env, getCourseReadinessChecks } from '../../lib/env'
-import { getStripe } from '../../lib/payments/stripe'
-import { courseStripeOptions } from '../../lib/courses/stripe'
+import { getCourseStripe, courseStripeOptions } from '../../lib/courses/stripe'
 import { bunny, resourceHead, resourceUpload, videoPlayback, videoThumbnail } from '../../lib/courses/providers'
 import { courseAccountEventTypes } from '../../lib/courses/webhooks'
 
 const live = process.argv.includes('--live')
+const staging = process.argv.includes('--staging')
+assert.ok(!(live && staging), 'Choose --live or --staging')
+if (staging) assert.equal(env.COURSE_LIVE_PAYMENTS_ENABLED, false, 'Keep live payments disabled in staging')
 const config = { ...env, COURSES_ENABLED: true, COURSE_LIVE_PAYMENTS_ENABLED: live }
 const checks = getCourseReadinessChecks(config)
 for (const check of checks) console.log(`${check.ok ? 'ok' : check.required ? 'missing' : 'optional'}\t${check.key}`)
@@ -26,13 +28,13 @@ async function check(name: string, action: () => Promise<void>) {
 }
 const client = postgres(env.DATABASE_URL, { max: 1, prepare: false, connect_timeout: 10 })
 let resourceKey: string | undefined
-await check(live ? 'course database schema and migration ledger' : 'course database schema', async () => {
+await check(live || staging ? 'course database schema and migration ledger' : 'course database schema', async () => {
   try {
     await client`select watched_ranges, video_asset_id from course_progress limit 0`
     await client`select id from course_emails limit 0`
     const resources = await client<{ storage_key: string }[]>`select storage_key from course_assets where kind = 'resource' and state = 'ready' limit 1`
     resourceKey = resources[0]?.storage_key
-    if (live) {
+    if (live || staging) {
       const rows = await client<{ hash: string }[]>`select hash from drizzle.__drizzle_migrations`
       const journal = await Bun.file('drizzle/meta/_journal.json').json()
       const migrations = readMigrationFiles({ migrationsFolder: 'drizzle' })
@@ -44,21 +46,21 @@ await check(live ? 'course database schema and migration ledger' : 'course datab
   } finally { await client.end() }
 })
 await check(live ? 'Stripe live US activation' : 'Stripe sandbox platform access', async () => {
-  const platform = await getStripe().accounts.retrieveCurrent({}, courseStripeOptions)
+  const platform = await getCourseStripe().accounts.retrieveCurrent({}, courseStripeOptions)
   if (live) {
     assert.equal(platform.country, 'US')
     assert.equal(platform.charges_enabled, true)
     assert.equal(platform.payouts_enabled, true)
     assert.equal(platform.details_submitted, true)
-  } else assert.ok(env.STRIPE_SECRET_KEY?.startsWith('sk_test_') || env.STRIPE_SECRET_KEY?.startsWith('rk_test_'))
+  } else assert.ok(env.COURSE_STRIPE_SECRET_KEY?.startsWith('sk_test_') || env.COURSE_STRIPE_SECRET_KEY?.startsWith('rk_test_'))
 })
-if (live) await check('live Connect destinations, scope, payload and events', async () => {
+if (live || staging) await check(`${live ? 'live' : 'sandbox'} HTTPS Connect destinations, scope, payload and events`, async () => {
   assert.ok(env.NEXTAUTH_URL)
   const origin = new URL(env.NEXTAUTH_URL).origin
   assert.equal(new URL(origin).protocol, 'https:')
-  const destinations = await getStripe().v2.core.eventDestinations.list({}, courseStripeOptions).autoPagingToArray({ limit: 1000 })
-  const snapshot = destinations.find(item => item.webhook_endpoint?.url === `${origin}/api/payments/stripe-connect-webhook` && item.event_payload === 'snapshot' && item.events_from?.includes('@accounts') && item.status === 'enabled' && item.livemode)
-  const thin = destinations.find(item => item.webhook_endpoint?.url === `${origin}/api/payments/stripe-connect-account-webhook` && item.event_payload === 'thin' && item.events_from?.includes('@self') && item.status === 'enabled' && item.livemode)
+  const destinations = await getCourseStripe().v2.core.eventDestinations.list({}, courseStripeOptions).autoPagingToArray({ limit: 1000 })
+  const snapshot = destinations.find(item => item.webhook_endpoint?.url === `${origin}/api/payments/stripe-connect-webhook` && item.event_payload === 'snapshot' && item.events_from?.includes('@accounts') && item.status === 'enabled' && item.livemode === live)
+  const thin = destinations.find(item => item.webhook_endpoint?.url === `${origin}/api/payments/stripe-connect-account-webhook` && item.event_payload === 'thin' && item.events_from?.includes('@self') && item.status === 'enabled' && item.livemode === live)
   assert.equal(snapshot?.snapshot_api_version, courseStripeOptions.apiVersion)
   const paymentEvents = ['checkout.session.completed', 'checkout.session.async_payment_succeeded', 'checkout.session.async_payment_failed', 'checkout.session.expired', 'payment_intent.succeeded', 'payment_intent.payment_failed', 'charge.refunded', 'charge.updated', 'charge.dispute.created', 'charge.dispute.updated', 'charge.dispute.closed', 'refund.created', 'refund.updated', 'refund.failed', 'account.updated', 'account.application.deauthorized']
   assert.ok(snapshot && paymentEvents.every(type => snapshot.enabled_events.includes('*') || snapshot.enabled_events.includes(type)))

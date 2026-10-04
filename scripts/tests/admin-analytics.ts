@@ -44,6 +44,8 @@ try {
       await tx`insert into subscription_events(id,provider,provider_event_id,provider_type,environment,event_name,amount,currency,occurred_at)
         values (${crypto.randomUUID()},'test',${crypto.randomUUID()},'test','production','test',${amount},${currency},'2040-01-10')`
     }
+    await tx`insert into subscription_events(id,provider,provider_event_id,provider_type,environment,event_name,amount,currency,occurred_at)
+      values (${crypto.randomUUID()},'test',${crypto.randomUUID()},'test','production','test',null,'USD','2040-01-11')`
     const [row] = await testDb.execute(analyticsQuery({ days: '30', platform: 'all' }, now))
     const data = row.data as import('../../lib/admin/analytics').AnalyticsDashboard
     assert.equal(data.summary.actors, 3)
@@ -52,15 +54,39 @@ try {
     assert.deepEqual(data.web.map(step => step.actors), [1,1,1])
     assert.equal(data.revenue.find(row => row.currency === 'USD')?.net, '8.000000')
     assert.equal(data.revenue.find(row => row.currency === 'EUR')?.net, '20.000000')
+    const usdDay = data.revenueDaily.find(row => row.currency === 'USD' && row.day === '2040-01-10')!
+    assert.equal(Number(usdDay.gross), 10)
+    assert.equal(Number(usdDay.refunds), 2)
+    assert.equal(Number(usdDay.net), 8)
+    const unknownDay = data.revenueDaily.find(row => row.currency === 'USD' && row.day === '2040-01-11')!
+    assert.equal(unknownDay.net, null)
+    assert.equal(unknownDay.gross, null)
+    assert.equal(unknownDay.refunds, null)
+    assert.equal(Number(unknownDay.missing_amount_events), 1)
+    assert.equal(data.daily.reduce((sum, row) => sum + Number(row.purchase_completions), 0), 3)
+    assert.equal(data.daily.reduce((sum, row) => sum + Number(row.paywall_views), 0), 2)
     assert.equal(Number(data.retention.find(row => row.day === 7)?.retained), 1)
     assert.equal(Number(data.retention.find(row => row.day === 30)?.eligible), 0)
     const [webOnly] = await testDb.execute(analyticsQuery({ days: '30', platform: 'web' }, now))
     assert.equal((webOnly.data as typeof data).summary.actors, 1)
+    assert.deepEqual((webOnly.data as typeof data).revenueDaily, data.revenueDaily)
     const [empty] = await testDb.execute(analyticsQuery({ days: '7', platform: 'android' }, now))
     assert.equal((empty.data as typeof data).summary.actors, 0)
     assert.ok((empty.data as typeof data).retention.every(row => Number(row.eligible) === 0))
     // Screen cohorts: optional paths, backtracking, resume, recent users, duplicates,
     // old releases, cross-flow events, out-of-order events and seven-day boundaries.
+    assert.equal(Number(data.eventMetrics.find(row => row.event === 'purchase_completed')?.events), 3)
+    assert.equal(Number(data.eventMetrics.find(row => row.event === 'identity_linked')?.actors), 0)
+    assert.equal(Number(data.billingProducts.find(row => row.currency === 'EUR')?.gross), 20)
+    assert.ok(data.contextCoverage.every(row => Number(row.events) === 0))
+    for (let index = 0; index < 25; index++) await put('good', 'report_viewed', 14, 'ios', 'production', { first_utm_campaign: `campaign-${index}`, report_id: 'report-one' })
+    await put('good', 'purchase_failed', 14, 'ios', 'production', { reason_code: 'store_or_sync', productId: 'monthly' })
+    const [expanded] = await testDb.execute(analyticsQuery({ days: '30', platform: 'all' }, now))
+    const expandedData = expanded.data as typeof data
+    assert.equal(expandedData.dimensions.filter(row => row.section === 'Acquisition' && row.dimension === 'first_utm_campaign').length, 20)
+    assert.ok(expandedData.dimensions.some(row => row.section === 'Purchases' && row.dimension === 'reason_code' && row.value === 'store_or_sync'))
+    assert.equal(Number(expandedData.contextCoverage.find(row => row.field === 'report_id')?.unique_ids), 1)
+    assert.ok(expandedData.eventDelivery.some(row => row.platform === 'server'))
     const view = (actor: string, step: string, day: number, flow = actor, version = '2') =>
       put(actor, 'onboarding_step_viewed', day, 'ios', 'production', { step, flow_id: flow, onboarding_version: version })
     await view('screen-good', 'experience', 2)

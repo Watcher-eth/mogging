@@ -10,7 +10,9 @@ import { SeoHead } from '@/components/app/seo-head'
 import { swrConfig } from '@/lib/swr'
 import '@/styles/globals.css'
 import '@/styles/courses.css'
+import '@/styles/admin.css'
 import dynamic from 'next/dynamic'
+const AdminShell = dynamic(() => import('@/components/admin/admin-shell').then(module => module.AdminShell))
 const Analytics = dynamic(() => import('@/components/app/analytics').then(module => module.Analytics), { ssr: false })
 
 export default function App({ Component, pageProps: { session, ...pageProps } }: AppProps) {
@@ -36,7 +38,9 @@ export default function App({ Component, pageProps: { session, ...pageProps } }:
             title={router.pathname === '/battle' ? 'Mog Battle: Compare Photos | Mogging' : undefined}
             description={router.pathname === '/battle' ? 'Compare photos in Mogging battles and see how community votes shape the leaderboard. Rankings reflect voter preferences.' : undefined}
           />
-          {courseRoute ? (
+          {router.pathname.startsWith('/admin/') ? (
+            <AdminShell><Component {...pageProps} /></AdminShell>
+          ) : courseRoute ? (
             <Component {...pageProps} />
           ) : (
             <AppShell><Component {...pageProps} /></AppShell>

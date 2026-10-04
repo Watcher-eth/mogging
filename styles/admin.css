@@ -1,0 +1,56 @@
+/* Admin shares the creator portal's type, colors, controls, and sidebar. */
+.admin-portal { --admin-muted: #73777d; --admin-border: #eceef0; }
+.admin-toolbar { min-height: 72px; padding-inline: 20px; }
+.admin-navigation { height: calc(100dvh - 72px); }
+.admin-navigation [data-sidebar="group-label"] { color: #858a91; font-size: 10px; letter-spacing: .04em; }
+.admin-navigation [data-sidebar="group"] { padding-block: 10px; }
+.admin-navigation .creator-nav-link { height: 36px; font-size: 12px; gap: 10px; border-radius: 9px; }
+.admin-page { width: 100%; max-width: 1440px; margin-inline: auto; padding: 38px 44px 64px; }
+.admin-page .creator-page-header { margin-bottom: 30px; }
+.admin-lock { display: inline-flex; align-items: center; gap: 8px; min-height: 40px; padding-inline: 10px; color: var(--admin-muted); font-size: 12px; border-radius: 10px; }
+.admin-lock:hover { background: #f7f8f9; }
+.admin-skip-link { position: fixed; top: 8px; left: 8px; z-index: 100; transform: translateY(-150%); padding: 12px 18px; border-radius: 8px; background: #181a1d; color: white; }
+.admin-skip-link:focus { transform: none; }
+.admin-portal :is(button, a, select, input, textarea, summary):focus-visible { outline: 2px solid #00A8EF; outline-offset: 3px; }
+.admin-portal button:active:not(:disabled) { transform: scale(.98); }
+.admin-stats-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); margin-bottom: 16px; gap: 20px; }
+.admin-metric { min-width: 0; padding-block: 12px 24px; background: transparent; }
+.admin-section { min-width: 0; padding-block: 30px; border-top: 1px solid var(--admin-border); }
+.admin-section-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 40px; }
+.admin-report-toolbar { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 12px; margin-bottom: 24px; }
+.admin-filter { display: flex; align-items: center; gap: 8px; font-size: 12px; color: var(--admin-muted); }
+.admin-filter > label { padding-left: 4px; }
+.admin-chart { height: 310px; width: 100%; min-width: 0; }
+.admin-chart-loading, .admin-chart-empty { display: grid; place-items: center; min-height: 220px; color: #858a91; font-size: 13px; }
+.admin-chart-empty { border-radius: 12px; background: #fafbfc; }
+.admin-notice { margin-bottom: 20px; padding: 12px 16px; border-left: 2px solid #00A8EF; background: #f7f8f9; font-size: 13px; line-height: 1.7; color: #52565c; }
+.admin-methodology, .admin-data-details { margin-top: 18px; font-size: 12px; color: #858a91; }
+.admin-methodology summary, .admin-data-details summary { width: fit-content; padding-block: 5px; cursor: pointer; }
+.admin-methodology p { max-width: 850px; padding-top: 8px; font-size: 12px; line-height: 1.8; }
+.admin-data-details { color: #73777d; }
+.admin-table-scroll { overflow-x: auto; width: 100%; }
+.admin-table { width: 100%; text-align: left; font-size: 12px; }
+.admin-table th { padding: 12px 14px; border-bottom: 1px solid #e8ebee; white-space: nowrap; color: #858a91; font-weight: 500; }
+.admin-table td { max-width: 260px; padding: 14px; border-bottom: 1px solid #f0f2f4; overflow-wrap: anywhere; font-variant-numeric: tabular-nums; }
+.admin-table :is(th, td):first-child { padding-left: 0; }
+.admin-table tr:last-child td { border-bottom: 0; }
+.admin-table tbody tr:hover { background: #fafbfc; }
+.admin-empty { padding-block: 28px; font-size: 13px; color: #858a91; }
+.admin-bars { display: grid; gap: 22px; }
+.admin-funnel { display: grid; gap: 24px; }
+.admin-funnel-step { display: grid; place-items: center; width: 24px; height: 24px; flex: 0 0 auto; border: 1px solid #e8ebee; border-radius: 8px; font-size: 10px; color: #92979e; }
+.admin-list { border-top: 1px solid var(--admin-border); }
+.admin-resource-row { padding: 20px 8px; border-bottom: 1px solid var(--admin-border); background: white; }
+.admin-resource-row:hover { background: #fafbfc; }
+.admin-portal .admin-page :is(h2, h3) { font-weight: 500; }
+.admin-portal .admin-page [class*="shadow-"] { box-shadow: none; }
+.admin-portal .admin-page [class*="rounded-[28px]"] { border-radius: 14px; }
+.admin-course-content { --c-accent: #00A8EF; color: #181a1d; }
+.admin-course-content .c-studio-container { width: 100%; max-width: none; margin: 0; padding: 0; }
+.admin-course-content .c-details-editor, .admin-course-content .c-studio-course { border-radius: 0; box-shadow: none; border: 0; border-top: 1px solid #eceef0; padding: 24px 0; }
+@media (min-width: 768px) { .admin-navigation { --sidebar-width: 216px; } }
+@media (max-width: 1100px) { .admin-page { padding-inline: 28px; } .admin-section-grid { gap: 24px; } }
+@media (max-width: 767px) { .admin-toolbar { padding-inline: 12px; min-height: 64px; } .admin-page { padding: 26px 20px 48px; } .admin-stats-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; } .admin-section-grid { grid-template-columns: minmax(0, 1fr); gap: 0; } .admin-chart { height: 250px; } }
+@media (prefers-reduced-motion: reduce) { .admin-portal *, .admin-portal *::before, .admin-portal *::after { animation: none !important; transition: none !important; } .admin-portal button:active:not(:disabled) { transform: none; } }
+.admin-course-content.course-app { min-height: 0; font-family: inherit; --c-ink: #181a1d; --c-muted: #73777d; }
+.admin-course-content .c-button-dark { background: #00A8EF; color: white; }

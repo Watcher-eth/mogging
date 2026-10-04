@@ -15,7 +15,7 @@ process.env.COURSES_ENABLED = 'true'
 process.env.COURSE_LIVE_PAYMENTS_ENABLED = 'false'
 process.env.COURSE_STRIPE_TAX_ENABLED = 'true'
 process.env.NEXTAUTH_URL = 'http://localhost:3000'
-process.env.STRIPE_SECRET_KEY = 'sk_test_course_mock'
+process.env.COURSE_STRIPE_SECRET_KEY = 'sk_test_course_mock'
 process.env.STRIPE_CONNECT_WEBHOOK_SECRET = 'whsec_course_mock'
 process.env.STRIPE_CONNECT_ACCOUNT_WEBHOOK_SECRET = 'whsec_course_account_mock'
 process.env.STRIPE_CONNECT_CLIENT_ID = 'ca_course_mock'
@@ -132,7 +132,7 @@ const provider = {
     return refund
   } },
 }
-mock.module('@/lib/payments/stripe', () => ({ getStripe: () => provider }))
+mock.module('@/lib/courses/stripe', () => ({ getCourseStripe: () => provider, courseStripeOptions: { apiVersion: '2026-08-26.dahlia' } }))
 let requestUserId: string | null = null
 mock.module('@/lib/auth/session', () => ({ getAuthSession: async () => requestUserId ? { user: { id: requestUserId } } : null }))
 mock.module('@/lib/api/rateLimit', () => ({ enforceRateLimit: async () => {} }))

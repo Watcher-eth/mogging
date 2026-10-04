@@ -12,12 +12,12 @@ test('production course pages require both hosting and the explicit launch gate'
 })
 
 test('live launch readiness rejects sandbox keys, shared photo buckets and deferred email', () => {
-  const config = { ...env, COURSES_ENABLED: true, COURSE_LIVE_PAYMENTS_ENABLED: true, STRIPE_SECRET_KEY: 'sk_test_fixture', R2_BUCKET_NAME: 'photos', COURSE_R2_BUCKET_NAME: 'photos', RESEND_API_KEY: undefined }
+  const config = { ...env, COURSES_ENABLED: true, COURSE_LIVE_PAYMENTS_ENABLED: true, COURSE_STRIPE_SECRET_KEY: 'sk_test_fixture', R2_BUCKET_NAME: 'photos', COURSE_R2_BUCKET_NAME: 'photos', RESEND_API_KEY: undefined }
   const checks = getCourseReadinessChecks(config)
   for (const key of ['COURSE_STRIPE_LIVE_KEY', 'COURSE_BUCKET_ISOLATION', 'COURSE_EMAIL']) {
     expect(checks.find(check => check.key === key)).toMatchObject({ ok: false, required: true })
   }
-  const ready = getCourseReadinessChecks({ ...config, STRIPE_SECRET_KEY: 'sk_live_fixture', COURSE_R2_BUCKET_NAME: 'course-resources', RESEND_API_KEY: 'fixture', PAYMENTS_EMAIL_FROM: 'courses@mogging.test' })
+  const ready = getCourseReadinessChecks({ ...config, COURSE_STRIPE_SECRET_KEY: 'sk_live_fixture', COURSE_R2_BUCKET_NAME: 'course-resources', RESEND_API_KEY: 'fixture', PAYMENTS_EMAIL_FROM: 'courses@mogging.test' })
   for (const key of ['COURSE_STRIPE_LIVE_KEY', 'COURSE_BUCKET_ISOLATION', 'COURSE_EMAIL']) expect(ready.find(check => check.key === key)?.ok).toBe(true)
   expect(getCourseReadinessChecks({ ...config, COURSES_ENABLED: false }).find(check => check.key === 'COURSE_LAUNCH_GATE')?.ok).toBe(false)
 })

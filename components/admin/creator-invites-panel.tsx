@@ -45,8 +45,7 @@ export function CreatorInvitesPanel() {
   }
 
   const url = created && typeof window !== 'undefined' ? `${window.location.origin}${created.path}` : ''
-  return <section className="rounded-2xl border border-zinc-200 bg-white p-5 sm:p-7">
-    <h2 className="text-2xl font-medium tracking-tight">Creator invitations</h2>
+  return <section className="max-w-4xl">
     <p className="mt-2 max-w-2xl text-sm leading-6 text-zinc-500">Prepare a creator’s verified TikTok account from your Discord conversation. They claim it with their preferred login and choose a payout method to finish setup.</p>
     <form onSubmit={(event) => void create(event)} className="mt-6 grid gap-4 sm:grid-cols-2">
       {[
@@ -56,7 +55,7 @@ export function CreatorInvitesPanel() {
         { name: 'avatarUrl', label: 'Profile-photo URL (optional)', placeholder: 'TikTok CDN URL; otherwise fetched automatically', required: false, max: 2048 },
         { name: 'evidenceUrl', label: 'Reviewed Discord analytics message or recording', placeholder: 'https://discord.com/channels/…/…/…', required: true, max: 2048 },
       ].map((field) => <label key={field.name} className="grid gap-2 text-sm"><span className="font-medium">{field.label}</span><input name={field.name} type={field.name.endsWith('Url') ? 'url' : 'text'} required={field.required} maxLength={field.max} placeholder={field.placeholder} className="creator-field w-full" /></label>)}
-      <label className="flex items-start gap-3 text-sm leading-6 sm:col-span-2"><input name="verified" type="checkbox" required className="mt-1 size-4 accent-black" /><span>I verified ownership of this TikTok account and reviewed its audience analytics for the past 28 days in Discord.</span></label>
+      <label className="flex items-start gap-3 text-sm leading-6 sm:col-span-2"><input name="verified" type="checkbox" required className="mt-1 size-4 accent-[#00A8EF]" /><span>I verified ownership of this TikTok account and reviewed its audience analytics for the past 28 days in Discord.</span></label>
       {message ? <p role="alert" className="text-sm text-red-600 sm:col-span-2">{message}</p> : null}
       <Button disabled={saving} className="h-11 rounded-full sm:col-span-2 sm:justify-self-start" type="submit">{saving ? <Loader2 className="animate-spin" /> : null}Create personalized invite</Button>
     </form>

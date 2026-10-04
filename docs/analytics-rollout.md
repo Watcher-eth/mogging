@@ -62,7 +62,7 @@ Stripe:
 
 The first-party dashboard is implemented at `/admin/analytics` (linked from creator admin). It shares the existing allowlisted account + admin-password access control. It reads Postgres directly; neither PostHog nor Metabase is required. Deploy the API/page and apply the migration before using it with production data.
 
-Included tabs: overview, acquisition, onboarding, revenue, retention, and quality. Time windows are 7/30/90 days; platform filters apply to behavior, while verified billing remains all-platform. Production only. Server identity events and admin-route traffic are excluded from behavioral activity.
+Dedicated sidebar pages now include overview, acquisition, authentication, onboarding, purchase flow, scans, engagement, referrals, notifications, attribution, revenue, retention, and data health. See [reporting coverage](admin-analytics-coverage.md) for every data source and scope. Time windows are 7/30/90 days; platform filters apply to production behavior, while verified billing and server milestones remain all-platform. Server milestones have no device count and admin-route traffic is excluded.
 
 Reporting safeguards:
 
@@ -70,7 +70,7 @@ Reporting safeguards:
 - Onboarding step counts are labeled as milestones, not inferred conversion rates. Retention anchors at first evaluation **observed in the selected window**, not first-ever lifetime activation.
 - Currency-separated gross/refund/net amounts; net excludes provider fees and taxes. Cancellation timing is observed intent, not churn rate or current subscription state.
 - Aggregate-only responses, capped table sizes, indexed time windows, one read-only database transaction with an eight-second statement timeout, and a bounded 12-key/60-second process cache that coalesces concurrent requests. Auth precedes cache access. HTTP responses are private/no-store; the page does not poll.
-- Plain tables and CSS funnel bars; no new chart dependency or mobile changes. Quality exposes delivery health and release-level evaluation latency, not invented native frame/startup measurements.
+- Liveline charts accompany accessible tables and ordered funnel bars. Data health exposes delivery health and release-level evaluation latency. These reporting changes require no mobile changes.
 
 Verification: `bun run scripts/tests/admin-analytics.ts` with the same isolated database variable as below tests sequential ordering, duplicate actors, malformed durations, environment/platform filtering, separate currencies, mature retention, and empty states. A local synthetic 20,000-event query measured about 45 ms. `scripts/tests/admin-analytics-http.ts` targets only the isolated preview on port 3107 with synthetic credentials and validates authorization, filtering, private headers, and snapshot reuse. Desktop and 390px browser checks verified the password gate, tabs, and absence of horizontal overflow/error overlays. These are local checks, not production load or native-device profiling.
 
@@ -81,7 +81,7 @@ UI/performance review:
 | Before | After | Why |
 | --- | --- | --- |
 | Creator-only password form | Shared admin password gate | One owner for the existing unlock flow |
-| SQL starter queries only | Accessible tables and CSS funnel bars in admin | No chart SDK or mobile bundle cost |
+| SQL starter queries only | Liveline charts, accessible tables and ordered funnel bars in admin | Readable trends with no mobile bundle changes |
 | Unbounded ad-hoc reporting risk | Preset ranges, timeout, aggregate response, bounded cache | Protect request and database budgets |
 | No in-product reporting caveats | Metric definitions alongside each report | Avoid confusing milestone counts, conversion, churn, and revenue |
 

@@ -4,10 +4,9 @@ import { z } from 'zod'
 import { db, schema } from '@/lib/db'
 import { env } from '@/lib/env'
 import { ApiError } from '@/lib/api/http'
-import { getStripe } from '@/lib/payments/stripe'
 import { courseSellers, courseContacts } from './schema'
 import { sellerForUser, accountEligible, syncSeller } from './sellers'
-import { courseStripeOptions } from './stripe'
+import { getCourseStripe, courseStripeOptions } from './stripe'
 import { siteUrl } from './http'
 
 const hash = (token: string) => createHash('sha256').update(token).digest('hex')
@@ -67,10 +66,10 @@ export async function oauthComplete(userId: string, query: unknown) {
   const seller = await sellerForUser(userId)
   const [used] = await db.delete(schema.verificationTokens).where(and(eq(schema.verificationTokens.identifier, `course-oauth:${userId}`), eq(schema.verificationTokens.token, hash(state)), gt(schema.verificationTokens.expires, new Date()))).returning()
   if (!used || (seller.stripeAccountId && seller.stripeConnected) || seller.status === 'suspended') throw new ApiError(400, 'Connection request is invalid or expired')
-  const token = await getStripe().oauth.token({ grant_type: 'authorization_code', code }, courseStripeOptions)
+  const token = await getCourseStripe().oauth.token({ grant_type: 'authorization_code', code }, courseStripeOptions)
   if (!token.stripe_user_id) throw new ApiError(502, 'Stripe did not return an account')
   // Stripe requires Accounts v1 for OAuth. Subsequent status checks use the same ID through v2.
-  const account = await getStripe().accounts.retrieve(token.stripe_user_id, {}, courseStripeOptions)
+  const account = await getCourseStripe().accounts.retrieve(token.stripe_user_id, {}, courseStripeOptions)
   if ((seller.stripeAccountId && account.id !== seller.stripeAccountId) || !accountEligible(account) || account.country !== seller.country) throw new ApiError(400, 'Connect a full-dashboard Stripe account registered in your selected country')
   const [updated] = await db.update(courseSellers).set({ stripeAccountId: account.id, stripeConnected: true, stripeLivemode: token.livemode, updatedAt: new Date() }).where(and(eq(courseSellers.id, seller.id), eq(courseSellers.status, seller.status), or(isNull(courseSellers.stripeAccountId), and(eq(courseSellers.stripeAccountId, account.id), eq(courseSellers.stripeConnected, false))))).returning()
   if (!updated) throw new ApiError(409, 'Seller connection changed')

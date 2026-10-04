@@ -1,11 +1,10 @@
 // Opt-in real provider smoke test. Never creates live accounts or accepts identity/terms.
 import assert from 'node:assert/strict'
 import { env } from '../../lib/env'
-import { getStripe } from '../../lib/payments/stripe'
-import { courseStripeOptions } from '../../lib/courses/stripe'
+import { getCourseStripe, courseStripeOptions } from '../../lib/courses/stripe'
 
-assert.ok(env.STRIPE_SECRET_KEY?.startsWith('sk_test_'), 'Sandbox credentials required')
-const stripe = getStripe(), fixtureFile = Bun.file('.local/stripe-v2-provider-check.json')
+assert.ok(env.COURSE_STRIPE_SECRET_KEY?.startsWith('sk_test_'), 'Sandbox credentials required')
+const stripe = getCourseStripe(), fixtureFile = Bun.file('.local/stripe-v2-provider-check.json')
 const params = { include: ['configuration.merchant', 'defaults', 'identity', 'requirements'] as const }
 const fixture = await fixtureFile.exists() ? await fixtureFile.json() : null
 const account = fixture ? await stripe.v2.core.accounts.retrieve(fixture.accountId, { include: [...params.include] }, courseStripeOptions) : await stripe.v2.core.accounts.create({
