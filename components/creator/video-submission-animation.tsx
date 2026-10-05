@@ -1,15 +1,28 @@
-import { useRef } from 'react'
+import { useId, useRef } from 'react'
 import { useInView } from 'motion/react'
 import styles from './video-submission-animation.module.css'
 
-/** Decorative editor → submission loop; CSS owns the animation clock. */
+/** Decorative editor → views → submission loop; CSS owns the animation clock. */
 export function VideoSubmissionAnimation() {
+  const id = useId().replace(/:/g, '')
   const ref = useRef<HTMLDivElement>(null)
   const inView = useInView(ref)
 
   return (
     <div ref={ref} className={styles.scene} data-running={inView} aria-hidden="true">
       <svg viewBox="0 0 320 180" fill="none" className={styles.art}>
+        <defs>
+          <clipPath id={`${id}-crop`}><rect width="48" height="64" rx="6" /></clipPath>
+          <g id={`${id}-video`}>
+            <image href="/_next/image?url=%2Fmodel.png&amp;w=256&amp;q=75" width="48" height="64" preserveAspectRatio="xMidYMid slice" clipPath={`url(#${id}-crop)`} />
+            <rect y="44" width="48" height="20" rx="6" fill="#17191D" fillOpacity=".45" />
+            <path d="M8 52h23M8 57h16" stroke="white" strokeWidth="2" strokeLinecap="round" opacity=".8" />
+          </g>
+          <g id={`${id}-play`}>
+            <circle r="11" fill="white" fillOpacity=".95" />
+            <path d="m-2.5-4 6 4-6 4V-4Z" fill="#252A30" />
+          </g>
+        </defs>
         <g className={styles.editor}>
           <rect x="32" y="12" width="256" height="152" rx="16" fill="white" stroke="#E4E7EB" />
           <circle cx="47" cy="26" r="2" fill="#D4D8DE" />
@@ -17,19 +30,18 @@ export function VideoSubmissionAnimation() {
           <circle cx="63" cy="26" r="2" fill="#D4D8DE" />
           <text x="160" y="29" textAnchor="middle" fill="#8A9099" fontSize="7" letterSpacing="1.4">YOUR NEXT VIDEO</text>
           <rect x="44" y="38" width="232" height="72" rx="8" fill="#F0F4F7" />
+          <path d="M61 54h36M61 60h25M223 88h34M233 94h24" stroke="#D5DEE5" strokeWidth="3" strokeLinecap="round" />
           <g className={styles.preview}>
-            <rect x="125" y="42" width="70" height="64" rx="7" fill="#E2F4FC" />
-            <path d="M139 97C139 82 149 77 160 77C171 77 181 82 181 97" fill="#B4DFEF" />
-            <ellipse cx="160" cy="64" rx="11" ry="13" fill="#B4DFEF" />
+            <use href={`#${id}-video`} x="136" y="42" />
           </g>
-          <circle cx="160" cy="74" r="13" fill="white" fillOpacity=".9" />
-          <path d="m157 69 8 5-8 5V69Z" fill="#252A30" />
+          <use href={`#${id}-play`} x="160" y="74" />
           <path d="M51 121H269" stroke="#E9ECEF" strokeLinecap="round" />
           <rect x="52" y="127" width="216" height="23" rx="5" fill="#EEF0F3" />
           {[0, 1, 2, 3, 4, 5].map((i) => (
             <g key={i}>
-              <rect x={56 + i * 35} y="130" width="31" height="17" rx="3" fill={i % 2 ? '#CBEAF7' : '#DDEAF0'} />
-              <path d={`M${61 + i * 35} 142l7-7 7 7`} stroke="#B1CEDC" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+              <svg x={56 + i * 35} y="130" width="31" height="17" viewBox="0 8 48 28" preserveAspectRatio="xMidYMid slice">
+                <use href={`#${id}-video`} />
+              </svg>
             </g>
           ))}
           <g className={styles.trim}>
@@ -42,17 +54,37 @@ export function VideoSubmissionAnimation() {
             <path d="m59 120 3 4 3-4" fill="#252A30" />
           </g>
         </g>
+        <g className={styles.analytics}>
+          <rect x="40" y="15" width="240" height="148" rx="16" fill="white" stroke="#E4E7EB" />
+          <text x="56" y="36" fill="#858A91" fontSize="8" letterSpacing="1.2">VIDEO PERFORMANCE</text>
+          <text x="56" y="64" fill="#252A30" fontSize="23" fontWeight="600" letterSpacing="-.8">12.8k</text>
+          <text x="126" y="63" fill="#858A91" fontSize="9">views</text>
+          <rect x="213" y="47" width="51" height="19" rx="9.5" fill="#EDF8FE" />
+          <text x="238" y="60" textAnchor="middle" fill="#00A8EF" fontSize="8" fontWeight="600">↗ 124%</text>
+          {[88, 111, 134].map((y) => <path key={y} d={`M56 ${y}H264`} stroke="#F0F2F5" />)}
+          <path className={styles.graphFill} d="M56 133 82 127 108 130 134 113 160 118 186 99 212 103 238 83 262 73V141H56Z" fill="#EDF8FE" />
+          <path className={styles.graph} pathLength="1" d="M56 133 82 127 108 130 134 113 160 118 186 99 212 103 238 83 262 73" stroke="#00A8EF" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />
+          <circle className={styles.graphDot} cx="262" cy="73" r="4" fill="#00A8EF" stroke="white" strokeWidth="2" />
+          <text x="56" y="153" fill="#A0A5AD" fontSize="7">Published</text>
+          <text x="264" y="153" textAnchor="end" fill="#A0A5AD" fontSize="7">Today</text>
+        </g>
         <g className={styles.submission}>
-          <rect x="82" y="36" width="156" height="112" rx="16" fill="white" stroke="#E4E7EB" />
-          <rect x="141" y="49" width="38" height="46" rx="7" fill="#EDF8FE" />
-          <path d="m157 62 10 7-10 7V62Z" fill="#00A8EF" />
-          <path d="M101 110H219" stroke="#EEF0F3" strokeWidth="4" strokeLinecap="round" />
-          <path className={styles.upload} d="M101 110H219" stroke="#00A8EF" strokeWidth="4" strokeLinecap="round" />
-          <text className={styles.sending} x="160" y="132" textAnchor="middle" fill="#858A91" fontSize="9">Submitting video</text>
-          <text className={styles.sent} x="160" y="132" textAnchor="middle" fill="#252A30" fontSize="9" fontWeight="500">Ready for review</text>
+          <rect x="54" y="20" width="212" height="140" rx="16" fill="white" stroke="#E4E7EB" />
+          <text x="70" y="40" fill="#858A91" fontSize="8" letterSpacing="1.2">CAMPAIGN SUBMISSION</text>
+          <use href={`#${id}-video`} x="70" y="51" />
+          <use href={`#${id}-play`} x="94" y="79" />
+          <text x="130" y="68" fill="#252A30" fontSize="10" fontWeight="600">Your next video</text>
+          <text x="130" y="84" fill="#858A91" fontSize="8">Published post attached</text>
+          <rect x="130" y="94" width="105" height="18" rx="9" fill="#F3F5F7" />
+          <path d="M138 105v-4m4 4v-7m4 7v-5" stroke="#858A91" strokeWidth="1.3" strokeLinecap="round" />
+          <text x="153" y="106" fill="#73777D" fontSize="7">Analytics attached</text>
+          <path d="M70 125H250" stroke="#EEF0F3" strokeWidth="3" strokeLinecap="round" />
+          <path className={styles.upload} pathLength="1" d="M70 125H250" stroke="#00A8EF" strokeWidth="3" strokeLinecap="round" />
+          <text className={styles.sending} x="160" y="146" textAnchor="middle" fill="#858A91" fontSize="9">Submitting video…</text>
+          <text className={styles.sent} x="160" y="146" textAnchor="middle" fill="#252A30" fontSize="9" fontWeight="500">Submitted · Ready for review</text>
           <g className={styles.check}>
-            <circle cx="178" cy="88" r="11" fill="#00A8EF" stroke="white" strokeWidth="3" />
-            <path d="m173.5 88 3 3 5-6" stroke="white" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
+            <circle cx="246" cy="29" r="12" fill="#00A8EF" stroke="white" strokeWidth="3" />
+            <path d="m241.5 29 3 3 5-6" stroke="white" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
           </g>
         </g>
         <g className={styles.spark} stroke="#00A8EF" strokeWidth="1.5" strokeLinecap="round">

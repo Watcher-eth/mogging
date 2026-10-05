@@ -17,6 +17,8 @@ import {
 } from 'lucide-react'
 import { useSession } from 'next-auth/react'
 import Image from 'next/image'
+import Link from 'next/link'
+import { IntroFacePreview } from '@/components/analysis/intro-face-preview'
 import { useRouter } from 'next/router'
 import { memo, useCallback, useEffect, useMemo, useRef, useState, type CSSProperties, type ChangeEvent, type ReactNode } from 'react'
 import { toast } from 'sonner'
@@ -156,8 +158,6 @@ type ClaimPaymentResponse = {
 type ImageFramePositions = Record<string, CaptureFrameImagePosition>
 const defaultFramePosition: CaptureFrameImagePosition = { x: 50, y: 50, scale: 1 }
 const analysisWebInstallStorageKey = 'mogging:analysis:web-install-id'
-const initialAssessedToday = 1842
-const assessmentCountDelayRangeMs = { min: 8_000, max: 16_000 }
 
 const pseudoAnalysisItems = [
   'Detecting facial reference lines',
@@ -921,43 +921,31 @@ function ScreenMotion({ children }: { children: ReactNode }) {
 }
 
 function IntroScreen({ onBegin }: { onBegin: () => void }) {
-  const [assessedToday, setAssessedToday] = useState(initialAssessedToday)
-
-  useEffect(() => {
-    let timeoutId: number
-
-    function scheduleIncrement() {
-      const { min, max } = assessmentCountDelayRangeMs
-      const delay = Math.round(min + Math.random() * (max - min))
-
-      timeoutId = window.setTimeout(() => {
-        setAssessedToday((current) => current + 1)
-        scheduleIncrement()
-      }, delay)
-    }
-
-    scheduleIncrement()
-    return () => window.clearTimeout(timeoutId)
-  }, [])
-
   return (
     <div className="grid min-h-[calc(100svh-5rem)] gap-8 px-5 py-6 sm:px-10 sm:py-8 lg:grid-cols-[1.08fr_0.92fr] lg:gap-16 xl:gap-24 2xl:gap-32">
-      <aside className="flex flex-col justify-between gap-10 lg:pr-16 xl:pr-24 2xl:pr-36">
+      <aside className="flex flex-col justify-between gap-10 lg:pr-16 xl:pr-24 2xl:pr-36" style={{ containerType: 'inline-size' }}>
         <div>
           <div className="flex gap-6 font-mono text-[10px] uppercase tracking-wide text-muted-foreground">
-            <span className="underline underline-offset-4">What is it?</span>
-            <span className="underline underline-offset-4">All reports</span>
+            <Link href="/how-face-analysis-works" className="underline underline-offset-4 transition-colors hover:text-foreground">How does it work</Link>
           </div>
 
           <div className="mt-20 sm:mt-28 lg:mt-40">
-            <h1 className="text-balance text-4xl font-semibold leading-[0.95] tracking-[-0.05em] sm:text-6xl">
-              Introductory Facial Assessment
+            <h1 className="text-[clamp(2rem,10cqw,4.5rem)] font-semibold leading-[1.02] tracking-[-0.05em]">
+              <span className="block whitespace-nowrap">Improve your looks</span>
+              <span className="block whitespace-nowrap">discover your</span>
+              <span className="block whitespace-nowrap">true potential</span>
             </h1>
-            <div className="mt-8 grid grid-cols-2 gap-4 font-mono text-[10px] uppercase text-muted-foreground sm:grid-cols-4">
-              <Meta label="Edition" value="Introductory" />
-              <Meta label="Features analysed" value="40" />
-              <Meta label="Cost" value="$4.99" />
-              <Meta label="Assessed today" value={assessedToday.toLocaleString()} />
+            <div className="mt-8 grid grid-cols-1 divide-y divide-zinc-200/60 sm:grid-cols-[1fr_1.2fr_1fr] sm:divide-x sm:divide-y-0">
+              {[
+                ['Based on science', 'Using the latest research'],
+                ['Personalized', 'Based on your demographics'],
+                ['Without surgery', 'Non-surgical changes'],
+              ].map(([title, description]) => (
+                <div key={title} className="py-3 first:pt-0 last:pb-0 sm:px-3 sm:py-0 sm:first:pl-0 sm:last:pr-0">
+                  <p className="text-sm font-medium tracking-tight sm:whitespace-nowrap lg:text-[clamp(0.625rem,2.6cqw,0.875rem)]">{title}</p>
+                  <p className="mt-1.5 text-xs leading-relaxed text-muted-foreground sm:whitespace-nowrap lg:text-[clamp(0.5rem,2.05cqw,0.75rem)]">{description}</p>
+                </div>
+              ))}
             </div>
           </div>
         </div>
@@ -973,24 +961,7 @@ function IntroScreen({ onBegin }: { onBegin: () => void }) {
         </div>
       </aside>
 
-      <div className="relative min-h-[420px] overflow-hidden bg-zinc-200 sm:min-h-[560px] lg:min-h-0">
-        <Image className="object-cover object-center" src={previewPhotoUrl} alt="Facial assessment preview" fill priority sizes="(min-width: 1024px) 46vw, 100vw" />
-        <div className="absolute left-1/2 top-1/2 w-[min(60vw,300px)] -translate-x-1/2 -translate-y-1/2 border border-white/80 p-3 text-white shadow-[0_20px_80px_rgba(0,0,0,0.18)] sm:w-[min(42vw,300px)]">
-          <div className="text-balance text-xl font-medium leading-none tracking-[-0.04em]">
-            Facial
-            <br />
-            Aesthetic
-            <br />
-            Assessments
-          </div>
-          <div className="mt-28 grid grid-cols-2 gap-x-4 gap-y-3 font-mono text-[9px] uppercase text-white/85 sm:mt-40 sm:grid-cols-4 sm:gap-y-4">
-            <PreviewMeta label="Eyes" value="Canthal tilt" />
-            <PreviewMeta label="Jaw" value="Gonial angle" />
-            <PreviewMeta label="Symmetry" value="Eye line tilt" />
-            <PreviewMeta label="Face shape" value="Upper third" />
-          </div>
-        </div>
-      </div>
+      <IntroFacePreview imageSrc={previewPhotoUrl} />
 
       <div className="lg:hidden">
         <Button className="h-11 w-full justify-between rounded-sm font-mono text-[11px] uppercase" onClick={onBegin}>
@@ -2263,24 +2234,6 @@ function ProgressBar({ progress }: { progress: number }) {
         <span>{Math.round(progress)}%</span>
         <span>Processing</span>
       </div>
-    </div>
-  )
-}
-
-function Meta({ label, value }: { label: string; value: string }) {
-  return (
-    <div>
-      <div className="opacity-60">{label} /</div>
-      <div className="mt-1 text-foreground/80">{value}</div>
-    </div>
-  )
-}
-
-function PreviewMeta({ label, value }: { label: string; value: string }) {
-  return (
-    <div>
-      <div className="text-white/55">{label} /</div>
-      <div className="mt-1 text-white/90">{value}</div>
     </div>
   )
 }
