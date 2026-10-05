@@ -6,7 +6,7 @@ import useSWR from 'swr'
 import { Button } from '@/components/ui/button'
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { CreatorHeader, CreatorShell } from '@/components/creator/creator-shell'
-import { CreatorIcon } from '@/components/creator/creator-icon'
+import { SubmissionReviewAnimation } from '@/components/creator/submission-review-animation'
 import type { CreatorDashboard, CreatorPayment, CreatorSubmission } from '@/components/creator/types'
 import { apiGet } from '@/lib/api/client'
 import { mergeCreatorSubmissionReviewResults } from '@/lib/creator/submission-review'
@@ -119,7 +119,7 @@ function SubmissionEvidence({ submission }: { submission: CreatorSubmission }) {
 }
 
 function StatusPill({ status }: { status: CreatorSubmission['status'] }) { return <span className={cn('shrink-0 rounded-full px-2.5 py-1 text-[11px] font-semibold', status === 'paid' && 'creator-tone-green text-[#29CE53]', status === 'approved' && 'creator-tone-blue text-[#00A8EF]', (status === 'pending' || status === 'in_review') && 'bg-[#f5f6f7] text-[#52565c]', status === 'rejected' && 'creator-tone-red text-[#F33232]')}>{statusLabel(status)}</span> }
-function EmptyState({ filtered }: { filtered: boolean }) { return <div className="creator-surface grid min-h-72 place-items-center p-8 text-center"><div>{filtered ? <span className="mx-auto grid size-12 place-items-center rounded-[16px] bg-[#f7f8f9] text-[#00A8EF]"><Clock3 className="size-5" /></span> : <CreatorIcon name="submissions" className="mx-auto size-20" />}<h2 className="mt-4 text-sm font-semibold">{filtered ? 'Nothing in This Status' : 'No Submissions Yet'}</h2><p className="mt-0.5 text-sm text-[#73777d]">{filtered ? 'Choose another filter to see more videos.' : 'Your submitted videos and payments will appear here.'}</p>{!filtered ? <Button asChild className="mt-6 h-10 rounded-full px-4"><Link href="/creator/submit">Submit Your First Video</Link></Button> : null}</div></div> }
+function EmptyState({ filtered }: { filtered: boolean }) { return <div className="creator-surface grid min-h-72 place-items-center px-4 py-8 sm:px-8 text-center"><div className="w-full">{filtered ? <span className="mx-auto grid size-12 place-items-center rounded-[16px] bg-[#f7f8f9] text-[#00A8EF]"><Clock3 className="size-5" /></span> : <SubmissionReviewAnimation />}<h2 className="mt-4 text-sm font-semibold">{filtered ? 'Nothing in This Status' : 'No Submissions Yet'}</h2><p className="mt-0.5 text-sm text-[#73777d]">{filtered ? 'Choose another filter to see more videos.' : 'Your submitted videos and payments will appear here.'}</p>{!filtered ? <Button asChild className="mt-6 h-10 rounded-full px-4"><Link href="/creator/submit">Submit Your First Video</Link></Button> : null}</div></div> }
 function Detail({ label, value }: { label: string; value: string }) { return <div className="flex items-center justify-between gap-4"><span className="text-zinc-500">{label}</span><span className="text-right font-medium capitalize">{value}</span></div> }
 function statusLabel(status: CreatorSubmission['status']) { return status === 'in_review' ? 'In Review' : status.slice(0, 1).toUpperCase() + status.slice(1) }
 function formatMoney(cents: number, currency: string) { return new Intl.NumberFormat('en-US', { style: 'currency', currency }).format(cents / 100) }

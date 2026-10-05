@@ -2,6 +2,13 @@
 .art { display: block; width: 100%; overflow: visible; filter: drop-shadow(0 8px 10px rgb(26 42 55 / 5%)); }
 .scene svg * { animation-play-state: paused !important; }
 .scene[data-running='true'] svg * { animation-play-state: running !important; }
+/* Cues share the SVG clock, including its offscreen pause. Only two state updates per loop. */
+.countCue { animation: countCue var(--duration) linear 4.55s infinite; }
+.resetCue { animation: resetCue var(--duration) linear 8.45s infinite; }
+.viewCount { display: flex; align-items: baseline; gap: 8px; color: #252a30; font-size: 23px; font-weight: 600; line-height: 29px; letter-spacing: -.8px; }
+.viewCount span { font-size: 9px; font-weight: 400; letter-spacing: 0; color: #858a91; }
+@keyframes countCue { from { opacity: 0; } to { opacity: 0; } }
+@keyframes resetCue { from { opacity: 0; } to { opacity: 0; } }
 .editor, .analytics, .submission, .trim, .check, .preview { transform-box: fill-box; transform-origin: center; }
 .editor { animation: editor var(--duration) cubic-bezier(.22,1,.36,1) infinite; }
 .preview { animation: preview var(--duration) ease-in-out infinite; }

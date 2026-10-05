@@ -17,6 +17,7 @@ import {
 } from 'lucide-react'
 import { useSession } from 'next-auth/react'
 import Image from 'next/image'
+import dynamic from 'next/dynamic'
 import Link from 'next/link'
 import { IntroFacePreview } from '@/components/analysis/intro-face-preview'
 import { useRouter } from 'next/router'
@@ -32,8 +33,6 @@ import {
   saveAnalysisDraft,
   type AnalysisDraftImage,
 } from '@/lib/client/analysisDraft'
-import { extractFaceLandmarksFromDataUrl } from '@/lib/client/faceLandmarks'
-import { inferHairColorFromDataUrl, inferSkinColorFromDataUrl } from '@/lib/client/appearance'
 import { parseFaceLandmarksPayload, type FaceLandmarksPayload, type NormalizedPoint } from '@/lib/analysis/landmarks'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -44,13 +43,15 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog'
-import { AnalysisReport, ReportActions } from '@/components/analysis/analysis-report'
-import { CameraSheet } from '@/components/analysis/camera-sheet'
 import { LoginDialog } from '@/components/app/app-shell'
 import { SeoHead } from '@/components/app/seo-head'
 import { CaptureFrame, type CaptureFrameImagePosition } from '@/components/analysis/capture-frame'
 import { TextLoop } from '@/components/core/text-loop'
 import { TextShimmer } from '@/components/core/text-shimmer'
+
+const AnalysisReport = dynamic(() => import('@/components/analysis/analysis-report').then((module) => module.AnalysisReport))
+const ReportActions = dynamic(() => import('@/components/analysis/analysis-report').then((module) => module.ReportActions))
+const CameraSheet = dynamic(() => import('@/components/analysis/camera-sheet').then((module) => module.CameraSheet))
 
 type FlowStep = 'intro' | 'upload' | 'preview-analysis' | 'payment' | 'actual-analysis' | 'results'
 
@@ -733,6 +734,10 @@ export default function AnalysisPage() {
 
   async function enrichImageLandmarks(image: AnalysisDraftImage) {
     try {
+      const [{ extractFaceLandmarksFromDataUrl }, { inferHairColorFromDataUrl, inferSkinColorFromDataUrl }] = await Promise.all([
+        import('@/lib/client/faceLandmarks'),
+        import('@/lib/client/appearance'),
+      ])
       const landmarks = await extractFaceLandmarksFromDataUrl(image.dataUrl)
       const [hairColor, skinColor] = await Promise.all([
         inferHairColorFromDataUrl(image.dataUrl, landmarks),
@@ -743,6 +748,7 @@ export default function AnalysisPage() {
         currentImage.id === image.id ? { ...currentImage, hairColor, skinColor, landmarks } : currentImage
       )))
     } catch {
+      const { inferHairColorFromDataUrl } = await import('@/lib/client/appearance')
       const hairColor = await inferHairColorFromDataUrl(image.dataUrl)
       setImages((current) => current.map((currentImage) => (
         currentImage.id === image.id ? { ...currentImage, hairColor, skinColor: null } : currentImage
@@ -888,15 +894,17 @@ export default function AnalysisPage() {
         onClose={() => setShareOpen(false)}
         onCreate={createShare}
       />
-      <CameraSheet
-        open={cameraOpen}
-        onCapture={addCameraImage}
-        onClose={() => setCameraOpen(false)}
-        onUpload={() => {
-          setCameraOpen(false)
-          window.setTimeout(() => uploadInputRef.current?.click(), 160)
-        }}
-      />
+      {cameraOpen ? (
+        <CameraSheet
+          open={cameraOpen}
+          onCapture={addCameraImage}
+          onClose={() => setCameraOpen(false)}
+          onUpload={() => {
+            setCameraOpen(false)
+            window.setTimeout(() => uploadInputRef.current?.click(), 160)
+          }}
+        />
+      ) : null}
       <LoginDialog
         open={loginOpen}
         onOpenChange={setLoginOpen}
@@ -923,17 +931,16 @@ function ScreenMotion({ children }: { children: ReactNode }) {
 function IntroScreen({ onBegin }: { onBegin: () => void }) {
   return (
     <div className="grid min-h-[calc(100svh-5rem)] gap-8 px-5 py-6 sm:px-10 sm:py-8 lg:grid-cols-[1.08fr_0.92fr] lg:gap-16 xl:gap-24 2xl:gap-32">
-      <aside className="flex flex-col justify-between gap-10 lg:pr-16 xl:pr-24 2xl:pr-36" style={{ containerType: 'inline-size' }}>
+      <aside className="flex flex-col justify-between gap-10 min-w-0" style={{ containerType: 'inline-size' }}>
         <div>
           <div className="flex gap-6 font-mono text-[10px] uppercase tracking-wide text-muted-foreground">
             <Link href="/how-face-analysis-works" className="underline underline-offset-4 transition-colors hover:text-foreground">How does it work</Link>
           </div>
 
           <div className="mt-20 sm:mt-28 lg:mt-40">
-            <h1 className="text-[clamp(2rem,10cqw,4.5rem)] font-semibold leading-[1.02] tracking-[-0.05em]">
-              <span className="block whitespace-nowrap">Improve your looks</span>
-              <span className="block whitespace-nowrap">discover your</span>
-              <span className="block whitespace-nowrap">true potential</span>
+            <h1 className="text-[clamp(1.625rem,5.5cqw,3.5rem)] lg:text-[clamp(2rem,8cqw,4.5rem)] font-semibold leading-[1.02] tracking-[-0.05em]">
+              <span className="block">Improve your looks</span>
+              <span className="block">Discover your true potential</span>
             </h1>
             <div className="mt-8 grid grid-cols-1 divide-y divide-zinc-200/60 sm:grid-cols-[1fr_1.2fr_1fr] sm:divide-x sm:divide-y-0">
               {[
@@ -961,7 +968,7 @@ function IntroScreen({ onBegin }: { onBegin: () => void }) {
         </div>
       </aside>
 
-      <IntroFacePreview imageSrc={previewPhotoUrl} />
+      <IntroFacePreview />
 
       <div className="lg:hidden">
         <Button className="h-11 w-full justify-between rounded-sm font-mono text-[11px] uppercase" onClick={onBegin}>
