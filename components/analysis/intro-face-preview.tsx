@@ -75,7 +75,7 @@ function primitivePath(primitive: Shape) {
     default: {
       const closed = primitive.kind === 'region' || Boolean(primitive.closed)
       const points = primitive.pixelPoints
-      return morphPath(primitive.id.includes('eye-contour') || primitive.id === 'mouth-contour'
+      return morphPath(primitive.id === 'mouth-contour'
         ? closed ? [...points, points[0]] : points
         : smoothContour(points, closed))
     }
@@ -96,24 +96,20 @@ const dot = (id: string, x: number, y: number, radius = 4): OverlayPrimitive => 
 // Keep these demo edits local; report measurements still use the shared presets.
 const presets: OverlayPreset[] = Object.entries(reportOverlayPresets).map(([category, preset]) => {
   switch (category) {
-    case 'eyes': return { ...preset, primitives: preset.primitives.filter((p) => p.id !== 'eye-line') }
-    case 'nose': {
-      const root = landmarks.anchors.noseBridge!
-      const base = landmarks.contours!.noseBase!
-      const left = base[0], right = base[base.length - 1]
-      const side = (wing: PixelPoint) => [
-        { x: root.x + (wing.x - root.x) * 0.28, y: root.y + (wing.y - root.y) * 0.2 },
-        { x: root.x + (wing.x - root.x) * 0.45, y: root.y + (wing.y - root.y) * 0.65 },
-      ]
-      return { ...preset, primitives: [
-        contour('nose-outline', [root, ...side(left), ...base, ...side(right).reverse()]),
-        label('nose-label', 'Nose shape', right.x + 0.025, right.y - 0.018),
-      ] }
-    }
+    // Preserve the calibrated eyelid extrema instead of resampling them again.
+    case 'eyes': return { ...preset, primitives: [
+      contour('left-eye-contour', portrait.contours.leftEye),
+      contour('right-eye-contour', portrait.contours.rightEye),
+      ...preset.primitives.filter((p) => p.kind === 'point' || p.kind === 'label'),
+    ] }
+    case 'nose': return { ...preset, primitives: [
+      contour('nose-outline', portrait.contours.noseOutline),
+      label('nose-label', 'Nose shape', 0.59, 0.45),
+    ] }
     case 'facial-fat': return { ...preset, primitives: preset.primitives.filter((p) => p.id !== 'facial-fat-box') }
-    case 'biological-age': return { ...preset, footer: '[ 008 ] FACE MAP', primitives: [
+    case 'biological-age': return { ...preset, footer: '[ 008 ] SKIN AGE', primitives: [
       ...buildFaceMapPoints(landmarks).slice(0, 60).map((p, index) => dot(`face-map-${index}`, p.x, p.y, 2.6)),
-      label('face-map-label', '60-point face map', 0.63, 0.59),
+      label('face-map-label', 'Skin age', 0.63, 0.59),
     ] }
     case 'sun-damage': {
       const leftEye = landmarks.anchors.leftPupil!, rightEye = landmarks.anchors.rightPupil!

@@ -408,9 +408,9 @@
 }
 .creator-sidebar-sheet { font-family: Inter, ui-sans-serif, system-ui, sans-serif; }
 .creator-navigation { position: sticky; top: 0; bottom: auto; left: auto; height: calc(100dvh - 88px); border-color: #eceef0; }
-.creator-nav-link { height: 38px; gap: 12px; border-radius: 13px; color: #73777d; font-size: 13px; }
+.creator-nav-link { --creator-control-radius: 12px; height: 38px; gap: 12px; border-radius: 13px; color: #73777d; font-size: 13px; }
 .creator-portal .creator-nav-link[data-active="true"], .creator-sidebar-sheet .creator-nav-link[data-active="true"] { background: #00A8EF; color: white; }
-.creator-guide-nav-link { min-height: 32px; border-radius: 11px; gap: 10px; color: #73777d; font-size: 12px; }
+.creator-guide-nav-link { --creator-control-radius: 12px; min-height: 32px; border-radius: 11px; gap: 10px; color: #73777d; font-size: 12px; }
 .creator-guide-nav-link[data-active="true"] { background: #f5f6f7; color: #181a1d; }
 .creator-guide-nav-link[data-active="true"] .creator-icon { color: #00A8EF; }
 @media (prefers-reduced-motion: reduce) { [data-sidebar], .creator-navigation { transition: none !important; } }
@@ -450,7 +450,7 @@
    Clickable content cards and generated app previews keep their content geometry. */
 :is(.creator-app, .creator-dialog, .creator-sidebar-sheet, [data-creator-controls])
 :is(button, [data-slot="button"], .creator-primary-button, .creator-button, .c-button, .c-icon-button, .c-text-link, [data-sidebar="menu-button"]):not(.creator-surface):not([data-creator-card]):not([data-creator-preview] *) {
-  border-radius: 999px;
+  border-radius: var(--creator-control-radius, 999px);
   transition-property: scale, background-color, border-color, color, box-shadow;
   transition-duration: 160ms;
   transition-timing-function: cubic-bezier(0.16, 1, 0.3, 1);

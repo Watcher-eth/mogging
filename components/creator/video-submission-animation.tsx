@@ -1,4 +1,4 @@
-import NumberFlow from '@number-flow/react'
+import NumberFlow, { continuous } from '@number-flow/react'
 import { useId, useRef, useState } from 'react'
 import { useInView } from 'motion/react'
 import styles from './video-submission-animation.module.css'
@@ -65,6 +65,7 @@ export function VideoSubmissionAnimation() {
             <div className={styles.viewCount}>
               <NumberFlow
                 value={views}
+                plugins={[continuous]}
                 suffix="k"
                 animated={views > 0}
                 transformTiming={{ duration: 2080, easing: 'ease-in-out' }}

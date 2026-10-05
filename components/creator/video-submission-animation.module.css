@@ -5,8 +5,9 @@
 /* Cues share the SVG clock, including its offscreen pause. Only two state updates per loop. */
 .countCue { animation: countCue var(--duration) linear 4.55s infinite; }
 .resetCue { animation: resetCue var(--duration) linear 8.45s infinite; }
-.viewCount { display: flex; align-items: baseline; gap: 8px; color: #252a30; font-size: 23px; font-weight: 600; line-height: 29px; letter-spacing: -.8px; }
+.viewCount { display: flex; align-items: baseline; gap: 8px; color: #252a30; font-size: 20px; font-weight: 500; line-height: 29px; letter-spacing: -.5px; visibility: hidden; animation: countVisibility var(--duration) linear infinite; }
 .viewCount span { font-size: 9px; font-weight: 400; letter-spacing: 0; color: #858a91; }
+@keyframes countVisibility { 0%, 27%, 62%, 100% { visibility: hidden; } 34%, 55% { visibility: visible; } }
 @keyframes countCue { from { opacity: 0; } to { opacity: 0; } }
 @keyframes resetCue { from { opacity: 0; } to { opacity: 0; } }
 .editor, .analytics, .submission, .trim, .check, .preview { transform-box: fill-box; transform-origin: center; }
