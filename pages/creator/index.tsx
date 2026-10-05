@@ -2,6 +2,7 @@ import Link from 'next/link'
 import { ArrowRight, Loader2, Megaphone } from 'lucide-react'
 import useSWR from 'swr'
 import { CreatorHeader, CreatorShell } from '@/components/creator/creator-shell'
+import { VideoSubmissionAnimation } from '@/components/creator/video-submission-animation'
 import type { CreatorDashboard } from '@/components/creator/types'
 import { apiGet } from '@/lib/api/client'
 
@@ -57,24 +58,29 @@ function OverviewContent() {
         }
         description="Your next step, reviews, and earnings."
       />
-      <section className="creator-next-step mb-7 p-5 sm:p-6">
-        <p className="text-[11px] font-semibold uppercase tracking-[0.13em] text-[#858a91]">
-          Next Up
-        </p>
-        <h2 className="mt-2 text-xl font-semibold tracking-[-0.035em]">
-          {hasSubmitted ? 'Submit your next video' : 'Submit your first video'}
-        </h2>
-        <p className="mt-0.5 text-sm leading-5 text-[#73777d]">
-          Choose a campaign and share your published post with analytics
-          evidence.
-        </p>
-        <Link
-          href="/creator/submit"
-          className="group mt-3 inline-flex min-h-11 items-center gap-1.5 text-sm font-semibold text-[#00A8EF]"
-        >
-          Continue
-          <ArrowRight className="size-4 transition-transform duration-150 group-hover:translate-x-0.5" />
-        </Link>
+      <section className="creator-next-step mb-7 flex flex-col gap-3 p-5 sm:flex-row sm:items-center sm:justify-between sm:gap-6 sm:p-6">
+        <div className="min-w-0">
+          <p className="text-[11px] font-semibold uppercase tracking-[0.13em] text-[#858a91]">
+            Next Up
+          </p>
+          <h2 className="mt-2 text-xl font-semibold tracking-[-0.035em]">
+            {hasSubmitted ? 'Submit your next video' : 'Submit your first video'}
+          </h2>
+          <p className="mt-0.5 text-sm leading-5 text-[#73777d]">
+            Choose a campaign and share your published post with analytics
+            evidence.
+          </p>
+          <Link
+            href="/creator/submit"
+            className="group mt-3 inline-flex min-h-11 items-center gap-1.5 text-sm font-semibold text-[#00A8EF]"
+          >
+            Continue
+            <ArrowRight className="size-4 transition-transform duration-150 group-hover:translate-x-0.5" />
+          </Link>
+        </div>
+        <div className="flex justify-center sm:block">
+          <VideoSubmissionAnimation />
+        </div>
       </section>
       <section
         className="creator-metrics grid grid-cols-2 xl:grid-cols-4"
