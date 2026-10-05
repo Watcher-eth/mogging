@@ -1,3 +1,4 @@
+import { CampaignHelp } from '@/components/creator/campaign-help'
 import { SprintBudget, SprintStatus } from '@/components/creator/campaign-summary'
 import Link from 'next/link'
 import Head from 'next/head'
@@ -100,6 +101,7 @@ function SprintsContent() {
       <CreatorHeader
         eyebrow="Mogging"
         title="Campaigns"
+        titleAccessory={<CampaignHelp />}
         description="Choose a campaign. Know the budget, rates and rules before you create."
       />
       <StudioTabs

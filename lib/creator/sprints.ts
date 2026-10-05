@@ -230,10 +230,8 @@ export function referralCode(
   if (!link) return null
   // Public aliases resolve to the same attribution record; keep legacy codes valid.
   try {
-    const alias = new URL(link.publicUrl).pathname.match(
-      /^\/r\/(mogging-[a-z0-9._-]+)$/,
-    )?.[1]
-    if (alias) return alias
+    const handle = new URL(link.publicUrl).pathname.match(/^\/r\/([a-z0-9._-]+)$/)?.[1]
+    if (handle) return `mogging-${handle}`
   } catch {}
   return link.slug
 }

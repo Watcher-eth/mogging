@@ -6,7 +6,7 @@ import { and, desc, eq, getTableColumns, or, sql } from 'drizzle-orm'
 import { z } from 'zod'
 import { db, schema } from '@/lib/db'
 import { env } from '@/lib/env'
-import { ensureCreatorTrackingLink } from '@/lib/creator/attribution'
+import { creatorReferralHandle, ensureCreatorTrackingLink } from '@/lib/creator/attribution'
 
 export { creatorProfileSchema, creatorSubmissionSchema, creatorSocialAccountSchema, creatorAccountAnalyticsSubmissionSchema } from './validation'
 import { creatorSubmissionSchema, creatorPostPlatform, creatorAnalyticsEvidenceSchema, creatorAccountAnalyticsSubmissionSchema, type CreatorProfileInput, type CreatorSubmissionInput, type CreatorSocialAccountInput, type CreatorAnalyticsEvidenceInput } from './validation'
@@ -45,7 +45,9 @@ export async function getCreatorDashboard(userId: string) {
   ])
 
   const socialAccountsWithLinks = await Promise.all(socialAccounts.map(async (account) => {
-    if (account.trackingLink?.isActive && account.trackingLink.publicUrl.startsWith('https://www.mogging.com/r/mogging-')) return account
+    const handle = creatorReferralHandle(account.handle)
+    if (!handle) return { ...account, trackingLink: null }
+    if (account.trackingLink?.isActive && account.trackingLink.publicUrl === `https://www.mogging.com/r/${handle}`) return account
     return { ...account, trackingLink: await ensureCreatorTrackingLink(account.id) }
   }))
 

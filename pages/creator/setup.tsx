@@ -72,7 +72,7 @@ function SetupContent() {
           description={
             payout
               ? 'Choose where to receive your approved earnings.'
-              : 'Enter your TikTok or Instagram handle to get your referral code.'
+              : 'Enter your TikTok or Instagram handle to get your referral link and code.'
           }
         />
         {!data ? (
@@ -141,7 +141,7 @@ function SetupContent() {
           <DialogHeader>
             <DialogTitle>Let’s get you set up.</DialogTitle>
             <DialogDescription>
-              Connect your account, get your referral code and choose a payout
+              Connect your account, get your referral link and code, and choose a payout
               method. Setup takes less than 5 minutes.
             </DialogDescription>
           </DialogHeader>

@@ -4,6 +4,7 @@ import { useState, type ReactNode } from 'react'
 import { SessionProvider } from 'next-auth/react'
 import { SWRConfig } from 'swr'
 import { Toaster } from 'sonner'
+import { CircleCheck, CircleAlert } from 'lucide-react'
 import { AppShell } from '@/components/app/app-shell'
 import { SeoHead } from '@/components/app/seo-head'
 import { swrConfig } from '@/lib/swr'
@@ -53,20 +54,22 @@ export default function App({ Component, pageProps: { session, ...pageProps } }:
           )}
           <Toaster
             position="top-center"
+            theme="light"
             icons={{
-              success: <span className="block size-2.5 rounded-full bg-black" />,
-              error: <span className="block size-2.5 rounded-full bg-black" />,
+              success: <CircleCheck className="size-5" strokeWidth={1.8} />,
+              error: <CircleAlert className="size-5" strokeWidth={1.8} />,
             }}
             toastOptions={{
+              unstyled: true,
               classNames: {
-                toast: 'rounded-[22px] border border-zinc-200 bg-white/95 px-4 py-3 text-black shadow-[0_18px_55px_rgba(15,23,42,0.14)] backdrop-blur-xl',
-                title: 'text-sm font-semibold tracking-[-0.02em] text-black',
-                description: 'text-sm text-zinc-500',
-                actionButton: 'rounded-full bg-black text-white',
-                cancelButton: 'rounded-full bg-zinc-100 text-black',
-                closeButton: 'border border-zinc-200 bg-white text-black',
-                error: 'rounded-[22px] border border-zinc-200 bg-white/95 text-black backdrop-blur-xl',
-                success: 'rounded-[22px] border border-zinc-200 bg-white/95 text-black backdrop-blur-xl',
+                toast: 'flex w-full items-center gap-3 rounded-[24px] border border-zinc-200/80 bg-white p-4 text-black shadow-[0_8px_30px_rgba(0,0,0,0.10),0_2px_6px_rgba(0,0,0,0.04)]',
+                content: 'min-w-0 flex-1',
+                icon: 'flex size-9 shrink-0 items-center justify-center rounded-full bg-zinc-100 text-zinc-800',
+                title: 'text-sm font-medium leading-5 tracking-[-0.01em]',
+                description: 'mt-1 text-sm leading-5 text-zinc-500',
+                actionButton: 'shrink-0 rounded-full bg-black px-3 py-2 text-xs font-medium text-white',
+                cancelButton: 'shrink-0 rounded-full bg-zinc-100 px-3 py-2 text-xs font-medium text-zinc-700',
+                closeButton: 'grid size-6 place-items-center rounded-full border border-zinc-200 bg-white text-zinc-500',
               },
             }}
           />

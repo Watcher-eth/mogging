@@ -1,12 +1,12 @@
 import { useState, type FormEvent } from 'react'
-import { Check, Copy, Loader2 } from 'lucide-react'
+import { Check, Loader2 } from 'lucide-react'
 import { toast } from 'sonner'
 import { Button } from '@/components/ui/button'
 import { SocialPlatformLogo } from '@/components/brand/social-platform-logo'
 import { Field, fieldClass } from './creator-shell'
 import type { CreatorSocialAccount } from './types'
 import { apiPost, ApiClientError } from '@/lib/api/client'
-import { referralCode } from '@/lib/creator/sprints'
+import { CreatorReferralDetails } from './referral-details'
 import { cn } from '@/lib/utils'
 
 export function ConnectAccountForm({
@@ -25,7 +25,6 @@ export function ConnectAccountForm({
   const [busy, setBusy] = useState(false)
   const [identity, setIdentity] = useState('')
   const [connected, setConnected] = useState<CreatorSocialAccount | null>(null)
-  const [copied, setCopied] = useState(false)
   const label = platform === 'tiktok' ? 'TikTok' : 'Instagram'
   async function connect(event: FormEvent) {
     event.preventDefault()
@@ -47,7 +46,6 @@ export function ConnectAccountForm({
     }
   }
   if (connected) {
-    const code = referralCode(connected.trackingLink)
     return (
       <div className="grid gap-5 p-6 sm:p-7">
         <div>
@@ -56,32 +54,10 @@ export function ConnectAccountForm({
           </span>
           <h3 className="font-semibold">Your account is connected</h3>
           <p className="mt-1 text-sm text-zinc-500">
-            Include your permanent referral code in your post captions.
+            Share your permanent referral link or include your code in post captions.
           </p>
         </div>
-        <div className="flex items-center justify-between gap-3 rounded-2xl bg-[#f5f6f7] p-4">
-          <code className="break-all text-lg">{code}</code>
-          <button
-            type="button"
-            aria-label="Copy referral code"
-            className="flex min-h-11 shrink-0 items-center gap-2 text-sm text-[#00A8EF]"
-            onClick={async () => {
-              try {
-                await navigator.clipboard.writeText(code || '')
-                setCopied(true)
-              } catch {
-                toast.error('Select and copy your code')
-              }
-            }}
-          >
-            {copied ? (
-              <Check className="size-4" />
-            ) : (
-              <Copy className="size-4" />
-            )}
-            {copied ? 'Copied' : 'Copy'}
-          </button>
-        </div>
+        <CreatorReferralDetails trackingLink={connected.trackingLink} />
         <Button
           onClick={async () => {
             setBusy(true)
@@ -141,7 +117,7 @@ export function ConnectAccountForm({
         />
       </Field>
       <p className="text-xs leading-5 text-zinc-500">
-        Connect your publishing profile to receive your referral code.
+        Connect your publishing profile to receive your referral link and code.
       </p>
       {disabled ? (
         <p className="text-sm text-[#F33232]">

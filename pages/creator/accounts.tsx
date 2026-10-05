@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import useSWR from 'swr'
-import { Copy, Loader2, Plus, Trash2 } from 'lucide-react'
+import { Loader2, Plus, Trash2 } from 'lucide-react'
 import { toast } from 'sonner'
 import { Button } from '@/components/ui/button'
 import {
@@ -18,7 +18,7 @@ import {
   type CreatorDashboard,
   type CreatorSocialAccount,
 } from '@/components/creator/types'
-import { referralCode } from '@/lib/creator/sprints'
+import { CreatorReferralDetails } from '@/components/creator/referral-details'
 import { apiGet, apiRequest, ApiClientError } from '@/lib/api/client'
 export default function CreatorAccountsPage() {
   return (
@@ -59,7 +59,7 @@ function AccountsContent() {
       <CreatorHeader
         eyebrow="Connected channels"
         title="Accounts"
-        description="Connect your publishing profiles and share your referral codes."
+        description="Connect your publishing profiles and share your referral links or codes."
         action={
           <Button
             onClick={() => setOpen(true)}
@@ -109,29 +109,8 @@ function AccountsContent() {
                   <Trash2 className="size-4" />
                 </button>
               </div>
-              <div className="mt-4 flex items-center justify-between gap-3 rounded-xl bg-[#f5f6f7] px-4 py-3">
-                <div className="min-w-0">
-                  <p className="text-xs text-zinc-500">Referral code</p>
-                  <code className="break-all text-sm">
-                    {referralCode(account.trackingLink)}
-                  </code>
-                </div>
-                <button
-                  aria-label="Copy referral code"
-                  className="grid size-11 shrink-0 place-items-center text-[#00A8EF]"
-                  onClick={async () => {
-                    try {
-                      await navigator.clipboard.writeText(
-                        referralCode(account.trackingLink) || '',
-                      )
-                      toast.success('Code copied')
-                    } catch {
-                      toast.error('Select and copy your code')
-                    }
-                  }}
-                >
-                  <Copy className="size-4" />
-                </button>
+              <div className="mt-4">
+                <CreatorReferralDetails trackingLink={account.trackingLink} />
               </div>
               {account.reviewNote ? (
                 <p className="mt-3 text-sm text-zinc-500">
@@ -146,7 +125,7 @@ function AccountsContent() {
           <div>
             <h2 className="font-semibold">Your audience starts here</h2>
             <p className="mt-1 text-sm text-zinc-500">
-              Add a TikTok or Instagram handle to get your referral code.
+              Add a TikTok or Instagram handle to get your referral link and code.
             </p>
             <Button className="mt-5" onClick={() => setOpen(true)}>
               Connect your first account

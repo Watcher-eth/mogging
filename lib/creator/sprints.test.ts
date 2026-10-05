@@ -117,11 +117,11 @@ test('permanent codes retain the existing attribution identity and reviews use s
       slug: 'stable-code',
       publicUrl: 'https://www.mogging.com/r/new-handle',
     }),
-  ).toBe('stable-code')
+  ).toBe('mogging-new-handle')
   expect(
     referralCode({
       slug: 'tiktok-sam-old',
-      publicUrl: 'https://www.mogging.com/r/mogging-sam',
+      publicUrl: 'https://www.mogging.com/r/sam',
     }),
   ).toBe('mogging-sam')
   expect(referralCode({ slug: 'legacy', publicUrl: 'invalid' })).toBe('legacy')

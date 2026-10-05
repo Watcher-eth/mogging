@@ -4,6 +4,7 @@ import type { NextApiRequest, NextApiResponse } from 'next'
 import type Stripe from 'stripe'
 import { db, schema } from '@/lib/db'
 import { env } from '@/lib/env'
+import { ApiError } from '@/lib/api/http'
 import { buildCreatorDeepLink } from './link-routing'
 
 export const CREATOR_ATTRIBUTION_COOKIE = 'mogging_creator_attribution'
@@ -30,69 +31,60 @@ export type CreatorAttributionContext = AttributionOwner & {
 export type PublicCreatorAttributionContext = Pick<CreatorAttributionContext,
   'clickId' | 'trackingLinkId' | 'firstClickId' | 'firstTrackingLinkId' | 'attributionKey'>
 
-export async function ensureCreatorTrackingLink(socialAccountId: string) {
-  const existing = await db.query.creatorTrackingLinks.findFirst({
-    where: eq(schema.creatorTrackingLinks.socialAccountId, socialAccountId),
-  })
-  if (existing) {
-    const publicUrl = existing.publicUrl || `${CREATOR_LINK_BASE_URL}/r/${existing.slug}`
-    if (!existing.isActive || existing.publicUrl !== publicUrl || existing.deepLinkBaseUrl !== CREATOR_APP_DEEP_LINK) {
-      const [updated] = await db.update(schema.creatorTrackingLinks).set({
-        isActive: true,
-        publicUrl,
-        deepLinkBaseUrl: CREATOR_APP_DEEP_LINK,
-        updatedAt: new Date(),
-      }).where(eq(schema.creatorTrackingLinks.id, existing.id)).returning()
-      return syncCreatorTrackingLinkHandle(updated)
-    }
-    return syncCreatorTrackingLinkHandle(existing)
-  }
+export function creatorReferralHandle(value: string | null | undefined) {
+  const handle = value?.trim().replace(/^@/, '').toLowerCase()
+  return handle && /^[a-z0-9._]{1,40}$/.test(handle) && /[a-z0-9]/.test(handle) ? handle : null
+}
 
-  const account = await db.query.creatorSocialAccounts.findFirst({
-    where: eq(schema.creatorSocialAccounts.id, socialAccountId),
-  })
-  if (!account) throw new Error('Creator social account not found')
-
-  const safeHandle = (account.handle || 'account').toLowerCase().replace(/[^a-z0-9._-]+/g, '-').replace(/^-+|-+$/g, '')
-  const slug = `mogging-${safeHandle}-${account.id.slice(0, 8)}`
-  const iosAppStoreUrl = buildIosAppStoreUrl(slug)
-  const [link] = await db.insert(schema.creatorTrackingLinks).values({
-    socialAccountId,
-    slug,
-    publicUrl: `${CREATOR_LINK_BASE_URL}/r/${slug}`,
-    deepLinkBaseUrl: CREATOR_APP_DEEP_LINK,
-    iosAppStoreUrl,
-    androidAppStoreUrl: env.NEXT_PUBLIC_ANDROID_APP_STORE_URL || null,
-  }).onConflictDoUpdate({
-    target: schema.creatorTrackingLinks.socialAccountId,
-    set: { isActive: true, publicUrl: `${CREATOR_LINK_BASE_URL}/r/${slug}`, deepLinkBaseUrl: CREATOR_APP_DEEP_LINK, updatedAt: new Date() },
-  }).returning()
-  return syncCreatorTrackingLinkHandle(link)
+export function ensureCreatorTrackingLink(socialAccountId: string) {
+  return saveCreatorTrackingLink(socialAccountId, true)
 }
 
 export async function syncCreatorTrackingLinkHandle(link: typeof schema.creatorTrackingLinks.$inferSelect) {
+  return await saveCreatorTrackingLink(link.socialAccountId, false) || link
+}
+
+async function saveCreatorTrackingLink(socialAccountId: string, activate: boolean) {
   return db.transaction(async (tx) => {
-    // Serialize updates for this link, without reassigning any previously published alias.
-    await tx.execute(sql`select id from creator_tracking_links where id = ${link.id} for update`)
-    const account = await tx.query.creatorSocialAccounts.findFirst({
-      where: eq(schema.creatorSocialAccounts.id, link.socialAccountId),
-    })
+    // One owner for creation, migration and aliases; serialize reconnects for this account.
+    const [account] = await tx.select().from(schema.creatorSocialAccounts)
+      .where(eq(schema.creatorSocialAccounts.id, socialAccountId)).for('update')
     if (!account) throw new Error('Creator social account not found')
-    const handle = account.handle?.trim().replace(/^@/, '').toLowerCase().replace(/[^a-z0-9._-]+/g, '-').replace(/^-+|-+$/g, '') || `creator-${account.id.slice(0, 8)}`
-    const candidates = [`mogging-${handle}`, `mogging-${handle}-${account.platform}`, `mogging-${handle}-${account.id}`]
-    for (const slug of candidates) {
+    const handle = creatorReferralHandle(account.handle)
+    if (!handle) return null
+    const existing = await tx.query.creatorTrackingLinks.findFirst({
+      where: eq(schema.creatorTrackingLinks.socialAccountId, socialAccountId),
+    })
+    const code = `mogging-${handle}`
+    const aliases = [handle, code].sort()
+    // Reserve link and code together, without ever reassigning published aliases.
+    for (const slug of aliases) {
+      await tx.execute(sql`select pg_advisory_xact_lock(hashtextextended(${`creator-referral:${slug}`}, 0))`)
       const canonical = await tx.query.creatorTrackingLinks.findFirst({ where: eq(schema.creatorTrackingLinks.slug, slug) })
-      if (canonical && canonical.id !== link.id) continue
-      await tx.insert(schema.creatorTrackingLinkAliases).values({ slug, trackingLinkId: link.id }).onConflictDoNothing()
       const alias = await tx.query.creatorTrackingLinkAliases.findFirst({ where: eq(schema.creatorTrackingLinkAliases.slug, slug) })
-      if (alias?.trackingLinkId !== link.id) continue
-      const publicUrl = `${CREATOR_LINK_BASE_URL}/r/${slug}`
-      if (link.publicUrl === publicUrl) return link
-      const [updated] = await tx.update(schema.creatorTrackingLinks).set({ publicUrl, updatedAt: new Date() })
-        .where(eq(schema.creatorTrackingLinks.id, link.id)).returning()
-      return updated
+      if ((canonical && canonical.id !== existing?.id) || (alias && alias.trackingLinkId !== existing?.id)) {
+        throw new ApiError(409, 'This referral handle is already in use. Connect a different publishing handle.')
+      }
     }
-    throw new Error('Could not reserve a unique creator referral handle')
+    const publicUrl = `${CREATOR_LINK_BASE_URL}/r/${handle}`
+    let link = existing
+    if (!link) {
+      ;[link] = await tx.insert(schema.creatorTrackingLinks).values({
+        socialAccountId, slug: code, publicUrl,
+        deepLinkBaseUrl: CREATOR_APP_DEEP_LINK,
+        iosAppStoreUrl: buildIosAppStoreUrl(code),
+        androidAppStoreUrl: env.NEXT_PUBLIC_ANDROID_APP_STORE_URL || null,
+      }).returning()
+    } else if (link.publicUrl !== publicUrl || (activate && !link.isActive) || link.deepLinkBaseUrl !== CREATOR_APP_DEEP_LINK) {
+      ;[link] = await tx.update(schema.creatorTrackingLinks).set({
+        publicUrl, isActive: activate || link.isActive,
+        deepLinkBaseUrl: CREATOR_APP_DEEP_LINK, updatedAt: new Date(),
+      }).where(eq(schema.creatorTrackingLinks.id, link.id)).returning()
+    }
+    for (const slug of aliases) {
+      await tx.insert(schema.creatorTrackingLinkAliases).values({ slug, trackingLinkId: link.id }).onConflictDoNothing()
+    }
+    return link
   })
 }
 

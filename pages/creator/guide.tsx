@@ -67,8 +67,8 @@ function GuideHome() {
   const resources = [
     ['rules', 'Content rules', 'What qualifies, what gets rejected, and why.'],
     ['examples', 'Examples & references', 'Real footage, hooks, audience comments, and takeaways.'],
-    ['referrals', 'Your referral links', 'Share the right link before you publish.'],
-    ['account', 'Connect an account', 'Add your publishing profile and get your code.'],
+    ['referrals', 'Your referral links & codes', 'Copy your link or code before you publish.'],
+    ['account', 'Connect an account', 'Add your publishing profile and get your link and code.'],
   ] as const
 
   return <>
@@ -179,7 +179,7 @@ function VideoGuide() {
 }
 
 function AccountGuide() {
-  return <section id="guide-panel-account" aria-label="Connecting accounts"><GuidePanelHeader eyebrow="Publishing profiles" title="Connect once. Share your code." description="Enter your TikTok or Instagram handle or profile URL. Your permanent referral code appears immediately after connecting." action={<Button asChild><Link href="/creator/accounts">Manage accounts<ArrowRight /></Link></Button>} /><ol className="grid gap-3 sm:grid-cols-3"><AccountStep number="1" icon={Link2} title="Add your profile" detail="Choose TikTok or Instagram and enter one handle or profile URL." /><AccountStep number="2" icon={ShieldCheck} title="Copy your code" detail="Your permanent code stays connected to that publishing profile and its attribution history." /><AccountStep number="3" icon={Smartphone} title="Create & submit" detail="Follow an active campaign’s brief. Every video or slideshow submission needs its own second-device analytics recording." /></ol></section>
+  return <section id="guide-panel-account" aria-label="Connecting accounts"><GuidePanelHeader eyebrow="Publishing profiles" title="Connect once. Share your link or code." description="Enter your TikTok or Instagram handle or profile URL. Your permanent referral link and code appear immediately after connecting." action={<Button asChild><Link href="/creator/accounts">Manage accounts<ArrowRight /></Link></Button>} /><ol className="grid gap-3 sm:grid-cols-3"><AccountStep number="1" icon={Link2} title="Add your profile" detail="Choose TikTok or Instagram and enter one handle or profile URL." /><AccountStep number="2" icon={ShieldCheck} title="Copy your link or code" detail="Your permanent link and code stay connected to that publishing profile and its attribution history." /><AccountStep number="3" icon={Smartphone} title="Create & submit" detail="Follow an active campaign’s brief. Every video or slideshow submission needs its own second-device analytics recording." /></ol></section>
 }
 
 function PayoutGuide() {
