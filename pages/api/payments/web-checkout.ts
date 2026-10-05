@@ -1,3 +1,4 @@
+import { LANDING_COOKIE, landingProperties, parseLandingAssignment } from '@/lib/analytics/landing'
 import { monitorBackend } from '@/lib/reliability/monitor'
 import type { NextApiRequest, NextApiResponse } from 'next'
 import { z } from 'zod'
@@ -26,6 +27,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
       throw new ApiError(503, 'Payments are not configured')
     }
 
+    const landingAssignment = parseLandingAssignment(req.cookies[LANDING_COOKIE])
     const input = parseBody(checkoutSchema, req.body)
     const accountId = await getRequestUserId(req, res)
     if (!accountId) throw new ApiError(401, 'Sign in before starting checkout')
@@ -82,6 +84,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
           mobileInstallId: input.mobileInstallId,
           source,
           activationCode,
+          ...(landingAssignment ? { landingAssignment: req.cookies[LANDING_COOKIE]! } : {}),
           accountId,
           userId: accountId,
           ...attributionMetadata,
@@ -120,6 +123,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
       source,
       properties: {
         product: input.product,
+        ...landingProperties(landingAssignment),
         mobileInstallId: input.mobileInstallId,
       },
     })

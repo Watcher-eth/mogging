@@ -10,11 +10,10 @@ import useSWR from 'swr'
 import useSWRImmutable from 'swr/immutable'
 import { AppHeader } from '@/components/app/app-header'
 import { SocialPlatformLogo } from '@/components/brand/social-platform-logo'
-import { CameraSheet } from '@/components/analysis/camera-sheet'
+import dynamic from 'next/dynamic'
+const CameraSheet = dynamic(() => import('@/components/analysis/camera-sheet').then(module => module.CameraSheet), { ssr: false })
 import { Button } from '@/components/ui/button'
 import { apiGet, apiPatch, ApiClientError } from '@/lib/api/client'
-import { inferHairColorFromDataUrl, inferSkinColorFromDataUrl } from '@/lib/client/appearance'
-import { extractFaceLandmarksFromDataUrl } from '@/lib/client/faceLandmarks'
 import type { HairColor, SkinColor } from '@/lib/appearance/types'
 import {
   Dialog,
@@ -267,8 +266,8 @@ export function AppShell({ children }: AppShellProps) {
         {creatorRoute && !creatorSignIn && !creatorSetup ? <SidebarProvider className="min-h-0 flex-1 flex-col">{children}</SidebarProvider> : children}
       </main>
 
-      {!creatorSetup && !creatorReferral ? <footer className={`border-t border-zinc-200 bg-white px-5 py-8 text-sm text-zinc-600 sm:px-10`}>
-        <nav aria-label="Resources and legal" className="mx-auto flex max-w-6xl flex-wrap gap-x-6 gap-y-4">
+      {!creatorSetup && !creatorReferral ? <footer className={`border-t border-zinc-200 bg-white py-8 text-sm text-zinc-600 ${router.pathname === '/' ? '' : 'px-5 sm:px-10'}`}>
+        <nav aria-label="Resources and legal" className={`mx-auto flex max-w-6xl flex-wrap gap-x-6 gap-y-4 ${router.pathname === '/' ? 'px-6 sm:px-10' : ''}`}>
           <Link href="/what-is-mogging" className="hover:text-black">What is mogging?</Link>
           <Link href="/how-face-analysis-works" className="hover:text-black">How face analysis works</Link>
           <Link href="/faq" className="hover:text-black">FAQ</Link>
@@ -416,7 +415,11 @@ function EditProfileDialog({
   ])
 
   async function inferProfileAppearance(dataUrl: string) {
+    const appearance = await import('@/lib/client/appearance').catch(() => null)
+    if (!appearance) return
+    const { inferHairColorFromDataUrl, inferSkinColorFromDataUrl } = appearance
     try {
+      const { extractFaceLandmarksFromDataUrl } = await import('@/lib/client/faceLandmarks')
       const landmarks = await extractFaceLandmarksFromDataUrl(dataUrl)
       const [inferredHairColor, inferredSkinColor] = await Promise.all([
         inferHairColorFromDataUrl(dataUrl, landmarks),
@@ -581,7 +584,7 @@ function EditProfileDialog({
           </button>
         </div>
       </DialogContent>
-      <CameraSheet
+      {open && <CameraSheet
         open={cameraOpen}
         onCapture={(image) => {
           setAvatarDataUrl(image.dataUrl)
@@ -592,7 +595,7 @@ function EditProfileDialog({
           setCameraOpen(false)
           window.setTimeout(() => fileInputRef.current?.click(), 160)
         }}
-      />
+      />}
     </Dialog>
   )
 }

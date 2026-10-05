@@ -380,54 +380,6 @@
 }
 
 /* One compositor animation; native scrolling takes over on interaction. */
-.reviews-viewport {
-  overflow-x: auto;
-  overscroll-behavior-x: contain;
-  padding-bottom: 12px;
-  scrollbar-width: thin;
-  scrollbar-color: #d4d4d8 transparent;
-  border-radius: 1.5rem;
-}
-.reviews-viewport:focus-visible {
-  outline: 2px solid #18181b;
-  outline-offset: 4px;
-}
-.reviews-track {
-  display: flex;
-  width: max-content;
-  animation: reviews-marquee 160s linear infinite;
-  animation-play-state: paused;
-}
-.reviews-viewport[data-visible="true"] .reviews-track {
-  animation-play-state: running;
-}
-.reviews-viewport:hover .reviews-track,
-.reviews-viewport:focus-within .reviews-track {
-  animation-play-state: paused;
-}
-.reviews-group {
-  display: flex;
-  gap: 20px;
-  padding-right: 20px;
-}
-.review-card {
-  width: clamp(280px, 78vw, 360px);
-  flex-shrink: 0;
-}
-.reviews-viewport[data-paused="true"] .reviews-track {
-  animation: none;
-}
-.reviews-viewport[data-paused="true"] .reviews-group[aria-hidden="true"] {
-  display: none;
-}
-@keyframes reviews-marquee {
-  to { transform: translateX(-50%); }
-}
-@media (prefers-reduced-motion: reduce) {
-  .reviews-track { animation: none; }
-  .reviews-group[aria-hidden="true"] { display: none; }
-}
-
 /* Match the compact wizard segments while keeping all three generator names visible. */
 .creator-generator-actions { width: min(100%, 420px); }
 .creator-page-header:has(.creator-generator-actions) .creator-header-action { max-width: 100%; }

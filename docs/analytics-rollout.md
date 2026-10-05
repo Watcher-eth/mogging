@@ -176,3 +176,25 @@ and `scripts/tests/admin-analytics.ts` against the disposable localhost `analyti
 The SQL fixtures cover optional paths, duplicates, ordering, seven-day boundaries, cross-flow isolation,
 resumed forward navigation, maturation, friction, completion, legacy exclusion, and 20k onboarding views.
 The desktop enqueue benchmark is synthetic; physical-device frame/startup performance is not measured.
+
+
+## Streamlined onboarding (tracking revision 3, app 0.1.63)
+
+The current admin screen funnel removes Personalized plan, Before/after comparison and Location.
+Daily commitment transitions directly to Lock in (four taps), followed by Sign in, Photo/camera,
+Scan preview, Paywall plans/account and Evaluation processing. Previous methods remains optional.
+The mobile and admin step catalogs match; versioned flow IDs keep resumed older flows separate.
+Current screen reach, drop-off, friction and mobile step activity use revision 3 only. Historical
+events remain stored, and the high-level activation/purchase funnels still include all releases.
+Until the new app ships, current screen rows show Awaiting data rather than mixing older flows.
+Tracking still uses the existing focus hook and batched event queue; no per-frame or per-tap events
+are added. These JavaScript changes are included when archiving the open Xcode workspace.
+
+## Homepage revision 1
+
+App-first landing page and two mutually exclusive A/B tests are described in
+[landing-experiments.md](landing-experiments.md). The shared contract adds
+`landing_viewed` and `landing_section_viewed`, plus allowlisted assignment context.
+Server-created checkouts and Stripe-confirmed paid completions retain that context.
+The old website funnel is replaced with a homepage-only view → store-click funnel;
+browser conversions are reported independently in experiment cohorts.

@@ -1,7 +1,7 @@
 // Kept identical in web and mobile; contract parity is tested by the rollout checks.
 export const analyticsEventNames = [
   'app_opened', 'app_first_open', 'session_started', 'screen_viewed', 'screen_exited',
-  'page_viewed', 'page_exited', 'landing_cta_clicked', 'destination_selected', 'app_store_redirected',
+  'page_viewed', 'page_exited', 'landing_viewed', 'landing_section_viewed', 'landing_cta_clicked', 'destination_selected', 'app_store_redirected',
   'account_auth_started', 'account_authenticated', 'account_auth_failed', 'identity_linked',
   'attribution_link_received', 'attribution_resolved', 'attribution_diagnostic',
   'onboarding_started', 'onboarding_step_viewed', 'onboarding_step_completed', 'onboarding_step_back',
@@ -32,7 +32,7 @@ const propertyKeys = new Set([
   'report_id', 'evaluation_id', 'success', 'count', 'push_id', 'campaign_id', 'creative_id',
   'creator_tracking_link_id', 'creator_first_tracking_link_id', 'creator_click_id',
   'locale', 'timezone',
-  'appsflyer_id', 'experiment_id', 'variant', 'price', 'currency', 'retry', 'first_evaluation',
+  'appsflyer_id', 'experiment_id', 'variant', 'landing_id', 'landing_version', 'price', 'currency', 'retry', 'first_evaluation',
   'utm_source', 'utm_medium', 'utm_campaign', 'utm_content', 'utm_term',
   'first_utm_source', 'first_utm_medium', 'first_utm_campaign', 'first_utm_content', 'first_utm_term',
   'last_utm_source', 'last_utm_medium', 'last_utm_campaign', 'last_utm_content', 'last_utm_term',

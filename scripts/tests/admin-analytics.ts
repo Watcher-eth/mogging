@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict'
 import postgres from 'postgres'
+import { ONBOARDING_ANALYTICS_VERSION, onboardingAnalyticsSteps } from '../../lib/analytics/onboarding'
 
 const address = process.env.ANALYTICS_TEST_DATABASE_URL
 if (!address) throw new Error('Set a disposable localhost analytics_test database; apply the analytics-billing test migration first')
@@ -33,9 +34,9 @@ try {
     await put('out-of-order','purchase_completed',2)
     await put('out-of-order','paywall_viewed',3)
     await put('sandbox','onboarding_started',2,'ios','development')
-    await put('web','page_viewed',2,'web')
+    await put('web','page_viewed',2,'web','production',{path:'/'})
     await put('web','landing_cta_clicked',3,'web')
-    await put('web','app_store_redirected',3,'web')
+    await put('web','app_store_redirected',3,'web','production',{path:'/'})
     await put('server-only','identity_linked',3,'server')
     const malformed = crypto.randomUUID()
     await tx`insert into analytics_events(id,event_id,event_name,mobile_install_id,platform,environment,properties,occurred_at)
@@ -51,7 +52,7 @@ try {
     assert.equal(data.summary.actors, 3)
     assert.deepEqual(data.onboarding.map(step => step.actors), [1,1,1,1,1])
     assert.deepEqual(data.paywall.map(step => step.actors), [2,1,1,1])
-    assert.deepEqual(data.web.map(step => step.actors), [1,1,1])
+    assert.deepEqual(data.web.map(step => step.actors), [1,1])
     assert.equal(data.revenue.find(row => row.currency === 'USD')?.net, '8.000000')
     assert.equal(data.revenue.find(row => row.currency === 'EUR')?.net, '20.000000')
     const usdDay = data.revenueDaily.find(row => row.currency === 'USD' && row.day === '2040-01-10')!
@@ -87,12 +88,11 @@ try {
     assert.ok(expandedData.dimensions.some(row => row.section === 'Purchases' && row.dimension === 'reason_code' && row.value === 'store_or_sync'))
     assert.equal(Number(expandedData.contextCoverage.find(row => row.field === 'report_id')?.unique_ids), 1)
     assert.ok(expandedData.eventDelivery.some(row => row.platform === 'server'))
-    const view = (actor: string, step: string, day: number, flow = actor, version = '2') =>
+    const view = (actor: string, step: string, day: number, flow = actor, version = ONBOARDING_ANALYTICS_VERSION) =>
       put(actor, 'onboarding_step_viewed', day, 'ios', 'production', { step, flow_id: flow, onboarding_version: version })
     await view('screen-good', 'experience', 2)
     await view('screen-good', 'experience', 2)
     await view('screen-good', 'goals', 3) // methods was legitimately skipped
-    await view('screen-good', 'protocol_bridge', 4)
     await view('screen-good', 'time', 5)
     await view('screen-good', 'paywall_plans', 7)
     await view('screen-dropped', 'experience', 2)
@@ -105,14 +105,14 @@ try {
     await view('screen-late', 'goals', 10)
     await view('screen-boundary', 'experience', 2)
     await view('screen-boundary', 'goals', 9)
-    await view('screen-old', 'experience', 2, 'old', '1')
+    await view('screen-old', 'experience', 2, 'old', '2')
     await view('screen-resumed', 'goals', 2)
     await view('screen-resumed', 'experience', 3)
     await view('screen-resumed', 'goals', 4) // returning forward after going back
     await view('screen-done', 'evaluation_processing', 2)
-    await put('screen-done', 'evaluation_completed', 3, 'ios', 'production', { flow_id: 'screen-done', onboarding_version: '2' })
-    await put('screen-good', 'onboarding_step_exited', 3, 'ios', 'production', { step: 'experience', flow_id: 'screen-good', onboarding_version: '2', duration_ms: 4500 })
-    await put('screen-good', 'permission_result', 3, 'ios', 'production', { step: 'upload', flow_id: 'screen-good', onboarding_version: '2', permission: 'camera', result: 'denied' })
+    await put('screen-done', 'evaluation_completed', 3, 'ios', 'production', { flow_id: 'screen-done', onboarding_version: ONBOARDING_ANALYTICS_VERSION })
+    await put('screen-good', 'onboarding_step_exited', 3, 'ios', 'production', { step: 'experience', flow_id: 'screen-good', onboarding_version: ONBOARDING_ANALYTICS_VERSION, duration_ms: 4500 })
+    await put('screen-good', 'permission_result', 3, 'ios', 'production', { step: 'upload', flow_id: 'screen-good', onboarding_version: ONBOARDING_ANALYTICS_VERSION, permission: 'camera', result: 'denied' })
     const [screensResult] = await testDb.execute(analyticsQuery({ days: '30', platform: 'all' }, now))
     const screens = (screensResult.data as typeof data).onboardingScreens
     const friction = (screensResult.data as typeof data).onboardingFriction
@@ -126,15 +126,14 @@ try {
     assert.equal(Number(experience.median_ms), 4500)
     assert.equal(Number(screens.find(row => row.step === 'methods')?.viewed), 0)
     assert.equal(Number(screens.find(row => row.step === 'evaluation_processing')?.continued), 1)
-    assert.ok(screens.findIndex(row => row.step === 'protocol_bridge') < screens.findIndex(row => row.step === 'time'))
+    assert.ok(screens.findIndex(row => row.step === 'time') < screens.findIndex(row => row.step === 'commit'))
+    assert.ok(screens.every(row => !['protocol_bridge', 'reveal', 'location'].includes(String(row.step))))
     const [screensWeb] = await testDb.execute(analyticsQuery({ days: '30', platform: 'web' }, now))
     assert.ok((screensWeb.data as typeof data).onboardingScreens.every(row => Number(row.viewed) === 0))
     await tx`insert into analytics_events(id,event_id,event_name,mobile_install_id,platform,environment,properties,occurred_at)
       select ${suffix} || n, ${suffix} || n, 'onboarding_step_viewed', 'load-' || (n % 1000), 'ios', 'production',
-        jsonb_build_object('onboarding_version','2','flow_id','load-' || (n % 1000),
-          'step',(array['primer','protocol_preview','age','height','gender','experience','methods','goals',
-            'protocol_bridge','time','commit','reveal','authentication','location','upload','scan_preview',
-            'paywall_plans','paywall_account','evaluation_processing'])[(n / 1000) % 19 + 1]),
+        jsonb_build_object('onboarding_version',${ONBOARDING_ANALYTICS_VERSION}::text,'flow_id','load-' || (n % 1000),
+          'step',(${tx.array(onboardingAnalyticsSteps.map(([step]) => step))}::text[])[(n / 1000) % ${onboardingAnalyticsSteps.length} + 1]),
         '2040-01-15'::timestamp + (n / 1000) * interval '1 minute' from generate_series(1,20000) n`
     const started = performance.now()
     await testDb.execute(analyticsQuery({ days: '30', platform: 'all' }, now))

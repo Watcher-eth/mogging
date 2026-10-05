@@ -15,6 +15,11 @@ describe('analytics chart data', () => {
     expect(rows.find(row => row.step === 'goals')).toMatchObject({ screen: 'Goals', viewed: 5, continued: 3, median_ms: 4500 })
     expect(rows.find(row => row.step === 'primer')?.viewed).toBe(0)
   })
+  test('omits removed screens even when a cached response contains their observations', () => {
+    const rows = onboardingScreenRows(['protocol_bridge', 'reveal', 'location'].map(step => ({ step, viewed: 10 })))
+    expect(rows.some(row => ['protocol_bridge', 'reveal', 'location'].includes(String(row.step)))).toBe(false)
+    expect(rows.find(row => row.step === 'commit')?.screen).toBe('Lock in (4 taps)')
+  })
   test('uses ordered UTC timestamps and preserves negative refund days', () => {
     expect(dailyPoints([{ day: '2026-10-02', net: '-2.5' }, { day: '2026-10-01', net: '9.99' }], 'net')).toEqual([
       { time: Date.parse('2026-10-01T00:00:00Z') / 1000, value: 9.99 },

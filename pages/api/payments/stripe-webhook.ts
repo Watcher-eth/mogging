@@ -1,3 +1,4 @@
+import { landingProperties, parseLandingAssignment } from '@/lib/analytics/landing'
 import { monitorBackend } from '@/lib/reliability/monitor'
 import type { NextApiRequest, NextApiResponse } from 'next'
 import { eq } from 'drizzle-orm'
@@ -79,7 +80,11 @@ async function handleStripeEvent(event: Stripe.Event) {
         source: 'stripe_webhook',
         properties: {
           product: expanded.metadata?.product || 'unknown',
+          ...landingProperties(parseLandingAssignment(expanded.metadata?.landingAssignment)),
           mode: expanded.mode || 'unknown',
+          status: expanded.payment_status,
+          price: expanded.amount_total,
+          currency: expanded.currency,
         },
       })
       await recordCreatorCheckoutPayment(expanded)

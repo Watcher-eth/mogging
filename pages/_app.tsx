@@ -1,10 +1,9 @@
 import type { AppProps } from 'next/app'
 import { useRouter } from 'next/router'
-import { useState } from 'react'
+import { useState, type ReactNode } from 'react'
 import { SessionProvider } from 'next-auth/react'
 import { SWRConfig } from 'swr'
 import { Toaster } from 'sonner'
-import { SoundProvider } from '@web-kits/audio/react'
 import { AppShell } from '@/components/app/app-shell'
 import { SeoHead } from '@/components/app/seo-head'
 import { swrConfig } from '@/lib/swr'
@@ -12,6 +11,12 @@ import '@/styles/globals.css'
 import '@/styles/courses.css'
 import '@/styles/admin.css'
 import dynamic from 'next/dynamic'
+const SoundProvider = dynamic(() => import('@web-kits/audio/react').then(module => module.SoundProvider))
+
+function PageSound({ silent, children, ...props }: { silent: boolean; children: ReactNode; enabled: boolean; volume: number; onEnabledChange: (enabled: boolean) => void; onVolumeChange: (volume: number) => void }) {
+  return silent ? <>{children}</> : <SoundProvider {...props}>{children}</SoundProvider>
+}
+
 const AdminShell = dynamic(() => import('@/components/admin/admin-shell').then(module => module.AdminShell))
 const Analytics = dynamic(() => import('@/components/app/analytics').then(module => module.Analytics), { ssr: false })
 
@@ -28,7 +33,8 @@ export default function App({ Component, pageProps: { session, ...pageProps } }:
     <SessionProvider session={session}>
       <Analytics />
       <SWRConfig value={swrConfig}>
-        <SoundProvider
+        <PageSound
+          silent={router.pathname === '/'}
           enabled={soundEnabled}
           volume={soundVolume}
           onEnabledChange={setSoundEnabled}
@@ -64,7 +70,7 @@ export default function App({ Component, pageProps: { session, ...pageProps } }:
               },
             }}
           />
-        </SoundProvider>
+        </PageSound>
       </SWRConfig>
     </SessionProvider>
   )

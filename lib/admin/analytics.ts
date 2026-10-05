@@ -1,3 +1,4 @@
+import { landingExperiments } from '@/lib/analytics/landing'
 import { sql, type SQL } from 'drizzle-orm'
 import { z } from 'zod'
 import { db } from '@/lib/db'
@@ -16,6 +17,7 @@ export type AnalyticsDashboard = {
   onboarding: Array<{ name: string; actors: number }>
   paywall: Array<{ name: string; actors: number }>
   web: Array<{ name: string; actors: number }>
+  landingExperiments: MetricRow[]; landingSections: MetricRow[]; landingSources: MetricRow[]; landingPlacements: MetricRow[]
   daily: MetricRow[]; acquisition: MetricRow[]; steps: MetricRow[]; screens: MetricRow[]
   onboardingScreens: MetricRow[]; onboardingFriction: MetricRow[]
   billing: MetricRow[]; revenue: MetricRow[]; revenueDaily: MetricRow[]; retention: MetricRow[]; cancellations: MetricRow[]
@@ -47,7 +49,7 @@ export function analyticsQuery(filters: AnalyticsFilters, now: Date) {
   const platform = filters.platform === 'all' ? sql`true` : sql`platform = ${filters.platform}`
   const onboarding = funnel('onboarding', ['onboarding_started', 'paywall_viewed', 'purchase_completed', 'evaluation_completed', 'report_viewed'], sql`platform in ('ios','android')`)
   const paywall = funnel('paywall', ['paywall_viewed', 'plan_selected', 'purchase_started', 'purchase_completed'], sql`platform in ('ios','android')`)
-  const web = funnel('web', ['page_viewed', 'landing_cta_clicked', 'app_store_redirected'], sql`platform = 'web'`)
+  const web = funnel('web', ['page_viewed', 'app_store_redirected'], sql`platform = 'web' and properties->>'path' = '/'`)
   const rows = (name: string) => sql`coalesce((select json_agg(r) from ${sql.identifier(name)} r), '[]'::json)`
   return sql`with e as materialized (
       select event_name, occurred_at, account_id, platform, app_version, properties, session_id, source, schema_version, received_at,
@@ -129,6 +131,58 @@ export function analyticsQuery(filters: AnalyticsFilters, now: Date) {
         count(*) filter (where event_name = 'report_viewed') as report_views,
         count(*) filter (where event_name = 'protocol_task_completed') as protocol_tasks
       from e group by 1 order by 1
+    ), landing_definitions(experiment_id, name) as (values ${sql.join(landingExperiments.map(({ id, name }) => sql`(${id}::text, ${name}::text)`), sql`,`)}),
+    landing_entries as materialized (
+      select distinct on (properties->>'landing_id') properties->>'landing_id' as landing_id,
+        properties->>'experiment_id' as experiment_id, properties->>'variant' as variant,
+        coalesce(nullif(properties->>'first_utm_source',''),nullif(properties->>'referrer_host',''),'direct / unknown') as source,
+        occurred_at as at
+      from e where platform = 'web' and event_name = 'landing_viewed' and properties->>'path' = '/'
+        and nullif(properties->>'landing_id','') is not null and properties->>'landing_version' = '1'
+        and properties->>'variant' in ('a','b')
+      order by properties->>'landing_id', occurred_at
+    ), landing_outcomes as materialized (
+      select l.*,
+        coalesce(bool_or(o.event_name = 'app_store_redirected' and o.properties->>'path' = '/'),false) as store,
+        coalesce(bool_or((o.event_name = 'landing_cta_clicked' and o.properties->>'path' = '/' and o.properties->>'destination' = 'web_analysis') or (o.event_name = 'page_viewed' and o.properties->>'path' = '/analysis')),false) as web_analysis,
+        coalesce(bool_or(o.event_name = 'paywall_viewed' and o.properties->>'surface' = 'web_analysis'),false) as paywall,
+        coalesce(bool_or(o.event_name = 'checkout_started' and o.platform = 'server'),false) as checkout,
+        coalesce(bool_or(o.event_name = 'checkout_completed' and o.platform = 'server' and o.properties->>'status' = 'paid'
+          and case when jsonb_typeof(o.properties->'price') = 'number' then (o.properties->>'price')::numeric > 0 else false end),false) as paid
+      from landing_entries l left join reported_events o on o.properties->>'landing_id' = l.landing_id
+        and o.occurred_at >= l.at and o.occurred_at <= l.at + interval '7 days'
+        and o.properties->>'experiment_id' = l.experiment_id and o.properties->>'variant' = l.variant
+        and o.event_name in ('app_store_redirected','landing_cta_clicked','page_viewed','paywall_viewed','checkout_started','checkout_completed')
+      group by l.landing_id,l.experiment_id,l.variant,l.source,l.at
+    ), landing_experiments as (
+      select d.experiment_id,d.name,v.variant,count(l.landing_id) as visitors,
+        count(*) filter(where l.store) as store_clicks, count(*) filter(where l.web_analysis) as web_starts,
+        count(*) filter(where l.paywall) as paywalls, count(*) filter(where l.checkout) as checkouts,
+        count(*) filter(where l.paid) as paid_checkouts,
+        count(*) filter(where l.at <= ${end}::timestamp - interval '7 days') as mature,
+        count(*) filter(where l.store and l.at <= ${end}::timestamp - interval '7 days') as mature_store_clicks,
+        count(*) filter(where l.at > ${end}::timestamp - interval '7 days') as pending,
+        min(l.at) as first_exposure
+      from landing_definitions d cross join (values ('a'),('b')) v(variant)
+        left join landing_outcomes l on l.experiment_id = d.experiment_id and l.variant = v.variant
+      group by d.experiment_id,d.name,v.variant order by d.experiment_id,v.variant
+    ), landing_sources as (
+      select source,count(*) as visitors,count(*) filter(where store) as store_clicks,
+        count(*) filter(where web_analysis) as web_starts,count(*) filter(where paid) as paid_checkouts
+      from landing_outcomes group by source order by visitors desc limit 30
+    ), landing_sections as (
+      select o.properties->>'placement' as section,count(distinct l.landing_id) as visitors
+      from landing_entries l join e o on o.properties->>'landing_id' = l.landing_id
+        and o.occurred_at >= l.at and o.occurred_at <= l.at + interval '7 days'
+      where o.event_name = 'landing_section_viewed' and o.properties->>'path' = '/'
+      group by 1 order by visitors desc
+    ), landing_placements as (
+      select o.properties->>'placement' as placement,o.properties->>'destination' as destination,
+        count(distinct l.landing_id) as visitors
+      from landing_entries l join e o on o.properties->>'landing_id' = l.landing_id
+        and o.occurred_at >= l.at and o.occurred_at <= l.at + interval '7 days'
+      where o.event_name = 'landing_cta_clicked' and o.properties->>'path' = '/'
+      group by 1,2 order by visitors desc
     ), acquisition as (
       select coalesce(nullif(properties->>'creator_first_tracking_link_id', ''), nullif(properties->>'first_utm_source', ''), 'unknown') as source,
         coalesce(nullif(properties->>'first_utm_campaign', ''), '—') as campaign,
@@ -200,7 +254,11 @@ export function analyticsQuery(filters: AnalyticsFilters, now: Date) {
         count(distinct actor) filter (where event_name = 'onboarding_step_completed') as completed,
         count(distinct actor) filter (where event_name = 'onboarding_step_skipped') as skipped,
         count(*) filter (where event_name = 'onboarding_step_back') as back_actions
-      from e where event_name like 'onboarding_step_%' group by 1 order by viewed desc limit 50
+      from e where event_name like 'onboarding_step_%'
+        and (platform = 'web' or (platform in ('ios','android')
+          and properties->>'onboarding_version' = ${ONBOARDING_ANALYTICS_VERSION}
+          and properties->>'step' in (select step from onboarding_definitions)))
+      group by 1 order by viewed desc limit 50
     ), screens as (
       select coalesce(properties->>'screen', properties->>'path', 'unknown') as screen,
         count(*) as exits,
@@ -286,6 +344,8 @@ export function analyticsQuery(filters: AnalyticsFilters, now: Date) {
         'evaluations', count(*) filter (where event_name = 'evaluation_completed'),
         'failures', count(*) filter (where event_name = 'evaluation_failed'), 'latest_event', max(occurred_at)) from e),
       'onboarding', ${onboarding.result}, 'paywall', ${paywall.result}, 'web', ${web.result},
+      'landingExperiments', ${rows('landing_experiments')}, 'landingSources', ${rows('landing_sources')},
+      'landingSections', ${rows('landing_sections')}, 'landingPlacements', ${rows('landing_placements')},
       'daily', ${rows('daily')}, 'acquisition', ${rows('acquisition')}, 'steps', ${rows('steps')},
       'onboardingScreens', ${rows('onboarding_screens')}, 'onboardingFriction', ${rows('onboarding_friction')}, 'screens', ${rows('screens')}, 'billing', ${rows('billing')}, 'revenue', ${rows('revenue')},
       'revenueDaily', ${rows('revenue_daily')}, 'retention', ${rows('retention')}, 'cancellations', ${rows('cancellations')},

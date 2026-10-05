@@ -1,3 +1,5 @@
+import { recordServerEvent } from '@/lib/analytics/events'
+import { LANDING_COOKIE, landingProperties, parseLandingAssignment } from '@/lib/analytics/landing'
 import { monitorBackend } from '@/lib/reliability/monitor'
 import type { NextApiRequest, NextApiResponse } from 'next'
 import { z } from 'zod'
@@ -37,6 +39,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
         mobileInstallId: input.mobileInstallId,
       },
     })
+    const landingAssignment = parseLandingAssignment(req.cookies[LANDING_COOKIE])
     const checkout = await stripe.checkout.sessions.create({
       mode: product.mode,
       payment_method_types: ['card'],
@@ -47,6 +50,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
         product: productId,
         mobileInstallId: input.mobileInstallId,
         source: 'web_analysis',
+        ...(landingAssignment ? { landingAssignment: req.cookies[LANDING_COOKIE]! } : {}),
         imageCount: String(input.imageCount),
         accountId,
         userId: accountId,
@@ -61,6 +65,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
     }
 
     await recordCreatorCheckout(attribution, checkout)
+    await recordServerEvent({ eventName: 'checkout_started', accountId, sessionId: checkout.id, source: 'web_analysis', properties: { product: productId, ...landingProperties(landingAssignment) } })
 
     return json(res, 200, {
       url: checkout.url,

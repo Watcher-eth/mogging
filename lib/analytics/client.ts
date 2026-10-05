@@ -1,3 +1,4 @@
+import { landingProperties, readLandingCookie, type LandingAssignment } from './landing'
 import { sanitizeProperties, type AnalyticsEventName } from './contract'
 type Event = { eventId: string; occurredAt: string; [key: string]: unknown }
 const key = 'mogging.analytics.v2'
@@ -27,6 +28,9 @@ function init() {
     lastActive = stored.lastActive || 0
   } catch { browserId ||= crypto.randomUUID() }
   const params = new URLSearchParams(location.search)
+  // The cookie owns assignment lifetime; persisted acquisition cannot extend it.
+  for (const field of ['landing_id', 'landing_version', 'experiment_id', 'variant']) delete context[field]
+  Object.assign(context, landingProperties(readLandingCookie(document.cookie)))
   context.locale = navigator.language
   context.timezone = Intl.DateTimeFormat().resolvedOptions().timeZone
   for (const name of ['utm_source', 'utm_medium', 'utm_campaign', 'utm_content', 'utm_term']) {
@@ -45,6 +49,10 @@ function persist() {
   try { sessionStorage.setItem(key, JSON.stringify({ queue, context, sessionId, lastActive })) } catch {}
 }
 function schedule() { if (!timer) timer = setTimeout(() => { timer = undefined; void flushWebAnalytics() }, retry) }
+export function setLandingAnalytics(assignment: LandingAssignment) {
+  init()
+  Object.assign(context, landingProperties(assignment))
+}
 export function identifyWebAnalytics(id?: string) {
   init()
   try {
