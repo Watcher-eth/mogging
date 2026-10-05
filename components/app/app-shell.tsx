@@ -765,7 +765,7 @@ export function LoginDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-h-[min(760px,calc(100svh-2rem))] max-w-[430px] overflow-hidden rounded-[34px] border border-white bg-white p-0 shadow-[0_32px_120px_rgba(15,23,42,0.24)]">
+      <DialogContent data-creator-controls={audience === 'creator' || undefined} className="max-h-[min(760px,calc(100svh-2rem))] max-w-[430px] overflow-hidden rounded-[34px] border border-white bg-white p-0 shadow-[0_32px_120px_rgba(15,23,42,0.24)]">
         <div className="relative grid content-start gap-4 overflow-y-auto px-7 pb-6 pt-4">
           <div className="pointer-events-none absolute inset-x-0 top-0 h-64 bg-[radial-gradient(ellipse_70%_48%_at_50%_10%,rgba(244,244,245,0.82)_0%,rgba(255,255,255,0)_72%)]" />
 

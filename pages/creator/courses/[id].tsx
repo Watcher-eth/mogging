@@ -549,7 +549,7 @@ function CourseBuilder({ record, seller, sellerChanged }: { record: CourseRecord
           if (!open) setEditingChapter(null)
         }}
       >
-        <DialogContent className="c-preview-dialog">
+        <DialogContent data-creator-controls className="c-preview-dialog">
           <DialogTitle>Shape this chapter.</DialogTitle>
           <DialogDescription>
             A clear title helps students find their way.

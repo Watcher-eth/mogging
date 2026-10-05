@@ -48,7 +48,7 @@ export function CourseLayout({
         <title>{`${title} · Mogging`}</title>
         <meta name="robots" content="noindex, nofollow" />
       </Head>
-      <div className="course-app">
+      <div className="course-app" data-creator-controls={studio || undefined}>
         <a href="#course-main" className="c-skip">
           Skip to content
         </a>

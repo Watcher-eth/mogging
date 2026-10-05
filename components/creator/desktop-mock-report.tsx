@@ -51,7 +51,7 @@ export function DesktopMockReport({ report, open, onClose }: {
   return <Dialog.Root open={open} onOpenChange={value => { if (!value) onClose() }}>
     <Dialog.Portal>
       <Dialog.Overlay className="fixed inset-0 z-[90] bg-white" />
-      <Dialog.Content className="fixed inset-0 z-[100] overflow-y-auto bg-white text-black outline-none" onOpenAutoFocus={event => { event.preventDefault(); captureRef.current?.focus() }}>
+      <Dialog.Content data-creator-controls className="fixed inset-0 z-[100] overflow-y-auto bg-white text-black outline-none" onOpenAutoFocus={event => { event.preventDefault(); captureRef.current?.focus() }}>
         <Dialog.Title className="sr-only">Desktop mock report</Dialog.Title>
         <Dialog.Description className="sr-only">Fullscreen analysis report. Choose a category to explore it. Share report downloads a PNG. Press Escape or Back to editor to edit your values.</Dialog.Description>
         <div ref={captureRef} tabIndex={-1} className="min-h-dvh bg-white outline-none" aria-busy={exporting}>

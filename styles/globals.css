@@ -143,8 +143,8 @@
   .creator-surface { min-width: 0; border: 1px solid #e8ebee; border-radius: 16px; background: white; }
   .creator-primary-button {
     display: inline-flex; min-height: 44px; align-items: center; justify-content: center; gap: 8px;
-    border-radius: 12px; background: var(--creator-blue); padding: 0 20px; color: white;
-    font-size: 14px; font-weight: 600; transition: background-color 160ms ease;
+    border-radius: 999px; background: var(--creator-blue); padding: 0 20px; color: white;
+    font-size: 14px; font-weight: 600;
   }
   .creator-field {
     min-height: 46px; width: 100%; border: 1px solid #dfe3e7; border-radius: 10px;
@@ -157,10 +157,8 @@
 
 .creator-app { background: white; }
 .creator-portal .bg-primary, .creator-dialog .bg-primary { background: #00A8EF; color: white; }
-.creator-portal .hover\:bg-primary\/90:hover, .creator-dialog .hover\:bg-primary\/90:hover { background: #00A8EF; filter: brightness(.96); }
 .creator-portal .focus-visible\:ring-ring:focus-visible, .creator-dialog .focus-visible\:ring-ring:focus-visible { --tw-ring-color: #00A8EF; }
 .creator-portal button, .creator-dialog button { box-shadow: none; }
-.creator-portal button.rounded-full, .creator-portal a.rounded-full, .creator-dialog button.rounded-full { border-radius: 12px; }
 .creator-portal .rounded-2xl { border-radius: 16px; }
 .creator-portal .rounded-xl { border-radius: 10px; }
 .creator-portal .bg-zinc-50 { background: #f7f8f9; }
@@ -191,9 +189,6 @@
   box-shadow: none;
 }
 :is(.creator-tone-blue, .creator-tone-green, .creator-tone-red) :where(p, span, a, strong, label, h2, h3, h4, svg, li) { color: white; }
-@media (hover: hover) and (pointer: fine) {
-  .creator-primary-button:hover { background: #00A8EF; filter: brightness(.96); }
-}
 @media (min-width: 768px) {
   .creator-page { padding: 36px 0 64px 22px; }
   .creator-page-header { flex-direction: row; align-items: flex-end; justify-content: space-between; }
@@ -450,3 +445,38 @@
 :is(.creator-navigation, .creator-sidebar-sheet) [data-sidebar="footer"] { padding-inline: 5px; }
 :is(.creator-navigation, .creator-sidebar-sheet) [data-sidebar="group-label"] { padding-inline: 5px; }
 :is(.creator-navigation, .creator-sidebar-sheet) :is(.creator-nav-link, .creator-guide-nav-link) { padding-inline: 5px; }
+
+/* Portal actions share one shape and motion, including buttons rendered as links.
+   Clickable content cards and generated app previews keep their content geometry. */
+:is(.creator-app, .creator-dialog, .creator-sidebar-sheet, [data-creator-controls])
+:is(button, [data-slot="button"], .creator-primary-button, .creator-button, .c-button, .c-icon-button, .c-text-link, [data-sidebar="menu-button"]):not(.creator-surface):not([data-creator-card]):not([data-creator-preview] *) {
+  border-radius: 999px;
+  transition-property: scale, background-color, border-color, color, box-shadow;
+  transition-duration: 160ms;
+  transition-timing-function: cubic-bezier(0.16, 1, 0.3, 1);
+}
+@media (hover: hover) and (pointer: fine) and (prefers-reduced-motion: no-preference) {
+  :is(.creator-app, .creator-dialog, .creator-sidebar-sheet, [data-creator-controls])
+  :is(button, [data-slot="button"], .creator-primary-button, .creator-button, .c-button, .c-icon-button, .c-text-link, [data-sidebar="menu-button"]):not(.creator-surface):not([data-creator-card]):not([data-creator-preview] *):not(:disabled):not([aria-disabled="true"]):not([data-disabled]):hover {
+    scale: 1.025;
+    opacity: 1;
+  }
+}
+:is(.creator-app, .creator-dialog, .creator-sidebar-sheet, [data-creator-controls]) .bg-primary:hover,
+:is(.creator-app, .creator-dialog, .creator-sidebar-sheet, [data-creator-controls]) .creator-primary-button:hover {
+  background-color: #00A8EF;
+  filter: none;
+}
+:is(.creator-app, .creator-dialog, .creator-sidebar-sheet, [data-creator-controls]) .bg-secondary:hover {
+  background-color: hsl(var(--secondary));
+}
+:is(.creator-app, .creator-dialog, .creator-sidebar-sheet, [data-creator-controls]) .bg-destructive:hover {
+  background-color: hsl(var(--destructive));
+}
+@media (prefers-reduced-motion: reduce) {
+  :is(.creator-app, .creator-dialog, .creator-sidebar-sheet, [data-creator-controls])
+  :is(button, [data-slot="button"], .creator-primary-button, .creator-button, .c-button, .c-icon-button, .c-text-link, [data-sidebar="menu-button"]):not(.creator-surface):not([data-creator-card]):not([data-creator-preview] *) {
+    scale: none;
+    transition: none;
+  }
+}

@@ -461,7 +461,7 @@ export default function LessonEditor({
           }
         }}
       >
-        <DialogContent className="c-preview-dialog">
+        <DialogContent data-creator-controls className="c-preview-dialog">
           <DialogTitle>
             {insert === 'image' ? 'Insert image' : 'Insert link'}
           </DialogTitle>

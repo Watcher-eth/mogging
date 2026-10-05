@@ -21,7 +21,7 @@ export function CampaignHelp() {
           <motion.button
             layoutId={reduceMotion ? undefined : 'help-panel'}
             transition={transition}
-            style={{ borderRadius: 24 }}
+            style={{ borderRadius: 999 }}
             className="inline-flex min-h-10 shrink-0 items-center gap-1.5 bg-[#f5f6f7] px-3 text-xs font-medium text-zinc-600 hover:bg-zinc-200/60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#00A8EF]"
           >
             <HelpCircle className="size-3.5" />
@@ -36,6 +36,7 @@ export function CampaignHelp() {
               </Dialog.Overlay>
               <Dialog.Content asChild forceMount>
                 <motion.section
+                    data-creator-controls
                   layoutId={reduceMotion ? undefined : 'help-panel'}
                   transition={transition}
                   style={{ borderRadius: 24 }}

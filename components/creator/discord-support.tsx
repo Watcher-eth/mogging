@@ -17,7 +17,7 @@ export function DiscordSupport() {
       <LayoutGroup id={motionId}>
         <SidebarMenuButton asChild tooltip="Discord Support" className="creator-discord-support">
           <Dialog.Trigger asChild>
-            <motion.button layoutId={reduceMotion ? undefined : 'discord-panel'} transition={transition} style={{ borderRadius: 24 }} aria-label="Discord Support">
+            <motion.button layoutId={reduceMotion ? undefined : 'discord-panel'} transition={transition} style={{ borderRadius: 999 }} aria-label="Discord Support">
               <MessageCircle className="size-4" />
               <motion.span layoutId={reduceMotion ? undefined : 'discord-label'} layout="position" transition={transition}>Discord Support</motion.span>
             </motion.button>
@@ -32,6 +32,7 @@ export function DiscordSupport() {
                 </Dialog.Overlay>
                 <Dialog.Content asChild forceMount>
                   <motion.section
+                    data-creator-controls
                     layoutId={reduceMotion ? undefined : 'discord-panel'}
                     transition={transition}
                     style={{ borderRadius: 20 }}

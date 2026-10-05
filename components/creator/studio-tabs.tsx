@@ -19,11 +19,11 @@ export function StudioTabs({
       <LayoutGroup id={id}>
         <Tabs.List
           aria-label="View"
-          className="mb-6 inline-flex max-w-full gap-1 overflow-x-auto rounded-2xl bg-[#f5f6f7] p-1"
+          className="mb-6 inline-flex max-w-full gap-1 overflow-x-auto rounded-full bg-[#f5f6f7] p-1"
         >
           {items.map((item) => (
             <Tabs.Trigger
-              className="relative isolate min-h-10 shrink-0 rounded-xl px-4 text-sm font-medium text-zinc-500 outline-none focus-visible:ring-2 focus-visible:ring-[#00A8EF] data-[state=active]:text-zinc-900"
+              className="relative isolate min-h-10 shrink-0 rounded-full px-4 text-sm font-medium text-zinc-500 outline-none focus-visible:ring-2 focus-visible:ring-[#00A8EF] data-[state=active]:text-zinc-900"
               key={item.value}
               value={item.value}
             >
@@ -34,7 +34,7 @@ export function StudioTabs({
                     duration: reduced ? 0 : 0.2,
                     ease: [0.22, 1, 0.36, 1],
                   }}
-                  className="absolute inset-0 -z-10 rounded-xl bg-white shadow-sm"
+                  className="absolute inset-0 -z-10 rounded-full bg-white shadow-sm"
                 />
               ) : null}
               {item.label}

@@ -137,7 +137,7 @@ export function MockProtocolGenerator() {
       <div><h2 className="text-sm font-semibold">iPhone protocol preview</h2><p className="mt-0.5 text-xs text-zinc-500">390 × 844 points · exported at 3× resolution</p></div>
       <div className="mx-auto w-full max-w-[402px] overflow-hidden rounded-[42px] border-[6px] border-zinc-900 bg-white shadow-xl">
         <div ref={frameRef} className="relative w-full" style={{ aspectRatio: '390/844' }}>
-          <div ref={captureRef} data-protocol-screen style={{ position: 'absolute', width: 390, height: 844, transform: `scale(${scale})`, transformOrigin: 'top left', background: '#fff', color: '#070709', fontFamily: '-apple-system, BlinkMacSystemFont, "Helvetica Neue", Arial, sans-serif', overflow: 'clip', textAlign: 'left' }}>
+          <div ref={captureRef} data-creator-preview data-protocol-screen style={{ position: 'absolute', width: 390, height: 844, transform: `scale(${scale})`, transformOrigin: 'top left', background: '#fff', color: '#070709', fontFamily: '-apple-system, BlinkMacSystemFont, "Helvetica Neue", Arial, sans-serif', overflow: 'clip', textAlign: 'left' }}>
             {day ? <ProtocolScreen days={days} selectedDay={selectedDay} completed={completed} scroll={scroll} openedTask={openedTask} disabled={exporting} onDay={value => { setSelectedDay(value); setOpenedTask(null) }} onToggle={toggle} onOpen={setOpenedTask} onScroll={setScroll} onFeedback={recordFeedback} /> : <div className="grid h-full place-items-center p-10 text-center text-sm text-zinc-500">Choose a focus area and generate your weekly protocol.</div>}
           </div>
         </div>
