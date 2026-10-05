@@ -4,6 +4,8 @@ These files are exact copies of `mogging-mobile/src/overlay-engine` so the stand
 
 When the canonical mobile files change, copy `landmarks.ts`, `schema.ts`, `layout.ts`, `resolve.ts`, `enrich-landmarks.ts`, `face-map-points.ts`, and `report-presets.ts` here unchanged and run the creator generator tests.
 
+`processing-presets.ts` snapshots the scan presets and descriptive labels from the mobile onboarding screen. The web analysis and paywall share these presets and the report canvas renderer; the processing sequence starts with the mobile face-map reveal. Sync this snapshot when the mobile scan sequence changes.
+
 The web adapter in `../report-overlay.ts` uses the mobile report line weights, point halos, label styling and timings in a 360-point viewport. The analysis report, creator preview, PNG and MP4 all draw through that adapter. `components/analysis/report-image-panel.tsx` resolves these presets against the loaded photo dimensions and observed viewport; never position normalized image anchors directly as viewport percentages. Always enrich detector contours before resolving indexed presets; raw MediaPipe contour lengths differ from the mobile contract. Real detections never use demo fallback points.
 
 The full face map matches the mobile Skin Age visualization: 160 decorative samples within the detected outline, revealed in 18 bands. These dots are a visualization, not extra measured landmarks or a skin-age prediction.

@@ -1,13 +1,14 @@
-.scene { width: 300px; max-width: 100%; flex-shrink: 0; pointer-events: none; --duration: 13s; }
+.scene { position: relative; container-type: inline-size; width: 300px; max-width: 100%; flex-shrink: 0; pointer-events: none; --duration: 13s; }
 .art { display: block; width: 100%; overflow: visible; filter: drop-shadow(0 8px 10px rgb(26 42 55 / 5%)); }
-.scene svg * { animation-play-state: paused !important; }
-.scene[data-running='true'] svg * { animation-play-state: running !important; }
+.scene * { animation-play-state: paused !important; }
+.scene[data-running='true'] * { animation-play-state: running !important; }
 /* Cues share the SVG clock, including its offscreen pause. Only two state updates per loop. */
 .countCue { animation: countCue var(--duration) linear 4.55s infinite; }
 .resetCue { animation: resetCue var(--duration) linear 8.45s infinite; }
-.viewCount { display: flex; align-items: baseline; gap: 8px; color: #252a30; font-size: 20px; font-weight: 500; line-height: 29px; letter-spacing: -.5px; visibility: hidden; animation: countVisibility var(--duration) linear infinite; }
-.viewCount span { font-size: 9px; font-weight: 400; letter-spacing: 0; color: #858a91; }
-@keyframes countVisibility { 0%, 27%, 62%, 100% { visibility: hidden; } 34%, 55% { visibility: visible; } }
+/* Keep NumberFlow in the HTML layer: SVG foreignObject can escape its parent fade in WebKit. */
+.analyticsCount { position: absolute; left: 12.5%; top: 8.333333%; width: 75%; height: 82.222222%; opacity: 0; transform-origin: center; animation: analytics var(--duration) cubic-bezier(.22,1,.36,1) infinite; }
+.viewCount { position: absolute; left: 6.666667%; top: 18.918919%; display: flex; align-items: baseline; gap: 2.5cqw; color: #252a30; font-size: 6.25cqw; font-weight: 500; line-height: 9.0625cqw; letter-spacing: -.15625cqw; }
+.viewCount > span { font-size: 2.8125cqw; font-weight: 400; letter-spacing: 0; color: #858a91; }
 @keyframes countCue { from { opacity: 0; } to { opacity: 0; } }
 @keyframes resetCue { from { opacity: 0; } to { opacity: 0; } }
 .editor, .analytics, .submission, .trim, .check, .preview { transform-box: fill-box; transform-origin: center; }
@@ -40,7 +41,7 @@
 @keyframes sent { 0%, 79%, 100% { opacity: 0; } 83%, 96% { opacity: 1; } }
 @keyframes spark { 0%, 81%, 95%, 100% { opacity: 0; } 85% { opacity: .75; } 91% { opacity: .25; } }
 @media (prefers-reduced-motion: reduce) {
-  .scene svg * { animation: none !important; }
+  .scene * { animation: none !important; }
   .editor, .analytics, .sending { opacity: 0; }
   .submission, .sent, .check { opacity: 1; }
   .upload { stroke-dashoffset: 0; }

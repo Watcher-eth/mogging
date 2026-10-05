@@ -1,5 +1,8 @@
 import { ImagePlus } from 'lucide-react'
 import Image from 'next/image'
+import { motion, useReducedMotion } from 'motion/react'
+import type { FaceLandmarksPayload } from '@/lib/analysis/landmarks'
+import { captureViewport, getFaceGuide } from './face-guide'
 import { useRef, type KeyboardEvent, type PointerEvent, type RefObject, type ReactNode, type WheelEvent } from 'react'
 
 export type CaptureFrameImagePosition = {
@@ -14,6 +17,7 @@ type CaptureFrameProps = {
   imageAlt?: string
   imagePosition?: CaptureFrameImagePosition
   imageSrc?: string | null
+  landmarks?: FaceLandmarksPayload | null
   muted?: boolean
   onEmptyClick?: () => void
   onImagePositionChange?: (position: CaptureFrameImagePosition) => void
@@ -31,6 +35,7 @@ export function CaptureFrame({
   imageAlt = 'Face alignment preview',
   imagePosition = { x: 50, y: 50, scale: 1 },
   imageSrc,
+  landmarks,
   muted = false,
   onEmptyClick,
   onImagePositionChange,
@@ -41,6 +46,8 @@ export function CaptureFrame({
   title = 'Look straight ahead',
   videoRef,
 }: CaptureFrameProps) {
+  const reduceMotion = useReducedMotion()
+  const guide = getFaceGuide(imageSrc ? landmarks : null, imagePosition)
   const hasMedia = Boolean(imageSrc || videoRef)
   const clickSuppressedRef = useRef(false)
   const dragStateRef = useRef<{
@@ -121,7 +128,7 @@ export function CaptureFrame({
 
   return (
     <div
-      className={`relative mx-auto aspect-[9/16] w-full max-w-[390px] overflow-hidden rounded-[44px] bg-black shadow-2xl ${imageSrc && onImagePositionChange ? 'cursor-grab touch-none active:cursor-grabbing' : ''} ${(!hasMedia && onEmptyClick) || (hasMedia && onMediaClick) ? 'cursor-pointer' : ''} ${className}`}
+      className={`relative mx-auto aspect-[9/16] w-full max-w-[390px] overflow-hidden ${imageSrc ? 'rounded-none' : 'rounded-[44px]'} bg-black shadow-2xl ${imageSrc && onImagePositionChange ? 'cursor-grab touch-none active:cursor-grabbing' : ''} ${(!hasMedia && onEmptyClick) || (hasMedia && onMediaClick) ? 'cursor-pointer' : ''} ${className}`}
       onClick={(!hasMedia && onEmptyClick) || (hasMedia && onMediaClick) ? handleClick : undefined}
       onPointerCancel={handlePointerUp}
       onPointerDown={handlePointerDown}
@@ -150,10 +157,7 @@ export function CaptureFrame({
         <video ref={videoRef} className="absolute inset-0 h-full w-full scale-x-[-1] object-cover" playsInline muted autoPlay />
       ) : (
         <div className="absolute inset-0 grid place-items-center bg-zinc-950">
-          <div className="grid justify-items-center gap-3 text-center text-white/65">
-            <ImagePlus className="size-9" aria-hidden="true" />
-            <p className="max-w-48 text-sm leading-5">Upload or take a front-facing photo</p>
-          </div>
+          <ImagePlus className="absolute left-1/2 top-[45%] size-9 -translate-x-1/2 -translate-y-1/2 text-white/65" aria-hidden="true" />
         </div>
       )}
 
@@ -176,20 +180,23 @@ export function CaptureFrame({
         </div>
       ) : null}
 
-      <svg className="pointer-events-none absolute left-1/2 top-[45%] h-[54%] w-[80%] -translate-x-1/2 -translate-y-1/2 overflow-visible" viewBox="0 0 260 340" aria-hidden="true">
-        <path
-          d="M130 9C52 9 14 68 14 162c0 96 42 169 116 169s116-73 116-169C246 68 208 9 130 9Z"
+      <svg className="pointer-events-none absolute inset-0 h-full w-full" viewBox={`0 0 ${captureViewport.width} ${captureViewport.height}`} aria-hidden="true">
+        <motion.ellipse
+          initial={false}
+          animate={guide}
+          transition={{ duration: reduceMotion ? 0 : 0.65, ease: [0.22, 1, 0.36, 1] }}
           fill="none"
           stroke="rgba(255,255,255,0.82)"
           strokeDasharray="8 12"
           strokeLinecap="round"
-          strokeWidth="3"
+          strokeWidth="2"
+          vectorEffect="non-scaling-stroke"
         />
       </svg>
 
-      <div className="pointer-events-none absolute inset-x-8 bottom-[17%] text-center text-white">
-        <h3 className="text-2xl font-semibold leading-none tracking-[-0.04em] sm:text-3xl">{hasMedia ? title : 'Add your photo'}</h3>
-        <p className="mt-3 text-sm font-medium text-white/62 sm:text-base">{hasMedia ? subtitle : 'Use a clear, front-facing image'}</p>
+      <div className={`pointer-events-none absolute inset-x-8 text-center text-white ${imageSrc ? 'bottom-5' : hasMedia ? 'bottom-[17%]' : 'bottom-[12%]'}`}>
+        {!imageSrc ? <h3 className="text-2xl font-semibold leading-none tracking-[-0.04em] sm:text-3xl">{hasMedia ? title : 'Add your photo'}</h3> : null}
+        <p className={`${imageSrc ? '' : hasMedia ? 'mt-3' : 'mt-1.5'} text-sm font-medium text-white/62 sm:text-base`}>{hasMedia ? subtitle : 'Use a clear, front-facing image'}</p>
       </div>
 
       {action ? <div className="absolute inset-x-0 bottom-7 px-8">{action}</div> : null}

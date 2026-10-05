@@ -41,6 +41,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
     })
     const landingAssignment = parseLandingAssignment(req.cookies[LANDING_COOKIE])
     const checkout = await stripe.checkout.sessions.create({
+      branding_settings: { display_name: 'Mogging' },
       mode: product.mode,
       payment_method_types: ['card'],
       allow_promotion_codes: true,

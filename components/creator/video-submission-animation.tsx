@@ -61,20 +61,6 @@ export function VideoSubmissionAnimation() {
         <g className={styles.analytics}>
           <rect x="40" y="15" width="240" height="148" rx="16" fill="white" stroke="#E4E7EB" />
           <text x="56" y="36" fill="#858A91" fontSize="8" letterSpacing="1.2">VIDEO PERFORMANCE</text>
-          <foreignObject x="56" y="43" width="145" height="29">
-            <div className={styles.viewCount}>
-              <NumberFlow
-                value={views}
-                plugins={[continuous]}
-                suffix="k"
-                animated={views > 0}
-                transformTiming={{ duration: 2080, easing: 'ease-in-out' }}
-                spinTiming={{ duration: 2080, easing: 'ease-in-out' }}
-                locales="en-US"
-              />
-              <span>views</span>
-            </div>
-          </foreignObject>
           <rect x="213" y="47" width="51" height="19" rx="9.5" fill="#EDF8FE" />
           <text x="238" y="60" textAnchor="middle" fill="#00A8EF" fontSize="8" fontWeight="600">↗ 124%</text>
           {[88, 111, 134].map((y) => <path key={y} d={`M56 ${y}H264`} stroke="#F0F2F5" />)}
@@ -107,6 +93,20 @@ export function VideoSubmissionAnimation() {
           <path d="M244 49v6m-3-3h6M77 93v6m-3-3h6" />
         </g>
       </svg>
+      <div className={styles.analyticsCount}>
+            <div className={styles.viewCount}>
+              <NumberFlow
+                value={views}
+                plugins={[continuous]}
+                suffix="k"
+                animated={views > 0}
+                transformTiming={{ duration: 2080, easing: 'ease-in-out' }}
+                spinTiming={{ duration: 2080, easing: 'ease-in-out' }}
+                locales="en-US"
+              />
+              <span>views</span>
+            </div>
+      </div>
     </div>
   )
 }

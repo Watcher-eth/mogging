@@ -26,7 +26,7 @@ export function createReportOverlay(slide: ContentSlide, image: GeneratorImage, 
   return { size, primitives, dots, value: `${score.trim() || '—'} / ${categoryScoreMax(slide.categoryId)}` }
 }
 
-export type ReportOverlay = Omit<ReturnType<typeof createReportOverlay>, 'value'> & { value?: string; labelLayout?: 'mobile' }
+export type ReportOverlay = Omit<ReturnType<typeof createReportOverlay>, 'value'> & { value?: string; labelLayout?: 'mobile'; labelAppearance?: 'scan' }
 
 export function drawReportOverlay(ctx: CanvasRenderingContext2D, overlay: ReportOverlay, width: number, timeMs: number, labels = true) {
   ctx.save()
@@ -162,6 +162,10 @@ function tracePaths(ctx: CanvasRenderingContext2D, prepared: PreparedPaths, prog
 
 function drawLabel(ctx: CanvasRenderingContext2D, label: Extract<ResolvedPrimitive, { kind: 'label' }>, overlay: ReportOverlay, time: number) {
   const variant = label.variant ?? 'tag'
+  if (variant === 'tag' && overlay.labelAppearance === 'scan') {
+    drawScanLabel(ctx, label, overlay, time)
+    return
+  }
   const width = variant === 'text' ? 154 : variant === 'node' ? 18 : 118
   const height = variant === 'text' ? 66 : variant === 'node' ? 18 : 44
   const right = label.align === 'right' || (!label.align && label.point.x >= overlay.size.width / 2)
@@ -208,6 +212,33 @@ function drawLabel(ctx: CanvasRenderingContext2D, label: Extract<ResolvedPrimiti
     ctx.fillText(text, variant === 'tag' ? 8 : 0, variant === 'tag' ? 4 : 0, variant === 'tag' ? 124 : width)
     ctx.restore()
   })
+}
+
+function drawScanLabel(ctx: CanvasRenderingContext2D, label: Extract<ResolvedPrimitive, { kind: 'label' }>, overlay: ReportOverlay, time: number) {
+  const width = 80
+  const height = label.value ? 26 : 18
+  const x = clamp(label.align === 'right' ? overlay.size.width - width - 12 : label.align === 'left' ? 12 : label.point.x, 12, Math.max(12, overlay.size.width - width - 12))
+  const y = clamp(label.point.y, 10, Math.max(10, overlay.size.height - height - 10))
+  const delay = label.animation?.delay ?? 0
+  const duration = Math.max(680, Math.min(label.animation?.duration ?? 720, 980))
+  const progress = enter(time, delay, duration)
+  const direction = label.align === 'right' ? 1 : -1
+  ctx.save()
+  ctx.globalAlpha *= progress
+  ctx.translate(x + (1 - progress) * 8 * direction, y)
+  ctx.fillStyle = 'rgba(255,255,255,.68)'
+  ctx.fillRect(0, 0, width, height)
+  ctx.strokeStyle = 'rgba(255,255,255,.54)'
+  ctx.lineWidth = 1
+  ctx.strokeRect(0, 0, width, height)
+  ctx.font = '600 7px -apple-system, BlinkMacSystemFont, Arial, sans-serif'
+  ctx.fillStyle = '#0a0a0d'
+  ctx.fillText(label.title.toUpperCase(), 6, 4, width - 12)
+  if (label.value) {
+    ctx.globalAlpha *= enter(time, delay + 150, duration)
+    ctx.fillText(label.value.toUpperCase(), 6, 13, width - 12)
+  }
+  ctx.restore()
 }
 
 function clamp(value: number, min: number, max: number) { return Math.max(min, Math.min(max, value)) }

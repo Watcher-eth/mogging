@@ -21,7 +21,7 @@ import dynamic from 'next/dynamic'
 import Link from 'next/link'
 import { IntroFacePreview } from '@/components/analysis/intro-face-preview'
 import { useRouter } from 'next/router'
-import { memo, useCallback, useEffect, useMemo, useRef, useState, type CSSProperties, type ChangeEvent, type ReactNode } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties, type ChangeEvent, type ReactNode } from 'react'
 import { toast } from 'sonner'
 import { useSound } from '@web-kits/audio/react'
 import useSWR from 'swr'
@@ -33,7 +33,7 @@ import {
   saveAnalysisDraft,
   type AnalysisDraftImage,
 } from '@/lib/client/analysisDraft'
-import { parseFaceLandmarksPayload, type FaceLandmarksPayload, type NormalizedPoint } from '@/lib/analysis/landmarks'
+import { parseFaceLandmarksPayload, type FaceLandmarksPayload } from '@/lib/analysis/landmarks'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import {
@@ -48,6 +48,8 @@ import { SeoHead } from '@/components/app/seo-head'
 import { CaptureFrame, type CaptureFrameImagePosition } from '@/components/analysis/capture-frame'
 import { TextLoop } from '@/components/core/text-loop'
 import { TextShimmer } from '@/components/core/text-shimmer'
+
+const ScanImagePanel = dynamic(() => import('@/components/analysis/scan-image-panel').then(module => module.ScanImagePanel))
 
 const AnalysisReport = dynamic(() => import('@/components/analysis/analysis-report').then((module) => module.AnalysisReport))
 const ReportActions = dynamic(() => import('@/components/analysis/analysis-report').then((module) => module.ReportActions))
@@ -167,7 +169,6 @@ const pseudoAnalysisItems = [
   'Preparing private report',
 ]
 const previewPhotoUrl = '/model.png'
-const paymentDialogImageUrl = 'https://cdn-blog.prose.com/1/2023/10/Untitled-1-4.jpg'
 const analysisTimeline = [
   {
     title: 'Preparing image geometry',
@@ -198,24 +199,10 @@ const analysisTimeline = [
     substeps: ['Calibrating PSL estimate', 'Writing evidence-weighted summary', 'Preparing shareable result'],
   },
 ]
-const mosaicPermutations = [
-  [0, 1, 2, 3, 4, 5, 6, 7, 8],
-  [1, 5, 2, 6, 4, 0, 3, 7, 8],
-  [6, 1, 3, 2, 4, 7, 0, 8, 5],
-  [8, 3, 0, 1, 4, 6, 7, 5, 2],
-  [2, 0, 5, 3, 4, 1, 8, 6, 7],
-]
-const originalMosaicPermutation = mosaicPermutations[0]
-
 type ReportFeature = {
   label: string
   value: string
   measurement?: string
-}
-
-type ReportOverlayPoint = {
-  x: number
-  y: number
 }
 
 type ReportCategory = {
@@ -805,7 +792,7 @@ export default function AnalysisPage() {
               <ActualAnalysisScreen
                 checkoutError={error}
                 checkoutLoading={checkoutLoading}
-                imageSrc={images[0]?.dataUrl ?? previewImage}
+                imageSrc={selectedImage?.dataUrl ?? images[0]?.dataUrl ?? previewImage}
                 isUnlocked={analysisUnlocked}
                 landmarks={selectedImage?.landmarks ?? images[0]?.landmarks ?? null}
                 paymentDialogOpen={paymentDialogOpen}
@@ -824,7 +811,7 @@ export default function AnalysisPage() {
               <ActualAnalysisScreen
                 checkoutError={error}
                 checkoutLoading={checkoutLoading}
-                imageSrc={images[0]?.dataUrl ?? previewImage}
+                imageSrc={selectedImage?.dataUrl ?? images[0]?.dataUrl ?? previewImage}
                 isUnlocked={analysisUnlocked}
                 landmarks={selectedImage?.landmarks ?? images[0]?.landmarks ?? null}
                 paymentDialogOpen={paymentDialogOpen}
@@ -843,7 +830,7 @@ export default function AnalysisPage() {
               <ActualAnalysisScreen
                 checkoutError={error}
                 checkoutLoading={checkoutLoading}
-                imageSrc={images[0]?.dataUrl ?? previewImage}
+                imageSrc={selectedImage?.dataUrl ?? images[0]?.dataUrl ?? previewImage}
                 isUnlocked={analysisUnlocked}
                 landmarks={selectedImage?.landmarks ?? images[0]?.landmarks ?? null}
                 paymentDialogOpen={paymentDialogOpen}
@@ -1050,7 +1037,8 @@ function UploadScreen({
                   transition={{ duration: 0.26, ease: [0.23, 1, 0.32, 1] }}
                 >
                   <CaptureFrame
-                    className="max-w-[370px] rounded-[34px]"
+                    className="max-w-[370px]"
+                    landmarks={images.find((image) => image.id === selectedImageId)?.landmarks}
                     imageSrc={previewImage}
                     imageAlt="Primary uploaded preview"
                     imagePosition={imagePosition}
@@ -1058,9 +1046,8 @@ function UploadScreen({
                     onImagePositionChange={previewImage ? onImagePositionChange : undefined}
                     onMediaClick={images.length >= 3 ? undefined : onUpload}
                     showStepIndicator={false}
-                    stepLabel="Step 1 of 3"
-                    title="Look straight ahead"
-                    subtitle={previewImage ? 'Center your face in the frame' : 'Upload or take a photo'}
+                    stepLabel="Step 1 of 4"
+                    subtitle="Center your face in the frame"
                   />
                 </motion.div>
               </AnimatePresence>
@@ -1087,17 +1074,20 @@ function UploadScreen({
             </div>
           ) : null}
 
-          {images.length > 0 ? (
-            <div className="mx-auto grid w-full max-w-[760px] grid-cols-[repeat(2,10rem)] justify-center gap-3 sm:grid-cols-[repeat(3,11.5rem)] sm:gap-4">
-              {images.map((image) => (
-                <UploadThumbnail
-                  key={image.id}
-                  image={image}
-                  isSelected={selectedImageId === image.id}
-                  onRemove={onRemove}
-                  onSelect={onSelect}
-                />
-              ))}
+          {previewImage && selectedImageId ? (
+            <div className="mx-auto flex w-full max-w-[390px] items-center justify-between gap-3">
+              {images.length > 1 ? (
+                <div className="flex flex-wrap gap-2">
+                  {images.map((image, index) => (
+                    <button key={image.id} type="button" aria-pressed={image.id === selectedImageId} onClick={() => onSelect(image.id)} className={`rounded-sm border px-2.5 py-1.5 text-xs ${image.id === selectedImageId ? 'border-black bg-black text-white' : 'border-zinc-200 text-muted-foreground'}`}>
+                      Photo {index + 1}
+                    </button>
+                  ))}
+                </div>
+              ) : <span className="text-xs text-muted-foreground">Photo 1</span>}
+              <button type="button" onClick={() => onRemove(selectedImageId)} className="flex shrink-0 items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground">
+                <X className="size-3.5" aria-hidden="true" /> Remove photo
+              </button>
             </div>
           ) : null}
         </div>
@@ -1121,46 +1111,6 @@ function UploadScreen({
   )
 }
 
-const UploadThumbnail = memo(function UploadThumbnail({
-  image,
-  isSelected,
-  onRemove,
-  onSelect,
-}: {
-  image: AnalysisDraftImage
-  isSelected: boolean
-  onRemove: (id: string) => void
-  onSelect: (id: string) => void
-}) {
-  return (
-    <button
-      className={`group relative size-40 overflow-hidden rounded-md border bg-muted transition-[border-color,box-shadow,transform] duration-200 ease-out hover:scale-[1.01] sm:size-[11.5rem] ${
-        isSelected ? 'border-black shadow-[0_10px_30px_rgba(15,23,42,0.12)]' : 'border-zinc-200'
-      }`}
-      onClick={() => onSelect(image.id)}
-      type="button"
-    >
-      <img
-        alt={image.name}
-        className="h-full w-full object-cover"
-        decoding="async"
-        draggable={false}
-        loading="eager"
-        src={image.dataUrl}
-      />
-      <span
-        className="absolute right-2 top-2 grid size-7 place-items-center rounded-full bg-background/95 opacity-100 shadow-sm transition-colors hover:bg-white sm:opacity-0 sm:group-hover:opacity-100"
-        onClick={(event) => {
-          event.stopPropagation()
-          onRemove(image.id)
-        }}
-      >
-        <X className="size-3.5" aria-hidden="true" />
-      </span>
-    </button>
-  )
-})
-
 function ProcessScreen({ children, wide = false }: { children: ReactNode; wide?: boolean }) {
   return (
     <div className={`grid min-h-[calc(100svh-5rem)] ${wide ? '' : 'place-items-center p-4 sm:p-8'}`}>
@@ -1169,17 +1119,21 @@ function ProcessScreen({ children, wide = false }: { children: ReactNode; wide?:
   )
 }
 
-function StepRail({ active }: { active: 1 | 2 | 3 }) {
+function StepRail({ active }: { active: 1 | 2 | 3 | 4 }) {
+  const steps = ['Upload image', 'Comprehensive Analysis', 'Unlock Full Report', 'Personalized Protocol']
+
   return (
-    <div className="font-mono text-[10px] uppercase text-muted-foreground">
+    <div className="font-mono text-[9px] uppercase text-muted-foreground sm:text-[10px]">
       <div className="h-3 overflow-hidden rounded-sm bg-zinc-100">
-        <div className="h-full bg-zinc-400" style={{ width: `${(active / 3) * 100}%` }} />
+        <div className="creator-progress h-full bg-zinc-400" style={{ width: `${(active / steps.length) * 100}%` }} />
       </div>
-      <div className="mt-3 grid grid-cols-3">
-        <span>[ 001 ] Upload image</span>
-        <span className="text-center">[ 002 ] Payment</span>
-        <span className="text-right">[ 003 ] Finish</span>
-      </div>
+      <ol className="mt-3 grid grid-cols-4 gap-3">
+        {steps.map((label, index) => (
+          <li key={label} aria-current={active === index + 1 ? 'step' : undefined} className="min-w-0 text-center first:text-left last:text-right">
+            [ {String(index + 1).padStart(3, '0')} ] {label}
+          </li>
+        ))}
+      </ol>
     </div>
   )
 }
@@ -1286,22 +1240,23 @@ function ActualAnalysisScreen({
             </div>
 
             <ProgressBar progress={isUnlocked ? progress : 24} />
+            {!isUnlocked ? <button type="button" className="mt-4 self-start text-sm font-medium underline underline-offset-4" onClick={onPaymentRequired}>Unlock full report <ArrowRight className="ml-1 inline size-4" aria-hidden="true" /></button> : null}
           </div>
         </div>
 
         <div className="grid place-items-center lg:justify-items-end">
-          <MosaicImage imageSrc={imageSrc} landmarks={landmarks} />
+          <ScanImagePanel imageSrc={imageSrc} landmarks={landmarks} paused={paymentDialogOpen} />
         </div>
       </div>
 
       <AnalysisPaymentDialog
+        imageSrc={imageSrc}
+        landmarks={landmarks}
         error={checkoutError}
         loading={checkoutLoading}
         open={paymentDialogOpen}
         onCheckout={onCheckout}
-        onOpenChange={(open) => {
-          if (open) onPaymentDialogChange(true)
-        }}
+        onOpenChange={onPaymentDialogChange}
       />
     </>
   )
@@ -1411,213 +1366,9 @@ function AnalysisTimeline({
   )
 }
 
-function MosaicImage({ imageSrc, landmarks }: { imageSrc: string | null; landmarks: FaceLandmarksPayload | null }) {
-  const [phase, setPhase] = useState(0)
-  const [mode, setMode] = useState<'shuffle' | 'assembled' | 'annotated'>('shuffle')
-  const src = imageSrc || previewPhotoUrl
-  const permutation = mode === 'shuffle'
-    ? mosaicPermutations[(phase % (mosaicPermutations.length - 1)) + 1]
-    : originalMosaicPermutation
-
-  useEffect(() => {
-    const timer = setInterval(() => {
-      setPhase((current) => current + 1)
-    }, 1_350)
-
-    return () => clearInterval(timer)
-  }, [])
-
-  useEffect(() => {
-    if (mode !== 'shuffle') return
-
-    const timer = setTimeout(() => {
-      setMode('assembled')
-    }, 10_000)
-
-    return () => clearTimeout(timer)
-  }, [mode])
-
-  useEffect(() => {
-    if (mode !== 'assembled') return
-
-    const timer = setTimeout(() => {
-      setMode('annotated')
-    }, 1_050)
-
-    return () => clearTimeout(timer)
-  }, [mode])
-
-  useEffect(() => {
-    if (mode !== 'annotated') return
-
-    const timer = setTimeout(() => {
-      setPhase((current) => current + 1)
-      setMode('shuffle')
-    }, 5_900)
-
-    return () => clearTimeout(timer)
-  }, [mode])
-
-  return (
-    <div className="relative aspect-[4/5] w-full max-w-[620px] overflow-hidden bg-zinc-100">
-      {Array.from({ length: 9 }).map((_, sourceIndex) => {
-        const sourceColumn = sourceIndex % 3
-        const sourceRow = Math.floor(sourceIndex / 3)
-        const targetIndex = permutation[sourceIndex]
-        const targetColumn = targetIndex % 3
-        const targetRow = Math.floor(targetIndex / 3)
-
-        return (
-          <motion.div
-            key={sourceIndex}
-            className="absolute h-1/3 w-1/3 overflow-hidden border border-white/20 bg-cover bg-no-repeat"
-            animate={{
-              x: `${targetColumn * 100}%`,
-              y: `${targetRow * 100}%`,
-              opacity: 1,
-              scale: 1,
-            }}
-            transition={{ type: 'spring', duration: 1.05, bounce: 0.12 }}
-            style={{
-              backgroundImage: `url(${src})`,
-              backgroundPosition: `${sourceColumn * 50}% ${sourceRow * 50}%`,
-              backgroundSize: '300% 300%',
-              left: 0,
-              top: 0,
-            }}
-          />
-        )
-      })}
-      <AnimatePresence>
-        {mode === 'annotated' ? <MosaicAnnotations key="mosaic-annotations" landmarks={landmarks} /> : null}
-      </AnimatePresence>
-    </div>
-  )
-}
-
-function MosaicAnnotations({ landmarks }: { landmarks: FaceLandmarksPayload | null }) {
-  const anchors = landmarks?.confidence && landmarks.confidence >= 0.5 ? landmarks.anchors : null
-  const leftEye = toPercentPoint(anchors?.leftEyeOuter)
-  const rightEye = toPercentPoint(anchors?.rightEyeOuter)
-  const noseTip = toPercentPoint(anchors?.noseTip)
-  const upperLip = toPercentPoint(anchors?.upperLip ?? anchors?.mouthCenter)
-  const chin = toPercentPoint(anchors?.chin)
-  const eyeMid = midpointPercent(leftEye, rightEye)
-  const chinHeight = upperLip && chin ? Math.max(48, Math.min(132, (chin.y - upperLip.y) * 5.2)) : 88
-
-  return (
-    <motion.div
-      className="pointer-events-none absolute inset-0"
-      initial={{ opacity: 0 }}
-      animate={{ opacity: 1 }}
-      exit={{ opacity: 0 }}
-      transition={{ duration: 0.42, ease: [0.23, 1, 0.32, 1] }}
-    >
-      <MosaicCallout
-        className={upperLip ? '' : 'left-[52%] top-[57%]'}
-        height={chinHeight}
-        label="Chin height"
-        style={upperLip ? { left: `${upperLip.x}%`, top: `${upperLip.y}%` } : undefined}
-        value="[ 5 CM ]"
-      />
-      <MosaicCallout
-        className={eyeMid ? '' : 'left-[29%] top-[32%]'}
-        height={70}
-        label="Eye line"
-        style={eyeMid ? { left: `${eyeMid.x - 8}%`, top: `${eyeMid.y}%` } : undefined}
-        value="[ near level ]"
-      />
-      <MosaicCallout
-        className={noseTip ? '' : 'left-[62%] top-[43%]'}
-        height={62}
-        label="Nose midline"
-        style={noseTip ? { left: `${noseTip.x + 4}%`, top: `${noseTip.y - 8}%` } : undefined}
-        value="[ minimal drift ]"
-      />
-    </motion.div>
-  )
-}
-
-function MosaicCallout({
-  className,
-  height,
-  label,
-  style,
-  textSide = 'right',
-  value,
-}: {
-  className?: string
-  height: number
-  label: string
-  style?: CSSProperties
-  textSide?: 'left' | 'right'
-  value: string
-}) {
-  const textPositionClass = textSide === 'left'
-    ? 'right-7 justify-items-end text-right'
-    : 'left-7 justify-items-start text-left'
-
-  return (
-    <div className={`absolute ${className ?? ''}`} style={style}>
-      <motion.span
-        className="absolute left-0 top-0 size-2 rounded-full bg-white shadow-[0_0_0_3px_rgba(0,0,0,0.18)]"
-        initial={{ scale: 0, opacity: 0 }}
-        animate={{ scale: 1, opacity: 1 }}
-        transition={{ duration: 0.24, ease: [0.23, 1, 0.32, 1] }}
-      />
-      <motion.span
-        className="absolute left-[3px] top-[7px] w-px origin-top bg-white shadow-[0_0_12px_rgba(0,0,0,0.2)]"
-        initial={{ scaleY: 0 }}
-        animate={{ scaleY: 1 }}
-        transition={{ delay: 0.18, duration: 0.72, ease: [0.23, 1, 0.32, 1] }}
-        style={{ height }}
-      />
-      <motion.span
-        className="absolute -left-[5px] block h-px w-4 bg-white"
-        initial={{ scaleX: 0 }}
-        animate={{ scaleX: 1 }}
-        transition={{ delay: 0.84, duration: 0.18, ease: [0.23, 1, 0.32, 1] }}
-        style={{ top: height + 6 }}
-      />
-      <span className={`absolute top-[48px] grid max-w-[min(38vw,150px)] gap-1 font-mono text-[11px] uppercase tracking-wide text-black ${textPositionClass}`}>
-        <span className="relative block overflow-hidden px-2 py-1">
-          <motion.span
-            className="absolute inset-0 origin-left bg-white"
-            initial={{ scaleX: 0 }}
-            animate={{ scaleX: 1 }}
-            transition={{ delay: 1.02, duration: 0.38, ease: [0.23, 1, 0.32, 1] }}
-          />
-          <motion.span
-            className="relative z-10 block whitespace-nowrap"
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            transition={{ delay: 1.24, duration: 0.2 }}
-          >
-            {label}
-          </motion.span>
-        </span>
-        <span className="relative block overflow-hidden px-2 py-1">
-          <motion.span
-            className="absolute inset-0 origin-left bg-white"
-            initial={{ scaleX: 0 }}
-            animate={{ scaleX: 1 }}
-            transition={{ delay: 1.16, duration: 0.38, ease: [0.23, 1, 0.32, 1] }}
-          />
-          <motion.span
-            className="relative z-10 block whitespace-nowrap"
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            transition={{ delay: 1.38, duration: 0.2 }}
-          >
-            {value}
-          </motion.span>
-        </span>
-      </span>
-    </div>
-  )
-}
-
 function AnalysisPaymentDialog({
+  imageSrc,
+  landmarks,
   error,
   loading,
   onCheckout,
@@ -1629,49 +1380,21 @@ function AnalysisPaymentDialog({
   onCheckout: () => void
   onOpenChange: (open: boolean) => void
   open: boolean
+  imageSrc: string | null
+  landmarks: FaceLandmarksPayload | null
 }) {
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="overflow-hidden rounded-[28px] border-0 bg-white p-0 shadow-[0_28px_90px_rgba(15,23,42,0.2)] sm:max-w-[500px]">
-        <div className="relative h-[330px] overflow-hidden bg-zinc-100">
-          <Image className="object-cover object-center" src={paymentDialogImageUrl} alt="Analysis preview" fill sizes="500px" />
-          <div className="absolute inset-0 bg-white/5" />
-          <PaymentFeatureCallout
-            label="Eye line"
-            labelX={8}
-            labelY={19}
-            lineEndX={22}
-            lineEndY={21}
-            pointX={18}
-            pointY={26}
-          />
-          <PaymentFeatureCallout
-            label="Nose curve"
-            labelX={63}
-            labelY={37}
-            lineEndX={63}
-            lineEndY={44}
-            pointX={55}
-            pointY={46}
-          />
-          <PaymentFeatureCallout
-            label="Mouth shape"
-            labelX={76}
-            labelY={60}
-            lineEndX={76}
-            lineEndY={63}
-            pointX={68}
-            pointY={62}
-          />
-        </div>
+      <DialogContent className="max-h-[calc(100svh-2rem)] overflow-y-auto rounded-[28px] border-0 bg-white p-0 shadow-[0_28px_90px_rgba(15,23,42,0.2)] sm:max-w-[500px]">
+        <ScanImagePanel imageSrc={imageSrc} landmarks={landmarks} variant="paywall" />
 
         <div className="px-6 pb-6 pt-5">
           <DialogHeader>
             <DialogTitle className="text-3xl leading-none tracking-[-0.055em]">
-              Unlock the full facial analysis
+              Discover your true potential
             </DialogTitle>
             <DialogDescription className="max-w-md">
-              We found enough signal to continue. Complete checkout to run the private advanced analysis and generate your results.
+              See your strongest features and biggest opportunities. Unlock your full report and a personalized, non-surgical protocol to improve your looks and work toward your true potential.
             </DialogDescription>
           </DialogHeader>
 
@@ -1685,48 +1408,12 @@ function AnalysisPaymentDialog({
           >
             <RainbowIcon />
             <span className="bg-gradient-to-r from-sky-500 via-violet-500 to-orange-500 bg-clip-text text-transparent">
-              {loading ? 'Opening checkout...' : 'Get your Analysis now'}
+              {loading ? 'Opening checkout...' : 'Unlock my full report'}
             </span>
           </button>
         </div>
       </DialogContent>
     </Dialog>
-  )
-}
-
-function PaymentFeatureCallout({
-  label,
-  labelX,
-  labelY,
-  lineEndX,
-  lineEndY,
-  pointX,
-  pointY,
-}: {
-  label: string
-  labelX: number
-  labelY: number
-  lineEndX: number
-  lineEndY: number
-  pointX: number
-  pointY: number
-}) {
-  return (
-    <div className="pointer-events-none absolute inset-0">
-      <svg className="absolute inset-0 h-full w-full" viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden="true">
-        <line x1={pointX} y1={pointY} x2={lineEndX} y2={lineEndY} stroke="rgba(255,255,255,0.9)" strokeWidth="0.35" vectorEffect="non-scaling-stroke" />
-      </svg>
-      <span
-        className="absolute size-2.5 -translate-x-1/2 -translate-y-1/2 rounded-full border border-white bg-white shadow-[0_0_0_5px_rgba(255,255,255,0.28),0_3px_10px_rgba(0,0,0,0.18)]"
-        style={{ left: `${pointX}%`, top: `${pointY}%` }}
-      />
-      <span
-        className="absolute -translate-y-1/2 whitespace-nowrap rounded-[5px] bg-white px-2.5 py-1.5 font-mono text-[10px] uppercase tracking-[0.08em] text-black shadow-[0_7px_18px_rgba(15,23,42,0.14)]"
-        style={{ left: `${labelX}%`, top: `${labelY}%` }}
-      >
-        {label}
-      </span>
-    </div>
   )
 }
 
@@ -1792,24 +1479,6 @@ function ResultsStep({
 
 function getReportLandmarks(result?: AnalysisResponse) {
   return parseFaceLandmarksPayload(result?.analysis.landmarks)
-}
-
-function toPercentPoint(point?: NormalizedPoint): ReportOverlayPoint | null {
-  if (!point) return null
-
-  return {
-    x: point.x * 100,
-    y: point.y * 100,
-  }
-}
-
-function midpointPercent(a?: ReportOverlayPoint | null, b?: ReportOverlayPoint | null): ReportOverlayPoint | null {
-  if (!a || !b) return null
-
-  return {
-    x: (a.x + b.x) / 2,
-    y: (a.y + b.y) / 2,
-  }
 }
 
 function getAnalysisReport(result?: AnalysisResponse): AnalysisReport | null {
