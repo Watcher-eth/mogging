@@ -1,3 +1,4 @@
+import { AnimatedDialogPanel } from '@/components/ui/animated-dialog-panel'
 import { remainingCreatorPaymentCents } from '@/lib/creator/money'
 import * as Tabs from '@radix-ui/react-tabs'
 import { SubmissionConversation } from '@/components/creator/submission-conversation'
@@ -292,7 +293,7 @@ function ReviewDialog({ target, payments, metrics, open, onOpenChange, onRefresh
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-h-[90dvh] max-w-3xl grid-cols-[minmax(0,1fr)] overflow-y-auto rounded-[32px] border-zinc-200 bg-white p-0">
-        <div className="min-w-0 p-5 sm:p-7">
+        <AnimatedDialogPanel contentKey={tab} contentClassName="min-w-0 p-5 sm:p-7">
           <DialogHeader className="min-w-0 pr-8 text-left">
             <div className="flex flex-wrap items-center gap-2">{target.resource !== 'payment' && canReview ? <ApprovalBadge target={target} /> : null}{canReview ? <StatusPill status={initialStatus} /> : null}<span className="text-xs text-zinc-400">{formatDate(target.item.createdAt)}</span></div>
             <div className="flex min-w-0 items-center gap-3 pt-2">{target.resource === 'account' ? <AccountAvatar account={target.item} /> : null}<DialogTitle className="min-w-0 break-words text-2xl">{reviewTitle(target)}</DialogTitle></div>
@@ -330,7 +331,7 @@ function ReviewDialog({ target, payments, metrics, open, onOpenChange, onRefresh
           {target.resource === 'payment' ? <div className="mt-5 grid gap-4 sm:grid-cols-2"><label className="grid gap-2 text-sm font-medium">Amount (USD)<input type="number" min="0" step="0.01" value={amount} onChange={(event) => setAmount(event.target.value)} className="h-12 rounded-xl border border-zinc-200 px-3.5 outline-none focus:border-zinc-400 focus:ring-4 focus:ring-zinc-100" /></label><label className="grid gap-2 text-sm font-medium">Provider reference<input value={providerReference} onChange={(event) => setProviderReference(event.target.value)} className="h-12 rounded-xl border border-zinc-200 px-3.5 outline-none focus:border-zinc-400 focus:ring-4 focus:ring-zinc-100" placeholder="Transaction ID" /></label></div> : null}
           <div className="mt-7 flex justify-end gap-2"><Button variant="ghost" className="rounded-xl" onClick={() => onOpenChange(false)}>Cancel</Button>{canReview ? <Button className="rounded-xl" onClick={() => void save()} disabled={saving}>{saving ? <Loader2 className="animate-spin" /> : <ShieldCheck />}{saving ? 'Saving…' : 'Save review'}</Button> : null}</div>
           </>}
-        </div>
+        </AnimatedDialogPanel>
       </DialogContent>
     </Dialog>
   )

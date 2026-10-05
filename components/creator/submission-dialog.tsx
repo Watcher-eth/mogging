@@ -2,7 +2,7 @@ import { MinimumViewsDialog } from './minimum-views-dialog'
 import Link from 'next/link'
 import { campaignRegionRates } from '@/lib/creator/sprint-defaults'
 import { useEffect, useRef, useState, type FormEvent } from 'react'
-import { AnimatePresence, motion, useReducedMotion } from 'motion/react'
+import { AnimatedDialogPanel } from '@/components/ui/animated-dialog-panel'
 import {
   Check,
   ChevronLeft,
@@ -94,7 +94,6 @@ export function SubmissionDialog({
   const [confirmed, setConfirmed] = useState<string[]>([])
   const [busy, setBusy] = useState(false)
   const [progress, setProgress] = useState(0)
-  const reduced = useReducedMotion()
   const fileRef = useRef<HTMLInputElement>(null)
   const campaign = campaigns?.sprints.find((item) => item.id === sprintId)
   const sprint = campaign && { ...campaign, terms: existingSubmission?.sprintTerms || campaign.terms }
@@ -262,18 +261,7 @@ export function SubmissionDialog({
             className="flex min-h-0 flex-1 flex-col"
           >
             <div className="min-h-0 flex-1 overflow-y-auto px-5 pb-6 sm:px-7">
-              <AnimatePresence mode="wait" initial={false}>
-                <motion.div
-                  key={step}
-                  initial={{ opacity: 0, x: 8 }}
-                  animate={{ opacity: 1, x: 0 }}
-                  exit={{ opacity: 0, x: -8 }}
-                  transition={{
-                    duration: reduced ? 0 : 0.16,
-                    ease: [0.22, 1, 0.36, 1],
-                  }}
-                  className="grid gap-4"
-                >
+              <AnimatedDialogPanel contentKey={step} contentClassName="grid gap-4">
                   {step === 1 ? (
                     <>
                       {activeSprints.map((item) => (
@@ -631,8 +619,7 @@ export function SubmissionDialog({
                       </p>
                     </>
                   ) : null}
-                </motion.div>
-              </AnimatePresence>
+              </AnimatedDialogPanel>
             </div>
             <div className="flex shrink-0 items-center justify-between border-t border-zinc-100 p-4 sm:px-7">
               <Button

@@ -9,9 +9,11 @@ export function CreatorReferralDetails({
   if (!trackingLink) {
     return <p className="rounded-xl bg-[#f5f6f7] p-4 text-sm text-zinc-500">Connect a publishing profile with its @handle to get your referral link and code.</p>
   }
+  const code = referralCode(trackingLink)
   const items = [
-    { label: 'Referral code', value: referralCode(trackingLink) },
-    { label: 'Referral link', value: trackingLink?.publicUrl },
+    { label: 'Referral code', value: code },
+    { label: 'Referral link', value: trackingLink.publicUrl },
+    { label: 'Bio text', value: code ? `Use ${code} for 10% on mogging.com` : undefined },
   ]
 
   return (
@@ -20,9 +22,10 @@ export function CreatorReferralDetails({
         <div key={label} className="flex items-center justify-between gap-3 py-3">
           <div className="min-w-0">
             <p className="text-xs text-zinc-500">{label}</p>
-            <code className="select-text break-all text-sm">
+            {label === "Bio text" ? <p className="mb-1 text-xs text-zinc-500">If you put your code in your bio, use:</p> : null}
+            <span className="select-text break-words text-sm">
               {value || 'Unavailable'}
-            </code>
+            </span>
           </div>
           <button
             type="button"
@@ -33,7 +36,7 @@ export function CreatorReferralDetails({
               if (!value) return
               try {
                 await navigator.clipboard.writeText(value)
-                toast.success(`${label === 'Referral link' ? 'Link' : 'Code'} copied`)
+                toast.success(`${label} copied`)
               } catch {
                 toast.error(`Select and copy your ${label.toLowerCase()}`)
               }

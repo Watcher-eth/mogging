@@ -1,3 +1,4 @@
+import { AnimatedDialogPanel } from '@/components/ui/animated-dialog-panel'
 import { SubmissionDialog as AnalyticsSubmissionDialog } from '@/components/creator/submission-dialog'
 import { SubmissionConversation } from '@/components/creator/submission-conversation'
 import Link from 'next/link'
@@ -73,6 +74,7 @@ function SubmissionDialog({ submission, payment, payments, linkedToApprovedAccou
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="creator-dialog max-h-[90vh] max-w-2xl overflow-y-auto !rounded-[32px] border-zinc-200 bg-white p-0">
+        <AnimatedDialogPanel contentKey={tab}>
         {submission && tab === 'details' ? <SubmissionEvidence submission={submission} /> : null}
         {submission ? (
           <div className="p-5 sm:p-7">
@@ -105,6 +107,7 @@ function SubmissionDialog({ submission, payment, payments, linkedToApprovedAccou
             </>}
           </div>
         ) : null}
+        </AnimatedDialogPanel>
       </DialogContent>
     </Dialog>
   )

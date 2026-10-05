@@ -1,3 +1,4 @@
+import { AnimatedDialogPanel } from '@/components/ui/animated-dialog-panel'
 import { useState } from 'react'
 import useSWR from 'swr'
 import { Loader2, Plus, Trash2 } from 'lucide-react'
@@ -144,6 +145,7 @@ function AccountsContent() {
               Enter your handle or profile URL.
             </DialogDescription>
           </DialogHeader>
+          <AnimatedDialogPanel contentKey={platform}>
           <ConnectAccountForm
             platform={platform}
             onPlatformChange={setPlatform}
@@ -154,6 +156,7 @@ function AccountsContent() {
               setOpen(false)
             }}
           />
+          </AnimatedDialogPanel>
         </DialogContent>
       </Dialog>
     </>
