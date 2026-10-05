@@ -70,6 +70,13 @@ export const creatorSubmissionSchema = z.object({
   usAudiencePercent: z.number().min(0).max(100),
 })
 
+export const creatorSubmissionAnalyticsSchema = creatorSubmissionSchema.pick({
+  analyticsVideoUrl: true, analyticsPhysicalRecordingConfirmed: true,
+  analyticsStorageKey: true, analyticsContentType: true, analyticsSizeBytes: true,
+  viewCountThreshold: true, usAudiencePercent: true,
+})
+export type CreatorSubmissionAnalyticsInput = z.infer<typeof creatorSubmissionAnalyticsSchema>
+
 export const creatorAnalyticsEvidenceSchema = z.object({
   analyticsVideoUrl: z.string().min(1).max(2048),
   analyticsStorageKey: z.string().min(1).max(300),

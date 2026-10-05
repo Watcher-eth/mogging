@@ -132,7 +132,7 @@ test('permanent codes retain the existing attribution identity and reviews use s
     'sprint-rule-1',
   ])
 })
-test('Money includes approved unpaid earnings, never estimates or already sent cashouts', () => {
+test('Money retains prior approved earnings through rejected rereviews and deducts paid cashouts', () => {
   const submissions: any[] = [
     { id: 'a', sprintId: 's', status: 'approved', approvedAmountCents: 1000 },
     { id: 'b', sprintId: 's', status: 'approved', approvedAmountCents: 3500 },
@@ -143,9 +143,9 @@ test('Money includes approved unpaid earnings, never estimates or already sent c
     { submissionId: 'b', status: 'paid', amountCents: 3500 },
     { submissionId: 'a', status: 'processing', amountCents: 1000 },
   ] as any)
-  expect(summary.balanceCents).toBe(1000)
+  expect(summary.balanceCents).toBe(1500)
   expect(summary.totalPaidCents).toBe(3500)
-  expect(summary.earnings.map((item) => item.id)).toEqual(['a'])
+  expect(summary.earnings.map((item) => item.id)).toEqual(['a', 'd'])
   expect(summary.pendingReview).toBe(1)
 })
 

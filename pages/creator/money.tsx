@@ -10,7 +10,7 @@ import type { CreatorDashboard } from '@/components/creator/types'
 import { apiGet } from '@/lib/api/client'
 import {
   creatorMoneySummary,
-  creatorEarnedCents,
+  creatorUnpaidCents,
   hasCreatorPayoutMethod,
 } from '@/lib/creator/money'
 import { sprintMoney, sprintViews } from '@/lib/creator/sprints'
@@ -68,7 +68,7 @@ function MoneyContent() {
         title="Money"
         description="Your reviewed earnings, completed cashouts and payout methods."
         titleAccessory={
-          <span className="inline-flex shrink-0 items-center gap-1.5 rounded-full bg-[#00A8EF] px-3 py-1.5 text-xs font-medium text-white">
+          <span className="inline-flex shrink-0 items-center gap-1.5 rounded-lg bg-[#00A8EF] px-3 py-1.5 text-xs font-medium text-white">
             <Clock3 className="size-3.5" />
             3–5 Days
           </span>
@@ -193,7 +193,7 @@ function MoneyContent() {
                     <strong className="text-lg tabular-nums">
                       {sprintMoney(payment.amountCents)}
                     </strong>
-                    <span className="rounded-full bg-[#29CE53] px-3 py-1 text-xs text-white">
+                    <span className="rounded-lg bg-[#29CE53] px-3 py-1 text-xs text-white">
                       Sent
                     </span>
                   </article>
@@ -212,7 +212,7 @@ function MoneyContent() {
             <div className="grid gap-3">
               {earnings.map((submission) => {
                 const payment = data.payments.find(
-                  (item) => item.submissionId === submission.id,
+                  (item) => item.submissionId === submission.id && item.status !== 'paid' && item.status !== 'cancelled',
                 )
                 return (
                   <article key={submission.id} className="creator-surface p-5">
@@ -226,11 +226,11 @@ function MoneyContent() {
                         </p>
                       </div>
                       <strong className="text-lg tabular-nums">
-                        {sprintMoney(creatorEarnedCents(submission))}
+                        {sprintMoney(creatorUnpaidCents(submission, data.payments))}
                       </strong>
                     </div>
                     <div className="mt-4 flex justify-between border-t border-zinc-100 pt-4 text-xs">
-                      <span className="rounded-full bg-[#f5f6f7] px-3 py-1 text-zinc-600">
+                      <span className="rounded-lg bg-[#f5f6f7] px-3 py-1 text-zinc-600">
                         {payment
                           ? payment.status === 'processing'
                             ? 'Processing'

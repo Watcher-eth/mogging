@@ -70,7 +70,7 @@ export function CreatorPayoutCalculator() {
           <div>
             <div className="flex items-center justify-between gap-4">
               <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-white/40">Potential Earnings</p>
-              {!estimate.isEligible ? <span className="rounded-full bg-zinc-100 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.12em] text-zinc-600">Not Eligible</span> : estimate.isCapped ? <span className="rounded-full bg-zinc-100 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.12em] text-zinc-600">Maximum Reached</span> : estimate.hasTier1RateBoost ? <span className="rounded-full creator-tone-green px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.12em] text-zinc-700">Tier 1 Rate Boost</span> : <Sparkles className="size-4 text-white/30" />}
+              {!estimate.isEligible ? <span className="rounded-lg bg-zinc-100 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.12em] text-zinc-600">Not Eligible</span> : estimate.isCapped ? <span className="rounded-lg bg-zinc-100 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.12em] text-zinc-600">Maximum Reached</span> : estimate.hasTier1RateBoost ? <span className="rounded-lg creator-tone-green px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.12em] text-zinc-700">Tier 1 Rate Boost</span> : <Sparkles className="size-4 text-white/30" />}
             </div>
             <NumberFlow
               className="mt-3 block text-5xl font-semibold tracking-[-0.07em] sm:text-6xl"

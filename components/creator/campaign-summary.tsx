@@ -9,7 +9,7 @@ export function SprintStatus({ sprint }: { sprint: CreatorSprint }) {
   const phase = sprintPhase(sprint)
   return (
     <span
-      className={`rounded-full px-3 py-1 text-xs font-medium ${phase === 'active' ? 'bg-[#29CE53] text-white' : 'bg-[#f5f6f7] text-zinc-600'}`}
+      className={`rounded-lg px-3 py-1 text-xs font-medium ${phase === 'active' ? 'bg-[#29CE53] text-white' : 'bg-[#f5f6f7] text-zinc-600'}`}
     >
       {phase === 'past'
         ? 'Ended'

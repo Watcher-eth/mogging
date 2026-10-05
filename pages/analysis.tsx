@@ -8,6 +8,7 @@ import {
   Copy,
   CreditCard,
   Download,
+  ScanFace,
   Gem,
   Loader2,
   Share2,
@@ -1401,39 +1402,19 @@ function AnalysisPaymentDialog({
           {error ? <p className="mt-4 text-sm text-destructive">{error}</p> : null}
 
           <button
-            className="mt-6 flex h-14 w-full items-center justify-center gap-3 rounded-full border border-white bg-white px-5 text-base font-semibold shadow-[0_16px_40px_rgba(15,23,42,0.16),inset_0_0_0_1px_rgba(255,255,255,0.9)] transition-[box-shadow,transform] duration-150 ease-out hover:shadow-[0_20px_48px_rgba(15,23,42,0.18),inset_0_0_0_1px_rgba(255,255,255,0.95)] active:scale-[0.98] disabled:opacity-60"
+            className="mt-6 flex min-h-14 w-full items-center justify-center gap-3 rounded-full bg-[#e5f2ff] px-5 py-3 text-base font-semibold text-[#007aff] transition-[background-color,transform] duration-150 ease-out hover:bg-[#d6eaff] active:scale-[0.98] disabled:opacity-60"
             disabled={loading}
             onClick={onCheckout}
             type="button"
           >
-            <RainbowIcon />
-            <span className="bg-gradient-to-r from-sky-500 via-violet-500 to-orange-500 bg-clip-text text-transparent">
-              {loading ? 'Opening checkout...' : 'Unlock my full report'}
+            <ScanFace className="size-6 shrink-0" aria-hidden="true" />
+            <span>
+              {loading ? 'Opening checkout...' : 'Get your full analysis now'}
             </span>
           </button>
         </div>
       </DialogContent>
     </Dialog>
-  )
-}
-
-function RainbowIcon() {
-  return (
-    <svg className="size-7 shrink-0" viewBox="0 0 28 28" fill="none" aria-hidden="true">
-      <defs>
-        <linearGradient id="analysis-rainbow-icon" x1="4" x2="25" y1="5" y2="24" gradientUnits="userSpaceOnUse">
-          <stop stopColor="#0EA5E9" />
-          <stop offset="0.46" stopColor="#7C3AED" />
-          <stop offset="1" stopColor="#F97316" />
-        </linearGradient>
-      </defs>
-      <path d="M9 5H6.8A1.8 1.8 0 0 0 5 6.8V9" stroke="url(#analysis-rainbow-icon)" strokeWidth="2.8" strokeLinecap="round" />
-      <path d="M19 5h2.2A1.8 1.8 0 0 1 23 6.8V9" stroke="url(#analysis-rainbow-icon)" strokeWidth="2.8" strokeLinecap="round" />
-      <path d="M9 23H6.8A1.8 1.8 0 0 1 5 21.2V19" stroke="url(#analysis-rainbow-icon)" strokeWidth="2.8" strokeLinecap="round" />
-      <path d="M14 11h5" stroke="url(#analysis-rainbow-icon)" strokeWidth="2.8" strokeLinecap="round" />
-      <path d="M10 16h8" stroke="url(#analysis-rainbow-icon)" strokeWidth="2.8" strokeLinecap="round" />
-      <path d="M22 16.5l.8 2.1 2.2.8-2.2.8-.8 2.1-.8-2.1-2.2-.8 2.2-.8.8-2.1Z" fill="url(#analysis-rainbow-icon)" />
-    </svg>
   )
 }
 

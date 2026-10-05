@@ -97,7 +97,7 @@ export const areaClass = 'creator-field min-h-28 resize-y py-3'
 
 export function Field({ label, hint, children }: { label: string; hint?: string; children: ReactNode }) {
   return (
-    <label className="grid gap-2">
+    <label className="grid content-start gap-2">
       <span className="flex items-center justify-between gap-4 text-[13px] font-semibold text-[#3a3a3c]">
         <span>{label}</span>
         {hint ? <span className="text-right text-[11px] font-normal leading-4 text-[#858a91]">{hint}</span> : null}

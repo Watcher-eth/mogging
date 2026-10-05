@@ -78,6 +78,7 @@ export type AdminSubmission = {
   unreadMessages?: number
   sprintId?: string | null
   sprintTerms?: import('@/lib/creator/sprints').SprintTerms | null
+  reviewRequestedAt?: string | null
   approvedAmountCents?: number | null
   id: string
   creatorProfileId: string

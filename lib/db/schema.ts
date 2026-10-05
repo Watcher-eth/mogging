@@ -660,6 +660,7 @@ export const creatorSubmissions = pgTable(
     sprintId: text('sprint_id').references(() => creatorSprints.id),
     sprintTerms: jsonb('sprint_terms').$type<import('../creator/sprints').SprintTerms>(),
     approvedAmountCents: integer('approved_amount_cents'),
+    reviewRequestedAt: timestamp('review_requested_at', { mode: 'date' }),
     postedAt: timestamp('posted_at', { mode: 'date' }),
     formatId: text('format_id'),
     requirementsConfirmedAt: timestamp('requirements_confirmed_at', { mode: 'date' }),

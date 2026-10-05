@@ -9,7 +9,7 @@ import { env } from '@/lib/env'
 import { creatorReferralHandle, ensureCreatorTrackingLink } from '@/lib/creator/attribution'
 
 export { creatorProfileSchema, creatorSubmissionSchema, creatorSocialAccountSchema, creatorAccountAnalyticsSubmissionSchema } from './validation'
-import { creatorSubmissionSchema, creatorPostPlatform, creatorAnalyticsEvidenceSchema, creatorAccountAnalyticsSubmissionSchema, type CreatorProfileInput, type CreatorSubmissionInput, type CreatorSocialAccountInput, type CreatorAnalyticsEvidenceInput } from './validation'
+import { creatorSubmissionAnalyticsSchema, type CreatorSubmissionAnalyticsInput, creatorSubmissionSchema, creatorPostPlatform, creatorAnalyticsEvidenceSchema, creatorAccountAnalyticsSubmissionSchema, type CreatorProfileInput, type CreatorSubmissionInput, type CreatorSocialAccountInput, type CreatorAnalyticsEvidenceInput } from './validation'
 
 export type CreatorTikTokOAuthInput = {
   accessToken: string
@@ -335,15 +335,7 @@ export async function createCreatorSubmission(userId: string, input: CreatorSubm
   const format = sprintFormat(sprint.terms, input.formatId)
   if (!format) throw new CreatorServiceError(400, 'Choose a format offered by this campaign')
   if (!sprint.terms.platforms.includes(creatorPostPlatform(input.postUrl)!)) throw new CreatorServiceError(400, 'This platform is not accepted by the campaign')
-  const prefix = `creators/${userId}/submission-analytics/`
-  if (!input.analyticsStorageKey.startsWith(prefix) || !/^[0-9a-f-]{36}\.(mp4|mov|webm)$/.test(input.analyticsStorageKey.slice(prefix.length))) {
-    throw new CreatorServiceError(400, 'Invalid analytics recording upload')
-  }
-  try {
-    await verifyCreatorRecordingUpload(input.analyticsStorageKey, input.analyticsSizeBytes, input.analyticsContentType)
-  } catch {
-    throw new CreatorServiceError(400, 'Upload the complete physical analytics recording before submitting this video')
-  }
+  await verifySubmissionAnalytics(userId, input)
   const socialAccount = input.socialAccountId ? await db.query.creatorSocialAccounts.findFirst({
     where: and(
       eq(schema.creatorSocialAccounts.id, input.socialAccountId),
@@ -367,7 +359,7 @@ export async function createCreatorSubmission(userId: string, input: CreatorSubm
     if (previousPost) throw new CreatorServiceError(409, 'This video has already been submitted')
     const [currentSprint] = await tx.select().from(schema.creatorSprints).where(eq(schema.creatorSprints.id, sprint.id)).for('update')
     if (!currentSprint || currentSprint.updatedAt.getTime() !== sprint.updatedAt.getTime() || sprintPhase({ ...currentSprint, startsAt: currentSprint.startsAt.toISOString(), endsAt: currentSprint.endsAt.toISOString() }) !== 'active') throw new CreatorServiceError(409, 'Campaign changed. Refresh its terms before submitting')
-    const [used] = await tx.select({ cents: sql<number>`coalesce(sum(${schema.creatorSubmissions.approvedAmountCents}),0)::float8` }).from(schema.creatorSubmissions).where(and(eq(schema.creatorSubmissions.sprintId, sprint.id), or(eq(schema.creatorSubmissions.status, 'approved'), eq(schema.creatorSubmissions.status, 'paid'))))
+    const [used] = await tx.select({ cents: sql<number>`coalesce(sum(${schema.creatorSubmissions.approvedAmountCents}),0)::float8` }).from(schema.creatorSubmissions).where(eq(schema.creatorSubmissions.sprintId, sprint.id))
     if (used.cents >= currentSprint.budgetCents) throw new CreatorServiceError(409, 'This campaign’s budget is fully committed')
   const [submission] = await tx
     .insert(schema.creatorSubmissions)
@@ -397,6 +389,39 @@ export async function createCreatorSubmission(userId: string, input: CreatorSubm
     .returning()
 
     return submission
+  })
+}
+
+async function verifySubmissionAnalytics(userId: string, input: CreatorSubmissionAnalyticsInput) {
+  const prefix = `creators/${userId}/submission-analytics/`
+  if (!input.analyticsStorageKey.startsWith(prefix) || !/^[0-9a-f-]{36}\.(mp4|mov|webm)$/.test(input.analyticsStorageKey.slice(prefix.length))) {
+    throw new CreatorServiceError(400, 'Invalid analytics recording upload')
+  }
+  try {
+    await verifyCreatorRecordingUpload(input.analyticsStorageKey, input.analyticsSizeBytes, input.analyticsContentType)
+  } catch {
+    throw new CreatorServiceError(400, 'Upload the complete physical analytics recording before submitting this video')
+  }
+}
+
+export async function requestSubmissionReview(userId: string, submissionId: string, input: CreatorSubmissionAnalyticsInput) {
+  input = creatorSubmissionAnalyticsSchema.parse(input)
+  const profile = await getCreatorProfile(userId)
+  if (!profile || profile.authStatus === 'suspended') throw new CreatorServiceError(403, 'Creator access required')
+  const existing = await getSubmissionForCreator(userId, submissionId)
+  if (!existing) throw new CreatorServiceError(404, 'Submission not found')
+  await verifySubmissionAnalytics(userId, input)
+  return db.transaction(async tx => {
+    const [submission] = await tx.select().from(schema.creatorSubmissions).where(and(eq(schema.creatorSubmissions.id, submissionId), eq(schema.creatorSubmissions.creatorProfileId, profile.id))).for('update')
+    if (!submission?.sprintId || !submission.sprintTerms) throw new CreatorServiceError(409, 'Only campaign submissions can request rereview')
+    if (submission.reviewRequestedAt || (['pending', 'in_review'].includes(submission.status) && submission.analyticsScreenshotUrl)) throw new CreatorServiceError(409, 'This submission is already awaiting review')
+    if (submission.analyticsStorageKey === input.analyticsStorageKey) throw new CreatorServiceError(400, 'Upload a fresh analytics recording')
+    const payments = await tx.query.creatorPayments.findMany({ where: eq(schema.creatorPayments.submissionId, submission.id) })
+    if (payments.some(payment => ['pending', 'processing'].includes(payment.status))) throw new CreatorServiceError(409, 'Wait until the scheduled payment is completed before requesting rereview')
+    const now = new Date()
+    await tx.insert(schema.creatorSubmissionMessages).values({ submissionId, authorUserId: userId, authorRole: 'creator', body: `Submitted fresh analytics for review: ${input.viewCountThreshold.toLocaleString('en-US')} views · ${input.usAudiencePercent}% Tier 1 audience.${submission.analyticsScreenshotUrl ? ` Previous evidence: ${submission.analyticsScreenshotUrl} (${submission.viewCountThreshold ?? 'unrecorded'} views).` : ''}` })
+    const [record] = await tx.update(schema.creatorSubmissions).set({ analyticsScreenshotUrl: creatorAssetPublicUrl(input.analyticsStorageKey), analyticsStorageKey: input.analyticsStorageKey, analyticsContentType: input.analyticsContentType, analyticsSizeBytes: input.analyticsSizeBytes, viewCountThreshold: input.viewCountThreshold, usAudiencePercent: input.usAudiencePercent, status: 'in_review', reviewRequestedAt: now, updatedAt: now }).where(eq(schema.creatorSubmissions.id, submission.id)).returning()
+    return record
   })
 }
 

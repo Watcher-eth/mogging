@@ -14,6 +14,7 @@ export type CreatorSubmission = {
   unreadMessages?: number
   sprintId?: string | null
   sprintTerms?: import('@/lib/creator/sprints').SprintTerms | null
+  reviewRequestedAt?: string | null
   approvedAmountCents?: number | null
   postedAt?: string | null
   id: string

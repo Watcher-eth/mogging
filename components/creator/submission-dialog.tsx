@@ -24,7 +24,7 @@ import { Field, fieldClass } from './creator-shell'
 import { CreatorStepper } from './creator-stepper'
 import { AnalyticsVerificationHelp } from './content-guidelines'
 import { SocialPlatformLogo } from '@/components/brand/social-platform-logo'
-import { creatorAccountLabel, type CreatorDashboard } from './types'
+import { creatorAccountLabel, type CreatorDashboard, type CreatorSubmission } from './types'
 import { apiGet, apiPost, ApiClientError } from '@/lib/api/client'
 import {
   MINIMUM_SUBMISSION_VIEWS,
@@ -64,11 +64,13 @@ export function SubmissionDialog({
   open,
   onOpenChange,
   initialSprintId,
+  existingSubmission,
   onSubmitted,
 }: {
   open: boolean
   onOpenChange: (value: boolean) => void
   initialSprintId?: string
+  existingSubmission?: CreatorSubmission
   onSubmitted: () => Promise<void>
 }) {
   const { data: campaigns, error: sprintError } = useSWR<{
@@ -78,23 +80,24 @@ export function SubmissionDialog({
     open ? '/api/creator' : null,
     apiGet,
   )
-  const [step, setStep] = useState(1)
-  const [sprintId, setSprintId] = useState(initialSprintId || '')
-  const [formatId, setFormatId] = useState('')
+  const [step, setStep] = useState(existingSubmission ? 4 : 1)
+  const [sprintId, setSprintId] = useState(existingSubmission?.sprintId || initialSprintId || '')
+  const [formatId, setFormatId] = useState(existingSubmission?.formatId || '')
   const [accountId, setAccountId] = useState('')
   const [platform, setPlatform] = useState<'tiktok' | 'instagram'>('tiktok')
-  const [postUrl, setPostUrl] = useState('')
+  const [postUrl, setPostUrl] = useState(existingSubmission?.postUrl || '')
   const [recording, setRecording] = useState<File | null>(null)
   const [physicalConfirmed, setPhysicalConfirmed] = useState(false)
-  const [views, setViews] = useState('')
+  const [views, setViews] = useState(existingSubmission?.viewCountThreshold?.toString() || '')
   const [rejectedViews, setRejectedViews] = useState<number | null>(null)
-  const [audience, setAudience] = useState('')
+  const [audience, setAudience] = useState(existingSubmission?.usAudiencePercent?.toString() || '')
   const [confirmed, setConfirmed] = useState<string[]>([])
   const [busy, setBusy] = useState(false)
   const [progress, setProgress] = useState(0)
   const reduced = useReducedMotion()
   const fileRef = useRef<HTMLInputElement>(null)
-  const sprint = campaigns?.sprints.find((item) => item.id === sprintId)
+  const campaign = campaigns?.sprints.find((item) => item.id === sprintId)
+  const sprint = campaign && { ...campaign, terms: existingSubmission?.sprintTerms || campaign.terms }
   const selectedPlatform = sprint?.terms.platforms.includes(platform)
     ? platform
     : sprint?.terms.platforms[0] || platform
@@ -193,7 +196,7 @@ export function SubmissionDialog({
         contentType,
         setProgress,
       )
-      await apiPost('/api/creator/submissions', {
+      await apiPost(existingSubmission ? `/api/creator/submissions/${encodeURIComponent(existingSubmission.id)}/rereview` : '/api/creator/submissions', {
         sprintId,
         formatId,
         requirementsConfirmed: true,
@@ -207,7 +210,7 @@ export function SubmissionDialog({
         viewCountThreshold: Number(views),
         usAudiencePercent: Number(audience),
       })
-      toast.success('Video submitted for review')
+      toast.success(existingSubmission ? 'Updated analytics submitted for review' : 'Video submitted for review')
       await onSubmitted()
       onOpenChange(false)
     } catch (error) {
@@ -235,13 +238,13 @@ export function SubmissionDialog({
       <DialogContent className="creator-dialog flex max-h-[92dvh] w-[calc(100%-2rem)] max-w-3xl flex-col overflow-hidden p-0">
         <DialogHeader className="shrink-0 border-b border-zinc-100 px-5 py-5 text-left sm:px-7">
           <p className="text-[10px] font-semibold uppercase tracking-widest text-zinc-400">
-            Submit a post · Step {step} of 5
+            {existingSubmission ? 'Update analytics' : 'Submit a post'} · Step {existingSubmission ? step - 3 : step} of {existingSubmission ? 2 : 5}
           </p>
           <DialogTitle className="pr-7 text-xl">{titles[step - 1]}</DialogTitle>
           <DialogDescription>{descriptions[step - 1]}</DialogDescription>
         </DialogHeader>
         <div className="shrink-0 px-4 pt-4">
-          <CreatorStepper step={step} labels={labels} />
+          <CreatorStepper step={existingSubmission ? step - 3 : step} labels={existingSubmission ? labels.slice(3) : labels} />
         </div>
         {!data || !campaigns ? (
           <div className="min-h-48 p-8 text-center">
@@ -532,7 +535,7 @@ export function SubmissionDialog({
                         second device and shows this post’s analytics and
                         audience locations.
                       </label>
-                      <div className="grid gap-4 sm:grid-cols-2">
+                      <div className="grid items-start gap-4 sm:grid-cols-2">
                         <Field label="Views shown in recording">
                           <input
                             className={fieldClass}
@@ -637,12 +640,12 @@ export function SubmissionDialog({
                 variant="ghost"
                 disabled={busy}
                 onClick={() =>
-                  step === 1
+                  step === (existingSubmission ? 4 : 1)
                     ? onOpenChange(false)
                     : setStep((current) => current - 1)
                 }
               >
-                {step === 1 ? (
+                {step === (existingSubmission ? 4 : 1) ? (
                   'Cancel'
                 ) : (
                   <>
@@ -665,7 +668,7 @@ export function SubmissionDialog({
                     Uploading {progress}%
                   </>
                 ) : step === 5 ? (
-                  'Submit post'
+                  existingSubmission ? 'Submit for review' : 'Submit post'
                 ) : (
                   'Continue'
                 )}

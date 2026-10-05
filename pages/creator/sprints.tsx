@@ -297,6 +297,7 @@ function SprintDetail({ sprint }: { sprint: CreatorSprint }) {
                       <DialogTrigger asChild>
                         <button
                           type="button"
+                          data-creator-card
                           className="group mb-3 flex w-full items-center gap-3 rounded-2xl bg-[#f5f6f7] p-4 text-left transition-colors hover:bg-[#eef0f2]"
                         >
                           <span className="grid size-10 shrink-0 place-items-center rounded-xl bg-white">
@@ -409,7 +410,7 @@ function SprintDetail({ sprint }: { sprint: CreatorSprint }) {
                         {item.platform} · {item.title}
                       </p>
                     </div>
-                    <span className="rounded-full bg-[#29CE53] px-3 py-1 text-xs text-white">
+                    <span className="rounded-lg bg-[#29CE53] px-3 py-1 text-xs text-white">
                       {item.status === 'paid' ? 'Paid' : 'Approved'}
                     </span>
                   </div>

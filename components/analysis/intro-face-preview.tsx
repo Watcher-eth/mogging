@@ -13,7 +13,7 @@ const initialHoldMs = 4_000
 const overlayHoldMs = 3_000
 const morphDuration = 0.9
 const morphEase = [0.65, 0, 0.35, 1] as const
-const pathSamples = 64
+const pathSamples = 65
 
 // A shared path topology lets persistent SVG nodes interpolate every geometry.
 function morphPath(points: PixelPoint[]) {
@@ -87,9 +87,20 @@ function primitivePath(primitive: Shape) {
 const landmarks = enrichFaceLandmarks(portrait as FaceLandmarksPayload)!
 const size = portrait.image
 const point = (x: number, y: number) => ({ point: { x, y } })
-const contour = (id: string, points: PixelPoint[]): OverlayPrimitive => ({
-  id, kind: 'polyline', points: points.map((p) => point(p.x, p.y)), closed: true, opacity: 0.88,
+const contour = (id: string, points: PixelPoint[], closed = true): OverlayPrimitive => ({
+  id, kind: 'polyline', points: points.map((p) => point(p.x, p.y)), closed, opacity: 0.88,
 })
+const line = (id: string, from: PixelPoint, to: PixelPoint): OverlayPrimitive => ({
+  id, kind: 'line', from: point(from.x, from.y), to: point(to.x, to.y), opacity: 0.88,
+})
+// Vision's outline ends at the eyebrows; trace the visible hairline to close it.
+const faceOutline = [
+  ...portrait.contours.faceOutline.slice(1, -1),
+  { x: 0.29, y: 0.235 }, { x: 0.34, y: 0.183 }, { x: 0.42, y: 0.154 },
+  { x: 0.51, y: 0.143 }, { x: 0.61, y: 0.161 }, { x: 0.69, y: 0.207 },
+  { x: 0.727, y: 0.252 },
+]
+const lowerJaw = portrait.contours.jawline.slice(4, 13)
 const label = (id: string, title: string, x: number, y: number): OverlayPrimitive => ({ id, kind: 'label', title, at: point(x, y) })
 const dot = (id: string, x: number, y: number, radius = 4): OverlayPrimitive => ({ id, kind: 'point', at: point(x, y), radius })
 
@@ -105,6 +116,39 @@ const presets: OverlayPreset[] = Object.entries(reportOverlayPresets).map(([cate
     case 'nose': return { ...preset, primitives: [
       contour('nose-outline', portrait.contours.noseOutline),
       label('nose-label', 'Nose shape', 0.59, 0.45),
+    ] }
+    case 'jaw': return { ...preset, primitives: [
+      ...[lowerJaw[0], lowerJaw[lowerJaw.length - 1]].flatMap((vertex, index) => {
+        const upper = portrait.contours.jawline[index === 0 ? 2 : 14]
+        const lower = lowerJaw[index === 0 ? 2 : lowerJaw.length - 3]
+        return [
+          line(`jaw-ramus-${index}`, upper, vertex),
+          line(`jaw-body-${index}`, vertex, lower),
+          dot(`jaw-vertex-${index}`, vertex.x, vertex.y, 3),
+        ]
+      }),
+      label('jaw-label', 'Jaw angle', 0.61, 0.67),
+    ] }
+    case 'dimorphism': return { ...preset, primitives: [
+      line('brow-width', portrait.anchors.leftBrow, portrait.anchors.rightBrow),
+      contour('lower-jaw-contour', lowerJaw, false),
+      dot('left-jaw', lowerJaw[lowerJaw.length - 1].x, lowerJaw[lowerJaw.length - 1].y, 3),
+      dot('right-jaw', lowerJaw[0].x, lowerJaw[0].y, 3),
+      dot('chin', portrait.anchors.chin.x, portrait.anchors.chin.y, 3),
+      label('dimorphism-label', 'Dimorphism', 0.61, 0.67),
+    ] }
+    case 'face-shape': return { ...preset, primitives: [
+      contour('full-face-outline', faceOutline),
+      label('shape-label', 'Face shape', 0.61, 0.67),
+    ] }
+    case 'overall': return { ...preset, primitives: [
+      contour('left-eye-contour', portrait.contours.leftEye),
+      contour('right-eye-contour', portrait.contours.rightEye),
+      contour('nose-outline', portrait.contours.noseOutline),
+      contour('mouth-contour', portrait.contours.mouth),
+      ...[portrait.anchors.leftCheek, portrait.anchors.rightCheek, portrait.anchors.chin]
+        .map((p, index) => dot(`proportion-${index}`, p.x, p.y, 3)),
+      label('overall-label', 'PSL score', 0.61, 0.67),
     ] }
     case 'facial-fat': return { ...preset, primitives: preset.primitives.filter((p) => p.id !== 'facial-fat-box') }
     case 'biological-age': return { ...preset, footer: '[ 008 ] SKIN AGE', primitives: [
@@ -147,7 +191,11 @@ const overlays = presets.map((preset) => {
 const slotCount = Math.max(...overlays.map((overlay) => overlay.paths.length))
 const dotCount = Math.max(...overlays.map((overlay) => overlay.dots.length))
 const collapsed = morphPath([{ x: size.width / 2, y: size.height / 2 }])
-const cardPath = morphPath([{ x: 212, y: 468 }, { x: 812, y: 468 }, { x: 812, y: 1068 }, { x: 212, y: 1068 }, { x: 212, y: 468 }])
+function squarePath(side: number, centerY: number) {
+  const x = (size.width - side) / 2
+  const y = centerY - side / 2
+  return morphPath([{ x, y }, { x: x + side, y }, { x: x + side, y: y + side }, { x, y: y + side }, { x, y }])
+}
 
 export function IntroFacePreview() {
   const maskId = useId()
@@ -155,6 +203,19 @@ export function IntroFacePreview() {
   const reduceMotion = useReducedMotion()
   const [visible, setVisible] = useState(false)
   const [active, setActive] = useState(-1)
+  const [card, setCard] = useState({ side: 400, centerY: size.height / 2 })
+
+  useEffect(() => {
+    const container = containerRef.current
+    if (!container) return
+    const observer = new ResizeObserver(([{ contentRect: { width, height } }]) => {
+      if (!width || !height) return
+      const scale = Math.max(width / size.width, height / size.height)
+      setCard({ side: Math.min(300, width * 0.8) / scale, centerY: height / scale / 2 })
+    })
+    observer.observe(container)
+    return () => observer.disconnect()
+  }, [])
 
   useEffect(() => {
     const container = containerRef.current
@@ -178,9 +239,9 @@ export function IntroFacePreview() {
 
   return (
     <div ref={containerRef} className="relative min-h-[420px] overflow-hidden bg-zinc-200 sm:min-h-[560px] lg:min-h-0">
-      <Image className="object-cover object-center" src="/model.png" alt="Preview of facial analysis measurements" fill priority sizes="(min-width: 1024px) 46vw, 100vw" />
+      <Image className="object-cover object-top" src="/model.png" alt="Preview of facial analysis measurements" fill priority sizes="(min-width: 1024px) 46vw, 100vw" />
       <div className="pointer-events-none absolute inset-0 text-white" aria-hidden="true">
-        <svg className="absolute inset-0 size-full" viewBox={`0 0 ${size.width} ${size.height}`} preserveAspectRatio="xMidYMid slice" fill="none">
+        <svg className="absolute inset-0 size-full" viewBox={`0 0 ${size.width} ${size.height}`} preserveAspectRatio="xMidYMin slice" fill="none">
           <defs>
             <mask id={maskId} maskUnits="userSpaceOnUse" x="0" y="0" width={size.width} height={size.height}>
               <rect width={size.width} height={size.height} fill="white" />
@@ -198,11 +259,11 @@ export function IntroFacePreview() {
                 key={index}
                 initial={false}
                 animate={{
-                  d: shape?.d ?? (showingReport || index > 0 ? collapsed : cardPath),
+                  d: shape?.d ?? (showingReport || index > 0 ? collapsed : squarePath(card.side, card.centerY)),
                   opacity: showingReport ? primitive ? primitive.opacity ?? 0.75 : 0 : index === 0 ? 0.8 : 0,
                   fillOpacity: primitive && 'fillOpacity' in primitive ? primitive.fillOpacity ?? 0 : 0,
                 }}
-                transition={transition}
+                transition={showingReport ? transition : { duration: 0 }}
                 stroke="white" fill="white" strokeWidth={1.1} vectorEffect="non-scaling-stroke"
                 strokeDasharray={primitive && 'dashed' in primitive && primitive.dashed ? '5 7' : undefined}
                 strokeLinecap="round" strokeLinejoin="round"
@@ -222,15 +283,6 @@ export function IntroFacePreview() {
             )
           })}
           </g>
-          <motion.g initial={false} animate={{ opacity: showingReport ? 0 : 1 }} transition={{ duration: reduceMotion ? 0 : 0.25 }} fill="white">
-            <text x="238" y="523" fontSize="44" fontWeight="500" letterSpacing="-1.5">
-              <tspan x="238">Facial</tspan><tspan x="238" dy="44">Aesthetic</tspan><tspan x="238" dy="44">Assessments</tspan>
-            </text>
-            <text x="238" y="982" fontSize="16" fontFamily="monospace">
-              <tspan x="238">EYES / CANTHAL TILT</tspan><tspan x="538">JAW / GONIAL ANGLE</tspan>
-              <tspan x="238" dy="36">SYMMETRY / EYE LINE</tspan><tspan x="538">FACE SHAPE / THIRDS</tspan>
-            </text>
-          </motion.g>
           {showingReport ? overlay.labels.map((label, index) => (
             <motion.g key={index} initial={{ opacity: 0 }} animate={{ x: label.x, y: label.y, opacity: 1 }} transition={transition}>
               <rect x="0" y="-24" width={label.width} height="48" rx="24" fill="white" fillOpacity="0.9" />
@@ -238,6 +290,12 @@ export function IntroFacePreview() {
             </motion.g>
           )) : null}
         </svg>
+        <motion.div className="absolute left-1/2 top-1/2 aspect-square w-[min(80%,300px)] -translate-x-1/2 -translate-y-1/2 p-3" initial={false} animate={{ opacity: showingReport ? 0 : 1 }} transition={{ duration: reduceMotion ? 0 : 0.25 }}>
+          <div className="text-xl font-medium leading-none tracking-[-0.04em]">Facial<br />Aesthetic<br />Assessments</div>
+          <div className="absolute inset-x-3 bottom-3 grid grid-cols-2 gap-x-4 gap-y-3 font-mono text-[9px] uppercase">
+            {['Eyes / Canthal tilt', 'Jaw / Gonial angle', 'Symmetry / Eye line', 'Face shape / Thirds'].map((title) => <span key={title}>{title}</span>)}
+          </div>
+        </motion.div>
       </div>
     </div>
   )

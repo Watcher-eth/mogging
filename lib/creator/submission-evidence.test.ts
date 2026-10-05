@@ -12,7 +12,7 @@ mock.module('@/lib/db', () => ({ schema, db: {
   transaction: async (fn: any) => fn({ execute: async () => undefined, query: { creatorSubmissions: { findFirst: async () => null } }, select: () => ({ from: (table: unknown) => ({ where: () => ({ for: async () => [sprint], then: (resolve: any) => resolve([{ cents: 0 }]) }) }) }), insert: (table: unknown) => ({ values: (values: any) => { inserted.push(values); return { returning: async () => [{ id: 'submission', ...values }] } } }) }),
   insert: () => ({ values: (values: any) => { inserted.push(values); return { returning: async () => [{ id: 'submission', ...values }] } } }),
 } }))
-mock.module('@/lib/creator/attribution', () => ({ ensureCreatorTrackingLink: async () => null }))
+mock.module('@/lib/creator/attribution', () => ({ ensureCreatorTrackingLink: async () => null, creatorReferralHandle: (value: string) => value }))
 mock.module('@/lib/storage/videos', () => ({
   creatorAssetPublicUrl: (key: string) => `https://media.example/${key}`,
   verifyCreatorRecordingUpload: async (...args: any[]) => { verified.push(args); if (!uploadExists) throw new Error('Incomplete upload') },

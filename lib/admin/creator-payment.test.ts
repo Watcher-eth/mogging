@@ -24,12 +24,12 @@ describe('creator admin payment selection', () => {
     expect(result.adminUsAudiencePercent).toBeNull()
   })
 
-  test('rejects arbitrary view and audience values', () => {
+  test('accepts exact campaign analytics rather than only historical tiers', () => {
     expect(creatorAdminPaymentSchema.safeParse({
       submissionId: 'submission-1',
       adminViewCountThreshold: 123_456,
       adminUsAudiencePercent: 31,
-    }).success).toBe(false)
+    }).success).toBe(true)
   })
 })
 

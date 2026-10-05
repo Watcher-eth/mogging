@@ -446,10 +446,10 @@
 :is(.creator-navigation, .creator-sidebar-sheet) [data-sidebar="group-label"] { padding-inline: 5px; }
 :is(.creator-navigation, .creator-sidebar-sheet) :is(.creator-nav-link, .creator-guide-nav-link) { padding-inline: 5px; }
 
-/* Portal actions share one shape and motion, including buttons rendered as links.
-   Clickable content cards and generated app previews keep their content geometry. */
+/* Explicit action controls share a pill shape. Native content controls,
+   upload fields and cards keep their own corner radius. */
 :is(.creator-app, .creator-dialog, .creator-sidebar-sheet, [data-creator-controls])
-:is(button, [data-slot="button"], .creator-primary-button, .creator-button, .c-button, .c-icon-button, .c-text-link, [data-sidebar="menu-button"]):not(.creator-surface):not([data-creator-card]):not([data-creator-preview] *) {
+:is([data-slot="button"], .creator-primary-button, .creator-button, .c-button, .c-icon-button, .c-text-link, [data-sidebar="menu-button"]):not(.creator-surface):not([data-creator-card]):not([data-creator-preview] *) {
   border-radius: var(--creator-control-radius, 999px);
   transition-property: scale, background-color, border-color, color, box-shadow;
   transition-duration: 160ms;
@@ -457,7 +457,7 @@
 }
 @media (hover: hover) and (pointer: fine) and (prefers-reduced-motion: no-preference) {
   :is(.creator-app, .creator-dialog, .creator-sidebar-sheet, [data-creator-controls])
-  :is(button, [data-slot="button"], .creator-primary-button, .creator-button, .c-button, .c-icon-button, .c-text-link, [data-sidebar="menu-button"]):not(.creator-surface):not([data-creator-card]):not([data-creator-preview] *):not(:disabled):not([aria-disabled="true"]):not([data-disabled]):hover {
+  :is([data-slot="button"], .creator-primary-button, .creator-button, .c-button, .c-icon-button, .c-text-link, [data-sidebar="menu-button"]):not(.creator-surface):not([data-creator-card]):not([data-creator-preview] *):not(:disabled):not([aria-disabled="true"]):not([data-disabled]):hover {
     scale: 1.025;
     opacity: 1;
   }
@@ -475,7 +475,7 @@
 }
 @media (prefers-reduced-motion: reduce) {
   :is(.creator-app, .creator-dialog, .creator-sidebar-sheet, [data-creator-controls])
-  :is(button, [data-slot="button"], .creator-primary-button, .creator-button, .c-button, .c-icon-button, .c-text-link, [data-sidebar="menu-button"]):not(.creator-surface):not([data-creator-card]):not([data-creator-preview] *) {
+  :is([data-slot="button"], .creator-primary-button, .creator-button, .c-button, .c-icon-button, .c-text-link, [data-sidebar="menu-button"]):not(.creator-surface):not([data-creator-card]):not([data-creator-preview] *) {
     scale: none;
     transition: none;
   }

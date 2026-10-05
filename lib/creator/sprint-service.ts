@@ -68,8 +68,7 @@ export async function listCreatorSprints(
     for (const total of totals)
       if (total.sprintId === row.id) {
         counts[total.status] = total.count
-        if (total.status === 'approved' || total.status === 'paid')
-          usedCents += total.cents
+        usedCents += total.cents
       }
     return {
       ...row,
@@ -142,7 +141,6 @@ export async function saveCreatorSprint(
         .where(
           and(
             eq(schema.creatorSubmissions.sprintId, input.id),
-            inArray(schema.creatorSubmissions.status, ['approved', 'paid']),
           ),
         )
       if (input.budgetCents < used.cents)

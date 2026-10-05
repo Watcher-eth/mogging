@@ -21,13 +21,14 @@ const terms: SprintTerms = {
 }
 let submission: any
 let payment: any
+let pastPayments: any[] = []
 let budget = 1000
 let used = 0
 let locks: unknown[] = []
 let messages: any[] = []
 const query = {
   creatorSubmissions: { findFirst: async () => submission },
-  creatorPayments: { findFirst: async () => payment },
+  creatorPayments: { findFirst: async () => payment, findMany: async () => [...pastPayments, ...(payment ? [payment] : [])] },
   creatorProfiles: {
     findFirst: async () => ({
       id: 'creator',
@@ -110,8 +111,10 @@ beforeEach(() => {
     formatId: 'f',
     status: 'pending',
     approvedAmountCents: null,
+    analyticsScreenshotUrl: 'https://media.example/fresh.mp4',
   }
   payment = undefined
+  pastPayments = []
   budget = 1000
   used = 0
   locks = []
@@ -160,9 +163,9 @@ test('payment uses approved cents and blocks duplicate payments and unsaved repr
   ).rejects.toThrow('approved earnings values')
   const created = await createCreatorPayment(input)
   expect(created.amountCents).toBe(1000)
-  await expect(createCreatorPayment(input)).rejects.toThrow('already exists')
+  await expect(createCreatorPayment(input)).rejects.toThrow('already scheduled')
   await expect(reviewCreatorResource(review)).rejects.toThrow(
-    'cannot be re-reviewed',
+    'scheduled payment',
   )
 })
 test('sent payments complete the video and cannot be reversed or edited', async () => {
@@ -204,4 +207,51 @@ test('review feedback enters the conversation once and clearing notes keeps hist
   expect(messages).toHaveLength(1)
   await reviewCreatorResource({ ...review, reviewNote: null }, 'admin')
   expect(messages).toHaveLength(1)
+})
+
+test('a paid first milestone can be rereviewed and only its unpaid increase is scheduled', async () => {
+  submission = { ...submission, status: 'in_review', reviewRequestedAt: new Date(), approvedAmountCents: 1000,
+    sprintTerms: { ...terms, milestones: [...terms.milestones, { views: 20000, amountCents: 3000 }] } }
+  pastPayments = [{ amountCents: 1000, status: 'paid' }]
+  budget = 3000; used = 1000
+  await reviewCreatorResource({ ...review, adminViewCountThreshold: 20000 })
+  expect(submission.approvedAmountCents).toBe(3000)
+  expect(submission.reviewRequestedAt).toBeNull()
+  const result = await createCreatorPayment({ submissionId: 'submission', adminViewCountThreshold: 20000, adminUsAudiencePercent: 40, status: 'pending' })
+  expect(result.amountCents).toBe(2000)
+})
+test('rejected or lower rereview preserves earlier approved earnings and their budget reservation', async () => {
+  submission = { ...submission, status: 'in_review', reviewRequestedAt: new Date(), approvedAmountCents: 1000 }
+  pastPayments = [{ amountCents: 1000, status: 'paid' }]; used = 1000
+  await reviewCreatorResource({ ...review, status: 'rejected' })
+  expect(submission.approvedAmountCents).toBe(1000)
+  expect(submission.reviewRequestedAt).toBeNull()
+  await reviewCreatorResource(review)
+  await expect(createCreatorPayment({ submissionId: 'submission', adminViewCountThreshold: 5000, adminUsAudiencePercent: 40, status: 'pending' })).rejects.toThrow('already been paid')
+})
+test('rereview incremental approval still respects the remaining campaign budget', async () => {
+  submission = { ...submission, status: 'in_review', reviewRequestedAt: new Date(), approvedAmountCents: 1000,
+    sprintTerms: { ...terms, milestones: [...terms.milestones, { views: 20000, amountCents: 3000 }] } }
+  pastPayments = [{ amountCents: 1000, status: 'paid' }]; used = 1000; budget = 2999
+  await expect(reviewCreatorResource({ ...review, adminViewCountThreshold: 20000 })).rejects.toThrow('exceed the sprint budget')
+})
+test('missing analytics cannot be approved and paid submissions require a creator rereview request', async () => {
+  submission.analyticsScreenshotUrl = null
+  await expect(reviewCreatorResource(review)).rejects.toThrow('evidence is required')
+  submission.analyticsScreenshotUrl = 'fresh.mp4'; submission.status = 'paid'
+  await expect(reviewCreatorResource(review)).rejects.toThrow('fresh analytics before rereview')
+})
+
+test('editing a completed payment reference cannot close a pending rereview', async () => {
+  submission = {...submission, status:'in_review', reviewRequestedAt:new Date(), approvedAmountCents:1000}
+  payment = {id:'payment',submissionId:'submission',status:'paid',amountCents:1000,paidAt:new Date()}
+  await reviewCreatorResource({resource:'payment',id:'payment',status:'paid',providerReference:'receipt'})
+  expect(submission.status).toBe('in_review')
+  expect(submission.reviewRequestedAt).toBeInstanceOf(Date)
+})
+test('an old failed payment cannot be revived after replacement funds are scheduled', async () => {
+  submission = {...submission, status:'approved',approvedAmountCents:1000}
+  payment = {id:'failed',submissionId:'submission',status:'failed',amountCents:1000}
+  pastPayments = [{id:'replacement',status:'pending',amountCents:1000}]
+  await expect(reviewCreatorResource({resource:'payment',id:'failed',status:'paid'})).rejects.toThrow('exceed the approved unpaid earnings')
 })
