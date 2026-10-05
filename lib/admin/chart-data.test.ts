@@ -26,6 +26,12 @@ describe('analytics chart data', () => {
       { time: Date.parse('2026-10-02T00:00:00Z') / 1000, value: -2.5 },
     ])
   })
+  test('preserves hourly UTC observations across midnight', () => {
+    expect(dailyPoints([{ day: '2026-10-05T01:00:00Z', actors: 3 }, { day: '2026-10-04T23:00:00Z', actors: 2 }], 'actors')).toEqual([
+      { time: Date.parse('2026-10-04T23:00:00Z') / 1000, value: 2 },
+      { time: Date.parse('2026-10-05T01:00:00Z') / 1000, value: 3 },
+    ])
+  })
   test('never converts unknown or invalid amounts into zero observations', () => {
     expect(dailyPoints([{ day: '2026-10-01', net: null }, { day: '2026-10-02', net: '' }, { day: 'invalid', net: 10 }, { day: '2026-10-03', net: 'bad' }], 'net')).toEqual([])
     expect(dailyPoints([{ day: '2026-10-01', actors: 0 }], 'actors')[0]?.value).toBe(0)

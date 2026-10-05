@@ -11,7 +11,7 @@ export function onboardingScreenRows(rows: MetricRow[]) {
 
 export function dailyPoints(rows: MetricRow[], field: string) {
   return rows.flatMap(row => {
-    const time = typeof row.day === 'string' ? Date.parse(`${row.day}T00:00:00Z`) / 1000 : NaN
+    const time = typeof row.day === 'string' ? Date.parse(/^\d{4}-\d{2}-\d{2}$/.test(row.day) ? `${row.day}T00:00:00Z` : row.day) / 1000 : NaN
     const raw = row[field]
     const value = raw == null || raw === '' ? NaN : Number(raw)
     return Number.isFinite(time) && Number.isFinite(value) ? [{ time, value }] : []

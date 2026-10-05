@@ -36,9 +36,6 @@
 .admin-table tr:last-child td { border-bottom: 0; }
 .admin-table tbody tr:hover { background: #fafbfc; }
 .admin-empty { padding-block: 28px; font-size: 13px; color: #858a91; }
-.admin-bars { display: grid; gap: 22px; }
-.admin-funnel { display: grid; gap: 24px; }
-.admin-funnel-step { display: grid; place-items: center; width: 24px; height: 24px; flex: 0 0 auto; border: 1px solid #e8ebee; border-radius: 8px; font-size: 10px; color: #92979e; }
 .admin-list { border-top: 1px solid var(--admin-border); }
 .admin-resource-row { padding: 20px 8px; border-bottom: 1px solid var(--admin-border); background: white; }
 .admin-resource-row:hover { background: #fafbfc; }

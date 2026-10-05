@@ -27,6 +27,7 @@ export function unfinishedEvaluationsQuery(now:Date) {
 export function reliabilityQuery(days:number,now:Date) {
   const start=new Date(now.getTime()-days*86400_000).toISOString()
   const end=now.toISOString()
+  const bucket=days===1?'YYYY-MM-DD"T"HH24:00:00"Z"':'YYYY-MM-DD'
   const rows=(name:string)=>sql`coalesce((select json_agg(r) from ${sql.identifier(name)} r),'[]'::json)`
   return sql`with events as materialized (
     select occurred_at,properties from analytics_events where event_name='backend_request' and environment='production' and platform='server' and source='backend' and occurred_at>=${start}::timestamp and occurred_at<${end}::timestamp
@@ -44,7 +45,7 @@ export function reliabilityQuery(days:number,now:Date) {
     count(*) filter(where code='input_no_face') as invalid_photos,
     percentile_cont(0.5) within group(order by duration_ms) as median_ms,percentile_cont(0.95) within group(order by duration_ms) as p95_ms,max(occurred_at) as latest_event from requests group by feature order by technical_failures desc,requests desc limit 100
   ), daily as (
-    select occurred_at::date as day,count(*) as requests,count(*) filter(where outcome in ('failed','degraded') and code!='input_no_face') as failures,
+    select to_char(occurred_at,${bucket}::text) as day,count(*) as requests,count(*) filter(where outcome in ('failed','degraded') and code!='input_no_face') as failures,
     count(*) filter(where feature='analyze' and outcome in ('failed','degraded') and code!='input_no_face') as evaluation_failures from requests group by 1 order by 1
   ), failures as (
     select feature,code,outcome,count(*) as events,max(occurred_at) as latest_event from requests where outcome in ('failed','degraded') group by 1,2,3 order by events desc limit 100

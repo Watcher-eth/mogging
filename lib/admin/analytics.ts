@@ -6,7 +6,7 @@ import { trackingDefinitions, trackingDimensions } from './tracking'
 import { ONBOARDING_ANALYTICS_VERSION, onboardingAnalyticsSteps } from '@/lib/analytics/onboarding'
 
 export const analyticsFilters = z.object({
-  days: z.enum(['7', '30', '90']).default('30'),
+  days: z.enum(['1', '7', '30', '90']).default('30'),
   platform: z.enum(['all', 'web', 'ios', 'android']).default('all'),
 })
 export type AnalyticsFilters = z.infer<typeof analyticsFilters>
@@ -46,6 +46,7 @@ function funnel(name: string, events: string[], platform: SQL) {
 export function analyticsQuery(filters: AnalyticsFilters, now: Date) {
   const start = new Date(now.getTime() - Number(filters.days) * 86400_000).toISOString()
   const end = now.toISOString()
+  const bucket = filters.days === '1' ? 'YYYY-MM-DD"T"HH24:00:00"Z"' : 'YYYY-MM-DD'
   const platform = filters.platform === 'all' ? sql`true` : sql`platform = ${filters.platform}`
   const onboarding = funnel('onboarding', ['onboarding_started', 'paywall_viewed', 'purchase_completed', 'evaluation_completed', 'report_viewed'], sql`platform in ('ios','android')`)
   const paywall = funnel('paywall', ['paywall_viewed', 'plan_selected', 'purchase_started', 'purchase_completed'], sql`platform in ('ios','android')`)
@@ -111,7 +112,7 @@ export function analyticsQuery(filters: AnalyticsFilters, now: Date) {
         and occurred_at >= ${start}::timestamp and occurred_at < ${end}::timestamp
     ), ${sql.join([...onboarding.ctes, ...paywall.ctes, ...web.ctes], sql`,`)},
     daily as (
-      select to_char(occurred_at, 'YYYY-MM-DD') as day, count(distinct actor) as actors,
+      select to_char(occurred_at, ${bucket}::text) as day, count(distinct actor) as actors,
         count(*) filter (where event_name = 'evaluation_completed') as evaluations,
         count(*) filter (where event_name = 'evaluation_started') as scan_starts,
         count(*) filter (where event_name = 'onboarding_started') as onboarding_starts,
@@ -298,7 +299,7 @@ export function analyticsQuery(filters: AnalyticsFilters, now: Date) {
         count(*) filter (where amount is null) as missing_amount_events
       from b group by 1 order by 1
     ), revenue_daily as (
-      select to_char(occurred_at, 'YYYY-MM-DD') as day, coalesce(currency, 'UNKNOWN') as currency,
+      select to_char(occurred_at, ${bucket}::text) as day, coalesce(currency, 'UNKNOWN') as currency,
         case when count(amount) > 0 then coalesce(sum(amount) filter (where amount > 0), 0)::text end as gross,
         case when count(amount) > 0 then coalesce(-sum(amount) filter (where amount < 0), 0)::text end as refunds,
         sum(amount)::text as net,

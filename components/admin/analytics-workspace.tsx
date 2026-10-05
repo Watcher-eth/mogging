@@ -12,6 +12,8 @@ import { apiGet, ApiClientError } from '@/lib/api/client'
 import { adminPage } from '@/lib/admin/navigation'
 import { onboardingScreenRows, retentionRates } from '@/lib/admin/chart-data'
 import type { AnalyticsDashboard, MetricRow } from '@/lib/admin/analytics'
+import dynamic from 'next/dynamic'
+const DistributionChart = dynamic(() => import('./category-chart').then(module => module.DistributionChart), { ssr: false })
 import { AnalyticsChart, chartColors as colors, type ChartMetric } from './analytics-chart'
 import { EventReport, DimensionReport, TrackingCoverage } from './tracking-report'
 import { OperationalReport } from './operational-report'
@@ -42,7 +44,7 @@ const revenueMetrics: ChartMetric[] = [
   { key: 'net', label: 'Net', color: colors.green },
 ]
 const qualityMetrics: ChartMetric[] = [{ key: 'failures', label: 'Scan failures', color: colors.orange }]
-const observationNote = 'Counts are observed events per UTC day, except active devices and first app opens which are distinct devices. Days with no recorded events are omitted; a gap does not establish zero users or an outage. Today is partial. Purchase completion is a client signal, not verified billing.'
+const observationNote = 'Counts are observed events per UTC bucket, except active devices and first app opens which are distinct devices. Buckets with no recorded events are omitted; a gap does not establish zero users or an outage. Boundary buckets are partial. Purchase completion is a client signal, not verified billing.'
 type Health = { pending_events: number; pending_billing_events: number; unfinished_webhooks: number;
   oldest_pending_event: string | null; last_revenuecat_receipt: string | null; last_stripe_receipt: string | null;
   configured: Record<string, boolean> }
@@ -52,7 +54,7 @@ export default function AnalyticsAdminPage() {
   const page = adminPage(router.pathname)
   const tab = page?.section || 'Overview'
   const { mutate } = useSWRConfig()
-  const days = ['7', '30', '90'].includes(String(router.query.days)) ? String(router.query.days) : '30'
+  const days = ['1', '7', '30', '90'].includes(String(router.query.days)) ? String(router.query.days) : '30'
   const platform = ['all', 'web', 'ios', 'android'].includes(String(router.query.platform)) ? String(router.query.platform) : 'all'
   const access = useSWR<{ unlocked: boolean }>('/api/admin/creator/session', apiGet, { shouldRetryOnError: false })
   const report = useSWR<AnalyticsDashboard>(access.data?.unlocked && tab !== 'Reliability' ? `/api/admin/analytics?days=${days}&platform=${platform}` : null, apiGet,
@@ -69,7 +71,7 @@ export default function AnalyticsAdminPage() {
     <CreatorHeader eyebrow="Analytics" title={page?.title || 'Product overview'} description={page?.description || 'Understand daily activity and the path to value.'} />
     <div className="admin-report-toolbar">
       <div className="flex flex-wrap items-center gap-3">
-        <AnalyticsSelect label="Period" value={days} onChange={value => filter('days', value)} options={[7,30,90].map(day => ({value:String(day),label:`Last ${day} days`}))} />
+        <AnalyticsSelect label="Period" value={days} onChange={value => filter('days', value)} options={[1,7,30,90].map(day => ({value:String(day),label:day === 1 ? "Last 24 hours" : `Last ${day} days`}))} />
         {tab !== 'Reliability'?<AnalyticsSelect label="Platform" value={platform} onChange={value => filter('platform', value)} options={['all','web','ios','android'].map(value => ({value,label:value === 'all' ? 'All platforms' : value === 'ios' ? 'iOS' : label(value)}))}/>:null}
         <Button variant="ghost" className="size-10 p-0 text-[#73777d]" aria-label="Refresh analytics" disabled={report.isValidating} onClick={() => void (tab === 'Reliability'?mutate(`/api/admin/reliability?days=${days}`):report.mutate())}><RefreshCw className={`size-4 ${report.isValidating ? 'animate-spin' : ''}`} /></Button>
       </div>
@@ -102,7 +104,7 @@ function Activity({ data, days, section }: { data: AnalyticsDashboard; days: num
   </>
 }
 function DailyChart({ data, days, title, metrics }: { data: AnalyticsDashboard; days: number; title: string; metrics: ChartMetric[] }) {
-  return <Panel title={title} description="Daily observations · UTC · today is partial" note={observationNote}>
+  return <Panel title={title} description={days === 1 ? "Hourly observations · UTC · boundary hours are partial" : "Daily observations · UTC · today is partial"} note={observationNote}>
     <AnalyticsChart rows={data.daily} metrics={metrics} days={days} title={title} />
     <DataDetails><Table rows={data.daily} columns={['day', ...metrics.map(metric => metric.key)]} /></DataDetails>
   </Panel>
@@ -157,7 +159,7 @@ function Revenue({ data, days }: { data: AnalyticsDashboard; days: number }) {
     {total ? <>
       <div className="mb-5 flex items-center justify-between gap-3"><h2 className="text-sm font-medium">Revenue in {currency}</h2><AnalyticsSelect label="Currency" value={currency} onChange={setSelectedCurrency} options={data.revenue.map(row=>({value:String(row.currency),label:String(row.currency)}))} /></div>
       <div className="admin-stats-grid"><Stat title="Known gross" value={money(total.gross, currency)} note="Recorded positive amounts" /><Stat title="Recorded refunds" value={money(total.refunds, currency)} note="Recorded negative amounts" /><Stat title="Known net" value={money(total.net, currency)} note="Before provider fees and taxes" /><Stat title="Unknown amounts" value={count(total.missing_amount_events)} note="Excluded from monetary totals" /></div>
-      <Panel title="Revenue over time" description={`Daily recorded amounts · ${currency}`} note="Provider-confirmed events, deduplicated by the billing ledger. Net is gross minus recorded refunds, before fees and taxes; it is not profit or MRR. Days without ledger events are omitted. Days with only unknown amounts are excluded from the chart."><AnalyticsChart key={currency} title="Revenue over time" rows={rows} metrics={revenueMetrics} days={days} currency={currency} /><DataDetails><Table rows={rows} columns={['day','gross','refunds','net','missing_amount_events']} /></DataDetails></Panel>
+      <Panel title="Revenue over time" description={`${days === 1 ? "Hourly" : "Daily"} recorded amounts · ${currency}`} note="Provider-confirmed events, deduplicated by the billing ledger. Net is gross minus recorded refunds, before fees and taxes; it is not profit or MRR. Buckets without ledger events are omitted. Buckets with only unknown amounts are excluded from the chart."><AnalyticsChart key={currency} title="Revenue over time" rows={rows} metrics={revenueMetrics} days={days} currency={currency} /><DataDetails><Table rows={rows} columns={['day','gross','refunds','net','missing_amount_events']} /></DataDetails></Panel>
     </> : <Notice>No verified billing events in this window.</Notice>}
     <Panel title="Revenue by currency" description="Amounts are never combined across currencies."><Table rows={data.revenue.map(row => ({ ...row, gross: money(row.gross, String(row.currency)), refunds: money(row.refunds, String(row.currency)), net: money(row.net, String(row.currency)) }))} columns={['currency','gross','refunds','net','missing_amount_events']} /></Panel>
     <Panel title="Revenue by provider & product" description="Currency-separated ledger amounts and account-linking coverage." note="Counts are observed ledger events and distinct subscriptions, not current active subscriber balances. Missing amounts remain unknown; fees and taxes are not deducted."><Table rows={(data.billingProducts ?? []).map(row => ({...row, gross:money(row.gross,String(row.currency)),refunds:money(row.refunds,String(row.currency)),net:money(row.net,String(row.currency))}))} columns={['provider','product','currency','events','customers','subscriptions','unlinked_events','gross','refunds','net','missing_amount_events']} /></Panel>
@@ -169,7 +171,7 @@ function Retention({ data, days }: { data: AnalyticsDashboard; days: number }) {
   return <>
     <Panel title="Return after the first observed scan" description="Meaningful return on day 1, day 7, and day 30." note="Account cohorts begin at their first evaluation observed in this window, not necessarily their first ever. Exact D1/D7/D30 windows count report views, completed protocol tasks, or scans. Only fully observed accounts are eligible; an immature cohort has no rate."><Bars maximum={100} rows={retentionRates(data.retention)} format={value => `${value.toFixed(1)}%`} /><DataDetails><Table rows={data.retention.map(row => ({ ...row, rate: percent(Number(row.retained), Number(row.eligible)) }))} columns={['day','eligible','retained','rate']} /></DataDetails></Panel>
     <DailyChart data={data} days={days} title="Value-building activity" metrics={valueMetrics} />
-    <div className="admin-section-grid"><Panel title="Cancellation timing" description="When cancellation intent is first observed." note="Relative to the first evaluation observed in the same window. Billing includes every platform, while evaluation history follows the platform filter. This is not a churn rate."><Bars rows={data.cancellations.map(row => ({ label: String(row.timing), value: Number(row.accounts) }))} /></Panel><Panel title="Value signals" description="Activity totals across all users." note="Includes people who are not currently paying. Share intent is not proof of a completed social post."><Bars rows={data.actions.filter(row => !String(row.event).endsWith('_failed')).map(row => ({ label: label(String(row.event)), value: Number(row.actors), detail: `${count(row.events)} events` }))} /></Panel></div>
+    <div className="admin-section-grid"><Panel title="Cancellation timing" description="When cancellation intent is first observed." note="Relative to the first evaluation observed in the same window. Billing includes every platform, while evaluation history follows the platform filter. This is not a churn rate."><DistributionChart rows={data.cancellations.map(row => ({ label: String(row.timing), value: Number(row.accounts) }))} /></Panel><Panel title="Value signals" description="Activity totals across all users." note="Includes people who are not currently paying. Share intent is not proof of a completed social post."><Bars rows={data.actions.filter(row => !String(row.event).endsWith('_failed')).map(row => ({ label: label(String(row.event)), value: Number(row.actors), detail: `${count(row.events)} events` }))} /></Panel></div>
   </>
 }
 function Quality({ data, days }: { data: AnalyticsDashboard; days: number }) {
@@ -193,6 +195,6 @@ function Quality({ data, days }: { data: AnalyticsDashboard; days: number }) {
 function Funnel({ title, rows }: { title: string; rows: AnalyticsDashboard['onboarding'] }) {
   const total = rows[0]?.actors ?? 0
   return <Panel title={title} description="Ordered milestones per device · seven-day completion window" note="Each milestone follows the previous one within seven days of entry. All observations must be in the selected period. Recent entrants may still complete. A client purchase completion is not verified revenue.">
-    <ol className="admin-funnel">{rows.map((row, index) => <li key={row.name}><div className="flex items-start gap-3"><span className="admin-funnel-step">{index + 1}</span><div className="min-w-0 flex-1"><div className="flex items-baseline justify-between gap-3 text-sm"><span className="text-[#52565c]">{label(row.name)}</span><span className="shrink-0 font-medium tabular-nums">{count(row.actors)} <span className="ml-2 text-xs font-normal text-[#858a91]">{percent(row.actors, total)}</span></span></div><div className="mt-3 h-1.5 rounded-full bg-[#f0f2f4]"><div className="h-full rounded-full bg-[#00A8EF]" style={{ width: `${total ? row.actors / total * 100 : 0}%`, opacity: 1 - index * 0.12 }} /></div>{index > 0 ? <p className="mt-2 text-xs text-[#858a91]">{percent(rows[index - 1].actors - row.actors, rows[index - 1].actors)} drop from previous step</p> : null}</div></div></li>)}</ol>
+    <Bars rows={rows.map((row, index) => ({label: `${index + 1}. ${label(row.name)}`, value: row.actors, detail: `${percent(row.actors, total)} of entrants${index > 0 ? ` · ${percent(rows[index - 1].actors - row.actors, rows[index - 1].actors)} drop from previous step` : ''}`}))} />
   </Panel>
 }
