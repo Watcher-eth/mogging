@@ -5,7 +5,7 @@ import { apiGet } from '@/lib/api/client'
 import { Button } from '@/components/ui/button'
 import { CreatorIcon } from './creator-icon'
 import { creatorAccountLabel, type CreatorDashboard } from './types'
-import { CreatorReferralDetails } from './referral-details'
+import { CreatorReferralCode, CreatorReferralDetails } from './referral-details'
 export function CreatorReferralLinks() {
   const { data, error, isLoading, mutate } = useSWR<CreatorDashboard>(
     '/api/creator',
@@ -60,10 +60,13 @@ export function CreatorReferralLinks() {
               key={account.id}
               className="min-w-0"
             >
-              <p className="mb-2 text-xs text-zinc-500">
-                {creatorAccountLabel(account)} ·{' '}
-                {account.platform === 'tiktok' ? 'TikTok' : 'Instagram'}
-              </p>
+              <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
+                <p className="text-xs text-zinc-500">
+                  {creatorAccountLabel(account)} ·{' '}
+                  {account.platform === 'tiktok' ? 'TikTok' : 'Instagram'}
+                </p>
+                <CreatorReferralCode trackingLink={account.trackingLink} />
+              </div>
               <CreatorReferralDetails trackingLink={account.trackingLink} />
             </div>
           ))}

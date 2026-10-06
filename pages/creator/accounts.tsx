@@ -19,7 +19,7 @@ import {
   type CreatorDashboard,
   type CreatorSocialAccount,
 } from '@/components/creator/types'
-import { CreatorReferralDetails } from '@/components/creator/referral-details'
+import { CreatorReferralCode, CreatorReferralDetails } from '@/components/creator/referral-details'
 import { apiGet, apiRequest, ApiClientError } from '@/lib/api/client'
 export default function CreatorAccountsPage() {
   return (
@@ -84,12 +84,12 @@ function AccountsContent() {
         <div className="grid gap-3">
           {accounts.map((account) => (
             <article className="creator-surface p-5" key={account.id}>
-              <div className="flex items-center gap-3">
+              <div className="flex flex-wrap items-center gap-3">
                 <SocialPlatformLogo
                   platform={account.platform}
                   className="size-9"
                 />
-                <div className="min-w-0 flex-1">
+                <div className="min-w-0 flex-1 basis-[140px]">
                   <a
                     href={account.profileUrl || undefined}
                     target="_blank"
@@ -102,13 +102,16 @@ function AccountsContent() {
                     {account.platform} · Connected
                   </p>
                 </div>
-                <button
-                  aria-label={`Remove ${creatorAccountLabel(account)}`}
-                  onClick={() => void remove(account)}
-                  className="grid size-11 place-items-center rounded-full text-zinc-400 hover:bg-zinc-100 hover:text-[#F33232]"
-                >
-                  <Trash2 className="size-4" />
-                </button>
+                <div className="ml-auto flex min-w-0 max-w-full items-center gap-1">
+                  <CreatorReferralCode trackingLink={account.trackingLink} />
+                  <button
+                    aria-label={`Remove ${creatorAccountLabel(account)}`}
+                    onClick={() => void remove(account)}
+                    className="grid size-11 shrink-0 place-items-center rounded-full text-zinc-400 hover:bg-zinc-100 hover:text-[#F33232]"
+                  >
+                    <Trash2 className="size-4" />
+                  </button>
+                </div>
               </div>
               <div className="mt-4">
                 <CreatorReferralDetails trackingLink={account.trackingLink} />

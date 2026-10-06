@@ -6,7 +6,7 @@ import { SocialPlatformLogo } from '@/components/brand/social-platform-logo'
 import { Field, fieldClass } from './creator-shell'
 import type { CreatorSocialAccount } from './types'
 import { apiPost, ApiClientError } from '@/lib/api/client'
-import { CreatorReferralDetails } from './referral-details'
+import { CreatorReferralCode, CreatorReferralDetails } from './referral-details'
 import { cn } from '@/lib/utils'
 
 export function ConnectAccountForm({
@@ -57,7 +57,10 @@ export function ConnectAccountForm({
             Share your permanent referral link or include your code in post captions.
           </p>
         </div>
-        <CreatorReferralDetails trackingLink={connected.trackingLink} />
+        <div className="min-w-0">
+          <CreatorReferralCode trackingLink={connected.trackingLink} />
+          <CreatorReferralDetails trackingLink={connected.trackingLink} />
+        </div>
         <Button
           onClick={async () => {
             setBusy(true)

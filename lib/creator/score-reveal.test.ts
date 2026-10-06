@@ -26,6 +26,6 @@ test('settled exports include every selected stat and preserve the PSL scale', (
   expect(labels).toContain('/ 8')
   expect(labels).toContain('6.4')
   expect(labels).toContain('7.2') // 9/10 potential becomes 7.2/8, as in the mobile report.
-  expect(labels).toContain('Get your score on')
-  expect(labels).toContain('mogging.com')
+  expect(labels).not.toContain('Get your score on')
+  expect(labels).not.toContain('mogging.com')
 })

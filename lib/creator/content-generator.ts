@@ -2,8 +2,8 @@ import { getReportOverlayPreset } from '@/lib/creator/mobile-overlay-engine/repo
 
 export const outputFormats = {
   vertical: { label: 'Vertical video / Stories', width: 1080, height: 1920 },
-  portrait: { label: 'Instagram portrait', width: 1080, height: 1350 },
-  square: { label: 'TikTok photo / Square (recommended)', width: 1080, height: 1080 },
+  portrait: { label: 'Portrait CTA · 2:3 (recommended)', width: 1080, height: 1620 },
+  square: { label: 'Square', width: 1080, height: 1080 },
 } as const
 
 export type OutputFormatId = keyof typeof outputFormats
@@ -74,8 +74,8 @@ export const categoryOptions = [
 export function categoryScoreMax(categoryId: string) { return categoryId === 'psl' ? 8 : 10 }
 
 export const templateOptions: Array<{ id: SlideTemplateId; label: string; description: string }> = [
-  { id: 'editorial', label: 'Glow-up', description: 'A short, image-first call to action' },
   { id: 'score-potential', label: 'Mobile report share', description: 'The mobile share layout with total score and potential' },
+  { id: 'editorial', label: 'Glow-up', description: 'A short, image-first call to action' },
   { id: 'psl', label: 'PSL comparison', description: 'PSL headline with current and potential' },
   { id: 'score-rows', label: 'Category scorecard', description: 'Rows for each selected report category' },
   { id: 'cta', label: 'Mogging score reveal', description: 'Animated category score rings and report stats' },
@@ -123,12 +123,12 @@ export function generateSlides({
   const shared = { currentScore, potentialScore, categoryScores }
   return [
     {
-      id: makeId('editorial'), templateId: 'editorial', imageId: readyImages[0].id, categoryId: featuredCategory,
-      eyebrow: '', headline: hook, supportingCopy: '', metricLabel: categoryLabel, metricValue, cta: 'mogging.com', ...shared,
+      id: makeId('score-potential'), templateId: 'score-potential', imageId: readyImages[0].id, categoryId: featuredCategory,
+      eyebrow: '', headline: 'Mogging', supportingCopy: '', metricLabel: categoryLabel, metricValue, cta: '', ...shared,
     },
     {
-      id: makeId('score-potential'), templateId: 'score-potential', imageId: readyImages[1 % readyImages.length].id, categoryId: featuredCategory,
-      eyebrow: '', headline: 'Mogging', supportingCopy: '', metricLabel: categoryLabel, metricValue, cta: '', ...shared,
+      id: makeId('editorial'), templateId: 'editorial', imageId: readyImages[1 % readyImages.length].id, categoryId: featuredCategory,
+      eyebrow: '', headline: hook, supportingCopy: '', metricLabel: categoryLabel, metricValue, cta: 'mogging.com', ...shared,
     },
     {
       id: makeId('psl'), templateId: 'psl', imageId: readyImages[2 % readyImages.length].id, categoryId: featuredCategory,
@@ -140,7 +140,7 @@ export function generateSlides({
     },
     {
       id: makeId('cta'), templateId: 'cta', imageId: readyImages.at(-1)?.id ?? readyImages[0].id, categoryId: featuredCategory,
-      eyebrow: 'Mogging', headline: 'Get your score on mogging.com', supportingCopy: 'Current and creator-entered potential scores.', metricLabel: categoryLabel, metricValue: '[ mapped ]', cta: 'Get your score on mogging.com', ...shared,
+      eyebrow: 'Mogging', headline: 'Mogging', supportingCopy: 'Current and creator-entered potential scores.', metricLabel: categoryLabel, metricValue: '[ mapped ]', cta: '', ...shared,
     },
   ]
 }

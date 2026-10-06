@@ -192,7 +192,7 @@ function drawEditorial(ctx: CanvasRenderingContext2D, slide: ContentSlide, width
   drawBrandPair(ctx, brand, width, height, timeMs)
   const size = width * .075
   const scale = width / shareCardLayout.width
-  const labelY = height - height * .1 - shareCardLayout.scoreLabelSize * scale
+  const labelY = height - height * .055 - shareCardLayout.scoreLabelSize * scale
   const valueY = labelY - (shareCardLayout.scoreSize + 12) * scale
   const headlineBottom = valueY - width * .05
   const headline = slide.headline.trim() && slide.headline.length <= 48 ? slide.headline : 'Time to ascend.'
@@ -241,13 +241,15 @@ function drawMobileShare(ctx: CanvasRenderingContext2D, slide: ContentSlide, ove
     const percent = slide.currentScore.trim() ? estimatedPopulationTopPercent(Number(slide.currentScore)) : null
     if (percent !== null) {
       ctx.fillStyle = 'rgba(255,255,255,.14)'; ctx.strokeStyle = 'rgba(255,255,255,.35)'; ctx.lineWidth = scale
-      roundedRect(ctx, 410 * scale, 100 * scale, 260 * scale, 82 * scale, 48 * scale); ctx.fill(); ctx.stroke()
+      ctx.font = `800 ${28 * scale}px "Mogging Share", Arial`
+      const pillWidth = ctx.measureText(`Top ${percent}%`).width + 32 * scale
+      roundedRect(ctx, (width - pillWidth) / 2, 100 * scale, pillWidth, 82 * scale, 41 * scale); ctx.fill(); ctx.stroke()
       ctx.textBaseline = 'middle'
       text(`Top ${percent}%`, width / 2, 141 * scale, 28, 'center')
       ctx.textBaseline = 'top'
     }
   })
-  const valueTop = height - height * .1 - shareCardLayout.scoreSize * scale
+  const valueTop = height - height * .055 - shareCardLayout.scoreSize * scale
   withEnter(ctx, enter(timeMs, 1050, 520), () => {
     text('TOTAL SCORE', inset, valueTop - 43 * scale, shareCardLayout.scoreLabelSize)
     text(formatShareScore(slide.currentScore), inset - 8 * scale, valueTop, shareCardLayout.scoreSize)
@@ -275,10 +277,10 @@ function drawPsl(ctx: CanvasRenderingContext2D, slide: ContentSlide, width: numb
     ctx.font = `700 ${width * .042}px Arial`; ctx.fillStyle = '#fff'; ctx.textAlign = 'center'
     ctx.fillText('Mogging: Face Rating', width / 2, height * .08 + width * .11)
   })
-  const x = width * .05, y = height * .67, cardWidth = width * .45, cardHeight = height * .23
+  const x = width * .05, y = height * .715, cardWidth = width * .435, cardHeight = height * .23
   const psl = slide.categoryScores.find(score => score.categoryId === 'psl')?.value || toPsl(slide.currentScore)
   drawScoreCard(ctx, 'PSL', psl, x, y, cardWidth, cardHeight, '#a3e635', enter(timeMs, 1020, 520))
-  drawScoreCard(ctx, 'Potential', toPsl(slide.potentialScore), x + cardWidth, y, cardWidth, cardHeight, '#67e8f9', enter(timeMs, 1180, 520))
+  drawScoreCard(ctx, 'Potential', toPsl(slide.potentialScore), x + cardWidth + width * .03, y, cardWidth, cardHeight, '#67e8f9', enter(timeMs, 1180, 520))
 }
 
 function toPsl(value: string) { return value.trim() ? (Number(value) * .8).toFixed(1) : '' }
@@ -288,9 +290,9 @@ function drawHeader(ctx: CanvasRenderingContext2D, eyebrow: string, template: st
 function drawScoreRows(ctx: CanvasRenderingContext2D, slide: ContentSlide, width: number, height: number, timeMs: number) {
   const rows = slide.categoryScores.filter(row => row.categoryId !== 'overall')
     .toSorted((a, b) => Number(b.categoryId === slide.categoryId) - Number(a.categoryId === slide.categoryId)).slice(0, 3)
-  const padding = width * .04, rowHeight = width * .065
-  const boxHeight = width * .18 + rows.length * rowHeight
-  const x = width * .05, y = height * .9 - boxHeight, boxWidth = width * .9
+  const padding = width * .045, rowHeight = width * .085
+  const boxHeight = width * .205 + rows.length * rowHeight
+  const x = width * .05, y = height * .945 - boxHeight, boxWidth = width * .9
   ctx.fillStyle = 'rgba(0,0,0,.78)'; roundedRect(ctx, x, y, boxWidth, boxHeight, width * .025); ctx.fill()
   withEnter(ctx, enter(timeMs, 760, 520), () => {
     for (const [index, score] of [slide.currentScore, slide.potentialScore].entries()) {
@@ -298,14 +300,14 @@ function drawScoreRows(ctx: CanvasRenderingContext2D, slide: ContentSlide, width
       ctx.textAlign = index === 0 ? 'left' : 'right'
       ctx.fillStyle = 'rgba(255,255,255,.7)'; ctx.font = `600 ${width * .022}px Arial`
       ctx.fillText(index === 0 ? 'SCORE' : 'POTENTIAL', scoreX, y + padding * .7)
-      ctx.fillStyle = index === 0 ? '#fff' : '#67e8f9'; ctx.font = `600 ${width * .06}px Arial`
+      ctx.fillStyle = index === 0 ? '#fff' : '#67e8f9'; ctx.font = `600 ${width * .075}px Arial`
       ctx.fillText(displayScore(score), scoreX, y + padding * 1.4)
     }
   })
   rows.forEach((row, index) => {
     const delay = 920 + index * 60
     withEnter(ctx, enter(timeMs, delay, 480), () => {
-      const rowY = y + width * .155 + index * rowHeight
+      const rowY = y + width * .19 + index * rowHeight
       ctx.textAlign = 'left'; ctx.fillStyle = '#fff'; ctx.font = `500 ${width * .022}px Arial`
       ctx.fillText(row.label, x + padding, rowY, width * .28)
       const barX = x + width * .34, barWidth = boxWidth * .39, barHeight = width * .009
@@ -316,7 +318,7 @@ function drawScoreRows(ctx: CanvasRenderingContext2D, slide: ContentSlide, width
     })
   })
 }
-function drawScoreCard(ctx: CanvasRenderingContext2D, label: string, value: string, x: number, y: number, width: number, height: number, accent: string, progress: number) { withEnter(ctx, progress, () => { ctx.fillStyle = 'rgba(0,0,0,.72)'; roundedRect(ctx, x, y, width, height, width * .025); ctx.fill(); ctx.strokeStyle = 'rgba(255,255,255,.25)'; ctx.stroke(); ctx.fillStyle = 'rgba(255,255,255,.55)'; ctx.font = `600 ${width * .055}px monospace`; ctx.fillText(label.toUpperCase(), x + width * .09, y + height * .12); ctx.fillStyle = '#fff'; ctx.font = `600 ${width * .2}px Arial`; ctx.fillText(displayScore(value), x + width * .09, y + height * .34); ctx.fillStyle = 'rgba(255,255,255,.18)'; roundedRect(ctx, x + width * .09, y + height * .76, width * .82, height * .055, height * .03); ctx.fill(); ctx.fillStyle = accent; roundedRect(ctx, x + width * .09, y + height * .76, width * .82 * scoreRatio(value, 8) * progress, height * .055, height * .03); ctx.fill() }) }
+function drawScoreCard(ctx: CanvasRenderingContext2D, label: string, value: string, x: number, y: number, width: number, height: number, accent: string, progress: number) { withEnter(ctx, progress, () => { ctx.fillStyle = 'rgba(0,0,0,.72)'; roundedRect(ctx, x, y, width, height, width * .075); ctx.fill(); ctx.strokeStyle = 'rgba(255,255,255,.25)'; ctx.stroke(); ctx.fillStyle = 'rgba(255,255,255,.55)'; ctx.font = `600 ${width * .055}px monospace`; ctx.fillText(label.toUpperCase(), x + width * .09, y + height * .12); ctx.fillStyle = '#fff'; ctx.font = `600 ${width * .2}px Arial`; ctx.fillText(displayScore(value), x + width * .09, y + height * .34); ctx.fillStyle = 'rgba(255,255,255,.18)'; roundedRect(ctx, x + width * .09, y + height * .76, width * .82, height * .055, height * .03); ctx.fill(); ctx.fillStyle = accent; roundedRect(ctx, x + width * .09, y + height * .76, width * .82 * scoreRatio(value, 8) * progress, height * .055, height * .03); ctx.fill() }) }
 
 function withEnter(ctx: CanvasRenderingContext2D, progress: number, draw: () => void) { if (progress <= 0) return; ctx.save(); ctx.globalAlpha = progress; ctx.translate(0, (1 - progress) * 8); draw(); ctx.restore() }
 type EasingCurve = [number, number, number, number]

@@ -40,8 +40,8 @@ export function drawScoreReveal(ctx: CanvasRenderingContext2D, slide: ContentSli
   const compact = height / width < 1.4
   const rowHeight = compact ? 84 : 112
   const panelHeight = rows ? rows * rowHeight + (compact ? 36 : 48) : 0
-  const panelTop = compact ? 646 : 918
-  const contentHeight = panelTop + panelHeight + (compact ? 132 : 168)
+  const panelTop = compact ? 680 : 918
+  const contentHeight = panelTop + panelHeight + 24
   const scale = Math.min(width / 1000, height / (contentHeight + height * .18))
   ctx.save()
   ctx.fillStyle = '#000'
@@ -78,8 +78,8 @@ export function drawScoreReveal(ctx: CanvasRenderingContext2D, slide: ContentSli
   const label = category?.label ?? slide.metricLabel
   const maximum = categoryScoreMax(slide.categoryId)
   entrance(ctx, time, 850, () => text(ctx, /score$/i.test(label) ? label : `${label} score`, 450, compact ? 419 : 588, 32, '#fff', 'center', 600))
-  ring(ctx, category?.value || slide.currentScore, 'Current', 315, compact ? 500 : 720, green, time, 1000, maximum)
-  ring(ctx, revealPotential(slide), 'Potential', 585, compact ? 500 : 720, cyan, time, 1160, maximum)
+  ring(ctx, category?.value || slide.currentScore, 'Current', 315, compact ? 534 : 720, green, time, 1000, maximum)
+  ring(ctx, revealPotential(slide), 'Potential', 585, compact ? 534 : 720, cyan, time, 1160, maximum)
 
   if (rows) {
     entrance(ctx, time, 1550, () => {
@@ -101,10 +101,6 @@ export function drawScoreReveal(ctx: CanvasRenderingContext2D, slide: ContentSli
       })
     })
   }
-  entrance(ctx, time, 2900, () => {
-    text(ctx, 'Get your score on', 450, panelTop + panelHeight + (compact ? 56 : 77), 28, '#d4d4d8', 'center', 500)
-    text(ctx, 'mogging.com', 450, panelTop + panelHeight + (compact ? 102 : 125), 44, '#fff', 'center', 700)
-  })
   ctx.restore()
 }
 
