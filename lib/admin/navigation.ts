@@ -12,6 +12,7 @@ export const adminNavigation = [
   { label: 'Analytics', items: [
     { href: '/admin/analytics', title: 'Product overview', description: 'Understand daily activity and the path to value.', section: 'Overview', icon: 'overview' },
     { href: '/admin/analytics/acquisition', title: 'Acquisition', description: 'Where visitors come from and what happens next.', section: 'Acquisition', icon: 'accounts' },
+    { href: '/admin/analytics/experiments', title: 'A/B tests', description: 'Compare homepage designs and inspect every experiment.', section: 'Experiments', icon: 'overview' },
     { href: '/admin/analytics/onboarding', title: 'Onboarding', description: 'Find where users continue, hesitate, or leave.', section: 'Onboarding', icon: 'video-submissions' },
     { href: '/admin/analytics/revenue', title: 'Revenue', description: 'Verified purchases, refunds, and subscription events.', section: 'Revenue', icon: 'payouts' },
     { href: '/admin/analytics/retention', title: 'Retention', description: 'See whether users return and build lasting value.', section: 'Retention', icon: 'overview' },

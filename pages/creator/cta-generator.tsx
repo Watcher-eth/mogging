@@ -48,7 +48,7 @@ export default function CtaGeneratorPage() {
   const photoUrls = useRef(new Set<string>())
   useEffect(() => { const urls = photoUrls.current; return () => { urls.forEach(url => URL.revokeObjectURL(url)); urls.clear() } }, [])
   const [images, setImages] = useState<GeneratorImage[]>([])
-  const [formatId, setFormatId] = useState<OutputFormatId>('vertical')
+  const [formatId, setFormatId] = useState<OutputFormatId>('square')
   const [tone, setTone] = useState<Tone>('curious')
   const [selectedCategories, setSelectedCategories] = useState<string[]>(['eyes', 'jaw', 'symmetry', 'overall'])
   const [featuredCategory, setFeaturedCategory] = useState('eyes')

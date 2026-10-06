@@ -190,17 +190,18 @@ function drawTemplate(ctx: CanvasRenderingContext2D, slide: ContentSlide, width:
 
 function drawEditorial(ctx: CanvasRenderingContext2D, slide: ContentSlide, width: number, height: number, timeMs: number, brand: RevealBrand | null) {
   drawBrandPair(ctx, brand, width, height, timeMs)
-  const size = width * .085
+  const size = width * .075
+  const scale = width / shareCardLayout.width
+  const labelY = height - height * .1 - shareCardLayout.scoreLabelSize * scale
+  const valueY = labelY - (shareCardLayout.scoreSize + 12) * scale
+  const headlineBottom = valueY - width * .05
   const headline = slide.headline.trim() && slide.headline.length <= 48 ? slide.headline : 'Time to ascend.'
   const lines = wrapText(ctx, headline, width * .86, `500 ${size}px Arial`).slice(0, 2)
   withEnter(ctx, enter(timeMs, 850, 520), () => {
     ctx.fillStyle = '#fff'; ctx.font = `500 ${size}px Arial`; ctx.textAlign = 'center'
-    lines.forEach((line, index) => ctx.fillText(line, width / 2, height * .81 - lines.length * size * 1.04 + index * size * 1.04))
+    lines.forEach((line, index) => ctx.fillText(line, width / 2, headlineBottom - lines.length * size * 1.04 + index * size * 1.04))
   })
   withEnter(ctx, enter(timeMs, 1050, 520), () => {
-    const scale = width / shareCardLayout.width
-    const labelY = height - shareCardLayout.footerBottom * scale
-    const valueY = labelY - (shareCardLayout.scoreSize + 12) * scale
     for (const [index, score] of [slide.currentScore, slide.potentialScore].entries()) {
       const x = index === 0 ? shareCardLayout.inset * scale : width - shareCardLayout.inset * scale
       ctx.textAlign = index === 0 ? 'left' : 'right'
@@ -246,7 +247,7 @@ function drawMobileShare(ctx: CanvasRenderingContext2D, slide: ContentSlide, ove
       ctx.textBaseline = 'top'
     }
   })
-  const valueTop = height - (shareCardLayout.footerBottom + shareCardLayout.scoreSize * .82) * scale
+  const valueTop = height - height * .1 - shareCardLayout.scoreSize * scale
   withEnter(ctx, enter(timeMs, 1050, 520), () => {
     text('TOTAL SCORE', inset, valueTop - 43 * scale, shareCardLayout.scoreLabelSize)
     text(formatShareScore(slide.currentScore), inset - 8 * scale, valueTop, shareCardLayout.scoreSize)
@@ -260,7 +261,7 @@ function formatShareScore(value: string) { return value.trim() && Number.isFinit
 function drawBrandPair(ctx: CanvasRenderingContext2D, brand: RevealBrand | null, width: number, height: number, timeMs: number) {
   withEnter(ctx, enter(timeMs, 420, 520), () => {
     const size = width * .085, gap = width * .025
-    const x = (width - size * 2 - gap) / 2, y = height * .055
+    const x = (width - size * 2 - gap) / 2, y = height * .08
     if (brand) {
       ctx.drawImage(brand.logo, x, y, size, size)
       ctx.drawImage(brand.appStore, x + size + gap, y, size, size)
@@ -272,9 +273,9 @@ function drawPsl(ctx: CanvasRenderingContext2D, slide: ContentSlide, width: numb
   drawBrandPair(ctx, brand, width, height, timeMs)
   withEnter(ctx, enter(timeMs, 580, 520), () => {
     ctx.font = `700 ${width * .042}px Arial`; ctx.fillStyle = '#fff'; ctx.textAlign = 'center'
-    ctx.fillText('Mogging: Face Rating', width / 2, height * .055 + width * .11)
+    ctx.fillText('Mogging: Face Rating', width / 2, height * .08 + width * .11)
   })
-  const x = width * .05, y = height * .76, cardWidth = width * .45, cardHeight = height * .19
+  const x = width * .05, y = height * .67, cardWidth = width * .45, cardHeight = height * .23
   const psl = slide.categoryScores.find(score => score.categoryId === 'psl')?.value || toPsl(slide.currentScore)
   drawScoreCard(ctx, 'PSL', psl, x, y, cardWidth, cardHeight, '#a3e635', enter(timeMs, 1020, 520))
   drawScoreCard(ctx, 'Potential', toPsl(slide.potentialScore), x + cardWidth, y, cardWidth, cardHeight, '#67e8f9', enter(timeMs, 1180, 520))
@@ -289,7 +290,7 @@ function drawScoreRows(ctx: CanvasRenderingContext2D, slide: ContentSlide, width
     .toSorted((a, b) => Number(b.categoryId === slide.categoryId) - Number(a.categoryId === slide.categoryId)).slice(0, 3)
   const padding = width * .04, rowHeight = width * .065
   const boxHeight = width * .18 + rows.length * rowHeight
-  const x = width * .05, y = height * .96 - boxHeight, boxWidth = width * .9
+  const x = width * .05, y = height * .9 - boxHeight, boxWidth = width * .9
   ctx.fillStyle = 'rgba(0,0,0,.78)'; roundedRect(ctx, x, y, boxWidth, boxHeight, width * .025); ctx.fill()
   withEnter(ctx, enter(timeMs, 760, 520), () => {
     for (const [index, score] of [slide.currentScore, slide.potentialScore].entries()) {

@@ -132,14 +132,15 @@ export function analyticsQuery(filters: AnalyticsFilters, now: Date) {
         count(*) filter (where event_name = 'report_viewed') as report_views,
         count(*) filter (where event_name = 'protocol_task_completed') as protocol_tasks
       from e group by 1 order by 1
-    ), landing_definitions(experiment_id, name) as (values ${sql.join(landingExperiments.map(({ id, name }) => sql`(${id}::text, ${name}::text)`), sql`,`)}),
+    ), landing_definitions(experiment_id, name, version) as (values ${sql.join(landingExperiments.map(({ id, name, version }) => sql`(${id}::text, ${name}::text, ${version}::text)`), sql`,`)}),
     landing_entries as materialized (
       select distinct on (properties->>'landing_id') properties->>'landing_id' as landing_id,
         properties->>'experiment_id' as experiment_id, properties->>'variant' as variant,
         coalesce(nullif(properties->>'first_utm_source',''),nullif(properties->>'referrer_host',''),'direct / unknown') as source,
         occurred_at as at
       from e where platform = 'web' and event_name = 'landing_viewed' and properties->>'path' = '/'
-        and nullif(properties->>'landing_id','') is not null and properties->>'landing_version' = '1'
+        and nullif(properties->>'landing_id','') is not null
+        and exists (select 1 from landing_definitions d where d.experiment_id = properties->>'experiment_id' and d.version = properties->>'landing_version')
         and properties->>'variant' in ('a','b')
       order by properties->>'landing_id', occurred_at
     ), landing_outcomes as materialized (
@@ -162,6 +163,7 @@ export function analyticsQuery(filters: AnalyticsFilters, now: Date) {
         count(*) filter(where l.paid) as paid_checkouts,
         count(*) filter(where l.at <= ${end}::timestamp - interval '7 days') as mature,
         count(*) filter(where l.store and l.at <= ${end}::timestamp - interval '7 days') as mature_store_clicks,
+        count(*) filter(where l.paid and l.at <= ${end}::timestamp - interval '7 days') as mature_paid_checkouts,
         count(*) filter(where l.at > ${end}::timestamp - interval '7 days') as pending,
         min(l.at) as first_exposure
       from landing_definitions d cross join (values ('a'),('b')) v(variant)

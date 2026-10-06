@@ -37,10 +37,12 @@ export function drawScoreReveal(ctx: CanvasRenderingContext2D, slide: ContentSli
   const stats = slide.categoryScores
   const columns = stats.length > 8 ? 3 : 2
   const rows = Math.ceil(stats.length / columns)
-  const panelHeight = rows ? rows * 112 + 48 : 0
-  const panelTop = 918
-  const contentHeight = panelTop + panelHeight + 168
-  const scale = Math.min(width / 1000, height / (contentHeight + 120))
+  const compact = height / width < 1.4
+  const rowHeight = compact ? 84 : 112
+  const panelHeight = rows ? rows * rowHeight + (compact ? 36 : 48) : 0
+  const panelTop = compact ? 646 : 918
+  const contentHeight = panelTop + panelHeight + (compact ? 132 : 168)
+  const scale = Math.min(width / 1000, height / (contentHeight + height * .18))
   ctx.save()
   ctx.fillStyle = '#000'
   ctx.fillRect(0, 0, width, height)
@@ -51,14 +53,15 @@ export function drawScoreReveal(ctx: CanvasRenderingContext2D, slide: ContentSli
 
   entrance(ctx, time, 80, () => {
     if (brand) {
-      ctx.drawImage(brand.logo, 354, 0, 84, 84)
-      ctx.drawImage(brand.appStore, 462, 0, 84, 84)
+      const iconSize = compact ? 56 : 84
+      ctx.drawImage(brand.logo, 450 - iconSize - 12, 0, iconSize, iconSize)
+      ctx.drawImage(brand.appStore, 462, 0, iconSize, iconSize)
     }
-    text(ctx, 'Mogging', 450, 154, 58, '#fff', 'center', 700)
+    text(ctx, 'Mogging', 450, compact ? 108 : 154, compact ? 44 : 58, '#fff', 'center', 700)
   })
 
   entrance(ctx, time, 260, () => {
-    const size = REVEAL_PORTRAIT_SIZE, x = (900 - size) / 2, y = 232
+    const size = compact ? 240 : REVEAL_PORTRAIT_SIZE, x = (900 - size) / 2, y = compact ? 148 : 232
     ctx.save()
     ctx.beginPath(); ctx.arc(450, y + size / 2, size / 2, 0, Math.PI * 2); ctx.clip()
     if (portrait) {
@@ -66,7 +69,7 @@ export function drawScoreReveal(ctx: CanvasRenderingContext2D, slide: ContentSli
       ctx.drawImage(portrait, x + (size - portrait.naturalWidth * zoom) / 2, y + (size - portrait.naturalHeight * zoom) / 2, portrait.naturalWidth * zoom, portrait.naturalHeight * zoom)
     }
     if (overlay) {
-      ctx.save(); ctx.translate(x, y); drawReportOverlay(ctx, overlay, size, Math.max(0, time - 650), false); ctx.restore()
+      ctx.save(); ctx.translate(x, y); ctx.scale(size / REVEAL_PORTRAIT_SIZE, size / REVEAL_PORTRAIT_SIZE); drawReportOverlay(ctx, overlay, REVEAL_PORTRAIT_SIZE, Math.max(0, time - 650), false); ctx.restore()
     }
     ctx.restore()
   })
@@ -74,9 +77,9 @@ export function drawScoreReveal(ctx: CanvasRenderingContext2D, slide: ContentSli
   const category = revealCategory(slide)
   const label = category?.label ?? slide.metricLabel
   const maximum = categoryScoreMax(slide.categoryId)
-  entrance(ctx, time, 850, () => text(ctx, /score$/i.test(label) ? label : `${label} score`, 450, 588, 32, '#fff', 'center', 600))
-  ring(ctx, category?.value || slide.currentScore, 'Current', 315, 720, green, time, 1000, maximum)
-  ring(ctx, revealPotential(slide), 'Potential', 585, 720, cyan, time, 1160, maximum)
+  entrance(ctx, time, 850, () => text(ctx, /score$/i.test(label) ? label : `${label} score`, 450, compact ? 419 : 588, 32, '#fff', 'center', 600))
+  ring(ctx, category?.value || slide.currentScore, 'Current', 315, compact ? 500 : 720, green, time, 1000, maximum)
+  ring(ctx, revealPotential(slide), 'Potential', 585, compact ? 500 : 720, cyan, time, 1160, maximum)
 
   if (rows) {
     entrance(ctx, time, 1550, () => {
@@ -85,7 +88,7 @@ export function drawScoreReveal(ctx: CanvasRenderingContext2D, slide: ContentSli
     })
     stats.forEach((stat, index) => {
       const cellWidth = 770 / columns
-      const x = 65 + index % columns * cellWidth, y = panelTop + 44 + Math.floor(index / columns) * 112
+      const x = 65 + index % columns * cellWidth, y = panelTop + (compact ? 30 : 44) + Math.floor(index / columns) * rowHeight
       const barWidth = cellWidth - 36
       const delay = 1650 + index * Math.min(motion.stagger, 600 / Math.max(1, stats.length))
       entrance(ctx, time, delay, () => {
@@ -99,8 +102,8 @@ export function drawScoreReveal(ctx: CanvasRenderingContext2D, slide: ContentSli
     })
   }
   entrance(ctx, time, 2900, () => {
-    text(ctx, 'Get your score on', 450, panelTop + panelHeight + 77, 28, '#d4d4d8', 'center', 500)
-    text(ctx, 'mogging.com', 450, panelTop + panelHeight + 125, 44, '#fff', 'center', 700)
+    text(ctx, 'Get your score on', 450, panelTop + panelHeight + (compact ? 56 : 77), 28, '#d4d4d8', 'center', 500)
+    text(ctx, 'mogging.com', 450, panelTop + panelHeight + (compact ? 102 : 125), 44, '#fff', 'center', 700)
   })
   ctx.restore()
 }

@@ -1,5 +1,4 @@
-import { landingExperiments } from '@/lib/analytics/landing'
-import { landingExperimentRows } from '@/lib/admin/landing'
+import { ExperimentsReport } from './experiments-report'
 import Link from 'next/link'
 import { useRouter } from 'next/router'
 import { useState } from 'react'
@@ -55,7 +54,7 @@ export default function AnalyticsAdminPage() {
   const tab = page?.section || 'Overview'
   const { mutate } = useSWRConfig()
   const days = ['1', '7', '30', '90'].includes(String(router.query.days)) ? String(router.query.days) : '30'
-  const platform = ['all', 'web', 'ios', 'android'].includes(String(router.query.platform)) ? String(router.query.platform) : 'all'
+  const platform = tab === 'Experiments' ? 'all' : ['all', 'web', 'ios', 'android'].includes(String(router.query.platform)) ? String(router.query.platform) : 'all'
   const access = useSWR<{ unlocked: boolean }>('/api/admin/creator/session', apiGet, { shouldRetryOnError: false })
   const report = useSWR<AnalyticsDashboard>(access.data?.unlocked && tab !== 'Reliability' ? `/api/admin/analytics?days=${days}&platform=${platform}` : null, apiGet,
     { dedupingInterval: 60_000, revalidateOnFocus: false, shouldRetryOnError: false })
@@ -72,7 +71,7 @@ export default function AnalyticsAdminPage() {
     <div className="admin-report-toolbar">
       <div className="flex flex-wrap items-center gap-3">
         <AnalyticsSelect label="Period" value={days} onChange={value => filter('days', value)} options={[1,7,30,90].map(day => ({value:String(day),label:day === 1 ? "Last 24 hours" : `Last ${day} days`}))} />
-        {tab !== 'Reliability'?<AnalyticsSelect label="Platform" value={platform} onChange={value => filter('platform', value)} options={['all','web','ios','android'].map(value => ({value,label:value === 'all' ? 'All platforms' : value === 'ios' ? 'iOS' : label(value)}))}/>:null}
+        {!['Reliability','Experiments'].includes(tab)?<AnalyticsSelect label="Platform" value={platform} onChange={value => filter('platform', value)} options={['all','web','ios','android'].map(value => ({value,label:value === 'all' ? 'All platforms' : value === 'ios' ? 'iOS' : label(value)}))}/>:null}
         <Button variant="ghost" className="size-10 p-0 text-[#73777d]" aria-label="Refresh analytics" disabled={report.isValidating} onClick={() => void (tab === 'Reliability'?mutate(`/api/admin/reliability?days=${days}`):report.mutate())}><RefreshCw className={`size-4 ${report.isValidating ? 'animate-spin' : ''}`} /></Button>
       </div>
       <p className="text-xs text-[#858a91]" aria-live="polite">{data ? `Updated ${new Date(data.generatedAt).toLocaleTimeString('en-GB', { timeZone: 'UTC', hour: '2-digit', minute: '2-digit' })} UTC` : 'UTC reporting'} · Production</p>
@@ -81,6 +80,7 @@ export default function AnalyticsAdminPage() {
     {tab === 'Reliability'?<ReliabilityReport days={Number(days)}/>:!data ? !report.error ? <Notice>Loading reporting snapshot…</Notice> : null : <>
       {!data.summary.events ? <Notice>No production behavior events in this window. Check ingestion and the released app version; billing may still be available.</Notice> : null}
       {tab === 'Overview' ? <Overview data={data} days={Number(days)} /> : null}
+      {tab === 'Experiments' ? <ExperimentsReport data={data} /> : null}
       {tab === 'Acquisition' ? <Acquisition data={data} days={Number(days)} /> : null}
       {tab === 'Onboarding' ? <Onboarding data={data} days={Number(days)} /> : null}
       {tab === 'Revenue' ? <Revenue data={data} days={Number(days)} /> : null}
@@ -125,11 +125,9 @@ function Acquisition({ data, days }: { data: AnalyticsDashboard; days: number })
   return <>
     <DailyChart data={data} days={days} title="Acquisition activity" metrics={acquisitionMetrics} />
     <div className="admin-section-grid"><Funnel title="Homepage → App Store click" rows={data.web} /><Panel title="Leading sources" description="Devices observed by source; redirects are not downloads." note="Top first-touch creator link IDs or UTM sources and campaigns. A device can appear in multiple rows; these are milestone counts, not joined attribution conversion rates."><Bars rows={data.acquisition.slice(0, 8).map(row => ({ label: `${row.source}${row.campaign !== '—' ? ` · ${row.campaign}` : ''}`, value: Number(row.actors), detail: `${count(row.first_opens)} first opens · ${count(row.purchase_actors)} purchasing devices` }))} /></Panel></div>
-    <Panel title="Landing page experiments" description="Primary goal: App Store clicks. Secondary goal: verified paid checkout in the browser." note="Two mutually exclusive tests with four equally allocated arms. Visitors keep their assignment for 90 days. Outcomes follow the first homepage exposure in this window for up to seven days; every observation must be inside the selected window. Recent visitors are pending. Store clicks are not installs. Intervals use mature visitors only and are 97.5% per test for two planned comparisons. Rates in small cohorts are directional, not winners.">
-      {landingExperiments.map(experiment => <div key={experiment.id} className="mb-8 last:mb-0"><h3 className="mb-3 text-sm font-semibold">{experiment.name}</h3><p className="mb-4 text-xs text-[#73777d]">{experiment.id} · 50% of traffic · A/B split 50/50 · Collect data for at least 14 days and 750 mature visitors per arm before the planned decision.</p><Table rows={landingExperimentRows(data.landingExperiments ?? [], experiment.id)} columns={['variant','visitors','store_clicks','observed_store_rate','mature','pending','mature_store_rate','interval','browser_starts','paywalls','checkouts','paid_checkouts']} /></div>)}
-    </Panel>
+    <Panel title="Homepage A/B tests" description="Compare the old and new homepage and inspect historical experiments."><Link href="/admin/analytics/experiments" className="text-sm font-medium text-[#00A8EF]">View all A/B tests →</Link></Panel>
     <div className="admin-section-grid"><Panel title="Homepage section reach" description="Unique visitors who saw at least 25% of each section."><Table rows={data.landingSections ?? []} columns={['section','visitors']} /></Panel><Panel title="Homepage CTA placements" description="Unique clickers by destination and button location." note="A visitor can click multiple placements; these rows must not be added together."><Table rows={data.landingPlacements ?? []} columns={['placement','destination','visitors']} /></Panel></div>
-    <Panel title="Homepage sources" description="Sources for visitors exposed to the new homepage." note="Source is first UTM source, otherwise the recorded referrer, otherwise direct / unknown. Paid checkouts are confirmed by the Stripe webhook."><Table rows={data.landingSources ?? []} columns={['source','visitors','store_clicks','web_starts','paid_checkouts']} /></Panel>
+    <Panel title="Homepage sources" description="Sources for exposed homepage visitors." note="Source is first UTM source, otherwise the recorded referrer, otherwise direct / unknown. Paid checkouts are confirmed by the Stripe webhook."><Table rows={data.landingSources ?? []} columns={['source','visitors','store_clicks','web_starts','paid_checkouts']} /></Panel>
     <EventReport data={data} section="Acquisition" />
     <Panel title="Source detail" description="Compare each observed source and campaign."><Table rows={data.acquisition} columns={['source','campaign','actors','first_opens','store_redirects','purchase_actors']} /><p className="mt-5 text-sm text-[#73777d]">For verified creator credit, open <Link href="/admin/attribution" className="text-[#008ac5] underline underline-offset-4">creator attribution</Link>.</p></Panel>
   </>

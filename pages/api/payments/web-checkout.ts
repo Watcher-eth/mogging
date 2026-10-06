@@ -1,4 +1,4 @@
-import { LANDING_COOKIE, landingProperties, parseLandingAssignment } from '@/lib/analytics/landing'
+import { readLandingCookie, serializeLandingAssignment, landingProperties } from '@/lib/analytics/landing'
 import { monitorBackend } from '@/lib/reliability/monitor'
 import type { NextApiRequest, NextApiResponse } from 'next'
 import { z } from 'zod'
@@ -27,7 +27,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
       throw new ApiError(503, 'Payments are not configured')
     }
 
-    const landingAssignment = parseLandingAssignment(req.cookies[LANDING_COOKIE])
+    const landingAssignment = readLandingCookie(req.headers.cookie ?? '')
     const input = parseBody(checkoutSchema, req.body)
     const accountId = await getRequestUserId(req, res)
     if (!accountId) throw new ApiError(401, 'Sign in before starting checkout')
@@ -63,8 +63,8 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
             const sessions = await getStripe().checkout.sessions.list({ customer: customer!, status: 'open', limit: 100 })
             const pending = sessions.data.filter(session => session.metadata?.creatorDiscount === CREATOR_MONTHLY_COUPON && session.url)
             for (const session of pending) {
-              if (session.metadata?.creatorClickId === attribution.clickId && session.metadata?.mobileInstallId === input.mobileInstallId) return session
-              // A changed creator or installation must not inherit the previous checkout's credit.
+              if (session.metadata?.creatorClickId === attribution.clickId && session.metadata?.mobileInstallId === input.mobileInstallId && session.metadata?.landingAssignment === (landingAssignment ? serializeLandingAssignment(landingAssignment) : undefined)) return session
+              // Keep creator, installation, and experiment credit with the matching checkout.
               await getStripe().checkout.sessions.expire(session.id)
             }
             const coupon = await getStripe().coupons.retrieve(CREATOR_MONTHLY_COUPON)
@@ -84,7 +84,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
           mobileInstallId: input.mobileInstallId,
           source,
           activationCode,
-          ...(landingAssignment ? { landingAssignment: req.cookies[LANDING_COOKIE]! } : {}),
+          ...(landingAssignment ? { landingAssignment: serializeLandingAssignment(landingAssignment) } : {}),
           accountId,
           userId: accountId,
           ...attributionMetadata,

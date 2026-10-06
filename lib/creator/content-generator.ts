@@ -1,9 +1,9 @@
 import { getReportOverlayPreset } from '@/lib/creator/mobile-overlay-engine/report-presets'
 
 export const outputFormats = {
-  vertical: { label: 'TikTok / Reels / Stories', width: 1080, height: 1920 },
+  vertical: { label: 'Vertical video / Stories', width: 1080, height: 1920 },
   portrait: { label: 'Instagram portrait', width: 1080, height: 1350 },
-  square: { label: 'Square', width: 1080, height: 1080 },
+  square: { label: 'TikTok photo / Square (recommended)', width: 1080, height: 1080 },
 } as const
 
 export type OutputFormatId = keyof typeof outputFormats

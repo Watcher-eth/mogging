@@ -1,7 +1,8 @@
+import dynamic from "next/dynamic";
+import { useLandingTracking } from "@/components/landing/use-landing-tracking";
 import type { GetServerSideProps } from "next";
 import Image from "next/image";
 import Link from "next/link";
-import { useRouter } from "next/router";
 import { ArrowRight, Plus } from "lucide-react";
 import {
   ScanPreview,
@@ -14,142 +15,36 @@ import { AnimatePresence, LazyMotion, domAnimation, useReducedMotion } from "mot
 import * as m from "motion/react-m";
 import { WebCheckout } from "@/components/landing/web-checkout";
 import { EvaluationStats } from "@/components/landing/evaluation-stats";
-import { useEffect, useRef, useState } from "react";
-import { toast } from "sonner";
+import { useState } from "react";
 import { SeoHead } from "@/components/app/seo-head";
 import { appStoreUrl, siteUrl } from "@/lib/seo";
 import {
-  flushWebAnalytics,
-  setLandingAnalytics,
-  trackWebEvent,
-} from "@/lib/analytics/client";
-import {
   createLandingAssignment,
+  isActiveLandingAssignment,
   LANDING_COOKIE,
   landingArms,
-  landingProperties,
   parseLandingAssignment,
   serializeLandingAssignment,
   type LandingAssignment,
 } from "@/lib/analytics/landing";
 
-const heroCopy = {
-  a: {
-    title: "Ascend to your true potential.",
-    description:
-      "Better skin. A stronger look. More confidence. Discover what’s holding your looks back—and start ascending with a Mogging evaluation and a Protocol built for you.",
-  },
-  b: {
-    title: "Find your potential. Start mogging.",
-    description:
-      "Your next level starts with knowing what to improve. Evaluate your jawline, eyes, skin, and more, then build a stronger look with your personalized Mogging Protocol.",
-  },
-};
+const LegacyHomepage = dynamic(() => import("@/components/landing/legacy-homepage"));
+const copy = { title: "Ascend to your true potential.", description: "Better skin. A stronger look. More confidence. Discover what’s holding your looks back—and start ascending with a Mogging evaluation and a Protocol built for you." };
 
 type Props = { assignment: LandingAssignment; preview: boolean };
 
-export default function HomePage({ assignment, preview }: Props) {
-  const router = useRouter();
+export default function HomePage(props: Props) {
+  return props.assignment.arm === "homepage_a" ? <LegacyHomepage {...props} /> : <NewHomepage {...props} />;
+}
+
+function NewHomepage({ assignment, preview }: Props) {
   const reduced = useReducedMotion();
   const entrance = { initial: { opacity: reduced ? 1 : 0, y: reduced ? 0 : 24 }, whileInView: { opacity: 1, y: 0 }, viewport: { once: true, amount: .12 }, transition: { duration: reduced ? 0 : .75, ease: [.16, 1, .3, 1] as [number, number, number, number] } };
-  const heroButton = useRef<HTMLAnchorElement>(null);
-  const sections = useRef<HTMLDivElement>(null);
-  const [stickyVisible, setStickyVisible] = useState(false);
-  const copy = heroCopy[assignment.arm === "hero_b" ? "b" : "a"];
-
-  useEffect(() => {
-    // Preserve links from older Stripe receipts; activation has one owner.
-    if (
-      router.query.checkout === "success" &&
-      typeof router.query.session_id === "string"
-    ) {
-      void router.replace(
-        `/app/handoff?session_id=${encodeURIComponent(router.query.session_id)}`,
-      );
-    } else if (router.query.checkout === "cancelled") {
-      toast.error(
-        "Checkout was cancelled. You can try again when you are ready.",
-      );
-    }
-  }, [router]);
-
-  useEffect(() => {
-    if (preview) return;
-    setLandingAnalytics(assignment);
-    let exposed = false;
-    const expose = () => {
-      if (exposed || document.visibilityState !== "visible") return;
-      exposed = true;
-      trackWebEvent("landing_viewed", {
-        ...landingProperties(assignment),
-        path: "/",
-        surface: "landing",
-      });
-    };
-    expose();
-    document.addEventListener("visibilitychange", expose);
-    const seen = new Set<string>();
-    const observer = new IntersectionObserver(
-      (entries) => {
-        if (!exposed || document.visibilityState !== "visible") return;
-        for (const entry of entries) {
-          const section = (entry.target as HTMLElement).dataset.landingSection;
-          if (!entry.isIntersecting || !section || seen.has(section)) continue;
-          seen.add(section);
-          trackWebEvent("landing_section_viewed", {
-            ...landingProperties(assignment),
-            path: "/",
-            surface: "landing",
-            placement: section,
-          });
-          observer.unobserve(entry.target);
-        }
-      },
-      { threshold: 0.25 },
-    );
-    sections.current
-      ?.querySelectorAll("[data-landing-section]")
-      .forEach((section) => observer.observe(section));
-    return () => {
-      document.removeEventListener("visibilitychange", expose);
-      observer.disconnect();
-    };
-  }, [assignment, preview]);
-
-  useEffect(() => {
-    if (assignment.arm !== "download_b" || !heroButton.current) return;
-    const observer = new IntersectionObserver(([entry]) => {
-      // Show only after the hero CTA has passed above the viewport, never before it.
-      setStickyVisible(
-        !entry.isIntersecting && entry.boundingClientRect.bottom < 0,
-      );
-    });
-    observer.observe(heroButton.current);
-    return () => observer.disconnect();
-  }, [assignment.arm]);
-
-  function trackDestination(
-    destination: "app_store" | "web_analysis",
-    placement: string,
-  ) {
-    if (preview) return;
-    const properties = {
-      ...landingProperties(assignment),
-      path: "/",
-      surface: "landing",
-      destination,
-      placement,
-    };
-    trackWebEvent("landing_cta_clicked", properties);
-    if (destination === "app_store")
-      trackWebEvent("app_store_redirected", properties);
-    void flushWebAnalytics();
-  }
+  const { sections, trackDestination } = useLandingTracking(assignment, preview);
 
   function downloadButton(placement: string, compact = false) {
     return (
       <a
-        ref={placement === "hero" ? heroButton : undefined}
         href={appStoreUrl}
         onClick={() => trackDestination("app_store", placement)}
         className={`inline-flex items-center justify-center gap-3 rounded-full bg-[#09090b] font-semibold text-white transition-transform duration-300 [transition-timing-function:cubic-bezier(0.16,1,0.3,1)] hover:scale-[1.035] active:scale-[0.98] motion-reduce:transform-none focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-black ${compact ? "h-12 px-5 text-sm" : "h-14 w-full px-7 text-base sm:w-auto"}`}
@@ -187,7 +82,7 @@ export default function HomePage({ assignment, preview }: Props) {
         }}
       />
       <main
-        className={`overflow-hidden bg-white text-zinc-950 ${assignment.arm === "download_b" ? "pb-24" : ""}`}
+        className="overflow-hidden bg-white text-zinc-950"
       >
         <m.section {...entrance} initial={false} className="mx-auto grid max-w-6xl items-center px-6 pb-14 pt-6 sm:px-10 lg:min-h-[730px] lg:grid-cols-2 lg:gap-24 lg:py-12">
           <div className="text-center lg:text-left">
@@ -376,27 +271,7 @@ export default function HomePage({ assignment, preview }: Props) {
             {downloadButton("footer")}
           </m.section>
         </div>
-        {stickyVisible && (
-          <aside
-            aria-label="Download Mogging"
-            className="fixed inset-x-0 bottom-0 z-50 flex items-center justify-between gap-4 border-t border-zinc-200 bg-white/95 px-5 pb-[max(12px,env(safe-area-inset-bottom))] pt-3 backdrop-blur-xl sm:inset-x-auto sm:bottom-5 sm:right-5 sm:rounded-[1.5rem] sm:border sm:pb-3 sm:shadow-[0_8px_40px_#00000012]"
-          >
-            <div className="flex items-center gap-3">
-              <Image
-                src="/app-store-icon.png"
-                alt=""
-                width={40}
-                height={40}
-                className="rounded-xl"
-              />
-              <div>
-                <p className="text-sm font-semibold">Mogging</p>
-                <p className="text-xs text-zinc-500">Your face. Your plan.</p>
-              </div>
-            </div>
-            {downloadButton("persistent", true)}
-          </aside>
-        )}
+
       </main>
     </LazyMotion>
   );
@@ -474,16 +349,18 @@ export const getServerSideProps: GetServerSideProps<Props> = async ({
     landingArms.includes(query.landing_preview as (typeof landingArms)[number])
       ? query.landing_preview
       : null;
-  const existing = parseLandingAssignment(req.cookies[LANDING_COOKIE]);
+  const automated = /bot\b|crawler|spider|slurp|facebookexternalhit|bingpreview|headlesschrome|lighthouse/i.test(req.headers["user-agent"] ?? "");
+  const saved = parseLandingAssignment(req.cookies[LANDING_COOKIE]);
+  const existing = isActiveLandingAssignment(saved) ? saved : null;
   const assignment = previewArm
     ? { id: crypto.randomUUID(), arm: previewArm as LandingAssignment["arm"] }
-    : (existing ?? createLandingAssignment(crypto.randomUUID()));
+    : automated ? { id: crypto.randomUUID(), arm: "homepage_b" as const } : (existing ?? createLandingAssignment(crypto.randomUUID()));
   // Render the assigned content on the server: no variant flash or client-side fetch.
   res.setHeader("Cache-Control", "private, no-store");
-  if (!previewArm && !existing)
+  if (!previewArm && !automated && !existing)
     res.setHeader(
       "Set-Cookie",
       `${LANDING_COOKIE}=${serializeLandingAssignment(assignment)}; Path=/; Max-Age=7776000; SameSite=Lax${process.env.NODE_ENV === "production" ? "; Secure" : ""}`,
     );
-  return { props: { assignment, preview: Boolean(previewArm) } };
+  return { props: { assignment, preview: Boolean(previewArm) || automated } };
 };
