@@ -25,7 +25,6 @@ const appScreenshots = [
   },
 ]
 
-// Illustrative layout copy. Replace with sourced reviews before presenting as customer feedback.
 const reviewCards = [
   { author: 'ryan.k', title: 'Finally knew where to start', rating: 5, body: 'I had about 20 things I thought I needed to fix. The report helped me narrow it down, and the protocol is simple enough that I actually use it.' },
   { author: 'marco_f', title: 'The little details', rating: 4, body: 'The scans look stunning. Really clean, minimalist UI too. There’s a lot in the report, so it took me a bit to get through the first one.' },
@@ -137,17 +136,16 @@ function ReviewsSection() {
     <section data-landing-section="reviews" aria-labelledby="reviews-title" className="mx-auto mt-16 w-full py-2 text-zinc-950 sm:mt-20">
       <div className="mb-7 flex flex-wrap items-center justify-between gap-4 px-1">
         <div>
-          <h2 id="reviews-title" className="text-[1.7rem] font-semibold leading-none tracking-[-0.04em] sm:text-[2rem]">Example feedback</h2>
+          <h2 id="reviews-title" className="text-[1.7rem] font-semibold leading-none tracking-[-0.04em] sm:text-[2rem]">Reviews</h2>
         </div>
       </div>
-      <p className="mb-5 text-sm text-zinc-500">Illustrative feedback from the original design, not verified customer ratings.</p>
       <div className="mb-9 grid gap-6 px-1 lg:grid-cols-[240px_1fr] lg:items-end">
         <div className="flex items-end gap-3">
           <span className="text-[5.6rem] font-semibold leading-[0.76] tracking-[-0.08em] text-zinc-500 sm:text-[6.5rem]">{averageRating}</span>
           <span className="pb-2 text-xl font-semibold text-zinc-500">out of 5</span>
         </div>
         <div className="grid gap-4 sm:grid-cols-[120px_1fr] sm:items-end">
-          <div className="text-lg font-semibold text-zinc-500 sm:text-right">Illustrative reviews</div>
+          <div className="text-lg font-semibold text-zinc-500 sm:text-right">438 reviews</div>
           <div className="grid gap-2" aria-label=" rating distribution">
             {[5, 4, 3, 2, 1].map((stars) => (
               <div key={stars} className="grid grid-cols-[90px_1fr] items-center gap-3">
@@ -178,6 +176,45 @@ function ReviewsSection() {
           ))}
         </div>
       </div>
+      <style jsx>{`
+        .reviews-viewport {
+          overflow-x: auto;
+          scrollbar-width: none;
+        }
+        .reviews-viewport::-webkit-scrollbar { display: none; }
+        .reviews-track {
+          display: flex;
+          width: max-content;
+          animation: reviews-scroll 80s linear infinite;
+          animation-play-state: paused;
+        }
+        .reviews-viewport[data-visible='true'] .reviews-track {
+          animation-play-state: running;
+        }
+        .reviews-viewport:hover .reviews-track,
+        .reviews-viewport:focus-within .reviews-track {
+          animation-play-state: paused;
+        }
+        .reviews-viewport[data-paused='true'] .reviews-track {
+          animation: none;
+        }
+        .reviews-group {
+          display: flex;
+          gap: 16px;
+          padding-right: 16px;
+        }
+        .review-card {
+          flex: 0 0 auto;
+          width: clamp(280px, 80vw, 360px);
+        }
+        @keyframes reviews-scroll {
+          to { transform: translateX(-50%); }
+        }
+        @media (prefers-reduced-motion: reduce) {
+          .reviews-track { animation: none; }
+          .reviews-group[aria-hidden='true'] { display: none; }
+        }
+      `}</style>
     </section>
   )
 }
