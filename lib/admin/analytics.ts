@@ -120,6 +120,8 @@ export function analyticsQuery(filters: AnalyticsFilters, now: Date) {
         count(*) filter (where event_name = 'account_auth_started') as auth_starts,
         count(*) filter (where event_name = 'account_authenticated') as auth_successes,
         count(*) filter (where event_name = 'account_auth_failed') as auth_failures,
+        count(*) filter (where event_name = 'account_auth_cancelled') as auth_cancellations,
+        count(*) filter (where event_name = 'account_post_login_failed') as post_login_failures,
         count(*) filter (where event_name = 'referral_invite_created') as referral_invites,
         count(*) filter (where event_name = 'referral_invite_redeemed') as referral_redemptions,
         count(*) filter (where event_name = 'push_opened') as push_opens,
@@ -247,7 +249,7 @@ export function analyticsQuery(filters: AnalyticsFilters, now: Date) {
         count(distinct e.actor) as affected_devices, count(*) as events
       from e join onboarding_definitions d on d.step = e.properties->>'step'
       where e.platform in ('ios','android') and e.properties->>'onboarding_version' = ${ONBOARDING_ANALYTICS_VERSION}
-        and (e.event_name in ('photo_validation_failed','account_auth_failed','purchase_failed','purchase_cancelled','restore_failed','evaluation_failed')
+        and (e.event_name in ('photo_validation_failed','account_auth_failed','account_post_login_failed','purchase_failed','purchase_cancelled','restore_failed','evaluation_failed')
           or (e.event_name = 'permission_result' and e.properties->>'result' = 'denied')
           or (e.event_name = 'consent_result' and e.properties->>'result' = 'declined'))
       group by d.position, d.label, e.event_name, 3 order by d.position, affected_devices desc limit 50

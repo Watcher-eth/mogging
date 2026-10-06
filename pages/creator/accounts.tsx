@@ -116,7 +116,7 @@ function AccountsContent() {
               <div className="mt-4">
                 <CreatorReferralDetails trackingLink={account.trackingLink} />
               </div>
-              {account.reviewNote ? (
+              {account.reviewNote && account.reviewNote !== 'Account ownership and audience analytics verified with our team on Discord.' ? (
                 <p className="mt-3 text-sm text-zinc-500">
                   {account.reviewNote}
                 </p>

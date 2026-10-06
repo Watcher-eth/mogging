@@ -2,7 +2,7 @@
 export const analyticsEventNames = [
   'app_opened', 'app_first_open', 'session_started', 'screen_viewed', 'screen_exited',
   'page_viewed', 'page_exited', 'landing_viewed', 'landing_section_viewed', 'landing_cta_clicked', 'destination_selected', 'app_store_redirected',
-  'account_auth_started', 'account_authenticated', 'account_auth_failed', 'identity_linked',
+  'account_auth_started', 'account_authenticated', 'account_auth_failed', 'account_auth_cancelled', 'account_post_login_failed', 'identity_linked',
   'attribution_link_received', 'attribution_resolved', 'attribution_diagnostic',
   'onboarding_started', 'onboarding_step_viewed', 'onboarding_step_completed', 'onboarding_step_back',
   'onboarding_step_exited', 'onboarding_step_skipped', 'onboarding_completed', 'permission_prompted', 'permission_result',
@@ -26,7 +26,7 @@ const propertyKeys = new Set([
   'screen', 'previous_screen', 'step', 'step_index', 'step_count', 'onboarding_version', 'flow_id', 'attempt_id',
   'duration_ms', 'surface', 'plan', 'product', 'productId', 'product_id', 'offering',
   'paywall_id', 'paywall_version', 'default_plan', 'product_count', 'products_loaded',
-  'channel', 'provider', 'status', 'reason_code', 'error_code', 'active', 'launch', 'launchState',
+  'channel', 'provider', 'auth_stage', 'status', 'reason_code', 'error_code', 'active', 'launch', 'launchState',
   'delivery', 'paidMedia', 'subscriptionActive', 'mode', 'permission', 'result', 'source',
   'destination', 'placement', 'path', 'referrer_host', 'category', 'task_id', 'tab',
   'report_id', 'evaluation_id', 'success', 'count', 'push_id', 'campaign_id', 'creative_id',

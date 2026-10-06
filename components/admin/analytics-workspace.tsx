@@ -93,10 +93,11 @@ export default function AnalyticsAdminPage() {
 function Activity({ data, days, section }: { data: AnalyticsDashboard; days: number; section: string }) {
   const daily = section === 'Scans' ? [{ key: 'scan_starts', label: 'Scans started', color: colors.ink }, { key: 'evaluations', label: 'Completed', color: colors.blue }, { key: 'failures', label: 'Failed', color: colors.orange }]
     : section === 'Purchases' ? onboardingMetrics : section === 'Engagement' ? valueMetrics
-    : section === 'Authentication' ? [{key:'auth_starts',label:'Sign-in starts',color:colors.ink},{key:'auth_successes',label:'Authenticated',color:colors.blue},{key:'auth_failures',label:'Failed',color:colors.orange}]
+    : section === 'Authentication' ? [{key:'auth_starts',label:'Sign-in starts',color:colors.ink},{key:'auth_successes',label:'Authenticated',color:colors.blue},{key:'auth_failures',label:'Auth errors',color:colors.orange},{key:'auth_cancellations',label:'Cancelled',color:colors.violet},{key:'post_login_failures',label:'Post-login errors',color:colors.green}]
     : section === 'Referrals' ? [{key:'referral_invites',label:'Invites created',color:colors.blue},{key:'referral_redemptions',label:'Invites redeemed',color:colors.green}]
     : section === 'Notifications' ? [{key:'push_opens',label:'Push opens',color:colors.blue}] : null
   return <>
+    {section === 'Authentication' ? <p className="mb-5 text-sm text-[#73777d]">Older app releases combine cancellations and setup errors with auth failures. Updated releases report these outcomes separately; historical events retain their original classification.</p> : null}
     {daily ? <DailyChart data={data} days={days} title={section === 'Scans' ? 'Scan outcomes' : section === 'Purchases' ? 'Paywall activity' : section === 'Authentication' ? 'Authentication outcomes' : section === 'Referrals' ? 'Referral activity' : section === 'Notifications' ? 'Notification engagement' : 'Value-building activity'} metrics={daily} /> : null}
     {section === 'Purchases' ? <Funnel title="Paywall conversion" rows={data.paywall} /> : null}
     {section !== 'AttributionLedger' ? <EventReport data={data} section={section as 'Authentication' | 'Purchases' | 'Scans' | 'Engagement' | 'Referrals' | 'Notifications'} /> : null}

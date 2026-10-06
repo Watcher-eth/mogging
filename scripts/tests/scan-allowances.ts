@@ -117,6 +117,19 @@ try {
     entitlements: { [env.REVENUECAT_PRO_ENTITLEMENT_ID]: { expires_date: end.toISOString(), product_identifier: `mogging.pro.${plan}` } },
     subscriptions: { [`mogging.pro.${plan}`]: { purchase_date: start.toISOString(), expires_date: end.toISOString(), store_transaction_id: transaction, store: 'app_store' } },
   })
+  await sql`INSERT INTO users (id) VALUES ('cancelled-renewal')`
+  const cancelled = subscription('monthly', 'cancelled-renewal-sub', new Date(now.getTime() - 1000), addCalendarMonths(now, 1))
+  Object.assign(cancelled.subscriptions['mogging.pro.monthly'], { unsubscribe_detected_at: now.toISOString() })
+  subscribers.set('cancelled-renewal', cancelled)
+  const cancelledOwner = { userId: 'cancelled-renewal' }
+  assert.equal((await getEntitlementSummary(cancelledOwner)).evaluationCredits, 2, 'cancelling renewal retains the unexpired paid allowance')
+  await consumeEvaluationEntitlement(cancelledOwner)
+  assert.equal((await getEntitlementSummary(cancelledOwner)).evaluationCredits, 1)
+  const expiredAt = new Date(now.getTime() - 1000).toISOString()
+  cancelled.entitlements[env.REVENUECAT_PRO_ENTITLEMENT_ID].expires_date = expiredAt
+  cancelled.subscriptions['mogging.pro.monthly'].expires_date = expiredAt
+  assert.equal((await getEntitlementSummary(cancelledOwner)).evaluationCredits, 0, 'expiry blocks the remaining subscription allowance')
+  await assert.rejects(reserveEvaluation(cancelledOwner, 'expired-subscription-scan', 'body'), /No scans/)
   for (const [plan, count] of [['weekly', 1], ['monthly', 2], ['yearly', 2]] as const) {
     const start = new Date(now.getTime() - 1000)
     const end = plan === 'weekly' ? new Date(now.getTime() + 6 * 86400000) : addCalendarMonths(start, plan === 'yearly' ? 12 : 1)
