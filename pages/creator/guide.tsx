@@ -1,3 +1,5 @@
+import { CreatorEssentials } from '@/components/creator/creator-essentials'
+import { creatorFormatElement, CREATOR_CTA_GUIDANCE } from '@/lib/creator/post-guidance'
 import { creatorGuideTopics, creatorGuideTopic, creatorGuideHref, type CreatorGuideTopic } from '@/lib/creator/guide-navigation'
 import Link from 'next/link'
 import dynamic from 'next/dynamic'
@@ -44,6 +46,7 @@ export default function CreatorProgramGuidePage() {
         <GuideHome />
       </> : <div className="creator-guide-article w-full">
         <nav aria-label="Guide breadcrumb" className="mb-7 flex items-center gap-2 text-xs text-[#73777d]"><Link href="/creator/guide" className="inline-flex min-h-11 items-center gap-1.5 hover:text-[#00A8EF]"><ArrowLeft className="size-3.5" />Creator guide</Link><span>/</span><span className="text-[#181a1d]">{selectedTopic.label}</span></nav>
+        {['video', 'payout', 'improve'].includes(topic) ? <CreatorEssentials /> : null}
         {topic === 'video' ? <VideoGuide /> : null}
         {topic === 'improve' ? <ImproveGuide /> : null}
         {topic === 'rules' ? <RulesGuide /> : null}
@@ -72,6 +75,7 @@ function GuideHome() {
   ] as const
 
   return <>
+    <CreatorEssentials />
     <section aria-label="Start with these questions" className="grid gap-3 lg:grid-cols-3">
       {startingQuestions.map((item) => <Link key={item.topic} href={creatorGuideHref(item.topic)} className="group flex flex-col rounded-[20px] bg-[#f5f6f7] p-5 transition-colors hover:bg-[#eef0f2] sm:p-6"><CreatorIcon name={item.icon} className="mb-5 size-6 text-[#00A8EF]" /><h2 className="text-lg font-semibold leading-6 tracking-[-0.03em]">{item.title}</h2><p className="mt-3 text-sm leading-6 text-[#73777d]">{item.answer}</p><span className="mt-auto flex items-center justify-between gap-3 pt-6 text-xs font-semibold text-[#00A8EF]">{item.link}<ArrowRight className="size-4 transition-transform duration-150 group-hover:translate-x-0.5" /></span></Link>)}
     </section>
@@ -87,7 +91,7 @@ function ImproveGuide() {
     <ol className="divide-y divide-[#eceef0]">{[
       ['Make the opening count', 'Introduce the problem, result, or transformation in the first few seconds or opening slide. Make the hook match the video footage or slideshow images and caption.'],
       ['Show the product clearly', 'Let viewers understand what Mogging does. Use your own scan, report, or protocol to connect the product to the story.'],
-      ['Give viewers a next step', 'Finish with a direct invitation to try Mogging. Include your matching account’s referral code in the caption.'],
+      ['Give viewers a next step', `${CREATOR_CTA_GUIDANCE} Include your matching account’s referral code in the caption.`],
       ['Read the comments', 'Your framing determines who watches. Look for an audience interested in their own looks, rather than unrelated celebrity fans or music listeners.'],
     ].map(([title, detail], index) => <li key={title} className="flex gap-5 py-5"><span className="pt-0.5 text-xs tabular-nums text-[#858a91]">0{index + 1}</span><div><h3 className="text-sm font-semibold">{title}</h3><p className="mt-1 text-sm leading-6 text-[#73777d]">{detail}</p></div></li>)}</ol>
     <GuideDisclosure title="Recommended publishing cadence" meta="Optional guidance"><div className="flex items-start gap-3"><CalendarDays className="mt-0.5 size-5 shrink-0 text-[#00A8EF]" /><div><p className="text-sm font-semibold">Post daily on both platforms when possible.</p><p className="mt-1 text-xs leading-5 text-[#73777d]">The same creative posted to TikTok and Instagram counts as two separate posts and can earn separately. Top editors may publish 6–12 times daily, but quality still matters.</p></div></div></GuideDisclosure>
@@ -151,7 +155,7 @@ function VideoGuide() {
           </div>
 
           <ol className="mt-6 grid gap-3 sm:grid-cols-3">
-            {format.elements.map((element, index) => <li key={element.title} className="rounded-[16px] bg-[#f7f8f9] p-4"><span className="text-[10px] font-semibold tabular-nums text-[#aeaeb2]">{String(index + 1).padStart(2, '0')}</span><p className="mt-3 text-sm font-semibold">{element.title}</p><p className="mt-1.5 text-xs leading-5 text-[#73777d]">{element.detail}</p></li>)}
+            {format.elements.map(creatorFormatElement).map((element, index) => <li key={element.title} className="rounded-[16px] bg-[#f7f8f9] p-4"><span className="text-[10px] font-semibold tabular-nums text-[#aeaeb2]">{String(index + 1).padStart(2, '0')}</span><p className="mt-3 text-sm font-semibold">{element.title}</p><p className="mt-1.5 text-xs leading-5 text-[#73777d]">{element.detail}</p></li>)}
           </ol>
 
           <div className="mt-5 grid gap-2">

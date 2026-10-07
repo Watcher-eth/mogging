@@ -3,7 +3,7 @@ import { calculateCreatorPayout, CREATOR_VIEW_THRESHOLDS } from './payouts'
 import type { SprintTerms } from './sprints'
 
 export const CREATOR_AUDIENCE_BANDS = [
-  { tier: 'D', minimumPercent: 0, payoutPercent: 20 },
+  { tier: 'D', minimumPercent: 10, payoutPercent: 20 },
   { tier: 'C', minimumPercent: 15, payoutPercent: 40 },
   { tier: 'B', minimumPercent: 22.5, payoutPercent: 65 },
   { tier: 'A', minimumPercent: 30, payoutPercent: 100 },
@@ -20,7 +20,7 @@ export function campaignAudienceRates(amountCents: number) {
 }
 
 export function campaignHasAudienceBands(terms: SprintTerms) {
-  return terms.minimumTier1Percent === 0 &&
+  return terms.minimumTier1Percent === 10 &&
     terms.maximumTier1Percent === 40 &&
     terms.milestones.every((milestone) => {
       const rates = milestone.audienceRates
@@ -53,7 +53,7 @@ export function defaultCreatorSprintTerms(): SprintTerms {
         audienceRates: campaignAudienceRates(amountCents),
       }
     }),
-    minimumTier1Percent: 0,
+    minimumTier1Percent: 10,
     maximumTier1Percent: 40,
     platforms: ['tiktok', 'instagram'],
     rules: ['Videos and slideshows are both welcome. Choose what historically works best for your audience; keep the whole post clearly looksmaxxing or ascension focused.', 'Include your Mogging referral code in your caption.'],

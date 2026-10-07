@@ -45,13 +45,13 @@ export function CampaignRegionHelp() {
                     <Dialog.Close aria-label="Close region rates" className="absolute right-3 top-3 grid size-10 place-items-center rounded-full text-zinc-500 hover:bg-zinc-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#00A8EF]">
                       <X aria-hidden="true" className="size-4" />
                     </Dialog.Close>
-                    <Dialog.Description className="mt-2 text-sm leading-6 text-zinc-500">Combine your audience share from the Tier 1 countries below to find your payout tier.</Dialog.Description>
+                    <Dialog.Description className="mt-2 text-sm leading-6 text-zinc-500">Combine your audience share from the Tier 1 countries below to find your payout tier. At least 10% is required to earn.</Dialog.Description>
                     <div className="my-5 space-y-4">
                       {[...CREATOR_AUDIENCE_BANDS].reverse().map((band) => (
                         <div key={band.tier}>
                           <div className="mb-2 flex items-center justify-between gap-3 text-xs">
                             <span className="font-semibold">Tier {band.tier} <span className="font-normal text-zinc-500">· {band.payoutPercent}% payout</span></span>
-                            <span className="tabular-nums text-zinc-500">{band.tier === 'D' ? 'Below 15%' : `${band.minimumPercent}%+`} Tier 1</span>
+                            <span className="tabular-nums text-zinc-500">{band.tier === 'D' ? '10–<15%' : `${band.minimumPercent}%+`} Tier 1</span>
                           </div>
                           <div aria-hidden="true" className="h-1.5 overflow-hidden rounded-full bg-zinc-100">
                             <div className="h-full rounded-full bg-[#00A8EF]" style={{ width: `${band.minimumPercent}%` }} />

@@ -1,3 +1,4 @@
+import { CREATOR_REREVIEW_GUIDANCE } from '@/lib/creator/post-guidance'
 import { AnimatedDialogPanel } from '@/components/ui/animated-dialog-panel'
 import { SubmissionDialog as AnalyticsSubmissionDialog } from '@/components/creator/submission-dialog'
 import { SubmissionConversation } from '@/components/creator/submission-conversation'
@@ -84,7 +85,7 @@ function SubmissionDialog({ submission, payment, payments, linkedToApprovedAccou
                 <DialogTitle className="min-w-0 flex-1 break-words text-2xl">{submission.title}</DialogTitle>
                 {submission.sprintId && !submission.reviewRequestedAt && !payments.some(item => ['pending', 'processing'].includes(item.status)) && (['approved', 'paid', 'rejected'].includes(submission.status) || !submission.analyticsScreenshotUrl) ? <Button variant="outline" className="min-h-10 max-w-[60%] shrink-0 whitespace-normal rounded-full px-3 text-xs sm:text-sm" onClick={onUpdateAnalytics}><RotateCcw className="size-4 shrink-0" aria-hidden="true" />{submission.analyticsScreenshotUrl ? 'Request rereview' : 'Add analytics & update views'}</Button> : null}
               </div>
-              <DialogDescription>{submission.platform}</DialogDescription>
+              <DialogDescription>{CREATOR_REREVIEW_GUIDANCE}</DialogDescription>
             </DialogHeader>
             {submission.reviewRequestedAt ? <p className="mt-3 text-xs text-zinc-500">Updated analytics are awaiting review. Prior payouts remain unchanged.</p> : null}
             <div className="mt-4 flex gap-1 rounded-full bg-zinc-100 p-1" aria-label="Submission view">{(['conversation', 'details'] as const).map(value => <button key={value} aria-pressed={tab === value} className={cn('min-h-10 flex-1 rounded-full text-sm font-medium capitalize', tab === value ? 'bg-white shadow-sm' : 'text-zinc-500')} onClick={() => setTab(value)}>{value === 'conversation' ? <>Messages{submission.unreadMessages ? <span className="ml-2 inline-flex min-w-5 items-center justify-center rounded-lg bg-[#007aff] px-1.5 py-0.5 text-[10px] text-white">{submission.unreadMessages}</span> : null}</> : 'Details'}</button>)}</div>

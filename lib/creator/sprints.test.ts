@@ -158,7 +158,9 @@ test('grouped campaign rates preserve maximum milestones and enforce each audien
   ])
   for (const milestone of campaign.milestones) {
     for (const [audience, percent] of [
-      [0, 20],
+      [0, 0],
+      [9.99, 0],
+      [10, 20],
       [14.99, 20],
       [15, 40],
       [22.49, 40],
@@ -177,7 +179,7 @@ test('grouped campaign rates preserve maximum milestones and enforce each audien
   expect(sprintPayoutCents(campaign, 100000, null)).toBe(0)
   expect(sprintPayoutCents(campaign, 100000, 15)).toBe(2600)
   expect(sprintPayoutCents(campaign, 100000, 22.5)).toBe(4225)
-  expect(sprintPayoutCents(campaign, 100000, 0)).toBe(1300)
+  expect(sprintPayoutCents(campaign, 100000, 0)).toBe(0)
   expect(campaignRegionRates(campaign)).toContain('Tier D 20%')
   expect(
     campaign.formats[0].requirements.some((rule) =>

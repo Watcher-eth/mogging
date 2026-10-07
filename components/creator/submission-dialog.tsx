@@ -1,3 +1,4 @@
+import { creatorFormatElement, CREATOR_REREVIEW_GUIDANCE } from '@/lib/creator/post-guidance'
 import { MinimumViewsDialog } from './minimum-views-dialog'
 import Link from 'next/link'
 import { campaignRegionRates } from '@/lib/creator/sprint-defaults'
@@ -54,8 +55,8 @@ const titles = [
   'Review and submit',
 ]
 const descriptions = [
-  'Choose the campaign this video or slideshow should earn against.',
-  'Read the brief, then choose the structure you followed.',
+  'Submit as soon as your post reaches 20,000 views—the first milestone. Choose its campaign below.',
+  'Use a 2–3 second CTA within the first 10 seconds of a video or the first 5 slides of a slideshow. Choose your format below.',
   'Link the public post and the account you published from.',
   'Upload one continuous recording filmed with a second device.',
   'Confirm the campaign requirements before sending your post for review.',
@@ -240,7 +241,7 @@ export function SubmissionDialog({
             {existingSubmission ? 'Update analytics' : 'Submit a post'} · Step {existingSubmission ? step - 3 : step} of {existingSubmission ? 2 : 5}
           </p>
           <DialogTitle className="pr-7 text-xl">{titles[step - 1]}</DialogTitle>
-          <DialogDescription>{descriptions[step - 1]}</DialogDescription>
+          <DialogDescription>{existingSubmission ? CREATOR_REREVIEW_GUIDANCE : descriptions[step - 1]}</DialogDescription>
         </DialogHeader>
         <div className="shrink-0 px-4 pt-4">
           <CreatorStepper step={existingSubmission ? step - 3 : step} labels={existingSubmission ? labels.slice(3) : labels} />
@@ -374,7 +375,7 @@ export function SubmissionDialog({
                                 <Link href="/creator/guide?topic=rules#video-requirements" target="_blank" className="block text-xs font-medium text-[#00A8EF] underline underline-offset-4">
                                   Celebrity edits and audience rules ↗
                                 </Link>
-                                {item.elements.map((element) => (
+                                {item.elements.map(creatorFormatElement).map((element) => (
                                   <p key={element.title}>
                                     <strong>{element.title}</strong>
                                     <br />
@@ -536,7 +537,7 @@ export function SubmissionDialog({
                             required
                           />
                           <p className="mt-1 text-xs text-zinc-500">
-                            At least 20,000 views are required to submit.
+                            Submit as soon as you reach 20,000 views. Request rereview at each new milestone.
                           </p>
                         </Field>
                         <Field label="Combined Tier 1 audience (%)">

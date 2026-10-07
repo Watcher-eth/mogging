@@ -1,3 +1,4 @@
+import { CREATOR_CTA_GUIDANCE } from './post-guidance'
 export type CreatorSubmissionFormat = {
   id: string
   name: string
@@ -18,7 +19,7 @@ const SHARED_REQUIREMENTS = [
   'Provide one continuous physical recording of this post’s analytics filmed with a second device; show the screen, username, post, views, traffic sources, and audience locations without cuts or edits',
 ] as const
 
-const CLOSING_CTA = { title: 'Closing CTA', detail: 'End with a clear invitation for viewers to try Mogging.' } as const
+const EARLY_CTA = { title: 'Early CTA · 2–3 seconds', detail: CREATOR_CTA_GUIDANCE } as const
 
 export const CREATOR_SUBMISSION_FORMATS = [
   {
@@ -29,7 +30,7 @@ export const CREATOR_SUBMISSION_FORMATS = [
     elements: [
       { title: 'Opening hook', detail: 'Introduce the problem, result, or transformation in the first few seconds of a video or the opening slide of a slideshow.' },
       { title: 'Product moment', detail: 'Show Mogging clearly enough for viewers to understand what the app does.' },
-      CLOSING_CTA,
+      EARLY_CTA,
     ],
     requirements: SHARED_REQUIREMENTS,
     notAllowed: [
@@ -48,7 +49,7 @@ export const CREATOR_SUBMISSION_FORMATS = [
     name: 'Custom format',
     shortDescription: 'Create your own looksmaxxing or ascension-focused video or slideshow. Use the approach that works best for your audience and include a clear invitation to try Mogging.',
     active: true,
-    elements: [CLOSING_CTA],
+    elements: [EARLY_CTA],
     requirements: SHARED_REQUIREMENTS,
     notAllowed: [],
   },

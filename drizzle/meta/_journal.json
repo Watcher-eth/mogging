@@ -337,6 +337,13 @@
       "when": 1791240338657,
       "tag": "0047_creator_submission_rereview",
       "breakpoints": true
+    },
+    {
+      "idx": 48,
+      "version": "7",
+      "when": 1791393888977,
+      "tag": "0048_creator_tier_d_minimum",
+      "breakpoints": true
     }
   ]
 }

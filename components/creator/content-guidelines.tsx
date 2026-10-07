@@ -1,3 +1,4 @@
+import { CREATOR_CTA_GUIDANCE } from '@/lib/creator/post-guidance'
 import Link from 'next/link'
 
 export const accountReviewPolicy = 'Complete any account review requested by the moderation team. Payouts are held until requested evidence is provided and the review is resolved. Confirmed botting on even one video puts all earnings at risk.'
@@ -15,8 +16,8 @@ export function ContentGuidelines() {
       <p className="mt-3 max-w-3xl text-sm leading-6 text-[#73777d]">Videos and slideshows are both welcome. Choose the format, pacing, and storytelling that historically work best for your audience; you have creative freedom within the campaign rules. Every post must clearly emphasize the improvement, attractiveness, features, transformation, or potential of someone’s looks. Keep the whole post focused on looksmaxxing or ascension: this applies to video footage or slideshow images, on-screen text, and the caption. Looksmaxxing, BP (blackpill), or transformation labels alone do not qualify a post. If a moderator has to question whether it is about looks, it is rejected.</p>
       <p className="mt-3 max-w-3xl text-sm leading-6 text-[#73777d]">Mogging pays for access to an audience interested in their appearance. Your framing determines who watches: a celebrity montage can attract fans, a song meme can attract music listeners, and a feature breakdown can attract people who want to understand their own face. High views alone do not make a post eligible.</p>
       <div className="mt-5 grid gap-3 sm:grid-cols-2">
-        <div className="rounded-2xl creator-notice p-4"><h4 className="text-sm font-semibold">What we want</h4><p className="mt-2 text-sm leading-6 text-zinc-600">Clear feature analysis, genuine before-and-after transformations, explicit attractiveness comparisons, or looks-potential edits. Show Mogging clearly and end by inviting viewers to try it.</p></div>
-        <div className="rounded-2xl creator-warning p-4"><h4 className="text-sm font-semibold text-red-800">What we reject</h4><p className="mt-2 text-sm leading-6 text-red-800">Engagement bait, unrelated captions, excluded niches, and fan edits whose looks connection exists only in your intent. Adding a Mogging CTA at the end does not rescue unrelated content.</p></div>
+        <div className="rounded-2xl creator-notice p-4"><h4 className="text-sm font-semibold">What we want</h4><p className="mt-2 text-sm leading-6 text-zinc-600">Clear feature analysis, genuine before-and-after transformations, explicit attractiveness comparisons, or looks-potential edits. Show Mogging clearly. {CREATOR_CTA_GUIDANCE}</p></div>
+        <div className="rounded-2xl creator-warning p-4"><h4 className="text-sm font-semibold text-red-800">What we reject</h4><p className="mt-2 text-sm leading-6 text-red-800">Engagement bait, unrelated captions, excluded niches, and fan edits whose looks connection exists only in your intent. Adding a Mogging CTA does not rescue unrelated content.</p></div>
       </div>
       <div className="mt-4 grid gap-2">
         <RuleDetail title="Celebrity edits and the Smallville exception">

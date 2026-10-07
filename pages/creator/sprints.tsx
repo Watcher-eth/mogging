@@ -1,3 +1,5 @@
+import { CreatorEssentials } from '@/components/creator/creator-essentials'
+import { creatorFormatElement } from '@/lib/creator/post-guidance'
 import { CampaignRegionHelp } from '@/components/creator/campaign-region-help'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { CampaignHelp } from '@/components/creator/campaign-help'
@@ -215,6 +217,7 @@ function SprintDetail({ sprint }: { sprint: CreatorSprint }) {
           )
         }
       />
+      <CreatorEssentials />
       <StudioTabs
         value={tab}
         onChange={setTab}
@@ -356,7 +359,7 @@ function SprintDetail({ sprint }: { sprint: CreatorSprint }) {
                             Video instructions
                           </h3>
                           <ol className="list-decimal space-y-4 pl-5 text-sm leading-6">
-                            {format.elements.map((item) => (
+                            {format.elements.map(creatorFormatElement).map((item) => (
                               <li key={item.title}>
                                 <strong>{item.title}</strong>
                                 <p className="text-zinc-500">{item.detail}</p>

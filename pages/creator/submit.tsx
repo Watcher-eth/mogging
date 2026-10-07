@@ -1,3 +1,4 @@
+import { CreatorEssentials } from '@/components/creator/creator-essentials'
 import Link from 'next/link'
 import { useRouter } from 'next/router'
 import { useState } from 'react'
@@ -44,6 +45,7 @@ function SubmitContent() {
           </Button>
         }
       />
+      <CreatorEssentials />
       {error ? (
         <p role="alert" className="text-sm text-zinc-500">
           Could not load submissions.{' '}
