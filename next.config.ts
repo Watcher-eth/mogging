@@ -1,4 +1,5 @@
 import type { NextConfig } from 'next'
+import { locales } from './lib/i18n/locales'
 
 const immutableAssetPaths = [
   '/model.png',
@@ -22,6 +23,10 @@ const immutableAssetPaths = [
 const nextConfig: NextConfig = {
   distDir: process.env.NEXT_DIST_DIR || '.next',
   reactStrictMode: true,
+  i18n: {
+    locales: [...locales],
+    defaultLocale: 'en', localeDetection: false,
+  },
   async headers() {
     return [
       {

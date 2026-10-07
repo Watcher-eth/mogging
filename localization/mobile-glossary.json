@@ -1,0 +1,135 @@
+{
+  "version": 1,
+  "policy": "One glossary shared with web where context matches. Targets are existing terms, not newly approved translations.",
+  "tone": {
+    "de": "informal du",
+    "es": "informal tú; Spain plural usage",
+    "es-419": "informal tú; neutral Latin American plural usage",
+    "fr": "informal tu with international vocabulary",
+    "zh-Hans": "natural concise Simplified Chinese"
+  },
+  "terms": [
+    {
+      "term": "Mogging",
+      "treatment": "preserve product/community term",
+      "approval": "owner policy",
+      "exceptions": "Natural grammatical integration is allowed; record language-specific exceptions."
+    },
+    {
+      "term": "mogging",
+      "treatment": "preserve product/community term",
+      "approval": "owner policy",
+      "exceptions": "Natural grammatical integration is allowed; record language-specific exceptions."
+    },
+    {
+      "term": "looksmaxxing",
+      "treatment": "preserve product/community term",
+      "approval": "owner policy",
+      "exceptions": "Natural grammatical integration is allowed; record language-specific exceptions."
+    },
+    {
+      "term": "Battle",
+      "treatment": "preserve product/community term",
+      "approval": "owner policy",
+      "exceptions": "Natural grammatical integration is allowed; record language-specific exceptions."
+    },
+    {
+      "term": "Pro",
+      "treatment": "preserve product/community term",
+      "approval": "owner policy",
+      "exceptions": "Natural grammatical integration is allowed; record language-specific exceptions."
+    },
+    {
+      "term": "personal improvement feature",
+      "targets": {
+        "de": "Protokoll",
+        "es": "protocolo",
+        "fr": "programme",
+        "zh-Hans": "提升方案"
+      },
+      "approval": {
+        "de": "owner reviewed",
+        "es": "draft pending native review",
+        "fr": "draft pending native review",
+        "zh-Hans": "draft pending native review"
+      },
+      "meaning": "The user’s improvement routine, distinct from billing."
+    },
+    {
+      "term": "subscription",
+      "targets": {
+        "de": "Plan / Abonnement by context",
+        "es": "suscripción",
+        "fr": "abonnement",
+        "zh-Hans": "订阅方案"
+      },
+      "approval": "contextual native review pending",
+      "meaning": "Paid recurring access; include period and renewal terms."
+    },
+    {
+      "term": "PSL",
+      "meaning": "Preserve rubric acronym and denominator; never equate /8 with display /10.",
+      "approval": "native technical terminology pending"
+    },
+    {
+      "term": "canthal tilt",
+      "meaning": "Technical eye-angle label; use precise native terminology.",
+      "approval": "native technical terminology pending"
+    },
+    {
+      "term": "symmetry",
+      "meaning": "Appearance estimate; preserve uncertainty.",
+      "approval": "native technical terminology pending"
+    },
+    {
+      "term": "facial definition",
+      "meaning": "Visible outline; do not infer body-fat percentage or need for weight loss.",
+      "approval": "native technical terminology pending"
+    },
+    {
+      "term": "Skin Age",
+      "meaning": "Visible age cues; not a diagnosis or biological age.",
+      "approval": "native technical terminology pending"
+    },
+    {
+      "term": "potential",
+      "meaning": "Projected cosmetic improvement; preserve canonical score and qualifications.",
+      "approval": "native technical terminology pending"
+    },
+    {
+      "term": "optional",
+      "meaning": "Must remain optional after translation.",
+      "approval": "native technical terminology pending"
+    },
+    {
+      "term": "not visible",
+      "meaning": "Must not become a positive observation.",
+      "approval": "native technical terminology pending"
+    },
+    {
+      "term": "may appear",
+      "meaning": "Must not become a definite finding.",
+      "approval": "native technical terminology pending"
+    },
+    {
+      "term": "restore purchases",
+      "meaning": "Restore existing access, not buy again.",
+      "approval": "native technical terminology pending"
+    },
+    {
+      "term": "introductory offer",
+      "meaning": "Preserve eligibility, first-period price and subsequent renewal.",
+      "approval": "native technical terminology pending"
+    },
+    {
+      "term": "cancel subscription",
+      "meaning": "Distinguish cancellation from deleting an account or uninstalling.",
+      "approval": "native technical terminology pending"
+    },
+    {
+      "term": "scan credit",
+      "meaning": "Keep credit count and singular/plural correct.",
+      "approval": "native technical terminology pending"
+    }
+  ]
+}

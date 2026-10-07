@@ -1,0 +1,12 @@
+{
+  "nav.leaderboard": "Ranking",
+  "faq.public.question": "¿Mis fotos aparecerán en el ranking?",
+  "faq.public.answer": "Participar en el ranking es opcional. Tú decides si tu perfil es público y puedes cambiarlo en Configuración.",
+  "settings.title": "Configuración",
+  "settings.name": "Escribe tu nombre",
+  "settings.contact": "Contactar a soporte",
+  "settings.publicationDescription": "Publica tu último análisis en Battle y en el ranking.",
+  "landing.leaderboard": "03 / Tu ranking",
+  "landing.friendsDescription": "Explora el ranking mundial o compárate con tus amigos. Consulten análisis públicos, sigan su progreso y avancen juntos.",
+  "landing.publicChoice": "Tú decides si participas. Haz público tu perfil para aparecer y cambia esta opción cuando quieras en Configuración."
+}

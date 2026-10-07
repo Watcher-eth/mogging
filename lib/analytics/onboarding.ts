@@ -1,8 +1,8 @@
 // Stable IDs and display order; optional steps are measured only for users who see them.
-export const ONBOARDING_ANALYTICS_VERSION = '3';
+export const ONBOARDING_ANALYTICS_VERSION = '4';
 export const onboardingAnalyticsSteps = [
   ['primer', 'Introduction'], ['protocol_preview', 'Protocol preview'],
-  ['age', 'Age'], ['height', 'Height'], ['gender', 'Appearance profile'],
+  ['age', 'Age'], ['height', 'Height'], ['weight', 'Weight (optional)'], ['gender', 'Appearance profile'],
   ['experience', 'Experience'], ['methods', 'Previous methods (optional)'],
   ['goals', 'Goals'], ['time', 'Daily commitment'],
   ['commit', 'Lock in (4 taps)'],

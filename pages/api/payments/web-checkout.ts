@@ -11,11 +11,17 @@ import { recordServerEvent } from '@/lib/analytics/events'
 import { env } from '@/lib/env'
 import { getStoredMobileCreatorAttribution, recordCreatorCheckout, resolveCreatorAttribution, stripeAttributionMetadata } from '@/lib/creator/attribution'
 import { generatePaymentActivationCode, getCheckoutLineItem, getProductConfig, paymentProductSchemaValues } from '@/lib/payments/entitlements'
+import { locales } from '@/lib/i18n/locales'
+import { priceAmounts } from '@/lib/payments/subscription-prices'
 import { getStripe } from '@/lib/payments/stripe'
 
 const checkoutSchema = z.object({
   product: z.enum(paymentProductSchemaValues),
   mobileInstallId: z.string().trim().min(8).max(120),
+  returnLocale: z.enum(locales).optional(),
+  currency: z.string().regex(/^[a-z]{3}$/).optional(),
+  unitAmount: z.number().int().nonnegative().optional(),
+  locale: z.enum(['en', 'de', 'es', 'fr', 'zh']).optional(),
   source: z.string().trim().max(80).optional(),
 })
 
@@ -33,7 +39,13 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
     if (!accountId) throw new ApiError(401, 'Sign in before starting checkout')
     const origin = getRequestOrigin(req)
     const product = getProductConfig(input.product)
-    await validateCheckoutProduct(input.product, product)
+    const price = await validateCheckoutProduct(input.product, product)
+    if (input.currency || input.unitAmount !== undefined) {
+      const currency = input.currency ?? price?.currency ?? 'usd'
+      const amount = price ? priceAmounts(price)[currency] : currency === 'usd' ? product.unitAmount : undefined
+      if (amount === undefined) throw new ApiError(400, 'The selected currency is unavailable')
+      if (input.unitAmount !== undefined && input.unitAmount !== amount) throw new ApiError(409, 'The price has changed. Please reload the plans')
+    }
     const source = input.source || 'web2app'
     const activationCode = generatePaymentActivationCode()
     const attribution = await resolveCreatorAttribution({
@@ -63,7 +75,15 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
             const sessions = await getStripe().checkout.sessions.list({ customer: customer!, status: 'open', limit: 100 })
             const pending = sessions.data.filter(session => session.metadata?.creatorDiscount === CREATOR_MONTHLY_COUPON && session.url)
             for (const session of pending) {
-              if (session.metadata?.creatorClickId === attribution.clickId && session.metadata?.mobileInstallId === input.mobileInstallId && session.metadata?.landingAssignment === (landingAssignment ? serializeLandingAssignment(landingAssignment) : undefined)) return session
+              const matches =
+                (!input.currency || session.currency === input.currency) &&
+                (input.unitAmount === undefined || session.metadata?.quotedUnitAmount === String(input.unitAmount)) &&
+                (!input.locale || session.locale === input.locale) &&
+                (!input.returnLocale || session.metadata?.returnLocale === input.returnLocale) &&
+                session.metadata?.creatorClickId === attribution.clickId &&
+                session.metadata?.mobileInstallId === input.mobileInstallId &&
+                session.metadata?.landingAssignment === (landingAssignment ? serializeLandingAssignment(landingAssignment) : undefined)
+              if (matches) return session
               // Keep creator, installation, and experiment credit with the matching checkout.
               await getStripe().checkout.sessions.expire(session.id)
             }
@@ -74,6 +94,8 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
       }
       return getStripe().checkout.sessions.create({
         mode: product.mode,
+        ...(input.currency ? { currency: input.currency, adaptive_pricing: { enabled: false } } : {}),
+        ...(input.locale ? { locale: input.locale } : {}),
         payment_method_types: ['card'],
         ...(discounted ? { discounts: [{ coupon: CREATOR_MONTHLY_COUPON }] } : { allow_promotion_codes: true }),
         ...(customer ? { customer } : {}),
@@ -81,6 +103,8 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
         line_items: [getCheckoutLineItem(input.product)],
         metadata: {
           product: input.product,
+          ...(input.returnLocale ? { returnLocale: input.returnLocale } : {}),
+          ...(input.unitAmount !== undefined ? { quotedUnitAmount: String(input.unitAmount) } : {}),
           mobileInstallId: input.mobileInstallId,
           source,
           activationCode,
@@ -107,7 +131,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
             }
           : null),
         success_url: `${origin}/app/handoff?session_id={CHECKOUT_SESSION_ID}`,
-        cancel_url: `${origin}/?checkout=cancelled&product=${input.product}`,
+        cancel_url: `${origin}${input.returnLocale && input.returnLocale !== 'en' ? `/${input.returnLocale}` : ''}/?checkout=cancelled&product=${input.product}`,
       })
     })
 
@@ -156,7 +180,7 @@ async function validateCheckoutProduct(productId: string, product: ReturnType<ty
     throw new ApiError(503, `${product.name} has an invalid Stripe price ID in ${priceEnvName}`)
   }
 
-  const price = await getStripe().prices.retrieve(product.priceId).catch((error: unknown) => {
+  const price = await getStripe().prices.retrieve(product.priceId, { expand: ['currency_options'] }).catch((error: unknown) => {
     if (isMissingStripePriceError(error)) {
       throw new ApiError(
         503,
@@ -176,12 +200,13 @@ async function validateCheckoutProduct(productId: string, product: ReturnType<ty
     if (product.interval && price.recurring.interval !== product.interval) {
       throw new ApiError(503, `${product.name} Stripe price must recur every ${product.interval}, not ${price.recurring.interval}`)
     }
-    return
+    return price
   }
 
   if (price.recurring) {
     throw new ApiError(503, `${product.name} must use a one-time Stripe price`)
   }
+  return price
 }
 
 function getStripePriceEnvName(productId: string) {

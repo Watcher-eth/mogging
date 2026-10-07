@@ -1,3 +1,5 @@
+import { useTranslation } from 'react-i18next';
+import { useRouter } from 'next/router';
 import dynamic from "next/dynamic";
 import { useLandingTracking } from "@/components/landing/use-landing-tracking";
 import type { GetServerSideProps } from "next";
@@ -29,15 +31,16 @@ import {
 } from "@/lib/analytics/landing";
 
 const LegacyHomepage = dynamic(() => import("@/components/landing/legacy-homepage"));
-const copy = { title: "Ascend to your true potential.", description: "Better skin. A stronger look. More confidence. Discover what’s holding your looks back—and start ascending with a Mogging evaluation and a Protocol built for you." };
 
 type Props = { assignment: LandingAssignment; preview: boolean };
 
 export default function HomePage(props: Props) {
-  return props.assignment.arm === "homepage_a" ? <LegacyHomepage {...props} /> : <NewHomepage {...props} />;
+  const locale = useRouter().locale;
+  return (!locale || locale === "en") && props.assignment.arm === "homepage_a" ? <LegacyHomepage {...props} /> : <NewHomepage {...props} />;
 }
 
 function NewHomepage({ assignment, preview }: Props) {
+  const { t } = useTranslation();
   const reduced = useReducedMotion();
   const entrance = { initial: { opacity: reduced ? 1 : 0, y: reduced ? 0 : 24 }, whileInView: { opacity: 1, y: 0 }, viewport: { once: true, amount: .12 }, transition: { duration: reduced ? 0 : .75, ease: [.16, 1, .3, 1] as [number, number, number, number] } };
   const { sections, trackDestination } = useLandingTracking(assignment, preview);
@@ -50,7 +53,7 @@ function NewHomepage({ assignment, preview }: Props) {
         className={`inline-flex items-center justify-center gap-3 rounded-full bg-[#09090b] font-semibold text-white transition-transform duration-300 [transition-timing-function:cubic-bezier(0.16,1,0.3,1)] hover:scale-[1.035] active:scale-[0.98] motion-reduce:transform-none focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-black ${compact ? "h-12 px-5 text-sm" : "h-14 w-full px-7 text-base sm:w-auto"}`}
       >
         <AppleMark />
-        {compact ? "Get Mogging" : "Download for iPhone"}
+        {t(compact ? "landing.get" : "landing.download")}
       </a>
     );
   }
@@ -58,8 +61,8 @@ function NewHomepage({ assignment, preview }: Props) {
   return (
     <LazyMotion features={domAnimation}>
       <SeoHead
-        title="Mogging | Face Analysis & Your Personalized Glow-Up Plan"
-        description="Understand your facial features, get a personalized Protocol, and track your progress with Mogging for iPhone. Prefer the web? Start a facial analysis in your browser."
+        title={t("seo.title")}
+        description={t("seo.description")}
         path="/"
         structuredData={{
           "@context": "https://schema.org",
@@ -87,24 +90,24 @@ function NewHomepage({ assignment, preview }: Props) {
         <m.section {...entrance} initial={false} className="mx-auto grid max-w-6xl items-center px-6 pb-14 pt-6 sm:px-10 lg:min-h-[730px] lg:grid-cols-2 lg:gap-24 lg:py-12">
           <div className="text-center lg:text-left">
             <p className="mb-4 hidden text-xs font-medium uppercase tracking-[0.16em] text-zinc-400 lg:block">
-              Your face. Your potential.
+              {t("landing.tagline")}
             </p>
-            <h1 className="mx-auto max-w-[650px] text-[clamp(2.5rem,5.5vw,4.75rem)] font-semibold leading-[1.04] tracking-[-0.055em] lg:mx-0">
-              {copy.title}
+            <h1 className="mx-auto max-w-[650px] text-balance text-[clamp(2.5rem,5.5vw,4.75rem)] font-semibold leading-[1.04] tracking-[-0.055em] lg:mx-0">
+              {t("landing.title")}
             </h1>
             <p className="mx-auto mt-5 max-w-lg text-base leading-7 text-zinc-500 sm:text-lg lg:mx-0">
-              {copy.description}
+              {t("landing.description")}
             </p>
             <div className="mt-7">{downloadButton("hero")}</div>
             <p className="mt-3 text-xs text-zinc-400">
-              Available on the App Store · In-app purchases
+              {t("landing.availability")}
             </p>
             <Link
               href="/analysis" prefetch={false}
               onClick={() => trackDestination("web_analysis", "hero")}
               className="mt-5 inline-flex items-center gap-2 text-sm font-medium text-zinc-500 hover:text-black"
             >
-              Prefer your browser? Start an analysis{" "}
+              {t("landing.browser")}{" "}
               <ArrowRight className="size-4" />
             </Link>
           </div>
@@ -123,14 +126,13 @@ function NewHomepage({ assignment, preview }: Props) {
           >
             <div className="mb-14 text-center">
               <p className="text-xs font-medium uppercase tracking-[0.16em] text-zinc-400">
-                This is Mogging
-              </p>
+              {t("landing.introduction")}
+            </p>
               <h2
                 id="features-title"
                 className="mt-4 text-4xl font-semibold leading-[1.1] tracking-[-0.045em] sm:text-5xl"
               >
-                Your potential.
-                <br />A daily plan to reach it.
+                {t("landing.planTitle")}
               </h2>
             </div>
             <div className="grid items-center gap-10 lg:grid-cols-2 lg:gap-24">
@@ -139,35 +141,28 @@ function NewHomepage({ assignment, preview }: Props) {
               </div>
               <div className="mx-auto w-full text-center lg:mx-0 lg:text-left">
                 <p className="text-xs font-medium uppercase tracking-widest text-zinc-400">
-                  01 / Your evaluation
-                </p>
+              {t("landing.evaluation")}
+            </p>
                 <h3 className="mt-4 text-4xl font-semibold leading-[1.1] tracking-[-0.045em]">
-                  See more than
-                  <br />a score.
+                  {t("landing.scoreTitle")}
                 </h3>
                 <p className="mt-5 text-lg leading-8 text-zinc-500">
-                  Your jawline, eyes, proportions, and symmetry. Understand your
-                  features across 10 categories and 40+ feature metrics, then keep every report to
-                  follow your progress.
-                </p>
+              {t("landing.scoreDescription")}
+            </p>
                 <EvaluationStats />
               </div>
             </div>
             <div className="mt-24 grid items-center gap-10 lg:grid-cols-2 lg:gap-24">
               <div className="order-2 mx-auto w-full text-center lg:order-1 lg:mx-0 lg:text-left">
                 <p className="text-xs font-medium uppercase tracking-widest text-zinc-400">
-                  02 / Your Protocol
-                </p>
+              {t("landing.protocol")}
+            </p>
                 <h3 className="mt-4 text-4xl font-semibold leading-[1.1] tracking-[-0.045em]">
-                  Less guesswork.
-                  <br />
-                  More direction.
+                  {t("landing.directionTitle")}
                 </h3>
                 <p className="mt-5 text-lg leading-8 text-zinc-500">
-                  Stop guessing how to improve your looks. Your personalized
-                  Protocol turns your evaluation into daily steps for your skin,
-                  posture, grooming, and more. Build the habits that help you ascend.
-                </p>
+              {t("landing.protocolDescription")}
+            </p>
                 <div className="mt-7">{downloadButton("features")}</div>
               </div>
               <div className="order-1 flex justify-center lg:order-2 lg:justify-end">
@@ -186,28 +181,28 @@ function NewHomepage({ assignment, preview }: Props) {
                 id="how-title"
                 className="text-center text-4xl font-semibold tracking-[-0.045em] sm:text-5xl"
               >
-                Your next move is simple.
-              </h2>
+              {t("landing.howTitle")}
+            </h2>
               <div className="mt-12 grid items-start gap-12 lg:grid-cols-3 lg:gap-8">
                 {[
                   {
                     number: "01",
-                    title: "Start with a photo.",
+                    title: t("landing.photoTitle"),
                     description:
-                      "Line up your face and capture your starting point.",
+                      t("landing.photoDescription"),
                     Preview: CameraPreview,
                   },
                   {
                     number: "02",
-                    title: "Get a comprehensive Evaluation.",
-                    description: "Watch your scan map your facial geometry.",
+                    title: t("landing.scanTitle"),
+                    description: t("landing.scanDescription"),
                     Preview: ScanPreview,
                   },
                   {
                     number: "03",
-                    title: "Your personalized Protocol to ascend.",
+                    title: t("landing.dailyTitle"),
                     description:
-                      "Follow your personalized Protocol, one day at a time.",
+                      t("landing.dailyDescription"),
                     Preview: ProtocolPreview,
                   },
                 ].map(({ number, title, description, Preview }) => (
@@ -236,10 +231,16 @@ function NewHomepage({ assignment, preview }: Props) {
           <m.section {...entrance} data-landing-section="leaderboard" aria-labelledby="leaderboard-title" className="mx-auto grid max-w-6xl items-center gap-10 px-6 py-14 sm:px-10 sm:py-20 lg:grid-cols-2 lg:gap-24">
             <div className="flex justify-center lg:justify-start"><LeaderboardPreview /></div>
             <div className="text-center lg:text-left">
-              <p className="text-xs font-medium uppercase tracking-widest text-zinc-400">03 / Your leaderboard</p>
-              <h2 id="leaderboard-title" className="mt-4 text-4xl font-semibold leading-[1.1] tracking-[-.045em] sm:text-5xl">See where you stand.<br />Bring your friends.</h2>
-              <p className="mt-5 text-lg leading-8 text-zinc-500">Explore the Global rankings or compare with your friends. Open public evaluations, follow your progress, and make your next move together.</p>
-              <p className="mt-4 text-sm leading-6 text-zinc-400">Joining is your choice. Make your profile public to appear, and change it anytime in Settings.</p>
+              <p className="text-xs font-medium uppercase tracking-widest text-zinc-400">
+              {t("landing.leaderboard")}
+            </p>
+              <h2 id="leaderboard-title" className="mt-4 text-4xl font-semibold leading-[1.1] tracking-[-.045em] sm:text-5xl">{t("landing.friendsTitle")}</h2>
+              <p className="mt-5 text-lg leading-8 text-zinc-500">
+              {t("landing.friendsDescription")}
+            </p>
+              <p className="mt-4 text-sm leading-6 text-zinc-400">
+              {t("landing.publicChoice")}
+            </p>
               <div className="mt-7">{downloadButton("leaderboard")}</div>
             </div>
           </m.section>
@@ -247,11 +248,17 @@ function NewHomepage({ assignment, preview }: Props) {
             <div className="mx-auto max-w-6xl px-6 sm:px-10">
               <div className="mb-10 flex flex-col justify-between gap-6 lg:flex-row lg:items-end">
                 <div className="max-w-xl">
-                  <p className="text-xs font-semibold uppercase tracking-[.16em] text-zinc-500">Prefer to pay in your browser?</p>
-                  <h2 id="web-title" className="mt-4 text-3xl font-semibold tracking-[-.04em] sm:text-4xl">Choose Pro here. Continue in the app.</h2>
-                  <p className="mt-4 text-base leading-7 text-zinc-500">Choose your plan, pay securely with Stripe, then activate your access in Mogging. Your evaluations and Protocol stay together.</p>
+                  <p className="text-xs font-semibold uppercase tracking-[.16em] text-zinc-500">
+              {t("landing.webEyebrow")}
+            </p>
+                  <h2 id="web-title" className="mt-4 text-3xl font-semibold tracking-[-.04em] sm:text-4xl">
+              {t("landing.webTitle")}
+            </h2>
+                  <p className="mt-4 text-base leading-7 text-zinc-500">
+              {t("landing.webDescription")}
+            </p>
                 </div>
-                <Link href="/analysis" prefetch={false} onClick={() => trackDestination("web_analysis", "web_section")} className="inline-flex items-center gap-2 text-sm font-medium text-zinc-500 hover:text-black">Want an analysis without the app? <ArrowRight className="size-4" /></Link>
+                <Link href="/analysis" prefetch={false} onClick={() => trackDestination("web_analysis", "web_section")} className="inline-flex items-center gap-2 text-sm font-medium text-zinc-500 hover:text-black">{t("landing.withoutApp")} <ArrowRight className="size-4" /></Link>
               </div>
               <WebCheckout embedded preview={preview} />
             </div>
@@ -263,10 +270,10 @@ function NewHomepage({ assignment, preview }: Props) {
             className="mx-auto max-w-6xl px-6 pb-20 pt-6 text-center sm:px-10"
           >
             <h2 className="text-4xl font-semibold tracking-[-0.045em] sm:text-5xl">
-              Find your starting point.
+              {t("landing.finalTitle")}
             </h2>
             <p className="mb-7 mt-4 text-zinc-500">
-              Unlock your potential. Build your look. Start mogging.
+              {t("landing.finalDescription")}
             </p>
             {downloadButton("footer")}
           </m.section>
@@ -278,6 +285,7 @@ function NewHomepage({ assignment, preview }: Props) {
 }
 
 function LandingFaq() {
+  const { t } = useTranslation();
   const [openFaq, setOpenFaq] = useState<number | null>(null);
   const reduced = useReducedMotion();
   return (
@@ -290,25 +298,25 @@ function LandingFaq() {
               id="faq-title"
               className="text-3xl font-semibold tracking-tight"
             >
-              Before you start.
+              {t("landing.faqTitle")}
             </h2>
             <div className="mt-6 max-w-3xl divide-y divide-zinc-100">
               {[
                 [
-                  "Is Mogging free to download?",
-                  "Yes. Downloading the app is free. Evaluations and Pro features require a purchase; you can review the available plans in the app.",
+                  t("faq.free.question"),
+                  t("faq.free.answer"),
                 ],
                 [
-                  "What does my evaluation include?",
-                  "10 detailed categories with 40+ feature metrics covering your eyes, jawline, proportions, symmetry, and more. You also get a personalized Protocol and saved evaluations to follow your progress.",
+                  t("faq.evaluation.question"),
+                  t("faq.evaluation.answer"),
                 ],
                 [
-                  "Will my photos appear on the leaderboard?",
-                  "Joining the leaderboard is optional. You choose whether to make your profile public, and can change that choice in Settings.",
+                  t("faq.public.question"),
+                  t("faq.public.answer"),
                 ],
                 [
-                  "Can I use Mogging without an iPhone?",
-                  "You can start a paid facial analysis in your browser. The mobile app is available for iPhone, with an Android app coming soon.",
+                  t("faq.devices.question"),
+                  t("faq.devices.answer"),
                 ],
               ].map(([question, answer], index) => (
                 <div key={question} className="py-5">
@@ -342,6 +350,7 @@ export const getServerSideProps: GetServerSideProps<Props> = async ({
   req,
   res,
   query,
+  locale,
 }) => {
   const previewArm =
     process.env.NODE_ENV !== "production" &&
@@ -349,18 +358,19 @@ export const getServerSideProps: GetServerSideProps<Props> = async ({
     landingArms.includes(query.landing_preview as (typeof landingArms)[number])
       ? query.landing_preview
       : null;
+  const localizedPreview = Boolean(locale && locale !== "en");
   const automated = /bot\b|crawler|spider|slurp|facebookexternalhit|bingpreview|headlesschrome|lighthouse/i.test(req.headers["user-agent"] ?? "");
   const saved = parseLandingAssignment(req.cookies[LANDING_COOKIE]);
   const existing = isActiveLandingAssignment(saved) ? saved : null;
-  const assignment = previewArm
+  const assignment = localizedPreview ? { id: crypto.randomUUID(), arm: "homepage_b" as const } : previewArm
     ? { id: crypto.randomUUID(), arm: previewArm as LandingAssignment["arm"] }
     : automated ? { id: crypto.randomUUID(), arm: "homepage_b" as const } : (existing ?? createLandingAssignment(crypto.randomUUID()));
   // Render the assigned content on the server: no variant flash or client-side fetch.
   res.setHeader("Cache-Control", "private, no-store");
-  if (!previewArm && !automated && !existing)
+  if (!localizedPreview && !previewArm && !automated && !existing)
     res.setHeader(
       "Set-Cookie",
       `${LANDING_COOKIE}=${serializeLandingAssignment(assignment)}; Path=/; Max-Age=7776000; SameSite=Lax${process.env.NODE_ENV === "production" ? "; Secure" : ""}`,
     );
-  return { props: { assignment, preview: Boolean(previewArm) || automated } };
+  return { props: { assignment, preview: localizedPreview || Boolean(previewArm) || automated } };
 };

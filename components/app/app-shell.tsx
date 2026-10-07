@@ -1,3 +1,4 @@
+import { useTranslation } from 'react-i18next'
 import { SidebarProvider } from '@/components/ui/sidebar'
 import Link from 'next/link'
 import Image from 'next/image'
@@ -84,6 +85,7 @@ type ProfileDialogValues = {
 }
 
 export function AppShell({ children }: AppShellProps) {
+  const { t } = useTranslation()
   const { data: session, status } = useSession()
   const router = useRouter()
   const pendingAuthRedirect = getSafeAuthRedirect(router.query.next)
@@ -256,7 +258,7 @@ export function AppShell({ children }: AppShellProps) {
                   size="sm"
                   onClick={() => setLoginOpen(true)}
                 >
-                  Login
+                  {t('signIn')}
                 </Button>
               </div>
             )}
@@ -267,13 +269,13 @@ export function AppShell({ children }: AppShellProps) {
       </main>
 
       {!creatorSetup && !creatorReferral ? <footer className={`border-t border-zinc-200 bg-white py-8 text-sm text-zinc-600 ${router.pathname === '/' ? '' : 'px-5 sm:px-10'}`}>
-        <nav aria-label="Resources and legal" className={`mx-auto flex max-w-6xl flex-wrap gap-x-6 gap-y-4 ${router.pathname === '/' ? 'px-6 sm:px-10' : ''}`}>
-          <Link href="/what-is-mogging" className="hover:text-black">What is mogging?</Link>
-          <Link href="/how-face-analysis-works" className="hover:text-black">How face analysis works</Link>
-          <Link href="/faq" className="hover:text-black">FAQ</Link>
-          <Link href="/support" className="hover:text-black">Support</Link>
-          <Link href="/privacy" className="hover:text-black">Privacy</Link>
-          <Link href="/tos" className="hover:text-black">Terms</Link>
+        <nav aria-label={t('footer.resources')} className={`mx-auto flex max-w-6xl flex-wrap gap-x-6 gap-y-4 ${router.pathname === '/' ? 'px-6 sm:px-10' : ''}`}>
+          <Link href="/what-is-mogging" className="hover:text-black">{t('footer.what')}</Link>
+          <Link href="/how-face-analysis-works" className="hover:text-black">{t('footer.how')}</Link>
+          <Link href="/faq" className="hover:text-black">{t('footer.faq')}</Link>
+          <Link href="/support" className="hover:text-black">{t('footer.support')}</Link>
+          <Link href="/privacy" className="hover:text-black">{t('footer.privacy')}</Link>
+          <Link href="/tos" className="hover:text-black">{t('footer.terms')}</Link>
         </nav>
       </footer> : null}
 

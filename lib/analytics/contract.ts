@@ -28,7 +28,7 @@ const propertyKeys = new Set([
   'paywall_id', 'paywall_version', 'default_plan', 'product_count', 'products_loaded',
   'channel', 'provider', 'auth_stage', 'status', 'reason_code', 'error_code', 'active', 'launch', 'launchState',
   'delivery', 'paidMedia', 'subscriptionActive', 'mode', 'permission', 'result', 'source',
-  'destination', 'placement', 'path', 'referrer_host', 'category', 'task_id', 'tab',
+  'destination', 'placement', 'path', 'referrer_host', 'first_referrer_host', 'category', 'task_id', 'tab',
   'report_id', 'evaluation_id', 'success', 'count', 'push_id', 'campaign_id', 'creative_id',
   'creator_tracking_link_id', 'creator_first_tracking_link_id', 'creator_click_id',
   'locale', 'timezone',

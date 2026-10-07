@@ -1,3 +1,5 @@
+import { useTranslation } from "react-i18next";
+import type { resources } from "@/lib/i18n/catalogs";
 import Image from "next/image";
 import useSWRImmutable from "swr/immutable";
 import { apiGet } from "@/lib/api/client";
@@ -43,6 +45,7 @@ function Frame({
   height?: number;
   dark?: boolean;
 }) {
+  const { t } = useTranslation();
   const ref = useRef<HTMLDivElement>(null);
   const [scale, setScale] = useState(1);
   const [active, setActive] = useState(false);
@@ -205,6 +208,30 @@ const overallGeometry = resolvePreviewOverlay(
   464,
 );
 
+const overlayLabelKeys = {
+  "Eye alignment": "demo.eyeAlignment",
+  "Spacing & tilt": "demo.spacingTilt",
+  "Nose proportions": "demo.noseProportions",
+  "Bridge & width": "demo.bridgeWidth",
+  "Chin profile": "demo.chinProfile",
+  "Length & projection": "demo.lengthProjection",
+  "Skin analysis": "demo.skinAnalysis",
+  "Tone & texture": "demo.toneTexture",
+  "Facial symmetry": "demo.facialSymmetry",
+  "Left / right balance": "demo.leftRight",
+  "Jawline definition": "demo.jawDefinition",
+  "Angle & chin support": "demo.angleSupport",
+  "Lip proportions": "demo.lipProportions",
+  "Width & fullness": "demo.widthFullness",
+  "PSL score": "demo.psl",
+  "Symmetry": "demo.symmetry"
+} as const;
+
+function formatPreviewScore(score: string, locale: string) {
+  const number = new Intl.NumberFormat(locale, { minimumFractionDigits: 1, maximumFractionDigits: 1, useGrouping: false });
+  return score.replace(/\d+\.\d+/g, value => number.format(Number(value)));
+}
+
 function PreviewLabel({
   label,
   width = scannerWidth,
@@ -214,6 +241,7 @@ function PreviewLabel({
   width?: number;
   height?: number;
 }) {
+  const { t, i18n } = useTranslation();
   const right =
     label.align === "right" ||
     (label.align !== "left" && label.point.x >= width / 2);
@@ -233,7 +261,7 @@ function PreviewLabel({
         ),
       }}
     >
-      {[label.title, label.value].filter(Boolean).map((text, index) => (
+      {[label.title, label.value].filter((text): text is string => Boolean(text)).map((text, index) => (
         <span
           key={index}
           style={
@@ -244,7 +272,7 @@ function PreviewLabel({
             } as CSSProperties
           }
         >
-          {text}
+          {overlayLabelKeys[text as keyof typeof overlayLabelKeys] ? t(overlayLabelKeys[text as keyof typeof overlayLabelKeys]) : formatPreviewScore(text, i18n.language)}
         </span>
       ))}
     </div>
@@ -252,6 +280,7 @@ function PreviewLabel({
 }
 
 function ScanContent({ active, priority }: { active: boolean; priority: boolean }) {
+  const { t } = useTranslation();
   const [scene, setScene] = useState(0);
   useEffect(() => {
     if (!active) return;
@@ -264,13 +293,13 @@ function ScanContent({ active, priority }: { active: boolean; priority: boolean 
   return (
     <div className={styles.scanning}>
       <header>
-        <h3>Facial scan</h3>
-        <p>Anchoring detected landmarks</p>
+        <h3>{t("demo.scan")}</h3>
+        <p>{t("demo.anchoring")}</p>
       </header>
       <div className={styles.scannerCard}>
         <Image
           src="/model2.png"
-          alt="Example face being scanned"
+          alt={t("demo.scanAlt")}
           fill
           sizes="242px"
           priority={priority}
@@ -330,16 +359,16 @@ function ScanContent({ active, priority }: { active: boolean; priority: boolean 
             }}
           >
             {
-              [
-                "Mapping eye region",
-                "Tracing nose axis",
-                "Measuring chin profile",
-                "Reading skin texture",
-                "Tracing jawline definition",
-                "Checking symmetry",
-                "Mapping lip proportions",
-                "Measuring facial balance",
-              ][scene]
+              t(([
+                "demo.eyeStatus",
+                "demo.noseStatus",
+                "demo.chinStatus",
+                "demo.skinStatus",
+                "demo.jawStatus",
+                "demo.symmetryStatus",
+                "demo.lipStatus",
+                "demo.balanceStatus",
+              ] as const)[scene])
             }
           </m.div>
         </AnimatePresence>
@@ -348,20 +377,23 @@ function ScanContent({ active, priority }: { active: boolean; priority: boolean 
   );
 }
 export const ScanPreview = memo(function ScanPreview({ priority = false }: { priority?: boolean }) {
+  const { t } = useTranslation();
   return (
-    <Frame dark label="Mogging Facial scan screen">
+    <Frame dark label={t("demo.scanFrame")}>
       {(active) => <ScanContent active={active} priority={priority} />}
     </Frame>
   );
 });
 export const CameraPreview = memo(function CameraPreview() {
+  const { t } = useTranslation();
   return (
-    <Frame dark label="Mogging guided face capture demonstration">
+    <Frame dark label={t("demo.cameraFrame")}>
       {(active) => <CameraContent active={active} />}
     </Frame>
   );
 });
 function CameraContent({ active }: { active: boolean }) {
+  const { t } = useTranslation();
   const [captured, setCaptured] = useState(false);
   const [flash, setFlash] = useState(0);
   const played = useRef(false);
@@ -380,7 +412,7 @@ function CameraContent({ active }: { active: boolean }) {
       <div className={styles.cameraImage}>
         <Image
           src="/model2.png"
-          alt="A person lining up their face in the camera"
+          alt={t("demo.captureAlt")}
           fill
           sizes="350px"
           className={styles.photo}
@@ -391,12 +423,12 @@ function CameraContent({ active }: { active: boolean }) {
       </div>
       <div className={styles.cameraShade} />
       <div className={styles.captureHeader}>
-        <h3>Capture</h3>
-        <span>FACE CAPTURE</span>
+        <h3>{t("demo.capture")}</h3>
+        <span>{t("demo.faceCapture")}</span>
       </div>
       <div className={styles.captureInstruction}>
-        <span>[ 001 ] FRONT IMAGE</span>
-        <b>{captured ? "FACE ALIGNED" : "ALIGN FACE"}</b>
+        <span>{t("demo.frontImage")}</span>
+        <b>{t(captured ? "demo.aligned" : "demo.align")}</b>
       </div>
       <div className={styles.captureControls}>
         <span className={styles.roundControl}>
@@ -405,13 +437,13 @@ function CameraContent({ active }: { active: boolean }) {
         <button
           onClick={capture}
           type="button"
-          aria-label="Take an example photo"
+          aria-label={t("demo.takePhoto")}
           className={captured ? styles.scanButton : styles.shutter}
         >
           {captured ? (
             <>
               <ScanFace size={21} />
-              Scan
+              {t("demo.scanButton")}
             </>
           ) : (
             <span />
@@ -427,19 +459,20 @@ function CameraContent({ active }: { active: boolean }) {
 }
 
 export const EvaluationPreview = memo(function EvaluationPreview() {
+  const { t, i18n } = useTranslation();
   return (
-    <Frame label="Live example of the Mogging evaluation screen">
+    <Frame label={t("demo.evaluationFrame")}>
       {() => (
         <>
           <div
             className={styles.evaluationContent}
             tabIndex={0}
-            aria-label="Scroll the example evaluation"
+            aria-label={t("demo.scrollEvaluation")}
           >
             <div className={styles.reportPortrait}>
               <Image
                 src="/model2.png"
-                alt="Example evaluation portrait"
+                alt={t("demo.portraitAlt")}
                 fill
                 sizes="350px"
                 className={styles.photo}
@@ -468,46 +501,46 @@ export const EvaluationPreview = memo(function EvaluationPreview() {
             <div className={styles.report}>
               <div className={styles.scores}>
                 <div>
-                  <small>OVERALL SCORE</small>
+                  <small>{t("demo.overallScore")}</small>
                   <strong>
-                    7.2<em>/ 10</em>
+                    {formatPreviewScore("7.2", i18n.language)}<em>/ 10</em>
                   </strong>
                 </div>
                 <div>
-                  <small>POTENTIAL</small>
+                  <small>{t("demo.potential")}</small>
                   <strong className={styles.potentialScore}>
-                    8.5<em>/ 10</em>
+                    {formatPreviewScore("8.5", i18n.language)}<em>/ 10</em>
                   </strong>
                 </div>
               </div>
               <div className={styles.categories}>
-                {[
-                  ["Eye area", "7.8/10"],
-                  ["Jaw & chin", "7.4/10"],
-                  ["Cheekbone structure", "7.1/10"],
-                  ["PSL score", "5.8/8"],
-                  ["Symmetry", "7.3/10"],
-                  ["Skin quality", "7.0/10"],
-                ].map(([name, score], index) => (
+                {([
+                  ["demo.eyeArea", "7.8/10"],
+                  ["demo.jawChin", "7.4/10"],
+                  ["demo.cheekbones", "7.1/10"],
+                  ["demo.psl", "5.8/8"],
+                  ["demo.symmetry", "7.3/10"],
+                  ["demo.skinQuality", "7.0/10"],
+                ] as const).map(([name, score], index) => (
                   <div
                     key={name}
                     className={styles.category}
                     style={{ animationDelay: `${260 + index * 35}ms` }}
                   >
-                    <span>{name}</span>
-                    <strong>{score}</strong>
+                    <span>{t(name)}</span>
+                    <strong>{formatPreviewScore(score, i18n.language)}</strong>
                   </div>
                 ))}
               </div>
               <div className={styles.growth}>
-                <h4>Growth Opportunities</h4>
+                <h4>{t("demo.growth")}</h4>
                 <div className={styles.opportunity}>
                   <div>
                     <span>
                       <ArrowUpRight size={17} />
                     </span>
-                    <strong>Potential Score</strong>
-                    <b>8.5/10</b>
+                    <strong>{t("demo.potentialScore")}</strong>
+                    <b>{formatPreviewScore("8.5/10", i18n.language)}</b>
                   </div>
                   <i>
                     <b />
@@ -518,30 +551,28 @@ export const EvaluationPreview = memo(function EvaluationPreview() {
                     <span>
                       <ClipboardList size={18} />
                     </span>
-                    <strong>Your priorities</strong>
+                    <strong>{t("demo.priorities")}</strong>
                     <ChevronUp size={18} color="#71717a" />
                   </div>
                   <p>
-                    Start with the first priority. These steps come from your
-                    category recommendations, ordered by score.
+                    {t("demo.priorityDescription")}
                   </p>
                   <div className={styles.priority}>
                     <div>
                       <b>1.</b>
-                      <strong>Skin quality</strong>
-                      <span>7.0/10</span>
+                      <strong>{t("demo.skinQuality")}</strong>
+                      <span>{formatPreviewScore("7.0/10", i18n.language)}</span>
                     </div>
-                    <p>Build a consistent routine around your skin goals.</p>
+                    <p>{t("demo.skinRoutine")}</p>
                   </div>
                   <div className={styles.priority}>
                     <div>
                       <b>2.</b>
-                      <strong>Definition</strong>
-                      <span>7.4/10</span>
+                      <strong>{t("demo.definition")}</strong>
+                      <span>{formatPreviewScore("7.4/10", i18n.language)}</span>
                     </div>
                     <p>
-                      Follow your Protocol and track changes with future
-                      evaluations.
+                      {t("demo.followProtocol")}
                     </p>
                   </div>
                 </div>
@@ -551,7 +582,7 @@ export const EvaluationPreview = memo(function EvaluationPreview() {
           <div className={styles.reportChrome}>
             <span>
               <ChartColumn size={16} strokeWidth={2} />
-              Overall
+              {t("demo.overall")}
               <ChevronDown size={15} />
             </span>
             <span>×</span>
@@ -559,7 +590,7 @@ export const EvaluationPreview = memo(function EvaluationPreview() {
           <div className={styles.shareDock}>
             <div className={styles.share}>
               <Share size={19} />
-              Share your score
+              {t("demo.share")}
             </div>
           </div>
         </>
@@ -568,25 +599,27 @@ export const EvaluationPreview = memo(function EvaluationPreview() {
   );
 });
 
-type PreviewTask = { title: string; detail: string; color: string; icon: string; hour: number };
+type PreviewTask = { title: keyof typeof resources.en.translation; detail: keyof typeof resources.en.translation; color: string; icon: string; hour: number };
 const protocolTasks: PreviewTask[] = [
-  { title: "10 controlled chin tucks", detail: "Sit tall with relaxed shoulders. Slide your chin straight back, hold 3 seconds, release, and repeat 10 times.", color: "#32c48d", icon: "figure.stand", hour: 7 },
-  { title: "Mewing: pressure-free rest", detail: "Find a relaxed tongue resting position. Keep your teeth apart and avoid pressing or straining.", color: "#ff6f9f", icon: "mouth.fill", hour: 12 },
-  { title: "Cleanse & moisturize", detail: "Use a gentle cleanser, then moisturize to keep your skin routine consistent.", color: "#58bdff", icon: "drop.fill", hour: 8 },
-  { title: "Daily SPF", detail: "Apply your sunscreen as directed before heading outdoors.", color: "#ffc45e", icon: "sun.max.fill", hour: 10 },
-  { title: "Frame your face", detail: "Try your recommended hair styling direction and check how it frames your face.", color: "#c09aff", icon: "scissors", hour: 16 },
-  { title: "Evening skin routine", detail: "Gently cleanse and moisturize before bed. Keep your routine simple and consistent.", color: "#58bdff", icon: "sparkles", hour: 18 },
+  { title: "demo.chinTask", detail: "demo.chinDetail", color: "#32c48d", icon: "figure.stand", hour: 7 },
+  { title: "demo.mewingTask", detail: "demo.mewingDetail", color: "#ff6f9f", icon: "mouth.fill", hour: 12 },
+  { title: "demo.cleanseTask", detail: "demo.cleanseDetail", color: "#58bdff", icon: "drop.fill", hour: 8 },
+  { title: "demo.spfTask", detail: "demo.spfDetail", color: "#ffc45e", icon: "sun.max.fill", hour: 10 },
+  { title: "demo.hairTask", detail: "demo.hairDetail", color: "#c09aff", icon: "scissors", hour: 16 },
+  { title: "demo.eveningTask", detail: "demo.eveningDetail", color: "#58bdff", icon: "sparkles", hour: 18 },
 ];
 const protocolDays = [[2, 3, 4], [0, 1, 5], [2, 1, 4], [0, 3, 5], [2, 1, 5], [0, 3, 4], [2, 3, 5], [0, 1, 4]].map(indices => indices.map(index => protocolTasks[index]));
 
 export const ProtocolPreview = memo(function ProtocolPreview() {
+  const { t } = useTranslation();
   return (
-    <Frame label="Interactive Mogging Protocol calendar and daily tasks">
+    <Frame label={t("demo.protocolFrame")}>
       {(active) => <ProtocolContent active={active} />}
     </Frame>
   );
 });
 function ProtocolContent({ active }: { active: boolean }) {
+  const { t, i18n } = useTranslation();
   const [selectedDay, setSelectedDay] = useState(1);
   const [completion, setCompletion] = useState<number[]>(() =>
     Array(8).fill(0),
@@ -606,7 +639,7 @@ function ProtocolContent({ active }: { active: boolean }) {
   return (
     <>
       <header className={styles.protocolHeader}>
-        <h3>Protocol</h3>
+        <h3>{t("demo.protocol")}</h3>
         <div className={styles.protocolActions}>
           <span key={completed} className={styles.protocolScore}>
             <i
@@ -631,12 +664,12 @@ function ProtocolContent({ active }: { active: boolean }) {
         </div>
       </header>
       <div className={styles.calendar}>
-        {["Sat", "Today", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"].map(
+        {Array.from({ length: 8 }, (_, index) => index === 1 ? t("demo.today") : new Intl.DateTimeFormat(i18n.language, { weekday: "short", timeZone: "UTC" }).format(new Date(Date.UTC(2026, 9, index + 3)))).map(
           (day, index) => (
             <button
               type="button"
               key={index}
-              aria-label={`Show ${day}, October ${index + 3}`}
+              aria-label={t("demo.showDate", { date: new Intl.DateTimeFormat(i18n.language, { month: "long", day: "numeric", timeZone: "UTC" }).format(new Date(Date.UTC(2026, 9, index + 3))) })}
               aria-pressed={selectedDay === index}
               data-today={index === 1}
               data-selected={selectedDay === index}
@@ -652,7 +685,7 @@ function ProtocolContent({ active }: { active: boolean }) {
       <div
         className={styles.scheduleScroll}
         tabIndex={0}
-        aria-label="Scroll the example Protocol"
+        aria-label={t("demo.scrollProtocol")}
       >
         <div key={selectedDay} className={styles.schedule}>
           {Array.from({ length: 14 }, (_, index) => (
@@ -686,11 +719,11 @@ function ProtocolContent({ active }: { active: boolean }) {
                         }
                       />
                     </span>
-                    <strong>{title}</strong>
+                    <strong>{t(title)}</strong>
                     <button
                       type="button"
                       role="checkbox"
-                      aria-label={`${done ? "Undo" : "Complete"} ${title}`}
+                      aria-label={t(done ? "demo.undo" : "demo.complete", { task: t(title) })}
                       aria-checked={done}
                       onClick={() => {
                         played.current = true;
@@ -704,7 +737,7 @@ function ProtocolContent({ active }: { active: boolean }) {
                       {done && <X size={14} />}
                     </button>
                   </div>
-                  <p>{detail}</p>
+                  <p>{t(detail)}</p>
                 </div>
               </div>
             );
@@ -724,25 +757,27 @@ const friendExamples: PreviewRanking[] = [
   { id: "friend-4", rank: 5, name: "Your friend", imageUrl: "/model9.png", displayRating: 1832 },
   { id: "friend-5", rank: 6, name: "Your friend", imageUrl: "/model4.png", displayRating: 1765 },
 ];
-const rankingRating = (person: PreviewRanking) => Math.round(person.displayRating).toLocaleString("en-US");
+const rankingRating = (person: PreviewRanking, locale: string) => Math.round(person.displayRating).toLocaleString(locale);
 
 export const LeaderboardPreview = memo(function LeaderboardPreview() {
-  return <Frame label="Mogging public leaderboard">{active => <LeaderboardContent active={active} />}</Frame>;
+  const { t } = useTranslation();
+  return <Frame label={t("demo.leaderboardFrame")}>{active => <LeaderboardContent active={active} />}</Frame>;
 });
 
 function LeaderboardContent({ active }: { active: boolean }) {
+  const { t, i18n } = useTranslation();
   const [scope, setScope] = useState("Global");
   // Mount near the viewport; fetch once and share the cache across visits.
   const { data, error } = useSWRImmutable<{ items: PreviewRanking[] }>(
     "/api/leaderboard/photos?limit=6&photoType=face&sort=rating&gender=all", apiGet,
     { shouldRetryOnError: false, dedupingInterval: 60000 },
   );
-  const entries = scope === "Global" ? data?.items ?? [] : friendExamples;
+  const entries = scope === "Global" ? data?.items ?? [] : friendExamples.map(person => ({ ...person, name: t(person.id === "you" ? "demo.you" : "demo.friend") }));
   return <div className={styles.leaderboard}>
     <h3>Leaderboard</h3>
-    <div className={styles.leaderboardTabs} role="tablist" aria-label="Leaderboard scope">
+    <div className={styles.leaderboardTabs} role="tablist" aria-label={t("demo.scope")}>
       <m.span className={styles.leaderboardIndicator} animate={{ x: scope === "Global" ? "0%" : "100%" }} transition={{ duration: active ? .42 : 0, ease: [.16, 1, .3, 1] }} aria-hidden="true" />
-      {["Global", "Friends"].map(tab => <button key={tab} type="button" role="tab" aria-selected={scope === tab} onClick={() => setScope(tab)}><strong>{tab}</strong></button>)}
+      {["Global", "Friends"].map(tab => <button key={tab} type="button" role="tab" aria-selected={scope === tab} onClick={() => setScope(tab)}><strong>{t(tab === "Global" ? "demo.global" : "demo.friends")}</strong></button>)}
     </div>
     <AnimatePresence mode="wait">
       <m.div key={scope} initial={{ opacity: 0, y: 14 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -8 }} transition={{ duration: active ? .42 : 0, ease: [.16, 1, .3, 1] }}>
@@ -755,17 +790,17 @@ function LeaderboardContent({ active }: { active: boolean }) {
               return <m.div key={person.id} initial={{ opacity: active ? 0 : 1, y: active ? 22 : 0 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: active ? .75 : 0, delay: active ? place * .18 : 0, ease: [.16, 1, .3, 1] }}>
                 <p>{person.name || "Mogger"}</p>
                 <div className={styles.podiumAvatar} style={{ borderColor: color, width: place === 0 ? 82 : 70, height: place === 0 ? 82 : 70 }}>
-                  <Image src={person.imageUrl} alt={person.name || "Public profile"} fill sizes="82px" /><b>{rankingRating(person)}</b>
+                  <Image src={person.imageUrl} alt={person.name || t("demo.publicProfile")} fill sizes="82px" /><b>{rankingRating(person, i18n.language)}</b>
                 </div>
-                <div className={styles.podiumColumn} style={{ height: [155, 112, 88][place], background: `linear-gradient(${color}cc, ${color}55 60%, transparent)` }}><i style={{ background: color }} /><strong>{["1st", "2nd", "3rd"][place]}</strong></div>
+                <div className={styles.podiumColumn} style={{ height: [155, 112, 88][place], background: `linear-gradient(${color}cc, ${color}55 60%, transparent)` }}><i style={{ background: color }} /><strong>{new Intl.NumberFormat(i18n.language).format(place + 1)}</strong></div>
               </m.div>;
             })}
           </div>
-          <p className={styles.rankingHeading}>RANKINGS <span>BATTLE RATING</span></p>
-          {entries.slice(3).map(person => <div className={styles.rankingRow} key={person.id}><span>{person.rank}</span><Image src={person.imageUrl} alt="" width={44} height={44} /><strong>{person.name || "Mogger"}</strong><b>{rankingRating(person)}</b></div>)}
-        </> : <p className={styles.rankingStatus} role="status">{error ? "Global rankings are temporarily unavailable." : data ? "Public rankings will appear here." : "Loading public rankings…"}</p>}
+          <p className={styles.rankingHeading}>{t("demo.rankings")} <span>{t("demo.battleRating")}</span></p>
+          {entries.slice(3).map(person => <div className={styles.rankingRow} key={person.id}><span>{person.rank}</span><Image src={person.imageUrl} alt="" width={44} height={44} /><strong>{person.name || "Mogger"}</strong><b>{rankingRating(person, i18n.language)}</b></div>)}
+        </> : <p className={styles.rankingStatus} role="status">{t(error ? "demo.rankingUnavailable" : data ? "demo.rankingEmpty" : "demo.rankingLoading")}</p>}
       </m.div>
     </AnimatePresence>
-    <p className={styles.rankingDisclaimer}>{scope === "Global" ? "Public rankings · Battle rating" : "Example friends leaderboard"}</p>
+    <p className={styles.rankingDisclaimer}>{t(scope === "Global" ? "demo.rankingDisclaimer" : "demo.friendsExample")}</p>
   </div>;
 }

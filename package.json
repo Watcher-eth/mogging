@@ -28,7 +28,10 @@
     "test:courses-http": "bun run scripts/tests/courses-http.ts",
     "test:courses-r2": "bun run scripts/tests/courses-r2.ts",
     "test:courses-stripe": "bun run scripts/tests/courses-stripe.ts",
-    "check:courses-release": "bun run scripts/setup/check-courses-release.ts"
+    "check:courses-release": "bun run scripts/setup/check-courses-release.ts",
+    "i18n:sync": "bun run scripts/i18n/sync.ts",
+    "i18n:check": "bun run scripts/i18n/sync.ts --check && bun test lib/i18n/locales.test.ts",
+    "i18n:review": "bun run scripts/i18n/inventory.ts && bun run scripts/i18n/review.ts"
   },
   "dependencies": {
     "@auth/drizzle-adapter": "^1.11.1",
@@ -65,6 +68,7 @@
     "clsx": "^2.1.1",
     "drizzle-orm": "^0.44.6",
     "html-to-image": "^1.11.13",
+    "i18next": "^26.4.2",
     "jose": "^4.15.9",
     "liveline": "^0.0.7",
     "lucide-react": "^1.14.0",
@@ -76,6 +80,7 @@
     "postgres": "^3.4.7",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
+    "react-i18next": "^17.0.16",
     "react-markdown": "^10.1.0",
     "recharts": "2.15.4",
     "rehype-raw": "^7.0.0",

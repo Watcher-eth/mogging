@@ -1,4 +1,5 @@
 import Head from 'next/head'
+import { locales } from '@/lib/i18n/locales'
 import { useRouter } from 'next/router'
 import { canonicalUrl as getCanonicalUrl, robotsForPath, serializeJsonLd, siteUrl, socialImageForPath } from '@/lib/seo'
 
@@ -20,7 +21,8 @@ export function SeoHead({
   structuredData,
 }: SeoHeadProps) {
   const router = useRouter()
-  const currentPath = path ?? router.asPath ?? '/'
+  const unprefixedPath = path ?? router.asPath ?? '/'
+  const currentPath = router.locale && router.locale !== 'en' ? `/${router.locale}${unprefixedPath === '/' ? '' : unprefixedPath}` : unprefixedPath
   const canonicalUrl = getCanonicalUrl(currentPath)
   const image = socialImageForPath(router.pathname)
   const imageUrl = new URL(image.path, siteUrl).href
@@ -28,13 +30,15 @@ export function SeoHead({
 
   return (
     <Head>
-      <meta key="robots" name="robots" content={robotsForPath(router.pathname)} />
+      <meta key="robots" name="robots" content={router.locale && router.locale !== 'en' && router.pathname !== '/' ? 'noindex, follow' : robotsForPath(router.pathname)} />
       {structuredData ? (
         <script key="structured-data" type="application/ld+json" dangerouslySetInnerHTML={{ __html: serializeJsonLd(structuredData) }} />
       ) : null}
       <title key="title">{title}</title>
       <meta key="description" name="description" content={description} />
       <meta key="apple-itunes-app" name="apple-itunes-app" content={`app-id=${iosAppStoreId}, app-argument=${canonicalUrl}`} />
+      {router.pathname === '/' && locales.map(locale => <link key={`alternate-${locale}`} rel="alternate" hrefLang={locale} href={`${siteUrl}${locale === 'en' ? '/' : `/${locale}`}`} />)}
+      {router.pathname === '/' && <link key="alternate-default" rel="alternate" hrefLang="x-default" href={`${siteUrl}/`} />}
       <link key="canonical" rel="canonical" href={canonicalUrl} />
       <link key="favicon" rel="icon" type="image/png" href="/favicon.png" />
       <link key="apple-touch-icon" rel="apple-touch-icon" href="/favicon.png" />

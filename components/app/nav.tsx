@@ -1,4 +1,6 @@
+import { ScanFace, Trophy, Swords } from 'lucide-react'
 import { trackWebEvent, flushWebAnalytics } from '@/lib/analytics/client'
+import { useTranslation } from 'react-i18next'
 import Link from 'next/link'
 import { LazyMotion } from 'motion/react'
 import * as m from 'motion/react-m'
@@ -7,16 +9,17 @@ import { useRouter } from 'next/router'
 import { cn } from '@/lib/utils'
 
 const navItems = [
-  { href: '/analysis', label: 'Analysis' },
-  { href: '/leaderboard', label: 'Leaderboard' },
-  { href: '/battle', label: 'Battle' },
-]
+  { href: '/analysis', label: 'nav.analysis', icon: ScanFace },
+  { href: '/leaderboard', label: 'nav.leaderboard', icon: Trophy },
+  { href: '/battle', label: 'nav.battle', icon: Swords },
+] as const
 
 export function AppNav({ activePath }: { activePath?: string }) {
   const router = useRouter()
+  const { t } = useTranslation()
 
   return (
-    <nav className="flex min-w-0 items-center justify-center gap-2 sm:gap-8">
+    <nav className="flex min-w-0 items-center justify-center gap-2 max-[360px]:col-span-3 max-[360px]:row-start-2 max-[360px]:gap-6 sm:gap-8">
       {navItems.map((item) => {
         const active = (activePath ?? router.pathname).startsWith(item.href)
 
@@ -24,6 +27,8 @@ export function AppNav({ activePath }: { activePath?: string }) {
           <Link
             key={item.href}
             href={item.href}
+            aria-label={t(item.label)}
+            title={t(item.label)}
             prefetch={router.pathname !== '/'}
             onClick={() => {
               if (router.pathname !== '/' || item.href !== '/analysis') return
@@ -31,11 +36,12 @@ export function AppNav({ activePath }: { activePath?: string }) {
               void flushWebAnalytics()
             }}
             className={cn(
-              'group relative py-2 text-[11px] font-medium text-black/45 transition-[color,transform] duration-200 ease-out hover:-translate-y-0.5 hover:text-black active:scale-[0.98] sm:text-sm',
+              'group relative flex h-9 w-8 shrink-0 items-center justify-center min-[481px]:h-auto min-[481px]:w-auto min-[481px]:py-2 text-[11px] font-medium text-black/45 transition-[color,transform] duration-200 ease-out hover:-translate-y-0.5 hover:text-black active:scale-[0.98] sm:text-sm',
               active && 'text-black'
             )}
           >
-            <span>{item.label}</span>
+            <item.icon className="size-[18px] min-[481px]:hidden" aria-hidden="true" />
+            <span className="block max-[480px]:hidden">{t(item.label)}</span>
             {active ? (
               <LazyMotion features={loadNavMotion}><m.span
                 layoutId="app-nav-active-pill"

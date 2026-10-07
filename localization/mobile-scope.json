@@ -1,0 +1,529 @@
+{
+  "date": "2026-10-06",
+  "scope": "Mobile full journeys and their backend/native/external text surfaces",
+  "policy": "Source inspection is not device or native-language approval. Candidates must be triaged and assigned semantic message IDs before translation.",
+  "locales": [
+    "de",
+    "de-AT",
+    "de-CH",
+    "es",
+    "es-419",
+    "fr",
+    "zh-Hans"
+  ],
+  "journeys": [
+    {
+      "id": "onboarding",
+      "title": "Welcome, personalization and account",
+      "sourceAudit": "reviewed",
+      "renderedAudit": "pending",
+      "translationStatus": "personalization draft added; account/error states incomplete",
+      "nativeApproval": false,
+      "sources": [
+        "mogging-mobile/src/screens/onboarding-screen.tsx",
+        "mogging-mobile/src/components/personalization-flow.tsx",
+        "mogging-mobile/src/components/account-auth-actions.tsx",
+        "mogging-mobile/src/lib/onboarding-state.ts"
+      ],
+      "dependencies": [
+        "Stable choices and migration"
+      ],
+      "acceptanceCases": [
+        {
+          "id": "onboarding-01",
+          "case": "First launch and returning user",
+          "status": "pending"
+        },
+        {
+          "id": "onboarding-02",
+          "case": "Experience-dependent questions",
+          "status": "pending"
+        },
+        {
+          "id": "onboarding-03",
+          "case": "Age/height/goals/methods/time selection",
+          "status": "pending"
+        },
+        {
+          "id": "onboarding-04",
+          "case": "Resume after background, termination and update",
+          "status": "pending"
+        },
+        {
+          "id": "onboarding-05",
+          "case": "Auth failures and cancelled sign-in",
+          "status": "pending"
+        }
+      ]
+    },
+    {
+      "id": "capture",
+      "title": "Photo capture and analysis submission",
+      "sourceAudit": "reviewed",
+      "renderedAudit": "pending",
+      "translationStatus": "incomplete",
+      "nativeApproval": false,
+      "sources": [
+        "mogging-mobile/src/components/guided-face-camera.tsx",
+        "mogging-mobile/src/lib/face-capture-guide.ts",
+        "mogging-mobile/src/api/face-report.ts"
+      ],
+      "dependencies": [
+        "Stable API error codes",
+        "Native permission messages"
+      ],
+      "acceptanceCases": [
+        {
+          "id": "capture-01",
+          "case": "Camera/library permission granted and denied",
+          "status": "pending"
+        },
+        {
+          "id": "capture-02",
+          "case": "Capture directions and accessibility",
+          "status": "pending"
+        },
+        {
+          "id": "capture-03",
+          "case": "Bad/missing face, invalid upload and timeout",
+          "status": "pending"
+        },
+        {
+          "id": "capture-04",
+          "case": "Cancellation, retry and lost connection",
+          "status": "pending"
+        }
+      ]
+    },
+    {
+      "id": "reports",
+      "title": "Report display, history and action plans",
+      "sourceAudit": "reviewed",
+      "renderedAudit": "pending",
+      "translationStatus": "incomplete",
+      "nativeApproval": false,
+      "sources": [
+        "mogging-mobile/src/screens/report-screen.tsx",
+        "mogging-mobile/src/data/report.ts",
+        "mogging-mobile/src/lib/category-action-plan.ts",
+        "mogging-mobile/src/lib/overall-action-plan.ts",
+        "mogging-mobile/src/lib/report-payload.ts",
+        "mogging-mobile/src/overlay-engine/report-presets.ts",
+        "moggingnew/lib/analysis/prompt.ts",
+        "moggingnew/lib/analysis/report.ts"
+      ],
+      "dependencies": [
+        "Structured action/feature IDs",
+        "Canonical presentation projection",
+        "Held-out report evaluation"
+      ],
+      "acceptanceCases": [
+        {
+          "id": "reports-01",
+          "case": "Canonical scores/measurements identical in every locale",
+          "status": "pending"
+        },
+        {
+          "id": "reports-02",
+          "case": "Legacy report and missing/uncertain feature",
+          "status": "pending"
+        },
+        {
+          "id": "reports-03",
+          "case": "No translated-label fallback overwrites observations",
+          "status": "pending"
+        },
+        {
+          "id": "reports-04",
+          "case": "Chinese action splitting and deduplication",
+          "status": "pending"
+        },
+        {
+          "id": "reports-05",
+          "case": "Offline report and failed translation",
+          "status": "pending"
+        },
+        {
+          "id": "reports-06",
+          "case": "Language switch never spends a scan credit",
+          "status": "pending"
+        }
+      ]
+    },
+    {
+      "id": "protocol",
+      "title": "Protocol personalization, calendar and feedback",
+      "sourceAudit": "reviewed",
+      "renderedAudit": "pending",
+      "translationStatus": "incomplete",
+      "nativeApproval": false,
+      "sources": [
+        "mogging-mobile/src/screens/reports-screen.tsx",
+        "mogging-mobile/src/components/protocol-menu.tsx",
+        "mogging-mobile/src/lib/protocol-tasks.ts"
+      ],
+      "dependencies": [
+        "Translate display from task IDs",
+        "Keep protocol derivation canonical"
+      ],
+      "acceptanceCases": [
+        {
+          "id": "protocol-01",
+          "case": "Tasks and completion survive locale switch",
+          "status": "pending"
+        },
+        {
+          "id": "protocol-02",
+          "case": "Products, tools, time budget and safeguards remain identical",
+          "status": "pending"
+        },
+        {
+          "id": "protocol-03",
+          "case": "Morning/evening and regional date display",
+          "status": "pending"
+        },
+        {
+          "id": "protocol-04",
+          "case": "Native menu choices and feedback",
+          "status": "pending"
+        },
+        {
+          "id": "protocol-05",
+          "case": "Task duration/frequency/conditional instructions preserved",
+          "status": "pending"
+        }
+      ]
+    },
+    {
+      "id": "social",
+      "title": "Battle, leaderboard and public profiles",
+      "sourceAudit": "reviewed",
+      "renderedAudit": "pending",
+      "translationStatus": "incomplete",
+      "nativeApproval": false,
+      "sources": [
+        "mogging-mobile/src/screens/reports-screen.tsx",
+        "mogging-mobile/src/screens/leaderboard-screen.tsx",
+        "mogging-mobile/src/components/publication-setting.tsx",
+        "mogging-mobile/src/api/compare.ts",
+        "mogging-mobile/src/api/leaderboard.ts"
+      ],
+      "dependencies": [
+        "Stable filter values",
+        "Error mapping"
+      ],
+      "acceptanceCases": [
+        {
+          "id": "social-01",
+          "case": "Battle filter values remain canonical",
+          "status": "pending"
+        },
+        {
+          "id": "social-02",
+          "case": "Empty and failed feeds",
+          "status": "pending"
+        },
+        {
+          "id": "social-03",
+          "case": "Voting retry and result labels",
+          "status": "pending"
+        },
+        {
+          "id": "social-04",
+          "case": "Public/private profile consent",
+          "status": "pending"
+        },
+        {
+          "id": "social-05",
+          "case": "Usernames remain unchanged",
+          "status": "pending"
+        }
+      ]
+    },
+    {
+      "id": "sharing",
+      "title": "Sharing and referral journeys",
+      "sourceAudit": "reviewed",
+      "renderedAudit": "pending",
+      "translationStatus": "incomplete",
+      "nativeApproval": false,
+      "sources": [
+        "mogging-mobile/src/screens/share-screen.tsx",
+        "mogging-mobile/src/components/share-guide.tsx",
+        "mogging-mobile/src/components/invite-friends-dialog.tsx",
+        "mogging-mobile/src/lib/share-caption.ts"
+      ],
+      "dependencies": [
+        "Rendered media review",
+        "Localized destination pages"
+      ],
+      "acceptanceCases": [
+        {
+          "id": "sharing-01",
+          "case": "Exported image/text has no unintended English",
+          "status": "pending"
+        },
+        {
+          "id": "sharing-02",
+          "case": "Chinese font rendering and long captions",
+          "status": "pending"
+        },
+        {
+          "id": "sharing-03",
+          "case": "Native share, TikTok and Instagram",
+          "status": "pending"
+        },
+        {
+          "id": "sharing-04",
+          "case": "Invite progress singular/plural and reward states",
+          "status": "pending"
+        },
+        {
+          "id": "sharing-05",
+          "case": "Deep-link fallback and attribution",
+          "status": "pending"
+        }
+      ]
+    },
+    {
+      "id": "purchases",
+      "title": "Subscriptions, creator offers and scan packs",
+      "sourceAudit": "reviewed",
+      "renderedAudit": "pending",
+      "translationStatus": "incomplete",
+      "nativeApproval": false,
+      "sources": [
+        "mogging-mobile/src/screens/onboarding-screen.tsx",
+        "mogging-mobile/src/components/return-offer-sheet.tsx",
+        "mogging-mobile/src/components/upgrade-sheet.tsx",
+        "mogging-mobile/src/data/scan-offers.ts",
+        "mogging-mobile/src/api/revenuecat.ts",
+        "mogging-mobile/src/api/payments.ts"
+      ],
+      "dependencies": [
+        "Remove scan price fallback",
+        "Store product metadata review",
+        "Sandbox purchase accounts"
+      ],
+      "acceptanceCases": [
+        {
+          "id": "purchases-01",
+          "case": "Actual store price and currency for each product",
+          "status": "pending"
+        },
+        {
+          "id": "purchases-02",
+          "case": "Intro price, period, eligibility and renewal",
+          "status": "pending"
+        },
+        {
+          "id": "purchases-03",
+          "case": "No USD fallback when product loading fails",
+          "status": "pending"
+        },
+        {
+          "id": "purchases-04",
+          "case": "Pending/cancelled purchase, restore and sync retry",
+          "status": "pending"
+        },
+        {
+          "id": "purchases-05",
+          "case": "German UI with USD storefront; French UI with CHF storefront",
+          "status": "pending"
+        },
+        {
+          "id": "purchases-06",
+          "case": "Creator discount and backend activation",
+          "status": "pending"
+        }
+      ]
+    },
+    {
+      "id": "settings",
+      "title": "Settings, support and account actions",
+      "sourceAudit": "reviewed",
+      "renderedAudit": "pending",
+      "translationStatus": "incomplete",
+      "nativeApproval": false,
+      "sources": [
+        "mogging-mobile/src/screens/reports-screen.tsx",
+        "mogging-mobile/src/api/delete-profile.ts",
+        "mogging-mobile/src/api/auth.ts",
+        "mogging-mobile/src/app.tsx"
+      ],
+      "dependencies": [
+        "One preference owner",
+        "Localized external pages"
+      ],
+      "acceptanceCases": [
+        {
+          "id": "settings-01",
+          "case": "Language preference and device-language reset",
+          "status": "pending"
+        },
+        {
+          "id": "settings-02",
+          "case": "Sign-out/deletion confirmations",
+          "status": "pending"
+        },
+        {
+          "id": "settings-03",
+          "case": "Account deletion failure and cancellation",
+          "status": "pending"
+        },
+        {
+          "id": "settings-04",
+          "case": "Support/legal destinations",
+          "status": "pending"
+        },
+        {
+          "id": "settings-05",
+          "case": "Unknown server error is understandable",
+          "status": "pending"
+        }
+      ]
+    },
+    {
+      "id": "native",
+      "title": "Permissions, native prompts, notifications and Live Activities",
+      "sourceAudit": "reviewed",
+      "renderedAudit": "pending",
+      "translationStatus": "incomplete",
+      "nativeApproval": false,
+      "sources": [
+        "mogging-mobile/app.json",
+        "mogging-mobile/app.config.js",
+        "mogging-mobile/modules/mogging-push/ios/NotificationPermissionView.swift",
+        "mogging-mobile/src/widgets/mogging-paywall-activity.tsx",
+        "mogging-mobile/ios/ExpoWidgetsTarget/MoggingPaywallActivity.swift",
+        "mogging-mobile/src/lib/push-notifications.ts",
+        "moggingnew/lib/push/schedule.ts",
+        "moggingnew/pages/api/push/device.ts"
+      ],
+      "dependencies": [
+        "Native build",
+        "Device locale on push registration",
+        "Widget isolated-runtime text"
+      ],
+      "acceptanceCases": [
+        {
+          "id": "native-01",
+          "case": "Effective permission messages in generated binary",
+          "status": "pending"
+        },
+        {
+          "id": "native-02",
+          "case": "Supported languages in system settings",
+          "status": "pending"
+        },
+        {
+          "id": "native-03",
+          "case": "Swift primer and Live Activity translated",
+          "status": "pending"
+        },
+        {
+          "id": "native-04",
+          "case": "Push registration carries current language",
+          "status": "pending"
+        },
+        {
+          "id": "native-05",
+          "case": "Server scheduled reminder uses correct task text",
+          "status": "pending"
+        },
+        {
+          "id": "native-06",
+          "case": "Old scheduled content refreshed on language change",
+          "status": "pending"
+        }
+      ]
+    },
+    {
+      "id": "external",
+      "title": "Store listings, email, web links and media",
+      "sourceAudit": "reviewed",
+      "renderedAudit": "pending",
+      "translationStatus": "incomplete",
+      "nativeApproval": false,
+      "sources": [
+        "moggingnew/lib/payments/activation-email.ts",
+        "mogging-mobile/assets",
+        "App Store Connect",
+        "RevenueCat"
+      ],
+      "dependencies": [
+        "Dashboard inspection",
+        "Media inventory",
+        "Native-editor availability"
+      ],
+      "acceptanceCases": [
+        {
+          "id": "external-01",
+          "case": "App/product names and descriptions localized",
+          "status": "pending"
+        },
+        {
+          "id": "external-02",
+          "case": "Screenshots/previews match ready app journeys",
+          "status": "pending"
+        },
+        {
+          "id": "external-03",
+          "case": "Support/privacy/activation language continuity",
+          "status": "pending"
+        },
+        {
+          "id": "external-04",
+          "case": "Embedded images/videos reviewed",
+          "status": "pending"
+        },
+        {
+          "id": "external-05",
+          "case": "Store territories and products reconciled",
+          "status": "pending"
+        }
+      ]
+    }
+  ],
+  "releaseGates": {
+    "minimumWeightedScore": 4.5,
+    "minimumDimensionScore": 4,
+    "criticalOrMajorDefectsAllowed": 0,
+    "reportFixturesPerBaseLanguage": 50,
+    "nativeComprehensionSessionsPerLanguage": "5–8",
+    "requireNativeReview": true,
+    "requireRenderedDeviceReview": true,
+    "requireSandboxPurchaseVerification": true
+  },
+  "sourceInventory": {
+    "totalCandidates": 2603,
+    "triageCounts": {
+      "needs-context-review": 1632,
+      "likely-code-value": 971
+    },
+    "uniqueFiles": 68,
+    "coverage": "Source candidates only. No percentage claimed."
+  },
+  "foundationVerification": {
+    "stableChoiceMigration": "implemented",
+    "persistVersion": 12,
+    "typechecks": [
+      "mobile",
+      "web"
+    ],
+    "mobileTests": {
+      "passed": 159,
+      "failed": 0
+    },
+    "nativeWalkthrough": "partial smoke: native launch, German language switch and age question rendered; full walkthrough pending",
+    "newTranslationsAdded": true,
+    "productionMobileRelease": false,
+    "iosBundleExport": "passed after personalization batch",
+    "canonicalReportProjection": "implemented; structural guards pass, semantic evaluation pending",
+    "personalizationMessages": 62,
+    "nativeDependency": "ExpoLocalization linked by CocoaPods",
+    "nativeBuild": "passed after linking ExpoLocalization",
+    "nativeQALimitation": "Shared Simulator and language menu/provider actively changed by parallel onboarding task.",
+    "languageAvailability": "Automatic device selection in onboarding; Settings supports persistent override and reset to device language. Draft languages remain subject to full release gates."
+  }
+}

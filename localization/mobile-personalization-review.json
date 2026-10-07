@@ -1,0 +1,1711 @@
+{
+  "date": "2026-10-06",
+  "batch": "Mobile personalization",
+  "status": "draft; contextual owner/native review pending",
+  "nativeApproved": false,
+  "source": "mogging-mobile/src/components/personalization-flow.tsx",
+  "choiceContext": "Choice IDs map to personalization.choice.{group}.{id}. Original English aliases remain migration inputs, never translated storage values.",
+  "sourceDecisions": [
+    "Removed unsupported accuracy/personalization claims from age and height questions after inspecting their current consumers.",
+    "Clarified that treatment selections are past experiences, not recommendations.",
+    "Changed appearance goal copy to facial contours and skin appearance; preserved stable IDs, migration aliases and protocol behavior.",
+    "Displayed metric height first; existing ranges and saved IDs retained. Range gaps remain a separate source issue.",
+    "Replaced ascension/maxxing metaphors with concrete daily-routine wording; protected Mewing and the YOU MOG. catchphrase.",
+    "Removed the commitment heading single-line limit so translations can wrap.",
+    "Swiss spelling overrides added. Austria shares German; Latin American Spanish uses the shared neutral wording for this batch.",
+    "Owner requested No Judgment. in the German experience subtitle; retain this English phrase."
+  ],
+  "requiredReview": [
+    "German owner review in rendered screens, including tone and commitment copy.",
+    "Native editorial review for Spanish, French and Simplified Chinese; targeted regional comprehension checks.",
+    "Accessibility, larger text, smallest phone, Android and iPad checks.",
+    "Experience branching, multiple choice, animated choice labels, restart/resume and four-tap completion.",
+    "No treatment eligibility, numeric range or saved state changes across languages."
+  ],
+  "messages": [
+    {
+      "id": "personalization.back",
+      "source": "Go back",
+      "sourceHash": "6aadac2f2b7a6b8e3e01909529190a0c2910592cfb85f5d65901b37c820236fa",
+      "translations": {
+        "de": {
+          "text": "Zurück",
+          "translationHash": "548611ce58f71a173404d9cfc99816457f97ad25b814310374f5c3f096546ee8",
+          "status": "draft; native review pending"
+        },
+        "es": {
+          "text": "Volver",
+          "translationHash": "ab26ae7bca362195383b3a6145b3389930682514157a61d4416e44717e497d12",
+          "status": "draft; native review pending"
+        },
+        "fr": {
+          "text": "Retour",
+          "translationHash": "ef23a5940244e0f5b4c5a5f5b53259165e40a7ab9fc639551d2819dec83d72f0",
+          "status": "draft; native review pending"
+        },
+        "zh-Hans": {
+          "text": "返回",
+          "translationHash": "572cf45ba43634b3448aadbc48d5398a1b32ad8a97bf42b689c394de222c30a1",
+          "status": "draft; native review pending"
+        }
+      }
+    },
+    {
+      "id": "personalization.baseline",
+      "source": "YOUR BASELINE",
+      "sourceHash": "46377c21cd761c6813537294a492e88cd3bd088005796252a21fd811f78e2562",
+      "translations": {
+        "de": {
+          "text": "DEINE AUSGANGSLAGE",
+          "translationHash": "94c61150121bf23bcfe0fd7a31993a20c3b208e146756199ba19f4c198547442",
+          "status": "draft; native review pending"
+        },
+        "es": {
+          "text": "TU PUNTO DE PARTIDA",
+          "translationHash": "2da963921c64392e25eb20d509e2ac0dad3b107c2f0b28a6b483bde4451a71e5",
+          "status": "draft; native review pending"
+        },
+        "fr": {
+          "text": "TON POINT DE DÉPART",
+          "translationHash": "bb84096955c96148a18f9de535f8950e4615898dd64a8a55496bba5543ba8410",
+          "status": "draft; native review pending"
+        },
+        "zh-Hans": {
+          "text": "你的基本信息",
+          "translationHash": "9310727bea56b4467fe17f2e722a5159b3ec5744ea6b1b435924b94960125dd5",
+          "status": "draft; native review pending"
+        }
+      }
+    },
+    {
+      "id": "personalization.experience",
+      "source": "YOUR EXPERIENCE",
+      "sourceHash": "367ac78ed1e2419427a0b68e88a587ee94eb82f3209434c5d34e278eb0301e05",
+      "translations": {
+        "de": {
+          "text": "DEINE ERFAHRUNG",
+          "translationHash": "e0d845de879ef4837c0cbea6f84b6efce9beefa895e58d232beba514fc3de605",
+          "status": "draft; native review pending"
+        },
+        "es": {
+          "text": "TU EXPERIENCIA",
+          "translationHash": "72fe1da2ccca5bea62d75b4fa4268019c2eefdd7c2865b6a34356849bed9ca28",
+          "status": "draft; native review pending"
+        },
+        "fr": {
+          "text": "TON EXPÉRIENCE",
+          "translationHash": "0680877da521ad303b7be96a935c19d1983e7b320811a3ec140377d90fde9ba2",
+          "status": "draft; native review pending"
+        },
+        "zh-Hans": {
+          "text": "你的经验",
+          "translationHash": "8b3747cc355f96ef00a6aede18b8aa70658029f53ffe146774b9e4bea8510783",
+          "status": "draft; native review pending"
+        }
+      }
+    },
+    {
+      "id": "personalization.history",
+      "source": "WHAT YOU’VE TRIED",
+      "sourceHash": "f8b26702e0644d13b79856c669f0d0ea7bb0ccf20b35cd96a925154283eb3f73",
+      "translations": {
+        "de": {
+          "text": "WAS DU SCHON PROBIERT HAST",
+          "translationHash": "e48ad09eeafacf7877d6365e5abb04927b237e13acb0b6ccc8a5056309ff8edc",
+          "status": "draft; native review pending"
+        },
+        "es": {
+          "text": "LO QUE HAS PROBADO",
+          "translationHash": "f915b1dce89a229ba8673394c793e3f4d118afb07396aa2c99755a9b21824fc0",
+          "status": "draft; native review pending"
+        },
+        "fr": {
+          "text": "CE QUE TU AS DÉJÀ ESSAYÉ",
+          "translationHash": "235d09f1b622c3e827205f2e8b26824682432abcd3973da1eaebf6946c380f2a",
+          "status": "draft; native review pending"
+        },
+        "zh-Hans": {
+          "text": "你尝试过的方法",
+          "translationHash": "795237cd64a74fd8a4bc5d555a36164e1e796e81042232c619b9cff4669c7752",
+          "status": "draft; native review pending"
+        }
+      }
+    },
+    {
+      "id": "personalization.goals",
+      "source": "YOUR GOALS",
+      "sourceHash": "5b94b814c94dc4aa0d79888878874b36175013ffb2b17b02c602e149f4033062",
+      "translations": {
+        "de": {
+          "text": "DEINE ZIELE",
+          "translationHash": "82de45fba4b60359ea194ef7de2a0fb99bb91edcca9d504259e8e137039c489c",
+          "status": "draft; native review pending"
+        },
+        "es": {
+          "text": "TUS OBJETIVOS",
+          "translationHash": "a9c5c1395473d2249b446c25b7923058cd82fd13fa57658c33e3fa98690af3ab",
+          "status": "draft; native review pending"
+        },
+        "fr": {
+          "text": "TES OBJECTIFS",
+          "translationHash": "0af3fcb92a22ae3f3fc8be8e934df4aafa8c5cfdfd64cc211b5466e5e7c2d3d9",
+          "status": "draft; native review pending"
+        },
+        "zh-Hans": {
+          "text": "你的目标",
+          "translationHash": "a9200b5373ae1b5fb92b35666eb5490c28c2e5f81968af60f24fb13dc319ca3d",
+          "status": "draft; native review pending"
+        }
+      }
+    },
+    {
+      "id": "personalization.protocol",
+      "source": "YOUR PROTOCOL",
+      "sourceHash": "80921742c93f4e77b01023873e356cfe782ca8a270caf49c6071da329347a93e",
+      "translations": {
+        "de": {
+          "text": "DEIN PROTOKOLL",
+          "translationHash": "7187b1dea58fc83cbe02e03ee87eb11265822f3f6ed29e25a7ae8093da0733c0",
+          "status": "draft; native review pending"
+        },
+        "es": {
+          "text": "TU PROTOCOLO",
+          "translationHash": "d49dfed19450531a6e9659aff973a5f761d899951856464a313c08885fd3416f",
+          "status": "draft; native review pending"
+        },
+        "fr": {
+          "text": "TON PROGRAMME",
+          "translationHash": "e29303d0c9e5df726cee5500eced786448a76c3fd2373a68db7210a0e6b6f1cd",
+          "status": "draft; native review pending"
+        },
+        "zh-Hans": {
+          "text": "你的提升方案",
+          "translationHash": "1fcec632e677c9beeb75935b982b9bbbca036fb47cc3c490cc231cc652395b6a",
+          "status": "draft; native review pending"
+        }
+      }
+    },
+    {
+      "id": "personalization.age.title",
+      "source": "How old are you?",
+      "sourceHash": "9b181de483e0da61391cd385f16383f953401fdfee8ca2c46297bd812f3e0b5d",
+      "translations": {
+        "de": {
+          "text": "Wie alt bist du?",
+          "translationHash": "4000ddf9f15272ec95c7de7400f566e3e8457a174571f491a1c2ee3bfb501fb6",
+          "status": "draft; native review pending"
+        },
+        "es": {
+          "text": "¿Cuántos años tienes?",
+          "translationHash": "9652f1030dff6d0dbd9fde97484e4ba04cb83621bb2c5c58d8421f2785c2853d",
+          "status": "draft; native review pending"
+        },
+        "fr": {
+          "text": "Quel âge as-tu ?",
+          "translationHash": "725af19c76722f3a9abb74ee952ebf3fc89a9daa7a3eba72792bc0be45304fcb",
+          "status": "draft; native review pending"
+        },
+        "zh-Hans": {
+          "text": "你多大了？",
+          "translationHash": "ecd4e5b26da5bd54e1efaf6d3940a653ad6f81638b9aeeeb0bfa6cbc768a052b",
+          "status": "draft; native review pending"
+        }
+      }
+    },
+    {
+      "id": "personalization.age.subtitle",
+      "source": "Choose your age range.",
+      "sourceHash": "2b7a706663edc27c5dcae7960aa5f2ceb434db790116c49ada106119a1340699",
+      "translations": {
+        "de": {
+          "text": "Wähle deine Altersgruppe.",
+          "translationHash": "d3f64eb68bb145e246e44237bdc668cb71f8bc313e4867df10892b82f2c24657",
+          "status": "draft; native review pending"
+        },
+        "es": {
+          "text": "Elige tu rango de edad.",
+          "translationHash": "9080c514eb32a007c155939f403adcc7e6b4e6d9f76789e4fe77da2b5fa0e8ee",
+          "status": "draft; native review pending"
+        },
+        "fr": {
+          "text": "Choisis ta tranche d’âge.",
+          "translationHash": "994101923885dc4d2d9e6de41bd0f3a3ee18e40bfc5b7458429087ee267652ed",
+          "status": "draft; native review pending"
+        },
+        "zh-Hans": {
+          "text": "请选择你的年龄段。",
+          "translationHash": "8bcdb0cd59ec894968a2189c4b66569b5e96c7f34b80808d5a5ac9b4b9ee54d1",
+          "status": "draft; native review pending"
+        }
+      }
+    },
+    {
+      "id": "personalization.height.title",
+      "source": "How tall are you?",
+      "sourceHash": "ee959fd9d35e3bab43097f8375c29cc611150adcd6376c098e0f84c69470f9a2",
+      "translations": {
+        "de": {
+          "text": "Wie groß bist du?",
+          "translationHash": "e5692adb3f1040e42931694a5c2ae38716d4904758d67f9dd759301df3de0bf6",
+          "status": "draft; native review pending"
+        },
+        "es": {
+          "text": "¿Cuánto mides?",
+          "translationHash": "b725ebaffc4445c37ae382143ce7a6869398c11f6397b15df3bbf6c916b80363",
+          "status": "draft; native review pending"
+        },
+        "fr": {
+          "text": "Quelle est ta taille ?",
+          "translationHash": "be2cd05803ce874bf8cd28b058d58d78714e8bd31c18ec0f81795b031f3f68d4",
+          "status": "draft; native review pending"
+        },
+        "zh-Hans": {
+          "text": "你有多高？",
+          "translationHash": "f38336c20426d808f8e1e474f51e3056aafeb27d876be07b21b0203f1e673074",
+          "status": "draft; native review pending"
+        },
+        "de-CH": {
+          "text": "Wie gross bist du?",
+          "translationHash": "9628ad203f3bd766c1fff69c10a8ffb489f64ba49184fafd7470d455a2950d2f",
+          "status": "draft; native review pending"
+        }
+      }
+    },
+    {
+      "id": "personalization.height.subtitle",
+      "source": "Choose the closest range.",
+      "sourceHash": "94dca77e4f5475029772a8cd4cd2c0bac391e20568675964ce7c45a4cdfcad14",
+      "translations": {
+        "de": {
+          "text": "Wähle den Bereich, der am besten passt.",
+          "translationHash": "b725f34412997f8bb169c053f7d317643b28a68e87d4506e69d8de0aed99a45d",
+          "status": "draft; native review pending"
+        },
+        "es": {
+          "text": "Elige el rango más cercano.",
+          "translationHash": "01c10018eca491eaf9d8a69b7193490cf7b5024981da4e7a39b3924d72acc5ad",
+          "status": "draft; native review pending"
+        },
+        "fr": {
+          "text": "Choisis la tranche la plus proche.",
+          "translationHash": "20dbf7a6d9fc2f62acdbbd740b7a355c9a22a2d653bc5a3f588578f94a9ded2e",
+          "status": "draft; native review pending"
+        },
+        "zh-Hans": {
+          "text": "请选择最接近的身高范围。",
+          "translationHash": "83de18b37f1ad22657665f3bad857ea98890a77b8c5208939ded76a834dc3103",
+          "status": "draft; native review pending"
+        }
+      }
+    },
+    {
+      "id": "personalization.gender.title",
+      "source": "What’s your gender?",
+      "sourceHash": "3ee685d4f9ef1b32932ffc01a5a7943741a1c8bd88ab9908983bfe5437c75ec8",
+      "translations": {
+        "de": {
+          "text": "Was ist dein Geschlecht?",
+          "translationHash": "2753bcd52991e8834718595201d903e1e9f776264cb6ce5d9e4961c12629afff",
+          "status": "draft; native review pending"
+        },
+        "es": {
+          "text": "¿Cuál es tu género?",
+          "translationHash": "b2d720cc602008de8aac8440a99b274061d0903970ce5eeefa77b7f2f033f5d6",
+          "status": "draft; native review pending"
+        },
+        "fr": {
+          "text": "Quel est ton genre ?",
+          "translationHash": "2e133d4b762fddf266907b2b5b4fddf63ef16a57f623e069c87b5d856a6d520d",
+          "status": "draft; native review pending"
+        },
+        "zh-Hans": {
+          "text": "你的性别是？",
+          "translationHash": "5823b04e447350ce41231e069a38aaa95ef51a818aa1343082f37fb3503751f8",
+          "status": "draft; native review pending"
+        }
+      }
+    },
+    {
+      "id": "personalization.gender.subtitle",
+      "source": "Choose the option that fits you.",
+      "sourceHash": "ea0a325e651a5898e2ca97a7d9947f1f6a0dac19d3d998938bcdaf3998ec3995",
+      "translations": {
+        "de": {
+          "text": "Wähle die Option, die zu dir passt.",
+          "translationHash": "fa440335f8f3b5c7ff647f132972b45ef6e593307020319c466df2fd6667be35",
+          "status": "draft; native review pending"
+        },
+        "es": {
+          "text": "Elige la opción que te corresponda.",
+          "translationHash": "7e4398e518dda1d2ca7b2168fdf7b2092588ca19c17de4a1d969cd44cd5ec061",
+          "status": "draft; native review pending"
+        },
+        "fr": {
+          "text": "Choisis l’option qui te correspond.",
+          "translationHash": "501d245ef500cfb3e8f8fd774f7b1d787536fd3c3594d8e60153f1f0e88363f2",
+          "status": "draft; native review pending"
+        },
+        "zh-Hans": {
+          "text": "请选择符合你的选项。",
+          "translationHash": "2042bb2cfbf593137dac5ba445aff6fe48d7568853f9596b9673ea096d328873",
+          "status": "draft; native review pending"
+        }
+      }
+    },
+    {
+      "id": "personalization.experience.title",
+      "source": "Have you worked on your appearance before?",
+      "sourceHash": "a3ddea2fd21506e82cb99d5d62d77dc1dffc926674c99fe42c7a5cecca96fe7e",
+      "translations": {
+        "de": {
+          "text": "Hast du schon etwas für dein Aussehen getan?",
+          "translationHash": "c4aed5d3c8cfcb1bc05b91d814a64677eaa68f7ecb87230cb2146deac1e182a1",
+          "status": "draft; native review pending"
+        },
+        "es": {
+          "text": "¿Has hecho algo para mejorar tu apariencia?",
+          "translationHash": "6679b8964f3df29175e26ba44c4c0096cd752d3152ed2049df1c0f3a8dc38dd5",
+          "status": "draft; native review pending"
+        },
+        "fr": {
+          "text": "As-tu déjà fait quelque chose pour améliorer ton apparence ?",
+          "translationHash": "96cbf363e2cbdf41801d40b9f4a59cd7eb8915209d9d257c562e375e59c45ad2",
+          "status": "draft; native review pending"
+        },
+        "zh-Hans": {
+          "text": "你之前尝试过改善外貌吗？",
+          "translationHash": "e0b201e1d5cbdff915d0a9169dc68a7f3ab08460a928159f237be643f5bec536",
+          "status": "draft; native review pending"
+        }
+      }
+    },
+    {
+      "id": "personalization.experience.subtitle",
+      "source": "No judgment. We’ll start where you are.",
+      "sourceHash": "941be1e859f2105bc112c8a25cd38a2fa7344aa0e8f34ef923f15d09fa38ad83",
+      "translations": {
+        "de": {
+          "text": "No Judgment. Wir setzen da an, wo du stehst.",
+          "translationHash": "fc79faddb4dfc04bd09a429d458cd897192a3bd1ca1da5248abbd9e5b8e20e62",
+          "status": "owner wording correction; contextual review pending"
+        },
+        "es": {
+          "text": "Sin juzgarte. Partimos de donde estás.",
+          "translationHash": "7e5ee8f8b0669ec51f8a1e1cf7f5a175a4fb8235a941090ab34b40af89782a0c",
+          "status": "draft; native review pending"
+        },
+        "fr": {
+          "text": "Sans te juger. On part de là où tu en es.",
+          "translationHash": "f29f16e8613260559afae98cfd9a00b18404c0d72946bbc88d4be3f87b75fda7",
+          "status": "draft; native review pending"
+        },
+        "zh-Hans": {
+          "text": "不作评判，从你的实际情况出发。",
+          "translationHash": "a870ceae62fd1bac69e8d2fa54b6e42146cd639e9ab9232b6f22e06a83b913f8",
+          "status": "draft; native review pending"
+        }
+      }
+    },
+    {
+      "id": "personalization.methods.title",
+      "source": "What have you tried?",
+      "sourceHash": "ec82ba475701baee0abcfa24579bb5d4fdc7d54d96989d205700e81dac383489",
+      "translations": {
+        "de": {
+          "text": "Was hast du schon ausprobiert?",
+          "translationHash": "7187096accc19b0a03f45a8226f6ce1811aaad4d537b17b350b1b84222b9b15f",
+          "status": "draft; native review pending"
+        },
+        "es": {
+          "text": "¿Qué has probado?",
+          "translationHash": "55d10237210e5736a6545ab818d019dcf29a5b8efd84e2e2b352fa0deedcaa7e",
+          "status": "draft; native review pending"
+        },
+        "fr": {
+          "text": "Qu’as-tu déjà essayé ?",
+          "translationHash": "7c4607aeb2969c0a52d58d90bdf007a3c54e997853c691f7e48d03969f4ff1a8",
+          "status": "draft; native review pending"
+        },
+        "zh-Hans": {
+          "text": "你尝试过哪些方法？",
+          "translationHash": "b8791ef4bf7efe5caf72f86c021b5854209f01ed403cf5cfe772369e016ad6c3",
+          "status": "draft; native review pending"
+        }
+      }
+    },
+    {
+      "id": "personalization.methods.subtitle",
+      "source": "Choose everything you’ve tried. These are past experiences, not recommendations.",
+      "sourceHash": "a7f4f4e5cd1ebd171c23fce746fdb2059a37a1ad5525482849a85aaed51ce90c",
+      "translations": {
+        "de": {
+          "text": "Wähle alles, was du schon ausprobiert hast. Es geht um deine Erfahrungen, nicht um Empfehlungen.",
+          "translationHash": "008240da93a36cfa789b8caeba6ea875ccb09491306b17532c205c45d742828f",
+          "status": "draft; native review pending"
+        },
+        "es": {
+          "text": "Elige todo lo que hayas probado. Son experiencias previas, no recomendaciones.",
+          "translationHash": "821fd082c3e8e623b26aecfc5af5d1d7107c0b563928aa4abcdf795b7637fead",
+          "status": "draft; native review pending"
+        },
+        "fr": {
+          "text": "Sélectionne tout ce que tu as déjà essayé. Il s’agit de tes expériences passées, pas de recommandations.",
+          "translationHash": "08061f7d1256f3af0ecd837f80683495ee948bfb6d9fed7144b3fdb8b752a90c",
+          "status": "draft; native review pending"
+        },
+        "zh-Hans": {
+          "text": "请选择你尝试过的所有方法。这里只了解你的过往经历，并非建议。",
+          "translationHash": "e8918746630076c18d59a2695919884432f4e5e0009010603a69941fe430ecca",
+          "status": "draft; native review pending"
+        }
+      }
+    },
+    {
+      "id": "personalization.goals.title",
+      "source": "What do you want to improve?",
+      "sourceHash": "925984fcce2dd861c343bf658780b11a56f6929b7e4039d6a905fb06e4cc1796",
+      "translations": {
+        "de": {
+          "text": "Was möchtest du verbessern?",
+          "translationHash": "80e894a084ec4120a672cf6cf69cf016a2496f58e611b4ede61a378939cd205a",
+          "status": "draft; native review pending"
+        },
+        "es": {
+          "text": "¿Qué quieres mejorar?",
+          "translationHash": "0d532c371528b390b558fbbc07961ce261493443b7ed317b8678d2bb65f4fc2f",
+          "status": "draft; native review pending"
+        },
+        "fr": {
+          "text": "Que souhaites-tu améliorer ?",
+          "translationHash": "e616fdb5e4982ea50a3589fe97e0b6e9a3cd0a9faea655d990d2427b1a7fd570",
+          "status": "draft; native review pending"
+        },
+        "zh-Hans": {
+          "text": "你想改善哪些方面？",
+          "translationHash": "4e55818fdf706f673224935efa06d8f55a0a5e534d1ea97ca8ea78d733f6eaeb",
+          "status": "draft; native review pending"
+        }
+      }
+    },
+    {
+      "id": "personalization.goals.subtitle",
+      "source": "Choose everything that matters to you.",
+      "sourceHash": "d36bfc546f97f0def213c5bb0c394c6c8a1fc65ff2430ffa9f1a398abed9166a",
+      "translations": {
+        "de": {
+          "text": "Wähle alles, was dir wichtig ist.",
+          "translationHash": "9ddc4b639c2c6f3e9f78128b6724da0f7b5db87f96e832a0d60321085daec667",
+          "status": "draft; native review pending"
+        },
+        "es": {
+          "text": "Elige todo lo que te importe.",
+          "translationHash": "0160159568379a2b4b0eab8cb3d41d3e6c6c915a7e97b6c2e2809a00a46e1858",
+          "status": "draft; native review pending"
+        },
+        "fr": {
+          "text": "Sélectionne tout ce qui compte pour toi.",
+          "translationHash": "35ed8903fd22b65bf6eb2eb3748831614e1f40a7a167f059765ab2bcace84931",
+          "status": "draft; native review pending"
+        },
+        "zh-Hans": {
+          "text": "请选择所有你在意的方面。",
+          "translationHash": "171724a506910943805edd90712e0995e8b75407d2ddbcbc3857ad4cd396e04b",
+          "status": "draft; native review pending"
+        }
+      }
+    },
+    {
+      "id": "personalization.time.title",
+      "source": "How much time can you set aside?",
+      "sourceHash": "d4a5d24c95d9a8b7e62e4cafcfe8e07a451cbea2216d58645db45867146edd18",
+      "translations": {
+        "de": {
+          "text": "Wie viel Zeit kannst du dir nehmen?",
+          "translationHash": "b25931f22874e0d2e8263ac90d495a9854119e5095c5db9fd54986e93bc70b19",
+          "status": "draft; native review pending"
+        },
+        "es": {
+          "text": "¿Cuánto tiempo puedes dedicarle?",
+          "translationHash": "80a7cd08816720c02345aa6934e8b5d3a9ee562e0f0926b25c554033dfaea54f",
+          "status": "draft; native review pending"
+        },
+        "fr": {
+          "text": "Combien de temps peux-tu y consacrer ?",
+          "translationHash": "74e9535679fe4268cee0e088e5726b78dfe3830f7445a604838bb90e978b522b",
+          "status": "draft; native review pending"
+        },
+        "zh-Hans": {
+          "text": "你每天能留出多少时间？",
+          "translationHash": "0b94fd190493382f37fca708997057c959625f9b2950e7505230991e567b82b9",
+          "status": "draft; native review pending"
+        }
+      }
+    },
+    {
+      "id": "personalization.time.subtitle",
+      "source": "Choose a daily routine you can stick with.",
+      "sourceHash": "50aa8e8e5e341ef1ae74896804eeeb796da99f68b452ea84a14dc0d3d54ee9cd",
+      "translations": {
+        "de": {
+          "text": "Wähle eine tägliche Routine, die du durchhalten kannst.",
+          "translationHash": "62b9f8e08e8da3ff52f1614c60426b0e38b973be318d4f7de462711d12551d7e",
+          "status": "draft; native review pending"
+        },
+        "es": {
+          "text": "Elige una rutina diaria que puedas mantener.",
+          "translationHash": "154d152d71e04e87a26ecdcf428effd11df2e9720cae588b763c52ce4d695802",
+          "status": "draft; native review pending"
+        },
+        "fr": {
+          "text": "Choisis une routine quotidienne que tu peux suivre régulièrement.",
+          "translationHash": "40e74e033b50a858452b43749bcdfa6a946c4bcbc0e596b918bb126cd6539d90",
+          "status": "draft; native review pending"
+        },
+        "zh-Hans": {
+          "text": "请选择你能坚持的日常安排。",
+          "translationHash": "7a61dc4f9990c8bf9b20c837707afc7dce2957b62c582aee4424475b2d8b3346",
+          "status": "draft; native review pending"
+        }
+      }
+    },
+    {
+      "id": "personalization.time.note",
+      "source": "Your Protocol takes your goals and available time into account.",
+      "sourceHash": "a16ab16b9a8e5b46f320c35acc955370534e12d14a21d528ec7f068764ea99b8",
+      "translations": {
+        "de": {
+          "text": "Dein Protokoll berücksichtigt deine Ziele und die Zeit, die du hast.",
+          "translationHash": "b83ae77796b22184c5ccee4c95ba7ea4e588eb58fd465697051bcb397e423338",
+          "status": "draft; native review pending"
+        },
+        "es": {
+          "text": "Tu protocolo tiene en cuenta tus objetivos y el tiempo disponible.",
+          "translationHash": "057a62f12beebccc2a551d0f1596980ffa2744b814895b7b627a9727018b8989",
+          "status": "draft; native review pending"
+        },
+        "fr": {
+          "text": "Ton programme tient compte de tes objectifs et du temps dont tu disposes.",
+          "translationHash": "68a7996956c160241e8ddaa300bbee2d02c7910a07c070a35fa264abb821ecb7",
+          "status": "draft; native review pending"
+        },
+        "zh-Hans": {
+          "text": "你的提升方案会考虑你的目标和可用时间。",
+          "translationHash": "446092be80ac92fdbbc570e389a12edccc999204b21078ea81137455d7274d14",
+          "status": "draft; native review pending"
+        }
+      }
+    },
+    {
+      "id": "personalization.commit.eyebrow",
+      "source": "COMMIT TO YOUR GOALS",
+      "sourceHash": "2f3984ea2f229fe7657b116df16297fc9b300b1e135182b3471eb89278922b3a",
+      "translations": {
+        "de": {
+          "text": "BLEIB AN DEINEN ZIELEN DRAN",
+          "translationHash": "e64ad721364357df8c0efcf0c08c3a3da2dea4c748d6035a086181a99b37d22a",
+          "status": "draft; native review pending"
+        },
+        "es": {
+          "text": "COMPROMÉTETE CON TUS OBJETIVOS",
+          "translationHash": "73c74b090d418d33952878e17e7c5646d9bb80d963140a048a3fac47a9024fa4",
+          "status": "draft; native review pending"
+        },
+        "fr": {
+          "text": "ENGAGE-TOI POUR TES OBJECTIFS",
+          "translationHash": "cbf1b32c64d4f75a332f93f79289b6f2906b13583e3221d5f79dfbda979cbcb6",
+          "status": "draft; native review pending"
+        },
+        "zh-Hans": {
+          "text": "为你的目标行动",
+          "translationHash": "aa53f796efe9f013201e29528e19fd7ee90ffb202e7565d4f8bb32cb4651adf8",
+          "status": "draft; native review pending"
+        }
+      }
+    },
+    {
+      "id": "personalization.commit.title",
+      "source": "Ready to work on your goals?",
+      "sourceHash": "5ce3a429d72bf2393f88a7a209270d4356b851437ddcde89a12fd19e798f4bf4",
+      "translations": {
+        "de": {
+          "text": "Bereit, deine Ziele anzugehen?",
+          "translationHash": "72489e6560c5d409e448cbb8d754bb7879495bf46e7f1108a73047d3657f5b5d",
+          "status": "draft; native review pending"
+        },
+        "es": {
+          "text": "¿Empezamos a trabajar en tus objetivos?",
+          "translationHash": "5b40c0b9f7d86f6432046383fd44a0227b3bc85ab2b049389cb7d104945d7717",
+          "status": "draft; native review pending"
+        },
+        "fr": {
+          "text": "On passe à tes objectifs ?",
+          "translationHash": "35cc8f814aadd4d797e8e947fceded554bf493ae9b8e97cc27260a56e6f2122a",
+          "status": "draft; native review pending"
+        },
+        "zh-Hans": {
+          "text": "准备好为目标行动了吗？",
+          "translationHash": "94a20156ff67f0c425d992a3dd83308ca61abf84819fc8efc9a36855789db054",
+          "status": "draft; native review pending"
+        }
+      }
+    },
+    {
+      "id": "personalization.commit.subtitle",
+      "source": "Your next step starts with action. Tap four times to begin.",
+      "sourceHash": "2a237d06e53be9238c263010ae3fae5004b545cec9afd55f2e5edacf0d7be330",
+      "translations": {
+        "de": {
+          "text": "Dein nächster Schritt beginnt mit einer Entscheidung. Tippe viermal, um loszulegen.",
+          "translationHash": "a945270aeeaa6a33cf9c4c029893f5f1174e2800ecca6c072a9ab1a9930b41fd",
+          "status": "draft; native review pending"
+        },
+        "es": {
+          "text": "El siguiente paso empieza con una acción. Toca cuatro veces para empezar.",
+          "translationHash": "572e1f588a86708aa4f932dcf678f536a2c54c56d7e11d84e9a9cd76a378842f",
+          "status": "draft; native review pending"
+        },
+        "fr": {
+          "text": "La prochaine étape commence par une action. Appuie quatre fois pour commencer.",
+          "translationHash": "ab01cdaaa32abe4cb179367aaf5be262fc4d2197cfaab21192d255d2d483c632",
+          "status": "draft; native review pending"
+        },
+        "zh-Hans": {
+          "text": "下一步，从行动开始。轻点四次，开启你的计划。",
+          "translationHash": "967990f0824fbcdef3894c2f030c46db262c2a8a1e0ca7ae7d7b773dfd26dce9",
+          "status": "draft; native review pending"
+        }
+      }
+    },
+    {
+      "id": "personalization.commit.label",
+      "source": "Commit to your goals, {{count}} of {{total}} taps complete",
+      "sourceHash": "8c06e5f8ae643794d07ffed4f9bc41fbd35620d799357b303b7fd3ec4f5a9244",
+      "translations": {
+        "de": {
+          "text": "Starte mit deinen Zielen: {{count}} von {{total}} Mal getippt",
+          "translationHash": "0dfe5dd42bcbac2ca8f9d9f3cd50e80f082196b54c46a967226448f826183736",
+          "status": "draft; native review pending"
+        },
+        "es": {
+          "text": "Comprométete con tus objetivos: {{count}} de {{total}} toques completados",
+          "translationHash": "d226b73f2d08f2ec3cda48213f7e1b7dbfc25d9dcdde7b89e9d5309f618a3b61",
+          "status": "draft; native review pending"
+        },
+        "fr": {
+          "text": "Engage-toi pour tes objectifs : {{count}} appuis sur {{total}} effectués",
+          "translationHash": "198c8173a753e95de59807ed359a0e92a0eb029e51300deaea330aa5e491d106",
+          "status": "draft; native review pending"
+        },
+        "zh-Hans": {
+          "text": "为目标行动：已轻点 {{count}} 次，共 {{total}} 次",
+          "translationHash": "b7915cd8e060a8c7a163ef83214433ab0109637b7d86e826df9eac1871f3d100",
+          "status": "draft; native review pending"
+        }
+      }
+    },
+    {
+      "id": "personalization.commit.hint",
+      "source": "Tap four times to complete the illustrated transformation",
+      "sourceHash": "5cdd7206bd34ed795cc52aff9093a5d34e0f724269754d50f78740c5199cad9b",
+      "translations": {
+        "de": {
+          "text": "Tippe viermal, um die Verwandlungsanimation abzuschließen",
+          "translationHash": "091db53014ea14494998dbefffeef6628da42f52bdba88a2a86fc7dbec1664fd",
+          "status": "draft; native review pending"
+        },
+        "es": {
+          "text": "Toca cuatro veces para completar la transformación ilustrada",
+          "translationHash": "7fd8ae9e2715cf6edc24f5fbd4bbe534603f47e0c5e134644318a0160f21f06a",
+          "status": "draft; native review pending"
+        },
+        "fr": {
+          "text": "Appuie quatre fois pour terminer la transformation illustrée",
+          "translationHash": "86597e24a850f4c25a8a551c3728a4b2f8911bd456137322aa44e8f92799f5ad",
+          "status": "draft; native review pending"
+        },
+        "zh-Hans": {
+          "text": "轻点四次，完成变化动画",
+          "translationHash": "e73ad01a90f7088ad320627f974796f9f6e21fcb22d5820284a7774c6a4a8697",
+          "status": "draft; native review pending"
+        },
+        "de-CH": {
+          "text": "Tippe viermal, um die Verwandlungsanimation abzuschliessen",
+          "translationHash": "2b1c7829f018451fdf8bdfabb5c661d340cdbfc7328afc046276f1078da92050",
+          "status": "draft; native review pending"
+        }
+      }
+    },
+    {
+      "id": "personalization.commit.celebration",
+      "source": "YOU MOG.",
+      "sourceHash": "b5273f3854822bcdd2db38b05c066afbf88689d1a4841e464af4349bfa304bb1",
+      "translations": {
+        "de": {
+          "text": "YOU MOG.",
+          "translationHash": "b5273f3854822bcdd2db38b05c066afbf88689d1a4841e464af4349bfa304bb1",
+          "status": "draft; native review pending"
+        },
+        "es": {
+          "text": "YOU MOG.",
+          "translationHash": "b5273f3854822bcdd2db38b05c066afbf88689d1a4841e464af4349bfa304bb1",
+          "status": "draft; native review pending"
+        },
+        "fr": {
+          "text": "YOU MOG.",
+          "translationHash": "b5273f3854822bcdd2db38b05c066afbf88689d1a4841e464af4349bfa304bb1",
+          "status": "draft; native review pending"
+        },
+        "zh-Hans": {
+          "text": "YOU MOG.",
+          "translationHash": "b5273f3854822bcdd2db38b05c066afbf88689d1a4841e464af4349bfa304bb1",
+          "status": "draft; native review pending"
+        }
+      }
+    },
+    {
+      "id": "personalization.commit.locked",
+      "source": "YOU’RE READY",
+      "sourceHash": "6adc30740f4c281f89b6b8cc7afa1ec4b4125262d63f4c67ddcd75e1d77e7a78",
+      "translations": {
+        "de": {
+          "text": "DU BIST BEREIT",
+          "translationHash": "f1fc25c6862b652e7d4faf2099caeaee2c6b1c38a132f45e58601dd1f6c04407",
+          "status": "draft; native review pending"
+        },
+        "es": {
+          "text": "TODO LISTO",
+          "translationHash": "96263a2dd0b12b27e1b7c2dd6cb53009284f9248539dcd5cf995546d17ea72e8",
+          "status": "draft; native review pending"
+        },
+        "fr": {
+          "text": "TOUT EST PRÊT",
+          "translationHash": "82be74122433c49b44767829e15cee7b86d6a61e74af2ee3d017f27373605927",
+          "status": "draft; native review pending"
+        },
+        "zh-Hans": {
+          "text": "准备就绪",
+          "translationHash": "1bd1893c09003d8ac1da3fb540668ad567294135866ddf94457e85cbb38eda54",
+          "status": "draft; native review pending"
+        }
+      }
+    },
+    {
+      "id": "personalization.commit.tap",
+      "source": "TAP TO BEGIN",
+      "sourceHash": "ad3760b95d094e9cf6cc38e614b7bf3ccc7693fcb88a1ce85b570accc14a4b88",
+      "translations": {
+        "de": {
+          "text": "TIPPEN, UM LOSZULEGEN",
+          "translationHash": "9a03aed5c1f164187b45bf165166ca9208ba3c63228161a22864565c2a7da31e",
+          "status": "draft; native review pending"
+        },
+        "es": {
+          "text": "TOCA PARA EMPEZAR",
+          "translationHash": "2c5d61a9f4a9ed33a565ab8ce217fe7650b6658657deaef64df383cf35ffec1e",
+          "status": "draft; native review pending"
+        },
+        "fr": {
+          "text": "APPUIE POUR COMMENCER",
+          "translationHash": "b811d3376eda912d04ec54398b63b355bfdc09f0d270e8816691e3094bfde615",
+          "status": "draft; native review pending"
+        },
+        "zh-Hans": {
+          "text": "轻点开始",
+          "translationHash": "f117d1a466f28707ee3e9219cb88087b287a998f8903486f9b239bb054759ee0",
+          "status": "draft; native review pending"
+        }
+      }
+    },
+    {
+      "id": "personalization.commit.complete",
+      "source": "Let’s make it happen.",
+      "sourceHash": "c1df241392ed673440d2b4440d1d08f3c832180ed8ac41e8c5e12d751233187e",
+      "translations": {
+        "de": {
+          "text": "Packen wir’s an.",
+          "translationHash": "0bd213973296f2c64b51323bc21afa9eace0eadde458858b4e9dc00d1c10c6fb",
+          "status": "draft; native review pending"
+        },
+        "es": {
+          "text": "Vamos a hacerlo.",
+          "translationHash": "57322bfd6c892e66e631857d94bfa72719ab3c1a18bb4d243b44fdf38cf1a9d2",
+          "status": "draft; native review pending"
+        },
+        "fr": {
+          "text": "C’est parti.",
+          "translationHash": "26fcfa9c0bb26d75a5516c61a85657ea81659ee408b579a530d21f24158d8726",
+          "status": "draft; native review pending"
+        },
+        "zh-Hans": {
+          "text": "开始行动吧。",
+          "translationHash": "794903184489c0959bc85e80ddbb13887aea8503e3ceaf1e83fe7662b0ccfe0b",
+          "status": "draft; native review pending"
+        }
+      }
+    },
+    {
+      "id": "personalization.choice.ageRange.under-18",
+      "source": "Under 18",
+      "sourceHash": "eaf7be3c1223d611806edfc6416bd8d8f59cef9dcfe8c74bbd9f1698b8339a9f",
+      "translations": {
+        "de": {
+          "text": "Unter 18",
+          "translationHash": "2834dd72ff3d23b4797c0516c960c75a2c7514b0b2d23f3306ae4c7396d13c76",
+          "status": "draft; native review pending"
+        },
+        "es": {
+          "text": "Menos de 18",
+          "translationHash": "1387a946187c2de12edf451a2e10f5559e439dc7b72e15ca3684b1e82447327c",
+          "status": "draft; native review pending"
+        },
+        "fr": {
+          "text": "Moins de 18",
+          "translationHash": "744ce8666cf15b1a417cd8e632d46e8c77e13a882a95db55711b966ef50649fb",
+          "status": "draft; native review pending"
+        },
+        "zh-Hans": {
+          "text": "未满 18 岁",
+          "translationHash": "edd795cf534b8740e5fe192075ee39d96abf56c824c0b47f161e4297a5e7f457",
+          "status": "draft; native review pending"
+        }
+      }
+    },
+    {
+      "id": "personalization.choice.ageRange.18-24",
+      "source": "18–24",
+      "sourceHash": "40682d1d0331a9045511a11da445d81fdae0d61fc52a45f2645bf0f5ce30c685",
+      "translations": {
+        "de": {
+          "text": "18–24",
+          "translationHash": "40682d1d0331a9045511a11da445d81fdae0d61fc52a45f2645bf0f5ce30c685",
+          "status": "draft; native review pending"
+        },
+        "es": {
+          "text": "18–24",
+          "translationHash": "40682d1d0331a9045511a11da445d81fdae0d61fc52a45f2645bf0f5ce30c685",
+          "status": "draft; native review pending"
+        },
+        "fr": {
+          "text": "18–24",
+          "translationHash": "40682d1d0331a9045511a11da445d81fdae0d61fc52a45f2645bf0f5ce30c685",
+          "status": "draft; native review pending"
+        },
+        "zh-Hans": {
+          "text": "18–24 岁",
+          "translationHash": "41998708c112205b1614c27e0dcaf19e93fdbbf97416c968490a73a995429fe9",
+          "status": "draft; native review pending"
+        }
+      }
+    },
+    {
+      "id": "personalization.choice.ageRange.25-34",
+      "source": "25–34",
+      "sourceHash": "453ab1aaa419039e95c1217b6bb8163edb26b46a3598f9f8afc71f324c7e2a69",
+      "translations": {
+        "de": {
+          "text": "25–34",
+          "translationHash": "453ab1aaa419039e95c1217b6bb8163edb26b46a3598f9f8afc71f324c7e2a69",
+          "status": "draft; native review pending"
+        },
+        "es": {
+          "text": "25–34",
+          "translationHash": "453ab1aaa419039e95c1217b6bb8163edb26b46a3598f9f8afc71f324c7e2a69",
+          "status": "draft; native review pending"
+        },
+        "fr": {
+          "text": "25–34",
+          "translationHash": "453ab1aaa419039e95c1217b6bb8163edb26b46a3598f9f8afc71f324c7e2a69",
+          "status": "draft; native review pending"
+        },
+        "zh-Hans": {
+          "text": "25–34 岁",
+          "translationHash": "4a31d703ab47ff5e286ac840cebcf9e0be1727cbac6f11b088acb06c8294bc77",
+          "status": "draft; native review pending"
+        }
+      }
+    },
+    {
+      "id": "personalization.choice.ageRange.35-49",
+      "source": "35–49",
+      "sourceHash": "f9e284a754288478cfe7dcee8532d4163ccd54fc3386146d60e6ed8183765a44",
+      "translations": {
+        "de": {
+          "text": "35–49",
+          "translationHash": "f9e284a754288478cfe7dcee8532d4163ccd54fc3386146d60e6ed8183765a44",
+          "status": "draft; native review pending"
+        },
+        "es": {
+          "text": "35–49",
+          "translationHash": "f9e284a754288478cfe7dcee8532d4163ccd54fc3386146d60e6ed8183765a44",
+          "status": "draft; native review pending"
+        },
+        "fr": {
+          "text": "35–49",
+          "translationHash": "f9e284a754288478cfe7dcee8532d4163ccd54fc3386146d60e6ed8183765a44",
+          "status": "draft; native review pending"
+        },
+        "zh-Hans": {
+          "text": "35–49 岁",
+          "translationHash": "5a774e61cfd40ca2ccf30edc1b85f28b09fb494d971f1ce7fa7e70a085700892",
+          "status": "draft; native review pending"
+        }
+      }
+    },
+    {
+      "id": "personalization.choice.ageRange.50-plus",
+      "source": "50+",
+      "sourceHash": "b7442fa74ead3c39a4de46e0b7328a0997f48d383c737dc4e63833ea93640e3e",
+      "translations": {
+        "de": {
+          "text": "50+",
+          "translationHash": "b7442fa74ead3c39a4de46e0b7328a0997f48d383c737dc4e63833ea93640e3e",
+          "status": "draft; native review pending"
+        },
+        "es": {
+          "text": "50+",
+          "translationHash": "b7442fa74ead3c39a4de46e0b7328a0997f48d383c737dc4e63833ea93640e3e",
+          "status": "draft; native review pending"
+        },
+        "fr": {
+          "text": "50+",
+          "translationHash": "b7442fa74ead3c39a4de46e0b7328a0997f48d383c737dc4e63833ea93640e3e",
+          "status": "draft; native review pending"
+        },
+        "zh-Hans": {
+          "text": "50 岁及以上",
+          "translationHash": "cb1978ac89b1b6d74fb25766bea946b148ba4e0b198590affa9c91da1424a5a0",
+          "status": "draft; native review pending"
+        }
+      }
+    },
+    {
+      "id": "personalization.choice.heightRange.under-152",
+      "source": "Under 152 cm (5′0″)",
+      "sourceHash": "0b3136f6808c222d83ccc4f97e85126ad867e2e16a78be97f74eebf320cd11eb",
+      "translations": {
+        "de": {
+          "text": "Unter 152 cm (5′0″)",
+          "translationHash": "3638962e503c2a6fd85abc9675cef26f9a553fca33a432f20bf15c9ac0750072",
+          "status": "draft; native review pending"
+        },
+        "es": {
+          "text": "Menos de 152 cm (5′0″)",
+          "translationHash": "8ffa41266c305e2707218133f10d822a23f2bdb18e5c9e1e2457d5058c2e1a73",
+          "status": "draft; native review pending"
+        },
+        "fr": {
+          "text": "Moins de 152 cm (5′0″)",
+          "translationHash": "7d3d827af6a724f1820fc63e8987416fe09cf0466a03f04283c83bc9c3208e72",
+          "status": "draft; native review pending"
+        },
+        "zh-Hans": {
+          "text": "低于 152 cm（5′0″）",
+          "translationHash": "55a2ba31493e36da27c72d8170e76666d2212c2823a1750ba60352f1f0fc8099",
+          "status": "draft; native review pending"
+        }
+      }
+    },
+    {
+      "id": "personalization.choice.heightRange.152-160",
+      "source": "152–160 cm (5′0″–5′3″)",
+      "sourceHash": "ee63b3093d3c9ebaab3bf4b80d09ed57db8171526caf05e950f3dd15c548473f",
+      "translations": {
+        "de": {
+          "text": "152–160 cm (5′0″–5′3″)",
+          "translationHash": "ee63b3093d3c9ebaab3bf4b80d09ed57db8171526caf05e950f3dd15c548473f",
+          "status": "draft; native review pending"
+        },
+        "es": {
+          "text": "152–160 cm (5′0″–5′3″)",
+          "translationHash": "ee63b3093d3c9ebaab3bf4b80d09ed57db8171526caf05e950f3dd15c548473f",
+          "status": "draft; native review pending"
+        },
+        "fr": {
+          "text": "152–160 cm (5′0″–5′3″)",
+          "translationHash": "ee63b3093d3c9ebaab3bf4b80d09ed57db8171526caf05e950f3dd15c548473f",
+          "status": "draft; native review pending"
+        },
+        "zh-Hans": {
+          "text": "152–160 cm（5′0″–5′3″）",
+          "translationHash": "5c2d29b11307f2d0daaa0353575a817f5ae39453aea608c30599aacd77d4cb1d",
+          "status": "draft; native review pending"
+        }
+      }
+    },
+    {
+      "id": "personalization.choice.heightRange.163-170",
+      "source": "163–170 cm (5′4″–5′7″)",
+      "sourceHash": "053cab3e4ffc2d18cea7f775504a6b68f6b3f8c52e0dd6fa0ed8520ff73884a5",
+      "translations": {
+        "de": {
+          "text": "163–170 cm (5′4″–5′7″)",
+          "translationHash": "053cab3e4ffc2d18cea7f775504a6b68f6b3f8c52e0dd6fa0ed8520ff73884a5",
+          "status": "draft; native review pending"
+        },
+        "es": {
+          "text": "163–170 cm (5′4″–5′7″)",
+          "translationHash": "053cab3e4ffc2d18cea7f775504a6b68f6b3f8c52e0dd6fa0ed8520ff73884a5",
+          "status": "draft; native review pending"
+        },
+        "fr": {
+          "text": "163–170 cm (5′4″–5′7″)",
+          "translationHash": "053cab3e4ffc2d18cea7f775504a6b68f6b3f8c52e0dd6fa0ed8520ff73884a5",
+          "status": "draft; native review pending"
+        },
+        "zh-Hans": {
+          "text": "163–170 cm（5′4″–5′7″）",
+          "translationHash": "e93364efc393a203f3425eb239d9523c8f349db059f7e9980a0eaa4daccc587d",
+          "status": "draft; native review pending"
+        }
+      }
+    },
+    {
+      "id": "personalization.choice.heightRange.173-180",
+      "source": "173–180 cm (5′8″–5′11″)",
+      "sourceHash": "9158b6954c9be0578bdc29a157f08c203f5b43c334f40e7188b38dc4e7097411",
+      "translations": {
+        "de": {
+          "text": "173–180 cm (5′8″–5′11″)",
+          "translationHash": "9158b6954c9be0578bdc29a157f08c203f5b43c334f40e7188b38dc4e7097411",
+          "status": "draft; native review pending"
+        },
+        "es": {
+          "text": "173–180 cm (5′8″–5′11″)",
+          "translationHash": "9158b6954c9be0578bdc29a157f08c203f5b43c334f40e7188b38dc4e7097411",
+          "status": "draft; native review pending"
+        },
+        "fr": {
+          "text": "173–180 cm (5′8″–5′11″)",
+          "translationHash": "9158b6954c9be0578bdc29a157f08c203f5b43c334f40e7188b38dc4e7097411",
+          "status": "draft; native review pending"
+        },
+        "zh-Hans": {
+          "text": "173–180 cm（5′8″–5′11″）",
+          "translationHash": "af17dcf7b92fbaa88d723083b94442e2b5f8b6e5f0ab817629b3d0eb5df1e6a2",
+          "status": "draft; native review pending"
+        }
+      }
+    },
+    {
+      "id": "personalization.choice.heightRange.183-191",
+      "source": "183–191 cm (6′0″–6′3″)",
+      "sourceHash": "4c50838a4aab8dfa7d87b3418f2adfb35525379ac1ebaacd6a313aaad2860eae",
+      "translations": {
+        "de": {
+          "text": "183–191 cm (6′0″–6′3″)",
+          "translationHash": "4c50838a4aab8dfa7d87b3418f2adfb35525379ac1ebaacd6a313aaad2860eae",
+          "status": "draft; native review pending"
+        },
+        "es": {
+          "text": "183–191 cm (6′0″–6′3″)",
+          "translationHash": "4c50838a4aab8dfa7d87b3418f2adfb35525379ac1ebaacd6a313aaad2860eae",
+          "status": "draft; native review pending"
+        },
+        "fr": {
+          "text": "183–191 cm (6′0″–6′3″)",
+          "translationHash": "4c50838a4aab8dfa7d87b3418f2adfb35525379ac1ebaacd6a313aaad2860eae",
+          "status": "draft; native review pending"
+        },
+        "zh-Hans": {
+          "text": "183–191 cm（6′0″–6′3″）",
+          "translationHash": "8b1c0e0d10419fd7351ddeef8893f7d672f5089536755d7aa43acca4c7109639",
+          "status": "draft; native review pending"
+        }
+      }
+    },
+    {
+      "id": "personalization.choice.heightRange.193-plus",
+      "source": "193+ cm (6′4″+)",
+      "sourceHash": "18ee48a7ddd94b7ca5aee153176c3c4629aa89b343595869de2e8c220a97bcc4",
+      "translations": {
+        "de": {
+          "text": "193+ cm (6′4″+)",
+          "translationHash": "18ee48a7ddd94b7ca5aee153176c3c4629aa89b343595869de2e8c220a97bcc4",
+          "status": "draft; native review pending"
+        },
+        "es": {
+          "text": "193+ cm (6′4″+)",
+          "translationHash": "18ee48a7ddd94b7ca5aee153176c3c4629aa89b343595869de2e8c220a97bcc4",
+          "status": "draft; native review pending"
+        },
+        "fr": {
+          "text": "193+ cm (6′4″+)",
+          "translationHash": "18ee48a7ddd94b7ca5aee153176c3c4629aa89b343595869de2e8c220a97bcc4",
+          "status": "draft; native review pending"
+        },
+        "zh-Hans": {
+          "text": "193+ cm（6′4″+）",
+          "translationHash": "1e31c81762e11e4d92a6d25f517ce2ca90fecce9254980df5ca95d23d4b7ea65",
+          "status": "draft; native review pending"
+        }
+      }
+    },
+    {
+      "id": "personalization.choice.gender.male",
+      "source": "Man",
+      "sourceHash": "20fe1bd201cd900bdbffeaec0b42e40b51cbf6b37ae5fbeaddd83aab9a221837",
+      "translations": {
+        "de": {
+          "text": "Mann",
+          "translationHash": "3d0ac364ae2bf7b787b4d3ceb1a7ceac91820bcbc43483e83cf031a33169a5fa",
+          "status": "draft; native review pending"
+        },
+        "es": {
+          "text": "Hombre",
+          "translationHash": "96ddfc65a159aee6725ccec5a155686f14b19e900ef90fcc1d57a8544474cb98",
+          "status": "draft; native review pending"
+        },
+        "fr": {
+          "text": "Homme",
+          "translationHash": "f7f9ca3e2f67af2a1076e0b2ed389e3947e4b82621ff7a9dd7b4b63d08755396",
+          "status": "draft; native review pending"
+        },
+        "zh-Hans": {
+          "text": "男性",
+          "translationHash": "2fda6b57c855f91e96046ee82ae284d1c96a96d9092d7f5adae4cf91822268bc",
+          "status": "draft; native review pending"
+        }
+      }
+    },
+    {
+      "id": "personalization.choice.gender.female",
+      "source": "Woman",
+      "sourceHash": "5c3967e73c04beef39bcdecfeea6e9238b48821f4fe33b803fa14750533ed678",
+      "translations": {
+        "de": {
+          "text": "Frau",
+          "translationHash": "a67c874c6211ae498fdaf7d4f55168c10e46bb54b4ec3a182eb8195e516bec6d",
+          "status": "draft; native review pending"
+        },
+        "es": {
+          "text": "Mujer",
+          "translationHash": "1ad7faf307b4aefa64fd03b295ca6c8e1b6082264cd4bcaf2a2f7edfc21eea5c",
+          "status": "draft; native review pending"
+        },
+        "fr": {
+          "text": "Femme",
+          "translationHash": "55c2bce1bb9917f297e05170ef7c60a31567c3d639aecdfb9fca6c2f6f44fed4",
+          "status": "draft; native review pending"
+        },
+        "zh-Hans": {
+          "text": "女性",
+          "translationHash": "6a7ffd13b8ffd8d65c191997b7341efd732b82ae6fd6288e12a39ea2378e9ac7",
+          "status": "draft; native review pending"
+        }
+      }
+    },
+    {
+      "id": "personalization.choice.gender.other",
+      "source": "Other",
+      "sourceHash": "f97e9da0e3b879f0a9df979ae260a5f7e1371edb127c1862d4f861981166cdc1",
+      "translations": {
+        "de": {
+          "text": "Andere",
+          "translationHash": "e7aa6f052cee46646b4f16469a573eed6f3c4f73da15def479e798820a8da243",
+          "status": "draft; native review pending"
+        },
+        "es": {
+          "text": "Otro",
+          "translationHash": "0d5a52a92cb9f499f5254400c174814a9f77351b42b0c32c02c400c7f624f9e9",
+          "status": "draft; native review pending"
+        },
+        "fr": {
+          "text": "Autre",
+          "translationHash": "eb72e1683b81c924512d50df783bf39c78acdff4d5b2f8bfcce96f4a84eb0b31",
+          "status": "draft; native review pending"
+        },
+        "zh-Hans": {
+          "text": "其他",
+          "translationHash": "d2909f1647e7c891a8282759b2eaa961e84620ff04cda7b8b5478cb540d74fa4",
+          "status": "draft; native review pending"
+        }
+      }
+    },
+    {
+      "id": "personalization.choice.experience.starting",
+      "source": "I’m just starting",
+      "sourceHash": "af433972ec940360e69d34cd9dc3f9653a5c2a89928e8504c44296fac06e6009",
+      "translations": {
+        "de": {
+          "text": "Ich fange gerade erst an",
+          "translationHash": "f04006250cd19ba6151da24801925531eb7ccb852160e0b2233927a5863a2a34",
+          "status": "draft; native review pending"
+        },
+        "es": {
+          "text": "Acabo de empezar",
+          "translationHash": "c38e1a7b5fae91ede3ac68ce0f04b31adfc88f0d3edc263c5c6e8e2b29c350d9",
+          "status": "draft; native review pending"
+        },
+        "fr": {
+          "text": "Je débute",
+          "translationHash": "bde8fadf64e0d11b7595f63afa7fe42556b8bf51d8b8b10a2d999caf61e8bc2a",
+          "status": "draft; native review pending"
+        },
+        "zh-Hans": {
+          "text": "我刚刚开始",
+          "translationHash": "c69bf46b45e32a7f5894fb7d22b32d91f61179664ea242ef62e5ca1a762e2388",
+          "status": "draft; native review pending"
+        }
+      }
+    },
+    {
+      "id": "personalization.choice.experience.tried",
+      "source": "I’ve tried a few things",
+      "sourceHash": "67c3f1f5b87dcb13707dde409d2ca5d1b42db934b207d6ef3b286eceec908d09",
+      "translations": {
+        "de": {
+          "text": "Ich habe schon einiges ausprobiert",
+          "translationHash": "d6aa79fccac98d95e8e05058fa1f7c4fb8692155b910ea0f57ed5eb6814eb827",
+          "status": "draft; native review pending"
+        },
+        "es": {
+          "text": "Ya he probado algunas cosas",
+          "translationHash": "f41dcb765d067f3628ea1c52f90d85f534dbf924d607fc6c0c05d29cb39957f4",
+          "status": "draft; native review pending"
+        },
+        "fr": {
+          "text": "J’ai déjà essayé quelques choses",
+          "translationHash": "87510556efe9aa81227fd7380a95f5140d45cbc1e2a4559e281ee657eaa5dcf7",
+          "status": "draft; native review pending"
+        },
+        "zh-Hans": {
+          "text": "我尝试过一些方法",
+          "translationHash": "cca9e387328b41c7744de863903b381d07f3e90e22e15ada035d2e0ba4b87e63",
+          "status": "draft; native review pending"
+        }
+      }
+    },
+    {
+      "id": "personalization.choice.experience.active",
+      "source": "I’m actively improving",
+      "sourceHash": "f33c582ebb982c031f7295c8c3b92ed543004dbc5ef0d3ce628b691d9e4702a9",
+      "translations": {
+        "de": {
+          "text": "Ich arbeite regelmäßig an meinem Aussehen",
+          "translationHash": "e9b27bcef4b1cc58f4641c6fab51b2123ddb1a5fd4c296c274d126853296c29d",
+          "status": "draft; native review pending"
+        },
+        "es": {
+          "text": "Trabajo activamente en mi apariencia",
+          "translationHash": "5e25344f62aca9ebc076e1cd0d144ca8391855f336d27c25619edec86e6fdf19",
+          "status": "draft; native review pending"
+        },
+        "fr": {
+          "text": "Je travaille régulièrement sur mon apparence",
+          "translationHash": "1002f67cd493ec936060a507df513f8b78dfaa4cc7bb5d8c2877cea1da50d71f",
+          "status": "draft; native review pending"
+        },
+        "zh-Hans": {
+          "text": "我正在积极改善外貌",
+          "translationHash": "8deca7c28b182fc16605085c8697b36684da48fc5320d50117e78ff01e6d6827",
+          "status": "draft; native review pending"
+        }
+      }
+    },
+    {
+      "id": "personalization.choice.methods.exercise",
+      "source": "Exercise",
+      "sourceHash": "9bc3516b784aceb156fb7e182b697e3f2aae96fa300e13aaad39085a986f02a6",
+      "translations": {
+        "de": {
+          "text": "Sport",
+          "translationHash": "9a085dd854f03306988189d9b57c89b54a9303bdbba275ea9fc5739d64e3b50c",
+          "status": "draft; native review pending"
+        },
+        "es": {
+          "text": "Ejercicio",
+          "translationHash": "24563ba8c01ae27e368b47caa1dd3fa4979f1a2519d7be39a6e333c7dd82269c",
+          "status": "draft; native review pending"
+        },
+        "fr": {
+          "text": "Activité physique",
+          "translationHash": "ab22d14f05506d5c1d9e04e8a720b0292ed4afc2b9c09d358a254ff7988734c1",
+          "status": "draft; native review pending"
+        },
+        "zh-Hans": {
+          "text": "运动",
+          "translationHash": "a9d130d79595672c8023969df955d00f6aa499262c2819c86e4053ec17a1794f",
+          "status": "draft; native review pending"
+        }
+      }
+    },
+    {
+      "id": "personalization.choice.methods.mewing",
+      "source": "Mewing",
+      "sourceHash": "a2229884f75548964bb841a422304f484b349b6f07098a9993636c1c7d672357",
+      "translations": {
+        "de": {
+          "text": "Mewing",
+          "translationHash": "a2229884f75548964bb841a422304f484b349b6f07098a9993636c1c7d672357",
+          "status": "draft; native review pending"
+        },
+        "es": {
+          "text": "Mewing",
+          "translationHash": "a2229884f75548964bb841a422304f484b349b6f07098a9993636c1c7d672357",
+          "status": "draft; native review pending"
+        },
+        "fr": {
+          "text": "Mewing",
+          "translationHash": "a2229884f75548964bb841a422304f484b349b6f07098a9993636c1c7d672357",
+          "status": "draft; native review pending"
+        },
+        "zh-Hans": {
+          "text": "Mewing",
+          "translationHash": "a2229884f75548964bb841a422304f484b349b6f07098a9993636c1c7d672357",
+          "status": "draft; native review pending"
+        }
+      }
+    },
+    {
+      "id": "personalization.choice.methods.skin-care",
+      "source": "Skin care",
+      "sourceHash": "9b2e65034b6067e02630157156b7f7145bee7885ae8886f6ef5b5a49d8258934",
+      "translations": {
+        "de": {
+          "text": "Hautpflege",
+          "translationHash": "e33f7a0eedbb7356bd4d9b7dc9be469ea18a4d482b3cdadec8506c1fd9a9dbac",
+          "status": "draft; native review pending"
+        },
+        "es": {
+          "text": "Cuidado de la piel",
+          "translationHash": "9e406ab1753f550417a9f971f62c010c44dcc32cfd6140a039fdf8e8255f933e",
+          "status": "draft; native review pending"
+        },
+        "fr": {
+          "text": "Soins de la peau",
+          "translationHash": "1b492f9f460fd5a513924daeb10a33632ef476db34c212622958ad1df04ecb7e",
+          "status": "draft; native review pending"
+        },
+        "zh-Hans": {
+          "text": "护肤",
+          "translationHash": "72cc990731433f38ca23f60d6ac9435a4cfc50af57234376207dae0cd37721b0",
+          "status": "draft; native review pending"
+        }
+      }
+    },
+    {
+      "id": "personalization.choice.methods.injectables",
+      "source": "Fillers / Botox",
+      "sourceHash": "eccc1e203efde1cf5e275128dd7a391b3047e013fd4dabe12def50ae77de1724",
+      "translations": {
+        "de": {
+          "text": "Filler / Botox",
+          "translationHash": "0af07b38b7990e0279de502fdbcfa3db5c3c463c5eafe4b0e3e3ef36566e24a6",
+          "status": "draft; native review pending"
+        },
+        "es": {
+          "text": "Rellenos / Botox",
+          "translationHash": "cf2cdb2832f8d9614af2f1ad89a8a3dbe61bcaab58f4a9307fcae727c3d6aa39",
+          "status": "draft; native review pending"
+        },
+        "fr": {
+          "text": "Injections de comblement / Botox",
+          "translationHash": "4addf7eb82d09bd79d4ccfbb8fb86abb7b6559cd4033d8c874ecbcb4387a244d",
+          "status": "draft; native review pending"
+        },
+        "zh-Hans": {
+          "text": "填充注射 / Botox",
+          "translationHash": "7429205003c6a7611484a958b151edd49df0712b18b8783d52da24e0c1547cde",
+          "status": "draft; native review pending"
+        }
+      }
+    },
+    {
+      "id": "personalization.choice.methods.surgery",
+      "source": "Surgery",
+      "sourceHash": "022eaabcc673d978c27083f5c76c555fee652325d1959ed1f5fe0f8cd4ff1c71",
+      "translations": {
+        "de": {
+          "text": "Operationen",
+          "translationHash": "742d790515db50efe0c9ec5602421e0d393af3247ea8dbc359cf7f48c3d6508e",
+          "status": "draft; native review pending"
+        },
+        "es": {
+          "text": "Cirugía",
+          "translationHash": "87e2e51cbeaadcdec11c106e39cd95528a9b6db333cbc18f0558a47ae337289f",
+          "status": "draft; native review pending"
+        },
+        "fr": {
+          "text": "Chirurgie",
+          "translationHash": "c220f58e093883a8c6df2486f1df679d6ee1ae18b2f7236c058c9acb9e6072a4",
+          "status": "draft; native review pending"
+        },
+        "zh-Hans": {
+          "text": "手术",
+          "translationHash": "5d0de80ea74c776517c57680116c7346621da6676204ed9b01c6240780411f07",
+          "status": "draft; native review pending"
+        }
+      }
+    },
+    {
+      "id": "personalization.choice.methods.other",
+      "source": "Other",
+      "sourceHash": "f97e9da0e3b879f0a9df979ae260a5f7e1371edb127c1862d4f861981166cdc1",
+      "translations": {
+        "de": {
+          "text": "Sonstiges",
+          "translationHash": "9f3d5f8d94cf29d7ab98b9d43e94cc0097f5b930adeb8cc327127e396b83d919",
+          "status": "draft; native review pending"
+        },
+        "es": {
+          "text": "Otros",
+          "translationHash": "0108f1aeeef4d7cdb879901dc5b53d95f7c4f4da15b7ba4debe2338af2c773a1",
+          "status": "draft; native review pending"
+        },
+        "fr": {
+          "text": "Autre",
+          "translationHash": "eb72e1683b81c924512d50df783bf39c78acdff4d5b2f8bfcce96f4a84eb0b31",
+          "status": "draft; native review pending"
+        },
+        "zh-Hans": {
+          "text": "其他",
+          "translationHash": "d2909f1647e7c891a8282759b2eaa961e84620ff04cda7b8b5478cb540d74fa4",
+          "status": "draft; native review pending"
+        }
+      }
+    },
+    {
+      "id": "personalization.choice.goals.jaw",
+      "source": "A more defined jawline",
+      "sourceHash": "95349807046eabf3f409478c4d164019ab771b1473cef6ba27f2c11ccd5e7f34",
+      "translations": {
+        "de": {
+          "text": "Eine markantere Kieferlinie",
+          "translationHash": "1bfeb4ffd41e046193ecf649a2c4e07ad7fbf2c478e5b17de2bec8c8a6b91bba",
+          "status": "draft; native review pending"
+        },
+        "es": {
+          "text": "Una mandíbula más definida",
+          "translationHash": "77728714b59ecfe2925d3559faada9434a98400701f9c72a17d571c23b339923",
+          "status": "draft; native review pending"
+        },
+        "fr": {
+          "text": "Une mâchoire plus définie",
+          "translationHash": "1ea2f0076430346ceb34a08eacd8b57e11806a25949c96d3649c0b0b05d7ab13",
+          "status": "draft; native review pending"
+        },
+        "zh-Hans": {
+          "text": "更清晰的下颌线条",
+          "translationHash": "f3a32b5789b637f2d03c8b6dff624bc4accbe2316fbe424a83cf002d7a4afb04",
+          "status": "draft; native review pending"
+        }
+      }
+    },
+    {
+      "id": "personalization.choice.goals.skin-age",
+      "source": "Clearer-looking skin",
+      "sourceHash": "141cba526d3ac1b322bf2b9b5615bea1befef560a1c2a81826232910d5378bfb",
+      "translations": {
+        "de": {
+          "text": "Ein reineres Hautbild",
+          "translationHash": "01d9623e84a53e634e5689338ba66f4283b535db11eff25110aef4e2d2f4d336",
+          "status": "draft; native review pending"
+        },
+        "es": {
+          "text": "Una piel de aspecto más limpio",
+          "translationHash": "4549741118efca3f9601261347fe04ce41c592201acf0a0b871f969bedeb5328",
+          "status": "draft; native review pending"
+        },
+        "fr": {
+          "text": "Une peau à l’aspect plus net",
+          "translationHash": "1edff8938c8413796e8e06af109b1033f27cc707acba2d0ca69959604c33c1fe",
+          "status": "draft; native review pending"
+        },
+        "zh-Hans": {
+          "text": "更清透的肤质",
+          "translationHash": "679b617a962d88b9762198d49c0e194db00c2bd627a80988fdb394de79910d0a",
+          "status": "draft; native review pending"
+        }
+      }
+    },
+    {
+      "id": "personalization.choice.goals.symmetry",
+      "source": "More balanced facial features",
+      "sourceHash": "c35819e2bff78c9186b3354aa983f1b9b3bdbacc1b7f2a2719f0a5b6fb5be479",
+      "translations": {
+        "de": {
+          "text": "Harmonischere Gesichtszüge",
+          "translationHash": "46695fc66e1a465df3ddb24cf96a3691f78fedcc81af2436fc79555255d11177",
+          "status": "draft; native review pending"
+        },
+        "es": {
+          "text": "Rasgos faciales más equilibrados",
+          "translationHash": "b645ca8d5abc0d22240337d498019293f39a33b2e12ed417a1cbb3500013fa5f",
+          "status": "draft; native review pending"
+        },
+        "fr": {
+          "text": "Des traits du visage plus harmonieux",
+          "translationHash": "c774c71f56a4c2341e10cfefed85a21e23a2780f7a510fc3cfbb6eded832f163",
+          "status": "draft; native review pending"
+        },
+        "zh-Hans": {
+          "text": "更协调的五官",
+          "translationHash": "6ddef6cf80baab28ece3f73e5cf1276e1ba4c0f6513080b142d3f8471f90ac55",
+          "status": "draft; native review pending"
+        }
+      }
+    },
+    {
+      "id": "personalization.choice.goals.eyes",
+      "source": "A more striking eye area",
+      "sourceHash": "21a5b6daf11bab5d2a10eca519a5c838ce1835101261510cc8679da92076efcd",
+      "translations": {
+        "de": {
+          "text": "Eine ausdrucksstärkere Augenpartie",
+          "translationHash": "826228739904405894aae9db7a1316687f4da17ab6e4063e04ac61cae6843cae",
+          "status": "draft; native review pending"
+        },
+        "es": {
+          "text": "Una mirada más expresiva",
+          "translationHash": "76afb1fd5aa33ebaf5b351ff238daefa9d919c12ae1300e3e7845ad371be4e4b",
+          "status": "draft; native review pending"
+        },
+        "fr": {
+          "text": "Un regard plus expressif",
+          "translationHash": "48fc078e7af94226ce3fc08608ce87cb6395a5aec58c90d0f87164bb485f3cde",
+          "status": "draft; native review pending"
+        },
+        "zh-Hans": {
+          "text": "更有神采的眼部",
+          "translationHash": "1685b2d0ff088fd02ea9eb9e75c3c09beb0a373690569fb5a17227adf7829723",
+          "status": "draft; native review pending"
+        }
+      }
+    },
+    {
+      "id": "personalization.choice.goals.facial-fat",
+      "source": "More defined facial contours",
+      "sourceHash": "76b826979e982ee2c6db4945cc8ec0ce852f0acb1dad20febeb9956e4f64cfcb",
+      "translations": {
+        "de": {
+          "text": "Klarere Gesichtskonturen",
+          "translationHash": "621c8a0c07d2c7c2362beda5bb7068ad79d6c46d5e058bbd313ae9329a9e26e6",
+          "status": "draft; native review pending"
+        },
+        "es": {
+          "text": "Contornos faciales más definidos",
+          "translationHash": "23fffbfd035cf46772bd8e805572c5421ed428fb4c47dbf1d37e2497078c0674",
+          "status": "draft; native review pending"
+        },
+        "fr": {
+          "text": "Des contours du visage plus définis",
+          "translationHash": "a87d856035155caa9b7bc7f0bf0d788027a65e068c584a180164894c25d691bd",
+          "status": "draft; native review pending"
+        },
+        "zh-Hans": {
+          "text": "更清晰的面部轮廓",
+          "translationHash": "42b15758433a9cf0d51ecc95751d5740c6b57f44a2818d765910b6d5d2bd4beb",
+          "status": "draft; native review pending"
+        }
+      }
+    },
+    {
+      "id": "personalization.choice.goals.overall",
+      "source": "Improve my overall appearance",
+      "sourceHash": "b8c30e3bf8ed156d3b9b0cb3b7b5a2fc772455a1e1366f7ebcfee1a09864f7e9",
+      "translations": {
+        "de": {
+          "text": "Mein Aussehen insgesamt verbessern",
+          "translationHash": "6185432ef4ae35fffe0de03b2b209211e655585e924ea52a7632f2b9548ef783",
+          "status": "draft; native review pending"
+        },
+        "es": {
+          "text": "Mejorar mi apariencia en general",
+          "translationHash": "32a8c8ca5d3a10a3200f5bc314c4a8301bcd77a8a16bbcac884fa27aaeb4716a",
+          "status": "draft; native review pending"
+        },
+        "fr": {
+          "text": "Améliorer mon apparence générale",
+          "translationHash": "60ebf02815e8f1bd9bf51840566cf86cdaa5878185f30d5d1d6deec1ff05091c",
+          "status": "draft; native review pending"
+        },
+        "zh-Hans": {
+          "text": "整体改善外貌",
+          "translationHash": "2448c4eeecd8c05c409df40bca4ba624a12488d5e3944ce7ed48a3052974726e",
+          "status": "draft; native review pending"
+        }
+      }
+    },
+    {
+      "id": "personalization.choice.commitment.minutes-5",
+      "source": "5 minutes a day",
+      "sourceHash": "177da936dc6ac650b91f4836c633a755cd576b171239d28d1194b814bea7aa3d",
+      "translations": {
+        "de": {
+          "text": "5 Minuten am Tag",
+          "translationHash": "e308506a53140c7938dec9ce8246cad0fffb5452ef8c5442e7cff8196bcbe472",
+          "status": "draft; native review pending"
+        },
+        "es": {
+          "text": "5 minutos al día",
+          "translationHash": "83c0cc0308fcd4dc937d354a65d7f8f885f3511f3feeb2125bf8f588d66223ec",
+          "status": "draft; native review pending"
+        },
+        "fr": {
+          "text": "5 minutes par jour",
+          "translationHash": "29a7a4f5da5baa54c4240a776690026570ddac7842fe2a03b54344023d0a7c76",
+          "status": "draft; native review pending"
+        },
+        "zh-Hans": {
+          "text": "每天 5 分钟",
+          "translationHash": "2a4cdd9005527969b74e8797f78d5323d5310889bd8c1bea09a6a97c76b80a94",
+          "status": "draft; native review pending"
+        }
+      }
+    },
+    {
+      "id": "personalization.choice.commitment.minutes-15",
+      "source": "15 minutes a day",
+      "sourceHash": "09b8462b12f89bb97ce9e922591a4d81338472ed21f8db76ec76fba47b4265e9",
+      "translations": {
+        "de": {
+          "text": "15 Minuten am Tag",
+          "translationHash": "71031dffbc0026e778d31675c259e2f374c08fe872812150e6a7d323199767b2",
+          "status": "draft; native review pending"
+        },
+        "es": {
+          "text": "15 minutos al día",
+          "translationHash": "b89d8f42433cca68b1c27d12149523963cb1979efd36354cd1f41039796be401",
+          "status": "draft; native review pending"
+        },
+        "fr": {
+          "text": "15 minutes par jour",
+          "translationHash": "5d8e08f45a70cb4d7fd7be38df951c1237bcfdc49d8ffd112765728fb8b64046",
+          "status": "draft; native review pending"
+        },
+        "zh-Hans": {
+          "text": "每天 15 分钟",
+          "translationHash": "d41fe01cf974f6fc38437d8a67c76fa7be738d33c444f0d3e4085bd3634d35a7",
+          "status": "draft; native review pending"
+        }
+      }
+    },
+    {
+      "id": "personalization.choice.commitment.flexible",
+      "source": "I can be flexible",
+      "sourceHash": "b15978ebc2ee5ae0fab1ede859603c6e1452346d88ec32039a3ffa34e0614398",
+      "translations": {
+        "de": {
+          "text": "Ich bin zeitlich flexibel",
+          "translationHash": "b1e3cec0465357200085a50df303be022bbf78f437fad237e41ec2daaf778abc",
+          "status": "draft; native review pending"
+        },
+        "es": {
+          "text": "Puedo adaptar mi horario",
+          "translationHash": "5865923e87c4113ec2573444042c5b9bb108b18389b39c8f803486fc9b99ac61",
+          "status": "draft; native review pending"
+        },
+        "fr": {
+          "text": "Je peux adapter mon emploi du temps",
+          "translationHash": "fece8e47aaeeb89434f124f936aed98da36455f4911c966f0f3823c8f1b2f16e",
+          "status": "draft; native review pending"
+        },
+        "zh-Hans": {
+          "text": "时间可以灵活安排",
+          "translationHash": "ff81f3f0c71ea112c3fd6b5e5351a26e0c928a295c10ca4bea06e86aba04e199",
+          "status": "draft; native review pending"
+        }
+      }
+    }
+  ]
+}

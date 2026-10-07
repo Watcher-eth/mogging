@@ -1,5 +1,6 @@
 import { landingProperties, readLandingCookie, type LandingAssignment } from './landing'
 import { sanitizeProperties, type AnalyticsEventName } from './contract'
+import { acquisitionReferrer } from './acquisition'
 type Event = { eventId: string; occurredAt: string; [key: string]: unknown }
 const key = 'mogging.analytics.v2'
 let initialized = false
@@ -37,7 +38,11 @@ function init() {
     const value = params.get(name)?.slice(0, 160)
     if (value) { context[name] = value; context[`first_${name}`] ||= value; context[`last_${name}`] = value }
   }
-  try { if (document.referrer) context.referrer_host = new URL(document.referrer).hostname } catch {}
+  const referrer = acquisitionReferrer(document.referrer)
+  if (referrer) {
+    context.referrer_host = referrer
+    context.first_referrer_host ||= referrer
+  }
   try { localStorage.setItem(`${key}.acquisition`, JSON.stringify(sanitizeProperties(context))) } catch {}
   window.addEventListener('pagehide', leave)
   document.addEventListener('visibilitychange', () => {

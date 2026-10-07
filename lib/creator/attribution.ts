@@ -5,7 +5,7 @@ import type Stripe from 'stripe'
 import { db, schema } from '@/lib/db'
 import { env } from '@/lib/env'
 import { ApiError } from '@/lib/api/http'
-import { buildCreatorDeepLink } from './link-routing'
+import { buildCreatorDeepLink, buildCreatorInstallLink } from './link-routing'
 
 export const CREATOR_ATTRIBUTION_COOKIE = 'mogging_creator_attribution'
 export const CREATOR_LINK_BASE_URL = 'https://www.mogging.com'
@@ -124,6 +124,8 @@ export async function createCreatorAttributionClick(input: {
     isBot,
   }).returning()
   const token = signClickId(click.id)
+  if (!isBot) link.iosAppStoreUrl = buildCreatorInstallLink(process.env.APPSFLYER_ONELINK_BASE_URL,
+    link.slug, token, link.iosAppStoreUrl)
   return {
     link,
     click,

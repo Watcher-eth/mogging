@@ -1,3 +1,4 @@
+import { LocalizationProvider } from '@/lib/i18n/provider'
 import type { AppProps } from 'next/app'
 import { useRouter } from 'next/router'
 import { useState, type ReactNode } from 'react'
@@ -31,6 +32,7 @@ export default function App({ Component, pageProps: { session, ...pageProps } }:
   const [soundVolume, setSoundVolume] = useState(0.82)
 
   return (
+    <LocalizationProvider locale={router.locale ?? 'en'}>
     <SessionProvider session={session}>
       <Analytics />
       <SWRConfig value={swrConfig}>
@@ -76,5 +78,6 @@ export default function App({ Component, pageProps: { session, ...pageProps } }:
         </PageSound>
       </SWRConfig>
     </SessionProvider>
+    </LocalizationProvider>
   )
 }

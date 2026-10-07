@@ -1,4 +1,5 @@
 import { landingExperiments } from '@/lib/analytics/landing'
+import { excludedAcquisitionHost } from '@/lib/analytics/acquisition'
 import { sql, type SQL } from 'drizzle-orm'
 import { z } from 'zod'
 import { db } from '@/lib/db'
@@ -52,6 +53,10 @@ export function analyticsQuery(filters: AnalyticsFilters, now: Date) {
   const paywall = funnel('paywall', ['paywall_viewed', 'plan_selected', 'purchase_started', 'purchase_completed'], sql`platform in ('ios','android')`)
   const web = funnel('web', ['page_viewed', 'app_store_redirected'], sql`platform = 'web' and properties->>'path' = '/'`)
   const rows = (name: string) => sql`coalesce((select json_agg(r) from ${sql.identifier(name)} r), '[]'::json)`
+  const referrer = sql`coalesce(nullif(properties->>'first_referrer_host',''),nullif(properties->>'referrer_host',''))`
+  const acquisitionSource = sql`coalesce(nullif(properties->>'creator_first_tracking_link_id',''),
+    nullif(properties->>'first_utm_source',''),
+    case when ${referrer} !~* ${excludedAcquisitionHost} then ${referrer} end)`
   return sql`with e as materialized (
       select event_name, occurred_at, account_id, platform, app_version, properties, session_id, source, schema_version, received_at,
         coalesce('install:' || mobile_install_id, 'anonymous:' || anonymous_id, 'account:' || account_id) as actor
@@ -138,7 +143,7 @@ export function analyticsQuery(filters: AnalyticsFilters, now: Date) {
     landing_entries as materialized (
       select distinct on (properties->>'landing_id') properties->>'landing_id' as landing_id,
         properties->>'experiment_id' as experiment_id, properties->>'variant' as variant,
-        coalesce(nullif(properties->>'first_utm_source',''),nullif(properties->>'referrer_host',''),'direct / unknown') as source,
+        coalesce(${acquisitionSource},'direct / unattributed') as source,
         occurred_at as at
       from e where platform = 'web' and event_name = 'landing_viewed' and properties->>'path' = '/'
         and nullif(properties->>'landing_id','') is not null
@@ -188,14 +193,20 @@ export function analyticsQuery(filters: AnalyticsFilters, now: Date) {
         and o.occurred_at >= l.at and o.occurred_at <= l.at + interval '7 days'
       where o.event_name = 'landing_cta_clicked' and o.properties->>'path' = '/'
       group by 1,2 order by visitors desc
+    ), acquisition_actors as (
+      select distinct on (actor) actor, coalesce(${acquisitionSource},'direct / unattributed') as source,
+        coalesce(nullif(properties->>'first_utm_campaign',''),'—') as campaign
+      from e where actor is not null
+      order by actor, (${acquisitionSource} is null),
+        (nullif(properties->>'creator_first_tracking_link_id','') is null),
+        (nullif(properties->>'first_utm_source','') is null), occurred_at
     ), acquisition as (
-      select coalesce(nullif(properties->>'creator_first_tracking_link_id', ''), nullif(properties->>'first_utm_source', ''), 'unknown') as source,
-        coalesce(nullif(properties->>'first_utm_campaign', ''), '—') as campaign,
-        count(distinct actor) as actors,
-        count(distinct actor) filter (where event_name = 'app_first_open') as first_opens,
-        count(distinct actor) filter (where event_name = 'app_store_redirected') as store_redirects,
-        count(distinct actor) filter (where event_name = 'purchase_completed') as purchase_actors
-      from e group by 1,2 order by actors desc limit 50
+      select a.source, a.campaign, count(distinct e.actor) as actors,
+        count(distinct e.actor) filter (where event_name = 'app_first_open') as first_opens,
+        count(distinct e.actor) filter (where event_name = 'app_store_redirected') as store_redirects,
+        count(distinct e.actor) filter (where event_name = 'purchase_completed') as purchase_actors
+      from e join acquisition_actors a on a.actor=e.actor
+      group by a.source,a.campaign order by actors desc limit 50
     ), onboarding_definitions(step, label, position) as (values ${sql.join(onboardingAnalyticsSteps.map(([step, label], index) => sql`(${step}::text, ${label}::text, ${index}::integer)`), sql`,`)}),
     onboarding_observations as materialized (
       select e.actor, e.properties->>'flow_id' as flow_id, d.step, d.position, e.occurred_at,
