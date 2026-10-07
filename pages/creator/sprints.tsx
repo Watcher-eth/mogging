@@ -1,3 +1,4 @@
+import NumberFlow from '@number-flow/react'
 import { CreatorEssentials } from '@/components/creator/creator-essentials'
 import { creatorFormatElement } from '@/lib/creator/post-guidance'
 import { CampaignRegionHelp } from '@/components/creator/campaign-region-help'
@@ -265,7 +266,15 @@ function SprintDetail({ sprint }: { sprint: CreatorSprint }) {
                         ) : null}
                       </div>
                       <p className="text-lg font-semibold leading-6 tracking-tight tabular-nums text-zinc-900">
-                        {sprintMoney(hasAudienceBands ? sprintPayoutCents(sprint.terms, item.views, audienceBand.minimumPercent) : item.amountCents)}
+                        <NumberFlow
+                          value={(hasAudienceBands ? sprintPayoutCents(sprint.terms, item.views, audienceBand.minimumPercent) : item.amountCents) / 100}
+                          locales="en-US"
+                          format={{ style: 'currency', currency: 'USD', minimumFractionDigits: 0, maximumFractionDigits: 2 }}
+                          spinTiming={{ duration: 420, easing: 'cubic-bezier(0.22, 1, 0.36, 1)' }}
+                          transformTiming={{ duration: 420, easing: 'cubic-bezier(0.22, 1, 0.36, 1)' }}
+                          opacityTiming={{ duration: 160, easing: 'ease-out' }}
+                          respectMotionPreference
+                        />
                       </p>
                       <p className="mt-1.5 text-xs font-medium tabular-nums text-zinc-500">
                         {sprintViews(item.views)}
