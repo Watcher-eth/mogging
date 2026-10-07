@@ -254,3 +254,18 @@ test('the guide leads with the face scan and custom formats before transformatio
     'General Mogging Face Scan', 'Custom format', 'Before → Mock Report → After',
   ])
 })
+
+
+test('old brief guidance matches the current portal without changing review decisions or terms', () => {
+  const saved = structuredClone(terms)
+  saved.formats[0].elements = [{ title: 'Closing CTA', detail: 'End your video by inviting viewers to try Mogging.' }]
+  saved.formats[0].requirements = ['Submit within 72 hours of publishing', 'Tag @moggingcom in the post or caption', 'Include your Mogging referral code in your bio and caption.']
+  const before = structuredClone(saved)
+  const items = sprintReviewItems(saved, 'f')
+  expect(items.find(item => item.id === 'element-1')).toMatchObject({ label: 'Early CTA · 2–3 seconds' })
+  expect(items.find(item => item.id === 'element-1')?.detail).toContain('first 10 seconds')
+  expect(items.find(item => item.id === 'requirement-1')).toBeUndefined()
+  expect(items.find(item => item.id === 'requirement-2')?.label).toBe('Tag @moggingcom in the post caption')
+  expect(items.find(item => item.id === 'requirement-3')?.label).toBe('Include your Mogging referral code in your caption.')
+  expect(saved).toEqual(before)
+})

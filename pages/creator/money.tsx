@@ -105,17 +105,15 @@ function MoneyContent() {
                 </button>
               ) : (
                 <p className="mt-3 text-sm text-zinc-500">
-                  {data.profile?.authStatus === 'verified'
-                    ? 'Payout method approved. Eligible payments are processed in 3–5 days.'
-                    : 'Your payout method is awaiting review.'}
+                  Payout method saved. Eligible payments typically take 3–5 days to process after approval.
                 </p>
               )}
               <div className="mt-7 flex flex-wrap items-center gap-x-6 gap-y-3 text-sm">
                 <span className="text-zinc-500">
-                  {earnings.length} reviewed videos awaiting payment
+                  {earnings.length} reviewed posts awaiting payment
                 </span>
                 <span className="text-zinc-500">
-                  {pendingReview} videos in review
+                  {pendingReview} posts in review
                 </span>
                 <button
                   className="ml-auto text-[#00A8EF]"

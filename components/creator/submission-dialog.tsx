@@ -1,4 +1,4 @@
-import { creatorFormatElement, CREATOR_REREVIEW_GUIDANCE } from '@/lib/creator/post-guidance'
+import { creatorCampaignRules, creatorFormatElement, CREATOR_REREVIEW_GUIDANCE } from '@/lib/creator/post-guidance'
 import { MinimumViewsDialog } from './minimum-views-dialog'
 import Link from 'next/link'
 import { campaignRegionRates } from '@/lib/creator/sprint-defaults'
@@ -113,8 +113,8 @@ export function SubmissionDialog({
   const checklist =
     format && sprint
       ? [
-          ...format.requirements,
-          ...sprint.terms.rules,
+          ...creatorCampaignRules(format.requirements),
+          ...creatorCampaignRules(sprint.terms.rules),
           ...format.notAllowed.map((item) => `My post avoids: ${item}`),
         ]
       : []
@@ -324,7 +324,7 @@ export function SubmissionDialog({
                             ))}
                           </div>
                           <ul className="mt-4 list-inside list-disc space-y-2 text-sm text-zinc-500">
-                            {sprint.terms.rules.map((rule) => (
+                            {creatorCampaignRules(sprint.terms.rules).map((rule) => (
                               <li key={rule}>{rule}</li>
                             ))}
                           </ul>
@@ -385,7 +385,7 @@ export function SubmissionDialog({
                                   </p>
                                 ))}
                                 <ul className="list-inside list-disc space-y-2 text-zinc-500">
-                                  {item.requirements.map((rule) => (
+                                  {creatorCampaignRules(item.requirements).map((rule) => (
                                     <li key={rule}>{rule}</li>
                                   ))}
                                 </ul>

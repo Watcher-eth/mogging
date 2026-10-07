@@ -44,7 +44,7 @@ export function CreatorReferralLinks() {
         ) : null}
       </div>
       <p className="mt-3 text-sm leading-6 text-zinc-500">
-        Share your link in your bio or messages, or use your code in captions.
+        Include your code in post captions. You can also share your link in your bio or messages.
         Choose the account you post from so referrals reach the right account.
       </p>
       {isLoading ? (

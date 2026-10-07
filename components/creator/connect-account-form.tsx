@@ -54,7 +54,7 @@ export function ConnectAccountForm({
           </span>
           <h3 className="font-semibold">Your account is connected</h3>
           <p className="mt-1 text-sm text-zinc-500">
-            Share your permanent referral link or include your code in post captions.
+            Include your code in post captions; you can also share your permanent referral link.
           </p>
         </div>
         <div className="min-w-0">

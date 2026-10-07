@@ -1,4 +1,5 @@
 import { z } from 'zod'
+import { creatorCampaignRule, creatorFormatElement } from './post-guidance'
 import type { CreatorSubmissionFormat } from './formats'
 
 const paragraph = z.string().trim().min(1).max(2000)
@@ -200,11 +201,10 @@ export function sprintReviewItems(terms: SprintTerms, id: string) {
   const format = sprintFormat(terms, id)
   if (!format) return []
   return [
-    ...format.elements.map((item, i) => ({
-      id: `element-${i + 1}`,
-      label: item.title,
-      detail: item.detail,
-    })),
+    ...format.elements.map((item, i) => {
+      const element = creatorFormatElement(item)
+      return { id: `element-${i + 1}`, label: element.title, detail: element.detail }
+    }),
     ...format.requirements.map((label, i) => ({
       id: `requirement-${i + 1}`,
       label,
@@ -217,12 +217,13 @@ export function sprintReviewItems(terms: SprintTerms, id: string) {
     })),
     ...terms.rules.map((label, i) => ({
       id: `sprint-rule-${i + 1}`,
-      label: label === 'Include your Mogging referral code in your bio and caption.'
-        ? 'Include your Mogging referral code in your caption.'
-        : label,
+      label,
       detail: 'Campaign rule',
     })),
-  ].filter((item) => !item.label.startsWith('Submit within'))
+  ].flatMap((item) => {
+    const label = creatorCampaignRule(item.label)
+    return label === null ? [] : [{ ...item, label }]
+  })
 }
 export function referralCode(
   link: { slug: string; publicUrl: string } | null | undefined,

@@ -1,3 +1,4 @@
+import { hasCreatorPayoutMethod } from '@/lib/creator/money'
 import { creatorProfileSchema } from '@/lib/creator/validation'
 import { useEffect, useState, type FormEvent } from 'react'
 import Image from 'next/image'
@@ -58,7 +59,7 @@ export function PayoutInformation({ email, onSaved, embedded = false }: { email:
   return (
     <>
 
-      {!embedded && profile ? <div className="mb-4 flex items-center gap-3 text-sm"><CreatorStatusIcon name="payouts" verified={profile.authStatus === 'verified'} /><div><p className="font-medium">{profile.authStatus === 'verified' ? 'Payment Method Approved' : 'Payout Information'}</p><p className="text-xs text-[#73777d]">{profile.authStatus === 'verified' ? 'Your payment destination is approved.' : (profile.paymentOption === 'paypal' ? profile.paypalEmail : profile.cryptoNetwork && profile.cryptoWalletAddress) ? 'Your payment destination is awaiting review.' : 'Add a payment destination to receive earnings.'}</p></div></div> : null}
+      {!embedded && profile ? <div className="mb-4 flex items-center gap-3 text-sm"><CreatorStatusIcon name="payouts" verified={hasCreatorPayoutMethod(profile)} /><div><p className="font-medium">{hasCreatorPayoutMethod(profile) ? 'Payment Method Saved' : 'Payout Information'}</p><p className="text-xs text-[#73777d]">{hasCreatorPayoutMethod(profile) ? 'Your payment destination is saved. Payments are released after submission approval and any required account review.' : 'Add a payment destination to receive earnings.'}</p></div></div> : null}
       <form onSubmit={save} className={cn('grid gap-8', !embedded && 'creator-surface p-5 sm:p-7')}>
         <section className="grid gap-5">
           <div className="flex items-center gap-3"><CreatorIcon name="payouts" className="size-11" /><div><h2 className="font-semibold tracking-[-0.025em]">Payment Method</h2><p className="text-xs text-zinc-500">You can change this before a payment is processed.</p></div></div>

@@ -1,6 +1,6 @@
 import NumberFlow from '@number-flow/react'
 import { CreatorEssentials } from '@/components/creator/creator-essentials'
-import { creatorFormatElement } from '@/lib/creator/post-guidance'
+import { creatorCampaignRules, creatorFormatElement } from '@/lib/creator/post-guidance'
 import { CampaignRegionHelp } from '@/components/creator/campaign-region-help'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { CampaignHelp } from '@/components/creator/campaign-help'
@@ -380,7 +380,7 @@ function SprintDetail({ sprint }: { sprint: CreatorSprint }) {
                             Requirements
                           </h3>
                           <ul className="list-disc space-y-3 pl-5 text-sm leading-6 text-zinc-600">
-                            {format.requirements.map((rule) => (
+                            {creatorCampaignRules(format.requirements).map((rule) => (
                               <li key={rule}>{rule}</li>
                             ))}
                           </ul>
@@ -410,7 +410,7 @@ function SprintDetail({ sprint }: { sprint: CreatorSprint }) {
                   </li>
                   {[
                     'A continuous analytics recording filmed with a second device is required.',
-                    ...sprint.terms.rules,
+                    ...creatorCampaignRules(sprint.terms.rules),
                   ].map((rule) => (
                     <li
                       key={rule}

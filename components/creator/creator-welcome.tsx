@@ -8,7 +8,7 @@ import { CREATOR_CTA_GUIDANCE, CREATOR_SUBMIT_GUIDANCE, CREATOR_REREVIEW_GUIDANC
 
 const questions = [
   { title: 'When should I submit?', headline: '20K views. Send it in.', answer: CREATOR_SUBMIT_GUIDANCE },
-  { title: 'How much do I get paid?', headline: 'Your views. Your audience.', answer: 'Each campaign has its own milestone payouts. Your verified views set the milestone; your combined Tier 1 audience sets the rate: A pays 100%, B 65%, C 40%, and D 20%. At least 10% Tier 1 audience is required. Check the campaign’s tier selector for the exact amount. Approval depends on the campaign rules and remaining budget.' },
+  { title: 'How much do I get paid?', headline: 'Your views. Your audience.', answer: 'Each campaign has its own milestone payouts. Your verified views set the milestone; your combined Tier 1 audience sets the rate. Standard campaign tiers pay A 100%, B 65%, C 40%, and D 20%, with at least 10% Tier 1 audience required. Check the campaign’s audience rules and milestone timeline for its exact amounts. Approval depends on the campaign rules and remaining budget.' },
   { title: 'Can I get paid again?', headline: 'New milestone. More earnings.', answer: CREATOR_REREVIEW_GUIDANCE },
   { title: 'How long should the CTA be?', headline: 'Keep it short. Show it early.', answer: CREATOR_CTA_GUIDANCE },
 ] as const

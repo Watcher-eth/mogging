@@ -44,6 +44,7 @@ export function CreatorReferralDetails({ trackingLink }: ReferralProps) {
 
   return (
     <div className="min-w-0 divide-y divide-zinc-100">
+      <p className="py-3 text-xs leading-5 text-zinc-500">Your code gives new subscribers 10% off their first month. Include it in post captions; adding it to your bio is optional.</p>
       {items.map(({ label, value }) => (
         <div key={label} className="flex items-center justify-between gap-3 py-3">
           <div className="min-w-0">

@@ -10,7 +10,7 @@ export type CreatorSubmissionFormat = {
 }
 
 const SHARED_REQUIREMENTS = [
-  'Tag @moggingcom in the post or caption',
+  'Tag @moggingcom in the post caption',
   'Keep the post public and the content original',
   'Use a connected account when one is available',
   'Make the entire video or slideshow, on-screen text, and caption clearly looksmaxxing, ascension, or transformation focused: emphasize appearance, attractiveness, facial features, improvement, or potential',

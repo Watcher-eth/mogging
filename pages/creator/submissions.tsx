@@ -87,6 +87,7 @@ function SubmissionDialog({ submission, payment, payments, linkedToApprovedAccou
               </div>
               <DialogDescription>{CREATOR_REREVIEW_GUIDANCE}</DialogDescription>
             </DialogHeader>
+            {payments.some(item => ['pending', 'processing'].includes(item.status)) ? <p className="mt-3 text-xs text-zinc-500">You can request rereview once your scheduled payout has finished processing.</p> : null}
             {submission.reviewRequestedAt ? <p className="mt-3 text-xs text-zinc-500">Updated analytics are awaiting review. Prior payouts remain unchanged.</p> : null}
             <div className="mt-4 flex gap-1 rounded-full bg-zinc-100 p-1" aria-label="Submission view">{(['conversation', 'details'] as const).map(value => <button key={value} aria-pressed={tab === value} className={cn('min-h-10 flex-1 rounded-full text-sm font-medium capitalize', tab === value ? 'bg-white shadow-sm' : 'text-zinc-500')} onClick={() => setTab(value)}>{value === 'conversation' ? <>Messages{submission.unreadMessages ? <span className="ml-2 inline-flex min-w-5 items-center justify-center rounded-lg bg-[#007aff] px-1.5 py-0.5 text-[10px] text-white">{submission.unreadMessages}</span> : null}</> : 'Details'}</button>)}</div>
             {tab === 'conversation' ? <SubmissionConversation submissionId={submission.id} viewerRole="creator" /> : <>
@@ -97,7 +98,7 @@ function SubmissionDialog({ submission, payment, payments, linkedToApprovedAccou
               <Detail label="Evidence" value={submission.analyticsContentType?.startsWith('video/') ? 'Second-device analytics recording' : submission.analyticsScreenshotUrl ? 'Analytics screenshot' : submission.videoUrl ? 'Legacy video' : 'Not provided'} />
               <Detail label="Evidence Size" value={evidenceSize ? formatBytes(evidenceSize) : 'Not recorded'} />
               <Detail label="View Count Threshold" value={submission.viewCountThreshold ? `${formatViewCount(submission.viewCountThreshold)} views` : 'Not recorded'} />
-              <Detail label="Tier 1 Audience" value={submission.usAudiencePercent !== null ? `${submission.usAudiencePercent}%` : 'Default 20% Tier 1 Audience'} />
+              <Detail label="Tier 1 Audience" value={submission.usAudiencePercent !== null ? `${submission.usAudiencePercent}%` : 'Not recorded'} />
               <Detail label="Total approved earnings" value={formatMoney(submission.approvedAmountCents || 0, 'USD')} />
               {payments.length ? payments.map(item => <Detail key={item.id} label={item.paidAt ? `Payment · ${formatDate(item.paidAt)}` : 'Payment'} value={`${formatMoney(item.amountCents, item.currency)} · ${item.status}`} />) : <Detail label="Payment" value="Not scheduled" />}
               <Detail label="Payment Method" value={payment ? (payment.paymentOption === 'paypal' ? 'PayPal' : 'Crypto') : '—'} />

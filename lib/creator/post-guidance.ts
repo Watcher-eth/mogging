@@ -7,3 +7,15 @@ export function creatorFormatElement(element: { title: string; detail: string })
     ? { title: 'Early CTA · 2–3 seconds', detail: CREATOR_CTA_GUIDANCE }
     : element
 }
+
+export function creatorCampaignRule(rule: string): string | null {
+  if (rule.startsWith('Submit within')) return null
+  if (rule === 'Tag @moggingcom in the post or caption') return 'Tag @moggingcom in the post caption'
+  return rule === 'Include your Mogging referral code in your bio and caption.'
+    ? 'Include your Mogging referral code in your caption.'
+    : rule
+}
+
+export function creatorCampaignRules(rules: readonly string[]) {
+  return rules.map(creatorCampaignRule).filter((rule): rule is string => rule !== null)
+}
