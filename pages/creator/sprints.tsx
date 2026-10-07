@@ -218,7 +218,6 @@ function SprintDetail({ sprint }: { sprint: CreatorSprint }) {
           )
         }
       />
-      <CreatorEssentials />
       <StudioTabs
         value={tab}
         onChange={setTab}
@@ -424,6 +423,7 @@ function SprintDetail({ sprint }: { sprint: CreatorSprint }) {
               </section>
             </div>
           </div>
+          <div className="mt-7"><CreatorEssentials /></div>
         </StudioTabContent>
         <StudioTabContent value="submissions">
           {isLoading ? (
