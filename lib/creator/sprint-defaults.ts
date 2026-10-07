@@ -19,9 +19,8 @@ export function campaignAudienceRates(amountCents: number) {
   ]
 }
 
-export function campaignRegionRates(terms: SprintTerms) {
-  const grouped =
-    terms.minimumTier1Percent === 0 &&
+export function campaignHasAudienceBands(terms: SprintTerms) {
+  return terms.minimumTier1Percent === 0 &&
     terms.maximumTier1Percent === 40 &&
     terms.milestones.every((milestone) => {
       const rates = milestone.audienceRates
@@ -36,7 +35,10 @@ export function campaignRegionRates(terms: SprintTerms) {
         )
       )
     })
-  return grouped
+}
+
+export function campaignRegionRates(terms: SprintTerms) {
+  return campaignHasAudienceBands(terms)
     ? 'Region rates: Tier A pays 100% · Tier B 65% · Tier C 40% · Tier D 20%.'
     : `Region rates: Tier 1 audience ${terms.minimumTier1Percent}–${terms.maximumTier1Percent}%; payouts follow the campaign’s audience rates.`
 }

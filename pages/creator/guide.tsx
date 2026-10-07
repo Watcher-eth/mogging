@@ -30,7 +30,7 @@ import { CreatorReferralLinks } from '@/components/creator/referral-links'
 
 const GuideExamples = dynamic(() => import('@/components/creator/guide-examples'), { loading: () => <p className="p-6 text-sm text-[#73777d]" role="status">Loading reference examples…</p> })
 
-const tierOneCountries = ['United States', 'Canada', 'United Kingdom', 'Australia', 'Germany', 'France', 'Netherlands', 'Sweden', 'Denmark', 'Switzerland', 'New Zealand', 'Poland', 'Italy', 'South Korea']
+import { CREATOR_TIER_ONE_COUNTRIES as tierOneCountries } from '@/lib/creator/audience'
 
 export default function CreatorProgramGuidePage() {
   const router = useRouter()

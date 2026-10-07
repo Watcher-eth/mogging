@@ -1,3 +1,5 @@
+import { CampaignRegionHelp } from '@/components/creator/campaign-region-help'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { CampaignHelp } from '@/components/creator/campaign-help'
 import { SprintBudget, SprintStatus } from '@/components/creator/campaign-summary'
 import Link from 'next/link'
@@ -6,7 +8,7 @@ import type { GetServerSideProps } from 'next'
 import { getCampaignPreview } from '@/lib/creator/sprint-service'
 import { campaignTimeLabel, type CampaignPreview } from '@/lib/creator/campaign-preview'
 import { siteUrl } from '@/lib/seo'
-import { campaignRegionRates } from '@/lib/creator/sprint-defaults'
+import { CREATOR_AUDIENCE_BANDS, campaignHasAudienceBands, campaignRegionRates } from '@/lib/creator/sprint-defaults'
 import { useRouter } from 'next/router'
 import { useState } from 'react'
 import useSWR from 'swr'
@@ -26,6 +28,7 @@ import { SocialPlatformLogo } from '@/components/brand/social-platform-logo'
 import { apiGet } from '@/lib/api/client'
 import {
   sprintPhase,
+  sprintPayoutCents,
   sprintMoney,
   sprintViews,
   type CreatorSprint,
@@ -178,6 +181,9 @@ function SprintsContent() {
 }
 function SprintDetail({ sprint }: { sprint: CreatorSprint }) {
   const [tab, setTab] = useState('overview')
+  const [audienceTier, setAudienceTier] = useState<string>('A')
+  const hasAudienceBands = campaignHasAudienceBands(sprint.terms)
+  const audienceBand = CREATOR_AUDIENCE_BANDS.find((band) => band.tier === audienceTier)!
   const { data, isLoading, error } = useSWR<{ submissions: SprintProof[] }>(
     tab === 'submissions' ? `/api/creator/sprints/${sprint.id}` : null,
     apiGet,
@@ -221,7 +227,19 @@ function SprintDetail({ sprint }: { sprint: CreatorSprint }) {
           <div className="creator-surface p-5 sm:p-7">
             <SprintBudget sprint={sprint} />
             <div className="mt-7 rounded-2xl border border-[#e8ebee] p-5">
-              <h2 className="text-sm font-semibold">Milestone payouts</h2>
+              <div className="flex items-center justify-between gap-3">
+                <h2 className="text-sm font-semibold">Milestone payouts</h2>
+                {hasAudienceBands ? <Select value={audienceTier} onValueChange={setAudienceTier}>
+                  <SelectTrigger aria-label="Milestone payout tier" className="h-8 w-24 rounded-full px-3 text-xs shadow-none">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {[...CREATOR_AUDIENCE_BANDS].reverse().map((band) => (
+                      <SelectItem key={band.tier} value={band.tier}>Tier {band.tier}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select> : null}
+              </div>
               <div
                 className="mt-5 overflow-x-auto pb-1"
                 role="region"
@@ -244,7 +262,7 @@ function SprintDetail({ sprint }: { sprint: CreatorSprint }) {
                         ) : null}
                       </div>
                       <p className="text-lg font-semibold leading-6 tracking-tight tabular-nums text-zinc-900">
-                        {sprintMoney(item.amountCents)}
+                        {sprintMoney(hasAudienceBands ? sprintPayoutCents(sprint.terms, item.views, audienceBand.minimumPercent) : item.amountCents)}
                       </p>
                       <p className="mt-1.5 text-xs font-medium tabular-nums text-zinc-500">
                         {sprintViews(item.views)}
@@ -375,8 +393,11 @@ function SprintDetail({ sprint }: { sprint: CreatorSprint }) {
               <section>
                 <h2 className="mb-3 text-sm font-semibold">Rules</h2>
                 <ul className="space-y-2">
+                  <li className="flex items-center gap-2 rounded-xl bg-[#f5f6f7] py-2 pl-4 pr-2 text-sm leading-6 text-zinc-600">
+                    <span className="min-w-0 flex-1">{campaignRegionRates(sprint.terms)}</span>
+                    {hasAudienceBands ? <CampaignRegionHelp /> : null}
+                  </li>
                   {[
-                    campaignRegionRates(sprint.terms),
                     'A continuous analytics recording filmed with a second device is required.',
                     ...sprint.terms.rules,
                   ].map((rule) => (
