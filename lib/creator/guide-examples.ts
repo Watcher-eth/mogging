@@ -1,15 +1,38 @@
 export type GuideExample = {
   id: string
   title: string
-  hook: string
+  hook?: string
   explanation: string
   takeaway: string
   images: string[]
+  posts?: Array<{ label: string; url: string }>
+  mockReport?: boolean
 }
 
 // Source order is retained so each example can be located in its reference document.
 // Explanations and rewrite suggestions are Mogging editorial guidance, not source review notes.
 export const positiveExamples: GuideExample[] = [
+  {
+    id: 'feature-education-slideshow',
+    title: 'Explain a feature with an educational slideshow',
+    explanation: 'This slideshow focuses on facial and body asymmetry, using labeled comparisons and feature-by-feature diagrams. The lesson is the clear educational structure: introduce one appearance-related topic, then explain it across readable slides.',
+    takeaway: 'Build an original Mogging slideshow around a facial feature or analysis finding. Use clear labels, original photos, and readable Mogging app footage. Include a 2–3 second CTA within the first 5 slides. The source uses illustrated characters; anime and cartoon content are forbidden under our current rules, so use real photos or Mogging report visuals instead. Do not copy the source or promise that exercises will fix asymmetry.',
+    images: ['feature-education'],
+    posts: [{ label: 'View educational slideshow · @zayn.calisthenics', url: 'https://www.tiktok.com/@zayn.calisthenics/photo/7692932628646825248' }],
+  },
+  {
+    id: 'evaluation-led-report',
+    title: 'Make the evaluation the main content',
+    explanation: 'These two references put the evaluation itself at the center: a face photo followed by harmony scores, individual feature ratings, and measurement overlays. One presents the report as a video; the other uses a slideshow. The report gives viewers something specific to inspect rather than serving as a brief background shot.',
+    takeaway: 'Create this format with Mogging: show the face, reveal a readable evaluation, and highlight a few specific findings. Use our mock report generator to create Mogging report visuals for this exact style of video or slideshow. Keep illustrative mock reports identifiable as examples, use photos you have permission to use, and avoid presenting invented scores as a real evaluation. Add the required 2–3 second Mogging CTA within the first 10 seconds or first 5 slides.',
+    images: ['evaluation-video', 'evaluation-slides'],
+    posts: [
+      { label: 'View evaluation video · @niklas_874', url: 'https://www.tiktok.com/@niklas_874/video/7674571963972521248' },
+      { label: 'View evaluation slideshow · @jacob_appeal1', url: 'https://www.tiktok.com/@jacob_appeal1/photo/7689549241022172446' },
+    ],
+    mockReport: true,
+  },
+
   { id: 'yes-1', title: 'Make potential the premise', hook: 'average “do I have potential” commenter', explanation: 'This historical reference shows a clear potential-focused premise, with comments about viewers’ own faces. Its Tom Welling subject is forbidden under the current rules; do not recreate it with Tom Welling or Smallville footage.', takeaway: 'Build the hook around appearance. A Mogging version can invite viewers to explore their own feature breakdown. This source example is transcribed because its screenshot includes another app’s branding.', images: [] },
   { id: 'yes-2', title: 'Connect confidence to a looks transformation', hook: 'mfs after ascending and suddenly start approaching every girl with confidence', explanation: 'The premise names an ascent, and the source comments ask about ascending, potential, and facial traits. The intended subject is a change in appearance rather than generic confidence.', takeaway: 'Make the physical transformation explicit in the edit. Do not promise confidence or romantic success as a guaranteed result of Mogging. This source example is transcribed because its screenshot includes another app’s branding.', images: [] },
   { id: 'yes-3', title: 'Name the facial feature', hook: 'Upper Eyelid Exposure', explanation: 'The image labels a specific feature. Viewers discuss how much of that feature they have and ask appearance-related questions.', takeaway: 'A clear feature label gives the viewer a reason to think about their own face. Demonstrate the relevant Mogging analysis without inventing treatment claims.', images: ['yes-3'] },
