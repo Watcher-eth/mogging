@@ -91,7 +91,7 @@ function DashboardView({ tab, data, onSelect, onRefresh }: { tab: Tab; data: Adm
   if (tab === 'cta-library') return <CtaLibraryAdminPanel />
   if (tab === 'accounts') return <ResourceSection title="Social accounts"><AccountList items={data.accounts} onSelect={onSelect} /></ResourceSection>
   if (tab === 'payments') return <ResourceSection title="Creator payments"><PaymentList items={data.payments} onSelect={onSelect} /></ResourceSection>
-  if (tab === 'creators') return <ResourceSection title="Creators"><div className="mb-5"><CreatorRegistrationMetrics creators={data.creators} accounts={data.accounts} /></div><CreatorList items={data.creators} onSelect={onSelect} /></ResourceSection>
+  if (tab === 'creators') return <ResourceSection title="Creators"><div className="mb-5"><CreatorRegistrationMetrics creators={data.creators} accounts={data.accounts} /></div><CreatorList items={data.creators} accounts={data.accounts} onSelect={onSelect} /></ResourceSection>
   return <Overview data={data} onSelect={onSelect} />
 }
 
@@ -215,13 +215,27 @@ function PaymentList({ items, onSelect }: { items: AdminPayment[]; onSelect: (ta
   return <div className="admin-list">{items.map((item) => <ResourceRow key={item.id} icon={CircleDollarSign} title={formatMoney(item.amountCents, item.currency)} subtitle={`${item.creatorName} · ${item.submissionTitle || 'Manual payment'} · ${formatDate(item.createdAt)}`} status={item.status} meta={item.paymentOption === 'paypal' ? 'PayPal' : 'Crypto'} onClick={() => onSelect({ resource: 'payment', item })} />)}</div>
 }
 
-function CreatorList({ items, onSelect }: { items: AdminCreator[]; onSelect: (target: ReviewTarget) => void }) {
+function CreatorList({ items, accounts, onSelect }: { items: AdminCreator[]; accounts: AdminAccount[]; onSelect: (target: ReviewTarget) => void }) {
   if (!items.length) return <EmptyState title="No creators yet" description="Creator profiles will appear here after registration." />
-  return <div className="admin-list">{items.map((item) => <ResourceRow key={item.id} icon={UserRound} title={item.displayName} subtitle={`${item.email} · Joined ${formatDate(item.createdAt)}`} status={hasPayoutDestination(item) ? item.authStatus === 'verified' ? 'approved' : item.authStatus : 'registered'} meta={hasPayoutDestination(item) ? item.paymentOption === 'paypal' ? 'PayPal' : item.cryptoNetwork || 'Crypto' : 'No payment method'} onClick={() => onSelect({ resource: 'creator', item })} />)}</div>
+  const accountsByCreator = new Map<string, AdminAccount[]>()
+  for (const account of accounts) {
+    const connected = accountsByCreator.get(account.creatorProfileId) || []
+    connected.push(account)
+    accountsByCreator.set(account.creatorProfileId, connected)
+  }
+  return <div className="admin-list">{items.map((item) => {
+    const connected = accountsByCreator.get(item.id) || []
+    const identity = connected.map((account) => `${capitalize(account.platform)} ${creatorAccountLabel(account)}`).join(' · ')
+    return <ResourceRow key={item.id} icon={UserRound} title={identity || item.displayName}
+      subtitle={`${identity ? item.displayName : 'No social account connected'} · ${item.email} · Joined ${formatDate(item.createdAt)}`}
+      status={hasPayoutDestination(item) ? item.authStatus === 'verified' ? 'approved' : item.authStatus : 'registered'}
+      meta={hasPayoutDestination(item) ? item.paymentOption === 'paypal' ? 'PayPal' : item.cryptoNetwork || 'Crypto' : 'No payment method'}
+      onClick={() => onSelect({ resource: 'creator', item })} />
+  })}</div>
 }
 
 function ResourceRow({ icon: Icon, asset, leading, title, subtitle, status, meta, unreadMessages, onClick }: { leading?: React.ReactNode; unreadMessages?: number; icon?: typeof UserRound; asset?: CreatorIconName; title: string; subtitle: string; status: string; meta: string; onClick: () => void }) {
-  return <button onClick={onClick} className="admin-resource-row group flex w-full items-center gap-4 text-left">{leading || (asset ? <CreatorIcon name={asset} className="size-12" /> : Icon ? <span className="grid size-11 shrink-0 place-items-center rounded-xl bg-zinc-100"><Icon className="size-5" /></span> : null)}<span className="min-w-0 flex-1"><span className="block truncate text-sm font-semibold tracking-[-0.02em]">{title}</span><span className="mt-1 block truncate text-xs text-zinc-500">{subtitle}</span></span><span className="hidden max-w-48 truncate text-xs text-zinc-400 md:block">{meta}</span>{unreadMessages ? <span className="rounded-full bg-[#007aff] px-2 py-1 text-[11px] text-white">{unreadMessages} new</span> : null}<StatusPill status={status} /><ArrowUpRight className="size-4 shrink-0 text-zinc-300 transition-[color,transform] duration-150 ease-out group-hover:-translate-y-0.5 group-hover:translate-x-0.5 group-hover:text-black" /></button>
+  return <button onClick={onClick} className="admin-resource-row group flex w-full items-center gap-4 text-left">{leading || (asset ? <CreatorIcon name={asset} className="size-12" /> : Icon ? <span className="grid size-11 shrink-0 place-items-center rounded-xl bg-zinc-100"><Icon className="size-5" /></span> : null)}<span className="min-w-0 flex-1"><span title={title} className="block truncate text-sm font-semibold tracking-[-0.02em]">{title}</span><span className="mt-1 block truncate text-xs text-zinc-500">{subtitle}</span></span><span className="hidden max-w-48 truncate text-xs text-zinc-400 md:block">{meta}</span>{unreadMessages ? <span className="rounded-full bg-[#007aff] px-2 py-1 text-[11px] text-white">{unreadMessages} new</span> : null}<StatusPill status={status} /><ArrowUpRight className="size-4 shrink-0 text-zinc-300 transition-[color,transform] duration-150 ease-out group-hover:-translate-y-0.5 group-hover:translate-x-0.5 group-hover:text-black" /></button>
 }
 
 function ApprovalBadge({ target }: { target: Exclude<ReviewTarget, { resource: 'payment' }> }) {
