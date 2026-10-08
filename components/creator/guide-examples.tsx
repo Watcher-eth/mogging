@@ -1,9 +1,8 @@
 import Image from 'next/image'
 import { useState } from 'react'
-import { ExternalLink, Search } from 'lucide-react'
+import { ExternalLink } from 'lucide-react'
 import { negativeExamples, positiveExamples } from '@/lib/creator/guide-examples'
 import imageSizes from '@/lib/creator/guide-image-sizes.json'
-import references from '@/lib/creator/june-video-references.json'
 import { cn } from '@/lib/utils'
 
 const sourceDocs = {
@@ -11,7 +10,6 @@ const sourceDocs = {
   'not-acceptable': 'https://docs.google.com/document/d/1jKZYY0dxwsDBVyHmdXQ2oKnBLbTfV3wbMmapx6uuUew/edit',
 }
 type Classification = keyof typeof sourceDocs
-const pageSize = 12
 
 export default function GuideExamples() {
   const [classification, setClassification] = useState<Classification>('acceptable')
@@ -27,7 +25,6 @@ export default function GuideExamples() {
         <div className="mt-5 flex flex-wrap gap-2" aria-label="Example classification">
           {(['acceptable', 'not-acceptable'] as const).map((value) => <button key={value} type="button" aria-pressed={classification === value} onClick={() => setClassification(value)} className={cn('min-h-11 rounded-full border px-4 text-sm font-semibold transition-colors', classification === value ? 'creator-choice-selected' : 'border-black/10 bg-white text-[#73777d] hover:bg-[#f7f8f9]')}>{value === 'acceptable' ? 'What we want' : 'What we don’t want'}</button>)}
         </div>
-        <a href="#june-index-title" className="mt-3 inline-flex min-h-11 items-center text-sm font-semibold text-[#00A8EF] underline underline-offset-4">Browse the June video index ↓</a>
       </header>
       <div className="py-6" key={classification}>
         <div className="mb-4 flex flex-wrap items-center justify-between gap-2"><h3 className="text-sm font-semibold">{examples.length} explained examples</h3><a href={sourceDocs[classification]} target="_blank" rel="noreferrer" className="inline-flex min-h-11 items-center gap-1 text-xs font-semibold text-[#00A8EF]">Original reference document<ExternalLink className="size-3.5" /></a></div>
@@ -45,34 +42,6 @@ export default function GuideExamples() {
           </details>)}
         </div>
       </div>
-      <JuneVideoIndex classification={classification} key={`index-${classification}`} />
-    </section>
-  )
-}
-
-function JuneVideoIndex({ classification }: { classification: Classification }) {
-  const [query, setQuery] = useState('')
-  const [platform, setPlatform] = useState('all')
-  const [page, setPage] = useState(0)
-  const search = query.trim().toLowerCase().replace(/^@/, '').split(/[?#]/)[0]
-  const matches = references.filter((item) => item.status === classification && (platform === 'all' || item.url.includes(platform)) && (!search || `${item.account} ${item.url}`.toLowerCase().includes(search)))
-  const pageCount = Math.ceil(matches.length / pageSize)
-  const visible = matches.slice(page * pageSize, (page + 1) * pageSize)
-  return (
-    <section className="border-t border-black/[0.055] bg-[#f7f8f9]/60 p-5 sm:p-6" aria-labelledby="june-index-title">
-      <h3 id="june-index-title" className="scroll-mt-52 text-xl font-semibold tracking-tight">June 2026 video reference index</h3>
-      <p className="mt-2 max-w-3xl text-sm leading-6 text-[#73777d]">All 2,261 spreadsheet entries are available across the two filters: 1,196 marked acceptable and 1,065 marked non-acceptable. Search an account or paste a video link to find its source classification.</p>
-      <p className="mt-2 max-w-3xl text-xs leading-5 text-[#73777d]">The spreadsheets do not give individual review reasons. These labels are reproduced from the source, not new Mogging reviews or payout decisions. Links open on TikTok or Instagram and may require sign-in or no longer be available. The screenshot examples above are a separate reference set; no link-to-screenshot match is implied.</p>
-      <div className="mt-5 flex flex-col gap-3 sm:flex-row">
-        <label className="relative flex-1"><span className="sr-only">Search June videos by account or URL</span><Search className="pointer-events-none absolute left-3.5 top-3.5 size-4 text-[#858a91]" /><input type="search" value={query} onChange={(event) => { setQuery(event.target.value); setPage(0) }} placeholder="Search account or video link" className="h-11 w-full rounded-xl border border-black/10 bg-white pl-10 pr-3 text-sm" /></label>
-        <label><span className="sr-only">Video platform</span><select className="h-11 w-full rounded-xl border border-black/10 bg-white px-3 text-sm sm:w-40" value={platform} onChange={(event) => { setPlatform(event.target.value); setPage(0) }}><option value="all">All platforms</option><option value="tiktok.com">TikTok</option><option value="instagram.com">Instagram</option></select></label>
-      </div>
-      <p className="mt-4 text-xs text-[#73777d]" aria-live="polite">{matches.length.toLocaleString('en-US')} {classification === 'acceptable' ? 'acceptable' : 'non-acceptable'} references{matches.length ? ` · ${page * pageSize + 1}–${Math.min((page + 1) * pageSize, matches.length)}` : ''}</p>
-      <ul className="mt-3 divide-y divide-black/[0.055] rounded-2xl border border-black/[0.07] bg-white">
-        {visible.map((item) => <li key={item.url}><a href={item.url} target="_blank" rel="noreferrer" className="flex min-h-16 items-center justify-between gap-4 px-4 py-3 hover:bg-[#f7f8f9]"><span className="min-w-0"><span className="block break-words text-sm font-semibold">@{item.account}</span><span className="mt-1 block text-xs text-[#858a91]">{item.url.includes('tiktok.com') ? 'TikTok' : 'Instagram'} · {classification === 'acceptable' ? 'Looks' : 'Not Looks'} sheet, row {item.row}</span></span><span className="inline-flex shrink-0 items-center gap-1 text-xs font-semibold text-[#00A8EF]">Watch<ExternalLink className="size-3.5" /></span></a></li>)}
-      </ul>
-      {!matches.length ? <p className="py-6 text-sm text-[#73777d]">No matches in this classification. Try the other classification, a shorter account name, or all platforms.</p> : null}
-      {pageCount > 1 ? <div className="mt-4 flex items-center justify-between gap-3"><button type="button" disabled={page === 0} onClick={() => setPage(page - 1)} className="min-h-11 rounded-full border border-black/10 bg-white px-4 text-sm font-semibold disabled:opacity-40">Previous</button><span className="text-xs tabular-nums text-[#73777d]">Page {page + 1} of {pageCount}</span><button type="button" disabled={page + 1 >= pageCount} onClick={() => setPage(page + 1)} className="min-h-11 rounded-full border border-black/10 bg-white px-4 text-sm font-semibold disabled:opacity-40">Next</button></div> : null}
     </section>
   )
 }
