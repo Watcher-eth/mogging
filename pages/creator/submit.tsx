@@ -45,7 +45,6 @@ function SubmitContent() {
           </Button>
         }
       />
-      <CreatorEssentials />
       {error ? (
         <p role="alert" className="text-sm text-zinc-500">
           Could not load submissions.{' '}
@@ -135,6 +134,7 @@ function SubmitContent() {
           </Link>
         </Button>
       </div>
+      <div className="mt-8"><CreatorEssentials /></div>
       {open ? (
         <SubmissionDialog
           open

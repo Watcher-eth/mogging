@@ -46,7 +46,6 @@ export default function CreatorProgramGuidePage() {
         <GuideHome />
       </> : <div className="creator-guide-article w-full">
         <nav aria-label="Guide breadcrumb" className="mb-7 flex items-center gap-2 text-xs text-[#73777d]"><Link href="/creator/guide" className="inline-flex min-h-11 items-center gap-1.5 hover:text-[#00A8EF]"><ArrowLeft className="size-3.5" />Creator guide</Link><span>/</span><span className="text-[#181a1d]">{selectedTopic.label}</span></nav>
-        {['video', 'payout', 'improve'].includes(topic) ? <CreatorEssentials /> : null}
         {topic === 'video' ? <VideoGuide /> : null}
         {topic === 'improve' ? <ImproveGuide /> : null}
         {topic === 'rules' ? <RulesGuide /> : null}
@@ -54,6 +53,7 @@ export default function CreatorProgramGuidePage() {
         {topic === 'payout' ? <PayoutGuide /> : null}
         {topic === 'account' ? <AccountGuide /> : null}
         {topic === 'referrals' ? <><GuidePanelHeader eyebrow="Share your link" title="Turn viewers into downloads." description="Use the personal link for the account you publish from so referrals go to the right account." /><CreatorReferralLinks /></> : null}
+        {topic === 'video' ? <div className="mt-8"><CreatorEssentials /></div> : null}
         <div className="mt-10 flex flex-wrap items-center justify-between gap-3 border-t border-[#eceef0] pt-5 text-sm"><Link href="/creator/guide" className="inline-flex min-h-11 items-center gap-2 font-medium"><ArrowLeft className="size-4" />All guides</Link><a href={discordContactUrl} target="_blank" rel="noreferrer" className="inline-flex min-h-11 items-center gap-2 text-[#00A8EF]"><MessageCircle className="size-4" />Ask us on Discord</a></div>
       </div>}
     </CreatorShell>
@@ -75,7 +75,6 @@ function GuideHome() {
   ] as const
 
   return <>
-    <CreatorEssentials />
     <section aria-label="Start with these questions" className="grid gap-3 lg:grid-cols-3">
       {startingQuestions.map((item) => <Link key={item.topic} href={creatorGuideHref(item.topic)} className="group flex flex-col rounded-[20px] bg-[#f5f6f7] p-5 transition-colors hover:bg-[#eef0f2] sm:p-6"><CreatorIcon name={item.icon} className="mb-5 size-6 text-[#00A8EF]" /><h2 className="text-lg font-semibold leading-6 tracking-[-0.03em]">{item.title}</h2><p className="mt-3 text-sm leading-6 text-[#73777d]">{item.answer}</p><span className="mt-auto flex items-center justify-between gap-3 pt-6 text-xs font-semibold text-[#00A8EF]">{item.link}<ArrowRight className="size-4 transition-transform duration-150 group-hover:translate-x-0.5" /></span></Link>)}
     </section>
