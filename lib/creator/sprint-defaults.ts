@@ -20,7 +20,7 @@ export function campaignAudienceRates(amountCents: number) {
 }
 
 export function campaignHasAudienceBands(terms: SprintTerms) {
-  return terms.minimumTier1Percent === 10 &&
+  return (terms.minimumTier1Percent === 0 || terms.minimumTier1Percent === 10) &&
     terms.maximumTier1Percent === 40 &&
     terms.milestones.every((milestone) => {
       const rates = milestone.audienceRates
@@ -30,7 +30,7 @@ export function campaignHasAudienceBands(terms: SprintTerms) {
         rates.length === expected.length &&
         expected.every(
           (rate, index) =>
-            rate.audiencePercent === rates[index].audiencePercent &&
+            (index === 0 ? terms.minimumTier1Percent : rate.audiencePercent) === rates[index].audiencePercent &&
             rate.amountCents === rates[index].amountCents,
         )
       )

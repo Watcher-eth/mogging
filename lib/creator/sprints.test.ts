@@ -1,4 +1,4 @@
-import { defaultCreatorSprintTerms } from './sprint-defaults'
+import { campaignHasAudienceBands, defaultCreatorSprintTerms } from './sprint-defaults'
 import { expect, test } from 'bun:test'
 import {
   sprintTermsSchema,
@@ -34,6 +34,20 @@ const terms: SprintTerms = {
     },
   ],
 }
+test('milestone tier selector recognizes current and existing campaign rates without changing payouts', () => {
+  const current = defaultCreatorSprintTerms()
+  const existing = structuredClone(current)
+  existing.minimumTier1Percent = 0
+  for (const milestone of existing.milestones) milestone.audienceRates![0].audiencePercent = 0
+  expect(campaignHasAudienceBands(current)).toBe(true)
+  expect(campaignHasAudienceBands(existing)).toBe(true)
+  expect(sprintPayoutCents(current, current.milestones[0].views, 5)).toBe(0)
+  expect(sprintPayoutCents(existing, existing.milestones[0].views, 5)).toBe(existing.milestones[0].audienceRates![0].amountCents)
+  const custom = structuredClone(current)
+  custom.milestones[0].audienceRates![1].amountCents += 1
+  expect(campaignHasAudienceBands(custom)).toBe(false)
+  expect(campaignHasAudienceBands(terms)).toBe(false)
+})
 test('milestones are total payouts; audience eligibility and caps are campaign-specific', () => {
   expect(sprintPayoutCents(terms, 4999, 40)).toBe(0)
   expect(sprintPayoutCents(terms, 5000, 19.9)).toBe(0)
