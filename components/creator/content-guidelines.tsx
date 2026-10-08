@@ -1,3 +1,4 @@
+import { CELEBRITY_EDIT_POLICY } from '@/lib/creator/content-policy'
 import { CREATOR_CTA_GUIDANCE } from '@/lib/creator/post-guidance'
 import Link from 'next/link'
 
@@ -17,12 +18,11 @@ export function ContentGuidelines() {
       <p className="mt-3 max-w-3xl text-sm leading-6 text-[#73777d]">Mogging pays for access to an audience interested in their appearance. Your framing determines who watches: a celebrity montage can attract fans, a song meme can attract music listeners, and a feature breakdown can attract people who want to understand their own face. High views alone do not make a post eligible.</p>
       <div className="mt-5 grid gap-3 sm:grid-cols-2">
         <div className="rounded-2xl creator-notice p-4"><h4 className="text-sm font-semibold">What we want</h4><p className="mt-2 text-sm leading-6 text-zinc-600">Clear feature analysis, genuine before-and-after transformations, explicit attractiveness comparisons, or looks-potential edits. Show Mogging clearly. {CREATOR_CTA_GUIDANCE}</p></div>
-        <div className="rounded-2xl creator-warning p-4"><h4 className="text-sm font-semibold text-red-800">What we reject</h4><p className="mt-2 text-sm leading-6 text-red-800">Engagement bait, unrelated captions, excluded niches, and fan edits whose looks connection exists only in your intent. Adding a Mogging CTA does not rescue unrelated content.</p></div>
+        <div className="rounded-2xl creator-warning p-4"><h4 className="text-sm font-semibold text-red-800">Violations and rejection rules</h4><p className="mt-2 text-sm leading-6 text-red-800">Engagement bait and unrelated captions can reduce your payout. Excluded niches and fraudulent evidence result in rejection. Smallville and Tom Welling posts are not allowed; other celebrity edits have strict conditions and still require review.</p></div>
       </div>
       <div className="mt-4 grid gap-2">
-        <RuleDetail title="Celebrity edits and the Smallville exception">
-          <p>Tom Welling, Marlon, Damon, and other attractive celebrities are not automatically eligible. Emphasize their appearance with a specific looks-focused premise. A compilation about fame, a character, a scene, or the show attracts the wrong audience.</p>
-          <p>Smallville clips that highlight the show are excluded. Solo Tom Welling edits from the show can qualify when his attractiveness is clearly the subject. These edits can perform very well when framed correctly; do not mistake permission to use a subject for approval of every edit of that subject.</p>
+        <RuleDetail title="Celebrity edits · strict review required" prohibited>
+          <p>{CELEBRITY_EDIT_POLICY}</p>
         </RuleDetail>
         <RuleDetail title="Engagement farms: exact examples to avoid" prohibited>
           <p>Do not make appearance or confidence depend on interacting with a post. Looks-related vocabulary does not make an engagement farm acceptable.</p>
@@ -35,8 +35,8 @@ export function ContentGuidelines() {
           <p>A relevant invitation to try Mogging is the required product CTA. Promising a glow-up for likes, “claim” comments, shares, or sound use is engagement bait.</p>
         </RuleDetail>
         <RuleDetail title="Unrelated captions and excluded niches" prohibited>
-          <p>Rejected caption examples: “When you hear this song”; “mfs after rejecting a girl for the first time”; “mood because summer is in 4 months”; “how summer feels with that one bro”. An attractive face behind this text does not change the subject.</p>
-          <p>Currently excluded: anime, cartoons and animated content, MMA, NBA and sports generally, animal edits, and Smallville story clips. These are current restrictions, not promises that a niche will become eligible later.</p>
+          <p>Caption violations that can reduce your payout: “When you hear this song”; “mfs after rejecting a girl for the first time”; “mood because summer is in 4 months”; “how summer feels with that one bro”. An attractive face behind this text does not change the subject.</p>
+          <p>Currently excluded: anime, cartoons and animated content, MMA, NBA and sports generally, animal edits, and all Smallville or Tom Welling posts. These are current restrictions, not promises that a niche will become eligible later.</p>
         </RuleDetail>
         <RuleDetail title="Read the comments to understand your audience">
           <p>The strongest signal in the reference material is viewers discussing their own looks: asking about potential, ratings / PSL, or specific facial features, sometimes sharing their own photos. PSL here is appearance-rating terminology; the app creators should promote is Mogging.</p>

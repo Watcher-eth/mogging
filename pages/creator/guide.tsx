@@ -1,3 +1,4 @@
+import { ContentRestrictions } from '@/components/creator/content-restrictions'
 import { CreatorEssentials } from '@/components/creator/creator-essentials'
 import { creatorCampaignRules, creatorFormatElement, CREATOR_CTA_GUIDANCE } from '@/lib/creator/post-guidance'
 import { creatorGuideTopics, creatorGuideTopic, creatorGuideHref, type CreatorGuideTopic } from '@/lib/creator/guide-navigation'
@@ -161,9 +162,7 @@ function VideoGuide() {
             <GuideDisclosure title="Full requirements" meta={`${creatorCampaignRules(format.requirements).length} items`}>
               <Checklist items={creatorCampaignRules(format.requirements)} />
             </GuideDisclosure>
-            {format.notAllowed.length > 0 ? <GuideDisclosure title="What is not allowed" meta={`${format.notAllowed.length} items`} tone="danger">
-              <Checklist items={format.notAllowed} prohibited />
-            </GuideDisclosure> : null}
+            <ContentRestrictions rules={format.notAllowed} />
           </div>
         </div>
       </div>

@@ -1,3 +1,4 @@
+import { creatorContentRestriction } from '@/lib/creator/content-policy'
 import { z } from 'zod'
 import { creatorCampaignRule, creatorFormatElement } from './post-guidance'
 import type { CreatorSubmissionFormat } from './formats'
@@ -210,9 +211,9 @@ export function sprintReviewItems(terms: SprintTerms, id: string) {
       label,
       detail: 'Sprint requirement',
     })),
-    ...format.notAllowed.map((label, i) => ({
+    ...format.notAllowed.map((restriction, i) => ({
       id: `restriction-${i + 1}`,
-      label: `Avoided: ${label}`,
+      label: `Avoided: ${creatorContentRestriction(restriction)}`,
       detail: 'Sprint restriction',
     })),
     ...terms.rules.map((label, i) => ({

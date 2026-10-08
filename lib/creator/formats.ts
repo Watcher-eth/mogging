@@ -1,3 +1,4 @@
+import { CELEBRITY_EDIT_POLICY } from './content-policy'
 import { CREATOR_CTA_GUIDANCE } from './post-guidance'
 export type CreatorSubmissionFormat = {
   id: string
@@ -38,9 +39,9 @@ export const CREATOR_SUBMISSION_FORMATS = [
       'Reused content that was not created for Mogging',
       'Obscured app footage, unclear app images, or unreadable on-screen text',
       'Engagement farms: promising looks, confidence, a glow-up, or romantic success in exchange for likes, comments, notifications, shares, or sound use',
-      'Unrelated song, summer, school, friendship, dating, or mood captions, even over footage of an attractive person',
+      'Unrelated movie edits or song, summer, school, friendship, dating, or mood captions, even over footage of an attractive person',
       'Anime, cartoons, animation, MMA, NBA, other sports edits, or animal edits',
-      'Smallville story clips or celebrity fan compilations without an explicit looks focus; solo Tom Welling looks edits may qualify',
+      CELEBRITY_EDIT_POLICY,
       'Botted views, purchased or fabricated engagement, or altered analytics evidence',
     ],
   },

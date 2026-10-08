@@ -1,3 +1,4 @@
+import { creatorContentRestriction } from '@/lib/creator/content-policy'
 import { creatorCampaignRules, creatorFormatElement, CREATOR_REREVIEW_GUIDANCE } from '@/lib/creator/post-guidance'
 import { MinimumViewsDialog } from './minimum-views-dialog'
 import Link from 'next/link'
@@ -115,7 +116,7 @@ export function SubmissionDialog({
       ? [
           ...creatorCampaignRules(format.requirements),
           ...creatorCampaignRules(sprint.terms.rules),
-          ...format.notAllowed.map((item) => `My post avoids: ${item}`),
+          ...format.notAllowed.map((item) => `My post avoids: ${creatorContentRestriction(item)}`),
         ]
       : []
   const accountRequired =

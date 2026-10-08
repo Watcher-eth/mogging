@@ -1,3 +1,4 @@
+import { ContentRestrictions } from '@/components/creator/content-restrictions'
 import NumberFlow from '@number-flow/react'
 import { CreatorEssentials } from '@/components/creator/creator-essentials'
 import { creatorCampaignRules, creatorFormatElement } from '@/lib/creator/post-guidance'
@@ -385,18 +386,7 @@ function SprintDetail({ sprint }: { sprint: CreatorSprint }) {
                             ))}
                           </ul>
                         </section>
-                        {format.notAllowed.length ? (
-                          <section className="creator-warning mt-3 rounded-xl p-4">
-                            <h3 className="text-sm font-semibold">
-                              Not allowed
-                            </h3>
-                            <ul className="mt-3 list-disc space-y-2 pl-5 text-sm leading-6">
-                              {format.notAllowed.map((rule) => (
-                                <li key={rule}>{rule}</li>
-                              ))}
-                            </ul>
-                          </section>
-                        ) : null}
+                        <div className="mt-3"><ContentRestrictions rules={format.notAllowed} /></div>
                       </DialogContent>
                     </Dialog>
                   ))}

@@ -1,3 +1,4 @@
+import { creatorContentRestriction } from '@/lib/creator/content-policy'
 import { z } from 'zod'
 import { ACTIVE_CREATOR_SUBMISSION_FORMATS, getCreatorSubmissionFormat } from '@/lib/creator/formats'
 
@@ -36,7 +37,7 @@ export function getCreatorSubmissionReviewItems(formatId: string | null) {
     })),
     ...format.notAllowed.map((restriction, index) => ({
       id: `restriction-${index + 1}`,
-      label: `Avoided: ${restriction}`,
+      label: `Avoided: ${creatorContentRestriction(restriction)}`,
       detail: 'The submitted video does not contain this disallowed element.',
     })),
   ] satisfies CreatorSubmissionReviewItem[]
