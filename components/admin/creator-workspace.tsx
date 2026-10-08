@@ -1,5 +1,5 @@
 import { AnimatedDialogPanel } from '@/components/ui/animated-dialog-panel'
-import { remainingCreatorPaymentCents } from '@/lib/creator/money'
+import { creatorUnpaidCents, remainingCreatorPaymentCents } from '@/lib/creator/money'
 import * as Tabs from '@radix-ui/react-tabs'
 import { SubmissionConversation } from '@/components/creator/submission-conversation'
 import { CreatorSprintsPanel } from '@/components/admin/creator-sprints-panel'
@@ -43,7 +43,7 @@ import { CreatorAttributionDashboard, CreatorAttributionReport } from '@/compone
 import { calculateCreatorPayout, CREATOR_TIER1_AUDIENCE_TIERS, CREATOR_VIEW_THRESHOLDS } from '@/lib/creator/payouts'
 import { mergeCreatorSubmissionReviewResults } from '@/lib/creator/submission-review'
 import { CreatorIcon, type CreatorIconName } from '@/components/creator/creator-icon'
-import { approvalKind, approvalTypes, getApprovalQueue, hasPayoutDestination, isNewInLastDay, publishedVideoEmbedUrl, walletExplorerUrl, type ApprovalKind } from '@/lib/admin/creator-overview'
+import { approvedUnpaidSubmissions, approvalKind, approvalTypes, getApprovalQueue, hasPayoutDestination, isNewInLastDay, publishedVideoEmbedUrl, walletExplorerUrl, type ApprovalKind } from '@/lib/admin/creator-overview'
 import type {
   AdminAccount,
   AdminAttributionReport,
@@ -90,7 +90,7 @@ function DashboardView({ tab, data, onSelect, onRefresh }: { tab: Tab; data: Adm
   if (tab === 'submissions') return <ResourceSection title="Video submissions"><SubmissionList items={data.submissions} payments={data.payments} onSelect={onSelect} /></ResourceSection>
   if (tab === 'cta-library') return <CtaLibraryAdminPanel />
   if (tab === 'accounts') return <ResourceSection title="Social accounts"><AccountList items={data.accounts} onSelect={onSelect} /></ResourceSection>
-  if (tab === 'payments') return <ResourceSection title="Creator payments"><PaymentList items={data.payments} onSelect={onSelect} /></ResourceSection>
+  if (tab === 'payments') return <ResourceSection title="Creator payments"><PaymentsPanel data={data} onSelect={onSelect} onRefresh={onRefresh} /></ResourceSection>
   if (tab === 'creators') return <ResourceSection title="Creators"><div className="mb-5"><CreatorRegistrationMetrics creators={data.creators} accounts={data.accounts} /></div><CreatorList items={data.creators} accounts={data.accounts} onSelect={onSelect} /></ResourceSection>
   return <Overview data={data} onSelect={onSelect} />
 }
@@ -208,6 +208,56 @@ function AccountRow({ item, onClick }: { item: AdminAccount; onClick: () => void
     </button>
     {profileUrl ? <a href={profileUrl} target="_blank" rel="noopener noreferrer" className="mt-3 inline-flex min-h-11 max-w-full items-center gap-2 text-sm font-medium text-blue-600 underline underline-offset-4"><span className="[overflow-wrap:anywhere]">{profileUrl}</span><ArrowUpRight className="size-4 shrink-0" /></a> : <p className="mt-3 text-sm text-amber-700">Profile URL unavailable. Request the account’s username before review.</p>}
   </article>
+}
+
+function PaymentsPanel({ data, onSelect, onRefresh }: { data: AdminDashboard; onSelect: (target: ReviewTarget) => void; onRefresh: () => Promise<void> }) {
+  const [selectedId, setSelectedId] = useState<string | null>(null)
+  const unpaid = approvedUnpaidSubmissions(data)
+  const selected = unpaid.find(item => item.id === selectedId)
+  const unpaidIds = new Set(unpaid.map(item => item.id))
+  const history = data.payments.filter(payment => !payment.submissionId || !unpaidIds.has(payment.submissionId) || !['pending', 'processing'].includes(payment.status))
+  return <>
+    <h2 className="mb-3 text-sm font-semibold">Approved · awaiting payout</h2>
+    {unpaid.length ? <div className="admin-list">{unpaid.map(item => <ResourceRow key={item.id} icon={CircleDollarSign} title={item.title} subtitle={item.creatorName} status="approved" meta={formatMoney(creatorUnpaidCents(item, data.payments), 'USD')} onClick={() => setSelectedId(item.id)} />)}</div> : <p className="text-sm text-zinc-500">No approved earnings awaiting payout.</p>}
+    {history.length ? <section className="mt-8"><h2 className="mb-3 text-sm font-semibold">Payment records</h2><PaymentList items={history} onSelect={onSelect} /></section> : null}
+    {selected ? <RecordPayoutDialog key={selected.id} submission={selected} creator={data.creators.find(item => item.id === selected.creatorProfileId)} payments={data.payments.filter(item => item.submissionId === selected.id)} onClose={() => setSelectedId(null)} onSaved={async () => { await onRefresh(); setSelectedId(null) }} /> : null}
+  </>
+}
+
+function RecordPayoutDialog({ submission, creator, payments, onClose, onSaved }: { submission: AdminSubmission; creator?: AdminCreator; payments: AdminPayment[]; onClose: () => void; onSaved: () => Promise<void> }) {
+  const scheduled = payments.find(item => ['pending', 'processing'].includes(item.status))
+  const [reference, setReference] = useState(scheduled?.providerReference || '')
+  const [receipt, setReceipt] = useState<File | null>(null)
+  const [saving, setSaving] = useState(false)
+  const paymentOption = scheduled?.paymentOption || creator?.paymentOption
+  const crypto = paymentOption === 'crypto'
+  const destination = crypto ? creator?.cryptoWalletAddress : creator?.paypalEmail
+  const amount = scheduled?.amountCents ?? creatorUnpaidCents(submission, payments)
+  async function save() {
+    setSaving(true)
+    try {
+      const receiptImage = receipt ? await new Promise<string>((resolve, reject) => {
+        const reader = new FileReader()
+        reader.onload = () => resolve(String(reader.result))
+        reader.onerror = () => reject(new Error('Could not read receipt'))
+        reader.readAsDataURL(receipt)
+      }) : undefined
+      if (scheduled) await apiPatch('/api/admin/creator/review', { resource: 'payment', id: scheduled.id, status: 'paid', providerReference: reference || null, receiptImage })
+      else await apiPost('/api/admin/creator/payments', { submissionId: submission.id, adminViewCountThreshold: submission.adminViewCountThreshold, adminUsAudiencePercent: submission.adminUsAudiencePercent, status: 'paid', providerReference: reference || null, receiptImage })
+      toast.success('Payout recorded')
+      await onSaved()
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : 'Could not record payout')
+    } finally { setSaving(false) }
+  }
+  return <Dialog open onOpenChange={open => { if (!open && !saving) onClose() }}><DialogContent className="creator-dialog max-w-md !rounded-[28px] p-6">
+    <DialogHeader className="pr-8 text-left"><DialogTitle>Record payout</DialogTitle><DialogDescription>{submission.creatorName} · {submission.title}</DialogDescription></DialogHeader>
+    <p className="text-3xl font-semibold tabular-nums">{formatMoney(amount, 'USD')}</p>
+    <div className="min-w-0 rounded-xl bg-zinc-50 p-4 text-sm"><p className="mb-2 font-semibold">{crypto ? creator?.cryptoNetwork || 'Crypto' : 'PayPal'}</p><p className="select-text break-all text-zinc-600">{destination || 'No payout destination saved'}</p>{!crypto && creator?.paypalMeUrl ? <a className="mt-2 inline-block text-[#00A8EF]" href={creator.paypalMeUrl} target="_blank" rel="noreferrer">Open PayPal.Me ↗</a> : null}</div>
+    {crypto ? <label className="grid gap-2 text-sm font-medium">Transaction hash<input className="creator-field" value={reference} onChange={event => setReference(event.target.value)} maxLength={180} placeholder="Paste the transaction hash" /></label> : <label className="grid gap-2 text-sm font-medium">PayPal receipt<input type="file" accept="image/jpeg,image/png,image/webp" className="min-w-0 text-sm text-zinc-500" onChange={event => { const file = event.target.files?.[0]; if (file && file.size > 5 * 1024 * 1024) { event.target.value = ''; setReceipt(null); toast.error('Choose a receipt image up to 5 MB'); return }; setReceipt(file || null) }} /><span className="text-xs font-normal text-zinc-500">JPG, PNG or WebP · up to 5 MB · optional</span></label>}
+    <p className="text-xs leading-5 text-zinc-500">Only mark paid after you have sent the money. This records your manual payout.</p>
+    <div className="flex justify-end gap-2"><Button variant="ghost" onClick={onClose} disabled={saving}>Cancel</Button><Button onClick={() => void save()} disabled={saving || !destination}>{saving ? <Loader2 className="size-4 animate-spin" /> : <CheckCircle2 className="size-4" />}Mark paid</Button></div>
+  </DialogContent></Dialog>
 }
 
 function PaymentList({ items, onSelect }: { items: AdminPayment[]; onSelect: (target: ReviewTarget) => void }) {
@@ -343,6 +393,7 @@ function ReviewDialog({ target, payments, metrics, open, onOpenChange, onRefresh
           </div> : null}
           {target.resource === 'account' ? <label className="mt-5 grid gap-2 text-sm font-medium">Review note<textarea value={reviewNote} onChange={(event) => setReviewNote(event.target.value.slice(0, 1000))} className="min-h-24 resize-y rounded-xl border border-zinc-200 p-3 text-sm outline-none transition-[border-color,box-shadow] duration-150 ease-out focus:border-zinc-400 focus:ring-4 focus:ring-zinc-100" placeholder="Visible to the creator" /></label> : null}
           {target.resource === 'payment' ? <div className="mt-5 grid gap-4 sm:grid-cols-2"><label className="grid gap-2 text-sm font-medium">Amount (USD)<input type="number" min="0" step="0.01" value={amount} onChange={(event) => setAmount(event.target.value)} className="h-12 rounded-xl border border-zinc-200 px-3.5 outline-none focus:border-zinc-400 focus:ring-4 focus:ring-zinc-100" /></label><label className="grid gap-2 text-sm font-medium">Provider reference<input value={providerReference} onChange={(event) => setProviderReference(event.target.value)} className="h-12 rounded-xl border border-zinc-200 px-3.5 outline-none focus:border-zinc-400 focus:ring-4 focus:ring-zinc-100" placeholder="Transaction ID" /></label></div> : null}
+          {target.resource === 'payment' && target.item.hasReceipt ? <a href={`/api/admin/creator/payments/${target.item.id}/receipt`} target="_blank" rel="noreferrer" className="mt-3 inline-block text-sm text-[#00A8EF]">View PayPal receipt ↗</a> : null}
           <div className="mt-7 flex justify-end gap-2"><Button variant="ghost" className="rounded-xl" onClick={() => onOpenChange(false)}>Cancel</Button>{canReview ? <Button className="rounded-xl" onClick={() => void save()} disabled={saving}>{saving ? <Loader2 className="animate-spin" /> : <ShieldCheck />}{saving ? 'Saving…' : 'Save review'}</Button> : null}</div>
           </>}
         </AnimatedDialogPanel>

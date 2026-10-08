@@ -1,3 +1,4 @@
+import { creatorUnpaidCents } from '@/lib/creator/money'
 import type { AdminCreator, AdminDashboard, ReviewTarget } from '@/components/admin/creator-types'
 
 export type ApprovalTarget = Exclude<ReviewTarget, { resource: 'payment' }>
@@ -57,4 +58,9 @@ export function publishedVideoEmbedUrl(postUrl: string | null) {
     }
   } catch { return null }
   return null
+}
+
+
+export function approvedUnpaidSubmissions(data: Pick<AdminDashboard, 'submissions' | 'payments'>) {
+  return data.submissions.filter(submission => submission.status === 'approved' && creatorUnpaidCents(submission, data.payments) > 0)
 }

@@ -936,6 +936,11 @@ export const creatorPayments = pgTable(
   })
 )
 
+export const creatorPaymentReceipts = pgTable('creator_payment_receipts', {
+  paymentId: text('payment_id').primaryKey().references(() => creatorPayments.id, { onDelete: 'cascade' }),
+  image: text('image').notNull(),
+})
+
 export const creatorAttributionMetrics = pgTable(
   'creator_attribution_metrics',
   {

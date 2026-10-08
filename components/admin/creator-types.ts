@@ -121,6 +121,7 @@ export type AdminPayment = {
   status: PaymentStatus
   paymentOption: 'paypal' | 'crypto'
   providerReference: string | null
+  hasReceipt?: boolean
   paidAt: string | null
   createdAt: string
 }

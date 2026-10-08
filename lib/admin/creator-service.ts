@@ -1,3 +1,4 @@
+import { normalizePaymentReceipt, paymentReceiptSchema } from './payment-receipt'
 import { remainingCreatorPaymentCents } from '@/lib/creator/money'
 import { submissionUnreadCount } from '@/lib/creator/submission-messages'
 import { sprintPayoutCents, sprintReviewItems } from '@/lib/creator/sprints'
@@ -43,6 +44,7 @@ export const creatorAdminReviewSchema = z.discriminatedUnion('resource', [
     status: z.enum(['pending', 'processing', 'paid', 'failed', 'cancelled']),
     amountCents: z.number().int().nonnegative().optional(),
     providerReference: z.string().trim().max(180).optional().nullable(),
+    receiptImage: paymentReceiptSchema,
   }),
 ])
 
@@ -52,6 +54,7 @@ export const creatorAdminPaymentSchema = z.object({
   adminUsAudiencePercent: z.number().min(0).max(100).nullable(),
   status: z.enum(['pending', 'processing', 'paid', 'failed', 'cancelled']).default('pending'),
   providerReference: z.string().trim().max(180).optional().nullable(),
+    receiptImage: paymentReceiptSchema,
 })
 
 export const creatorAttributionMetricsSchema = z.object({
@@ -182,11 +185,13 @@ export async function getCreatorAdminDashboard() {
         status: schema.creatorPayments.status,
         paymentOption: schema.creatorPayments.paymentOption,
         providerReference: schema.creatorPayments.providerReference,
+        hasReceipt: sql<boolean>`${schema.creatorPaymentReceipts.paymentId} is not null`,
         paidAt: schema.creatorPayments.paidAt,
         createdAt: schema.creatorPayments.createdAt,
       })
       .from(schema.creatorPayments)
       .innerJoin(schema.creatorProfiles, eq(schema.creatorPayments.creatorProfileId, schema.creatorProfiles.id))
+      .leftJoin(schema.creatorPaymentReceipts, eq(schema.creatorPaymentReceipts.paymentId, schema.creatorPayments.id))
       .innerJoin(schema.users, eq(schema.creatorProfiles.userId, schema.users.id))
       .leftJoin(schema.creatorSubmissions, eq(schema.creatorPayments.submissionId, schema.creatorSubmissions.id))
       .orderBy(desc(schema.creatorPayments.createdAt)),
@@ -360,6 +365,7 @@ export async function reviewCreatorResource(input: CreatorAdminReviewInput, revi
     })
   }
 
+  const receiptImage = await normalizePaymentReceipt(input.receiptImage)
   return db.transaction(async tx => {
     const target = await tx.query.creatorPayments.findFirst({ where: eq(schema.creatorPayments.id, input.id) })
     if (!target) throw new ApiError(404, 'Creator payment not found')
@@ -374,17 +380,22 @@ export async function reviewCreatorResource(input: CreatorAdminReviewInput, revi
       if (payment.amountCents > available) throw new ApiError(409, 'This payment would exceed the approved unpaid earnings')
     }
     const [record] = await tx.update(schema.creatorPayments).set({ status: input.status, ...(input.amountCents === undefined ? {} : { amountCents: input.amountCents }), ...(input.providerReference === undefined ? {} : { providerReference: input.providerReference || null }), paidAt: input.status === 'paid' ? payment.paidAt || now : null, updatedAt: now }).where(eq(schema.creatorPayments.id, input.id)).returning()
+    if (receiptImage) {
+      if (payment.paymentOption !== 'paypal') throw new ApiError(400, 'Image receipts are for PayPal payments')
+      await tx.insert(schema.creatorPaymentReceipts).values({ paymentId: record.id, image: receiptImage }).onConflictDoUpdate({ target: schema.creatorPaymentReceipts.paymentId, set: { image: receiptImage } })
+    }
     if (submission?.sprintId && submission.status === 'approved' && input.status === 'paid' && payment.status !== 'paid') await tx.update(schema.creatorSubmissions).set({ status: 'paid', updatedAt: now }).where(eq(schema.creatorSubmissions.id, submission.id))
     return record
   })
 }
 
 export async function createCreatorPayment(input: CreatorAdminPaymentInput) {
+  const receiptImage = await normalizePaymentReceipt(input.receiptImage)
   const submission = await db.query.creatorSubmissions.findFirst({
     where: eq(schema.creatorSubmissions.id, input.submissionId),
   })
   if (!submission) throw new ApiError(404, 'Creator submission not found')
-  if (submission.sprintId) return createSprintPayment(input)
+  if (submission.sprintId) return createSprintPayment(input, receiptImage)
   if (!isCreatorViewThreshold(input.adminViewCountThreshold) || (input.adminUsAudiencePercent !== null && !isCreatorTier1AudienceTier(input.adminUsAudiencePercent))) throw new ApiError(400, 'Choose supported historical payout values')
 
   const profile = await db.query.creatorProfiles.findFirst({
@@ -418,6 +429,11 @@ export async function createCreatorPayment(input: CreatorAdminPaymentInput) {
       providerReference: input.providerReference || null,
       paidAt: input.status === 'paid' ? now : null,
     }).returning()
+    if (receiptImage) {
+      if (profile.paymentOption !== 'paypal') throw new ApiError(400, 'Image receipts are for PayPal payments')
+      await tx.insert(schema.creatorPaymentReceipts).values({ paymentId: payment.id, image: receiptImage })
+    }
+    if (input.status === 'paid') await tx.update(schema.creatorSubmissions).set({ status: 'paid', updatedAt: now }).where(eq(schema.creatorSubmissions.id, submission.id))
     return payment
   })
 }
@@ -449,7 +465,7 @@ async function reviewSprintSubmission(input: Extract<CreatorAdminReviewInput, { 
     return record
   })
 }
-async function createSprintPayment(input: CreatorAdminPaymentInput) {
+async function createSprintPayment(input: CreatorAdminPaymentInput, receiptImage: string | null) {
   return db.transaction(async tx => {
     const [submission] = await tx.select().from(schema.creatorSubmissions).where(eq(schema.creatorSubmissions.id, input.submissionId)).for('update')
     if (!submission || submission.status !== 'approved' || !submission.approvedAmountCents) throw new ApiError(409, 'Approve eligible earnings before scheduling a payment')
@@ -461,6 +477,10 @@ async function createSprintPayment(input: CreatorAdminPaymentInput) {
     if (!profile || profile.authStatus !== 'verified' || !(profile.paymentOption === 'paypal' ? profile.paypalEmail : profile.cryptoNetwork && profile.cryptoWalletAddress)) throw new ApiError(409, 'An approved payout method is required')
     if (input.adminViewCountThreshold !== submission.adminViewCountThreshold || input.adminUsAudiencePercent !== submission.adminUsAudiencePercent) throw new ApiError(409, 'Use the approved earnings values')
     const [payment] = await tx.insert(schema.creatorPayments).values({ creatorProfileId: profile.id, submissionId: submission.id, amountCents, paymentOption: profile.paymentOption, status: input.status, providerReference: input.providerReference || null, paidAt: input.status === 'paid' ? new Date() : null }).returning()
+    if (receiptImage) {
+      if (profile.paymentOption !== 'paypal') throw new ApiError(400, 'Image receipts are for PayPal payments')
+      await tx.insert(schema.creatorPaymentReceipts).values({ paymentId: payment.id, image: receiptImage })
+    }
     if (input.status === 'paid') await tx.update(schema.creatorSubmissions).set({ status: 'paid', updatedAt: new Date() }).where(eq(schema.creatorSubmissions.id, submission.id))
     return payment
   })

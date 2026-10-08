@@ -13,3 +13,5 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     return handleApiError(error, res)
   }
 }
+
+export const config = { api: { bodyParser: { sizeLimit: '8mb' } } }

@@ -1,6 +1,6 @@
 import { describe, expect, test } from 'bun:test'
 import type { AdminAccount, AdminCreator, AdminDashboard, AdminSubmission } from '@/components/admin/creator-types'
-import { approvalKind, getApprovalQueue, isNewInLastDay, publishedVideoEmbedUrl, walletExplorerUrl } from './creator-overview'
+import { approvedUnpaidSubmissions, approvalKind, getApprovalQueue, isNewInLastDay, publishedVideoEmbedUrl, walletExplorerUrl } from './creator-overview'
 
 describe('admin overview approvals', () => {
   test('keeps every approval type beyond the former eight-video cutoff', () => {
@@ -49,4 +49,20 @@ describe('admin overview approvals', () => {
     expect(publishedVideoEmbedUrl('https://evil.example/reel/123/')).toBeNull()
     expect(publishedVideoEmbedUrl('javascript:alert(1)')).toBeNull()
   })
+})
+
+test('payment queue includes approved unpaid earnings without requiring a payment record', () => {
+  const submission = { id: 'video', sprintId: 'campaign', status: 'approved', approvedAmountCents: 4500 } as AdminSubmission
+  const data = { submissions: [submission], payments: [] } as unknown as AdminDashboard
+  expect(approvedUnpaidSubmissions(data).map(item => item.id)).toEqual(['video'])
+  data.payments = [{ submissionId: 'video', status: 'paid', amountCents: 1500 }] as AdminDashboard['payments']
+  expect(approvedUnpaidSubmissions(data)).toHaveLength(1)
+  data.payments.push({ submissionId: 'video', status: 'pending', amountCents: 3000 } as AdminDashboard['payments'][number])
+  expect(approvedUnpaidSubmissions(data)).toHaveLength(1)
+  data.payments[1].status = 'paid'
+  expect(approvedUnpaidSubmissions(data)).toHaveLength(0)
+  data.payments[1].status = 'failed'
+  expect(approvedUnpaidSubmissions(data)).toHaveLength(1)
+  submission.status = 'in_review'
+  expect(approvedUnpaidSubmissions(data)).toHaveLength(0)
 })

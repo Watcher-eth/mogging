@@ -14,7 +14,9 @@ export function hasCreatorPayoutMethod(
       : profile.cryptoNetwork && profile.cryptoWalletAddress),
   )
 }
-export function creatorEarnedCents(submission: CreatorSubmission) {
+type EarningsSubmission = Pick<CreatorSubmission, 'id' | 'sprintId' | 'approvedAmountCents' | 'status' | 'adminViewCountThreshold' | 'adminUsAudiencePercent'>
+
+export function creatorEarnedCents(submission: EarningsSubmission) {
   if (submission.sprintId) return submission.approvedAmountCents || 0
   if (submission.status !== 'approved' && submission.status !== 'paid') return 0
   const views = submission.adminViewCountThreshold
@@ -50,6 +52,6 @@ export function remainingCreatorPaymentCents(totalCents: number, payments: Pick<
   return Math.max(0, totalCents - committed)
 }
 
-export function creatorUnpaidCents(submission: CreatorSubmission, payments: CreatorPayment[]) {
+export function creatorUnpaidCents(submission: EarningsSubmission, payments: Pick<CreatorPayment, 'submissionId' | 'amountCents' | 'status'>[]) {
   return remainingCreatorPaymentCents(creatorEarnedCents(submission), payments.filter(payment => payment.submissionId === submission.id), false)
 }
