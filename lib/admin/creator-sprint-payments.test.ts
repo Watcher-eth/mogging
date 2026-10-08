@@ -1,3 +1,4 @@
+import sharp from 'sharp'
 import { beforeEach, expect, mock, test } from 'bun:test'
 import * as schema from '@/lib/db/schema'
 import { sprintReviewItems, type SprintTerms } from '@/lib/creator/sprints'
@@ -26,6 +27,7 @@ let budget = 1000
 let used = 0
 let locks: unknown[] = []
 let messages: any[] = []
+let receipt: any
 const query = {
   creatorSubmissions: { findFirst: async () => submission },
   creatorPayments: { findFirst: async () => payment, findMany: async () => [...pastPayments, ...(payment ? [payment] : [])] },
@@ -72,7 +74,7 @@ const tx = {
     }),
   }),
   insert: (table: unknown) => ({
-    values: (values: any) => table === schema.creatorSubmissionMessages ? Promise.resolve(messages.push(values)) : ({
+    values: (values: any) => table === schema.creatorPaymentReceipts ? Object.assign(Promise.resolve(receipt = values), { onConflictDoUpdate: async () => { receipt = values } }) : table === schema.creatorSubmissionMessages ? Promise.resolve(messages.push(values)) : ({
       returning: async () => {
         payment = { id: 'payment', ...values }
         return [payment]
@@ -119,6 +121,7 @@ beforeEach(() => {
   used = 0
   locks = []
   messages = []
+  receipt = undefined
 })
 test('approval reserves saved sprint rates and locks the budget and submission', async () => {
   const result = await reviewCreatorResource(review)
@@ -254,4 +257,25 @@ test('an old failed payment cannot be revived after replacement funds are schedu
   payment = {id:'failed',submissionId:'submission',status:'failed',amountCents:1000}
   pastPayments = [{id:'replacement',status:'pending',amountCents:1000}]
   await expect(reviewCreatorResource({resource:'payment',id:'failed',status:'paid'})).rejects.toThrow('exceed the approved unpaid earnings')
+})
+
+
+test('manual paid records persist PayPal receipt proof and complete the campaign submission', async () => {
+  await reviewCreatorResource(review)
+  const image = await sharp({ create: { width: 10, height: 10, channels: 3, background: 'white' } }).png().toBuffer()
+  const record = await createCreatorPayment({ submissionId: submission.id, adminViewCountThreshold: 5000, adminUsAudiencePercent: 40, status: 'paid', receiptImage: `data:image/png;base64,${image.toString('base64')}` })
+  expect(record.status).toBe('paid')
+  expect(receipt.paymentId).toBe(record.id)
+  expect((await sharp(Buffer.from(receipt.image, 'base64')).metadata()).format).toBe('jpeg')
+  expect(submission.status).toBe('paid')
+})
+
+test('recording a scheduled payout stores its receipt on the same payment', async () => {
+  await reviewCreatorResource(review)
+  await createCreatorPayment({ submissionId: submission.id, adminViewCountThreshold: 5000, adminUsAudiencePercent: 40, status: 'pending' })
+  const image = await sharp({ create: { width: 10, height: 10, channels: 3, background: 'white' } }).png().toBuffer()
+  await reviewCreatorResource({ resource: 'payment', id: payment.id, status: 'paid', receiptImage: `data:image/png;base64,${image.toString('base64')}` })
+  expect(receipt.paymentId).toBe(payment.id)
+  expect(payment.status).toBe('paid')
+  expect(submission.status).toBe('paid')
 })

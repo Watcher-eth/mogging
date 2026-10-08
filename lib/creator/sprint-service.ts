@@ -90,7 +90,13 @@ export async function sprintApprovedSubmissions(
   const rows = await db
     .select({
       id: schema.creatorSubmissions.id,
-      handle: schema.creatorSocialAccounts.handle,
+      handle: sql<string | null>`coalesce(${schema.creatorSocialAccounts.handle}, (
+        select min(account.handle) from creator_social_accounts account
+        where account.creator_profile_id = ${schema.creatorSubmissions.creatorProfileId}
+          and account.platform::text = lower(${schema.creatorSubmissions.platform})
+          and account.handle is not null
+        having count(*) = 1
+      ))`,
       title: schema.creatorSubmissions.title,
       platform: schema.creatorSubmissions.platform,
       postUrl: schema.creatorSubmissions.postUrl,

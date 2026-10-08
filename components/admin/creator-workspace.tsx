@@ -11,13 +11,14 @@ import Link from 'next/link'
 import { useRouter } from 'next/router'
 import { CreatorHeader } from '@/components/creator/creator-shell'
 import { adminPage } from '@/lib/admin/navigation'
-import { useMemo, useState } from 'react'
+import { useMemo, useRef, useState } from 'react'
 import {
   ArrowUpRight,
   BadgeCheck,
   CheckCircle2,
   CircleDollarSign,
   Camera,
+  Copy,
   Loader2,
   ShieldCheck,
   UserRound,
@@ -225,7 +226,8 @@ function PaymentsPanel({ data, onSelect, onRefresh }: { data: AdminDashboard; on
 }
 
 function RecordPayoutDialog({ submission, creator, payments, onClose, onSaved }: { submission: AdminSubmission; creator?: AdminCreator; payments: AdminPayment[]; onClose: () => void; onSaved: () => Promise<void> }) {
-  const scheduled = payments.find(item => ['pending', 'processing'].includes(item.status))
+  const contentRef = useRef<HTMLDivElement>(null)
+  const scheduled = payments.find(item => ['pending', 'processing'].includes(item.status)) || (!submission.sprintId ? payments.find(item => item.status !== 'paid') : undefined)
   const [reference, setReference] = useState(scheduled?.providerReference || '')
   const [receipt, setReceipt] = useState<File | null>(null)
   const [saving, setSaving] = useState(false)
@@ -250,13 +252,14 @@ function RecordPayoutDialog({ submission, creator, payments, onClose, onSaved }:
       toast.error(error instanceof Error ? error.message : 'Could not record payout')
     } finally { setSaving(false) }
   }
-  return <Dialog open onOpenChange={open => { if (!open && !saving) onClose() }}><DialogContent className="creator-dialog max-w-md !rounded-[28px] p-6">
+  return <Dialog open onOpenChange={open => { if (!open && !saving) onClose() }}><DialogContent ref={contentRef} onOpenAutoFocus={event => { event.preventDefault(); contentRef.current?.focus() }} className="creator-dialog max-h-[calc(100dvh-32px)] max-w-md overflow-y-auto !rounded-[28px] p-6">
     <DialogHeader className="pr-8 text-left"><DialogTitle>Record payout</DialogTitle><DialogDescription>{submission.creatorName} · {submission.title}</DialogDescription></DialogHeader>
     <p className="text-3xl font-semibold tabular-nums">{formatMoney(amount, 'USD')}</p>
-    <div className="min-w-0 rounded-xl bg-zinc-50 p-4 text-sm"><p className="mb-2 font-semibold">{crypto ? creator?.cryptoNetwork || 'Crypto' : 'PayPal'}</p><p className="select-text break-all text-zinc-600">{destination || 'No payout destination saved'}</p>{!crypto && creator?.paypalMeUrl ? <a className="mt-2 inline-block text-[#00A8EF]" href={creator.paypalMeUrl} target="_blank" rel="noreferrer">Open PayPal.Me ↗</a> : null}</div>
-    {crypto ? <label className="grid gap-2 text-sm font-medium">Transaction hash<input className="creator-field" value={reference} onChange={event => setReference(event.target.value)} maxLength={180} placeholder="Paste the transaction hash" /></label> : <label className="grid gap-2 text-sm font-medium">PayPal receipt<input type="file" accept="image/jpeg,image/png,image/webp" className="min-w-0 text-sm text-zinc-500" onChange={event => { const file = event.target.files?.[0]; if (file && file.size > 5 * 1024 * 1024) { event.target.value = ''; setReceipt(null); toast.error('Choose a receipt image up to 5 MB'); return }; setReceipt(file || null) }} /><span className="text-xs font-normal text-zinc-500">JPG, PNG or WebP · up to 5 MB · optional</span></label>}
+    <div className="min-w-0 rounded-xl bg-zinc-50 p-4 text-sm"><p className="mb-2 font-semibold">{crypto ? creator?.cryptoNetwork || 'Crypto' : 'PayPal'}</p><div className="flex items-start justify-between gap-3"><p className="select-text break-all text-zinc-600">{destination || 'No payout destination saved'}</p>{destination ? <button type="button" aria-label="Copy payout destination" className="grid size-8 shrink-0 place-items-center rounded-full text-[#00A8EF] hover:bg-sky-50" onClick={() => void navigator.clipboard.writeText(destination).then(() => toast.success('Payout destination copied')).catch(() => toast.error('Select and copy the payout destination'))}><Copy className="size-4" /></button> : null}</div>{!crypto && creator?.paypalMeUrl ? <a className="mt-2 inline-block text-[#00A8EF]" href={creator.paypalMeUrl} target="_blank" rel="noreferrer">Open PayPal.Me ↗</a> : null}</div>
+    {crypto ? <label className="grid gap-2 text-sm font-medium">Transaction hash<input className="creator-field" value={reference} onChange={event => setReference(event.target.value)} maxLength={180} placeholder="Paste the transaction hash" /></label> : <label className="grid gap-2 text-sm font-medium">PayPal receipt<input type="file" accept="image/jpeg,image/png,image/webp" className="min-w-0 text-sm text-zinc-500 file:mr-3 file:rounded-full file:border-0 file:bg-sky-50 file:px-4 file:py-2 file:font-medium file:text-[#00A8EF]" onChange={event => { const file = event.target.files?.[0]; if (file && file.size > 5 * 1024 * 1024) { event.target.value = ''; setReceipt(null); toast.error('Choose a receipt image up to 5 MB'); return }; setReceipt(file || null) }} /><span className="text-xs font-normal text-zinc-500">JPG, PNG or WebP · up to 5 MB · optional</span></label>}
+    {!scheduled && creator?.authStatus !== 'verified' ? <p className="text-xs text-amber-700">Approve this creator’s payout method in <Link href="/admin/creators" className="underline">Creators</Link> before recording a new payment.</p> : null}
     <p className="text-xs leading-5 text-zinc-500">Only mark paid after you have sent the money. This records your manual payout.</p>
-    <div className="flex justify-end gap-2"><Button variant="ghost" onClick={onClose} disabled={saving}>Cancel</Button><Button onClick={() => void save()} disabled={saving || !destination}>{saving ? <Loader2 className="size-4 animate-spin" /> : <CheckCircle2 className="size-4" />}Mark paid</Button></div>
+    <div className="flex justify-end gap-2"><Button variant="ghost" onClick={onClose} disabled={saving}>Cancel</Button><Button onClick={() => void save()} disabled={saving || !destination || (!scheduled && creator?.authStatus !== 'verified')}>{saving ? <Loader2 className="size-4 animate-spin" /> : <CheckCircle2 className="size-4" />}Mark paid</Button></div>
   </DialogContent></Dialog>
 }
 
@@ -677,4 +680,3 @@ function normalizeAttributionReport(report?: Partial<AdminAttributionReport>): A
     recentRevenueCents: report?.recentRevenueCents || 0,
   }
 }
-
