@@ -264,7 +264,7 @@ export function AppShell({ children }: AppShellProps) {
             )}
       </AppHeader> : null}
 
-      <main className={creatorSignIn || creatorSetup || creatorReferral ? 'flex w-full flex-1 flex-col' : creatorRoute ? 'mx-auto flex w-full max-w-[1440px] flex-1 flex-col px-4 sm:px-[19px]' : immersive ? 'w-full' : 'mx-auto w-full max-w-6xl px-4 py-8 sm:px-6'}>
+      <main className={creatorSignIn || creatorSetup || creatorReferral ? 'flex w-full flex-1 flex-col' : creatorRoute ? 'mx-auto flex w-full max-w-[1440px] flex-1 flex-col px-4 sm:px-[19px]' : immersive ? 'w-full' : router.pathname === '/faq' ? 'w-full px-5 py-8 sm:px-10' : 'mx-auto w-full max-w-6xl px-4 py-8 sm:px-6'}>
         {creatorRoute && !creatorSignIn && !creatorSetup ? <SidebarProvider className="min-h-0 flex-1 flex-col">{children}</SidebarProvider> : children}
       </main>
 

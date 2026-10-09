@@ -36,7 +36,7 @@ export function AnalysisStory() {
   const entrance = { initial: { opacity: reduced ? 1 : 0, y: reduced ? 0 : 16 }, whileInView: { opacity: 1, y: 0 }, viewport: { once: true, amount: .12 }, transition: { duration: reduced ? 0 : .4, ease: [.16, 1, .3, 1] as [number, number, number, number] } }
   const [selected, setSelected] = useState(0)
   const [done, setDone] = useState<string[]>([])
-  const [day, setDay] = useState(3)
+  const [day, setDay] = useState(9)
   const [measurement, setMeasurement] = useState(0)
   const [anchors, setAnchors] = useState(false)
   const example = examples[selected]
@@ -74,14 +74,13 @@ export function AnalysisStory() {
           <h3>Make your next move.</h3>
           <div className={styles.protocol}>
             <div className={styles.protocolHeader}><strong>Your Protocol</strong><span><BadgeCheck size={17} />{checked ? '5' : '0'}</span></div>
-            <div className={styles.week} aria-label="Example Protocol dates">{['Tue', 'Wed', 'Thu', 'Today', 'Sat', 'Sun'].map((label, index) => <button key={index} type="button" aria-label={`Show example day ${index + 6}`} aria-pressed={day === index} data-today={index === 3} onClick={() => setDay(index)}><span>{label}</span><b>{done.includes(`${example.id}:${index}`) ? <Check size={13} /> : index + 6}</b><i /></button>)}</div>
+            <div className={styles.week} aria-label="Example Protocol dates">{['Thu', 'Today', 'Sat', 'Sun'].map((label, index) => { const date = index + 8; return <button key={date} type="button" aria-label={`Show example day ${date}`} aria-pressed={day === date} data-today={date === 9} onClick={() => setDay(date)}><span>{label}</span><b>{done.includes(`${example.id}:${date}`) ? <Check size={13} /> : date}</b></button> })}</div>
             <div className={styles.schedule}>
-              <span className={styles.time}>09:00</span>
               <div className={styles.task} key={taskKey} data-completed={checked} style={{ '--task-color': example.color } as CSSProperties}>
-                <div className={styles.taskTop}><span className={styles.taskIcon}><TaskIcon size={17} /></span><strong>{example.task}</strong><button type="button" aria-label={`Complete ${example.task}`} aria-pressed={checked} onClick={() => setDone(current => checked ? current.filter(id => id !== taskKey) : [...current, taskKey])}>{checked ? <Check size={14} /> : null}</button></div>
+                <div className={styles.taskTop}><span className={styles.taskIcon}><TaskIcon size={17} /></span><span className={styles.taskTiming}>{example.timing.split(' · ')[0]}</span><button type="button" aria-label={`Complete ${example.task}`} aria-pressed={checked} onClick={() => setDone(current => checked ? current.filter(id => id !== taskKey) : [...current, taskKey])}>{checked ? <Check size={14} /> : null}</button></div>
+                <strong className={styles.taskTitle}>{example.task}</strong>
                 <p>{example.detail}</p>
               </div>
-              <span className={styles.nextTime}>10:00</span>
             </div>
           </div>
           <p className={styles.context}>A clear priority becomes a repeatable habit. Save your reports to follow changes over time.</p>
