@@ -4,7 +4,7 @@ export type ReportCategory = {
   subtitle: string;
   scoreLabel: string;
   score: number;
-  features: Array<{ label: string; value: string; measurement?: string }>;
+  features: Array<{ label: string; value: string; measurement?: string; id?: string; visual?: string; positions?: number[]; grade?: number | null; scale?: 'range' | 'quality' }>;
   eyeColor?: string;
   explanation: string;
   recommendation: string;

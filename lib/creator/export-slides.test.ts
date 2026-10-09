@@ -2,7 +2,7 @@ import { afterEach, beforeEach, expect, mock, test } from 'bun:test'
 import type { ContentSlide } from './content-generator'
 import { drawSlideFrame, renderSlideMp4, encodeCanvasMp4 } from './export-slides'
 
-const slide: ContentSlide = { id:'test', templateId:'editorial', imageId:'image', categoryId:'eyes', eyebrow:'Test', headline:'Test export', supportingCopy:'Test', metricLabel:'Eyes', metricValue:'7', cta:'Test', currentScore:'7', potentialScore:'8', categoryScores:[] }
+const slide: ContentSlide = { id:'test', templateId:'mock-report', imageId:'image', categoryId:'eyes', eyebrow:'Test', headline:'Test export', supportingCopy:'Test', metricLabel:'Eyes', metricValue:'7', cta:'Test', currentScore:'7', potentialScore:'8', categoryScores:[] }
 const args = { slide, images:[{id:'image', name:'test', dataUrl:'data:image/png;base64,', width:1080,height:1920,landmarks:null,status:'ready' as const}], width:1080,height:1920 }
 const originals = new Map<string, PropertyDescriptor | undefined>()
 let tracksStopped = 0
@@ -52,29 +52,17 @@ test('missing restored photo produces actionable error before encoding',async()=
   await expect(renderSlideMp4({...args,images:[]})).rejects.toThrow('Add a clear photo')
 })
 
-test('polished templates omit technical headers and category tags', () => {
+test('editorial covers preserve the distinction between total, feature, and potential scores', () => {
   const texts: string[] = []
-  const ctx = new Proxy({}, { get: (_target, key) => key === 'fillText' ? (text: string) => texts.push(text) : key === 'measureText' ? () => ({ width: 30 }) : key === 'createLinearGradient' ? () => ({ addColorStop() {} }) : () => {} }) as CanvasRenderingContext2D
-  drawSlideFrame(ctx, { ...slide, headline: 'Time to ascend.' }, null, null, 1080, 1920, 4000, null)
-  expect(texts).toEqual(['Time to ascend.', '7.0', 'TOTAL SCORE', '8.0', 'POTENTIAL'])
+  const ctx = new Proxy({}, { get: (_target, key) => key === 'fillText' ? (text: string) => texts.push(text) : key === 'measureText' ? (text: string) => ({ width: text.length * 80 }) : () => {} }) as CanvasRenderingContext2D
+  drawSlideFrame(ctx, { ...slide, templateId: 'performance' }, null, null, 1080, 1620, 4000, null)
+  expect(texts).toContain('7'); expect(texts).not.toContain('MOGGING SCORE')
   texts.length = 0
-  drawSlideFrame(ctx, { ...slide, templateId: 'score-potential' }, null, null, 1080, 1920, 4000, null)
-  expect(texts).toContain('TOTAL SCORE')
-  expect(texts).toContain('POTENTIAL')
-  expect(texts).not.toContain('ESTIMATED')
-  expect(texts.some(text => /ACTIVE CATEGORY|CURRENT|EYES|\[/.test(text))).toBe(false)
+  drawSlideFrame(ctx, { ...slide, templateId: 'precision', categoryScores: [{ categoryId: 'eyes', label: 'Eyes', value: '8.4' }] }, null, null, 1080, 1620, 4000, null)
+  expect(texts).toContain('8.4'); expect(texts).toContain('Eyes'); expect(texts).not.toContain('7')
   texts.length = 0
-  drawSlideFrame(ctx, { ...slide, templateId: 'psl' }, null, null, 1080, 1920, 4000, null)
-  expect(texts).toContain('Mogging: Face Rating')
-  expect(texts.filter(text => text === 'PSL')).toHaveLength(1)
-  expect(texts.some(text => /FACE REPORT|\[|^M$/.test(text))).toBe(false)
-  texts.length = 0
-  const categoryScores = ['jaw', 'nose', 'mouth', 'eyes', 'overall'].map(categoryId => ({ categoryId, label: categoryId, value: '7' }))
-  drawSlideFrame(ctx, { ...slide, templateId: 'score-rows', categoryScores }, null, null, 1080, 1920, 4000, null)
-  expect(texts).toContain('SCORE')
-  expect(texts).toContain('POTENTIAL')
-  expect(texts).toContain('eyes')
-  expect(texts.filter(text => categoryScores.some(row => row.label === text))).toEqual(['eyes', 'jaw', 'nose'])
+  drawSlideFrame(ctx, { ...slide, templateId: 'afterimage' }, null, null, 1080, 1620, 4000, null)
+  expect(texts).toContain('CURRENT'); expect(texts).toContain('POTENTIAL'); expect(texts).toContain('7'); expect(texts).toContain('8')
 })
 
 test('3× iPhone MP4 requests a codec level that supports its frame size', async () => {

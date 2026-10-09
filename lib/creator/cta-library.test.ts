@@ -15,6 +15,12 @@ describe('creator CTA library validation', () => {
     }
   })
 
+  test('accepts every released template and the existing template IDs', () => {
+    for (const templateId of ['score-potential', 'editorial', 'cta', 'psl', 'score-rows', 'performance', 'precision', 'afterimage', 'phone-report']) {
+      expect(creatorCtaLibrarySubmissionSchema.safeParse({ title: 'Creator poster', templateId, formatId: 'portrait', assetStorageKey: 'creators/user-1/cta-library/poster.png', assetContentType: 'image/png', assetSizeBytes: 1024 }).success).toBe(true)
+    }
+  })
+
   test('rejects unsupported assets and oversized submissions', () => {
     expect(creatorCtaLibrarySubmissionSchema.safeParse({
       title: 'CTA',

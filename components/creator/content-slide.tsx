@@ -14,17 +14,19 @@ export function ContentSlidePreview({ slide, images, format }: { slide: ContentS
     const reduced = window.matchMedia('(prefers-reduced-motion: reduce)')
     let draw: (() => void) | undefined
     setError(null)
-    void prepareCanvas({ slide, images, ...format }).then(prepared => {
+    const scale = slide.templateId === 'mock-report' ? Math.max(1, 1170 / format.width) : 1
+    const width = Math.round(format.width * scale), height = Math.round(format.height * scale)
+    void prepareCanvas({ slide, images, width, height }).then(prepared => {
       if (disposed) return
-      canvas.width = format.width
-      canvas.height = format.height
+      canvas.dataset.template = slide.templateId
+      canvas.width = width
+      canvas.height = height
       const start = performance.now()
       draw = () => {
         cancelAnimationFrame(frame)
-        if (document.hidden) return
         const time = reduced.matches ? 4000 : slide.templateId === 'mock-report' ? performance.now() - start : Math.min(4000, performance.now() - start)
-        drawSlideFrame(ctx, slide, prepared.image, prepared.overlay, format.width, format.height, time, prepared.brand)
-        if (!reduced.matches && (slide.templateId === 'mock-report' || time < 4000)) frame = requestAnimationFrame(draw!)
+        drawSlideFrame(ctx, slide, prepared.image, prepared.overlay, width, height, time, prepared.brand)
+        if (!document.hidden && !reduced.matches && (slide.templateId === 'mock-report' || time < 4000)) frame = requestAnimationFrame(draw!)
       }
       reduced.addEventListener('change', draw)
       document.addEventListener('visibilitychange', draw)
@@ -40,7 +42,7 @@ export function ContentSlidePreview({ slide, images, format }: { slide: ContentS
         document.removeEventListener('visibilitychange', draw)
       }
     }
-  }, [slide, images, format, replay])
+  }, [slide, images, format.width, format.height, replay])
   return <div>
     <div className="relative overflow-hidden bg-black" style={{ aspectRatio: `${format.width} / ${format.height}` }}>
       <canvas ref={canvasRef} className="block size-full" role="img" aria-label={`Mogging ${slide.metricLabel}. Current ${slide.currentScore}, potential ${slide.potentialScore}.`} />

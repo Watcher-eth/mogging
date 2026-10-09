@@ -1,6 +1,6 @@
 import { afterEach, expect, spyOn, test } from 'bun:test'
 import { randomScore, randomScorePair, scoreRanges, type ScoreRange } from './random-scores'
-import { reportCategories } from './mobile-overlay-engine/report-data'
+import { reportCategories } from './mock-report-data'
 import { mockReportFormat, mockReportHeroHeight, mockReportSize } from './mock-report'
 import { drawSlideFrame } from './export-slides'
 import type { ContentSlide } from './content-generator'
@@ -35,7 +35,7 @@ test('iPhone export dimensions support H.264 and preserve the hero crop ratio', 
 })
 
 test('every mobile report category draws its complete feature grid and growth section through the export renderer', () => {
-  expect(reportCategories.map(item => item.id)).toEqual(['eyes', 'nose', 'mouth', 'jaw', 'dimorphism', 'face-shape', 'skin-age', 'symmetry', 'sun-damage', 'facial-fat', 'overall'])
+  expect(reportCategories.map(item => item.id)).toEqual(['eyes', 'brows', 'nose', 'mouth', 'jaw', 'cheeks', 'face-shape', 'proportions', 'symmetry', 'skin', 'hair', 'ears', 'overall'])
   for (const category of reportCategories) {
     const texts: string[] = []
     let saves = 0

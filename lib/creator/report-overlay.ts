@@ -26,9 +26,10 @@ export function createReportOverlay(slide: ContentSlide, image: GeneratorImage, 
   return { size, primitives, dots, value: `${score.trim() || '—'} / ${categoryScoreMax(slide.categoryId)}` }
 }
 
-export type ReportOverlay = Omit<ReturnType<typeof createReportOverlay>, 'value'> & { value?: string; labelLayout?: 'mobile'; labelAppearance?: 'scan'; labelScale?: number }
+export type ReportOverlay = Omit<ReturnType<typeof createReportOverlay>, 'value'> & { value?: string; labelLayout?: 'mobile'; labelAppearance?: 'scan'; labelScale?: number; ink?: string; pointAppearance?: 'minimal' }
 
 export function drawReportOverlay(ctx: CanvasRenderingContext2D, overlay: ReportOverlay, width: number, timeMs: number, labels = true) {
+  const ink = overlay.ink ?? '255,255,255'
   ctx.save()
   ctx.scale(width / overlay.size.width, width / overlay.size.width)
   ctx.textBaseline = 'top'
@@ -40,7 +41,7 @@ export function drawReportOverlay(ctx: CanvasRenderingContext2D, overlay: Report
   for (const dot of overlay.dots) {
     ctx.save()
     ctx.globalAlpha *= clamp((timeMs / 2800 - dot.band / 18) * 18, 0, 1) * .9
-    ctx.fillStyle = 'white'
+    ctx.fillStyle = `rgb(${ink})`
     ctx.beginPath()
     ctx.arc(dot.x, dot.y, 1.15, 0, Math.PI * 2)
     ctx.fill()
@@ -57,6 +58,14 @@ export function drawReportOverlay(ctx: CanvasRenderingContext2D, overlay: Report
     ctx.lineCap = 'round'
     ctx.lineJoin = 'round'
     if (primitive.kind === 'point') {
+      if (overlay.pointAppearance === 'minimal') {
+        ctx.globalAlpha *= progress
+        ctx.translate(primitive.point.x,primitive.point.y)
+        ctx.setLineDash([]); ctx.lineWidth=.55; ctx.strokeStyle=`rgba(${ink},.8)`
+        circle(ctx,2.8); ctx.stroke()
+        ctx.fillStyle=`rgb(${ink})`; circle(ctx,.85); ctx.fill()
+        ctx.restore(); continue
+      }
       ctx.globalAlpha *= progress
       const scale = primitive.animation?.entrance === 'scale' ? progress : 1
       const radius = (primitive.radius ?? 10) * scale
@@ -65,22 +74,22 @@ export function drawReportOverlay(ctx: CanvasRenderingContext2D, overlay: Report
       const transform = ctx.getTransform()
       ctx.filter = `blur(${5 * Math.hypot(transform.a, transform.b)}px)`
       circle(ctx, primitive.radius ?? 10)
-      ctx.fillStyle = 'rgba(255,255,255,.16)'
+      ctx.fillStyle = `rgba(${ink},.16)`
       ctx.fill()
       ctx.restore()
       ctx.setLineDash([2.1, 3.8])
       ctx.lineWidth = 1
-      ctx.strokeStyle = 'rgba(255,255,255,.72)'
+      ctx.strokeStyle = `rgba(${ink},.72)`
       circle(ctx, radius)
       ctx.stroke()
-      ctx.fillStyle = 'rgba(255,255,255,.96)'
+      ctx.fillStyle = `rgba(${ink},.96)`
       circle(ctx, 2.2 * scale)
       ctx.fill()
     } else {
       const paths = preparedPaths(primitive)
       if (primitive.kind === 'region' || (primitive.kind === 'box' && primitive.fillOpacity)) {
         ctx.globalAlpha *= progress
-        ctx.fillStyle = `rgba(255,255,255,${primitive.fillOpacity ?? .08})`
+        ctx.fillStyle = `rgba(${ink},${primitive.fillOpacity ?? .08})`
         ctx.beginPath()
         if (primitive.kind === 'box') {
           const { x, y, width, height } = primitive.rect
@@ -89,7 +98,7 @@ export function drawReportOverlay(ctx: CanvasRenderingContext2D, overlay: Report
         ctx.fill()
       }
       ctx.lineWidth = primitive.strokeWidth ?? (primitive.kind === 'region' ? .45 : .9)
-      ctx.strokeStyle = `rgba(255,255,255,${primitive.opacity ?? (primitive.kind === 'region' ? .42 : .72)})`
+      ctx.strokeStyle = `rgba(${ink},${primitive.opacity ?? (primitive.kind === 'region' ? .42 : .72)})`
       ctx.setLineDash(primitive.dashed ? [1.7, 3.8] : [])
       ctx.beginPath()
       tracePaths(ctx, paths, progress)

@@ -20,6 +20,7 @@ import { apiGet, apiPost, ApiClientError } from '@/lib/api/client'
 import { buildZip, downloadBlob, renderSlideMp4, renderSlidePng } from '@/lib/creator/export-slides'
 import type { CreatorCtaLibraryItem } from '@/lib/creator/cta-library'
 import { categoryOptions, categoryScoreMax, generateSlides, outputFormats, templateOptions, type ContentSlide, type GeneratorImage, type OutputFormatId, type SavedCampaign, type Tone } from '@/lib/creator/content-generator'
+import { buildMockOverallCategory } from '@/lib/creator/mock-report-data'
 import { cn } from '@/lib/utils'
 import { CreatorIcon, type CreatorIconName } from '@/components/creator/creator-icon'
 
@@ -38,6 +39,12 @@ const approvedExamples = [
   { id: 'approved-progress', label: 'Progression story', detail: 'Frame one → frame two → link in bio', category: 'Progress series', status: 'Approved format' },
 ]
 type CtaLibraryResponse = { approved: CreatorCtaLibraryItem[]; mine: CreatorCtaLibraryItem[] }
+
+function refreshPhoneReport(slide: ContentSlide): ContentSlide {
+  if (slide.templateId !== 'phone-report' || !slide.mockReport) return slide
+  const scores = Object.fromEntries(slide.categoryScores.map(score => [score.categoryId, score.value]))
+  return { ...slide, mockReport: { ...slide.mockReport, category: buildMockOverallCategory(slide.currentScore, scores) } }
+}
 
 export default function CtaGeneratorPage() {
   const reducedMotion = useReducedMotion()
@@ -77,7 +84,7 @@ export default function CtaGeneratorPage() {
   useEffect(() => {
     try {
       const saved = JSON.parse(localStorage.getItem(STORAGE_KEY) ?? '[]') as SavedCampaign[]
-      if (Array.isArray(saved)) setSavedCampaigns(saved.slice(0, 12))
+      if (Array.isArray(saved)) setSavedCampaigns(saved.slice(0, 12).map(campaign => ({ ...campaign, slides: campaign.slides.filter(slide => String(slide.templateId) !== 'feature-portrait') })))
     } catch { /* Ignore invalid legacy storage. */ }
   }, [])
 
@@ -151,7 +158,7 @@ export default function CtaGeneratorPage() {
 
   function updateCurrentScore(value: string) {
     setCurrentScore(value)
-    setSlides((current) => current.map((slide) => ({ ...slide, currentScore: value, metricValue: slide.templateId === 'cta' ? slide.metricValue : formatMetricScore(slide.categoryScores.find((score) => score.categoryId === slide.categoryId)?.value || value, slide.categoryId) })))
+    setSlides((current) => current.map((slide) => refreshPhoneReport({ ...slide, currentScore: value, metricValue: slide.templateId === 'cta' ? slide.metricValue : formatMetricScore(slide.categoryScores.find((score) => score.categoryId === slide.categoryId)?.value || value, slide.categoryId) })))
   }
 
   function updatePotentialScore(value: string) {
@@ -161,7 +168,7 @@ export default function CtaGeneratorPage() {
 
   function updateCategoryScore(categoryId: string, value: string) {
     setCategoryScoreValues((current) => ({ ...current, [categoryId]: value }))
-    setSlides((current) => current.map((slide) => ({ ...slide, metricValue: slide.templateId !== 'cta' && slide.categoryId === categoryId ? formatMetricScore(value || slide.currentScore, categoryId) : slide.metricValue, categoryScores: slide.categoryScores.map((score) => score.categoryId === categoryId ? { ...score, value } : score) })))
+    setSlides((current) => current.map((slide) => refreshPhoneReport({ ...slide, metricValue: slide.templateId !== 'cta' && slide.categoryId === categoryId ? formatMetricScore(value || slide.currentScore, categoryId) : slide.metricValue, categoryScores: slide.categoryScores.map((score) => score.categoryId === categoryId ? { ...score, value } : score) })))
   }
 
   async function downloadSlide(slide: ContentSlide, index: number) {
@@ -310,7 +317,7 @@ export default function CtaGeneratorPage() {
             }} />
             <Field label="Featured category"><select className={fieldClass} value={featuredCategory} onChange={(event) => { const value = event.target.value; setFeaturedCategory(value); setSelectedCategories((current) => current.includes(value) ? current : [value, ...current]) }}>{categoryOptions.map((item) => <option key={item.id} value={item.id}>{item.label}</option>)}</select></Field>
             <div className="grid grid-cols-2 gap-2"><ScoreField label="Current score" value={currentScore} onChange={updateCurrentScore} /><ScoreField label="Potential" value={potentialScore} onChange={updatePotentialScore} /></div>
-            <p className="text-xs leading-5 text-zinc-500">The Mogging score reveal pairs your featured category’s score with the potential entered above. Selected report values appear underneath as animated stats.</p>
+            <p className="text-xs leading-5 text-zinc-500">Use your overall score, feature scores and potential to create seven templates, including the three original favorites.</p>
             <div className="grid gap-2"><p className="text-xs font-semibold uppercase tracking-[0.14em] text-zinc-400">Category scores</p>{selectedCategories.map((categoryId) => <ScoreField key={categoryId} label={categoryOptions.find((item) => item.id === categoryId)?.label.replace(' analysis', '') ?? categoryId} maximum={categoryScoreMax(categoryId)} value={categoryScoreValues[categoryId] ?? ''} onChange={(value) => updateCategoryScore(categoryId, value)} />)}</div>
             {selectedCategories.includes('psl') ? <p className="text-xs leading-5 text-zinc-500">PSL uses the mobile report’s 0–8 scale. For a featured PSL reveal, the 0–10 potential above is converted to the same scale.</p> : null}
         </div><details className="mt-5 border-t pt-4"><summary className="min-h-11 cursor-pointer text-sm font-semibold">Customize format, categories & style</summary>
@@ -321,13 +328,13 @@ export default function CtaGeneratorPage() {
             <fieldset><legend className="text-sm font-medium">Values to show</legend><div className="mt-2 grid grid-cols-2 gap-2">{categoryOptions.map((item) => { const active = selectedCategories.includes(item.id); return <button key={item.id} type="button" aria-pressed={active} onClick={() => setSelectedCategories((current) => active ? current.filter((id) => id !== item.id) : [...current, item.id])} className={cn('flex min-h-12 items-center gap-2 rounded-[14px] border px-3 text-left text-xs font-medium transition-[border-color,background-color,box-shadow,transform] duration-150 active:scale-[0.98]', active ? 'creator-choice-selected' : 'border-black/[0.08] bg-white text-[#73777d] hover:bg-[#f7f8f9]')}><span className={cn('grid size-4 shrink-0 place-items-center rounded-full border', active ? 'border-transparent creator-tone-blue text-white' : 'border-black/20')}>{active ? <Check className="size-2.5" /> : null}</span>{item.label}</button> })}</div></fieldset>
           </div>
         </details>
-        <div className="creator-actions mt-6 flex flex-wrap justify-between gap-3"><Button variant="outline" className="h-11 rounded-full px-6" onClick={() => setStep(1)}>Back to Photos</Button><Button className="h-11 rounded-full px-6" onClick={createCampaign}><RefreshCw />{slides.length ? 'Regenerate 5 Templates' : 'Generate 5 Templates'}</Button></div>
+        <div className="creator-actions mt-6 flex flex-wrap justify-between gap-3"><Button variant="outline" className="h-11 rounded-full px-6" onClick={() => setStep(1)}>Back to Photos</Button><Button className="h-11 rounded-full px-6" onClick={createCampaign}><RefreshCw />{slides.length ? `Regenerate ${templateOptions.length} Templates` : `Generate ${templateOptions.length} Templates`}</Button></div>
       </section> : null}
       {step === 3 ? <>
         <Button variant="outline" className="mb-5 h-11 rounded-full px-6" disabled={exporting || videoProgress !== null || librarySubmitting} onClick={() => setStep(2)}>Back to Details</Button>
         <div className="grid items-start gap-5 lg:grid-cols-2">
         <section className="min-w-0">
-          <div className="mb-3 flex items-end justify-between"><div><p className="text-sm font-semibold">Template preview</p><p className="mt-1 text-xs text-zinc-400">{slides.length ? `5 templates · ${format.width} × ${format.height}` : 'Your generated templates will appear here'}</p></div></div>
+          <div className="mb-3 flex items-end justify-between"><div><p className="text-sm font-semibold">Template preview</p><p className="mt-1 text-xs text-zinc-400">{slides.length ? `${templateOptions.length} templates · ${format.width} × ${format.height}` : 'Your generated templates will appear here'}</p></div></div>
           {selectedSlide && mode === 'cta' ? <div className="mx-auto" style={{ maxWidth: `min(100%, ${64 * format.width / format.height}dvh)` }}><ContentSlidePreview key={selectedSlide.id} slide={selectedSlide} images={images} format={format} /></div> : <div className="grid min-h-[620px] place-items-center border border-dashed border-zinc-300 bg-zinc-50/50 text-center" style={{ aspectRatio: `${format.width} / ${format.height}` }}><div><ImagePlus className="mx-auto size-6 text-zinc-300" /><p className="mt-3 text-sm font-semibold text-zinc-500">No templates yet</p><p className="mt-1 text-xs text-zinc-400">Upload a clear face and generate templates.</p></div></div>}
           {slides.length ? <div className="mt-4 flex gap-2 overflow-x-auto pb-2">{templateOptions.map((template, index) => { const slide = slides.find((item) => item.templateId === template.id); if (!slide) return null; return <button type="button" key={template.id} onClick={() => setSelectedSlideId(slide.id)} className={cn('min-h-11 min-w-28 flex-1 rounded-xl border p-3 text-left transition-[border-color,background-color,transform] duration-150 ease-out active:scale-[0.98]', selectedSlide?.templateId === template.id ? 'creator-choice-selected' : 'border-zinc-200 bg-white')}><span className="block font-mono text-[9px] uppercase opacity-50">Template {index + 1}</span><span className="mt-2 block text-[11px] font-semibold leading-4">{template.label}</span></button> })}</div> : null}
         </section>

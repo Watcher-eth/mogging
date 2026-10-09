@@ -7,7 +7,8 @@ import { Button } from '@/components/ui/button'
 import { Field, fieldClass } from './creator-shell'
 import { RandomScoreControl } from './random-score-control'
 import { ContentSlidePreview } from './content-slide'
-import { reportCategories, type ReportCategory } from '@/lib/creator/mobile-overlay-engine/report-data'
+import type { ReportCategory } from '@/lib/creator/mobile-overlay-engine/report-data'
+import { reportCategories } from '@/lib/creator/mock-report-data'
 import { randomScore, randomScorePair } from '@/lib/creator/random-scores'
 import { mockReportFormat, mockReportScrollMax, mockEyePalette } from '@/lib/creator/mock-report'
 import { downloadBlob, renderSlidePng, renderSlideMp4 } from '@/lib/creator/export-slides'
@@ -16,7 +17,7 @@ import type { ContentSlide, GeneratorImage } from '@/lib/creator/content-generat
 const DesktopMockReport = dynamic(() => import('./desktop-mock-report').then(module => module.DesktopMockReport), { ssr: false })
 
 export function MockReportGenerator({ images, active, onBack }: { images: GeneratorImage[]; active: boolean; onBack: () => void }) {
-  const [layout, setLayout] = useState<'iphone' | 'desktop'>('iphone')
+  const [layout, setLayout] = useState<'iphone' | 'phone' | 'desktop'>('iphone')
   const [desktopReport, setDesktopReport] = useState<DesktopMockReportData | null>(null)
   const [desktopOpen, setDesktopOpen] = useState(false)
   const ownsFullscreen = useRef(false)
@@ -61,7 +62,7 @@ export function MockReportGenerator({ images, active, onBack }: { images: Genera
   }
   function generate() {
     if (!photo) return toast.error('Add a photo with a usable face first')
-    if (!current || (layout === 'iphone' && !potential) || !category.features.every(feature => feature.value.trim())) return toast.error('Enter the scores and every feature value, or use Randomize values')
+    if (!current || (layout !== 'desktop' && !potential) || !category.features.every(feature => feature.value.trim())) return toast.error('Enter the scores and every feature value, or use Randomize values')
     if (layout === 'desktop') {
       const categories = reportCategories.map(base => {
         const draft = drafts[base.id] ?? base
@@ -75,10 +76,10 @@ export function MockReportGenerator({ images, active, onBack }: { images: Genera
     }
     setScrollMax(mockReportScrollMax(category))
     setSlide({
-      id: crypto.randomUUID(), templateId: 'mock-report', imageId: photo.id,
+      id: crypto.randomUUID(), templateId: layout === 'phone' ? 'phone-report' : 'mock-report', imageId: photo.id,
       categoryId, currentScore: current, potentialScore: potential,
       categoryScores: [{ categoryId, label: category.title, value: category.score.toFixed(1) }],
-      overlayStyle: categoryId === 'skin-age' ? 'face-map' : 'category',
+      overlayStyle: ['skin', 'skin-age'].includes(categoryId) ? 'face-map' : 'category',
       metricLabel: category.title, metricValue: category.score.toFixed(1),
       eyebrow: '', headline: '', supportingCopy: '', cta: '',
       mockReport: { category: { ...category, features: category.features.map(feature => ({ ...feature })) }, scroll: 0 },
@@ -102,7 +103,7 @@ export function MockReportGenerator({ images, active, onBack }: { images: Genera
       <div><h2 className="text-lg font-semibold">Mock report details</h2><p className="mt-0.5 text-sm text-zinc-500">Choose an iPhone or desktop report and edit its values before generating.</p></div>
       <Button variant="outline" className="justify-self-start rounded-full" onClick={onBack}>Back to photos</Button>
       <fieldset><legend className="mb-2 text-sm font-medium">Report format</legend><div className="grid grid-cols-2 gap-2">
-        {([{ id: 'iphone', label: 'iPhone', icon: Smartphone }, { id: 'desktop', label: 'Desktop', icon: Monitor }] as const).map(option => <label key={option.id} className={`flex min-h-12 cursor-pointer items-center justify-center gap-2 rounded-xl border px-3 text-sm font-semibold transition-colors ${layout === option.id ? 'border-black bg-black text-white' : 'border-zinc-200 bg-white text-zinc-600 hover:bg-zinc-50'} has-[:focus-visible]:ring-2 has-[:focus-visible]:ring-blue-500 has-[:focus-visible]:ring-offset-2`}>
+        {([{ id: 'iphone', label: 'iPhone', icon: Smartphone }, { id: 'phone', label: 'Phone CTA', icon: Smartphone }, { id: 'desktop', label: 'Desktop', icon: Monitor }] as const).map(option => <label key={option.id} className={`flex min-h-12 cursor-pointer items-center justify-center gap-2 rounded-xl border px-3 text-sm font-semibold transition-colors ${layout === option.id ? 'border-black bg-black text-white' : 'border-zinc-200 bg-white text-zinc-600 hover:bg-zinc-50'} has-[:focus-visible]:ring-2 has-[:focus-visible]:ring-blue-500 has-[:focus-visible]:ring-offset-2`}>
           <input type="radio" name="mock-report-format" value={option.id} checked={layout === option.id} onChange={() => setLayout(option.id)} className="sr-only" /><option.icon className="size-4" />{option.label}
         </label>)}
       </div></fieldset>
@@ -113,13 +114,13 @@ export function MockReportGenerator({ images, active, onBack }: { images: Genera
         setCurrent(pair.current); setPotential(pair.potential)
         const randomizeCategory = (item: ReportCategory): ReportCategory => ({
           ...item, score: item.id === 'overall' ? Number(pair.current) : Number(randomScore(range)),
-          features: item.features.map(feature => ({ ...feature, value: `${randomScore(range, /PSL/i.test(feature.label) ? 8 : 10)}/${/PSL/i.test(feature.label) ? 8 : 10}`, measurement: undefined })),
+          features: item.features.map(feature => ({ ...feature, value: item.id === 'overall' ? `${randomScore(range, /PSL/i.test(feature.label) ? 8 : 10)} / ${/PSL/i.test(feature.label) ? 8 : 10}` : feature.value, grade: Number(randomScore(range)), measurement: undefined })),
         })
         if (layout === 'desktop') setDrafts(values => Object.fromEntries(reportCategories.map(base => [base.id, randomizeCategory(values[base.id] ?? base)])))
         else updateCategory(randomizeCategory(category))
       }} />
       {layout === 'desktop' ? <p className="text-xs leading-5 text-zinc-500">Randomize fills scores across every desktop category. You can edit each category individually.</p> : null}
-      <div className="grid grid-cols-2 gap-3"><ScoreInput label="Overall score" value={current} onChange={setCurrent} />{layout === 'iphone' ? <ScoreInput label="Potential" value={potential} onChange={setPotential} /> : null}</div>
+      <div className="grid grid-cols-2 gap-3"><ScoreInput label="Overall score" value={current} onChange={setCurrent} />{layout !== 'desktop' ? <ScoreInput label="Potential" value={potential} onChange={setPotential} /> : null}</div>
       {categoryId !== 'overall' ? <ScoreInput label={`${category.title} score`} value={String(category.score)} onChange={value => updateCategory({ score: Number(value) })} /> : null}
       {categoryId === 'eyes' ? <Field label="Eye color"><select aria-label="Eye color" className={fieldClass} value={category.eyeColor ?? ''} onChange={event => updateCategory({ eyeColor: event.target.value || undefined })}><option value="">Hide eye color palette</option>{mockEyePalette.map(shade => <option key={shade.name} value={shade.name}>{shade.name}</option>)}</select></Field> : null}
       <fieldset className="grid gap-3"><legend className="mb-3 text-sm font-semibold">Feature grid</legend>{category.features.map((feature, index) => <div key={`${categoryId}-${index}`} className="grid grid-cols-2 gap-2">

@@ -10,10 +10,10 @@ export const mockReportFormat = { width: 1170, height: 2532 }
 export const mockReportHeroHeight = Math.round(mockReportSize.height * .55)
 const ink = '#0a0a0d', paper = '#f7f7f7', muted = '#71717a'
 export const mockEyePalette = [
-  { name: 'blue', hex: '#3974b9' }, { name: 'gray', hex: '#8996a1' },
-  { name: 'green', hex: '#5a9458' }, { name: 'hazel', hex: '#827c4d' },
-  { name: 'amber', hex: '#ae813f' }, { name: 'brown', hex: '#745b42' },
-  { name: 'dark brown', hex: '#3f322c' },
+  { name: 'blue', hex: '#6ea5ce' }, { name: 'gray', hex: '#87989f' },
+  { name: 'green', hex: '#6e8962' }, { name: 'hazel', hex: '#8c8555' },
+  { name: 'amber', hex: '#ac8748' }, { name: 'brown', hex: '#795439' },
+  { name: 'dark brown', hex: '#382723' },
 ]
 const sans = '-apple-system, BlinkMacSystemFont, "Helvetica Neue", Arial, sans-serif'
 
@@ -42,9 +42,9 @@ export function drawMockReport(ctx: CanvasRenderingContext2D, slide: ContentSlid
     if (overlay) drawReportOverlay(ctx, overlay, w, time)
     ctx.restore()
   }
-  fade(ctx, mockReportHeroHeight - 150, 150)
+  fade(ctx, mockReportHeroHeight - 120, 120)
   let y = mockReportHeroHeight - 82 + 6
-  label(ctx, 'Overall score', 20, y)
+  label(ctx, 'Overall Score', 20, y)
   label(ctx, 'Potential', w - 20, y, true, '#A8A8AF')
   text(ctx, Number(slide.currentScore).toFixed(1), 20, y + 20, 44, 600)
   ctx.save()
@@ -63,44 +63,40 @@ export function drawMockReport(ctx: CanvasRenderingContext2D, slide: ContentSlid
   y += 112
   const summary = categorySummaryLayout(ctx, category)
   if (summary.height) {
-    card(ctx, 18, y, w - 36, summary.height, 18)
-    label(ctx, category.scoreLabel, 34, y + 16)
-    const subtitleY = y + summary.height - 16 - summary.subtitle.length * 18
-    const titleY = subtitleY - 8 - summary.title.length * 35
-    summary.title.forEach((line, index) => text(ctx, line, 34, titleY + index * 35, 32, 600))
-    summary.subtitle.forEach((line, index) => text(ctx, line, 34, subtitleY + index * 18, 13, 400, muted))
-    text(ctx, summary.score, w - 34, y + summary.height - 42, 22, 500, ink, true, undefined, 'Courier')
+    text(ctx, category.title, 18, y + 4, 24, 600)
+    text(ctx, summary.score, w - 18, y + 8, 20, 600, muted, true)
     y += summary.height + 10
   }
   if (category.id === 'eyes' && category.eyeColor) {
     const selected = mockEyePalette.find(shade => shade.name === category.eyeColor)
     if (selected) {
-      card(ctx, 18, y, w - 36, 125, 18)
+      card(ctx, 18, y, w - 36, 91, 18)
       label(ctx, 'Eye color', 34, y + 16)
       text(ctx, selected.name[0].toUpperCase() + selected.name.slice(1), w - 34, y + 16, 14, 600, ink, true)
-      const others = mockEyePalette.filter(shade => shade !== selected)
-      const shades = [...others.slice(0, 3), selected, ...others.slice(3)]
-      const sw = (w - 68 - 30) / 7
-      shades.forEach((shade, index) => box(ctx, 34 + index * (sw + 5), y + 46 + (shade === selected ? 0 : 9), sw, shade === selected ? 64 : 46, 5, shade.hex))
-      y += 135
+      const gradient = ctx.createLinearGradient(34, 0, w - 34, 0)
+      mockEyePalette.forEach((shade, index) => gradient.addColorStop(index / (mockEyePalette.length - 1), shade.hex))
+      box(ctx, 34, y + 48, w - 68, 18, 5, gradient)
+      const position = mockEyePalette.indexOf(selected) / (mockEyePalette.length - 1)
+      const px = 34 + (w - 68) * .94 * position
+      box(ctx, px, y + 44, 14, 26, 9, '#ffffff70')
+      ctx.strokeStyle = '#ffffffcc'; ctx.lineWidth = .7; ctx.stroke()
+      y += 101
     }
   }
-  const tileWidth = (w - 46) / 2
-  category.features.forEach((feature, index) => {
-    const left = 18 + index % 2 * (tileWidth + 10)
-    const top = y + Math.floor(index / 2) * 164
-    card(ctx, left, top, tileWidth, 154, 18)
-    label(ctx, feature.label, left + 13, top + 13, false, muted, tileWidth - 26)
-    const quantitative = /^\s*\d+(?:\.\d+)?\s*$/.test(feature.value) || /\d+(?:\.\d+)?\s*(?:\/\s*\d+|%|°|x|×)/i.test(feature.value)
-    let size = quantitative ? 34 : 23
-    const lineHeight = quantitative ? 36 : 27
+  const layout = mockFeatureLayout(category)
+  for (const { feature, x, top, width: tileWidth, height: tileHeight } of layout.tiles) {
+    const left = x, cardTop = y + top
+    card(ctx, left, cardTop, tileWidth, tileHeight, 18)
+    label(ctx, feature.label, left + 13, cardTop + 13, false, muted, tileWidth - 26)
+    const visual = feature.visual ?? 'Text'
+    if (visual !== 'Text') drawMetricVisual(ctx, feature, left + 13, cardTop + 38, tileWidth - 26, tileHeight - 82)
+    let size = visual === 'Orbit' ? 19 : 23
     let lines = wrap(ctx, feature.value, tileWidth - 26, size, 600)
-    while (lines.length > 3 && size > (quantitative ? 25 : 17)) lines = wrap(ctx, feature.value, tileWidth - 26, --size, 600)
-    const valueTop = top + 154 - 13 - Math.min(3, lines.length) * lineHeight
-    if (feature.measurement) text(ctx, feature.measurement, left + 13, valueTop - 21, 13, 400, muted, false, tileWidth - 26, 'Courier')
-    lines.slice(0, 3).forEach((line, i) => text(ctx, line, left + 13, valueTop + i * lineHeight, size, 600))
-  })
-  y += Math.ceil(category.features.length / 2) * 164 + 22
+    while (lines.length > 3 && size > 16) lines = wrap(ctx, feature.value, tileWidth - 26, --size, 600)
+    lines.slice(0, 3).forEach((line, i) => text(ctx, line, left + 13, cardTop + tileHeight - 14 - Math.min(3, lines.length) * 26 + i * 26, size, 600))
+    if (feature.visual === 'Rail' && feature.grade != null) text(ctx, `${feature.grade.toFixed(1)} / 10`, left + tileWidth - 13, cardTop + tileHeight - 40, size, 500, muted, true)
+  }
+  y += layout.height + 22
   text(ctx, 'Growth Opportunities', 18, y, 25, 700)
   y += 40
   card(ctx, 18, y, w - 36, 103, 22)
@@ -109,7 +105,10 @@ export function drawMockReport(ctx: CanvasRenderingContext2D, slide: ContentSlid
   text(ctx, 'Potential Score', 80, y + 22, 19, 700)
   text(ctx, `${Number(slide.potentialScore).toFixed(1)}/10`, w - 34, y + 22, 18, 600, muted, true)
   box(ctx, 34, y + 64, w - 68, 7, 4, 'rgba(7,7,9,.08)')
-  box(ctx, 34, y + 64, (w - 68) * Math.max(.08, Number(slide.potentialScore) / 10), 7, 4, '#8df0a8')
+  const potentialGradient = ctx.createLinearGradient(34, 0, w - 34, 0)
+  potentialGradient.addColorStop(0, '#53A553'); potentialGradient.addColorStop(1, '#00A8EF')
+  box(ctx, 34, y + 64, (w - 68) * Math.max(.08, Number(slide.potentialScore) / 10), 7, 4, potentialGradient)
+  for (const score of [slide.currentScore, slide.potentialScore]) box(ctx, 34 + (w - 68) * Number(score) / 10 - 4, y + 59, 8, 17, 4, '#ffffffcc')
   y += 115
   const blocks = growthBlocks(category)
   const blockHeights = blocks.map(block => wrap(ctx, block.value, w - 68, block.size, block.weight).length * block.lineHeight + (block.heading ? 27 : 0))
@@ -126,7 +125,9 @@ export function drawMockReport(ctx: CanvasRenderingContext2D, slide: ContentSlid
       if (block.score) text(ctx, block.score, w - 34, blockY + 2, 13, 400, muted, true)
       blockY += 27
     }
-    paragraph(ctx, block.value, 34, blockY, w - 68, block.size, block.lineHeight, muted)
+    const todo = block.value.startsWith('•  ')
+    if (todo) { box(ctx, 34, blockY + 2, 15, 15, 4, '#fff'); ctx.strokeStyle = '#d4d4d8'; ctx.lineWidth = 1; ctx.stroke() }
+    paragraph(ctx, todo ? block.value.slice(3) : block.value, todo ? 59 : 34, blockY, todo ? w - 93 : w - 68, block.size, block.lineHeight, muted)
     blockY += blockHeights[index] - (block.heading ? 27 : 0) + block.gap
   })
   y += actionHeight
@@ -145,12 +146,8 @@ export function drawMockReport(ctx: CanvasRenderingContext2D, slide: ContentSlid
 
 function categorySummaryLayout(ctx: CanvasRenderingContext2D, category: ReportCategory) {
   const score = `${category.score.toFixed(1)} / 10`
-  ctx.font = '500 22px Courier'
-  const width = mockReportSize.width - 84 - ctx.measureText(score).width
-  const title = wrap(ctx, category.title, width, 32, 600)
-  const subtitle = wrap(ctx, category.subtitle, width, 13, 400)
-  const height = category.id === 'overall' ? 0 : Math.max(116, 44 + title.length * 35 + 8 + subtitle.length * 18)
-  return { title, subtitle, height, score }
+  const title = wrap(ctx, category.title, 290, 32, 600)
+  return { title, subtitle: [] as string[], height: category.id === 'overall' ? 0 : 38, score }
 }
 
 type GrowthBlock = { value: string; size: number; lineHeight: number; weight: number; gap: number; heading?: string; score?: string }
@@ -176,8 +173,8 @@ export function mockReportScrollMax(category: ReportCategory) {
   if (!ctx) return 0
   const actionHeight = 82 + growthBlocks(category).reduce((sum, block) => sum + wrap(ctx, block.value, mockReportSize.width - 68, block.size, block.weight).length * block.lineHeight + (block.heading ? 27 : 0) + block.gap, 0)
   const contentHeight = mockReportHeroHeight + 36 + (category.id === 'overall' ? 0 : categorySummaryLayout(ctx, category).height + 10)
-    + (category.id === 'eyes' && category.eyeColor ? 135 : 0)
-    + Math.ceil(category.features.length / 2) * 164 + 22 + 40 + 115 + actionHeight
+    + (category.id === 'eyes' && category.eyeColor ? 101 : 0)
+    + mockFeatureLayout(category).height + 22 + 40 + 115 + actionHeight
     + (['skin-age', 'sun-damage'].includes(category.id) ? 168 : 0) + 132
   return Math.max(0, Math.ceil(contentHeight - mockReportSize.height))
 }
@@ -195,12 +192,12 @@ function drawChrome(ctx: CanvasRenderingContext2D, category: ReportCategory) {
   ctx.font = `600 14px ${sans}`
   const pillWidth = ctx.measureText(title).width + 62
   box(ctx, 18, 61, pillWidth, 38, 19, 'rgba(255,255,255,.84)')
-  symbol(ctx, categorySymbolIds.indexOf(category.id), 30, 72, 16)
+  symbol(ctx, categorySymbolIds.indexOf(({ brows: 'eyes', cheeks: 'face-shape', proportions: 'symmetry', skin: 'skin-age', hair: 'face-shape', ears: 'face-shape' } as Record<string, string>)[category.id] ?? category.id), 30, 72, 16)
   text(ctx, title, 54, 72, 14, 600)
   symbol(ctx, 15, 18 + pillWidth - 25, 72, 15)
   box(ctx, w - 46, 61, 38, 38, 19, 'rgba(255,255,255,.82)')
   text(ctx, '×', w - 35, 66, 23, 500)
-  fade(ctx, h - 176, 92)
+  fade(ctx, h - 140, 56)
   ctx.fillStyle = paper; ctx.fillRect(0, h - 84, w, 84)
   box(ctx, 18, h - 84, w - 36, 58, 29, ink)
   text(ctx, 'SHARE YOUR SCORE', w / 2 + 12, h - 63, 15, 600, paper, false, undefined, sans, 'center')
@@ -233,7 +230,7 @@ function symbol(ctx: CanvasRenderingContext2D, index: number, x: number, y: numb
   if (symbols) ctx.drawImage(white ? symbols.white : symbols.ink, index * 96, 0, 96, 96, x - size * .1, y - size * .1, size * 1.2, size * 1.2)
 }
 
-function box(ctx: CanvasRenderingContext2D, x: number, y: number, width: number, height: number, radius: number, fill: string) {
+function box(ctx: CanvasRenderingContext2D, x: number, y: number, width: number, height: number, radius: number, fill: string | CanvasGradient) {
   ctx.beginPath(); ctx.roundRect(x, y, width, height, radius); ctx.fillStyle = fill; ctx.fill()
 }
 function card(ctx: CanvasRenderingContext2D, x: number, y: number, width: number, height: number, radius: number) {
@@ -263,6 +260,59 @@ function paragraph(ctx: CanvasRenderingContext2D, value: string, x: number, y: n
 }
 function fade(ctx: CanvasRenderingContext2D, y: number, height: number) {
   const gradient = ctx.createLinearGradient(0, y, 0, y + height)
-  gradient.addColorStop(0, 'rgba(247,247,247,0)'); gradient.addColorStop(1, paper)
+  for (let i = 0; i <= 12; i++) {
+    const position = i / 12, opacity = (1 - Math.cos(position * Math.PI)) / 2
+    gradient.addColorStop(position, `rgba(247,247,247,${opacity})`)
+  }
   ctx.fillStyle = gradient; ctx.fillRect(0, y, mockReportSize.width, height)
+}
+
+function mockFeatureLayout(category: ReportCategory) {
+  const isFull = (feature: ReportCategory['features'][number]) => feature.visual === 'Capsule' || ['proportions.fifths','proportions.width-hierarchy','proportions.vertical-alignment'].includes(feature.id ?? '') || feature.value.length > 28
+  const full = category.features.filter(isFull)
+  const orbits = category.features.filter(feature => !isFull(feature) && feature.visual === 'Orbit')
+  const remaining = category.features.filter(feature => !isFull(feature) && feature.visual !== 'Orbit')
+  if (orbits.length % 2) full.push(orbits.pop()!)
+  if (remaining.length % 2) full.push(remaining.pop()!)
+  let top = 0
+  const tiles: Array<{ feature: ReportCategory['features'][number]; x: number; top: number; width: number; height: number }> = []
+  for (const feature of full) {
+    const height = feature.visual === 'Orbit' ? 176 : feature.visual !== 'Text' ? 145 : 138
+    tiles.push({ feature, x: 18, top, width: 354, height }); top += height + 10
+  }
+  const halves = [...orbits, ...remaining]
+  for (let index = 0; index < halves.length; index += 2) {
+    const height = halves[index].visual === 'Orbit' ? 176 : 138
+    halves.slice(index,index + 2).forEach((feature, column) => tiles.push({ feature, x: 18 + column * 182, top, width: 172, height }))
+    top += height + 10
+  }
+  return { tiles, height: top }
+}
+function drawMetricVisual(ctx: CanvasRenderingContext2D, feature: ReportCategory['features'][number], x: number, y: number, width: number, height: number) {
+  const quality = feature.visual === 'Rail' || feature.scale === 'quality'
+  const stops: Array<[number, string]> = quality ? [[0,'#F33232'],[.32,'#FF6800'],[.64,'#53A553'],[1,'#00A8EF']] : [[0,'#F33232'],[.18,'#FF6800'],[.35,'#53A553'],[.5,'#00A8EF'],[.65,'#53A553'],[.82,'#FF6800'],[1,'#F33232']]
+  const gradient = ctx.createLinearGradient(x, y, x + width, y); stops.forEach(([position,color]) => gradient.addColorStop(position,color))
+  const positions = feature.visual === 'Rail' ? [(feature.grade ?? 7.4) / 10] : feature.positions ?? [.5]
+  ctx.save()
+  if (feature.visual === 'Orbit') {
+    const radius = Math.min(width * .43, height - 14), cx = x + width / 2, cy = y + (height + radius) / 2
+    ctx.beginPath(); ctx.arc(cx, cy, radius, Math.PI, Math.PI * 2)
+    ctx.strokeStyle = gradient; ctx.lineWidth = 14; ctx.lineCap = 'round'; ctx.shadowColor = '#00A8EF55'; ctx.shadowBlur = 10; ctx.globalAlpha = .25; ctx.stroke()
+    ctx.shadowBlur = 0; ctx.globalAlpha = .55; ctx.lineWidth = 9; ctx.stroke()
+    ctx.shadowBlur = 0; ctx.globalAlpha = .75; ctx.lineWidth = 1.3; ctx.strokeStyle = 'white'; ctx.stroke()
+    ctx.beginPath(); ctx.arc(cx, cy, 2, 0, Math.PI * 2); ctx.fillStyle = '#71717a'; ctx.fill()
+    for (const position of positions) {
+      const angle = Math.PI * (1 + Math.max(0,Math.min(1,position))), px = cx + radius * Math.cos(angle), py = cy + radius * Math.sin(angle)
+      ctx.beginPath(); ctx.moveTo(cx,cy); ctx.lineTo(px,py); ctx.lineWidth = 1; ctx.strokeStyle = '#71717a55'; ctx.stroke()
+      ctx.beginPath(); ctx.arc(px,py,7,0,Math.PI*2); ctx.fillStyle = '#ffffffcc'; ctx.fill(); ctx.strokeStyle = 'white'; ctx.stroke()
+    }
+  } else {
+    const cy = y + height / 2
+    box(ctx, x, cy - 4, width, 8, 4, '#e4e4e7')
+    ctx.globalAlpha = .65; ctx.shadowColor = '#00A8EF66'; ctx.shadowBlur = 5
+    box(ctx, x, cy - 4, feature.visual === 'Rail' ? width * positions[0] : width, 8, 4, gradient)
+    ctx.globalAlpha = 1; ctx.shadowBlur = 0
+    positions.forEach(position => box(ctx, x + width * Math.max(0,Math.min(1,position)) - 4, cy - 8, 8, 16, 4, '#ffffffdd'))
+  }
+  ctx.restore()
 }
