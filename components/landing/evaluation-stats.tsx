@@ -4,8 +4,8 @@ import { useInView, useReducedMotion } from 'motion/react'
 import { useRef } from 'react'
 
 const stats = [
-  { value: 10, label: 'stats.categories', suffix: '' },
-  { value: 40, label: 'stats.metrics', suffix: '+' },
+  { value: 13, label: 'stats.categories', suffix: '' },
+  { value: 110, label: 'stats.metrics', suffix: '+' },
   { value: 200, label: 'stats.anchors', suffix: '+' },
 ] as const
 const timing = { duration: 1600, easing: 'cubic-bezier(0.16, 1, 0.3, 1)' }

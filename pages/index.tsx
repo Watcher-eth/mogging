@@ -8,7 +8,6 @@ import Link from "next/link";
 import { ArrowRight, Plus } from "lucide-react";
 import {
   ScanPreview,
-  CameraPreview,
   EvaluationPreview,
   ProtocolPreview,
   LeaderboardPreview,
@@ -16,6 +15,7 @@ import {
 import { AnimatePresence, LazyMotion, domAnimation, useReducedMotion } from "motion/react";
 import * as m from "motion/react-m";
 import { WebCheckout } from "@/components/landing/web-checkout";
+import { AnalysisStory } from "@/components/landing/analysis-story";
 import { EvaluationStats } from "@/components/landing/evaluation-stats";
 import { useState } from "react";
 import { SeoHead } from "@/components/app/seo-head";
@@ -42,7 +42,7 @@ export default function HomePage(props: Props) {
 function NewHomepage({ assignment, preview }: Props) {
   const { t } = useTranslation();
   const reduced = useReducedMotion();
-  const entrance = { initial: { opacity: reduced ? 1 : 0, y: reduced ? 0 : 24 }, whileInView: { opacity: 1, y: 0 }, viewport: { once: true, amount: .12 }, transition: { duration: reduced ? 0 : .75, ease: [.16, 1, .3, 1] as [number, number, number, number] } };
+  const entrance = { initial: { opacity: reduced ? 1 : 0, y: reduced ? 0 : 24 }, whileInView: { opacity: 1, y: 0 }, viewport: { once: true, amount: .12 }, transition: { duration: reduced ? 0 : .4, ease: [.16, 1, .3, 1] as [number, number, number, number] } };
   const { sections, trackDestination } = useLandingTracking(assignment, preview);
 
   function downloadButton(placement: string, compact = false) {
@@ -119,6 +119,7 @@ function NewHomepage({ assignment, preview }: Props) {
         </m.section>
 
         <div ref={sections}>
+          <AnalysisStory />
           <m.section {...entrance}
             data-landing-section="features"
             aria-labelledby="features-title"
@@ -167,63 +168,6 @@ function NewHomepage({ assignment, preview }: Props) {
               </div>
               <div className="order-1 flex justify-center lg:order-2 lg:justify-end">
                 <ProtocolPreview />
-              </div>
-            </div>
-          </m.section>
-
-          <m.section {...entrance}
-            data-landing-section="how_it_works"
-            aria-labelledby="how-title"
-            className="bg-[#f7f7f8] py-14 sm:py-20"
-          >
-            <div className="mx-auto max-w-6xl px-6 sm:px-10">
-              <h2
-                id="how-title"
-                className="text-center text-4xl font-semibold tracking-[-0.045em] sm:text-5xl"
-              >
-              {t("landing.howTitle")}
-            </h2>
-              <div className="mt-12 grid items-start gap-12 lg:grid-cols-3 lg:gap-8">
-                {[
-                  {
-                    number: "01",
-                    title: t("landing.photoTitle"),
-                    description:
-                      t("landing.photoDescription"),
-                    Preview: CameraPreview,
-                  },
-                  {
-                    number: "02",
-                    title: t("landing.scanTitle"),
-                    description: t("landing.scanDescription"),
-                    Preview: ScanPreview,
-                  },
-                  {
-                    number: "03",
-                    title: t("landing.dailyTitle"),
-                    description:
-                      t("landing.dailyDescription"),
-                    Preview: ProtocolPreview,
-                  },
-                ].map(({ number, title, description, Preview }) => (
-                  <div key={number} className="mx-auto w-full max-w-[350px]">
-                    <Preview />
-                    <div className="mt-7">
-                      <span className="text-xs font-medium tracking-widest text-zinc-400">
-                        {number}
-                      </span>
-                      <h3 className="mt-3 text-xl font-semibold tracking-tight">
-                        {title}
-                      </h3>
-                      <p className="mt-3 text-sm leading-6 text-zinc-500">
-                        {description}
-                      </p>
-                    </div>
-                  </div>
-                ))}
-              </div>
-              <div className="mt-12 text-center">
-                {downloadButton("how_it_works")}
               </div>
             </div>
           </m.section>
@@ -289,7 +233,7 @@ function LandingFaq() {
   const [openFaq, setOpenFaq] = useState<number | null>(null);
   const reduced = useReducedMotion();
   return (
-          <m.section initial={{ opacity: reduced ? 1 : 0, y: reduced ? 0 : 20 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true, amount: .2 }} transition={{ duration: reduced ? 0 : .65, ease: [.16, 1, .3, 1] }}
+          <m.section initial={{ opacity: reduced ? 1 : 0, y: reduced ? 0 : 20 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true, amount: .2 }} transition={{ duration: reduced ? 0 : .4, ease: [.16, 1, .3, 1] }}
             data-landing-section="faq"
             aria-labelledby="faq-title"
             className="mx-auto max-w-6xl border-t border-zinc-100 px-6 py-14 sm:px-10"

@@ -1,6 +1,8 @@
 import { useTranslation } from "react-i18next";
 import type { resources } from "@/lib/i18n/catalogs";
 import Image from "next/image";
+import reportDemo from "./report-demo.json";
+import { RubricVisual } from "@/components/analysis/v2/rubric-visual";
 import useSWRImmutable from "swr/immutable";
 import { apiGet } from "@/lib/api/client";
 import { AnimatePresence } from "motion/react";
@@ -19,10 +21,18 @@ import {
   ChevronUp,
   Images,
   ScanFace,
-  ArrowUpRight,
   ClipboardList,
   X,
   ChartColumn,
+  Smile,
+  Triangle,
+  Ruler,
+  Sparkles,
+  Scissors,
+  Ear,
+  FlipHorizontal2,
+  UserRound,
+  type LucideIcon,
   Share,
   Signal,
   Wifi,
@@ -116,7 +126,7 @@ function Frame({
   );
 }
 
-function Primitive({ primitive }: { primitive: ResolvedPrimitive }) {
+export function Primitive({ primitive }: { primitive: ResolvedPrimitive }) {
   const style = {
     animationDelay: `${primitive.animation?.delay ?? 0}ms`,
     animationDuration: `${primitive.animation?.duration ?? 1000}ms`,
@@ -458,14 +468,58 @@ function CameraContent({ active }: { active: boolean }) {
   );
 }
 
+const reportIcons: Record<string, LucideIcon> = {
+  overall: ChartColumn,
+  jaw: Triangle, cheeks: Smile, face: UserRound, proportions: Ruler,
+  symmetry: FlipHorizontal2, skin: Sparkles, hair: Scissors, ears: Ear,
+};
+function ReportCategoryIcon({ id }: { id: string }) {
+  const symbol = { eyes: "eye.fill", nose: "nose.fill", mouth: "mouth.fill" }[id as "eyes" | "nose" | "mouth"];
+  if (symbol) return <i className={styles.nativeSymbol} style={{ "--symbol": `url("/creator-icons/protocol/${symbol}.png")` } as CSSProperties} aria-hidden="true" />;
+  if (id === "brows") return <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" aria-hidden="true"><path d="M3 14 Q7 8 11 12 M13 12 Q17 8 21 14" /></svg>;
+  const Icon = reportIcons[id] ?? ChartColumn;
+  return <Icon size={18} strokeWidth={1.8} aria-hidden="true" />;
+}
+
 export const EvaluationPreview = memo(function EvaluationPreview() {
   const { t, i18n } = useTranslation();
+  const [completed, setCompleted] = useState<string[]>([]);
+  const [categoryId, setCategoryId] = useState("overall");
+  const [categoryMenu, setCategoryMenu] = useState(false);
+  const reportScroll = useRef<HTMLDivElement>(null);
+  const category = reportDemo.find(item => item.id === categoryId);
+  const currentScore = category?.score ?? 7.2;
+  const potentialScore = category?.potential ?? 8.5;
+  const priorities = category?.priorities ?? [
+    { id: "overall.skin", title: t("demo.skinQuality"), detail: t("demo.skinRoutine"), score: 7 },
+    { id: "overall.definition", title: t("demo.definition"), detail: t("demo.followProtocol"), score: 7.4 },
+  ];
+  const overallRubrics = [
+    { id: "overall.psl", label: t("demo.psl"), value: "5.8/8", visual: "Orbit", positions: [5.8 / 8], grade: null },
+    { id: "overall.symmetry", label: t("demo.symmetry"), value: "7.3/10", visual: "Orbit", positions: [.73], grade: null },
+    { id: "overall.eyes", label: t("demo.eyeArea"), value: "7.8/10", visual: "Text", positions: [], grade: null },
+    { id: "overall.jaw", label: t("demo.jawChin"), value: "7.4/10", visual: "Text", positions: [], grade: null },
+    { id: "overall.cheeks", label: t("demo.cheekbones"), value: "7.1/10", visual: "Text", positions: [], grade: null },
+    { id: "overall.skin", label: t("demo.skinQuality"), value: "7.0/10", visual: "Rail", positions: [], grade: 7 },
+  ];
+  const categoryCards = (category?.rubrics ?? overallRubrics).map(rubric => ({ rubric, full: rubric.visual === "Capsule" || rubric.value.length > 22 }));
+  const pairedCards = categoryCards.filter(card => !card.full);
+  if (pairedCards.length % 2) pairedCards[0].full = true;
+  const orderedCards = [...categoryCards.filter(card => card.full), ...categoryCards.filter(card => !card.full)];
+  const geometry = categoryId === "overall" ? overallGeometry : resolvePreviewOverlay(reportOverlayPresets[categoryId === "face" ? "face-shape" : categoryId] ?? reportOverlayPresets.overall, 464);
+  const selectCategory = (id: string) => {
+    setCategoryId(id);
+    setCategoryMenu(false);
+    reportScroll.current?.scrollTo({ top: 0 });
+  };
+  const toggleTask = (task: string) => setCompleted(current => current.includes(task) ? current.filter(item => item !== task) : [...current, task]);
   return (
     <Frame label={t("demo.evaluationFrame")}>
       {() => (
         <>
           <div
             className={styles.evaluationContent}
+            ref={reportScroll}
             tabIndex={0}
             aria-label={t("demo.scrollEvaluation")}
           >
@@ -482,15 +536,15 @@ export const EvaluationPreview = memo(function EvaluationPreview() {
                 viewBox="0 0 390 464"
                 aria-hidden="true"
               >
-                {overallGeometry.map((p) => (
+                {geometry.map((p) => (
                   <Primitive key={p.id} primitive={p} />
                 ))}
               </svg>
-              {overallGeometry.map((primitive) =>
+              {geometry.map((primitive) =>
                 primitive.kind === "label" ? (
                   <PreviewLabel
                     key={primitive.id}
-                    label={{ ...primitive, value: "[ 5.8 / 8 ]" }}
+                    label={categoryId === "overall" ? { ...primitive, value: "[ 5.8 / 8 ]" } : primitive}
                     width={390}
                     height={464}
                   />
@@ -501,34 +555,25 @@ export const EvaluationPreview = memo(function EvaluationPreview() {
             <div className={styles.report}>
               <div className={styles.scores}>
                 <div>
-                  <small>{t("demo.overallScore")}</small>
+                  <small>{category?.title ?? t("demo.overallScore")}</small>
                   <strong>
-                    {formatPreviewScore("7.2", i18n.language)}<em>/ 10</em>
+                    {formatPreviewScore(`${currentScore}`, i18n.language)}<em>/ 10</em>
                   </strong>
                 </div>
                 <div>
                   <small>{t("demo.potential")}</small>
                   <strong className={styles.potentialScore}>
-                    {formatPreviewScore("8.5", i18n.language)}<em>/ 10</em>
+                    {formatPreviewScore(`${potentialScore}`, i18n.language)}<em>/ 10</em>
                   </strong>
                 </div>
               </div>
-              <div className={styles.categories}>
-                {([
-                  ["demo.eyeArea", "7.8/10"],
-                  ["demo.jawChin", "7.4/10"],
-                  ["demo.cheekbones", "7.1/10"],
-                  ["demo.psl", "5.8/8"],
-                  ["demo.symmetry", "7.3/10"],
-                  ["demo.skinQuality", "7.0/10"],
-                ] as const).map(([name, score], index) => (
-                  <div
-                    key={name}
-                    className={styles.category}
-                    style={{ animationDelay: `${260 + index * 35}ms` }}
-                  >
-                    <span>{t(name)}</span>
-                    <strong>{formatPreviewScore(score, i18n.language)}</strong>
+              {category ? <div className={styles.categoryHeading}><span>{category.title}</span><strong>{formatPreviewScore(`${category.score}/10`, i18n.language)}</strong></div> : null}
+              <div className={styles.categories} key={categoryId}>
+                {orderedCards.map(({ rubric, full }) => (
+                  <div key={rubric.id} className={`${styles.category} ${rubric.visual === "Orbit" ? styles.dialCard : ""} ${full ? styles.fullCard : ""}`}>
+                    <span>{rubric.label}</span>
+                    {rubric.visual !== "Text" ? <RubricVisual kind={rubric.visual} scale={categoryId === "overall" ? "quality" : "range"} positions={rubric.positions} grade={rubric.grade} /> : null}
+                    <strong>{category ? rubric.value : formatPreviewScore(rubric.value, i18n.language)}</strong>
                   </div>
                 ))}
               </div>
@@ -536,15 +581,16 @@ export const EvaluationPreview = memo(function EvaluationPreview() {
                 <h4>{t("demo.growth")}</h4>
                 <div className={styles.opportunity}>
                   <div>
-                    <span>
-                      <ArrowUpRight size={17} />
-                    </span>
                     <strong>{t("demo.potentialScore")}</strong>
-                    <b>{formatPreviewScore("8.5/10", i18n.language)}</b>
+                    <b>{formatPreviewScore(`${potentialScore}/10`, i18n.language)}</b>
                   </div>
-                  <i>
-                    <b />
-                  </i>
+                  <div className={styles.potentialTrack} aria-hidden="true">
+                    <i style={{ width: `${potentialScore * 10}%` }} /><span style={{ left: `${currentScore * 10}%` }} /><span style={{ left: `${potentialScore * 10}%` }} />
+                  </div>
+                  <div className={styles.potentialLegend}>
+                    <span>{formatPreviewScore(`${currentScore}`, i18n.language)} · {category?.title ?? t("demo.overallScore")}</span>
+                    <span>{formatPreviewScore(`${potentialScore}`, i18n.language)} · {t("demo.potential")}</span>
+                  </div>
                 </div>
                 <div className={styles.opportunity}>
                   <div>
@@ -557,35 +603,30 @@ export const EvaluationPreview = memo(function EvaluationPreview() {
                   <p>
                     {t("demo.priorityDescription")}
                   </p>
-                  <div className={styles.priority}>
-                    <div>
-                      <b>1.</b>
-                      <strong>{t("demo.skinQuality")}</strong>
-                      <span>{formatPreviewScore("7.0/10", i18n.language)}</span>
+                  {priorities.map(task => (
+                    <div key={task.id} className={styles.priority} data-completed={completed.includes(task.id)}>
+                      <div>
+                        <button type="button" className={styles.todo} aria-label={task.detail} aria-pressed={completed.includes(task.id)} onClick={() => toggleTask(task.id)}>{completed.includes(task.id) ? <Check size={14} /> : null}</button>
+                        <strong>{task.title}</strong>
+                        <span>{formatPreviewScore(`${task.score}/10`, i18n.language)}</span>
+                      </div>
+                      <p>{task.detail}</p>
                     </div>
-                    <p>{t("demo.skinRoutine")}</p>
-                  </div>
-                  <div className={styles.priority}>
-                    <div>
-                      <b>2.</b>
-                      <strong>{t("demo.definition")}</strong>
-                      <span>{formatPreviewScore("7.4/10", i18n.language)}</span>
-                    </div>
-                    <p>
-                      {t("demo.followProtocol")}
-                    </p>
-                  </div>
+                  ))}
                 </div>
               </div>
             </div>
           </div>
           <div className={styles.reportChrome}>
-            <span>
-              <ChartColumn size={16} strokeWidth={2} />
-              {t("demo.overall")}
+            <button type="button" className={styles.categoryTrigger} aria-label="Choose report category" aria-expanded={categoryMenu} aria-controls="landing-report-categories" onClick={() => setCategoryMenu(open => !open)}>
+              <ReportCategoryIcon id={categoryId} />
+              {category?.title ?? t("demo.overall")}
               <ChevronDown size={15} />
-            </span>
-            <span>×</span>
+            </button>
+            {categoryMenu ? <div id="landing-report-categories" className={styles.categoryMenu} aria-label="Report categories">
+              {[{ id: "overall", title: t("demo.overall") }, ...reportDemo].map(item => <button key={item.id} type="button" aria-pressed={categoryId === item.id} onClick={() => selectCategory(item.id)}><ReportCategoryIcon id={item.id} /><span>{item.title}</span>{categoryId === item.id ? <Check size={14} /> : null}</button>)}
+            </div> : null}
+            <span className={styles.reportClose} aria-hidden="true"><X size={21} strokeWidth={2} /></span>
           </div>
           <div className={styles.shareDock}>
             <div className={styles.share}>
