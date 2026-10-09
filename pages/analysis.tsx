@@ -1,3 +1,5 @@
+import type { WebReport } from '@/lib/analysis-v2/report-schema'
+import { reportCategoryDefaults as reportCategories } from '@/components/analysis/report-category-defaults'
 import { pslToOverallScore } from '@/lib/analysis/score-scale'
 import { trackWebEvent } from '@/lib/analytics/client'
 import { AnimatePresence, motion } from 'motion/react'
@@ -52,6 +54,8 @@ import { TextShimmer } from '@/components/core/text-shimmer'
 
 const ScanImagePanel = dynamic(() => import('@/components/analysis/scan-image-panel').then(module => module.ScanImagePanel))
 
+const WebAnalysisReport = dynamic(() => import('@/components/analysis/v2/web-analysis-report').then(module => module.WebAnalysisReport))
+
 const AnalysisReport = dynamic(() => import('@/components/analysis/analysis-report').then((module) => module.AnalysisReport))
 const ReportActions = dynamic(() => import('@/components/analysis/analysis-report').then((module) => module.ReportActions))
 const CameraSheet = dynamic(() => import('@/components/analysis/camera-sheet').then((module) => module.CameraSheet))
@@ -85,6 +89,7 @@ type AnalysisResponse = {
 
 type AnalysisMetrics = Record<string, unknown> & {
   report?: AnalysisReport | null
+  webReportV2?: WebReport | null
   metricScores?: Array<{
     name: string
     score: number
@@ -198,142 +203,6 @@ const analysisTimeline = [
   {
     title: 'Composing final report',
     substeps: ['Calibrating PSL estimate', 'Writing evidence-weighted summary', 'Preparing shareable result'],
-  },
-]
-type ReportFeature = {
-  label: string
-  value: string
-  measurement?: string
-}
-
-type ReportCategory = {
-  id: string
-  title: string
-  subtitle: string
-  scoreLabel: string
-  features: ReportFeature[]
-}
-
-const reportCategories: ReportCategory[] = [
-  {
-    id: 'eyes',
-    title: 'Eyes',
-    subtitle: 'Periocular balance and eye-line structure',
-    scoreLabel: 'Eye area',
-    features: [
-      { label: 'Canthal tilt', value: 'Positive' },
-      { label: 'Spacing', value: 'balanced width' },
-      { label: 'Upper lid', value: 'defined support' },
-      { label: 'Periocular match', value: 'strong signal' },
-    ],
-  },
-  {
-    id: 'nose',
-    title: 'Nose',
-    subtitle: 'Bridge alignment and central facial axis',
-    scoreLabel: 'Nasal balance',
-    features: [
-      { label: 'Bridge', value: 'straight contour' },
-      { label: 'Midline drift', value: 'minimal drift' },
-      { label: 'Width', value: 'moderate width' },
-      { label: 'Bridge projection', value: 'clear contour' },
-    ],
-  },
-  {
-    id: 'mouth',
-    title: 'Mouth',
-    subtitle: 'Lip shape, width, and lower-third fit',
-    scoreLabel: 'Mouth harmony',
-    features: [
-      { label: 'Width', value: 'proportional width' },
-      { label: 'Cupid bow', value: 'visible contour' },
-      { label: 'Lower lip', value: 'balanced fullness' },
-      { label: 'Mouth line tilt', value: 'near level' },
-    ],
-  },
-  {
-    id: 'jaw',
-    title: 'Jaw',
-    subtitle: 'Mandible definition and chin support',
-    scoreLabel: 'Jawline',
-    features: [
-      { label: 'Gonial angle', value: 'defined angle' },
-      { label: 'Chin height', value: 'strong support' },
-      { label: 'Mandible', value: 'clear edge definition' },
-      { label: 'Neck transition', value: 'clear contour' },
-    ],
-  },
-  {
-    id: 'dimorphism',
-    title: 'Dimorphism',
-    subtitle: 'Sex-typical cues weighted against harmony',
-    scoreLabel: 'Dimorphism',
-    features: [
-      { label: 'Brow frame', value: 'moderate structure' },
-      { label: 'Midface', value: 'refined proportion' },
-      { label: 'Lower third', value: 'structured contour' },
-      { label: 'Soft tissue', value: 'balanced fullness' },
-    ],
-  },
-  {
-    id: 'face-shape',
-    title: 'Face shape',
-    subtitle: 'Frame, thirds, and silhouette continuity',
-    scoreLabel: 'Face shape',
-    features: [
-      { label: 'Outline', value: 'oval tendency' },
-      { label: 'Upper third', value: 'balanced thirds' },
-      { label: 'Midface', value: 'compact proportion' },
-      { label: 'Lower third', value: 'defined frame' },
-    ],
-  },
-  {
-    id: 'facial-fat',
-    title: 'Soft tissue',
-    subtitle: 'Visible facial fullness',
-    scoreLabel: 'Soft tissue',
-    features: [
-      { label: 'Cheeks', value: 'balanced fullness' },
-      { label: 'Jaw blur', value: 'low blur' },
-      { label: 'Under-chin', value: 'lean contour' },
-      { label: 'Fullness cue', value: 'low visible fullness' },
-    ],
-  },
-  {
-    id: 'biological-age',
-    title: 'Human age',
-    subtitle: 'Visible age and texture cues',
-    scoreLabel: 'Age signal',
-    features: [
-      { label: 'Texture age cue', value: 'low visible texture' },
-      { label: 'Under-eye cue', value: 'low shadowing' },
-      { label: 'Facial fullness', value: 'youthful fullness' },
-      { label: 'Presentation', value: 'clear capture' },
-    ],
-  },
-  {
-    id: 'symmetry',
-    title: 'Symmetry',
-    subtitle: 'Left-right balance across visible landmarks',
-    scoreLabel: 'Symmetry',
-    features: [
-      { label: 'Eye line tilt', value: 'near level' },
-      { label: 'Nose midline', value: 'minimal drift' },
-      { label: 'Mouth line tilt', value: 'near level' },
-      { label: 'Chin axis', value: 'minor drift' },
-    ],
-  },
-  {
-    id: 'overall',
-    title: 'Overall',
-    subtitle: 'Final calibrated assessment',
-    scoreLabel: 'Overall score',
-    features: [
-      { label: 'Harmony', value: 'strong signal' },
-      { label: 'Structure', value: 'strong signal' },
-      { label: 'Balance', value: 'consistent baseline' },
-      { label: 'Percentile', value: 'upper range' },
-    ],
   },
 ]
 export default function AnalysisPage() {
@@ -495,7 +364,7 @@ export default function AnalysisPage() {
 
       for (const [index, image] of draftImages.entries()) {
         setProgress(Math.round(30 + (index / draftImages.length) * 62))
-        const result = await apiPost<AnalysisResponse>('/api/analyze', {
+        const result = await apiPost<AnalysisResponse>('/api/web/analyze', {
           imageData: image.dataUrl,
           gender,
           photoType: 'face',
@@ -503,9 +372,11 @@ export default function AnalysisPage() {
           hairColor: image.hairColor ?? null,
           skinColor: image.skinColor ?? null,
           landmarks: image.landmarks ?? null,
+          mesh: image.mesh ?? null,
         }, {
           headers: buildPaidAnalysisHeaders(paymentInstallId),
         })
+        if (result.analysis.status !== 'complete') throw new Error(result.analysis.failureReason ?? 'Unable to complete this analysis. Please retry.')
         analysisResults.push(result)
       }
 
@@ -517,7 +388,7 @@ export default function AnalysisPage() {
     } catch (analysisError) {
       trackWebEvent('evaluation_failed', { attempt_id: attemptId, flow_id: analyticsFlow.current, duration_ms: Date.now() - analyticsStarted, reason_code: 'request_failed', surface: 'web_analysis' })
       setStep('actual-analysis')
-      setError(analysisError instanceof ApiClientError ? analysisError.message : 'Analysis failed')
+      setError(analysisError instanceof Error ? analysisError.message : 'Analysis failed')
     }
   }
 
@@ -578,7 +449,7 @@ export default function AnalysisPage() {
       const analysisResults: AnalysisResponse[] = []
       for (const [index, image] of draft.images.entries()) {
         setProgress(Math.round(28 + (index / draft.images.length) * 62))
-        const result = await apiPost<AnalysisResponse>('/api/analyze', {
+        const result = await apiPost<AnalysisResponse>('/api/web/analyze', {
           imageData: image.dataUrl,
           gender: draft.gender,
           photoType: 'face',
@@ -586,9 +457,11 @@ export default function AnalysisPage() {
           hairColor: image.hairColor ?? null,
           skinColor: image.skinColor ?? null,
           landmarks: image.landmarks ?? null,
+          mesh: image.mesh ?? null,
         }, {
           headers: buildPaidAnalysisHeaders(paymentInstallId),
         })
+        if (result.analysis.status !== 'complete') throw new Error(result.analysis.failureReason ?? 'Unable to complete this analysis. Please retry.')
         analysisResults.push(result)
       }
 
@@ -599,7 +472,7 @@ export default function AnalysisPage() {
       void router.replace('/analysis', undefined, { shallow: true })
     } catch (analysisError) {
       setStep('actual-analysis')
-      setError(analysisError instanceof ApiClientError ? analysisError.message : 'Analysis failed after payment')
+      setError(analysisError instanceof Error ? analysisError.message : 'Analysis failed after payment')
     }
   }, [router])
 
@@ -722,18 +595,19 @@ export default function AnalysisPage() {
 
   async function enrichImageLandmarks(image: AnalysisDraftImage) {
     try {
-      const [{ extractFaceLandmarksFromDataUrl }, { inferHairColorFromDataUrl, inferSkinColorFromDataUrl }] = await Promise.all([
+      const [{ detectWebAnalysisEvidence }, { inferHairColorFromDataUrl, inferSkinColorFromDataUrl }] = await Promise.all([
         import('@/lib/client/faceLandmarks'),
         import('@/lib/client/appearance'),
       ])
-      const landmarks = await extractFaceLandmarksFromDataUrl(image.dataUrl)
+      const { detection, mesh } = await detectWebAnalysisEvidence(image.dataUrl)
+      const landmarks = detection.status === 'detected' ? detection.landmarks : null
       const [hairColor, skinColor] = await Promise.all([
         inferHairColorFromDataUrl(image.dataUrl, landmarks),
         inferSkinColorFromDataUrl(image.dataUrl, landmarks),
       ])
 
       setImages((current) => current.map((currentImage) => (
-        currentImage.id === image.id ? { ...currentImage, hairColor, skinColor, landmarks } : currentImage
+        currentImage.id === image.id ? { ...currentImage, hairColor, skinColor, landmarks, mesh } : currentImage
       )))
     } catch {
       const { inferHairColorFromDataUrl } = await import('@/lib/client/appearance')
@@ -1451,6 +1325,11 @@ function ResultsStep({
       score: getReportCategoryScore(category.id, primaryResult),
     }
   })
+  if (primaryResult?.analysis.metrics.webReportV2?.version === 2) {
+    return <WebAnalysisReport report={primaryResult.analysis.metrics.webReportV2} imageSrc={primaryResult.photo.imageUrl} landmarks={landmarks} pslScore={primaryScore ?? 1}>
+      <ReportActions battleOptOut={battleOptOut} battleOptOutSaving={battleOptOutSaving} score={primaryResult.analysis.metrics.webReportV2.overallScore} onBattleOptOutChange={onBattleOptOutChange} onOpenShare={onOpenShare} onReset={onReset} />
+    </WebAnalysisReport>
+  }
   return (
     <AnalysisReport categories={categories} imageSrc={primaryResult?.photo.imageUrl ?? previewPhotoUrl} landmarks={landmarks} score={score} pslScore={primaryScore}>
       <ReportActions battleOptOut={battleOptOut} battleOptOutSaving={battleOptOutSaving} score={score} onBattleOptOutChange={onBattleOptOutChange} onOpenShare={onOpenShare} onReset={onReset} />

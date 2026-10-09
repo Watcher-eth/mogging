@@ -26,7 +26,7 @@ export function createReportOverlay(slide: ContentSlide, image: GeneratorImage, 
   return { size, primitives, dots, value: `${score.trim() || '—'} / ${categoryScoreMax(slide.categoryId)}` }
 }
 
-export type ReportOverlay = Omit<ReturnType<typeof createReportOverlay>, 'value'> & { value?: string; labelLayout?: 'mobile'; labelAppearance?: 'scan' }
+export type ReportOverlay = Omit<ReturnType<typeof createReportOverlay>, 'value'> & { value?: string; labelLayout?: 'mobile'; labelAppearance?: 'scan'; labelScale?: number }
 
 export function drawReportOverlay(ctx: CanvasRenderingContext2D, overlay: ReportOverlay, width: number, timeMs: number, labels = true) {
   ctx.save()
@@ -166,8 +166,9 @@ function drawLabel(ctx: CanvasRenderingContext2D, label: Extract<ResolvedPrimiti
     drawScanLabel(ctx, label, overlay, time)
     return
   }
-  const width = variant === 'text' ? 154 : variant === 'node' ? 18 : 118
-  const height = variant === 'text' ? 66 : variant === 'node' ? 18 : 44
+  const scale = overlay.labelScale ?? 1
+  const width = (variant === 'text' ? 154 : variant === 'node' ? 18 : 118) * scale
+  const height = (variant === 'text' ? 66 : variant === 'node' ? 18 : 44) * scale
   const right = label.align === 'right' || (!label.align && label.point.x >= overlay.size.width / 2)
   let x = clamp(label.point.x - (variant === 'node' ? width / 2 : 0), 10, Math.max(10, overlay.size.width - width - 10))
   let y = clamp(label.point.y - (variant === 'node' ? height / 2 : 0), 10, Math.max(10, overlay.size.height - height - 10))
@@ -187,7 +188,7 @@ function drawLabel(ctx: CanvasRenderingContext2D, label: Extract<ResolvedPrimiti
   } else if (variant === 'tag' && overlay.labelLayout !== 'mobile') {
     const rowWidth = Math.max(...rows.map((row, index) => {
       ctx.font = `600 ${index ? 11 : 10}px -apple-system, BlinkMacSystemFont, Arial, sans-serif`
-      return Math.min(140, ctx.measureText(row.toUpperCase()).width + 16)
+      return Math.min(140, ctx.measureText(row.toUpperCase()).width + 16) * scale
     }))
     const rightEdge = Math.max(10, overlay.size.width - rowWidth - 10)
     x = label.align ? right ? rightEdge : 10 : clamp(x, 10, rightEdge)
@@ -197,7 +198,8 @@ function drawLabel(ctx: CanvasRenderingContext2D, label: Extract<ResolvedPrimiti
     const progress = enter(time, delay, duration)
     ctx.save()
     ctx.globalAlpha *= enter(time, delay, duration * .82)
-    ctx.translate(x + (1 - progress) * 42 * direction, y + index * (variant === 'tag' ? 24 : 13))
+    ctx.translate(x + (1 - progress) * 42 * direction, y + index * (variant === 'tag' ? 24 : 13) * scale)
+    ctx.scale(scale, scale)
     const fontSize = variant === 'node' ? 8 : variant === 'text' ? 10 : index ? 11 : 10
     ctx.font = `600 ${fontSize}px -apple-system, BlinkMacSystemFont, Arial, sans-serif`
     const text = row.toUpperCase()
@@ -209,7 +211,7 @@ function drawLabel(ctx: CanvasRenderingContext2D, label: Extract<ResolvedPrimiti
       ctx.fillRect(0, 0, 18, 18)
     }
     ctx.fillStyle = variant === 'tag' ? index ? '#0a0a0d' : '#71717a' : 'rgba(255,255,255,.78)'
-    ctx.fillText(text, variant === 'tag' ? 8 : 0, variant === 'tag' ? 4 : 0, variant === 'tag' ? 124 : width)
+    ctx.fillText(text, variant === 'tag' ? 8 : 0, variant === 'tag' ? 4 : 0, variant === 'tag' ? 124 : width / scale)
     ctx.restore()
   })
 }

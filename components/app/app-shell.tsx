@@ -93,7 +93,7 @@ export function AppShell({ children }: AppShellProps) {
   const creatorSetup = router.pathname === '/creator/setup'
   const creatorReferral = router.pathname === '/r/[slug]'
   const creatorSignIn = router.pathname.startsWith('/creator') && status === 'unauthenticated'
-  const immersive = router.pathname === '/' || router.pathname === '/analysis' || router.pathname === '/leaderboard' || router.pathname === '/battle' || router.pathname === '/app' || router.pathname === '/app/handoff'
+  const immersive = router.pathname === '/__analysis-v2-report-preview' || router.pathname === '/' || router.pathname === '/analysis' || router.pathname === '/leaderboard' || router.pathname === '/battle' || router.pathname === '/app' || router.pathname === '/app/handoff'
   const [loginOpen, setLoginOpen] = useState(false)
   const [accountOpen, setAccountOpen] = useState(false)
   const [editOpen, setEditOpen] = useState(false)

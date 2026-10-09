@@ -1,3 +1,4 @@
+import type { LandmarkInput } from '@/lib/analysis-v2/measurements'
 import type { FaceLandmarksPayload, NormalizedPoint } from '@/lib/analysis/landmarks'
 
 const wasmBaseUrl = 'https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.35/wasm'
@@ -16,7 +17,7 @@ const cheekboneIndices = [234, 116, 117, 118, 119, 100, 47, 126, 209, 49, 129, 2
 
 type FaceLandmarkerInstance = {
   detect: (image: HTMLImageElement) => {
-    faceLandmarks?: Array<Array<{ x: number; y: number }>>
+    faceLandmarks?: Array<Array<{ x: number; y: number; z?: number }>>
   }
 }
 
@@ -34,12 +35,23 @@ export async function extractFaceLandmarksFromDataUrl(dataUrl: string): Promise<
 }
 
 export async function detectFaceLandmarksFromDataUrl(dataUrl: string): Promise<FaceDetectionResult> {
+  return (await detectWebAnalysisEvidence(dataUrl)).detection
+}
+
+// A single detector pass supplies both the existing overlay anchors and web v2 geometry.
+export async function detectWebAnalysisEvidence(dataUrl: string): Promise<{ detection: FaceDetectionResult; mesh: LandmarkInput | null }> {
   try {
     const [image, landmarker] = await Promise.all([loadImage(dataUrl), getFaceLandmarker()])
     const result = landmarker.detect(image)
-    return landmarksFromFaces(result.faceLandmarks ?? [], { width: image.naturalWidth, height: image.naturalHeight })
+    const size = { width: image.naturalWidth, height: image.naturalHeight }
+    const detection = landmarksFromFaces(result.faceLandmarks ?? [], size)
+    const points = result.faceLandmarks?.[0]
+    const mesh = detection.status === 'detected' && points?.length === 478
+      ? { ...size, points: points.map(point => ({ x: point.x, y: point.y, z: point.z ?? 0 })) }
+      : null
+    return { detection, mesh }
   } catch {
-    return { status: 'unavailable', message: 'Face detection could not load. Check your connection and retry, or try another browser.' }
+    return { detection: { status: 'unavailable', message: 'Face detection could not load. Check your connection and retry, or try another browser.' }, mesh: null }
   }
 }
 

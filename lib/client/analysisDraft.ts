@@ -1,3 +1,4 @@
+import type { LandmarkInput } from '@/lib/analysis-v2/measurements'
 import type { FaceLandmarksPayload } from '@/lib/analysis/landmarks'
 import type { HairColor, SkinColor } from '@/lib/appearance/types'
 
@@ -12,6 +13,7 @@ export type AnalysisDraftImage = {
   hairColor?: HairColor | null
   skinColor?: SkinColor | null
   landmarks?: FaceLandmarksPayload | null
+  mesh?: LandmarkInput | null
 }
 
 export type AnalysisDraft = {

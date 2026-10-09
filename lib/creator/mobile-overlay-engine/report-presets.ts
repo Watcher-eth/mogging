@@ -128,6 +128,35 @@ const region = (id: string, points: OverlayPointRef[], delay: number, fillOpacit
 });
 
 const presets: Record<string, OverlayPreset> = {
+  brows: {
+    id: "report-brows", footer: "[ 012 ] BROWS",
+    primitives: [
+      polyline("left-brow", Array.from({ length: 5 }, (_, i) => contour("leftBrow", i, 40, 34)), 0),
+      polyline("right-brow", Array.from({ length: 5 }, (_, i) => contour("rightBrow", i, 61, 34)), 100),
+      line("left-brow-eye", common.leftBrow, common.leftPupil, 240, true),
+      line("right-brow-eye", common.rightBrow, common.rightPupil, 340, true),
+    ],
+  },
+  cheeks: {
+    id: "report-cheeks", footer: "[ 013 ] CHEEKS",
+    primitives: [
+      polyline("cheekbone-trace", Array.from({ length: 5 }, (_, i) => contour("cheekbones", i, 50, 55)), 0),
+      polyline("lower-frame", detail.jawline, 160),
+      line("left-contour", common.leftCheek, common.jawLeft, 300),
+      line("right-contour", common.rightCheek, common.jawRight, 400),
+      line("cheek-width", common.leftCheek, common.rightCheek, 500, true),
+    ],
+  },
+  proportions: {
+    id: "report-proportions", footer: "[ 014 ] PROPORTIONS",
+    primitives: [
+      line("height-diagonal", at("forehead", 50, 31, offset(-9, -10)), at("chin", 50, 79, offset(9, 0)), 0),
+      line("upper-third", at("forehead", 50, 31, offset(-20, -10)), at("forehead", 50, 31, offset(20, -10)), 100, true),
+      line("brow-third", common.leftBrow, common.rightBrow, 200, true),
+      line("nose-third", at("noseTip", 51, 52, offset(-18, 3)), at("noseTip", 51, 52, offset(18, 3)), 300, true),
+      line("chin-third", at("chin", 50, 79, offset(-12, 0)), at("chin", 50, 79, offset(12, 0)), 400, true),
+    ],
+  },
   eyes: {
     id: "report-eyes",
     footer: "[ 001 ] EYES",

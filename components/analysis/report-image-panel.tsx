@@ -6,13 +6,15 @@ import { getReportImageLandmarks } from '@/lib/client/report-landmarks'
 import { enrichFaceLandmarks } from '@/lib/creator/mobile-overlay-engine/enrich-landmarks'
 import { isFaceLandmarksUsable } from '@/lib/creator/mobile-overlay-engine/landmarks'
 import { getReportOverlayPreset } from '@/lib/creator/mobile-overlay-engine/report-presets'
+import type { OverlayPreset } from '@/lib/creator/mobile-overlay-engine/schema'
 import { FaceOverlay, type LoadedImage } from './face-overlay'
 
 
-export function ReportImagePanel({ category, imageSrc, landmarks, value }: {
-  category: { id: string; title: string }
+export function ReportImagePanel({ category, imageSrc, landmarks, value, naturalImage = false }: {
+  category: { id: string; title: string; overlayPreset?: OverlayPreset | null; faceMapPointCount?: number }
   imageSrc: string
   landmarks: FaceLandmarksPayload | null
+  naturalImage?: boolean
   value?: string
 }) {
   const [image, setImage] = useState<LoadedImage | null>(null)
@@ -34,14 +36,14 @@ export function ReportImagePanel({ category, imageSrc, landmarks, value }: {
   }, [image, imageSrc, landmarks, attempt])
 
   return (
-    <div className="relative min-h-[520px] overflow-hidden bg-zinc-100 lg:h-full lg:min-h-0">
-      <Image key={attempt} className="object-cover object-center" src={imageSrc} alt={`${category.title} analysis image`} fill priority onError={() => setFailed(true)} sizes="(min-width: 1024px) 44vw, 100vw" onLoad={(event) => {
+    <div style={naturalImage ? { aspectRatio: image ? `${image.width} / ${image.height}` : '2 / 3', height: 'auto', minHeight: 0 } : undefined} className="relative min-h-[520px] overflow-hidden bg-zinc-100 lg:h-full lg:min-h-0">
+      <Image key={attempt} className={naturalImage ? "object-contain object-center" : "object-cover object-center"} src={imageSrc} alt={`${category.title} analysis image`} fill priority onError={() => setFailed(true)} sizes="(min-width: 1024px) 44vw, 100vw" onLoad={(event) => {
         const photo = event.currentTarget
         setImage((previous) => previous?.src === photo.currentSrc ? previous : { src: photo.currentSrc, width: photo.naturalWidth, height: photo.naturalHeight })
       }} />
       <div className="absolute inset-0 bg-black/10" />
       <AnimatePresence>
-        {image && enriched ? <FaceOverlay key={category.id} preset={getReportOverlayPreset(category.id)} landmarks={enriched} image={image} value={value} /> : null}
+        {image && enriched ? <FaceOverlay key={category.id} preset={category.overlayPreset === undefined ? getReportOverlayPreset(category.id) : category.overlayPreset} faceMapPointCount={category.faceMapPointCount} landmarks={enriched} image={image} value={value} /> : null}
       </AnimatePresence>
       <div className="absolute inset-x-4 top-4 flex items-center justify-between gap-4 font-mono text-[10px] uppercase tracking-wide text-white drop-shadow-[0_1px_8px_rgba(0,0,0,0.35)]">
         <span>[ {category.title} ]</span>

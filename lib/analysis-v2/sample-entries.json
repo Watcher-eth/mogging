@@ -1,0 +1,845 @@
+[
+  {
+    "id": "eyes.spacing",
+    "value": 0.42,
+    "evidence": "pupil centers narrow relative to cheek width",
+    "source": "llm-estimate",
+    "grade": null
+  },
+  {
+    "id": "eyes.inner-gap",
+    "value": 0.85,
+    "evidence": "inner corners close, slightly less than mean eye width",
+    "source": "llm-estimate",
+    "grade": null
+  },
+  {
+    "id": "eyes.aspect",
+    "value": [
+      1.6,
+      1.6
+    ],
+    "evidence": "width/height ratio similar both eyes",
+    "source": "llm-estimate",
+    "grade": null
+  },
+  {
+    "id": "eyes.canthal-tilt",
+    "value": [
+      5,
+      5
+    ],
+    "evidence": "slight positive tilt, outer corners rise",
+    "source": "llm-estimate",
+    "grade": null
+  },
+  {
+    "id": "eyes.opening",
+    "value": [
+      0.55,
+      0.55
+    ],
+    "evidence": "lid opening about half iris diameter",
+    "source": "llm-estimate",
+    "grade": null
+  },
+  {
+    "id": "eyes.shape",
+    "value": "almond",
+    "evidence": "tapered outer corners, moderate height",
+    "source": "llm-estimate",
+    "grade": null
+  },
+  {
+    "id": "eyes.upper-lid",
+    "value": [
+      0.15,
+      0.15
+    ],
+    "evidence": "narrow visible strip above iris",
+    "source": "llm-estimate",
+    "grade": null
+  },
+  {
+    "id": "eyes.lower-sclera",
+    "value": [
+      0.05,
+      0.05
+    ],
+    "evidence": "minimal sclera below iris",
+    "source": "llm-estimate",
+    "grade": null
+  },
+  {
+    "id": "eyes.crease",
+    "value": "partly visible",
+    "evidence": "shadow suggests partial crease",
+    "source": "llm-estimate",
+    "grade": null
+  },
+  {
+    "id": "eyes.orbital-contour",
+    "value": "flatter",
+    "evidence": "shallow orbital appearance frontally",
+    "source": "llm-estimate",
+    "grade": null
+  },
+  {
+    "id": "eyes.under-eye-fullness",
+    "value": "slight",
+    "evidence": "minimal soft tissue below lid",
+    "source": "llm-estimate",
+    "grade": null
+  },
+  {
+    "id": "eyes.lashes",
+    "value": "moderate",
+    "evidence": "visible lashes, not dense",
+    "source": "llm-estimate",
+    "grade": null
+  },
+  {
+    "id": "brows.tilt",
+    "value": [
+      8,
+      8
+    ],
+    "evidence": "gentle upward tilt laterally",
+    "source": "llm-estimate",
+    "grade": null
+  },
+  {
+    "id": "brows.eye-distance",
+    "value": [
+      0.6,
+      0.6
+    ],
+    "evidence": "moderate gap above upper lid",
+    "source": "llm-estimate",
+    "grade": null
+  },
+  {
+    "id": "brows.length",
+    "value": [
+      0.9,
+      0.9
+    ],
+    "evidence": "brow chord near eye width",
+    "source": "llm-estimate",
+    "grade": null
+  },
+  {
+    "id": "brows.thickness",
+    "value": null,
+    "evidence": "Required segmentation or contour validation is not available yet.",
+    "source": "llm-estimate",
+    "grade": null
+  },
+  {
+    "id": "brows.density",
+    "value": "moderate",
+    "evidence": "even coverage, possible makeup",
+    "source": "llm-estimate",
+    "grade": null
+  },
+  {
+    "id": "brows.arch",
+    "value": "soft arch",
+    "evidence": "gentle curve, not flat",
+    "source": "llm-estimate",
+    "grade": null
+  },
+  {
+    "id": "brows.tail",
+    "value": [
+      -5,
+      -5
+    ],
+    "evidence": "slight downward turn outer third",
+    "source": "llm-estimate",
+    "grade": null
+  },
+  {
+    "id": "brows.position",
+    "value": "aligned",
+    "evidence": "medial start near inner corner, tail near outer corner",
+    "source": "llm-estimate",
+    "grade": null
+  },
+  {
+    "id": "nose.width",
+    "value": 0.22,
+    "evidence": "narrow nose relative to cheeks",
+    "source": "llm-estimate",
+    "grade": null
+  },
+  {
+    "id": "nose.eye-gap-ratio",
+    "value": 1.1,
+    "evidence": "nose-wing slightly wider than inner-eye gap",
+    "source": "llm-estimate",
+    "grade": null
+  },
+  {
+    "id": "nose.length",
+    "value": 0.45,
+    "evidence": "mid-length nasal proportion",
+    "source": "llm-estimate",
+    "grade": null
+  },
+  {
+    "id": "nose.bridge",
+    "value": null,
+    "evidence": "A side capture is required.",
+    "source": "llm-estimate",
+    "grade": null
+  },
+  {
+    "id": "nose.tip-shape",
+    "value": null,
+    "evidence": "A side capture is required.",
+    "source": "llm-estimate",
+    "grade": null
+  },
+  {
+    "id": "nose.rotation",
+    "value": null,
+    "evidence": "A side capture is required.",
+    "source": "llm-estimate",
+    "grade": null
+  },
+  {
+    "id": "nose.projection",
+    "value": null,
+    "evidence": "A side capture is required.",
+    "source": "llm-estimate",
+    "grade": null
+  },
+  {
+    "id": "nose.nostril-visibility",
+    "value": null,
+    "evidence": "Required segmentation or contour validation is not available yet.",
+    "source": "llm-estimate",
+    "grade": null
+  },
+  {
+    "id": "nose.alar-angle",
+    "value": null,
+    "evidence": "Required segmentation or contour validation is not available yet.",
+    "source": "llm-estimate",
+    "grade": null
+  },
+  {
+    "id": "nose.bridge-width",
+    "value": 0.6,
+    "evidence": "bridge narrower than wings",
+    "source": "llm-estimate",
+    "grade": null
+  },
+  {
+    "id": "mouth.width",
+    "value": null,
+    "evidence": "side view absent; neutral mouth present but ratio needs frontal only, definition valid",
+    "source": "llm-estimate",
+    "grade": null
+  },
+  {
+    "id": "mouth.lip-ratio",
+    "value": 1.1,
+    "evidence": "lower vermilion slightly taller than upper; closed relaxed lips",
+    "source": "llm-estimate",
+    "grade": null
+  },
+  {
+    "id": "mouth.corner-position",
+    "value": -2,
+    "evidence": "corners near level with central seam; slight neutral downturn",
+    "source": "llm-estimate",
+    "grade": null
+  },
+  {
+    "id": "mouth.pupil-ratio",
+    "value": 1.35,
+    "evidence": "mouth-corner width exceeds interpupillary distance; frontal view",
+    "source": "llm-estimate",
+    "grade": null
+  },
+  {
+    "id": "mouth.fullness",
+    "value": "moderate",
+    "evidence": "vermilion shows moderate volume without extreme thin or full",
+    "source": "llm-estimate",
+    "grade": null
+  },
+  {
+    "id": "mouth.cupid-bow",
+    "value": "defined",
+    "evidence": "central notch and peaks clearly visible; precise contour",
+    "source": "llm-estimate",
+    "grade": null
+  },
+  {
+    "id": "mouth.bow-depth",
+    "value": 0.08,
+    "evidence": "notch shallow relative to peak baseline; defined contour visible",
+    "source": "llm-estimate",
+    "grade": null
+  },
+  {
+    "id": "mouth.philtrum",
+    "value": null,
+    "evidence": "subnasale-to-upper-vermilion landmarks uncertain without validated points",
+    "source": "llm-estimate",
+    "grade": null
+  },
+  {
+    "id": "mouth.projection",
+    "value": null,
+    "evidence": "A side capture is required.",
+    "source": "llm-estimate",
+    "grade": null
+  },
+  {
+    "id": "mouth.contour",
+    "value": "even",
+    "evidence": "upper and lower lip edges clearly visible; smooth outline",
+    "source": "llm-estimate",
+    "grade": null
+  },
+  {
+    "id": "jaw.width",
+    "value": null,
+    "evidence": "validated jaw-angle anchors not provided; contour proxy only",
+    "source": "llm-estimate",
+    "grade": null
+  },
+  {
+    "id": "jaw.angle",
+    "value": null,
+    "evidence": "A side capture is required.",
+    "source": "llm-estimate",
+    "grade": null
+  },
+  {
+    "id": "jaw.projection",
+    "value": null,
+    "evidence": "A side capture is required.",
+    "source": "llm-estimate",
+    "grade": null
+  },
+  {
+    "id": "jaw.height",
+    "value": 0.55,
+    "evidence": "lower-lip-to-chin roughly half subnasale-to-chin; frontal estimate",
+    "source": "llm-estimate",
+    "grade": null
+  },
+  {
+    "id": "jaw.chin-width",
+    "value": 0.75,
+    "evidence": "chin width substantial relative to jaw; frontal contour",
+    "source": "llm-estimate",
+    "grade": null
+  },
+  {
+    "id": "jaw.chin-shape",
+    "value": "tapered",
+    "evidence": "chin narrows toward base; rounded apex",
+    "source": "llm-estimate",
+    "grade": null
+  },
+  {
+    "id": "jaw.jaw-shape",
+    "value": "tapered",
+    "evidence": "jaw narrows from cheek to chin; soft curves",
+    "source": "llm-estimate",
+    "grade": null
+  },
+  {
+    "id": "jaw.definition",
+    "value": null,
+    "evidence": "A side capture is required.",
+    "source": "llm-estimate",
+    "grade": null
+  },
+  {
+    "id": "jaw.under-chin",
+    "value": null,
+    "evidence": "A side capture is required.",
+    "source": "llm-estimate",
+    "grade": null
+  },
+  {
+    "id": "jaw.chin-philtrum",
+    "value": null,
+    "evidence": "philtrum height landmarks uncertain; chin segment unvalidated",
+    "source": "llm-estimate",
+    "grade": null
+  },
+  {
+    "id": "cheeks.height",
+    "value": null,
+    "evidence": "validated cheek anchors not provided; vertical position uncertain",
+    "source": "llm-estimate",
+    "grade": null
+  },
+  {
+    "id": "cheeks.width",
+    "value": 1.15,
+    "evidence": "cheek width exceeds outer-eye-corner span slightly; frontal",
+    "source": "llm-estimate",
+    "grade": null
+  },
+  {
+    "id": "cheeks.midface",
+    "value": null,
+    "evidence": "eye-line-to-subnasale height convention not validated",
+    "source": "llm-estimate",
+    "grade": null
+  },
+  {
+    "id": "cheeks.contour",
+    "value": "fuller-looking",
+    "evidence": "cheeks show rounded volume; even lighting",
+    "source": "llm-estimate",
+    "grade": null
+  },
+  {
+    "id": "cheeks.prominence",
+    "value": null,
+    "evidence": "A side capture is required.",
+    "source": "llm-estimate",
+    "grade": null
+  },
+  {
+    "id": "cheeks.malar-transition",
+    "value": "smooth",
+    "evidence": "cheek-to-lower-face transition gradual; even light",
+    "source": "llm-estimate",
+    "grade": null
+  },
+  {
+    "id": "cheeks.paranasal",
+    "value": null,
+    "evidence": "A side capture is required.",
+    "source": "llm-estimate",
+    "grade": null
+  },
+  {
+    "id": "cheeks.nasolabial-fold",
+    "value": "slight",
+    "evidence": "faint line visible; neutral expression maintained",
+    "source": "llm-estimate",
+    "grade": null
+  },
+  {
+    "id": "face.frame",
+    "value": null,
+    "evidence": "upper-face-to-chin height endpoints not validated",
+    "source": "llm-estimate",
+    "grade": null
+  },
+  {
+    "id": "face.forehead-height",
+    "value": null,
+    "evidence": "The complete actual hairline is not established.",
+    "source": "llm-estimate",
+    "grade": null
+  },
+  {
+    "id": "face.forehead-slope",
+    "value": null,
+    "evidence": "A side capture is required.",
+    "source": "llm-estimate",
+    "grade": null
+  },
+  {
+    "id": "face.shape",
+    "value": "oval",
+    "evidence": "length exceeds width; chin tapers; soft curves",
+    "source": "llm-estimate",
+    "grade": null
+  },
+  {
+    "id": "face.temple-width",
+    "value": null,
+    "evidence": "temple anchors obscured by hair; width uncertain",
+    "source": "llm-estimate",
+    "grade": null
+  },
+  {
+    "id": "face.forehead-width",
+    "value": null,
+    "evidence": "forehead level width unvalidated; hair obscures boundary",
+    "source": "llm-estimate",
+    "grade": null
+  },
+  {
+    "id": "face.taper",
+    "value": null,
+    "evidence": "temple width unavailable; jaw width unvalidated",
+    "source": "llm-estimate",
+    "grade": null
+  },
+  {
+    "id": "face.forehead-contour",
+    "value": null,
+    "evidence": "A side capture is required.",
+    "source": "llm-estimate",
+    "grade": null
+  },
+  {
+    "id": "proportions.upper-third",
+    "value": null,
+    "evidence": "The complete actual hairline is not established.",
+    "source": "llm-estimate",
+    "grade": null
+  },
+  {
+    "id": "proportions.middle-third",
+    "value": null,
+    "evidence": "The complete actual hairline is not established.",
+    "source": "llm-estimate",
+    "grade": null
+  },
+  {
+    "id": "proportions.lower-third",
+    "value": null,
+    "evidence": "The complete actual hairline is not established.",
+    "source": "llm-estimate",
+    "grade": null
+  },
+  {
+    "id": "proportions.fifths",
+    "value": null,
+    "evidence": "actual hairline boundary not visible",
+    "source": "llm-estimate",
+    "grade": null
+  },
+  {
+    "id": "proportions.lower-partition",
+    "value": 0.45,
+    "evidence": "mouth seam near midpoint of subnasale-chin",
+    "source": "llm-estimate",
+    "grade": null
+  },
+  {
+    "id": "proportions.convexity",
+    "value": null,
+    "evidence": "A side capture is required.",
+    "source": "llm-estimate",
+    "grade": null
+  },
+  {
+    "id": "proportions.vertical-alignment",
+    "value": [
+      0.02,
+      -0.01,
+      0.01
+    ],
+    "evidence": "nose centered, mouth and chin slight offsets",
+    "source": "llm-estimate",
+    "grade": null
+  },
+  {
+    "id": "proportions.width-hierarchy",
+    "value": "temple > cheek > jaw",
+    "evidence": "temple width greatest, jaw narrowest",
+    "source": "llm-estimate",
+    "grade": null
+  },
+  {
+    "id": "proportions.eye-mouth-height",
+    "value": 0.85,
+    "evidence": "eye-line to mouth slightly less than mouth-to-chin",
+    "source": "llm-estimate",
+    "grade": null
+  },
+  {
+    "id": "proportions.nose-lower-third",
+    "value": 0.75,
+    "evidence": "nose length substantial relative to lower face",
+    "source": "llm-estimate",
+    "grade": null
+  },
+  {
+    "id": "proportions.angle-coordination",
+    "value": null,
+    "evidence": "Required segmentation or contour validation is not available yet.",
+    "source": "llm-estimate",
+    "grade": null
+  },
+  {
+    "id": "proportions.summary",
+    "value": "6 proportion relationships available; approximate, without a combined grade.",
+    "evidence": "Derived only from accepted proportion entries.",
+    "source": "derived",
+    "grade": null
+  },
+  {
+    "id": "symmetry.eyes-height",
+    "value": 1.5,
+    "evidence": "minimal vertical eye corner difference",
+    "source": "llm-estimate",
+    "grade": null
+  },
+  {
+    "id": "symmetry.eyes-opening",
+    "value": 0,
+    "evidence": "Calculated from accepted left/right eye aspect ratios.",
+    "source": "derived",
+    "grade": null
+  },
+  {
+    "id": "symmetry.brows-height",
+    "value": 1,
+    "evidence": "brow anchors nearly level",
+    "source": "llm-estimate",
+    "grade": null
+  },
+  {
+    "id": "symmetry.brows-shape",
+    "value": null,
+    "evidence": "brow contour reflection uncertain",
+    "source": "llm-estimate",
+    "grade": null
+  },
+  {
+    "id": "symmetry.nose-wings",
+    "value": 2,
+    "evidence": "minor alar asymmetry",
+    "source": "llm-estimate",
+    "grade": null
+  },
+  {
+    "id": "symmetry.nose-axis",
+    "value": 1,
+    "evidence": "tip centered on base",
+    "source": "llm-estimate",
+    "grade": null
+  },
+  {
+    "id": "symmetry.mouth-height",
+    "value": 1.5,
+    "evidence": "corners nearly level",
+    "source": "llm-estimate",
+    "grade": null
+  },
+  {
+    "id": "symmetry.lip-contour",
+    "value": null,
+    "evidence": "precise lip contour reflection uncertain",
+    "source": "llm-estimate",
+    "grade": null
+  },
+  {
+    "id": "symmetry.chin-axis",
+    "value": 0.5,
+    "evidence": "chin centered on axis",
+    "source": "llm-estimate",
+    "grade": null
+  },
+  {
+    "id": "symmetry.jaw-outline",
+    "value": null,
+    "evidence": "validated contour unavailable",
+    "source": "llm-estimate",
+    "grade": null
+  },
+  {
+    "id": "symmetry.cheek-outline",
+    "value": null,
+    "evidence": "even lighting but contour validation uncertain",
+    "source": "llm-estimate",
+    "grade": null
+  },
+  {
+    "id": "symmetry.ears-position",
+    "value": null,
+    "evidence": "Both complete ears must be visible.",
+    "source": "llm-estimate",
+    "grade": null
+  },
+  {
+    "id": "skin.texture",
+    "value": 1,
+    "evidence": "localized fine detail on cheeks and forehead",
+    "source": "llm-estimate",
+    "grade": null
+  },
+  {
+    "id": "skin.tone",
+    "value": 1,
+    "evidence": "slight localized variation, freckles present",
+    "source": "llm-estimate",
+    "grade": null
+  },
+  {
+    "id": "skin.under-eye-contrast",
+    "value": 1,
+    "evidence": "slight shadow, possible makeup",
+    "source": "llm-estimate",
+    "grade": null
+  },
+  {
+    "id": "skin.blemishes",
+    "value": null,
+    "evidence": "Evidence conflates natural pigmentation with blemish appearance.",
+    "source": "llm-estimate",
+    "grade": null
+  },
+  {
+    "id": "skin.pores",
+    "value": "fine",
+    "evidence": "minimal pore visibility",
+    "source": "llm-estimate",
+    "grade": null
+  },
+  {
+    "id": "skin.shine",
+    "value": "localized",
+    "evidence": "highlight on forehead and nose bridge",
+    "source": "llm-estimate",
+    "grade": null
+  },
+  {
+    "id": "skin.fine-lines",
+    "value": "not apparent",
+    "evidence": "smooth surface visible",
+    "source": "llm-estimate",
+    "grade": null
+  },
+  {
+    "id": "skin.marks",
+    "value": "localized",
+    "evidence": "freckles across nose and cheeks",
+    "source": "llm-estimate",
+    "grade": null
+  },
+  {
+    "id": "skin.under-eye-color",
+    "value": "slight warm tone",
+    "evidence": "local tonal contrast minimal",
+    "source": "llm-estimate",
+    "grade": null
+  },
+  {
+    "id": "skin.surface-pattern",
+    "value": "nose cheeks forehead chin",
+    "evidence": "fine detail distributed",
+    "source": "llm-estimate",
+    "grade": null
+  },
+  {
+    "id": "skin.capture-effects",
+    "value": "makeup possible smoothing",
+    "evidence": "even finish suggests styling",
+    "source": "llm-estimate",
+    "grade": null
+  },
+  {
+    "id": "skin.priorities",
+    "value": "Review capture effects: makeup possible smoothing. Compare observations under consistent lighting.",
+    "evidence": "Capture guidance only; no treatment or diagnosis inferred.",
+    "source": "derived",
+    "grade": null
+  },
+  {
+    "id": "hair.hairline-shape",
+    "value": null,
+    "evidence": "The complete actual hairline is not established.",
+    "source": "llm-estimate",
+    "grade": null
+  },
+  {
+    "id": "hair.hairline-visibility",
+    "value": "partial",
+    "evidence": "front hair visible, exact edge unclear",
+    "source": "llm-estimate",
+    "grade": null
+  },
+  {
+    "id": "hair.coverage",
+    "value": "dense lateral coverage with central part",
+    "evidence": "no scalp visible",
+    "source": "llm-estimate",
+    "grade": null
+  },
+  {
+    "id": "hair.frame",
+    "value": "forehead partially exposed lateral volume softens jaw",
+    "evidence": "waves frame face",
+    "source": "llm-estimate",
+    "grade": null
+  },
+  {
+    "id": "hair.volume",
+    "value": 1.4,
+    "evidence": "silhouette extends beyond cheek width",
+    "source": "llm-estimate",
+    "grade": null
+  },
+  {
+    "id": "hair.beard-style",
+    "value": "clean-shaven",
+    "evidence": "no facial hair visible",
+    "source": "llm-estimate",
+    "grade": null
+  },
+  {
+    "id": "hair.grooming",
+    "value": null,
+    "evidence": "The chosen grooming style has not been supplied.",
+    "source": "llm-estimate",
+    "grade": null
+  },
+  {
+    "id": "hair.beard-grooming",
+    "value": null,
+    "evidence": "The chosen grooming style has not been supplied.",
+    "source": "llm-estimate",
+    "grade": null
+  },
+  {
+    "id": "ears.height",
+    "value": null,
+    "evidence": "Both complete ears must be visible.",
+    "source": "llm-estimate",
+    "grade": null
+  },
+  {
+    "id": "ears.width",
+    "value": null,
+    "evidence": "A side capture is required.",
+    "source": "llm-estimate",
+    "grade": null
+  },
+  {
+    "id": "ears.protrusion",
+    "value": null,
+    "evidence": "Both complete ears must be visible.",
+    "source": "llm-estimate",
+    "grade": null
+  },
+  {
+    "id": "ears.vertical-position",
+    "value": null,
+    "evidence": "Both complete ears must be visible.",
+    "source": "llm-estimate",
+    "grade": null
+  },
+  {
+    "id": "ears.shape",
+    "value": null,
+    "evidence": "A side capture is required.",
+    "source": "llm-estimate",
+    "grade": null
+  },
+  {
+    "id": "ears.attachment",
+    "value": null,
+    "evidence": "A side capture is required.",
+    "source": "llm-estimate",
+    "grade": null
+  }
+]

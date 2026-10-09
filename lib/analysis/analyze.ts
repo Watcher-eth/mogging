@@ -12,7 +12,7 @@ import { computePslScore } from './scoring'
 import { saveAnalysisResult } from './service'
 import { faceLandmarksPayloadSchema } from './landmarks'
 import { AnalysisProviderError } from './errors'
-import type { AnalysisProviderResult } from './schema'
+import type { AnalysisProvider, AnalysisProviderResult } from './schema'
 
 export const analyzeAndSaveSchema = z.object({
   imageData: z.string().min(1),
@@ -32,12 +32,22 @@ export const analyzeAndSaveSchema = z.object({
 
 export type AnalyzeAndSaveInput = z.infer<typeof analyzeAndSaveSchema>
 
-export async function analyzeAndSave(input: AnalyzeAndSaveInput, reservationId?: string) {
+type AnalysisOptions = {
+  provider?: AnalysisProvider
+  promptVersion?: string
+  metrics?: (result: AnalysisProviderResult) => Record<string, unknown>
+  photoHash?: (contentHash: string) => string
+  requirePersistence?: boolean
+}
+
+export async function analyzeAndSave(input: AnalyzeAndSaveInput, reservationId?: string, options: AnalysisOptions = {}) {
+  const provider = options.provider ?? analysisProvider
+  const promptVersion = options.promptVersion ?? ANALYSIS_PROMPT_VERSION
   const data = analyzeAndSaveSchema.parse(input)
   const storedImagePromise = storeImageDataUrl(data.imageData)
     .then((storedImage) => ({ ok: true as const, storedImage }))
     .catch((error: unknown) => ({ ok: false as const, error }))
-  const providerResultPromise = analysisProvider
+  const providerResultPromise = provider
     .analyzeFace({
       imageDataUrl: data.imageData,
       gender: data.gender,
@@ -55,7 +65,8 @@ export async function analyzeAndSave(input: AnalyzeAndSaveInput, reservationId?:
   const providerResult = await providerResultPromise
 
   if (!storedImageResult.ok) {
-    return createTransientAnalysisResult(data, providerResult, 'Image storage failed')
+    if (options.requirePersistence) throw new Error('Unable to save the report image. Please retry.')
+    return createTransientAnalysisResult(data, providerResult, 'Image storage failed', options)
   }
 
   const storedImage = storedImageResult.storedImage
@@ -66,7 +77,7 @@ export async function analyzeAndSave(input: AnalyzeAndSaveInput, reservationId?:
       anonymousActorId: data.anonymousActorId ?? null,
       imageUrl: storedImage.imageUrl,
       imageStorageKey: storedImage.imageStorageKey,
-      imageHash: storedImage.imageHash,
+      imageHash: options.photoHash?.(storedImage.imageHash) ?? storedImage.imageHash,
       name: data.name ?? null,
       caption: data.caption ?? null,
       gender: data.gender,
@@ -83,8 +94,8 @@ export async function analyzeAndSave(input: AnalyzeAndSaveInput, reservationId?:
       status: 'failed',
       metrics: failure.metrics,
       landmarks: data.landmarks ?? {},
-      model: analysisProvider.model,
-      promptVersion: ANALYSIS_PROMPT_VERSION,
+      model: provider.model,
+      promptVersion,
       failureReason: failure.failureReason,
     }, reservationId ? { id: reservationId, photo: photoResult.photo, deduped: photoResult.deduped } : undefined)
 
@@ -101,7 +112,7 @@ export async function analyzeAndSave(input: AnalyzeAndSaveInput, reservationId?:
       anonymousActorId: data.anonymousActorId ?? null,
       imageUrl: storedImage.imageUrl,
       imageStorageKey: storedImage.imageStorageKey,
-      imageHash: storedImage.imageHash,
+      imageHash: options.photoHash?.(storedImage.imageHash) ?? storedImage.imageHash,
       name: data.name ?? null,
       caption: data.caption ?? null,
       gender: data.gender,
@@ -118,8 +129,8 @@ export async function analyzeAndSave(input: AnalyzeAndSaveInput, reservationId?:
       status: 'failed',
       metrics: failure.metrics,
       landmarks: data.landmarks ?? {},
-      model: analysisProvider.model,
-      promptVersion: ANALYSIS_PROMPT_VERSION,
+      model: provider.model,
+      promptVersion,
       failureReason: failure.failureReason,
     }, reservationId ? { id: reservationId, photo: photoResult.photo, deduped: photoResult.deduped } : undefined)
 
@@ -136,7 +147,7 @@ export async function analyzeAndSave(input: AnalyzeAndSaveInput, reservationId?:
       anonymousActorId: data.anonymousActorId ?? null,
       imageUrl: storedImage.imageUrl,
       imageStorageKey: storedImage.imageStorageKey,
-      imageHash: storedImage.imageHash,
+      imageHash: options.photoHash?.(storedImage.imageHash) ?? storedImage.imageHash,
       name: data.name ?? null,
       caption: data.caption ?? null,
       gender: data.gender,
@@ -152,8 +163,8 @@ export async function analyzeAndSave(input: AnalyzeAndSaveInput, reservationId?:
       status: 'failed',
       metrics: {},
       landmarks: data.landmarks ?? {},
-      model: analysisProvider.model,
-      promptVersion: ANALYSIS_PROMPT_VERSION,
+      model: provider.model,
+      promptVersion,
       failureReason: 'No face detected',
     }, reservationId ? { id: reservationId, photo: photoResult.photo, deduped: photoResult.deduped } : undefined)
 
@@ -169,7 +180,7 @@ export async function analyzeAndSave(input: AnalyzeAndSaveInput, reservationId?:
     anonymousActorId: data.anonymousActorId ?? null,
     imageUrl: storedImage.imageUrl,
     imageStorageKey: storedImage.imageStorageKey,
-    imageHash: storedImage.imageHash,
+    imageHash: options.photoHash?.(storedImage.imageHash) ?? storedImage.imageHash,
     name: data.name ?? null,
     caption: data.caption ?? null,
     gender: data.gender,
@@ -199,10 +210,11 @@ export async function analyzeAndSave(input: AnalyzeAndSaveInput, reservationId?:
       proportionalityScore: result.proportionalityScore ?? null,
       averagenessScore: result.averagenessScore ?? null,
       metricScores: result.metricScores,
+      ...options.metrics?.(result),
     },
     landmarks: data.landmarks ?? result.landmarks,
-    model: analysisProvider.model,
-    promptVersion: ANALYSIS_PROMPT_VERSION,
+    model: provider.model,
+    promptVersion,
   }, reservationId ? { id: reservationId, photo: photoResult.photo, deduped: photoResult.deduped } : undefined)
 
   return {
@@ -221,9 +233,13 @@ function createTransientAnalysisResult(
   providerResult:
     | { ok: true; result: Awaited<ReturnType<typeof analysisProvider.analyzeFace>> }
     | { ok: false; error: unknown },
-  persistenceFailureReason: string
+  persistenceFailureReason: string,
+  options: AnalysisOptions = {},
 ) {
-  const imageHash = computeImageHash(data.imageData)
+  const provider = options.provider ?? analysisProvider
+  const promptVersion = options.promptVersion ?? ANALYSIS_PROMPT_VERSION
+  const contentHash = computeImageHash(data.imageData)
+  const imageHash = options.photoHash?.(contentHash) ?? contentHash
   const photo = {
     id: `transient-photo-${imageHash}`,
     imageUrl: data.imageData,
@@ -248,8 +264,8 @@ function createTransientAnalysisResult(
           tierDescription: null,
           metrics: failure.metrics,
           landmarks: data.landmarks ?? {},
-          model: analysisProvider.model,
-          promptVersion: ANALYSIS_PROMPT_VERSION,
+          model: provider.model,
+          promptVersion,
           failureReason: failure.failureReason,
           persistenceFailureReason,
         },
@@ -272,8 +288,8 @@ function createTransientAnalysisResult(
         tierDescription: null,
         metrics: failure.metrics,
         landmarks: data.landmarks ?? {},
-        model: analysisProvider.model,
-        promptVersion: ANALYSIS_PROMPT_VERSION,
+        model: provider.model,
+        promptVersion,
         failureReason: failure.failureReason,
         persistenceFailureReason,
       },
@@ -296,8 +312,8 @@ function createTransientAnalysisResult(
         tierDescription: null,
         metrics: {},
         landmarks: data.landmarks ?? {},
-        model: analysisProvider.model,
-        promptVersion: ANALYSIS_PROMPT_VERSION,
+        model: provider.model,
+        promptVersion,
         failureReason: 'No face detected',
         persistenceFailureReason,
       },
@@ -327,10 +343,11 @@ function createTransientAnalysisResult(
         proportionalityScore: result.proportionalityScore ?? null,
         averagenessScore: result.averagenessScore ?? null,
         metricScores: result.metricScores,
+      ...options.metrics?.(result),
       },
       landmarks: data.landmarks ?? result.landmarks,
-      model: analysisProvider.model,
-      promptVersion: ANALYSIS_PROMPT_VERSION,
+      model: provider.model,
+      promptVersion,
       failureReason: null,
       persistenceFailureReason,
     },

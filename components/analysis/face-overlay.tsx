@@ -9,12 +9,13 @@ import { drawReportOverlay, type ReportOverlay } from '@/lib/creator/report-over
 
 export type LoadedImage = { src: string; width: number; height: number }
 
-export function FaceOverlay({ preset, landmarks, image, value, appearance = 'report' }: {
+export function FaceOverlay({ preset, landmarks, image, value, appearance = 'report', faceMapPointCount }: {
   preset: OverlayPreset | null
   landmarks: FaceLandmarksPayload
   image: LoadedImage
   value?: string
   appearance?: 'report' | 'scan'
+  faceMapPointCount?: number
 }) {
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const reduceMotion = useReducedMotion()
@@ -38,9 +39,10 @@ export function FaceOverlay({ preset, landmarks, image, value, appearance = 'rep
       const overlay: ReportOverlay = {
         size,
         primitives: preset ? resolveOverlayPreset({ preset, landmarks, imageSize: image, viewport: size, fit: 'cover' }).primitives : [],
-        dots: preset ? [] : getFaceMapDots(landmarks, image, size),
+        dots: preset ? [] : getFaceMapDots(landmarks, image, size, faceMapPointCount),
         value,
         labelAppearance: appearance === 'scan' ? 'scan' : undefined,
+        labelScale: appearance === 'report' ? .6 : 1,
       }
       const end = Math.max(preset ? 0 : 2800, ...overlay.primitives.map((primitive) => (primitive.animation?.delay ?? 0) + Math.max(980, primitive.animation?.duration ?? 760) + 150))
       draw = () => {
@@ -67,7 +69,7 @@ export function FaceOverlay({ preset, landmarks, image, value, appearance = 'rep
     reducedMotion.addEventListener('change', resize)
     resize()
     return () => { cancelAnimationFrame(frame); observer.disconnect(); visibility.disconnect(); document.removeEventListener('visibilitychange', resume); reducedMotion.removeEventListener('change', resize) }
-  }, [preset, landmarks, image, value, appearance])
+  }, [preset, landmarks, image, value, appearance, faceMapPointCount])
   return (
     <motion.div className="pointer-events-none absolute inset-0" initial={{ opacity: 0 }} animate={{ opacity: 1, transition: { duration: reduceMotion ? 0 : appearance === 'scan' ? .52 : .18 } }} exit={{ opacity: 0, transition: { duration: reduceMotion ? 0 : appearance === 'scan' ? .76 : .18 } }} aria-hidden="true">
       <canvas ref={canvasRef} className="absolute inset-0 size-full" />
@@ -75,8 +77,8 @@ export function FaceOverlay({ preset, landmarks, image, value, appearance = 'rep
   )
 }
 
-function getFaceMapDots(landmarks: FaceLandmarksPayload, image: LoadedImage, size: { width: number; height: number }) {
-  const points = buildFaceMapPoints(landmarks)
+function getFaceMapDots(landmarks: FaceLandmarksPayload, image: LoadedImage, size: { width: number; height: number }, count?: number) {
+  const points = buildFaceMapPoints(landmarks).slice(0, count)
   const transform = getImageTransform(image, size, 'cover')
   const top = Math.min(...points.map(point => point.y))
   const bottom = Math.max(...points.map(point => point.y))

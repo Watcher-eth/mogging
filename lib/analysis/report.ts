@@ -59,7 +59,7 @@ function averageScores(...scores: number[]) {
   return clampCategoryScore(scores.reduce((sum, score) => sum + score, 0) / scores.length)
 }
 
-function createOverallFeatureGrid(
+export function createOverallFeatureGrid(
   categoryScore: (id: string, fallback: number) => number,
   fallback: number,
 ) {

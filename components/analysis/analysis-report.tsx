@@ -2,6 +2,7 @@ import { AnimatePresence, motion } from 'motion/react'
 import { Share2 } from 'lucide-react'
 import { useState, type ReactNode } from 'react'
 import type { FaceLandmarksPayload } from '@/lib/analysis/landmarks'
+import type { OverlayPreset } from '@/lib/creator/mobile-overlay-engine/schema'
 import { ReportImagePanel } from './report-image-panel'
 
 export type DesktopReportCategory = {
@@ -13,9 +14,12 @@ export type DesktopReportCategory = {
   features: Array<{ label: string; value: string; measurement?: string }>
   explanation?: string
   eyeColor?: string
+  hairColor?: string
+  overlayPreset?: OverlayPreset | null
+  faceMapPointCount?: number
 }
 
-export function AnalysisReport({ categories, initialCategoryId, imageSrc, landmarks, score, pslScore, children }: {
+export function AnalysisReport({ categories, initialCategoryId, imageSrc, landmarks, score, pslScore, children, renderDetails, naturalImage = false }: {
   categories: DesktopReportCategory[]
   initialCategoryId?: string
   imageSrc: string
@@ -23,6 +27,8 @@ export function AnalysisReport({ categories, initialCategoryId, imageSrc, landma
   score: number
   pslScore?: number | null
   children: ReactNode
+  naturalImage?: boolean
+  renderDetails?: (category: DesktopReportCategory) => ReactNode
 }) {
   const [activeCategoryId, setActiveCategoryId] = useState(initialCategoryId ?? categories[0]?.id)
   const activeCategory = categories.find(category => category.id === activeCategoryId) ?? categories[0]
@@ -73,7 +79,7 @@ export function AnalysisReport({ categories, initialCategoryId, imageSrc, landma
             landmarks={landmarks}
             value={overlayValue}
           />
-          <ReportDetailPanel category={activeCategory} />
+          {renderDetails ? renderDetails(activeCategory) : <ReportDetailPanel category={activeCategory} />}
         </div>
       </section>
 
@@ -162,8 +168,7 @@ function GradedScoreSlab({ score }: { score: number }) {
 }
 
 function ReportDetailPanel({ category }: { category: DesktopReportCategory }) {
-  const { title, subtitle, scoreLabel, features, score } = category
-  const scoreMax = 10
+  const { features } = category
   const explanation = category.explanation
     ?? `${category.title} is scored from visible proportions, local symmetry, and how the feature fits the full facial frame.`
 
@@ -178,16 +183,9 @@ function ReportDetailPanel({ category }: { category: DesktopReportCategory }) {
           exit={{ opacity: 0, y: -10 }}
           transition={{ duration: 0.42, ease: [0.23, 1, 0.32, 1] }}
         >
-      <div className="border bg-white p-5">
-        <p className="font-mono text-[10px] uppercase tracking-wide text-muted-foreground">{scoreLabel}</p>
-        <div className="mt-14 flex items-end justify-between">
-          <h3 className="text-4xl font-semibold leading-none tracking-[-0.055em]">{title}</h3>
-          <span className="font-mono text-xl">{score.toFixed(1)} <span className="text-[10px] uppercase text-muted-foreground">/ {scoreMax}</span></span>
-        </div>
-        <p className="mt-4 text-sm leading-6 text-muted-foreground">{subtitle}</p>
-      </div>
+      <ReportCategoryHeader category={category} />
 
-      {category.id === 'eyes' && category.eyeColor && <EyeColorPalette color={category.eyeColor} />}
+      {category.id === 'eyes' && category.eyeColor && <ReportColorPalette color={category.eyeColor} />}
 
       <div className="grid grid-cols-2 gap-3">
         {features.map((feature, index) => (
@@ -234,18 +232,57 @@ const eyePalette = [
   { name: 'dark brown', hex: '#3f322c' },
 ] as const
 
-function EyeColorPalette({ color }: { color: string }) {
-  const selected = eyePalette.find((shade) => shade.name === color.toLowerCase())
-  if (!selected) return null
-  const shades = [...eyePalette.filter((shade) => shade !== selected).slice(0, 3), selected, ...eyePalette.filter((shade) => shade !== selected).slice(3)]
+const hairPalette = [
+  { name: 'black', hex: '#242020' }, { name: 'brown', hex: '#74523c' },
+  { name: 'blond', hex: '#ceb37c' }, { name: 'red', hex: '#a65735' },
+  { name: 'gray', hex: '#a6a5a2' }, { name: 'other', hex: '#b4a6b3' },
+] as const
 
-  return <div className="border bg-white p-4" aria-label={`Eye color: ${selected.name}`}>
+export function ReportColorPalette({ color, kind = 'eye', ribbon = false }: { color: string; kind?: 'eye' | 'hair'; ribbon?: boolean }) {
+  const palette = kind === 'eye' ? eyePalette : hairPalette
+  const selected = palette.find((shade) => shade.name === color.toLowerCase())
+  if (!selected) return null
+  const shades = [...palette.filter((shade) => shade !== selected).slice(0, 3), selected, ...palette.filter((shade) => shade !== selected).slice(3)]
+
+  const ribbonStops = kind === 'eye' ? [
+    { name: 'blue', hex: '#467eb5' }, { hex: '#80b4cc' }, { name: 'gray', hex: '#94a7ab' },
+    { hex: '#799a86' }, { name: 'green', hex: '#64865a' }, { hex: '#8f945e' },
+    { name: 'hazel', hex: '#8d8050' }, { hex: '#b19a5e' }, { name: 'amber', hex: '#b08142' },
+    { hex: '#987044' }, { name: 'brown', hex: '#745b42' }, { hex: '#594132' }, { name: 'dark brown', hex: '#352820' },
+  ] : [
+    { name: 'black', hex: '#242020' }, { hex: '#3b2c25' }, { hex: '#5b3d2b' },
+    { name: 'brown', hex: '#74523c' }, { hex: '#986849' }, { name: 'red', hex: '#ae593b' },
+    { hex: '#c68a58' }, { hex: '#cba36b' }, { name: 'blond', hex: '#d4b980' },
+    { hex: '#e2d0a8' }, { hex: '#d2cabe' }, { name: 'gray', hex: '#aaa9a5' }, { name: 'other', hex: '#c4b3c8' },
+  ]
+  const selectedPosition = ribbonStops.findIndex(shade => shade.name === selected.name) / (ribbonStops.length - 1) * 100
+  const gradient = `linear-gradient(90deg,${ribbonStops.map((shade, index) => `${shade.hex} ${index / (ribbonStops.length - 1) * 100}%`).join(',')})`
+
+  return <div className="border bg-white p-4" aria-label={`${kind === 'eye' ? 'Eye' : 'Hair'} color: ${selected.name}`}>
     <div className="flex items-center justify-between gap-3">
-      <p className="font-mono text-[10px] uppercase tracking-wide text-muted-foreground">Eye color</p>
+      <p className="font-mono text-[10px] uppercase tracking-wide text-muted-foreground">{kind === 'eye' ? 'Eye color' : 'Hair color'}</p>
       <p className="text-sm font-semibold capitalize">{selected.name}</p>
     </div>
-    <div className="mt-4 flex h-16 items-center justify-center gap-1.5" aria-hidden="true">
+    {ribbon ? <div className="relative mt-6 h-[29px] rounded-sm border border-black/5" style={{ background: gradient }} aria-hidden="true">
+      <span className="absolute inset-0 rounded-sm" style={{ background: 'linear-gradient(180deg,#ffffff50,transparent 65%,#ffffff20)' }} />
+      <span className="absolute -top-1 -bottom-1 w-3 -translate-x-1/2 rounded-md border border-white/60 bg-white/20 shadow-[inset_0_1px_3px_#ffffff99,0_2px_6px_#00000018] backdrop-blur-md" style={{ left: `clamp(8px,${selectedPosition}%,calc(100% - 8px))` }}><span className="absolute left-1/2 top-1/2 h-3 w-px -translate-x-1/2 -translate-y-1/2 bg-black/60" /></span>
+    </div> : <div className="mt-4 flex h-16 items-center justify-center gap-1.5" aria-hidden="true">
       {shades.map((shade) => <span key={shade.name} className="min-w-0 flex-1 rounded-sm" style={{ height: shade === selected ? 64 : 46, backgroundColor: shade.hex }} />)}
-    </div>
+    </div>}
   </div>
+}
+
+export function ReportCategoryHeader({ category, simplified = false }: { category: DesktopReportCategory; simplified?: boolean }) {
+  const { title, subtitle, scoreLabel, score } = category
+  if (simplified) return <div className="border bg-white p-5"><div className="flex items-baseline justify-between gap-4"><h3 className="text-4xl font-semibold leading-none tracking-[-0.055em]">{category.id === 'overall' ? scoreLabel : title}</h3><span className="text-4xl font-semibold leading-none tabular-nums tracking-[-0.055em]">{score.toFixed(1)} <span className="text-sm font-normal text-muted-foreground">/ 10</span></span></div></div>
+  return (
+      <div className="border bg-white p-5">
+        <p className="font-mono text-[10px] uppercase tracking-wide text-muted-foreground">{scoreLabel}</p>
+        <div className="mt-14 flex items-end justify-between">
+          <h3 className="text-4xl font-semibold leading-none tracking-[-0.055em]">{title}</h3>
+          <span className="font-mono text-xl">{score.toFixed(1)} <span className="text-[10px] uppercase text-muted-foreground">/ {10}</span></span>
+        </div>
+        <p className="mt-4 text-sm leading-6 text-muted-foreground">{subtitle}</p>
+      </div>
+  )
 }

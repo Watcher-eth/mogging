@@ -1,0 +1,1307 @@
+{
+  "version": "proposal-3-hybrid",
+  "status": "planning-only",
+  "categories": [
+    {
+      "id": "eyes",
+      "title": "Eyes & orbital area",
+      "rubrics": [
+        {
+          "id": "eyes.spacing",
+          "name": "Eye spacing",
+          "output": "R",
+          "definition": "Pupil-center distance / visible cheek width.",
+          "capture": "Front",
+          "visual": "Capsule",
+          "producerPolicy": "detector_geometry_then_llm_estimate",
+          "gradePolicy": "versioned_provisional_reference_band"
+        },
+        {
+          "id": "eyes.inner-gap",
+          "name": "Inner-eye gap",
+          "output": "N",
+          "definition": "Inner-corner distance / mean left/right eye width.",
+          "capture": "Front",
+          "visual": "Text",
+          "producerPolicy": "detector_geometry_then_llm_estimate",
+          "gradePolicy": null
+        },
+        {
+          "id": "eyes.aspect",
+          "name": "Eye aspect ratio",
+          "output": "R",
+          "definition": "Per-eye inner-to-outer corner width / maximum lid-opening height; retain left and right as a two-number pair.",
+          "capture": "Front, neutral lids",
+          "visual": "Capsule",
+          "producerPolicy": "detector_geometry_then_llm_estimate",
+          "gradePolicy": "versioned_provisional_reference_band"
+        },
+        {
+          "id": "eyes.canthal-tilt",
+          "name": "Outer-corner tilt",
+          "output": "A",
+          "definition": "Per-eye corner-line angle to roll-corrected horizontal; outward rise is positive.",
+          "capture": "Front",
+          "visual": "Orbit",
+          "producerPolicy": "detector_geometry_then_llm_estimate",
+          "gradePolicy": "versioned_provisional_reference_band"
+        },
+        {
+          "id": "eyes.opening",
+          "name": "Vertical eye opening",
+          "output": "R",
+          "definition": "Maximum lid-opening height / visible iris diameter; keep each eye separately.",
+          "capture": "Front, iris visible",
+          "visual": "Capsule",
+          "producerPolicy": "detector_geometry_then_llm_estimate",
+          "gradePolicy": "versioned_provisional_reference_band"
+        },
+        {
+          "id": "eyes.shape",
+          "name": "Eye shape",
+          "output": "T",
+          "definition": "Contour term: almond / rounded / elongated / mixed / uncertain; not an attractiveness score.",
+          "capture": "Front",
+          "visual": "Text",
+          "producerPolicy": "llm_image_observation",
+          "gradePolicy": null
+        },
+        {
+          "id": "eyes.upper-lid",
+          "name": "Upper-lid exposure",
+          "output": "N",
+          "definition": "Visible upper-lid strip height / iris diameter at defined central vertical line.",
+          "capture": "Front, neutral lids",
+          "visual": "Text",
+          "producerPolicy": "detector_geometry_then_llm_estimate",
+          "gradePolicy": null
+        },
+        {
+          "id": "eyes.lower-sclera",
+          "name": "Lower scleral exposure",
+          "output": "N",
+          "definition": "Visible scleral strip below iris / iris diameter; zero only if clearly absent.",
+          "capture": "Front, gaze centered",
+          "visual": "Text",
+          "producerPolicy": "detector_geometry_then_llm_estimate",
+          "gradePolicy": null
+        },
+        {
+          "id": "eyes.crease",
+          "name": "Lid-crease appearance",
+          "output": "T",
+          "definition": "Visible / partly visible / not visible / uncertain; do not treat anatomy as missing data.",
+          "capture": "Front",
+          "visual": "Text",
+          "producerPolicy": "llm_image_observation",
+          "gradePolicy": null
+        },
+        {
+          "id": "eyes.orbital-contour",
+          "name": "Orbital contour",
+          "output": "T",
+          "definition": "Qualified appearance: flatter / recessed-looking / prominent-looking / uncertain; no depth measurement.",
+          "capture": "Front + optional side",
+          "visual": "Text",
+          "producerPolicy": "llm_image_observation",
+          "gradePolicy": null
+        },
+        {
+          "id": "eyes.under-eye-fullness",
+          "name": "Under-eye fullness",
+          "output": "T",
+          "definition": "Not apparent / slight / noticeable / pronounced / uncertain; visual observation only.",
+          "capture": "Front, even lighting",
+          "visual": "Text",
+          "producerPolicy": "llm_image_observation",
+          "gradePolicy": null
+        },
+        {
+          "id": "eyes.lashes",
+          "name": "Visible lash appearance",
+          "output": "T",
+          "definition": "Sparse-looking / moderate / dense-looking / obscured; no universal desirability grade.",
+          "capture": "Front, sufficient detail",
+          "visual": "Text",
+          "producerPolicy": "llm_image_observation",
+          "gradePolicy": null
+        }
+      ]
+    },
+    {
+      "id": "brows",
+      "title": "Brows",
+      "rubrics": [
+        {
+          "id": "brows.tilt",
+          "name": "Brow tilt",
+          "output": "A",
+          "definition": "Medial-to-lateral brow baseline angle after roll correction, per side.",
+          "capture": "Front",
+          "visual": "Orbit",
+          "producerPolicy": "detector_geometry_then_llm_estimate",
+          "gradePolicy": "versioned_provisional_reference_band"
+        },
+        {
+          "id": "brows.eye-distance",
+          "name": "Brow\u2013eye distance",
+          "output": "R",
+          "definition": "Central brow lower edge to upper lid distance / eye opening height.",
+          "capture": "Front",
+          "visual": "Capsule",
+          "producerPolicy": "detector_geometry_then_llm_estimate",
+          "gradePolicy": "versioned_provisional_reference_band"
+        },
+        {
+          "id": "brows.length",
+          "name": "Brow length relative to eye",
+          "output": "R",
+          "definition": "Medial-to-lateral brow chord length / eye width, per side.",
+          "capture": "Front",
+          "visual": "Capsule",
+          "producerPolicy": "detector_geometry_then_llm_estimate",
+          "gradePolicy": "versioned_provisional_reference_band"
+        },
+        {
+          "id": "brows.thickness",
+          "name": "Brow thickness",
+          "output": "N",
+          "definition": "Median brow-mask thickness / eye width; never millimeters from an unscaled image.",
+          "capture": "Front, brow segmentation",
+          "visual": "Text",
+          "producerPolicy": "detector_geometry_then_llm_estimate",
+          "gradePolicy": null
+        },
+        {
+          "id": "brows.density",
+          "name": "Visible brow coverage",
+          "output": "T",
+          "definition": "Low / moderate / high apparent coverage / obscured; distinguish makeup and shadows.",
+          "capture": "Front, even lighting",
+          "visual": "Text",
+          "producerPolicy": "llm_image_observation",
+          "gradePolicy": null
+        },
+        {
+          "id": "brows.arch",
+          "name": "Brow arch",
+          "output": "A",
+          "definition": "Per-brow interior angle at the visible arch peak between lines to brow start and tail; retain left and right. A flatter arch approaches 180 degrees. Estimate the visible contour when detector points are insufficient.",
+          "capture": "Front",
+          "visual": "Text",
+          "producerPolicy": "llm_image_observation",
+          "gradePolicy": null
+        },
+        {
+          "id": "brows.tail",
+          "name": "Brow-tail direction",
+          "output": "A",
+          "definition": "Signed angle of outer-third brow segment to horizontal; not the main whole-brow tilt.",
+          "capture": "Front",
+          "visual": "Text",
+          "producerPolicy": "detector_geometry_then_llm_estimate",
+          "gradePolicy": null
+        },
+        {
+          "id": "brows.position",
+          "name": "Brow position",
+          "output": "T",
+          "definition": "Relative medial start and tail position against eye corners; aligned / inward / outward / mixed.",
+          "capture": "Front",
+          "visual": "Text",
+          "producerPolicy": "llm_image_observation",
+          "gradePolicy": null
+        }
+      ]
+    },
+    {
+      "id": "nose",
+      "title": "Nose",
+      "rubrics": [
+        {
+          "id": "nose.width",
+          "name": "Nose-base width",
+          "output": "R",
+          "definition": "Visible nose-wing width / cheek width.",
+          "capture": "Front",
+          "visual": "Capsule",
+          "producerPolicy": "detector_geometry_then_llm_estimate",
+          "gradePolicy": "versioned_provisional_reference_band"
+        },
+        {
+          "id": "nose.eye-gap-ratio",
+          "name": "Nose / inner-eye gap",
+          "output": "N",
+          "definition": "Nose-wing width / inner-eye corner distance; this ratio is owned here.",
+          "capture": "Front",
+          "visual": "Text",
+          "producerPolicy": "detector_geometry_then_llm_estimate",
+          "gradePolicy": null
+        },
+        {
+          "id": "nose.length",
+          "name": "Nose length",
+          "output": "N",
+          "definition": "Defined nasal-root-to-tip distance / visible face height; proxy endpoints must be named.",
+          "capture": "Front",
+          "visual": "Text",
+          "producerPolicy": "detector_geometry_then_llm_estimate",
+          "gradePolicy": null
+        },
+        {
+          "id": "nose.bridge",
+          "name": "Bridge contour",
+          "output": "T",
+          "definition": "Straight-looking / concave-looking / convex-looking / irregular-looking / uncertain.",
+          "capture": "Side",
+          "visual": "Text",
+          "producerPolicy": "llm_image_observation",
+          "gradePolicy": null
+        },
+        {
+          "id": "nose.tip-shape",
+          "name": "Tip shape",
+          "output": "T",
+          "definition": "Rounded / narrower / broader / mixed / uncertain; replace judgmental \u201cbulbous\u201d language.",
+          "capture": "Front + side",
+          "visual": "Text",
+          "producerPolicy": "llm_image_observation",
+          "gradePolicy": null
+        },
+        {
+          "id": "nose.rotation",
+          "name": "Tip rotation",
+          "output": "A",
+          "definition": "Nasolabial angle between columella tangent and upper-lip tangent; endpoint convention fixed.",
+          "capture": "Side, neutral mouth",
+          "visual": "Orbit",
+          "producerPolicy": "detector_geometry_then_llm_estimate",
+          "gradePolicy": "versioned_provisional_reference_band"
+        },
+        {
+          "id": "nose.projection",
+          "name": "Nose projection",
+          "output": "R",
+          "definition": "Tip perpendicular distance from fixed root-to-base line / nose length in profile.",
+          "capture": "Side",
+          "visual": "Capsule",
+          "producerPolicy": "detector_geometry_then_llm_estimate",
+          "gradePolicy": "versioned_provisional_reference_band"
+        },
+        {
+          "id": "nose.nostril-visibility",
+          "name": "Nostril visibility",
+          "output": "N",
+          "definition": "Visible nostril aperture area / nose bounding-box area, each side; explicitly pose-dependent.",
+          "capture": "Front, segmentation",
+          "visual": "Text",
+          "producerPolicy": "detector_geometry_then_llm_estimate",
+          "gradePolicy": null
+        },
+        {
+          "id": "nose.alar-angle",
+          "name": "Nose-wing angle",
+          "output": "A",
+          "definition": "Angle from defined alar contour tangent to facial vertical, each side; requires contour validation.",
+          "capture": "Front",
+          "visual": "Text",
+          "producerPolicy": "detector_geometry_then_llm_estimate",
+          "gradePolicy": null
+        },
+        {
+          "id": "nose.bridge-width",
+          "name": "Bridge / base width",
+          "output": "N",
+          "definition": "Visible bridge width at defined level / nose-wing width; no depth inference.",
+          "capture": "Front",
+          "visual": "Text",
+          "producerPolicy": "detector_geometry_then_llm_estimate",
+          "gradePolicy": null
+        }
+      ]
+    },
+    {
+      "id": "mouth",
+      "title": "Mouth & lips",
+      "rubrics": [
+        {
+          "id": "mouth.width",
+          "name": "Mouth / nose width",
+          "output": "R",
+          "definition": "Mouth-corner width / nose-wing width.",
+          "capture": "Front, neutral mouth",
+          "visual": "Capsule",
+          "producerPolicy": "detector_geometry_then_llm_estimate",
+          "gradePolicy": "versioned_provisional_reference_band"
+        },
+        {
+          "id": "mouth.lip-ratio",
+          "name": "Lower / upper lip height",
+          "output": "R",
+          "definition": "Central lower vermilion height / central upper vermilion height.",
+          "capture": "Front, closed relaxed lips",
+          "visual": "Capsule",
+          "producerPolicy": "detector_geometry_then_llm_estimate",
+          "gradePolicy": "versioned_provisional_reference_band"
+        },
+        {
+          "id": "mouth.corner-position",
+          "name": "Mouth-corner inclination",
+          "output": "A",
+          "definition": "Mean signed corner elevation angle relative to central mouth seam after roll correction.",
+          "capture": "Front, neutral mouth",
+          "visual": "Orbit",
+          "producerPolicy": "detector_geometry_then_llm_estimate",
+          "gradePolicy": "versioned_provisional_reference_band"
+        },
+        {
+          "id": "mouth.pupil-ratio",
+          "name": "Mouth / pupil spacing",
+          "output": "N",
+          "definition": "Mouth-corner width / interpupillary distance; owned here, not repeated in Proportions.",
+          "capture": "Front",
+          "visual": "Text",
+          "producerPolicy": "detector_geometry_then_llm_estimate",
+          "gradePolicy": null
+        },
+        {
+          "id": "mouth.fullness",
+          "name": "Visible lip fullness",
+          "output": "T",
+          "definition": "Thin-looking / moderate / fuller-looking / mixed; do not grade volume as universally better.",
+          "capture": "Front",
+          "visual": "Text",
+          "producerPolicy": "llm_image_observation",
+          "gradePolicy": null
+        },
+        {
+          "id": "mouth.cupid-bow",
+          "name": "Cupid\u2019s bow",
+          "output": "T",
+          "definition": "Soft / defined / broad / asymmetric-looking / uncertain.",
+          "capture": "Front",
+          "visual": "Text",
+          "producerPolicy": "llm_image_observation",
+          "gradePolicy": null
+        },
+        {
+          "id": "mouth.bow-depth",
+          "name": "Cupid\u2019s bow depth",
+          "output": "N",
+          "definition": "Central notch depth relative to upper-lip peak baseline / mouth width, not millimeters.",
+          "capture": "Front, precise lip contour",
+          "visual": "Text",
+          "producerPolicy": "detector_geometry_then_llm_estimate",
+          "gradePolicy": null
+        },
+        {
+          "id": "mouth.philtrum",
+          "name": "Philtrum / upper lip",
+          "output": "N",
+          "definition": "Subnasale-to-upper-vermilion height / upper-vermilion height; defined landmarks required.",
+          "capture": "Front",
+          "visual": "Text",
+          "producerPolicy": "detector_geometry_then_llm_estimate",
+          "gradePolicy": null
+        },
+        {
+          "id": "mouth.projection",
+          "name": "Lip projection",
+          "output": "N",
+          "definition": "Signed upper/lower lip offsets from stated profile reference line / nose length.",
+          "capture": "Side",
+          "visual": "Text",
+          "producerPolicy": "detector_geometry_then_llm_estimate",
+          "gradePolicy": null
+        },
+        {
+          "id": "mouth.contour",
+          "name": "Lip-contour appearance",
+          "output": "T",
+          "definition": "Even / variable / partly obscured / uncertain; visible contour observation.",
+          "capture": "Front",
+          "visual": "Text",
+          "producerPolicy": "llm_image_observation",
+          "gradePolicy": null
+        }
+      ]
+    },
+    {
+      "id": "jaw",
+      "title": "Jaw & chin",
+      "rubrics": [
+        {
+          "id": "jaw.width",
+          "name": "Jaw / cheek width",
+          "output": "R",
+          "definition": "Width between validated jaw-angle anchors / cheek width; contour proxy labeled separately.",
+          "capture": "Front",
+          "visual": "Capsule",
+          "producerPolicy": "detector_geometry_then_llm_estimate",
+          "gradePolicy": "versioned_provisional_reference_band"
+        },
+        {
+          "id": "jaw.angle",
+          "name": "Profile jaw angle",
+          "output": "A",
+          "definition": "Angle between validated mandibular-body and ramus lines; no inferred anatomy from frontal photo.",
+          "capture": "Side",
+          "visual": "Orbit",
+          "producerPolicy": "detector_geometry_then_llm_estimate",
+          "gradePolicy": "versioned_provisional_reference_band"
+        },
+        {
+          "id": "jaw.projection",
+          "name": "Chin projection",
+          "output": "R",
+          "definition": "Signed chin offset from stated facial profile line / visible face height.",
+          "capture": "Side",
+          "visual": "Orbit",
+          "producerPolicy": "detector_geometry_then_llm_estimate",
+          "gradePolicy": "versioned_provisional_reference_band"
+        },
+        {
+          "id": "jaw.height",
+          "name": "Chin / lower-face height",
+          "output": "R",
+          "definition": "Defined lower-lip-to-chin height / subnasale-to-chin height.",
+          "capture": "Front",
+          "visual": "Capsule",
+          "producerPolicy": "detector_geometry_then_llm_estimate",
+          "gradePolicy": "versioned_provisional_reference_band"
+        },
+        {
+          "id": "jaw.chin-width",
+          "name": "Chin / jaw width",
+          "output": "N",
+          "definition": "Chin width at defined contour level / jaw width.",
+          "capture": "Front",
+          "visual": "Text",
+          "producerPolicy": "detector_geometry_then_llm_estimate",
+          "gradePolicy": null
+        },
+        {
+          "id": "jaw.chin-shape",
+          "name": "Chin shape",
+          "output": "T",
+          "definition": "Rounded / squared / tapered / mixed / uncertain.",
+          "capture": "Front",
+          "visual": "Text",
+          "producerPolicy": "llm_image_observation",
+          "gradePolicy": null
+        },
+        {
+          "id": "jaw.jaw-shape",
+          "name": "Jaw outline",
+          "output": "T",
+          "definition": "Rounded / angular / tapered / mixed; descriptive, not a skeletal diagnosis.",
+          "capture": "Front",
+          "visual": "Text",
+          "producerPolicy": "llm_image_observation",
+          "gradePolicy": null
+        },
+        {
+          "id": "jaw.definition",
+          "name": "Jaw edge visibility",
+          "output": "T",
+          "definition": "Low / moderate / clear / lighting-limited; appearance rather than body-fat estimate.",
+          "capture": "Front + side",
+          "visual": "Text",
+          "producerPolicy": "llm_image_observation",
+          "gradePolicy": null
+        },
+        {
+          "id": "jaw.under-chin",
+          "name": "Under-chin contour",
+          "output": "T",
+          "definition": "Smooth / variable / partly obscured / uncertain, qualified by posture.",
+          "capture": "Side",
+          "visual": "Text",
+          "producerPolicy": "llm_image_observation",
+          "gradePolicy": null
+        },
+        {
+          "id": "jaw.chin-philtrum",
+          "name": "Chin / philtrum height",
+          "output": "N",
+          "definition": "Defined chin segment height / philtrum height; owned here.",
+          "capture": "Front",
+          "visual": "Text",
+          "producerPolicy": "detector_geometry_then_llm_estimate",
+          "gradePolicy": null
+        }
+      ]
+    },
+    {
+      "id": "cheeks",
+      "title": "Cheeks & midface",
+      "rubrics": [
+        {
+          "id": "cheeks.height",
+          "name": "Cheek landmark height",
+          "output": "R",
+          "definition": "Vertical cheek-anchor position relative to eye-line and chin / eye-to-chin height.",
+          "capture": "Front, validated cheek anchors",
+          "visual": "Orbit",
+          "producerPolicy": "detector_geometry_then_llm_estimate",
+          "gradePolicy": "versioned_provisional_reference_band"
+        },
+        {
+          "id": "cheeks.width",
+          "name": "Cheek width / eye span",
+          "output": "R",
+          "definition": "Cheek width / outer-eye-corner span.",
+          "capture": "Front",
+          "visual": "Capsule",
+          "producerPolicy": "detector_geometry_then_llm_estimate",
+          "gradePolicy": "versioned_provisional_reference_band"
+        },
+        {
+          "id": "cheeks.midface",
+          "name": "Midface width / height",
+          "output": "R",
+          "definition": "Cheek width / eye-line-to-subnasale height; explicit convention.",
+          "capture": "Front",
+          "visual": "Capsule",
+          "producerPolicy": "detector_geometry_then_llm_estimate",
+          "gradePolicy": "versioned_provisional_reference_band"
+        },
+        {
+          "id": "cheeks.contour",
+          "name": "Cheek contour",
+          "output": "T",
+          "definition": "Fuller-looking / flatter-looking / hollow-looking / mixed; no tissue-volume estimate.",
+          "capture": "Front, even lighting",
+          "visual": "Text",
+          "producerPolicy": "llm_image_observation",
+          "gradePolicy": null
+        },
+        {
+          "id": "cheeks.prominence",
+          "name": "Cheekbone appearance",
+          "output": "T",
+          "definition": "Subtle / moderate / pronounced / uncertain; visible prominence, not 3D projection.",
+          "capture": "Front + side",
+          "visual": "Text",
+          "producerPolicy": "llm_image_observation",
+          "gradePolicy": null
+        },
+        {
+          "id": "cheeks.malar-transition",
+          "name": "Cheek transition",
+          "output": "T",
+          "definition": "Smooth / distinct / variable / lighting-limited at cheek-to-lower-face transition.",
+          "capture": "Front",
+          "visual": "Text",
+          "producerPolicy": "llm_image_observation",
+          "gradePolicy": null
+        },
+        {
+          "id": "cheeks.paranasal",
+          "name": "Paranasal contour",
+          "output": "T",
+          "definition": "Flat-looking / recessed-looking / fuller-looking / uncertain; not a structural diagnosis.",
+          "capture": "Front + side",
+          "visual": "Text",
+          "producerPolicy": "llm_image_observation",
+          "gradePolicy": null
+        },
+        {
+          "id": "cheeks.nasolabial-fold",
+          "name": "Visible nasolabial folds",
+          "output": "T",
+          "definition": "Not apparent / slight / noticeable / pronounced / uncertain; neutral expression required.",
+          "capture": "Front",
+          "visual": "Text",
+          "producerPolicy": "llm_image_observation",
+          "gradePolicy": null
+        }
+      ]
+    },
+    {
+      "id": "face",
+      "title": "Face shape & forehead",
+      "rubrics": [
+        {
+          "id": "face.frame",
+          "name": "Visible face width / height",
+          "output": "R",
+          "definition": "Cheek width / defined upper-face-to-chin height; actual endpoints recorded.",
+          "capture": "Front",
+          "visual": "Capsule",
+          "producerPolicy": "detector_geometry_then_llm_estimate",
+          "gradePolicy": "versioned_provisional_reference_band"
+        },
+        {
+          "id": "face.forehead-height",
+          "name": "Forehead proportion",
+          "output": "R",
+          "definition": "Visible hairline-to-brow height / hairline-to-chin height; never substituted inferred forehead.",
+          "capture": "Front, hairline visible",
+          "visual": "Capsule",
+          "producerPolicy": "detector_geometry_then_llm_estimate",
+          "gradePolicy": "versioned_provisional_reference_band"
+        },
+        {
+          "id": "face.forehead-slope",
+          "name": "Forehead inclination",
+          "output": "A",
+          "definition": "Forehead profile tangent relative to normalized facial vertical.",
+          "capture": "Side, forehead unobscured",
+          "visual": "Orbit",
+          "producerPolicy": "detector_geometry_then_llm_estimate",
+          "gradePolicy": "versioned_provisional_reference_band"
+        },
+        {
+          "id": "face.shape",
+          "name": "Face shape",
+          "output": "T",
+          "definition": "Oval / round / oblong / square / heart / diamond / mixed; allow mixed rather than forced label.",
+          "capture": "Front",
+          "visual": "Text",
+          "producerPolicy": "llm_image_observation",
+          "gradePolicy": null
+        },
+        {
+          "id": "face.temple-width",
+          "name": "Temple / cheek width",
+          "output": "N",
+          "definition": "Visible temple-anchor width / cheek width.",
+          "capture": "Front, temples visible",
+          "visual": "Text",
+          "producerPolicy": "detector_geometry_then_llm_estimate",
+          "gradePolicy": null
+        },
+        {
+          "id": "face.forehead-width",
+          "name": "Forehead / cheek width",
+          "output": "N",
+          "definition": "Width at stated forehead level / cheek width.",
+          "capture": "Front, unobscured",
+          "visual": "Text",
+          "producerPolicy": "detector_geometry_then_llm_estimate",
+          "gradePolicy": null
+        },
+        {
+          "id": "face.taper",
+          "name": "Upper-to-lower face taper",
+          "output": "N",
+          "definition": "Temple width / jaw width; raw relationship, not a second harmony score.",
+          "capture": "Front",
+          "visual": "Text",
+          "producerPolicy": "detector_geometry_then_llm_estimate",
+          "gradePolicy": null
+        },
+        {
+          "id": "face.forehead-contour",
+          "name": "Forehead contour",
+          "output": "T",
+          "definition": "Flatter-looking / curved-looking / mixed / uncertain.",
+          "capture": "Front + side",
+          "visual": "Text",
+          "producerPolicy": "llm_image_observation",
+          "gradePolicy": null
+        }
+      ]
+    },
+    {
+      "id": "proportions",
+      "title": "Facial proportions & harmony",
+      "rubrics": [
+        {
+          "id": "proportions.upper-third",
+          "name": "Upper facial third",
+          "output": "R",
+          "definition": "Hairline-to-glabella vertical distance / hairline-to-chin height.",
+          "capture": "Front, actual hairline",
+          "visual": "Capsule",
+          "producerPolicy": "detector_geometry_then_llm_estimate",
+          "gradePolicy": "versioned_provisional_reference_band"
+        },
+        {
+          "id": "proportions.middle-third",
+          "name": "Middle facial third",
+          "output": "R",
+          "definition": "Glabella-to-subnasale vertical distance / hairline-to-chin height.",
+          "capture": "Front, actual hairline",
+          "visual": "Capsule",
+          "producerPolicy": "detector_geometry_then_llm_estimate",
+          "gradePolicy": "versioned_provisional_reference_band"
+        },
+        {
+          "id": "proportions.lower-third",
+          "name": "Lower facial third",
+          "output": "R",
+          "definition": "Subnasale-to-chin vertical distance / hairline-to-chin height.",
+          "capture": "Front, actual hairline",
+          "visual": "Text",
+          "producerPolicy": "detector_geometry_then_llm_estimate",
+          "gradePolicy": "versioned_provisional_reference_band"
+        },
+        {
+          "id": "proportions.fifths",
+          "name": "Visible facial fifths",
+          "output": "N",
+          "definition": "Five widths from face edges, outer/inner eye corners; output vector summing to visible width.",
+          "capture": "Front",
+          "visual": "Text",
+          "producerPolicy": "detector_geometry_then_llm_estimate",
+          "gradePolicy": null
+        },
+        {
+          "id": "proportions.lower-partition",
+          "name": "Lower-third partition",
+          "output": "R",
+          "definition": "Subnasale-to-mouth-seam height / subnasale-to-chin height.",
+          "capture": "Front",
+          "visual": "Rail",
+          "producerPolicy": "detector_geometry_then_llm_estimate",
+          "gradePolicy": "versioned_provisional_reference_band"
+        },
+        {
+          "id": "proportions.convexity",
+          "name": "Profile facial convexity",
+          "output": "A",
+          "definition": "Angle at subnasale from fixed forehead and chin anchors; convention recorded.",
+          "capture": "Side",
+          "visual": "Orbit",
+          "producerPolicy": "detector_geometry_then_llm_estimate",
+          "gradePolicy": "versioned_provisional_reference_band"
+        },
+        {
+          "id": "proportions.vertical-alignment",
+          "name": "Vertical feature alignment",
+          "output": "N",
+          "definition": "Signed nose/mouth/chin midline offsets from facial axis / cheek width; vector.",
+          "capture": "Front",
+          "visual": "Text",
+          "producerPolicy": "detector_geometry_then_llm_estimate",
+          "gradePolicy": null
+        },
+        {
+          "id": "proportions.width-hierarchy",
+          "name": "Feature width hierarchy",
+          "output": "T",
+          "definition": "Ordered measured temple, cheek and jaw widths; show pattern, no new score.",
+          "capture": "Front",
+          "visual": "Text",
+          "producerPolicy": "llm_image_observation",
+          "gradePolicy": null
+        },
+        {
+          "id": "proportions.eye-mouth-height",
+          "name": "Eye-to-mouth / mouth-to-chin",
+          "output": "N",
+          "definition": "Vertical eye-line-to-mouth distance / mouth-to-chin distance.",
+          "capture": "Front",
+          "visual": "Text",
+          "producerPolicy": "detector_geometry_then_llm_estimate",
+          "gradePolicy": null
+        },
+        {
+          "id": "proportions.nose-lower-third",
+          "name": "Nose length / lower third",
+          "output": "N",
+          "definition": "Defined nose length / subnasale-to-chin height.",
+          "capture": "Front",
+          "visual": "Text",
+          "producerPolicy": "detector_geometry_then_llm_estimate",
+          "gradePolicy": null
+        },
+        {
+          "id": "proportions.angle-coordination",
+          "name": "Nose-wing / frontal jaw angle",
+          "output": "A",
+          "definition": "Difference between validated alar and jaw contour angles; research candidate, not an ideal.",
+          "capture": "Front, validated endpoints",
+          "visual": "Orbit",
+          "producerPolicy": "detector_geometry_then_llm_estimate",
+          "gradePolicy": null
+        },
+        {
+          "id": "proportions.summary",
+          "name": "Proportional summary",
+          "output": "D",
+          "definition": "Summarize owned measured relationships without adding independent weight or a new numeric grade.",
+          "capture": "Supported measurements",
+          "visual": "Text",
+          "producerPolicy": "derive_from_accepted_results",
+          "gradePolicy": null
+        }
+      ]
+    },
+    {
+      "id": "symmetry",
+      "title": "Symmetry",
+      "rubrics": [
+        {
+          "id": "symmetry.eyes-height",
+          "name": "Eye-corner height balance",
+          "output": "B",
+          "definition": "Mean corresponding eye-corner absolute vertical difference / face height after roll correction.",
+          "capture": "Front",
+          "visual": "Rail",
+          "producerPolicy": "detector_geometry_then_llm_estimate",
+          "gradePolicy": "difference_thresholds_or_visual_ordinal_balance"
+        },
+        {
+          "id": "symmetry.eyes-opening",
+          "name": "Eye-opening balance",
+          "output": "B",
+          "definition": "Absolute difference of eye aspect ratios / mean aspect ratio.",
+          "capture": "Front, neutral lids",
+          "visual": "Text",
+          "producerPolicy": "detector_geometry_then_llm_estimate",
+          "gradePolicy": "difference_thresholds_or_visual_ordinal_balance"
+        },
+        {
+          "id": "symmetry.brows-height",
+          "name": "Brow height balance",
+          "output": "B",
+          "definition": "Corresponding brow-anchor vertical difference / face height; fixed central anchor.",
+          "capture": "Front",
+          "visual": "Rail",
+          "producerPolicy": "detector_geometry_then_llm_estimate",
+          "gradePolicy": "difference_thresholds_or_visual_ordinal_balance"
+        },
+        {
+          "id": "symmetry.brows-shape",
+          "name": "Brow-shape balance",
+          "output": "B",
+          "definition": "Mirrored brow-contour residual / eye width after fixed facial-axis reflection.",
+          "capture": "Front, brow contour",
+          "visual": "Text",
+          "producerPolicy": "detector_geometry_then_llm_estimate",
+          "gradePolicy": "difference_thresholds_or_visual_ordinal_balance"
+        },
+        {
+          "id": "symmetry.nose-wings",
+          "name": "Nose-wing balance",
+          "output": "B",
+          "definition": "Absolute left/right wing-to-midline distance difference / mean wing distance.",
+          "capture": "Front",
+          "visual": "Text",
+          "producerPolicy": "detector_geometry_then_llm_estimate",
+          "gradePolicy": "difference_thresholds_or_visual_ordinal_balance"
+        },
+        {
+          "id": "symmetry.nose-axis",
+          "name": "Nose axis alignment",
+          "output": "B",
+          "definition": "Absolute lateral tip/base offset from defined facial midline / face width.",
+          "capture": "Front",
+          "visual": "Text",
+          "producerPolicy": "detector_geometry_then_llm_estimate",
+          "gradePolicy": "difference_thresholds_or_visual_ordinal_balance"
+        },
+        {
+          "id": "symmetry.mouth-height",
+          "name": "Mouth-corner height balance",
+          "output": "B",
+          "definition": "Absolute corner height difference / face height; no smile.",
+          "capture": "Front, neutral mouth",
+          "visual": "Rail",
+          "producerPolicy": "detector_geometry_then_llm_estimate",
+          "gradePolicy": "difference_thresholds_or_visual_ordinal_balance"
+        },
+        {
+          "id": "symmetry.lip-contour",
+          "name": "Lip-contour balance",
+          "output": "B",
+          "definition": "Mirrored lip-contour residual / mouth width.",
+          "capture": "Front, precise lip contour",
+          "visual": "Text",
+          "producerPolicy": "detector_geometry_then_llm_estimate",
+          "gradePolicy": "difference_thresholds_or_visual_ordinal_balance"
+        },
+        {
+          "id": "symmetry.chin-axis",
+          "name": "Chin midline alignment",
+          "output": "B",
+          "definition": "Absolute signed chin offset from facial axis / cheek width.",
+          "capture": "Front",
+          "visual": "Rail",
+          "producerPolicy": "detector_geometry_then_llm_estimate",
+          "gradePolicy": "difference_thresholds_or_visual_ordinal_balance"
+        },
+        {
+          "id": "symmetry.jaw-outline",
+          "name": "Jaw-outline balance",
+          "output": "B",
+          "definition": "Mirrored jaw-contour residual / cheek width; proxy versus anatomical source explicit.",
+          "capture": "Front, validated contour",
+          "visual": "Text",
+          "producerPolicy": "detector_geometry_then_llm_estimate",
+          "gradePolicy": "difference_thresholds_or_visual_ordinal_balance"
+        },
+        {
+          "id": "symmetry.cheek-outline",
+          "name": "Cheek-outline balance",
+          "output": "B",
+          "definition": "Mirrored cheek-contour residual / cheek width.",
+          "capture": "Front, even lighting",
+          "visual": "Text",
+          "producerPolicy": "detector_geometry_then_llm_estimate",
+          "gradePolicy": "difference_thresholds_or_visual_ordinal_balance"
+        },
+        {
+          "id": "symmetry.ears-position",
+          "name": "Ear-position balance",
+          "output": "B",
+          "definition": "Corresponding visible ear height difference / face height; block on yaw or hidden ear.",
+          "capture": "Front, both ears visible",
+          "visual": "Text",
+          "producerPolicy": "detector_geometry_then_llm_estimate",
+          "gradePolicy": "difference_thresholds_or_visual_ordinal_balance"
+        }
+      ]
+    },
+    {
+      "id": "skin",
+      "title": "Skin & texture",
+      "rubrics": [
+        {
+          "id": "skin.texture",
+          "name": "Visible texture",
+          "output": "O",
+          "definition": "Appearance ordinal: 0 little texture visible; 1 localized fine detail; 2 noticeable detail across several areas; 3 widespread prominent detail; 4 highly prominent detail.",
+          "capture": "Front, even light, adequate resolution",
+          "visual": "Rail",
+          "producerPolicy": "llm_image_observation",
+          "gradePolicy": "10_minus_2_5_times_ordinal_level"
+        },
+        {
+          "id": "skin.tone",
+          "name": "Visible tone variation",
+          "output": "O",
+          "definition": "0 little local variation; 1 slight localized variation; 2 noticeable in several regions; 3 widespread pronounced variation; 4 extensive highly pronounced variation. Natural pigmentation is not scored.",
+          "capture": "Front, even light",
+          "visual": "Rail",
+          "producerPolicy": "llm_image_observation",
+          "gradePolicy": "10_minus_2_5_times_ordinal_level"
+        },
+        {
+          "id": "skin.under-eye-contrast",
+          "name": "Under-eye contrast",
+          "output": "O",
+          "definition": "0 little contrast against adjacent cheek; 1 slight; 2 noticeable; 3 pronounced; 4 very pronounced. Qualify shadows and makeup.",
+          "capture": "Front, even light",
+          "visual": "Rail",
+          "producerPolicy": "llm_image_observation",
+          "gradePolicy": "10_minus_2_5_times_ordinal_level"
+        },
+        {
+          "id": "skin.blemishes",
+          "name": "Visible blemish appearance",
+          "output": "O",
+          "definition": "0 none apparent; 1 isolated small appearances; 2 several localized appearances; 3 widespread noticeable appearances; 4 extensive prominent appearances. Cosmetic observation, no diagnosis.",
+          "capture": "Front, detail visible",
+          "visual": "Rail",
+          "producerPolicy": "llm_image_observation",
+          "gradePolicy": "10_minus_2_5_times_ordinal_level"
+        },
+        {
+          "id": "skin.pores",
+          "name": "Visible pore detail",
+          "output": "T",
+          "definition": "Not discernible / fine / noticeable / prominent / insufficient resolution; do not infer absent pores.",
+          "capture": "Front, detail visible",
+          "visual": "Text",
+          "producerPolicy": "llm_image_observation",
+          "gradePolicy": null
+        },
+        {
+          "id": "skin.shine",
+          "name": "Surface shine",
+          "output": "T",
+          "definition": "Low / localized / widespread / lighting-limited; neutral description, not health grade.",
+          "capture": "Front, even light",
+          "visual": "Text",
+          "producerPolicy": "llm_image_observation",
+          "gradePolicy": null
+        },
+        {
+          "id": "skin.fine-lines",
+          "name": "Visible fine lines",
+          "output": "T",
+          "definition": "Not apparent / localized / multiple areas / uncertain; no age estimate.",
+          "capture": "Front, neutral expression",
+          "visual": "Text",
+          "producerPolicy": "llm_image_observation",
+          "gradePolicy": null
+        },
+        {
+          "id": "skin.marks",
+          "name": "Visible marks",
+          "output": "T",
+          "definition": "Not apparent / localized / multiple areas / uncertain; no claims about origin or disease.",
+          "capture": "Front",
+          "visual": "Text",
+          "producerPolicy": "llm_image_observation",
+          "gradePolicy": null
+        },
+        {
+          "id": "skin.under-eye-color",
+          "name": "Under-eye color appearance",
+          "output": "T",
+          "definition": "Neutral description of local tonal contrast only; do not assign a medical cause.",
+          "capture": "Front, even light",
+          "visual": "Text",
+          "producerPolicy": "llm_image_observation",
+          "gradePolicy": null
+        },
+        {
+          "id": "skin.surface-pattern",
+          "name": "Regional surface pattern",
+          "output": "T",
+          "definition": "Record affected regions using forehead / nose / cheeks / chin; grounded in visible findings.",
+          "capture": "Front",
+          "visual": "Text",
+          "producerPolicy": "llm_image_observation",
+          "gradePolicy": null
+        },
+        {
+          "id": "skin.capture-effects",
+          "name": "Capture effects",
+          "output": "T",
+          "definition": "Shadow / highlight / smoothing / makeup possible / compression / none apparent; qualify rather than diagnose filters.",
+          "capture": "Front",
+          "visual": "Text",
+          "producerPolicy": "llm_image_observation",
+          "gradePolicy": null
+        },
+        {
+          "id": "skin.priorities",
+          "name": "Surface-care priorities",
+          "output": "D",
+          "definition": "Conservative care or capture suggestions from supported observations; no extra grade.",
+          "capture": "Supported observations",
+          "visual": "Text",
+          "producerPolicy": "derive_from_accepted_results",
+          "gradePolicy": null
+        }
+      ]
+    },
+    {
+      "id": "hair",
+      "title": "Hair & facial hair",
+      "rubrics": [
+        {
+          "id": "hair.hairline-shape",
+          "name": "Hairline shape",
+          "output": "T",
+          "definition": "Rounded / straighter / peaked / irregular / partly obscured / uncertain; no health diagnosis.",
+          "capture": "Front, hairline visible",
+          "visual": "Text",
+          "producerPolicy": "llm_image_observation",
+          "gradePolicy": null
+        },
+        {
+          "id": "hair.hairline-visibility",
+          "name": "Hairline visibility",
+          "output": "T",
+          "definition": "Full / partial / obscured; capture state, not attractiveness.",
+          "capture": "Front",
+          "visual": "Text",
+          "producerPolicy": "llm_image_observation",
+          "gradePolicy": null
+        },
+        {
+          "id": "hair.coverage",
+          "name": "Visible hair coverage",
+          "output": "T",
+          "definition": "Describe visible coverage and scalp visibility; no inference of hair loss or follicle density.",
+          "capture": "Front + optional side",
+          "visual": "Text",
+          "producerPolicy": "llm_image_observation",
+          "gradePolicy": null
+        },
+        {
+          "id": "hair.frame",
+          "name": "Hairstyle framing",
+          "output": "T",
+          "definition": "Describe forehead exposure, lateral volume and contour relationship to face shape.",
+          "capture": "Front",
+          "visual": "Text",
+          "producerPolicy": "llm_image_observation",
+          "gradePolicy": null
+        },
+        {
+          "id": "hair.volume",
+          "name": "Hair volume / face width",
+          "output": "N",
+          "definition": "Visible hairstyle silhouette width / cheek width; appearance-only, not a target ratio.",
+          "capture": "Front",
+          "visual": "Text",
+          "producerPolicy": "detector_geometry_then_llm_estimate",
+          "gradePolicy": null
+        },
+        {
+          "id": "hair.beard-style",
+          "name": "Facial-hair style",
+          "output": "T",
+          "definition": "Clean-shaven / stubble / moustache / beard / mixed / obscured; clean-shaven is a valid style.",
+          "capture": "Front + optional side",
+          "visual": "Text",
+          "producerPolicy": "llm_image_observation",
+          "gradePolicy": null
+        },
+        {
+          "id": "hair.grooming",
+          "name": "Hair grooming consistency",
+          "output": "O",
+          "definition": "0 cohesive visible outline with no stray mismatch; 1 minor irregularity; 2 several inconsistent patches/edges; 3 substantial inconsistency; 4 pervasive inconsistency. Assess requested presentation style; block if style intent unclear.",
+          "capture": "Front, style preference supplied",
+          "visual": "Rail",
+          "producerPolicy": "llm_image_observation",
+          "gradePolicy": "10_minus_2_5_times_ordinal_level"
+        },
+        {
+          "id": "hair.beard-grooming",
+          "name": "Facial-hair grooming consistency",
+          "output": "O",
+          "definition": "Same 0\u20134 grooming anchors applied to chosen facial-hair outline and trimming, not hair quantity. Clean-shaven: not applicable.",
+          "capture": "Front, facial hair present + style intent",
+          "visual": "Rail",
+          "producerPolicy": "llm_image_observation",
+          "gradePolicy": "10_minus_2_5_times_ordinal_level"
+        }
+      ]
+    },
+    {
+      "id": "ears",
+      "title": "Ears",
+      "rubrics": [
+        {
+          "id": "ears.height",
+          "name": "Ear height / face height",
+          "output": "R",
+          "definition": "Top-to-bottom visible ear height / face height, per side.",
+          "capture": "Front + side, whole ear visible",
+          "visual": "Capsule",
+          "producerPolicy": "detector_geometry_then_llm_estimate",
+          "gradePolicy": "versioned_provisional_reference_band"
+        },
+        {
+          "id": "ears.width",
+          "name": "Ear width / height",
+          "output": "N",
+          "definition": "Visible ear width / ear height; projection-dependent, per side.",
+          "capture": "Side",
+          "visual": "Text",
+          "producerPolicy": "detector_geometry_then_llm_estimate",
+          "gradePolicy": null
+        },
+        {
+          "id": "ears.protrusion",
+          "name": "Ear prominence",
+          "output": "R",
+          "definition": "Visible lateral ear extension from head contour / cheek width; front-photo proxy, not anatomical protrusion angle.",
+          "capture": "Front, no hair occlusion",
+          "visual": "Orbit",
+          "producerPolicy": "detector_geometry_then_llm_estimate",
+          "gradePolicy": "versioned_provisional_reference_band"
+        },
+        {
+          "id": "ears.vertical-position",
+          "name": "Ear vertical position",
+          "output": "N",
+          "definition": "Ear top/bottom heights relative to brow and nose-base lines / face height.",
+          "capture": "Front, both ears visible",
+          "visual": "Text",
+          "producerPolicy": "detector_geometry_then_llm_estimate",
+          "gradePolicy": null
+        },
+        {
+          "id": "ears.shape",
+          "name": "Ear shape",
+          "output": "T",
+          "definition": "Neutral contour and lobe description; no attractiveness grade.",
+          "capture": "Side",
+          "visual": "Text",
+          "producerPolicy": "llm_image_observation",
+          "gradePolicy": null
+        },
+        {
+          "id": "ears.attachment",
+          "name": "Lobe appearance",
+          "output": "T",
+          "definition": "Attached-looking / detached-looking / mixed / uncertain; descriptive only.",
+          "capture": "Side",
+          "visual": "Text",
+          "producerPolicy": "llm_image_observation",
+          "gradePolicy": null
+        }
+      ]
+    }
+  ],
+  "gradingPolicies": {
+    "R": {
+      "output": "numeric_ratio",
+      "grade": "versioned_pilot_reference_band_for_calculated_or_estimated_value"
+    },
+    "A": {
+      "output": "signed_degrees",
+      "grade": "versioned_pilot_reference_band_for_calculated_or_estimated_value"
+    },
+    "N": {
+      "output": "numeric_with_units",
+      "grade": null
+    },
+    "B": {
+      "output": "normalized_absolute_difference_with_paired_raw_values",
+      "grade": "versioned_difference_thresholds_or_explicit_visual_ordinal_balance"
+    },
+    "O": {
+      "output": "ordinal_level_0_to_4",
+      "grade": "10 - 2.5 * level under reviewed pilot anchors"
+    },
+    "T": {
+      "output": "controlled_term",
+      "grade": null
+    },
+    "D": {
+      "output": "derived_explanation",
+      "grade": null
+    }
+  },
+  "referenceBand": {
+    "parameters": [
+      "a",
+      "L",
+      "U",
+      "b"
+    ],
+    "constraint": "a < L <= U < b",
+    "grade": "10 inside [L,U]; linear from 0 at a to 10 at L and from 10 at U to 0 at b; clamp 0..10",
+    "calibrationStatus": "provisional_pilot_bounds_to_be_reviewed_then_refined",
+    "visualPosition": "100 * clamp((x-a)/(b-a),0,1)"
+  },
+  "deploymentStatus": "not_implemented",
+  "pipeline": [
+    "capture_and_landmarks",
+    "deterministic_geometry",
+    "llm_estimation_and_observation",
+    "source_reconciliation",
+    "registry_grading",
+    "report_assembly"
+  ],
+  "estimationPolicy": {
+    "allowNumericLLMEstimates": true,
+    "gradeEstimatedValues": true,
+    "detectorResultsPreferredWhenUsable": true,
+    "silentReplacementAllowed": false,
+    "inputContext": [
+      "source_image",
+      "relevant_crops",
+      "capture_view_pose",
+      "computed_measurements",
+      "landmark_overlay",
+      "pending_ids",
+      "proxy_warnings",
+      "rubric_definitions"
+    ],
+    "missingViewPolicy": "unassessable",
+    "modelConfidenceIsCalibratedAccuracy": false
+  }
+}
