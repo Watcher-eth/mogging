@@ -7,6 +7,7 @@ type RateLimitOptions = {
   key: string
   limit: number
   windowMs: number
+  identity?: string
 }
 
 type Bucket = {
@@ -44,7 +45,7 @@ function enforceMemoryRateLimit(
   options: RateLimitOptions
 ) {
   const now = Date.now()
-  const actor = getClientKey(req)
+  const actor = options.identity ?? getClientKey(req)
   const key = `${options.key}:${actor}`
   const bucket = buckets.get(key)
 
@@ -69,7 +70,7 @@ async function enforceRedisRateLimit(
   options: RateLimitOptions
 ) {
   const now = Date.now()
-  const actor = getClientKey(req)
+  const actor = options.identity ?? getClientKey(req)
   const windowSeconds = Math.ceil(options.windowMs / 1000)
   const bucket = Math.floor(now / options.windowMs)
   const key = `rate_limit:${options.key}:${bucket}:${actor}`

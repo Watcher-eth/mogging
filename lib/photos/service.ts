@@ -1,4 +1,5 @@
-import { eq } from 'drizzle-orm'
+import { and, eq, isNull } from 'drizzle-orm'
+import { createHash } from 'crypto'
 import { z } from 'zod'
 import { hairColorSchema, normalizeApparentAge, skinColorSchema } from '@/lib/appearance/types'
 import { db, schema } from '@/lib/db'
@@ -32,8 +33,16 @@ export type CreatePhotoRecordInput = z.input<typeof createPhotoRecordSchema>
 export async function createPhotoRecord(input: CreatePhotoRecordInput) {
   const data = createPhotoRecordSchema.parse(input)
 
-  const existing = await db.query.photos.findFirst({
-    where: eq(schema.photos.imageHash, data.imageHash),
+  const owner = data.userId
+    ? eq(schema.photos.userId, data.userId)
+    : and(isNull(schema.photos.userId), data.anonymousActorId
+      ? eq(schema.photos.anonymousActorId, data.anonymousActorId)
+      : isNull(schema.photos.anonymousActorId))
+  const ownerKey = data.userId ? `user:${data.userId}` : data.anonymousActorId ? `anonymous:${data.anonymousActorId}` : null
+  const imageHash = ownerKey ? createHash('sha256').update(`${ownerKey}:${data.imageHash}`).digest('hex') : data.imageHash
+  // Retain the owner's historical records; never reuse another owner's identical upload.
+  const find = (hash: string) => db.query.photos.findFirst({
+    where: and(eq(schema.photos.imageHash, hash), owner),
     columns: {
       id: true,
       imageUrl: true,
@@ -42,6 +51,7 @@ export async function createPhotoRecord(input: CreatePhotoRecordInput) {
     },
   })
 
+  const existing = await find(data.imageHash) ?? await find(imageHash)
   if (existing) {
     return {
       photo: existing,
@@ -58,7 +68,7 @@ export async function createPhotoRecord(input: CreatePhotoRecordInput) {
       personGroupId: data.personGroupId ?? null,
       imageUrl: data.imageUrl,
       imageStorageKey: data.imageStorageKey ?? null,
-      imageHash: data.imageHash,
+      imageHash,
       name: data.name ?? null,
       caption: data.caption ?? null,
       gender: data.gender,
@@ -72,6 +82,7 @@ export async function createPhotoRecord(input: CreatePhotoRecordInput) {
       longitude: data.longitude ?? null,
       isPublic: data.isPublic,
     })
+    .onConflictDoNothing({ target: schema.photos.imageHash })
     .returning({
       id: schema.photos.id,
       imageUrl: schema.photos.imageUrl,
@@ -79,8 +90,8 @@ export async function createPhotoRecord(input: CreatePhotoRecordInput) {
       isPublic: schema.photos.isPublic,
     })
 
-  return {
-    photo,
-    deduped: false,
-  }
+  if (photo) return { photo, deduped: false }
+  const concurrent = await find(imageHash)
+  if (!concurrent) throw new Error('Unable to save photo for this account')
+  return { photo: concurrent, deduped: true }
 }

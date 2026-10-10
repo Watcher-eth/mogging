@@ -433,11 +433,18 @@ export async function reserveEvaluation(ownerInput: EntitlementOwner, requestId:
       return { id, result: prior.result, summary: access.summary }
     }
     let entitlementId = access.lifetime?.id
+    if (entitlementId) {
+      // Recheck after locking: access may have expired or been revoked since reconciliation.
+      const [current] = await tx.select().from(schema.paymentEntitlements)
+        .where(and(eq(schema.paymentEntitlements.id, entitlementId), getOwnerWhere(owner))).for('update')
+      if (!current || !activePro(current, new Date())) throw new ApiError(402, 'This access has expired. Buy scans to continue.')
+    }
     if (!entitlementId) {
       const ids = access.spendable.map(row => row.id)
       if (!ids.length) throw new ApiError(402, 'No scans available. Buy more scans or wait for your next allowance.')
       const [pack] = await tx.select().from(schema.paymentEntitlements)
         .where(and(inArray(schema.paymentEntitlements.id, ids), getOwnerWhere(owner), gt(schema.paymentEntitlements.creditBalance, 0),
+          sql`coalesce(${schema.paymentEntitlements.subscriptionStatus}, '') not in ('refunded', 'disputed')`,
           or(isNull(schema.paymentEntitlements.creditExpiresAt), gt(schema.paymentEntitlements.creditExpiresAt, new Date()))))
         .orderBy(sql`case when ${schema.paymentEntitlements.source} = 'subscription_allowance' then 0 else 1 end`, schema.paymentEntitlements.creditExpiresAt, schema.paymentEntitlements.createdAt)
         .limit(1).for('update')

@@ -21,13 +21,14 @@ type AppleIdentity = {
 }
 
 export async function createMobileSessionFromApple(input: {
+  existingOnly?: boolean
   referralTicket?: string
   identityToken: string
   nonce: string
   name?: string | null
 }) {
   const identity = await verifyAppleIdentity(input.identityToken, input.nonce)
-  const userId = await findOrCreateAppleUser(identity, input.name)
+  const userId = await findOrCreateAppleUser(identity, input.name, input.existingOnly)
   await creditReferralSignup(userId, input.referralTicket)
   return createMobileSessionForUser(userId)
 }
@@ -102,12 +103,14 @@ async function verifyAppleIdentity(identityToken: string, nonce: string): Promis
   }
 }
 
-async function findOrCreateAppleUser(identity: AppleIdentity, name?: string | null) {
+async function findOrCreateAppleUser(identity: AppleIdentity, name?: string | null, existingOnly = false) {
   const existingAccount = await db.query.accounts.findFirst({
     where: and(eq(schema.accounts.provider, 'apple'), eq(schema.accounts.providerAccountId, identity.subject)),
     columns: { userId: true },
   })
   if (existingAccount) return existingAccount.userId
+
+  if (!identity.email && existingOnly) throw new ApiError(404, 'No existing Mogging account was found. Start onboarding to create one.')
 
   if (!identity.email) {
     throw new ApiError(409, 'Apple did not provide an email for this new account. Revoke Mogging in Apple ID settings and sign in again.')
@@ -117,6 +120,8 @@ async function findOrCreateAppleUser(identity: AppleIdentity, name?: string | nu
     where: eq(schema.users.email, identity.email),
     columns: { id: true },
   })
+
+  if (!user && existingOnly) throw new ApiError(404, 'No existing Mogging account was found. Start onboarding to create one.')
 
   if (!user) {
     await db.insert(schema.users).values({

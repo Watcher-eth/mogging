@@ -2,6 +2,7 @@ import { monitorBackend } from '@/lib/reliability/monitor'
 import type { NextApiRequest, NextApiResponse } from 'next'
 import { z } from 'zod'
 import { ApiError, handleApiError, json, methodNotAllowed, parseBody } from '@/lib/api/http'
+import { enforceRateLimit } from '@/lib/api/rateLimit'
 import { getRequestUserId } from '@/lib/auth/mobile-session'
 import { redeemPaymentActivationCode } from '@/lib/payments/entitlements'
 import { redeemInviteCode } from '@/lib/payments/invite-codes'
@@ -16,9 +17,11 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
   if (req.method !== 'POST') return methodNotAllowed(res, ['POST'])
 
   try {
+    await enforceRateLimit(req, res, { key: 'redeem_code_ip', limit: 20, windowMs: 15 * 60 * 1000 })
     const input = parseBody(redeemCodeSchema, req.body)
     const userId = await getRequestUserId(req, res)
     if (!userId) throw new ApiError(401, 'Sign in before redeeming a web purchase')
+    await enforceRateLimit(req, res, { key: 'redeem_code_account', identity: userId, limit: 10, windowMs: 15 * 60 * 1000 })
 
     const { entitlements, source } = await redeemAnyAccessCode({
       code: input.code,

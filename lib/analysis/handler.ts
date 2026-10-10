@@ -42,9 +42,8 @@ return async function handler(req: NextApiRequest, res: NextApiResponse) {
       throw new ApiError(401, 'Authentication required')
     }
     const mobileInstallId = readMobileInstallId(req)
-    const adminMode = readHeader(req.headers['x-mogging-admin-code']) === '674523'
     const anonymousActorId = userId ? null : getOrSetAnonymousActorId(req, res)
-    if (!adminMode && !userId) {
+    if (!userId) {
       throw new ApiError(401, 'Sign in before generating a paid report')
     }
     if (clientRequestId.length > 200) throw new ApiError(400, 'Invalid scan request ID')
@@ -68,7 +67,7 @@ return async function handler(req: NextApiRequest, res: NextApiResponse) {
     const anonymousSkinColor = skinColorSchema.safeParse(anonymousProfile?.skinColor).data ?? null
     const userSkinColor = skinColorSchema.safeParse(userProfile?.skinColor).data ?? null
 
-    if (userId && !adminMode) {
+    if (userId) {
       reservation = await reserveEvaluation({ userId, mobileInstallId: mobileInstallId ?? undefined }, requestId,
         createHash('sha256').update(JSON.stringify(body)).digest('hex'))
       if (reservation.result) return json(res, 200, { ...reservation.result, entitlements: reservation.summary })
@@ -138,10 +137,6 @@ function readMobileInstallId(req: NextApiRequest) {
   if (!value) return null
   const trimmed = value.trim()
   return trimmed.length >= 8 && trimmed.length <= 120 ? trimmed : null
-}
-
-function readHeader(value: string | string[] | undefined) {
-  return Array.isArray(value) ? value[0] : value
 }
 
 async function createDefaultShare({

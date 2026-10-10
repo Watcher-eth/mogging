@@ -209,6 +209,31 @@ try {
     VALUES ('code', 'codes', 'code-install', 'invite:code', 'mobile_subscription_monthly', 'admin_invite_code', 'active', now() + interval '1 day')`
   assert.equal((await getEntitlementSummary({ userId: 'codes' })).evaluationCredits, Number.MAX_SAFE_INTEGER)
   await consumeEvaluationEntitlement({ userId: 'codes' })
+  // Hold the reservation lock so the code expires after access was read, before debit.
+  const gate = postgres(scoped.toString(), {max:1})
+  let ready!: () => void, release!: () => void
+  const locked = new Promise<void>(resolve=>{ready=resolve})
+  const unlock = new Promise<void>(resolve=>{release=resolve})
+  const blocked = gate.begin(async tx=>{
+    await tx`select pg_advisory_xact_lock(hashtextextended('codes:expiry-race',0))`
+    ready()
+    await unlock
+  })
+  await locked
+  const racing = reserveEvaluation({userId:'codes'},'expiry-race','body').then(()=>null,error=>error)
+  try {
+    let waiting = false
+    for (let i=0;i<100;i++) {
+      const rows = await admin`select count(*)::int as n from pg_stat_activity where wait_event='advisory'`
+      if (rows[0].n>0) {waiting=true;break}
+      await new Promise(resolve=>setTimeout(resolve,10))
+    }
+    assert.ok(waiting,'scan reached the transaction lock after reading the code')
+    await sql`UPDATE payment_entitlements SET current_period_end=now()-interval '1 second' WHERE id='code'`
+  } finally { release();await blocked;await gate.end() }
+  assert.match((await racing)?.message ?? '',/expired/,'expired access cannot reserve a free scan after reconciliation')
+  console.log('PASS: unlimited-code expiry between access check and locked reservation fails closed')
+
   await assert.rejects(grantEntitlementFromCheckoutSession({ session: { status: 'complete', payment_status: 'unpaid' } as any }), /not completed/)
   // Reproduce three packs plus three singles through delayed sync and webhook delivery.
   await sql`INSERT INTO users(id) VALUES ('pack-buyer')`
@@ -255,6 +280,30 @@ try {
   // Provider regeneration stays inside one reservation. It never consumes a second credit.
   subscribers.set('pack-buyer',{non_subscriptions:{[scanProducts[0].productId]:[purchase('provider-credit')]}})
   assert.equal((await getEntitlementSummary(packOwner)).evaluationCredits,1)
+  // The same uploaded bytes cannot reuse another account's private photo/report.
+  await sql.unsafe(`ALTER TABLE photos ADD COLUMN anonymous_actor_id text, ADD COLUMN image_url text,
+    ADD COLUMN image_storage_key text, ADD COLUMN image_hash text UNIQUE, ADD COLUMN is_public boolean DEFAULT false,
+    ADD COLUMN photo_set_id text, ADD COLUMN person_group_id text, ADD COLUMN name text, ADD COLUMN caption text,
+    ADD COLUMN gender text, ADD COLUMN age int, ADD COLUMN hair_color text, ADD COLUMN skin_color text,
+    ADD COLUMN source text, ADD COLUMN photo_type text, ADD COLUMN position text, ADD COLUMN latitude real, ADD COLUMN longitude real,
+    ADD COLUMN created_at timestamp DEFAULT now(), ADD COLUMN updated_at timestamp DEFAULT now()`)
+  await sql`INSERT INTO users(id) VALUES ('photo-a'),('photo-b')`
+  const { createPhotoRecord } = await import('../../lib/photos/service')
+  const upload = {imageUrl:'/fixture.jpg',imageHash:'a'.repeat(64)}
+  await sql`INSERT INTO photos(id,user_id,image_url,image_hash) VALUES ('legacy-photo','photo-a','/fixture.jpg',${upload.imageHash})`
+  const original = await createPhotoRecord({...upload,userId:'photo-a'})
+  const other = await createPhotoRecord({...upload,userId:'photo-b'})
+  assert.equal(original.photo.id,'legacy-photo','historical owner record is preserved')
+  assert.notEqual(original.photo.id,other.photo.id,'identical image belongs to a different private record per account')
+  const [concurrentA,concurrentB] = await Promise.all([
+    createPhotoRecord({...upload,imageHash:'b'.repeat(64),userId:'photo-b'}),
+    createPhotoRecord({...upload,imageHash:'b'.repeat(64),userId:'photo-b'})])
+  assert.equal(concurrentA.photo.id,concurrentB.photo.id,'concurrent same-owner uploads deduplicate safely')
+  await saveAnalysisResult({photoId:original.photo.id,status:'complete',pslScore:5,metrics:{},landmarks:{}})
+  await saveAnalysisResult({photoId:other.photo.id,status:'complete',pslScore:7,metrics:{},landmarks:{}})
+  const reports = await sql`SELECT photos.user_id,analyses.psl_score FROM analyses JOIN photos ON photos.id=analyses.photo_id WHERE photos.user_id IN ('photo-a','photo-b') ORDER BY photos.user_id`
+  assert.deepEqual(reports.map(r=>[r.user_id,r.psl_score]),[['photo-a',5],['photo-b',7]])
+  console.log('PASS: identical-file account isolation, historical private reports, and concurrent same-owner uploads')
   const { KimiAnalysisProvider } = await import('../../lib/analysis/providers/kimi')
   const { createFallbackAnalysisReport } = await import('../../lib/analysis/report')
   env.MOONSHOT_API_KEY = 'local-provider-test-only'

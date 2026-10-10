@@ -5,6 +5,7 @@ import { handleApiError, json, methodNotAllowed, parseBody } from '@/lib/api/htt
 import { createMobileSessionFromApple } from '@/lib/auth/mobile-session'
 
 const appleMobileSchema = z.object({
+  existingOnly: z.boolean().optional(),
   referralTicket: z.string().max(120).optional(),
   identityToken: z.string().min(100).max(10_000),
   nonce: z.string().min(16).max(200),

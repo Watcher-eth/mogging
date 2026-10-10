@@ -1,4 +1,5 @@
 import { expect, mock, test } from 'bun:test'
+mock.module('@/lib/reliability/monitor', () => ({ monitorBackend: (_feature: string, handler: unknown) => handler }))
 let viewer: string | null = null
 const photo = { id: 'photo', userId: 'owner', anonymousActorId: null, isPublic: false, imageUrl: '/model.png', imageHash: 'hash' }
 const analysis = { id: 'analysis', photo, status: 'complete', metrics: { report: { summary: 'Saved mobile report' } } }

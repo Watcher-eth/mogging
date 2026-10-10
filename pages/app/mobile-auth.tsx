@@ -24,9 +24,13 @@ export default function MobileAuthPage() {
   useEffect(() => {
     if (!router.isReady || status === 'loading' || started.current) return
     started.current = true
+    if (router.query.error === 'account_not_found') {
+      window.location.replace(`${mobileRedirectUri}#error=account_not_found`)
+      return
+    }
 
     if (status === 'unauthenticated') {
-      const callbackUrl = `${window.location.origin}/app/mobile-auth`
+      const callbackUrl = `${window.location.origin}/app/mobile-auth${router.query.existingOnly === '1' ? '?existingOnly=1' : ''}`
       void signIn('google', { callbackUrl })
       return
     }
