@@ -74,7 +74,7 @@ export async function recordServerEvent({
       accountId: accountId || undefined,
       sessionId: sessionId || undefined,
       platform: 'server',
-      environment: process.env.NODE_ENV === 'production' ? 'production' : 'development',
+      environment: (process.env.VERCEL_ENV || process.env.NODE_ENV) === 'production' ? 'production' : 'development',
       source,
       properties,
       occurredAt: new Date().toISOString(),

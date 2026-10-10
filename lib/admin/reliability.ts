@@ -36,17 +36,17 @@ export function reliabilityQuery(days:number,now:Date) {
     case when properties->>'duration_ms' ~ '^[0-9]{1,9}$' then (properties->>'duration_ms')::numeric end as duration_ms from events
   ), summary as (
     select count(*) as requests,count(*) filter(where outcome='failed') as failures,count(*) filter(where outcome='degraded') as degraded,
-    count(*) filter(where outcome='rejected') as rejected,count(*) filter(where outcome='failed' and code!='input_no_face') as technical_failures,
-    count(*) filter(where occurred_at>=${end}::timestamp-interval '15 minutes' and outcome in ('failed','degraded') and code!='input_no_face') as recent_failures,
+    count(*) filter(where outcome='rejected') as rejected,count(*) filter(where outcome='failed' and code is distinct from 'input_no_face') as technical_failures,
+    count(*) filter(where occurred_at>=${end}::timestamp-interval '15 minutes' and outcome in ('failed','degraded') and code is distinct from 'input_no_face') as recent_failures,
     max(occurred_at) as latest_event from requests
   ), features as (
-    select feature,count(*) as requests,count(*) filter(where outcome='failed' and code!='input_no_face') as technical_failures,
+    select feature,count(*) as requests,count(*) filter(where outcome='failed' and code is distinct from 'input_no_face') as technical_failures,
     count(*) filter(where outcome='degraded') as degraded,count(*) filter(where outcome='rejected') as rejected,
     count(*) filter(where code='input_no_face') as invalid_photos,
     percentile_cont(0.5) within group(order by duration_ms) as median_ms,percentile_cont(0.95) within group(order by duration_ms) as p95_ms,max(occurred_at) as latest_event from requests group by feature order by technical_failures desc,requests desc limit 100
   ), daily as (
-    select to_char(occurred_at,${bucket}::text) as day,count(*) as requests,count(*) filter(where outcome in ('failed','degraded') and code!='input_no_face') as failures,
-    count(*) filter(where feature='analyze' and outcome in ('failed','degraded') and code!='input_no_face') as evaluation_failures from requests group by 1 order by 1
+    select to_char(occurred_at,${bucket}::text) as day,count(*) as requests,count(*) filter(where outcome in ('failed','degraded') and code is distinct from 'input_no_face') as failures,
+    count(*) filter(where feature='analyze' and outcome in ('failed','degraded') and code is distinct from 'input_no_face') as evaluation_failures from requests group by 1 order by 1
   ), failures as (
     select feature,code,outcome,count(*) as events,max(occurred_at) as latest_event from requests where outcome in ('failed','degraded') group by 1,2,3 order by events desc limit 100
   ), recent as (

@@ -12,7 +12,7 @@ export const analyticsEventNames = [
   'purchase_started', 'purchase_completed', 'purchase_failed', 'purchase_cancelled',
   'restore_started', 'restore_failed', 'purchase_restored', 'activation_code_redeemed',
   'evaluation_started', 'evaluation_completed', 'evaluation_failed',
-  'report_viewed', 'category_viewed', 'protocol_viewed', 'protocol_task_completed',
+  'screenshot_taken', 'report_viewed', 'category_viewed', 'protocol_viewed', 'protocol_task_completed',
   'repeat_evaluation_started', 'share_started', 'share_completed', 'share_failed',
   'referral_invite_created', 'referral_invite_redeemed', 'push_opened',
   'battle_vote_selected', 'battle_vote_cancelled', 'battle_filters_changed', 'settings_opened',

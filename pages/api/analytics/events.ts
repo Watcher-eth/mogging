@@ -34,6 +34,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
       ...event,
       // A queued event from a previous account must never be relabelled on account switch.
       accountId: accountId && event.accountId === accountId ? accountId : undefined,
+      environment: process.env.VERCEL_ENV && process.env.VERCEL_ENV !== 'production' ? 'development' as const : event.environment,
       source: event.platform === 'web' ? 'web' : 'mobile',
     }))
 

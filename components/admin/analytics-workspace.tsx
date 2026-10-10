@@ -71,7 +71,7 @@ export default function AnalyticsAdminPage() {
     <div className="admin-report-toolbar">
       <div className="flex flex-wrap items-center gap-3">
         <AnalyticsSelect label="Period" value={days} onChange={value => filter('days', value)} options={[1,7,30,90].map(day => ({value:String(day),label:day === 1 ? "Last 24 hours" : `Last ${day} days`}))} />
-        {!['Reliability','Experiments'].includes(tab)?<AnalyticsSelect label="Platform" value={platform} onChange={value => filter('platform', value)} options={['all','web','ios','android'].map(value => ({value,label:value === 'all' ? 'All platforms' : value === 'ios' ? 'iOS' : label(value)}))}/>:null}
+        {!['Reliability','Experiments','Revenue'].includes(tab)?<AnalyticsSelect label="Platform" value={platform} onChange={value => filter('platform', value)} options={['all','web','ios','android'].map(value => ({value,label:value === 'all' ? 'All platforms' : value === 'ios' ? 'iOS' : label(value)}))}/>:null}
         <Button variant="ghost" className="size-10 p-0 text-[#73777d]" aria-label="Refresh analytics" disabled={report.isValidating} onClick={() => void (tab === 'Reliability'?mutate(`/api/admin/reliability?days=${days}`):report.mutate())}><RefreshCw className={`size-4 ${report.isValidating ? 'animate-spin' : ''}`} /></Button>
       </div>
       <p className="text-xs text-[#858a91]" aria-live="polite">{data ? `Updated ${new Date(data.generatedAt).toLocaleTimeString('en-GB', { timeZone: 'UTC', hour: '2-digit', minute: '2-digit' })} UTC` : 'UTC reporting'} · Production</p>
@@ -98,14 +98,15 @@ function Activity({ data, days, section }: { data: AnalyticsDashboard; days: num
     : section === 'Notifications' ? [{key:'push_opens',label:'Push opens',color:colors.blue}] : null
   return <>
     {section === 'Scans' ? <>
+      <StoredReports data={data} days={days} />
       <div className="admin-stats-grid">
         <Stat title="Confirmed evaluations" value={count(data.scanLedger.summary.completed)} note="Completed credit reservations" />
         <Stat title="Saved reports" value={count(data.scanLedger.summary.reports)} note="Distinct report IDs in completed reservations" />
         <Stat title="Returned scans" value={count(data.scanLedger.summary.failed)} note="Failed reservations return their credit" />
         <Stat title="Processing" value={count(data.scanLedger.summary.pending)} note="Reservations still pending" />
       </div>
-      <Panel title="Paid scan ledger" description="Backend-confirmed outcomes across all platforms." note="Independent of client analytics and the platform filter. Known sandbox purchases are excluded. Counts by reservation start time in UTC; a new evaluation of the same image can update an existing report.">
-        <AnalyticsChart rows={data.scanLedger.daily} metrics={[{key:'completed',label:'Completed',color:colors.blue},{key:'failed',label:'Credit returned',color:colors.orange},{key:'pending',label:'Pending',color:colors.violet}]} days={days} title="Paid scan ledger" />
+      <Panel title="Scan credit ledger" description="Backend-confirmed credit usage across all platforms, including free credits." note="Independent of client analytics and the platform filter. Known sandbox purchases are excluded. Counts by reservation start time in UTC; a new evaluation of the same image can update an existing report.">
+        <AnalyticsChart rows={data.scanLedger.daily} metrics={[{key:'completed',label:'Completed',color:colors.blue},{key:'failed',label:'Credit returned',color:colors.orange},{key:'pending',label:'Pending',color:colors.violet}]} days={days} title="Scan credit ledger" />
         <DataDetails><Table rows={data.scanLedger.daily} columns={['day','started','completed','failed','pending']} /></DataDetails>
       </Panel>
     </> : null}
@@ -130,9 +131,23 @@ function Overview({ data, days }: { data: AnalyticsDashboard; days: number }) {
       <Stat title="Completed scans" value={count(data.summary.evaluations)} note="Client-observed completions" />
       <Stat title="Scan failures" value={count(data.summary.failures)} note="Events, not a cohort failure rate" />
     </div>
+    <StoredReports data={data} days={days} />
     <DailyChart data={data} days={days} title="Product activity" metrics={activityMetrics} />
     <div className="admin-section-grid"><Funnel title="Mobile activation" rows={data.onboarding} /><Funnel title="Paywall conversion" rows={data.paywall} /></div>
   </>
+}
+function StoredReports({ data, days }: { data: AnalyticsDashboard; days: number }) {
+  const ledger = data.reportLedger
+  return <Panel title="Stored user reports" description="Saved report records across all platforms; seeded examples excluded." note="Counts by report creation time in UTC. Reports can be updated or reused, so they are not scan attempts. These records have no environment tag and can include internal test uploads. This panel is independent of the client platform filter.">
+    <div className="admin-stats-grid">
+      <Stat title="Completed reports" value={count(ledger.summary.completed)} note="Saved user report records" />
+      <Stat title="Failed reports" value={count(ledger.summary.failed)} note="Saved failed report records" />
+      <Stat title="Confirmed credit scans" value={count(data.scanLedger.summary.completed)} note="Completed non-sandbox reservations, including free credits" />
+      <Stat title="Client completions" value={count(data.summary.evaluations)} note="Observed events for the selected platform" />
+    </div>
+    <AnalyticsChart rows={ledger.daily} metrics={[{key:'completed',label:'Completed reports',color:colors.blue},{key:'failed',label:'Failed reports',color:colors.orange}]} days={days} title="Stored user reports" />
+    <DataDetails><Table rows={ledger.daily} columns={['day','completed','failed']} /></DataDetails>
+  </Panel>
 }
 function Acquisition({ data, days }: { data: AnalyticsDashboard; days: number }) {
   return <>
@@ -153,9 +168,10 @@ function Onboarding({ data, days }: { data: AnalyticsDashboard; days: number }) 
   return <>
     <DailyChart data={data} days={days} title="Onboarding activity" metrics={[{key:'onboarding_starts',label:'Started',color:colors.ink},{key:'onboarding_completions',label:'Completed',color:colors.green},{key:'paywall_views',label:'Paywall views',color:colors.blue}]}/>
     <div className="admin-section-grid"><Funnel title="Onboarding → first value" rows={data.onboarding}/><Panel title="Screen reach" description="All tracked screens, in their app order." note="Observed first views and continuation per flow, not one joined cohort. Optional screens have their own audiences; their counts can differ from neighboring steps. Recent views can still continue. Empty screens remain visible as awaiting data."><ComparisonBars series={[{label:'Viewed',color:colors.blue},{label:'Continued',color:colors.green}]} rows={screens.map(row=>({label:String(row.screen),values:[Number(row.viewed),Number(row.continued)],detail:Number(row.viewed)>0?`${row.continuation} continued`:'Awaiting data'}))}/></Panel></div>
-    <Panel title="Onboarding screens" description="Current onboarding · tracking revision 3 · app 0.1.63 onward." note="Optional screens only count users who actually see them. Awaiting data means no screen views have been recorded for the selected period and platform. Conversion and drop-off rates remain blank until their denominators are available."><DataDetails><Table rows={screens} columns={['screen','status','viewed','continued','continuation','drop_off']} /><Table rows={screens} columns={['screen','pending','mature','dropped','median_ms','back_actions']} /></DataDetails></Panel>
-    <div><Panel title="Where users leave" description="Drop-off among screen views at least seven days old." note="Counts a device's first screen view per flow. Continued means reaching a later screen or completing an evaluation within seven days. Optional skips do not create false drop-off. Recent views are pending. Uses tracking revision 3 from app 0.1.63 onward; older flows are excluded."><Bars maximum={100} format={value => `${value.toFixed(1)}%`} rows={screens.filter(row => Number(row.mature) > 0).map(row => ({ label: String(row.screen), value: Number(row.dropped) / Number(row.mature) * 100, detail: `${count(row.dropped)} of ${count(row.mature)} mature views · ${count(row.pending)} pending` }))} /></Panel></div>
+    <Panel title="Onboarding screens" description="Compatible onboarding screen cohorts · tracking revisions 3 and 4." note="Optional screens only count users who actually see them. Awaiting data means no screen views have been recorded for the selected period and platform. Conversion and drop-off rates remain blank until their denominators are available."><DataDetails><Table rows={screens} columns={['screen','status','viewed','continued','continuation','drop_off']} /><Table rows={screens} columns={['screen','pending','mature','dropped','median_ms','back_actions']} /></DataDetails></Panel>
+    <div><Panel title="Where users leave" description="Drop-off among screen views at least seven days old." note="Counts a device's first screen view per flow. Continued means reaching a later screen or completing an evaluation within seven days. Optional skips do not create false drop-off. Recent views are pending. Uses compatible tracking revisions 3 and 4; older or unversioned flows remain visible in event totals and coverage below."><Bars maximum={100} format={value => `${value.toFixed(1)}%`} rows={screens.filter(row => Number(row.mature) > 0).map(row => ({ label: String(row.screen), value: Number(row.dropped) / Number(row.mature) * 100, detail: `${count(row.dropped)} of ${count(row.mature)} mature views · ${count(row.pending)} pending` }))} /></Panel></div>
     <EventReport data={data} section="Onboarding" />
+    <Panel title="Onboarding revision coverage" description="Every recorded revision stays visible." note="Revisions 3 and 4 share screen ordering. Earlier and unversioned events count toward event totals, but cannot be safely combined with the current per-screen cohorts."><Table rows={data.onboardingRevisions} columns={['revision','views','devices','coverage']} /></Panel>
     <Panel title="Friction signals" description="Permission refusals, cancelled purchases, and safe error codes." note="Signals do not prove an error caused drop-off. No questionnaire answers, photos, or scan scores are recorded."><Table rows={data.onboardingFriction ?? []} columns={['screen','event','reason','affected_devices','events']} /></Panel>
     <Panel title="Step activity & screen exposure" description="Additional context from recorded screen events." note="Step activity is unique devices per milestone, not sequential completion. Foreground exposure is recorded on exits, not active attention; app termination may omit exits. Durations are capped at 30 minutes."><DataDetails><Table rows={data.steps} columns={['step','viewed','completed','skipped','back_actions']} /><Table rows={data.screens} columns={['screen','exits','median_ms','p90_ms']} /></DataDetails></Panel>
   </>
@@ -180,19 +196,19 @@ function Revenue({ data, days }: { data: AnalyticsDashboard; days: number }) {
 }
 function Retention({ data, days }: { data: AnalyticsDashboard; days: number }) {
   return <>
-    <Panel title="Return after the first observed scan" description="Meaningful return on day 1, day 7, and day 30." note="Account cohorts begin at their first evaluation observed in this window, not necessarily their first ever. Exact D1/D7/D30 windows count report views, completed protocol tasks, or scans. Only fully observed accounts are eligible; an immature cohort has no rate."><Bars maximum={100} rows={retentionRates(data.retention)} format={value => `${value.toFixed(1)}%`} /><DataDetails><Table rows={data.retention.map(row => ({ ...row, rate: percent(Number(row.retained), Number(row.eligible)) }))} columns={['day','eligible','retained','rate']} /></DataDetails></Panel>
+    <Panel title="Return after the first observed scan" description="Meaningful return on day 1, day 7, and day 30." note="Account cohorts enter this period only when their earliest recorded production scan completion falls within it. Earlier history is searched before assigning a cohort. Exact D1/D7/D30 windows count report views, completed protocol tasks, or scans. Only fully observed accounts are eligible; an immature cohort has no rate."><Bars maximum={100} rows={retentionRates(data.retention)} format={value => `${value.toFixed(1)}%`} /><DataDetails><Table rows={data.retention.map(row => ({ ...row, rate: percent(Number(row.retained), Number(row.eligible)) }))} columns={['day','eligible','retained','rate']} /></DataDetails></Panel>
     <DailyChart data={data} days={days} title="Value-building activity" metrics={valueMetrics} />
-    <div className="admin-section-grid"><Panel title="Cancellation timing" description="When cancellation intent is first observed." note="Relative to the first evaluation observed in the same window. Billing includes every platform, while evaluation history follows the platform filter. This is not a churn rate."><DistributionChart rows={data.cancellations.map(row => ({ label: String(row.timing), value: Number(row.accounts) }))} /></Panel><Panel title="Value signals" description="Activity totals across all users." note="Includes people who are not currently paying. Share intent is not proof of a completed social post."><Bars rows={data.actions.filter(row => !String(row.event).endsWith('_failed')).map(row => ({ label: label(String(row.event)), value: Number(row.actors), detail: `${count(row.events)} events` }))} /></Panel></div>
+    <div className="admin-section-grid"><Panel title="Cancellation timing" description="When cancellation intent is first observed." note="Relative to the earliest recorded production scan completion, including history before the selected period. Billing includes every platform, while evaluation history follows the platform filter. This is not a churn rate."><DistributionChart rows={data.cancellations.map(row => ({ label: String(row.timing), value: Number(row.accounts) }))} /></Panel><Panel title="Value signals" description="Activity totals across all users." note="Includes people who are not currently paying. Share intent is not proof of a completed social post."><Bars rows={data.actions.filter(row => !String(row.event).endsWith('_failed')).map(row => ({ label: label(String(row.event)), value: Number(row.actors), detail: `${count(row.events)} events` }))} /></Panel></div>
   </>
 }
 function Quality({ data, days }: { data: AnalyticsDashboard; days: number }) {
   const health = useSWR<Health>('/api/admin/analytics-health', apiGet, { dedupingInterval: 60_000, shouldRetryOnError: false })
   return <>
     <DailyChart data={data} days={days} title="Scan failures" metrics={qualityMetrics} />
-    <Panel title="Delivery & provider health" description="Check event backlogs and the latest provider receipts." note="PostHog export is optional; a backlog is expected when export is disabled. Provider receipt timestamps and webhook backlogs include both production and sandbox. Configuration flags and webhook counts do not prove end-to-end delivery.">
+    <Panel title="Delivery & provider health" description="Check export backlogs and the latest stored billing events." note="PostHog export is optional; a backlog is expected when export is disabled. Billing event timestamps and webhook backlogs include both production and sandbox. Stored billing events can include recovered history. Requests rejected before webhook validation do not enter the receipt backlog; inspect Backend reliability for those failures. Configuration flags and webhook counts do not prove end-to-end delivery.">
       {health.error ? <Notice>Health checks could not load. <button className="underline" onClick={() => void health.mutate()}>Try again</button></Notice> : !health.data ? <p className="admin-empty">Loading health checks…</p> : <>
         <div className="admin-stats-grid"><Stat title="Behavior & identity backlog" value={count(health.data.pending_events)} note="Events awaiting export" /><Stat title="Billing export backlog" value={count(health.data.pending_billing_events)} note="Billing events awaiting export" /><Stat title="Unfinished webhooks" value={count(health.data.unfinished_webhooks)} note="Older than ten minutes" /></div>
-        <Table rows={[{ metric: 'Oldest behavior backlog', value: health.data.oldest_pending_event }, { metric: 'Last RevenueCat receipt', value: health.data.last_revenuecat_receipt }, { metric: 'Last Stripe receipt', value: health.data.last_stripe_receipt }]} columns={['metric','value']} />
+        <Table rows={[{ metric: 'Oldest behavior backlog', value: health.data.oldest_pending_event }, { metric: 'Last stored RevenueCat event', value: health.data.last_revenuecat_receipt }, { metric: 'Last stored Stripe event', value: health.data.last_stripe_receipt }]} columns={['metric','value']} />
         <ul className="mt-5 flex flex-wrap gap-x-6 gap-y-2 text-xs text-[#73777d]">{Object.entries(health.data.configured).map(([key, value]) => <li key={key}><span className={`mr-2 inline-block size-1.5 rounded-full ${value ? 'bg-[#40a88a]' : 'bg-[#db9474]'}`} />{label(key)}: {value ? 'Configured' : 'Not configured'}</li>)}</ul>
       </>}
     </Panel>

@@ -57,10 +57,12 @@ export function CreatorEconomicsDashboard({ data, onSelectSubmission }: { data: 
         <span className={cn('inline-flex w-fit items-center gap-2 rounded-full px-3 py-1.5 text-xs font-semibold', aggregate.attributableMarginCents === 0 ? 'bg-zinc-100 text-zinc-600' : aggregate.isWithinCompensationCap ? 'bg-emerald-50 text-emerald-700' : 'bg-red-50 text-red-700')}>{aggregate.attributableMarginCents === 0 ? <Calculator className="size-3.5" /> : aggregate.isWithinCompensationCap ? <CheckCircle2 className="size-3.5" /> : <TriangleAlert className="size-3.5" />}{aggregate.attributableMarginCents === 0 ? 'Margin data needed' : aggregate.isWithinCompensationCap ? 'Within profitability rule' : 'Creator budget exceeds cap'}</span>
       </header>
 
+      <p className="mb-6 text-sm leading-6 text-zinc-500">Economics uses manually recorded submission metrics and program assumptions, rather than the automatic attribution ledger. {data.attributionMetrics.length} of {data.submissions.length} submissions have recorded metrics. Missing entries are excluded from metric totals; margin and conversion estimates are incomplete until those entries are recorded.</p>
+
       <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-        <EconomicsMetric label="Qualified views" value={formatNumber(aggregate.qualifiedViews)} detail={`${formatPercent(aggregate.linkCtr)} link CTR`} icon={Eye} />
-        <EconomicsMetric label="First-time paid" value={formatNumber(aggregate.firstTimePaidCustomers)} detail={`${formatPercent(aggregate.installToPaidConversion)} install → paid`} icon={UserCheck} />
-        <EconomicsMetric label="90-day margin" value={formatMoney(aggregate.attributableMarginCents)} detail="Attributable contribution margin" icon={TrendingUp} />
+        <EconomicsMetric label="Qualified views" value={data.attributionMetrics.length ? formatNumber(aggregate.qualifiedViews) : '—'} detail={data.attributionMetrics.length ? `${formatPercent(aggregate.linkCtr)} link CTR` : 'Submission metrics needed'} icon={Eye} />
+        <EconomicsMetric label="First-time paid" value={data.attributionMetrics.length ? formatNumber(aggregate.firstTimePaidCustomers) : '—'} detail={data.attributionMetrics.length ? `${formatPercent(aggregate.installToPaidConversion)} install → paid` : 'Submission metrics needed'} icon={UserCheck} />
+        <EconomicsMetric label="90-day margin" value={data.attributionMetrics.length ? formatMoney(aggregate.attributableMarginCents) : '—'} detail="Estimated attributable contribution margin" icon={TrendingUp} />
         <EconomicsMetric label="Committed comp" value={formatMoney(aggregate.committedCompensationCents)} detail={`${formatPercent(aggregate.compensationShare)} of attributable margin`} icon={CircleDollarSign} warning={aggregate.attributableMarginCents > 0 && !aggregate.isWithinCompensationCap} />
       </div>
 

@@ -512,6 +512,7 @@ export async function recordCreatorPaymentReversal(input: {
 }
 
 export async function getCreatorAttributionReport() {
+  const productionEvents = sql`lower(coalesce(${schema.creatorAttributionEvents.metadata}->>'environment', 'production')) != 'sandbox'`
   const [links, clickRows, eventRows, firstEventRows] = await Promise.all([
     db.select({
       trackingLinkId: schema.creatorTrackingLinks.id,
@@ -557,7 +558,7 @@ export async function getCreatorAttributionReport() {
       recentPaywallViews: sql<number>`count(*) filter (where ${schema.creatorAttributionEvents.eventType} = 'paywall_view' and ${schema.creatorAttributionEvents.createdAt} >= now() - interval '30 days')::int`,
       recentPaidCustomers: sql<number>`count(distinct ${schema.creatorAttributionEvents.attributionKey}) filter (where ${schema.creatorAttributionEvents.eventType} = 'payment' and ${schema.creatorAttributionEvents.amountCents} > 0 and ${schema.creatorAttributionEvents.createdAt} >= now() - interval '30 days')::int`,
       recentRevenueCents: sql<number>`coalesce(sum(${schema.creatorAttributionEvents.amountCents}) filter (where upper(${schema.creatorAttributionEvents.currency}) = 'USD' and ${schema.creatorAttributionEvents.eventType} in ('payment', 'refund', 'dispute') and ${schema.creatorAttributionEvents.createdAt} >= now() - interval '30 days'), 0)::int`,
-    }).from(schema.creatorAttributionEvents).groupBy(schema.creatorAttributionEvents.trackingLinkId),
+    }).from(schema.creatorAttributionEvents).where(productionEvents).groupBy(schema.creatorAttributionEvents.trackingLinkId),
     db.select({
       trackingLinkId: schema.creatorAttributionEvents.firstTrackingLinkId,
       firstTouchSignups: sql<number>`count(*) filter (where ${schema.creatorAttributionEvents.eventType} = 'signup')::int`,
@@ -565,7 +566,7 @@ export async function getCreatorAttributionReport() {
       firstTouchPaidCustomers: sql<number>`count(distinct ${schema.creatorAttributionEvents.attributionKey}) filter (where ${schema.creatorAttributionEvents.eventType} = 'payment' and ${schema.creatorAttributionEvents.amountCents} > 0)::int`,
       firstTouchRevenueCents: sql<number>`coalesce(sum(${schema.creatorAttributionEvents.amountCents}) filter (where upper(${schema.creatorAttributionEvents.currency}) = 'USD' and ${schema.creatorAttributionEvents.eventType} in ('payment', 'refund', 'dispute')), 0)::int`,
     }).from(schema.creatorAttributionEvents)
-      .where(sql`${schema.creatorAttributionEvents.firstTrackingLinkId} is not null`)
+      .where(and(productionEvents, sql`${schema.creatorAttributionEvents.firstTrackingLinkId} is not null`))
       .groupBy(schema.creatorAttributionEvents.firstTrackingLinkId),
   ])
   const clicksByLink = new Map(clickRows.map((row) => [row.trackingLinkId, row]))

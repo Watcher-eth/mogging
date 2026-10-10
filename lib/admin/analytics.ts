@@ -4,7 +4,7 @@ import { sql, type SQL } from 'drizzle-orm'
 import { z } from 'zod'
 import { db } from '@/lib/db'
 import { trackingDefinitions, trackingDimensions } from './tracking'
-import { ONBOARDING_ANALYTICS_VERSION, onboardingAnalyticsSteps } from '@/lib/analytics/onboarding'
+import { onboardingAnalyticsSteps } from '@/lib/analytics/onboarding'
 
 export const analyticsFilters = z.object({
   days: z.enum(['1', '7', '30', '90']).default('30'),
@@ -25,6 +25,8 @@ export type AnalyticsDashboard = {
   actions: MetricRow[]; releases: MetricRow[]
   eventMetrics: MetricRow[]; eventPlatforms: MetricRow[]; dimensions: MetricRow[]; billingProducts: MetricRow[]; billingDimensions: MetricRow[]; contextCoverage: MetricRow[]; eventDelivery: MetricRow[]
   scanLedger: { summary: { started: number; completed: number; failed: number; pending: number; reports: number }; daily: MetricRow[] }
+  reportLedger: { summary: { completed: number; failed: number; other: number }; daily: MetricRow[] }
+  onboardingRevisions: MetricRow[]
 }
 
 // All identifiers here are constants owned by this module, never request input.
@@ -50,13 +52,15 @@ export function analyticsQuery(filters: AnalyticsFilters, now: Date) {
   const end = now.toISOString()
   const bucket = filters.days === '1' ? 'YYYY-MM-DD"T"HH24:00:00"Z"' : 'YYYY-MM-DD'
   const platform = filters.platform === 'all' ? sql`true` : sql`platform = ${filters.platform}`
+  // Revision 4 adds optional weight; shared steps preserve revision 3's ordering.
+  const supportedOnboarding = sql`e.properties->>'onboarding_version' in ('3','4')`
   const onboarding = funnel('onboarding', ['onboarding_started', 'paywall_viewed', 'purchase_completed', 'evaluation_completed', 'report_viewed'], sql`platform in ('ios','android')`)
   const paywall = funnel('paywall', ['paywall_viewed', 'plan_selected', 'purchase_started', 'purchase_completed'], sql`platform in ('ios','android')`)
   const web = funnel('web', ['page_viewed', 'app_store_redirected'], sql`platform = 'web' and properties->>'path' = '/'`)
   const rows = (name: string) => sql`coalesce((select json_agg(r) from ${sql.identifier(name)} r), '[]'::json)`
   const referrer = sql`coalesce(nullif(properties->>'first_referrer_host',''),nullif(properties->>'referrer_host',''))`
   const acquisitionSource = sql`coalesce(nullif(properties->>'creator_first_tracking_link_id',''),
-    nullif(properties->>'first_utm_source',''),
+    nullif(properties->>'first_utm_source',''), nullif(properties->>'utm_source',''),
     case when ${referrer} !~* ${excludedAcquisitionHost} then ${referrer} end)`
   return sql`with e as materialized (
       select event_name, occurred_at, account_id, platform, app_version, properties, session_id, source, schema_version, received_at,
@@ -65,6 +69,14 @@ export function analyticsQuery(filters: AnalyticsFilters, now: Date) {
         and platform in ('web','ios','android')
         and coalesce(properties->>'path', '') not like '/admin%'
         and occurred_at >= ${start}::timestamp and occurred_at < ${end}::timestamp and ${platform}
+    ), user_reports as materialized (
+      select a.status, a.created_at from analyses a join photos p on p.id = a.photo_id
+      where p.source = 'user' and a.created_at >= ${start}::timestamp and a.created_at < ${end}::timestamp
+    ), report_ledger_daily as (
+      select to_char(created_at, ${bucket}::text) as day,
+        count(*) filter(where status = 'complete') as completed,
+        count(*) filter(where status = 'failed') as failed
+      from user_reports group by 1 order by 1
     ), scan_ledger as materialized (
       select r.status, r.created_at, r.result->'analysis'->>'id' as analysis_id
       from scan_reservations r join payment_entitlements p on p.id = r.entitlement_id
@@ -207,7 +219,7 @@ export function analyticsQuery(filters: AnalyticsFilters, now: Date) {
       group by 1,2 order by visitors desc
     ), acquisition_actors as (
       select distinct on (actor) actor, coalesce(${acquisitionSource},'direct / unattributed') as source,
-        coalesce(nullif(properties->>'first_utm_campaign',''),'—') as campaign
+        coalesce(nullif(properties->>'first_utm_campaign',''),nullif(properties->>'utm_campaign',''),'—') as campaign
       from e where actor is not null
       order by actor, (${acquisitionSource} is null),
         (nullif(properties->>'creator_first_tracking_link_id','') is null),
@@ -227,7 +239,7 @@ export function analyticsQuery(filters: AnalyticsFilters, now: Date) {
       from e join onboarding_definitions d on d.step = e.properties->>'step'
       where e.platform in ('ios','android') and e.actor is not null
         and nullif(e.properties->>'flow_id', '') is not null
-        and e.properties->>'onboarding_version' = ${ONBOARDING_ANALYTICS_VERSION}
+        and ${supportedOnboarding}
         and e.event_name in ('onboarding_step_viewed','onboarding_step_exited','onboarding_step_back')
     ), onboarding_forward_events as materialized (
       select actor, flow_id, position, occurred_at as at from onboarding_observations
@@ -235,7 +247,7 @@ export function analyticsQuery(filters: AnalyticsFilters, now: Date) {
       union all
       select actor, properties->>'flow_id', ${onboardingAnalyticsSteps.length}::integer, occurred_at from e
       where event_name = 'evaluation_completed' and platform in ('ios','android')
-        and properties->>'onboarding_version' = ${ONBOARDING_ANALYTICS_VERSION}
+        and ${supportedOnboarding}
         and actor is not null and nullif(properties->>'flow_id', '') is not null
     ), onboarding_timelines as (
       select actor, flow_id, array_agg(position) as positions, array_agg(at) as times
@@ -271,7 +283,7 @@ export function analyticsQuery(filters: AnalyticsFilters, now: Date) {
         coalesce(e.properties->>'reason_code', e.properties->>'permission', 'unknown') as reason,
         count(distinct e.actor) as affected_devices, count(*) as events
       from e join onboarding_definitions d on d.step = e.properties->>'step'
-      where e.platform in ('ios','android') and e.properties->>'onboarding_version' = ${ONBOARDING_ANALYTICS_VERSION}
+      where e.platform in ('ios','android') and ${supportedOnboarding}
         and (e.event_name in ('photo_validation_failed','account_auth_failed','account_post_login_failed','purchase_failed','purchase_cancelled','restore_failed','evaluation_failed')
           or (e.event_name = 'permission_result' and e.properties->>'result' = 'denied')
           or (e.event_name = 'consent_result' and e.properties->>'result' = 'declined'))
@@ -284,7 +296,7 @@ export function analyticsQuery(filters: AnalyticsFilters, now: Date) {
         count(*) filter (where event_name = 'onboarding_step_back') as back_actions
       from e where event_name like 'onboarding_step_%'
         and (platform = 'web' or (platform in ('ios','android')
-          and properties->>'onboarding_version' = ${ONBOARDING_ANALYTICS_VERSION}
+          and ${supportedOnboarding}
           and properties->>'step' in (select step from onboarding_definitions)))
       group by 1 order by viewed desc limit 50
     ), screens as (
@@ -320,9 +332,9 @@ export function analyticsQuery(filters: AnalyticsFilters, now: Date) {
       ) ranked where rank <= 20 order by dimension,events desc
     ), revenue as (
       select coalesce(currency, 'UNKNOWN') as currency,
-        coalesce(sum(amount) filter (where amount > 0), 0)::text as gross,
-        coalesce(-sum(amount) filter (where amount < 0), 0)::text as refunds,
-        coalesce(sum(amount), 0)::text as net,
+        case when count(amount) > 0 then coalesce(sum(amount) filter (where amount > 0), 0)::text end as gross,
+        case when count(amount) > 0 then coalesce(-sum(amount) filter (where amount < 0), 0)::text end as refunds,
+        sum(amount)::text as net,
         count(*) filter (where amount is null) as missing_amount_events
       from b group by 1 order by 1
     ), revenue_daily as (
@@ -332,9 +344,13 @@ export function analyticsQuery(filters: AnalyticsFilters, now: Date) {
         sum(amount)::text as net,
         count(*) filter (where amount is null) as missing_amount_events
       from b group by 1,2 order by 1,2
+    ), activation_history as materialized (
+      select account_id, min(occurred_at) as at from analytics_events
+      where environment = 'production' and event_name = 'evaluation_completed'
+        and platform in ('web','ios','android') and ${platform}
+        and occurred_at < ${end}::timestamp and account_id is not null group by 1
     ), activated as (
-      select account_id, min(occurred_at) as at from e
-      where event_name = 'evaluation_completed' and account_id is not null group by 1
+      select * from activation_history where at >= ${start}::timestamp
     ), retention as (
       select n.day, count(*) filter (where a.at < ${end}::timestamp - (n.day + 1) * interval '1 day') as eligible,
         count(*) filter (where a.at < ${end}::timestamp - (n.day + 1) * interval '1 day' and exists (
@@ -347,12 +363,12 @@ export function analyticsQuery(filters: AnalyticsFilters, now: Date) {
       select account_id, min(occurred_at) as at from b
       where event_name = 'cancellation_scheduled' and account_id is not null group by 1
     ), cancellations as (
-      select case when a.at is null then 'No evaluation observed in window'
+      select case when a.at is null then 'No evaluation recorded'
         when c.at < a.at then 'Before evaluation'
         when c.at < a.at + interval '1 day' then 'Within 24 hours'
         when c.at < a.at + interval '7 days' then 'Within 7 days'
         else 'Later' end as timing, count(*) as accounts
-      from cancellation_accounts c left join activated a using(account_id) group by 1
+      from cancellation_accounts c left join activation_history a using(account_id) group by 1
     ), actions as (
       select event_name as event, count(*) as events, count(distinct actor) as actors from e
       where event_name in ('report_viewed','category_viewed','protocol_viewed','protocol_task_completed',
@@ -366,7 +382,17 @@ export function analyticsQuery(filters: AnalyticsFilters, now: Date) {
         round((percentile_cont(0.5) within group (order by case when jsonb_typeof(properties->'duration_ms') = 'number' then (properties->>'duration_ms')::numeric end)
           filter (where event_name = 'evaluation_completed' and jsonb_typeof(properties->'duration_ms') = 'number'))::numeric) as median_evaluation_ms
       from e group by 1,2 order by actors desc limit 30
+    ), onboarding_revisions as (
+      select coalesce(properties->>'onboarding_version','unversioned') as revision,
+        count(*) as views, count(distinct actor) as devices,
+        case when properties->>'onboarding_version' in ('3','4') then 'Included in screen cohorts' else 'Event totals only' end as coverage
+      from e where platform in ('ios','android') and event_name = 'onboarding_step_viewed'
+      group by 1,4 order by 1
     ) select json_build_object(
+      'reportLedger', json_build_object('summary', (select json_build_object(
+        'completed', count(*) filter(where status = 'complete'), 'failed', count(*) filter(where status = 'failed'),
+        'other', count(*) filter(where status not in ('complete','failed'))) from user_reports), 'daily', ${rows('report_ledger_daily')}),
+      'onboardingRevisions', ${rows('onboarding_revisions')},
       'scanLedger', json_build_object('summary', (select json_build_object(
         'started', count(*), 'completed', count(*) filter(where status = 'complete'),
         'failed', count(*) filter(where status = 'failed'), 'pending', count(*) filter(where status = 'pending'),

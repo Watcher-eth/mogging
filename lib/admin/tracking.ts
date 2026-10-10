@@ -8,7 +8,7 @@ export const trackingSections = {
   Onboarding: ['onboarding_started', 'onboarding_step_viewed', 'onboarding_step_completed', 'onboarding_step_back', 'onboarding_step_exited', 'onboarding_step_skipped', 'onboarding_completed', 'permission_prompted', 'permission_result', 'photo_source_selected', 'photo_selected', 'photo_validation_failed', 'consent_result'],
   Purchases: ['paywall_viewed', 'paywall_dismissed', 'paywall_products_loaded', 'plan_selected', 'checkout_started', 'checkout_completed', 'handoff_created', 'handoff_opened', 'handoff_consumed', 'purchase_started', 'purchase_completed', 'purchase_failed', 'purchase_cancelled', 'restore_started', 'restore_failed', 'purchase_restored', 'activation_code_redeemed'],
   Scans: ['evaluation_started', 'evaluation_completed', 'evaluation_failed'],
-  Engagement: ['app_opened', 'session_started', 'screen_viewed', 'screen_exited', 'report_viewed', 'category_viewed', 'protocol_viewed', 'protocol_task_completed', 'repeat_evaluation_started', 'share_started', 'share_completed', 'share_failed', 'battle_vote_selected', 'battle_vote_cancelled', 'battle_filters_changed', 'settings_opened'],
+  Engagement: ['app_opened', 'session_started', 'screen_viewed', 'screen_exited', 'screenshot_taken', 'report_viewed', 'category_viewed', 'protocol_viewed', 'protocol_task_completed', 'repeat_evaluation_started', 'share_started', 'share_completed', 'share_failed', 'battle_vote_selected', 'battle_vote_cancelled', 'battle_filters_changed', 'settings_opened'],
   Referrals: ['referral_invite_created', 'referral_invite_redeemed'],
   Notifications: ['push_opened'],
 } satisfies Record<string, readonly AnalyticsEventName[]>

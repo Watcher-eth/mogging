@@ -17,7 +17,7 @@ describe('admin reporting windows', () => {
     const query = dialect.sqlToQuery(analyticsQuery({ days: '1', platform: 'ios' }, now))
     expect(query.params).toContain(start)
     expect(query.params).toContain(now.toISOString())
-    expect(query.params.filter(value => value === 'YYYY-MM-DD"T"HH24:00:00"Z"')).toHaveLength(3)
+    expect(query.params.filter(value => value === 'YYYY-MM-DD"T"HH24:00:00"Z"')).toHaveLength(4)
     expect(query.sql).toContain('occurred_at >=')
     expect(query.sql).toContain('occurred_at <')
     expect(query.params).toContain('ios')
@@ -33,7 +33,7 @@ describe('admin reporting windows', () => {
   test('longer reporting windows retain daily aggregation', () => {
     const query = dialect.sqlToQuery(analyticsQuery({ days: '7', platform: 'all' }, now))
     expect(query.params).toContain('2026-09-28T16:37:42.000Z')
-    expect(query.params.filter(value => value === 'YYYY-MM-DD')).toHaveLength(3)
+    expect(query.params.filter(value => value === 'YYYY-MM-DD')).toHaveLength(4)
     expect(dialect.sqlToQuery(reliabilityQuery(7, now)).params).toContain('YYYY-MM-DD')
   })
 })

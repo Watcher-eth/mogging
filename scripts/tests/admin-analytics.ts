@@ -13,7 +13,9 @@ try {
   assert.equal(analyticsFilters.safeParse({ days: '999' }).success, false)
   assert.equal(analyticsFilters.safeParse({ platform: ['ios','web'] }).success, false)
   const now = new Date('2040-01-31T00:00:00Z')
-  await connection.unsafe(`CREATE TABLE IF NOT EXISTS payment_entitlements (id text PRIMARY KEY, metadata jsonb NOT NULL DEFAULT '{}');
+  await connection.unsafe(`CREATE TABLE IF NOT EXISTS photos (id text PRIMARY KEY, source text);
+    CREATE TABLE IF NOT EXISTS analyses (id text PRIMARY KEY, photo_id text REFERENCES photos(id), status text, created_at timestamp);
+    CREATE TABLE IF NOT EXISTS payment_entitlements (id text PRIMARY KEY, metadata jsonb NOT NULL DEFAULT '{}');
     CREATE TABLE IF NOT EXISTS scan_reservations (id text PRIMARY KEY, entitlement_id text REFERENCES payment_entitlements(id), status text, result jsonb, created_at timestamp);`)
   // Rollback isolates each run, including performance fixtures.
   await connection.begin(async tx => {
@@ -36,7 +38,7 @@ try {
     await put('out-of-order','purchase_completed',2)
     await put('out-of-order','paywall_viewed',3)
     await put('sandbox','onboarding_started',2,'ios','development')
-    await put('web','page_viewed',2,'web','production',{path:'/'})
+    await put('web','page_viewed',2,'web','production',{path:'/',utm_source:'reddit',utm_campaign:'legacy-campaign'})
     await put('web','landing_cta_clicked',3,'web')
     await put('web','app_store_redirected',3,'web','production',{path:'/'})
     await put('server-only','identity_linked',3,'server')
@@ -55,6 +57,7 @@ try {
     assert.deepEqual(data.onboarding.map(step => step.actors), [1,1,1,1,1])
     assert.deepEqual(data.paywall.map(step => step.actors), [2,1,1,1])
     assert.deepEqual(data.web.map(step => step.actors), [1,1])
+    assert.ok(data.acquisition.some(row => row.source === 'reddit' && row.campaign === 'legacy-campaign'))
     assert.equal(data.revenue.find(row => row.currency === 'USD')?.net, '8.000000')
     assert.equal(data.revenue.find(row => row.currency === 'EUR')?.net, '20.000000')
     const usdDay = data.revenueDaily.find(row => row.currency === 'USD' && row.day === '2040-01-10')!
@@ -151,10 +154,49 @@ try {
         jsonb_build_object('onboarding_version',${ONBOARDING_ANALYTICS_VERSION}::text,'flow_id','load-' || (n % 1000),
           'step',(${tx.array(onboardingAnalyticsSteps.map(([step]) => step))}::text[])[(n / 1000) % ${onboardingAnalyticsSteps.length} + 1]),
         '2040-01-15'::timestamp + (n / 1000) * interval '1 minute' from generate_series(1,20000) n`
+    // Compatible prior releases remain visible; incompatible revisions stay separate.
+    await view('revision-three', 'experience', 2, 'revision-three', '3')
+    await view('revision-three', 'goals', 3, 'revision-three', '3')
+    const [compatible] = await testDb.execute(analyticsQuery({ days: '30', platform: 'all' }, now))
+    assert.equal(Number((compatible.data as typeof data).onboardingScreens.find(row => row.step === 'experience')?.viewed), 1009)
+    assert.ok((compatible.data as typeof data).onboardingRevisions.some(row => row.revision === '3' && row.coverage === 'Included in screen cohorts'))
+    assert.ok((compatible.data as typeof data).onboardingRevisions.some(row => row.revision === '2' && row.coverage === 'Event totals only'))
+    const oldUser = `old-${suffix}`
+    await tx`insert into users(id) values (${oldUser})`
+    for (const date of ['2039-12-01','2040-01-15']) {
+      const id = crypto.randomUUID()
+      await tx`insert into analytics_events(id,event_id,event_name,account_id,mobile_install_id,platform,environment,properties,occurred_at)
+        values (${id},${id},'evaluation_completed',${oldUser},${oldUser},'ios','production','{}',${date}::timestamp)`
+    }
+    await tx`insert into subscription_events(id,provider,provider_event_id,provider_type,environment,event_name,account_id,occurred_at)
+      values (${crypto.randomUUID()},'test',${crypto.randomUUID()},'test','production','cancellation_scheduled',${oldUser},'2040-01-16')`
+    await tx`insert into subscription_events(id,provider,provider_event_id,provider_type,environment,event_name,currency,occurred_at)
+      values (${crypto.randomUUID()},'test',${crypto.randomUUID()},'test','production','test','GBP','2040-01-16')`
+    for (const [source,status] of [['user','complete'],['user','failed'],['seeded','complete']]) {
+      const id = crypto.randomUUID()
+      await tx`insert into photos(id,source) values (${id},${source})`
+      await tx`insert into analyses(id,photo_id,status,created_at) values (${id},${id},${status},'2040-01-16')`
+    }
+    const [history] = await testDb.execute(analyticsQuery({ days: '30', platform: 'all' }, now))
+    const historyData = history.data as typeof data
+    assert.equal(Number(historyData.retention.find(row => row.day === 1)?.eligible), Number(data.retention.find(row => row.day === 1)?.eligible))
+    assert.equal(Number(historyData.cancellations.find(row => row.timing === 'Later')?.accounts), 1)
+    assert.equal(historyData.revenue.find(row => row.currency === 'GBP')?.net, null)
+    assert.equal(historyData.revenue.find(row => row.currency === 'GBP')?.gross, null)
+    assert.deepEqual(historyData.reportLedger.summary, {completed:1,failed:1,other:0})
     const started = performance.now()
     await testDb.execute(analyticsQuery({ days: '30', platform: 'all' }, now))
     const queryMs = performance.now() - started
-    assert.ok(queryMs < 8000, 'Onboarding aggregation must fit the dashboard query deadline')
+    assert.ok(queryMs < 8000, `Onboarding aggregation must fit the dashboard query deadline (${queryMs.toFixed(1)}ms)`)
+    // Missing error codes must not disappear through SQL NULL comparisons.
+    for (const code of [null, 'input_no_face']) {
+      const id = crypto.randomUUID()
+      await tx`insert into analytics_events(id,event_id,event_name,platform,source,environment,properties,occurred_at)
+        values (${id},${id},'backend_request','server','backend','production',${tx.json({feature:'analyze',outcome:'failed',code})},'2040-01-16')`
+    }
+    const { reliabilityQuery } = await import('../../lib/admin/reliability')
+    const [reliability] = await testDb.execute(reliabilityQuery(30, now))
+    assert.equal(Number(reliability.data.summary.technical_failures), 1)
     console.log(`PASS: ordered funnels, deduplicated actors, sandbox exclusion, platform filters, currency isolation, mature retention, per-screen drop-off/optional paths/resume/ordering/maturity, empty states. 20k onboarding-view query: ${queryMs.toFixed(1)}ms (local synthetic fixture).`)
     throw new Error('ROLLBACK_FIXTURES')
   }).catch(error => { if (error.message !== 'ROLLBACK_FIXTURES') throw error })
