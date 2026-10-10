@@ -168,7 +168,7 @@ test('grouped campaign rates preserve maximum milestones and enforce each audien
     await import('./sprint-defaults')
   const campaign = sprintTermsSchema.parse(defaultCreatorSprintTerms())
   expect(campaign.milestones.map((rate) => rate.amountCents)).toEqual([
-    1500, 4500, 6500, 9600, 18300, 25900, 32500,
+    1500, 3500, 6500, 9600, 18300, 25900, 32500,
   ])
   for (const milestone of campaign.milestones) {
     for (const [audience, percent] of [

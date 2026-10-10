@@ -1,6 +1,6 @@
 export const CREATOR_VIEW_THRESHOLDS = [
   { views: 20_000, label: '20K', basePayout: 10, maxPayout: 15 },
-  { views: 40_000, label: '40K', basePayout: 20, baseTier1Cpm: 2.5 },
+  { views: 40_000, label: '40K', basePayout: 20, baseTier1Cpm: 2.5, maxPayout: 35 },
   { views: 100_000, label: '100K', basePayout: 26, baseTier1Cpm: 1.3 },
   { views: 250_000, label: '250K', basePayout: 33, baseTier1Cpm: 0.65 },
   { views: 500_000, label: '500K', basePayout: 60, baseTier1Cpm: 0.6 },
@@ -64,10 +64,10 @@ export function calculateCreatorPayout(totalViews: number, tier1AudienceEligible
   const audienceTierSteps = (audiencePercentage - 20) / 2.5
   const estimatedTier1Views = totalViews * (audiencePercentage / 100)
   const maximumPayout = 'maxPayout' in threshold ? threshold.maxPayout : MAXIMUM_PAYOUT_DOLLARS
-  const unroundedPayout = 'maxPayout' in threshold
+  const unroundedPayout = !('baseTier1Cpm' in threshold)
     ? threshold.basePayout + (threshold.maxPayout - threshold.basePayout) * (audiencePercentage - 20) / (MAXIMUM_PAYABLE_AUDIENCE_PERCENT - 20)
     : estimatedTier1Views / 1_000 * (threshold.baseTier1Cpm + audienceTierSteps * CPM_INCREASE_PER_TIER)
-  const tier1Cpm = 'maxPayout' in threshold
+  const tier1Cpm = !('baseTier1Cpm' in threshold)
     ? unroundedPayout / estimatedTier1Views * 1_000
     : threshold.baseTier1Cpm + audienceTierSteps * CPM_INCREASE_PER_TIER
   const cappedPayout = Math.min(unroundedPayout, maximumPayout)

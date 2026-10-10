@@ -43,6 +43,7 @@ const revenueMetrics: ChartMetric[] = [
   { key: 'net', label: 'Net', color: colors.green },
 ]
 const qualityMetrics: ChartMetric[] = [{ key: 'failures', label: 'Scan failures', color: colors.orange }]
+const operationalSections = ['Authentication','Purchases','Referrals','Notifications','AttributionLedger']
 const observationNote = 'Counts are observed events per UTC bucket, except active devices and first app opens which are distinct devices. Buckets with no recorded events are omitted; a gap does not establish zero users or an outage. Boundary buckets are partial. Purchase completion is a client signal, not verified billing.'
 type Health = { pending_events: number; pending_billing_events: number; unfinished_webhooks: number;
   oldest_pending_event: string | null; last_revenuecat_receipt: string | null; last_stripe_receipt: string | null;
@@ -66,13 +67,19 @@ export default function AnalyticsAdminPage() {
   const filter = (key: 'days' | 'platform', value: string) => {
     void router.replace({ pathname: router.pathname, query: { days, platform, [key]: value } }, undefined, { shallow: true })
   }
+  const refresh = () => {
+    if (tab === 'Reliability') { void mutate(`/api/admin/reliability?days=${days}`); return }
+    void report.mutate()
+    if (operationalSections.includes(tab)) void mutate(`/api/admin/analytics-operations?days=${days}&section=${tab}`)
+    if (tab === 'Quality') void mutate('/api/admin/analytics-health')
+  }
   return <>
     <CreatorHeader eyebrow="Analytics" title={page?.title || 'Product overview'} description={page?.description || 'Understand daily activity and the path to value.'} />
     <div className="admin-report-toolbar">
       <div className="flex flex-wrap items-center gap-3">
         <AnalyticsSelect label="Period" value={days} onChange={value => filter('days', value)} options={[1,7,30,90].map(day => ({value:String(day),label:day === 1 ? "Last 24 hours" : `Last ${day} days`}))} />
         {!['Reliability','Experiments','Revenue'].includes(tab)?<AnalyticsSelect label="Platform" value={platform} onChange={value => filter('platform', value)} options={['all','web','ios','android'].map(value => ({value,label:value === 'all' ? 'All platforms' : value === 'ios' ? 'iOS' : label(value)}))}/>:null}
-        <Button variant="ghost" className="size-10 p-0 text-[#73777d]" aria-label="Refresh analytics" disabled={report.isValidating} onClick={() => void (tab === 'Reliability'?mutate(`/api/admin/reliability?days=${days}`):report.mutate())}><RefreshCw className={`size-4 ${report.isValidating ? 'animate-spin' : ''}`} /></Button>
+        <Button variant="ghost" className="size-10 p-0 text-[#73777d]" aria-label="Refresh analytics" disabled={report.isValidating} onClick={refresh}><RefreshCw className={`size-4 ${report.isValidating ? 'animate-spin' : ''}`} /></Button>
       </div>
       <p className="text-xs text-[#858a91]" aria-live="polite">{data ? `Updated ${new Date(data.generatedAt).toLocaleTimeString('en-GB', { timeZone: 'UTC', hour: '2-digit', minute: '2-digit' })} UTC` : 'UTC reporting'} · Production</p>
     </div>
@@ -114,7 +121,7 @@ function Activity({ data, days, section }: { data: AnalyticsDashboard; days: num
     {daily ? <DailyChart data={data} days={days} title={section === 'Scans' ? 'Client-observed scan outcomes' : section === 'Purchases' ? 'Paywall activity' : section === 'Authentication' ? 'Authentication outcomes' : section === 'Referrals' ? 'Referral activity' : section === 'Notifications' ? 'Notification engagement' : 'Value-building activity'} metrics={daily} /> : null}
     {section === 'Purchases' ? <Funnel title="Paywall conversion" rows={data.paywall} /> : null}
     {section !== 'AttributionLedger' ? <EventReport data={data} section={section as 'Authentication' | 'Purchases' | 'Scans' | 'Engagement' | 'Referrals' | 'Notifications'} /> : null}
-    {['Authentication','Purchases','Referrals','Notifications','AttributionLedger'].includes(section) ? <OperationalReport days={days} section={section} /> : null}
+    {operationalSections.includes(section) ? <OperationalReport days={days} section={section} /> : null}
   </>
 }
 function DailyChart({ data, days, title, metrics }: { data: AnalyticsDashboard; days: number; title: string; metrics: ChartMetric[] }) {

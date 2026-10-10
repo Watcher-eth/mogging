@@ -154,6 +154,8 @@ try {
         jsonb_build_object('onboarding_version',${ONBOARDING_ANALYTICS_VERSION}::text,'flow_id','load-' || (n % 1000),
           'step',(${tx.array(onboardingAnalyticsSteps.map(([step]) => step))}::text[])[(n / 1000) % ${onboardingAnalyticsSteps.length} + 1]),
         '2040-01-15'::timestamp + (n / 1000) * interval '1 minute' from generate_series(1,20000) n`
+    // Bulk fixtures need fresh planner statistics, just like production autovacuum provides.
+    await tx`analyze analytics_events`
     // Compatible prior releases remain visible; incompatible revisions stay separate.
     await view('revision-three', 'experience', 2, 'revision-three', '3')
     await view('revision-three', 'goals', 3, 'revision-three', '3')

@@ -44,6 +44,12 @@ describe('calculateCreatorPayout', () => {
     expect(calculateCreatorPayout(20_000, false, 40)).toMatchObject({ payout: 0, isEligible: false })
   })
 
+  test('40K is capped at $35 while lower audience rates and other milestones remain intact', () => {
+    expect(calculateCreatorPayout(40_000, true, 40)).toMatchObject({ payout: 35, isCapped: true });
+    expect(calculateCreatorPayout(40_000, true, 30).payout).toBe(32);
+    expect(calculateCreatorPayout(100_000, true, 40).payout).toBe(65);
+  });
+
   test('returns no payout below 20% combined Tier-1 audience', () => {
     const result = calculateCreatorPayout(500_000, false, null)
 
