@@ -2,7 +2,7 @@ import { monitorBackend } from '@/lib/reliability/monitor'
 import { timingSafeEqual } from 'crypto'
 import type { NextApiRequest, NextApiResponse } from 'next'
 import { z } from 'zod'
-import { ApiError, handleApiError, json, methodNotAllowed, parseBody } from '@/lib/api/http'
+import { ApiError, handleApiError, json, methodNotAllowed } from '@/lib/api/http'
 import { recordRevenueCatCreatorEvent } from '@/lib/creator/attribution'
 import { eq } from 'drizzle-orm'
 import { db, schema } from '@/lib/db'
@@ -21,7 +21,14 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
   if (req.method !== 'POST') return methodNotAllowed(res, ['POST'])
   try {
     verifyAuthorization(req)
-    const payload = parseBody(webhookSchema, req.body)
+    const parsed = webhookSchema.safeParse(req.body)
+    if (!parsed.success) {
+      // Field names and issue codes only; never log subscriber attributes or payloads.
+      console.warn('billing:invalid-webhook', { issues: parsed.error.issues.slice(0, 12)
+        .map(issue => ({ code: issue.code, field: issue.path.slice(0, 2).join('.') })) })
+      throw parsed.error
+    }
+    const payload = parsed.data
     const event = payload.event
     const processed = await processBillingWebhook('revenuecat', event.id, async () => {
       await recordRevenueCatLifecycle(event)

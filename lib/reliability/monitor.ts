@@ -25,7 +25,7 @@ export function monitorBackend(feature: string, handler: (req: NextApiRequest, r
     let outcome: BackendOutcome | undefined
     const originalJson = res.json.bind(res)
     res.json = body => {
-      outcome = backendOutcome(res.statusCode,body)
+      outcome = backendOutcome(res.statusCode,body,feature)
       return originalJson(body)
     }
     try { return await handler(req,res) }
@@ -33,7 +33,7 @@ export function monitorBackend(feature: string, handler: (req: NextApiRequest, r
       outcome = {outcome:'failed',code:'unhandled_error',alert:true}
       throw error
     } finally {
-      const result = outcome ?? backendOutcome(res.statusCode,null)
+      const result = outcome ?? backendOutcome(res.statusCode,null,feature)
       // Vercel retains this task after sending the response. Logging never gates a purchase or scan.
       waitUntil(recordBackendRequest(feature,result,Date.now()-started,trace))
     }

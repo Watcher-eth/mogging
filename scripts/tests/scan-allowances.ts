@@ -3,6 +3,7 @@ import assert from 'node:assert/strict'
 import { randomUUID } from 'node:crypto'
 import { readFile } from 'node:fs/promises'
 import postgres from 'postgres'
+import { mock } from 'bun:test'
 
 const url = process.env.SCAN_TEST_DATABASE_URL
 if (!url || !['127.0.0.1', 'localhost'].includes(new URL(url).hostname)) throw new Error('Set SCAN_TEST_DATABASE_URL to an isolated local PostgreSQL server')
@@ -38,9 +39,16 @@ try {
       model text, prompt_version text, failure_reason text, created_at timestamp NOT NULL DEFAULT now(), updated_at timestamp NOT NULL DEFAULT now()
     );`)
   await sql.unsafe(await readFile(new URL('../../drizzle/0031_scan_allowances.sql', import.meta.url), 'utf8'))
+  await sql.unsafe(`CREATE TABLE analytics_events (id text PRIMARY KEY, event_id text UNIQUE, event_name text,
+    account_id text, mobile_install_id text, anonymous_id text, session_id text, platform text, source text,
+    properties jsonb, occurred_at timestamp, received_at timestamp DEFAULT now());`)
+  await sql.unsafe(await readFile(new URL('../../drizzle/0035_analytics_billing.sql', import.meta.url), 'utf8'))
+  // Creator commissions are outside this test; billing and crediting use their real implementations.
+  mock.module('@/lib/creator/attribution', () => ({ recordRevenueCatCreatorEvent: async () => null }))
   const { getEntitlementSummary, consumeEvaluationEntitlement, reserveEvaluation, finishEvaluation, creditRevenueCatScans, grantEntitlementFromCheckoutSession, revokeRevenueCatPurchase } = await import('../../lib/payments/entitlements')
   const { scanProducts } = await import('../../lib/payments/revenuecat')
   const { default: upgradesHandler } = await import('../../pages/api/payments/upgrades')
+  const { default: webhookHandler } = await import('../../pages/api/payments/revenuecat-webhook')
   const { env } = await import('../../lib/env')
   const { saveAnalysisResult } = await import('../../lib/analysis/service')
   const { getStripe } = await import('../../lib/payments/stripe')
@@ -202,6 +210,74 @@ try {
   assert.equal((await getEntitlementSummary({ userId: 'codes' })).evaluationCredits, Number.MAX_SAFE_INTEGER)
   await consumeEvaluationEntitlement({ userId: 'codes' })
   await assert.rejects(grantEntitlementFromCheckoutSession({ session: { status: 'complete', payment_status: 'unpaid' } as any }), /not completed/)
+  // Reproduce three packs plus three singles through delayed sync and webhook delivery.
+  await sql`INSERT INTO users(id) VALUES ('pack-buyer')`
+  await sql`INSERT INTO sessions VALUES ('pack-buyer-token-012345678901234567890', 'pack-buyer', now() + interval '1 day')`
+  const packSubscriber = {non_subscriptions: Object.fromEntries(scanProducts.map(product => [product.productId,
+    Array.from({length:3}, (_,index) => purchase(`batch-${product.product}-${index}`))]))}
+  subscribers.set('pack-buyer', packSubscriber)
+  env.REVENUECAT_WEBHOOK_AUTH_TOKEN = 'local-webhook-test-only'
+  const invoke = async (handler: typeof upgradesHandler, body: unknown, token: string) => {
+    let status = 200; let result: any
+    const response = {statusCode:200, setHeader() {}, getHeader() {return 'local-test'},
+      status(code: number) {status = this.statusCode = code; return this}, json(value: unknown) {result = value; return this}}
+    await handler({method:'POST', headers:{authorization:`Bearer ${token}`}, body} as any, response as any)
+    return {status,result}
+  }
+  const event = {api_version:'1.0',event:{id:'pack-webhook',type:'NON_RENEWING_PURCHASE',app_user_id:'pack-buyer',
+    product_id:scanProducts[1].productId,transaction_id:'batch-evaluation_pack_3-0',environment:'PRODUCTION',
+    entitlement_ids:null,is_trial_conversion:null,expiration_at_ms:null,price:9.99,currency:'USD',event_timestamp_ms:Date.now()}}
+  assert.equal((await invoke(webhookHandler, event, 'wrong-token')).status,401)
+  const delivered = await invoke(webhookHandler,event,env.REVENUECAT_WEBHOOK_AUTH_TOKEN)
+  assert.equal(delivered.status,200)
+  assert.equal((await invoke(webhookHandler,event,env.REVENUECAT_WEBHOOK_AUTH_TOKEN)).result.data.duplicate,true)
+  assert.equal((await sql`SELECT * FROM subscription_events WHERE provider_event_id='pack-webhook'`).length,1)
+  assert.equal((await invoke(webhookHandler,{...event,event:{...event.event,entitlement_ids:'invalid'}},env.REVENUECAT_WEBHOOK_AUTH_TOKEN)).status,400)
+  const syncBody = {mobileInstallId:'pack-test-install',transactionId:'batch-evaluation_pack_3-0'}
+  const synced = await invoke(upgradesHandler,syncBody,'pack-buyer-token-012345678901234567890')
+  assert.equal(synced.status,200)
+  assert.equal(synced.result.data.entitlements.evaluationCredits,12)
+  const packOwner = {userId:'pack-buyer',mobileInstallId:'pack-test-install'}
+  for(let index=0;index<12;index++) {
+    const reserved = await reserveEvaluation(packOwner,`mobile-batch-${index}`,'photo-body')
+    const photoId = `batch-photo-${index}`
+    await sql`INSERT INTO photos(id,user_id) VALUES (${photoId},'pack-buyer')`
+    const saved = await saveAnalysisResult({photoId,status:'complete',metrics:{},landmarks:{}},
+      {id:reserved.id,photo:{id:photoId},deduped:false})
+    assert.equal(saved.analysis.status,'complete')
+    assert.deepEqual((await reserveEvaluation(packOwner,`mobile-batch-${index}`,'photo-body')).result?.analysis,JSON.parse(JSON.stringify(saved.analysis)))
+  }
+  assert.equal((await invoke(upgradesHandler,syncBody,'pack-buyer-token-012345678901234567890')).result.data.entitlements.evaluationCredits,0)
+  assert.equal((await sql`SELECT * FROM analyses JOIN photos ON photos.id=analyses.photo_id WHERE photos.user_id='pack-buyer'`).length,12)
+  await assert.rejects(reserveEvaluation(packOwner,'thirteenth','body'),/No scans/)
+  subscribers.set('pack-buyer',null)
+  assert.equal((await getEntitlementSummary(packOwner)).evaluationCredits,0,'provider outage preserves the ledger and cannot refill credits')
+  // Provider regeneration stays inside one reservation. It never consumes a second credit.
+  subscribers.set('pack-buyer',{non_subscriptions:{[scanProducts[0].productId]:[purchase('provider-credit')]}})
+  assert.equal((await getEntitlementSummary(packOwner)).evaluationCredits,1)
+  const { KimiAnalysisProvider } = await import('../../lib/analysis/providers/kimi')
+  const { createFallbackAnalysisReport } = await import('../../lib/analysis/report')
+  env.MOONSHOT_API_KEY = 'local-provider-test-only'
+  const base = {faceDetected:true,pslScore:5,harmonyScore:6,dimorphismScore:6,angularityScore:6,metricScores:[],landmarks:{}}
+  const valid = {...base,report:createFallbackAnalysisReport(base,5)}
+  const purchaseFetch = globalThis.fetch
+  let providerCalls = 0
+  globalThis.fetch = (async (url: string | URL | Request, init?: RequestInit) => {
+    if (!String(url).endsWith('/chat/completions')) return purchaseFetch(url,init)
+    providerCalls++
+    return Response.json({choices:[{finish_reason:'stop',message:{content:providerCalls === 1 ? '{broken' : JSON.stringify(valid)}}]})
+  }) as typeof fetch
+  const recovery = await reserveEvaluation(packOwner,'provider-recovery','same-image')
+  const generated = await new KimiAnalysisProvider().analyzeFace({imageDataUrl:'data:image/jpeg;base64,test',gender:'other'})
+  assert.equal(providerCalls,2)
+  assert.equal((await getEntitlementSummary(packOwner)).evaluationCredits,0)
+  await sql`INSERT INTO photos(id,user_id) VALUES ('recovered-photo','pack-buyer')`
+  await saveAnalysisResult({photoId:'recovered-photo',status:'complete',metrics:{report:generated.report},landmarks:generated.landmarks},
+    {id:recovery.id,photo:{id:'recovered-photo'},deduped:false})
+  assert.equal((await reserveEvaluation(packOwner,'provider-recovery','same-image')).result?.analysis != null,true)
+  assert.equal((await getEntitlementSummary(packOwner)).evaluationCredits,0)
+  console.log('PASS: provider correction generates a valid saved report using one credit, and replay consumes none')
+  console.log('PASS: nullable consumable webhook, authorization, duplicate delivery, immediate authenticated sync, 3 packs + 3 singles -> 12 saved reports, request replay, exhaustion and restore')
   console.log('PASS: calendar limits, concurrency, replay, failures, expiry, restore, refunds, account isolation/deletion, preserved codes, unpaid checkout')
 } finally {
   globalThis.fetch = realFetch

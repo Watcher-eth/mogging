@@ -24,6 +24,7 @@ export type AnalyticsDashboard = {
   billing: MetricRow[]; revenue: MetricRow[]; revenueDaily: MetricRow[]; retention: MetricRow[]; cancellations: MetricRow[]
   actions: MetricRow[]; releases: MetricRow[]
   eventMetrics: MetricRow[]; eventPlatforms: MetricRow[]; dimensions: MetricRow[]; billingProducts: MetricRow[]; billingDimensions: MetricRow[]; contextCoverage: MetricRow[]; eventDelivery: MetricRow[]
+  scanLedger: { summary: { started: number; completed: number; failed: number; pending: number; reports: number }; daily: MetricRow[] }
 }
 
 // All identifiers here are constants owned by this module, never request input.
@@ -64,6 +65,17 @@ export function analyticsQuery(filters: AnalyticsFilters, now: Date) {
         and platform in ('web','ios','android')
         and coalesce(properties->>'path', '') not like '/admin%'
         and occurred_at >= ${start}::timestamp and occurred_at < ${end}::timestamp and ${platform}
+    ), scan_ledger as materialized (
+      select r.status, r.created_at, r.result->'analysis'->>'id' as analysis_id
+      from scan_reservations r join payment_entitlements p on p.id = r.entitlement_id
+      where r.created_at >= ${start}::timestamp and r.created_at < ${end}::timestamp
+        and coalesce(p.metadata->>'sandbox', 'false') <> 'true'
+    ), scan_ledger_daily as (
+      select to_char(created_at, ${bucket}::text) as day, count(*) as started,
+        count(*) filter(where status = 'complete') as completed,
+        count(*) filter(where status = 'failed') as failed,
+        count(*) filter(where status = 'pending') as pending
+      from scan_ledger group by 1 order by 1
     ), reported_events as materialized (
       select * from e union all
       select event_name, occurred_at, account_id, platform, app_version, properties, session_id, source, schema_version, received_at, null::text as actor
@@ -355,6 +367,11 @@ export function analyticsQuery(filters: AnalyticsFilters, now: Date) {
           filter (where event_name = 'evaluation_completed' and jsonb_typeof(properties->'duration_ms') = 'number'))::numeric) as median_evaluation_ms
       from e group by 1,2 order by actors desc limit 30
     ) select json_build_object(
+      'scanLedger', json_build_object('summary', (select json_build_object(
+        'started', count(*), 'completed', count(*) filter(where status = 'complete'),
+        'failed', count(*) filter(where status = 'failed'), 'pending', count(*) filter(where status = 'pending'),
+        'reports', count(distinct analysis_id) filter(where status = 'complete')) from scan_ledger),
+        'daily', ${rows('scan_ledger_daily')}),
       'summary', (select json_build_object('events', count(*), 'actors', count(distinct actor),
         'first_opens', count(distinct actor) filter (where event_name = 'app_first_open'),
         'evaluations', count(*) filter (where event_name = 'evaluation_completed'),

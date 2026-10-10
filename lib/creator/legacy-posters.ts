@@ -1,3 +1,4 @@
+import { drawBrandLockup } from './brand'
 import type { ContentSlide } from './content-generator'
 import { drawReportOverlay, type ReportOverlay } from './report-overlay'
 import type { RevealBrand } from './score-reveal'
@@ -9,7 +10,10 @@ export function drawLegacyPoster(ctx: CanvasRenderingContext2D, slide: ContentSl
   ctx.save(); ctx.textBaseline = 'top'; ctx.textAlign = 'left'
   ctx.fillStyle = '#09090b'; ctx.fillRect(0,0,width,height)
   if (image) drawCover(ctx,image,0,0,width,height)
-  if (slide.templateId === 'score-potential') drawMobileShare(ctx,slide,overlay,width,height,timeMs)
+  if (slide.templateId === 'score-potential') {
+    drawMobileShare(ctx,slide,overlay,width,height,timeMs)
+    drawBrandLockup(ctx,brand,width*.14,height*.715,width*.72)
+  }
   else {
     const gradient=ctx.createLinearGradient(0,0,0,height)
     gradient.addColorStop(0,'rgba(0,0,0,.45)'); gradient.addColorStop(.5,'rgba(0,0,0,.05)'); gradient.addColorStop(1,'rgba(0,0,0,.95)')

@@ -20,7 +20,7 @@ test('all mobile report categories and scored overall features are selectable', 
 
 test('settled exports include every selected stat and preserve the PSL scale', () => {
   const labels: string[] = []
-  const context = new Proxy({}, { get: (_target, key) => key === 'fillText' ? (label: string) => labels.push(label) : key === 'createLinearGradient' ? () => ({ addColorStop() {} }) : () => {} }) as CanvasRenderingContext2D
+  const context = new Proxy({}, { get: (_target, key) => key === 'fillText' ? (label: string) => labels.push(label) : key === 'measureText' ? () => ({ width: 380 }) : key === 'createLinearGradient' ? () => ({ addColorStop() {} }) : () => {} }) as CanvasRenderingContext2D
   drawScoreReveal(context, slide, null, null, null, 1080, 1080, REVEAL_SETTLED_MS)
   for (const category of slide.categoryScores) expect(labels).toContain(category.label.toUpperCase())
   expect(labels).toContain('/ 8')

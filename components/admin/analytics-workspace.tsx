@@ -97,8 +97,20 @@ function Activity({ data, days, section }: { data: AnalyticsDashboard; days: num
     : section === 'Referrals' ? [{key:'referral_invites',label:'Invites created',color:colors.blue},{key:'referral_redemptions',label:'Invites redeemed',color:colors.green}]
     : section === 'Notifications' ? [{key:'push_opens',label:'Push opens',color:colors.blue}] : null
   return <>
+    {section === 'Scans' ? <>
+      <div className="admin-stats-grid">
+        <Stat title="Confirmed evaluations" value={count(data.scanLedger.summary.completed)} note="Completed credit reservations" />
+        <Stat title="Saved reports" value={count(data.scanLedger.summary.reports)} note="Distinct report IDs in completed reservations" />
+        <Stat title="Returned scans" value={count(data.scanLedger.summary.failed)} note="Failed reservations return their credit" />
+        <Stat title="Processing" value={count(data.scanLedger.summary.pending)} note="Reservations still pending" />
+      </div>
+      <Panel title="Paid scan ledger" description="Backend-confirmed outcomes across all platforms." note="Independent of client analytics and the platform filter. Known sandbox purchases are excluded. Counts by reservation start time in UTC; a new evaluation of the same image can update an existing report.">
+        <AnalyticsChart rows={data.scanLedger.daily} metrics={[{key:'completed',label:'Completed',color:colors.blue},{key:'failed',label:'Credit returned',color:colors.orange},{key:'pending',label:'Pending',color:colors.violet}]} days={days} title="Paid scan ledger" />
+        <DataDetails><Table rows={data.scanLedger.daily} columns={['day','started','completed','failed','pending']} /></DataDetails>
+      </Panel>
+    </> : null}
     {section === 'Authentication' ? <p className="mb-5 text-sm text-[#73777d]">Older app releases combine cancellations and setup errors with auth failures. Updated releases report these outcomes separately; historical events retain their original classification.</p> : null}
-    {daily ? <DailyChart data={data} days={days} title={section === 'Scans' ? 'Scan outcomes' : section === 'Purchases' ? 'Paywall activity' : section === 'Authentication' ? 'Authentication outcomes' : section === 'Referrals' ? 'Referral activity' : section === 'Notifications' ? 'Notification engagement' : 'Value-building activity'} metrics={daily} /> : null}
+    {daily ? <DailyChart data={data} days={days} title={section === 'Scans' ? 'Client-observed scan outcomes' : section === 'Purchases' ? 'Paywall activity' : section === 'Authentication' ? 'Authentication outcomes' : section === 'Referrals' ? 'Referral activity' : section === 'Notifications' ? 'Notification engagement' : 'Value-building activity'} metrics={daily} /> : null}
     {section === 'Purchases' ? <Funnel title="Paywall conversion" rows={data.paywall} /> : null}
     {section !== 'AttributionLedger' ? <EventReport data={data} section={section as 'Authentication' | 'Purchases' | 'Scans' | 'Engagement' | 'Referrals' | 'Notifications'} /> : null}
     {['Authentication','Purchases','Referrals','Notifications','AttributionLedger'].includes(section) ? <OperationalReport days={days} section={section} /> : null}

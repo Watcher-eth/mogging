@@ -11,7 +11,7 @@ export const revenueCatEventSchema = z.object({
   event_timestamp_ms: time, purchased_at_ms: time, expiration_at_ms: time, grace_period_expiration_at_ms: time,
   price: z.number().finite().nullable().optional(), price_in_purchased_currency: z.number().finite().nullable().optional(),
   commission_percentage: z.number().min(0).max(1).nullable().optional(), tax_percentage: z.number().min(0).max(1).nullable().optional(),
-  is_trial_conversion: z.boolean().optional(), entitlement_ids: z.array(z.string().max(300)).optional(),
+  is_trial_conversion: z.boolean().nullish(), entitlement_ids: z.array(z.string().max(300)).nullish(),
   transferred_from: z.array(z.string().max(300)).optional(), transferred_to: z.array(z.string().max(300)).optional(),
   subscriber_attributes: z.record(z.string(), z.object({ value: z.unknown().optional() })).optional(),
 })

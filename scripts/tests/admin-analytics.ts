@@ -13,6 +13,8 @@ try {
   assert.equal(analyticsFilters.safeParse({ days: '999' }).success, false)
   assert.equal(analyticsFilters.safeParse({ platform: ['ios','web'] }).success, false)
   const now = new Date('2040-01-31T00:00:00Z')
+  await connection.unsafe(`CREATE TABLE IF NOT EXISTS payment_entitlements (id text PRIMARY KEY, metadata jsonb NOT NULL DEFAULT '{}');
+    CREATE TABLE IF NOT EXISTS scan_reservations (id text PRIMARY KEY, entitlement_id text REFERENCES payment_entitlements(id), status text, result jsonb, created_at timestamp);`)
   // Rollback isolates each run, including performance fixtures.
   await connection.begin(async tx => {
     const { PgDialect } = await import('drizzle-orm/pg-core')
@@ -73,6 +75,20 @@ try {
     assert.deepEqual((webOnly.data as typeof data).revenueDaily, data.revenueDaily)
     const [empty] = await testDb.execute(analyticsQuery({ days: '7', platform: 'android' }, now))
     assert.equal((empty.data as typeof data).summary.actors, 0)
+    // Saved outcomes remain visible even without a single client completion event.
+    const credit = `ledger-${suffix}`
+    await tx`insert into payment_entitlements(id) values (${credit})`
+    const sandboxCredit = `sandbox-${suffix}`
+    await tx`insert into payment_entitlements(id,metadata) values (${sandboxCredit},'{"sandbox":true}')`
+    for (const [index, status, report] of [[0,'complete','saved'],[1,'complete','saved'],[2,'failed',null],[3,'pending',null]] as const) {
+      await tx`insert into scan_reservations(id,entitlement_id,status,result,created_at)
+        values (${`${suffix}-${index}`},${credit},${status},${tx.json({analysis:{id:report}})},'2040-01-20')`
+    }
+    await tx`insert into scan_reservations(id,entitlement_id,status,result,created_at)
+      values (${`${suffix}-sandbox`},${sandboxCredit},'complete','{"analysis":{"id":"sandbox"}}','2040-01-20')`
+    const [ledger] = await testDb.execute(analyticsQuery({ days: '30', platform: 'android' }, now))
+    assert.deepEqual((ledger.data as typeof data).scanLedger.summary, {started:4,completed:2,failed:1,pending:1,reports:1})
+    assert.equal(Number((ledger.data as typeof data).scanLedger.daily[0].completed), 2)
     assert.ok((empty.data as typeof data).retention.every(row => Number(row.eligible) === 0))
     // Screen cohorts: optional paths, backtracking, resume, recent users, duplicates,
     // old releases, cross-flow events, out-of-order events and seven-day boundaries.

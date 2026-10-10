@@ -2,6 +2,19 @@ import { describe, expect, test } from 'bun:test'
 import { normalizeRevenueCat, revenueCatEventSchema, revenueCatLifecycle } from './subscription-events'
 
 describe('billing facts', () => {
+  test('consumable webhooks accept RevenueCat null entitlement and trial fields', () => {
+    const event = revenueCatEventSchema.parse({
+      id: 'scan-pack', type: 'NON_RENEWING_PURCHASE', environment: 'PRODUCTION',
+      product_id: 'mogging.evaluation.pack3', entitlement_ids: null,
+      is_trial_conversion: null, expiration_at_ms: null,
+      price: 9.99, price_in_purchased_currency: 9.99, currency: 'USD',
+    })
+    expect(normalizeRevenueCat(event)).toMatchObject({
+      eventName: 'one_time_purchase', environment: 'production', amount: '9.99',
+      properties: { entitlement_ids: [], trial_conversion: false },
+    })
+    expect(revenueCatEventSchema.safeParse({ ...event, entitlement_ids: 'pro' }).success).toBe(false)
+  })
   test.each([
     ['INITIAL_PURCHASE', 'subscription_started'], ['RENEWAL', 'subscription_renewed'],
     ['NON_RENEWING_PURCHASE', 'one_time_purchase'], ['UNCANCELLATION', 'subscription_reactivated'],

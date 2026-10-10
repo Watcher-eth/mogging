@@ -2,6 +2,11 @@ import {describe,expect,test} from 'bun:test'
 import {backendOutcome} from './outcome'
 
 describe('backend reliability outcomes',()=>{
+  test('billing contract rejection alerts without treating unauthenticated requests as outages',()=>{
+    expect(backendOutcome(400,{error:{code:'bad_request'}},'payments/revenuecat-webhook')).toEqual({outcome:'failed',code:'billing_invalid_payload',alert:true})
+    expect(backendOutcome(401,null,'payments/revenuecat-webhook').alert).toBe(false)
+    expect(backendOutcome(400,null,'analytics/events').alert).toBe(false)
+  })
   test('notifies for 5xx, never ordinary authentication and validation rejections',()=>{
     expect(backendOutcome(502,null)).toEqual({outcome:'failed',code:'http_502',alert:true})
     for(const status of [400,401,403,409,429]) expect(backendOutcome(status,null).alert).toBe(false)

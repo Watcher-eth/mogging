@@ -1,8 +1,8 @@
-export const ANALYSIS_PROMPT_VERSION = 'psl-kimi-v3'
+export const ANALYSIS_PROMPT_VERSION = 'psl-kimi-v4'
 
 import type { AnalyzeFaceInput } from './schema'
 
-const CATEGORY_IDS = [
+export const CATEGORY_IDS = [
   'eyes',
   'nose',
   'mouth',
@@ -45,7 +45,7 @@ Return only valid JSON. No markdown. No prose outside JSON.
 Assess visible facial aesthetics only. Do not infer identity, ethnicity, morality, intelligence, health diagnosis, fertility, or real-world worth.
 Do not claim objective health, fertility, morality, competence, intelligence, or medical status from appearance.
 PSL is internally calibrated on 1-8: ordinary faces 3.5-5.2, attractive 5.5-6.8, model-tier 7.0-7.9, 8.0 only near-ideal. All report category "score" values, including overall, must be 0-10 display scores.
-If no real human face is visible, set faceDetected=false and pslScore=null, use empty metricScores/categories, and return empty landmarks.`
+If no real human face is visible, set faceDetected=false, pslScore=null, report=null, metricScores=[], and landmarks={}. Keep the required top-level numeric scores valid.`
 
 export function buildAnalysisPrompt(
   gender: AnalyzeFaceInput['gender'],
@@ -57,7 +57,7 @@ export function buildAnalysisPrompt(
   const compactRequirements = options.compact
     ? `
 - Keep every feature label under 4 words and every feature value under 7 words.
-- Keep every recommendation under 220 characters, preserving the finding and concrete action. Keep every metric description under 10 words.
+- Aim for recommendations of 120-180 characters; the hard limit is 220 characters. Preserve the finding and concrete action. Keep every metric description under 10 words.
 - Use no whitespace outside JSON string values.`
     : ''
 
@@ -81,16 +81,17 @@ Return one complete JSON object matching this schema:
     "summary": string,
     "protocolContext": {"faceShape": "unsure"|"oval"|"round"|"square"|"oblong"|"heart"|"diamond", "hairTexture": "unsure"|"straight"|"wavy"|"curly"|"coily", "visibleConcerns": ["dryness"|"fine-lines"|"marks"|"pimples"|"blackheads"|"sparse-brows"|"brow-shape"|"hair-thinning"|"dry-lips"]},
     "potential": {"score": number, "label": string, "summary": string, "focusAreas": [string]},
-    "categories": [{"id": string, "title": string, "subtitle": string, "scoreLabel": string, "score": number, "eyeColor": "blue"|"gray"|"green"|"hazel"|"amber"|"brown"|"dark brown" (eyes only, omit if uncertain), "features": [{"label": string, "value": string, "measurement": string (when measurable)}], "explanation": string, "recommendation": string}]
+    "categories": [{"id": string, "title": string, "subtitle": string, "scoreLabel": string, "score": number, "eyeColor": "blue"|"gray"|"green"|"hazel"|"amber"|"brown"|"dark brown" (eyes only, omit if uncertain), "features": [{"label": string, "value": string, "measurement": string (optional; omit when not measurable, never use an empty string or null)}], "explanation": string, "recommendation": string}]
   },
   "landmarks": {"version": 1, "source": "kimi-vision-estimate", "confidence": number, "image": {"width": number, "height": number}, "anchors": {"anchorName": {"x": number, "y": number}}}
 }
 
 Hard requirements:
 - Include a report object with exactly the 11 listed category ids.
+- categories is an array INSIDE report, not a top-level array or an object keyed by category id. These report requirements apply only when faceDetected=true; otherwise use report=null.
 - Category id literals must include "id": "facial-fat", "id": "biological-age", and "id": "sun-damage".
 - report.categories must contain exactly these 11 ids, in this order: ${CATEGORY_IDS.join(', ')}.
-- Every category must have ${featureCount} features.
+- Every category${options.compact ? ' except overall' : ''} must have ${featureCount} features. The overall category must have exactly 6 features.
 - Every category "score" must be a 0-10 number. Do not use apparent age in years, percentages, or PSL /8 as a category score.
 - Feature labels and values must be approachable but precise. Prefer values like "7.2/10", "mild right drift", "slight downward tilt", "balanced width", or "low visible texture" over vague values like "aligned", "centered", "clean", "high", "measured", or "good".
 - For every feature whose label names a measurable dimension (including angle, tilt, width, height, spacing, length, distance, ratio, projection, or thirds), include a separate measurement alongside its descriptive value. Use degrees for angles/tilts and a dimensionless ratio to a named facial reference for distances or proportions (for example "0.48× face width"). Base estimates on visible landmarks, not assumed real-world millimeters or centimeters. Omit the measurement only if the relevant points are not visible; explain that uncertainty in the value. Do not put a bare score in measurement.

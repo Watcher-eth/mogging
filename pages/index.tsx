@@ -17,9 +17,11 @@ import * as m from "motion/react-m";
 import { WebCheckout } from "@/components/landing/web-checkout";
 import { AnalysisStory } from "@/components/landing/analysis-story";
 import { EvaluationStats } from "@/components/landing/evaluation-stats";
-import { useState } from "react";
+import { useCallback, useState } from "react";
 import { SeoHead } from "@/components/app/seo-head";
 import { appStoreUrl, siteUrl } from "@/lib/seo";
+import { AppStoreHandoff } from "@/components/landing/app-store-handoff";
+import { HOMEPAGE_DESTINATION_COOKIE, shouldRouteHomepageToStore } from "@/lib/homepage-routing";
 import {
   createLandingAssignment,
   isActiveLandingAssignment,
@@ -32,10 +34,13 @@ import {
 
 const LegacyHomepage = dynamic(() => import("@/components/landing/legacy-homepage"));
 
-type Props = { assignment: LandingAssignment; preview: boolean };
+type Props = { assignment: LandingAssignment; preview: boolean; routeToStore: boolean };
 
 export default function HomePage(props: Props) {
   const locale = useRouter().locale;
+  const [routeToStore, setRouteToStore] = useState(props.routeToStore);
+  const continueOnWebsite = useCallback(() => setRouteToStore(false), []);
+  if (routeToStore) return <AppStoreHandoff assignment={props.assignment} onContinue={continueOnWebsite} />;
   return (!locale || locale === "en") && props.assignment.arm === "homepage_a" ? <LegacyHomepage {...props} /> : <NewHomepage {...props} />;
 }
 
@@ -316,5 +321,6 @@ export const getServerSideProps: GetServerSideProps<Props> = async ({
       "Set-Cookie",
       `${LANDING_COOKIE}=${serializeLandingAssignment(assignment)}; Path=/; Max-Age=7776000; SameSite=Lax${process.env.NODE_ENV === "production" ? "; Secure" : ""}`,
     );
-  return { props: { assignment, preview: localizedPreview || Boolean(previewArm) || automated } };
+  const routeToStore = shouldRouteHomepageToStore(req.headers["user-agent"] || '', req.cookies[HOMEPAGE_DESTINATION_COOKIE], Boolean(previewArm) || automated);
+  return { props: { assignment, preview: localizedPreview || Boolean(previewArm) || automated, routeToStore } };
 };

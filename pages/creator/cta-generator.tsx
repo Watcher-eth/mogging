@@ -41,7 +41,7 @@ const approvedExamples = [
 type CtaLibraryResponse = { approved: CreatorCtaLibraryItem[]; mine: CreatorCtaLibraryItem[] }
 
 function refreshPhoneReport(slide: ContentSlide): ContentSlide {
-  if (slide.templateId !== 'phone-report' || !slide.mockReport) return slide
+  if (!['phone-report','handheld-report'].includes(slide.templateId) || !slide.mockReport) return slide
   const scores = Object.fromEntries(slide.categoryScores.map(score => [score.categoryId, score.value]))
   return { ...slide, mockReport: { ...slide.mockReport, category: buildMockOverallCategory(slide.currentScore, scores) } }
 }
@@ -317,7 +317,7 @@ export default function CtaGeneratorPage() {
             }} />
             <Field label="Featured category"><select className={fieldClass} value={featuredCategory} onChange={(event) => { const value = event.target.value; setFeaturedCategory(value); setSelectedCategories((current) => current.includes(value) ? current : [value, ...current]) }}>{categoryOptions.map((item) => <option key={item.id} value={item.id}>{item.label}</option>)}</select></Field>
             <div className="grid grid-cols-2 gap-2"><ScoreField label="Current score" value={currentScore} onChange={updateCurrentScore} /><ScoreField label="Potential" value={potentialScore} onChange={updatePotentialScore} /></div>
-            <p className="text-xs leading-5 text-zinc-500">Use your overall score, feature scores and potential to create seven templates, including the three original favorites.</p>
+            <p className="text-xs leading-5 text-zinc-500">Use your overall score, feature scores and potential to create eight templates, including the three original favorites.</p>
             <div className="grid gap-2"><p className="text-xs font-semibold uppercase tracking-[0.14em] text-zinc-400">Category scores</p>{selectedCategories.map((categoryId) => <ScoreField key={categoryId} label={categoryOptions.find((item) => item.id === categoryId)?.label.replace(' analysis', '') ?? categoryId} maximum={categoryScoreMax(categoryId)} value={categoryScoreValues[categoryId] ?? ''} onChange={(value) => updateCategoryScore(categoryId, value)} />)}</div>
             {selectedCategories.includes('psl') ? <p className="text-xs leading-5 text-zinc-500">PSL uses the mobile report’s 0–8 scale. For a featured PSL reveal, the 0–10 potential above is converted to the same scale.</p> : null}
         </div><details className="mt-5 border-t pt-4"><summary className="min-h-11 cursor-pointer text-sm font-semibold">Customize format, categories & style</summary>

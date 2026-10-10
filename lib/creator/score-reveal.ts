@@ -1,3 +1,4 @@
+import { loadCreatorBrand, drawBrandLockup, type CreatorBrand } from './brand'
 import { categoryScoreMax, type ContentSlide } from './content-generator'
 import { drawReportOverlay, type ReportOverlay } from './report-overlay'
 
@@ -18,12 +19,8 @@ export function loadRevealImage(src: string) {
   })
 }
 
-export async function loadRevealBrand() {
-  const [logo, appStore] = await Promise.all([loadRevealImage('/favicon.png'), loadRevealImage('/app-store-icon.png')])
-  return { logo, appStore }
-}
-
-export type RevealBrand = Awaited<ReturnType<typeof loadRevealBrand>>
+export const loadRevealBrand = loadCreatorBrand
+export type RevealBrand = CreatorBrand
 
 export function revealCategory(slide: ContentSlide) {
   return slide.categoryScores.find(score => score.categoryId === slide.categoryId)
@@ -49,14 +46,8 @@ export function drawScoreReveal(ctx: CanvasRenderingContext2D, slide: ContentSli
   ctx.scale(scale, scale)
   ctx.textBaseline = 'middle'; ctx.lineCap = 'round'
 
+  drawBrandLockup(ctx, brand, 150, 0, 600)
   entrance(ctx, time, 80, () => {
-    text(ctx, 'Mogging: Face Scan', 150, 24, 42, '#f4f5f3', 'left', 500)
-    if (brand) {
-      for (const [index, icon] of [brand.logo, brand.appStore].entries()) {
-        ctx.save(); ctx.beginPath(); ctx.roundRect(646 + index * 60, 0, 44, 44, 12); ctx.clip()
-        ctx.drawImage(icon, 646 + index * 60, 0, 44, 44); ctx.restore()
-      }
-    }
     const category = revealCategory(slide)
     const label = (category?.label ?? slide.metricLabel).replace(/\s+(analysis|score)$/i, '')
     text(ctx, label.toUpperCase(), 450, 86, 23, '#9aaba8', 'center', 400)

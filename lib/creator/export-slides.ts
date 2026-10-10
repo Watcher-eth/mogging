@@ -2,7 +2,7 @@ import { drawLegacyPoster, loadShareFont } from './legacy-posters'
 import { resolveShareOverallOverlay } from '@/lib/sharing/overall-overlay'
 import { enrichFaceLandmarks } from './mobile-overlay-engine/enrich-landmarks'
 import { preparePoster, drawPoster, posterFamily } from './editorial-posters'
-import { loadPhoneFrame, drawPhoneReport } from './phone-report'
+import { loadPhoneFrame, drawPhoneReport, loadHandheldPhone, drawHandheldReport } from './phone-report'
 import { type ContentSlide, type GeneratorImage } from './content-generator'
 import { createReportOverlay, type ReportOverlay } from './report-overlay'
 import { drawScoreReveal, loadRevealBrand, REVEAL_DURATION_MS, REVEAL_PORTRAIT_SIZE, type RevealBrand } from './score-reveal'
@@ -151,9 +151,9 @@ export async function prepareCanvas({ slide, images, width, height }: RenderArgs
   const ctx = canvas.getContext('2d', { alpha: false }); if (!ctx) throw new Error('Canvas export is unavailable')
   const source = images.find((item) => item.id === slide.imageId && item.status === 'ready')
   if (!source) throw new Error('This template’s photo is no longer available. Add a clear photo and generate the set again.')
-  const isReport = ['mock-report', 'phone-report'].includes(slide.templateId)
+  const isReport = ['mock-report', 'phone-report', 'handheld-report'].includes(slide.templateId)
   const legacy = ['score-potential','editorial','cta'].includes(slide.templateId)
-  const [image, brand] = await Promise.all([loadImage(source.dataUrl), legacy ? loadRevealBrand() : null, legacy ? loadShareFont() : null, isReport ? loadMockReportSymbols() : null, slide.templateId === 'phone-report' ? loadPhoneFrame() : null])
+  const [image, brand] = await Promise.all([loadImage(source.dataUrl), loadRevealBrand(), loadShareFont(), isReport ? loadMockReportSymbols() : null, slide.templateId === 'phone-report' ? loadPhoneFrame() : slide.templateId === 'handheld-report' ? loadHandheldPhone() : null])
   const posterOverlay = ['performance','afterimage'].includes(slide.templateId)
   const overlay: ReportOverlay | null = slide.templateId === 'score-potential'
     ? { size: { width, height }, primitives: resolveShareOverallOverlay(enrichFaceLandmarks(source.landmarks),width,height), dots: [], value: '' }
@@ -173,7 +173,8 @@ export async function prepareCanvas({ slide, images, width, height }: RenderArgs
 export function drawSlideFrame(ctx: CanvasRenderingContext2D, slide: ContentSlide, image: HTMLImageElement | null, overlay: ReportOverlay | null, width: number, height: number, timeMs: number, brand: RevealBrand | null) {
   if (slide.templateId === 'cta') drawScoreReveal(ctx,slide,image,overlay,brand,width,height,timeMs)
   else if (['score-potential','editorial'].includes(slide.templateId)) drawLegacyPoster(ctx,slide,image,overlay,width,height,timeMs,brand)
-  else if (slide.templateId === 'phone-report') drawPhoneReport(ctx, slide, image, overlay, width, height, timeMs)
+  else if (slide.templateId === 'phone-report') drawPhoneReport(ctx, slide, image, overlay, width, height, timeMs, brand)
+  else if (slide.templateId === 'handheld-report') drawHandheldReport(ctx, slide, image, overlay, width, height, timeMs, brand)
   else if (slide.templateId === 'mock-report') drawMockReport(ctx, slide, image, overlay, width, height, timeMs)
   else drawPoster(ctx, slide, image, width, height, timeMs, overlay)
 }

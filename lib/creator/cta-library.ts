@@ -7,7 +7,7 @@ import { creatorAssetPublicUrl, CREATOR_CTA_LIBRARY_TYPES, MAX_CREATOR_CTA_LIBRA
 
 export const creatorCtaLibrarySubmissionSchema = z.object({
   title: z.string().trim().min(2).max(100),
-  templateId: z.enum(['editorial', 'score-potential', 'psl', 'score-rows', 'cta', 'performance', 'precision', 'afterimage', 'phone-report']),
+  templateId: z.enum(['editorial', 'score-potential', 'psl', 'score-rows', 'cta', 'performance', 'precision', 'afterimage', 'phone-report', 'handheld-report']),
   formatId: z.enum(['vertical', 'portrait', 'square']),
   assetStorageKey: z.string().min(1),
   assetContentType: z.enum(CREATOR_CTA_LIBRARY_TYPES),
