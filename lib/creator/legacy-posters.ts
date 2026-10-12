@@ -12,7 +12,10 @@ export function drawLegacyPoster(ctx: CanvasRenderingContext2D, slide: ContentSl
   if (image) drawCover(ctx,image,0,0,width,height)
   if (slide.templateId === 'score-potential') {
     drawMobileShare(ctx,slide,overlay,width,height,timeMs)
-    drawBrandLockup(ctx,brand,width*.14,height*.715,width*.72)
+    const brandWidth = width * .36
+    const scoreHeight = shareCardLayout.scoreSize * width / shareCardLayout.width
+    const scoreCenterY = height * .945 - scoreHeight / 2
+    drawBrandLockup(ctx, brand, (width - brandWidth) / 2, scoreCenterY - brandWidth * .125 / 2, brandWidth)
   }
   else {
     const gradient=ctx.createLinearGradient(0,0,0,height)

@@ -55,7 +55,8 @@ export function analyticsQuery(filters: AnalyticsFilters, now: Date) {
   // Revision 4 adds optional weight; shared steps preserve revision 3's ordering.
   const supportedOnboarding = sql`e.properties->>'onboarding_version' in ('3','4')`
   const onboarding = funnel('onboarding', ['onboarding_started', 'paywall_viewed', 'purchase_completed', 'evaluation_completed', 'report_viewed'], sql`platform in ('ios','android')`)
-  const paywall = funnel('paywall', ['paywall_viewed', 'plan_selected', 'purchase_started', 'purchase_completed'], sql`platform in ('ios','android')`)
+  // A default plan can be purchased without an explicit plan-selection event.
+  const paywall = funnel('paywall', ['paywall_viewed', 'purchase_started', 'purchase_completed'], sql`platform in ('ios','android')`)
   const web = funnel('web', ['page_viewed', 'app_store_redirected'], sql`platform = 'web' and properties->>'path' = '/'`)
   const rows = (name: string) => sql`coalesce((select json_agg(r) from ${sql.identifier(name)} r), '[]'::json)`
   const referrer = sql`coalesce(nullif(properties->>'first_referrer_host',''),nullif(properties->>'referrer_host',''))`
