@@ -1,5 +1,6 @@
 import { pslToOverallScore } from '@/lib/analysis/score-scale'
 import { estimatedPopulationTopPercent } from '@/lib/sharing/population-percentile'
+import { parseStoryDesign, prepareStoryPortrait, ReportStoryDesign } from '@/lib/sharing/story-design'
 import { ImageResponse } from '@vercel/og'
 import type { NextApiRequest, NextApiResponse } from 'next'
 import { parseFaceLandmarksPayload } from '@/lib/analysis/landmarks'
@@ -50,8 +51,10 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     const rank = getLooksmaxRank(totalDisplayScore, share.photo.gender)
     const tier = (share.analysis.tier || 'Facial aesthetic').toUpperCase()
 
+    const design = parseStoryDesign(req.query.design)
+    const portrait = design === 'original' ? null : await prepareStoryPortrait(imageUrl, design)
     const image = new ImageResponse(
-      (
+      design !== 'original' && portrait ? <ReportStoryDesign design={design} portrait={portrait} landmarks={landmarks} score={totalScore} potential={potential.score} rank={rank} /> : (
         <div
           style={{
             background: '#a2a5a5',
@@ -123,7 +126,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
           </div>
 
           {topPercent !== null && (
-            <div style={{ position: 'absolute', top: 100, left: 410, width: 260, height: 82,
+            <div style={{ position: 'absolute', top: shareCardLayout.headerTop, left: 410, width: 260, height: 82,
               display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
               borderRadius: 48, border: '1px solid rgba(255,255,255,0.35)', background: 'rgba(255,255,255,0.14)' }}>
               <span style={{ fontSize: shareCardLayout.headingSize, fontWeight: 800 }}>Top {topPercent}%</span>

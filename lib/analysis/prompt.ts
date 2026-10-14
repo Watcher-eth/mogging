@@ -49,7 +49,7 @@ If no real human face is visible, set faceDetected=false, pslScore=null, report=
 
 export function buildAnalysisPrompt(
   gender: AnalyzeFaceInput['gender'],
-  options: { compact?: boolean } = {}
+  options: { compact?: boolean; landmarksProvided?: boolean } = {}
 ) {
   const explanationLength = options.compact ? '8-14 words' : '12-22 words'
   const summaryLength = options.compact ? 'one sentence' : 'two short sentences'
@@ -83,7 +83,7 @@ Return one complete JSON object matching this schema:
     "potential": {"score": number, "label": string, "summary": string, "focusAreas": [string]},
     "categories": [{"id": string, "title": string, "subtitle": string, "scoreLabel": string, "score": number, "eyeColor": "blue"|"gray"|"green"|"hazel"|"amber"|"brown"|"dark brown" (eyes only, omit if uncertain), "features": [{"label": string, "value": string, "measurement": string (optional; omit when not measurable, never use an empty string or null)}], "explanation": string, "recommendation": string}]
   },
-  "landmarks": {"version": 1, "source": "kimi-vision-estimate", "confidence": number, "image": {"width": number, "height": number}, "anchors": {"anchorName": {"x": number, "y": number}}}
+  "landmarks": ${options.landmarksProvided ? '{}' : `{"version": 1, "source": "kimi-vision-estimate", "confidence": number, "image": {"width": number, "height": number}, "anchors": {"anchorName": {"x": number, "y": number}}}`}
 }
 
 Hard requirements:
@@ -126,8 +126,7 @@ Hard requirements:
 - report.protocolContext supports the automatic weekly protocol. Include only clearly visible findings consistent with report feature values, and use an empty visibleConcerns array when unsupported. Use unsure for obscured or uncertain face shape or hair texture. These are cosmetic observations, never diagnoses: marks means visible uneven tone; pimples/blackheads require clearly visible spots or clogged pores; hair-thinning requires clearly visible sparse scalp coverage. Never infer symptoms, product ownership, age, treatment suitability, preferences, or a need to tan from the photo. A low category score alone is not a visible concern.
 - report.summary must be personalized and ${summaryLength}.
 - metricScores must contain 6 concise items.
-- landmarks.anchors should include these normalized 0-1 points when visible: ${LANDMARK_ANCHORS.join(', ')}.
-- Landmark coordinates are normalized inside the source image, not the displayed crop.
+${options.landmarksProvided ? '- Accurate image landmarks are already provided by the client detector. Return landmarks={} rather than estimating a second set.' : `- landmarks.anchors should include these normalized 0-1 points when visible: ${LANDMARK_ANCHORS.join(', ')}.\n- Landmark coordinates are normalized inside the source image, not the displayed crop.`}
 - Scores must be calibrated, not inflated.
 - Do not use the golden ratio, claim objective worth, or make a medical diagnosis; never classify or imply an apparent age below 18.
 - For facial-fat, title it "Facial definition", scoreLabel must be "Definition score", and never show a body-fat percentage. Higher scores mean clearer cheek and lower-face definition; the category is a cosmetic visual estimate only.

@@ -54,8 +54,9 @@ export type FaceLandmarkQuality = {
 }
 
 export type FaceLandmarksPayload = {
+  detectorRevision?: string
   version: 1
-  source: 'mediapipe-face-landmarker' | 'apple-vision' | 'kimi-vision-estimate'
+  source: 'mediapipe-face-landmarker' | 'apple-vision' | 'google-mlkit' | 'kimi-vision-estimate'
   confidence: number
   image: {
     width: number
@@ -72,8 +73,9 @@ const pointSchema = z.object({
 })
 
 export const faceLandmarksPayloadSchema = z.object({
+  detectorRevision: z.string().max(80).optional(),
   version: z.literal(1),
-  source: z.enum(['mediapipe-face-landmarker', 'apple-vision', 'kimi-vision-estimate']),
+  source: z.enum(['mediapipe-face-landmarker', 'apple-vision', 'google-mlkit', 'kimi-vision-estimate']),
   confidence: z.number().min(0).max(1),
   image: z.object({
     width: z.number().positive(),

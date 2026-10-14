@@ -73,6 +73,7 @@ return async function handler(req: NextApiRequest, res: NextApiResponse) {
       if (reservation.result) return json(res, 200, { ...reservation.result, entitlements: reservation.summary })
     }
 
+    console.info('analyze:access-ready', { requestId, elapsedMs: Date.now() - startedAt })
     markEvaluationStarted(res)
     const result = await run({
       ...body,

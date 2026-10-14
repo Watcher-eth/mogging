@@ -94,6 +94,7 @@ export type AnalysisReport = z.infer<typeof analysisReportSchema>
 export type AnalysisProviderResult = z.infer<typeof analysisProviderResultSchema>
 
 export type AnalyzeFaceInput = {
+  landmarksProvided?: boolean
   imageDataUrl: string
   gender: 'male' | 'female' | 'other'
 }

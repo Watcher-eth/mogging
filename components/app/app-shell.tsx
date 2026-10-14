@@ -722,21 +722,20 @@ export function LoginDialog({
     }
   }, [open])
 
-  function continueWithGoogle() {
-    void signIn('google', { callbackUrl })
+  const authPending = useRef(false)
+  function continueWithProvider(provider: string) {
+    if (authPending.current) return
+    authPending.current = true
+    void signIn(provider, { callbackUrl }).catch(() => {
+      authPending.current = false
+      toast.error('Unable to open sign-in. Please try again.')
+    })
   }
+  function continueWithGoogle() { continueWithProvider('google') }
+  function continueWithMeta() { continueWithProvider('facebook') }
+  function continueWithX() { continueWithProvider('twitter') }
+  function continueWithTikTok() { continueWithProvider('tiktok') }
 
-  function continueWithMeta() {
-    void signIn('facebook', { callbackUrl })
-  }
-
-  function continueWithX() {
-    void signIn('twitter', { callbackUrl })
-  }
-
-  function continueWithTikTok() {
-    void signIn('tiktok', { callbackUrl })
-  }
 
   const authButtons = [
     {

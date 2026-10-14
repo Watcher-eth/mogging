@@ -326,6 +326,28 @@ try {
   assert.equal((await reserveEvaluation(packOwner,'provider-recovery','same-image')).result?.analysis != null,true)
   assert.equal((await getEntitlementSummary(packOwner)).evaluationCredits,0)
   console.log('PASS: provider correction generates a valid saved report using one credit, and replay consumes none')
+  // A transport failure refunds the reservation; a new request can recover the
+  // same photo, and replay of the recovered report must never spend twice.
+  await sql`INSERT INTO users(id) VALUES ('transport-buyer')`
+  await sql`INSERT INTO payment_entitlements(id,user_id,mobile_install_id,stripe_checkout_session_id,product,credit_balance,source)
+    VALUES ('transport-credit','transport-buyer','transport-install','transport-fixture','evaluation',1,'admin_invite_code')`
+  const transportOwner = {userId:'transport-buyer',mobileInstallId:'transport-install'}
+  await sql`INSERT INTO photos(id,user_id) VALUES ('transport-photo','transport-buyer')`
+  const interrupted = await reserveEvaluation(transportOwner,'interrupted','same-photo')
+  const failure = {code:'provider_unavailable',retryable:true,raw:'{"transportCode":"ECONNRESET"}'}
+  await saveAnalysisResult({photoId:'transport-photo',status:'failed',landmarks:{},metrics:{providerError:failure}},
+    {id:interrupted.id,photo:{id:'transport-photo'},deduped:false})
+  assert.equal((await getEntitlementSummary(transportOwner)).evaluationCredits,1)
+  const retry = await reserveEvaluation(transportOwner,'retry','same-photo')
+  const recovered = await saveAnalysisResult({photoId:'transport-photo',status:'complete',landmarks:{},metrics:{report:valid.report}},
+    {id:retry.id,photo:{id:'transport-photo'},deduped:true})
+  const replay = await reserveEvaluation(transportOwner,'retry','same-photo')
+  assert.equal(replay.result?.analysis != null,true)
+  assert.equal((replay.result?.analysis as any).id,recovered.analysis.id)
+  assert.equal((await getEntitlementSummary(transportOwner)).evaluationCredits,0)
+  assert.equal((await sql`SELECT count(*)::int as n FROM analyses WHERE photo_id='transport-photo'`)[0].n,1)
+  console.log('PASS: interrupted scan refunds its credit; retry updates the same photo to a complete replayable report')
+
   console.log('PASS: nullable consumable webhook, authorization, duplicate delivery, immediate authenticated sync, 3 packs + 3 singles -> 12 saved reports, request replay, exhaustion and restore')
   console.log('PASS: calendar limits, concurrency, replay, failures, expiry, restore, refunds, account isolation/deletion, preserved codes, unpaid checkout')
 } finally {

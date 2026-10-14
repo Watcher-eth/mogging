@@ -1,5 +1,5 @@
 import {describe,expect,test} from 'bun:test'
-import {backendOutcome} from './outcome'
+import {backendOutcome, authErrorOutcome} from './outcome'
 
 describe('backend reliability outcomes',()=>{
   test('billing contract rejection alerts without treating unauthenticated requests as outages',()=>{
@@ -26,3 +26,9 @@ describe('backend reliability outcomes',()=>{
     expect(backendOutcome(200,{data:{analysis:{status:'complete'}}})).toEqual({outcome:'ok',code:'ok',alert:false})
   })
 })
+
+test('handled OAuth errors remain failures even when NextAuth redirects; denial is a rejection', () => {
+  expect(authErrorOutcome({ error: new Error('State cookie was missing.') })).toEqual({ outcome: 'failed', code: 'oauth_state_missing', alert: true });
+  expect(authErrorOutcome({ error: new Error('access_denied') })).toEqual({ outcome: 'rejected', code: 'oauth_cancelled', alert: false });
+  expect(authErrorOutcome(new Error('private token and url'))).toEqual({ outcome: 'failed', code: 'oauth_failed', alert: true });
+});

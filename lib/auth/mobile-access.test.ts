@@ -37,6 +37,7 @@ test('Google returning sign-in denies unknown users before adapter signup and le
   let existing: { id: string } | null = null
   const handler = load('../../pages/api/auth/[...nextauth].ts', {
     ...ops, db: { query: { users: { findFirst: async () => existing } } }, schema: { users: { email: 'email' } },
+    authDiagnosticContext: { run: (_:unknown, fn:()=>unknown) => fn() }, authLogger: {},
     authOptions: { callbacks: {} }, NextAuth: (_req: unknown, _res: unknown, options: unknown) => options,
   }, 'handler')
   const req = { cookies: { 'next-auth.callback-url': 'https://www.mogging.com/app/mobile-auth?existingOnly=1' } }

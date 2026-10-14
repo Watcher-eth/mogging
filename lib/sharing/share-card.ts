@@ -1,5 +1,5 @@
 export const shareCardLayout = {
-  width: 1080, height: 1920, inset: 78, headerTop: 104, footerBottom: 92,
+  width: 1080, height: 1920, inset: 78, headerTop: 150, footerBottom: 300,
   headingSize: 28, subheadingSize: 24, scoreLabelSize: 25, scoreSize: 176,
   gradients: [
     'linear-gradient(180deg, rgba(0,0,0,0.32) 0%, rgba(0,0,0,0.08) 36%, rgba(0,0,0,0.82) 100%)',

@@ -17,11 +17,9 @@ export function AppStoreHandoff({ assignment, onContinue }: { assignment: Landin
     const eventProperties = { ...properties, destination: destination === 'store' ? 'app_store' : 'web', placement: automatic ? 'automatic_iphone' : 'iphone_handoff' }
     trackWebEvent('destination_selected', eventProperties)
     if (destination === 'store') {
-      trackWebEvent('landing_viewed', properties)
       if (!automatic) trackWebEvent('landing_cta_clicked', eventProperties)
       trackWebEvent('app_store_redirected', eventProperties)
       void flushWebAnalytics()
-      onContinue()
       location.assign(appStoreUrl)
     } else {
       void flushWebAnalytics()

@@ -1,3 +1,4 @@
+import { authDiagnosticContext, authLogger } from '@/lib/auth/diagnostics'
 import { monitorBackend } from '@/lib/reliability/monitor'
 import NextAuth from 'next-auth'
 import { eq } from 'drizzle-orm'
@@ -7,8 +8,11 @@ import { authOptions } from '@/lib/auth/options'
 import { creditReferralSignup, REFERRAL_COOKIE } from '@/lib/referrals/service'
 
 function handler(req: NextApiRequest, res: NextApiResponse) {
-  return NextAuth(req, res, {
+  return authDiagnosticContext.run({ req, res }, () => NextAuth(req, res, {
     ...authOptions,
+    pages: { ...authOptions.pages, error: '/auth/error',
+      signIn: ['OAuthCallback', 'OAuthSignin', 'Callback'].includes(String(req.query?.error)) ? '/auth/error' : authOptions.pages?.signIn },
+    logger: authLogger,
     callbacks: {
       ...authOptions.callbacks,
       async signIn({ user, account }) {
@@ -29,7 +33,7 @@ function handler(req: NextApiRequest, res: NextApiResponse) {
       ...authOptions.events,
       async signIn({ user }) { await creditReferralSignup(user.id, req.cookies[REFERRAL_COOKIE]) },
     },
-  })
+  }))
 }
 
 export default monitorBackend('auth/[...nextauth]',handler)

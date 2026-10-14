@@ -13,9 +13,9 @@ const transpiler = new Bun.Transpiler({ loader: 'ts' })
 const input = { imageDataUrl: 'data:image/jpeg;base64,test', gender: 'other' }
 function provider(fetch: (url: string, init?: RequestInit) => Promise<Response>, timeout = 100_000, clock: Pick<DateConstructor, 'now'> = Date) {
   const context: any = { z, analysisProviderResultSchema, AnalysisProviderError, buildAnalysisPrompt,
-    ANALYSIS_SYSTEM_PROMPT, CATEGORY_IDS, Date: clock, AbortController, setTimeout, clearTimeout,
+    ANALYSIS_SYSTEM_PROMPT, CATEGORY_IDS, Date: clock, AbortController, TextDecoder, setTimeout, clearTimeout,
     env: { MOONSHOT_API_KEY: 'test', KIMI_ANALYSIS_MODEL: 'test', MOONSHOT_BASE_URL: 'https://test.invalid' },
-    fetch, console: { warn() {} } }
+    fetch, console: { warn() {}, info() {} } }
   runInNewContext(transpiler.transformSync(source.replace('100_000', String(timeout)) + '\nglobalThis.provider = new KimiAnalysisProvider();'), context)
   return context.provider
 }
@@ -91,6 +91,16 @@ test('HTTP authentication, rate-limit and server errors do not cause another pro
   }
 })
 
+test('known early connection failures retry once; unknown failures preserve safe diagnostics without retries', async () => {
+  let calls = 0
+  const error = Object.assign(new Error('fetch failed'), {cause: {code:'ECONNRESET', message:'private provider address'}})
+  await expect(provider(async()=>{ calls++; throw error }).analyzeFace(input)).rejects.toMatchObject({
+    code:'provider_unavailable', retryable:true, raw:'{"transportCode":"ECONNRESET","stage":"connection"}',
+  })
+  expect(calls).toBe(2)
+  await expect(provider(async()=>{throw {cause:{code:'secret url'}}}).analyzeFace(input)).rejects.toMatchObject({raw:'{"transportCode":"unknown_transport","stage":"connection"}'})
+})
+
 test('no-face response is accepted as no face, with no report invention', async () => {
   const result = await provider(async()=>completion({faceDetected:false,pslScore:null,harmonyScore:0,dimorphismScore:0,angularityScore:0,report:null})).analyzeFace(input)
   expect(result.faceDetected).toBe(false)
@@ -114,3 +124,76 @@ test('stalled response body remains covered by the deadline and is not retried a
   await expect(face.analyzeFace(input)).rejects.toMatchObject({code:'provider_unavailable'})
   expect(calls).toBe(1)
 })
+
+
+test('interrupted response body is a transport failure, not a report-validation retry', async () => {
+  let calls = 0
+  const error = Object.assign(new TypeError('terminated'), {cause:{code:'UND_ERR_SOCKET'}})
+  await expect(provider(async()=>{calls++;return {ok:true,json:async()=>{throw error}} as unknown as Response}).analyzeFace(input)).rejects.toMatchObject({code:'provider_unavailable',raw:'{"transportCode":"UND_ERR_SOCKET","stage":"response_body"}'})
+  expect(calls).toBe(1)
+})
+
+function stream(events: unknown[], complete = true) {
+  const body = events.map(event => `data: ${JSON.stringify(event)}\r\n\r\n`).join('') + (complete ? 'data: [DONE]\n\n' : '');
+  const bytes = new TextEncoder().encode(body);
+  return new Response(new ReadableStream({ start(controller) {
+    // Split UTF-8, JSON and SSE delimiters across arbitrary transport chunks.
+    for (let index = 0; index < bytes.length; index += 13) controller.enqueue(bytes.slice(index, index + 13));
+    controller.close();
+  } }), { headers: { 'content-type': 'text/event-stream' } });
+}
+
+test('streamed report handles split chunks, usage-only events and validates all categories', async () => {
+  const body = report(); body.report.summary = 'Balanced proportions — visible features.';
+  const text = JSON.stringify(body);
+  const result = await provider(async (_, init) => {
+    expect(JSON.parse(String(init?.body)).stream).toBe(true);
+    return stream([{ choices: [{ delta: { content: text.slice(0, 89) } }] },
+      { choices: [{ delta: { content: text.slice(89) }, finish_reason: 'stop' }] },
+      { choices: [], usage: { completion_tokens: 2800 } }]);
+  }).analyzeFace(input);
+  expect(result.report.summary).toBe(body.report.summary);
+  expect(result.report.categories).toHaveLength(11);
+});
+
+test('truncated streaming output never becomes a complete report or a validation regeneration', async () => {
+  let calls = 0;
+  await expect(provider(async () => { calls++; return stream([{ choices: [{ delta: { content: JSON.stringify(report()) }, finish_reason: 'stop' }] }], false); }).analyzeFace(input))
+    .rejects.toMatchObject({ code: 'provider_unavailable' });
+  expect(calls).toBe(1);
+});
+
+test('long connection failure is not restarted after the customer has already waited', async () => {
+  let time = 0, calls = 0;
+  class Clock extends Date { static now() { return time; } }
+  await expect(provider(async () => { calls++; time += 74000; throw Object.assign(new Error('fetch failed'), { cause: { code: 'ECONNRESET' } }); }, 100000, Clock).analyzeFace(input))
+    .rejects.toMatchObject({ code: 'provider_unavailable' });
+  expect(calls).toBe(1);
+});
+
+test('early DNS failure recovers within one provider operation', async () => {
+  let calls = 0;
+  const result = await provider(async () => { if (++calls === 1) throw { cause: { code: 'EAI_AGAIN' } }; return completion(report()); }).analyzeFace(input);
+  expect(calls).toBe(2);
+  expect(result.report.categories).toHaveLength(11);
+});
+
+test('native detector remains the landmark owner; provider skips redundant coordinate generation', async () => {
+  let prompt = '';
+  await provider(async (_, init) => { prompt = JSON.parse(String(init?.body)).messages[1].content[1].text; return completion(report()); })
+    .analyzeFace({ ...input, landmarksProvided: true });
+  expect(prompt).toContain('Return landmarks={}');
+  expect(prompt).toContain('"landmarks": {}');
+  expect(prompt).not.toContain('"anchorName"');
+  expect(prompt).not.toContain('landmarks.anchors should include');
+  expect(prompt).toContain('exactly the 11');
+});
+
+test('TLS certificate causes are preserved without retrying or exposing certificate contents', async () => {
+  for (const code of ['ERR_TLS_CERT_ALTNAME_INVALID', 'CERT_HAS_EXPIRED', 'UNABLE_TO_VERIFY_LEAF_SIGNATURE']) {
+    let calls = 0;
+    await expect(provider(async () => { calls++; throw { cause: { code, cert: 'private-certificate', host: 'private-host' } }; }).analyzeFace(input))
+      .rejects.toMatchObject({ raw: JSON.stringify({ transportCode: code, stage: 'connection' }) });
+    expect(calls).toBe(1);
+  }
+});

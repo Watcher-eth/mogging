@@ -6,6 +6,13 @@ import { db, schema } from '@/lib/db'
 import { backendOutcome, type BackendOutcome } from './outcome'
 import { sendReliabilityAlert } from './alerts'
 
+const requestOutcomes = new WeakMap<NextApiResponse, BackendOutcome>()
+
+// Frameworks such as NextAuth catch errors internally and respond with redirects.
+export function setBackendOutcome(res: NextApiResponse, outcome: BackendOutcome) {
+  requestOutcomes.set(res, outcome)
+}
+
 function backendEnvironment() {
   return process.env.VERCEL_ENV || (process.env.NODE_ENV === 'production' ? 'production' : 'development')
 }
@@ -33,7 +40,8 @@ export function monitorBackend(feature: string, handler: (req: NextApiRequest, r
       outcome = {outcome:'failed',code:'unhandled_error',alert:true}
       throw error
     } finally {
-      const result = outcome ?? backendOutcome(res.statusCode,null,feature)
+      const result = requestOutcomes.get(res) ?? outcome ?? backendOutcome(res.statusCode,null,feature)
+      requestOutcomes.delete(res)
       // Vercel retains this task after sending the response. Logging never gates a purchase or scan.
       waitUntil(recordBackendRequest(feature,result,Date.now()-started,trace))
     }

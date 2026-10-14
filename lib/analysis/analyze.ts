@@ -11,7 +11,6 @@ import { createFallbackAnalysisReport, normalizeAnalysisReport } from './report'
 import { computePslScore } from './scoring'
 import { saveAnalysisResult } from './service'
 import { faceLandmarksPayloadSchema } from './landmarks'
-import { AnalysisProviderError } from './errors'
 import type { AnalysisProvider, AnalysisProviderResult } from './schema'
 
 export const analyzeAndSaveSchema = z.object({
@@ -44,6 +43,7 @@ export async function analyzeAndSave(input: AnalyzeAndSaveInput, reservationId?:
   const provider = options.provider ?? analysisProvider
   const promptVersion = options.promptVersion ?? ANALYSIS_PROMPT_VERSION
   const data = analyzeAndSaveSchema.parse(input)
+  const storageStarted = Date.now()
   const storedImagePromise = storeImageDataUrl(data.imageData)
     .then((storedImage) => ({ ok: true as const, storedImage }))
     .catch((error: unknown) => ({ ok: false as const, error }))
@@ -51,11 +51,14 @@ export async function analyzeAndSave(input: AnalyzeAndSaveInput, reservationId?:
     .analyzeFace({
       imageDataUrl: data.imageData,
       gender: data.gender,
+      landmarksProvided: Boolean(data.landmarks && data.landmarks.source !== 'kimi-vision-estimate' &&
+        data.landmarks.confidence >= 0.5 && Object.values(data.landmarks.anchors).filter(Boolean).length >= 8),
     })
     .then((result) => ({ ok: true as const, result }))
     .catch((error: unknown) => ({ ok: false as const, error }))
 
   const storedImageResult = await storedImagePromise
+  console.info('analyze:image-storage', { elapsedMs: Date.now() - storageStarted, success: storedImageResult.ok })
   if (!storedImageResult.ok) {
     console.error('Image storage failed during analysis', storedImageResult.error)
   }
@@ -70,41 +73,6 @@ export async function analyzeAndSave(input: AnalyzeAndSaveInput, reservationId?:
   }
 
   const storedImage = storedImageResult.storedImage
-
-  if (!providerResult.ok && !isRetryableProviderFailure(providerResult.error)) {
-    const photoResult = await createPhotoRecord({
-      userId: data.userId ?? null,
-      anonymousActorId: data.anonymousActorId ?? null,
-      imageUrl: storedImage.imageUrl,
-      imageStorageKey: storedImage.imageStorageKey,
-      imageHash: options.photoHash?.(storedImage.imageHash) ?? storedImage.imageHash,
-      name: data.name ?? null,
-      caption: data.caption ?? null,
-      gender: data.gender,
-      age: normalizeApparentAge(data.age),
-      hairColor: data.hairColor ?? null,
-      skinColor: data.skinColor ?? null,
-      photoType: data.photoType,
-      latitude: data.latitude ?? null,
-      longitude: data.longitude ?? null,
-    })
-    const failure = toAnalysisFailure(providerResult.error)
-    const analysisResult = await saveAnalysisResult({
-      photoId: photoResult.photo.id,
-      status: 'failed',
-      metrics: failure.metrics,
-      landmarks: data.landmarks ?? {},
-      model: provider.model,
-      promptVersion,
-      failureReason: failure.failureReason,
-    }, reservationId ? { id: reservationId, photo: photoResult.photo, deduped: photoResult.deduped } : undefined)
-
-    return {
-      photo: photoResult.photo,
-      analysis: analysisResult.analysis,
-      deduped: photoResult.deduped,
-    }
-  }
 
   if (!providerResult.ok) {
     const photoResult = await createPhotoRecord({
@@ -224,10 +192,6 @@ export async function analyzeAndSave(input: AnalyzeAndSaveInput, reservationId?:
   }
 }
 
-function isRetryableProviderFailure(error: unknown) {
-  return error instanceof AnalysisProviderError && error.retryable
-}
-
 function createTransientAnalysisResult(
   data: AnalyzeAndSaveInput,
   providerResult:
@@ -247,32 +211,6 @@ function createTransientAnalysisResult(
   }
 
   if (!providerResult.ok) {
-    if (isRetryableProviderFailure(providerResult.error)) {
-      const failure = toAnalysisFailure(providerResult.error)
-
-      return {
-        photo,
-        analysis: {
-          id: `transient-analysis-${imageHash}`,
-          status: 'failed' as const,
-          pslScore: null,
-          harmonyScore: null,
-          dimorphismScore: null,
-          angularityScore: null,
-          percentile: null,
-          tier: null,
-          tierDescription: null,
-          metrics: failure.metrics,
-          landmarks: data.landmarks ?? {},
-          model: provider.model,
-          promptVersion,
-          failureReason: failure.failureReason,
-          persistenceFailureReason,
-        },
-        deduped: false,
-      }
-    }
-
     const failure = toAnalysisFailure(providerResult.error)
     return {
       photo,

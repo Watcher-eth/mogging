@@ -82,8 +82,11 @@ const subscriptionProducts: Record<string, ScanPlan> = {
 export function readRevenueCatScanSubscription(subscriber: RevenueCatSubscriber | null) {
   const pro = readRevenueCatPro(subscriber)
   if (!pro?.active || !pro.productIdentifier) return null
-  const plan = subscriptionProducts[pro.productIdentifier]
   const subscription = subscriber?.subscriptions?.[pro.productIdentifier]
+  // RevenueCat's Google Play identifiers include the base plan after a colon.
+  // Restrict normalization to verified Play subscriptions; Apple IDs stay exact.
+  const productId = subscription?.store === 'play_store' ? pro.productIdentifier.split(':')[0] : pro.productIdentifier
+  const plan = subscriptionProducts[productId]
   const start = validDate(subscription?.purchase_date)
   const end = validDate(subscription?.expires_date)
   const transaction = subscription?.store_transaction_id

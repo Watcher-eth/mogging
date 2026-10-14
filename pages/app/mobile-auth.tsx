@@ -31,7 +31,9 @@ export default function MobileAuthPage() {
 
     if (status === 'unauthenticated') {
       const callbackUrl = `${window.location.origin}/app/mobile-auth${router.query.existingOnly === '1' ? '?existingOnly=1' : ''}`
-      void signIn('google', { callbackUrl })
+      void signIn('google', { callbackUrl }).catch(() => {
+        setError('Unable to open Google sign-in. Return to the app and try again.')
+      })
       return
     }
 
@@ -48,7 +50,7 @@ export default function MobileAuthPage() {
         started.current = false
         setError(caught instanceof Error ? caught.message : 'Unable to return to Mogging')
       })
-  }, [router.isReady, status])
+  }, [router.isReady, router.query.error, router.query.existingOnly, status])
 
   return (
     <>

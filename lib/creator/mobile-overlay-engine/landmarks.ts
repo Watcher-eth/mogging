@@ -74,7 +74,7 @@ export type FaceLandmarkQuality = {
 export type FaceLandmarksPayload = {
   version: 1;
   detectorRevision?: string;
-  source: "mediapipe-face-landmarker" | "apple-vision" | "kimi-vision-estimate" | "demo-static";
+  source: "mediapipe-face-landmarker" | "apple-vision" | "google-mlkit" | "kimi-vision-estimate" | "demo-static";
   confidence: number;
   image: {
     width: number;

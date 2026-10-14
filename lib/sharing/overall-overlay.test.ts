@@ -1,4 +1,5 @@
 import { expect, test } from 'bun:test'
+import { parseFaceLandmarksPayload } from '@/lib/analysis/landmarks'
 import { resolveShareOverallOverlay } from './overall-overlay'
 import type { FaceLandmarksPayload } from '@/lib/analysis/landmarks'
 const face: FaceLandmarksPayload = {
@@ -39,4 +40,19 @@ test('rejects collapsed geometry even when Vision reports high confidence', () =
   }
   expect(resolveShareOverallOverlay(collapsed, 1080, 1920)).toEqual([])
   expect(resolveShareOverallOverlay({ ...face, quality: { score: .99, faceCoverage: .144 } }, 1080, 1920).length).toBeGreaterThan(0)
+})
+
+test('API validation preserves current iPhone geometry and still excludes obsolete detectors', () => {
+  const current = parseFaceLandmarksPayload({ ...face, source: 'apple-vision', detectorRevision: 'vision-face-local-v6' })
+  expect(current?.detectorRevision).toBe('vision-face-local-v6')
+  expect(resolveShareOverallOverlay(current, 936, 1000).length).toBeGreaterThan(0)
+  const obsolete = parseFaceLandmarksPayload({ ...face, source: 'apple-vision', detectorRevision: 'vision-face-local-v5' })
+  expect(resolveShareOverallOverlay(obsolete, 936, 1000)).toEqual([])
+  expect(resolveShareOverallOverlay(parseFaceLandmarksPayload({ ...face, source: 'apple-vision' }), 936, 1000)).toEqual([])
+})
+
+test('Android face geometry survives API validation and drives the existing share overlay', () => {
+  const android = parseFaceLandmarksPayload({ ...face, source: 'google-mlkit', detectorRevision: 'mlkit-face-local-v1' })
+  expect(android?.source).toBe('google-mlkit')
+  expect(resolveShareOverallOverlay(android, 1080, 1920)).toEqual(resolveShareOverallOverlay(face, 1080, 1920))
 })

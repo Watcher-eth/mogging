@@ -60,3 +60,9 @@ test('balanced mature cohorts expose effect size without declaring a winner', ()
   const rows = ['a','b'].map((variant,i)=>({experiment_id:'landing_homepage_v2',variant,visitors:1000,mature:1000,mature_store_clicks:i?250:200,first_exposure:'2026-09-01'}))
   expect(landingExperimentSummary(rows,'landing_homepage_v2',new Date('2026-10-05'))).toMatchObject({status:'Checkpoints met · review uncertainty',difference:'5.0 percentage points',lift:'25.0%',imbalance:false})
 })
+
+
+test('handoff-only assignments do not dilute homepage click rates', () => {
+  const [row] = landingExperimentRows([{experiment_id:'landing_homepage_v2',variant:'a',visitors:100,homepage_visitors:80,store_clicks:8,mature:40,mature_store_clicks:4,pending:40}], 'landing_homepage_v2')
+  expect(row).toMatchObject({visitors:100,homepage_visitors:80,observed_store_rate:'10.0%',mature_store_rate:'10.0%'})
+})

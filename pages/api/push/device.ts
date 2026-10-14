@@ -5,11 +5,12 @@ import { z } from 'zod'
 import { db, schema } from '@/lib/db'
 import { ApiError, handleApiError, json, methodNotAllowed } from '@/lib/api/http'
 import { enforceRateLimit } from '@/lib/api/rateLimit'
+import { isPushTokenValid } from '@/lib/push/fcm'
 
 const identity = z.object({ installId: z.string().min(16).max(100) })
 const registration = identity.extend({
-  token: z.string().regex(/^[a-f0-9]{32,512}$/),
-  environment: z.enum(['sandbox', 'production']),
+  token: z.string().min(32).max(4096),
+  environment: z.enum(['sandbox', 'production', 'fcm']),
   timezone: z.string().max(100).refine(value => {
     try { new Intl.DateTimeFormat('en', { timeZone: value }); return true } catch { return false }
   }),
@@ -17,7 +18,7 @@ const registration = identity.extend({
     date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
     tasks: z.array(z.object({ id: z.string().min(1).max(200), title: z.string().trim().min(1).max(180), completed: z.boolean() })).max(10),
   })).max(40).optional(),
-})
+}).refine(input => isPushTokenValid(input.token, input.environment), { path: ['token'], message: 'Invalid push token' })
 
 async function handler(req: NextApiRequest, res: NextApiResponse) {
   res.setHeader('Cache-Control', 'no-store')

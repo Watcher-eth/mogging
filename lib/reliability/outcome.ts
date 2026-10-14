@@ -26,3 +26,14 @@ export function backendOutcome(status: number, body: unknown, feature?: string):
   // Availability endpoint also reports missing runtime configuration as HTTP 503.
   return { outcome: 'ok', code: 'ok', alert: false }
 }
+
+// NextAuth metadata can contain tokens or URLs. Classify only known messages.
+export function authErrorOutcome(metadata: unknown): BackendOutcome {
+  const value = object(metadata)
+  const error = object(value.error ?? metadata)
+  const message = typeof error.message === 'string' ? error.message : ''
+  if (message === 'access_denied') return { outcome: 'rejected', code: 'oauth_cancelled', alert: false }
+  const code = message === 'State cookie was missing.' ? 'oauth_state_missing'
+    : message === 'PKCE code_verifier cookie was missing.' ? 'oauth_pkce_missing' : 'oauth_failed'
+  return { outcome: 'failed', code, alert: true }
+}

@@ -11,7 +11,7 @@ export function useLandingTracking(assignment: LandingAssignment, preview: boole
     const expose = () => {
       if (exposed || document.visibilityState !== 'visible') return
       exposed = true
-      trackWebEvent('landing_viewed', { ...landingProperties(assignment), path: '/', surface: 'landing' })
+      trackWebEvent('landing_viewed', { ...landingProperties(assignment), path: '/', surface: 'landing', placement: 'homepage' })
     }
     expose()
     document.addEventListener('visibilitychange', expose)

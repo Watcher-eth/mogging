@@ -16,13 +16,14 @@ export function landingExperimentRows(rows: MetricRow[], experimentId: string): 
   return ['a', 'b'].map(variant => {
     const row = rows.find(row => row.experiment_id === experimentId && row.variant === variant)
     const visitors = Number(row?.visitors ?? 0)
+    const homepageVisitors = Number(row?.homepage_visitors ?? visitors)
     const mature = Number(row?.mature ?? 0)
     const matureClicks = Number(row?.mature_store_clicks ?? 0)
     const interval = landingRateInterval(matureClicks, mature, experiment.status === 'active' ? 1.959963985 : 2.241402728)
     return {
       variant: `${variant.toUpperCase()} · ${variant === 'a' ? experiment.control : experiment.treatment}`,
-      visitors, store_clicks: Number(row?.store_clicks ?? 0),
-      observed_store_rate: visitors ? `${(Number(row?.store_clicks ?? 0) / visitors * 100).toFixed(1)}%` : '—',
+      visitors, homepage_visitors: homepageVisitors, store_clicks: Number(row?.store_clicks ?? 0),
+      observed_store_rate: homepageVisitors ? `${(Number(row?.store_clicks ?? 0) / homepageVisitors * 100).toFixed(1)}%` : '—',
       mature, pending: Number(row?.pending ?? 0),
       mature_store_rate: mature ? `${(matureClicks / mature * 100).toFixed(1)}%` : '—',
       mature_store_clicks: matureClicks,

@@ -18,7 +18,7 @@ export type AnalyticsDashboard = {
   onboarding: Array<{ name: string; actors: number }>
   paywall: Array<{ name: string; actors: number }>
   web: Array<{ name: string; actors: number }>
-  landingExperiments: MetricRow[]; landingSections: MetricRow[]; landingSources: MetricRow[]; landingPlacements: MetricRow[]
+  landingHandoffs?: MetricRow[]; webAudience?: MetricRow[]; landingExperiments: MetricRow[]; landingSections: MetricRow[]; landingSources: MetricRow[]; landingPlacements: MetricRow[]
   daily: MetricRow[]; acquisition: MetricRow[]; steps: MetricRow[]; screens: MetricRow[]
   onboardingScreens: MetricRow[]; onboardingFriction: MetricRow[]
   billing: MetricRow[]; revenue: MetricRow[]; revenueDaily: MetricRow[]; retention: MetricRow[]; cancellations: MetricRow[]
@@ -177,7 +177,8 @@ export function analyticsQuery(filters: AnalyticsFilters, now: Date) {
       order by properties->>'landing_id', occurred_at
     ), landing_outcomes as materialized (
       select l.*,
-        coalesce(bool_or(o.event_name = 'app_store_redirected' and o.properties->>'path' = '/'),false) as store,
+        coalesce(bool_or(o.event_name = 'app_store_redirected' and o.properties->>'path' = '/' and coalesce(o.properties->>'placement','') not in ('automatic_iphone','iphone_handoff')),false) as store,
+        coalesce(bool_or(o.event_name = 'app_store_redirected' and o.properties->>'placement' in ('automatic_iphone','iphone_handoff')),false) as handoff,
         coalesce(bool_or((o.event_name = 'landing_cta_clicked' and o.properties->>'path' = '/' and o.properties->>'destination' = 'web_analysis') or (o.event_name = 'page_viewed' and o.properties->>'path' = '/analysis')),false) as web_analysis,
         coalesce(bool_or(o.event_name = 'paywall_viewed' and o.properties->>'surface' = 'web_analysis'),false) as paywall,
         coalesce(bool_or(o.event_name = 'checkout_started' and o.platform = 'server'),false) as checkout,
@@ -186,21 +187,34 @@ export function analyticsQuery(filters: AnalyticsFilters, now: Date) {
       from landing_entries l left join reported_events o on o.properties->>'landing_id' = l.landing_id
         and o.occurred_at >= l.at and o.occurred_at <= l.at + interval '7 days'
         and o.properties->>'experiment_id' = l.experiment_id and o.properties->>'variant' = l.variant
-        and o.event_name in ('app_store_redirected','landing_cta_clicked','page_viewed','paywall_viewed','checkout_started','checkout_completed')
+        and o.event_name in ('app_store_redirected','landing_cta_clicked','page_viewed','paywall_viewed','checkout_started','checkout_completed','landing_section_viewed')
       group by l.landing_id,l.experiment_id,l.variant,l.source,l.at
     ), landing_experiments as (
       select d.experiment_id,d.name,v.variant,count(l.landing_id) as visitors,
+        count(l.landing_id) filter(where not l.handoff) as homepage_visitors,
         count(*) filter(where l.store) as store_clicks, count(*) filter(where l.web_analysis) as web_starts,
         count(*) filter(where l.paywall) as paywalls, count(*) filter(where l.checkout) as checkouts,
         count(*) filter(where l.paid) as paid_checkouts,
-        count(*) filter(where l.at <= ${end}::timestamp - interval '7 days') as mature,
+        count(*) filter(where l.at <= ${end}::timestamp - interval '7 days' and (not l.handoff)) as mature,
         count(*) filter(where l.store and l.at <= ${end}::timestamp - interval '7 days') as mature_store_clicks,
         count(*) filter(where l.paid and l.at <= ${end}::timestamp - interval '7 days') as mature_paid_checkouts,
-        count(*) filter(where l.at > ${end}::timestamp - interval '7 days') as pending,
+        count(*) filter(where l.at > ${end}::timestamp - interval '7 days' and (not l.handoff)) as pending,
         min(l.at) as first_exposure
       from landing_definitions d cross join (values ('a'),('b')) v(variant)
         left join landing_outcomes l on l.experiment_id = d.experiment_id and l.variant = v.variant
       group by d.experiment_id,d.name,v.variant order by d.experiment_id,v.variant
+    ), landing_handoffs as (
+      select properties->>'placement' as placement, properties->>'destination' as destination,
+        count(distinct properties->>'landing_id') as browsers
+      from e where platform = 'web' and event_name = 'destination_selected'
+        and properties->>'placement' in ('automatic_iphone','iphone_handoff')
+      group by 1,2
+    ), web_audience as (
+      select case when properties->>'path' like '/creator%' then 'Creator portal'
+        when properties->>'path' like '/app/%' or properties->>'path' like '/auth%' then 'Authentication / app handoff'
+        else 'Public website' end as surface,
+        count(*) as pageviews,count(distinct actor) as browsers
+      from e where platform = 'web' and event_name = 'page_viewed' group by 1
     ), landing_sources as (
       select source,count(*) as visitors,count(*) filter(where store) as store_clicks,
         count(*) filter(where web_analysis) as web_starts,count(*) filter(where paid) as paid_checkouts
@@ -404,7 +418,7 @@ export function analyticsQuery(filters: AnalyticsFilters, now: Date) {
         'evaluations', count(*) filter (where event_name = 'evaluation_completed'),
         'failures', count(*) filter (where event_name = 'evaluation_failed'), 'latest_event', max(occurred_at)) from e),
       'onboarding', ${onboarding.result}, 'paywall', ${paywall.result}, 'web', ${web.result},
-      'landingExperiments', ${rows('landing_experiments')}, 'landingSources', ${rows('landing_sources')},
+      'landingHandoffs', ${rows('landing_handoffs')}, 'webAudience', ${rows('web_audience')}, 'landingExperiments', ${rows('landing_experiments')}, 'landingSources', ${rows('landing_sources')},
       'landingSections', ${rows('landing_sections')}, 'landingPlacements', ${rows('landing_placements')},
       'daily', ${rows('daily')}, 'acquisition', ${rows('acquisition')}, 'steps', ${rows('steps')},
       'onboardingScreens', ${rows('onboarding_screens')}, 'onboardingFriction', ${rows('onboarding_friction')}, 'screens', ${rows('screens')}, 'billing', ${rows('billing')}, 'revenue', ${rows('revenue')},

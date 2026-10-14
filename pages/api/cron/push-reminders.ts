@@ -6,6 +6,7 @@ import { db, schema } from '@/lib/db'
 import { ApiError, handleApiError, json, methodNotAllowed } from '@/lib/api/http'
 import { reminderFor, PUSH_HOUR, PUSH_WEEKDAYS } from '@/lib/push/schedule'
 import { prepareApplePush, sendApplePush } from '@/lib/push/apns'
+import { prepareAndroidPush, sendAndroidPush } from '@/lib/push/fcm'
 
 export const config = { maxDuration: 60 }
 
@@ -16,7 +17,6 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
     const expected = Buffer.from(`Bearer ${process.env.CRON_SECRET ?? ''}`)
     const actual = Buffer.from(req.headers.authorization ?? '')
     if (!process.env.CRON_SECRET || expected.length !== actual.length || !timingSafeEqual(expected, actual)) throw new ApiError(401, 'Unauthorized')
-    await prepareApplePush()
     const now = new Date()
     const started = Date.now()
     let cursor = ''
@@ -42,16 +42,26 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
         await Promise.all(devices.slice(offset, offset + 10).map(async device => {
           const reminder = reminderFor(now, device.timezone, device.protocolDays)
           if (!reminder) return
+          // Configuration/authentication errors must not reserve an undelivered reminder.
+          try {
+            if (device.environment === 'fcm') await prepareAndroidPush()
+            else await prepareApplePush()
+          } catch (error) {
+            failed++
+            console.error('Push provider unavailable', { provider: device.environment, message: error instanceof Error ? error.message : 'Unknown error' })
+            return
+          }
           const claim = { userId: device.userId, kind: reminder.kind, slot: reminder.slot }
           const inserted = await db.insert(schema.pushDeliveries).values(claim).onConflictDoNothing().returning()
           if (!inserted.length) return
           // Reserve before sending: concurrent/repeated cron runs cannot duplicate a push.
           // An ambiguous transport failure stays reserved rather than risking duplicate delivery.
           try {
-            const result = await sendApplePush({ ...device, ...reminder, collapseId: `${reminder.kind}-${reminder.slot}` })
+            const send = device.environment === 'fcm' ? sendAndroidPush : sendApplePush
+            const result = await send({ ...device, ...reminder, collapseId: `${reminder.kind}-${reminder.slot}` })
             if (result.status === 200) { sent++; return }
             failed++
-            console.error('APNs rejected reminder', { status: result.status, reason: result.reason })
+            console.error('Push rejected reminder', { provider: device.environment, status: result.status, reason: result.reason })
             if (result.status === 410 || ['BadDeviceToken', 'DeviceTokenNotForTopic'].includes(result.reason ?? '')) {
               await db.delete(schema.pushDevices).where(and(eq(schema.pushDevices.installId, device.installId), eq(schema.pushDevices.token, device.token)))
             }
@@ -59,7 +69,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
             await db.delete(schema.pushDeliveries).where(and(eq(schema.pushDeliveries.userId, claim.userId), eq(schema.pushDeliveries.kind, claim.kind), eq(schema.pushDeliveries.slot, claim.slot)))
           } catch (error) {
             failed++
-            console.error('APNs transport failed; delivery is uncertain', error instanceof Error ? error.message : 'Unknown error')
+            console.error('Push transport failed; delivery is uncertain', error instanceof Error ? error.message : 'Unknown error')
           }
         }))
       }
