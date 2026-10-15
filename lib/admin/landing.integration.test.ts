@@ -15,7 +15,8 @@ test.skipIf(!url)('homepage reporting deduplicates exposure and only credits mat
       await tx.unsafe(`create temporary table photos (id text,source text) on commit drop;
         create temporary table analyses (photo_id text,status text,created_at timestamp) on commit drop;
         create temporary table payment_entitlements (id text,metadata jsonb) on commit drop;
-        create temporary table scan_reservations (entitlement_id text,status text,created_at timestamp,result jsonb) on commit drop;`)
+        create temporary table scan_reservations (entitlement_id text,status text,created_at timestamp,result jsonb) on commit drop;
+        create temporary table referral_signups (referred_user_id text,created_at timestamptz) on commit drop;`)
       async function event(name: string, id: string, variant: string, at: string, extra: Record<string, unknown> = {}, platform = 'web', experiment = 'landing_homepage_v2', version = '2', environment = 'production') {
         const properties = {landing_id:id,variant,experiment_id:experiment,landing_version:version,path:'/',...extra}
         await tx`insert into analytics_events (event_name, occurred_at, anonymous_id, platform, properties, source, environment) values (${name},${at}::timestamp,${id},${platform},${tx.json(properties)},'mogging.com',${environment})`
@@ -24,6 +25,14 @@ test.skipIf(!url)('homepage reporting deduplicates exposure and only credits mat
       await event('landing_viewed','old','a','2026-09-11')
       await event('app_store_redirected','old','a','2026-09-11')
       await event('app_store_redirected','old','a','2026-09-12')
+      await event('landing_section_viewed','old','a','2026-09-12',{placement:'reviews'})
+      await event('landing_section_viewed','old','a','2026-09-13',{placement:'reviews'}) // one visitor
+      await event('landing_cta_clicked','old','a','2026-09-12',{placement:'hero',destination:'app_store'})
+      await event('landing_cta_clicked','old','a','2026-09-13',{placement:'hero',destination:'app_store'})
+      await event('landing_section_viewed','old','a','2026-09-20',{placement:'too_late'})
+      await event('landing_cta_clicked','old','a','2026-09-09',{placement:'too_early',destination:'app_store'})
+      await event('landing_section_viewed','unexposed','a','2026-09-12',{placement:'unexposed'})
+      await event('landing_cta_clicked','old','a','2026-09-12',{path:'/creator',placement:'other_page',destination:'app_store'})
       await event('landing_viewed','new','b','2026-09-11')
       await event('app_store_redirected','new','b','2026-09-10') // before exposure
       await event('app_store_redirected','new','a','2026-09-12') // wrong variant
@@ -43,6 +52,8 @@ test.skipIf(!url)('homepage reporting deduplicates exposure and only credits mat
       const query = new PgDialect().sqlToQuery(analyticsQuery({days:'30',platform:'all'},new Date('2026-10-05T00:00:00Z')))
       const [result] = await tx.unsafe(query.sql,query.params as (string | number | null)[])
       const rows = result.data.landingExperiments
+      expect(result.data.landingSections).toEqual([{section:'reviews',visitors:1}])
+      expect(result.data.landingPlacements).toEqual([{placement:'hero',destination:'app_store',visitors:1}])
       expect(rows.find((row: {experiment_id:string;variant:string})=>row.experiment_id==='landing_homepage_v2'&&row.variant==='a')).toMatchObject({visitors:2,homepage_visitors:1,store_clicks:1,mature:1,mature_store_clicks:1,paid_checkouts:0})
       expect(rows.find((row: {experiment_id:string;variant:string})=>row.experiment_id==='landing_homepage_v2'&&row.variant==='b')).toMatchObject({visitors:1,store_clicks:0,mature:1,mature_store_clicks:0,paid_checkouts:1})
       expect(rows.find((row: {experiment_id:string;variant:string})=>row.experiment_id==='landing_hero_v1'&&row.variant==='a')).toMatchObject({visitors:1,store_clicks:1})

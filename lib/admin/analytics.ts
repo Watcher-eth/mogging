@@ -31,16 +31,21 @@ export type AnalyticsDashboard = {
 
 // All identifiers here are constants owned by this module, never request input.
 function funnel(name: string, events: string[], platform: SQL) {
-  const ctes = events.map((event, index) => {
+  const ctes = events.flatMap((event, index) => {
     const current = sql.identifier(`${name}${index}`)
     const previous = sql.identifier(`${name}${index - 1}`)
-    return index === 0
+    const observations = sql.identifier(`${name}_events${index}`)
+    // Filter once before joining actors; rescanning the full event snapshot per
+    // actor makes the reporting window increasingly expensive as traffic grows.
+    return [sql`${observations} as materialized (
+      select actor, occurred_at from e where event_name = ${event} and ${platform} and actor is not null
+    )`, index === 0
       ? sql`${current} as (select actor, min(occurred_at) as at, min(occurred_at) as started
-          from e where event_name = ${event} and ${platform} and actor is not null group by actor)`
-      : sql`${current} as (select e.actor, min(e.occurred_at) as at, p.started from e
+          from ${observations} group by actor)`
+      : sql`${current} as (select e.actor, min(e.occurred_at) as at, p.started from ${observations} e
           join ${previous} p on p.actor = e.actor
-          where e.event_name = ${event} and ${platform} and e.occurred_at >= p.at
-            and e.occurred_at <= p.started + interval '7 days' group by e.actor, p.started)`
+          where e.occurred_at >= p.at
+            and e.occurred_at <= p.started + interval '7 days' group by e.actor, p.started)`]
   })
   const result = sql`json_build_array(${sql.join(events.map((event, index) =>
     sql`json_build_object('name', ${event}::text, 'actors', (select count(*) from ${sql.identifier(`${name}${index}`)}))`), sql`,`)})`
@@ -67,6 +72,7 @@ export function analyticsQuery(filters: AnalyticsFilters, now: Date) {
       select event_name, occurred_at, account_id, platform, app_version, properties, session_id, source, schema_version, received_at,
         coalesce('install:' || mobile_install_id, 'anonymous:' || anonymous_id, 'account:' || account_id) as actor
       from analytics_events where environment = 'production'
+        and event_name <> 'referral_invite_redeemed'
         and platform in ('web','ios','android')
         and coalesce(properties->>'path', '') not like '/admin%'
         and occurred_at >= ${start}::timestamp and occurred_at < ${end}::timestamp and ${platform}
@@ -93,7 +99,15 @@ export function analyticsQuery(filters: AnalyticsFilters, now: Date) {
       select * from e union all
       select event_name, occurred_at, account_id, platform, app_version, properties, session_id, source, schema_version, received_at, null::text as actor
       from analytics_events where environment = 'production' and platform = 'server' and source is distinct from 'backend'
+        and event_name <> 'referral_invite_redeemed'
         and occurred_at >= ${start}::timestamp and occurred_at < ${end}::timestamp
+      union all
+      -- Qualification is committed with the reward transaction. The ledger is
+      -- authoritative, including older signups that never emitted a client event.
+      select 'referral_invite_redeemed', created_at at time zone 'UTC', referred_user_id,
+        'server', null::text, '{}'::jsonb, null::text, 'referral_ledger', 1,
+        created_at at time zone 'UTC', null::text
+      from referral_signups where created_at >= ${start}::timestamptz and created_at < ${end}::timestamptz
     ), event_definitions(section, event) as (values ${sql.join(trackingDefinitions.map(({section, event}) => sql`(${section}::text, ${event}::text)`), sql`,`)}),
     event_metrics as (
       select event_name as event, count(*) as events, count(distinct actor) as actors,
@@ -163,7 +177,8 @@ export function analyticsQuery(filters: AnalyticsFilters, now: Date) {
         count(*) filter (where event_name = 'evaluation_failed') as failures,
         count(*) filter (where event_name = 'report_viewed') as report_views,
         count(*) filter (where event_name = 'protocol_task_completed') as protocol_tasks
-      from e group by 1 order by 1
+      from reported_events where platform in ('web','ios','android') or event_name = 'referral_invite_redeemed'
+      group by 1 order by 1
     ), landing_definitions(experiment_id, name, version) as (values ${sql.join(landingExperiments.map(({ id, name, version }) => sql`(${id}::text, ${name}::text, ${version}::text)`), sql`,`)}),
     landing_entries as materialized (
       select distinct on (properties->>'landing_id') properties->>'landing_id' as landing_id,
@@ -219,18 +234,21 @@ export function analyticsQuery(filters: AnalyticsFilters, now: Date) {
       select source,count(*) as visitors,count(*) filter(where store) as store_clicks,
         count(*) filter(where web_analysis) as web_starts,count(*) filter(where paid) as paid_checkouts
       from landing_outcomes group by source order by visitors desc limit 30
+    ), landing_engagement as materialized (
+      select properties, occurred_at, event_name from e
+      where event_name in ('landing_section_viewed','landing_cta_clicked') and properties->>'path' = '/'
     ), landing_sections as (
       select o.properties->>'placement' as section,count(distinct l.landing_id) as visitors
-      from landing_entries l join e o on o.properties->>'landing_id' = l.landing_id
+      from landing_entries l join landing_engagement o on o.properties->>'landing_id' = l.landing_id
         and o.occurred_at >= l.at and o.occurred_at <= l.at + interval '7 days'
-      where o.event_name = 'landing_section_viewed' and o.properties->>'path' = '/'
+      where o.event_name = 'landing_section_viewed'
       group by 1 order by visitors desc
     ), landing_placements as (
       select o.properties->>'placement' as placement,o.properties->>'destination' as destination,
         count(distinct l.landing_id) as visitors
-      from landing_entries l join e o on o.properties->>'landing_id' = l.landing_id
+      from landing_entries l join landing_engagement o on o.properties->>'landing_id' = l.landing_id
         and o.occurred_at >= l.at and o.occurred_at <= l.at + interval '7 days'
-      where o.event_name = 'landing_cta_clicked' and o.properties->>'path' = '/'
+      where o.event_name = 'landing_cta_clicked'
       group by 1,2 order by visitors desc
     ), acquisition_actors as (
       select distinct on (actor) actor, coalesce(${acquisitionSource},'direct / unattributed') as source,

@@ -64,11 +64,12 @@ export async function analyzeAndSave(input: AnalyzeAndSaveInput, reservationId?:
   }
   if (storedImageResult.ok && data.userId) {
     await updateUserAvatarIfMissing(data.userId, storedImageResult.storedImage.imageUrl)
+      .catch(() => console.warn('analyze:avatar-update-failed'))
   }
   const providerResult = await providerResultPromise
 
   if (!storedImageResult.ok) {
-    if (options.requirePersistence) throw new Error('Unable to save the report image. Please retry.')
+    if (reservationId || options.requirePersistence) throw new Error('Unable to save the report image. Please retry; your scan credit is still available.')
     return createTransientAnalysisResult(data, providerResult, 'Image storage failed', options)
   }
 

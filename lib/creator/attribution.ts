@@ -55,18 +55,37 @@ async function saveCreatorTrackingLink(socialAccountId: string, activate: boolea
     const existing = await tx.query.creatorTrackingLinks.findFirst({
       where: eq(schema.creatorTrackingLinks.socialAccountId, socialAccountId),
     })
-    const code = `mogging-${handle}`
-    const aliases = [handle, code].sort()
-    // Reserve link and code together, without ever reassigning published aliases.
-    for (const slug of aliases) {
-      await tx.execute(sql`select pg_advisory_xact_lock(hashtextextended(${`creator-referral:${slug}`}, 0))`)
-      const canonical = await tx.query.creatorTrackingLinks.findFirst({ where: eq(schema.creatorTrackingLinks.slug, slug) })
-      const alias = await tx.query.creatorTrackingLinkAliases.findFirst({ where: eq(schema.creatorTrackingLinkAliases.slug, slug) })
-      if ((canonical && canonical.id !== existing?.id) || (alias && alias.trackingLinkId !== existing?.id)) {
-        throw new ApiError(409, 'This referral handle is already in use. Connect a different publishing handle.')
+    // One referral identity per creator and handle, shared across platforms.
+    await tx.execute(sql`select pg_advisory_xact_lock(hashtextextended(${`creator-referral-owner:${account.creatorProfileId}:${handle}`}, 0))`)
+    const sameHandleAccounts = await tx.query.creatorSocialAccounts.findMany({
+      where: and(eq(schema.creatorSocialAccounts.creatorProfileId, account.creatorProfileId), eq(schema.creatorSocialAccounts.handle, handle)),
+      orderBy: [asc(schema.creatorSocialAccounts.createdAt)],
+      with: { trackingLink: true },
+    })
+    const ownedLinks = sameHandleAccounts.flatMap(other => other.trackingLink?.isActive ? [other.trackingLink] : [])
+    const shared = ownedLinks.find(link => link.publicUrl === `${CREATOR_LINK_BASE_URL}/r/${handle}`) || ownedLinks[0]
+    if (shared && shared.id !== existing?.id) return shared
+    // A handle owned by another creator must retain its published aliases.
+    let referralHandle = handle
+    let aliases: string[] = []
+    for (const candidate of [handle, `${handle}-${account.platform}`, `${handle}-${account.platform}-${account.id}`]) {
+      const candidateAliases = [candidate, `mogging-${candidate}`].sort()
+      let available = true
+      for (const slug of candidateAliases) {
+        await tx.execute(sql`select pg_advisory_xact_lock(hashtextextended(${`creator-referral:${slug}`}, 0))`)
+        const canonical = await tx.query.creatorTrackingLinks.findFirst({ where: eq(schema.creatorTrackingLinks.slug, slug) })
+        const alias = await tx.query.creatorTrackingLinkAliases.findFirst({ where: eq(schema.creatorTrackingLinkAliases.slug, slug) })
+        if ((canonical && canonical.id !== existing?.id) || (alias && alias.trackingLinkId !== existing?.id)) available = false
+      }
+      if (available) {
+        referralHandle = candidate
+        aliases = candidateAliases
+        break
       }
     }
-    const publicUrl = `${CREATOR_LINK_BASE_URL}/r/${handle}`
+    if (!aliases.length) throw new ApiError(409, 'Could not reserve a referral link for this account')
+    const code = `mogging-${referralHandle}`
+    const publicUrl = `${CREATOR_LINK_BASE_URL}/r/${referralHandle}`
     let link = existing
     if (!link) {
       ;[link] = await tx.insert(schema.creatorTrackingLinks).values({

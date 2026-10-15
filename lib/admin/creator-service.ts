@@ -6,7 +6,7 @@ import { and, desc, eq, sql } from 'drizzle-orm'
 import { z } from 'zod'
 import { ApiError } from '@/lib/api/http'
 import { db, schema } from '@/lib/db'
-import { ensureCreatorTrackingLink, getCreatorAttributionReport } from '@/lib/creator/attribution'
+import { getCreatorAttributionReport } from '@/lib/creator/attribution'
 import {
   creatorSubmissionReviewResultsSchema,
   validateCreatorSubmissionReviewResults,
@@ -203,15 +203,9 @@ export async function getCreatorAdminDashboard() {
   ])
 
   const attributionByAccountId = new Map(accountAttributionRows.map((report) => [report.socialAccountId, report]))
-  const accounts = await Promise.all(accountRows.map(async (account) => {
-    const trackingLink = account.trackingLinkUrl && account.trackingLinkActive ? null : await ensureCreatorTrackingLink(account.id)
-    return {
-      ...account,
-      trackingLinkUrl: trackingLink?.publicUrl || account.trackingLinkUrl,
-      trackingLinkSlug: trackingLink?.slug || account.trackingLinkSlug,
-      trackingLinkActive: trackingLink?.isActive ?? account.trackingLinkActive,
-      attribution: attributionReportValues(attributionByAccountId.get(account.id)),
-    }
+  const accounts = accountRows.map((account) => ({
+    ...account,
+    attribution: attributionReportValues(attributionByAccountId.get(account.id)),
   }))
   const attributionByCreatorId = new Map<string, ReturnType<typeof emptyAttributionReport>>()
   const accountCountByCreatorId = new Map<string, number>()

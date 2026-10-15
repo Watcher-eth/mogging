@@ -10,6 +10,8 @@ export const analyticsEventNames = [
   'paywall_viewed', 'paywall_dismissed', 'paywall_products_loaded', 'plan_selected',
   'checkout_started', 'checkout_completed', 'handoff_created', 'handoff_opened', 'handoff_consumed',
   'purchase_started', 'purchase_completed', 'purchase_failed', 'purchase_cancelled', 'purchase_activation_failed',
+  'purchase_stage_changed', 'purchase_pending', 'purchase_activated', 'purchase_account_required',
+  'purchase_app_state', 'purchase_recovered', 'purchase_reconciled', 'purchase_cancel_feedback',
   'restore_started', 'restore_failed', 'purchase_restored', 'activation_code_redeemed',
   'evaluation_started', 'evaluation_completed', 'evaluation_failed',
   'screenshot_taken', 'report_viewed', 'category_viewed', 'protocol_viewed', 'protocol_task_completed',
@@ -24,9 +26,10 @@ export type AnalyticsProperties = Record<string, string | number | boolean | nul
 // demographics, coordinates, user input, or report scores leave the product.
 const propertyKeys = new Set([
   'screen', 'previous_screen', 'step', 'step_index', 'step_count', 'onboarding_version', 'flow_id', 'attempt_id',
+  'stage_duration_ms', 'previous_stage_duration_ms', 'previous_stage', 'purchase_tracking_version', 'purchase_kind', 'transaction_id', 'os_version', 'store_environment', 'app_state', 'feedback_reason',
   'duration_ms', 'surface', 'plan', 'product', 'productId', 'product_id', 'offering',
   'paywall_id', 'paywall_version', 'default_plan', 'product_count', 'products_loaded',
-  'native_domain', 'native_code', 'native_underlying_domain', 'native_underlying_code',
+  'http_status', 'native_domain', 'native_code', 'native_underlying_domain', 'native_underlying_code',
   'channel', 'provider', 'auth_stage', 'purchase_stage', 'status', 'reason_code', 'error_code', 'active', 'launch', 'launchState',
   'delivery', 'paidMedia', 'subscriptionActive', 'mode', 'permission', 'result', 'source',
   'destination', 'placement', 'path', 'referrer_host', 'first_referrer_host', 'category', 'task_id', 'tab',

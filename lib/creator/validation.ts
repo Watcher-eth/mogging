@@ -8,7 +8,7 @@ export function creatorPostPlatform(value: string): 'tiktok' | 'instagram' | nul
     if (['www.tiktok.com', 'tiktok.com', 'm.tiktok.com'].includes(url.hostname) && /^\/@[\w.]+\/(video|photo)\/\d+\/?$/.test(url.pathname)) return 'tiktok'
     if (['vm.tiktok.com', 'vt.tiktok.com'].includes(url.hostname) && /^\/[a-zA-Z0-9]+\/?$/.test(url.pathname)) return 'tiktok'
     if (['www.tiktok.com', 'tiktok.com'].includes(url.hostname) && /^\/t\/[a-zA-Z0-9]+\/?$/.test(url.pathname)) return 'tiktok'
-    if (['www.instagram.com', 'instagram.com'].includes(url.hostname) && /^\/(reel|reels|p)\/[a-zA-Z0-9_-]+\/?$/.test(url.pathname)) return 'instagram'
+    if (['www.instagram.com', 'instagram.com'].includes(url.hostname) && /^\/(?:(?:share|[a-zA-Z0-9._]+)\/)?(reel|reels|p)\/[a-zA-Z0-9_-]+\/?$/.test(url.pathname)) return 'instagram'
     return null
   } catch { return null }
 }

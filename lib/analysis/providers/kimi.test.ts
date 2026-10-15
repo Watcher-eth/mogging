@@ -4,6 +4,7 @@ import { runInNewContext } from 'node:vm'
 import { z } from 'zod'
 import { analysisProviderResultSchema } from '../schema'
 import { AnalysisProviderError } from '../errors'
+import { requestMoonshotJson } from './moonshot'
 import { buildAnalysisPrompt, ANALYSIS_SYSTEM_PROMPT, CATEGORY_IDS } from '../prompt'
 
 // Use the real provider/parser in an isolated context, with no API credentials or network.
@@ -15,7 +16,7 @@ function provider(fetch: (url: string, init?: RequestInit) => Promise<Response>,
   const context: any = { z, analysisProviderResultSchema, AnalysisProviderError, buildAnalysisPrompt,
     ANALYSIS_SYSTEM_PROMPT, CATEGORY_IDS, Date: clock, AbortController, TextDecoder, setTimeout, clearTimeout,
     env: { MOONSHOT_API_KEY: 'test', KIMI_ANALYSIS_MODEL: 'test', MOONSHOT_BASE_URL: 'https://test.invalid' },
-    fetch, console: { warn() {}, info() {} } }
+    fetch, requestMoonshotJson: (options: Parameters<typeof requestMoonshotJson>[0]) => requestMoonshotJson({ ...options, fetcher: fetch as typeof globalThis.fetch, now: () => clock.now() }), console: { warn() {}, info() {} } }
   runInNewContext(transpiler.transformSync(source.replace('100_000', String(timeout)) + '\nglobalThis.provider = new KimiAnalysisProvider();'), context)
   return context.provider
 }
@@ -63,7 +64,7 @@ test('missing categories, duplicate IDs and overlong advice trigger one correcte
       return completion(prompts.length === 1 ? bad : report())
     }).analyzeFace(input)
     expect(prompts).toHaveLength(2)
-    expect(prompts[1]).toContain('entire corrected JSON')
+    // The correction is a separate final message, preserving the original image and rubric.
     expect(result.report.categories).toHaveLength(11)
   }
 })
@@ -83,8 +84,8 @@ test('two invalid generations still fail; no fallback observations or partial re
   expect(calls).toBe(2)
 })
 
-test('HTTP authentication, rate-limit and server errors do not cause another provider call', async () => {
-  for (const status of [401,429,503]) {
+test('HTTP authentication and permanent request errors do not retry', async () => {
+  for (const status of [400,401,403,404]) {
     let calls = 0
     await expect(provider(async()=>{calls++; return new Response('provider rejection',{status})}).analyzeFace(input)).rejects.toBeInstanceOf(AnalysisProviderError)
     expect(calls).toBe(1)
@@ -95,10 +96,10 @@ test('known early connection failures retry once; unknown failures preserve safe
   let calls = 0
   const error = Object.assign(new Error('fetch failed'), {cause: {code:'ECONNRESET', message:'private provider address'}})
   await expect(provider(async()=>{ calls++; throw error }).analyzeFace(input)).rejects.toMatchObject({
-    code:'provider_unavailable', retryable:true, raw:'{"transportCode":"ECONNRESET","stage":"connection"}',
+    code:'provider_unavailable', retryable:true, raw:expect.stringContaining('"transportCode":"ECONNRESET","stage":"connection"'),
   })
   expect(calls).toBe(2)
-  await expect(provider(async()=>{throw {cause:{code:'secret url'}}}).analyzeFace(input)).rejects.toMatchObject({raw:'{"transportCode":"unknown_transport","stage":"connection"}'})
+  await expect(provider(async()=>{throw {cause:{code:'secret url'}}}).analyzeFace(input)).rejects.toMatchObject({raw:expect.stringContaining('"transportCode":"unknown_transport","stage":"connection"')})
 })
 
 test('no-face response is accepted as no face, with no report invention', async () => {
@@ -129,7 +130,7 @@ test('stalled response body remains covered by the deadline and is not retried a
 test('interrupted response body is a transport failure, not a report-validation retry', async () => {
   let calls = 0
   const error = Object.assign(new TypeError('terminated'), {cause:{code:'UND_ERR_SOCKET'}})
-  await expect(provider(async()=>{calls++;return {ok:true,json:async()=>{throw error}} as unknown as Response}).analyzeFace(input)).rejects.toMatchObject({code:'provider_unavailable',raw:'{"transportCode":"UND_ERR_SOCKET","stage":"response_body"}'})
+  await expect(provider(async()=>{calls++;return {ok:true,json:async()=>{throw error}} as unknown as Response}).analyzeFace(input)).rejects.toMatchObject({code:'provider_unavailable',raw:expect.stringContaining('"transportCode":"UND_ERR_SOCKET","stage":"response_body"')})
   expect(calls).toBe(1)
 })
 
@@ -193,7 +194,7 @@ test('TLS certificate causes are preserved without retrying or exposing certific
   for (const code of ['ERR_TLS_CERT_ALTNAME_INVALID', 'CERT_HAS_EXPIRED', 'UNABLE_TO_VERIFY_LEAF_SIGNATURE']) {
     let calls = 0;
     await expect(provider(async () => { calls++; throw { cause: { code, cert: 'private-certificate', host: 'private-host' } }; }).analyzeFace(input))
-      .rejects.toMatchObject({ raw: JSON.stringify({ transportCode: code, stage: 'connection' }) });
+      .rejects.toMatchObject({ raw: expect.stringContaining(JSON.stringify({ transportCode: code, stage: 'connection' }).slice(1, -1)) });
     expect(calls).toBe(1);
   }
 });

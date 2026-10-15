@@ -1,3 +1,4 @@
+import { requestMoonshotJson } from '@/lib/analysis/providers/moonshot'
 import { z } from 'zod'
 import registry from './rubric-registry.json'
 import type { measureLandmarks } from './measurements'
@@ -18,7 +19,6 @@ export const rubricVectorSizes: Record<string, number> = {
   'nose.nostril-visibility': 2, 'nose.alar-angle': 2, 'mouth.projection': 2,
   'proportions.fifths': 5, 'proportions.vertical-alignment': 3, 'ears.height': 2, 'ears.width': 2, 'ears.vertical-position': 4,
 }
-const completionSchema = z.object({ choices: z.array(z.object({ finish_reason: z.string().nullable(), message: z.object({ content: z.string() }) })), usage: z.object({ prompt_tokens: z.number(), completion_tokens: z.number() }).optional() })
 export type RubricEstimate = { id: string; value: string | number | number[] | null; evidence: string; source: 'llm-estimate' | 'landmark-geometry' | 'derived'; grade: number | null; positions?: number[] }
 export const rubricBatches = [
   ['eyes', 'brows', 'nose', 'ears'],
@@ -120,28 +120,24 @@ export async function evaluateV2(input: { imageDataUrl: string; geometry: Geomet
   options.signal?.addEventListener('abort', abort, { once: true })
   const timeout = setTimeout(abort, 90_000)
   try {
-    // Independent image assessments share the same geometry and run concurrently. No auto-retries or writes.
+    // Assessments run concurrently; only a failed batch is retried within this deadline.
     const batches = await Promise.all(batchesToEstimate.map(async (rubrics, index) => {
-      const batchStarted = performance.now()
-      const response = await (options.fetcher ?? fetch)(`${process.env.MOONSHOT_BASE_URL ?? 'https://api.moonshot.ai/v1'}/chat/completions`, {
-        method: 'POST', signal: controller.signal,
-        headers: { Authorization: `Bearer ${apiKey}`, 'Content-Type': 'application/json' },
-        body: JSON.stringify({ model, thinking: { type: 'disabled' }, temperature: .6, max_tokens: options.graded ? 4000 : 2600, response_format: { type: 'json_object' }, messages: [
+      const result = await requestMoonshotJson({ stage: `rubric_batch_${index + 1}`, apiKey, signal: controller.signal, fetcher: options.fetcher, timeoutMs: 90_000,
+        body: { model, thinking: { type: 'disabled' }, temperature: .6, max_tokens: options.graded ? 4000 : 2600, response_format: { type: 'json_object' }, messages: [
           { role: 'system', content: 'Analyze visible facial appearance for entertainment. Never infer identity, ethnicity, health diagnoses, biological traits, intelligence or worth. Do not recommend medical treatments. Return JSON only. All estimates are approximate. Return null for obscured or unsupported features, and for side-only measurements from a frontal image. Do not invent physical millimeters or population percentiles.' + (options.graded ? ' Provide subjective cosmetic appearance grades, consistently applying the supplied rubric definitions. Grades are entertainment assessments, not medical or population measurements.' : ' Do not invent grading bands or attractiveness scores.') },
           { role: 'user', content: [
             { type: 'image_url', image_url: { url: input.imageDataUrl } },
             { type: 'text', text: `Return {"capture":{"front":true,"side":false,"hairline":null,"neutralEyes":null,"neutralMouth":null,"bothEars":null,"evenLight":null,"detail":null},"entries":[["rubric.id",value,"brief evidence"]]}. Assess every capture flag from the image: true only if clearly established, false if absent, null if uncertain. Hairline means the complete actual boundary, not an estimated forehead. A single frontal image cannot establish a side view. Natural freckles, facial hair and normal pigmentation are not blemishes. Descriptive terms must follow the requested vocabulary; uncertain means null for numeric values. The example capture flags are placeholders, not evidence. Exactly one entry per requested ID. R=ratio, A=degrees, N=numeric value using definition, B=normalized paired difference in %, O=integer appearance level 0–4 using the defined anchors, T=descriptive term, D=short explanation. Null if unavailable. Estimate brows.thickness, nose.nostril-visibility and nose.alar-angle from visible contours when upstream masks are absent. For proportions.angle-coordination estimate only when both referenced contours are visible. Missing detector geometry alone is not a reason to return null. Fully obscured features or missing required views must remain null. Return null for hair.grooming and hair.beard-grooming: style intent is not supplied. Evidence at most 12 words. If any member of a numeric vector is unavailable, return null for the whole rubric; never fill it with zero. For paired outputs use a two-number array [left,right]; other numeric vectors may have 2–5 numbers. B must be a single percentage. Required vector lengths: ${JSON.stringify(rubricVectorSizes)}. Always return exactly the specified vector length. Never add a mean, an average, or a label as another vector member. Do not average paired results. Do not repeat titles, units, recommendations or geometry coordinates. Only reuse a supplied value when its rubric ID and full definition match; never substitute another ratio or an incompatible measurement. Do not treat mesh forehead points as hairline points. Treat calculated upstream measurements as evidence, not universal aesthetic ideals.\n${options.graded ? 'For this web report use five-element tuples [id,value,evidence,grade,positions]. grade is a cosmetic appearance score 0–10: 0–2 markedly weak, 3–4 weak, 5–6 ordinary, 7–8 strong, 9–10 exceptional. For null values grade=null and positions=[]. Text rubrics MUST have grade=null and positions=[]; do not repeat raw measurements in positions. Rail visuals use grade and positions=[grade/10]. Capsule and Orbit visuals describe a two-sided balance interval: 0=markedly low/narrow/negative, .5=balanced reference, 1=markedly high/wide/positive, NOT a population percentile. Estimate a continuous position from the actual value and explain the relationship in evidence; paired values have paired positions. Do not put all values in the middle. For ears.protrusion and proportions.angle-coordination instead use quality positions=[grade/10]. Reuse exact canonical upstream values for matching rubric IDs while grading their visual relationships. Do not invent obscured anatomy. Descriptive evidence should discuss the feature itself, not measurement uncertainty.' : ''}\nRequested definitions: ${JSON.stringify(rubrics.map(({ id, output, definition, capture, visual }) => ({ id, output, definition, capture, ...(options.graded ? { visual } : {}) })))}\nUpstream geometry: ${JSON.stringify({ calculated, capture: input.geometry?.quality ?? null })}` },
           ] },
-        ] }),
+        ] },
+        parse: value => {
+          const content = JSON.stringify(value)
+          const capture = captureSchema.parse((value as Record<string, unknown>).capture)
+          const entries = options.graded ? parseGradedEstimates(content, rubrics) : parseEstimates(content, rubrics)
+          return { entries, capture }
+        },
       })
-      const headersMs = Math.round(performance.now() - batchStarted)
-      if (!response.ok) throw new Error(`Moonshot batch ${index + 1} returned HTTP ${response.status}`)
-      const completion = completionSchema.parse(await response.json())
-      const choice = completion.choices[0]
-      if (!choice || choice.finish_reason !== 'stop') throw new Error(`Moonshot batch ${index + 1} did not finish its JSON`)
-      const capture = captureSchema.parse(JSON.parse(choice.message.content).capture)
-      const entries = options.graded ? parseGradedEstimates(choice.message.content, rubrics) : parseEstimates(choice.message.content, rubrics)
-      return { entries, capture, timing: { batch: index + 1, rubricCount: entries.length, headersMs, totalMs: Math.round(performance.now() - batchStarted), usage: completion.usage ?? null } }
+      return { ...result.value, timing: { ...result.timing, batch: index + 1, rubricCount: result.value.entries.length } }
     }))
     const reconciled = reconcileEstimates(options.graded ? batches.flatMap(batch => batch.entries).map(entry => { const canonical = calculated.find(item => item.id === entry.id); return canonical ? { ...entry, value: canonical.value, source: canonical.source } : entry }) : [...calculated, ...batches.flatMap(batch => batch.entries)], batches.map(batch => batch.capture))
     return { version: 2 as const, status: 'experimental' as const, model, geometry: input.geometry, ...reconciled, timing: { totalMs: Math.round(performance.now() - started), targetMs: 30_000, batches: batches.map(batch => batch.timing) } }

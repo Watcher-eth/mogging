@@ -20,6 +20,7 @@ export function Panel({ title, description, note, children, action }: { title: s
   return <section aria-labelledby={id} className="admin-section"><header className="mb-6 flex flex-wrap items-start justify-between gap-3"><div><h2 id={id} className="text-lg font-medium tracking-[-0.025em]">{title}</h2>{description ? <p className="mt-1.5 text-sm leading-6 text-[#73777d]">{description}</p> : null}</div>{action}</header>{children}{note ? <details className="admin-methodology"><summary>How this is measured</summary><p>{note}</p></details> : null}</section>
 }
 const labels: Record<string, string> = {
+  http_status: 'HTTP status', median_store_ms: 'Median store response', elapsed_ms: 'Since tap', stage_ms: 'Time in stage',
   events: 'Events', accounts: 'Accounts', actors: 'Devices / browsers', unlinked_events: 'Unlinked billing events', flows: 'Flows', attempts: 'Attempts', unique_ids: 'Distinct IDs', clock_skew_events: 'Clock skew events', provider_type: 'Provider event type', first_opens: 'First app opens', purchase_completions: 'Purchase completions',
   purchase_actors: 'Purchasing devices', median_ms: 'Median time', p90_ms: '90th percentile time',
   median_evaluation_ms: 'Median scan time', evaluation_failures: 'Scan failures', evaluations_started: 'Scans started',

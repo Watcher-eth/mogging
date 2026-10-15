@@ -77,7 +77,7 @@ export default function CreatorAdminPage() {
       <CreatorHeader eyebrow="Creator program" title={page?.title || 'Review queue'} description={page?.description || 'The next approvals that need your attention.'} />
 
       {error ? <p role="alert" className="admin-notice">Could not load the workspace. <button className="underline" onClick={() => void mutate()}>Try again</button></p> : isLoading || !dashboard ? <CenteredLoader /> : <DashboardView tab={tab} data={dashboard} onSelect={setSelected} onRefresh={async () => { await mutate() }} />}
-      {selected ? <ReviewDialog key={`${selected.resource}-${selected.item.id}`} target={reviewTarget!} payments={dashboard?.payments || []} metrics={dashboard?.attributionMetrics || []} open onOpenChange={(open) => { if (!open) setSelected(null) }} onRefresh={async () => { await mutate() }} onSaved={async () => { await mutate(); setSelected(null) }} /> : null}
+      {selected ? <ReviewDialog key={`${selected.resource}-${selected.item.id}`} target={reviewTarget!} creator={selected.resource === 'submission' ? dashboard?.creators.find(creator => creator.id === selected.item.creatorProfileId) : undefined} payments={dashboard?.payments || []} metrics={dashboard?.attributionMetrics || []} open onOpenChange={(open) => { if (!open) setSelected(null) }} onRefresh={async () => { await mutate() }} onSaved={async () => { await mutate(); setSelected(null) }} /> : null}
     </div>
   )
 }
@@ -308,7 +308,7 @@ function QueueRow({ target, onClick }: { target: Exclude<ReviewTarget, { resourc
   </button>
 }
 
-function ReviewDialog({ target, payments, metrics, open, onOpenChange, onRefresh, onSaved }: { target: ReviewTarget; payments: AdminPayment[]; metrics: AdminAttributionMetrics[]; open: boolean; onOpenChange: (open: boolean) => void; onRefresh: () => Promise<void>; onSaved: () => Promise<void> }) {
+function ReviewDialog({ target, creator, payments, metrics, open, onOpenChange, onRefresh, onSaved }: { target: ReviewTarget; creator?: AdminCreator; payments: AdminPayment[]; metrics: AdminAttributionMetrics[]; open: boolean; onOpenChange: (open: boolean) => void; onRefresh: () => Promise<void>; onSaved: () => Promise<void> }) {
   const canReview = target.resource !== 'creator' || hasPayoutDestination(target.item)
   const initialStatus = target.resource === 'creator' ? target.item.authStatus : target.item.status
   const [status, setStatus] = useState(initialStatus)
@@ -381,6 +381,7 @@ function ReviewDialog({ target, payments, metrics, open, onOpenChange, onRefresh
                 <p className="mt-4 text-xs text-zinc-500">Send questions and general feedback in Messages.</p>
               </Tabs.Content>
               <Tabs.Content value="earnings" className="outline-none">
+                {creator ? <PayoutAccountDetails creator={creator} /> : <p className="mt-5 text-sm text-zinc-500">Creator payout details unavailable.</p>}
                 <AdminPayoutDecision submission={target.item} selection={adminPayoutSelection} onViewCountChange={setAdminViewCountThreshold} onAudienceChange={setAdminUsAudiencePercent} />
                 {existingPayment ? <div className="mt-5 border-t border-zinc-100 pt-5"><p className="text-sm font-semibold">Payment scheduled</p><p className="mt-1 text-sm text-zinc-500">{formatMoney(existingPayment.amountCents, existingPayment.currency)} · {statusLabel(existingPayment.status)}</p></div> : <CreatePayment submission={target.item} payments={payments.filter(payment => payment.submissionId === target.item.id)} selection={adminPayoutSelection} onCreated={onSaved} />}
               </Tabs.Content>
@@ -574,6 +575,7 @@ function PayoutAccountDetails({ creator }: { creator: AdminCreator }) {
   return <section className="mt-6 rounded-2xl border border-emerald-200 bg-emerald-50/40 p-5">
     <div className="flex items-center gap-3"><span className="grid size-12 place-items-center rounded-xl bg-emerald-100 text-emerald-700"><Wallet className="size-6" /></span><div><h3 className="text-lg font-semibold">{crypto ? 'Crypto wallet' : 'PayPal account'}</h3><p className="mt-1 text-xs text-zinc-500">Payout destination for {creator.displayName}</p></div></div>
     <Details rows={[['Method', crypto ? 'Crypto' : 'PayPal'], ...(crypto ? [['Network', creator.cryptoNetwork || 'Not provided'] as [string, string]] : []), [crypto ? 'Wallet address' : 'PayPal email', destination || 'Not provided']]} />
+    {destination ? <Button type="button" variant="outline" className="mt-4 rounded-full" onClick={() => void navigator.clipboard.writeText(destination).then(() => toast.success('Payout destination copied')).catch(() => toast.error('Select and copy the payout destination'))}><Copy className="size-4" />Copy {crypto ? 'wallet address' : 'PayPal email'}</Button> : null}
     {explorer ? <a href={explorer} target="_blank" rel="noopener noreferrer" className="mt-4 inline-flex min-h-11 items-center gap-2 text-sm font-semibold text-emerald-700 underline underline-offset-4">View wallet on {creator.cryptoNetwork}<ArrowUpRight className="size-4" /></a> : crypto ? <p className="mt-4 text-sm text-zinc-500">{creator.cryptoNetwork ? 'No supported block explorer for this network.' : 'Choose a network before reviewing this wallet.'}</p> : <div className="mt-4"><a href={creator.paypalMeUrl || 'https://www.paypal.com/myaccount/transfer/homepage'} target="_blank" rel="noopener noreferrer" className="inline-flex min-h-11 items-center gap-2 text-sm font-semibold text-emerald-700 underline underline-offset-4">{creator.paypalMeUrl ? 'View PayPal account' : 'Open PayPal'}<ArrowUpRight className="size-4" /></a>{!creator.paypalMeUrl ? <p className="text-xs leading-5 text-zinc-500">Use the email above to find the recipient. Ask the creator to add their PayPal.Me link for direct profile access.</p> : null}</div>}
   </section>
 }

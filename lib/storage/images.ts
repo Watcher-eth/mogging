@@ -1,6 +1,6 @@
-import { mkdir, writeFile } from 'fs/promises'
+import { mkdir, rm, writeFile } from 'fs/promises'
 import path from 'path'
-import { PutObjectCommand, S3Client } from '@aws-sdk/client-s3'
+import { DeleteObjectsCommand, PutObjectCommand, S3Client } from '@aws-sdk/client-s3'
 import { z } from 'zod'
 import { env, isR2Configured } from '@/lib/env'
 import { computeImageHash } from '@/lib/photos/imageHash'
@@ -31,6 +31,38 @@ export class ImageStorageError extends Error {
     message: string
   ) {
     super(message)
+  }
+}
+
+const imageKeyPattern = /^[a-f0-9]{64}\.(jpg|png|webp)$/
+
+export function storedImageKeyFromUrl(url: string | null) {
+  if (!url) return null
+  for (const base of [env.R2_PUBLIC_BASE_URL, env.IMAGE_PUBLIC_BASE_URL || '/uploads']) {
+    if (!base) continue
+    const prefix = `${base.replace(/\/$/, '')}/`
+    if (!url.startsWith(prefix)) continue
+    const key = url.slice(prefix.length)
+    if (imageKeyPattern.test(key)) return key
+  }
+  return null
+}
+
+export async function deleteStoredImages(keys: string[]) {
+  const unique = [...new Set(keys)]
+  if (unique.some(key => !imageKeyPattern.test(key))) throw new ImageStorageError(400, 'Invalid image storage key')
+  if (!unique.length) return
+  if (!isR2Configured()) {
+    const root = path.resolve(env.IMAGE_STORAGE_DIR || './public/uploads')
+    await Promise.all(unique.map(key => rm(path.join(root, key), { force: true })))
+    return
+  }
+  for (let offset = 0; offset < unique.length; offset += 1000) {
+    const result = await getR2Client().send(new DeleteObjectsCommand({
+      Bucket: env.R2_BUCKET_NAME,
+      Delete: { Objects: unique.slice(offset, offset + 1000).map(Key => ({ Key })), Quiet: true },
+    }))
+    if (result.Errors?.length) throw new ImageStorageError(502, 'Image deletion is incomplete; retry the request')
   }
 }
 
@@ -106,7 +138,7 @@ async function storeR2Image(
       Key: imageStorageKey,
       Body: parsed.buffer,
       ContentType: parsed.contentType,
-      CacheControl: 'public, max-age=31536000, immutable',
+      CacheControl: 'public, max-age=86400',
     })
   )
 

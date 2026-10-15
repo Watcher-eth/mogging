@@ -145,7 +145,7 @@ function AccountsContent() {
           <DialogHeader className="border-b p-6 text-left">
             <DialogTitle>Connect account</DialogTitle>
             <DialogDescription>
-              Enter your handle or profile URL.
+              Enter your Instagram username or TikTok handle.
             </DialogDescription>
           </DialogHeader>
           <AnimatedDialogPanel contentKey={platform}>

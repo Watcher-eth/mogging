@@ -21,6 +21,10 @@ const tx = {
       }
     } }
   },
+  delete(table: unknown) {
+    writes.push({ table, deleted: true })
+    return { where: () => ({ returning: async () => [providerAccount] }) }
+  },
   update(table: unknown) {
     return { set(values: any) {
       writes.push({ table, values })
@@ -34,10 +38,10 @@ mock.module('@/lib/db', () => ({ schema, db: {
   update: tx.update,
   transaction: async (fn: any) => fn(tx),
 } }))
-mock.module('@/lib/creator/attribution', () => ({ ensureCreatorTrackingLink: async () => ({ publicUrl: 'https://www.mogging.com/r/test' }) }))
+mock.module('@/lib/creator/attribution', () => ({ creatorReferralHandle: (value: string) => value, ensureCreatorTrackingLink: async () => ({ publicUrl: 'https://www.mogging.com/r/test' }) }))
 mock.module('@/lib/storage/videos', () => ({ creatorAssetPublicUrl: (key: string) => `https://media.example/${key}`, verifyCreatorRecordingUpload: async () => { if (!uploadExists) throw new Error('Not found') } }))
 const evidence = { analyticsVideoUrl: 'https://media.example/recording.mp4', analyticsStorageKey: 'creators/user/account-analytics/00000000-0000-0000-0000-000000000001.mp4', analyticsContentType: 'video/mp4' as const, analyticsSizeBytes: 100, analyticsPast28DaysConfirmed: true as const }
-const { addCreatorTikTokOAuthAccount, addCreatorSocialAccount, submitCreatorAccountAnalyticsEvidence } = await import('./service')
+const { addCreatorTikTokOAuthAccount, addCreatorSocialAccount, removeCreatorSocialAccount, submitCreatorAccountAnalyticsEvidence } = await import('./service')
 const input = { openId: 'provider-id', accessToken: 'test-token', profile: { display_name: 'Nate' }, scope: 'user.info.basic,user.info.stats' }
 beforeEach(() => { rows = []; providerAccount = undefined; tokenAccount = undefined; writes = []; uploadExists = true })
 
@@ -146,4 +150,26 @@ test('reconnecting with partial permissions preserves known stats and avatar', a
   const account = await addCreatorTikTokOAuthAccount('user', input)
   expect(account.oauthProfile).toEqual({ follower_count: 42, display_name: 'Nate' })
   expect(account.avatarUrl).toBe(providerAccount.avatarUrl)
+})
+
+
+test('retrying your own Instagram connection returns the saved account', async () => {
+  providerAccount = { id: 'existing', creatorProfileId: 'creator', platform: 'instagram', handle: 'nate' }
+  expect((await addCreatorSocialAccount('user', { platform: 'instagram', handle: 'nate' })).id).toBe('existing')
+  expect(writes).toHaveLength(0)
+})
+
+test('manual connections cannot claim another creator account', async () => {
+  providerAccount = { creatorProfileId: 'another-creator' }
+  await expect(addCreatorSocialAccount('user', { platform: 'instagram', handle: 'nate' })).rejects.toThrow('another creator')
+  expect(writes).toHaveLength(0)
+})
+
+
+test('removing one platform preserves the shared referral link on the remaining account', async () => {
+  providerAccount = { id: 'tiktok-account', creatorProfileId: 'creator', platform: 'tiktok', handle: 'nate', connectionMethod: 'manual' }
+  rows = [providerAccount, { id: 'instagram-account', creatorProfileId: 'creator', platform: 'instagram', handle: 'nate' }]
+  await removeCreatorSocialAccount('user', providerAccount.id)
+  expect(writes.find(write => write.table === schema.creatorTrackingLinks)?.values.socialAccountId).toBe('instagram-account')
+  expect(writes.some(write => write.table === schema.creatorTrackingLinks && write.deleted)).toBe(false)
 })

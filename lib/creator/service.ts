@@ -120,7 +120,10 @@ export async function addCreatorSocialAccount(userId: string, input: CreatorSoci
     await tx.execute(sql`select id from creator_profiles where id = ${profile.id} for update`)
     await tx.execute(sql`select pg_advisory_xact_lock(hashtextextended(${`${input.platform}:${input.handle}`}, 0))`)
     const claimed = await tx.query.creatorSocialAccounts.findFirst({ where: and(eq(schema.creatorSocialAccounts.platform, input.platform), eq(schema.creatorSocialAccounts.handle, input.handle)) })
-    if (claimed) throw new CreatorServiceError(409, 'This profile is already connected')
+    if (claimed) {
+      if (claimed.creatorProfileId === profile.id) return claimed
+      throw new CreatorServiceError(409, 'This profile is already connected to another creator')
+    }
     const accounts = await tx.query.creatorSocialAccounts.findMany({ where: eq(schema.creatorSocialAccounts.creatorProfileId, profile.id) })
     if (accounts.length >= 10 || accounts.filter(item => item.platform === input.platform).length >= 5) throw new CreatorServiceError(409, 'You can connect up to five accounts per platform')
     const [created] = await tx.insert(schema.creatorSocialAccounts).values({ creatorProfileId: profile.id, platform: input.platform, status: 'approved', handle: input.handle, profileUrl: input.profileUrl || `https://www.${input.platform}.com/${input.platform === 'tiktok' ? '@' : ''}${input.handle}` }).returning()
@@ -269,7 +272,17 @@ export async function removeCreatorSocialAccount(userId: string, accountId: stri
       ),
     })
     if (!existing) return null
-    await tx.delete(schema.creatorTrackingLinks).where(eq(schema.creatorTrackingLinks.socialAccountId, accountId))
+    // Keep a shared referral identity when its original publishing account is removed.
+    const siblings = existing.handle ? await tx.query.creatorSocialAccounts.findMany({
+      where: and(eq(schema.creatorSocialAccounts.creatorProfileId, profile.id), eq(schema.creatorSocialAccounts.handle, existing.handle)),
+    }) : []
+    const replacement = siblings.find(account => account.id !== accountId)
+    if (replacement) {
+      await tx.update(schema.creatorTrackingLinks).set({ socialAccountId: replacement.id, updatedAt: new Date() })
+        .where(eq(schema.creatorTrackingLinks.socialAccountId, accountId))
+    } else {
+      await tx.delete(schema.creatorTrackingLinks).where(eq(schema.creatorTrackingLinks.socialAccountId, accountId))
+    }
     const [deleted] = await tx.delete(schema.creatorSocialAccounts).where(eq(schema.creatorSocialAccounts.id, accountId)).returning()
     return deleted
   })

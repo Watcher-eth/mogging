@@ -1,7 +1,7 @@
 import { z } from 'zod'
 import registry from './rubric-registry.json'
 import { hairColorSchema } from '@/lib/appearance/types'
-import { protocolContextSchema, reportPotentialSchema } from '@/lib/analysis/schema'
+import { analysisReportSchema, reportPotentialSchema } from '@/lib/analysis/schema'
 
 const score = z.number().finite().min(0).max(10)
 const point = z.object({ x: z.number().min(0).max(1), y: z.number().min(0).max(1) })
@@ -33,7 +33,7 @@ export const webOverviewSchema = webReportSchema.omit({ version: true, entries: 
   pslScore: z.number().min(1).max(8),
   harmonyScore: score, symmetryScore: score, proportionalityScore: score, averagenessScore: score,
   dimorphismScore: score, angularityScore: score,
-  potential: reportPotentialSchema.optional(), protocolContext: protocolContextSchema.optional(),
+  potential: reportPotentialSchema.optional().catch(undefined), protocolContext: analysisReportSchema.shape.protocolContext,
 })
 
 // Providers may express outlines as one flat path or several paths, with object or tuple points.

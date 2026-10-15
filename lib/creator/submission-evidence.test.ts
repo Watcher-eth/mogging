@@ -4,11 +4,11 @@ import * as schema from '@/lib/db/schema'
 let uploadExists = true
 let sprintActive = true
 const now = new Date()
-const sprint = { id: '00000000-0000-4000-8000-000000000004', status: 'published', startsAt: new Date(now.getTime()-86400000), endsAt: new Date(now.getTime()+86400000), updatedAt: now, budgetCents: 10000, terms: { milestones: [{ views: 5000, amountCents: 1000 }], minimumTier1Percent: 20, maximumTier1Percent: 40, platforms: ['tiktok' as const], rules: ['Keep public'], formats: [{ id: 'general-creator-video-v1', name: 'Video', shortDescription: 'Show Mogging', active: true, elements: [{ title: 'Hook', detail: 'Introduce the app' }], requirements: ['Keep public'], notAllowed: [] }] } }
+const sprint = { id: '00000000-0000-4000-8000-000000000004', status: 'published', startsAt: new Date(now.getTime()-86400000), endsAt: new Date(now.getTime()+86400000), updatedAt: now, budgetCents: 10000, terms: { milestones: [{ views: 5000, amountCents: 1000 }], minimumTier1Percent: 20, maximumTier1Percent: 40, platforms: ['tiktok', 'instagram'] as ('tiktok' | 'instagram')[], rules: ['Keep public'], formats: [{ id: 'general-creator-video-v1', name: 'Video', shortDescription: 'Show Mogging', active: true, elements: [{ title: 'Hook', detail: 'Introduce the app' }], requirements: ['Keep public'], notAllowed: [] }] } }
 let inserted: any[] = []
 let verified: any[] = []
 mock.module('@/lib/db', () => ({ schema, db: {
-  query: { creatorProfiles: { findFirst: async () => ({ id: 'creator' }) }, creatorSprints: { findFirst: async () => ({ ...sprint, status: sprintActive ? 'published' : 'ended' }) } },
+  query: { creatorProfiles: { findFirst: async () => ({ id: 'creator' }) }, creatorSocialAccounts: { findFirst: async () => ({ id: '00000000-0000-4000-8000-000000000005', creatorProfileId: 'creator', platform: 'instagram' }) }, creatorSprints: { findFirst: async () => ({ ...sprint, status: sprintActive ? 'published' : 'ended' }) } },
   transaction: async (fn: any) => fn({ execute: async () => undefined, query: { creatorSubmissions: { findFirst: async () => null } }, select: () => ({ from: (table: unknown) => ({ where: () => ({ for: async () => [sprint], then: (resolve: any) => resolve([{ cents: 0 }]) }) }) }), insert: (table: unknown) => ({ values: (values: any) => { inserted.push(values); return { returning: async () => [{ id: 'submission', ...values }] } } }) }),
   insert: () => ({ values: (values: any) => { inserted.push(values); return { returning: async () => [{ id: 'submission', ...values }] } } }),
 } }))
@@ -77,4 +77,14 @@ test('legacy clients can submit old posts without a publication-age restriction'
   await createCreatorSubmission('user', { ...input, postedAt: '2020-01-01T00:00:00.000Z' } as any)
   expect(inserted).toHaveLength(1)
   expect(inserted[0].postedAt).toBeUndefined()
+})
+
+
+test('a connected Instagram account can submit a shared Reel with verified recording evidence', async () => {
+  const postUrl = 'https://www.instagram.com/share/reel/AbC123/?igsh=abc'
+  const submission = await createCreatorSubmission('user', { ...input, postUrl, socialAccountId: '00000000-0000-4000-8000-000000000005' })
+  expect(submission.platform).toBe('Instagram Reels')
+  expect(submission.postUrl).toBe(postUrl)
+  expect(submission.socialAccountId).toBe('00000000-0000-4000-8000-000000000005')
+  expect(verified).toHaveLength(1)
 })

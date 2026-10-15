@@ -42,7 +42,7 @@ test('a failed batch cancels sibling provider calls instead of leaving paid work
   let calls = 0
   let cancelled = 0
   const fetcher = async (_url: string, options: RequestInit): Promise<Response> => {
-    if (calls++ === 0) return Response.json({ choices: [{ finish_reason: 'stop', message: { content: '{broken' } }] })
+    if (calls++ === 0) return new Response('Authentication unavailable', { status: 401 })
     return new Promise((_resolve, reject) => options.signal!.addEventListener('abort', () => { cancelled++; reject(new Error('Cancelled')) }, { once: true }))
   }
   try {
@@ -112,4 +112,30 @@ test('visible contour estimates do not require upstream segmentation masks', () 
     expect(result.entries.find(entry => entry.id === id)!.value).not.toBeNull()
   }
   expect(rubricVectorSizes['brows.arch']).toBe(2)
+})
+
+test('an incomplete batch alone regenerates; successful sibling assessments are retained', async () => {
+  const originalKey = process.env.MOONSHOT_API_KEY
+  process.env.MOONSHOT_API_KEY = 'test-only'
+  const batches = rubricBatches.map(batch => batch.filter(rubric => rubric.output !== 'D'))
+  const calls = [0, 0, 0]
+  const fetcher = async (_url: string, options: RequestInit) => {
+    const request = JSON.parse(String(options.body))
+    const text = request.messages[1].content[1].text as string
+    const definitions = JSON.parse(text.split('Requested definitions: ')[1].split('\nUpstream geometry:')[0])
+    const index = batches.findIndex(batch => batch[0].id === definitions[0].id)
+    const values = entries(batches[index])
+    calls[index]++
+    return Response.json({ choices: [{ finish_reason: 'stop', message: { content: JSON.stringify({ capture, entries: index === 1 && calls[index] === 1 ? values.slice(1) : values }) } }] })
+  }
+  try {
+    const result = await evaluateV2({ imageDataUrl: 'public test fixture', geometry: null }, { fetcher })
+    expect(calls).toEqual([1, 2, 1])
+    expect(result.entries).toHaveLength(116)
+    expect(result.timing.batches.map(batch => batch.attempts)).toEqual([1, 2, 1])
+    expect(result.entries.find(entry => entry.id === batches[1][0].id)?.value).not.toBeNull()
+  } finally {
+    if (originalKey === undefined) Reflect.deleteProperty(process.env, 'MOONSHOT_API_KEY')
+    else process.env.MOONSHOT_API_KEY = originalKey
+  }
 })

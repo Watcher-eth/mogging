@@ -104,7 +104,7 @@ export function ConnectAccountForm({
           </button>
         ))}
       </div>
-      <Field label={`${label} handle or URL`}>
+      <Field label={platform === 'instagram' ? 'Instagram username' : `${label} handle or URL`}>
         <input
           className={fieldClass}
           value={identity}
@@ -112,11 +112,14 @@ export function ConnectAccountForm({
           placeholder={
             platform === 'tiktok'
               ? '@your-handle or tiktok.com/@handle'
-              : '@your-handle or instagram.com/handle'
+              : '@yourusername'
           }
           required
           disabled={busy || disabled}
           autoComplete="off"
+          autoCapitalize="none"
+          autoCorrect="off"
+          spellCheck={false}
         />
       </Field>
       <p className="text-xs leading-5 text-zinc-500">

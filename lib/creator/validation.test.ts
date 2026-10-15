@@ -47,3 +47,13 @@ test('submitting analytics requires complete confirmed video evidence', () => {
     expect(creatorAccountAnalyticsSubmissionSchema.safeParse({ ...profile, ...evidence, ...patch }).success).toBe(false)
   }
 })
+
+test('accepts Instagram shared and username-prefixed post links', () => {
+  for (const url of [
+    'https://www.instagram.com/share/reel/AbC123/?igsh=abc',
+    'https://www.instagram.com/share/p/AbC123/',
+    'https://www.instagram.com/creator/reel/AbC_123/',
+  ]) expect(creatorPostUrlSchema.safeParse(url).success).toBe(true)
+  expect(creatorPostUrlSchema.safeParse('https://instagram.com.evil.example/share/reel/AbC123/').success).toBe(false)
+  expect(creatorPostUrlSchema.safeParse('https://instagram.com/creator/').success).toBe(false)
+})

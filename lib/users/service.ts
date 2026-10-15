@@ -3,7 +3,8 @@ import { z } from 'zod'
 import { hairColorSchema, normalizeApparentAge, skinColorSchema } from '@/lib/appearance/types'
 import { db, schema } from '@/lib/db'
 import { conservativeScore, displayRating, initialSkillRating } from '@/lib/ratings/trueskill'
-import { storeImageDataUrl } from '@/lib/storage/images'
+import { deleteStoredImages, storedImageKeyFromUrl, storeImageDataUrl } from '@/lib/storage/images'
+import { env } from '@/lib/env'
 
 const RECENT_PHOTO_LIMIT = 12
 const SEARCH_LIMIT = 20
@@ -153,22 +154,34 @@ export async function updateUserAvatarIfMissing(userId: string, imageUrl: string
 }
 
 export async function deleteUserProfile(userId: string) {
-  const [deleted] = await db
-    .delete(schema.users)
-    .where(eq(schema.users.id, userId))
-    .returning({ id: schema.users.id })
-
-  if (!deleted) {
-    throw new UserServiceError(404, 'User not found')
-  }
-
-  return deleted
+  return db.transaction(async tx => {
+    const [user] = await tx
+      .select({ image: schema.users.image })
+      .from(schema.users)
+      .where(eq(schema.users.id, userId))
+      .for('update')
+    if (!user) throw new UserServiceError(404, 'User not found')
+    const images = await tx
+      .select({ imageUrl: schema.photos.imageUrl, imageStorageKey: schema.photos.imageStorageKey })
+      .from(schema.photos)
+      .where(eq(schema.photos.userId, userId))
+    await tx
+      .update(schema.creatorOnboardingInvites)
+      .set({ claimedByUserId: null, revokedAt: sql`coalesce(${schema.creatorOnboardingInvites.revokedAt}, now())` })
+      .where(eq(schema.creatorOnboardingInvites.claimedByUserId, userId))
+    const [deleted] = await tx
+      .delete(schema.users)
+      .where(eq(schema.users.id, userId))
+      .returning({ id: schema.users.id })
+    await deleteUnreferencedProfileImages(tx, images, user.image)
+    return deleted
+  })
 }
 
 export async function deleteAnonymousProfile(anonymousActorId: string) {
   return db.transaction(async (tx) => {
     const photoRows = await tx
-      .select({ id: schema.photos.id })
+      .select({ id: schema.photos.id, imageUrl: schema.photos.imageUrl, imageStorageKey: schema.photos.imageStorageKey })
       .from(schema.photos)
       .where(eq(schema.photos.anonymousActorId, anonymousActorId))
 
@@ -205,9 +218,45 @@ export async function deleteAnonymousProfile(anonymousActorId: string) {
     await tx.delete(schema.photoSets).where(eq(schema.photoSets.anonymousActorId, anonymousActorId))
     await tx.delete(schema.personGroups).where(eq(schema.personGroups.anonymousActorId, anonymousActorId))
     await tx.delete(schema.anonymousProfiles).where(eq(schema.anonymousProfiles.anonymousActorId, anonymousActorId))
+    await deleteUnreferencedProfileImages(tx, photoRows)
 
     return { anonymousActorId }
   })
+}
+
+type ProfileTransaction = Parameters<Parameters<typeof db.transaction>[0]>[0]
+
+async function deleteUnreferencedProfileImages(
+  tx: ProfileTransaction,
+  images: Array<{ imageUrl: string; imageStorageKey: string | null }>,
+  avatar: string | null = null,
+) {
+  const keys = [...new Set([
+    ...images.map(image => image.imageStorageKey ?? storedImageKeyFromUrl(image.imageUrl)),
+    storedImageKeyFromUrl(avatar),
+  ].filter((key): key is string => Boolean(key)))]
+  if (!keys.length) return
+  const urls = [...new Set([
+    ...images.map(image => image.imageUrl), ...(avatar ? [avatar] : []),
+    ...[env.R2_PUBLIC_BASE_URL, env.IMAGE_PUBLIC_BASE_URL || '/uploads'].flatMap(base =>
+      base ? keys.map(key => `${base.replace(/\/$/, '')}/${key}`) : []),
+  ])]
+  // Identical uploads share a content-addressed object. Keep another profile's
+  // photo or avatar; a failed storage deletion rolls back the database records
+  // so the same request can retry with its original object keys.
+  const [photos, users] = await Promise.all([
+    tx.select({ imageStorageKey: schema.photos.imageStorageKey, imageUrl: schema.photos.imageUrl })
+      .from(schema.photos)
+      .where(or(inArray(schema.photos.imageStorageKey, keys), inArray(schema.photos.imageUrl, urls))),
+    tx.select({ image: schema.users.image })
+      .from(schema.users)
+      .where(inArray(schema.users.image, urls)),
+  ])
+  const referenced = new Set([
+    ...photos.map(photo => photo.imageStorageKey ?? storedImageKeyFromUrl(photo.imageUrl)),
+    ...users.map(user => storedImageKeyFromUrl(user.image)),
+  ])
+  await deleteStoredImages(keys.filter(key => !referenced.has(key)))
 }
 
 export async function searchUsers(input: SearchUsersInput) {

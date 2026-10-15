@@ -1,3 +1,4 @@
+import { PurchaseAttemptsReportView } from './purchase-attempts-report';
 import { ExperimentsReport } from './experiments-report'
 import Link from 'next/link'
 import { useRouter } from 'next/router'
@@ -70,6 +71,7 @@ export default function AnalyticsAdminPage() {
   const refresh = () => {
     if (tab === 'Reliability') { void mutate(`/api/admin/reliability?days=${days}`); return }
     void report.mutate()
+    if (tab === 'Purchases') void mutate(`/api/admin/purchase-attempts?days=${days}&platform=${platform}`)
     if (operationalSections.includes(tab)) void mutate(`/api/admin/analytics-operations?days=${days}&section=${tab}`)
     if (tab === 'Quality') void mutate('/api/admin/analytics-health')
   }
@@ -119,7 +121,7 @@ function Activity({ data, days, section }: { data: AnalyticsDashboard; days: num
     </> : null}
     {section === 'Authentication' ? <p className="mb-5 text-sm text-[#73777d]">Older app releases combine cancellations and setup errors with auth failures. Updated releases report these outcomes separately; historical events retain their original classification.</p> : null}
     {daily ? <DailyChart data={data} days={days} title={section === 'Scans' ? 'Client-observed scan outcomes' : section === 'Purchases' ? 'Paywall activity' : section === 'Authentication' ? 'Authentication outcomes' : section === 'Referrals' ? 'Referral activity' : section === 'Notifications' ? 'Notification engagement' : 'Value-building activity'} metrics={daily} /> : null}
-    {section === 'Purchases' ? <Funnel title="Paywall conversion" rows={data.paywall} /> : null}
+    {section === 'Purchases' ? <><Funnel title="Paywall conversion" rows={data.paywall} /><PurchaseAttemptsReportView days={days} platform={data.filters.platform} /></> : null}
     {section !== 'AttributionLedger' ? <EventReport data={data} section={section as 'Authentication' | 'Purchases' | 'Scans' | 'Engagement' | 'Referrals' | 'Notifications'} /> : null}
     {operationalSections.includes(section) ? <OperationalReport days={days} section={section} /> : null}
   </>

@@ -4,7 +4,7 @@ import { randomBytes, randomUUID } from 'node:crypto'
 import postgres from 'postgres'
 if (process.env.RUN_REFERRAL_LIVE_TEST !== '1') throw new Error('Set RUN_REFERRAL_LIVE_TEST=1 to run')
 const sql = postgres(process.env.DATABASE_URL!, { max: 1 })
-const base = 'https://www.mogging.com'
+const base = process.env.REFERRAL_TEST_BASE_URL || 'https://www.mogging.com'
 const inviter = randomUUID()
 const emails = Array.from({ length: 3 }, () => `referral-test-${randomUUID()}@example.invalid`)
 const token = randomBytes(32).toString('hex')
@@ -14,22 +14,33 @@ try {
   const response = await fetch(`${base}/api/referrals`, { headers: { Authorization: `Bearer ${token}` } })
   assert.equal(response.status, 200, 'referral link endpoint')
   const { data } = await response.json() as { data: { url: string } }
-  const landing = await fetch(data.url, { redirect: 'manual' })
-  assert.equal(landing.status, 307, 'referral landing redirect')
-  assert.equal(landing.headers.get('location'), '/auth/register')
+  const landing = await fetch(`${base}${new URL(data.url).pathname}`, { redirect: 'manual' })
+  assert.equal(landing.status, 200, 'referral invitation page')
+  assert.ok((await landing.text()).includes('Copy invite'), 'install recovery is offered')
   const cookie = landing.headers.getSetCookie().find(value => value.startsWith('mogging_referral='))?.split(';')[0]
   assert.ok(cookie, 'signed attribution cookie')
   for (const email of emails) {
+    const password = randomBytes(24).toString('hex')
     const signup: Response = await fetch(`${base}/api/auth/register`, {
       method: 'POST', headers: { 'Content-Type': 'application/json', Cookie: cookie },
-      body: JSON.stringify({ email, password: randomBytes(24).toString('hex'), name: 'Referral smoke test' }),
+      body: JSON.stringify({ email, password, name: 'Referral smoke test' }),
     })
     assert.equal(signup.status, 201, 'referred signup')
+    const { data: registered } = await signup.json() as { data: { user: { id: string } } }
+    // No browser cookie or referral link is supplied after installation: the account owns attribution.
+    const login = await fetch(`${base}/api/auth/credentials-mobile`, {
+      method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ email, password }),
+    })
+    assert.equal(login.status, 200, 'same account signs in on mobile without referral cookie')
+    const { data: mobile } = await login.json() as { data: { userId: string } }
+    assert.equal(mobile.userId, registered.user.id)
+    const [referral] = await sql`SELECT inviter_user_id FROM referral_signups WHERE referred_user_id = ${mobile.userId}`
+    assert.equal(referral?.inviter_user_id, inviter, 'account referral survives browser-to-mobile handoff')
   }
   const rewards = await sql`SELECT credit_balance FROM payment_entitlements WHERE user_id = ${inviter}`
   assert.equal(rewards.length, 1)
   assert.equal(rewards[0].credit_balance, 1)
-  console.log('PASS: production invite link → signed cookie → three new signups → one scan credited')
+  console.log('PASS: invite page → signed cookie → three new accounts → mobile login without cookie → one scan credited')
 } finally {
   await sql`DELETE FROM users WHERE id = ${inviter} OR email IN ${sql(emails)}`
   await sql.end()
