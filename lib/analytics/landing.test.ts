@@ -9,8 +9,8 @@ test('allocates visitors evenly into the single old-versus-new experiment and ro
     counts[assignment.arm]++
     expect(parseLandingAssignment(serializeLandingAssignment(assignment))).toEqual(assignment)
     const properties = landingProperties(assignment)
-    expect(properties.experiment_id).toBe('landing_homepage_v2')
-    expect(properties.landing_version).toBe('2')
+    expect(properties.experiment_id).toBe('landing_homepage_v3')
+    expect(properties.landing_version).toBe('3')
     expect(properties.variant).toBe(assignment.arm.endsWith('_b') ? 'b' : 'a')
   }
   expect(Object.values(counts)).toEqual([128, 128])
@@ -43,26 +43,35 @@ test('new assignments take precedence while historical Stripe metadata stays rea
   expect(isActiveLandingAssignment(legacy)).toBe(false)
   expect(isActiveLandingAssignment(active)).toBe(true)
   expect(landingProperties(legacy)).toMatchObject({experiment_id:'landing_hero_v1',landing_version:'1',variant:'b'})
-  expect(readLandingCookie(`mogging_landing_v1=${serializeLandingAssignment(legacy)}; mogging_landing_v2=${serializeLandingAssignment(active)}`)).toEqual(active)
-  expect(landingExperiments.filter(item=>item.status==='active').map(item=>item.id)).toEqual(['landing_homepage_v2'])
+  expect(readLandingCookie(`mogging_landing_v1=${serializeLandingAssignment(legacy)}; mogging_landing_v3=${serializeLandingAssignment(active)}`)).toEqual(active)
+  expect(landingExperiments.filter(item=>item.status==='active').map(item=>item.id)).toEqual(['landing_homepage_v3'])
 })
 test('no observations or immature cohorts produce no lift or winner', () => {
-  const empty = landingExperimentSummary([], 'landing_homepage_v2', new Date('2026-10-05'))
+  const empty = landingExperimentSummary([], 'landing_homepage_v3', new Date('2026-10-05'))
   expect(empty).toMatchObject({status:'Awaiting first exposure', lift:'—', total:0})
-  const recent = ['a','b'].map(variant=>({experiment_id:'landing_homepage_v2',variant,visitors:20,mature:0,mature_store_clicks:0,first_exposure:'2026-10-04'}))
-  expect(landingExperimentSummary(recent,'landing_homepage_v2',new Date('2026-10-05'))).toMatchObject({status:'Collecting data',difference:'Awaiting mature visitors',lift:'—'})
+  const recent = ['a','b'].map(variant=>({experiment_id:'landing_homepage_v3',variant,visitors:20,mature:0,mature_store_clicks:0,first_exposure:'2026-10-04'}))
+  expect(landingExperimentSummary(recent,'landing_homepage_v3',new Date('2026-10-05'))).toMatchObject({status:'Collecting data',difference:'Awaiting mature visitors',lift:'—'})
 })
 test('allocation warnings take precedence over large apparent improvements', () => {
-  const rows = ['a','b'].map((variant,i)=>({experiment_id:'landing_homepage_v2',variant,visitors:i?2000:1000,mature:i?2000:1000,mature_store_clicks:i?1000:100,first_exposure:'2026-09-01'}))
-  expect(landingExperimentSummary(rows,'landing_homepage_v2',new Date('2026-10-05'))).toMatchObject({status:'Check traffic allocation',imbalance:true})
+  const rows = ['a','b'].map((variant,i)=>({experiment_id:'landing_homepage_v3',variant,visitors:i?2000:1000,mature:i?2000:1000,mature_store_clicks:i?1000:100,first_exposure:'2026-09-01'}))
+  expect(landingExperimentSummary(rows,'landing_homepage_v3',new Date('2026-10-05'))).toMatchObject({status:'Check traffic allocation',imbalance:true})
 })
 test('balanced mature cohorts expose effect size without declaring a winner', () => {
-  const rows = ['a','b'].map((variant,i)=>({experiment_id:'landing_homepage_v2',variant,visitors:1000,mature:1000,mature_store_clicks:i?250:200,first_exposure:'2026-09-01'}))
-  expect(landingExperimentSummary(rows,'landing_homepage_v2',new Date('2026-10-05'))).toMatchObject({status:'Checkpoints met · review uncertainty',difference:'5.0 percentage points',lift:'25.0%',imbalance:false})
+  const rows = ['a','b'].map((variant,i)=>({experiment_id:'landing_homepage_v3',variant,visitors:1000,mature:1000,mature_store_clicks:i?250:200,first_exposure:'2026-09-01'}))
+  expect(landingExperimentSummary(rows,'landing_homepage_v3',new Date('2026-10-05'))).toMatchObject({status:'Checkpoints met · review uncertainty',difference:'5.0 percentage points',lift:'25.0%',imbalance:false})
 })
 
 
 test('handoff-only assignments do not dilute homepage click rates', () => {
-  const [row] = landingExperimentRows([{experiment_id:'landing_homepage_v2',variant:'a',visitors:100,homepage_visitors:80,store_clicks:8,mature:40,mature_store_clicks:4,pending:40}], 'landing_homepage_v2')
+  const [row] = landingExperimentRows([{experiment_id:'landing_homepage_v3',variant:'a',visitors:100,homepage_visitors:80,store_clicks:8,mature:40,mature_store_clicks:4,pending:40}], 'landing_homepage_v3')
   expect(row).toMatchObject({visitors:100,homepage_visitors:80,observed_store_rate:'10.0%',mature_store_rate:'10.0%'})
+})
+
+test('archived homepage cookies and checkout attribution survive the iPhone-preview revision', () => {
+  const old = parseLandingAssignment('00000000-0000-4000-8000-000000000001.homepage_b')!
+  expect(isActiveLandingAssignment(old)).toBe(false)
+  expect(landingProperties(old)).toMatchObject({experiment_id:'landing_homepage_v2',landing_version:'2',variant:'b'})
+  expect(readLandingCookie(`mogging_landing_v2=${serializeLandingAssignment(old)}`)).toEqual(old)
+  const current = createLandingAssignment('00000000-0000-4000-8000-000000000002')
+  expect(readLandingCookie(`mogging_landing_v2=${serializeLandingAssignment(old)}; mogging_landing_v3=${serializeLandingAssignment(current)}`)).toEqual(current)
 })

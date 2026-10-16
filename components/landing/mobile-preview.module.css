@@ -1,14 +1,14 @@
 .frame {
-  position: relative;
-  width: 100%;
+  position: absolute;
+  left: 5.185185%;
+  top: 2.427536%;
+  width: 89.62963%;
+  height: 95.144928%;
+  border-radius: 14.876033% / 6.854531%;
   overflow: hidden;
   font-family: -apple-system, BlinkMacSystemFont, "Inter", sans-serif;
   color: #111113;
-  max-width: 350px;
-  border-radius: 40px;
   background: #f7f7f7;
-  border: 1px solid #e4e4e7;
-  box-shadow: 0 24px 72px #00000008;
 }
 
 .stage {
@@ -37,16 +37,6 @@
   display: flex;
   align-items: center;
   gap: 3px;
-}
-.status i {
-  position: absolute;
-  left: 50%;
-  top: 10px;
-  transform: translateX(-50%);
-  width: 104px;
-  height: 26px;
-  border-radius: 30px;
-  background: #000;
 }
 
 .evaluationContent {
@@ -1066,3 +1056,28 @@
 .categoryMenu svg { flex-shrink: 0; }
 .reportClose svg { display: block; }
 .categoryTrigger:focus-visible, .categoryMenu button:focus-visible { outline: 2px solid #00A8EF; outline-offset: 2px; }
+
+/* Match the published screen opening of the iPhone 16 Pro frame. */
+.iphone {
+  position: relative;
+  width: 100%;
+  max-width: 350px;
+  aspect-ratio: 1350 / 2760;
+  filter: drop-shadow(0 18px 24px #00000016);
+}
+.iphoneHardware {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+  user-select: none;
+  z-index: 5;
+}
+
+/* Shared-frame hero: the portrait expands into the report; controls stay fixed. */
+.journeyScene { position: absolute; inset: 0; }
+.journeyScene[data-preview-phase="scan"] { padding-top: 48px; background: #020202; }
+.journeyScene[data-preview-phase="report"] { background: #f7f7f7; }
+
+.journeyScene[data-preview-phase="scan"] .scanning { height: 100%; }

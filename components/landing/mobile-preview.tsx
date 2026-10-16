@@ -5,11 +5,12 @@ import reportDemo from "./report-demo.json";
 import { RubricVisual } from "@/components/analysis/v2/rubric-visual";
 import useSWRImmutable from "swr/immutable";
 import { apiGet } from "@/lib/api/client";
-import { AnimatePresence } from "motion/react";
+import { AnimatePresence, LayoutGroup, useReducedMotion } from "motion/react";
 import * as m from "motion/react-m";
 import {
   memo,
   useEffect,
+  useId,
   useRef,
   useState,
   type CSSProperties,
@@ -47,15 +48,15 @@ import styles from "./mobile-preview.module.css";
 function Frame({
   children,
   label,
-  height = 844,
   dark = false,
+  priority = false,
 }: {
   children: (active: boolean) => ReactNode;
   label: string;
-  height?: number;
   dark?: boolean;
+  priority?: boolean;
 }) {
-  const { t } = useTranslation();
+  const height = 844;
   const ref = useRef<HTMLDivElement>(null);
   const [scale, setScale] = useState(1);
   const [active, setActive] = useState(false);
@@ -98,30 +99,35 @@ function Frame({
     };
   }, []);
   return (
-    <div
-      ref={ref}
-      className={styles.frame}
-      style={{ aspectRatio: `390 / ${height}` }}
-      role="group"
-      aria-label={label}
-    >
-      <div
-        className={styles.stage}
-        data-active={active}
-        data-dark={dark}
-        style={{ height, transform: `scale(${scale})` }}
-      >
-        <div className={styles.status} aria-hidden="true">
-          <span>9:41</span>
-          <i />
-          <span className={styles.statusIcons}>
-            <Signal size={14} fill="currentColor" />
-            <Wifi size={14} />
-            <BatteryFull size={18} />
-          </span>
+    <div className={styles.iphone} role="group" aria-label={label}>
+      <div ref={ref} className={styles.frame}>
+        <div
+          className={styles.stage}
+          data-active={active}
+          data-dark={dark}
+          style={{ height, transform: `scale(${scale})` }}
+        >
+          <div className={styles.status} aria-hidden="true">
+            <span>9:41</span>
+            <span className={styles.statusIcons}>
+              <Signal size={14} fill="currentColor" />
+              <Wifi size={14} />
+              <BatteryFull size={18} />
+            </span>
+          </div>
+          {ready && children(active)}
         </div>
-        {ready && children(active)}
       </div>
+      <Image
+        src="/creator-devices/iphone-16-pro.png"
+        alt=""
+        aria-hidden="true"
+        width={1350}
+        height={2760}
+        sizes="350px"
+        priority={priority}
+        className={styles.iphoneHardware}
+      />
     </div>
   );
 }
@@ -289,7 +295,7 @@ function PreviewLabel({
   );
 }
 
-function ScanContent({ active, priority }: { active: boolean; priority: boolean }) {
+function ScanContent({ active, priority, portraitLayoutId }: { active: boolean; priority: boolean; portraitLayoutId?: string }) {
   const { t } = useTranslation();
   const [scene, setScene] = useState(0);
   useEffect(() => {
@@ -306,7 +312,7 @@ function ScanContent({ active, priority }: { active: boolean; priority: boolean 
         <h3>{t("demo.scan")}</h3>
         <p>{t("demo.anchoring")}</p>
       </header>
-      <div className={styles.scannerCard}>
+      <m.div className={styles.scannerCard} layoutId={portraitLayoutId} transition={portraitTransition}>
         <Image
           src="/model2.png"
           alt={t("demo.scanAlt")}
@@ -354,7 +360,7 @@ function ScanContent({ active, priority }: { active: boolean; priority: boolean 
         <div className={styles.scanTrack}>
           <div className={styles.scanLine} />
         </div>
-      </div>
+      </m.div>
       <div className={styles.scanStatusSlot}>
         <AnimatePresence mode="wait" initial={false}>
           <m.div
@@ -394,6 +400,46 @@ export const ScanPreview = memo(function ScanPreview({ priority = false }: { pri
     </Frame>
   );
 });
+// The same portrait carries the visitor from measurement to the finished report.
+const portraitTransition = { duration: 0.65, ease: [0.22, 1, 0.36, 1] as [number, number, number, number] };
+const heroSceneDuration = { scan: 8400, report: 7000 };
+
+export const ScanReportPreview = memo(function ScanReportPreview() {
+  const { t } = useTranslation();
+  const reduced = useReducedMotion();
+  const id = useId();
+  const [phase, setPhase] = useState<"scan" | "report">("scan");
+  const [hovered, setHovered] = useState(false);
+  const [focused, setFocused] = useState(false);
+  const report = reduced || phase === "report";
+  return (
+    <div onPointerEnter={() => setHovered(true)} onPointerLeave={() => setHovered(false)}
+      onFocusCapture={() => setFocused(true)} onBlurCapture={event => { if (!event.currentTarget.contains(event.relatedTarget as Node | null)) setFocused(false); }}>
+      <LayoutGroup id={id}>
+        <Frame priority dark={!report} label={`${t("demo.scanFrame")} · ${t("demo.evaluationFrame")}`}>
+          {active => <ScanReportContent active={active && !hovered && !focused} phase={report ? "report" : "scan"} onPhaseChange={setPhase} reduced={Boolean(reduced)} />}
+        </Frame>
+      </LayoutGroup>
+    </div>
+  );
+});
+
+function ScanReportContent({ active, phase, onPhaseChange, reduced }: {
+  active: boolean; phase: "scan" | "report"; onPhaseChange: (phase: "scan" | "report") => void; reduced: boolean;
+}) {
+  useEffect(() => {
+    if (!active || reduced) return;
+    const timer = setTimeout(() => onPhaseChange(phase === "scan" ? "report" : "scan"), heroSceneDuration[phase]);
+    return () => clearTimeout(timer);
+  }, [active, phase, onPhaseChange, reduced]);
+  return <AnimatePresence initial={false}>
+    <m.div key={phase} className={styles.journeyScene} data-preview-phase={phase}
+      initial={{ opacity: reduced ? 1 : 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} transition={{ duration: reduced ? 0 : 0.3 }}>
+      {phase === "scan" ? <ScanContent active={active} priority portraitLayoutId="hero-portrait" /> : <EvaluationContent priority portraitLayoutId={reduced ? undefined : "hero-portrait"} />}
+    </m.div>
+  </AnimatePresence>;
+}
+
 export const CameraPreview = memo(function CameraPreview() {
   const { t } = useTranslation();
   return (
@@ -481,8 +527,9 @@ function ReportCategoryIcon({ id }: { id: string }) {
   return <Icon size={18} strokeWidth={1.8} aria-hidden="true" />;
 }
 
-export const EvaluationPreview = memo(function EvaluationPreview() {
+function EvaluationContent({ portraitLayoutId, priority = false }: { portraitLayoutId?: string; priority?: boolean }) {
   const { t, i18n } = useTranslation();
+  const categoryMenuId = useId();
   const [completed, setCompleted] = useState<string[]>([]);
   const [categoryId, setCategoryId] = useState("overall");
   const [categoryMenu, setCategoryMenu] = useState(false);
@@ -514,21 +561,20 @@ export const EvaluationPreview = memo(function EvaluationPreview() {
   };
   const toggleTask = (task: string) => setCompleted(current => current.includes(task) ? current.filter(item => item !== task) : [...current, task]);
   return (
-    <Frame label={t("demo.evaluationFrame")}>
-      {() => (
-        <>
+    <>
           <div
             className={styles.evaluationContent}
             ref={reportScroll}
             tabIndex={0}
             aria-label={t("demo.scrollEvaluation")}
           >
-            <div className={styles.reportPortrait}>
+            <m.div className={styles.reportPortrait} layoutId={portraitLayoutId} transition={portraitTransition}>
               <Image
                 src="/model2.png"
                 alt={t("demo.portraitAlt")}
                 fill
                 sizes="350px"
+                priority={priority}
                 className={styles.photo}
               />
               <svg
@@ -551,7 +597,7 @@ export const EvaluationPreview = memo(function EvaluationPreview() {
                 ) : null,
               )}
               <div className={styles.fade} />
-            </div>
+            </m.div>
             <div className={styles.report}>
               <div className={styles.scores}>
                 <div>
@@ -618,12 +664,12 @@ export const EvaluationPreview = memo(function EvaluationPreview() {
             </div>
           </div>
           <div className={styles.reportChrome}>
-            <button type="button" className={styles.categoryTrigger} aria-label="Choose report category" aria-expanded={categoryMenu} aria-controls="landing-report-categories" onClick={() => setCategoryMenu(open => !open)}>
+            <button type="button" className={styles.categoryTrigger} aria-label="Choose report category" aria-expanded={categoryMenu} aria-controls={categoryMenuId} onClick={() => setCategoryMenu(open => !open)}>
               <ReportCategoryIcon id={categoryId} />
               {category?.title ?? t("demo.overall")}
               <ChevronDown size={15} />
             </button>
-            {categoryMenu ? <div id="landing-report-categories" className={styles.categoryMenu} aria-label="Report categories">
+            {categoryMenu ? <div id={categoryMenuId} className={styles.categoryMenu} aria-label="Report categories">
               {[{ id: "overall", title: t("demo.overall") }, ...reportDemo].map(item => <button key={item.id} type="button" aria-pressed={categoryId === item.id} onClick={() => selectCategory(item.id)}><ReportCategoryIcon id={item.id} /><span>{item.title}</span>{categoryId === item.id ? <Check size={14} /> : null}</button>)}
             </div> : null}
             <span className={styles.reportClose} aria-hidden="true"><X size={21} strokeWidth={2} /></span>
@@ -634,10 +680,13 @@ export const EvaluationPreview = memo(function EvaluationPreview() {
               {t("demo.share")}
             </div>
           </div>
-        </>
-      )}
-    </Frame>
+    </>
   );
+}
+
+export const EvaluationPreview = memo(function EvaluationPreview() {
+  const { t } = useTranslation();
+  return <Frame label={t("demo.evaluationFrame")}>{() => <EvaluationContent />}</Frame>;
 });
 
 type PreviewTask = { title: keyof typeof resources.en.translation; detail: keyof typeof resources.en.translation; color: string; icon: string; hour: number };

@@ -7,7 +7,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { ArrowRight, Plus } from "lucide-react";
 import {
-  ScanPreview,
+  ScanReportPreview,
   EvaluationPreview,
   ProtocolPreview,
   LeaderboardPreview,
@@ -41,7 +41,7 @@ export default function HomePage(props: Props) {
   const [routeToStore, setRouteToStore] = useState(props.routeToStore);
   const continueOnWebsite = useCallback(() => setRouteToStore(false), []);
   if (routeToStore) return <AppStoreHandoff assignment={props.assignment} onContinue={continueOnWebsite} />;
-  return (!locale || locale === "en") && props.assignment.arm === "homepage_a" ? <LegacyHomepage {...props} /> : <NewHomepage {...props} />;
+  return (!locale || locale === "en") && props.assignment.arm.endsWith("_a") ? <LegacyHomepage {...props} /> : <NewHomepage {...props} />;
 }
 
 function NewHomepage({ assignment, preview }: Props) {
@@ -118,7 +118,7 @@ function NewHomepage({ assignment, preview }: Props) {
           </div>
           <div className="mt-10 flex justify-center lg:mt-0 lg:justify-end">
             <div className="w-full max-w-[350px]">
-              <ScanPreview priority />
+              <ScanReportPreview />
             </div>
           </div>
         </m.section>
@@ -301,19 +301,20 @@ export const getServerSideProps: GetServerSideProps<Props> = async ({
   query,
   locale,
 }) => {
+  const requestedPreview = query.landing_preview === "homepage_a" ? "homepage_v3_a" : query.landing_preview === "homepage_b" ? "homepage_v3_b" : query.landing_preview;
   const previewArm =
     process.env.NODE_ENV !== "production" &&
-    typeof query.landing_preview === "string" &&
-    landingArms.includes(query.landing_preview as (typeof landingArms)[number])
-      ? query.landing_preview
+    typeof requestedPreview === "string" &&
+    landingArms.includes(requestedPreview as (typeof landingArms)[number])
+      ? requestedPreview
       : null;
   const localizedPreview = Boolean(locale && locale !== "en");
   const automated = /bot\b|crawler|spider|slurp|facebookexternalhit|bingpreview|headlesschrome|lighthouse/i.test(req.headers["user-agent"] ?? "");
   const saved = parseLandingAssignment(req.cookies[LANDING_COOKIE]);
   const existing = isActiveLandingAssignment(saved) ? saved : null;
-  const assignment = localizedPreview ? { id: crypto.randomUUID(), arm: "homepage_b" as const } : previewArm
+  const assignment = localizedPreview ? { id: crypto.randomUUID(), arm: "homepage_v3_b" as const } : previewArm
     ? { id: crypto.randomUUID(), arm: previewArm as LandingAssignment["arm"] }
-    : automated ? { id: crypto.randomUUID(), arm: "homepage_b" as const } : (existing ?? createLandingAssignment(crypto.randomUUID()));
+    : automated ? { id: crypto.randomUUID(), arm: "homepage_v3_b" as const } : (existing ?? createLandingAssignment(crypto.randomUUID()));
   // Render the assigned content on the server: no variant flash or client-side fetch.
   res.setHeader("Cache-Control", "private, no-store");
   if (!localizedPreview && !previewArm && !automated && !existing)

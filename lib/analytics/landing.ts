@@ -1,14 +1,15 @@
 // IDs and treatments are immutable. New designs always start a new experiment.
-export const LANDING_COOKIE = 'mogging_landing_v2'
+export const LANDING_COOKIE = 'mogging_landing_v3'
 export const LEGACY_LANDING_COOKIE = 'mogging_landing_v1'
-export const LANDING_VERSION = '2'
+export const LANDING_VERSION = '3'
 export const landingExperiments = [
-  { id: 'landing_homepage_v2', version: '2', name: 'Homepage: old vs new', control: 'Old homepage', treatment: 'New homepage', status: 'active', traffic: 100, minimumDays: 14, minimumVisitors: 1000 },
+  { id: 'landing_homepage_v3', version: '3', name: 'Homepage: old vs new · iPhone previews', control: 'Old homepage', treatment: 'New homepage · scan-to-report iPhone previews', status: 'active', traffic: 100, minimumDays: 14, minimumVisitors: 1000 },
+  { id: 'landing_homepage_v2', version: '2', name: 'Homepage: old vs new', control: 'Old homepage', treatment: 'New homepage', status: 'archived', traffic: 0, minimumDays: 14, minimumVisitors: 1000 },
   { id: 'landing_hero_v1', version: '1', name: 'Hero message', control: 'Glow-up + plan', treatment: 'Face insights + next move', status: 'archived', traffic: 0, minimumDays: 14, minimumVisitors: 750 },
   { id: 'landing_download_v1', version: '1', name: 'Persistent download CTA', control: 'Inline buttons', treatment: 'Inline + persistent button', status: 'archived', traffic: 0, minimumDays: 14, minimumVisitors: 750 },
 ] as const
-export const landingArms = ['homepage_a', 'homepage_b'] as const
-const legacyArms = ['hero_a', 'hero_b', 'download_a', 'download_b'] as const
+export const landingArms = ['homepage_v3_a', 'homepage_v3_b'] as const
+const legacyArms = ['homepage_a', 'homepage_b', 'hero_a', 'hero_b', 'download_a', 'download_b'] as const
 export type LandingArm = typeof landingArms[number] | typeof legacyArms[number]
 export type LandingAssignment = { id: string; arm: LandingArm }
 
@@ -29,10 +30,10 @@ export function serializeLandingAssignment(assignment: LandingAssignment) {
 }
 export function landingProperties(assignment: LandingAssignment | null) {
   if (!assignment) return {}
-  const experiment = landingExperiments.find(item => item.id === (assignment.arm.startsWith('homepage_') ? 'landing_homepage_v2' : assignment.arm.startsWith('hero_') ? 'landing_hero_v1' : 'landing_download_v1'))!
+  const experiment = landingExperiments.find(item => item.id === (assignment.arm.startsWith('homepage_v3_') ? 'landing_homepage_v3' : assignment.arm.startsWith('homepage_') ? 'landing_homepage_v2' : assignment.arm.startsWith('hero_') ? 'landing_hero_v1' : 'landing_download_v1'))!
   return { landing_id: assignment.id, landing_version: experiment.version, experiment_id: experiment.id, variant: assignment.arm.endsWith('_b') ? 'b' : 'a' }
 }
 export function readLandingCookie(cookie: string) {
   const cookies = new Map(cookie.split(';').map(part => { const [name, ...value] = part.trim().split('='); return [name, value.join('=')] }))
-  return parseLandingAssignment(cookies.get(LANDING_COOKIE)) ?? parseLandingAssignment(cookies.get(LEGACY_LANDING_COOKIE))
+  return parseLandingAssignment(cookies.get(LANDING_COOKIE)) ?? parseLandingAssignment(cookies.get('mogging_landing_v2')) ?? parseLandingAssignment(cookies.get(LEGACY_LANDING_COOKIE))
 }
