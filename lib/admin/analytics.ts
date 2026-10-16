@@ -1,3 +1,4 @@
+import { audienceCTEs, eventAudience, customerEvent, customerAccount } from './audience'
 import { landingExperiments } from '@/lib/analytics/landing'
 import { excludedAcquisitionHost } from '@/lib/analytics/acquisition'
 import { sql, type SQL } from 'drizzle-orm'
@@ -11,8 +12,16 @@ export const analyticsFilters = z.object({
   platform: z.enum(['all', 'web', 'ios', 'android']).default('all'),
 })
 export type AnalyticsFilters = z.infer<typeof analyticsFilters>
+// Only money-bearing events can have an unknown monetary amount. Stripe invoices
+// own subscription revenue; checkout expiry, declines and status updates do not.
+const monetaryBillingEvent = sql`(
+  (provider = 'stripe' and event_name in ('one_time_purchase','invoice_paid','subscription_renewed','subscription_refunded'))
+  or (provider = 'revenuecat' and event_name in ('subscription_started','subscription_renewed','trial_converted','one_time_purchase','refund_reversed','subscription_refunded'))
+)`
+
 export type MetricRow = Record<string, string | number | null>
 export type AnalyticsDashboard = {
+  audienceBreakdown?: MetricRow[]
   generatedAt: string; queryMs: number; filters: AnalyticsFilters
   summary: { events: number; actors: number; first_opens: number; evaluations: number; failures: number; latest_event: string | null }
   onboarding: Array<{ name: string; actors: number }>
@@ -68,17 +77,26 @@ export function analyticsQuery(filters: AnalyticsFilters, now: Date) {
   const acquisitionSource = sql`coalesce(nullif(properties->>'creator_first_tracking_link_id',''),
     nullif(properties->>'first_utm_source',''), nullif(properties->>'utm_source',''),
     case when ${referrer} !~* ${excludedAcquisitionHost} then ${referrer} end)`
-  return sql`with e as materialized (
+  return sql`with ${audienceCTEs()}, scoped_events as materialized (
+      select a.*, ${eventAudience('a')} as audience,
+        coalesce('install:' || mobile_install_id, 'anonymous:' || anonymous_id, 'account:' || account_id) as actor
+      from analytics_events a where a.platform in ('web','ios','android')
+        and a.occurred_at >= ${start}::timestamp and a.occurred_at < ${end}::timestamp
+    ), audience_breakdown as (
+      select audience, count(*) as events, count(distinct actor) as devices,
+        count(*) filter(where platform in ('ios','android') and coalesce(properties->>'runtime_environment','unknown') = 'unknown') as runtime_unconfirmed_events
+      from scoped_events group by audience order by audience
+    ), e as materialized (
       select event_name, occurred_at, account_id, platform, app_version, properties, session_id, source, schema_version, received_at,
         coalesce('install:' || mobile_install_id, 'anonymous:' || anonymous_id, 'account:' || account_id) as actor
-      from analytics_events where environment = 'production'
+      from scoped_events where audience = 'customer'
         and event_name <> 'referral_invite_redeemed'
         and platform in ('web','ios','android')
         and coalesce(properties->>'path', '') not like '/admin%'
         and occurred_at >= ${start}::timestamp and occurred_at < ${end}::timestamp and ${platform}
     ), user_reports as materialized (
       select a.status, a.created_at from analyses a join photos p on p.id = a.photo_id
-      where p.source = 'user' and a.created_at >= ${start}::timestamp and a.created_at < ${end}::timestamp
+      where p.source = 'user' and ${customerAccount(sql`p.user_id`)} and a.id not in (select id from excluded_reports) and a.created_at >= ${start}::timestamp and a.created_at < ${end}::timestamp
     ), report_ledger_daily as (
       select to_char(created_at, ${bucket}::text) as day,
         count(*) filter(where status = 'complete') as completed,
@@ -88,7 +106,7 @@ export function analyticsQuery(filters: AnalyticsFilters, now: Date) {
       select r.status, r.created_at, r.result->'analysis'->>'id' as analysis_id
       from scan_reservations r join payment_entitlements p on p.id = r.entitlement_id
       where r.created_at >= ${start}::timestamp and r.created_at < ${end}::timestamp
-        and coalesce(p.metadata->>'sandbox', 'false') <> 'true'
+        and p.id not in (select id from excluded_entitlements)
     ), scan_ledger_daily as (
       select to_char(created_at, ${bucket}::text) as day, count(*) as started,
         count(*) filter(where status = 'complete') as completed,
@@ -98,7 +116,7 @@ export function analyticsQuery(filters: AnalyticsFilters, now: Date) {
     ), reported_events as materialized (
       select * from e union all
       select event_name, occurred_at, account_id, platform, app_version, properties, session_id, source, schema_version, received_at, null::text as actor
-      from analytics_events where environment = 'production' and platform = 'server' and source is distinct from 'backend'
+      from analytics_events server_event where ${customerEvent('server_event')} and platform = 'server' and source is distinct from 'backend'
         and event_name <> 'referral_invite_redeemed'
         and occurred_at >= ${start}::timestamp and occurred_at < ${end}::timestamp
       union all
@@ -107,7 +125,7 @@ export function analyticsQuery(filters: AnalyticsFilters, now: Date) {
       select 'referral_invite_redeemed', created_at at time zone 'UTC', referred_user_id,
         'server', null::text, '{}'::jsonb, null::text, 'referral_ledger', 1,
         created_at at time zone 'UTC', null::text
-      from referral_signups where created_at >= ${start}::timestamptz and created_at < ${end}::timestamptz
+      from referral_signups where ${customerAccount(sql`referred_user_id`)} and ${customerAccount(sql`inviter_user_id`)} and created_at >= ${start}::timestamptz and created_at < ${end}::timestamptz
     ), event_definitions(section, event) as (values ${sql.join(trackingDefinitions.map(({section, event}) => sql`(${section}::text, ${event}::text)`), sql`,`)}),
     event_metrics as (
       select event_name as event, count(*) as events, count(distinct actor) as actors,
@@ -152,7 +170,7 @@ export function analyticsQuery(filters: AnalyticsFilters, now: Date) {
       from (values ('appsflyer_id'),('creator_click_id'),('creator_tracking_link_id'),('creator_first_tracking_link_id'),('flow_id'),('attempt_id'),('report_id'),('evaluation_id')) f(field)
       left join e on true group by f.field order by f.field
     ), b as materialized (
-      select * from subscription_events where environment = 'production'
+      select * from subscription_events where environment = 'production' and ${customerAccount(sql`coalesce(account_id,external_user_id)`)}
         and occurred_at >= ${start}::timestamp and occurred_at < ${end}::timestamp
     ), ${sql.join([...onboarding.ctes, ...paywall.ctes, ...web.ctes], sql`,`)},
     daily as (
@@ -229,7 +247,7 @@ export function analyticsQuery(filters: AnalyticsFilters, now: Date) {
         when properties->>'path' like '/app/%' or properties->>'path' like '/auth%' then 'Authentication / app handoff'
         else 'Public website' end as surface,
         count(*) as pageviews,count(distinct actor) as browsers
-      from e where platform = 'web' and event_name = 'page_viewed' group by 1
+      from scoped_events where audience in ('customer','creator / admin') and platform = 'web' and event_name = 'page_viewed' group by 1
     ), landing_sources as (
       select source,count(*) as visitors,count(*) filter(where store) as store_clicks,
         count(*) filter(where web_analysis) as web_starts,count(*) filter(where paid) as paid_checkouts
@@ -351,12 +369,12 @@ export function analyticsQuery(filters: AnalyticsFilters, now: Date) {
         count(distinct subscription_id) as subscriptions, count(*) filter (where account_id is null) as unlinked_events,
         case when count(amount) > 0 then coalesce(sum(amount) filter(where amount > 0),0)::text end as gross,
         case when count(amount) > 0 then coalesce(-sum(amount) filter(where amount < 0),0)::text end as refunds,
-        sum(amount)::text as net, count(*) filter(where amount is null) as missing_amount_events
+        sum(amount)::text as net, count(*) filter(where amount is null and ${monetaryBillingEvent}) as missing_amount_events
       from b group by 1,2,3 order by events desc limit 100
     ), billing_dimension_counts as (
       select provider, event_name as event, p.key as dimension, p.value, count(*) as events
       from b cross join lateral jsonb_each_text(properties) p
-      where p.key in ('period_type','trial_conversion','store','country','cancel_reason','expiration_reason','new_product_id','offering','offer_code','commission_percentage','tax_percentage','timestamp_estimated')
+      where p.key in ('period_type','trial_conversion','store','country','cancel_reason','expiration_reason','new_product_id','offering','offer_code','commission_percentage','tax_percentage','timestamp_estimated','failure_code','decline_code')
         and p.value is not null and jsonb_typeof(properties->p.key) in ('string','number','boolean')
       group by 1,2,3,4
     ), billing_dimensions as (
@@ -368,18 +386,18 @@ export function analyticsQuery(filters: AnalyticsFilters, now: Date) {
         case when count(amount) > 0 then coalesce(sum(amount) filter (where amount > 0), 0)::text end as gross,
         case when count(amount) > 0 then coalesce(-sum(amount) filter (where amount < 0), 0)::text end as refunds,
         sum(amount)::text as net,
-        count(*) filter (where amount is null) as missing_amount_events
+        count(*) filter (where amount is null and ${monetaryBillingEvent}) as missing_amount_events
       from b group by 1 order by 1
     ), revenue_daily as (
       select to_char(occurred_at, ${bucket}::text) as day, coalesce(currency, 'UNKNOWN') as currency,
         case when count(amount) > 0 then coalesce(sum(amount) filter (where amount > 0), 0)::text end as gross,
         case when count(amount) > 0 then coalesce(-sum(amount) filter (where amount < 0), 0)::text end as refunds,
         sum(amount)::text as net,
-        count(*) filter (where amount is null) as missing_amount_events
+        count(*) filter (where amount is null and ${monetaryBillingEvent}) as missing_amount_events
       from b group by 1,2 order by 1,2
     ), activation_history as materialized (
-      select account_id, min(occurred_at) as at from analytics_events
-      where environment = 'production' and event_name = 'evaluation_completed'
+      select account_id, min(occurred_at) as at from analytics_events history
+      where ${customerEvent('history')} and event_name = 'evaluation_completed'
         and platform in ('web','ios','android') and ${platform}
         and occurred_at < ${end}::timestamp and account_id is not null group by 1
     ), activated as (
@@ -435,7 +453,7 @@ export function analyticsQuery(filters: AnalyticsFilters, now: Date) {
         'first_opens', count(distinct actor) filter (where event_name = 'app_first_open'),
         'evaluations', count(*) filter (where event_name = 'evaluation_completed'),
         'failures', count(*) filter (where event_name = 'evaluation_failed'), 'latest_event', max(occurred_at)) from e),
-      'onboarding', ${onboarding.result}, 'paywall', ${paywall.result}, 'web', ${web.result},
+      'audienceBreakdown', ${rows('audience_breakdown')}, 'onboarding', ${onboarding.result}, 'paywall', ${paywall.result}, 'web', ${web.result},
       'landingHandoffs', ${rows('landing_handoffs')}, 'webAudience', ${rows('web_audience')}, 'landingExperiments', ${rows('landing_experiments')}, 'landingSources', ${rows('landing_sources')},
       'landingSections', ${rows('landing_sections')}, 'landingPlacements', ${rows('landing_placements')},
       'daily', ${rows('daily')}, 'acquisition', ${rows('acquisition')}, 'steps', ${rows('steps')},

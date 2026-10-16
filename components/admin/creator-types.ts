@@ -32,6 +32,7 @@ export type AdminAttributionReport = {
 }
 
 export type AdminCreator = {
+  bundledPayouts?: boolean
   id: string
   displayName: string
   email: string
@@ -74,6 +75,7 @@ export type AdminAccount = {
 }
 
 export type AdminSubmission = {
+  updatedAt?: string
   creatorAvatarUrl?: string | null
   unreadMessages?: number
   sprintId?: string | null
@@ -110,6 +112,7 @@ export type AdminSubmission = {
 }
 
 export type AdminPayment = {
+  payoutRequestId?: string | null
   id: string
   creatorProfileId: string
   creatorName: string
@@ -145,6 +148,7 @@ export type AdminProgramSettings = {
 }
 
 export type AdminDashboard = {
+  payoutRequests?: import('@/components/creator/types').CreatorPayoutRequest[]
   creators: AdminCreator[]
   accounts: AdminAccount[]
   submissions: AdminSubmission[]

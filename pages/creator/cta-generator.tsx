@@ -46,6 +46,12 @@ function refreshPhoneReport(slide: ContentSlide): ContentSlide {
   return { ...slide, mockReport: { ...slide.mockReport, category: buildMockOverallCategory(slide.currentScore, scores) } }
 }
 
+function RatioSelector({ value, onChange, disabled }: { value: OutputFormatId; onChange: (value: OutputFormatId) => void; disabled: boolean }) {
+  return <Field label="Aspect ratio"><select className={fieldClass} value={value} disabled={disabled} onChange={event => onChange(event.target.value as OutputFormatId)}>
+    {(['portrait', 'square', 'vertical'] as const).map(id => <option key={id} value={id}>{outputFormats[id].label} · {outputFormats[id].width} × {outputFormats[id].height}</option>)}
+  </select></Field>
+}
+
 export default function CtaGeneratorPage() {
   const reducedMotion = useReducedMotion()
   const transition = reducedMotion ? { duration: 0 } : generatorTransition
@@ -80,6 +86,13 @@ export default function CtaGeneratorPage() {
   const format = outputFormats[formatId]
   const selectedSlide = slides.find((slide) => slide.id === selectedSlideId) ?? slides[0]
   const usableImages = images.filter((image) => image.status === 'ready')
+  const formatLocked = exporting || videoProgress !== null || librarySubmitting
+
+  function changeFormat(value: OutputFormatId) {
+    if (formatLocked) return
+    setFormatId(value)
+    setSubmittedSlides({})
+  }
 
   useEffect(() => {
     try {
@@ -309,6 +322,7 @@ export default function CtaGeneratorPage() {
       {step === 2 ? <section className="creator-surface p-5 sm:p-6">
         <SectionTitle asset="formats" title="Set up your templates" detail="Choose the format and enter scores, or randomize values for a mock CTA." />
         <div className="mt-5 grid content-start gap-4">
+            <RatioSelector value={formatId} onChange={changeFormat} disabled={formatLocked} />
             <RandomScoreControl onRandomize={range => {
               const pair = randomScorePair(range)
               updateCurrentScore(pair.current)
@@ -322,7 +336,6 @@ export default function CtaGeneratorPage() {
             {selectedCategories.includes('psl') ? <p className="text-xs leading-5 text-zinc-500">PSL uses the mobile report’s 0–8 scale. For a featured PSL reveal, the 0–10 potential above is converted to the same scale.</p> : null}
         </div><details className="mt-5 border-t pt-4"><summary className="min-h-11 cursor-pointer text-sm font-semibold">Customize format, categories & style</summary>
           <div className="mt-5 grid gap-4">
-            <Field label="Format"><select className={fieldClass} value={formatId} onChange={(event) => setFormatId(event.target.value as OutputFormatId)}>{Object.entries(outputFormats).map(([id, item]) => <option key={id} value={id}>{item.label} · {item.width}×{item.height}</option>)}</select></Field>
             <Field label="Tone"><select className={fieldClass} value={tone} onChange={(event) => setTone(event.target.value as Tone)}><option value="curious">Curious</option><option value="direct">Direct</option><option value="educational">Educational</option></select></Field>
             <Field label="Overlay style"><select className={fieldClass} value={overlayStyle} onChange={(event) => { const value = event.target.value as 'category' | 'face-map'; setOverlayStyle(value); setSlides((current) => current.map((slide) => ({ ...slide, overlayStyle: value }))) }}><option value="category">Mobile report · category lines</option><option value="face-map">Mobile report · full face map</option></select></Field>
             <fieldset><legend className="text-sm font-medium">Values to show</legend><div className="mt-2 grid grid-cols-2 gap-2">{categoryOptions.map((item) => { const active = selectedCategories.includes(item.id); return <button key={item.id} type="button" aria-pressed={active} onClick={() => setSelectedCategories((current) => active ? current.filter((id) => id !== item.id) : [...current, item.id])} className={cn('flex min-h-12 items-center gap-2 rounded-[14px] border px-3 text-left text-xs font-medium transition-[border-color,background-color,box-shadow,transform] duration-150 active:scale-[0.98]', active ? 'creator-choice-selected' : 'border-black/[0.08] bg-white text-[#73777d] hover:bg-[#f7f8f9]')}><span className={cn('grid size-4 shrink-0 place-items-center rounded-full border', active ? 'border-transparent creator-tone-blue text-white' : 'border-black/20')}>{active ? <Check className="size-2.5" /> : null}</span>{item.label}</button> })}</div></fieldset>
@@ -341,6 +354,7 @@ export default function CtaGeneratorPage() {
 
         <section className="creator-surface grid gap-4 p-5 sm:p-6">
           <SectionTitle asset="cta" title="Personalize and export" detail="Choose a template, review its alignment, then save your video." />
+          <RatioSelector value={formatId} onChange={changeFormat} disabled={formatLocked} />
 {selectedSlide ? <>{selectedSlide.templateId === 'editorial' ? <Field label="Call to action"><input className={fieldClass} maxLength={48} value={selectedSlide.headline} onChange={(event) => updateSlide({ headline: event.target.value })} /></Field> : selectedSlide.templateId === 'score-rows' ? <Field label="Eyebrow"><input className={fieldClass} maxLength={80} value={selectedSlide.eyebrow} onChange={(event) => updateSlide({ eyebrow: event.target.value })} /></Field> : null}<div className="grid gap-2"><Button className="h-11 rounded-xl" disabled={videoProgress !== null} onClick={() => void downloadVideo()}>{videoProgress !== null ? <Loader2 className="animate-spin" /> : <Film />}{videoProgress !== null ? `${Math.round(videoProgress * 100)}%` : 'Animated (MP4)'}</Button><Button className="h-11 rounded-xl" variant="outline" onClick={() => void downloadSlide(selectedSlide, slides.indexOf(selectedSlide))}><Download />Screenshot (PNG)</Button></div>{submittedSlides[selectedSlide.id] ? <SubmissionConfirmation title={submittedSlides[selectedSlide.id]} /> : <details className="rounded-2xl border border-zinc-200 p-4"><summary className="cursor-pointer text-sm font-semibold">Save to CTA library (optional)</summary><p className="mt-1 text-[11px] leading-4 text-zinc-500">This also saves the CTA to your personal library. Admins review it before other creators can see it.</p><div className="mt-4 grid gap-3"><Field label="Library title"><input className={fieldClass} value={libraryTitle} maxLength={100} placeholder={selectedSlide.headline || 'Mogging CTA'} onChange={(event) => setLibraryTitle(event.target.value)} /></Field><Field label="Asset format"><select className={fieldClass} value={libraryAssetType} onChange={(event) => setLibraryAssetType(event.target.value as 'video/mp4' | 'image/png')}><option value="video/mp4">Animated (MP4) · default</option><option value="image/png">Screenshot (PNG)</option></select></Field><Button className="h-11 rounded-xl" variant="outline" disabled={librarySubmitting} onClick={() => void submitToLibrary()}>{librarySubmitting ? <Loader2 className="animate-spin" /> : <Send />}{librarySubmitting ? (libraryProgress === null ? 'Uploading…' : `Rendering ${Math.round(libraryProgress * 100)}%`) : 'Submit for approval'}</Button></div></details>}</> : <p className="rounded-2xl bg-zinc-50 p-4 text-xs leading-5 text-zinc-500">Enter every score above, then generate the templates. Overlays match the mobile report. Review eye, nose and jaw alignment before exporting.</p>}        </section></div>
       </> : null}
       <div className="mt-6"><ContentRequirementsNote /></div>

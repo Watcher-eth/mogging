@@ -82,12 +82,13 @@ export type CreatorAdminReviewInput = z.infer<typeof creatorAdminReviewSchema>
 export type CreatorAdminPaymentInput = z.infer<typeof creatorAdminPaymentSchema>
 
 export async function getCreatorAdminDashboard() {
-  const [creatorRows, accountRows, submissions, payments, attributionMetrics, settingsRecord, accountAttributionRows] = await Promise.all([
+  const [creatorRows, accountRows, submissions, payments, attributionMetrics, settingsRecord, accountAttributionRows, payoutRequests] = await Promise.all([
     db
       .select({
         id: schema.creatorProfiles.id,
         userId: schema.creatorProfiles.userId,
         displayName: schema.creatorProfiles.displayName,
+        bundledPayouts: schema.creatorProfiles.bundledPayouts,
         email: schema.users.email,
         image: schema.users.image,
         primaryContact: schema.creatorProfiles.socialHandle,
@@ -166,6 +167,7 @@ export async function getCreatorAdminDashboard() {
         reviewNote: schema.creatorSubmissions.reviewNote,
         reviewChecklist: schema.creatorSubmissions.reviewChecklist,
         createdAt: schema.creatorSubmissions.createdAt,
+        updatedAt: schema.creatorSubmissions.updatedAt,
       })
       .from(schema.creatorSubmissions)
       .innerJoin(schema.creatorProfiles, eq(schema.creatorSubmissions.creatorProfileId, schema.creatorProfiles.id))
@@ -181,6 +183,7 @@ export async function getCreatorAdminDashboard() {
         submissionId: schema.creatorPayments.submissionId,
         submissionTitle: schema.creatorSubmissions.title,
         amountCents: schema.creatorPayments.amountCents,
+        payoutRequestId: schema.creatorPayments.payoutRequestId,
         currency: schema.creatorPayments.currency,
         status: schema.creatorPayments.status,
         paymentOption: schema.creatorPayments.paymentOption,
@@ -200,6 +203,7 @@ export async function getCreatorAdminDashboard() {
       where: eq(schema.creatorProgramSettings.id, 'default'),
     }),
     getCreatorAttributionReport(),
+    db.query.creatorPayoutRequests.findMany({ where: eq(schema.creatorPayoutRequests.status, 'pending'), orderBy: [desc(schema.creatorPayoutRequests.requestedAt)] }),
   ])
 
   const attributionByAccountId = new Map(accountAttributionRows.map((report) => [report.socialAccountId, report]))
@@ -232,6 +236,7 @@ export async function getCreatorAdminDashboard() {
     accounts,
     submissions,
     payments,
+    payoutRequests,
     attributionMetrics,
     settings,
     rules: {
@@ -366,6 +371,11 @@ export async function reviewCreatorResource(input: CreatorAdminReviewInput, revi
     const [submission] = target.submissionId ? await tx.select().from(schema.creatorSubmissions).where(eq(schema.creatorSubmissions.id, target.submissionId)).for('update') : []
     const [payment] = await tx.select().from(schema.creatorPayments).where(eq(schema.creatorPayments.id, input.id)).for('update')
     if (!payment) throw new ApiError(404, 'Creator payment not found')
+    if (payment.payoutRequestId) throw new ApiError(409, 'Record this payment through its bundled payout request')
+    if (['pending', 'processing', 'paid'].includes(input.status)) {
+      const profile = await tx.query.creatorProfiles.findFirst({ where: eq(schema.creatorProfiles.id, payment.creatorProfileId) })
+      if (profile?.bundledPayouts && !['processing', 'paid'].includes(payment.status)) throw new ApiError(409, 'This creator uses bundled payouts. Wait for their payout request.')
+    }
     if (payment.status === 'paid' && (input.status !== 'paid' || (input.amountCents !== undefined && input.amountCents !== payment.amountCents))) throw new ApiError(409, 'Completed payments cannot be changed')
     if (submission?.sprintId && input.amountCents !== undefined && input.amountCents !== payment.amountCents) throw new ApiError(409, 'Sprint payments use the approved earnings amount')
     if (submission?.sprintId && ['pending', 'processing', 'paid'].includes(input.status)) {
@@ -378,7 +388,10 @@ export async function reviewCreatorResource(input: CreatorAdminReviewInput, revi
       if (payment.paymentOption !== 'paypal') throw new ApiError(400, 'Image receipts are for PayPal payments')
       await tx.insert(schema.creatorPaymentReceipts).values({ paymentId: record.id, image: receiptImage }).onConflictDoUpdate({ target: schema.creatorPaymentReceipts.paymentId, set: { image: receiptImage } })
     }
-    if (submission?.sprintId && submission.status === 'approved' && input.status === 'paid' && payment.status !== 'paid') await tx.update(schema.creatorSubmissions).set({ status: 'paid', updatedAt: now }).where(eq(schema.creatorSubmissions.id, submission.id))
+    if (submission?.sprintId && submission.status === 'approved' && input.status === 'paid' && payment.status !== 'paid') {
+      const payments = await tx.query.creatorPayments.findMany({ where: eq(schema.creatorPayments.submissionId, submission.id) })
+      if (remainingCreatorPaymentCents(submission.approvedAmountCents || 0, payments, false) === 0) await tx.update(schema.creatorSubmissions).set({ status: 'paid', updatedAt: now }).where(eq(schema.creatorSubmissions.id, submission.id))
+    }
     return record
   })
 }
@@ -392,16 +405,6 @@ export async function createCreatorPayment(input: CreatorAdminPaymentInput) {
   if (submission.sprintId) return createSprintPayment(input, receiptImage)
   if (!isCreatorViewThreshold(input.adminViewCountThreshold) || (input.adminUsAudiencePercent !== null && !isCreatorTier1AudienceTier(input.adminUsAudiencePercent))) throw new ApiError(400, 'Choose supported historical payout values')
 
-  const profile = await db.query.creatorProfiles.findFirst({
-    where: eq(schema.creatorProfiles.id, submission.creatorProfileId),
-  })
-  if (!profile) throw new ApiError(404, 'Creator profile not found')
-
-  const existing = await db.query.creatorPayments.findFirst({
-    where: eq(schema.creatorPayments.submissionId, submission.id),
-  })
-  if (existing) throw new ApiError(409, 'A payment already exists for this submission')
-
   const now = new Date()
   const estimate = calculateCreatorPayout(
     input.adminViewCountThreshold,
@@ -409,6 +412,12 @@ export async function createCreatorPayment(input: CreatorAdminPaymentInput) {
     input.adminUsAudiencePercent
   )
   return db.transaction(async (tx) => {
+    await tx.select().from(schema.creatorSubmissions).where(eq(schema.creatorSubmissions.id, submission.id)).for('update')
+    const profile = await tx.query.creatorProfiles.findFirst({ where: eq(schema.creatorProfiles.id, submission.creatorProfileId) })
+    if (!profile) throw new ApiError(404, 'Creator profile not found')
+    if (profile.bundledPayouts) throw new ApiError(409, 'This creator uses bundled payouts. Wait for their payout request.')
+    const existing = await tx.query.creatorPayments.findFirst({ where: eq(schema.creatorPayments.submissionId, submission.id) })
+    if (existing) throw new ApiError(409, 'A payment already exists for this submission')
     await tx.update(schema.creatorSubmissions).set({
       adminViewCountThreshold: input.adminViewCountThreshold,
       adminUsAudiencePercent: input.adminUsAudiencePercent,
@@ -469,6 +478,7 @@ async function createSprintPayment(input: CreatorAdminPaymentInput, receiptImage
     if (!amountCents) throw new ApiError(409, 'All approved earnings have already been paid')
     const profile = await tx.query.creatorProfiles.findFirst({ where: eq(schema.creatorProfiles.id, submission.creatorProfileId) })
     if (!profile || profile.authStatus !== 'verified' || !(profile.paymentOption === 'paypal' ? profile.paypalEmail : profile.cryptoNetwork && profile.cryptoWalletAddress)) throw new ApiError(409, 'An approved payout method is required')
+    if (profile.bundledPayouts) throw new ApiError(409, 'This creator uses bundled payouts. Wait for their payout request.')
     if (input.adminViewCountThreshold !== submission.adminViewCountThreshold || input.adminUsAudiencePercent !== submission.adminUsAudiencePercent) throw new ApiError(409, 'Use the approved earnings values')
     const [payment] = await tx.insert(schema.creatorPayments).values({ creatorProfileId: profile.id, submissionId: submission.id, amountCents, paymentOption: profile.paymentOption, status: input.status, providerReference: input.providerReference || null, paidAt: input.status === 'paid' ? new Date() : null }).returning()
     if (receiptImage) {

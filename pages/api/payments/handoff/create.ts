@@ -3,6 +3,7 @@ import type { NextApiRequest, NextApiResponse } from 'next'
 import { z } from 'zod'
 import { ApiError, handleApiError, json, methodNotAllowed, parseBody } from '@/lib/api/http'
 import { getRequestUserId } from '@/lib/auth/mobile-session'
+import { confirmCheckoutForAccount } from '@/lib/payments/entitlements'
 import { createPaymentHandoff } from '@/lib/payments/handoff'
 
 const createHandoffSchema = z.object({
@@ -17,6 +18,10 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
     const accountId = await getRequestUserId(req, res)
     if (!accountId) throw new ApiError(401, 'Sign in to continue this purchase')
 
+    const entitlement = await confirmCheckoutForAccount(input.sessionId, accountId)
+    if (entitlement.source === 'web_analysis') {
+      return json(res, 200, { analysisUrl: `/analysis?checkout=success&session_id=${encodeURIComponent(input.sessionId)}` })
+    }
     const handoff = await createPaymentHandoff({
       sessionId: input.sessionId,
       accountId,

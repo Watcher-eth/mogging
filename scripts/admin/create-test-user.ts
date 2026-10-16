@@ -1,3 +1,5 @@
+import { db, schema } from '../../lib/db'
+import { eq } from 'drizzle-orm'
 import { EmailAlreadyExistsError, registerUser } from '../../lib/auth/register'
 
 const email = process.argv[2]
@@ -11,6 +13,7 @@ if (!email || !password) {
 
 try {
   const user = await registerUser({ email, password, name })
+  await db.update(schema.users).set({ analyticsInternal: true }).where(eq(schema.users.id, user.id))
   console.log(JSON.stringify({ user }, null, 2))
 } catch (error) {
   if (error instanceof EmailAlreadyExistsError) {

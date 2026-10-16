@@ -1,4 +1,5 @@
 export type CreatorProfile = {
+  bundledPayouts?: boolean
   id: string
   displayName: string
   socialHandle: string | null
@@ -42,6 +43,7 @@ export type CreatorSubmission = {
 }
 
 export type CreatorPayment = {
+  payoutRequestId?: string | null
   id: string
   submissionId: string | null
   amountCents: number
@@ -79,6 +81,7 @@ export type CreatorSocialAccount = {
 }
 
 export type CreatorDashboard = {
+  payoutRequests?: CreatorPayoutRequest[]
   profile: CreatorProfile | null
   submissions: CreatorSubmission[]
   payments: CreatorPayment[]
@@ -93,6 +96,18 @@ export type CreatorDashboard = {
   featureFlags: {
     creatorAccountRequiredForSubmission: boolean
   }
+}
+
+export type CreatorPayoutRequest = {
+  id: string
+  creatorProfileId: string
+  amountCents: number
+  status: 'pending' | 'paid'
+  paymentOption: 'paypal' | 'crypto'
+  destination: string
+  network: string | null
+  requestedAt: string
+  paidAt: string | null
 }
 
 export function creatorAccountLabel(account: Pick<CreatorSocialAccount, 'handle' | 'displayName' | 'platform'>) {

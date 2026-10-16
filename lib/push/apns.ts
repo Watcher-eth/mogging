@@ -22,7 +22,7 @@ async function providerToken() {
 export async function prepareApplePush() { await providerToken() }
 
 export async function sendApplePush(input: {
-  token: string; environment: string; title: string; body: string; target: string; collapseId: string
+  token: string; environment: string; title: string; body: string; target: string; collapseId: string; ttlSeconds?: number
 }) {
   const authorization = await providerToken()
   return new Promise<{ status: number; reason?: string }>((resolve, reject) => {
@@ -40,7 +40,7 @@ export async function sendApplePush(input: {
       authorization: `bearer ${authorization}`, 'apns-topic': 'app.mogging.scan',
       'apns-push-type': 'alert', 'apns-priority': '10',
       // Never queue a completed task or yesterday's reminder for later delivery.
-      'apns-expiration': '0', 'apns-collapse-id': input.collapseId,
+      'apns-expiration': String(input.ttlSeconds ? Math.floor(Date.now()/1000)+input.ttlSeconds : 0), 'apns-collapse-id': input.collapseId,
     })
     let status = 0
     let body = ''

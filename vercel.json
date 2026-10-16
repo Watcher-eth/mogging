@@ -1,8 +1,24 @@
 {
   "crons": [
-    { "path": "/api/cron/reliability", "schedule": "* * * * *" },
-    { "path": "/api/cron/push-reminders", "schedule": "* * * * *" },
-    { "path": "/api/cron/analytics-export", "schedule": "* * * * *" },
-    { "path": "/api/cron/courses", "schedule": "*/5 * * * *" }
+    {
+      "path": "/api/cron/reliability",
+      "schedule": "* * * * *"
+    },
+    {
+      "path": "/api/cron/push-reminders",
+      "schedule": "* * * * *"
+    },
+    {
+      "path": "/api/cron/analytics-export",
+      "schedule": "* * * * *"
+    },
+    {
+      "path": "/api/cron/courses",
+      "schedule": "*/5 * * * *"
+    },
+    {
+      "path": "/api/cron/stripe-reconciliation",
+      "schedule": "*/5 * * * *"
+    }
   ]
 }

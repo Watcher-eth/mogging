@@ -12,6 +12,7 @@ export type RevenueCatSubscriber = {
   entitlements?: Record<string, { expires_date?: string | null; product_identifier?: string | null }>
   subscriptions?: Record<string, {
     purchase_date?: string | null
+    is_sandbox?: boolean
     expires_date?: string | null
     store_transaction_id?: string | number | null
     store?: string
@@ -91,5 +92,5 @@ export function readRevenueCatScanSubscription(subscriber: RevenueCatSubscriber 
   const end = validDate(subscription?.expires_date)
   const transaction = subscription?.store_transaction_id
   if (!plan || !start || !end || !transaction || subscription?.refunded_at || subscription?.ownership_type === 'FAMILY_SHARED') return null
-  return { plan, start, end, key: `revenuecat-subscription:${subscription?.store || 'store'}:${transaction}` }
+  return { plan, start, end, sandbox: Boolean(subscription?.is_sandbox), key: `revenuecat-subscription:${subscription?.store || 'store'}:${transaction}` }
 }

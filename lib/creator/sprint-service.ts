@@ -119,7 +119,14 @@ export async function sprintApprovedSubmissions(
         inArray(schema.creatorSubmissions.status, ['approved', 'paid']),
       ),
     )
-    .orderBy(desc(schema.creatorSubmissions.adminViewCountThreshold))
+    .orderBy(
+      desc(sql`case when ${schema.creatorSubmissions.status} = 'paid' then coalesce((
+        select max(payment.paid_at) from creator_payments payment
+        where payment.submission_id = ${schema.creatorSubmissions.id}
+          and payment.status = 'paid'
+      ), ${schema.creatorSubmissions.updatedAt}) else ${schema.creatorSubmissions.updatedAt} end`),
+      desc(schema.creatorSubmissions.createdAt),
+    )
     .limit(100)
   return rows.map((row) => ({
     ...row,

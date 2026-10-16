@@ -1,14 +1,16 @@
 import Link from 'next/link'
 import { useRouter } from 'next/router'
 import { useSession } from 'next-auth/react'
-import { Clock3, ArrowRight, Loader2, Wallet } from 'lucide-react'
+import { ArrowRight, Loader2, Wallet } from 'lucide-react'
 import useSWR from 'swr'
 import { CreatorHeader, CreatorShell } from '@/components/creator/creator-shell'
 import { StudioTabs, StudioTabContent } from '@/components/creator/studio-tabs'
 import { PayoutInformation } from '@/components/creator/payout-information-form'
+import { BundledPayoutControls } from '@/components/creator/bundled-payout-controls'
 import type { CreatorDashboard } from '@/components/creator/types'
 import { apiGet } from '@/lib/api/client'
 import {
+  creatorBundlePlan,
   creatorMoneySummary,
   creatorUnpaidCents,
   hasCreatorPayoutMethod,
@@ -61,30 +63,27 @@ function MoneyContent() {
   const { cashouts, earnings, balanceCents, totalPaidCents, pendingReview } =
     creatorMoneySummary(data.submissions, data.payments)
   const ready = hasCreatorPayoutMethod(data.profile)
+  const request = data.payoutRequests?.find(item => item.status === 'pending')
+  const bundled = Boolean(data.profile?.bundledPayouts)
+  const displayedBalance = request?.amountCents ?? (bundled ? creatorBundlePlan(data.submissions, data.payments).amountCents : balanceCents)
   return (
     <>
       <CreatorHeader
         eyebrow="Earnings & payments"
         title="Money"
-        description="Your reviewed earnings, completed cashouts and payout methods."
-        titleAccessory={
-          <span className="inline-flex shrink-0 items-center gap-1.5 rounded-lg bg-[#00A8EF] px-3 py-1.5 text-xs font-medium text-white">
-            <Clock3 className="size-3.5" />
-            3–5 Days
-          </span>
-        }
+        description="Your creator earnings and payouts."
       />
       <StudioTabs value={tab} onChange={change} items={tabs}>
         <StudioTabContent value="wallet">
           <section className="creator-surface overflow-hidden">
             <div className="p-6 sm:p-8">
               <p className="text-xs font-medium text-zinc-500">
-                Reviewed balance
+                {request ? 'Payout requested' : bundled ? 'Available to request' : 'Reviewed balance'}
               </p>
               <p
                 aria-label={
                   ready
-                    ? `Balance ${sprintMoney(balanceCents)}`
+                    ? `Balance ${sprintMoney(displayedBalance)}`
                     : 'Select a payout method to view your balance'
                 }
                 className={cn(
@@ -93,7 +92,7 @@ function MoneyContent() {
                 )}
                 aria-hidden={!ready}
               >
-                {sprintMoney(balanceCents)}
+                {sprintMoney(displayedBalance)}
               </p>
               {!ready ? (
                 <button
@@ -103,56 +102,14 @@ function MoneyContent() {
                   Connect a payout method
                   <ArrowRight className="size-4" />
                 </button>
-              ) : (
-                <p className="mt-3 text-sm text-zinc-500">
-                  Payout method saved. Eligible payments typically take 3–5 days to process after approval.
-                </p>
-              )}
-              <div className="mt-7 flex flex-wrap items-center gap-x-6 gap-y-3 text-sm">
-                <span className="text-zinc-500">
-                  {earnings.length} reviewed posts awaiting payment
-                </span>
-                <span className="text-zinc-500">
-                  {pendingReview} posts in review
-                </span>
-                <button
-                  className="ml-auto text-[#00A8EF]"
-                  onClick={() => change('earnings')}
-                >
-                  View breakdown →
-                </button>
-              </div>
-            </div>
-            <div className="border-t border-zinc-100 p-6 sm:p-8">
-              <div className="mb-4 flex justify-between text-sm">
-                <h2 className="font-semibold">Cashout history</h2>
-                <span className="text-zinc-500">
-                  {sprintMoney(totalPaidCents)} total paid
-                </span>
-              </div>
-              {cashouts.length ? (
-                cashouts.slice(0, 5).map((payment) => (
-                  <div
-                    key={payment.id}
-                    className="flex justify-between gap-3 border-t border-zinc-100 py-3 text-sm"
-                  >
-                    <span className="text-zinc-500">
-                      {data.submissions.find(
-                        (item) => item.id === payment.submissionId,
-                      )?.title || 'Creator payout'}
-                    </span>
-                    <strong>{sprintMoney(payment.amountCents)}</strong>
-                  </div>
-                ))
-              ) : (
-                <p className="rounded-xl bg-[#f5f6f7] p-4 text-sm text-zinc-500">
-                  No payout history yet.
-                </p>
-              )}
+              ) : null}
+              <BundledPayoutControls data={data} onSaved={mutate} />
+              <button className="mt-6 text-sm text-[#00A8EF]" onClick={() => change('earnings')}>View earnings breakdown →</button>
             </div>
           </section>
         </StudioTabContent>
         <StudioTabContent value="cashouts">
+          <p className="mb-5 text-sm text-zinc-500">{sprintMoney(totalPaidCents)} total paid</p>
           {cashouts.length ? (
             <div className="grid gap-3">
               {cashouts.map((payment) => {
@@ -206,6 +163,7 @@ function MoneyContent() {
           )}
         </StudioTabContent>
         <StudioTabContent value="earnings">
+          <p className="mb-5 text-sm text-zinc-500">{earnings.length} posts awaiting payment · {pendingReview} in review</p>
           {earnings.length ? (
             <div className="grid gap-3">
               {earnings.map((submission) => {

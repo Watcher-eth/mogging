@@ -1,21 +1,9 @@
-import { landingProperties, parseLandingAssignment } from '@/lib/analytics/landing'
 import { monitorBackend } from '@/lib/reliability/monitor'
 import type { NextApiRequest, NextApiResponse } from 'next'
-import { eq } from 'drizzle-orm'
 import Stripe from 'stripe'
-import { db, schema } from '@/lib/db'
 import { env } from '@/lib/env'
-import {
-  recordCreatorCheckoutPayment,
-  recordCreatorInvoicePayment,
-  recordCreatorPaymentReversal,
-} from '@/lib/creator/attribution'
-import { sendPaymentActivationEmailForCheckoutSession } from '@/lib/payments/activation-email'
-import { grantEntitlementFromCheckoutSession, revokePaymentIntentEntitlement, updateSubscriptionEntitlement } from '@/lib/payments/entitlements'
 import { getStripe } from '@/lib/payments/stripe'
-import { recordServerEvent } from '@/lib/analytics/events'
-import { processBillingWebhook } from '@/lib/payments/billing-ledger'
-import { recordStripeLifecycle } from '@/lib/payments/stripe-lifecycle'
+import { processStripeEvent } from '@/lib/payments/stripe-events'
 
 export const config = {
   api: {
@@ -48,111 +36,13 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
   }
 
   try {
-    const legacy = await db.query.stripeWebhookEvents.findFirst({ where: eq(schema.stripeWebhookEvents.id, event.id) })
-    if (legacy) return res.status(200).json({ received: true, duplicate: true })
-    await processBillingWebhook('stripe', event.id, async () => {
-      await handleStripeEvent(event)
-      await recordStripeLifecycle(event)
-    })
+    await processStripeEvent(event)
   } catch (error) {
     console.error('Stripe webhook handling failed', event.id, event.type, error)
     return res.status(500).json({ error: { code: 'internal_error', message: 'Webhook handling failed' } })
   }
 
   return res.status(200).json({ received: true })
-}
-
-async function handleStripeEvent(event: Stripe.Event) {
-  switch (event.type) {
-    case 'checkout.session.async_payment_succeeded':
-    case 'checkout.session.completed': {
-      const session = event.data.object as Stripe.Checkout.Session
-      const expanded = await getStripe().checkout.sessions.retrieve(session.id, {
-        expand: ['subscription', 'customer'],
-      })
-      if (isLegacyCheckoutProduct(expanded.metadata?.product)) return
-      if (!['paid', 'no_payment_required'].includes(expanded.payment_status)) return
-      await grantEntitlementFromCheckoutSession({ session: expanded })
-      await recordServerEvent({
-        eventName: 'checkout_completed',
-        accountId: expanded.metadata?.accountId || expanded.metadata?.userId,
-        sessionId: expanded.id,
-        source: 'stripe_webhook',
-        properties: {
-          product: expanded.metadata?.product || 'unknown',
-          ...landingProperties(parseLandingAssignment(expanded.metadata?.landingAssignment)),
-          mode: expanded.mode || 'unknown',
-          status: expanded.payment_status,
-          price: expanded.amount_total,
-          currency: expanded.currency,
-        },
-      })
-      await recordCreatorCheckoutPayment(expanded)
-      await sendPaymentActivationEmailForCheckoutSession({ session: expanded }).catch((error) => {
-        console.error('Payment activation email failed', expanded.id, error)
-      })
-      return
-    }
-
-    case 'invoice.paid': {
-      const invoice = event.data.object as Stripe.Invoice
-      const subscriptionId = readInvoiceSubscriptionId(invoice)
-      if (!subscriptionId) return
-      const subscription = await getStripe().subscriptions.retrieve(subscriptionId)
-      await updateSubscriptionEntitlement(subscription)
-      await recordCreatorInvoicePayment(invoice, subscription)
-      return
-    }
-
-    case 'customer.subscription.updated':
-    case 'customer.subscription.deleted': {
-      const subscription = event.data.object as Stripe.Subscription
-      await updateSubscriptionEntitlement(await getStripe().subscriptions.retrieve(subscription.id))
-      return
-    }
-
-    case 'charge.refunded':
-      await handleChargeRevocation(event.data.object as Stripe.Charge, 'refunded')
-      return
-
-    case 'charge.dispute.created':
-      await handleChargeRevocation((event.data.object as Stripe.Dispute).charge, 'disputed')
-      return
-
-    default:
-      return
-  }
-}
-
-function isLegacyCheckoutProduct(product: string | null | undefined) {
-  return product === 'analysis' || product === 'mobile_subscription'
-}
-
-async function handleChargeRevocation(charge: string | Stripe.Charge | null, status: 'refunded' | 'disputed') {
-  const chargeObject = typeof charge === 'string' ? await getStripe().charges.retrieve(charge) : charge
-  const paymentIntentId = readPaymentIntentId(chargeObject?.payment_intent)
-  if (!paymentIntentId) return
-
-  await revokePaymentIntentEntitlement({ paymentIntentId, status })
-  await recordCreatorPaymentReversal({
-    eventId: chargeObject?.id || paymentIntentId,
-    paymentIntentId,
-    eventType: status === 'refunded' ? 'refund' : 'dispute',
-    amountCents: chargeObject?.amount_refunded || chargeObject?.amount || 0,
-    currency: chargeObject?.currency || 'usd',
-  })
-}
-
-function readPaymentIntentId(paymentIntent: string | Stripe.PaymentIntent | null | undefined) {
-  if (!paymentIntent) return null
-  return typeof paymentIntent === 'string' ? paymentIntent : paymentIntent.id
-}
-
-function readInvoiceSubscriptionId(invoice: Stripe.Invoice) {
-  const subscription = invoice.parent?.subscription_details?.subscription
-    ?? (invoice as Stripe.Invoice & { subscription?: string | Stripe.Subscription | null }).subscription
-  if (!subscription) return null
-  return typeof subscription === 'string' ? subscription : subscription.id
 }
 
 async function readRawBody(req: NextApiRequest) {

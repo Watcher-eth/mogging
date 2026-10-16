@@ -20,6 +20,7 @@ export function loadPhoneFrame() {
 
 export function drawPhoneReport(ctx: CanvasRenderingContext2D, slide: ContentSlide, photo: HTMLImageElement | null, overlay: ReportOverlay | null, width: number, height: number, time: number, brand: CreatorBrand | null = null) {
   if (!frame) return
+  const square = height / width < 1.2
   ctx.save()
   ctx.fillStyle = '#f9faf8'; ctx.fillRect(0, 0, width, height)
   const glow = ctx.createRadialGradient(width*.5,height*.8,0,width*.5,height*.8,width*.75)
@@ -34,13 +35,13 @@ export function drawPhoneReport(ctx: CanvasRenderingContext2D, slide: ContentSli
     ctx.beginPath(); ctx.moveTo(0,y); ctx.lineTo(width,y); ctx.stroke()
   }
   ctx.textBaseline = 'top'; ctx.textAlign = 'center'; ctx.fillStyle = '#09090b'
-  ctx.font = `600 ${width * .078}px "Poster Sans", sans-serif`
+  ctx.font = `600 ${width * (square ? .065 : .078)}px "Poster Sans", sans-serif`
   ctx.fillText(slide.headline || 'Ascend Now', width / 2, height * .06)
-  drawBrandLockup(ctx,brand,width*.19,height*.13,width*.62,'#09090b')
+  drawBrandLockup(ctx,brand,width*.19,height*(square ? .14 : .13),width*.62,'#09090b')
 
   const progress = 1 - Math.pow(1 - Math.min(1, time / 800), 3)
-  const phoneHeight = Math.min(height * .94, width * 1.95), phoneWidth = phoneHeight * 1350 / 2760
-  const x = (width - phoneWidth) / 2, y = height * .205 + (1 - progress) * height * .72
+  const phoneHeight = square ? height * (1 - .235) / .75 : Math.min(height * .94, width * 1.95), phoneWidth = phoneHeight * 1350 / 2760
+  const x = (width - phoneWidth) / 2, y = height * (square ? .235 : .205) + (1 - progress) * height * .72
   ctx.save(); ctx.shadowColor = 'rgba(0,0,0,.20)'; ctx.shadowBlur = width * .045; ctx.shadowOffsetY = width * .015
   ctx.drawImage(frame, x, y, phoneWidth, phoneHeight); ctx.restore()
   // Published Apple frame screen coordinates, not a recreated device outline.
@@ -79,10 +80,19 @@ export function loadHandheldPhone() {
 
 export function drawHandheldReport(ctx: CanvasRenderingContext2D, slide: ContentSlide, photo: HTMLImageElement | null, overlay: ReportOverlay | null, width: number, height: number, time: number, brand: CreatorBrand | null) {
   if (!handheld) return
+  const square = height / width < 1.2
   // Coordinates are calibrated to the photographed display, preserving the photo's aspect ratio.
-  const scale = Math.max(width / 941,height / 1672)
-  const offsetX = (width - 941 * scale) / 2, offsetY = (height - 1672 * scale) / 2
-  ctx.save(); ctx.drawImage(handheld,offsetX,offsetY,941 * scale,1672 * scale)
+  const scale = square ? Math.min(width / 941, height * .69 / 918) : Math.max(width / 941,height / 1672)
+  const offsetX = (width - 941 * scale) / 2, offsetY = square ? height * .24 - 420 * scale : (height - 1672 * scale) / 2
+  ctx.save()
+  if (square) {
+    const backdropScale = Math.max(width * 1.6 / 941, height * 1.6 / 1672)
+    ctx.fillStyle = '#080a0d'; ctx.fillRect(0,0,width,height)
+    ctx.save(); ctx.filter = `blur(${width * .10}px)`
+    ctx.drawImage(handheld,(width - 941 * backdropScale) / 2,(height - 1672 * backdropScale) / 2,941 * backdropScale,1672 * backdropScale)
+    ctx.restore()
+  }
+  ctx.drawImage(handheld,offsetX,offsetY,941 * scale,1672 * scale)
   const screenX = offsetX + 259 * scale, screenY = offsetY + 420 * scale
   const screenWidth = 419 * scale, screenHeight = 918 * scale
   const report = renderEmbeddedReport(ctx,slide,photo,overlay,screenWidth,time)
@@ -93,6 +103,6 @@ export function drawHandheldReport(ctx: CanvasRenderingContext2D, slide: Content
   const reflection = ctx.createLinearGradient(screenX,screenY,screenX + screenWidth,screenY + screenHeight)
   reflection.addColorStop(0,'rgba(255,255,255,.08)'); reflection.addColorStop(.45,'rgba(255,255,255,0)'); reflection.addColorStop(1,'rgba(0,0,0,.10)')
   ctx.fillStyle = reflection; ctx.fillRect(screenX,screenY,screenWidth,screenHeight); ctx.restore()
-  drawBrandLockup(ctx,brand,width*.10,Math.max(height*.085,offsetY + 270 * scale),width*.80)
+  drawBrandLockup(ctx,brand,width*.10,square ? height * .055 : Math.max(height*.085,offsetY + 270 * scale),width*.80)
   ctx.restore()
 }

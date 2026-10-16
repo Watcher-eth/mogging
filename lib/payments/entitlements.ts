@@ -1,3 +1,5 @@
+import { recordVerifiedStripeCheckout } from './stripe-lifecycle'
+import { recordBackendRequest } from '@/lib/reliability/monitor'
 import { randomInt, createHmac } from 'crypto'
 import { and, eq, gt, isNull, inArray, sql, or, lt, gte, count } from 'drizzle-orm'
 import Stripe from 'stripe'
@@ -158,7 +160,12 @@ export async function confirmCheckoutForAccount(sessionId: string, accountId: st
   const existing = await db.query.paymentEntitlements.findFirst({
     where: and(eq(schema.paymentEntitlements.stripeCheckoutSessionId, sessionId), eq(schema.paymentEntitlements.userId, accountId)),
   })
-  if (existing) return
+  if (existing) {
+    const ledger = await db.query.subscriptionEvents.findFirst({
+      where: and(eq(schema.subscriptionEvents.provider, 'stripe'), eq(schema.subscriptionEvents.providerEventId, `checkout:${sessionId}`)), columns: { id: true },
+    })
+    if (ledger) return existing
+  }
   const session = await getStripe().checkout.sessions.retrieve(sessionId, { expand: ['subscription', 'customer'] })
   const owner = session.metadata?.accountId || session.metadata?.userId
   if (owner !== accountId || (session.client_reference_id && session.client_reference_id !== accountId)) {
@@ -168,6 +175,14 @@ export async function confirmCheckoutForAccount(sessionId: string, accountId: st
     throw new ApiError(409, 'Payment confirmation is still processing')
   }
   await grantEntitlementFromCheckoutSession({ session })
+  await recordVerifiedStripeCheckout(session).catch(async () => {
+    await recordBackendRequest('payments/stripe-reporting', { outcome: 'failed', code: 'billing_record_failed', alert: true }, 0)
+  })
+  const entitlement = await db.query.paymentEntitlements.findFirst({
+    where: and(eq(schema.paymentEntitlements.stripeCheckoutSessionId, sessionId), eq(schema.paymentEntitlements.userId, accountId)),
+  })
+  if (!entitlement) throw new ApiError(409, 'Payment confirmation is still processing')
+  return entitlement
 }
 
 export async function grantEntitlementFromCheckoutSession({
@@ -348,7 +363,7 @@ async function loadScanAccess(owner: EntitlementOwner, verifiedSubscriber?: Reve
   const now = new Date()
   const active = rows.filter(row => activePro(row, now))
   const allowanceKeys: string[] = []
-  const grant = async (key: string, plan: 'weekly' | 'monthly' | 'yearly', start: Date, end: Date) => {
+  const grant = async (key: string, plan: 'weekly' | 'monthly' | 'yearly', start: Date, end: Date, sandbox = false) => {
     const period = scanPeriod(plan, start, end, now)
     if (!period) return
     const periodKey = `${key}:scans:${period.start.toISOString()}`
@@ -366,6 +381,7 @@ async function loadScanAccess(owner: EntitlementOwner, verifiedSubscriber?: Reve
       stripeCheckoutSessionId: periodKey,
       product: 'evaluation',
       source: 'subscription_allowance',
+      metadata: { sandbox },
       creditBalance: Math.max(0, period.credits - (legacy?.used || 0)),
       creditExpiresAt: period.end,
       currentPeriodStart: period.start,
@@ -383,11 +399,11 @@ async function loadScanAccess(owner: EntitlementOwner, verifiedSubscriber?: Reve
     await db.insert(schema.paymentEntitlements).values({
       userId: owner.userId, mobileInstallId: owner.mobileInstallId || `account_${owner.userId}`,
       stripeCheckoutSessionId: rc.key, product: `mobile_subscription_${rc.plan}`,
-      source: 'revenuecat_subscription', creditBalance: 0,
+      source: 'revenuecat_subscription', metadata: { sandbox: rc.sandbox }, creditBalance: 0,
       currentPeriodStart: rc.start, currentPeriodEnd: rc.end,
     }).onConflictDoNothing({ target: schema.paymentEntitlements.stripeCheckoutSessionId })
     const ownerRow = await db.query.paymentEntitlements.findFirst({ where: eq(schema.paymentEntitlements.stripeCheckoutSessionId, rc.key) })
-    if (ownerRow?.userId === owner.userId) await grant(rc.key, rc.plan, rc.start, rc.end)
+    if (ownerRow?.userId === owner.userId) await grant(rc.key, rc.plan, rc.start, rc.end, rc.sandbox)
   }
   rows = await db.query.paymentEntitlements.findMany({ where: getOwnerWhere(owner) })
   const spendable = rows.filter(row =>

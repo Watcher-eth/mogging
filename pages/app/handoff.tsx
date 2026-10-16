@@ -12,6 +12,7 @@ const appStoreUrl = 'https://apps.apple.com/us/app/mogging-face-rating/id6771414
 type HandoffResponse = {
   token: string
   expiresAt: string
+  analysisUrl?: string
 }
 
 export default function PaymentHandoffPage() {
@@ -37,6 +38,10 @@ export default function PaymentHandoffPage() {
       try {
         const result = await apiPost<HandoffResponse>('/api/payments/handoff/create', { sessionId }, { signal: AbortSignal.timeout(20_000) })
         if (cancelled) return
+        if (result.analysisUrl) {
+          await router.replace(result.analysisUrl)
+          return
+        }
         setHandoff(result)
         timer = setTimeout(() => setRetry(value => value + 1), Math.max(1000, Date.parse(result.expiresAt) - Date.now() + 100))
         trackWebEvent('handoff_created', { stripeCheckoutSessionId: sessionId })
@@ -56,7 +61,7 @@ export default function PaymentHandoffPage() {
       cancelled = true
       if (timer) clearTimeout(timer)
     }
-  }, [router.isReady, sessionId, status, retry])
+  }, [router, router.isReady, sessionId, status, retry])
 
   const token = handoff?.token || (!sessionId || status === 'unauthenticated' ? suppliedToken : null)
   const appUrl = useMemo(() => {

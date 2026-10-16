@@ -1,3 +1,5 @@
+import { createHash } from 'node:crypto'
+import { landingProperties, parseLandingAssignment } from '@/lib/analytics/landing'
 import type Stripe from 'stripe'
 import { and, eq, or } from 'drizzle-orm'
 import { db, schema } from '@/lib/db'
@@ -32,6 +34,9 @@ export function normalizeStripeLifecycle(event: Stripe.Event) {
         amount = typeof value.amount_total === 'number' ? value.amount_total / 100 : null
       } else eventName = 'checkout_confirmed' // Invoice owns subscription revenue.
       break
+    case 'payment_intent.payment_failed':
+    case 'checkout.session.async_payment_failed': eventName = 'payment_failed'; break
+    case 'checkout.session.expired': eventName = 'checkout_expired'; break
     case 'payment_intent.succeeded':
       eventName = 'payment_received' // Retained for reconciliation; invoices own subscription revenue.
       break
@@ -55,9 +60,10 @@ export function normalizeStripeLifecycle(event: Stripe.Event) {
     externalUserId: id(value.customer), subscriptionId: event.type.startsWith('customer.subscription.') ? id(value) : subscription,
     transactionId: id(value.payment_intent) || id(value.charge), productId: typeof metadata.product === 'string' ? metadata.product : null,
     amount: amount == null ? null : String(amount), currency, occurredAt: new Date(event.created * 1000),
-    properties: { status: value.status ?? null, cancel_at_period_end: value.cancel_at_period_end ?? null,
+    properties: { timestamp_estimated: event.id.startsWith('checkout:'), status: value.status ?? null, cancel_at_period_end: value.cancel_at_period_end ?? null,
       period_type: value.status === 'trialing' ? 'TRIAL' : 'NORMAL',
-      cancel_reason: object(value.cancellation_details).reason ?? null, billing_reason: value.billing_reason ?? null },
+      cancel_reason: object(value.cancellation_details).reason ?? null, billing_reason: value.billing_reason ?? null,
+      failure_code: object(value.last_payment_error).code ?? null, decline_code: object(value.last_payment_error).decline_code ?? null },
     candidateAccountId: typeof metadata.accountId === 'string' ? metadata.accountId : typeof metadata.userId === 'string' ? metadata.userId : null,
   }
 }
@@ -83,4 +89,38 @@ export async function recordStripeLifecycle(event: Stripe.Event) {
   fact.externalUserId ||= prior?.externalUserId ?? null
   const user = candidate ? await db.query.users.findFirst({ where: eq(schema.users.id, candidate), columns: { id: true } }) : null
   await db.insert(schema.subscriptionEvents).values({ ...fact, accountId: user?.id }).onConflictDoNothing()
+}
+
+
+// The checkout ID is the deduplication key across return, webhook and recovery.
+export async function recordStripeBillingEvent(event: Stripe.Event) {
+  await recordStripeLifecycle(event)
+  if (!['checkout.session.completed', 'checkout.session.async_payment_succeeded'].includes(event.type)) return
+  const session = event.data.object as Stripe.Checkout.Session
+  if (session.payment_status !== 'paid') return
+  const prior = await db.query.analyticsEvents.findFirst({
+    where: and(eq(schema.analyticsEvents.eventName, 'checkout_completed'), eq(schema.analyticsEvents.sessionId, session.id), eq(schema.analyticsEvents.platform, 'server')),
+    columns: { id: true },
+  })
+  if (prior) return
+  const fact = normalizeStripeLifecycle(event)!
+  const accountId = fact.candidateAccountId ? (await db.query.users.findFirst({ where: eq(schema.users.id, fact.candidateAccountId), columns: { id: true } }))?.id : null
+  const hash = createHash('sha256').update(`stripe-checkout:${session.id}`).digest('hex')
+  await db.insert(schema.analyticsEvents).values({
+    eventId: `${hash.slice(0,8)}-${hash.slice(8,12)}-5${hash.slice(13,16)}-a${hash.slice(17,20)}-${hash.slice(20,32)}`,
+    eventName: 'checkout_completed', sessionId: session.id, accountId,
+    platform: 'server', source: 'stripe_verified', environment: session.livemode ? 'production' : 'development',
+    occurredAt: new Date(event.created * 1000), properties: {
+      product: session.metadata?.product || 'unknown', mode: session.mode, status: session.payment_status,
+      price: session.amount_total, currency: session.currency,
+      ...landingProperties(parseLandingAssignment(session.metadata?.landingAssignment)),
+    },
+  }).onConflictDoNothing({ target: schema.analyticsEvents.eventId })
+}
+
+export async function recordVerifiedStripeCheckout(session: Stripe.Checkout.Session) {
+  await recordStripeBillingEvent({
+    id: `checkout:${session.id}`, type: 'checkout.session.completed', created: Math.floor(Date.now() / 1000),
+    livemode: session.livemode, data: { object: session },
+  } as Stripe.Event)
 }

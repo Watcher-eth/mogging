@@ -176,7 +176,7 @@ export function drawSlideFrame(ctx: CanvasRenderingContext2D, slide: ContentSlid
   else if (slide.templateId === 'phone-report') drawPhoneReport(ctx, slide, image, overlay, width, height, timeMs, brand)
   else if (slide.templateId === 'handheld-report') drawHandheldReport(ctx, slide, image, overlay, width, height, timeMs, brand)
   else if (slide.templateId === 'mock-report') drawMockReport(ctx, slide, image, overlay, width, height, timeMs)
-  else drawPoster(ctx, slide, image, width, height, timeMs, overlay)
+  else drawPoster(ctx, slide, image, width, height, timeMs, overlay, brand)
 }
 
 function loadImage(src: string) { return new Promise<HTMLImageElement>((resolve, reject) => { const image = new Image(); image.onload = () => resolve(image); image.onerror = () => reject(new Error('Image export failed')); image.src = src }) }

@@ -44,10 +44,12 @@ const revenueMetrics: ChartMetric[] = [
   { key: 'net', label: 'Net', color: colors.green },
 ]
 const qualityMetrics: ChartMetric[] = [{ key: 'failures', label: 'Scan failures', color: colors.orange }]
-const operationalSections = ['Authentication','Purchases','Referrals','Notifications','AttributionLedger']
+const operationalSections = ['Authentication','Purchases','Scans','Referrals','Notifications','AttributionLedger']
 const observationNote = 'Counts are observed events per UTC bucket, except active devices and first app opens which are distinct devices. Buckets with no recorded events are omitted; a gap does not establish zero users or an outage. Boundary buckets are partial. Purchase completion is a client signal, not verified billing.'
 type Health = { pending_events: number; pending_billing_events: number; unfinished_webhooks: number;
   oldest_pending_event: string | null; last_revenuecat_receipt: string | null; last_stripe_receipt: string | null;
+  unrecorded_stripe_purchases: number;
+  stripe_reconciliation: { checked_at: string; webhook_ready: boolean | null; events_checked: number } | null;
   configured: Record<string, boolean> }
 
 export default function AnalyticsAdminPage() {
@@ -88,6 +90,8 @@ export default function AnalyticsAdminPage() {
     {report.error ? <Notice>Analytics could not load. <button className="underline" onClick={() => void report.mutate()}>Try again</button>. Missing data is never shown as zero.</Notice> : null}
     {tab === 'Reliability'?<ReliabilityReport days={Number(days)}/>:!data ? !report.error ? <Notice>Loading reporting snapshot…</Notice> : null : <>
       {!data.summary.events ? <Notice>No production behavior events in this window. Check ingestion and the released app version; billing may still be available.</Notice> : null}
+      <p className="mb-5 text-xs leading-5 text-zinc-500">Customer activity excludes creator/admin pages, explicitly marked internal accounts and known sandbox sessions. Older activity without runtime evidence remains included.</p>
+      {data.audienceBreakdown ? <DataDetails><Table rows={data.audienceBreakdown} columns={['audience','devices','events','runtime_unconfirmed_events']} /></DataDetails> : null}
       {tab === 'Overview' ? <Overview data={data} days={Number(days)} /> : null}
       {tab === 'Experiments' ? <ExperimentsReport data={data} /> : null}
       {tab === 'Acquisition' ? <Acquisition data={data} days={Number(days)} /> : null}
@@ -135,7 +139,7 @@ function DailyChart({ data, days, title, metrics }: { data: AnalyticsDashboard; 
 function Overview({ data, days }: { data: AnalyticsDashboard; days: number }) {
   return <>
     <div className="admin-stats-grid">
-      <Stat title="Active devices" value={count(data.summary.actors)} note="Devices / browsers, across the period" />
+      <Stat title="Active devices" value={count(data.summary.actors)} note="Customer devices / browsers; creator and admin pages excluded" />
       <Stat title="First app opens" value={count(data.summary.first_opens)} note="Observed new installations" />
       <Stat title="Completed scans" value={count(data.summary.evaluations)} note="Client-observed completions" />
       <Stat title="Scan failures" value={count(data.summary.failures)} note="Events, not a cohort failure rate" />
@@ -147,11 +151,11 @@ function Overview({ data, days }: { data: AnalyticsDashboard; days: number }) {
 }
 function StoredReports({ data, days }: { data: AnalyticsDashboard; days: number }) {
   const ledger = data.reportLedger
-  return <Panel title="Stored user reports" description="Saved report records across all platforms; seeded examples excluded." note="Counts by report creation time in UTC. Reports can be updated or reused, so they are not scan attempts. These records have no environment tag and can include internal test uploads. This panel is independent of the client platform filter.">
+  return <Panel title="Stored user reports" description="Customer report records across all platforms; examples, known sandbox and internal checks excluded." note="Counts by report creation time in UTC. Reports can be updated or reused, so they are not scan attempts. Known sandbox credits, explicitly internal accounts and release checks are excluded. Older reports without provenance remain unclassified and retained. This panel is independent of the client platform filter.">
     <div className="admin-stats-grid">
       <Stat title="Completed reports" value={count(ledger.summary.completed)} note="Saved user report records" />
       <Stat title="Failed reports" value={count(ledger.summary.failed)} note="Saved failed report records" />
-      <Stat title="Confirmed credit scans" value={count(data.scanLedger.summary.completed)} note="Completed non-sandbox reservations, including free credits" />
+      <Stat title="Confirmed credit scans" value={count(data.scanLedger.summary.completed)} note="Customer reservations, including free credits; known internal and sandbox checks excluded" />
       <Stat title="Client completions" value={count(data.summary.evaluations)} note="Observed events for the selected platform" />
     </div>
     <AnalyticsChart rows={ledger.daily} metrics={[{key:'completed',label:'Completed reports',color:colors.blue},{key:'failed',label:'Failed reports',color:colors.orange}]} days={days} title="Stored user reports" />
@@ -187,6 +191,22 @@ function Onboarding({ data, days }: { data: AnalyticsDashboard; days: number }) 
     <Panel title="Step activity & screen exposure" description="Additional context from recorded screen events." note="Step activity is unique devices per milestone, not sequential completion. Foreground exposure is recorded on exits, not active attention; app termination may omit exits. Durations are capped at 30 minutes."><DataDetails><Table rows={data.steps} columns={['step','viewed','completed','skipped','back_actions']} /><Table rows={data.screens} columns={['screen','exits','median_ms','p90_ms']} /></DataDetails></Panel>
   </>
 }
+function StripeReportingHealth() {
+  const health = useSWR<Health>('/api/admin/analytics-health', apiGet, { dedupingInterval: 60_000, shouldRetryOnError: false })
+  const data = health.data
+  return <Panel title="Stripe reporting health" description="Verified purchases are recorded once across checkout return, webhooks and recovery." note="Recovery checks the previous seven days every five minutes. Technical failures appear in Backend reliability; payment failure reasons appear in the billing context below.">
+    {health.error ? <Notice>Stripe reporting health could not load.</Notice> : !data ? <p className="admin-empty">Checking Stripe reporting…</p> : <>
+      {data.unrecorded_stripe_purchases > 0 ? <Notice>{count(data.unrecorded_stripe_purchases)} paid Stripe purchases are missing from the billing ledger. Revenue is incomplete until recovery succeeds.</Notice> : null}
+      {data.stripe_reconciliation?.webhook_ready === false ? <Notice>Stripe webhook configuration needs attention. Scheduled recovery is checking for missed events.</Notice> : null}
+      <Table rows={[
+        { metric: 'Paid purchases missing from ledger', value: data.unrecorded_stripe_purchases },
+        { metric: 'Last stored Stripe event', value: data.last_stripe_receipt },
+        { metric: 'Last recovery check', value: data.stripe_reconciliation?.checked_at ?? 'Awaiting first check' },
+        { metric: 'Webhook configuration', value: data.stripe_reconciliation ? data.stripe_reconciliation.webhook_ready === null ? 'Unable to check' : data.stripe_reconciliation.webhook_ready ? 'Ready' : 'Needs attention' : 'Not yet checked' },
+      ]} columns={['metric','value']} />
+    </>}
+  </Panel>
+}
 function Revenue({ data, days }: { data: AnalyticsDashboard; days: number }) {
   const [selectedCurrency, setSelectedCurrency] = useState('')
   const currency = data.revenue.some(row => row.currency === selectedCurrency) ? selectedCurrency : String(data.revenue[0]?.currency || '')
@@ -199,6 +219,7 @@ function Revenue({ data, days }: { data: AnalyticsDashboard; days: number }) {
       <div className="admin-stats-grid"><Stat title="Known gross" value={money(total.gross, currency)} note="Recorded positive amounts" /><Stat title="Recorded refunds" value={money(total.refunds, currency)} note="Recorded negative amounts" /><Stat title="Known net" value={money(total.net, currency)} note="Before provider fees and taxes" /><Stat title="Unknown amounts" value={count(total.missing_amount_events)} note="Excluded from monetary totals" /></div>
       <Panel title="Revenue over time" description={`${days === 1 ? "Hourly" : "Daily"} recorded amounts · ${currency}`} note="Provider-confirmed events, deduplicated by the billing ledger. Net is gross minus recorded refunds, before fees and taxes; it is not profit or MRR. Buckets without ledger events are omitted. Buckets with only unknown amounts are excluded from the chart."><AnalyticsChart key={currency} title="Revenue over time" rows={rows} metrics={revenueMetrics} days={days} currency={currency} /><DataDetails><Table rows={rows} columns={['day','gross','refunds','net','missing_amount_events']} /></DataDetails></Panel>
     </> : <Notice>No verified billing events in this window.</Notice>}
+    <StripeReportingHealth />
     <Panel title="Revenue by currency" description="Amounts are never combined across currencies."><Table rows={data.revenue.map(row => ({ ...row, gross: money(row.gross, String(row.currency)), refunds: money(row.refunds, String(row.currency)), net: money(row.net, String(row.currency)) }))} columns={['currency','gross','refunds','net','missing_amount_events']} /></Panel>
     <Panel title="Revenue by provider & product" description="Currency-separated ledger amounts and account-linking coverage." note="Counts are observed ledger events and distinct subscriptions, not current active subscriber balances. Missing amounts remain unknown; fees and taxes are not deducted."><Table rows={(data.billingProducts ?? []).map(row => ({...row, gross:money(row.gross,String(row.currency)),refunds:money(row.refunds,String(row.currency)),net:money(row.net,String(row.currency))}))} columns={['provider','product','currency','events','customers','subscriptions','unlinked_events','gross','refunds','net','missing_amount_events']} /></Panel>
     <DimensionReport title="Billing context & reasons" rows={data.billingDimensions ?? []} />

@@ -7,7 +7,7 @@ import { ApiError, handleApiError, json, methodNotAllowed, parseBody } from '@/l
 import { getRequestUserId } from '@/lib/auth/mobile-session'
 import { env } from '@/lib/env'
 import { recordCreatorCheckout, resolveCreatorAttribution, stripeAttributionMetadata } from '@/lib/creator/attribution'
-import { getCheckoutLineItem, getProductConfig } from '@/lib/payments/entitlements'
+import { getCheckoutLineItem, getProductConfig, getEntitlementSummary } from '@/lib/payments/entitlements'
 import { getStripe } from '@/lib/payments/stripe'
 import type { PaymentProduct } from '@/lib/db/schema'
 
@@ -27,6 +27,8 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
     const input = parseBody(checkoutSchema, req.body)
     const accountId = await getRequestUserId(req, res)
     if (!accountId) throw new ApiError(401, 'Sign in before starting checkout')
+    const access = await getEntitlementSummary({ userId: accountId, mobileInstallId: input.mobileInstallId })
+    if (access.evaluationCredits >= input.imageCount) return json(res, 200, { url: '/analysis?resume=1' })
     const origin = getRequestOrigin(req)
     const productId: PaymentProduct = input.imageCount > 1 ? 'evaluation_pack_3' : 'evaluation'
     const product = getProductConfig(productId)
@@ -47,6 +49,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
       allow_promotion_codes: true,
       client_reference_id: accountId,
       line_items: [getCheckoutLineItem(productId)],
+      ...(product.mode === 'payment' ? { payment_intent_data: { metadata: { product: productId, accountId, userId: accountId, source: 'web_analysis' } } } : {}),
       metadata: {
         product: productId,
         mobileInstallId: input.mobileInstallId,
@@ -57,7 +60,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
         userId: accountId,
         ...stripeAttributionMetadata(attribution),
       },
-      success_url: `${origin}/app/handoff?session_id={CHECKOUT_SESSION_ID}`,
+      success_url: `${origin}/analysis?checkout=success&session_id={CHECKOUT_SESSION_ID}`,
       cancel_url: `${origin}/analysis?checkout=cancelled`,
     })
 

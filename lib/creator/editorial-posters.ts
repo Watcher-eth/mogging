@@ -1,3 +1,4 @@
+import { drawBrandLockup, type CreatorBrand } from './brand'
 import { drawReportOverlay, type ReportOverlay } from './report-overlay'
 import { enrichFaceLandmarks } from './mobile-overlay-engine/enrich-landmarks'
 import { getImageTransform, projectImagePoint } from './mobile-overlay-engine/layout'
@@ -167,7 +168,7 @@ function baselineText(ctx: CanvasRenderingContext2D, value: string, x: number, b
   ctx.font=`${weight} ${size}px ${sans}`; ctx.fillStyle=color; ctx.textAlign=align; ctx.textBaseline='alphabetic'
   ctx.fillText(value,x,baseline)
 }
-export function drawPoster(ctx: CanvasRenderingContext2D, slide: ContentSlide, image: HTMLImageElement | null, width: number, height: number, time: number, overlay: ReportOverlay | null = null) {
+export function drawPoster(ctx: CanvasRenderingContext2D, slide: ContentSlide, image: HTMLImageElement | null, width: number, height: number, time: number, overlay: ReportOverlay | null = null, brand: CreatorBrand | null = null) {
   const family=posterFamily(slide.templateId), dark=['performance','afterimage'].includes(family), ink=dark?'#f0efea':'#161818', muted=dark?'#a2a4a2':'#6e716d'
   ctx.save(); ctx.fillStyle=dark?'#080909':'#ffffff'; ctx.fillRect(0,0,width,height)
   ctx.globalAlpha=1-Math.pow(1-Math.min(1,time/900),3)
@@ -189,13 +190,21 @@ export function drawPoster(ctx: CanvasRenderingContext2D, slide: ContentSlide, i
     ctx.restore()
   }
   const inset=width*.055, right=width-inset
-  ctx.save(); ctx.letterSpacing=`${-width*.00065}px`
-  text(ctx,'mogging.com',inset,height*.045,width*.035,ink,400,'"Poster Brand", sans-serif')
-  ctx.restore()
-  if (brandIcon) {
-    const size=width*.041
-    ctx.save(); ctx.beginPath(); ctx.roundRect(right-size,height*.044,size,size,size*.31); ctx.clip()
-    ctx.drawImage(brandIcon,right-size,height*.044,size,size); ctx.restore()
+  const square = height / width < 1.2
+  if (square && family === 'afterimage') {
+    drawBrandLockup(ctx, brand, width * .13, height * .035, width * .74, ink)
+  } else {
+    ctx.save(); ctx.letterSpacing=`${-width*.00065}px`
+    text(ctx,'mogging.com',inset,height*(family==='precision' ? .025 : .045),width*.035,ink,square ? 650 : 400,square ? sans : '"Poster Brand", sans-serif')
+    ctx.restore()
+    const size=width*.041, gap=width*.014
+    const iconY=height*(family==='precision' ? .024 : .044)
+    if (brandIcon) {
+      const iconX=right-size-(square && brand ? size+gap : 0)
+      ctx.save(); ctx.beginPath(); ctx.roundRect(iconX,iconY,size,size,size*.31); ctx.clip()
+      ctx.drawImage(brandIcon,iconX,iconY,size,size); ctx.restore()
+    }
+    if (square && brand) ctx.drawImage(brand.appStore,right-size,iconY,size,size)
   }
   if(family==='performance') {
     const baseline=height*.943, score=slide.currentScore||'—', size=width*.145
@@ -208,8 +217,8 @@ export function drawPoster(ctx: CanvasRenderingContext2D, slide: ContentSlide, i
   } else if(family==='precision') {
     const score=slide.categoryScores.find(item=>item.categoryId===slide.categoryId)?.value||slide.currentScore
     const baseline=height*.967
-    baselineText(ctx,'ANALYSIS',inset,baseline-width*.085,width*.016,muted)
-    baselineText(ctx,slide.metricLabel,inset,baseline-width*.02,width*.056,ink,500)
+    baselineText(ctx,'ANALYSIS',inset,baseline-width*.065,width*.016,muted)
+    baselineText(ctx,slide.metricLabel,inset,baseline,width*.056,ink,500)
     baselineText(ctx,score||'—',right-width*.085,baseline,width*.115,'#161818',500,'right')
     baselineText(ctx,`/ ${categoryScoreMax(slide.categoryId)}`,right,baseline,width*.021,muted,400,'right')
   } else {

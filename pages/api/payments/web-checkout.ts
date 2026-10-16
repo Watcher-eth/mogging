@@ -101,6 +101,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
         ...(customer ? { customer } : {}),
         client_reference_id: accountId,
         line_items: [getCheckoutLineItem(input.product)],
+        ...(product.mode === 'payment' ? { payment_intent_data: { metadata: { product: input.product, accountId, userId: accountId, source } } } : {}),
         metadata: {
           product: input.product,
           ...(input.returnLocale ? { returnLocale: input.returnLocale } : {}),

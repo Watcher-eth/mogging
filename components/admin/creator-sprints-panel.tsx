@@ -5,7 +5,7 @@ import {
   SprintStatus,
 } from '@/components/creator/campaign-summary'
 import { SocialPlatformLogo } from '@/components/brand/social-platform-logo'
-import type { AdminSubmission } from '@/components/admin/creator-types'
+import type { AdminPayment, AdminSubmission } from '@/components/admin/creator-types'
 import { useState, type FormEvent } from 'react'
 import useSWR from 'swr'
 import {
@@ -44,9 +44,11 @@ const lines = (value: string) =>
     .filter(Boolean)
 export function CreatorSprintsPanel({
   submissions,
+  payments,
   onSelectSubmission,
 }: {
   submissions: AdminSubmission[]
+  payments: AdminPayment[]
   onSelectSubmission: (submission: AdminSubmission) => void
 }) {
   const { data, error, isLoading, mutate } = useSWR<{
@@ -76,6 +78,17 @@ export function CreatorSprintsPanel({
         ? ['pending', 'in_review'].includes(submission.status)
         : submission.status === submissionStatus),
   )
+  if (submissionStatus === 'approved' || submissionStatus === 'paid') {
+    const latestPayout = new Map<string, number>()
+    for (const payment of payments) {
+      if (payment.status !== 'paid' || !payment.submissionId) continue
+      const paidAt = Date.parse(payment.paidAt || payment.createdAt)
+      latestPayout.set(payment.submissionId, Math.max(latestPayout.get(payment.submissionId) || 0, paidAt))
+    }
+    const activityDate = (submission: AdminSubmission) =>
+      (submission.status === 'paid' ? latestPayout.get(submission.id) : null) ?? Date.parse(submission.updatedAt || submission.createdAt)
+    filteredSubmissions.sort((a, b) => activityDate(b) - activityDate(a) || Date.parse(b.createdAt) - Date.parse(a.createdAt))
+  }
   const filters = [
     { value: 'all', label: 'All campaigns' },
     { value: 'active', label: 'Active' },

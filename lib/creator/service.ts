@@ -27,9 +27,9 @@ export async function getCreatorDashboard(userId: string) {
   const featureFlags = {
     creatorAccountRequiredForSubmission: env.CREATOR_ACCOUNT_REQUIRED_FOR_SUBMISSION,
   }
-  if (!profile) return { profile: null, submissions: [], payments: [], socialAccounts: [], communityMetrics: await communityMetricsPromise, featureFlags }
+  if (!profile) return { profile: null, submissions: [], payments: [], payoutRequests: [], socialAccounts: [], communityMetrics: await communityMetricsPromise, featureFlags }
 
-  const [submissions, payments, socialAccounts, communityMetrics] = await Promise.all([
+  const [submissions, payments, socialAccounts, communityMetrics, payoutRequests] = await Promise.all([
     db.select({ ...getTableColumns(schema.creatorSubmissions), unreadMessages: submissionUnreadCount('creator') })
       .from(schema.creatorSubmissions).where(eq(schema.creatorSubmissions.creatorProfileId, profile.id)).orderBy(desc(schema.creatorSubmissions.createdAt)),
     db.query.creatorPayments.findMany({
@@ -42,6 +42,7 @@ export async function getCreatorDashboard(userId: string) {
       with: { trackingLink: true },
     }),
     communityMetricsPromise,
+    db.query.creatorPayoutRequests.findMany({ where: eq(schema.creatorPayoutRequests.creatorProfileId, profile.id), orderBy: [desc(schema.creatorPayoutRequests.requestedAt)], limit: 100 }),
   ])
 
   const socialAccountsWithLinks = await Promise.all(socialAccounts.map(async (account) => {
@@ -51,7 +52,7 @@ export async function getCreatorDashboard(userId: string) {
     return { ...account, trackingLink: await ensureCreatorTrackingLink(account.id) }
   }))
 
-  return { profile, submissions, payments, socialAccounts: socialAccountsWithLinks, communityMetrics, featureFlags }
+  return { profile, submissions, payments, payoutRequests, socialAccounts: socialAccountsWithLinks, communityMetrics, featureFlags }
 }
 
 async function getCreatorCommunityMetrics() {

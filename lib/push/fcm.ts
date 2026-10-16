@@ -90,6 +90,7 @@ export async function sendAndroidPush(input: {
   body: string;
   target: string;
   collapseId: string;
+  ttlSeconds?: number;
 }) {
   const authorization = await accessToken();
   const response = await fetch(
@@ -108,7 +109,7 @@ export async function sendAndroidPush(input: {
           data: { title: input.title, body: input.body, target: input.target },
           android: {
             priority: "HIGH",
-            ttl: "0s",
+            ttl: `${input.ttlSeconds ?? 0}s`,
             collapse_key: input.collapseId,
           },
         },

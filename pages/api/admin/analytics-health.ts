@@ -19,7 +19,11 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         (select count(*)::int from subscription_events where environment = 'production' and exported_at is null) as pending_billing_events,
         (select count(*)::int from billing_webhook_receipts where processed_at is null and received_at < now() - interval '10 minutes') as unfinished_webhooks,
         (select max(received_at) from subscription_events where provider = 'revenuecat') as last_revenuecat_receipt,
-        (select max(received_at) from subscription_events where provider = 'stripe') as last_stripe_receipt
+        (select max(received_at) from subscription_events where provider = 'stripe') as last_stripe_receipt,
+        (select count(*)::int from payment_entitlements p where stripe_checkout_session_id like 'cs_live_%'
+          and not exists (select 1 from subscription_events b where b.provider = 'stripe' and b.provider_event_id = 'checkout:' || p.stripe_checkout_session_id)) as unrecorded_stripe_purchases,
+        (select jsonb_build_object('checked_at',occurred_at,'webhook_ready',properties->'webhook_ready','events_checked',properties->'events_checked')
+          from analytics_events where event_name = 'backend_billing_reconciliation' and environment = 'production' and source = 'backend' order by occurred_at desc limit 1) as stripe_reconciliation
       `)
     })
     return json(res, 200, { ...health, configured: {

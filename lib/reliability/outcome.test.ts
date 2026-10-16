@@ -32,3 +32,8 @@ test('handled OAuth errors remain failures even when NextAuth redirects; denial 
   expect(authErrorOutcome({ error: new Error('access_denied') })).toEqual({ outcome: 'rejected', code: 'oauth_cancelled', alert: false });
   expect(authErrorOutcome(new Error('private token and url'))).toEqual({ outcome: 'failed', code: 'oauth_failed', alert: true });
 });
+
+test('Stripe signature rejection is a visible billing integration failure', () => {
+  expect(backendOutcome(400, null, 'payments/stripe-webhook')).toEqual({ outcome: 'failed', code: 'billing_signature_invalid', alert: true })
+  expect(backendOutcome(401, null, 'payments/confirm').alert).toBe(false)
+})

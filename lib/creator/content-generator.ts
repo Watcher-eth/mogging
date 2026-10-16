@@ -2,9 +2,9 @@ import { buildMockOverallCategory } from './mock-report-data'
 import { getReportOverlayPreset } from '@/lib/creator/mobile-overlay-engine/report-presets'
 
 export const outputFormats = {
-  vertical: { label: 'Vertical video / Stories', width: 1080, height: 1920 },
-  portrait: { label: 'Portrait CTA · 2:3 (recommended)', width: 1080, height: 1620 },
-  square: { label: 'Square', width: 1080, height: 1080 },
+  vertical: { label: '9:16 · Stories', width: 1080, height: 1920 },
+  portrait: { label: '2:3 · Original (default)', width: 1080, height: 1620 },
+  square: { label: '1:1 · Square', width: 1080, height: 1080 },
 } as const
 
 export type OutputFormatId = keyof typeof outputFormats

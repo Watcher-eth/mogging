@@ -1,3 +1,4 @@
+import { audienceCTEs, customerEvent } from './audience'
 import { sql } from 'drizzle-orm'
 import { db } from '@/lib/db'
 import type { MetricRow } from './analytics'
@@ -29,7 +30,7 @@ export function reliabilityQuery(days:number,now:Date) {
   const end=now.toISOString()
   const bucket=days===1?'YYYY-MM-DD"T"HH24:00:00"Z"':'YYYY-MM-DD'
   const rows=(name:string)=>sql`coalesce((select json_agg(r) from ${sql.identifier(name)} r),'[]'::json)`
-  return sql`with events as materialized (
+  return sql`with ${audienceCTEs()}, events as materialized (
     select occurred_at,properties from analytics_events where event_name='backend_request' and environment='production' and platform='server' and source='backend' and occurred_at>=${start}::timestamp and occurred_at<${end}::timestamp
   ), requests as (
     select occurred_at,properties->>'feature' as feature,properties->>'outcome' as outcome,properties->>'code' as code,properties->>'trace_id' as trace,
@@ -52,7 +53,7 @@ export function reliabilityQuery(days:number,now:Date) {
   ), recent as (
     select feature,code,outcome,duration_ms,trace,occurred_at as latest_event from requests where outcome in ('failed','degraded') order by occurred_at desc limit 50
   ), clients as (
-    select event_name as event,platform,app_version as release,coalesce(properties->>'reason_code','unspecified') as code,count(*) as events,max(occurred_at) as latest_event from analytics_events where environment='production' and platform in ('web','ios','android') and event_name in ('evaluation_failed','photo_validation_failed','purchase_failed','restore_failed','account_auth_failed','account_post_login_failed','share_failed') and occurred_at>=${start}::timestamp and occurred_at<${end}::timestamp group by 1,2,3,4 order by events desc limit 100
+    select event_name as event,platform,app_version as release,coalesce(properties->>'reason_code','unspecified') as code,count(*) as events,max(occurred_at) as latest_event from analytics_events client where ${customerEvent('client')} and platform in ('web','ios','android') and event_name in ('evaluation_failed','photo_validation_failed','purchase_failed','restore_failed','account_auth_failed','account_post_login_failed','share_failed') and occurred_at>=${start}::timestamp and occurred_at<${end}::timestamp group by 1,2,3,4 order by events desc limit 100
   ), notifications as (
     select properties->>'feature' as feature,properties->>'code' as code,properties->>'status' as status,count(*) as events,max(occurred_at) as latest_event from analytics_events where event_name='backend_alert' and environment='production' and source='backend' and occurred_at>=${start}::timestamp and occurred_at<${end}::timestamp group by 1,2,3 order by latest_event desc limit 50
   ), stalled as (${unfinishedEvaluationsQuery(now)}) select json_build_object('summary',(select row_to_json(s) from summary s),'features',${rows('features')},'daily',${rows('daily')},'failures',${rows('failures')},'recent',${rows('recent')},'clients',${rows('clients')},'notifications',${rows('notifications')},'stalled',${rows('stalled')}) as data`

@@ -123,11 +123,6 @@ type AnalysisReport = {
   categories: AnalysisReportCategory[]
 }
 
-type VerifyPaymentResponse = {
-  paid: boolean
-  sessionId: string
-}
-
 type ShareResponse = {
   share: {
     token: string
@@ -152,7 +147,7 @@ type CheckoutResponse = {
   url: string
 }
 
-type ClaimPaymentResponse = {
+type PaymentAccessResponse = {
   entitlements: {
     mobileInstallId: string
     evaluationCredits: number
@@ -223,8 +218,6 @@ export default function AnalysisPage() {
   useEffect(() => {
     analyticsFlow.current ||= crypto.randomUUID()
     trackWebEvent('onboarding_step_viewed', { step, flow_id: analyticsFlow.current, surface: 'web_analysis' })
-    if (step === 'payment') trackWebEvent('paywall_viewed', { surface: 'web_analysis', paywall_id: 'web_analysis', paywall_version: '1', flow_id: analyticsFlow.current })
-    if (step === 'results') trackWebEvent('report_viewed', { surface: 'web_analysis', flow_id: analyticsFlow.current })
   }, [step])
   const [progress, setProgress] = useState(0)
   const [results, setResults] = useState<AnalysisResponse[]>([])
@@ -232,12 +225,21 @@ export default function AnalysisPage() {
   const [cameraOpen, setCameraOpen] = useState(false)
   const [analysisUnlocked, setAnalysisUnlocked] = useState(false)
   const [paymentDialogOpen, setPaymentDialogOpen] = useState(false)
+  const viewedAnalysisId = step === 'results' ? results[0]?.analysis.id : undefined
+  useEffect(() => {
+    if (viewedAnalysisId) trackWebEvent('report_viewed', { report_id: viewedAnalysisId, surface: 'web_analysis', flow_id: analyticsFlow.current })
+  }, [viewedAnalysisId])
+  useEffect(() => {
+    if (paymentDialogOpen) trackWebEvent('paywall_viewed', { surface: 'web_analysis', paywall_id: 'web_analysis', paywall_version: '1', flow_id: analyticsFlow.current })
+  }, [paymentDialogOpen])
   const [checkoutLoading, setCheckoutLoading] = useState(false)
   const [shareOpen, setShareOpen] = useState(false)
   const [shareUrl, setShareUrl] = useState<string | null>(null)
   const [shareLoading, setShareLoading] = useState(false)
   const [loginOpen, setLoginOpen] = useState(false)
   const loadedAnalysisIdRef = useRef<string | null>(null)
+  const resumedCheckoutRef = useRef<string | null>(null)
+  const analysisRunningRef = useRef(false)
   const [battleOptOutByPhotoId, setBattleOptOutByPhotoId] = useState<Record<string, boolean>>({})
   const [battleOptOutSaving, setBattleOptOutSaving] = useState(false)
   const [landmarkPendingIds, setLandmarkPendingIds] = useState<Record<string, boolean>>({})
@@ -288,13 +290,22 @@ export default function AnalysisPage() {
 
     setImages(preparedImages)
     setError(null)
-    setAnalysisUnlocked(!paidAnalysisRequired)
+    setAnalysisUnlocked(true)
     setPaymentDialogOpen(false)
     setProgress(18)
     setStep('actual-analysis')
 
-    if (!paidAnalysisRequired) {
-      void runActualAnalysis(preparedImages)
+    try {
+      const installId = ensureAnalysisWebInstallId()
+      const access = await apiGet<PaymentAccessResponse>(`/api/payments/entitlements?mobileInstallId=${encodeURIComponent(installId)}`)
+      if (access.entitlements.evaluationCredits >= preparedImages.length) {
+        await runActualAnalysis(preparedImages, installId, gender)
+      } else {
+        setAnalysisUnlocked(false)
+      }
+    } catch (caught) {
+      setStep('upload')
+      setError(caught instanceof Error ? caught.message : 'Unable to check your scan credits. Please try again.')
     }
   }
 
@@ -313,20 +324,19 @@ export default function AnalysisPage() {
       return
     }
 
-    if (!paidAnalysisRequired) {
-      setAnalysisUnlocked(true)
-      setPaymentDialogOpen(false)
-      setStep('actual-analysis')
-      setProgress(30)
-      void runActualAnalysis()
-      return
-    }
-
     setCheckoutLoading(true)
     setError(null)
 
     try {
       const paymentInstallId = ensureAnalysisWebInstallId()
+      const access = await apiGet<PaymentAccessResponse>(`/api/payments/entitlements?mobileInstallId=${encodeURIComponent(paymentInstallId)}`)
+      if (access.entitlements.evaluationCredits >= images.length) {
+        setAnalysisUnlocked(true)
+        setPaymentDialogOpen(false)
+        setStep('actual-analysis')
+        await runActualAnalysis(images, paymentInstallId, gender)
+        return
+      }
       await saveAnalysisDraft({
         gender,
         images,
@@ -338,23 +348,21 @@ export default function AnalysisPage() {
       })
       window.location.href = response.url
     } catch (checkoutError) {
+      trackWebEvent('purchase_failed', { surface: 'web_analysis', purchase_stage: 'checkout_open', reason_code: checkoutError instanceof ApiClientError ? checkoutError.code : 'request_failed', http_status: checkoutError instanceof ApiClientError ? checkoutError.status : undefined })
       setError(checkoutError instanceof ApiClientError ? checkoutError.message : 'Unable to open checkout')
+    } finally {
       setCheckoutLoading(false)
     }
   }
 
-  async function runActualAnalysis(draftImages = images, paymentInstallId: string | null = null) {
+  const runActualAnalysis = useCallback(async (draftImages: AnalysisDraftImage[], paymentInstallId: string, analysisGender: 'male' | 'female' | 'other') => {
     if (draftImages.length === 0) {
       setStep('upload')
       setError('Upload an image before starting analysis.')
       return
     }
-    if (paidAnalysisRequired && !paymentInstallId) {
-      setStep('payment')
-      setPaymentDialogOpen(true)
-      setError('Complete checkout before generating your report.')
-      return
-    }
+    if (analysisRunningRef.current) return
+    analysisRunningRef.current = true
 
     const analyticsStarted = Date.now()
     const attemptId = crypto.randomUUID()
@@ -366,7 +374,7 @@ export default function AnalysisPage() {
         setProgress(Math.round(30 + (index / draftImages.length) * 62))
         const result = await apiPost<AnalysisResponse>('/api/web/analyze', {
           imageData: image.dataUrl,
-          gender,
+          gender: analysisGender,
           photoType: 'face',
           name: image.name,
           hairColor: image.hairColor ?? null,
@@ -382,15 +390,17 @@ export default function AnalysisPage() {
 
       setProgress(100)
       setResults(analysisResults)
-      trackWebEvent('evaluation_completed', { attempt_id: attemptId, flow_id: analyticsFlow.current, duration_ms: Date.now() - analyticsStarted, surface: 'web_analysis' })
+      trackWebEvent('evaluation_completed', { report_id: analysisResults[0]?.analysis.id, attempt_id: attemptId, flow_id: analyticsFlow.current, duration_ms: Date.now() - analyticsStarted, surface: 'web_analysis' })
       setStep('results')
       await clearAnalysisDraft()
     } catch (analysisError) {
-      trackWebEvent('evaluation_failed', { attempt_id: attemptId, flow_id: analyticsFlow.current, duration_ms: Date.now() - analyticsStarted, reason_code: 'request_failed', surface: 'web_analysis' })
+      trackWebEvent('evaluation_failed', { attempt_id: attemptId, flow_id: analyticsFlow.current, duration_ms: Date.now() - analyticsStarted, reason_code: analysisError instanceof ApiClientError ? analysisError.code : 'request_failed', http_status: analysisError instanceof ApiClientError ? analysisError.status : undefined, surface: 'web_analysis' })
       setStep('actual-analysis')
       setError(analysisError instanceof Error ? analysisError.message : 'Analysis failed')
+    } finally {
+      analysisRunningRef.current = false
     }
-  }
+  }, [])
 
   async function toggleBattleOptOut(photoId: string, optOut: boolean) {
     const previousValue = battleOptOutByPhotoId[photoId] ?? !results.find((result) => result.photo.id === photoId)?.photo.isPublic
@@ -411,80 +421,66 @@ export default function AnalysisPage() {
     }
   }
 
-  const resumeAfterPayment = useCallback(async (sessionId: string, checkoutInstallId: string | null) => {
+  const resumeAfterPayment = useCallback(async (sessionId: string) => {
     try {
       setError(null)
       setAnalysisUnlocked(true)
       setPaymentDialogOpen(false)
       setStep('actual-analysis')
       setProgress(28)
-      const paymentInstallId = ensureAnalysisWebInstallId(checkoutInstallId)
-
-      const [verification, draft] = await Promise.all([
-        apiGet<VerifyPaymentResponse>(`/api/payments/verify?session_id=${encodeURIComponent(sessionId)}`),
+      const [confirmation, draft] = await Promise.all([
+        apiPost<PaymentAccessResponse>('/api/payments/confirm', { sessionId }),
         loadAnalysisDraft(),
       ])
-
-      if (!verification.paid) {
-        setStep('payment')
-        setError('Payment has not completed yet.')
-        return
-      }
-
-      if (!draft || draft.images.length === 0) {
+      const installId = ensureAnalysisWebInstallId(confirmation.entitlements.mobileInstallId)
+      // Remove the return parameters before changing screens, so retries cannot re-run checkout recovery.
+      await router.replace('/analysis', undefined, { shallow: true })
+      if (!draft?.images.length) {
         setStep('upload')
-        setError('Upload draft expired. Please upload your images again.')
+        setError('Your payment is confirmed. Please upload your photo to use your scan credit.')
         return
       }
-
-      await apiPost<ClaimPaymentResponse>('/api/payments/claim', {
-        sessionId,
-        mobileInstallId: paymentInstallId,
-      })
-
       setImages(draft.images)
       setSelectedImageId(draft.images[draft.images.length - 1]?.id ?? null)
       setGender(draft.gender)
-
-      const analysisResults: AnalysisResponse[] = []
-      for (const [index, image] of draft.images.entries()) {
-        setProgress(Math.round(28 + (index / draft.images.length) * 62))
-        const result = await apiPost<AnalysisResponse>('/api/web/analyze', {
-          imageData: image.dataUrl,
-          gender: draft.gender,
-          photoType: 'face',
-          name: image.name,
-          hairColor: image.hairColor ?? null,
-          skinColor: image.skinColor ?? null,
-          landmarks: image.landmarks ?? null,
-          mesh: image.mesh ?? null,
-        }, {
-          headers: buildPaidAnalysisHeaders(paymentInstallId),
-        })
-        if (result.analysis.status !== 'complete') throw new Error(result.analysis.failureReason ?? 'Unable to complete this analysis. Please retry.')
-        analysisResults.push(result)
+      if (confirmation.entitlements.evaluationCredits < draft.images.length) {
+        setStep('upload')
+        setError('Your payment is confirmed. Select one photo per available scan credit to continue.')
+        return
       }
-
-      setProgress(100)
-      setResults(analysisResults)
-      setStep('results')
-      await clearAnalysisDraft()
-      void router.replace('/analysis', undefined, { shallow: true })
-    } catch (analysisError) {
-      setStep('actual-analysis')
-      setError(analysisError instanceof Error ? analysisError.message : 'Analysis failed after payment')
+      await runActualAnalysis(draft.images, installId, draft.gender)
+    } catch (caught) {
+      setStep('upload')
+      trackWebEvent('purchase_activation_failed', { surface: 'web_analysis', purchase_stage: 'checkout_return', reason_code: caught instanceof ApiClientError ? caught.code : 'request_failed', http_status: caught instanceof ApiClientError ? caught.status : undefined })
+      setError(caught instanceof Error ? caught.message : 'Unable to restore your purchase. Please try again.')
     }
-  }, [router])
+  }, [router, runActualAnalysis])
 
   useEffect(() => {
-    if (!router.isReady || router.query.checkout !== 'success') return
-
+    if (!router.isReady || status !== 'authenticated' || router.query.checkout !== 'success') return
     const sessionId = typeof router.query.session_id === 'string' ? router.query.session_id : null
-    const checkoutInstallId = typeof router.query.install_id === 'string' ? router.query.install_id : null
-    if (!sessionId) return
+    if (!sessionId || resumedCheckoutRef.current === sessionId) return
+    resumedCheckoutRef.current = sessionId
+    void resumeAfterPayment(sessionId)
+  }, [resumeAfterPayment, router.isReady, router.query.checkout, router.query.session_id, status])
 
-    void resumeAfterPayment(sessionId, checkoutInstallId)
-  }, [resumeAfterPayment, router.isReady, router.query.checkout, router.query.install_id, router.query.session_id])
+  useEffect(() => {
+    if (!router.isReady || status !== 'authenticated' || router.query.checkout === 'success' || step !== 'intro') return
+    let cancelled = false
+    const installId = ensureAnalysisWebInstallId()
+    void Promise.all([
+      apiGet<PaymentAccessResponse>(`/api/payments/entitlements?mobileInstallId=${encodeURIComponent(installId)}`),
+      loadAnalysisDraft(),
+    ]).then(([access, draft]) => {
+      if (cancelled || !draft?.images.length || access.entitlements.evaluationCredits < 1) return
+      setImages(draft.images)
+      setSelectedImageId(draft.images[draft.images.length - 1]?.id ?? null)
+      setGender(draft.gender)
+      setStep('upload')
+      toast.info('Your paid scan is ready. Review your photo and continue.')
+    }).catch(() => { /* The upload action checks access again before offering payment. */ })
+    return () => { cancelled = true }
+  }, [router.isReady, router.query.checkout, status, step])
 
   useEffect(() => {
     if (paidAnalysisRequired && router.isReady && router.query.checkout === 'cancelled') {

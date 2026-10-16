@@ -83,6 +83,7 @@ export const users = pgTable(
     id: text('id')
       .primaryKey()
       .$defaultFn(() => crypto.randomUUID()),
+    analyticsInternal: boolean('analytics_internal').notNull().default(false),
     name: text('name'),
     email: text('email').notNull(),
     emailVerified: timestamp('email_verified', { mode: 'date' }),
@@ -603,6 +604,7 @@ export const creatorProfiles = pgTable(
       .references(() => users.id, { onDelete: 'cascade' }),
     displayName: text('display_name').notNull(),
     socialHandle: text('social_handle'),
+    bundledPayouts: boolean('bundled_payouts').notNull().default(false),
     authStatus: creatorAuthStatusEnum('auth_status').notNull().default('pending'),
     paymentOption: creatorPaymentOptionEnum('payment_option').notNull().default('paypal'),
     paypalEmail: text('paypal_email'),
@@ -910,6 +912,20 @@ export const mobileCreatorAttributions = pgTable(
   })
 )
 
+export const creatorPayoutRequests = pgTable('creator_payout_requests', {
+  id: text('id').primaryKey().$defaultFn(() => crypto.randomUUID()),
+  creatorProfileId: text('creator_profile_id').notNull().references(() => creatorProfiles.id, { onDelete: 'cascade' }),
+  amountCents: integer('amount_cents').notNull(),
+  status: text('status').$type<'pending' | 'paid'>().notNull().default('pending'),
+  paymentOption: creatorPaymentOptionEnum('payment_option').notNull(),
+  destination: text('destination').notNull(),
+  network: text('network'),
+  requestedAt: timestamp('requested_at', { mode: 'date' }).notNull().defaultNow(),
+  paidAt: timestamp('paid_at', { mode: 'date' }),
+}, table => ({
+  openRequest: uniqueIndex('creator_payout_requests_one_pending').on(table.creatorProfileId).where(sql`${table.status} = 'pending'`),
+}))
+
 export const creatorPayments = pgTable(
   'creator_payments',
   {
@@ -920,6 +936,7 @@ export const creatorPayments = pgTable(
       .notNull()
       .references(() => creatorProfiles.id, { onDelete: 'cascade' }),
     submissionId: text('submission_id').references(() => creatorSubmissions.id, { onDelete: 'set null' }),
+    payoutRequestId: text('payout_request_id').references(() => creatorPayoutRequests.id),
     amountCents: integer('amount_cents').notNull(),
     currency: varchar('currency', { length: 3 }).notNull().default('USD'),
     status: creatorPaymentStatusEnum('status').notNull().default('pending'),

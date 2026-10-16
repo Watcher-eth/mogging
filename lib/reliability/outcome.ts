@@ -11,6 +11,7 @@ export function backendOutcome(status: number, body: unknown, feature?: string):
   const root = object(body)
   // An authenticated provider webhook rejected by our contract is an integration
   // failure, unlike an ordinary malformed client request. Do not hide it as 4xx.
+  if (feature === 'payments/stripe-webhook' && status === 400) return { outcome: 'failed', code: 'billing_signature_invalid', alert: true }
   if (feature === 'payments/revenuecat-webhook' && status === 400) return { outcome: 'failed', code: 'billing_invalid_payload', alert: true }
   if (object(root.error).code === 'provider_error') return {outcome:'failed',code:`provider_http_${status}`,alert:true}
   if (status >= 500) return { outcome: 'failed', code: `http_${status}`, alert: true }

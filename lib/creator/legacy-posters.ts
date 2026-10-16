@@ -12,8 +12,9 @@ export function drawLegacyPoster(ctx: CanvasRenderingContext2D, slide: ContentSl
   if (image) drawCover(ctx,image,0,0,width,height)
   if (slide.templateId === 'score-potential') {
     drawMobileShare(ctx,slide,overlay,width,height,timeMs)
-    const brandWidth = width * .36
-    const scoreHeight = shareCardLayout.scoreSize * width / shareCardLayout.width
+    const square = height / width < 1.2
+    const brandWidth = width * (square ? .30 : .36)
+    const scoreHeight = shareCardLayout.scoreSize * width / shareCardLayout.width * (square ? .86 : 1)
     const scoreCenterY = height * .945 - scoreHeight / 2
     drawBrandLockup(ctx, brand, (width - brandWidth) / 2, scoreCenterY - brandWidth * .125 / 2, brandWidth)
   }
@@ -28,17 +29,32 @@ export function drawLegacyPoster(ctx: CanvasRenderingContext2D, slide: ContentSl
 }
 
 function drawEditorial(ctx: CanvasRenderingContext2D, slide: ContentSlide, width: number, height: number, timeMs: number, brand: RevealBrand | null) {
-  drawBrandPair(ctx, brand, width, height, timeMs)
+  const square = height / width < 1.2
+  if (square) withEnter(ctx, enter(timeMs, 420, 520), () => drawBrandLockup(ctx, brand, width * .13, height * .035, width * .74))
+  else drawBrandPair(ctx, brand, width, height, timeMs)
   const size = width * .075
   const scale = width / shareCardLayout.width
   const labelY = height - height * .055 - shareCardLayout.scoreLabelSize * scale
   const valueY = labelY - (shareCardLayout.scoreSize + 12) * scale
   const headlineBottom = valueY - width * .05
   const headline = slide.headline.trim() && slide.headline.length <= 48 ? slide.headline : 'Time to ascend.'
-  const lines = wrapText(ctx, headline, width * .86, `500 ${size}px Arial`).slice(0, 2)
+  ctx.font = `800 ${shareCardLayout.scoreSize * scale}px "Mogging Share", Arial`
+  const scoreWidths = [slide.currentScore, slide.potentialScore].map(value => ctx.measureText(formatShareScore(value)).width)
+  const left = shareCardLayout.inset * scale + scoreWidths[0] + width * .025
+  const right = width - shareCardLayout.inset * scale - scoreWidths[1] - width * .025
+  const headlineWidth = square ? Math.max(width * .15, right - left) : width * .86
+  let headlineSize = square ? width * .035 : size
+  let lines = wrapText(ctx, headline, headlineWidth, `500 ${headlineSize}px Arial`)
+  if (!square) lines = lines.slice(0, 2)
+  while (square && lines.length > 2 && headlineSize > width * .022) {
+    headlineSize -= 1
+    lines = wrapText(ctx, headline, headlineWidth, `500 ${headlineSize}px Arial`)
+  }
   withEnter(ctx, enter(timeMs, 850, 520), () => {
-    ctx.fillStyle = '#fff'; ctx.font = `500 ${size}px Arial`; ctx.textAlign = 'center'
-    lines.forEach((line, index) => ctx.fillText(line, width / 2, headlineBottom - lines.length * size * 1.04 + index * size * 1.04))
+    ctx.fillStyle = '#fff'; ctx.font = `500 ${headlineSize}px Arial`; ctx.textAlign = 'center'
+    const centerX = square ? (left + right) / 2 : width / 2
+    const top = square ? valueY + shareCardLayout.scoreSize * scale / 2 - lines.length * headlineSize * .52 : headlineBottom - lines.length * headlineSize * 1.04
+    lines.slice(0, 2).forEach((line, index) => ctx.fillText(line, centerX, top + index * headlineSize * 1.04, headlineWidth))
   })
   withEnter(ctx, enter(timeMs, 1050, 520), () => {
     for (const [index, score] of [slide.currentScore, slide.potentialScore].entries()) {
@@ -68,7 +84,8 @@ function drawMobileShare(ctx: CanvasRenderingContext2D, slide: ContentSlide, ove
     ctx.fillStyle = gradient; ctx.fillRect(0, 0, width, height)
   }
   if (overlay) drawShareOverallOverlay(ctx, overlay.primitives, width, timeMs)
-  const top = shareCardLayout.headerTop * scale, inset = shareCardLayout.inset * scale
+  const square = height / width < 1.2
+  const top = square ? height * .035 : shareCardLayout.headerTop * scale, inset = shareCardLayout.inset * scale
   const text = (value: string, x: number, y: number, size: number, align: CanvasTextAlign = 'left', alpha = 1) => {
     ctx.textAlign = align; ctx.font = `800 ${size * scale}px "Mogging Share", Arial`; ctx.fillStyle = `rgba(255,255,255,${alpha})`; ctx.fillText(value, x, y)
   }
@@ -82,18 +99,20 @@ function drawMobileShare(ctx: CanvasRenderingContext2D, slide: ContentSlide, ove
       ctx.fillStyle = 'rgba(255,255,255,.14)'; ctx.strokeStyle = 'rgba(255,255,255,.35)'; ctx.lineWidth = scale
       ctx.font = `800 ${28 * scale}px "Mogging Share", Arial`
       const pillWidth = ctx.measureText(`Top ${percent}%`).width + 32 * scale
-      roundedRect(ctx, (width - pillWidth) / 2, 100 * scale, pillWidth, 82 * scale, 41 * scale); ctx.fill(); ctx.stroke()
+      const pillTop = square ? top - 6 * scale : 100 * scale
+      roundedRect(ctx, (width - pillWidth) / 2, pillTop, pillWidth, 82 * scale, 41 * scale); ctx.fill(); ctx.stroke()
       ctx.textBaseline = 'middle'
-      text(`Top ${percent}%`, width / 2, 141 * scale, 28, 'center')
+      text(`Top ${percent}%`, width / 2, pillTop + 41 * scale, 28, 'center')
       ctx.textBaseline = 'top'
     }
   })
-  const valueTop = height - height * .055 - shareCardLayout.scoreSize * scale
+  const scoreSize = shareCardLayout.scoreSize * (height / width < 1.2 ? .86 : 1)
+  const valueTop = height - height * .055 - scoreSize * scale
   withEnter(ctx, enter(timeMs, 1050, 520), () => {
     text('TOTAL SCORE', inset, valueTop - 43 * scale, shareCardLayout.scoreLabelSize)
-    text(formatShareScore(slide.currentScore), inset - 8 * scale, valueTop, shareCardLayout.scoreSize)
+    text(formatShareScore(slide.currentScore), inset - 8 * scale, valueTop, scoreSize)
     text('POTENTIAL', width - inset, valueTop - 43 * scale, shareCardLayout.scoreLabelSize, 'right')
-    text(formatShareScore(slide.potentialScore), width - inset + 20 * scale, valueTop, shareCardLayout.scoreSize, 'right', .8)
+    text(formatShareScore(slide.potentialScore), width - inset + 20 * scale, valueTop, scoreSize, 'right', .8)
   })
 }
 

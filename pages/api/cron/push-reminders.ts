@@ -5,8 +5,8 @@ import { and, asc, desc, eq, gt, lt, sql } from 'drizzle-orm'
 import { db, schema } from '@/lib/db'
 import { ApiError, handleApiError, json, methodNotAllowed } from '@/lib/api/http'
 import { reminderFor, PUSH_HOUR, PUSH_WEEKDAYS } from '@/lib/push/schedule'
-import { prepareApplePush, sendApplePush } from '@/lib/push/apns'
-import { prepareAndroidPush, sendAndroidPush } from '@/lib/push/fcm'
+import { deliverPush } from '@/lib/push/delivery'
+import { recordServerEvent } from '@/lib/analytics/events'
 
 export const config = { maxDuration: 60 }
 
@@ -25,6 +25,27 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
     let partial = false
     const latestDevices = db.selectDistinctOn([schema.pushDevices.userId]).from(schema.pushDevices)
       .orderBy(asc(schema.pushDevices.userId), desc(schema.pushDevices.updatedAt), desc(schema.pushDevices.installId)).as('latest_push_device')
+    // Reward notifications are independent of the weekly reminder hour. An unspent
+    // reward plus the unique delivery claim acts as the durable notification queue.
+    const rewards = await db.select({ device: { installId: latestDevices.installId, userId: latestDevices.userId, token: latestDevices.token, environment: latestDevices.environment, timezone: latestDevices.timezone, sessionExpiresAt: latestDevices.sessionExpiresAt, protocolDays: latestDevices.protocolDays, updatedAt: latestDevices.updatedAt }, rewardId: schema.paymentEntitlements.id }).from(latestDevices)
+      .innerJoin(schema.paymentEntitlements,eq(schema.paymentEntitlements.userId,latestDevices.userId))
+      .where(and(gt(latestDevices.sessionExpiresAt,now),eq(schema.paymentEntitlements.source,'referral_reward'),
+        gt(schema.paymentEntitlements.creditBalance,0),
+        gt(schema.paymentEntitlements.createdAt,new Date(now.getTime()-30*86400_000)),
+        sql`not exists(select 1 from ${schema.pushDeliveries} where ${schema.pushDeliveries.userId}=${latestDevices.userId}
+          and ${schema.pushDeliveries.kind}='referral_reward' and ${schema.pushDeliveries.slot}=${schema.paymentEntitlements.id})`))
+      .orderBy(asc(schema.paymentEntitlements.createdAt)).limit(100)
+    for(let offset=0;offset<rewards.length && Date.now()-started<20_000;offset+=10) {
+      await Promise.all(rewards.slice(offset,offset+10).map(async ({device,rewardId})=>{
+        const result=await deliverPush(device,{kind:'referral_reward',slot:rewardId,title:'Your free scan is unlocked',
+          body:'Your three friends joined. Your full face scan is ready—open Mogging to use it.',target:'scan_reward',ttlSeconds:86400})
+        if(result==='sent') {
+          sent++
+          await recordServerEvent({eventName:'referral_reward_notification_sent',accountId:device.userId,source:'push',properties:{surface:'referral_reward'}})
+        }
+        if(result==='failed') failed++
+      }))
+    }
     // Keyset pagination; each account receives a reminder on its most recently active device.
     while (Date.now() - started < 40_000) {
       const devices = await db.select().from(latestDevices)
@@ -42,35 +63,9 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
         await Promise.all(devices.slice(offset, offset + 10).map(async device => {
           const reminder = reminderFor(now, device.timezone, device.protocolDays)
           if (!reminder) return
-          // Configuration/authentication errors must not reserve an undelivered reminder.
-          try {
-            if (device.environment === 'fcm') await prepareAndroidPush()
-            else await prepareApplePush()
-          } catch (error) {
-            failed++
-            console.error('Push provider unavailable', { provider: device.environment, message: error instanceof Error ? error.message : 'Unknown error' })
-            return
-          }
-          const claim = { userId: device.userId, kind: reminder.kind, slot: reminder.slot }
-          const inserted = await db.insert(schema.pushDeliveries).values(claim).onConflictDoNothing().returning()
-          if (!inserted.length) return
-          // Reserve before sending: concurrent/repeated cron runs cannot duplicate a push.
-          // An ambiguous transport failure stays reserved rather than risking duplicate delivery.
-          try {
-            const send = device.environment === 'fcm' ? sendAndroidPush : sendApplePush
-            const result = await send({ ...device, ...reminder, collapseId: `${reminder.kind}-${reminder.slot}` })
-            if (result.status === 200) { sent++; return }
-            failed++
-            console.error('Push rejected reminder', { provider: device.environment, status: result.status, reason: result.reason })
-            if (result.status === 410 || ['BadDeviceToken', 'DeviceTokenNotForTopic'].includes(result.reason ?? '')) {
-              await db.delete(schema.pushDevices).where(and(eq(schema.pushDevices.installId, device.installId), eq(schema.pushDevices.token, device.token)))
-            }
-            // Definite rejections may be retried by the next run after configuration/service recovery.
-            await db.delete(schema.pushDeliveries).where(and(eq(schema.pushDeliveries.userId, claim.userId), eq(schema.pushDeliveries.kind, claim.kind), eq(schema.pushDeliveries.slot, claim.slot)))
-          } catch (error) {
-            failed++
-            console.error('Push transport failed; delivery is uncertain', error instanceof Error ? error.message : 'Unknown error')
-          }
+          const result = await deliverPush(device, reminder)
+          if (result === 'sent') sent++
+          if (result === 'failed') failed++
         }))
       }
       if (partial) break

@@ -22,3 +22,12 @@ test('cancellation intent and trial conversion are not actual expiration', () =>
   expect(normalizeStripeLifecycle(event('customer.subscription.updated', { id: 'sub', cancel_at_period_end: true }, { cancel_at_period_end: false }))?.eventName).toBe('cancellation_scheduled')
   expect(normalizeStripeLifecycle(event('customer.subscription.updated', { id: 'sub', status: 'active' }, { status: 'trialing' }))?.eventName).toBe('trial_converted')
 })
+
+test('failed payments retain safe decline codes without recording revenue or customer details', () => {
+  const result = normalizeStripeLifecycle(event('payment_intent.payment_failed', { id: 'pi', currency: 'usd', last_payment_error: { code: 'card_declined', decline_code: 'insufficient_funds', message: 'private card details' } }))!
+  expect(result.eventName).toBe('payment_failed')
+  expect(result.amount).toBeNull()
+  expect(result.properties).toMatchObject({ failure_code: 'card_declined', decline_code: 'insufficient_funds' })
+  expect(JSON.stringify(result)).not.toContain('private card details')
+  expect(normalizeStripeLifecycle(event('checkout.session.expired', { id: 'cs' }))?.amount).toBeNull()
+})

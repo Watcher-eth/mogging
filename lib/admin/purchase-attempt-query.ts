@@ -1,3 +1,4 @@
+import { audienceCTEs, customerEvent } from './audience'
 import { createHash } from 'node:crypto'
 import { sql, type SQL } from 'drizzle-orm'
 import { db } from '@/lib/db'
@@ -8,11 +9,11 @@ import { describePurchaseAttempt, type PurchaseAttemptRow } from './purchase-att
 export function purchaseAttemptsQuery(filters: AnalyticsFilters, now: Date) {
   const start = new Date(now.getTime() - Number(filters.days) * 86400_000).toISOString()
   const platform: SQL = filters.platform === 'all' ? sql`a.platform in ('ios','android')` : sql`a.platform = ${filters.platform}`
-  return sql`with starts as (
+  return sql`with ${audienceCTEs()}, starts as (
     select a.properties->>'attempt_id' as id,
       coalesce(a.mobile_install_id, a.anonymous_id, a.account_id) as device,
       a.platform, coalesce(a.app_version,'unknown') as release, min(a.occurred_at) as started
-    from analytics_events a where a.environment = 'production' and a.event_name = 'purchase_started'
+    from analytics_events a where ${customerEvent('a')} and a.event_name = 'purchase_started'
       and nullif(a.properties->>'attempt_id','') is not null and ${platform}
       and a.occurred_at >= ${start}::timestamp and a.occurred_at < ${now.toISOString()}::timestamp
     group by 1,2,3,4 order by started desc limit 2001

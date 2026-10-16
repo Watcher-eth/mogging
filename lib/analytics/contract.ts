@@ -7,6 +7,7 @@ export const analyticsEventNames = [
   'onboarding_started', 'onboarding_step_viewed', 'onboarding_step_completed', 'onboarding_step_back',
   'onboarding_step_exited', 'onboarding_step_skipped', 'onboarding_completed', 'permission_prompted', 'permission_result',
   'photo_source_selected', 'photo_selected', 'face_capture_started', 'face_capture_result', 'photo_preparation_started', 'photo_preparation_stage', 'photo_picker_result', 'photo_preparation_completed', 'photo_validation_failed', 'consent_result',
+  'paywall_offer_unlocked', 'paywall_offer_unavailable', 'paywall_offer_dismissed', 'referral_reward_notification_sent',
   'paywall_viewed', 'paywall_dismissed', 'paywall_products_loaded', 'plan_selected',
   'checkout_started', 'checkout_completed', 'handoff_created', 'handoff_opened', 'handoff_consumed',
   'purchase_started', 'purchase_completed', 'purchase_failed', 'purchase_cancelled', 'purchase_activation_failed',
@@ -16,7 +17,7 @@ export const analyticsEventNames = [
   'evaluation_started', 'evaluation_completed', 'evaluation_failed',
   'screenshot_taken', 'report_viewed', 'category_viewed', 'protocol_viewed', 'protocol_task_completed',
   'repeat_evaluation_started', 'share_started', 'share_completed', 'share_failed',
-  'referral_invite_created', 'referral_invite_redeemed', 'push_opened',
+  'referral_invite_opened', 'referral_invite_created', 'referral_invite_redeemed', 'push_opened',
   'battle_vote_selected', 'battle_vote_cancelled', 'battle_filters_changed', 'settings_opened',
 ] as const
 export type AnalyticsEventName = typeof analyticsEventNames[number]
@@ -25,7 +26,7 @@ export type AnalyticsProperties = Record<string, string | number | boolean | nul
 // Allowlist protects both ingestion and transport. No URLs, tokens, free-form errors, images,
 // demographics, coordinates, user input, or report scores leave the product.
 const propertyKeys = new Set([
-  'screen', 'previous_screen', 'step', 'step_index', 'step_count', 'onboarding_version', 'flow_id', 'attempt_id',
+  'runtime_environment', 'screen', 'previous_screen', 'step', 'step_index', 'step_count', 'onboarding_version', 'flow_id', 'attempt_id',
   'stage_duration_ms', 'previous_stage_duration_ms', 'previous_stage', 'purchase_tracking_version', 'purchase_kind', 'transaction_id', 'os_version', 'store_environment', 'app_state', 'feedback_reason',
   'duration_ms', 'surface', 'plan', 'product', 'productId', 'product_id', 'offering',
   'paywall_id', 'paywall_version', 'default_plan', 'product_count', 'products_loaded',
