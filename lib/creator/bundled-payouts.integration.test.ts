@@ -116,6 +116,20 @@ describe.skipIf(!testUrl)('bundled payouts database integration', () => {
     await expect(admin.createCreatorPayment({ submissionId: f.first.id, adminViewCountThreshold: 50_000, adminUsAudiencePercent: 40, status: 'pending' })).rejects.toMatchObject({ status: 409 })
   })
 
+  test('opting into bundled payouts blocks paying approved earnings before any request exists', async () => {
+    const f = await fixture()
+    const { db, schema } = database
+    const [pending] = await db.insert(schema.creatorPayments).values({ creatorProfileId: f.profile.id, submissionId: f.first.id, amountCents: 2000, status: 'pending', paymentOption: 'paypal' }).returning()
+    await expect(admin.reviewCreatorResource({ resource: 'payment', id: pending.id, status: 'paid' })).rejects.toMatchObject({ status: 409 })
+    await expect(admin.createCreatorPayment({ submissionId: f.second.id, adminViewCountThreshold: 50_000, adminUsAudiencePercent: 40, status: 'paid' })).rejects.toMatchObject({ status: 409 })
+    expect((await records(f.profile.id)).find(payment => payment.id === pending.id)?.status).toBe('pending')
+    expect(await db.query.creatorPayoutRequests.findMany({ where: eq(schema.creatorPayoutRequests.creatorProfileId, f.profile.id) })).toHaveLength(0)
+    const request = await payouts.requestBundledPayout(f.userId, 3500)
+    expect(request.amountCents).toBe(3500)
+    await payouts.settleBundledPayout({ id: request.id, expectedAmountCents: 3500 })
+    expect((await records(f.profile.id)).filter(payment => payment.payoutRequestId === request.id).every(payment => payment.status === 'paid')).toBe(true)
+  })
+
   test('zero balances, unapproved payout methods and suspended creators cannot request', async () => {
     const f = await fixture()
     const { db, schema } = database

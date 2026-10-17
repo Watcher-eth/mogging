@@ -1,6 +1,6 @@
 import { describe, expect, test } from 'bun:test'
-import type { AdminAccount, AdminCreator, AdminDashboard, AdminSubmission } from '@/components/admin/creator-types'
-import { approvedUnpaidSubmissions, approvalKind, getApprovalQueue, isNewInLastDay, publishedVideoEmbedUrl, walletExplorerUrl } from './creator-overview'
+import type { AdminAccount, AdminCreator, AdminDashboard, AdminPayment, AdminSubmission } from '@/components/admin/creator-types'
+import { approvedUnpaidSubmissions, creatorOutstandingPaymentGroups, approvalKind, getApprovalQueue, isNewInLastDay, publishedVideoEmbedUrl, walletExplorerUrl } from './creator-overview'
 
 describe('admin overview approvals', () => {
   test('keeps every approval type beyond the former eight-video cutoff', () => {
@@ -65,4 +65,37 @@ test('payment queue includes approved unpaid earnings without requiring a paymen
   expect(approvedUnpaidSubmissions(data)).toHaveLength(1)
   submission.status = 'in_review'
   expect(approvedUnpaidSubmissions(data)).toHaveLength(0)
+})
+
+test('outstanding creator groups deduct paid milestones and do not duplicate scheduled payments', () => {
+  const submissions = [
+    {id:'rereview',creatorProfileId:'a',creatorName:'Same name',title:'Milestone',sprintId:'campaign',approvedAmountCents:3500,status:'approved',createdAt:'2026-10-15',updatedAt:'2026-10-17'},
+    {id:'new',creatorProfileId:'a',creatorName:'Same name',title:'New video',sprintId:'campaign',approvedAmountCents:1500,status:'approved',createdAt:'2026-10-16'},
+    {id:'other',creatorProfileId:'b',creatorName:'Same name',title:'Other creator',sprintId:'campaign',approvedAmountCents:1000,status:'approved',createdAt:'2026-10-14'},
+  ] as AdminSubmission[]
+  const payments = [
+    {id:'paid',submissionId:'rereview',creatorProfileId:'a',status:'paid',amountCents:1500,currency:'USD'},
+    {id:'pending',submissionId:'rereview',creatorProfileId:'a',status:'pending',amountCents:2000,currency:'USD'},
+    {id:'failed',submissionId:'new',creatorProfileId:'a',status:'failed',amountCents:1500,currency:'USD'},
+  ] as AdminPayment[]
+  const groups = creatorOutstandingPaymentGroups(submissions,payments,[payments[1]])
+  expect(groups).toHaveLength(2)
+  expect(groups[0]).toMatchObject({creatorProfileId:'a',amountCents:3500,processingCents:0})
+  expect(groups[0].lines.map(line=>[line.id,line.kind,line.amountCents])).toEqual([['rereview','Rereview',2000],['new','New submission',1500]])
+  expect(groups[1]).toMatchObject({creatorProfileId:'b',amountCents:1000})
+})
+
+test('processing transfers and different currencies are never included in the amount to send again', () => {
+  const submission = {id:'s',creatorProfileId:'a',creatorName:'Creator',title:'Video',sprintId:'campaign',approvedAmountCents:3000,status:'approved',createdAt:'2026-10-16'} as AdminSubmission
+  const payments = [
+    {id:'paid',submissionId:'s',creatorProfileId:'a',status:'paid',amountCents:1000,currency:'USD'},
+    {id:'processing',submissionId:'s',creatorProfileId:'a',status:'processing',amountCents:500,currency:'USD'},
+    {id:'manual',submissionId:null,creatorProfileId:'a',creatorName:'Creator',status:'pending',amountCents:700,currency:'EUR',createdAt:'2026-10-17'},
+    {id:'bundle',submissionId:null,creatorProfileId:'a',creatorName:'Creator',status:'pending',amountCents:900,currency:'USD',payoutRequestId:'request',createdAt:'2026-10-17'},
+  ] as AdminPayment[]
+  const groups = creatorOutstandingPaymentGroups([submission],payments,payments)
+  expect(groups).toHaveLength(2)
+  expect(groups.find(group=>group.currency==='USD')).toMatchObject({amountCents:1500,processingCents:500})
+  expect(groups.find(group=>group.currency==='EUR')).toMatchObject({amountCents:700,processingCents:0})
+  expect(groups.flatMap(group=>group.lines).some(line=>line.id==='bundle')).toBe(false)
 })

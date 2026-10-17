@@ -1,5 +1,5 @@
 import { creatorUnpaidCents } from '@/lib/creator/money'
-import type { AdminCreator, AdminDashboard, ReviewTarget } from '@/components/admin/creator-types'
+import type { AdminCreator, AdminDashboard, AdminPayment, AdminSubmission, ReviewTarget } from '@/components/admin/creator-types'
 
 export type ApprovalTarget = Exclude<ReviewTarget, { resource: 'payment' }>
 export type ApprovalKind = 'submission' | 'account' | 'payout'
@@ -63,4 +63,35 @@ export function publishedVideoEmbedUrl(postUrl: string | null) {
 
 export function approvedUnpaidSubmissions(data: Pick<AdminDashboard, 'submissions' | 'payments'>) {
   return data.submissions.filter(submission => submission.status === 'approved' && creatorUnpaidCents(submission, data.payments) > 0)
+}
+
+type OutstandingPaymentLine = { id: string; creatorProfileId: string; creatorName: string; title: string; submission?: AdminSubmission; payment?: AdminPayment; paidCents: number; processingCents: number; amountCents: number; kind: string; at: string; currency: string }
+
+export function creatorOutstandingPaymentGroups(submissions: AdminDashboard['submissions'], payments: AdminDashboard['payments'], otherPayments: AdminDashboard['payments'] = []) {
+  const lines: OutstandingPaymentLine[] = submissions.map(submission => {
+    const records = payments.filter(payment => payment.submissionId === submission.id)
+    const paidCents = records.filter(payment => payment.status === 'paid').reduce((sum, payment) => sum + payment.amountCents, 0)
+    const outstandingCents = creatorUnpaidCents(submission, records)
+    const processingCents = Math.min(outstandingCents, records.filter(payment => payment.status === 'processing').reduce((sum, payment) => sum + payment.amountCents, 0))
+    return { id: submission.id, creatorProfileId: submission.creatorProfileId, creatorName: submission.creatorName, title: submission.title, submission, payment: undefined, paidCents, processingCents, amountCents: outstandingCents - processingCents, kind: paidCents > 0 ? 'Rereview' : 'New submission', at: submission.updatedAt || submission.createdAt, currency: 'USD' }
+  })
+  const includedIds = new Set(submissions.map(submission => submission.id))
+  for (const payment of otherPayments) {
+    if (!['pending', 'processing'].includes(payment.status) || payment.payoutRequestId || (payment.submissionId && includedIds.has(payment.submissionId))) continue
+    const paidCents = payment.submissionId ? payments.filter(item => item.submissionId === payment.submissionId && item.status === 'paid').reduce((sum, item) => sum + item.amountCents, 0) : 0
+    lines.push({ id: payment.id, creatorProfileId: payment.creatorProfileId, creatorName: payment.creatorName, title: payment.submissionTitle || 'Manual payment', payment, paidCents, processingCents: payment.status === 'processing' ? payment.amountCents : 0, amountCents: payment.status === 'processing' ? 0 : payment.amountCents, kind: payment.submissionId ? paidCents > 0 ? 'Rereview' : 'New submission' : 'Manual payment', at: payment.createdAt, currency: payment.currency })
+  }
+  type Line = typeof lines[number]
+  const groups = new Map<string, { creatorProfileId: string; creatorName: string; currency: string; amountCents: number; processingCents: number; lines: Line[] }>()
+  lines.sort((a, b) => Date.parse(b.at) - Date.parse(a.at))
+  for (const line of lines) {
+    if (line.amountCents + line.processingCents <= 0) continue
+    const key = `${line.creatorProfileId}:${line.currency}`
+    let group = groups.get(key)
+    if (!group) { group = { creatorProfileId: line.creatorProfileId, creatorName: line.creatorName, currency: line.currency, amountCents: 0, processingCents: 0, lines: [] }; groups.set(key, group) }
+    group.amountCents += line.amountCents
+    group.processingCents += line.processingCents
+    group.lines.push(line)
+  }
+  return [...groups.values()]
 }

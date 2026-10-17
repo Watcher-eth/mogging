@@ -1,7 +1,7 @@
 import { AnimatedDialogPanel } from '@/components/ui/animated-dialog-panel'
 import { creatorBundlePlan, creatorUnpaidCents, remainingCreatorPaymentCents } from '@/lib/creator/money'
 import { SubmissionPayoutSummary } from '@/components/admin/submission-payout-summary'
-import { BundledPayoutQueue } from '@/components/admin/bundled-payout-queue'
+import { BundledPayoutQueue, PayoutVideoBreakdown } from '@/components/admin/bundled-payout-queue'
 import * as Tabs from '@radix-ui/react-tabs'
 import { SubmissionConversation } from '@/components/creator/submission-conversation'
 import { CreatorSprintsPanel } from '@/components/admin/creator-sprints-panel'
@@ -46,7 +46,7 @@ import { CreatorAttributionDashboard, CreatorAttributionReport } from '@/compone
 import { calculateCreatorPayout, CREATOR_TIER1_AUDIENCE_TIERS, CREATOR_VIEW_THRESHOLDS } from '@/lib/creator/payouts'
 import { mergeCreatorSubmissionReviewResults } from '@/lib/creator/submission-review'
 import { CreatorIcon, type CreatorIconName } from '@/components/creator/creator-icon'
-import { approvedUnpaidSubmissions, approvalKind, approvalTypes, getApprovalQueue, hasPayoutDestination, isNewInLastDay, publishedVideoEmbedUrl, walletExplorerUrl, type ApprovalKind } from '@/lib/admin/creator-overview'
+import { approvedUnpaidSubmissions, creatorOutstandingPaymentGroups, approvalKind, approvalTypes, getApprovalQueue, hasPayoutDestination, isNewInLastDay, publishedVideoEmbedUrl, walletExplorerUrl, type ApprovalKind } from '@/lib/admin/creator-overview'
 import type {
   AdminAccount,
   AdminAttributionReport,
@@ -79,7 +79,7 @@ export default function CreatorAdminPage() {
       <CreatorHeader eyebrow="Creator program" title={page?.title || 'Review queue'} description={page?.description || 'The next approvals that need your attention.'} />
 
       {error ? <p role="alert" className="admin-notice">Could not load the workspace. <button className="underline" onClick={() => void mutate()}>Try again</button></p> : isLoading || !dashboard ? <CenteredLoader /> : <DashboardView tab={tab} data={dashboard} onSelect={setSelected} onRefresh={async () => { await mutate() }} />}
-      {selected ? <ReviewDialog key={`${selected.resource}-${selected.item.id}`} target={reviewTarget!} creator={selected.resource === 'submission' ? dashboard?.creators.find(creator => creator.id === selected.item.creatorProfileId) : undefined} payments={dashboard?.payments || []} metrics={dashboard?.attributionMetrics || []} open onOpenChange={(open) => { if (!open) setSelected(null) }} onRefresh={async () => { await mutate() }} onSaved={async () => { await mutate(); setSelected(null) }} /> : null}
+      {selected ? <ReviewDialog key={`${selected.resource}-${selected.item.id}`} target={reviewTarget!} creator={selected.resource !== 'creator' ? dashboard?.creators.find(creator => creator.id === selected.item.creatorProfileId) : undefined} payments={dashboard?.payments || []} metrics={dashboard?.attributionMetrics || []} open onOpenChange={(open) => { if (!open) setSelected(null) }} onRefresh={async () => { await mutate() }} onSaved={async () => { await mutate(); setSelected(null) }} /> : null}
     </div>
   )
 }
@@ -221,13 +221,28 @@ function PaymentsPanel({ data, onSelect, onRefresh }: { data: AdminDashboard; on
   const waiting = data.creators.filter(creator => creator.bundledPayouts).map(creator => ({ creator, plan: creatorBundlePlan(data.submissions.filter(submission => submission.creatorProfileId === creator.id), data.payments.filter(payment => payment.creatorProfileId === creator.id)) })).filter(item => item.plan.amountCents > 0)
   const selected = unpaid.find(item => item.id === selectedId)
   const unpaidIds = new Set(unpaid.map(item => item.id))
-  const history = data.payments.filter(payment => !(payment.payoutRequestId && ['pending', 'processing'].includes(payment.status)) && (!payment.submissionId || !unpaidIds.has(payment.submissionId) || !['pending', 'processing'].includes(payment.status)))
+  const records = data.payments.filter(payment => !(payment.payoutRequestId && ['pending', 'processing'].includes(payment.status)) && (!payment.submissionId || !unpaidIds.has(payment.submissionId) || !['pending', 'processing'].includes(payment.status)))
+  const otherOutstanding = records.filter(payment => ['pending', 'processing'].includes(payment.status) && !bundledCreators.has(payment.creatorProfileId))
+  const groups = creatorOutstandingPaymentGroups(unpaid, data.payments, otherOutstanding)
+  const history = records.filter(payment => !otherOutstanding.some(item => item.id === payment.id))
   return <>
     <BundledPayoutQueue data={data} onRefresh={onRefresh} />
-    <h2 className="mb-3 text-sm font-semibold">Approved · awaiting payout</h2>
-    {unpaid.length ? <div className="admin-list">{unpaid.map(item => <ResourceRow key={item.id} icon={CircleDollarSign} title={item.title} subtitle={item.creatorName} status="approved" meta={formatMoney(creatorUnpaidCents(item, data.payments), 'USD')} onClick={() => setSelectedId(item.id)} />)}</div> : <p className="text-sm text-zinc-500">No approved earnings awaiting payout.</p>}
-    {waiting.length ? <section className="mt-8"><h2 className="text-sm font-semibold">Bundled · waiting for creator request</h2><p className="mt-1 text-xs text-zinc-500">These creators chose when to cash out. Wait for their Pay me now request before sending payment.</p><div className="admin-list mt-3">{waiting.map(({ creator, plan }) => <ResourceRow key={creator.id} icon={Wallet} title={creator.displayName} subtitle="Available for their next bundle" status="approved" meta={formatMoney(plan.amountCents, 'USD')} onClick={() => { const item = data.submissions.find(submission => submission.id === plan.lines[0]?.submissionId); onSelect(item ? { resource: 'submission', item } : { resource: 'creator', item: creator }) }} />)}</div></section> : null}
-    {history.length ? <section className="mt-8"><h2 className="mb-3 text-sm font-semibold">Payment records</h2><PaymentList items={history} onSelect={onSelect} /></section> : null}
+    <h2 className="text-sm font-semibold">Pay after approval</h2><p className="mb-3 mt-1 text-xs leading-5 text-zinc-500">These creators have not enabled bundled payouts. No creator payout request is required.</p>
+    {groups.length ? <div className="space-y-4">{groups.map(group => <section key={`${group.creatorProfileId}:${group.currency}`} aria-label={`${group.creatorName} outstanding payments`} className="overflow-hidden rounded-2xl border border-zinc-200 bg-white">
+      <div className="flex flex-wrap items-center justify-between gap-3 bg-zinc-50/70 px-5 py-4">
+        <div><h3 className="text-sm font-semibold">{group.creatorName}</h3><span className="mt-1 inline-block rounded-full bg-zinc-100 px-2 py-0.5 text-[11px] font-medium text-zinc-600">Pay after approval</span><p className="mt-1 text-xs text-zinc-500">{group.lines.length} {group.lines.length === 1 ? 'item' : 'items'} · {data.creators.find(creator => creator.id === group.creatorProfileId)?.paymentOption === 'crypto' ? 'Crypto' : 'PayPal'}</p></div>
+        <div className="text-right"><p className="text-xs text-zinc-500">Total to pay</p><p className="text-xl font-semibold tabular-nums">{formatMoney(group.amountCents, group.currency)}</p>{group.processingCents > 0 ? <p className="mt-1 text-xs text-amber-700">{formatMoney(group.processingCents, group.currency)} already processing · excluded</p> : null}</div>
+      </div>
+      <ul className="divide-y divide-zinc-100">{group.lines.map(line => <li key={line.id}><button type="button" className="flex w-full items-start gap-3 px-5 py-4 text-left transition-colors hover:bg-zinc-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-sky-500" onClick={() => { if (line.payment) onSelect({ resource: 'payment', item: line.payment }); else setSelectedId(line.id) }}>
+        <span className="min-w-0 flex-1"><span className="flex flex-wrap items-center gap-2"><span className="break-words text-sm font-medium">{line.title}</span><span className={cn('rounded-full px-2 py-0.5 text-[11px] font-medium', line.kind === 'Rereview' ? 'bg-violet-50 text-violet-700' : 'bg-zinc-100 text-zinc-600')}>{line.kind}</span></span><span className="mt-1 block text-xs leading-5 text-zinc-500">{line.submission ? `${capitalize(line.submission.platform)}${line.submission.socialHandle ? ` · @${line.submission.socialHandle.replace(/^@/, '')}` : ''}` : 'Scheduled payment'}{line.paidCents > 0 ? <> · {formatMoney(line.paidCents, group.currency)} previously paid</> : null}{line.processingCents > 0 ? <> · {formatMoney(line.processingCents, group.currency)} processing</> : null}</span></span>
+        <span className="shrink-0 text-sm font-semibold tabular-nums">{formatMoney(line.amountCents, group.currency)}</span><ArrowUpRight className="mt-0.5 size-4 shrink-0 text-zinc-400" />
+      </button></li>)}</ul>
+    </section>)}</div> : <p className="text-sm text-zinc-500">No approved earnings awaiting payout.</p>}
+    {waiting.length ? <section className="mt-8"><h2 className="text-sm font-semibold">On hold · bundled payouts enabled</h2><p className="mt-1 text-xs leading-5 text-zinc-500">These creators enabled “I want bundled payouts” in Money. Do not send these earnings until they tap “Pay me now.” Only the requested amount moves to the payout queue above.</p><div className="mt-3 space-y-4">{waiting.map(({ creator, plan }) => <section key={creator.id} aria-label={`${creator.displayName} payout on hold`} className="overflow-hidden rounded-2xl border border-amber-200 bg-amber-50/40">
+      <div className="flex flex-wrap items-start justify-between gap-3 border-b border-amber-100 px-5 py-4"><div><h3 className="text-sm font-semibold">{creator.displayName}</h3><span className="mt-2 inline-block rounded-full bg-amber-100 px-2 py-1 text-[11px] font-semibold text-amber-900">Bundled payouts enabled · request required</span><p className="mt-2 max-w-md text-xs leading-5 text-amber-900">Hold payment. This balance is not included in a payout request.</p><button type="button" className="mt-2 text-xs font-medium underline underline-offset-4" onClick={() => onSelect({ resource: 'creator', item: creator })}>View creator</button></div><div className="text-right"><p className="text-xs text-amber-800">On hold · do not pay yet</p><p className="mt-1 text-xl font-semibold tabular-nums">{formatMoney(plan.amountCents, 'USD')}</p></div></div>
+      <div className="px-5"><PayoutVideoBreakdown data={data} lines={plan.lines} /></div>
+    </section>)}</div></section> : null}
+    {history.length ? <section className="mt-8"><h2 className="mb-3 text-sm font-semibold">Payment records</h2><PaymentList creators={data.creators} items={history} onSelect={onSelect} /></section> : null}
     {selected ? <RecordPayoutDialog key={selected.id} submission={selected} creator={data.creators.find(item => item.id === selected.creatorProfileId)} payments={data.payments.filter(item => item.submissionId === selected.id)} onClose={() => setSelectedId(null)} onSaved={async () => { await onRefresh(); setSelectedId(null) }} /> : null}
   </>
 }
@@ -270,9 +285,9 @@ function RecordPayoutDialog({ submission, creator, payments, onClose, onSaved }:
   </DialogContent></Dialog>
 }
 
-function PaymentList({ items, onSelect }: { items: AdminPayment[]; onSelect: (target: ReviewTarget) => void }) {
+function PaymentList({ items, creators, onSelect }: { items: AdminPayment[]; creators: AdminCreator[]; onSelect: (target: ReviewTarget) => void }) {
   if (!items.length) return <EmptyState title="No payments created" description="Create a payment while reviewing an approved video." />
-  return <div className="admin-list">{items.map((item) => <ResourceRow key={item.id} icon={CircleDollarSign} title={formatMoney(item.amountCents, item.currency)} subtitle={`${item.creatorName} · ${item.submissionTitle || 'Manual payment'} · ${formatDate(item.createdAt)}`} status={item.status} meta={item.paymentOption === 'paypal' ? 'PayPal' : 'Crypto'} onClick={() => onSelect({ resource: 'payment', item })} />)}</div>
+  return <div className="admin-list">{items.map((item) => <ResourceRow key={item.id} icon={CircleDollarSign} title={formatMoney(item.amountCents, item.currency)} subtitle={`${creators.find(creator => creator.id === item.creatorProfileId)?.bundledPayouts && item.status === 'pending' ? 'On hold · request required · ' : ''}${item.creatorName} · ${item.submissionTitle || 'Manual payment'} · ${formatDate(item.createdAt)}`} status={item.status} meta={creators.find(creator => creator.id === item.creatorProfileId)?.bundledPayouts && item.status === 'pending' ? 'On hold · request required' : item.paymentOption === 'paypal' ? 'PayPal' : 'Crypto'} onClick={() => onSelect({ resource: 'payment', item })} />)}</div>
 }
 
 function CreatorList({ items, accounts, onSelect }: { items: AdminCreator[]; accounts: AdminAccount[]; onSelect: (target: ReviewTarget) => void }) {
@@ -287,7 +302,7 @@ function CreatorList({ items, accounts, onSelect }: { items: AdminCreator[]; acc
     const connected = accountsByCreator.get(item.id) || []
     const identity = connected.map((account) => `${capitalize(account.platform)} ${creatorAccountLabel(account)}`).join(' · ')
     return <ResourceRow key={item.id} icon={UserRound} title={identity || item.displayName}
-      subtitle={`${identity ? item.displayName : 'No social account connected'} · ${item.email} · Joined ${formatDate(item.createdAt)}`}
+      subtitle={`${item.bundledPayouts ? 'Bundled payouts · creator request required' : 'Pay after approval'} · ${identity ? item.displayName : 'No social account connected'} · ${item.email} · Joined ${formatDate(item.createdAt)}`}
       status={hasPayoutDestination(item) ? item.authStatus === 'verified' ? 'approved' : item.authStatus : 'registered'}
       meta={hasPayoutDestination(item) ? item.paymentOption === 'paypal' ? 'PayPal' : item.cryptoNetwork || 'Crypto' : 'No payment method'}
       onClick={() => onSelect({ resource: 'creator', item })} />
@@ -316,7 +331,8 @@ function QueueRow({ target, onClick }: { target: Exclude<ReviewTarget, { resourc
 }
 
 function ReviewDialog({ target, creator, payments, metrics, open, onOpenChange, onRefresh, onSaved }: { target: ReviewTarget; creator?: AdminCreator; payments: AdminPayment[]; metrics: AdminAttributionMetrics[]; open: boolean; onOpenChange: (open: boolean) => void; onRefresh: () => Promise<void>; onSaved: () => Promise<void> }) {
-  const canReview = (target.resource !== 'creator' || hasPayoutDestination(target.item)) && !(target.resource === 'payment' && target.item.payoutRequestId)
+  const waitingForPayoutRequest = target.resource === 'payment' && creator?.bundledPayouts && !['processing', 'paid'].includes(target.item.status)
+  const canReview = !waitingForPayoutRequest && (target.resource !== 'creator' || hasPayoutDestination(target.item)) && !(target.resource === 'payment' && target.item.payoutRequestId)
   const initialStatus = target.resource === 'creator' ? target.item.authStatus : target.item.status
   const [status, setStatus] = useState(initialStatus)
   const [reviewNote, setReviewNote] = useState(target.resource === 'account' ? target.item.reviewNote || '' : '')
@@ -411,7 +427,8 @@ function ReviewDialog({ target, creator, payments, metrics, open, onOpenChange, 
             <Select value={status} onValueChange={(value) => setStatus(value as typeof status)}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent>{statusOptions(target.resource).map((option) => <SelectItem key={option} value={option}>{target.resource === 'creator' && option === 'verified' ? 'Approved' : statusLabel(option)}</SelectItem>)}</SelectContent></Select>
           </div> : null}
           {target.resource === 'account' ? <label className="mt-5 grid gap-2 text-sm font-medium">Review note<textarea value={reviewNote} onChange={(event) => setReviewNote(event.target.value.slice(0, 1000))} className="min-h-24 resize-y rounded-xl border border-zinc-200 p-3 text-sm outline-none transition-[border-color,box-shadow] duration-150 ease-out focus:border-zinc-400 focus:ring-4 focus:ring-zinc-100" placeholder="Visible to the creator" /></label> : null}
-          {target.resource === 'payment' ? <div className="mt-5 grid gap-4 sm:grid-cols-2"><label className="grid gap-2 text-sm font-medium">Amount (USD)<input type="number" min="0" step="0.01" value={amount} onChange={(event) => setAmount(event.target.value)} className="h-12 rounded-xl border border-zinc-200 px-3.5 outline-none focus:border-zinc-400 focus:ring-4 focus:ring-zinc-100" /></label><label className="grid gap-2 text-sm font-medium">Provider reference<input value={providerReference} onChange={(event) => setProviderReference(event.target.value)} className="h-12 rounded-xl border border-zinc-200 px-3.5 outline-none focus:border-zinc-400 focus:ring-4 focus:ring-zinc-100" placeholder="Transaction ID" /></label></div> : null}
+          {waitingForPayoutRequest ? <p role="note" className="mt-5 rounded-xl bg-amber-50 p-4 text-sm text-amber-900">Bundled payouts enabled. Hold this payment until the creator requests it through Pay me now in Money.</p> : null}
+          {target.resource === 'payment' ? <div className="mt-5 grid gap-4 sm:grid-cols-2"><label className="grid gap-2 text-sm font-medium">Amount (USD)<input type="number" min="0" step="0.01" value={amount} disabled={!canReview} onChange={(event) => setAmount(event.target.value)} className="h-12 rounded-xl border border-zinc-200 px-3.5 outline-none focus:border-zinc-400 focus:ring-4 focus:ring-zinc-100" /></label><label className="grid gap-2 text-sm font-medium">Provider reference<input value={providerReference} disabled={!canReview} onChange={(event) => setProviderReference(event.target.value)} className="h-12 rounded-xl border border-zinc-200 px-3.5 outline-none focus:border-zinc-400 focus:ring-4 focus:ring-zinc-100" placeholder="Transaction ID" /></label></div> : null}
           {target.resource === 'payment' && target.item.hasReceipt ? <a href={`/api/admin/creator/payments/${target.item.id}/receipt`} target="_blank" rel="noreferrer" className="mt-3 inline-block text-sm text-[#00A8EF]">View PayPal receipt ↗</a> : null}
           <div className="mt-7 flex justify-end gap-2"><Button variant="ghost" className="rounded-xl" onClick={() => onOpenChange(false)}>Cancel</Button>{canReview ? <Button className="rounded-xl" onClick={() => void save()} disabled={saving}>{saving ? <Loader2 className="animate-spin" /> : <ShieldCheck />}{saving ? 'Saving…' : 'Save review'}</Button> : null}</div>
           </>}
