@@ -1,3 +1,4 @@
+import { resolveCreatorPostIdentity, rethrowCreatorPostConflict } from './post-identity'
 import { submissionUnreadCount } from '@/lib/creator/submission-messages'
 import { sprintPhase, sprintFormat } from './sprints'
 import type { TikTokUserInfo } from '@/lib/auth/tiktok-api'
@@ -321,10 +322,13 @@ export async function createCreatorSubmission(userId: string, input: CreatorSubm
     throw new CreatorServiceError(400, 'The post link must match the selected account’s platform')
   }
 
+  let postKey: string
+  try { postKey = await resolveCreatorPostIdentity(input.postUrl) }
+  catch { throw new CreatorServiceError(400, 'Could not verify this shared link. Open the video and paste its full TikTok or Instagram post URL instead.') }
   return db.transaction(async tx => {
-    await tx.execute(sql`select pg_advisory_xact_lock(hashtextextended(${input.postUrl}, 0))`)
-    const previousPost = await tx.query.creatorSubmissions.findFirst({ where: eq(schema.creatorSubmissions.postUrl, input.postUrl) })
-    if (previousPost) throw new CreatorServiceError(409, 'This video has already been submitted')
+    await tx.execute(sql`select pg_advisory_xact_lock(hashtextextended(${postKey}, 0))`)
+    const previousPost = await tx.query.creatorSubmissions.findFirst({ where: or(eq(schema.creatorSubmissions.postKey, postKey), eq(schema.creatorSubmissions.postUrl, input.postUrl)) })
+    if (previousPost) throw new CreatorServiceError(409, 'This video has already been submitted. Request a rereview on the original submission instead.')
     const [currentSprint] = await tx.select().from(schema.creatorSprints).where(eq(schema.creatorSprints.id, sprint.id)).for('update')
     if (!currentSprint || currentSprint.updatedAt.getTime() !== sprint.updatedAt.getTime() || sprintPhase({ ...currentSprint, startsAt: currentSprint.startsAt.toISOString(), endsAt: currentSprint.endsAt.toISOString() }) !== 'active') throw new CreatorServiceError(409, 'Campaign changed. Refresh its terms before submitting')
     const [used] = await tx.select({ cents: sql<number>`coalesce(sum(${schema.creatorSubmissions.approvedAmountCents}),0)::float8` }).from(schema.creatorSubmissions).where(eq(schema.creatorSubmissions.sprintId, sprint.id))
@@ -342,6 +346,7 @@ export async function createCreatorSubmission(userId: string, input: CreatorSubm
       platform: creatorPostPlatform(input.postUrl) === 'tiktok' ? 'TikTok' : 'Instagram Reels',
       caption: null,
       postUrl: input.postUrl,
+      postKey,
       videoUrl: null,
       videoStorageKey: null,
       videoContentType: null,
@@ -357,7 +362,7 @@ export async function createCreatorSubmission(userId: string, input: CreatorSubm
     .returning()
 
     return submission
-  })
+  }).catch(rethrowCreatorPostConflict)
 }
 
 async function verifySubmissionAnalytics(userId: string, input: CreatorSubmissionAnalyticsInput) {
@@ -390,7 +395,7 @@ export async function requestSubmissionReview(userId: string, submissionId: stri
     await tx.insert(schema.creatorSubmissionMessages).values({ submissionId, authorUserId: userId, authorRole: 'creator', body: `Submitted fresh analytics for review: ${input.viewCountThreshold.toLocaleString('en-US')} views · ${input.usAudiencePercent}% Tier 1 audience.${submission.analyticsScreenshotUrl ? ` Previous evidence: ${submission.analyticsScreenshotUrl} (${submission.viewCountThreshold ?? 'unrecorded'} views).` : ''}` })
     const [record] = await tx.update(schema.creatorSubmissions).set({ analyticsScreenshotUrl: creatorAssetPublicUrl(input.analyticsStorageKey), analyticsStorageKey: input.analyticsStorageKey, analyticsContentType: input.analyticsContentType, analyticsSizeBytes: input.analyticsSizeBytes, viewCountThreshold: input.viewCountThreshold, usAudiencePercent: input.usAudiencePercent, status: 'in_review', reviewRequestedAt: now, updatedAt: now }).where(eq(schema.creatorSubmissions.id, submission.id)).returning()
     return record
-  })
+  }).catch(rethrowCreatorPostConflict)
 }
 
 export async function getSubmissionForCreator(userId: string, submissionId: string) {

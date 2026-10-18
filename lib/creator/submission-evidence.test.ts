@@ -1,6 +1,7 @@
 import { beforeEach, expect, mock, test } from 'bun:test'
 import * as schema from '@/lib/db/schema'
 
+let previousPost: any = null
 let uploadExists = true
 let sprintActive = true
 const now = new Date()
@@ -9,7 +10,7 @@ let inserted: any[] = []
 let verified: any[] = []
 mock.module('@/lib/db', () => ({ schema, db: {
   query: { creatorProfiles: { findFirst: async () => ({ id: 'creator' }) }, creatorSocialAccounts: { findFirst: async () => ({ id: '00000000-0000-4000-8000-000000000005', creatorProfileId: 'creator', platform: 'instagram' }) }, creatorSprints: { findFirst: async () => ({ ...sprint, status: sprintActive ? 'published' : 'ended' }) } },
-  transaction: async (fn: any) => fn({ execute: async () => undefined, query: { creatorSubmissions: { findFirst: async () => null } }, select: () => ({ from: (table: unknown) => ({ where: () => ({ for: async () => [sprint], then: (resolve: any) => resolve([{ cents: 0 }]) }) }) }), insert: (table: unknown) => ({ values: (values: any) => { inserted.push(values); return { returning: async () => [{ id: 'submission', ...values }] } } }) }),
+  transaction: async (fn: any) => fn({ execute: async () => undefined, query: { creatorSubmissions: { findFirst: async () => previousPost } }, select: () => ({ from: (table: unknown) => ({ where: () => ({ for: async () => [sprint], then: (resolve: any) => resolve([{ cents: 0 }]) }) }) }), insert: (table: unknown) => ({ values: (values: any) => { inserted.push(values); return { returning: async () => [{ id: 'submission', ...values }] } } }) }),
   insert: () => ({ values: (values: any) => { inserted.push(values); return { returning: async () => [{ id: 'submission', ...values }] } } }),
 } }))
 mock.module('@/lib/creator/attribution', () => ({ ensureCreatorTrackingLink: async () => null, creatorReferralHandle: (value: string) => value }))
@@ -27,7 +28,7 @@ const input = {
   analyticsStorageKey: 'creators/user/submission-analytics/00000000-0000-4000-8000-000000000001.mp4',
   analyticsContentType: 'video/mp4' as const, analyticsSizeBytes: 100, viewCountThreshold: 40000 as const,
 }
-beforeEach(() => { inserted = []; verified = []; uploadExists = true; sprintActive = true })
+beforeEach(() => { previousPost = null; inserted = []; verified = []; uploadExists = true; sprintActive = true })
 test('completed video evidence is checked and its URL comes from owned storage', async () => {
   const submission = await createCreatorSubmission('user', input)
   expect(verified).toEqual([[input.analyticsStorageKey, 100, 'video/mp4']])
@@ -80,11 +81,23 @@ test('legacy clients can submit old posts without a publication-age restriction'
 })
 
 
-test('a connected Instagram account can submit a shared Reel with verified recording evidence', async () => {
-  const postUrl = 'https://www.instagram.com/share/reel/AbC123/?igsh=abc'
+test('a connected Instagram account can submit a Reel with verified recording evidence', async () => {
+  const postUrl = 'https://www.instagram.com/creator/reel/AbC123/?igsh=abc'
   const submission = await createCreatorSubmission('user', { ...input, postUrl, socialAccountId: '00000000-0000-4000-8000-000000000005' })
   expect(submission.platform).toBe('Instagram Reels')
   expect(submission.postUrl).toBe(postUrl)
   expect(submission.socialAccountId).toBe('00000000-0000-4000-8000-000000000005')
   expect(verified).toHaveLength(1)
+})
+
+test('tracking variants of an existing video cannot create a second submission', async () => {
+  previousPost = { id: 'original', postKey: 'tiktok:123' }
+  await expect(createCreatorSubmission('user', { ...input, postUrl: input.postUrl + '?tracking=new' })).rejects.toMatchObject({ status: 409 })
+  expect(inserted).toHaveLength(0)
+})
+test('new submissions retain the original URL and store a stable video identity', async () => {
+  const postUrl = input.postUrl + '?tracking=new'
+  const submission = await createCreatorSubmission('user', { ...input, postUrl })
+  expect(submission.postUrl).toBe(postUrl)
+  expect(submission.postKey).toBe('tiktok:123')
 })

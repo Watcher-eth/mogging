@@ -670,6 +670,7 @@ export const creatorSubmissions = pgTable(
     platform: text('platform').notNull(),
     caption: text('caption'),
     postUrl: text('post_url'),
+    postKey: text('post_key'),
     videoUrl: text('video_url'),
     videoStorageKey: text('video_storage_key'),
     videoContentType: text('video_content_type'),
@@ -692,6 +693,7 @@ export const creatorSubmissions = pgTable(
   },
   (table) => ({
     creatorIdx: index('creator_submissions_creator_profile_id_idx').on(table.creatorProfileId),
+    postKeyIdx: uniqueIndex('creator_submissions_post_key_unique').on(table.postKey).where(sql`${table.status} <> 'rejected'`),
     sprintIdx: index('creator_submissions_sprint_id_idx').on(table.sprintId),
     socialAccountIdx: index('creator_submissions_social_account_id_idx').on(table.socialAccountId),
     statusIdx: index('creator_submissions_status_idx').on(table.status),

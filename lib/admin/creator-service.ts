@@ -1,3 +1,4 @@
+import { rethrowCreatorPostConflict } from '@/lib/creator/post-identity'
 import { normalizePaymentReceipt, paymentReceiptSchema } from './payment-receipt'
 import { remainingCreatorPaymentCents } from '@/lib/creator/money'
 import { submissionUnreadCount } from '@/lib/creator/submission-messages'
@@ -336,7 +337,7 @@ export async function reviewCreatorResource(input: CreatorAdminReviewInput, revi
 
   if (input.resource === 'submission') {
     const current = await db.query.creatorSubmissions.findFirst({ where: eq(schema.creatorSubmissions.id, input.id) })
-    if (current?.sprintId && current.sprintTerms) return reviewSprintSubmission(input, reviewerId)
+    if (current?.sprintId && current.sprintTerms) return reviewSprintSubmission(input, reviewerId).catch(rethrowCreatorPostConflict)
     return db.transaction(async tx => {
       const [submission] = await tx.select().from(schema.creatorSubmissions).where(eq(schema.creatorSubmissions.id, input.id)).for('update')
       if (!submission) throw new ApiError(404, 'Creator submission not found')
@@ -361,7 +362,7 @@ export async function reviewCreatorResource(input: CreatorAdminReviewInput, revi
       if (!record) throw new ApiError(404, 'Creator submission not found')
       await appendReviewMessage(tx, submission, input.reviewNote, reviewerId)
       return record
-    })
+    }).catch(rethrowCreatorPostConflict)
   }
 
   const receiptImage = await normalizePaymentReceipt(input.receiptImage)
