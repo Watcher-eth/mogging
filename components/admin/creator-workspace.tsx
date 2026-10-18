@@ -136,7 +136,7 @@ function Overview({ data, onSelect, onRefresh }: { data: AdminDashboard; onSelec
 
       <div className="grid gap-3 sm:grid-cols-3">
         <Metric label="Videos" newValue={data.submissions.filter((item) => isNewInLastDay(item.createdAt)).length} value={data.submissions.length} detail={`${data.submissions.filter((item) => item.status === 'pending').length} awaiting review`} asset="submissions" />
-        <Metric label="Accounts" newValue={data.accounts.filter((item) => isNewInLastDay(item.createdAt)).length} value={data.accounts.length} detail={`${data.accounts.filter((item) => item.status === 'pending' && item.analyticsVideoUrl && item.analyticsConfirmedAt).length} awaiting review`} icon={BadgeCheck} />
+        <Metric label="Accounts" newValue={data.accounts.filter((item) => isNewInLastDay(item.createdAt)).length} value={data.accounts.length} detail={`${data.accounts.filter((item) => item.status === 'pending').length} awaiting review`} icon={BadgeCheck} />
         <Metric label="Outstanding" newValue={formatMoney(data.payments.filter((item) => (item.status === 'pending' || item.status === 'processing') && isNewInLastDay(item.createdAt)).reduce((total, item) => total + item.amountCents, 0), 'USD')} value={formatMoney(outstandingCents, 'USD')} detail={`${data.payments.filter((item) => item.status === 'pending' || item.status === 'processing').length} payments`} icon={CircleDollarSign} />
       </div>
       <div className="mt-7"><BundledPayoutQueue data={data} onRefresh={onRefresh} /></div>
@@ -186,9 +186,8 @@ function SubmissionList({ items, payments, onSelect }: { items: AdminSubmission[
 }
 
 function AccountList({ items, onSelect }: { items: AdminAccount[]; onSelect: (target: ReviewTarget) => void }) {
-  const reviewable = items.filter((item) => item.analyticsVideoUrl && item.analyticsConfirmedAt)
-  if (!reviewable.length) return <EmptyState title="No accounts ready for review" description="Accounts appear here only after their audience recording is submitted." />
-  return <div className="admin-list">{reviewable.map((item) => <AccountRow key={item.id} item={item} onClick={() => onSelect({ resource: 'account', item })} />)}</div>
+  if (!items.length) return <EmptyState title="No connected accounts" description="Accounts appear here when creators connect their TikTok or Instagram handle." />
+  return <div className="admin-list">{items.map((item) => <AccountRow key={item.id} item={item} onClick={() => onSelect({ resource: 'account', item })} />)}</div>
 }
 
 function AccountAvatar({ account }: { account: AdminAccount }) {
@@ -568,27 +567,6 @@ function CreatePayment({ submission, payments, totalCents, selection, onCreated 
   return <div className="mt-5 border-t border-zinc-100 pt-5"><p className="text-xs leading-5 text-zinc-500">{totalCents === null ? 'Choose the final views and audience tier above before creating payment.' : needsApproval ? 'Approve and save this review first. Only the additional amount shown above will be scheduled.' : amountCents ? 'Only the additional amount shown above will be scheduled.' : 'No additional payment is due for this milestone.'}</p><Button variant="outline" className="mt-4 h-10 w-full rounded-xl bg-white" onClick={() => void create()} disabled={creating || totalCents === null || !amountCents || needsApproval}>{creating ? <Loader2 className="animate-spin" /> : <CircleDollarSign />}{creating ? 'Creating…' : 'Schedule additional payment'}</Button></div>
 }
 
-function AccountAudienceEvidence({ account }: { account: AdminAccount }) {
-  const [playbackFailed, setPlaybackFailed] = useState(false)
-  const discordEvidence = account.analyticsVideoUrl?.startsWith('https://discord.com/channels/')
-  return <section className="mt-6 min-w-0 rounded-2xl border border-zinc-200 p-4 sm:p-5" aria-label="Audience verification recording">
-    <h3 className="text-base font-semibold">Audience verification recording</h3>
-    <p className="mt-1 text-sm leading-6 text-zinc-500">Review the past 28 days of audience analytics and top countries before approving this account.</p>
-    {account.analyticsVideoUrl ? <>
-      {discordEvidence ? <p className="mt-4 rounded-xl bg-zinc-50 p-4 text-sm text-zinc-600">Ownership and audience analytics were reviewed by our team on Discord. Open the original message to inspect the evidence.</p> : <video key={account.analyticsVideoUrl} className="mt-4 block max-h-[55dvh] w-full min-w-0 rounded-xl bg-black object-contain" src={account.analyticsVideoUrl} controls playsInline preload="metadata" onError={() => setPlaybackFailed(true)} aria-label="Uploaded audience analytics recording" />}
-      <div className="mt-3 flex flex-wrap items-center justify-between gap-3 text-sm">
-        <a href={account.analyticsVideoUrl} target="_blank" rel="noopener noreferrer" className="inline-flex min-h-11 items-center gap-1 font-medium underline underline-offset-4">{discordEvidence ? 'Open Discord evidence' : 'Open recording'}<ArrowUpRight className="size-4" /></a>
-        {account.analyticsSizeBytes ? <span className="text-zinc-500">{formatBytes(account.analyticsSizeBytes)}</span> : null}
-      </div>
-      {playbackFailed ? <p role="alert" className="mt-2 text-sm text-amber-700">The recording could not play here. Open it in a new tab to view or download it. If it is unavailable, request a new upload.</p> : null}
-      {!account.analyticsConfirmedAt ? <p className="mt-2 text-sm text-amber-700">The creator has not confirmed the required analytics period. Request completed verification before approval.</p> : null}
-    </> : <div className="mt-4 rounded-xl bg-amber-50 p-4 text-sm text-amber-900">
-      <p className="font-semibold">No audience recording uploaded</p>
-      <p className="mt-1 leading-6">Connecting a social account does not submit its audience evidence. Set the review to Missing information and ask the creator to upload their 28-day audience recording from Accounts → Verify account.</p>
-    </div>}
-  </section>
-}
-
 function SubmissionVideo({ submission }: { submission: AdminSubmission }) {
   const embedUrl = publishedVideoEmbedUrl(submission.postUrl)
   return <section className="mt-6 overflow-hidden rounded-2xl border border-violet-200 bg-violet-50/40">
@@ -626,7 +604,7 @@ function ReviewDetails({ target }: { target: ReviewTarget }) {
     <h3 className="mt-6 text-base font-semibold">Account metrics</h3>
     <CreatorAttributionReport report={target.item.attribution} accountCount={1} />
     <p className="mt-2 text-xs text-zinc-500">Follower counts and platform audience metrics are available in the recording below.</p>
-    {target.item.analyticsVideoUrl ? <AccountAudienceEvidence account={target.item} /> : <p className="mt-4 text-sm text-zinc-500">Connected by handle. Account audience verification is no longer required; each video has its own analytics evidence.</p>}
+    <p className="mt-4 text-sm text-zinc-500">Review the linked publishing profile. Analytics evidence is collected for individual video submissions.</p>
   </>
   if (target.resource === 'submission') {
     return <Details rows={[
@@ -658,7 +636,6 @@ function statusLabel(status: string) { return status.split('_').map(capitalize).
 function capitalize(value: string) { return value.charAt(0).toUpperCase() + value.slice(1) }
 function formatMoney(cents: number, currency: string) { return new Intl.NumberFormat('en-US', { style: 'currency', currency }).format(cents / 100) }
 function formatDate(value: string) { return new Intl.DateTimeFormat('en-US', { month: 'short', day: 'numeric', year: 'numeric' }).format(new Date(value)) }
-function formatBytes(bytes: number) { return `${(bytes / 1024 / 1024).toFixed(1)} MB` }
 function formatViewCount(views: number) { return views === 1_000_000 ? '+1M' : new Intl.NumberFormat('en-US', { notation: views >= 10_000 ? 'compact' : 'standard', maximumFractionDigits: 0 }).format(views) }
 function getSubmissionPayoutEstimate(selection: AdminPayoutSelection, submission?: AdminSubmission) {
   if (submission?.sprintTerms) return { payout: sprintPayoutCents(submission.sprintTerms, selection.viewCountThreshold, selection.usAudiencePercent) / 100, isCapped: false }

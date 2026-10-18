@@ -55,7 +55,7 @@ export function CreatorSetupChecklist() {
     {
       title: 'Submit your first video',
       description:
-        'Choose a campaign and submit your post with analytics evidence.',
+        'Choose a campaign and submit your first published post.',
       href: '/creator/submit',
       complete: data.submissions.length > 0,
     },

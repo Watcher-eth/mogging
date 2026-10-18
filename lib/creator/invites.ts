@@ -68,7 +68,6 @@ export async function claimCreatorInvite(token: string, userId: string) {
     const now = new Date()
     const values = {
       displayName: invite.displayName, profileUrl: invite.profileUrl, avatarUrl: invite.avatarUrl,
-      analyticsVideoUrl: invite.evidenceUrl, analyticsPeriodDays: 28, analyticsConfirmedAt: invite.verifiedAt,
       status: 'approved' as const, reviewNote: null, updatedAt: now,
     }
     if (existing) await tx.update(schema.creatorSocialAccounts).set(values).where(eq(schema.creatorSocialAccounts.id, existing.id))

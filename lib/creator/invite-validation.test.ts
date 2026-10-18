@@ -9,7 +9,7 @@ test('normalizes matching TikTok profiles', () => {
   expect(invite.profileUrl).toBe('https://www.tiktok.com/@alex.creator')
 })
 
-test('accepts analytics evidence shared in a Discord direct message', () => {
+test('accepts ownership evidence shared in a Discord direct message', () => {
   expect(creatorInviteSchema.safeParse({ ...input, evidenceUrl: 'https://discord.com/channels/@me/1555046510406934528/1555265856517316688' }).success).toBe(true)
 })
 

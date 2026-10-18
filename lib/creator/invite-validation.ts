@@ -1,7 +1,7 @@
 import { z } from 'zod'
 import { creatorSocialAccountSchema } from './validation'
 
-export const CREATOR_INVITE_PROGRESS = 66
+export const CREATOR_INVITE_PROGRESS = 50
 
 export function isCreatorAvatarUrl(value: string) {
   try {
@@ -24,7 +24,7 @@ export const creatorInviteSchema = z.object({
         (url.hostname === 'cdn.discordapp.com' && /^\/attachments\/\d+\/\d+\/[^/]+\.(?:mov|mp4|webm)$/i.test(url.pathname))
       )
     } catch { return false }
-  }, 'Enter the Discord message or recording link containing the reviewed analytics'),
+  }, 'Enter the Discord message or recording link confirming account ownership'),
   verificationConfirmed: z.literal(true),
 }).transform((value, ctx) => {
   const account = creatorSocialAccountSchema.safeParse({ platform: 'tiktok', handle: value.handle, profileUrl: value.profileUrl })

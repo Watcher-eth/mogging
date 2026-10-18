@@ -26,7 +26,7 @@ export default function CreatorInvitePage({ invite, token, url, imageUrl }: Prop
   const [error, setError] = useState('')
   const ready = invite.state === 'ready'
   const title = ready ? `${invite.displayName}, your creator setup is ${CREATOR_INVITE_PROGRESS}% complete` : 'Your Mogging creator invitation'
-  const description = ready ? 'Your TikTok account and analytics are verified. Claim your account and choose your payout method to finish setup.' : 'Continue in Creator Studio or contact our team on Discord for a new invitation.'
+  const description = ready ? 'Your TikTok account is ready. Claim your account and choose your payout method to finish setup.' : 'Continue in Creator Studio or contact our team on Discord for a new invitation.'
 
   const claim = useCallback(async () => {
     if (!session?.user?.id) {
@@ -85,7 +85,7 @@ export default function CreatorInvitePage({ invite, token, url, imageUrl }: Prop
             <div className="mt-7 flex items-center justify-between gap-4 text-sm"><span className="text-[#73777d]">Creator setup</span><span className="text-lg font-medium text-[#00A8EF]">{CREATOR_INVITE_PROGRESS}% complete</span></div>
             <div role="progressbar" aria-label="Creator setup" aria-valuenow={CREATOR_INVITE_PROGRESS} aria-valuemin={0} aria-valuemax={100} className="mt-3 h-3 overflow-hidden rounded-full bg-[#eeeeef]"><div className="creator-progress h-full rounded-full bg-[#00A8EF]" style={{ width: `${CREATOR_INVITE_PROGRESS}%` }} /></div>
             <ul className="my-7 space-y-4 text-sm">
-              {(['Account connected', 'Audience analytics verified'] as const).map((label) => <li key={label} className="flex items-center gap-3"><span className="grid size-7 place-items-center rounded-full bg-[#00A8EF] text-white"><Check className="size-4" strokeWidth={2.75} /></span>{label}</li>)}
+              <li className="flex items-center gap-3"><span className="grid size-7 place-items-center rounded-full bg-[#00A8EF] text-white"><Check className="size-4" strokeWidth={2.75} /></span>Account connected</li>
               <li className="flex items-center gap-3 text-[#73777d]"><CreatorIcon name="payouts" className="size-7" />Choose your payout method</li>
             </ul>
           </> : null}

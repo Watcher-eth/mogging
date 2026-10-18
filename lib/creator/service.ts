@@ -3,13 +3,12 @@ import { sprintPhase, sprintFormat } from './sprints'
 import type { TikTokUserInfo } from '@/lib/auth/tiktok-api'
 import { creatorAssetPublicUrl, verifyCreatorRecordingUpload } from '@/lib/storage/videos'
 import { and, desc, eq, getTableColumns, or, sql } from 'drizzle-orm'
-import { z } from 'zod'
 import { db, schema } from '@/lib/db'
 import { env } from '@/lib/env'
 import { creatorReferralHandle, ensureCreatorTrackingLink } from '@/lib/creator/attribution'
 
-export { creatorProfileSchema, creatorSubmissionSchema, creatorSocialAccountSchema, creatorAccountAnalyticsSubmissionSchema } from './validation'
-import { creatorSubmissionAnalyticsSchema, type CreatorSubmissionAnalyticsInput, creatorSubmissionSchema, creatorPostPlatform, creatorAnalyticsEvidenceSchema, creatorAccountAnalyticsSubmissionSchema, type CreatorProfileInput, type CreatorSubmissionInput, type CreatorSocialAccountInput, type CreatorAnalyticsEvidenceInput } from './validation'
+export { creatorProfileSchema, creatorSubmissionSchema, creatorSocialAccountSchema } from './validation'
+import { creatorSubmissionAnalyticsSchema, type CreatorSubmissionAnalyticsInput, creatorSubmissionSchema, creatorPostPlatform, type CreatorProfileInput, type CreatorSubmissionInput, type CreatorSocialAccountInput } from './validation'
 
 export type CreatorTikTokOAuthInput = {
   accessToken: string
@@ -215,51 +214,6 @@ export async function addCreatorTikTokOAuthAccount(userId: string, input: Creato
     return account
   })
   return { ...account, trackingLink: await ensureCreatorTrackingLink(account.id) }
-}
-
-export async function submitCreatorAccountAnalyticsEvidence(userId: string, input: z.infer<typeof creatorAccountAnalyticsSubmissionSchema>) {
-  await validateCreatorAnalyticsEvidence(userId, input)
-  const profile = await getCreatorProfile(userId)
-  if (!profile) throw new CreatorServiceError(404, 'Creator profile not found')
-  const [account] = await db
-    .update(schema.creatorSocialAccounts)
-    .set({
-      ...creatorAnalyticsEvidenceValues(input),
-      status: 'pending',
-      reviewNote: null,
-      updatedAt: new Date(),
-    })
-    .where(and(
-      eq(schema.creatorSocialAccounts.id, input.accountId),
-      eq(schema.creatorSocialAccounts.creatorProfileId, profile.id)
-    ))
-    .returning()
-  if (!account) throw new CreatorServiceError(404, 'Connected account not found')
-  return account
-}
-
-export async function validateCreatorAnalyticsEvidence(userId: string, input: z.infer<typeof creatorAnalyticsEvidenceSchema>) {
-  input = creatorAnalyticsEvidenceSchema.parse(input)
-  const prefix = `creators/${userId}/account-analytics/`
-  if (!input.analyticsStorageKey.startsWith(prefix) || !/^[0-9a-f-]{36}\.(mp4|mov|webm)$/.test(input.analyticsStorageKey.slice(prefix.length))) {
-    throw new CreatorServiceError(400, 'Invalid analytics recording upload')
-  }
-  try {
-    await verifyCreatorRecordingUpload(input.analyticsStorageKey, input.analyticsSizeBytes, input.analyticsContentType)
-  } catch {
-    throw new CreatorServiceError(400, 'Upload the complete audience recording before connecting or submitting this account')
-  }
-}
-
-function creatorAnalyticsEvidenceValues(input: z.infer<typeof creatorAnalyticsEvidenceSchema>) {
-  return {
-    analyticsVideoUrl: creatorAssetPublicUrl(input.analyticsStorageKey),
-    analyticsStorageKey: input.analyticsStorageKey,
-    analyticsContentType: input.analyticsContentType,
-    analyticsSizeBytes: input.analyticsSizeBytes,
-    analyticsPeriodDays: 28,
-    analyticsConfirmedAt: new Date(),
-  }
 }
 
 export async function removeCreatorSocialAccount(userId: string, accountId: string) {

@@ -5,7 +5,6 @@ let rows: any[] = []
 let providerAccount: any = undefined
 let tokenAccount: any = undefined
 let writes: any[] = []
-let uploadExists = true
 const tx = {
   execute: async () => undefined,
   query: {
@@ -39,11 +38,10 @@ mock.module('@/lib/db', () => ({ schema, db: {
   transaction: async (fn: any) => fn(tx),
 } }))
 mock.module('@/lib/creator/attribution', () => ({ creatorReferralHandle: (value: string) => value, ensureCreatorTrackingLink: async () => ({ publicUrl: 'https://www.mogging.com/r/test' }) }))
-mock.module('@/lib/storage/videos', () => ({ creatorAssetPublicUrl: (key: string) => `https://media.example/${key}`, verifyCreatorRecordingUpload: async () => { if (!uploadExists) throw new Error('Not found') } }))
-const evidence = { analyticsVideoUrl: 'https://media.example/recording.mp4', analyticsStorageKey: 'creators/user/account-analytics/00000000-0000-0000-0000-000000000001.mp4', analyticsContentType: 'video/mp4' as const, analyticsSizeBytes: 100, analyticsPast28DaysConfirmed: true as const }
-const { addCreatorTikTokOAuthAccount, addCreatorSocialAccount, removeCreatorSocialAccount, submitCreatorAccountAnalyticsEvidence } = await import('./service')
+mock.module('@/lib/storage/videos', () => ({ creatorAssetPublicUrl: (key: string) => `https://media.example/${key}`, verifyCreatorRecordingUpload: async () => undefined }))
+const { addCreatorTikTokOAuthAccount, addCreatorSocialAccount, removeCreatorSocialAccount } = await import('./service')
 const input = { openId: 'provider-id', accessToken: 'test-token', profile: { display_name: 'Nate' }, scope: 'user.info.basic,user.info.stats' }
-beforeEach(() => { rows = []; providerAccount = undefined; tokenAccount = undefined; writes = []; uploadExists = true })
+beforeEach(() => { rows = []; providerAccount = undefined; tokenAccount = undefined; writes = [] })
 
 test('basic authorization connects before uploading and uses the real display name', async () => {
   const account = await addCreatorTikTokOAuthAccount('user', input)
@@ -108,27 +106,6 @@ test('manual TikTok connects without claiming audience analytics verification', 
   expect(account.oauthVerifiedAt).toBeUndefined()
   expect(writes[0].values).not.toHaveProperty('analyticsConfirmedAt')
   expect(writes[0].values).not.toHaveProperty('analyticsVideoUrl')
-})
-
-test('evidence updates reject absent uploads before writing', async () => {
-  uploadExists = false
-  await expect(submitCreatorAccountAnalyticsEvidence('user', { accountId: '00000000-0000-4000-8000-000000000002', ...evidence })).rejects.toThrow('complete audience recording')
-  expect(writes).toHaveLength(0)
-})
-
-test('rejects foreign recording keys and path traversal before connecting', async () => {
-  for (const key of ['creators/other/account-analytics/00000000-0000-0000-0000-000000000001.mp4', 'creators/user/account-analytics/../../../other.mp4']) {
-    await expect(submitCreatorAccountAnalyticsEvidence('user', { accountId: '00000000-0000-4000-8000-000000000002', ...evidence, analyticsStorageKey: key })).rejects.toThrow('Invalid analytics recording')
-  }
-  expect(writes).toHaveLength(0)
-})
-
-test('only uploading verified evidence submits the account for review', async () => {
-  providerAccount = { id: 'existing', status: 'missing_information' }
-  const account = await submitCreatorAccountAnalyticsEvidence('user', { accountId: '00000000-0000-4000-8000-000000000002', ...evidence })
-  expect(account.status).toBe('pending')
-  expect(account.analyticsConfirmedAt).toBeInstanceOf(Date)
-  expect(account.analyticsVideoUrl).toContain(evidence.analyticsStorageKey)
 })
 
 test('OAuth persists every returned profile and stats field and uses the returned avatar', async () => {

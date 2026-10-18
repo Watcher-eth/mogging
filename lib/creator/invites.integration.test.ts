@@ -25,7 +25,7 @@ describe.skipIf(!testUrl)('creator invite database integration', () => {
   }
   const token = (result: { path: string }) => result.path.split('/').pop()!
 
-  test('a claim adds approved manual account and verified analytics without setting payout or OAuth', async () => {
+  test('a claim adds an approved manual account without requiring audience analytics, payout or OAuth', async () => {
     const id = await user()
     const created = await invite()
     const preview = await service.getCreatorInvitePreview(token(created))
@@ -38,7 +38,9 @@ describe.skipIf(!testUrl)('creator invite database integration', () => {
     const accounts = await database.db.query.creatorSocialAccounts.findMany({ where: eq(database.schema.creatorSocialAccounts.creatorProfileId, profile!.id) })
     expect(accounts).toHaveLength(1)
     expect(accounts[0].status).toBe('approved')
-    expect(accounts[0].analyticsConfirmedAt).toBeInstanceOf(Date)
+    expect(accounts[0].analyticsConfirmedAt).toBeNull()
+    expect(accounts[0].analyticsVideoUrl).toBeNull()
+    expect(accounts[0].analyticsPeriodDays).toBeNull()
     expect(accounts[0].oauthVerifiedAt).toBeNull()
     expect(accounts[0].connectionMethod).toBe('manual')
     await service.claimCreatorInvite(token(created), id)

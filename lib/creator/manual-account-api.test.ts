@@ -1,5 +1,5 @@
 import { beforeEach, expect, mock, test } from 'bun:test'
-import { creatorSocialAccountSchema, creatorAccountAnalyticsSubmissionSchema } from './validation'
+import { creatorSocialAccountSchema } from './validation'
 
 let session: { user: { id: string; email: string } } | null
 const addAccount = mock(async (_userId: string, input: unknown) => ({ id: 'account', ...input as object }))
@@ -7,11 +7,9 @@ mock.module('@/lib/auth/session', () => ({ getAuthSession: async () => session }
 mock.module('@/lib/creator/service', () => ({
   addCreatorSocialAccount: addAccount,
   creatorSocialAccountSchema,
-  creatorAccountAnalyticsSubmissionSchema,
   getCreatorDashboard: mock(),
   getCreatorTikTokAccessToken: mock(),
   removeCreatorSocialAccount: mock(),
-  submitCreatorAccountAnalyticsEvidence: mock(),
 }))
 const { default: handler } = await import('../../pages/api/creator/accounts')
 

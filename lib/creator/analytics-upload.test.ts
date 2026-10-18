@@ -1,7 +1,7 @@
 import { afterEach, expect, test } from 'bun:test'
 import { uploadAnalyticsRecording } from './analytics-upload'
 import { creatorVideoContentType } from './video-types'
-import { creatorAccountAnalyticsSubmissionSchema } from './validation'
+import { creatorSubmissionAnalyticsSchema } from './validation'
 
 test('accepts supported phone videos when the file picker omits MIME metadata', () => {
   expect(creatorVideoContentType({ name: 'IMG_1234.MOV', type: '' })).toBe('video/quicktime')
@@ -28,10 +28,9 @@ test('normalizes Apple video aliases and codec metadata into server-supported co
   for (const [name, type, expected] of examples) {
     const contentType = creatorVideoContentType({ name, type })
     expect(contentType).toBe(expected)
-    expect(creatorAccountAnalyticsSubmissionSchema.safeParse({
-      accountId: '00000000-0000-4000-8000-000000000002',
-      analyticsVideoUrl: '/recording', analyticsStorageKey: 'creators/user/account-analytics/recording',
-      analyticsContentType: contentType, analyticsSizeBytes: 100, analyticsPast28DaysConfirmed: true,
+    expect(creatorSubmissionAnalyticsSchema.safeParse({
+      analyticsVideoUrl: '/recording', analyticsStorageKey: 'creators/user/submission-analytics/recording',
+      analyticsContentType: contentType, analyticsSizeBytes: 100, analyticsPhysicalRecordingConfirmed: true, viewCountThreshold: 20000, usAudiencePercent: 40,
     }).success).toBe(true)
   }
 })

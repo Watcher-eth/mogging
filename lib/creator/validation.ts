@@ -77,14 +77,6 @@ export const creatorSubmissionAnalyticsSchema = creatorSubmissionSchema.pick({
 })
 export type CreatorSubmissionAnalyticsInput = z.infer<typeof creatorSubmissionAnalyticsSchema>
 
-export const creatorAnalyticsEvidenceSchema = z.object({
-  analyticsVideoUrl: z.string().min(1).max(2048),
-  analyticsStorageKey: z.string().min(1).max(300),
-  analyticsContentType: z.enum(CREATOR_VIDEO_TYPES),
-  analyticsSizeBytes: z.number().int().positive().max(250 * 1024 * 1024),
-  analyticsPast28DaysConfirmed: z.literal(true),
-})
-
 export const creatorSocialAccountSchema = z.object({
   platform: z.enum(['tiktok', 'instagram']),
   handle: z
@@ -106,11 +98,6 @@ export const creatorSocialAccountSchema = z.object({
   }
 })
 
-export const creatorAccountAnalyticsSubmissionSchema = creatorAnalyticsEvidenceSchema.extend({
-  accountId: z.string().uuid(),
-})
-
 export type CreatorProfileInput = z.infer<typeof creatorProfileSchema>
 export type CreatorSubmissionInput = z.infer<typeof creatorSubmissionSchema>
 export type CreatorSocialAccountInput = z.infer<typeof creatorSocialAccountSchema>
-export type CreatorAnalyticsEvidenceInput = z.infer<typeof creatorAnalyticsEvidenceSchema>
