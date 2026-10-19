@@ -2,15 +2,17 @@ import { CREATOR_REREVIEW_GUIDANCE } from '@/lib/creator/post-guidance'
 import { AnimatedDialogPanel } from '@/components/ui/animated-dialog-panel'
 import { SubmissionDialog as AnalyticsSubmissionDialog } from '@/components/creator/submission-dialog'
 import { SubmissionConversation } from '@/components/creator/submission-conversation'
+import { SubmissionPostPreview, useSubmissionPostPreview } from '@/components/creator/submission-post-preview'
 import Link from 'next/link'
 import { useMemo, useState } from 'react'
-import { ArrowUpRight, Camera, MessageCircle, CheckCircle2, CircleAlert, Clock3, Loader2, RotateCcw, XCircle } from 'lucide-react'
+import { ArrowUpRight, Eye, MessageCircle, CheckCircle2, CircleAlert, Clock3, Loader2, RotateCcw, XCircle } from 'lucide-react'
 import useSWR from 'swr'
 import { Button } from '@/components/ui/button'
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { CreatorHeader, CreatorShell } from '@/components/creator/creator-shell'
 import { SubmissionReviewAnimation } from '@/components/creator/submission-review-animation'
 import type { CreatorDashboard, CreatorPayment, CreatorSubmission } from '@/components/creator/types'
+import type { CreatorPostPreview } from '@/lib/creator/post-preview'
 import { apiGet } from '@/lib/api/client'
 import { mergeCreatorSubmissionReviewResults } from '@/lib/creator/submission-review'
 import { sprintReviewItems } from '@/lib/creator/sprints'
@@ -54,15 +56,38 @@ function SubmissionsContent() {
 }
 
 function SubmissionCard({ submission, payment, onClick, style }: { submission: CreatorSubmission; payment?: CreatorPayment; onClick: () => void; style: React.CSSProperties }) {
+  const { ref, preview, visible } = useSubmissionPostPreview(submission)
   const amount = submission.sprintId && creatorEarnedCents(submission) > 0 ? formatMoney(creatorEarnedCents(submission), 'USD') : payment ? formatMoney(payment.amountCents, payment.currency) : submission.status === 'approved' ? formatMoney(creatorEarnedCents(submission), 'USD') : null
+  const submittedViews = submission.reviewRequestedAt ? submission.viewCountThreshold : submission.adminViewCountThreshold ?? submission.viewCountThreshold
+  const currentViews = preview?.viewCount ?? null
+  const views = currentViews ?? submittedViews
+  const caption = preview?.caption || submission.caption
+  const viewsDescription = views === null ? 'No views recorded' : currentViews !== null
+    ? `${views.toLocaleString('en-US')} public views${preview?.fetchedAt ? ` · checked ${new Date(preview.fetchedAt).toLocaleString('en-US')}` : ''}`
+    : `${views.toLocaleString('en-US')} submitted views`
+  let username = preview?.authorName?.replace(/^@/, '')
+  if (!username && submission.postUrl) {
+    try {
+      const path = new URL(submission.postUrl).pathname
+      username = path.match(/^\/@([^/]+)/)?.[1]
+    } catch { /* Legacy submissions may not have a valid published URL. */ }
+  }
   return (
-    <button onClick={onClick} style={style} className="creator-list-item creator-surface group grid w-full grid-cols-[40px_minmax(0,1fr)_auto] items-center gap-3 p-4 text-left transition-[border-color,box-shadow,transform] duration-200 hover:-translate-y-0.5 hover:border-black/10 hover:shadow-[0_16px_40px_rgba(0,0,0,0.06)] active:scale-[0.99]">
-      <span className="grid size-10 place-items-center rounded-full bg-zinc-50"><Camera className="size-5 text-zinc-700" aria-hidden="true" /></span>
-      <span className="min-w-0"><span className="block truncate text-sm font-semibold tracking-[-0.02em]">{submission.title}</span><span className="mt-1 block text-xs text-zinc-500">{formatDate(submission.createdAt)}</span></span>
-      <span className="flex flex-wrap items-center justify-end gap-2">
-        {amount ? <span className="text-sm font-semibold">{amount}</span> : null}
-        {submission.unreadMessages ? <span aria-label={`${submission.unreadMessages} new messages`} className="inline-flex items-center gap-1 rounded-lg bg-[#007aff] px-2 py-1 text-[11px] font-semibold text-white"><MessageCircle className="size-3" aria-hidden="true" />{submission.unreadMessages}</span> : null}
-        <StatusPill status={submission.status} />
+    <button ref={ref} onClick={onClick} style={style} className="creator-list-item creator-surface group grid w-full grid-cols-[80px_minmax(0,1fr)] items-center gap-x-4 p-3 text-left transition-[border-color,box-shadow,transform] duration-200 hover:-translate-y-0.5 hover:border-black/10 hover:shadow-[0_16px_40px_rgba(0,0,0,0.06)] active:scale-[0.99] sm:grid-cols-[96px_minmax(0,1fr)] sm:gap-x-5 sm:p-4">
+      <SubmissionPostPreview preview={preview} videoUrl={visible ? submission.videoUrl : null} platform={submission.platform} />
+      <span className="min-w-0">
+        {caption ? <span className="line-clamp-2 whitespace-pre-wrap break-words text-sm font-semibold leading-5 tracking-[-0.02em] sm:line-clamp-none" title={caption}>{caption}</span> : null}
+        <span className="mt-2 flex flex-wrap items-center gap-x-1.5 gap-y-1 text-[13px] font-medium tabular-nums text-zinc-700" title={viewsDescription}>
+          <span className="inline-flex items-center gap-1.5"><Eye className="size-3.5 text-zinc-400" aria-hidden="true" />{views === null ? 'Views not recorded' : `${formatViewCount(views)} ${currentViews === null ? 'submitted views' : 'views'}`}</span>
+          <span aria-hidden="true" className="px-0.5 text-zinc-300">·</span>
+          <span className="whitespace-nowrap text-xs font-normal text-zinc-500">{formatDate(submission.createdAt)}</span>
+        </span>
+        <span className="mt-3 flex flex-wrap items-center gap-2">
+          {username ? <span className="break-all text-xs font-medium text-zinc-500">@{username}</span> : null}
+          {amount ? <span className="text-sm font-semibold">{amount}</span> : null}
+          {submission.unreadMessages ? <span aria-label={`${submission.unreadMessages} new messages`} className="inline-flex items-center gap-1 rounded-lg bg-[#007aff] px-2 py-1 text-[11px] font-semibold text-white"><MessageCircle className="size-3" aria-hidden="true" />{submission.unreadMessages}</span> : null}
+          <StatusPill status={submission.status} />
+        </span>
       </span>
     </button>
   )
@@ -70,6 +95,8 @@ function SubmissionCard({ submission, payment, onClick, style }: { submission: C
 
 function SubmissionDialog({ submission, payment, payments, linkedToApprovedAccount, open, onOpenChange, onUpdateAnalytics }: { submission: CreatorSubmission | null; payment?: CreatorPayment; payments: CreatorPayment[]; linkedToApprovedAccount: boolean; open: boolean; onOpenChange: (open: boolean) => void; onUpdateAnalytics: () => void }) {
   const [tab, setTab] = useState<'conversation' | 'details'>('conversation')
+  const { data: post } = useSWR<CreatorPostPreview>(open && submission?.postUrl ? `/api/creator/submissions/${submission.id}/preview` : null, apiGet, { dedupingInterval: 300_000, revalidateOnFocus: false })
+  const caption = post?.caption || submission?.caption
   const evidenceSize = submission?.analyticsSizeBytes || submission?.videoSizeBytes
 
   return (
@@ -82,7 +109,7 @@ function SubmissionDialog({ submission, payment, payments, linkedToApprovedAccou
             <DialogHeader className="text-left">
               <div className="flex items-center gap-2 pr-10"><StatusPill status={submission.status} /><span className="text-xs text-zinc-400">{formatDate(submission.createdAt)}</span></div>
               <div className="flex items-center justify-between gap-3 pt-2">
-                <DialogTitle className="min-w-0 flex-1 break-words text-2xl">{submission.title}</DialogTitle>
+                <DialogTitle className="min-w-0 flex-1 break-words text-xl">{caption || `${submission.platform} submission`}</DialogTitle>
                 {submission.sprintId && !submission.reviewRequestedAt && !payments.some(item => ['pending', 'processing'].includes(item.status)) && (['approved', 'paid', 'rejected'].includes(submission.status) || !submission.analyticsScreenshotUrl) ? <Button variant="outline" className="min-h-10 max-w-[60%] shrink-0 whitespace-normal rounded-full px-3 text-xs sm:text-sm" onClick={onUpdateAnalytics}><RotateCcw className="size-4 shrink-0" aria-hidden="true" />{submission.analyticsScreenshotUrl ? 'Request rereview' : 'Add analytics & update views'}</Button> : null}
               </div>
               <DialogDescription>{CREATOR_REREVIEW_GUIDANCE}</DialogDescription>
@@ -103,7 +130,7 @@ function SubmissionDialog({ submission, payment, payments, linkedToApprovedAccou
               {payments.length ? payments.map(item => <Detail key={item.id} label={item.paidAt ? `Payment · ${formatDate(item.paidAt)}` : 'Payment'} value={`${formatMoney(item.amountCents, item.currency)} · ${item.status}`} />) : <Detail label="Payment" value="Not scheduled" />}
               <Detail label="Payment Method" value={payment ? (payment.paymentOption === 'paypal' ? 'PayPal' : 'Crypto') : '—'} />
             </div>
-            {submission.caption ? <div className="mt-6"><p className="text-xs font-semibold uppercase tracking-[0.15em] text-zinc-400">Caption</p><p className="mt-2 whitespace-pre-wrap text-sm leading-6 text-zinc-600">{submission.caption}</p></div> : null}
+            {caption ? <div className="mt-6"><p className="text-xs font-semibold uppercase tracking-[0.15em] text-zinc-400">Caption</p><p className="mt-2 whitespace-pre-wrap text-sm leading-6 text-zinc-600">{caption}</p></div> : null}
             {submission.reviewChecklist?.length ? <CreatorReviewChecklist submission={submission} /> : null}
             {submission.postUrl ? <Button asChild variant="outline" className="mt-6 h-10 rounded-xl"><a href={submission.postUrl} target="_blank" rel="noreferrer">Open Published Post <ArrowUpRight /></a></Button> : null}
             </>}
@@ -139,4 +166,4 @@ function statusLabel(status: CreatorSubmission['status']) { return status === 'i
 function formatMoney(cents: number, currency: string) { return new Intl.NumberFormat('en-US', { style: 'currency', currency }).format(cents / 100) }
 function formatDate(value: string) { return new Intl.DateTimeFormat('en-US', { month: 'short', day: 'numeric', year: 'numeric' }).format(new Date(value)) }
 function formatBytes(bytes: number) { return `${(bytes / 1024 / 1024).toFixed(1)} MB` }
-function formatViewCount(views: number) { return views === 1_000_000 ? '+1M' : new Intl.NumberFormat('en-US', { notation: views >= 10_000 ? 'compact' : 'standard', maximumFractionDigits: 0 }).format(views) }
+function formatViewCount(views: number) { return new Intl.NumberFormat('en-US', { notation: views >= 10_000 ? 'compact' : 'standard', maximumFractionDigits: 1 }).format(views) }

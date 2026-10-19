@@ -12,3 +12,4 @@ out
 public/uploads
 .vercel
 .local/
+.private-uploads/

@@ -1,0 +1,17 @@
+{
+  "checkedAt": "2026-10-17T00:19:05.116Z",
+  "scope": "Real isolated PostgreSQL; authenticated synthetic creator A, creator B, ordinary user and verified admin; no production records or provider calls.",
+  "passed": 10,
+  "checks": [
+    "creator dashboard ignores supplied identities and returns only its own records",
+    "campaign proofs are private while aggregate budget contracts remain compatible",
+    "another creator cannot read, message, mark-read, remove accounts or rereview records",
+    "creator cannot read or publish another user private report",
+    "every admin route rejects a signed-in creator including forged admin cookies",
+    "admin email spoofing is rejected and existing admin login remains compatible",
+    "ordinary accounts receive no private creator metrics",
+    "approved templates retain reusable assets while owner and admin review data stay intact",
+    "legacy anonymous sessions and automatic avatars retain their original contracts",
+    "health diagnostics retain the existing response contract"
+  ]
+}
