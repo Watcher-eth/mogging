@@ -3,9 +3,11 @@ export const analyticsEventNames = [
   'app_opened', 'app_first_open', 'session_started', 'screen_viewed', 'screen_exited',
   'page_viewed', 'page_exited', 'landing_viewed', 'landing_section_viewed', 'landing_cta_clicked', 'destination_selected', 'app_store_redirected',
   'account_auth_started', 'account_authenticated', 'account_auth_failed', 'account_auth_cancelled', 'account_post_login_failed', 'identity_linked',
+  'guest_session_ready', 'guest_purchase_recovered', 'guest_account_saved', 'guest_save_prompt_viewed', 'guest_recovery_bound', 'guest_recovery_binding_failed',
+  'guest_save_prompt_dismissed', 'guest_save_signin_started', 'guest_account_save_failed', 'guest_recovery_started', 'guest_recovery_completed', 'guest_recovery_failed', 'reports_sync_completed', 'reports_sync_failed',
   'attribution_link_received', 'attribution_resolved', 'attribution_diagnostic',
   'onboarding_started', 'onboarding_step_viewed', 'onboarding_step_completed', 'onboarding_step_back',
-  'onboarding_step_exited', 'onboarding_step_skipped', 'onboarding_completed', 'permission_prompted', 'permission_result',
+  'onboarding_interaction', 'onboarding_step_exited', 'onboarding_step_skipped', 'onboarding_completed', 'permission_prompted', 'permission_result',
   'photo_source_selected', 'photo_selected', 'face_capture_started', 'face_capture_result', 'photo_preparation_started', 'photo_preparation_stage', 'photo_picker_result', 'photo_preparation_completed', 'photo_validation_failed', 'consent_result',
   'paywall_offer_unlocked', 'paywall_offer_unavailable', 'paywall_offer_dismissed', 'referral_reward_notification_sent',
   'paywall_viewed', 'paywall_dismissed', 'paywall_products_loaded', 'plan_selected',
@@ -15,6 +17,7 @@ export const analyticsEventNames = [
   'purchase_app_state', 'purchase_recovered', 'purchase_reconciled', 'purchase_cancel_feedback',
   'restore_started', 'restore_failed', 'purchase_restored', 'activation_code_redeemed',
   'evaluation_started', 'evaluation_completed', 'evaluation_failed',
+  'evaluation_request_started', 'evaluation_request_completed', 'evaluation_request_failed',
   'screenshot_taken', 'report_viewed', 'category_viewed', 'protocol_viewed', 'protocol_task_completed',
   'repeat_evaluation_started', 'share_started', 'share_completed', 'share_failed',
   'referral_invite_opened', 'referral_invite_created', 'referral_invite_redeemed', 'push_opened',
@@ -26,9 +29,9 @@ export type AnalyticsProperties = Record<string, string | number | boolean | nul
 // Allowlist protects both ingestion and transport. No URLs, tokens, free-form errors, images,
 // demographics, coordinates, user input, or report scores leave the product.
 const propertyKeys = new Set([
-  'runtime_environment', 'screen', 'previous_screen', 'step', 'step_index', 'step_count', 'onboarding_version', 'flow_id', 'attempt_id',
+  'account_type', 'runtime_environment', 'screen', 'previous_screen', 'step', 'step_index', 'step_count', 'onboarding_version', 'flow_id', 'attempt_id', 'request_id',
   'stage_duration_ms', 'previous_stage_duration_ms', 'previous_stage', 'purchase_tracking_version', 'purchase_kind', 'transaction_id', 'os_version', 'store_environment', 'app_state', 'feedback_reason',
-  'duration_ms', 'surface', 'plan', 'product', 'productId', 'product_id', 'offering',
+  'action', 'duration_ms', 'surface', 'plan', 'product', 'productId', 'product_id', 'offering',
   'paywall_id', 'paywall_version', 'default_plan', 'product_count', 'products_loaded',
   'http_status', 'native_domain', 'native_code', 'native_underlying_domain', 'native_underlying_code',
   'channel', 'provider', 'auth_stage', 'purchase_stage', 'status', 'reason_code', 'error_code', 'active', 'launch', 'launchState',
@@ -45,9 +48,12 @@ const propertyKeys = new Set([
 export function sanitizeProperties(input: Record<string, unknown>): AnalyticsProperties {
   const output: AnalyticsProperties = {}
   let budget = 2000
-  for (const key of Object.keys(input).slice(0, 80)) {
+  // Correlation and required event fields survive long attribution context.
+  const keys = new Set(['step', 'step_index', 'step_count', 'onboarding_version', 'flow_id', 'action', 'screen', 'permission', 'attempt_id', 'evaluation_id', 'request_id', 'report_id', 'transaction_id', 'reason_code', 'error_code', ...Object.keys(input).slice(0, 80)])
+  for (const key of keys) {
     if (!propertyKeys.has(key)) continue
     const value = input[key]
+    if (value !== null && typeof value !== 'boolean' && typeof value !== 'string' && !(typeof value === 'number' && Number.isFinite(value))) continue
     const cost = (key.length + (typeof value === 'string' ? Math.min(value.length, 160) : 24)) * 3 + 8
     if (cost > budget) continue
     budget -= cost

@@ -5,7 +5,8 @@ import { sql, type SQL } from 'drizzle-orm'
 import { z } from 'zod'
 import { db } from '@/lib/db'
 import { trackingDefinitions, trackingDimensions } from './tracking'
-import { onboardingAnalyticsSteps } from '@/lib/analytics/onboarding'
+import { scanProducts } from '@/lib/payments/revenuecat'
+import { onboardingAnalyticsSteps, supportedOnboardingVersions } from '@/lib/analytics/onboarding'
 
 export const analyticsFilters = z.object({
   days: z.enum(['1', '7', '30', '90']).default('30'),
@@ -19,6 +20,13 @@ const monetaryBillingEvent = sql`(
   or (provider = 'revenuecat' and event_name in ('subscription_started','subscription_renewed','trial_converted','one_time_purchase','refund_reversed','subscription_refunded'))
 )`
 
+const subscriptionLifecycleEvents = [
+  'subscription_started', 'trial_started', 'trial_converted', 'invoice_paid', 'subscription_renewed',
+  'cancellation_scheduled', 'subscription_pause_scheduled', 'subscription_expired', 'subscription_refunded',
+  'subscription_reactivated', 'subscription_updated', 'subscription_extended', 'subscription_product_changed',
+  'billing_issue_started', 'refund_reversed',
+]
+
 export type MetricRow = Record<string, string | number | null>
 export type AnalyticsDashboard = {
   audienceBreakdown?: MetricRow[]
@@ -30,12 +38,14 @@ export type AnalyticsDashboard = {
   landingHandoffs?: MetricRow[]; webAudience?: MetricRow[]; landingExperiments: MetricRow[]; landingSections: MetricRow[]; landingSources: MetricRow[]; landingPlacements: MetricRow[]
   daily: MetricRow[]; acquisition: MetricRow[]; steps: MetricRow[]; screens: MetricRow[]
   onboardingScreens: MetricRow[]; onboardingFriction: MetricRow[]
+  revenueTotals?: MetricRow[]; revenueActivity?: MetricRow[]
   billing: MetricRow[]; revenue: MetricRow[]; revenueDaily: MetricRow[]; retention: MetricRow[]; cancellations: MetricRow[]
   actions: MetricRow[]; releases: MetricRow[]
   eventMetrics: MetricRow[]; eventPlatforms: MetricRow[]; dimensions: MetricRow[]; billingProducts: MetricRow[]; billingDimensions: MetricRow[]; contextCoverage: MetricRow[]; eventDelivery: MetricRow[]
   scanLedger: { summary: { started: number; completed: number; failed: number; pending: number; reports: number }; daily: MetricRow[] }
   reportLedger: { summary: { completed: number; failed: number; other: number }; daily: MetricRow[] }
   onboardingRevisions: MetricRow[]
+  paidDelivery?: MetricRow[]; membershipActivation?: MetricRow[]
 }
 
 // All identifiers here are constants owned by this module, never request input.
@@ -66,8 +76,7 @@ export function analyticsQuery(filters: AnalyticsFilters, now: Date) {
   const end = now.toISOString()
   const bucket = filters.days === '1' ? 'YYYY-MM-DD"T"HH24:00:00"Z"' : 'YYYY-MM-DD'
   const platform = filters.platform === 'all' ? sql`true` : sql`platform = ${filters.platform}`
-  // Revision 4 adds optional weight; shared steps preserve revision 3's ordering.
-  const supportedOnboarding = sql`e.properties->>'onboarding_version' in ('3','4')`
+  const supportedOnboarding = sql`e.properties->>'onboarding_version' in (${sql.join(supportedOnboardingVersions.map(version => sql`${version}`), sql`,`)})`
   const onboarding = funnel('onboarding', ['onboarding_started', 'paywall_viewed', 'purchase_completed', 'evaluation_completed', 'report_viewed'], sql`platform in ('ios','android')`)
   // A default plan can be purchased without an explicit plan-selection event.
   const paywall = funnel('paywall', ['paywall_viewed', 'purchase_started', 'purchase_completed'], sql`platform in ('ios','android')`)
@@ -169,9 +178,11 @@ export function analyticsQuery(filters: AnalyticsFilters, now: Date) {
         count(distinct e.properties->>f.field) as unique_ids
       from (values ('appsflyer_id'),('creator_click_id'),('creator_tracking_link_id'),('creator_first_tracking_link_id'),('flow_id'),('attempt_id'),('report_id'),('evaluation_id')) f(field)
       left join e on true group by f.field order by f.field
-    ), b as materialized (
+    ), billing_history as materialized (
       select * from subscription_events where environment = 'production' and ${customerAccount(sql`coalesce(account_id,external_user_id)`)}
-        and occurred_at >= ${start}::timestamp and occurred_at < ${end}::timestamp
+        and occurred_at < ${end}::timestamp
+    ), b as materialized (
+      select * from billing_history where occurred_at >= ${start}::timestamp
     ), ${sql.join([...onboarding.ctes, ...paywall.ctes, ...web.ctes], sql`,`)},
     daily as (
       select to_char(occurred_at, ${bucket}::text) as day, count(distinct actor) as actors,
@@ -285,6 +296,9 @@ export function analyticsQuery(filters: AnalyticsFilters, now: Date) {
     ), onboarding_definitions(step, label, position) as (values ${sql.join(onboardingAnalyticsSteps.map(([step, label], index) => sql`(${step}::text, ${label}::text, ${index}::integer)`), sql`,`)}),
     onboarding_observations as materialized (
       select e.actor, e.properties->>'flow_id' as flow_id, d.step, d.position, e.occurred_at,
+        case when jsonb_typeof(e.properties->'step_index') = 'number' then
+          case when (e.properties->>'step_index')::numeric between 0 and 1000 then (e.properties->>'step_index')::numeric else d.position end
+          else d.position end as sequence_index,
         e.event_name, case when jsonb_typeof(e.properties->'duration_ms') = 'number'
           then (e.properties->>'duration_ms')::numeric end as duration_ms
       from e join onboarding_definitions d on d.step = e.properties->>'step'
@@ -293,25 +307,26 @@ export function analyticsQuery(filters: AnalyticsFilters, now: Date) {
         and ${supportedOnboarding}
         and e.event_name in ('onboarding_step_viewed','onboarding_step_exited','onboarding_step_back')
     ), onboarding_forward_events as materialized (
-      select actor, flow_id, position, occurred_at as at from onboarding_observations
+      select actor, flow_id, step, sequence_index as position, occurred_at as at from onboarding_observations
       where event_name = 'onboarding_step_viewed'
       union all
-      select actor, properties->>'flow_id', ${onboardingAnalyticsSteps.length}::integer, occurred_at from e
+      select actor, properties->>'flow_id', ''::text, 1001::numeric, occurred_at from e
       where event_name = 'evaluation_completed' and platform in ('ios','android')
         and ${supportedOnboarding}
         and actor is not null and nullif(properties->>'flow_id', '') is not null
     ), onboarding_timelines as (
-      select actor, flow_id, array_agg(position) as positions, array_agg(at) as times
+      select actor, flow_id, array_agg(step) as steps, array_agg(position) as positions, array_agg(at) as times
       from onboarding_forward_events group by actor, flow_id
     ), onboarding_progress as (
-      select t.actor, t.flow_id, d.step, v.at, exists (
+      select t.actor, t.flow_id, v.step, v.at, exists (
         select 1 from unnest(t.positions, t.times) n(position, at)
         where n.position > v.position and n.at >= v.at and n.at <= v.at + interval '7 days'
       ) as continued
       from onboarding_timelines t cross join lateral (
-        select position, min(at) as at from unnest(t.positions, t.times) n(position, at)
-        where position < ${onboardingAnalyticsSteps.length} group by position
-      ) v join onboarding_definitions d on d.position = v.position
+        select distinct on (step) step, position, at
+        from unnest(t.steps, t.positions, t.times) n(step, position, at)
+        where step <> '' order by step, at
+      ) v
     ), onboarding_totals as (
       select step, count(*) as viewed, count(*) filter (where continued) as continued,
         count(*) filter (where not continued and at > ${end}::timestamp - interval '7 days') as pending,
@@ -388,6 +403,66 @@ export function analyticsQuery(filters: AnalyticsFilters, now: Date) {
         sum(amount)::text as net,
         count(*) filter (where amount is null and ${monetaryBillingEvent}) as missing_amount_events
       from b group by 1 order by 1
+    ), revenue_totals as (
+      select coalesce(currency, 'UNKNOWN') as currency, sum(amount)::text as net,
+        coalesce(sum(amount) filter(where occurred_at >= ${end}::timestamp - interval '24 hours'),0)::text as last_24h,
+        coalesce(sum(amount) filter(where occurred_at >= ${end}::timestamp - interval '48 hours'
+          and occurred_at < ${end}::timestamp - interval '24 hours'),0)::text as previous_24h,
+        count(*) filter(where amount is null and ${monetaryBillingEvent}) as missing_amount_events,
+        count(*) filter(where amount is null and ${monetaryBillingEvent}
+          and occurred_at >= ${end}::timestamp - interval '48 hours') as recent_missing_amount_events
+      from billing_history group by 1 having count(amount) > 0 or count(*) filter(where ${monetaryBillingEvent}) > 0
+      order by 1
+    ), subscription_identities as (
+      select distinct provider,subscription_id from billing_history where subscription_id is not null
+        and event_name in (${sql.join(subscriptionLifecycleEvents.filter(name => !['subscription_refunded','refund_reversed'].includes(name)).map(name => sql`${name}`), sql`,`)})
+    ), subscription_facts as (
+      select *,
+        case when jsonb_typeof(properties->'expiration_at_ms') = 'number' then
+          case when (properties->>'expiration_at_ms')::numeric between 0 and 8640000000000000
+            then to_timestamp((properties->>'expiration_at_ms')::double precision / 1000) at time zone 'UTC' end end as expires_at,
+        case when jsonb_typeof(properties->'grace_period_expiration_at_ms') = 'number' then
+          case when (properties->>'grace_period_expiration_at_ms')::numeric between 0 and 8640000000000000
+            then to_timestamp((properties->>'grace_period_expiration_at_ms')::double precision / 1000) at time zone 'UTC' end end as grace_ends_at,
+        case when properties->>'cancel_at_period_end' in ('true','false') then (properties->>'cancel_at_period_end')::boolean
+          when event_name in ('cancellation_scheduled','subscription_pause_scheduled','subscription_expired','subscription_refunded') then true
+          when event_name in ('subscription_started','subscription_reactivated','subscription_renewed','trial_started','trial_converted','invoice_paid','refund_reversed') then false end as canceled,
+        case when event_name in ('subscription_expired','subscription_refunded') or properties->>'status' in ('canceled','unpaid','paused','incomplete_expired') then true
+          when event_name in ('subscription_started','subscription_reactivated','subscription_renewed','trial_started','trial_converted','invoice_paid','refund_reversed') then false end as ended
+      from billing_history h where exists(select 1 from subscription_identities i where i.provider=h.provider and i.subscription_id=h.subscription_id)
+        and event_name in (${sql.join(subscriptionLifecycleEvents.map(name => sql`${name}`), sql`,`)})
+    ), first_subscriptions as (
+      select provider, subscription_id, min(occurred_at) as at from subscription_facts
+      where amount > 0 and event_name in ('subscription_started','trial_converted','invoice_paid') group by 1,2
+    ), scan_credit_purchases as (
+      select distinct on (provider, coalesce(transaction_id, provider_event_id)) occurred_at,
+        case ${sql.join(scanProducts.map(product => sql`when product_id in (${product.product}, ${product.productId}) then ${product.credits}::integer`), sql` `)} else 0 end as credits
+      from billing_history where event_name = 'one_time_purchase'
+      order by provider, coalesce(transaction_id, provider_event_id), occurred_at, received_at, id
+    ), subscription_snapshots as (
+      select snapshot, at, provider, subscription_id,
+        (array_agg(greatest(expires_at,grace_ends_at) order by occurred_at desc,received_at desc,id desc)
+          filter(where expires_at is not null or grace_ends_at is not null))[1] as ends_at,
+        coalesce((array_agg(canceled order by occurred_at desc,received_at desc,id desc) filter(where canceled is not null))[1],false) as canceled,
+        coalesce((array_agg(ended order by occurred_at desc,received_at desc,id desc) filter(where ended is not null))[1],false) as ended
+      from (values (0,${end}::timestamp),(1,${end}::timestamp - interval '24 hours')) snapshots(snapshot,at)
+      join subscription_facts on occurred_at < at group by 1,2,3,4
+    ), revenue_activity as (
+      select 'new_subscriptions' as metric, count(*) as total,
+        count(*) filter(where at >= ${end}::timestamp - interval '24 hours') as last_24h,
+        count(*) filter(where at >= ${end}::timestamp - interval '48 hours' and at < ${end}::timestamp - interval '24 hours') as previous_24h,
+        0::bigint as unknown_status, 0::bigint as previous_unknown_status from first_subscriptions
+      union all
+      select 'scans_bought',coalesce(sum(credits),0),
+        coalesce(sum(credits) filter(where occurred_at >= ${end}::timestamp - interval '24 hours'),0),
+        coalesce(sum(credits) filter(where occurred_at >= ${end}::timestamp - interval '48 hours' and occurred_at < ${end}::timestamp - interval '24 hours'),0),0,0 from scan_credit_purchases
+      union all
+      select 'active_subscriptions',count(*) filter(where snapshot=0 and not ended and ends_at > at),
+        count(*) filter(where snapshot=0 and not ended and ends_at > at),count(*) filter(where snapshot=1 and not ended and ends_at > at),
+        count(*) filter(where snapshot=0 and not ended and ends_at is null),count(*) filter(where snapshot=1 and not ended and ends_at is null) from subscription_snapshots
+      union all
+      select 'canceled_subscriptions',count(*) filter(where snapshot=0 and (canceled or ended or ends_at <= at)),
+        count(*) filter(where snapshot=0 and (canceled or ended or ends_at <= at)),count(*) filter(where snapshot=1 and (canceled or ended or ends_at <= at)),0,0 from subscription_snapshots
     ), revenue_daily as (
       select to_char(occurred_at, ${bucket}::text) as day, coalesce(currency, 'UNKNOWN') as currency,
         case when count(amount) > 0 then coalesce(sum(amount) filter (where amount > 0), 0)::text end as gross,
@@ -395,6 +470,63 @@ export function analyticsQuery(filters: AnalyticsFilters, now: Date) {
         sum(amount)::text as net,
         count(*) filter (where amount is null and ${monetaryBillingEvent}) as missing_amount_events
       from b group by 1,2 order by 1,2
+    ), paid_history as materialized (
+      select account_id, min(occurred_at) as first_paid,
+        min(occurred_at) filter(where event_name <> 'one_time_purchase') as first_membership
+      from subscription_events paid
+      where environment = 'production' and account_id is not null and ${customerAccount(sql`account_id`)}
+        and amount > 0 and occurred_at < ${end}::timestamp
+        and event_name in ('one_time_purchase','subscription_started','trial_converted','invoice_paid','subscription_renewed')
+      group by account_id
+    ), paid_cohorts as (
+      select account_id, first_paid as at, 'delivery' as kind from paid_history where first_paid >= ${start}::timestamp
+      union all
+      select account_id, first_membership, 'membership' from paid_history where first_membership >= ${start}::timestamp
+    ), paid_scans as materialized (
+      select r.user_id, r.created_at, r.status, r.result->'analysis'->>'id' as report_id
+      from scan_reservations r where r.entitlement_id not in (select id from excluded_entitlements)
+        and r.user_id in (select account_id from paid_cohorts)
+        and r.created_at >= ${start}::timestamp and r.created_at < ${end}::timestamp
+    ), paid_observations as materialized (
+      select * from scoped_events where audience = 'customer' and account_id in (select account_id from paid_cohorts)
+        and event_name in ('purchase_activated','evaluation_completed','report_viewed','protocol_task_completed')
+    ), paid_outcomes as materialized (
+      select c.*, scan.created_at as scan_at, scan.report_id,
+        (select min(a.occurred_at) from paid_observations a where a.account_id = c.account_id
+          and a.event_name = 'purchase_activated' and a.occurred_at >= c.at) as activated_at,
+        (select min(a.occurred_at) from paid_observations a where a.account_id = c.account_id
+          and a.event_name = 'evaluation_completed' and exists(select 1 from paid_scans s where s.user_id = c.account_id
+            and s.status = 'complete' and s.report_id = a.properties->>'report_id' and s.created_at >= c.at and s.created_at <= a.occurred_at)) as received_at,
+        (select min(a.occurred_at) from paid_observations a where a.account_id = c.account_id
+          and a.event_name = 'report_viewed' and exists(select 1 from paid_scans s where s.user_id = c.account_id
+            and s.status = 'complete' and s.report_id = a.properties->>'report_id' and s.created_at >= c.at and s.created_at <= a.occurred_at)) as viewed_at,
+        (select min(a.occurred_at) from paid_observations a where a.account_id = c.account_id
+          and a.event_name = 'protocol_task_completed' and a.occurred_at >= c.at) as protocol_at,
+        (select min(s.created_at) from paid_scans s where s.user_id = c.account_id and s.status = 'complete'
+          and s.report_id <> scan.report_id and s.created_at >= scan.created_at + interval '1 day') as second_scan_at
+      from paid_cohorts c left join lateral (
+        select s.created_at,s.report_id from paid_scans s where s.user_id = c.account_id
+          and s.status = 'complete' and s.report_id is not null and s.created_at >= c.at
+        order by s.created_at,s.report_id limit 1
+      ) scan on true
+    ), paid_delivery as (
+      select n.days as window_days, count(*) as payers,
+        count(*) filter(where at <= ${end}::timestamp - n.days * interval '1 day') as eligible,
+        count(*) filter(where at > ${end}::timestamp - n.days * interval '1 day') as pending,
+        count(*) filter(where at <= ${end}::timestamp - n.days * interval '1 day' and activated_at < at + n.days * interval '1 day') as activation_observed,
+        count(*) filter(where at <= ${end}::timestamp - n.days * interval '1 day' and scan_at < at + n.days * interval '1 day') as report_generated,
+        count(*) filter(where at <= ${end}::timestamp - n.days * interval '1 day' and received_at < at + n.days * interval '1 day') as report_received,
+        count(*) filter(where at <= ${end}::timestamp - n.days * interval '1 day' and viewed_at < at + n.days * interval '1 day') as report_viewed,
+        round((percentile_cont(0.5) within group(order by extract(epoch from viewed_at - at) * 1000)
+          filter(where at <= ${end}::timestamp - n.days * interval '1 day' and viewed_at < at + n.days * interval '1 day'))::numeric) as median_ms
+      from paid_outcomes cross join (values (1),(7)) n(days) where kind = 'delivery' group by n.days order by n.days
+    ), membership_activation as (
+      select n.days as window_days, count(*) as subscribers,
+        count(*) filter(where at <= ${end}::timestamp - n.days * interval '1 day') as eligible,
+        count(*) filter(where at > ${end}::timestamp - n.days * interval '1 day') as pending,
+        count(*) filter(where at <= ${end}::timestamp - n.days * interval '1 day' and protocol_at < at + n.days * interval '1 day') as first_protocol_action,
+        count(*) filter(where at <= ${end}::timestamp - n.days * interval '1 day' and second_scan_at < at + n.days * interval '1 day') as returned_for_second_scan
+      from paid_outcomes cross join (values (7),(14)) n(days) where kind = 'membership' group by n.days order by n.days
     ), activation_history as materialized (
       select account_id, min(occurred_at) as at from analytics_events history
       where ${customerEvent('history')} and event_name = 'evaluation_completed'
@@ -436,10 +568,11 @@ export function analyticsQuery(filters: AnalyticsFilters, now: Date) {
     ), onboarding_revisions as (
       select coalesce(properties->>'onboarding_version','unversioned') as revision,
         count(*) as views, count(distinct actor) as devices,
-        case when properties->>'onboarding_version' in ('3','4') then 'Included in screen cohorts' else 'Event totals only' end as coverage
+        case when properties->>'onboarding_version' in (${sql.join(supportedOnboardingVersions.map(version => sql`${version}`), sql`,`)}) then 'Included in screen cohorts' else 'Event totals only' end as coverage
       from e where platform in ('ios','android') and event_name = 'onboarding_step_viewed'
       group by 1,4 order by 1
     ) select json_build_object(
+      'paidDelivery', ${rows('paid_delivery')}, 'membershipActivation', ${rows('membership_activation')},
       'reportLedger', json_build_object('summary', (select json_build_object(
         'completed', count(*) filter(where status = 'complete'), 'failed', count(*) filter(where status = 'failed'),
         'other', count(*) filter(where status not in ('complete','failed'))) from user_reports), 'daily', ${rows('report_ledger_daily')}),
@@ -458,7 +591,7 @@ export function analyticsQuery(filters: AnalyticsFilters, now: Date) {
       'landingSections', ${rows('landing_sections')}, 'landingPlacements', ${rows('landing_placements')},
       'daily', ${rows('daily')}, 'acquisition', ${rows('acquisition')}, 'steps', ${rows('steps')},
       'onboardingScreens', ${rows('onboarding_screens')}, 'onboardingFriction', ${rows('onboarding_friction')}, 'screens', ${rows('screens')}, 'billing', ${rows('billing')}, 'revenue', ${rows('revenue')},
-      'revenueDaily', ${rows('revenue_daily')}, 'retention', ${rows('retention')}, 'cancellations', ${rows('cancellations')},
+      'revenueTotals', ${rows('revenue_totals')}, 'revenueActivity', ${rows('revenue_activity')}, 'revenueDaily', ${rows('revenue_daily')}, 'retention', ${rows('retention')}, 'cancellations', ${rows('cancellations')},
       'actions', ${rows('actions')}, 'releases', ${rows('releases')},
       'eventMetrics', ${rows('event_metrics')}, 'eventPlatforms', ${rows('event_platforms')}, 'dimensions', ${rows('dimensions')},
       'eventDelivery', ${rows('event_delivery')}, 'contextCoverage', ${rows('context_coverage')}, 'billingProducts', ${rows('billing_products')}, 'billingDimensions', ${rows('billing_dimensions')}

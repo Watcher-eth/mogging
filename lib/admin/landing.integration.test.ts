@@ -16,7 +16,7 @@ test.skipIf(!url)('homepage reporting deduplicates exposure and only credits mat
         create temporary table photos (id text,source text,user_id text) on commit drop;
         create temporary table analyses (id text,photo_id text,status text,created_at timestamp) on commit drop;
         create temporary table payment_entitlements (id text,user_id text,mobile_install_id text,source text,stripe_checkout_session_id text,metadata jsonb) on commit drop;
-        create temporary table scan_reservations (entitlement_id text,status text,created_at timestamp,result jsonb) on commit drop;
+        create temporary table scan_reservations (id text,user_id text,entitlement_id text,status text,created_at timestamp,result jsonb) on commit drop;
         create temporary table referral_signups (referred_user_id text,inviter_user_id text,created_at timestamptz) on commit drop;`)
       async function event(name: string, id: string, variant: string, at: string, extra: Record<string, unknown> = {}, platform = 'web', experiment = 'landing_homepage_v2', version = '2', environment = 'production') {
         const properties = {landing_id:id,variant,experiment_id:experiment,landing_version:version,path:'/',...extra}

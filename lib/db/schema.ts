@@ -142,6 +142,24 @@ export const sessions = pgTable('sessions', {
   expires: timestamp('expires', { mode: 'date' }).notNull(),
 })
 
+// Guests are normal server-owned accounts with no login credentials or free credits.
+export const mobileGuests = pgTable('mobile_guests', {
+  userId: text('user_id').primaryKey().references(() => users.id, { onDelete: 'cascade' }),
+  claimedByUserId: text('claimed_by_user_id').references(() => users.id, { onDelete: 'cascade' }),
+  createdAt: timestamp('created_at', { mode: 'date' }).notNull().defaultNow(),
+})
+
+export const mobileGuestKeys = pgTable('mobile_guest_keys', {
+  keyHash: text('key_hash').primaryKey(),
+  userId: text('user_id').notNull().references(() => mobileGuests.userId, { onDelete: 'cascade' }),
+})
+
+export const mobileGuestPurchases = pgTable('mobile_guest_purchases', {
+  originalTransactionId: text('original_transaction_id').notNull(),
+  environment: text('environment').notNull(),
+  userId: text('user_id').notNull().references(() => mobileGuests.userId, { onDelete: 'cascade' }),
+}, table => ({ pk: primaryKey({ columns: [table.originalTransactionId, table.environment] }) }))
+
 export const verificationTokens = pgTable(
   'verification_tokens',
   {

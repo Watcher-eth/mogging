@@ -70,7 +70,11 @@ export async function getRequestUserId(req: NextApiRequest, res: NextApiResponse
       where: and(eq(schema.sessions.sessionToken, bearerToken), gt(schema.sessions.expires, new Date())),
       columns: { userId: true },
     })
-    if (mobileSession) return mobileSession.userId
+    if (mobileSession) {
+      const guest = await db.query.mobileGuests.findFirst({ where: eq(schema.mobileGuests.userId, mobileSession.userId), columns: { claimedByUserId: true } })
+      return guest?.claimedByUserId ? null : mobileSession.userId
+    }
+    return null
   }
 
   const session = await getAuthSession(req, res)

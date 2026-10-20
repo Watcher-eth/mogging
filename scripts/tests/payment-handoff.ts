@@ -40,6 +40,7 @@ try {
       tier text, tier_description text, metrics jsonb NOT NULL DEFAULT '{}', landmarks jsonb NOT NULL DEFAULT '{}',
       model text, prompt_version text, failure_reason text, created_at timestamp NOT NULL DEFAULT now(), updated_at timestamp NOT NULL DEFAULT now()
     );`)
+  await sql.unsafe(await readFile(new URL('../../drizzle/0053_mobile_guest_accounts.sql', import.meta.url), 'utf8'))
   await sql.unsafe(await readFile(new URL('../../drizzle/0031_scan_allowances.sql', import.meta.url), 'utf8'))
   await sql.unsafe(`CREATE TABLE payment_handoffs (
     id text PRIMARY KEY, token_hash text NOT NULL UNIQUE, user_id text NOT NULL REFERENCES users(id),
@@ -47,11 +48,11 @@ try {
     consumed_at timestamp, consumed_by_install_id text, created_at timestamp NOT NULL DEFAULT now()
   );
   CREATE TABLE analytics_events (
-    id text PRIMARY KEY, event_id text NOT NULL UNIQUE, event_name text NOT NULL, schema_version integer DEFAULT 1,
-    environment text DEFAULT 'test', app_version text, exported_at timestamp, account_id text REFERENCES users(id),
+    id text PRIMARY KEY, event_id text NOT NULL UNIQUE, event_name text NOT NULL, account_id text REFERENCES users(id),
     mobile_install_id text, anonymous_id text, session_id text, platform text NOT NULL, source text,
     properties jsonb DEFAULT '{}', occurred_at timestamp NOT NULL, received_at timestamp DEFAULT now()
   );`)
+  await sql.unsafe(await readFile(new URL('../../drizzle/0035_analytics_billing.sql', import.meta.url), 'utf8'))
   const { createPaymentHandoff, consumePaymentHandoff } = await import('../../lib/payments/handoff')
   const { grantEntitlementFromCheckoutSession, getEntitlementSummary, redeemPaymentActivationCode, reserveEvaluation, finishEvaluation, revokePaymentIntentEntitlement } = await import('../../lib/payments/entitlements')
   const { getStripe } = await import('../../lib/payments/stripe')

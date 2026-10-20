@@ -24,6 +24,7 @@ try {
       created_at timestamp DEFAULT now(), updated_at timestamp DEFAULT now()
     );`)
   const scopedSql = postgres(scoped.toString(), { max: 1 })
+  await scopedSql`CREATE TABLE mobile_guests (user_id text PRIMARY KEY REFERENCES users(id), claimed_by_user_id text REFERENCES users(id))`
   await scopedSql.unsafe(await Bun.file('drizzle/0030_referral_links.sql').text())
   await scopedSql.unsafe(await Bun.file('drizzle/0034_referral_scan_reward.sql').text())
   const { getReferralLink, createReferralTicket, readReferralTicket, creditReferralSignup } = await import('../../lib/referrals/service')

@@ -38,6 +38,7 @@ try {
       tier text, tier_description text, metrics jsonb NOT NULL DEFAULT '{}', landmarks jsonb NOT NULL DEFAULT '{}',
       model text, prompt_version text, failure_reason text, created_at timestamp NOT NULL DEFAULT now(), updated_at timestamp NOT NULL DEFAULT now()
     );`)
+  await sql.unsafe(await readFile(new URL('../../drizzle/0053_mobile_guest_accounts.sql', import.meta.url), 'utf8'))
   await sql.unsafe(await readFile(new URL('../../drizzle/0031_scan_allowances.sql', import.meta.url), 'utf8'))
   await sql.unsafe(`CREATE TABLE analytics_events (id text PRIMARY KEY, event_id text UNIQUE, event_name text,
     account_id text, mobile_install_id text, anonymous_id text, session_id text, platform text, source text,

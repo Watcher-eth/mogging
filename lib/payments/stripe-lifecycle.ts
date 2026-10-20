@@ -54,13 +54,15 @@ export function normalizeStripeLifecycle(event: Stripe.Event) {
   // ISK and UGX retain two-decimal representation in Stripe despite being zero-decimal currencies.
   if (amount != null && currency && ['BIF','CLP','DJF','GNF','JPY','KMF','KRW','MGA','PYG','RWF','VND','VUV','XAF','XOF','XPF'].includes(currency)) amount *= 100
   const refundId = eventName === 'subscription_refunded' ? id(value) : null
+  const first = (items: unknown) => object(Array.isArray(items) ? items[0] : null)
+  const periodEnd = value.current_period_end ?? first(object(value.items).data).current_period_end ?? object(first(object(value.lines).data).period).end
   return {
     provider: 'stripe', providerEventId: refundId ? `refund:${refundId}` : eventName === 'one_time_purchase' ? `checkout:${id(value)}` : event.id,
     providerType: event.type, eventName, environment: event.livemode ? 'production' : 'sandbox',
     externalUserId: id(value.customer), subscriptionId: event.type.startsWith('customer.subscription.') ? id(value) : subscription,
     transactionId: id(value.payment_intent) || id(value.charge), productId: typeof metadata.product === 'string' ? metadata.product : null,
     amount: amount == null ? null : String(amount), currency, occurredAt: new Date(event.created * 1000),
-    properties: { timestamp_estimated: event.id.startsWith('checkout:'), status: value.status ?? null, cancel_at_period_end: value.cancel_at_period_end ?? null,
+    properties: { expiration_at_ms: typeof periodEnd === 'number' && Number.isFinite(periodEnd) ? periodEnd * 1000 : null, timestamp_estimated: event.id.startsWith('checkout:'), status: value.status ?? null, cancel_at_period_end: value.cancel_at_period_end ?? null,
       period_type: value.status === 'trialing' ? 'TRIAL' : 'NORMAL',
       cancel_reason: object(value.cancellation_details).reason ?? null, billing_reason: value.billing_reason ?? null,
       failure_code: object(value.last_payment_error).code ?? null, decline_code: object(value.last_payment_error).decline_code ?? null },

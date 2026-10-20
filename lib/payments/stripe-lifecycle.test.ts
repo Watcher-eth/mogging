@@ -31,3 +31,15 @@ test('failed payments retain safe decline codes without recording revenue or cus
   expect(JSON.stringify(result)).not.toContain('private card details')
   expect(normalizeStripeLifecycle(event('checkout.session.expired', { id: 'cs' }))?.amount).toBeNull()
 })
+
+
+test('subscription access periods are retained across Stripe subscription and invoice payload shapes', () => {
+  for (const [type, payload] of [
+    ['customer.subscription.updated', { id: 'sub', current_period_end: 2000 }],
+    ['customer.subscription.updated', { id: 'sub', items: { data: [{ current_period_end: 2000 }] } }],
+    ['invoice.paid', { parent: { subscription_details: { subscription: 'sub' } }, lines: { data: [{ period: { end: 2000 } }] } }],
+  ] as const) {
+    expect(normalizeStripeLifecycle(event(type, payload))?.properties.expiration_at_ms).toBe(2000000)
+  }
+  expect(normalizeStripeLifecycle(event('invoice.paid', { amount_paid: 500 }))?.properties.expiration_at_ms).toBeNull()
+})

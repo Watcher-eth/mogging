@@ -4,7 +4,7 @@ import Link from 'next/link'
 import { useRouter } from 'next/router'
 import { useState } from 'react'
 import useSWR, { useSWRConfig } from 'swr'
-import { RefreshCw } from 'lucide-react'
+import { ArrowDownRight, ArrowUpRight, Minus, RefreshCw } from 'lucide-react'
 import { AdminPasswordGate } from './admin-password-gate'
 import { CreatorHeader } from '@/components/creator/creator-shell'
 import { Button } from '@/components/ui/button'
@@ -98,6 +98,7 @@ export default function AnalyticsAdminPage() {
       {tab === 'Onboarding' ? <Onboarding data={data} days={Number(days)} /> : null}
       {tab === 'Revenue' ? <Revenue data={data} days={Number(days)} /> : null}
       {tab === 'Retention' ? <Retention data={data} days={Number(days)} /> : null}
+      {tab === 'Purchases' ? <PaidDelivery data={data} /> : null}
       {['Authentication','Purchases','Scans','Engagement','Referrals','Notifications','AttributionLedger'].includes(tab) ? <Activity data={data} days={Number(days)} section={tab} /> : null}
       {tab === 'Quality' ? <Quality data={data} days={Number(days)} /> : null}
     </>}
@@ -145,6 +146,7 @@ function Overview({ data, days }: { data: AnalyticsDashboard; days: number }) {
       <Stat title="Scan failures" value={count(data.summary.failures)} note="Events, not a cohort failure rate" />
     </div>
     <StoredReports data={data} days={days} />
+    <PaidDelivery data={data} />
     <DailyChart data={data} days={days} title="Product activity" metrics={activityMetrics} />
     <div className="admin-section-grid"><Funnel title="Mobile activation" rows={data.onboarding} /><Funnel title="Paywall conversion" rows={data.paywall} /></div>
   </>
@@ -207,13 +209,63 @@ function StripeReportingHealth() {
     </>}
   </Panel>
 }
+function MetricGrowth({ current, previous, unknown = false, comparison, detail, zeroLabel = 'New', reverseColors = false }: {
+  current: number; previous: number; unknown?: boolean; comparison: string; detail: string; zeroLabel?: string; reverseColors?: boolean
+}) {
+  const change = current - previous
+  const Icon = unknown || change === 0 ? Minus : change > 0 ? ArrowUpRight : ArrowDownRight
+  const growth = unknown ? 'Unavailable' : previous === 0
+    ? current === 0 ? '0%' : current > 0 ? zeroLabel : 'Net decrease'
+    : `${change > 0 ? '+' : ''}${new Intl.NumberFormat('en', { maximumFractionDigits: 1 }).format(change / Math.abs(previous) * 100)}%`
+  const improves = reverseColors ? change < 0 : change > 0
+  return <p className="mt-2 flex flex-wrap items-center gap-x-1 gap-y-0.5 text-xs leading-5" title={detail}>
+    <span className={`inline-flex items-center gap-0.5 font-medium ${unknown || change === 0 ? 'text-[#73777d]' : improves ? 'text-emerald-600' : 'text-rose-600'}`}><Icon className="size-3.5" aria-hidden="true" />{growth}</span>
+    <span className="text-[#858a91]">{comparison}</span>
+  </p>
+}
+const revenueActivityMetrics = [
+  { key: 'new_subscriptions', title: 'New subscriptions', note: 'First recorded paid subscriptions', comparison: 'last 24h vs previous 24h' },
+  { key: 'scans_bought', title: 'New scans bought', note: 'One-off scan credits · packs count as 3', comparison: 'last 24h vs previous 24h' },
+  { key: 'active_subscriptions', title: 'Active subscriptions', note: 'Current unexpired subscription access', comparison: 'vs 24h ago' },
+  { key: 'canceled_subscriptions', title: 'Canceled / discontinued', note: 'Current cancellation intent or ended access', comparison: 'vs 24h ago' },
+]
+
 function Revenue({ data, days }: { data: AnalyticsDashboard; days: number }) {
   const [selectedCurrency, setSelectedCurrency] = useState('')
   const currency = data.revenue.some(row => row.currency === selectedCurrency) ? selectedCurrency : String(data.revenue[0]?.currency || '')
   const total = data.revenue.find(row => row.currency === currency)
   const rows = (data.revenueDaily ?? []).filter(row => row.currency === currency)
   return <>
-    <p className="mb-6 text-xs leading-5 text-[#858a91]">Verified billing · all platforms · excludes sandbox · currencies stay separate</p>
+    <section aria-label="Total earned" className="mb-8">
+      <h2 className="text-sm font-medium">Total earned · all time</h2>
+      <p className="mt-1 text-xs leading-5 text-[#858a91]">Verified net revenue · all platforms · before fees and taxes · currencies stay separate</p>
+      {data.revenueTotals?.length ? <div className="admin-stats-grid mt-5">
+        {data.revenueTotals.map(row => <div key={String(row.currency)} className="admin-metric">
+          <p className="text-xs text-[#73777d]">{String(row.currency)}</p>
+          <p className="mt-3 text-[32px] font-medium tabular-nums tracking-[-0.045em] text-[#181a1d]">{money(row.net, String(row.currency))}</p>
+          <MetricGrowth current={Number(row.last_24h)} previous={Number(row.previous_24h)} unknown={Number(row.recent_missing_amount_events) > 0 || row.net == null}
+            comparison="last 24h vs previous 24h" zeroLabel="New revenue"
+            detail={`Last 24h: ${money(row.last_24h, String(row.currency))}; preceding 24h: ${money(row.previous_24h, String(row.currency))}`} />
+          {Number(row.missing_amount_events) > 0 ? <p className="mt-1 text-xs text-[#858a91]">{count(row.missing_amount_events)} unknown amounts excluded</p> : null}
+        </div>)}
+      </div> : <Notice>No verified earnings recorded yet.</Notice>}
+    </section>
+    <section aria-label="Subscriptions and scan purchases" className="mb-8">
+      <div className="admin-stats-grid">
+        {revenueActivityMetrics.map(metric => {
+          const row = data.revenueActivity?.find(row => row.metric === metric.key)
+          const unconfirmed = Number(row?.unknown_status ?? 0)
+          return <div key={metric.key} className="admin-metric">
+            <p className="text-xs text-[#73777d]">{metric.title}</p>
+            <p className="mt-3 text-[32px] font-medium tabular-nums tracking-[-0.045em] text-[#181a1d]">{row ? count(row.total) : '—'}{unconfirmed ? <span className="ml-1.5 text-xs tracking-normal text-[#858a91]">confirmed</span> : null}</p>
+            {row ? <MetricGrowth current={Number(row.last_24h)} previous={Number(row.previous_24h)} unknown={unconfirmed > 0 || Number(row.previous_unknown_status) > 0} comparison={metric.comparison}
+              detail={`${metric.comparison === 'vs 24h ago' ? 'Now / 24h ago' : 'Last 24h / preceding 24h'}: ${count(row.last_24h)} / ${count(row.previous_24h)}`} reverseColors={metric.key === 'canceled_subscriptions'} /> : null}
+            <p className="mt-2 text-xs leading-5 text-[#858a91]">{row && ['new_subscriptions','scans_bought'].includes(metric.key) ? `${count(row.last_24h)} in last 24h · ` : ''}{metric.note}{unconfirmed ? ` · ${count(unconfirmed)} status unconfirmed` : ''}</p>
+          </div>
+        })}
+      </div>
+      <p className="mt-3 text-xs leading-5 text-[#858a91]">All time · production billing only. Renewals do not count as new subscriptions. Canceled subscriptions can remain active until paid access expires. Status without a recorded expiry stays unconfirmed.</p>
+    </section>
     {total ? <>
       <div className="mb-5 flex items-center justify-between gap-3"><h2 className="text-sm font-medium">Revenue in {currency}</h2><AnalyticsSelect label="Currency" value={currency} onChange={setSelectedCurrency} options={data.revenue.map(row=>({value:String(row.currency),label:String(row.currency)}))} /></div>
       <div className="admin-stats-grid"><Stat title="Known gross" value={money(total.gross, currency)} note="Recorded positive amounts" /><Stat title="Recorded refunds" value={money(total.refunds, currency)} note="Recorded negative amounts" /><Stat title="Known net" value={money(total.net, currency)} note="Before provider fees and taxes" /><Stat title="Unknown amounts" value={count(total.missing_amount_events)} note="Excluded from monetary totals" /></div>
@@ -226,8 +278,21 @@ function Revenue({ data, days }: { data: AnalyticsDashboard; days: number }) {
     <Panel title="Subscription lifecycle" description="Provider-confirmed events, grouped by customer." note="Cancellation scheduled is intent; expiry is loss of access. These are events observed in the selected window, not current subscriber balances."><Bars rows={data.billing.map(row => ({ label: `${label(String(row.event))} · ${row.provider}`, value: Number(row.events), detail: `${count(row.customers)} customers` }))} /><DataDetails><Table rows={data.billing} columns={['provider','provider_type','event','events','customers']} /></DataDetails></Panel>
   </>
 }
+function PaidDelivery({ data }: { data: AnalyticsDashboard }) {
+  const rows = data.paidDelivery ?? []
+  const day = rows.find(row => Number(row.window_days) === 1)
+  return <Panel title="Paid customers receiving their report" description="Verified payment → activation observed → report generated → received → viewed."
+    note="All platforms. Linked accounts enter on their earliest recorded positive production payment in the selected period, including one-time purchases. Earlier payment history is checked; renewals do not create another customer. Each row uses only accounts with a full 1- or 7-day follow-up; pending accounts are not failures. Server reservations establish generation; receipt, viewing and activation require client observations and can be missing on older builds. Received and viewed report IDs must match a completed post-payment reservation, including successful retries. Time is from payment to the first matching report view. Known internal and sandbox activity is excluded; unlinked billing cannot be assigned a delivery outcome.">
+    <div className="admin-stats-grid"><Stat title="Observed view within 24h" value={day ? percent(Number(day.report_viewed), Number(day.eligible)) : '—'} note="Verified payers with complete follow-up" /><Stat title="Awaiting full 24h" value={day ? count(day.pending) : '—'} note="Immature cohort, not lost customers" /></div>
+    <Table rows={rows.map(row => ({ ...row, window: `${row.window_days} days`, delivery_rate: percent(Number(row.report_viewed), Number(row.eligible)), view_unobserved: Number(row.eligible) - Number(row.report_viewed) }))} columns={['window','payers','eligible','pending','activation_observed','report_generated','report_received','report_viewed','view_unobserved','delivery_rate','median_ms']} />
+  </Panel>
+}
 function Retention({ data, days }: { data: AnalyticsDashboard; days: number }) {
   return <>
+    <Panel title="Do subscribers use the membership?" description="First protocol action and return for a second completed scan."
+      note="All platforms. Linked subscribers enter on their earliest recorded positive subscription payment in the selected period; earlier history is checked. Counts and rates use only subscribers with a complete 7- or 14-day follow-up from payment. Protocol use requires a completed task after subscribing. Return requires a different completed report ID at least 24 hours after the first successful post-payment scan started. Retries, reused report IDs and reopening a report do not count as another scan. Internal and sandbox activity is excluded. Missing client task observations do not prove a subscriber did nothing.">
+      <Table rows={(data.membershipActivation ?? []).map(row => ({ ...row, window: `${row.window_days} days`, protocol_rate: percent(Number(row.first_protocol_action), Number(row.eligible)), second_scan_rate: percent(Number(row.returned_for_second_scan), Number(row.eligible)) }))} columns={['window','subscribers','eligible','pending','first_protocol_action','protocol_rate','returned_for_second_scan','second_scan_rate']} />
+    </Panel>
     <Panel title="Return after the first observed scan" description="Meaningful return on day 1, day 7, and day 30." note="Account cohorts enter this period only when their earliest recorded production scan completion falls within it. Earlier history is searched before assigning a cohort. Exact D1/D7/D30 windows count report views, completed protocol tasks, or scans. Only fully observed accounts are eligible; an immature cohort has no rate."><Bars maximum={100} rows={retentionRates(data.retention)} format={value => `${value.toFixed(1)}%`} /><DataDetails><Table rows={data.retention.map(row => ({ ...row, rate: percent(Number(row.retained), Number(row.eligible)) }))} columns={['day','eligible','retained','rate']} /></DataDetails></Panel>
     <DailyChart data={data} days={days} title="Value-building activity" metrics={valueMetrics} />
     <div className="admin-section-grid"><Panel title="Cancellation timing" description="When cancellation intent is first observed." note="Relative to the earliest recorded production scan completion, including history before the selected period. Billing includes every platform, while evaluation history follows the platform filter. This is not a churn rate."><DistributionChart rows={data.cancellations.map(row => ({ label: String(row.timing), value: Number(row.accounts) }))} /></Panel><Panel title="Value signals" description="Activity totals across all users." note="Includes people who are not currently paying. Share intent is not proof of a completed social post."><Bars rows={data.actions.filter(row => !String(row.event).endsWith('_failed')).map(row => ({ label: label(String(row.event)), value: Number(row.actors), detail: `${count(row.events)} events` }))} /></Panel></div>

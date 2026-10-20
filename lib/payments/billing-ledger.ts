@@ -62,6 +62,10 @@ export async function recordRevenueCatLifecycle(event: RevenueCatEvent) {
   const knownIds = new Set(knownUsers.map(user => user.id))
   let accountId = candidates.find(candidate => knownIds.has(candidate))
   if (accountId) {
+    const guest = await db.query.mobileGuests.findFirst({ where: eq(schema.mobileGuests.userId, accountId), columns: { claimedByUserId: true } })
+    accountId = guest?.claimedByUserId ?? accountId
+  }
+  if (accountId) {
     for (const alias of new Set(candidates)) await linkRevenueCatIdentity(accountId, alias)
   }
   await db.transaction(async tx => {

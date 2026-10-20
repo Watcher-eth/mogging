@@ -345,13 +345,25 @@ function activePro(row: EntitlementRow, now: Date) {
 async function loadScanAccess(owner: EntitlementOwner, verifiedSubscriber?: RevenueCatSubscriber | null) {
   if (!owner.userId) throw new ApiError(401, 'An account is required')
   await releaseAbandonedEvaluations(owner.userId)
-  const subscriber = verifiedSubscriber !== undefined ? verifiedSubscriber : await fetchRevenueCatSubscriber(owner.userId).catch(() => null)
+  // Claimed guest IDs remain billing aliases. Reconcile each server-owned ID;
+  // never accept an arbitrary RevenueCat ID from a request header.
+  const aliases = await db.query.mobileGuests.findMany({ where: eq(schema.mobileGuests.claimedByUserId, owner.userId), columns: { userId: true } })
+  for (const alias of aliases) {
+    await db.update(schema.paymentEntitlements).set({ userId: owner.userId }).where(eq(schema.paymentEntitlements.userId, alias.userId))
+  }
+  const guestOwner = await db.query.mobileGuests.findFirst({ where: eq(schema.mobileGuests.userId, owner.userId), columns: { claimedByUserId: true } })
+  if (guestOwner?.claimedByUserId) throw new ApiError(401, 'This guest account was saved. Sign in to continue.')
+  const subscribers = (await Promise.all([
+    verifiedSubscriber !== undefined ? verifiedSubscriber : fetchRevenueCatSubscriber(owner.userId).catch(() => null),
+    ...aliases.map(alias => fetchRevenueCatSubscriber(alias.userId).catch(() => null)),
+  ])).filter((value): value is RevenueCatSubscriber => Boolean(value))
+  const subscriber = subscribers.find(value => readRevenueCatPro(value)?.active) ?? subscribers[0] ?? null
   if (subscriber?.original_app_user_id) {
     // Reuses the required provider verification; analytics failure must not deny paid access.
     try { await linkRevenueCatIdentity(owner.userId, subscriber.original_app_user_id) }
     catch { console.error('RevenueCat analytics identity linking failed') }
   }
-  if (subscriber) await creditRevenueCatScans(owner.userId, owner.mobileInstallId, subscriber)
+  for (const verified of subscribers) await creditRevenueCatScans(owner.userId, owner.mobileInstallId, verified)
   let rows = await db.query.paymentEntitlements.findMany({ where: getOwnerWhere(owner) })
   // Reconcile provider state, including pre-migration rows and missed webhooks.
   const stripeIds = [...new Set(rows.flatMap(row => row.stripeSubscriptionId ? [row.stripeSubscriptionId] : []))]
@@ -393,8 +405,9 @@ async function loadScanAccess(owner: EntitlementOwner, verifiedSubscriber?: Reve
     if (!row.currentPeriodStart || !row.currentPeriodEnd) continue
     await grant(row.stripeSubscriptionId || row.id, row.product.replace('mobile_subscription_', '') as 'weekly' | 'monthly' | 'yearly', row.currentPeriodStart, row.currentPeriodEnd)
   }
-  const rc = readRevenueCatScanSubscription(subscriber)
-  if (rc) {
+  for (const verified of subscribers) {
+    const rc = readRevenueCatScanSubscription(verified)
+    if (!rc) continue
     // Bind the paid billing transaction once, across aliases and all annual months.
     await db.insert(schema.paymentEntitlements).values({
       userId: owner.userId, mobileInstallId: owner.mobileInstallId || `account_${owner.userId}`,
@@ -440,6 +453,10 @@ export async function reserveEvaluation(ownerInput: EntitlementOwner, requestId:
   const id = `${owner.userId}:${requestId}`
   const access = await loadScanAccess(owner)
   return db.transaction(async tx => {
+    // Serialize with account claiming so an in-flight scan cannot be orphaned.
+    await tx.execute(sql`select pg_advisory_xact_lock(hashtextextended(${`guest:${owner.userId}`}, 0))`)
+    const guest = await tx.query.mobileGuests.findFirst({ where: eq(schema.mobileGuests.userId, owner.userId!), columns: { claimedByUserId: true } })
+    if (guest?.claimedByUserId) throw new ApiError(401, 'This guest account was saved. Sign in to continue.')
     // Serialize identical request IDs even when the account has several packs.
     await tx.execute(sql`select pg_advisory_xact_lock(hashtextextended(${id}, 0))`)
     const prior = await tx.query.scanReservations.findFirst({ where: eq(schema.scanReservations.id, id) })
@@ -670,8 +687,9 @@ export async function revokeRevenueCatPurchase(transactionId: string) {
 }
 
 export async function syncRevenueCatScans(userId: string, mobileInstallId?: string) {
+  const guest = await db.query.mobileGuests.findFirst({ where: eq(schema.mobileGuests.userId, userId), columns: { claimedByUserId: true } })
   const subscriber = await fetchRevenueCatSubscriber(userId, true)
   if (!subscriber) throw new ApiError(503, 'Unable to verify purchases.')
-  await creditRevenueCatScans(userId, mobileInstallId, subscriber)
+  await creditRevenueCatScans(guest?.claimedByUserId ?? userId, mobileInstallId, subscriber)
   return subscriber
 }

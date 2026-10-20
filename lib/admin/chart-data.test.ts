@@ -15,10 +15,15 @@ describe('analytics chart data', () => {
     expect(rows.find(row => row.step === 'goals')).toMatchObject({ screen: 'Goals', viewed: 5, continued: 3, median_ms: 4500 })
     expect(rows.find(row => row.step === 'primer')?.viewed).toBe(0)
   })
+  test('retains sign-in observations from installed builds that authenticate before the report', () => {
+    const rows = onboardingScreenRows([{ step: 'authentication', viewed: 9 }, { step: 'paywall_account', viewed: 4 }])
+    expect(rows.find(row => row.step === 'authentication')?.viewed).toBe(9)
+    expect(rows.find(row => row.step === 'paywall_account')?.viewed).toBe(4)
+  })
   test('omits removed screens even when a cached response contains their observations', () => {
     const rows = onboardingScreenRows(['protocol_bridge', 'reveal', 'location'].map(step => ({ step, viewed: 10 })))
     expect(rows.some(row => ['protocol_bridge', 'reveal', 'location'].includes(String(row.step)))).toBe(false)
-    expect(rows.find(row => row.step === 'commit')?.screen).toBe('Lock in (4 taps)')
+    expect(rows.find(row => row.step === 'commit')?.screen).toBe('Invest in yourself')
   })
   test('uses ordered UTC timestamps and preserves negative refund days', () => {
     expect(dailyPoints([{ day: '2026-10-02', net: '-2.5' }, { day: '2026-10-01', net: '9.99' }], 'net')).toEqual([

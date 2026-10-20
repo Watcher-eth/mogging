@@ -2,9 +2,10 @@
 import assert from 'node:assert/strict'
 import { randomUUID } from 'node:crypto'
 import postgres from 'postgres'
+import { readFile } from 'node:fs/promises'
 
 const url = process.env.DATABASE_URL
-if (!url) throw new Error('DATABASE_URL required')
+if (!url || !['127.0.0.1', 'localhost'].includes(new URL(url).hostname)) throw new Error('Set DATABASE_URL to an isolated local PostgreSQL server')
 const admin = postgres(url, { max: 1 })
 const namespace = `purchase_test_${randomUUID().replaceAll('-', '')}`
 await admin.unsafe(`CREATE SCHEMA "${namespace}"`)
@@ -17,7 +18,7 @@ delete process.env.REVENUECAT_SECRET_API_KEY
 try {
   await admin.unsafe(`CREATE TABLE "${namespace}".users (id text PRIMARY KEY, created_at timestamp NOT NULL DEFAULT now());
     CREATE TABLE "${namespace}".payment_entitlements (
-      id text PRIMARY KEY, mobile_install_id text NOT NULL, user_id text REFERENCES "${namespace}".users(id),
+      id text PRIMARY KEY, mobile_install_id text NOT NULL, user_id text CONSTRAINT payment_entitlements_user_id_users_id_fk REFERENCES "${namespace}".users(id),
       anonymous_actor_id text, stripe_checkout_session_id text NOT NULL UNIQUE,
       stripe_customer_id text, stripe_subscription_id text, stripe_payment_intent_id text,
       product text NOT NULL, credit_balance integer NOT NULL DEFAULT 0, subscription_status text,
@@ -26,12 +27,14 @@ try {
       created_at timestamp DEFAULT now(), updated_at timestamp DEFAULT now()
     );`)
   const scopedSql = postgres(scoped.toString(), { max: 1 })
+  await scopedSql.unsafe(await readFile(new URL('../../drizzle/0053_mobile_guest_accounts.sql', import.meta.url), 'utf8'))
+  await scopedSql.unsafe(await readFile(new URL('../../drizzle/0031_scan_allowances.sql', import.meta.url), 'utf8'))
   const { creditRevenueCatScans, consumeEvaluationEntitlement, getEntitlementSummary } = await import('../../lib/payments/entitlements')
   const { readRevenueCatPro, scanProducts } = await import('../../lib/payments/revenuecat')
   await scopedSql`INSERT INTO users (id) VALUES ('buyer'), ('other-account')`
   const subscriber = { non_subscriptions: {
-    [scanProducts[0].productId]: [{ id: 'single', store_transaction_id: 'apple-single', is_sandbox: true }],
-    [scanProducts[1].productId]: [{ id: 'pack', store_transaction_id: 'apple-pack', is_sandbox: true }],
+    [scanProducts[0].productId]: [{ id: 'single', store_transaction_id: 'apple-single', purchase_date: new Date().toISOString(), is_sandbox: true }],
+    [scanProducts[1].productId]: [{ id: 'pack', store_transaction_id: 'apple-pack', purchase_date: new Date().toISOString(), is_sandbox: true }],
   } }
   const owner = { userId: 'buyer', mobileInstallId: 'purchase-test-install' }
   await Promise.all(Array.from({ length: 5 }, () => creditRevenueCatScans(owner.userId, owner.mobileInstallId, subscriber)))
@@ -44,7 +47,7 @@ try {
   assert.equal(results.filter(result => result.status === 'fulfilled').length, 4)
   assert.equal((await getEntitlementSummary(owner, subscriber)).evaluationCredits, 0)
   // Re-sync/restore must preserve spent balances, then a repeat pack adds exactly three.
-  subscriber.non_subscriptions[scanProducts[1].productId].push({ id: 'pack-again', store_transaction_id: 'apple-pack-again', is_sandbox: true })
+  subscriber.non_subscriptions[scanProducts[1].productId].push({ id: 'pack-again', store_transaction_id: 'apple-pack-again', purchase_date: new Date().toISOString(), is_sandbox: true })
   assert.equal((await getEntitlementSummary(owner, subscriber)).evaluationCredits, 3)
   const refunded = { non_subscriptions: { [scanProducts[1].productId]: [{ id: 'pack-again', refunded_at: new Date().toISOString() }] } }
   assert.equal((await getEntitlementSummary(owner, refunded)).evaluationCredits, 0)
