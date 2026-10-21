@@ -176,12 +176,21 @@ export function analyticsQuery(filters: AnalyticsFilters, now: Date) {
         select *, row_number() over (partition by section, dimension order by events desc, event, value) as rank
         from dimension_counts
       ) ranked where rank <= 20 order by section, dimension, events desc, event, value
+    ), context_observations as materialized (
+      -- Reduce to scalar values before grouping; sorting full event properties
+      -- once per coverage field spills hundreds of megabytes on real windows.
+      select f.field, e.properties->>f.field as value, e.actor
+      from e cross join (values ('appsflyer_id'),('creator_click_id'),('creator_tracking_link_id'),('creator_first_tracking_link_id'),('flow_id'),('attempt_id'),('report_id'),('evaluation_id')) f(field)
+      where e.properties->>f.field is not null
+    ), context_counts as (
+      select field, count(*) filter(where value <> '') as events,
+        count(distinct actor) filter(where value <> '') as actors,
+        count(distinct value) as unique_ids
+      from context_observations group by field
     ), context_coverage as (
-      select f.field, count(*) filter(where nullif(e.properties->>f.field,'') is not null) as events,
-        count(distinct e.actor) filter(where nullif(e.properties->>f.field,'') is not null) as actors,
-        count(distinct e.properties->>f.field) as unique_ids
+      select f.field, coalesce(c.events,0) as events, coalesce(c.actors,0) as actors, coalesce(c.unique_ids,0) as unique_ids
       from (values ('appsflyer_id'),('creator_click_id'),('creator_tracking_link_id'),('creator_first_tracking_link_id'),('flow_id'),('attempt_id'),('report_id'),('evaluation_id')) f(field)
-      left join e on true group by f.field order by f.field
+      left join context_counts c using(field) order by f.field
     ), billing_history as materialized (
       select * from subscription_events where environment = 'production' and ${customerAccount(sql`coalesce(account_id,external_user_id)`)}
         and occurred_at < ${end}::timestamp
@@ -658,6 +667,8 @@ export function getAnalyticsDashboard(filters: AnalyticsFilters) {
   const promise = db.transaction(async tx => {
     await tx.execute(sql`set transaction read only`)
     await tx.execute(sql`set local statement_timeout = '8s'`)
+    // This one-shot report compiles over a thousand JIT functions above the cost threshold.
+    await tx.execute(sql`set local jit = off`)
     const [row] = await tx.execute(analyticsQuery(filters, now))
     return { ...(row.data as Omit<AnalyticsDashboard, 'generatedAt' | 'queryMs' | 'filters'>),
       generatedAt: now.toISOString(), queryMs: Date.now() - now.getTime(), filters }
