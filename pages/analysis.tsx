@@ -326,6 +326,7 @@ export default function AnalysisPage() {
 
     setCheckoutLoading(true)
     setError(null)
+    let checkoutStage = 'entitlements'
 
     try {
       const paymentInstallId = ensureAnalysisWebInstallId()
@@ -337,19 +338,22 @@ export default function AnalysisPage() {
         await runActualAnalysis(images, paymentInstallId, gender)
         return
       }
+      checkoutStage = 'draft_save'
       await saveAnalysisDraft({
         gender,
         images,
         savedAt: Date.now(),
       })
+      checkoutStage = 'checkout_create'
       const response = await apiPost<CheckoutResponse>('/api/payments/checkout', {
         imageCount: images.length,
         mobileInstallId: paymentInstallId,
       })
+      checkoutStage = 'checkout_redirect'
       window.location.href = response.url
     } catch (checkoutError) {
-      trackWebEvent('purchase_failed', { surface: 'web_analysis', purchase_stage: 'checkout_open', reason_code: checkoutError instanceof ApiClientError ? checkoutError.code : 'request_failed', http_status: checkoutError instanceof ApiClientError ? checkoutError.status : undefined })
-      setError(checkoutError instanceof ApiClientError ? checkoutError.message : 'Unable to open checkout')
+      trackWebEvent('purchase_failed', { surface: 'web_analysis', purchase_stage: checkoutStage, reason_code: checkoutError instanceof ApiClientError ? checkoutError.code : checkoutStage === 'draft_save' ? 'draft_storage_unavailable' : 'request_failed', http_status: checkoutError instanceof ApiClientError ? checkoutError.status : undefined })
+      setError(checkoutError instanceof ApiClientError ? checkoutError.message : checkoutStage === 'draft_save' ? 'Your browser could not save your photos for checkout. Free up storage or try a regular browser window, then retry. You have not been charged.' : 'Unable to open checkout. Please check your connection and retry.')
     } finally {
       setCheckoutLoading(false)
     }

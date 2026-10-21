@@ -1,5 +1,16 @@
 export const CELEBRITY_EDIT_POLICY = 'Smallville and Tom Welling posts are not allowed. Other celebrity edits are unlikely to be approved: they must use exclusively looksmaxxing hashtags (no celebrity or show hashtags) and have a clear looksmaxxing focus, such as a transformation, glow-up, or clear looksmaxxing CTA. Even when these conditions are met, approval is subject to review.'
 
+export const SHARED_CONTENT_RESTRICTIONS = [
+  'False or misleading claims about results',
+  'Reused content that was not created for Mogging',
+  'Obscured app footage, unclear app images, or unreadable on-screen text',
+  'Engagement farms: promising looks, confidence, a glow-up, or romantic success in exchange for likes, comments, notifications, shares, or sound use',
+  'Unrelated movie edits or song, summer, school, friendship, dating, or mood captions, even over footage of an attractive person',
+  'Anime, cartoons, animation, MMA, NBA, other sports edits, or animal edits',
+  CELEBRITY_EDIT_POLICY,
+  'Botted views, purchased or fabricated engagement, or altered analytics evidence',
+] as const
+
 export function creatorContentRestriction(rule: string) {
   if (rule.startsWith('Unrelated song,')) return rule.replace('Unrelated song,', 'Unrelated movie edits or song,')
   return /smallville|tom welling|celebrity fan/i.test(rule) ? CELEBRITY_EDIT_POLICY : rule

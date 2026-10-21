@@ -1,3 +1,4 @@
+import { followerRangeSchema } from './tiktok-anchor'
 import { CREATOR_VIDEO_TYPES, MAX_CREATOR_ANALYTICS_VIDEO_BYTES } from './video-types'
 import { z } from 'zod'
 
@@ -56,6 +57,7 @@ export const creatorProfileSchema = z
 export const MINIMUM_SUBMISSION_VIEWS = 20_000
 
 export const creatorSubmissionSchema = z.object({
+  tiktokAnchorLinked: z.boolean().optional(),
   sprintId: z.string().uuid(),
   formatId: z.string().trim().min(1).max(80),
   requirementsConfirmed: z.literal(true),
@@ -78,6 +80,7 @@ export const creatorSubmissionAnalyticsSchema = creatorSubmissionSchema.pick({
 export type CreatorSubmissionAnalyticsInput = z.infer<typeof creatorSubmissionAnalyticsSchema>
 
 export const creatorSocialAccountSchema = z.object({
+  followerRange: followerRangeSchema.optional(),
   platform: z.enum(['tiktok', 'instagram']),
   handle: z
     .string()

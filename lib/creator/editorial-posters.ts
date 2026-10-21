@@ -25,7 +25,7 @@ export function loadPosterAssets() {
   })])).then(() => undefined)
 }
 
-async function cutout(image: HTMLImageElement) {
+export async function cutout(image: HTMLImageElement) {
   segmenter ??= (async () => {
     const { ImageSegmenter, FilesetResolver } = await import('@mediapipe/tasks-vision')
     const vision = await FilesetResolver.forVisionTasks('https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.35/wasm')

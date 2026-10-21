@@ -24,7 +24,14 @@ export const analyticsEventSchema = z.object({
   if (required && (typeof event.properties[required] !== 'string' || !event.properties[required])) {
     ctx.addIssue({ code: 'custom', path: ['properties', required], message: `Missing ${required}` })
   }
-  if (event.eventName === 'screen_exited' && (typeof event.properties.duration_ms !== 'number' || event.properties.duration_ms < 0)) {
+  const contentKey = event.eventName.startsWith('course_lesson_') ? 'lesson_id'
+    : event.eventName.startsWith('course_') ? 'course_id' : null
+  for (const key of new Set([contentKey, ...(event.eventName.startsWith('course_lesson_') ? ['course_id'] : [])])) {
+    if (key && (typeof event.properties[key] !== 'string' || !event.properties[key])) {
+      ctx.addIssue({ code: 'custom', path: ['properties', key], message: `Missing ${key}` })
+    }
+  }
+  if (['screen_exited', 'course_lesson_exited', 'progress_exited'].includes(event.eventName) && (typeof event.properties.duration_ms !== 'number' || event.properties.duration_ms < 0 || event.properties.duration_ms > 1800000)) {
     ctx.addIssue({ code: 'custom', path: ['properties', 'duration_ms'], message: 'Invalid screen duration' })
   }
 })

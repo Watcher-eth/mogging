@@ -66,3 +66,20 @@ export function validateCreatorSubmissionReviewResults(
     && expectedIds.every((id) => submittedIds.includes(id))
     && new Set(submittedIds).size === submittedIds.length
 }
+
+// Store one meaning in every review: false is a requirement that was not met.
+export function resetSubmissionReview<T extends CreatorSubmissionReviewResult>(items: T[], status: string): T[] {
+  return items.map(item => ({ ...item, met: status === 'rejected', note: null }))
+}
+
+export function submissionRejectionLabel(item: CreatorSubmissionReviewItem) {
+  return item.label.startsWith('Avoided: ')
+    ? `Includes: ${item.label.slice('Avoided: '.length)}`
+    : `Not met: ${item.label}`
+}
+
+export function submissionReviewError(status: string, items: ReadonlyArray<Pick<CreatorSubmissionReviewResult, 'met'>>) {
+  if (status === 'rejected' && !items.some(item => !item.met))
+    return 'Select at least one rejection reason so the creator knows what to fix.'
+  return null
+}

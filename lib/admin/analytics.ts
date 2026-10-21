@@ -45,6 +45,7 @@ export type AnalyticsDashboard = {
   scanLedger: { summary: { started: number; completed: number; failed: number; pending: number; reports: number }; daily: MetricRow[] }
   reportLedger: { summary: { completed: number; failed: number; other: number }; daily: MetricRow[] }
   onboardingRevisions: MetricRow[]
+  featureUsage?: MetricRow[]; featureRetention?: MetricRow[]
   paidDelivery?: MetricRow[]; membershipActivation?: MetricRow[]
 }
 
@@ -90,6 +91,9 @@ export function analyticsQuery(filters: AnalyticsFilters, now: Date) {
       select a.*, ${eventAudience('a')} as audience,
         coalesce('install:' || mobile_install_id, 'anonymous:' || anonymous_id, 'account:' || account_id) as actor
       from analytics_events a where a.platform in ('web','ios','android')
+        and a.event_name !~ '^(battle|leaderboard)_'
+        and coalesce(a.properties->>'screen','') !~* '(^|/)(battle|leaderboard)(/|[?#]|$)'
+        and coalesce(a.properties->>'path','') !~* '^/(battle|leaderboard)(/|[?#]|$)'
         and a.occurred_at >= ${start}::timestamp and a.occurred_at < ${end}::timestamp
     ), audience_breakdown as (
       select audience, count(*) as events, count(distinct actor) as devices,
@@ -205,7 +209,10 @@ export function analyticsQuery(filters: AnalyticsFilters, now: Date) {
         count(*) filter (where event_name = 'purchase_started') as purchase_starts,
         count(*) filter (where event_name = 'evaluation_failed') as failures,
         count(*) filter (where event_name = 'report_viewed') as report_views,
-        count(*) filter (where event_name = 'protocol_task_completed') as protocol_tasks
+        count(*) filter (where event_name = 'protocol_task_completed') as protocol_tasks,
+        count(distinct actor) filter (where event_name = 'course_lesson_viewed') as course_learners,
+        count(*) filter (where event_name = 'course_lesson_completed') as lessons_completed,
+        count(distinct actor) filter (where event_name = 'progress_viewed') as progress_users
       from reported_events where platform in ('web','ios','android') or event_name = 'referral_invite_redeemed'
       group by 1 order by 1
     ), landing_definitions(experiment_id, name, version) as (values ${sql.join(landingExperiments.map(({ id, name, version }) => sql`(${id}::text, ${name}::text, ${version}::text)`), sql`,`)}),
@@ -538,10 +545,52 @@ export function analyticsQuery(filters: AnalyticsFilters, now: Date) {
       select n.day, count(*) filter (where a.at < ${end}::timestamp - (n.day + 1) * interval '1 day') as eligible,
         count(*) filter (where a.at < ${end}::timestamp - (n.day + 1) * interval '1 day' and exists (
           select 1 from e where e.account_id = a.account_id
-            and e.event_name in ('report_viewed','protocol_task_completed','evaluation_completed')
+            and (e.event_name in ('report_viewed','protocol_task_completed','evaluation_completed','course_lesson_completed','progress_area_viewed')
+              or (e.event_name in ('course_lesson_exited','progress_exited')
+                and case when jsonb_typeof(e.properties->'duration_ms') = 'number' then (e.properties->>'duration_ms')::numeric else 0 end between 10000 and 1800000))
             and e.occurred_at >= a.at + n.day * interval '1 day'
             and e.occurred_at < a.at + (n.day + 1) * interval '1 day'
         )) as retained from (values (1),(7),(30)) n(day) left join activated a on true group by 1 order by 1
+    ), feature_usage as (
+      select case when event_name like 'course_%' then 'courses' else 'progress' end as feature,
+        case when event_name like 'course_%' then coalesce(properties->>'course_id','unknown') else 'progress' end as course_id,
+        count(distinct actor) as users,
+        count(distinct (actor, date_trunc('day', occurred_at))) as active_days,
+        count(distinct (actor, properties->>'lesson_id')) filter(where event_name = 'course_lesson_viewed') as lessons_opened,
+        count(distinct (actor, properties->>'lesson_id')) filter(where event_name = 'course_lesson_completed') as lessons_completed,
+        count(distinct actor) filter(where event_name = 'course_completed') as courses_completed,
+        count(*) filter(where event_name = 'progress_area_viewed') as area_views,
+        count(distinct actor) filter(where event_name = 'progress_action_selected' and properties->>'action' = 'protocol') as protocol_opens,
+        count(distinct actor) filter(where event_name = 'progress_action_selected' and properties->>'action' = 'evaluations') as evaluation_opens,
+        round((percentile_cont(0.5) within group(order by
+          case when jsonb_typeof(properties->'duration_ms') = 'number' then (properties->>'duration_ms')::numeric end)
+          filter(where event_name in ('course_lesson_exited','progress_exited')
+            and case when jsonb_typeof(properties->'duration_ms') = 'number' then (properties->>'duration_ms')::numeric else -1 end between 0 and 1800000))::numeric) as median_ms
+      from e where actor is not null and event_name in ('course_viewed','course_lesson_viewed','course_lesson_exited','course_lesson_completed','course_completed',
+        'progress_viewed','progress_exited','progress_area_viewed','progress_action_selected')
+      group by 1,2 order by 1,2
+    ), feature_history as materialized (
+      select account_id, occurred_at,
+        case when event_name like 'course_%' then 'courses' else 'progress' end as feature
+      from analytics_events history
+      where ${customerEvent('history')} and ${platform} and platform in ('ios','android','web')
+        and account_id is not null and occurred_at < ${end}::timestamp
+        and (event_name in ('course_lesson_completed','progress_area_viewed')
+          or (event_name in ('course_lesson_exited','progress_exited')
+            and case when jsonb_typeof(properties->'duration_ms') = 'number' then (properties->>'duration_ms')::numeric else 0 end between 10000 and 1800000))
+    ), feature_first_usage as (
+      select account_id, feature, min(occurred_at) as at from feature_history group by 1,2
+    ), feature_retention as (
+      select f.feature, n.day,
+        count(a.account_id) as cohort_accounts,
+        count(a.account_id) filter(where a.at <= ${end}::timestamp - (n.day + 1) * interval '1 day') as eligible,
+        count(a.account_id) filter(where a.at <= ${end}::timestamp - (n.day + 1) * interval '1 day' and exists(
+          select 1 from feature_history h where h.account_id = a.account_id and h.feature = f.feature
+            and h.occurred_at >= a.at + n.day * interval '1 day' and h.occurred_at < a.at + (n.day + 1) * interval '1 day'
+        )) as retained
+      from (values ('courses'),('progress')) f(feature) cross join (values (1),(7),(30)) n(day)
+      left join feature_first_usage a on a.feature = f.feature and a.at >= ${start}::timestamp
+      group by 1,2 order by 1,2
     ), cancellation_accounts as (
       select account_id, min(occurred_at) as at from b
       where event_name = 'cancellation_scheduled' and account_id is not null group by 1
@@ -555,7 +604,8 @@ export function analyticsQuery(filters: AnalyticsFilters, now: Date) {
     ), actions as (
       select event_name as event, count(*) as events, count(distinct actor) as actors from e
       where event_name in ('report_viewed','category_viewed','protocol_viewed','protocol_task_completed',
-        'repeat_evaluation_started','share_started','referral_invite_created','push_opened','evaluation_failed','purchase_failed','restore_failed')
+        'repeat_evaluation_started','share_started','referral_invite_created','push_opened','evaluation_failed','purchase_failed','restore_failed',
+        'course_lesson_viewed','course_lesson_completed','course_completed','progress_viewed','progress_area_viewed','progress_action_selected')
       group by 1 order by events desc
     ), releases as (
       select coalesce(app_version, 'unknown') as release, platform,
@@ -591,7 +641,7 @@ export function analyticsQuery(filters: AnalyticsFilters, now: Date) {
       'landingSections', ${rows('landing_sections')}, 'landingPlacements', ${rows('landing_placements')},
       'daily', ${rows('daily')}, 'acquisition', ${rows('acquisition')}, 'steps', ${rows('steps')},
       'onboardingScreens', ${rows('onboarding_screens')}, 'onboardingFriction', ${rows('onboarding_friction')}, 'screens', ${rows('screens')}, 'billing', ${rows('billing')}, 'revenue', ${rows('revenue')},
-      'revenueTotals', ${rows('revenue_totals')}, 'revenueActivity', ${rows('revenue_activity')}, 'revenueDaily', ${rows('revenue_daily')}, 'retention', ${rows('retention')}, 'cancellations', ${rows('cancellations')},
+      'revenueTotals', ${rows('revenue_totals')}, 'revenueActivity', ${rows('revenue_activity')}, 'revenueDaily', ${rows('revenue_daily')}, 'retention', ${rows('retention')}, 'featureUsage', ${rows('feature_usage')}, 'featureRetention', ${rows('feature_retention')}, 'cancellations', ${rows('cancellations')},
       'actions', ${rows('actions')}, 'releases', ${rows('releases')},
       'eventMetrics', ${rows('event_metrics')}, 'eventPlatforms', ${rows('event_platforms')}, 'dimensions', ${rows('dimensions')},
       'eventDelivery', ${rows('event_delivery')}, 'contextCoverage', ${rows('context_coverage')}, 'billingProducts', ${rows('billing_products')}, 'billingDimensions', ${rows('billing_dimensions')}

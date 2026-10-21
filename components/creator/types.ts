@@ -54,6 +54,8 @@ export type CreatorPayment = {
 }
 
 export type CreatorSocialAccount = {
+  followers?: import('@/lib/creator/tiktok-anchor').CreatorFollowers | null
+  tiktokAnchorJoinedAt?: string | null
   id: string
   platform: 'tiktok' | 'instagram'
   handle: string | null

@@ -10,7 +10,7 @@ export const outputFormats = {
 export type OutputFormatId = keyof typeof outputFormats
 export type CampaignGoal = 'conversion' | 'engagement' | 'traffic'
 export type Tone = 'direct' | 'curious' | 'educational'
-export type SlideTemplateId = 'editorial' | 'score-potential' | 'psl' | 'score-rows' | 'cta' | 'mock-report' | 'phone-report' | 'handheld-report' | 'paper-editorial' | 'performance' | 'precision' | 'quiet-editorial' | 'afterimage'
+export type SlideTemplateId = 'editorial' | 'score-potential' | 'psl' | 'score-rows' | 'cta' | 'mock-report' | 'phone-report' | 'handheld-report' | 'paper-editorial' | 'performance' | 'precision' | 'quiet-editorial' | 'afterimage' | 'glamour-guidance'
 
 export type CategoryScore = {
   categoryId: string
@@ -85,8 +85,18 @@ export const templateOptions: Array<{ id: SlideTemplateId; label: string; descri
   { id: 'handheld-report', label: 'Report · In your hand', description: 'A photographed handheld phone with your live report' },
 ]
 
+// Creator-owned branding must never become a shared default.
+export const GLAMOUR_CREATOR_PROFILE_ID = '1c822ac8-ae5f-4ba4-bb7b-e504c6046ce1'
+
+export function creatorTemplateOptions(creatorProfileId?: string | null) {
+  return creatorProfileId === GLAMOUR_CREATOR_PROFILE_ID
+    ? [{ id: 'glamour-guidance' as const, label: 'Glamour Guidance · Exclusive', description: 'Portrait cutout, bold headlines and current-to-potential scores' }, ...templateOptions]
+    : templateOptions
+}
+
 export function generateSlides({
   tone,
+  creatorProfileId,
   seed,
   selectedCategories,
   images,
@@ -95,6 +105,7 @@ export function generateSlides({
   potentialScore = '',
   scoreValues = {},
 }: {
+  creatorProfileId?: string | null
   campaignGoal: CampaignGoal
   tone: Tone
   selectedCategories: string[]
@@ -120,7 +131,14 @@ export function generateSlides({
   const metricScore = scoreValues[featuredCategory] || currentScore
   const metricValue = `${metricScore || '—'} / ${categoryScoreMax(featuredCategory)}`
   const shared = { currentScore, potentialScore, categoryScores }
+  const exclusive: ContentSlide[] = creatorProfileId === GLAMOUR_CREATOR_PROFILE_ID ? [{
+    id: makeId('glamour-guidance'), templateId: 'glamour-guidance', imageId: readyImages[0].id,
+    categoryId: featuredCategory, eyebrow: 'Glamour Guidance', headline: 'WHAT MAKES YOU',
+    supportingCopy: 'Discover your features. Unlock your potential.', metricLabel: categoryLabel,
+    metricValue, cta: 'GET YOUR FACIAL ANALYSIS', ...shared,
+  }] : []
   return [
+    ...exclusive,
     { id: makeId('score-potential'), templateId: 'score-potential', imageId: readyImages[0].id, categoryId: featuredCategory, eyebrow: '', headline: 'Mogging', supportingCopy: '', metricLabel: categoryLabel, metricValue, cta: '', ...shared },
     { id: makeId('precision'), templateId: 'precision', imageId: readyImages[1 % readyImages.length].id, categoryId: featuredCategory,
       eyebrow: '', headline: 'Feature study', supportingCopy: 'Understand the details. Build your next move.', metricLabel: categoryLabel, metricValue, cta: 'Start at Mogging.com', ...shared },

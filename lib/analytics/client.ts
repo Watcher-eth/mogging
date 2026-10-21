@@ -1,5 +1,5 @@
 import { landingProperties, readLandingCookie, type LandingAssignment } from './landing'
-import { sanitizeProperties, type AnalyticsEventName } from './contract'
+import { sanitizeProperties, isRetiredAnalyticsSurface, type AnalyticsEventName } from './contract'
 import { acquisitionReferrer } from './acquisition'
 type Event = { eventId: string; occurredAt: string; [key: string]: unknown }
 const key = 'mogging.analytics.v2'
@@ -92,7 +92,8 @@ export function trackWebPage(route: string) {
   const next = route.split('?')[0].split('#')[0]
   if (path === next && viewedAt) return
   endPage()
-  path = next
+  path = isRetiredAnalyticsSurface(next) ? '' : next
+  if (!path) return
   viewedAt = Date.now()
   trackWebEvent('page_viewed', { path })
 }

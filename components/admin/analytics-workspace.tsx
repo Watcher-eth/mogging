@@ -37,6 +37,8 @@ const onboardingMetrics: ChartMetric[] = [
 const valueMetrics: ChartMetric[] = [
   { key: 'report_views', label: 'Report views', color: colors.blue },
   { key: 'protocol_tasks', label: 'Protocol tasks', color: colors.green },
+  { key: 'course_learners', label: 'Course learners', color: colors.violet },
+  { key: 'progress_users', label: 'Progress users', color: colors.orange },
 ]
 const revenueMetrics: ChartMetric[] = [
   { key: 'gross', label: 'Gross', color: colors.blue },
@@ -111,6 +113,7 @@ function Activity({ data, days, section }: { data: AnalyticsDashboard; days: num
     : section === 'Referrals' ? [{key:'referral_invites',label:'Invites created',color:colors.blue},{key:'referral_redemptions',label:'Invites redeemed',color:colors.green}]
     : section === 'Notifications' ? [{key:'push_opens',label:'Push opens',color:colors.blue}] : null
   return <>
+    {section === 'Engagement' ? <FeatureUsage data={data} /> : null}
     {section === 'Scans' ? <>
       <StoredReports data={data} days={days} />
       <div className="admin-stats-grid">
@@ -287,13 +290,27 @@ function PaidDelivery({ data }: { data: AnalyticsDashboard }) {
     <Table rows={rows.map(row => ({ ...row, window: `${row.window_days} days`, delivery_rate: percent(Number(row.report_viewed), Number(row.eligible)), view_unobserved: Number(row.eligible) - Number(row.report_viewed) }))} columns={['window','payers','eligible','pending','activation_observed','report_generated','report_received','report_viewed','view_unobserved','delivery_rate','median_ms']} />
   </Panel>
 }
+function FeatureUsage({ data }: { data: AnalyticsDashboard }) {
+  const rows = data.featureUsage ?? []
+  return <>
+    <Panel title="Course usage" description="Which courses people open, work through, and finish." note="Unique devices in the selected window. Active days are device-days in UTC. Lessons opened/completed are distinct device–lesson pairs; these totals are not a sequential conversion rate. Median reading time counts finished foreground visits only, including interrupted visits; background time is excluded. Older app versions do not emit these events.">
+      <Table rows={rows.filter(row => row.feature === 'courses')} columns={['course_id','users','active_days','lessons_opened','lessons_completed','courses_completed','median_ms']} />
+    </Panel>
+    <Panel title="Progress usage" description="Do people return to inspect progress and act on it?" note="Unique devices; area views are deliberate opens, not chart scrubs. Protocol/evaluation opens count devices choosing that destination, not completed tasks or scans. Median foreground visit time excludes time outside the app.">
+      <Table rows={rows.filter(row => row.feature === 'progress')} columns={['users','active_days','area_views','protocol_opens','evaluation_opens','median_ms']} />
+    </Panel>
+  </>
+}
 function Retention({ data, days }: { data: AnalyticsDashboard; days: number }) {
   return <>
+    <Panel title="Do people come back to courses and progress?" description="Same-feature return on day 1, day 7 and day 30 after first meaningful use." note="Account cohorts begin at the earliest observed lesson completion, area-history open, or foreground feature visit lasting at least 10 seconds. Earlier history is checked. Return must meet the same meaningful-use rule in the exact 24-hour D1/D7/D30 window, on that same feature. Only accounts with a full follow-up window are eligible. Internal/sandbox traffic and anonymous-only activity are excluded; this measures observed use, not whether the feature caused retention. New instrumentation needs time to mature.">
+      <Table rows={(data.featureRetention ?? []).map(row => ({ ...row, rate: percent(Number(row.retained), Number(row.eligible)) }))} columns={['feature','day','cohort_accounts','eligible','retained','rate']} />
+    </Panel>
     <Panel title="Do subscribers use the membership?" description="First protocol action and return for a second completed scan."
       note="All platforms. Linked subscribers enter on their earliest recorded positive subscription payment in the selected period; earlier history is checked. Counts and rates use only subscribers with a complete 7- or 14-day follow-up from payment. Protocol use requires a completed task after subscribing. Return requires a different completed report ID at least 24 hours after the first successful post-payment scan started. Retries, reused report IDs and reopening a report do not count as another scan. Internal and sandbox activity is excluded. Missing client task observations do not prove a subscriber did nothing.">
       <Table rows={(data.membershipActivation ?? []).map(row => ({ ...row, window: `${row.window_days} days`, protocol_rate: percent(Number(row.first_protocol_action), Number(row.eligible)), second_scan_rate: percent(Number(row.returned_for_second_scan), Number(row.eligible)) }))} columns={['window','subscribers','eligible','pending','first_protocol_action','protocol_rate','returned_for_second_scan','second_scan_rate']} />
     </Panel>
-    <Panel title="Return after the first observed scan" description="Meaningful return on day 1, day 7, and day 30." note="Account cohorts enter this period only when their earliest recorded production scan completion falls within it. Earlier history is searched before assigning a cohort. Exact D1/D7/D30 windows count report views, completed protocol tasks, or scans. Only fully observed accounts are eligible; an immature cohort has no rate."><Bars maximum={100} rows={retentionRates(data.retention)} format={value => `${value.toFixed(1)}%`} /><DataDetails><Table rows={data.retention.map(row => ({ ...row, rate: percent(Number(row.retained), Number(row.eligible)) }))} columns={['day','eligible','retained','rate']} /></DataDetails></Panel>
+    <Panel title="Return after the first observed scan" description="Meaningful return on day 1, day 7, and day 30." note="Account cohorts enter this period only when their earliest recorded production scan completion falls within it. Earlier history is searched before assigning a cohort. Exact D1/D7/D30 windows count report views, completed protocol tasks, scans, lesson completions, progress-area opens, or at least 10 seconds of foreground learning/progress use. Only fully observed accounts are eligible; an immature cohort has no rate."><Bars maximum={100} rows={retentionRates(data.retention)} format={value => `${value.toFixed(1)}%`} /><DataDetails><Table rows={data.retention.map(row => ({ ...row, rate: percent(Number(row.retained), Number(row.eligible)) }))} columns={['day','eligible','retained','rate']} /></DataDetails></Panel>
     <DailyChart data={data} days={days} title="Value-building activity" metrics={valueMetrics} />
     <div className="admin-section-grid"><Panel title="Cancellation timing" description="When cancellation intent is first observed." note="Relative to the earliest recorded production scan completion, including history before the selected period. Billing includes every platform, while evaluation history follows the platform filter. This is not a churn rate."><DistributionChart rows={data.cancellations.map(row => ({ label: String(row.timing), value: Number(row.accounts) }))} /></Panel><Panel title="Value signals" description="Activity totals across all users." note="Includes people who are not currently paying. Share intent is not proof of a completed social post."><Bars rows={data.actions.filter(row => !String(row.event).endsWith('_failed')).map(row => ({ label: label(String(row.event)), value: Number(row.actors), detail: `${count(row.events)} events` }))} /></Panel></div>
   </>

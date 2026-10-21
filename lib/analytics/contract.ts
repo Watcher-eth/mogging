@@ -21,7 +21,8 @@ export const analyticsEventNames = [
   'screenshot_taken', 'report_viewed', 'category_viewed', 'protocol_viewed', 'protocol_task_completed',
   'repeat_evaluation_started', 'share_started', 'share_completed', 'share_failed',
   'referral_invite_opened', 'referral_invite_created', 'referral_invite_redeemed', 'push_opened',
-  'battle_vote_selected', 'battle_vote_cancelled', 'battle_filters_changed', 'settings_opened',
+  'course_viewed', 'course_lesson_viewed', 'course_lesson_exited', 'course_lesson_completed', 'course_completed',
+  'progress_viewed', 'progress_exited', 'progress_area_viewed', 'progress_action_selected', 'settings_opened',
 ] as const
 export type AnalyticsEventName = typeof analyticsEventNames[number]
 export type AnalyticsProperties = Record<string, string | number | boolean | null>
@@ -29,6 +30,7 @@ export type AnalyticsProperties = Record<string, string | number | boolean | nul
 // Allowlist protects both ingestion and transport. No URLs, tokens, free-form errors, images,
 // demographics, coordinates, user input, or report scores leave the product.
 const propertyKeys = new Set([
+  'course_id', 'lesson_id', 'lesson_index', 'lesson_count', 'completed_count', 'revisit', 'history_state', 'profile_type',
   'account_type', 'runtime_environment', 'screen', 'previous_screen', 'step', 'step_index', 'step_count', 'onboarding_version', 'flow_id', 'attempt_id', 'request_id',
   'stage_duration_ms', 'previous_stage_duration_ms', 'previous_stage', 'purchase_tracking_version', 'purchase_kind', 'transaction_id', 'os_version', 'store_environment', 'app_state', 'feedback_reason',
   'action', 'duration_ms', 'surface', 'plan', 'product', 'productId', 'product_id', 'offering',
@@ -49,7 +51,7 @@ export function sanitizeProperties(input: Record<string, unknown>): AnalyticsPro
   const output: AnalyticsProperties = {}
   let budget = 2000
   // Correlation and required event fields survive long attribution context.
-  const keys = new Set(['step', 'step_index', 'step_count', 'onboarding_version', 'flow_id', 'action', 'screen', 'permission', 'attempt_id', 'evaluation_id', 'request_id', 'report_id', 'transaction_id', 'reason_code', 'error_code', ...Object.keys(input).slice(0, 80)])
+  const keys = new Set(['step', 'step_index', 'step_count', 'onboarding_version', 'flow_id', 'action', 'screen', 'course_id', 'lesson_id', 'duration_ms', 'permission', 'attempt_id', 'evaluation_id', 'request_id', 'report_id', 'transaction_id', 'reason_code', 'error_code', ...Object.keys(input).slice(0, 80)])
   for (const key of keys) {
     if (!propertyKeys.has(key)) continue
     const value = input[key]
@@ -62,4 +64,9 @@ export function sanitizeProperties(input: Record<string, unknown>): AnalyticsPro
     else if (typeof value === 'string') output[key] = value.slice(0, 160)
   }
   return output
+}
+
+// Retired product surfaces are ignored without discarding valid events in the same batch.
+export function isRetiredAnalyticsSurface(value: unknown) {
+  return typeof value === 'string' && /(^|\/)(battle|leaderboard)(\/|$)/i.test(value.split(/[?#]/)[0]);
 }

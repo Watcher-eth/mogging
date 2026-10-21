@@ -1,3 +1,7 @@
+import useSWR from 'swr'
+import { apiGet } from '@/lib/api/client'
+import { creatorAccountLabel, type CreatorDashboard } from './types'
+import { tiktokAnchorEligible, TIKTOK_ANCHOR_INVITE, TIKTOK_ANCHOR_REQUIREMENT } from '@/lib/creator/tiktok-anchor'
 import { CELEBRITY_EDIT_POLICY } from '@/lib/creator/content-policy'
 import { CREATOR_CTA_GUIDANCE } from '@/lib/creator/post-guidance'
 import Link from 'next/link'
@@ -10,9 +14,23 @@ export function AnalyticsVerificationHelp() {
   return <p className="mt-3 text-xs leading-5">Don’t have two devices? <a href={discordContactUrl} target="_blank" rel="noreferrer" className="font-semibold underline underline-offset-4">Message us on Discord</a> and we’ll arrange a video call to verify your analytics live.</p>
 }
 
+export function TikTokAnchorGuidelines() {
+  const { data } = useSWR<CreatorDashboard>('/api/creator', apiGet)
+  const accounts = (data?.socialAccounts || []).filter(account => tiktokAnchorEligible(account) === true)
+  if (!accounts.length) return null
+  return <aside className="creator-notice my-5 rounded-2xl p-5" aria-label="TikTok anchor requirement">
+    <h3 className="text-sm font-semibold">Required for your TikTok accounts with 1,000+ followers</h3>
+    <p className="mt-1 text-xs text-zinc-500">Applies to {accounts.map(creatorAccountLabel).join(', ')} on TikTok.</p>
+    <p className="mt-3 text-sm leading-6 text-zinc-600">{TIKTOK_ANCHOR_REQUIREMENT}</p>
+    <p className="mt-2 text-sm leading-6 text-zinc-600">Confirm joining in Accounts before your next submission. The anchor is mandatory for every new submission from these TikTok accounts. This does not apply to Instagram or TikTok accounts below 1,000 followers.</p>
+    <div className="mt-3 flex flex-wrap gap-x-5 gap-y-1 text-sm font-semibold text-[#008bc6]"><Link href="/creator/accounts" className="inline-flex min-h-11 items-center underline underline-offset-4">Confirm joining in Accounts →</Link><a href={TIKTOK_ANCHOR_INVITE} target="_blank" rel="noreferrer" className="inline-flex min-h-11 items-center underline underline-offset-4">Open the TikTok project ↗</a></div>
+  </aside>
+}
+
 export function ContentGuidelines() {
   return (
     <section id="video-requirements" className="scroll-mt-6" aria-labelledby="content-standard-title">
+      <TikTokAnchorGuidelines />
       <h2 id="content-standard-title" className="text-lg font-semibold tracking-tight">Before you publish</h2>
       <p className="mt-3 max-w-3xl text-sm leading-6 text-[#73777d]">Videos and slideshows are both welcome. Choose the format, pacing, and storytelling that historically work best for your audience; you have creative freedom within the campaign rules. Every post must clearly emphasize the improvement, attractiveness, features, transformation, or potential of someone’s looks. Keep the whole post focused on looksmaxxing or ascension: this applies to video footage or slideshow images, on-screen text, and the caption. Looksmaxxing, BP (blackpill), or transformation labels alone do not qualify a post. If a moderator has to question whether it is about looks, it is rejected.</p>
       <p className="mt-3 max-w-3xl text-sm leading-6 text-[#73777d]">Mogging pays for access to an audience interested in their appearance. Your framing determines who watches: a celebrity montage can attract fans, a song meme can attract music listeners, and a feature breakdown can attract people who want to understand their own face. High views alone do not make a post eligible.</p>

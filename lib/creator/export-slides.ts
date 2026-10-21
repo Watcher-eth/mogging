@@ -1,3 +1,4 @@
+import { drawGlamourGuidance, prepareGlamourImage } from './glamour-guidance'
 import { drawLegacyPoster, loadShareFont } from './legacy-posters'
 import { resolveShareOverallOverlay } from '@/lib/sharing/overall-overlay'
 import { enrichFaceLandmarks } from './mobile-overlay-engine/enrich-landmarks'
@@ -152,6 +153,7 @@ export async function prepareCanvas({ slide, images, width, height }: RenderArgs
   const source = images.find((item) => item.id === slide.imageId && item.status === 'ready')
   if (!source) throw new Error('This template’s photo is no longer available. Add a clear photo and generate the set again.')
   const isReport = ['mock-report', 'phone-report', 'handheld-report'].includes(slide.templateId)
+  const glamour = slide.templateId === 'glamour-guidance'
   const legacy = ['score-potential','editorial','cta'].includes(slide.templateId)
   const [image, brand] = await Promise.all([loadImage(source.dataUrl), loadRevealBrand(), loadShareFont(), isReport ? loadMockReportSymbols() : null, slide.templateId === 'phone-report' ? loadPhoneFrame() : slide.templateId === 'handheld-report' ? loadHandheldPhone() : null])
   const posterOverlay = ['performance','afterimage'].includes(slide.templateId)
@@ -166,12 +168,14 @@ export async function prepareCanvas({ slide, images, width, height }: RenderArgs
     overlay.labelLayout = 'mobile'
     overlay.value = slide.categoryId === 'overall' ? `${(Number(slide.currentScore) * .8).toFixed(1)} / 8` : `${Number(slide.categoryScores[0]?.value ?? slide.currentScore).toFixed(1)} / 10`
   }
-  if (!isReport && !legacy) await preparePoster(image, width, height, posterFamily(slide.templateId), source.landmarks)
+  if (!isReport && !legacy && !glamour) await preparePoster(image, width, height, posterFamily(slide.templateId), source.landmarks)
+  if (glamour) await prepareGlamourImage(image)
   return { canvas, ctx, image, overlay, brand }
 }
 
 export function drawSlideFrame(ctx: CanvasRenderingContext2D, slide: ContentSlide, image: HTMLImageElement | null, overlay: ReportOverlay | null, width: number, height: number, timeMs: number, brand: RevealBrand | null) {
-  if (slide.templateId === 'cta') drawScoreReveal(ctx,slide,image,overlay,brand,width,height,timeMs)
+  if (slide.templateId === 'glamour-guidance') drawGlamourGuidance(ctx, slide, image, width, height, timeMs)
+  else if (slide.templateId === 'cta') drawScoreReveal(ctx,slide,image,overlay,brand,width,height,timeMs)
   else if (['score-potential','editorial'].includes(slide.templateId)) drawLegacyPoster(ctx,slide,image,overlay,width,height,timeMs,brand)
   else if (slide.templateId === 'phone-report') drawPhoneReport(ctx, slide, image, overlay, width, height, timeMs, brand)
   else if (slide.templateId === 'handheld-report') drawHandheldReport(ctx, slide, image, overlay, width, height, timeMs, brand)

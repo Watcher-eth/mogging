@@ -12,14 +12,14 @@ export function creatorPostIdentity(value: string): string | null {
   return id ? `${platform}:${id}` : null
 }
 
-export async function resolveCreatorPostIdentity(value: string): Promise<string> {
+export async function resolveCreatorPostLink(value: string): Promise<{ key: string; url: string }> {
   let url = new URL(value)
   const platform = creatorPostPlatform(value)
   if (!platform) throw new Error('Enter a published TikTok or Instagram post link')
   const signal = AbortSignal.timeout(8_000)
   for (let redirect = 0; redirect < 6; redirect++) {
     const identity = creatorPostIdentity(url.href)
-    if (identity?.startsWith(`${platform}:`)) return identity
+    if (identity?.startsWith(`${platform}:`)) return { key: identity, url: url.href }
     // Validate every hop before making a request; never follow arbitrary redirect hosts.
     if (url.protocol !== 'https:' || url.username || url.password || url.port || !(
       platform === 'tiktok'
@@ -33,6 +33,10 @@ export async function resolveCreatorPostIdentity(value: string): Promise<string>
     url = new URL(location, url)
   }
   throw new Error('Could not verify this shared link. Open the video and paste its full TikTok or Instagram post URL instead.')
+}
+
+export async function resolveCreatorPostIdentity(value: string): Promise<string> {
+  return (await resolveCreatorPostLink(value)).key
 }
 
 // Drizzle wraps PostgreSQL errors in a cause; only translate this exact constraint.

@@ -22,11 +22,7 @@ export type AnalysisDraft = {
   savedAt: number
 }
 
-export async function saveAnalysisDraft(draft: AnalysisDraft) {
-  const db = await openDraftDb()
-  await requestToPromise(db.transaction(STORE_NAME, 'readwrite').objectStore(STORE_NAME).put(draft, DRAFT_KEY))
-  db.close()
-}
+export const saveAnalysisDraft = (draft: AnalysisDraft) => updateDraft(draft)
 
 export async function loadAnalysisDraft() {
   const db = await openDraftDb()
@@ -38,10 +34,21 @@ export async function loadAnalysisDraft() {
   return draft ?? null
 }
 
-export async function clearAnalysisDraft() {
+export const clearAnalysisDraft = () => updateDraft()
+
+async function updateDraft(draft?: AnalysisDraft) {
   const db = await openDraftDb()
-  await requestToPromise(db.transaction(STORE_NAME, 'readwrite').objectStore(STORE_NAME).delete(DRAFT_KEY))
-  db.close()
+  try {
+    await new Promise<void>((resolve, reject) => {
+      const transaction = db.transaction(STORE_NAME, 'readwrite')
+      transaction.oncomplete = () => resolve()
+      transaction.onabort = () => reject(transaction.error ?? new Error('Unable to save checkout photos'))
+      transaction.onerror = () => reject(transaction.error ?? new Error('Unable to save checkout photos'))
+      const store = transaction.objectStore(STORE_NAME)
+      if (draft) store.put(draft, DRAFT_KEY)
+      else store.delete(DRAFT_KEY)
+    })
+  } finally { db.close() }
 }
 
 function openDraftDb() {

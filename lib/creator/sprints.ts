@@ -1,4 +1,4 @@
-import { creatorContentRestriction } from '@/lib/creator/content-policy'
+import { creatorContentRestriction, SHARED_CONTENT_RESTRICTIONS } from '@/lib/creator/content-policy'
 import { z } from 'zod'
 import { creatorCampaignRule, creatorFormatElement } from './post-guidance'
 import type { CreatorSubmissionFormat } from './formats'
@@ -156,8 +156,7 @@ export function creatorCampaignFormats(campaigns: CreatorSprint[], now = Date.no
   const order: Record<string, number> = { 'general-creator-video-v1': 0, 'custom-video-v1': 1 }
   return campaigns
     .filter((campaign) => sprintPhase(campaign, now) === 'active' && campaign.usedCents < campaign.budgetCents)
-    .flatMap((campaign) => campaign.terms.formats
-      .filter((format) => format.active)
+    .flatMap((campaign) => sprintFormats(campaign.terms)
       .map((format) => ({ key: `${campaign.id}:${format.id}`, campaignId: campaign.id, campaignName: campaign.name, format })))
     .sort((a, b) => (order[a.format.id] ?? 2) - (order[b.format.id] ?? 2))
 }
@@ -192,11 +191,24 @@ export function sprintPayoutCents(
       )
     : 0
 }
-export function sprintFormat(
-  terms: SprintTerms,
-  id: string,
-): CreatorSubmissionFormat | undefined {
-  return terms.formats.find((item) => item.id === id && item.active)
+export function sprintFormats(terms: SprintTerms): CreatorSubmissionFormat[] {
+  const general = terms.formats.find(format => format.id === 'general-creator-video-v1')
+  const shared = general?.notAllowed.length ? general.notAllowed : SHARED_CONTENT_RESTRICTIONS
+  return terms.formats.filter(format => format.active).map(format => {
+    if (format.id !== 'custom-video-v1') return format
+    // Append missing rules so existing restriction IDs and review results stay stable.
+    const notAllowed = [...format.notAllowed]
+    const seen = new Set(notAllowed.map(creatorContentRestriction))
+    for (const rule of shared) {
+      const normalized = creatorContentRestriction(rule)
+      if (!seen.has(normalized)) { notAllowed.push(rule); seen.add(normalized) }
+    }
+    return { ...format, notAllowed }
+  })
+}
+
+export function sprintFormat(terms: SprintTerms, id: string): CreatorSubmissionFormat | undefined {
+  return sprintFormats(terms).find(format => format.id === id)
 }
 export function sprintReviewItems(terms: SprintTerms, id: string) {
   const format = sprintFormat(terms, id)

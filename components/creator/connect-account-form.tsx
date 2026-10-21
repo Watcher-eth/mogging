@@ -8,6 +8,8 @@ import type { CreatorSocialAccount } from './types'
 import { apiPost, ApiClientError } from '@/lib/api/client'
 import { CreatorReferralCode, CreatorReferralDetails } from './referral-details'
 import { cn } from '@/lib/utils'
+import { FollowerRangeSelect } from './tiktok-anchor-onboarding'
+import type { FollowerRange } from '@/lib/creator/tiktok-anchor'
 
 export function ConnectAccountForm({
   platform,
@@ -24,6 +26,7 @@ export function ConnectAccountForm({
 }) {
   const [busy, setBusy] = useState(false)
   const [identity, setIdentity] = useState('')
+  const [followerRange, setFollowerRange] = useState<FollowerRange | ''>('')
   const [connected, setConnected] = useState<CreatorSocialAccount | null>(null)
   const label = platform === 'tiktok' ? 'TikTok' : 'Instagram'
   async function connect(event: FormEvent) {
@@ -32,7 +35,7 @@ export function ConnectAccountForm({
     try {
       const { account } = await apiPost<{ account: CreatorSocialAccount }>(
         '/api/creator/accounts',
-        { platform, identity },
+        { platform, identity, ...(platform === 'tiktok' ? { followerRange } : {}) },
       )
       setConnected(account)
     } catch (error) {
@@ -88,6 +91,7 @@ export function ConnectAccountForm({
             onClick={() => {
               onPlatformChange(option)
               setIdentity('')
+              setFollowerRange('')
             }}
             className={cn(
               'flex min-h-11 items-center gap-2 rounded-xl border px-3 text-sm capitalize',
@@ -122,6 +126,7 @@ export function ConnectAccountForm({
           spellCheck={false}
         />
       </Field>
+      {platform === 'tiktok' ? <FollowerRangeSelect id="connect-tiktok-followers" value={followerRange} onChange={setFollowerRange} /> : null}
       <p className="text-xs leading-5 text-zinc-500">
         Connect your publishing profile to receive your referral link and code.
       </p>

@@ -1,3 +1,5 @@
+import { TikTokAccountDialog } from './tiktok-anchor-onboarding'
+import { publishingTikTokHandle, tiktokAnchorEligible, TIKTOK_ANCHOR_REQUIREMENT } from '@/lib/creator/tiktok-anchor'
 import { creatorContentRestriction } from '@/lib/creator/content-policy'
 import { creatorCampaignRules, creatorFormatElement, CREATOR_REREVIEW_GUIDANCE } from '@/lib/creator/post-guidance'
 import { MinimumViewsDialog } from './minimum-views-dialog'
@@ -41,6 +43,7 @@ import {
 import { uploadAnalyticsRecording } from '@/lib/creator/analytics-upload'
 import {
   sprintPhase,
+  sprintFormat,
   sprintMoney,
   sprintViews,
   sprintPayoutCents,
@@ -78,7 +81,7 @@ export function SubmissionDialog({
   const { data: campaigns, error: sprintError } = useSWR<{
     sprints: CreatorSprint[]
   }>(open ? '/api/creator/sprints' : null, apiGet)
-  const { data, error: dashboardError } = useSWR<CreatorDashboard>(
+  const { data, error: dashboardError, mutate: refreshDashboard } = useSWR<CreatorDashboard>(
     open ? '/api/creator' : null,
     apiGet,
   )
@@ -86,6 +89,7 @@ export function SubmissionDialog({
   const [sprintId, setSprintId] = useState(existingSubmission?.sprintId || initialSprintId || '')
   const [formatId, setFormatId] = useState(existingSubmission?.formatId || '')
   const [accountId, setAccountId] = useState('')
+  const [anchorSetupOpen, setAnchorSetupOpen] = useState(false)
   const [platform, setPlatform] = useState<'tiktok' | 'instagram'>('tiktok')
   const [postUrl, setPostUrl] = useState(existingSubmission?.postUrl || '')
   const [recording, setRecording] = useState<File | null>(null)
@@ -102,7 +106,7 @@ export function SubmissionDialog({
   const selectedPlatform = sprint?.terms.platforms.includes(platform)
     ? platform
     : sprint?.terms.platforms[0] || platform
-  const format = sprint?.terms.formats.find((item) => item.id === formatId)
+  const format = sprint ? sprintFormat(sprint.terms, formatId) : undefined
   const activeSprints =
     campaigns?.sprints.filter(
       (item) =>
@@ -111,16 +115,20 @@ export function SubmissionDialog({
   useEffect(() => {
     if (initialSprintId) setSprintId(initialSprintId)
   }, [initialSprintId])
+  const publishingAccount = data?.socialAccounts.find(item => item.id === accountId)
+  const anchorEligibility = tiktokAnchorEligible(publishingAccount)
+  const anchorRequired = !existingSubmission && platform === 'tiktok' && anchorEligibility === true
   const checklist =
     format && sprint
       ? [
           ...creatorCampaignRules(format.requirements),
+          ...(anchorRequired ? [TIKTOK_ANCHOR_REQUIREMENT] : []),
           ...creatorCampaignRules(sprint.terms.rules),
           ...format.notAllowed.map((item) => `My post avoids: ${creatorContentRestriction(item)}`),
         ]
       : []
   const accountRequired =
-    data?.featureFlags.creatorAccountRequiredForSubmission || false
+    platform === 'tiktok' || data?.featureFlags.creatorAccountRequiredForSubmission || false
   function checkMinimumViews() {
     const count = Number(views)
     if (
@@ -158,6 +166,12 @@ export function SubmissionDialog({
         return toast.error('Choose the publishing account')
       if (account && account.platform !== platform)
         return toast.error('The account must match the post platform')
+      if (platform === 'tiktok') {
+        if (anchorEligibility === null) return toast.error('Confirm this account’s follower range in Accounts first')
+        if (anchorRequired && !account?.tiktokAnchorJoinedAt) { setAnchorSetupOpen(true); return toast.error('Join the Mogging project before submitting') }
+        const handle = publishingTikTokHandle(parsed.data)
+        if (handle && account?.handle?.toLowerCase() !== handle) return toast.error('Choose the TikTok account that published this post')
+      }
 
     }
     if (step === 4 && !checkMinimumViews()) return
@@ -201,6 +215,7 @@ export function SubmissionDialog({
         sprintId,
         formatId,
         requirementsConfirmed: true,
+        tiktokAnchorLinked: anchorRequired && confirmed.includes(String(checklist.indexOf(TIKTOK_ANCHOR_REQUIREMENT))),
         socialAccountId: accountId || null,
         postUrl,
         analyticsVideoUrl: intent.publicUrl,
@@ -227,6 +242,7 @@ export function SubmissionDialog({
     }
   }
   return (
+    <>
     <Dialog
       open={open}
       onOpenChange={(value) => {
@@ -412,6 +428,7 @@ export function SubmissionDialog({
                             onClick={() => {
                               setPlatform(item)
                               setAccountId('')
+                              setConfirmed([])
                             }}
                           >
                             <SocialPlatformLogo
@@ -429,7 +446,7 @@ export function SubmissionDialog({
                         <select
                           className={fieldClass}
                           value={accountId}
-                          onChange={(e) => setAccountId(e.target.value)}
+                          onChange={(e) => { setAccountId(e.target.value); setConfirmed([]) }}
                           required={accountRequired}
                         >
                           <option value="">Choose account</option>
@@ -442,6 +459,11 @@ export function SubmissionDialog({
                             ))}
                         </select>
                       </Field>
+                      {platform === 'tiktok' && publishingAccount ? (
+                        <div className="rounded-xl bg-[#eaf7fd] p-4 text-sm leading-6">
+                          {anchorEligibility === null ? <><strong>Confirm your follower range first.</strong><p className="text-zinc-600">We need it to show the requirements for this publishing account.</p><Link href="/creator/accounts" className="font-medium text-[#008bc6] underline underline-offset-4">Update in Accounts</Link></> : anchorRequired ? <><strong>TikTok anchor required for this account</strong><p className="mt-1 text-zinc-600">Accept the Mogging TikTok One project before posting. On TikTok’s posting screen, choose Content disclosure → Disclose post content → Branded content → Link project → Mogging.</p>{publishingAccount.tiktokAnchorJoinedAt ? <p className="mt-2 text-xs font-medium text-[#008bc6]">Joining confirmed · Link the anchor on this post and every new TikTok submission.</p> : <button type="button" onClick={() => setAnchorSetupOpen(true)} className="mt-2 min-h-11 font-medium text-[#008bc6] underline underline-offset-4">Join project to continue →</button>}</> : <p className="text-zinc-600">This account has fewer than 1,000 followers. The TikTok anchor requirement does not apply.</p>}
+                        </div>
+                      ) : null}
                       <Field label="Video URL">
                         <input
                           className={fieldClass}
@@ -671,5 +693,7 @@ export function SubmissionDialog({
         onClose={() => setRejectedViews(null)}
       />
     </Dialog>
+    {publishingAccount && anchorRequired && anchorSetupOpen ? <TikTokAccountDialog key={publishingAccount.id} account={publishingAccount} mode="anchor" open onOpenChange={setAnchorSetupOpen} onSaved={() => refreshDashboard()} /> : null}
+    </>
   )
 }

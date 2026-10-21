@@ -1,3 +1,5 @@
+import { followerLabel, tiktokAnchorEligible } from '@/lib/creator/tiktok-anchor'
+import { TikTokAccountDialog } from '@/components/creator/tiktok-anchor-onboarding'
 import { AnimatedDialogPanel } from '@/components/ui/animated-dialog-panel'
 import { useState } from 'react'
 import useSWR from 'swr'
@@ -33,9 +35,11 @@ function AccountsContent() {
     '/api/creator',
     apiGet,
   )
+  const [editing, setEditing] = useState<{ id: string; mode: 'followers' | 'anchor' } | null>(null)
   const [open, setOpen] = useState(false)
   const [platform, setPlatform] = useState<'tiktok' | 'instagram'>('tiktok')
   const accounts = data?.socialAccounts || []
+  const editingAccount = accounts.find(account => account.id === editing?.id)
   const counts = {
     tiktok: accounts.filter((item) => item.platform === 'tiktok').length,
     instagram: accounts.filter((item) => item.platform === 'instagram').length,
@@ -116,6 +120,11 @@ function AccountsContent() {
               <div className="mt-4">
                 <CreatorReferralDetails trackingLink={account.trackingLink} />
               </div>
+              {account.platform === 'tiktok' ? <div className="mt-4 flex flex-wrap items-center gap-x-4 gap-y-2 border-t border-zinc-100 pt-3 text-xs">
+                <span className="text-zinc-500">{followerLabel(account.followers)}</span>
+                <button className="min-h-11 font-medium text-[#008bc6]" onClick={() => setEditing({ id: account.id, mode: 'followers' })}>Update followers</button>
+                {tiktokAnchorEligible(account) ? <button className="min-h-11 font-medium text-[#008bc6]" onClick={() => setEditing({ id: account.id, mode: 'anchor' })}>{account.tiktokAnchorJoinedAt ? 'View TikTok anchor setup' : 'Set up TikTok anchor'}</button> : null}
+              </div> : null}
               {account.reviewNote && account.reviewNote !== 'Account ownership and audience analytics verified with our team on Discord.' ? (
                 <p className="mt-3 text-sm text-zinc-500">
                   {account.reviewNote}
@@ -140,6 +149,7 @@ function AccountsContent() {
       <p className="mt-5 text-xs text-zinc-500">
         TikTok {counts.tiktok}/5 · Instagram {counts.instagram}/5
       </p>
+      {editingAccount && editing ? <TikTokAccountDialog key={`${editing.id}:${editing.mode}`} account={editingAccount} mode={editing.mode} open onOpenChange={value => { if (!value) setEditing(null) }} onSaved={() => mutate()} /> : null}
       <Dialog open={open} onOpenChange={setOpen}>
         <DialogContent className="creator-dialog p-0">
           <DialogHeader className="border-b p-6 text-left">

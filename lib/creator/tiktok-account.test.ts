@@ -1,5 +1,6 @@
 import { beforeEach, expect, mock, test } from 'bun:test'
 import * as schema from '@/lib/db/schema'
+mock.module('@/lib/creator/tiktok-followers', () => ({ resolveTikTokFollowers: async (_handle: string, range?: string) => range ? { source: 'self_reported', range, checkedAt: new Date().toISOString() } : null }))
 
 let rows: any[] = []
 let providerAccount: any = undefined
@@ -99,13 +100,19 @@ test('Instagram connects without account audience verification', async () => {
 })
 
 test('manual TikTok connects without claiming audience analytics verification', async () => {
-  const account = await addCreatorSocialAccount('user', { platform: 'tiktok', handle: 'nate', profileUrl: 'https://www.tiktok.com/@nate' })
+  const account = await addCreatorSocialAccount('user', { platform: 'tiktok', handle: 'nate', profileUrl: 'https://www.tiktok.com/@nate', followerRange: '1k_5k' })
   expect(account.status).toBe('approved')
   expect(account.analyticsConfirmedAt).toBeUndefined()
   expect(account.analyticsVideoUrl).toBeUndefined()
   expect(account.oauthVerifiedAt).toBeUndefined()
+  expect(account.followers).toMatchObject({ source: 'self_reported', range: '1k_5k' })
   expect(writes[0].values).not.toHaveProperty('analyticsConfirmedAt')
   expect(writes[0].values).not.toHaveProperty('analyticsVideoUrl')
+})
+
+test('a manual TikTok account needs a range when no count is available', async () => {
+  await expect(addCreatorSocialAccount('user', { platform: 'tiktok', handle: 'nate' })).rejects.toThrow('follower range')
+  expect(writes).toHaveLength(0)
 })
 
 test('OAuth persists every returned profile and stats field and uses the returned avatar', async () => {

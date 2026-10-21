@@ -2,6 +2,8 @@ import { beforeEach, expect, mock, test } from 'bun:test'
 import * as schema from '@/lib/db/schema'
 
 let previousPost: any = null
+const accountId = '00000000-0000-4000-8000-000000000005'
+let publishingAccount: any
 let uploadExists = true
 let sprintActive = true
 const now = new Date()
@@ -9,7 +11,7 @@ const sprint = { id: '00000000-0000-4000-8000-000000000004', status: 'published'
 let inserted: any[] = []
 let verified: any[] = []
 mock.module('@/lib/db', () => ({ schema, db: {
-  query: { creatorProfiles: { findFirst: async () => ({ id: 'creator' }) }, creatorSocialAccounts: { findFirst: async () => ({ id: '00000000-0000-4000-8000-000000000005', creatorProfileId: 'creator', platform: 'instagram' }) }, creatorSprints: { findFirst: async () => ({ ...sprint, status: sprintActive ? 'published' : 'ended' }) } },
+  query: { creatorProfiles: { findFirst: async () => ({ id: 'creator' }) }, creatorSocialAccounts: { findFirst: async () => publishingAccount, findMany: async () => publishingAccount?.platform === 'tiktok' ? [publishingAccount] : [] }, creatorSprints: { findFirst: async () => ({ ...sprint, status: sprintActive ? 'published' : 'ended' }) } },
   transaction: async (fn: any) => fn({ execute: async () => undefined, query: { creatorSubmissions: { findFirst: async () => previousPost } }, select: () => ({ from: (table: unknown) => ({ where: () => ({ for: async () => [sprint], then: (resolve: any) => resolve([{ cents: 0 }]) }) }) }), insert: (table: unknown) => ({ values: (values: any) => { inserted.push(values); return { returning: async () => [{ id: 'submission', ...values }] } } }) }),
   insert: () => ({ values: (values: any) => { inserted.push(values); return { returning: async () => [{ id: 'submission', ...values }] } } }),
 } }))
@@ -28,7 +30,7 @@ const input = {
   analyticsStorageKey: 'creators/user/submission-analytics/00000000-0000-4000-8000-000000000001.mp4',
   analyticsContentType: 'video/mp4' as const, analyticsSizeBytes: 100, viewCountThreshold: 40000 as const,
 }
-beforeEach(() => { previousPost = null; inserted = []; verified = []; uploadExists = true; sprintActive = true })
+beforeEach(() => { publishingAccount = { id: accountId, creatorProfileId: 'creator', platform: 'tiktok', handle: 'nate', followers: { source: 'public', count: 999, checkedAt: now.toISOString() } }; previousPost = null; inserted = []; verified = []; uploadExists = true; sprintActive = true })
 test('completed video evidence is checked and its URL comes from owned storage', async () => {
   const submission = await createCreatorSubmission('user', input)
   expect(verified).toEqual([[input.analyticsStorageKey, 100, 'video/mp4']])
@@ -82,6 +84,7 @@ test('legacy clients can submit old posts without a publication-age restriction'
 
 
 test('a connected Instagram account can submit a Reel with verified recording evidence', async () => {
+  publishingAccount = { ...publishingAccount, platform: 'instagram', followers: { source: 'public', count: 50000, checkedAt: now.toISOString() } }
   const postUrl = 'https://www.instagram.com/creator/reel/AbC123/?igsh=abc'
   const submission = await createCreatorSubmission('user', { ...input, postUrl, socialAccountId: '00000000-0000-4000-8000-000000000005' })
   expect(submission.platform).toBe('Instagram Reels')
@@ -100,4 +103,47 @@ test('new submissions retain the original URL and store a stable video identity'
   const submission = await createCreatorSubmission('user', { ...input, postUrl })
   expect(submission.postUrl).toBe(postUrl)
   expect(submission.postKey).toBe('tiktok:123')
+})
+
+
+test('eligible TikTok accounts require anchor confirmation even without a selected account ID', async () => {
+  publishingAccount.followers.count = 1000
+  await expect(createCreatorSubmission('user', { ...input, tiktokAnchorLinked: true })).rejects.toThrow('confirm joining in Accounts')
+  expect(verified).toHaveLength(0)
+  publishingAccount.tiktokAnchorJoinedAt = now
+  await expect(createCreatorSubmission('user', input)).rejects.toThrow('linked this post with its anchor')
+  expect(inserted).toHaveLength(0)
+  const submission = await createCreatorSubmission('user', { ...input, tiktokAnchorLinked: true })
+  expect(submission.socialAccountId).toBe(accountId)
+  expect(submission.sprintTerms!.formats[0].requirements.at(-1)).toContain('TikTok One project')
+  expect(sprint.terms.formats[0].requirements).toEqual(['Keep public'])
+})
+test('unknown TikTok counts and unconnected publishing handles cannot bypass eligibility checks', async () => {
+  publishingAccount.followers = null
+  await expect(createCreatorSubmission('user', input)).rejects.toThrow('follower range')
+  publishingAccount.handle = 'other'
+  await expect(createCreatorSubmission('user', { ...input, socialAccountId: accountId })).rejects.toThrow('account that published')
+  await expect(createCreatorSubmission('user', input)).rejects.toThrow('Connect the TikTok account')
+  expect(inserted).toHaveLength(0)
+})
+test('self-reported ranges follow the same threshold as fetched counts', async () => {
+  publishingAccount.followers = { source: 'self_reported', range: 'under_1k', checkedAt: now.toISOString() }
+  const submission = await createCreatorSubmission('user', input)
+  expect(submission.sprintTerms).toEqual(sprint.terms)
+  publishingAccount.followers.range = '1k_5k'
+  publishingAccount.tiktokAnchorJoinedAt = now
+  await expect(createCreatorSubmission('user', input)).rejects.toThrow('linked this post with its anchor')
+})
+
+
+test('joining once never waives the anchor confirmation on subsequent TikTok submissions', async () => {
+  publishingAccount.followers.count = 1000
+  publishingAccount.tiktokAnchorJoinedAt = now
+  await createCreatorSubmission('user', { ...input, tiktokAnchorLinked: true })
+  const secondPost = { ...input, postUrl: 'https://www.tiktok.com/@nate/video/124' }
+  await expect(createCreatorSubmission('user', secondPost)).rejects.toThrow('linked this post with its anchor')
+  expect(inserted).toHaveLength(1)
+  await createCreatorSubmission('user', { ...secondPost, tiktokAnchorLinked: true })
+  expect(inserted).toHaveLength(2)
+  for (const post of inserted) expect(post.sprintTerms.formats[0].requirements.at(-1)).toContain('TikTok One project')
 })

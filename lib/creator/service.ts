@@ -1,4 +1,6 @@
-import { resolveCreatorPostIdentity, rethrowCreatorPostConflict } from './post-identity'
+import { resolveCreatorPostLink, rethrowCreatorPostConflict } from './post-identity'
+import { accountFollowers, followersFromOAuth, publishingTikTokHandle, tiktokAnchorEligible, TIKTOK_ANCHOR_REQUIREMENT } from './tiktok-anchor'
+import { resolveTikTokFollowers } from './tiktok-followers'
 import { submissionUnreadCount } from '@/lib/creator/submission-messages'
 import { sprintPhase, sprintFormat } from './sprints'
 import type { TikTokUserInfo } from '@/lib/auth/tiktok-api'
@@ -46,6 +48,7 @@ export async function getCreatorDashboard(userId: string) {
   ])
 
   const socialAccountsWithLinks = await Promise.all(socialAccounts.map(async (account) => {
+    account = { ...account, followers: account.platform === 'tiktok' ? accountFollowers(account) : null }
     const handle = creatorReferralHandle(account.handle)
     if (!handle) return { ...account, trackingLink: null }
     if (account.trackingLink?.isActive && account.trackingLink.publicUrl === `https://www.mogging.com/r/${handle}`) return account
@@ -116,6 +119,8 @@ export async function saveCreatorProfile(userId: string, input: CreatorProfileIn
 export async function addCreatorSocialAccount(userId: string, input: CreatorSocialAccountInput) {
   const profile = await getOrCreateCreatorProfile(userId)
   if (profile.authStatus === 'suspended') throw new CreatorServiceError(403, 'Your creator account is suspended')
+  const followers = input.platform === 'tiktok' ? await resolveTikTokFollowers(input.handle, input.followerRange) : null
+  if (input.platform === 'tiktok' && !followers) throw new CreatorServiceError(400, 'Choose your TikTok follower range to connect this account')
   const account = await db.transaction(async tx => {
     // Serialize both account-limit checks and handle claims across concurrent requests.
     await tx.execute(sql`select id from creator_profiles where id = ${profile.id} for update`)
@@ -127,7 +132,7 @@ export async function addCreatorSocialAccount(userId: string, input: CreatorSoci
     }
     const accounts = await tx.query.creatorSocialAccounts.findMany({ where: eq(schema.creatorSocialAccounts.creatorProfileId, profile.id) })
     if (accounts.length >= 10 || accounts.filter(item => item.platform === input.platform).length >= 5) throw new CreatorServiceError(409, 'You can connect up to five accounts per platform')
-    const [created] = await tx.insert(schema.creatorSocialAccounts).values({ creatorProfileId: profile.id, platform: input.platform, status: 'approved', handle: input.handle, profileUrl: input.profileUrl || `https://www.${input.platform}.com/${input.platform === 'tiktok' ? '@' : ''}${input.handle}` }).returning()
+    const [created] = await tx.insert(schema.creatorSocialAccounts).values({ creatorProfileId: profile.id, platform: input.platform, status: 'approved', handle: input.handle, followers, profileUrl: input.profileUrl || `https://www.${input.platform}.com/${input.platform === 'tiktok' ? '@' : ''}${input.handle}` }).returning()
     return created
   })
   return { ...account, trackingLink: await ensureCreatorTrackingLink(account.id) }
@@ -191,6 +196,7 @@ export async function addCreatorTikTokOAuthAccount(userId: string, input: Creato
     })
 
     const socialValues = {
+      followers: followersFromOAuth(input.profile) || accountToUpdate?.followers || null,
       // OAuth proves the provider identity even when profile scope is unavailable.
       // Preserve known handles on reconnect; never invent a username from display_name.
       handle: normalizedHandle || accountToUpdate?.handle || null,
@@ -304,8 +310,7 @@ export async function createCreatorSubmission(userId: string, input: CreatorSubm
   const format = sprintFormat(sprint.terms, input.formatId)
   if (!format) throw new CreatorServiceError(400, 'Choose a format offered by this campaign')
   if (!sprint.terms.platforms.includes(creatorPostPlatform(input.postUrl)!)) throw new CreatorServiceError(400, 'This platform is not accepted by the campaign')
-  await verifySubmissionAnalytics(userId, input)
-  const socialAccount = input.socialAccountId ? await db.query.creatorSocialAccounts.findFirst({
+  let socialAccount = input.socialAccountId ? await db.query.creatorSocialAccounts.findFirst({
     where: and(
       eq(schema.creatorSocialAccounts.id, input.socialAccountId),
       eq(schema.creatorSocialAccounts.creatorProfileId, profile.id)
@@ -322,9 +327,26 @@ export async function createCreatorSubmission(userId: string, input: CreatorSubm
     throw new CreatorServiceError(400, 'The post link must match the selected account’s platform')
   }
 
-  let postKey: string
-  try { postKey = await resolveCreatorPostIdentity(input.postUrl) }
+  let postLink: { key: string; url: string }
+  try { postLink = await resolveCreatorPostLink(input.postUrl) }
   catch { throw new CreatorServiceError(400, 'Could not verify this shared link. Open the video and paste its full TikTok or Instagram post URL instead.') }
+  let anchorRequired = false
+  if (creatorPostPlatform(input.postUrl) === 'tiktok') {
+    const handle = publishingTikTokHandle(postLink.url)
+    const accounts = await db.query.creatorSocialAccounts.findMany({ where: and(eq(schema.creatorSocialAccounts.creatorProfileId, profile.id), eq(schema.creatorSocialAccounts.platform, 'tiktok')) })
+    const publishingAccount = accounts.find(account => account.handle?.toLowerCase() === handle)
+    if (socialAccount && socialAccount.id !== publishingAccount?.id) throw new CreatorServiceError(400, 'Choose the TikTok account that published this post')
+    socialAccount = publishingAccount || null
+    if (!socialAccount) throw new CreatorServiceError(400, 'Connect the TikTok account that published this post and confirm its follower range in Accounts')
+    const eligibility = tiktokAnchorEligible({ ...socialAccount, followers: accountFollowers(socialAccount) })
+    if (eligibility === null) throw new CreatorServiceError(400, 'Confirm this TikTok account’s follower range in Accounts before submitting')
+    anchorRequired = eligibility
+    if (anchorRequired && !socialAccount.tiktokAnchorJoinedAt) throw new CreatorServiceError(400, 'Join the Mogging TikTok One project and confirm joining in Accounts before your next submission')
+    if (anchorRequired && input.tiktokAnchorLinked !== true) throw new CreatorServiceError(400, 'Confirm you accepted Mogging’s TikTok One project and linked this post with its anchor')
+  }
+  const postKey = postLink.key
+  const submissionTerms = anchorRequired ? { ...sprint.terms, formats: sprint.terms.formats.map(item => item.id === format.id ? { ...item, requirements: [...item.requirements.filter(rule => rule !== TIKTOK_ANCHOR_REQUIREMENT), TIKTOK_ANCHOR_REQUIREMENT] } : item) } : sprint.terms
+  await verifySubmissionAnalytics(userId, input)
   return db.transaction(async tx => {
     await tx.execute(sql`select pg_advisory_xact_lock(hashtextextended(${postKey}, 0))`)
     const previousPost = await tx.query.creatorSubmissions.findFirst({ where: or(eq(schema.creatorSubmissions.postKey, postKey), eq(schema.creatorSubmissions.postUrl, input.postUrl)) })
@@ -339,7 +361,7 @@ export async function createCreatorSubmission(userId: string, input: CreatorSubm
       creatorProfileId: profile.id,
       socialAccountId: socialAccount?.id || null,
       sprintId: sprint.id,
-      sprintTerms: sprint.terms,
+      sprintTerms: submissionTerms,
       formatId: format.id,
       requirementsConfirmedAt: new Date(),
       title: format.name,

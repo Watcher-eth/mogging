@@ -2,7 +2,7 @@
 
 The analytics sidebar separates acquisition, authentication, onboarding, purchase flow,
 scans, engagement, referrals, notifications, attribution, revenue, retention, and data health.
-All 67 events in the shared web/mobile contract have one reporting owner in
+All current events in the shared web/mobile contract have one reporting owner in
 `lib/admin/tracking.ts`. Supported milestones remain visible when no data exists,
 including all 16 current onboarding screens (tracking revision 3, app 0.1.63 onward) in their display order.
 
@@ -15,7 +15,7 @@ including all 16 current onboarding screens (tracking revision 3, app 0.1.63 onw
 | Paywall, product loading, plan selection, checkout, purchase outcomes, restore, access codes | Purchase flow |
 | Server web-to-app handoff status | Purchase flow |
 | Evaluation attempts, duration, completion and failure | Scans |
-| Sessions, reports, categories, protocols, tasks, sharing, battles, settings | Engagement |
+| Sessions, reports, categories, protocols, tasks, sharing, courses, progress, settings | Engagement |
 | Referral intent, credited signups, granted rewards, lifetime inviter progress | Referrals |
 | Push opens, current registrations by environment/timezone, reminder records | Notifications |
 | Creator milestones and subscription lifecycle, direct/first-touch link credit by currency | Attribution ledger; Creator attribution retains its account drilldown |
@@ -45,3 +45,40 @@ production data completeness.
 
 Homepage experiment cohorts, mature conversion intervals, section reach, CTA placement,
 and source reporting live in Acquisition. See [landing experiments](landing-experiments.md).
+
+## Courses and progress
+
+The mobile learning/progress pages emit only semantic boundaries:
+
+| Event | Purpose |
+| --- | --- |
+| `course_viewed` | Course overview reach and saved lesson count |
+| `course_lesson_viewed` / `course_lesson_exited` | Lesson reach, revisits, foreground reading duration |
+| `course_lesson_completed` / `course_completed` | First locally saved completion; revisiting does not re-complete |
+| `progress_viewed` / `progress_exited` | Progress reach, foreground use, empty/baseline/comparison state |
+| `progress_area_viewed` | Deliberate score-history exploration, category only |
+| `progress_action_selected` | Navigation to protocol or evaluations, not proof of a later task/scan |
+
+Visits stop on loss of focus or app foreground and resume as a fresh visit. There are no
+heartbeats, scroll/animation events, quiz-answer events, chart-point events, photos, personal
+names, profile IDs or scores. Course/lesson IDs are static content IDs. Progress records only
+self/other, not the person's identity. Mobile sessions emit `session_started` at a new
+30-minute-inactivity session boundary.
+
+Engagement shows unique device reach, active device-days (UTC), distinct device–lesson
+completions, course completions and median observed foreground visit time. Missing exits
+(e.g. force termination) leave duration unknown. A completion is saved locally; reinstalling
+or clearing local progress may produce another client completion. Reporting deduplicates
+within the selected window and does not claim verified learning or causal retention.
+
+Retention reports exact D1/D7/D30 same-feature return after first meaningful use: a completed
+lesson, deliberate progress-area open, or at least 10 seconds in a foreground lesson/progress
+visit. First use is searched across earlier history; only mature, identified customer accounts
+are eligible. First-scan return also recognizes these meaningful learning/progress actions.
+Anonymous usage still appears under Engagement. Cohorts need time after release to mature.
+
+Battle vote/filter events and Battle/Leaderboard screen/page collection are retired. Old
+clients' retired events are dropped individually at ingestion; other events in that batch
+continue to be accepted. Historical records are preserved but excluded from current customer
+activity reports. No database migration is needed. Deploy the backend contract/reporting
+before distributing the instrumented mobile build so new events are accepted.

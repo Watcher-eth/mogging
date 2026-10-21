@@ -21,7 +21,7 @@ export const adminNavigation = [
     { href: '/admin/analytics/authentication', title: 'Authentication', description: 'Sign-in outcomes and verified identity linking.', section: 'Authentication', icon: 'accounts' },
     { href: '/admin/analytics/purchases', title: 'Purchase flow', description: 'Paywall choices, purchase outcomes, restores, and handoffs.', section: 'Purchases', icon: 'payouts' },
     { href: '/admin/analytics/scans', title: 'Scans', description: 'Attempts, completions, failures, and scan latency.', section: 'Scans', icon: 'overview' },
-    { href: '/admin/analytics/engagement', title: 'Engagement', description: 'Reports, protocols, sharing, battles, and app activity.', section: 'Engagement', icon: 'overview' },
+    { href: '/admin/analytics/engagement', title: 'Engagement', description: 'Courses, progress, reports, protocols, and app activity.', section: 'Engagement', icon: 'overview' },
     { href: '/admin/analytics/referrals', title: 'Referrals', description: 'Referral milestones, credited signups, and reward progress.', section: 'Referrals', icon: 'accounts' },
     { href: '/admin/analytics/notifications', title: 'Notifications', description: 'Push opens, registered devices, and reminder records.', section: 'Notifications', icon: 'overview' },
     { href: '/admin/analytics/attribution', title: 'Attribution ledger', description: 'Creator link credit, lifecycle events, and currency-separated revenue.', section: 'AttributionLedger', icon: 'accounts' },

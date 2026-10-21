@@ -1,3 +1,4 @@
+import { SubmissionReviewFeedback } from '@/components/creator/submission-review-feedback'
 import { CREATOR_REREVIEW_GUIDANCE } from '@/lib/creator/post-guidance'
 import { AnimatedDialogPanel } from '@/components/ui/animated-dialog-panel'
 import { SubmissionDialog as AnalyticsSubmissionDialog } from '@/components/creator/submission-dialog'
@@ -5,7 +6,7 @@ import { SubmissionConversation } from '@/components/creator/submission-conversa
 import { SubmissionPostPreview, useSubmissionPostPreview } from '@/components/creator/submission-post-preview'
 import Link from 'next/link'
 import { useMemo, useState } from 'react'
-import { ArrowUpRight, Eye, MessageCircle, CheckCircle2, CircleAlert, Clock3, Loader2, RotateCcw, XCircle } from 'lucide-react'
+import { ArrowUpRight, Eye, MessageCircle, CircleAlert, Clock3, Loader2, RotateCcw, XCircle } from 'lucide-react'
 import useSWR from 'swr'
 import { Button } from '@/components/ui/button'
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog'
@@ -116,6 +117,7 @@ function SubmissionDialog({ submission, payment, payments, linkedToApprovedAccou
             </DialogHeader>
             {payments.some(item => ['pending', 'processing'].includes(item.status)) ? <p className="mt-3 text-xs text-zinc-500">You can request rereview once your scheduled payout has finished processing.</p> : null}
             {submission.reviewRequestedAt ? <p className="mt-3 text-xs text-zinc-500">Updated analytics are awaiting review. Prior payouts remain unchanged.</p> : null}
+            {submission.status === 'rejected' ? <CreatorReviewChecklist submission={submission} /> : null}
             <div className="mt-4 flex gap-1 rounded-full bg-zinc-100 p-1" aria-label="Submission view">{(['conversation', 'details'] as const).map(value => <button key={value} aria-pressed={tab === value} className={cn('min-h-10 flex-1 rounded-full text-sm font-medium capitalize', tab === value ? 'bg-white shadow-sm' : 'text-zinc-500')} onClick={() => setTab(value)}>{value === 'conversation' ? <>Messages{submission.unreadMessages ? <span className="ml-2 inline-flex min-w-5 items-center justify-center rounded-lg bg-[#007aff] px-1.5 py-0.5 text-[10px] text-white">{submission.unreadMessages}</span> : null}</> : 'Details'}</button>)}</div>
             {tab === 'conversation' ? <SubmissionConversation submissionId={submission.id} viewerRole="creator" /> : <>
             {!linkedToApprovedAccount && !submission.sprintId ? <div className="mt-6 flex gap-3 rounded-2xl creator-warning px-4 py-3 text-sm leading-6"><CircleAlert className="mt-0.5 size-4 shrink-0 text-zinc-600" /><p><strong className="font-semibold">Account Not Approved.</strong> This video is not currently connected to an approved TikTok or Instagram account.</p></div> : null}
@@ -131,7 +133,7 @@ function SubmissionDialog({ submission, payment, payments, linkedToApprovedAccou
               <Detail label="Payment Method" value={payment ? (payment.paymentOption === 'paypal' ? 'PayPal' : 'Crypto') : '—'} />
             </div>
             {caption ? <div className="mt-6"><p className="text-xs font-semibold uppercase tracking-[0.15em] text-zinc-400">Caption</p><p className="mt-2 whitespace-pre-wrap text-sm leading-6 text-zinc-600">{caption}</p></div> : null}
-            {submission.reviewChecklist?.length ? <CreatorReviewChecklist submission={submission} /> : null}
+            {submission.status !== 'rejected' && submission.reviewChecklist?.length ? <CreatorReviewChecklist submission={submission} /> : null}
             {submission.postUrl ? <Button asChild variant="outline" className="mt-6 h-10 rounded-xl"><a href={submission.postUrl} target="_blank" rel="noreferrer">Open Published Post <ArrowUpRight /></a></Button> : null}
             </>}
           </div>
@@ -146,8 +148,9 @@ function CreatorReviewChecklist({ submission }: { submission: CreatorSubmission 
   const items = submission.sprintTerms
     ? sprintReviewItems(submission.sprintTerms, submission.formatId || '').map(item => ({ ...item, met: submission.reviewChecklist?.find(result => result.id === item.id)?.met || false, note: submission.reviewChecklist?.find(result => result.id === item.id)?.note || null }))
     : mergeCreatorSubmissionReviewResults(submission.formatId, submission.reviewChecklist)
-  const metCount = items.filter((item) => item.met).length
-  return <section className="mt-6 rounded-2xl border border-zinc-200 p-4"><div className="flex items-start justify-between gap-4"><div><p className="text-xs font-semibold uppercase tracking-[0.15em] text-zinc-400">Requirements review</p><p className="mt-2 text-sm font-semibold">Creator-guide results</p><p className="mt-1 text-xs leading-5 text-zinc-500">See what your video satisfied and where the review team found a gap.</p></div><span className="shrink-0 rounded-lg bg-zinc-100 px-2.5 py-1 text-[11px] font-semibold tabular-nums text-zinc-600">{metCount}/{items.length}</span></div><div className="mt-4 grid gap-2">{items.map((item) => <div key={item.id} className={cn('flex items-start gap-3 rounded-xl p-3', item.met ? 'creator-tone-green text-zinc-700' : 'creator-tone-red text-red-950')}>{item.met ? <CheckCircle2 className="mt-0.5 size-4 shrink-0 text-[#29CE53]" /> : <XCircle className="mt-0.5 size-4 shrink-0 text-red-600" />}<div><p className="text-sm font-semibold">{item.label}</p><p className={cn('mt-1 text-[11px] leading-5', item.met ? 'text-zinc-700' : 'text-red-800')}>{item.note || (item.met ? 'Requirement satisfied.' : 'This requirement was not marked as satisfied.')}</p></div></div>)}</div></section>
+  // Missing entries in historical checklists were never reviewed; do not invent failures.
+  const storedIds = new Set(submission.reviewChecklist?.map(item => item.id) || [])
+  return <SubmissionReviewFeedback items={items.filter(item => storedIds.has(item.id))} status={submission.status} note={submission.reviewNote} />
 }
 
 function SubmissionEvidence({ submission }: { submission: CreatorSubmission }) {

@@ -12,12 +12,16 @@ test('shared NextAuth logger classifies the correct concurrent request and never
     setBackendOutcome: (res:unknown,outcome:unknown) => marks.set(res,outcome) }
   runInNewContext(new Bun.Transpiler({loader:'ts'}).transformSync(source+'\nglobalThis.context = authDiagnosticContext; globalThis.logger = authLogger;'),scope)
   const a = {getHeader:()=>'a'}, b = {getHeader:()=>'b'}
-  await Promise.all([scope.context.run({req:{cookies:{},query:{state:'private-oauth-state'}},res:a},async()=>{
+  await Promise.all([scope.context.run({req:{cookies:{},query:{state:'private-oauth-state'},headers:{
+    'user-agent':'Chrome/142.0 Safari/537.36 Instagram private-browser-header',
+    cookie:'__Secure-next-auth.state=private-cookie; __Secure-next-auth.pkce.code_verifier=private-pkce',
+  }},res:a},async()=>{
     await Promise.resolve(); scope.logger.error('OAUTH_CALLBACK_ERROR',{error:new Error('State cookie was missing.'),token:'private-access-token'})
   }),scope.context.run({req:{cookies:{},query:{}},res:b},async()=>{
     scope.logger.error('OAUTH_CALLBACK_HANDLER_ERROR',new Error('access_denied'))
   })])
   expect(marks.get(a).code).toBe('oauth_state_missing')
   expect(marks.get(b).code).toBe('oauth_cancelled')
+  expect(logs.find((entry:any)=>entry.trace==='a')).toMatchObject({browser:'chrome',embeddedBrowser:true,cookieHeaderPresent:true,stateCookieInHeader:true,pkceCookieInHeader:true,stateCookiePresent:false})
   expect(JSON.stringify(logs)).not.toContain('private-')
 })

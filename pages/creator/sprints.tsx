@@ -32,6 +32,7 @@ import { SocialPlatformLogo } from '@/components/brand/social-platform-logo'
 import { apiGet } from '@/lib/api/client'
 import {
   sprintPhase,
+  sprintFormats,
   sprintPayoutCents,
   sprintMoney,
   sprintViews,
@@ -320,8 +321,7 @@ function SprintDetail({ sprint }: { sprint: CreatorSprint }) {
             <div className="mt-7 grid gap-7 lg:grid-cols-2">
               <section>
                 <h2 className="mb-3 text-sm font-semibold">Formats & briefs</h2>
-                {sprint.terms.formats
-                  .filter((item) => item.active)
+                {sprintFormats(sprint.terms)
                   .map((format) => (
                     <Dialog key={format.id}>
                       <DialogTrigger asChild>

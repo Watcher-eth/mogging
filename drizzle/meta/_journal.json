@@ -379,6 +379,13 @@
       "when": 1792368000000,
       "tag": "0053_mobile_guest_accounts",
       "breakpoints": true
+    },
+    {
+      "idx": 54,
+      "version": "7",
+      "when": 1792454400000,
+      "tag": "0054_creator_tiktok_anchors",
+      "breakpoints": true
     }
   ]
 }

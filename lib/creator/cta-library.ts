@@ -1,3 +1,4 @@
+import { GLAMOUR_CREATOR_PROFILE_ID } from './content-generator'
 import { desc, eq, type SQL } from 'drizzle-orm'
 import { z } from 'zod'
 import { ApiError } from '@/lib/api/http'
@@ -7,7 +8,7 @@ import { creatorAssetPublicUrl, CREATOR_CTA_LIBRARY_TYPES, MAX_CREATOR_CTA_LIBRA
 
 export const creatorCtaLibrarySubmissionSchema = z.object({
   title: z.string().trim().min(2).max(100),
-  templateId: z.enum(['editorial', 'score-potential', 'psl', 'score-rows', 'cta', 'performance', 'precision', 'afterimage', 'phone-report', 'handheld-report']),
+  templateId: z.enum(['editorial', 'score-potential', 'psl', 'score-rows', 'cta', 'performance', 'precision', 'afterimage', 'phone-report', 'handheld-report', 'glamour-guidance']),
   formatId: z.enum(['vertical', 'portrait', 'square']),
   assetStorageKey: z.string().min(1),
   assetContentType: z.enum(CREATOR_CTA_LIBRARY_TYPES),
@@ -43,7 +44,7 @@ export async function getCreatorCtaLibrary(userId: string) {
     selectLibraryItems(eq(schema.creatorCtaLibraryItems.status, 'approved')),
     profile ? selectLibraryItems(eq(schema.creatorCtaLibraryItems.creatorProfileId, profile.id)) : Promise.resolve([]),
   ])
-  return { approved, mine }
+  return { creatorProfileId: profile?.id ?? null, approved: approved.filter(item => item.templateId !== 'glamour-guidance'), mine }
 }
 
 export async function createCreatorCtaLibraryItem(userId: string, input: z.infer<typeof creatorCtaLibrarySubmissionSchema>) {
@@ -51,6 +52,9 @@ export async function createCreatorCtaLibraryItem(userId: string, input: z.infer
     throw new ApiError(400, 'Invalid CTA library upload')
   }
   const profile = await getOrCreateCreatorProfile(userId)
+  if (input.templateId === 'glamour-guidance' && profile.id !== GLAMOUR_CREATOR_PROFILE_ID) {
+    throw new ApiError(403, 'This template belongs to another creator')
+  }
   const [item] = await db.insert(schema.creatorCtaLibraryItems).values({
     creatorProfileId: profile.id,
     title: input.title,

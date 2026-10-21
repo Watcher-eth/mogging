@@ -19,6 +19,7 @@ type EarningsSubmission = Pick<CreatorSubmission, 'id' | 'sprintId' | 'approvedA
 export function creatorEarnedCents(submission: EarningsSubmission) {
   if (submission.sprintId) return submission.approvedAmountCents || 0
   if (submission.status !== 'approved' && submission.status !== 'paid') return 0
+  if (submission.approvedAmountCents != null) return submission.approvedAmountCents
   const views = submission.adminViewCountThreshold
   return views !== null && isCreatorViewThreshold(views)
     ? calculateCreatorPayout(views, true, submission.adminUsAudiencePercent)

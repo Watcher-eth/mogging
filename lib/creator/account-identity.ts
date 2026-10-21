@@ -1,9 +1,11 @@
 import { z } from 'zod'
 import { creatorSocialAccountSchema } from './validation'
+import { followerRangeSchema } from './tiktok-anchor'
 export const creatorConnectAccountSchema = z
   .object({
     platform: z.enum(['tiktok', 'instagram']),
     identity: z.string().trim().min(1).max(2048),
+    followerRange: followerRangeSchema.optional(),
   })
   .transform((value, ctx) => {
     let handle = value.identity
@@ -23,6 +25,7 @@ export const creatorConnectAccountSchema = z
       platform: value.platform,
       handle,
       profileUrl,
+      followerRange: value.platform === 'tiktok' ? value.followerRange : undefined,
     })
     if (!/[a-z0-9]/i.test(handle)) {
       ctx.addIssue({

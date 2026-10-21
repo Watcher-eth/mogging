@@ -1,3 +1,5 @@
+import { getCreatorSubmissionFormat } from './formats'
+import { creatorRestrictionGroups } from './content-policy'
 import { describe, expect, test } from 'bun:test'
 import { CREATOR_CTA_GUIDANCE } from './post-guidance'
 import {
@@ -5,19 +7,20 @@ import {
   mergeCreatorSubmissionReviewResults,
   validateCreatorSubmissionReviewResults,
   creatorSubmissionReviewResultsSchema,
+  resetSubmissionReview, submissionReviewError, submissionRejectionLabel,
 } from './submission-review'
 
 describe('creator submission review checklist', () => {
-  test('custom submissions require the early CTA and seven shared requirements', () => {
+  test('custom submissions share all General restrictions and requirements', () => {
     const items = getCreatorSubmissionReviewItems('custom-video-v1')
     const generalItems = getCreatorSubmissionReviewItems('general-creator-video-v1')
-    expect(items).toHaveLength(8)
+    expect(items).toHaveLength(generalItems.length - 2)
     expect(items[0]).toEqual({
       id: 'element-1',
       label: 'Early CTA · 2–3 seconds',
       detail: CREATOR_CTA_GUIDANCE,
     })
-    expect(items.slice(1)).toEqual(generalItems.filter((item) => item.id.startsWith('requirement-')))
+    expect(items.slice(1)).toEqual(generalItems.filter(item => !item.id.startsWith('element-')))
     const results = items.map(({ id }) => ({ id, met: true, note: null }))
     expect(validateCreatorSubmissionReviewResults('custom-video-v1', results)).toBe(true)
     expect(validateCreatorSubmissionReviewResults('custom-video-v1', results.slice(1))).toBe(false)
@@ -60,4 +63,48 @@ describe('creator submission review checklist', () => {
     ])).toBe(false)
     expect(validateCreatorSubmissionReviewResults('unknown-format', [])).toBe(false)
   })
+})
+
+
+test('switching to rejection starts with no selected failures and clears stale feedback', () => {
+  const items = mergeCreatorSubmissionReviewResults('custom-video-v1', [{ id: 'element-1', met: false, note: 'Old feedback' }])
+  const rejection = resetSubmissionReview(items, 'rejected')
+  expect(rejection.every(item => item.met && item.note === null)).toBe(true)
+  expect(submissionReviewError('rejected', rejection)).toContain('Select at least one')
+  const selected = rejection.map((item, i) => i === 0 ? { ...item, met: false, note: 'CTA is missing.' } : item)
+  expect(submissionReviewError('rejected', selected)).toBeNull()
+  expect(selected.filter(item => !item.met).map(item => item.id)).toEqual(['element-1'])
+  expect(items[0].note).toBe('Old feedback')
+})
+
+test('leaving rejection does not falsely mark requirements fulfilled or block approval', () => {
+  const items = resetSubmissionReview(mergeCreatorSubmissionReviewResults('custom-video-v1', []), 'rejected')
+  const approval = resetSubmissionReview(items, 'approved')
+  expect(approval.every(item => !item.met)).toBe(true)
+  expect(submissionReviewError('approved', approval)).toBeNull()
+  expect(submissionReviewError('approved', items)).toBeNull()
+  expect(submissionReviewError('pending', approval)).toBeNull()
+  expect(submissionReviewError('rejected', [])).not.toBeNull()
+})
+
+test('rejection labels describe the failure without saying a restriction was avoided', () => {
+  expect(submissionRejectionLabel({id:'restriction-1',label:'Avoided: Botted views',detail:''})).toBe('Includes: Botted views')
+  expect(submissionRejectionLabel({id:'element-1',label:'Early CTA',detail:''})).toBe('Not met: Early CTA')
+})
+
+
+test('approval does not require every checklist item to be fulfilled', () => {
+  expect(submissionReviewError('approved', [{ met: true }, { met: false }])).toBeNull()
+  expect(submissionReviewError('approved', [{ met: false }])).toBeNull()
+})
+
+
+test('Custom and General expose identical penalty and forbidden-content groups', () => {
+  const general = getCreatorSubmissionFormat('general-creator-video-v1')!
+  const custom = getCreatorSubmissionFormat('custom-video-v1')!
+  expect(custom.notAllowed).toBe(general.notAllowed)
+  const groups = creatorRestrictionGroups(custom.notAllowed)
+  expect(groups).toEqual(creatorRestrictionGroups(general.notAllowed))
+  expect(groups.forbidden.some(rule => rule.includes('Tom Welling'))).toBe(true)
+  expect(groups.penalties.some(rule => rule.includes('movie edits'))).toBe(true)
 })

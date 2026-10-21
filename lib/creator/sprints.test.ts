@@ -9,6 +9,7 @@ import {
   sprintPhase,
   referralCode,
   sprintReviewItems,
+  sprintFormats,
   type SprintTerms,
 } from './sprints'
 import { creatorConnectAccountSchema } from './account-identity'
@@ -282,4 +283,39 @@ test('old brief guidance matches the current portal without changing review deci
   expect(items.find(item => item.id === 'requirement-2')?.label).toBe('Tag @moggingcom in the post caption')
   expect(items.find(item => item.id === 'requirement-3')?.label).toBe('Include your Mogging referral code in your caption.')
   expect(saved).toEqual(before)
+})
+
+
+test('existing Custom campaigns inherit General restrictions in briefs and review checklists', () => {
+  const saved = defaultCreatorSprintTerms()
+  saved.formats.find(format => format.id === 'custom-video-v1')!.notAllowed = []
+  const before = JSON.stringify(saved)
+  const formats = sprintFormats(saved)
+  const general = formats.find(format => format.id === 'general-creator-video-v1')!
+  const custom = formats.find(format => format.id === 'custom-video-v1')!
+  expect(custom.notAllowed).toEqual(general.notAllowed)
+  const restrictions = sprintReviewItems(saved, custom.id).filter(item => item.id.startsWith('restriction-'))
+  expect(restrictions).toEqual(sprintReviewItems(saved, general.id).filter(item => item.id.startsWith('restriction-')))
+  expect(restrictions.some(item => item.label.includes('Tom Welling'))).toBe(true)
+  expect(restrictions.some(item => item.label.includes('movie edits'))).toBe(true)
+  expect(JSON.stringify(saved)).toBe(before)
+})
+
+test('inherited Custom rules preserve existing restriction IDs and do not duplicate policy aliases', () => {
+  const saved = defaultCreatorSprintTerms()
+  const custom = saved.formats.find(format => format.id === 'custom-video-v1')!
+  custom.notAllowed = ['Existing campaign-specific restriction', 'No Tom Welling content']
+  const items = sprintReviewItems(saved, custom.id)
+  expect(items.find(item => item.id === 'restriction-1')?.label).toBe('Avoided: Existing campaign-specific restriction')
+  expect(items.find(item => item.id === 'restriction-2')?.label).toContain('Tom Welling')
+  expect(items.filter(item => item.label.includes('Tom Welling'))).toHaveLength(1)
+})
+
+test('Custom-only historical campaigns inherit the shared rules when no General format exists', () => {
+  const saved = defaultCreatorSprintTerms()
+  saved.formats = saved.formats.filter(format => format.id === 'custom-video-v1')
+  saved.formats[0].notAllowed = []
+  const items = sprintReviewItems(saved, 'custom-video-v1')
+  expect(items.some(item => item.label.includes('Tom Welling'))).toBe(true)
+  expect(items.some(item => item.label.includes('Engagement farms'))).toBe(true)
 })

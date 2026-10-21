@@ -22,7 +22,7 @@ import {
   TriangleAlert,
 } from 'lucide-react'
 import { CreatorHeader, CreatorShell } from '@/components/creator/creator-shell'
-import { ContentGuidelines, accountReviewPolicy, AnalyticsVerificationHelp, discordContactUrl } from '@/components/creator/content-guidelines'
+import { ContentGuidelines, TikTokAnchorGuidelines, accountReviewPolicy, AnalyticsVerificationHelp, discordContactUrl } from '@/components/creator/content-guidelines'
 import { Button } from '@/components/ui/button'
 import useSWR from 'swr'
 import { apiGet } from '@/lib/api/client'
@@ -143,6 +143,7 @@ function VideoGuide() {
   return (
     <section id="guide-panel-video" aria-label="Create content">
       <GuidePanelHeader eyebrow="Create content" title="What kind of content should I make?" description="Videos and slideshows are both welcome. Choose the format that historically works best for your audience and make it clearly looksmaxxing or ascension focused. You have creative freedom within the campaign brief; submit the published link and a continuous analytics recording filmed with a second device." />
+      <TikTokAnchorGuidelines />
       <div className="mb-6"><GuideNext topic="rules" title="Know what qualifies before you edit" detail="Read the looks-focused standards and examples of rejected content." /></div>
 
       <div className="grid gap-6">

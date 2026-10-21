@@ -8,7 +8,7 @@
     "build": "next build",
     "start": "next start",
     "lint": "next lint",
-    "test": "bun test",
+    "test": "bun scripts/tests/run.mjs",
     "test:courses": "bun run scripts/tests/courses.ts",
     "test:courses-credentials": "bun run scripts/tests/courses-credentials.ts",
     "typecheck": "tsc --noEmit",

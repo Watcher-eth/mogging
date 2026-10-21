@@ -5,7 +5,7 @@ import { getImageTransform, projectImagePoint } from '@/lib/creator/mobile-overl
 import { reportOverlayPresets } from '@/lib/creator/mobile-overlay-engine/report-presets'
 import { resolveOverlayPreset } from '@/lib/creator/mobile-overlay-engine/resolve'
 import type { FaceLandmarksPayload } from '@/lib/creator/mobile-overlay-engine/landmarks'
-import { generateSlides, type GeneratorImage } from './content-generator'
+import { creatorTemplateOptions, GLAMOUR_CREATOR_PROFILE_ID, generateSlides, type GeneratorImage } from './content-generator'
 
 const fixture: FaceLandmarksPayload = {
   version: 1,
@@ -164,4 +164,26 @@ describe('responsive report anchoring', () => {
       })
     }
   }
+})
+
+
+describe('creator-exclusive CTA templates', () => {
+  const args = { campaignGoal: 'traffic' as const, tone: 'direct' as const, selectedCategories: ['eyes'], images: [{ id: 'portrait', name: 'portrait.jpg', dataUrl: 'data:', width: 1080, height: 1620, landmarks: null, status: 'ready' as const }], offer: 'Mogging', seed: 0 }
+
+  test('places Glamour Guidance first only for its owner, preserving the other templates', () => {
+    const regular = generateSlides(args)
+    const exclusive = generateSlides({ ...args, creatorProfileId: GLAMOUR_CREATOR_PROFILE_ID })
+    expect(exclusive[0].templateId).toBe('glamour-guidance')
+    expect(exclusive[0].imageId).toBe('portrait')
+    expect(exclusive.slice(1).map(slide => slide.templateId)).toEqual(regular.map(slide => slide.templateId))
+    expect(creatorTemplateOptions(GLAMOUR_CREATOR_PROFILE_ID).map(option => option.id)).toEqual(exclusive.map(slide => slide.templateId))
+    for (const creatorProfileId of [undefined, null, 'another-creator']) {
+      expect(creatorTemplateOptions(creatorProfileId).some(option => option.id === 'glamour-guidance')).toBe(false)
+      expect(generateSlides({ ...args, creatorProfileId }).some(slide => slide.templateId === 'glamour-guidance')).toBe(false)
+    }
+  })
+
+  test('does not bypass face validation for the exclusive template', () => {
+    expect(generateSlides({ ...args, creatorProfileId: GLAMOUR_CREATOR_PROFILE_ID, images: args.images.map(image => ({ ...image, status: 'no-face' as const })) })).toEqual([])
+  })
 })

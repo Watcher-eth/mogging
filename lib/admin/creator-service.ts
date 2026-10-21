@@ -1,3 +1,4 @@
+import { submissionReviewError } from '@/lib/creator/submission-review'
 import { rethrowCreatorPostConflict } from '@/lib/creator/post-identity'
 import { normalizePaymentReceipt, paymentReceiptSchema } from './payment-receipt'
 import { remainingCreatorPaymentCents } from '@/lib/creator/money'
@@ -36,6 +37,7 @@ export const creatorAdminReviewSchema = z.discriminatedUnion('resource', [
     status: z.enum(['pending', 'in_review', 'approved', 'rejected', 'paid']),
     reviewNote: z.string().trim().max(1000).optional().nullable(),
     reviewChecklist: creatorSubmissionReviewResultsSchema,
+    approvedAmountCents: z.number().int().nonnegative().max(2_000_000_000).optional().nullable(),
     adminViewCountThreshold: z.number().int().nonnegative().max(2_000_000_000),
     adminUsAudiencePercent: z.number().min(0).max(100).nullable(),
   }),
@@ -336,6 +338,9 @@ export async function reviewCreatorResource(input: CreatorAdminReviewInput, revi
   }
 
   if (input.resource === 'submission') {
+    if (input.approvedAmountCents != null && input.status !== 'approved') throw new ApiError(400, 'Approve the submission before adjusting its payout')
+    const reviewError = submissionReviewError(input.status, input.reviewChecklist)
+    if (reviewError) throw new ApiError(400, reviewError)
     const current = await db.query.creatorSubmissions.findFirst({ where: eq(schema.creatorSubmissions.id, input.id) })
     if (current?.sprintId && current.sprintTerms) return reviewSprintSubmission(input, reviewerId).catch(rethrowCreatorPostConflict)
     return db.transaction(async tx => {
@@ -351,7 +356,12 @@ export async function reviewCreatorResource(input: CreatorAdminReviewInput, revi
       if (!validateCreatorSubmissionReviewResults(submission.formatId, reviewChecklist)) {
         throw new ApiError(400, 'Complete every creator-guide review item before saving')
       }
+      const payments = await tx.query.creatorPayments.findMany({ where: eq(schema.creatorPayments.submissionId, submission.id) })
+      const calculated = Math.round(calculateCreatorPayout(input.adminViewCountThreshold, true, input.adminUsAudiencePercent).payout * 100)
+      const approvedAmountCents = input.status === 'approved' ? reviewedPayoutCents(input, calculated, payments) : submission.approvedAmountCents
+      if (input.status === 'approved' && approvedAmountCents !== (submission.approvedAmountCents ?? calculated) && payments.some(payment => ['pending', 'processing'].includes(payment.status))) throw new ApiError(409, 'Resolve the scheduled payment before adjusting earnings')
       const [record] = await tx.update(schema.creatorSubmissions).set({
+        approvedAmountCents: input.status === 'approved' ? approvedAmountCents : submission.approvedAmountCents,
         status: input.status,
         reviewNote: input.reviewNote || null,
         reviewChecklist,
@@ -413,7 +423,9 @@ export async function createCreatorPayment(input: CreatorAdminPaymentInput) {
     input.adminUsAudiencePercent
   )
   return db.transaction(async (tx) => {
-    await tx.select().from(schema.creatorSubmissions).where(eq(schema.creatorSubmissions.id, submission.id)).for('update')
+    const [lockedSubmission] = await tx.select().from(schema.creatorSubmissions).where(eq(schema.creatorSubmissions.id, submission.id)).for('update')
+    if (!lockedSubmission) throw new ApiError(404, 'Creator submission not found')
+    if (lockedSubmission.approvedAmountCents != null && (input.adminViewCountThreshold !== lockedSubmission.adminViewCountThreshold || input.adminUsAudiencePercent !== lockedSubmission.adminUsAudiencePercent)) throw new ApiError(409, 'Save the updated payout review before scheduling payment')
     const profile = await tx.query.creatorProfiles.findFirst({ where: eq(schema.creatorProfiles.id, submission.creatorProfileId) })
     if (!profile) throw new ApiError(404, 'Creator profile not found')
     if (profile.bundledPayouts) throw new ApiError(409, 'This creator uses bundled payouts. Wait for their payout request.')
@@ -424,10 +436,12 @@ export async function createCreatorPayment(input: CreatorAdminPaymentInput) {
       adminUsAudiencePercent: input.adminUsAudiencePercent,
       updatedAt: now,
     }).where(eq(schema.creatorSubmissions.id, submission.id))
+    const amountCents = lockedSubmission.approvedAmountCents ?? Math.round(estimate.payout * 100)
+    if (amountCents <= 0) throw new ApiError(409, 'No unpaid earnings to schedule')
     const [payment] = await tx.insert(schema.creatorPayments).values({
       creatorProfileId: profile.id,
       submissionId: submission.id,
-      amountCents: estimate.payout * 100,
+      amountCents,
       status: input.status,
       paymentOption: profile.paymentOption,
       providerReference: input.providerReference || null,
@@ -440,6 +454,16 @@ export async function createCreatorPayment(input: CreatorAdminPaymentInput) {
     if (input.status === 'paid') await tx.update(schema.creatorSubmissions).set({ status: 'paid', updatedAt: now }).where(eq(schema.creatorSubmissions.id, submission.id))
     return payment
   })
+}
+
+function reviewedPayoutCents(input: Extract<CreatorAdminReviewInput, { resource: 'submission' }>, calculated: number, payments: { status: string; amountCents: number }[]) {
+  const amount = input.approvedAmountCents ?? calculated
+  const paid = payments.filter(payment => payment.status === 'paid').reduce((sum, payment) => sum + payment.amountCents, 0)
+  if (!Number.isSafeInteger(amount) || amount < 0 || amount > 2_000_000_000) throw new ApiError(400, 'Enter a valid payout amount in cents')
+  if (amount < paid) throw new ApiError(409, 'The approved total cannot be lower than payments already sent')
+  if (input.approvedAmountCents != null && amount !== calculated && !input.reviewNote?.trim()) throw new ApiError(400, 'Explain the payout adjustment so the creator knows why it changed')
+  if (!calculated && amount > 0) throw new ApiError(400, 'Eligible views and audience are required before approving earnings')
+  return amount
 }
 
 async function reviewSprintSubmission(input: Extract<CreatorAdminReviewInput, { resource: 'submission' }>, reviewerId?: string) {
@@ -456,9 +480,9 @@ async function reviewSprintSubmission(input: Extract<CreatorAdminReviewInput, { 
     if (!expected.length || ids.size !== expected.length || input.reviewChecklist.length !== expected.length || expected.some(item => !ids.has(item.id))) throw new ApiError(400, 'Complete the sprint review checklist')
     const calculated = sprintPayoutCents(submission.sprintTerms, input.adminViewCountThreshold, input.adminUsAudiencePercent)
     const preservedCents = submission.reviewRequestedAt || payments.some(payment => payment.status === 'paid') ? submission.approvedAmountCents || 0 : 0
-    const amountCents = input.status === 'approved' ? Math.max(preservedCents, calculated) : preservedCents || null
+    const amountCents = input.status === 'approved' ? reviewedPayoutCents(input, input.approvedAmountCents == null ? Math.max(preservedCents, calculated) : calculated, payments) : preservedCents || null
 
-    if (input.status === 'approved' && (!calculated || input.reviewChecklist.some(item => !item.met))) throw new ApiError(409, 'Approval requires eligible views, audience and every sprint requirement')
+    if (input.status === 'approved' && !calculated) throw new ApiError(409, 'Approval requires eligible views and audience')
     const [sprint] = await tx.select().from(schema.creatorSprints).where(eq(schema.creatorSprints.id, submission.sprintId)).for('update')
     if (!sprint) throw new ApiError(404, 'Sprint not found')
     const [used] = await tx.select({ cents: sql<number>`coalesce(sum(${schema.creatorSubmissions.approvedAmountCents}),0)::float8` }).from(schema.creatorSubmissions).where(eq(schema.creatorSubmissions.sprintId, sprint.id))

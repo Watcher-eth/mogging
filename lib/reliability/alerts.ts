@@ -11,7 +11,7 @@ export function reliabilityAlertStatus() {
 
 export async function sendReliabilityAlert(feature: string, code: string, trace: string) {
   const email = process.env.RELIABILITY_ALERT_EMAIL
-  if (!email) return 'unconfigured'
+  if (!email || !env.RESEND_API_KEY) return 'unconfigured'
   // A shared cooldown prevents every failing request from notifying independently.
   // Without Redis, keep alerts visibly disabled rather than creating an email storm.
   if (!redis) return 'missing_deduplication'

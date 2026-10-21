@@ -72,3 +72,19 @@ test('3× iPhone MP4 requests a codec level that supports its frame size', async
   await expect(encodeCanvasMp4({ width: 1170, height: 2532 } as HTMLCanvasElement, () => {}, 14000)).rejects.toThrow('cannot export MP4')
   expect(codecs).toEqual(['avc1.420033', 'avc1.4d0033'])
 })
+
+
+test('exclusive CTA renders entered scores and the edited call to action with the small creator logo', () => {
+  for (const height of [1080, 1620, 1920]) {
+    const texts: string[] = []
+    const ctx = new Proxy({}, { get: (_target, key) => key === 'fillText' ? (text: string) => texts.push(text) : key === 'measureText' ? (text: string) => ({ width: text.length * 25 }) : () => {} }) as CanvasRenderingContext2D
+    drawSlideFrame(ctx, { ...slide, templateId: 'glamour-guidance', headline: 'KNOW YOUR FEATURES', currentScore: '6.7', potentialScore: '8.4', cta: 'GET YOUR FACIAL ANALYSIS' }, null, null, 1080, height, 4000, null)
+    expect(texts).toContain('Glamour Guidance')
+    expect(texts).toContain('GG')
+    expect(texts).toContain('6.7')
+    expect(texts).toContain('8.4')
+    expect(texts).toContain('KNOW YOUR FEATURES')
+    expect(texts).toContain('GET YOUR FACIAL ANALYSIS')
+    expect(texts).toContain('MOGGING.COM')
+  }
+})

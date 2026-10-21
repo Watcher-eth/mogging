@@ -1,5 +1,5 @@
 import { expect, test } from 'bun:test'
-import { creatorMoneySummary, remainingCreatorPaymentCents } from './money'
+import { creatorBundlePlan, creatorMoneySummary, remainingCreatorPaymentCents } from './money'
 import type { CreatorPayment, CreatorSubmission } from '@/components/creator/types'
 test('a second milestone leaves only its increase unpaid', () => {
   const submission = {id:'s', sprintId:'campaign', status:'approved',approvedAmountCents:3000} as CreatorSubmission
@@ -16,4 +16,12 @@ test('rereview or rejection retains the original approved balance and paid histo
 })
 test('all prior payments are deducted, failed and cancelled attempts are excluded', () => {
   expect(remainingCreatorPaymentCents(3000,[{status:'paid',amountCents:1000},{status:'paid',amountCents:1000},{status:'processing',amountCents:500},{status:'failed',amountCents:1000},{status:'cancelled',amountCents:1000}])).toBe(500)
+})
+
+test('a legacy adjustment drives the balance and bundle instead of recalculating its payout', () => {
+  const submission = { id: 's', status: 'approved', approvedAmountCents: 2000, adminViewCountThreshold: 40000, adminUsAudiencePercent: 30 } as CreatorSubmission
+  expect(creatorMoneySummary([submission], []).balanceCents).toBe(2000)
+  expect(creatorBundlePlan([submission], []).amountCents).toBe(2000)
+  expect(creatorMoneySummary([{ ...submission, approvedAmountCents: 0 }], []).balanceCents).toBe(0)
+  expect(creatorMoneySummary([{ ...submission, approvedAmountCents: null }], []).balanceCents).toBe(3200)
 })

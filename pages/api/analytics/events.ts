@@ -1,3 +1,4 @@
+import { isRetiredAnalyticsSurface } from '@/lib/analytics/contract'
 import { monitorBackend } from '@/lib/reliability/monitor'
 import type { NextApiRequest, NextApiResponse } from 'next'
 import { z } from 'zod'
@@ -35,7 +36,8 @@ export async function handler(req: NextApiRequest, res: NextApiResponse) {
       columns: { userId: true },
     }) : []
     const ownedIds = new Set([accountId, ...claimed.map(guest => guest.userId)])
-    const events = valid.filter(event => event.platform !== 'server'
+    const events = valid.filter(event => !isRetiredAnalyticsSurface(event.properties.screen) && !isRetiredAnalyticsSurface(event.properties.path)
+      && event.platform !== 'server'
       && !/^(revenuecat|stripe):/.test(event.anonymousId || '')
       && !['checkout_completed', 'handoff_created', 'handoff_consumed', 'activation_code_redeemed'].includes(event.eventName)
       && Date.parse(event.occurredAt) >= now - 30 * 86400_000

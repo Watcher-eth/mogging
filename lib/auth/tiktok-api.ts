@@ -69,9 +69,10 @@ export async function exchangeTikTokAuthorizationCode(input: {
   return tokens as TikTokTokenResponse & { access_token: string; open_id: string }
 }
 
-export async function getTikTokUserInfo(accessToken: string, fields: readonly string[]) {
+export async function getTikTokUserInfo(accessToken: string, fields: readonly string[], signal?: AbortSignal) {
   const response = await fetch(`${TIKTOK_USER_INFO_URL}?fields=${encodeURIComponent(fields.join(','))}`, {
     headers: { Authorization: `Bearer ${accessToken}` },
+    signal,
   })
   const profile = (await response.json()) as TikTokProfile
   if (!response.ok || (profile.error?.code && profile.error.code !== 'ok')) {

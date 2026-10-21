@@ -781,6 +781,8 @@ export const creatorSocialAccounts = pgTable(
     providerAccountId: text('provider_account_id'),
     oauthVerifiedAt: timestamp('oauth_verified_at', { mode: 'date' }),
     oauthProfile: jsonb('oauth_profile').$type<Record<string, unknown>>(),
+    followers: jsonb('followers').$type<import('../creator/tiktok-anchor').CreatorFollowers>(),
+    tiktokAnchorJoinedAt: timestamp('tiktok_anchor_joined_at', { mode: 'date' }),
     analyticsVideoUrl: text('analytics_video_url'),
     analyticsStorageKey: text('analytics_storage_key'),
     analyticsContentType: text('analytics_content_type'),

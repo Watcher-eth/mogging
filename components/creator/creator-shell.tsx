@@ -18,6 +18,7 @@ import { CreatorAuthPrompt } from './creator-auth-prompt'
 import { CreatorIcon, type CreatorIconName } from './creator-icon'
 import { CreatorSetupChecklist } from './setup-checklist'
 import { DiscordSupport } from './discord-support'
+import { TikTokAnchorOnboarding } from './tiktok-anchor-onboarding'
 
 type CreatorNavItem = { href: string; label: string; asset: CreatorIconName }
 
@@ -77,6 +78,7 @@ export function CreatorShell({ children, allowUnauthenticated = false }: { child
         <SidebarInset className="creator-page creator-enter min-w-0 bg-white" key={router.pathname}>{children}</SidebarInset>
       </div>
       <CreatorWelcomeDialog open={welcome.open} onOpenChange={welcome.onOpenChange} />
+      <TikTokAnchorOnboarding enabled={!welcome.open && !moreOpen} />
       <CreatorSetupChecklist />
     </div>
   )

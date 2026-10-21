@@ -1,4 +1,4 @@
-import { CELEBRITY_EDIT_POLICY } from './content-policy'
+import { SHARED_CONTENT_RESTRICTIONS } from './content-policy'
 import { CREATOR_CTA_GUIDANCE } from './post-guidance'
 export type CreatorSubmissionFormat = {
   id: string
@@ -34,16 +34,7 @@ export const CREATOR_SUBMISSION_FORMATS = [
       EARLY_CTA,
     ],
     requirements: SHARED_REQUIREMENTS,
-    notAllowed: [
-      'False or misleading claims about results',
-      'Reused content that was not created for Mogging',
-      'Obscured app footage, unclear app images, or unreadable on-screen text',
-      'Engagement farms: promising looks, confidence, a glow-up, or romantic success in exchange for likes, comments, notifications, shares, or sound use',
-      'Unrelated movie edits or song, summer, school, friendship, dating, or mood captions, even over footage of an attractive person',
-      'Anime, cartoons, animation, MMA, NBA, other sports edits, or animal edits',
-      CELEBRITY_EDIT_POLICY,
-      'Botted views, purchased or fabricated engagement, or altered analytics evidence',
-    ],
+    notAllowed: SHARED_CONTENT_RESTRICTIONS,
   },
   {
     id: 'custom-video-v1',
@@ -52,7 +43,7 @@ export const CREATOR_SUBMISSION_FORMATS = [
     active: true,
     elements: [EARLY_CTA],
     requirements: SHARED_REQUIREMENTS,
-    notAllowed: [],
+    notAllowed: SHARED_CONTENT_RESTRICTIONS,
   },
 ] as const satisfies ReadonlyArray<CreatorSubmissionFormat>
 
