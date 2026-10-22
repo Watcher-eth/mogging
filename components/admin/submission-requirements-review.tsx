@@ -12,6 +12,7 @@ export function SubmissionRequirementsReview({ items, status, onChange }: {
 }) {
   const rejecting = status === 'rejected'
   const selectedCount = items.filter(item => rejecting ? !item.met : item.met).length
+  const allRequirementsMet = !rejecting && selectedCount === items.length
   function update(index: number, patch: Partial<CreatorSubmissionReviewResult>) {
     onChange(items.map((item, i) => i === index ? { ...item, ...patch } : item))
   }
@@ -20,7 +21,10 @@ export function SubmissionRequirementsReview({ items, status, onChange }: {
       <div><h3 className="text-sm font-semibold">{rejecting ? 'Why are you rejecting this video?' : 'Creator-guide requirements'}</h3>
         <p className="mt-1 text-xs leading-5 text-zinc-500">{rejecting ? 'Check only the requirements they did not meet. These reasons and your feedback will be shown to the creator.' : 'Check only the requirements they fulfilled. Unchecked items do not block approval and remain visible to the creator. Apply any payout penalty in Earnings.'}</p>
       </div>
-      <span aria-live="polite" className={cn('shrink-0 rounded-full px-2.5 py-1 text-[11px] font-semibold tabular-nums', rejecting ? 'bg-red-50 text-red-700' : 'bg-zinc-100 text-zinc-600')}>{rejecting ? `${selectedCount} selected` : `${selectedCount}/${items.length}`}</span>
+      <div className="flex shrink-0 items-center gap-2">
+        {!rejecting ? <button type="button" className="min-h-9 rounded-full border border-zinc-200 bg-white px-3 text-xs font-semibold text-zinc-700 transition-[background-color,transform] duration-150 ease-out hover:bg-zinc-50 active:scale-[0.97] disabled:cursor-default disabled:text-zinc-400 disabled:active:scale-100" disabled={allRequirementsMet} onClick={() => onChange(items.map(item => ({ ...item, met: true, note: null })))}>Check all</button> : null}
+        <span aria-live="polite" className={cn('rounded-full px-2.5 py-1 text-[11px] font-semibold tabular-nums', rejecting ? 'bg-red-50 text-red-700' : 'bg-zinc-100 text-zinc-600')}>{rejecting ? `${selectedCount} selected` : `${selectedCount}/${items.length}`}</span>
+      </div>
     </div>
     <Link href="/creator/guide#video-requirements" target="_blank" className="mt-3 inline-flex min-h-9 items-center gap-1 text-xs font-semibold text-zinc-600 underline decoration-zinc-300 underline-offset-4 hover:text-black">Open video requirements <ArrowUpRight className="size-3.5" /></Link>
     <div className="mt-3 grid gap-2">

@@ -17,6 +17,7 @@ import { useMemo, useRef, useState } from 'react'
 import {
   ArrowUpRight,
   BadgeCheck,
+  Check,
   CheckCircle2,
   CircleDollarSign,
   Camera,
@@ -47,6 +48,7 @@ import { calculateCreatorPayout, CREATOR_TIER1_AUDIENCE_TIERS, CREATOR_VIEW_THRE
 import { mergeCreatorSubmissionReviewResults, resetSubmissionReview, submissionReviewError } from '@/lib/creator/submission-review'
 import { SubmissionRequirementsReview } from '@/components/admin/submission-requirements-review'
 import { CreatorIcon, type CreatorIconName } from '@/components/creator/creator-icon'
+import { CREATOR_TIER_ONE_COUNTRIES } from '@/lib/creator/audience'
 import { approvedUnpaidSubmissions, creatorOutstandingPaymentGroups, approvalKind, approvalTypes, getApprovalQueue, hasPayoutDestination, isNewInLastDay, publishedVideoEmbedUrl, walletExplorerUrl, type ApprovalKind } from '@/lib/admin/creator-overview'
 import type {
   AdminAccount,
@@ -225,7 +227,14 @@ function PaymentsPanel({ data, onSelect, onRefresh }: { data: AdminDashboard; on
   const otherOutstanding = records.filter(payment => ['pending', 'processing'].includes(payment.status) && !bundledCreators.has(payment.creatorProfileId))
   const groups = creatorOutstandingPaymentGroups(unpaid, data.payments, otherOutstanding)
   const history = records.filter(payment => !otherOutstanding.some(item => item.id === payment.id))
+  const requestedBundleCents = (data.payoutRequests || []).filter(request => request.status === 'pending').reduce((total, request) => total + request.amountCents, 0)
+  const payAfterApprovalCents = groups.reduce((total, group) => total + group.amountCents, 0)
+  const grandTotalCents = requestedBundleCents + payAfterApprovalCents
   return <>
+    <section aria-label="Grand total to pay" className="mb-7 flex flex-wrap items-end justify-between gap-4 rounded-2xl border border-emerald-200 bg-emerald-50/50 p-5">
+      <div><p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-emerald-700">Grand total to pay</p><p className="mt-2 max-w-xl text-xs leading-5 text-zinc-500">Ready to send now across requested bundles and pay-after-approval earnings. Payments already processing and bundled balances still on hold are excluded.</p></div>
+      <p className="text-3xl font-semibold tracking-[-0.04em] tabular-nums">{formatMoney(grandTotalCents, 'USD')}</p>
+    </section>
     <BundledPayoutQueue data={data} onRefresh={onRefresh} />
     <h2 className="text-sm font-semibold">Pay after approval</h2><p className="mb-3 mt-1 text-xs leading-5 text-zinc-500">These creators have not enabled bundled payouts. No creator payout request is required.</p>
     {groups.length ? <div className="space-y-4">{groups.map(group => <section key={`${group.creatorProfileId}:${group.currency}`} aria-label={`${group.creatorName} outstanding payments`} className="overflow-hidden rounded-2xl border border-zinc-200 bg-white">
@@ -409,10 +418,10 @@ function ReviewDialog({ target, creator, payments, metrics, open, onOpenChange, 
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-h-[90dvh] max-w-3xl grid-cols-[minmax(0,1fr)] overflow-y-auto rounded-[32px] border-zinc-200 bg-white p-0">
+      <DialogContent className="max-h-[90dvh] max-w-6xl grid-cols-[minmax(0,1fr)] overflow-y-auto rounded-[32px] border-zinc-200 bg-white p-0">
         <AnimatedDialogPanel contentKey={tab} contentClassName="min-w-0 p-5 sm:p-7">
           <DialogHeader className="min-w-0 pr-8 text-left">
-            <div className="flex flex-wrap items-center gap-2">{target.resource !== 'payment' && canReview ? <ApprovalBadge target={target} /> : null}{canReview ? <StatusPill status={initialStatus} /> : null}<span className="text-xs text-zinc-400">{formatDate(target.item.createdAt)}</span></div>
+            <div className="flex flex-wrap items-center gap-2">{target.resource !== 'payment' && canReview ? <ApprovalBadge target={target} /> : null}{target.resource === 'submission' && target.item.reviewRequestedAt ? <span className="inline-flex items-center rounded-lg border border-violet-200 bg-violet-50 px-2.5 py-1 text-[11px] font-semibold text-violet-700">Rereview</span> : null}{canReview ? <StatusPill status={initialStatus} /> : null}<span className="text-xs text-zinc-400">{formatDate(target.item.createdAt)}</span></div>
             <div className="flex min-w-0 items-center gap-3 pt-2">{target.resource === 'account' ? <AccountAvatar account={target.item} /> : null}<DialogTitle className="min-w-0 break-words text-2xl">{reviewTitle(target)}</DialogTitle></div>
             <DialogDescription className="[overflow-wrap:anywhere]">{reviewSubtitle(target)}</DialogDescription>
           </DialogHeader>
@@ -420,17 +429,22 @@ function ReviewDialog({ target, creator, payments, metrics, open, onOpenChange, 
             <Tabs.List aria-label="Submission review" className="flex shrink-0 gap-1 rounded-full bg-zinc-100 p-1">{['video', 'review', 'earnings', 'attribution', 'messages'].map(value => <Tabs.Trigger key={value} value={value} className="min-h-11 min-w-0 flex-1 rounded-full px-1 text-[11px] font-medium capitalize text-zinc-500 data-[state=active]:bg-white data-[state=active]:text-zinc-900 data-[state=active]:shadow-sm sm:text-sm">{capitalize(value)}{value === 'messages' && target.item.unreadMessages ? <span className="ml-1 rounded-full bg-[#007aff] px-1.5 py-0.5 text-[10px] text-white">{target.item.unreadMessages}</span> : null}</Tabs.Trigger>)}</Tabs.List>
             <div className="min-h-0 max-h-[min(58dvh,calc(90dvh_-_300px))] overflow-y-auto overscroll-contain">
               <Tabs.Content value="video" className="outline-none">
-                <SubmissionVideo submission={target.item} />
-                {target.item.analyticsScreenshotUrl ? <section className="mt-5 overflow-hidden rounded-2xl bg-zinc-50"><h3 className="p-4 text-sm font-semibold">Analytics evidence</h3><AdminSubmissionEvidence submission={target.item} /></section> : <p className="mt-5 text-sm text-zinc-500">No analytics evidence uploaded. Request it in Messages.</p>}
-                <ReviewDetails target={target} />
-                {target.item.caption ? <p className="mt-5 whitespace-pre-wrap text-sm leading-6 text-zinc-600">{target.item.caption}</p> : null}
+                <div className="lg:grid lg:grid-cols-[minmax(0,1fr)_260px] lg:gap-5">
+                  <div className="min-w-0">
+                    <SubmissionVideo submission={target.item} />
+                    {target.item.analyticsScreenshotUrl ? <section className="mt-5 overflow-hidden rounded-2xl bg-zinc-50"><h3 className="p-4 text-sm font-semibold">Analytics evidence</h3><AdminSubmissionEvidence submission={target.item} /></section> : <p className="mt-5 text-sm text-zinc-500">No analytics evidence uploaded. Request it in Messages.</p>}
+                    <ReviewDetails target={target} />
+                    {target.item.caption ? <p className="mt-5 whitespace-pre-wrap text-sm leading-6 text-zinc-600">{target.item.caption}</p> : null}
+                  </div>
+                  <TierOneAudienceChecklist />
+                </div>
               </Tabs.Content>
               <Tabs.Content value="review" className="outline-none">
                 <div className="mt-5 grid gap-2"><span className="text-sm font-medium">Review status</span><Select value={status} onValueChange={changeReviewStatus}><SelectTrigger aria-label="Review status"><SelectValue /></SelectTrigger><SelectContent>{statusOptions('submission').map(option => <SelectItem key={option} value={option} disabled={Boolean(target.item.sprintId) && option === 'paid'}>{statusLabel(option)}</SelectItem>)}</SelectContent></Select></div>
                 <SubmissionRequirementsReview items={reviewChecklist} status={status} onChange={setReviewChecklist} />
                 {reducedApproval ? <p className="mt-3 rounded-xl bg-amber-50 p-3 text-xs leading-5 text-amber-900">Approving with a reduced payout. Unmet requirements and the adjustment reason remain visible to the creator.</p> : null}
                 <p className="mt-3 text-xs leading-5 text-zinc-400">Switching between approval and rejection clears checklist selections.</p>
-                <p className="mt-4 text-xs text-zinc-500">Send questions and general feedback in Messages.</p>
+                <p className="mt-4 text-xs text-zinc-500">Send questions and general feedback in Messages. Finish the payout decision and save in Earnings.</p>
               </Tabs.Content>
               <Tabs.Content value="earnings" className="outline-none">
                 <div className="mt-5 rounded-xl bg-sky-50 p-4 text-sm"><p className="font-semibold">{creator?.bundledPayouts ? 'Bundled payouts · creator chooses when to cash out' : 'Separate payouts · paid after approval'}</p><p className="mt-1 text-xs leading-5 text-zinc-500">{creator?.bundledPayouts ? 'Hold these earnings until the creator requests a bundle. Requests appear in the review queue and Payments with the full amount to send.' : 'This creator has not opted into bundled payouts.'}</p></div>
@@ -448,7 +462,7 @@ function ReviewDialog({ target, creator, payments, metrics, open, onOpenChange, 
               <Tabs.Content forceMount value="attribution" className="outline-none data-[state=inactive]:hidden"><AttributionEditor submission={target.item} metrics={metrics.find(item => item.submissionId === target.item.id)} onSaved={onRefresh} /></Tabs.Content>
               <Tabs.Content value="messages" className="outline-none"><SubmissionConversation submissionId={target.item.id} viewerRole="team" className="h-[min(50dvh,440px)] min-h-[280px]" /></Tabs.Content>
             </div>
-            {(tab === 'review' || tab === 'earnings') ? <div className="mt-5 flex shrink-0 items-center justify-between gap-3 border-t border-zinc-100 pt-4"><p className="text-xs text-zinc-500">{reviewError || (status === 'rejected' ? `${reviewChecklist.filter(item => !item.met).length} rejection reasons selected` : adminViewCountThreshold ? `${reviewChecklist.filter(item => item.met).length}/${reviewChecklist.length} requirements met` : 'Set verified views in Earnings before saving.')}</p><Button className="shrink-0 rounded-full" onClick={() => void save()} disabled={saving || !adminViewCountThreshold || Boolean(reviewError)}>{saving ? <Loader2 className="animate-spin" /> : <ShieldCheck />}{saving ? 'Saving…' : status === 'rejected' ? 'Save rejection' : status === 'approved' && reviewChecklist.some(item => !item.met) ? 'Approve with exceptions' : 'Save review'}</Button></div> : null}
+            {tab === 'earnings' ? <div className="mt-5 flex shrink-0 items-center justify-between gap-3 border-t border-zinc-100 pt-4"><p className="text-xs text-zinc-500">{reviewError || (status === 'rejected' ? `${reviewChecklist.filter(item => !item.met).length} rejection reasons selected` : adminViewCountThreshold ? `${reviewChecklist.filter(item => item.met).length}/${reviewChecklist.length} requirements met` : 'Set verified views in Earnings before saving.')}</p><Button className="shrink-0 rounded-full" onClick={() => void save()} disabled={saving || !adminViewCountThreshold || Boolean(reviewError)}>{saving ? <Loader2 className="animate-spin" /> : <ShieldCheck />}{saving ? 'Saving…' : status === 'rejected' ? 'Save rejection' : status === 'approved' && reviewChecklist.some(item => !item.met) ? 'Approve with exceptions' : 'Save review'}</Button></div> : null}
           </Tabs.Root> : <>
           <ReviewDetails target={target} />
           {canReview ? <div className="mt-6 grid gap-2">
@@ -465,6 +479,20 @@ function ReviewDialog({ target, creator, payments, metrics, open, onOpenChange, 
       </DialogContent>
     </Dialog>
   )
+}
+
+function TierOneAudienceChecklist() {
+  return <aside className="mt-5 self-start rounded-2xl border border-zinc-200 bg-zinc-50/70 p-4 lg:sticky lg:top-0 lg:mt-6" aria-label="Accepted Tier 1 audiences">
+    <h3 className="text-sm font-semibold">Accepted Tier 1 audiences</h3>
+    <p className="mt-1 text-xs leading-5 text-zinc-500">Check each accepted country as it appears in the analytics recording.</p>
+    <div className="mt-4 grid grid-cols-2 gap-2 lg:grid-cols-1">
+      {CREATOR_TIER_ONE_COUNTRIES.map(country => <label key={country} className="flex min-h-9 cursor-pointer items-center gap-2 rounded-lg bg-white px-2.5 py-2 text-xs font-medium shadow-sm ring-1 ring-zinc-200 transition-[background-color,transform] duration-150 ease-out active:scale-[0.98] has-[:checked]:bg-emerald-50 has-[:checked]:text-emerald-800 has-[:checked]:ring-emerald-200">
+        <input type="checkbox" className="peer sr-only" />
+        <span className="grid size-4 shrink-0 place-items-center rounded border border-zinc-300 bg-white text-transparent peer-checked:border-emerald-600 peer-checked:bg-emerald-600 peer-checked:text-white"><Check className="size-3" aria-hidden="true" /></span>
+        <span>{country}</span>
+      </label>)}
+    </div>
+  </aside>
 }
 
 function AdminSubmissionEvidence({ submission }: { submission: AdminSubmission }) {
