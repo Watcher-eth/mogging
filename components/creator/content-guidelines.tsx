@@ -1,7 +1,7 @@
 import useSWR from 'swr'
 import { apiGet } from '@/lib/api/client'
 import { creatorAccountLabel, type CreatorDashboard } from './types'
-import { tiktokAnchorEligible, TIKTOK_ANCHOR_INVITE, TIKTOK_ANCHOR_REQUIREMENT } from '@/lib/creator/tiktok-anchor'
+import { tiktokAnchorEligible, TIKTOK_ANCHOR_REQUIREMENTS_ENABLED, TIKTOK_ANCHOR_INVITE, TIKTOK_ANCHOR_REQUIREMENT } from '@/lib/creator/tiktok-anchor'
 import { CELEBRITY_EDIT_POLICY } from '@/lib/creator/content-policy'
 import { CREATOR_CTA_GUIDANCE } from '@/lib/creator/post-guidance'
 import Link from 'next/link'
@@ -17,7 +17,7 @@ export function AnalyticsVerificationHelp() {
 export function TikTokAnchorGuidelines() {
   const { data } = useSWR<CreatorDashboard>('/api/creator', apiGet)
   const accounts = (data?.socialAccounts || []).filter(account => tiktokAnchorEligible(account) === true)
-  if (!accounts.length) return null
+  if (!TIKTOK_ANCHOR_REQUIREMENTS_ENABLED || !accounts.length) return null
   return <aside className="creator-notice my-5 rounded-2xl p-5" aria-label="TikTok anchor requirement">
     <h3 className="text-sm font-semibold">Required for your TikTok accounts with 1,000+ followers</h3>
     <p className="mt-1 text-xs text-zinc-500">Applies to {accounts.map(creatorAccountLabel).join(', ')} on TikTok.</p>

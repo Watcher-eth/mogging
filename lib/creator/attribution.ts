@@ -5,7 +5,8 @@ import type Stripe from 'stripe'
 import { db, schema } from '@/lib/db'
 import { env } from '@/lib/env'
 import { ApiError } from '@/lib/api/http'
-import { buildCreatorDeepLink, buildCreatorInstallLink } from './link-routing'
+import { allocateCreatorBillingEvent } from './billing-attribution'
+import { buildCreatorDeepLink } from './link-routing'
 
 export const CREATOR_ATTRIBUTION_COOKIE = 'mogging_creator_attribution'
 export const CREATOR_LINK_BASE_URL = 'https://www.mogging.com'
@@ -21,6 +22,7 @@ type AttributionOwner = {
 
 export type CreatorAttributionContext = AttributionOwner & {
   token: string
+  creatorSlug?: string
   clickId: string
   trackingLinkId: string
   firstClickId: string
@@ -112,6 +114,7 @@ export async function setCreatorTrackingLinkActive(socialAccountId: string, isAc
 }
 
 export async function findCreatorTrackingLink(slug: string) {
+  let submissionId: string | null = null
   let link = await db.query.creatorTrackingLinks.findFirst({
     where: eq(schema.creatorTrackingLinks.slug, slug),
   })
@@ -119,9 +122,12 @@ export async function findCreatorTrackingLink(slug: string) {
     const alias = await db.query.creatorTrackingLinkAliases.findFirst({
       where: eq(schema.creatorTrackingLinkAliases.slug, slug),
     })
-    if (alias) link = await db.query.creatorTrackingLinks.findFirst({ where: eq(schema.creatorTrackingLinks.id, alias.trackingLinkId) })
+    if (alias) {
+      submissionId = alias.submissionId
+      link = await db.query.creatorTrackingLinks.findFirst({ where: eq(schema.creatorTrackingLinks.id, alias.trackingLinkId) })
+    }
   }
-  return link?.isActive ? link : null
+  return link?.isActive ? { ...link, submissionId } : null
 }
 
 export async function createCreatorAttributionClick(input: {
@@ -129,22 +135,31 @@ export async function createCreatorAttributionClick(input: {
   anonymousActorId: string | null
   referrer?: string | null
   userAgent?: string | null
+  source?: 'browser' | 'native_link' | 'creator_code'
+  placement?: string | null
+  resumeToken?: string | null
 }) {
   const link = await findCreatorTrackingLink(input.slug)
   if (!link) return null
   // Apply current campaign configuration to existing links without rewriting their destination.
-  link.iosAppStoreUrl = buildIosAppStoreUrl(link.slug, link.iosAppStoreUrl)
+  link.iosAppStoreUrl = buildIosAppStoreUrl(`c-${link.id.replace(/-/g, "").slice(0, 24)}`, link.iosAppStoreUrl)
   const isBot = isLinkPreviewOrBot(input.userAgent || '')
-  const [click] = await db.insert(schema.creatorAttributionClicks).values({
+  const resumed = !isBot && input.resumeToken ? await resolveCreatorAttribution({ token: input.resumeToken }) : null
+  let click = resumed?.trackingLinkId === link.id ? await db.query.creatorAttributionClicks.findFirst({ where: eq(schema.creatorAttributionClicks.id, resumed.clickId) }) : undefined
+  if (!click) {
+    const [created] = await db.insert(schema.creatorAttributionClicks).values({
     trackingLinkId: link.id,
     anonymousActorId: input.anonymousActorId,
     referrer: input.referrer?.slice(0, 2000) || null,
     userAgent: input.userAgent?.slice(0, 1000) || null,
     isBot,
+    source: input.source || 'browser',
+    placement: input.placement?.slice(0, 40) || null,
+    submissionId: link.submissionId,
   }).returning()
+    click = created
+  }
   const token = signClickId(click.id)
-  if (!isBot) link.iosAppStoreUrl = buildCreatorInstallLink(process.env.APPSFLYER_ONELINK_BASE_URL,
-    link.slug, token, link.iosAppStoreUrl)
   return {
     link,
     click,
@@ -195,6 +210,7 @@ export async function resolveCreatorAttribution(input: {
   }) : null
   return {
     token,
+    creatorSlug: click.trackingLink.slug,
     clickId: click.id,
     trackingLinkId: click.trackingLinkId,
     firstClickId: firstClick?.id || click.id,
@@ -224,6 +240,7 @@ export async function recordCreatorSignup(input: { req: Pick<NextApiRequest, 'he
     db.query.users.findFirst({ where: eq(schema.users.id, input.userId), columns: { createdAt: true } }),
     db.query.creatorAttributionClicks.findFirst({ where: eq(schema.creatorAttributionClicks.id, context.clickId), columns: { createdAt: true } }),
   ])
+  await insertAttributionEvent({ ...context, eventType: 'claim', dedupeKey: `creator-claim:${input.userId}:${context.clickId}` })
   if (!user || !click || user.createdAt.getTime() < click.createdAt.getTime() - 60_000) return null
   return insertAttributionEvent({ ...context, eventType: 'signup', dedupeKey: `creator-signup:${input.userId}` })
 }
@@ -247,41 +264,48 @@ export async function recordCreatorPaywallView(input: { token: string; mobileIns
   return { created: Boolean(event), event, context: publicCreatorAttributionContext(context) }
 }
 
-export async function resolveMobileCreatorAttribution(input: { token: string; mobileInstallId: string; userId?: string | null }) {
+export async function resolveMobileCreatorAttribution(input: { token: string; mobileInstallId: string; userId?: string | null; method?: string }) {
   const direct = await resolveCreatorAttribution({
     token: input.token,
     owner: { mobileInstallId: input.mobileInstallId, userId: input.userId },
   })
   if (!direct) return null
 
-  const firstTouch = await db.query.mobileCreatorAttributions.findFirst({
-    where: eq(schema.mobileCreatorAttributions.mobileInstallId, input.mobileInstallId),
-    orderBy: [asc(schema.mobileCreatorAttributions.createdAt)],
-  })
-  const context: CreatorAttributionContext = {
-    ...direct,
-    firstClickId: firstTouch?.firstClickId || direct.firstClickId,
-    firstTrackingLinkId: firstTouch?.firstTrackingLinkId || direct.firstTrackingLinkId,
-    attributionKey: firstTouch?.attributionKey || `install:${input.mobileInstallId}`,
-  }
+  return db.transaction(async tx => {
+    await tx.execute(sql`select pg_advisory_xact_lock(hashtextextended(${`creator-install:${input.mobileInstallId}`}, 0))`)
+    const touches = await tx.query.mobileCreatorAttributions.findMany({
+      where: eq(schema.mobileCreatorAttributions.mobileInstallId, input.mobileInstallId),
+      orderBy: [asc(schema.mobileCreatorAttributions.createdAt)],
+    })
+    const existing = touches.find(touch => touch.clickId === direct.clickId)
+    if (existing?.userId && input.userId && existing.userId !== input.userId) throw new ApiError(409, 'This referral belongs to another account. Open your own creator link.')
+    const firstTouch = touches.find(touch => !input.userId || !touch.userId || touch.userId === input.userId)
+    const context: CreatorAttributionContext = {
+      ...direct,
+      firstClickId: firstTouch?.firstClickId || direct.firstClickId,
+      firstTrackingLinkId: firstTouch?.firstTrackingLinkId || direct.firstTrackingLinkId,
+      attributionKey: firstTouch?.attributionKey || `install:${input.mobileInstallId}`,
+    }
 
-  await db.insert(schema.mobileCreatorAttributions).values({
-    mobileInstallId: input.mobileInstallId,
-    trackingLinkId: context.trackingLinkId,
-    clickId: context.clickId,
-    firstTrackingLinkId: context.firstTrackingLinkId,
-    firstClickId: context.firstClickId,
-    attributionKey: context.attributionKey,
-    userId: input.userId || null,
-  }).onConflictDoUpdate({
-    target: [schema.mobileCreatorAttributions.mobileInstallId, schema.mobileCreatorAttributions.clickId],
-    set: {
-      userId: input.userId || firstTouch?.userId || null,
-      updatedAt: new Date(),
-    },
-  })
+    await tx.insert(schema.mobileCreatorAttributions).values({
+      mobileInstallId: input.mobileInstallId,
+      trackingLinkId: context.trackingLinkId,
+      clickId: context.clickId,
+      firstTrackingLinkId: context.firstTrackingLinkId,
+      firstClickId: context.firstClickId,
+      attributionKey: context.attributionKey,
+      userId: input.userId || null,
+      method: input.method || 'direct',
+    }).onConflictDoUpdate({
+      target: [schema.mobileCreatorAttributions.mobileInstallId, schema.mobileCreatorAttributions.clickId],
+      set: {
+        userId: input.userId || existing?.userId || null,
+        updatedAt: new Date(),
+      },
+    })
 
-  return context
+    return context
+  })
 }
 
 export async function getStoredMobileCreatorAttribution(input: { mobileInstallId: string; userId?: string | null; anonymousActorId?: string | null }) {
@@ -309,7 +333,7 @@ export async function associateMobileCreatorAttribution(input: { token: string; 
 
   await db.update(schema.mobileCreatorAttributions)
     .set({ userId: input.userId, updatedAt: new Date() })
-    .where(eq(schema.mobileCreatorAttributions.mobileInstallId, input.mobileInstallId))
+    .where(and(eq(schema.mobileCreatorAttributions.mobileInstallId, input.mobileInstallId), sql`(${schema.mobileCreatorAttributions.userId} is null or ${schema.mobileCreatorAttributions.userId} = ${input.userId})`))
   await db.update(schema.creatorAttributionEvents)
     .set({ userId: input.userId })
     .where(and(
@@ -330,7 +354,16 @@ export async function associateMobileCreatorAttribution(input: { token: string; 
       dedupeKey: `creator-signup:${input.userId}`,
     })
   }
+  await insertAttributionEvent({ ...context, eventType: 'claim', dedupeKey: `creator-claim:${input.userId}:${context.clickId}` })
   return publicCreatorAttributionContext(context)
+}
+
+export async function getAccountCreatorAttribution(userId: string) {
+  const claim = await db.query.creatorAttributionEvents.findFirst({
+    where: and(eq(schema.creatorAttributionEvents.userId, userId), eq(schema.creatorAttributionEvents.eventType, 'claim')),
+    orderBy: [desc(schema.creatorAttributionEvents.createdAt)],
+  })
+  return claim?.clickId ? resolveCreatorAttribution({ token: signClickId(claim.clickId), owner: { userId } }) : null
 }
 
 export type RevenueCatCreatorEvent = {
@@ -373,57 +406,10 @@ export function mapRevenueCatAttributionEvent(type: string, cancelReason?: strin
 }
 
 export async function recordRevenueCatCreatorEvent(event: RevenueCatCreatorEvent) {
-  const candidates = Array.from(new Set([event.appUserId, event.originalAppUserId, ...(event.aliases || [])].filter(isString)))
-  const attributeInstallId = readSubscriberAttribute(event.subscriberAttributes, 'mobile_install_id')
-  if (attributeInstallId) candidates.push(attributeInstallId)
-  if (candidates.length === 0) return null
-
-  const attributeClickId = readSubscriberAttribute(event.subscriberAttributes, 'creator_click_id')
-  const identityMatch = or(inArray(schema.mobileCreatorAttributions.mobileInstallId, candidates), inArray(schema.mobileCreatorAttributions.userId, candidates))
-  const touch = await db.query.mobileCreatorAttributions.findFirst({
-    where: attributeClickId
-      ? and(identityMatch, eq(schema.mobileCreatorAttributions.clickId, attributeClickId))
-      : identityMatch,
-    orderBy: [desc(schema.mobileCreatorAttributions.updatedAt)],
+  const fact = await db.query.subscriptionEvents.findFirst({
+    where: and(eq(schema.subscriptionEvents.provider, 'revenuecat'), eq(schema.subscriptionEvents.providerEventId, event.id)),
   })
-  if (!touch) return null
-
-  const context: CreatorAttributionContext = {
-    token: '',
-    clickId: touch.clickId,
-    trackingLinkId: touch.trackingLinkId,
-    firstClickId: touch.firstClickId,
-    firstTrackingLinkId: touch.firstTrackingLinkId,
-    attributionKey: touch.attributionKey,
-    mobileInstallId: touch.mobileInstallId,
-    userId: touch.userId,
-  }
-  const amountCents = Math.round(Math.abs(event.price || 0) * 100)
-  const mapping = mapRevenueCatAttributionEvent(event.type, event.cancelReason)
-  if (!mapping) return null
-  const metadata = {
-    provider: 'revenuecat',
-    revenueCatEventType: event.type,
-    productId: event.productId || null,
-    transactionId: event.transactionId || null,
-    originalTransactionId: event.originalTransactionId || null,
-    environment: event.environment || null,
-    store: event.store || null,
-    cancelReason: event.cancelReason || null,
-    expirationReason: event.expirationReason || null,
-    purchasedAtMs: event.purchasedAtMs || null,
-    expirationAtMs: event.expirationAtMs || null,
-    gracePeriodExpirationAtMs: event.gracePeriodExpirationAtMs || null,
-  }
-
-  return insertAttributionEvent({
-    ...context,
-    eventType: mapping.eventType,
-    dedupeKey: `creator-${mapping.dedupeCategory}:revenuecat:${event.id}`,
-    amountCents: amountCents * mapping.amountMultiplier,
-    currency: event.currency || 'USD',
-    metadata,
-  })
+  return fact ? allocateCreatorBillingEvent(fact) : null
 }
 
 export function publicCreatorAttributionContext(context: CreatorAttributionContext): PublicCreatorAttributionContext {
@@ -450,88 +436,30 @@ export async function recordCreatorCheckout(context: CreatorAttributionContext |
 
 export async function recordCreatorCheckoutPayment(session: Stripe.Checkout.Session) {
   if (session.mode === 'subscription') return null
-  const context = await contextFromStripeMetadata(session.metadata, {
-    userId: session.metadata?.userId,
-    anonymousActorId: session.metadata?.anonymousActorId,
-    mobileInstallId: session.metadata?.mobileInstallId,
-  })
-  if (!context) return null
-  return insertAttributionEvent({
-    ...context,
-    eventType: 'payment',
-    dedupeKey: `creator-payment:checkout:${session.id}`,
-    amountCents: session.amount_total || 0,
-    currency: session.currency || 'usd',
-    stripeCheckoutSessionId: session.id,
-    stripeSubscriptionId: readStripeId(session.subscription),
-    stripePaymentIntentId: readStripeId(session.payment_intent),
-    metadata: { checkoutMode: session.mode },
-  })
+  const fact = await db.query.subscriptionEvents.findFirst({ where: and(
+    eq(schema.subscriptionEvents.provider, 'stripe'), eq(schema.subscriptionEvents.providerEventId, `checkout:${session.id}`),
+  ) })
+  return fact ? allocateCreatorBillingEvent(fact) : null
 }
 
-export async function recordCreatorInvoicePayment(invoice: Stripe.Invoice, subscription: Stripe.Subscription) {
-  const billingReason = (invoice as Stripe.Invoice & { billing_reason?: string | null }).billing_reason
-  const context = await contextFromStripeMetadata(subscription.metadata, { mobileInstallId: subscription.metadata.mobileInstallId })
-  if (!context) return null
-  return insertAttributionEvent({
-    ...context,
-    eventType: 'payment',
-    dedupeKey: `creator-payment:invoice:${invoice.id}`,
-    amountCents: invoice.amount_paid,
-    currency: invoice.currency,
-    stripeSubscriptionId: subscription.id,
-    stripePaymentIntentId: readInvoicePaymentIntentId(invoice),
-    metadata: { billingReason },
-  })
+export async function recordCreatorInvoicePayment(invoice: Stripe.Invoice, _subscription: Stripe.Subscription) {
+  const fact = await db.query.subscriptionEvents.findFirst({ where: and(
+    eq(schema.subscriptionEvents.provider, 'stripe'), sql`${schema.subscriptionEvents.properties}->>'invoice_id' = ${invoice.id}`,
+  ) })
+  return fact ? allocateCreatorBillingEvent(fact) : null
 }
 
-export async function recordCreatorPaymentReversal(input: {
-  eventId: string
-  paymentIntentId: string
-  eventType: 'refund' | 'dispute'
-  amountCents: number
-  currency: string
-}) {
-  const entitlement = await db.query.paymentEntitlements.findFirst({
-    where: eq(schema.paymentEntitlements.stripePaymentIntentId, input.paymentIntentId),
-  })
-  const paymentEvent = entitlement ? null : await db.query.creatorAttributionEvents.findFirst({
-    where: and(
-      eq(schema.creatorAttributionEvents.stripePaymentIntentId, input.paymentIntentId),
-      eq(schema.creatorAttributionEvents.eventType, 'payment')
-    ),
-  })
-  const metadata = entitlement?.metadata || {}
-  const context = entitlement
-    ? await contextFromStripeMetadata(metadata as Record<string, unknown>, {
-        userId: entitlement.userId,
-        anonymousActorId: entitlement.anonymousActorId,
-        mobileInstallId: entitlement.mobileInstallId,
-      })
-    : paymentEvent?.clickId ? {
-        token: signClickId(paymentEvent.clickId || ''),
-        clickId: paymentEvent.clickId,
-        trackingLinkId: paymentEvent.trackingLinkId,
-        firstClickId: paymentEvent.firstClickId || paymentEvent.clickId,
-        firstTrackingLinkId: paymentEvent.firstTrackingLinkId || paymentEvent.trackingLinkId,
-        attributionKey: paymentEvent.attributionKey,
-        userId: paymentEvent.userId,
-        anonymousActorId: paymentEvent.anonymousActorId,
-        mobileInstallId: paymentEvent.mobileInstallId,
-      } : null
-  if (!context) return null
-  return insertAttributionEvent({
-    ...context,
-    eventType: input.eventType,
-    dedupeKey: `creator-${input.eventType}:${input.eventId}`,
-    amountCents: -Math.abs(input.amountCents),
-    currency: input.currency,
-    stripePaymentIntentId: input.paymentIntentId,
-  })
+export async function recordCreatorPaymentReversal(input: { eventId: string; paymentIntentId: string; eventType: 'refund' | 'dispute'; amountCents: number; currency: string }) {
+  // Individual verified refund/dispute facts own reversals; never add a cumulative charge total.
+  const facts = await db.query.subscriptionEvents.findMany({ where: and(
+    eq(schema.subscriptionEvents.provider, 'stripe'), eq(schema.subscriptionEvents.transactionId, input.paymentIntentId),
+    inArray(schema.subscriptionEvents.eventName, ['subscription_refunded', 'payment_disputed']),
+  ) })
+  for (const fact of facts) await allocateCreatorBillingEvent(fact)
 }
 
 export async function getCreatorAttributionReport() {
-  const productionEvents = sql`lower(coalesce(${schema.creatorAttributionEvents.metadata}->>'environment', 'production')) != 'sandbox'`
+  const productionEvents = sql`lower(coalesce(${schema.creatorAttributionEvents.metadata}->>'environment', 'production')) != 'sandbox' and not exists(select 1 from users u where u.id=${schema.creatorAttributionEvents.userId} and u.analytics_internal)`
   const [links, clickRows, eventRows, firstEventRows] = await Promise.all([
     db.select({
       trackingLinkId: schema.creatorTrackingLinks.id,
@@ -554,10 +482,10 @@ export async function getCreatorAttributionReport() {
       .innerJoin(schema.users, eq(schema.creatorProfiles.userId, schema.users.id)),
     db.select({
       trackingLinkId: schema.creatorAttributionClicks.trackingLinkId,
-      clicks: sql<number>`count(*) filter (where not ${schema.creatorAttributionClicks.isBot})::int`,
-      uniqueClicks: sql<number>`count(distinct ${schema.creatorAttributionClicks.anonymousActorId}) filter (where not ${schema.creatorAttributionClicks.isBot})::int`,
+      clicks: sql<number>`count(*) filter (where not ${schema.creatorAttributionClicks.isBot} and ${schema.creatorAttributionClicks.source} = 'browser')::int`,
+      uniqueClicks: sql<number>`count(distinct ${schema.creatorAttributionClicks.anonymousActorId}) filter (where not ${schema.creatorAttributionClicks.isBot} and ${schema.creatorAttributionClicks.source} = 'browser')::int`,
       botClicks: sql<number>`count(*) filter (where ${schema.creatorAttributionClicks.isBot})::int`,
-      recentClicks: sql<number>`count(*) filter (where not ${schema.creatorAttributionClicks.isBot} and ${schema.creatorAttributionClicks.createdAt} >= now() - interval '30 days')::int`,
+      recentClicks: sql<number>`count(*) filter (where not ${schema.creatorAttributionClicks.isBot} and ${schema.creatorAttributionClicks.source} = 'browser' and ${schema.creatorAttributionClicks.createdAt} >= now() - interval '30 days')::int`,
     }).from(schema.creatorAttributionClicks).groupBy(schema.creatorAttributionClicks.trackingLinkId),
     db.select({
       trackingLinkId: schema.creatorAttributionEvents.trackingLinkId,
@@ -566,7 +494,7 @@ export async function getCreatorAttributionReport() {
       paywallViews: sql<number>`count(*) filter (where ${schema.creatorAttributionEvents.eventType} = 'paywall_view')::int`,
       checkouts: sql<number>`count(*) filter (where ${schema.creatorAttributionEvents.eventType} = 'checkout')::int`,
       purchases: sql<number>`count(*) filter (where ${schema.creatorAttributionEvents.eventType} = 'payment' and ${schema.creatorAttributionEvents.amountCents} > 0)::int`,
-      paidCustomers: sql<number>`count(distinct ${schema.creatorAttributionEvents.attributionKey}) filter (where ${schema.creatorAttributionEvents.eventType} = 'payment' and ${schema.creatorAttributionEvents.amountCents} > 0)::int`,
+      paidCustomers: sql<number>`count(distinct coalesce(${schema.creatorAttributionEvents.userId}, ${schema.creatorAttributionEvents.attributionKey})) filter (where ${schema.creatorAttributionEvents.eventType} = 'payment' and ${schema.creatorAttributionEvents.amountCents} > 0)::int`,
       refunds: sql<number>`count(*) filter (where ${schema.creatorAttributionEvents.eventType} = 'refund')::int`,
       disputes: sql<number>`count(*) filter (where ${schema.creatorAttributionEvents.eventType} = 'dispute')::int`,
       grossRevenueCents: sql<number>`coalesce(sum(${schema.creatorAttributionEvents.amountCents}) filter (where upper(${schema.creatorAttributionEvents.currency}) = 'USD' and ${schema.creatorAttributionEvents.eventType} = 'payment' and ${schema.creatorAttributionEvents.amountCents} > 0), 0)::int`,
@@ -575,14 +503,14 @@ export async function getCreatorAttributionReport() {
       recentSignups: sql<number>`count(*) filter (where ${schema.creatorAttributionEvents.eventType} = 'signup' and ${schema.creatorAttributionEvents.createdAt} >= now() - interval '30 days')::int`,
       recentInstalls: sql<number>`count(*) filter (where ${schema.creatorAttributionEvents.eventType} = 'install' and ${schema.creatorAttributionEvents.createdAt} >= now() - interval '30 days')::int`,
       recentPaywallViews: sql<number>`count(*) filter (where ${schema.creatorAttributionEvents.eventType} = 'paywall_view' and ${schema.creatorAttributionEvents.createdAt} >= now() - interval '30 days')::int`,
-      recentPaidCustomers: sql<number>`count(distinct ${schema.creatorAttributionEvents.attributionKey}) filter (where ${schema.creatorAttributionEvents.eventType} = 'payment' and ${schema.creatorAttributionEvents.amountCents} > 0 and ${schema.creatorAttributionEvents.createdAt} >= now() - interval '30 days')::int`,
+      recentPaidCustomers: sql<number>`count(distinct coalesce(${schema.creatorAttributionEvents.userId}, ${schema.creatorAttributionEvents.attributionKey})) filter (where ${schema.creatorAttributionEvents.eventType} = 'payment' and ${schema.creatorAttributionEvents.amountCents} > 0 and ${schema.creatorAttributionEvents.createdAt} >= now() - interval '30 days')::int`,
       recentRevenueCents: sql<number>`coalesce(sum(${schema.creatorAttributionEvents.amountCents}) filter (where upper(${schema.creatorAttributionEvents.currency}) = 'USD' and ${schema.creatorAttributionEvents.eventType} in ('payment', 'refund', 'dispute') and ${schema.creatorAttributionEvents.createdAt} >= now() - interval '30 days'), 0)::int`,
     }).from(schema.creatorAttributionEvents).where(productionEvents).groupBy(schema.creatorAttributionEvents.trackingLinkId),
     db.select({
       trackingLinkId: schema.creatorAttributionEvents.firstTrackingLinkId,
       firstTouchSignups: sql<number>`count(*) filter (where ${schema.creatorAttributionEvents.eventType} = 'signup')::int`,
       firstTouchPaywallViews: sql<number>`count(*) filter (where ${schema.creatorAttributionEvents.eventType} = 'paywall_view')::int`,
-      firstTouchPaidCustomers: sql<number>`count(distinct ${schema.creatorAttributionEvents.attributionKey}) filter (where ${schema.creatorAttributionEvents.eventType} = 'payment' and ${schema.creatorAttributionEvents.amountCents} > 0)::int`,
+      firstTouchPaidCustomers: sql<number>`count(distinct coalesce(${schema.creatorAttributionEvents.userId}, ${schema.creatorAttributionEvents.attributionKey})) filter (where ${schema.creatorAttributionEvents.eventType} = 'payment' and ${schema.creatorAttributionEvents.amountCents} > 0)::int`,
       firstTouchRevenueCents: sql<number>`coalesce(sum(${schema.creatorAttributionEvents.amountCents}) filter (where upper(${schema.creatorAttributionEvents.currency}) = 'USD' and ${schema.creatorAttributionEvents.eventType} in ('payment', 'refund', 'dispute')), 0)::int`,
     }).from(schema.creatorAttributionEvents)
       .where(and(productionEvents, sql`${schema.creatorAttributionEvents.firstTrackingLinkId} is not null`))
@@ -620,29 +548,8 @@ export async function getCreatorAttributionReport() {
   }))
 }
 
-async function contextFromStripeMetadata(metadata: Record<string, unknown> | null, owner: AttributionOwner) {
-  const trackingLinkId = readString(metadata?.creatorTrackingLinkId)
-  const clickId = readString(metadata?.creatorClickId)
-  if (!trackingLinkId || !clickId) return null
-  const click = await db.query.creatorAttributionClicks.findFirst({
-    where: and(eq(schema.creatorAttributionClicks.id, clickId), eq(schema.creatorAttributionClicks.trackingLinkId, trackingLinkId)),
-  })
-  if (!click || click.isBot) return null
-  return {
-    token: signClickId(clickId),
-    clickId,
-    trackingLinkId,
-    firstClickId: readString(metadata?.creatorFirstClickId) || clickId,
-    firstTrackingLinkId: readString(metadata?.creatorFirstTrackingLinkId) || trackingLinkId,
-    userId: owner.userId || null,
-    anonymousActorId: owner.anonymousActorId || click.anonymousActorId,
-    mobileInstallId: owner.mobileInstallId || null,
-    attributionKey: readString(metadata?.creatorAttributionKey) || getAttributionKey(owner, click.anonymousActorId, clickId),
-  } satisfies CreatorAttributionContext
-}
-
 async function insertAttributionEvent(input: CreatorAttributionContext & {
-  eventType: 'signup' | 'install' | 'paywall_view' | 'checkout' | 'payment' | 'refund' | 'dispute' | 'subscription_cancellation' | 'subscription_expiration' | 'subscription_billing_issue' | 'subscription_reactivation'
+  eventType: 'claim' | 'signup' | 'install' | 'paywall_view' | 'checkout' | 'payment' | 'refund' | 'dispute' | 'subscription_cancellation' | 'subscription_expiration' | 'subscription_billing_issue' | 'subscription_reactivation'
   dedupeKey: string
   amountCents?: number
   currency?: string
@@ -667,7 +574,7 @@ async function insertAttributionEvent(input: CreatorAttributionContext & {
     amountCents: input.amountCents || 0,
     currency: (input.currency || 'USD').toUpperCase().slice(0, 3),
     dedupeKey: input.dedupeKey,
-    metadata: input.metadata || {},
+    metadata: { ...input.metadata },
   }).onConflictDoNothing({ target: schema.creatorAttributionEvents.dedupeKey }).returning()
   return event || null
 }
@@ -686,7 +593,7 @@ function buildIosAppStoreUrl(slug: string, base?: string) {
   return url.toString()
 }
 
-function signClickId(clickId: string) {
+export function signClickId(clickId: string) {
   return `${clickId}.${signatureFor(clickId)}`
 }
 
@@ -718,15 +625,6 @@ function readCookie(header: string, name: string) {
   try { return decodeURIComponent(value) } catch { return null }
 }
 
-function readSubscriberAttribute(attributes: Record<string, { value?: unknown }> | undefined, key: string) {
-  const value = attributes?.[key]?.value
-  return typeof value === 'string' && value.length > 0 && value.length <= 200 ? value : null
-}
-
-function isString(value: string | null | undefined): value is string {
-  return typeof value === 'string' && value.length > 0
-}
-
 function isLinkPreviewOrBot(userAgent: string) {
   return /(bot|crawler|spider|preview|facebookexternalhit|Facebot|Twitterbot|LinkedInBot|Slackbot|Discordbot|WhatsApp|TelegramBot|TikTokBot)/i.test(userAgent)
 }
@@ -734,13 +632,4 @@ function isLinkPreviewOrBot(userAgent: string) {
 function readStripeId(value: string | { id: string } | null) {
   if (!value) return null
   return typeof value === 'string' ? value : value.id
-}
-
-function readInvoicePaymentIntentId(invoice: Stripe.Invoice) {
-  const value = (invoice as Stripe.Invoice & { payment_intent?: string | Stripe.PaymentIntent | null }).payment_intent
-  return readStripeId(value || null)
-}
-
-function readString(value: unknown) {
-  return typeof value === 'string' && value ? value : null
 }

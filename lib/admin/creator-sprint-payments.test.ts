@@ -128,14 +128,14 @@ test('approval reserves saved sprint rates and locks the budget and submission',
   expect(result).toHaveProperty('approvedAmountCents', 1000)
   expect(locks).toEqual([schema.creatorSubmissions, schema.creatorSprints])
 })
-test('approval cannot exceed remaining budget or pass unmet campaign requirements', async () => {
+test('approval cannot exceed remaining budget but permits unmet campaign requirements', async () => {
   used = 1
   await expect(reviewCreatorResource(review)).rejects.toThrow(
     'exceed the sprint budget',
   )
   expect(submission.status).toBe('pending')
   used = 0
-  await expect(
+  expect(await
     reviewCreatorResource({
       ...review,
       reviewChecklist: review.reviewChecklist.map((item, i) => ({
@@ -143,7 +143,7 @@ test('approval cannot exceed remaining budget or pass unmet campaign requirement
         met: i !== 0,
       })),
     }),
-  ).rejects.toThrow('every sprint requirement')
+  ).toMatchObject({ status: 'approved', approvedAmountCents: 1000 })
 })
 test('re-review replaces its own reservation instead of counting it twice', async () => {
   submission = { ...submission, status: 'approved', approvedAmountCents: 1000 }
@@ -226,7 +226,7 @@ test('a paid first milestone can be rereviewed and only its unpaid increase is s
 test('rejected or lower rereview preserves earlier approved earnings and their budget reservation', async () => {
   submission = { ...submission, status: 'in_review', reviewRequestedAt: new Date(), approvedAmountCents: 1000 }
   pastPayments = [{ amountCents: 1000, status: 'paid' }]; used = 1000
-  await reviewCreatorResource({ ...review, status: 'rejected' })
+  await reviewCreatorResource({ ...review, status: 'rejected', reviewChecklist: review.reviewChecklist.map((item, i) => ({ ...item, met: i !== 0 })) })
   expect(submission.approvedAmountCents).toBe(1000)
   expect(submission.reviewRequestedAt).toBeNull()
   await reviewCreatorResource(review)

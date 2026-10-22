@@ -14,12 +14,15 @@ try {
   await connection.begin(async tx => {
     await tx.unsafe(`CREATE TEMP TABLE analytics_events (
       id text,event_name text,account_id text,mobile_install_id text,anonymous_id text,
-      platform text,app_version text,environment text,properties jsonb,occurred_at timestamp,received_at timestamp);
-      CREATE TEMP TABLE subscription_events (provider text,environment text,event_name text,transaction_id text,product_id text,occurred_at timestamp);`)
+      platform text,app_version text,environment text,properties jsonb,occurred_at timestamp,received_at timestamp,session_id text);
+      CREATE TEMP TABLE subscription_events (provider text,environment text,event_name text,transaction_id text,product_id text,occurred_at timestamp);
+      CREATE TEMP TABLE users (id text, analytics_internal boolean);
+      CREATE TEMP TABLE payment_entitlements (id text, user_id text, mobile_install_id text, metadata jsonb, source text, stripe_checkout_session_id text);
+      CREATE TEMP TABLE scan_reservations (entitlement_id text, result jsonb);`)
     const now = new Date('2040-01-31T00:00:00Z')
     const base = Date.parse('2040-01-30T00:00:00Z')
     const put = async (attempt:string,event:string,seconds:number,props:Record<string,unknown>={},environment='production',platform='ios',device='device') => {
-      await tx`insert into analytics_events values (${crypto.randomUUID()},${event},null,${device},null,${platform},'1.39(73)',${environment},${tx.json({attempt_id:attempt,surface:'onboarding_paywall',purchase_tracking_version:'2',...props})},${new Date(base+seconds*1000)},${new Date(base+seconds*1000)})`
+      await tx`insert into analytics_events values (${crypto.randomUUID()},${event},null,${device},null,${platform},'1.39(73)',${environment},${tx.json({attempt_id:attempt,surface:'onboarding_paywall',purchase_tracking_version:'2',...props})},${new Date(base+seconds*1000)},${new Date(base+seconds*1000)},null)`
     }
     await put('paid','purchase_started',0)
     await put('paid','purchase_started',0) // A duplicate UX event is still one attempt.

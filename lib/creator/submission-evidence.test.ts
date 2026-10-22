@@ -74,12 +74,12 @@ test('exactly 20,000 views meets the submission minimum', async () => {
 
 test('submission does not require or invent a publication timestamp', async () => {
   const submission = await createCreatorSubmission('user', input)
-  expect(submission.postedAt).toBeUndefined()
+  expect(submission.postedAt).toBeNull()
 })
 test('legacy clients can submit old posts without a publication-age restriction', async () => {
   await createCreatorSubmission('user', { ...input, postedAt: '2020-01-01T00:00:00.000Z' } as any)
   expect(inserted).toHaveLength(1)
-  expect(inserted[0].postedAt).toBeUndefined()
+  expect(inserted[0].postedAt).toEqual(new Date('2020-01-01T00:00:00.000Z'))
 })
 
 
@@ -106,44 +106,34 @@ test('new submissions retain the original URL and store a stable video identity'
 })
 
 
-test('eligible TikTok accounts require anchor confirmation even without a selected account ID', async () => {
-  publishingAccount.followers.count = 1000
-  await expect(createCreatorSubmission('user', { ...input, tiktokAnchorLinked: true })).rejects.toThrow('confirm joining in Accounts')
-  expect(verified).toHaveLength(0)
-  publishingAccount.tiktokAnchorJoinedAt = now
-  await expect(createCreatorSubmission('user', input)).rejects.toThrow('linked this post with its anchor')
-  expect(inserted).toHaveLength(0)
-  const submission = await createCreatorSubmission('user', { ...input, tiktokAnchorLinked: true })
+test('1K+ TikTok accounts can submit while anchors are paused without joining or linking', async () => {
+  publishingAccount.followers.count = 50000
+  const submission = await createCreatorSubmission('user', input)
   expect(submission.socialAccountId).toBe(accountId)
-  expect(submission.sprintTerms!.formats[0].requirements.at(-1)).toContain('TikTok One project')
-  expect(sprint.terms.formats[0].requirements).toEqual(['Keep public'])
+  expect(submission.sprintTerms).toEqual(sprint.terms)
+  expect(verified).toHaveLength(1)
+  expect(inserted).toHaveLength(1)
 })
-test('unknown TikTok counts and unconnected publishing handles cannot bypass eligibility checks', async () => {
+test('unknown follower counts no longer block submissions, but publishing-account ownership still does', async () => {
   publishingAccount.followers = null
-  await expect(createCreatorSubmission('user', input)).rejects.toThrow('follower range')
+  await createCreatorSubmission('user', input)
+  expect(inserted).toHaveLength(1)
   publishingAccount.handle = 'other'
   await expect(createCreatorSubmission('user', { ...input, socialAccountId: accountId })).rejects.toThrow('account that published')
   await expect(createCreatorSubmission('user', input)).rejects.toThrow('Connect the TikTok account')
-  expect(inserted).toHaveLength(0)
-})
-test('self-reported ranges follow the same threshold as fetched counts', async () => {
-  publishingAccount.followers = { source: 'self_reported', range: 'under_1k', checkedAt: now.toISOString() }
-  const submission = await createCreatorSubmission('user', input)
-  expect(submission.sprintTerms).toEqual(sprint.terms)
-  publishingAccount.followers.range = '1k_5k'
-  publishingAccount.tiktokAnchorJoinedAt = now
-  await expect(createCreatorSubmission('user', input)).rejects.toThrow('linked this post with its anchor')
-})
-
-
-test('joining once never waives the anchor confirmation on subsequent TikTok submissions', async () => {
-  publishingAccount.followers.count = 1000
-  publishingAccount.tiktokAnchorJoinedAt = now
-  await createCreatorSubmission('user', { ...input, tiktokAnchorLinked: true })
-  const secondPost = { ...input, postUrl: 'https://www.tiktok.com/@nate/video/124' }
-  await expect(createCreatorSubmission('user', secondPost)).rejects.toThrow('linked this post with its anchor')
   expect(inserted).toHaveLength(1)
-  await createCreatorSubmission('user', { ...secondPost, tiktokAnchorLinked: true })
+})
+test('self-reported follower ranges do not enable the paused requirement', async () => {
+  for (const range of ['under_1k','1k_5k','10k_plus']) {
+    publishingAccount.followers = { source:'self_reported',range,checkedAt:now.toISOString() }
+    const submission = await createCreatorSubmission('user', input)
+    expect(submission.sprintTerms).toEqual(sprint.terms)
+  }
+})
+test('subsequent posts can also submit without anchor confirmation while paused', async () => {
+  publishingAccount.followers.count = 1000
+  await createCreatorSubmission('user', input)
+  await createCreatorSubmission('user', { ...input, postUrl:'https://www.tiktok.com/@nate/video/124' })
   expect(inserted).toHaveLength(2)
-  for (const post of inserted) expect(post.sprintTerms.formats[0].requirements.at(-1)).toContain('TikTok One project')
+  for (const post of inserted) expect(post.sprintTerms).toEqual(sprint.terms)
 })

@@ -1,9 +1,10 @@
 import { markEvaluationStarted, monitorBackend } from '@/lib/reliability/monitor'
 import { createHash, randomUUID } from 'crypto'
 import type { NextApiRequest, NextApiResponse } from 'next'
+import type { ZodType } from 'zod'
 import { eq } from 'drizzle-orm'
 import { ApiError, handleApiError, json, methodNotAllowed, parseBody } from '@/lib/api/http'
-import { analyzeAndSave, analyzeAndSaveSchema } from './analyze'
+import { analyzeAndSave, analyzeAndSaveSchema, type AnalyzeAndSaveInput } from './analyze'
 import { getOrSetAnonymousActorId } from '@/lib/auth/anonymous'
 import { getAnonymousProfile } from '@/lib/auth/anonymousProfile'
 import { getRequestUserId } from '@/lib/auth/mobile-session'
@@ -14,7 +15,7 @@ import { env } from '@/lib/env'
 import { reserveEvaluation, finishEvaluation } from '@/lib/payments/entitlements'
 import { createAnalysisShare } from '@/lib/sharing/service'
 
-export function createAnalyzeHandler(run: typeof analyzeAndSave = analyzeAndSave, bodySchema = analyzeAndSaveSchema, requestNamespace = '') {
+export function createAnalyzeHandler(run: typeof analyzeAndSave = analyzeAndSave, bodySchema: ZodType<AnalyzeAndSaveInput> = analyzeAndSaveSchema, requestNamespace = '') {
 return async function handler(req: NextApiRequest, res: NextApiResponse) {
   if (req.method !== 'POST') return methodNotAllowed(res, ['POST'])
 
@@ -68,8 +69,18 @@ return async function handler(req: NextApiRequest, res: NextApiResponse) {
     const userSkinColor = skinColorSchema.safeParse(userProfile?.skinColor).data ?? null
 
     if (userId) {
-      reservation = await reserveEvaluation({ userId, mobileInstallId: mobileInstallId ?? undefined }, requestId,
-        createHash('sha256').update(JSON.stringify(body)).digest('hex'))
+      try {
+        reservation = await reserveEvaluation({ userId, mobileInstallId: mobileInstallId ?? undefined }, requestId,
+          createHash('sha256').update(JSON.stringify(body)).digest('hex'))
+      } catch (error) {
+        if (error instanceof ApiError && error.code === 'evaluation_processing') {
+          // Existing mobile builds retry a dropped connection immediately. Wait
+          // for their original request instead of returning a terminal-looking 409.
+          const completed = await waitForExistingEvaluation(`${userId}:${requestId}`, startedAt + 105_000)
+          if (completed) return json(res, 200, completed)
+        }
+        throw error
+      }
       if (reservation.result) return json(res, 200, { ...reservation.result, entitlements: reservation.summary })
     }
 
@@ -130,6 +141,17 @@ return async function handler(req: NextApiRequest, res: NextApiResponse) {
   }
 }
 
+}
+
+async function waitForExistingEvaluation(id: string, deadline: number) {
+  while (Date.now() < deadline) {
+    const row = await db.query.scanReservations.findFirst({
+      where: eq(schema.scanReservations.id, id), columns: { status: true, result: true },
+    })
+    if (!row || row.status !== 'pending') return row?.result ?? null
+    await new Promise(resolve => setTimeout(resolve, 750))
+  }
+  return null
 }
 
 function readMobileInstallId(req: NextApiRequest) {

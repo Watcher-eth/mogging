@@ -4,6 +4,8 @@ import { requireCreatorAdmin } from '@/lib/admin/creator-auth'
 import { ApiError, handleApiError, json, methodNotAllowed } from '@/lib/api/http'
 import { enforceRateLimit } from '@/lib/api/rateLimit'
 
+export const config = { maxDuration: 30 }
+
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   res.setHeader('Cache-Control', 'private, no-store')
   try {

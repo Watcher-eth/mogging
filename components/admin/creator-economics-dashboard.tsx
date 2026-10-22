@@ -1,100 +1,38 @@
 import { useState } from 'react'
-import {
-  Calculator,
-  CheckCircle2,
-  CircleDollarSign,
-  Eye,
-  MousePointerClick,
-  Save,
-  Settings2,
-  Smartphone,
-  TrendingUp,
-  TriangleAlert,
-  UserCheck,
-} from 'lucide-react'
+import { Save, Settings2 } from 'lucide-react'
 import { toast } from 'sonner'
 import { Button } from '@/components/ui/button'
-import type { AdminDashboard, AdminPayment, AdminSubmission } from './creator-types'
+import { Panel, Stat, Table } from './analytics-ui'
+import type { AdminDashboard, AdminSubmission } from './creator-types'
 import { calculateCreatorEconomics, type FunnelMetrics } from '@/lib/admin/creator-economics'
-import { apiPatch, ApiClientError } from '@/lib/api/client'
-import { cn } from '@/lib/utils'
+import { apiPatch, apiPost, ApiClientError } from '@/lib/api/client'
 
-const emptyMetrics: FunnelMetrics = {
-  qualifiedViews: 0,
-  linkClicks: 0,
-  installs: 0,
-  firstTimePaidCustomers: 0,
+const emptyMetrics: FunnelMetrics = { qualifiedViews: 0, linkClicks: 0, installs: 0, firstTimePaidCustomers: 0 }
+
+export function CreatorEconomicsDashboard({ data }: { data: AdminDashboard; onSelectSubmission: (submission: AdminSubmission) => void }) {
+  const coverage = data.creatorCoverage
+  const paying = Number(coverage?.totals.paying_accounts || 0)
+  const committed = data.payments.filter(item => ['pending', 'processing', 'paid'].includes(item.status) && item.currency.toUpperCase() === 'USD').reduce((total, item) => total + item.amountCents, 0)
+  const creatorRows = data.creators.map(creator => {
+    const cost = data.payments.filter(payment => payment.creatorProfileId === creator.id && ['pending','processing','paid'].includes(payment.status) && payment.currency.toUpperCase() === 'USD').reduce((total, payment) => total + payment.amountCents, 0)
+    return { creator: creator.displayName, browser_clicks: creator.attribution.clicks, paying_accounts: creator.attribution.paidCustomers,
+      usd_net_revenue: formatMoney(creator.attribution.revenueCents), usd_compensation: formatMoney(cost),
+      observed_cost_per_paying_account: creator.attribution.paidCustomers ? formatMoney(cost / creator.attribution.paidCustomers) : null }
+  })
+  return <div className="grid gap-6">
+    <p className="text-sm leading-6 text-zinc-500">Revenue and paying accounts come from verified billing and stored referral evidence. Unknown acquisition remains unknown. Manual historical funnel counts are excluded. Revenue and compensation below are USD; other currencies remain separate in billing.</p>
+    <div className="grid gap-3 sm:grid-cols-3"><Stat title="Attributed paying accounts" value={String(paying)} note="Distinct credited accounts across all creators; all time" /><Stat title="Attributed net revenue" value={formatMoney(Number(coverage?.totals.usd_net_cents || 0))} note="Verified USD payments less refunds and disputes; all time" /><Stat title="Committed compensation" value={formatMoney(committed)} note="Pending, processing and paid USD payouts; all time" /></div>
+    <Panel title="Creator economics" description="A paying account may buy through more than one creator; row counts should not be added together. Observed cost per paying account is not an incremental CAC estimate."><Table rows={creatorRows} columns={['creator','browser_clicks','paying_accounts','usd_net_revenue','usd_compensation','observed_cost_per_paying_account']} /></Panel>
+    <Panel title="Referral entry paths" description="Last 30 days. Native exchanges and code claims are separate from browser requests."><Table rows={scalarRows(coverage?.sources || [])} columns={['source','requests','browser_ids']} /></Panel>
+    <Panel title="Mobile continuity" description="Last 30 days. The recovered first-open cohort requires an observed app first open, an original click before it, and recovery within 24 hours. It is separate from App Store download reports."><Table rows={scalarRows(coverage?.mobile || [])} columns={['method','touches','installations','account_claimed','recovered_first_open_cohort']} /></Panel>
+    <Panel title="Billing attribution coverage" description="Last 30 days. Unmatched facts are retried by the reconciliation job; reasons are visible here."><Table rows={scalarRows(coverage?.billing || [])} columns={['provider','status','events']} /></Panel>
+    <StoreCampaignImport rows={coverage?.storeCampaigns || []} />
+    <Panel title="Post attribution" description="Posts registered or submitted in the last 90 days. Zero post-level payments means no captured post-specific credit; creator-level credit is not distributed across videos."><Table rows={scalarRows(coverage?.posts || []).map(row => ({ ...row, usd_net_revenue: formatMoney(Number(row.usd_net_cents || 0)) }))} columns={['handle','platform','draft','posted_at','caption_recorded','browser_clicks','paying_accounts','usd_net_revenue']} /></Panel>
+  </div>
 }
 
-export function CreatorEconomicsDashboard({ data, onSelectSubmission }: { data: AdminDashboard; onSelectSubmission: (submission: AdminSubmission) => void }) {
-  const metricsBySubmission = new Map(data.attributionMetrics.map((metrics) => [metrics.submissionId, metrics]))
-  const paymentsBySubmission = buildPaymentsBySubmission(data.payments)
-
-  const economicsSettings = {
-    ninetyDayContributionMarginCents: data.settings.ninetyDayContributionMarginCents,
-    compensationCapRate: data.rules.compensationCapRate,
-    conversionBonusCapRate: data.rules.conversionBonusCapRate,
-  }
-  const aggregateMetrics = data.attributionMetrics.reduce<FunnelMetrics>((total, item) => ({
-    qualifiedViews: total.qualifiedViews + item.qualifiedViews,
-    linkClicks: total.linkClicks + item.linkClicks,
-    installs: total.installs + item.installs,
-    firstTimePaidCustomers: total.firstTimePaidCustomers + item.firstTimePaidCustomers,
-  }), { ...emptyMetrics })
-  const aggregate = calculateCreatorEconomics(aggregateMetrics, data.payments, economicsSettings)
-  const videoRows = data.submissions.map((submission) => {
-    const metrics = metricsBySubmission.get(submission.id) || emptyMetrics
-    const economics = calculateCreatorEconomics(metrics, paymentsBySubmission.get(submission.id) || [], economicsSettings)
-    return { submission, economics }
-  }).sort((left, right) => right.economics.contributionAfterCompensationCents - left.economics.contributionAfterCompensationCents)
-  const creatorRows = buildCreatorRows(data, metricsBySubmission, paymentsBySubmission)
-
-
-  return (
-    <section>
-      <header className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
-
-        <span className={cn('inline-flex w-fit items-center gap-2 rounded-full px-3 py-1.5 text-xs font-semibold', aggregate.attributableMarginCents === 0 ? 'bg-zinc-100 text-zinc-600' : aggregate.isWithinCompensationCap ? 'bg-emerald-50 text-emerald-700' : 'bg-red-50 text-red-700')}>{aggregate.attributableMarginCents === 0 ? <Calculator className="size-3.5" /> : aggregate.isWithinCompensationCap ? <CheckCircle2 className="size-3.5" /> : <TriangleAlert className="size-3.5" />}{aggregate.attributableMarginCents === 0 ? 'Margin data needed' : aggregate.isWithinCompensationCap ? 'Within profitability rule' : 'Creator budget exceeds cap'}</span>
-      </header>
-
-      <p className="mb-6 text-sm leading-6 text-zinc-500">Economics uses manually recorded submission metrics and program assumptions, rather than the automatic attribution ledger. {data.attributionMetrics.length} of {data.submissions.length} submissions have recorded metrics. Missing entries are excluded from metric totals; margin and conversion estimates are incomplete until those entries are recorded.</p>
-
-      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-        <EconomicsMetric label="Qualified views" value={data.attributionMetrics.length ? formatNumber(aggregate.qualifiedViews) : '—'} detail={data.attributionMetrics.length ? `${formatPercent(aggregate.linkCtr)} link CTR` : 'Submission metrics needed'} icon={Eye} />
-        <EconomicsMetric label="First-time paid" value={data.attributionMetrics.length ? formatNumber(aggregate.firstTimePaidCustomers) : '—'} detail={data.attributionMetrics.length ? `${formatPercent(aggregate.installToPaidConversion)} install → paid` : 'Submission metrics needed'} icon={UserCheck} />
-        <EconomicsMetric label="90-day margin" value={data.attributionMetrics.length ? formatMoney(aggregate.attributableMarginCents) : '—'} detail="Estimated attributable contribution margin" icon={TrendingUp} />
-        <EconomicsMetric label="Committed comp" value={formatMoney(aggregate.committedCompensationCents)} detail={`${formatPercent(aggregate.compensationShare)} of attributable margin`} icon={CircleDollarSign} warning={aggregate.attributableMarginCents > 0 && !aggregate.isWithinCompensationCap} />
-      </div>
-
-      <div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-        <SmallMetric label="Sustainable creator RPM" value={formatMoney(aggregate.sustainableRpmCents)} />
-        <SmallMetric label="Actual creator RPM" value={formatMoney(aggregate.actualRpmCents)} />
-        <SmallMetric label="Creator CAC" value={aggregate.firstTimePaidCustomers ? formatMoney(aggregate.creatorCacCents) : '—'} />
-        <SmallMetric label="90-day margin ROAS" value={aggregate.committedCompensationCents ? `${aggregate.ninetyDayRoas.toFixed(2)}×` : '—'} />
-      </div>
-
-      <div className="mt-7"><Funnel metrics={aggregate} /></div>
-
-      <div className="mt-7 rounded-xl bg-[#f7f8f9] p-5 text-[#181a1d] sm:p-7">
-        <div className="flex items-start gap-3"><span className="grid size-10 shrink-0 place-items-center rounded-xl bg-white"><Calculator className="size-5" /></span><div><p className="text-sm font-semibold">Profitability rule</p><p className="mt-1 text-sm leading-6 text-zinc-400">Total committed creator compensation must stay at or below 35% of attributable users’ 90-day contribution margin.</p></div></div>
-        <div className="mt-6 overflow-x-auto rounded-2xl border border-zinc-200 bg-white px-4 py-4 font-mono text-xs leading-6 text-zinc-600">1,000 × link CTR × click-to-install × install-to-paid × 90-day margin/customer × 35%</div>
-        <div className="mt-4 grid gap-3 text-sm sm:grid-cols-3"><DarkStat label="Affordable compensation" value={formatMoney(aggregate.compensationCapCents)} /><DarkStat label="Contribution after compensation" value={formatMoney(aggregate.contributionAfterCompensationCents)} negative={aggregate.contributionAfterCompensationCents < 0} /><DarkStat label="Max conversion bonus/customer" value={formatMoney(aggregate.maxConversionBonusCents)} /></div>
-      </div>
-
-      <PerformanceTable title="Video economics" description="Click a video to enter or update its funnel data." rows={videoRows} onSelect={onSelectSubmission} />
-      <CreatorPerformanceTable rows={creatorRows} />
-    </section>
-  )
-}
-
-function Funnel({ metrics }: { metrics: ReturnType<typeof calculateCreatorEconomics> }) {
-  const steps = [
-    { label: 'Qualified views', value: metrics.qualifiedViews, rate: null, icon: Eye },
-    { label: 'Link clicks', value: metrics.linkClicks, rate: metrics.linkCtr, icon: MousePointerClick },
-    { label: 'Installs', value: metrics.installs, rate: metrics.clickToInstallConversion, icon: Smartphone },
-    { label: 'First-time paid', value: metrics.firstTimePaidCustomers, rate: metrics.installToPaidConversion, icon: UserCheck },
-  ]
-  return <div className="admin-section"><p className="text-sm font-semibold">Attribution funnel</p><p className="mt-1 text-xs leading-5 text-zinc-500">Each rate uses the previous stage as its denominator.</p><div className="mt-5 grid gap-2 sm:grid-cols-4">{steps.map((step, index) => { const Icon = step.icon; return <div key={step.label} className="relative px-1 py-4"><Icon className="size-4 text-zinc-400" /><p className="mt-5 text-2xl font-semibold tracking-[-0.045em]">{formatNumber(step.value)}</p><p className="mt-1 text-xs text-zinc-500">{step.label}</p>{index > 0 ? <p className="mt-3 text-[11px] font-semibold text-zinc-400">{formatPercent(step.rate || 0)} conversion</p> : <p className="mt-3 text-[11px] font-semibold text-zinc-400">Funnel entry</p>}</div> })}</div></div>
+function scalarRows(rows: Array<Record<string, unknown>>) {
+  return rows.map(row => Object.fromEntries(Object.entries(row).map(([key,value]) => [key, value == null ? null : typeof value === 'number' ? value : String(value)]))) as Array<Record<string, string | number | null>>
 }
 
 export function CreatorProgramSettings({ data, onRefresh }: { data: AdminDashboard; onRefresh: () => Promise<void> }) {
@@ -126,45 +64,22 @@ function ProgramSettings({ monthlyPrice, margin, setMonthlyPrice, setMargin, sav
   return <div className="admin-section"><div className="flex items-center gap-2.5"><span className="grid size-9 place-items-center rounded-xl bg-zinc-100"><Settings2 className="size-4" /></span><div><p className="text-sm font-semibold">Program assumptions</p><p className="text-xs text-zinc-500">Used across every creator calculation.</p></div></div><div className="mt-5 grid gap-4"><MoneyInput label="Monthly subscription" value={monthlyPrice} onChange={setMonthlyPrice} hint="USD per month" /><MoneyInput label="90-day contribution margin/customer" value={margin} onChange={setMargin} hint={`90-day gross revenue is ${formatMoney(data.settings.monthlySubscriptionCents * 3)}`} /></div><p className="mt-4 text-xs leading-5 text-zinc-500">Enter revenue after refunds, payment fees, hosting, and other variable costs—not gross subscription revenue.</p><Button className="mt-5 h-10 w-full rounded-xl" onClick={onSave} disabled={saving}>{saving ? <Save className="animate-pulse" /> : <Save />}{saving ? 'Saving…' : 'Save assumptions'}</Button><div className="mt-4 flex items-center justify-between border-t border-zinc-100 pt-4 text-xs"><span className="text-zinc-500">Conversion bonus ceiling</span><span className="font-semibold">{formatMoney(aggregate.maxConversionBonusCents)} / paid customer</span></div></div>
 }
 
-function PerformanceTable({ title, description, rows, onSelect }: { title: string; description: string; rows: Array<{ submission: AdminSubmission; economics: ReturnType<typeof calculateCreatorEconomics> }>; onSelect: (submission: AdminSubmission) => void }) {
-  return <section className="mt-8"><div className="mb-4"><p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-zinc-400">Performance detail</p><h3 className="mt-2 text-2xl font-semibold tracking-[-0.045em]">{title}</h3><p className="mt-2 text-sm text-zinc-500">{description}</p></div>{rows.length ? <div className="admin-list"><div className="hidden grid-cols-[minmax(220px,1.5fr)_repeat(5,minmax(90px,0.7fr))] gap-3 border-b border-zinc-100 px-4 py-3 text-[11px] font-semibold uppercase tracking-[0.12em] text-zinc-400 lg:grid"><span>Video</span><span>Views</span><span>Paid</span><span>Max RPM</span><span>Actual RPM</span><span>Net margin</span></div>{rows.map(({ submission, economics }) => <button key={submission.id} onClick={() => onSelect(submission)} className="grid w-full gap-3 border-b border-zinc-100 px-4 py-4 text-left last:border-0 hover:bg-zinc-50 lg:grid-cols-[minmax(220px,1.5fr)_repeat(5,minmax(90px,0.7fr))] lg:items-center"><span className="min-w-0"><span className="block truncate text-sm font-semibold">{submission.title}</span><span className="mt-1 block truncate text-xs text-zinc-500">{submission.creatorName} · {submission.socialHandle ? `@${submission.socialHandle}` : submission.platform}</span></span><TableValue label="Views" value={formatNumber(economics.qualifiedViews)} /><TableValue label="Paid" value={formatNumber(economics.firstTimePaidCustomers)} /><TableValue label="Max RPM" value={formatMoney(economics.sustainableRpmCents)} /><TableValue label="Actual RPM" value={formatMoney(economics.actualRpmCents)} warning={!economics.isWithinCompensationCap && economics.committedCompensationCents > 0} /><TableValue label="Net margin" value={formatMoney(economics.contributionAfterCompensationCents)} warning={economics.contributionAfterCompensationCents < 0} /></button>)}</div> : <div className="rounded-[28px] border border-dashed border-zinc-300 bg-white p-8 text-center text-sm text-zinc-500">Video economics will appear after the first creator submission.</div>}</section>
-}
-
-function CreatorPerformanceTable({ rows }: { rows: ReturnType<typeof buildCreatorRows> }) {
-  return <section className="mt-8"><div className="mb-4"><p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-zinc-400">Creator comparison</p><h3 className="mt-2 text-2xl font-semibold tracking-[-0.045em]">Creator profitability</h3><p className="mt-2 text-sm text-zinc-500">Ranked by 90-day contribution margin after committed compensation.</p></div>{rows.length ? <div className="grid gap-3">{rows.map((row, index) => <div key={row.creatorProfileId} className="admin-resource-row flex flex-col gap-4 sm:flex-row sm:items-center"><span className="grid size-9 shrink-0 place-items-center rounded-xl bg-zinc-100 text-xs font-semibold">{index + 1}</span><span className="min-w-0 flex-1"><span className="block truncate text-sm font-semibold">{row.creatorName}</span><span className="mt-1 block text-xs text-zinc-500">{formatNumber(row.economics.qualifiedViews)} views · {row.economics.firstTimePaidCustomers} paid customers</span></span><div className="grid grid-cols-3 gap-5 text-right"><CreatorValue label="Creator CAC" value={row.economics.firstTimePaidCustomers ? formatMoney(row.economics.creatorCacCents) : '—'} /><CreatorValue label="Comp share" value={formatPercent(row.economics.compensationShare)} /><CreatorValue label="Net margin" value={formatMoney(row.economics.contributionAfterCompensationCents)} warning={row.economics.contributionAfterCompensationCents < 0} /></div></div>)}</div> : null}</section>
-}
-
-function buildCreatorRows(data: AdminDashboard, metricsBySubmission: Map<string, AdminDashboard['attributionMetrics'][number]>, paymentsBySubmission: Map<string, AdminDashboard['payments']>) {
-  const rows = new Map<string, { creatorProfileId: string; creatorName: string; metrics: FunnelMetrics; payments: AdminDashboard['payments'] }>()
-  for (const submission of data.submissions) {
-    const row = rows.get(submission.creatorProfileId) || { creatorProfileId: submission.creatorProfileId, creatorName: submission.creatorName, metrics: { ...emptyMetrics }, payments: [] }
-    const metrics = metricsBySubmission.get(submission.id) || emptyMetrics
-    row.metrics.qualifiedViews += metrics.qualifiedViews
-    row.metrics.linkClicks += metrics.linkClicks
-    row.metrics.installs += metrics.installs
-    row.metrics.firstTimePaidCustomers += metrics.firstTimePaidCustomers
-    row.payments.push(...(paymentsBySubmission.get(submission.id) || []))
-    rows.set(submission.creatorProfileId, row)
-  }
-  const settings = { ninetyDayContributionMarginCents: data.settings.ninetyDayContributionMarginCents, compensationCapRate: data.rules.compensationCapRate, conversionBonusCapRate: data.rules.conversionBonusCapRate }
-  return [...rows.values()].map((row) => ({ ...row, economics: calculateCreatorEconomics(row.metrics, row.payments, settings) })).sort((left, right) => right.economics.contributionAfterCompensationCents - left.economics.contributionAfterCompensationCents)
-}
-
-function buildPaymentsBySubmission(payments: AdminPayment[]) {
-  const map = new Map<string, AdminPayment[]>()
-  for (const payment of payments) {
-    if (!payment.submissionId) continue
-    map.set(payment.submissionId, [...(map.get(payment.submissionId) || []), payment])
-  }
-  return map
-}
-
-function EconomicsMetric({ label, value, detail, icon: Icon, warning = false }: { label: string; value: string; detail: string; icon: typeof Eye; warning?: boolean }) { return <div className={cn('admin-metric', warning ? 'text-red-700' : '')}><div className="flex items-center justify-between"><p className="text-sm font-medium text-zinc-500">{label}</p><span className={cn('grid size-9 place-items-center rounded-xl', warning ? 'bg-red-50 text-red-600' : 'bg-zinc-100')}><Icon className="size-4" /></span></div><p className="mt-5 text-3xl font-semibold tracking-[-0.055em]">{value}</p><p className={cn('mt-1 text-xs', warning ? 'text-red-600' : 'text-zinc-400')}>{detail}</p></div> }
-function SmallMetric({ label, value }: { label: string; value: string }) { return <div className="flex items-center justify-between gap-3 border-b border-zinc-100 py-3"><span className="text-xs text-zinc-500">{label}</span><span className="text-sm font-semibold">{value}</span></div> }
-function DarkStat({ label, value, negative = false }: { label: string; value: string; negative?: boolean }) { return <div className="rounded-xl bg-white/[0.05] p-4"><p className="text-xs text-zinc-500">{label}</p><p className={cn('mt-2 text-lg font-semibold', negative && 'text-red-600')}>{value}</p></div> }
 function MoneyInput({ label, value, onChange, hint }: { label: string; value: string; onChange: (value: string) => void; hint: string }) { return <label className="grid gap-2"><span className="flex items-center justify-between text-sm font-medium"><span>{label}</span><span className="text-[11px] font-normal text-zinc-400">{hint}</span></span><span className="relative"><span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-sm text-zinc-400">$</span><input type="number" min="0" step="0.01" value={value} onChange={(event) => onChange(event.target.value)} className="h-11 w-full rounded-xl border border-zinc-200 pl-7 pr-3 text-sm outline-none focus:border-zinc-400 focus:ring-4 focus:ring-zinc-100" /></span></label> }
-function TableValue({ label, value, warning = false }: { label: string; value: string; warning?: boolean }) { return <span className="flex items-center justify-between lg:block"><span className="text-xs text-zinc-400 lg:hidden">{label}</span><span className={cn('text-sm font-medium', warning && 'text-red-600')}>{value}</span></span> }
-function CreatorValue({ label, value, warning = false }: { label: string; value: string; warning?: boolean }) { return <span><span className="block text-[10px] uppercase tracking-[0.08em] text-zinc-400">{label}</span><span className={cn('mt-1 block text-sm font-semibold', warning && 'text-red-600')}>{value}</span></span> }
 function formatMoney(cents: number) { return new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(cents / 100) }
-function formatNumber(value: number) { return new Intl.NumberFormat('en-US', { notation: value >= 100_000 ? 'compact' : 'standard', maximumFractionDigits: 1 }).format(value) }
-function formatPercent(value: number) { return new Intl.NumberFormat('en-US', { style: 'percent', maximumFractionDigits: 1 }).format(value) }
+
+function StoreCampaignImport({ rows }: { rows: Array<Record<string, unknown>> }) {
+  const [busy, setBusy] = useState(false), [message, setMessage] = useState('')
+  async function upload(file: File | undefined) {
+    if (!file || busy) return
+    if (file.size > 900_000) { setMessage('Choose an export smaller than 900 KB'); return }
+    setBusy(true); setMessage('')
+    try { const result = await apiPost<{ rows: number }>('/api/admin/creator/store-campaigns', { csv: await file.text() }); setMessage(`${result.rows} aggregate rows imported. Refresh to see them.`) }
+    catch (error) { setMessage(error instanceof Error ? error.message : 'Could not import export') }
+    finally { setBusy(false) }
+  }
+  return <Panel title="App Store campaign cross-check" description="Import aggregate App Store campaign exports using date,campaign,territory,downloads,sales,currency columns. Dates must use YYYY-MM-DD. Blank or suppressed values remain unknown. These rows never assign individual customers or change creator payments.">
+    <label className="mb-4 grid gap-2 text-sm">{busy ? 'Importing…' : 'Upload campaign CSV or TSV'}<input type="file" accept=".csv,.tsv,text/csv,text/tab-separated-values" disabled={busy} onChange={event => void upload(event.target.files?.[0])} /></label>
+    <p role="status" className="mb-4 text-xs text-zinc-500">{message || 'Use the stable c- campaign token from the creator’s App Store destination. Imports preserve currency and territory separately.'}</p>
+    <Table rows={scalarRows(rows)} columns={['handle','campaign','day','territory','downloads','sales','currency']} />
+  </Panel>
+}

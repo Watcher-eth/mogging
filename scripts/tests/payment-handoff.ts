@@ -53,6 +53,7 @@ try {
     properties jsonb DEFAULT '{}', occurred_at timestamp NOT NULL, received_at timestamp DEFAULT now()
   );`)
   await sql.unsafe(await readFile(new URL('../../drizzle/0035_analytics_billing.sql', import.meta.url), 'utf8'))
+  await sql.unsafe(`ALTER TABLE subscription_events ADD COLUMN creator_attribution_status text NOT NULL DEFAULT 'pending', ADD COLUMN creator_attribution_checked_at timestamp`)
   const { createPaymentHandoff, consumePaymentHandoff } = await import('../../lib/payments/handoff')
   const { grantEntitlementFromCheckoutSession, getEntitlementSummary, redeemPaymentActivationCode, reserveEvaluation, finishEvaluation, revokePaymentIntentEntitlement } = await import('../../lib/payments/entitlements')
   const { getStripe } = await import('../../lib/payments/stripe')

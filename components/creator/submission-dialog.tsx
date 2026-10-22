@@ -1,5 +1,5 @@
 import { TikTokAccountDialog } from './tiktok-anchor-onboarding'
-import { publishingTikTokHandle, tiktokAnchorEligible, TIKTOK_ANCHOR_REQUIREMENT } from '@/lib/creator/tiktok-anchor'
+import { publishingTikTokHandle, tiktokAnchorEligible, TIKTOK_ANCHOR_REQUIREMENTS_ENABLED, TIKTOK_ANCHOR_REQUIREMENT } from '@/lib/creator/tiktok-anchor'
 import { creatorContentRestriction } from '@/lib/creator/content-policy'
 import { creatorCampaignRules, creatorFormatElement, CREATOR_REREVIEW_GUIDANCE } from '@/lib/creator/post-guidance'
 import { MinimumViewsDialog } from './minimum-views-dialog'
@@ -91,6 +91,9 @@ export function SubmissionDialog({
   const [accountId, setAccountId] = useState('')
   const [anchorSetupOpen, setAnchorSetupOpen] = useState(false)
   const [platform, setPlatform] = useState<'tiktok' | 'instagram'>('tiktok')
+  const [registeredPostId, setRegisteredPostId] = useState('')
+  const [caption, setCaption] = useState(existingSubmission?.caption || '')
+  const [postedAt, setPostedAt] = useState('')
   const [postUrl, setPostUrl] = useState(existingSubmission?.postUrl || '')
   const [recording, setRecording] = useState<File | null>(null)
   const [physicalConfirmed, setPhysicalConfirmed] = useState(false)
@@ -98,6 +101,7 @@ export function SubmissionDialog({
   const [rejectedViews, setRejectedViews] = useState<number | null>(null)
   const [audience, setAudience] = useState(existingSubmission?.usAudiencePercent?.toString() || '')
   const [confirmed, setConfirmed] = useState<string[]>([])
+  const canCheckAll = (data?.submissions.filter(item => item.status === 'approved' || item.status === 'paid').length ?? 0) >= 4
   const [busy, setBusy] = useState(false)
   const [progress, setProgress] = useState(0)
   const fileRef = useRef<HTMLInputElement>(null)
@@ -117,7 +121,7 @@ export function SubmissionDialog({
   }, [initialSprintId])
   const publishingAccount = data?.socialAccounts.find(item => item.id === accountId)
   const anchorEligibility = tiktokAnchorEligible(publishingAccount)
-  const anchorRequired = !existingSubmission && platform === 'tiktok' && anchorEligibility === true
+  const anchorRequired = TIKTOK_ANCHOR_REQUIREMENTS_ENABLED && !existingSubmission && platform === 'tiktok' && anchorEligibility === true
   const checklist =
     format && sprint
       ? [
@@ -167,7 +171,7 @@ export function SubmissionDialog({
       if (account && account.platform !== platform)
         return toast.error('The account must match the post platform')
       if (platform === 'tiktok') {
-        if (anchorEligibility === null) return toast.error('Confirm this account’s follower range in Accounts first')
+        if (TIKTOK_ANCHOR_REQUIREMENTS_ENABLED && anchorEligibility === null) return toast.error('Confirm this account’s follower range in Accounts first')
         if (anchorRequired && !account?.tiktokAnchorJoinedAt) { setAnchorSetupOpen(true); return toast.error('Join the Mogging project before submitting') }
         const handle = publishingTikTokHandle(parsed.data)
         if (handle && account?.handle?.toLowerCase() !== handle) return toast.error('Choose the TikTok account that published this post')
@@ -212,6 +216,9 @@ export function SubmissionDialog({
         setProgress,
       )
       await apiPost(existingSubmission ? `/api/creator/submissions/${encodeURIComponent(existingSubmission.id)}/rereview` : '/api/creator/submissions', {
+        registeredPostId: registeredPostId || undefined,
+        caption: caption.trim() || undefined,
+        postedAt: postedAt ? new Date(postedAt).toISOString() : undefined,
         sprintId,
         formatId,
         requirementsConfirmed: true,
@@ -414,6 +421,14 @@ export function SubmissionDialog({
                   ) : null}
                   {step === 3 ? (
                     <>
+                      {!existingSubmission && data.registeredPosts?.length ? <Field label="Prepared post" hint="Keeps the original post link and attribution"><select className={fieldClass} value={registeredPostId} onChange={event => {
+                        const post = data.registeredPosts?.find(item => item.id === event.target.value)
+                        setRegisteredPostId(event.target.value)
+                        if (post) { setSprintId(post.sprintId || ''); setFormatId(post.formatId || ''); setAccountId(post.socialAccountId || ''); setPostUrl(post.postUrl || ''); setCaption(post.caption || ''); setPlatform(post.platform === 'TikTok' ? 'tiktok' : 'instagram'); if (post.postedAt) { const date = new Date(post.postedAt); setPostedAt(new Date(date.getTime() - date.getTimezoneOffset() * 60000).toISOString().slice(0,16)) } }
+                        setConfirmed([])
+                      }}><option value="">New post without a prepared link</option>{data.registeredPosts.map(post => <option key={post.id} value={post.id}>{post.platform} · {post.code} · {post.title}</option>)}</select></Field> : null}
+                      <Field label="Published caption" hint="Include the exact creator or post code viewers see"><textarea className={fieldClass} value={caption} maxLength={2200} onChange={event => setCaption(event.target.value)} /></Field>
+                      <Field label="Posting time" hint="Your local time"><input type="datetime-local" className={fieldClass} value={postedAt} onChange={event => setPostedAt(event.target.value)} /></Field>
                       <div className="grid grid-cols-2 gap-2">
                         {sprint?.terms.platforms.map((item) => (
                           <button
@@ -459,7 +474,7 @@ export function SubmissionDialog({
                             ))}
                         </select>
                       </Field>
-                      {platform === 'tiktok' && publishingAccount ? (
+                      {TIKTOK_ANCHOR_REQUIREMENTS_ENABLED && platform === 'tiktok' && publishingAccount ? (
                         <div className="rounded-xl bg-[#eaf7fd] p-4 text-sm leading-6">
                           {anchorEligibility === null ? <><strong>Confirm your follower range first.</strong><p className="text-zinc-600">We need it to show the requirements for this publishing account.</p><Link href="/creator/accounts" className="font-medium text-[#008bc6] underline underline-offset-4">Update in Accounts</Link></> : anchorRequired ? <><strong>TikTok anchor required for this account</strong><p className="mt-1 text-zinc-600">Accept the Mogging TikTok One project before posting. On TikTok’s posting screen, choose Content disclosure → Disclose post content → Branded content → Link project → Mogging.</p>{publishingAccount.tiktokAnchorJoinedAt ? <p className="mt-2 text-xs font-medium text-[#008bc6]">Joining confirmed · Link the anchor on this post and every new TikTok submission.</p> : <button type="button" onClick={() => setAnchorSetupOpen(true)} className="mt-2 min-h-11 font-medium text-[#008bc6] underline underline-offset-4">Join project to continue →</button>}</> : <p className="text-zinc-600">This account has fewer than 1,000 followers. The TikTok anchor requirement does not apply.</p>}
                         </div>
@@ -612,9 +627,10 @@ export function SubmissionDialog({
                           </div>
                         ))}
                       </dl>
-                      <p className="text-xs font-semibold uppercase tracking-widest text-zinc-400">
-                        Confirm before submitting
-                      </p>
+                      <div className="flex items-center justify-between gap-3">
+                        <p className="text-xs font-semibold uppercase tracking-widest text-zinc-400">Confirm before submitting</p>
+                        {canCheckAll ? <button type="button" disabled={!checklist.length || confirmed.length === checklist.length} onClick={() => setConfirmed(checklist.map((_, i) => String(i)))} className="min-h-9 shrink-0 rounded-full px-3 text-xs font-semibold text-[#008bc6] transition-colors hover:bg-sky-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-400 disabled:cursor-default disabled:text-zinc-400 disabled:hover:bg-transparent">Check all</button> : null}
+                      </div>
                       {checklist.map((rule, i) => (
                         <label
                           key={i}

@@ -48,6 +48,7 @@ export const creatorSocialAccountStatusEnum = pgEnum('creator_social_account_sta
   'missing_information',
 ])
 export const creatorAttributionEventTypeEnum = pgEnum('creator_attribution_event_type', [
+  'claim',
   'signup',
   'install',
   'paywall_view',
@@ -537,6 +538,8 @@ export const subscriptionEvents = pgTable('subscription_events', {
   occurredAt: timestamp('occurred_at', { mode: 'date' }).notNull(),
   receivedAt: timestamp('received_at', { mode: 'date' }).notNull().defaultNow(),
   exportedAt: timestamp('exported_at', { mode: 'date' }),
+  creatorAttributionStatus: text('creator_attribution_status').notNull().default('pending'),
+  creatorAttributionCheckedAt: timestamp('creator_attribution_checked_at', { mode: 'date' }),
 }, table => ({
   providerUnique: uniqueIndex('subscription_events_provider_event_unique').on(table.provider, table.providerEventId),
   accountTime: index('subscription_events_account_time_idx').on(table.accountId, table.occurredAt),
@@ -685,6 +688,7 @@ export const creatorSubmissions = pgTable(
     formatId: text('format_id'),
     requirementsConfirmedAt: timestamp('requirements_confirmed_at', { mode: 'date' }),
     title: text('title').notNull(),
+    isDraft: boolean('is_draft').notNull().default(false),
     platform: text('platform').notNull(),
     caption: text('caption'),
     postUrl: text('post_url'),
@@ -837,6 +841,7 @@ export const creatorTrackingLinks = pgTable(
 export const creatorTrackingLinkAliases = pgTable('creator_tracking_link_aliases', {
   slug: text('slug').primaryKey(),
   trackingLinkId: text('tracking_link_id').notNull().references(() => creatorTrackingLinks.id, { onDelete: 'cascade' }),
+  submissionId: text('submission_id').references(() => creatorSubmissions.id, { onDelete: 'cascade' }),
   createdAt: timestamp('created_at', { mode: 'date' }).notNull().defaultNow(),
 }, table => [index('creator_tracking_link_aliases_link_idx').on(table.trackingLinkId)])
 
@@ -853,6 +858,9 @@ export const creatorAttributionClicks = pgTable(
     referrer: text('referrer'),
     userAgent: text('user_agent'),
     isBot: boolean('is_bot').notNull().default(false),
+    source: text('source').notNull().default('browser'),
+    placement: text('placement'),
+    submissionId: text('submission_id').references(() => creatorSubmissions.id, { onDelete: 'set null' }),
     createdAt: timestamp('created_at', { mode: 'date' }).notNull().defaultNow(),
   },
   (table) => ({
@@ -921,6 +929,7 @@ export const mobileCreatorAttributions = pgTable(
       .notNull()
       .references(() => creatorAttributionClicks.id, { onDelete: 'cascade' }),
     attributionKey: text('attribution_key').notNull(),
+    method: text('method').notNull().default('direct'),
     userId: text('user_id').references(() => users.id, { onDelete: 'set null' }),
     createdAt: timestamp('created_at', { mode: 'date' }).notNull().defaultNow(),
     updatedAt: timestamp('updated_at', { mode: 'date' }).notNull().defaultNow(),
@@ -933,6 +942,28 @@ export const mobileCreatorAttributions = pgTable(
     userIdx: index('mobile_creator_attributions_user_id_idx').on(table.userId),
   })
 )
+
+export const creatorReferralHandoffs = pgTable('creator_referral_handoffs', {
+  tokenHash: text('token_hash').primaryKey(),
+  verifierHash: text('verifier_hash').notNull(),
+  clickId: text('click_id').notNull().references(() => creatorAttributionClicks.id, { onDelete: 'cascade' }),
+  expiresAt: timestamp('expires_at', { mode: 'date' }).notNull(),
+  consumedAt: timestamp('consumed_at', { mode: 'date' }),
+  consumedByInstallId: text('consumed_by_install_id'),
+  createdAt: timestamp('created_at', { mode: 'date' }).notNull().defaultNow(),
+}, table => [index('creator_referral_handoffs_expiry_idx').on(table.expiresAt)])
+
+export const creatorStoreCampaignMetrics = pgTable('creator_store_campaign_metrics', {
+  campaign: text('campaign').notNull(),
+  day: text('day').notNull(),
+  territory: text('territory').notNull().default('ALL'),
+  trackingLinkId: text('tracking_link_id').references(() => creatorTrackingLinks.id, { onDelete: 'set null' }),
+  downloads: integer('downloads'),
+  sales: numeric('sales', { precision: 20, scale: 6 }),
+  currency: text('currency').notNull().default('UNK'),
+  sourceHash: text('source_hash').notNull(),
+  importedAt: timestamp('imported_at', { mode: 'date' }).notNull().defaultNow(),
+}, table => [primaryKey({ columns: [table.campaign, table.day, table.territory, table.currency] })])
 
 export const creatorPayoutRequests = pgTable('creator_payout_requests', {
   id: text('id').primaryKey().$defaultFn(() => crypto.randomUUID()),

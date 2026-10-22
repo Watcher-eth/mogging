@@ -45,7 +45,8 @@ test('recovery still processes billing if webhook configuration cannot be inspec
   const warnings: string[] = [], records: any[] = []
   const scope: any = { Date, URL, crypto,
     process: { env: { VERCEL_ENV: 'production' } }, schema: { analyticsEvents: {} },
-    db: { insert: () => ({ values: async (record: any) => { records.push(record) } }) },
+    and: (...v: unknown[]) => v, eq: (...v: unknown[]) => v, lt: (...v: unknown[]) => v, desc: (v: unknown) => v, sql: () => ({}),
+    db: { query: { analyticsEvents: { findFirst: async () => null } }, insert: () => ({ values: async (record: any) => { records.push(record) } }) },
     processBillingWebhook: async (_provider: unknown, _id: unknown, work: () => Promise<void>) => { if (claimed) return false; claimed = true; await work(); return true },
     recordBackendRequest: async (_feature: unknown, result: any) => { warnings.push(result.code) },
     processStripeEvent: async () => { processed++ },

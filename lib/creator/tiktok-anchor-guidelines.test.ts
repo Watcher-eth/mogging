@@ -22,7 +22,7 @@ test('anchor guidelines stay hidden for Instagram, unknown counts, and TikTok be
     expect(render()).toBe('')
   }
 })
-test('guidelines identify only eligible TikTok accounts and require joining plus every subsequent anchor', () => {
+test('paused anchor requirements are hidden even for eligible TikTok accounts', () => {
   socialAccounts = [
     {
       platform: 'tiktok',
@@ -52,11 +52,5 @@ test('guidelines identify only eligible TikTok accounts and require joining plus
       },
     },
   ]
-  const html = render()
-  expect(html).toContain('@eligible')
-  expect(html).not.toContain('@small')
-  expect(html).not.toContain('@instagram')
-  expect(html).toContain('before your next submission')
-  expect(html).toContain('mandatory for every new submission')
-  expect(html).toContain('Branded content')
+  expect(render()).toBe('')
 })

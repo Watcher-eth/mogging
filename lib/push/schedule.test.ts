@@ -7,13 +7,13 @@ const days: ProtocolDay[] = [{ date: '2026-09-21', tasks: [
 ] }]
 
 describe('local-time push schedule', () => {
-  test('battle and invite each get a distinct weekly day and destination', () => {
+  test('retired Battle days never send a reminder; invitations remain available', () => {
     const battle = reminderFor(new Date('2026-09-23T18:15:00Z'), 'UTC', [])
     const invite = reminderFor(new Date('2026-09-26T18:45:00Z'), 'UTC', [])
-    expect(battle?.target).toBe('battle')
+    expect(battle).toBeNull()
     expect(invite?.target).toBe('invite')
-    expect(battle?.slot).toBe('2026-09-23')
-    expect(reminderFor(new Date('2026-09-30T18:15:00Z'), 'UTC', [])?.target).toBe('battle')
+    expect(invite?.body).not.toContain('mogs')
+    expect(reminderFor(new Date('2026-09-30T18:15:00Z'), 'UTC', [])).toBeNull()
   })
   test('weekly protocol names the first unfinished task, never a completed task', () => {
     const reminder = reminderFor(new Date('2026-09-21T18:00:00Z'), 'UTC', days)
@@ -34,13 +34,13 @@ describe('local-time push schedule', () => {
     }
   })
   test('uses the local date, including zones across midnight and fractional offsets', () => {
-    expect(reminderFor(new Date('2026-09-24T01:00:00Z'), 'America/Los_Angeles', [])?.slot).toBe('2026-09-23')
-    expect(reminderFor(new Date('2026-09-23T12:30:00Z'), 'Asia/Kolkata', [])?.target).toBe('battle')
-    expect(reminderFor(new Date('2026-09-23T12:15:00Z'), 'Asia/Kathmandu', [])?.target).toBe('battle')
+    expect(reminderFor(new Date('2026-09-27T01:00:00Z'), 'America/Los_Angeles', [])?.slot).toBe('2026-09-26')
+    expect(reminderFor(new Date('2026-09-26T12:30:00Z'), 'Asia/Kolkata', [])?.target).toBe('invite')
+    expect(reminderFor(new Date('2026-09-26T12:15:00Z'), 'Asia/Kathmandu', [])?.target).toBe('invite')
   })
   test('keeps 6pm wall-clock time across daylight-saving changes', () => {
-    expect(reminderFor(new Date('2026-10-28T22:00:00Z'), 'America/New_York', [])?.target).toBe('battle')
-    expect(reminderFor(new Date('2026-11-04T23:00:00Z'), 'America/New_York', [])?.target).toBe('battle')
-    expect(reminderFor(new Date('2026-11-04T22:00:00Z'), 'America/New_York', [])).toBeNull()
+    expect(reminderFor(new Date('2026-10-31T22:00:00Z'), 'America/New_York', [])?.target).toBe('invite')
+    expect(reminderFor(new Date('2026-11-07T23:00:00Z'), 'America/New_York', [])?.target).toBe('invite')
+    expect(reminderFor(new Date('2026-11-07T22:00:00Z'), 'America/New_York', [])).toBeNull()
   })
 })

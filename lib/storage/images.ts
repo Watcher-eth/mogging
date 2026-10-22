@@ -139,7 +139,8 @@ async function storeR2Image(
       Body: parsed.buffer,
       ContentType: parsed.contentType,
       CacheControl: 'public, max-age=86400',
-    })
+    }),
+    { abortSignal: AbortSignal.timeout(20_000) }
   )
 
   const baseUrl = env.R2_PUBLIC_BASE_URL
@@ -157,6 +158,7 @@ function getR2Client() {
   if (r2Client) return r2Client
 
   r2Client = new S3Client({
+    maxAttempts: 3,
     region: 'auto',
     endpoint: `https://${env.R2_ACCOUNT_ID}.r2.cloudflarestorage.com`,
     credentials: {

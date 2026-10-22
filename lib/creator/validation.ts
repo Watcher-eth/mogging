@@ -57,6 +57,9 @@ export const creatorProfileSchema = z
 export const MINIMUM_SUBMISSION_VIEWS = 20_000
 
 export const creatorSubmissionSchema = z.object({
+  registeredPostId: z.string().uuid().optional(),
+  caption: z.string().trim().min(1).max(2200).optional(),
+  postedAt: z.iso.datetime().refine(value => Date.parse(value) <= Date.now() + 300_000, 'Posting time cannot be in the future').optional(),
   tiktokAnchorLinked: z.boolean().optional(),
   sprintId: z.string().uuid(),
   formatId: z.string().trim().min(1).max(80),

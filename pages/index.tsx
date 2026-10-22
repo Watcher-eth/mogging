@@ -2,7 +2,7 @@ import { useTranslation } from 'react-i18next';
 import { useRouter } from 'next/router';
 import dynamic from "next/dynamic";
 import { useLandingTracking } from "@/components/landing/use-landing-tracking";
-import type { GetServerSideProps } from "next";
+import type { GetServerSideProps, NextApiRequest, NextApiResponse } from "next";
 import Image from "next/image";
 import Link from "next/link";
 import { ArrowRight, Plus } from "lucide-react";
@@ -323,5 +323,14 @@ export const getServerSideProps: GetServerSideProps<Props> = async ({
       `${LANDING_COOKIE}=${serializeLandingAssignment(assignment)}; Path=/; Max-Age=7776000; SameSite=Lax${process.env.NODE_ENV === "production" ? "; Secure" : ""}`,
     );
   const routeToStore = shouldRouteHomepageToStore(req.headers["user-agent"] || '', req.cookies[HOMEPAGE_DESTINATION_COOKIE], Boolean(previewArm) || automated);
+  // Creator visitors keep the recovery page instead of losing their referral in the generic store redirect.
+  if (typeof query.attribution_token === 'string' || (routeToStore && !query.login && req.cookies.mogging_creator_attribution)) {
+    const { resolveCreatorAttribution, setCreatorAttributionCookie } = await import('@/lib/creator/attribution');
+    const referral = await resolveCreatorAttribution({ req: req as NextApiRequest, token: typeof query.attribution_token === 'string' ? query.attribution_token : null });
+    if (referral?.creatorSlug) {
+      setCreatorAttributionCookie(res as NextApiResponse, referral.token);
+      if (routeToStore && !query.login) return { redirect: { destination: `/r/${encodeURIComponent(referral.creatorSlug)}?fallback=1&attribution_token=${encodeURIComponent(referral.token)}`, permanent: false } };
+    }
+  }
   return { props: { assignment, preview: localizedPreview || Boolean(previewArm) || automated, routeToStore } };
 };

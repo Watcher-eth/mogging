@@ -69,6 +69,7 @@ export function normalizeRevenueCat(event: RevenueCatEvent, receivedAt = new Dat
       aliases: event.aliases ?? [], transferred_from: event.transferred_from ?? [], transferred_to: event.transferred_to ?? [],
       mobile_install_id: attribute('mobile_install_id'), appsflyer_id: attribute('$appsflyerId'),
       creator_tracking_link_id: attribute('creator_tracking_link_id'),
+      creator_click_id: attribute('creator_click_id'),
       creator_first_tracking_link_id: attribute('creator_first_tracking_link_id'),
       timestamp_estimated: event.event_timestamp_ms == null,
     },

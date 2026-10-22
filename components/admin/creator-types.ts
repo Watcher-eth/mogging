@@ -148,6 +148,7 @@ export type AdminProgramSettings = {
 }
 
 export type AdminDashboard = {
+  creatorCoverage?: { mobile?: Array<Record<string, unknown>>; storeCampaigns?: Array<Record<string, unknown>>; sources: Array<Record<string, unknown>>; billing: Array<Record<string, unknown>>; posts: Array<Record<string, unknown>>; totals: Record<string, unknown> }
   payoutRequests?: import('@/components/creator/types').CreatorPayoutRequest[]
   creators: AdminCreator[]
   accounts: AdminAccount[]

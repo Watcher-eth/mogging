@@ -1,4 +1,6 @@
 import { AnimatedDialogPanel } from '@/components/ui/animated-dialog-panel'
+import dynamic from 'next/dynamic'
+const CreatorPerformanceDashboard = dynamic(() => import('./creator-performance-dashboard'), { loading: () => <p role="status" className="admin-notice">Loading creator performance…</p> })
 import { creatorBundlePlan, creatorUnpaidCents, remainingCreatorPaymentCents } from '@/lib/creator/money'
 import { SubmissionPayoutSummary } from '@/components/admin/submission-payout-summary'
 import { BundledPayoutQueue, PayoutVideoBreakdown } from '@/components/admin/bundled-payout-queue'
@@ -45,7 +47,7 @@ import { cn } from '@/lib/utils'
 import { CreatorEconomicsDashboard, CreatorProgramSettings } from '@/components/admin/creator-economics-dashboard'
 import { CreatorAttributionDashboard, CreatorAttributionReport } from '@/components/admin/creator-attribution-dashboard'
 import { calculateCreatorPayout, CREATOR_TIER1_AUDIENCE_TIERS, CREATOR_VIEW_THRESHOLDS } from '@/lib/creator/payouts'
-import { mergeCreatorSubmissionReviewResults, resetSubmissionReview, submissionReviewError } from '@/lib/creator/submission-review'
+import { mergeCreatorSubmissionReviewResults, resetSubmissionReview, submissionReviewError, withAudienceRejectionReason } from '@/lib/creator/submission-review'
 import { SubmissionRequirementsReview } from '@/components/admin/submission-requirements-review'
 import { CreatorIcon, type CreatorIconName } from '@/components/creator/creator-icon'
 import { CREATOR_TIER_ONE_COUNTRIES } from '@/lib/creator/audience'
@@ -61,7 +63,7 @@ import type {
   ReviewTarget,
 } from '@/components/admin/creator-types'
 
-type Tab = 'settings' | 'overview' | 'metrics' | 'attribution' | 'sprints' | 'submissions' | 'cta-library' | 'accounts' | 'payments' | 'creators' | 'invites'
+type Tab = 'settings' | 'overview' | 'metrics' | 'performance' | 'attribution' | 'sprints' | 'submissions' | 'cta-library' | 'accounts' | 'payments' | 'creators' | 'invites'
 
 export default function CreatorAdminPage() {
   const { data: access, error: accessError, isLoading: accessLoading, mutate: mutateAccess } = useSWR<{ unlocked: boolean; email: string }>('/api/admin/creator/session', apiGet)
@@ -91,6 +93,7 @@ function DashboardView({ tab, data, onSelect, onRefresh }: { tab: Tab; data: Adm
   if (tab === 'sprints') return <CreatorSprintsPanel submissions={data.submissions} payments={data.payments} onSelectSubmission={(item) => onSelect({ resource: 'submission', item })} />
   if (tab === 'invites') return <CreatorInvitesPanel />
   if (tab === 'metrics') return <CreatorEconomicsDashboard data={data} onSelectSubmission={(item) => onSelect({ resource: 'submission', item })} />
+  if (tab === 'performance') return <CreatorPerformanceDashboard data={data} />
   if (tab === 'settings') return <CreatorProgramSettings data={data} onRefresh={onRefresh} />
   if (tab === 'attribution') return <CreatorAttributionDashboard data={data} onSelectCreator={(item) => onSelect({ resource: 'creator', item })} onSelectAccount={(item) => onSelect({ resource: 'account', item })} />
   if (tab === 'submissions') return <ResourceSection title="Video submissions"><SubmissionList items={data.submissions} payments={data.payments} onSelect={onSelect} /></ResourceSection>
@@ -348,7 +351,7 @@ function ReviewDialog({ target, creator, payments, metrics, open, onOpenChange, 
   const [amount, setAmount] = useState(target.resource === 'payment' ? (target.item.amountCents / 100).toFixed(2) : target.resource === 'submission' ? initialPayoutAmount(target.item) : '')
   const [providerReference, setProviderReference] = useState(target.resource === 'payment' ? target.item.providerReference || '' : '')
   const [reviewChecklist, setReviewChecklist] = useState(() => target.resource === 'submission'
-    ? target.item.sprintTerms ? sprintReviewItems(target.item.sprintTerms, target.item.formatId || '').map(item => ({ ...item, met: target.item.reviewChecklist?.find(row => row.id === item.id)?.met || false, note: target.item.reviewChecklist?.find(row => row.id === item.id)?.note || null })) : mergeCreatorSubmissionReviewResults(target.item.formatId, target.item.reviewChecklist)
+    ? withAudienceRejectionReason(target.item.sprintTerms ? sprintReviewItems(target.item.sprintTerms, target.item.formatId || '').map(item => ({ ...item, met: target.item.reviewChecklist?.find(row => row.id === item.id)?.met || false, note: target.item.reviewChecklist?.find(row => row.id === item.id)?.note || null })) : mergeCreatorSubmissionReviewResults(target.item.formatId, target.item.reviewChecklist), initialStatus, target.item.reviewChecklist)
     : [])
   const [adminViewCountThreshold, setAdminViewCountThreshold] = useState(() => target.resource === 'submission'
     ? String((target.item.reviewRequestedAt ? target.item.viewCountThreshold : target.item.adminViewCountThreshold) ?? target.item.viewCountThreshold ?? '')
@@ -381,7 +384,7 @@ function ReviewDialog({ target, creator, payments, metrics, open, onOpenChange, 
 
   function changeReviewStatus(value: string) {
     if (target.resource === 'submission' && (status === 'rejected') !== (value === 'rejected')) {
-      setReviewChecklist(items => resetSubmissionReview(items, value))
+      setReviewChecklist(items => withAudienceRejectionReason(resetSubmissionReview(items, value), value))
     }
     setStatus(value as typeof status)
   }
@@ -459,7 +462,7 @@ function ReviewDialog({ target, creator, payments, metrics, open, onOpenChange, 
                 <SubmissionPayoutSummary totalCents={Number.isFinite(payoutTotalCents) ? payoutTotalCents : null} payments={submissionPayments} />
                 {existingPayment ? <div className="mt-5 border-t border-zinc-100 pt-5"><p className="text-sm font-semibold">{existingPayment.payoutRequestId ? 'Included in requested bundle' : 'Payment scheduled'}</p><p className="mt-1 text-sm text-zinc-500">{formatMoney(existingPayment.amountCents, existingPayment.currency)} · {statusLabel(existingPayment.status)}</p>{existingPayment.payoutRequestId ? <Link href="/admin/payments" className="mt-2 inline-block text-xs text-[#007aff]">Review and record the complete bundle in Payments →</Link> : null}</div> : creator?.bundledPayouts ? <p className="mt-5 text-xs text-zinc-500">Save the review as usual. The creator can request these earnings from Money when ready.</p> : <CreatePayment submission={target.item} payments={submissionPayments} totalCents={payoutTotalCents} unsavedAdjustment={Boolean(adjustmentError) || (amount.trim() ? payoutTotalCents !== target.item.approvedAmountCents : target.item.approvedAmountCents != null && target.item.approvedAmountCents !== calculatedTotalCents)} selection={adminPayoutSelection} onCreated={onSaved} />}
               </Tabs.Content>
-              <Tabs.Content forceMount value="attribution" className="outline-none data-[state=inactive]:hidden"><AttributionEditor submission={target.item} metrics={metrics.find(item => item.submissionId === target.item.id)} onSaved={onRefresh} /></Tabs.Content>
+              <Tabs.Content forceMount value="attribution" className="outline-none data-[state=inactive]:hidden"><AttributionEvidence submission={target.item} metrics={metrics.find(item => item.submissionId === target.item.id)} /></Tabs.Content>
               <Tabs.Content value="messages" className="outline-none"><SubmissionConversation submissionId={target.item.id} viewerRole="team" className="h-[min(50dvh,440px)] min-h-[280px]" /></Tabs.Content>
             </div>
             {tab === 'earnings' ? <div className="mt-5 flex shrink-0 items-center justify-between gap-3 border-t border-zinc-100 pt-4"><p className="text-xs text-zinc-500">{reviewError || (status === 'rejected' ? `${reviewChecklist.filter(item => !item.met).length} rejection reasons selected` : adminViewCountThreshold ? `${reviewChecklist.filter(item => item.met).length}/${reviewChecklist.length} requirements met` : 'Set verified views in Earnings before saving.')}</p><Button className="shrink-0 rounded-full" onClick={() => void save()} disabled={saving || !adminViewCountThreshold || Boolean(reviewError)}>{saving ? <Loader2 className="animate-spin" /> : <ShieldCheck />}{saving ? 'Saving…' : status === 'rejected' ? 'Save rejection' : status === 'approved' && reviewChecklist.some(item => !item.met) ? 'Approve with exceptions' : 'Save review'}</Button></div> : null}
@@ -528,29 +531,9 @@ function AdminSubmissionEvidence({ submission }: { submission: AdminSubmission }
   return null
 }
 
-function AttributionEditor({ submission, metrics, onSaved }: { submission: AdminSubmission; metrics?: AdminAttributionMetrics; onSaved: () => Promise<void> }) {
-  const [values, setValues] = useState({ qualifiedViews: metrics?.qualifiedViews || 0, linkClicks: metrics?.linkClicks || 0, installs: metrics?.installs || 0, firstTimePaidCustomers: metrics?.firstTimePaidCustomers || 0 })
-  const [postedAt, setPostedAt] = useState(metrics?.postedAt?.slice(0, 10) || '')
-  const [saving, setSaving] = useState(false)
-  async function saveMetrics() {
-    if (values.linkClicks > values.qualifiedViews) return toast.error('Link clicks cannot exceed qualified views')
-    if (values.installs > values.linkClicks) return toast.error('Installs cannot exceed link clicks')
-    if (values.firstTimePaidCustomers > values.installs) return toast.error('Paid customers cannot exceed installs')
-    setSaving(true)
-    try {
-      await apiPatch('/api/admin/creator/metrics', { submissionId: submission.id, ...values, postedAt: postedAt ? new Date(`${postedAt}T00:00:00Z`).toISOString() : null })
-      toast.success('Attribution metrics updated')
-      await onSaved()
-    } catch (error) {
-      toast.error(error instanceof ApiClientError ? error.message : 'Could not update attribution metrics')
-    } finally {
-      setSaving(false)
-    }
-  }
-  return <div className="mt-6"><div className="flex items-center justify-between gap-3"><div><p className="text-sm font-semibold">Performance & attribution</p><p className="mt-1 text-xs leading-5 text-zinc-500">Cumulative metrics for this video, entered by an admin. Use unique attributable events and first-time paying customers only.</p></div><Button variant="outline" className="h-9 rounded-xl bg-white" onClick={() => void saveMetrics()} disabled={saving}>{saving ? <Loader2 className="animate-spin" /> : null}{saving ? 'Saving…' : 'Save metrics'}</Button></div><label className="mt-4 grid gap-2 text-xs font-medium text-zinc-600">Video posted on<input type="date" value={postedAt} onChange={(event) => setPostedAt(event.target.value)} className="h-10 w-full rounded-xl border border-zinc-200 bg-white px-3 sm:w-48" /></label><p className="mt-3 text-xs text-zinc-500">{postedAt ? `Cumulative attribution since ${formatDate(`${postedAt}T00:00:00Z`)}.` : 'Enter the posting date to identify the attribution period.'} Submitted {formatDate(submission.createdAt)}{metrics ? ` · Metrics updated ${formatDate(metrics.updatedAt)}` : ' · No attribution metrics recorded yet'}.</p><div className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-4"><MetricInput label="Qualified views" value={values.qualifiedViews} onChange={(qualifiedViews) => setValues((current) => ({ ...current, qualifiedViews }))} /><MetricInput label="Link clicks" value={values.linkClicks} onChange={(linkClicks) => setValues((current) => ({ ...current, linkClicks }))} /><MetricInput label="Installs" value={values.installs} onChange={(installs) => setValues((current) => ({ ...current, installs }))} /><MetricInput label="First-time paid" value={values.firstTimePaidCustomers} onChange={(firstTimePaidCustomers) => setValues((current) => ({ ...current, firstTimePaidCustomers }))} /></div></div>
+function AttributionEvidence({ submission, metrics }: { submission: AdminSubmission; metrics?: AdminAttributionMetrics }) {
+  return <div className="mt-6 space-y-3 text-sm leading-6 text-zinc-500"><p>Clicks and revenue are derived from referral records and verified billing. Open Economics for post-level attribution and unmatched payment reasons.</p><p>Submitted {formatDate(submission.createdAt)}. {metrics ? `Historical manual metrics were last updated ${formatDate(metrics.updatedAt)}; they are retained for reference and excluded from live economics.` : 'No historical manual metrics.'}</p><Link className="inline-flex min-h-11 items-center font-medium text-sky-700 underline" href="/admin/economics">Open automatic economics</Link></div>
 }
-
-function MetricInput({ label, value, onChange }: { label: string; value: number; onChange: (value: number) => void }) { return <label className="grid gap-1.5"><span className="text-[11px] font-medium text-zinc-500">{label}</span><input type="number" min="0" step="1" value={value} onChange={(event) => onChange(Math.max(0, Math.round(Number(event.target.value) || 0)))} className="h-10 min-w-0 rounded-xl border border-zinc-200 bg-white px-3 text-sm outline-none focus:border-zinc-400 focus:ring-4 focus:ring-zinc-100" /></label> }
 
 type AdminPayoutSelection = {
   viewCountThreshold: number

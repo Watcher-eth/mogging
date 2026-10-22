@@ -45,12 +45,11 @@ export async function apiPatch<T>(path: string, body?: unknown, init?: RequestIn
 }
 
 export async function apiRequest<T>(path: string, init?: RequestInit) {
+  const headers = new Headers(init?.headers)
+  if (!headers.has('Content-Type')) headers.set('Content-Type', 'application/json')
   const response = await fetch(path, {
-    headers: {
-      'Content-Type': 'application/json',
-      ...init?.headers,
-    },
     ...init,
+    headers,
   })
   const payload = await response.json().catch(() => null) as ApiEnvelope<T> | ApiErrorEnvelope | null
 

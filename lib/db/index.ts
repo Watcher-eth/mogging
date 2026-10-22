@@ -13,6 +13,8 @@ const client =
   postgres(env.DATABASE_URL, {
     max: 10,
     prepare: false,
+    // Schema timestamps are UTC without timezone; make database defaults match Date encoding.
+    connection: { TimeZone: 'UTC' },
   })
 
 if (process.env.NODE_ENV !== 'production') {

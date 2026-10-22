@@ -20,6 +20,8 @@ const monetaryBillingEvent = sql`(
   or (provider = 'revenuecat' and event_name in ('subscription_started','subscription_renewed','trial_converted','one_time_purchase','refund_reversed','subscription_refunded'))
 )`
 
+const contextFields = ['appsflyer_id','creator_click_id','creator_tracking_link_id','creator_first_tracking_link_id','flow_id','attempt_id','report_id','evaluation_id']
+
 const subscriptionLifecycleEvents = [
   'subscription_started', 'trial_started', 'trial_converted', 'invoice_paid', 'subscription_renewed',
   'cancellation_scheduled', 'subscription_pause_scheduled', 'subscription_expired', 'subscription_refunded',
@@ -82,13 +84,15 @@ export function analyticsQuery(filters: AnalyticsFilters, now: Date) {
   // A default plan can be purchased without an explicit plan-selection event.
   const paywall = funnel('paywall', ['paywall_viewed', 'purchase_started', 'purchase_completed'], sql`platform in ('ios','android')`)
   const web = funnel('web', ['page_viewed', 'app_store_redirected'], sql`platform = 'web' and properties->>'path' = '/'`)
+  const contextDefinitions = sql.join(contextFields.map(field => sql`(${field}::text)`), sql`,`)
   const rows = (name: string) => sql`coalesce((select json_agg(r) from ${sql.identifier(name)} r), '[]'::json)`
   const referrer = sql`coalesce(nullif(properties->>'first_referrer_host',''),nullif(properties->>'referrer_host',''))`
   const acquisitionSource = sql`coalesce(nullif(properties->>'creator_first_tracking_link_id',''),
     nullif(properties->>'first_utm_source',''), nullif(properties->>'utm_source',''),
     case when ${referrer} !~* ${excludedAcquisitionHost} then ${referrer} end)`
   return sql`with ${audienceCTEs()}, scoped_events as materialized (
-      select a.*, ${eventAudience('a')} as audience,
+      select a.event_name, a.occurred_at, a.account_id, a.platform, a.app_version, a.properties,
+        a.session_id, a.source, a.schema_version, a.received_at, ${eventAudience('a')} as audience,
         coalesce('install:' || mobile_install_id, 'anonymous:' || anonymous_id, 'account:' || account_id) as actor
       from analytics_events a where a.platform in ('web','ios','android')
         and a.event_name !~ '^(battle|leaderboard)_'
@@ -101,7 +105,7 @@ export function analyticsQuery(filters: AnalyticsFilters, now: Date) {
       from scoped_events group by audience order by audience
     ), e as materialized (
       select event_name, occurred_at, account_id, platform, app_version, properties, session_id, source, schema_version, received_at,
-        coalesce('install:' || mobile_install_id, 'anonymous:' || anonymous_id, 'account:' || account_id) as actor
+        actor
       from scoped_events where audience = 'customer'
         and event_name <> 'referral_invite_redeemed'
         and platform in ('web','ios','android')
@@ -164,13 +168,17 @@ export function analyticsQuery(filters: AnalyticsFilters, now: Date) {
         round((percentile_cont(0.9) within group(order by extract(epoch from (received_at-occurred_at))*1000)
           filter(where received_at >= occurred_at))::numeric) as p90_ms
       from reported_events group by 1,2,3 order by events desc limit 100
-    ), dimension_counts as (
-      select case when p.key like '%utm_%' or p.key in ('campaign_id','creative_id','paidMedia','referrer_host') then 'Acquisition' else d.section end as section, e.event_name as event, p.key as dimension, p.value, count(*) as events, count(distinct e.actor) as actors
+    ), dimension_actor_counts as (
+      -- Hash repeated observations per actor before counting distinct devices.
+      select case when p.key like '%utm_%' or p.key in ('campaign_id','creative_id','paidMedia','referrer_host') then 'Acquisition' else d.section end as section, e.event_name as event, p.key as dimension, p.value, e.actor, count(*) as events
       from reported_events e join event_definitions d on d.event = e.event_name
         cross join lateral jsonb_each_text(e.properties) p
       where p.key in (${sql.join(trackingDimensions.map(key => sql`${key}`), sql`,`)}) and p.value is not null
         and jsonb_typeof(e.properties->p.key) in ('string','number','boolean')
-      group by 1,2,3,4
+      group by 1,2,3,4,5
+    ), dimension_counts as (
+      select section,event,dimension,value,sum(events)::bigint as events,count(actor) as actors
+      from dimension_actor_counts group by 1,2,3,4
     ), dimensions as (
       select section, event, dimension, value, events, actors from (
         select *, row_number() over (partition by section, dimension order by events desc, event, value) as rank
@@ -180,7 +188,7 @@ export function analyticsQuery(filters: AnalyticsFilters, now: Date) {
       -- Reduce to scalar values before grouping; sorting full event properties
       -- once per coverage field spills hundreds of megabytes on real windows.
       select f.field, e.properties->>f.field as value, e.actor
-      from e cross join (values ('appsflyer_id'),('creator_click_id'),('creator_tracking_link_id'),('creator_first_tracking_link_id'),('flow_id'),('attempt_id'),('report_id'),('evaluation_id')) f(field)
+      from e cross join (values ${contextDefinitions}) f(field)
       where e.properties->>f.field is not null
     ), context_counts as (
       select field, count(*) filter(where value <> '') as events,
@@ -189,7 +197,7 @@ export function analyticsQuery(filters: AnalyticsFilters, now: Date) {
       from context_observations group by field
     ), context_coverage as (
       select f.field, coalesce(c.events,0) as events, coalesce(c.actors,0) as actors, coalesce(c.unique_ids,0) as unique_ids
-      from (values ('appsflyer_id'),('creator_click_id'),('creator_tracking_link_id'),('creator_first_tracking_link_id'),('flow_id'),('attempt_id'),('report_id'),('evaluation_id')) f(field)
+      from (values ${contextDefinitions}) f(field)
       left join context_counts c using(field) order by f.field
     ), billing_history as materialized (
       select * from subscription_events where environment = 'production' and ${customerAccount(sql`coalesce(account_id,external_user_id)`)}
@@ -666,7 +674,7 @@ export function getAnalyticsDashboard(filters: AnalyticsFilters) {
   const now = new Date()
   const promise = db.transaction(async tx => {
     await tx.execute(sql`set transaction read only`)
-    await tx.execute(sql`set local statement_timeout = '8s'`)
+    await tx.execute(sql`set local statement_timeout = '12s'`)
     // This one-shot report compiles over a thousand JIT functions above the cost threshold.
     await tx.execute(sql`set local jit = off`)
     const [row] = await tx.execute(analyticsQuery(filters, now))

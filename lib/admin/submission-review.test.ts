@@ -1,8 +1,9 @@
 import { beforeEach, expect, mock, test } from 'bun:test'
 import * as schema from '@/lib/db/schema'
-import { getCreatorSubmissionReviewItems } from '@/lib/creator/submission-review'
+import { getCreatorSubmissionReviewItems, TIER_D_AUDIENCE_REJECTION } from '@/lib/creator/submission-review'
 import { defaultCreatorSprintTerms } from '@/lib/creator/sprint-defaults'
 import { sprintReviewItems } from '@/lib/creator/sprints'
+import { TIKTOK_ANCHOR_REQUIREMENT } from '@/lib/creator/post-guidance'
 
 let submission: Record<string, any>
 let writes = 0
@@ -95,6 +96,28 @@ test('a fully unchecked campaign checklist can be approved and stays unchecked',
   expect(await reviewCreatorResource({ ...approval(), reviewChecklist })).toMatchObject({ status: 'approved', approvedAmountCents: 2000, reviewChecklist })
 })
 
+test('an open pre-pause checklist can approve exceptions and a reduced payout', async () => {
+  const terms = defaultCreatorSprintTerms()
+  terms.rules.push(TIKTOK_ANCHOR_REQUIREMENT)
+  submission = { ...submission, sprintId: 'campaign', sprintTerms: terms, analyticsScreenshotUrl: 'https://example.com/evidence.png' }
+  const reviewChecklist = sprintReviewItems(terms, 'custom-video-v1', true).map(({ id }) => ({ id, met: false, note: null }))
+  const saved = await reviewCreatorResource({ ...approval(), reviewChecklist })
+  expect(saved).toMatchObject({ status: 'approved', approvedAmountCents: 2000,
+    reviewChecklist: sprintReviewItems(terms, 'custom-video-v1').map(({ id }) => ({ id, met: false, note: null })),
+  })
+  expect(reviewChecklist.length).toBeGreaterThan(submission.reviewChecklist.length)
+})
+
+test('missing current, duplicate, or unknown review items cannot silently pass approval', async () => {
+  const terms = defaultCreatorSprintTerms()
+  submission = { ...submission, sprintId: 'campaign', sprintTerms: terms, analyticsScreenshotUrl: 'https://example.com/evidence.png' }
+  const items = sprintReviewItems(terms, 'custom-video-v1').map(({ id }) => ({ id, met: false, note: null }))
+  for (const reviewChecklist of [items.slice(1), [...items, items[0]], [...items, { id: 'unknown', met: false, note: null }]]) {
+    await expect(reviewCreatorResource({ ...approval(), reviewChecklist })).rejects.toThrow('Refresh the page and reopen')
+  }
+  expect(writes).toBe(0)
+})
+
 test('scheduled transfers block payout changes, including reset to the calculated amount', async () => {
   submission.approvedAmountCents = 2000
   priorPayments.push({ status: 'pending', amountCents: 700 })
@@ -111,3 +134,21 @@ test('scheduling a legacy payment uses the saved adjustment, not the calculated 
   expect(await createCreatorPayment({ submissionId: 'submission', adminViewCountThreshold: 40000, adminUsAudiencePercent: 30, status: 'pending' })).toMatchObject({ amountCents: 2000 })
   await expect(createCreatorPayment({ submissionId: 'submission', adminViewCountThreshold: 100000, adminUsAudiencePercent: 30, status: 'pending' })).rejects.toThrow('Save the updated payout review')
 })
+
+ test('Tier D audience alone can explain a campaign rejection and persists for the creator', async () => {
+  const terms = defaultCreatorSprintTerms()
+  submission = { ...submission, sprintId: 'campaign', sprintTerms: terms }
+  const reviewChecklist = [
+    ...sprintReviewItems(terms, 'custom-video-v1').map(({ id }) => ({ id, met: true, note: null })),
+    { id: TIER_D_AUDIENCE_REJECTION.id, met: false, note: 'Verified Tier 1 audience: 7.4%.' },
+  ]
+  const saved = await reviewCreatorResource({ ...input(), adminUsAudiencePercent: 7.4, reviewChecklist })
+  expect(saved).toMatchObject({ status: 'rejected', reviewChecklist })
+ })
+ test('legacy submissions also preserve the Tier D audience rejection reason', async () => {
+  const reviewChecklist = [
+    ...results().map(item => ({ ...item, met: true, note: null })),
+    { id: TIER_D_AUDIENCE_REJECTION.id, met: false, note: null },
+  ]
+  expect(await reviewCreatorResource({ ...input(), adminUsAudiencePercent: null, reviewChecklist })).toMatchObject({ status: 'rejected', reviewChecklist })
+ })

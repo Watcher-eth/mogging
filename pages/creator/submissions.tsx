@@ -1,3 +1,4 @@
+import { RegisteredPosts } from '@/components/creator/registered-posts'
 import { SubmissionReviewFeedback } from '@/components/creator/submission-review-feedback'
 import { CREATOR_REREVIEW_GUIDANCE } from '@/lib/creator/post-guidance'
 import { AnimatedDialogPanel } from '@/components/ui/animated-dialog-panel'
@@ -15,7 +16,7 @@ import { SubmissionReviewAnimation } from '@/components/creator/submission-revie
 import type { CreatorDashboard, CreatorPayment, CreatorSubmission } from '@/components/creator/types'
 import type { CreatorPostPreview } from '@/lib/creator/post-preview'
 import { apiGet } from '@/lib/api/client'
-import { mergeCreatorSubmissionReviewResults } from '@/lib/creator/submission-review'
+import { mergeCreatorSubmissionReviewResults, withAudienceRejectionReason } from '@/lib/creator/submission-review'
 import { sprintReviewItems } from '@/lib/creator/sprints'
 import { creatorEarnedCents } from '@/lib/creator/money'
 import { cn } from '@/lib/utils'
@@ -48,6 +49,7 @@ function SubmissionsContent() {
   return (
     <>
       <CreatorHeader eyebrow="History & Payments" title="Submissions" description="Follow every video from review through approval and payout." action={<Button asChild className="h-11 rounded-full px-5"><Link href="/creator/submit">New Submission</Link></Button>} />
+      {data ? <RegisteredPosts data={data} onChange={mutate} /> : null}
       <label className="mb-5 flex items-center gap-3 text-sm font-medium">Status<select className="creator-field max-w-xs" value={filter} onChange={(event) => setFilter(event.target.value as typeof filter)}>{filters.map((item) => <option key={item.value} value={item.value}>{item.label} ({item.value === 'all' ? submissions.length : submissions.filter((submission) => submission.status === item.value).length})</option>)}</select></label>
       {isLoading ? <div className="grid min-h-64 place-items-center"><Loader2 className="size-5 animate-spin text-zinc-400" /></div> : visible.length ? <div className="grid gap-3">{visible.map((submission, index) => <SubmissionCard key={submission.id} submission={submission} payment={paymentBySubmission.get(submission.id)} onClick={() => setSelectedId(submission.id)} style={{ animationDelay: `${Math.min(index * 45, 180)}ms` }} />)}</div> : <EmptyState filtered={filter !== 'all'} />}
       <SubmissionDialog key={selected?.id || "closed"} submission={selected} payment={selected ? paymentBySubmission.get(selected.id) : undefined} payments={selected ? (data?.payments || []).filter(payment => payment.submissionId === selected.id) : []} linkedToApprovedAccount={Boolean(selected?.socialAccountId && accountStatusById.get(selected.socialAccountId) === 'approved')} open={Boolean(selected)} onOpenChange={(open) => { if (!open) setSelectedId(null) }} onUpdateAnalytics={() => { setAnalyticsId(selected!.id); setSelectedId(null) }} />
@@ -150,7 +152,7 @@ function CreatorReviewChecklist({ submission }: { submission: CreatorSubmission 
     : mergeCreatorSubmissionReviewResults(submission.formatId, submission.reviewChecklist)
   // Missing entries in historical checklists were never reviewed; do not invent failures.
   const storedIds = new Set(submission.reviewChecklist?.map(item => item.id) || [])
-  return <SubmissionReviewFeedback items={items.filter(item => storedIds.has(item.id))} status={submission.status} note={submission.reviewNote} />
+  return <SubmissionReviewFeedback items={withAudienceRejectionReason(items, submission.status, submission.reviewChecklist).filter(item => storedIds.has(item.id))} status={submission.status} note={submission.reviewNote} />
 }
 
 function SubmissionEvidence({ submission }: { submission: CreatorSubmission }) {

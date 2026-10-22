@@ -1,7 +1,9 @@
 import Head from 'next/head'
 import Image from 'next/image'
 import Link from 'next/link'
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
+import { useSession } from 'next-auth/react'
+import { trackWebEvent } from '@/lib/analytics/client'
 import * as Avatar from '@radix-ui/react-avatar'
 import type { GetServerSideProps, NextApiRequest, NextApiResponse } from 'next'
 import { ArrowRight, Check, Copy, Sparkles } from 'lucide-react'
@@ -9,6 +11,7 @@ import { Button } from '@/components/ui/button'
 import { MoggingWordmark } from '@/components/brand/mogging-wordmark'
 import { getOrSetAnonymousActorId } from '@/lib/auth/anonymous'
 import { createCreatorAttributionClick, setCreatorAttributionCookie } from '@/lib/creator/attribution'
+import { homepageDestinationCookie } from '@/lib/homepage-routing'
 import { creatorLinkPlatform } from '@/lib/creator/link-routing'
 import { siteUrl } from '@/lib/seo'
 
@@ -21,14 +24,36 @@ type CreatorLinkPageProps = {
   deepLinkUrl: string
   storeUrl: string | null
   webUrl: string
+  clickId: string
+  trackingLinkId: string
 }
 
 export default function CreatorLinkPage(props: CreatorLinkPageProps) {
-  const [copied, setCopied] = useState(false)
+  const [copied, setCopied] = useState<'code' | 'link' | null>(null)
+  const [copyError, setCopyError] = useState(false)
+  const { status } = useSession()
+  const [accountSaved, setAccountSaved] = useState(false)
+  useEffect(() => {
+    if (status !== 'authenticated') return
+    let active = true
+    void fetch('/api/attribution/claim', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: '{}' })
+      .then(response => { if (active) setAccountSaved(response.ok) }).catch(() => undefined)
+    return () => { active = false }
+  }, [status, props.clickId])
+  const eventContext = { creator_tracking_link_id: props.trackingLinkId, creator_click_id: props.clickId, surface: 'creator_landing' }
+  useEffect(() => { trackWebEvent('attribution_diagnostic', { creator_tracking_link_id: props.trackingLinkId, creator_click_id: props.clickId, surface: 'creator_landing', provider: 'mogging', action: 'creator_landing_viewed' }) }, [props.clickId, props.trackingLinkId])
+  async function copyAndInstall() {
+    const signed = new URL(props.url)
+    signed.searchParams.set('attribution_token', new URL(props.deepLinkUrl).searchParams.get('attribution_token') || '')
+    try { await navigator.clipboard.writeText(signed.toString()); setCopied('link') }
+    catch { setCopyError(true); return }
+    trackWebEvent('app_store_redirected', { ...eventContext, destination: 'app_store', placement: 'copy_and_install' })
+    if (props.storeUrl) window.location.assign(props.storeUrl)
+  }
   const title = `${props.creator} invited you to Mogging`
   const description = 'Start your ascent with a personalized plan to improve your looks, build better habits, and track your progress with Mogging.'
   async function copyCode() {
-    try { await navigator.clipboard.writeText(props.code); setCopied(true) } catch { setCopied(false) }
+    try { await navigator.clipboard.writeText(props.code); setCopied('code') } catch { setCopied(null) }
   }
   return <div className="relative isolate min-h-dvh overflow-hidden bg-white text-[#181a1d]">
     <Head>
@@ -73,18 +98,24 @@ export default function CreatorLinkPage(props: CreatorLinkPageProps) {
           <span className="break-all font-mono text-2xl font-medium tracking-tight sm:text-3xl">{props.code}</span>
           {copied ? <Check className="size-5 shrink-0" /> : <Copy className="size-5 shrink-0" />}
         </button>
-        <span role="status" className="sr-only">{copied ? 'Creator code copied' : ''}</span>
+        <span role="status" className="sr-only">{copied === 'code' ? 'Creator code copied' : copied === 'link' ? 'Referral link copied' : ''}</span>
       </div>
-      {props.storeUrl ? <Button asChild className="mt-6 h-14 w-full rounded-full bg-[#00A8EF] text-base font-medium text-white hover:bg-[#0099da]"><a href={props.storeUrl}>Get your Mogging Scan now<ArrowRight /></a></Button> : <Button asChild className="mt-6 h-14 w-full rounded-full bg-[#00A8EF] text-base text-white"><a href={props.webUrl}>Get your Mogging Scan now<ArrowRight /></a></Button>}
+      {props.storeUrl ? <>
+        <Button type="button" onClick={() => void copyAndInstall()} className="mt-6 h-14 w-full rounded-full bg-[#00A8EF] text-base font-medium text-white hover:bg-[#0099da]">Copy referral and install<ArrowRight /></Button>
+        <p className="mt-3 text-xs leading-5 text-[#73777d]">After installing, paste this link in the app’s creator field to recover your referral.</p>
+        {copyError ? <p role="alert" className="mt-2 text-xs text-red-700">Copying is unavailable in this browser. Keep your creator code or reopen this link after installing.</p> : null}
+        <a href={props.storeUrl} onClick={() => trackWebEvent('app_store_redirected', { ...eventContext, destination: 'app_store', placement: 'direct_install' })} className="mt-3 inline-flex min-h-11 items-center text-sm underline underline-offset-4">Install without copying</a>
+      </> : <Button asChild className="mt-6 h-14 w-full rounded-full bg-[#00A8EF] text-base text-white"><a href={props.webUrl}>Get your Mogging Scan now<ArrowRight /></a></Button>}
+      <Link href={`/r/${encodeURIComponent(props.code)}?login=1&next=${encodeURIComponent(`/r/${props.code}?fallback=1`)}`} className="mt-3 inline-flex min-h-11 items-center text-sm font-medium text-[#00A8EF]">{accountSaved ? 'Referral saved to your account' : 'Save my referral to my account'}</Link>
       <a href={props.deepLinkUrl} className="mt-4 inline-flex min-h-11 items-center gap-1.5 text-sm font-medium">Already have the app? Open Mogging<ArrowRight className="size-4" /></a>
       <p className="mt-3 max-w-[360px] text-xs leading-5 text-[#93979d]">After installing, reopen this link or enter this creator code in the app before purchasing so your creator gets credit.</p>
-      {props.storeUrl ? <a href={props.webUrl} className="mt-3 inline-flex min-h-11 items-center text-xs text-[#73777d] underline underline-offset-4">Continue on the website</a> : null}
+      {props.storeUrl ? <a href={props.webUrl} onClick={() => { document.cookie = homepageDestinationCookie('web', location.protocol === 'https:') }} className="mt-3 inline-flex min-h-11 items-center text-xs text-[#73777d] underline underline-offset-4">Continue on the website</a> : null}
       <nav aria-label="Legal" className="mt-8 flex gap-5 text-xs text-[#93979d]"><Link href="/privacy">Privacy</Link><Link href="/tos">Terms</Link></nav>
     </section>
   </div>
 }
 
-export const getServerSideProps: GetServerSideProps<CreatorLinkPageProps> = async ({ params, req, res }) => {
+export const getServerSideProps: GetServerSideProps<CreatorLinkPageProps> = async ({ params, query, req, res }) => {
   // Each response contains a visitor-specific signed token. Never cache or leak it in referrers.
   res.setHeader('Cache-Control', 'private, no-store')
   res.setHeader('Referrer-Policy', 'no-referrer')
@@ -94,6 +125,9 @@ export const getServerSideProps: GetServerSideProps<CreatorLinkPageProps> = asyn
   const anonymousActorId = getOrSetAnonymousActorId(req as NextApiRequest, res as NextApiResponse)
   const attribution = await createCreatorAttributionClick({
     slug,
+    source: 'browser',
+    resumeToken: typeof query?.attribution_token === 'string' ? query.attribution_token : null,
+    placement: typeof query?.placement === 'string' && ['bio', 'story', 'qr', 'caption', 'video'].includes(query.placement) ? query.placement : null,
     anonymousActorId,
     referrer: req.headers.referer || null,
     userAgent,
@@ -116,6 +150,8 @@ export const getServerSideProps: GetServerSideProps<CreatorLinkPageProps> = asyn
 
   return {
     props: {
+      clickId: attribution.click.id,
+      trackingLinkId: attribution.link.id,
       creator: account.displayName || account.handle || 'Your creator',
       avatarUrl: account.avatarUrl,
       url: `${siteUrl}/r/${slug}`,

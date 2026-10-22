@@ -81,6 +81,25 @@ try {
     const empty=await query('android')
     assert.equal(empty.featureUsage!.length,0)
     assert.ok(empty.featureRetention!.every(row=>Number(row.eligible)===0))
+    // Repeated events and events without a device still count as observations,
+    // while distinct-device counts exclude missing actors. Empty IDs are not missing fields.
+    const coverage = { report_id:'coverage-report', appsflyer_id:'af-one', creator_click_id:'', category:'coverage-category' }
+    await put('learner','report_viewed','2040-01-12',coverage)
+    await put('learner','report_viewed','2040-01-13',coverage)
+    await tx`insert into analytics_events(id,event_id,event_name,platform,environment,properties,occurred_at)
+      values (${crypto.randomUUID()},${crypto.randomUUID()},'report_viewed','ios','production',${tx.json(coverage)},'2040-01-14')`
+    const covered = await query()
+    const field = (name:string) => covered.contextCoverage.find(row=>row.field===name)!
+    assert.equal(Number(field('appsflyer_id').events),3)
+    assert.equal(Number(field('appsflyer_id').actors),1)
+    assert.equal(Number(field('appsflyer_id').unique_ids),1)
+    assert.equal(Number(field('creator_click_id').events),0)
+    assert.equal(Number(field('creator_click_id').actors),0)
+    assert.equal(Number(field('creator_click_id').unique_ids),1)
+    assert.equal(Number(field('evaluation_id').unique_ids),0)
+    const dimension = covered.dimensions.find(row=>row.event==='report_viewed'&&row.dimension==='category'&&row.value==='coverage-category')!
+    assert.equal(Number(dimension.events),3)
+    assert.equal(Number(dimension.actors),1)
     assert.ok(performance.now()-start<8000,'query remains within dashboard deadline')
     console.log('PASS: feature usage, completion deduplication, foreground durations, D1/D7/D30 maturity, earlier history, meaningful post-scan return, anonymous/internal/sandbox exclusion, retired surfaces, platform filtering')
     throw new Error('ROLLBACK_FIXTURES')

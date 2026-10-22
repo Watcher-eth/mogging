@@ -6,8 +6,17 @@ import { db, schema } from '@/lib/db'
 import type { NextApiRequest, NextApiResponse } from 'next'
 import { authOptions } from '@/lib/auth/options'
 import { creditReferralSignup, REFERRAL_COOKIE } from '@/lib/referrals/service'
+import { googleMobileCallback } from '@/lib/auth/google-mobile'
+import { handleApiError } from '@/lib/api/http'
 
 function handler(req: NextApiRequest, res: NextApiResponse) {
+  if (req.method === 'GET' && req.query.nextauth?.[0] === 'callback' && req.query.nextauth?.[1] === 'google'
+    && typeof req.query.state === 'string' && req.query.state.startsWith('mob1.')) {
+    res.setHeader('Cache-Control', 'private, no-store')
+    res.setHeader('Referrer-Policy', 'no-referrer')
+    try { return res.redirect(302, googleMobileCallback(req.query)!) }
+    catch (error) { return handleApiError(error, res) }
+  }
   return authDiagnosticContext.run({ req, res }, () => NextAuth(req, res, {
     ...authOptions,
     pages: { ...authOptions.pages, error: '/auth/error',

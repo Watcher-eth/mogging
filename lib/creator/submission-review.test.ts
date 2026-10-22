@@ -7,7 +7,7 @@ import {
   mergeCreatorSubmissionReviewResults,
   validateCreatorSubmissionReviewResults,
   creatorSubmissionReviewResultsSchema,
-  resetSubmissionReview, submissionReviewError, submissionRejectionLabel,
+  resetSubmissionReview, submissionReviewError, submissionRejectionLabel, withAudienceRejectionReason, TIER_D_AUDIENCE_REJECTION,
 } from './submission-review'
 
 describe('creator submission review checklist', () => {
@@ -108,3 +108,16 @@ test('Custom and General expose identical penalty and forbidden-content groups',
   expect(groups.forbidden.some(rule => rule.includes('Tom Welling'))).toBe(true)
   expect(groups.penalties.some(rule => rule.includes('movie edits'))).toBe(true)
 })
+
+ test('audience reason appears only for rejection and is not selected by default', () => {
+  const base = mergeCreatorSubmissionReviewResults('custom-video-v1', [])
+  const items = withAudienceRejectionReason(base, 'rejected')
+  const audience = items.at(-1)!
+  expect(audience).toMatchObject({ id: TIER_D_AUDIENCE_REJECTION.id, met: true, note: null })
+  expect(submissionRejectionLabel(audience)).toContain('below 10%')
+  expect(withAudienceRejectionReason(items, 'approved')).toEqual(base)
+  expect(withAudienceRejectionReason(base, 'rejected', [{ ...audience, met: false, note: '7.4% verified' }]).at(-1)).toMatchObject({ met: false, note: '7.4% verified' })
+  expect(validateCreatorSubmissionReviewResults('custom-video-v1', items)).toBe(true)
+  expect(validateCreatorSubmissionReviewResults('custom-video-v1', [...items, audience])).toBe(false)
+  expect(validateCreatorSubmissionReviewResults('unknown', [audience])).toBe(false)
+ })

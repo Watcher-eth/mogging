@@ -1,4 +1,4 @@
-import { submissionReviewError } from '@/lib/creator/submission-review'
+import { submissionReviewError, TIER_D_AUDIENCE_REJECTION } from '@/lib/creator/submission-review'
 import { rethrowCreatorPostConflict } from '@/lib/creator/post-identity'
 import { normalizePaymentReceipt, paymentReceiptSchema } from './payment-receipt'
 import { remainingCreatorPaymentCents } from '@/lib/creator/money'
@@ -8,6 +8,7 @@ import { and, desc, eq, sql } from 'drizzle-orm'
 import { z } from 'zod'
 import { ApiError } from '@/lib/api/http'
 import { db, schema } from '@/lib/db'
+import { getCreatorCoverage } from './creator-coverage'
 import { getCreatorAttributionReport } from '@/lib/creator/attribution'
 import {
   creatorSubmissionReviewResultsSchema,
@@ -60,19 +61,6 @@ export const creatorAdminPaymentSchema = z.object({
     receiptImage: paymentReceiptSchema,
 })
 
-export const creatorAttributionMetricsSchema = z.object({
-  postedAt: z.string().datetime().refine((value) => Date.parse(value) <= Date.now(), 'Posting date cannot be in the future').optional().nullable(),
-  submissionId: z.string().min(1),
-  qualifiedViews: z.number().int().nonnegative().max(2_000_000_000),
-  linkClicks: z.number().int().nonnegative().max(2_000_000_000),
-  installs: z.number().int().nonnegative().max(2_000_000_000),
-  firstTimePaidCustomers: z.number().int().nonnegative().max(2_000_000_000),
-}).superRefine((value, ctx) => {
-  if (value.linkClicks > value.qualifiedViews) ctx.addIssue({ code: 'custom', path: ['linkClicks'], message: 'Link clicks cannot exceed qualified views' })
-  if (value.installs > value.linkClicks) ctx.addIssue({ code: 'custom', path: ['installs'], message: 'Installs cannot exceed link clicks' })
-  if (value.firstTimePaidCustomers > value.installs) ctx.addIssue({ code: 'custom', path: ['firstTimePaidCustomers'], message: 'Paid customers cannot exceed installs' })
-})
-
 export const creatorProgramSettingsSchema = z.object({
   monthlySubscriptionCents: z.number().int().positive().max(1_000_000),
   ninetyDayContributionMarginCents: z.number().int().nonnegative().max(10_000_000),
@@ -85,7 +73,7 @@ export type CreatorAdminReviewInput = z.infer<typeof creatorAdminReviewSchema>
 export type CreatorAdminPaymentInput = z.infer<typeof creatorAdminPaymentSchema>
 
 export async function getCreatorAdminDashboard() {
-  const [creatorRows, accountRows, submissions, payments, attributionMetrics, settingsRecord, accountAttributionRows, payoutRequests] = await Promise.all([
+  const [creatorRows, accountRows, submissions, payments, attributionMetrics, settingsRecord, accountAttributionRows, payoutRequests, creatorCoverage] = await Promise.all([
     db
       .select({
         id: schema.creatorProfiles.id,
@@ -176,6 +164,7 @@ export async function getCreatorAdminDashboard() {
       .innerJoin(schema.creatorProfiles, eq(schema.creatorSubmissions.creatorProfileId, schema.creatorProfiles.id))
       .innerJoin(schema.users, eq(schema.creatorProfiles.userId, schema.users.id))
       .leftJoin(schema.creatorSocialAccounts, eq(schema.creatorSubmissions.socialAccountId, schema.creatorSocialAccounts.id))
+      .where(eq(schema.creatorSubmissions.isDraft, false))
       .orderBy(desc(schema.creatorSubmissions.createdAt)),
     db
       .select({
@@ -207,6 +196,7 @@ export async function getCreatorAdminDashboard() {
     }),
     getCreatorAttributionReport(),
     db.query.creatorPayoutRequests.findMany({ where: eq(schema.creatorPayoutRequests.status, 'pending'), orderBy: [desc(schema.creatorPayoutRequests.requestedAt)] }),
+    getCreatorCoverage(),
   ])
 
   const attributionByAccountId = new Map(accountAttributionRows.map((report) => [report.socialAccountId, report]))
@@ -241,6 +231,7 @@ export async function getCreatorAdminDashboard() {
     payments,
     payoutRequests,
     attributionMetrics,
+    creatorCoverage,
     settings,
     rules: {
       compensationCapRate: CREATOR_COMPENSATION_CAP_RATE,
@@ -291,28 +282,6 @@ function addAttributionReports(left: ReturnType<typeof emptyAttributionReport>, 
   return total
 }
 
-export async function saveCreatorAttributionMetrics(input: z.infer<typeof creatorAttributionMetricsSchema>) {
-  const submission = await db.query.creatorSubmissions.findFirst({
-    where: eq(schema.creatorSubmissions.id, input.submissionId),
-  })
-  if (!submission) throw new ApiError(404, 'Creator submission not found')
-
-  const values = {
-    submissionId: input.submissionId,
-    ...(input.postedAt !== undefined ? { postedAt: input.postedAt ? new Date(input.postedAt) : null } : {}),
-    qualifiedViews: input.qualifiedViews,
-    linkClicks: input.linkClicks,
-    installs: input.installs,
-    firstTimePaidCustomers: input.firstTimePaidCustomers,
-    updatedAt: new Date(),
-  }
-  const [metrics] = await db.insert(schema.creatorAttributionMetrics).values(values).onConflictDoUpdate({
-    target: schema.creatorAttributionMetrics.submissionId,
-    set: values,
-  }).returning()
-  return metrics
-}
-
 export async function saveCreatorProgramSettings(input: z.infer<typeof creatorProgramSettingsSchema>) {
   const values = { id: 'default', ...input, updatedAt: new Date() }
   const [settings] = await db.insert(schema.creatorProgramSettings).values(values).onConflictDoUpdate({
@@ -345,6 +314,7 @@ export async function reviewCreatorResource(input: CreatorAdminReviewInput, revi
     if (current?.sprintId && current.sprintTerms) return reviewSprintSubmission(input, reviewerId).catch(rethrowCreatorPostConflict)
     return db.transaction(async tx => {
       const [submission] = await tx.select().from(schema.creatorSubmissions).where(eq(schema.creatorSubmissions.id, input.id)).for('update')
+      if (submission?.isDraft) throw new ApiError(409, 'This post has not been submitted for review')
       if (!submission) throw new ApiError(404, 'Creator submission not found')
 
       if (!isCreatorViewThreshold(input.adminViewCountThreshold) || (input.adminUsAudiencePercent !== null && !isCreatorTier1AudienceTier(input.adminUsAudiencePercent))) throw new ApiError(400, 'Choose supported historical payout values')
@@ -469,6 +439,7 @@ function reviewedPayoutCents(input: Extract<CreatorAdminReviewInput, { resource:
 async function reviewSprintSubmission(input: Extract<CreatorAdminReviewInput, { resource: 'submission' }>, reviewerId?: string) {
   return db.transaction(async tx => {
     const [submission] = await tx.select().from(schema.creatorSubmissions).where(eq(schema.creatorSubmissions.id, input.id)).for('update')
+    if (submission?.isDraft) throw new ApiError(409, 'Submit this post for review before approving payment')
     if (!submission?.sprintId || !submission.sprintTerms) throw new ApiError(404, 'Sprint submission not found')
     const payments = await tx.query.creatorPayments.findMany({ where: eq(schema.creatorPayments.submissionId, submission.id) })
     if (payments.some(payment => ['pending', 'processing'].includes(payment.status))) throw new ApiError(409, 'Wait for the scheduled payment before reviewing new earnings')
@@ -476,8 +447,16 @@ async function reviewSprintSubmission(input: Extract<CreatorAdminReviewInput, { 
     if (input.status === 'approved' && !submission.analyticsScreenshotUrl) throw new ApiError(409, 'Fresh analytics evidence is required before approval')
     if (input.status === 'paid') throw new ApiError(400, 'Mark the payment sent to complete a cashout')
     const expected = sprintReviewItems(submission.sprintTerms, submission.formatId || '')
-    const ids = new Set(input.reviewChecklist.map(item => item.id))
-    if (!expected.length || ids.size !== expected.length || input.reviewChecklist.length !== expected.length || expected.some(item => !ids.has(item.id))) throw new ApiError(400, 'Complete the sprint review checklist')
+    if (expected.length && input.reviewChecklist.some(item => item.id === TIER_D_AUDIENCE_REJECTION.id)) expected.push(TIER_D_AUDIENCE_REJECTION)
+    // An open admin tab may still send rules retired since the modal was loaded.
+    // Discard only known retired rules; preserve every current result, including unmet ones.
+    const currentIds = new Set(expected.map(item => item.id))
+    const retiredIds = new Set(sprintReviewItems(submission.sprintTerms, submission.formatId || '', true).filter(item => !currentIds.has(item.id)).map(item => item.id))
+    const reviewChecklist = input.reviewChecklist.filter(item => !retiredIds.has(item.id))
+    const ids = new Set(reviewChecklist.map(item => item.id))
+    if (!expected.length || ids.size !== expected.length || reviewChecklist.length !== expected.length || expected.some(item => !ids.has(item.id))) throw new ApiError(400, 'The review requirements changed. Refresh the page and reopen the submission. Unmet requirements can stay unchecked.')
+    const reviewError = submissionReviewError(input.status, reviewChecklist)
+    if (reviewError) throw new ApiError(400, reviewError)
     const calculated = sprintPayoutCents(submission.sprintTerms, input.adminViewCountThreshold, input.adminUsAudiencePercent)
     const preservedCents = submission.reviewRequestedAt || payments.some(payment => payment.status === 'paid') ? submission.approvedAmountCents || 0 : 0
     const amountCents = input.status === 'approved' ? reviewedPayoutCents(input, input.approvedAmountCents == null ? Math.max(preservedCents, calculated) : calculated, payments) : preservedCents || null
@@ -488,7 +467,7 @@ async function reviewSprintSubmission(input: Extract<CreatorAdminReviewInput, { 
     const [used] = await tx.select({ cents: sql<number>`coalesce(sum(${schema.creatorSubmissions.approvedAmountCents}),0)::float8` }).from(schema.creatorSubmissions).where(eq(schema.creatorSubmissions.sprintId, sprint.id))
     const previous = submission.approvedAmountCents || 0
     if (used.cents - previous + (amountCents || 0) > sprint.budgetCents) throw new ApiError(409, 'This approval would exceed the sprint budget')
-    const [record] = await tx.update(schema.creatorSubmissions).set({ status: input.status, reviewRequestedAt: ['approved', 'rejected'].includes(input.status) ? null : submission.reviewRequestedAt, approvedAmountCents: amountCents, adminViewCountThreshold: input.adminViewCountThreshold, adminUsAudiencePercent: input.adminUsAudiencePercent, reviewChecklist: input.reviewChecklist.map(item => ({ ...item, note: item.note || null })), reviewNote: input.reviewNote || null, updatedAt: new Date() }).where(eq(schema.creatorSubmissions.id, submission.id)).returning()
+    const [record] = await tx.update(schema.creatorSubmissions).set({ status: input.status, reviewRequestedAt: ['approved', 'rejected'].includes(input.status) ? null : submission.reviewRequestedAt, approvedAmountCents: amountCents, adminViewCountThreshold: input.adminViewCountThreshold, adminUsAudiencePercent: input.adminUsAudiencePercent, reviewChecklist: reviewChecklist.map(item => ({ ...item, note: item.note || null })), reviewNote: input.reviewNote || null, updatedAt: new Date() }).where(eq(schema.creatorSubmissions.id, submission.id)).returning()
     await appendReviewMessage(tx, submission, input.reviewNote, reviewerId)
     return record
   })

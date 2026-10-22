@@ -18,7 +18,7 @@ function route(file: string, overrides: Record<string, unknown> = {}) {
     confirmCheckoutForAccount: async () => ({ mobileInstallId: 'fixture-install', source: 'web_analysis' }),
     createPaymentHandoff: async () => ({ token: 'mobile-token' }),
     getProductConfig: () => ({ mode: 'payment' }), getCheckoutLineItem: () => ({}),
-    resolveCreatorAttribution: async () => null, stripeAttributionMetadata: () => ({}),
+    resolveCreatorAttribution: async () => null, getAccountCreatorAttribution: async () => null, stripeAttributionMetadata: () => ({}),
     parseLandingAssignment: () => null, landingProperties: () => ({}), LANDING_COOKIE: 'landing',
     recordCreatorCheckout: async () => {}, recordServerEvent: async () => {},
     getStripe: () => ({ checkout: { sessions: { create: async (input: any) => { calls.push(input); return { id: 'cs_live_fixture', url: 'https://checkout.stripe.com/fixture' } } } } }),

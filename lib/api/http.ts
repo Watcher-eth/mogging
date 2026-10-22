@@ -10,6 +10,8 @@ type ApiErrorCode =
   | 'method_not_allowed'
   | 'rate_limited'
   | 'provider_error'
+  | 'image_storage_unavailable'
+  | 'evaluation_processing'
   | 'internal_error'
 
 export class ApiError extends Error {

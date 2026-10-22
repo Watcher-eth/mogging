@@ -9,7 +9,7 @@ import { ApiError, handleApiError, json, methodNotAllowed, parseBody } from '@/l
 import { getRequestUserId } from '@/lib/auth/mobile-session'
 import { recordServerEvent } from '@/lib/analytics/events'
 import { env } from '@/lib/env'
-import { getStoredMobileCreatorAttribution, recordCreatorCheckout, resolveCreatorAttribution, stripeAttributionMetadata } from '@/lib/creator/attribution'
+import { getAccountCreatorAttribution, getStoredMobileCreatorAttribution, recordCreatorCheckout, resolveCreatorAttribution, stripeAttributionMetadata } from '@/lib/creator/attribution'
 import { generatePaymentActivationCode, getCheckoutLineItem, getProductConfig, paymentProductSchemaValues } from '@/lib/payments/entitlements'
 import { locales } from '@/lib/i18n/locales'
 import { priceAmounts } from '@/lib/payments/subscription-prices'
@@ -59,7 +59,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
       mobileInstallId: input.mobileInstallId,
       userId: accountId,
       anonymousActorId: null,
-    })
+    }) || await getAccountCreatorAttribution(accountId)
     const attributionMetadata = stripeAttributionMetadata(attribution)
     const checkout = await db.transaction(async (tx) => {
       // Serialize this account's eligibility check and session creation, including retries.

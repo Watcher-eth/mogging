@@ -1,3 +1,4 @@
+import { allocateCreatorBillingEvent } from '@/lib/creator/billing-attribution'
 import { createHash } from 'node:crypto'
 import { landingProperties, parseLandingAssignment } from '@/lib/analytics/landing'
 import type Stripe from 'stripe'
@@ -46,7 +47,7 @@ export function normalizeStripeLifecycle(event: Stripe.Event) {
       eventName = 'subscription_refunded'
       amount = typeof value.amount === 'number' ? -value.amount / 100 : null
       break
-    case 'charge.dispute.created': eventName = 'payment_disputed'; break
+    case 'charge.dispute.created': eventName = 'payment_disputed'; amount = typeof value.amount === 'number' ? -value.amount / 100 : null; break
     default: return null
   }
   // Stripe uses zero-decimal amounts for these currencies.
@@ -62,7 +63,9 @@ export function normalizeStripeLifecycle(event: Stripe.Event) {
     externalUserId: id(value.customer), subscriptionId: event.type.startsWith('customer.subscription.') ? id(value) : subscription,
     transactionId: id(value.payment_intent) || id(value.charge), productId: typeof metadata.product === 'string' ? metadata.product : null,
     amount: amount == null ? null : String(amount), currency, occurredAt: new Date(event.created * 1000),
-    properties: { expiration_at_ms: typeof periodEnd === 'number' && Number.isFinite(periodEnd) ? periodEnd * 1000 : null, timestamp_estimated: event.id.startsWith('checkout:'), status: value.status ?? null, cancel_at_period_end: value.cancel_at_period_end ?? null,
+    properties: { creator_click_id: typeof metadata.creatorClickId === 'string' ? metadata.creatorClickId : null,
+      invoice_id: event.type === 'invoice.paid' ? id(value) : null,
+      expiration_at_ms: typeof periodEnd === 'number' && Number.isFinite(periodEnd) ? periodEnd * 1000 : null, timestamp_estimated: event.id.startsWith('checkout:'), status: value.status ?? null, cancel_at_period_end: value.cancel_at_period_end ?? null,
       period_type: value.status === 'trialing' ? 'TRIAL' : 'NORMAL',
       cancel_reason: object(value.cancellation_details).reason ?? null, billing_reason: value.billing_reason ?? null,
       failure_code: object(value.last_payment_error).code ?? null, decline_code: object(value.last_payment_error).decline_code ?? null },
@@ -91,6 +94,8 @@ export async function recordStripeLifecycle(event: Stripe.Event) {
   fact.externalUserId ||= prior?.externalUserId ?? null
   const user = candidate ? await db.query.users.findFirst({ where: eq(schema.users.id, candidate), columns: { id: true } }) : null
   await db.insert(schema.subscriptionEvents).values({ ...fact, accountId: user?.id }).onConflictDoNothing()
+  const stored = await db.query.subscriptionEvents.findFirst({ where: and(eq(schema.subscriptionEvents.provider, 'stripe'), eq(schema.subscriptionEvents.providerEventId, fact.providerEventId)) })
+  if (stored && stored.environment === 'production' && !['allocated', 'not_applicable', 'internal'].includes(stored.creatorAttributionStatus)) await allocateCreatorBillingEvent(stored).catch(() => { console.warn('creator:billing-allocation-pending') })
 }
 
 

@@ -1,6 +1,6 @@
 export type ProtocolDay = { date: string; tasks: { id: string; title: string; completed: boolean }[] }
 export const PUSH_HOUR = 18
-export const PUSH_WEEKDAYS = { protocol: 1, battle: 3, invite: 6 } as const
+export const PUSH_WEEKDAYS = { protocol: 1, invite: 6 } as const
 
 export function reminderFor(now: Date, timezone: string, days: ProtocolDay[]) {
   const parts = Object.fromEntries(new Intl.DateTimeFormat('en-US', {
@@ -11,13 +11,9 @@ export function reminderFor(now: Date, timezone: string, days: ProtocolDay[]) {
   if (Number(parts.hour) !== PUSH_HOUR) return null
   const date = `${parts.year}-${parts.month}-${parts.day}`
   const weekday = new Date(`${date}T12:00:00Z`).getUTCDay() || 7
-  if (weekday === PUSH_WEEKDAYS.battle) return {
-    kind: 'battle' as const, slot: date, title: 'Battle for the crown 👑',
-    body: 'Swipe. Pick your winner. Decide who mogs.', target: 'battle',
-  }
   if (weekday === PUSH_WEEKDAYS.invite) return {
-    kind: 'invite' as const, slot: date, title: 'Who mogs in your friend group?',
-    body: 'Invite your friends and settle it.', target: 'invite',
+    kind: 'invite' as const, slot: date, title: 'Build better habits together',
+    body: 'Invite friends to start their own personal Protocol.', target: 'invite',
   }
   if (weekday !== PUSH_WEEKDAYS.protocol) return null
   const task = days.find(day => day.date === date)?.tasks.find(task => !task.completed)

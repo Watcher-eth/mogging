@@ -1,9 +1,9 @@
 import { z } from 'zod'
 
+export { TIKTOK_ANCHOR_REQUIREMENT, TIKTOK_ANCHOR_REQUIREMENTS_ENABLED } from './post-guidance'
+
 export const TIKTOK_ANCHOR_INVITE =
   'https://www.tiktok.com/t/ZS9UgQb9Cp1Eq-WbUok/#linkSource=DirectLink'
-export const TIKTOK_ANCHOR_REQUIREMENT =
-  'For this TikTok account with 1,000+ followers: accept the Mogging TikTok One project before posting, then use Content disclosure → Disclose post content → Branded content → Link project to link this video to Mogging with its anchor.'
 export const FOLLOWER_RANGES = [
   { value: 'under_1k', label: 'Under 1,000' },
   { value: '1k_5k', label: '1,000–4,999' },

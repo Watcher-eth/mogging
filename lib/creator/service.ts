@@ -1,5 +1,5 @@
 import { resolveCreatorPostLink, rethrowCreatorPostConflict } from './post-identity'
-import { accountFollowers, followersFromOAuth, publishingTikTokHandle, tiktokAnchorEligible, TIKTOK_ANCHOR_REQUIREMENT } from './tiktok-anchor'
+import { accountFollowers, followersFromOAuth, publishingTikTokHandle, tiktokAnchorEligible, TIKTOK_ANCHOR_REQUIREMENTS_ENABLED, TIKTOK_ANCHOR_REQUIREMENT } from './tiktok-anchor'
 import { resolveTikTokFollowers } from './tiktok-followers'
 import { submissionUnreadCount } from '@/lib/creator/submission-messages'
 import { sprintPhase, sprintFormat } from './sprints'
@@ -9,6 +9,7 @@ import { and, desc, eq, getTableColumns, or, sql } from 'drizzle-orm'
 import { db, schema } from '@/lib/db'
 import { env } from '@/lib/env'
 import { creatorReferralHandle, ensureCreatorTrackingLink } from '@/lib/creator/attribution'
+import { captionContainsCreatorCode } from './post-guidance'
 
 export { creatorProfileSchema, creatorSubmissionSchema, creatorSocialAccountSchema } from './validation'
 import { creatorSubmissionAnalyticsSchema, type CreatorSubmissionAnalyticsInput, creatorSubmissionSchema, creatorPostPlatform, type CreatorProfileInput, type CreatorSubmissionInput, type CreatorSocialAccountInput } from './validation'
@@ -55,7 +56,9 @@ export async function getCreatorDashboard(userId: string) {
     return { ...account, trackingLink: await ensureCreatorTrackingLink(account.id) }
   }))
 
-  return { profile, submissions, payments, payoutRequests, socialAccounts: socialAccountsWithLinks, communityMetrics, featureFlags }
+  const postCodes = submissions.some(post => post.isDraft) ? await db.query.creatorTrackingLinkAliases.findMany({ where: sql`${schema.creatorTrackingLinkAliases.submissionId} in (select id from creator_submissions where creator_profile_id = ${profile.id} and is_draft)` }) : []
+  const codes = new Map(postCodes.map(alias => [alias.submissionId, alias.slug]))
+  return { profile, submissions: submissions.filter(post => !post.isDraft), registeredPosts: submissions.filter(post => post.isDraft).map(post => ({ ...post, code: codes.get(post.id) || null })), payments, payoutRequests, socialAccounts: socialAccountsWithLinks, communityMetrics, featureFlags }
 }
 
 async function getCreatorCommunityMetrics() {
@@ -337,12 +340,14 @@ export async function createCreatorSubmission(userId: string, input: CreatorSubm
     const publishingAccount = accounts.find(account => account.handle?.toLowerCase() === handle)
     if (socialAccount && socialAccount.id !== publishingAccount?.id) throw new CreatorServiceError(400, 'Choose the TikTok account that published this post')
     socialAccount = publishingAccount || null
-    if (!socialAccount) throw new CreatorServiceError(400, 'Connect the TikTok account that published this post and confirm its follower range in Accounts')
-    const eligibility = tiktokAnchorEligible({ ...socialAccount, followers: accountFollowers(socialAccount) })
-    if (eligibility === null) throw new CreatorServiceError(400, 'Confirm this TikTok account’s follower range in Accounts before submitting')
-    anchorRequired = eligibility
-    if (anchorRequired && !socialAccount.tiktokAnchorJoinedAt) throw new CreatorServiceError(400, 'Join the Mogging TikTok One project and confirm joining in Accounts before your next submission')
-    if (anchorRequired && input.tiktokAnchorLinked !== true) throw new CreatorServiceError(400, 'Confirm you accepted Mogging’s TikTok One project and linked this post with its anchor')
+    if (!socialAccount) throw new CreatorServiceError(400, 'Connect the TikTok account that published this post')
+    if (TIKTOK_ANCHOR_REQUIREMENTS_ENABLED) {
+      const eligibility = tiktokAnchorEligible({ ...socialAccount, followers: accountFollowers(socialAccount) })
+      if (eligibility === null) throw new CreatorServiceError(400, 'Confirm this TikTok account’s follower range in Accounts before submitting')
+      anchorRequired = eligibility
+      if (anchorRequired && !socialAccount.tiktokAnchorJoinedAt) throw new CreatorServiceError(400, 'Join the Mogging TikTok One project and confirm joining in Accounts before your next submission')
+      if (anchorRequired && input.tiktokAnchorLinked !== true) throw new CreatorServiceError(400, 'Confirm you accepted Mogging’s TikTok One project and linked this post with its anchor')
+    }
   }
   const postKey = postLink.key
   const submissionTerms = anchorRequired ? { ...sprint.terms, formats: sprint.terms.formats.map(item => item.id === format.id ? { ...item, requirements: [...item.requirements.filter(rule => rule !== TIKTOK_ANCHOR_REQUIREMENT), TIKTOK_ANCHOR_REQUIREMENT] } : item) } : sprint.terms
@@ -350,23 +355,30 @@ export async function createCreatorSubmission(userId: string, input: CreatorSubm
   return db.transaction(async tx => {
     await tx.execute(sql`select pg_advisory_xact_lock(hashtextextended(${postKey}, 0))`)
     const previousPost = await tx.query.creatorSubmissions.findFirst({ where: or(eq(schema.creatorSubmissions.postKey, postKey), eq(schema.creatorSubmissions.postUrl, input.postUrl)) })
-    if (previousPost) throw new CreatorServiceError(409, 'This video has already been submitted. Request a rereview on the original submission instead.')
+    if (previousPost && previousPost.id !== input.registeredPostId) throw new CreatorServiceError(409, 'This video has already been submitted. Request a rereview on the original submission instead.')
     const [currentSprint] = await tx.select().from(schema.creatorSprints).where(eq(schema.creatorSprints.id, sprint.id)).for('update')
     if (!currentSprint || currentSprint.updatedAt.getTime() !== sprint.updatedAt.getTime() || sprintPhase({ ...currentSprint, startsAt: currentSprint.startsAt.toISOString(), endsAt: currentSprint.endsAt.toISOString() }) !== 'active') throw new CreatorServiceError(409, 'Campaign changed. Refresh its terms before submitting')
     const [used] = await tx.select({ cents: sql<number>`coalesce(sum(${schema.creatorSubmissions.approvedAmountCents}),0)::float8` }).from(schema.creatorSubmissions).where(eq(schema.creatorSubmissions.sprintId, sprint.id))
     if (used.cents >= currentSprint.budgetCents) throw new CreatorServiceError(409, 'This campaign’s budget is fully committed')
-  const [submission] = await tx
-    .insert(schema.creatorSubmissions)
-    .values({
+    const draft = input.registeredPostId ? await tx.query.creatorSubmissions.findFirst({ where: and(eq(schema.creatorSubmissions.id, input.registeredPostId), eq(schema.creatorSubmissions.creatorProfileId, profile.id)) }) : null
+    if (input.registeredPostId && (!draft?.isDraft || draft.sprintId !== sprint.id || draft.formatId !== format.id || draft.socialAccountId !== socialAccount?.id)) throw new CreatorServiceError(409, 'Choose the registered post matching this campaign, format and account')
+    if (draft) {
+      const code = await tx.query.creatorTrackingLinkAliases.findFirst({ where: eq(schema.creatorTrackingLinkAliases.submissionId, draft.id) })
+      if (!input.postedAt && !draft.postedAt) throw new CreatorServiceError(400, 'Add this post’s publication time')
+      if (!code || !captionContainsCreatorCode(input.caption || draft.caption || '', code.slug)) throw new CreatorServiceError(400, 'Include the prepared post’s exact creator code in its published caption')
+    }
+    const values = {
       creatorProfileId: profile.id,
       socialAccountId: socialAccount?.id || null,
       sprintId: sprint.id,
-      sprintTerms: submissionTerms,
+      sprintTerms: draft?.sprintTerms || submissionTerms,
       formatId: format.id,
       requirementsConfirmedAt: new Date(),
       title: format.name,
       platform: creatorPostPlatform(input.postUrl) === 'tiktok' ? 'TikTok' : 'Instagram Reels',
-      caption: null,
+      caption: input.caption || draft?.caption || null,
+      postedAt: input.postedAt ? new Date(input.postedAt) : draft?.postedAt || null,
+      isDraft: false,
       postUrl: input.postUrl,
       postKey,
       videoUrl: null,
@@ -380,8 +392,11 @@ export async function createCreatorSubmission(userId: string, input: CreatorSubm
       analyticsSizeBytes: input.analyticsSizeBytes,
       viewCountThreshold: input.viewCountThreshold,
       usAudiencePercent: input.usAudiencePercent ?? null,
-    })
-    .returning()
+    }
+    const [submission] = draft
+      ? await tx.update(schema.creatorSubmissions).set(values).where(and(eq(schema.creatorSubmissions.id, draft.id), eq(schema.creatorSubmissions.isDraft, true))).returning()
+      : await tx.insert(schema.creatorSubmissions).values(values).returning()
+    if (!submission) throw new CreatorServiceError(409, 'This post was already submitted')
 
     return submission
   }).catch(rethrowCreatorPostConflict)
@@ -408,6 +423,7 @@ export async function requestSubmissionReview(userId: string, submissionId: stri
   await verifySubmissionAnalytics(userId, input)
   return db.transaction(async tx => {
     const [submission] = await tx.select().from(schema.creatorSubmissions).where(and(eq(schema.creatorSubmissions.id, submissionId), eq(schema.creatorSubmissions.creatorProfileId, profile.id))).for('update')
+    if (submission?.isDraft) throw new CreatorServiceError(409, 'Submit this registered post with its campaign and analytics first')
     if (!submission?.sprintId || !submission.sprintTerms) throw new CreatorServiceError(409, 'Only campaign submissions can request rereview')
     if (submission.reviewRequestedAt || (['pending', 'in_review'].includes(submission.status) && submission.analyticsScreenshotUrl)) throw new CreatorServiceError(409, 'This submission is already awaiting review')
     if (submission.analyticsStorageKey === input.analyticsStorageKey) throw new CreatorServiceError(400, 'Upload a fresh analytics recording')

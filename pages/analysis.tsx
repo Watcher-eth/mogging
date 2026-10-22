@@ -1793,6 +1793,7 @@ async function prepareImagesForAnalysis(images: AnalysisDraftImage[], framePosit
       ...image,
       dataUrl,
       landmarks: null,
+      mesh: null,
     }
   }))
 }

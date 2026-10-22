@@ -1,4 +1,5 @@
 import { ANALYSIS_PROMPT_VERSION } from './prompt'
+import { ApiError } from '@/lib/api/http'
 import { z } from 'zod'
 import { hairColorSchema, normalizeApparentAge, skinColorSchema } from '@/lib/appearance/types'
 import { computeImageHash } from '@/lib/photos/imageHash'
@@ -44,9 +45,16 @@ export async function analyzeAndSave(input: AnalyzeAndSaveInput, reservationId?:
   const promptVersion = options.promptVersion ?? ANALYSIS_PROMPT_VERSION
   const data = analyzeAndSaveSchema.parse(input)
   const storageStarted = Date.now()
-  const storedImagePromise = storeImageDataUrl(data.imageData)
+  const storedImageResult = await storeImageDataUrl(data.imageData)
     .then((storedImage) => ({ ok: true as const, storedImage }))
     .catch((error: unknown) => ({ ok: false as const, error }))
+  console.info('analyze:image-storage', { elapsedMs: Date.now() - storageStarted, success: storedImageResult.ok })
+  if (!storedImageResult.ok) {
+    console.error('Image storage failed during analysis', storedImageResult.error)
+    // Do not start paid provider work for a photo we cannot retain. The handler
+    // returns the reservation before the client retries this known storage failure.
+    if (reservationId || options.requirePersistence) throw new ApiError(503, 'Unable to save the report image. Please retry; your scan credit is still available.', 'image_storage_unavailable')
+  }
   const providerResultPromise = provider
     .analyzeFace({
       imageDataUrl: data.imageData,
@@ -57,11 +65,6 @@ export async function analyzeAndSave(input: AnalyzeAndSaveInput, reservationId?:
     .then((result) => ({ ok: true as const, result }))
     .catch((error: unknown) => ({ ok: false as const, error }))
 
-  const storedImageResult = await storedImagePromise
-  console.info('analyze:image-storage', { elapsedMs: Date.now() - storageStarted, success: storedImageResult.ok })
-  if (!storedImageResult.ok) {
-    console.error('Image storage failed during analysis', storedImageResult.error)
-  }
   if (storedImageResult.ok && data.userId) {
     await updateUserAvatarIfMissing(data.userId, storedImageResult.storedImage.imageUrl)
       .catch(() => console.warn('analyze:avatar-update-failed'))
@@ -69,7 +72,6 @@ export async function analyzeAndSave(input: AnalyzeAndSaveInput, reservationId?:
   const providerResult = await providerResultPromise
 
   if (!storedImageResult.ok) {
-    if (reservationId || options.requirePersistence) throw new Error('Unable to save the report image. Please retry; your scan credit is still available.')
     return createTransientAnalysisResult(data, providerResult, 'Image storage failed', options)
   }
 

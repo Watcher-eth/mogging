@@ -5,7 +5,7 @@ import { ApiError, handleApiError, json, methodNotAllowed, parseBody } from '@/l
 import { enforceRateLimit } from '@/lib/api/rateLimit'
 import { createCreatorAttributionClick } from '@/lib/creator/attribution'
 
-const inputSchema = z.object({ slug: z.string().trim().toLowerCase().min(1).max(200).regex(/^[a-z0-9._-]+$/) })
+const inputSchema = z.object({ source: z.enum(['native_link', 'creator_code']).default('creator_code'), slug: z.string().trim().toLowerCase().min(1).max(200).regex(/^[a-z0-9._-]+$/) })
 
 // Public creator codes are not credentials. Only the server can mint signed click tokens.
 // This records an explicit referral touch, never an inferred or deferred install.
@@ -14,8 +14,8 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
   if (req.method !== 'POST') return methodNotAllowed(res, ['POST'])
   try {
     await enforceRateLimit(req, res, { key: 'creator_link', limit: 20, windowMs: 60_000 })
-    const { slug } = parseBody(inputSchema, req.body)
-    const attribution = await createCreatorAttributionClick({ slug, anonymousActorId: null,
+    const { slug, source } = parseBody(inputSchema, req.body)
+    const attribution = await createCreatorAttributionClick({ slug, source, anonymousActorId: null,
       userAgent: req.headers['user-agent'] || null })
     if (!attribution || attribution.isBot) throw new ApiError(404, 'Creator link not found or inactive')
     return json(res, 200, { url: attribution.deepLinkUrl })

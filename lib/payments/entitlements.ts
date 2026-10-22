@@ -166,7 +166,16 @@ export async function confirmCheckoutForAccount(sessionId: string, accountId: st
     })
     if (ledger) return existing
   }
-  const session = await getStripe().checkout.sessions.retrieve(sessionId, { expand: ['subscription', 'customer'] })
+  let session: Stripe.Checkout.Session
+  try {
+    session = await getStripe().checkout.sessions.retrieve(sessionId, { expand: ['subscription', 'customer'] })
+  } catch (error) {
+    if (!existing) throw error
+    // Reporting recovery must not block an already verified, account-owned receipt.
+    // Callers still enforce its current balance, expiry and revocation status.
+    await recordBackendRequest('payments/stripe-reporting', { outcome: 'degraded', code: 'billing_confirmation_refresh_failed', alert: true }, 0).catch(() => {})
+    return existing
+  }
   const owner = session.metadata?.accountId || session.metadata?.userId
   if (owner !== accountId || (session.client_reference_id && session.client_reference_id !== accountId)) {
     throw new ApiError(403, 'Sign in with the account used at checkout')
@@ -462,7 +471,7 @@ export async function reserveEvaluation(ownerInput: EntitlementOwner, requestId:
     const prior = await tx.query.scanReservations.findFirst({ where: eq(schema.scanReservations.id, id) })
     if (prior) {
       if (prior.requestHash !== requestHash) throw new ApiError(409, 'This scan request ID was already used for another photo')
-      if (prior.status === 'pending') throw new ApiError(409, 'Your scan is still processing. Please retry shortly.')
+      if (prior.status === 'pending') throw new ApiError(409, 'Your scan is still processing. Please retry shortly.', 'evaluation_processing')
       return { id, result: prior.result, summary: access.summary }
     }
     let entitlementId = access.lifetime?.id

@@ -83,6 +83,7 @@ export type CreatorSocialAccount = {
 }
 
 export type CreatorDashboard = {
+  registeredPosts?: Array<CreatorSubmission & { code: string | null }>
   payoutRequests?: CreatorPayoutRequest[]
   profile: CreatorProfile | null
   submissions: CreatorSubmission[]

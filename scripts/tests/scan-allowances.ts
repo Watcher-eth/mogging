@@ -44,6 +44,7 @@ try {
     account_id text, mobile_install_id text, anonymous_id text, session_id text, platform text, source text,
     properties jsonb, occurred_at timestamp, received_at timestamp DEFAULT now());`)
   await sql.unsafe(await readFile(new URL('../../drizzle/0035_analytics_billing.sql', import.meta.url), 'utf8'))
+  await sql.unsafe(`ALTER TABLE subscription_events ADD COLUMN creator_attribution_status text NOT NULL DEFAULT 'pending', ADD COLUMN creator_attribution_checked_at timestamp`)
   // Creator commissions are outside this test; billing and crediting use their real implementations.
   mock.module('@/lib/creator/attribution', () => ({ recordRevenueCatCreatorEvent: async () => null }))
   const { getEntitlementSummary, consumeEvaluationEntitlement, reserveEvaluation, finishEvaluation, creditRevenueCatScans, grantEntitlementFromCheckoutSession, revokeRevenueCatPurchase } = await import('../../lib/payments/entitlements')

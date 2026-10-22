@@ -6,6 +6,7 @@ import { getRequestUserId } from '@/lib/auth/mobile-session'
 import { publicCreatorAttributionContext, resolveMobileCreatorAttribution } from '@/lib/creator/attribution'
 
 const resolveSchema = z.object({
+  method: z.enum(['direct', 'creator_code', 'browser_recovery', 'account_recovery', 'deferred_provider', 'custom_scheme', 'universal_link']).default('direct'),
   attributionToken: z.string().min(40).max(200),
   mobileInstallId: z.string().trim().min(8).max(120),
 })
@@ -17,6 +18,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
     const userId = await getRequestUserId(req, res)
     const context = await resolveMobileCreatorAttribution({
       token: input.attributionToken,
+      method: input.method,
       mobileInstallId: input.mobileInstallId,
       userId,
     })

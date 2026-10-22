@@ -17,6 +17,7 @@ export const adminNavigation = [
     { href: '/admin/analytics/revenue', title: 'Revenue', description: 'Verified purchases, refunds, and subscription events.', section: 'Revenue', icon: 'payouts' },
     { href: '/admin/analytics/retention', title: 'Retention', description: 'See whether users return and build lasting value.', section: 'Retention', icon: 'overview' },
     { href: '/admin/attribution', title: 'Creator attribution', description: 'Understand the customers and revenue each creator brings.', section: 'attribution', icon: 'accounts' },
+    { href: '/admin/creator-performance', title: 'Creator performance', description: 'Submitted views, creator and platform reach, spend, and CPM.', section: 'performance', icon: 'overview' },
     { href: '/admin/economics', title: 'Creator economics', description: 'Measure creator performance against sustainable compensation.', section: 'metrics', icon: 'payouts' },
     { href: '/admin/analytics/authentication', title: 'Authentication', description: 'Sign-in outcomes and verified identity linking.', section: 'Authentication', icon: 'accounts' },
     { href: '/admin/analytics/purchases', title: 'Purchase flow', description: 'Paywall choices, purchase outcomes, restores, and handoffs.', section: 'Purchases', icon: 'payouts' },

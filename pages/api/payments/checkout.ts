@@ -6,7 +6,7 @@ import { z } from 'zod'
 import { ApiError, handleApiError, json, methodNotAllowed, parseBody } from '@/lib/api/http'
 import { getRequestUserId } from '@/lib/auth/mobile-session'
 import { env } from '@/lib/env'
-import { recordCreatorCheckout, resolveCreatorAttribution, stripeAttributionMetadata } from '@/lib/creator/attribution'
+import { getAccountCreatorAttribution, recordCreatorCheckout, resolveCreatorAttribution, stripeAttributionMetadata } from '@/lib/creator/attribution'
 import { getCheckoutLineItem, getProductConfig, getEntitlementSummary } from '@/lib/payments/entitlements'
 import { getStripe } from '@/lib/payments/stripe'
 import type { PaymentProduct } from '@/lib/db/schema'
@@ -41,6 +41,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
         mobileInstallId: input.mobileInstallId,
       },
     })
+    const accountAttribution = attribution || await getAccountCreatorAttribution(accountId)
     const landingAssignment = parseLandingAssignment(req.cookies[LANDING_COOKIE])
     const checkout = await stripe.checkout.sessions.create({
       branding_settings: { display_name: 'Mogging' },
@@ -58,7 +59,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
         imageCount: String(input.imageCount),
         accountId,
         userId: accountId,
-        ...stripeAttributionMetadata(attribution),
+        ...stripeAttributionMetadata(accountAttribution),
       },
       success_url: `${origin}/analysis?checkout=success&session_id={CHECKOUT_SESSION_ID}`,
       cancel_url: `${origin}/analysis?checkout=cancelled`,
@@ -68,7 +69,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
       throw new ApiError(500, 'Failed to create checkout session')
     }
 
-    await recordCreatorCheckout(attribution, checkout)
+    await recordCreatorCheckout(accountAttribution, checkout)
     await recordServerEvent({ eventName: 'checkout_started', accountId, sessionId: checkout.id, source: 'web_analysis', properties: { product: productId, ...landingProperties(landingAssignment) } })
 
     return json(res, 200, {

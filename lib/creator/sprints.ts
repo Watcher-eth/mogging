@@ -210,7 +210,7 @@ export function sprintFormats(terms: SprintTerms): CreatorSubmissionFormat[] {
 export function sprintFormat(terms: SprintTerms, id: string): CreatorSubmissionFormat | undefined {
   return sprintFormats(terms).find(format => format.id === id)
 }
-export function sprintReviewItems(terms: SprintTerms, id: string) {
+export function sprintReviewItems(terms: SprintTerms, id: string, includeRetired = false) {
   const format = sprintFormat(terms, id)
   if (!format) return []
   return [
@@ -234,6 +234,7 @@ export function sprintReviewItems(terms: SprintTerms, id: string) {
       detail: 'Campaign rule',
     })),
   ].flatMap((item) => {
+    if (includeRetired) return [item]
     const label = creatorCampaignRule(item.label)
     return label === null ? [] : [{ ...item, label }]
   })

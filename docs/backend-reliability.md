@@ -66,3 +66,27 @@ recipient selection, grouping and delivery retries without sending real messages
 test production/source isolation, latency validation, unfinished scans and client
 release reporting. `scripts/tests/admin-analytics-http.ts` checks authorization,
 private headers, health responses and monitored endpoint auth/trace behavior.
+
+## Recovery changes, October 21, 2026
+
+The paid web scan client preserves JSON Content-Type alongside paid request headers.
+The web endpoint also accepts valid JSON from previously loaded clients that sent
+text/plain; authentication, schema validation, credit reservation and replay checks
+remain unchanged. `lib/api/paid-scan-http.test.ts` reproduces the original HTTP 400
+through Next's actual body parser and verifies completion and legacy retries.
+
+Mobile Google sign-in uses a signed, expiring state bound to an app-held PKCE
+verifier and nonce. The existing registered Google callback returns a one-use code
+to the app; the server verifies Google's signed identity before creating the
+existing mobile session. It does not depend on browser state cookies. Ordinary web
+NextAuth and older mobile releases keep their existing flow. The automated tests
+exercise signature/state/nonce/account boundaries and real PostgreSQL concurrent
+signup/session persistence. Interactive Google and Apple tests still require a device.
+
+Stripe recovery reads from the last successful checkpoint with a one-hour overlap,
+plus a daily seven-day audit. Failed passes never advance the checkpoint. An
+already verified account-owned receipt remains usable during a provider outage;
+access still depends on its balance, expiry and revocation status. Ambiguous native
+store errors retain their recovery journal and trigger an observation after the
+SDK finishes, without initiating another purchase. Wednesday Battle reminders
+were removed from the schedule.
