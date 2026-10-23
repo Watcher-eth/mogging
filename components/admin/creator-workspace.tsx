@@ -51,7 +51,7 @@ import { mergeCreatorSubmissionReviewResults, resetSubmissionReview, submissionR
 import { SubmissionRequirementsReview } from '@/components/admin/submission-requirements-review'
 import { CreatorIcon, type CreatorIconName } from '@/components/creator/creator-icon'
 import { CREATOR_TIER_ONE_COUNTRIES } from '@/lib/creator/audience'
-import { approvedUnpaidSubmissions, creatorOutstandingPaymentGroups, approvalKind, approvalTypes, getApprovalQueue, hasPayoutDestination, isNewInLastDay, publishedVideoEmbedUrl, walletExplorerUrl, type ApprovalKind } from '@/lib/admin/creator-overview'
+import { approvedUnpaidSubmissions, creatorOutstandingPaymentGroups, approvalKind, approvalSubmittedAt, approvalTypes, getApprovalQueue, hasPayoutDestination, isNewInLastDay, publishedVideoEmbedUrl, walletExplorerUrl, type ApprovalKind } from '@/lib/admin/creator-overview'
 import type {
   AdminAccount,
   AdminAttributionReport,
@@ -332,13 +332,14 @@ function ApprovalBadge({ target }: { target: Exclude<ReviewTarget, { resource: '
 
 function QueueRow({ target, onClick }: { target: Exclude<ReviewTarget, { resource: 'payment' }>; onClick: () => void }) {
   const kind = approvalKind(target)
+  const submittedAt = approvalSubmittedAt(target)
   const title = reviewTitle(target)
   const subtitle = target.resource === 'creator' ? `${target.item.email} · ${target.item.paymentOption === 'paypal' ? 'PayPal' : target.item.cryptoNetwork}` : `${target.item.creatorName} · ${capitalize(target.item.platform)}${target.resource === 'submission' && target.item.socialAccountStatus !== 'approved' ? ' · Account not approved' : ''}`
   const Icon = kind === 'submission' ? Video : kind === 'account' ? BadgeCheck : Wallet
   return <button type="button" onClick={onClick} className="admin-resource-row flex w-full min-w-0 items-center gap-3 text-left">
     {target.resource === 'account' ? <AccountAvatar account={target.item} /> : <span className={cn('grid size-11 shrink-0 place-items-center rounded-xl border', approvalTypes[kind].color)}><Icon className="size-5" /></span>}
-    <span className="min-w-0 flex-1"><ApprovalBadge target={target} /><span className="mt-2 block truncate text-sm font-semibold">{title}</span><span className="mt-1 block break-words text-xs text-zinc-500">{subtitle}</span><span className="mt-1 block text-xs text-zinc-400 sm:hidden">{formatDate(target.item.createdAt)}</span></span>
-    <span className="hidden text-xs text-zinc-400 sm:block">{formatDate(target.item.createdAt)}</span><StatusPill status={target.resource === 'creator' ? target.item.authStatus : target.item.status} /><ArrowUpRight className="size-4 shrink-0 text-zinc-400" />
+    <span className="min-w-0 flex-1"><ApprovalBadge target={target} /><span className="mt-2 block truncate text-sm font-semibold">{title}</span><span className="mt-1 block break-words text-xs text-zinc-500">{subtitle}</span><span className="mt-1 block text-xs text-zinc-400 sm:hidden">{formatDate(submittedAt)}</span></span>
+    <span className="hidden text-xs text-zinc-400 sm:block">{formatDate(submittedAt)}</span><StatusPill status={target.resource === 'creator' ? target.item.authStatus : target.item.status} /><ArrowUpRight className="size-4 shrink-0 text-zinc-400" />
   </button>
 }
 

@@ -18,12 +18,22 @@ export function approvalKind(target: ApprovalTarget): ApprovalKind {
   return target.resource === 'creator' ? 'payout' : target.resource
 }
 
+export function approvalSubmittedAt(target: ApprovalTarget) {
+  return target.resource === 'submission' && target.item.reviewRequestedAt
+    ? target.item.reviewRequestedAt
+    : target.item.createdAt
+}
+
 export function getApprovalQueue(data: AdminDashboard): ApprovalTarget[] {
   return [
     ...data.submissions.filter((item) => item.status === 'pending' || item.status === 'in_review').map((item) => ({ resource: 'submission' as const, item })),
     ...data.accounts.filter((item) => item.status === 'pending' && item.analyticsVideoUrl && item.analyticsConfirmedAt).map((item) => ({ resource: 'account' as const, item })),
     ...data.creators.filter((item) => item.authStatus === 'pending' && hasPayoutDestination(item)).map((item) => ({ resource: 'creator' as const, item })),
-  ].sort((a, b) => Date.parse(b.item.createdAt) - Date.parse(a.item.createdAt))
+  ].sort((a, b) => {
+    const aTime = Date.parse(approvalSubmittedAt(a))
+    const bTime = Date.parse(approvalSubmittedAt(b))
+    return (Number.isFinite(aTime) ? aTime : Number.MAX_SAFE_INTEGER) - (Number.isFinite(bTime) ? bTime : Number.MAX_SAFE_INTEGER)
+  })
 }
 
 export function isNewInLastDay(value: string, now = Date.now()) {

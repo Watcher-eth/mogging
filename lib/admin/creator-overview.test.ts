@@ -18,12 +18,30 @@ describe('admin overview approvals', () => {
     } as AdminDashboard
     const queue = getApprovalQueue(data)
     expect(queue).toHaveLength(12)
-    expect(queue[0].item.id).toBe('ready')
-    expect(queue.at(-1)?.item.id).toBe('payout')
+    expect(queue[0].item.id).toBe('payout')
+    expect(queue.at(-1)?.item.id).toBe('ready')
     expect(queue.map(approvalKind)).toContain('account')
     expect(queue.map(approvalKind)).toContain('payout')
     expect(queue.some((target) => target.item.id === 'registration')).toBe(false)
     expect(queue.some((target) => target.item.id === 'incomplete')).toBe(false)
+  })
+
+  test('orders oldest review submissions first and uses the rereview request time', () => {
+    const data = {
+      submissions: [
+        { id: 'new-submission', status: 'pending', createdAt: '2026-10-03T12:00:00Z' },
+        { id: 'rereview', status: 'in_review', createdAt: '2026-09-01T12:00:00Z', reviewRequestedAt: '2026-10-02T12:00:00Z' },
+        { id: 'first-submission', status: 'pending', createdAt: '2026-10-01T12:00:00Z' },
+      ] as AdminSubmission[],
+      accounts: [],
+      creators: [],
+    } as unknown as AdminDashboard
+
+    expect(getApprovalQueue(data).map(target => target.item.id)).toEqual([
+      'first-submission',
+      'rereview',
+      'new-submission',
+    ])
   })
 
   test('uses a rolling 24-hour window and excludes invalid or future timestamps', () => {
