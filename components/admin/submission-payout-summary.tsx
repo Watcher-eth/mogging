@@ -1,3 +1,4 @@
+import { Disclosure, DisclosureSummary, AccordionContent } from '@/components/ui/accordion'
 import type { AdminPayment } from './creator-types'
 import { remainingCreatorPaymentCents } from '@/lib/creator/money'
 
@@ -19,12 +20,12 @@ export function SubmissionPayoutSummary({ totalCents, payments }: { totalCents: 
       <div className="flex items-center justify-between gap-4 border-t border-zinc-100 pt-3"><dt className="font-semibold">Additional to pay</dt><dd className="text-xl font-semibold tracking-tight">{remainingCents === null ? '—' : money(remainingCents)}</dd></div>
     </dl>
     <p className="mt-2 text-xs leading-5 text-zinc-500">Total for this video minus settled and scheduled payments. Failed and cancelled payments are excluded.</p>
-    {settled.length > 0 ? <details className="mt-4 border-t border-zinc-100 pt-3">
-      <summary className="min-h-8 cursor-pointer text-xs font-medium">Paid history ({settled.length})</summary>
+    {settled.length > 0 ? <Disclosure className="mt-4 border-t border-zinc-100 pt-3">
+      <DisclosureSummary className="min-h-8 cursor-pointer text-xs font-medium">Paid history ({settled.length})</DisclosureSummary><AccordionContent>
       <ul className="mt-2 divide-y divide-zinc-100">{settled.map(payment => <li key={payment.id} className="flex items-start justify-between gap-4 py-3 text-xs">
         <div className="min-w-0"><p className="font-medium">{payment.paymentOption === 'paypal' ? 'PayPal' : 'Crypto'} · {date(payment.paidAt || payment.createdAt)}</p>{payment.providerReference ? <p className="mt-1 break-all text-zinc-500">{payment.providerReference}</p> : null}{payment.hasReceipt ? <a href={`/api/admin/creator/payments/${payment.id}/receipt`} target="_blank" rel="noreferrer" className="mt-2 inline-flex min-h-8 items-center text-[#007aff] underline underline-offset-4">View receipt</a> : null}</div>
         <span className="shrink-0 font-semibold tabular-nums">{money(payment.amountCents, payment.currency)}</span>
       </li>)}</ul>
-    </details> : null}
+    </AccordionContent></Disclosure> : null}
   </section>
 }

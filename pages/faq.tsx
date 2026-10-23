@@ -1,6 +1,7 @@
+import { Accordion, AccordionItem, AccordionTrigger, AccordionContent, AccordionChevron } from '@/components/ui/accordion'
 import Link from 'next/link'
 import { useEffect, useState } from 'react'
-import { ArrowUpRight, Plus, MessageCircle } from 'lucide-react'
+import { ArrowUpRight, MessageCircle } from 'lucide-react'
 import { LazyMotion, domAnimation, useReducedMotion } from 'motion/react'
 import * as m from 'motion/react-m'
 import { SeoHead } from '@/components/app/seo-head'
@@ -37,7 +38,6 @@ const groups = [
 ]
 
 export default function FaqPage() {
-  const [open, setOpen] = useState<string | null>(null)
   const [active, setActive] = useState(groups[0].id)
   const reduced = useReducedMotion()
   useEffect(() => {
@@ -55,15 +55,15 @@ export default function FaqPage() {
     <div className={styles.page} data-faq-page>
       <m.header {...entrance} className={styles.hero}><h1>FAQ</h1><p>Quick answers.<br />A clearer next step.</p></m.header>
       <div className={styles.layout}>
-        <div className={styles.questions}>
+        <Accordion className={styles.questions}>
           {groups.map(group => <m.section {...entrance} key={group.id} id={group.id} aria-labelledby={`${group.id}-title`} className={styles.group}>
-            <h2 id={`${group.id}-title`}>{group.title}</h2>
-            {group.questions.map(item => { const expanded = open === item.id; return <div key={item.id} className={styles.item} data-open={expanded}>
-              <h3><button type="button" id={`${item.id}-trigger`} aria-expanded={expanded} aria-controls={`${item.id}-answer`} onClick={() => setOpen(current => current === item.id ? null : item.id)}><span>{item.question}</span><span className={styles.plus} aria-hidden="true"><Plus size={20} strokeWidth={1.5} /></span></button></h3>
-              <div id={`${item.id}-answer`} role="region" aria-labelledby={`${item.id}-trigger`} aria-hidden={!expanded} inert={!expanded} className={styles.answer}><div><p>{item.answer}</p>{item.link ? <Link href={item.link.href}>{item.link.label}<ArrowUpRight size={15} /></Link> : null}</div></div>
-            </div> })}
+            <h2 key="title" id={`${group.id}-title`}>{group.title}</h2>
+            {group.questions.map(item => <AccordionItem key={item.id} value={item.id} className={styles.item}>
+              <h3><AccordionTrigger><span>{item.question}</span><AccordionChevron className={styles.plus} /></AccordionTrigger></h3>
+              <AccordionContent className={styles.answer}><p>{item.answer}</p>{item.link ? <Link href={item.link.href}>{item.link.label}<ArrowUpRight size={15} /></Link> : null}</AccordionContent>
+            </AccordionItem>)}
           </m.section>)}
-        </div>
+        </Accordion>
         <nav className={styles.index} aria-label="FAQ topics"><p>ON THIS PAGE</p>{groups.map(group => <a key={group.id} href={`#${group.id}`} aria-current={active === group.id ? 'location' : undefined} onClick={() => setActive(group.id)}>{group.title}</a>)}</nav>
       </div>
       <m.aside {...entrance} className={styles.support}><div><MessageCircle size={22} strokeWidth={1.5} /><h2>Still have a question?</h2><p>We’re here to help with your account, report or purchase.</p></div><Link href="/support">Get in touch<ArrowUpRight size={18} /></Link></m.aside>

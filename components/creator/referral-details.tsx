@@ -24,9 +24,9 @@ export function CreatorReferralCode({ trackingLink }: ReferralProps) {
       title={code}
       disabled={!trackingLink?.isActive}
       onClick={() => void copyReferral(code, 'Referral code')}
-      className="inline-flex min-h-11 min-w-0 max-w-full items-center gap-2 rounded-xl border border-dashed border-zinc-300 px-3 text-sm hover:border-[#00A8EF] hover:bg-sky-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#00A8EF] disabled:opacity-40"
+      className="inline-flex min-h-11 min-w-0 max-w-full items-center gap-2 rounded-md font-mono text-sm font-semibold tracking-wide text-zinc-800 hover:text-[#00A8EF] focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#00A8EF] disabled:opacity-40"
     >
-      <span className="truncate">{code}</span>
+      <span className="break-all text-left">{code}</span>
       <Copy aria-hidden="true" className="size-3.5 shrink-0 text-[#00A8EF]" />
     </button>
   )
@@ -43,13 +43,12 @@ export function CreatorReferralDetails({ trackingLink }: ReferralProps) {
   ]
 
   return (
-    <div className="min-w-0 divide-y divide-zinc-100">
-      <p className="py-3 text-xs leading-5 text-zinc-500">Your code gives new subscribers 10% off their first month. Include it in post captions; adding it to your bio is optional.</p>
+    <div className="min-w-0 space-y-2 pt-2">
       {items.map(({ label, value }) => (
-        <div key={label} className="flex items-center justify-between gap-3 py-3">
+        <div key={label} className="flex items-center justify-between gap-3">
           <div className="min-w-0">
             <p className="mb-1 text-xs text-zinc-500">{label}</p>
-            <span className="select-text break-words text-sm leading-6">{value || 'Unavailable'}</span>
+            <span className="block select-text break-all text-[13px] leading-5 text-zinc-700">{value || 'Unavailable'}</span>
           </div>
           <button
             type="button"
@@ -63,6 +62,7 @@ export function CreatorReferralDetails({ trackingLink }: ReferralProps) {
           </button>
         </div>
       ))}
+      <p className="pt-2 text-[11px] leading-[1.6] text-zinc-400">Your code gives new subscribers 10% off their first month. Include it in post captions; adding it to your bio is optional.</p>
     </div>
   )
 }

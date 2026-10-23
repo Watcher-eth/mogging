@@ -1,0 +1,182 @@
+{
+  "checkedAt": "2026-10-22T01:52:08.896Z",
+  "productionDeployment": "dpl_J7AEbdsBJ48CLSWySh8j3m5dtz3c",
+  "url": "https://www.mogging.com",
+  "baseDeployment": "dpl_5YbJpSP8oiyZA2C4p4CghxGY1Pe9",
+  "schemaMigrationsApplied": [
+    "0055_creator_continuity",
+    "0056_creator_store_campaigns"
+  ],
+  "configuration": {
+    "NEXTAUTH_URL": "https://www.mogging.com",
+    "targets": [
+      "production",
+      "preview"
+    ]
+  },
+  "tests": {
+    "repairSnapshot": {
+      "files": 124,
+      "failed": 0
+    },
+    "mobile": {
+      "passed": 303,
+      "failed": 0,
+      "expects": 15157
+    },
+    "productionNextBuild": true,
+    "iosJavaScriptExport": true,
+    "realPostgres": [
+      "scan and restore allowances",
+      "web payment handoff and provider outage recovery",
+      "concurrent Google signup and session persistence"
+    ],
+    "coordinatedAttribution": {
+      "testFiles": 127,
+      "failed": 0,
+      "postgresChecks": 23,
+      "browserTransportChecks": 5
+    }
+  },
+  "liveScan": {
+    "deployment": "https://mogging-bvc8j9j1j-glimpseback.vercel.app",
+    "at": "2026-10-22T01:29:32.527Z",
+    "health": true,
+    "googleStartCallbackAndWrongVerifier": true,
+    "scan": {
+      "firstStatus": 201,
+      "retryStatus": 200,
+      "reportComplete": true,
+      "creditBalance": 0,
+      "completedReservations": 1
+    },
+    "fixtureRemoved": true
+  },
+  "publicProbes": [
+    {
+      "path": "/",
+      "status": 200,
+      "passed": true
+    },
+    {
+      "path": "/api/health",
+      "status": 200,
+      "passed": true
+    },
+    {
+      "path": "/api/auth/providers",
+      "status": 200,
+      "passed": true
+    },
+    {
+      "path": "/api/web/analyze",
+      "status": 401,
+      "passed": true
+    },
+    {
+      "path": "/api/cron/stripe-reconciliation",
+      "status": 401,
+      "passed": true
+    }
+  ],
+  "blockedWebCustomer": {
+    "originalCreditBalance": 1,
+    "originalImageOnlyInCustomerBrowser": true,
+    "retryRequired": true
+  },
+  "historicalUnresolvedAttempts": {
+    "checked": 9,
+    "revenueCatAccountResponses": 200,
+    "observedPurchaseRecords": 0,
+    "interpretation": "No recorded provider purchase under the known signed-in customer IDs; silence is not labeled cancellation."
+  },
+  "pending": [
+    "Physical-device Google/Apple authentication and StoreKit purchase/pending/restore",
+    "Physical-device Safari/social-browser fresh-install recovery",
+    "Apple campaign reporting after qualifying installs"
+  ],
+  "stripeReconciliation": {
+    "previousRunMs": 45199,
+    "firstIncrementalRunMs": 2681,
+    "outcome": "ok",
+    "eventsChecked": 1,
+    "coveredSince": "2026-10-22T00:30:48.000Z",
+    "coveredUntil": "2026-10-22T01:35:48.000Z",
+    "successfulCheckpoint": true
+  },
+  "coordinatedAttribution": {
+    "migrations": [
+      "0055_creator_continuity",
+      "0056_creator_store_campaigns"
+    ],
+    "migrationStatus": "applied by coordinated attribution task",
+    "candidate": "dpl_5EZRBV68hqqbtSh6YNXAkbXKQ3za",
+    "publicPromotion": "verified",
+    "criticalRepairSourceHashCheck": {
+      "matched": 13,
+      "mismatched": 0
+    },
+    "proof": {
+      "deployment": "https://mogging-3lv6dh2v1-glimpseback.vercel.app",
+      "at": "2026-10-22T01:39:19.899Z",
+      "health": true,
+      "migrations": [
+        "0055_creator_continuity",
+        "0056_creator_store_campaigns"
+      ],
+      "landingAndCookie": true,
+      "proofBoundBrowserRecovery": true,
+      "resolveClaimOwnershipAccountRecovery": true,
+      "idempotentPaywallNoFabricatedInstall": true,
+      "desktopSignedEntry": true,
+      "repairedGoogleCanonicalOrigin": true,
+      "authBoundaries": true,
+      "fixtureCleaned": true
+    },
+    "appleProviderToken": {
+      "value": "127053121",
+      "source": "App Store Connect > Mogging > Analytics > Acquisition > Campaigns > Generate a Campaign Link",
+      "generatedLink": "https://apps.apple.com/app/apple-store/id6771414050?pt=127053121&ct=mogging-attribution&mt=8",
+      "configurationStatus": "production configured and final build promoted",
+      "appleCampaignReport": "Not enough data to display campaigns",
+      "publicProof": {
+        "at": "2026-10-22T01:50:22.193Z",
+        "path": "/r/pain.psl",
+        "status": 200,
+        "host": "apps.apple.com",
+        "pt": "127053121",
+        "ct": "c-e5c32928024d4836bcdea076",
+        "passed": true,
+        "qaUserAgent": "MoggingQA bot iPhone"
+      },
+      "activeLinks": {
+        "configured": 94,
+        "total": 94
+      },
+      "scope": "creator-level Apple campaign aggregates; individual post purchase attribution uses recovered first-party click"
+    },
+    "finalPublicProof": {
+      "at": "2026-10-22T01:52:08.896Z",
+      "deployment": "dpl_CAWrh9q6RjG3ECFifx7oxjrFAjMJ",
+      "health": true,
+      "creatorPage": true,
+      "googleCanonicalOrigin": true,
+      "appleProviderToken": true,
+      "appleCreatorCampaign": true,
+      "correctApp": true
+    }
+  },
+  "currentProductionDeployment": "dpl_CAWrh9q6RjG3ECFifx7oxjrFAjMJ",
+  "creatorReconciliation": {
+    "outcome": "ok",
+    "completedAt": "2026-10-22T01:46:26Z",
+    "durationMs": 39877,
+    "facts": 69,
+    "notApplicable": 46,
+    "noEligibleTouch": 22,
+    "initialPurchaseMissing": 1,
+    "pending": 0,
+    "allocations": 0,
+    "source": "coordinated attribution task production verification"
+  }
+}

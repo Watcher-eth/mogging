@@ -1,3 +1,4 @@
+import { Disclosure, DisclosureSummary, AccordionContent } from '@/components/ui/accordion'
 import { useId, type ReactNode } from 'react'
 import dynamic from 'next/dynamic'
 const CategoryChart = dynamic(() => import('./category-chart').then(module => module.CategoryChart), { ssr: false })
@@ -17,7 +18,7 @@ export function Stat({ title, value, note }: { title: string; value: string; not
 }
 export function Panel({ title, description, note, children, action }: { title: string; description?: string; note?: string; children: ReactNode; action?: ReactNode }) {
   const id = useId()
-  return <section aria-labelledby={id} className="admin-section"><header className="mb-6 flex flex-wrap items-start justify-between gap-3"><div><h2 id={id} className="text-lg font-medium tracking-[-0.025em]">{title}</h2>{description ? <p className="mt-1.5 text-sm leading-6 text-[#73777d]">{description}</p> : null}</div>{action}</header>{children}{note ? <details className="admin-methodology"><summary>How this is measured</summary><p>{note}</p></details> : null}</section>
+  return <section aria-labelledby={id} className="admin-section"><header className="mb-6 flex flex-wrap items-start justify-between gap-3"><div><h2 id={id} className="text-lg font-medium tracking-[-0.025em]">{title}</h2>{description ? <p className="mt-1.5 text-sm leading-6 text-[#73777d]">{description}</p> : null}</div>{action}</header>{children}{note ? <Disclosure className="admin-methodology"><DisclosureSummary>How this is measured</DisclosureSummary><AccordionContent><p>{note}</p></AccordionContent></Disclosure> : null}</section>
 }
 const labels: Record<string, string> = {
   http_status: 'HTTP status', median_store_ms: 'Median store response', elapsed_ms: 'Since tap', stage_ms: 'Time in stage',
@@ -31,7 +32,7 @@ export function Table({ rows, columns }: { rows: MetricRow[]; columns: string[] 
   return <div className="admin-table-scroll" tabIndex={0} role="region" aria-label="Report data"><table className="admin-table"><thead><tr>{columns.map(column => <th key={column} scope="col">{labels[column] || label(column)}</th>)}</tr></thead><tbody>{rows.map((row, index) => <tr key={index}>{columns.map(column => <td key={column}>{row[column] == null ? '—' : column.endsWith('_ms') ? `${count(Number(row[column]) / 1000)} s` : typeof row[column] === 'number' ? count(row[column]) : String(row[column])}</td>)}</tr>)}</tbody></table></div>
 }
 export function DataDetails({ children }: { children: ReactNode }) {
-  return <details className="admin-data-details"><summary>View underlying data</summary><div className="mt-4">{children}</div></details>
+  return <Disclosure className="admin-data-details"><DisclosureSummary>View underlying data</DisclosureSummary><AccordionContent><div className="mt-4">{children}</div></AccordionContent></Disclosure>
 }
 export function ComparisonBars({ rows, series }: { rows: Array<{ label: string; values: number[]; detail?: string }>; series: Array<{ label: string; color: string }> }) {
   return <CategoryChart rows={rows} series={series} format={count} />

@@ -1,0 +1,27 @@
+{
+  "deploymentId": "dpl_7gp6NzQ8wRGVrjZWqh6qq3rAcKCX",
+  "url": "https://www.mogging.com",
+  "deploymentUrl": "https://mogging-9jk7vp7jw-glimpseback.vercel.app",
+  "baseCommit": "918d360c0986ec5ef533b5900b6b8a106f684077",
+  "previousDeploymentId": "dpl_B4kRMx9q2gYHX64oFdyTczDJyGEj",
+  "runtimeFiles": [
+    "lib/analysis/analyze.ts",
+    "lib/analysis/handler.ts",
+    "lib/api/http.ts",
+    "lib/payments/entitlements.ts",
+    "lib/storage/images.ts",
+    "lib/admin/analytics.ts",
+    "pages/api/admin/analytics.ts"
+  ],
+  "migrationsApplied": [
+    "0048_creator_tier_d_minimum"
+  ],
+  "pendingMigrations": 0,
+  "missingExpectedDatabaseColumns": [],
+  "productionHealth": {
+    "status": 200,
+    "database": true,
+    "configuration": true
+  },
+  "dashboardVerification": "Read-only production-data queries succeeded for 1, 7 and 30 days; authenticated browser UI was not exercised."
+}

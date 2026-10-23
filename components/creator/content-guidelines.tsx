@@ -1,3 +1,4 @@
+import { Disclosure, DisclosureSummary, AccordionContent } from '@/components/ui/accordion'
 import useSWR from 'swr'
 import { apiGet } from '@/lib/api/client'
 import { creatorAccountLabel, type CreatorDashboard } from './types'
@@ -68,7 +69,7 @@ export function ContentGuidelines() {
 }
 
 function RuleDetail({ title, children, prohibited = false }: { title: string; children: React.ReactNode; prohibited?: boolean }) {
-  return <details className={prohibited ? "rounded-2xl creator-warning text-red-800" : "rounded-2xl border border-black/[0.07] bg-white"}><summary className="cursor-pointer px-4 py-4 text-sm font-semibold">{title}</summary><div className="space-y-3 border-t border-black/[0.055] p-4 text-sm leading-6 text-[#73777d]">{children}</div></details>
+  return <Disclosure className={prohibited ? "rounded-2xl creator-warning text-red-800" : "rounded-2xl border border-black/[0.07] bg-white"}><DisclosureSummary className="cursor-pointer px-4 py-4 text-sm font-semibold">{title}</DisclosureSummary><AccordionContent><div className="space-y-3 border-t border-black/[0.055] p-4 text-sm leading-6 text-[#73777d]">{children}</div></AccordionContent></Disclosure>
 }
 
 export function ContentRequirementsNote() {
@@ -76,5 +77,5 @@ export function ContentRequirementsNote() {
 }
 
 export function AccountReviewNote() {
-  return <details className="creator-notice mb-5 rounded-2xl p-4"><summary className="cursor-pointer text-sm font-semibold">Account reviews and payout eligibility</summary><p className="mt-3 text-sm leading-6 text-[#73777d]">{accountReviewPolicy}</p><Link href="/creator/guide?topic=payout" className="mt-2 inline-flex min-h-11 items-center text-sm font-semibold text-[#00A8EF] underline underline-offset-4">Read the payout and audience requirements</Link></details>
+  return <Disclosure className="creator-notice mb-5 rounded-2xl p-4"><DisclosureSummary className="cursor-pointer text-sm font-semibold">Account reviews and payout eligibility</DisclosureSummary><AccordionContent><p className="mt-3 text-sm leading-6 text-[#73777d]">{accountReviewPolicy}</p><Link href="/creator/guide?topic=payout" className="mt-2 inline-flex min-h-11 items-center text-sm font-semibold text-[#00A8EF] underline underline-offset-4">Read the payout and audience requirements</Link></AccordionContent></Disclosure>
 }

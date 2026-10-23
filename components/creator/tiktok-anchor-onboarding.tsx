@@ -118,9 +118,9 @@ export function TikTokAccountDialog({
       }}
     >
       <DialogContent
-        className={`creator-dialog flex max-h-[90dvh] flex-col gap-0 overflow-hidden !rounded-[28px] border-zinc-100 bg-white p-0 ${followers ? 'max-w-[440px]' : 'max-w-[700px]'}`}
+        className={`creator-dialog flex max-h-[90dvh] flex-col gap-0 overflow-hidden border-zinc-100 bg-white p-0 ${followers ? 'max-w-[440px]' : 'max-w-[700px]'}`}
       >
-        <DialogHeader className="shrink-0 px-6 pb-4 pt-6 text-left sm:px-8">
+        <DialogHeader className="creator-dialog-header shrink-0 px-6 pb-4 pt-6 text-left sm:px-8">
           <div className="mb-2 flex items-center gap-2.5">
             <span className="flex size-8 items-center justify-center rounded-xl bg-[#eaf7fd] text-[#00A8EF]">
               {followers ? (
@@ -135,7 +135,7 @@ export function TikTokAccountDialog({
                 : 'New for TikTok · 1K+ followers'}
             </p>
           </div>
-          <DialogTitle className="pr-5 text-[27px] font-semibold leading-tight tracking-[-0.04em]">
+          <DialogTitle className="creator-dialog-title pr-5 text-[27px] font-semibold leading-tight tracking-[-0.04em]">
             {followers
               ? 'How many followers do you have?'
               : 'Your video. A direct link to Mogging.'}

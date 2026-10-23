@@ -50,7 +50,7 @@ export function ConnectAccountForm({
   }
   if (connected) {
     return (
-      <div className="grid gap-5 p-6 sm:p-7">
+      <div className="creator-dialog-form grid gap-5 p-6 sm:p-7">
         <div>
           <span className="mb-3 grid size-10 place-items-center rounded-full bg-[#00A8EF] text-white">
             <Check className="size-5" />
@@ -81,7 +81,7 @@ export function ConnectAccountForm({
     )
   }
   return (
-    <form onSubmit={connect} className="grid gap-5 p-6 sm:p-7">
+    <form onSubmit={connect} className="creator-dialog-form grid gap-5 p-6 sm:p-7">
       <div className="grid grid-cols-2 gap-2">
         {(['tiktok', 'instagram'] as const).map((option) => (
           <button
@@ -94,7 +94,7 @@ export function ConnectAccountForm({
               setFollowerRange('')
             }}
             className={cn(
-              'flex min-h-11 items-center gap-2 rounded-xl border px-3 text-sm capitalize',
+              'creator-selection flex items-center gap-2 border text-sm capitalize',
               platform === option
                 ? 'creator-choice-selected'
                 : 'border-zinc-200',

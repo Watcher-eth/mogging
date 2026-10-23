@@ -1079,10 +1079,6 @@
 }
 .c-outline-section-heading svg {
   color: #777773;
-  transition: transform 0.18s ease-out;
-}
-.c-outline-section-heading svg.is-collapsed {
-  transform: rotate(-90deg);
 }
 .c-outline-row {
   display: flex;

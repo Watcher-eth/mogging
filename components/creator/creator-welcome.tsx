@@ -42,7 +42,7 @@ export function CreatorWelcomeDialog({ open, onOpenChange }: { open: boolean; on
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent ref={contentRef} onOpenAutoFocus={(event) => { event.preventDefault(); contentRef.current?.focus() }} className="creator-dialog max-h-[calc(100dvh-32px)] max-w-[480px] overflow-y-auto gap-2 !rounded-[28px] border-zinc-100 bg-white p-0">
+      <DialogContent ref={contentRef} onOpenAutoFocus={(event) => { event.preventDefault(); contentRef.current?.focus() }} className="creator-dialog max-h-[calc(100dvh-32px)] max-w-[480px] overflow-y-auto gap-2 border-zinc-100 bg-white p-0">
         <div className="px-6 pt-6 sm:px-8 sm:pt-7">
           <p className="pr-8 text-[15px] font-semibold text-zinc-500">{question.title}</p>
           <nav aria-label="Creator introduction" className="mt-5 flex gap-1.5 pr-6">
@@ -55,7 +55,7 @@ export function CreatorWelcomeDialog({ open, onOpenChange }: { open: boolean; on
         </div>
         <AnimatedDialogPanel contentKey={step} contentClassName="px-6 pb-2 sm:px-8">
           <WelcomeGraphic key={step} step={step} />
-          <DialogTitle className="mt-5 text-[26px] font-semibold leading-tight tracking-[-0.04em]">{question.headline}</DialogTitle>
+          <DialogTitle className="creator-dialog-title mt-5 text-[26px] font-semibold leading-tight tracking-[-0.04em]">{question.headline}</DialogTitle>
           <DialogDescription className="mt-3 text-sm leading-6 text-zinc-500">{question.answer}</DialogDescription>
         </AnimatedDialogPanel>
         <div className="flex items-center justify-between px-6 pb-4 sm:px-8">

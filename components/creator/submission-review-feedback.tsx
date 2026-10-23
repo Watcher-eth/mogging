@@ -1,3 +1,4 @@
+import { Disclosure, DisclosureSummary, AccordionContent } from '@/components/ui/accordion'
 import { CheckCircle2, XCircle } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { submissionRejectionLabel, type CreatorSubmissionReviewItem, type CreatorSubmissionReviewResult } from '@/lib/creator/submission-review'
@@ -21,6 +22,6 @@ export function SubmissionReviewFeedback({ items, status, note }: { items: Revie
     </li>)}</ol> : null}
     {note ? <div className="mt-4 rounded-xl bg-white p-3.5"><p className="text-xs font-semibold text-zinc-900">Team feedback</p><p className="mt-1 whitespace-pre-wrap break-words text-sm leading-6 text-zinc-600">{note}</p></div> : null}
     {rejected ? <p className="mt-4 text-xs leading-5 text-zinc-600">Need help understanding the review? Send the team a message below.</p> : null}
-    {met.length && !rejected ? <details className="mt-4 border-t border-zinc-100 pt-3"><summary className="cursor-pointer text-xs font-medium text-zinc-600">{met.length} requirements met</summary><ul className="mt-3 grid gap-2">{met.map(item => <li key={item.id} className="flex items-start gap-2 text-xs leading-5 text-zinc-600"><CheckCircle2 aria-hidden="true" className="mt-0.5 size-3.5 shrink-0 text-emerald-600" />{item.label}</li>)}</ul></details> : null}
+    {met.length && !rejected ? <Disclosure className="mt-4 border-t border-zinc-100 pt-3"><DisclosureSummary className="cursor-pointer text-xs font-medium text-zinc-600">{met.length} requirements met</DisclosureSummary><AccordionContent><ul className="mt-3 grid gap-2">{met.map(item => <li key={item.id} className="flex items-start gap-2 text-xs leading-5 text-zinc-600"><CheckCircle2 aria-hidden="true" className="mt-0.5 size-3.5 shrink-0 text-emerald-600" />{item.label}</li>)}</ul></AccordionContent></Disclosure> : null}
   </section>
 }

@@ -46,7 +46,7 @@ export function MinimumViewsDialog({ views, onClose }: {
       <DialogContent className="creator-dialog max-w-md gap-5 p-6 text-center [&>button:last-child]:flex [&>button:last-child]:size-10 [&>button:last-child]:items-center [&>button:last-child]:justify-center [&>button:last-child]:bg-transparent [&>button:last-child]:p-0 [&>button:last-child]:text-zinc-500 [&>button:last-child]:backdrop-blur-none [&>button:last-child]:hover:bg-sky-100 [&>button:last-child]:hover:text-zinc-900">
         <ViewsGoal key={views} start={views ?? 0} />
         <div className="space-y-2">
-          <DialogTitle>Your post hasn’t reached the minimum views yet</DialogTitle>
+          <DialogTitle className="creator-dialog-title">Your post hasn’t reached the minimum views yet</DialogTitle>
           <DialogDescription>
             Your post currently has {views?.toLocaleString('en-US')} views. Please wait until your video or slideshow gets at least 20,000 views, then resubmit.
           </DialogDescription>

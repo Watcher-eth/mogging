@@ -1,4 +1,4 @@
-.page { position: relative; padding: 24px 0 64px; color: #18181b; --faq-ease: cubic-bezier(.22,1,.36,1); --faq-duration: 240ms; }
+.page { position: relative; padding: 24px 0 64px; color: #18181b; --faq-ease: cubic-bezier(.22,1,.36,1); }
 .page::before { content: ''; position: absolute; z-index: -1; pointer-events: none; left: calc(50% - 50vw); top: -110px; width: 100vw; height: 430px; background: radial-gradient(ellipse at 20% 0%,#00a8ef0c,transparent 70%); }
 .hero { display: flex; align-items: center; justify-content: space-between; gap: 32px; padding: 32px 0 104px; }
 .hero h1 { font-size: clamp(56px,7vw,80px); font-weight: 500; line-height: 1; letter-spacing: -.055em; }
@@ -10,11 +10,8 @@
 .item h3 { font-size: 17px; font-weight: 400; letter-spacing: -.015em; }
 .item h3 > button { display: flex; align-items: center; justify-content: space-between; gap: 28px; width: 100%; min-height: 76px; padding: 22px 0; text-align: left; line-height: 1.5; }
 .item h3 > button > span:first-child { transition: translate 180ms var(--faq-ease), color 180ms; }
-.plus { display: grid; place-items: center; flex-shrink: 0; color: #00a8ef; transition: rotate var(--faq-duration) var(--faq-ease), opacity 180ms; }
-.item[data-open=true] .plus { rotate: 45deg; }
-.answer { display: grid; grid-template-rows: 0fr; opacity: 0; transition: grid-template-rows var(--faq-duration) var(--faq-ease), opacity 180ms var(--faq-ease); }
-.answer > div { overflow: hidden; min-height: 0; }
-.item[data-open=true] .answer { grid-template-rows: 1fr; opacity: 1; }
+.plus { display: grid; place-items: center; flex-shrink: 0; color: #00a8ef; }
+.answer { transform-origin: top left; }
 .answer p { padding: 0 36px 22px 0; font-size: 15px; line-height: 1.85; color: #71717a; max-width: 660px; }
 .answer a { display: inline-flex; align-items: center; gap: 6px; margin-bottom: 24px; font-size: 13px; font-weight: 500; color: #18181b; }
 .answer a svg, .support a svg { transition: translate 180ms var(--faq-ease); }

@@ -138,8 +138,8 @@ function SetupContent() {
         }}
       >
         <DialogContent className="creator-dialog p-8">
-          <DialogHeader>
-            <DialogTitle>Let’s get you set up.</DialogTitle>
+          <DialogHeader className="creator-dialog-header">
+            <DialogTitle className="creator-dialog-title">Let’s get you set up.</DialogTitle>
             <DialogDescription>
               Connect your account, get your referral link and code, and choose a payout
               method. Setup takes less than 5 minutes.

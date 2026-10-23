@@ -71,7 +71,7 @@ function OverviewContent() {
             evidence.
           </p>
           <Link
-            href="/creator/submit"
+            href="/creator/submissions?new=1"
             className="group mt-3 inline-flex min-h-11 items-center gap-1.5 text-sm font-semibold text-[#00A8EF]"
           >
             Continue

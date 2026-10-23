@@ -1,3 +1,4 @@
+import { Disclosure, DisclosureSummary, AccordionContent } from '@/components/ui/accordion'
 import Link from 'next/link'
 import { ArrowUpRight, XCircle } from 'lucide-react'
 import { cn } from '@/lib/utils'
@@ -38,7 +39,7 @@ export function SubmissionRequirementsReview({ items, status, onChange }: {
           {rejecting && selected ? <div className="ml-7 mt-3">
             <p className="flex items-center gap-1.5 text-[11px] font-medium text-red-700"><XCircle aria-hidden="true" className="size-3.5" />Shown to the creator</p>
             <textarea aria-label={`Feedback for ${item.label}`} value={item.note || ''} maxLength={500} onChange={event => update(index, { note: event.target.value })} className="mt-2 min-h-20 w-full resize-y rounded-xl border border-red-200 bg-white p-3 text-sm leading-5 outline-none focus:border-red-400 focus:ring-2 focus:ring-red-100" placeholder="Add a specific example or explain how to fix this (optional)" />
-          </div> : <details className="ml-7 mt-2"><summary className="cursor-pointer text-xs text-zinc-500">Requirement details</summary><p className="mt-2 text-xs leading-5 text-zinc-500">{item.detail}</p></details>}
+          </div> : <Disclosure className="ml-7 mt-2"><DisclosureSummary className="cursor-pointer text-xs text-zinc-500">Requirement details</DisclosureSummary><AccordionContent><p className="mt-2 text-xs leading-5 text-zinc-500">{item.detail}</p></AccordionContent></Disclosure>}
         </div>
       })}
     </div>

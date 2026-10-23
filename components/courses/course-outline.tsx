@@ -1,6 +1,7 @@
+import { Accordion, AccordionItem, AccordionTrigger, AccordionContent, AccordionChevron } from '@/components/ui/accordion'
 import { useState, type ReactNode, type ComponentType } from 'react'
 import Image from 'next/image'
-import { Check, ChevronDown, FileText, Play } from 'lucide-react'
+import { Check, FileText, Play } from 'lucide-react'
 import { AnimatePresence, motion } from 'motion/react'
 import type { CourseContent, CourseLesson } from '@/lib/courses/validation'
 
@@ -54,7 +55,7 @@ export function CourseOutline({
   const [collapsed, setCollapsed] = useState<string[]>([])
   const completedIds = new Set(completed)
   return (
-    <div className="c-outline">
+    <Accordion className="c-outline" multiple expandedValue={content.sections.filter(section => !collapsed.includes(section.id)).map(section => section.id)} onValueChange={value => setCollapsed(content.sections.filter(section => !Array.isArray(value) || !value.includes(section.id)).map(section => section.id))}>
       <AnimatePresence initial={false}>
         {content.sections.map((section, sectionIndex) => (
           <motion.section
@@ -65,33 +66,17 @@ export function CourseOutline({
             className="c-outline-section"
             key={section.id}
           >
-            <div className="c-outline-section-heading">
-              <button
-                onClick={() =>
-                  setCollapsed((current) =>
-                    current.includes(section.id)
-                      ? current.filter((id) => id !== section.id)
-                      : [...current, section.id],
-                  )
-                }
-                aria-expanded={!collapsed.includes(section.id)}
-                aria-controls={`chapter-${section.id}`}
-              >
+            <AccordionItem value={section.id}><div className="c-outline-section-heading">
+              <AccordionTrigger>
                 <span className="c-outline-number">
                   {String(sectionIndex + 1).padStart(2, '0')}
                 </span>
                 <strong>{section.title}</strong>
-                <ChevronDown
-                  size={14}
-                  className={
-                    collapsed.includes(section.id) ? 'is-collapsed' : ''
-                  }
-                />
-              </button>
+                <AccordionChevron />
+              </AccordionTrigger>
               {sectionActions?.(section.id, sectionIndex)}
             </div>
-            {!collapsed.includes(section.id) && (
-              <div id={`chapter-${section.id}`} className="c-outline-lessons">
+            <AccordionContent className="c-outline-lessons">
                 <AnimatePresence initial={false}>
                   {section.lessons.map((lesson, index) => {
                     const image =
@@ -148,11 +133,10 @@ export function CourseOutline({
                 {!section.lessons.length && (
                   <EmptySection sectionId={section.id} />
                 )}
-              </div>
-            )}
+            </AccordionContent></AccordionItem>
           </motion.section>
         ))}
       </AnimatePresence>
-    </div>
+    </Accordion>
   )
 }

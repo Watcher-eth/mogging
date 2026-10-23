@@ -1,3 +1,4 @@
+import { Accordion, AccordionItem, AccordionTrigger, AccordionContent, AccordionChevron } from '@/components/ui/accordion'
 import { useTranslation } from 'react-i18next';
 import { useRouter } from 'next/router';
 import dynamic from "next/dynamic";
@@ -5,14 +6,14 @@ import { useLandingTracking } from "@/components/landing/use-landing-tracking";
 import type { GetServerSideProps, NextApiRequest, NextApiResponse } from "next";
 import Image from "next/image";
 import Link from "next/link";
-import { ArrowRight, Plus } from "lucide-react";
+import { ArrowRight } from "lucide-react";
 import {
   ScanReportPreview,
   EvaluationPreview,
   ProtocolPreview,
   LeaderboardPreview,
 } from "@/components/landing/mobile-preview";
-import { AnimatePresence, LazyMotion, domAnimation, useReducedMotion } from "motion/react";
+import { LazyMotion, domAnimation, useReducedMotion } from "motion/react";
 import * as m from "motion/react-m";
 import { WebCheckout } from "@/components/landing/web-checkout";
 import { AnalysisStory } from "@/components/landing/analysis-story";
@@ -235,7 +236,6 @@ function NewHomepage({ assignment, preview }: Props) {
 
 function LandingFaq() {
   const { t } = useTranslation();
-  const [openFaq, setOpenFaq] = useState<number | null>(null);
   const reduced = useReducedMotion();
   return (
           <m.section initial={{ opacity: reduced ? 1 : 0, y: reduced ? 0 : 20 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true, amount: .2 }} transition={{ duration: reduced ? 0 : .4, ease: [.16, 1, .3, 1] }}
@@ -249,7 +249,7 @@ function LandingFaq() {
             >
               {t("landing.faqTitle")}
             </h2>
-            <div className="mt-6 max-w-3xl divide-y divide-zinc-100">
+            <Accordion className="mt-6 max-w-3xl divide-y divide-zinc-100">
               {[
                 [
                   t("faq.free.question"),
@@ -268,16 +268,12 @@ function LandingFaq() {
                   t("faq.devices.answer"),
                 ],
               ].map(([question, answer], index) => (
-                <div key={question} className="py-5">
-                  <button type="button" onClick={() => setOpenFaq(openFaq === index ? null : index)} aria-expanded={openFaq === index} aria-controls={`faq-answer-${index}`} id={`faq-question-${index}`} className="flex w-full items-center justify-between gap-6 text-left text-base font-medium focus-visible:outline focus-visible:outline-offset-4">
-                    {question}<m.span animate={{ rotate: openFaq === index ? 45 : 0 }} transition={{ duration: reduced ? 0 : .35, ease: [.16, 1, .3, 1] }}><Plus className="size-5 text-zinc-400" /></m.span>
-                  </button>
-                  <AnimatePresence initial={false}>
-                    {openFaq === index && <m.div id={`faq-answer-${index}`} role="region" aria-labelledby={`faq-question-${index}`} initial={{ height: 0, opacity: 0 }} animate={{ height: "auto", opacity: 1 }} exit={{ height: 0, opacity: 0 }} transition={{ duration: reduced ? 0 : .4, ease: [.16, 1, .3, 1] }} className="overflow-hidden"><p className="max-w-2xl pt-3 text-sm leading-7 text-zinc-500">{answer}</p></m.div>}
-                  </AnimatePresence>
-                </div>
+                <AccordionItem key={question} value={index} className="py-5">
+                  <h3><AccordionTrigger className="flex w-full items-center justify-between gap-6 text-left text-base font-medium"><span>{question}</span><AccordionChevron /></AccordionTrigger></h3>
+                  <AccordionContent><p className="max-w-2xl pt-3 text-sm leading-7 text-zinc-500">{answer}</p></AccordionContent>
+                </AccordionItem>
               ))}
-            </div>
+            </Accordion>
           </m.section>
   );
 }

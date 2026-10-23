@@ -11,7 +11,7 @@
 .admin-lock:hover { background: #f7f8f9; }
 .admin-skip-link { position: fixed; top: 8px; left: 8px; z-index: 100; transform: translateY(-150%); padding: 12px 18px; border-radius: 8px; background: #181a1d; color: white; }
 .admin-skip-link:focus { transform: none; }
-.admin-portal :is(button, a, select, input, textarea, summary):focus-visible { outline: 2px solid #00A8EF; outline-offset: 3px; }
+.admin-portal :is(button, a, select, input, textarea):focus-visible { outline: 2px solid #00A8EF; outline-offset: 3px; }
 .admin-portal button:active:not(:disabled) { transform: scale(.98); }
 .admin-stats-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); margin-bottom: 16px; gap: 20px; }
 .admin-metric { min-width: 0; padding-block: 12px 24px; background: transparent; }
@@ -25,7 +25,7 @@
 .admin-chart-empty { border-radius: 12px; background: #fafbfc; }
 .admin-notice { margin-bottom: 20px; padding: 12px 16px; border-left: 2px solid #00A8EF; background: #f7f8f9; font-size: 13px; line-height: 1.7; color: #52565c; }
 .admin-methodology, .admin-data-details { margin-top: 18px; font-size: 12px; color: #858a91; }
-.admin-methodology summary, .admin-data-details summary { width: fit-content; padding-block: 5px; cursor: pointer; }
+.admin-methodology [data-accordion-trigger], .admin-data-details [data-accordion-trigger] { width: fit-content; padding-block: 5px; cursor: pointer; }
 .admin-methodology p { max-width: 850px; padding-top: 8px; font-size: 12px; line-height: 1.8; }
 .admin-data-details { color: #73777d; }
 .admin-table-scroll { overflow-x: auto; width: 100%; }

@@ -6,6 +6,7 @@ import { SubmissionDialog as AnalyticsSubmissionDialog } from '@/components/crea
 import { SubmissionConversation } from '@/components/creator/submission-conversation'
 import { SubmissionPostPreview, useSubmissionPostPreview } from '@/components/creator/submission-post-preview'
 import Link from 'next/link'
+import { useRouter } from 'next/router'
 import { useMemo, useState } from 'react'
 import { ArrowUpRight, Eye, MessageCircle, CircleAlert, Clock3, Loader2, RotateCcw, XCircle } from 'lucide-react'
 import useSWR from 'swr'
@@ -35,6 +36,12 @@ export default function CreatorSubmissionsPage() {
 }
 
 function SubmissionsContent() {
+  const router = useRouter()
+  const newSubmissionOpen = router.query.new === '1'
+  async function closeNewSubmission() {
+    const { new: _, sprint: __, ...query } = router.query
+    await router.replace({ pathname: router.pathname, query }, undefined, { shallow: true })
+  }
   const { data, isLoading, mutate } = useSWR<CreatorDashboard>('/api/creator', apiGet, { refreshInterval: 30_000 })
   const [filter, setFilter] = useState<(typeof filters)[number]['value']>('all')
   const [selectedId, setSelectedId] = useState<string | null>(null)
@@ -47,14 +54,23 @@ function SubmissionsContent() {
   const accountStatusById = useMemo(() => new Map((data?.socialAccounts || []).map((account) => [account.id, account.status])), [data?.socialAccounts])
 
   return (
-    <>
-      <CreatorHeader eyebrow="History & Payments" title="Submissions" description="Follow every video from review through approval and payout." action={<Button asChild className="h-11 rounded-full px-5"><Link href="/creator/submit">New Submission</Link></Button>} />
+    <div className="creator-submissions-history">
+      <CreatorHeader eyebrow="History & Payments" title="Submissions" description="Follow every video from review through approval and payout." action={<Button asChild className="h-11 rounded-full px-5"><Link href="/creator/submissions?new=1">New Submission</Link></Button>} />
       {data ? <RegisteredPosts data={data} onChange={mutate} /> : null}
-      <label className="mb-5 flex items-center gap-3 text-sm font-medium">Status<select className="creator-field max-w-xs" value={filter} onChange={(event) => setFilter(event.target.value as typeof filter)}>{filters.map((item) => <option key={item.value} value={item.value}>{item.label} ({item.value === 'all' ? submissions.length : submissions.filter((submission) => submission.status === item.value).length})</option>)}</select></label>
+      <label className="mb-5 flex items-center gap-3 text-sm font-medium">Status<select className="creator-field creator-history-filter max-w-xs" value={filter} onChange={(event) => setFilter(event.target.value as typeof filter)}>{filters.map((item) => <option key={item.value} value={item.value}>{item.label} ({item.value === 'all' ? submissions.length : submissions.filter((submission) => submission.status === item.value).length})</option>)}</select></label>
       {isLoading ? <div className="grid min-h-64 place-items-center"><Loader2 className="size-5 animate-spin text-zinc-400" /></div> : visible.length ? <div className="grid gap-3">{visible.map((submission, index) => <SubmissionCard key={submission.id} submission={submission} payment={paymentBySubmission.get(submission.id)} onClick={() => setSelectedId(submission.id)} style={{ animationDelay: `${Math.min(index * 45, 180)}ms` }} />)}</div> : <EmptyState filtered={filter !== 'all'} />}
       <SubmissionDialog key={selected?.id || "closed"} submission={selected} payment={selected ? paymentBySubmission.get(selected.id) : undefined} payments={selected ? (data?.payments || []).filter(payment => payment.submissionId === selected.id) : []} linkedToApprovedAccount={Boolean(selected?.socialAccountId && accountStatusById.get(selected.socialAccountId) === 'approved')} open={Boolean(selected)} onOpenChange={(open) => { if (!open) setSelectedId(null) }} onUpdateAnalytics={() => { setAnalyticsId(selected!.id); setSelectedId(null) }} />
+      {newSubmissionOpen ? <AnalyticsSubmissionDialog
+        open
+        initialSprintId={typeof router.query.sprint === 'string' ? router.query.sprint : undefined}
+        onOpenChange={open => { if (!open) void closeNewSubmission() }}
+        onSubmitted={async () => {
+          await mutate()
+          await closeNewSubmission()
+        }}
+      /> : null}
       {analyticsSubmission ? <AnalyticsSubmissionDialog key={analyticsSubmission.id} open existingSubmission={analyticsSubmission} onOpenChange={open => { if (!open) setAnalyticsId(null) }} onSubmitted={async () => { await mutate() }} /> : null}
-    </>
+    </div>
   )
 }
 
@@ -104,15 +120,15 @@ function SubmissionDialog({ submission, payment, payments, linkedToApprovedAccou
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="creator-dialog max-h-[90vh] max-w-2xl overflow-y-auto !rounded-[32px] border-zinc-200 bg-white p-0">
+      <DialogContent className="creator-dialog max-h-[90vh] max-w-2xl overflow-y-auto border-zinc-200 bg-white p-0">
         <AnimatedDialogPanel contentKey={tab}>
         {submission && tab === 'details' ? <SubmissionEvidence submission={submission} /> : null}
         {submission ? (
           <div className="p-5 sm:p-7">
-            <DialogHeader className="text-left">
+            <DialogHeader className="creator-dialog-header text-left">
               <div className="flex items-center gap-2 pr-10"><StatusPill status={submission.status} /><span className="text-xs text-zinc-400">{formatDate(submission.createdAt)}</span></div>
               <div className="flex items-center justify-between gap-3 pt-2">
-                <DialogTitle className="min-w-0 flex-1 break-words text-xl">{caption || `${submission.platform} submission`}</DialogTitle>
+                <DialogTitle className="creator-dialog-title min-w-0 flex-1 break-words text-xl">{caption || `${submission.platform} submission`}</DialogTitle>
                 {submission.sprintId && !submission.reviewRequestedAt && !payments.some(item => ['pending', 'processing'].includes(item.status)) && (['approved', 'paid', 'rejected'].includes(submission.status) || !submission.analyticsScreenshotUrl) ? <Button variant="outline" className="min-h-10 max-w-[60%] shrink-0 whitespace-normal rounded-full px-3 text-xs sm:text-sm" onClick={onUpdateAnalytics}><RotateCcw className="size-4 shrink-0" aria-hidden="true" />{submission.analyticsScreenshotUrl ? 'Request rereview' : 'Add analytics & update views'}</Button> : null}
               </div>
               <DialogDescription>{CREATOR_REREVIEW_GUIDANCE}</DialogDescription>
@@ -165,7 +181,7 @@ function SubmissionEvidence({ submission }: { submission: CreatorSubmission }) {
 }
 
 function StatusPill({ status }: { status: CreatorSubmission['status'] }) { return <span className={cn('shrink-0 rounded-lg px-2.5 py-1 text-[11px] font-semibold', status === 'paid' && 'creator-tone-green text-[#29CE53]', status === 'approved' && 'creator-tone-blue text-[#00A8EF]', (status === 'pending' || status === 'in_review') && 'bg-[#f5f6f7] text-[#52565c]', status === 'rejected' && 'creator-tone-red text-[#F33232]')}>{statusLabel(status)}</span> }
-function EmptyState({ filtered }: { filtered: boolean }) { return <div className="creator-surface grid min-h-72 place-items-center px-4 py-8 sm:px-8 text-center"><div className="w-full">{filtered ? <span className="mx-auto grid size-12 place-items-center rounded-[16px] bg-[#f7f8f9] text-[#00A8EF]"><Clock3 className="size-5" /></span> : <SubmissionReviewAnimation />}<h2 className="mt-4 text-sm font-semibold">{filtered ? 'Nothing in This Status' : 'No Submissions Yet'}</h2><p className="mt-0.5 text-sm text-[#73777d]">{filtered ? 'Choose another filter to see more videos.' : 'Your submitted videos and payments will appear here.'}</p>{!filtered ? <Button asChild className="mt-6 h-10 rounded-full px-4"><Link href="/creator/submit">Submit Your First Video</Link></Button> : null}</div></div> }
+function EmptyState({ filtered }: { filtered: boolean }) { return <div className="creator-surface grid min-h-72 place-items-center px-4 py-8 sm:px-8 text-center"><div className="w-full">{filtered ? <span className="mx-auto grid size-12 place-items-center rounded-[16px] bg-[#f7f8f9] text-[#00A8EF]"><Clock3 className="size-5" /></span> : <SubmissionReviewAnimation />}<h2 className="mt-4 text-sm font-semibold">{filtered ? 'Nothing in This Status' : 'No Submissions Yet'}</h2><p className="mt-0.5 text-sm text-[#73777d]">{filtered ? 'Choose another filter to see more videos.' : 'Your submitted videos and payments will appear here.'}</p>{!filtered ? <Button asChild className="mt-6 h-10 rounded-full px-4"><Link href="/creator/submissions?new=1">Submit Your First Video</Link></Button> : null}</div></div> }
 function Detail({ label, value }: { label: string; value: string }) { return <div className="flex items-center justify-between gap-4"><span className="text-zinc-500">{label}</span><span className="text-right font-medium capitalize">{value}</span></div> }
 function statusLabel(status: CreatorSubmission['status']) { return status === 'in_review' ? 'In Review' : status.slice(0, 1).toUpperCase() + status.slice(1) }
 function formatMoney(cents: number, currency: string) { return new Intl.NumberFormat('en-US', { style: 'currency', currency }).format(cents / 100) }

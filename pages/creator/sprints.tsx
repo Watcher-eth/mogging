@@ -210,7 +210,7 @@ function SprintDetail({ sprint }: { sprint: CreatorSprint }) {
           sprintPhase(sprint) === 'active' &&
           sprint.usedCents < sprint.budgetCents ? (
             <Button asChild>
-              <Link href={`/creator/submit?sprint=${sprint.id}`}>
+              <Link href={`/creator/submissions?new=1&sprint=${sprint.id}`}>
                 <Plus />
                 Submit a video
               </Link>
@@ -238,7 +238,7 @@ function SprintDetail({ sprint }: { sprint: CreatorSprint }) {
                   <SelectTrigger aria-label="Milestone payout tier" className="h-8 w-24 rounded-full px-3 text-xs shadow-none">
                     <SelectValue />
                   </SelectTrigger>
-                  <SelectContent>
+                  <SelectContent className="creator-select-content">
                     {[...CREATOR_AUDIENCE_BANDS].reverse().map((band) => (
                       <SelectItem key={band.tier} value={band.tier}>Tier {band.tier}</SelectItem>
                     ))}
@@ -348,11 +348,11 @@ function SprintDetail({ sprint }: { sprint: CreatorSprint }) {
                         </button>
                       </DialogTrigger>
                       <DialogContent className="creator-dialog max-h-[calc(100dvh-32px)] max-w-2xl overflow-y-auto p-6 sm:p-8">
-                        <DialogHeader className="pr-6 text-left">
+                        <DialogHeader className="creator-dialog-header pr-6 text-left">
                           <p className="text-[11px] font-semibold uppercase tracking-widest text-zinc-500">
                             Format brief
                           </p>
-                          <DialogTitle>{format.name}</DialogTitle>
+                          <DialogTitle className="creator-dialog-title">{format.name}</DialogTitle>
                           <DialogDescription>
                             {format.shortDescription}
                           </DialogDescription>

@@ -1,3 +1,4 @@
+import { AccordionTrigger, AccordionChevron, Disclosure, DisclosureSummary, AccordionContent } from '@/components/ui/accordion'
 import { ContentRestrictions } from '@/components/creator/content-restrictions'
 import { CreatorEssentials } from '@/components/creator/creator-essentials'
 import { creatorCampaignRules, creatorFormatElement, CREATOR_CTA_GUIDANCE } from '@/lib/creator/post-guidance'
@@ -14,7 +15,6 @@ import {
   Calculator,
   CalendarDays,
   Check,
-  ChevronDown,
   ExternalLink,
   Link2,
   ShieldCheck,
@@ -80,7 +80,7 @@ function GuideHome() {
       {startingQuestions.map((item) => <Link key={item.topic} href={creatorGuideHref(item.topic)} className="group flex flex-col rounded-[20px] bg-[#f5f6f7] p-5 transition-colors hover:bg-[#eef0f2] sm:p-6"><CreatorIcon name={item.icon} className="mb-5 size-6 text-[#00A8EF]" /><h2 className="text-lg font-semibold leading-6 tracking-[-0.03em]">{item.title}</h2><p className="mt-3 text-sm leading-6 text-[#73777d]">{item.answer}</p><span className="mt-auto flex items-center justify-between gap-3 pt-6 text-xs font-semibold text-[#00A8EF]">{item.link}<ArrowRight className="size-4 transition-transform duration-150 group-hover:translate-x-0.5" /></span></Link>)}
     </section>
     <section className="mt-10" aria-labelledby="explore-guide-title"><p className="text-[11px] font-semibold uppercase tracking-[0.13em] text-[#858a91]">Go a little deeper</p><h2 id="explore-guide-title" className="mt-2 text-xl font-semibold tracking-[-0.03em]">Find exactly what you need.</h2><div className="mt-5 grid gap-x-8 sm:grid-cols-2">{resources.map(([id, title, detail]) => <Link key={id} href={creatorGuideHref(id)} className="group flex items-center justify-between gap-3 border-t border-[#eceef0] py-5"><span><span className="block text-sm font-semibold">{title}</span><span className="mt-1 block text-xs leading-5 text-[#73777d]">{detail}</span></span><ArrowRight className="size-4 shrink-0 text-[#858a91] transition-[color,transform] duration-150 group-hover:translate-x-0.5 group-hover:text-[#00A8EF]" /></Link>)}</div></section>
-    <details className="mt-6 border-t border-[#eceef0] pt-3"><summary className="min-h-11 cursor-pointer py-3 text-sm font-medium">Brand new? See the three-step overview</summary><QuickStart /></details>
+    <Disclosure className="mt-6 border-t border-[#eceef0] pt-3"><DisclosureSummary className="min-h-11 cursor-pointer py-3 text-sm font-medium">Brand new? See the three-step overview</DisclosureSummary><AccordionContent><QuickStart /></AccordionContent></Disclosure>
     <div className="mt-8 flex flex-wrap items-center justify-between gap-4 rounded-[16px] bg-[#f5f6f7] px-5 py-4"><div><p className="text-sm font-semibold">A question we haven’t answered?</p><p className="mt-0.5 text-xs text-[#73777d]">We’ll help you figure out your next step.</p></div><a href={discordContactUrl} target="_blank" rel="noreferrer" className="inline-flex min-h-11 items-center gap-2 text-sm font-semibold text-[#00A8EF]">Ask us on Discord<ArrowRight className="size-4" /></a></div>
   </>
 }
@@ -200,15 +200,15 @@ function GuidePanelHeader({ eyebrow, title, description, action }: { eyebrow: st
 
 function GuideDisclosure({ title, meta, children, tone = 'default' }: { title: string; meta: string; children: ReactNode; tone?: 'default' | 'warning' | 'danger' }) {
   return (
-    <details className={cn('guide-disclosure rounded-[16px] border', tone === 'danger' || tone === 'warning' ? 'creator-warning' : 'border-[#eceef0] bg-white')}>
-      <summary className="flex cursor-pointer list-none items-center gap-3 px-4 py-3.5 text-sm font-semibold marker:content-none">
+    <Disclosure className={cn('guide-disclosure rounded-[16px] border', tone === 'danger' || tone === 'warning' ? 'creator-warning' : 'border-[#eceef0] bg-white')}>
+      <AccordionTrigger className="flex w-full cursor-pointer items-center gap-3 px-4 py-3.5 text-left text-sm font-semibold">
         {tone === 'danger' ? <TriangleAlert className="size-4 shrink-0 text-red-700" /> : tone === 'warning' ? <TriangleAlert className="size-4 shrink-0 text-[#52565c]" /> : null}
         <span className="min-w-0 flex-1">{title}</span>
         <span className="text-[11px] font-normal text-[#858a91]">{meta}</span>
-        <ChevronDown className="guide-disclosure-chevron size-4 shrink-0 text-[#858a91]" />
-      </summary>
+        <AccordionChevron />
+      </AccordionTrigger><AccordionContent>
       <div className="border-t border-black/[0.055] px-4 py-4">{children}</div>
-    </details>
+    </AccordionContent></Disclosure>
   )
 }
 

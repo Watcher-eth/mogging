@@ -1,0 +1,260 @@
+diff --git a/lib/analysis/analyze.ts b/lib/analysis/analyze.ts
+index cc0a032..2d2c2af 100644
+--- a/lib/analysis/analyze.ts
++++ b/lib/analysis/analyze.ts
+@@ -1,4 +1,5 @@
+ import { ANALYSIS_PROMPT_VERSION } from './prompt'
++import { ApiError } from '@/lib/api/http'
+ import { z } from 'zod'
+ import { hairColorSchema, normalizeApparentAge, skinColorSchema } from '@/lib/appearance/types'
+ import { computeImageHash } from '@/lib/photos/imageHash'
+@@ -44,9 +45,16 @@ export async function analyzeAndSave(input: AnalyzeAndSaveInput, reservationId?:
+   const promptVersion = options.promptVersion ?? ANALYSIS_PROMPT_VERSION
+   const data = analyzeAndSaveSchema.parse(input)
+   const storageStarted = Date.now()
+-  const storedImagePromise = storeImageDataUrl(data.imageData)
++  const storedImageResult = await storeImageDataUrl(data.imageData)
+     .then((storedImage) => ({ ok: true as const, storedImage }))
+     .catch((error: unknown) => ({ ok: false as const, error }))
++  console.info('analyze:image-storage', { elapsedMs: Date.now() - storageStarted, success: storedImageResult.ok })
++  if (!storedImageResult.ok) {
++    console.error('Image storage failed during analysis', storedImageResult.error)
++    // Do not start paid provider work for a photo we cannot retain. The handler
++    // returns the reservation before the client retries this known storage failure.
++    if (reservationId || options.requirePersistence) throw new ApiError(503, 'Unable to save the report image. Please retry; your scan credit is still available.', 'image_storage_unavailable')
++  }
+   const providerResultPromise = provider
+     .analyzeFace({
+       imageDataUrl: data.imageData,
+@@ -57,11 +65,6 @@ export async function analyzeAndSave(input: AnalyzeAndSaveInput, reservationId?:
+     .then((result) => ({ ok: true as const, result }))
+     .catch((error: unknown) => ({ ok: false as const, error }))
+ 
+-  const storedImageResult = await storedImagePromise
+-  console.info('analyze:image-storage', { elapsedMs: Date.now() - storageStarted, success: storedImageResult.ok })
+-  if (!storedImageResult.ok) {
+-    console.error('Image storage failed during analysis', storedImageResult.error)
+-  }
+   if (storedImageResult.ok && data.userId) {
+     await updateUserAvatarIfMissing(data.userId, storedImageResult.storedImage.imageUrl)
+       .catch(() => console.warn('analyze:avatar-update-failed'))
+@@ -69,7 +72,6 @@ export async function analyzeAndSave(input: AnalyzeAndSaveInput, reservationId?:
+   const providerResult = await providerResultPromise
+ 
+   if (!storedImageResult.ok) {
+-    if (reservationId || options.requirePersistence) throw new Error('Unable to save the report image. Please retry; your scan credit is still available.')
+     return createTransientAnalysisResult(data, providerResult, 'Image storage failed', options)
+   }
+ 
+diff --git a/lib/analysis/handler.ts b/lib/analysis/handler.ts
+index a850c25..f89a22a 100644
+--- a/lib/analysis/handler.ts
++++ b/lib/analysis/handler.ts
+@@ -1,9 +1,10 @@
+ import { markEvaluationStarted, monitorBackend } from '@/lib/reliability/monitor'
+ import { createHash, randomUUID } from 'crypto'
+ import type { NextApiRequest, NextApiResponse } from 'next'
++import type { ZodType } from 'zod'
+ import { eq } from 'drizzle-orm'
+ import { ApiError, handleApiError, json, methodNotAllowed, parseBody } from '@/lib/api/http'
+-import { analyzeAndSave, analyzeAndSaveSchema } from './analyze'
++import { analyzeAndSave, analyzeAndSaveSchema, type AnalyzeAndSaveInput } from './analyze'
+ import { getOrSetAnonymousActorId } from '@/lib/auth/anonymous'
+ import { getAnonymousProfile } from '@/lib/auth/anonymousProfile'
+ import { getRequestUserId } from '@/lib/auth/mobile-session'
+@@ -14,7 +15,7 @@ import { env } from '@/lib/env'
+ import { reserveEvaluation, finishEvaluation } from '@/lib/payments/entitlements'
+ import { createAnalysisShare } from '@/lib/sharing/service'
+ 
+-export function createAnalyzeHandler(run: typeof analyzeAndSave = analyzeAndSave, bodySchema = analyzeAndSaveSchema, requestNamespace = '') {
++export function createAnalyzeHandler(run: typeof analyzeAndSave = analyzeAndSave, bodySchema: ZodType<AnalyzeAndSaveInput> = analyzeAndSaveSchema, requestNamespace = '') {
+ return async function handler(req: NextApiRequest, res: NextApiResponse) {
+   if (req.method !== 'POST') return methodNotAllowed(res, ['POST'])
+ 
+@@ -68,8 +69,18 @@ return async function handler(req: NextApiRequest, res: NextApiResponse) {
+     const userSkinColor = skinColorSchema.safeParse(userProfile?.skinColor).data ?? null
+ 
+     if (userId) {
+-      reservation = await reserveEvaluation({ userId, mobileInstallId: mobileInstallId ?? undefined }, requestId,
+-        createHash('sha256').update(JSON.stringify(body)).digest('hex'))
++      try {
++        reservation = await reserveEvaluation({ userId, mobileInstallId: mobileInstallId ?? undefined }, requestId,
++          createHash('sha256').update(JSON.stringify(body)).digest('hex'))
++      } catch (error) {
++        if (error instanceof ApiError && error.code === 'evaluation_processing') {
++          // Existing mobile builds retry a dropped connection immediately. Wait
++          // for their original request instead of returning a terminal-looking 409.
++          const completed = await waitForExistingEvaluation(`${userId}:${requestId}`, startedAt + 105_000)
++          if (completed) return json(res, 200, completed)
++        }
++        throw error
++      }
+       if (reservation.result) return json(res, 200, { ...reservation.result, entitlements: reservation.summary })
+     }
+ 
+@@ -132,6 +143,17 @@ return async function handler(req: NextApiRequest, res: NextApiResponse) {
+ 
+ }
+ 
++async function waitForExistingEvaluation(id: string, deadline: number) {
++  while (Date.now() < deadline) {
++    const row = await db.query.scanReservations.findFirst({
++      where: eq(schema.scanReservations.id, id), columns: { status: true, result: true },
++    })
++    if (!row || row.status !== 'pending') return row?.result ?? null
++    await new Promise(resolve => setTimeout(resolve, 750))
++  }
++  return null
++}
++
+ function readMobileInstallId(req: NextApiRequest) {
+   const header = req.headers['x-mogging-mobile-install-id']
+   const value = Array.isArray(header) ? header[0] : header
+diff --git a/lib/api/http.ts b/lib/api/http.ts
+index 4354bdd..82ebffd 100644
+--- a/lib/api/http.ts
++++ b/lib/api/http.ts
+@@ -10,6 +10,8 @@ type ApiErrorCode =
+   | 'method_not_allowed'
+   | 'rate_limited'
+   | 'provider_error'
++  | 'image_storage_unavailable'
++  | 'evaluation_processing'
+   | 'internal_error'
+ 
+ export class ApiError extends Error {
+diff --git a/lib/storage/images.ts b/lib/storage/images.ts
+index 8b859f2..b29b301 100644
+--- a/lib/storage/images.ts
++++ b/lib/storage/images.ts
+@@ -139,7 +139,8 @@ async function storeR2Image(
+       Body: parsed.buffer,
+       ContentType: parsed.contentType,
+       CacheControl: 'public, max-age=86400',
+-    })
++    }),
++    { abortSignal: AbortSignal.timeout(20_000) }
+   )
+ 
+   const baseUrl = env.R2_PUBLIC_BASE_URL
+@@ -157,6 +158,7 @@ function getR2Client() {
+   if (r2Client) return r2Client
+ 
+   r2Client = new S3Client({
++    maxAttempts: 3,
+     region: 'auto',
+     endpoint: `https://${env.R2_ACCOUNT_ID}.r2.cloudflarestorage.com`,
+     credentials: {
+diff --git a/lib/payments/entitlements.ts b/lib/payments/entitlements.ts
+index bdcf676..cd63909 100644
+--- a/lib/payments/entitlements.ts
++++ b/lib/payments/entitlements.ts
+@@ -462,7 +471,7 @@ export async function reserveEvaluation(ownerInput: EntitlementOwner, requestId:
+     const prior = await tx.query.scanReservations.findFirst({ where: eq(schema.scanReservations.id, id) })
+     if (prior) {
+       if (prior.requestHash !== requestHash) throw new ApiError(409, 'This scan request ID was already used for another photo')
+-      if (prior.status === 'pending') throw new ApiError(409, 'Your scan is still processing. Please retry shortly.')
++      if (prior.status === 'pending') throw new ApiError(409, 'Your scan is still processing. Please retry shortly.', 'evaluation_processing')
+       return { id, result: prior.result, summary: access.summary }
+     }
+     let entitlementId = access.lifetime?.id
+diff --git a/lib/admin/analytics.ts b/lib/admin/analytics.ts
+index 05c0d3d..551fcaa 100644
+--- a/lib/admin/analytics.ts
++++ b/lib/admin/analytics.ts
+@@ -20,6 +20,8 @@ const monetaryBillingEvent = sql`(
+   or (provider = 'revenuecat' and event_name in ('subscription_started','subscription_renewed','trial_converted','one_time_purchase','refund_reversed','subscription_refunded'))
+ )`
+ 
++const contextFields = ['appsflyer_id','creator_click_id','creator_tracking_link_id','creator_first_tracking_link_id','flow_id','attempt_id','report_id','evaluation_id']
++
+ const subscriptionLifecycleEvents = [
+   'subscription_started', 'trial_started', 'trial_converted', 'invoice_paid', 'subscription_renewed',
+   'cancellation_scheduled', 'subscription_pause_scheduled', 'subscription_expired', 'subscription_refunded',
+@@ -82,13 +84,15 @@ export function analyticsQuery(filters: AnalyticsFilters, now: Date) {
+   // A default plan can be purchased without an explicit plan-selection event.
+   const paywall = funnel('paywall', ['paywall_viewed', 'purchase_started', 'purchase_completed'], sql`platform in ('ios','android')`)
+   const web = funnel('web', ['page_viewed', 'app_store_redirected'], sql`platform = 'web' and properties->>'path' = '/'`)
++  const contextDefinitions = sql.join(contextFields.map(field => sql`(${field}::text)`), sql`,`)
+   const rows = (name: string) => sql`coalesce((select json_agg(r) from ${sql.identifier(name)} r), '[]'::json)`
+   const referrer = sql`coalesce(nullif(properties->>'first_referrer_host',''),nullif(properties->>'referrer_host',''))`
+   const acquisitionSource = sql`coalesce(nullif(properties->>'creator_first_tracking_link_id',''),
+     nullif(properties->>'first_utm_source',''), nullif(properties->>'utm_source',''),
+     case when ${referrer} !~* ${excludedAcquisitionHost} then ${referrer} end)`
+   return sql`with ${audienceCTEs()}, scoped_events as materialized (
+-      select a.*, ${eventAudience('a')} as audience,
++      select a.event_name, a.occurred_at, a.account_id, a.platform, a.app_version, a.properties,
++        a.session_id, a.source, a.schema_version, a.received_at, ${eventAudience('a')} as audience,
+         coalesce('install:' || mobile_install_id, 'anonymous:' || anonymous_id, 'account:' || account_id) as actor
+       from analytics_events a where a.platform in ('web','ios','android')
+         and a.event_name !~ '^(battle|leaderboard)_'
+@@ -101,7 +105,7 @@ export function analyticsQuery(filters: AnalyticsFilters, now: Date) {
+       from scoped_events group by audience order by audience
+     ), e as materialized (
+       select event_name, occurred_at, account_id, platform, app_version, properties, session_id, source, schema_version, received_at,
+-        coalesce('install:' || mobile_install_id, 'anonymous:' || anonymous_id, 'account:' || account_id) as actor
++        actor
+       from scoped_events where audience = 'customer'
+         and event_name <> 'referral_invite_redeemed'
+         and platform in ('web','ios','android')
+@@ -164,13 +168,17 @@ export function analyticsQuery(filters: AnalyticsFilters, now: Date) {
+         round((percentile_cont(0.9) within group(order by extract(epoch from (received_at-occurred_at))*1000)
+           filter(where received_at >= occurred_at))::numeric) as p90_ms
+       from reported_events group by 1,2,3 order by events desc limit 100
+-    ), dimension_counts as (
+-      select case when p.key like '%utm_%' or p.key in ('campaign_id','creative_id','paidMedia','referrer_host') then 'Acquisition' else d.section end as section, e.event_name as event, p.key as dimension, p.value, count(*) as events, count(distinct e.actor) as actors
++    ), dimension_actor_counts as (
++      -- Hash repeated observations per actor before counting distinct devices.
++      select case when p.key like '%utm_%' or p.key in ('campaign_id','creative_id','paidMedia','referrer_host') then 'Acquisition' else d.section end as section, e.event_name as event, p.key as dimension, p.value, e.actor, count(*) as events
+       from reported_events e join event_definitions d on d.event = e.event_name
+         cross join lateral jsonb_each_text(e.properties) p
+       where p.key in (${sql.join(trackingDimensions.map(key => sql`${key}`), sql`,`)}) and p.value is not null
+         and jsonb_typeof(e.properties->p.key) in ('string','number','boolean')
+-      group by 1,2,3,4
++      group by 1,2,3,4,5
++    ), dimension_counts as (
++      select section,event,dimension,value,sum(events)::bigint as events,count(actor) as actors
++      from dimension_actor_counts group by 1,2,3,4
+     ), dimensions as (
+       select section, event, dimension, value, events, actors from (
+         select *, row_number() over (partition by section, dimension order by events desc, event, value) as rank
+@@ -180,7 +188,7 @@ export function analyticsQuery(filters: AnalyticsFilters, now: Date) {
+       -- Reduce to scalar values before grouping; sorting full event properties
+       -- once per coverage field spills hundreds of megabytes on real windows.
+       select f.field, e.properties->>f.field as value, e.actor
+-      from e cross join (values ('appsflyer_id'),('creator_click_id'),('creator_tracking_link_id'),('creator_first_tracking_link_id'),('flow_id'),('attempt_id'),('report_id'),('evaluation_id')) f(field)
++      from e cross join (values ${contextDefinitions}) f(field)
+       where e.properties->>f.field is not null
+     ), context_counts as (
+       select field, count(*) filter(where value <> '') as events,
+@@ -189,7 +197,7 @@ export function analyticsQuery(filters: AnalyticsFilters, now: Date) {
+       from context_observations group by field
+     ), context_coverage as (
+       select f.field, coalesce(c.events,0) as events, coalesce(c.actors,0) as actors, coalesce(c.unique_ids,0) as unique_ids
+-      from (values ('appsflyer_id'),('creator_click_id'),('creator_tracking_link_id'),('creator_first_tracking_link_id'),('flow_id'),('attempt_id'),('report_id'),('evaluation_id')) f(field)
++      from (values ${contextDefinitions}) f(field)
+       left join context_counts c using(field) order by f.field
+     ), billing_history as materialized (
+       select * from subscription_events where environment = 'production' and ${customerAccount(sql`coalesce(account_id,external_user_id)`)}
+@@ -666,7 +674,7 @@ export function getAnalyticsDashboard(filters: AnalyticsFilters) {
+   const now = new Date()
+   const promise = db.transaction(async tx => {
+     await tx.execute(sql`set transaction read only`)
+-    await tx.execute(sql`set local statement_timeout = '8s'`)
++    await tx.execute(sql`set local statement_timeout = '12s'`)
+     // This one-shot report compiles over a thousand JIT functions above the cost threshold.
+     await tx.execute(sql`set local jit = off`)
+     const [row] = await tx.execute(analyticsQuery(filters, now))
+diff --git a/pages/api/admin/analytics.ts b/pages/api/admin/analytics.ts
+index 59d86e9..ee92f38 100644
+--- a/pages/api/admin/analytics.ts
++++ b/pages/api/admin/analytics.ts
+@@ -4,6 +4,8 @@ import { requireCreatorAdmin } from '@/lib/admin/creator-auth'
+ import { ApiError, handleApiError, json, methodNotAllowed } from '@/lib/api/http'
+ import { enforceRateLimit } from '@/lib/api/rateLimit'
+ 
++export const config = { maxDuration: 30 }
++
+ export default async function handler(req: NextApiRequest, res: NextApiResponse) {
+   res.setHeader('Cache-Control', 'private, no-store')
+   try {

@@ -1,3 +1,4 @@
+import { Disclosure, DisclosureSummary, AccordionContent } from '@/components/ui/accordion'
 import Link from 'next/link'
 import * as Tabs from '@radix-ui/react-tabs'
 import {
@@ -833,17 +834,17 @@ function SprintEditor({
                     ),
                   })
                 return (
-                  <details
+                  <Disclosure
                     className="mt-3 rounded-2xl border border-zinc-200 bg-white"
                     key={format.id}
-                    open={terms.formats.length === 1 || undefined}
+                    defaultOpen={terms.formats.length === 1 || undefined}
                   >
-                    <summary className="cursor-pointer p-4 text-sm font-semibold">
+                    <DisclosureSummary className="cursor-pointer p-4 text-sm font-semibold">
                       {format.name || `New format ${i + 1}`}
                       <span className="ml-2 text-xs font-normal text-zinc-400">
                         {format.active ? 'Active' : 'Hidden'}
                       </span>
-                    </summary>
+                    </DisclosureSummary><AccordionContent>
                     <div className="grid gap-4 border-t border-zinc-100 p-4">
                       <div className="flex justify-between">
                         <label className="flex items-center gap-2 text-sm">
@@ -957,7 +958,7 @@ function SprintEditor({
                         />
                       </Field>
                     </div>
-                  </details>
+                  </AccordionContent></Disclosure>
                 )
               })}
               <Button

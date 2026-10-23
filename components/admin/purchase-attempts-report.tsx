@@ -1,3 +1,4 @@
+import { Disclosure, DisclosureSummary, AccordionContent } from '@/components/ui/accordion'
 import { useState } from 'react'
 import useSWR from 'swr'
 import { apiGet } from '@/lib/api/client'
@@ -78,8 +79,8 @@ export function PurchaseAttemptDetails({ data }: { data: PurchaseAttemptsReport 
     </Panel>
     <Panel title="Attempt timelines" description="The most recent 80 attempts matching your filters. Expand an attempt to inspect each milestone." note="Device labels are pseudonyms. Unresolved means no final result was observed; it does not mean cancelled. Payment approval can arrive later.">
       {!attempts.length ? <p className="admin-empty">No linked attempts in this window. New mobile tracking requires the updated app build.</p> : null}
-      {attempts.slice(0,80).map(attempt => <details key={`${attempt.device}:${attempt.id}`} className="border-b border-[#edf0f2] py-4 last:border-0">
-        <summary className="cursor-pointer text-sm"><span className="font-medium">{outcomeLabels[attempt.outcome]}</span><span className="ml-3 text-xs text-[#858a91]">{attempt.device} · {attempt.release} · {new Date(attempt.started).toLocaleString()} · {String(attempt.context.plan ?? attempt.context.productId ?? '')}</span></summary>
+      {attempts.slice(0,80).map(attempt => <Disclosure key={`${attempt.device}:${attempt.id}`} className="border-b border-[#edf0f2] py-4 last:border-0">
+        <DisclosureSummary className="cursor-pointer text-sm"><span className="font-medium">{outcomeLabels[attempt.outcome]}</span><span className="ml-3 text-xs text-[#858a91]">{attempt.device} · {attempt.release} · {new Date(attempt.started).toLocaleString()} · {String(attempt.context.plan ?? attempt.context.productId ?? '')}</span></DisclosureSummary><AccordionContent>
         <div className="mt-4"><Table rows={attempt.events.map(event => ({
           time:new Date(event.at).toLocaleTimeString(), event:({purchase_started:'Purchase button tapped',checkout_started:'Store purchase requested',purchase_completed:'SDK purchase returned'} as Record<string,string>)[event.event] ?? label(event.event), stage:label(String(event.properties.purchase_stage ?? '')),
           result:label(String(event.properties.result ?? event.properties.reason_code ?? event.properties.feedback_reason ?? '')),
@@ -88,7 +89,7 @@ export function PurchaseAttemptDetails({ data }: { data: PurchaseAttemptsReport 
           app_state:String(event.properties.app_state ?? ''),
         }))} columns={['time','event','stage','result','elapsed_ms','stage_ms','app_state']} />
         <p className="mt-3 text-xs text-[#858a91]">Billing ledger: {attempt.verified ? 'Exact production transaction match' : 'No exact transaction match recorded'} · Paywall: {String(attempt.context.surface ?? 'unknown')} · Price: {String(attempt.context.price ?? 'not recorded')} · OS: {String(attempt.context.os_version ?? 'not recorded')} · Store environment: {String(attempt.context.store_environment ?? 'unknown')}</p></div>
-      </details>)}
+      </AccordionContent></Disclosure>)}
     </Panel>
   </>
 }

@@ -1,0 +1,104 @@
+{
+  "deployment": "dpl_CAWrh9q6RjG3ECFifx7oxjrFAjMJ",
+  "productionUrl": "https://www.mogging.com",
+  "serverLive": true,
+  "mobileDistributed": false,
+  "webIsolatedTestFiles": {
+    "passed": 127,
+    "failed": 0
+  },
+  "mobileTests": {
+    "passed": 303,
+    "failed": 0
+  },
+  "postgresIntegrationChecks": 23,
+  "browserTransportChecks": 5,
+  "nativeSimulator": {
+    "build": true,
+    "launch": true,
+    "missingBrowserCookieGuidance": true,
+    "settingsCodeSaveConfirmed": true,
+    "physicalDeviceStoreContinuityVerified": false
+  },
+  "appleCampaigns": {
+    "activeCreatorLinks": 94,
+    "withProviderToken": 94,
+    "providerTokenConfigured": true,
+    "aggregateGranularity": "creator_account",
+    "individualPostIdentity": "recovered_click",
+    "configScope": "Production",
+    "configType": "Config",
+    "actualDownloadReportsVerified": false
+  },
+  "deployedProbe": {
+    "deployment": "https://mogging-3lv6dh2v1-glimpseback.vercel.app",
+    "at": "2026-10-22T01:39:19.899Z",
+    "health": true,
+    "migrations": [
+      "0055_creator_continuity",
+      "0056_creator_store_campaigns"
+    ],
+    "landingAndCookie": true,
+    "proofBoundBrowserRecovery": true,
+    "resolveClaimOwnershipAccountRecovery": true,
+    "idempotentPaywallNoFabricatedInstall": true,
+    "desktopSignedEntry": true,
+    "repairedGoogleCanonicalOrigin": true,
+    "authBoundaries": true,
+    "fixtureCleaned": true
+  },
+  "publicProbe": {
+    "deployment": "dpl_CAWrh9q6RjG3ECFifx7oxjrFAjMJ",
+    "at": "2026-10-22T01:51:52.527Z",
+    "health": true,
+    "accountAuth": true,
+    "missingCookieRecovery": true,
+    "cronAuthenticationRequired": true
+  },
+  "productionStatus": {
+    "at": "2026-10-22T01:47:12.349Z",
+    "migrations": 2,
+    "billing": [
+      {
+        "status": "not_applicable",
+        "events": 46,
+        "checked_at": "2026-10-22 01:46:25.742"
+      },
+      {
+        "status": "no_eligible_touch",
+        "events": 22,
+        "checked_at": "2026-10-22 01:46:25.288"
+      },
+      {
+        "status": "initial_purchase_missing",
+        "events": 1,
+        "checked_at": "2026-10-22 01:45:46.954"
+      }
+    ],
+    "internalQaRemaining": 0
+  },
+  "cronRegistered": true,
+  "cronDeployment": "dpl_CAWrh9q6RjG3ECFifx7oxjrFAjMJ",
+  "testCommand": "DATABASE_URL=postgres://watcher@127.0.0.1:5432/creator_continuity_test NEXTAUTH_URL=http://localhost:3017 NEXTAUTH_SECRET=<dummy> bun run test",
+  "firstScheduledReconciliation": {
+    "outcome": "ok",
+    "durationMs": 39877,
+    "completedAt": "2026-10-22T01:46:26.020Z",
+    "classifiedFacts": 69,
+    "notApplicable": 46,
+    "noEligibleTouch": 22,
+    "initialPurchaseMissing": 1
+  },
+  "publicStoreDestination": {
+    "at": "2026-10-22T01:51:57.860Z",
+    "publicCreator": "pain.psl",
+    "storeHost": "apps.apple.com",
+    "correctApp": true,
+    "providerTokenVerified": true,
+    "stableCreatorCampaignVerified": true,
+    "botMarkedProbe": true
+  },
+  "initialDeployment": "dpl_5EZRBV68hqqbtSh6YNXAkbXKQ3za",
+  "deploymentUrl": "https://mogging-i8xjnebf7-glimpseback.vercel.app",
+  "reconciliationBudgetMs": 45000
+}

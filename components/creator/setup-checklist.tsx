@@ -6,11 +6,21 @@ import {
   motion,
   useReducedMotion,
 } from 'motion/react'
-import { Check, ChevronRight, ChevronUp, X } from 'lucide-react'
+import { Check, ChevronRight, ChevronUp, Plus, X } from 'lucide-react'
 import useSWR from 'swr'
 import { apiGet } from '@/lib/api/client'
 import { cn } from '@/lib/utils'
 import type { CreatorDashboard } from './types'
+
+export function creatorSetupComplete(data: CreatorDashboard) {
+  return data.socialAccounts.length > 0 && data.submissions.length > 0 && hasPayoutInformation(data)
+}
+
+function hasPayoutInformation({ profile }: CreatorDashboard) {
+  return Boolean(profile && (profile.paymentOption === 'paypal'
+    ? profile.paypalEmail
+    : profile.cryptoNetwork && profile.cryptoWalletAddress))
+}
 
 export function CreatorSetupChecklist() {
   const [expanded, setExpanded] = useState(false)
@@ -33,7 +43,6 @@ export function CreatorSetupChecklist() {
   })
   if (!data) return null
 
-  const profile = data.profile
   const tasks = [
     {
       title: 'Connect a social account',
@@ -45,23 +54,22 @@ export function CreatorSetupChecklist() {
       title: 'Add payout information',
       description: 'Choose PayPal or crypto for your earnings.',
       href: '/creator/money?tab=methods',
-      complete: Boolean(
-        profile &&
-        (profile.paymentOption === 'paypal'
-          ? profile.paypalEmail
-          : profile.cryptoNetwork && profile.cryptoWalletAddress),
-      ),
+      complete: hasPayoutInformation(data),
     },
     {
       title: 'Submit your first video',
       description:
         'Choose a campaign and submit your first published post.',
-      href: '/creator/submit',
+      href: '/creator/submissions?new=1',
       complete: data.submissions.length > 0,
     },
   ]
   const completed = tasks.filter((task) => task.complete).length
-  if (completed === tasks.length) return null
+  if (completed === tasks.length) return <Link
+    href="/creator/submissions?new=1"
+    aria-label="New video"
+    className="fixed bottom-[max(20px,env(safe-area-inset-bottom))] right-5 z-40 flex size-14 items-center justify-center gap-2 rounded-full bg-[#008bc6] text-white shadow-[0_6px_24px_rgba(0,139,198,0.25)] transition-[background-color,transform] duration-150 hover:bg-[#007eb4] active:scale-[0.97] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-400 focus-visible:ring-offset-4 motion-reduce:transition-none md:bottom-auto md:right-20 md:top-4 md:h-11 md:w-auto md:px-5 md:shadow-none"
+  ><Plus className="size-6 md:size-4" aria-hidden="true" /><span className="hidden text-sm font-semibold md:inline">New video</span></Link>
   const progress = completed / tasks.length
 
   return (

@@ -24,7 +24,6 @@ type CreatorNavItem = { href: string; label: string; asset: CreatorIconName }
 const creatorNav: ReadonlyArray<CreatorNavItem> = [
   { href: '/creator', label: 'Overview', asset: 'overview' },
   { href: '/creator/sprints', label: 'Campaigns', asset: 'submissions' },
-  { href: '/creator/submit', label: 'Submit', asset: 'video-submissions' },
   { href: '/creator/submissions', label: 'Submissions', asset: 'submissions' },
   { href: '/creator/accounts', label: 'Accounts', asset: 'accounts' },
   { href: '/creator/money', label: 'Money', asset: 'payouts' },
@@ -61,7 +60,7 @@ export function CreatorShell({ children, allowUnauthenticated = false }: { child
   if (router.pathname === '/creator/setup') return <>{children}</>
 
   return (
-    <div className="creator-portal flex w-full flex-1 flex-col">
+    <div className="creator-portal creator-workspace-shell flex w-full flex-1 flex-col">
       <header className="creator-toolbar">
         <div className="flex items-center gap-2"><SidebarTrigger className="size-11" /><div className="shrink-0 px-1">
           <Link href="/creator" className="flex min-h-11 items-center gap-2.5 text-[13px] font-semibold tracking-[-0.015em] text-[#181a1d]"><Image src="/favicon.png" width={32} height={32} alt="" className="rounded-[9px]" priority /><span>Creator Studio</span></Link>
@@ -71,7 +70,7 @@ export function CreatorShell({ children, allowUnauthenticated = false }: { child
         <button type="button" onClick={() => setMoreOpen(true)} aria-label="Creator menu" className="grid size-11 place-items-center rounded-full hover:bg-zinc-100"><MoreHorizontal className="size-5" /></button>
       </header>
 
-      <Dialog open={moreOpen} onOpenChange={setMoreOpen}><DialogContent className="creator-dialog p-5"><DialogHeader className="text-left"><DialogTitle>Creator Studio</DialogTitle><DialogDescription>Account and support.</DialogDescription></DialogHeader><button type="button" onClick={() => { setMoreOpen(false); welcome.onOpenChange(true) }} className="min-h-11 text-left text-sm font-medium text-[#00A8EF]">Creator quick guide</button><div className="flex items-center justify-between border-t pt-3 text-sm"><Link href="/support" onClick={() => setMoreOpen(false)} className="creator-button p-3">Support</Link><button className="flex min-h-11 items-center gap-2 px-3" onClick={() => void signOut({ callbackUrl: '/' })}><LogOut className="size-4" />Sign out</button></div></DialogContent></Dialog>
+      <Dialog open={moreOpen} onOpenChange={setMoreOpen}><DialogContent className="creator-dialog p-5"><DialogHeader className="creator-dialog-header text-left"><DialogTitle className="creator-dialog-title">Creator Studio</DialogTitle><DialogDescription>Account and support.</DialogDescription></DialogHeader><button type="button" onClick={() => { setMoreOpen(false); welcome.onOpenChange(true) }} className="min-h-11 text-left text-sm font-medium text-[#00A8EF]">Creator quick guide</button><div className="flex items-center justify-between border-t pt-3 text-sm"><Link href="/support" onClick={() => setMoreOpen(false)} className="creator-button p-3">Support</Link><button className="flex min-h-11 items-center gap-2 px-3" onClick={() => void signOut({ callbackUrl: '/' })}><LogOut className="size-4" />Sign out</button></div></DialogContent></Dialog>
       <div className="creator-workspace flex min-w-0 flex-1">
         <CreatorNavigation />
         <SidebarInset className="creator-page creator-enter min-w-0 bg-white" key={router.pathname}>{children}</SidebarInset>
@@ -100,7 +99,7 @@ export const areaClass = 'creator-field min-h-28 resize-y py-3'
 
 export function Field({ label, hint, children }: { label: string; hint?: string; children: ReactNode }) {
   return (
-    <label className="grid content-start gap-2">
+    <label className="creator-field-label">
       <span className="flex items-center justify-between gap-4 text-[13px] font-semibold text-[#3a3a3c]">
         <span>{label}</span>
         {hint ? <span className="text-right text-[11px] font-normal leading-4 text-[#858a91]">{hint}</span> : null}

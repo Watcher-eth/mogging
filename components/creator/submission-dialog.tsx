@@ -1,5 +1,7 @@
+import { Accordion, AccordionItem, AccordionTrigger, AccordionChevron, Disclosure, DisclosureSummary, AccordionContent } from '@/components/ui/accordion'
 import { TikTokAccountDialog } from './tiktok-anchor-onboarding'
 import { publishingTikTokHandle, tiktokAnchorEligible, TIKTOK_ANCHOR_REQUIREMENTS_ENABLED, TIKTOK_ANCHOR_REQUIREMENT } from '@/lib/creator/tiktok-anchor'
+import { detectPostingAccount } from '@/lib/creator/post-account'
 import { creatorContentRestriction } from '@/lib/creator/content-policy'
 import { creatorCampaignRules, creatorFormatElement, CREATOR_REREVIEW_GUIDANCE } from '@/lib/creator/post-guidance'
 import { MinimumViewsDialog } from './minimum-views-dialog'
@@ -10,6 +12,8 @@ import { AnimatedDialogPanel } from '@/components/ui/animated-dialog-panel'
 import {
   Check,
   ChevronLeft,
+  Link2,
+  Layers,
   FileVideo,
   Loader2,
   UploadCloud,
@@ -25,14 +29,12 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog'
 import { Field, fieldClass } from './creator-shell'
-import { CreatorStepper } from './creator-stepper'
 import { AnalyticsVerificationHelp } from './content-guidelines'
 import { SocialPlatformLogo } from '@/components/brand/social-platform-logo'
 import { creatorAccountLabel, type CreatorDashboard, type CreatorSubmission } from './types'
 import { apiGet, apiPost, ApiClientError } from '@/lib/api/client'
 import {
   MINIMUM_SUBMISSION_VIEWS,
-  creatorPostPlatform,
   creatorPostUrlSchema,
 } from '@/lib/creator/validation'
 import {
@@ -50,18 +52,16 @@ import {
   type CreatorSprint,
 } from '@/lib/creator/sprints'
 import { cn } from '@/lib/utils'
-const labels = ['Campaign', 'Format', 'Link', 'Analytics', 'Review']
+const labels = ['Campaign', 'Post', 'Analytics', 'Review']
 const titles = [
   'Pick a campaign',
-  'Pick a format',
-  'Add your published video or slideshow',
+  'Add your post',
   'Verify your analytics',
   'Review and submit',
 ]
 const descriptions = [
   'Submit as soon as your post reaches 20,000 views—the first milestone. Choose its campaign below.',
-  'Use a 2–3 second CTA within the first 10 seconds of a video or the first 5 slides of a slideshow. Choose your format below.',
-  'Link the public post and the account you published from.',
+  'Choose the format you used, then paste your published video or slideshow link.',
   'Upload one continuous recording filmed with a second device.',
   'Confirm the campaign requirements before sending your post for review.',
 ]
@@ -85,15 +85,18 @@ export function SubmissionDialog({
     open ? '/api/creator' : null,
     apiGet,
   )
-  const [step, setStep] = useState(existingSubmission ? 4 : 1)
+  const [step, setStep] = useState(existingSubmission ? 3 : 1)
+  const [stepDirection, setStepDirection] = useState<1 | -1>(1)
+  function changeStep(value: number) {
+    setStepDirection(value > step ? 1 : -1)
+    setStep(value)
+  }
   const [sprintId, setSprintId] = useState(existingSubmission?.sprintId || initialSprintId || '')
   const [formatId, setFormatId] = useState(existingSubmission?.formatId || '')
-  const [accountId, setAccountId] = useState('')
+  const [selectedAccountId, setAccountId] = useState(existingSubmission?.socialAccountId || '')
+  const [formatOpen, setFormatOpen] = useState(!existingSubmission?.formatId)
   const [anchorSetupOpen, setAnchorSetupOpen] = useState(false)
-  const [platform, setPlatform] = useState<'tiktok' | 'instagram'>('tiktok')
-  const [registeredPostId, setRegisteredPostId] = useState('')
-  const [caption, setCaption] = useState(existingSubmission?.caption || '')
-  const [postedAt, setPostedAt] = useState('')
+  const [usedRefCode, setUsedRefCode] = useState(false)
   const [postUrl, setPostUrl] = useState(existingSubmission?.postUrl || '')
   const [recording, setRecording] = useState<File | null>(null)
   const [physicalConfirmed, setPhysicalConfirmed] = useState(false)
@@ -105,11 +108,19 @@ export function SubmissionDialog({
   const [busy, setBusy] = useState(false)
   const [progress, setProgress] = useState(0)
   const fileRef = useRef<HTMLInputElement>(null)
+  const headingRef = useRef<HTMLHeadingElement>(null)
+  const contentRef = useRef<HTMLDivElement>(null)
+  const previousStep = useRef(step)
+  const stepLabels = existingSubmission ? labels.slice(2) : labels
+  const visibleStep = existingSubmission ? step - 2 : step
+  useEffect(() => {
+    if (previousStep.current === step) return
+    previousStep.current = step
+    if (contentRef.current) contentRef.current.scrollTop = 0
+    headingRef.current?.focus({ preventScroll: true })
+  }, [step])
   const campaign = campaigns?.sprints.find((item) => item.id === sprintId)
   const sprint = campaign && { ...campaign, terms: existingSubmission?.sprintTerms || campaign.terms }
-  const selectedPlatform = sprint?.terms.platforms.includes(platform)
-    ? platform
-    : sprint?.terms.platforms[0] || platform
   const format = sprint ? sprintFormat(sprint.terms, formatId) : undefined
   const activeSprints =
     campaigns?.sprints.filter(
@@ -119,7 +130,9 @@ export function SubmissionDialog({
   useEffect(() => {
     if (initialSprintId) setSprintId(initialSprintId)
   }, [initialSprintId])
-  const publishingAccount = data?.socialAccounts.find(item => item.id === accountId)
+  const detected = detectPostingAccount(postUrl, data?.socialAccounts || [], selectedAccountId)
+  const { platform, account: publishingAccount } = detected
+  const accountId = publishingAccount?.id || ''
   const anchorEligibility = tiktokAnchorEligible(publishingAccount)
   const anchorRequired = TIKTOK_ANCHOR_REQUIREMENTS_ENABLED && !existingSubmission && platform === 'tiktok' && anchorEligibility === true
   const checklist =
@@ -155,17 +168,16 @@ export function SubmissionDialog({
       return toast.error('Choose an active campaign with available budget')
     if (step === 2) {
       if (!format) return toast.error('Choose a format')
-      setPlatform(selectedPlatform)
-    }
-    if (step === 3) {
+
       const parsed = creatorPostUrlSchema.safeParse(postUrl)
       if (!parsed.success) return toast.error(parsed.error.issues[0].message)
       if (
-        creatorPostPlatform(parsed.data) !== platform ||
-        !sprint?.terms.platforms.includes(platform)
+        !platform || !sprint?.terms.platforms.includes(platform)
       )
         return toast.error('The post link must match an accepted platform')
-      const account = data?.socialAccounts.find((item) => item.id === accountId)
+      const account = publishingAccount
+      if (detected.handle && !account)
+        return toast.error(`Connect @${detected.handle} in Accounts before submitting`)
       if (accountRequired && !account)
         return toast.error('Choose the publishing account')
       if (account && account.platform !== platform)
@@ -178,12 +190,12 @@ export function SubmissionDialog({
       }
 
     }
-    if (step === 4 && !checkMinimumViews()) return
-    if (step === 4 && (!recording || !physicalConfirmed || !views || !audience))
+    if (step === 3 && !checkMinimumViews()) return
+    if (step === 3 && (!recording || !physicalConfirmed || !views || !audience))
       return toast.error(
         'Add your recording and analytics, and confirm it was filmed with a second device',
       )
-    setStep((current) => current + 1)
+    changeStep(step + 1)
   }
   async function submit(event: FormEvent) {
     event.preventDefault()
@@ -216,9 +228,6 @@ export function SubmissionDialog({
         setProgress,
       )
       await apiPost(existingSubmission ? `/api/creator/submissions/${encodeURIComponent(existingSubmission.id)}/rereview` : '/api/creator/submissions', {
-        registeredPostId: registeredPostId || undefined,
-        caption: caption.trim() || undefined,
-        postedAt: postedAt ? new Date(postedAt).toISOString() : undefined,
         sprintId,
         formatId,
         requirementsConfirmed: true,
@@ -259,17 +268,14 @@ export function SubmissionDialog({
         }
       }}
     >
-      <DialogContent className="creator-dialog flex max-h-[92dvh] w-[calc(100%-2rem)] max-w-3xl flex-col overflow-hidden p-0">
-        <DialogHeader className="shrink-0 border-b border-zinc-100 px-5 py-5 text-left sm:px-7">
+      <DialogContent className="creator-dialog flex gap-0 max-h-[92dvh] w-[calc(100%-2rem)] max-w-3xl flex-col overflow-hidden p-0">
+        <DialogHeader className="creator-dialog-header shrink-0 border-b border-zinc-100 px-5 py-5 text-left sm:px-7">
           <p className="text-[10px] font-semibold uppercase tracking-widest text-zinc-400">
-            {existingSubmission ? 'Update analytics' : 'Submit a post'} · Step {existingSubmission ? step - 3 : step} of {existingSubmission ? 2 : 5}
+            {existingSubmission ? 'Update analytics' : 'Submit a post'}
           </p>
-          <DialogTitle className="pr-7 text-xl">{titles[step - 1]}</DialogTitle>
+          <DialogTitle ref={headingRef} tabIndex={-1} className="creator-dialog-title pr-7 text-xl outline-none">{titles[step - 1]}</DialogTitle>
           <DialogDescription>{existingSubmission ? CREATOR_REREVIEW_GUIDANCE : descriptions[step - 1]}</DialogDescription>
         </DialogHeader>
-        <div className="shrink-0 px-4 pt-4">
-          <CreatorStepper step={existingSubmission ? step - 3 : step} labels={existingSubmission ? labels.slice(3) : labels} />
-        </div>
         {!data || !campaigns ? (
           <div className="min-h-48 p-8 text-center">
             {sprintError || dashboardError ? (
@@ -282,11 +288,11 @@ export function SubmissionDialog({
           </div>
         ) : (
           <form
-            onSubmit={step === 5 ? submit : next}
+            onSubmit={step === 4 ? submit : next}
             className="flex min-h-0 flex-1 flex-col"
           >
-            <div className="min-h-0 flex-1 overflow-y-auto px-5 pb-6 sm:px-7">
-              <AnimatedDialogPanel contentKey={step} contentClassName="grid gap-4">
+            <div ref={contentRef} className="min-h-0 flex-1 overflow-y-auto px-5 pb-6 sm:px-7">
+              <AnimatedDialogPanel contentKey={step} motionStyle="swish" direction={stepDirection} contentClassName="grid gap-4">
                   {step === 1 ? (
                     <>
                       {activeSprints.map((item) => (
@@ -297,8 +303,8 @@ export function SubmissionDialog({
                             setSprintId(item.id)
                             setFormatId('')
                             setConfirmed([])
-                            setPlatform(item.terms.platforms[0])
                             setAccountId('')
+                            setFormatOpen(true)
                           }}
                           className={cn(
                             'rounded-2xl border p-4 text-left',
@@ -330,10 +336,10 @@ export function SubmissionDialog({
                         </p>
                       ) : null}
                       {sprint ? (
-                        <details className="rounded-xl bg-[#f5f6f7] p-4">
-                          <summary className="cursor-pointer text-sm font-semibold">
+                        <Disclosure className="rounded-xl bg-[#f5f6f7] p-4">
+                          <DisclosureSummary className="cursor-pointer text-sm font-semibold">
                             Rates & campaign rules
-                          </summary>
+                          </DisclosureSummary><AccordionContent>
                           <p className="mt-3 text-xs text-zinc-500">
                             {campaignRegionRates(sprint.terms)}
                           </p>
@@ -352,19 +358,26 @@ export function SubmissionDialog({
                               <li key={rule}>{rule}</li>
                             ))}
                           </ul>
-                        </details>
+                        </AccordionContent></Disclosure>
                       ) : null}
                     </>
                   ) : null}
                   {step === 2 ? (
                     <>
+                    <Accordion expandedValue={formatOpen ? 'formats' : null} onValueChange={value => setFormatOpen(value !== null)}><AccordionItem value="formats" className="creator-form-section overflow-hidden">
+                      <AccordionTrigger className="flex min-h-20 w-full items-center gap-3 p-4 text-left sm:p-5">
+                        <span className="grid size-10 shrink-0 place-items-center rounded-xl bg-zinc-100 text-zinc-500"><Layers className="size-4" /></span>
+                        <span className="min-w-0 flex-1"><span className="block text-xs text-zinc-500">Format</span><span className="mt-1 block text-sm font-semibold">{format?.name || 'Choose your post format'}</span></span>
+                        <AccordionChevron />
+                      </AccordionTrigger>
+                      <AccordionContent className="grid gap-3 border-t border-zinc-100 p-4 sm:p-5">
                       {sprint?.terms.formats
                         .filter((item) => item.active)
                         .map((item) => (
                           <div
                             key={item.id}
                             className={cn(
-                              'rounded-2xl border p-4',
+                              'creator-selection border text-left',
                               formatId === item.id
                                 ? 'creator-choice-selected'
                                 : 'border-zinc-200',
@@ -372,10 +385,12 @@ export function SubmissionDialog({
                           >
                             <button
                               type="button"
+                              aria-pressed={formatId === item.id}
                               className="flex w-full items-center justify-between text-left"
                               onClick={() => {
                                 setFormatId(item.id)
                                 setConfirmed([])
+                                setFormatOpen(false)
                               }}
                             >
                               <span>
@@ -388,10 +403,10 @@ export function SubmissionDialog({
                                 <Check className="ml-3 size-4 shrink-0 text-[#00A8EF]" />
                               ) : null}
                             </button>
-                            <details className="mt-3 text-sm">
-                              <summary className="cursor-pointer text-[#00A8EF]">
+                            <Disclosure className="mt-3 text-sm">
+                              <DisclosureSummary className="cursor-pointer text-[#00A8EF]">
                                 Read the brief
-                              </summary>
+                              </DisclosureSummary><AccordionContent>
                               <div className="mt-3 space-y-3">
                                 <Link href="/creator/cta-generator" target="_blank" className="inline-block text-xs font-medium text-[#00A8EF] underline underline-offset-4">
                                   Create mock reports in the CTA generator ↗
@@ -414,89 +429,36 @@ export function SubmissionDialog({
                                   ))}
                                 </ul>
                               </div>
-                            </details>
+                            </AccordionContent></Disclosure>
                           </div>
                         ))}
-                    </>
-                  ) : null}
-                  {step === 3 ? (
-                    <>
-                      {!existingSubmission && data.registeredPosts?.length ? <Field label="Prepared post" hint="Keeps the original post link and attribution"><select className={fieldClass} value={registeredPostId} onChange={event => {
-                        const post = data.registeredPosts?.find(item => item.id === event.target.value)
-                        setRegisteredPostId(event.target.value)
-                        if (post) { setSprintId(post.sprintId || ''); setFormatId(post.formatId || ''); setAccountId(post.socialAccountId || ''); setPostUrl(post.postUrl || ''); setCaption(post.caption || ''); setPlatform(post.platform === 'TikTok' ? 'tiktok' : 'instagram'); if (post.postedAt) { const date = new Date(post.postedAt); setPostedAt(new Date(date.getTime() - date.getTimezoneOffset() * 60000).toISOString().slice(0,16)) } }
-                        setConfirmed([])
-                      }}><option value="">New post without a prepared link</option>{data.registeredPosts.map(post => <option key={post.id} value={post.id}>{post.platform} · {post.code} · {post.title}</option>)}</select></Field> : null}
-                      <Field label="Published caption" hint="Include the exact creator or post code viewers see"><textarea className={fieldClass} value={caption} maxLength={2200} onChange={event => setCaption(event.target.value)} /></Field>
-                      <Field label="Posting time" hint="Your local time"><input type="datetime-local" className={fieldClass} value={postedAt} onChange={event => setPostedAt(event.target.value)} /></Field>
-                      <div className="grid grid-cols-2 gap-2">
-                        {sprint?.terms.platforms.map((item) => (
-                          <button
-                            key={item}
-                            type="button"
-                            className={cn(
-                              'flex min-h-11 items-center justify-center gap-2 rounded-xl border text-sm capitalize',
-                              platform === item
-                                ? 'creator-choice-selected'
-                                : 'border-zinc-200',
-                            )}
-                            onClick={() => {
-                              setPlatform(item)
-                              setAccountId('')
-                              setConfirmed([])
-                            }}
-                          >
-                            <SocialPlatformLogo
-                              platform={item}
-                              className="size-4"
-                            />
-                            {item}
-                          </button>
-                        ))}
+                      </AccordionContent>
+                    </AccordionItem></Accordion>
+                    <section className="creator-form-section p-5 sm:p-6">
+                      <div className="mb-4 flex items-center gap-3"><span className="grid size-10 shrink-0 place-items-center rounded-xl bg-zinc-100 text-zinc-500"><Link2 className="size-4" /></span><div className="min-w-0 flex-1"><h3 className="text-sm font-semibold">Video link</h3><p className="mt-0.5 text-xs text-zinc-500">Paste a TikTok or Instagram post.</p></div>{platform ? <span className="flex items-center gap-1.5 rounded-full bg-zinc-100 px-2.5 py-1.5 text-xs font-medium capitalize"><SocialPlatformLogo platform={platform} className="size-3.5" />{platform}</span> : null}</div>
+                      <input aria-label="Video URL" className={fieldClass} type="url" value={postUrl} onChange={event => { setPostUrl(event.target.value); setAccountId(''); setConfirmed([]) }} placeholder="https://www.tiktok.com/@you/video/…" required />
+                      <div aria-live="polite" className="mt-3">
+                      {detected.handle && !publishingAccount ? <p className="text-xs leading-5 text-amber-700">This post is from @{detected.handle}. <Link href="/creator/accounts" className="font-semibold underline">Connect this account</Link> before submitting.</p> : publishingAccount ? <p className="flex items-center gap-1.5 text-xs text-zinc-500"><Check className="size-3.5 text-[#008bc6]" />{detected.handle ? 'Account matched' : 'Publishing account'} · {creatorAccountLabel(publishingAccount)}</p> : !platform ? <p className="text-xs text-zinc-400">Platform and account are filled in where the link identifies them.</p> : !detected.candidates.length ? <p className="text-xs text-amber-700"><Link href="/creator/accounts" className="underline">Connect a {platform} account</Link> before submitting.</p> : null}
                       </div>
-                      <Field
-                        label="Published from"
-                        hint={accountRequired ? 'Required' : 'Optional'}
-                      >
-                        <select
-                          className={fieldClass}
-                          value={accountId}
-                          onChange={(e) => { setAccountId(e.target.value); setConfirmed([]) }}
-                          required={accountRequired}
-                        >
-                          <option value="">Choose account</option>
-                          {data.socialAccounts
-                            .filter((item) => item.platform === platform)
-                            .map((item) => (
-                              <option value={item.id} key={item.id}>
-                                {creatorAccountLabel(item)}
-                              </option>
-                            ))}
-                        </select>
-                      </Field>
+                      {!detected.handle && detected.candidates.length > 1 ? <div className="mt-4"><Field label="Published from" hint="This link doesn’t include a username. Choose the posting account."><select className={fieldClass} value={accountId} onChange={event => { setAccountId(event.target.value); setConfirmed([]) }} required={accountRequired}><option value="">Choose account</option>{detected.candidates.map(item => <option key={item.id} value={item.id}>{creatorAccountLabel(item)}</option>)}</select></Field></div> : null}
+                      {platform && !sprint?.terms.platforms.includes(platform) ? <p role="alert" className="mt-3 text-xs text-red-600">This campaign does not accept {platform} posts.</p> : null}
+                    </section>
+                    <label className="flex min-h-11 cursor-pointer items-center gap-2.5 px-1 text-sm text-zinc-600">
+                      <span className="relative grid size-[18px] shrink-0 place-items-center">
+                        <input type="checkbox" checked={usedRefCode} onChange={event => setUsedRefCode(event.target.checked)} className="peer size-[18px] appearance-none rounded-[5px] border border-zinc-300 bg-white checked:border-[#008bc6] checked:bg-[#008bc6] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-400 focus-visible:ring-offset-2" />
+                        <Check aria-hidden="true" className="pointer-events-none absolute size-3 text-white opacity-0 peer-checked:opacity-100" strokeWidth={2.5} />
+                      </span>
+                      <span>Did you use a ref code <span className="text-zinc-400">(optional)</span></span>
+                    </label>
                       {TIKTOK_ANCHOR_REQUIREMENTS_ENABLED && platform === 'tiktok' && publishingAccount ? (
                         <div className="rounded-xl bg-[#eaf7fd] p-4 text-sm leading-6">
                           {anchorEligibility === null ? <><strong>Confirm your follower range first.</strong><p className="text-zinc-600">We need it to show the requirements for this publishing account.</p><Link href="/creator/accounts" className="font-medium text-[#008bc6] underline underline-offset-4">Update in Accounts</Link></> : anchorRequired ? <><strong>TikTok anchor required for this account</strong><p className="mt-1 text-zinc-600">Accept the Mogging TikTok One project before posting. On TikTok’s posting screen, choose Content disclosure → Disclose post content → Branded content → Link project → Mogging.</p>{publishingAccount.tiktokAnchorJoinedAt ? <p className="mt-2 text-xs font-medium text-[#008bc6]">Joining confirmed · Link the anchor on this post and every new TikTok submission.</p> : <button type="button" onClick={() => setAnchorSetupOpen(true)} className="mt-2 min-h-11 font-medium text-[#008bc6] underline underline-offset-4">Join project to continue →</button>}</> : <p className="text-zinc-600">This account has fewer than 1,000 followers. The TikTok anchor requirement does not apply.</p>}
                         </div>
                       ) : null}
-                      <Field label="Video URL">
-                        <input
-                          className={fieldClass}
-                          type="url"
-                          value={postUrl}
-                          onChange={(e) => setPostUrl(e.target.value)}
-                          placeholder={
-                            platform === 'tiktok'
-                              ? 'https://www.tiktok.com/@handle/video/…'
-                              : 'https://www.instagram.com/reel/…'
-                          }
-                          required
-                        />
-                      </Field>
 
                     </>
                   ) : null}
-                  {step === 4 ? (
+                  {step === 3 ? (
                     <>
                       <div className="rounded-2xl bg-[#f5f6f7] p-4 text-sm leading-6">
                         <strong>
@@ -608,7 +570,7 @@ export function SubmissionDialog({
                       ) : null}
                     </>
                   ) : null}
-                  {step === 5 ? (
+                  {step === 4 ? (
                     <>
                       <dl className="grid gap-3 rounded-2xl bg-[#f5f6f7] p-4 text-sm">
                         {[
@@ -616,6 +578,7 @@ export function SubmissionDialog({
                           ['Format', format?.name],
                           ['Platform', platform],
                           ['Video', postUrl],
+                          ...(usedRefCode ? [['Ref code', 'Used']] : []),
                           ['Analytics', recording?.name],
                         ].map(([name, value]) => (
                           <div
@@ -661,18 +624,19 @@ export function SubmissionDialog({
                   ) : null}
               </AnimatedDialogPanel>
             </div>
-            <div className="flex shrink-0 items-center justify-between border-t border-zinc-100 p-4 sm:px-7">
+            <div className="flex shrink-0 flex-col gap-3 border-t border-zinc-100 p-4 sm:px-7">
+              <div className="flex items-center justify-between gap-3">
               <Button
                 type="button"
                 variant="ghost"
                 disabled={busy}
                 onClick={() =>
-                  step === (existingSubmission ? 4 : 1)
+                  step === (existingSubmission ? 3 : 1)
                     ? onOpenChange(false)
-                    : setStep((current) => current - 1)
+                    : changeStep(step - 1)
                 }
               >
-                {step === (existingSubmission ? 4 : 1) ? (
+                {step === (existingSubmission ? 3 : 1) ? (
                   'Cancel'
                 ) : (
                   <>
@@ -686,7 +650,7 @@ export function SubmissionDialog({
                   busy ||
                   (step === 1 && !sprint) ||
                   (step === 2 && !format) ||
-                  (step === 5 && confirmed.length !== checklist.length)
+                  (step === 4 && confirmed.length !== checklist.length)
                 }
               >
                 {busy ? (
@@ -694,12 +658,19 @@ export function SubmissionDialog({
                     <Loader2 className="size-4 animate-spin" />
                     Uploading {progress}%
                   </>
-                ) : step === 5 ? (
+                ) : step === 4 ? (
                   existingSubmission ? 'Submit for review' : 'Submit post'
                 ) : (
                   'Continue'
                 )}
               </Button>
+              </div>
+              <ol aria-label={`Submission progress: step ${visibleStep} of ${stepLabels.length}`} className="flex h-3 items-center justify-center gap-1.5">
+                {stepLabels.map((label, index) => <li key={label} aria-current={index + 1 === visibleStep ? 'step' : undefined} className="flex items-center">
+                  <span aria-hidden="true" className={cn('block h-1.5 rounded-full transition-[width,background-color] duration-200 ease-out motion-reduce:transition-none', index + 1 === visibleStep ? 'w-5 bg-[#00A8EF]' : index + 1 < visibleStep ? 'w-1.5 bg-[#00A8EF]/40' : 'w-1.5 bg-zinc-200')} />
+                  <span className="sr-only">{label}{index + 1 < visibleStep ? ', complete' : index + 1 === visibleStep ? ', current step' : ''}</span>
+                </li>)}
+              </ol>
             </div>
           </form>
         )}

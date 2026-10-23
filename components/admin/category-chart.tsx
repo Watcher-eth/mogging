@@ -1,3 +1,4 @@
+import { Disclosure, DisclosureSummary, AccordionContent } from '@/components/ui/accordion'
 import { Bar, BarChart, CartesianGrid, Cell, Pie, PieChart, XAxis, YAxis } from 'recharts'
 import { ChartContainer, ChartLegend, ChartLegendContent, ChartTooltip, ChartTooltipContent, type ChartConfig } from '@/components/ui/chart'
 
@@ -20,7 +21,7 @@ export function CategoryChart({ rows, series, format = number, maximum }: { rows
         {series.length > 1 ? <ChartLegend content={<ChartLegendContent />} /> : null}
       </BarChart>
     </ChartContainer>
-    <details className="admin-data-details"><summary>View chart values</summary><div className="admin-table-scroll mt-4"><table className="admin-table"><thead><tr><th scope="col">Category</th>{series.map(item => <th key={item.label} scope="col">{item.label}</th>)}<th scope="col">Details</th></tr></thead><tbody>{rows.map((row, index) => <tr key={index}><th scope="row">{row.label}</th>{row.values.map((value, index) => <td key={index}>{value == null ? '—' : format(value)}</td>)}<td>{row.detail || '—'}</td></tr>)}</tbody></table></div></details>
+    <Disclosure className="admin-data-details"><DisclosureSummary>View chart values</DisclosureSummary><AccordionContent><div className="admin-table-scroll mt-4"><table className="admin-table"><thead><tr><th scope="col">Category</th>{series.map(item => <th key={item.label} scope="col">{item.label}</th>)}<th scope="col">Details</th></tr></thead><tbody>{rows.map((row, index) => <tr key={index}><th scope="row">{row.label}</th>{row.values.map((value, index) => <td key={index}>{value == null ? '—' : format(value)}</td>)}<td>{row.detail || '—'}</td></tr>)}</tbody></table></div></AccordionContent></Disclosure>
   </div>
 }
 
