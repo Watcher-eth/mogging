@@ -1,7 +1,7 @@
 import { followerLabel, tiktokAnchorEligible } from '@/lib/creator/tiktok-anchor'
 import { TikTokAccountDialog } from '@/components/creator/tiktok-anchor-onboarding'
 import { AnimatedDialogPanel } from '@/components/ui/animated-dialog-panel'
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import * as Avatar from '@radix-ui/react-avatar'
 import { AnimatedGroup } from '@/components/core/animated-group'
 import useSWR from 'swr'
@@ -24,7 +24,7 @@ import {
   type CreatorSocialAccount,
 } from '@/components/creator/types'
 import { CreatorReferralCode, CreatorReferralDetails } from '@/components/creator/referral-details'
-import { apiGet, apiRequest, ApiClientError } from '@/lib/api/client'
+import { apiGet, apiPost, apiRequest, ApiClientError } from '@/lib/api/client'
 export default function CreatorAccountsPage() {
   return (
     <CreatorShell>
@@ -37,6 +37,16 @@ function AccountsContent() {
     '/api/creator',
     apiGet,
   )
+  useEffect(() => {
+    let active = true
+    void apiPost<{ accounts: Array<{ id: string; avatarUrl: string | null }> }>('/api/creator/account-avatars', {})
+      .then(result => {
+        if (!active) return
+        const photos = new Map(result.accounts.map(account => [account.id, account.avatarUrl]))
+        void mutate(current => current ? { ...current, socialAccounts: current.socialAccounts.map(account => ({ ...account, avatarUrl: photos.get(account.id) || account.avatarUrl })) } : current, { revalidate: false })
+      }).catch(() => { /* Keep existing photos and initials when the provider is unavailable. */ })
+    return () => { active = false }
+  }, [mutate])
   const [editing, setEditing] = useState<{ id: string; mode: 'followers' | 'anchor' } | null>(null)
   const [open, setOpen] = useState(false)
   const [platform, setPlatform] = useState<'tiktok' | 'instagram'>('tiktok')

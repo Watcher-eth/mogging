@@ -1,3 +1,5 @@
+import { fetchAccountAvatar } from './account-avatars'
+import { getCreatorSubmissionUpdates, recordSubmissionUpdate } from './submission-updates'
 import { resolveCreatorPostLink, rethrowCreatorPostConflict } from './post-identity'
 import { accountFollowers, followersFromOAuth, publishingTikTokHandle, tiktokAnchorEligible, TIKTOK_ANCHOR_REQUIREMENTS_ENABLED, TIKTOK_ANCHOR_REQUIREMENT } from './tiktok-anchor'
 import { resolveTikTokFollowers } from './tiktok-followers'
@@ -30,9 +32,9 @@ export async function getCreatorDashboard(userId: string) {
   const featureFlags = {
     creatorAccountRequiredForSubmission: env.CREATOR_ACCOUNT_REQUIRED_FOR_SUBMISSION,
   }
-  if (!profile) return { profile: null, submissions: [], payments: [], payoutRequests: [], socialAccounts: [], communityMetrics: await communityMetricsPromise, featureFlags }
+  if (!profile) return { profile: null, submissions: [], payments: [], payoutRequests: [], updates: [], socialAccounts: [], communityMetrics: await communityMetricsPromise, featureFlags }
 
-  const [submissions, payments, socialAccounts, communityMetrics, payoutRequests] = await Promise.all([
+  const [submissions, payments, socialAccounts, communityMetrics, payoutRequests, updates] = await Promise.all([
     db.select({ ...getTableColumns(schema.creatorSubmissions), unreadMessages: submissionUnreadCount('creator') })
       .from(schema.creatorSubmissions).where(and(eq(schema.creatorSubmissions.creatorProfileId, profile.id), eq(schema.creatorSubmissions.isDraft, false))).orderBy(desc(schema.creatorSubmissions.createdAt)),
     db.query.creatorPayments.findMany({
@@ -46,6 +48,7 @@ export async function getCreatorDashboard(userId: string) {
     }),
     communityMetricsPromise,
     db.query.creatorPayoutRequests.findMany({ where: eq(schema.creatorPayoutRequests.creatorProfileId, profile.id), orderBy: [desc(schema.creatorPayoutRequests.requestedAt)], limit: 100 }),
+    getCreatorSubmissionUpdates(profile.id),
   ])
 
   const socialAccountsWithLinks = await Promise.all(socialAccounts.map(async (account) => {
@@ -56,7 +59,7 @@ export async function getCreatorDashboard(userId: string) {
     return { ...account, trackingLink: await ensureCreatorTrackingLink(account.id) }
   }))
 
-  return { profile, submissions, payments, payoutRequests, socialAccounts: socialAccountsWithLinks, communityMetrics, featureFlags }
+  return { profile, submissions, payments, payoutRequests, updates, socialAccounts: socialAccountsWithLinks, communityMetrics, featureFlags }
 }
 
 async function getCreatorCommunityMetrics() {
@@ -120,7 +123,10 @@ export async function saveCreatorProfile(userId: string, input: CreatorProfileIn
 export async function addCreatorSocialAccount(userId: string, input: CreatorSocialAccountInput) {
   const profile = await getOrCreateCreatorProfile(userId)
   if (profile.authStatus === 'suspended') throw new CreatorServiceError(403, 'Your creator account is suspended')
-  const followers = input.platform === 'tiktok' ? await resolveTikTokFollowers(input.handle, input.followerRange) : null
+  const [followers, avatarUrl] = await Promise.all([
+    input.platform === 'tiktok' ? resolveTikTokFollowers(input.handle, input.followerRange) : null,
+    fetchAccountAvatar(input.platform, input.handle),
+  ])
   if (input.platform === 'tiktok' && !followers) throw new CreatorServiceError(400, 'Choose your TikTok follower range to connect this account')
   const account = await db.transaction(async tx => {
     // Serialize both account-limit checks and handle claims across concurrent requests.
@@ -133,7 +139,7 @@ export async function addCreatorSocialAccount(userId: string, input: CreatorSoci
     }
     const accounts = await tx.query.creatorSocialAccounts.findMany({ where: eq(schema.creatorSocialAccounts.creatorProfileId, profile.id) })
     if (accounts.length >= 10 || accounts.filter(item => item.platform === input.platform).length >= 5) throw new CreatorServiceError(409, 'You can connect up to five accounts per platform')
-    const [created] = await tx.insert(schema.creatorSocialAccounts).values({ creatorProfileId: profile.id, platform: input.platform, status: 'approved', handle: input.handle, followers, profileUrl: input.profileUrl || `https://www.${input.platform}.com/${input.platform === 'tiktok' ? '@' : ''}${input.handle}` }).returning()
+    const [created] = await tx.insert(schema.creatorSocialAccounts).values({ creatorProfileId: profile.id, platform: input.platform, status: 'approved', handle: input.handle, followers, avatarUrl, avatarCheckedAt: new Date(), profileUrl: input.profileUrl || `https://www.${input.platform}.com/${input.platform === 'tiktok' ? '@' : ''}${input.handle}` }).returning()
     return created
   })
   return { ...account, trackingLink: await ensureCreatorTrackingLink(account.id) }
@@ -145,6 +151,8 @@ export async function addCreatorTikTokOAuthAccount(userId: string, input: Creato
   if (normalizedHandle !== undefined && !/^[a-z0-9._]{2,40}$/.test(normalizedHandle)) {
     throw new CreatorServiceError(400, 'TikTok returned an invalid username')
   }
+
+  const avatarUrl = await fetchAccountAvatar('tiktok', normalizedHandle || null, input.profile.avatar_large_url || input.profile.avatar_url_100 || input.profile.avatar_url)
 
   const account = await db.transaction(async (tx) => {
     const accounts = await tx.query.creatorSocialAccounts.findMany({
@@ -203,7 +211,8 @@ export async function addCreatorTikTokOAuthAccount(userId: string, input: Creato
       handle: normalizedHandle || accountToUpdate?.handle || null,
       displayName: input.profile.display_name || accountToUpdate?.displayName || null,
       profileUrl: input.profile.profile_deep_link || (normalizedHandle ? `https://www.tiktok.com/@${normalizedHandle}` : accountToUpdate?.profileUrl || null),
-      avatarUrl: input.profile.avatar_large_url || input.profile.avatar_url_100 || input.profile.avatar_url || accountToUpdate?.avatarUrl || null,
+      avatarUrl: avatarUrl || accountToUpdate?.avatarUrl || null,
+      avatarCheckedAt: new Date(),
       oauthProfile: { ...accountToUpdate?.oauthProfile, ...input.profile },
       connectionMethod: 'oauth',
       providerAccountId: input.openId,
@@ -395,6 +404,7 @@ export async function createCreatorSubmission(userId: string, input: CreatorSubm
       ? await tx.update(schema.creatorSubmissions).set(values).where(and(eq(schema.creatorSubmissions.id, draft.id), eq(schema.creatorSubmissions.isDraft, true))).returning()
       : await tx.insert(schema.creatorSubmissions).values(values).returning()
     if (!submission) throw new CreatorServiceError(409, 'This post was already submitted')
+    await recordSubmissionUpdate(tx, submission.id, 'submitted')
 
     return submission
   }).catch(rethrowCreatorPostConflict)
@@ -430,6 +440,7 @@ export async function requestSubmissionReview(userId: string, submissionId: stri
     const now = new Date()
     await tx.insert(schema.creatorSubmissionMessages).values({ submissionId, authorUserId: userId, authorRole: 'creator', body: `Submitted fresh analytics for review: ${input.viewCountThreshold.toLocaleString('en-US')} views · ${input.usAudiencePercent}% Tier 1 audience.${submission.analyticsScreenshotUrl ? ` Previous evidence: ${submission.analyticsScreenshotUrl} (${submission.viewCountThreshold ?? 'unrecorded'} views).` : ''}` })
     const [record] = await tx.update(schema.creatorSubmissions).set({ analyticsScreenshotUrl: creatorAssetPublicUrl(input.analyticsStorageKey), analyticsStorageKey: input.analyticsStorageKey, analyticsContentType: input.analyticsContentType, analyticsSizeBytes: input.analyticsSizeBytes, viewCountThreshold: input.viewCountThreshold, usAudiencePercent: input.usAudiencePercent, status: 'in_review', reviewRequestedAt: now, updatedAt: now }).where(eq(schema.creatorSubmissions.id, submission.id)).returning()
+    await recordSubmissionUpdate(tx, submissionId, 'rereview_requested', null, now)
     return record
   }).catch(rethrowCreatorPostConflict)
 }

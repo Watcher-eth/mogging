@@ -14,10 +14,14 @@ export function groupSubmissionDays<T extends { createdAt: string }>(submissions
 }
 
 export function submissionAge(value: string, now = new Date()) {
-  const days = Math.max(0, Math.floor((now.getTime() - Date.parse(value)) / 86_400_000))
+  const uploaded = new Date(value)
+  const today = new Date(now)
+  uploaded.setHours(0, 0, 0, 0)
+  today.setHours(0, 0, 0, 0)
+  const days = Math.max(0, Math.round((today.getTime() - uploaded.getTime()) / 86_400_000))
   if (days === 0) return 'Today'
   if (days < 7) return `${days}d ago`
-  if (days < 60) return `${Math.floor(days / 7)}W ago`
+  if (days < 30) return `${Math.floor(days / 7)}W ago`
   if (days < 365) return `${Math.floor(days / 30)}M ago`
   return `${Math.floor(days / 365)}Y ago`
 }

@@ -1,5 +1,6 @@
+import { CreatorUpdates } from '@/components/creator/creator-updates'
 import Link from 'next/link'
-import { ArrowRight, Loader2, Megaphone } from 'lucide-react'
+import { ArrowRight, Loader2 } from 'lucide-react'
 import useSWR from 'swr'
 import { CreatorHeader, CreatorShell } from '@/components/creator/creator-shell'
 import { VideoSubmissionAnimation } from '@/components/creator/video-submission-animation'
@@ -107,29 +108,7 @@ function OverviewContent() {
           detail="Connected profiles"
         />
       </section>
-      <section aria-label="Announcements" className="mt-8">
-        <h2 className="text-sm font-semibold">Announcements</h2>
-        <Link
-          href="/creator/sprints"
-          className="group mt-3 flex items-center gap-4 rounded-2xl border border-[#e8ebee] p-5 transition-colors hover:bg-[#fafbfc]"
-        >
-          <span className="grid size-10 shrink-0 place-items-center rounded-xl bg-[#eef9ff] text-[#00A8EF]">
-            <Megaphone className="size-5" aria-hidden="true" />
-          </span>
-          <span className="min-w-0 flex-1">
-            <span className="block text-sm font-semibold">
-              Explore current campaigns
-            </span>
-            <span className="mt-1 block text-sm text-[#73777d]">
-              Check which campaigns are accepting submissions, their remaining budgets, and their format requirements before creating your post.
-            </span>
-          </span>
-          <ArrowRight
-            className="size-4 shrink-0 text-[#00A8EF] transition-transform group-hover:translate-x-1 motion-reduce:transition-none"
-            aria-hidden="true"
-          />
-        </Link>
-      </section>
+      <CreatorUpdates data={data} />
     </>
   )
 }

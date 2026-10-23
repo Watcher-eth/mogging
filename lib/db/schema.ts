@@ -723,6 +723,17 @@ export const creatorSubmissions = pgTable(
   })
 )
 
+export const creatorSubmissionUpdates = pgTable('creator_submission_updates', {
+  id: text('id').primaryKey().$defaultFn(() => crypto.randomUUID()),
+  submissionId: text('submission_id').notNull().references(() => creatorSubmissions.id, { onDelete: 'cascade' }),
+  type: text('type').$type<import('../creator/updates').CreatorUpdateType>().notNull(),
+  note: text('note'),
+  createdAt: timestamp('created_at', { mode: 'date' }).notNull().defaultNow(),
+}, table => ({
+  submissionTimeIdx: index('creator_submission_updates_submission_time_idx').on(table.submissionId, table.createdAt),
+  typeCheck: check('creator_submission_updates_type_check', sql`${table.type} in ('submitted', 'pending', 'in_review', 'approved', 'rejected', 'paid', 'rereview_requested', 'feedback')`),
+}))
+
 export const creatorSubmissionMessages = pgTable('creator_submission_messages', {
   id: text('id').primaryKey().$defaultFn(() => crypto.randomUUID()),
   submissionId: text('submission_id').notNull().references(() => creatorSubmissions.id, { onDelete: 'cascade' }),
@@ -781,6 +792,7 @@ export const creatorSocialAccounts = pgTable(
     displayName: text('display_name'),
     profileUrl: text('profile_url'),
     avatarUrl: text('avatar_url'),
+    avatarCheckedAt: timestamp('avatar_checked_at', { mode: 'date' }),
     connectionMethod: text('connection_method').notNull().default('manual'),
     providerAccountId: text('provider_account_id'),
     oauthVerifiedAt: timestamp('oauth_verified_at', { mode: 'date' }),

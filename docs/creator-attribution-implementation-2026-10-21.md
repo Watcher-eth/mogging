@@ -4,6 +4,8 @@
 
 This replaces the phased proposal with implemented work across all six areas. The original audit remains a historical, read-only snapshot in `creator-attribution-plan-2026-10-21.md`; its estimates and rollout suggestions are not the current implementation status.
 
+The replacement post signal is an explicitly pasted original TikTok/Instagram URL. It resolves only to an approved/paid ordinary submission on an approved account with an active link, then enters the existing signed attribution flow. Unknown or unreviewed posts fall back to the reusable account code. This requires the updated mobile binary; it does not identify an anonymous App Store install automatically.
+
 ## What changed
 
 | Area | Implemented behavior |

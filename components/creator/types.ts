@@ -84,6 +84,7 @@ export type CreatorSocialAccount = {
 }
 
 export type CreatorDashboard = {
+  updates?: import('@/lib/creator/updates').CreatorUpdate[]
   payoutRequests?: CreatorPayoutRequest[]
   profile: CreatorProfile | null
   submissions: CreatorSubmission[]

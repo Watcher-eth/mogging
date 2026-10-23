@@ -43,6 +43,8 @@ try {
   const videoId = `${Date.now()}${Math.floor(Math.random() * 1_000_000).toString().padStart(6, '0')}`
   const postUrl = `https://www.tiktok.com/@fixture_${owner.slice(0,8)}/video/${videoId}`
   await db.update(schema.creatorSubmissions).set({ isDraft: false, postUrl, postKey: `tiktok:${videoId}` }).where(eq(schema.creatorSubmissions.id, post.id))
+  check('an unreviewed original post cannot claim creator credit', await createCreatorAttributionClick({ postUrl, anonymousActorId: null }) === null)
+  await db.update(schema.creatorSubmissions).set({ status: 'approved' }).where(eq(schema.creatorSubmissions.id, post.id))
   const click = await createCreatorAttributionClick({ postUrl: `${postUrl}?share=viewer`, source: 'creator_code', anonymousActorId: null, userAgent: 'Mogging iOS' })
   check('the original published URL recovers creator and post without a custom creator URL', click?.click.submissionId === post.id && click.link.id === accountLink.id)
   check('unknown original post URLs do not invent creator credit', await createCreatorAttributionClick({ postUrl: postUrl.replace(videoId, String(BigInt(videoId) + BigInt(1))), anonymousActorId: null }) === null)

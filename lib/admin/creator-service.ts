@@ -1,3 +1,4 @@
+import { recordReviewUpdate } from '@/lib/creator/submission-updates'
 import { submissionReviewError, TIER_D_AUDIENCE_REJECTION } from '@/lib/creator/submission-review'
 import { rethrowCreatorPostConflict } from '@/lib/creator/post-identity'
 import { normalizePaymentReceipt, paymentReceiptSchema } from './payment-receipt'
@@ -341,6 +342,7 @@ export async function reviewCreatorResource(input: CreatorAdminReviewInput, revi
       }).where(eq(schema.creatorSubmissions.id, input.id)).returning()
       if (!record) throw new ApiError(404, 'Creator submission not found')
       await appendReviewMessage(tx, submission, input.reviewNote, reviewerId)
+      await recordReviewUpdate(tx, submission, input)
       return record
     }).catch(rethrowCreatorPostConflict)
   }
@@ -469,6 +471,7 @@ async function reviewSprintSubmission(input: Extract<CreatorAdminReviewInput, { 
     if (used.cents - previous + (amountCents || 0) > sprint.budgetCents) throw new ApiError(409, 'This approval would exceed the sprint budget')
     const [record] = await tx.update(schema.creatorSubmissions).set({ status: input.status, reviewRequestedAt: ['approved', 'rejected'].includes(input.status) ? null : submission.reviewRequestedAt, approvedAmountCents: amountCents, adminViewCountThreshold: input.adminViewCountThreshold, adminUsAudiencePercent: input.adminUsAudiencePercent, reviewChecklist: reviewChecklist.map(item => ({ ...item, note: item.note || null })), reviewNote: input.reviewNote || null, updatedAt: new Date() }).where(eq(schema.creatorSubmissions.id, submission.id)).returning()
     await appendReviewMessage(tx, submission, input.reviewNote, reviewerId)
+    await recordReviewUpdate(tx, submission, input)
     return record
   })
 }

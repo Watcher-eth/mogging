@@ -7,7 +7,7 @@ import { SubmissionPostPreview, useSubmissionPostPreview } from '@/components/cr
 import Link from 'next/link'
 import { useRouter } from 'next/router'
 import { useMemo, useState } from 'react'
-import { ArrowUpRight, CalendarDays, Eye, MessageCircle, CircleAlert, Clock3, Loader2, RotateCcw, XCircle } from 'lucide-react'
+import { ArrowUpRight, CalendarDays, ChevronDown, SlidersHorizontal, Eye, MessageCircle, CircleAlert, Clock3, Loader2, RotateCcw, XCircle } from 'lucide-react'
 import useSWR from 'swr'
 import { Button } from '@/components/ui/button'
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog'
@@ -57,8 +57,16 @@ function SubmissionsContent() {
 
   return (
     <div className="creator-submissions-history">
-      <CreatorHeader eyebrow="History & Payments" title="Submissions" description="Follow every video from review through approval and payout." action={<Button asChild className="h-11 rounded-full px-5"><Link href="/creator/submissions?new=1">New Submission</Link></Button>} />
-      <label className="mb-5 flex items-center gap-3 text-sm font-medium">Status<select className="creator-field creator-history-filter max-w-xs" value={filter} onChange={(event) => setFilter(event.target.value as typeof filter)}>{filters.map((item) => <option key={item.value} value={item.value}>{item.label} ({item.value === 'all' ? submissions.length : submissions.filter((submission) => submission.status === item.value).length})</option>)}</select></label>
+      <CreatorHeader eyebrow="History & Payments" eyebrowAccessory={
+        <span className="relative inline-flex h-9 items-center gap-1 rounded-full border border-zinc-200 bg-white px-2.5 text-zinc-600 transition-colors hover:bg-zinc-100 focus-within:ring-2 focus-within:ring-zinc-400 focus-within:ring-offset-2">
+          <SlidersHorizontal aria-hidden="true" className="size-3.5" />
+          <ChevronDown aria-hidden="true" className="size-3" />
+          {filter !== 'all' ? <span aria-hidden="true" className="absolute right-0 top-0 size-1.5 rounded-full bg-zinc-900" /> : null}
+          <select aria-label="Filter submissions by status" title={`Status: ${filters.find(item => item.value === filter)?.label}`} className="creator-status-filter absolute inset-0 size-full cursor-pointer opacity-0" value={filter} onChange={event => setFilter(event.target.value as typeof filter)}>
+            {filters.map(item => <option key={item.value} value={item.value}>{item.label} ({item.value === 'all' ? submissions.length : submissions.filter(submission => submission.status === item.value).length})</option>)}
+          </select>
+        </span>
+      } title="Submissions" description="Follow every video from review through approval and payout." action={<Button asChild className="h-11 rounded-full px-5"><Link href="/creator/submissions?new=1">New Submission</Link></Button>} />
       <TooltipProvider delayDuration={150}>
         {isLoading ? <div className="grid min-h-64 place-items-center"><Loader2 className="size-5 animate-spin text-zinc-400" /></div> : days.length ? <div className="grid gap-4">{days.map(day => <section key={day.key} aria-label={day.label}>
           <h2 className="mb-2 px-1 text-[11px] font-medium text-zinc-400">{day.label}</h2>
@@ -103,10 +111,10 @@ function SubmissionCard({ submission, payment, accountHandle, onClick }: { submi
     : submission.status === 'in_review' && submission.reviewRequestedAt ? { label: 'Review requested', date: submission.reviewRequestedAt }
     : submission.updatedAt ? { label: 'Last updated', date: submission.updatedAt } : null
   return (
-    <button ref={ref} onClick={onClick} className="creator-list-item creator-surface group grid w-full grid-cols-[80px_minmax(0,1fr)] items-center gap-x-3 p-2.5 text-left transition-[border-color,box-shadow,transform] duration-200 hover:-translate-y-0.5 hover:border-black/10 hover:shadow-[0_16px_40px_rgba(0,0,0,0.06)] active:scale-[0.99] sm:grid-cols-[96px_minmax(0,1fr)] sm:gap-x-4 sm:p-3">
+    <button ref={ref} onClick={onClick} className="creator-list-item creator-surface group relative grid w-full grid-cols-[80px_minmax(0,1fr)] items-center gap-x-3 p-2.5 text-left transition-[border-color,box-shadow,transform] duration-200 hover:-translate-y-0.5 hover:border-black/10 hover:shadow-[0_16px_40px_rgba(0,0,0,0.06)] active:scale-[0.99] sm:grid-cols-[96px_minmax(0,1fr)] sm:gap-x-4 sm:p-3">
       <SubmissionPostPreview preview={preview} videoUrl={visible ? submission.videoUrl : null} platform={submission.platform} />
-      <span className="min-w-0">
-        <span className="mb-2 flex justify-end"><time dateTime={submission.createdAt} title={`Uploaded ${new Date(submission.createdAt).toLocaleString('en-GB')}`} className="rounded-md bg-zinc-100/80 px-1.5 py-0.5 text-[10px] font-medium leading-4 text-zinc-400">{submissionAge(submission.createdAt)}</time></span>
+      <span className="min-w-0 pt-5">
+        <span className="absolute right-2.5 top-2.5 flex sm:right-3 sm:top-3"><StatusStamp status={submission.status} event={statusDate} /></span>
         {caption ? <span className="line-clamp-2 whitespace-pre-wrap break-words text-sm font-semibold leading-5 tracking-[-0.02em] sm:line-clamp-none" title={caption}>{caption}</span> : null}
         <span className="mt-2 flex flex-wrap items-center gap-x-1.5 gap-y-1 text-[13px] font-medium tabular-nums text-zinc-700" title={viewsDescription}>
           <span className="inline-flex items-center gap-1.5"><Eye className="size-3.5 text-zinc-400" aria-hidden="true" />{views === null ? 'Views not recorded' : `${formatViewCount(views)} ${currentViews === null ? 'submitted views' : 'views'}`}</span>
@@ -115,7 +123,7 @@ function SubmissionCard({ submission, payment, accountHandle, onClick }: { submi
         <span className="mt-2 flex flex-wrap items-center gap-2">
           {amount ? <span className="text-sm font-semibold">{amount}</span> : null}
           {submission.unreadMessages ? <span aria-label={`${submission.unreadMessages} new messages`} className="inline-flex items-center gap-1 rounded-lg bg-[#007aff] px-2 py-1 text-[11px] font-semibold text-white"><MessageCircle className="size-3" aria-hidden="true" />{submission.unreadMessages}</span> : null}
-          {statusDate ? <Tooltip><TooltipTrigger asChild><span tabIndex={0} className="inline-flex rounded-sm outline-none focus-visible:ring-2 focus-visible:ring-zinc-400" aria-label={`${statusLabel(submission.status)} · ${statusDate.label} ${new Date(statusDate.date).toLocaleString('en-GB')}`}><StatusStamp status={submission.status} /></span></TooltipTrigger><TooltipContent side="top" className="flex items-center gap-2 rounded-[12px_12px_12px_3px] border border-zinc-200 bg-white px-2.5 py-2 text-[11px] text-zinc-500 shadow-sm"><CalendarDays className="size-3.5" aria-hidden="true" /><span>{statusDate.label} · {new Date(statusDate.date).toLocaleString('en-GB', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' })}</span></TooltipContent></Tooltip> : <StatusStamp status={submission.status} />}
+          <time dateTime={submission.createdAt} title={`Uploaded ${new Date(submission.createdAt).toLocaleString('en-GB')}`} className="rounded-md bg-zinc-100/80 px-1.5 py-0.5 text-[10px] font-medium leading-4 text-zinc-400">{submissionAge(submission.createdAt)}</time>
         </span>
       </span>
     </button>
@@ -190,7 +198,15 @@ function SubmissionEvidence({ submission }: { submission: CreatorSubmission }) {
   return <div className="grid aspect-video place-items-center rounded-t-[31px] bg-zinc-950 text-sm text-white/50">No Media Evidence</div>
 }
 
-function StatusStamp({ status }: { status: CreatorSubmission['status'] }) { return <span className={cn('inline-flex shrink-0 -rotate-2 items-center rounded-[3px] border border-current px-1.5 py-0.5 text-[9px] font-bold uppercase leading-3 tracking-[0.06em]' , status === 'paid' && 'creator-tone-green text-[#29CE53]', status === 'approved' && 'creator-tone-blue text-[#00A8EF]', (status === 'pending' || status === 'in_review') && 'bg-[#f5f6f7] text-[#52565c]', status === 'rejected' && 'creator-tone-red text-[#F33232]')}>{statusLabel(status)}</span> }
+function StatusStamp({ status, event }: { status: CreatorSubmission['status']; event?: { label: string; date: string } | null }) {
+  const stamp = <span className={cn('inline-flex shrink-0 -rotate-2 items-center rounded-[3px] border border-current px-1.5 py-0.5 text-[9px] font-bold uppercase leading-3 tracking-[0.06em]', status === 'paid' && 'creator-tone-green text-[#29CE53]', status === 'approved' && 'creator-tone-blue text-[#00A8EF]', (status === 'pending' || status === 'in_review') && 'bg-[#f5f6f7] text-[#52565c]', status === 'rejected' && 'creator-tone-red text-[#F33232]')}>{statusLabel(status)}</span>
+  if (!event) return stamp
+  const date = new Date(event.date).toLocaleString('en-GB', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' })
+  return <Tooltip>
+    <TooltipTrigger asChild><span tabIndex={0} className="inline-flex rounded-sm outline-none focus-visible:ring-2 focus-visible:ring-zinc-400" aria-label={`${statusLabel(status)} · ${event.label} ${date}`}>{stamp}</span></TooltipTrigger>
+    <TooltipContent side="top" className="flex items-center gap-2 rounded-[12px_12px_12px_3px] border border-zinc-200 bg-white px-2.5 py-2 text-[11px] text-zinc-500 shadow-sm"><CalendarDays className="size-3.5" aria-hidden="true" /><span>{event.label} · {date}</span></TooltipContent>
+  </Tooltip>
+}
 function EmptyState({ filtered }: { filtered: boolean }) { return <div className="creator-surface grid min-h-72 place-items-center px-4 py-8 sm:px-8 text-center"><div className="w-full">{filtered ? <span className="mx-auto grid size-12 place-items-center rounded-[16px] bg-[#f7f8f9] text-[#00A8EF]"><Clock3 className="size-5" /></span> : <SubmissionReviewAnimation />}<h2 className="mt-4 text-sm font-semibold">{filtered ? 'Nothing in This Status' : 'No Submissions Yet'}</h2><p className="mt-0.5 text-sm text-[#73777d]">{filtered ? 'Choose another filter to see more videos.' : 'Your submitted videos and payments will appear here.'}</p>{!filtered ? <Button asChild className="mt-6 h-10 rounded-full px-4"><Link href="/creator/submissions?new=1">Submit Your First Video</Link></Button> : null}</div></div> }
 function Detail({ label, value }: { label: string; value: string }) { return <div className="flex items-center justify-between gap-4"><span className="text-zinc-500">{label}</span><span className="text-right font-medium capitalize">{value}</span></div> }
 function statusLabel(status: CreatorSubmission['status']) { return status === 'in_review' ? 'In Review' : status.slice(0, 1).toUpperCase() + status.slice(1) }

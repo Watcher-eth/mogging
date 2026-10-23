@@ -32,7 +32,7 @@ const dashboard: CreatorDashboard = {
     videoUrl: null, videoContentType: null, videoSizeBytes: null,
     analyticsScreenshotUrl: null, analyticsContentType: null, analyticsSizeBytes: null,
     viewCountThreshold: 40000, usAudiencePercent: 30, adminViewCountThreshold: null,
-    adminUsAudiencePercent: null, reviewNote: null, reviewChecklist: null, createdAt: account.createdAt,
+    adminUsAudiencePercent: null, reviewNote: null, reviewChecklist: null, createdAt: account.createdAt, updatedAt: '2026-10-22T17:00:00Z',
   }],
   payments: [], socialAccounts: [account, { ...account, id: '22222222-2222-4222-8222-222222222222', platform: 'instagram' }],
   communityMetrics: { totalQualifiedViews: 340000, totalFirstTimePaidCustomers: 0, totalPaidCents: 0, paidCreators: 0, approvedSubmissions: 1 },
@@ -41,7 +41,7 @@ const dashboard: CreatorDashboard = {
 const sampleSubmissions: CreatorDashboard['submissions'] = [
   { ...dashboard.submissions[0], id: 'preview-paid', status: 'paid', caption: 'A small change. A whole new level of confidence.', viewCountThreshold: 330000, approvedAmountCents: 2500, createdAt: '2026-10-21T16:00:00Z' },
   { ...dashboard.submissions[0], id: 'preview-approved', status: 'approved', caption: 'Your next level starts with understanding your features.', viewCountThreshold: 125000, approvedAmountCents: 1500, createdAt: '2026-10-20T16:00:00Z' },
-  { ...dashboard.submissions[0], id: 'preview-review', status: 'in_review', platform: 'Instagram Reels', caption: 'The glow-up checklist I wish I had sooner.', viewCountThreshold: 64000, createdAt: '2026-10-22T16:00:00Z' },
+  { ...dashboard.submissions[0], id: 'preview-review', status: 'in_review', reviewRequestedAt: '2026-10-22T16:00:00Z', platform: 'Instagram Reels', caption: 'The glow-up checklist I wish I had sooner.', viewCountThreshold: 64000, createdAt: '2026-10-22T16:00:00Z' },
   { ...dashboard.submissions[0], id: 'preview-rejected', status: 'rejected', caption: 'Three things I changed about my routine.', viewCountThreshold: 25000, createdAt: '2026-10-19T16:00:00Z' },
 ]
 const samplePayments: CreatorDashboard['payments'] = [

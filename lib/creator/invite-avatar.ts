@@ -2,20 +2,55 @@ import { isCreatorAvatarUrl } from './invite-validation'
 import { env } from '@/lib/env'
 import { creatorAssetPublicUrl, storeCreatorAsset } from '@/lib/storage/videos'
 
-// Fetch only the canonical TikTok profile and known image CDNs; never follow redirects.
-export async function resolveTikTokAvatar(handle: string): Promise<string | null> {
-  if (!/^[a-z0-9._]{1,32}$/.test(handle)) return null
+type Platform = 'tiktok' | 'instagram'
+
+function profileImage(value: unknown, platform: Platform): string | null {
+  if (typeof value !== 'string') return null
+  if (platform === 'tiktok') return isCreatorAvatarUrl(value) ? value : null
   try {
-    const response = await fetch(`https://www.tiktok.com/@${handle}`, { redirect: 'error', signal: AbortSignal.timeout(4000) })
+    const url = new URL(value)
+    return url.protocol === 'https:' && !url.username && !url.password && !url.port &&
+      ['cdninstagram.com', 'fbcdn.net'].some(host => url.hostname === host || url.hostname.endsWith(`.${host}`)) ? url.href : null
+  } catch { return null }
+}
+
+// Only a provider object with the exact requested username can supply a photo.
+export function parseCreatorAvatar(payload: unknown, platform: Platform, handle: string): string | null {
+  const nodes: unknown[] = [payload]
+  for (let visited = 0; nodes.length && visited < 20_000; visited++) {
+    const node = nodes.pop()
+    if (!node || typeof node !== 'object') continue
+    const user = node as Record<string, unknown>
+    const username = platform === 'tiktok' ? user.uniqueId : user.username
+    if (typeof username === 'string' && username.toLowerCase() === handle.toLowerCase()) {
+      const image = platform === 'tiktok' ? user.avatarLarger || user.avatarMedium || user.avatarThumb : user.profile_pic_url_hd || user.profile_pic_url
+      const url = profileImage(image, platform)
+      if (url) return url
+    }
+    nodes.push(...Object.values(node))
+  }
+  return null
+}
+
+export async function resolveCreatorAvatar(platform: Platform, handle: string): Promise<string | null> {
+  if (!/^[a-z0-9._]{1,40}$/i.test(handle)) return null
+  const endpoint = platform === 'tiktok' ? `https://www.tiktok.com/@${handle}` : `https://www.instagram.com/${handle}/`
+  try {
+    const response = await fetch(endpoint, { redirect: 'error', signal: AbortSignal.timeout(4000), cache: 'no-store' })
     if (!response.ok) return null
     const html = await readLimited(response, 2 * 1024 * 1024)
-    const payload = html.match(/<script[^>]+id="__UNIVERSAL_DATA_FOR_REHYDRATION__"[^>]*>([\s\S]*?)<\/script>/)?.[1]
-    if (!payload) return null
-    const user = JSON.parse(payload)?.__DEFAULT_SCOPE__?.['webapp.user-detail']?.userInfo?.user
-    if (user?.uniqueId?.toLowerCase() !== handle) return null
-    const avatar = user.avatarLarger || user.avatarMedium || user.avatarThumb
-    return typeof avatar === 'string' && isCreatorAvatarUrl(avatar) ? avatar : null
+    for (const match of html.matchAll(/<script[^>]*(?:type="application\/(?:ld\+)?json"|id="__UNIVERSAL_DATA_FOR_REHYDRATION__")[^>]*>([\s\S]*?)<\/script>/g)) {
+      try {
+        const image = parseCreatorAvatar(JSON.parse(match[1]), platform, handle)
+        if (image) return image
+      } catch { /* Login/challenge pages and changed markup are not profile proof. */ }
+    }
+    return null
   } catch { return null }
+}
+
+export function resolveTikTokAvatar(handle: string) {
+  return resolveCreatorAvatar('tiktok', handle)
 }
 
 export async function creatorAvatarDataUrl(url: string | null) {
@@ -45,8 +80,10 @@ export async function preserveCreatorAvatar(url: string) {
   const contentType = header.slice(5).split(';')[0]
   const extension = contentType === 'image/jpeg' ? 'jpeg' : contentType.split('/')[1]
   const key = `creator/avatars/${crypto.randomUUID()}.${extension}`
-  await storeCreatorAsset(key, Buffer.from(data, 'base64'), contentType)
-  return creatorAssetPublicUrl(key)
+  try {
+    await storeCreatorAsset(key, Buffer.from(data, 'base64'), contentType)
+    return creatorAssetPublicUrl(key)
+  } catch { return url }
 }
 
 async function readLimited(response: Response, limit: number, binary?: false): Promise<string>

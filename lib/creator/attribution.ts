@@ -141,7 +141,8 @@ export async function findCreatorTrackingLinkForPost(postUrl: string) {
     .innerJoin(schema.creatorProfiles, eq(schema.creatorProfiles.id, schema.creatorSocialAccounts.creatorProfileId))
     .innerJoin(schema.creatorTrackingLinks, eq(schema.creatorTrackingLinks.socialAccountId, schema.creatorSocialAccounts.id))
     .where(and(or(eq(schema.creatorSubmissions.postKey, post.key), eq(schema.creatorSubmissions.postUrl, post.url)),
-      eq(schema.creatorSubmissions.isDraft, false), eq(schema.creatorSocialAccounts.status, 'approved'),
+      eq(schema.creatorSubmissions.isDraft, false), inArray(schema.creatorSubmissions.status, ['approved', 'paid']),
+      eq(schema.creatorSocialAccounts.status, 'approved'),
       ne(schema.creatorProfiles.authStatus, 'suspended'), eq(schema.creatorTrackingLinks.isActive, true))).limit(1)
   return match ? { ...match.link, submissionId: match.submissionId } : null
 }

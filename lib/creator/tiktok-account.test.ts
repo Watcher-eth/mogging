@@ -1,5 +1,6 @@
 import { beforeEach, expect, mock, test } from 'bun:test'
 import * as schema from '@/lib/db/schema'
+mock.module('@/lib/creator/account-avatars', () => ({ fetchAccountAvatar: async (_platform: string, _handle: string | null, avatar?: string) => avatar || null }))
 mock.module('@/lib/creator/tiktok-followers', () => ({ resolveTikTokFollowers: async (_handle: string, range?: string) => range ? { source: 'self_reported', range, checkedAt: new Date().toISOString() } : null }))
 
 let rows: any[] = []

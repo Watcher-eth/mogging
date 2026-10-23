@@ -154,8 +154,8 @@
 }
 
 .creator-app { background: white; }
-.creator-portal .bg-primary, .creator-dialog .bg-primary { background: #00A8EF; color: white; }
-.creator-portal .focus-visible\:ring-ring:focus-visible, .creator-dialog .focus-visible\:ring-ring:focus-visible { --tw-ring-color: #00A8EF; }
+.creator-portal .bg-primary, .creator-dialog .bg-primary { background: var(--creator-control-accent, #00A8EF); color: white; }
+.creator-portal .focus-visible\:ring-ring:focus-visible, .creator-dialog .focus-visible\:ring-ring:focus-visible { --tw-ring-color: var(--creator-control-accent, #00A8EF); }
 .creator-portal button, .creator-dialog button { box-shadow: none; }
 .creator-portal .rounded-2xl { border-radius: var(--creator-section-radius); }
 .creator-portal .rounded-xl { border-radius: 18px; }
@@ -185,7 +185,7 @@
 .creator-selection { min-height: 56px; border-radius: 20px; padding: 16px; transition: background-color 160ms ease, border-color 160ms ease; }
 :is(.creator-portal, .creator-dialog, [data-creator-controls]) :where([data-slot="button"]:not(.size-8):not(.size-9):not(.size-10)) { min-height: 46px; }
 .creator-field,
-:is(.creator-portal, .creator-dialog, [data-creator-controls]) :where(input:not([type="checkbox"]):not([type="radio"]):not([type="file"]):not([type="range"]):not([type="color"]):not([type="hidden"]):not(.sr-only):not(.c-title-input), textarea:not(.c-title-input), select, [role="combobox"]):not([data-creator-preview] *):not([aria-hidden="true"]):not(.creator-history-filter) {
+:is(.creator-portal, .creator-dialog, [data-creator-controls]) :where(input:not([type="checkbox"]):not([type="radio"]):not([type="file"]):not([type="range"]):not([type="color"]):not([type="hidden"]):not(.sr-only):not(.c-title-input), textarea:not(.c-title-input), select, [role="combobox"]):not([data-creator-preview] *):not([aria-hidden="true"]):not(.creator-status-filter) {
   width: 100%; border: 1px solid transparent; border-radius: 18px; background-color: var(--creator-input-surface, #f5f5f6); min-height: 52px; padding: 13px 16px; font-size: 16px; line-height: 1.5; color: #181a1d;
   transition: background-color 160ms ease, border-color 160ms ease, box-shadow 160ms ease;
 }
@@ -221,13 +221,10 @@
 /* Submission history keeps its established card layout and animated empty state. */
 .creator-submissions-history :is(.creator-surface, .rounded-2xl) { border-radius: 16px; }
 .creator-submissions-history .rounded-xl { border-radius: 10px; }
-.creator-submissions-history .creator-history-filter { min-height: 46px; border: 1px solid #dfe3e7; border-radius: 10px; background: white; padding: 0 13px; }
 .creator-submissions-history [data-slot="button"] { min-height: 0; }
 
 .creator-submission-dialog { --creator-control-accent: #09090b; --creator-control-ring: rgb(0 0 0 / .08); }
-.creator-submission-dialog .bg-primary { background: #09090b; }
 .creator-submission-dialog .creator-choice-selected { background: #f4f4f5; border-color: #18181b; }
-.creator-submission-dialog .focus-visible\:ring-ring:focus-visible { --tw-ring-color: #09090b; }
 .creator-submission-dialog .accordion-trigger:focus-visible { outline-color: #09090b; }
 
 .creator-info-bubble { position: relative; display: flex; align-items: center; gap: 12px; min-height: 76px; margin-top: 8px; border-radius: 24px; background: #202123; padding: 16px 18px; color: rgb(255 255 255 / .72); font-size: 13px; line-height: 21px; }
@@ -515,7 +512,7 @@
 }
 :is(.creator-app, .creator-dialog, .creator-sidebar-sheet, [data-creator-controls]) .bg-primary:hover,
 :is(.creator-app, .creator-dialog, .creator-sidebar-sheet, [data-creator-controls]) .creator-primary-button:hover {
-  background-color: #00A8EF;
+  background-color: var(--creator-control-accent, #00A8EF);
   filter: none;
 }
 :is(.creator-app, .creator-dialog, .creator-sidebar-sheet, [data-creator-controls]) .bg-secondary:hover {
