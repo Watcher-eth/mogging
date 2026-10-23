@@ -1,0 +1,14 @@
+.header :global(.creator-page-header) {
+  flex-direction: row;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+}
+.header :global(.creator-header-action) { flex-shrink: 0; }
+.header :global(.creator-page-header > div:first-child > p:last-child) {
+  font-size: 12px;
+  line-height: 18px;
+}
+@media (min-width: 640px) {
+  .header :global(.creator-page-header > div:first-child > p:last-child) { font-size: 14px; line-height: 20px; }
+}

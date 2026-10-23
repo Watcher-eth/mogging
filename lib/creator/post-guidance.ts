@@ -26,16 +26,7 @@ export function creatorCampaignRules(rules: readonly string[]) {
   return rules.map(creatorCampaignRule).filter((rule): rule is string => rule !== null)
 }
 
-export function creatorCaption(code: string) {
-  return `Try your own face scan with @moggingcom. Enter ${code} in Mogging’s creator field before subscribing. #mogging`
-}
-
 export function captionContainsCreatorCode(caption: string, code: string) {
   const escaped = code.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
   return new RegExp(`(^|[^a-z0-9._-])${escaped}($|[^a-z0-9._-])`, 'i').test(caption)
-}
-
-export function creatorCtaOverlay(code: string) {
-  const safeCode = code.replace(/[^a-zA-Z0-9._-]/g, '')
-  return `<svg xmlns="http://www.w3.org/2000/svg" width="1080" height="240" viewBox="0 0 1080 240"><rect x="16" y="16" width="1048" height="208" rx="40" fill="#111827"/><text x="540" y="90" text-anchor="middle" font-family="Arial,sans-serif" font-size="36" fill="white">Try Mogging · Enter this creator code</text><text x="540" y="163" text-anchor="middle" font-family="Arial,sans-serif" font-size="48" font-weight="bold" fill="#38bdf8">${safeCode}</text></svg>`
 }

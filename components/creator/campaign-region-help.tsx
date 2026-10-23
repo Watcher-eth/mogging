@@ -1,11 +1,11 @@
 import * as Dialog from '@radix-ui/react-dialog'
 import { AnimatePresence, LayoutGroup, motion, useReducedMotion } from 'motion/react'
 import { Info, X } from 'lucide-react'
-import { useId, useState } from 'react'
+import { useId, useState, type CSSProperties } from 'react'
 import { CREATOR_AUDIENCE_BANDS } from '@/lib/creator/sprint-defaults'
 import { CREATOR_TIER_ONE_COUNTRIES } from '@/lib/creator/audience'
 
-export function CampaignRegionHelp() {
+export function CampaignRegionHelp({ monochrome = false }: { monochrome?: boolean }) {
   const [open, setOpen] = useState(false)
   const reduceMotion = useReducedMotion()
   const id = useId()
@@ -20,8 +20,8 @@ export function CampaignRegionHelp() {
             aria-label="Explain region rates"
             layoutId={reduceMotion ? undefined : 'region-panel'}
             transition={transition}
-            style={{ borderRadius: 999 }}
-            className="grid size-9 shrink-0 place-items-center text-zinc-500 hover:bg-zinc-200/60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#00A8EF]"
+            style={{ borderRadius: 999, '--region-accent': monochrome ? '#09090b' : '#00A8EF' } as CSSProperties}
+            className="grid size-9 shrink-0 place-items-center text-zinc-500 hover:bg-zinc-200/60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--region-accent)]"
           >
             <Info aria-hidden="true" className="size-4" />
           </motion.button>
@@ -37,12 +37,12 @@ export function CampaignRegionHelp() {
                   data-creator-controls
                   layoutId={reduceMotion ? undefined : 'region-panel'}
                   transition={transition}
-                  style={{ borderRadius: 24 }}
+                  style={{ borderRadius: 24, '--region-accent': monochrome ? '#09090b' : '#00A8EF' } as CSSProperties}
                   className="fixed left-[max(16px,calc(50vw-210px))] top-[max(16px,calc(50dvh-280px))] z-50 max-h-[calc(100dvh-32px)] w-[min(420px,calc(100vw-32px))] overflow-y-auto border border-[#eceef0] bg-white p-6 shadow-[0_8px_40px_rgba(0,0,0,0.10)] outline-none"
                 >
                   <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} transition={{ duration: reduceMotion ? 0 : 0.14 }}>
                     <Dialog.Title className="pr-8 text-lg font-semibold tracking-tight">Region rates</Dialog.Title>
-                    <Dialog.Close aria-label="Close region rates" className="absolute right-3 top-3 grid size-10 place-items-center rounded-full text-zinc-500 hover:bg-zinc-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#00A8EF]">
+                    <Dialog.Close aria-label="Close region rates" className="absolute right-3 top-3 grid size-10 place-items-center rounded-full text-zinc-500 hover:bg-zinc-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--region-accent)]">
                       <X aria-hidden="true" className="size-4" />
                     </Dialog.Close>
                     <Dialog.Description className="mt-2 text-sm leading-6 text-zinc-500">Combine your audience share from the Tier 1 countries below to find your payout tier. At least 10% is required to earn.</Dialog.Description>
@@ -54,7 +54,7 @@ export function CampaignRegionHelp() {
                             <span className="tabular-nums text-zinc-500">{band.tier === 'D' ? '10–<15%' : `${band.minimumPercent}%+`} Tier 1</span>
                           </div>
                           <div aria-hidden="true" className="h-1.5 overflow-hidden rounded-full bg-zinc-100">
-                            <div className="h-full rounded-full bg-[#00A8EF]" style={{ width: `${band.minimumPercent}%` }} />
+                            <div className="h-full rounded-full bg-[var(--region-accent)]" style={{ width: `${band.minimumPercent}%` }} />
                           </div>
                         </div>
                       ))}

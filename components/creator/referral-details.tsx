@@ -62,7 +62,7 @@ export function CreatorReferralDetails({ trackingLink }: ReferralProps) {
           </button>
         </div>
       ))}
-      <p className="pt-2 text-[11px] leading-[1.6] text-zinc-400">Your code gives new subscribers 10% off their first month. Include it in post captions; adding it to your bio is optional.</p>
+      <p className="pt-2 text-[11px] leading-[1.6] text-zinc-400">Reuse this account’s link and code across your posts—no separate post setup. Your code gives new subscribers 10% off their first month. Include it in post captions; adding it to your bio is optional.</p>
     </div>
   )
 }

@@ -97,11 +97,11 @@ export function CreatorHeader({ eyebrow, title, description, action, titleAccess
 export const fieldClass = 'creator-field'
 export const areaClass = 'creator-field min-h-28 resize-y py-3'
 
-export function Field({ label, hint, children }: { label: string; hint?: string; children: ReactNode }) {
+export function Field({ label, hint, children }: { label: ReactNode; hint?: string; children: ReactNode }) {
   return (
     <label className="creator-field-label">
       <span className="flex items-center justify-between gap-4 text-[13px] font-semibold text-[#3a3a3c]">
-        <span>{label}</span>
+        <span className="min-w-0 flex-1">{label}</span>
         {hint ? <span className="text-right text-[11px] font-normal leading-4 text-[#858a91]">{hint}</span> : null}
       </span>
       {children}

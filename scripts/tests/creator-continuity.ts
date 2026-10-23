@@ -8,9 +8,9 @@ const url = new URL(target)
 if (!['localhost', '127.0.0.1'].includes(url.hostname) || url.pathname !== '/creator_continuity_test') throw new Error('Creator integration tests require the isolated local test database')
 process.env.DATABASE_URL = target
 const { db, schema } = await import('../../lib/db')
-const { createCreatorAttributionClick, resolveMobileCreatorAttribution, associateMobileCreatorAttribution, getAccountCreatorAttribution, signClickId } = await import('../../lib/creator/attribution')
+const { createCreatorAttributionClick, resolveMobileCreatorAttribution, associateMobileCreatorAttribution, getAccountCreatorAttribution, signClickId, ensureCreatorTrackingLink } = await import('../../lib/creator/attribution')
 const { createReferralHandoff, redeemReferralHandoff, referralHash } = await import('../../lib/creator/continuity')
-const { registerCreatorPost, publishRegisteredPost } = await import('../../lib/creator/post-registration')
+const { getCreatorDashboard } = await import('../../lib/creator/service')
 const { allocateCreatorBillingEvent, reconcileCreatorBilling } = await import('../../lib/creator/billing-attribution')
 const { getCreatorCoverage } = await import('../../lib/admin/creator-coverage')
 const { importStoreCampaignCsv } = await import('../../lib/creator/store-campaigns')
@@ -27,15 +27,30 @@ try {
       elements: [{ title: 'CTA', detail: 'Include code' }], requirements: ['Include code'], notAllowed: [] }] }
   await db.insert(schema.creatorSprints).values({ id: campaign, name: 'Continuity fixture', description: 'Local only', status: 'published', budgetCents: 10000,
     startsAt: new Date(Date.now()-86400000), endsAt: new Date(Date.now()+86400000), terms })
-  const post = await registerCreatorPost(owner, { sprintId: campaign, socialAccountId: account, formatId: 'fixture' })
-  check('pre-publication registration has one draft owner and a post code', post.isDraft && post.code.startsWith('p-'))
-  const published = await publishRegisteredPost(owner, { id: post.id, postUrl: `https://www.tiktok.com/@fixture_${owner.slice(0,8)}/video/${Date.now()}${Math.floor(Math.random()*1000000)}`, caption: post.suggestedCaption, postedAt: new Date(Date.now()-3600000).toISOString() })
-  check('publication preserves the draft identity and records caption/time', published.id === post.id && !!published.caption && !!published.postedAt)
-  await assert.rejects(() => publishRegisteredPost(otherBuyer, { id: post.id, postUrl: published.postUrl!, caption: 'x', postedAt: new Date().toISOString() }))
-  check('another account cannot bind someone else’s registered post', true)
-  const click = await createCreatorAttributionClick({ slug: post.code, anonymousActorId: id(), userAgent: 'iPhone Safari', placement: 'video' })
+  const accountLink = await ensureCreatorTrackingLink(account)
+  assert.ok(accountLink)
+  // Model an already-issued link; the retired registration endpoint cannot create more.
+  const [post] = await db.insert(schema.creatorSubmissions).values({ creatorProfileId: creator, socialAccountId: account,
+    sprintId: campaign, sprintTerms: terms, formatId: 'fixture', title: 'Legacy post', platform: 'TikTok', isDraft: true }).returning()
+  const code = `p-${id().replaceAll('-', '').slice(0, 12)}`
+  await db.insert(schema.creatorTrackingLinkAliases).values({ slug: code, trackingLinkId: accountLink.id, submissionId: post.id })
+  const dashboard = await getCreatorDashboard(owner)
+  check('retired setup drafts stay out of the normal creator submission list', !dashboard.submissions.some(item => item.id === post.id) && !('registeredPosts' in dashboard))
+  const accountClick = await createCreatorAttributionClick({ slug: accountLink.slug, anonymousActorId: id(), userAgent: 'iPhone Safari' })
+  check('one reusable account link works without any post-specific identity', accountClick && accountClick.click.submissionId === null)
+  const legacyClick = await createCreatorAttributionClick({ slug: code, anonymousActorId: id(), userAgent: 'iPhone Safari', placement: 'video' })
+  check('already-issued post aliases still resolve after setup retirement', legacyClick?.click.submissionId === post.id)
+  const videoId = `${Date.now()}${Math.floor(Math.random() * 1_000_000).toString().padStart(6, '0')}`
+  const postUrl = `https://www.tiktok.com/@fixture_${owner.slice(0,8)}/video/${videoId}`
+  await db.update(schema.creatorSubmissions).set({ isDraft: false, postUrl, postKey: `tiktok:${videoId}` }).where(eq(schema.creatorSubmissions.id, post.id))
+  const click = await createCreatorAttributionClick({ postUrl: `${postUrl}?share=viewer`, source: 'creator_code', anonymousActorId: null, userAgent: 'Mogging iOS' })
+  check('the original published URL recovers creator and post without a custom creator URL', click?.click.submissionId === post.id && click.link.id === accountLink.id)
+  check('unknown original post URLs do not invent creator credit', await createCreatorAttributionClick({ postUrl: postUrl.replace(videoId, String(BigInt(videoId) + BigInt(1))), anonymousActorId: null }) === null)
+  await db.update(schema.creatorTrackingLinks).set({ isActive: false }).where(eq(schema.creatorTrackingLinks.id, accountLink.id))
+  check('original post recovery cannot bypass an inactive creator link', await createCreatorAttributionClick({ postUrl, anonymousActorId: null }) === null)
+  await db.update(schema.creatorTrackingLinks).set({ isActive: true }).where(eq(schema.creatorTrackingLinks.id, accountLink.id))
   assert.ok(click)
-  check('post-specific identity survives creator link resolution', click.click.submissionId === post.id && click.link.submissionId === post.id)
+  check('original post identity survives signed-click resolution', click.click.submissionId === post.id && click.link.submissionId === post.id)
   check('store destination is first-party configured and has stable campaign mapping', new URL(click.link.iosAppStoreUrl).hostname === 'apps.apple.com' && new URL(click.link.iosAppStoreUrl).searchParams.get('ct')?.startsWith('c-'))
   const verifier = 'a'.repeat(64), install = `mob_${id()}`
   const ticket = await createReferralHandoff(click.click.id, referralHash(verifier))

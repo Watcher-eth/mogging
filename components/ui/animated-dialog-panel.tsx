@@ -12,9 +12,9 @@ const swish: Variants = {
 const still: Variants = { visible: { ...resting, transition: { duration: 0 } }, exit: { opacity: 0, transition: { duration: 0 } } }
 
 // Exiting fields remain visible briefly, but cannot receive focus or block validation.
-const PanelContent = forwardRef<HTMLDivElement, ComponentProps<typeof motion.div>>((props, ref) => {
+const PanelContent = forwardRef<HTMLDivElement, Omit<ComponentProps<typeof motion.div>, 'children'> & { children: ReactNode }>(({ children, ...props }, ref) => {
   const present = useIsPresent()
-  return <motion.div {...props} ref={ref} inert={!present || undefined} aria-hidden={!present || undefined} />
+  return <motion.div {...props} ref={ref} inert={!present || undefined} aria-hidden={!present || undefined}><fieldset disabled={!present} className="contents">{children}</fieldset></motion.div>
 })
 PanelContent.displayName = 'DialogPanelContent'
 

@@ -6,8 +6,9 @@ let accounts = 0
 let cookieToken = ''
 mock.module('@/lib/fonts', () => ({ moggingFont: { className: 'test-font' } }))
 mock.module('@/lib/creator/attribution', () => ({
-  createCreatorAttributionClick: async ({ slug, userAgent }: { slug: string; userAgent: string }) => {
-    if (slug !== 'creator-test') return null
+  createCreatorAttributionClick: async ({ slug, postUrl, userAgent }: { slug: string; postUrl?: string; userAgent: string }) => {
+    if (slug !== 'creator-test' && postUrl !== 'https://www.tiktok.com/@creator/video/123') return null
+    slug ||= 'creator-test'
     clicks++
     return { token: 'test-signed-token', isBot: userAgent === 'bot', click: { isBot: userAgent === 'bot' },
       deepLinkUrl: 'mogging://r/creator-test?attribution_token=test-signed-token',
@@ -60,3 +61,10 @@ for (const [method, slug, status] of [['GET', 'creator-test', 405], ['POST', 'ba
 }
 assert.ok(clicks > 0)
 console.log('Creator routing and code endpoint checks passed (mocked database; no production writes).')
+
+for (const [postUrl, status] of [['https://www.tiktok.com/@creator/video/123', 200], ['https://www.instagram.com/reel/notregistered/', 404], ['https://evil.test/reel/123', 400]] as const) {
+  const res = response()
+  await handler({ method: 'POST', headers: { 'user-agent': 'Mogging iOS' }, body: { postUrl } } as any, res as any)
+  assert.equal(res.statusCode, status)
+}
+console.log('Original social post endpoint input checks passed.')

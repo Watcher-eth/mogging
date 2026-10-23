@@ -1,4 +1,5 @@
 import Link from 'next/link'
+import styles from './money.module.css'
 import { useRouter } from 'next/router'
 import { useSession } from 'next-auth/react'
 import { ArrowRight, Loader2, Wallet } from 'lucide-react'
@@ -6,6 +7,7 @@ import useSWR from 'swr'
 import { CreatorHeader, CreatorShell } from '@/components/creator/creator-shell'
 import { StudioTabs, StudioTabContent } from '@/components/creator/studio-tabs'
 import { PayoutInformation } from '@/components/creator/payout-information-form'
+import { PiggyBank } from '@/components/creator/piggy-bank'
 import { BundledPayoutControls } from '@/components/creator/bundled-payout-controls'
 import type { CreatorDashboard } from '@/components/creator/types'
 import { apiGet } from '@/lib/api/client'
@@ -68,41 +70,46 @@ function MoneyContent() {
   const displayedBalance = request?.amountCents ?? (bundled ? creatorBundlePlan(data.submissions, data.payments).amountCents : balanceCents)
   return (
     <>
+      <div className={styles.header}>
       <CreatorHeader
         eyebrow="Earnings & payments"
         title="Money"
         description="Your creator earnings and payouts."
+        action={
+          <div className="text-right">
+            {request ? <p className="mb-1 text-xs text-zinc-500">Payout requested</p> : null}
+            <p
+              aria-label={
+                ready
+                  ? `Balance ${sprintMoney(displayedBalance)}`
+                  : 'Select a payout method to view your balance'
+              }
+              className={cn(
+                'text-4xl font-semibold tracking-[-0.05em] tabular-nums sm:text-6xl',
+                !ready && 'select-none blur-md',
+              )}
+              aria-hidden={!ready}
+            >
+              {sprintMoney(displayedBalance)}
+            </p>
+            {!ready ? (
+              <button
+                onClick={() => change('methods')}
+                className="mt-3 flex min-h-11 items-center gap-2 text-sm font-medium sm:justify-end text-[#00A8EF]"
+              >
+                Connect a payout method
+                <ArrowRight className="size-4" />
+              </button>
+            ) : null}
+          </div>
+        }
       />
+      </div>
       <StudioTabs value={tab} onChange={change} items={tabs}>
         <StudioTabContent value="wallet">
           <section className="creator-surface overflow-hidden">
             <div className="p-6 sm:p-8">
-              <p className="text-xs font-medium text-zinc-500">
-                {request ? 'Payout requested' : bundled ? 'Available to request' : 'Reviewed balance'}
-              </p>
-              <p
-                aria-label={
-                  ready
-                    ? `Balance ${sprintMoney(displayedBalance)}`
-                    : 'Select a payout method to view your balance'
-                }
-                className={cn(
-                  'mt-2 text-5xl font-semibold tracking-[-0.05em] tabular-nums sm:text-6xl',
-                  !ready && 'select-none blur-md',
-                )}
-                aria-hidden={!ready}
-              >
-                {sprintMoney(displayedBalance)}
-              </p>
-              {!ready ? (
-                <button
-                  onClick={() => change('methods')}
-                  className="mt-5 flex items-center gap-2 text-sm font-medium text-[#00A8EF]"
-                >
-                  Connect a payout method
-                  <ArrowRight className="size-4" />
-                </button>
-              ) : null}
+              <div className="grid min-h-52 place-items-center"><PiggyBank /></div>
               <BundledPayoutControls data={data} onSaved={mutate} />
               <button className="mt-6 text-sm text-[#00A8EF]" onClick={() => change('earnings')}>View earnings breakdown →</button>
             </div>

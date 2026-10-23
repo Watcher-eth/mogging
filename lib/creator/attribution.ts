@@ -1,5 +1,5 @@
 import { createHmac, timingSafeEqual } from 'crypto'
-import { and, asc, desc, eq, gte, inArray, or, sql } from 'drizzle-orm'
+import { and, asc, desc, eq, gte, inArray, ne, or, sql } from 'drizzle-orm'
 import type { NextApiRequest, NextApiResponse } from 'next'
 import type Stripe from 'stripe'
 import { db, schema } from '@/lib/db'
@@ -7,6 +7,7 @@ import { env } from '@/lib/env'
 import { ApiError } from '@/lib/api/http'
 import { allocateCreatorBillingEvent } from './billing-attribution'
 import { buildCreatorDeepLink } from './link-routing'
+import { resolveCreatorPostLink } from './post-identity'
 
 export const CREATOR_ATTRIBUTION_COOKIE = 'mogging_creator_attribution'
 export const CREATOR_LINK_BASE_URL = 'https://www.mogging.com'
@@ -130,8 +131,22 @@ export async function findCreatorTrackingLink(slug: string) {
   return link?.isActive ? { ...link, submissionId } : null
 }
 
-export async function createCreatorAttributionClick(input: {
-  slug: string
+export async function findCreatorTrackingLinkForPost(postUrl: string) {
+  let post: { key: string; url: string }
+  try { post = await resolveCreatorPostLink(postUrl) }
+  catch { throw new ApiError(400, 'Open the post and paste its full TikTok or Instagram URL, or enter the creator’s code.') }
+  const [match] = await db.select({ link: schema.creatorTrackingLinks, submissionId: schema.creatorSubmissions.id })
+    .from(schema.creatorSubmissions)
+    .innerJoin(schema.creatorSocialAccounts, and(eq(schema.creatorSocialAccounts.id, schema.creatorSubmissions.socialAccountId), eq(schema.creatorSocialAccounts.creatorProfileId, schema.creatorSubmissions.creatorProfileId)))
+    .innerJoin(schema.creatorProfiles, eq(schema.creatorProfiles.id, schema.creatorSocialAccounts.creatorProfileId))
+    .innerJoin(schema.creatorTrackingLinks, eq(schema.creatorTrackingLinks.socialAccountId, schema.creatorSocialAccounts.id))
+    .where(and(or(eq(schema.creatorSubmissions.postKey, post.key), eq(schema.creatorSubmissions.postUrl, post.url)),
+      eq(schema.creatorSubmissions.isDraft, false), eq(schema.creatorSocialAccounts.status, 'approved'),
+      ne(schema.creatorProfiles.authStatus, 'suspended'), eq(schema.creatorTrackingLinks.isActive, true))).limit(1)
+  return match ? { ...match.link, submissionId: match.submissionId } : null
+}
+
+export async function createCreatorAttributionClick(input: ({ slug: string; postUrl?: never } | { postUrl: string; slug?: never }) & {
   anonymousActorId: string | null
   referrer?: string | null
   userAgent?: string | null
@@ -139,7 +154,7 @@ export async function createCreatorAttributionClick(input: {
   placement?: string | null
   resumeToken?: string | null
 }) {
-  const link = await findCreatorTrackingLink(input.slug)
+  const link = input.postUrl ? await findCreatorTrackingLinkForPost(input.postUrl) : await findCreatorTrackingLink(input.slug || '')
   if (!link) return null
   // Apply current campaign configuration to existing links without rewriting their destination.
   link.iosAppStoreUrl = buildIosAppStoreUrl(`c-${link.id.replace(/-/g, "").slice(0, 24)}`, link.iosAppStoreUrl)

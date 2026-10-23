@@ -12,6 +12,7 @@ export type CreatorProfile = {
 }
 
 export type CreatorSubmission = {
+  updatedAt?: string | null
   unreadMessages?: number
   sprintId?: string | null
   sprintTerms?: import('@/lib/creator/sprints').SprintTerms | null
@@ -83,7 +84,6 @@ export type CreatorSocialAccount = {
 }
 
 export type CreatorDashboard = {
-  registeredPosts?: Array<CreatorSubmission & { code: string | null }>
   payoutRequests?: CreatorPayoutRequest[]
   profile: CreatorProfile | null
   submissions: CreatorSubmission[]

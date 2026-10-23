@@ -1,9 +1,12 @@
-import { Accordion, AccordionItem, AccordionTrigger, AccordionChevron, Disclosure, DisclosureSummary, AccordionContent } from '@/components/ui/accordion'
+import { Disclosure, DisclosureSummary, AccordionContent } from '@/components/ui/accordion'
 import { TikTokAccountDialog } from './tiktok-anchor-onboarding'
 import { publishingTikTokHandle, tiktokAnchorEligible, TIKTOK_ANCHOR_REQUIREMENTS_ENABLED, TIKTOK_ANCHOR_REQUIREMENT } from '@/lib/creator/tiktok-anchor'
 import { detectPostingAccount } from '@/lib/creator/post-account'
 import { creatorContentRestriction } from '@/lib/creator/content-policy'
 import { creatorCampaignRules, creatorFormatElement, CREATOR_REREVIEW_GUIDANCE } from '@/lib/creator/post-guidance'
+import { PublishedPostPlayer } from './published-post-player'
+import { AnalyticsRecordingPreview } from './analytics-recording-preview'
+import { CampaignRegionHelp } from './campaign-region-help'
 import { MinimumViewsDialog } from './minimum-views-dialog'
 import Link from 'next/link'
 import { campaignRegionRates } from '@/lib/creator/sprint-defaults'
@@ -12,9 +15,9 @@ import { AnimatedDialogPanel } from '@/components/ui/animated-dialog-panel'
 import {
   Check,
   ChevronLeft,
-  Link2,
-  Layers,
-  FileVideo,
+  Eye,
+  Info,
+  Users,
   Loader2,
   UploadCloud,
 } from 'lucide-react'
@@ -29,8 +32,6 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog'
 import { Field, fieldClass } from './creator-shell'
-import { AnalyticsVerificationHelp } from './content-guidelines'
-import { SocialPlatformLogo } from '@/components/brand/social-platform-logo'
 import { creatorAccountLabel, type CreatorDashboard, type CreatorSubmission } from './types'
 import { apiGet, apiPost, ApiClientError } from '@/lib/api/client'
 import {
@@ -52,16 +53,18 @@ import {
   type CreatorSprint,
 } from '@/lib/creator/sprints'
 import { cn } from '@/lib/utils'
-const labels = ['Campaign', 'Post', 'Analytics', 'Review']
+const labels = ['Campaign', 'Format', 'Link', 'Analytics', 'Review']
 const titles = [
   'Pick a campaign',
-  'Add your post',
+  'Choose your format',
+  'Link your post',
   'Verify your analytics',
   'Review and submit',
 ]
 const descriptions = [
   'Submit as soon as your post reaches 20,000 views—the first milestone. Choose its campaign below.',
-  'Choose the format you used, then paste your published video or slideshow link.',
+  'Choose the format you used for your post.',
+  'Paste your published TikTok or Instagram URL to preview it.',
   'Upload one continuous recording filmed with a second device.',
   'Confirm the campaign requirements before sending your post for review.',
 ]
@@ -85,7 +88,7 @@ export function SubmissionDialog({
     open ? '/api/creator' : null,
     apiGet,
   )
-  const [step, setStep] = useState(existingSubmission ? 3 : 1)
+  const [step, setStep] = useState(existingSubmission ? 4 : 1)
   const [stepDirection, setStepDirection] = useState<1 | -1>(1)
   function changeStep(value: number) {
     setStepDirection(value > step ? 1 : -1)
@@ -94,7 +97,6 @@ export function SubmissionDialog({
   const [sprintId, setSprintId] = useState(existingSubmission?.sprintId || initialSprintId || '')
   const [formatId, setFormatId] = useState(existingSubmission?.formatId || '')
   const [selectedAccountId, setAccountId] = useState(existingSubmission?.socialAccountId || '')
-  const [formatOpen, setFormatOpen] = useState(!existingSubmission?.formatId)
   const [anchorSetupOpen, setAnchorSetupOpen] = useState(false)
   const [usedRefCode, setUsedRefCode] = useState(false)
   const [postUrl, setPostUrl] = useState(existingSubmission?.postUrl || '')
@@ -111,8 +113,8 @@ export function SubmissionDialog({
   const headingRef = useRef<HTMLHeadingElement>(null)
   const contentRef = useRef<HTMLDivElement>(null)
   const previousStep = useRef(step)
-  const stepLabels = existingSubmission ? labels.slice(2) : labels
-  const visibleStep = existingSubmission ? step - 2 : step
+  const stepLabels = existingSubmission ? labels.slice(3) : labels
+  const visibleStep = existingSubmission ? step - 3 : step
   useEffect(() => {
     if (previousStep.current === step) return
     previousStep.current = step
@@ -166,8 +168,8 @@ export function SubmissionDialog({
       (!sprint || !activeSprints.some((item) => item.id === sprint.id))
     )
       return toast.error('Choose an active campaign with available budget')
-    if (step === 2) {
-      if (!format) return toast.error('Choose a format')
+    if (step === 2 && !format) return toast.error('Choose a format')
+    if (step === 3) {
 
       const parsed = creatorPostUrlSchema.safeParse(postUrl)
       if (!parsed.success) return toast.error(parsed.error.issues[0].message)
@@ -190,8 +192,8 @@ export function SubmissionDialog({
       }
 
     }
-    if (step === 3 && !checkMinimumViews()) return
-    if (step === 3 && (!recording || !physicalConfirmed || !views || !audience))
+    if (step === 4 && !checkMinimumViews()) return
+    if (step === 4 && (!recording || !physicalConfirmed || !views || !audience))
       return toast.error(
         'Add your recording and analytics, and confirm it was filmed with a second device',
       )
@@ -268,7 +270,7 @@ export function SubmissionDialog({
         }
       }}
     >
-      <DialogContent className="creator-dialog flex gap-0 max-h-[92dvh] w-[calc(100%-2rem)] max-w-3xl flex-col overflow-hidden p-0">
+      <DialogContent className="creator-dialog creator-submission-dialog flex gap-0 max-h-[92dvh] w-[calc(100%-2rem)] max-w-3xl flex-col overflow-hidden p-0">
         <DialogHeader className="creator-dialog-header shrink-0 border-b border-zinc-100 px-5 py-5 text-left sm:px-7">
           <p className="text-[10px] font-semibold uppercase tracking-widest text-zinc-400">
             {existingSubmission ? 'Update analytics' : 'Submit a post'}
@@ -288,7 +290,7 @@ export function SubmissionDialog({
           </div>
         ) : (
           <form
-            onSubmit={step === 4 ? submit : next}
+            onSubmit={step === 5 ? submit : next}
             className="flex min-h-0 flex-1 flex-col"
           >
             <div ref={contentRef} className="min-h-0 flex-1 overflow-y-auto px-5 pb-6 sm:px-7">
@@ -304,7 +306,6 @@ export function SubmissionDialog({
                             setFormatId('')
                             setConfirmed([])
                             setAccountId('')
-                            setFormatOpen(true)
                           }}
                           className={cn(
                             'rounded-2xl border p-4 text-left',
@@ -316,7 +317,7 @@ export function SubmissionDialog({
                           <div className="flex items-center justify-between gap-3">
                             <strong className="text-sm">{item.name}</strong>
                             {sprintId === item.id ? (
-                              <Check className="size-4 text-[#00A8EF]" />
+                              <Check className="size-4 text-zinc-950" />
                             ) : null}
                           </div>
                           <p className="mt-1 text-xs text-zinc-500">
@@ -364,13 +365,6 @@ export function SubmissionDialog({
                   ) : null}
                   {step === 2 ? (
                     <>
-                    <Accordion expandedValue={formatOpen ? 'formats' : null} onValueChange={value => setFormatOpen(value !== null)}><AccordionItem value="formats" className="creator-form-section overflow-hidden">
-                      <AccordionTrigger className="flex min-h-20 w-full items-center gap-3 p-4 text-left sm:p-5">
-                        <span className="grid size-10 shrink-0 place-items-center rounded-xl bg-zinc-100 text-zinc-500"><Layers className="size-4" /></span>
-                        <span className="min-w-0 flex-1"><span className="block text-xs text-zinc-500">Format</span><span className="mt-1 block text-sm font-semibold">{format?.name || 'Choose your post format'}</span></span>
-                        <AccordionChevron />
-                      </AccordionTrigger>
-                      <AccordionContent className="grid gap-3 border-t border-zinc-100 p-4 sm:p-5">
                       {sprint?.terms.formats
                         .filter((item) => item.active)
                         .map((item) => (
@@ -390,7 +384,6 @@ export function SubmissionDialog({
                               onClick={() => {
                                 setFormatId(item.id)
                                 setConfirmed([])
-                                setFormatOpen(false)
                               }}
                             >
                               <span>
@@ -400,18 +393,18 @@ export function SubmissionDialog({
                                 </p>
                               </span>
                               {formatId === item.id ? (
-                                <Check className="ml-3 size-4 shrink-0 text-[#00A8EF]" />
+                                <Check className="ml-3 size-4 shrink-0 text-zinc-950" />
                               ) : null}
                             </button>
                             <Disclosure className="mt-3 text-sm">
-                              <DisclosureSummary className="cursor-pointer text-[#00A8EF]">
+                              <DisclosureSummary className="cursor-pointer text-zinc-950">
                                 Read the brief
                               </DisclosureSummary><AccordionContent>
                               <div className="mt-3 space-y-3">
-                                <Link href="/creator/cta-generator" target="_blank" className="inline-block text-xs font-medium text-[#00A8EF] underline underline-offset-4">
+                                <Link href="/creator/cta-generator" target="_blank" className="inline-block text-xs font-medium text-zinc-950 underline underline-offset-4">
                                   Create mock reports in the CTA generator ↗
                                 </Link>
-                                <Link href="/creator/guide?topic=rules#video-requirements" target="_blank" className="block text-xs font-medium text-[#00A8EF] underline underline-offset-4">
+                                <Link href="/creator/guide?topic=rules#video-requirements" target="_blank" className="block text-xs font-medium text-zinc-950 underline underline-offset-4">
                                   Celebrity edits and audience rules ↗
                                 </Link>
                                 {item.elements.map(creatorFormatElement).map((element) => (
@@ -432,46 +425,77 @@ export function SubmissionDialog({
                             </AccordionContent></Disclosure>
                           </div>
                         ))}
-                      </AccordionContent>
-                    </AccordionItem></Accordion>
-                    <section className="creator-form-section p-5 sm:p-6">
-                      <div className="mb-4 flex items-center gap-3"><span className="grid size-10 shrink-0 place-items-center rounded-xl bg-zinc-100 text-zinc-500"><Link2 className="size-4" /></span><div className="min-w-0 flex-1"><h3 className="text-sm font-semibold">Video link</h3><p className="mt-0.5 text-xs text-zinc-500">Paste a TikTok or Instagram post.</p></div>{platform ? <span className="flex items-center gap-1.5 rounded-full bg-zinc-100 px-2.5 py-1.5 text-xs font-medium capitalize"><SocialPlatformLogo platform={platform} className="size-3.5" />{platform}</span> : null}</div>
-                      <input aria-label="Video URL" className={fieldClass} type="url" value={postUrl} onChange={event => { setPostUrl(event.target.value); setAccountId(''); setConfirmed([]) }} placeholder="https://www.tiktok.com/@you/video/…" required />
-                      <div aria-live="polite" className="mt-3">
-                      {detected.handle && !publishingAccount ? <p className="text-xs leading-5 text-amber-700">This post is from @{detected.handle}. <Link href="/creator/accounts" className="font-semibold underline">Connect this account</Link> before submitting.</p> : publishingAccount ? <p className="flex items-center gap-1.5 text-xs text-zinc-500"><Check className="size-3.5 text-[#008bc6]" />{detected.handle ? 'Account matched' : 'Publishing account'} · {creatorAccountLabel(publishingAccount)}</p> : !platform ? <p className="text-xs text-zinc-400">Platform and account are filled in where the link identifies them.</p> : !detected.candidates.length ? <p className="text-xs text-amber-700"><Link href="/creator/accounts" className="underline">Connect a {platform} account</Link> before submitting.</p> : null}
+                    </>
+                  ) : null}
+                  {step === 3 ? (
+                    <>
+                      <div className="flex items-center justify-between gap-4 pb-1">
+                        <div><p className="text-xs text-zinc-500">Selected format</p><p className="mt-1 text-sm font-semibold">{format?.name}</p></div>
+                        <button type="button" onClick={() => changeStep(2)} className="min-h-11 text-xs font-medium text-zinc-500 underline underline-offset-4">Change</button>
                       </div>
+                      <PublishedPostPlayer postUrl={postUrl} />
+                      <div className="grid gap-2">
+                      <Field label="Video URL"><input className={fieldClass} type="url" value={postUrl} onChange={event => { setPostUrl(event.target.value); setAccountId(''); setConfirmed([]) }} placeholder="Paste your TikTok or Instagram link" required /></Field>
+                      {((detected.handle && !publishingAccount) || (platform && !detected.candidates.length)) ? <div aria-live="polite">
+                        {detected.handle && !publishingAccount ? <p className="text-xs leading-5 text-amber-700">This post is from @{detected.handle}. <Link href="/creator/accounts" className="font-semibold underline">Connect this account</Link> before submitting.</p> : platform && !detected.candidates.length ? <p className="text-xs text-amber-700"><Link href="/creator/accounts" className="underline">Connect a {platform} account</Link> before submitting.</p> : null}
+                      </div> : null}
                       {!detected.handle && detected.candidates.length > 1 ? <div className="mt-4"><Field label="Published from" hint="This link doesn’t include a username. Choose the posting account."><select className={fieldClass} value={accountId} onChange={event => { setAccountId(event.target.value); setConfirmed([]) }} required={accountRequired}><option value="">Choose account</option>{detected.candidates.map(item => <option key={item.id} value={item.id}>{creatorAccountLabel(item)}</option>)}</select></Field></div> : null}
                       {platform && !sprint?.terms.platforms.includes(platform) ? <p role="alert" className="mt-3 text-xs text-red-600">This campaign does not accept {platform} posts.</p> : null}
-                    </section>
                     <label className="flex min-h-11 cursor-pointer items-center gap-2.5 px-1 text-sm text-zinc-600">
                       <span className="relative grid size-[18px] shrink-0 place-items-center">
-                        <input type="checkbox" checked={usedRefCode} onChange={event => setUsedRefCode(event.target.checked)} className="peer size-[18px] appearance-none rounded-[5px] border border-zinc-300 bg-white checked:border-[#008bc6] checked:bg-[#008bc6] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-400 focus-visible:ring-offset-2" />
+                        <input type="checkbox" checked={usedRefCode} onChange={event => setUsedRefCode(event.target.checked)} className="peer size-[18px] appearance-none rounded-[5px] border border-zinc-300 bg-white checked:border-black checked:bg-black focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-black focus-visible:ring-offset-2" />
                         <Check aria-hidden="true" className="pointer-events-none absolute size-3 text-white opacity-0 peer-checked:opacity-100" strokeWidth={2.5} />
                       </span>
                       <span>Did you use a ref code <span className="text-zinc-400">(optional)</span></span>
                     </label>
+                      </div>
                       {TIKTOK_ANCHOR_REQUIREMENTS_ENABLED && platform === 'tiktok' && publishingAccount ? (
-                        <div className="rounded-xl bg-[#eaf7fd] p-4 text-sm leading-6">
-                          {anchorEligibility === null ? <><strong>Confirm your follower range first.</strong><p className="text-zinc-600">We need it to show the requirements for this publishing account.</p><Link href="/creator/accounts" className="font-medium text-[#008bc6] underline underline-offset-4">Update in Accounts</Link></> : anchorRequired ? <><strong>TikTok anchor required for this account</strong><p className="mt-1 text-zinc-600">Accept the Mogging TikTok One project before posting. On TikTok’s posting screen, choose Content disclosure → Disclose post content → Branded content → Link project → Mogging.</p>{publishingAccount.tiktokAnchorJoinedAt ? <p className="mt-2 text-xs font-medium text-[#008bc6]">Joining confirmed · Link the anchor on this post and every new TikTok submission.</p> : <button type="button" onClick={() => setAnchorSetupOpen(true)} className="mt-2 min-h-11 font-medium text-[#008bc6] underline underline-offset-4">Join project to continue →</button>}</> : <p className="text-zinc-600">This account has fewer than 1,000 followers. The TikTok anchor requirement does not apply.</p>}
+                        <div className="rounded-xl bg-zinc-100 p-4 text-sm leading-6">
+                          {anchorEligibility === null ? <><strong>Confirm your follower range first.</strong><p className="text-zinc-600">We need it to show the requirements for this publishing account.</p><Link href="/creator/accounts" className="font-medium text-zinc-950 underline underline-offset-4">Update in Accounts</Link></> : anchorRequired ? <><strong>TikTok anchor required for this account</strong><p className="mt-1 text-zinc-600">Accept the Mogging TikTok One project before posting. On TikTok’s posting screen, choose Content disclosure → Disclose post content → Branded content → Link project → Mogging.</p>{publishingAccount.tiktokAnchorJoinedAt ? <p className="mt-2 text-xs font-medium text-zinc-950">Joining confirmed · Link the anchor on this post and every new TikTok submission.</p> : <button type="button" onClick={() => setAnchorSetupOpen(true)} className="mt-2 min-h-11 font-medium text-zinc-950 underline underline-offset-4">Join project to continue →</button>}</> : <p className="text-zinc-600">This account has fewer than 1,000 followers. The TikTok anchor requirement does not apply.</p>}
                         </div>
                       ) : null}
 
                     </>
                   ) : null}
-                  {step === 3 ? (
+                  {step === 4 ? (
                     <>
-                      <div className="rounded-2xl bg-[#f5f6f7] p-4 text-sm leading-6">
-                        <strong>
-                          Film your analytics with a second device.
-                        </strong>
-                        <p className="text-zinc-500">
-                          Show the physical screen, account handle, published
-                          post, views, traffic sources and complete audience
-                          locations in one continuous take. Screenshots, native
-                          screen recordings, cuts and edited analytics are not
-                          accepted.
-                        </p>
-                        <AnalyticsVerificationHelp />
+                      <aside role="note" className="creator-info-bubble">
+                        <Info aria-hidden="true" className="size-8 shrink-0" fill="white" stroke="#202123" strokeWidth={1.7} />
+                        <p><strong>Film your analytics with a second device.</strong> Show your handle, post, views, traffic sources and all audience locations in one unedited take. No screenshots or screen recordings.</p>
+                      </aside>
+                      <div className="grid items-start gap-4 sm:grid-cols-2">
+                        <Field label={<span className="flex items-center justify-between gap-2"><span className="inline-flex items-center gap-2"><Eye aria-hidden="true" className="size-4 shrink-0" />Views shown in recording</span><span title="Use the total views visible in your analytics recording"><Info aria-hidden="true" className="size-3.5 shrink-0 text-zinc-400" /></span></span>}>
+                          <input
+                            className={fieldClass}
+                            type="number"
+                            min="0"
+                            max="2000000000"
+                            step="1"
+                            value={views}
+                            onChange={(e) => setViews(e.target.value)}
+                            required
+                          />
+                          <p className="mt-1 text-xs text-zinc-500">
+                            Submit as soon as you reach 20,000 views. Request rereview at each new milestone.
+                          </p>
+                        </Field>
+                        <div className="creator-field-label">
+                          <div className="flex items-center justify-between gap-2">
+                            <label htmlFor="submission-tier-one-audience" className="inline-flex items-center gap-2 text-[13px] font-semibold text-[#3a3a3c]"><Users aria-hidden="true" className="size-4 shrink-0" />Combined Tier 1 audience (%)</label>
+                            <CampaignRegionHelp monochrome />
+                          </div>
+                          <input
+                            id="submission-tier-one-audience"
+                            className={fieldClass}
+                            type="number"
+                            min="0"
+                            max="100"
+                            step="0.1"
+                            value={audience}
+                            onChange={(e) => setAudience(e.target.value)}
+                            required
+                          />
+                        </div>
                       </div>
                       <input
                         ref={fileRef}
@@ -495,22 +519,10 @@ export function SubmissionDialog({
                           setPhysicalConfirmed(false)
                         }}
                       />
-                      <button
-                        type="button"
-                        onClick={() => fileRef.current?.click()}
-                        className="flex min-h-28 items-center justify-center gap-3 rounded-2xl border border-dashed border-zinc-300 bg-white p-4 text-sm"
-                      >
-                        {recording ? (
-                          <FileVideo className="size-5 text-[#00A8EF]" />
-                        ) : (
-                          <UploadCloud className="size-5 text-[#00A8EF]" />
-                        )}
-                        <span className="min-w-0 break-all">
-                          {recording
-                            ? `${recording.name} · ${(recording.size / 1024 / 1024).toFixed(1)} MB`
-                            : 'Choose recording · MP4, MOV, M4V, WebM · up to 250 MB'}
-                        </span>
-                      </button>
+                      {recording ? <AnalyticsRecordingPreview file={recording} onChoose={() => fileRef.current?.click()} /> : <button type="button" onClick={() => fileRef.current?.click()} className="flex min-h-28 items-center justify-center gap-3 rounded-2xl border border-dashed border-zinc-300 bg-white p-4 text-sm">
+                        <UploadCloud className="size-5 shrink-0 text-zinc-950" />
+                        <span>Choose recording<span className="mt-1 block text-xs text-zinc-400">MP4, MOV, M4V, WebM · up to 250 MB</span></span>
+                      </button>}
                       <label className="flex items-start gap-3 text-sm text-zinc-600">
                         <input
                           type="checkbox"
@@ -518,41 +530,12 @@ export function SubmissionDialog({
                           onChange={(e) =>
                             setPhysicalConfirmed(e.target.checked)
                           }
-                          className="mt-1 size-4 shrink-0 accent-[#00A8EF]"
+                          className="mt-1 size-4 shrink-0 accent-black"
                         />
                         This unedited physical recording was filmed with a
                         second device and shows this post’s analytics and
                         audience locations.
                       </label>
-                      <div className="grid items-start gap-4 sm:grid-cols-2">
-                        <Field label="Views shown in recording">
-                          <input
-                            className={fieldClass}
-                            type="number"
-                            min="0"
-                            max="2000000000"
-                            step="1"
-                            value={views}
-                            onChange={(e) => setViews(e.target.value)}
-                            required
-                          />
-                          <p className="mt-1 text-xs text-zinc-500">
-                            Submit as soon as you reach 20,000 views. Request rereview at each new milestone.
-                          </p>
-                        </Field>
-                        <Field label="Combined Tier 1 audience (%)">
-                          <input
-                            className={fieldClass}
-                            type="number"
-                            min="0"
-                            max="100"
-                            step="0.1"
-                            value={audience}
-                            onChange={(e) => setAudience(e.target.value)}
-                            required
-                          />
-                        </Field>
-                      </div>
                       {sprint && views && audience ? (
                         <p className="text-sm text-zinc-500">
                           Estimated earnings:{' '}
@@ -570,7 +553,7 @@ export function SubmissionDialog({
                       ) : null}
                     </>
                   ) : null}
-                  {step === 4 ? (
+                  {step === 5 ? (
                     <>
                       <dl className="grid gap-3 rounded-2xl bg-[#f5f6f7] p-4 text-sm">
                         {[
@@ -592,7 +575,7 @@ export function SubmissionDialog({
                       </dl>
                       <div className="flex items-center justify-between gap-3">
                         <p className="text-xs font-semibold uppercase tracking-widest text-zinc-400">Confirm before submitting</p>
-                        {canCheckAll ? <button type="button" disabled={!checklist.length || confirmed.length === checklist.length} onClick={() => setConfirmed(checklist.map((_, i) => String(i)))} className="min-h-9 shrink-0 rounded-full px-3 text-xs font-semibold text-[#008bc6] transition-colors hover:bg-sky-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-400 disabled:cursor-default disabled:text-zinc-400 disabled:hover:bg-transparent">Check all</button> : null}
+                        {canCheckAll ? <button type="button" disabled={!checklist.length || confirmed.length === checklist.length} onClick={() => setConfirmed(checklist.map((_, i) => String(i)))} className="min-h-9 shrink-0 rounded-full px-3 text-xs font-semibold text-zinc-950 transition-colors hover:bg-zinc-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-black disabled:cursor-default disabled:text-zinc-400 disabled:hover:bg-transparent">Check all</button> : null}
                       </div>
                       {checklist.map((rule, i) => (
                         <label
@@ -601,7 +584,7 @@ export function SubmissionDialog({
                         >
                           <input
                             type="checkbox"
-                            className="mt-1 size-4 shrink-0 accent-[#00A8EF]"
+                            className="mt-1 size-4 shrink-0 accent-black"
                             checked={confirmed.includes(String(i))}
                             onChange={(e) =>
                               setConfirmed((current) =>
@@ -631,12 +614,12 @@ export function SubmissionDialog({
                 variant="ghost"
                 disabled={busy}
                 onClick={() =>
-                  step === (existingSubmission ? 3 : 1)
+                  step === (existingSubmission ? 4 : 1)
                     ? onOpenChange(false)
                     : changeStep(step - 1)
                 }
               >
-                {step === (existingSubmission ? 3 : 1) ? (
+                {step === (existingSubmission ? 4 : 1) ? (
                   'Cancel'
                 ) : (
                   <>
@@ -650,7 +633,7 @@ export function SubmissionDialog({
                   busy ||
                   (step === 1 && !sprint) ||
                   (step === 2 && !format) ||
-                  (step === 4 && confirmed.length !== checklist.length)
+                  (step === 5 && confirmed.length !== checklist.length)
                 }
               >
                 {busy ? (
@@ -658,7 +641,7 @@ export function SubmissionDialog({
                     <Loader2 className="size-4 animate-spin" />
                     Uploading {progress}%
                   </>
-                ) : step === 4 ? (
+                ) : step === 5 ? (
                   existingSubmission ? 'Submit for review' : 'Submit post'
                 ) : (
                   'Continue'
@@ -667,7 +650,7 @@ export function SubmissionDialog({
               </div>
               <ol aria-label={`Submission progress: step ${visibleStep} of ${stepLabels.length}`} className="flex h-3 items-center justify-center gap-1.5">
                 {stepLabels.map((label, index) => <li key={label} aria-current={index + 1 === visibleStep ? 'step' : undefined} className="flex items-center">
-                  <span aria-hidden="true" className={cn('block h-1.5 rounded-full transition-[width,background-color] duration-200 ease-out motion-reduce:transition-none', index + 1 === visibleStep ? 'w-5 bg-[#00A8EF]' : index + 1 < visibleStep ? 'w-1.5 bg-[#00A8EF]/40' : 'w-1.5 bg-zinc-200')} />
+                  <span aria-hidden="true" className={cn('block h-1.5 rounded-full transition-[width,background-color] duration-200 ease-out motion-reduce:transition-none', index + 1 === visibleStep ? 'w-5 bg-black' : index + 1 < visibleStep ? 'w-1.5 bg-black/40' : 'w-1.5 bg-zinc-200')} />
                   <span className="sr-only">{label}{index + 1 < visibleStep ? ', complete' : index + 1 === visibleStep ? ', current step' : ''}</span>
                 </li>)}
               </ol>

@@ -1,5 +1,7 @@
 # First-party creator attribution implementation
 
+> Update — October 22: per-post registration has been retired at the user’s request. Creators reuse the existing account link/code across posts. The “Track your post from the start” panel and code/CTA generator are removed; cached registration requests receive HTTP 410. Previously shared URLs and their historical attribution remain valid. The account-level identity/recovery/billing system is unchanged. Earlier post-registration details below describe the original release.
+
 This replaces the phased proposal with implemented work across all six areas. The original audit remains a historical, read-only snapshot in `creator-attribution-plan-2026-10-21.md`; its estimates and rollout suggestions are not the current implementation status.
 
 ## What changed

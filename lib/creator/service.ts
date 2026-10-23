@@ -34,7 +34,7 @@ export async function getCreatorDashboard(userId: string) {
 
   const [submissions, payments, socialAccounts, communityMetrics, payoutRequests] = await Promise.all([
     db.select({ ...getTableColumns(schema.creatorSubmissions), unreadMessages: submissionUnreadCount('creator') })
-      .from(schema.creatorSubmissions).where(eq(schema.creatorSubmissions.creatorProfileId, profile.id)).orderBy(desc(schema.creatorSubmissions.createdAt)),
+      .from(schema.creatorSubmissions).where(and(eq(schema.creatorSubmissions.creatorProfileId, profile.id), eq(schema.creatorSubmissions.isDraft, false))).orderBy(desc(schema.creatorSubmissions.createdAt)),
     db.query.creatorPayments.findMany({
       where: eq(schema.creatorPayments.creatorProfileId, profile.id),
       orderBy: [desc(schema.creatorPayments.createdAt)],
@@ -56,9 +56,7 @@ export async function getCreatorDashboard(userId: string) {
     return { ...account, trackingLink: await ensureCreatorTrackingLink(account.id) }
   }))
 
-  const postCodes = submissions.some(post => post.isDraft) ? await db.query.creatorTrackingLinkAliases.findMany({ where: sql`${schema.creatorTrackingLinkAliases.submissionId} in (select id from creator_submissions where creator_profile_id = ${profile.id} and is_draft)` }) : []
-  const codes = new Map(postCodes.map(alias => [alias.submissionId, alias.slug]))
-  return { profile, submissions: submissions.filter(post => !post.isDraft), registeredPosts: submissions.filter(post => post.isDraft).map(post => ({ ...post, code: codes.get(post.id) || null })), payments, payoutRequests, socialAccounts: socialAccountsWithLinks, communityMetrics, featureFlags }
+  return { profile, submissions, payments, payoutRequests, socialAccounts: socialAccountsWithLinks, communityMetrics, featureFlags }
 }
 
 async function getCreatorCommunityMetrics() {

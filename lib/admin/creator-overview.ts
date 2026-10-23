@@ -43,23 +43,7 @@ export function walletExplorerUrl(network: string | null, address: string | null
   return explorer ? explorer + encodeURIComponent(address) : null
 }
 
-export function publishedVideoEmbedUrl(postUrl: string | null) {
-  if (!postUrl) return null
-  try {
-    const url = new URL(postUrl)
-    if (url.protocol !== 'https:') return null
-    if (['tiktok.com', 'www.tiktok.com', 'm.tiktok.com'].includes(url.hostname)) {
-      const id = url.pathname.match(/^\/@[\w.]+\/video\/(\d+)\/?$/)?.[1]
-      return id ? `https://www.tiktok.com/player/v1/${id}` : null
-    }
-    if (['instagram.com', 'www.instagram.com'].includes(url.hostname)) {
-      const path = url.pathname.match(/^\/(reel|reels|p)\/([\w-]+)\/?$/)
-      return path ? `https://www.instagram.com/${path[1]}/${path[2]}/embed/` : null
-    }
-  } catch { return null }
-  return null
-}
-
+export { publishedVideoEmbedUrl } from '@/lib/creator/post-embed'
 
 export function approvedUnpaidSubmissions(data: Pick<AdminDashboard, 'submissions' | 'payments'>) {
   return data.submissions.filter(submission => submission.status === 'approved' && creatorUnpaidCents(submission, data.payments) > 0)

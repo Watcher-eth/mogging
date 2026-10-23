@@ -1,4 +1,3 @@
-import { RegisteredPosts } from '@/components/creator/registered-posts'
 import { SubmissionReviewFeedback } from '@/components/creator/submission-review-feedback'
 import { CREATOR_REREVIEW_GUIDANCE } from '@/lib/creator/post-guidance'
 import { AnimatedDialogPanel } from '@/components/ui/animated-dialog-panel'
@@ -8,7 +7,7 @@ import { SubmissionPostPreview, useSubmissionPostPreview } from '@/components/cr
 import Link from 'next/link'
 import { useRouter } from 'next/router'
 import { useMemo, useState } from 'react'
-import { ArrowUpRight, Eye, MessageCircle, CircleAlert, Clock3, Loader2, RotateCcw, XCircle } from 'lucide-react'
+import { ArrowUpRight, CalendarDays, Eye, MessageCircle, CircleAlert, Clock3, Loader2, RotateCcw, XCircle } from 'lucide-react'
 import useSWR from 'swr'
 import { Button } from '@/components/ui/button'
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog'
@@ -21,6 +20,8 @@ import { mergeCreatorSubmissionReviewResults, withAudienceRejectionReason } from
 import { sprintReviewItems } from '@/lib/creator/sprints'
 import { creatorEarnedCents } from '@/lib/creator/money'
 import { cn } from '@/lib/utils'
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
+import { groupSubmissionDays, submissionAge } from '@/lib/creator/submission-timeline'
 
 const filters = [
   { value: 'all', label: 'All' },
@@ -50,15 +51,20 @@ function SubmissionsContent() {
   const selected = data?.submissions.find(item => item.id === selectedId) || null
   const submissions = useMemo(() => data?.submissions || [], [data?.submissions])
   const visible = useMemo(() => filter === 'all' ? submissions : submissions.filter((item) => item.status === filter), [filter, submissions])
+  const days = groupSubmissionDays(visible)
   const paymentBySubmission = useMemo(() => new Map((data?.payments || []).filter((payment) => payment.submissionId).map((payment) => [payment.submissionId, payment])), [data?.payments])
   const accountStatusById = useMemo(() => new Map((data?.socialAccounts || []).map((account) => [account.id, account.status])), [data?.socialAccounts])
 
   return (
     <div className="creator-submissions-history">
       <CreatorHeader eyebrow="History & Payments" title="Submissions" description="Follow every video from review through approval and payout." action={<Button asChild className="h-11 rounded-full px-5"><Link href="/creator/submissions?new=1">New Submission</Link></Button>} />
-      {data ? <RegisteredPosts data={data} onChange={mutate} /> : null}
       <label className="mb-5 flex items-center gap-3 text-sm font-medium">Status<select className="creator-field creator-history-filter max-w-xs" value={filter} onChange={(event) => setFilter(event.target.value as typeof filter)}>{filters.map((item) => <option key={item.value} value={item.value}>{item.label} ({item.value === 'all' ? submissions.length : submissions.filter((submission) => submission.status === item.value).length})</option>)}</select></label>
-      {isLoading ? <div className="grid min-h-64 place-items-center"><Loader2 className="size-5 animate-spin text-zinc-400" /></div> : visible.length ? <div className="grid gap-3">{visible.map((submission, index) => <SubmissionCard key={submission.id} submission={submission} payment={paymentBySubmission.get(submission.id)} onClick={() => setSelectedId(submission.id)} style={{ animationDelay: `${Math.min(index * 45, 180)}ms` }} />)}</div> : <EmptyState filtered={filter !== 'all'} />}
+      <TooltipProvider delayDuration={150}>
+        {isLoading ? <div className="grid min-h-64 place-items-center"><Loader2 className="size-5 animate-spin text-zinc-400" /></div> : days.length ? <div className="grid gap-4">{days.map(day => <section key={day.key} aria-label={day.label}>
+          <h2 className="mb-2 px-1 text-[11px] font-medium text-zinc-400">{day.label}</h2>
+          <div className="grid gap-2">{day.submissions.map(submission => <SubmissionCard key={submission.id} submission={submission} payment={paymentBySubmission.get(submission.id)} accountHandle={data?.socialAccounts.find(account => account.id === submission.socialAccountId)?.handle} onClick={() => setSelectedId(submission.id)} />)}</div>
+        </section>)}</div> : <EmptyState filtered={filter !== 'all'} />}
+      </TooltipProvider>
       <SubmissionDialog key={selected?.id || "closed"} submission={selected} payment={selected ? paymentBySubmission.get(selected.id) : undefined} payments={selected ? (data?.payments || []).filter(payment => payment.submissionId === selected.id) : []} linkedToApprovedAccount={Boolean(selected?.socialAccountId && accountStatusById.get(selected.socialAccountId) === 'approved')} open={Boolean(selected)} onOpenChange={(open) => { if (!open) setSelectedId(null) }} onUpdateAnalytics={() => { setAnalyticsId(selected!.id); setSelectedId(null) }} />
       {newSubmissionOpen ? <AnalyticsSubmissionDialog
         open
@@ -74,7 +80,7 @@ function SubmissionsContent() {
   )
 }
 
-function SubmissionCard({ submission, payment, onClick, style }: { submission: CreatorSubmission; payment?: CreatorPayment; onClick: () => void; style: React.CSSProperties }) {
+function SubmissionCard({ submission, payment, accountHandle, onClick }: { submission: CreatorSubmission; payment?: CreatorPayment; accountHandle?: string | null; onClick: () => void }) {
   const { ref, preview, visible } = useSubmissionPostPreview(submission)
   const amount = submission.sprintId && creatorEarnedCents(submission) > 0 ? formatMoney(creatorEarnedCents(submission), 'USD') : payment ? formatMoney(payment.amountCents, payment.currency) : submission.status === 'approved' ? formatMoney(creatorEarnedCents(submission), 'USD') : null
   const submittedViews = submission.reviewRequestedAt ? submission.viewCountThreshold : submission.adminViewCountThreshold ?? submission.viewCountThreshold
@@ -91,21 +97,25 @@ function SubmissionCard({ submission, payment, onClick, style }: { submission: C
       username = path.match(/^\/@([^/]+)/)?.[1]
     } catch { /* Legacy submissions may not have a valid published URL. */ }
   }
+  username ||= accountHandle?.replace(/^@/, '')
+  const statusDate = submission.status === 'paid' && payment?.paidAt ? { label: 'Paid', date: payment.paidAt }
+    : submission.status === 'pending' ? { label: 'Submitted', date: submission.createdAt }
+    : submission.status === 'in_review' && submission.reviewRequestedAt ? { label: 'Review requested', date: submission.reviewRequestedAt }
+    : submission.updatedAt ? { label: 'Last updated', date: submission.updatedAt } : null
   return (
-    <button ref={ref} onClick={onClick} style={style} className="creator-list-item creator-surface group grid w-full grid-cols-[80px_minmax(0,1fr)] items-center gap-x-4 p-3 text-left transition-[border-color,box-shadow,transform] duration-200 hover:-translate-y-0.5 hover:border-black/10 hover:shadow-[0_16px_40px_rgba(0,0,0,0.06)] active:scale-[0.99] sm:grid-cols-[96px_minmax(0,1fr)] sm:gap-x-5 sm:p-4">
+    <button ref={ref} onClick={onClick} className="creator-list-item creator-surface group grid w-full grid-cols-[80px_minmax(0,1fr)] items-center gap-x-3 p-2.5 text-left transition-[border-color,box-shadow,transform] duration-200 hover:-translate-y-0.5 hover:border-black/10 hover:shadow-[0_16px_40px_rgba(0,0,0,0.06)] active:scale-[0.99] sm:grid-cols-[96px_minmax(0,1fr)] sm:gap-x-4 sm:p-3">
       <SubmissionPostPreview preview={preview} videoUrl={visible ? submission.videoUrl : null} platform={submission.platform} />
       <span className="min-w-0">
+        <span className="mb-2 flex justify-end"><time dateTime={submission.createdAt} title={`Uploaded ${new Date(submission.createdAt).toLocaleString('en-GB')}`} className="rounded-md bg-zinc-100/80 px-1.5 py-0.5 text-[10px] font-medium leading-4 text-zinc-400">{submissionAge(submission.createdAt)}</time></span>
         {caption ? <span className="line-clamp-2 whitespace-pre-wrap break-words text-sm font-semibold leading-5 tracking-[-0.02em] sm:line-clamp-none" title={caption}>{caption}</span> : null}
         <span className="mt-2 flex flex-wrap items-center gap-x-1.5 gap-y-1 text-[13px] font-medium tabular-nums text-zinc-700" title={viewsDescription}>
           <span className="inline-flex items-center gap-1.5"><Eye className="size-3.5 text-zinc-400" aria-hidden="true" />{views === null ? 'Views not recorded' : `${formatViewCount(views)} ${currentViews === null ? 'submitted views' : 'views'}`}</span>
-          <span aria-hidden="true" className="px-0.5 text-zinc-300">·</span>
-          <span className="whitespace-nowrap text-xs font-normal text-zinc-500">{formatDate(submission.createdAt)}</span>
+          {username ? <><span aria-hidden="true" className="px-0.5 text-zinc-300">·</span><span className="min-w-0 truncate text-xs font-normal text-zinc-500">@{username}</span></> : null}
         </span>
-        <span className="mt-3 flex flex-wrap items-center gap-2">
-          {username ? <span className="break-all text-xs font-medium text-zinc-500">@{username}</span> : null}
+        <span className="mt-2 flex flex-wrap items-center gap-2">
           {amount ? <span className="text-sm font-semibold">{amount}</span> : null}
           {submission.unreadMessages ? <span aria-label={`${submission.unreadMessages} new messages`} className="inline-flex items-center gap-1 rounded-lg bg-[#007aff] px-2 py-1 text-[11px] font-semibold text-white"><MessageCircle className="size-3" aria-hidden="true" />{submission.unreadMessages}</span> : null}
-          <StatusPill status={submission.status} />
+          {statusDate ? <Tooltip><TooltipTrigger asChild><span tabIndex={0} className="inline-flex rounded-sm outline-none focus-visible:ring-2 focus-visible:ring-zinc-400" aria-label={`${statusLabel(submission.status)} · ${statusDate.label} ${new Date(statusDate.date).toLocaleString('en-GB')}`}><StatusStamp status={submission.status} /></span></TooltipTrigger><TooltipContent side="top" className="flex items-center gap-2 rounded-[12px_12px_12px_3px] border border-zinc-200 bg-white px-2.5 py-2 text-[11px] text-zinc-500 shadow-sm"><CalendarDays className="size-3.5" aria-hidden="true" /><span>{statusDate.label} · {new Date(statusDate.date).toLocaleString('en-GB', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' })}</span></TooltipContent></Tooltip> : <StatusStamp status={submission.status} />}
         </span>
       </span>
     </button>
@@ -126,7 +136,7 @@ function SubmissionDialog({ submission, payment, payments, linkedToApprovedAccou
         {submission ? (
           <div className="p-5 sm:p-7">
             <DialogHeader className="creator-dialog-header text-left">
-              <div className="flex items-center gap-2 pr-10"><StatusPill status={submission.status} /><span className="text-xs text-zinc-400">{formatDate(submission.createdAt)}</span></div>
+              <div className="flex items-center gap-2 pr-10"><StatusStamp status={submission.status} /><span className="text-xs text-zinc-400">{formatDate(submission.createdAt)}</span></div>
               <div className="flex items-center justify-between gap-3 pt-2">
                 <DialogTitle className="creator-dialog-title min-w-0 flex-1 break-words text-xl">{caption || `${submission.platform} submission`}</DialogTitle>
                 {submission.sprintId && !submission.reviewRequestedAt && !payments.some(item => ['pending', 'processing'].includes(item.status)) && (['approved', 'paid', 'rejected'].includes(submission.status) || !submission.analyticsScreenshotUrl) ? <Button variant="outline" className="min-h-10 max-w-[60%] shrink-0 whitespace-normal rounded-full px-3 text-xs sm:text-sm" onClick={onUpdateAnalytics}><RotateCcw className="size-4 shrink-0" aria-hidden="true" />{submission.analyticsScreenshotUrl ? 'Request rereview' : 'Add analytics & update views'}</Button> : null}
@@ -180,7 +190,7 @@ function SubmissionEvidence({ submission }: { submission: CreatorSubmission }) {
   return <div className="grid aspect-video place-items-center rounded-t-[31px] bg-zinc-950 text-sm text-white/50">No Media Evidence</div>
 }
 
-function StatusPill({ status }: { status: CreatorSubmission['status'] }) { return <span className={cn('shrink-0 rounded-lg px-2.5 py-1 text-[11px] font-semibold', status === 'paid' && 'creator-tone-green text-[#29CE53]', status === 'approved' && 'creator-tone-blue text-[#00A8EF]', (status === 'pending' || status === 'in_review') && 'bg-[#f5f6f7] text-[#52565c]', status === 'rejected' && 'creator-tone-red text-[#F33232]')}>{statusLabel(status)}</span> }
+function StatusStamp({ status }: { status: CreatorSubmission['status'] }) { return <span className={cn('inline-flex shrink-0 -rotate-2 items-center rounded-[3px] border border-current px-1.5 py-0.5 text-[9px] font-bold uppercase leading-3 tracking-[0.06em]' , status === 'paid' && 'creator-tone-green text-[#29CE53]', status === 'approved' && 'creator-tone-blue text-[#00A8EF]', (status === 'pending' || status === 'in_review') && 'bg-[#f5f6f7] text-[#52565c]', status === 'rejected' && 'creator-tone-red text-[#F33232]')}>{statusLabel(status)}</span> }
 function EmptyState({ filtered }: { filtered: boolean }) { return <div className="creator-surface grid min-h-72 place-items-center px-4 py-8 sm:px-8 text-center"><div className="w-full">{filtered ? <span className="mx-auto grid size-12 place-items-center rounded-[16px] bg-[#f7f8f9] text-[#00A8EF]"><Clock3 className="size-5" /></span> : <SubmissionReviewAnimation />}<h2 className="mt-4 text-sm font-semibold">{filtered ? 'Nothing in This Status' : 'No Submissions Yet'}</h2><p className="mt-0.5 text-sm text-[#73777d]">{filtered ? 'Choose another filter to see more videos.' : 'Your submitted videos and payments will appear here.'}</p>{!filtered ? <Button asChild className="mt-6 h-10 rounded-full px-4"><Link href="/creator/submissions?new=1">Submit Your First Video</Link></Button> : null}</div></div> }
 function Detail({ label, value }: { label: string; value: string }) { return <div className="flex items-center justify-between gap-4"><span className="text-zinc-500">{label}</span><span className="text-right font-medium capitalize">{value}</span></div> }
 function statusLabel(status: CreatorSubmission['status']) { return status === 'in_review' ? 'In Review' : status.slice(0, 1).toUpperCase() + status.slice(1) }
