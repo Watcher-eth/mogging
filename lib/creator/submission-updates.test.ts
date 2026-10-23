@@ -27,3 +27,14 @@ test('marking a post paid does not pretend a transfer has completed', async () =
   await recordReviewUpdate(tx, previous, { status: 'paid' })
   expect(events).toHaveLength(0)
 })
+
+test('a higher approved view milestone records a new decision, but repeat saves and decreases do not', async () => {
+  const approved = { ...previous, status: 'approved', adminViewCountThreshold: 100000 }
+  await recordReviewUpdate(tx, approved, { status: 'approved', adminViewCountThreshold: 300000 })
+  expect(events).toHaveLength(1)
+  expect(events[0].type).toBe('approved')
+  events = []
+  await recordReviewUpdate(tx, approved, { status: 'approved', adminViewCountThreshold: 100000 })
+  await recordReviewUpdate(tx, approved, { status: 'approved', adminViewCountThreshold: 50000 })
+  expect(events).toHaveLength(0)
+})

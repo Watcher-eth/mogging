@@ -36,7 +36,7 @@ import { Field, fieldClass } from './creator-shell'
 import { creatorAccountLabel, type CreatorDashboard, type CreatorSubmission } from './types'
 import { apiGet, apiPost, ApiClientError } from '@/lib/api/client'
 import {
-  MINIMUM_SUBMISSION_VIEWS,
+  minimumSubmissionViews,
   creatorPostUrlSchema,
 } from '@/lib/creator/validation'
 import {
@@ -63,7 +63,7 @@ const titles = [
   'Review and submit',
 ]
 const descriptions = [
-  'Submit as soon as your post reaches 20,000 views—the first milestone. Choose its campaign below.',
+  'Choose an active campaign below. Submit as soon as your post reaches its first milestone.',
   'Choose the format you used for your post.',
   'Paste your published TikTok or Instagram URL to preview it.',
   'Upload one continuous recording filmed with a second device.',
@@ -122,8 +122,9 @@ export function SubmissionDialog({
     if (contentRef.current) contentRef.current.scrollTop = 0
     headingRef.current?.focus({ preventScroll: true })
   }, [step])
-  const campaign = campaigns?.sprints.find((item) => item.id === sprintId)
+  const campaign = campaigns?.sprints.find((item) => item.id === sprintId && (existingSubmission || sprintPhase(item) === 'active'))
   const sprint = campaign && { ...campaign, terms: existingSubmission?.sprintTerms || campaign.terms }
+  const minimumViews = minimumSubmissionViews(sprint?.terms)
   const format = sprint ? sprintFormat(sprint.terms, formatId) : undefined
   const activeSprints =
     campaigns?.sprints.filter(
@@ -155,7 +156,7 @@ export function SubmissionDialog({
       views.trim() &&
       Number.isInteger(count) &&
       count >= 0 &&
-      count < MINIMUM_SUBMISSION_VIEWS
+      count < minimumViews
     ) {
       setRejectedViews(count)
       return false
@@ -477,7 +478,7 @@ export function SubmissionDialog({
                             required
                           />
                           <p className="mt-1 text-xs text-zinc-500">
-                            Submit as soon as you reach 20,000 views. Request rereview at each new milestone.
+                            Submit as soon as you reach {minimumViews.toLocaleString('en-US')} views. Request rereview at each new milestone.
                           </p>
                         </Field>
                         <div className="creator-field-label">
@@ -660,6 +661,7 @@ export function SubmissionDialog({
       </DialogContent>
       <MinimumViewsDialog
         views={rejectedViews}
+        minimumViews={minimumViews}
         onClose={() => setRejectedViews(null)}
       />
     </Dialog>

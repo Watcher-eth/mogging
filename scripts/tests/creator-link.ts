@@ -4,7 +4,6 @@ import { mock } from 'bun:test'
 let clicks = 0
 let accounts = 0
 let cookieToken = ''
-mock.module('@/lib/fonts', () => ({ moggingFont: { className: 'test-font' } }))
 mock.module('@/lib/creator/attribution', () => ({
   createCreatorAttributionClick: async ({ slug, postUrl, userAgent }: { slug: string; postUrl?: string; userAgent: string }) => {
     if (slug !== 'creator-test' && postUrl !== 'https://www.tiktok.com/@creator/video/123') return null

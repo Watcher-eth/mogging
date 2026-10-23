@@ -407,6 +407,13 @@
       "when": 1792713600000,
       "tag": "0057_creator_updates_and_avatars",
       "breakpoints": true
+    },
+    {
+      "idx": 58,
+      "version": "7",
+      "when": 1792713601000,
+      "tag": "0058_creator_bonus_budgets",
+      "breakpoints": true
     }
   ]
 }

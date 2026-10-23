@@ -10,20 +10,16 @@ import { useState, type ReactNode } from 'react'
 import {
   ArrowRight,
   ArrowLeft,
-  Clock3,
   MessageCircle,
-  Calculator,
   CalendarDays,
   Check,
   ExternalLink,
-  Link2,
   ShieldCheck,
   Smartphone,
   TriangleAlert,
 } from 'lucide-react'
 import { CreatorHeader, CreatorShell } from '@/components/creator/creator-shell'
-import { ContentGuidelines, TikTokAnchorGuidelines, accountReviewPolicy, AnalyticsVerificationHelp, discordContactUrl } from '@/components/creator/content-guidelines'
-import { Button } from '@/components/ui/button'
+import { ContentGuidelines, TikTokAnchorGuidelines, AnalyticsVerificationHelp, discordContactUrl } from '@/components/creator/content-guidelines'
 import useSWR from 'swr'
 import { apiGet } from '@/lib/api/client'
 import { creatorCampaignFormats, type CreatorSprint } from '@/lib/creator/sprints'
@@ -33,7 +29,6 @@ import { CreatorReferralLinks } from '@/components/creator/referral-links'
 
 const GuideExamples = dynamic(() => import('@/components/creator/guide-examples'), { loading: () => <p className="p-6 text-sm text-[#73777d]" role="status">Loading reference examples…</p> })
 
-import { CREATOR_TIER_ONE_COUNTRIES as tierOneCountries } from '@/lib/creator/audience'
 
 export default function CreatorProgramGuidePage() {
   const router = useRouter()
@@ -51,8 +46,6 @@ export default function CreatorProgramGuidePage() {
         {topic === 'improve' ? <ImproveGuide /> : null}
         {topic === 'rules' ? <RulesGuide /> : null}
         {topic === 'examples' ? <GuideExamples /> : null}
-        {topic === 'payout' ? <PayoutGuide /> : null}
-        {topic === 'account' ? <AccountGuide /> : null}
         {topic === 'referrals' ? <><GuidePanelHeader eyebrow="Share your link" title="Turn viewers into downloads." description="Use the personal link for the account you publish from so referrals go to the right account." /><CreatorReferralLinks /></> : null}
         {topic === 'video' ? <div className="mt-8"><CreatorEssentials /></div> : null}
         <div className="mt-10 flex flex-wrap items-center justify-between gap-3 border-t border-[#eceef0] pt-5 text-sm"><Link href="/creator/guide" className="inline-flex min-h-11 items-center gap-2 font-medium"><ArrowLeft className="size-4" />All guides</Link><a href={discordContactUrl} target="_blank" rel="noreferrer" className="inline-flex min-h-11 items-center gap-2 text-[#00A8EF]"><MessageCircle className="size-4" />Ask us on Discord</a></div>
@@ -64,7 +57,6 @@ export default function CreatorProgramGuidePage() {
 const startingQuestions = [
   { topic: 'video', icon: 'video-submissions', title: 'What kind of content should I make?', answer: 'Make an original looksmaxxing or ascension-focused video or slideshow. Choose what historically works best for your audience, show Mogging, and invite viewers to try it.', link: 'Find your format' },
   { topic: 'improve', icon: 'cta', title: 'How can I improve my content?', answer: 'Start with a clear hook, make the product easy to understand, and check who your content attracts. Learn from examples before your next edit.', link: 'Improve your content' },
-  { topic: 'payout', icon: 'payouts', title: 'How much / when do I get paid?', answer: 'Earnings depend on your campaign’s milestones, verified views and audience geography. Payment processing typically takes 3–5 days after approval.', link: 'Understand your earnings' },
 ] as const
 
 function GuideHome() {
@@ -72,11 +64,10 @@ function GuideHome() {
     ['rules', 'Content rules', 'What qualifies, what gets rejected, and why.'],
     ['examples', 'Examples & references', 'Real footage, hooks, audience comments, and takeaways.'],
     ['referrals', 'Your referral links & codes', 'Copy your link or code before you publish.'],
-    ['account', 'Connect an account', 'Add your publishing profile and get your link and code.'],
   ] as const
 
   return <>
-    <section aria-label="Start with these questions" className="grid gap-3 lg:grid-cols-3">
+    <section aria-label="Start with these questions" className="grid gap-3 sm:grid-cols-2">
       {startingQuestions.map((item) => <Link key={item.topic} href={creatorGuideHref(item.topic)} className="group flex flex-col rounded-[20px] bg-[#f5f6f7] p-5 transition-colors hover:bg-[#eef0f2] sm:p-6"><CreatorIcon name={item.icon} className="mb-5 size-6 text-[#00A8EF]" /><h2 className="text-lg font-semibold leading-6 tracking-[-0.03em]">{item.title}</h2><p className="mt-3 text-sm leading-6 text-[#73777d]">{item.answer}</p><span className="mt-auto flex items-center justify-between gap-3 pt-6 text-xs font-semibold text-[#00A8EF]">{item.link}<ArrowRight className="size-4 transition-transform duration-150 group-hover:translate-x-0.5" /></span></Link>)}
     </section>
     <section className="mt-10" aria-labelledby="explore-guide-title"><p className="text-[11px] font-semibold uppercase tracking-[0.13em] text-[#858a91]">Go a little deeper</p><h2 id="explore-guide-title" className="mt-2 text-xl font-semibold tracking-[-0.03em]">Find exactly what you need.</h2><div className="mt-5 grid gap-x-8 sm:grid-cols-2">{resources.map(([id, title, detail]) => <Link key={id} href={creatorGuideHref(id)} className="group flex items-center justify-between gap-3 border-t border-[#eceef0] py-5"><span><span className="block text-sm font-semibold">{title}</span><span className="mt-1 block text-xs leading-5 text-[#73777d]">{detail}</span></span><ArrowRight className="size-4 shrink-0 text-[#858a91] transition-[color,transform] duration-150 group-hover:translate-x-0.5 group-hover:text-[#00A8EF]" /></Link>)}</div></section>
@@ -88,6 +79,30 @@ function GuideHome() {
 function ImproveGuide() {
   return <section aria-label="Improve your content">
     <GuidePanelHeader eyebrow="Improve your content" title="Make every part of your edit count." description="A strong video or slideshow makes its looksmaxxing or ascension focus clear, shows Mogging, and attracts people who want to improve their appearance. Build on the format and style that already work for your audience." />
+    <div className="mb-6 divide-y divide-[#eceef0]">
+      <section className="py-5 first:pt-0" aria-labelledby="warm-up-account">
+        <h2 id="warm-up-account" className="text-lg font-semibold tracking-[-0.02em]">1. Warm up your account</h2>
+        <p className="mt-2 text-sm leading-6 text-[#73777d]">Spend a little time on your feed every day. Watch relevant looksmaxxing, ascension, and transformation posts, follow creators you enjoy, and leave thoughtful comments. Pay attention to hooks, pacing, and questions people ask, then use those observations in your own posts.</p>
+        <p className="mt-2 text-sm leading-6 text-[#73777d]">Engage naturally before and after publishing, and reply to your own comments. This helps you learn the community and personalize what you see; it is not a guaranteed reach boost. Skip repetitive comments, engagement swaps, and automated activity.</p>
+      </section>
+      <section className="py-5" aria-labelledby="audience-connection">
+        <h2 id="audience-connection" className="text-lg font-semibold tracking-[-0.02em]">2. Proxies, VPNs, and your audience</h2>
+        <p className="mt-2 text-sm leading-6 text-[#73777d]">A proxy or VPN changes your connection’s IP address. It does not guarantee that your posts will reach a particular country. TikTok uses several signals, including viewer interactions, content, language, and location.</p>
+        <p className="mt-2 text-sm leading-6 text-[#73777d]">If you use a proxy or VPN, keep the connection consistent while you compare results. Build for the audience you want: use their language, relevant examples, and publishing times. Change one thing at a time and compare the actual audience countries in your post analytics. Base submissions on those recorded results.</p>
+        <a href="https://support.tiktok.com/en/using-tiktok/exploring-videos/how-tiktok-recommends-content" target="_blank" rel="noreferrer" className="mt-3 inline-flex min-h-11 items-center gap-1 text-xs font-medium text-[#00A8EF]">How TikTok recommends content<ExternalLink className="size-3" aria-hidden="true" /></a>
+      </section>
+      <section className="py-5" aria-labelledby="talk-to-viewers">
+        <h2 id="talk-to-viewers" className="text-lg font-semibold tracking-[-0.02em]">3. Talk directly to viewers</h2>
+        <p className="mt-2 text-sm leading-6 text-[#73777d]">Speak to one person, give them a clear reason to respond, and connect the question to the product moment. Try a direct opening, a specific question, or a genuine free-analysis offer.</p>
+        <ul className="mt-3 grid gap-2 text-sm leading-6 text-[#73777d]">
+          <li className="rounded-xl bg-[#f5f6f7] px-4 py-3">“Stop right now—want feedback on your look? Send me a photo privately.”</li>
+          <li className="rounded-xl bg-[#f5f6f7] px-4 py-3">“Which part of your look would you work on first? Tell me in the comments.”</li>
+          <li className="rounded-xl bg-[#f5f6f7] px-4 py-3">“Comment ANALYSIS for a chance to get a free analysis.”</li>
+        </ul>
+        <p className="mt-3 text-sm leading-6 text-[#73777d]">Only advertise a free analysis when you will actually provide it. Explain how many people you will choose, when you will choose them, and how they will receive it. Reply to useful comments and turn recurring questions into your next post. Keep photo sharing optional and private.</p>
+      </section>
+    </div>
+    <h2 className="text-lg font-semibold tracking-[-0.02em]">Make the edit work harder</h2>
     <ol className="divide-y divide-[#eceef0]">{[
       ['Make the opening count', 'Introduce the problem, result, or transformation in the first few seconds or opening slide. Make the hook match the video footage or slideshow images and caption.'],
       ['Show the product clearly', 'Let viewers understand what Mogging does. Use your own scan, report, or protocol to connect the product to the story.'],
@@ -181,19 +196,10 @@ function VideoGuide() {
   )
 }
 
-function AccountGuide() {
-  return <section id="guide-panel-account" aria-label="Connecting accounts"><GuidePanelHeader eyebrow="Publishing profiles" title="Connect once. Share your link or code." description="Enter your TikTok or Instagram handle or profile URL. Your permanent referral link and code appear immediately after connecting." action={<Button asChild><Link href="/creator/accounts">Manage accounts<ArrowRight /></Link></Button>} /><ol className="grid gap-3 sm:grid-cols-3"><AccountStep number="1" icon={Link2} title="Add your profile" detail="Choose TikTok or Instagram and enter one handle or profile URL." /><AccountStep number="2" icon={ShieldCheck} title="Copy your link or code" detail="Your permanent link and code stay connected to that publishing profile and its attribution history." /><AccountStep number="3" icon={Smartphone} title="Create & submit" detail="Follow an active campaign’s brief. Every video or slideshow submission needs its own second-device analytics recording." /></ol></section>
-}
-
-function PayoutGuide() {
-  return <section id="guide-panel-payout" aria-label="Earnings and payouts"><GuidePanelHeader eyebrow="Campaigns & Money" title="How much / when do I get paid?" description="Each campaign sets its own budget, milestones, audience thresholds and requirements. Check the campaign before you create." action={<Button asChild><Link href="/creator/sprints">Explore campaigns<ArrowRight /></Link></Button>} /><div className="grid gap-3 sm:grid-cols-3"><PayoutFact value="Campaigns" label="Each campaign has its own rates and budget" /><PayoutFact value="Verified" label="Your recording determines eligible views and audience" /><PayoutFact value="3–5 days" label="Typical payment processing after approval" /></div><div className="mt-6 grid gap-3"><GuideDisclosure title="How campaign earnings work" meta="Rates & budget"><p className="text-sm leading-6 text-zinc-500">When a campaign has a tier selector, its milestone timeline shows total payouts for the selected tier. Otherwise, the advertised amounts are the maximum payouts; check the campaign’s audience rates. Your verified audience determines the payout using the campaign’s audience tiers or scaling rules. You must reach its minimum views and audience threshold. Initial submissions require a campaign that is still accepting submissions and has remaining budget; there is no 72-hour cutoff based on when you published. Milestones are total payouts, not stacked bonuses. Approval is subject to available campaign budget. The campaign terms saved when you submit remain attached to that post.</p></GuideDisclosure><GuideDisclosure title="Where to track your money" meta="Wallet, cashouts, earnings"><p className="text-sm leading-6 text-zinc-500">Wallet shows your approved unpaid balance once you select a payout method. Earnings lists eligible reviewed posts awaiting payment. Cashouts lists payments actually sent. Add or update PayPal or crypto in Payout methods.</p><Link href="/creator/money" className="mt-3 inline-block text-sm text-[#00A8EF]">Open Money →</Link></GuideDisclosure><GuideDisclosure title="Content eligibility and review holds" meta="Before payment" tone="warning"><p className="text-sm leading-6 text-zinc-500">Every post must satisfy its campaign brief and rules. Provide genuine, readable second-device analytics evidence and resolve any requested moderation checks. {accountReviewPolicy}</p><AnalyticsVerificationHelp /></GuideDisclosure><div id="audience-tiers"><GuideDisclosure title="Tier 1 countries" meta={`${tierOneCountries.length} countries`}><div className="flex flex-wrap gap-2">{tierOneCountries.map(country => <span key={country} className="rounded-lg bg-[#f5f6f7] px-3 py-1.5 text-xs">{country}</span>)}</div><p className="mt-3 text-xs text-zinc-500">Combine the audience share from these countries. Minimum and maximum percentages are defined by your campaign.</p></GuideDisclosure></div></div><p className="mt-6 rounded-2xl bg-[#f5f6f7] p-5 text-sm text-zinc-500">Choose a payout destination before payment is released. Historical submissions keep their original payout terms.</p></section>
-}
-
-function GuidePanelHeader({ eyebrow, title, description, action }: { eyebrow: string; title: string; description: string; action?: ReactNode }) {
+function GuidePanelHeader({ eyebrow, title, description }: { eyebrow: string; title: string; description: string }) {
   return (
     <header className="mb-7 flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
       <div className="min-w-0"><div><p className="text-[11px] font-semibold uppercase tracking-[0.13em] text-[#858a91]">{eyebrow}</p><h1 className="mt-1 text-[28px] font-medium leading-tight tracking-[-0.04em] sm:text-[32px]">{title}</h1><p className="mt-0.5 text-sm leading-6 text-[#73777d]">{description}</p></div></div>
-      {action ? <div className="shrink-0">{action}</div> : null}
     </header>
   )
 }
@@ -218,12 +224,4 @@ function Checklist({ items, prohibited = false }: { items: ReadonlyArray<string>
 
 function Evidence({ icon: Icon, title, detail }: { icon: typeof Smartphone; title: string; detail: string }) {
   return <div className="flex items-start gap-3"><span className="grid size-9 shrink-0 place-items-center rounded-[12px] bg-white text-[#00A8EF] shadow-sm"><Icon className="size-4" /></span><div><p className="text-sm font-semibold">{title}</p><p className="mt-1 text-xs leading-5 text-[#73777d]">{detail}</p></div></div>
-}
-
-function AccountStep({ number, icon: Icon, title, detail }: { number: string; icon: typeof Link2; title: string; detail: string }) {
-  return <li className="rounded-[16px] bg-[#f7f8f9] p-4"><div className="flex items-center justify-between"><span className="grid size-9 place-items-center rounded-[12px] bg-white text-[#00A8EF] shadow-sm"><Icon className="size-4" /></span><span className="text-[10px] font-semibold text-[#aeaeb2]">{number.padStart(2, '0')}</span></div><p className="mt-4 text-sm font-semibold">{title}</p><p className="mt-1 text-xs leading-5 text-[#73777d]">{detail}</p></li>
-}
-
-function PayoutFact({ value, label }: { value: string; label: string }) {
-  return <div className="rounded-[16px] bg-[#f7f8f9] p-5"><p className="text-2xl font-semibold tabular-nums tracking-[-0.045em]">{value}</p><p className="mt-2 text-xs leading-5 text-[#73777d]">{label}</p></div>
 }

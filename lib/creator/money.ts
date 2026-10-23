@@ -38,6 +38,7 @@ export function creatorMoneySummary(
     cashouts,
     earnings,
     balanceCents,
+    bonusEarnings: payments.filter(payment => payment.bonusSprintId && payment.status !== 'paid' && payment.status !== 'cancelled'),
     totalPaidCents: cashouts.reduce(
       (sum, payment) => sum + payment.amountCents,
       0,

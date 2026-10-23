@@ -44,6 +44,9 @@ export type CreatorSubmission = {
 }
 
 export type CreatorPayment = {
+  bonusSprintId?: string | null
+  bonusKey?: string | null
+  bonusNote?: string | null
   payoutRequestId?: string | null
   id: string
   submissionId: string | null

@@ -6,6 +6,7 @@ import type { CreatorSubmissionFormat } from './formats'
 const paragraph = z.string().trim().min(1).max(2000)
 export const sprintTermsSchema = z
   .object({
+    bonusBudgetCents: z.number().int().nonnegative().max(100_000_000).optional(),
     milestones: z
       .array(
         z.object({
@@ -124,6 +125,9 @@ export type CreatorSprint = {
   endsAt: string
   terms: SprintTerms
   usedCents: number
+  paidCents?: number
+  bonusUsedCents?: number
+  bonusPaidCents?: number
   counts: {
     pending: number
     in_review: number

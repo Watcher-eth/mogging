@@ -1,3 +1,5 @@
+import { CreatorExclusivityReview } from './creator-exclusivity-review'
+import { hasLaunchCampaignBonuses } from '@/lib/creator/campaign-launch'
 import { AnimatedDialogPanel } from '@/components/ui/animated-dialog-panel'
 import dynamic from 'next/dynamic'
 const CreatorPerformanceDashboard = dynamic(() => import('./creator-performance-dashboard'), { loading: () => <p role="status" className="admin-notice">Loading creator performance…</p> })
@@ -478,6 +480,7 @@ function ReviewDialog({ target, creator, payments, metrics, open, onOpenChange, 
                 <SubmissionRequirementsReview items={reviewChecklist} status={status} onChange={setReviewChecklist} />
                 {reducedApproval ? <p className="mt-3 rounded-xl bg-amber-50 p-3 text-xs leading-5 text-amber-900">Approving with a reduced payout. Unmet requirements and the adjustment reason remain visible to the creator.</p> : null}
                 <p className="mt-3 text-xs leading-5 text-zinc-400">Switching between approval and rejection clears checklist selections.</p>
+                {hasLaunchCampaignBonuses(target.item) ? <CreatorExclusivityReview key={target.item.id} submission={target.item} onSaved={onSaved} /> : null}
                 <p className="mt-4 text-xs text-zinc-500">Send questions and general feedback in Messages. Finish the payout decision and save in Earnings.</p>
               </Tabs.Content>
               <Tabs.Content value="earnings" className="outline-none">

@@ -9,10 +9,16 @@ export const CREATOR_AUDIENCE_BANDS = [
   { tier: 'A', minimumPercent: 30, payoutPercent: 100 },
 ] as const
 
-export function campaignAudienceRates(amountCents: number) {
+export function campaignAudienceBands(terms?: SprintTerms) {
+  const first = terms?.milestones[0]
+  const tierA = first?.audienceRates?.find(rate => rate.amountCents === first.amountCents)?.audiencePercent
+  return CREATOR_AUDIENCE_BANDS.filter(band => band.minimumPercent >= (terms?.minimumTier1Percent ?? 10)).map(band => band.tier === 'A' && tierA === 32 ? { ...band, minimumPercent: 32 } : band)
+}
+
+export function campaignAudienceRates(amountCents: number, tierAMinimumPercent = 30, minimumPercent = 10) {
   return [
-    ...CREATOR_AUDIENCE_BANDS.map((band) => ({
-      audiencePercent: band.minimumPercent,
+    ...CREATOR_AUDIENCE_BANDS.filter(band => band.minimumPercent >= minimumPercent).map((band) => ({
+      audiencePercent: band.tier === 'A' ? tierAMinimumPercent : band.minimumPercent,
       amountCents: Math.round((amountCents * band.payoutPercent) / 100),
     })),
     { audiencePercent: 40, amountCents },
@@ -20,12 +26,12 @@ export function campaignAudienceRates(amountCents: number) {
 }
 
 export function campaignHasAudienceBands(terms: SprintTerms) {
-  return (terms.minimumTier1Percent === 0 || terms.minimumTier1Percent === 10) &&
+  return [0, 10, 15].includes(terms.minimumTier1Percent) &&
     terms.maximumTier1Percent === 40 &&
     terms.milestones.every((milestone) => {
       const rates = milestone.audienceRates
       if (!rates) return false
-      const expected = campaignAudienceRates(milestone.amountCents)
+      const expected = campaignAudienceRates(milestone.amountCents, campaignAudienceBands(terms).find(band => band.tier === 'A')!.minimumPercent, terms.minimumTier1Percent)
       return (
         rates.length === expected.length &&
         expected.every(
@@ -39,7 +45,7 @@ export function campaignHasAudienceBands(terms: SprintTerms) {
 
 export function campaignRegionRates(terms: SprintTerms) {
   return campaignHasAudienceBands(terms)
-    ? 'Region rates: Tier A pays 100% · Tier B 65% · Tier C 40% · Tier D 20%.'
+    ? `Region rates: ${[...campaignAudienceBands(terms)].reverse().map(band => `Tier ${band.tier} ${band.tier === 'A' ? 'pays ' : ''}${band.payoutPercent}%`).join(' · ')}.`
     : `Region rates: Tier 1 audience ${terms.minimumTier1Percent}–${terms.maximumTier1Percent}%; payouts follow the campaign’s audience rates.`
 }
 

@@ -1,0 +1,80 @@
+{
+  "deploymentId": "dpl_3dS58v3jxGLWJXDKffH5G6xBd86x",
+  "deploymentUrl": "mogging-dm5tom529-glimpseback.vercel.app",
+  "page": "https://www.mogging.com/creator/conversions",
+  "campaignsPublished": false,
+  "bonusPaymentsEnabled": false,
+  "bonusUi": "Hidden until a published bonus campaign starts",
+  "migrationsApplied": [],
+  "sourceManifest": ".local/creator-conversions-manifest.json",
+  "stagingChecks": {
+    "deployment": "https://mogging-dm5tom529-glimpseback.vercel.app",
+    "checks": [
+      {
+        "name": "health",
+        "status": 200,
+        "cacheControl": "public, max-age=0, must-revalidate"
+      },
+      {
+        "name": "conversionsPage",
+        "status": 200,
+        "cacheControl": "public, max-age=0, must-revalidate"
+      },
+      {
+        "name": "conversionsAuthentication",
+        "status": 401,
+        "cacheControl": "private, no-store"
+      },
+      {
+        "name": "conversionsMethod",
+        "status": 405,
+        "cacheControl": "private, no-store"
+      },
+      {
+        "name": "privateCampaignPreview",
+        "status": 404,
+        "cacheControl": "public, max-age=0, must-revalidate"
+      },
+      {
+        "name": "noBonusEndpoint",
+        "status": 404,
+        "cacheControl": "public, max-age=0, must-revalidate"
+      }
+    ]
+  },
+  "productionChecks": {
+    "deployment": "https://www.mogging.com",
+    "checks": [
+      {
+        "name": "health",
+        "status": 200,
+        "cacheControl": "public, max-age=0, must-revalidate"
+      },
+      {
+        "name": "conversionsPage",
+        "status": 200,
+        "cacheControl": "public, max-age=0, must-revalidate"
+      },
+      {
+        "name": "conversionsAuthentication",
+        "status": 401,
+        "cacheControl": "private, no-store"
+      },
+      {
+        "name": "conversionsMethod",
+        "status": 405,
+        "cacheControl": "private, no-store"
+      },
+      {
+        "name": "privateCampaignPreview",
+        "status": 404,
+        "cacheControl": "public, max-age=0, must-revalidate"
+      },
+      {
+        "name": "noBonusEndpoint",
+        "status": 404,
+        "cacheControl": "public, max-age=0, must-revalidate"
+      }
+    ]
+  }
+}

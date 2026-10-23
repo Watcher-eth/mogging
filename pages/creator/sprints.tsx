@@ -1,4 +1,6 @@
 import { ContentRestrictions } from '@/components/creator/content-restrictions'
+import { LaunchCampaignDetail } from '@/components/creator/launch-campaign-detail'
+import { launchCampaign } from '@/lib/creator/campaign-launch'
 import NumberFlow from '@number-flow/react'
 import { CreatorEssentials } from '@/components/creator/creator-essentials'
 import { creatorCampaignRules, creatorFormatElement } from '@/lib/creator/post-guidance'
@@ -84,7 +86,7 @@ function SprintsContent() {
   const { data, error, isLoading, mutate } = useSWR<{
     sprints: CreatorSprint[]
   }>('/api/creator/sprints', apiGet)
-  const [phase, setPhase] = useState('active')
+  const phase = typeof router.query.phase === 'string' && ['active', 'scheduled', 'past'].includes(router.query.phase) ? router.query.phase : 'active'
   const selected = data?.sprints.find((item) => item.id === router.query.id)
   if (isLoading) return <Loader2 className="mx-auto my-16 animate-spin" />
   if (error)
@@ -103,7 +105,10 @@ function SprintsContent() {
         <Link href="/creator/sprints">Back to campaigns</Link>
       </p>
     )
-  if (selected) return <SprintDetail sprint={selected} />
+  if (selected) {
+    const campaign = launchCampaign(selected.terms)
+    return campaign ? <LaunchCampaignDetail sprint={selected} campaign={campaign} /> : <SprintDetail sprint={selected} />
+  }
   return (
     <>
       <CreatorHeader
@@ -114,10 +119,10 @@ function SprintsContent() {
       />
       <StudioTabs
         value={phase}
-        onChange={setPhase}
+        onChange={value => void router.push({ pathname: '/creator/sprints', query: { phase: value } }, undefined, { shallow: true })}
         items={[
           { value: 'active', label: 'Active' },
-          { value: 'scheduled', label: 'Scheduled' },
+          { value: 'scheduled', label: 'Upcoming' },
           { value: 'past', label: 'Past' },
         ]}
       >
@@ -200,7 +205,7 @@ function SprintDetail({ sprint }: { sprint: CreatorSprint }) {
         className="mb-6 inline-flex items-center gap-2 text-sm text-zinc-500"
       >
         <ArrowLeft className="size-4" />
-        All campaigns
+        Active campaigns
       </Link>
       <CreatorHeader
         eyebrow="Campaign"

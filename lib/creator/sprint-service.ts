@@ -1,3 +1,4 @@
+import { launchCampaign, LAUNCH_CONTENT_BUDGET_CENTS, LAUNCH_BONUS_BUDGET_CENTS } from './campaign-launch'
 import { and, desc, eq, inArray, sql } from 'drizzle-orm'
 import { db, schema } from '@/lib/db'
 import { ApiError } from '@/lib/api/http'
@@ -16,13 +17,16 @@ export async function getCampaignPreview(id: string): Promise<CampaignPreview | 
     description: schema.creatorSprints.description,
     status: schema.creatorSprints.status,
     budgetCents: schema.creatorSprints.budgetCents,
+    terms: schema.creatorSprints.terms,
     startsAt: schema.creatorSprints.startsAt,
     endsAt: schema.creatorSprints.endsAt,
   }).from(schema.creatorSprints).where(and(
     eq(schema.creatorSprints.id, id),
     inArray(schema.creatorSprints.status, ['published', 'ended']),
   )).limit(1)
-  return row ? { ...row, startsAt: row.startsAt.toISOString(), endsAt: row.endsAt.toISOString() } : null
+  if (!row) return null
+  const { terms, ...preview } = row
+  return { ...preview, budgetCents: row.budgetCents + (launchCampaign(terms) ? terms.bonusBudgetCents ?? 0 : 0), startsAt: row.startsAt.toISOString(), endsAt: row.endsAt.toISOString() }
 }
 
 export async function listCreatorSprints(
@@ -36,7 +40,11 @@ export async function listCreatorSprints(
         ? undefined
         : inArray(schema.creatorSprints.status, ['published', 'ended']),
     )
-    .orderBy(desc(schema.creatorSprints.startsAt))
+    .orderBy(desc(schema.creatorSprints.startsAt), sql`case ${schema.creatorSprints.terms}->'formats'->0->>'id'
+      when 'launch-general-looksmaxxing-v1' then 0
+      when 'launch-feature-comparison-v1' then 1
+      when 'launch-detailed-analysis-v1' then 2
+      else 3 end`)
   if (!rows.length) return []
   const totals = await db
     .select({
@@ -56,6 +64,13 @@ export async function listCreatorSprints(
       schema.creatorSubmissions.sprintId,
       schema.creatorSubmissions.status,
     )
+  const spending = await db.select({
+    id: schema.creatorSprints.id,
+    paidCents: sql<number>`coalesce((select sum(p.amount_cents) from creator_payments p join creator_submissions s on s.id = p.submission_id where s.sprint_id = creator_sprints.id and p.status = 'paid' and p.currency = 'USD'), 0)::int`,
+    bonusUsedCents: sql<number>`coalesce((select sum(p.amount_cents) from creator_payments p where p.bonus_sprint_id = creator_sprints.id and p.status <> 'cancelled'), 0)::int`,
+    bonusPaidCents: sql<number>`coalesce((select sum(p.amount_cents) from creator_payments p where p.bonus_sprint_id = creator_sprints.id and p.status = 'paid'), 0)::int`,
+  }).from(schema.creatorSprints).where(inArray(schema.creatorSprints.id, rows.map(row => row.id)))
+  const spendingById = new Map(spending.map(row => [row.id, row]))
   return rows.map((row) => {
     const counts = {
       pending: 0,
@@ -75,6 +90,9 @@ export async function listCreatorSprints(
       startsAt: row.startsAt.toISOString(),
       endsAt: row.endsAt.toISOString(),
       usedCents,
+      paidCents: spendingById.get(row.id)?.paidCents ?? 0,
+      bonusUsedCents: spendingById.get(row.id)?.bonusUsedCents ?? 0,
+      bonusPaidCents: spendingById.get(row.id)?.bonusPaidCents ?? 0,
       counts,
     }
   })
@@ -139,6 +157,7 @@ export async function saveCreatorSprint(
   input: z.infer<typeof sprintInputSchema>,
 ) {
   return db.transaction(async (tx) => {
+    let existingStatus = 'draft'
     if (input.id) {
       const [existing] = await tx
         .select()
@@ -146,6 +165,7 @@ export async function saveCreatorSprint(
         .where(eq(schema.creatorSprints.id, input.id))
         .for('update')
       if (!existing) throw new ApiError(404, 'Campaign not found')
+      existingStatus = existing.status
       const [used] = await tx
         .select({
           cents: sql<number>`coalesce(sum(${schema.creatorSubmissions.approvedAmountCents}),0)::float8`,
@@ -156,20 +176,22 @@ export async function saveCreatorSprint(
             eq(schema.creatorSubmissions.sprintId, input.id),
           ),
         )
-      if (input.budgetCents < used.cents)
+      const contentBudget = existing.status === 'draft' && launchCampaign(input.terms) ? LAUNCH_CONTENT_BUDGET_CENTS : input.budgetCents
+      if (contentBudget < used.cents)
         throw new ApiError(
           409,
           'Budget cannot be below already committed earnings',
         )
     }
+    const newLaunch = existingStatus === 'draft' && launchCampaign(input.terms)
     const values = {
       name: input.name,
       description: input.description,
       status: input.status,
-      budgetCents: input.budgetCents,
+      budgetCents: newLaunch ? LAUNCH_CONTENT_BUDGET_CENTS : input.budgetCents,
       startsAt: new Date(input.startsAt),
       endsAt: new Date(input.endsAt),
-      terms: input.terms,
+      terms: newLaunch ? { ...input.terms, bonusBudgetCents: LAUNCH_BONUS_BUDGET_CENTS } : input.terms,
       updatedAt: new Date(),
     }
     const [sprint] = input.id

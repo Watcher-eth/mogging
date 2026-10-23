@@ -75,6 +75,7 @@ export type AdminAccount = {
 }
 
 export type AdminSubmission = {
+  exclusivityConfirmed?: boolean
   updatedAt?: string
   creatorAvatarUrl?: string | null
   unreadMessages?: number
@@ -112,6 +113,9 @@ export type AdminSubmission = {
 }
 
 export type AdminPayment = {
+  bonusSprintId?: string | null
+  bonusKey?: string | null
+  bonusNote?: string | null
   payoutRequestId?: string | null
   id: string
   creatorProfileId: string

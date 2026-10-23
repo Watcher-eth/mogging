@@ -10,6 +10,7 @@ import { PayoutInformation } from '@/components/creator/payout-information-form'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog'
 import { Button } from '@/components/ui/button'
 import CreatorSubmissionsPage from './submissions'
+import CreatorProgramGuidePage from './guide'
 import { SubmissionDialog } from '@/components/creator/submission-dialog'
 import type { CreatorDashboard, CreatorSocialAccount } from '@/components/creator/types'
 import { defaultCreatorSprintTerms } from '@/lib/creator/sprint-defaults'
@@ -67,6 +68,7 @@ async function previewFetch<Data>(request: string | string[]): Promise<Data> {
 const previewData = (empty: boolean): Middleware => useSWRNext => <Data, Error>(key: Key, _fetcher: BareFetcher<Data> | null, config: SWRConfiguration<Data, Error>) => useSWRNext<Data, Error>(key, request => empty && (Array.isArray(request) ? request[0] : request) === '/api/creator' ? Promise.resolve({ ...dashboard, submissions: [], payments: [] } as Data) : previewFetch<Data>(request), { ...config, refreshInterval: 0, revalidateOnFocus: false, shouldRetryOnError: false })
 export default function SubmissionPreview() {
   const router = useRouter()
+  const guide = router.query.view === 'guide'
   const history = router.query.view === 'submissions' || router.query.view === 'empty'
   const empty = router.query.view === 'empty'
   const previewMiddleware = useMemo(() => previewData(empty), [empty])
@@ -75,7 +77,7 @@ export default function SubmissionPreview() {
   const [platform, setPlatform] = useState<'tiktok' | 'instagram'>('tiktok')
   const previewRouter = useMemo(() => ({
     ...router,
-    pathname: history ? '/creator/submissions' : '/creator/submit',
+    pathname: guide ? '/creator/guide' : history ? '/creator/submissions' : '/creator/submit',
     push: async (...args: Parameters<typeof router.push>) => {
       const [destination] = args
       if (typeof destination === 'string') {
@@ -87,11 +89,11 @@ export default function SubmissionPreview() {
       }
       return router.push(...args)
     },
-  }), [router, history])
+  }), [router, history, guide])
   return <SessionContext.Provider value={{ data: { expires: '2099-01-01', user: { id: '', name: 'Example creator' } }, status: 'authenticated', update: async () => null }}>
     <SWRConfig key={empty ? 'empty' : 'populated'} value={{ provider: () => new Map(), use: [previewMiddleware] }}><RouterContext.Provider value={previewRouter}>
       <SidebarProvider className="min-h-0 flex-1 flex-col">
-        {history ? <><div className="flex justify-center gap-5 px-4 pt-3 text-xs text-zinc-400"><a href="?view=submissions" className="underline underline-offset-4">Mock submissions</a><a href="?view=empty" className="underline underline-offset-4">Animated empty state</a><span>Local preview</span></div><CreatorSubmissionsPage />{open ? <SubmissionDialog open onOpenChange={setOpen} onSubmitted={async () => {}} /> : null}</> : <CreatorShell>
+        {guide ? <CreatorProgramGuidePage /> : history ? <><div className="flex justify-center gap-5 px-4 pt-3 text-xs text-zinc-400"><a href="?view=submissions" className="underline underline-offset-4">Mock submissions</a><a href="?view=empty" className="underline underline-offset-4">Animated empty state</a><span>Local preview</span></div><CreatorSubmissionsPage />{open ? <SubmissionDialog open onOpenChange={setOpen} onSubmitted={async () => {}} /> : null}</> : <CreatorShell>
         <CreatorHeader eyebrow="Creator videos" title="Your submissions" description="Your content, reviews and earnings in one place." />
         <div className="creator-surface p-6"><p className="text-sm font-medium">You’re ready for your next post.</p><p className="mt-2 text-sm text-zinc-500">Open New video to try the updated submission flow.</p><p className="mt-5 text-xs text-zinc-400">Local preview · sample accounts · no real submissions</p></div>
         <div className="mt-5 flex gap-3"><Button variant="outline" onClick={() => setPanel('account')}>Preview account form</Button><Button variant="outline" onClick={() => setPanel('payout')}>Preview payout form</Button></div>

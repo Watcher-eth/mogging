@@ -1,6 +1,8 @@
 import { followerRangeSchema } from './tiktok-anchor'
 import { CREATOR_VIDEO_TYPES, MAX_CREATOR_ANALYTICS_VIDEO_BYTES } from './video-types'
 import { z } from 'zod'
+import { launchCampaign } from './campaign-launch'
+import type { SprintTerms } from './sprints'
 
 export function creatorPostPlatform(value: string): 'tiktok' | 'instagram' | null {
   try {
@@ -55,6 +57,9 @@ export const creatorProfileSchema = z
   })
 
 export const MINIMUM_SUBMISSION_VIEWS = 20_000
+export function minimumSubmissionViews(terms?: SprintTerms | null) {
+  return terms && launchCampaign(terms) ? Math.min(...terms.milestones.map(item => item.views)) : MINIMUM_SUBMISSION_VIEWS
+}
 
 export const creatorSubmissionSchema = z.object({
   registeredPostId: z.string().uuid().optional(),
@@ -71,7 +76,8 @@ export const creatorSubmissionSchema = z.object({
   analyticsStorageKey: z.string().min(1),
   analyticsContentType: z.enum(CREATOR_VIDEO_TYPES),
   analyticsSizeBytes: z.number().int().positive().max(MAX_CREATOR_ANALYTICS_VIDEO_BYTES),
-  viewCountThreshold: z.number().int().min(MINIMUM_SUBMISSION_VIEWS, "Your post has not reached the minimum views yet. Wait until it has at least 20,000 views, then resubmit.").max(2_000_000_000),
+  // The service validates the selected campaign's minimum from saved terms.
+  viewCountThreshold: z.number().int().min(5_000, 'Your post has not reached the minimum views yet.').max(2_000_000_000),
   usAudiencePercent: z.number().min(0).max(100),
 })
 

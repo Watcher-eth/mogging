@@ -57,6 +57,11 @@ export function handleApiError(error: unknown, res: NextApiResponse) {
     return errorJson(res, error.status, statusToCode(error.status), error.message)
   }
 
+  const databaseError = error instanceof Error && 'cause' in error ? error.cause : error
+  const constraint = databaseError && typeof databaseError === 'object' && 'constraint_name' in databaseError ? databaseError.constraint_name : null
+  if (constraint === 'creator_bonus_budget_limit') return errorJson(res, 409, 'conflict', 'The bonus budget cannot cover this payment or budget change')
+  if (constraint === 'creator_bonus_award_immutable') return errorJson(res, 409, 'conflict', 'Bonus award identity, amount, and completed payments cannot be changed')
+
   console.error(error)
   return errorJson(res, 500, 'internal_error', 'Internal server error')
 }

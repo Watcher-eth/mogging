@@ -8,9 +8,10 @@ export async function recordSubmissionUpdate(tx: Transaction, submissionId: stri
   await tx.insert(schema.creatorSubmissionUpdates).values({ submissionId, type, note: note?.trim() || null, createdAt })
 }
 
-export async function recordReviewUpdate(tx: Transaction, previous: { id: string; status: string; reviewNote: string | null; reviewRequestedAt?: Date | null }, next: { status: CreatorUpdateType; reviewNote?: string | null }) {
+export async function recordReviewUpdate(tx: Transaction, previous: { id: string; status: string; reviewNote: string | null; reviewRequestedAt?: Date | null; adminViewCountThreshold?: number | null }, next: { status: CreatorUpdateType; reviewNote?: string | null; adminViewCountThreshold?: number | null }) {
   if (next.status === 'paid') return
-  if (previous.status !== next.status || (previous.reviewRequestedAt && ['approved', 'rejected'].includes(next.status))) {
+  const newApprovedMilestone = next.status === 'approved' && (next.adminViewCountThreshold ?? 0) > (previous.adminViewCountThreshold ?? 0)
+  if (previous.status !== next.status || newApprovedMilestone || (previous.reviewRequestedAt && ['approved', 'rejected'].includes(next.status))) {
     await recordSubmissionUpdate(tx, previous.id, next.status, next.reviewNote)
   } else if (next.reviewNote?.trim() && next.reviewNote.trim() !== previous.reviewNote?.trim()) {
     await recordSubmissionUpdate(tx, previous.id, 'feedback', next.reviewNote)

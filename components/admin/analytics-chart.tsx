@@ -10,11 +10,18 @@ const Liveline = dynamic(() => import('liveline').then(module => module.Liveline
 export type ChartMetric = { key: string; label: string; color: string }
 export const chartColors = { blue: '#00A8EF', violet: '#9b83e5', green: '#40a88a', orange: '#db9474', ink: '#52565c' }
 
-export function AnalyticsChart({ rows, metrics, days, currency, title }: { rows: MetricRow[]; metrics: ChartMetric[]; days: number; currency?: string; title: string }) {
+export function AnalyticsChart({ rows, metrics, days, currency, title, fitToData = false }: { rows: MetricRow[]; metrics: ChartMetric[]; days: number; currency?: string; title: string; fitToData?: boolean }) {
   const series = useMemo(() => metrics.map(metric => {
     const data = dailyPoints(rows, metric.key)
     return { id: metric.key, label: metric.label, color: metric.color, data, value: data.at(-1)?.value ?? 0 }
   }), [rows, metrics])
+  const firstTime = Math.min(...series.map(item => item.data[0]?.time ?? Infinity))
+  const windowSeconds = useMemo(() => {
+    if (!fitToData || !Number.isFinite(firstTime)) return days * 86400
+    // Liveline reserves 1.5% of its window beyond now when badges are hidden.
+    // Fit the first observation to its left edge rather than clipping that point.
+    return Math.max(1, (Date.now() / 1000 - firstTime) / 0.985 + 60)
+  }, [fitToData, firstTime, days])
   const interval = days === 1 ? "hourly" : "daily"
   const formatTime = (time: number) => new Date(time * 1000).toLocaleString("en-US", { month: "short", day: "numeric", ...(days === 1 ? { hour: "2-digit" as const, minute: "2-digit" as const, hour12: false } : {}), timeZone: "UTC" })
   const hasData = series.some(item => item.data.length > 0)
@@ -24,8 +31,8 @@ export function AnalyticsChart({ rows, metrics, days, currency, title }: { rows:
   // Pause the snapshot so historical daily data does not scroll like a live feed.
   return <div className="admin-chart" role="group" aria-label={`${title}. ${interval} UTC observations; exact values are available in the underlying data.`}>
     <Liveline data={series[0].data} value={series[0].value} series={series.length > 1 ? series : undefined}
-      color={series[0].color} theme="light" window={days * 86400} paused pulse={false} momentum={false} badge={false}
-      fill={series.length === 1} grid scrub lineWidth={2} padding={{ top: 20, bottom: 38, left: 12, right: 58 }}
+      color={series[0].color} theme="light" window={windowSeconds} paused pulse={false} momentum={false} badge={false}
+      fill={series.length === 1} grid scrub lineWidth={2} padding={{ top: 20, bottom: 38, left: fitToData ? 0 : 12, right: 58 }}
       formatValue={value => currency ? money(value, currency) : count(value)}
       formatTime={formatTime} />
   </div>

@@ -6,11 +6,12 @@ import { submissionUnreadCount } from '@/lib/creator/submission-messages'
 import { sprintPhase, sprintFormat } from './sprints'
 import type { TikTokUserInfo } from '@/lib/auth/tiktok-api'
 import { creatorAssetPublicUrl, verifyCreatorRecordingUpload } from '@/lib/storage/videos'
-import { and, desc, eq, getTableColumns, or, sql } from 'drizzle-orm'
+import { and, desc, eq, getTableColumns, isNotNull, isNull, or, sql } from 'drizzle-orm'
 import { db, schema } from '@/lib/db'
 import { env } from '@/lib/env'
 import { creatorReferralHandle, ensureCreatorTrackingLink } from '@/lib/creator/attribution'
 import { captionContainsCreatorCode } from './post-guidance'
+import { minimumSubmissionViews } from './validation'
 
 export { creatorProfileSchema, creatorSubmissionSchema, creatorSocialAccountSchema } from './validation'
 import { creatorSubmissionAnalyticsSchema, type CreatorSubmissionAnalyticsInput, creatorSubmissionSchema, creatorPostPlatform, type CreatorProfileInput, type CreatorSubmissionInput, type CreatorSocialAccountInput } from './validation'
@@ -110,13 +111,19 @@ export async function saveCreatorProfile(userId: string, input: CreatorProfileIn
     updatedAt: new Date(),
   } as const
 
-  const [profile] = await db
-    .insert(schema.creatorProfiles)
-    .values(values)
-    .onConflictDoUpdate({ target: schema.creatorProfiles.userId, set: values })
-    .returning()
-
-  return profile
+  return db.transaction(async tx => {
+    const [profile] = await tx.insert(schema.creatorProfiles).values(values)
+      .onConflictDoUpdate({ target: schema.creatorProfiles.userId, set: values }).returning()
+    // Unrequested bonuses follow the chosen destination; requested payouts keep
+    // the payment method captured when the creator requested them.
+    await tx.update(schema.creatorPayments).set({ paymentOption: profile.paymentOption }).where(and(
+      eq(schema.creatorPayments.creatorProfileId, profile.id),
+      isNotNull(schema.creatorPayments.bonusSprintId),
+      eq(schema.creatorPayments.status, 'pending'),
+      isNull(schema.creatorPayments.payoutRequestId),
+    ))
+    return profile
+  })
 }
 
 export async function addCreatorSocialAccount(userId: string, input: CreatorSocialAccountInput) {
@@ -322,6 +329,7 @@ export async function createCreatorSubmission(userId: string, input: CreatorSubm
   if (profile.authStatus === 'suspended') throw new CreatorServiceError(403, 'Your creator account is suspended')
   const sprint = await db.query.creatorSprints.findFirst({ where: eq(schema.creatorSprints.id, input.sprintId) })
   if (!sprint || sprintPhase({ ...sprint, startsAt: sprint.startsAt.toISOString(), endsAt: sprint.endsAt.toISOString() }) !== 'active') throw new CreatorServiceError(409, 'Choose an active campaign')
+  if (input.viewCountThreshold < minimumSubmissionViews(sprint.terms)) throw new CreatorServiceError(400, `This campaign requires at least ${minimumSubmissionViews(sprint.terms).toLocaleString('en-US')} views`)
   const format = sprintFormat(sprint.terms, input.formatId)
   if (!format) throw new CreatorServiceError(400, 'Choose a format offered by this campaign')
   if (!sprint.terms.platforms.includes(creatorPostPlatform(input.postUrl)!)) throw new CreatorServiceError(400, 'This platform is not accepted by the campaign')
@@ -433,6 +441,7 @@ export async function requestSubmissionReview(userId: string, submissionId: stri
   if (!profile || profile.authStatus === 'suspended') throw new CreatorServiceError(403, 'Creator access required')
   const existing = await getSubmissionForCreator(userId, submissionId)
   if (!existing) throw new CreatorServiceError(404, 'Submission not found')
+  if (input.viewCountThreshold < minimumSubmissionViews(existing.sprintTerms)) throw new CreatorServiceError(400, `This campaign requires at least ${minimumSubmissionViews(existing.sprintTerms).toLocaleString('en-US')} views`)
   await verifySubmissionAnalytics(userId, input)
   return db.transaction(async tx => {
     const [submission] = await tx.select().from(schema.creatorSubmissions).where(and(eq(schema.creatorSubmissions.id, submissionId), eq(schema.creatorSubmissions.creatorProfileId, profile.id))).for('update')

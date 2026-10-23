@@ -2,10 +2,12 @@ import * as Dialog from '@radix-ui/react-dialog'
 import { AnimatePresence, LayoutGroup, motion, useReducedMotion } from 'motion/react'
 import { Info, X } from 'lucide-react'
 import { useId, useState, type CSSProperties } from 'react'
-import { CREATOR_AUDIENCE_BANDS } from '@/lib/creator/sprint-defaults'
+import { campaignAudienceBands } from '@/lib/creator/sprint-defaults'
 import { CREATOR_TIER_ONE_COUNTRIES } from '@/lib/creator/audience'
 
-export function CampaignRegionHelp({ monochrome = false }: { monochrome?: boolean }) {
+import type { SprintTerms } from '@/lib/creator/sprints'
+
+export function CampaignRegionHelp({ monochrome = false, terms }: { monochrome?: boolean; terms?: SprintTerms }) {
   const [open, setOpen] = useState(false)
   const reduceMotion = useReducedMotion()
   const id = useId()
@@ -45,9 +47,9 @@ export function CampaignRegionHelp({ monochrome = false }: { monochrome?: boolea
                     <Dialog.Close aria-label="Close region rates" className="absolute right-3 top-3 grid size-10 place-items-center rounded-full text-zinc-500 hover:bg-zinc-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--region-accent)]">
                       <X aria-hidden="true" className="size-4" />
                     </Dialog.Close>
-                    <Dialog.Description className="mt-2 text-sm leading-6 text-zinc-500">Combine your audience share from the Tier 1 countries below to find your payout tier. At least 10% is required to earn.</Dialog.Description>
+                    <Dialog.Description className="mt-2 text-sm leading-6 text-zinc-500">Combine your audience share from the Tier 1 countries below to find your payout tier. At least {campaignAudienceBands(terms)[0].minimumPercent}% is required to earn.</Dialog.Description>
                     <div className="my-5 space-y-4">
-                      {[...CREATOR_AUDIENCE_BANDS].reverse().map((band) => (
+                      {[...campaignAudienceBands(terms)].reverse().map((band) => (
                         <div key={band.tier}>
                           <div className="mb-2 flex items-center justify-between gap-3 text-xs">
                             <span className="font-semibold">Tier {band.tier} <span className="font-normal text-zinc-500">· {band.payoutPercent}% payout</span></span>

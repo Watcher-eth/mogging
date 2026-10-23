@@ -1,8 +1,9 @@
-import { BadgeCheck, BookOpen, Files, Layers, LayoutDashboard, Link2, ScanFace, ShieldCheck, UsersRound, Video, Wallet } from 'lucide-react'
+import { BadgeCheck, BookOpen, Files, ChartNoAxesCombined, Layers, LayoutDashboard, Link2, ScanFace, ShieldCheck, UsersRound, Video, Wallet } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
 const creatorIcons = {
   accounts: UsersRound,
+  conversions: ChartNoAxesCombined,
   cta: ScanFace,
   formats: Layers,
   guide: BookOpen,

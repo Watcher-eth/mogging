@@ -35,7 +35,7 @@ export function drawPhoneReport(ctx: CanvasRenderingContext2D, slide: ContentSli
     ctx.beginPath(); ctx.moveTo(0,y); ctx.lineTo(width,y); ctx.stroke()
   }
   ctx.textBaseline = 'top'; ctx.textAlign = 'center'; ctx.fillStyle = '#09090b'
-  ctx.font = `600 ${width * (square ? .065 : .078)}px "Poster Sans", sans-serif`
+  ctx.font = `600 ${width * (square ? .065 : .078)}px "Poster Brand", sans-serif`
   ctx.fillText(slide.headline || 'Ascend Now', width / 2, height * .06)
   drawBrandLockup(ctx,brand,width*.19,height*(square ? .14 : .13),width*.62,'#09090b')
 

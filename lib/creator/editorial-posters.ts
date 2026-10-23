@@ -18,7 +18,6 @@ export function posterFamily(template: ContentSlide['templateId']): PosterFamily
 export function loadPosterAssets() {
   return assets ??= Promise.all([
     new FontFace('Poster Brand', 'url(/fonts/Geist-Regular.ttf)', { weight: '400' }),
-    new FontFace('Poster Sans', 'url(/fonts/PPFramaText-Variable.woff2)', { weight: '100 900' }),
   ].map(async font => { await font.load(); document.fonts.add(font) }).concat([new Promise<void>((resolve, reject) => {
     const image = new Image(); image.onload = () => { brandIcon = image; resolve() }; image.onerror = () => reject(new Error('Brand icon could not be loaded'))
     image.src = '/landing/mogging-logo.png'
@@ -159,7 +158,7 @@ async function paperTexture(source: HTMLCanvasElement, width: number, height: nu
   } finally { mount?.dispose(); host.remove() }
 }
 
-const sans = '"Poster Sans", sans-serif'
+const sans = '"Poster Brand", sans-serif'
 function text(ctx: CanvasRenderingContext2D, value: string, x: number, y: number, size: number, color: string, weight=400, font=sans, align: CanvasTextAlign='left', maxWidth?: number) {
   ctx.font=`${weight} ${size}px ${font}`; ctx.fillStyle=color; ctx.textAlign=align; ctx.textBaseline='top'
   ctx.fillText(value,x,y,maxWidth)

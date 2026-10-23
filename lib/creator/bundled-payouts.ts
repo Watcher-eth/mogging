@@ -1,3 +1,4 @@
+import { refreshCreatorBonuses } from './bonus-service'
 import { and, asc, eq, inArray } from 'drizzle-orm'
 import { z } from 'zod'
 import { db, schema } from '@/lib/db'
@@ -85,5 +86,5 @@ export async function settleBundledPayout(input: z.infer<typeof settlePayoutRequ
     }
     const [settled] = await tx.update(schema.creatorPayoutRequests).set({ status: 'paid', paidAt: now }).where(eq(schema.creatorPayoutRequests.id, request.id)).returning()
     return settled
-  })
+  }).then(async request => { await refreshCreatorBonuses(request.creatorProfileId); return request })
 }

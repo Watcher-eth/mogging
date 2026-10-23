@@ -27,6 +27,7 @@ const creatorNav: ReadonlyArray<CreatorNavItem> = [
   { href: '/creator/submissions', label: 'Submissions', asset: 'submissions' },
   { href: '/creator/accounts', label: 'Accounts', asset: 'accounts' },
   { href: '/creator/money', label: 'Money', asset: 'payouts' },
+  { href: '/creator/conversions', label: 'Conversions', asset: 'conversions' },
   { href: '/creator/cta-generator', label: 'CTA Studio', asset: 'cta' },
 ]
 

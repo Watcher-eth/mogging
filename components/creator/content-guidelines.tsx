@@ -77,5 +77,5 @@ export function ContentRequirementsNote() {
 }
 
 export function AccountReviewNote() {
-  return <Disclosure className="creator-notice mb-5 rounded-2xl p-4"><DisclosureSummary className="cursor-pointer text-sm font-semibold">Account reviews and payout eligibility</DisclosureSummary><AccordionContent><p className="mt-3 text-sm leading-6 text-[#73777d]">{accountReviewPolicy}</p><Link href="/creator/guide?topic=payout" className="mt-2 inline-flex min-h-11 items-center text-sm font-semibold text-[#00A8EF] underline underline-offset-4">Read the payout and audience requirements</Link></AccordionContent></Disclosure>
+  return <Disclosure className="creator-notice mb-5 rounded-2xl p-4"><DisclosureSummary className="cursor-pointer text-sm font-semibold">Account reviews and payout eligibility</DisclosureSummary><AccordionContent><p className="mt-3 text-sm leading-6 text-[#73777d]">{accountReviewPolicy}</p><Link href="/creator/money" className="mt-2 inline-flex min-h-11 items-center text-sm font-semibold text-[#00A8EF] underline underline-offset-4">View earnings and payouts</Link></AccordionContent></Disclosure>
 }

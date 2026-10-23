@@ -1,3 +1,5 @@
+import { refreshCreatorBonuses } from '@/lib/creator/bonus-service'
+import { hasLaunchCampaignBonuses } from '@/lib/creator/campaign-launch'
 import { recordReviewUpdate } from '@/lib/creator/submission-updates'
 import { submissionReviewError, TIER_D_AUDIENCE_REJECTION } from '@/lib/creator/submission-review'
 import { rethrowCreatorPostConflict } from '@/lib/creator/post-identity'
@@ -22,6 +24,7 @@ import {
 } from '@/lib/creator/payouts'
 
 export const creatorAdminReviewSchema = z.discriminatedUnion('resource', [
+  z.object({ resource: z.literal('exclusivity'), id: z.string().min(1), confirmed: z.boolean() }),
   z.object({
     resource: z.literal('creator'),
     id: z.string().min(1),
@@ -157,6 +160,7 @@ export async function getCreatorAdminDashboard() {
         adminViewCountThreshold: schema.creatorSubmissions.adminViewCountThreshold,
         adminUsAudiencePercent: schema.creatorSubmissions.adminUsAudiencePercent,
         status: schema.creatorSubmissions.status,
+        exclusivityConfirmed: schema.creatorSubmissions.exclusivityConfirmed,
         reviewNote: schema.creatorSubmissions.reviewNote,
         reviewChecklist: schema.creatorSubmissions.reviewChecklist,
         createdAt: schema.creatorSubmissions.createdAt,
@@ -175,7 +179,10 @@ export async function getCreatorAdminDashboard() {
         creatorName: schema.creatorProfiles.displayName,
         creatorEmail: schema.users.email,
         submissionId: schema.creatorPayments.submissionId,
-        submissionTitle: schema.creatorSubmissions.title,
+        submissionTitle: sql<string | null>`coalesce(${schema.creatorPayments.bonusNote}, ${schema.creatorSubmissions.title})`,
+        bonusSprintId: schema.creatorPayments.bonusSprintId,
+        bonusKey: schema.creatorPayments.bonusKey,
+        bonusNote: schema.creatorPayments.bonusNote,
         amountCents: schema.creatorPayments.amountCents,
         payoutRequestId: schema.creatorPayments.payoutRequestId,
         currency: schema.creatorPayments.currency,
@@ -296,6 +303,29 @@ export async function saveCreatorProgramSettings(input: z.infer<typeof creatorPr
 export async function reviewCreatorResource(input: CreatorAdminReviewInput, reviewerId?: string) {
   const now = new Date()
 
+  if (input.resource === 'exclusivity') {
+    const record = await db.transaction(async tx => {
+      const found = await tx.query.creatorSubmissions.findFirst({ where: eq(schema.creatorSubmissions.id, input.id) })
+      if (!found || found.isDraft) throw new ApiError(404, 'Submitted post not found')
+      if (!hasLaunchCampaignBonuses(found)) throw new ApiError(400, 'Bio-link bonus review is only available for new campaign submissions')
+      await tx.select().from(schema.creatorProfiles).where(eq(schema.creatorProfiles.id, found.creatorProfileId)).for('update')
+      if (!input.confirmed) {
+        const [awarded] = await tx.select({ id: schema.creatorPayments.id }).from(schema.creatorPayments).where(and(
+          eq(schema.creatorPayments.creatorProfileId, found.creatorProfileId),
+          sql`${schema.creatorPayments.bonusKey} like 'exclusivity:%' and ${schema.creatorPayments.status} <> 'cancelled' and exists (
+            select 1 from creator_sprints c where c.id = ${schema.creatorPayments.bonusSprintId}
+            and ${found.createdAt.toISOString()}::timestamp >= c.starts_at and ${found.createdAt.toISOString()}::timestamp < c.ends_at
+          )`,
+        )).limit(1)
+        if (awarded) throw new ApiError(409, 'This period has approved bio-link bonus awards. Resolve those payments before changing its verification.')
+      }
+      const [saved] = await tx.update(schema.creatorSubmissions).set({ exclusivityConfirmed: input.confirmed }).where(eq(schema.creatorSubmissions.id, input.id)).returning()
+      return saved
+    })
+    await refreshCreatorBonuses(record.creatorProfileId)
+    return record
+  }
+
   if (input.resource === 'creator') {
     const [record] = await db.update(schema.creatorProfiles).set({ authStatus: input.status, updatedAt: now }).where(eq(schema.creatorProfiles.id, input.id)).returning()
     if (!record) throw new ApiError(404, 'Creator registration not found')
@@ -313,7 +343,7 @@ export async function reviewCreatorResource(input: CreatorAdminReviewInput, revi
     const reviewError = submissionReviewError(input.status, input.reviewChecklist)
     if (reviewError) throw new ApiError(400, reviewError)
     const current = await db.query.creatorSubmissions.findFirst({ where: eq(schema.creatorSubmissions.id, input.id) })
-    if (current?.sprintId && current.sprintTerms) return reviewSprintSubmission(input, reviewerId).catch(rethrowCreatorPostConflict)
+    if (current?.sprintId && current.sprintTerms) return reviewSprintSubmission(input, reviewerId).then(async record => { if (record.sprintTerms?.bonusBudgetCents) await refreshCreatorBonuses(record.creatorProfileId); return record }).catch(rethrowCreatorPostConflict)
     return db.transaction(async tx => {
       const [submission] = await tx.select().from(schema.creatorSubmissions).where(eq(schema.creatorSubmissions.id, input.id)).for('update')
       if (submission?.isDraft) throw new ApiError(409, 'This post has not been submitted for review')
@@ -355,6 +385,7 @@ export async function reviewCreatorResource(input: CreatorAdminReviewInput, revi
     const [submission] = target.submissionId ? await tx.select().from(schema.creatorSubmissions).where(eq(schema.creatorSubmissions.id, target.submissionId)).for('update') : []
     const [payment] = await tx.select().from(schema.creatorPayments).where(eq(schema.creatorPayments.id, input.id)).for('update')
     if (!payment) throw new ApiError(404, 'Creator payment not found')
+    if (payment.bonusSprintId && input.amountCents !== undefined && input.amountCents !== payment.amountCents) throw new ApiError(409, 'Automatic bonus awards cannot be edited. Cancel an incorrect award instead.')
     if (payment.payoutRequestId) throw new ApiError(409, 'Record this payment through its bundled payout request')
     if (['pending', 'processing', 'paid'].includes(input.status)) {
       const profile = await tx.query.creatorProfiles.findFirst({ where: eq(schema.creatorProfiles.id, payment.creatorProfileId) })
@@ -375,6 +406,12 @@ export async function reviewCreatorResource(input: CreatorAdminReviewInput, revi
     if (submission?.sprintId && submission.status === 'approved' && input.status === 'paid' && payment.status !== 'paid') {
       const payments = await tx.query.creatorPayments.findMany({ where: eq(schema.creatorPayments.submissionId, submission.id) })
       if (remainingCreatorPaymentCents(submission.approvedAmountCents || 0, payments, false) === 0) await tx.update(schema.creatorSubmissions).set({ status: 'paid', updatedAt: now }).where(eq(schema.creatorSubmissions.id, submission.id))
+    }
+    return record
+  }).then(async record => {
+    if (record.submissionId && record.status === 'paid') {
+      const post = await db.query.creatorSubmissions.findFirst({ where: eq(schema.creatorSubmissions.id, record.submissionId) })
+      if (post?.sprintTerms?.bonusBudgetCents) await refreshCreatorBonuses(record.creatorProfileId)
     }
     return record
   })

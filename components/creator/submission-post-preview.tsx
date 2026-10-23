@@ -7,8 +7,8 @@ import { SocialPlatformLogo } from '@/components/brand/social-platform-logo'
 import type { CreatorPostPreview } from '@/lib/creator/post-preview'
 import type { CreatorSubmission } from './types'
 
-export function useSubmissionPostPreview(submission: CreatorSubmission) {
-  const ref = useRef<HTMLButtonElement>(null)
+export function useSubmissionPostPreview<Element extends HTMLElement = HTMLButtonElement>(submission: Pick<CreatorSubmission, 'id' | 'postUrl'>) {
+  const ref = useRef<Element>(null)
   const [visible, setVisible] = useState(false)
   useEffect(() => {
     const observer = new IntersectionObserver(([entry]) => {

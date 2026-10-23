@@ -1,4 +1,5 @@
 import { campaignTimeLabel } from '@/lib/creator/campaign-preview'
+import { launchCampaign } from '@/lib/creator/campaign-launch'
 import {
   sprintMoney,
   sprintPhase,
@@ -22,23 +23,26 @@ export function SprintStatus({ sprint }: { sprint: CreatorSprint }) {
   )
 }
 export function SprintBudget({ sprint }: { sprint: CreatorSprint }) {
+  const isLaunch = Boolean(launchCampaign(sprint.terms))
+  const budgetCents = sprint.budgetCents + (isLaunch ? sprint.terms.bonusBudgetCents ?? 0 : 0)
+  const usedCents = sprint.usedCents + (isLaunch ? sprint.bonusUsedCents ?? 0 : 0)
   const percent = Math.min(
     100,
-    Math.round((sprint.usedCents / sprint.budgetCents) * 100),
+    Math.round((usedCents / budgetCents) * 100),
   )
   return (
     <div>
       <div className="flex items-center justify-between gap-3 text-[10px] font-semibold uppercase tracking-widest text-zinc-400">
-        <p>Budget committed</p>
+        <p>{isLaunch ? 'Total Budget' : 'Budget committed'}</p>
         <p className="text-right">{campaignTimeLabel(sprint)}</p>
       </div>
       <div className="mt-1 flex items-end justify-between gap-3">
         <p className="text-xl font-semibold tabular-nums">{percent}%</p>
         <p className="text-sm text-zinc-500">
           <strong className="font-medium text-zinc-900">
-            {sprintMoney(sprint.usedCents)}
+            {sprintMoney(usedCents)}
           </strong>{' '}
-          / {sprintMoney(sprint.budgetCents)}
+          / {sprintMoney(budgetCents)}
         </p>
       </div>
       <div

@@ -1,3 +1,4 @@
+import { CampaignBudget } from '@/components/creator/campaign-budget'
 import { Disclosure, DisclosureSummary, AccordionContent } from '@/components/ui/accordion'
 import Link from 'next/link'
 import * as Tabs from '@radix-ui/react-tabs'
@@ -129,7 +130,7 @@ export function CreatorSprintsPanel({
               </Button>
             </div>
             <div className="mt-6 grid gap-6 border-t border-zinc-100 pt-5 sm:grid-cols-2">
-              <SprintBudget sprint={selected} />
+              {selected.terms.bonusBudgetCents ? <CampaignBudget sprint={selected} /> : <SprintBudget sprint={selected} />}
               <div className="flex flex-col justify-center gap-2 text-sm text-zinc-500">
                 <span>{campaignDates(selected)}</span>
                 <span>

@@ -62,7 +62,7 @@ function MoneyContent() {
         </button>
       </p>
     )
-  const { cashouts, earnings, balanceCents, totalPaidCents, pendingReview } =
+  const { cashouts, earnings, bonusEarnings, balanceCents, totalPaidCents, pendingReview } =
     creatorMoneySummary(data.submissions, data.payments)
   const ready = hasCreatorPayoutMethod(data.profile)
   const request = data.payoutRequests?.find(item => item.status === 'pending')
@@ -131,7 +131,7 @@ function MoneyContent() {
                     <Wallet className="size-8 shrink-0" />
                     <div className="min-w-0 flex-1">
                       <h2 className="text-sm font-semibold">
-                        {submission?.title || 'Creator payout'}
+                        {payment.bonusNote || submission?.title || 'Creator payout'}
                       </h2>
                       <p className="mt-1 text-xs text-zinc-500">
                         {payment.paymentOption === 'paypal'
@@ -170,6 +170,7 @@ function MoneyContent() {
           )}
         </StudioTabContent>
         <StudioTabContent value="earnings">
+          {bonusEarnings.map(payment => <article key={payment.id} className="creator-surface mb-3 flex items-center justify-between gap-4 p-5"><div><h2 className="text-sm font-semibold">{payment.bonusNote || 'Campaign bonus'}</h2><p className="mt-1 text-xs text-zinc-500">{payment.status === 'failed' ? 'Payment needs an admin retry' : payment.payoutRequestId ? 'Included in your payout request' : 'Approved bonus · awaiting payment'}</p></div><span className="shrink-0 text-sm font-semibold tabular-nums">{sprintMoney(payment.amountCents)}</span></article>)}
           <p className="mb-5 text-sm text-zinc-500">{earnings.length} posts awaiting payment · {pendingReview} in review</p>
           {earnings.length ? (
             <div className="grid gap-3">
@@ -219,7 +220,7 @@ function MoneyContent() {
                 )
               })}
             </div>
-          ) : (
+          ) : bonusEarnings.length ? null : (
             <Empty
               title="No reviewed earnings yet"
               description="Eligible, approved videos will appear here until their payments are sent."

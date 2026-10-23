@@ -12,6 +12,7 @@ async function handler(
   req: NextApiRequest,
   res: NextApiResponse,
 ) {
+  res.setHeader('Cache-Control', 'private, no-store')
   try {
     if (req.method !== 'GET') return methodNotAllowed(res, ['GET'])
     const session = await getAuthSession(req, res)
