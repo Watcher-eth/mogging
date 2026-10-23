@@ -37,16 +37,20 @@ function AccountsContent() {
     '/api/creator',
     apiGet,
   )
+  const profileId = data?.profile?.id
   useEffect(() => {
+    if (!profileId) return
     let active = true
-    void apiPost<{ accounts: Array<{ id: string; avatarUrl: string | null }> }>('/api/creator/account-avatars', {})
+    const refresh = () => { void apiPost<{ accounts: Array<{ id: string; avatarUrl: string | null }> }>('/api/creator/account-avatars', {})
       .then(result => {
         if (!active) return
         const photos = new Map(result.accounts.map(account => [account.id, account.avatarUrl]))
         void mutate(current => current ? { ...current, socialAccounts: current.socialAccounts.map(account => ({ ...account, avatarUrl: photos.get(account.id) || account.avatarUrl })) } : current, { revalidate: false })
-      }).catch(() => { /* Keep existing photos and initials when the provider is unavailable. */ })
-    return () => { active = false }
-  }, [mutate])
+      }).catch(() => { /* Keep existing photos and initials when the provider is unavailable. */ }) }
+    refresh()
+    window.addEventListener('focus', refresh)
+    return () => { active = false; window.removeEventListener('focus', refresh) }
+  }, [mutate, profileId])
   const [editing, setEditing] = useState<{ id: string; mode: 'followers' | 'anchor' } | null>(null)
   const [open, setOpen] = useState(false)
   const [platform, setPlatform] = useState<'tiktok' | 'instagram'>('tiktok')

@@ -18,14 +18,14 @@ export function CreatorUpdates({ data }: { data: CreatorDashboard }) {
         {updates.map(update => {
           const Icon = icons[update.type]
           return <li key={update.id}>
-            <Link href="/creator/submissions" className="group flex items-start gap-3 rounded-xl py-4 transition-colors hover:bg-zinc-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#007aff] sm:gap-4">
+            <Link href={`/creator/submissions?submission=${encodeURIComponent(update.submissionId)}`} className="group flex items-start gap-3 rounded-xl py-4 transition-colors hover:bg-zinc-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#007aff] sm:gap-4">
               <span className={`grid size-10 shrink-0 place-items-center rounded-full ${update.type === 'approved' || update.type === 'paid' ? 'bg-emerald-50 text-emerald-600' : update.type === 'rejected' ? 'bg-orange-50 text-orange-600' : 'bg-zinc-100 text-zinc-500'}`}><Icon className="size-4" aria-hidden="true" /></span>
               <span className="min-w-0 flex-1">
                 <span className="block text-sm font-semibold">{update.snapshot ? currentLabels[update.type] : creatorUpdateLabels[update.type]}</span>
                 <span className="mt-1 block truncate text-[13px] text-zinc-500">{update.title}</span>
                 {update.note ? <span className="mt-1.5 line-clamp-2 text-[13px] leading-5 text-zinc-600">{update.note}</span> : null}
               </span>
-              {update.snapshot ? <span className="pt-0.5 text-right text-[11px] text-zinc-400">Current status</span> : <time dateTime={update.createdAt} title={new Date(update.createdAt).toLocaleString()} className="shrink-0 pt-0.5 text-right text-[11px] text-zinc-400">{new Date(update.createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}</time>}
+              {update.snapshot ? <span className="pt-0.5 text-right text-[11px] text-zinc-400">Current status</span> : <time dateTime={update.createdAt} title={new Date(update.createdAt).toLocaleString()} className="shrink-0 pt-0.5 text-right text-[11px] leading-5 text-zinc-400"><span className="block">{new Date(update.createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}</span><span className="block">{new Date(update.createdAt).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })}</span></time>}
             </Link>
           </li>
         })}

@@ -1,0 +1,29 @@
+import { beforeEach, expect, mock, test } from 'bun:test'
+mock.module('@/lib/db', () => ({ db: {}, schema: {} }))
+const { recordReviewUpdate } = await import('./submission-updates')
+let events: any[] = []
+const tx: any = { insert: () => ({ values: async (event: unknown) => { events.push(event) } }) }
+const previous = { id: 'own-post', status: 'in_review', reviewNote: null, reviewRequestedAt: null }
+beforeEach(() => { events = [] })
+
+test('approval and review note are captured together', async () => {
+  await recordReviewUpdate(tx, previous, { status: 'approved', reviewNote: 'Nice work' })
+  expect(events).toHaveLength(1)
+  expect(events[0]).toMatchObject({ submissionId: previous.id, type: 'approved', note: 'Nice work' })
+})
+test('saving an unchanged review does not repeat an update', async () => {
+  await recordReviewUpdate(tx, { ...previous, status: 'approved', reviewNote: 'Nice work' }, { status: 'approved', reviewNote: 'Nice work' })
+  expect(events).toHaveLength(0)
+})
+test('a fresh review decision is retained even when the previous status matches', async () => {
+  await recordReviewUpdate(tx, { ...previous, status: 'approved', reviewRequestedAt: new Date() }, { status: 'approved' })
+  expect(events[0].type).toBe('approved')
+})
+test('new feedback on an existing decision is its own update', async () => {
+  await recordReviewUpdate(tx, { ...previous, status: 'rejected' }, { status: 'rejected', reviewNote: 'Please show the analytics page' })
+  expect(events[0]).toMatchObject({ type: 'feedback', note: 'Please show the analytics page' })
+})
+test('marking a post paid does not pretend a transfer has completed', async () => {
+  await recordReviewUpdate(tx, previous, { status: 'paid' })
+  expect(events).toHaveLength(0)
+})

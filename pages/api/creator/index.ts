@@ -9,6 +9,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
     const session = await getAuthSession(req, res)
     if (!session?.user?.id) throw new ApiError(401, 'Authentication required')
 
+    res.setHeader('Cache-Control', 'private, no-store')
     if (req.method === 'GET') {
       return json(res, 200, await getCreatorDashboard(session.user.id))
     }

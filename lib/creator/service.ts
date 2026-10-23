@@ -1,4 +1,3 @@
-import { fetchAccountAvatar } from './account-avatars'
 import { getCreatorSubmissionUpdates, recordSubmissionUpdate } from './submission-updates'
 import { resolveCreatorPostLink, rethrowCreatorPostConflict } from './post-identity'
 import { accountFollowers, followersFromOAuth, publishingTikTokHandle, tiktokAnchorEligible, TIKTOK_ANCHOR_REQUIREMENTS_ENABLED, TIKTOK_ANCHOR_REQUIREMENT } from './tiktok-anchor'
@@ -123,6 +122,7 @@ export async function saveCreatorProfile(userId: string, input: CreatorProfileIn
 export async function addCreatorSocialAccount(userId: string, input: CreatorSocialAccountInput) {
   const profile = await getOrCreateCreatorProfile(userId)
   if (profile.authStatus === 'suspended') throw new CreatorServiceError(403, 'Your creator account is suspended')
+  const { fetchAccountAvatar } = await import('./account-avatars')
   const [followers, avatarUrl] = await Promise.all([
     input.platform === 'tiktok' ? resolveTikTokFollowers(input.handle, input.followerRange) : null,
     fetchAccountAvatar(input.platform, input.handle),
@@ -134,7 +134,11 @@ export async function addCreatorSocialAccount(userId: string, input: CreatorSoci
     await tx.execute(sql`select pg_advisory_xact_lock(hashtextextended(${`${input.platform}:${input.handle}`}, 0))`)
     const claimed = await tx.query.creatorSocialAccounts.findFirst({ where: and(eq(schema.creatorSocialAccounts.platform, input.platform), eq(schema.creatorSocialAccounts.handle, input.handle)) })
     if (claimed) {
-      if (claimed.creatorProfileId === profile.id) return claimed
+      if (claimed.creatorProfileId === profile.id) {
+        if (!avatarUrl) return claimed
+        const [updated] = await tx.update(schema.creatorSocialAccounts).set({ avatarUrl, avatarCheckedAt: new Date() }).where(eq(schema.creatorSocialAccounts.id, claimed.id)).returning()
+        return updated
+      }
       throw new CreatorServiceError(409, 'This profile is already connected to another creator')
     }
     const accounts = await tx.query.creatorSocialAccounts.findMany({ where: eq(schema.creatorSocialAccounts.creatorProfileId, profile.id) })
@@ -152,6 +156,7 @@ export async function addCreatorTikTokOAuthAccount(userId: string, input: Creato
     throw new CreatorServiceError(400, 'TikTok returned an invalid username')
   }
 
+  const { fetchAccountAvatar } = await import('./account-avatars')
   const avatarUrl = await fetchAccountAvatar('tiktok', normalizedHandle || null, input.profile.avatar_large_url || input.profile.avatar_url_100 || input.profile.avatar_url)
 
   const account = await db.transaction(async (tx) => {

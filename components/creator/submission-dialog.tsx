@@ -5,6 +5,7 @@ import { detectPostingAccount } from '@/lib/creator/post-account'
 import { creatorContentRestriction } from '@/lib/creator/content-policy'
 import { creatorCampaignRules, creatorFormatElement, CREATOR_REREVIEW_GUIDANCE } from '@/lib/creator/post-guidance'
 import { PublishedPostPlayer } from './published-post-player'
+import { SocialPlatformLogo } from '@/components/brand/social-platform-logo'
 import { AnalyticsRecordingPreview } from './analytics-recording-preview'
 import { CampaignRegionHelp } from './campaign-region-help'
 import { MinimumViewsDialog } from './minimum-views-dialog'
@@ -106,7 +107,7 @@ export function SubmissionDialog({
   const [rejectedViews, setRejectedViews] = useState<number | null>(null)
   const [audience, setAudience] = useState(existingSubmission?.usAudiencePercent?.toString() || '')
   const [confirmed, setConfirmed] = useState<string[]>([])
-  const canCheckAll = (data?.submissions.filter(item => item.status === 'approved' || item.status === 'paid').length ?? 0) >= 4
+  const canCheckAll = (data?.submissions.filter(item => item.status === 'approved' || item.status === 'paid').length ?? 0) >= 5
   const [busy, setBusy] = useState(false)
   const [progress, setProgress] = useState(0)
   const fileRef = useRef<HTMLInputElement>(null)
@@ -562,14 +563,13 @@ export function SubmissionDialog({
                           ['Platform', platform],
                           ['Video', postUrl],
                           ...(usedRefCode ? [['Ref code', 'Used']] : []),
-                          ['Analytics', recording?.name],
                         ].map(([name, value]) => (
                           <div
                             className="flex items-start justify-between gap-4"
                             key={name}
                           >
                             <dt className="shrink-0 text-zinc-500">{name}</dt>
-                            <dd className="break-all text-right">{value}</dd>
+                            <dd className="break-all text-right">{name === 'Platform' && platform ? <span className="inline-flex items-center gap-2"><span>{platform === 'tiktok' ? 'TikTok' : 'Instagram'}</span><span className="grid size-6 shrink-0 place-items-center rounded-full bg-white"><SocialPlatformLogo platform={platform} className="size-3.5" /></span></span> : value}</dd>
                           </div>
                         ))}
                       </dl>

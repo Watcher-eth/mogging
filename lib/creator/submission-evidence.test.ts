@@ -9,10 +9,11 @@ let sprintActive = true
 const now = new Date()
 const sprint = { id: '00000000-0000-4000-8000-000000000004', status: 'published', startsAt: new Date(now.getTime()-86400000), endsAt: new Date(now.getTime()+86400000), updatedAt: now, budgetCents: 10000, terms: { milestones: [{ views: 5000, amountCents: 1000 }], minimumTier1Percent: 20, maximumTier1Percent: 40, platforms: ['tiktok', 'instagram'] as ('tiktok' | 'instagram')[], rules: ['Keep public'], formats: [{ id: 'general-creator-video-v1', name: 'Video', shortDescription: 'Show Mogging', active: true, elements: [{ title: 'Hook', detail: 'Introduce the app' }], requirements: ['Keep public'], notAllowed: [] }] } }
 let inserted: any[] = []
+let updates: any[] = []
 let verified: any[] = []
 mock.module('@/lib/db', () => ({ schema, db: {
   query: { creatorProfiles: { findFirst: async () => ({ id: 'creator' }) }, creatorSocialAccounts: { findFirst: async () => publishingAccount, findMany: async () => publishingAccount?.platform === 'tiktok' ? [publishingAccount] : [] }, creatorSprints: { findFirst: async () => ({ ...sprint, status: sprintActive ? 'published' : 'ended' }) } },
-  transaction: async (fn: any) => fn({ execute: async () => undefined, query: { creatorSubmissions: { findFirst: async () => previousPost } }, select: () => ({ from: (table: unknown) => ({ where: () => ({ for: async () => [sprint], then: (resolve: any) => resolve([{ cents: 0 }]) }) }) }), insert: (table: unknown) => ({ values: (values: any) => { inserted.push(values); return { returning: async () => [{ id: 'submission', ...values }] } } }) }),
+  transaction: async (fn: any) => fn({ execute: async () => undefined, query: { creatorSubmissions: { findFirst: async () => previousPost } }, select: () => ({ from: (table: unknown) => ({ where: () => ({ for: async () => [sprint], then: (resolve: any) => resolve([{ cents: 0 }]) }) }) }), insert: (table: unknown) => ({ values: (values: any) => { (table === schema.creatorSubmissionUpdates ? updates : inserted).push(values); return { returning: async () => [{ id: 'submission', ...values }] } } }) }),
   insert: () => ({ values: (values: any) => { inserted.push(values); return { returning: async () => [{ id: 'submission', ...values }] } } }),
 } }))
 mock.module('@/lib/creator/attribution', () => ({ ensureCreatorTrackingLink: async () => null, creatorReferralHandle: (value: string) => value }))
@@ -30,12 +31,13 @@ const input = {
   analyticsStorageKey: 'creators/user/submission-analytics/00000000-0000-4000-8000-000000000001.mp4',
   analyticsContentType: 'video/mp4' as const, analyticsSizeBytes: 100, viewCountThreshold: 40000 as const,
 }
-beforeEach(() => { publishingAccount = { id: accountId, creatorProfileId: 'creator', platform: 'tiktok', handle: 'nate', followers: { source: 'public', count: 999, checkedAt: now.toISOString() } }; previousPost = null; inserted = []; verified = []; uploadExists = true; sprintActive = true })
+beforeEach(() => { publishingAccount = { id: accountId, creatorProfileId: 'creator', platform: 'tiktok', handle: 'nate', followers: { source: 'public', count: 999, checkedAt: now.toISOString() } }; previousPost = null; inserted = []; updates = []; verified = []; uploadExists = true; sprintActive = true })
 test('completed video evidence is checked and its URL comes from owned storage', async () => {
   const submission = await createCreatorSubmission('user', input)
   expect(verified).toEqual([[input.analyticsStorageKey, 100, 'video/mp4']])
   expect(submission.analyticsScreenshotUrl).toBe(`https://media.example/${input.analyticsStorageKey}`)
   expect(inserted).toHaveLength(1)
+  expect(updates).toMatchObject([{ submissionId: 'submission', type: 'submitted' }])
 })
 test('missing or incomplete uploads cannot create submissions', async () => {
   uploadExists = false

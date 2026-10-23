@@ -30,7 +30,7 @@ export function creatorActivity(updates: CreatorUpdate[], submissions: CreatorSu
   const activity: CreatorUpdate[] = [...updates]
   for (const post of submissions) {
     if (!submitted.has(post.id)) activity.push({ id: `submitted:${post.id}`, submissionId: post.id, type: 'submitted', note: null, createdAt: post.createdAt, title: post.caption || post.title })
-    if (['in_review', 'approved', 'rejected'].includes(post.status) && !updates.some(item => item.submissionId === post.id && item.type === post.status)) activity.push({ id: `status:${post.id}`, submissionId: post.id, type: post.status, note: post.reviewNote, createdAt: post.updatedAt || post.createdAt, title: post.caption || post.title, snapshot: true })
+    if (['in_review', 'approved', 'rejected'].includes(post.status) && !post.reviewRequestedAt && !updates.some(item => item.submissionId === post.id)) activity.push({ id: `status:${post.id}`, submissionId: post.id, type: post.status, note: post.reviewNote, createdAt: post.updatedAt || post.createdAt, title: post.caption || post.title, snapshot: true })
     if (post.reviewRequestedAt && !existingRequests.has(`${post.id}:${post.reviewRequestedAt}`)) activity.push({ id: `rereview:${post.id}`, submissionId: post.id, type: 'rereview_requested', note: null, createdAt: post.reviewRequestedAt, title: post.caption || post.title })
   }
   for (const payment of payments) {

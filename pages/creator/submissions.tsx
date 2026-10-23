@@ -45,14 +45,26 @@ function SubmissionsContent() {
   }
   const { data, isLoading, mutate } = useSWR<CreatorDashboard>('/api/creator', apiGet, { refreshInterval: 30_000 })
   const [filter, setFilter] = useState<(typeof filters)[number]['value']>('all')
-  const [selectedId, setSelectedId] = useState<string | null>(null)
+  const selectedId = typeof router.query.submission === 'string' ? router.query.submission : null
+  function setSelectedId(id: string | null) {
+    const { submission: _, ...query } = router.query
+    void router.replace({ pathname: router.pathname, query: id ? { ...query, submission: id } : query }, undefined, { shallow: true })
+  }
   const [analyticsId, setAnalyticsId] = useState<string | null>(null)
   const analyticsSubmission = data?.submissions.find(item => item.id === analyticsId)
   const selected = data?.submissions.find(item => item.id === selectedId) || null
   const submissions = useMemo(() => data?.submissions || [], [data?.submissions])
   const visible = useMemo(() => filter === 'all' ? submissions : submissions.filter((item) => item.status === filter), [filter, submissions])
   const days = groupSubmissionDays(visible)
-  const paymentBySubmission = useMemo(() => new Map((data?.payments || []).filter((payment) => payment.submissionId).map((payment) => [payment.submissionId, payment])), [data?.payments])
+  const paymentBySubmission = useMemo(() => {
+    const payments = new Map<string, CreatorPayment>()
+    for (const payment of data?.payments || []) {
+      if (!payment.submissionId) continue
+      const current = payments.get(payment.submissionId)
+      if (!current || (payment.paidAt && (!current.paidAt || payment.paidAt > current.paidAt))) payments.set(payment.submissionId, payment)
+    }
+    return payments
+  }, [data?.payments])
   const accountStatusById = useMemo(() => new Map((data?.socialAccounts || []).map((account) => [account.id, account.status])), [data?.socialAccounts])
 
   return (
