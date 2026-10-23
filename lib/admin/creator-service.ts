@@ -39,6 +39,7 @@ export const creatorAdminReviewSchema = z.discriminatedUnion('resource', [
     reviewNote: z.string().trim().max(1000).optional().nullable(),
     reviewChecklist: creatorSubmissionReviewResultsSchema,
     approvedAmountCents: z.number().int().nonnegative().max(2_000_000_000).optional().nullable(),
+    approveWithoutPayment: z.boolean().optional(),
     adminViewCountThreshold: z.number().int().nonnegative().max(2_000_000_000),
     adminUsAudiencePercent: z.number().min(0).max(100).nullable(),
   }),
@@ -459,9 +460,19 @@ async function reviewSprintSubmission(input: Extract<CreatorAdminReviewInput, { 
     if (reviewError) throw new ApiError(400, reviewError)
     const calculated = sprintPayoutCents(submission.sprintTerms, input.adminViewCountThreshold, input.adminUsAudiencePercent)
     const preservedCents = submission.reviewRequestedAt || payments.some(payment => payment.status === 'paid') ? submission.approvedAmountCents || 0 : 0
-    const amountCents = input.status === 'approved' ? reviewedPayoutCents(input, input.approvedAmountCents == null ? Math.max(preservedCents, calculated) : calculated, payments) : preservedCents || null
+    if (input.approveWithoutPayment) {
+      if (input.status !== 'approved' || !submission.reviewRequestedAt || !preservedCents) throw new ApiError(400, 'No-payment approval is only available for a paid rereview')
+      if (remainingCreatorPaymentCents(preservedCents, payments) !== 0) throw new ApiError(409, 'Existing approved earnings must be paid before closing a rereview without payment')
+      if (calculated > preservedCents) throw new ApiError(400, 'This rereview has additional eligible earnings')
+      if (!input.reviewNote?.trim()) throw new ApiError(400, 'Explain why this rereview receives no additional payment')
+    }
+    if (input.status === 'approved' && !calculated && !input.approveWithoutPayment) throw new ApiError(409, 'Approval requires eligible views and audience')
+    const amountCents = input.status === 'approved'
+      ? input.approveWithoutPayment
+        ? preservedCents
+        : reviewedPayoutCents(input, input.approvedAmountCents == null ? Math.max(preservedCents, calculated) : calculated, payments)
+      : preservedCents || null
 
-    if (input.status === 'approved' && !calculated) throw new ApiError(409, 'Approval requires eligible views and audience')
     const [sprint] = await tx.select().from(schema.creatorSprints).where(eq(schema.creatorSprints.id, submission.sprintId)).for('update')
     if (!sprint) throw new ApiError(404, 'Sprint not found')
     const [used] = await tx.select({ cents: sql<number>`coalesce(sum(${schema.creatorSubmissions.approvedAmountCents}),0)::float8` }).from(schema.creatorSubmissions).where(eq(schema.creatorSubmissions.sprintId, sprint.id))

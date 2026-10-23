@@ -359,6 +359,7 @@ function ReviewDialog({ target, creator, payments, metrics, open, onOpenChange, 
   const [adminUsAudiencePercent, setAdminUsAudiencePercent] = useState(() => target.resource === 'submission'
     ? String((target.item.reviewRequestedAt ? target.item.usAudiencePercent : target.item.adminUsAudiencePercent) ?? target.item.usAudiencePercent ?? 'base')
     : 'base')
+  const [approveWithoutPayment, setApproveWithoutPayment] = useState(false)
   const [tab, setTab] = useState('video')
   const [saving, setSaving] = useState(false)
   const existingPayment = target.resource === 'submission' ? payments.find((payment) => payment.submissionId === target.item.id && ['pending', 'processing'].includes(payment.status)) : undefined
@@ -372,24 +373,52 @@ function ReviewDialog({ target, creator, payments, metrics, open, onOpenChange, 
     target.resource === 'submission' && target.item.sprintId && (target.item.reviewRequestedAt || submissionPayments.some(payment => payment.status === 'paid')) ? target.item.approvedAmountCents || 0 : 0,
     Math.round(payoutEstimate.payout * 100),
   ) : null
-
-  const payoutTotalCents = amount.trim() ? Math.round(Number(amount) * 100) : calculatedTotalCents
   const paidCents = submissionPayments.filter(payment => payment.status === 'paid').reduce((sum, payment) => sum + payment.amountCents, 0)
-  const adjustmentError = target.resource === 'submission' && status === 'approved' && amount.trim()
-    ? !/^\d+(\.\d{1,2})?$/.test(amount) || !Number.isSafeInteger(payoutTotalCents) || payoutTotalCents! > 2_000_000_000
-      ? 'Enter a valid USD amount with at most two decimals.'
-      : payoutTotalCents! < paidCents ? 'The approved total cannot be lower than payments already sent.'
-      : payoutTotalCents !== calculatedTotalCents && !reviewNote.trim() ? 'Explain the payout adjustment for the creator.' : null
+  const previouslyApprovedCents = target.resource === 'submission' ? target.item.approvedAmountCents || 0 : 0
+  const canApproveWithoutPayment = target.resource === 'submission' && Boolean(target.item.reviewRequestedAt) && previouslyApprovedCents > 0 && paidCents >= previouslyApprovedCents
+  const payoutTotalCents = approveWithoutPayment ? previouslyApprovedCents : amount.trim() ? Math.round(Number(amount) * 100) : calculatedTotalCents
+  const approvedPayoutInput = approveWithoutPayment
+    ? (previouslyApprovedCents / 100).toFixed(2)
+    : amount.trim()
+      ? amount
+      : calculatedTotalCents === null
+        ? ''
+        : (calculatedTotalCents / 100).toFixed(2)
+  const estimatedTierCents = payoutEstimate ? Math.round(payoutEstimate.payout * 100) : null
+  const adjustmentError = target.resource === 'submission' && status === 'approved'
+    ? approveWithoutPayment
+      ? !reviewNote.trim()
+        ? 'Explain why this rereview receives no additional payment.'
+        : estimatedTierCents !== null && estimatedTierCents > previouslyApprovedCents
+          ? 'This rereview has additional eligible earnings. Use the calculated payout instead.'
+          : null
+      : amount.trim()
+        ? !/^\d+(\.\d{1,2})?$/.test(amount) || !Number.isSafeInteger(payoutTotalCents) || payoutTotalCents! > 2_000_000_000
+          ? 'Enter a valid USD amount with at most two decimals.'
+          : payoutTotalCents! < paidCents ? 'The approved total cannot be lower than payments already sent.'
+          : payoutTotalCents !== calculatedTotalCents && !reviewNote.trim() ? 'Explain the payout adjustment for the creator.' : null
+        : null
     : null
 
   function changeReviewStatus(value: string) {
     if (target.resource === 'submission' && (status === 'rejected') !== (value === 'rejected')) {
       setReviewChecklist(items => withAudienceRejectionReason(resetSubmissionReview(items, value), value))
     }
+    if (value !== 'approved') setApproveWithoutPayment(false)
     setStatus(value as typeof status)
   }
 
-  const reducedApproval = status === 'approved' && Boolean(amount.trim() && reviewNote.trim()) && payoutTotalCents !== null && calculatedTotalCents !== null && Boolean(payoutEstimate && payoutTotalCents < Math.round(payoutEstimate.payout * 100))
+  function changeAdminViewCount(value: string) {
+    setAdminViewCountThreshold(value)
+    setAmount('')
+  }
+
+  function changeAdminAudience(value: string) {
+    setAdminUsAudiencePercent(value)
+    setAmount('')
+  }
+
+  const reducedApproval = status === 'approved' && (approveWithoutPayment || Boolean(amount.trim() && reviewNote.trim())) && payoutTotalCents !== null && calculatedTotalCents !== null && Boolean(payoutEstimate && payoutTotalCents < Math.round(payoutEstimate.payout * 100))
   const reviewError = target.resource === 'submission' ? submissionReviewError(status, reviewChecklist) || adjustmentError : null
 
   async function save() {
@@ -403,14 +432,15 @@ function ReviewDialog({ target, creator, payments, metrics, open, onOpenChange, 
         status,
         ...(['account', 'submission'].includes(target.resource) ? { reviewNote: reviewNote || null } : null),
         ...(target.resource === 'submission' ? {
-          approvedAmountCents: status === 'approved' && amount.trim() ? payoutTotalCents : null,
+          approvedAmountCents: status === 'approved' && amount.trim() && !approveWithoutPayment ? payoutTotalCents : null,
+          approveWithoutPayment,
           reviewChecklist: reviewChecklist.map(({ id, met, note }) => ({ id, met, note: note || null })),
           adminViewCountThreshold: adminPayoutSelection.viewCountThreshold,
           adminUsAudiencePercent: adminPayoutSelection.usAudiencePercent,
         } : null),
         ...(target.resource === 'payment' ? { amountCents: Math.round(Number(amount) * 100), providerReference: providerReference || null } : null),
       })
-      toast.success('Review saved')
+      toast.success(approveWithoutPayment ? 'Approved with no additional payment' : 'Review saved')
       await onSaved()
     } catch (error) {
       toast.error(error instanceof ApiClientError ? error.message : 'Could not save review')
@@ -452,20 +482,24 @@ function ReviewDialog({ target, creator, payments, metrics, open, onOpenChange, 
               <Tabs.Content value="earnings" className="outline-none">
                 <div className="mt-5 rounded-xl bg-sky-50 p-4 text-sm"><p className="font-semibold">{creator?.bundledPayouts ? 'Bundled payouts · creator chooses when to cash out' : 'Separate payouts · paid after approval'}</p><p className="mt-1 text-xs leading-5 text-zinc-500">{creator?.bundledPayouts ? 'Hold these earnings until the creator requests a bundle. Requests appear in the review queue and Payments with the full amount to send.' : 'This creator has not opted into bundled payouts.'}</p></div>
                 {creator ? <PayoutAccountDetails creator={creator} /> : <p className="mt-5 text-sm text-zinc-500">Creator payout details unavailable.</p>}
-                <AdminPayoutDecision submission={target.item} selection={adminPayoutSelection} onViewCountChange={setAdminViewCountThreshold} onAudienceChange={setAdminUsAudiencePercent} />
+                <AdminPayoutDecision submission={target.item} selection={adminPayoutSelection} onViewCountChange={changeAdminViewCount} onAudienceChange={changeAdminAudience} />
+                {canApproveWithoutPayment ? <label className="mt-5 flex cursor-pointer items-start gap-3 rounded-2xl border border-amber-200 bg-amber-50/70 p-4">
+                  <input type="checkbox" checked={approveWithoutPayment} onChange={event => { setApproveWithoutPayment(event.target.checked); if (event.target.checked) { setStatus('approved'); setAmount('') } }} className="mt-0.5 size-4 shrink-0 accent-amber-600" />
+                  <span><span className="block text-sm font-semibold text-amber-950">Approve this rereview with no additional payment</span><span className="mt-1 block text-xs leading-5 text-amber-900/75">Use this when the verified audience tier does not increase earnings beyond what was already paid. Prior earnings stay unchanged, and the creator can request another rereview at this or a future threshold.</span></span>
+                </label> : null}
                 <section className="mt-5 rounded-2xl border border-zinc-200 p-4">
-                  <div className="flex items-center justify-between gap-3"><p className="text-sm font-semibold">Approved payout · USD</p><button type="button" className="min-h-10 text-xs font-medium text-[#007aff]" onClick={() => setAmount('')}>Use calculated amount</button></div>
-                  <label className="mt-2 grid gap-2 text-xs text-zinc-500">Total earned for this video, including prior payments<input aria-label="Approved payout in USD" type="number" min={paidCents / 100} step="0.01" inputMode="decimal" value={amount} placeholder={calculatedTotalCents === null ? 'Choose views and audience first' : (calculatedTotalCents / 100).toFixed(2)} onChange={event => setAmount(event.target.value)} className="creator-field text-lg font-semibold tabular-nums" disabled={Boolean(existingPayment)} /></label>
+                  <div className="flex items-center justify-between gap-3"><p className="text-sm font-semibold">Approved payout · USD</p><button type="button" className="min-h-10 text-xs font-medium text-[#007aff] disabled:text-zinc-400" onClick={() => setAmount('')} disabled={approveWithoutPayment}>Use calculated amount</button></div>
+                  <label className="mt-2 grid gap-2 text-xs text-zinc-500">Total approved earnings for this video, including prior payments<input aria-label="Approved payout in USD" type="number" min={paidCents / 100} step="0.01" inputMode="decimal" value={approvedPayoutInput} placeholder="Choose views and audience first" onChange={event => setAmount(event.target.value)} className="creator-field text-lg font-semibold tabular-nums" disabled={Boolean(existingPayment) || approveWithoutPayment} /></label>
                   <p className="mt-2 text-xs leading-5 text-zinc-500">Calculated payout: {calculatedTotalCents === null ? '—' : formatMoney(calculatedTotalCents, 'USD')}. Enter a different total to apply a payout adjustment. Save the approved review before scheduling payment.</p>
-                  <label className="mt-4 grid gap-2 text-xs font-semibold text-zinc-700">Adjustment reason · shown to creator<textarea value={reviewNote} onChange={event => setReviewNote(event.target.value)} maxLength={1000} placeholder="Explain the rule violation and payout adjustment…" className="creator-field min-h-20 resize-y py-3 font-normal" /></label>
+                  <label className="mt-4 grid gap-2 text-xs font-semibold text-zinc-700">{approveWithoutPayment ? 'No-payment explanation · required and shown to creator' : 'Adjustment reason · shown to creator'}<textarea value={reviewNote} onChange={event => setReviewNote(event.target.value)} maxLength={1000} placeholder={approveWithoutPayment ? 'Explain that the audience moved to a lower tier and no additional payout is due…' : 'Explain the rule violation and payout adjustment…'} className="creator-field min-h-20 resize-y py-3 font-normal" /></label>
                 </section>
                 <SubmissionPayoutSummary totalCents={Number.isFinite(payoutTotalCents) ? payoutTotalCents : null} payments={submissionPayments} />
-                {existingPayment ? <div className="mt-5 border-t border-zinc-100 pt-5"><p className="text-sm font-semibold">{existingPayment.payoutRequestId ? 'Included in requested bundle' : 'Payment scheduled'}</p><p className="mt-1 text-sm text-zinc-500">{formatMoney(existingPayment.amountCents, existingPayment.currency)} · {statusLabel(existingPayment.status)}</p>{existingPayment.payoutRequestId ? <Link href="/admin/payments" className="mt-2 inline-block text-xs text-[#007aff]">Review and record the complete bundle in Payments →</Link> : null}</div> : creator?.bundledPayouts ? <p className="mt-5 text-xs text-zinc-500">Save the review as usual. The creator can request these earnings from Money when ready.</p> : <CreatePayment submission={target.item} payments={submissionPayments} totalCents={payoutTotalCents} unsavedAdjustment={Boolean(adjustmentError) || (amount.trim() ? payoutTotalCents !== target.item.approvedAmountCents : target.item.approvedAmountCents != null && target.item.approvedAmountCents !== calculatedTotalCents)} selection={adminPayoutSelection} onCreated={onSaved} />}
+                {approveWithoutPayment ? <p className="mt-5 rounded-xl bg-zinc-50 p-3 text-xs leading-5 text-zinc-600">No new payment will be scheduled. Saving closes this rereview while keeping the creator’s prior approved earnings and future rereview access.</p> : existingPayment ? <div className="mt-5 border-t border-zinc-100 pt-5"><p className="text-sm font-semibold">{existingPayment.payoutRequestId ? 'Included in requested bundle' : 'Payment scheduled'}</p><p className="mt-1 text-sm text-zinc-500">{formatMoney(existingPayment.amountCents, existingPayment.currency)} · {statusLabel(existingPayment.status)}</p>{existingPayment.payoutRequestId ? <Link href="/admin/payments" className="mt-2 inline-block text-xs text-[#007aff]">Review and record the complete bundle in Payments →</Link> : null}</div> : creator?.bundledPayouts ? <p className="mt-5 text-xs text-zinc-500">Save the review as usual. The creator can request these earnings from Money when ready.</p> : <CreatePayment submission={target.item} payments={submissionPayments} totalCents={payoutTotalCents} unsavedAdjustment={Boolean(adjustmentError) || (amount.trim() ? payoutTotalCents !== target.item.approvedAmountCents : target.item.approvedAmountCents != null && target.item.approvedAmountCents !== calculatedTotalCents)} selection={adminPayoutSelection} onCreated={onSaved} />}
               </Tabs.Content>
               <Tabs.Content forceMount value="attribution" className="outline-none data-[state=inactive]:hidden"><AttributionEvidence submission={target.item} metrics={metrics.find(item => item.submissionId === target.item.id)} /></Tabs.Content>
               <Tabs.Content value="messages" className="outline-none"><SubmissionConversation submissionId={target.item.id} viewerRole="team" className="h-[min(50dvh,440px)] min-h-[280px]" /></Tabs.Content>
             </div>
-            {tab === 'earnings' ? <div className="mt-5 flex shrink-0 items-center justify-between gap-3 border-t border-zinc-100 pt-4"><p className="text-xs text-zinc-500">{reviewError || (status === 'rejected' ? `${reviewChecklist.filter(item => !item.met).length} rejection reasons selected` : adminViewCountThreshold ? `${reviewChecklist.filter(item => item.met).length}/${reviewChecklist.length} requirements met` : 'Set verified views in Earnings before saving.')}</p><Button className="shrink-0 rounded-full" onClick={() => void save()} disabled={saving || !adminViewCountThreshold || Boolean(reviewError)}>{saving ? <Loader2 className="animate-spin" /> : <ShieldCheck />}{saving ? 'Saving…' : status === 'rejected' ? 'Save rejection' : status === 'approved' && reviewChecklist.some(item => !item.met) ? 'Approve with exceptions' : 'Save review'}</Button></div> : null}
+            {tab === 'earnings' ? <div className="mt-5 flex shrink-0 items-center justify-between gap-3 border-t border-zinc-100 pt-4"><p className="text-xs text-zinc-500">{reviewError || (status === 'rejected' ? `${reviewChecklist.filter(item => !item.met).length} rejection reasons selected` : adminViewCountThreshold ? `${reviewChecklist.filter(item => item.met).length}/${reviewChecklist.length} requirements met` : 'Set verified views in Earnings before saving.')}</p><Button className="shrink-0 rounded-full" onClick={() => void save()} disabled={saving || !adminViewCountThreshold || Boolean(reviewError)}>{saving ? <Loader2 className="animate-spin" /> : <ShieldCheck />}{saving ? 'Saving…' : approveWithoutPayment ? 'Approve — no payment' : status === 'rejected' ? 'Save rejection' : status === 'approved' && reviewChecklist.some(item => !item.met) ? 'Approve with exceptions' : 'Save review'}</Button></div> : null}
           </Tabs.Root> : <>
           <ReviewDetails target={target} />
           {canReview ? <div className="mt-6 grid gap-2">

@@ -223,6 +223,21 @@ test('a paid first milestone can be rereviewed and only its unpaid increase is s
   const result = await createCreatorPayment({ submissionId: 'submission', adminViewCountThreshold: 20000, adminUsAudiencePercent: 40, status: 'pending' })
   expect(result.amountCents).toBe(2000)
 })
+test('a lower-tier paid rereview can be approved with no additional payment and an explanation', async () => {
+  submission = { ...submission, status: 'in_review', reviewRequestedAt: new Date(), approvedAmountCents: 1000 }
+  pastPayments = [{ amountCents: 1000, status: 'paid' }]
+  used = 1000
+  const noPaymentReview = { ...review, approveWithoutPayment: true, adminUsAudiencePercent: 10, reviewNote: 'The verified audience moved to a lower tier, so no additional payment is due.' }
+  const result = await reviewCreatorResource(noPaymentReview)
+  expect(result).toMatchObject({ status: 'approved', approvedAmountCents: 1000, adminUsAudiencePercent: 10, reviewRequestedAt: null, reviewNote: noPaymentReview.reviewNote })
+  await expect(createCreatorPayment({ submissionId: 'submission', adminViewCountThreshold: 5000, adminUsAudiencePercent: 10, status: 'pending' })).rejects.toThrow('already been paid')
+})
+test('no-payment rereview approval requires its creator-visible explanation', async () => {
+  submission = { ...submission, status: 'in_review', reviewRequestedAt: new Date(), approvedAmountCents: 1000 }
+  pastPayments = [{ amountCents: 1000, status: 'paid' }]
+  used = 1000
+  await expect(reviewCreatorResource({ ...review, approveWithoutPayment: true, adminUsAudiencePercent: 10, reviewNote: null })).rejects.toThrow('Explain why this rereview receives no additional payment')
+})
 test('rejected or lower rereview preserves earlier approved earnings and their budget reservation', async () => {
   submission = { ...submission, status: 'in_review', reviewRequestedAt: new Date(), approvedAmountCents: 1000 }
   pastPayments = [{ amountCents: 1000, status: 'paid' }]; used = 1000
