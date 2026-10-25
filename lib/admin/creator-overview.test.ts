@@ -1,6 +1,6 @@
 import { describe, expect, test } from 'bun:test'
 import type { AdminAccount, AdminCreator, AdminDashboard, AdminPayment, AdminSubmission } from '@/components/admin/creator-types'
-import { approvedUnpaidSubmissions, creatorOutstandingPaymentGroups, approvalKind, getApprovalQueue, isNewInLastDay, publishedVideoEmbedUrl, walletExplorerUrl } from './creator-overview'
+import { approvedUnpaidSubmissions, creatorOutstandingPaymentGroups, approvalKind, getApprovalQueue, getSubmissionReviewQueues, isNewInLastDay, publishedVideoEmbedUrl, walletExplorerUrl } from './creator-overview'
 
 describe('admin overview approvals', () => {
   test('queues every submission without retired account or payout approval steps', () => {
@@ -41,6 +41,26 @@ describe('admin overview approvals', () => {
       'first-submission',
       'rereview',
       'new-submission',
+    ])
+  })
+
+  test('separates campaign formats into first-come-first-served queues', () => {
+    const data = {
+      submissions: [
+        { id: 'general-new', status: 'pending', formatId: 'launch-general-looksmaxxing-v1', createdAt: '2026-10-04T12:00:00Z' },
+        { id: 'comparison', status: 'pending', formatId: 'launch-feature-comparison-v1', createdAt: '2026-10-02T12:00:00Z' },
+        { id: 'general-first', status: 'pending', formatId: 'launch-general-looksmaxxing-v1', createdAt: '2026-10-01T12:00:00Z' },
+        { id: 'analysis-rereview', status: 'in_review', formatId: 'legacy', sprintName: 'Mogging Detailed Analysis', createdAt: '2026-09-01T12:00:00Z', reviewRequestedAt: '2026-10-03T12:00:00Z' },
+      ] as AdminSubmission[],
+      accounts: [],
+      creators: [],
+    } as unknown as AdminDashboard
+
+    const queues = getSubmissionReviewQueues(data)
+    expect(queues.map(queue => [queue.label, queue.items.map(target => target.item.id)])).toEqual([
+      ['General Looksmaxxing', ['general-first', 'general-new']],
+      ['Face Feature Comparison', ['comparison']],
+      ['Detailed Analysis', ['analysis-rereview']],
     ])
   })
 

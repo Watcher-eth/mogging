@@ -3,6 +3,14 @@ import type { AdminCreator, AdminDashboard, AdminPayment, AdminSubmission, Revie
 
 export type ApprovalTarget = Exclude<ReviewTarget, { resource: 'payment' }>
 export type ApprovalKind = 'submission' | 'account' | 'payout'
+export type SubmissionReviewQueueId = 'general-looksmaxxing' | 'feature-comparison' | 'detailed-analysis' | 'other'
+
+export const submissionReviewQueueLabels: Record<SubmissionReviewQueueId, string> = {
+  'general-looksmaxxing': 'General Looksmaxxing',
+  'feature-comparison': 'Face Feature Comparison',
+  'detailed-analysis': 'Detailed Analysis',
+  other: 'Other submissions',
+}
 
 export const approvalTypes = {
   submission: { label: 'Video submission', plural: 'Video submissions', color: 'border-violet-200 bg-violet-50 text-violet-700' },
@@ -32,6 +40,29 @@ export function getApprovalQueue(data: AdminDashboard): ApprovalTarget[] {
     const bTime = Date.parse(approvalSubmittedAt(b))
     return (Number.isFinite(aTime) ? aTime : Number.MAX_SAFE_INTEGER) - (Number.isFinite(bTime) ? bTime : Number.MAX_SAFE_INTEGER)
   })
+}
+
+export function submissionReviewQueueId(submission: AdminSubmission): SubmissionReviewQueueId {
+  const format = submission.sprintTerms?.formats.find(item => item.id === submission.formatId)
+  const identity = [submission.formatId, format?.name, submission.sprintName, submission.title].filter(Boolean).join(' ').toLowerCase()
+  if (identity.includes('general-looksmaxxing') || identity.includes('general looksmaxxing')) return 'general-looksmaxxing'
+  if (identity.includes('feature-comparison') || identity.includes('face feature comparison')) return 'feature-comparison'
+  if (identity.includes('detailed-analysis') || identity.includes('detailed analysis')) return 'detailed-analysis'
+  return 'other'
+}
+
+export function getSubmissionReviewQueues(data: AdminDashboard) {
+  const queues = new Map<SubmissionReviewQueueId, ApprovalTarget[]>([
+    ['general-looksmaxxing', []],
+    ['feature-comparison', []],
+    ['detailed-analysis', []],
+    ['other', []],
+  ])
+  for (const target of getApprovalQueue(data)) {
+    const queueId = target.resource === 'submission' ? submissionReviewQueueId(target.item) : 'other'
+    queues.get(queueId)!.push(target)
+  }
+  return [...queues].filter(([id, items]) => id !== 'other' || items.length).map(([id, items]) => ({ id, label: submissionReviewQueueLabels[id], items }))
 }
 
 export function isNewInLastDay(value: string, now = Date.now()) {
