@@ -54,7 +54,7 @@ import { mergeCreatorSubmissionReviewResults, submissionReviewError, createSubmi
 import { SubmissionRequirementsReview } from '@/components/admin/submission-requirements-review'
 import { CreatorIcon, type CreatorIconName } from '@/components/creator/creator-icon'
 import { CREATOR_TIER_ONE_COUNTRIES } from '@/lib/creator/audience'
-import { approvedUnpaidSubmissions, creatorOutstandingPaymentGroups, approvalKind, approvalSubmittedAt, approvalTypes, getApprovalQueue, hasPayoutDestination, isNewInLastDay, publishedVideoEmbedUrl, walletExplorerUrl } from '@/lib/admin/creator-overview'
+import { approvedUnpaidSubmissions, creatorOutstandingPaymentGroups, approvalKind, approvalSubmittedAt, approvalTypes, getSubmissionReviewQueues, hasPayoutDestination, isNewInLastDay, publishedVideoEmbedUrl, walletExplorerUrl } from '@/lib/admin/creator-overview'
 import type {
   AdminAccount,
   AdminAttributionReport,
@@ -134,7 +134,8 @@ function CtaReviewCard({ item, onSaved }: { item: CreatorCtaLibraryItem; onSaved
 }
 
 function Overview({ data, onSelect, onRefresh }: { data: AdminDashboard; onSelect: (target: ReviewTarget) => void; onRefresh: () => Promise<void> }) {
-  const attention = useMemo(() => getApprovalQueue(data), [data])
+  const reviewQueues = useMemo(() => getSubmissionReviewQueues(data), [data])
+  const attentionCount = reviewQueues.reduce((total, queue) => total + queue.items.length, 0)
   const outstandingCents = data.payments.filter((payment) => payment.status === 'pending' || payment.status === 'processing').reduce((total, payment) => total + payment.amountCents, 0)
 
   return (
@@ -147,8 +148,11 @@ function Overview({ data, onSelect, onRefresh }: { data: AdminDashboard; onSelec
       </div>
       <div className="mt-7"><BundledPayoutQueue data={data} onRefresh={onRefresh} /></div>
       <section className="mt-7">
-        <div className="mb-4"><p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-zinc-400">Priority queue</p><h2 className="mt-2 text-2xl font-semibold tracking-[-0.045em]">Needs your attention</h2></div>
-        {attention.length ? <div className="admin-list">{attention.map((target) => <QueueRow key={`${target.resource}-${target.item.id}`} target={target} onClick={() => onSelect(target)} />)}</div> : <EmptyState title="You’re all caught up" description="New submissions ready for review will appear here." />}
+        <div className="mb-4"><p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-zinc-400">Review queues</p><div className="mt-2 flex flex-wrap items-baseline justify-between gap-2"><h2 className="text-2xl font-semibold tracking-[-0.045em]">First come, first served</h2><span className="text-xs tabular-nums text-zinc-400">{attentionCount} awaiting review</span></div></div>
+        {attentionCount ? <div className="grid gap-6">{reviewQueues.map(queue => <section key={queue.id} aria-labelledby={`review-queue-${queue.id}`} className="overflow-hidden rounded-2xl border border-zinc-200 bg-white">
+          <div className="flex items-center justify-between gap-3 px-5 py-4"><div><h3 id={`review-queue-${queue.id}`} className="text-sm font-semibold">{queue.label}</h3><p className="mt-1 text-xs text-zinc-400">Oldest submission first</p></div><span className="rounded-full bg-zinc-100 px-2.5 py-1 text-xs font-semibold tabular-nums text-zinc-600">{queue.items.length}</span></div>
+          {queue.items.length ? <div className="admin-list px-3">{queue.items.map(target => <QueueRow key={`${target.resource}-${target.item.id}`} target={target} onClick={() => onSelect(target)} />)}</div> : <p className="border-t border-zinc-100 px-5 py-5 text-sm text-zinc-400">No submissions waiting.</p>}
+        </section>)}</div> : <EmptyState title="You’re all caught up" description="New submissions ready for review will appear here." />}
       </section>
     </>
   )
