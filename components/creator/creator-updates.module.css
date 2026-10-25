@@ -1,0 +1,19 @@
+.row { display:flex; align-items:center; gap:16px; padding:20px 0; transition:background 160ms ease; }
+.row:hover { background:#fafafa; }
+.row:focus-visible,.announcement:focus-visible { outline:2px solid #00a8ef; outline-offset:4px; }
+.stack { position:relative; width:60px; height:64px; flex-shrink:0; }
+.card { position:absolute; left:0; top:0; border-radius:8px; box-shadow:0 0 0 2px white,0 2px 5px #0001; transform:translate(calc(var(--index)*5px),calc(var(--index)*-3px)) rotate(calc(var(--index)*5deg)); transform-origin:50% 90%; transition:transform 220ms cubic-bezier(.23,1,.32,1); }
+.announcement { border-bottom:1px solid #f0f0f2; }
+.art { position:relative; display:grid; place-items:center; width:60px; height:64px; flex-shrink:0; }
+.art img { height:64px; width:48px; object-fit:contain; justify-self:start; }
+.coin { position:absolute; display:grid; place-items:center; width:19px; height:23px; border:2px solid #ffe798; border-radius:50%; background:linear-gradient(120deg,#fff0a0,#edaa13 65%,#ffd85d); box-shadow:0 2px 5px #7f580333,inset 0 0 0 1px #bd7a14; color:#986009; font-size:12px; font-weight:700; animation:bonus-float 5s ease-in-out infinite; }
+.coin:nth-of-type(1) { left:-5px; top:13px; rotate:-20deg; }
+.coin:nth-of-type(2) { right:2px; top:3px; rotate:20deg; animation-delay:-.7s; }
+.coin:nth-of-type(3) { right:4px; bottom:3px; rotate:-10deg; width:15px; height:19px; font-size:9px; animation-delay:-1.3s; }
+@media (hover:hover) and (prefers-reduced-motion:no-preference) {
+ .row:hover .card { transform:translate(calc(var(--index)*13px),calc(var(--index)*-5px)) rotate(calc(var(--index)*13deg)); }
+
+}
+@keyframes bonus-float { 0% { transform:translate(0,0) rotateY(0deg); } 25% { transform:translate(3px,-5px) rotateY(90deg); } 50% { transform:translate(0,-7px) rotateY(180deg); } 75% { transform:translate(-3px,-3px) rotateY(270deg); } 100% { transform:translate(0,0) rotateY(360deg); } }
+@media (max-width:600px) { .row { gap:12px; } }
+@media (prefers-reduced-motion:reduce) { .card,.row { transition:none; }.coin { animation:none; } }

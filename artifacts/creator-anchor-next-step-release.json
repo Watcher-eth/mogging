@@ -1,0 +1,20 @@
+{
+  "deployment": "dpl_6WieWt5U7djWMeBGrJ8ztvL8coqa",
+  "url": "https://mogging-b7ip6gj0t-glimpseback.vercel.app",
+  "previousDeployment": "dpl_2FCkBYDbcsKUVQmLvrMRdvKW1rqW",
+  "files": [
+    "pages/creator/index.tsx",
+    "components/creator/creator-next-step.tsx",
+    "components/creator/anchor-earnings-animation.tsx",
+    "components/creator/anchor-earnings-animation.module.css"
+  ],
+  "validation": [
+    "Six existing follower eligibility tests passed",
+    "Root and isolated release TypeScript passed; targeted lint clean; production build passed",
+    "Browser verified 999 follower fallback, 1000 follower CTA, joined-account CTA and existing setup dialog",
+    "Desktop and 390px mobile layout verified; animation active and reduced-motion static fallback included",
+    "Candidate source hashes match all 107 tracked release files, preserving concurrent Pacific-time analytics fix",
+    "Staged health 200/database healthy; private anchor preview excluded with 404"
+  ],
+  "preview": "/Users/watcher/Desktop/mogging/artifacts/campaign-launch/creator-anchor-cta.png"
+}

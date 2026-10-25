@@ -4,7 +4,6 @@ import { CreatorEssentials } from '@/components/creator/creator-essentials'
 import { creatorCampaignRules, creatorFormatElement, CREATOR_CTA_GUIDANCE } from '@/lib/creator/post-guidance'
 import { creatorGuideTopics, creatorGuideTopic, creatorGuideHref, type CreatorGuideTopic } from '@/lib/creator/guide-navigation'
 import Link from 'next/link'
-import dynamic from 'next/dynamic'
 import { useRouter } from 'next/router'
 import { useState, type ReactNode } from 'react'
 import {
@@ -27,9 +26,6 @@ import { cn } from '@/lib/utils'
 import { CreatorIcon, type CreatorIconName } from '@/components/creator/creator-icon'
 import { CreatorReferralLinks } from '@/components/creator/referral-links'
 
-const GuideExamples = dynamic(() => import('@/components/creator/guide-examples'), { loading: () => <p className="p-6 text-sm text-[#73777d]" role="status">Loading reference examples…</p> })
-
-
 export default function CreatorProgramGuidePage() {
   const router = useRouter()
   const topic = creatorGuideTopic(router.query.topic, router.asPath)
@@ -45,8 +41,7 @@ export default function CreatorProgramGuidePage() {
         {topic === 'video' ? <VideoGuide /> : null}
         {topic === 'improve' ? <ImproveGuide /> : null}
         {topic === 'rules' ? <RulesGuide /> : null}
-        {topic === 'examples' ? <GuideExamples /> : null}
-        {topic === 'referrals' ? <><GuidePanelHeader eyebrow="Share your link" title="Turn viewers into downloads." description="Use the personal link for the account you publish from so referrals go to the right account." /><CreatorReferralLinks /></> : null}
+        {topic === 'referrals' ? <><GuidePanelHeader eyebrow="Referral links & codes" title="Make every referral count." description="One permanent link and code for each account. Choose the account you publish from, then copy and share." /><CreatorReferralLinks /></> : null}
         {topic === 'video' ? <div className="mt-8"><CreatorEssentials /></div> : null}
         <div className="mt-10 flex flex-wrap items-center justify-between gap-3 border-t border-[#eceef0] pt-5 text-sm"><Link href="/creator/guide" className="inline-flex min-h-11 items-center gap-2 font-medium"><ArrowLeft className="size-4" />All guides</Link><a href={discordContactUrl} target="_blank" rel="noreferrer" className="inline-flex min-h-11 items-center gap-2 text-[#00A8EF]"><MessageCircle className="size-4" />Ask us on Discord</a></div>
       </div>}
@@ -56,13 +51,12 @@ export default function CreatorProgramGuidePage() {
 
 const startingQuestions = [
   { topic: 'video', icon: 'video-submissions', title: 'What kind of content should I make?', answer: 'Make an original looksmaxxing or ascension-focused video or slideshow. Choose what historically works best for your audience, show Mogging, and invite viewers to try it.', link: 'Find your format' },
-  { topic: 'improve', icon: 'cta', title: 'How can I improve my content?', answer: 'Start with a clear hook, make the product easy to understand, and check who your content attracts. Learn from examples before your next edit.', link: 'Improve your content' },
+  { topic: 'improve', icon: 'cta', title: 'How can I improve my content?', answer: 'Start with a clear hook, make the product easy to understand, and check who your content attracts. Use your audience’s feedback to improve your next edit.', link: 'Improve your content' },
 ] as const
 
 function GuideHome() {
   const resources = [
     ['rules', 'Content rules', 'What qualifies, what gets rejected, and why.'],
-    ['examples', 'Examples & references', 'Real footage, hooks, audience comments, and takeaways.'],
     ['referrals', 'Your referral links & codes', 'Copy your link or code before you publish.'],
   ] as const
 
@@ -110,7 +104,7 @@ function ImproveGuide() {
       ['Read the comments', 'Your framing determines who watches. Look for an audience interested in their own looks, rather than unrelated celebrity fans or music listeners.'],
     ].map(([title, detail], index) => <li key={title} className="flex gap-5 py-5"><span className="pt-0.5 text-xs tabular-nums text-[#858a91]">0{index + 1}</span><div><h3 className="text-sm font-semibold">{title}</h3><p className="mt-1 text-sm leading-6 text-[#73777d]">{detail}</p></div></li>)}</ol>
     <GuideDisclosure title="Recommended publishing cadence" meta="Optional guidance"><div className="flex items-start gap-3"><CalendarDays className="mt-0.5 size-5 shrink-0 text-[#00A8EF]" /><div><p className="text-sm font-semibold">Post daily on both platforms when possible.</p><p className="mt-1 text-xs leading-5 text-[#73777d]">The same creative posted to TikTok and Instagram counts as two separate posts and can earn separately. Top editors may publish 6–12 times daily, but quality still matters.</p></div></div></GuideDisclosure>
-    <div className="mt-6 grid gap-3 sm:grid-cols-2"><GuideNext topic="examples" title="Learn from real examples" detail="Inspect the hook, footage, and audience." /><Link href="/creator/cta-generator" className="rounded-[16px] bg-[#f5f6f7] p-5"><h3 className="text-sm font-semibold">Build a clearer product moment</h3><p className="mt-1 text-xs leading-5 text-[#73777d]">Create CTAs, mock reports, and protocols in CTA Studio.</p><ArrowRight className="mt-4 size-4 text-[#00A8EF]" /></Link></div>
+    <div className="mt-6 grid gap-3 sm:grid-cols-2"><GuideNext topic="rules" title="Check the content rules" detail="Know what qualifies before you publish." /><Link href="/creator/cta-generator" className="rounded-[16px] bg-[#f5f6f7] p-5"><h3 className="text-sm font-semibold">Build a clearer product moment</h3><p className="mt-1 text-xs leading-5 text-[#73777d]">Create CTAs, mock reports, and protocols in CTA Studio.</p><ArrowRight className="mt-4 size-4 text-[#00A8EF]" /></Link></div>
   </section>
 }
 
@@ -153,18 +147,21 @@ function VideoGuide() {
   const [formatId, setFormatId] = useState('')
   const selected = formats.find((item) => item.key === formatId) ?? formats[0]
   const format = selected?.format
-  if (!format) return <section><GuidePanelHeader eyebrow="Create content" title="What kind of content should I make?" description="Start with an active brief, then follow its requirements." /><p className="text-sm text-[#73777d]" role="status">{isLoading ? 'Loading active formats…' : error ? 'Formats could not load. Please refresh to try again.' : 'No formats are accepting submissions right now.'}</p></section>
+  if (!format) return <section><GuidePanelHeader eyebrow="Create content" title="Your next post starts here." description="Start with an active brief, then follow its requirements." /><p className="text-sm text-[#73777d]" role="status">{isLoading ? 'Loading active formats…' : error ? 'Formats could not load. Please refresh to try again.' : 'No formats are accepting submissions right now.'}</p></section>
 
   return (
     <section id="guide-panel-video" aria-label="Create content">
-      <GuidePanelHeader eyebrow="Create content" title="What kind of content should I make?" description="Videos and slideshows are both welcome. Choose the format that historically works best for your audience and make it clearly looksmaxxing or ascension focused. You have creative freedom within the campaign brief; submit the published link and a continuous analytics recording filmed with a second device." />
-      <TikTokAnchorGuidelines />
-      <div className="mb-6"><GuideNext topic="rules" title="Know what qualifies before you edit" detail="Read the looks-focused standards and examples of rejected content." /></div>
+      <GuidePanelHeader eyebrow="Create content" title="Your next post starts here." description="Choose an active campaign, follow its brief, and make it your own. Original videos and slideshows are both welcome." />
+      <div className="mb-8 grid gap-4 border-y border-[#eceef0] py-5 sm:grid-cols-3">{[
+        ['01', 'Choose your campaign', 'Find the brief that fits your idea.'],
+        ['02', 'Create & publish', 'Keep the looks focus and Mogging moment clear.'],
+        ['03', 'Submit for review', 'Share the post and your analytics evidence.'],
+      ].map(([number, title, detail]) => <div key={number} className="flex gap-3"><span className="pt-0.5 text-xs font-medium tabular-nums text-[#00A8EF]">{number}</span><div><h2 className="text-sm font-semibold">{title}</h2><p className="mt-1 text-xs leading-5 text-[#73777d]">{detail}</p></div></div>)}</div>
 
       <div className="grid gap-6">
-        {formats.length > 1 ? <label className="grid gap-2 text-xs font-semibold text-[#73777d]">Active format<select className="creator-field max-w-sm text-sm font-normal text-[#181a1d]" value={selected.key} onChange={(event) => setFormatId(event.target.value)}>{formats.map((item) => <option key={item.key} value={item.key}>{item.campaignName} · {item.format.name}</option>)}</select></label> : null}
+        {formats.length > 1 ? <fieldset><legend className="mb-3 text-xs font-semibold text-[#73777d]">Choose an active campaign</legend><div className="grid gap-2 sm:grid-cols-3">{formats.map((item) => <button key={item.key} type="button" aria-pressed={selected.key === item.key} onClick={() => setFormatId(item.key)} className={cn('flex items-start gap-3 rounded-2xl border p-4 text-left transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#00A8EF]', selected.key === item.key ? 'border-[#00A8EF] bg-[#f0faff]' : 'border-[#e7e9ec] bg-white hover:bg-[#f7f8f9]')}><span className={cn('mt-0.5 grid size-4 shrink-0 place-items-center rounded-full border', selected.key === item.key ? 'border-[#00A8EF] bg-[#00A8EF] text-white' : 'border-[#cbd0d5]')}>{selected.key === item.key ? <Check className="size-3" /> : null}</span><span className="text-sm font-medium leading-5">{item.campaignName}</span></button>)}</div></fieldset> : null}
 
-        <div className="min-w-0">
+        <div className="min-w-0 rounded-[24px] border border-[#e7e9ec] p-5 sm:p-7">
           <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
             <div><h3 className="text-2xl font-semibold tracking-[-0.04em]">{format.name}</h3><p className="mt-0.5 text-sm leading-6 text-[#73777d]">{format.shortDescription}</p></div>
             <span className="w-fit shrink-0 rounded-lg creator-tone-green px-2.5 py-1 text-[11px] font-semibold text-[#29CE53]">Accepting Submissions</span>
@@ -178,20 +175,22 @@ function VideoGuide() {
             <GuideDisclosure title="Full requirements" meta={`${creatorCampaignRules(format.requirements).length} items`}>
               <Checklist items={creatorCampaignRules(format.requirements)} />
             </GuideDisclosure>
-            <ContentRestrictions rules={format.notAllowed} />
+            <GuideDisclosure title="Restrictions & payout rules" meta="Read before posting" icon={<TriangleAlert className="size-4 shrink-0 text-[#9a5b12]" aria-hidden="true" />}><ContentRestrictions rules={format.notAllowed} /></GuideDisclosure>
           </div>
         </div>
       </div>
 
-      <div className="mt-8 border-t border-[#eceef0] pt-6">
+      <div className="mt-6 rounded-[24px] bg-[#f5f6f7] p-5 sm:p-7">
         <h3 className="text-sm font-semibold">What you’ll submit</h3>
         <div className="mt-4 grid gap-3 sm:grid-cols-3">
-          <Evidence icon={ExternalLink} title="Published Post URL" detail="A public TikTok or Instagram link." />
-          <Evidence icon={Smartphone} title="Physical Analytics Recording" detail="Film with a second device: views, traffic sources, and complete audience location data." />
-          <Evidence icon={ShieldCheck} title="Final Confirmation" detail="Confirm the video or slideshow follows the selected brief." />
+          <Evidence icon={ExternalLink} title="Published post link" detail="A public TikTok or Instagram link." />
+          <Evidence icon={Smartphone} title="Analytics recording" detail="Film with a second device: views, traffic sources, and complete audience location data." />
+          <Evidence icon={ShieldCheck} title="Final confirmation" detail="Confirm the video or slideshow follows the selected brief." />
         </div>
         <p className="mt-4 text-xs leading-5 text-[#858a91]">Follow the brief shown in your selected campaign, and keep the post public while it is under review.</p><AnalyticsVerificationHelp />
       </div>
+      <div className="mt-5"><GuideNext topic="rules" title="Know what qualifies before you edit" detail="Check the content standards and evidence requirements." /></div>
+      <TikTokAnchorGuidelines />
     </section>
   )
 }
@@ -199,21 +198,21 @@ function VideoGuide() {
 function GuidePanelHeader({ eyebrow, title, description }: { eyebrow: string; title: string; description: string }) {
   return (
     <header className="mb-7 flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
-      <div className="min-w-0"><div><p className="text-[11px] font-semibold uppercase tracking-[0.13em] text-[#858a91]">{eyebrow}</p><h1 className="mt-1 text-[28px] font-medium leading-tight tracking-[-0.04em] sm:text-[32px]">{title}</h1><p className="mt-0.5 text-sm leading-6 text-[#73777d]">{description}</p></div></div>
+      <div className="min-w-0"><div><p className="text-[11px] font-semibold uppercase tracking-[0.13em] text-[#858a91]">{eyebrow}</p><h1 className="mt-1 text-[28px] font-medium leading-tight tracking-[-0.04em] sm:text-[32px]">{title}</h1><p className="mt-3 max-w-2xl text-sm leading-6 text-[#73777d]">{description}</p></div></div>
     </header>
   )
 }
 
-function GuideDisclosure({ title, meta, children, tone = 'default' }: { title: string; meta: string; children: ReactNode; tone?: 'default' | 'warning' | 'danger' }) {
+function GuideDisclosure({ title, meta, children, icon }: { title: string; meta: string; children: ReactNode; icon?: ReactNode }) {
   return (
-    <Disclosure className={cn('guide-disclosure rounded-[16px] border', tone === 'danger' || tone === 'warning' ? 'creator-warning' : 'border-[#eceef0] bg-white')}>
-      <AccordionTrigger className="flex w-full cursor-pointer items-center gap-3 px-4 py-3.5 text-left text-sm font-semibold">
-        {tone === 'danger' ? <TriangleAlert className="size-4 shrink-0 text-red-700" /> : tone === 'warning' ? <TriangleAlert className="size-4 shrink-0 text-[#52565c]" /> : null}
+    <Disclosure className="guide-disclosure border-t border-[#e7e9ec]">
+      <AccordionTrigger className="flex w-full cursor-pointer items-center gap-3 py-4 text-left text-sm font-semibold">
+        {icon}
         <span className="min-w-0 flex-1">{title}</span>
-        <span className="text-[11px] font-normal text-[#858a91]">{meta}</span>
+        <span className="text-xs font-normal text-[#62676e]">{meta}</span>
         <AccordionChevron />
       </AccordionTrigger><AccordionContent>
-      <div className="border-t border-black/[0.055] px-4 py-4">{children}</div>
+      <div className="pb-2 pt-1">{children}</div>
     </AccordionContent></Disclosure>
   )
 }

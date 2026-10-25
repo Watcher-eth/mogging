@@ -1,0 +1,57 @@
+{
+  "video": "https://www.tiktok.com/@pain.psl/video/7699100128963071234",
+  "storedShortLink": "https://vm.tiktok.com/ZN8AV8Php/",
+  "shortLinkRedirectConfirmed": true,
+  "submissionId": "089f7918-1559-4ebe-b97b-d9022e10d460",
+  "creator": "pain.psl / ascendic international",
+  "oldCampaign": "Mogging Face Analysis",
+  "originalSubmission": "Oct 21, 2026 03:22:10 PM PDT",
+  "originalViewsRecoverableFromRereviewMessage": 100000,
+  "paid": [
+    {
+      "amountUSD": 65.0,
+      "at": "Oct 21, 2026 06:14:05 PM PDT"
+    }
+  ],
+  "rereviewRequested": "Oct 22, 2026 12:53:08 PM PDT",
+  "requestedViews": 250000,
+  "requestedTier1Percent": 30,
+  "reviewFeedbackAt": "Oct 22, 2026 07:18:38 PM PDT",
+  "reviewFeedback": "The approved audiences were UK, Italy, Germany, France, and Poland which totaled to 24.5% shown in your analytics. Since we already paid more than what you would earn for Tier B ($62.40), there is no difference to payout. If there were others not shown in the analytics video, feel free to let me know and we can fix that. If your audience changes above 30%, submit rereview.",
+  "verifiedViews": 250000,
+  "verifiedTier1Percent": 24.5,
+  "currentCampaignId": "8592a794-9b27-455a-8121-393e39c85ba2",
+  "campaignTransfers": [],
+  "oldCampaignClosed": "Oct 23, 2026 11:52:12 AM PDT",
+  "closingManualTopUpUSD": 3.65,
+  "committedBeforeClosingTopUpUSD": 2996.35,
+  "closedBudgetUSD": 3000,
+  "queueEvidence": [
+    {
+      "submissionId": "8014f28e-a589-4723-96b9-ac21c0d55805",
+      "submitted": "Oct 22, 2026 09:12:07 PM PDT",
+      "approved": [
+        "Oct 23, 2026 11:31:59 AM PDT"
+      ]
+    },
+    {
+      "submissionId": "81f3e8e1-6daf-4162-bbc4-4cda5c03e3df",
+      "submitted": "Oct 22, 2026 09:16:18 PM PDT",
+      "approved": [
+        "Oct 23, 2026 11:33:30 AM PDT"
+      ]
+    },
+    {
+      "submissionId": "9666cefb-6dfa-48dc-8120-c5560313c2ae",
+      "submitted": "Oct 22, 2026 10:16:21 PM PDT",
+      "approved": [
+        "Oct 23, 2026 11:39:26 AM PDT"
+      ]
+    }
+  ],
+  "limitations": [
+    "Original approval timestamp and initial audience snapshot were not durably recorded.",
+    "No exact campaign-balance snapshot survives for the rereview-request instant.",
+    "Historical audit gaps prevent proof of strict global FIFO."
+  ]
+}

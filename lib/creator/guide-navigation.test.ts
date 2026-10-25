@@ -9,9 +9,10 @@ describe('existing creator guide links', () => {
   })
 
   test('keeps remaining topics and safely handles retired or unknown topics', () => {
-    for (const topic of ['video', 'examples', 'improve'] as const) {
+    for (const topic of ['video', 'improve', 'rules', 'referrals'] as const) {
       expect(creatorGuideTopic(topic, `/creator/guide?topic=${topic}`)).toBe(topic)
     }
+    expect(creatorGuideTopic('examples', '/creator/guide?topic=examples')).toBe('video')
     expect(creatorGuideTopic('payout', '/creator/guide?topic=payout')).toBe('start')
     expect(creatorGuideTopic('account', '/creator/guide?topic=account')).toBe('start')
     expect(creatorGuideTopic('missing', '/creator/guide?topic=missing')).toBe('start')

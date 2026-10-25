@@ -48,7 +48,7 @@ export function CreatorReferralDetails({ trackingLink }: ReferralProps) {
         <div key={label} className="flex items-center justify-between gap-3">
           <div className="min-w-0">
             <p className="mb-1 text-xs text-zinc-500">{label}</p>
-            <span className="block select-text break-all text-[13px] leading-5 text-zinc-700">{value || 'Unavailable'}</span>
+            <span className="block select-text break-words [overflow-wrap:anywhere] text-[13px] leading-5 text-zinc-700">{value || 'Unavailable'}</span>
           </div>
           <button
             type="button"
@@ -62,7 +62,6 @@ export function CreatorReferralDetails({ trackingLink }: ReferralProps) {
           </button>
         </div>
       ))}
-      <p className="pt-2 text-[11px] leading-[1.6] text-zinc-400">Reuse this account’s link and code across your posts—no separate post setup. Your code gives new subscribers 10% off their first month. Include it in post captions; adding it to your bio is optional.</p>
     </div>
   )
 }

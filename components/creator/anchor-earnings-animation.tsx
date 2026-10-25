@@ -17,7 +17,7 @@ const dots = Array.from({ length: 76 }, (_, i) => {
     '--from-x': `${(start[0] - 12) * 3}px`, '--from-y': `${(start[1] - 12) * 3}px`,
     '--to-x': `${(end[0] - 12) * 3}px`, '--to-y': `${(end[1] - 12) * 3}px`,
     '--scatter-x': `${Math.cos(angle) * distance}px`, '--scatter-y': `${Math.sin(angle) * distance}px`,
-    '--dot-color': i % 7 === 0 ? '#25bfc5' : i % 9 === 0 ? '#ed5974' : '#25282d',
+    '--dot-color': i % 7 === 0 ? '#25bfc5' : i % 9 === 0 ? '#ed5974' : 'var(--anchor-note, #25282d)',
   } as CSSProperties
 })
 
@@ -32,12 +32,12 @@ export function AnchorEarningsAnimation() {
           <svg x="-36" y="-36" width="72" height="72" viewBox="0 0 24 24" overflow="visible">
             <path fill="#25bfc5" transform="translate(-.45 -.25)" d={tiktokNote} />
             <path fill="#ed5974" transform="translate(.45 .25)" d={tiktokNote} />
-            <path fill="#25282d" d={tiktokNote} />
+            <path fill="var(--anchor-note, #25282d)" d={tiktokNote} />
           </svg>
         </g>
         {dots.map((style, i) => <circle key={i} r={i % 4 === 0 ? 1.3 : .95} className={styles.particle} style={style} />)}
         <g className={styles.anchor}>
-          <svg x="-36" y="-36" width="72" height="72" viewBox="0 0 24 24" stroke="#00a8ef" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round">
+          <svg x="-36" y="-36" width="72" height="72" viewBox="0 0 24 24" stroke="var(--anchor-accent, #00a8ef)" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round">
             <circle cx="12" cy="5" r="3" />
             <path d="M12 8v14M5 12H2a10 10 0 0 0 20 0h-3" />
           </svg>

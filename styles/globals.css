@@ -163,9 +163,6 @@
 .creator-portal .bg-zinc-100 { background: #eef0f2; }
 .creator-portal .border-zinc-200 { border-color: #e8ebee; }
 .creator-portal .creator-icon { max-width: 32px; max-height: 32px; }
-.creator-next-step { border-radius: 16px; background: #f7f8f9; border: 1px solid #eef0f2; }
-.creator-metrics { border-block: 1px solid #eceef0; }
-.creator-metric + .creator-metric { border-left: 1px solid #eceef0; }
 .creator-guide-card { background: #f7f8f9; border-color: #f0f1f3; }
 .creator-guide-card > .creator-icon { color: #181a1d; }
 .creator-dialog { border: 1px solid rgb(0 0 0 / .035); border-radius: 32px; background: white; box-shadow: 0 24px 80px rgb(0 0 0 / .13); }
@@ -253,8 +250,6 @@
 }
 @media (max-width: 767px) {
   .creator-toolbar { min-height: 72px; }
-  .creator-metric:nth-child(3) { border-left: 0; }
-  .creator-metric:nth-child(n+3) { border-top: 1px solid #eceef0; }
 }
 @media (prefers-contrast: more) {
   .creator-surface, .creator-field, .creator-dialog { border-color: #73777d; }

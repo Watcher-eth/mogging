@@ -1,4 +1,5 @@
 import Link from 'next/link'
+import { BorderBeam } from '@/components/ui/border-beam'
 import { useEffect, useId, useRef, useState } from 'react'
 import {
   AnimatePresence,
@@ -11,6 +12,8 @@ import useSWR from 'swr'
 import { apiGet } from '@/lib/api/client'
 import { cn } from '@/lib/utils'
 import type { CreatorDashboard } from './types'
+
+const floatingPosition = 'fixed bottom-[max(16px,env(safe-area-inset-bottom))] right-4 z-40 sm:bottom-6 sm:right-6'
 
 export function creatorSetupComplete(data: CreatorDashboard) {
   return data.socialAccounts.length > 0 && data.submissions.length > 0 && hasPayoutInformation(data)
@@ -68,8 +71,8 @@ export function CreatorSetupChecklist() {
   if (completed === tasks.length) return <Link
     href="/creator/submissions?new=1"
     aria-label="New video"
-    className="fixed bottom-[max(20px,env(safe-area-inset-bottom))] right-5 z-40 flex size-14 items-center justify-center gap-2 rounded-full bg-[#008bc6] text-white shadow-[0_6px_24px_rgba(0,139,198,0.25)] transition-[background-color,transform] duration-150 hover:bg-[#007eb4] active:scale-[0.97] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-400 focus-visible:ring-offset-4 motion-reduce:transition-none md:bottom-auto md:right-20 md:top-4 md:h-11 md:w-auto md:px-5 md:shadow-none"
-  ><Plus className="size-6 md:size-4" aria-hidden="true" /><span className="hidden text-sm font-semibold md:inline">New video</span></Link>
+    className={cn(floatingPosition, 'isolate flex h-12 items-center justify-center gap-2 overflow-hidden rounded-full border border-white/20 bg-black px-5 text-white shadow-[0_6px_24px_rgba(0,0,0,0.2)] transition-[background-color,transform] duration-150 hover:bg-[#181a1d] active:scale-[0.97] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-zinc-500 focus-visible:ring-offset-4 motion-reduce:transition-none')}
+  ><Plus className="size-4" aria-hidden="true" /><span className="text-sm font-semibold">New video</span>{!reduceMotion ? <BorderBeam size={45} duration={6} borderWidth={1.5} colorFrom="#f5f5f5" colorTo="#8edbff" /> : null}</Link>
   const progress = completed / tasks.length
 
   return (
@@ -78,7 +81,7 @@ export function CreatorSetupChecklist() {
       onKeyDown={(event) => {
         if (event.key === 'Escape') setExpanded(false)
       }}
-      className="fixed bottom-[max(16px,env(safe-area-inset-bottom))] right-4 z-40 sm:bottom-6 sm:right-6"
+      className={floatingPosition}
     >
       <LayoutGroup id={motionId}>
         <motion.div

@@ -17,9 +17,9 @@
   0%, 17%, 100% { opacity: 0; transform: translate(var(--from-x), var(--from-y)); fill: var(--dot-color); }
   23% { opacity: 1; transform: translate(var(--from-x), var(--from-y)); fill: var(--dot-color); }
   32% { opacity: .8; transform: translate(var(--scatter-x), var(--scatter-y)); }
-  43% { opacity: 1; transform: translate(var(--to-x), var(--to-y)); fill: #00a8ef; }
-  48%, 70% { opacity: 0; transform: translate(var(--to-x), var(--to-y)); fill: #00a8ef; }
-  76% { opacity: 1; transform: translate(var(--to-x), var(--to-y)); fill: #00a8ef; }
+  43% { opacity: 1; transform: translate(var(--to-x), var(--to-y)); fill: var(--anchor-accent, #00a8ef); }
+  48%, 70% { opacity: 0; transform: translate(var(--to-x), var(--to-y)); fill: var(--anchor-accent, #00a8ef); }
+  76% { opacity: 1; transform: translate(var(--to-x), var(--to-y)); fill: var(--anchor-accent, #00a8ef); }
   84% { opacity: .8; transform: translate(var(--scatter-x), var(--scatter-y)); }
   94% { opacity: 1; transform: translate(var(--from-x), var(--from-y)); fill: var(--dot-color); }
   98% { opacity: 0; transform: translate(var(--from-x), var(--from-y)); }

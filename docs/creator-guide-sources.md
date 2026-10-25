@@ -11,7 +11,7 @@ Updated September 23, 2026 from the supplied announcement, June 2026 spreadsheet
 
 `lib/creator/formats.ts` owns the enforceable format brief displayed in the guide, submission sidebar/dialog, and moderator checklist. Existing elements, requirements, restrictions, and their positional review IDs are preserved. New requirements and restrictions are appended. No payout calculation or approval logic is changed.
 
-`lib/creator/guide-examples.ts` annotates every screenshot example in source order. The positive document has 14 screenshots, with its final two treated as one before-and-after example. The negative document has 15 screenshots. Explanations and suggested rewrites are editorial adaptations for Mogging, not invented individual moderation decisions.
+The Examples & References guide page and its screenshot annotations were retired on October 25, 2026. Original source documents remain listed above for internal reference. The positive document has 14 screenshots, with its final two treated as one before-and-after example. The negative document has 15 screenshots. Explanations and suggested rewrites are editorial adaptations for Mogging, not invented individual moderation decisions.
 
 26 screenshots are stored as WebP under `public/creator-guide`. Positive images 1 and 2 and negative image 1 contain another app’s branding and are represented by transcribed hooks and explanations instead. The remaining images preserve the supplied visual evidence. No third-party video has been downloaded or rehosted. Screenshots are not linked to spreadsheet rows without evidence of a match.
 
@@ -30,7 +30,7 @@ Updated September 23, 2026 from the supplied announcement, June 2026 spreadsheet
 ## Guide destinations
 
 - `/creator/guide#video-requirements`
-- `/creator/guide?topic=examples`
+- `/creator/guide?topic=video` (legacy `topic=examples` links open this guide)
 - `/creator/guide?topic=account`
 - `/creator/guide?topic=payout`
 
@@ -42,3 +42,7 @@ Updated September 23, 2026 from the supplied announcement, June 2026 spreadsheet
 - All 2,261 imported rows were compared against the source exports, including account, classification, source row, and canonical HTTPS URL.
 - Browser checks covered desktop and 390px mobile layout, screenshots, URL search with tracking parameters, account search, platform filtering, pagination, classification switching, and keyboard topic navigation. No browser errors or horizontal mobile overflow were observed.
 - Static guide content was previewed locally using the existing unauthenticated presentation option, then that temporary option was removed. The normal sign-in gate was verified afterward. No authenticated submission or payment was made, and no deployment was performed.
+
+## Content rules portrait
+
+`public/creator-guide/live-activity-portrait.png` reuses the bundled demo model rendered by the mobile app’s `ActivityPortrait.swift`, with its white symmetry overlay and curved alpha fade. It is the demo asset used in the Live Activity preview, not a creator or customer photo.

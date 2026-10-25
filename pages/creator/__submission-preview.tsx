@@ -1,3 +1,4 @@
+import { LAUNCH_CAMPAIGNS, launchCampaignTerms } from '@/lib/creator/campaign-launch'
 import { TikTokAccountDialog } from '@/components/creator/tiktok-anchor-onboarding'
 import { useMemo, useState } from 'react'
 import { useRouter } from 'next/router'
@@ -11,6 +12,7 @@ import { PayoutInformation } from '@/components/creator/payout-information-form'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog'
 import { Button } from '@/components/ui/button'
 import CreatorSubmissionsPage from './submissions'
+import CreatorOverviewPage from './index'
 import CreatorProgramGuidePage from './guide'
 import { SubmissionDialog } from '@/components/creator/submission-dialog'
 import type { CreatorDashboard, CreatorSocialAccount } from '@/components/creator/types'
@@ -62,34 +64,40 @@ const bonusDemoPayments: CreatorDashboard['payments'] = [
   { id: 'demo-paid-bonus', submissionId: null, bonusSprintId: campaign.id, bonusKey: 'audience:preview-paid:1000', bonusNote: 'Audience excellence · General Looksmaxxing Content', amountCents: 1000, currency: 'USD', status: 'paid', paymentOption: 'paypal', paidAt: '2026-10-22T16:00:00Z' },
   { id: 'demo-campaign-bonus', submissionId: null, bonusSprintId: campaign.id, bonusKey: 'million:1500', bonusNote: 'Million View Club · General Looksmaxxing Content', amountCents: 1500, currency: 'USD', status: 'pending', paymentOption: 'paypal', paidAt: null },
 ]
-async function previewFetch<Data>(request: string | string[], bonuses = false): Promise<Data> {
+async function previewFetch<Data>(request: string | string[], bonuses = false, guide = false, overview = false): Promise<Data> {
   const path = Array.isArray(request) ? request[0] : request
-  if (path === '/api/creator') return { ...dashboard, submissions: bonuses ? bonusDemoSubmissions : sampleSubmissions, payments: bonuses ? bonusDemoPayments : samplePayments } as Data
+  if (path === '/api/creator') return { ...dashboard, ...(guide || overview ? { socialAccounts: dashboard.socialAccounts.map((item, index) => ({ ...item, ...(overview ? { avatarUrl: index ? '/model2.png' : '/model.png', followers: { source: 'manual', count: 5000, checkedAt: item.createdAt } } : {}), trackingLink: { id: item.id, slug: `example${index}`, publicUrl: `https://www.mogging.com/r/example${index}`, isActive: true } })) } : {}), submissions: bonuses ? bonusDemoSubmissions : sampleSubmissions, payments: overview ? [
+    ...bonusDemoPayments.filter(payment => payment.id !== 'preview-payment'),
+    { ...samplePayments[0], amountCents: 1000 },
+    { ...samplePayments[0], id: 'preview-bundle-paid', amountCents: 750, payoutRequestId: 'preview-bundle' },
+    { ...samplePayments[0], id: 'preview-bundle-approved', submissionId: 'preview-approved', amountCents: 750, payoutRequestId: 'preview-bundle' },
+  ] : bonuses ? bonusDemoPayments : samplePayments } as Data
   if (path.endsWith('/preview')) {
     const index = Math.max(0, sampleSubmissions.findIndex(item => path.includes(item.id)))
     const submission = sampleSubmissions[index]
-    return { thumbnailUrl: `/model${index ? index + 1 : ''}.png`, caption: submission.caption, authorName: 'examplecreator', width: 600, height: 800, viewCount: submission.viewCountThreshold, fetchedAt: submission.createdAt } as Data
+    return { thumbnailUrl: `/model${index ? index + 1 : ''}.png`, caption: submission.caption, authorName: 'examplecreator', width: overview ? 1080 : 600, height: overview ? 1920 : 800, viewCount: submission.viewCountThreshold, fetchedAt: submission.createdAt } as Data
   }
   if (path.endsWith('/messages')) return { submission: { status: 'in_review', unreadMessages: 0 }, messages: [], nextCursor: null } as Data
-  if (path === '/api/creator/sprints') return { sprints: [campaign] } as Data
+  if (path === '/api/creator/sprints') return { sprints: guide ? [...LAUNCH_CAMPAIGNS].reverse().map((item, index) => ({ ...campaign, id: `guide-${index}`, name: item.name, budgetCents: 250000, usedCents: 0, terms: launchCampaignTerms(item) })) : [campaign] } as Data
   throw new Error('Preview only: no real submissions can be sent.')
 }
-const previewData = (empty: boolean, bonuses: boolean): Middleware => useSWRNext => <Data, Error>(key: Key, _fetcher: BareFetcher<Data> | null, config: SWRConfiguration<Data, Error>) => useSWRNext<Data, Error>(key, request => empty && (Array.isArray(request) ? request[0] : request) === '/api/creator' ? Promise.resolve({ ...dashboard, submissions: [], payments: [] } as Data) : previewFetch<Data>(request, bonuses), { ...config, refreshInterval: 0, revalidateOnFocus: false, shouldRetryOnError: false })
+const previewData = (empty: boolean, bonuses: boolean, guide: boolean, overview: boolean): Middleware => useSWRNext => <Data, Error>(key: Key, _fetcher: BareFetcher<Data> | null, config: SWRConfiguration<Data, Error>) => useSWRNext<Data, Error>(key, request => empty && (Array.isArray(request) ? request[0] : request) === '/api/creator' ? Promise.resolve({ ...dashboard, submissions: [], payments: [], ...(overview ? { socialAccounts: [] } : {}) } as Data) : previewFetch<Data>(request, bonuses, guide, overview), { ...config, refreshInterval: 0, revalidateOnFocus: false, shouldRetryOnError: false })
 export default function SubmissionPreview() {
   const router = useRouter()
   const guide = router.query.view === 'guide'
+  const overview = router.query.view === 'overview'
   const anchors = router.query.view === 'anchors'
   const [anchorOpen, setAnchorOpen] = useState(true)
-  const bonuses = router.query.view === 'bonuses'
+  const bonuses = router.query.view === 'bonuses' || overview
   const history = bonuses || router.query.view === 'submissions' || router.query.view === 'empty'
-  const empty = router.query.view === 'empty'
-  const previewMiddleware = useMemo(() => previewData(empty, bonuses), [empty, bonuses])
+  const empty = router.query.view === 'empty' || (overview && router.query.empty === '1')
+  const previewMiddleware = useMemo(() => previewData(empty, bonuses, guide, overview), [empty, bonuses, guide, overview])
   const [open, setOpen] = useState(false)
   const [panel, setPanel] = useState<'account' | 'payout' | null>(null)
   const [platform, setPlatform] = useState<'tiktok' | 'instagram'>('tiktok')
   const previewRouter = useMemo(() => ({
     ...router,
-    pathname: guide ? '/creator/guide' : history ? '/creator/submissions' : '/creator/submit',
+    pathname: overview ? '/creator' : guide ? '/creator/guide' : history ? '/creator/submissions' : '/creator/submit',
     replace: async (...args: Parameters<typeof router.replace>) => {
       const [destination, , options] = args
       if (typeof destination === 'object' && destination.pathname === '/creator/submissions') {
@@ -101,6 +109,7 @@ export default function SubmissionPreview() {
       const [destination] = args
       if (typeof destination === 'string') {
         const target = new URL(destination, 'http://preview.local')
+        if (target.pathname === '/creator/guide') return router.push({ pathname: '/creator/__submission-preview', query: { view: 'guide', ...Object.fromEntries(target.searchParams) }, hash: target.hash })
         if (['/creator/submissions', '/creator/submit'].includes(target.pathname) && target.searchParams.get('new') === '1') {
           setOpen(true)
           return true
@@ -108,11 +117,11 @@ export default function SubmissionPreview() {
       }
       return router.push(...args)
     },
-  }), [router, history, guide, bonuses])
+  }), [router, history, guide, bonuses, overview])
   return <SessionContext.Provider value={{ data: { expires: '2099-01-01', user: { id: '', name: 'Example creator' } }, status: 'authenticated', update: async () => null }}>
     <SWRConfig key={empty ? 'empty' : bonuses ? 'bonuses' : 'populated'} value={{ provider: () => new Map(), use: [previewMiddleware] }}><RouterContext.Provider value={previewRouter}>
       <SidebarProvider className="min-h-0 flex-1 flex-col">
-        {anchors ? <CreatorShell><CreatorHeader eyebrow="TikTok" title="Optional app anchor" description="Local preview · sample account" /><Button onClick={() => setAnchorOpen(true)}>View optional anchor setup</Button><TikTokAccountDialog account={{ ...account, followers: { source: 'public', count: 5000, checkedAt: account.createdAt } }} mode="anchor" open={anchorOpen} onOpenChange={setAnchorOpen} onSaved={async () => {}} /></CreatorShell> : guide ? <CreatorProgramGuidePage /> : history ? <><div className="flex justify-center gap-5 px-4 pt-3 text-xs text-zinc-400"><a href="?view=submissions" className="underline underline-offset-4">Mock submissions</a><a href="?view=empty" className="underline underline-offset-4">Animated empty state</a><a href="?view=bonuses" className="underline underline-offset-4">Bonus earnings</a><span>Local preview · sample data</span></div><CreatorSubmissionsPage />{open ? <SubmissionDialog open onOpenChange={setOpen} onSubmitted={async () => {}} /> : null}</> : <CreatorShell>
+        {overview ? <><p className="bg-[#f6f8f7] py-2 text-center text-[10px] text-[#8b958e]">Private overview preview · sample data</p><CreatorOverviewPage />{open ? <SubmissionDialog open onOpenChange={setOpen} onSubmitted={async () => {}} /> : null}</> : anchors ? <CreatorShell><CreatorHeader eyebrow="TikTok" title="Optional app anchor" description="Local preview · sample account" /><Button onClick={() => setAnchorOpen(true)}>View optional anchor setup</Button><TikTokAccountDialog account={{ ...account, followers: { source: 'public', count: 5000, checkedAt: account.createdAt } }} mode="anchor" open={anchorOpen} onOpenChange={setAnchorOpen} onSaved={async () => {}} /></CreatorShell> : guide ? <CreatorProgramGuidePage /> : history ? <><div className="flex justify-center gap-5 px-4 pt-3 text-xs text-zinc-400"><a href="?view=submissions" className="underline underline-offset-4">Mock submissions</a><a href="?view=empty" className="underline underline-offset-4">Animated empty state</a><a href="?view=bonuses" className="underline underline-offset-4">Bonus earnings</a><span>Local preview · sample data</span></div><CreatorSubmissionsPage />{open ? <SubmissionDialog open onOpenChange={setOpen} onSubmitted={async () => {}} /> : null}</> : <CreatorShell>
         <CreatorHeader eyebrow="Creator videos" title="Your submissions" description="Your content, reviews and earnings in one place." />
         <div className="creator-surface p-6"><p className="text-sm font-medium">You’re ready for your next post.</p><p className="mt-2 text-sm text-zinc-500">Open New video to try the updated submission flow.</p><p className="mt-5 text-xs text-zinc-400">Local preview · sample accounts · no real submissions</p></div>
         <div className="mt-5 flex gap-3"><Button variant="outline" onClick={() => setPanel('account')}>Preview account form</Button><Button variant="outline" onClick={() => setPanel('payout')}>Preview payout form</Button></div>

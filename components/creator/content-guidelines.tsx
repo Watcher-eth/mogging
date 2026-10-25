@@ -6,6 +6,8 @@ import { tiktokAnchorEligible, TIKTOK_ANCHOR_INVITE } from '@/lib/creator/tiktok
 import { CELEBRITY_EDIT_POLICY } from '@/lib/creator/content-policy'
 import { CREATOR_CTA_GUIDANCE } from '@/lib/creator/post-guidance'
 import Link from 'next/link'
+import Image from 'next/image'
+import { Check, ShieldCheck, TriangleAlert, Video, Type, Captions } from 'lucide-react'
 
 export const accountReviewPolicy = 'Complete any account review requested by the moderation team. Payouts are held until requested evidence is provided and the review is resolved. Confirmed botting on even one video puts all earnings at risk.'
 
@@ -31,15 +33,28 @@ export function TikTokAnchorGuidelines() {
 export function ContentGuidelines() {
   return (
     <section id="video-requirements" className="scroll-mt-6" aria-labelledby="content-standard-title">
-      <TikTokAnchorGuidelines />
-      <h2 id="content-standard-title" className="text-lg font-semibold tracking-tight">Before you publish</h2>
-      <p className="mt-3 max-w-3xl text-sm leading-6 text-[#73777d]">Videos and slideshows are both welcome. Choose the format, pacing, and storytelling that historically work best for your audience; you have creative freedom within the campaign rules. Every post must clearly emphasize the improvement, attractiveness, features, transformation, or potential of someone’s looks. Keep the whole post focused on looksmaxxing or ascension: this applies to video footage or slideshow images, on-screen text, and the caption. Looksmaxxing, BP (blackpill), or transformation labels alone do not qualify a post. If a moderator has to question whether it is about looks, it is rejected.</p>
-      <p className="mt-3 max-w-3xl text-sm leading-6 text-[#73777d]">Mogging pays for access to an audience interested in their appearance. Your framing determines who watches: a celebrity montage can attract fans, a song meme can attract music listeners, and a feature breakdown can attract people who want to understand their own face. High views alone do not make a post eligible.</p>
-      <div className="mt-5 grid gap-3 sm:grid-cols-2">
-        <div className="rounded-2xl creator-notice p-4"><h4 className="text-sm font-semibold">What we want</h4><p className="mt-2 text-sm leading-6 text-zinc-600">Clear feature analysis, genuine before-and-after transformations, explicit attractiveness comparisons, or looks-potential edits. Show Mogging clearly. {CREATOR_CTA_GUIDANCE}</p></div>
-        <div className="rounded-2xl creator-warning p-4"><h4 className="text-sm font-semibold text-red-800">Violations and rejection rules</h4><p className="mt-2 text-sm leading-6 text-red-800">Engagement bait and unrelated captions can reduce your payout. Excluded niches and fraudulent evidence result in rejection. Smallville and Tom Welling posts are not allowed; other celebrity edits have strict conditions and still require review.</p></div>
+      <div className="flex items-center gap-4 overflow-hidden rounded-[24px] bg-[#0c1017] p-5 text-white sm:gap-7 sm:px-7 sm:py-5">
+        <div className="min-w-0 flex-1 py-2">
+          <h2 id="content-standard-title" className="text-xl font-semibold tracking-[-0.03em] sm:text-2xl">Keep it about looks.</h2>
+          <p className="mt-2 max-w-xl text-sm leading-6 text-[#bdc2cb]">Show facial features, appearance improvements, or a clear transformation. Ask yourself what your viewer will think: “Can I improve myself?” or “I can improve my looks!”</p>
+          <div className="mt-4 flex flex-wrap gap-2">{[
+            { icon: Video, label: 'Looks-focused visuals' },
+            { icon: Type, label: 'Relevant on-screen text' },
+            { icon: Captions, label: 'Matching caption' },
+          ].map(({ icon: Icon, label }) => <span key={label} className="inline-flex items-center gap-2 rounded-full bg-white/10 px-3 py-2 text-xs font-medium text-[#f1f3f6]"><Icon className="size-3.5 shrink-0 text-[#bdc2cb]" aria-hidden="true" />{label}</span>)}</div>
+        </div>
+        <Image src="/creator-guide/live-activity-portrait.png" width={200} height={232} alt="" className="ml-auto h-auto w-16 shrink-0 self-start opacity-[0.85] sm:w-32 sm:self-center" />
       </div>
-      <div className="mt-4 grid gap-2">
+      <div className="mt-4 grid gap-3 sm:grid-cols-2">
+        <div className="rounded-[20px] border border-[#e7e9ec] p-5"><Check className="mb-3 size-5 text-[#29a752]" aria-hidden="true" /><h3 className="text-sm font-semibold">What we want</h3><p className="mt-2 text-sm leading-6 text-zinc-600">Clear feature analysis, genuine before-and-after transformations, explicit attractiveness comparisons, or looks-potential edits. Show Mogging clearly. {CREATOR_CTA_GUIDANCE}</p></div>
+        <div className="rounded-[20px] border border-[#e7e9ec] p-5"><TriangleAlert className="mb-3 size-5 text-[#b42332]" aria-hidden="true" /><h3 className="text-sm font-semibold">What puts a payout at risk</h3><p className="mt-2 text-sm leading-6 text-zinc-600">Engagement bait and unrelated captions can reduce your payout. Excluded niches and fraudulent evidence result in rejection. Smallville and Tom Welling posts are not allowed; other celebrity edits have strict conditions and still require review.</p></div>
+      </div>
+      <h2 className="mb-3 mt-8 text-lg font-semibold tracking-tight">The rules, in detail</h2>
+      <div className="grid gap-2">
+        <RuleDetail title="Looks focus & audience fit">
+      <p className="text-sm leading-6 text-[#73777d]">Videos and slideshows are both welcome. Choose the format, pacing, and storytelling that historically work best for your audience; you have creative freedom within the campaign rules. Every post must clearly emphasize the improvement, attractiveness, features, transformation, or potential of someone’s looks. Keep the whole post focused on looksmaxxing or ascension: this applies to video footage or slideshow images, on-screen text, and the caption. Looksmaxxing, BP (blackpill), or transformation labels alone do not qualify a post. If a moderator has to question whether it is about looks, it is rejected.</p>
+      <p className="text-sm leading-6 text-[#73777d]">Mogging pays for access to an audience interested in their appearance. Your framing determines who watches: a celebrity montage can attract fans, a song meme can attract music listeners, and a feature breakdown can attract people who want to understand their own face. High views alone do not make a post eligible.</p>
+        </RuleDetail>
         <RuleDetail title="Celebrity edits · strict review required" prohibited>
           <p>{CELEBRITY_EDIT_POLICY}</p>
         </RuleDetail>
@@ -58,22 +73,22 @@ export function ContentGuidelines() {
           <p>Currently excluded: anime, cartoons and animated content, MMA, NBA and sports generally, animal edits, and all Smallville or Tom Welling posts. These are current restrictions, not promises that a niche will become eligible later.</p>
         </RuleDetail>
         <RuleDetail title="Read the comments to understand your audience">
-          <p>The strongest signal in the reference material is viewers discussing their own looks: asking about potential, ratings / PSL, or specific facial features, sometimes sharing their own photos. PSL here is appearance-rating terminology; the app creators should promote is Mogging.</p>
+          <p>A useful signal is viewers discussing their own looks: asking about potential, ratings / PSL, or specific facial features, sometimes sharing their own photos. PSL here is appearance-rating terminology; the app creators should promote is Mogging.</p>
           <p>Song requests, plot discussions, school jokes, tagging friends, and repetitive “claim” comments suggest a different audience. Use this feedback to improve the next edit. Comments are a diagnostic signal, not a required quota or a guarantee of approval; the post still has to meet every rule. Never fabricate the desired comments.</p>
         </RuleDetail>
         <RuleDetail title="Account reviews, fraud, and payout holds"><p>{accountReviewPolicy}</p><p>Keep evidence genuine and readable. For each video or slideshow submission, film the post’s analytics with a second device in one continuous take. Show the screen, username, post, views, traffic sources, and audience locations. Screenshots, native screen recordings, cuts, and edits are not accepted. Provide additional evidence when requested. Campaign content eligibility, audience geography, view milestones, and payout setup are separate checks; passing one does not waive the others.</p><AnalyticsVerificationHelp /></RuleDetail>
       </div>
-      <Link href="/creator/guide?topic=examples" className="mt-5 inline-flex min-h-11 items-center text-sm font-semibold text-[#00A8EF] underline underline-offset-4">Explore screenshots and explained examples →</Link>
+      <TikTokAnchorGuidelines />
     </section>
   )
 }
 
 function RuleDetail({ title, children, prohibited = false }: { title: string; children: React.ReactNode; prohibited?: boolean }) {
-  return <Disclosure className={prohibited ? "rounded-2xl creator-warning text-red-800" : "rounded-2xl border border-black/[0.07] bg-white"}><DisclosureSummary className="cursor-pointer px-4 py-4 text-sm font-semibold">{title}</DisclosureSummary><AccordionContent><div className="space-y-3 border-t border-black/[0.055] p-4 text-sm leading-6 text-[#73777d]">{children}</div></AccordionContent></Disclosure>
+  return <Disclosure className="overflow-hidden rounded-2xl border border-[#e7e9ec] bg-white"><DisclosureSummary className="flex min-h-14 cursor-pointer items-center gap-3 px-5 py-4 text-sm font-medium"><span className="flex min-w-0 items-center gap-3">{prohibited ? <TriangleAlert className="size-4 shrink-0 text-[#a65c19]" aria-hidden="true" /> : <ShieldCheck className="size-4 shrink-0 text-[#858a91]" aria-hidden="true" />}<span className="min-w-0">{title}</span></span></DisclosureSummary><AccordionContent><div className="space-y-3 border-t border-black/[0.055] p-4 text-sm leading-6 text-[#73777d]">{children}</div></AccordionContent></Disclosure>
 }
 
 export function ContentRequirementsNote() {
-  return <aside className="creator-notice mb-5 rounded-2xl p-4 text-sm leading-6"><strong>Videos and slideshows are welcome. Keep the whole post about looksmaxxing or ascension.</strong><span className="text-zinc-600"> Choose what works best for your audience. Video footage or slideshow images, text, and captions must explicitly focus on appearance, features, potential, or transformation. No engagement farms or unrelated fan edits. </span><Link href="/creator/guide#video-requirements" className="font-semibold text-[#00A8EF] underline underline-offset-4">Read the rules</Link><span className="text-zinc-600"> · </span><Link href="/creator/guide?topic=examples" className="font-semibold text-[#00A8EF] underline underline-offset-4">See examples</Link></aside>
+  return <aside className="creator-notice mb-5 rounded-2xl p-4 text-sm leading-6"><strong>Videos and slideshows are welcome. Keep the whole post about looksmaxxing or ascension.</strong><span className="text-zinc-600"> Choose what works best for your audience. Video footage or slideshow images, text, and captions must explicitly focus on appearance, features, potential, or transformation. No engagement farms or unrelated fan edits. </span><Link href="/creator/guide#video-requirements" className="font-semibold text-[#00A8EF] underline underline-offset-4">Read the rules</Link></aside>
 }
 
 export function AccountReviewNote() {

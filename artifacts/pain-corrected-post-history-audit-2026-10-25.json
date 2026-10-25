@@ -1,0 +1,209 @@
+{
+  "submissionId": "fffa51cb-fcdd-415f-845a-ac820145a71c",
+  "video": "https://www.tiktok.com/@pain.psl/video/7699153878914223382",
+  "shortLink": "https://vm.tiktok.com/ZN8AXgvLg/",
+  "originalSubmitted": "Oct 21, 2026 12:25:48 PM PDT",
+  "originalViewsFromPreviousEvidence": 29000,
+  "rereview": {
+    "at": "Oct 23, 2026 05:05:19 AM PDT",
+    "views": 250000,
+    "tier1Percent": 17
+  },
+  "transferredAt": "Oct 23, 2026 11:52:09 AM PDT",
+  "transferReason": "Owner-authorized campaign handover; preserve prior earnings and payments",
+  "destination": "Face Feature Comparison",
+  "oldCampaignClosed": "Oct 23, 2026 11:52:12 AM PDT",
+  "manualClosingTopupUSD": 3.65,
+  "approvedAt": "Oct 23, 2026 03:10:32 PM PDT",
+  "approvedTotalUSD": 16,
+  "payments": [
+    {
+      "amountUSD": 15.0,
+      "at": "Oct 21, 2026 06:14:05 PM PDT"
+    },
+    {
+      "amountUSD": 1.0,
+      "at": "Oct 23, 2026 04:37:53 PM PDT"
+    }
+  ],
+  "closingQueueReconstruction": [
+    {
+      "id": "5f1de864-b9fd-42f3-81fc-03d9afa3ccef",
+      "creator": "ADARSH RAWAT",
+      "queueAt": "Oct 22, 2026 07:45:32 PM PDT",
+      "decisions": [
+        {
+          "type": "rejected",
+          "at": "Oct 23, 2026 11:30:34 AM PDT"
+        }
+      ],
+      "position": 1
+    },
+    {
+      "id": "8014f28e-a589-4723-96b9-ac21c0d55805",
+      "creator": "Ben Withpsl",
+      "queueAt": "Oct 22, 2026 09:12:07 PM PDT",
+      "decisions": [
+        {
+          "type": "approved",
+          "at": "Oct 23, 2026 11:31:59 AM PDT"
+        }
+      ],
+      "position": 2
+    },
+    {
+      "id": "81f3e8e1-6daf-4162-bbc4-4cda5c03e3df",
+      "creator": "Ben Withpsl",
+      "queueAt": "Oct 22, 2026 09:16:18 PM PDT",
+      "decisions": [
+        {
+          "type": "approved",
+          "at": "Oct 23, 2026 11:33:30 AM PDT"
+        }
+      ],
+      "position": 3
+    },
+    {
+      "id": "71d484f2-423d-4e31-851d-6e2a023d7cff",
+      "creator": "PRIME",
+      "queueAt": "Oct 22, 2026 10:06:20 PM PDT",
+      "decisions": [
+        {
+          "type": "approved",
+          "at": "Oct 23, 2026 11:34:55 AM PDT"
+        }
+      ],
+      "position": 4
+    },
+    {
+      "id": "a2b32eb2-d2c6-48c8-8813-2de6482b1821",
+      "creator": "Jannis M\u00fcpller",
+      "queueAt": "Oct 22, 2026 10:15:05 PM PDT",
+      "decisions": [
+        {
+          "type": "approved",
+          "at": "Oct 23, 2026 11:35:54 AM PDT"
+        }
+      ],
+      "position": 5
+    },
+    {
+      "id": "9666cefb-6dfa-48dc-8120-c5560313c2ae",
+      "creator": "Jannis M\u00fcpller",
+      "queueAt": "Oct 22, 2026 10:16:21 PM PDT",
+      "decisions": [
+        {
+          "type": "approved",
+          "at": "Oct 23, 2026 11:39:26 AM PDT"
+        }
+      ],
+      "position": 6
+    },
+    {
+      "id": "4ed05217-3f91-4bb2-ba84-391bfcbf3049",
+      "creator": "Jannis M\u00fcpller",
+      "queueAt": "Oct 22, 2026 10:17:39 PM PDT",
+      "decisions": [],
+      "position": 7
+    },
+    {
+      "id": "295055ae-cbf4-46d8-ae5c-8c8e83fdc6be",
+      "creator": "Bjorni Aliaj",
+      "queueAt": "Oct 23, 2026 01:37:46 AM PDT",
+      "decisions": [],
+      "position": 8
+    },
+    {
+      "id": "93c116db-da3d-4540-9714-bf2a8afba413",
+      "creator": "Bjorni Aliaj",
+      "queueAt": "Oct 23, 2026 01:42:36 AM PDT",
+      "decisions": [],
+      "position": 9
+    },
+    {
+      "id": "fffa51cb-fcdd-415f-845a-ac820145a71c",
+      "creator": "ascendic international",
+      "queueAt": "Oct 23, 2026 05:05:19 AM PDT",
+      "decisions": [],
+      "position": 10
+    },
+    {
+      "id": "9e0619c9-a112-42e5-a338-8686ae41f052",
+      "creator": "Max Hope",
+      "queueAt": "Oct 23, 2026 05:08:29 AM PDT",
+      "decisions": [],
+      "position": 11
+    },
+    {
+      "id": "cfd2b027-2551-4ed0-8272-54499a71e38c",
+      "creator": "Jannis M\u00fcpller",
+      "queueAt": "Oct 23, 2026 06:16:59 AM PDT",
+      "decisions": [],
+      "position": 12
+    },
+    {
+      "id": "e59718c1-97ba-4e42-b1bb-beace16a1fbc",
+      "creator": "Bannu",
+      "queueAt": "Oct 23, 2026 06:20:19 AM PDT",
+      "decisions": [],
+      "position": 13
+    },
+    {
+      "id": "501bdc94-5e5a-4da0-9296-524d809d1cae",
+      "creator": "Bannu",
+      "queueAt": "Oct 23, 2026 06:22:32 AM PDT",
+      "decisions": [],
+      "position": 14
+    },
+    {
+      "id": "80f152ce-7a3f-4671-a19f-27ce98fbb959",
+      "creator": "Bannu",
+      "queueAt": "Oct 23, 2026 06:24:53 AM PDT",
+      "decisions": [],
+      "position": 15
+    },
+    {
+      "id": "c5ecceb9-f995-424f-bbc5-47cf6473576f",
+      "creator": "zukai method",
+      "queueAt": "Oct 23, 2026 08:46:10 AM PDT",
+      "decisions": [],
+      "position": 16
+    },
+    {
+      "id": "ead72678-ded6-4481-b2a4-d0ba3aee9362",
+      "creator": "\ud835\udc00\ud835\udc11\ud835\udc00\ud835\udc15\ud835\udc08\ud835\udc17",
+      "queueAt": "Oct 23, 2026 09:48:07 AM PDT",
+      "decisions": [],
+      "position": 17
+    },
+    {
+      "id": "178222f4-329d-4019-96b7-b3fa6c05fd4f",
+      "creator": "sparky`",
+      "queueAt": "Oct 23, 2026 10:43:15 AM PDT",
+      "decisions": [],
+      "position": 18
+    },
+    {
+      "id": "82774b38-2259-4c86-9580-2f583086a871",
+      "creator": "silver.psl1",
+      "queueAt": "Oct 23, 2026 11:29:18 AM PDT",
+      "decisions": [],
+      "position": 19
+    }
+  ],
+  "rateComparison": {
+    "oldCampaignTotalUSD": 38.4,
+    "oldAdditionalBeforeNewPaymentUSD": 23.4,
+    "newCampaignTotalUSD": 16,
+    "paidTotalUSD": 16,
+    "differenceIfOldTermsHonoredUSD": 22.4
+  },
+  "limitations": [
+    "The exact campaign balance at 5:05 AM was not snapshotted.",
+    "Queue reconstruction uses original submission timestamps or latest recorded prereview analytics request before closure; no complete immutable queue snapshot was stored.",
+    "Campaign visibility/request acceptance did not reserve a payout allocation.",
+    "The deployed approval list sorts newest original submissions first; the chronological queue above is a reconstruction, not proof of enforced FIFO or a reserved allocation."
+  ],
+  "queueInterpretation": "Using the fresh rereview timestamp, all five final funded old-campaign reviews were earlier. Three earlier unapproved entries also transferred before this post. Using the original post-submission timestamp instead gives a different order.",
+  "oldRateSource": "Saved old campaign terms, cross-checked against an old-campaign snapshot on the same creator\u2019s other post from October 21."
+}
