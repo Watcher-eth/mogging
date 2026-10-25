@@ -1,3 +1,4 @@
+import { reconcileCreatorReferrals } from '@/lib/creator/creator-referrals'
 import { reconcileCreatorBonuses } from '@/lib/creator/bonus-service'
 import { timingSafeEqual } from 'node:crypto'
 import type { NextApiRequest, NextApiResponse } from 'next'
@@ -16,7 +17,8 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
     const result = await reconcileCreatorBilling(100, 25_000)
     await db.delete(schema.creatorReferralHandoffs).where(sql`${schema.creatorReferralHandoffs.expiresAt} < now() - interval '1 day'`)
     const bonuses = await reconcileCreatorBonuses(100, 20_000)
-    return res.status(200).json({ result, bonuses })
+    const creatorReferrals = await reconcileCreatorReferrals()
+    return res.status(200).json({ result, bonuses, creatorReferrals })
   } catch { return res.status(503).json({ error: 'creator_reconciliation_pending' }) }
 }
 export default monitorBackend('cron/creator-attribution', handler)

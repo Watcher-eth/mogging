@@ -1,3 +1,4 @@
+import { assertCreatorReferralPaymentsEligible, refreshCreatorReferralBonuses } from './creator-referrals'
 import { refreshCreatorBonuses } from './bonus-service'
 import { and, asc, eq, inArray } from 'drizzle-orm'
 import { z } from 'zod'
@@ -37,6 +38,7 @@ export async function requestBundledPayout(userId: string, expectedAmountCents: 
     const submissions = await tx.select().from(schema.creatorSubmissions).where(eq(schema.creatorSubmissions.creatorProfileId, profile.id)).orderBy(asc(schema.creatorSubmissions.id)).for('update')
     const payments = await tx.query.creatorPayments.findMany({ where: eq(schema.creatorPayments.creatorProfileId, profile.id) })
     if (payments.some(payment => ['paid', 'pending', 'processing'].includes(payment.status) && payment.currency !== 'USD')) throw new ApiError(409, 'Contact the team to review your payout currency')
+    await assertCreatorReferralPaymentsEligible(tx, payments.filter(payment => payment.status === 'pending' && !payment.payoutRequestId))
     const plan = creatorBundlePlan(submissions, payments)
     if (!plan.amountCents) throw new ApiError(409, 'No earnings are available to request. Payments already processing or requested are excluded.')
     if (plan.amountCents !== expectedAmountCents) throw new ApiError(409, 'Your balance changed. Refresh Money and request the updated amount.')
@@ -74,6 +76,7 @@ export async function settleBundledPayout(input: z.infer<typeof settlePayoutRequ
     const submissions = await tx.select().from(schema.creatorSubmissions).where(eq(schema.creatorSubmissions.creatorProfileId, request.creatorProfileId)).orderBy(asc(schema.creatorSubmissions.id)).for('update')
     const payments = await tx.select().from(schema.creatorPayments).where(eq(schema.creatorPayments.payoutRequestId, request.id)).for('update')
     if (!payments.length || payments.some(payment => !['pending', 'processing'].includes(payment.status) || payment.currency !== 'USD') || payments.reduce((sum, payment) => sum + payment.amountCents, 0) !== request.amountCents) throw new ApiError(409, 'This bundle needs review before recording payment')
+    await assertCreatorReferralPaymentsEligible(tx, payments)
     const now = new Date()
     await tx.update(schema.creatorPayments).set({ status: 'paid', paidAt: now, updatedAt: now, providerReference: input.providerReference || null }).where(eq(schema.creatorPayments.payoutRequestId, request.id))
     if (receipt) await tx.insert(schema.creatorPaymentReceipts).values(payments.map(payment => ({ paymentId: payment.id, image: receipt }))).onConflictDoUpdate({ target: schema.creatorPaymentReceipts.paymentId, set: { image: receipt } })
@@ -86,5 +89,5 @@ export async function settleBundledPayout(input: z.infer<typeof settlePayoutRequ
     }
     const [settled] = await tx.update(schema.creatorPayoutRequests).set({ status: 'paid', paidAt: now }).where(eq(schema.creatorPayoutRequests.id, request.id)).returning()
     return settled
-  }).then(async request => { await refreshCreatorBonuses(request.creatorProfileId); return request })
+  }).then(async request => { await Promise.all([refreshCreatorBonuses(request.creatorProfileId), refreshCreatorReferralBonuses(request.creatorProfileId)]); return request })
 }

@@ -1,3 +1,5 @@
+import { CREATOR_INVITER_COOKIE, readCreatorInviter } from '@/lib/creator/creator-referral-cookie'
+import { getOrCreateCreatorProfile } from '@/lib/creator/service'
 import { monitorBackend } from '@/lib/reliability/monitor'
 import type { NextApiRequest, NextApiResponse } from 'next'
 import { ApiError, handleApiError, json, methodNotAllowed, parseBody } from '@/lib/api/http'
@@ -18,6 +20,8 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
       return json(res, 200, { submissions: dashboard.submissions, payments: dashboard.payments })
     }
     if (req.method === 'POST') {
+      const referralCode = readCreatorInviter(req.cookies[CREATOR_INVITER_COOKIE])
+      if (referralCode) await getOrCreateCreatorProfile(session.user.id, referralCode)
       const input = parseBody(creatorSubmissionSchema, req.body)
       const submission = await createCreatorSubmission(session.user.id, input)
       return json(res, 201, { submission })

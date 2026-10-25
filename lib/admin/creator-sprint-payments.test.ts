@@ -1,4 +1,6 @@
 import sharp from 'sharp'
+import { PgDialect } from 'drizzle-orm/pg-core'
+import type { SQL } from 'drizzle-orm'
 import { beforeEach, expect, mock, test } from 'bun:test'
 import * as schema from '@/lib/db/schema'
 import { sprintReviewItems, type SprintTerms } from '@/lib/creator/sprints'
@@ -42,6 +44,7 @@ const query = {
 }
 const tx = {
   query,
+  execute: async (query: SQL) => new PgDialect().sqlToQuery(query).sql.startsWith('select amount_cents') ? [] : [{ cents: used }],
   select: () => ({
     from: (table: unknown) => ({
       where: () => ({
@@ -82,6 +85,7 @@ const tx = {
     }),
   }),
 }
+mock.module('@/lib/creator/creator-referrals', () => ({ reserveCreatorReferralVideo: async () => undefined, refreshCreatorReferralBonuses: async () => 0, assertCreatorReferralPaymentsEligible: async () => undefined }))
 mock.module('@/lib/db', () => ({
   schema,
   db: { ...tx, transaction: async (fn: any) => fn(tx) },

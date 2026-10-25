@@ -435,6 +435,13 @@
       "when": 1792886400000,
       "tag": "0061_creator_submission_history",
       "breakpoints": true
+    },
+    {
+      "idx": 62,
+      "version": "7",
+      "when": 1792972800000,
+      "tag": "0062_creator_referrals",
+      "breakpoints": true
     }
   ]
 }

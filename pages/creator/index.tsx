@@ -1,3 +1,4 @@
+import { InviteCreators } from '@/components/creator/creator-referrals'
 import { CreatorUpdates } from '@/components/creator/creator-updates'
 import { Loader2 } from 'lucide-react'
 import useSWR from 'swr'
@@ -45,7 +46,7 @@ function OverviewContent() {
           firstName ? `Good to see you, ${firstName}` : 'Your creator workspace'
         }
         description="Your reach, reviews, and rewards in one place."
-        eyebrowAccessory={<span className="inline-flex items-center rounded-full bg-[#f4f6f5] px-3 py-2 text-[10px] font-normal normal-case tracking-normal text-[#6b766f]">All time</span>}
+        eyebrowAccessory={<InviteCreators />}
       />
       <OverviewBento data={data} onAccountSaved={mutate} />
       <CreatorUpdates data={data} />

@@ -1,3 +1,5 @@
+import { getOrCreateCreatorProfile } from '@/lib/creator/service'
+import { CREATOR_INVITER_COOKIE, readCreatorInviter } from '@/lib/creator/creator-referral-cookie'
 import { monitorBackend } from '@/lib/reliability/monitor'
 import type { NextApiRequest, NextApiResponse } from 'next'
 import { z } from 'zod'
@@ -18,6 +20,8 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
     const session = await getAuthSession(req, res)
     if (!session?.user?.id) throw new ApiError(401, 'Authentication required')
     const { token } = parseBody(z.object({ token: creatorInviteTokenSchema }), req.body)
+    const referralCode = readCreatorInviter(req.cookies[CREATOR_INVITER_COOKIE])
+    if (referralCode) await getOrCreateCreatorProfile(session.user.id, referralCode)
     return json(res, 200, await claimCreatorInvite(token, session.user.id))
   } catch (error) { return handleApiError(error, res) }
 }

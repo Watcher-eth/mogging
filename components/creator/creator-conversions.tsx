@@ -1,3 +1,4 @@
+import { CreatorReferralsSection } from './creator-referrals'
 import { useState } from "react";
 import Image from "next/image";
 import { useSubmissionPostPreview } from "./submission-post-preview";
@@ -227,6 +228,7 @@ export function CreatorConversions({ report, showBonuses = report.bonusesAvailab
           <span>{sprintMoney(report.unassigned.revenueCents)} revenue</span>
         </div>
       </section>
+      <CreatorReferralsSection />
     </div>
   );
 }

@@ -643,6 +643,37 @@ export const creatorProfiles = pgTable(
   })
 )
 
+export const creatorReferralLinks = pgTable('creator_referral_links', {
+  creatorProfileId: text('creator_profile_id').primaryKey().references(() => creatorProfiles.id),
+  code: text('code').notNull().unique(),
+  createdAt: timestamp('created_at', { mode: 'date' }).notNull().defaultNow(),
+})
+
+export const creatorReferrals = pgTable('creator_referrals', {
+  inviteeId: text('invitee_id').primaryKey().references(() => creatorProfiles.id),
+  inviterId: text('inviter_id').notNull().references(() => creatorProfiles.id),
+  blockedReason: text('blocked_reason'),
+  checkedAt: timestamp('checked_at', { mode: 'date' }),
+  createdAt: timestamp('created_at', { mode: 'date' }).notNull().defaultNow(),
+}, table => ({
+  inviterIdx: index('creator_referrals_inviter_idx').on(table.inviterId),
+  notSelf: check('creator_referrals_not_self', sql`inviter_id <> invitee_id`),
+}))
+
+export const creatorReferralAwards = pgTable('creator_referral_awards', {
+  id: text('id').primaryKey().$defaultFn(() => crypto.randomUUID()),
+  inviteeId: text('invitee_id').notNull().references(() => creatorReferrals.inviteeId),
+  submissionId: text('submission_id').notNull().unique().references(() => creatorSubmissions.id),
+  slot: integer('slot').notNull(),
+  issuedCents: integer('issued_cents').notNull().default(0),
+  paidBasisCents: integer('paid_basis_cents').notNull().default(0),
+  approvedAt: timestamp('approved_at', { mode: 'date' }).notNull().defaultNow(),
+}, table => ({
+  slotIdx: uniqueIndex('creator_referral_awards_slot_unique').on(table.inviteeId, table.slot),
+  slotRange: check('creator_referral_awards_slot_range', sql`slot between 1 and 5`),
+  nonnegative: check('creator_referral_awards_nonnegative', sql`issued_cents >= 0 and paid_basis_cents >= 0`),
+}))
+
 export const creatorOnboardingInvites = pgTable('creator_onboarding_invites', {
   id: text('id').primaryKey().$defaultFn(() => crypto.randomUUID()),
   tokenHash: text('token_hash').notNull().unique(),
@@ -1015,6 +1046,7 @@ export const creatorPayments = pgTable(
       .notNull()
       .references(() => creatorProfiles.id, { onDelete: 'cascade' }),
     submissionId: text('submission_id').references(() => creatorSubmissions.id, { onDelete: 'set null' }),
+    creatorReferralAwardId: text('creator_referral_award_id').references(() => creatorReferralAwards.id),
     bonusSprintId: text('bonus_sprint_id').references(() => creatorSprints.id),
     bonusKey: text('bonus_key'),
     bonusNote: text('bonus_note'),
@@ -1030,7 +1062,8 @@ export const creatorPayments = pgTable(
   },
   (table) => ({
     bonusIdentityIdx: uniqueIndex('creator_payments_bonus_identity_unique').on(table.creatorProfileId, table.bonusSprintId, table.bonusKey),
-    bonusShapeCheck: check('creator_payments_bonus_shape', sql`(${table.bonusSprintId} is null and ${table.bonusKey} is null and ${table.bonusNote} is null) or (${table.bonusSprintId} is not null and ${table.bonusKey} is not null and ${table.bonusNote} is not null and ${table.submissionId} is null and ${table.currency} = 'USD' and ${table.amountCents} > 0)`),
+    bonusShapeCheck: check('creator_payments_bonus_shape', sql`(bonus_sprint_id is null and bonus_key is null and bonus_note is null and creator_referral_award_id is null) or (creator_referral_award_id is not null and bonus_sprint_id is null and bonus_key is null and bonus_note is not null and submission_id is null and currency = 'USD' and amount_cents > 0) or (creator_referral_award_id is null and bonus_sprint_id is not null and bonus_key is not null and bonus_note is not null and submission_id is null and currency = 'USD' and amount_cents > 0)`),
+    referralAwardIdx: index('creator_payments_referral_award_idx').on(table.creatorReferralAwardId),
     creatorIdx: index('creator_payments_creator_profile_id_idx').on(table.creatorProfileId),
     submissionIdx: index('creator_payments_submission_id_idx').on(table.submissionId),
     statusIdx: index('creator_payments_status_idx').on(table.status),

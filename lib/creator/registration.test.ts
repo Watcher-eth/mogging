@@ -5,7 +5,16 @@ let profiles = new Map<string, any>()
 let inserts: any[] = []
 let user: any
 let conflict = false
-mock.module('@/lib/db', () => ({ schema, db: {
+let transactionQueue = Promise.resolve()
+const fakeDb = {
+  execute: async () => undefined,
+  transaction: async (callback: (tx: any) => Promise<any>) => {
+    const previous = transactionQueue
+    let release!: () => void
+    transactionQueue = new Promise<void>(resolve => { release = resolve })
+    await previous
+    try { return await callback(fakeDb) } finally { release() }
+  },
   query: {
     creatorProfiles: { findFirst: async () => profiles.get('user') },
     users: { findFirst: async () => user },
@@ -26,7 +35,8 @@ mock.module('@/lib/db', () => ({ schema, db: {
       } }
     },
   }) }),
-} }))
+}
+mock.module('@/lib/db', () => ({ schema, db: fakeDb }))
 mock.module('@/lib/creator/attribution', () => ({ ensureCreatorTrackingLink: async () => null, creatorReferralHandle: () => null }))
 const { getOrCreateCreatorProfile } = await import('./service')
 

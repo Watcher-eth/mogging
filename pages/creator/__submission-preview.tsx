@@ -1,3 +1,5 @@
+import { CreatorConversions } from '@/components/creator/creator-conversions'
+import { EMPTY_CREATOR_CONVERSION_REPORT } from '@/lib/creator/conversion-report'
 import { LAUNCH_CAMPAIGNS, launchCampaignTerms } from '@/lib/creator/campaign-launch'
 import { TikTokAccountDialog } from '@/components/creator/tiktok-anchor-onboarding'
 import { useMemo, useState } from 'react'
@@ -72,6 +74,7 @@ async function previewFetch<Data>(request: string | string[], bonuses = false, g
     { ...samplePayments[0], id: 'preview-bundle-paid', amountCents: 750, payoutRequestId: 'preview-bundle' },
     { ...samplePayments[0], id: 'preview-bundle-approved', submissionId: 'preview-approved', amountCents: 750, payoutRequestId: 'preview-bundle' },
   ] : bonuses ? bonusDemoPayments : samplePayments } as Data
+  if (path === '/api/creator/referrals') return { inviteUrl: 'https://www.mogging.com/creator/join/preview-personal-creator-link0001', invited: 2, earnedCents: 325, paidCents: 125, outstandingCents: 200, referrals: [{ id: 'referral-one', name: 'Alex', joinedAt: '2026-10-25T16:00:00Z', approvedVideos: 3, earnedCents: 200, status: 'active' }, { id: 'referral-two', name: 'Sam', joinedAt: '2026-10-24T16:00:00Z', approvedVideos: 1, earnedCents: 125, status: 'active' }] } as Data
   if (path.endsWith('/preview')) {
     const index = Math.max(0, sampleSubmissions.findIndex(item => path.includes(item.id)))
     const submission = sampleSubmissions[index]
@@ -86,6 +89,7 @@ export default function SubmissionPreview() {
   const router = useRouter()
   const guide = router.query.view === 'guide'
   const overview = router.query.view === 'overview'
+  const conversions = router.query.view === 'conversions'
   const anchors = router.query.view === 'anchors'
   const [anchorOpen, setAnchorOpen] = useState(true)
   const bonuses = router.query.view === 'bonuses' || overview
@@ -97,7 +101,7 @@ export default function SubmissionPreview() {
   const [platform, setPlatform] = useState<'tiktok' | 'instagram'>('tiktok')
   const previewRouter = useMemo(() => ({
     ...router,
-    pathname: overview ? '/creator' : guide ? '/creator/guide' : history ? '/creator/submissions' : '/creator/submit',
+    pathname: conversions ? '/creator/conversions' : overview ? '/creator' : guide ? '/creator/guide' : history ? '/creator/submissions' : '/creator/submit',
     replace: async (...args: Parameters<typeof router.replace>) => {
       const [destination, , options] = args
       if (typeof destination === 'object' && destination.pathname === '/creator/submissions') {
@@ -117,11 +121,11 @@ export default function SubmissionPreview() {
       }
       return router.push(...args)
     },
-  }), [router, history, guide, bonuses, overview])
+  }), [router, history, guide, bonuses, overview, conversions])
   return <SessionContext.Provider value={{ data: { expires: '2099-01-01', user: { id: '', name: 'Example creator' } }, status: 'authenticated', update: async () => null }}>
     <SWRConfig key={empty ? 'empty' : bonuses ? 'bonuses' : 'populated'} value={{ provider: () => new Map(), use: [previewMiddleware] }}><RouterContext.Provider value={previewRouter}>
       <SidebarProvider className="min-h-0 flex-1 flex-col">
-        {overview ? <><p className="bg-[#f6f8f7] py-2 text-center text-[10px] text-[#8b958e]">Private overview preview · sample data</p><CreatorOverviewPage />{open ? <SubmissionDialog open onOpenChange={setOpen} onSubmitted={async () => {}} /> : null}</> : anchors ? <CreatorShell><CreatorHeader eyebrow="TikTok" title="Optional app anchor" description="Local preview · sample account" /><Button onClick={() => setAnchorOpen(true)}>View optional anchor setup</Button><TikTokAccountDialog account={{ ...account, followers: { source: 'public', count: 5000, checkedAt: account.createdAt } }} mode="anchor" open={anchorOpen} onOpenChange={setAnchorOpen} onSaved={async () => {}} /></CreatorShell> : guide ? <CreatorProgramGuidePage /> : history ? <><div className="flex justify-center gap-5 px-4 pt-3 text-xs text-zinc-400"><a href="?view=submissions" className="underline underline-offset-4">Mock submissions</a><a href="?view=empty" className="underline underline-offset-4">Animated empty state</a><a href="?view=bonuses" className="underline underline-offset-4">Bonus earnings</a><span>Local preview · sample data</span></div><CreatorSubmissionsPage />{open ? <SubmissionDialog open onOpenChange={setOpen} onSubmitted={async () => {}} /> : null}</> : <CreatorShell>
+        {overview ? <><p className="bg-[#f6f8f7] py-2 text-center text-[10px] text-[#8b958e]">Private overview preview · sample data</p><CreatorOverviewPage />{open ? <SubmissionDialog open onOpenChange={setOpen} onSubmitted={async () => {}} /> : null}</> : conversions ? <CreatorShell><CreatorConversions report={EMPTY_CREATOR_CONVERSION_REPORT} /></CreatorShell> : anchors ? <CreatorShell><CreatorHeader eyebrow="TikTok" title="Optional app anchor" description="Local preview · sample account" /><Button onClick={() => setAnchorOpen(true)}>View optional anchor setup</Button><TikTokAccountDialog account={{ ...account, followers: { source: 'public', count: 5000, checkedAt: account.createdAt } }} mode="anchor" open={anchorOpen} onOpenChange={setAnchorOpen} onSaved={async () => {}} /></CreatorShell> : guide ? <CreatorProgramGuidePage /> : history ? <><div className="flex justify-center gap-5 px-4 pt-3 text-xs text-zinc-400"><a href="?view=submissions" className="underline underline-offset-4">Mock submissions</a><a href="?view=empty" className="underline underline-offset-4">Animated empty state</a><a href="?view=bonuses" className="underline underline-offset-4">Bonus earnings</a><span>Local preview · sample data</span></div><CreatorSubmissionsPage />{open ? <SubmissionDialog open onOpenChange={setOpen} onSubmitted={async () => {}} /> : null}</> : <CreatorShell>
         <CreatorHeader eyebrow="Creator videos" title="Your submissions" description="Your content, reviews and earnings in one place." />
         <div className="creator-surface p-6"><p className="text-sm font-medium">You’re ready for your next post.</p><p className="mt-2 text-sm text-zinc-500">Open New video to try the updated submission flow.</p><p className="mt-5 text-xs text-zinc-400">Local preview · sample accounts · no real submissions</p></div>
         <div className="mt-5 flex gap-3"><Button variant="outline" onClick={() => setPanel('account')}>Preview account form</Button><Button variant="outline" onClick={() => setPanel('payout')}>Preview payout form</Button></div>

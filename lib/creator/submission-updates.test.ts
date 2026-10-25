@@ -1,4 +1,5 @@
 import { beforeEach, expect, mock, test } from 'bun:test'
+mock.module('./creator-referrals', () => ({ reserveCreatorReferralVideo: async () => undefined }))
 mock.module('@/lib/db', () => ({ db: {}, schema: {} }))
 const { recordReviewUpdate } = await import('./submission-updates')
 let events: any[] = []

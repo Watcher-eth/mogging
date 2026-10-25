@@ -1,3 +1,4 @@
+import { CREATOR_INVITER_COOKIE, readCreatorInviter } from '@/lib/creator/creator-referral-cookie'
 import { monitorBackend } from '@/lib/reliability/monitor'
 import type { NextApiRequest, NextApiResponse } from 'next'
 import { ApiError, handleApiError, json, methodNotAllowed, parseBody } from '@/lib/api/http'
@@ -10,6 +11,8 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
     if (!session?.user?.id) throw new ApiError(401, 'Authentication required')
 
     res.setHeader('Cache-Control', 'private, no-store')
+    const referralCode = readCreatorInviter(req.cookies[CREATOR_INVITER_COOKIE])
+    if (referralCode) await getOrCreateCreatorProfile(session.user.id, referralCode)
     if (req.method === 'GET') {
       return json(res, 200, await getCreatorDashboard(session.user.id))
     }

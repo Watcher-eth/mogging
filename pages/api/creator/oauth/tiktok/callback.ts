@@ -1,3 +1,5 @@
+import { CREATOR_INVITER_COOKIE, readCreatorInviter } from '@/lib/creator/creator-referral-cookie'
+import { getOrCreateCreatorProfile } from '@/lib/creator/service'
 import { monitorBackend } from '@/lib/reliability/monitor'
 import { creatorTikTokFields } from '@/lib/creator/tiktok-permissions'
 import type { NextApiRequest, NextApiResponse } from 'next'
@@ -45,6 +47,8 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
     const user = profile.data?.user
     if (!user) return redirect('error')
 
+    const referralCode = readCreatorInviter(req.cookies[CREATOR_INVITER_COOKIE])
+    if (referralCode) await getOrCreateCreatorProfile(session.user.id, referralCode)
     const account = await addCreatorTikTokOAuthAccount(session.user.id, {
       accessToken: tokens.access_token,
       expiresIn: tokens.expires_in,

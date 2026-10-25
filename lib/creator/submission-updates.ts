@@ -1,3 +1,4 @@
+import { reserveCreatorReferralVideo } from './creator-referrals'
 import { and, desc, eq, sql } from 'drizzle-orm'
 import { db, schema } from '@/lib/db'
 import type { CreatorUpdateType } from './updates'
@@ -5,6 +6,7 @@ import type { CreatorUpdateType } from './updates'
 type Transaction = Parameters<Parameters<typeof db.transaction>[0]>[0]
 
 export async function recordSubmissionUpdate(tx: Transaction, submissionId: string, type: CreatorUpdateType, note?: string | null, createdAt = new Date()) {
+  if (type === 'approved') await reserveCreatorReferralVideo(tx, submissionId)
   await tx.insert(schema.creatorSubmissionUpdates).values({ submissionId, type, note: note?.trim() || null, createdAt,
     historySnapshot: sql`(select jsonb_build_object(
       'submittedViews', s.view_count_threshold, 'submittedAudiencePercent', s.us_audience_percent,

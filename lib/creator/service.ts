@@ -1,3 +1,4 @@
+import { attributeNewCreator } from './creator-referrals'
 import { expiredRereviewAssignment } from './rereview-campaign'
 import { campaignCommittedCents } from './campaign-accounting'
 import { getCreatorSubmissionUpdates, recordSubmissionUpdate } from './submission-updates'
@@ -120,7 +121,7 @@ export async function saveCreatorProfile(userId: string, input: CreatorProfileIn
     // the payment method captured when the creator requested them.
     await tx.update(schema.creatorPayments).set({ paymentOption: profile.paymentOption }).where(and(
       eq(schema.creatorPayments.creatorProfileId, profile.id),
-      isNotNull(schema.creatorPayments.bonusSprintId),
+      or(isNotNull(schema.creatorPayments.bonusSprintId), isNotNull(schema.creatorPayments.creatorReferralAwardId)),
       eq(schema.creatorPayments.status, 'pending'),
       isNull(schema.creatorPayments.payoutRequestId),
     ))
@@ -304,25 +305,27 @@ export async function getCreatorTikTokAccessToken(userId: string, accountId: str
   return tokenAccount?.access_token || null
 }
 
-export async function getOrCreateCreatorProfile(userId: string) {
+export async function getOrCreateCreatorProfile(userId: string, referralCode?: string | null) {
   const existing = await getCreatorProfile(userId)
   if (existing) return existing
-  const user = await db.query.users.findFirst({ where: eq(schema.users.id, userId) })
-  if (!user) throw new CreatorServiceError(404, 'User not found')
-  const [profile] = await db
-    .insert(schema.creatorProfiles)
-    .values({
-      userId,
-      displayName: user.name || user.email.split('@')[0],
-      socialHandle: user.instagramUsername,
-    })
-    .onConflictDoNothing({ target: schema.creatorProfiles.userId })
-    .returning()
-  // Concurrent Studio visits or account connections share the same registration.
-  if (profile) return profile
-  const registered = await getCreatorProfile(userId)
-  if (!registered) throw new CreatorServiceError(500, 'Could not register creator')
-  return registered
+  return db.transaction(async tx => {
+    // Serialize all registration paths and referral attribution for this login.
+    await tx.execute(sql`select id from users where id = ${userId} for update`)
+    const existing = await tx.query.creatorProfiles.findFirst({ where: eq(schema.creatorProfiles.userId, userId) })
+    if (existing) return existing
+    const user = await tx.query.users.findFirst({ where: eq(schema.users.id, userId) })
+    if (!user) throw new CreatorServiceError(404, 'User not found')
+    const [profile] = await tx.insert(schema.creatorProfiles).values({
+      userId, displayName: user.name || user.email.split('@')[0], socialHandle: user.instagramUsername,
+    }).onConflictDoNothing({ target: schema.creatorProfiles.userId }).returning()
+    if (!profile) {
+      const registered = await tx.query.creatorProfiles.findFirst({ where: eq(schema.creatorProfiles.userId, userId) })
+      if (!registered) throw new CreatorServiceError(500, 'Could not register creator')
+      return registered
+    }
+    await attributeNewCreator(tx, profile, referralCode)
+    return profile
+  })
 }
 
 export async function createCreatorSubmission(userId: string, input: CreatorSubmissionInput) {

@@ -1,3 +1,5 @@
+import { CREATOR_INVITER_COOKIE, readCreatorInviter } from '@/lib/creator/creator-referral-cookie'
+import { getOrCreateCreatorProfile } from '@/lib/creator/service'
 import { monitorBackend } from '@/lib/reliability/monitor'
 import { creatorConnectAccountSchema } from '@/lib/creator/account-identity'
 import type { NextApiRequest, NextApiResponse } from 'next'
@@ -25,6 +27,8 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
       return json(res, 200, { socialAccounts: dashboard.socialAccounts })
     }
     if (req.method === 'POST') {
+      const referralCode = readCreatorInviter(req.cookies[CREATOR_INVITER_COOKIE])
+      if (referralCode) await getOrCreateCreatorProfile(session.user.id, referralCode)
       const input = parseBody(creatorConnectAccountSchema, req.body)
       return json(res, 201, { account: await addCreatorSocialAccount(session.user.id, input) })
     }

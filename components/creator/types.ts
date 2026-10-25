@@ -44,6 +44,7 @@ export type CreatorSubmission = {
 }
 
 export type CreatorPayment = {
+  creatorReferralAwardId?: string | null
   bonusSprintId?: string | null
   bonusKey?: string | null
   bonusNote?: string | null

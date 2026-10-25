@@ -1,3 +1,4 @@
+import { assertCreatorReferralPaymentsEligible, refreshCreatorReferralBonuses } from '@/lib/creator/creator-referrals'
 import { campaignCommittedCents } from '@/lib/creator/campaign-accounting'
 import { refreshCreatorBonuses } from '@/lib/creator/bonus-service'
 import { hasLaunchCampaignBonuses } from '@/lib/creator/campaign-launch'
@@ -388,9 +389,10 @@ export async function reviewCreatorResource(input: CreatorAdminReviewInput, revi
     const [submission] = target.submissionId ? await tx.select().from(schema.creatorSubmissions).where(eq(schema.creatorSubmissions.id, target.submissionId)).for('update') : []
     const [payment] = await tx.select().from(schema.creatorPayments).where(eq(schema.creatorPayments.id, input.id)).for('update')
     if (!payment) throw new ApiError(404, 'Creator payment not found')
-    if (payment.bonusSprintId && input.amountCents !== undefined && input.amountCents !== payment.amountCents) throw new ApiError(409, 'Automatic bonus awards cannot be edited. Cancel an incorrect award instead.')
+    if ((payment.bonusSprintId || payment.creatorReferralAwardId) && input.amountCents !== undefined && input.amountCents !== payment.amountCents) throw new ApiError(409, 'Automatic bonus awards cannot be edited. Cancel an incorrect award instead.')
     if (payment.payoutRequestId) throw new ApiError(409, 'Record this payment through its bundled payout request')
     if (['pending', 'processing', 'paid'].includes(input.status)) {
+      if (payment.creatorReferralAwardId && payment.status !== 'paid') await assertCreatorReferralPaymentsEligible(tx, [payment])
       const profile = await tx.query.creatorProfiles.findFirst({ where: eq(schema.creatorProfiles.id, payment.creatorProfileId) })
       if (profile?.bundledPayouts && !['processing', 'paid'].includes(payment.status)) throw new ApiError(409, 'This creator uses bundled payouts. Wait for their payout request.')
     }
@@ -412,6 +414,7 @@ export async function reviewCreatorResource(input: CreatorAdminReviewInput, revi
     }
     return record
   }).then(async record => {
+    if (record.status === 'paid') await refreshCreatorReferralBonuses(record.creatorProfileId)
     if (record.submissionId && record.status === 'paid') {
       const post = await db.query.creatorSubmissions.findFirst({ where: eq(schema.creatorSubmissions.id, record.submissionId) })
       if (post?.sprintTerms?.bonusBudgetCents) await refreshCreatorBonuses(record.creatorProfileId)
@@ -426,7 +429,7 @@ export async function createCreatorPayment(input: CreatorAdminPaymentInput) {
     where: eq(schema.creatorSubmissions.id, input.submissionId),
   })
   if (!submission) throw new ApiError(404, 'Creator submission not found')
-  if (submission.sprintId) return createSprintPayment(input, receiptImage)
+  if (submission.sprintId) return createSprintPayment(input, receiptImage).then(async payment => { if (payment.status === 'paid') await refreshCreatorReferralBonuses(payment.creatorProfileId); return payment })
   if (!isCreatorViewThreshold(input.adminViewCountThreshold) || (input.adminUsAudiencePercent !== null && !isCreatorTier1AudienceTier(input.adminUsAudiencePercent))) throw new ApiError(400, 'Choose supported historical payout values')
 
   const now = new Date()
@@ -467,7 +470,7 @@ export async function createCreatorPayment(input: CreatorAdminPaymentInput) {
     }
     if (input.status === 'paid') await tx.update(schema.creatorSubmissions).set({ status: 'paid', updatedAt: now }).where(eq(schema.creatorSubmissions.id, submission.id))
     return payment
-  })
+  }).then(async payment => { if (payment.status === 'paid') await refreshCreatorReferralBonuses(payment.creatorProfileId); return payment })
 }
 
 function reviewedPayoutCents(input: Extract<CreatorAdminReviewInput, { resource: 'submission' }>, calculated: number, payments: { status: string; amountCents: number }[]) {
