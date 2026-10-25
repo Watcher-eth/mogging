@@ -1,0 +1,33 @@
+{
+  "deployment": "dpl_8wzaPEFMrcYWMqzkoGbgvSm8VXc3",
+  "commit": "96c723d425007f2be51a0def32f41ec09777b423",
+  "migration": "0062_creator_referrals",
+  "schema": {
+    "referrals": true,
+    "awards": true,
+    "payment_column": true
+  },
+  "paymentTotalsUnchanged": true,
+  "checks": [
+    {
+      "path": "/api/health",
+      "status": 200
+    },
+    {
+      "path": "/api/creator/referrals",
+      "status": 401
+    },
+    {
+      "path": "/api/creator/sprints",
+      "status": 401
+    },
+    {
+      "path": "/creator/__submission-preview?view=overview",
+      "status": 404
+    },
+    {
+      "path": "/creator/join/invalid",
+      "status": 404
+    }
+  ]
+}
