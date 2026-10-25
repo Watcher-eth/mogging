@@ -164,6 +164,10 @@ export const LAUNCH_CAMPAIGNS: LaunchCampaign[] = [
         url: "https://www.tiktok.com/@pedrocasxs/video/7698764501147061524",
         label: "@pedrocasxs",
       },
+      {
+        url: "https://www.tiktok.com/@looksguru/photo/7418092394492546336",
+        label: "@looksguru",
+      },
     ],
   },
   {
