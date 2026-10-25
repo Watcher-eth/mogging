@@ -1,0 +1,43 @@
+{
+  "deployment": "dpl_FiiLPt1iYDLEQ7YXQMhGZ5bSyUbc",
+  "url": "https://mogging-s5i08jwtb-glimpseback.vercel.app",
+  "production": "https://www.mogging.com",
+  "files": [
+    "lib/admin/analytics.ts",
+    "pages/api/admin/analytics.ts",
+    "components/admin/analytics-workspace.tsx",
+    "components/admin/creator-performance-dashboard.tsx",
+    "lib/admin/analytics-window.test.ts",
+    "lib/admin/analytics-route.test.ts"
+  ],
+  "tests": {
+    "unitTests": 19,
+    "assertions": 60,
+    "paritySections": 14,
+    "parityDatasets": 107,
+    "typecheck": "passed",
+    "lint": "passed",
+    "productionBuild": "passed"
+  },
+  "benchmark": {
+    "original30DaysMs": 12245,
+    "original7DaysMs": 8477,
+    "scoped7DaysMs": {
+      "Overview": 4176,
+      "Acquisition": 6599,
+      "Revenue": 2245,
+      "Onboarding": 6216,
+      "Retention": 2703,
+      "Authentication": 3911,
+      "Quality": 3770
+    },
+    "note": "Read-only production-database measurements from local machine, uncached. Authenticated deployed response/cache timing not measured."
+  },
+  "security": {
+    "stagedHealth": 200,
+    "unauthenticatedAnalytics": 401,
+    "productionCredentialsDownload": "Rejected by automatic approval review; no credentials downloaded.",
+    "liveHealth": 200,
+    "liveUnauthenticatedAnalytics": 401
+  }
+}

@@ -1,6 +1,6 @@
 import { beforeEach, expect, mock, test } from 'bun:test'
 import * as schema from '@/lib/db/schema'
-import { getCreatorSubmissionReviewItems, TIER_D_AUDIENCE_REJECTION } from '@/lib/creator/submission-review'
+import { getCreatorSubmissionReviewItems, AUDIENCE_MINIMUM_REJECTION } from '@/lib/creator/submission-review'
 import { defaultCreatorSprintTerms } from '@/lib/creator/sprint-defaults'
 import { sprintReviewItems } from '@/lib/creator/sprints'
 import { TIKTOK_ANCHOR_REQUIREMENT } from '@/lib/creator/post-guidance'
@@ -9,7 +9,8 @@ let submission: Record<string, any>
 let writes = 0
 const priorPayments = [{ status: 'paid', amountCents: 1300 }]
 const tx = {
-  query: { creatorPayments: { findMany: async () => priorPayments, findFirst: async () => undefined }, creatorProfiles: { findFirst: async () => ({ id: 'creator', paymentOption: 'paypal', bundledPayouts: false }) } },
+  execute: async () => [{ cents: submission.approvedAmountCents || 0, amount_cents: 0 }],
+  query: { creatorPayments: { findMany: async () => priorPayments, findFirst: async () => undefined }, creatorProfiles: { findFirst: async () => ({ id: 'creator', authStatus: 'pending', paymentOption: 'paypal', paypalEmail: 'creator@example.com', bundledPayouts: false }) } },
   select: (fields?: unknown) => ({ from: (table: unknown) => ({ where: () => fields
     ? Promise.resolve([{ cents: submission.approvedAmountCents || 0 }])
     : { for: async () => table === schema.creatorSprints ? [{ id: 'campaign', budgetCents: 100000 }] : [submission] } }) }),
@@ -27,7 +28,7 @@ const input = () => {
   if (parsed.resource !== 'submission') throw new Error('Expected submission input')
   return parsed
 }
-beforeEach(() => { submission = { id: 'submission', formatId: 'custom-video-v1', status: 'pending', reviewNote: null }; writes = 0 })
+beforeEach(() => { priorPayments.splice(0, priorPayments.length, { status: 'paid', amountCents: 1300 }); submission = { id: 'submission', formatId: 'custom-video-v1', status: 'pending', reviewNote: null }; writes = 0 })
 
 test('rejection persists only selected failures and their creator-visible feedback', async () => {
   const saved = await reviewCreatorResource(input())
@@ -135,20 +136,61 @@ test('scheduling a legacy payment uses the saved adjustment, not the calculated 
   await expect(createCreatorPayment({ submissionId: 'submission', adminViewCountThreshold: 100000, adminUsAudiencePercent: 30, status: 'pending' })).rejects.toThrow('Save the updated payout review')
 })
 
- test('Tier D audience alone can explain a campaign rejection and persists for the creator', async () => {
+ test('Tier C audience alone can explain a campaign rejection and persists for the creator', async () => {
   const terms = defaultCreatorSprintTerms()
   submission = { ...submission, sprintId: 'campaign', sprintTerms: terms }
   const reviewChecklist = [
     ...sprintReviewItems(terms, 'custom-video-v1').map(({ id }) => ({ id, met: true, note: null })),
-    { id: TIER_D_AUDIENCE_REJECTION.id, met: false, note: 'Verified Tier 1 audience: 7.4%.' },
+    { id: AUDIENCE_MINIMUM_REJECTION.id, met: false, note: 'Verified Tier 1 audience: 7.4%.' },
   ]
   const saved = await reviewCreatorResource({ ...input(), adminUsAudiencePercent: 7.4, reviewChecklist })
   expect(saved).toMatchObject({ status: 'rejected', reviewChecklist })
  })
- test('legacy submissions also preserve the Tier D audience rejection reason', async () => {
+ test('legacy submissions also preserve the Tier C audience rejection reason', async () => {
   const reviewChecklist = [
     ...results().map(item => ({ ...item, met: true, note: null })),
-    { id: TIER_D_AUDIENCE_REJECTION.id, met: false, note: null },
+    { id: AUDIENCE_MINIMUM_REJECTION.id, met: false, note: null },
   ]
   expect(await reviewCreatorResource({ ...input(), adminUsAudiencePercent: null, reviewChecklist })).toMatchObject({ status: 'rejected', reviewChecklist })
  })
+
+
+function zeroPayoutReview() {
+  const terms = defaultCreatorSprintTerms()
+  submission = { ...submission, sprintId: 'campaign', sprintTerms: terms, analyticsScreenshotUrl: 'https://example.com/evidence.mp4' }
+  return { ...approval(null, 'Verified Tier 1 audience is 7.4%, below the campaign minimum.'), adminViewCountThreshold: 20000, adminUsAudiencePercent: 7.4,
+    reviewChecklist: sprintReviewItems(terms, 'custom-video-v1').map(({ id }) => ({ id, met: true, note: null })) }
+}
+
+test('below-minimum audience can be approved at zero with a creator-visible explanation', async () => {
+  const review = zeroPayoutReview()
+  priorPayments.length = 0
+  expect(await reviewCreatorResource(review)).toMatchObject({ status: 'approved', approvedAmountCents: 0, adminUsAudiencePercent: 7.4, reviewNote: review.reviewNote })
+})
+
+test('a zero-eligibility approval requires an explanation and cannot grant positive earnings', async () => {
+  const review = zeroPayoutReview()
+  priorPayments.length = 0
+  await expect(reviewCreatorResource({ ...review, reviewNote: ' ' })).rejects.toThrow('Explain why this video receives no payment')
+  await expect(reviewCreatorResource({ ...review, approvedAmountCents: 100 })).rejects.toThrow('Eligible views and audience are required')
+  expect(writes).toBe(0)
+})
+
+test('a zero-payout adjustment cannot erase previously sent payments', async () => {
+  const review = zeroPayoutReview()
+  await expect(reviewCreatorResource({ ...review, approvedAmountCents: 0 })).rejects.toThrow('cannot be lower than payments already sent')
+  expect(priorPayments).toEqual([{ status: 'paid', amountCents: 1300 }])
+  expect(writes).toBe(0)
+})
+
+
+test('a fully paid $15 rereview saves unchanged earnings without another payment or explanation', async () => {
+  const terms = defaultCreatorSprintTerms()
+  terms.milestones = [{ views: 20000, amountCents: 1500 }]
+  priorPayments.splice(0, priorPayments.length, { status: 'paid', amountCents: 1500 })
+  submission = { ...submission, status: 'in_review', sprintId: 'campaign', sprintTerms: terms, approvedAmountCents: 1500, reviewRequestedAt: new Date(), analyticsScreenshotUrl: 'https://example.com/evidence.mp4' }
+  const reviewChecklist = sprintReviewItems(terms, 'custom-video-v1').map(({ id }) => ({ id, met: true, note: null }))
+  expect(await reviewCreatorResource({ ...approval(null, null), reviewChecklist })).toMatchObject({ status: 'approved', approvedAmountCents: 1500, reviewRequestedAt: null })
+  expect(priorPayments).toEqual([{ status: 'paid', amountCents: 1500 }])
+  await expect(createCreatorPayment({ submissionId: 'submission', adminViewCountThreshold: 40000, adminUsAudiencePercent: 30, status: 'pending' })).rejects.toThrow()
+})

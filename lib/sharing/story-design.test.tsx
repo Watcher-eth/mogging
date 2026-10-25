@@ -16,7 +16,7 @@ describe('report story designs', () => {
     for (const design of ['precision', 'afterimage'] as const) {
       const portrait = await prepareStoryPortrait(source, design)
       portraits.push(portrait)
-      const image = new ImageResponse(<ReportStoryDesign design={design} portrait={portrait} landmarks={null} score="10.0" potential="10.0" rank="True Adam" />, { width: 1080, height: 1920 })
+      const image = new ImageResponse(<ReportStoryDesign design={design} portrait={portrait} landmarks={null} score="10.0" potential="10.0" />, { width: 1080, height: 1920 })
       const bytes = Buffer.from(await image.arrayBuffer())
       const metadata = await sharp(bytes).metadata()
       expect(metadata.format).toBe('png')

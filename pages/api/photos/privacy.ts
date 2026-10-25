@@ -21,6 +21,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
     }
 
     const body = parseBody(photoPrivacySchema, req.body)
+    if (body.isPublic) throw new ApiError(410, 'Public report publishing has been removed')
     const [photo] = await db
       .update(schema.photos)
       .set({

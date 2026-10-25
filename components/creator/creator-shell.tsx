@@ -1,3 +1,4 @@
+import { TikTokAnchorOnboarding } from './tiktok-anchor-onboarding'
 import { CreatorWelcomeDialog, useCreatorWelcome } from './creator-welcome'
 import { Sidebar, SidebarContent, SidebarHeader, SidebarFooter, SidebarGroup, SidebarGroupLabel, SidebarGroupContent, SidebarMenu, SidebarMenuItem, SidebarMenuButton, SidebarInset, SidebarTrigger, useSidebar } from '@/components/ui/sidebar'
 import { creatorGuideTopics, creatorGuideTopic, creatorGuideHref } from '@/lib/creator/guide-navigation'
@@ -78,6 +79,7 @@ export function CreatorShell({ children, allowUnauthenticated = false }: { child
       </div>
       <CreatorWelcomeDialog open={welcome.open} onOpenChange={welcome.onOpenChange} />
       <CreatorSetupChecklist />
+      <TikTokAnchorOnboarding enabled={!welcome.open && !moreOpen && router.pathname === '/creator'} />
     </div>
   )
 }

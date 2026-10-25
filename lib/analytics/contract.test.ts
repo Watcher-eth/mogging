@@ -19,7 +19,7 @@ test('required fields and scan correlation survive verbose attribution context w
 
 const mobileOnboarding = Bun.file(new URL('../../../mogging-mobile/src/analytics/onboarding.ts', import.meta.url))
 test('new onboarding analytics preserves supported released versions', () => {
-  expect(supportedOnboardingVersions).toEqual(['3', '4', '5', ONBOARDING_ANALYTICS_VERSION])
+  expect(supportedOnboardingVersions).toEqual(['3', '4', '5', '6', ONBOARDING_ANALYTICS_VERSION])
 })
 test.skipIf(!await mobileOnboarding.exists())('admin and mobile onboarding catalogs stay identical', async () => {
   expect(await Bun.file(new URL('./onboarding.ts', import.meta.url)).text()).toBe(await mobileOnboarding.text())

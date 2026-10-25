@@ -83,7 +83,7 @@ export function CreatorConversions({ report, showBonuses = report.bonusesAvailab
         </div>
         <div className={styles.chart}>
           {report.daily.length ? (
-            <AnalyticsChart key={selected.join(",")} rows={report.daily} metrics={selectedMetric} days={days} fitToData
+            <AnalyticsChart key={selected.join(",")} rows={report.daily} metrics={selectedMetric} days={days} fitToData timeZone="UTC"
               currency={selected.includes("revenue") ? "USD" : undefined} title="Daily content performance" />
           ) : <EmptyConversionChart />}
         </div>

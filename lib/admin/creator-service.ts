@@ -1,10 +1,11 @@
+import { campaignCommittedCents } from '@/lib/creator/campaign-accounting'
 import { refreshCreatorBonuses } from '@/lib/creator/bonus-service'
 import { hasLaunchCampaignBonuses } from '@/lib/creator/campaign-launch'
 import { recordReviewUpdate } from '@/lib/creator/submission-updates'
-import { submissionReviewError, TIER_D_AUDIENCE_REJECTION } from '@/lib/creator/submission-review'
+import { submissionReviewError, AUDIENCE_MINIMUM_REJECTION } from '@/lib/creator/submission-review'
 import { rethrowCreatorPostConflict } from '@/lib/creator/post-identity'
 import { normalizePaymentReceipt, paymentReceiptSchema } from './payment-receipt'
-import { remainingCreatorPaymentCents } from '@/lib/creator/money'
+import { canReceiveCreatorPayout, remainingCreatorPaymentCents } from '@/lib/creator/money'
 import { submissionUnreadCount } from '@/lib/creator/submission-messages'
 import { sprintPayoutCents, sprintReviewItems } from '@/lib/creator/sprints'
 import { and, desc, eq, sql } from 'drizzle-orm'
@@ -140,6 +141,7 @@ export async function getCreatorAdminDashboard() {
         creatorAvatarUrl: sql<string | null>`coalesce(nullif(${schema.creatorSocialAccounts.avatarUrl}, ''), ${schema.users.image})`,
         socialAccountStatus: schema.creatorSocialAccounts.status,
         sprintId: schema.creatorSubmissions.sprintId,
+        sprintName: schema.creatorSprints.name,
         sprintTerms: schema.creatorSubmissions.sprintTerms,
         approvedAmountCents: schema.creatorSubmissions.approvedAmountCents,
         reviewRequestedAt: schema.creatorSubmissions.reviewRequestedAt,
@@ -167,6 +169,7 @@ export async function getCreatorAdminDashboard() {
         updatedAt: schema.creatorSubmissions.updatedAt,
       })
       .from(schema.creatorSubmissions)
+      .leftJoin(schema.creatorSprints, eq(schema.creatorSubmissions.sprintId, schema.creatorSprints.id))
       .innerJoin(schema.creatorProfiles, eq(schema.creatorSubmissions.creatorProfileId, schema.creatorProfiles.id))
       .innerJoin(schema.users, eq(schema.creatorProfiles.userId, schema.users.id))
       .leftJoin(schema.creatorSocialAccounts, eq(schema.creatorSubmissions.socialAccountId, schema.creatorSocialAccounts.id))
@@ -373,7 +376,7 @@ export async function reviewCreatorResource(input: CreatorAdminReviewInput, revi
       }).where(eq(schema.creatorSubmissions.id, input.id)).returning()
       if (!record) throw new ApiError(404, 'Creator submission not found')
       await appendReviewMessage(tx, submission, input.reviewNote, reviewerId)
-      await recordReviewUpdate(tx, submission, input)
+      await recordReviewUpdate(tx, submission, { ...input, approvedAmountCents: record.approvedAmountCents })
       return record
     }).catch(rethrowCreatorPostConflict)
   }
@@ -438,6 +441,7 @@ export async function createCreatorPayment(input: CreatorAdminPaymentInput) {
     if (lockedSubmission.approvedAmountCents != null && (input.adminViewCountThreshold !== lockedSubmission.adminViewCountThreshold || input.adminUsAudiencePercent !== lockedSubmission.adminUsAudiencePercent)) throw new ApiError(409, 'Save the updated payout review before scheduling payment')
     const profile = await tx.query.creatorProfiles.findFirst({ where: eq(schema.creatorProfiles.id, submission.creatorProfileId) })
     if (!profile) throw new ApiError(404, 'Creator profile not found')
+    if (!canReceiveCreatorPayout(profile)) throw new ApiError(409, 'Save a complete payout method and ensure creator access is active')
     if (profile.bundledPayouts) throw new ApiError(409, 'This creator uses bundled payouts. Wait for their payout request.')
     const existing = await tx.query.creatorPayments.findFirst({ where: eq(schema.creatorPayments.submissionId, submission.id) })
     if (existing) throw new ApiError(409, 'A payment already exists for this submission')
@@ -487,7 +491,7 @@ async function reviewSprintSubmission(input: Extract<CreatorAdminReviewInput, { 
     if (input.status === 'approved' && !submission.analyticsScreenshotUrl) throw new ApiError(409, 'Fresh analytics evidence is required before approval')
     if (input.status === 'paid') throw new ApiError(400, 'Mark the payment sent to complete a cashout')
     const expected = sprintReviewItems(submission.sprintTerms, submission.formatId || '')
-    if (expected.length && input.reviewChecklist.some(item => item.id === TIER_D_AUDIENCE_REJECTION.id)) expected.push(TIER_D_AUDIENCE_REJECTION)
+    if (expected.length && input.reviewChecklist.some(item => item.id === AUDIENCE_MINIMUM_REJECTION.id)) expected.push(AUDIENCE_MINIMUM_REJECTION)
     // An open admin tab may still send rules retired since the modal was loaded.
     // Discard only known retired rules; preserve every current result, including unmet ones.
     const currentIds = new Set(expected.map(item => item.id))
@@ -505,7 +509,7 @@ async function reviewSprintSubmission(input: Extract<CreatorAdminReviewInput, { 
       if (calculated > preservedCents) throw new ApiError(400, 'This rereview has additional eligible earnings')
       if (!input.reviewNote?.trim()) throw new ApiError(400, 'Explain why this rereview receives no additional payment')
     }
-    if (input.status === 'approved' && !calculated && !input.approveWithoutPayment) throw new ApiError(409, 'Approval requires eligible views and audience')
+    if (input.status === 'approved' && !calculated && !input.approveWithoutPayment && !input.reviewNote?.trim()) throw new ApiError(400, 'Explain why this video receives no payment')
     const amountCents = input.status === 'approved'
       ? input.approveWithoutPayment
         ? preservedCents
@@ -514,12 +518,14 @@ async function reviewSprintSubmission(input: Extract<CreatorAdminReviewInput, { 
 
     const [sprint] = await tx.select().from(schema.creatorSprints).where(eq(schema.creatorSprints.id, submission.sprintId)).for('update')
     if (!sprint) throw new ApiError(404, 'Sprint not found')
-    const [used] = await tx.select({ cents: sql<number>`coalesce(sum(${schema.creatorSubmissions.approvedAmountCents}),0)::float8` }).from(schema.creatorSubmissions).where(eq(schema.creatorSubmissions.sprintId, sprint.id))
+    const [used] = await tx.execute<{ cents: number }>(sql`select ${campaignCommittedCents(sprint.id)} as cents`)
+    const [transfer] = await tx.execute<{ amount_cents: number }>(sql`select amount_cents from creator_campaign_transfers where submission_id = ${submission.id}`)
+    if ((amountCents || 0) < (transfer?.amount_cents ?? 0)) throw new ApiError(409, 'Previously approved earnings from the original campaign must be preserved')
     const previous = submission.approvedAmountCents || 0
     if (used.cents - previous + (amountCents || 0) > sprint.budgetCents) throw new ApiError(409, 'This approval would exceed the sprint budget')
     const [record] = await tx.update(schema.creatorSubmissions).set({ status: input.status, reviewRequestedAt: ['approved', 'rejected'].includes(input.status) ? null : submission.reviewRequestedAt, approvedAmountCents: amountCents, adminViewCountThreshold: input.adminViewCountThreshold, adminUsAudiencePercent: input.adminUsAudiencePercent, reviewChecklist: reviewChecklist.map(item => ({ ...item, note: item.note || null })), reviewNote: input.reviewNote || null, updatedAt: new Date() }).where(eq(schema.creatorSubmissions.id, submission.id)).returning()
     await appendReviewMessage(tx, submission, input.reviewNote, reviewerId)
-    await recordReviewUpdate(tx, submission, input)
+    await recordReviewUpdate(tx, submission, { ...input, approvedAmountCents: record.approvedAmountCents })
     return record
   })
 }
@@ -532,7 +538,7 @@ async function createSprintPayment(input: CreatorAdminPaymentInput, receiptImage
     const amountCents = remainingCreatorPaymentCents(submission.approvedAmountCents, payments)
     if (!amountCents) throw new ApiError(409, 'All approved earnings have already been paid')
     const profile = await tx.query.creatorProfiles.findFirst({ where: eq(schema.creatorProfiles.id, submission.creatorProfileId) })
-    if (!profile || profile.authStatus !== 'verified' || !(profile.paymentOption === 'paypal' ? profile.paypalEmail : profile.cryptoNetwork && profile.cryptoWalletAddress)) throw new ApiError(409, 'An approved payout method is required')
+    if (!profile || !canReceiveCreatorPayout(profile)) throw new ApiError(409, 'Save a complete payout method and ensure creator access is active')
     if (profile.bundledPayouts) throw new ApiError(409, 'This creator uses bundled payouts. Wait for their payout request.')
     if (input.adminViewCountThreshold !== submission.adminViewCountThreshold || input.adminUsAudiencePercent !== submission.adminUsAudiencePercent) throw new ApiError(409, 'Use the approved earnings values')
     const [payment] = await tx.insert(schema.creatorPayments).values({ creatorProfileId: profile.id, submissionId: submission.id, amountCents, paymentOption: profile.paymentOption, status: input.status, providerReference: input.providerReference || null, paidAt: input.status === 'paid' ? new Date() : null }).returning()

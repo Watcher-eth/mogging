@@ -262,6 +262,7 @@ export const photos = pgTable(
     updatedAt: timestamp('updated_at', { mode: 'date' }).notNull().defaultNow(),
   },
   (table) => ({
+    privateReportsOnly: check('photos_private_reports_only', sql`not ${table.isPublic}`),
     imageHashIdx: uniqueIndex('photos_image_hash_unique').on(table.imageHash),
     userIdx: index('photos_user_id_idx').on(table.userId),
     anonymousActorIdx: index('photos_anonymous_actor_id_idx').on(table.anonymousActorId),
@@ -726,11 +727,21 @@ export const creatorSubmissions = pgTable(
   })
 )
 
+export const creatorCampaignTransfers = pgTable('creator_campaign_transfers', {
+  submissionId: text('submission_id').primaryKey().references(() => creatorSubmissions.id),
+  fromSprintId: text('from_sprint_id').notNull().references(() => creatorSprints.id),
+  toSprintId: text('to_sprint_id').notNull().references(() => creatorSprints.id),
+  amountCents: integer('amount_cents').notNull(),
+  reason: text('reason').notNull(),
+  createdAt: timestamp('created_at', { mode: 'date' }).notNull().defaultNow(),
+})
+
 export const creatorSubmissionUpdates = pgTable('creator_submission_updates', {
   id: text('id').primaryKey().$defaultFn(() => crypto.randomUUID()),
   submissionId: text('submission_id').notNull().references(() => creatorSubmissions.id, { onDelete: 'cascade' }),
   type: text('type').$type<import('../creator/updates').CreatorUpdateType>().notNull(),
   note: text('note'),
+  historySnapshot: jsonb('history_snapshot').$type<import('../creator/updates').SubmissionHistorySnapshot>(),
   createdAt: timestamp('created_at', { mode: 'date' }).notNull().defaultNow(),
 }, table => ({
   submissionTimeIdx: index('creator_submission_updates_submission_time_idx').on(table.submissionId, table.createdAt),

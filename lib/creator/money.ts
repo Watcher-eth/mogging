@@ -4,8 +4,10 @@ import type {
   CreatorProfile,
   CreatorSubmission,
 } from '@/components/creator/types'
+type PayoutDetails = Pick<CreatorProfile, 'paymentOption' | 'paypalEmail' | 'cryptoNetwork' | 'cryptoWalletAddress'>
+
 export function hasCreatorPayoutMethod(
-  profile: CreatorProfile | null | undefined,
+  profile: PayoutDetails | null | undefined,
 ) {
   return Boolean(
     profile &&
@@ -14,6 +16,11 @@ export function hasCreatorPayoutMethod(
       : profile.cryptoNetwork && profile.cryptoWalletAddress),
   )
 }
+// Saving valid payout details makes a creator ready; suspension is a separate gate.
+export function canReceiveCreatorPayout(profile: (PayoutDetails & Pick<CreatorProfile, 'authStatus'>) | null | undefined) {
+  return Boolean(profile && profile.authStatus !== 'suspended' && hasCreatorPayoutMethod(profile))
+}
+
 type EarningsSubmission = Pick<CreatorSubmission, 'id' | 'sprintId' | 'approvedAmountCents' | 'status' | 'adminViewCountThreshold' | 'adminUsAudiencePercent'>
 
 export function creatorEarnedCents(submission: EarningsSubmission) {

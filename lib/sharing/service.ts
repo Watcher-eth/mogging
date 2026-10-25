@@ -1,14 +1,14 @@
 import { and, eq, isNull } from 'drizzle-orm'
 import { z } from 'zod'
 import { db, schema } from '@/lib/db'
-import { getPslLeaderboard } from '@/lib/leaderboards/service'
+import { ownsPhoto, type PhotoViewer } from '@/lib/photos/access'
 import { createShareToken } from './token'
 
 export const createAnalysisShareSchema = z.object({
   analysisId: z.string().min(1),
   ownerUserId: z.string().min(1).nullable().optional(),
   ownerAnonymousActorId: z.string().min(1).nullable().optional(),
-  includeLeaderboard: z.boolean().default(false),
+  includeLeaderboard: z.boolean().default(false).transform(() => false),
 })
 
 export type CreateAnalysisShareInput = z.infer<typeof createAnalysisShareSchema>
@@ -39,7 +39,7 @@ export async function createAnalysisShare(input: CreateAnalysisShareInput) {
     throw new SharingServiceError(400, 'Only completed analyses can be shared')
   }
 
-  if (!canCreateShare(analysis.photo, data.ownerUserId ?? null, data.ownerAnonymousActorId ?? null)) {
+  if (!ownsPhoto(analysis.photo, { userId: data.ownerUserId ?? null, anonymousActorId: data.ownerAnonymousActorId ?? null })) {
     throw new SharingServiceError(403, 'You do not have access to this analysis')
   }
 
@@ -63,10 +63,6 @@ export async function createAnalysisShare(input: CreateAnalysisShareInput) {
     }
   }
 
-  const leaderboardSnapshot = data.includeLeaderboard
-    ? await getLeaderboardSnapshot(analysis.photo.gender)
-    : null
-
   const [share] = await db
     .insert(schema.analysisShares)
     .values({
@@ -76,7 +72,7 @@ export async function createAnalysisShare(input: CreateAnalysisShareInput) {
       ownerUserId: data.ownerUserId ?? null,
       ownerAnonymousActorId: data.ownerAnonymousActorId ?? null,
       includeLeaderboard: data.includeLeaderboard,
-      leaderboardSnapshot,
+      leaderboardSnapshot: null,
     })
     .returning()
 
@@ -86,7 +82,7 @@ export async function createAnalysisShare(input: CreateAnalysisShareInput) {
   }
 }
 
-export async function getShareByToken(token: string) {
+export async function getShareByToken(token: string, viewer: PhotoViewer = { userId: null, anonymousActorId: null }) {
   const share = await db.query.analysisShares.findFirst({
     where: eq(schema.analysisShares.token, token),
     with: {
@@ -111,15 +107,15 @@ export async function getShareByToken(token: string) {
     throw new SharingServiceError(404, 'Share not found')
   }
 
-  if (!canReadSharePhoto(share.photo, share.ownerUserId, share.ownerAnonymousActorId)) {
+  if (!ownsPhoto(share.photo, viewer)) {
     throw new SharingServiceError(404, 'Share not found')
   }
 
   return {
     token: share.token,
     createdAt: share.createdAt,
-    includeLeaderboard: share.includeLeaderboard,
-    leaderboardSnapshot: share.leaderboardSnapshot,
+    includeLeaderboard: false,
+    leaderboardSnapshot: null,
     owner: share.owner,
     photo: {
       id: share.photo.id,
@@ -147,45 +143,5 @@ export async function getShareByToken(token: string) {
       promptVersion: share.analysis.promptVersion,
       createdAt: share.analysis.createdAt,
     },
-  }
-}
-
-function canReadSharePhoto(
-  photo: { userId: string | null; anonymousActorId: string | null; isPublic: boolean },
-  ownerUserId: string | null,
-  ownerAnonymousActorId: string | null
-) {
-  if (photo.isPublic) return true
-  if (photo.userId) return photo.userId === ownerUserId
-  if (photo.anonymousActorId) return photo.anonymousActorId === ownerAnonymousActorId
-
-  return false
-}
-
-function canCreateShare(
-  photo: { userId: string | null; anonymousActorId: string | null; isPublic: boolean },
-  ownerUserId: string | null,
-  ownerAnonymousActorId: string | null
-) {
-  if (photo.isPublic) return true
-  if (photo.userId) return photo.userId === ownerUserId
-  if (photo.anonymousActorId) return photo.anonymousActorId === ownerAnonymousActorId
-
-  return false
-}
-
-async function getLeaderboardSnapshot(gender: 'male' | 'female' | 'other') {
-  const leaderboard = await getPslLeaderboard({
-    page: 1,
-    limit: 10,
-    gender,
-  })
-
-  return {
-    capturedAt: new Date().toISOString(),
-    type: 'psl',
-    gender,
-    top: leaderboard.items,
-    total: leaderboard.total,
   }
 }

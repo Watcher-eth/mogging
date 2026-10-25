@@ -36,3 +36,35 @@ test('paid history remains visible without an estimate and a lower milestone nev
   const lower = renderToStaticMarkup(<SubmissionPayoutSummary totalCents={2250} payments={payments} />)
   expect(lower).toContain('Additional to pay</dt><dd class="text-xl font-semibold tracking-tight">$0.00')
 })
+
+test('an automatic audience bonus is added to post earnings and total outstanding before any payout is requested', () => {
+  const bonus = { ...payment('bonus', 1000, 'pending'), submissionId: null, bonusSprintId: 'campaign', bonusKey: 'audience:submission:1000', bonusNote: 'Audience excellence · General Looksmaxxing Content', paidAt: null }
+  const html = renderToStaticMarkup(<SubmissionPayoutSummary totalCents={3000} payments={[]} bonuses={[bonus]} />)
+  expect(html).toContain('Audience excellence')
+  expect(html).toContain('Added to balance')
+  expect(html).toContain('+$10.00')
+  expect(html).toContain('Total earnings including bonuses</dt><dd class="font-semibold">$40.00')
+  expect(html).toContain('Additional to pay</dt><dd class="text-xl font-semibold tracking-tight">$40.00')
+})
+
+test('bonus payouts already paid or reserved are deducted once from combined earnings', () => {
+  const bonus = { ...payment('bonus', 1000, 'pending'), submissionId: null, bonusSprintId: 'campaign', bonusKey: 'audience:submission:1000', bonusNote: 'Audience excellence', payoutRequestId: 'bundle' }
+  const pending = renderToStaticMarkup(<SubmissionPayoutSummary totalCents={3000} payments={[payment('base', 3000, 'paid')]} bonuses={[bonus]} />)
+  expect(pending).toContain('Total earnings including bonuses</dt><dd class="font-semibold">$40.00')
+  expect(pending).toContain('Already scheduled</dt><dd class="font-medium">$10.00')
+  expect(pending).toContain('Additional to pay</dt><dd class="text-xl font-semibold tracking-tight">$0.00')
+  const paid = renderToStaticMarkup(<SubmissionPayoutSummary totalCents={3000} payments={[payment('base', 3000, 'paid')]} bonuses={[{ ...bonus, status: 'paid' }]} />)
+  expect(paid).toContain('Already paid</dt><dd class="font-medium">$40.00')
+  expect(paid).toContain('Additional to pay</dt><dd class="text-xl font-semibold tracking-tight">$0.00')
+})
+
+
+test('a qualifying unsaved review includes the automatic bonus in the total and additional earnings', () => {
+  const html = renderToStaticMarkup(<SubmissionPayoutSummary totalCents={3000} payments={[]} projectedBonuses={[{subject:'audience:submission',cents:1000,label:'Audience excellence'}]} />)
+  expect(html).toContain('Audience excellence')
+  expect(html).toContain('Automatically added on approval')
+  expect(html).toContain('+$10.00')
+  expect(html).toContain('Total earnings including bonuses</dt><dd class="font-semibold">$40.00')
+  expect(html).toContain('Additional to pay</dt><dd class="text-xl font-semibold tracking-tight">$40.00')
+  expect(html).not.toContain('Added to balance')
+})

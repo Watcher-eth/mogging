@@ -132,7 +132,7 @@ export function TikTokAccountDialog({
             <p className="text-[10px] font-semibold uppercase tracking-[0.12em] text-zinc-400">
               {followers
                 ? 'One quick account update'
-                : 'New for TikTok · 1K+ followers'}
+                : 'Optional for TikTok · 1K+ followers'}
             </p>
           </div>
           <DialogTitle className="creator-dialog-title pr-5 text-[27px] font-semibold leading-tight tracking-[-0.04em]">
@@ -147,13 +147,12 @@ export function TikTokAccountDialog({
                 <strong className="font-medium text-zinc-700">
                   {creatorAccountLabel(account)}
                 </strong>
-                . We’ll show the TikTok anchor requirement only if this account
-                has at least 1,000 followers.
+                . This helps us show optional app anchors for eligible TikTok accounts.
               </>
             ) : (
               <>
-                Required before your next TikTok submission: join the Mogging
-                project once, then link every new Mogging post with its anchor.
+                Give viewers a direct link to Mogging to help improve conversions.
+                This is optional and never required to post, submit, or earn.
               </>
             )}
           </DialogDescription>
@@ -182,7 +181,7 @@ export function TikTokAccountDialog({
                 </h3>
                 <p className="mt-2 text-sm leading-6 text-zinc-500">
                   Open the invitation using {creatorAccountLabel(account)} in
-                  TikTok and accept the project before your next submission.
+                  TikTok and accept the project if you want to use app anchors.
                 </p>
                 <div className="mx-auto mt-5 w-[252px] max-w-full rounded-[20px] bg-white p-3 shadow-[0_2px_14px_rgba(0,0,0,0.035)]">
                   <Image
@@ -224,7 +223,7 @@ export function TikTokAccountDialog({
                     2
                   </span>
                   <h3 className="text-base font-semibold tracking-tight">
-                    Link each new Mogging video
+                    Choose the anchor for your video
                   </h3>
                 </div>
                 <p className="mt-2 text-sm leading-6 text-zinc-500">
@@ -250,8 +249,8 @@ export function TikTokAccountDialog({
                   ))}
                 </ol>
                 <p className="mt-3 text-xs leading-5 text-zinc-400">
-                  Link the project with its anchor before publishing. This
-                  requirement applies only to TikTok accounts with 1,000+
+                  Select the project only for videos you want to publish with an anchor.
+                  App anchors are available to eligible TikTok accounts with 1,000+
                   followers, not Instagram. TikTok may also apply region, age,
                   and account eligibility checks.{' '}
                   <a
@@ -263,6 +262,11 @@ export function TikTokAccountDialog({
                     Need help?
                   </a>
                 </p>
+              </section>
+              <section className="rounded-xl border border-zinc-100 p-4">
+                <h3 className="text-sm font-semibold">Review before publishing</h3>
+                <p className="mt-2 text-sm leading-6 text-zinc-500">TikTok checks your video before it can go live. After TikTok’s review, we approve videos within 24 hours. Posting through this project is not instant; TikTok’s review time is separate from ours.</p>
+                <p className="mt-2 text-xs leading-5 text-zinc-500">Prefer to post directly? Skip the anchor. Your participation and payout eligibility stay the same.</p>
               </section>
               <label className="flex items-start gap-3 rounded-xl bg-zinc-50 p-3 text-sm leading-5 text-zinc-600">
                 <input
@@ -289,7 +293,7 @@ export function TikTokAccountDialog({
               onClick={() => onOpenChange(false)}
               className="min-h-11 text-sm text-zinc-500"
             >
-              Remind me later
+              Maybe later
             </button>
             <Button
               disabled={busy || (followers ? !range : !confirmed)}
@@ -319,13 +323,12 @@ export function TikTokAnchorOnboarding({ enabled }: { enabled: boolean }) {
   const candidates = (data?.socialAccounts || []).filter(
     (account) =>
       account.platform === 'tiktok' &&
-      (tiktokAnchorEligible(account) === null ||
-        (tiktokAnchorEligible(account) && !account.tiktokAnchorJoinedAt))
+      tiktokAnchorEligible(account) === true && !account.tiktokAnchorJoinedAt
   )
   const key = candidates
     .map(
       (account) =>
-        `${account.id}:${tiktokAnchorEligible(account) === null ? 'followers' : 'anchor'}`
+        `${account.id}:anchor`
     )
     .join(',')
   useEffect(() => {
@@ -333,7 +336,7 @@ export function TikTokAnchorOnboarding({ enabled }: { enabled: boolean }) {
       key.split(',').filter((id) => {
         try {
           return (
-            sessionStorage.getItem(`mogging:tiktok-anchor:v1:${id}`) === 'later'
+            sessionStorage.getItem(`mogging:tiktok-anchor:optional:v1:${id}`) === 'later'
           )
         } catch {
           return false
@@ -346,23 +349,22 @@ export function TikTokAnchorOnboarding({ enabled }: { enabled: boolean }) {
   const account = candidates.find(
     (item) =>
       !dismissed.includes(
-        `${item.id}:${tiktokAnchorEligible(item) === null ? 'followers' : 'anchor'}`
+        `${item.id}:anchor`
       )
   )
   if (!account) return null
-  const mode = tiktokAnchorEligible(account) === null ? 'followers' : 'anchor'
-  const id = `${account.id}:${mode}`
+  const id = `${account.id}:anchor`
   return (
     <TikTokAccountDialog
       key={id}
       account={account}
-      mode={mode}
+      mode="anchor"
       open
       onSaved={() => mutate()}
       onOpenChange={(open) => {
         if (!open) {
           try {
-            sessionStorage.setItem(`mogging:tiktok-anchor:v1:${id}`, 'later')
+            sessionStorage.setItem(`mogging:tiktok-anchor:optional:v1:${id}`, 'later')
           } catch {
             /* A browser may disable session storage. */
           }

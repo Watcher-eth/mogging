@@ -14,10 +14,11 @@ export type CreatorSubmissionReviewResult = {
   note: string | null
 }
 
-export const TIER_D_AUDIENCE_REJECTION = {
+export const AUDIENCE_MINIMUM_REJECTION = {
+  // Preserve the stored ID so existing reviews and open dialogs remain valid.
   id: 'audience-tier-d-minimum',
-  label: 'Tier D audience minimum',
-  detail: 'Tier D requires 10–14.99% Tier 1 audience. The verified Tier 1 audience is below the 10% minimum.',
+  label: 'Tier C audience minimum',
+  detail: 'Tier C requires at least 15% Tier 1 audience. The verified Tier 1 audience is below the 15% minimum.',
 } satisfies CreatorSubmissionReviewItem
 
 export function withAudienceRejectionReason(
@@ -25,10 +26,10 @@ export function withAudienceRejectionReason(
   status: string,
   stored: CreatorSubmissionReviewResult[] | null | undefined = items,
 ) {
-  const requirements = items.filter(item => item.id !== TIER_D_AUDIENCE_REJECTION.id)
+  const requirements = items.filter(item => item.id !== AUDIENCE_MINIMUM_REJECTION.id)
   if (status !== 'rejected') return requirements
-  const saved = stored?.find(item => item.id === TIER_D_AUDIENCE_REJECTION.id)
-  return [...requirements, { ...TIER_D_AUDIENCE_REJECTION, met: saved?.met ?? true, note: saved?.note ?? null }]
+  const saved = stored?.find(item => item.id === AUDIENCE_MINIMUM_REJECTION.id)
+  return [...requirements, { ...AUDIENCE_MINIMUM_REJECTION, met: saved?.met ?? true, note: saved?.note ?? null }]
 }
 
 export const creatorSubmissionReviewResultsSchema = z.array(z.object({
@@ -77,7 +78,7 @@ export function validateCreatorSubmissionReviewResults(
   results: CreatorSubmissionReviewResult[]
 ) {
   const expectedIds = getCreatorSubmissionReviewItems(formatId).map((item) => item.id)
-  if (expectedIds.length && results.some(item => item.id === TIER_D_AUDIENCE_REJECTION.id)) expectedIds.push(TIER_D_AUDIENCE_REJECTION.id)
+  if (expectedIds.length && results.some(item => item.id === AUDIENCE_MINIMUM_REJECTION.id)) expectedIds.push(AUDIENCE_MINIMUM_REJECTION.id)
   const submittedIds = results.map((item) => item.id)
   return expectedIds.length > 0
     && expectedIds.length === submittedIds.length
@@ -91,7 +92,7 @@ export function resetSubmissionReview<T extends CreatorSubmissionReviewResult>(i
 }
 
 export function submissionRejectionLabel(item: CreatorSubmissionReviewItem) {
-  if (item.id === TIER_D_AUDIENCE_REJECTION.id) return 'Tier D audience (10–14.99% Tier 1) not met — below 10%'
+  if (item.id === AUDIENCE_MINIMUM_REJECTION.id) return 'Tier C audience not met — below 15% Tier 1'
   return item.label.startsWith('Avoided: ')
     ? `Includes: ${item.label.slice('Avoided: '.length)}`
     : `Not met: ${item.label}`
@@ -101,4 +102,20 @@ export function submissionReviewError(status: string, items: ReadonlyArray<Pick<
   if (status === 'rejected' && !items.some(item => !item.met))
     return 'Select at least one rejection reason so the creator knows what to fix.'
   return null
+}
+
+// Approval checks and rejection reasons are independent choices, not inverses.
+export function createSubmissionReviewDrafts(
+  items: (CreatorSubmissionReviewItem & CreatorSubmissionReviewResult)[],
+  status: string,
+  stored: CreatorSubmissionReviewResult[] | null | undefined,
+) {
+  const requirements = withAudienceRejectionReason(items, 'approved')
+  const approval = status === 'rejected' ? resetSubmissionReview(requirements, 'approved') : requirements
+  const rejection = withAudienceRejectionReason(resetSubmissionReview(requirements, 'rejected'), 'rejected')
+    .map(item => {
+      const saved = status === 'rejected' ? stored?.find(row => row.id === item.id) : undefined
+      return saved ? { ...item, met: saved.met, note: saved.note } : item
+    })
+  return { approval, rejection }
 }

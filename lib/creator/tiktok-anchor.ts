@@ -1,6 +1,6 @@
 import { z } from 'zod'
 
-export { TIKTOK_ANCHOR_REQUIREMENT, TIKTOK_ANCHOR_REQUIREMENTS_ENABLED } from './post-guidance'
+export { TIKTOK_ANCHOR_REQUIREMENT } from './post-guidance'
 
 export const TIKTOK_ANCHOR_INVITE =
   'https://www.tiktok.com/t/ZS9UgQb9Cp1Eq-WbUok/#linkSource=DirectLink'

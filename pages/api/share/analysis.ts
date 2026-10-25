@@ -10,6 +10,7 @@ import {
 } from '@/lib/sharing/service'
 
 async function handler(req: NextApiRequest, res: NextApiResponse) {
+  res.setHeader('Cache-Control', 'private, no-store')
   if (req.method !== 'POST') return methodNotAllowed(res, ['POST'])
 
   try {

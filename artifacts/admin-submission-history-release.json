@@ -1,0 +1,16 @@
+{
+  "deployment": "dpl_BS4BGXBjiz435M5qEKyn1G9yv6uQ",
+  "url": "https://mogging-7acxfl0kw-glimpseback.vercel.app",
+  "previous": "dpl_8QcHQZp6ui6GoJSRpam1cZURfQSc",
+  "migration": "0061_creator_submission_history",
+  "validation": [
+    "37 focused tests passed",
+    "Exact snapshot persistence verified in isolated local database; fixtures rolled back",
+    "Local UI History timeline and persistent Save review verified",
+    "Actual rereview/payment history verified in read-only live query; no payment duplication",
+    "Production build, TypeScript and targeted lint passed",
+    "Staged health 200/database healthy, protected History API 401, private campaign preview 404",
+    "Live health 200/database healthy, protected History API 401"
+  ],
+  "preview": "/Users/watcher/Desktop/mogging/artifacts/campaign-launch/admin-submission-history.png"
+}

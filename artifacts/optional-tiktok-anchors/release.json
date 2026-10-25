@@ -1,0 +1,30 @@
+{
+  "baseDeployment": "dpl_FXEa6rurj5RThfqEcfUqR797zYtT",
+  "baseDirectory": ".local/launch-campaigns-release",
+  "releaseDirectory": ".local/optional-tiktok-anchors-release",
+  "files": {
+    "components/creator/creator-shell.tsx": "85cc261e7e8c245f545957e9eaa2a3e9068599c45af7d4265e51061ae439b4db",
+    "components/creator/tiktok-anchor-onboarding.tsx": "744d86d38beb0a14d173b4449299e62b2119c3d5ccfd489daad37abb5395b2a3",
+    "components/creator/content-guidelines.tsx": "43836c1f34f6a071ed5857473e87086550d9a8f8a48f0d939385ec34d1cec407",
+    "components/creator/submission-dialog.tsx": "084c605ddf08b42ad907ae0381720bc62897b8a0151b2a5e0eb38d3fc0ac3c38",
+    "pages/creator/accounts.tsx": "dec9b7b9ee465ac95ec8cdd95f2f8406b48d465ee3a63e931e567b6fa65b3619",
+    "lib/creator/post-guidance.ts": "b6c7112b3af76c6963e02aedbf7f9df9dfa84594eb4cc2f8b5f28b84e74f9b7c",
+    "lib/creator/tiktok-anchor.ts": "c5efdb7825ab318ee1b30ab06641cd6f7d39ed9d776654fb486dd9fae6dcdc5b",
+    "lib/creator/tiktok-anchor-service.ts": "74648bf959c23cd4f80097b23eef28d00cec0f0aacca5a41519f698b98d0e448",
+    "lib/creator/service.ts": "c74eb4e0eaf164c03e4517104546619e210e06eb095adf2ccaa79a1428ddcd61",
+    "lib/creator/tiktok-anchor-pause.test.ts": "e680f166256e020f53c58ea678289902d95ed72f2d007be1b13829b690137d72",
+    "lib/creator/tiktok-anchor-guidelines.test.ts": "927f8cb531a490021f90e94a7fbc54792c7893ada7296510b6261a0ee4c3011e",
+    "lib/creator/submission-evidence.test.ts": "f13b089b4eb2c9bd0042427a0441a475ad4af6aac6a936e1aad2ce34e2c5fe48"
+  },
+  "deployment": "dpl_8QcHQZp6ui6GoJSRpam1cZURfQSc",
+  "deploymentUrl": "https://mogging-hdtsav9be-glimpseback.vercel.app",
+  "productionUrl": "https://www.mogging.com",
+  "validation": [
+    "32 focused tests passed in isolated release",
+    "TypeScript and remote production build passed",
+    "Staged health 200 with database healthy; creator GET and anchor PATCH reject anonymous requests with 401",
+    "Promoted tested production build; live health 200 and database healthy",
+    "Live creator page JavaScript includes optional copy, review timing, skip button, correct invitation and optional prompt storage key",
+    "Only 12 intended source/test files differ from previous production snapshot; no migrations"
+  ]
+}

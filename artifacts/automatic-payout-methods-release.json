@@ -1,0 +1,22 @@
+{
+  "deployment": "dpl_7Gip8kfQSViExc8joaa1fR9MHRr6",
+  "previousDeployment": "dpl_4J2xd8uwMsWiEj8LxQXp6qF5Lq4w",
+  "url": "https://mogging-mqdayedne-glimpseback.vercel.app",
+  "changedImplementationFiles": [
+    "lib/creator/money.ts",
+    "lib/creator/bundled-payouts.ts",
+    "lib/admin/creator-service.ts",
+    "lib/admin/creator-overview.ts",
+    "components/creator/bundled-payout-controls.tsx",
+    "components/admin/creator-workspace.tsx",
+    "pages/creator/accounts.tsx"
+  ],
+  "validation": [
+    "35 release tests / 111 assertions passed across isolated commands",
+    "Real local PostgreSQL: pending saved methods work for bundles and individual scheduling; suspension, missing destination and duplicates rejected; fixtures cleaned",
+    "TypeScript and ESLint passed; production build passed",
+    "Staged health200 and unauthenticated payout request401; livehealth200",
+    "Incoming audience-bonus and combined earnings fixes preserved by source hashes"
+  ],
+  "productionDataBackfill": false
+}

@@ -38,3 +38,12 @@ test('a higher approved view milestone records a new decision, but repeat saves 
   await recordReviewUpdate(tx, approved, { status: 'approved', adminViewCountThreshold: 50000 })
   expect(events).toHaveLength(0)
 })
+
+test('approval amount and audience changes create history without repeating unchanged saves', async () => {
+ const approved = { ...previous, status: 'approved', approvedAmountCents: 1500, adminUsAudiencePercent: 40 }
+ await recordReviewUpdate(tx, approved, {status:'approved',approvedAmountCents:2250,adminUsAudiencePercent:40})
+ await recordReviewUpdate(tx, approved, {status:'approved',approvedAmountCents:1500,adminUsAudiencePercent:45})
+ expect(events).toHaveLength(2)
+ await recordReviewUpdate(tx, approved, {status:'approved',approvedAmountCents:1500,adminUsAudiencePercent:40})
+ expect(events).toHaveLength(2)
+})

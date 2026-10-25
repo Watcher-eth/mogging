@@ -1,0 +1,17 @@
+{
+  "deployment": "dpl_BKM5JjYuCZ3JPsz8gS62LDDeJkid",
+  "previousDeployment": "dpl_9EdEZgARn98jz8gfBg46DQ27sEL5",
+  "url": "https://mogging-2n90v66re-glimpseback.vercel.app",
+  "changedFiles": [
+    "components/admin/creator-workspace.tsx",
+    "components/creator/submission-conversation.tsx",
+    "lib/admin/creator-service.ts"
+  ],
+  "validation": [
+    "Actual ReviewDialog with local sample data: manual views/audience/payout input, zero explanation typing, status selector, checklist, rejection feedback, tab switching, preserved message draft, captured correct zero approval request",
+    "27 tests, 77 assertions passed; server reviews and conversation effects run in isolated processes",
+    "TypeScript, focused ESLint and production build passed",
+    "Staged health200, admin unauthorized401; production health200"
+  ],
+  "screenshot": "artifacts/admin-review-zero-payout-check.png"
+}

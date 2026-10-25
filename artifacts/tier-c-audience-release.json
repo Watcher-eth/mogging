@@ -1,0 +1,17 @@
+{
+  "deployment": "dpl_9cw2zmEDPuFZRdiXRAjmj7S353Re",
+  "previousDeployment": "dpl_BKM5JjYuCZ3JPsz8gS62LDDeJkid",
+  "changedFiles": [
+    "lib/creator/submission-review.ts",
+    "lib/admin/creator-service.ts",
+    "lib/creator/submission-review.test.ts",
+    "lib/admin/submission-review.test.ts"
+  ],
+  "label": "Tier C audience not met \u2014 below 15% Tier 1",
+  "validation": [
+    "29 review tests / 87 assertions passed",
+    "TypeScript and production build passed",
+    "Staged health200; unauthenticated admin review401"
+  ],
+  "savedReviewIdPreserved": true
+}

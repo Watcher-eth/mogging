@@ -13,7 +13,6 @@ import { hairColorSchema, normalizeApparentAge, skinColorSchema } from '@/lib/ap
 import { db, schema } from '@/lib/db'
 import { env } from '@/lib/env'
 import { reserveEvaluation, finishEvaluation } from '@/lib/payments/entitlements'
-import { createAnalysisShare } from '@/lib/sharing/service'
 
 export function createAnalyzeHandler(run: typeof analyzeAndSave = analyzeAndSave, bodySchema: ZodType<AnalyzeAndSaveInput> = analyzeAndSaveSchema, requestNamespace = '') {
 return async function handler(req: NextApiRequest, res: NextApiResponse) {
@@ -98,20 +97,12 @@ return async function handler(req: NextApiRequest, res: NextApiResponse) {
       skinColor: body.skinColor ?? userSkinColor ?? anonymousSkinColor,
     }, reservation?.id)
     generationReturned = true
-    const shareResult =
-      result.analysis.status === 'complete'
-        ? await createDefaultShare({
-            analysisId: result.analysis.id,
-            ownerUserId: userId,
-            ownerAnonymousActorId: anonymousActorId,
-          })
-        : null
     const successful = result.analysis.status === 'complete'
     const entitlements = reservation ? {
       ...reservation.summary,
       evaluationCredits: Math.min(Number.MAX_SAFE_INTEGER, reservation.summary.evaluationCredits + (successful ? 0 : 1)),
     } : null
-    const response = { ...result, entitlements, share: shareResult?.share ? { token: shareResult.share.token } : null }
+    const response = { ...result, entitlements, share: null }
     if (reservation) await finishEvaluation(reservation.id, response, successful)
 
     console.info('analyze:finish', {
@@ -121,7 +112,6 @@ return async function handler(req: NextApiRequest, res: NextApiResponse) {
       analysisStatus: result.analysis.status,
       failureReason: result.analysis.failureReason ?? null,
       pslScore: result.analysis.pslScore ?? null,
-      shareToken: shareResult?.share.token ?? null,
       mobileInstallId,
     })
 
@@ -160,29 +150,4 @@ function readMobileInstallId(req: NextApiRequest) {
   if (!value) return null
   const trimmed = value.trim()
   return trimmed.length >= 8 && trimmed.length <= 120 ? trimmed : null
-}
-
-async function createDefaultShare({
-  analysisId,
-  ownerAnonymousActorId,
-  ownerUserId,
-}: {
-  analysisId: string
-  ownerAnonymousActorId: string | null
-  ownerUserId: string | null
-}) {
-  try {
-    return await createAnalysisShare({
-      analysisId,
-      ownerUserId,
-      ownerAnonymousActorId,
-      includeLeaderboard: false,
-    })
-  } catch (error) {
-    console.warn('analyze:share:create-failed', {
-      analysisId,
-      message: error instanceof Error ? error.message : String(error),
-    })
-    return null
-  }
 }

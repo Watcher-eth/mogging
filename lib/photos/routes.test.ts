@@ -23,25 +23,19 @@ async function call(handler: any, method: string, body?: unknown) {
   await handler({ method, query: { id: analysis.id }, headers: {}, body }, res)
   return result
 }
-test('publication is owner-authorized, reversible, and controls full report access', async () => {
+test('reports stay owner-only and publishing is retired, including old public flags', async () => {
   viewer = null
   expect((await call(read, 'GET')).status).toBe(404)
   expect((await call(publish, 'POST', { photoId: photo.id, isPublic: true })).status).toBe(401)
+  viewer = 'owner'
+  expect((await call(read, 'GET')).body.data.canManage).toBe(true)
+  expect((await call(publish, 'POST', { photoId: photo.id, isPublic: true })).status).toBe(410)
+  photo.isPublic = true
   viewer = 'stranger'
-  expect((await call(publish, 'POST', { photoId: photo.id, isPublic: true })).status).toBe(404)
-  viewer = 'owner'
-  const own = await call(read, 'GET')
-  expect(own.body.data.analysis.id).toBe('analysis')
-  expect(own.body.data.canManage).toBe(true)
-  expect((await call(publish, 'POST', { photoId: photo.id, isPublic: true })).body.data.photo.isPublic).toBe(true)
-  viewer = null
-  const shared = await call(read, 'GET')
-  expect(shared.status).toBe(200)
-  expect(shared.body.data.analysis.metrics.report.summary).toBe('Saved mobile report')
-  expect(shared.body.data.canManage).toBe(false)
-  expect(shared.headers['Cache-Control']).toBe('private, no-store')
-  viewer = 'owner'
-  expect((await call(publish, 'POST', { photoId: photo.id, isPublic: false })).body.data.photo.isPublic).toBe(false)
+  expect((await call(read, 'GET')).status).toBe(404)
   viewer = null
   expect((await call(read, 'GET')).status).toBe(404)
+  viewer = 'owner'
+  expect((await call(publish, 'POST', { photoId: photo.id, isPublic: false })).body.data.photo.isPublic).toBe(false)
+  expect((await call(read, 'GET')).headers['Cache-Control']).toBe('private, no-store')
 })

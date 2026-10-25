@@ -3,7 +3,7 @@ import type { AdminAccount, AdminCreator, AdminDashboard, AdminPayment, AdminSub
 import { approvedUnpaidSubmissions, creatorOutstandingPaymentGroups, approvalKind, getApprovalQueue, isNewInLastDay, publishedVideoEmbedUrl, walletExplorerUrl } from './creator-overview'
 
 describe('admin overview approvals', () => {
-  test('keeps every approval type beyond the former eight-video cutoff', () => {
+  test('queues every submission without retired account or payout approval steps', () => {
     const data = {
       submissions: Array.from({ length: 10 }, (_, id) => ({ id: String(id), status: id === 9 ? 'in_review' : 'pending', createdAt: '2026-09-29' } as AdminSubmission)),
       accounts: [
@@ -17,11 +17,11 @@ describe('admin overview approvals', () => {
       ] as AdminCreator[],
     } as AdminDashboard
     const queue = getApprovalQueue(data)
-    expect(queue).toHaveLength(12)
-    expect(queue[0].item.id).toBe('payout')
-    expect(queue.at(-1)?.item.id).toBe('ready')
-    expect(queue.map(approvalKind)).toContain('account')
-    expect(queue.map(approvalKind)).toContain('payout')
+    expect(queue).toHaveLength(10)
+    expect(queue[0].item.id).toBe('0')
+    expect(queue.at(-1)?.item.id).toBe('9')
+    expect(queue.map(approvalKind)).not.toContain('account')
+    expect(queue.map(approvalKind)).not.toContain('payout')
     expect(queue.some((target) => target.item.id === 'registration')).toBe(false)
     expect(queue.some((target) => target.item.id === 'incomplete')).toBe(false)
   })

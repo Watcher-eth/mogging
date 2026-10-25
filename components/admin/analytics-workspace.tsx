@@ -11,6 +11,7 @@ import { Button } from '@/components/ui/button'
 import { apiGet, ApiClientError } from '@/lib/api/client'
 import { adminPage } from '@/lib/admin/navigation'
 import { onboardingScreenRows, retentionRates } from '@/lib/admin/chart-data'
+import { formatReportingTime } from '@/lib/admin/reporting-time'
 import type { AnalyticsDashboard, MetricRow } from '@/lib/admin/analytics'
 import dynamic from 'next/dynamic'
 const DistributionChart = dynamic(() => import('./category-chart').then(module => module.DistributionChart), { ssr: false })
@@ -47,7 +48,7 @@ const revenueMetrics: ChartMetric[] = [
 ]
 const qualityMetrics: ChartMetric[] = [{ key: 'failures', label: 'Scan failures', color: colors.orange }]
 const operationalSections = ['Authentication','Purchases','Scans','Referrals','Notifications','AttributionLedger']
-const observationNote = 'Counts are observed events per UTC bucket, except active devices and first app opens which are distinct devices. Buckets with no recorded events are omitted; a gap does not establish zero users or an outage. Boundary buckets are partial. Purchase completion is a client signal, not verified billing.'
+const observationNote = 'Counts are observed events per Pacific-time bucket, except active devices and first app opens which are distinct devices. Buckets with no recorded events are omitted; a gap does not establish zero users or an outage. Boundary buckets are partial. Purchase completion is a client signal, not verified billing.'
 type Health = { pending_events: number; pending_billing_events: number; unfinished_webhooks: number;
   oldest_pending_event: string | null; last_revenuecat_receipt: string | null; last_stripe_receipt: string | null;
   unrecorded_stripe_purchases: number;
@@ -59,10 +60,10 @@ export default function AnalyticsAdminPage() {
   const page = adminPage(router.pathname)
   const tab = page?.section || 'Overview'
   const { mutate } = useSWRConfig()
-  const days = ['1', '7', '30', '90'].includes(String(router.query.days)) ? String(router.query.days) : '30'
+  const days = ['1', '7', '30', '90'].includes(String(router.query.days)) ? String(router.query.days) : '7'
   const platform = tab === 'Experiments' ? 'all' : ['all', 'web', 'ios', 'android'].includes(String(router.query.platform)) ? String(router.query.platform) : 'all'
   const access = useSWR<{ unlocked: boolean }>('/api/admin/creator/session', apiGet, { shouldRetryOnError: false })
-  const report = useSWR<AnalyticsDashboard>(access.data?.unlocked && tab !== 'Reliability' ? `/api/admin/analytics?days=${days}&platform=${platform}` : null, apiGet,
+  const report = useSWR<AnalyticsDashboard>(access.data?.unlocked && tab !== 'Reliability' ? `/api/admin/analytics?days=${days}&platform=${platform}&section=${tab}` : null, apiGet,
     { dedupingInterval: 60_000, revalidateOnFocus: false, shouldRetryOnError: false })
   const expired = report.error instanceof ApiClientError && report.error.status === 401
   if (access.error) return <Notice>Admin access could not be verified. Reload or sign in with an authorized account.</Notice>
@@ -87,7 +88,7 @@ export default function AnalyticsAdminPage() {
         {!['Reliability','Experiments','Revenue'].includes(tab)?<AnalyticsSelect label="Platform" value={platform} onChange={value => filter('platform', value)} options={['all','web','ios','android'].map(value => ({value,label:value === 'all' ? 'All platforms' : value === 'ios' ? 'iOS' : label(value)}))}/>:null}
         <Button variant="ghost" className="size-10 p-0 text-[#73777d]" aria-label="Refresh analytics" disabled={report.isValidating} onClick={refresh}><RefreshCw className={`size-4 ${report.isValidating ? 'animate-spin' : ''}`} /></Button>
       </div>
-      <p className="text-xs text-[#858a91]" aria-live="polite">{data ? `Updated ${new Date(data.generatedAt).toLocaleTimeString('en-GB', { timeZone: 'UTC', hour: '2-digit', minute: '2-digit' })} UTC` : 'UTC reporting'} · Production</p>
+      <p className="text-xs text-[#858a91]" aria-live="polite">{data ? `Updated ${formatReportingTime(new Date(data.generatedAt), { hour: 'numeric', minute: '2-digit', timeZoneName: 'short' })}` : 'Pacific-time reporting'} · Production</p>
     </div>
     {report.error ? <Notice>Analytics could not load. <button className="underline" onClick={() => void report.mutate()}>Try again</button>. Missing data is never shown as zero.</Notice> : null}
     {tab === 'Reliability'?<ReliabilityReport days={Number(days)}/>:!data ? !report.error ? <Notice>Loading reporting snapshot…</Notice> : null : <>
@@ -122,7 +123,7 @@ function Activity({ data, days, section }: { data: AnalyticsDashboard; days: num
         <Stat title="Returned scans" value={count(data.scanLedger.summary.failed)} note="Failed reservations return their credit" />
         <Stat title="Processing" value={count(data.scanLedger.summary.pending)} note="Reservations still pending" />
       </div>
-      <Panel title="Scan credit ledger" description="Backend-confirmed credit usage across all platforms, including free credits." note="Independent of client analytics and the platform filter. Known sandbox purchases are excluded. Counts by reservation start time in UTC; a new evaluation of the same image can update an existing report.">
+      <Panel title="Scan credit ledger" description="Backend-confirmed credit usage across all platforms, including free credits." note="Independent of client analytics and the platform filter. Known sandbox purchases are excluded. Counts by reservation start time in Pacific time; a new evaluation of the same image can update an existing report.">
         <AnalyticsChart rows={data.scanLedger.daily} metrics={[{key:'completed',label:'Completed',color:colors.blue},{key:'failed',label:'Credit returned',color:colors.orange},{key:'pending',label:'Pending',color:colors.violet}]} days={days} title="Scan credit ledger" />
         <DataDetails><Table rows={data.scanLedger.daily} columns={['day','started','completed','failed','pending']} /></DataDetails>
       </Panel>
@@ -135,7 +136,7 @@ function Activity({ data, days, section }: { data: AnalyticsDashboard; days: num
   </>
 }
 function DailyChart({ data, days, title, metrics }: { data: AnalyticsDashboard; days: number; title: string; metrics: ChartMetric[] }) {
-  return <Panel title={title} description={days === 1 ? "Hourly observations · UTC · boundary hours are partial" : "Daily observations · UTC · today is partial"} note={observationNote}>
+  return <Panel title={title} description={days === 1 ? "Hourly observations · Pacific time · boundary hours are partial" : "Daily observations · Pacific time · today is partial"} note={observationNote}>
     <AnalyticsChart rows={data.daily} metrics={metrics} days={days} title={title} />
     <DataDetails><Table rows={data.daily} columns={['day', ...metrics.map(metric => metric.key)]} /></DataDetails>
   </Panel>
@@ -156,7 +157,7 @@ function Overview({ data, days }: { data: AnalyticsDashboard; days: number }) {
 }
 function StoredReports({ data, days }: { data: AnalyticsDashboard; days: number }) {
   const ledger = data.reportLedger
-  return <Panel title="Stored user reports" description="Customer report records across all platforms; examples, known sandbox and internal checks excluded." note="Counts by report creation time in UTC. Reports can be updated or reused, so they are not scan attempts. Known sandbox credits, explicitly internal accounts and release checks are excluded. Older reports without provenance remain unclassified and retained. This panel is independent of the client platform filter.">
+  return <Panel title="Stored user reports" description="Customer report records across all platforms; examples, known sandbox and internal checks excluded." note="Counts by report creation time in Pacific time. Reports can be updated or reused, so they are not scan attempts. Known sandbox credits, explicitly internal accounts and release checks are excluded. Older reports without provenance remain unclassified and retained. This panel is independent of the client platform filter.">
     <div className="admin-stats-grid">
       <Stat title="Completed reports" value={count(ledger.summary.completed)} note="Saved user report records" />
       <Stat title="Failed reports" value={count(ledger.summary.failed)} note="Saved failed report records" />
@@ -293,7 +294,7 @@ function PaidDelivery({ data }: { data: AnalyticsDashboard }) {
 function FeatureUsage({ data }: { data: AnalyticsDashboard }) {
   const rows = data.featureUsage ?? []
   return <>
-    <Panel title="Course usage" description="Which courses people open, work through, and finish." note="Unique devices in the selected window. Active days are device-days in UTC. Lessons opened/completed are distinct device–lesson pairs; these totals are not a sequential conversion rate. Median reading time counts finished foreground visits only, including interrupted visits; background time is excluded. Older app versions do not emit these events.">
+    <Panel title="Course usage" description="Which courses people open, work through, and finish." note="Unique devices in the selected window. Active days are device-days in Pacific time. Lessons opened/completed are distinct device–lesson pairs; these totals are not a sequential conversion rate. Median reading time counts finished foreground visits only, including interrupted visits; background time is excluded. Older app versions do not emit these events.">
       <Table rows={rows.filter(row => row.feature === 'courses')} columns={['course_id','users','active_days','lessons_opened','lessons_completed','courses_completed','median_ms']} />
     </Panel>
     <Panel title="Progress usage" description="Do people return to inspect progress and act on it?" note="Unique devices; area views are deliberate opens, not chart scrubs. Protocol/evaluation opens count devices choosing that destination, not completed tasks or scans. Median foreground visit time excludes time outside the app.">
@@ -330,7 +331,7 @@ function Quality({ data, days }: { data: AnalyticsDashboard; days: number }) {
     <Panel title="Event delivery by release" description="Time from the client event timestamp to server receipt, plus clock skew." note="Batching, offline queues, network transit, and client clock differences affect these values. Negative delays are counted as clock skew and excluded from duration percentiles. This is not API request latency."><Table rows={data.eventDelivery ?? []} columns={['platform','release','schema_version','events','clock_skew_events','median_ms','p90_ms']} /></Panel>
     <TrackingCoverage data={data} />
     <Panel title="Identifier coverage" description="Presence and uniqueness of stored attribution and flow context; raw IDs stay private."><Table rows={data.contextCoverage ?? []} columns={['field','events','actors','unique_ids']} /></Panel>
-    <Panel title="Snapshot diagnostics"><dl className="flex flex-wrap gap-x-12 gap-y-5 text-sm">{[['Query time', `${count(data.queryMs)} ms`], ['Events scanned', count(data.summary.events)], ['Newest event', data.summary.latest_event ? `${data.summary.latest_event} UTC` : 'No events']].map(([title, value]) => <div key={title}><dt className="text-[#858a91]">{title}</dt><dd className="mt-2 font-medium">{value}</dd></div>)}</dl></Panel>
+    <Panel title="Snapshot diagnostics"><dl className="flex flex-wrap gap-x-12 gap-y-5 text-sm">{[['Query time', `${count(data.queryMs)} ms`], ['Events scanned', count(data.summary.events)], ['Newest event', data.summary.latest_event ? formatReportingTime(data.summary.latest_event, { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit', timeZoneName: 'short' }) : 'No events']].map(([title, value]) => <div key={title}><dt className="text-[#858a91]">{title}</dt><dd className="mt-2 font-medium">{value}</dd></div>)}</dl></Panel>
   </>
 }
 function Funnel({ title, rows }: { title: string; rows: AnalyticsDashboard['onboarding'] }) {

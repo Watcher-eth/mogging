@@ -1,3 +1,4 @@
+import { campaignCommittedCents, campaignPaidCents } from './campaign-accounting'
 import { launchCampaign, LAUNCH_CONTENT_BUDGET_CENTS, LAUNCH_BONUS_BUDGET_CENTS } from './campaign-launch'
 import { and, desc, eq, inArray, sql } from 'drizzle-orm'
 import { db, schema } from '@/lib/db'
@@ -51,7 +52,6 @@ export async function listCreatorSprints(
       sprintId: schema.creatorSubmissions.sprintId,
       status: schema.creatorSubmissions.status,
       count: sql<number>`count(*)::int`,
-      cents: sql<number>`coalesce(sum(${schema.creatorSubmissions.approvedAmountCents}),0)::float8`,
     })
     .from(schema.creatorSubmissions)
     .where(
@@ -66,7 +66,8 @@ export async function listCreatorSprints(
     )
   const spending = await db.select({
     id: schema.creatorSprints.id,
-    paidCents: sql<number>`coalesce((select sum(p.amount_cents) from creator_payments p join creator_submissions s on s.id = p.submission_id where s.sprint_id = creator_sprints.id and p.status = 'paid' and p.currency = 'USD'), 0)::int`,
+    paidCents: campaignPaidCents(sql`creator_sprints.id`),
+    usedCents: campaignCommittedCents(sql`creator_sprints.id`),
     bonusUsedCents: sql<number>`coalesce((select sum(p.amount_cents) from creator_payments p where p.bonus_sprint_id = creator_sprints.id and p.status <> 'cancelled'), 0)::int`,
     bonusPaidCents: sql<number>`coalesce((select sum(p.amount_cents) from creator_payments p where p.bonus_sprint_id = creator_sprints.id and p.status = 'paid'), 0)::int`,
   }).from(schema.creatorSprints).where(inArray(schema.creatorSprints.id, rows.map(row => row.id)))
@@ -79,17 +80,15 @@ export async function listCreatorSprints(
       rejected: 0,
       paid: 0,
     }
-    let usedCents = 0
     for (const total of totals)
       if (total.sprintId === row.id) {
         counts[total.status] = total.count
-        usedCents += total.cents
       }
     return {
       ...row,
       startsAt: row.startsAt.toISOString(),
       endsAt: row.endsAt.toISOString(),
-      usedCents,
+      usedCents: spendingById.get(row.id)?.usedCents ?? 0,
       paidCents: spendingById.get(row.id)?.paidCents ?? 0,
       bonusUsedCents: spendingById.get(row.id)?.bonusUsedCents ?? 0,
       bonusPaidCents: spendingById.get(row.id)?.bonusPaidCents ?? 0,
@@ -166,16 +165,7 @@ export async function saveCreatorSprint(
         .for('update')
       if (!existing) throw new ApiError(404, 'Campaign not found')
       existingStatus = existing.status
-      const [used] = await tx
-        .select({
-          cents: sql<number>`coalesce(sum(${schema.creatorSubmissions.approvedAmountCents}),0)::float8`,
-        })
-        .from(schema.creatorSubmissions)
-        .where(
-          and(
-            eq(schema.creatorSubmissions.sprintId, input.id),
-          ),
-        )
+      const [used] = await tx.execute<{ cents: number }>(sql`select ${campaignCommittedCents(input.id)} as cents`)
       const contentBudget = existing.status === 'draft' && launchCampaign(input.terms) ? LAUNCH_CONTENT_BUDGET_CENTS : input.budgetCents
       if (contentBudget < used.cents)
         throw new ApiError(

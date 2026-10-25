@@ -73,8 +73,10 @@ describe("bonus eligibility estimates", () => {
     expect(audienceBonusClaimsRemaining(6)).toBe(0);
     expect(audienceBonusClaimsRemaining(-1)).toBe(5);
   });
-  test("the audience bonus requires the same post to exceed 100K views and reach 45% Tier 1", () => {
-    expect(qualifiesAudienceBonus(100_000, 45)).toBe(false);
+  test("the audience bonus requires the same post to reach 100K views and reach 45% Tier 1", () => {
+    expect(qualifiesAudienceBonus(99_999, 50)).toBe(false);
+    expect(qualifiesAudienceBonus(100_000, 45)).toBe(true);
+    expect(qualifiesAudienceBonus(100_000, 51.4)).toBe(true);
     expect(qualifiesAudienceBonus(100_001, 44.99)).toBe(false);
     expect(qualifiesAudienceBonus(100_001, 45)).toBe(true);
     expect(qualifiesAudienceBonus(Infinity, 45)).toBe(false);
@@ -123,3 +125,15 @@ describe("bonus eligibility estimates", () => {
     ).toBe(0);
   });
 });
+
+test('specialist campaign review criteria retain saved element IDs and have specific labels', async () => {
+  const { sprintReviewItems } = await import('./sprints')
+  for (const key of ['detailed-analysis', 'feature-comparison']) {
+    const campaign = LAUNCH_CAMPAIGNS.find(item => item.key === key)!
+    const terms = launchCampaignTerms(campaign)
+    const criteria = sprintReviewItems(terms, terms.formats[0].id).filter(item => item.id.startsWith('element-'))
+    expect(criteria.map(item => item.id)).toEqual(['element-1', 'element-2', 'element-3'])
+    expect(criteria.every(item => item.detail.length > 40)).toBe(true)
+    expect(criteria[0].label).toContain(key === 'detailed-analysis' ? 'commenter or celebrity' : 'facial feature')
+  }
+})

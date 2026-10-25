@@ -89,16 +89,10 @@ export function AnalysisReport({ categories, initialCategoryId, imageSrc, landma
 }
 
 export function ReportActions({
-  battleOptOut,
-  battleOptOutSaving,
-  onBattleOptOutChange,
   onOpenShare,
   onReset,
   score,
 }: {
-  battleOptOut: boolean
-  battleOptOutSaving: boolean
-  onBattleOptOutChange: (optOut: boolean) => void
   onOpenShare: () => void
   onReset: () => void
   score: number
@@ -114,16 +108,6 @@ export function ReportActions({
         Share report
         <Share2 className="size-4" aria-hidden="true" />
       </button>
-      <label className="flex items-start gap-3 border border-zinc-200 px-3 py-3 text-xs leading-5 text-zinc-500">
-        <input
-          checked={!battleOptOut}
-          className="mt-0.5 size-4 shrink-0 accent-black"
-          disabled={battleOptOutSaving}
-          onChange={(event) => onBattleOptOutChange(!event.target.checked)}
-          type="checkbox"
-        />
-        <span>Make my image public in the battle arena and leaderboard</span>
-      </label>
       <button
         className="h-10 text-left font-mono text-[10px] uppercase tracking-wide text-muted-foreground transition-colors hover:text-black"
         onClick={onReset}

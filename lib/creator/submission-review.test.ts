@@ -3,11 +3,12 @@ import { creatorRestrictionGroups } from './content-policy'
 import { describe, expect, test } from 'bun:test'
 import { CREATOR_CTA_GUIDANCE } from './post-guidance'
 import {
+  createSubmissionReviewDrafts,
   getCreatorSubmissionReviewItems,
   mergeCreatorSubmissionReviewResults,
   validateCreatorSubmissionReviewResults,
   creatorSubmissionReviewResultsSchema,
-  resetSubmissionReview, submissionReviewError, submissionRejectionLabel, withAudienceRejectionReason, TIER_D_AUDIENCE_REJECTION,
+  resetSubmissionReview, submissionReviewError, submissionRejectionLabel, withAudienceRejectionReason, AUDIENCE_MINIMUM_REJECTION,
 } from './submission-review'
 
 describe('creator submission review checklist', () => {
@@ -113,11 +114,33 @@ test('Custom and General expose identical penalty and forbidden-content groups',
   const base = mergeCreatorSubmissionReviewResults('custom-video-v1', [])
   const items = withAudienceRejectionReason(base, 'rejected')
   const audience = items.at(-1)!
-  expect(audience).toMatchObject({ id: TIER_D_AUDIENCE_REJECTION.id, met: true, note: null })
-  expect(submissionRejectionLabel(audience)).toContain('below 10%')
+  expect(audience).toMatchObject({ id: AUDIENCE_MINIMUM_REJECTION.id, met: true, note: null })
+  expect(submissionRejectionLabel(audience)).toBe('Tier C audience not met — below 15% Tier 1')
   expect(withAudienceRejectionReason(items, 'approved')).toEqual(base)
   expect(withAudienceRejectionReason(base, 'rejected', [{ ...audience, met: false, note: '7.4% verified' }]).at(-1)).toMatchObject({ met: false, note: '7.4% verified' })
   expect(validateCreatorSubmissionReviewResults('custom-video-v1', items)).toBe(true)
   expect(validateCreatorSubmissionReviewResults('custom-video-v1', [...items, audience])).toBe(false)
   expect(validateCreatorSubmissionReviewResults('unknown', [audience])).toBe(false)
  })
+
+
+test('approval defaults never become selected rejection reasons', () => {
+  for (const met of [false, true]) {
+    const items = getCreatorSubmissionReviewItems('custom-video-v1').map(item => ({ ...item, met, note: null }))
+    const drafts = createSubmissionReviewDrafts(items, 'in_review', null)
+    expect(drafts.approval.every(item => item.met === met)).toBe(true)
+    expect(drafts.rejection.every(item => item.met && item.note === null)).toBe(true)
+    expect(submissionReviewError('rejected', drafts.rejection)).toContain('Select at least one')
+    drafts.rejection[0] = { ...drafts.rejection[0], met: false, note: 'Manually selected reason' }
+    expect(drafts.rejection.filter(item => !item.met).map(item => item.id)).toEqual([items[0].id])
+    expect(drafts.approval.every(item => item.met === met)).toBe(true)
+    expect(drafts.rejection[0].note).toBe('Manually selected reason')
+  }
+})
+
+test('reopening a rejection restores only saved reasons; new checklist items start unchecked', () => {
+  const items = getCreatorSubmissionReviewItems('custom-video-v1').map(item => ({ ...item, met: false, note: null }))
+  const drafts = createSubmissionReviewDrafts(items, 'rejected', [{ id: items[0].id, met: false, note: 'Saved reason' }])
+  expect(drafts.rejection.filter(item => !item.met)).toEqual([{ ...items[0], note: 'Saved reason' }])
+  expect(drafts.approval.every(item => !item.met && item.note === null)).toBe(true)
+})

@@ -2,7 +2,7 @@ import { Disclosure, DisclosureSummary, AccordionContent } from '@/components/ui
 import useSWR from 'swr'
 import { apiGet } from '@/lib/api/client'
 import { creatorAccountLabel, type CreatorDashboard } from './types'
-import { tiktokAnchorEligible, TIKTOK_ANCHOR_REQUIREMENTS_ENABLED, TIKTOK_ANCHOR_INVITE, TIKTOK_ANCHOR_REQUIREMENT } from '@/lib/creator/tiktok-anchor'
+import { tiktokAnchorEligible, TIKTOK_ANCHOR_INVITE } from '@/lib/creator/tiktok-anchor'
 import { CELEBRITY_EDIT_POLICY } from '@/lib/creator/content-policy'
 import { CREATOR_CTA_GUIDANCE } from '@/lib/creator/post-guidance'
 import Link from 'next/link'
@@ -18,13 +18,13 @@ export function AnalyticsVerificationHelp() {
 export function TikTokAnchorGuidelines() {
   const { data } = useSWR<CreatorDashboard>('/api/creator', apiGet)
   const accounts = (data?.socialAccounts || []).filter(account => tiktokAnchorEligible(account) === true)
-  if (!TIKTOK_ANCHOR_REQUIREMENTS_ENABLED || !accounts.length) return null
-  return <aside className="creator-notice my-5 rounded-2xl p-5" aria-label="TikTok anchor requirement">
-    <h3 className="text-sm font-semibold">Required for your TikTok accounts with 1,000+ followers</h3>
+  if (!accounts.length) return null
+  return <aside className="creator-notice my-5 rounded-2xl p-5" aria-label="Optional TikTok app anchor">
+    <h3 className="text-sm font-semibold">Optional app anchors for TikTok accounts with 1,000+ followers</h3>
     <p className="mt-1 text-xs text-zinc-500">Applies to {accounts.map(creatorAccountLabel).join(', ')} on TikTok.</p>
-    <p className="mt-3 text-sm leading-6 text-zinc-600">{TIKTOK_ANCHOR_REQUIREMENT}</p>
-    <p className="mt-2 text-sm leading-6 text-zinc-600">Confirm joining in Accounts before your next submission. The anchor is mandatory for every new submission from these TikTok accounts. This does not apply to Instagram or TikTok accounts below 1,000 followers.</p>
-    <div className="mt-3 flex flex-wrap gap-x-5 gap-y-1 text-sm font-semibold text-[#008bc6]"><Link href="/creator/accounts" className="inline-flex min-h-11 items-center underline underline-offset-4">Confirm joining in Accounts →</Link><a href={TIKTOK_ANCHOR_INVITE} target="_blank" rel="noreferrer" className="inline-flex min-h-11 items-center underline underline-offset-4">Open the TikTok project ↗</a></div>
+    <p className="mt-3 text-sm leading-6 text-zinc-600">Give viewers a direct link to Mogging to help improve conversions. Join our TikTok One project, then select it under Content disclosure → Disclose post content → Branded content → Link project when creating your video.</p>
+    <p className="mt-2 text-sm leading-6 text-zinc-600">TikTok reviews project videos before publishing. We approve videos within 24 hours after TikTok’s review. Anchors are optional: you can post, submit, and earn without joining the project or adding an anchor.</p>
+    <div className="mt-3 flex flex-wrap gap-x-5 gap-y-1 text-sm font-semibold text-[#008bc6]"><Link href="/creator/accounts" className="inline-flex min-h-11 items-center underline underline-offset-4">View optional setup in Accounts →</Link><a href={TIKTOK_ANCHOR_INVITE} target="_blank" rel="noreferrer" className="inline-flex min-h-11 items-center underline underline-offset-4">Open the TikTok project ↗</a></div>
   </aside>
 }
 

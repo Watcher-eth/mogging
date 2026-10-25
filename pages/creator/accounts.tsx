@@ -5,7 +5,7 @@ import { useEffect, useState } from 'react'
 import * as Avatar from '@radix-ui/react-avatar'
 import { AnimatedGroup } from '@/components/core/animated-group'
 import useSWR from 'swr'
-import { ArrowUpRight, Check, CircleAlert, Clock3, Loader2, Plus, Trash2, Users } from 'lucide-react'
+import { ArrowUpRight, Check, Loader2, Plus, Trash2, Users } from 'lucide-react'
 import { toast } from 'sonner'
 import { Button } from '@/components/ui/button'
 import {
@@ -134,9 +134,8 @@ function AccountsContent() {
                 <div className="mt-2 flex flex-wrap items-center gap-2 text-xs">
                   <span className="font-medium text-zinc-500">{account.platform === 'tiktok' ? 'TikTok' : 'Instagram'}</span>
                   <span aria-hidden="true" className="text-zinc-300">·</span>
-                  <span className={`inline-flex items-center gap-1 ${account.status === 'approved' ? 'text-[#248a3d]' : account.status === 'pending' ? 'text-zinc-500' : 'text-amber-700'}`}>
-                    {account.status === 'approved' ? <Check className="size-3.5" /> : account.status === 'pending' ? <Clock3 className="size-3.5" /> : <CircleAlert className="size-3.5" />}
-                    {account.status === 'approved' ? 'Connected' : account.status === 'pending' ? 'Pending review' : 'Needs information'}
+                  <span className="inline-flex items-center gap-1 text-[#248a3d]">
+                    <Check className="size-3.5" />Connected
                   </span>
                 </div>
               </div>
@@ -150,7 +149,7 @@ function AccountsContent() {
               {account.platform === 'tiktok' ? <div className="mt-4 flex flex-wrap items-center gap-x-4 gap-y-1 border-t border-zinc-100 pt-3 text-xs">
                 <span className="inline-flex items-center gap-1.5 text-zinc-500"><Users className="size-3.5" />{followerLabel(account.followers)}</span>
                 <button className="min-h-11 font-medium text-[#008bc6]" onClick={() => setEditing({ id: account.id, mode: 'followers' })}>Update followers</button>
-                {tiktokAnchorEligible(account) ? <button className="min-h-11 font-medium text-[#008bc6]" onClick={() => setEditing({ id: account.id, mode: 'anchor' })}>{account.tiktokAnchorJoinedAt ? 'View TikTok anchor setup' : 'Set up TikTok anchor'}</button> : null}
+                {tiktokAnchorEligible(account) ? <button className="min-h-11 font-medium text-[#008bc6]" onClick={() => setEditing({ id: account.id, mode: 'anchor' })}>{account.tiktokAnchorJoinedAt ? 'View TikTok anchor setup' : 'Set up optional TikTok anchor'}</button> : null}
               </div> : null}
               {account.reviewNote && account.reviewNote !== 'Account ownership and audience analytics verified with our team on Discord.' ? (
                 <p className="mt-3 text-sm text-zinc-500">

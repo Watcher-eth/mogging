@@ -1,10 +1,9 @@
 import { expect, test } from 'bun:test'
-import { TIKTOK_ANCHOR_REQUIREMENT, TIKTOK_ANCHOR_REQUIREMENTS_ENABLED } from './tiktok-anchor'
+import { TIKTOK_ANCHOR_REQUIREMENT } from './tiktok-anchor'
 import { creatorCampaignRules } from './post-guidance'
 import { sprintReviewItems, type SprintTerms } from './sprints'
 
-test('the anchor requirement is paused without hiding other campaign rules', () => {
-  expect(TIKTOK_ANCHOR_REQUIREMENTS_ENABLED).toBe(false)
+test('optional anchors never become campaign requirements', () => {
   expect(creatorCampaignRules(['Show Mogging', TIKTOK_ANCHOR_REQUIREMENT, 'Keep public'])).toEqual(['Show Mogging','Keep public'])
 })
 test('old submission snapshots no longer require anchors and keep stable review IDs', () => {

@@ -1,4 +1,4 @@
-import { creatorUnpaidCents } from '@/lib/creator/money'
+import { creatorUnpaidCents, hasCreatorPayoutMethod } from '@/lib/creator/money'
 import type { AdminCreator, AdminDashboard, AdminPayment, AdminSubmission, ReviewTarget } from '@/components/admin/creator-types'
 
 export type ApprovalTarget = Exclude<ReviewTarget, { resource: 'payment' }>
@@ -7,11 +7,11 @@ export type ApprovalKind = 'submission' | 'account' | 'payout'
 export const approvalTypes = {
   submission: { label: 'Video submission', plural: 'Video submissions', color: 'border-violet-200 bg-violet-50 text-violet-700' },
   account: { label: 'Social account', plural: 'Social accounts', color: 'border-blue-200 bg-blue-50 text-blue-700' },
-  payout: { label: 'Payout account', plural: 'Payout accounts', color: 'border-emerald-200 bg-emerald-50 text-emerald-700' },
+  payout: { label: 'Creator', plural: 'Creators', color: 'border-emerald-200 bg-emerald-50 text-emerald-700' },
 } as const
 
 export function hasPayoutDestination(creator: AdminCreator) {
-  return creator.paymentOption === 'paypal' ? Boolean(creator.paypalEmail) : Boolean(creator.cryptoNetwork && creator.cryptoWalletAddress)
+  return hasCreatorPayoutMethod(creator)
 }
 
 export function approvalKind(target: ApprovalTarget): ApprovalKind {
@@ -27,8 +27,6 @@ export function approvalSubmittedAt(target: ApprovalTarget) {
 export function getApprovalQueue(data: AdminDashboard): ApprovalTarget[] {
   return [
     ...data.submissions.filter((item) => item.status === 'pending' || item.status === 'in_review').map((item) => ({ resource: 'submission' as const, item })),
-    ...data.accounts.filter((item) => item.status === 'pending' && item.analyticsVideoUrl && item.analyticsConfirmedAt).map((item) => ({ resource: 'account' as const, item })),
-    ...data.creators.filter((item) => item.authStatus === 'pending' && hasPayoutDestination(item)).map((item) => ({ resource: 'creator' as const, item })),
   ].sort((a, b) => {
     const aTime = Date.parse(approvalSubmittedAt(a))
     const bTime = Date.parse(approvalSubmittedAt(b))
@@ -73,7 +71,7 @@ export function creatorOutstandingPaymentGroups(submissions: AdminDashboard['sub
   for (const payment of otherPayments) {
     if (!['pending', 'processing'].includes(payment.status) || payment.payoutRequestId || (payment.submissionId && includedIds.has(payment.submissionId))) continue
     const paidCents = payment.submissionId ? payments.filter(item => item.submissionId === payment.submissionId && item.status === 'paid').reduce((sum, item) => sum + item.amountCents, 0) : 0
-    lines.push({ id: payment.id, creatorProfileId: payment.creatorProfileId, creatorName: payment.creatorName, title: payment.submissionTitle || 'Manual payment', payment, paidCents, processingCents: payment.status === 'processing' ? payment.amountCents : 0, amountCents: payment.status === 'processing' ? 0 : payment.amountCents, kind: payment.submissionId ? paidCents > 0 ? 'Rereview' : 'New submission' : 'Manual payment', at: payment.createdAt, currency: payment.currency })
+    lines.push({ id: payment.id, creatorProfileId: payment.creatorProfileId, creatorName: payment.creatorName, title: payment.submissionTitle || 'Manual payment', payment, paidCents, processingCents: payment.status === 'processing' ? payment.amountCents : 0, amountCents: payment.status === 'processing' ? 0 : payment.amountCents, kind: payment.bonusSprintId ? 'Bonus' : payment.submissionId ? paidCents > 0 ? 'Rereview' : 'New submission' : 'Manual payment', at: payment.createdAt, currency: payment.currency })
   }
   type Line = typeof lines[number]
   const groups = new Map<string, { creatorProfileId: string; creatorName: string; currency: string; amountCents: number; processingCents: number; lines: Line[] }>()

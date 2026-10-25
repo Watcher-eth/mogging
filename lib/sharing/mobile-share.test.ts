@@ -9,7 +9,7 @@ test('share creation uses mobile bearer identity and keeps the standard data env
  const scope:any={getRequestUserId:async()=>identity,getOrSetAnonymousActorId:()=> 'anonymous',parseBody:(_:unknown,v:unknown)=>v,createAnalysisShareSchema:{},ApiError,handleApiError,json,
  createAnalysisShare:async(input:any)=>{received=input;if(input.ownerUserId!=='mobile-owner')throw new scope.SharingServiceError(403,'Forbidden');return{share:{token:'private-owner-token'},existing:false}},SharingServiceError:class extends Error{constructor(public status:number,message:string){super(message)}},}
  runInNewContext(new Bun.Transpiler({loader:'ts'}).transformSync(source+'\nglobalThis.handler=handler'),scope)
- let body:any;const res:any={status:(s:number)=>{res.statusCode=s;return res},json:(v:any)=>{body=v;return res}}
+ let body:any;const res:any={setHeader:()=>{},status:(s:number)=>{res.statusCode=s;return res},json:(v:any)=>{body=v;return res}}
  await scope.handler({method:'POST',body:{analysisId:'saved-private',ownerUserId:'spoofed-owner'}},res)
  expect(received.ownerUserId).toBe('mobile-owner');expect(body).toEqual({data:{share:{token:'private-owner-token'},existing:false},share:{token:'private-owner-token'}})
  identity=null;await scope.handler({method:'POST',body:{analysisId:'saved-private',ownerUserId:'mobile-owner'}},res)

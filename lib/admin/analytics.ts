@@ -7,9 +7,12 @@ import { db } from '@/lib/db'
 import { trackingDefinitions, trackingDimensions } from './tracking'
 import { scanProducts } from '@/lib/payments/revenuecat'
 import { onboardingAnalyticsSteps, supportedOnboardingVersions } from '@/lib/analytics/onboarding'
+import { reportingBucket } from './reporting-bucket'
+import { ADMIN_REPORTING_TIME_ZONE } from './reporting-time'
 
 export const analyticsFilters = z.object({
-  days: z.enum(['1', '7', '30', '90']).default('30'),
+  days: z.enum(['1', '7', '30', '90']).default('7'),
+  section: z.enum(['Overview', 'Acquisition', 'Experiments', 'Onboarding', 'Revenue', 'Retention', 'Authentication', 'Purchases', 'Scans', 'Engagement', 'Referrals', 'Notifications', 'AttributionLedger', 'Quality']).optional(),
   platform: z.enum(['all', 'web', 'ios', 'android']).default('all'),
 })
 export type AnalyticsFilters = z.infer<typeof analyticsFilters>
@@ -74,18 +77,46 @@ function funnel(name: string, events: string[], platform: SQL) {
   return { ctes, result }
 }
 
+// Only reference the selected page's aggregates. PostgreSQL skips unreferenced
+// CTEs, so an acquisition visit never computes retention or billing cohorts.
+const sectionReports: Record<NonNullable<AnalyticsFilters['section']>, readonly string[]> = {
+  Overview: ['daily', 'onboarding', 'paywall', 'reportLedger', 'scanLedger', 'paid_delivery'],
+  Acquisition: ['daily', 'web', 'acquisition', 'web_audience', 'landing_sections', 'landing_placements', 'landing_sources'],
+  Experiments: ['landing_handoffs', 'landing_experiments'],
+  Onboarding: ['daily', 'onboarding', 'onboarding_screens', 'onboarding_friction', 'onboarding_revisions', 'steps', 'screens'],
+  Revenue: ['revenue', 'revenue_totals', 'revenue_activity', 'revenue_daily', 'billing', 'billing_products', 'billing_dimensions'],
+  Retention: ['daily', 'feature_retention', 'membership_activation', 'retention', 'cancellations', 'actions'],
+  Authentication: ['daily'],
+  Purchases: ['daily', 'paywall', 'paid_delivery'],
+  Scans: ['daily', 'reportLedger', 'scanLedger'],
+  Engagement: ['daily', 'feature_usage'],
+  Referrals: ['daily'],
+  Notifications: ['daily'],
+  AttributionLedger: [],
+  Quality: ['daily', 'releases', 'event_delivery', 'event_metrics', 'context_coverage'],
+}
+const eventReportSections = new Set(['Acquisition', 'Onboarding', 'Authentication', 'Purchases', 'Scans', 'Engagement', 'Referrals', 'Notifications'])
+
 export function analyticsQuery(filters: AnalyticsFilters, now: Date) {
   const start = new Date(now.getTime() - Number(filters.days) * 86400_000).toISOString()
   const end = now.toISOString()
-  const bucket = filters.days === '1' ? 'YYYY-MM-DD"T"HH24:00:00"Z"' : 'YYYY-MM-DD'
   const platform = filters.platform === 'all' ? sql`true` : sql`platform = ${filters.platform}`
   const supportedOnboarding = sql`e.properties->>'onboarding_version' in (${sql.join(supportedOnboardingVersions.map(version => sql`${version}`), sql`,`)})`
   const onboarding = funnel('onboarding', ['onboarding_started', 'paywall_viewed', 'purchase_completed', 'evaluation_completed', 'report_viewed'], sql`platform in ('ios','android')`)
   // A default plan can be purchased without an explicit plan-selection event.
   const paywall = funnel('paywall', ['paywall_viewed', 'purchase_started', 'purchase_completed'], sql`platform in ('ios','android')`)
   const web = funnel('web', ['page_viewed', 'app_store_redirected'], sql`platform = 'web' and properties->>'path' = '/'`)
+  const reportEvents = filters.section && eventReportSections.has(filters.section)
+    ? trackingDefinitions.filter(definition => definition.section === filters.section).map(definition => definition.event) : null
+  const eventReportFilter = reportEvents ? sql`event_name in (${sql.join(reportEvents.map(event => sql`${event}`), sql`,`)})` : sql`true`
+  const dimensionSection = sql`case when p.key like '%utm_%' or p.key in ('campaign_id','creative_id','paidMedia','referrer_host') then 'Acquisition' else d.section end`
   const contextDefinitions = sql.join(contextFields.map(field => sql`(${field}::text)`), sql`,`)
-  const rows = (name: string) => sql`coalesce((select json_agg(r) from ${sql.identifier(name)} r), '[]'::json)`
+  const reports = filters.section ? new Set(['audience_breakdown', ...sectionReports[filters.section]]) : null
+  if (filters.section && eventReportSections.has(filters.section)) {
+    for (const name of ['event_metrics', 'event_platforms', 'dimensions', 'context_coverage']) reports!.add(name)
+  }
+  const include = (name: string, query: SQL, fallback = sql`'[]'::json`) => !reports || reports.has(name) ? query : fallback
+  const rows = (name: string) => include(name, sql`coalesce((select json_agg(r) from ${sql.identifier(name)} r), '[]'::json)`)
   const referrer = sql`coalesce(nullif(properties->>'first_referrer_host',''),nullif(properties->>'referrer_host',''))`
   const acquisitionSource = sql`coalesce(nullif(properties->>'creator_first_tracking_link_id',''),
     nullif(properties->>'first_utm_source',''), nullif(properties->>'utm_source',''),
@@ -115,7 +146,7 @@ export function analyticsQuery(filters: AnalyticsFilters, now: Date) {
       select a.status, a.created_at from analyses a join photos p on p.id = a.photo_id
       where p.source = 'user' and ${customerAccount(sql`p.user_id`)} and a.id not in (select id from excluded_reports) and a.created_at >= ${start}::timestamp and a.created_at < ${end}::timestamp
     ), report_ledger_daily as (
-      select to_char(created_at, ${bucket}::text) as day,
+      select ${reportingBucket(sql`created_at`, Number(filters.days))} as day,
         count(*) filter(where status = 'complete') as completed,
         count(*) filter(where status = 'failed') as failed
       from user_reports group by 1 order by 1
@@ -125,7 +156,7 @@ export function analyticsQuery(filters: AnalyticsFilters, now: Date) {
       where r.created_at >= ${start}::timestamp and r.created_at < ${end}::timestamp
         and p.id not in (select id from excluded_entitlements)
     ), scan_ledger_daily as (
-      select to_char(created_at, ${bucket}::text) as day, count(*) as started,
+      select ${reportingBucket(sql`created_at`, Number(filters.days))} as day, count(*) as started,
         count(*) filter(where status = 'complete') as completed,
         count(*) filter(where status = 'failed') as failed,
         count(*) filter(where status = 'pending') as pending
@@ -155,11 +186,11 @@ export function analyticsQuery(filters: AnalyticsFilters, now: Date) {
         round((percentile_cont(0.9) within group (order by case when jsonb_typeof(properties->'duration_ms') = 'number'
           then (properties->>'duration_ms')::numeric end) filter (where jsonb_typeof(properties->'duration_ms') = 'number'
           and (properties->>'duration_ms')::numeric between 0 and 1800000))::numeric) as p90_ms
-      from reported_events group by event_name order by events desc
+      from reported_events where ${eventReportFilter} group by event_name order by events desc
     ), event_platforms as (
       select event_name as event, platform, coalesce(source,'unknown') as source, count(*) as events,
         count(distinct actor) as actors, count(distinct account_id) as accounts
-      from reported_events group by 1,2,3 order by events desc limit 300
+      from reported_events where ${eventReportFilter} group by 1,2,3 order by events desc limit 300
     ), event_delivery as (
       select platform,coalesce(app_version,'unknown') as release,schema_version,count(*) as events,
         count(*) filter(where received_at < occurred_at) as clock_skew_events,
@@ -170,10 +201,11 @@ export function analyticsQuery(filters: AnalyticsFilters, now: Date) {
       from reported_events group by 1,2,3 order by events desc limit 100
     ), dimension_actor_counts as (
       -- Hash repeated observations per actor before counting distinct devices.
-      select case when p.key like '%utm_%' or p.key in ('campaign_id','creative_id','paidMedia','referrer_host') then 'Acquisition' else d.section end as section, e.event_name as event, p.key as dimension, p.value, e.actor, count(*) as events
+      select ${dimensionSection} as section, e.event_name as event, p.key as dimension, p.value, e.actor, count(*) as events
       from reported_events e join event_definitions d on d.event = e.event_name
         cross join lateral jsonb_each_text(e.properties) p
-      where p.key in (${sql.join(trackingDimensions.map(key => sql`${key}`), sql`,`)}) and p.value is not null
+      where ${filters.section ? sql`${dimensionSection} = ${filters.section}` : sql`true`}
+        and p.key in (${sql.join(trackingDimensions.map(key => sql`${key}`), sql`,`)}) and p.value is not null
         and jsonb_typeof(e.properties->p.key) in ('string','number','boolean')
       group by 1,2,3,4,5
     ), dimension_counts as (
@@ -206,7 +238,7 @@ export function analyticsQuery(filters: AnalyticsFilters, now: Date) {
       select * from billing_history where occurred_at >= ${start}::timestamp
     ), ${sql.join([...onboarding.ctes, ...paywall.ctes, ...web.ctes], sql`,`)},
     daily as (
-      select to_char(occurred_at, ${bucket}::text) as day, count(distinct actor) as actors,
+      select ${reportingBucket(sql`occurred_at`, Number(filters.days))} as day, count(distinct actor) as actors,
         count(*) filter (where event_name = 'evaluation_completed') as evaluations,
         count(*) filter (where event_name = 'evaluation_started') as scan_starts,
         count(*) filter (where event_name = 'onboarding_started') as onboarding_starts,
@@ -488,7 +520,7 @@ export function analyticsQuery(filters: AnalyticsFilters, now: Date) {
       select 'canceled_subscriptions',count(*) filter(where snapshot=0 and (canceled or ended or ends_at <= at)),
         count(*) filter(where snapshot=0 and (canceled or ended or ends_at <= at)),count(*) filter(where snapshot=1 and (canceled or ended or ends_at <= at)),0,0 from subscription_snapshots
     ), revenue_daily as (
-      select to_char(occurred_at, ${bucket}::text) as day, coalesce(currency, 'UNKNOWN') as currency,
+      select ${reportingBucket(sql`occurred_at`, Number(filters.days))} as day, coalesce(currency, 'UNKNOWN') as currency,
         case when count(amount) > 0 then coalesce(sum(amount) filter (where amount > 0), 0)::text end as gross,
         case when count(amount) > 0 then coalesce(-sum(amount) filter (where amount < 0), 0)::text end as refunds,
         sum(amount)::text as net,
@@ -572,7 +604,7 @@ export function analyticsQuery(filters: AnalyticsFilters, now: Date) {
       select case when event_name like 'course_%' then 'courses' else 'progress' end as feature,
         case when event_name like 'course_%' then coalesce(properties->>'course_id','unknown') else 'progress' end as course_id,
         count(distinct actor) as users,
-        count(distinct (actor, date_trunc('day', occurred_at))) as active_days,
+        count(distinct (actor, date_trunc('day', occurred_at at time zone 'UTC', ${ADMIN_REPORTING_TIME_ZONE}))) as active_days,
         count(distinct (actor, properties->>'lesson_id')) filter(where event_name = 'course_lesson_viewed') as lessons_opened,
         count(distinct (actor, properties->>'lesson_id')) filter(where event_name = 'course_lesson_completed') as lessons_completed,
         count(distinct actor) filter(where event_name = 'course_completed') as courses_completed,
@@ -640,20 +672,20 @@ export function analyticsQuery(filters: AnalyticsFilters, now: Date) {
       group by 1,4 order by 1
     ) select json_build_object(
       'paidDelivery', ${rows('paid_delivery')}, 'membershipActivation', ${rows('membership_activation')},
-      'reportLedger', json_build_object('summary', (select json_build_object(
+      'reportLedger', ${include('reportLedger', sql`json_build_object('summary', (select json_build_object(
         'completed', count(*) filter(where status = 'complete'), 'failed', count(*) filter(where status = 'failed'),
-        'other', count(*) filter(where status not in ('complete','failed'))) from user_reports), 'daily', ${rows('report_ledger_daily')}),
+        'other', count(*) filter(where status not in ('complete','failed'))) from user_reports), 'daily', coalesce((select json_agg(r) from report_ledger_daily r), '[]'::json))`)},
       'onboardingRevisions', ${rows('onboarding_revisions')},
-      'scanLedger', json_build_object('summary', (select json_build_object(
+      'scanLedger', ${include('scanLedger', sql`json_build_object('summary', (select json_build_object(
         'started', count(*), 'completed', count(*) filter(where status = 'complete'),
         'failed', count(*) filter(where status = 'failed'), 'pending', count(*) filter(where status = 'pending'),
         'reports', count(distinct analysis_id) filter(where status = 'complete')) from scan_ledger),
-        'daily', ${rows('scan_ledger_daily')}),
+        'daily', coalesce((select json_agg(r) from scan_ledger_daily r), '[]'::json))`)},
       'summary', (select json_build_object('events', count(*), 'actors', count(distinct actor),
         'first_opens', count(distinct actor) filter (where event_name = 'app_first_open'),
         'evaluations', count(*) filter (where event_name = 'evaluation_completed'),
         'failures', count(*) filter (where event_name = 'evaluation_failed'), 'latest_event', max(occurred_at)) from e),
-      'audienceBreakdown', ${rows('audience_breakdown')}, 'onboarding', ${onboarding.result}, 'paywall', ${paywall.result}, 'web', ${web.result},
+      'audienceBreakdown', ${rows('audience_breakdown')}, 'onboarding', ${include('onboarding', onboarding.result)}, 'paywall', ${include('paywall', paywall.result)}, 'web', ${include('web', web.result)},
       'landingHandoffs', ${rows('landing_handoffs')}, 'webAudience', ${rows('web_audience')}, 'landingExperiments', ${rows('landing_experiments')}, 'landingSources', ${rows('landing_sources')},
       'landingSections', ${rows('landing_sections')}, 'landingPlacements', ${rows('landing_placements')},
       'daily', ${rows('daily')}, 'acquisition', ${rows('acquisition')}, 'steps', ${rows('steps')},
@@ -665,22 +697,22 @@ export function analyticsQuery(filters: AnalyticsFilters, now: Date) {
     ) as data`
 }
 
-// Twelve allowed filter combinations; share concurrent requests, expire after one minute.
-const cache = new Map<string, { until: number; promise: Promise<AnalyticsDashboard> }>()
+// Deduplicate concurrent misses; the authenticated API owns snapshot caching.
+const pending = new Map<string, Promise<AnalyticsDashboard>>()
 export function getAnalyticsDashboard(filters: AnalyticsFilters) {
-  const key = `${filters.days}:${filters.platform}`
-  const found = cache.get(key)
-  if (found && found.until > Date.now()) return found.promise
+  const key = `${filters.days}:${filters.platform}:${filters.section ?? 'all'}`
+  const found = pending.get(key)
+  if (found) return found
   const now = new Date()
   const promise = db.transaction(async tx => {
     await tx.execute(sql`set transaction read only`)
     await tx.execute(sql`set local statement_timeout = '12s'`)
-    // This one-shot report compiles over a thousand JIT functions above the cost threshold.
+    // This report otherwise compiles over a thousand JIT functions.
     await tx.execute(sql`set local jit = off`)
     const [row] = await tx.execute(analyticsQuery(filters, now))
     return { ...(row.data as Omit<AnalyticsDashboard, 'generatedAt' | 'queryMs' | 'filters'>),
       generatedAt: now.toISOString(), queryMs: Date.now() - now.getTime(), filters }
-  }).catch(error => { cache.delete(key); throw error })
-  cache.set(key, { until: now.getTime() + 60_000, promise })
+  }).finally(() => { pending.delete(key) })
+  pending.set(key, promise)
   return promise
 }

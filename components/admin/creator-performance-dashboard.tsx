@@ -16,7 +16,7 @@ type Series = { key: string; label: string; color: string; axis?: 'views' }
 type ChartRow = { day: string; [key: string]: string | number | null }
 
 export default function CreatorPerformanceDashboard({ data }: { data: AdminDashboard }) {
-  const [days, setDays] = useState('30')
+  const [days, setDays] = useState('7')
   const [platform, setPlatform] = useState('all')
   const [search, setSearch] = useState('')
   const [sort, setSort] = useState('views')

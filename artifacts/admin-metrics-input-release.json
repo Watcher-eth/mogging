@@ -1,0 +1,16 @@
+{
+  "deployment": "dpl_9EdEZgARn98jz8gfBg46DQ27sEL5",
+  "previousDeployment": "dpl_5VQgx7kxKYdFjWS4f2mnR3UJxrgo",
+  "url": "https://mogging-2i1bxm4a4-glimpseback.vercel.app",
+  "changedFiles": [
+    "components/admin/creator-workspace.tsx"
+  ],
+  "validation": [
+    "Manual browser typing: cleared views then typed 47321, cleared audience then typed 32.7",
+    "4 tests / 21 assertions passed",
+    "TypeScript and focused ESLint passed",
+    "Production build passed",
+    "Staged health HTTP200, admin unauthenticated PATCH HTTP401",
+    "Live domain points to fixed deployment"
+  ]
+}

@@ -12,8 +12,8 @@ describe('photo publication consent', () => {
     expect(photo.gender).toBe('other')
   })
 
-  test('an explicit publication choice is preserved for curated imports', () => {
-    expect(createPhotoRecordSchema.parse({ ...upload, source: 'seeded', isPublic: true }).isPublic).toBe(true)
+  test('publication requests cannot make any new report public', () => {
+    expect(createPhotoRecordSchema.parse({ ...upload, source: 'seeded', isPublic: true }).isPublic).toBe(false)
     expect(createPhotoRecordSchema.parse({ ...upload, isPublic: false }).isPublic).toBe(false)
   })
 

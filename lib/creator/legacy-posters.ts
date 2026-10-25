@@ -3,8 +3,7 @@ import type { ContentSlide } from './content-generator'
 import { drawReportOverlay, type ReportOverlay } from './report-overlay'
 import type { RevealBrand } from './score-reveal'
 import { drawShareOverallOverlay } from '@/lib/sharing/overall-overlay'
-import { estimatedPopulationTopPercent } from '@/lib/sharing/population-percentile'
-import { getLooksmaxRank, shareCardLayout } from '@/lib/sharing/share-card'
+import { shareCardLayout } from '@/lib/sharing/share-card'
 
 export function drawLegacyPoster(ctx: CanvasRenderingContext2D, slide: ContentSlide, image: HTMLImageElement | null, overlay: ReportOverlay | null, width: number, height: number, timeMs: number, brand: RevealBrand | null) {
   ctx.save(); ctx.textBaseline = 'top'; ctx.textAlign = 'left'
@@ -92,19 +91,7 @@ function drawMobileShare(ctx: CanvasRenderingContext2D, slide: ContentSlide, ove
   withEnter(ctx, enter(timeMs, 300, 480), () => {
     text('MOGGING.COM', inset, top, shareCardLayout.headingSize)
     text('FACIAL AESTHETIC', inset, top + 46 * scale, shareCardLayout.subheadingSize, 'left', .76)
-    text('RANK', width - inset, top, shareCardLayout.headingSize, 'right')
-    text(getLooksmaxRank(Number(slide.currentScore), 'other').toUpperCase(), width - inset, top + 46 * scale, shareCardLayout.subheadingSize, 'right', .76)
-    const percent = slide.currentScore.trim() ? estimatedPopulationTopPercent(Number(slide.currentScore)) : null
-    if (percent !== null) {
-      ctx.fillStyle = 'rgba(255,255,255,.14)'; ctx.strokeStyle = 'rgba(255,255,255,.35)'; ctx.lineWidth = scale
-      ctx.font = `800 ${28 * scale}px "Mogging Share", Arial`
-      const pillWidth = ctx.measureText(`Top ${percent}%`).width + 32 * scale
-      const pillTop = square ? top - 6 * scale : 100 * scale
-      roundedRect(ctx, (width - pillWidth) / 2, pillTop, pillWidth, 82 * scale, 41 * scale); ctx.fill(); ctx.stroke()
-      ctx.textBaseline = 'middle'
-      text(`Top ${percent}%`, width / 2, pillTop + 41 * scale, 28, 'center')
-      ctx.textBaseline = 'top'
-    }
+
   })
   const scoreSize = shareCardLayout.scoreSize * (height / width < 1.2 ? .86 : 1)
   const valueTop = height - height * .055 - scoreSize * scale

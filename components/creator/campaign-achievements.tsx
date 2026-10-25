@@ -66,7 +66,7 @@ export function CampaignAchievements({
       title: "Audience excellence",
       reward: "$10 · up to 5 times",
       requirement:
-        "Reach 45%+ Tier 1 audience on a post with more than 100K views. Claim this bonus up to 5 times total.",
+        "Reach 45%+ Tier 1 audience on a post with 100K+ views. Claim this bonus up to 5 times total.",
       value: `$${(AUDIENCE_BONUS_MAX_CLAIMS - audienceRemaining) * 10} / $${AUDIENCE_BONUS_MAX_CLAIMS * 10}`,
       caption:
         progress.audienceQualifyingPosts > progress.audienceAwards &&

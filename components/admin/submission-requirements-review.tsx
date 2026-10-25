@@ -6,14 +6,21 @@ import { submissionRejectionLabel, type CreatorSubmissionReviewItem, type Creato
 
 type ReviewItem = CreatorSubmissionReviewItem & CreatorSubmissionReviewResult
 
-export function SubmissionRequirementsReview({ items, status, onChange }: {
+export function SubmissionRequirementsReview({ items, status, onChange, campaignName }: {
   items: ReviewItem[]
   status: string
+  campaignName?: string
   onChange: (items: ReviewItem[]) => void
 }) {
   const rejecting = status === 'rejected'
   const selectedCount = items.filter(item => rejecting ? !item.met : item.met).length
   const allRequirementsMet = !rejecting && selectedCount === items.length
+  const indexed = items.map((item, index) => ({ item, index }))
+  const campaignItems = campaignName ? indexed.filter(({ item }) => item.id.startsWith('element-')) : []
+  const groups = campaignItems.length ? [
+    { title: `${campaignName} criteria`, items: campaignItems },
+    { title: 'General requirements & rules', items: indexed.filter(({ item }) => !item.id.startsWith('element-')) },
+  ] : [{ title: null, items: indexed }]
   function update(index: number, patch: Partial<CreatorSubmissionReviewResult>) {
     onChange(items.map((item, i) => i === index ? { ...item, ...patch } : item))
   }
@@ -28,8 +35,10 @@ export function SubmissionRequirementsReview({ items, status, onChange }: {
       </div>
     </div>
     <Link href="/creator/guide#video-requirements" target="_blank" className="mt-3 inline-flex min-h-9 items-center gap-1 text-xs font-semibold text-zinc-600 underline decoration-zinc-300 underline-offset-4 hover:text-black">Open video requirements <ArrowUpRight className="size-3.5" /></Link>
-    <div className="mt-3 grid gap-2">
-      {items.map((item, index) => {
+    {groups.map(group => <div key={group.title || 'requirements'} className="mt-4">
+      {group.title ? <h4 className="mb-2 text-xs font-semibold text-zinc-900">{group.title}</h4> : null}
+      <div className="grid gap-2">
+      {group.items.map(({ item, index }) => {
         const selected = rejecting ? !item.met : item.met
         return <div key={item.id} className={cn('rounded-2xl border p-3.5 transition-colors duration-150', rejecting && selected ? 'border-red-200 bg-red-50/60' : 'border-zinc-200 bg-white')}>
           <label className="flex min-h-6 cursor-pointer items-start gap-3">
@@ -42,6 +51,7 @@ export function SubmissionRequirementsReview({ items, status, onChange }: {
           </div> : <Disclosure className="ml-7 mt-2"><DisclosureSummary className="cursor-pointer text-xs text-zinc-500">Requirement details</DisclosureSummary><AccordionContent><p className="mt-2 text-xs leading-5 text-zinc-500">{item.detail}</p></AccordionContent></Disclosure>}
         </div>
       })}
-    </div>
+      </div>
+    </div>)}
   </section>
 }

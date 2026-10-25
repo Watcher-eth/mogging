@@ -7,8 +7,8 @@ test('private mobile-created reports are available only to their owner', () => {
   expect(canReadPhoto(photo, { ...guest, userId: 'someone-else' })).toBe(false)
   expect(canReadPhoto(photo, guest)).toBe(false)
 })
-test('explicitly public reports can be viewed but not managed by visitors', () => {
-  expect(canReadPhoto({ ...photo, isPublic: true }, guest)).toBe(true)
+test('legacy publication flags never grant visitors access', () => {
+  expect(canReadPhoto({ ...photo, isPublic: true }, guest)).toBe(false)
   expect(ownsPhoto(photo, guest)).toBe(false)
   expect(canReadPhoto(photo, guest)).toBe(false)
 })

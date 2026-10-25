@@ -1,3 +1,4 @@
+import { bonusTargetPayments } from './bonus-payments'
 import { createHash } from 'node:crypto'
 import { and, asc, eq, inArray, ne, sql } from 'drizzle-orm'
 import { db, schema } from '@/lib/db'
@@ -19,6 +20,8 @@ export async function syncCreatorCampaignBonuses(creatorProfileId: string, deadl
     const [profile] = await tx.select().from(schema.creatorProfiles).where(eq(schema.creatorProfiles.id, creatorProfileId)).for('update')
     if (!profile || profile.authStatus === 'suspended') return 0
     const posts = await tx.query.creatorSubmissions.findMany({ where: and(eq(schema.creatorSubmissions.creatorProfileId, profile.id), eq(schema.creatorSubmissions.isDraft, false)), orderBy: [asc(schema.creatorSubmissions.createdAt), asc(schema.creatorSubmissions.id)] })
+    const transferred = await tx.execute<{ submission_id: string }>(sql`select t.submission_id from creator_campaign_transfers t join creator_submissions s on s.id = t.submission_id where s.creator_profile_id = ${profile.id}`)
+    const transferredIds = new Set(transferred.map(row => row.submission_id))
     const campaignIds = [...new Set(posts.flatMap(post => post.sprintId ? [post.sprintId] : []))]
     const campaigns = campaignIds.length ? await tx.query.creatorSprints.findMany({ where: inArray(schema.creatorSprints.id, campaignIds), orderBy: [asc(schema.creatorSprints.id)] }) : []
     const payments = await tx.query.creatorPayments.findMany({ where: eq(schema.creatorPayments.creatorProfileId, profile.id) })
@@ -31,7 +34,7 @@ export async function syncCreatorCampaignBonuses(creatorProfileId: string, deadl
       const campaign = campaigns.find(campaign => campaign.id === post.sprintId)
       if (!campaign || !launchCampaign(campaign.terms) || !campaign.terms.bonusBudgetCents || campaign.status === 'draft' || campaign.startsAt.getTime() > Date.now() || !['approved', 'paid'].includes(post.status)) return false
       const metrics = report.videos.find(video => video.id === post.id)
-      const prior = payments.filter(payment => payment.bonusSprintId === campaign.id && payment.bonusKey?.startsWith(`conversion:${post.id}:`)).reduce((sum, payment) => sum + payment.amountCents, 0)
+      const prior = bonusTargetPayments(payments, `conversion:${post.id}`, campaign.id).reduce((sum, payment) => sum + payment.amountCents, 0)
       return metrics && metrics.paidAmountCents > 0 && metrics.direct.revenueCents >= metrics.paidAmountCents * 1.5 && Math.round(metrics.direct.revenueCents * 0.05) > prior
     }).sort((a, b) => Date.parse(a.bonusPlacement?.checkedAt ?? '1970-01-01') - Date.parse(b.bonusPlacement?.checkedAt ?? '1970-01-01'))
     for (const post of placementCandidates) {
@@ -54,7 +57,7 @@ export async function syncCreatorCampaignBonuses(creatorProfileId: string, deadl
       const [committed] = await tx.select({ cents: sql<number>`coalesce(sum(${schema.creatorPayments.amountCents}), 0)::int` }).from(schema.creatorPayments).where(and(eq(schema.creatorPayments.bonusSprintId, campaign.id), ne(schema.creatorPayments.status, 'cancelled')))
       let remaining = budget - committed.cents
       const approved = posts.filter(post => hasLaunchCampaignBonuses(post) && post.sprintId === campaign.id && ['approved', 'paid'].includes(post.status) && (post.approvedAmountCents ?? 0) > 0)
-      const periodPosts = posts.filter(post => hasLaunchCampaignBonuses(post) && post.createdAt >= campaign.startsAt && post.createdAt < campaign.endsAt)
+      const periodPosts = posts.filter(post => hasLaunchCampaignBonuses(post) && (post.createdAt >= campaign.startsAt || transferredIds.has(post.id)) && post.createdAt < campaign.endsAt)
       const bioLinkVerified = campaign.endsAt.getTime() <= Date.now() && periodPosts.length > 0 && periodPosts.every(post => post.exclusivityConfirmed)
       const conversions = new Map<string, NonNullable<CampaignBonusProgress['conversions']>>()
       for (const post of approved) {
@@ -67,7 +70,7 @@ export async function syncCreatorCampaignBonuses(creatorProfileId: string, deadl
         conversions.set(post.id, { revenueCents: metrics.direct.revenueCents, paidAmountCents: metrics.paidAmountCents, ...evidence })
       }
       for (const target of campaignBonusTargets(approved, bioLinkVerified, conversions)) {
-        const prior = payments.filter(payment => payment.bonusSprintId === campaign.id && payment.bonusKey?.startsWith(`${target.subject}:`))
+        const prior = bonusTargetPayments(payments, target.subject, campaign.id)
         // A manual cancellation is not undone by the next reconciliation.
         const awarded = prior.reduce((sum, payment) => sum + payment.amountCents, 0)
         const increment = target.cents - awarded

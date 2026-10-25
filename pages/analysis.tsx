@@ -7,7 +7,6 @@ import {
   ArrowRight,
   Camera,
   Check,
-  Copy,
   CreditCard,
   Download,
   ScanFace,
@@ -129,13 +128,6 @@ type ShareResponse = {
   }
 }
 
-type PhotoPrivacyResponse = {
-  photo: {
-    id: string
-    isPublic: boolean
-  }
-}
-
 type AppConfig = {
   features: {
     authRequired: boolean
@@ -240,8 +232,6 @@ export default function AnalysisPage() {
   const loadedAnalysisIdRef = useRef<string | null>(null)
   const resumedCheckoutRef = useRef<string | null>(null)
   const analysisRunningRef = useRef(false)
-  const [battleOptOutByPhotoId, setBattleOptOutByPhotoId] = useState<Record<string, boolean>>({})
-  const [battleOptOutSaving, setBattleOptOutSaving] = useState(false)
   const [landmarkPendingIds, setLandmarkPendingIds] = useState<Record<string, boolean>>({})
   const [imageFramePositions, setImageFramePositions] = useState<ImageFramePositions>({})
 
@@ -406,25 +396,6 @@ export default function AnalysisPage() {
     }
   }, [])
 
-  async function toggleBattleOptOut(photoId: string, optOut: boolean) {
-    const previousValue = battleOptOutByPhotoId[photoId] ?? !results.find((result) => result.photo.id === photoId)?.photo.isPublic
-    setBattleOptOutByPhotoId((current) => ({ ...current, [photoId]: optOut }))
-    setBattleOptOutSaving(true)
-
-    try {
-      await apiPost<PhotoPrivacyResponse>('/api/photos/privacy', {
-        photoId,
-        isPublic: !optOut,
-      })
-      toast.success(optOut ? 'Removed from battle arena and leaderboard' : 'Published to battle arena and leaderboard')
-    } catch (privacyError) {
-      setBattleOptOutByPhotoId((current) => ({ ...current, [photoId]: previousValue }))
-      toast.error(privacyError instanceof ApiClientError ? privacyError.message : 'Unable to update battle setting')
-    } finally {
-      setBattleOptOutSaving(false)
-    }
-  }
-
   const resumeAfterPayment = useCallback(async (sessionId: string) => {
     try {
       setError(null)
@@ -514,9 +485,6 @@ export default function AnalysisPage() {
         setSelectedImageId(null)
         setImageFramePositions({})
         setShareUrl(null)
-        setBattleOptOutByPhotoId({
-          [result.photo.id]: !result.photo.isPublic,
-        })
       })
       .catch((analysisError) => {
         if (cancelled) return
@@ -731,15 +699,8 @@ export default function AnalysisPage() {
                     setSelectedImageId(null)
                     setImageFramePositions({})
                     setResults([])
-                    setBattleOptOutByPhotoId({})
                     setStep('intro')
                     setShareUrl(null)
-                  }}
-                  battleOptOut={primaryResult ? (battleOptOutByPhotoId[primaryResult.photo.id] ?? !primaryResult.photo.isPublic) : true}
-                  battleOptOutSaving={battleOptOutSaving || primaryResult?.canManage === false}
-                  onBattleOptOutChange={(optOut) => {
-                    if (!primaryResult) return
-                    void toggleBattleOptOut(primaryResult.photo.id, optOut)
                   }}
                 />
               </ProcessScreen>
@@ -1293,17 +1254,11 @@ function AnalysisPaymentDialog({
 }
 
 function ResultsStep({
-  battleOptOut,
-  battleOptOutSaving,
-  onBattleOptOutChange,
   primaryScore,
   results,
   onOpenShare,
   onReset,
 }: {
-  battleOptOut: boolean
-  battleOptOutSaving: boolean
-  onBattleOptOutChange: (optOut: boolean) => void
   primaryScore: number | null
   results: AnalysisResponse[]
   onOpenShare: () => void
@@ -1327,12 +1282,12 @@ function ResultsStep({
   })
   if (primaryResult?.analysis.metrics.webReportV2?.version === 2) {
     return <WebAnalysisReport report={primaryResult.analysis.metrics.webReportV2} imageSrc={primaryResult.photo.imageUrl} landmarks={landmarks} pslScore={primaryScore ?? 1}>
-      <ReportActions battleOptOut={battleOptOut} battleOptOutSaving={battleOptOutSaving} score={primaryResult.analysis.metrics.webReportV2.overallScore} onBattleOptOutChange={onBattleOptOutChange} onOpenShare={onOpenShare} onReset={onReset} />
+      <ReportActions score={primaryResult.analysis.metrics.webReportV2.overallScore} onOpenShare={onOpenShare} onReset={onReset} />
     </WebAnalysisReport>
   }
   return (
     <AnalysisReport categories={categories} imageSrc={primaryResult?.photo.imageUrl ?? previewPhotoUrl} landmarks={landmarks} score={score} pslScore={primaryScore}>
-      <ReportActions battleOptOut={battleOptOut} battleOptOutSaving={battleOptOutSaving} score={score} onBattleOptOutChange={onBattleOptOutChange} onOpenShare={onOpenShare} onReset={onReset} />
+      <ReportActions score={score} onOpenShare={onOpenShare} onReset={onReset} />
     </AnalysisReport>
   )
 }
@@ -1490,14 +1445,6 @@ function ShareSheet({
     return shareUrl ?? await onCreate()
   }
 
-  async function handleCopyLink() {
-    const url = await ensureShareUrl()
-    if (!url) return
-
-    await navigator.clipboard.writeText(url).catch(() => null)
-    toast.success('Share link copied')
-  }
-
   async function handleImageShare(target: 'instagram' | 'tiktok' | 'native') {
     const url = await ensureShareUrl()
     if (!url || !result) return
@@ -1515,16 +1462,6 @@ function ShareSheet({
           text: `Overall score ${formatShareScore(getReportOverallScore(result))} / 10`,
           files: [file],
         })
-        return
-      }
-
-      const sharedLink = await shareLinkFallback(target, url, result)
-      if (sharedLink) return
-
-      if (target !== 'native') {
-        await copyText(url)
-        window.open(getPlatformShareFallbackUrl(target), '_blank', 'noopener,noreferrer')
-        toast.success(`${target === 'instagram' ? 'Instagram' : 'TikTok'} opened. Add the copied link to your story.`)
         return
       }
 
@@ -1579,15 +1516,6 @@ function ShareSheet({
               )}
             </div>
 
-            <div className="mt-4 flex items-center gap-2 border border-zinc-200 bg-zinc-50 px-3 py-2">
-              <span className="min-w-0 flex-1 truncate text-sm text-zinc-600">{shareUrl ?? 'Creating share link...'}</span>
-              {loading ? (
-                <Loader2 className="size-4 animate-spin text-zinc-500" aria-hidden="true" />
-              ) : (
-                <Copy className="size-4 text-zinc-500" aria-hidden="true" />
-              )}
-            </div>
-
             <div className="mt-4 grid gap-2">
               <ShareNetworkButton
                 disabled={loading || renderingImage}
@@ -1619,18 +1547,6 @@ function ShareSheet({
                   {shareActionLoading === 'native' ? <Loader2 className="size-4 animate-spin" aria-hidden="true" /> : null}
                 </button>
               ) : null}
-              <button
-                className="flex h-12 w-full items-center justify-between rounded-full border border-zinc-200 bg-white px-4 text-left font-mono text-[11px] uppercase tracking-wide text-black transition-colors hover:bg-zinc-50 disabled:opacity-60"
-                disabled={loading}
-                onClick={() => void handleCopyLink()}
-                type="button"
-              >
-                <span className="flex items-center gap-3">
-                  <Copy className="size-5" aria-hidden="true" />
-                  Copy link
-                </span>
-                {loading ? <Loader2 className="size-4 animate-spin" aria-hidden="true" /> : null}
-              </button>
             </div>
 
             {shareImageUrl ? (
@@ -1683,31 +1599,6 @@ function ShareNetworkButton({
 
 function formatShareScore(score: number | null) {
   return typeof score === 'number' ? score.toFixed(1) : '--'
-}
-
-async function shareLinkFallback(target: 'instagram' | 'tiktok' | 'native', url: string, result: AnalysisResponse) {
-  if (!navigator.share) return false
-
-  try {
-    await navigator.share({
-      title: 'My Mogging report',
-      text: `Overall score ${formatShareScore(getReportOverallScore(result))} / 10`,
-      url,
-    })
-    return true
-  } catch (error) {
-    if (error instanceof DOMException && error.name === 'AbortError') return true
-    return false
-  }
-}
-
-function getPlatformShareFallbackUrl(target: 'instagram' | 'tiktok') {
-  if (target === 'instagram') return 'https://www.instagram.com/'
-  return 'https://www.tiktok.com/upload'
-}
-
-async function copyText(text: string) {
-  await navigator.clipboard?.writeText(text).catch(() => null)
 }
 
 function getShareToken(url: string) {

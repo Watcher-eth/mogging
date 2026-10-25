@@ -214,13 +214,26 @@ export function sprintFormats(terms: SprintTerms): CreatorSubmissionFormat[] {
 export function sprintFormat(terms: SprintTerms, id: string): CreatorSubmissionFormat | undefined {
   return sprintFormats(terms).find(format => format.id === id)
 }
+const campaignReviewLabels: Record<string, readonly string[]> = {
+  'launch-detailed-analysis-v1': [
+    'A commenter or celebrity face is clearly introduced',
+    'A Mogging mock report is created and shown',
+    'Voice-over analyses at least one specific feature or report category',
+  ],
+  'launch-feature-comparison-v1': [
+    'At least one facial feature is analysed or highlighted in detail',
+    'The content uses a feature-focused edit, education, analysis or improvement approach',
+    'Clear visuals, labels or commentary show what viewers should notice',
+  ],
+}
+
 export function sprintReviewItems(terms: SprintTerms, id: string, includeRetired = false) {
   const format = sprintFormat(terms, id)
   if (!format) return []
   return [
     ...format.elements.map((item, i) => {
       const element = creatorFormatElement(item)
-      return { id: `element-${i + 1}`, label: element.title, detail: element.detail }
+      return { id: `element-${i + 1}`, label: campaignReviewLabels[id]?.[i] ?? element.title, detail: element.detail }
     }),
     ...format.requirements.map((label, i) => ({
       id: `requirement-${i + 1}`,

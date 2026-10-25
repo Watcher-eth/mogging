@@ -1,11 +1,12 @@
+import { getRequestUserId } from '@/lib/auth/mobile-session'
+import { getAnonymousActorId } from '@/lib/auth/anonymous'
 import { pslToOverallScore } from '@/lib/analysis/score-scale'
-import { estimatedPopulationTopPercent } from '@/lib/sharing/population-percentile'
 import { parseStoryDesign, prepareStoryPortrait, ReportStoryDesign } from '@/lib/sharing/story-design'
 import { ImageResponse } from '@vercel/og'
 import type { NextApiRequest, NextApiResponse } from 'next'
 import { parseFaceLandmarksPayload } from '@/lib/analysis/landmarks'
 import { ShareOverallOverlay } from '@/lib/sharing/overall-overlay'
-import { getLooksmaxRank, shareCardLayout } from '@/lib/sharing/share-card'
+import { shareCardLayout } from '@/lib/sharing/share-card'
 import { getShareByToken } from '@/lib/sharing/service'
 
 export const config = {
@@ -23,6 +24,7 @@ const storySize: CanvasSize = {
 }
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
+  res.setHeader('Cache-Control', 'private, no-store')
   if (req.method !== 'GET' && req.method !== 'POST') {
     res.setHeader('Allow', 'GET, POST')
     res.status(405).end('Method not allowed')
@@ -36,7 +38,9 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   }
 
   try {
-    const share = await getShareByToken(token)
+    const share = await getShareByToken(token, {
+      userId: await getRequestUserId(req, res), anonymousActorId: getAnonymousActorId(req),
+    })
     const suppliedLandmarks = req.method === 'POST' ? req.body?.landmarks : share.analysis.landmarks
     const landmarks = parseFaceLandmarksPayload(suppliedLandmarks)
     if (req.method === 'POST' && suppliedLandmarks !== null && !landmarks) {
@@ -46,15 +50,12 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     const imageUrl = absoluteImageUrl(share.photo.imageUrl, req)
     const totalDisplayScore = readReportTotalScore(share.analysis.metrics, share.analysis.pslScore)
     const totalScore = formatScore(totalDisplayScore)
-    const topPercent = estimatedPopulationTopPercent(Number(totalScore))
     const potential = readReportPotential(share.analysis.metrics, share.analysis.pslScore, totalDisplayScore)
-    const rank = getLooksmaxRank(totalDisplayScore, share.photo.gender)
-    const tier = (share.analysis.tier || 'Facial aesthetic').toUpperCase()
 
     const design = parseStoryDesign(req.query.design)
     const portrait = design === 'original' ? null : await prepareStoryPortrait(imageUrl, design)
     const image = new ImageResponse(
-      design !== 'original' && portrait ? <ReportStoryDesign design={design} portrait={portrait} landmarks={landmarks} score={totalScore} potential={potential.score} rank={rank} /> : (
+      design !== 'original' && portrait ? <ReportStoryDesign design={design} portrait={portrait} landmarks={landmarks} score={totalScore} potential={potential.score} /> : (
         <div
           style={{
             background: '#a2a5a5',
@@ -122,21 +123,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
             }}
           >
             <span style={{ fontSize: shareCardLayout.headingSize, fontWeight: 800, letterSpacing: '1.2px' }}>MOGGING.COM</span>
-            <span style={{ fontSize: shareCardLayout.subheadingSize, fontWeight: 700, letterSpacing: '0.6px', marginTop: 12, opacity: 0.76 }}>{tier}</span>
-          </div>
-
-          {topPercent !== null && (
-            <div style={{ position: 'absolute', top: shareCardLayout.headerTop, left: 410, width: 260, height: 82,
-              display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
-              borderRadius: 48, border: '1px solid rgba(255,255,255,0.35)', background: 'rgba(255,255,255,0.14)' }}>
-              <span style={{ fontSize: shareCardLayout.headingSize, fontWeight: 800 }}>Top {topPercent}%</span>
-              <span style={{ fontSize: 16, letterSpacing: '1px', marginTop: 5, opacity: 0.72 }}>ESTIMATED</span>
-            </div>
-          )}
-
-          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', right: shareCardLayout.inset, position: 'absolute', top: shareCardLayout.headerTop }}>
-            <span style={{ fontSize: shareCardLayout.headingSize, fontWeight: 800, letterSpacing: '1.2px' }}>RANK</span>
-            <span style={{ fontSize: shareCardLayout.subheadingSize, fontWeight: 700, letterSpacing: '0.6px', marginTop: 12, opacity: 0.76 }}>{rank.toUpperCase()}</span>
+            <span style={{ fontSize: shareCardLayout.subheadingSize, fontWeight: 700, letterSpacing: '0.6px', marginTop: 12, opacity: 0.76 }}>Facial analysis</span>
           </div>
 
           <div

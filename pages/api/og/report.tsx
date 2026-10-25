@@ -1,3 +1,5 @@
+import { getRequestUserId } from '@/lib/auth/mobile-session'
+import { getAnonymousActorId } from '@/lib/auth/anonymous'
 import { pslToOverallScore } from '@/lib/analysis/score-scale'
 import { ImageResponse } from '@vercel/og'
 import type { NextApiRequest, NextApiResponse } from 'next'
@@ -18,6 +20,7 @@ const photo = {
 }
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
+  res.setHeader('Cache-Control', 'private, no-store')
   if (req.method !== 'GET') {
     res.setHeader('Allow', 'GET')
     res.status(405).end('Method not allowed')
@@ -31,7 +34,9 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   }
 
   try {
-    const share = await getShareByToken(token)
+    const share = await getShareByToken(token, {
+      userId: await getRequestUserId(req, res), anonymousActorId: getAnonymousActorId(req),
+    })
     const landmarks = parseFaceLandmarksPayload(share.analysis.landmarks)
     const imageUrl = absoluteImageUrl(share.photo.imageUrl, req)
     const overallScore = formatScore(toDisplayScore(share.analysis.pslScore))
@@ -39,7 +44,6 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     const symmetryOverlay = getSymmetryOverlay(landmarks)
     const displayName = (share.photo.name || share.owner?.name || 'Mogging report').toUpperCase()
     const gender = share.photo.gender.toUpperCase()
-    const tier = (share.analysis.tier || 'FACIAL AESTHETIC').toUpperCase()
     const harmony = formatMetric(share.analysis.harmonyScore)
     const dimorphism = formatMetric(share.analysis.dimorphismScore)
 
@@ -282,7 +286,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
             >
               <MetaBlock label="NAME" value={displayName} width={160} />
               <MetaBlock label="GENDER" value={gender} width={100} />
-              <MetaBlock label="TYPE" value={tier} width={185} />
+              <MetaBlock label="TYPE" value="FACIAL ANALYSIS" width={185} />
               <MetaBlock label="HARM." value={harmony} width={82} />
               <MetaBlock label="DIMORPH." value={dimorphism} width={90} />
             </div>
@@ -296,7 +300,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     )
 
     const buffer = Buffer.from(await image.arrayBuffer())
-    res.setHeader('Cache-Control', 'public, s-maxage=3600, stale-while-revalidate=86400')
+    res.setHeader('Cache-Control', 'private, no-store')
     res.setHeader('Content-Type', 'image/png')
     res.status(200).send(buffer)
     return

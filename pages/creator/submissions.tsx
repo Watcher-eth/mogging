@@ -1,3 +1,5 @@
+import { SubmissionBonusBreakdown, CampaignBonusAwards } from '@/components/creator/submission-bonuses'
+import { submissionBonusPayments, campaignBonusPayments, bonusPaymentTotal, type BonusPayment } from '@/lib/creator/bonus-payments'
 import { SubmissionReviewFeedback } from '@/components/creator/submission-review-feedback'
 import { CREATOR_REREVIEW_GUIDANCE } from '@/lib/creator/post-guidance'
 import { AnimatedDialogPanel } from '@/components/ui/animated-dialog-panel'
@@ -7,7 +9,7 @@ import { SubmissionPostPreview, useSubmissionPostPreview } from '@/components/cr
 import Link from 'next/link'
 import { useRouter } from 'next/router'
 import { useMemo, useState } from 'react'
-import { ArrowUpRight, CalendarDays, ChevronDown, SlidersHorizontal, Eye, MessageCircle, CircleAlert, Clock3, Loader2, RotateCcw, XCircle } from 'lucide-react'
+import { ArrowUpRight, CalendarDays, ChevronDown, SlidersHorizontal, Eye, MessageCircle, CircleAlert, Clock3, Loader2, RotateCcw, XCircle, Sparkles } from 'lucide-react'
 import useSWR from 'swr'
 import { Button } from '@/components/ui/button'
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog'
@@ -79,13 +81,14 @@ function SubmissionsContent() {
           </select>
         </span>
       } title="Submissions" description="Follow every video from review through approval and payout." action={<Button asChild className="h-11 rounded-full px-5"><Link href="/creator/submissions?new=1">New Submission</Link></Button>} />
+      <CampaignBonusAwards bonuses={campaignBonusPayments(data?.payments || [])} />
       <TooltipProvider delayDuration={150}>
         {isLoading ? <div className="grid min-h-64 place-items-center"><Loader2 className="size-5 animate-spin text-zinc-400" /></div> : days.length ? <div className="grid gap-4">{days.map(day => <section key={day.key} aria-label={day.label}>
           <h2 className="mb-2 px-1 text-[11px] font-medium text-zinc-400">{day.label}</h2>
-          <div className="grid gap-2">{day.submissions.map(submission => <SubmissionCard key={submission.id} submission={submission} payment={paymentBySubmission.get(submission.id)} accountHandle={data?.socialAccounts.find(account => account.id === submission.socialAccountId)?.handle} onClick={() => setSelectedId(submission.id)} />)}</div>
+          <div className="grid gap-2">{day.submissions.map(submission => <SubmissionCard key={submission.id} submission={submission} bonuses={submissionBonusPayments(submission, data?.payments || [])} payment={paymentBySubmission.get(submission.id)} accountHandle={data?.socialAccounts.find(account => account.id === submission.socialAccountId)?.handle} onClick={() => setSelectedId(submission.id)} />)}</div>
         </section>)}</div> : <EmptyState filtered={filter !== 'all'} />}
       </TooltipProvider>
-      <SubmissionDialog key={selected?.id || "closed"} submission={selected} payment={selected ? paymentBySubmission.get(selected.id) : undefined} payments={selected ? (data?.payments || []).filter(payment => payment.submissionId === selected.id) : []} linkedToApprovedAccount={Boolean(selected?.socialAccountId && accountStatusById.get(selected.socialAccountId) === 'approved')} open={Boolean(selected)} onOpenChange={(open) => { if (!open) setSelectedId(null) }} onUpdateAnalytics={() => { setAnalyticsId(selected!.id); setSelectedId(null) }} />
+      <SubmissionDialog key={selected?.id || "closed"} submission={selected} bonuses={selected ? submissionBonusPayments(selected, data?.payments || []) : []} payment={selected ? paymentBySubmission.get(selected.id) : undefined} payments={selected ? (data?.payments || []).filter(payment => payment.submissionId === selected.id) : []} linkedToApprovedAccount={Boolean(selected?.socialAccountId && accountStatusById.get(selected.socialAccountId) === 'approved')} open={Boolean(selected)} onOpenChange={(open) => { if (!open) setSelectedId(null) }} onUpdateAnalytics={() => { setAnalyticsId(selected!.id); setSelectedId(null) }} />
       {newSubmissionOpen ? <AnalyticsSubmissionDialog
         open
         initialSprintId={typeof router.query.sprint === 'string' ? router.query.sprint : undefined}
@@ -100,9 +103,11 @@ function SubmissionsContent() {
   )
 }
 
-function SubmissionCard({ submission, payment, accountHandle, onClick }: { submission: CreatorSubmission; payment?: CreatorPayment; accountHandle?: string | null; onClick: () => void }) {
+function SubmissionCard({ submission, payment, accountHandle, onClick, bonuses }: { bonuses: BonusPayment[]; submission: CreatorSubmission; payment?: CreatorPayment; accountHandle?: string | null; onClick: () => void }) {
   const { ref, preview, visible } = useSubmissionPostPreview(submission)
-  const amount = submission.sprintId && creatorEarnedCents(submission) > 0 ? formatMoney(creatorEarnedCents(submission), 'USD') : payment ? formatMoney(payment.amountCents, payment.currency) : submission.status === 'approved' ? formatMoney(creatorEarnedCents(submission), 'USD') : null
+  const bonusCents = bonusPaymentTotal(bonuses)
+  const baseAmount = submission.sprintId && creatorEarnedCents(submission) > 0 ? formatMoney(creatorEarnedCents(submission), 'USD') : payment ? formatMoney(payment.amountCents, payment.currency) : submission.status === 'approved' ? formatMoney(creatorEarnedCents(submission), 'USD') : null
+  const amount = bonusCents ? formatMoney(creatorEarnedCents(submission) + bonusCents, 'USD') : baseAmount
   const submittedViews = submission.reviewRequestedAt ? submission.viewCountThreshold : submission.adminViewCountThreshold ?? submission.viewCountThreshold
   const currentViews = preview?.viewCount ?? null
   const views = currentViews ?? submittedViews
@@ -134,6 +139,7 @@ function SubmissionCard({ submission, payment, accountHandle, onClick }: { submi
         </span>
         <span className="mt-2 flex flex-wrap items-center gap-2">
           {amount ? <span className="text-sm font-semibold">{amount}</span> : null}
+          {bonusCents > 0 ? <span className="inline-flex items-center gap-1 rounded-md border border-amber-200/70 bg-amber-50 px-1.5 py-0.5 text-[10px] font-medium text-amber-800"><Sparkles aria-hidden="true" className="size-3" />+{formatMoney(bonusCents, 'USD')} bonus</span> : null}
           {submission.unreadMessages ? <span aria-label={`${submission.unreadMessages} new messages`} className="inline-flex items-center gap-1 rounded-lg bg-[#007aff] px-2 py-1 text-[11px] font-semibold text-white"><MessageCircle className="size-3" aria-hidden="true" />{submission.unreadMessages}</span> : null}
           <time dateTime={submission.createdAt} title={`Uploaded ${new Date(submission.createdAt).toLocaleString('en-GB')}`} className="rounded-md bg-zinc-100/80 px-1.5 py-0.5 text-[10px] font-medium leading-4 text-zinc-400">{submissionAge(submission.createdAt)}</time>
         </span>
@@ -142,7 +148,7 @@ function SubmissionCard({ submission, payment, accountHandle, onClick }: { submi
   )
 }
 
-function SubmissionDialog({ submission, payment, payments, linkedToApprovedAccount, open, onOpenChange, onUpdateAnalytics }: { submission: CreatorSubmission | null; payment?: CreatorPayment; payments: CreatorPayment[]; linkedToApprovedAccount: boolean; open: boolean; onOpenChange: (open: boolean) => void; onUpdateAnalytics: () => void }) {
+function SubmissionDialog({ submission, payment, payments, linkedToApprovedAccount, open, onOpenChange, onUpdateAnalytics, bonuses }: { bonuses: BonusPayment[]; submission: CreatorSubmission | null; payment?: CreatorPayment; payments: CreatorPayment[]; linkedToApprovedAccount: boolean; open: boolean; onOpenChange: (open: boolean) => void; onUpdateAnalytics: () => void }) {
   const [tab, setTab] = useState<'conversation' | 'details'>('conversation')
   const { data: post } = useSWR<CreatorPostPreview>(open && submission?.postUrl ? `/api/creator/submissions/${submission.id}/preview` : null, apiGet, { dedupingInterval: 300_000, revalidateOnFocus: false })
   const caption = post?.caption || submission?.caption
@@ -165,6 +171,7 @@ function SubmissionDialog({ submission, payment, payments, linkedToApprovedAccou
             </DialogHeader>
             {payments.some(item => ['pending', 'processing'].includes(item.status)) ? <p className="mt-3 text-xs text-zinc-500">You can request rereview once your scheduled payout has finished processing.</p> : null}
             {submission.reviewRequestedAt ? <p className="mt-3 text-xs text-zinc-500">Updated analytics are awaiting review. Prior payouts remain unchanged.</p> : null}
+            <SubmissionBonusBreakdown contentCents={creatorEarnedCents(submission)} bonuses={bonuses} />
             {submission.status === 'rejected' ? <CreatorReviewChecklist submission={submission} /> : null}
             <div className="mt-4 flex gap-1 rounded-full bg-zinc-100 p-1" aria-label="Submission view">{(['conversation', 'details'] as const).map(value => <button key={value} aria-pressed={tab === value} className={cn('min-h-10 flex-1 rounded-full text-sm font-medium capitalize', tab === value ? 'bg-white shadow-sm' : 'text-zinc-500')} onClick={() => setTab(value)}>{value === 'conversation' ? <>Messages{submission.unreadMessages ? <span className="ml-2 inline-flex min-w-5 items-center justify-center rounded-lg bg-[#007aff] px-1.5 py-0.5 text-[10px] text-white">{submission.unreadMessages}</span> : null}</> : 'Details'}</button>)}</div>
             {tab === 'conversation' ? <SubmissionConversation submissionId={submission.id} viewerRole="creator" /> : <>
@@ -176,7 +183,7 @@ function SubmissionDialog({ submission, payment, payments, linkedToApprovedAccou
               <Detail label="Evidence Size" value={evidenceSize ? formatBytes(evidenceSize) : 'Not recorded'} />
               <Detail label="View Count Threshold" value={submission.viewCountThreshold ? `${formatViewCount(submission.viewCountThreshold)} views` : 'Not recorded'} />
               <Detail label="Tier 1 Audience" value={submission.usAudiencePercent !== null ? `${submission.usAudiencePercent}%` : 'Not recorded'} />
-              <Detail label="Total approved earnings" value={formatMoney(submission.approvedAmountCents || 0, 'USD')} />
+              <Detail label="Total approved earnings" value={formatMoney((submission.approvedAmountCents || 0) + bonusPaymentTotal(bonuses), 'USD')} />
               {payments.length ? payments.map(item => <Detail key={item.id} label={item.paidAt ? `Payment · ${formatDate(item.paidAt)}` : 'Payment'} value={`${formatMoney(item.amountCents, item.currency)} · ${item.status}`} />) : <Detail label="Payment" value="Not scheduled" />}
               <Detail label="Payment Method" value={payment ? (payment.paymentOption === 'paypal' ? 'PayPal' : 'Crypto') : '—'} />
             </div>

@@ -1,6 +1,4 @@
-// Temporarily paused while TikTok project linking is unavailable. Shared by UI and server.
-export const TIKTOK_ANCHOR_REQUIREMENTS_ENABLED = false
-
+// Retained to hide mandatory-anchor wording in historical campaign snapshots.
 export const TIKTOK_ANCHOR_REQUIREMENT =
   'For this TikTok account with 1,000+ followers: accept the Mogging TikTok One project before posting, then use Content disclosure → Disclose post content → Branded content → Link project to link this video to Mogging with its anchor.'
 export const CREATOR_CTA_GUIDANCE = 'Use a 2–3 second CTA inviting viewers to try Mogging. Place it within the first 10 seconds of a video or the first 5 slides of a slideshow.'
@@ -15,7 +13,7 @@ export function creatorFormatElement(element: { title: string; detail: string })
 
 export function creatorCampaignRule(rule: string): string | null {
   if (rule.startsWith('Submit within')) return null
-  if (!TIKTOK_ANCHOR_REQUIREMENTS_ENABLED && rule === TIKTOK_ANCHOR_REQUIREMENT) return null
+  if (rule === TIKTOK_ANCHOR_REQUIREMENT) return null
   if (rule === 'Tag @moggingcom in the post or caption') return 'Tag @moggingcom in the post caption'
   return rule === 'Include your Mogging referral code in your bio and caption.'
     ? 'Include your Mogging referral code in your caption.'

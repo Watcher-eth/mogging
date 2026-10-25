@@ -8,9 +8,9 @@ import { cn } from '@/lib/utils'
 type Message = { id: string; authorRole: 'creator' | 'team'; body: string; createdAt: string }
 type Thread = { submission: { status: string; unreadMessages: number }; messages: Message[]; nextCursor: string | null }
 
-export function SubmissionConversation({ submissionId, viewerRole, className }: { className?: string; submissionId: string; viewerRole: Message['authorRole'] }) {
+export function SubmissionConversation({ submissionId, viewerRole, className, active = true }: { className?: string; submissionId: string; viewerRole: Message['authorRole']; active?: boolean }) {
   const endpoint = `/api/${viewerRole === 'team' ? 'admin/creator' : 'creator'}/submissions/${encodeURIComponent(submissionId)}/messages`
-  const { data, error, isLoading, isValidating, size, setSize, mutate } = useSWRInfinite<Thread>((index, previous) => index === 0 ? endpoint : previous?.nextCursor ? `${endpoint}?cursor=${encodeURIComponent(previous.nextCursor)}` : null, apiGet, { refreshInterval: 10_000 })
+  const { data, error, isLoading, isValidating, size, setSize, mutate } = useSWRInfinite<Thread>((index, previous) => !active ? null : index === 0 ? endpoint : previous?.nextCursor ? `${endpoint}?cursor=${encodeURIComponent(previous.nextCursor)}` : null, apiGet, { refreshInterval: active ? 10_000 : 0 })
   const { mutate: refreshDashboard } = useSWRConfig()
   const readInFlight = useRef(false)
   const [draft, setDraft] = useState('')
@@ -23,10 +23,10 @@ export function SubmissionConversation({ submissionId, viewerRole, className }: 
   const previousHeight = useRef<number | null>(null)
   const messages = [...new Map([...(data || [])].reverse().flatMap(page => page.messages).map(message => [message.id, message])).values()]
   useEffect(() => {
-    if (!composer.current) return
+    if (!active || !composer.current) return
     composer.current.style.height = 'auto'
     composer.current.style.height = `${Math.min(composer.current.scrollHeight, 112)}px`
-  }, [draft])
+  }, [draft, active])
   const messageKey = messages.map(message => message.id).join(',')
   useEffect(() => {
     const el = scroll.current
@@ -45,12 +45,12 @@ export function SubmissionConversation({ submissionId, viewerRole, className }: 
 
   useEffect(() => {
     const latest = data?.[0]?.messages.at(-1)
-    if (!atBottom || !latest || !data?.[0]?.submission.unreadMessages || readInFlight.current) return
+    if (!active || !atBottom || !latest || !data?.[0]?.submission.unreadMessages || readInFlight.current) return
     readInFlight.current = true
     void apiPatch(endpoint, { messageId: latest.id }).then(async () => {
       await Promise.all([refreshDashboard('/api/creator'), refreshDashboard('/api/admin/creator'), mutate()])
     }).catch(() => { /* Keep unread counts; the next poll retries the read receipt. */ }).finally(() => { readInFlight.current = false })
-  }, [atBottom, data, endpoint, refreshDashboard, mutate])
+  }, [active, atBottom, data, endpoint, refreshDashboard, mutate])
 
   async function send() {
     const body = draft.trim()

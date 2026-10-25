@@ -1,9 +1,10 @@
+import { launchCampaign } from '@/lib/creator/campaign-launch'
 import { Disclosure, DisclosureSummary, AccordionContent } from '@/components/ui/accordion'
 import { TikTokAccountDialog } from './tiktok-anchor-onboarding'
-import { publishingTikTokHandle, tiktokAnchorEligible, TIKTOK_ANCHOR_REQUIREMENTS_ENABLED, TIKTOK_ANCHOR_REQUIREMENT } from '@/lib/creator/tiktok-anchor'
+import { publishingTikTokHandle, tiktokAnchorEligible } from '@/lib/creator/tiktok-anchor'
 import { detectPostingAccount } from '@/lib/creator/post-account'
 import { creatorContentRestriction } from '@/lib/creator/content-policy'
-import { creatorCampaignRules, creatorFormatElement, CREATOR_REREVIEW_GUIDANCE } from '@/lib/creator/post-guidance'
+import { creatorCampaignRules, CREATOR_REREVIEW_GUIDANCE } from '@/lib/creator/post-guidance'
 import { PublishedPostPlayer } from './published-post-player'
 import { SocialPlatformLogo } from '@/components/brand/social-platform-logo'
 import { AnalyticsRecordingPreview } from './analytics-recording-preview'
@@ -54,17 +55,15 @@ import {
   type CreatorSprint,
 } from '@/lib/creator/sprints'
 import { cn } from '@/lib/utils'
-const labels = ['Campaign', 'Format', 'Link', 'Analytics', 'Review']
+const labels = ['Campaign', 'Link', 'Analytics', 'Review']
 const titles = [
   'Pick a campaign',
-  'Choose your format',
   'Link your post',
   'Verify your analytics',
   'Review and submit',
 ]
 const descriptions = [
   'Choose an active campaign below. Submit as soon as your post reaches its first milestone.',
-  'Choose the format you used for your post.',
   'Paste your published TikTok or Instagram URL to preview it.',
   'Upload one continuous recording filmed with a second device.',
   'Confirm the campaign requirements before sending your post for review.',
@@ -89,14 +88,13 @@ export function SubmissionDialog({
     open ? '/api/creator' : null,
     apiGet,
   )
-  const [step, setStep] = useState(existingSubmission ? 4 : 1)
+  const [step, setStep] = useState(existingSubmission ? 3 : 1)
   const [stepDirection, setStepDirection] = useState<1 | -1>(1)
   function changeStep(value: number) {
     setStepDirection(value > step ? 1 : -1)
     setStep(value)
   }
   const [sprintId, setSprintId] = useState(existingSubmission?.sprintId || initialSprintId || '')
-  const [formatId, setFormatId] = useState(existingSubmission?.formatId || '')
   const [selectedAccountId, setAccountId] = useState(existingSubmission?.socialAccountId || '')
   const [anchorSetupOpen, setAnchorSetupOpen] = useState(false)
   const [usedRefCode, setUsedRefCode] = useState(false)
@@ -114,8 +112,8 @@ export function SubmissionDialog({
   const headingRef = useRef<HTMLHeadingElement>(null)
   const contentRef = useRef<HTMLDivElement>(null)
   const previousStep = useRef(step)
-  const stepLabels = existingSubmission ? labels.slice(3) : labels
-  const visibleStep = existingSubmission ? step - 3 : step
+  const stepLabels = existingSubmission ? labels.slice(2) : labels
+  const visibleStep = existingSubmission ? step - 2 : step
   useEffect(() => {
     if (previousStep.current === step) return
     previousStep.current = step
@@ -125,7 +123,10 @@ export function SubmissionDialog({
   const campaign = campaigns?.sprints.find((item) => item.id === sprintId && (existingSubmission || sprintPhase(item) === 'active'))
   const sprint = campaign && { ...campaign, terms: existingSubmission?.sprintTerms || campaign.terms }
   const minimumViews = minimumSubmissionViews(sprint?.terms)
-  const format = sprint ? sprintFormat(sprint.terms, formatId) : undefined
+  const format = sprint ? existingSubmission
+    ? sprintFormat(sprint.terms, existingSubmission.formatId || '')
+    : sprint.terms.formats.find(item => item.active) : undefined
+  const formatId = format?.id || ''
   const activeSprints =
     campaigns?.sprints.filter(
       (item) =>
@@ -138,12 +139,11 @@ export function SubmissionDialog({
   const { platform, account: publishingAccount } = detected
   const accountId = publishingAccount?.id || ''
   const anchorEligibility = tiktokAnchorEligible(publishingAccount)
-  const anchorRequired = TIKTOK_ANCHOR_REQUIREMENTS_ENABLED && !existingSubmission && platform === 'tiktok' && anchorEligibility === true
+  const anchorAvailable = !existingSubmission && platform === 'tiktok' && anchorEligibility === true
   const checklist =
     format && sprint
       ? [
           ...creatorCampaignRules(format.requirements),
-          ...(anchorRequired ? [TIKTOK_ANCHOR_REQUIREMENT] : []),
           ...creatorCampaignRules(sprint.terms.rules),
           ...format.notAllowed.map((item) => `My post avoids: ${creatorContentRestriction(item)}`),
         ]
@@ -170,8 +170,7 @@ export function SubmissionDialog({
       (!sprint || !activeSprints.some((item) => item.id === sprint.id))
     )
       return toast.error('Choose an active campaign with available budget')
-    if (step === 2 && !format) return toast.error('Choose a format')
-    if (step === 3) {
+    if (step === 2) {
 
       const parsed = creatorPostUrlSchema.safeParse(postUrl)
       if (!parsed.success) return toast.error(parsed.error.issues[0].message)
@@ -187,15 +186,13 @@ export function SubmissionDialog({
       if (account && account.platform !== platform)
         return toast.error('The account must match the post platform')
       if (platform === 'tiktok') {
-        if (TIKTOK_ANCHOR_REQUIREMENTS_ENABLED && anchorEligibility === null) return toast.error('Confirm this account’s follower range in Accounts first')
-        if (anchorRequired && !account?.tiktokAnchorJoinedAt) { setAnchorSetupOpen(true); return toast.error('Join the Mogging project before submitting') }
         const handle = publishingTikTokHandle(parsed.data)
         if (handle && account?.handle?.toLowerCase() !== handle) return toast.error('Choose the TikTok account that published this post')
       }
 
     }
-    if (step === 4 && !checkMinimumViews()) return
-    if (step === 4 && (!recording || !physicalConfirmed || !views || !audience))
+    if (step === 3 && !checkMinimumViews()) return
+    if (step === 3 && (!recording || !physicalConfirmed || !views || !audience))
       return toast.error(
         'Add your recording and analytics, and confirm it was filmed with a second device',
       )
@@ -235,7 +232,6 @@ export function SubmissionDialog({
         sprintId,
         formatId,
         requirementsConfirmed: true,
-        tiktokAnchorLinked: anchorRequired && confirmed.includes(String(checklist.indexOf(TIKTOK_ANCHOR_REQUIREMENT))),
         socialAccountId: accountId || null,
         postUrl,
         analyticsVideoUrl: intent.publicUrl,
@@ -292,20 +288,23 @@ export function SubmissionDialog({
           </div>
         ) : (
           <form
-            onSubmit={step === 5 ? submit : next}
+            onSubmit={step === 4 ? submit : next}
             className="flex min-h-0 flex-1 flex-col"
           >
             <div ref={contentRef} className="min-h-0 flex-1 overflow-y-auto px-5 pb-6 sm:px-7">
               <AnimatedDialogPanel contentKey={step} motionStyle="swish" direction={stepDirection} contentClassName="grid gap-4">
                   {step === 1 ? (
                     <>
-                      {activeSprints.map((item) => (
+                      {activeSprints.map((item) => {
+                        const isLaunch = Boolean(launchCampaign(item.terms))
+                        const budgetCents = item.budgetCents + (isLaunch ? item.terms.bonusBudgetCents ?? 0 : 0)
+                        const usedCents = item.usedCents + (isLaunch ? item.bonusUsedCents ?? 0 : 0)
+                        return (
                         <button
                           type="button"
                           key={item.id}
                           onClick={() => {
                             setSprintId(item.id)
-                            setFormatId('')
                             setConfirmed([])
                             setAccountId('')
                           }}
@@ -323,15 +322,16 @@ export function SubmissionDialog({
                             ) : null}
                           </div>
                           <p className="mt-1 text-xs text-zinc-500">
-                            {sprintMoney(item.budgetCents - item.usedCents)}{' '}
-                            remaining · {sprintMoney(item.budgetCents)} total
+                            {sprintMoney(Math.max(0, budgetCents - usedCents))}{' '}
+                            remaining · {sprintMoney(budgetCents)} total
                             budget
                           </p>
                           <p className="mt-3 text-sm text-zinc-500">
                             {item.description}
                           </p>
                         </button>
-                      ))}
+                        )
+                      })}
                       {!activeSprints.length ? (
                         <p className="py-8 text-center text-sm text-zinc-500">
                           No active campaigns with available budget. Check back
@@ -367,73 +367,9 @@ export function SubmissionDialog({
                   ) : null}
                   {step === 2 ? (
                     <>
-                      {sprint?.terms.formats
-                        .filter((item) => item.active)
-                        .map((item) => (
-                          <div
-                            key={item.id}
-                            className={cn(
-                              'creator-selection border text-left',
-                              formatId === item.id
-                                ? 'creator-choice-selected'
-                                : 'border-zinc-200',
-                            )}
-                          >
-                            <button
-                              type="button"
-                              aria-pressed={formatId === item.id}
-                              className="flex w-full items-center justify-between text-left"
-                              onClick={() => {
-                                setFormatId(item.id)
-                                setConfirmed([])
-                              }}
-                            >
-                              <span>
-                                <strong className="text-sm">{item.name}</strong>
-                                <p className="mt-1 text-xs text-zinc-500">
-                                  {item.shortDescription}
-                                </p>
-                              </span>
-                              {formatId === item.id ? (
-                                <Check className="ml-3 size-4 shrink-0 text-zinc-950" />
-                              ) : null}
-                            </button>
-                            <Disclosure className="mt-3 text-sm">
-                              <DisclosureSummary className="cursor-pointer text-zinc-950">
-                                Read the brief
-                              </DisclosureSummary><AccordionContent>
-                              <div className="mt-3 space-y-3">
-                                <Link href="/creator/cta-generator" target="_blank" className="inline-block text-xs font-medium text-zinc-950 underline underline-offset-4">
-                                  Create mock reports in the CTA generator ↗
-                                </Link>
-                                <Link href="/creator/guide?topic=rules#video-requirements" target="_blank" className="block text-xs font-medium text-zinc-950 underline underline-offset-4">
-                                  Celebrity edits and audience rules ↗
-                                </Link>
-                                {item.elements.map(creatorFormatElement).map((element) => (
-                                  <p key={element.title}>
-                                    <strong>{element.title}</strong>
-                                    <br />
-                                    <span className="text-zinc-500">
-                                      {element.detail}
-                                    </span>
-                                  </p>
-                                ))}
-                                <ul className="list-inside list-disc space-y-2 text-zinc-500">
-                                  {creatorCampaignRules(item.requirements).map((rule) => (
-                                    <li key={rule}>{rule}</li>
-                                  ))}
-                                </ul>
-                              </div>
-                            </AccordionContent></Disclosure>
-                          </div>
-                        ))}
-                    </>
-                  ) : null}
-                  {step === 3 ? (
-                    <>
                       <div className="flex items-center justify-between gap-4 pb-1">
-                        <div><p className="text-xs text-zinc-500">Selected format</p><p className="mt-1 text-sm font-semibold">{format?.name}</p></div>
-                        <button type="button" onClick={() => changeStep(2)} className="min-h-11 text-xs font-medium text-zinc-500 underline underline-offset-4">Change</button>
+                        <div><p className="text-xs text-zinc-500">Selected campaign</p><p className="mt-1 text-sm font-semibold">{sprint?.name}</p></div>
+                        <button type="button" onClick={() => changeStep(1)} className="min-h-11 text-xs font-medium text-zinc-500 underline underline-offset-4">Change</button>
                       </div>
                       <PublishedPostPlayer postUrl={postUrl} />
                       <div className="grid gap-2">
@@ -451,15 +387,17 @@ export function SubmissionDialog({
                       <span>Did you use a ref code <span className="text-zinc-400">(optional)</span></span>
                     </label>
                       </div>
-                      {TIKTOK_ANCHOR_REQUIREMENTS_ENABLED && platform === 'tiktok' && publishingAccount ? (
+                      {anchorAvailable ? (
                         <div className="rounded-xl bg-zinc-100 p-4 text-sm leading-6">
-                          {anchorEligibility === null ? <><strong>Confirm your follower range first.</strong><p className="text-zinc-600">We need it to show the requirements for this publishing account.</p><Link href="/creator/accounts" className="font-medium text-zinc-950 underline underline-offset-4">Update in Accounts</Link></> : anchorRequired ? <><strong>TikTok anchor required for this account</strong><p className="mt-1 text-zinc-600">Accept the Mogging TikTok One project before posting. On TikTok’s posting screen, choose Content disclosure → Disclose post content → Branded content → Link project → Mogging.</p>{publishingAccount.tiktokAnchorJoinedAt ? <p className="mt-2 text-xs font-medium text-zinc-950">Joining confirmed · Link the anchor on this post and every new TikTok submission.</p> : <button type="button" onClick={() => setAnchorSetupOpen(true)} className="mt-2 min-h-11 font-medium text-zinc-950 underline underline-offset-4">Join project to continue →</button>}</> : <p className="text-zinc-600">This account has fewer than 1,000 followers. The TikTok anchor requirement does not apply.</p>}
+                          <strong>TikTok app anchor · Optional</strong>
+                          <p className="mt-1 text-zinc-600">A direct link to Mogging can help more viewers convert. TikTok reviews videos before publishing; we approve videos within 24 hours after TikTok’s review. You can submit and earn without an anchor.</p>
+                          <button type="button" onClick={() => setAnchorSetupOpen(true)} className="mt-2 min-h-11 font-medium text-zinc-950 underline underline-offset-4">View optional anchor setup →</button>
                         </div>
                       ) : null}
 
                     </>
                   ) : null}
-                  {step === 4 ? (
+                  {step === 3 ? (
                     <>
                       <aside role="note" className="creator-info-bubble">
                         <Info aria-hidden="true" className="size-8 shrink-0" fill="white" stroke="#202123" strokeWidth={1.7} />
@@ -555,12 +493,11 @@ export function SubmissionDialog({
                       ) : null}
                     </>
                   ) : null}
-                  {step === 5 ? (
+                  {step === 4 ? (
                     <>
                       <dl className="grid gap-3 rounded-2xl bg-[#f5f6f7] p-4 text-sm">
                         {[
                           ['Campaign', sprint?.name],
-                          ['Format', format?.name],
                           ['Platform', platform],
                           ['Video', postUrl],
                           ...(usedRefCode ? [['Ref code', 'Used']] : []),
@@ -615,12 +552,12 @@ export function SubmissionDialog({
                 variant="ghost"
                 disabled={busy}
                 onClick={() =>
-                  step === (existingSubmission ? 4 : 1)
+                  step === (existingSubmission ? 3 : 1)
                     ? onOpenChange(false)
                     : changeStep(step - 1)
                 }
               >
-                {step === (existingSubmission ? 4 : 1) ? (
+                {step === (existingSubmission ? 3 : 1) ? (
                   'Cancel'
                 ) : (
                   <>
@@ -632,9 +569,8 @@ export function SubmissionDialog({
               <Button
                 disabled={
                   busy ||
-                  (step === 1 && !sprint) ||
-                  (step === 2 && !format) ||
-                  (step === 5 && confirmed.length !== checklist.length)
+                  (step === 1 && (!sprint || !format)) ||
+                  (step === 4 && confirmed.length !== checklist.length)
                 }
               >
                 {busy ? (
@@ -642,7 +578,7 @@ export function SubmissionDialog({
                     <Loader2 className="size-4 animate-spin" />
                     Uploading {progress}%
                   </>
-                ) : step === 5 ? (
+                ) : step === 4 ? (
                   existingSubmission ? 'Submit for review' : 'Submit post'
                 ) : (
                   'Continue'
@@ -665,7 +601,7 @@ export function SubmissionDialog({
         onClose={() => setRejectedViews(null)}
       />
     </Dialog>
-    {publishingAccount && anchorRequired && anchorSetupOpen ? <TikTokAccountDialog key={publishingAccount.id} account={publishingAccount} mode="anchor" open onOpenChange={setAnchorSetupOpen} onSaved={() => refreshDashboard()} /> : null}
+    {publishingAccount && anchorAvailable && anchorSetupOpen ? <TikTokAccountDialog key={publishingAccount.id} account={publishingAccount} mode="anchor" open onOpenChange={setAnchorSetupOpen} onSaved={() => refreshDashboard()} /> : null}
     </>
   )
 }

@@ -22,9 +22,9 @@ export async function prepareStoryPortrait(imageUrl: string, design: Exclude<Sto
   return `data:image/jpeg;base64,${(await portrait.jpeg({ quality: 88 }).toBuffer()).toString('base64')}`
 }
 
-export function ReportStoryDesign({ design, portrait, landmarks, score, potential, rank }: {
+export function ReportStoryDesign({ design, portrait, landmarks, score, potential }: {
   design: Exclude<StoryDesign, 'original'>; portrait: string; landmarks: FaceLandmarksPayload | null;
-  score: string; potential: string; rank: string;
+  score: string; potential: string;
 }) {
   const precision = design === 'precision'
   const ink = precision ? '#171b1a' : '#f0f4ed'
@@ -54,7 +54,7 @@ export function ReportStoryDesign({ design, portrait, landmarks, score, potentia
       {precision ? 'Face study.' : 'See your potential.'}
     </div>
     <div style={{ position: 'absolute', top: 1370, left: 72, right: 72, display: 'flex', alignItems: 'center', justifyContent: 'space-between', borderTop: `1px solid ${precision ? '#bfc5bd' : '#34574c'}`, paddingTop: 24, fontSize: 24, letterSpacing: 2 }}>
-      <span>FACIAL ANALYSIS</span><span style={{ color: muted }}>{rank.toUpperCase()}</span>
+      <span>FACIAL ANALYSIS</span><span style={{ color: muted }}>PERSONAL REPORT</span>
     </div>
     <div style={{ position: 'absolute', top: 1450, left: 72, right: 72, display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end' }}>
       <div style={{ display: 'flex', flexDirection: 'column' }}><span style={{ color: muted, fontSize: 23, letterSpacing: 2 }}>CURRENT SCORE</span><div style={{ display: 'flex', alignItems: 'flex-end', gap: 12 }}><span style={{ fontSize: 132, letterSpacing: -7, lineHeight: 1.15 }}>{score}</span><span style={{ fontSize: 30, color: muted, marginBottom: 24 }}> / 10</span></div></div>

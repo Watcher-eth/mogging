@@ -4,7 +4,7 @@ import { z } from 'zod'
 import { db, schema } from '@/lib/db'
 import { ApiError } from '@/lib/api/http'
 import { normalizePaymentReceipt, paymentReceiptSchema } from '@/lib/admin/payment-receipt'
-import { creatorBundlePlan, creatorEarnedCents, hasCreatorPayoutMethod, remainingCreatorPaymentCents } from './money'
+import { creatorBundlePlan, creatorEarnedCents, canReceiveCreatorPayout, remainingCreatorPaymentCents } from './money'
 
 export const payoutPreferenceSchema = z.object({ bundledPayouts: z.boolean() })
 export const payoutRequestSchema = z.object({ expectedAmountCents: z.number().int().positive() })
@@ -31,7 +31,7 @@ export async function requestBundledPayout(userId: string, expectedAmountCents: 
     if (!profile?.bundledPayouts) throw new ApiError(409, 'Enable bundled payouts first')
     const existing = await tx.query.creatorPayoutRequests.findFirst({ where: and(eq(schema.creatorPayoutRequests.creatorProfileId, profile.id), eq(schema.creatorPayoutRequests.status, 'pending')) })
     if (existing) return existing
-    if (profile.authStatus !== 'verified' || !hasCreatorPayoutMethod(profile)) throw new ApiError(409, 'An approved payout method is required')
+    if (!canReceiveCreatorPayout(profile)) throw new ApiError(409, 'Save a complete payout method and ensure creator access is active')
     // Same submission locks as individual payouts: concurrent reviews and manual
     // payments cannot change a balance while we reserve the bundle.
     const submissions = await tx.select().from(schema.creatorSubmissions).where(eq(schema.creatorSubmissions.creatorProfileId, profile.id)).orderBy(asc(schema.creatorSubmissions.id)).for('update')

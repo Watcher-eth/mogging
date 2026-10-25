@@ -32,7 +32,7 @@ export function audienceBonusClaimsRemaining(awards: number) {
 export function qualifiesAudienceBonus(views: number, tier1Percent: number) {
   return (
     Number.isSafeInteger(views) &&
-    views > 100_000 &&
+    views >= 100_000 &&
     Number.isFinite(tier1Percent) &&
     tier1Percent >= 45 &&
     tier1Percent <= 100

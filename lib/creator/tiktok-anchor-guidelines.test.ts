@@ -22,7 +22,7 @@ test('anchor guidelines stay hidden for Instagram, unknown counts, and TikTok be
     expect(render()).toBe('')
   }
 })
-test('paused anchor requirements are hidden even for eligible TikTok accounts', () => {
+test('eligible creators see optional anchors, review timing, and unchanged payout eligibility', () => {
   socialAccounts = [
     {
       platform: 'tiktok',
@@ -52,5 +52,12 @@ test('paused anchor requirements are hidden even for eligible TikTok accounts', 
       },
     },
   ]
-  expect(render()).toBe('')
+  const html = render()
+  expect(html).toContain('Optional app anchors')
+  expect(html).toContain('@eligible')
+  expect(html).not.toContain('@small')
+  expect(html).not.toContain('@instagram')
+  expect(html).toContain('within 24 hours after TikTok’s review')
+  expect(html).toContain('you can post, submit, and earn without')
+  expect(html).not.toContain('mandatory')
 })

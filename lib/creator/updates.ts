@@ -1,3 +1,13 @@
+export type SubmissionHistorySnapshot = {
+  submittedViews: number | null
+  submittedAudiencePercent: number | null
+  verifiedViews: number | null
+  verifiedAudiencePercent: number | null
+  approvedAmountCents: number | null
+  campaignId: string | null
+  campaignName: string | null
+}
+
 import type { CreatorPayment, CreatorSubmission } from '@/components/creator/types'
 
 export type CreatorUpdateType = 'submitted' | 'pending' | 'in_review' | 'approved' | 'rejected' | 'paid' | 'rereview_requested' | 'feedback'

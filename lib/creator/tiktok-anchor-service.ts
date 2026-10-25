@@ -40,7 +40,7 @@ export async function updateTikTokAnchorAccount(
     )
       throw new ApiError(
         400,
-        'This requirement is only for TikTok accounts with at least 1,000 followers'
+        'Optional app anchors are available to TikTok accounts with at least 1,000 followers'
       )
     // A creator confirmation, not a claim that TikTok membership was API-verified.
     const [updated] = await db

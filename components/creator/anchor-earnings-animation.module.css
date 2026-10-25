@@ -1,0 +1,31 @@
+.scene { width: 220px; max-width: 100%; flex-shrink: 0; pointer-events: none; --loop: 8s; --ease: cubic-bezier(.45, 0, .2, 1); }
+.art { display: block; width: 100%; overflow: visible; }
+.tiktok, .anchor { transform-origin: 0 0; }
+.tiktok { animation: tiktok var(--loop) var(--ease) infinite; }
+.anchor { opacity: 0; animation: anchor var(--loop) var(--ease) infinite; }
+.particle { opacity: 0; fill: var(--dot-color); animation: dissolve var(--loop) var(--ease) infinite; }
+.scene[data-running='false'] * { animation-play-state: paused; }
+@keyframes tiktok {
+  0%, 18%, 97%, 100% { opacity: 1; transform: scale(1); }
+  25%, 90% { opacity: 0; transform: scale(.96); }
+}
+@keyframes anchor {
+  0%, 40%, 92%, 100% { opacity: 0; transform: scale(.96); }
+  47%, 70% { opacity: 1; transform: scale(1); }
+}
+@keyframes dissolve {
+  0%, 17%, 100% { opacity: 0; transform: translate(var(--from-x), var(--from-y)); fill: var(--dot-color); }
+  23% { opacity: 1; transform: translate(var(--from-x), var(--from-y)); fill: var(--dot-color); }
+  32% { opacity: .8; transform: translate(var(--scatter-x), var(--scatter-y)); }
+  43% { opacity: 1; transform: translate(var(--to-x), var(--to-y)); fill: #00a8ef; }
+  48%, 70% { opacity: 0; transform: translate(var(--to-x), var(--to-y)); fill: #00a8ef; }
+  76% { opacity: 1; transform: translate(var(--to-x), var(--to-y)); fill: #00a8ef; }
+  84% { opacity: .8; transform: translate(var(--scatter-x), var(--scatter-y)); }
+  94% { opacity: 1; transform: translate(var(--from-x), var(--from-y)); fill: var(--dot-color); }
+  98% { opacity: 0; transform: translate(var(--from-x), var(--from-y)); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .scene * { animation: none !important; }
+  .tiktok, .particle { opacity: 0; }
+  .anchor { opacity: 1; }
+}

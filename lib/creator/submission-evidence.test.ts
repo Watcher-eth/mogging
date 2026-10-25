@@ -7,13 +7,13 @@ let publishingAccount: any
 let uploadExists = true
 let sprintActive = true
 const now = new Date()
-const sprint = { id: '00000000-0000-4000-8000-000000000004', status: 'published', startsAt: new Date(now.getTime()-86400000), endsAt: new Date(now.getTime()+86400000), updatedAt: now, budgetCents: 10000, terms: { milestones: [{ views: 5000, amountCents: 1000 }], minimumTier1Percent: 20, maximumTier1Percent: 40, platforms: ['tiktok', 'instagram'] as ('tiktok' | 'instagram')[], rules: ['Keep public'], formats: [{ id: 'general-creator-video-v1', name: 'Video', shortDescription: 'Show Mogging', active: true, elements: [{ title: 'Hook', detail: 'Introduce the app' }], requirements: ['Keep public'], notAllowed: [] }] } }
+const sprint = { id: '00000000-0000-4000-8000-000000000004', status: 'published', startsAt: new Date(now.getTime()-86400000), endsAt: new Date(now.getTime()+86400000), updatedAt: now, budgetCents: 10000, terms: { milestones: [{ views: 20000, amountCents: 1000 }], minimumTier1Percent: 20, maximumTier1Percent: 40, platforms: ['tiktok', 'instagram'] as ('tiktok' | 'instagram')[], rules: ['Keep public'], formats: [{ id: 'general-creator-video-v1', name: 'Video', shortDescription: 'Show Mogging', active: true, elements: [{ title: 'Hook', detail: 'Introduce the app' }], requirements: ['Keep public'], notAllowed: [] }] } }
 let inserted: any[] = []
 let updates: any[] = []
 let verified: any[] = []
 mock.module('@/lib/db', () => ({ schema, db: {
   query: { creatorProfiles: { findFirst: async () => ({ id: 'creator' }) }, creatorSocialAccounts: { findFirst: async () => publishingAccount, findMany: async () => publishingAccount?.platform === 'tiktok' ? [publishingAccount] : [] }, creatorSprints: { findFirst: async () => ({ ...sprint, status: sprintActive ? 'published' : 'ended' }) } },
-  transaction: async (fn: any) => fn({ execute: async () => undefined, query: { creatorSubmissions: { findFirst: async () => previousPost } }, select: () => ({ from: (table: unknown) => ({ where: () => ({ for: async () => [sprint], then: (resolve: any) => resolve([{ cents: 0 }]) }) }) }), insert: (table: unknown) => ({ values: (values: any) => { (table === schema.creatorSubmissionUpdates ? updates : inserted).push(values); return { returning: async () => [{ id: 'submission', ...values }] } } }) }),
+  transaction: async (fn: any) => fn({ execute: async () => [{ cents: 0 }], query: { creatorSubmissions: { findFirst: async () => previousPost } }, select: () => ({ from: (table: unknown) => ({ where: () => ({ for: async () => [sprint], then: (resolve: any) => resolve([{ cents: 0 }]) }) }) }), insert: (table: unknown) => ({ values: (values: any) => { (table === schema.creatorSubmissionUpdates ? updates : inserted).push(values); return { returning: async () => [{ id: 'submission', ...values }] } } }) }),
   insert: () => ({ values: (values: any) => { inserted.push(values); return { returning: async () => [{ id: 'submission', ...values }] } } }),
 } }))
 mock.module('@/lib/creator/attribution', () => ({ ensureCreatorTrackingLink: async () => null, creatorReferralHandle: (value: string) => value }))
@@ -64,7 +64,7 @@ test('a submission stores a snapshot of campaign terms', async () => { const sub
 
 test('posts below 20,000 views cannot be inserted or trigger recording verification', async () => {
   for (const viewCountThreshold of [0, 4999, 19999]) {
-    await expect(createCreatorSubmission('user', { ...input, viewCountThreshold })).rejects.toThrow('at least 20,000 views')
+    await expect(createCreatorSubmission('user', { ...input, viewCountThreshold })).rejects.toThrow(/minimum views|at least 20,000 views/)
   }
   expect(inserted).toHaveLength(0)
   expect(verified).toHaveLength(0)
@@ -108,7 +108,7 @@ test('new submissions retain the original URL and store a stable video identity'
 })
 
 
-test('1K+ TikTok accounts can submit while anchors are paused without joining or linking', async () => {
+test('1K+ TikTok accounts can submit with optional anchors without joining or linking', async () => {
   publishingAccount.followers.count = 50000
   const submission = await createCreatorSubmission('user', input)
   expect(submission.socialAccountId).toBe(accountId)
@@ -125,14 +125,14 @@ test('unknown follower counts no longer block submissions, but publishing-accoun
   await expect(createCreatorSubmission('user', input)).rejects.toThrow('Connect the TikTok account')
   expect(inserted).toHaveLength(1)
 })
-test('self-reported follower ranges do not enable the paused requirement', async () => {
+test('self-reported follower ranges never make anchors mandatory', async () => {
   for (const range of ['under_1k','1k_5k','10k_plus']) {
     publishingAccount.followers = { source:'self_reported',range,checkedAt:now.toISOString() }
     const submission = await createCreatorSubmission('user', input)
     expect(submission.sprintTerms).toEqual(sprint.terms)
   }
 })
-test('subsequent posts can also submit without anchor confirmation while paused', async () => {
+test('subsequent posts can also submit without anchor confirmation with optional anchors', async () => {
   publishingAccount.followers.count = 1000
   await createCreatorSubmission('user', input)
   await createCreatorSubmission('user', { ...input, postUrl:'https://www.tiktok.com/@nate/video/124' })

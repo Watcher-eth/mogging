@@ -6,14 +6,14 @@ import { toast } from 'sonner'
 import { Button } from '@/components/ui/button'
 import type { CreatorDashboard } from './types'
 import { apiPatch, apiPost } from '@/lib/api/client'
-import { creatorBundlePlan, hasCreatorPayoutMethod } from '@/lib/creator/money'
+import { creatorBundlePlan, canReceiveCreatorPayout } from '@/lib/creator/money'
 
 export function BundledPayoutControls({ data, onSaved }: { data: CreatorDashboard; onSaved: () => Promise<unknown> }) {
   const [busy, setBusy] = useState(false)
   const enabled = Boolean(data.profile?.bundledPayouts)
   const request = data.payoutRequests?.find(item => item.status === 'pending')
   const { amountCents } = creatorBundlePlan(data.submissions, data.payments)
-  const ready = hasCreatorPayoutMethod(data.profile) && data.profile?.authStatus === 'verified'
+  const ready = canReceiveCreatorPayout(data.profile)
 
   async function act(action: 'preference' | 'request', checked?: boolean) {
     if (busy) return
@@ -42,7 +42,7 @@ export function BundledPayoutControls({ data, onSaved }: { data: CreatorDashboar
     {enabled ? <div className="mt-5">
       {request ? <p role="status" className="text-sm leading-6 text-zinc-500">Your request is with our team. New earnings go toward your next bundle.</p> : <>
         <Button className="h-12 w-full rounded-xl" onClick={() => void act('request')} disabled={busy || !ready || !amountCents}>{busy ? <Loader2 className="size-4 animate-spin" /> : null}Pay me now</Button>
-        <p className="mt-3 text-xs leading-5 text-zinc-500">{!ready ? 'Your payout method needs approval before you can request payment.' : amountCents ? 'One combined transfer. Usually paid within 3–5 days.' : 'Approved earnings will be available to request here.'}</p>
+        <p className="mt-3 text-xs leading-5 text-zinc-500">{!ready ? data.profile.authStatus === 'suspended' ? 'Creator access is suspended. Contact the team before requesting payment.' : 'Add your payout details in Payout methods to request payment.' : amountCents ? 'One combined transfer. Usually paid within 3–5 days.' : 'Approved earnings will be available to request here.'}</p>
       </>}
     </div> : <p className="mt-3 text-xs leading-5 text-zinc-500">Payments are sent separately, usually within 3–5 days of approval.</p>}
   </section>

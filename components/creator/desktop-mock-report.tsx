@@ -25,8 +25,6 @@ export function DesktopMockReport({ report, open, onClose }: {
 }) {
   const captureRef = useRef<HTMLDivElement>(null)
   const [exporting, setExporting] = useState(false)
-  // The mock's publication checkbox is presentation-only and never updates an account.
-  const [battleOptOut, setBattleOptOut] = useState(true)
 
   async function downloadScreenshot() {
     if (!captureRef.current || exporting) return
@@ -63,7 +61,7 @@ export function DesktopMockReport({ report, open, onClose }: {
             </Button>
           </AppHeader>
           <AnalysisReport naturalImage categories={report.categories} initialCategoryId={report.initialCategoryId} imageSrc={report.image.dataUrl} landmarks={report.image.landmarks} score={report.overallScore} pslScore={report.overallScore * .8} renderDetails={category => <V2ReportDetail category={category} groups={[{ id: category.id, title: category.title, rubrics: category.features.map((feature, index) => ({ id: `${category.id}.${index}`, visual: 'Text', positions: [], grade: null, ...feature } as WebRubric)) }]} />}>
-            <ReportActions score={report.overallScore} battleOptOut={battleOptOut} battleOptOutSaving={false} onBattleOptOutChange={setBattleOptOut} onOpenShare={() => void downloadScreenshot()} onReset={onClose} />
+            <ReportActions score={report.overallScore} onOpenShare={() => void downloadScreenshot()} onReset={onClose} />
           </AnalysisReport>
         </div>
         <span className="sr-only" role="status">{exporting ? 'Exporting desktop report' : ''}</span>

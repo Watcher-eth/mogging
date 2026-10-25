@@ -80,6 +80,7 @@ export type AdminSubmission = {
   creatorAvatarUrl?: string | null
   unreadMessages?: number
   sprintId?: string | null
+  sprintName?: string | null
   sprintTerms?: import('@/lib/creator/sprints').SprintTerms | null
   reviewRequestedAt?: string | null
   approvedAmountCents?: number | null

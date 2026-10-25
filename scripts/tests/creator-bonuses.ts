@@ -39,7 +39,7 @@ async function post(profileId: string, sprint: Awaited<ReturnType<typeof campaig
 }
 const payments = (profileId: string) => db.query.creatorPayments.findMany({ where: eq(schema.creatorPayments.creatorProfileId, profileId) })
 try {
-  const own = await creator(), sprint = await campaign(), first = await post(own.profile.id, sprint)
+  const own = await creator(), sprint = await campaign(), first = await post(own.profile.id, sprint, 100_000)
   const upcoming = await campaign()
   await db.update(schema.creatorSprints).set({ startsAt: new Date(Date.now() + 86_400_000), endsAt: new Date(Date.now() + 31 * 86_400_000) }).where(eq(schema.creatorSprints.id, upcoming.id))
   const attempted = { sprintId: upcoming.id, formatId: upcoming.terms.formats[0].id, requirementsConfirmed: true as const, postUrl: 'https://www.tiktok.com/@local/video/123456789', analyticsVideoUrl: '/test.mp4', analyticsPhysicalRecordingConfirmed: true as const, analyticsStorageKey: 'test', analyticsContentType: 'video/mp4' as const, analyticsSizeBytes: 100, viewCountThreshold: 5000, usAudiencePercent: 40 }
