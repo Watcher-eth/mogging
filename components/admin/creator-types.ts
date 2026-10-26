@@ -31,6 +31,16 @@ export type AdminAttributionReport = {
   recentRevenueCents: number
 }
 
+export type AdminCreatorWarning = {
+  id: string
+  creatorProfileId: string
+  note: string
+  createdByEmail: string
+  createdAt: string
+  resolvedAt: string | null
+  resolvedByEmail: string | null
+}
+
 export type AdminCreator = {
   bundledPayouts?: boolean
   id: string
@@ -45,6 +55,7 @@ export type AdminCreator = {
   cryptoNetwork: string | null
   cryptoWalletAddress: string | null
   accountCount: number
+  warnings?: AdminCreatorWarning[]
   attribution: AdminAttributionReport
   createdAt: string
 }

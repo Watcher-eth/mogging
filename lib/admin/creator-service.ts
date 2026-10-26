@@ -14,6 +14,7 @@ import { z } from 'zod'
 import { ApiError } from '@/lib/api/http'
 import { db, schema } from '@/lib/db'
 import { getCreatorCoverage } from './creator-coverage'
+import { listCreatorInternalWarnings } from './creator-warnings'
 import { getCreatorAttributionReport } from '@/lib/creator/attribution'
 import {
   creatorSubmissionReviewResultsSchema,
@@ -80,7 +81,7 @@ export type CreatorAdminReviewInput = z.infer<typeof creatorAdminReviewSchema>
 export type CreatorAdminPaymentInput = z.infer<typeof creatorAdminPaymentSchema>
 
 export async function getCreatorAdminDashboard() {
-  const [creatorRows, accountRows, submissions, payments, attributionMetrics, settingsRecord, accountAttributionRows, payoutRequests, creatorCoverage] = await Promise.all([
+  const [creatorRows, accountRows, submissions, payments, attributionMetrics, settingsRecord, accountAttributionRows, payoutRequests, creatorCoverage, warningRows] = await Promise.all([
     db
       .select({
         id: schema.creatorProfiles.id,
@@ -210,6 +211,7 @@ export async function getCreatorAdminDashboard() {
     getCreatorAttributionReport(),
     db.query.creatorPayoutRequests.findMany({ where: eq(schema.creatorPayoutRequests.status, 'pending'), orderBy: [desc(schema.creatorPayoutRequests.requestedAt)] }),
     getCreatorCoverage(),
+    listCreatorInternalWarnings(),
   ])
 
   const attributionByAccountId = new Map(accountAttributionRows.map((report) => [report.socialAccountId, report]))
@@ -219,6 +221,12 @@ export async function getCreatorAdminDashboard() {
   }))
   const attributionByCreatorId = new Map<string, ReturnType<typeof emptyAttributionReport>>()
   const accountCountByCreatorId = new Map<string, number>()
+  const warningsByCreatorId = new Map<string, typeof warningRows>()
+  for (const warning of warningRows) {
+    const warnings = warningsByCreatorId.get(warning.creatorProfileId) || []
+    warnings.push(warning)
+    warningsByCreatorId.set(warning.creatorProfileId, warnings)
+  }
   for (const account of accounts) {
     accountCountByCreatorId.set(account.creatorProfileId, (accountCountByCreatorId.get(account.creatorProfileId) || 0) + 1)
     const current = attributionByCreatorId.get(account.creatorProfileId) || emptyAttributionReport()
@@ -227,6 +235,7 @@ export async function getCreatorAdminDashboard() {
   const creators = creatorRows.map((creator) => ({
     ...creator,
     accountCount: accountCountByCreatorId.get(creator.id) || 0,
+    warnings: warningsByCreatorId.get(creator.id) || [],
     attribution: attributionByCreatorId.get(creator.id) || emptyAttributionReport(),
   }))
 

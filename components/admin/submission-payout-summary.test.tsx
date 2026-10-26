@@ -15,6 +15,14 @@ test('rereview shows the new milestone minus actual settled payouts and links th
   expect(html).toContain('/api/admin/creator/payments/first/receipt')
 })
 
+test('rejected review shows zero additional payment while retaining paid history', () => {
+  const html = renderToStaticMarkup(<SubmissionPayoutSummary totalCents={4500} payments={[payment('first', 2275, 'paid')]} additionalToPayOverrideCents={0} />)
+  expect(html).toContain('Additional to pay</dt><dd class="text-xl font-semibold tracking-tight">$0.00')
+  expect(html).toContain('Already paid</dt><dd class="font-medium">$22.75')
+  expect(html).toContain('/api/admin/creator/payments/first/receipt')
+  expect(html).toContain('This rejected review creates no new payment.')
+})
+
 test('scheduled payouts are reserved separately and failed or cancelled payouts do not reduce the difference', () => {
   const html = renderToStaticMarkup(<SubmissionPayoutSummary totalCents={6000} payments={[
     payment('first', 1000, 'paid'), payment('second', 1250, 'paid'),

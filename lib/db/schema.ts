@@ -643,6 +643,18 @@ export const creatorProfiles = pgTable(
   })
 )
 
+export const creatorInternalWarnings = pgTable('creator_internal_warnings', {
+  id: text('id').primaryKey().$defaultFn(() => crypto.randomUUID()),
+  creatorProfileId: text('creator_profile_id').notNull().references(() => creatorProfiles.id, { onDelete: 'cascade' }),
+  note: text('note').notNull(),
+  createdByEmail: text('created_by_email').notNull(),
+  createdAt: timestamp('created_at', { mode: 'date' }).notNull().defaultNow(),
+  resolvedAt: timestamp('resolved_at', { mode: 'date' }),
+  resolvedByEmail: text('resolved_by_email'),
+}, table => ({
+  creatorStatusIdx: index('creator_internal_warnings_creator_status_idx').on(table.creatorProfileId, table.resolvedAt, table.createdAt),
+}))
+
 export const creatorReferralLinks = pgTable('creator_referral_links', {
   creatorProfileId: text('creator_profile_id').primaryKey().references(() => creatorProfiles.id),
   code: text('code').notNull().unique(),
