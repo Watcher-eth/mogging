@@ -22,12 +22,13 @@ reportCategories.push({ ...overall, scoreLabel: 'Overall Score', features: overa
 
 
 export function buildMockOverallCategory(currentScore: string, scores: Record<string, string>): ReportCategory {
-  const score = Number(currentScore) || 7
+  const score = currentScore.trim() && Number.isFinite(Number(currentScore)) ? Math.min(10, Math.max(0, Number(currentScore))) : 7
   const scoreIds: Record<string, string> = { 'PSL score': 'psl', Symmetry: 'symmetry', 'Eye area': 'eyes', 'Jaw & chin': 'jaw', 'Cheekbone structure': 'cheekbones' }
   const category = reportCategories.find(item => item.id === 'overall')!
   return { ...category, score, features: category.features.map(feature => {
     const max = feature.label === 'PSL score' ? 8 : 10
-    const value = Math.min(max, Math.max(0, Number(scores[scoreIds[feature.label]]) || score * max / 10))
+    const raw = scores[scoreIds[feature.label]]
+    const value = Math.min(max, Math.max(0, raw?.trim() && Number.isFinite(Number(raw)) ? Number(raw) : score * max / 10))
     return { ...feature, value: `${value.toFixed(1)} / ${max}`, positions: [value / max] }
   }) }
 }

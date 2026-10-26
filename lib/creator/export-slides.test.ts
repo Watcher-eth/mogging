@@ -73,6 +73,21 @@ test('3× iPhone MP4 requests a codec level that supports its frame size', async
   expect(codecs).toEqual(['avc1.420033', 'avc1.4d0033'])
 })
 
+test('cancelled composition exports release the encoder and frame resources', async () => {
+  const controller = new AbortController()
+  let encoderClosed = false, frameClosed = false
+  replace('VideoEncoder', class {
+    static async isConfigSupported(config: VideoEncoderConfig) { return { supported: true, config } }
+    state = 'configured'; encodeQueueSize = 0
+    configure() {} encode() {} async flush() {}
+    close() { encoderClosed = true; this.state = 'closed' }
+  })
+  replace('VideoFrame', class { close() { frameClosed = true } })
+  await expect(encodeCanvasMp4({ width: 1080, height: 1920 } as HTMLCanvasElement, () => controller.abort(), 1000, undefined, controller.signal)).rejects.toThrow()
+  expect(encoderClosed).toBe(true)
+  expect(frameClosed).toBe(true)
+})
+
 
 test('exclusive CTA renders entered scores and the edited call to action with the small creator logo', () => {
   for (const height of [1080, 1620, 1920]) {

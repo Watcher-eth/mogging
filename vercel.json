@@ -1,4 +1,9 @@
 {
+  "git": {
+    "deploymentEnabled": {
+      "codex/cta-studio-motion": false
+    }
+  },
   "crons": [
     {
       "path": "/api/cron/reliability",

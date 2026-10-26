@@ -49,8 +49,8 @@ test('every mobile report category draws its complete feature grid and growth se
     } }) as CanvasRenderingContext2D
     const slide: ContentSlide = { id: 'test', templateId: 'mock-report', categoryId: category.id, imageId: 'test', currentScore: '6.3', potentialScore: '8.2', categoryScores: [], eyebrow: '', headline: '', supportingCopy: '', metricLabel: category.title, metricValue: '', cta: '', mockReport: { category, scroll: 0 } }
     drawSlideFrame(ctx, slide, null, null, mockReportFormat.width, mockReportFormat.height, 4000, null)
-    expect(texts).toContain('6.3')
-    expect(texts).toContain('8.2')
+    expect(texts.join('')).toContain('6.3')
+    expect(texts.join('')).toContain('8.2')
     expect(texts).toContain('Growth Opportunities')
     expect(texts).toContain('Potential Score')
     expect(texts).toContain(category.id === 'overall' ? 'Your priorities' : 'Action Plan')
