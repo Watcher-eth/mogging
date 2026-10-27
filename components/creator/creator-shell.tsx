@@ -1,3 +1,5 @@
+import dynamic from 'next/dynamic'
+const CreatorSupportLauncher = dynamic(() => import('./support/support-launcher').then(m => m.CreatorSupportLauncher), { ssr: false })
 import { TikTokAnchorOnboarding } from './tiktok-anchor-onboarding'
 import { CreatorWelcomeDialog, useCreatorWelcome } from './creator-welcome'
 import { Sidebar, SidebarContent, SidebarHeader, SidebarFooter, SidebarGroup, SidebarGroupLabel, SidebarGroupContent, SidebarMenu, SidebarMenuItem, SidebarMenuButton, SidebarInset, SidebarTrigger, useSidebar } from '@/components/ui/sidebar'
@@ -30,6 +32,7 @@ const creatorNav: ReadonlyArray<CreatorNavItem> = [
   { href: '/creator/money', label: 'Money', asset: 'payouts' },
   { href: '/creator/conversions', label: 'Conversions', asset: 'conversions' },
   { href: '/creator/cta-generator', label: 'CTA Studio', asset: 'cta' },
+  { href: '/creator/support', label: 'Mogging Support', asset: 'guide' },
 ]
 
 export function CreatorShell({ children, allowUnauthenticated = false }: { children: ReactNode; allowUnauthenticated?: boolean }) {
@@ -79,6 +82,7 @@ export function CreatorShell({ children, allowUnauthenticated = false }: { child
       </div>
       <CreatorWelcomeDialog open={welcome.open} onOpenChange={welcome.onOpenChange} />
       <CreatorSetupChecklist />
+      {router.pathname !== '/creator/support' && !router.pathname.includes('__') ? <CreatorSupportLauncher /> : null}
       <TikTokAnchorOnboarding enabled={!welcome.open && !moreOpen && router.pathname === '/creator'} />
     </div>
   )

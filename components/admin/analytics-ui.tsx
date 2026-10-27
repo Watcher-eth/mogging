@@ -37,6 +37,6 @@ export function DataDetails({ children }: { children: ReactNode }) {
 export function ComparisonBars({ rows, series }: { rows: Array<{ label: string; values: number[]; detail?: string }>; series: Array<{ label: string; color: string }> }) {
   return <CategoryChart rows={rows} series={series} format={count} />
 }
-export function Bars({ rows, format = count, maximum }: { rows: Array<{ label: string; value: number | null; detail?: string }>; format?: (value: number) => string; maximum?: number }) {
-  return <CategoryChart rows={rows.map(({ value, ...row }) => ({ ...row, values: [value] }))} series={[{ label: 'Observed', color: '#00A8EF' }]} format={format} maximum={maximum} />
+export function Bars({ rows, format = count, maximum, presentation, color = '#00A8EF' }: { rows: Array<{ label: string; value: number | null; detail?: string }>; format?: (value: number) => string; maximum?: number; presentation?: 'standard' | 'inline'; color?: string }) {
+  return <CategoryChart rows={rows.map(({ value, ...row }) => ({ ...row, values: [value] }))} series={[{ label: 'Observed', color }]} format={format} maximum={maximum} presentation={presentation} />
 }

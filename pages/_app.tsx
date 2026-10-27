@@ -34,7 +34,7 @@ export default function App({ Component, pageProps: { session, ...pageProps } }:
   return (
     <LocalizationProvider locale={router.locale ?? 'en'}>
     <SessionProvider session={session}>
-      <Analytics />
+      {process.env.NODE_ENV !== 'production' && router.pathname === '/creator/__support-demo' ? null : <Analytics />}
       <SWRConfig value={swrConfig}>
         <PageSound
           silent={router.pathname === '/'}

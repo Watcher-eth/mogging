@@ -6,6 +6,8 @@ export type CreatorConversionMetrics = {
 };
 /** Top-level video metrics include estimates. Financial qualification must use direct.revenueCents, never the blended total. */
 export type CreatorConversionVideo = CreatorConversionMetrics & {
+  /** Present only for an explicitly windowed report; never substitute lifetime metrics. */
+  daily?: Array<{ day: string; linkPresses: number; downloads: number; conversions: number; revenue: number }>;
   id: string;
   title: string;
   platform: string;

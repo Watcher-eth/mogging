@@ -3,7 +3,11 @@ import { db, schema } from "@/lib/db";
 import { ApiError } from "@/lib/api/http";
 import { EMPTY_CREATOR_CONVERSION_REPORT, type CreatorConversionReport } from "./conversion-report";
 
-export async function getCreatorConversionReport(userId: string): Promise<CreatorConversionReport> {
+export type CreatorConversionWindow = { start: Date; end: Date }
+export async function getCreatorConversionReport(userId: string, window?: CreatorConversionWindow): Promise<CreatorConversionReport> {
+  if (window && (!Number.isFinite(window.start.getTime()) || !Number.isFinite(window.end.getTime()) || window.start >= window.end)) throw new Error('Invalid conversion window')
+  const clickWindow = window ? sql`and c.created_at >= ${window.start.toISOString()}::timestamptz and c.created_at < ${window.end.toISOString()}::timestamptz` : sql``
+  const eventWindow = window ? sql`where e.created_at >= ${window.start.toISOString()}::timestamptz and e.created_at < ${window.end.toISOString()}::timestamptz` : sql``
   const profile = await db.query.creatorProfiles.findFirst({ columns: { id: true, authStatus: true }, where: eq(schema.creatorProfiles.userId, userId) });
   if (!profile) return EMPTY_CREATOR_CONVERSION_REPORT;
   if (profile.authStatus === "suspended") throw new ApiError(403, "Creator access required");
@@ -60,15 +64,16 @@ export async function getCreatorConversionReport(userId: string): Promise<Creato
       where event_type = 'payment' and amount_cents > 0 and customer_key is not null
       order by customer_key, created_at, id
     ), daily_activity as (
-      select c.created_at::date as day, 1 as presses, 0 as downloads, 0 as conversions, 0::bigint as revenue
-      from own_clicks c where c.source = 'browser'
+      select timezone('UTC',c.created_at)::date as day, 1 as presses, 0 as downloads, 0 as conversions, 0::bigint as revenue
+      from own_clicks c where c.source = 'browser' ${clickWindow}
       union all
-      select e.created_at::date, 0, case when i.id is not null then 1 else 0 end,
+      select timezone('UTC',e.created_at)::date, 0, case when i.id is not null then 1 else 0 end,
         case when buyer.id is not null then 1 else 0 end,
         case when upper(e.currency) = 'USD' and e.event_type in ('payment','refund','dispute')
           then coalesce(e.amount_cents,0) else 0 end
       from own_events e left join first_installs i on i.id = e.id
       left join first_customers buyer on buyer.id = e.id
+      ${eventWindow}
     ), daily_totals as (
       select day, sum(presses) as presses, sum(downloads) as downloads,
         sum(conversions) as conversions, sum(revenue) / 100.0 as revenue
@@ -79,17 +84,21 @@ export async function getCreatorConversionReport(userId: string): Promise<Creato
         greatest((select max(day) from daily_totals), timezone('UTC',now())::date), interval '1 day')::date as day
       where exists(select 1 from daily_totals)
     ), credits as (
-      select w.submission_id, coalesce(w.estimated, false) as estimated,
+      select timezone('UTC',c.created_at)::date as day, w.submission_id, coalesce(w.estimated, false) as estimated,
         coalesce(w.weight, 1) as presses, 0::numeric as downloads, 0::numeric as conversions, 0::numeric as revenue
-      from own_clicks c left join weights w on w.click_id = c.id where c.source = 'browser'
+      from own_clicks c left join weights w on w.click_id = c.id where c.source = 'browser' ${clickWindow}
       union all
-      select w.submission_id, coalesce(w.estimated, false), 0,
+      select timezone('UTC',e.created_at)::date, w.submission_id, coalesce(w.estimated, false), 0,
         case when i.id is not null then coalesce(w.weight, 1) else 0 end,
         case when buyer.id is not null then coalesce(w.weight, 1) else 0 end,
         case when upper(e.currency) = 'USD' and e.event_type in ('payment','refund','dispute')
           then coalesce(e.amount_cents,0) * coalesce(w.weight,1) else 0 end
       from own_events e left join weights w on w.click_id = e.owned_click_id
       left join first_installs i on i.id = e.id left join first_customers buyer on buyer.id = e.id
+      ${eventWindow}
+    ), video_days as (
+      select submission_id, day, sum(presses) as presses, sum(downloads) as downloads, sum(conversions) as conversions, sum(revenue)/100.0 as revenue
+      from credits group by submission_id, day
     ), metrics as (
       select submission_id,
         jsonb_build_object('linkPresses',sum(presses),'downloads',sum(downloads),
@@ -120,10 +129,10 @@ export async function getCreatorConversionReport(userId: string): Promise<Creato
         'revenue',coalesce(d.revenue,0)
       ) order by days.day) from days left join daily_totals d using(day)),'[]'::jsonb),
       'totals', jsonb_build_object(
-        'linkPresses', (select count(*) from own_clicks where source = 'browser'),
-        'downloads', (select count(*) from first_installs),
-        'conversions', (select count(*) from first_customers),
-        'revenueCents', (select coalesce(sum(amount_cents),0) from own_events where upper(currency) = 'USD' and event_type in ('payment','refund','dispute'))
+        'linkPresses', (select coalesce(sum(presses),0) from daily_totals),
+        'downloads', (select coalesce(sum(downloads),0) from daily_totals),
+        'conversions', (select coalesce(sum(conversions),0) from daily_totals),
+        'revenueCents', (select coalesce(sum(revenue),0)*100 from daily_totals)
       ),
       'unassigned', coalesce((select combined from metrics where submission_id is null),(select metrics from zero)),
       'videos', coalesce((select jsonb_agg(
@@ -134,7 +143,9 @@ export async function getCreatorConversionReport(userId: string): Promise<Creato
           'direct',coalesce(m.direct,(select metrics from zero)),
           'estimated',coalesce(m.estimated,(select metrics from zero)),
           'paidAmountCents',coalesce(paid.cents,0)
-        ) order by p.submitted_at desc) from own_posts p
+        ) || case when ${Boolean(window)} then jsonb_build_object('daily',coalesce((select jsonb_agg(jsonb_build_object(
+          'day',to_char(v.day,'YYYY-MM-DD'),'linkPresses',v.presses,'downloads',v.downloads,'conversions',v.conversions,'revenue',v.revenue
+        ) order by v.day) from video_days v where v.submission_id=p.id),'[]'::jsonb)) else '{}'::jsonb end order by p.submitted_at desc) from own_posts p
         left join metrics m on m.submission_id=p.id left join paid on paid.submission_id=p.id),'[]'::jsonb)
     ) as report
   `);

@@ -91,6 +91,7 @@ export function AppShell({ children }: AppShellProps) {
   const pendingAuthRedirect = getSafeAuthRedirect(router.query.next)
   const creatorRoute = router.pathname === '/creator' || router.pathname.startsWith('/creator/')
   const creatorSetup = router.pathname === '/creator/setup'
+  const creatorSupport = router.pathname === '/creator/support' || router.pathname === '/creator/__support-demo'
   const creatorReferral = router.pathname === '/r/[slug]'
   const creatorSignIn = router.pathname.startsWith('/creator') && status === 'unauthenticated'
   const immersive = router.pathname === '/__analysis-v2-report-preview' || router.pathname === '/' || router.pathname === '/analysis' || router.pathname === '/leaderboard' || router.pathname === '/battle' || router.pathname === '/app' || router.pathname === '/app/handoff'
@@ -268,7 +269,7 @@ export function AppShell({ children }: AppShellProps) {
         {creatorRoute && !creatorSignIn && !creatorSetup ? <SidebarProvider className="min-h-0 flex-1 flex-col">{children}</SidebarProvider> : children}
       </main>
 
-      {!creatorSetup && !creatorReferral ? <footer className={`border-t border-zinc-200 bg-white py-8 text-sm text-zinc-600 ${router.pathname === '/' ? '' : 'px-5 sm:px-10'}`}>
+      {!creatorSetup && !creatorReferral && !creatorSupport ? <footer className={`border-t border-zinc-200 bg-white py-8 text-sm text-zinc-600 ${router.pathname === '/' ? '' : 'px-5 sm:px-10'}`}>
         <nav aria-label={t('footer.resources')} className={`mx-auto flex max-w-6xl flex-wrap gap-x-6 gap-y-4 ${router.pathname === '/' ? 'px-6 sm:px-10' : ''}`}>
           <Link href="/what-is-mogging" className="hover:text-black">{t('footer.what')}</Link>
           <Link href="/how-face-analysis-works" className="hover:text-black">{t('footer.how')}</Link>
