@@ -3,7 +3,6 @@ import { submissionBonusPayments, reviewAudienceBonuses } from '@/lib/creator/bo
 import { CreatorExclusivityReview } from './creator-exclusivity-review'
 import { hasLaunchCampaignBonuses, launchCampaign } from '@/lib/creator/campaign-launch'
 import dynamic from 'next/dynamic'
-const CreatorPerformanceDashboard = dynamic(() => import('./creator-performance-dashboard'), { loading: () => <p role="status" className="admin-notice">Loading creator performance…</p> })
 import { canReceiveCreatorPayout, creatorBundlePlan, creatorUnpaidCents, remainingCreatorPaymentCents } from '@/lib/creator/money'
 import { SubmissionPayoutSummary } from '@/components/admin/submission-payout-summary'
 import { CreatorWarningPanel } from '@/components/admin/creator-warning-panel'
@@ -48,7 +47,7 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } f
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { apiGet, apiPatch, apiPost, ApiClientError } from '@/lib/api/client'
 import { cn } from '@/lib/utils'
-import { CreatorEconomicsDashboard, CreatorProgramSettings } from '@/components/admin/creator-economics-dashboard'
+import { CreatorProgramSettings } from '@/components/admin/creator-economics-dashboard'
 import { CreatorAttributionDashboard, CreatorAttributionReport } from '@/components/admin/creator-attribution-dashboard'
 import { calculateCreatorPayout, CREATOR_TIER1_AUDIENCE_TIERS, CREATOR_VIEW_THRESHOLDS } from '@/lib/creator/payouts'
 import { mergeCreatorSubmissionReviewResults, submissionReviewError, createSubmissionReviewDrafts } from '@/lib/creator/submission-review'
@@ -100,8 +99,6 @@ export default function CreatorAdminPage() {
 function DashboardView({ tab, data, onSelect, onRefresh }: { tab: Tab; data: AdminDashboard; onSelect: (target: ReviewTarget) => void; onRefresh: () => Promise<void> }) {
   if (tab === 'sprints') return <CreatorSprintsPanel submissions={data.submissions} payments={data.payments} onSelectSubmission={(item) => onSelect({ resource: 'submission', item })} />
   if (tab === 'invites') return <CreatorInvitesPanel />
-  if (tab === 'metrics') return <CreatorEconomicsDashboard data={data} onSelectSubmission={(item) => onSelect({ resource: 'submission', item })} />
-  if (tab === 'performance') return <CreatorPerformanceDashboard data={data} />
   if (tab === 'settings') return <CreatorProgramSettings data={data} onRefresh={onRefresh} />
   if (tab === 'attribution') return <CreatorAttributionDashboard data={data} onSelectCreator={(item) => onSelect({ resource: 'creator', item })} onSelectAccount={(item) => onSelect({ resource: 'account', item })} />
   if (tab === 'submissions') return <ResourceSection title="Video submissions"><SubmissionList items={data.submissions} payments={data.payments} onSelect={onSelect} /></ResourceSection>

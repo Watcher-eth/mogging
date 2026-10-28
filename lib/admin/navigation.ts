@@ -10,24 +10,24 @@ export const adminNavigation = [
     { href: '/admin/cta-library', title: 'CTA library', description: 'Moderate samples for the creator content library.', section: 'cta-library', icon: 'cta' },
   ] },
   { label: 'Analytics', items: [
-    { href: '/admin/analytics', title: 'Product overview', description: 'Understand daily activity and the path to value.', section: 'Overview', icon: 'overview' },
-    { href: '/admin/analytics/acquisition', title: 'Acquisition', description: 'Where visitors come from and what happens next.', section: 'Acquisition', icon: 'accounts' },
+    { href: '/admin/analytics', title: 'Product overview', description: 'Customer activity, completed scans, and paid report delivery.', section: 'Overview', icon: 'overview' },
+    { href: '/admin/analytics/acquisition', title: 'Acquisition', description: 'Traffic sources, store interest, and first app opens.', section: 'Acquisition', icon: 'accounts' },
     { href: '/admin/analytics/experiments', title: 'A/B tests', description: 'Compare homepage designs and inspect every experiment.', section: 'Experiments', icon: 'overview' },
-    { href: '/admin/analytics/onboarding', title: 'Onboarding', description: 'Find where users continue, hesitate, or leave.', section: 'Onboarding', icon: 'video-submissions' },
-    { href: '/admin/analytics/revenue', title: 'Revenue', description: 'Verified purchases, refunds, and subscription events.', section: 'Revenue', icon: 'payouts' },
-    { href: '/admin/analytics/retention', title: 'Retention', description: 'See whether users return and build lasting value.', section: 'Retention', icon: 'overview' },
-    { href: '/admin/attribution', title: 'Creator attribution', description: 'Understand the customers and revenue each creator brings.', section: 'attribution', icon: 'accounts' },
-    { href: '/admin/creator-performance', title: 'Creator performance', description: 'Submitted views, creator and platform reach, spend, and CPM.', section: 'performance', icon: 'overview' },
-    { href: '/admin/economics', title: 'Creator economics', description: 'Measure creator performance against sustainable compensation.', section: 'metrics', icon: 'payouts' },
-    { href: '/admin/analytics/authentication', title: 'Authentication', description: 'Sign-in outcomes and verified identity linking.', section: 'Authentication', icon: 'accounts' },
-    { href: '/admin/analytics/purchases', title: 'Purchase flow', description: 'Paywall choices, purchase outcomes, restores, and handoffs.', section: 'Purchases', icon: 'payouts' },
-    { href: '/admin/analytics/scans', title: 'Scans', description: 'Attempts, completions, failures, and scan latency.', section: 'Scans', icon: 'overview' },
-    { href: '/admin/analytics/engagement', title: 'Engagement', description: 'Courses, progress, reports, protocols, and app activity.', section: 'Engagement', icon: 'overview' },
-    { href: '/admin/analytics/referrals', title: 'Referrals', description: 'Referral milestones, credited signups, and reward progress.', section: 'Referrals', icon: 'accounts' },
-    { href: '/admin/analytics/notifications', title: 'Notifications', description: 'Push opens, registered devices, and reminder records.', section: 'Notifications', icon: 'overview' },
-    { href: '/admin/analytics/attribution', title: 'Attribution ledger', description: 'Creator link credit, lifecycle events, and currency-separated revenue.', section: 'AttributionLedger', icon: 'accounts' },
-    { href: '/admin/analytics/quality', title: 'Data health', description: 'Monitor delivery, failures, and release quality.', section: 'Quality', icon: 'overview' },
-    { href: '/admin/analytics/reliability', title: 'Backend reliability', description: 'Catch outages, broken features, and failed evaluations.', section: 'Reliability', icon: 'overview' },
+    { href: '/admin/analytics/onboarding', title: 'Onboarding', description: 'Completion, screen progression, and drop-off across mobile onboarding.', section: 'Onboarding', icon: 'video-submissions' },
+    { href: '/admin/analytics/revenue', title: 'Revenue', description: 'Revenue, customer payments, and subscription activity.', section: 'Revenue', icon: 'payouts' },
+    { href: '/admin/analytics/retention', title: 'Retention', description: 'Customer return rates, cohort trends, and subscriber engagement.', section: 'Retention', icon: 'overview' },
+    { href: '/admin/attribution', title: 'Creator attribution', description: 'Creator-driven traffic, paying customers, and attributed revenue.', section: 'CreatorAttribution', icon: 'accounts' },
+    { href: '/admin/creator-performance', title: 'Creator performance', description: 'Content reach, earned creator costs, and post payouts.', section: 'CreatorPerformance', icon: 'overview' },
+    { href: '/admin/economics', title: 'Creator economics', description: 'Attributed revenue, creator compensation, and acquisition measurement.', section: 'CreatorEconomics', icon: 'payouts' },
+    { href: '/admin/analytics/authentication', title: 'Authentication', description: 'Sign-in activity, authentication issues, and account continuity.', section: 'Authentication', icon: 'accounts' },
+    { href: '/admin/analytics/purchases', title: 'Purchase flow', description: 'Purchase attempts, billing confirmation, and access activation.', section: 'Purchases', icon: 'payouts' },
+    { href: '/admin/analytics/scans', title: 'Scans', description: 'Completed evaluations, request reliability, and report availability.', section: 'Scans', icon: 'overview' },
+    { href: '/admin/analytics/engagement', title: 'Engagement', description: 'Meaningful product use, feature adoption, and completed actions.', section: 'Engagement', icon: 'overview' },
+    { href: '/admin/analytics/referrals', title: 'Referrals', description: 'Credited signups, referred customer outcomes, and scan rewards.', section: 'Referrals', icon: 'accounts' },
+    { href: '/admin/analytics/notifications', title: 'Notifications', description: 'Notification registrations, reminder activity, and customer engagement.', section: 'Notifications', icon: 'overview' },
+    { href: '/admin/analytics/attribution', title: 'Attribution ledger', description: 'Audit creator credit records by attribution model and currency.', section: 'AttributionLedger', icon: 'accounts' },
+    { href: '/admin/analytics/quality', title: 'Data health', description: 'Data ingestion, processing queues, and reporting coverage.', section: 'Quality', icon: 'overview' },
+    { href: '/admin/analytics/reliability', title: 'Backend reliability', description: 'Recorded backend operations, technical issues, and evaluation follow-up.', section: 'Reliability', icon: 'overview' },
   ] },
   { label: 'Manage', items: [
     { href: '/admin/program-settings', title: 'Program settings', description: 'Set the assumptions used in creator profitability calculations.', section: 'settings', icon: 'payouts' },
@@ -40,3 +40,5 @@ export const adminNavigation = [
 export function adminPage(path: string) {
   return adminNavigation.flatMap(group => [...group.items]).find(item => item.href === path)
 }
+
+export const analyticsPreviewPages: Record<string, string> = { '/admin/analytics': 'overview', '/admin/analytics/acquisition': 'acquisition', '/admin/analytics/experiments': 'experiments', '/admin/analytics/onboarding': 'onboarding', '/admin/analytics/revenue': 'revenue', '/admin/analytics/retention': 'retention', '/admin/attribution': 'creator-attribution', '/admin/creator-performance': 'creator-performance', '/admin/economics': 'creator-economics', '/admin/analytics/authentication': 'authentication', '/admin/analytics/purchases': 'purchases', '/admin/analytics/scans': 'scans', '/admin/analytics/engagement': 'engagement', '/admin/analytics/referrals': 'referrals', '/admin/analytics/notifications': 'notifications', '/admin/analytics/attribution': 'attribution-ledger', '/admin/analytics/quality': 'data-health', '/admin/analytics/reliability': 'backend-reliability' }

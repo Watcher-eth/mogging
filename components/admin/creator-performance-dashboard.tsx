@@ -1,98 +1,83 @@
-import { useMemo, useState } from 'react'
-import useSWR from 'swr'
-import { apiGet } from '@/lib/api/client'
-import type { PerformanceRevenue } from '@/lib/admin/creator-performance-revenue'
-import { CartesianGrid, Line, LineChart, XAxis, YAxis } from 'recharts'
-import { ChartContainer, ChartTooltip, ChartTooltipContent } from '@/components/ui/chart'
-import { buildCreatorPerformance, viewCpm } from '@/lib/admin/creator-performance'
-import type { AdminDashboard } from './creator-types'
-import { DataDetails, Panel, Stat, Table, count } from './analytics-ui'
+import { useState } from 'react'
+import { AnalyticsLink as Link } from './analytics-link'
+import type { AnalyticsDashboard, MetricRow } from '@/lib/admin/analytics'
+import { viewCpm, type CreatorPerformanceReport } from '@/lib/admin/creator-performance'
+import { formatReportingTime } from '@/lib/admin/reporting-time'
+import { AnalyticsChart, chartColors, type ChartMetric } from './analytics-chart'
+import { AnalyticsSelect } from './analytics-select'
+import { Bars, DataDetails, Notice, Panel, Stat, Table, count } from './analytics-ui'
 
-const usd = (value: number | null) => value === null ? '—' : new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(value)
-const short = (value: number) => new Intl.NumberFormat('en-US', { notation: 'compact', maximumFractionDigits: 1 }).format(value)
-const change = (current: number, previous: number) => previous > 0 ? `${current >= previous ? '+' : ''}${((current / previous - 1) * 100).toFixed(1)}% vs previous period` : 'No prior-period baseline'
-const fieldClass = 'min-h-10 rounded-xl border border-zinc-200 bg-white px-3 text-sm outline-none focus-visible:ring-2 focus-visible:ring-sky-400'
-type Series = { key: string; label: string; color: string; axis?: 'views' }
-type ChartRow = { day: string; [key: string]: string | number | null }
+const usd = (value: number | null) => value == null ? '—' : new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(value)
+const compactCount = (value: number) => new Intl.NumberFormat('en-US', { notation: 'compact', maximumFractionDigits: 1 }).format(value)
+const reach: ChartMetric[] = [{ key: 'reportedViews', label: 'Reported views', color: chartColors.blue }]
+const spend: ChartMetric[] = [{ key: 'earned', label: 'Earned cost by submission date', color: chartColors.blue }, { key: 'cashPaid', label: 'Cash paid by payment date', color: chartColors.green }]
+const calendarDate = (day: string) => new Date(`${day}T12:00:00Z`).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric', timeZone: 'UTC' })
+const date = (value: string | null | undefined) => value ? formatReportingTime(value, { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit', timeZoneName: 'short' }) : 'No record available'
+const creatorTable = (rows: CreatorPerformanceReport['creators']): MetricRow[] => rows.map(row => ({ creator: row.name, posts: row.posts, reported_views: row.reportedViews, reviewed_views: row.reviewedViews, earned_cost: usd(row.earnedCents / 100), paid_on_these_posts: usd(row.paidCents / 100), outstanding_on_these_posts: usd(row.unpaidCents / 100), cost_per_1000_reviewed_views: usd(viewCpm(row.earnedCents, row.costViews)) }))
+const creatorColumns = ['creator', 'posts', 'reported_views', 'reviewed_views', 'earned_cost', 'paid_on_these_posts', 'outstanding_on_these_posts', 'cost_per_1000_reviewed_views']
 
-export default function CreatorPerformanceDashboard({ data }: { data: AdminDashboard }) {
-  const [days, setDays] = useState('7')
-  const [platform, setPlatform] = useState('all')
+export default function CreatorPerformanceDashboard({ data, attributionHref = '/admin/attribution' }: { data: AnalyticsDashboard; attributionHref?: string }) {
+  const [platform, setPlatform] = useState<'all' | 'tiktok' | 'instagram'>('all')
+  const [metric, setMetric] = useState('views')
   const [search, setSearch] = useState('')
-  const [sort, setSort] = useState('views')
-  const report = useMemo(() => buildCreatorPerformance(data, { days: days === 'all' ? null : Number(days), platform }), [data, days, platform])
-  const { total, previous } = report
-  const { data: revenue, error: revenueError, mutate: reloadRevenue } = useSWR<PerformanceRevenue>(`/api/admin/creator/performance-revenue?start=${report.start}&end=${report.today}&platform=${platform}`, apiGet, { refreshInterval: 30000, keepPreviousData: false })
-  const revenueByDay = new Map(revenue?.daily.map(row => [row.day, row]))
-  const comparison = report.daily.map(row => ({ ...row, appRevenue: revenueByDay.get(row.day)?.appRevenue || 0, attributedRevenue: revenueByDay.get(row.day)?.attributedRevenue || 0 }))
-  const cpm = viewCpm(total.earnedCents, total.costViews)
-  const creators = report.creators.filter(row => row.name.toLocaleLowerCase().includes(search.toLocaleLowerCase())).sort((a, b) =>
-    sort === 'spend' ? b.earnedCents - a.earnedCents : sort === 'cpm' ? (viewCpm(b.earnedCents, b.costViews) ?? -1) - (viewCpm(a.earnedCents, a.costViews) ?? -1) : b.reportedViews - a.reportedViews)
-  const series = platform === 'all' ? [{ key: 'tiktokViews', label: 'TikTok', color: '#181a1d' }, { key: 'instagramViews', label: 'Instagram', color: '#9b83e5' }] : [{ key: 'reportedViews', label: 'Reported views', color: '#00A8EF' }]
-  return <div className="space-y-6 [&_td]:whitespace-nowrap">
-    <div className="flex flex-wrap items-end justify-between gap-4">
-      <p className="max-w-2xl text-sm leading-6 text-zinc-500">Views, payout obligations, and cost efficiency from submitted posts. Dates use Pacific time; today is partial.</p>
-      <div className="flex flex-wrap gap-3">
-        <label className="grid gap-1.5 text-xs font-medium text-zinc-500">Chart period<select value={days} onChange={e => setDays(e.target.value)} className={fieldClass}><option value="7">Last 7 days</option><option value="30">Last 30 days</option><option value="90">Last 90 days</option><option value="all">All time</option></select></label>
-        <label className="grid gap-1.5 text-xs font-medium text-zinc-500">Platform<select value={platform} onChange={e => setPlatform(e.target.value)} className={fieldClass}><option value="all">All platforms</option><option value="tiktok">TikTok</option><option value="instagram">Instagram</option></select></label>
+  const snapshot = data.creatorPerformance
+  if (!snapshot) return <Notice>Creator performance could not be established from this snapshot. Missing data is not shown as zero.</Notice>
+  const report = snapshot.reports[platform]
+  const { total, allTime } = report
+  const creators = report.periodCreators.filter(row => row.name.toLocaleLowerCase().includes(search.trim().toLocaleLowerCase())).sort((a, b) => metric === 'cost' ? b.earnedCents - a.earnedCents : metric === 'cpm' ? (viewCpm(b.earnedCents, b.costViews) ?? -1) - (viewCpm(a.earnedCents, a.costViews) ?? -1) : b.reportedViews - a.reportedViews)
+  return <>
+    <div className="mb-5 flex flex-wrap items-center justify-between gap-3">
+      <p className="text-xs leading-5 text-zinc-500">{calendarDate(report.start)} – {calendarDate(report.today)} · Pacific calendar dates · Today is partial · USD</p>
+      <AnalyticsSelect label="Social platform" value={platform} onChange={value => setPlatform(value as typeof platform)} options={[{ value: 'all', label: 'All social platforms' }, { value: 'tiktok', label: 'TikTok' }, { value: 'instagram', label: 'Instagram' }]} />
+    </div>
+    <p className="mb-5 text-sm leading-6 text-zinc-500">Current reported views and earned costs for posts first submitted in the selected period. Cash paid follows payment dates and can include older posts.</p>
+    <div className="admin-stats-grid">
+      <Stat title="Reported post views" value={count(total.reportedViews)} note={`${count(total.posts)} submitted posts · ${count(total.reviewedViews)} admin-reviewed views`} />
+      <Stat title="Earned post cost" value={usd(total.earnedCents / 100)} note={`${usd(total.unpaidCents / 100)} remains unpaid on these posts · current earned balance`} />
+      <Stat title="Cost per 1,000 reviewed views" value={usd(viewCpm(total.earnedCents, total.costViews))} note={`${count(total.costViews)} eligible reviewed views · ratio of total earned cost to eligible views`} />
+      <Stat title="Cash paid for posts" value={usd(report.cashPaidCents / 100)} note="Completed USD payments dated in this period · includes older posts" />
+    </div>
+    {total.posts === 0 ? <Notice>No included posts were submitted in this period. Payment-date activity and all-time payout balances are reported separately.</Notice> : null}
+    <Panel title="Content reach by submission date" description="Current reported views grouped by the day each post was first submitted."
+      note="Source: creator submission records, using the larger of the latest creator-reported and admin-reviewed view counts. This is cumulative reach of submission cohorts, not views gained on each calendar day and not unique people. The earliest recorded submission event defines the cohort date; older records without that event use the post record’s creation date. Rereviews update the original cohort. Pending and rejected posts remain in reported reach, but do not supply approved cost-view denominators. Missing view snapshots and views beyond the last update are not estimated. Dates are Pacific calendar labels; empty days mean no included submissions, not zero platform activity.">
+      <AnalyticsChart title="Content reach by submission date" rows={report.daily} metrics={reach} valueFormatter={compactCount} days={report.days} granularity="daily" timeZone="UTC" />
+      <DataDetails><Table rows={report.daily.map(row => ({ day: row.day, posts: row.posts, reported_views: row.reportedViews, reviewed_views: row.reviewedViews, tiktok_views: row.tiktokViews, instagram_views: row.instagramViews }))} columns={['day', 'posts', 'reported_views', 'reviewed_views', 'tiktok_views', 'instagram_views']} /></DataDetails>
+    </Panel>
+    <Panel title="Earned cost and cash payments" description="Earned cost follows submission dates; cash paid follows payment dates. These are different timing views."
+      note="Source: approved earnings and completed creator payment records linked to posts. Earned cost uses the existing payout rules, approved adjustments and a floor of amounts already paid. Paying a post does not add to its earned cost again. Failed, cancelled, pending and processing transfers are excluded from cash paid. All amounts are USD. Cash can pay for posts submitted before the selected period, so these series must not be subtracted to calculate the outstanding balance. Current unpaid balances are shown below.">
+      <AnalyticsChart title="Earned cost and cash payments" rows={report.daily} metrics={spend} days={report.days} currency="USD" granularity="daily" timeZone="UTC" />
+      <DataDetails><Table rows={report.daily.map(row => ({ day: row.day, earned_cost: usd(row.earned), cash_paid: usd(row.cashPaid) }))} columns={['day', 'earned_cost', 'cash_paid']} /></DataDetails>
+    </Panel>
+    <Panel title="Creator comparison" description="Posts submitted in the selected period. The social-platform filter applies."
+      action={<div className="flex flex-wrap gap-3"><input aria-label="Search creators" placeholder="Search creators…" value={search} onChange={event => setSearch(event.target.value)} className="h-10 rounded-xl border border-zinc-200 px-3 text-sm outline-none focus-visible:ring-2 focus-visible:ring-sky-400" /><AnalyticsSelect label="Compare" value={metric} onChange={setMetric} options={[{ value: 'views', label: 'Reported views' }, { value: 'cost', label: 'Earned cost' }, { value: 'cpm', label: 'Cost per 1,000 views' }]} /></div>}
+      note="CPM uses earned USD divided by reviewed views on posts with approved earnings, multiplied by 1,000. It is a weighted ratio of totals, not an average of creator or daily CPMs. No eligible reviewed views means CPM is unavailable. Reported reach includes unapproved posts, while the cost denominator does not. View counts are observations, not audited impressions. No ROAS or causal revenue claim is inferred from these costs.">
+      <Bars animated labelWidth={180} rows={creators.slice(0, 10).map(row => ({ label: row.name, value: metric === 'cost' ? row.earnedCents / 100 : metric === 'cpm' ? viewCpm(row.earnedCents, row.costViews) : row.reportedViews, detail: `${count(row.posts)} posts · ${usd(row.earnedCents / 100)} earned · ${count(row.costViews)} eligible reviewed views` }))} format={metric === 'views' ? compactCount : usd} />
+      <DataDetails><Table rows={creatorTable(creators)} columns={creatorColumns} /><p className="mt-3 text-xs text-zinc-500">Chart shows the top ten matches; the table includes all matching creators in this submission period.</p></DataDetails>
+    </Panel>
+    <Panel title="Post earnings and payouts" description="Current all-time balances for included posts on the selected social platform. Independent of the period filter."
+      note="This is the current position of post-linked USD earnings and paid transfers. All-time cash includes paid records without payment dates; the period chart cannot place those records on a day. Unlinked bonuses, referral awards and other non-post payments are outside this report. Earned costs and cash paid overlap and must not be added together. Experimental creators remain excluded. These are recorded obligations and payments, not bank-reconciled cash balances.">
+      <div className="grid gap-6 sm:grid-cols-3">
+        <Stat title="Total earned for posts" value={usd(allTime.earnedCents / 100)} note="All included submission history · approved and paid earnings" />
+        <Stat title="Total paid toward posts" value={usd(allTime.paidCents / 100)} note="Completed linked USD payments · including records without payment dates" />
+        <Stat title="Outstanding earned payouts" value={usd(allTime.unpaidCents / 100)} note="Earned balance not yet paid · pending transfers remain outstanding" />
       </div>
-    </div>
-    <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-      <Stat title="Views on submitted posts" value={short(total.reportedViews)} note={`${count(total.posts)} posts · ${days === 'all' ? 'All recorded submissions' : change(total.reportedViews, previous.reportedViews)}`} />
-      <Stat title="Earned payouts" value={usd(total.earnedCents / 100)} note={`${usd(total.unpaidCents / 100)} still unpaid on these posts`} />
-      <Stat title="Earned CPM" value={usd(cpm)} note={`Per 1,000 reviewed views · ${short(total.costViews)} views`} />
-      <Stat title="Cash paid in period" value={usd(report.cashPaidCents / 100)} note="By payment date, including older posts" />
-    </div>
-    <p className="text-xs text-zinc-500">Excluded experiments: matheo.psl, bejapsl, and Valerie. Their posts, views, payouts, and attributed revenue are excluded throughout this report.</p>
-    <Panel title="Views, spend, and revenue" description="Compare daily submitted-video views with earned payouts and recorded revenue. USD on the left axis; views on the right." note="Views and earned payouts follow the original submission date, using current counts and approvals. App revenue follows the billing-event date; attributed revenue follows the date attribution was recorded. App revenue covers all acquisition channels and stays global when filtering TikTok or Instagram. Known experiment-attributed billing events are excluded. Refunds reduce revenue; amounts are before store fees and tax adjustments. This is a timing comparison, not proof of causation or creator ROAS. A zero attributed-revenue line means no revenue was recorded as directly attributed, not that creators produced no sales.">
-      {revenueError ? <p role="alert" className="admin-notice">Revenue could not be loaded. <button type="button" className="underline" onClick={() => void reloadRevenue()}>Retry</button></p> : !revenue ? <p role="status" className="admin-chart-loading">Loading verified revenue…</p> : <>
-        <PerformanceChart rows={comparison} series={[{ key: 'reportedViews', label: 'Submitted-video views', color: '#52565c', axis: 'views' }, { key: 'earned', label: 'Earned spend', color: '#00A8EF' }, { key: 'appRevenue', label: 'App revenue (all channels)', color: '#40a88a' }, { key: 'attributedRevenue', label: 'Creator-attributed revenue', color: '#9b83e5' }]} title="Views, spend, and revenue" currency />
-        <div className="mt-5 grid gap-4 sm:grid-cols-3"><Stat title="Earned creator spend" value={usd(total.earnedCents / 100)} note="Experimental creators excluded" /><Stat title="Recorded app revenue · USD" value={usd(comparison.reduce((sum, row) => sum + row.appRevenue, 0))} note="All acquisition channels; refunds deducted" /><Stat title="Directly attributed revenue · USD" value={usd(comparison.reduce((sum, row) => sum + row.attributedRevenue, 0))} note="Selected social platform; experiments excluded" /></div>
-        {revenue.otherCurrencies.length ? <p className="mt-4 text-xs leading-5 text-zinc-500">Other recorded revenue, kept separate from the USD chart: {revenue.otherCurrencies.map(row => `${row.amount.toLocaleString('en-US', { maximumFractionDigits: 2 })} ${row.currency}`).join(' · ')}.</p> : null}
-      </>}
+      <DataDetails><Table rows={creatorTable(report.creators)} columns={creatorColumns} /></DataDetails>
     </Panel>
-    <Panel title="Views by submission day" description="The latest reported view count of each video, grouped by the day it was first submitted." note="Each post is counted once. We use the larger of its latest submitted and admin-reviewed counts. Rereviews update that post’s existing submission day. This is a submission-cohort report, not views gained on each calendar day; true daily view growth requires historical view snapshots.">
-      <PerformanceChart rows={report.daily} series={series} title="Views by submission day" />
-      <div className="mt-5 flex flex-wrap gap-x-8 gap-y-2 text-sm text-zinc-500"><span><strong className="text-zinc-900">{count(total.posts)}</strong> posts submitted</span><span><strong className="text-zinc-900">{count(total.approvedPosts)}</strong> with approved earnings</span><span><strong className="text-zinc-900">{short(total.reviewedViews)}</strong> admin-reviewed views</span></div>
+    {platform === 'all' ? <Panel title="Platform mix" description="Selected submission period · current reported reach and earned costs.">
+      <Table rows={report.platforms.map(row => ({ platform: row.platform === 'tiktok' ? 'TikTok' : row.platform === 'instagram' ? 'Instagram' : row.platform, posts: row.posts, reported_views: row.reportedViews, reviewed_views: row.reviewedViews, earned_cost: usd(row.earnedCents / 100), unpaid_on_these_posts: usd(row.unpaidCents / 100), cost_per_1000_reviewed_views: usd(viewCpm(row.earnedCents, row.costViews)) }))} columns={['platform', 'posts', 'reported_views', 'reviewed_views', 'earned_cost', 'unpaid_on_these_posts', 'cost_per_1000_reviewed_views']} />
+    </Panel> : null}
+    <Panel title="Data sources and coverage" description="Database observation times and reporting exclusions.">
+      <dl className="grid gap-5 text-sm sm:grid-cols-3">{[
+        ['Snapshot generated', data.generatedAt], ['Latest submission update', snapshot.latestSubmissionUpdate], ['Latest paid-record update', snapshot.latestPaymentUpdate],
+      ].map(([title, value]) => <div key={title}><dt className="text-zinc-500">{title}</dt><dd className="mt-1 font-medium">{date(value)}</dd></div>)}</dl>
+      <p className="mt-5 text-xs leading-5 text-zinc-500">Checks every minute while visible and on return to this tab. Snapshots use a 60-second cache with background revalidation. Update timestamps cover all submitted posts and paid records loaded for this report, before social-platform and experiment exclusions. They do not verify current social-platform view counts.</p>
+      <p className="mt-3 text-xs leading-5 text-zinc-500">Existing experimental exclusions are preserved: matheo.psl, bejapsl and Valerie. Drafts are excluded. Post views and costs follow submission date; current approved adjustments can change older cohorts.</p>
+      <DataDetails><Table rows={[
+        { metric: 'Latest submitted post', value: date(snapshot.latestSubmission) },
+        { metric: 'Paid records excluded because they are non-USD or not linked to a post', value: report.excludedPayments },
+        { metric: 'Included paid records without a payment date', value: report.undatedPayments },
+      ]} columns={['metric', 'value']} /></DataDetails>
+      <Link className="mt-5 inline-block text-sm font-medium text-[#008ac5] underline underline-offset-4" href={attributionHref}>View creator-attributed customers and revenue →</Link>
     </Panel>
-    <div className="grid gap-6 xl:grid-cols-2">
-      <Panel title="Spend and payouts" description="Earned payouts follow submission day. Cash paid follows the actual payment date." note="Earned payouts include approved unpaid balances, custom payout adjustments, and previously paid earnings. Paying a post does not add to its earned cost again. Failed, cancelled, and merely scheduled transfers are not cash paid. All amounts are USD and linked to a submitted post.">
-        <PerformanceChart rows={report.daily} series={[{ key: 'earned', label: 'Earned payouts', color: '#00A8EF' }, { key: 'cashPaid', label: 'Cash paid', color: '#40a88a' }]} title="Spend and payouts" currency />
-      </Panel>
-      <Panel title="Cost per 1,000 views" description="Daily weighted CPM for the posts submitted that day, based on their current reviewed views and earned payouts." note="CPM = earned USD ÷ reviewed views on posts with approved earnings × 1,000. Pending and rejected posts without approved earnings do not dilute the denominator. Period and creator CPMs use the ratio of totals, never an average of daily CPMs. A dash means no eligible reviewed views.">
-        <PerformanceChart rows={report.daily} series={[{ key: 'cpm', label: 'Earned CPM', color: '#9b83e5' }]} title="Earned CPM" currency />
-        <p className="mt-4 text-xs text-zinc-500">Period CPM: <strong className="text-zinc-900">{usd(cpm)}</strong> · All-time CPM: <strong className="text-zinc-900">{usd(viewCpm(report.allTime.earnedCents, report.allTime.costViews))}</strong></p>
-      </Panel>
-    </div>
-    <Panel title="Platform breakdown" description="Selected chart period. Views and earned spend use the same submission cohorts.">
-      <Table rows={report.platforms.map(row => ({ platform: row.platform === 'tiktok' ? 'TikTok' : row.platform === 'instagram' ? 'Instagram' : row.platform, posts: row.posts, reported_views: row.reportedViews, reviewed_views: row.reviewedViews, earned: usd(row.earnedCents / 100), paid_on_these_posts: usd(row.paidCents / 100), outstanding: usd(row.unpaidCents / 100), CPM: usd(viewCpm(row.earnedCents, row.costViews)) }))} columns={['platform', 'posts', 'reported_views', 'reviewed_views', 'earned', 'paid_on_these_posts', 'outstanding', 'CPM']} />
-    </Panel>
-    <Panel title="All-time creator performance" description="Always all time, regardless of the chart period. The platform filter applies here too." action={<div className="flex flex-wrap gap-2"><input aria-label="Search creators" placeholder="Search creators…" value={search} onChange={e => setSearch(e.target.value)} className={fieldClass} /><select aria-label="Sort creators" value={sort} onChange={e => setSort(e.target.value)} className={fieldClass}><option value="views">Most views</option><option value="spend">Highest spend</option><option value="cpm">Highest CPM</option></select></div>}>
-      <Table rows={creators.map(row => ({ creator: row.name, posts: row.posts, 'TikTok views': row.tiktokViews, instagram_views: row.instagramViews, total_views: row.reportedViews, reviewed_views: row.reviewedViews, earned: usd(row.earnedCents / 100), paid: usd(row.paidCents / 100), outstanding: usd(row.unpaidCents / 100), CPM: usd(viewCpm(row.earnedCents, row.costViews)) }))} columns={['creator', 'posts', 'TikTok views', 'instagram_views', 'total_views', 'reviewed_views', 'earned', 'paid', 'outstanding', 'CPM']} />
-      <p className="mt-4 text-xs text-zinc-500">{count(report.allTime.posts)} posts · {count(report.allTime.reportedViews)} total views · {usd(report.allTime.earnedCents / 100)} earned · {usd(report.allTime.paidCents / 100)} paid · {usd(report.allTime.unpaidCents / 100)} unpaid</p>
-    </Panel>
-    {report.excludedPayments || report.undatedPayments ? <p role="status" className="admin-notice">{report.excludedPayments ? `${count(report.excludedPayments)} paid records are excluded because they are not USD or are not linked to a post. ` : ''}{report.undatedPayments ? `${count(report.undatedPayments)} paid records have no payment date; included in all-time and post totals, excluded from the daily cash chart.` : ''}</p> : null}
-  </div>
-}
-
-function PerformanceChart({ rows, series, title, currency = false }: { rows: ChartRow[]; series: Series[]; title: string; currency?: boolean }) {
-  const config = Object.fromEntries(series.map(s => [s.key, { label: s.label, color: s.color }]))
-  const dateLabel = (day: string) => new Date(`${day}T12:00:00Z`).toLocaleDateString('en-US', { month: 'short', day: 'numeric', timeZone: 'UTC' })
-  const hasViewsAxis = series.some(s => s.axis === 'views')
-  const formatValue = (value: unknown, key: string) => currency && series.find(s => s.key === key)?.axis !== 'views' ? usd(Number(value)) : count(value)
-  if (!rows.some(row => series.some(s => row[s.key] !== null))) return <p className="admin-empty">No reviewed views available to calculate CPM in this period.</p>
-  return <div>
-    <ChartContainer config={config} className="h-64 w-full aspect-auto" aria-label={title}>
-      <LineChart accessibilityLayer data={rows} margin={{ top: 12, right: 12, bottom: 0, left: 0 }}>
-        <CartesianGrid vertical={false} stroke="#eef0f3" />
-        <XAxis dataKey="day" tickFormatter={dateLabel} tickLine={false} axisLine={false} minTickGap={32} />
-        <YAxis yAxisId="value" tickFormatter={value => currency ? `$${short(Number(value))}` : short(Number(value))} tickLine={false} axisLine={false} width={62} domain={[(min: number) => Math.min(0, min), 'auto']} />
-        {hasViewsAxis ? <YAxis yAxisId="views" orientation="right" tickFormatter={value => short(Number(value))} tickLine={false} axisLine={false} width={62} domain={[0,'auto']} /> : null}
-        <ChartTooltip content={<ChartTooltipContent labelFormatter={value => String(value)} formatter={(value, name) => <span>{config[String(name)]?.label || name}: <strong>{formatValue(value,String(name))}</strong></span>} />} />
-        {series.map(s => <Line key={s.key} yAxisId={s.axis === 'views' ? 'views' : 'value'} name={s.key} dataKey={s.key} stroke={s.color} strokeWidth={2} type="linear" dot={s.key === 'cpm' || rows.length === 1 ? { r: 2 } : false} connectNulls={false} isAnimationActive={false} />)}
-      </LineChart>
-    </ChartContainer>
-    <div className="mt-3 flex flex-wrap gap-4 text-xs text-zinc-500">{series.map(s => <span key={s.key} className="flex items-center gap-2"><span className="h-0.5 w-4" style={{ background: s.color }} />{s.label}</span>)}</div>
-    <DataDetails><Table rows={rows.map(row => Object.fromEntries([['day', row.day], ...series.map(s => [s.label, row[s.key] === null ? null : formatValue(row[s.key],s.key)])]))} columns={['day', ...series.map(s => s.label)]} /></DataDetails>
-  </div>
+  </>
 }

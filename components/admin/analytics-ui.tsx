@@ -23,7 +23,7 @@ export function Panel({ title, description, note, children, action }: { title: s
 const labels: Record<string, string> = {
   http_status: 'HTTP status', median_store_ms: 'Median store response', elapsed_ms: 'Since tap', stage_ms: 'Time in stage',
   events: 'Events', accounts: 'Accounts', actors: 'Devices / browsers', unlinked_events: 'Unlinked billing events', flows: 'Flows', attempts: 'Attempts', unique_ids: 'Distinct IDs', clock_skew_events: 'Clock skew events', provider_type: 'Provider event type', first_opens: 'First app opens', purchase_completions: 'Purchase completions',
-  purchase_actors: 'Purchasing devices', median_ms: 'Median time', p90_ms: '90th percentile time',
+  purchase_actors: 'Purchasing devices', median_ms: 'Median time', p90_ms: '90th percentile time', p95_ms: '95th percentile time',
   median_evaluation_ms: 'Median scan time', evaluation_failures: 'Scan failures', evaluations_started: 'Scans started',
   continuation: 'Continued %', drop_off: 'Drop-off %', affected_devices: 'Affected devices', missing_amount_events: 'Unknown amounts',
 }
@@ -37,6 +37,6 @@ export function DataDetails({ children }: { children: ReactNode }) {
 export function ComparisonBars({ rows, series }: { rows: Array<{ label: string; values: number[]; detail?: string }>; series: Array<{ label: string; color: string }> }) {
   return <CategoryChart rows={rows} series={series} format={count} />
 }
-export function Bars({ rows, format = count, maximum, presentation, color = '#00A8EF' }: { rows: Array<{ label: string; value: number | null; detail?: string }>; format?: (value: number) => string; maximum?: number; presentation?: 'standard' | 'inline'; color?: string }) {
-  return <CategoryChart rows={rows.map(({ value, ...row }) => ({ ...row, values: [value] }))} series={[{ label: 'Observed', color }]} format={format} maximum={maximum} presentation={presentation} />
+export function Bars({ rows, format = count, maximum, presentation, labelWidth, animated, color = '#00A8EF' }: { rows: Array<{ label: string; value: number | null; detail?: string }>; format?: (value: number) => string; maximum?: number; presentation?: 'standard' | 'inline'; labelWidth?: number; animated?: boolean; color?: string }) {
+  return <CategoryChart rows={rows.map(({ value, ...row }) => ({ ...row, values: [value] }))} series={[{ label: 'Observed', color }]} format={format} maximum={maximum} presentation={presentation} labelWidth={labelWidth} animated={animated} />
 }

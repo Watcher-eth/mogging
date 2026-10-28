@@ -11,7 +11,7 @@ export const PERFORMANCE_EXCLUDED_CREATOR_IDS = [
 const excludedCreators = new Set<string>(PERFORMANCE_EXCLUDED_CREATOR_IDS)
 const dayFormatter = new Intl.DateTimeFormat('en-CA', { timeZone: PERFORMANCE_TIME_ZONE, year: 'numeric', month: '2-digit', day: '2-digit' })
 export function performanceDay(date: string | Date) {
-  const value = new Date(date)
+  const value = new Date(typeof date === 'string' && date.includes('T') && !/[zZ]$|[+-]\d{2}:?\d{2}$/.test(date) ? `${date}Z` : date)
   return Number.isFinite(value.getTime()) ? dayFormatter.format(value) : null
 }
 function shiftDay(day: string, days: number) {
@@ -30,7 +30,14 @@ function postPlatform(platform: string) {
   return value.startsWith('instagram') ? 'instagram' : value.startsWith('tiktok') ? 'tiktok' : value
 }
 
-export function buildCreatorPerformance(data: Pick<AdminDashboard, 'submissions' | 'payments' | 'creators'>, options: { days: number | null; platform: string; now?: Date }) {
+export type PerformanceInput = {
+  submissions: Array<Pick<AdminDashboard['submissions'][number], 'id' | 'creatorProfileId' | 'creatorName' | 'platform' | 'createdAt' | 'sprintId' | 'status' | 'approvedAmountCents' | 'viewCountThreshold' | 'adminViewCountThreshold' | 'adminUsAudiencePercent'>>
+  payments: Array<Pick<AdminDashboard['payments'][number], 'id' | 'submissionId' | 'creatorProfileId' | 'amountCents' | 'currency' | 'status' | 'paidAt'>>
+  creators: Array<Pick<AdminDashboard['creators'][number], 'id' | 'displayName'>>
+}
+export type CreatorPerformanceReport = ReturnType<typeof buildCreatorPerformance>
+
+export function buildCreatorPerformance(data: PerformanceInput, options: { days: number | null; platform: string; now?: Date }) {
   const today = performanceDay(options.now || new Date())!
   const allSubmissions = data.submissions.filter(s => !excludedCreators.has(s.creatorProfileId) && (options.platform === 'all' || postPlatform(s.platform) === options.platform))
   const selectedIds = new Set(allSubmissions.map(s => s.id))
@@ -69,6 +76,7 @@ export function buildCreatorPerformance(data: Pick<AdminDashboard, 'submissions'
   const total = emptyTotals(), previous = emptyTotals(), allTime = emptyTotals()
   const creators = new Map<string, Totals & { id: string; name: string; tiktokViews: number; instagramViews: number }>()
   const creatorNames = new Map(data.creators.map(c => [c.id, c.displayName]))
+  const periodCreators = new Map<string, Totals & { id: string; name: string; tiktokViews: number; instagramViews: number }>()
   const platforms = new Map<string, Totals & { platform: string }>()
   for (const post of posts) {
     const creator = creators.get(post.creatorId) || { ...emptyTotals(), id: post.creatorId, name: creatorNames.get(post.creatorId) || post.creatorName, tiktokViews: 0, instagramViews: 0 }
@@ -81,6 +89,11 @@ export function buildCreatorPerformance(data: Pick<AdminDashboard, 'submissions'
       if (post.day && post.day >= previousStart && post.day < start) add(previous, post)
       continue
     }
+    const periodCreator = periodCreators.get(post.creatorId) || { ...emptyTotals(), id: post.creatorId, name: creatorNames.get(post.creatorId) || post.creatorName, tiktokViews: 0, instagramViews: 0 }
+    add(periodCreator, post)
+    if (post.platform === 'tiktok') periodCreator.tiktokViews += post.reportedViews
+    if (post.platform === 'instagram') periodCreator.instagramViews += post.reportedViews
+    periodCreators.set(post.creatorId, periodCreator)
     add(total, post)
     const bucket = daily.get(post.day)!
     add(bucket, post)
@@ -93,6 +106,7 @@ export function buildCreatorPerformance(data: Pick<AdminDashboard, 'submissions'
   return { start, today, days, total, previous, allTime, excludedPayments, undatedPayments,
     cashPaidCents: [...daily.values()].reduce((sum, row) => sum + row.cashPaidCents, 0),
     daily: [...daily.values()].map(row => ({ ...row, earned: row.earnedCents / 100, cashPaid: row.cashPaidCents / 100, cpm: viewCpm(row.earnedCents, row.costViews) })),
+    periodCreators: [...periodCreators.values()].sort((a, b) => b.reportedViews - a.reportedViews),
     creators: [...creators.values()].sort((a, b) => b.reportedViews - a.reportedViews),
     platforms: [...platforms.values()].sort((a, b) => b.reportedViews - a.reportedViews) }
 }

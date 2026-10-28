@@ -67,3 +67,9 @@ export function calculateCreatorEconomics(
 function divide(numerator: number, denominator: number) {
   return denominator > 0 ? numerator / denominator : 0
 }
+
+// Recorded compensation and payer identities share a currency, but not an acquisition cohort.
+export function observedCompensationPerPayer(paid: number, scheduled: number, payingCustomers: number) {
+  return payingCustomers > 0 && [paid, scheduled, payingCustomers].every(Number.isFinite)
+    ? (paid + scheduled) / payingCustomers : null
+}

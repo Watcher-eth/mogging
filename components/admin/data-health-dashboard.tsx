@@ -1,0 +1,34 @@
+import type {AnalyticsDashboard} from '@/lib/admin/analytics'
+import {AnalyticsChart,chartColors} from './analytics-chart'
+import {DataDetails,Notice,Panel,Stat,Table,count} from './analytics-ui'
+import {operationalTime as time,operationalDuration as duration,operationalLabel as label} from './operational-format'
+export function DataHealthDashboard({data,days}:{data:AnalyticsDashboard;days:number}){
+ const report=data.dataHealth
+ if(!report)return <Notice>Data health is unavailable. Collection and processing counts are withheld until a snapshot loads.</Notice>
+ const summary=report.summary[0],backlog=report.backlog[0],settings=report.settings
+ return <>
+  <p className="mb-5 text-xs leading-5 text-zinc-500">{days===1?'Last 24 hours':`Last ${days} days`} · Production collection records · All audiences and platforms · Pacific time</p>
+  <div className="admin-stats-grid"><Stat title="Client records received" value={count(summary?.client_records)} note="Received in this period · includes internal and explicitly marked test payloads stored in production collection"/><Stat title="Billing records received" value={count(summary?.billing_records)} note="Production billing ingestion · selected receipt window"/><Stat title="P90 client ingestion delay" value={duration(summary?.p90_ms)} note="Nonnegative receipt minus event time · not API response latency"/><Stat title="Webhooks pending over 10 min" value={count(backlog?.unfinished_webhooks)} note="Current stored receipts · production/test modes not separable"/></div>
+  <Panel title="Client data received" description={`${days===1?'Hourly':'Daily'} records received by first-party analytics`}
+   note="Groups records by server receipt time, not the time the customer acted. This is pipeline volume across raw production collection, including internal records, test-marked payloads and historical event types. Customer analytics applies separate audience exclusions. Empty buckets are omitted; they do not establish an outage. Boundary buckets are partial.">
+   <AnalyticsChart key={days} title="Client data received" rows={report.daily} metrics={[{key:'records',label:'Records received',color:chartColors.blue}]} days={days}/>
+   <DataDetails><Table rows={report.daily.map(row=>({...row,period:time(row.day)}))} columns={['period','records']}/></DataDetails>
+  </Panel>
+  <Panel title="Ingestion timing and sources" description="Collection volume and observed delay by platform and source."
+   note="Delay includes offline queues, batching, network transit and client clock differences. Future-dated events are counted as clock skew and excluded from delay percentiles. A delay percentile is not service uptime or backend request latency. Raw receipt volume does not measure active customers.">
+   <p className="mb-4 text-sm leading-6 text-zinc-500">{count(summary?.clock_skew_records)} client records have event timestamps after their server receipt time and are excluded from delay calculations.</p>
+   <Table rows={report.sources.map(row=>({...row,platform:row.platform==='ios'?'iOS':label(row.platform),source:label(row.source),latest_receipt:time(row.latest_receipt)}))} columns={['platform','source','records','clock_skew_records','median_ms','p90_ms','latest_receipt']}/>
+   <DataDetails><h3 className="mb-3 text-sm font-medium">Production billing receipts</h3><Table rows={report.billing.map(row=>({...row,provider:row.provider==='revenuecat'?'RevenueCat':label(row.provider),latest_receipt:time(row.latest_receipt)}))} columns={['provider','records','latest_receipt']}/><h3 className="mb-3 mt-6 text-sm font-medium">Selected event metadata</h3><Table rows={report.context.map(row=>({...row,event:label(row.event)}))} columns={['event','records','with_account','with_attempt','with_report']}/><p className="mt-3 text-xs leading-5 text-zinc-500">Identifier presence is diagnostic. Different events require different context; anonymous use and older app releases can omit these fields. Raw identifiers are not exposed.</p></DataDetails>
+  </Panel>
+  <Panel title="Processing and export queues" description="Current balances across all stored dates, independent of the period filter."
+   note="PostHog export is optional. Pending export rows are expected when export is disabled and do not mean first-party data was lost. Webhook receipts have no reliable mode field and can include in-flight processing; pending does not establish failure. Live checkout access records without a checkout-event ledger match are reconciliation candidates, not proof of missing company revenue; subscription revenue can be represented by invoice records.">
+   <div className="grid gap-6 sm:grid-cols-3"><Stat title="Analytics rows awaiting export" value={count(backlog?.pending_events)} note="Production collection · all audiences · current stored export state"/><Stat title="Billing rows awaiting export" value={count(backlog?.pending_billing)} note="Production billing · current stored export state"/><Stat title="Live checkout matching gaps" value={count(backlog?.checkout_gaps)} note="Live-session access records without a checkout-event ledger match"/></div>
+   <p className="mt-5 text-xs leading-5 text-zinc-500">Export configuration in this runtime: {settings?.exportEnabled?'enabled':'not configured'}. Runtime: {settings?.runtime??'unknown'}. These flags describe the server generating this snapshot, rather than verifying another deployment’s configuration.</p>
+   <DataDetails><Table rows={[{source:'Oldest analytics row awaiting export',timestamp:time(backlog?.oldest_pending_event)},{source:'Oldest webhook pending over ten minutes',timestamp:time(backlog?.oldest_webhook)},{source:'Latest stored Stripe reconciliation check',timestamp:time(backlog?.latest_reconciliation)}]} columns={['source','timestamp']}/><Table rows={[{setting:'Export configured in this runtime',state:settings?.exportEnabled?'Configured':'Not configured'},{setting:'Scheduler credential in this runtime',state:settings?.scheduler?'Present':'Not configured'}]} columns={['setting','state']}/></DataDetails>
+  </Panel>
+  <Panel title="Snapshot freshness" description="Collection timestamps and snapshot generation remain separate.">
+   <dl className="grid gap-5 text-sm sm:grid-cols-2">{[['Snapshot generated',data.generatedAt],['Latest client receipt in this period',summary?.latest_client_receipt]].map(([title,value])=><div key={String(title)}><dt className="text-zinc-500">{title}</dt><dd className="mt-1 font-medium">{time(value)}</dd></div>)}</dl>
+   <p className="mt-5 text-xs leading-5 text-zinc-500">Read-only checks every minute while visible and on return to this tab; snapshots use a 60-second cache with background revalidation. No source records in a window does not establish an outage or healthy collection. Request failures and execution time are reviewed separately in Backend reliability; scan outcomes remain on Scans.</p>
+  </Panel>
+ </>
+}

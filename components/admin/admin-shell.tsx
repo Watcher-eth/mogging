@@ -1,3 +1,4 @@
+import { analyticsPreviewPages } from '@/lib/admin/navigation'
 import Head from 'next/head'
 import Image from 'next/image'
 import Link from 'next/link'
@@ -40,9 +41,15 @@ export function AdminShell({ children }: { children: ReactNode }) {
 function AdminNavigation() {
   const router = useRouter()
   const { setOpenMobile } = useSidebar()
+  const preview = process.env.NODE_ENV === 'development' && router.pathname === '/admin/__product-overview-preview'
+
+  const currentPath = preview ? Object.keys(analyticsPreviewPages).find(path => analyticsPreviewPages[path] === (router.query.page ?? 'overview')) : router.pathname
+  const destination = (href: string) => preview && analyticsPreviewPages[href]
+    ? { pathname: router.pathname, query: { ...router.query, page: analyticsPreviewPages[href], ...(analyticsPreviewPages[href] === 'backend-reliability' ? { days: '1', platform: 'all' } : analyticsPreviewPages[href] === 'data-health' ? { days: '7', platform: 'all' } : analyticsPreviewPages[href] === 'retention' ? { days: '90' } : ['experiments', 'revenue', 'creator-attribution', 'creator-performance', 'creator-economics', 'scans', 'referrals', 'notifications', 'attribution-ledger'].includes(analyticsPreviewPages[href]) ? { days: '30', platform: 'all' } : ['onboarding', 'authentication', 'purchases', 'engagement'].includes(analyticsPreviewPages[href]) ? { days: '30', platform: ['onboarding', 'purchases'].includes(analyticsPreviewPages[href]) && router.query.platform === 'web' ? 'all' : router.query.platform ?? 'all' } : {}) } }
+    : href
   return <Sidebar collapsible="icon" className="creator-navigation admin-navigation">
     <SidebarHeader className="flex-row items-center justify-between border-b border-[#eceef0] p-3 md:hidden"><span className="text-sm font-semibold">Mogging Admin</span><button aria-label="Close navigation" onClick={() => setOpenMobile(false)} className="grid size-11 place-items-center"><X className="size-5" /></button></SidebarHeader>
-    <SidebarContent className="py-4"><nav aria-label="Admin navigation">{adminNavigation.map(group => <SidebarGroup key={group.label}><SidebarGroupLabel>{group.label}</SidebarGroupLabel><SidebarGroupContent><SidebarMenu>{group.items.map(item => <SidebarMenuItem key={item.href}><SidebarMenuButton asChild tooltip={item.title} isActive={router.pathname === item.href} className="creator-nav-link"><Link href={item.href} onClick={() => setOpenMobile(false)} aria-label={item.title} aria-current={router.pathname === item.href ? 'page' : undefined}><CreatorIcon name={item.icon} className="size-5" /><span>{item.title}</span></Link></SidebarMenuButton></SidebarMenuItem>)}</SidebarMenu></SidebarGroupContent></SidebarGroup>)}</nav></SidebarContent>
+    <SidebarContent className="py-4"><nav aria-label="Admin navigation">{adminNavigation.map(group => <SidebarGroup key={group.label}><SidebarGroupLabel>{group.label}</SidebarGroupLabel><SidebarGroupContent><SidebarMenu>{group.items.map(item => <SidebarMenuItem key={item.href}><SidebarMenuButton asChild tooltip={item.title} isActive={currentPath === item.href} className="creator-nav-link"><Link href={destination(item.href)} onClick={() => setOpenMobile(false)} aria-label={item.title} aria-current={currentPath === item.href ? 'page' : undefined}><CreatorIcon name={item.icon} className="size-5" /><span>{item.title}</span></Link></SidebarMenuButton></SidebarMenuItem>)}</SidebarMenu></SidebarGroupContent></SidebarGroup>)}</nav></SidebarContent>
     <SidebarFooter><SidebarMenu><SidebarMenuItem><SidebarMenuButton asChild tooltip="Creator portal" className="creator-guide-nav-link"><Link href="/creator"><ArrowUpRight className="size-4" /><span>Creator portal</span></Link></SidebarMenuButton></SidebarMenuItem></SidebarMenu></SidebarFooter>
   </Sidebar>
 }

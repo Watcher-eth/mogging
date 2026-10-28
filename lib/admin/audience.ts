@@ -17,7 +17,7 @@ export function audienceCTEs() {
       select id from payment_entitlements p where p.user_id in (select id from internal_accounts)
         or p.mobile_install_id in (select mobile_install_id from internal_identities where mobile_install_id is not null)
         or coalesce(p.metadata->>'sandbox','false') = 'true' or p.metadata->>'livemode' = 'false'
-        or p.source in ('release_verification','internal_test','smoke_test')
+        or p.source in ('release_verification','internal_release_verification','internal_test','smoke_test')
         or (p.source in ('subscription_allowance','revenuecat_subscription')
           and split_part(p.stripe_checkout_session_id,':',3) in (select transaction_id from sandbox_transactions))
     ), excluded_reports as materialized (

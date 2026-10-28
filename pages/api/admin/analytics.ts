@@ -7,7 +7,7 @@ import { enforceRateLimit } from '@/lib/api/rateLimit'
 
 // Shared across function instances; stale snapshots refresh in the background.
 // Authentication still runs on every request before any cached data is read.
-const getReport = unstable_cache(getAnalyticsDashboard, ['admin-analytics-pacific-v2'], { revalidate: 60 })
+const getReport = unstable_cache(getAnalyticsDashboard, ['admin-analytics-pacific-v4'], { revalidate: 60 })
 
 export const config = { maxDuration: 30 }
 

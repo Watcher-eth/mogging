@@ -87,3 +87,21 @@ test('experimental creators are excluded from every view, spend, cash and creato
   expect(report.daily.reduce((sum, d) => sum + d.reportedViews,0)).toBe(20000)
   expect(buildCreatorPerformance(data(experiments,transfers), { ...options, days: null, platform: 'instagram' }).allTime.posts).toBe(0)
 })
+
+
+test('period creator rows reconcile to period totals while all-time payout balances remain separate', () => {
+  const source = data([post('recent'), post('old', { creatorProfileId: 'old-creator', creatorName: 'Old Creator', createdAt: '2026-09-01T18:00:00Z' })], [payment('old-paid', { submissionId: 'old', creatorProfileId: 'old-creator', amountCents: 300 })])
+  const report = buildCreatorPerformance(source, options)
+  expect(report.periodCreators.map(row => row.id)).toEqual(['creator'])
+  expect(report.periodCreators.reduce((sum, row) => sum + row.earnedCents, 0)).toBe(report.total.earnedCents)
+  expect(report.periodCreators.reduce((sum, row) => sum + row.reportedViews, 0)).toBe(report.total.reportedViews)
+  expect(report.creators).toHaveLength(2)
+  expect(report.cashPaidCents).toBe(300)
+  expect(report.total.paidCents).toBe(0)
+  expect(report.allTime.paidCents).toBe(300)
+})
+
+test('database JSON timestamps without offsets retain their stored UTC interpretation', () => {
+  expect(performanceDay('2026-10-21T02:00:00')).toBe('2026-10-20')
+  expect(performanceDay('2026-01-01T07:59:59')).toBe('2025-12-31')
+})

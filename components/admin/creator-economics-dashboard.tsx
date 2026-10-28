@@ -1,39 +1,14 @@
+import { Disclosure, DisclosureSummary, AccordionContent } from '@/components/ui/accordion'
 import { useState } from 'react'
 import { Save, Settings2 } from 'lucide-react'
 import { toast } from 'sonner'
 import { Button } from '@/components/ui/button'
-import { Panel, Stat, Table } from './analytics-ui'
-import type { AdminDashboard, AdminSubmission } from './creator-types'
+import { Panel, Table } from './analytics-ui'
+import type { AdminDashboard } from './creator-types'
 import { calculateCreatorEconomics, type FunnelMetrics } from '@/lib/admin/creator-economics'
 import { apiPatch, apiPost, ApiClientError } from '@/lib/api/client'
 
 const emptyMetrics: FunnelMetrics = { qualifiedViews: 0, linkClicks: 0, installs: 0, firstTimePaidCustomers: 0 }
-
-export function CreatorEconomicsDashboard({ data }: { data: AdminDashboard; onSelectSubmission: (submission: AdminSubmission) => void }) {
-  const coverage = data.creatorCoverage
-  const paying = Number(coverage?.totals.paying_accounts || 0)
-  const committed = data.payments.filter(item => ['pending', 'processing', 'paid'].includes(item.status) && item.currency.toUpperCase() === 'USD').reduce((total, item) => total + item.amountCents, 0)
-  const creatorRows = data.creators.map(creator => {
-    const cost = data.payments.filter(payment => payment.creatorProfileId === creator.id && ['pending','processing','paid'].includes(payment.status) && payment.currency.toUpperCase() === 'USD').reduce((total, payment) => total + payment.amountCents, 0)
-    return { creator: creator.displayName, browser_clicks: creator.attribution.clicks, paying_accounts: creator.attribution.paidCustomers,
-      usd_net_revenue: formatMoney(creator.attribution.revenueCents), usd_compensation: formatMoney(cost),
-      observed_cost_per_paying_account: creator.attribution.paidCustomers ? formatMoney(cost / creator.attribution.paidCustomers) : null }
-  })
-  return <div className="grid gap-6">
-    <p className="text-sm leading-6 text-zinc-500">Revenue and paying accounts come from verified billing and stored referral evidence. Unknown acquisition remains unknown. Manual historical funnel counts are excluded. Revenue and compensation below are USD; other currencies remain separate in billing.</p>
-    <div className="grid gap-3 sm:grid-cols-3"><Stat title="Attributed paying accounts" value={String(paying)} note="Distinct credited accounts across all creators; all time" /><Stat title="Attributed net revenue" value={formatMoney(Number(coverage?.totals.usd_net_cents || 0))} note="Verified USD payments less refunds and disputes; all time" /><Stat title="Committed compensation" value={formatMoney(committed)} note="Pending, processing and paid USD payouts; all time" /></div>
-    <Panel title="Creator economics" description="A paying account may buy through more than one creator; row counts should not be added together. Observed cost per paying account is not an incremental CAC estimate."><Table rows={creatorRows} columns={['creator','browser_clicks','paying_accounts','usd_net_revenue','usd_compensation','observed_cost_per_paying_account']} /></Panel>
-    <Panel title="Referral entry paths" description="Last 30 days. Native exchanges and code claims are separate from browser requests."><Table rows={scalarRows(coverage?.sources || [])} columns={['source','requests','browser_ids']} /></Panel>
-    <Panel title="Mobile continuity" description="Last 30 days. The recovered first-open cohort requires an observed app first open, an original click before it, and recovery within 24 hours. It is separate from App Store download reports."><Table rows={scalarRows(coverage?.mobile || [])} columns={['method','touches','installations','account_claimed','recovered_first_open_cohort']} /></Panel>
-    <Panel title="Billing attribution coverage" description="Last 30 days. Unmatched facts are retried by the reconciliation job; reasons are visible here."><Table rows={scalarRows(coverage?.billing || [])} columns={['provider','status','events']} /></Panel>
-    <StoreCampaignImport rows={coverage?.storeCampaigns || []} />
-    <Panel title="Post attribution" description="Existing post-specific evidence from the last 90 days is retained. New posts reuse the account link/code, so creator-level purchases are not assigned to individual videos."><Table rows={scalarRows(coverage?.posts || []).map(row => ({ ...row, usd_net_revenue: formatMoney(Number(row.usd_net_cents || 0)) }))} columns={['handle','platform','draft','posted_at','caption_recorded','browser_clicks','paying_accounts','usd_net_revenue']} /></Panel>
-  </div>
-}
-
-function scalarRows(rows: Array<Record<string, unknown>>) {
-  return rows.map(row => Object.fromEntries(Object.entries(row).map(([key,value]) => [key, value == null ? null : typeof value === 'number' ? value : String(value)]))) as Array<Record<string, string | number | null>>
-}
 
 export function CreatorProgramSettings({ data, onRefresh }: { data: AdminDashboard; onRefresh: () => Promise<void> }) {
   const [monthlyPrice, setMonthlyPrice] = useState((data.settings.monthlySubscriptionCents / 100).toFixed(2))
@@ -57,11 +32,11 @@ export function CreatorProgramSettings({ data, onRefresh }: { data: AdminDashboa
   }
 
   const aggregate = calculateCreatorEconomics(emptyMetrics, [], { ninetyDayContributionMarginCents: data.settings.ninetyDayContributionMarginCents, compensationCapRate: data.rules.compensationCapRate, conversionBonusCapRate: data.rules.conversionBonusCapRate })
-  return <div className="max-w-xl"><ProgramSettings monthlyPrice={monthlyPrice} margin={margin} setMonthlyPrice={setMonthlyPrice} setMargin={setMargin} saving={saving} onSave={() => void saveSettings()} data={data} aggregate={aggregate} /></div>
+  return <div className="max-w-xl"><ProgramSettings monthlyPrice={monthlyPrice} margin={margin} setMonthlyPrice={setMonthlyPrice} setMargin={setMargin} saving={saving} onSave={() => void saveSettings()} data={data} aggregate={aggregate} /><Disclosure className="admin-data-details"><DisclosureSummary>Manage App Store campaign imports</DisclosureSummary><AccordionContent><StoreCampaignImport rows={data.creatorCoverage?.storeCampaigns || []} /></AccordionContent></Disclosure></div>
 }
 
 function ProgramSettings({ monthlyPrice, margin, setMonthlyPrice, setMargin, saving, onSave, data, aggregate }: { monthlyPrice: string; margin: string; setMonthlyPrice: (value: string) => void; setMargin: (value: string) => void; saving: boolean; onSave: () => void; data: AdminDashboard; aggregate: ReturnType<typeof calculateCreatorEconomics> }) {
-  return <div className="admin-section"><div className="flex items-center gap-2.5"><span className="grid size-9 place-items-center rounded-xl bg-zinc-100"><Settings2 className="size-4" /></span><div><p className="text-sm font-semibold">Program assumptions</p><p className="text-xs text-zinc-500">Used across every creator calculation.</p></div></div><div className="mt-5 grid gap-4"><MoneyInput label="Monthly subscription" value={monthlyPrice} onChange={setMonthlyPrice} hint="USD per month" /><MoneyInput label="90-day contribution margin/customer" value={margin} onChange={setMargin} hint={`90-day gross revenue is ${formatMoney(data.settings.monthlySubscriptionCents * 3)}`} /></div><p className="mt-4 text-xs leading-5 text-zinc-500">Enter revenue after refunds, payment fees, hosting, and other variable costs—not gross subscription revenue.</p><Button className="mt-5 h-10 w-full rounded-xl" onClick={onSave} disabled={saving}>{saving ? <Save className="animate-pulse" /> : <Save />}{saving ? 'Saving…' : 'Save assumptions'}</Button><div className="mt-4 flex items-center justify-between border-t border-zinc-100 pt-4 text-xs"><span className="text-zinc-500">Conversion bonus ceiling</span><span className="font-semibold">{formatMoney(aggregate.maxConversionBonusCents)} / paid customer</span></div></div>
+  return <div className="admin-section"><div className="flex items-center gap-2.5"><span className="grid size-9 place-items-center rounded-xl bg-zinc-100"><Settings2 className="size-4" /></span><div><p className="text-sm font-semibold">Program assumptions</p><p className="text-xs text-zinc-500">Planning assumptions and conversion-bonus limits.</p></div></div><div className="mt-5 grid gap-4"><MoneyInput label="Monthly subscription" value={monthlyPrice} onChange={setMonthlyPrice} hint="USD per month" /><MoneyInput label="90-day contribution margin/customer" value={margin} onChange={setMargin} hint={`90-day gross revenue is ${formatMoney(data.settings.monthlySubscriptionCents * 3)}`} /></div><p className="mt-4 text-xs leading-5 text-zinc-500">Enter revenue after refunds, payment fees, hosting, and other variable costs—not gross subscription revenue. These assumptions are not treated as realized revenue in Creator Economics.</p><Button className="mt-5 h-10 w-full rounded-xl" onClick={onSave} disabled={saving}>{saving ? <Save className="animate-pulse" /> : <Save />}{saving ? 'Saving…' : 'Save assumptions'}</Button><div className="mt-4 flex items-center justify-between border-t border-zinc-100 pt-4 text-xs"><span className="text-zinc-500">Conversion bonus ceiling</span><span className="font-semibold">{formatMoney(aggregate.maxConversionBonusCents)} / paid customer</span></div></div>
 }
 
 function MoneyInput({ label, value, onChange, hint }: { label: string; value: string; onChange: (value: string) => void; hint: string }) { return <label className="grid gap-2"><span className="flex items-center justify-between text-sm font-medium"><span>{label}</span><span className="text-[11px] font-normal text-zinc-400">{hint}</span></span><span className="relative"><span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-sm text-zinc-400">$</span><input type="number" min="0" step="0.01" value={value} onChange={(event) => onChange(event.target.value)} className="h-11 w-full rounded-xl border border-zinc-200 pl-7 pr-3 text-sm outline-none focus:border-zinc-400 focus:ring-4 focus:ring-zinc-100" /></span></label> }
@@ -82,4 +57,8 @@ function StoreCampaignImport({ rows }: { rows: Array<Record<string, unknown>> })
     <p role="status" className="mb-4 text-xs text-zinc-500">{message || 'Use the stable c- campaign token from the creator’s App Store destination. Imports preserve currency and territory separately.'}</p>
     <Table rows={scalarRows(rows)} columns={['handle','campaign','day','territory','downloads','sales','currency']} />
   </Panel>
+}
+
+function scalarRows(rows: Array<Record<string, unknown>>) {
+  return rows.map(row => Object.fromEntries(Object.entries(row).map(([key, value]) => [key, value == null ? null : typeof value === 'number' ? value : String(value)]))) as Array<Record<string, string | number | null>>
 }

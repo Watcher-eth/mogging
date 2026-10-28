@@ -10,6 +10,8 @@ export type ReliabilityData = {
   generatedAt:string
   health: Awaited<ReturnType<typeof backendHealth>>
   alerts:ReturnType<typeof reliabilityAlertStatus>
+  runtime:string
+  alertSummary:MetricRow[]
   available:boolean
   summary:MetricRow
   features:MetricRow[]
@@ -19,6 +21,7 @@ export type ReliabilityData = {
   clients:MetricRow[]
   notifications:MetricRow[]
   stalled:MetricRow[]
+  unresolved_count:number
 }
 export function unfinishedEvaluationsQuery(now:Date) {
   const end=now.toISOString()
@@ -34,29 +37,48 @@ export function reliabilityQuery(days:number,now:Date) {
     select occurred_at,properties from analytics_events where event_name='backend_request' and environment='production' and platform='server' and source='backend' and occurred_at>=${start}::timestamp and occurred_at<${end}::timestamp
   ), requests as (
     select occurred_at,properties->>'feature' as feature,properties->>'outcome' as outcome,properties->>'code' as code,properties->>'trace_id' as trace,
+    coalesce(properties->>'feature'='availability' or properties->>'code'='evaluation_unfinished',false) as signal,
     case when properties->>'duration_ms' ~ '^[0-9]{1,9}$' then (properties->>'duration_ms')::numeric end as duration_ms from events
   ), summary as (
     select count(*) as requests,count(*) filter(where outcome='failed') as failures,count(*) filter(where outcome='degraded') as degraded,
     count(*) filter(where outcome='rejected') as rejected,count(*) filter(where outcome='failed' and code is distinct from 'input_no_face') as technical_failures,
     count(*) filter(where occurred_at>=${end}::timestamp-interval '15 minutes' and outcome in ('failed','degraded') and code is distinct from 'input_no_face') as recent_failures,
+    count(*) filter(where not signal) as operations,
+    count(*) filter(where not signal and outcome in ('failed','degraded') and code is distinct from 'input_no_face') as operation_issues,
+    count(*) filter(where signal) as monitoring_signals,
+    count(*) filter(where not signal and outcome='rejected') as operation_rejections,
+    count(*) filter(where not signal and code='input_no_face') as invalid_photos,
+    percentile_cont(0.95) within group(order by duration_ms) filter(where not signal) as p95_ms,
     max(occurred_at) as latest_event from requests
   ), features as (
     select feature,count(*) as requests,count(*) filter(where outcome='failed' and code is distinct from 'input_no_face') as technical_failures,
     count(*) filter(where outcome='degraded') as degraded,count(*) filter(where outcome='rejected') as rejected,
     count(*) filter(where code='input_no_face') as invalid_photos,
-    percentile_cont(0.5) within group(order by duration_ms) as median_ms,percentile_cont(0.95) within group(order by duration_ms) as p95_ms,max(occurred_at) as latest_event from requests group by feature order by technical_failures desc,requests desc limit 100
+    percentile_cont(0.5) within group(order by duration_ms) as median_ms,percentile_cont(0.95) within group(order by duration_ms) as p95_ms,max(occurred_at) as latest_event from requests where not signal group by feature order by technical_failures desc,requests desc limit 100
   ), daily as (
     select ${reportingBucket(sql`occurred_at`, days)} as day,count(*) as requests,count(*) filter(where outcome in ('failed','degraded') and code is distinct from 'input_no_face') as failures,
-    count(*) filter(where feature='analyze' and outcome in ('failed','degraded') and code is distinct from 'input_no_face') as evaluation_failures from requests group by 1 order by 1
+    count(*) filter(where feature='analyze' and outcome in ('failed','degraded') and code is distinct from 'input_no_face') as evaluation_failures from requests where not signal group by 1 order by 1
   ), failures as (
-    select feature,code,outcome,count(*) as events,max(occurred_at) as latest_event from requests where outcome in ('failed','degraded') group by 1,2,3 order by events desc limit 100
+    select feature,code,outcome,count(*) as events,max(occurred_at) as latest_event from requests where not signal and code is distinct from 'input_no_face' and outcome in ('failed','degraded') group by 1,2,3 order by events desc limit 100
   ), recent as (
-    select feature,code,outcome,duration_ms,trace,occurred_at as latest_event from requests where outcome in ('failed','degraded') order by occurred_at desc limit 50
+    select feature,code,outcome,duration_ms,trace,occurred_at as latest_event from requests where not signal and code is distinct from 'input_no_face' and outcome in ('failed','degraded') order by occurred_at desc limit 50
   ), clients as (
     select event_name as event,platform,app_version as release,coalesce(properties->>'reason_code','unspecified') as code,count(*) as events,max(occurred_at) as latest_event from analytics_events client where ${customerEvent('client')} and platform in ('web','ios','android') and event_name in ('evaluation_failed','photo_validation_failed','purchase_failed','restore_failed','account_auth_failed','account_post_login_failed','share_failed') and occurred_at>=${start}::timestamp and occurred_at<${end}::timestamp group by 1,2,3,4 order by events desc limit 100
   ), notifications as (
     select properties->>'feature' as feature,properties->>'code' as code,properties->>'status' as status,count(*) as events,max(occurred_at) as latest_event from analytics_events where event_name='backend_alert' and environment='production' and source='backend' and occurred_at>=${start}::timestamp and occurred_at<${end}::timestamp group by 1,2,3 order by latest_event desc limit 50
-  ), stalled as (${unfinishedEvaluationsQuery(now)}) select json_build_object('summary',(select row_to_json(s) from summary s),'features',${rows('features')},'daily',${rows('daily')},'failures',${rows('failures')},'recent',${rows('recent')},'clients',${rows('clients')},'notifications',${rows('notifications')},'stalled',${rows('stalled')}) as data`
+  ), unresolved as materialized (
+    select s.properties->>'trace_id' as trace,min(s.occurred_at) as started_at from analytics_events s
+    where s.event_name='backend_evaluation_started' and s.environment='production' and s.source='backend'
+      and s.occurred_at>=${end}::timestamp-interval '24 hours' and s.occurred_at<${end}::timestamp-interval '5 minutes'
+      and nullif(s.properties->>'trace_id','') is not null and s.properties->>'trace_id' not in ('undefined','null')
+      and not exists(select 1 from analytics_events r where r.event_name='backend_request' and r.environment='production' and r.source='backend'
+        and r.occurred_at>=s.occurred_at and r.occurred_at<${end}::timestamp and r.properties->>'trace_id'=s.properties->>'trace_id')
+    group by s.properties->>'trace_id'
+  ), stalled as (select * from unresolved order by started_at desc limit 50),
+  alert_summary as (select properties->>'status' as status,count(*) as records,max(occurred_at) as latest_event
+    from analytics_events where event_name='backend_alert' and environment='production' and source='backend'
+      and occurred_at>=${start}::timestamp and occurred_at<${end}::timestamp group by 1)
+  select json_build_object('unresolved_count',(select count(*) from unresolved),'alertSummary',${rows('alert_summary')},'summary',(select row_to_json(s) from summary s),'features',${rows('features')},'daily',${rows('daily')},'failures',${rows('failures')},'recent',${rows('recent')},'clients',${rows('clients')},'notifications',${rows('notifications')},'stalled',${rows('stalled')}) as data`
 }
 export async function getReliabilityData(days:number):Promise<ReliabilityData> {
   const [health,report] = await Promise.all([
@@ -65,9 +87,9 @@ export async function getReliabilityData(days:number):Promise<ReliabilityData> {
       await tx.execute(sql`set transaction read only`)
       await tx.execute(sql`set local statement_timeout = '8s'`)
       const [row]=await tx.execute(reliabilityQuery(days,new Date()))
-      return row.data as Omit<ReliabilityData,'health'|'alerts'|'generatedAt'|'available'>
+      return row.data as Omit<ReliabilityData,'health'|'alerts'|'generatedAt'|'available'|'runtime'>
     }).catch(()=>null),
   ])
-  return {generatedAt:new Date().toISOString(),health,alerts:reliabilityAlertStatus(),available:Boolean(report),
-    ...(report || {summary:{},features:[],daily:[],failures:[],recent:[],clients:[],notifications:[],stalled:[]})}
+  return {runtime:process.env.VERCEL_ENV || process.env.NODE_ENV || 'unknown',generatedAt:new Date().toISOString(),health,alerts:reliabilityAlertStatus(),available:Boolean(report),
+    ...(report || {summary:{},features:[],daily:[],failures:[],recent:[],clients:[],notifications:[],stalled:[],unresolved_count:0,alertSummary:[]})}
 }
