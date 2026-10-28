@@ -1,3 +1,4 @@
+import { DEFAULT_CAMPAIGN_AUDIENCE, type CampaignAudience } from '@/lib/creator/campaign-access'
 import { CampaignBudget } from '@/components/creator/campaign-budget'
 import { Disclosure, DisclosureSummary, AccordionContent } from '@/components/ui/accordion'
 import Link from 'next/link'
@@ -39,6 +40,8 @@ import {
   type CreatorSprint,
   type SprintTerms,
 } from '@/lib/creator/sprints'
+type CampaignCreator = { id: string; displayName: string; socialHandle: string | null }
+
 const lines = (value: string) =>
   value
     .split('\n')
@@ -55,6 +58,7 @@ export function CreatorSprintsPanel({
 }) {
   const { data, error, isLoading, mutate } = useSWR<{
     sprints: CreatorSprint[]
+    creators: CampaignCreator[]
   }>('/api/admin/creator/sprints', apiGet, { refreshInterval: 30_000 })
   const [editing, setEditing] = useState<CreatorSprint | 'new' | null>(null)
   const [phase, setPhase] = useState('all')
@@ -340,6 +344,7 @@ export function CreatorSprintsPanel({
                     <p className="mt-2 line-clamp-2 text-sm leading-6 text-zinc-500">
                       {campaign.description}
                     </p>
+                    <p className="mt-3 text-xs text-zinc-500">{campaign.audience?.mode === 'selected' ? `${campaign.audience.creatorIds.length} selected creators` : campaign.audience?.mode === 'except' ? `All except ${campaign.audience.creatorIds.length} creators` : 'All creators'}</p>
                     <p className="mt-3 text-xs text-zinc-400">
                       {campaignDates(campaign)}
                     </p>
@@ -428,6 +433,7 @@ export function CreatorSprintsPanel({
             <SprintEditor
               key={typeof editing === 'string' ? editing : editing.id}
               sprint={editing === 'new' ? undefined : editing}
+              creators={data?.creators || []}
               onSaved={async () => {
                 await mutate()
                 setEditing(null)
@@ -453,13 +459,18 @@ function campaignDates(campaign: CreatorSprint) {
 
 function SprintEditor({
   sprint,
+  creators,
   onSaved,
   onCancel,
 }: {
   sprint?: CreatorSprint
+  creators: CampaignCreator[]
   onSaved: () => Promise<void>
   onCancel: () => void
 }) {
+  const [audience, setAudience] = useState<CampaignAudience>(sprint?.audience ?? DEFAULT_CAMPAIGN_AUDIENCE)
+  const [creatorQuery, setCreatorQuery] = useState('')
+  const visibleCreators = creators.filter(creator => `${creator.displayName} ${creator.socialHandle || ''}`.toLowerCase().includes(creatorQuery.toLowerCase()))
   const [name, setName] = useState(sprint?.name || '')
   const [description, setDescription] = useState(sprint?.description || '')
   const [budget, setBudget] = useState(
@@ -505,12 +516,13 @@ function SprintEditor({
       startsAt: new Date(starts).toISOString(),
       endsAt: new Date(ends).toISOString(),
       terms,
+      audience,
     })
     if (!parsed.success) {
       const issue = parsed.error.issues[0]
       const key = issue.path[1]
       const targetSection =
-        issue.path[0] !== 'terms'
+        issue.path[0] === 'audience' ? 'audience' : issue.path[0] !== 'terms'
           ? 'details'
           : ['formats', 'rules'].includes(String(key))
             ? 'content'
@@ -553,12 +565,13 @@ function SprintEditor({
       >
         <Tabs.List
           aria-label="Campaign editor"
-          className="mx-6 mb-4 grid shrink-0 grid-cols-3 gap-1 rounded-xl bg-zinc-100 p-1"
+          className="mx-6 mb-4 grid shrink-0 grid-cols-4 gap-1 rounded-xl bg-zinc-100 p-1"
         >
           {[
             ['details', 'Details'],
             ['payouts', 'Payouts'],
             ['content', 'Content'],
+            ['audience', 'Creators'],
           ].map(([value, label]) => (
             <Tabs.Trigger
               key={value}
@@ -573,6 +586,71 @@ function SprintEditor({
           disabled={busy}
           className="min-h-0 min-w-0 overflow-y-auto px-6 pb-6"
         >
+          <Tabs.Content value="audience" className="grid gap-5">
+            <Field label="Who can see this campaign?">
+              <select
+                className={fieldClass}
+                value={audience.mode}
+                onChange={event => setAudience(current => ({
+                  ...current,
+                  mode: event.target.value as CampaignAudience['mode'],
+                }))}
+              >
+                <option value="all">All creators</option>
+                <option value="selected">Only selected creators</option>
+                <option value="except">Everyone except selected creators</option>
+              </select>
+            </Field>
+            <p className="text-xs leading-5 text-zinc-500">
+              Visibility applies to campaign browsing and new submissions. Existing submissions keep their saved terms and earnings.
+            </p>
+            {audience.mode !== 'all' ? (
+              <>
+                <Field label="Search creators">
+                  <input
+                    type="search"
+                    className={fieldClass}
+                    value={creatorQuery}
+                    onChange={event => setCreatorQuery(event.target.value)}
+                    placeholder="Name or social handle"
+                  />
+                </Field>
+                <p role="status" className="text-xs text-zinc-500">
+                  {audience.creatorIds.length} selected · {audience.mode === 'selected'
+                    ? 'Only selected creators will see this campaign.'
+                    : 'Selected creators will not see this campaign.'}
+                </p>
+                <div className="max-h-72 divide-y divide-zinc-100 overflow-y-auto rounded-2xl border border-zinc-200">
+                  {visibleCreators.map(creator => (
+                    <label key={creator.id} className="flex min-h-14 cursor-pointer items-center gap-3 px-4 py-3 hover:bg-zinc-50">
+                      <input
+                        type="checkbox"
+                        className="size-4 accent-[#00A8EF]"
+                        checked={audience.creatorIds.includes(creator.id)}
+                        onChange={event => setAudience(current => ({
+                          ...current,
+                          creatorIds: event.target.checked
+                            ? [...current.creatorIds, creator.id]
+                            : current.creatorIds.filter(id => id !== creator.id),
+                        }))}
+                      />
+                      <span className="min-w-0 text-sm font-medium text-zinc-900">
+                        {creator.displayName}
+                        {creator.socialHandle ? (
+                          <span className="mt-0.5 block text-xs font-normal text-zinc-500">{creator.socialHandle}</span>
+                        ) : null}
+                      </span>
+                    </label>
+                  ))}
+                  {!visibleCreators.length ? (
+                    <p className="p-4 text-sm text-zinc-500">No creators match your search.</p>
+                  ) : null}
+                </div>
+              </>
+            ) : (
+              <p className="text-sm text-zinc-500">Every creator can see this campaign when it is published.</p>
+            )}
+          </Tabs.Content>
           <Tabs.Content value="details" className="grid gap-5">
             <p className="text-xs leading-5 text-zinc-500">
               Set the campaign’s name, budget, and publishing schedule. Dates

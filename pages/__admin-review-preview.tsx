@@ -1,3 +1,4 @@
+import { detailedAnalysisVariantTerms } from '@/lib/creator/detailed-analysis-variant'
 import { submissionHistory } from '@/lib/admin/submission-history'
 import { useRouter } from 'next/router'
 import { useEffect, useState } from 'react'
@@ -39,7 +40,10 @@ export default function AdminReviewPreview() {
     return () => { window.fetch = original }
   }, [])
   if (['mobile', 'compact'].includes(String(router.query.device))) return <iframe title="Mobile review preview" src="/__admin-review-preview" style={{ width: 390, height: router.query.device === 'compact' ? 360 : 640, border: 0 }} />
-  const reviewSubmission = router.query.case === 'bonus' ? { ...submission, title: '100K views · 62% Tier 1 audience', status: 'pending' as const, approvedAmountCents: null, reviewRequestedAt: null, viewCountThreshold: 100000, usAudiencePercent: 62, adminViewCountThreshold: null, adminUsAudiencePercent: null } : submission
-  return <main className="p-8"><p>Local sample only. No production writes.</p><output aria-label="Saved review payload">{saved}</output>{ready ? <ReviewDialog target={{ resource: 'submission', item: reviewSubmission }} payments={router.query.case === 'bonus' ? [] : payments} metrics={[]} open onOpenChange={() => {}} onRefresh={async () => {}} onSaved={async () => {}} /> : null}</main>
+  const detailedCase = ['mgc', 'detailed'].includes(String(router.query.case))
+  const detailed = launchCampaignTerms(LAUNCH_CAMPAIGNS.find(campaign => campaign.key === 'detailed-analysis')!)
+  const versionTerms = router.query.case === 'mgc' ? detailedAnalysisVariantTerms(detailed, 'bd0d7a74-3c39-44dd-98ec-21bf6667a714') : detailed
+  const reviewSubmission = detailedCase ? { ...submission, title: 'Detailed analysis · 100K views', sprintName: router.query.case === 'mgc' ? 'Mogging Detailed Analysis MGC' : 'Mogging Detailed Analysis', sprintTerms: versionTerms, formatId: versionTerms.formats[0].id, status: 'pending' as const, approvedAmountCents: null, reviewRequestedAt: null, viewCountThreshold: 100000, usAudiencePercent: 32, adminViewCountThreshold: null, adminUsAudiencePercent: null } : router.query.case === 'bonus' ? { ...submission, title: '100K views · 62% Tier 1 audience', status: 'pending' as const, approvedAmountCents: null, reviewRequestedAt: null, viewCountThreshold: 100000, usAudiencePercent: 62, adminViewCountThreshold: null, adminUsAudiencePercent: null } : submission
+  return <main className="p-8"><p>Local sample only. No production writes.</p><output aria-label="Saved review payload">{saved}</output>{ready ? <ReviewDialog target={{ resource: 'submission', item: reviewSubmission }} payments={detailedCase || router.query.case === 'bonus' ? [] : payments} metrics={[]} open onOpenChange={() => {}} onRefresh={async () => {}} onSaved={async () => {}} /> : null}</main>
 }
 export function getServerSideProps() { return process.env.NODE_ENV === 'production' ? { notFound: true } : { props: {} } }

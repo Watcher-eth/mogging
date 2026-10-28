@@ -1,3 +1,5 @@
+import { campaignVersionGroups } from '@/lib/creator/campaign-versions'
+import { CampaignVersionToggle, MgcSubmissionNotice } from '@/components/creator/campaign-version-toggle'
 import { ContentRestrictions } from '@/components/creator/content-restrictions'
 import { LaunchCampaignDetail } from '@/components/creator/launch-campaign-detail'
 import { launchCampaign } from '@/lib/creator/campaign-launch'
@@ -46,7 +48,7 @@ type Props = { campaign: CampaignPreview | null; timeLabel: string | null }
 export const getServerSideProps: GetServerSideProps<Props> = async ({ query, res }) => {
   res.setHeader('Cache-Control', 'private, no-store')
   const campaign = typeof query.id === 'string' ? await getCampaignPreview(query.id) : null
-  if (query.id && !campaign) return { notFound: true }
+  // Custom-audience campaigns use generic metadata; the authenticated API controls access.
   return { props: { campaign, timeLabel: campaign ? campaignTimeLabel(campaign) : null } }
 }
 
@@ -87,6 +89,7 @@ function SprintsContent() {
     sprints: CreatorSprint[]
   }>('/api/creator/sprints', apiGet)
   const phase = typeof router.query.phase === 'string' && ['active', 'scheduled', 'past'].includes(router.query.phase) ? router.query.phase : 'active'
+  const [versionId, setVersionId] = useState('')
   const selected = data?.sprints.find((item) => item.id === router.query.id)
   if (isLoading) return <Loader2 className="mx-auto my-16 animate-spin" />
   if (error)
@@ -107,7 +110,11 @@ function SprintsContent() {
     )
   if (selected) {
     const campaign = launchCampaign(selected.terms)
-    return campaign ? <LaunchCampaignDetail sprint={selected} campaign={campaign} /> : <SprintDetail sprint={selected} />
+    const versions = campaignVersionGroups(data?.sprints || []).find(group => group.some(item => item.id === selected.id)) || [selected]
+    return <>
+      <div className="mb-6"><CampaignVersionToggle campaigns={versions} selectedId={selected.id} onChange={id => void router.push({ pathname: '/creator/sprints', query: { id } }, undefined, { shallow: true })} /></div>
+      {campaign ? <LaunchCampaignDetail key={selected.id} sprint={selected} campaign={campaign} /> : <SprintDetail sprint={selected} />}
+    </>
   }
   return (
     <>
@@ -129,9 +136,11 @@ function SprintsContent() {
         {['active', 'scheduled', 'past'].map((tab) => (
           <StudioTabContent key={tab} value={tab}>
             <div className="grid gap-4">
-              {data?.sprints
-                .filter((sprint) => sprintPhase(sprint) === tab)
-                .map((sprint) => (
+              {campaignVersionGroups((data?.sprints || []).filter(sprint => sprintPhase(sprint) === tab))
+                .map((versions) => {
+                  const sprint = versions.find(item => item.id === versionId) || versions[0]
+                  return <div key={versions[0].id} className="grid gap-3">
+                  <CampaignVersionToggle campaigns={versions} selectedId={sprint.id} onChange={setVersionId} />
                   <Link
                     key={sprint.id}
                     href={`/creator/sprints?id=${sprint.id}`}
@@ -157,6 +166,7 @@ function SprintsContent() {
                     <p className="mt-2 text-sm text-zinc-500">
                       {sprint.description}
                     </p>
+                    <div className="mt-3"><MgcSubmissionNotice sprint={sprint} /></div>
                     <div className="my-5 border-y border-zinc-100 py-4">
                       <SprintBudget sprint={sprint} />
                     </div>
@@ -169,7 +179,8 @@ function SprintsContent() {
                       <ArrowRight className="size-4 text-[#00A8EF] transition-transform group-hover:translate-x-1" />
                     </div>
                   </Link>
-                ))}
+                  </div>
+                })}
               {!data?.sprints.some((item) => sprintPhase(item) === tab) ? (
                 <div className="creator-surface p-10 text-center">
                   <h2 className="font-semibold">No {tab} campaigns</h2>

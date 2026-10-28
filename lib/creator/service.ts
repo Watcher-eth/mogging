@@ -1,3 +1,4 @@
+import { canSeeCampaign } from './campaign-access'
 import { attributeNewCreator } from './creator-referrals'
 import { expiredRereviewAssignment } from './rereview-campaign'
 import { campaignCommittedCents } from './campaign-accounting'
@@ -334,6 +335,7 @@ export async function createCreatorSubmission(userId: string, input: CreatorSubm
   if (profile.authStatus === 'suspended') throw new CreatorServiceError(403, 'Your creator account is suspended')
   const sprint = await db.query.creatorSprints.findFirst({ where: eq(schema.creatorSprints.id, input.sprintId) })
   if (!sprint || sprintPhase({ ...sprint, startsAt: sprint.startsAt.toISOString(), endsAt: sprint.endsAt.toISOString() }) !== 'active') throw new CreatorServiceError(409, 'Choose an active campaign')
+  if (!canSeeCampaign(sprint.audience, profile.id)) throw new CreatorServiceError(404, 'Campaign not found')
   if (input.viewCountThreshold < minimumSubmissionViews(sprint.terms)) throw new CreatorServiceError(400, `This campaign requires at least ${minimumSubmissionViews(sprint.terms).toLocaleString('en-US')} views`)
   const format = sprintFormat(sprint.terms, input.formatId)
   if (!format) throw new CreatorServiceError(400, 'Choose a format offered by this campaign')
@@ -373,6 +375,7 @@ export async function createCreatorSubmission(userId: string, input: CreatorSubm
     const previousPost = await tx.query.creatorSubmissions.findFirst({ where: or(eq(schema.creatorSubmissions.postKey, postKey), eq(schema.creatorSubmissions.postUrl, input.postUrl)) })
     if (previousPost && previousPost.id !== input.registeredPostId) throw new CreatorServiceError(409, 'This video has already been submitted. Request a rereview on the original submission instead.')
     const [currentSprint] = await tx.select().from(schema.creatorSprints).where(eq(schema.creatorSprints.id, sprint.id)).for('update')
+    if (currentSprint && !canSeeCampaign(currentSprint.audience, profile.id)) throw new CreatorServiceError(404, 'Campaign not found')
     if (!currentSprint || currentSprint.updatedAt.getTime() !== sprint.updatedAt.getTime() || sprintPhase({ ...currentSprint, startsAt: currentSprint.startsAt.toISOString(), endsAt: currentSprint.endsAt.toISOString() }) !== 'active') throw new CreatorServiceError(409, 'Campaign changed. Refresh its terms before submitting')
     const [used] = await tx.execute<{ cents: number }>(sql`select ${campaignCommittedCents(sprint.id)} as cents`)
     if (used.cents >= currentSprint.budgetCents) throw new CreatorServiceError(409, 'This campaign’s budget is fully committed')

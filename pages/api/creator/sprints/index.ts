@@ -17,7 +17,7 @@ async function handler(
     if (req.method !== 'GET') return methodNotAllowed(res, ['GET'])
     const session = await getAuthSession(req, res)
     if (!session?.user?.id) throw new ApiError(401, 'Authentication required')
-    return json(res, 200, { sprints: await listCreatorSprints() })
+    return json(res, 200, { sprints: await listCreatorSprints(false, session.user.id) })
   } catch (error) {
     return handleApiError(error, res)
   }

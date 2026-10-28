@@ -1,3 +1,5 @@
+import { campaignAccessSql } from './campaign-access-sql'
+import { canSeeCampaign, DEFAULT_CAMPAIGN_AUDIENCE } from './campaign-access'
 import { campaignCommittedCents, campaignPaidCents } from './campaign-accounting'
 import { launchCampaign, LAUNCH_CONTENT_BUDGET_CENTS, LAUNCH_BONUS_BUDGET_CENTS } from './campaign-launch'
 import { and, desc, eq, inArray, sql } from 'drizzle-orm'
@@ -24,6 +26,7 @@ export async function getCampaignPreview(id: string): Promise<CampaignPreview | 
   }).from(schema.creatorSprints).where(and(
     eq(schema.creatorSprints.id, id),
     inArray(schema.creatorSprints.status, ['published', 'ended']),
+    eq(sql`creator_sprints.audience->>'mode'`, 'all'),
   )).limit(1)
   if (!row) return null
   const { terms, ...preview } = row
@@ -32,14 +35,16 @@ export async function getCampaignPreview(id: string): Promise<CampaignPreview | 
 
 export async function listCreatorSprints(
   admin = false,
+  userId?: string,
 ): Promise<CreatorSprint[]> {
+  const profile = !admin && userId ? await db.query.creatorProfiles.findFirst({ columns: { id: true }, where: eq(schema.creatorProfiles.userId, userId) }) : undefined
   const rows = await db
     .select()
     .from(schema.creatorSprints)
     .where(
       admin
         ? undefined
-        : inArray(schema.creatorSprints.status, ['published', 'ended']),
+        : and(inArray(schema.creatorSprints.status, ['published', 'ended']), campaignAccessSql(profile?.id)),
     )
     .orderBy(desc(schema.creatorSprints.startsAt), sql`case ${schema.creatorSprints.terms}->'formats'->0->>'id'
       when 'launch-general-looksmaxxing-v1' then 0
@@ -86,6 +91,7 @@ export async function listCreatorSprints(
       }
     return {
       ...row,
+      audience: admin ? row.audience : undefined,
       startsAt: row.startsAt.toISOString(),
       endsAt: row.endsAt.toISOString(),
       usedCents: spendingById.get(row.id)?.usedCents ?? 0,
@@ -98,11 +104,13 @@ export async function listCreatorSprints(
 }
 export async function sprintApprovedSubmissions(
   sprintId: string,
+  userId?: string,
 ): Promise<SprintProof[]> {
   const sprint = await db.query.creatorSprints.findFirst({
     where: eq(schema.creatorSprints.id, sprintId),
   })
-  if (!sprint || sprint.status === 'draft')
+  const profile = userId ? await db.query.creatorProfiles.findFirst({ columns: { id: true }, where: eq(schema.creatorProfiles.userId, userId) }) : undefined
+  if (!sprint || sprint.status === 'draft' || !canSeeCampaign(sprint.audience, profile?.id))
     throw new ApiError(404, 'Campaign not found')
   const rows = await db
     .select({
@@ -157,6 +165,11 @@ export async function saveCreatorSprint(
 ) {
   return db.transaction(async (tx) => {
     let existingStatus = 'draft'
+    let audience = input.audience ?? DEFAULT_CAMPAIGN_AUDIENCE
+    if (input.audience?.creatorIds.length) {
+      const profiles = await tx.select({ id: schema.creatorProfiles.id }).from(schema.creatorProfiles).where(inArray(schema.creatorProfiles.id, input.audience.creatorIds))
+      if (profiles.length !== input.audience.creatorIds.length) throw new ApiError(400, 'One or more creators no longer exist')
+    }
     if (input.id) {
       const [existing] = await tx
         .select()
@@ -165,6 +178,7 @@ export async function saveCreatorSprint(
         .for('update')
       if (!existing) throw new ApiError(404, 'Campaign not found')
       existingStatus = existing.status
+      audience = input.audience ?? existing.audience
       const [used] = await tx.execute<{ cents: number }>(sql`select ${campaignCommittedCents(input.id)} as cents`)
       const contentBudget = existing.status === 'draft' && launchCampaign(input.terms) ? LAUNCH_CONTENT_BUDGET_CENTS : input.budgetCents
       if (contentBudget < used.cents)
@@ -175,6 +189,7 @@ export async function saveCreatorSprint(
     }
     const newLaunch = existingStatus === 'draft' && launchCampaign(input.terms)
     const values = {
+      audience,
       name: input.name,
       description: input.description,
       status: input.status,

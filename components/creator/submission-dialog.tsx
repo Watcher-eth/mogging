@@ -1,3 +1,5 @@
+import { campaignVersionGroups } from '@/lib/creator/campaign-versions'
+import { CampaignVersionToggle, MgcSubmissionNotice } from './campaign-version-toggle'
 import { launchCampaign } from '@/lib/creator/campaign-launch'
 import { Disclosure, DisclosureSummary, AccordionContent } from '@/components/ui/accordion'
 import { TikTokAccountDialog } from './tiktok-anchor-onboarding'
@@ -293,16 +295,19 @@ export function SubmissionDialog({
           >
             <div ref={contentRef} className="min-h-0 flex-1 overflow-y-auto px-5 pb-6 sm:px-7">
               <AnimatedDialogPanel contentKey={step} motionStyle="swish" direction={stepDirection} contentClassName="grid gap-4">
+                  {sprint ? <MgcSubmissionNotice sprint={sprint} /> : null}
                   {step === 1 ? (
                     <>
-                      {activeSprints.map((item) => {
+                      {campaignVersionGroups(activeSprints).map((versions) => {
+                        const item = versions.find(version => version.id === sprintId) || versions[0]
                         const isLaunch = Boolean(launchCampaign(item.terms))
                         const budgetCents = item.budgetCents + (isLaunch ? item.terms.bonusBudgetCents ?? 0 : 0)
                         const usedCents = item.usedCents + (isLaunch ? item.bonusUsedCents ?? 0 : 0)
                         return (
+                        <div key={versions[0].id} className="grid gap-3">
+                        <CampaignVersionToggle campaigns={versions} selectedId={item.id} onChange={id => { setSprintId(id); setConfirmed([]); setAccountId('') }} />
                         <button
                           type="button"
-                          key={item.id}
                           onClick={() => {
                             setSprintId(item.id)
                             setConfirmed([])
@@ -330,6 +335,7 @@ export function SubmissionDialog({
                             {item.description}
                           </p>
                         </button>
+                        </div>
                         )
                       })}
                       {!activeSprints.length ? (

@@ -1,3 +1,4 @@
+import { canSeeCampaign } from './campaign-access'
 import { and, asc, desc, eq, gt, inArray, lte } from 'drizzle-orm'
 import type { db } from '@/lib/db'
 import * as schema from '@/lib/db/schema'
@@ -18,11 +19,11 @@ export async function expiredRereviewAssignment(tx: Transaction, post: Submissio
     where: and(eq(schema.creatorSprints.status, 'published'), lte(schema.creatorSprints.startsAt, now), gt(schema.creatorSprints.endsAt, now)),
     orderBy: [desc(schema.creatorSprints.startsAt), asc(schema.creatorSprints.id)],
   })
-  const general = active.find(campaign => launchCampaign(campaign.terms)?.key === 'general-looksmaxxing')
+  const general = active.find(campaign => launchCampaign(campaign.terms)?.key === 'general-looksmaxxing' && canSeeCampaign(campaign.audience, post.creatorProfileId))
   if (!general) throw new ApiError(409, 'No active General Looksmaxxing campaign is available for this rereview')
   const locked = await tx.select().from(schema.creatorSprints).where(inArray(schema.creatorSprints.id, [source.id, general.id])).orderBy(asc(schema.creatorSprints.id)).for('update')
   const destination = locked.find(campaign => campaign.id === general.id)
-  if (!destination || destination.status !== 'published' || destination.startsAt > now || destination.endsAt <= now) throw new ApiError(409, 'The rereview campaign changed. Please try again.')
+  if (!destination || !canSeeCampaign(destination.audience, post.creatorProfileId) || destination.status !== 'published' || destination.startsAt > now || destination.endsAt <= now) throw new ApiError(409, 'The rereview campaign changed. Please try again.')
   const format = destination.terms.formats.find(format => format.active)
   if (!format) throw new ApiError(409, 'The rereview campaign has no active content requirements')
   const previous = await tx.query.creatorCampaignTransfers.findFirst({ where: eq(schema.creatorCampaignTransfers.submissionId, post.id) })

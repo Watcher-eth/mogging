@@ -1,3 +1,5 @@
+import { LAUNCH_CAMPAIGNS, launchCampaignTerms } from '@/lib/creator/campaign-launch'
+import { detailedAnalysisVariantTerms } from '@/lib/creator/detailed-analysis-variant'
 import { beforeEach, expect, mock, test } from 'bun:test'
 import * as schema from '@/lib/db/schema'
 import { getCreatorSubmissionReviewItems, AUDIENCE_MINIMUM_REJECTION } from '@/lib/creator/submission-review'
@@ -10,7 +12,7 @@ let writes = 0
 const priorPayments = [{ status: 'paid', amountCents: 1300 }]
 const tx = {
   execute: async () => [{ cents: submission.approvedAmountCents || 0, amount_cents: 0 }],
-  query: { creatorPayments: { findMany: async () => priorPayments, findFirst: async () => undefined }, creatorProfiles: { findFirst: async () => ({ id: 'creator', authStatus: 'pending', paymentOption: 'paypal', paypalEmail: 'creator@example.com', bundledPayouts: false }) } },
+  query: { creatorSubmissions: { findFirst: async () => undefined }, creatorPayments: { findMany: async () => priorPayments, findFirst: async () => undefined }, creatorProfiles: { findFirst: async () => ({ id: 'creator', authStatus: 'pending', paymentOption: 'paypal', paypalEmail: 'creator@example.com', bundledPayouts: false }) } },
   select: (fields?: unknown) => ({ from: (table: unknown) => ({ where: () => fields
     ? Promise.resolve([{ cents: submission.approvedAmountCents || 0 }])
     : { for: async () => table === schema.creatorSprints ? [{ id: 'campaign', budgetCents: 100000 }] : [submission] } }) }),
@@ -21,6 +23,7 @@ mock.module('@/lib/db', () => ({ schema, db: {
   query: { creatorSubmissions: { findFirst: async () => submission } },
   transaction: async (fn: (tx: unknown) => unknown) => fn(tx),
 } }))
+mock.module('@/lib/creator/bonus-service', () => ({ refreshCreatorBonuses: async () => {} }))
 const { creatorAdminReviewSchema, reviewCreatorResource, createCreatorPayment } = await import('./creator-service')
 const results = () => getCreatorSubmissionReviewItems('custom-video-v1').map(({ id }, i) => ({ id, met: i !== 0, note: i === 0 ? 'Show the CTA within 2–3 seconds.' : null }))
 const input = () => {
@@ -193,4 +196,32 @@ test('a fully paid $15 rereview saves unchanged earnings without another payment
   expect(await reviewCreatorResource({ ...approval(null, null), reviewChecklist })).toMatchObject({ status: 'approved', approvedAmountCents: 1500, reviewRequestedAt: null })
   expect(priorPayments).toEqual([{ status: 'paid', amountCents: 1500 }])
   await expect(createCreatorPayment({ submissionId: 'submission', adminViewCountThreshold: 40000, adminUsAudiencePercent: 30, status: 'pending' })).rejects.toThrow()
+})
+
+
+const detailedTerms = launchCampaignTerms(LAUNCH_CAMPAIGNS.find(campaign => campaign.key === 'detailed-analysis')!)
+const mgcTerms = detailedAnalysisVariantTerms(detailedTerms, 'bd0d7a74-3c39-44dd-98ec-21bf6667a714')
+for (const [version, terms, amounts] of [
+  ['original', detailedTerms, [4000, 7000, 12000]],
+  ['MGC', mgcTerms, [3000, 6500, 6500]],
+] as const) {
+  for (const [index, views] of [50000, 100000, 300000].entries()) {
+    test(`${version} admin approval and payment use its saved campaign rates at ${views} views`, async () => {
+      priorPayments.length = 0
+      const formatId = terms.formats[0].id
+      submission = { ...submission, creatorProfileId: 'creator', formatId, sprintId: version, sprintTerms: structuredClone(terms), analyticsScreenshotUrl: 'https://example.com/evidence.mp4' }
+      const reviewChecklist = sprintReviewItems(terms, formatId).map(({ id }) => ({ id, met: true, note: null }))
+      const saved = await reviewCreatorResource({ ...approval(null, null), adminViewCountThreshold: views, adminUsAudiencePercent: 32, reviewChecklist })
+      expect(saved).toMatchObject({ approvedAmountCents: amounts[index], sprintId: version, sprintTerms: terms })
+      const payment = await createCreatorPayment({ submissionId: 'submission', adminViewCountThreshold: views, adminUsAudiencePercent: 32, status: 'pending' })
+      expect(payment.amountCents).toBe(amounts[index])
+    })
+  }
+}
+test('MGC rereview pays only the additional earnings at its own audience-adjusted rate', async () => {
+  priorPayments.splice(0, priorPayments.length, { status: 'paid', amountCents: 3000 })
+  submission = { ...submission, creatorProfileId: 'creator', formatId: mgcTerms.formats[0].id, sprintId: 'MGC', sprintTerms: structuredClone(mgcTerms), status: 'in_review', approvedAmountCents: 3000, reviewRequestedAt: new Date(), analyticsScreenshotUrl: 'https://example.com/evidence.mp4' }
+  const reviewChecklist = sprintReviewItems(mgcTerms, mgcTerms.formats[0].id).map(({ id }) => ({ id, met: true, note: null }))
+  expect(await reviewCreatorResource({ ...approval(null, null), adminViewCountThreshold: 100000, adminUsAudiencePercent: 22.5, reviewChecklist })).toMatchObject({ approvedAmountCents: 4225 })
+  expect(await createCreatorPayment({ submissionId: 'submission', adminViewCountThreshold: 100000, adminUsAudiencePercent: 22.5, status: 'pending' })).toMatchObject({ amountCents: 1225 })
 })

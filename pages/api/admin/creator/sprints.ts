@@ -1,3 +1,5 @@
+import { db, schema } from '@/lib/db'
+import { asc } from 'drizzle-orm'
 import type { NextApiRequest, NextApiResponse } from 'next'
 import { requireCreatorAdmin } from '@/lib/admin/creator-auth'
 import {
@@ -17,8 +19,11 @@ export default async function handler(
 ) {
   try {
     await requireCreatorAdmin(req, res)
-    if (req.method === 'GET')
-      return json(res, 200, { sprints: await listCreatorSprints(true) })
+    res.setHeader('Cache-Control', 'private, no-store')
+    if (req.method === 'GET') {
+      const [sprints, creators] = await Promise.all([listCreatorSprints(true), db.select({ id: schema.creatorProfiles.id, displayName: schema.creatorProfiles.displayName, socialHandle: schema.creatorProfiles.socialHandle }).from(schema.creatorProfiles).orderBy(asc(schema.creatorProfiles.displayName))])
+      return json(res, 200, { sprints, creators })
+    }
     if (req.method === 'POST')
       return json(res, 200, {
         sprint: await saveCreatorSprint(parseBody(sprintInputSchema, req.body)),

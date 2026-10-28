@@ -1,3 +1,4 @@
+import { MgcSubmissionNotice } from './campaign-version-toggle'
 import { CampaignRequirementList } from './campaign-requirement-list'
 import { ExampleCarousel } from './campaign-examples'
 import { CampaignMilestoneStrip } from './campaign-milestones'
@@ -83,6 +84,7 @@ export function LaunchCampaignDetail({
           <p className={styles.eyebrow}>Mogging creator campaigns</p>
           <h1>{sprint.name}</h1>
           <p className={styles.description}>{sprint.description}</p>
+          <div className="mt-4"><MgcSubmissionNotice sprint={sprint} /></div>
           <div className={styles.metadata}>
             <span>
               <Clock3 size={14} />

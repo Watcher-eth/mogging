@@ -1,3 +1,4 @@
+import { campaignAudienceSchema, type CampaignAudience } from './campaign-access'
 import { creatorContentRestriction, SHARED_CONTENT_RESTRICTIONS } from '@/lib/creator/content-policy'
 import { z } from 'zod'
 import { creatorCampaignRule, creatorFormatElement } from './post-guidance'
@@ -6,6 +7,7 @@ import type { CreatorSubmissionFormat } from './formats'
 const paragraph = z.string().trim().min(1).max(2000)
 export const sprintTermsSchema = z
   .object({
+    mgcSourceCampaignId: z.string().uuid().optional(),
     bonusBudgetCents: z.number().int().nonnegative().max(100_000_000).optional(),
     milestones: z
       .array(
@@ -106,6 +108,7 @@ export const sprintInputSchema = z
     startsAt: z.string().datetime(),
     endsAt: z.string().datetime(),
     terms: sprintTermsSchema,
+    audience: campaignAudienceSchema.optional(),
   })
   .superRefine((value, ctx) => {
     if (Date.parse(value.endsAt) <= Date.parse(value.startsAt))
@@ -116,6 +119,7 @@ export const sprintInputSchema = z
   })
 export type SprintTerms = z.infer<typeof sprintTermsSchema>
 export type CreatorSprint = {
+  audience?: CampaignAudience
   id: string
   name: string
   description: string

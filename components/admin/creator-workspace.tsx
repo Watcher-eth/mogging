@@ -1,3 +1,4 @@
+import { getSubmissionPayoutEstimate, type AdminPayoutSelection } from '@/lib/admin/submission-payout'
 import { SubmissionHistory } from './submission-history'
 import { submissionBonusPayments, reviewAudienceBonuses } from '@/lib/creator/bonus-payments'
 import { CreatorExclusivityReview } from './creator-exclusivity-review'
@@ -10,7 +11,7 @@ import { BundledPayoutQueue, PayoutVideoBreakdown } from '@/components/admin/bun
 import * as Tabs from '@radix-ui/react-tabs'
 import { SubmissionConversation } from '@/components/creator/submission-conversation'
 import { CreatorSprintsPanel } from '@/components/admin/creator-sprints-panel'
-import { sprintPayoutCents, sprintReviewItems } from '@/lib/creator/sprints'
+import { sprintReviewItems } from '@/lib/creator/sprints'
 import * as Avatar from '@radix-ui/react-avatar'
 import { creatorAccountLabel } from '@/components/creator/types'
 import Image from 'next/image'
@@ -49,7 +50,7 @@ import { apiGet, apiPatch, apiPost, ApiClientError } from '@/lib/api/client'
 import { cn } from '@/lib/utils'
 import { CreatorProgramSettings } from '@/components/admin/creator-economics-dashboard'
 import { CreatorAttributionDashboard, CreatorAttributionReport } from '@/components/admin/creator-attribution-dashboard'
-import { calculateCreatorPayout, CREATOR_TIER1_AUDIENCE_TIERS, CREATOR_VIEW_THRESHOLDS } from '@/lib/creator/payouts'
+import { CREATOR_TIER1_AUDIENCE_TIERS, CREATOR_VIEW_THRESHOLDS } from '@/lib/creator/payouts'
 import { mergeCreatorSubmissionReviewResults, submissionReviewError, createSubmissionReviewDrafts } from '@/lib/creator/submission-review'
 import { SubmissionRequirementsReview } from '@/components/admin/submission-requirements-review'
 import { CreatorIcon, type CreatorIconName } from '@/components/creator/creator-icon'
@@ -594,11 +595,6 @@ function AttributionEvidence({ submission, metrics }: { submission: AdminSubmiss
   return <div className="mt-6 space-y-3 text-sm leading-6 text-zinc-500"><p>Clicks and revenue are derived from referral records and verified billing. Open Economics for post-level attribution and unmatched payment reasons.</p><p>Submitted {formatDate(submission.createdAt)}. {metrics ? `Historical manual metrics were last updated ${formatDate(metrics.updatedAt)}; they are retained for reference and excluded from live economics.` : 'No historical manual metrics.'}</p><Link className="inline-flex min-h-11 items-center font-medium text-sky-700 underline" href="/admin/economics">Open automatic economics</Link></div>
 }
 
-type AdminPayoutSelection = {
-  viewCountThreshold: number
-  usAudiencePercent: number | null
-}
-
 export function AdminPayoutDecision({
   submission,
   selection,
@@ -621,6 +617,7 @@ export function AdminPayoutDecision({
       <label className="grid gap-2 text-xs font-semibold text-zinc-700">Admin-approved views{submission.sprintTerms ? <input type="number" min="0" max="2000000000" className="creator-field" value={selection.viewCountThreshold} onChange={event => onViewCountChange(event.target.value)} /> : <Select value={selection.viewCountThreshold ? String(selection.viewCountThreshold) : undefined} onValueChange={onViewCountChange}><SelectTrigger aria-label="Admin-approved view count"><SelectValue placeholder="Choose final views" /></SelectTrigger><SelectContent>{CREATOR_VIEW_THRESHOLDS.map((threshold) => <SelectItem key={threshold.views} value={String(threshold.views)}>{threshold.label} views</SelectItem>)}</SelectContent></Select>}</label>
       <label className="grid gap-2 text-xs font-semibold text-zinc-700">Admin-approved audience{submission.sprintTerms ? <input type="number" min="0" max="100" step="0.1" className="creator-field" value={selection.usAudiencePercent} onChange={event => onAudienceChange(event.target.value)} /> : <Select value={selection.usAudiencePercent} onValueChange={onAudienceChange}><SelectTrigger aria-label="Admin-approved audience"><SelectValue /></SelectTrigger><SelectContent><SelectItem value="base">20%+ combined Tier-1 · base</SelectItem>{CREATOR_TIER1_AUDIENCE_TIERS.map((percentage) => <SelectItem key={percentage} value={String(percentage)}>{percentage === 40 ? '40%+ Tier 1' : `${percentage}% Tier 1`}</SelectItem>)}</SelectContent></Select>}</label>
     </div>
+    {submission.sprintTerms ? <p className="mt-3 text-xs leading-5 text-zinc-500">Automatic payout uses the saved rates for <strong className="font-semibold text-zinc-700">{submission.sprintName || (submission.sprintTerms.mgcSourceCampaignId ? 'Mogging Detailed Analysis MGC' : 'this submission’s campaign')}</strong>.</p> : null}
     <p className="mt-3 text-[11px] leading-5 text-zinc-500">These admin-approved values override the creator’s selection for payment.{estimate?.isCapped ? ' The $325 payout cap is applied.' : ''}</p>
   </section>
 }
@@ -724,11 +721,6 @@ function initialPayoutAmount(submission: AdminSubmission) {
   if (submission.reviewRequestedAt || submission.approvedAmountCents == null || !submission.reviewNote) return ''
   const estimate = getSubmissionPayoutEstimate({ viewCountThreshold: submission.adminViewCountThreshold || 0, usAudiencePercent: submission.adminUsAudiencePercent }, submission)
   return estimate && Math.round(estimate.payout * 100) === submission.approvedAmountCents ? '' : (submission.approvedAmountCents / 100).toFixed(2)
-}
-function getSubmissionPayoutEstimate(selection: AdminPayoutSelection, submission?: AdminSubmission) {
-  if (submission?.sprintTerms) return { payout: sprintPayoutCents(submission.sprintTerms, selection.viewCountThreshold, selection.usAudiencePercent) / 100, isCapped: false }
-  if (!selection.viewCountThreshold || !CREATOR_VIEW_THRESHOLDS.some((item) => item.views === selection.viewCountThreshold)) return null
-  return calculateCreatorPayout(selection.viewCountThreshold, true, selection.usAudiencePercent)
 }
 
 function normalizeAdminDashboard(data: AdminDashboard): AdminDashboard {

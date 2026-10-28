@@ -704,6 +704,7 @@ export const creatorOnboardingInvites = pgTable('creator_onboarding_invites', {
 })
 
 export const creatorSprints = pgTable('creator_sprints', {
+  audience: jsonb('audience').$type<import('../creator/campaign-access').CampaignAudience>().notNull().default({ mode: 'all', creatorIds: [] }),
   id: text('id').primaryKey().$defaultFn(() => crypto.randomUUID()),
   name: text('name').notNull(), description: text('description').notNull(),
   status: text('status').$type<'draft' | 'published' | 'ended'>().notNull().default('draft'),
