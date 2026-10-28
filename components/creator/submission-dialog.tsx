@@ -1,5 +1,7 @@
+import { campaignBudgetState, requestedIncrementCents, canReserveSubmission } from '@/lib/creator/campaign-budget-state'
+import { CampaignSubmissionBudget } from './campaign-submission-budget'
 import { campaignVersionGroups } from '@/lib/creator/campaign-versions'
-import { CampaignVersionToggle, MgcSubmissionNotice } from './campaign-version-toggle'
+import { CampaignVersionToggle } from './campaign-version-toggle'
 import { launchCampaign } from '@/lib/creator/campaign-launch'
 import { Disclosure, DisclosureSummary, AccordionContent } from '@/components/ui/accordion'
 import { TikTokAccountDialog } from './tiktok-anchor-onboarding'
@@ -83,7 +85,7 @@ export function SubmissionDialog({
   existingSubmission?: CreatorSubmission
   onSubmitted: () => Promise<void>
 }) {
-  const { data: campaigns, error: sprintError } = useSWR<{
+  const { data: campaigns, error: sprintError, mutate: refreshCampaigns } = useSWR<{
     sprints: CreatorSprint[]
   }>(open ? '/api/creator/sprints' : null, apiGet)
   const { data, error: dashboardError, mutate: refreshDashboard } = useSWR<CreatorDashboard>(
@@ -124,6 +126,9 @@ export function SubmissionDialog({
   }, [step])
   const campaign = campaigns?.sprints.find((item) => item.id === sprintId && (existingSubmission || sprintPhase(item) === 'active'))
   const sprint = campaign && { ...campaign, terms: existingSubmission?.sprintTerms || campaign.terms }
+  const expectedCents = sprint ? sprintPayoutCents(sprint.terms, Number(views), Number(audience)) : 0
+  const budgetRequestBlocked = sprint && !canReserveSubmission(campaignBudgetState(sprint).availableCents,
+    existingSubmission ? requestedIncrementCents(expectedCents, existingSubmission.approvedAmountCents ?? 0) : expectedCents, Boolean(existingSubmission))
   const minimumViews = minimumSubmissionViews(sprint?.terms)
   const format = sprint ? existingSubmission
     ? sprintFormat(sprint.terms, existingSubmission.formatId || '')
@@ -132,7 +137,7 @@ export function SubmissionDialog({
   const activeSprints =
     campaigns?.sprints.filter(
       (item) =>
-        sprintPhase(item) === 'active' && item.usedCents < item.budgetCents,
+        sprintPhase(item) === 'active',
     ) || []
   useEffect(() => {
     if (initialSprintId) setSprintId(initialSprintId)
@@ -169,7 +174,7 @@ export function SubmissionDialog({
     event.preventDefault()
     if (
       step === 1 &&
-      (!sprint || !activeSprints.some((item) => item.id === sprint.id))
+      (!sprint || campaignBudgetState(sprint).locked || !activeSprints.some((item) => item.id === sprint.id))
     )
       return toast.error('Choose an active campaign with available budget')
     if (step === 2) {
@@ -193,6 +198,7 @@ export function SubmissionDialog({
       }
 
     }
+    if (step === 3 && sprint && !existingSubmission && sprintPayoutCents(sprint.terms, Number(views), Number(audience)) > campaignBudgetState(sprint).availableCents) return toast.error('Your expected payout exceeds the available campaign budget. Pending requests reserve funds.')
     if (step === 3 && !checkMinimumViews()) return
     if (step === 3 && (!recording || !physicalConfirmed || !views || !audience))
       return toast.error(
@@ -203,6 +209,7 @@ export function SubmissionDialog({
   async function submit(event: FormEvent) {
     event.preventDefault()
     if (!checkMinimumViews()) return
+    if (sprint && !existingSubmission && (campaignBudgetState(sprint).locked || sprintPayoutCents(sprint.terms, Number(views), Number(audience)) > campaignBudgetState(sprint).availableCents)) return toast.error('Not enough campaign budget remains for this request. Refresh the campaign to see availability.')
     if (
       !recording ||
       !physicalConfirmed ||
@@ -248,6 +255,7 @@ export function SubmissionDialog({
       await onSubmitted()
       onOpenChange(false)
     } catch (error) {
+      if (error instanceof ApiClientError && error.status === 409) void refreshCampaigns()
       toast.error(
         error instanceof ApiClientError
           ? error.message
@@ -295,26 +303,28 @@ export function SubmissionDialog({
           >
             <div ref={contentRef} className="min-h-0 flex-1 overflow-y-auto px-5 pb-6 sm:px-7">
               <AnimatedDialogPanel contentKey={step} motionStyle="swish" direction={stepDirection} contentClassName="grid gap-4">
-                  {sprint ? <MgcSubmissionNotice sprint={sprint} /> : null}
+                  {sprint && step !== 1 ? <CampaignSubmissionBudget sprint={sprint} /> : null}
                   {step === 1 ? (
                     <>
                       {campaignVersionGroups(activeSprints).map((versions) => {
                         const item = versions.find(version => version.id === sprintId) || versions[0]
                         const isLaunch = Boolean(launchCampaign(item.terms))
                         const budgetCents = item.budgetCents + (isLaunch ? item.terms.bonusBudgetCents ?? 0 : 0)
-                        const usedCents = item.usedCents + (isLaunch ? item.bonusUsedCents ?? 0 : 0)
+                        const usedCents = campaignBudgetState(item).allocatedCents + (isLaunch ? item.bonusUsedCents ?? 0 : 0)
                         return (
                         <div key={versions[0].id} className="grid gap-3">
                         <CampaignVersionToggle campaigns={versions} selectedId={item.id} onChange={id => { setSprintId(id); setConfirmed([]); setAccountId('') }} />
+                        <CampaignSubmissionBudget sprint={item} />
                         <button
                           type="button"
+                          disabled={campaignBudgetState(item).locked}
                           onClick={() => {
                             setSprintId(item.id)
                             setConfirmed([])
                             setAccountId('')
                           }}
                           className={cn(
-                            'rounded-2xl border p-4 text-left',
+                            'rounded-2xl border p-4 text-left disabled:cursor-not-allowed disabled:opacity-60',
                             sprintId === item.id
                               ? 'creator-choice-selected'
                               : 'border-zinc-200',
@@ -575,8 +585,8 @@ export function SubmissionDialog({
               <Button
                 disabled={
                   busy ||
-                  (step === 1 && (!sprint || !format)) ||
-                  (step === 4 && confirmed.length !== checklist.length)
+                  (step === 1 && (!sprint || !format || budgetRequestBlocked)) ||
+                  (step === 4 && (confirmed.length !== checklist.length || budgetRequestBlocked))
                 }
               >
                 {busy ? (

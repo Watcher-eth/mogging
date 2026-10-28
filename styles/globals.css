@@ -227,6 +227,13 @@
 .creator-info-bubble { position: relative; display: flex; align-items: center; gap: 12px; min-height: 76px; margin-top: 8px; border-radius: 24px; background: #202123; padding: 16px 18px; color: rgb(255 255 255 / .72); font-size: 13px; line-height: 21px; }
 .creator-info-bubble::before { content: ""; position: absolute; top: -10px; left: 48px; border-inline: 11px solid transparent; border-bottom: 13px solid #202123; }
 .creator-info-bubble strong { color: white; font-weight: 500; }
+.creator-info-bubble-compact { min-height: 0; gap: 10px; border-radius: 18px; padding: 12px 14px; font-size: 12px; line-height: 18px; }
+.creator-info-bubble-compact::before { top: -7px; border-inline-width: 8px; border-bottom-width: 9px; }
+.creator-info-bubble-disclosure { display: block; }
+.creator-info-bubble-warning { background: #fff4cc; color: #786027; }
+.creator-info-bubble-warning::before { border-bottom-color: #fff4cc; }
+.creator-info-bubble-warning strong { color: #473510; }
+
 
 .creator-notice { background: #f5f6f7; color: #181a1d; border: 0; box-shadow: none; }
 

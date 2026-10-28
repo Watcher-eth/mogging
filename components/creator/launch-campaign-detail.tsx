@@ -1,4 +1,5 @@
-import { MgcSubmissionNotice } from './campaign-version-toggle'
+import { campaignBudgetState } from '@/lib/creator/campaign-budget-state'
+import { CampaignSubmissionBudget } from './campaign-submission-budget'
 import { CampaignRequirementList } from './campaign-requirement-list'
 import { ExampleCarousel } from './campaign-examples'
 import { CampaignMilestoneStrip } from './campaign-milestones'
@@ -51,7 +52,7 @@ export function LaunchCampaignDetail({
   const format = sprint.terms.formats[0];
   const minimum = sprint.terms.milestones[0].views;
   const canSubmit =
-    sprintPhase(sprint) === "active" && sprint.usedCents < sprint.budgetCents;
+    sprintPhase(sprint) === "active" && !campaignBudgetState(sprint).locked;
   const faqs = [
     [
       "When can I submit?",
@@ -84,7 +85,6 @@ export function LaunchCampaignDetail({
           <p className={styles.eyebrow}>Mogging creator campaigns</p>
           <h1>{sprint.name}</h1>
           <p className={styles.description}>{sprint.description}</p>
-          <div className="mt-4"><MgcSubmissionNotice sprint={sprint} /></div>
           <div className={styles.metadata}>
             <span>
               <Clock3 size={14} />
@@ -103,8 +103,8 @@ export function LaunchCampaignDetail({
         </div>
         <div className={styles.headerAction}>
           <div className={styles.headerBudget}>
-            <span>Total Budget</span>
-            <strong>{sprintMoney(sprint.usedCents + (sprint.bonusUsedCents ?? 0))}<span> / {sprintMoney(sprint.budgetCents + (sprint.terms.bonusBudgetCents ?? 0))}</span></strong>
+            <span>Total budget allocated</span>
+            <strong>{sprintMoney(campaignBudgetState(sprint).allocatedCents + (sprint.bonusUsedCents ?? 0))}<span> / {sprintMoney(sprint.budgetCents + (sprint.terms.bonusBudgetCents ?? 0))}</span></strong>
           </div>
           {canSubmit ? (
             <Link
@@ -114,6 +114,9 @@ export function LaunchCampaignDetail({
               Submit a post <ArrowRight size={16} />
             </Link>
           ) : null}
+          <div className={styles.headerMessages}>
+            <CampaignSubmissionBudget sprint={sprint} />
+          </div>
         </div>
       </header>
       <section className={styles.payments} aria-labelledby="payout-heading">
@@ -240,7 +243,7 @@ export function LaunchCampaignDetail({
             Submit a post <ArrowRight size={15} />
           </Link>
         ) : (
-          <span>Opens October 23 · 12 pm Los Angeles</span>
+          <span>{campaignBudgetState(sprint).locked ? 'Submissions locked · content budget fully allocated' : sprintPhase(sprint) === 'past' ? 'Campaign ended' : 'Submissions open when the campaign begins'}</span>
         )}
       </footer>
     </div>

@@ -19,7 +19,7 @@ const terms = launchCampaignTerms(source)
 const base: CreatorSprint = {
   id: 'bd0d7a74-3c39-44dd-98ec-21bf6667a714', name: source.name, description: source.description,
   status: 'published', budgetCents: 250000, startsAt: '2026-10-24T01:52:12.189Z', endsAt: '2026-11-23T02:52:12.189Z',
-  terms, usedCents: 0, counts: { pending: 0, in_review: 0, approved: 0, rejected: 0, paid: 0 },
+  terms, usedCents: 200000, pendingCents: 45000, sharedBudget: true, budgetPoolId: 'bd0d7a74-3c39-44dd-98ec-21bf6667a714', budgetPoolName: 'Mogging Detailed Analysis', counts: { pending: 0, in_review: 0, approved: 0, rejected: 0, paid: 0 },
   audience: { mode: 'all', creatorIds: [] },
 }
 

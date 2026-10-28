@@ -1,6 +1,7 @@
+import { lockCampaignBudget } from './campaign-budget-service'
 import { campaignAccessSql } from './campaign-access-sql'
 import { canSeeCampaign, DEFAULT_CAMPAIGN_AUDIENCE } from './campaign-access'
-import { campaignCommittedCents, campaignPaidCents } from './campaign-accounting'
+import { campaignCommittedCents, campaignPaidCents, campaignPendingCents, campaignContentBudgetCents, campaignBonusBudgetCents, campaignBonusCommittedCents, campaignBudgetPoolId } from './campaign-accounting'
 import { launchCampaign, LAUNCH_CONTENT_BUDGET_CENTS, LAUNCH_BONUS_BUDGET_CENTS } from './campaign-launch'
 import { and, desc, eq, inArray, sql } from 'drizzle-orm'
 import { db, schema } from '@/lib/db'
@@ -19,7 +20,7 @@ export async function getCampaignPreview(id: string): Promise<CampaignPreview | 
     name: schema.creatorSprints.name,
     description: schema.creatorSprints.description,
     status: schema.creatorSprints.status,
-    budgetCents: schema.creatorSprints.budgetCents,
+    budgetCents: campaignContentBudgetCents(sql`creator_sprints.id`),
     terms: schema.creatorSprints.terms,
     startsAt: schema.creatorSprints.startsAt,
     endsAt: schema.creatorSprints.endsAt,
@@ -73,8 +74,14 @@ export async function listCreatorSprints(
     id: schema.creatorSprints.id,
     paidCents: campaignPaidCents(sql`creator_sprints.id`),
     usedCents: campaignCommittedCents(sql`creator_sprints.id`),
-    bonusUsedCents: sql<number>`coalesce((select sum(p.amount_cents) from creator_payments p where p.bonus_sprint_id = creator_sprints.id and p.status <> 'cancelled'), 0)::int`,
-    bonusPaidCents: sql<number>`coalesce((select sum(p.amount_cents) from creator_payments p where p.bonus_sprint_id = creator_sprints.id and p.status = 'paid'), 0)::int`,
+    pendingCents: campaignPendingCents(sql`creator_sprints.id`),
+    budgetCents: campaignContentBudgetCents(sql`creator_sprints.id`),
+    bonusBudgetCents: campaignBonusBudgetCents(sql`creator_sprints.id`),
+    poolId: campaignBudgetPoolId(sql`creator_sprints.id`),
+    poolName: sql<string>`(select owner.name from creator_sprints owner where owner.id = ${campaignBudgetPoolId(sql`creator_sprints.id`)})`,
+    sharedBudget: sql<boolean>`(select count(*) > 1 from creator_sprints sibling where coalesce(sibling.budget_pool_id, sibling.id) = ${campaignBudgetPoolId(sql`creator_sprints.id`)})`,
+    bonusUsedCents: campaignBonusCommittedCents(sql`creator_sprints.id`),
+    bonusPaidCents: campaignBonusCommittedCents(sql`creator_sprints.id`, true),
   }).from(schema.creatorSprints).where(inArray(schema.creatorSprints.id, rows.map(row => row.id)))
   const spendingById = new Map(spending.map(row => [row.id, row]))
   return rows.map((row) => {
@@ -92,6 +99,12 @@ export async function listCreatorSprints(
     return {
       ...row,
       audience: admin ? row.audience : undefined,
+      budgetCents: spendingById.get(row.id)?.budgetCents ?? row.budgetCents,
+      terms: { ...row.terms, bonusBudgetCents: spendingById.get(row.id)?.bonusBudgetCents ?? row.terms.bonusBudgetCents },
+      pendingCents: spendingById.get(row.id)?.pendingCents ?? 0,
+      budgetPoolId: spendingById.get(row.id)?.poolId,
+      budgetPoolName: spendingById.get(row.id)?.poolName,
+      sharedBudget: spendingById.get(row.id)?.sharedBudget,
       startsAt: row.startsAt.toISOString(),
       endsAt: row.endsAt.toISOString(),
       usedCents: spendingById.get(row.id)?.usedCents ?? 0,
@@ -171,20 +184,22 @@ export async function saveCreatorSprint(
       if (profiles.length !== input.audience.creatorIds.length) throw new ApiError(400, 'One or more creators no longer exist')
     }
     if (input.id) {
+      const owner = await lockCampaignBudget(tx, input.id)
       const [existing] = await tx
         .select()
         .from(schema.creatorSprints)
         .where(eq(schema.creatorSprints.id, input.id))
         .for('update')
       if (!existing) throw new ApiError(404, 'Campaign not found')
+      if (existing.budgetPoolId && (input.budgetCents !== owner.budget_cents || input.terms.bonusBudgetCents !== owner.terms.bonusBudgetCents)) throw new ApiError(409, 'Edit the original campaign to change this shared budget')
       existingStatus = existing.status
       audience = input.audience ?? existing.audience
-      const [used] = await tx.execute<{ cents: number }>(sql`select ${campaignCommittedCents(input.id)} as cents`)
+      const [used] = await tx.execute<{ cents: number }>(sql`select ${campaignCommittedCents(input.id)} + ${campaignPendingCents(input.id)} as cents`)
       const contentBudget = existing.status === 'draft' && launchCampaign(input.terms) ? LAUNCH_CONTENT_BUDGET_CENTS : input.budgetCents
-      if (contentBudget < used.cents)
+      if (contentBudget < used.cents && contentBudget < owner.budget_cents)
         throw new ApiError(
           409,
-          'Budget cannot be below already committed earnings',
+          'Budget cannot be reduced below approved earnings and pending requests',
         )
     }
     const newLaunch = existingStatus === 'draft' && launchCampaign(input.terms)

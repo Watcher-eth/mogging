@@ -1,3 +1,4 @@
+import { CampaignSubmissionBudget } from '@/components/creator/campaign-submission-budget'
 import { DEFAULT_CAMPAIGN_AUDIENCE, type CampaignAudience } from '@/lib/creator/campaign-access'
 import { CampaignBudget } from '@/components/creator/campaign-budget'
 import { Disclosure, DisclosureSummary, AccordionContent } from '@/components/ui/accordion'
@@ -127,6 +128,7 @@ export function CreatorSprintsPanel({
                 <p className="mt-2 max-w-3xl text-sm leading-6 text-zinc-500">
                   {selected.description}
                 </p>
+                <div className="mt-4"><CampaignSubmissionBudget sprint={selected} /></div>
               </div>
               <Button variant="outline" onClick={() => setEditing(selected)}>
                 <Pencil className="size-4" />
@@ -685,8 +687,9 @@ function SprintEditor({
                 onChange={(e) => setDescription(e.target.value)}
               />
             </Field>
+            {sprint?.sharedBudget ? <p className="rounded-xl bg-zinc-50 p-3 text-xs leading-5 text-zinc-500">Shared with {sprint.budgetPoolName || 'Mogging Detailed Analysis'}. Both campaign versions draw from one content and bonus budget. Edit the original campaign to change the budget.</p> : null}
             <div className="grid gap-4 sm:grid-cols-3">
-              <Field label="Total budget (USD)">
+              <Field label="Content budget (USD)">
                 <input
                   required
                   type="number"
@@ -694,6 +697,7 @@ function SprintEditor({
                   step="0.01"
                   className={fieldClass}
                   value={budget}
+                  disabled={Boolean(sprint?.budgetPoolId && sprint.budgetPoolId !== sprint.id)}
                   onChange={(e) => setBudget(e.target.value)}
                 />
               </Field>

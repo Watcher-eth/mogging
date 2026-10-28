@@ -1,5 +1,6 @@
+import { lockCampaignBudget } from '@/lib/creator/campaign-budget-service'
 import { assertCreatorReferralPaymentsEligible, refreshCreatorReferralBonuses } from '@/lib/creator/creator-referrals'
-import { campaignCommittedCents } from '@/lib/creator/campaign-accounting'
+import { campaignCommittedCents, campaignPendingCents } from '@/lib/creator/campaign-accounting'
 import { refreshCreatorBonuses } from '@/lib/creator/bonus-service'
 import { hasLaunchCampaignBonuses } from '@/lib/creator/campaign-launch'
 import { recordReviewUpdate } from '@/lib/creator/submission-updates'
@@ -528,13 +529,17 @@ async function reviewSprintSubmission(input: Extract<CreatorAdminReviewInput, { 
         : reviewedPayoutCents(input, input.approvedAmountCents == null ? Math.max(preservedCents, calculated) : calculated, payments)
       : preservedCents || null
 
+    const budgetOwner = await lockCampaignBudget(tx, submission.sprintId)
     const [sprint] = await tx.select().from(schema.creatorSprints).where(eq(schema.creatorSprints.id, submission.sprintId)).for('update')
     if (!sprint) throw new ApiError(404, 'Sprint not found')
-    const [used] = await tx.execute<{ cents: number }>(sql`select ${campaignCommittedCents(sprint.id)} as cents`)
+    const [used] = await tx.execute<{ cents: number; other_pending_cents: number }>(sql`select ${campaignCommittedCents(sprint.id)} as cents, ${campaignPendingCents(sprint.id, submission.id)} as other_pending_cents`)
     const [transfer] = await tx.execute<{ amount_cents: number }>(sql`select amount_cents from creator_campaign_transfers where submission_id = ${submission.id}`)
     if ((amountCents || 0) < (transfer?.amount_cents ?? 0)) throw new ApiError(409, 'Previously approved earnings from the original campaign must be preserved')
     const previous = submission.approvedAmountCents || 0
-    if (used.cents - previous + (amountCents || 0) > sprint.budgetCents) throw new ApiError(409, 'This approval would exceed the sprint budget')
+    const nextPendingCents = ['pending', 'in_review'].includes(input.status)
+      ? Math.max(0, sprintPayoutCents(submission.sprintTerms, submission.viewCountThreshold ?? 0, submission.usAudiencePercent) - (amountCents || 0)) : 0
+    const allocatedAfterReview = used.cents - previous + (amountCents || 0) + (used.other_pending_cents ?? 0) + nextPendingCents
+    if (input.status !== 'rejected' && allocatedAfterReview > budgetOwner.budget_cents) throw new ApiError(409, 'This review would exceed the shared campaign budget after pending requests')
     const [record] = await tx.update(schema.creatorSubmissions).set({ status: input.status, reviewRequestedAt: ['approved', 'rejected'].includes(input.status) ? null : submission.reviewRequestedAt, approvedAmountCents: amountCents, adminViewCountThreshold: input.adminViewCountThreshold, adminUsAudiencePercent: input.adminUsAudiencePercent, reviewChecklist: reviewChecklist.map(item => ({ ...item, note: item.note || null })), reviewNote: input.reviewNote || null, updatedAt: new Date() }).where(eq(schema.creatorSubmissions.id, submission.id)).returning()
     await appendReviewMessage(tx, submission, input.reviewNote, reviewerId)
     await recordReviewUpdate(tx, submission, { ...input, approvedAmountCents: record.approvedAmountCents })

@@ -1,3 +1,4 @@
+import { campaignBudgetState } from './campaign-budget-state'
 import { campaignAudienceSchema, type CampaignAudience } from './campaign-access'
 import { creatorContentRestriction, SHARED_CONTENT_RESTRICTIONS } from '@/lib/creator/content-policy'
 import { z } from 'zod'
@@ -119,6 +120,10 @@ export const sprintInputSchema = z
   })
 export type SprintTerms = z.infer<typeof sprintTermsSchema>
 export type CreatorSprint = {
+  budgetPoolId?: string | null
+  budgetPoolName?: string
+  sharedBudget?: boolean
+  pendingCents?: number
   audience?: CampaignAudience
   id: string
   name: string
@@ -163,7 +168,7 @@ export function sprintPhase(
 export function creatorCampaignFormats(campaigns: CreatorSprint[], now = Date.now()) {
   const order: Record<string, number> = { 'general-creator-video-v1': 0, 'custom-video-v1': 1 }
   return campaigns
-    .filter((campaign) => sprintPhase(campaign, now) === 'active' && campaign.usedCents < campaign.budgetCents)
+    .filter((campaign) => sprintPhase(campaign, now) === 'active' && !campaignBudgetState(campaign).locked)
     .flatMap((campaign) => sprintFormats(campaign.terms)
       .map((format) => ({ key: `${campaign.id}:${format.id}`, campaignId: campaign.id, campaignName: campaign.name, format })))
     .sort((a, b) => (order[a.format.id] ?? 2) - (order[b.format.id] ?? 2))

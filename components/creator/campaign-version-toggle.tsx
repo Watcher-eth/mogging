@@ -1,5 +1,4 @@
 import type { CreatorSprint } from '@/lib/creator/sprints'
-import { MGC_SUBMISSION_GUIDANCE } from '@/lib/creator/detailed-analysis-variant'
 
 export function CampaignVersionToggle({ campaigns, selectedId, onChange }: {
   campaigns: CreatorSprint[]
@@ -16,8 +15,4 @@ export function CampaignVersionToggle({ campaigns, selectedId, onChange }: {
       className={`min-h-11 rounded-xl px-4 py-3 text-sm font-medium transition-colors focus-visible:outline-[#00A8EF] active:scale-[0.98] ${campaign.id === selectedId ? 'bg-white text-zinc-950 shadow-sm' : 'text-zinc-500 hover:text-zinc-900'}`}
     >{campaign.name}</button>)}
   </div>
-}
-
-export function MgcSubmissionNotice({ sprint }: { sprint: Pick<CreatorSprint, 'terms'> }) {
-  return sprint.terms.mgcSourceCampaignId ? <p className="rounded-xl border border-sky-100 bg-sky-50 px-4 py-3 text-sm leading-6 text-sky-900">{MGC_SUBMISSION_GUIDANCE}</p> : null
 }

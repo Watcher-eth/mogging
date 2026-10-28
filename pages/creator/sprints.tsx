@@ -1,5 +1,7 @@
+import { campaignBudgetState } from '@/lib/creator/campaign-budget-state'
+import { CampaignSubmissionBudget } from '@/components/creator/campaign-submission-budget'
 import { campaignVersionGroups } from '@/lib/creator/campaign-versions'
-import { CampaignVersionToggle, MgcSubmissionNotice } from '@/components/creator/campaign-version-toggle'
+import { CampaignVersionToggle } from '@/components/creator/campaign-version-toggle'
 import { ContentRestrictions } from '@/components/creator/content-restrictions'
 import { LaunchCampaignDetail } from '@/components/creator/launch-campaign-detail'
 import { launchCampaign } from '@/lib/creator/campaign-launch'
@@ -166,7 +168,6 @@ function SprintsContent() {
                     <p className="mt-2 text-sm text-zinc-500">
                       {sprint.description}
                     </p>
-                    <div className="mt-3"><MgcSubmissionNotice sprint={sprint} /></div>
                     <div className="my-5 border-y border-zinc-100 py-4">
                       <SprintBudget sprint={sprint} />
                     </div>
@@ -218,13 +219,14 @@ function SprintDetail({ sprint }: { sprint: CreatorSprint }) {
         <ArrowLeft className="size-4" />
         Active campaigns
       </Link>
+      <CampaignSubmissionBudget sprint={sprint} />
       <CreatorHeader
         eyebrow="Campaign"
         title={sprint.name}
         description={sprint.description}
         action={
           sprintPhase(sprint) === 'active' &&
-          sprint.usedCents < sprint.budgetCents ? (
+          !campaignBudgetState(sprint).locked ? (
             <Button asChild>
               <Link href={`/creator/submissions?new=1&sprint=${sprint.id}`}>
                 <Plus />

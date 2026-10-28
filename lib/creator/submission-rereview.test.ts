@@ -1,3 +1,4 @@
+import { defaultCreatorSprintTerms } from './sprint-defaults'
 import { beforeEach, expect, mock, test } from 'bun:test'
 import * as schema from '@/lib/db/schema'
 let submission: any
@@ -9,6 +10,7 @@ let messages: any[] = []
 let assignment: any
 let assignmentCalls = 0
 const tx = {
+  execute: async () => [{ id: 'owner', budget_cents: 100000, terms: {}, committed: submission.approvedAmountCents ?? 0, pending: 0 }],
   query: { creatorPayments: { findMany: async () => payments } },
   select: () => ({ from: () => ({ where: () => ({ for: async () => [submission] }) }) }),
   insert: () => ({ values: async (value: any) => { messages.push(value) } }),
@@ -25,7 +27,7 @@ const input = { analyticsVideoUrl:'https://untrusted.example/fake.mp4', analytic
   analyticsStorageKey:'creators/user/submission-analytics/00000000-0000-4000-8000-000000000001.mp4', analyticsContentType:'video/mp4' as const,
   analyticsSizeBytes:100, viewCountThreshold:40000, usAudiencePercent:40 }
 beforeEach(() => {
-  submission = {id:'submission', creatorProfileId:'creator', sprintId:'campaign', sprintTerms:{}, status:'paid', approvedAmountCents:1000, analyticsStorageKey:'old-key', analyticsScreenshotUrl:'https://media.example/old.mp4', viewCountThreshold:20000}
+  submission = {id:'submission', creatorProfileId:'creator', sprintId:'campaign', sprintTerms:defaultCreatorSprintTerms(), status:'paid', approvedAmountCents:1000, analyticsStorageKey:'old-key', analyticsScreenshotUrl:'https://media.example/old.mp4', viewCountThreshold:20000}
   payments = [{status:'paid',amountCents:1000}]; verified=0; writes=0; uploadExists=true; messages=[]; assignment=undefined; assignmentCalls=0
 })
 test('fresh analytics reopen the same submission and preserve prior approved earnings', async () => {
@@ -79,7 +81,7 @@ test('minimum views and physical recording confirmation remain required', async 
 })
 
 test('a fresh expired-campaign rereview applies the new assignment without repricing prior earnings', async () => {
-  assignment = { sprintId: 'general', sprintTerms: {}, formatId: 'general-format', reviewChecklist: null }
+  assignment = { sprintId: 'general', sprintTerms: defaultCreatorSprintTerms(), formatId: 'general-format', reviewChecklist: null }
   const updated = await requestSubmissionReview('user', 'submission', input)
   expect(updated).toMatchObject({ sprintId: 'general', formatId: 'general-format', approvedAmountCents: 1000, status: 'in_review' })
   expect(assignmentCalls).toBe(1)

@@ -1,13 +1,14 @@
+import { lockCampaignBudget, requireSubmissionBudget } from './campaign-budget-service'
+import { requestedIncrementCents } from './campaign-budget-state'
 import { canSeeCampaign } from './campaign-access'
 import { attributeNewCreator } from './creator-referrals'
 import { expiredRereviewAssignment } from './rereview-campaign'
-import { campaignCommittedCents } from './campaign-accounting'
 import { getCreatorSubmissionUpdates, recordSubmissionUpdate } from './submission-updates'
 import { resolveCreatorPostLink, rethrowCreatorPostConflict } from './post-identity'
 import { accountFollowers, followersFromOAuth, publishingTikTokHandle } from './tiktok-anchor'
 import { resolveTikTokFollowers } from './tiktok-followers'
 import { submissionUnreadCount } from '@/lib/creator/submission-messages'
-import { sprintPhase, sprintFormat } from './sprints'
+import { sprintPayoutCents, sprintPhase, sprintFormat } from './sprints'
 import type { TikTokUserInfo } from '@/lib/auth/tiktok-api'
 import { creatorAssetPublicUrl, verifyCreatorRecordingUpload } from '@/lib/storage/videos'
 import { and, desc, eq, getTableColumns, isNotNull, isNull, or, sql } from 'drizzle-orm'
@@ -374,11 +375,10 @@ export async function createCreatorSubmission(userId: string, input: CreatorSubm
     await tx.execute(sql`select pg_advisory_xact_lock(hashtextextended(${postKey}, 0))`)
     const previousPost = await tx.query.creatorSubmissions.findFirst({ where: or(eq(schema.creatorSubmissions.postKey, postKey), eq(schema.creatorSubmissions.postUrl, input.postUrl)) })
     if (previousPost && previousPost.id !== input.registeredPostId) throw new CreatorServiceError(409, 'This video has already been submitted. Request a rereview on the original submission instead.')
+    await lockCampaignBudget(tx, sprint.id)
     const [currentSprint] = await tx.select().from(schema.creatorSprints).where(eq(schema.creatorSprints.id, sprint.id)).for('update')
     if (currentSprint && !canSeeCampaign(currentSprint.audience, profile.id)) throw new CreatorServiceError(404, 'Campaign not found')
     if (!currentSprint || currentSprint.updatedAt.getTime() !== sprint.updatedAt.getTime() || sprintPhase({ ...currentSprint, startsAt: currentSprint.startsAt.toISOString(), endsAt: currentSprint.endsAt.toISOString() }) !== 'active') throw new CreatorServiceError(409, 'Campaign changed. Refresh its terms before submitting')
-    const [used] = await tx.execute<{ cents: number }>(sql`select ${campaignCommittedCents(sprint.id)} as cents`)
-    if (used.cents >= currentSprint.budgetCents) throw new CreatorServiceError(409, 'This campaign’s budget is fully committed')
     const draft = input.registeredPostId ? await tx.query.creatorSubmissions.findFirst({ where: and(eq(schema.creatorSubmissions.id, input.registeredPostId), eq(schema.creatorSubmissions.creatorProfileId, profile.id)) }) : null
     if (input.registeredPostId && (!draft?.isDraft || draft.sprintId !== sprint.id || draft.formatId !== format.id || draft.socialAccountId !== socialAccount?.id)) throw new CreatorServiceError(409, 'Choose the registered post matching this campaign, format and account')
     if (draft) {
@@ -386,6 +386,7 @@ export async function createCreatorSubmission(userId: string, input: CreatorSubm
       if (!input.postedAt && !draft.postedAt) throw new CreatorServiceError(400, 'Add this post’s publication time')
       if (!code || !captionContainsCreatorCode(input.caption || draft.caption || '', code.slug)) throw new CreatorServiceError(400, 'Include the prepared post’s exact creator code in its published caption')
     }
+    await requireSubmissionBudget(tx, sprint.id, sprintPayoutCents(draft?.sprintTerms || sprint.terms, input.viewCountThreshold, input.usAudiencePercent))
     const values = {
       creatorProfileId: profile.id,
       socialAccountId: socialAccount?.id || null,
@@ -454,6 +455,9 @@ export async function requestSubmissionReview(userId: string, submissionId: stri
     const assignment = await expiredRereviewAssignment(tx, submission, now)
     const minimumViews = minimumSubmissionViews(assignment?.sprintTerms ?? submission.sprintTerms)
     if (input.viewCountThreshold < minimumViews) throw new CreatorServiceError(400, `This campaign requires at least ${minimumViews.toLocaleString('en-US')} views`)
+    const budgetCampaignId = assignment?.sprintId ?? submission.sprintId
+    const increment = requestedIncrementCents(sprintPayoutCents(assignment?.sprintTerms ?? submission.sprintTerms, input.viewCountThreshold, input.usAudiencePercent), submission.approvedAmountCents ?? 0)
+    await requireSubmissionBudget(tx, budgetCampaignId, increment, { rereview: true, excludeSubmissionId: submission.id, committedAdjustmentCents: assignment ? submission.approvedAmountCents ?? 0 : 0 })
     await tx.insert(schema.creatorSubmissionMessages).values({ submissionId, authorUserId: userId, authorRole: 'creator', body: `Submitted fresh analytics for review: ${input.viewCountThreshold.toLocaleString('en-US')} views · ${input.usAudiencePercent}% Tier 1 audience.${submission.analyticsScreenshotUrl ? ` Previous evidence: ${submission.analyticsScreenshotUrl} (${submission.viewCountThreshold ?? 'unrecorded'} views).` : ''}` })
     const [record] = await tx.update(schema.creatorSubmissions).set({ ...assignment, analyticsScreenshotUrl: creatorAssetPublicUrl(input.analyticsStorageKey), analyticsStorageKey: input.analyticsStorageKey, analyticsContentType: input.analyticsContentType, analyticsSizeBytes: input.analyticsSizeBytes, viewCountThreshold: input.viewCountThreshold, usAudiencePercent: input.usAudiencePercent, status: 'in_review', reviewRequestedAt: now, updatedAt: now }).where(eq(schema.creatorSubmissions.id, submission.id)).returning()
     await recordSubmissionUpdate(tx, submissionId, 'rereview_requested', null, now)

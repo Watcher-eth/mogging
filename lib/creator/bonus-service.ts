@@ -1,6 +1,8 @@
+import { lockCampaignBudget } from './campaign-budget-service'
+import { campaignBonusCommittedCents } from './campaign-accounting'
 import { bonusTargetPayments } from './bonus-payments'
 import { createHash } from 'node:crypto'
-import { and, asc, eq, inArray, ne, sql } from 'drizzle-orm'
+import { and, asc, eq, inArray, sql } from 'drizzle-orm'
 import { db, schema } from '@/lib/db'
 import { campaignBonusTargets, AUDIENCE_BONUS_MAX_CLAIMS, type CampaignBonusProgress } from './campaign-bonuses'
 import { getCreatorConversionReport } from './conversion-service'
@@ -49,12 +51,12 @@ export async function syncCreatorCampaignBonuses(creatorProfileId: string, deadl
     }
     let audienceAwards = payments.filter(payment => payment.bonusKey?.startsWith('audience:') && payment.status !== 'cancelled').length
     let created = 0
-    for (const campaign of campaigns) {
+    for (const campaign of [...campaigns].sort((a, b) => (a.budgetPoolId ?? a.id).localeCompare(b.budgetPoolId ?? b.id))) {
       if (Date.now() >= deadline) break
       if (!launchCampaign(campaign.terms) || !campaign.terms.bonusBudgetCents || campaign.status === 'draft' || campaign.startsAt.getTime() > Date.now()) continue
-      const [locked] = await tx.select().from(schema.creatorSprints).where(eq(schema.creatorSprints.id, campaign.id)).for('update')
-      const budget = locked.terms.bonusBudgetCents ?? 0
-      const [committed] = await tx.select({ cents: sql<number>`coalesce(sum(${schema.creatorPayments.amountCents}), 0)::int` }).from(schema.creatorPayments).where(and(eq(schema.creatorPayments.bonusSprintId, campaign.id), ne(schema.creatorPayments.status, 'cancelled')))
+      const owner = await lockCampaignBudget(tx, campaign.id)
+      const budget = owner.terms.bonusBudgetCents ?? 0
+      const [committed] = await tx.execute<{ cents: number }>(sql`select ${campaignBonusCommittedCents(campaign.id)} as cents`)
       let remaining = budget - committed.cents
       const approved = posts.filter(post => hasLaunchCampaignBonuses(post) && post.sprintId === campaign.id && ['approved', 'paid'].includes(post.status) && (post.approvedAmountCents ?? 0) > 0)
       const periodPosts = posts.filter(post => hasLaunchCampaignBonuses(post) && (post.createdAt >= campaign.startsAt || transferredIds.has(post.id)) && post.createdAt < campaign.endsAt)

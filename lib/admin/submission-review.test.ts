@@ -9,9 +9,11 @@ import { TIKTOK_ANCHOR_REQUIREMENT } from '@/lib/creator/post-guidance'
 
 let submission: Record<string, any>
 let writes = 0
+let otherPendingCents = 0
+let poolBudgetCents = 100000
 const priorPayments = [{ status: 'paid', amountCents: 1300 }]
 const tx = {
-  execute: async () => [{ cents: submission.approvedAmountCents || 0, amount_cents: 0 }],
+  execute: async () => [{ id: 'budget-owner', budget_cents: poolBudgetCents, terms: {}, cents: submission.approvedAmountCents || 0, amount_cents: 0, other_pending_cents: otherPendingCents }],
   query: { creatorSubmissions: { findFirst: async () => undefined }, creatorPayments: { findMany: async () => priorPayments, findFirst: async () => undefined }, creatorProfiles: { findFirst: async () => ({ id: 'creator', authStatus: 'pending', paymentOption: 'paypal', paypalEmail: 'creator@example.com', bundledPayouts: false }) } },
   select: (fields?: unknown) => ({ from: (table: unknown) => ({ where: () => fields
     ? Promise.resolve([{ cents: submission.approvedAmountCents || 0 }])
@@ -31,7 +33,7 @@ const input = () => {
   if (parsed.resource !== 'submission') throw new Error('Expected submission input')
   return parsed
 }
-beforeEach(() => { priorPayments.splice(0, priorPayments.length, { status: 'paid', amountCents: 1300 }); submission = { id: 'submission', formatId: 'custom-video-v1', status: 'pending', reviewNote: null }; writes = 0 })
+beforeEach(() => { priorPayments.splice(0, priorPayments.length, { status: 'paid', amountCents: 1300 }); submission = { id: 'submission', formatId: 'custom-video-v1', status: 'pending', reviewNote: null }; writes = 0; otherPendingCents = 0; poolBudgetCents = 100000 })
 
 test('rejection persists only selected failures and their creator-visible feedback', async () => {
   const saved = await reviewCreatorResource(input())
@@ -224,4 +226,17 @@ test('MGC rereview pays only the additional earnings at its own audience-adjuste
   const reviewChecklist = sprintReviewItems(mgcTerms, mgcTerms.formats[0].id).map(({ id }) => ({ id, met: true, note: null }))
   expect(await reviewCreatorResource({ ...approval(null, null), adminViewCountThreshold: 100000, adminUsAudiencePercent: 22.5, reviewChecklist })).toMatchObject({ approvedAmountCents: 4225 })
   expect(await createCreatorPayment({ submissionId: 'submission', adminViewCountThreshold: 100000, adminUsAudiencePercent: 22.5, status: 'pending' })).toMatchObject({ amountCents: 1225 })
+})
+
+
+test('MGC approvals protect other pending reservations in the shared original budget', async () => {
+  priorPayments.length = 0
+  poolBudgetCents = 7000
+  otherPendingCents = 1000
+  submission = { ...submission, creatorProfileId: 'creator', formatId: mgcTerms.formats[0].id, sprintId: 'MGC', sprintTerms: mgcTerms, analyticsScreenshotUrl: 'https://example.com/evidence.mp4' }
+  const reviewChecklist = sprintReviewItems(mgcTerms, mgcTerms.formats[0].id).map(({ id }) => ({ id, met: true, note: null }))
+  await expect(reviewCreatorResource({ ...approval(null,null), adminViewCountThreshold:100000, adminUsAudiencePercent:32, reviewChecklist })).rejects.toThrow('pending requests')
+  expect(writes).toBe(0)
+  otherPendingCents = 500
+  expect(await reviewCreatorResource({ ...approval(null,null), adminViewCountThreshold:100000, adminUsAudiencePercent:32, reviewChecklist })).toMatchObject({approvedAmountCents:6500})
 })

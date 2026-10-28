@@ -1,4 +1,5 @@
 import {
+  type AnyPgColumn,
   boolean,
   check,
   index,
@@ -704,6 +705,7 @@ export const creatorOnboardingInvites = pgTable('creator_onboarding_invites', {
 })
 
 export const creatorSprints = pgTable('creator_sprints', {
+  budgetPoolId: text('budget_pool_id').references((): AnyPgColumn => creatorSprints.id),
   audience: jsonb('audience').$type<import('../creator/campaign-access').CampaignAudience>().notNull().default({ mode: 'all', creatorIds: [] }),
   id: text('id').primaryKey().$defaultFn(() => crypto.randomUUID()),
   name: text('name').notNull(), description: text('description').notNull(),

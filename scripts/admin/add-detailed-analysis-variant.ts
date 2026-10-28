@@ -28,7 +28,7 @@ try {
     }
     if (source.audience.mode !== 'all') throw new Error('Source already has custom visibility; review before applying')
     const creatorIds = creators.map(creator => creator.id)
-    const values = { id: variantId, name: 'Mogging Detailed Analysis MGC', description: source.description, status: source.status, budgetCents: source.budgetCents, startsAt: source.startsAt, endsAt: source.endsAt, terms, audience: { mode: 'selected' as const, creatorIds } }
+    const values = { budgetPoolId: source.budgetPoolId ?? source.id, id: variantId, name: 'Mogging Detailed Analysis MGC', description: source.description, status: source.status, budgetCents: source.budgetCents, startsAt: source.startsAt, endsAt: source.endsAt, terms, audience: { mode: 'selected' as const, creatorIds } }
     if (apply) {
       await tx.insert(schema.creatorSprints).values(values)
       const after = await tx.query.creatorSprints.findMany({ orderBy: schema.creatorSprints.id })
