@@ -15,7 +15,8 @@ export function discordConfig() {
   const botToken = process.env.DISCORD_BOT_TOKEN
   const clientSecret = process.env.DISCORD_CLIENT_SECRET
   const guildId = process.env.DISCORD_GUILD_ID
-  if (!applicationId || !publicKey || !botToken || !clientSecret || !guildId) throw new ApiError(503, 'Discord support is not configured yet')
+  const missing = Object.entries({ DISCORD_APPLICATION_ID: applicationId, DISCORD_PUBLIC_KEY: publicKey, DISCORD_BOT_TOKEN: botToken, DISCORD_CLIENT_SECRET: clientSecret, DISCORD_GUILD_ID: guildId }).filter(([, value]) => !value).map(([key]) => key)
+  if (!applicationId || !publicKey || !botToken || !clientSecret || !guildId) throw new ApiError(503, `Discord support is not configured yet. Missing server settings: ${missing.join(', ')}`)
   return { applicationId, publicKey, botToken, clientSecret, guildId, redirectUri: `${portalOrigin()}${CALLBACK_PATH}` }
 }
 export function discordConfigured() { try { discordConfig(); return true } catch { return false } }
