@@ -1,0 +1,109 @@
+{
+  "timezone_validation": [
+    {
+      "timezone": "Asia/Saigon",
+      "devices": "1",
+      "first_device_update": "2026-10-26 06:05:05.779261+00",
+      "last_device_update": "2026-10-26 06:05:05.779261+00"
+    },
+    {
+      "timezone": "Europe/Kiev",
+      "devices": "1",
+      "first_device_update": "2026-10-26 19:13:10.784694+00",
+      "last_device_update": "2026-10-26 19:13:10.784694+00"
+    }
+  ],
+  "unfinished_receipts": [
+    {
+      "type": "stripe_reconciliation",
+      "records": "1161",
+      "oldest": "2026-10-21 17:00:48.629766",
+      "latest": "2026-10-28 22:35:52.474366"
+    }
+  ],
+  "failed_reports": [
+    {
+      "failure_reason": "The generated report could not be validated. Please retry; your scan credit is still available.",
+      "reports": "5",
+      "accounts": "2",
+      "first": "2026-10-25 02:00:54.48451",
+      "last": "2026-10-27 06:36:33.23726"
+    }
+  ],
+  "recent_paid_failure_recovery": [
+    {
+      "failures": "2",
+      "at": "2026-10-25 02:00:17.471",
+      "later_success": true,
+      "later_cancel": true
+    },
+    {
+      "failures": "3",
+      "at": "2026-10-27 06:28:18.117",
+      "later_success": true,
+      "later_cancel": false
+    }
+  ],
+  "reconciliation_checkpoints": [
+    {
+      "occurred_at": "2026-10-24 22:35:48.37",
+      "properties": {
+        "provider": "stripe",
+        "covered_since": 1792877448,
+        "covered_until": 1792881348,
+        "lookback_days": null,
+        "webhook_ready": true,
+        "events_checked": 1
+      }
+    },
+    {
+      "occurred_at": "2026-10-24 22:30:48.573",
+      "properties": {
+        "provider": "stripe",
+        "covered_since": 1792877148,
+        "covered_until": 1792881048,
+        "lookback_days": null,
+        "webhook_ready": true,
+        "events_checked": 1
+      }
+    },
+    {
+      "occurred_at": "2026-10-24 22:25:48.351",
+      "properties": {
+        "provider": "stripe",
+        "covered_since": 1792876848,
+        "covered_until": 1792880748,
+        "lookback_days": null,
+        "webhook_ready": true,
+        "events_checked": 1
+      }
+    },
+    {
+      "occurred_at": "2026-10-24 22:20:48.282",
+      "properties": {
+        "provider": "stripe",
+        "covered_since": 1792876548,
+        "covered_until": 1792880448,
+        "lookback_days": null,
+        "webhook_ready": true,
+        "events_checked": 1
+      }
+    }
+  ],
+  "protocol_usage": [
+    {
+      "event_name": "protocol_viewed",
+      "events": "112",
+      "accounts": "24"
+    },
+    {
+      "event_name": "protocol_task_completed",
+      "events": "5",
+      "accounts": "4"
+    }
+  ],
+  "push_reward_query": {
+    "ok": true,
+    "rows": 0
+  }
+}

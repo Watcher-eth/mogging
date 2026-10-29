@@ -1,41 +1,21 @@
 .groups { container-type: inline-size; min-width: 0; }
 .grid { display: grid; grid-template-columns: minmax(0,1fr); gap: 12px; }
 .full { grid-column: 1 / -1; }
-.track { position: relative; width: 100%; margin: 16px 0 8px; isolation: isolate; border-radius: 99px; background: #f0f1f3; box-shadow: inset 0 1px 3px #0000000d, 0 1px 0 white; }
-.capsule { height: 12px; }
-.rail { height: 12px; }
-.tint { position: absolute; inset: 0; border-radius: inherit; opacity: .55; filter: blur(2px); }
-.track::after { content: ''; position: absolute; inset: 1px; border-radius: inherit; background: linear-gradient(#ffffff75,transparent 65%); border: 1px solid #ffffff80; pointer-events: none; }
-.thumb { position: absolute; z-index: 1; top: 50%; width: 10px; height: 18px; transform: translate(-50%,-50%); border-radius: 6px; background: #ffffffbc; border: 1px solid white; backdrop-filter: blur(6px); box-shadow: 0 1px 5px #00000035, inset 0 0 3px white; }
-.secondary { height: 10px; width: 6px; background: #18181b; border-color: #ffffffbd; }
-.rail .thumb { width: 10px; height: 18px; }
-.orbit { width: min(240px,100%); margin: 0 auto; }
-.orbitHalf { display: grid; grid-template-rows: auto minmax(170px,1fr) auto; min-height: 270px; row-gap: 16px; }
-.orbitHalf .orbit { align-self: center; }
-.orbitHalf .valueRow { margin-top: 0; }
-.valueRow { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; }
-.orbitFull { display: grid; grid-template-columns: minmax(0,1fr) 120px; align-items: center; column-gap: 16px; }
-.orbitFull > p:first-child { grid-column: 1; }
-.orbitFull > .valueRow { grid-column: 1; grid-row: 2; }
-.orbitFull .orbit { grid-column: 2; grid-row: 1 / 3; width: 120px; margin: 16px 0; }
-.orbit svg { display: block; width: 100%; }
-.enter { animation: enter 220ms cubic-bezier(.23,1,.32,1); }
-@keyframes enter { from { opacity: 0; transform: translateY(5px); } to { opacity: 1; transform: translateY(0); } }
-@container (min-width: 280px) { .grid { grid-template-columns: repeat(2,minmax(0,1fr)); } }
-@media (prefers-reduced-motion: reduce) { .enter { animation: none; } }
-/* Preview uses the same shell and overlays; only its column sizing is adjusted. */
+.metric { display: flex; min-width: 0; min-height: 180px; flex-direction: column; justify-content: space-between; gap: 18px; border-radius: 24px; padding: 20px; background: linear-gradient(145deg,#fcfcfd,#f8f9fb99); }
+.metricHeader { display: flex; align-items: baseline; justify-content: space-between; gap: 14px; }
+.observation { min-height: 124px; }
+.scoreOnly .metricHeader { flex: 1; flex-direction: column; align-items: stretch; }
+.scoreOnly .score { align-self: flex-end; margin-top: auto; font-size: clamp(36px,5cqw,54px); }
+.metricHeader > p:first-child { min-width: 0; }
+.score { flex-shrink: 0; font-size: 24px; font-weight: 400; letter-spacing: -.045em; font-variant-numeric: tabular-nums; }
+.score span { color: #83909d; font-size: 12px; }
+.valueRow { margin-top: 12px; font-size: 20px; line-height: 1.3; letter-spacing: -.035em; }
+@container (min-width: 420px) { .grid { grid-template-columns: repeat(2,minmax(0,1fr)); } .full:not(.observation) { min-height: 210px; } }
 @media (min-width: 1024px) {
-  .previewShell > div > aside, .reportShell > div > aside { position: static; align-self: start; }
-  .previewShell > div { grid-template-columns: 200px minmax(0,1fr); gap: 40px; }
-  .previewShell > div > aside h2 { font-size: 36px; }
-  .previewShell > div > section > div { grid-template-columns: minmax(0,1fr) minmax(0,1fr); align-items: start; }
-  .previewShell > div > section > div > div:first-child { position: sticky; top: 96px; }
-}
-.previewShell > div > section > div > div:first-child img { object-fit: contain; }
-.previewShell > div > section > div > div:first-child { height: auto; min-height: 0; aspect-ratio: 1024 / 1536; }
-@media (min-width: 1024px) {
-  .reportShell > div { grid-template-columns: 200px minmax(0,1fr); gap: 40px; }
-  .reportShell > div > aside h2 { font-size: 36px; }
-  .reportShell > div > section > div { grid-template-columns: minmax(0,1fr) minmax(0,1fr); align-items: start; }
-  .reportShell > div > section > div > div:first-child { position: sticky; top: 96px; }
+  :global(html):has(.previewShell), :global(html):has(.reportShell) { height: 100dvh; overflow: hidden; }
+  :global(body):has(.previewShell), :global(body):has(.reportShell) { position: fixed; inset: 0; width: 100%; height: 100dvh; overflow: clip; }
+  :global(main):has(> .previewShell) { display: flex; flex-direction: column; height: calc(100dvh - 80px); min-height: 0; overflow: hidden; }
+  :global(main):has(.previewShell) ~ :global(footer), :global(main):has(.reportShell) ~ :global(footer) { display: none; }
+  .previewShell, .reportShell { display: flex; flex: 1; min-height: 0; }
+  .reportShell { flex: none; height: calc(100dvh - 80px); }
 }

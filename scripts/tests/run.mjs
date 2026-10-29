@@ -7,7 +7,10 @@ for (const file of files) {
     stdout: 'inherit',
     stderr: 'inherit',
   });
-  if (result.exitCode !== 0) failed++;
+  if (result.exitCode !== 0) {
+    failed++;
+    console.error(`Failed suite: ${file} (exit ${result.exitCode}, signal ${result.signalCode ?? 'none'})`);
+  }
 }
 
 console.log(`\n${files.length} test files: ${files.length - failed} passed, ${failed} failed.`);

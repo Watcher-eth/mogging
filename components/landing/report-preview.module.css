@@ -1,0 +1,26 @@
+.glass {
+  color: #111115;
+  background: linear-gradient(135deg, #ffffff80, #ffffff0a 32%, #ffffff08 68%, #ffffff60);
+  border: .7px solid #ffffffcc;
+  box-shadow: inset 0 1px 1px #ffffff80, 0 1px 3px #00000014;
+  backdrop-filter: blur(18px) saturate(1.5);
+  -webkit-backdrop-filter: blur(18px) saturate(1.5);
+}
+.menu { position: absolute; left: 18px; top: 61px; z-index: 3; }
+.menu summary { display: flex; align-items: center; gap: 8px; height: 38px; padding: 0 10px 0 12px; border-radius: 19px; cursor: pointer; font-size: 14px; font-weight: 600; list-style: none; }
+.menu summary::-webkit-details-marker { display: none; }
+.options { position: absolute; top: 46px; left: 0; width: 236px; max-height: 560px; overflow-y: auto; padding: 6px; border-radius: 22px; background-color: #ffffffad; animation: menu-entry .22s ease-out; }
+.options button { display: flex; align-items: center; gap: 10px; width: 100%; min-height: 39px; padding: 8px 10px; border-radius: 14px; text-align: left; font-size: 14px; }
+.options button span { flex: 1; }
+.options button:hover, .options button:focus-visible { background: #ffffff99; outline: none; }
+.close { position: absolute; top: 61px; right: 8px; width: 38px; height: 38px; border-radius: 50%; display: grid; place-items: center; transition: transform .18s ease, opacity .18s ease; }
+.close:active { transform: scale(.94); opacity: .62; }
+@keyframes menu-entry { from { opacity: 0; transform: translateY(-5px) scale(.98); } to { opacity: 1; transform: none; } }
+@media (prefers-reduced-motion: reduce) { .options { animation: none; } .close { transition: none; } }
+
+.glass[data-ink="light"] { color: #fff; background: linear-gradient(135deg, #ffffff30, #ffffff06 32%, #ffffff04 68%, #ffffff20); border-color: #ffffff80; text-shadow: 0 1px 3px #00000038; }
+.menu summary { justify-content: center; line-height: 18px; box-sizing: border-box; }
+.menu summary span { display: block; line-height: 18px; }
+.menu svg, .close svg { display: block; flex: none; }
+.close { padding: 0; line-height: 1; box-sizing: border-box; }
+.options { color: #111115; }

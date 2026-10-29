@@ -1,7 +1,7 @@
 import Head from 'next/head'
 import { locales } from '@/lib/i18n/locales'
 import { useRouter } from 'next/router'
-import { canonicalUrl as getCanonicalUrl, robotsForPath, serializeJsonLd, siteUrl, socialImageForPath } from '@/lib/seo'
+import { canonicalUrl as getCanonicalUrl, robotsForPath, serializeJsonLd, mobileApplicationSchema, siteUrl, socialImageForPath } from '@/lib/seo'
 
 type SeoHeadProps = {
   title?: string
@@ -11,7 +11,7 @@ type SeoHeadProps = {
 }
 
 const defaultTitle = 'Mogging'
-const defaultDescription = 'Battle faces, get a PSL analysis, and climb the global mogging leaderboard.'
+const defaultDescription = 'Explore your facial features with detailed analysis, personalized routines, and progress tracking. Download Mogging for iPhone.'
 const iosAppStoreId = '6771414050'
 
 export function SeoHead({
@@ -34,6 +34,9 @@ export function SeoHead({
       {structuredData ? (
         <script key="structured-data" type="application/ld+json" dangerouslySetInnerHTML={{ __html: serializeJsonLd(structuredData) }} />
       ) : null}
+      {router.pathname === '/' && (
+        <script key="mobile-application" type="application/ld+json" dangerouslySetInnerHTML={{ __html: serializeJsonLd(mobileApplicationSchema) }} />
+      )}
       <title key="title">{title}</title>
       <meta key="description" name="description" content={description} />
       <meta key="apple-itunes-app" name="apple-itunes-app" content={`app-id=${iosAppStoreId}, app-argument=${canonicalUrl}`} />

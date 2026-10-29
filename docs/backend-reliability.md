@@ -35,7 +35,7 @@ or change its result; its failures appear in hosting logs.
 
 - Production recipient: `RELIABILITY_ALERT_EMAIL=w@mogging.com`, configured in Vercel.
 - Requires `RESEND_API_KEY`, a verified sender matching `PAYMENTS_EMAIL_FROM`
-  (default `Mogging <support@mogging.com>`), and shared Upstash Redis credentials.
+  (default `Mogging <gabe@mogging.com>`), and shared Upstash Redis credentials.
 - The first technical failure attempts an email. Redis groups repeat failures by
   feature and code for 15 minutes. Failed sends release the cooldown for later retry.
   An accepted email is not proof of inbox delivery. Missing configuration is shown

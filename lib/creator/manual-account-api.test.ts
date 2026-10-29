@@ -6,6 +6,7 @@ const addAccount = mock(async (_userId: string, input: unknown) => ({ id: 'accou
 mock.module('@/lib/auth/session', () => ({ getAuthSession: async () => session }))
 mock.module('@/lib/creator/service', () => ({
   addCreatorSocialAccount: addAccount,
+  getOrCreateCreatorProfile: mock(),
   creatorSocialAccountSchema,
   getCreatorDashboard: mock(),
   getCreatorTikTokAccessToken: mock(),
@@ -20,7 +21,7 @@ async function connect(body: Record<string, unknown>) {
     json(payload: unknown) { this.payload = payload; return this },
     setHeader() {},
   }
-  await handler({ method: 'POST', body } as any, res)
+  await handler({ method: 'POST', body, cookies: {}, headers: {} } as any, res)
   return res
 }
 const tiktok = { platform: 'tiktok', identity: '@creator' }

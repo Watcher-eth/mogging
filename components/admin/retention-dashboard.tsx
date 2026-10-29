@@ -2,6 +2,7 @@ import type { AnalyticsDashboard, MetricRow } from '@/lib/admin/analytics'
 import { formatReportingTime } from '@/lib/admin/reporting-time'
 import { AnalyticsChart, chartColors, type ChartMetric } from './analytics-chart'
 import { Bars, DataDetails, Notice, Panel, Stat, Table, count, percent } from './analytics-ui'
+import { ReleaseCohortsDashboard } from './release-cohorts-dashboard'
 
 const horizons = [1, 7, 30]
 const percentValue = (value: number) => `${value.toFixed(1)}%`
@@ -19,6 +20,7 @@ export function RetentionDashboard({ data, days }: { data: AnalyticsDashboard; d
   const cohortCount = rows[0]?.cohort_accounts
   const platform = data.filters.platform === 'all' ? 'All platforms' : data.filters.platform === 'ios' ? 'iOS' : data.filters.platform === 'android' ? 'Android' : 'Web'
   return <>
+    <ReleaseCohortsDashboard days={days} />
     <p className="mb-5 text-xs leading-5 text-zinc-500">{days === 1 ? 'Last 24 hours' : `Last ${days} days`} of new cohorts · {platform} · Pacific cohort dates · Identified customer accounts</p>
     <p className="mb-5 text-sm leading-6 text-zinc-500">Return after the first observed scan, based on account-linked client activity. Each rate uses its own fully observed 24-hour return window; sample sizes differ.</p>
     <div className="admin-stats-grid">

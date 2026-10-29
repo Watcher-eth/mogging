@@ -33,7 +33,7 @@ export default function AnalyticsAdminPage() {
   const router = useRouter()
   const page = adminPage(router.pathname)
   const tab = page?.section || 'Overview'
-  const days = ['1', '7', '30', '90'].includes(String(router.query.days)) ? String(router.query.days) : tab === 'Reliability' ? '1' : tab === 'Quality' ? '7' : tab === 'Retention' ? '90' : ['Experiments', 'Onboarding', 'Revenue', 'CreatorAttribution', 'CreatorPerformance', 'CreatorEconomics', 'Authentication', 'Purchases', 'Scans', 'Engagement', 'Referrals', 'Notifications', 'AttributionLedger', 'Quality', 'Reliability'].includes(tab) ? '30' : '7'
+  const days = ['1', '7', '30', '90'].includes(String(router.query.days)) ? String(router.query.days) : ['Reliability', 'Revenue'].includes(tab) ? '1' : tab === 'Quality' ? '7' : tab === 'Retention' ? '90' : ['Experiments', 'Onboarding', 'Revenue', 'CreatorAttribution', 'CreatorPerformance', 'CreatorEconomics', 'Authentication', 'Purchases', 'Scans', 'Engagement', 'Referrals', 'Notifications', 'AttributionLedger', 'Quality', 'Reliability'].includes(tab) ? '30' : '7'
   const platform = ['Onboarding','Purchases'].includes(tab) && router.query.platform === 'web' ? 'all' : ['Experiments', 'Revenue', 'CreatorAttribution', 'CreatorPerformance', 'CreatorEconomics', 'Scans', 'Referrals', 'Notifications', 'AttributionLedger', 'Quality', 'Reliability'].includes(tab) ? 'all' : ['all', 'web', 'ios', 'android'].includes(String(router.query.platform)) ? String(router.query.platform) : 'all'
   const access = useSWR<{ unlocked: boolean }>('/api/admin/creator/session', apiGet, { shouldRetryOnError: false })
   const report = useSWR<AnalyticsDashboard>(access.data?.unlocked ? `/api/admin/analytics?days=${days}&platform=${platform}&section=${tab}` : null, apiGet,

@@ -13,17 +13,24 @@ const reach: ChartMetric[] = [{ key: 'reportedViews', label: 'Reported views', c
 const spend: ChartMetric[] = [{ key: 'earned', label: 'Earned cost by submission date', color: chartColors.blue }, { key: 'cashPaid', label: 'Cash paid by payment date', color: chartColors.green }]
 const calendarDate = (day: string) => new Date(`${day}T12:00:00Z`).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric', timeZone: 'UTC' })
 const date = (value: string | null | undefined) => value ? formatReportingTime(value, { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit', timeZoneName: 'short' }) : 'No record available'
-const creatorTable = (rows: CreatorPerformanceReport['creators']): MetricRow[] => rows.map(row => ({ creator: row.name, posts: row.posts, reported_views: row.reportedViews, reviewed_views: row.reviewedViews, earned_cost: usd(row.earnedCents / 100), paid_on_these_posts: usd(row.paidCents / 100), outstanding_on_these_posts: usd(row.unpaidCents / 100), cost_per_1000_reviewed_views: usd(viewCpm(row.earnedCents, row.costViews)) }))
+const creatorTable = (rows: CreatorPerformanceReport['periodCreators']): MetricRow[] => rows.map(row => ({ creator: row.name, posts: row.posts, reported_views: row.reportedViews, reviewed_views: row.reviewedViews, earned_cost: usd(row.earnedCents / 100), paid_on_these_posts: usd(row.paidCents / 100), outstanding_on_these_posts: usd(row.unpaidCents / 100), cost_per_1000_reviewed_views: usd(viewCpm(row.earnedCents, row.costViews)) }))
 const creatorColumns = ['creator', 'posts', 'reported_views', 'reviewed_views', 'earned_cost', 'paid_on_these_posts', 'outstanding_on_these_posts', 'cost_per_1000_reviewed_views']
+const weeklyChange = (current: number, previous: number) => {
+  const difference = current - previous
+  if (!difference) return '—'
+  return `${difference > 0 ? '+' : '−'}${count(Math.abs(difference))} · ${previous ? `${difference > 0 ? '+' : '−'}${(Math.abs(difference) / previous * 100).toFixed(1)}%` : 'new'}`
+}
 
 export default function CreatorPerformanceDashboard({ data, attributionHref = '/admin/attribution' }: { data: AnalyticsDashboard; attributionHref?: string }) {
   const [platform, setPlatform] = useState<'all' | 'tiktok' | 'instagram'>('all')
   const [metric, setMetric] = useState('views')
   const [search, setSearch] = useState('')
+  const [showAllCreators, setShowAllCreators] = useState(false)
   const snapshot = data.creatorPerformance
   if (!snapshot) return <Notice>Creator performance could not be established from this snapshot. Missing data is not shown as zero.</Notice>
   const report = snapshot.reports[platform]
   const { total, allTime } = report
+  const weeklyCreators = [...report.creators].sort((a, b) => b.weekViews - a.weekViews || b.reportedViews - a.reportedViews || a.name.localeCompare(b.name))
   const creators = report.periodCreators.filter(row => row.name.toLocaleLowerCase().includes(search.trim().toLocaleLowerCase())).sort((a, b) => metric === 'cost' ? b.earnedCents - a.earnedCents : metric === 'cpm' ? (viewCpm(b.earnedCents, b.costViews) ?? -1) - (viewCpm(a.earnedCents, a.costViews) ?? -1) : b.reportedViews - a.reportedViews)
   return <>
     <div className="mb-5 flex flex-wrap items-center justify-between gap-3">
@@ -48,6 +55,11 @@ export default function CreatorPerformanceDashboard({ data, attributionHref = '/
       <AnalyticsChart title="Earned cost and cash payments" rows={report.daily} metrics={spend} days={report.days} currency="USD" granularity="daily" timeZone="UTC" />
       <DataDetails><Table rows={report.daily.map(row => ({ day: row.day, earned_cost: usd(row.earned), cash_paid: usd(row.cashPaid) }))} columns={['day', 'earned_cost', 'cash_paid']} /></DataDetails>
     </Panel>
+    <Panel title="Creator leaders · last 7 days" description={`${calendarDate(report.weekStart)} – ${calendarDate(report.today)} · Ranked by views on new submissions · Changes vs previous 7 days · Today is partial`}
+      note="Seven Pacific calendar dates, independent of the page’s period selector. Views are the latest reported totals on posts first submitted in each week, not views gained during that week. Changes compare with the preceding seven calendar dates. Rereviews do not count as new submissions. The social-platform filter and experimental exclusions apply.">
+      <Table rows={(showAllCreators ? weeklyCreators : weeklyCreators.slice(0, 10)).map((row, index) => ({ rank: index + 1, creator: row.name, total_views: row.reportedViews, views_7d: row.weekViews, view_change: weeklyChange(row.weekViews, row.previousWeekViews), submissions_7d: row.weekPosts, submission_change: weeklyChange(row.weekPosts, row.previousWeekPosts) }))} columns={['rank', 'creator', 'total_views', 'views_7d', 'view_change', 'submissions_7d', 'submission_change']} />
+      {weeklyCreators.length > 10 ? <button type="button" aria-expanded={showAllCreators} onClick={() => setShowAllCreators(current => !current)} className="mt-4 text-sm font-medium text-[#008ac5] underline underline-offset-4 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4">{showAllCreators ? 'Show top 10' : `Show all ${weeklyCreators.length} creators`}</button> : null}
+    </Panel>
     <Panel title="Creator comparison" description="Posts submitted in the selected period. The social-platform filter applies."
       action={<div className="flex flex-wrap gap-3"><input aria-label="Search creators" placeholder="Search creators…" value={search} onChange={event => setSearch(event.target.value)} className="h-10 rounded-xl border border-zinc-200 px-3 text-sm outline-none focus-visible:ring-2 focus-visible:ring-sky-400" /><AnalyticsSelect label="Compare" value={metric} onChange={setMetric} options={[{ value: 'views', label: 'Reported views' }, { value: 'cost', label: 'Earned cost' }, { value: 'cpm', label: 'Cost per 1,000 views' }]} /></div>}
       note="CPM uses earned USD divided by reviewed views on posts with approved earnings, multiplied by 1,000. It is a weighted ratio of totals, not an average of creator or daily CPMs. No eligible reviewed views means CPM is unavailable. Reported reach includes unapproved posts, while the cost denominator does not. View counts are observations, not audited impressions. No ROAS or causal revenue claim is inferred from these costs.">
@@ -71,7 +83,7 @@ export default function CreatorPerformanceDashboard({ data, attributionHref = '/
         ['Snapshot generated', data.generatedAt], ['Latest submission update', snapshot.latestSubmissionUpdate], ['Latest paid-record update', snapshot.latestPaymentUpdate],
       ].map(([title, value]) => <div key={title}><dt className="text-zinc-500">{title}</dt><dd className="mt-1 font-medium">{date(value)}</dd></div>)}</dl>
       <p className="mt-5 text-xs leading-5 text-zinc-500">Checks every minute while visible and on return to this tab. Snapshots use a 60-second cache with background revalidation. Update timestamps cover all submitted posts and paid records loaded for this report, before social-platform and experiment exclusions. They do not verify current social-platform view counts.</p>
-      <p className="mt-3 text-xs leading-5 text-zinc-500">Existing experimental exclusions are preserved: matheo.psl, bejapsl and Valerie. Drafts are excluded. Post views and costs follow submission date; current approved adjustments can change older cohorts.</p>
+      <p className="mt-3 text-xs leading-5 text-zinc-500">Existing experimental exclusions are preserved: matheo.psl, bejapsl, Jeff / youcalb and Valerie. Drafts are excluded. Post views and costs follow submission date; current approved adjustments can change older cohorts.</p>
       <DataDetails><Table rows={[
         { metric: 'Latest submitted post', value: date(snapshot.latestSubmission) },
         { metric: 'Paid records excluded because they are non-USD or not linked to a post', value: report.excludedPayments },

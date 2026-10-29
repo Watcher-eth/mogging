@@ -2,6 +2,8 @@ import { beforeEach, expect, mock, test } from 'bun:test'
 let session: { user: { id: string } } | null
 const claim = mock(async (_token: string, _userId: string) => ({ destination: '/creator/setup?step=payout' }))
 mock.module('@/lib/auth/session', () => ({ getAuthSession: async () => session }))
+mock.module('@/lib/creator/service', () => ({ getOrCreateCreatorProfile: mock() }))
+mock.module('@/lib/reliability/monitor', () => ({ monitorBackend: (_feature: string, handler: unknown) => handler }))
 mock.module('@/lib/creator/invites', () => ({ claimCreatorInvite: claim }))
 mock.module('@/lib/env', () => ({ env: { NEXTAUTH_URL: 'http://localhost:3149' } }))
 const { default: handler } = await import('../../pages/api/creator/claim-invite')
@@ -9,7 +11,7 @@ const token = 'a'.repeat(64)
 
 async function request(method = 'POST', body: unknown = { token }, origin = 'https://www.mogging.com') {
   const res: any = { statusCode: 200, setHeader() {}, status(code: number) { this.statusCode = code; return this }, json(payload: unknown) { this.payload = payload; return this } }
-  await handler({ method, body, headers: { origin } } as any, res)
+  await handler({ method, body, cookies: {}, headers: { origin } } as any, res)
   return res
 }
 beforeEach(() => { session = { user: { id: 'session-user' } }; claim.mockClear() })

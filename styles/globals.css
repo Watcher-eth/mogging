@@ -11,6 +11,9 @@
 
 @layer base {
   :root {
+    --page-max: 72rem;
+    --workspace-max: 90rem;
+    --legal-page-max: 98.75rem;
     --background: 0 0% 98%;
     --foreground: 240 10% 4%;
     --card: 0 0% 100%;
@@ -534,3 +537,13 @@
 /* Shared Motion Primitives accordion triggers. Panels own their height/variant motion. */
 .accordion-trigger { -webkit-tap-highlight-color: transparent; }
 .accordion-trigger:focus-visible { outline: 2px solid #00a8ef; outline-offset: 3px; border-radius: 4px; }
+
+/* Wider page frames only on large laptops and desktop displays. */
+@media (min-width: 1440px) {
+  :root {
+    --page-max: min(105rem, calc(100vw - 6rem));
+    --workspace-max: 120rem;
+    --legal-page-max: var(--page-max);
+    --campaign-page-max: var(--workspace-max);
+  }
+}

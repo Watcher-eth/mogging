@@ -1395,3 +1395,11 @@ export const pushDeliveries = pgTable('push_deliveries', {
   slot: text('slot').notNull(),
   createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
 }, table => [primaryKey({ columns: [table.userId, table.kind, table.slot] })])
+
+export const billingReconciliationState = pgTable('billing_reconciliation_state', {
+  provider: text('provider').primaryKey(),
+  state: jsonb('state').$type<import('../payments/stripe-recovery').StripeRecoveryState>(),
+  leaseId: text('lease_id'),
+  leaseUntil: timestamp('lease_until', { withTimezone: true }),
+  updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
+})

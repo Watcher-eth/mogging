@@ -5,7 +5,7 @@
 .admin-navigation [data-sidebar="group-label"] { color: #858a91; font-size: 10px; letter-spacing: .04em; }
 .admin-navigation [data-sidebar="group"] { padding-block: 10px; }
 .admin-navigation .creator-nav-link { height: 36px; font-size: 12px; gap: 10px; border-radius: 9px; }
-.admin-page { width: 100%; max-width: 1440px; margin-inline: auto; padding: 38px 44px 64px; }
+.admin-page { width: 100%; max-width: var(--workspace-max); margin-inline: auto; padding: 38px 44px 64px; }
 .admin-page .creator-page-header { margin-bottom: 30px; }
 .admin-lock { display: inline-flex; align-items: center; gap: 8px; min-height: 40px; padding-inline: 10px; color: var(--admin-muted); font-size: 12px; border-radius: 10px; }
 .admin-lock:hover { background: #f7f8f9; }
@@ -51,3 +51,5 @@
 @media (prefers-reduced-motion: reduce) { .admin-portal *, .admin-portal *::before, .admin-portal *::after { animation: none !important; transition: none !important; } .admin-portal button:active:not(:disabled) { transform: none; } }
 .admin-course-content.course-app { min-height: 0; font-family: inherit; --c-ink: #181a1d; --c-muted: #73777d; }
 .admin-course-content .c-button-dark { background: #00A8EF; color: white; }
+
+@media (min-width: 1440px) { .admin-page { padding-inline: 32px; } }

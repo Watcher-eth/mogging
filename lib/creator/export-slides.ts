@@ -8,15 +8,15 @@ import { type ContentSlide, type GeneratorImage } from './content-generator'
 import { createReportOverlay, type ReportOverlay } from './report-overlay'
 import { drawScoreReveal, loadRevealBrand, REVEAL_DURATION_MS, REVEAL_PORTRAIT_SIZE, type RevealBrand } from './score-reveal'
 
-import { drawMockReport, mockReportSize, mockReportHeroHeight, loadMockReportSymbols } from './mock-report'
+import { drawMockReport, mockReportFormat, mockReportSize, mockReportHeroHeight, loadMockReportSymbols } from './mock-report'
 
 type RenderArgs = { slide: ContentSlide; images: GeneratorImage[]; width: number; height: number }
 
 export async function renderSlidePng(args: RenderArgs) {
   await document.fonts.ready
-  if (args.slide.templateId === 'mock-report' && args.width < 1170) {
-    const scale = 1170 / args.width
-    args = { ...args, width: 1170, height: Math.round(args.height * scale) }
+  if (args.slide.templateId === 'mock-report' && args.width < mockReportFormat.width) {
+    const scale = mockReportFormat.width / args.width
+    args = { ...args, width: mockReportFormat.width, height: Math.round(args.height * scale) }
   }
   const { canvas, ctx, image, overlay, brand } = await prepareCanvas(args)
   await drawSlideFrame(ctx, args.slide, image, overlay, args.width, args.height, 4000, brand)
@@ -49,7 +49,7 @@ export async function encodeCanvasMp4(canvas: HTMLCanvasElement, drawFrame: (tim
   const frameRate = 30
   const frameCount = Math.ceil(durationMs / 1000 * frameRate)
   let supportedConfig: VideoEncoderConfig | null = null
-  // 3× iPhone exports exceed Level 4’s frame-size limit.
+  // Retina iPhone exports exceed Level 4’s frame-size limit.
   const codecs = canvas.width * canvas.height > 2_097_152 ? ['avc1.420033', 'avc1.4d0033'] : ['avc1.420028', 'avc1.4d002a']
   for (const codec of codecs) {
     const candidate: VideoEncoderConfig = { codec, width: canvas.width, height: canvas.height, bitrate: 8_000_000, framerate: frameRate, avc: { format: 'avc' } }

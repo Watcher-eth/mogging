@@ -69,7 +69,7 @@ const sections: LegalSection[] = [
     label: 'Contact',
     title: 'Contact Us',
     body: [
-      'Questions about these Terms can be sent to support@mogging.app. Include enough detail for us to understand your request and the account or feature involved.',
+      'Questions about these Terms can be sent to gabe@mogging.com. Include enough detail for us to understand your request and the account or feature involved.',
     ],
   },
 ]

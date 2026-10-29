@@ -19,7 +19,7 @@ async function request(method: string, body = {}) {
     json(payload: unknown) { this.payload = payload; return this },
     setHeader() {},
   }
-  await handler({ method, body } as any, res)
+  await handler({ method, body, cookies: {}, headers: {} } as any, res)
   return res
 }
 

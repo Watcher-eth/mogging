@@ -55,7 +55,7 @@ const ScanImagePanel = dynamic(() => import('@/components/analysis/scan-image-pa
 
 const WebAnalysisReport = dynamic(() => import('@/components/analysis/v2/web-analysis-report').then(module => module.WebAnalysisReport))
 
-const AnalysisReport = dynamic(() => import('@/components/analysis/analysis-report').then((module) => module.AnalysisReport))
+const LegacyAnalysisReport = dynamic(() => import('@/components/analysis/v2/web-analysis-report').then(module => module.LegacyAnalysisReport))
 const ReportActions = dynamic(() => import('@/components/analysis/analysis-report').then((module) => module.ReportActions))
 const CameraSheet = dynamic(() => import('@/components/analysis/camera-sheet').then((module) => module.CameraSheet))
 
@@ -1081,7 +1081,7 @@ function ActualAnalysisScreen({
         </div>
 
         <div className="grid place-items-center lg:justify-items-end">
-          <ScanImagePanel imageSrc={imageSrc} landmarks={landmarks} paused={paymentDialogOpen} />
+          <ScanImagePanel key={imageSrc} imageSrc={imageSrc} landmarks={landmarks} paused={paymentDialogOpen} />
         </div>
       </div>
 
@@ -1222,7 +1222,7 @@ function AnalysisPaymentDialog({
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-h-[calc(100svh-2rem)] overflow-y-auto rounded-[28px] border-0 bg-white p-0 shadow-[0_28px_90px_rgba(15,23,42,0.2)] sm:max-w-[500px]">
-        <ScanImagePanel imageSrc={imageSrc} landmarks={landmarks} variant="paywall" />
+        <ScanImagePanel key={imageSrc} imageSrc={imageSrc} landmarks={landmarks} variant="paywall" />
 
         <div className="px-6 pb-6 pt-5">
           <DialogHeader>
@@ -1286,9 +1286,9 @@ function ResultsStep({
     </WebAnalysisReport>
   }
   return (
-    <AnalysisReport categories={categories} imageSrc={primaryResult?.photo.imageUrl ?? previewPhotoUrl} landmarks={landmarks} score={score} pslScore={primaryScore}>
+    <LegacyAnalysisReport categories={categories} imageSrc={primaryResult?.photo.imageUrl ?? previewPhotoUrl} landmarks={landmarks} score={score} pslScore={primaryScore}>
       <ReportActions score={score} onOpenShare={onOpenShare} onReset={onReset} />
-    </AnalysisReport>
+    </LegacyAnalysisReport>
   )
 }
 

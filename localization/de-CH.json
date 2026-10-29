@@ -1,5 +1,11 @@
 {
   "close": "Schliessen",
   "personalization.height.title": "Wie gross bist du?",
-  "personalization.commit.hint": "Tippe viermal, um die Verwandlungsanimation abzuschliessen"
+  "personalization.commit.hint": "Tippe viermal, um die Verwandlungsanimation abzuschliessen",
+  "landing.progress": "03 / Dein Fortschritt",
+  "landing.progressTitle": "Sieh deinen Fortschritt. Finde deinen nächsten Schritt.",
+  "landing.progressDescription": "Vergleiche deine Auswertungen im Laufe der Zeit. Verfolge Veränderungen deiner Merkmale und richte dein tägliches Protocol gezielt aus.",
+  "landing.progressPrivacy": "Deine Auswertungen bleiben privat.",
+  "faq.public.question": "Sind meine Fotos und Berichte öffentlich?",
+  "faq.public.answer": "Nein. Deine Fotos und Berichte sind privat. Du kannst auf Wunsch ein Bild deines eigenen Berichts exportieren."
 }

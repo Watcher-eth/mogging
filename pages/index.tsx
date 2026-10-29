@@ -11,7 +11,7 @@ import {
   ScanReportPreview,
   EvaluationPreview,
   ProtocolPreview,
-  LeaderboardPreview,
+  ProgressPreview,
 } from "@/components/landing/mobile-preview";
 import { LazyMotion, domAnimation, useReducedMotion } from "motion/react";
 import * as m from "motion/react-m";
@@ -46,6 +46,7 @@ export default function HomePage(props: Props) {
 }
 
 function NewHomepage({ assignment, preview }: Props) {
+  const { locale } = useRouter();
   const { t } = useTranslation();
   const reduced = useReducedMotion();
   const entrance = { initial: { opacity: reduced ? 1 : 0, y: reduced ? 0 : 24 }, whileInView: { opacity: 1, y: 0 }, viewport: { once: true, amount: .12 }, transition: { duration: reduced ? 0 : .4, ease: [.16, 1, .3, 1] as [number, number, number, number] } };
@@ -67,7 +68,7 @@ function NewHomepage({ assignment, preview }: Props) {
   return (
     <LazyMotion features={domAnimation}>
       <SeoHead
-        title={t("seo.title")}
+        title={locale === "en" || !locale ? "Mogging App | Face Analysis & Personalized Routines" : t("seo.title")}
         description={t("seo.description")}
         path="/"
         structuredData={{
@@ -93,7 +94,7 @@ function NewHomepage({ assignment, preview }: Props) {
       <main
         className="overflow-hidden bg-white text-zinc-950"
       >
-        <m.section {...entrance} initial={false} className="mx-auto grid max-w-6xl items-center px-6 pb-14 pt-6 sm:px-10 lg:min-h-[730px] lg:grid-cols-2 lg:gap-24 lg:py-12">
+        <m.section {...entrance} initial={false} className="mx-auto grid max-w-[var(--page-max)] items-center px-6 pb-14 pt-6 sm:px-10 lg:min-h-[730px] lg:grid-cols-2 lg:gap-24 lg:py-12">
           <div className="text-center lg:text-left">
             <p className="mb-4 hidden text-xs font-medium uppercase tracking-[0.16em] text-zinc-400 lg:block">
               {t("landing.tagline")}
@@ -129,7 +130,7 @@ function NewHomepage({ assignment, preview }: Props) {
           <m.section {...entrance}
             data-landing-section="features"
             aria-labelledby="features-title"
-            className="mx-auto max-w-6xl px-6 py-12 sm:px-10 sm:py-20"
+            className="mx-auto max-w-[var(--page-max)] px-6 py-12 sm:px-10 sm:py-20"
           >
             <div className="mb-14 text-center">
               <p className="text-xs font-medium uppercase tracking-[0.16em] text-zinc-400">
@@ -178,24 +179,24 @@ function NewHomepage({ assignment, preview }: Props) {
             </div>
           </m.section>
 
-          <m.section {...entrance} data-landing-section="leaderboard" aria-labelledby="leaderboard-title" className="mx-auto grid max-w-6xl items-center gap-10 px-6 py-14 sm:px-10 sm:py-20 lg:grid-cols-2 lg:gap-24">
-            <div className="flex justify-center lg:justify-start"><LeaderboardPreview /></div>
+          <m.section {...entrance} data-landing-section="progress" aria-labelledby="progress-title" className="mx-auto grid max-w-[var(--page-max)] items-center gap-10 px-6 py-14 sm:px-10 sm:py-20 lg:grid-cols-2 lg:gap-24">
+            <div className="flex justify-center lg:justify-start"><ProgressPreview /></div>
             <div className="text-center lg:text-left">
               <p className="text-xs font-medium uppercase tracking-widest text-zinc-400">
-              {t("landing.leaderboard")}
+              {t("landing.progress")}
             </p>
-              <h2 id="leaderboard-title" className="mt-4 text-4xl font-semibold leading-[1.1] tracking-[-.045em] sm:text-5xl">{t("landing.friendsTitle")}</h2>
+              <h2 id="progress-title" className="mt-4 text-4xl font-semibold leading-[1.1] tracking-[-.045em] sm:text-5xl">{t("landing.progressTitle")}</h2>
               <p className="mt-5 text-lg leading-8 text-zinc-500">
-              {t("landing.friendsDescription")}
+              {t("landing.progressDescription")}
             </p>
               <p className="mt-4 text-sm leading-6 text-zinc-400">
-              {t("landing.publicChoice")}
+              {t("landing.progressPrivacy")}
             </p>
-              <div className="mt-7">{downloadButton("leaderboard")}</div>
+              <div className="mt-7">{downloadButton("progress")}</div>
             </div>
           </m.section>
           <m.section {...entrance} data-landing-section="web_analysis" aria-labelledby="web-title" className="border-y border-zinc-100 bg-[#f7f7f8] py-14 sm:py-20">
-            <div className="mx-auto max-w-6xl px-6 sm:px-10">
+            <div className="mx-auto max-w-[var(--page-max)] px-6 sm:px-10">
               <div className="mb-10 flex flex-col justify-between gap-6 lg:flex-row lg:items-end">
                 <div className="max-w-xl">
                   <p className="text-xs font-semibold uppercase tracking-[.16em] text-zinc-500">
@@ -217,7 +218,7 @@ function NewHomepage({ assignment, preview }: Props) {
           <LandingFaq />
           <m.section {...entrance}
             data-landing-section="final_cta"
-            className="mx-auto max-w-6xl px-6 pb-20 pt-6 text-center sm:px-10"
+            className="mx-auto max-w-[var(--page-max)] px-6 pb-20 pt-6 text-center sm:px-10"
           >
             <h2 className="text-4xl font-semibold tracking-[-0.045em] sm:text-5xl">
               {t("landing.finalTitle")}
@@ -241,7 +242,7 @@ function LandingFaq() {
           <m.section initial={{ opacity: reduced ? 1 : 0, y: reduced ? 0 : 20 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true, amount: .2 }} transition={{ duration: reduced ? 0 : .4, ease: [.16, 1, .3, 1] }}
             data-landing-section="faq"
             aria-labelledby="faq-title"
-            className="mx-auto max-w-6xl border-t border-zinc-100 px-6 py-14 sm:px-10"
+            className="mx-auto max-w-[var(--page-max)] border-t border-zinc-100 px-6 py-14 sm:px-10"
           >
             <h2
               id="faq-title"

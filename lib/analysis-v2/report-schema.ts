@@ -40,6 +40,14 @@ export const webOverviewSchema = webReportSchema.omit({ version: true, entries: 
 // Normalize those equivalent encodings, then retain only valid visible image-coordinate paths.
 export function parseWebOverview(value: unknown) {
   const raw = z.record(z.string(), z.unknown()).parse(value)
+  // Color is optional presentation metadata, never a reason to regenerate all
+  // assessments or consume a scan. Unknown observations stay unknown.
+  const color = (value: unknown) => typeof value === 'string' ? value.trim().toLowerCase().replace(/[-_]/g, ' ').replace(/^grey$/, 'gray').replace(/^blonde$/, 'blond') : null
+  const eyeColor = webReportSchema.shape.eyeColor.safeParse(color(raw.eyeColor))
+  const hairColor = webReportSchema.shape.hairColor.safeParse(color(raw.hairColor))
+  const categories = raw.categories && !Array.isArray(raw.categories) && typeof raw.categories === 'object'
+    ? Object.entries(raw.categories).map(([id, category]) => category && typeof category === 'object' ? { id, ...category } : category)
+    : raw.categories
   const contours = raw.contours as Record<string, unknown> | undefined
   const paths = (value: unknown, maximum: number) => {
     if (!Array.isArray(value) || !value.length) return []
@@ -52,5 +60,6 @@ export function parseWebOverview(value: unknown) {
       return parsed.success ? [parsed.data] : []
     }).slice(0, maximum)
   }
-  return webOverviewSchema.parse({ ...raw, contours: { hair: paths(contours?.hair, 3), ears: paths(contours?.ears, 2) } })
+  return webOverviewSchema.parse({ ...raw, categories, eyeColor: eyeColor.success ? eyeColor.data : null,
+    hairColor: hairColor.success ? hairColor.data : null, contours: { hair: paths(contours?.hair, 3), ears: paths(contours?.ears, 2) } })
 }

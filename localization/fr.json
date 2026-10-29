@@ -19,7 +19,7 @@
   "landing.planTitle": "Ton potentiel. Un programme quotidien pour le révéler.",
   "landing.evaluation": "01 / Ton analyse",
   "landing.scoreTitle": "Bien plus qu’un score.",
-  "landing.scoreDescription": "Mâchoire, yeux, proportions et symétrie : découvre tes traits à travers 10 catégories et plus de 40 mesures. Retrouve chaque rapport pour suivre tes progrès.",
+  "landing.scoreDescription": "Mâchoire, yeux, proportions et symétrie : découvre tes traits à travers 13 catégories et plus de 110 mesures. Retrouve chaque rapport pour suivre tes progrès.",
   "landing.protocol": "02 / Ton programme",
   "landing.directionTitle": "Moins de tâtonnements. Un programme axé sur tes objectifs.",
   "landing.finalTitle": "Trouve ton point de départ.",
@@ -29,8 +29,8 @@
   "faq.free.answer": "Oui, le téléchargement est gratuit. Les analyses et les fonctionnalités Pro sont payantes. Tu peux consulter les offres disponibles dans l’app.",
   "faq.evaluation.question": "Que comprend mon analyse ?",
   "faq.evaluation.answer": "10 catégories détaillées avec plus de 40 mesures portant sur tes yeux, ta mâchoire, tes proportions, ta symétrie et d’autres traits. Tu disposes aussi d’un programme personnalisé et de tes analyses sauvegardées pour suivre tes progrès.",
-  "faq.public.question": "Mes photos apparaîtront-elles dans le classement ?",
-  "faq.public.answer": "La participation au classement est facultative. Tu choisis de rendre ton profil public ou non et tu peux modifier ce choix dans les paramètres.",
+  "faq.public.question": "Mes photos et rapports sont-ils publics ?",
+  "faq.public.answer": "Non. Vos photos et rapports sont privés. Vous pouvez exporter une image de votre propre rapport quand vous le souhaitez.",
   "faq.devices.question": "Puis-je utiliser Mogging sans iPhone ?",
   "faq.devices.answer": "Tu peux lancer une analyse du visage payante dans ton navigateur. L’app est disponible sur iPhone ; une version Android arrive prochainement.",
   "stats.categories": "Catégories détaillées",
@@ -307,5 +307,9 @@
   "paywall.goalCheekbones": "des pommettes plus définies",
   "paywall.benefits.scanTitle": "1 scan du visage par semaine",
   "paywall.benefits.protocolTitle": "Protocole sur mesure pour te dépasser",
-  "paywall.benefits.trackingTitle": "Suivi et rappels"
+  "paywall.benefits.trackingTitle": "Suivi et rappels",
+  "landing.progress": "03 / Votre progression",
+  "landing.progressTitle": "Voyez vos progrès. Trouvez la prochaine étape.",
+  "landing.progressDescription": "Comparez vos évaluations au fil du temps. Suivez les changements de vos traits et adaptez votre Protocol quotidien.",
+  "landing.progressPrivacy": "Vos évaluations restent privées."
 }

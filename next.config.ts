@@ -27,6 +27,9 @@ const nextConfig: NextConfig = {
     locales: [...locales],
     defaultLocale: 'en', localeDetection: false,
   },
+  async redirects() {
+    return [{ source: '/analyze', destination: '/analysis', permanent: true }]
+  },
   async headers() {
     return [
       {

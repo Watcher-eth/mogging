@@ -61,7 +61,7 @@ export async function googleMobileUser(identity: { subject: string; email: strin
     const account = await tx.query.accounts.findFirst({ where, columns: { userId: true } })
     if (account) return account.userId
     const user = await tx.query.users.findFirst({ where: eq(schema.users.email, identity.email), columns: { id: true } })
-    if (!user && existingOnly) throw new ApiError(404, 'No existing Mogging account was found. Start onboarding to create one.')
+    if (!user && existingOnly) throw new ApiError(404, 'No existing Mogging account was found. Start onboarding to create one.', 'account_not_found')
     // Preserve NextAuth's account-linking boundary for an existing non-Google identity.
     if (user) throw new ApiError(409, 'This email uses another sign-in method. Use your original sign-in method.')
     const [created] = await tx.insert(schema.users).values({ email: identity.email, emailVerified: new Date(), name: identity.name })

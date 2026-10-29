@@ -1,0 +1,3671 @@
+{
+  "window": {
+    "name": "recent3",
+    "days": 3,
+    "end": "2026-10-28T07:00:00.000Z"
+  },
+  "sections": {
+    "Revenue": {
+      "web": [],
+      "daily": [],
+      "scans": null,
+      "steps": [],
+      "actions": [],
+      "billing": [
+        {
+          "event": "checkout_expired",
+          "events": 62,
+          "provider": "stripe",
+          "customers": 61,
+          "provider_type": "checkout.session.expired"
+        },
+        {
+          "event": "subscription_started",
+          "events": 9,
+          "provider": "revenuecat",
+          "customers": 9,
+          "provider_type": "INITIAL_PURCHASE"
+        },
+        {
+          "event": "cancellation_scheduled",
+          "events": 8,
+          "provider": "revenuecat",
+          "customers": 8,
+          "provider_type": "CANCELLATION"
+        },
+        {
+          "event": "subscription_expired",
+          "events": 3,
+          "provider": "revenuecat",
+          "customers": 3,
+          "provider_type": "EXPIRATION"
+        },
+        {
+          "event": "subscription_renewed",
+          "events": 2,
+          "provider": "revenuecat",
+          "customers": 2,
+          "provider_type": "RENEWAL"
+        },
+        {
+          "event": "subscription_reactivated",
+          "events": 1,
+          "provider": "revenuecat",
+          "customers": 1,
+          "provider_type": "UNCANCELLATION"
+        },
+        {
+          "event": "subscription_refunded",
+          "events": 1,
+          "provider": "revenuecat",
+          "customers": 1,
+          "provider_type": "CANCELLATION"
+        }
+      ],
+      "paywall": [],
+      "revenue": [
+        {
+          "net": "14.990000",
+          "gross": "14.990000",
+          "refunds": "0",
+          "currency": "AUD",
+          "paying_customers": 1,
+          "missing_amount_events": 0,
+          "unidentified_payments": 0
+        },
+        {
+          "net": "5.990000",
+          "gross": "5.990000",
+          "refunds": "0",
+          "currency": "EUR",
+          "paying_customers": 1,
+          "missing_amount_events": 0,
+          "unidentified_payments": 0
+        },
+        {
+          "net": "4.990000",
+          "gross": "4.990000",
+          "refunds": "0",
+          "currency": "GBP",
+          "paying_customers": 1,
+          "missing_amount_events": 0,
+          "unidentified_payments": 0
+        },
+        {
+          "net": "0.000000",
+          "gross": "0",
+          "refunds": "0",
+          "currency": "KRW",
+          "paying_customers": 0,
+          "missing_amount_events": 0,
+          "unidentified_payments": 0
+        },
+        {
+          "net": "34.940000",
+          "gross": "39.930000",
+          "refunds": "4.990000",
+          "currency": "USD",
+          "paying_customers": 7,
+          "missing_amount_events": 0,
+          "unidentified_payments": 0
+        },
+        {
+          "net": "199.990000",
+          "gross": "199.990000",
+          "refunds": "0",
+          "currency": "ZAR",
+          "paying_customers": 1,
+          "missing_amount_events": 0,
+          "unidentified_payments": 0
+        }
+      ],
+      "screens": [],
+      "summary": {
+        "actors": 1547,
+        "events": 53460,
+        "failures": 5,
+        "evaluations": 13,
+        "first_opens": 478,
+        "latest_event": "2026-10-28T06:55:21.816"
+      },
+      "releases": [],
+      "referrals": null,
+      "retention": [],
+      "dataHealth": null,
+      "dimensions": [],
+      "engagement": null,
+      "onboarding": [],
+      "scanLedger": [],
+      "acquisition": [],
+      "webAudience": [],
+      "eventMetrics": [],
+      "featureUsage": [],
+      "paidDelivery": [],
+      "purchaseFlow": null,
+      "reportLedger": [],
+      "revenueDaily": [
+        {
+          "day": "2026-10-25T07:00:00Z",
+          "net": "24.950000",
+          "gross": "24.950000",
+          "refunds": "0",
+          "currency": "USD",
+          "missing_amount_events": 0
+        },
+        {
+          "day": "2026-10-26T07:00:00Z",
+          "net": "14.990000",
+          "gross": "14.990000",
+          "refunds": "0",
+          "currency": "AUD",
+          "missing_amount_events": 0
+        },
+        {
+          "day": "2026-10-26T07:00:00Z",
+          "net": "4.990000",
+          "gross": "4.990000",
+          "refunds": "0",
+          "currency": "GBP",
+          "missing_amount_events": 0
+        },
+        {
+          "day": "2026-10-26T07:00:00Z",
+          "net": "0.000000",
+          "gross": "0",
+          "refunds": "0",
+          "currency": "KRW",
+          "missing_amount_events": 0
+        },
+        {
+          "day": "2026-10-26T07:00:00Z",
+          "net": "9.990000",
+          "gross": "14.980000",
+          "refunds": "4.990000",
+          "currency": "USD",
+          "missing_amount_events": 0
+        },
+        {
+          "day": "2026-10-27T07:00:00Z",
+          "net": "5.990000",
+          "gross": "5.990000",
+          "refunds": "0",
+          "currency": "EUR",
+          "missing_amount_events": 0
+        },
+        {
+          "day": "2026-10-27T07:00:00Z",
+          "net": null,
+          "gross": null,
+          "refunds": null,
+          "currency": "USD",
+          "missing_amount_events": 0
+        },
+        {
+          "day": "2026-10-27T07:00:00Z",
+          "net": "199.990000",
+          "gross": "199.990000",
+          "refunds": "0",
+          "currency": "ZAR",
+          "missing_amount_events": 0
+        }
+      ],
+      "cancellations": [],
+      "eventDelivery": [],
+      "notifications": null,
+      "revenueTotals": [
+        {
+          "net": "14.990000",
+          "currency": "AUD",
+          "last_24h": "0",
+          "previous_24h": "14.990000",
+          "missing_amount_events": 0,
+          "recent_missing_amount_events": 0
+        },
+        {
+          "net": "12.990000",
+          "currency": "CAD",
+          "last_24h": "0",
+          "previous_24h": "0",
+          "missing_amount_events": 0,
+          "recent_missing_amount_events": 0
+        },
+        {
+          "net": "31.960000",
+          "currency": "EUR",
+          "last_24h": "5.990000",
+          "previous_24h": "0",
+          "missing_amount_events": 0,
+          "recent_missing_amount_events": 0
+        },
+        {
+          "net": "4.990000",
+          "currency": "GBP",
+          "last_24h": "0",
+          "previous_24h": "4.990000",
+          "missing_amount_events": 0,
+          "recent_missing_amount_events": 0
+        },
+        {
+          "net": "7700.000000",
+          "currency": "KRW",
+          "last_24h": "0",
+          "previous_24h": "0.000000",
+          "missing_amount_events": 0,
+          "recent_missing_amount_events": 0
+        },
+        {
+          "net": "174.730000",
+          "currency": "USD",
+          "last_24h": "0",
+          "previous_24h": "9.990000",
+          "missing_amount_events": 0,
+          "recent_missing_amount_events": 0
+        },
+        {
+          "net": "199.990000",
+          "currency": "ZAR",
+          "last_24h": "199.990000",
+          "previous_24h": "0",
+          "missing_amount_events": 0,
+          "recent_missing_amount_events": 0
+        }
+      ],
+      "authentication": null,
+      "eventPlatforms": [],
+      "landingSources": [],
+      "landingSummary": [],
+      "revenueSources": [
+        {
+          "fees": 2.04411135,
+          "gross": 14.99,
+          "taxes": 1.362591,
+          "source": "Apple App Store",
+          "refunds": 0,
+          "currency": "AUD",
+          "proceeds": 11.58329765,
+          "purchases": 1,
+          "after_refunds": 14.99,
+          "unknown_fee_events": 0,
+          "refund_transactions": 0,
+          "provider_estimated_proceeds": 9.539636
+        },
+        {
+          "fees": 0.7425204,
+          "gross": 5.99,
+          "taxes": 1.039864,
+          "source": "Apple App Store",
+          "refunds": 0,
+          "currency": "EUR",
+          "proceeds": 4.2076156,
+          "purchases": 1,
+          "after_refunds": 5.99,
+          "unknown_fee_events": 0,
+          "refund_transactions": 0,
+          "provider_estimated_proceeds": 3.662885
+        },
+        {
+          "fees": 0.61998255,
+          "gross": 4.99,
+          "taxes": 0.856783,
+          "source": "Apple App Store",
+          "refunds": 0,
+          "currency": "GBP",
+          "proceeds": 3.51323445,
+          "purchases": 1,
+          "after_refunds": 4.99,
+          "unknown_fee_events": 0,
+          "refund_transactions": 0,
+          "provider_estimated_proceeds": 2.893202
+        },
+        {
+          "fees": 5.241,
+          "gross": 39.93,
+          "taxes": 0,
+          "source": "Apple App Store",
+          "refunds": 4.99,
+          "currency": "USD",
+          "proceeds": 29.699,
+          "purchases": 7,
+          "after_refunds": 34.94,
+          "unknown_fee_events": 0,
+          "refund_transactions": 1,
+          "provider_estimated_proceeds": 24.458
+        },
+        {
+          "fees": 26.0866956,
+          "gross": 199.99,
+          "taxes": 26.078696,
+          "source": "Apple App Store",
+          "refunds": 0,
+          "currency": "ZAR",
+          "proceeds": 147.8246084,
+          "purchases": 1,
+          "after_refunds": 199.99,
+          "unknown_fee_events": 0,
+          "refund_transactions": 0,
+          "provider_estimated_proceeds": 121.733913
+        }
+      ],
+      "billingProducts": [
+        {
+          "net": null,
+          "gross": null,
+          "events": 54,
+          "product": "evaluation",
+          "refunds": null,
+          "currency": "USD",
+          "provider": "stripe",
+          "customers": 54,
+          "subscriptions": 0,
+          "unlinked_events": 0,
+          "missing_amount_events": 0
+        },
+        {
+          "net": "24.950000",
+          "gross": "29.940000",
+          "events": 14,
+          "product": "mogging.pro.weekly",
+          "refunds": "4.990000",
+          "currency": "USD",
+          "provider": "revenuecat",
+          "customers": 8,
+          "subscriptions": 8,
+          "unlinked_events": 0,
+          "missing_amount_events": 0
+        },
+        {
+          "net": null,
+          "gross": null,
+          "events": 8,
+          "product": "evaluation_pack_3",
+          "refunds": null,
+          "currency": "USD",
+          "provider": "stripe",
+          "customers": 8,
+          "subscriptions": 0,
+          "unlinked_events": 0,
+          "missing_amount_events": 0
+        },
+        {
+          "net": "9.990000",
+          "gross": "9.990000",
+          "events": 3,
+          "product": "mogging.pro.monthly",
+          "refunds": "0",
+          "currency": "USD",
+          "provider": "revenuecat",
+          "customers": 2,
+          "subscriptions": 2,
+          "unlinked_events": 0,
+          "missing_amount_events": 0
+        },
+        {
+          "net": "4.990000",
+          "gross": "4.990000",
+          "events": 2,
+          "product": "mogging.pro.weekly",
+          "refunds": "0",
+          "currency": "GBP",
+          "provider": "revenuecat",
+          "customers": 1,
+          "subscriptions": 1,
+          "unlinked_events": 0,
+          "missing_amount_events": 0
+        },
+        {
+          "net": "199.990000",
+          "gross": "199.990000",
+          "events": 2,
+          "product": "mogging.pro.monthly",
+          "refunds": "0",
+          "currency": "ZAR",
+          "provider": "revenuecat",
+          "customers": 1,
+          "subscriptions": 1,
+          "unlinked_events": 0,
+          "missing_amount_events": 0
+        },
+        {
+          "net": "0.000000",
+          "gross": "0",
+          "events": 1,
+          "product": "mogging.pro.weekly",
+          "refunds": "0",
+          "currency": "KRW",
+          "provider": "revenuecat",
+          "customers": 1,
+          "subscriptions": 1,
+          "unlinked_events": 0,
+          "missing_amount_events": 0
+        },
+        {
+          "net": "14.990000",
+          "gross": "14.990000",
+          "events": 1,
+          "product": "mogging.pro.monthly",
+          "refunds": "0",
+          "currency": "AUD",
+          "provider": "revenuecat",
+          "customers": 1,
+          "subscriptions": 1,
+          "unlinked_events": 0,
+          "missing_amount_events": 0
+        },
+        {
+          "net": "5.990000",
+          "gross": "5.990000",
+          "events": 1,
+          "product": "mogging.pro.weekly",
+          "refunds": "0",
+          "currency": "EUR",
+          "provider": "revenuecat",
+          "customers": 1,
+          "subscriptions": 1,
+          "unlinked_events": 0,
+          "missing_amount_events": 0
+        }
+      ],
+      "contextCoverage": [],
+      "landingHandoffs": [],
+      "landingSections": [],
+      "onboardingDaily": [],
+      "retentionWeekly": [],
+      "revenueActivity": [
+        {
+          "total": 23,
+          "metric": "new_subscriptions",
+          "last_24h": 2,
+          "period_total": 9,
+          "previous_24h": 3,
+          "unknown_status": 0,
+          "previous_unknown_status": 0
+        },
+        {
+          "total": 24,
+          "metric": "scans_bought",
+          "last_24h": 0,
+          "period_total": 0,
+          "previous_24h": 0,
+          "unknown_status": 0,
+          "previous_unknown_status": 0
+        },
+        {
+          "total": 20,
+          "metric": "active_subscriptions",
+          "last_24h": 20,
+          "period_total": null,
+          "previous_24h": 18,
+          "unknown_status": 0,
+          "previous_unknown_status": 0
+        },
+        {
+          "total": 16,
+          "metric": "canceled_subscriptions",
+          "last_24h": 16,
+          "period_total": null,
+          "previous_24h": 15,
+          "unknown_status": 0,
+          "previous_unknown_status": 0
+        },
+        {
+          "total": 12,
+          "metric": "scheduled_cancellations",
+          "last_24h": 12,
+          "period_total": null,
+          "previous_24h": 11,
+          "unknown_status": 0,
+          "previous_unknown_status": 0
+        }
+      ],
+      "billingReporting": [
+        {
+          "latest_event": "2026-10-28T05:15:25",
+          "webhook_ready": "true",
+          "latest_receipt": "2026-10-28T05:15:25.727438",
+          "recovery_checked_at": "2026-10-24T22:35:48.37",
+          "missing_amount_events": 0,
+          "unrecorded_stripe_purchases": 0,
+          "all_time_missing_amount_events": 0
+        }
+      ],
+      "creatorEconomics": null,
+      "featureRetention": [],
+      "revenueCountries": [
+        {
+          "gross": 39.93,
+          "country": "US",
+          "refunds": 4.99,
+          "currency": "USD",
+          "proceeds": 29.699,
+          "purchases": 7,
+          "after_refunds": 34.94,
+          "refund_transactions": 1
+        },
+        {
+          "gross": 14.99,
+          "country": "AU",
+          "refunds": 0,
+          "currency": "AUD",
+          "proceeds": 11.58329765,
+          "purchases": 1,
+          "after_refunds": 14.99,
+          "refund_transactions": 0
+        },
+        {
+          "gross": 5.99,
+          "country": "BE",
+          "refunds": 0,
+          "currency": "EUR",
+          "proceeds": 4.2076156,
+          "purchases": 1,
+          "after_refunds": 5.99,
+          "refund_transactions": 0
+        },
+        {
+          "gross": 4.99,
+          "country": "GB",
+          "refunds": 0,
+          "currency": "GBP",
+          "proceeds": 3.51323445,
+          "purchases": 1,
+          "after_refunds": 4.99,
+          "refund_transactions": 0
+        },
+        {
+          "gross": 199.99,
+          "country": "ZA",
+          "refunds": 0,
+          "currency": "ZAR",
+          "proceeds": 147.8246084,
+          "purchases": 1,
+          "after_refunds": 199.99,
+          "refund_transactions": 0
+        }
+      ],
+      "attributionLedger": null,
+      "audienceBreakdown": [
+        {
+          "events": 5598,
+          "devices": 123,
+          "audience": "creator / admin",
+          "runtime_unconfirmed_events": 0
+        },
+        {
+          "events": 53460,
+          "devices": 1547,
+          "audience": "customer",
+          "runtime_unconfirmed_events": 0
+        },
+        {
+          "events": 1307,
+          "devices": 5,
+          "audience": "internal",
+          "runtime_unconfirmed_events": 0
+        },
+        {
+          "events": 752,
+          "devices": 7,
+          "audience": "non-production",
+          "runtime_unconfirmed_events": 0
+        }
+      ],
+      "billingDimensions": [
+        {
+          "event": "cancellation_scheduled",
+          "value": "UNSUBSCRIBE",
+          "events": 8,
+          "provider": "revenuecat",
+          "dimension": "cancel_reason"
+        },
+        {
+          "event": "subscription_refunded",
+          "value": "CUSTOMER_SUPPORT",
+          "events": 1,
+          "provider": "revenuecat",
+          "dimension": "cancel_reason"
+        },
+        {
+          "event": "cancellation_scheduled",
+          "value": "0.3",
+          "events": 6,
+          "provider": "revenuecat",
+          "dimension": "commission_percentage"
+        },
+        {
+          "event": "subscription_started",
+          "value": "0.3",
+          "events": 5,
+          "provider": "revenuecat",
+          "dimension": "commission_percentage"
+        },
+        {
+          "event": "subscription_expired",
+          "value": "0.3",
+          "events": 2,
+          "provider": "revenuecat",
+          "dimension": "commission_percentage"
+        },
+        {
+          "event": "subscription_renewed",
+          "value": "0.3",
+          "events": 2,
+          "provider": "revenuecat",
+          "dimension": "commission_percentage"
+        },
+        {
+          "event": "cancellation_scheduled",
+          "value": "0.2485",
+          "events": 1,
+          "provider": "revenuecat",
+          "dimension": "commission_percentage"
+        },
+        {
+          "event": "cancellation_scheduled",
+          "value": "0.2609",
+          "events": 1,
+          "provider": "revenuecat",
+          "dimension": "commission_percentage"
+        },
+        {
+          "event": "subscription_expired",
+          "value": "0.2727",
+          "events": 1,
+          "provider": "revenuecat",
+          "dimension": "commission_percentage"
+        },
+        {
+          "event": "subscription_reactivated",
+          "value": "0.3",
+          "events": 1,
+          "provider": "revenuecat",
+          "dimension": "commission_percentage"
+        },
+        {
+          "event": "subscription_refunded",
+          "value": "0.3",
+          "events": 1,
+          "provider": "revenuecat",
+          "dimension": "commission_percentage"
+        },
+        {
+          "event": "subscription_started",
+          "value": "0.2149",
+          "events": 1,
+          "provider": "revenuecat",
+          "dimension": "commission_percentage"
+        },
+        {
+          "event": "subscription_started",
+          "value": "0.2485",
+          "events": 1,
+          "provider": "revenuecat",
+          "dimension": "commission_percentage"
+        },
+        {
+          "event": "subscription_started",
+          "value": "0.2609",
+          "events": 1,
+          "provider": "revenuecat",
+          "dimension": "commission_percentage"
+        },
+        {
+          "event": "subscription_started",
+          "value": "0.2727",
+          "events": 1,
+          "provider": "revenuecat",
+          "dimension": "commission_percentage"
+        },
+        {
+          "event": "cancellation_scheduled",
+          "value": "US",
+          "events": 5,
+          "provider": "revenuecat",
+          "dimension": "country"
+        },
+        {
+          "event": "subscription_started",
+          "value": "US",
+          "events": 5,
+          "provider": "revenuecat",
+          "dimension": "country"
+        },
+        {
+          "event": "subscription_expired",
+          "value": "US",
+          "events": 2,
+          "provider": "revenuecat",
+          "dimension": "country"
+        },
+        {
+          "event": "subscription_renewed",
+          "value": "US",
+          "events": 2,
+          "provider": "revenuecat",
+          "dimension": "country"
+        },
+        {
+          "event": "cancellation_scheduled",
+          "value": "GB",
+          "events": 1,
+          "provider": "revenuecat",
+          "dimension": "country"
+        },
+        {
+          "event": "cancellation_scheduled",
+          "value": "KW",
+          "events": 1,
+          "provider": "revenuecat",
+          "dimension": "country"
+        },
+        {
+          "event": "cancellation_scheduled",
+          "value": "ZA",
+          "events": 1,
+          "provider": "revenuecat",
+          "dimension": "country"
+        },
+        {
+          "event": "subscription_expired",
+          "value": "KR",
+          "events": 1,
+          "provider": "revenuecat",
+          "dimension": "country"
+        },
+        {
+          "event": "subscription_reactivated",
+          "value": "KW",
+          "events": 1,
+          "provider": "revenuecat",
+          "dimension": "country"
+        },
+        {
+          "event": "subscription_refunded",
+          "value": "US",
+          "events": 1,
+          "provider": "revenuecat",
+          "dimension": "country"
+        },
+        {
+          "event": "subscription_started",
+          "value": "AU",
+          "events": 1,
+          "provider": "revenuecat",
+          "dimension": "country"
+        },
+        {
+          "event": "subscription_started",
+          "value": "BE",
+          "events": 1,
+          "provider": "revenuecat",
+          "dimension": "country"
+        },
+        {
+          "event": "subscription_started",
+          "value": "GB",
+          "events": 1,
+          "provider": "revenuecat",
+          "dimension": "country"
+        },
+        {
+          "event": "subscription_started",
+          "value": "ZA",
+          "events": 1,
+          "provider": "revenuecat",
+          "dimension": "country"
+        },
+        {
+          "event": "subscription_expired",
+          "value": "UNSUBSCRIBE",
+          "events": 2,
+          "provider": "revenuecat",
+          "dimension": "expiration_reason"
+        },
+        {
+          "event": "subscription_expired",
+          "value": "CUSTOMER_SUPPORT",
+          "events": 1,
+          "provider": "revenuecat",
+          "dimension": "expiration_reason"
+        },
+        {
+          "event": "subscription_started",
+          "value": "default",
+          "events": 8,
+          "provider": "revenuecat",
+          "dimension": "offering"
+        },
+        {
+          "event": "cancellation_scheduled",
+          "value": "default",
+          "events": 7,
+          "provider": "revenuecat",
+          "dimension": "offering"
+        },
+        {
+          "event": "subscription_expired",
+          "value": "default",
+          "events": 2,
+          "provider": "revenuecat",
+          "dimension": "offering"
+        },
+        {
+          "event": "subscription_renewed",
+          "value": "default",
+          "events": 2,
+          "provider": "revenuecat",
+          "dimension": "offering"
+        },
+        {
+          "event": "subscription_reactivated",
+          "value": "default",
+          "events": 1,
+          "provider": "revenuecat",
+          "dimension": "offering"
+        },
+        {
+          "event": "checkout_expired",
+          "value": "NORMAL",
+          "events": 62,
+          "provider": "stripe",
+          "dimension": "period_type"
+        },
+        {
+          "event": "subscription_started",
+          "value": "NORMAL",
+          "events": 9,
+          "provider": "revenuecat",
+          "dimension": "period_type"
+        },
+        {
+          "event": "cancellation_scheduled",
+          "value": "NORMAL",
+          "events": 8,
+          "provider": "revenuecat",
+          "dimension": "period_type"
+        },
+        {
+          "event": "subscription_expired",
+          "value": "NORMAL",
+          "events": 3,
+          "provider": "revenuecat",
+          "dimension": "period_type"
+        },
+        {
+          "event": "subscription_renewed",
+          "value": "NORMAL",
+          "events": 2,
+          "provider": "revenuecat",
+          "dimension": "period_type"
+        },
+        {
+          "event": "subscription_reactivated",
+          "value": "NORMAL",
+          "events": 1,
+          "provider": "revenuecat",
+          "dimension": "period_type"
+        },
+        {
+          "event": "subscription_refunded",
+          "value": "NORMAL",
+          "events": 1,
+          "provider": "revenuecat",
+          "dimension": "period_type"
+        },
+        {
+          "event": "subscription_started",
+          "value": "APP_STORE",
+          "events": 9,
+          "provider": "revenuecat",
+          "dimension": "store"
+        },
+        {
+          "event": "cancellation_scheduled",
+          "value": "APP_STORE",
+          "events": 8,
+          "provider": "revenuecat",
+          "dimension": "store"
+        },
+        {
+          "event": "subscription_expired",
+          "value": "APP_STORE",
+          "events": 3,
+          "provider": "revenuecat",
+          "dimension": "store"
+        },
+        {
+          "event": "subscription_renewed",
+          "value": "APP_STORE",
+          "events": 2,
+          "provider": "revenuecat",
+          "dimension": "store"
+        },
+        {
+          "event": "subscription_reactivated",
+          "value": "APP_STORE",
+          "events": 1,
+          "provider": "revenuecat",
+          "dimension": "store"
+        },
+        {
+          "event": "subscription_refunded",
+          "value": "APP_STORE",
+          "events": 1,
+          "provider": "revenuecat",
+          "dimension": "store"
+        },
+        {
+          "event": "cancellation_scheduled",
+          "value": "0",
+          "events": 6,
+          "provider": "revenuecat",
+          "dimension": "tax_percentage"
+        },
+        {
+          "event": "subscription_started",
+          "value": "0",
+          "events": 5,
+          "provider": "revenuecat",
+          "dimension": "tax_percentage"
+        },
+        {
+          "event": "subscription_expired",
+          "value": "0",
+          "events": 2,
+          "provider": "revenuecat",
+          "dimension": "tax_percentage"
+        },
+        {
+          "event": "subscription_renewed",
+          "value": "0",
+          "events": 2,
+          "provider": "revenuecat",
+          "dimension": "tax_percentage"
+        },
+        {
+          "event": "cancellation_scheduled",
+          "value": "0.1304",
+          "events": 1,
+          "provider": "revenuecat",
+          "dimension": "tax_percentage"
+        },
+        {
+          "event": "cancellation_scheduled",
+          "value": "0.1717",
+          "events": 1,
+          "provider": "revenuecat",
+          "dimension": "tax_percentage"
+        },
+        {
+          "event": "subscription_expired",
+          "value": "0.0909",
+          "events": 1,
+          "provider": "revenuecat",
+          "dimension": "tax_percentage"
+        },
+        {
+          "event": "subscription_reactivated",
+          "value": "0",
+          "events": 1,
+          "provider": "revenuecat",
+          "dimension": "tax_percentage"
+        },
+        {
+          "event": "subscription_refunded",
+          "value": "0",
+          "events": 1,
+          "provider": "revenuecat",
+          "dimension": "tax_percentage"
+        },
+        {
+          "event": "subscription_started",
+          "value": "0.0909",
+          "events": 1,
+          "provider": "revenuecat",
+          "dimension": "tax_percentage"
+        },
+        {
+          "event": "subscription_started",
+          "value": "0.1304",
+          "events": 1,
+          "provider": "revenuecat",
+          "dimension": "tax_percentage"
+        },
+        {
+          "event": "subscription_started",
+          "value": "0.1717",
+          "events": 1,
+          "provider": "revenuecat",
+          "dimension": "tax_percentage"
+        },
+        {
+          "event": "subscription_started",
+          "value": "0.1736",
+          "events": 1,
+          "provider": "revenuecat",
+          "dimension": "tax_percentage"
+        },
+        {
+          "event": "checkout_expired",
+          "value": "false",
+          "events": 62,
+          "provider": "stripe",
+          "dimension": "timestamp_estimated"
+        },
+        {
+          "event": "subscription_started",
+          "value": "false",
+          "events": 9,
+          "provider": "revenuecat",
+          "dimension": "timestamp_estimated"
+        },
+        {
+          "event": "cancellation_scheduled",
+          "value": "false",
+          "events": 8,
+          "provider": "revenuecat",
+          "dimension": "timestamp_estimated"
+        },
+        {
+          "event": "subscription_expired",
+          "value": "false",
+          "events": 3,
+          "provider": "revenuecat",
+          "dimension": "timestamp_estimated"
+        },
+        {
+          "event": "subscription_renewed",
+          "value": "false",
+          "events": 2,
+          "provider": "revenuecat",
+          "dimension": "timestamp_estimated"
+        },
+        {
+          "event": "subscription_reactivated",
+          "value": "false",
+          "events": 1,
+          "provider": "revenuecat",
+          "dimension": "timestamp_estimated"
+        },
+        {
+          "event": "subscription_refunded",
+          "value": "false",
+          "events": 1,
+          "provider": "revenuecat",
+          "dimension": "timestamp_estimated"
+        },
+        {
+          "event": "subscription_started",
+          "value": "false",
+          "events": 9,
+          "provider": "revenuecat",
+          "dimension": "trial_conversion"
+        },
+        {
+          "event": "cancellation_scheduled",
+          "value": "false",
+          "events": 8,
+          "provider": "revenuecat",
+          "dimension": "trial_conversion"
+        },
+        {
+          "event": "subscription_expired",
+          "value": "false",
+          "events": 3,
+          "provider": "revenuecat",
+          "dimension": "trial_conversion"
+        },
+        {
+          "event": "subscription_renewed",
+          "value": "false",
+          "events": 2,
+          "provider": "revenuecat",
+          "dimension": "trial_conversion"
+        },
+        {
+          "event": "subscription_reactivated",
+          "value": "false",
+          "events": 1,
+          "provider": "revenuecat",
+          "dimension": "trial_conversion"
+        },
+        {
+          "event": "subscription_refunded",
+          "value": "false",
+          "events": 1,
+          "provider": "revenuecat",
+          "dimension": "trial_conversion"
+        }
+      ],
+      "landingPlacements": [],
+      "onboardingScreens": [],
+      "onboardingSummary": [],
+      "retentionCoverage": [],
+      "revenueComparison": [
+        {
+          "currency": "CAD",
+          "current_net": "0",
+          "previous_net": "0.000000",
+          "missing_amount_events": 0
+        },
+        {
+          "currency": "KRW",
+          "current_net": "0.000000",
+          "previous_net": "0",
+          "missing_amount_events": 0
+        },
+        {
+          "currency": "EUR",
+          "current_net": "5.990000",
+          "previous_net": "5.990000",
+          "missing_amount_events": 0
+        },
+        {
+          "currency": "ZAR",
+          "current_net": "199.990000",
+          "previous_net": "0",
+          "missing_amount_events": 0
+        },
+        {
+          "currency": "AUD",
+          "current_net": "14.990000",
+          "previous_net": "0",
+          "missing_amount_events": 0
+        },
+        {
+          "currency": "USD",
+          "current_net": "34.940000",
+          "previous_net": "34.940000",
+          "missing_amount_events": 0
+        },
+        {
+          "currency": "GBP",
+          "current_net": "4.990000",
+          "previous_net": "0",
+          "missing_amount_events": 0
+        }
+      ],
+      "revenueFinancials": [
+        {
+          "fees": 0.7425204,
+          "gross": 5.99,
+          "taxes": 1.039864,
+          "refunds": 0,
+          "currency": "EUR",
+          "proceeds": 4.2076156,
+          "apple_events": 1,
+          "after_refunds": 5.99,
+          "known_proceeds": 4.2076156,
+          "unknown_fee_events": 0,
+          "commission_mismatches": 1
+        },
+        {
+          "fees": 26.0866956,
+          "gross": 199.99,
+          "taxes": 26.078696,
+          "refunds": 0,
+          "currency": "ZAR",
+          "proceeds": 147.8246084,
+          "apple_events": 1,
+          "after_refunds": 199.99,
+          "known_proceeds": 147.8246084,
+          "unknown_fee_events": 0,
+          "commission_mismatches": 1
+        },
+        {
+          "fees": 5.241,
+          "gross": 39.93,
+          "taxes": 0,
+          "refunds": 4.99,
+          "currency": "USD",
+          "proceeds": 29.699,
+          "apple_events": 8,
+          "after_refunds": 34.94,
+          "known_proceeds": 29.699,
+          "unknown_fee_events": 0,
+          "commission_mismatches": 8
+        },
+        {
+          "fees": 2.04411135,
+          "gross": 14.99,
+          "taxes": 1.362591,
+          "refunds": 0,
+          "currency": "AUD",
+          "proceeds": 11.58329765,
+          "apple_events": 1,
+          "after_refunds": 14.99,
+          "known_proceeds": 11.58329765,
+          "unknown_fee_events": 0,
+          "commission_mismatches": 1
+        },
+        {
+          "fees": 0.61998255,
+          "gross": 4.99,
+          "taxes": 0.856783,
+          "refunds": 0,
+          "currency": "GBP",
+          "proceeds": 3.51323445,
+          "apple_events": 1,
+          "after_refunds": 4.99,
+          "known_proceeds": 3.51323445,
+          "unknown_fee_events": 0,
+          "commission_mismatches": 1
+        }
+      ],
+      "acquisitionSummary": [],
+      "creatorAttribution": null,
+      "landingExperiments": [],
+      "onboardingFriction": [],
+      "onboardingRevisions": [],
+      "membershipActivation": [],
+      "revenueProceedsDaily": [
+        {
+          "day": "2026-10-27T07:00:00Z",
+          "currency": "ZAR",
+          "proceeds": 147.8246084
+        },
+        {
+          "day": "2026-10-25T07:00:00Z",
+          "currency": "USD",
+          "proceeds": 21.2075
+        },
+        {
+          "day": "2026-10-26T07:00:00Z",
+          "currency": "AUD",
+          "proceeds": 11.58329765
+        },
+        {
+          "day": "2026-10-26T07:00:00Z",
+          "currency": "GBP",
+          "proceeds": 3.51323445
+        },
+        {
+          "day": "2026-10-27T07:00:00Z",
+          "currency": "EUR",
+          "proceeds": 4.2076156
+        },
+        {
+          "day": "2026-10-26T07:00:00Z",
+          "currency": "USD",
+          "proceeds": 8.4915
+        }
+      ],
+      "landingExperimentDaily": [],
+      "revenueSubscriptionOverview": [
+        {
+          "ended": 4,
+          "trials": 0,
+          "cancelling": 12,
+          "access_total": 20,
+          "auto_renewing": 8,
+          "billing_retry": 0,
+          "unknown_expiry": 0,
+          "ended_in_period": 3,
+          "cancellation_requests": 8,
+          "starting_subscriptions": 14,
+          "churned_starting_subscriptions": 2
+        }
+      ],
+      "revenueSubscriptionProducts": [
+        {
+          "ended": 0,
+          "source": "Apple App Store",
+          "trials": 0,
+          "product": "mogging.pro.monthly",
+          "cancelling": 5,
+          "auto_renewing": 2,
+          "billing_retry": 0,
+          "unknown_expiry": 0
+        },
+        {
+          "ended": 4,
+          "source": "Apple App Store",
+          "trials": 0,
+          "product": "mogging.pro.weekly",
+          "cancelling": 7,
+          "auto_renewing": 6,
+          "billing_retry": 0,
+          "unknown_expiry": 0
+        }
+      ]
+    },
+    "Purchases": {
+      "web": [],
+      "daily": [],
+      "scans": null,
+      "steps": [],
+      "actions": [],
+      "billing": [],
+      "paywall": [],
+      "revenue": [],
+      "screens": [],
+      "summary": {
+        "actors": 1547,
+        "events": 53460,
+        "failures": 5,
+        "evaluations": 13,
+        "first_opens": 478,
+        "latest_event": "2026-10-28T06:55:21.816"
+      },
+      "releases": [],
+      "referrals": null,
+      "retention": [],
+      "dataHealth": null,
+      "dimensions": [],
+      "engagement": null,
+      "onboarding": [],
+      "scanLedger": [],
+      "acquisition": [],
+      "webAudience": [],
+      "eventMetrics": [],
+      "featureUsage": [],
+      "paidDelivery": [],
+      "purchaseFlow": {
+        "daily": [
+          {
+            "day": "2026-10-25T07:00:00Z",
+            "attempts": 66,
+            "activated": 4,
+            "purchased": 4
+          },
+          {
+            "day": "2026-10-26T07:00:00Z",
+            "attempts": 64,
+            "activated": 4,
+            "purchased": 4
+          },
+          {
+            "day": "2026-10-27T07:00:00Z",
+            "attempts": 53,
+            "activated": 1,
+            "purchased": 1
+          }
+        ],
+        "summary": [
+          {
+            "errors": 5,
+            "devices": 148,
+            "attempts": 183,
+            "verified": 7,
+            "activated": 9,
+            "purchased": 9,
+            "requested": 182,
+            "incomplete": 19,
+            "cancellations": 150,
+            "access_unconfirmed": 0
+          }
+        ],
+        "support": [
+          {
+            "events": 42,
+            "devices": 26,
+            "event_name": "purchase_restored"
+          },
+          {
+            "events": 42,
+            "devices": 26,
+            "event_name": "restore_started"
+          }
+        ],
+        "coverage": [
+          {
+            "latest_event": "2026-10-28T06:30:33.247",
+            "start_events": 183,
+            "paywall_views": 463,
+            "latest_receipt": "2026-10-28T13:12:52.59729",
+            "detailed_starts": 183,
+            "paywall_devices": 343,
+            "unlinked_starts": 0,
+            "latest_billing_receipt": "2026-10-27T11:44:12.930322",
+            "runtime_unconfirmed_events": 0
+          }
+        ],
+        "failures": [
+          {
+            "stage": "store_purchase",
+            "reason": "store_problem",
+            "outcome": "store_failed",
+            "attempts": 3,
+            "error_code": "2",
+            "affected_devices": 3
+          },
+          {
+            "stage": "store_purchase",
+            "reason": "purchase_not_allowed",
+            "outcome": "store_failed",
+            "attempts": 2,
+            "error_code": "3",
+            "affected_devices": 2
+          }
+        ],
+        "feedback": [
+          {
+            "reason": "price",
+            "responses": 45
+          },
+          {
+            "reason": "not_ready",
+            "responses": 8
+          },
+          {
+            "reason": "other",
+            "responses": 3
+          }
+        ],
+        "handoffs": [],
+        "outcomes": [
+          {
+            "devices": 122,
+            "outcome": "cancelled",
+            "attempts": 150
+          },
+          {
+            "devices": 19,
+            "outcome": "unresolved",
+            "attempts": 19
+          },
+          {
+            "devices": 9,
+            "outcome": "activated",
+            "attempts": 9
+          },
+          {
+            "devices": 5,
+            "outcome": "store_failed",
+            "attempts": 5
+          }
+        ],
+        "surfaces": [
+          {
+            "surface": "onboarding_paywall",
+            "attempts": 174,
+            "platform": "ios",
+            "verified": 7,
+            "activated": 9,
+            "purchased": 9,
+            "cancellations": 142,
+            "purchase_type": "subscription"
+          },
+          {
+            "surface": "onboarding_feedback_offer",
+            "attempts": 9,
+            "platform": "ios",
+            "verified": 0,
+            "activated": 0,
+            "purchased": 0,
+            "cancellations": 8,
+            "purchase_type": "subscription"
+          }
+        ]
+      },
+      "reportLedger": [],
+      "revenueDaily": [],
+      "cancellations": [],
+      "eventDelivery": [],
+      "notifications": null,
+      "revenueTotals": [],
+      "authentication": null,
+      "eventPlatforms": [],
+      "landingSources": [],
+      "landingSummary": [],
+      "revenueSources": [],
+      "billingProducts": [],
+      "contextCoverage": [],
+      "landingHandoffs": [],
+      "landingSections": [],
+      "onboardingDaily": [],
+      "retentionWeekly": [],
+      "revenueActivity": [],
+      "billingReporting": [],
+      "creatorEconomics": null,
+      "featureRetention": [],
+      "revenueCountries": [],
+      "attributionLedger": null,
+      "audienceBreakdown": [
+        {
+          "events": 5598,
+          "devices": 123,
+          "audience": "creator / admin",
+          "runtime_unconfirmed_events": 0
+        },
+        {
+          "events": 53460,
+          "devices": 1547,
+          "audience": "customer",
+          "runtime_unconfirmed_events": 0
+        },
+        {
+          "events": 1307,
+          "devices": 5,
+          "audience": "internal",
+          "runtime_unconfirmed_events": 0
+        },
+        {
+          "events": 752,
+          "devices": 7,
+          "audience": "non-production",
+          "runtime_unconfirmed_events": 0
+        }
+      ],
+      "billingDimensions": [],
+      "landingPlacements": [],
+      "onboardingScreens": [],
+      "onboardingSummary": [],
+      "retentionCoverage": [],
+      "revenueComparison": [],
+      "revenueFinancials": [],
+      "acquisitionSummary": [],
+      "creatorAttribution": null,
+      "landingExperiments": [],
+      "onboardingFriction": [],
+      "onboardingRevisions": [],
+      "membershipActivation": [],
+      "revenueProceedsDaily": [],
+      "landingExperimentDaily": [],
+      "revenueSubscriptionOverview": [],
+      "revenueSubscriptionProducts": []
+    },
+    "Scans": {
+      "web": [],
+      "daily": [],
+      "scans": {
+        "daily": [
+          {
+            "day": "2026-10-25T07:00:00Z",
+            "failed": 0,
+            "pending": 0,
+            "requests": 5,
+            "completed": 5
+          },
+          {
+            "day": "2026-10-26T07:00:00Z",
+            "failed": 3,
+            "pending": 0,
+            "requests": 10,
+            "completed": 7
+          },
+          {
+            "day": "2026-10-27T07:00:00Z",
+            "failed": 0,
+            "pending": 0,
+            "requests": 2,
+            "completed": 2
+          }
+        ],
+        "client": [
+          {
+            "p90_ms": null,
+            "median_ms": null,
+            "latest_event": "2026-10-27T22:49:18.464",
+            "latest_receipt": "2026-10-27T22:49:23.603137",
+            "request_starts": 0,
+            "request_failures": 0,
+            "evaluation_p90_ms": 75076,
+            "evaluation_starts": 18,
+            "timed_completions": 0,
+            "timed_evaluations": 13,
+            "evaluation_failures": 5,
+            "request_completions": 0,
+            "requests_without_id": 0,
+            "evaluation_median_ms": 40141,
+            "evaluation_completions": 13,
+            "runtime_unconfirmed_events": 0
+          }
+        ],
+        "events": [
+          {
+            "events": 13,
+            "devices": 13,
+            "event_name": "evaluation_completed"
+          },
+          {
+            "events": 5,
+            "devices": 2,
+            "event_name": "evaluation_failed"
+          },
+          {
+            "events": 18,
+            "devices": 13,
+            "event_name": "evaluation_started"
+          }
+        ],
+        "reports": [
+          {
+            "other": 0,
+            "failed": 3,
+            "completed": 14,
+            "latest_created": "2026-10-27T18:15:44.858106",
+            "latest_updated": "2026-10-27T18:15:44.858106"
+          }
+        ],
+        "sources": [
+          {
+            "failed": 3,
+            "source": "subscription_allowance",
+            "pending": 0,
+            "requests": 13,
+            "completed": 10
+          },
+          {
+            "failed": 0,
+            "source": "referral_reward",
+            "pending": 0,
+            "requests": 4,
+            "completed": 4
+          }
+        ],
+        "summary": [
+          {
+            "other": 0,
+            "failed": 3,
+            "pending": 0,
+            "accounts": 13,
+            "requests": 17,
+            "completed": 14,
+            "latest_request": "2026-10-27T18:15:01.346",
+            "oldest_pending": null,
+            "distinct_reports": 14,
+            "missing_report_reference": 0,
+            "pending_over_five_minutes": 0
+          }
+        ],
+        "failures": [
+          {
+            "events": 3,
+            "reason": "analysis_failed",
+            "platform": "ios",
+            "event_name": "evaluation_failed",
+            "affected_devices": 1
+          },
+          {
+            "events": 1,
+            "reason": "http_402",
+            "platform": "ios",
+            "event_name": "evaluation_failed",
+            "affected_devices": 1
+          },
+          {
+            "events": 1,
+            "reason": "request_failed",
+            "platform": "ios",
+            "event_name": "evaluation_failed",
+            "affected_devices": 1
+          }
+        ],
+        "releases": []
+      },
+      "steps": [],
+      "actions": [],
+      "billing": [],
+      "paywall": [],
+      "revenue": [],
+      "screens": [],
+      "summary": {
+        "actors": 1547,
+        "events": 53460,
+        "failures": 5,
+        "evaluations": 13,
+        "first_opens": 478,
+        "latest_event": "2026-10-28T06:55:21.816"
+      },
+      "releases": [],
+      "referrals": null,
+      "retention": [],
+      "dataHealth": null,
+      "dimensions": [],
+      "engagement": null,
+      "onboarding": [],
+      "scanLedger": [],
+      "acquisition": [],
+      "webAudience": [],
+      "eventMetrics": [],
+      "featureUsage": [],
+      "paidDelivery": [],
+      "purchaseFlow": null,
+      "reportLedger": [],
+      "revenueDaily": [],
+      "cancellations": [],
+      "eventDelivery": [],
+      "notifications": null,
+      "revenueTotals": [],
+      "authentication": null,
+      "eventPlatforms": [],
+      "landingSources": [],
+      "landingSummary": [],
+      "revenueSources": [],
+      "billingProducts": [],
+      "contextCoverage": [],
+      "landingHandoffs": [],
+      "landingSections": [],
+      "onboardingDaily": [],
+      "retentionWeekly": [],
+      "revenueActivity": [],
+      "billingReporting": [],
+      "creatorEconomics": null,
+      "featureRetention": [],
+      "revenueCountries": [],
+      "attributionLedger": null,
+      "audienceBreakdown": [
+        {
+          "events": 5598,
+          "devices": 123,
+          "audience": "creator / admin",
+          "runtime_unconfirmed_events": 0
+        },
+        {
+          "events": 53460,
+          "devices": 1547,
+          "audience": "customer",
+          "runtime_unconfirmed_events": 0
+        },
+        {
+          "events": 1307,
+          "devices": 5,
+          "audience": "internal",
+          "runtime_unconfirmed_events": 0
+        },
+        {
+          "events": 752,
+          "devices": 7,
+          "audience": "non-production",
+          "runtime_unconfirmed_events": 0
+        }
+      ],
+      "billingDimensions": [],
+      "landingPlacements": [],
+      "onboardingScreens": [],
+      "onboardingSummary": [],
+      "retentionCoverage": [],
+      "revenueComparison": [],
+      "revenueFinancials": [],
+      "acquisitionSummary": [],
+      "creatorAttribution": null,
+      "landingExperiments": [],
+      "onboardingFriction": [],
+      "onboardingRevisions": [],
+      "membershipActivation": [],
+      "revenueProceedsDaily": [],
+      "landingExperimentDaily": [],
+      "revenueSubscriptionOverview": [],
+      "revenueSubscriptionProducts": []
+    },
+    "Authentication": {
+      "web": [],
+      "daily": [
+        {
+          "day": "2026-10-25T07:00:00Z",
+          "actors": 592,
+          "failures": 0,
+          "push_opens": 0,
+          "auth_starts": 213,
+          "evaluations": 5,
+          "first_opens": 174,
+          "scan_starts": 5,
+          "report_views": 11,
+          "auth_failures": 14,
+          "paywall_views": 218,
+          "auth_successes": 131,
+          "progress_users": 0,
+          "protocol_tasks": 3,
+          "store_clickers": 117,
+          "course_learners": 0,
+          "purchase_starts": 66,
+          "store_redirects": 130,
+          "referral_invites": 62,
+          "website_visitors": 313,
+          "lessons_completed": 0,
+          "onboarding_starts": 238,
+          "auth_cancellations": 60,
+          "post_login_failures": 0,
+          "purchase_completions": 4,
+          "referral_redemptions": 4,
+          "onboarding_completions": 5
+        },
+        {
+          "day": "2026-10-26T07:00:00Z",
+          "actors": 550,
+          "failures": 5,
+          "push_opens": 0,
+          "auth_starts": 215,
+          "evaluations": 6,
+          "first_opens": 160,
+          "scan_starts": 11,
+          "report_views": 9,
+          "auth_failures": 15,
+          "paywall_views": 217,
+          "auth_successes": 124,
+          "progress_users": 0,
+          "protocol_tasks": 0,
+          "store_clickers": 121,
+          "course_learners": 0,
+          "purchase_starts": 64,
+          "store_redirects": 133,
+          "referral_invites": 69,
+          "website_visitors": 312,
+          "lessons_completed": 0,
+          "onboarding_starts": 235,
+          "auth_cancellations": 71,
+          "post_login_failures": 0,
+          "purchase_completions": 4,
+          "referral_redemptions": 11,
+          "onboarding_completions": 6
+        },
+        {
+          "day": "2026-10-27T07:00:00Z",
+          "actors": 448,
+          "failures": 0,
+          "push_opens": 0,
+          "auth_starts": 192,
+          "evaluations": 2,
+          "first_opens": 144,
+          "scan_starts": 2,
+          "report_views": 14,
+          "auth_failures": 12,
+          "paywall_views": 156,
+          "auth_successes": 120,
+          "progress_users": 0,
+          "protocol_tasks": 0,
+          "store_clickers": 88,
+          "course_learners": 0,
+          "purchase_starts": 53,
+          "store_redirects": 99,
+          "referral_invites": 72,
+          "website_visitors": 227,
+          "lessons_completed": 0,
+          "onboarding_starts": 198,
+          "auth_cancellations": 55,
+          "post_login_failures": 0,
+          "purchase_completions": 1,
+          "referral_redemptions": 1,
+          "onboarding_completions": 1
+        }
+      ],
+      "scans": null,
+      "steps": [],
+      "actions": [],
+      "billing": [],
+      "paywall": [],
+      "revenue": [],
+      "screens": [],
+      "summary": {
+        "actors": 1547,
+        "events": 53460,
+        "failures": 5,
+        "evaluations": 13,
+        "first_opens": 478,
+        "latest_event": "2026-10-28T06:55:21.816"
+      },
+      "releases": [],
+      "referrals": null,
+      "retention": [],
+      "dataHealth": null,
+      "dimensions": [],
+      "engagement": null,
+      "onboarding": [],
+      "scanLedger": [],
+      "acquisition": [],
+      "webAudience": [],
+      "eventMetrics": [],
+      "featureUsage": [],
+      "paidDelivery": [],
+      "purchaseFlow": null,
+      "reportLedger": [],
+      "revenueDaily": [],
+      "cancellations": [],
+      "eventDelivery": [],
+      "notifications": null,
+      "revenueTotals": [],
+      "authentication": {
+        "links": [
+          {
+            "links": 746,
+            "accounts": 530,
+            "latest_link": "2026-10-28T06:28:17.241367"
+          }
+        ],
+        "summary": [
+          {
+            "events": 2146,
+            "starts": 620,
+            "failures": 41,
+            "successes": 375,
+            "latest_event": "2026-10-28T06:30:35.806",
+            "cancellations": 186,
+            "latest_receipt": "2026-10-28T06:30:38.651918",
+            "setup_failures": 0,
+            "classified_issues": 227,
+            "starts_with_attempt": 620,
+            "authenticated_devices": 363,
+            "runtime_unconfirmed_events": 0
+          }
+        ],
+        "support": [],
+        "failures": [
+          {
+            "stage": "provider",
+            "events": 16,
+            "reason": "ERR_REQUEST_UNKNOWN",
+            "outcome": "account_auth_failed",
+            "provider": "apple",
+            "affected_devices": 13
+          },
+          {
+            "stage": "session_exchange",
+            "events": 16,
+            "reason": "http_404",
+            "outcome": "account_auth_failed",
+            "provider": "apple",
+            "affected_devices": 13
+          },
+          {
+            "stage": "session_exchange",
+            "events": 3,
+            "reason": "http_401",
+            "outcome": "account_auth_failed",
+            "provider": "apple",
+            "affected_devices": 1
+          },
+          {
+            "stage": "session_exchange",
+            "events": 3,
+            "reason": "account_not_found",
+            "outcome": "account_auth_failed",
+            "provider": "google",
+            "affected_devices": 3
+          },
+          {
+            "stage": "session_exchange",
+            "events": 2,
+            "reason": "unknown_error",
+            "outcome": "account_auth_failed",
+            "provider": "apple",
+            "affected_devices": 2
+          },
+          {
+            "stage": "provider",
+            "events": 1,
+            "reason": "provider_not_active",
+            "outcome": "account_auth_failed",
+            "provider": "apple",
+            "affected_devices": 1
+          }
+        ],
+        "providers": [
+          {
+            "starts": 358,
+            "failures": 38,
+            "provider": "apple",
+            "successes": 266,
+            "cancellations": 52,
+            "setup_failures": 0
+          },
+          {
+            "starts": 262,
+            "failures": 3,
+            "provider": "google",
+            "successes": 109,
+            "cancellations": 134,
+            "setup_failures": 0
+          }
+        ]
+      },
+      "eventPlatforms": [],
+      "landingSources": [],
+      "landingSummary": [],
+      "revenueSources": [],
+      "billingProducts": [],
+      "contextCoverage": [],
+      "landingHandoffs": [],
+      "landingSections": [],
+      "onboardingDaily": [],
+      "retentionWeekly": [],
+      "revenueActivity": [],
+      "billingReporting": [],
+      "creatorEconomics": null,
+      "featureRetention": [],
+      "revenueCountries": [],
+      "attributionLedger": null,
+      "audienceBreakdown": [
+        {
+          "events": 5598,
+          "devices": 123,
+          "audience": "creator / admin",
+          "runtime_unconfirmed_events": 0
+        },
+        {
+          "events": 53460,
+          "devices": 1547,
+          "audience": "customer",
+          "runtime_unconfirmed_events": 0
+        },
+        {
+          "events": 1307,
+          "devices": 5,
+          "audience": "internal",
+          "runtime_unconfirmed_events": 0
+        },
+        {
+          "events": 752,
+          "devices": 7,
+          "audience": "non-production",
+          "runtime_unconfirmed_events": 0
+        }
+      ],
+      "billingDimensions": [],
+      "landingPlacements": [],
+      "onboardingScreens": [],
+      "onboardingSummary": [],
+      "retentionCoverage": [],
+      "revenueComparison": [],
+      "revenueFinancials": [],
+      "acquisitionSummary": [],
+      "creatorAttribution": null,
+      "landingExperiments": [],
+      "onboardingFriction": [],
+      "onboardingRevisions": [],
+      "membershipActivation": [],
+      "revenueProceedsDaily": [],
+      "landingExperimentDaily": [],
+      "revenueSubscriptionOverview": [],
+      "revenueSubscriptionProducts": []
+    },
+    "Quality": {
+      "web": [],
+      "daily": [],
+      "scans": null,
+      "steps": [],
+      "actions": [],
+      "billing": [],
+      "paywall": [],
+      "revenue": [],
+      "screens": [],
+      "summary": {
+        "actors": 1547,
+        "events": 53460,
+        "failures": 5,
+        "evaluations": 13,
+        "first_opens": 478,
+        "latest_event": "2026-10-28T06:55:21.816"
+      },
+      "releases": [],
+      "referrals": null,
+      "retention": [],
+      "dataHealth": {
+        "daily": [
+          {
+            "day": "2026-10-25T07:00:00Z",
+            "records": 21906
+          },
+          {
+            "day": "2026-10-26T07:00:00Z",
+            "records": 20558
+          },
+          {
+            "day": "2026-10-27T07:00:00Z",
+            "records": 17954
+          }
+        ],
+        "backlog": [
+          {
+            "checkout_gaps": 0,
+            "oldest_webhook": "2026-10-21T17:00:48.629766",
+            "pending_events": 240943,
+            "pending_billing": 214,
+            "unfinished_webhooks": 971,
+            "oldest_pending_event": "2026-07-22T18:44:20.962571",
+            "latest_reconciliation": "2026-10-24T22:35:48.37"
+          }
+        ],
+        "billing": [
+          {
+            "records": 62,
+            "provider": "stripe",
+            "latest_receipt": "2026-10-28T05:15:25.727438"
+          },
+          {
+            "records": 24,
+            "provider": "revenuecat",
+            "latest_receipt": "2026-10-27T18:14:50.667335"
+          }
+        ],
+        "context": [
+          {
+            "event": "account_auth_started",
+            "records": 620,
+            "with_report": 0,
+            "with_account": 18,
+            "with_attempt": 620
+          },
+          {
+            "event": "report_viewed",
+            "records": 34,
+            "with_report": 34,
+            "with_account": 33,
+            "with_attempt": 0
+          },
+          {
+            "event": "evaluation_started",
+            "records": 18,
+            "with_report": 0,
+            "with_account": 18,
+            "with_attempt": 18
+          },
+          {
+            "event": "purchase_started",
+            "records": 183,
+            "with_report": 0,
+            "with_account": 183,
+            "with_attempt": 183
+          }
+        ],
+        "sources": [
+          {
+            "p90_ms": 10545.5844,
+            "source": "mobile",
+            "records": 44684,
+            "platform": "ios",
+            "median_ms": 5113.273999999999,
+            "latest_receipt": "2026-10-28T06:30:45.673856",
+            "clock_skew_records": 596
+          },
+          {
+            "p90_ms": 5593.5564,
+            "source": "web",
+            "records": 15734,
+            "platform": "web",
+            "median_ms": 3214.5825,
+            "latest_receipt": "2026-10-28T06:55:24.002516",
+            "clock_skew_records": 504
+          }
+        ],
+        "summary": [
+          {
+            "p90_ms": 10478.3914,
+            "client_records": 60418,
+            "billing_records": 86,
+            "clock_skew_records": 1100,
+            "latest_client_receipt": "2026-10-28T06:55:24.002516"
+          }
+        ]
+      },
+      "dimensions": [],
+      "engagement": null,
+      "onboarding": [],
+      "scanLedger": [],
+      "acquisition": [],
+      "webAudience": [],
+      "eventMetrics": [],
+      "featureUsage": [],
+      "paidDelivery": [],
+      "purchaseFlow": null,
+      "reportLedger": [],
+      "revenueDaily": [],
+      "cancellations": [],
+      "eventDelivery": [],
+      "notifications": null,
+      "revenueTotals": [],
+      "authentication": null,
+      "eventPlatforms": [],
+      "landingSources": [],
+      "landingSummary": [],
+      "revenueSources": [],
+      "billingProducts": [],
+      "contextCoverage": [],
+      "landingHandoffs": [],
+      "landingSections": [],
+      "onboardingDaily": [],
+      "retentionWeekly": [],
+      "revenueActivity": [],
+      "billingReporting": [],
+      "creatorEconomics": null,
+      "featureRetention": [],
+      "revenueCountries": [],
+      "attributionLedger": null,
+      "audienceBreakdown": [
+        {
+          "events": 5598,
+          "devices": 123,
+          "audience": "creator / admin",
+          "runtime_unconfirmed_events": 0
+        },
+        {
+          "events": 53460,
+          "devices": 1547,
+          "audience": "customer",
+          "runtime_unconfirmed_events": 0
+        },
+        {
+          "events": 1307,
+          "devices": 5,
+          "audience": "internal",
+          "runtime_unconfirmed_events": 0
+        },
+        {
+          "events": 752,
+          "devices": 7,
+          "audience": "non-production",
+          "runtime_unconfirmed_events": 0
+        }
+      ],
+      "billingDimensions": [],
+      "landingPlacements": [],
+      "onboardingScreens": [],
+      "onboardingSummary": [],
+      "retentionCoverage": [],
+      "revenueComparison": [],
+      "revenueFinancials": [],
+      "acquisitionSummary": [],
+      "creatorAttribution": null,
+      "landingExperiments": [],
+      "onboardingFriction": [],
+      "onboardingRevisions": [],
+      "membershipActivation": [],
+      "revenueProceedsDaily": [],
+      "landingExperimentDaily": [],
+      "revenueSubscriptionOverview": [],
+      "revenueSubscriptionProducts": []
+    },
+    "AttributionLedger": {
+      "web": [],
+      "daily": [],
+      "scans": null,
+      "steps": [],
+      "actions": [],
+      "billing": [],
+      "paywall": [],
+      "revenue": [],
+      "screens": [],
+      "summary": {
+        "actors": 1547,
+        "events": 53460,
+        "failures": 5,
+        "evaluations": 13,
+        "first_opens": 478,
+        "latest_event": "2026-10-28T06:55:21.816"
+      },
+      "releases": [],
+      "referrals": null,
+      "retention": [],
+      "dataHealth": null,
+      "dimensions": [],
+      "engagement": null,
+      "onboarding": [],
+      "scanLedger": [],
+      "acquisition": [],
+      "webAudience": [],
+      "eventMetrics": [],
+      "featureUsage": [],
+      "paidDelivery": [],
+      "purchaseFlow": null,
+      "reportLedger": [],
+      "revenueDaily": [],
+      "cancellations": [],
+      "eventDelivery": [],
+      "notifications": null,
+      "revenueTotals": [],
+      "authentication": null,
+      "eventPlatforms": [],
+      "landingSources": [],
+      "landingSummary": [],
+      "revenueSources": [],
+      "billingProducts": [],
+      "contextCoverage": [],
+      "landingHandoffs": [],
+      "landingSections": [],
+      "onboardingDaily": [],
+      "retentionWeekly": [],
+      "revenueActivity": [],
+      "billingReporting": [],
+      "creatorEconomics": null,
+      "featureRetention": [],
+      "revenueCountries": [],
+      "attributionLedger": {
+        "daily": [
+          {
+            "day": "2026-10-25T07:00:00Z",
+            "credit": "direct",
+            "records": 6,
+            "currency": "USD"
+          },
+          {
+            "day": "2026-10-25T07:00:00Z",
+            "credit": "first",
+            "records": 5,
+            "currency": "USD"
+          },
+          {
+            "day": "2026-10-26T07:00:00Z",
+            "credit": "direct",
+            "records": 1,
+            "currency": "USD"
+          },
+          {
+            "day": "2026-10-26T07:00:00Z",
+            "credit": "first",
+            "records": 1,
+            "currency": "USD"
+          }
+        ],
+        "records": [
+          {
+            "event": "claim",
+            "amount": 0,
+            "credit": "direct",
+            "handle": "marlon.bpedits",
+            "creator": "Abran Ansari",
+            "currency": "USD",
+            "event_at": "2026-10-26T13:38:42.417227",
+            "recorded_at": "2026-10-26T13:38:42.417227",
+            "billing_link": "No billing record linked",
+            "record_reference": "5605e025-8a20-42ec-b43c-1877d1488bff"
+          },
+          {
+            "event": "claim",
+            "amount": 0,
+            "credit": "first",
+            "handle": "marlon.bpedits",
+            "creator": "Abran Ansari",
+            "currency": "USD",
+            "event_at": "2026-10-26T13:38:42.417227",
+            "recorded_at": "2026-10-26T13:38:42.417227",
+            "billing_link": "No billing record linked",
+            "record_reference": "5605e025-8a20-42ec-b43c-1877d1488bff"
+          },
+          {
+            "event": "claim",
+            "amount": 0,
+            "credit": "direct",
+            "handle": "rudeus.clips",
+            "creator": "Uis Jaw",
+            "currency": "USD",
+            "event_at": "2026-10-26T03:29:09.806241",
+            "recorded_at": "2026-10-26T03:29:09.806241",
+            "billing_link": "No billing record linked",
+            "record_reference": "5886f6a4-253f-494c-8173-f060723bfd1c"
+          },
+          {
+            "event": "claim",
+            "amount": 0,
+            "credit": "first",
+            "handle": "rudeus.clips",
+            "creator": "Uis Jaw",
+            "currency": "USD",
+            "event_at": "2026-10-26T03:29:09.806241",
+            "recorded_at": "2026-10-26T03:29:09.806241",
+            "billing_link": "No billing record linked",
+            "record_reference": "5886f6a4-253f-494c-8173-f060723bfd1c"
+          },
+          {
+            "event": "claim",
+            "amount": 0,
+            "credit": "first",
+            "handle": "rudeus.clips",
+            "creator": "Uis Jaw",
+            "currency": "USD",
+            "event_at": "2026-10-25T21:21:51.487358",
+            "recorded_at": "2026-10-25T21:21:51.487358",
+            "billing_link": "No billing record linked",
+            "record_reference": "35e66513-624b-44c2-94a8-bfc132161442"
+          },
+          {
+            "event": "claim",
+            "amount": 0,
+            "credit": "direct",
+            "handle": "rudeus.clips",
+            "creator": "Uis Jaw",
+            "currency": "USD",
+            "event_at": "2026-10-25T21:21:51.487358",
+            "recorded_at": "2026-10-25T21:21:51.487358",
+            "billing_link": "No billing record linked",
+            "record_reference": "35e66513-624b-44c2-94a8-bfc132161442"
+          },
+          {
+            "event": "claim",
+            "amount": 0,
+            "credit": "direct",
+            "handle": "rudeus.clips",
+            "creator": "Uis Jaw",
+            "currency": "USD",
+            "event_at": "2026-10-25T20:32:09.237818",
+            "recorded_at": "2026-10-25T20:32:09.237818",
+            "billing_link": "No billing record linked",
+            "record_reference": "35b9a83d-ec0f-4294-a55e-ccbb5e38137f"
+          },
+          {
+            "event": "checkout",
+            "amount": 0,
+            "credit": "direct",
+            "handle": "pain.psl",
+            "creator": "ascendic international",
+            "currency": "USD",
+            "event_at": "2026-10-25T08:10:52.527837",
+            "recorded_at": "2026-10-25T08:10:52.527837",
+            "billing_link": "No billing record linked",
+            "record_reference": "928a9494-e1a6-4339-b8f8-f483ccdd3c11"
+          },
+          {
+            "event": "checkout",
+            "amount": 0,
+            "credit": "first",
+            "handle": "pain.psl",
+            "creator": "ascendic international",
+            "currency": "USD",
+            "event_at": "2026-10-25T08:10:52.527837",
+            "recorded_at": "2026-10-25T08:10:52.527837",
+            "billing_link": "No billing record linked",
+            "record_reference": "928a9494-e1a6-4339-b8f8-f483ccdd3c11"
+          },
+          {
+            "event": "signup",
+            "amount": 0,
+            "credit": "direct",
+            "handle": "pain.psl",
+            "creator": "ascendic international",
+            "currency": "USD",
+            "event_at": "2026-10-25T08:07:33.056903",
+            "recorded_at": "2026-10-25T08:07:33.056903",
+            "billing_link": "No billing record linked",
+            "record_reference": "671d210b-7b37-4a6d-b0f4-5332ca269d91"
+          },
+          {
+            "event": "signup",
+            "amount": 0,
+            "credit": "first",
+            "handle": "pain.psl",
+            "creator": "ascendic international",
+            "currency": "USD",
+            "event_at": "2026-10-25T08:07:33.056903",
+            "recorded_at": "2026-10-25T08:07:33.056903",
+            "billing_link": "No billing record linked",
+            "record_reference": "671d210b-7b37-4a6d-b0f4-5332ca269d91"
+          },
+          {
+            "event": "claim",
+            "amount": 0,
+            "credit": "first",
+            "handle": "pain.psl",
+            "creator": "ascendic international",
+            "currency": "USD",
+            "event_at": "2026-10-25T08:07:32.871512",
+            "recorded_at": "2026-10-25T08:07:32.871512",
+            "billing_link": "No billing record linked",
+            "record_reference": "9a30c149-c5c3-4ffd-88b2-289a6b49825e"
+          },
+          {
+            "event": "claim",
+            "amount": 0,
+            "credit": "direct",
+            "handle": "pain.psl",
+            "creator": "ascendic international",
+            "currency": "USD",
+            "event_at": "2026-10-25T08:07:32.871512",
+            "recorded_at": "2026-10-25T08:07:32.871512",
+            "billing_link": "No billing record linked",
+            "record_reference": "9a30c149-c5c3-4ffd-88b2-289a6b49825e"
+          }
+        ],
+        "summary": [
+          {
+            "net": 0,
+            "gross": 0,
+            "credit": "first",
+            "records": 6,
+            "currency": "USD",
+            "payments": 0,
+            "reversals": 0,
+            "latest_event": "2026-10-26T13:38:42.417227",
+            "legacy_money": 0,
+            "latest_record": "2026-10-26T13:38:42.417227",
+            "billing_linked": 0
+          },
+          {
+            "net": 0,
+            "gross": 0,
+            "credit": "direct",
+            "records": 7,
+            "currency": "USD",
+            "payments": 0,
+            "reversals": 0,
+            "latest_event": "2026-10-26T13:38:42.417227",
+            "legacy_money": 0,
+            "latest_record": "2026-10-26T13:38:42.417227",
+            "billing_linked": 0
+          }
+        ],
+        "coverage": [
+          {
+            "underlying_records": 7,
+            "unallocated_billing_records": 11
+          }
+        ]
+      },
+      "audienceBreakdown": [
+        {
+          "events": 5598,
+          "devices": 123,
+          "audience": "creator / admin",
+          "runtime_unconfirmed_events": 0
+        },
+        {
+          "events": 53460,
+          "devices": 1547,
+          "audience": "customer",
+          "runtime_unconfirmed_events": 0
+        },
+        {
+          "events": 1307,
+          "devices": 5,
+          "audience": "internal",
+          "runtime_unconfirmed_events": 0
+        },
+        {
+          "events": 752,
+          "devices": 7,
+          "audience": "non-production",
+          "runtime_unconfirmed_events": 0
+        }
+      ],
+      "billingDimensions": [],
+      "landingPlacements": [],
+      "onboardingScreens": [],
+      "onboardingSummary": [],
+      "retentionCoverage": [],
+      "revenueComparison": [],
+      "revenueFinancials": [],
+      "acquisitionSummary": [],
+      "creatorAttribution": null,
+      "landingExperiments": [],
+      "onboardingFriction": [],
+      "onboardingRevisions": [],
+      "membershipActivation": [],
+      "revenueProceedsDaily": [],
+      "landingExperimentDaily": [],
+      "revenueSubscriptionOverview": [],
+      "revenueSubscriptionProducts": []
+    }
+  },
+  "reliability": {
+    "unresolved_count": 0,
+    "alertSummary": [
+      {
+        "status": "unconfigured",
+        "records": 3963,
+        "latest_event": "2026-10-28T06:59:43.716"
+      }
+    ],
+    "summary": {
+      "requests": 59335,
+      "failures": 3963,
+      "degraded": 0,
+      "rejected": 120,
+      "technical_failures": 3963,
+      "recent_failures": 18,
+      "operations": 55015,
+      "operation_issues": 3963,
+      "monitoring_signals": 4320,
+      "operation_rejections": 120,
+      "invalid_photos": 0,
+      "p95_ms": 1957.2999999999956,
+      "latest_event": "2026-10-28T06:59:43.716"
+    },
+    "features": [
+      {
+        "feature": "cron/push-reminders",
+        "requests": 4320,
+        "technical_failures": 2935,
+        "degraded": 0,
+        "rejected": 0,
+        "invalid_photos": 0,
+        "median_ms": 367,
+        "p95_ms": 551,
+        "latest_event": "2026-10-28T06:59:43.716"
+      },
+      {
+        "feature": "payments/stripe-reconciliation",
+        "requests": 864,
+        "technical_failures": 864,
+        "degraded": 0,
+        "rejected": 0,
+        "invalid_photos": 0,
+        "median_ms": 80829.5,
+        "p95_ms": 81400,
+        "latest_event": "2026-10-28T06:57:09.625"
+      },
+      {
+        "feature": "auth/[...nextauth]",
+        "requests": 7385,
+        "technical_failures": 161,
+        "degraded": 0,
+        "rejected": 7,
+        "invalid_photos": 0,
+        "median_ms": 2,
+        "p95_ms": 28,
+        "latest_event": "2026-10-28T06:55:14.102"
+      },
+      {
+        "feature": "mobile-analyze-v2",
+        "requests": 18,
+        "technical_failures": 3,
+        "degraded": 0,
+        "rejected": 1,
+        "invalid_photos": 0,
+        "median_ms": 42170.5,
+        "p95_ms": 96311.74999999999,
+        "latest_event": "2026-10-27T18:15:47.194"
+      },
+      {
+        "feature": "analytics/events",
+        "requests": 17619,
+        "technical_failures": 0,
+        "degraded": 0,
+        "rejected": 0,
+        "invalid_photos": 0,
+        "median_ms": 210,
+        "p95_ms": 590,
+        "latest_event": "2026-10-28T06:55:24.141"
+      },
+      {
+        "feature": "creator",
+        "requests": 5043,
+        "technical_failures": 0,
+        "degraded": 0,
+        "rejected": 0,
+        "invalid_photos": 0,
+        "median_ms": 372,
+        "p95_ms": 1302.8999999999996,
+        "latest_event": "2026-10-28T06:37:04.245"
+      },
+      {
+        "feature": "cron/analytics-export",
+        "requests": 4320,
+        "technical_failures": 0,
+        "degraded": 0,
+        "rejected": 0,
+        "invalid_photos": 0,
+        "median_ms": 0,
+        "p95_ms": 1,
+        "latest_event": "2026-10-28T06:59:42.441"
+      },
+      {
+        "feature": "user/me",
+        "requests": 2872,
+        "technical_failures": 0,
+        "degraded": 0,
+        "rejected": 3,
+        "invalid_photos": 0,
+        "median_ms": 369,
+        "p95_ms": 966.3499999999995,
+        "latest_event": "2026-10-28T06:36:59.31"
+      },
+      {
+        "feature": "payments/entitlements",
+        "requests": 2532,
+        "technical_failures": 0,
+        "degraded": 0,
+        "rejected": 0,
+        "invalid_photos": 0,
+        "median_ms": 1492,
+        "p95_ms": 2217.45,
+        "latest_event": "2026-10-28T06:30:45.745"
+      },
+      {
+        "feature": "push/device",
+        "requests": 2178,
+        "technical_failures": 0,
+        "degraded": 0,
+        "rejected": 0,
+        "invalid_photos": 0,
+        "median_ms": 381,
+        "p95_ms": 776.1500000000001,
+        "latest_event": "2026-10-28T06:30:44.633"
+      },
+      {
+        "feature": "app-config",
+        "requests": 1869,
+        "technical_failures": 0,
+        "degraded": 0,
+        "rejected": 0,
+        "invalid_photos": 0,
+        "median_ms": 1,
+        "p95_ms": 4,
+        "latest_event": "2026-10-28T06:55:14.091"
+      },
+      {
+        "feature": "attribution/claim",
+        "requests": 1113,
+        "technical_failures": 0,
+        "degraded": 0,
+        "rejected": 0,
+        "invalid_photos": 0,
+        "median_ms": 2,
+        "p95_ms": 736,
+        "latest_event": "2026-10-28T06:36:55.128"
+      },
+      {
+        "feature": "cron/courses",
+        "requests": 864,
+        "technical_failures": 0,
+        "degraded": 0,
+        "rejected": 0,
+        "invalid_photos": 0,
+        "median_ms": 0,
+        "p95_ms": 1,
+        "latest_event": "2026-10-28T06:55:40.094"
+      },
+      {
+        "feature": "cron/creator-attribution",
+        "requests": 864,
+        "technical_failures": 0,
+        "degraded": 0,
+        "rejected": 0,
+        "invalid_photos": 0,
+        "median_ms": 40457,
+        "p95_ms": 49150.899999999994,
+        "latest_event": "2026-10-28T06:56:16.03"
+      },
+      {
+        "feature": "referrals",
+        "requests": 515,
+        "technical_failures": 0,
+        "degraded": 0,
+        "rejected": 3,
+        "invalid_photos": 0,
+        "median_ms": 912,
+        "p95_ms": 1359.1999999999998,
+        "latest_event": "2026-10-28T05:34:17.465"
+      },
+      {
+        "feature": "creator/sprints",
+        "requests": 472,
+        "technical_failures": 0,
+        "degraded": 0,
+        "rejected": 1,
+        "invalid_photos": 0,
+        "median_ms": 641,
+        "p95_ms": 1042.45,
+        "latest_event": "2026-10-28T06:37:04.424"
+      },
+      {
+        "feature": "compare",
+        "requests": 348,
+        "technical_failures": 0,
+        "degraded": 0,
+        "rejected": 0,
+        "invalid_photos": 0,
+        "median_ms": 734,
+        "p95_ms": 1657,
+        "latest_event": "2026-10-28T01:57:10.887"
+      },
+      {
+        "feature": "auth/apple-mobile",
+        "requests": 286,
+        "technical_failures": 0,
+        "degraded": 0,
+        "rejected": 19,
+        "invalid_photos": 0,
+        "median_ms": 1454,
+        "p95_ms": 1513,
+        "latest_event": "2026-10-28T06:14:19.483"
+      },
+      {
+        "feature": "leaderboard/photos",
+        "requests": 239,
+        "technical_failures": 0,
+        "degraded": 0,
+        "rejected": 0,
+        "invalid_photos": 0,
+        "median_ms": 368,
+        "p95_ms": 375,
+        "latest_event": "2026-10-28T06:43:21.294"
+      },
+      {
+        "feature": "auth/anonymous-profile",
+        "requests": 204,
+        "technical_failures": 0,
+        "degraded": 0,
+        "rejected": 0,
+        "invalid_photos": 0,
+        "median_ms": 182,
+        "p95_ms": 191.85,
+        "latest_event": "2026-10-28T06:53:29.87"
+      },
+      {
+        "feature": "creator/account-avatars",
+        "requests": 192,
+        "technical_failures": 0,
+        "degraded": 0,
+        "rejected": 0,
+        "invalid_photos": 0,
+        "median_ms": 547,
+        "p95_ms": 1705.5,
+        "latest_event": "2026-10-28T00:57:45.258"
+      },
+      {
+        "feature": "creator/cta-library",
+        "requests": 182,
+        "technical_failures": 0,
+        "degraded": 0,
+        "rejected": 11,
+        "invalid_photos": 0,
+        "median_ms": 367,
+        "p95_ms": 828.55,
+        "latest_event": "2026-10-28T06:09:31.409"
+      },
+      {
+        "feature": "analysis/[id]",
+        "requests": 118,
+        "technical_failures": 0,
+        "degraded": 0,
+        "rejected": 20,
+        "invalid_photos": 0,
+        "median_ms": 725,
+        "p95_ms": 737.3,
+        "latest_event": "2026-10-27T23:46:13.951"
+      },
+      {
+        "feature": "auth/mobile-session",
+        "requests": 109,
+        "technical_failures": 0,
+        "degraded": 0,
+        "rejected": 0,
+        "invalid_photos": 0,
+        "median_ms": 207,
+        "p95_ms": 253.1999999999999,
+        "latest_event": "2026-10-28T06:28:05.764"
+      },
+      {
+        "feature": "payments/stripe-webhook",
+        "requests": 62,
+        "technical_failures": 0,
+        "degraded": 0,
+        "rejected": 0,
+        "invalid_photos": 0,
+        "median_ms": 1284,
+        "p95_ms": 1300.95,
+        "latest_event": "2026-10-28T05:15:26.782"
+      },
+      {
+        "feature": "payments/checkout",
+        "requests": 60,
+        "technical_failures": 0,
+        "degraded": 0,
+        "rejected": 0,
+        "invalid_photos": 0,
+        "median_ms": 1741,
+        "p95_ms": 1909.5499999999995,
+        "latest_event": "2026-10-28T01:47:59.521"
+      },
+      {
+        "feature": "creator/submission-analytics-upload-intent",
+        "requests": 58,
+        "technical_failures": 0,
+        "degraded": 0,
+        "rejected": 0,
+        "invalid_photos": 0,
+        "median_ms": 30,
+        "p95_ms": 46.74999999999999,
+        "latest_event": "2026-10-28T06:21:50.194"
+      },
+      {
+        "feature": "leaderboard/profile",
+        "requests": 47,
+        "technical_failures": 0,
+        "degraded": 0,
+        "rejected": 0,
+        "invalid_photos": 0,
+        "median_ms": 548,
+        "p95_ms": 558.4,
+        "latest_event": "2026-10-27T17:26:08.198"
+      },
+      {
+        "feature": "creator/submissions",
+        "requests": 41,
+        "technical_failures": 0,
+        "degraded": 0,
+        "rejected": 10,
+        "invalid_photos": 0,
+        "median_ms": 2164,
+        "p95_ms": 2508,
+        "latest_event": "2026-10-28T06:22:02.412"
+      },
+      {
+        "feature": "analysis/potential-image",
+        "requests": 34,
+        "technical_failures": 0,
+        "degraded": 0,
+        "rejected": 3,
+        "invalid_photos": 0,
+        "median_ms": 25817.5,
+        "p95_ms": 27632.2,
+        "latest_event": "2026-10-27T21:20:42.961"
+      },
+      {
+        "feature": "leaderboard/me",
+        "requests": 32,
+        "technical_failures": 0,
+        "degraded": 0,
+        "rejected": 0,
+        "invalid_photos": 0,
+        "median_ms": 184.5,
+        "p95_ms": 187.45,
+        "latest_event": "2026-10-28T01:34:48.181"
+      },
+      {
+        "feature": "creator/accounts",
+        "requests": 30,
+        "technical_failures": 0,
+        "degraded": 0,
+        "rejected": 6,
+        "invalid_photos": 0,
+        "median_ms": 4431.5,
+        "p95_ms": 4953.85,
+        "latest_event": "2026-10-28T03:54:17.314"
+      },
+      {
+        "feature": "payments/revenuecat-webhook",
+        "requests": 27,
+        "technical_failures": 0,
+        "degraded": 0,
+        "rejected": 0,
+        "invalid_photos": 0,
+        "median_ms": 2910,
+        "p95_ms": 3792.5999999999995,
+        "latest_event": "2026-10-27T18:14:52.798"
+      },
+      {
+        "feature": "auth/mobile-access",
+        "requests": 16,
+        "technical_failures": 0,
+        "degraded": 0,
+        "rejected": 0,
+        "invalid_photos": 0,
+        "median_ms": 547.5,
+        "p95_ms": 552.25,
+        "latest_event": "2026-10-28T06:28:06.749"
+      },
+      {
+        "feature": "attribution/link",
+        "requests": 16,
+        "technical_failures": 0,
+        "degraded": 0,
+        "rejected": 15,
+        "invalid_photos": 0,
+        "median_ms": 374.5,
+        "p95_ms": 483,
+        "latest_event": "2026-10-26T12:55:30.836"
+      },
+      {
+        "feature": "leaderboard/friends",
+        "requests": 15,
+        "technical_failures": 0,
+        "degraded": 0,
+        "rejected": 1,
+        "invalid_photos": 0,
+        "median_ms": 731,
+        "p95_ms": 738.6,
+        "latest_event": "2026-10-27T18:57:13.569"
+      },
+      {
+        "feature": "photos/privacy",
+        "requests": 14,
+        "technical_failures": 0,
+        "degraded": 0,
+        "rejected": 14,
+        "invalid_photos": 0,
+        "median_ms": 364,
+        "p95_ms": 367.05,
+        "latest_event": "2026-10-26T20:46:28.284"
+      },
+      {
+        "feature": "creator/submission-rereview",
+        "requests": 14,
+        "technical_failures": 0,
+        "degraded": 0,
+        "rejected": 1,
+        "invalid_photos": 0,
+        "median_ms": 1788,
+        "p95_ms": 2250.1,
+        "latest_event": "2026-10-28T03:03:00.602"
+      },
+      {
+        "feature": "creator/payouts",
+        "requests": 9,
+        "technical_failures": 0,
+        "degraded": 0,
+        "rejected": 0,
+        "invalid_photos": 0,
+        "median_ms": 728,
+        "p95_ms": 735.8,
+        "latest_event": "2026-10-26T14:43:46.233"
+      },
+      {
+        "feature": "payments/web-checkout",
+        "requests": 5,
+        "technical_failures": 0,
+        "degraded": 0,
+        "rejected": 5,
+        "invalid_photos": 0,
+        "median_ms": 2,
+        "p95_ms": 2,
+        "latest_event": "2026-10-28T01:43:48.877"
+      },
+      {
+        "feature": "creator/sprints/[id]",
+        "requests": 4,
+        "technical_failures": 0,
+        "degraded": 0,
+        "rejected": 0,
+        "invalid_photos": 0,
+        "median_ms": 457,
+        "p95_ms": 458.85,
+        "latest_event": "2026-10-27T17:05:37.256"
+      },
+      {
+        "feature": "share/analysis",
+        "requests": 2,
+        "technical_failures": 0,
+        "degraded": 0,
+        "rejected": 0,
+        "invalid_photos": 0,
+        "median_ms": 779,
+        "p95_ms": 1068.8,
+        "latest_event": "2026-10-27T22:38:14.829"
+      },
+      {
+        "feature": "admin/creator/payout-requests",
+        "requests": 1,
+        "technical_failures": 0,
+        "degraded": 0,
+        "rejected": 0,
+        "invalid_photos": 0,
+        "median_ms": 4267,
+        "p95_ms": 4267,
+        "latest_event": "2026-10-26T00:24:51.194"
+      },
+      {
+        "feature": "attribution/resolve",
+        "requests": 1,
+        "technical_failures": 0,
+        "degraded": 0,
+        "rejected": 0,
+        "invalid_photos": 0,
+        "median_ms": 908,
+        "p95_ms": 908,
+        "latest_event": "2026-10-25T15:13:07.395"
+      },
+      {
+        "feature": "web-analyze-v2",
+        "requests": 1,
+        "technical_failures": 0,
+        "degraded": 0,
+        "rejected": 0,
+        "invalid_photos": 0,
+        "median_ms": 36153,
+        "p95_ms": 36153,
+        "latest_event": "2026-10-27T22:49:17.943"
+      }
+    ],
+    "daily": [
+      {
+        "day": "2026-10-25T07:00:00Z",
+        "requests": 20090,
+        "failures": 399,
+        "evaluation_failures": 0
+      },
+      {
+        "day": "2026-10-26T07:00:00Z",
+        "requests": 18272,
+        "failures": 1799,
+        "evaluation_failures": 0
+      },
+      {
+        "day": "2026-10-27T07:00:00Z",
+        "requests": 16653,
+        "failures": 1765,
+        "evaluation_failures": 0
+      }
+    ],
+    "failures": [
+      {
+        "feature": "cron/push-reminders",
+        "code": "http_500",
+        "outcome": "failed",
+        "events": 2935,
+        "latest_event": "2026-10-28T06:59:43.716"
+      },
+      {
+        "feature": "payments/stripe-reconciliation",
+        "code": "http_503",
+        "outcome": "failed",
+        "events": 864,
+        "latest_event": "2026-10-28T06:57:09.625"
+      },
+      {
+        "feature": "auth/[...nextauth]",
+        "code": "oauth_state_missing",
+        "outcome": "failed",
+        "events": 128,
+        "latest_event": "2026-10-28T06:26:43.473"
+      },
+      {
+        "feature": "auth/[...nextauth]",
+        "code": "oauth_failed",
+        "outcome": "failed",
+        "events": 33,
+        "latest_event": "2026-10-28T06:04:29.053"
+      },
+      {
+        "feature": "mobile-analyze-v2",
+        "code": "provider_bad_response",
+        "outcome": "failed",
+        "events": 3,
+        "latest_event": "2026-10-27T06:36:34.523"
+      }
+    ],
+    "recent": [
+      {
+        "feature": "cron/push-reminders",
+        "code": "http_500",
+        "outcome": "failed",
+        "duration_ms": 371,
+        "trace": "17deb827-a895-4f5f-b6ad-cd4c1062e994",
+        "latest_event": "2026-10-28T06:59:43.716"
+      },
+      {
+        "feature": "cron/push-reminders",
+        "code": "http_500",
+        "outcome": "failed",
+        "duration_ms": 368,
+        "trace": "1b618c94-ca22-4111-bc36-211d0a02c14c",
+        "latest_event": "2026-10-28T06:58:43.87"
+      },
+      {
+        "feature": "cron/push-reminders",
+        "code": "http_500",
+        "outcome": "failed",
+        "duration_ms": 368,
+        "trace": "578a5798-2e27-43fa-a87f-efaa3a5ca7f9",
+        "latest_event": "2026-10-28T06:57:43.936"
+      },
+      {
+        "feature": "payments/stripe-reconciliation",
+        "code": "http_503",
+        "outcome": "failed",
+        "duration_ms": 81254,
+        "trace": "746c22fe-6aba-4eca-a9a6-40821d428771",
+        "latest_event": "2026-10-28T06:57:09.625"
+      },
+      {
+        "feature": "cron/push-reminders",
+        "code": "http_500",
+        "outcome": "failed",
+        "duration_ms": 367,
+        "trace": "d4a12706-d309-4827-a1ec-8f09662a2ed0",
+        "latest_event": "2026-10-28T06:56:43.548"
+      },
+      {
+        "feature": "cron/push-reminders",
+        "code": "http_500",
+        "outcome": "failed",
+        "duration_ms": 367,
+        "trace": "2dbf2bae-7e88-4354-9541-15c46ac64661",
+        "latest_event": "2026-10-28T06:55:43.703"
+      },
+      {
+        "feature": "cron/push-reminders",
+        "code": "http_500",
+        "outcome": "failed",
+        "duration_ms": 373,
+        "trace": "7544012c-72a2-4065-87d3-ebd894bf7661",
+        "latest_event": "2026-10-28T06:54:43.966"
+      },
+      {
+        "feature": "cron/push-reminders",
+        "code": "http_500",
+        "outcome": "failed",
+        "duration_ms": 368,
+        "trace": "d4a3630c-9d60-441c-8c0f-0b35eb8aa075",
+        "latest_event": "2026-10-28T06:53:43.64"
+      },
+      {
+        "feature": "cron/push-reminders",
+        "code": "http_500",
+        "outcome": "failed",
+        "duration_ms": 367,
+        "trace": "26848747-58de-4a42-a32e-c35674cd83bd",
+        "latest_event": "2026-10-28T06:52:43.873"
+      },
+      {
+        "feature": "payments/stripe-reconciliation",
+        "code": "http_503",
+        "outcome": "failed",
+        "duration_ms": 80185,
+        "trace": "66ddf350-a80a-4b4a-8165-cc4b6a16fd7d",
+        "latest_event": "2026-10-28T06:52:08.409"
+      },
+      {
+        "feature": "cron/push-reminders",
+        "code": "http_500",
+        "outcome": "failed",
+        "duration_ms": 369,
+        "trace": "e735cec8-d4d4-47be-a027-a22fed29f509",
+        "latest_event": "2026-10-28T06:51:43.771"
+      },
+      {
+        "feature": "cron/push-reminders",
+        "code": "http_500",
+        "outcome": "failed",
+        "duration_ms": 370,
+        "trace": "e84086dc-0428-47fd-814a-da5d9b0e51bd",
+        "latest_event": "2026-10-28T06:50:43.486"
+      },
+      {
+        "feature": "cron/push-reminders",
+        "code": "http_500",
+        "outcome": "failed",
+        "duration_ms": 366,
+        "trace": "e3ffaf08-45e5-4733-ac40-3f7b49eec84e",
+        "latest_event": "2026-10-28T06:49:43.784"
+      },
+      {
+        "feature": "cron/push-reminders",
+        "code": "http_500",
+        "outcome": "failed",
+        "duration_ms": 368,
+        "trace": "52776e83-65cf-47e7-b2d0-7929c412ac0b",
+        "latest_event": "2026-10-28T06:48:43.719"
+      },
+      {
+        "feature": "cron/push-reminders",
+        "code": "http_500",
+        "outcome": "failed",
+        "duration_ms": 367,
+        "trace": "8efd791c-f708-414a-9fab-76d3ddcdd6e1",
+        "latest_event": "2026-10-28T06:47:43.677"
+      },
+      {
+        "feature": "payments/stripe-reconciliation",
+        "code": "http_503",
+        "outcome": "failed",
+        "duration_ms": 80381,
+        "trace": "fffd7be8-8b81-4f95-9fb1-3108150e8d68",
+        "latest_event": "2026-10-28T06:47:08.505"
+      },
+      {
+        "feature": "cron/push-reminders",
+        "code": "http_500",
+        "outcome": "failed",
+        "duration_ms": 368,
+        "trace": "893f44e1-0ede-41c5-a953-c612ec944234",
+        "latest_event": "2026-10-28T06:46:43.629"
+      },
+      {
+        "feature": "cron/push-reminders",
+        "code": "http_500",
+        "outcome": "failed",
+        "duration_ms": 369,
+        "trace": "d89b41fc-6478-40ec-8571-c35be0be9d3e",
+        "latest_event": "2026-10-28T06:45:43.46"
+      },
+      {
+        "feature": "cron/push-reminders",
+        "code": "http_500",
+        "outcome": "failed",
+        "duration_ms": 367,
+        "trace": "d36bf5ef-9582-45a9-b30b-3ab6b49343d1",
+        "latest_event": "2026-10-28T06:44:43.504"
+      },
+      {
+        "feature": "cron/push-reminders",
+        "code": "http_500",
+        "outcome": "failed",
+        "duration_ms": 368,
+        "trace": "d55f8d15-7eea-4ad2-997a-44b1619b2961",
+        "latest_event": "2026-10-28T06:43:43.802"
+      },
+      {
+        "feature": "cron/push-reminders",
+        "code": "http_500",
+        "outcome": "failed",
+        "duration_ms": 368,
+        "trace": "2a71d80c-c848-4746-a65d-cb3ad2b52f18",
+        "latest_event": "2026-10-28T06:42:43.801"
+      },
+      {
+        "feature": "payments/stripe-reconciliation",
+        "code": "http_503",
+        "outcome": "failed",
+        "duration_ms": 81093,
+        "trace": "26359744-53fa-4d03-b032-e6ff1c0dc8d0",
+        "latest_event": "2026-10-28T06:42:09.477"
+      },
+      {
+        "feature": "cron/push-reminders",
+        "code": "http_500",
+        "outcome": "failed",
+        "duration_ms": 367,
+        "trace": "9dc0277d-3480-4a22-8090-7d68cdc8dad2",
+        "latest_event": "2026-10-28T06:41:43.5"
+      },
+      {
+        "feature": "cron/push-reminders",
+        "code": "http_500",
+        "outcome": "failed",
+        "duration_ms": 367,
+        "trace": "4c98944e-94ec-4f3e-b18b-0e6906a046f1",
+        "latest_event": "2026-10-28T06:40:43.697"
+      },
+      {
+        "feature": "cron/push-reminders",
+        "code": "http_500",
+        "outcome": "failed",
+        "duration_ms": 365,
+        "trace": "b8bcc651-5c32-4cfa-b469-652f1d56d00e",
+        "latest_event": "2026-10-28T06:39:43.623"
+      },
+      {
+        "feature": "cron/push-reminders",
+        "code": "http_500",
+        "outcome": "failed",
+        "duration_ms": 366,
+        "trace": "6c9d4309-fa6a-4394-9c4a-08520874f167",
+        "latest_event": "2026-10-28T06:38:43.716"
+      },
+      {
+        "feature": "cron/push-reminders",
+        "code": "http_500",
+        "outcome": "failed",
+        "duration_ms": 365,
+        "trace": "3f71f6dc-94d9-4c1b-bd33-752234b09fa0",
+        "latest_event": "2026-10-28T06:37:43.542"
+      },
+      {
+        "feature": "payments/stripe-reconciliation",
+        "code": "http_503",
+        "outcome": "failed",
+        "duration_ms": 81125,
+        "trace": "85f306e0-e351-463f-be7a-7b6a5c179a73",
+        "latest_event": "2026-10-28T06:37:09.403"
+      },
+      {
+        "feature": "cron/push-reminders",
+        "code": "http_500",
+        "outcome": "failed",
+        "duration_ms": 366,
+        "trace": "fc559292-1b8a-4d78-9cbf-5aee0ca8912d",
+        "latest_event": "2026-10-28T06:36:43.779"
+      },
+      {
+        "feature": "cron/push-reminders",
+        "code": "http_500",
+        "outcome": "failed",
+        "duration_ms": 367,
+        "trace": "9d466c0a-6b47-44db-9369-04a45f5b9fde",
+        "latest_event": "2026-10-28T06:35:43.76"
+      },
+      {
+        "feature": "cron/push-reminders",
+        "code": "http_500",
+        "outcome": "failed",
+        "duration_ms": 366,
+        "trace": "74f9a280-c579-457b-811d-c6e65f063758",
+        "latest_event": "2026-10-28T06:34:43.606"
+      },
+      {
+        "feature": "cron/push-reminders",
+        "code": "http_500",
+        "outcome": "failed",
+        "duration_ms": 366,
+        "trace": "3e991786-cec2-44e2-87b3-e9597d5ab243",
+        "latest_event": "2026-10-28T06:33:43.626"
+      },
+      {
+        "feature": "cron/push-reminders",
+        "code": "http_500",
+        "outcome": "failed",
+        "duration_ms": 366,
+        "trace": "4819833c-e01e-485b-8e27-e49644bdd78b",
+        "latest_event": "2026-10-28T06:32:43.589"
+      },
+      {
+        "feature": "payments/stripe-reconciliation",
+        "code": "http_503",
+        "outcome": "failed",
+        "duration_ms": 80501,
+        "trace": "be97b26a-8fd7-410b-9bed-b950cbbf4852",
+        "latest_event": "2026-10-28T06:32:08.906"
+      },
+      {
+        "feature": "cron/push-reminders",
+        "code": "http_500",
+        "outcome": "failed",
+        "duration_ms": 370,
+        "trace": "887c3667-67d3-4cf3-ab1a-100289ee582f",
+        "latest_event": "2026-10-28T06:31:43.874"
+      },
+      {
+        "feature": "cron/push-reminders",
+        "code": "http_500",
+        "outcome": "failed",
+        "duration_ms": 365,
+        "trace": "c8f63792-70da-42e8-9542-dd2fb85c932d",
+        "latest_event": "2026-10-28T06:30:43.496"
+      },
+      {
+        "feature": "cron/push-reminders",
+        "code": "http_500",
+        "outcome": "failed",
+        "duration_ms": 366,
+        "trace": "41a74e3b-28c1-4b69-8995-b3f1ee075647",
+        "latest_event": "2026-10-28T06:29:43.631"
+      },
+      {
+        "feature": "cron/push-reminders",
+        "code": "http_500",
+        "outcome": "failed",
+        "duration_ms": 368,
+        "trace": "56e2c135-10d8-499b-8c03-38ebdf14a1f9",
+        "latest_event": "2026-10-28T06:28:43.737"
+      },
+      {
+        "feature": "cron/push-reminders",
+        "code": "http_500",
+        "outcome": "failed",
+        "duration_ms": 365,
+        "trace": "6fe71d69-4fcf-4dbb-874d-5a2c3fa97d7d",
+        "latest_event": "2026-10-28T06:27:43.623"
+      },
+      {
+        "feature": "payments/stripe-reconciliation",
+        "code": "http_503",
+        "outcome": "failed",
+        "duration_ms": 81358,
+        "trace": "de7da8b3-db78-4c84-8301-c99ad1b21a6e",
+        "latest_event": "2026-10-28T06:27:09.649"
+      },
+      {
+        "feature": "cron/push-reminders",
+        "code": "http_500",
+        "outcome": "failed",
+        "duration_ms": 367,
+        "trace": "970b8201-3d52-4456-9ecf-875e4d422e98",
+        "latest_event": "2026-10-28T06:26:43.529"
+      },
+      {
+        "feature": "auth/[...nextauth]",
+        "code": "oauth_state_missing",
+        "outcome": "failed",
+        "duration_ms": 15,
+        "trace": "ea8bc674-e465-4de0-afd1-9a59f1c1992f",
+        "latest_event": "2026-10-28T06:26:43.473"
+      },
+      {
+        "feature": "cron/push-reminders",
+        "code": "http_500",
+        "outcome": "failed",
+        "duration_ms": 365,
+        "trace": "8fd6807d-c4a1-485e-a8a7-cad5ccced58a",
+        "latest_event": "2026-10-28T06:25:43.781"
+      },
+      {
+        "feature": "cron/push-reminders",
+        "code": "http_500",
+        "outcome": "failed",
+        "duration_ms": 366,
+        "trace": "8232db9c-a235-45e2-b6f6-d125ff8505f8",
+        "latest_event": "2026-10-28T06:24:43.583"
+      },
+      {
+        "feature": "cron/push-reminders",
+        "code": "http_500",
+        "outcome": "failed",
+        "duration_ms": 369,
+        "trace": "5df382ce-1820-441a-9049-222113d42f67",
+        "latest_event": "2026-10-28T06:23:43.639"
+      },
+      {
+        "feature": "cron/push-reminders",
+        "code": "http_500",
+        "outcome": "failed",
+        "duration_ms": 374,
+        "trace": "5d1f3cf6-0135-4003-8365-33ec4de68fa6",
+        "latest_event": "2026-10-28T06:22:43.604"
+      },
+      {
+        "feature": "payments/stripe-reconciliation",
+        "code": "http_503",
+        "outcome": "failed",
+        "duration_ms": 81378,
+        "trace": "4a190942-cdb6-4611-bb54-6be8d423777d",
+        "latest_event": "2026-10-28T06:22:09.733"
+      },
+      {
+        "feature": "cron/push-reminders",
+        "code": "http_500",
+        "outcome": "failed",
+        "duration_ms": 368,
+        "trace": "b26bfdaa-de33-40d8-a2b8-0c7ac030f4e2",
+        "latest_event": "2026-10-28T06:21:43.57"
+      },
+      {
+        "feature": "cron/push-reminders",
+        "code": "http_500",
+        "outcome": "failed",
+        "duration_ms": 381,
+        "trace": "93a5d40c-09d4-45c2-87fa-4ae991f77e8e",
+        "latest_event": "2026-10-28T06:20:44.129"
+      },
+      {
+        "feature": "cron/push-reminders",
+        "code": "http_500",
+        "outcome": "failed",
+        "duration_ms": 369,
+        "trace": "0654d23f-6a63-460e-805a-4e52c12b29c9",
+        "latest_event": "2026-10-28T06:19:43.645"
+      }
+    ],
+    "clients": [
+      {
+        "event": "account_auth_failed",
+        "platform": "ios",
+        "release": "1.41(80)",
+        "code": "authentication_failed",
+        "events": 40,
+        "latest_event": "2026-10-28T01:52:03.32"
+      },
+      {
+        "event": "evaluation_failed",
+        "platform": "ios",
+        "release": "1.41(80)",
+        "code": "analysis_failed",
+        "events": 3,
+        "latest_event": "2026-10-27T06:36:34.881"
+      },
+      {
+        "event": "purchase_failed",
+        "platform": "ios",
+        "release": "1.41(80)",
+        "code": "store_problem",
+        "events": 3,
+        "latest_event": "2026-10-27T13:45:07.376"
+      },
+      {
+        "event": "purchase_failed",
+        "platform": "ios",
+        "release": "1.41(80)",
+        "code": "purchase_not_allowed",
+        "events": 2,
+        "latest_event": "2026-10-26T22:54:57.259"
+      },
+      {
+        "event": "purchase_failed",
+        "platform": "web",
+        "release": null,
+        "code": "request_failed",
+        "events": 1,
+        "latest_event": "2026-10-26T16:31:50.824"
+      },
+      {
+        "event": "account_auth_failed",
+        "platform": "ios",
+        "release": "1.47(86)",
+        "code": "authentication_failed",
+        "events": 1,
+        "latest_event": "2026-10-27T00:05:43.216"
+      },
+      {
+        "event": "evaluation_failed",
+        "platform": "ios",
+        "release": "1.41(80)",
+        "code": "http_402",
+        "events": 1,
+        "latest_event": "2026-10-27T02:45:33.587"
+      },
+      {
+        "event": "evaluation_failed",
+        "platform": "ios",
+        "release": "1.41(80)",
+        "code": "request_failed",
+        "events": 1,
+        "latest_event": "2026-10-27T02:43:42.064"
+      }
+    ],
+    "notifications": [
+      {
+        "feature": "cron/push-reminders",
+        "code": "http_500",
+        "status": "unconfigured",
+        "events": 2935,
+        "latest_event": "2026-10-28T06:59:43.716"
+      },
+      {
+        "feature": "payments/stripe-reconciliation",
+        "code": "http_503",
+        "status": "unconfigured",
+        "events": 864,
+        "latest_event": "2026-10-28T06:57:09.625"
+      },
+      {
+        "feature": "auth/[...nextauth]",
+        "code": "oauth_state_missing",
+        "status": "unconfigured",
+        "events": 128,
+        "latest_event": "2026-10-28T06:26:43.473"
+      },
+      {
+        "feature": "auth/[...nextauth]",
+        "code": "oauth_failed",
+        "status": "unconfigured",
+        "events": 33,
+        "latest_event": "2026-10-28T06:04:29.054"
+      },
+      {
+        "feature": "mobile-analyze-v2",
+        "code": "provider_bad_response",
+        "status": "unconfigured",
+        "events": 3,
+        "latest_event": "2026-10-27T06:36:34.523"
+      }
+    ],
+    "stalled": []
+  }
+}

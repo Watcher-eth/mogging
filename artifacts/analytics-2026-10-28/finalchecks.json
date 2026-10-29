@@ -1,0 +1,97 @@
+{
+  "notification_days": [
+    {
+      "kind": "battle",
+      "day": "2026-10-21",
+      "records": "22",
+      "first": "2026-10-21 13:00:44.44448+00",
+      "last": "2026-10-22 01:00:44.980565+00"
+    },
+    {
+      "kind": "invite",
+      "day": "2026-10-24",
+      "records": "88",
+      "first": "2026-10-24 07:00:43.571825+00",
+      "last": "2026-10-25 01:00:44.325801+00"
+    },
+    {
+      "kind": "referral_reward",
+      "day": "2026-10-24",
+      "records": "1",
+      "first": "2026-10-24 15:53:43.528202+00",
+      "last": "2026-10-24 15:53:43.528202+00"
+    },
+    {
+      "kind": "referral_reward",
+      "day": "2026-10-25",
+      "records": "1",
+      "first": "2026-10-25 16:50:43.464293+00",
+      "last": "2026-10-25 16:50:43.464293+00"
+    },
+    {
+      "kind": "referral_reward",
+      "day": "2026-10-26",
+      "records": "1",
+      "first": "2026-10-26 19:09:43.527712+00",
+      "last": "2026-10-26 19:09:43.527712+00"
+    }
+  ],
+  "unresolved_followup": [
+    {
+      "attempts": "44",
+      "devices": "44",
+      "later_client_success": "0",
+      "later_verified_charge": "0"
+    }
+  ],
+  "restore": [
+    {
+      "event_name": "purchase_restored",
+      "result": null,
+      "reason": null,
+      "active": null,
+      "credits": null,
+      "events": "76",
+      "devices": "52"
+    },
+    {
+      "event_name": "restore_started",
+      "result": null,
+      "reason": null,
+      "active": null,
+      "credits": null,
+      "events": "76",
+      "devices": "52"
+    }
+  ],
+  "overall_creator_posts": [
+    {
+      "period": "current7",
+      "submissions": "95",
+      "creators": "27",
+      "approved_posts": "85",
+      "verified_views": "5232876",
+      "approved_cents": "197086"
+    },
+    {
+      "period": "previous7",
+      "submissions": "49",
+      "creators": "10",
+      "approved_posts": "46",
+      "verified_views": "3779281",
+      "approved_cents": "170510"
+    }
+  ],
+  "scan_still_charged": [
+    {
+      "status": "complete",
+      "requests": "25",
+      "entitlement_still_has_credit": "3"
+    },
+    {
+      "status": "failed",
+      "requests": "5",
+      "entitlement_still_has_credit": "3"
+    }
+  ]
+}

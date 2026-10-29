@@ -1,4 +1,4 @@
-import { readSupportAllowance, reserveSupportMessage } from '@/lib/creator/support/allowance-store'
+import { createSupportAllowanceStore } from '@/lib/creator/support/allowance-ledger'
 import { createHmac, randomBytes } from 'node:crypto'
 import type { NextApiRequest, NextApiResponse } from 'next'
 import { handleApiError, json, methodNotAllowed, parseBody } from '@/lib/api/http'
@@ -8,6 +8,8 @@ import { createDemoDataSource } from '@/lib/creator/support/demo'
 import { supportRequestSchema } from '@/lib/creator/support/contracts'
 import { readSupportConversation, signSupportConversation, nextSupportMemory } from '@/lib/creator/support/conversation'
 const demoSecret = process.env.NEXTAUTH_SECRET ? createHmac('sha256', process.env.NEXTAUTH_SECRET).update('creator-support-local-demo').digest('hex') : randomBytes(32).toString('hex')
+// The private development preview never consumes a shared creator allowance.
+const { readSupportAllowance, reserveSupportMessage } = createSupportAllowanceStore(null, false)
 export const config = { api: { bodyParser: { sizeLimit: '24kb' } }, maxDuration: 60 }
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   res.setHeader('Cache-Control', 'private, no-store')

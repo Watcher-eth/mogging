@@ -28,12 +28,12 @@ const groups = [
   { id: 'privacy', title: 'Privacy & sharing', questions: [
     { id: 'leaderboard', question: 'Will my photos appear on the leaderboard?', answer: 'Joining the leaderboard is optional. You choose whether to make your profile public, and you can change that choice in Settings.' },
     { id: 'data', question: 'Where can I learn how my data is handled?', answer: 'Our privacy policy explains how Mogging handles account information, photos and service data. Contact support if you have a question about a report, photo visibility or a shared link.', link: { href: '/privacy', label: 'Read the privacy policy' } },
-    { id: 'delete', question: 'How can I request data or account deletion?', answer: 'Email support@mogging.app with the subject “Privacy Request” and include the email on your account and any relevant profile or report links. Support can help with account data, photo visibility, sharing and deletion requests.', link: { href: '/support#privacy', label: 'Privacy support' } },
+    { id: 'delete', question: 'How can I request data or account deletion?', answer: 'Email gabe@mogging.com with the subject “Privacy Request” and include the email on your account and any relevant profile or report links. Support can help with account data, photo visibility, sharing and deletion requests.', link: { href: '/support#privacy', label: 'Privacy support' } },
   ] },
   { id: 'billing', title: 'Billing & support', questions: [
     { id: 'access', question: 'I paid, but my access has not unlocked. What should I do?', answer: 'Confirm you are signed into the account you used for the purchase. If access is still missing, contact support with your checkout email, receipt details and approximate purchase time.', link: { href: '/support#billing', label: 'Get billing help' } },
     { id: 'refund', question: 'How do I get help with billing or a refund?', answer: 'Contact support with your account email and purchase details. The team can help you identify the purchase provider and the right next step for your request.', link: { href: '/support#billing', label: 'Billing and refunds' } },
-    { id: 'signin', question: 'I cannot sign in. Where can I get help?', answer: 'First check that you are using the same login method you used to create your account. If that does not resolve it, email support@mogging.app with your account email and a short description of what happened.', link: { href: '/support', label: 'Contact support' } },
+    { id: 'signin', question: 'I cannot sign in. Where can I get help?', answer: 'First check that you are using the same login method you used to create your account. If that does not resolve it, email gabe@mogging.com with your account email and a short description of what happened.', link: { href: '/support', label: 'Contact support' } },
   ] },
 ]
 

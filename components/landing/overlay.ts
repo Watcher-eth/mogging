@@ -4,6 +4,8 @@ import { resolveOverlayPreset } from "@/lib/creator/mobile-overlay-engine/resolv
 import type { OverlayPreset } from "@/lib/creator/mobile-overlay-engine/schema";
 import portrait from "./primer-portrait.json";
 
+export const previewPortrait = { src: "/landing/report-city-portrait.webp", ...portrait.image };
+
 export const previewLandmarks = enrichFaceLandmarks(
   portrait as FaceLandmarksPayload,
 )!;

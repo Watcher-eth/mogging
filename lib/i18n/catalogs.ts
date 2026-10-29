@@ -22,7 +22,7 @@ export const resources = {
       "landing.planTitle": "Your potential. A daily plan to reach it.",
       "landing.evaluation": "01 / Your evaluation",
       "landing.scoreTitle": "See more than a score.",
-      "landing.scoreDescription": "Your jawline, eyes, proportions, and symmetry. Understand your features across 10 categories and 40+ feature metrics, then keep every report to follow your progress.",
+      "landing.scoreDescription": "Your jawline, eyes, proportions, and symmetry. Understand your features across 13 categories and 110+ feature metrics, then keep every report to follow your progress.",
       "landing.protocol": "02 / Your Protocol",
       "landing.directionTitle": "Less guesswork. More direction.",
       "landing.finalTitle": "Find your starting point.",
@@ -32,8 +32,8 @@ export const resources = {
       "faq.free.answer": "Yes. Downloading the app is free. Evaluations and Pro features require a purchase; you can review the available plans in the app.",
       "faq.evaluation.question": "What does my evaluation include?",
       "faq.evaluation.answer": "10 detailed categories with 40+ feature metrics covering your eyes, jawline, proportions, symmetry, and more. You also get a personalized Protocol and saved evaluations to follow your progress.",
-      "faq.public.question": "Will my photos appear on the leaderboard?",
-      "faq.public.answer": "Joining the leaderboard is optional. You choose whether to make your profile public, and can change that choice in Settings.",
+      "faq.public.question": "Are my photos and reports public?",
+      "faq.public.answer": "No. Your photos and reports are private. You can export an image of your own report when you choose.",
       "faq.devices.question": "Can I use Mogging without an iPhone?",
       "faq.devices.answer": "You can start a paid facial analysis in your browser. The mobile app is available for iPhone, with an Android app coming soon.",
       "stats.categories": "Detailed categories",
@@ -310,7 +310,11 @@ export const resources = {
       "paywall.goalCheekbones": "more defined cheekbones",
       "paywall.benefits.scanTitle": "1x Face Scan per week",
       "paywall.benefits.protocolTitle": "Custom-tailored protocol to Ascend",
-      "paywall.benefits.trackingTitle": "Progress tracking & reminders"
+      "paywall.benefits.trackingTitle": "Progress tracking & reminders",
+      "landing.progress": "03 / Your progress",
+      "landing.progressTitle": "See your progress. Find your next step.",
+      "landing.progressDescription": "Compare your evaluations over time. Follow changes across your features and keep your daily Protocol focused.",
+      "landing.progressPrivacy": "Your evaluations stay private."
     }
   },
   "de": {
@@ -335,7 +339,7 @@ export const resources = {
       "landing.planTitle": "Dein Potenzial. Dein personalisiertes Protokoll, um es zu erreichen.",
       "landing.evaluation": "01 / Deine Analyse",
       "landing.scoreTitle": "Mehr als nur ein Score.",
-      "landing.scoreDescription": "Kieferlinie, Augen, Proportionen und Symmetrie: Lerne deine Gesichtszüge anhand von 10 Kategorien und über 40 Merkmalen kennen. Deine Berichte bleiben gespeichert, damit du deine Fortschritte verfolgen kannst.",
+      "landing.scoreDescription": "Kieferlinie, Augen, Proportionen und Symmetrie: Lerne deine Gesichtszüge anhand von 13 Kategorien und über 110 Merkmalen kennen. Deine Berichte bleiben gespeichert, damit du deine Fortschritte verfolgen kannst.",
       "landing.protocol": "02 / Dein Protokoll",
       "landing.directionTitle": "Weniger raten - mehr zielorientiertes Protokoll",
       "landing.finalTitle": "Finde deinen Ausgangspunkt.",
@@ -345,8 +349,8 @@ export const resources = {
       "faq.free.answer": "Ja, der Download ist kostenlos. Analysen und Pro-Funktionen sind kostenpflichtig. Die verfügbaren Angebote findest du in der App.",
       "faq.evaluation.question": "Was beinhaltet meine Analyse?",
       "faq.evaluation.answer": "10 detaillierte Kategorien mit über 40 Merkmalen zu Augen, Kieferlinie, Proportionen, Symmetrie und mehr. Dazu erhältst du ein persönliches Protokoll und gespeicherte Analysen, mit denen du deine Fortschritte verfolgen kannst.",
-      "faq.public.question": "Werden meine Fotos in der Rangliste angezeigt?",
-      "faq.public.answer": "Die Teilnahme an der Rangliste ist freiwillig. Du entscheidest, ob dein Profil öffentlich ist, und kannst diese Einstellung jederzeit ändern.",
+      "faq.public.question": "Sind meine Fotos und Berichte öffentlich?",
+      "faq.public.answer": "Nein. Deine Fotos und Berichte sind privat. Du kannst auf Wunsch ein Bild deines eigenen Berichts exportieren.",
       "faq.devices.question": "Kann ich Mogging auch ohne iPhone nutzen?",
       "faq.devices.answer": "Du kannst eine kostenpflichtige Gesichtsanalyse im Browser starten. Die App ist für iPhone verfügbar; eine Android-Version folgt.",
       "stats.categories": "Detaillierte Kategorien",
@@ -623,7 +627,11 @@ export const resources = {
       "paywall.goalCheekbones": "definiertere Wangenknochen",
       "paywall.benefits.scanTitle": "1 Gesichtsscan pro Woche",
       "paywall.benefits.protocolTitle": "Maßgeschneidertes Protokoll für deinen Aufstieg",
-      "paywall.benefits.trackingTitle": "Fortschritt & Erinnerungen"
+      "paywall.benefits.trackingTitle": "Fortschritt & Erinnerungen",
+      "landing.progress": "03 / Dein Fortschritt",
+      "landing.progressTitle": "Sieh deinen Fortschritt. Finde deinen nächsten Schritt.",
+      "landing.progressDescription": "Vergleiche deine Auswertungen im Laufe der Zeit. Verfolge Veränderungen deiner Merkmale und richte dein tägliches Protocol gezielt aus.",
+      "landing.progressPrivacy": "Deine Auswertungen bleiben privat."
     }
   },
   "es": {
@@ -648,7 +656,7 @@ export const resources = {
       "landing.planTitle": "Tu potencial. Un protocolo diario para alcanzarlo.",
       "landing.evaluation": "01 / Tu análisis",
       "landing.scoreTitle": "Mucho más que una puntuación.",
-      "landing.scoreDescription": "Línea mandibular, ojos, proporciones y simetría. Conoce tus rasgos a través de 10 categorías y más de 40 métricas. Conserva todos tus informes para seguir tu progreso.",
+      "landing.scoreDescription": "Línea mandibular, ojos, proporciones y simetría. Conoce tus rasgos a través de 13 categorías y más de 110 métricas. Conserva todos tus informes para seguir tu progreso.",
       "landing.protocol": "02 / Tu protocolo",
       "landing.directionTitle": "Menos suposiciones. Un protocolo centrado en tus objetivos.",
       "landing.finalTitle": "Encuentra tu punto de partida.",
@@ -658,8 +666,8 @@ export const resources = {
       "faq.free.answer": "Sí. Descargar la app es gratis. Los análisis y las funciones Pro son de pago; puedes consultar los planes disponibles en la app.",
       "faq.evaluation.question": "¿Qué incluye mi análisis?",
       "faq.evaluation.answer": "10 categorías detalladas con más de 40 métricas sobre tus ojos, línea mandibular, proporciones, simetría y otros rasgos. También recibirás un protocolo personalizado y podrás consultar tus análisis guardados para seguir tu progreso.",
-      "faq.public.question": "¿Mis fotos aparecerán en la clasificación?",
-      "faq.public.answer": "Participar en la clasificación es opcional. Tú decides si tu perfil es público y puedes cambiarlo en Ajustes.",
+      "faq.public.question": "¿Mis fotos e informes son públicos?",
+      "faq.public.answer": "No. Tus fotos e informes son privados. Puedes exportar una imagen de tu propio informe cuando quieras.",
       "faq.devices.question": "¿Puedo usar Mogging sin un iPhone?",
       "faq.devices.answer": "Puedes iniciar un análisis facial de pago en el navegador. La app está disponible para iPhone y próximamente llegará a Android.",
       "stats.categories": "Categorías detalladas",
@@ -936,7 +944,11 @@ export const resources = {
       "paywall.goalCheekbones": "unos pómulos más definidos",
       "paywall.benefits.scanTitle": "1 análisis facial por semana",
       "paywall.benefits.protocolTitle": "Protocolo a tu medida para ascender",
-      "paywall.benefits.trackingTitle": "Progreso y recordatorios"
+      "paywall.benefits.trackingTitle": "Progreso y recordatorios",
+      "landing.progress": "03 / Tu progreso",
+      "landing.progressTitle": "Mira tu progreso. Encuentra tu siguiente paso.",
+      "landing.progressDescription": "Compara tus evaluaciones a lo largo del tiempo. Sigue los cambios de tus rasgos y enfoca tu Protocol diario.",
+      "landing.progressPrivacy": "Tus evaluaciones son privadas."
     }
   },
   "fr": {
@@ -961,7 +973,7 @@ export const resources = {
       "landing.planTitle": "Ton potentiel. Un programme quotidien pour le révéler.",
       "landing.evaluation": "01 / Ton analyse",
       "landing.scoreTitle": "Bien plus qu’un score.",
-      "landing.scoreDescription": "Mâchoire, yeux, proportions et symétrie : découvre tes traits à travers 10 catégories et plus de 40 mesures. Retrouve chaque rapport pour suivre tes progrès.",
+      "landing.scoreDescription": "Mâchoire, yeux, proportions et symétrie : découvre tes traits à travers 13 catégories et plus de 110 mesures. Retrouve chaque rapport pour suivre tes progrès.",
       "landing.protocol": "02 / Ton programme",
       "landing.directionTitle": "Moins de tâtonnements. Un programme axé sur tes objectifs.",
       "landing.finalTitle": "Trouve ton point de départ.",
@@ -971,8 +983,8 @@ export const resources = {
       "faq.free.answer": "Oui, le téléchargement est gratuit. Les analyses et les fonctionnalités Pro sont payantes. Tu peux consulter les offres disponibles dans l’app.",
       "faq.evaluation.question": "Que comprend mon analyse ?",
       "faq.evaluation.answer": "10 catégories détaillées avec plus de 40 mesures portant sur tes yeux, ta mâchoire, tes proportions, ta symétrie et d’autres traits. Tu disposes aussi d’un programme personnalisé et de tes analyses sauvegardées pour suivre tes progrès.",
-      "faq.public.question": "Mes photos apparaîtront-elles dans le classement ?",
-      "faq.public.answer": "La participation au classement est facultative. Tu choisis de rendre ton profil public ou non et tu peux modifier ce choix dans les paramètres.",
+      "faq.public.question": "Mes photos et rapports sont-ils publics ?",
+      "faq.public.answer": "Non. Vos photos et rapports sont privés. Vous pouvez exporter une image de votre propre rapport quand vous le souhaitez.",
       "faq.devices.question": "Puis-je utiliser Mogging sans iPhone ?",
       "faq.devices.answer": "Tu peux lancer une analyse du visage payante dans ton navigateur. L’app est disponible sur iPhone ; une version Android arrive prochainement.",
       "stats.categories": "Catégories détaillées",
@@ -1249,7 +1261,11 @@ export const resources = {
       "paywall.goalCheekbones": "des pommettes plus définies",
       "paywall.benefits.scanTitle": "1 scan du visage par semaine",
       "paywall.benefits.protocolTitle": "Protocole sur mesure pour te dépasser",
-      "paywall.benefits.trackingTitle": "Suivi et rappels"
+      "paywall.benefits.trackingTitle": "Suivi et rappels",
+      "landing.progress": "03 / Votre progression",
+      "landing.progressTitle": "Voyez vos progrès. Trouvez la prochaine étape.",
+      "landing.progressDescription": "Comparez vos évaluations au fil du temps. Suivez les changements de vos traits et adaptez votre Protocol quotidien.",
+      "landing.progressPrivacy": "Vos évaluations restent privées."
     }
   },
   "zh-Hans": {
@@ -1274,7 +1290,7 @@ export const resources = {
       "landing.planTitle": "发掘你的潜力，用每日提升方案逐步实现。",
       "landing.evaluation": "01 / 你的分析",
       "landing.scoreTitle": "不只是一个分数。",
-      "landing.scoreDescription": "从下颌轮廓、眼睛到比例与对称性，通过 10 个类别和 40 多项特征指标了解你的面部特征。保存每份报告，持续关注变化。",
+      "landing.scoreDescription": "从下颌轮廓、眼睛到比例与对称性，通过 13 个类别和 110 多项特征指标了解你的面部特征。保存每份报告，持续关注变化。",
       "landing.protocol": "02 / 你的提升方案",
       "landing.directionTitle": "少些猜测，用提升方案明确目标。",
       "landing.finalTitle": "找到你的起点。",
@@ -1284,8 +1300,8 @@ export const resources = {
       "faq.free.answer": "可以，下载 App 是免费的。分析和 Pro 功能需要付费，你可以在 App 中查看可选方案。",
       "faq.evaluation.question": "分析包含哪些内容？",
       "faq.evaluation.answer": "包含 10 个详细类别和 40 多项特征指标，涵盖眼睛、下颌轮廓、比例、对称性等。你还会获得专属提升方案，并可查看已保存的分析，持续关注变化。",
-      "faq.public.question": "我的照片会出现在排行榜上吗？",
-      "faq.public.answer": "是否参与排行榜由你决定。你可以选择是否公开个人资料，也可以在设置中更改。",
+      "faq.public.question": "我的照片和报告会公开吗？",
+      "faq.public.answer": "不会。你的照片和报告都是私密的。你可以自行选择导出个人报告的图片。",
       "faq.devices.question": "没有 iPhone 也能使用 Mogging 吗？",
       "faq.devices.answer": "你可以在浏览器中进行付费面部分析。移动 App 目前支持 iPhone，Android 版即将推出。",
       "stats.categories": "详细类别",
@@ -1562,7 +1578,11 @@ export const resources = {
       "paywall.goalCheekbones": "更清晰的颧骨轮廓",
       "paywall.benefits.scanTitle": "每周1次面部扫描",
       "paywall.benefits.protocolTitle": "助你蜕变的定制方案",
-      "paywall.benefits.trackingTitle": "进度追踪与提醒"
+      "paywall.benefits.trackingTitle": "进度追踪与提醒",
+      "landing.progress": "03 / 你的进展",
+      "landing.progressTitle": "看见进步，找到下一步。",
+      "landing.progressDescription": "对比不同时期的评估，了解各项面部特征的变化，让日常 Protocol 更有针对性。",
+      "landing.progressPrivacy": "你的评估始终保密。"
     }
   },
   "de-CH": {
@@ -1587,7 +1607,7 @@ export const resources = {
       "landing.planTitle": "Dein Potenzial. Dein personalisiertes Protokoll, um es zu erreichen.",
       "landing.evaluation": "01 / Deine Analyse",
       "landing.scoreTitle": "Mehr als nur ein Score.",
-      "landing.scoreDescription": "Kieferlinie, Augen, Proportionen und Symmetrie: Lerne deine Gesichtszüge anhand von 10 Kategorien und über 40 Merkmalen kennen. Deine Berichte bleiben gespeichert, damit du deine Fortschritte verfolgen kannst.",
+      "landing.scoreDescription": "Kieferlinie, Augen, Proportionen und Symmetrie: Lerne deine Gesichtszüge anhand von 13 Kategorien und über 110 Merkmalen kennen. Deine Berichte bleiben gespeichert, damit du deine Fortschritte verfolgen kannst.",
       "landing.protocol": "02 / Dein Protokoll",
       "landing.directionTitle": "Weniger raten - mehr zielorientiertes Protokoll",
       "landing.finalTitle": "Finde deinen Ausgangspunkt.",
@@ -1597,8 +1617,8 @@ export const resources = {
       "faq.free.answer": "Ja, der Download ist kostenlos. Analysen und Pro-Funktionen sind kostenpflichtig. Die verfügbaren Angebote findest du in der App.",
       "faq.evaluation.question": "Was beinhaltet meine Analyse?",
       "faq.evaluation.answer": "10 detaillierte Kategorien mit über 40 Merkmalen zu Augen, Kieferlinie, Proportionen, Symmetrie und mehr. Dazu erhältst du ein persönliches Protokoll und gespeicherte Analysen, mit denen du deine Fortschritte verfolgen kannst.",
-      "faq.public.question": "Werden meine Fotos in der Rangliste angezeigt?",
-      "faq.public.answer": "Die Teilnahme an der Rangliste ist freiwillig. Du entscheidest, ob dein Profil öffentlich ist, und kannst diese Einstellung jederzeit ändern.",
+      "faq.public.question": "Sind meine Fotos und Berichte öffentlich?",
+      "faq.public.answer": "Nein. Deine Fotos und Berichte sind privat. Du kannst auf Wunsch ein Bild deines eigenen Berichts exportieren.",
       "faq.devices.question": "Kann ich Mogging auch ohne iPhone nutzen?",
       "faq.devices.answer": "Du kannst eine kostenpflichtige Gesichtsanalyse im Browser starten. Die App ist für iPhone verfügbar; eine Android-Version folgt.",
       "stats.categories": "Detaillierte Kategorien",
@@ -1875,7 +1895,11 @@ export const resources = {
       "paywall.goalCheekbones": "definiertere Wangenknochen",
       "paywall.benefits.scanTitle": "1 Gesichtsscan pro Woche",
       "paywall.benefits.protocolTitle": "Maßgeschneidertes Protokoll für deinen Aufstieg",
-      "paywall.benefits.trackingTitle": "Fortschritt & Erinnerungen"
+      "paywall.benefits.trackingTitle": "Fortschritt & Erinnerungen",
+      "landing.progress": "03 / Dein Fortschritt",
+      "landing.progressTitle": "Sieh deinen Fortschritt. Finde deinen nächsten Schritt.",
+      "landing.progressDescription": "Vergleiche deine Auswertungen im Laufe der Zeit. Verfolge Veränderungen deiner Merkmale und richte dein tägliches Protocol gezielt aus.",
+      "landing.progressPrivacy": "Deine Auswertungen bleiben privat."
     }
   },
   "es-419": {
@@ -1900,7 +1924,7 @@ export const resources = {
       "landing.planTitle": "Tu potencial. Un protocolo diario para alcanzarlo.",
       "landing.evaluation": "01 / Tu análisis",
       "landing.scoreTitle": "Mucho más que una puntuación.",
-      "landing.scoreDescription": "Línea mandibular, ojos, proporciones y simetría. Conoce tus rasgos a través de 10 categorías y más de 40 métricas. Conserva todos tus informes para seguir tu progreso.",
+      "landing.scoreDescription": "Línea mandibular, ojos, proporciones y simetría. Conoce tus rasgos a través de 13 categorías y más de 110 métricas. Conserva todos tus informes para seguir tu progreso.",
       "landing.protocol": "02 / Tu protocolo",
       "landing.directionTitle": "Menos suposiciones. Un protocolo centrado en tus objetivos.",
       "landing.finalTitle": "Encuentra tu punto de partida.",
@@ -1910,8 +1934,8 @@ export const resources = {
       "faq.free.answer": "Sí. Descargar la app es gratis. Los análisis y las funciones Pro son de pago; puedes consultar los planes disponibles en la app.",
       "faq.evaluation.question": "¿Qué incluye mi análisis?",
       "faq.evaluation.answer": "10 categorías detalladas con más de 40 métricas sobre tus ojos, línea mandibular, proporciones, simetría y otros rasgos. También recibirás un protocolo personalizado y podrás consultar tus análisis guardados para seguir tu progreso.",
-      "faq.public.question": "¿Mis fotos aparecerán en el ranking?",
-      "faq.public.answer": "Participar en el ranking es opcional. Tú decides si tu perfil es público y puedes cambiarlo en Configuración.",
+      "faq.public.question": "¿Mis fotos e informes son públicos?",
+      "faq.public.answer": "No. Tus fotos e informes son privados. Puedes exportar una imagen de tu propio informe cuando quieras.",
       "faq.devices.question": "¿Puedo usar Mogging sin un iPhone?",
       "faq.devices.answer": "Puedes iniciar un análisis facial de pago en el navegador. La app está disponible para iPhone y próximamente llegará a Android.",
       "stats.categories": "Categorías detalladas",
@@ -2188,7 +2212,11 @@ export const resources = {
       "paywall.goalCheekbones": "unos pómulos más definidos",
       "paywall.benefits.scanTitle": "1 análisis facial por semana",
       "paywall.benefits.protocolTitle": "Protocolo a tu medida para ascender",
-      "paywall.benefits.trackingTitle": "Progreso y recordatorios"
+      "paywall.benefits.trackingTitle": "Progreso y recordatorios",
+      "landing.progress": "03 / Tu progreso",
+      "landing.progressTitle": "Mira tu progreso. Encuentra tu siguiente paso.",
+      "landing.progressDescription": "Compara tus evaluaciones a lo largo del tiempo. Sigue los cambios de tus rasgos y enfoca tu Protocol diario.",
+      "landing.progressPrivacy": "Tus evaluaciones son privadas."
     }
   },
   "de-AT": {
@@ -2213,7 +2241,7 @@ export const resources = {
       "landing.planTitle": "Dein Potenzial. Dein personalisiertes Protokoll, um es zu erreichen.",
       "landing.evaluation": "01 / Deine Analyse",
       "landing.scoreTitle": "Mehr als nur ein Score.",
-      "landing.scoreDescription": "Kieferlinie, Augen, Proportionen und Symmetrie: Lerne deine Gesichtszüge anhand von 10 Kategorien und über 40 Merkmalen kennen. Deine Berichte bleiben gespeichert, damit du deine Fortschritte verfolgen kannst.",
+      "landing.scoreDescription": "Kieferlinie, Augen, Proportionen und Symmetrie: Lerne deine Gesichtszüge anhand von 13 Kategorien und über 110 Merkmalen kennen. Deine Berichte bleiben gespeichert, damit du deine Fortschritte verfolgen kannst.",
       "landing.protocol": "02 / Dein Protokoll",
       "landing.directionTitle": "Weniger raten - mehr zielorientiertes Protokoll",
       "landing.finalTitle": "Finde deinen Ausgangspunkt.",
@@ -2223,8 +2251,8 @@ export const resources = {
       "faq.free.answer": "Ja, der Download ist kostenlos. Analysen und Pro-Funktionen sind kostenpflichtig. Die verfügbaren Angebote findest du in der App.",
       "faq.evaluation.question": "Was beinhaltet meine Analyse?",
       "faq.evaluation.answer": "10 detaillierte Kategorien mit über 40 Merkmalen zu Augen, Kieferlinie, Proportionen, Symmetrie und mehr. Dazu erhältst du ein persönliches Protokoll und gespeicherte Analysen, mit denen du deine Fortschritte verfolgen kannst.",
-      "faq.public.question": "Werden meine Fotos in der Rangliste angezeigt?",
-      "faq.public.answer": "Die Teilnahme an der Rangliste ist freiwillig. Du entscheidest, ob dein Profil öffentlich ist, und kannst diese Einstellung jederzeit ändern.",
+      "faq.public.question": "Sind meine Fotos und Berichte öffentlich?",
+      "faq.public.answer": "Nein. Deine Fotos und Berichte sind privat. Du kannst auf Wunsch ein Bild deines eigenen Berichts exportieren.",
       "faq.devices.question": "Kann ich Mogging auch ohne iPhone nutzen?",
       "faq.devices.answer": "Du kannst eine kostenpflichtige Gesichtsanalyse im Browser starten. Die App ist für iPhone verfügbar; eine Android-Version folgt.",
       "stats.categories": "Detaillierte Kategorien",
@@ -2501,7 +2529,11 @@ export const resources = {
       "paywall.goalCheekbones": "definiertere Wangenknochen",
       "paywall.benefits.scanTitle": "1 Gesichtsscan pro Woche",
       "paywall.benefits.protocolTitle": "Maßgeschneidertes Protokoll für deinen Aufstieg",
-      "paywall.benefits.trackingTitle": "Fortschritt & Erinnerungen"
+      "paywall.benefits.trackingTitle": "Fortschritt & Erinnerungen",
+      "landing.progress": "03 / Dein Fortschritt",
+      "landing.progressTitle": "Sieh deinen Fortschritt. Finde deinen nächsten Schritt.",
+      "landing.progressDescription": "Vergleiche deine Auswertungen im Laufe der Zeit. Verfolge Veränderungen deiner Merkmale und richte dein tägliches Protocol gezielt aus.",
+      "landing.progressPrivacy": "Deine Auswertungen bleiben privat."
     }
   }
 } as const
