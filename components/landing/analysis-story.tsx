@@ -1,114 +1,124 @@
-import Image from 'next/image'
-import { useState, type CSSProperties } from 'react'
-import { useReducedMotion } from 'motion/react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { useInView, useReducedMotion } from 'motion/react'
 import * as m from 'motion/react-m'
-import { ArrowRight, Check, Eye, Ruler, Sparkles, ScanFace, ChevronRight, BadgeCheck, Droplets, Scissors } from 'lucide-react'
-import { RubricVisual } from '@/components/analysis/v2/rubric-visual'
-import { reportOverlayPresets } from '@/lib/creator/mobile-overlay-engine/report-presets'
-import { FaceOverlay } from '@/components/analysis/face-overlay'
-import { resolvePreviewOverlay, previewLandmarks } from './overlay'
-import { Primitive } from './mobile-preview'
+import { Check, ArrowUpRight } from 'lucide-react'
+import { MetricTimeline, type TimelineAxis } from '@/components/analysis/v2/metric-timeline'
+import NumberFlow from '@number-flow/react'
+import { reportCategories } from '@/lib/creator/mock-report-data'
+import { preciseFaceOverlay, drawFaceTreatment } from '@/lib/creator/face-treatment'
+import { drawReportPortrait, drawReportPortraitFade } from '@/lib/creator/report-portrait'
+import { nativeMetricHeight, drawNativeReportMetric } from '@/lib/creator/native-report-metric'
+import { timelineStyle } from '@/lib/creator/mobile-report-geometry'
+import { nativeReportEntry } from '@/lib/creator/report-tour'
+import type { ReportFeature } from '@/lib/creator/mobile-overlay-engine/report-data'
+import { previewLandmarks, previewPortrait } from './overlay'
 import portrait from './primer-portrait.json'
 import styles from './analysis-story.module.css'
 
+function feature(category: string, id: string) {
+  return reportCategories.find(item => item.id === category)!.features.find(item => item.id === id)!
+}
+const texture = feature('skin', 'skin.texture')
 const examples = [
-  { id: 'skin', taskIcon: Droplets, color: '#58bdff', title: 'Skin', icon: Sparkles, finding: 'Skin texture', value: 'Uneven in places', kind: 'Rail', positions: [], grade: 7, context: 'Your report brings surface texture, tone and visible blemishes into one clear picture.', task: 'Build a consistent skin routine', detail: 'Gently cleanse, moisturize and use daily sun protection.', timing: 'Morning · Your Protocol' },
-  { id: 'brows', taskIcon: Scissors, color: '#c09aff', title: 'Brows', icon: Eye, finding: 'Brow coverage', value: 'Moderate coverage', kind: 'Capsule', positions: [.57], grade: null, context: 'Shape, coverage and position help explain how your brows frame your eyes.', task: 'Define your natural brow shape', detail: 'Brush into place and tidy stray hairs outside the natural outline.', timing: 'Grooming · Your Protocol' },
-  { id: 'jaw', taskIcon: Scissors, color: '#32c48d', title: 'Jaw & chin', icon: ScanFace, finding: 'Jaw outline', value: 'Defined', kind: 'Orbit', positions: [.74], grade: null, context: 'Your report separates facial structure from the grooming and presentation you can work on.', task: 'Keep your stubble edges tidy', detail: 'Follow your natural cheek and jaw lines for a consistent finish.', timing: 'Grooming · Your Protocol' },
-] as const
-const jawOverlay = resolvePreviewOverlay(reportOverlayPresets.jaw, 585)
-const image = { src: '/model2.png', ...portrait.image }
-const browPaths = [portrait.contours.leftBrow, portrait.contours.rightBrow].map(points => {
-  const midpoint = (a: typeof points[number], b: typeof a) => `${(a.x + b.x) * 50} ${(a.y + b.y) * 50}`
-  return `M${midpoint(points[points.length - 1], points[0])} ${points.map((point, index) => `Q${point.x * 100} ${point.y * 100} ${midpoint(point, points[(index + 1) % points.length])}`).join(' ')} Z`
-})
+  { id: 'skin', title: 'Skin', feature: { ...texture, label: 'Skin texture', value: `${texture.grade!.toFixed(1)} / 10` }, narration: 'Skin texture', context: 'Texture, tone and visible detail. A clearer picture of where to focus your routine.', task: 'Build a consistent skin routine', detail: 'Gently cleanse, moisturize and use daily sun protection.' },
+  { id: 'brows', title: 'Brows', feature: feature('brows', 'brows.tilt'), narration: 'Brow tilt', context: 'See how your brows sit, and how their shape frames your eyes.', task: 'Work with your natural brow shape', detail: 'Brush into place and tidy stray hairs outside the natural outline.' },
+  { id: 'jaw', title: 'Jaw & chin', feature: feature('jaw', 'jaw.height'), narration: 'Jaw and chin', context: 'Understand the lower face, with structure and presentation kept in perspective.', task: 'Keep your grooming consistent', detail: 'Follow your natural cheek and jaw lines for a clean finish.' },
+]
 const points = portrait.anchors
 const cheekWidth = points.rightCheek.x - points.leftCheek.x
-const measurements = [
-  { title: 'Eye spacing', description: 'The distance between pupil centers, compared with the width across the cheeks.', a: points.leftPupil, b: points.rightPupil, numerator: 'Distance between pupils', denominator: 'Visible cheek width', value: (points.rightPupil.x - points.leftPupil.x) / cheekWidth },
-  { title: 'Jaw width', description: 'The width between the jaw corners, compared with the cheek width above them.', a: points.jawLeft, b: points.jawRight, numerator: 'Visible jaw width', denominator: 'Visible cheek width', value: (points.jawRight.x - points.jawLeft.x) / cheekWidth },
-  { title: 'Mouth width', description: 'The distance between the mouth corners relative to the width of the face.', a: points.mouthLeft, b: points.mouthRight, numerator: 'Visible mouth width', denominator: 'Visible cheek width', value: (points.mouthRight.x - points.mouthLeft.x) / cheekWidth },
-  { title: 'Inner-eye gap', description: 'The gap between the inner eye corners, expressed in eye widths.', a: points.leftEyeInner, b: points.rightEyeInner, numerator: 'Inner-eye distance', denominator: 'Average eye width', value: (points.rightEyeInner.x - points.leftEyeInner.x) / ((points.leftEyeInner.x - points.leftEyeOuter.x + points.rightEyeOuter.x - points.rightEyeInner.x) / 2) },
+export const measurementExamples = [
+  { category: 'eyes', title: 'Eye spacing', narration: 'Pupil spacing', feature: { ...feature('eyes', 'eyes.spacing'), value: `${((points.rightPupil.x - points.leftPupil.x) / cheekWidth).toFixed(2)}×`, positions: [(points.rightPupil.x - points.leftPupil.x) / cheekWidth] }, description: 'The distance between your pupils, relative to the width across your cheeks.', reference: 'Pupil distance / cheek width' },
+  { category: 'eyes', title: 'Eye opening', narration: 'Upper and lower eyelids', feature: feature('eyes', 'eyes.opening'), description: 'The vertical opening of each eye, shown separately for the left and right sides.', reference: 'Left and right eye opening' },
+  { category: 'jaw', title: 'Jaw width', narration: 'Jaw width', feature: { ...feature('jaw', 'jaw.width'), value: `${((points.jawRight.x - points.jawLeft.x) / cheekWidth).toFixed(2)}×`, positions: [(points.jawRight.x - points.jawLeft.x) / cheekWidth] }, description: 'Jaw width compared with the cheek width above it. One proportion, with the reference points in view.', reference: 'Jaw width / cheek width' },
 ]
 
-export function AnalysisStory() {
+// One entry clock for the portrait overlays and native instruments. It pauses
+// outside the viewport and never invents movement after a measurement settles.
+function useVisibleCanvas(width: number, height: number, draw: (ctx: CanvasRenderingContext2D, elapsed: number) => void) {
+  const ref = useRef<HTMLCanvasElement>(null), elapsed = useRef(0)
+  const visible = useInView(ref, { amount: .35 }), reduced = useReducedMotion()
+  useEffect(() => { elapsed.current = 0 }, [draw])
+  useEffect(() => {
+    const canvas = ref.current, ctx = canvas?.getContext('2d')
+    if (!canvas || !ctx) return
+    canvas.width = Math.round(width * 3); canvas.height = Math.round(height * 3)
+    let frame = 0, last = performance.now()
+    function paint(now: number) {
+      cancelAnimationFrame(frame)
+      if (visible && !document.hidden) elapsed.current += Math.min(50, now - last)
+      last = now
+      ctx!.setTransform(3, 0, 0, 3, 0, 0); ctx!.clearRect(0, 0, width, height)
+      draw(ctx!, reduced ? 4000 : elapsed.current)
+      if (visible && !document.hidden && !reduced && elapsed.current < 2400) frame = requestAnimationFrame(paint)
+    }
+    const resume = () => { last = performance.now(); paint(last) }
+    resume(); document.addEventListener('visibilitychange', resume)
+    return () => { cancelAnimationFrame(frame); document.removeEventListener('visibilitychange', resume) }
+  }, [draw, width, height, visible, reduced])
+  return ref
+}
+
+export function ReportPortraitDemo({ category, narration }: { category: string; narration: string }) {
+  const [image, setImage] = useState<HTMLImageElement | null>(null)
+  useEffect(() => {
+    let disposed = false
+    const photo = new window.Image(); photo.src = previewPortrait.src
+    void photo.decode().then(() => { if (!disposed) setImage(photo) }).catch(() => {})
+    return () => { disposed = true }
+  }, [])
+  const overlay = useMemo(() => preciseFaceOverlay({ size: { width: 390, height: 520 }, primitives: [], dots: [] }, { ...portrait.image, landmarks: previewLandmarks }, category, narration, category === 'skin'), [category, narration])
+  const draw = useCallback((ctx: CanvasRenderingContext2D, elapsed: number) => {
+    if (!image) return
+    drawReportPortrait(ctx, image, 390, 520)
+    drawFaceTreatment(ctx, overlay, 390, elapsed)
+    drawReportPortraitFade(ctx, 390, 520)
+  }, [image, overlay])
+  const ref = useVisibleCanvas(390, 520, draw)
+  return <div className={styles.portrait}><canvas ref={ref} role="img" aria-label={`Example portrait with ${narration.toLowerCase()} mapped using the app’s face overlays`} /><span>Eric, 27 NYC</span></div>
+}
+
+export function ReportMetricDemo({ metric, axis }: { metric: ReportFeature; axis?: TimelineAxis }) {
+  const [position, setPosition] = useState(metric.positions?.[0] ?? .5)
   const reduced = useReducedMotion()
-  const entrance = { initial: { opacity: reduced ? 1 : 0, y: reduced ? 0 : 16 }, whileInView: { opacity: 1, y: 0 }, viewport: { once: true, amount: .12 }, transition: { duration: reduced ? 0 : .4, ease: [.16, 1, .3, 1] as [number, number, number, number] } }
-  const [selected, setSelected] = useState(0)
-  const [done, setDone] = useState<string[]>([])
-  const [day, setDay] = useState(9)
-  const [measurement, setMeasurement] = useState(0)
-  const [anchors, setAnchors] = useState(false)
-  const example = examples[selected]
-  const metric = measurements[measurement]
-  const taskKey = `${example.id}:${day}`
-  const checked = done.includes(taskKey)
-  const TaskIcon = example.taskIcon
-  const referenceLines = metric.title === 'Inner-eye gap' ? [[points.leftEyeOuter, points.leftEyeInner], [points.rightEyeInner, points.rightEyeOuter]] : [[points.leftCheek, points.rightCheek]]
+  const width = 324, height = nativeMetricHeight(metric, width)
+  const draw = useCallback((ctx: CanvasRenderingContext2D, elapsed: number) => drawNativeReportMetric(ctx, metric, 0, 0, width, height, nativeReportEntry(elapsed)), [metric, height])
+  const ref = useVisibleCanvas(width, height, draw)
+  const dial = timelineStyle(metric.id ?? '', metric.label, metric.visual === 'Orbit') === 'dial'
+  return <div className={styles.instrument} data-interactive={Boolean(axis)}>
+    <span className={styles.metricLabel}>{metric.label}</span>
+    <div className={styles.desktopChart}><MetricTimeline key={metric.id} kind={metric.visual ?? 'Text'} positions={axis ? [position] : metric.positions ?? []} grade={metric.grade ?? null} scale={metric.scale} label={metric.label} axis={axis} onPositionChange={axis ? setPosition : undefined} /></div>
+    <div className={styles.mobileChart} data-dial={dial}><canvas ref={ref} style={{ aspectRatio: `${width}/${height}` }} aria-hidden="true" />{dial ? <strong>{metric.value}</strong> : null}</div>
+    <strong className={styles.metricValue} data-mobile-dial={dial}>{axis ? <NumberFlow value={axis.minimum + position * (axis.maximum - axis.minimum)} format={{ minimumFractionDigits: axis.digits, maximumFractionDigits: axis.digits }} suffix={axis.unit} animated={!reduced} transformTiming={{ duration: 180, easing: 'ease-out' }} spinTiming={{ duration: 180, easing: 'ease-out' }} /> : metric.value}</strong>
+  </div>
+}
+
+export function AnalysisStory() {
+  const [selected, setSelected] = useState(0), [measurement, setMeasurement] = useState(0)
+  const [completed, setCompleted] = useState<string[]>([])
+  const reduced = useReducedMotion(), example = examples[selected], metric = measurementExamples[measurement]
+  const checked = completed.includes(example.id)
+  const entrance = { initial: { opacity: reduced ? 1 : 0, y: reduced ? 0 : 14 }, whileInView: { opacity: 1, y: 0 }, viewport: { once: true, amount: .12 }, transition: { duration: reduced ? 0 : .5, ease: [.16, 1, .3, 1] as [number, number, number, number] } }
   return <>
     <m.section {...entrance} data-landing-section="how_it_works" aria-labelledby="story-title" className={styles.section}>
-      <div className={styles.intro}>
-        <p className={styles.eyebrow}>HOW MOGGING WORKS</p>
-        <h2 id="story-title">Your face. Your findings.<br />Your next move.</h2>
-        <p>Choose a feature. Follow it from your scan to your daily plan.</p>
-      </div>
-      <div className={styles.tabs} role="tablist" aria-label="Explore a feature">
-        {examples.map(({ title, icon: Icon }, index) => <button key={title} type="button" role="tab" aria-selected={selected === index} aria-controls="feature-story" onClick={() => setSelected(index)}><Icon size={17} />{title}</button>)}
-      </div>
-      <div id="feature-story" role="tabpanel" aria-label={example.title} className={styles.story}>
-        <article className={styles.scan}>
-          <Image src="/model2.png" alt="Example face with the selected feature mapped" fill sizes="(min-width: 1024px) 340px, 90vw" />
-          {example.id === 'skin' ? <FaceOverlay preset={null} landmarks={previewLandmarks} image={image} faceMapPointCount={60} /> : example.id === 'brows' ? <svg className={styles.browOverlay} viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden="true">{browPaths.map((path, index) => <path key={index} d={path} />)}</svg> : <svg key={example.id} viewBox="0 0 390 585" aria-hidden="true">{jawOverlay.map(primitive => <Primitive key={primitive.id} primitive={primitive} />)}</svg>}
-          <div className={styles.scanTop}><span>01 / MAP</span><span>{example.title}</span></div>
-          <div className={styles.scanBottom}><span>Start with your features.</span><p>Landmarks and contours map the areas your report explores.</p></div>
-        </article>
-        <article className={styles.finding}>
-          <p className={styles.eyebrow}>02 / UNDERSTAND</p>
-          <h3>Find your focus.</h3>
-          <div className={styles.metric} key={example.id}><span>{example.finding}</span><RubricVisual kind={example.kind} scale="quality" positions={[...example.positions]} grade={example.grade} /><strong>{example.value}</strong></div>
-          <p className={styles.context}>{example.context}</p>
-          <div className={styles.connection}><span>From your report</span><ArrowRight size={19} /><span>To your Protocol</span></div>
-        </article>
-        <article className={styles.plan}>
-          <p className={styles.eyebrow}>03 / ACT</p>
-          <h3>Make your next move.</h3>
-          <div className={styles.protocol}>
-            <div className={styles.protocolHeader}><strong>Your Protocol</strong><span><BadgeCheck size={17} />{checked ? '5' : '0'}</span></div>
-            <div className={styles.week} aria-label="Example Protocol dates">{['Thu', 'Today', 'Sat', 'Sun'].map((label, index) => { const date = index + 8; return <button key={date} type="button" aria-label={`Show example day ${date}`} aria-pressed={day === date} data-today={date === 9} onClick={() => setDay(date)}><span>{label}</span><b>{done.includes(`${example.id}:${date}`) ? <Check size={13} /> : date}</b></button> })}</div>
-            <div className={styles.schedule}>
-              <div className={styles.task} key={taskKey} data-completed={checked} style={{ '--task-color': example.color } as CSSProperties}>
-                <div className={styles.taskTop}><span className={styles.taskIcon}><TaskIcon size={17} /></span><span className={styles.taskTiming}>{example.timing.split(' · ')[0]}</span><button type="button" aria-label={`Complete ${example.task}`} aria-pressed={checked} onClick={() => setDone(current => checked ? current.filter(id => id !== taskKey) : [...current, taskKey])}>{checked ? <Check size={14} /> : null}</button></div>
-                <strong className={styles.taskTitle}>{example.task}</strong>
-                <p>{example.detail}</p>
-              </div>
-            </div>
+      <header className={styles.intro}><p className={styles.eyebrow}>HOW MOGGING WORKS</p><h2 id="story-title">Understand your features.<br />Find your next step.</h2><p>A closer look. A clear finding. Something you can act on.</p></header>
+      <div className={styles.story}>
+        <ReportPortraitDemo category={example.id} narration={example.narration} />
+        <div className={styles.finding}>
+          <div className={styles.tabs} role="tablist" aria-label="Explore a feature">{examples.map((item, index) => <button key={item.id} id={`feature-tab-${item.id}`} type="button" role="tab" aria-selected={selected === index} aria-controls="feature-story" tabIndex={selected === index ? 0 : -1} onClick={() => setSelected(index)} onKeyDown={event => { if (['ArrowLeft','ArrowRight','Home','End'].includes(event.key)) { event.preventDefault(); const next = event.key === 'Home' ? 0 : event.key === 'End' ? examples.length - 1 : (selected + (event.key === 'ArrowRight' ? 1 : -1) + examples.length) % examples.length; setSelected(next); document.getElementById(`feature-tab-${examples[next].id}`)?.focus() } }}>{item.title}</button>)}</div>
+          <div role="tabpanel" id="feature-story" aria-labelledby={`feature-tab-${example.id}`}>
+            <ReportMetricDemo metric={example.feature} />
+            <p className={styles.context}>{example.context}</p>
+            <div className={styles.action}><p className={styles.eyebrow}>YOUR NEXT STEP <ArrowUpRight size={13} /></p><button type="button" aria-pressed={checked} onClick={() => setCompleted(current => checked ? current.filter(id => id !== example.id) : [...current, example.id])}><span className={styles.checkbox}>{checked ? <Check size={15} /> : null}</span><span><strong>{example.task}</strong><span>{example.detail}</span></span></button><small>{checked ? 'A small step, checked off.' : 'Try checking off a step in your Protocol.'}</small></div>
           </div>
-          <p className={styles.context}>A clear priority becomes a repeatable habit. Save your reports to follow changes over time.</p>
-        </article>
+        </div>
       </div>
-      <p className={styles.caption}>Interactive example report. Your findings and Protocol are personalized to you.</p>
     </m.section>
-    <m.section {...entrance} data-landing-section="measurement_proof" aria-labelledby="measurement-title" className={styles.proofSection}>
+    <m.section {...entrance} data-landing-section="measurement_proof" aria-labelledby="measurement-title" className={`${styles.section} ${styles.proofSection}`}>
+      <header className={styles.intro}><p className={styles.eyebrow}>LOOK CLOSER</p><h2 id="measurement-title">Every measurement.<br />A little more context.</h2><p>See the points and proportions behind your report.</p></header>
+      <div className={styles.measurements} role="group" aria-label="Explore a measurement">{measurementExamples.map((item, index) => <button key={item.title} type="button" aria-pressed={measurement === index} onClick={() => setMeasurement(index)}>{item.title}</button>)}</div>
       <div className={styles.proof}>
-        <div className={styles.proofPhoto}>
-          <Image src="/model2.png" alt="Example portrait showing the points used to calculate a facial proportion" fill sizes="(min-width: 1024px) 420px, 90vw" />
-          <svg key={metric.title} className={styles.measurementOverlay} viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden="true">
-            {anchors ? Object.values(portrait.contours).flat().map((point, index) => <circle key={index} cx={point.x * 100} cy={point.y * 100} r=".26" fill="white" opacity=".7" />) : null}
-            {referenceLines.map(([a, b], index) => <line key={index} x1={a.x * 100} y1={a.y * 100} x2={b.x * 100} y2={b.y * 100} stroke="white" strokeWidth=".22" strokeDasharray="1 1" />)}
-            <line x1={metric.a.x * 100} y1={metric.a.y * 100} x2={metric.b.x * 100} y2={metric.b.y * 100} stroke="#00A8EF" strokeWidth=".4" />
-            {[metric.a, metric.b, ...referenceLines.flat()].map((point, index) => <circle key={index} cx={point.x * 100} cy={point.y * 100} r=".65" fill={index < 2 ? '#00A8EF' : 'white'} stroke="white" strokeWidth=".2" />)}
-          </svg>
-          <button className={styles.anchorToggle} type="button" aria-pressed={anchors} onClick={() => setAnchors(show => !show)}><ScanFace size={16} />{anchors ? 'Hide landmarks' : 'Show landmarks'}</button>
-        </div>
-        <div className={styles.proofContent}>
-          <p className={styles.eyebrow}>LOOK CLOSER</p>
-          <h2 id="measurement-title">See where the<br />number comes from.</h2>
-          <p className={styles.context}>Explore the geometry behind a proportion. The points, the distances and the relationship between them.</p>
-          <div className={styles.measurements}>{measurements.map((item, index) => <button key={item.title} type="button" aria-pressed={measurement === index} onClick={() => setMeasurement(index)}><Ruler size={18} /><span>{item.title}</span><strong>{item.value.toFixed(2)}×</strong><ChevronRight size={16} /></button>)}</div>
-          <div className={styles.calculation} key={metric.title}><p className={styles.eyebrow}>THE MEASUREMENT</p><h3>{metric.title}</h3><p className={styles.context}>{metric.description}</p><div className={styles.formula}><span>{metric.numerator}</span><i /><span>{metric.denominator}</span><strong>{metric.value.toFixed(2)}×</strong></div></div>
-          <p className={styles.context}>Geometry describes proportions. Visual assessment adds context for skin, hair and individual features. Together, they build your report.</p>
-          <p className={styles.caption}>A worked example using the landmarks on this portrait.</p>
-        </div>
+        <div className={styles.proofFinding}><ReportMetricDemo metric={metric.feature} /><p className={styles.context}>{metric.description}</p><p className={styles.reference}>{metric.reference}</p></div>
+        <ReportPortraitDemo category={metric.category} narration={metric.narration} />
       </div>
     </m.section>
   </>

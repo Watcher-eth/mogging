@@ -20,6 +20,8 @@ export function enrichFaceLandmarks(landmarks: FaceLandmarksPayload | null): Fac
     const points = landmarks.contours?.[key];
     // A partial/broken contour should disappear, not connect across missing data.
     if (!points || points.length < 2 || !points.every(validPoint)) continue;
+    // Keep both edges of detected brow outlines; five-point resampling erases their thickness.
+    if ((key === 'leftBrow' || key === 'rightBrow') && points.length >= 6) { contours[key] = points; continue; }
     contours[key] = resampleContour(points, CONTOUR_SAMPLES[key], CLOSED_CONTOURS.has(key), landmarks.image);
   }
   return { ...landmarks, anchors, contours };

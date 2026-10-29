@@ -1,11 +1,15 @@
+import type { Triangulation } from './triangulation';
+export type ReportFeature = { label: string; value: string; measurement?: string; id?: string; visual?: string; positions?: number[]; grade?: number | null; scale?: 'range' | 'quality'; maximum?: number; axis?: { maximum: number; unit: '%' }; triangulation?: Triangulation };
+
 export type ReportCategory = {
   id: string;
   title: string;
   subtitle: string;
   scoreLabel: string;
   score: number;
-  features: Array<{ label: string; value: string; measurement?: string; id?: string; visual?: string; positions?: number[]; grade?: number | null; scale?: 'range' | 'quality' }>;
+  features: ReportFeature[];
   eyeColor?: string;
+  hairColor?: string;
   explanation: string;
   recommendation: string;
 };

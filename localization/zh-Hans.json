@@ -19,7 +19,7 @@
   "landing.planTitle": "发掘你的潜力，用每日提升方案逐步实现。",
   "landing.evaluation": "01 / 你的分析",
   "landing.scoreTitle": "不只是一个分数。",
-  "landing.scoreDescription": "从下颌轮廓、眼睛到比例与对称性，通过 10 个类别和 40 多项特征指标了解你的面部特征。保存每份报告，持续关注变化。",
+  "landing.scoreDescription": "从下颌轮廓、眼睛到比例与对称性，通过 13 个类别和 110 多项特征指标了解你的面部特征。保存每份报告，持续关注变化。",
   "landing.protocol": "02 / 你的提升方案",
   "landing.directionTitle": "少些猜测，用提升方案明确目标。",
   "landing.finalTitle": "找到你的起点。",
@@ -29,8 +29,8 @@
   "faq.free.answer": "可以，下载 App 是免费的。分析和 Pro 功能需要付费，你可以在 App 中查看可选方案。",
   "faq.evaluation.question": "分析包含哪些内容？",
   "faq.evaluation.answer": "包含 10 个详细类别和 40 多项特征指标，涵盖眼睛、下颌轮廓、比例、对称性等。你还会获得专属提升方案，并可查看已保存的分析，持续关注变化。",
-  "faq.public.question": "我的照片会出现在排行榜上吗？",
-  "faq.public.answer": "是否参与排行榜由你决定。你可以选择是否公开个人资料，也可以在设置中更改。",
+  "faq.public.question": "我的照片和报告会公开吗？",
+  "faq.public.answer": "不会。你的照片和报告都是私密的。你可以自行选择导出个人报告的图片。",
   "faq.devices.question": "没有 iPhone 也能使用 Mogging 吗？",
   "faq.devices.answer": "你可以在浏览器中进行付费面部分析。移动 App 目前支持 iPhone，Android 版即将推出。",
   "stats.categories": "详细类别",
@@ -307,5 +307,9 @@
   "paywall.goalCheekbones": "更清晰的颧骨轮廓",
   "paywall.benefits.scanTitle": "每周1次面部扫描",
   "paywall.benefits.protocolTitle": "助你蜕变的定制方案",
-  "paywall.benefits.trackingTitle": "进度追踪与提醒"
+  "paywall.benefits.trackingTitle": "进度追踪与提醒",
+  "landing.progress": "03 / 你的进展",
+  "landing.progressTitle": "看见进步，找到下一步。",
+  "landing.progressDescription": "对比不同时期的评估，了解各项面部特征的变化，让日常 Protocol 更有针对性。",
+  "landing.progressPrivacy": "你的评估始终保密。"
 }

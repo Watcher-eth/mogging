@@ -10,6 +10,23 @@ const overview = () => ({
   categories: registry.categories.map(category => ({ id: category.id, score: 6, explanation: 'Visible contours and placement.', recommendation: 'Maintain a consistent grooming routine.' })),
 })
 
+test('optional color variations cannot fail a valid report or trigger a costly regeneration', () => {
+  for (const [input, expected] of [['Grey', 'gray'], [' DARK-BROWN ', 'dark brown'], ['unknown', null], [undefined, null], [42, null]] as const) {
+    const result = parseWebOverview({ ...overview(), eyeColor: input, hairColor: 'Blonde' })
+    expect(result.eyeColor).toBe(expected)
+    expect(result.hairColor).toBe('blond')
+    expect(result.overallScore).toBe(6)
+  }
+})
+
+test('keyed categories retain strict coverage, numeric scores, IDs and explanations', () => {
+  const categories = Object.fromEntries(overview().categories.map(({ id, ...value }) => [id, value]))
+  expect(parseWebOverview({ ...overview(), categories }).categories).toEqual(overview().categories)
+  delete categories.eyes
+  expect(() => parseWebOverview({ ...overview(), categories })).toThrow()
+  expect(() => parseWebOverview({ ...overview(), categories: null })).toThrow()
+})
+
 test('unsupported optional concern labels do not discard validated scores and report categories', () => {
   const protocolContext = { faceShape: 'oval', hairTexture: 'wavy', visibleConcerns: ['unsupported-a', 'unsupported-b'] }
   expect(protocolContextSchema.safeParse(protocolContext).success).toBe(false)

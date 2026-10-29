@@ -1,31 +1,25 @@
 import { expect, test } from "bun:test";
-import { readFileSync } from "node:fs";
+import sharp from "sharp";
 import { enrichFaceLandmarks } from "@/lib/creator/mobile-overlay-engine/enrich-landmarks";
 import type { FaceLandmarksPayload } from "@/lib/creator/mobile-overlay-engine/landmarks";
 import { processingOverlayPresets } from "./scan-presets";
 import { reportOverlayPresets } from "@/lib/creator/mobile-overlay-engine/report-presets";
+import { getImageTransform } from "@/lib/creator/mobile-overlay-engine/layout";
 import { resolveOverlayPreset } from "@/lib/creator/mobile-overlay-engine/resolve";
 import portrait from "./primer-portrait.json";
-import { resolvePreviewOverlay } from "./overlay";
+import { previewPortrait, resolvePreviewOverlay } from "./overlay";
 
-test("the cached calibration is paired with the exact mobile portrait", () => {
-  expect(
-    readFileSync("public/model2.png").equals(
-      readFileSync("../mogging-mobile/assets/images/model2.png"),
-    ),
-  ).toBe(true);
-  expect(portrait).toEqual(
-    JSON.parse(
-      readFileSync(
-        "../mogging-mobile/src/overlay-engine/detection/primer-portrait.json",
-        "utf8",
-      ),
-    ),
-  );
+test("the cached calibration matches the website report portrait dimensions", async () => {
+  const image = await sharp(`public${previewPortrait.src}`).metadata();
+  expect(portrait.image).toEqual({ width: image.width, height: image.height });
+  expect(portrait.quality.warnings).toEqual([]);
 });
 
 test("centered cover cropping keeps scan and report measurements aligned with the portrait", () => {
   const landmarks = enrichFaceLandmarks(portrait as FaceLandmarksPayload)!;
+  const fullTransform = getImageTransform(portrait.image, { width: 390, height: 560 }, "cover");
+  const compactTransform = getImageTransform(portrait.image, { width: 390, height: 350 }, "cover");
+  const scale = compactTransform.scale / fullTransform.scale;
   for (const preset of [
     ...processingOverlayPresets,
     reportOverlayPresets.overall,
@@ -45,9 +39,9 @@ test("centered cover cropping keeps scan and report measurements aligned with th
     for (const primitive of compact) {
       const original = full.find((item) => item.id === primitive.id)!;
       if (primitive.kind === "point" && original.kind === "point") {
-        // SVG xMidYMid slice removes 105px at each vertical edge, just like the photo.
-        expect(primitive.point.x).toBeCloseTo(original.point.x, 6);
-        expect(primitive.point.y).toBeCloseTo(original.point.y - 105, 6);
+        // Overlay points follow the same centered cover transform as the photo.
+        expect(primitive.point.x).toBeCloseTo(compactTransform.offsetX + (original.point.x - fullTransform.offsetX) * scale, 6);
+        expect(primitive.point.y).toBeCloseTo(compactTransform.offsetY + (original.point.y - fullTransform.offsetY) * scale, 6);
         expect(Number.isFinite(primitive.point.x + primitive.point.y)).toBe(
           true,
         );

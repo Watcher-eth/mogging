@@ -22,7 +22,7 @@ type LegalPageProps = {
   contactLabel?: string
 }
 
-const supportHref = 'mailto:support@mogging.app'
+const supportHref = 'mailto:gabe@mogging.com'
 
 export function LegalPage({
   eyebrow,
@@ -32,14 +32,14 @@ export function LegalPage({
   path,
   sections,
   contactHref = supportHref,
-  contactLabel = 'support@mogging.app',
+  contactLabel = 'gabe@mogging.com',
 }: LegalPageProps) {
   return (
     <>
       <SeoHead title={`${title} | Mogging`} description={description} path={path} />
       <main className="min-h-[calc(100vh-4rem)] overflow-hidden bg-white text-black sm:min-h-[calc(100vh-5rem)]">
         <div className="pointer-events-none fixed inset-x-0 top-16 h-px bg-zinc-200/70 sm:top-20" aria-hidden="true" />
-        <div className="mx-auto grid w-full max-w-[1580px] grid-cols-1 border-x border-zinc-200/70 lg:grid-cols-[280px_minmax(0,1fr)]">
+        <div className="mx-auto grid w-full max-w-[var(--legal-page-max)] grid-cols-1 border-x border-zinc-200/70 lg:grid-cols-[280px_minmax(0,1fr)]">
           <aside className="border-b border-zinc-200/70 bg-white/95 px-5 py-4 backdrop-blur-xl lg:sticky lg:top-20 lg:h-[calc(100vh-5rem)] lg:border-b-0 lg:border-r lg:px-8 lg:py-12">
             <motion.div
               initial={{ opacity: 0, y: 12 }}

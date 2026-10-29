@@ -6,7 +6,7 @@ const sections: LegalSection[] = [
     label: 'Contact Support',
     title: 'Contact Support',
     body: [
-      'Email support@mogging.app for account, billing, analysis, photo, privacy, or safety help. Include the email on your account and a short description of what happened.',
+      'Email gabe@mogging.com for account, billing, analysis, photo, privacy, or safety help. Include the email on your account and a short description of what happened.',
       { items: ['For billing issues, include the checkout email and approximate purchase time.', 'For analysis issues, include the analysis or share link if you have one.', 'For safety or privacy requests, include links or screenshots that identify the content.'] },
     ],
   },
@@ -42,7 +42,7 @@ const sections: LegalSection[] = [
     label: 'Privacy Requests',
     title: 'Privacy and Data Requests',
     body: [
-      'You can request help with account data, photo visibility, share links, deletion, or privacy questions by emailing support@mogging.app.',
+      'You can request help with account data, photo visibility, share links, deletion, or privacy questions by emailing gabe@mogging.com.',
       'For faster handling, use the subject Privacy Request and include the account email, profile name, and any relevant links.',
     ],
   },

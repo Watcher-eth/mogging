@@ -1,0 +1,3679 @@
+{
+  "Retention": {
+    "web": [],
+    "daily": [],
+    "scans": null,
+    "steps": [],
+    "actions": [],
+    "billing": [],
+    "paywall": [],
+    "revenue": [],
+    "screens": [],
+    "summary": {
+      "actors": 5023,
+      "events": 168330,
+      "failures": 12,
+      "evaluations": 29,
+      "first_opens": 1578,
+      "latest_event": "2026-10-28T06:55:21.816"
+    },
+    "releases": [],
+    "referrals": null,
+    "retention": [
+      {
+        "day": 1,
+        "pending": 8,
+        "eligible": 19,
+        "retained": 0,
+        "cohort_accounts": 27
+      },
+      {
+        "day": 7,
+        "pending": 21,
+        "eligible": 6,
+        "retained": 0,
+        "cohort_accounts": 27
+      },
+      {
+        "day": 30,
+        "pending": 27,
+        "eligible": 0,
+        "retained": 0,
+        "cohort_accounts": 27
+      }
+    ],
+    "dataHealth": null,
+    "dimensions": [],
+    "engagement": null,
+    "onboarding": [],
+    "scanLedger": [],
+    "acquisition": [],
+    "webAudience": [],
+    "eventMetrics": [],
+    "featureUsage": [],
+    "paidDelivery": [],
+    "purchaseFlow": null,
+    "reportLedger": [],
+    "revenueDaily": [],
+    "cancellations": [],
+    "eventDelivery": [],
+    "notifications": null,
+    "revenueTotals": [],
+    "authentication": null,
+    "eventPlatforms": [],
+    "landingSources": [],
+    "landingSummary": [],
+    "revenueSources": [],
+    "billingProducts": [],
+    "contextCoverage": [],
+    "landingHandoffs": [],
+    "landingSections": [],
+    "onboardingDaily": [],
+    "retentionWeekly": [
+      {
+        "day": "2026-10-12T07:00:00+00:00",
+        "pending": 0,
+        "eligible": 2,
+        "retained": 0,
+        "cohort_accounts": 2
+      },
+      {
+        "day": "2026-10-19T07:00:00+00:00",
+        "pending": 13,
+        "eligible": 4,
+        "retained": 0,
+        "cohort_accounts": 17
+      },
+      {
+        "day": "2026-10-26T07:00:00+00:00",
+        "pending": 8,
+        "eligible": 0,
+        "retained": 0,
+        "cohort_accounts": 8
+      }
+    ],
+    "revenueActivity": [],
+    "billingReporting": [],
+    "creatorEconomics": null,
+    "featureRetention": [
+      {
+        "day": 1,
+        "feature": "courses",
+        "eligible": 0,
+        "retained": 0,
+        "cohort_accounts": 0
+      },
+      {
+        "day": 7,
+        "feature": "courses",
+        "eligible": 0,
+        "retained": 0,
+        "cohort_accounts": 0
+      },
+      {
+        "day": 30,
+        "feature": "courses",
+        "eligible": 0,
+        "retained": 0,
+        "cohort_accounts": 0
+      },
+      {
+        "day": 1,
+        "feature": "progress",
+        "eligible": 0,
+        "retained": 0,
+        "cohort_accounts": 0
+      },
+      {
+        "day": 7,
+        "feature": "progress",
+        "eligible": 0,
+        "retained": 0,
+        "cohort_accounts": 0
+      },
+      {
+        "day": 30,
+        "feature": "progress",
+        "eligible": 0,
+        "retained": 0,
+        "cohort_accounts": 0
+      }
+    ],
+    "revenueCountries": [],
+    "attributionLedger": null,
+    "audienceBreakdown": [
+      {
+        "events": 22324,
+        "devices": 276,
+        "audience": "creator / admin",
+        "runtime_unconfirmed_events": 0
+      },
+      {
+        "events": 168330,
+        "devices": 5023,
+        "audience": "customer",
+        "runtime_unconfirmed_events": 19346
+      },
+      {
+        "events": 7465,
+        "devices": 14,
+        "audience": "internal",
+        "runtime_unconfirmed_events": 437
+      },
+      {
+        "events": 2691,
+        "devices": 25,
+        "audience": "non-production",
+        "runtime_unconfirmed_events": 58
+      }
+    ],
+    "billingDimensions": [],
+    "landingPlacements": [],
+    "onboardingScreens": [],
+    "onboardingSummary": [],
+    "retentionCoverage": [
+      {
+        "linked_events": 58111,
+        "anonymous_events": 110219,
+        "latest_scan_cohort": "2026-10-27T22:49:18.464",
+        "earliest_scan_cohort": "2026-10-06T02:19:26.104",
+        "latest_linked_receipt": "2026-10-28T22:26:52.250515",
+        "latest_linked_activity": "2026-10-28T06:32:24.846"
+      }
+    ],
+    "revenueComparison": [],
+    "revenueFinancials": [],
+    "acquisitionSummary": [],
+    "creatorAttribution": null,
+    "landingExperiments": [],
+    "onboardingFriction": [],
+    "onboardingRevisions": [],
+    "membershipActivation": [
+      {
+        "pending": 17,
+        "eligible": 6,
+        "subscribers": 23,
+        "window_days": 7,
+        "first_protocol_action": 1,
+        "returned_for_second_scan": 0
+      },
+      {
+        "pending": 23,
+        "eligible": 0,
+        "subscribers": 23,
+        "window_days": 14,
+        "first_protocol_action": 0,
+        "returned_for_second_scan": 0
+      }
+    ],
+    "revenueProceedsDaily": [],
+    "landingExperimentDaily": [],
+    "revenueSubscriptionOverview": [],
+    "revenueSubscriptionProducts": []
+  },
+  "Referrals": {
+    "web": [],
+    "daily": [],
+    "scans": null,
+    "steps": [],
+    "actions": [],
+    "billing": [],
+    "paywall": [],
+    "revenue": [],
+    "screens": [],
+    "summary": {
+      "actors": 5023,
+      "events": 168330,
+      "failures": 12,
+      "evaluations": 29,
+      "first_opens": 1578,
+      "latest_event": "2026-10-28T06:55:21.816"
+    },
+    "releases": [],
+    "referrals": {
+      "daily": [
+        {
+          "day": "2026-10-14T07:00:00Z",
+          "signups": 6
+        },
+        {
+          "day": "2026-10-15T07:00:00Z",
+          "signups": 0
+        },
+        {
+          "day": "2026-10-16T07:00:00Z",
+          "signups": 0
+        },
+        {
+          "day": "2026-10-17T07:00:00Z",
+          "signups": 2
+        },
+        {
+          "day": "2026-10-18T07:00:00Z",
+          "signups": 1
+        },
+        {
+          "day": "2026-10-19T07:00:00Z",
+          "signups": 0
+        },
+        {
+          "day": "2026-10-20T07:00:00Z",
+          "signups": 0
+        },
+        {
+          "day": "2026-10-21T07:00:00Z",
+          "signups": 4
+        },
+        {
+          "day": "2026-10-22T07:00:00Z",
+          "signups": 3
+        },
+        {
+          "day": "2026-10-23T07:00:00Z",
+          "signups": 1
+        },
+        {
+          "day": "2026-10-24T07:00:00Z",
+          "signups": 6
+        },
+        {
+          "day": "2026-10-25T07:00:00Z",
+          "signups": 4
+        },
+        {
+          "day": "2026-10-26T07:00:00Z",
+          "signups": 11
+        },
+        {
+          "day": "2026-10-27T07:00:00Z",
+          "signups": 1
+        }
+      ],
+      "rewards": [
+        {
+          "latest_update": "2026-10-26T19:10:01.484",
+          "period_records": 11,
+          "completed_scans": 8,
+          "lifetime_records": 11,
+          "available_credits": 3
+        }
+      ],
+      "summary": [
+        {
+          "paid7": 0,
+          "mobile7": 1,
+          "pending": 30,
+          "signups": 39,
+          "viewed7": 0,
+          "eligible": 9,
+          "inviters": 22,
+          "paywall7": 2
+        }
+      ],
+      "activity": [
+        {
+          "events": 730,
+          "devices": 279,
+          "accounts": 279,
+          "event_name": "referral_invite_created"
+        },
+        {
+          "events": 582,
+          "devices": 423,
+          "accounts": 423,
+          "event_name": "referral_invite_opened"
+        },
+        {
+          "events": 3,
+          "devices": 0,
+          "accounts": 3,
+          "event_name": "referral_reward_notification_sent"
+        }
+      ],
+      "coverage": [
+        {
+          "latest_invite_event": "2026-10-28T06:30:40.121",
+          "latest_invite_receipt": "2026-10-28T06:30:43.556648",
+          "latest_billing_receipt": null,
+          "latest_credited_signup": "2026-10-28T03:22:35.589299",
+          "unknown_amount_records": 0,
+          "latest_referred_receipt": "2026-10-28T03:23:23.782556",
+          "latest_referred_activity": "2026-10-28T03:23:23.635"
+        }
+      ],
+      "rewardKinds": [
+        {
+          "kind": "one_time",
+          "period_records": 11,
+          "lifetime_records": 11,
+          "available_credits": 3
+        }
+      ],
+      "participation": [
+        {
+          "paid7": 0,
+          "viewed7": 0,
+          "eligible": 3,
+          "inviters": 13,
+          "contribution": "one",
+          "credited_signups": 13
+        },
+        {
+          "paid7": 0,
+          "viewed7": 0,
+          "eligible": 0,
+          "inviters": 1,
+          "contribution": "two",
+          "credited_signups": 2
+        },
+        {
+          "paid7": 0,
+          "viewed7": 0,
+          "eligible": 6,
+          "inviters": 8,
+          "contribution": "three_plus",
+          "credited_signups": 24
+        }
+      ]
+    },
+    "retention": [],
+    "dataHealth": null,
+    "dimensions": [],
+    "engagement": null,
+    "onboarding": [],
+    "scanLedger": [],
+    "acquisition": [],
+    "webAudience": [],
+    "eventMetrics": [],
+    "featureUsage": [],
+    "paidDelivery": [],
+    "purchaseFlow": null,
+    "reportLedger": [],
+    "revenueDaily": [],
+    "cancellations": [],
+    "eventDelivery": [],
+    "notifications": null,
+    "revenueTotals": [],
+    "authentication": null,
+    "eventPlatforms": [],
+    "landingSources": [],
+    "landingSummary": [],
+    "revenueSources": [],
+    "billingProducts": [],
+    "contextCoverage": [],
+    "landingHandoffs": [],
+    "landingSections": [],
+    "onboardingDaily": [],
+    "retentionWeekly": [],
+    "revenueActivity": [],
+    "billingReporting": [],
+    "creatorEconomics": null,
+    "featureRetention": [],
+    "revenueCountries": [],
+    "attributionLedger": null,
+    "audienceBreakdown": [
+      {
+        "events": 22324,
+        "devices": 276,
+        "audience": "creator / admin",
+        "runtime_unconfirmed_events": 0
+      },
+      {
+        "events": 168330,
+        "devices": 5023,
+        "audience": "customer",
+        "runtime_unconfirmed_events": 19346
+      },
+      {
+        "events": 7465,
+        "devices": 14,
+        "audience": "internal",
+        "runtime_unconfirmed_events": 437
+      },
+      {
+        "events": 2691,
+        "devices": 25,
+        "audience": "non-production",
+        "runtime_unconfirmed_events": 58
+      }
+    ],
+    "billingDimensions": [],
+    "landingPlacements": [],
+    "onboardingScreens": [],
+    "onboardingSummary": [],
+    "retentionCoverage": [],
+    "revenueComparison": [],
+    "revenueFinancials": [],
+    "acquisitionSummary": [],
+    "creatorAttribution": null,
+    "landingExperiments": [],
+    "onboardingFriction": [],
+    "onboardingRevisions": [],
+    "membershipActivation": [],
+    "revenueProceedsDaily": [],
+    "landingExperimentDaily": [],
+    "revenueSubscriptionOverview": [],
+    "revenueSubscriptionProducts": []
+  },
+  "Overview": {
+    "web": [],
+    "daily": [
+      {
+        "day": "2026-10-14T07:00:00Z",
+        "actors": 142,
+        "failures": 1,
+        "push_opens": 0,
+        "auth_starts": 38,
+        "evaluations": 0,
+        "first_opens": 31,
+        "scan_starts": 3,
+        "report_views": 0,
+        "auth_failures": 2,
+        "paywall_views": 33,
+        "auth_successes": 20,
+        "progress_users": 0,
+        "protocol_tasks": 0,
+        "store_clickers": 30,
+        "course_learners": 0,
+        "purchase_starts": 15,
+        "store_redirects": 33,
+        "referral_invites": 28,
+        "website_visitors": 87,
+        "lessons_completed": 0,
+        "onboarding_starts": 47,
+        "auth_cancellations": 12,
+        "post_login_failures": 0,
+        "purchase_completions": 0,
+        "referral_redemptions": 6,
+        "onboarding_completions": 0
+      },
+      {
+        "day": "2026-10-15T07:00:00Z",
+        "actors": 148,
+        "failures": 0,
+        "push_opens": 0,
+        "auth_starts": 57,
+        "evaluations": 0,
+        "first_opens": 43,
+        "scan_starts": 0,
+        "report_views": 0,
+        "auth_failures": 2,
+        "paywall_views": 38,
+        "auth_successes": 33,
+        "progress_users": 0,
+        "protocol_tasks": 0,
+        "store_clickers": 30,
+        "course_learners": 0,
+        "purchase_starts": 21,
+        "store_redirects": 31,
+        "referral_invites": 18,
+        "website_visitors": 83,
+        "lessons_completed": 0,
+        "onboarding_starts": 64,
+        "auth_cancellations": 20,
+        "post_login_failures": 0,
+        "purchase_completions": 0,
+        "referral_redemptions": 0,
+        "onboarding_completions": 0
+      },
+      {
+        "day": "2026-10-16T07:00:00Z",
+        "actors": 179,
+        "failures": 0,
+        "push_opens": 0,
+        "auth_starts": 65,
+        "evaluations": 0,
+        "first_opens": 51,
+        "scan_starts": 0,
+        "report_views": 0,
+        "auth_failures": 3,
+        "paywall_views": 47,
+        "auth_successes": 43,
+        "progress_users": 0,
+        "protocol_tasks": 0,
+        "store_clickers": 36,
+        "course_learners": 0,
+        "purchase_starts": 20,
+        "store_redirects": 38,
+        "referral_invites": 55,
+        "website_visitors": 102,
+        "lessons_completed": 0,
+        "onboarding_starts": 62,
+        "auth_cancellations": 18,
+        "post_login_failures": 0,
+        "purchase_completions": 0,
+        "referral_redemptions": 0,
+        "onboarding_completions": 0
+      },
+      {
+        "day": "2026-10-17T07:00:00Z",
+        "actors": 237,
+        "failures": 0,
+        "push_opens": 0,
+        "auth_starts": 74,
+        "evaluations": 1,
+        "first_opens": 64,
+        "scan_starts": 1,
+        "report_views": 3,
+        "auth_failures": 2,
+        "paywall_views": 66,
+        "auth_successes": 45,
+        "progress_users": 0,
+        "protocol_tasks": 0,
+        "store_clickers": 37,
+        "course_learners": 0,
+        "purchase_starts": 26,
+        "store_redirects": 38,
+        "referral_invites": 29,
+        "website_visitors": 135,
+        "lessons_completed": 0,
+        "onboarding_starts": 95,
+        "auth_cancellations": 25,
+        "post_login_failures": 0,
+        "purchase_completions": 2,
+        "referral_redemptions": 2,
+        "onboarding_completions": 1
+      },
+      {
+        "day": "2026-10-18T07:00:00Z",
+        "actors": 279,
+        "failures": 0,
+        "push_opens": 0,
+        "auth_starts": 106,
+        "evaluations": 1,
+        "first_opens": 91,
+        "scan_starts": 1,
+        "report_views": 1,
+        "auth_failures": 7,
+        "paywall_views": 97,
+        "auth_successes": 66,
+        "progress_users": 0,
+        "protocol_tasks": 0,
+        "store_clickers": 46,
+        "course_learners": 0,
+        "purchase_starts": 44,
+        "store_redirects": 47,
+        "referral_invites": 43,
+        "website_visitors": 148,
+        "lessons_completed": 0,
+        "onboarding_starts": 130,
+        "auth_cancellations": 33,
+        "post_login_failures": 0,
+        "purchase_completions": 1,
+        "referral_redemptions": 1,
+        "onboarding_completions": 1
+      },
+      {
+        "day": "2026-10-19T07:00:00Z",
+        "actors": 282,
+        "failures": 0,
+        "push_opens": 0,
+        "auth_starts": 76,
+        "evaluations": 5,
+        "first_opens": 73,
+        "scan_starts": 5,
+        "report_views": 7,
+        "auth_failures": 3,
+        "paywall_views": 74,
+        "auth_successes": 52,
+        "progress_users": 0,
+        "protocol_tasks": 1,
+        "store_clickers": 60,
+        "course_learners": 0,
+        "purchase_starts": 23,
+        "store_redirects": 60,
+        "referral_invites": 24,
+        "website_visitors": 168,
+        "lessons_completed": 0,
+        "onboarding_starts": 90,
+        "auth_cancellations": 18,
+        "post_login_failures": 0,
+        "purchase_completions": 5,
+        "referral_redemptions": 0,
+        "onboarding_completions": 4
+      },
+      {
+        "day": "2026-10-20T07:00:00Z",
+        "actors": 293,
+        "failures": 2,
+        "push_opens": 0,
+        "auth_starts": 104,
+        "evaluations": 0,
+        "first_opens": 76,
+        "scan_starts": 2,
+        "report_views": 1,
+        "auth_failures": 6,
+        "paywall_views": 76,
+        "auth_successes": 52,
+        "progress_users": 0,
+        "protocol_tasks": 0,
+        "store_clickers": 58,
+        "course_learners": 0,
+        "purchase_starts": 19,
+        "store_redirects": 60,
+        "referral_invites": 24,
+        "website_visitors": 155,
+        "lessons_completed": 0,
+        "onboarding_starts": 102,
+        "auth_cancellations": 41,
+        "post_login_failures": 0,
+        "purchase_completions": 0,
+        "referral_redemptions": 0,
+        "onboarding_completions": 0
+      },
+      {
+        "day": "2026-10-21T07:00:00Z",
+        "actors": 431,
+        "failures": 0,
+        "push_opens": 0,
+        "auth_starts": 171,
+        "evaluations": 2,
+        "first_opens": 121,
+        "scan_starts": 2,
+        "report_views": 5,
+        "auth_failures": 10,
+        "paywall_views": 136,
+        "auth_successes": 99,
+        "progress_users": 0,
+        "protocol_tasks": 1,
+        "store_clickers": 85,
+        "course_learners": 0,
+        "purchase_starts": 45,
+        "store_redirects": 88,
+        "referral_invites": 46,
+        "website_visitors": 247,
+        "lessons_completed": 0,
+        "onboarding_starts": 154,
+        "auth_cancellations": 60,
+        "post_login_failures": 0,
+        "purchase_completions": 1,
+        "referral_redemptions": 4,
+        "onboarding_completions": 2
+      },
+      {
+        "day": "2026-10-22T07:00:00Z",
+        "actors": 608,
+        "failures": 0,
+        "push_opens": 0,
+        "auth_starts": 213,
+        "evaluations": 3,
+        "first_opens": 163,
+        "scan_starts": 3,
+        "report_views": 6,
+        "auth_failures": 14,
+        "paywall_views": 169,
+        "auth_successes": 114,
+        "progress_users": 0,
+        "protocol_tasks": 0,
+        "store_clickers": 133,
+        "course_learners": 0,
+        "purchase_starts": 60,
+        "store_redirects": 146,
+        "referral_invites": 84,
+        "website_visitors": 353,
+        "lessons_completed": 0,
+        "onboarding_starts": 217,
+        "auth_cancellations": 75,
+        "post_login_failures": 0,
+        "purchase_completions": 2,
+        "referral_redemptions": 3,
+        "onboarding_completions": 2
+      },
+      {
+        "day": "2026-10-23T07:00:00Z",
+        "actors": 477,
+        "failures": 0,
+        "push_opens": 0,
+        "auth_starts": 186,
+        "evaluations": 1,
+        "first_opens": 150,
+        "scan_starts": 1,
+        "report_views": 3,
+        "auth_failures": 14,
+        "paywall_views": 144,
+        "auth_successes": 104,
+        "progress_users": 0,
+        "protocol_tasks": 0,
+        "store_clickers": 93,
+        "course_learners": 0,
+        "purchase_starts": 51,
+        "store_redirects": 101,
+        "referral_invites": 81,
+        "website_visitors": 242,
+        "lessons_completed": 0,
+        "onboarding_starts": 189,
+        "auth_cancellations": 63,
+        "post_login_failures": 0,
+        "purchase_completions": 1,
+        "referral_redemptions": 1,
+        "onboarding_completions": 1
+      },
+      {
+        "day": "2026-10-24T07:00:00Z",
+        "actors": 597,
+        "failures": 4,
+        "push_opens": 0,
+        "auth_starts": 308,
+        "evaluations": 3,
+        "first_opens": 237,
+        "scan_starts": 9,
+        "report_views": 8,
+        "auth_failures": 17,
+        "paywall_views": 241,
+        "auth_successes": 172,
+        "progress_users": 0,
+        "protocol_tasks": 0,
+        "store_clickers": 101,
+        "course_learners": 0,
+        "purchase_starts": 98,
+        "store_redirects": 104,
+        "referral_invites": 95,
+        "website_visitors": 253,
+        "lessons_completed": 0,
+        "onboarding_starts": 307,
+        "auth_cancellations": 111,
+        "post_login_failures": 0,
+        "purchase_completions": 4,
+        "referral_redemptions": 6,
+        "onboarding_completions": 3
+      },
+      {
+        "day": "2026-10-25T07:00:00Z",
+        "actors": 592,
+        "failures": 0,
+        "push_opens": 0,
+        "auth_starts": 213,
+        "evaluations": 5,
+        "first_opens": 174,
+        "scan_starts": 5,
+        "report_views": 11,
+        "auth_failures": 14,
+        "paywall_views": 218,
+        "auth_successes": 131,
+        "progress_users": 0,
+        "protocol_tasks": 3,
+        "store_clickers": 117,
+        "course_learners": 0,
+        "purchase_starts": 66,
+        "store_redirects": 130,
+        "referral_invites": 62,
+        "website_visitors": 313,
+        "lessons_completed": 0,
+        "onboarding_starts": 238,
+        "auth_cancellations": 60,
+        "post_login_failures": 0,
+        "purchase_completions": 4,
+        "referral_redemptions": 4,
+        "onboarding_completions": 5
+      },
+      {
+        "day": "2026-10-26T07:00:00Z",
+        "actors": 550,
+        "failures": 5,
+        "push_opens": 0,
+        "auth_starts": 215,
+        "evaluations": 6,
+        "first_opens": 160,
+        "scan_starts": 11,
+        "report_views": 9,
+        "auth_failures": 15,
+        "paywall_views": 217,
+        "auth_successes": 124,
+        "progress_users": 0,
+        "protocol_tasks": 0,
+        "store_clickers": 121,
+        "course_learners": 0,
+        "purchase_starts": 64,
+        "store_redirects": 133,
+        "referral_invites": 69,
+        "website_visitors": 312,
+        "lessons_completed": 0,
+        "onboarding_starts": 235,
+        "auth_cancellations": 71,
+        "post_login_failures": 0,
+        "purchase_completions": 4,
+        "referral_redemptions": 11,
+        "onboarding_completions": 6
+      },
+      {
+        "day": "2026-10-27T07:00:00Z",
+        "actors": 448,
+        "failures": 0,
+        "push_opens": 0,
+        "auth_starts": 192,
+        "evaluations": 2,
+        "first_opens": 144,
+        "scan_starts": 2,
+        "report_views": 14,
+        "auth_failures": 12,
+        "paywall_views": 156,
+        "auth_successes": 120,
+        "progress_users": 0,
+        "protocol_tasks": 0,
+        "store_clickers": 88,
+        "course_learners": 0,
+        "purchase_starts": 53,
+        "store_redirects": 99,
+        "referral_invites": 72,
+        "website_visitors": 227,
+        "lessons_completed": 0,
+        "onboarding_starts": 198,
+        "auth_cancellations": 55,
+        "post_login_failures": 0,
+        "purchase_completions": 1,
+        "referral_redemptions": 1,
+        "onboarding_completions": 1
+      }
+    ],
+    "scans": null,
+    "steps": [],
+    "actions": [],
+    "billing": [],
+    "paywall": [],
+    "revenue": [],
+    "screens": [],
+    "summary": {
+      "actors": 5023,
+      "events": 168330,
+      "failures": 12,
+      "evaluations": 29,
+      "first_opens": 1578,
+      "latest_event": "2026-10-28T06:55:21.816"
+    },
+    "releases": [],
+    "referrals": null,
+    "retention": [],
+    "dataHealth": null,
+    "dimensions": [],
+    "engagement": null,
+    "onboarding": [],
+    "scanLedger": {
+      "daily": [
+        {
+          "day": "2026-10-14T07:00:00Z",
+          "failed": 0,
+          "pending": 0,
+          "started": 2,
+          "completed": 2
+        },
+        {
+          "day": "2026-10-17T07:00:00Z",
+          "failed": 0,
+          "pending": 0,
+          "started": 1,
+          "completed": 1
+        },
+        {
+          "day": "2026-10-18T07:00:00Z",
+          "failed": 0,
+          "pending": 0,
+          "started": 1,
+          "completed": 1
+        },
+        {
+          "day": "2026-10-19T07:00:00Z",
+          "failed": 0,
+          "pending": 0,
+          "started": 5,
+          "completed": 5
+        },
+        {
+          "day": "2026-10-21T07:00:00Z",
+          "failed": 0,
+          "pending": 0,
+          "started": 2,
+          "completed": 2
+        },
+        {
+          "day": "2026-10-22T07:00:00Z",
+          "failed": 0,
+          "pending": 0,
+          "started": 3,
+          "completed": 3
+        },
+        {
+          "day": "2026-10-23T07:00:00Z",
+          "failed": 0,
+          "pending": 0,
+          "started": 1,
+          "completed": 1
+        },
+        {
+          "day": "2026-10-24T07:00:00Z",
+          "failed": 2,
+          "pending": 0,
+          "started": 7,
+          "completed": 5
+        },
+        {
+          "day": "2026-10-25T07:00:00Z",
+          "failed": 0,
+          "pending": 0,
+          "started": 5,
+          "completed": 5
+        },
+        {
+          "day": "2026-10-26T07:00:00Z",
+          "failed": 3,
+          "pending": 0,
+          "started": 10,
+          "completed": 7
+        },
+        {
+          "day": "2026-10-27T07:00:00Z",
+          "failed": 0,
+          "pending": 0,
+          "started": 2,
+          "completed": 2
+        }
+      ],
+      "summary": {
+        "failed": 5,
+        "pending": 0,
+        "reports": 34,
+        "started": 39,
+        "completed": 34
+      }
+    },
+    "acquisition": [],
+    "webAudience": [],
+    "eventMetrics": [],
+    "featureUsage": [],
+    "paidDelivery": [
+      {
+        "payers": 25,
+        "pending": 2,
+        "eligible": 23,
+        "median_ms": 43582,
+        "window_days": 1,
+        "report_viewed": 17,
+        "report_received": 19,
+        "report_generated": 21,
+        "activation_observed": 19
+      },
+      {
+        "payers": 25,
+        "pending": 17,
+        "eligible": 8,
+        "median_ms": 52143,
+        "window_days": 7,
+        "report_viewed": 4,
+        "report_received": 6,
+        "report_generated": 6,
+        "activation_observed": 4
+      }
+    ],
+    "purchaseFlow": null,
+    "reportLedger": [],
+    "revenueDaily": [],
+    "cancellations": [],
+    "eventDelivery": [],
+    "notifications": null,
+    "revenueTotals": [],
+    "authentication": null,
+    "eventPlatforms": [],
+    "landingSources": [],
+    "landingSummary": [],
+    "revenueSources": [],
+    "billingProducts": [],
+    "contextCoverage": [],
+    "landingHandoffs": [],
+    "landingSections": [],
+    "onboardingDaily": [],
+    "retentionWeekly": [],
+    "revenueActivity": [],
+    "billingReporting": [],
+    "creatorEconomics": null,
+    "featureRetention": [],
+    "revenueCountries": [],
+    "attributionLedger": null,
+    "audienceBreakdown": [
+      {
+        "events": 22324,
+        "devices": 276,
+        "audience": "creator / admin",
+        "runtime_unconfirmed_events": 0
+      },
+      {
+        "events": 168330,
+        "devices": 5023,
+        "audience": "customer",
+        "runtime_unconfirmed_events": 19346
+      },
+      {
+        "events": 7465,
+        "devices": 14,
+        "audience": "internal",
+        "runtime_unconfirmed_events": 437
+      },
+      {
+        "events": 2691,
+        "devices": 25,
+        "audience": "non-production",
+        "runtime_unconfirmed_events": 58
+      }
+    ],
+    "billingDimensions": [],
+    "landingPlacements": [],
+    "onboardingScreens": [],
+    "onboardingSummary": [],
+    "retentionCoverage": [],
+    "revenueComparison": [],
+    "revenueFinancials": [],
+    "acquisitionSummary": [],
+    "creatorAttribution": null,
+    "landingExperiments": [],
+    "onboardingFriction": [],
+    "onboardingRevisions": [],
+    "membershipActivation": [],
+    "revenueProceedsDaily": [],
+    "landingExperimentDaily": [],
+    "revenueSubscriptionOverview": [],
+    "revenueSubscriptionProducts": []
+  },
+  "Revenue": {
+    "web": [],
+    "daily": [],
+    "scans": null,
+    "steps": [],
+    "actions": [],
+    "billing": [
+      {
+        "event": "checkout_expired",
+        "events": 142,
+        "provider": "stripe",
+        "customers": 134,
+        "provider_type": "checkout.session.expired"
+      },
+      {
+        "event": "subscription_started",
+        "events": 23,
+        "provider": "revenuecat",
+        "customers": 23,
+        "provider_type": "INITIAL_PURCHASE"
+      },
+      {
+        "event": "cancellation_scheduled",
+        "events": 16,
+        "provider": "revenuecat",
+        "customers": 15,
+        "provider_type": "CANCELLATION"
+      },
+      {
+        "event": "subscription_expired",
+        "events": 3,
+        "provider": "revenuecat",
+        "customers": 3,
+        "provider_type": "EXPIRATION"
+      },
+      {
+        "event": "one_time_purchase",
+        "events": 2,
+        "provider": "revenuecat",
+        "customers": 2,
+        "provider_type": "NON_RENEWING_PURCHASE"
+      },
+      {
+        "event": "subscription_renewed",
+        "events": 2,
+        "provider": "revenuecat",
+        "customers": 2,
+        "provider_type": "RENEWAL"
+      },
+      {
+        "event": "one_time_purchase",
+        "events": 2,
+        "provider": "stripe",
+        "customers": 2,
+        "provider_type": "checkout.session.completed"
+      },
+      {
+        "event": "subscription_reactivated",
+        "events": 1,
+        "provider": "revenuecat",
+        "customers": 1,
+        "provider_type": "UNCANCELLATION"
+      },
+      {
+        "event": "subscription_refunded",
+        "events": 1,
+        "provider": "revenuecat",
+        "customers": 1,
+        "provider_type": "CANCELLATION"
+      }
+    ],
+    "paywall": [],
+    "revenue": [
+      {
+        "net": "14.990000",
+        "gross": "14.990000",
+        "refunds": "0",
+        "currency": "AUD",
+        "paying_customers": 1,
+        "missing_amount_events": 0,
+        "unidentified_payments": 0
+      },
+      {
+        "net": "12.990000",
+        "gross": "12.990000",
+        "refunds": "0",
+        "currency": "CAD",
+        "paying_customers": 1,
+        "missing_amount_events": 0,
+        "unidentified_payments": 0
+      },
+      {
+        "net": "31.960000",
+        "gross": "31.960000",
+        "refunds": "0",
+        "currency": "EUR",
+        "paying_customers": 3,
+        "missing_amount_events": 0,
+        "unidentified_payments": 0
+      },
+      {
+        "net": "4.990000",
+        "gross": "4.990000",
+        "refunds": "0",
+        "currency": "GBP",
+        "paying_customers": 1,
+        "missing_amount_events": 0,
+        "unidentified_payments": 0
+      },
+      {
+        "net": "7700.000000",
+        "gross": "7700.000000",
+        "refunds": "0",
+        "currency": "KRW",
+        "paying_customers": 1,
+        "missing_amount_events": 0,
+        "unidentified_payments": 0
+      },
+      {
+        "net": "114.810000",
+        "gross": "119.800000",
+        "refunds": "4.990000",
+        "currency": "USD",
+        "paying_customers": 17,
+        "missing_amount_events": 0,
+        "unidentified_payments": 0
+      },
+      {
+        "net": "199.990000",
+        "gross": "199.990000",
+        "refunds": "0",
+        "currency": "ZAR",
+        "paying_customers": 1,
+        "missing_amount_events": 0,
+        "unidentified_payments": 0
+      }
+    ],
+    "screens": [],
+    "summary": {
+      "actors": 5023,
+      "events": 168330,
+      "failures": 12,
+      "evaluations": 29,
+      "first_opens": 1578,
+      "latest_event": "2026-10-28T06:55:21.816"
+    },
+    "releases": [],
+    "referrals": null,
+    "retention": [],
+    "dataHealth": null,
+    "dimensions": [],
+    "engagement": null,
+    "onboarding": [],
+    "scanLedger": [],
+    "acquisition": [],
+    "webAudience": [],
+    "eventMetrics": [],
+    "featureUsage": [],
+    "paidDelivery": [],
+    "purchaseFlow": null,
+    "reportLedger": [],
+    "revenueDaily": [
+      {
+        "day": "2026-10-14T07:00:00Z",
+        "net": null,
+        "gross": null,
+        "refunds": null,
+        "currency": "USD",
+        "missing_amount_events": 0
+      },
+      {
+        "day": "2026-10-15T07:00:00Z",
+        "net": "4.990000",
+        "gross": "4.990000",
+        "refunds": "0",
+        "currency": "USD",
+        "missing_amount_events": 0
+      },
+      {
+        "day": "2026-10-16T07:00:00Z",
+        "net": null,
+        "gross": null,
+        "refunds": null,
+        "currency": "USD",
+        "missing_amount_events": 0
+      },
+      {
+        "day": "2026-10-17T07:00:00Z",
+        "net": "19.980000",
+        "gross": "19.980000",
+        "refunds": "0",
+        "currency": "EUR",
+        "missing_amount_events": 0
+      },
+      {
+        "day": "2026-10-17T07:00:00Z",
+        "net": null,
+        "gross": null,
+        "refunds": null,
+        "currency": "USD",
+        "missing_amount_events": 0
+      },
+      {
+        "day": "2026-10-18T07:00:00Z",
+        "net": "9.990000",
+        "gross": "9.990000",
+        "refunds": "0",
+        "currency": "USD",
+        "missing_amount_events": 0
+      },
+      {
+        "day": "2026-10-19T07:00:00Z",
+        "net": "7700.000000",
+        "gross": "7700.000000",
+        "refunds": "0",
+        "currency": "KRW",
+        "missing_amount_events": 0
+      },
+      {
+        "day": "2026-10-19T07:00:00Z",
+        "net": "24.960000",
+        "gross": "24.960000",
+        "refunds": "0",
+        "currency": "USD",
+        "missing_amount_events": 0
+      },
+      {
+        "day": "2026-10-20T07:00:00Z",
+        "net": "4.990000",
+        "gross": "4.990000",
+        "refunds": "0",
+        "currency": "USD",
+        "missing_amount_events": 0
+      },
+      {
+        "day": "2026-10-21T07:00:00Z",
+        "net": "12.990000",
+        "gross": "12.990000",
+        "refunds": "0",
+        "currency": "CAD",
+        "missing_amount_events": 0
+      },
+      {
+        "day": "2026-10-21T07:00:00Z",
+        "net": null,
+        "gross": null,
+        "refunds": null,
+        "currency": "USD",
+        "missing_amount_events": 0
+      },
+      {
+        "day": "2026-10-22T07:00:00Z",
+        "net": "14.980000",
+        "gross": "14.980000",
+        "refunds": "0",
+        "currency": "USD",
+        "missing_amount_events": 0
+      },
+      {
+        "day": "2026-10-23T07:00:00Z",
+        "net": "4.990000",
+        "gross": "4.990000",
+        "refunds": "0",
+        "currency": "USD",
+        "missing_amount_events": 0
+      },
+      {
+        "day": "2026-10-24T07:00:00Z",
+        "net": "0.000000",
+        "gross": "0",
+        "refunds": "0",
+        "currency": "CAD",
+        "missing_amount_events": 0
+      },
+      {
+        "day": "2026-10-24T07:00:00Z",
+        "net": "5.990000",
+        "gross": "5.990000",
+        "refunds": "0",
+        "currency": "EUR",
+        "missing_amount_events": 0
+      },
+      {
+        "day": "2026-10-24T07:00:00Z",
+        "net": "14.970000",
+        "gross": "14.970000",
+        "refunds": "0",
+        "currency": "USD",
+        "missing_amount_events": 0
+      },
+      {
+        "day": "2026-10-25T07:00:00Z",
+        "net": "24.950000",
+        "gross": "24.950000",
+        "refunds": "0",
+        "currency": "USD",
+        "missing_amount_events": 0
+      },
+      {
+        "day": "2026-10-26T07:00:00Z",
+        "net": "14.990000",
+        "gross": "14.990000",
+        "refunds": "0",
+        "currency": "AUD",
+        "missing_amount_events": 0
+      },
+      {
+        "day": "2026-10-26T07:00:00Z",
+        "net": "4.990000",
+        "gross": "4.990000",
+        "refunds": "0",
+        "currency": "GBP",
+        "missing_amount_events": 0
+      },
+      {
+        "day": "2026-10-26T07:00:00Z",
+        "net": "0.000000",
+        "gross": "0",
+        "refunds": "0",
+        "currency": "KRW",
+        "missing_amount_events": 0
+      },
+      {
+        "day": "2026-10-26T07:00:00Z",
+        "net": "9.990000",
+        "gross": "14.980000",
+        "refunds": "4.990000",
+        "currency": "USD",
+        "missing_amount_events": 0
+      },
+      {
+        "day": "2026-10-27T07:00:00Z",
+        "net": "5.990000",
+        "gross": "5.990000",
+        "refunds": "0",
+        "currency": "EUR",
+        "missing_amount_events": 0
+      },
+      {
+        "day": "2026-10-27T07:00:00Z",
+        "net": null,
+        "gross": null,
+        "refunds": null,
+        "currency": "USD",
+        "missing_amount_events": 0
+      },
+      {
+        "day": "2026-10-27T07:00:00Z",
+        "net": "199.990000",
+        "gross": "199.990000",
+        "refunds": "0",
+        "currency": "ZAR",
+        "missing_amount_events": 0
+      }
+    ],
+    "cancellations": [],
+    "eventDelivery": [],
+    "notifications": null,
+    "revenueTotals": [
+      {
+        "net": "14.990000",
+        "currency": "AUD",
+        "last_24h": "0",
+        "previous_24h": "14.990000",
+        "missing_amount_events": 0,
+        "recent_missing_amount_events": 0
+      },
+      {
+        "net": "12.990000",
+        "currency": "CAD",
+        "last_24h": "0",
+        "previous_24h": "0",
+        "missing_amount_events": 0,
+        "recent_missing_amount_events": 0
+      },
+      {
+        "net": "31.960000",
+        "currency": "EUR",
+        "last_24h": "5.990000",
+        "previous_24h": "0",
+        "missing_amount_events": 0,
+        "recent_missing_amount_events": 0
+      },
+      {
+        "net": "4.990000",
+        "currency": "GBP",
+        "last_24h": "0",
+        "previous_24h": "4.990000",
+        "missing_amount_events": 0,
+        "recent_missing_amount_events": 0
+      },
+      {
+        "net": "7700.000000",
+        "currency": "KRW",
+        "last_24h": "0",
+        "previous_24h": "0.000000",
+        "missing_amount_events": 0,
+        "recent_missing_amount_events": 0
+      },
+      {
+        "net": "174.730000",
+        "currency": "USD",
+        "last_24h": "0",
+        "previous_24h": "9.990000",
+        "missing_amount_events": 0,
+        "recent_missing_amount_events": 0
+      },
+      {
+        "net": "199.990000",
+        "currency": "ZAR",
+        "last_24h": "199.990000",
+        "previous_24h": "0",
+        "missing_amount_events": 0,
+        "recent_missing_amount_events": 0
+      }
+    ],
+    "authentication": null,
+    "eventPlatforms": [],
+    "landingSources": [],
+    "landingSummary": [],
+    "revenueSources": [
+      {
+        "fees": 2.04411135,
+        "gross": 14.99,
+        "taxes": 1.362591,
+        "source": "Apple App Store",
+        "refunds": 0,
+        "currency": "AUD",
+        "proceeds": 11.58329765,
+        "purchases": 1,
+        "after_refunds": 14.99,
+        "unknown_fee_events": 0,
+        "refund_transactions": 0,
+        "provider_estimated_proceeds": 9.539636
+      },
+      {
+        "fees": 1.9485,
+        "gross": 12.99,
+        "taxes": 0,
+        "source": "Apple App Store",
+        "refunds": 0,
+        "currency": "CAD",
+        "proceeds": 11.0415,
+        "purchases": 1,
+        "after_refunds": 12.99,
+        "unknown_fee_events": 0,
+        "refund_transactions": 0,
+        "provider_estimated_proceeds": 9.093
+      },
+      {
+        "fees": 3.9824409,
+        "gross": 31.96,
+        "taxes": 5.410394,
+        "source": "Apple App Store",
+        "refunds": 0,
+        "currency": "EUR",
+        "proceeds": 22.5671651,
+        "purchases": 4,
+        "after_refunds": 31.96,
+        "unknown_fee_events": 0,
+        "refund_transactions": 0,
+        "provider_estimated_proceeds": 19.645438
+      },
+      {
+        "fees": 0.61998255,
+        "gross": 4.99,
+        "taxes": 0.856783,
+        "source": "Apple App Store",
+        "refunds": 0,
+        "currency": "GBP",
+        "proceeds": 3.51323445,
+        "purchases": 1,
+        "after_refunds": 4.99,
+        "unknown_fee_events": 0,
+        "refund_transactions": 0,
+        "provider_estimated_proceeds": 2.893202
+      },
+      {
+        "fees": 1050.0105,
+        "gross": 7700,
+        "taxes": 699.93,
+        "source": "Apple App Store",
+        "refunds": 0,
+        "currency": "KRW",
+        "proceeds": 5950.0595,
+        "purchases": 1,
+        "after_refunds": 7700,
+        "unknown_fee_events": 0,
+        "refund_transactions": 0,
+        "provider_estimated_proceeds": 4900.28
+      },
+      {
+        "fees": 15.7245,
+        "gross": 109.82,
+        "taxes": 0,
+        "source": "Apple App Store",
+        "refunds": 4.99,
+        "currency": "USD",
+        "proceeds": 89.1055,
+        "purchases": 18,
+        "after_refunds": 104.83,
+        "unknown_fee_events": 0,
+        "refund_transactions": 1,
+        "provider_estimated_proceeds": 73.381
+      },
+      {
+        "fees": 26.0866956,
+        "gross": 199.99,
+        "taxes": 26.078696,
+        "source": "Apple App Store",
+        "refunds": 0,
+        "currency": "ZAR",
+        "proceeds": 147.8246084,
+        "purchases": 1,
+        "after_refunds": 199.99,
+        "unknown_fee_events": 0,
+        "refund_transactions": 0,
+        "provider_estimated_proceeds": 121.733913
+      },
+      {
+        "fees": null,
+        "gross": 9.98,
+        "taxes": null,
+        "source": "Stripe",
+        "refunds": 0,
+        "currency": "USD",
+        "proceeds": null,
+        "purchases": 2,
+        "after_refunds": 9.98,
+        "unknown_fee_events": 2,
+        "refund_transactions": 0,
+        "provider_estimated_proceeds": null
+      }
+    ],
+    "billingProducts": [
+      {
+        "net": "9.980000",
+        "gross": "9.980000",
+        "events": 132,
+        "product": "evaluation",
+        "refunds": "0",
+        "currency": "USD",
+        "provider": "stripe",
+        "customers": 123,
+        "subscriptions": 0,
+        "unlinked_events": 0,
+        "missing_amount_events": 0
+      },
+      {
+        "net": "64.870000",
+        "gross": "69.860000",
+        "events": 26,
+        "product": "mogging.pro.weekly",
+        "refunds": "4.990000",
+        "currency": "USD",
+        "provider": "revenuecat",
+        "customers": 12,
+        "subscriptions": 12,
+        "unlinked_events": 0,
+        "missing_amount_events": 0
+      },
+      {
+        "net": null,
+        "gross": null,
+        "events": 12,
+        "product": "evaluation_pack_3",
+        "refunds": null,
+        "currency": "USD",
+        "provider": "stripe",
+        "customers": 12,
+        "subscriptions": 0,
+        "unlinked_events": 0,
+        "missing_amount_events": 0
+      },
+      {
+        "net": "29.970000",
+        "gross": "29.970000",
+        "events": 5,
+        "product": "mogging.pro.monthly",
+        "refunds": "0",
+        "currency": "USD",
+        "provider": "revenuecat",
+        "customers": 3,
+        "subscriptions": 3,
+        "unlinked_events": 0,
+        "missing_amount_events": 0
+      },
+      {
+        "net": "11.980000",
+        "gross": "11.980000",
+        "events": 3,
+        "product": "mogging.pro.weekly",
+        "refunds": "0",
+        "currency": "EUR",
+        "provider": "revenuecat",
+        "customers": 2,
+        "subscriptions": 2,
+        "unlinked_events": 0,
+        "missing_amount_events": 0
+      },
+      {
+        "net": "7700.000000",
+        "gross": "7700.000000",
+        "events": 3,
+        "product": "mogging.pro.weekly",
+        "refunds": "0",
+        "currency": "KRW",
+        "provider": "revenuecat",
+        "customers": 1,
+        "subscriptions": 1,
+        "unlinked_events": 0,
+        "missing_amount_events": 0
+      },
+      {
+        "net": "199.990000",
+        "gross": "199.990000",
+        "events": 2,
+        "product": "mogging.pro.monthly",
+        "refunds": "0",
+        "currency": "ZAR",
+        "provider": "revenuecat",
+        "customers": 1,
+        "subscriptions": 1,
+        "unlinked_events": 0,
+        "missing_amount_events": 0
+      },
+      {
+        "net": "12.990000",
+        "gross": "12.990000",
+        "events": 2,
+        "product": "mogging.pro.monthly",
+        "refunds": "0",
+        "currency": "CAD",
+        "provider": "revenuecat",
+        "customers": 1,
+        "subscriptions": 1,
+        "unlinked_events": 0,
+        "missing_amount_events": 0
+      },
+      {
+        "net": "9.990000",
+        "gross": "9.990000",
+        "events": 2,
+        "product": "mogging.pro.monthly",
+        "refunds": "0",
+        "currency": "EUR",
+        "provider": "revenuecat",
+        "customers": 1,
+        "subscriptions": 1,
+        "unlinked_events": 0,
+        "missing_amount_events": 0
+      },
+      {
+        "net": "4.990000",
+        "gross": "4.990000",
+        "events": 2,
+        "product": "mogging.pro.weekly",
+        "refunds": "0",
+        "currency": "GBP",
+        "provider": "revenuecat",
+        "customers": 1,
+        "subscriptions": 1,
+        "unlinked_events": 0,
+        "missing_amount_events": 0
+      },
+      {
+        "net": "9.990000",
+        "gross": "9.990000",
+        "events": 1,
+        "product": "mogging.evaluation.pack3",
+        "refunds": "0",
+        "currency": "EUR",
+        "provider": "revenuecat",
+        "customers": 1,
+        "subscriptions": 1,
+        "unlinked_events": 0,
+        "missing_amount_events": 0
+      },
+      {
+        "net": "14.990000",
+        "gross": "14.990000",
+        "events": 1,
+        "product": "mogging.pro.monthly",
+        "refunds": "0",
+        "currency": "AUD",
+        "provider": "revenuecat",
+        "customers": 1,
+        "subscriptions": 1,
+        "unlinked_events": 0,
+        "missing_amount_events": 0
+      },
+      {
+        "net": "9.990000",
+        "gross": "9.990000",
+        "events": 1,
+        "product": "mogging.evaluation.pack3",
+        "refunds": "0",
+        "currency": "USD",
+        "provider": "revenuecat",
+        "customers": 1,
+        "subscriptions": 1,
+        "unlinked_events": 0,
+        "missing_amount_events": 0
+      }
+    ],
+    "contextCoverage": [],
+    "landingHandoffs": [],
+    "landingSections": [],
+    "onboardingDaily": [],
+    "retentionWeekly": [],
+    "revenueActivity": [
+      {
+        "total": 23,
+        "metric": "new_subscriptions",
+        "last_24h": 2,
+        "period_total": 23,
+        "previous_24h": 3,
+        "unknown_status": 0,
+        "previous_unknown_status": 0
+      },
+      {
+        "total": 24,
+        "metric": "scans_bought",
+        "last_24h": 0,
+        "period_total": 8,
+        "previous_24h": 0,
+        "unknown_status": 0,
+        "previous_unknown_status": 0
+      },
+      {
+        "total": 20,
+        "metric": "active_subscriptions",
+        "last_24h": 20,
+        "period_total": null,
+        "previous_24h": 18,
+        "unknown_status": 0,
+        "previous_unknown_status": 0
+      },
+      {
+        "total": 16,
+        "metric": "canceled_subscriptions",
+        "last_24h": 16,
+        "period_total": null,
+        "previous_24h": 15,
+        "unknown_status": 0,
+        "previous_unknown_status": 0
+      },
+      {
+        "total": 12,
+        "metric": "scheduled_cancellations",
+        "last_24h": 12,
+        "period_total": null,
+        "previous_24h": 11,
+        "unknown_status": 0,
+        "previous_unknown_status": 0
+      }
+    ],
+    "billingReporting": [
+      {
+        "latest_event": "2026-10-28T05:15:25",
+        "webhook_ready": "true",
+        "latest_receipt": "2026-10-28T05:15:25.727438",
+        "recovery_checked_at": "2026-10-24T22:35:48.37",
+        "missing_amount_events": 0,
+        "unrecorded_stripe_purchases": 0,
+        "all_time_missing_amount_events": 0
+      }
+    ],
+    "creatorEconomics": null,
+    "featureRetention": [],
+    "revenueCountries": [
+      {
+        "gross": 99.84,
+        "country": "US",
+        "refunds": 4.99,
+        "currency": "USD",
+        "proceeds": 80.6225,
+        "purchases": 16,
+        "after_refunds": 94.85,
+        "refund_transactions": 1
+      },
+      {
+        "gross": 19.98,
+        "country": "AT",
+        "refunds": 0,
+        "currency": "EUR",
+        "proceeds": 14.1519339,
+        "purchases": 2,
+        "after_refunds": 19.98,
+        "refund_transactions": 0
+      },
+      {
+        "gross": 11.98,
+        "country": "BE",
+        "refunds": 0,
+        "currency": "EUR",
+        "proceeds": 8.4152312,
+        "purchases": 2,
+        "after_refunds": 11.98,
+        "refund_transactions": 0
+      },
+      {
+        "gross": 9.98,
+        "country": "Unknown",
+        "refunds": 0,
+        "currency": "USD",
+        "proceeds": null,
+        "purchases": 2,
+        "after_refunds": 9.98,
+        "refund_transactions": 0
+      },
+      {
+        "gross": 4.99,
+        "country": "AR",
+        "refunds": 0,
+        "currency": "USD",
+        "proceeds": 4.2415,
+        "purchases": 1,
+        "after_refunds": 4.99,
+        "refund_transactions": 0
+      },
+      {
+        "gross": 14.99,
+        "country": "AU",
+        "refunds": 0,
+        "currency": "AUD",
+        "proceeds": 11.58329765,
+        "purchases": 1,
+        "after_refunds": 14.99,
+        "refund_transactions": 0
+      },
+      {
+        "gross": 12.99,
+        "country": "CA",
+        "refunds": 0,
+        "currency": "CAD",
+        "proceeds": 11.0415,
+        "purchases": 1,
+        "after_refunds": 12.99,
+        "refund_transactions": 0
+      },
+      {
+        "gross": 4.99,
+        "country": "GB",
+        "refunds": 0,
+        "currency": "GBP",
+        "proceeds": 3.51323445,
+        "purchases": 1,
+        "after_refunds": 4.99,
+        "refund_transactions": 0
+      },
+      {
+        "gross": 7700,
+        "country": "KR",
+        "refunds": 0,
+        "currency": "KRW",
+        "proceeds": 5950.0595,
+        "purchases": 1,
+        "after_refunds": 7700,
+        "refund_transactions": 0
+      },
+      {
+        "gross": 4.99,
+        "country": "KW",
+        "refunds": 0,
+        "currency": "USD",
+        "proceeds": 4.2415,
+        "purchases": 1,
+        "after_refunds": 4.99,
+        "refund_transactions": 0
+      },
+      {
+        "gross": 199.99,
+        "country": "ZA",
+        "refunds": 0,
+        "currency": "ZAR",
+        "proceeds": 147.8246084,
+        "purchases": 1,
+        "after_refunds": 199.99,
+        "refund_transactions": 0
+      }
+    ],
+    "attributionLedger": null,
+    "audienceBreakdown": [
+      {
+        "events": 22324,
+        "devices": 276,
+        "audience": "creator / admin",
+        "runtime_unconfirmed_events": 0
+      },
+      {
+        "events": 168330,
+        "devices": 5023,
+        "audience": "customer",
+        "runtime_unconfirmed_events": 19346
+      },
+      {
+        "events": 7465,
+        "devices": 14,
+        "audience": "internal",
+        "runtime_unconfirmed_events": 437
+      },
+      {
+        "events": 2691,
+        "devices": 25,
+        "audience": "non-production",
+        "runtime_unconfirmed_events": 58
+      }
+    ],
+    "billingDimensions": [
+      {
+        "event": "cancellation_scheduled",
+        "value": "UNSUBSCRIBE",
+        "events": 16,
+        "provider": "revenuecat",
+        "dimension": "cancel_reason"
+      },
+      {
+        "event": "subscription_refunded",
+        "value": "CUSTOMER_SUPPORT",
+        "events": 1,
+        "provider": "revenuecat",
+        "dimension": "cancel_reason"
+      },
+      {
+        "event": "subscription_started",
+        "value": "0.3",
+        "events": 16,
+        "provider": "revenuecat",
+        "dimension": "commission_percentage"
+      },
+      {
+        "event": "cancellation_scheduled",
+        "value": "0.3",
+        "events": 11,
+        "provider": "revenuecat",
+        "dimension": "commission_percentage"
+      },
+      {
+        "event": "subscription_expired",
+        "value": "0.3",
+        "events": 2,
+        "provider": "revenuecat",
+        "dimension": "commission_percentage"
+      },
+      {
+        "event": "subscription_renewed",
+        "value": "0.3",
+        "events": 2,
+        "provider": "revenuecat",
+        "dimension": "commission_percentage"
+      },
+      {
+        "event": "subscription_started",
+        "value": "0.2149",
+        "events": 2,
+        "provider": "revenuecat",
+        "dimension": "commission_percentage"
+      },
+      {
+        "event": "subscription_started",
+        "value": "0.2727",
+        "events": 2,
+        "provider": "revenuecat",
+        "dimension": "commission_percentage"
+      },
+      {
+        "event": "cancellation_scheduled",
+        "value": "0.2149",
+        "events": 1,
+        "provider": "revenuecat",
+        "dimension": "commission_percentage"
+      },
+      {
+        "event": "cancellation_scheduled",
+        "value": "0.2167",
+        "events": 1,
+        "provider": "revenuecat",
+        "dimension": "commission_percentage"
+      },
+      {
+        "event": "cancellation_scheduled",
+        "value": "0.2485",
+        "events": 1,
+        "provider": "revenuecat",
+        "dimension": "commission_percentage"
+      },
+      {
+        "event": "cancellation_scheduled",
+        "value": "0.2609",
+        "events": 1,
+        "provider": "revenuecat",
+        "dimension": "commission_percentage"
+      },
+      {
+        "event": "cancellation_scheduled",
+        "value": "0.2727",
+        "events": 1,
+        "provider": "revenuecat",
+        "dimension": "commission_percentage"
+      },
+      {
+        "event": "one_time_purchase",
+        "value": "0.2167",
+        "events": 1,
+        "provider": "revenuecat",
+        "dimension": "commission_percentage"
+      },
+      {
+        "event": "one_time_purchase",
+        "value": "0.3",
+        "events": 1,
+        "provider": "revenuecat",
+        "dimension": "commission_percentage"
+      },
+      {
+        "event": "subscription_expired",
+        "value": "0.2727",
+        "events": 1,
+        "provider": "revenuecat",
+        "dimension": "commission_percentage"
+      },
+      {
+        "event": "subscription_reactivated",
+        "value": "0.3",
+        "events": 1,
+        "provider": "revenuecat",
+        "dimension": "commission_percentage"
+      },
+      {
+        "event": "subscription_refunded",
+        "value": "0.3",
+        "events": 1,
+        "provider": "revenuecat",
+        "dimension": "commission_percentage"
+      },
+      {
+        "event": "subscription_started",
+        "value": "0.2167",
+        "events": 1,
+        "provider": "revenuecat",
+        "dimension": "commission_percentage"
+      },
+      {
+        "event": "subscription_started",
+        "value": "0.2485",
+        "events": 1,
+        "provider": "revenuecat",
+        "dimension": "commission_percentage"
+      },
+      {
+        "event": "subscription_started",
+        "value": "0.2609",
+        "events": 1,
+        "provider": "revenuecat",
+        "dimension": "commission_percentage"
+      },
+      {
+        "event": "subscription_started",
+        "value": "US",
+        "events": 13,
+        "provider": "revenuecat",
+        "dimension": "country"
+      },
+      {
+        "event": "cancellation_scheduled",
+        "value": "US",
+        "events": 8,
+        "provider": "revenuecat",
+        "dimension": "country"
+      },
+      {
+        "event": "cancellation_scheduled",
+        "value": "KW",
+        "events": 2,
+        "provider": "revenuecat",
+        "dimension": "country"
+      },
+      {
+        "event": "subscription_expired",
+        "value": "US",
+        "events": 2,
+        "provider": "revenuecat",
+        "dimension": "country"
+      },
+      {
+        "event": "subscription_renewed",
+        "value": "US",
+        "events": 2,
+        "provider": "revenuecat",
+        "dimension": "country"
+      },
+      {
+        "event": "subscription_started",
+        "value": "BE",
+        "events": 2,
+        "provider": "revenuecat",
+        "dimension": "country"
+      },
+      {
+        "event": "cancellation_scheduled",
+        "value": "AT",
+        "events": 1,
+        "provider": "revenuecat",
+        "dimension": "country"
+      },
+      {
+        "event": "cancellation_scheduled",
+        "value": "BE",
+        "events": 1,
+        "provider": "revenuecat",
+        "dimension": "country"
+      },
+      {
+        "event": "cancellation_scheduled",
+        "value": "CA",
+        "events": 1,
+        "provider": "revenuecat",
+        "dimension": "country"
+      },
+      {
+        "event": "cancellation_scheduled",
+        "value": "GB",
+        "events": 1,
+        "provider": "revenuecat",
+        "dimension": "country"
+      },
+      {
+        "event": "cancellation_scheduled",
+        "value": "KR",
+        "events": 1,
+        "provider": "revenuecat",
+        "dimension": "country"
+      },
+      {
+        "event": "cancellation_scheduled",
+        "value": "ZA",
+        "events": 1,
+        "provider": "revenuecat",
+        "dimension": "country"
+      },
+      {
+        "event": "one_time_purchase",
+        "value": "AT",
+        "events": 1,
+        "provider": "revenuecat",
+        "dimension": "country"
+      },
+      {
+        "event": "one_time_purchase",
+        "value": "US",
+        "events": 1,
+        "provider": "revenuecat",
+        "dimension": "country"
+      },
+      {
+        "event": "subscription_expired",
+        "value": "KR",
+        "events": 1,
+        "provider": "revenuecat",
+        "dimension": "country"
+      },
+      {
+        "event": "subscription_reactivated",
+        "value": "KW",
+        "events": 1,
+        "provider": "revenuecat",
+        "dimension": "country"
+      },
+      {
+        "event": "subscription_refunded",
+        "value": "US",
+        "events": 1,
+        "provider": "revenuecat",
+        "dimension": "country"
+      },
+      {
+        "event": "subscription_started",
+        "value": "AR",
+        "events": 1,
+        "provider": "revenuecat",
+        "dimension": "country"
+      },
+      {
+        "event": "subscription_started",
+        "value": "AT",
+        "events": 1,
+        "provider": "revenuecat",
+        "dimension": "country"
+      },
+      {
+        "event": "subscription_started",
+        "value": "AU",
+        "events": 1,
+        "provider": "revenuecat",
+        "dimension": "country"
+      },
+      {
+        "event": "subscription_expired",
+        "value": "UNSUBSCRIBE",
+        "events": 2,
+        "provider": "revenuecat",
+        "dimension": "expiration_reason"
+      },
+      {
+        "event": "subscription_expired",
+        "value": "CUSTOMER_SUPPORT",
+        "events": 1,
+        "provider": "revenuecat",
+        "dimension": "expiration_reason"
+      },
+      {
+        "event": "subscription_started",
+        "value": "default",
+        "events": 22,
+        "provider": "revenuecat",
+        "dimension": "offering"
+      },
+      {
+        "event": "cancellation_scheduled",
+        "value": "default",
+        "events": 15,
+        "provider": "revenuecat",
+        "dimension": "offering"
+      },
+      {
+        "event": "subscription_expired",
+        "value": "default",
+        "events": 2,
+        "provider": "revenuecat",
+        "dimension": "offering"
+      },
+      {
+        "event": "subscription_renewed",
+        "value": "default",
+        "events": 2,
+        "provider": "revenuecat",
+        "dimension": "offering"
+      },
+      {
+        "event": "subscription_reactivated",
+        "value": "default",
+        "events": 1,
+        "provider": "revenuecat",
+        "dimension": "offering"
+      },
+      {
+        "event": "checkout_expired",
+        "value": "NORMAL",
+        "events": 142,
+        "provider": "stripe",
+        "dimension": "period_type"
+      },
+      {
+        "event": "subscription_started",
+        "value": "NORMAL",
+        "events": 23,
+        "provider": "revenuecat",
+        "dimension": "period_type"
+      },
+      {
+        "event": "cancellation_scheduled",
+        "value": "NORMAL",
+        "events": 16,
+        "provider": "revenuecat",
+        "dimension": "period_type"
+      },
+      {
+        "event": "subscription_expired",
+        "value": "NORMAL",
+        "events": 3,
+        "provider": "revenuecat",
+        "dimension": "period_type"
+      },
+      {
+        "event": "one_time_purchase",
+        "value": "NORMAL",
+        "events": 2,
+        "provider": "revenuecat",
+        "dimension": "period_type"
+      },
+      {
+        "event": "subscription_renewed",
+        "value": "NORMAL",
+        "events": 2,
+        "provider": "revenuecat",
+        "dimension": "period_type"
+      },
+      {
+        "event": "one_time_purchase",
+        "value": "NORMAL",
+        "events": 2,
+        "provider": "stripe",
+        "dimension": "period_type"
+      },
+      {
+        "event": "subscription_reactivated",
+        "value": "NORMAL",
+        "events": 1,
+        "provider": "revenuecat",
+        "dimension": "period_type"
+      },
+      {
+        "event": "subscription_refunded",
+        "value": "NORMAL",
+        "events": 1,
+        "provider": "revenuecat",
+        "dimension": "period_type"
+      },
+      {
+        "event": "subscription_started",
+        "value": "APP_STORE",
+        "events": 23,
+        "provider": "revenuecat",
+        "dimension": "store"
+      },
+      {
+        "event": "cancellation_scheduled",
+        "value": "APP_STORE",
+        "events": 16,
+        "provider": "revenuecat",
+        "dimension": "store"
+      },
+      {
+        "event": "subscription_expired",
+        "value": "APP_STORE",
+        "events": 3,
+        "provider": "revenuecat",
+        "dimension": "store"
+      },
+      {
+        "event": "one_time_purchase",
+        "value": "APP_STORE",
+        "events": 2,
+        "provider": "revenuecat",
+        "dimension": "store"
+      },
+      {
+        "event": "subscription_renewed",
+        "value": "APP_STORE",
+        "events": 2,
+        "provider": "revenuecat",
+        "dimension": "store"
+      },
+      {
+        "event": "subscription_reactivated",
+        "value": "APP_STORE",
+        "events": 1,
+        "provider": "revenuecat",
+        "dimension": "store"
+      },
+      {
+        "event": "subscription_refunded",
+        "value": "APP_STORE",
+        "events": 1,
+        "provider": "revenuecat",
+        "dimension": "store"
+      },
+      {
+        "event": "subscription_started",
+        "value": "0",
+        "events": 16,
+        "provider": "revenuecat",
+        "dimension": "tax_percentage"
+      },
+      {
+        "event": "cancellation_scheduled",
+        "value": "0",
+        "events": 11,
+        "provider": "revenuecat",
+        "dimension": "tax_percentage"
+      },
+      {
+        "event": "subscription_expired",
+        "value": "0",
+        "events": 2,
+        "provider": "revenuecat",
+        "dimension": "tax_percentage"
+      },
+      {
+        "event": "subscription_renewed",
+        "value": "0",
+        "events": 2,
+        "provider": "revenuecat",
+        "dimension": "tax_percentage"
+      },
+      {
+        "event": "subscription_started",
+        "value": "0.0909",
+        "events": 2,
+        "provider": "revenuecat",
+        "dimension": "tax_percentage"
+      },
+      {
+        "event": "subscription_started",
+        "value": "0.1736",
+        "events": 2,
+        "provider": "revenuecat",
+        "dimension": "tax_percentage"
+      },
+      {
+        "event": "cancellation_scheduled",
+        "value": "0.0909",
+        "events": 1,
+        "provider": "revenuecat",
+        "dimension": "tax_percentage"
+      },
+      {
+        "event": "cancellation_scheduled",
+        "value": "0.1304",
+        "events": 1,
+        "provider": "revenuecat",
+        "dimension": "tax_percentage"
+      },
+      {
+        "event": "cancellation_scheduled",
+        "value": "0.1667",
+        "events": 1,
+        "provider": "revenuecat",
+        "dimension": "tax_percentage"
+      },
+      {
+        "event": "cancellation_scheduled",
+        "value": "0.1717",
+        "events": 1,
+        "provider": "revenuecat",
+        "dimension": "tax_percentage"
+      },
+      {
+        "event": "cancellation_scheduled",
+        "value": "0.1736",
+        "events": 1,
+        "provider": "revenuecat",
+        "dimension": "tax_percentage"
+      },
+      {
+        "event": "one_time_purchase",
+        "value": "0",
+        "events": 1,
+        "provider": "revenuecat",
+        "dimension": "tax_percentage"
+      },
+      {
+        "event": "one_time_purchase",
+        "value": "0.1667",
+        "events": 1,
+        "provider": "revenuecat",
+        "dimension": "tax_percentage"
+      },
+      {
+        "event": "subscription_expired",
+        "value": "0.0909",
+        "events": 1,
+        "provider": "revenuecat",
+        "dimension": "tax_percentage"
+      },
+      {
+        "event": "subscription_reactivated",
+        "value": "0",
+        "events": 1,
+        "provider": "revenuecat",
+        "dimension": "tax_percentage"
+      },
+      {
+        "event": "subscription_refunded",
+        "value": "0",
+        "events": 1,
+        "provider": "revenuecat",
+        "dimension": "tax_percentage"
+      },
+      {
+        "event": "subscription_started",
+        "value": "0.1304",
+        "events": 1,
+        "provider": "revenuecat",
+        "dimension": "tax_percentage"
+      },
+      {
+        "event": "subscription_started",
+        "value": "0.1667",
+        "events": 1,
+        "provider": "revenuecat",
+        "dimension": "tax_percentage"
+      },
+      {
+        "event": "subscription_started",
+        "value": "0.1717",
+        "events": 1,
+        "provider": "revenuecat",
+        "dimension": "tax_percentage"
+      },
+      {
+        "event": "checkout_expired",
+        "value": "false",
+        "events": 142,
+        "provider": "stripe",
+        "dimension": "timestamp_estimated"
+      },
+      {
+        "event": "subscription_started",
+        "value": "false",
+        "events": 23,
+        "provider": "revenuecat",
+        "dimension": "timestamp_estimated"
+      },
+      {
+        "event": "cancellation_scheduled",
+        "value": "false",
+        "events": 16,
+        "provider": "revenuecat",
+        "dimension": "timestamp_estimated"
+      },
+      {
+        "event": "subscription_expired",
+        "value": "false",
+        "events": 3,
+        "provider": "revenuecat",
+        "dimension": "timestamp_estimated"
+      },
+      {
+        "event": "one_time_purchase",
+        "value": "false",
+        "events": 2,
+        "provider": "revenuecat",
+        "dimension": "timestamp_estimated"
+      },
+      {
+        "event": "subscription_renewed",
+        "value": "false",
+        "events": 2,
+        "provider": "revenuecat",
+        "dimension": "timestamp_estimated"
+      },
+      {
+        "event": "one_time_purchase",
+        "value": "false",
+        "events": 2,
+        "provider": "stripe",
+        "dimension": "timestamp_estimated"
+      },
+      {
+        "event": "subscription_reactivated",
+        "value": "false",
+        "events": 1,
+        "provider": "revenuecat",
+        "dimension": "timestamp_estimated"
+      },
+      {
+        "event": "subscription_refunded",
+        "value": "false",
+        "events": 1,
+        "provider": "revenuecat",
+        "dimension": "timestamp_estimated"
+      },
+      {
+        "event": "subscription_started",
+        "value": "false",
+        "events": 23,
+        "provider": "revenuecat",
+        "dimension": "trial_conversion"
+      },
+      {
+        "event": "cancellation_scheduled",
+        "value": "false",
+        "events": 16,
+        "provider": "revenuecat",
+        "dimension": "trial_conversion"
+      },
+      {
+        "event": "subscription_expired",
+        "value": "false",
+        "events": 3,
+        "provider": "revenuecat",
+        "dimension": "trial_conversion"
+      },
+      {
+        "event": "one_time_purchase",
+        "value": "false",
+        "events": 2,
+        "provider": "revenuecat",
+        "dimension": "trial_conversion"
+      },
+      {
+        "event": "subscription_renewed",
+        "value": "false",
+        "events": 2,
+        "provider": "revenuecat",
+        "dimension": "trial_conversion"
+      },
+      {
+        "event": "subscription_reactivated",
+        "value": "false",
+        "events": 1,
+        "provider": "revenuecat",
+        "dimension": "trial_conversion"
+      },
+      {
+        "event": "subscription_refunded",
+        "value": "false",
+        "events": 1,
+        "provider": "revenuecat",
+        "dimension": "trial_conversion"
+      }
+    ],
+    "landingPlacements": [],
+    "onboardingScreens": [],
+    "onboardingSummary": [],
+    "retentionCoverage": [],
+    "revenueComparison": [
+      {
+        "currency": "CAD",
+        "current_net": "12.990000",
+        "previous_net": "0",
+        "missing_amount_events": 0
+      },
+      {
+        "currency": "KRW",
+        "current_net": "7700.000000",
+        "previous_net": "0",
+        "missing_amount_events": 0
+      },
+      {
+        "currency": "EUR",
+        "current_net": "31.960000",
+        "previous_net": "0",
+        "missing_amount_events": 0
+      },
+      {
+        "currency": "ZAR",
+        "current_net": "199.990000",
+        "previous_net": "0",
+        "missing_amount_events": 0
+      },
+      {
+        "currency": "AUD",
+        "current_net": "14.990000",
+        "previous_net": "0",
+        "missing_amount_events": 0
+      },
+      {
+        "currency": "USD",
+        "current_net": "114.810000",
+        "previous_net": "59.920000",
+        "missing_amount_events": 0
+      },
+      {
+        "currency": "GBP",
+        "current_net": "4.990000",
+        "previous_net": "0",
+        "missing_amount_events": 0
+      }
+    ],
+    "revenueFinancials": [
+      {
+        "fees": 1.9485,
+        "gross": 12.99,
+        "taxes": 0,
+        "refunds": 0,
+        "currency": "CAD",
+        "proceeds": 11.0415,
+        "apple_events": 1,
+        "after_refunds": 12.99,
+        "known_proceeds": 11.0415,
+        "unknown_fee_events": 0,
+        "commission_mismatches": 1
+      },
+      {
+        "fees": 1050.0105,
+        "gross": 7700,
+        "taxes": 699.93,
+        "refunds": 0,
+        "currency": "KRW",
+        "proceeds": 5950.0595,
+        "apple_events": 1,
+        "after_refunds": 7700,
+        "known_proceeds": 5950.0595,
+        "unknown_fee_events": 0,
+        "commission_mismatches": 1
+      },
+      {
+        "fees": 3.9824409,
+        "gross": 31.96,
+        "taxes": 5.410394,
+        "refunds": 0,
+        "currency": "EUR",
+        "proceeds": 22.5671651,
+        "apple_events": 4,
+        "after_refunds": 31.96,
+        "known_proceeds": 22.5671651,
+        "unknown_fee_events": 0,
+        "commission_mismatches": 4
+      },
+      {
+        "fees": 26.0866956,
+        "gross": 199.99,
+        "taxes": 26.078696,
+        "refunds": 0,
+        "currency": "ZAR",
+        "proceeds": 147.8246084,
+        "apple_events": 1,
+        "after_refunds": 199.99,
+        "known_proceeds": 147.8246084,
+        "unknown_fee_events": 0,
+        "commission_mismatches": 1
+      },
+      {
+        "fees": 15.7245,
+        "gross": 119.8,
+        "taxes": 0,
+        "refunds": 4.99,
+        "currency": "USD",
+        "proceeds": null,
+        "apple_events": 19,
+        "after_refunds": 114.81,
+        "known_proceeds": 89.1055,
+        "unknown_fee_events": 2,
+        "commission_mismatches": 19
+      },
+      {
+        "fees": 2.04411135,
+        "gross": 14.99,
+        "taxes": 1.362591,
+        "refunds": 0,
+        "currency": "AUD",
+        "proceeds": 11.58329765,
+        "apple_events": 1,
+        "after_refunds": 14.99,
+        "known_proceeds": 11.58329765,
+        "unknown_fee_events": 0,
+        "commission_mismatches": 1
+      },
+      {
+        "fees": 0.61998255,
+        "gross": 4.99,
+        "taxes": 0.856783,
+        "refunds": 0,
+        "currency": "GBP",
+        "proceeds": 3.51323445,
+        "apple_events": 1,
+        "after_refunds": 4.99,
+        "known_proceeds": 3.51323445,
+        "unknown_fee_events": 0,
+        "commission_mismatches": 1
+      }
+    ],
+    "acquisitionSummary": [],
+    "creatorAttribution": null,
+    "landingExperiments": [],
+    "onboardingFriction": [],
+    "onboardingRevisions": [],
+    "membershipActivation": [],
+    "revenueProceedsDaily": [
+      {
+        "day": "2026-10-27T07:00:00Z",
+        "currency": "EUR",
+        "proceeds": 4.2076156
+      },
+      {
+        "day": "2026-10-19T07:00:00Z",
+        "currency": "USD",
+        "proceeds": 21.216
+      },
+      {
+        "day": "2026-10-18T07:00:00Z",
+        "currency": "USD",
+        "proceeds": 8.4915
+      },
+      {
+        "day": "2026-10-27T07:00:00Z",
+        "currency": "ZAR",
+        "proceeds": 147.8246084
+      },
+      {
+        "day": "2026-10-20T07:00:00Z",
+        "currency": "USD",
+        "proceeds": null
+      },
+      {
+        "day": "2026-10-22T07:00:00Z",
+        "currency": "USD",
+        "proceeds": 12.733
+      },
+      {
+        "day": "2026-10-21T07:00:00Z",
+        "currency": "CAD",
+        "proceeds": 11.0415
+      },
+      {
+        "day": "2026-10-25T07:00:00Z",
+        "currency": "USD",
+        "proceeds": 21.2075
+      },
+      {
+        "day": "2026-10-19T07:00:00Z",
+        "currency": "KRW",
+        "proceeds": 5950.0595
+      },
+      {
+        "day": "2026-10-26T07:00:00Z",
+        "currency": "AUD",
+        "proceeds": 11.58329765
+      },
+      {
+        "day": "2026-10-26T07:00:00Z",
+        "currency": "USD",
+        "proceeds": 8.4915
+      },
+      {
+        "day": "2026-10-24T07:00:00Z",
+        "currency": "USD",
+        "proceeds": 12.7245
+      },
+      {
+        "day": "2026-10-23T07:00:00Z",
+        "currency": "USD",
+        "proceeds": 4.2415
+      },
+      {
+        "day": "2026-10-17T07:00:00Z",
+        "currency": "EUR",
+        "proceeds": 14.1519339
+      },
+      {
+        "day": "2026-10-24T07:00:00Z",
+        "currency": "EUR",
+        "proceeds": 4.2076156
+      },
+      {
+        "day": "2026-10-26T07:00:00Z",
+        "currency": "GBP",
+        "proceeds": 3.51323445
+      },
+      {
+        "day": "2026-10-15T07:00:00Z",
+        "currency": "USD",
+        "proceeds": null
+      }
+    ],
+    "landingExperimentDaily": [],
+    "revenueSubscriptionOverview": [
+      {
+        "ended": 4,
+        "trials": 0,
+        "cancelling": 12,
+        "access_total": 20,
+        "auto_renewing": 8,
+        "billing_retry": 0,
+        "unknown_expiry": 0,
+        "ended_in_period": 3,
+        "cancellation_requests": 15,
+        "starting_subscriptions": 0,
+        "churned_starting_subscriptions": 0
+      }
+    ],
+    "revenueSubscriptionProducts": [
+      {
+        "ended": 0,
+        "source": "Apple App Store",
+        "trials": 0,
+        "product": "mogging.pro.monthly",
+        "cancelling": 5,
+        "auto_renewing": 2,
+        "billing_retry": 0,
+        "unknown_expiry": 0
+      },
+      {
+        "ended": 4,
+        "source": "Apple App Store",
+        "trials": 0,
+        "product": "mogging.pro.weekly",
+        "cancelling": 7,
+        "auto_renewing": 6,
+        "billing_retry": 0,
+        "unknown_expiry": 0
+      }
+    ]
+  },
+  "previous3_Purchases": {
+    "web": [],
+    "daily": [],
+    "scans": null,
+    "steps": [],
+    "actions": [],
+    "billing": [],
+    "paywall": [],
+    "revenue": [],
+    "screens": [],
+    "summary": {
+      "actors": 1646,
+      "events": 57311,
+      "failures": 4,
+      "evaluations": 7,
+      "first_opens": 550,
+      "latest_event": "2026-10-25T06:59:52.392"
+    },
+    "releases": [],
+    "referrals": null,
+    "retention": [],
+    "dataHealth": null,
+    "dimensions": [],
+    "engagement": null,
+    "onboarding": [],
+    "scanLedger": [],
+    "acquisition": [],
+    "webAudience": [],
+    "eventMetrics": [],
+    "featureUsage": [],
+    "paidDelivery": [],
+    "purchaseFlow": {
+      "daily": [
+        {
+          "day": "2026-10-22T07:00:00Z",
+          "attempts": 60,
+          "activated": 2,
+          "purchased": 2
+        },
+        {
+          "day": "2026-10-23T07:00:00Z",
+          "attempts": 51,
+          "activated": 1,
+          "purchased": 1
+        },
+        {
+          "day": "2026-10-24T07:00:00Z",
+          "attempts": 98,
+          "activated": 4,
+          "purchased": 4
+        }
+      ],
+      "summary": [
+        {
+          "errors": 2,
+          "devices": 176,
+          "attempts": 209,
+          "verified": 7,
+          "activated": 7,
+          "purchased": 7,
+          "requested": 209,
+          "incomplete": 17,
+          "cancellations": 183,
+          "access_unconfirmed": 0
+        }
+      ],
+      "support": [
+        {
+          "events": 32,
+          "devices": 24,
+          "event_name": "purchase_restored"
+        },
+        {
+          "events": 32,
+          "devices": 24,
+          "event_name": "restore_started"
+        }
+      ],
+      "coverage": [
+        {
+          "latest_event": "2026-10-25T06:59:07.199",
+          "start_events": 209,
+          "paywall_views": 475,
+          "latest_receipt": "2026-10-25T06:59:19.085698",
+          "detailed_starts": 209,
+          "paywall_devices": 358,
+          "unlinked_starts": 0,
+          "latest_billing_receipt": "2026-10-25T02:00:04.615272",
+          "runtime_unconfirmed_events": 0
+        }
+      ],
+      "failures": [
+        {
+          "stage": "store_purchase",
+          "reason": "purchase_not_allowed",
+          "outcome": "store_failed",
+          "attempts": 1,
+          "error_code": "3",
+          "affected_devices": 1
+        },
+        {
+          "stage": "store_purchase",
+          "reason": "store_problem",
+          "outcome": "store_failed",
+          "attempts": 1,
+          "error_code": "2",
+          "affected_devices": 1
+        }
+      ],
+      "feedback": [
+        {
+          "reason": "price",
+          "responses": 39
+        },
+        {
+          "reason": "not_ready",
+          "responses": 15
+        },
+        {
+          "reason": "other",
+          "responses": 2
+        },
+        {
+          "reason": "payment_trouble",
+          "responses": 2
+        }
+      ],
+      "handoffs": [],
+      "outcomes": [
+        {
+          "devices": 151,
+          "outcome": "cancelled",
+          "attempts": 183
+        },
+        {
+          "devices": 17,
+          "outcome": "unresolved",
+          "attempts": 17
+        },
+        {
+          "devices": 7,
+          "outcome": "activated",
+          "attempts": 7
+        },
+        {
+          "devices": 2,
+          "outcome": "store_failed",
+          "attempts": 2
+        }
+      ],
+      "surfaces": [
+        {
+          "surface": "onboarding_paywall",
+          "attempts": 197,
+          "platform": "ios",
+          "verified": 7,
+          "activated": 7,
+          "purchased": 7,
+          "cancellations": 171,
+          "purchase_type": "subscription"
+        },
+        {
+          "surface": "onboarding_feedback_offer",
+          "attempts": 12,
+          "platform": "ios",
+          "verified": 0,
+          "activated": 0,
+          "purchased": 0,
+          "cancellations": 12,
+          "purchase_type": "subscription"
+        }
+      ]
+    },
+    "reportLedger": [],
+    "revenueDaily": [],
+    "cancellations": [],
+    "eventDelivery": [],
+    "notifications": null,
+    "revenueTotals": [],
+    "authentication": null,
+    "eventPlatforms": [],
+    "landingSources": [],
+    "landingSummary": [],
+    "revenueSources": [],
+    "billingProducts": [],
+    "contextCoverage": [],
+    "landingHandoffs": [],
+    "landingSections": [],
+    "onboardingDaily": [],
+    "retentionWeekly": [],
+    "revenueActivity": [],
+    "billingReporting": [],
+    "creatorEconomics": null,
+    "featureRetention": [],
+    "revenueCountries": [],
+    "attributionLedger": null,
+    "audienceBreakdown": [
+      {
+        "events": 7064,
+        "devices": 127,
+        "audience": "creator / admin",
+        "runtime_unconfirmed_events": 0
+      },
+      {
+        "events": 57311,
+        "devices": 1646,
+        "audience": "customer",
+        "runtime_unconfirmed_events": 0
+      },
+      {
+        "events": 2149,
+        "devices": 2,
+        "audience": "internal",
+        "runtime_unconfirmed_events": 0
+      },
+      {
+        "events": 1592,
+        "devices": 12,
+        "audience": "non-production",
+        "runtime_unconfirmed_events": 0
+      }
+    ],
+    "billingDimensions": [],
+    "landingPlacements": [],
+    "onboardingScreens": [],
+    "onboardingSummary": [],
+    "retentionCoverage": [],
+    "revenueComparison": [],
+    "revenueFinancials": [],
+    "acquisitionSummary": [],
+    "creatorAttribution": null,
+    "landingExperiments": [],
+    "onboardingFriction": [],
+    "onboardingRevisions": [],
+    "membershipActivation": [],
+    "revenueProceedsDaily": [],
+    "landingExperimentDaily": [],
+    "revenueSubscriptionOverview": [],
+    "revenueSubscriptionProducts": []
+  },
+  "previous3_Scans": {
+    "web": [],
+    "daily": [],
+    "scans": {
+      "daily": [
+        {
+          "day": "2026-10-22T07:00:00Z",
+          "failed": 0,
+          "pending": 0,
+          "requests": 3,
+          "completed": 3
+        },
+        {
+          "day": "2026-10-23T07:00:00Z",
+          "failed": 0,
+          "pending": 0,
+          "requests": 1,
+          "completed": 1
+        },
+        {
+          "day": "2026-10-24T07:00:00Z",
+          "failed": 2,
+          "pending": 0,
+          "requests": 7,
+          "completed": 5
+        }
+      ],
+      "client": [
+        {
+          "p90_ms": null,
+          "median_ms": null,
+          "latest_event": "2026-10-25T02:20:39.056",
+          "latest_receipt": "2026-10-25T02:20:43.186826",
+          "request_starts": 0,
+          "request_failures": 0,
+          "evaluation_p90_ms": 35765,
+          "evaluation_starts": 13,
+          "timed_completions": 0,
+          "timed_evaluations": 7,
+          "evaluation_failures": 4,
+          "request_completions": 0,
+          "requests_without_id": 0,
+          "evaluation_median_ms": 29962,
+          "evaluation_completions": 7,
+          "runtime_unconfirmed_events": 0
+        }
+      ],
+      "events": [
+        {
+          "events": 7,
+          "devices": 6,
+          "event_name": "evaluation_completed"
+        },
+        {
+          "events": 4,
+          "devices": 2,
+          "event_name": "evaluation_failed"
+        },
+        {
+          "events": 13,
+          "devices": 8,
+          "event_name": "evaluation_started"
+        }
+      ],
+      "reports": [
+        {
+          "other": 0,
+          "failed": 2,
+          "completed": 9,
+          "latest_created": "2026-10-25T02:02:29.026303",
+          "latest_updated": "2026-10-25T02:02:29.026303"
+        }
+      ],
+      "sources": [
+        {
+          "failed": 2,
+          "source": "subscription_allowance",
+          "pending": 0,
+          "requests": 10,
+          "completed": 8
+        },
+        {
+          "failed": 0,
+          "source": "referral_reward",
+          "pending": 0,
+          "requests": 1,
+          "completed": 1
+        }
+      ],
+      "summary": [
+        {
+          "other": 0,
+          "failed": 2,
+          "pending": 0,
+          "accounts": 8,
+          "requests": 11,
+          "completed": 9,
+          "latest_request": "2026-10-25T02:02:06.638",
+          "oldest_pending": null,
+          "distinct_reports": 9,
+          "missing_report_reference": 0,
+          "pending_over_five_minutes": 0
+        }
+      ],
+      "failures": [
+        {
+          "events": 2,
+          "reason": "analysis_failed",
+          "platform": "ios",
+          "event_name": "evaluation_failed",
+          "affected_devices": 1
+        },
+        {
+          "events": 1,
+          "reason": "http_402",
+          "platform": "ios",
+          "event_name": "evaluation_failed",
+          "affected_devices": 1
+        },
+        {
+          "events": 1,
+          "reason": "request_failed",
+          "platform": "ios",
+          "event_name": "evaluation_failed",
+          "affected_devices": 1
+        }
+      ],
+      "releases": []
+    },
+    "steps": [],
+    "actions": [],
+    "billing": [],
+    "paywall": [],
+    "revenue": [],
+    "screens": [],
+    "summary": {
+      "actors": 1646,
+      "events": 57311,
+      "failures": 4,
+      "evaluations": 7,
+      "first_opens": 550,
+      "latest_event": "2026-10-25T06:59:52.392"
+    },
+    "releases": [],
+    "referrals": null,
+    "retention": [],
+    "dataHealth": null,
+    "dimensions": [],
+    "engagement": null,
+    "onboarding": [],
+    "scanLedger": [],
+    "acquisition": [],
+    "webAudience": [],
+    "eventMetrics": [],
+    "featureUsage": [],
+    "paidDelivery": [],
+    "purchaseFlow": null,
+    "reportLedger": [],
+    "revenueDaily": [],
+    "cancellations": [],
+    "eventDelivery": [],
+    "notifications": null,
+    "revenueTotals": [],
+    "authentication": null,
+    "eventPlatforms": [],
+    "landingSources": [],
+    "landingSummary": [],
+    "revenueSources": [],
+    "billingProducts": [],
+    "contextCoverage": [],
+    "landingHandoffs": [],
+    "landingSections": [],
+    "onboardingDaily": [],
+    "retentionWeekly": [],
+    "revenueActivity": [],
+    "billingReporting": [],
+    "creatorEconomics": null,
+    "featureRetention": [],
+    "revenueCountries": [],
+    "attributionLedger": null,
+    "audienceBreakdown": [
+      {
+        "events": 7064,
+        "devices": 127,
+        "audience": "creator / admin",
+        "runtime_unconfirmed_events": 0
+      },
+      {
+        "events": 57311,
+        "devices": 1646,
+        "audience": "customer",
+        "runtime_unconfirmed_events": 0
+      },
+      {
+        "events": 2149,
+        "devices": 2,
+        "audience": "internal",
+        "runtime_unconfirmed_events": 0
+      },
+      {
+        "events": 1592,
+        "devices": 12,
+        "audience": "non-production",
+        "runtime_unconfirmed_events": 0
+      }
+    ],
+    "billingDimensions": [],
+    "landingPlacements": [],
+    "onboardingScreens": [],
+    "onboardingSummary": [],
+    "retentionCoverage": [],
+    "revenueComparison": [],
+    "revenueFinancials": [],
+    "acquisitionSummary": [],
+    "creatorAttribution": null,
+    "landingExperiments": [],
+    "onboardingFriction": [],
+    "onboardingRevisions": [],
+    "membershipActivation": [],
+    "revenueProceedsDaily": [],
+    "landingExperimentDaily": [],
+    "revenueSubscriptionOverview": [],
+    "revenueSubscriptionProducts": []
+  },
+  "previous3_Authentication": {
+    "web": [],
+    "daily": [
+      {
+        "day": "2026-10-22T07:00:00Z",
+        "actors": 608,
+        "failures": 0,
+        "push_opens": 0,
+        "auth_starts": 213,
+        "evaluations": 3,
+        "first_opens": 163,
+        "scan_starts": 3,
+        "report_views": 6,
+        "auth_failures": 14,
+        "paywall_views": 169,
+        "auth_successes": 114,
+        "progress_users": 0,
+        "protocol_tasks": 0,
+        "store_clickers": 133,
+        "course_learners": 0,
+        "purchase_starts": 60,
+        "store_redirects": 146,
+        "referral_invites": 84,
+        "website_visitors": 353,
+        "lessons_completed": 0,
+        "onboarding_starts": 217,
+        "auth_cancellations": 75,
+        "post_login_failures": 0,
+        "purchase_completions": 2,
+        "referral_redemptions": 3,
+        "onboarding_completions": 2
+      },
+      {
+        "day": "2026-10-23T07:00:00Z",
+        "actors": 477,
+        "failures": 0,
+        "push_opens": 0,
+        "auth_starts": 186,
+        "evaluations": 1,
+        "first_opens": 150,
+        "scan_starts": 1,
+        "report_views": 3,
+        "auth_failures": 14,
+        "paywall_views": 144,
+        "auth_successes": 104,
+        "progress_users": 0,
+        "protocol_tasks": 0,
+        "store_clickers": 93,
+        "course_learners": 0,
+        "purchase_starts": 51,
+        "store_redirects": 101,
+        "referral_invites": 81,
+        "website_visitors": 242,
+        "lessons_completed": 0,
+        "onboarding_starts": 189,
+        "auth_cancellations": 63,
+        "post_login_failures": 0,
+        "purchase_completions": 1,
+        "referral_redemptions": 1,
+        "onboarding_completions": 1
+      },
+      {
+        "day": "2026-10-24T07:00:00Z",
+        "actors": 597,
+        "failures": 4,
+        "push_opens": 0,
+        "auth_starts": 308,
+        "evaluations": 3,
+        "first_opens": 237,
+        "scan_starts": 9,
+        "report_views": 8,
+        "auth_failures": 17,
+        "paywall_views": 241,
+        "auth_successes": 172,
+        "progress_users": 0,
+        "protocol_tasks": 0,
+        "store_clickers": 101,
+        "course_learners": 0,
+        "purchase_starts": 98,
+        "store_redirects": 104,
+        "referral_invites": 95,
+        "website_visitors": 253,
+        "lessons_completed": 0,
+        "onboarding_starts": 307,
+        "auth_cancellations": 111,
+        "post_login_failures": 0,
+        "purchase_completions": 4,
+        "referral_redemptions": 6,
+        "onboarding_completions": 3
+      }
+    ],
+    "scans": null,
+    "steps": [],
+    "actions": [],
+    "billing": [],
+    "paywall": [],
+    "revenue": [],
+    "screens": [],
+    "summary": {
+      "actors": 1646,
+      "events": 57311,
+      "failures": 4,
+      "evaluations": 7,
+      "first_opens": 550,
+      "latest_event": "2026-10-25T06:59:52.392"
+    },
+    "releases": [],
+    "referrals": null,
+    "retention": [],
+    "dataHealth": null,
+    "dimensions": [],
+    "engagement": null,
+    "onboarding": [],
+    "scanLedger": [],
+    "acquisition": [],
+    "webAudience": [],
+    "eventMetrics": [],
+    "featureUsage": [],
+    "paidDelivery": [],
+    "purchaseFlow": null,
+    "reportLedger": [],
+    "revenueDaily": [],
+    "cancellations": [],
+    "eventDelivery": [],
+    "notifications": null,
+    "revenueTotals": [],
+    "authentication": {
+      "links": [
+        {
+          "links": 778,
+          "accounts": 536,
+          "latest_link": "2026-10-25T06:57:48.685061"
+        }
+      ],
+      "summary": [
+        {
+          "events": 2290,
+          "starts": 707,
+          "failures": 45,
+          "successes": 390,
+          "latest_event": "2026-10-25T06:59:47.307",
+          "cancellations": 249,
+          "latest_receipt": "2026-10-25T06:59:47.889414",
+          "setup_failures": 0,
+          "classified_issues": 294,
+          "starts_with_attempt": 707,
+          "authenticated_devices": 389,
+          "runtime_unconfirmed_events": 0
+        }
+      ],
+      "support": [],
+      "failures": [
+        {
+          "stage": "provider",
+          "events": 22,
+          "reason": "ERR_REQUEST_UNKNOWN",
+          "outcome": "account_auth_failed",
+          "provider": "apple",
+          "affected_devices": 16
+        },
+        {
+          "stage": "session_exchange",
+          "events": 14,
+          "reason": "http_404",
+          "outcome": "account_auth_failed",
+          "provider": "apple",
+          "affected_devices": 8
+        },
+        {
+          "stage": "session_exchange",
+          "events": 7,
+          "reason": "http_409",
+          "outcome": "account_auth_failed",
+          "provider": "apple",
+          "affected_devices": 3
+        },
+        {
+          "stage": "session_exchange",
+          "events": 2,
+          "reason": "account_not_found",
+          "outcome": "account_auth_failed",
+          "provider": "google",
+          "affected_devices": 2
+        }
+      ],
+      "providers": [
+        {
+          "starts": 374,
+          "failures": 43,
+          "provider": "apple",
+          "successes": 283,
+          "cancellations": 48,
+          "setup_failures": 0
+        },
+        {
+          "starts": 333,
+          "failures": 2,
+          "provider": "google",
+          "successes": 107,
+          "cancellations": 201,
+          "setup_failures": 0
+        }
+      ]
+    },
+    "eventPlatforms": [],
+    "landingSources": [],
+    "landingSummary": [],
+    "revenueSources": [],
+    "billingProducts": [],
+    "contextCoverage": [],
+    "landingHandoffs": [],
+    "landingSections": [],
+    "onboardingDaily": [],
+    "retentionWeekly": [],
+    "revenueActivity": [],
+    "billingReporting": [],
+    "creatorEconomics": null,
+    "featureRetention": [],
+    "revenueCountries": [],
+    "attributionLedger": null,
+    "audienceBreakdown": [
+      {
+        "events": 7064,
+        "devices": 127,
+        "audience": "creator / admin",
+        "runtime_unconfirmed_events": 0
+      },
+      {
+        "events": 57311,
+        "devices": 1646,
+        "audience": "customer",
+        "runtime_unconfirmed_events": 0
+      },
+      {
+        "events": 2149,
+        "devices": 2,
+        "audience": "internal",
+        "runtime_unconfirmed_events": 0
+      },
+      {
+        "events": 1592,
+        "devices": 12,
+        "audience": "non-production",
+        "runtime_unconfirmed_events": 0
+      }
+    ],
+    "billingDimensions": [],
+    "landingPlacements": [],
+    "onboardingScreens": [],
+    "onboardingSummary": [],
+    "retentionCoverage": [],
+    "revenueComparison": [],
+    "revenueFinancials": [],
+    "acquisitionSummary": [],
+    "creatorAttribution": null,
+    "landingExperiments": [],
+    "onboardingFriction": [],
+    "onboardingRevisions": [],
+    "membershipActivation": [],
+    "revenueProceedsDaily": [],
+    "landingExperimentDaily": [],
+    "revenueSubscriptionOverview": [],
+    "revenueSubscriptionProducts": []
+  }
+}

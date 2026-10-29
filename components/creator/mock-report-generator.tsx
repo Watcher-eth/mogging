@@ -138,7 +138,7 @@ export function MockReportGenerator({ images, active, onBack }: { images: Genera
       {desktopReport ? <Button className="rounded-full" onClick={openDesktop}><Maximize2 className="size-4" />Open fullscreen report</Button> : null}
       <p className="text-xs text-zinc-500">Press Escape or Back to editor to return. Edit values and generate again to update the report.</p>
     </section> : <section className="grid min-w-0 gap-4 lg:sticky lg:top-28">
-      <div><h2 className="text-sm font-semibold">iPhone report preview</h2><p className="mt-0.5 text-xs text-zinc-500">390 × 844 points · exported at 3× resolution</p></div>
+      <div><h2 className="text-sm font-semibold">iPhone report preview</h2><p className="mt-0.5 text-xs text-zinc-500">390 × 844 points · exported at 4× resolution</p></div>
       {slide ? <>
         <div className="mx-auto w-full max-w-[390px] overflow-hidden rounded-[42px] border-[6px] border-zinc-900 bg-zinc-900 shadow-xl">{active ? <ContentSlidePreview slide={slide} images={images} format={mockReportFormat} /> : null}</div>
         <Field label="Report scroll position" hint="Scroll to the feature grid or Growth Opportunities before exporting"><input aria-label="Report scroll position" className="w-full accent-black" type="range" min={0} max={scrollMax} step={1} value={slide.mockReport?.scroll ?? 0} onChange={event => setSlide({ ...slide, mockReport: { ...slide.mockReport!, scroll: Number(event.target.value) } })} /></Field>

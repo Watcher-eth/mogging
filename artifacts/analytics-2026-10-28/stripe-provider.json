@@ -1,0 +1,11 @@
+{
+  "checkout": [],
+  "paymentIntents": [],
+  "eventAudit": {
+    "days": 7,
+    "events": 0,
+    "readMs": 113
+  },
+  "usableForProductionConclusions": false,
+  "limitation": "Local Stripe credential mode must be verified; empty results are not proof of zero production activity."
+}

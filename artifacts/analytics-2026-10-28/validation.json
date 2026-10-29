@@ -1,0 +1,273 @@
+{
+  "usd_revenue": [
+    {
+      "period": "current7",
+      "provider": "revenuecat",
+      "charges": "19",
+      "refunds": "1",
+      "missing_usd": "20",
+      "gross_usd": null,
+      "refunds_usd": null,
+      "net_usd": null
+    },
+    {
+      "period": "previous7",
+      "provider": "revenuecat",
+      "charges": "8",
+      "refunds": "0",
+      "missing_usd": "8",
+      "gross_usd": null,
+      "refunds_usd": null,
+      "net_usd": null
+    },
+    {
+      "period": "previous7",
+      "provider": "stripe",
+      "charges": "2",
+      "refunds": "0",
+      "missing_usd": "0",
+      "gross_usd": "9.980000",
+      "refunds_usd": null,
+      "net_usd": "9.980000"
+    },
+    {
+      "period": "today_partial",
+      "provider": "revenuecat",
+      "charges": "1",
+      "refunds": "0",
+      "missing_usd": "1",
+      "gross_usd": null,
+      "refunds_usd": null,
+      "net_usd": null
+    }
+  ],
+  "recent_auth_modes": [
+    {
+      "event_name": "account_auth_started",
+      "provider": "apple",
+      "mode": null,
+      "auth_mode": null,
+      "stage": null,
+      "reason": null,
+      "error": null,
+      "events": "358",
+      "devices": "287"
+    },
+    {
+      "event_name": "account_auth_started",
+      "provider": "google",
+      "mode": null,
+      "auth_mode": null,
+      "stage": null,
+      "reason": null,
+      "error": null,
+      "events": "262",
+      "devices": "167"
+    },
+    {
+      "event_name": "account_auth_failed",
+      "provider": "apple",
+      "mode": null,
+      "auth_mode": null,
+      "stage": null,
+      "reason": "authentication_failed",
+      "error": "ERR_REQUEST_UNKNOWN",
+      "events": "16",
+      "devices": "13"
+    },
+    {
+      "event_name": "account_auth_failed",
+      "provider": "apple",
+      "mode": null,
+      "auth_mode": null,
+      "stage": null,
+      "reason": "authentication_failed",
+      "error": "http_404",
+      "events": "16",
+      "devices": "13"
+    },
+    {
+      "event_name": "account_auth_failed",
+      "provider": "google",
+      "mode": null,
+      "auth_mode": null,
+      "stage": null,
+      "reason": "authentication_failed",
+      "error": "account_not_found",
+      "events": "3",
+      "devices": "3"
+    },
+    {
+      "event_name": "account_auth_failed",
+      "provider": "apple",
+      "mode": null,
+      "auth_mode": null,
+      "stage": null,
+      "reason": "authentication_failed",
+      "error": "http_401",
+      "events": "3",
+      "devices": "1"
+    },
+    {
+      "event_name": "account_auth_failed",
+      "provider": "apple",
+      "mode": null,
+      "auth_mode": null,
+      "stage": null,
+      "reason": "authentication_failed",
+      "error": "unknown_error",
+      "events": "2",
+      "devices": "2"
+    },
+    {
+      "event_name": "account_auth_failed",
+      "provider": "apple",
+      "mode": null,
+      "auth_mode": null,
+      "stage": null,
+      "reason": "authentication_failed",
+      "error": "provider_not_active",
+      "events": "1",
+      "devices": "1"
+    }
+  ],
+  "retention_mature": [
+    {
+      "period": "current7",
+      "day": 1,
+      "eligible": "13",
+      "retained": "1"
+    },
+    {
+      "period": "current7",
+      "day": 7,
+      "eligible": "0",
+      "retained": "0"
+    },
+    {
+      "period": "previous7",
+      "day": 1,
+      "eligible": "6",
+      "retained": "0"
+    },
+    {
+      "period": "previous7",
+      "day": 7,
+      "eligible": "6",
+      "retained": "0"
+    }
+  ],
+  "attribution_coverage": [
+    {
+      "source": "browser_clicks",
+      "records": "317",
+      "identities": "251"
+    },
+    {
+      "source": "native_link",
+      "records": "1",
+      "identities": "1"
+    },
+    {
+      "source": "store_campaign_metrics",
+      "records": "0",
+      "identities": "0"
+    }
+  ],
+  "creator_posts": [
+    {
+      "display_name": "Jannis Müpller",
+      "posts": "31",
+      "approved_posts": "31",
+      "approved_views": "1880776",
+      "approved_cents": "76723"
+    },
+    {
+      "display_name": "zukai method",
+      "posts": "9",
+      "approved_posts": "8",
+      "approved_views": "865400",
+      "approved_cents": "28000"
+    },
+    {
+      "display_name": "ascendic international",
+      "posts": "5",
+      "approved_posts": "5",
+      "approved_views": "690000",
+      "approved_cents": "32313"
+    },
+    {
+      "display_name": "Uis Jaw",
+      "posts": "5",
+      "approved_posts": "5",
+      "approved_views": "290000",
+      "approved_cents": "10350"
+    },
+    {
+      "display_name": "Діма",
+      "posts": "5",
+      "approved_posts": "5",
+      "approved_views": "229000",
+      "approved_cents": "3990"
+    },
+    {
+      "display_name": "Bannu",
+      "posts": "6",
+      "approved_posts": "6",
+      "approved_views": "211600",
+      "approved_cents": "9050"
+    },
+    {
+      "display_name": "Bpedits",
+      "posts": "1",
+      "approved_posts": "1",
+      "approved_views": "163000",
+      "approved_cents": "3000"
+    },
+    {
+      "display_name": "Prenzzz Hstls",
+      "posts": "1",
+      "approved_posts": "1",
+      "approved_views": "102800",
+      "approved_cents": "4000"
+    },
+    {
+      "display_name": "Bjorni Aliaj",
+      "posts": "2",
+      "approved_posts": "2",
+      "approved_views": "102700",
+      "approved_cents": "4500"
+    },
+    {
+      "display_name": "PRIME",
+      "posts": "3",
+      "approved_posts": "3",
+      "approved_views": "100700",
+      "approved_cents": "5100"
+    },
+    {
+      "display_name": "silver.psl1",
+      "posts": "1",
+      "approved_posts": "1",
+      "approved_views": "100000",
+      "approved_cents": "3000"
+    },
+    {
+      "display_name": "𝐀𝐑𝐀𝐕𝐈𝐗",
+      "posts": "2",
+      "approved_posts": "2",
+      "approved_views": "87700",
+      "approved_cents": "5000"
+    }
+  ],
+  "Asia/Saigon": {
+    "valid": false,
+    "error": "time zone \"Asia/Saigon\" not recognized",
+    "code": "22023"
+  },
+  "Europe/Kiev": {
+    "valid": false,
+    "error": "time zone \"Europe/Kiev\" not recognized",
+    "code": "22023"
+  }
+}

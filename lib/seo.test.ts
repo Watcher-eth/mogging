@@ -17,12 +17,19 @@ describe('search indexing policy', () => {
     expect(canonicalUrl('/what-is-mogging/#origin')).toBe('https://www.mogging.com/what-is-mogging')
   })
 
+  test('consolidates regional copies to their language homepage', () => {
+    expect(canonicalUrl('/de-AT?campaign=1')).toBe('https://www.mogging.com/de')
+    expect(canonicalUrl('/de-CH/')).toBe('https://www.mogging.com/de')
+    expect(canonicalUrl('/es-419')).toBe('https://www.mogging.com/es')
+    expect(canonicalUrl('/fr')).toBe('https://www.mogging.com/fr')
+  })
+
   test('keeps all sitemap routes indexable', () => {
     for (const path of publicPaths) expect(robotsForPath(path)).toStartWith('index,')
   })
 
   test('excludes utility, private report, placeholder and unknown routes', () => {
-    for (const path of ['/share/[token]', '/admin/creators', '/creator', '/auth/register', '/app/handoff', '/app/mobile-auth', '/ranking', '/404', '/not-a-real-page']) {
+    for (const path of ['/battle', '/share/[token]', '/admin/creators', '/creator', '/auth/register', '/app/handoff', '/app/mobile-auth', '/ranking', '/404', '/not-a-real-page']) {
       expect(robotsForPath(path)).toBe('noindex, follow')
     }
   })

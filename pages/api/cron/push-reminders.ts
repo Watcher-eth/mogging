@@ -4,7 +4,7 @@ import { timingSafeEqual } from 'node:crypto'
 import { and, asc, desc, eq, gt, lt, sql } from 'drizzle-orm'
 import { db, schema } from '@/lib/db'
 import { ApiError, handleApiError, json, methodNotAllowed } from '@/lib/api/http'
-import { reminderFor, PUSH_HOUR, PUSH_WEEKDAYS } from '@/lib/push/schedule'
+import { reminderFor } from '@/lib/push/schedule'
 import { deliverPush } from '@/lib/push/delivery'
 import { recordServerEvent } from '@/lib/analytics/events'
 
@@ -51,16 +51,15 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
       const devices = await db.select().from(latestDevices)
         .where(and(
           gt(latestDevices.userId, cursor), gt(latestDevices.sessionExpiresAt, now),
-          sql`extract(hour from (${now.toISOString()}::timestamptz at time zone ${latestDevices.timezone})) = ${PUSH_HOUR}`,
-          sql`extract(isodow from (${now.toISOString()}::timestamptz at time zone ${latestDevices.timezone})) in (${sql.join(Object.values(PUSH_WEEKDAYS).map(day => sql`${day}`), sql`, `)})`,
-          sql`not exists (select 1 from ${schema.pushDeliveries} where ${schema.pushDeliveries.userId} = ${latestDevices.userId}
-            and ${schema.pushDeliveries.slot} = to_char(${now.toISOString()}::timestamptz at time zone ${latestDevices.timezone}, 'YYYY-MM-DD'))`,
         ))
         .orderBy(asc(latestDevices.userId)).limit(100)
       if (!devices.length) break
       for (let offset = 0; offset < devices.length; offset += 10) {
         if (Date.now() - started >= 40_000) { partial = true; break }
         await Promise.all(devices.slice(offset, offset + 10).map(async device => {
+          // Intl owns local scheduling, just as it owns registration validation.
+          // PostgreSQL and ICU disagree on valid aliases. Invalid legacy devices
+          // are skipped independently; delivery claims still prevent duplicate sends.
           const reminder = reminderFor(now, device.timezone, device.protocolDays)
           if (!reminder) return
           const result = await deliverPush(device, reminder)

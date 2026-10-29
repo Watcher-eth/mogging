@@ -105,3 +105,20 @@ test('database JSON timestamps without offsets retain their stored UTC interpret
   expect(performanceDay('2026-10-21T02:00:00')).toBe('2026-10-20')
   expect(performanceDay('2026-01-01T07:59:59')).toBe('2025-12-31')
 })
+
+test('weekly creator leaders compare submission cohorts independently of the page period and include inactive creators', () => {
+  const source = data([
+    post('current', { createdAt: '2026-10-15T07:00:00Z', viewCountThreshold: 30000, adminViewCountThreshold: 25000 }),
+    post('previous', { createdAt: '2026-10-15T06:59:59Z', viewCountThreshold: 10000, adminViewCountThreshold: 10000 }),
+    post('inactive', { creatorProfileId: 'inactive', creatorName: 'Inactive', createdAt: '2026-10-10T18:00:00Z' }),
+    post('older', { createdAt: '2026-10-08T06:59:59Z', viewCountThreshold: 500000 }),
+    post('other-platform', { platform: 'instagram', viewCountThreshold: 70000 }),
+    post('excluded', { creatorProfileId: PERFORMANCE_EXCLUDED_CREATOR_IDS[0] }),
+  ])
+  const report = buildCreatorPerformance(source, { ...options, days: 30, platform: 'tiktok' })
+  expect(report.weekStart).toBe('2026-10-15')
+  expect(report.previousWeekStart).toBe('2026-10-08')
+  expect(report.creators.find(row => row.id === 'creator')).toMatchObject({ weekViews: 30000, previousWeekViews: 10000, weekPosts: 1, previousWeekPosts: 1 })
+  expect(report.creators.find(row => row.id === 'inactive')).toMatchObject({ weekViews: 0, previousWeekViews: 20000, weekPosts: 0, previousWeekPosts: 1 })
+  expect(report.creators).toHaveLength(2)
+})

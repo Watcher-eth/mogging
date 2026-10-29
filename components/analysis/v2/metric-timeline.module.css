@@ -1,0 +1,4 @@
+.instrument { position: relative; width: 100%; margin: 8px auto 0; }
+.timelineControl { position: absolute; inset: 0; width: 100%; height: 100%; opacity: 0; cursor: ew-resize; touch-action: pan-y; }
+.instrument:has(.timelineControl:focus-visible) { outline: 2px solid #929299; outline-offset: 8px; border-radius: 6px; }
+.instrument svg { display: block; width: 100%; overflow: visible; font-family: inherit; }

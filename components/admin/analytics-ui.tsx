@@ -13,8 +13,8 @@ export const money = (value: unknown, currency: string) => value == null ? '—'
 export function Notice({ children }: { children: ReactNode }) {
   return <div role="status" className="admin-notice">{children}</div>
 }
-export function Stat({ title, value, note }: { title: string; value: string; note: string }) {
-  return <div className="admin-metric"><p className="text-xs text-[#73777d]">{title}</p><p className="mt-3 text-[32px] font-medium tabular-nums tracking-[-0.045em] text-[#181a1d]">{value}</p><p className="mt-2 text-xs leading-5 text-[#858a91]">{note}</p></div>
+export function Stat({ title, value, note, change }: { title: string; value: string; note: string; change?: ReactNode }) {
+  return <div className="admin-metric"><p className="text-xs text-[#73777d]">{title}</p><div className="mt-3 flex flex-wrap items-baseline gap-x-3 gap-y-1"><p className="text-[32px] font-medium tabular-nums tracking-[-0.045em] text-[#181a1d]">{value}</p>{change}</div><p className="mt-2 text-xs leading-5 text-[#858a91]">{note}</p></div>
 }
 export function Panel({ title, description, note, children, action }: { title: string; description?: string; note?: string; children: ReactNode; action?: ReactNode }) {
   const id = useId()

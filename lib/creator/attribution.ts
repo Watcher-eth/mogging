@@ -139,7 +139,11 @@ export async function findCreatorTrackingLinkForPost(postUrl: string) {
     .from(schema.creatorSubmissions)
     .innerJoin(schema.creatorSocialAccounts, and(eq(schema.creatorSocialAccounts.id, schema.creatorSubmissions.socialAccountId), eq(schema.creatorSocialAccounts.creatorProfileId, schema.creatorSubmissions.creatorProfileId)))
     .innerJoin(schema.creatorProfiles, eq(schema.creatorProfiles.id, schema.creatorSocialAccounts.creatorProfileId))
-    .innerJoin(schema.creatorTrackingLinks, eq(schema.creatorTrackingLinks.socialAccountId, schema.creatorSocialAccounts.id))
+    .innerJoin(schema.creatorTrackingLinks, or(eq(schema.creatorTrackingLinks.socialAccountId, schema.creatorSocialAccounts.id),
+      sql`exists(select 1 from creator_social_accounts shared
+        where shared.id=${schema.creatorTrackingLinks.socialAccountId}
+          and shared.creator_profile_id=${schema.creatorSocialAccounts.creatorProfileId}
+          and lower(shared.handle)=lower(${schema.creatorSocialAccounts.handle}))`))
     .where(and(or(eq(schema.creatorSubmissions.postKey, post.key), eq(schema.creatorSubmissions.postUrl, post.url)),
       eq(schema.creatorSubmissions.isDraft, false), inArray(schema.creatorSubmissions.status, ['approved', 'paid']),
       eq(schema.creatorSocialAccounts.status, 'approved'),

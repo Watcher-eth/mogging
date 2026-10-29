@@ -1,4 +1,5 @@
 import { useTranslation } from 'react-i18next'
+import { isEmbeddedBrowser } from '@/lib/auth/browser-flow'
 import { SidebarProvider } from '@/components/ui/sidebar'
 import Link from 'next/link'
 import Image from 'next/image'
@@ -265,12 +266,12 @@ export function AppShell({ children }: AppShellProps) {
             )}
       </AppHeader> : null}
 
-      <main className={creatorSignIn || creatorSetup || creatorReferral ? 'flex w-full flex-1 flex-col' : creatorRoute ? 'mx-auto flex w-full max-w-[1440px] flex-1 flex-col' : immersive ? 'w-full' : router.pathname === '/faq' ? 'w-full px-5 py-8 sm:px-10' : 'mx-auto w-full max-w-6xl px-4 py-8 sm:px-6'}>
+      <main className={creatorSignIn || creatorSetup || creatorReferral ? 'flex w-full flex-1 flex-col' : creatorRoute ? 'mx-auto flex w-full max-w-[var(--workspace-max)] flex-1 flex-col' : immersive ? 'w-full' : router.pathname === '/faq' ? 'w-full px-5 py-8 sm:px-10' : 'mx-auto w-full max-w-[var(--page-max)] px-4 py-8 sm:px-6'}>
         {creatorRoute && !creatorSignIn && !creatorSetup ? <SidebarProvider className="min-h-0 flex-1 flex-col">{children}</SidebarProvider> : children}
       </main>
 
       {!creatorSetup && !creatorReferral && !creatorSupport ? <footer className={`border-t border-zinc-200 bg-white py-8 text-sm text-zinc-600 ${router.pathname === '/' ? '' : 'px-5 sm:px-10'}`}>
-        <nav aria-label={t('footer.resources')} className={`mx-auto flex max-w-6xl flex-wrap gap-x-6 gap-y-4 ${router.pathname === '/' ? 'px-6 sm:px-10' : ''}`}>
+        <nav aria-label={t('footer.resources')} className={`mx-auto flex max-w-[var(--page-max)] flex-wrap gap-x-6 gap-y-4 ${router.pathname === '/' ? 'px-6 sm:px-10' : ''}`}>
           <Link href="/what-is-mogging" className="hover:text-black">{t('footer.what')}</Link>
           <Link href="/how-face-analysis-works" className="hover:text-black">{t('footer.how')}</Link>
           <Link href="/faq" className="hover:text-black">{t('footer.faq')}</Link>
@@ -691,9 +692,11 @@ export function LoginDialog({
   children?: ReactNode
 }) {
   const [availableProviders, setAvailableProviders] = useState<Set<string> | null>(null)
+  const [embeddedAuth, setEmbeddedAuth] = useState(false)
+  const authPending = useRef(false)
   const modelImages = [
     '/model.png',
-    '/model2.png',
+    '/landing/report-city-portrait.webp',
     '/model3.png',
     '/model4.png',
     '/model5.png',
@@ -710,7 +713,8 @@ export function LoginDialog({
 
   useEffect(() => {
     if (!open) return
-
+    authPending.current = false
+    setEmbeddedAuth(isEmbeddedBrowser(navigator.userAgent))
     let cancelled = false
 
     getProviders().then((providers) => {
@@ -723,10 +727,10 @@ export function LoginDialog({
     }
   }, [open])
 
-  const authPending = useRef(false)
   function continueWithProvider(provider: string) {
     if (authPending.current) return
     authPending.current = true
+    document.cookie = `mogging_auth_provider=${encodeURIComponent(provider)}; Path=/; Max-Age=900; SameSite=Lax${location.protocol === 'https:' ? '; Secure' : ''}`
     void signIn(provider, { callbackUrl }).catch(() => {
       authPending.current = false
       toast.error('Unable to open sign-in. Please try again.')
@@ -832,6 +836,7 @@ export function LoginDialog({
             ))}
           </div>
           {audience === 'creator' && availableProviders !== null && authButtons.some((button) => !availableProviders.has(button.id)) ? <p className="text-center text-xs text-zinc-500">Some sign-in options are currently unavailable.</p> : null}
+          {audience === 'creator' && embeddedAuth ? <p className="text-sm leading-5 text-zinc-600">For reliable sign-in, open this page in Safari or Chrome from the browser menu, then continue there.</p> : null}
           {children}
         </div>
       </DialogContent>

@@ -99,7 +99,7 @@ const sections: LegalSection[] = [
       'Reasons for storing report-related face data: Mogging stores this data so you can view prior reports, compare changes over time, regenerate overlays, create and serve share cards, receive support, delete your profile, troubleshoot errors, secure the service, prevent abuse, resolve disputes, and comply with legal obligations.',
       'Length of retention in Mogging systems: uploaded face photos, landmark points, report outputs, overlay data, and share links are retained while your profile or report remains active, and in any event no longer than 12 months after your last account activity unless a longer period is required for security, legal compliance, dispute resolution, or fraud prevention. We use this finite period because reports and share links are account-history features, while stale inactive data is not needed indefinitely.',
       'Temporary processing files and generated share-image caches are kept only as long as needed to complete the request, improve performance, or support a current share action. Server or CDN caches for generated share images are normally short-lived and may persist for up to 24 hours before automatic expiry or replacement.',
-      'Deletion: if you delete your profile in the app or request deletion at support@mogging.app, we delete or de-identify active account records, uploaded face photos, reports, landmarks, and share links tied to that profile. Active systems are targeted for deletion promptly after the request is processed, and backup copies are overwritten or removed on their normal cycle, generally within 90 days.',
+      'Deletion: if you delete your profile in the app or request deletion at gabe@mogging.com, we delete or de-identify active account records, uploaded face photos, reports, landmarks, and share links tied to that profile. Active systems are targeted for deletion promptly after the request is processed, and backup copies are overwritten or removed on their normal cycle, generally within 90 days.',
       'Third-party retention: Moonshot/Kimi may retain submitted user content and related logs according to the Kimi OpenPlatform Privacy Policy, including while the API account is active and as long as necessary for service, safety, security, dispute, legitimate business, or legal purposes. Hosting, storage, database, authentication, payment, security, analytics, and support providers may retain service records according to their own processor obligations and backup cycles, but they are not authorized by Mogging to identify users from face data or create biometric templates for Mogging.',
     ],
   },
@@ -108,8 +108,8 @@ const sections: LegalSection[] = [
     label: 'Choices',
     title: 'Your Choices and Requests',
     body: [
-      'You can request access, correction, deletion, or help with account data by emailing support@mogging.app. Include the account email, app install context, checkout email, or relevant share link when available so we can locate the right records.',
-      { items: ['You can manage or cancel Apple subscriptions in your Apple ID subscription settings.', 'You can request purchase support for web payments by contacting support@mogging.app with the checkout email and approximate purchase time.', 'You can delete your profile in the app where available or request deletion by email.', 'You can control camera, photo library, location, notification, tracking, and other device permissions in system settings.'] },
+      'You can request access, correction, deletion, or help with account data by emailing gabe@mogging.com. Include the account email, app install context, checkout email, or relevant share link when available so we can locate the right records.',
+      { items: ['You can manage or cancel Apple subscriptions in your Apple ID subscription settings.', 'You can request purchase support for web payments by contacting gabe@mogging.com with the checkout email and approximate purchase time.', 'You can delete your profile in the app where available or request deletion by email.', 'You can control camera, photo library, location, notification, tracking, and other device permissions in system settings.'] },
     ],
   },
   {
@@ -126,7 +126,7 @@ const sections: LegalSection[] = [
     label: 'Contact',
     title: 'Contact Us',
     body: [
-      'For privacy questions or data requests, email support@mogging.app with the subject Privacy Request and include the account email or relevant share link when available.',
+      'For privacy questions or data requests, email gabe@mogging.com with the subject Privacy Request and include the account email or relevant share link when available.',
     ],
   },
 ]

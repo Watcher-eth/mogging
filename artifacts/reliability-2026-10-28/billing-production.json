@@ -1,0 +1,30 @@
+{
+  "recovery": [
+    {
+      "event_name": "backend_billing_reconciliation",
+      "occurred_at": "2026-10-28 23:30:49.355",
+      "properties": {
+        "partial": false,
+        "provider": "stripe",
+        "covered_until": 1793230249,
+        "webhook_ready": true,
+        "events_checked": 181,
+        "events_recovered": 0,
+        "audit_covered_until": 1793230249
+      }
+    }
+  ],
+  "request": [
+    {
+      "occurred_at": "2026-10-28 23:30:52.671",
+      "properties": {
+        "code": "ok",
+        "feature": "payments/stripe-reconciliation",
+        "outcome": "ok",
+        "trace_id": "01aeba9a-326a-4718-bb04-dde97821102a",
+        "duration_ms": 3315
+      }
+    }
+  ],
+  "pending": []
+}

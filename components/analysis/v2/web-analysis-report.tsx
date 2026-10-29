@@ -1,7 +1,7 @@
-import type { ReactNode } from 'react'
+import type { ComponentProps, ReactNode } from 'react'
 import { AnalysisReport, type DesktopReportCategory } from '../analysis-report'
 import { V2ReportDetail } from './report-detail'
-import { buildWebRubricGroups, type WebRubricGroup } from '@/lib/analysis-v2/web-report'
+import { overallScoreFields, buildCheekContextGroups, buildLegacyRubricGroups, buildWebRubricGroups, type WebRubricGroup } from '@/lib/analysis-v2/web-report'
 import type { WebReport } from '@/lib/analysis-v2/report-schema'
 import type { FaceLandmarksPayload } from '@/lib/analysis/landmarks'
 import type { OverlayPreset } from '@/lib/creator/mobile-overlay-engine/schema'
@@ -9,6 +9,11 @@ import registry from '@/lib/analysis-v2/rubric-registry.json'
 import styles from './rubrics.module.css'
 
 const titles: Record<string, string> = { eyes: 'Eyes', brows: 'Brows', nose: 'Nose', mouth: 'Mouth', jaw: 'Jaw', cheeks: 'Cheeks', face: 'Face shape', proportions: 'Proportions', symmetry: 'Symmetry', skin: 'Skin', hair: 'Hair', ears: 'Ears' }
+
+export function LegacyAnalysisReport(props: Omit<ComponentProps<typeof AnalysisReport>, 'renderDetails'>) {
+  return <div className={styles.reportShell}><AnalysisReport {...props} naturalImage renderDetails={category => <V2ReportDetail category={category} groups={buildLegacyRubricGroups(category)} />} /></div>
+}
+
 function contourOverlay(id: 'hair' | 'ears', report: WebReport): OverlayPreset {
   return { id: `web-v2-${id}`, footer: `[ ${id.toUpperCase()} ]`, primitives: report.contours[id].map((points, index) => ({
     id: `${id}-${index}`, kind: 'polyline', points: points.map(point => ({ point })), strokeWidth: .32, opacity: .8,
@@ -27,14 +32,10 @@ export function WebAnalysisReport({ report, imageSrc, landmarks, pslScore, child
     }
   })
   const getScore = (id: string) => report.categories.find(category => category.id === id)!.score
-  const overallFeatures = [
-    ['Eye area', getScore('eyes')], ['Jaw & chin', getScore('jaw')], ['Cheekbone structure', getScore('cheeks')],
-    ['Facial thirds', getScore('proportions')], ['Symmetry', getScore('symmetry')], ['Skin quality', getScore('skin')],
-  ] as const
   categories.push({ id: 'overall', title: 'Overall', subtitle: 'Facial harmony, structure and balance', scoreLabel: 'Mogging Score', score: report.overallScore, features: [], explanation: report.summary })
-  const overallGroups: WebRubricGroup[] = [{ id: 'overall', title: 'Overall', rubrics: [
-    { id: 'overall.psl', label: 'PSL score', value: `${pslScore.toFixed(1)} / 8`, visual: 'Orbit', scale: 'quality', positions: [pslScore / 8], grade: null },
-    ...overallFeatures.map(([label, score]) => ({ id: `overall.${label}`, label, value: `${score.toFixed(1)} / 10`, visual: label === 'Symmetry' ? 'Orbit' : 'Text', scale: 'quality' as const, positions: label === 'Symmetry' ? [score / 10] : [], grade: null })),
-  ] }]
-  return <div className={styles.reportShell}><AnalysisReport naturalImage categories={categories} imageSrc={imageSrc} landmarks={landmarks} score={report.overallScore} pslScore={pslScore} renderDetails={category => <V2ReportDetail category={category} groups={category.id === 'overall' ? overallGroups : buildWebRubricGroups(category.id, report.entries)} />}>{children}</AnalysisReport></div>
+  const overallGroups: WebRubricGroup[] = [{ id: 'overall', title: 'Overall', rubrics: overallScoreFields.map(([id, label, max]) => {
+    const score = id === 'psl' ? pslScore : getScore(id)
+    return { id: `overall.${id}`, label, value: `${score.toFixed(1)} / ${max}`, visual: 'Orbit', scale: 'quality', positions: [score / max], grade: null }
+  }) }]
+  return <div className={styles.reportShell}><AnalysisReport naturalImage categories={categories} imageSrc={imageSrc} landmarks={landmarks} score={report.overallScore} pslScore={pslScore} renderDetails={category => <V2ReportDetail category={category} groups={category.id === 'overall' ? overallGroups : [...buildWebRubricGroups(category.id, report.entries), ...(category.id === 'cheeks' ? buildCheekContextGroups(report.entries) : [])]} />}>{children}</AnalysisReport></div>
 }

@@ -1,0 +1,78 @@
+{
+  "schema": [
+    {
+      "table_name": "billing_reconciliation_state",
+      "column_name": "lease_id"
+    },
+    {
+      "table_name": "billing_reconciliation_state",
+      "column_name": "lease_until"
+    },
+    {
+      "table_name": "billing_reconciliation_state",
+      "column_name": "provider"
+    },
+    {
+      "table_name": "billing_reconciliation_state",
+      "column_name": "state"
+    },
+    {
+      "table_name": "billing_reconciliation_state",
+      "column_name": "updated_at"
+    },
+    {
+      "table_name": "creator_sprints",
+      "column_name": "budget_pool_id"
+    }
+  ],
+  "billing": [
+    {
+      "provider": "stripe",
+      "state": {
+        "audit": null,
+        "auditedAt": 1793230249,
+        "incremental": null,
+        "coveredUntil": 1793230249
+      },
+      "lease_until": null,
+      "updated_at": "2026-10-28 23:30:52.068633+00"
+    }
+  ],
+  "jobs": [
+    {
+      "feature": "cron/push-reminders",
+      "outcome": "ok",
+      "code": "ok",
+      "runs": "15",
+      "last": "2026-10-28 23:31:44.266"
+    },
+    {
+      "feature": "cron/push-reminders",
+      "outcome": "rejected",
+      "code": "http_401",
+      "runs": "1",
+      "last": "2026-10-28 23:26:35.41"
+    },
+    {
+      "feature": "payments/stripe-reconciliation",
+      "outcome": "failed",
+      "code": "http_503",
+      "runs": "3",
+      "last": "2026-10-28 23:27:09.036"
+    },
+    {
+      "feature": "payments/stripe-reconciliation",
+      "outcome": "ok",
+      "code": "ok",
+      "runs": "1",
+      "last": "2026-10-28 23:30:52.671"
+    },
+    {
+      "feature": "payments/stripe-reconciliation",
+      "outcome": "rejected",
+      "code": "http_401",
+      "runs": "1",
+      "last": "2026-10-28 23:26:36.76"
+    }
+  ]
+}

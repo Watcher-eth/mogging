@@ -75,13 +75,13 @@ export const categoryOptions = [
 export function categoryScoreMax(categoryId: string) { return categoryId === 'psl' ? 8 : 10 }
 
 export const templateOptions: Array<{ id: SlideTemplateId; label: string; description: string }> = [
-  { id: 'score-potential', label: 'Mobile report share · Original 1', description: 'The original mobile total-score and potential layout' },
+  { id: 'score-potential', label: 'Report share · Score & potential', description: 'The app’s portrait share layout with score and potential' },
   { id: 'precision', label: 'Precision · Feature study', description: 'Monochrome editorial slices and one selected feature score' },
-  { id: 'cta', label: 'Score reveal · Original 5', description: 'Animated category rings and report stats' },
+  { id: 'cta', label: 'Face scan · Score reveal', description: 'Animated category rings and report stats' },
   { id: 'performance', label: 'Performance · Score cover', description: 'Sculptural monochrome portrait and a commanding score' },
   { id: 'phone-report', label: 'Report · iPhone edition', description: 'The actual report inside an iPhone frame' },
   { id: 'afterimage', label: 'Afterimage · Motion edition', description: 'A sharp portrait and teal light trails, with current and potential scores' },
-  { id: 'editorial', label: 'Glow-up · Original 2', description: 'The original portrait and glow-up headline' },
+  { id: 'editorial', label: 'Portrait · Glow-up', description: 'A portrait with your glow-up headline' },
   { id: 'handheld-report', label: 'Report · In your hand', description: 'A photographed handheld phone with your live report' },
 ]
 

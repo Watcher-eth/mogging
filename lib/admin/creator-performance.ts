@@ -6,6 +6,7 @@ export const PERFORMANCE_TIME_ZONE = 'America/Los_Angeles'
 export const PERFORMANCE_EXCLUDED_CREATOR_IDS = [
   'd6073111-cfa8-48bb-b9db-98fc0de28381', // matheo.psl
   '106184ef-136c-4768-ad5e-fd8a01b3d571', // bejapsl
+  '9dad60a6-f37e-48fa-9167-26aab7d4ffac', // Jeff / youcalb
   '4e0596a2-39b3-41ee-9734-077eff30899d', // Valerie
 ] as const
 const excludedCreators = new Set<string>(PERFORMANCE_EXCLUDED_CREATOR_IDS)
@@ -68,21 +69,26 @@ export function buildCreatorPerformance(data: PerformanceInput, options: { days:
   const start = options.days ? shiftDay(today, 1 - options.days) : firstDay
   const days = Math.max(1, Math.round((Date.parse(`${today}T12:00:00Z`) - Date.parse(`${start}T12:00:00Z`)) / 86400000) + 1)
   const previousStart = shiftDay(start, -days)
+  const weekStart = shiftDay(today, -6), previousWeekStart = shiftDay(today, -13)
   const daily = new Map(Array.from({ length: days }, (_, i) => {
     const day = shiftDay(start, i)
     const bucket = { ...emptyTotals(), day, tiktokViews: 0, instagramViews: 0, cashPaidCents: cashByDay.get(day) || 0 }
     return [day, bucket] as const
   }))
   const total = emptyTotals(), previous = emptyTotals(), allTime = emptyTotals()
-  const creators = new Map<string, Totals & { id: string; name: string; tiktokViews: number; instagramViews: number }>()
+  const creators = new Map<string, Totals & { id: string; name: string; tiktokViews: number; instagramViews: number; weekViews: number; previousWeekViews: number; weekPosts: number; previousWeekPosts: number }>()
   const creatorNames = new Map(data.creators.map(c => [c.id, c.displayName]))
   const periodCreators = new Map<string, Totals & { id: string; name: string; tiktokViews: number; instagramViews: number }>()
   const platforms = new Map<string, Totals & { platform: string }>()
   for (const post of posts) {
-    const creator = creators.get(post.creatorId) || { ...emptyTotals(), id: post.creatorId, name: creatorNames.get(post.creatorId) || post.creatorName, tiktokViews: 0, instagramViews: 0 }
+    const creator = creators.get(post.creatorId) || { ...emptyTotals(), id: post.creatorId, name: creatorNames.get(post.creatorId) || post.creatorName, tiktokViews: 0, instagramViews: 0, weekViews: 0, previousWeekViews: 0, weekPosts: 0, previousWeekPosts: 0 }
     add(creator, post)
     if (post.platform === 'tiktok') creator.tiktokViews += post.reportedViews
     if (post.platform === 'instagram') creator.instagramViews += post.reportedViews
+    if (post.day && post.day <= today && post.day >= previousWeekStart) {
+      if (post.day >= weekStart) { creator.weekViews += post.reportedViews; creator.weekPosts++ }
+      else { creator.previousWeekViews += post.reportedViews; creator.previousWeekPosts++ }
+    }
     creators.set(post.creatorId, creator)
     add(allTime, post)
     if (!post.day || post.day < start || post.day > today) {
@@ -103,7 +109,7 @@ export function buildCreatorPerformance(data: PerformanceInput, options: { days:
     add(platform, post)
     platforms.set(post.platform, platform)
   }
-  return { start, today, days, total, previous, allTime, excludedPayments, undatedPayments,
+  return { start, today, days, weekStart, previousWeekStart, total, previous, allTime, excludedPayments, undatedPayments,
     cashPaidCents: [...daily.values()].reduce((sum, row) => sum + row.cashPaidCents, 0),
     daily: [...daily.values()].map(row => ({ ...row, earned: row.earnedCents / 100, cashPaid: row.cashPaidCents / 100, cpm: viewCpm(row.earnedCents, row.costViews) })),
     periodCreators: [...periodCreators.values()].sort((a, b) => b.reportedViews - a.reportedViews),

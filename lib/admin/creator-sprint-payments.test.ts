@@ -44,7 +44,11 @@ const query = {
 }
 const tx = {
   query,
-  execute: async (query: SQL) => new PgDialect().sqlToQuery(query).sql.startsWith('select amount_cents') ? [] : [{ cents: used }],
+  execute: async (query: SQL) => {
+    const text = new PgDialect().sqlToQuery(query).sql.trim()
+    if (text.startsWith('select id, budget_cents, terms')) return [{ id: 'sprint', budget_cents: budget, terms }]
+    return text.startsWith('select amount_cents') ? [] : [{ cents: used, other_pending_cents: 0 }]
+  },
   select: () => ({
     from: (table: unknown) => ({
       where: () => ({
@@ -135,7 +139,7 @@ test('approval reserves saved sprint rates and locks the budget and submission',
 test('approval cannot exceed remaining budget but permits unmet campaign requirements', async () => {
   used = 1
   await expect(reviewCreatorResource(review)).rejects.toThrow(
-    'exceed the sprint budget',
+    'exceed the shared campaign budget',
   )
   expect(submission.status).toBe('pending')
   used = 0
@@ -255,7 +259,7 @@ test('rereview incremental approval still respects the remaining campaign budget
   submission = { ...submission, status: 'in_review', reviewRequestedAt: new Date(), approvedAmountCents: 1000,
     sprintTerms: { ...terms, milestones: [...terms.milestones, { views: 20000, amountCents: 3000 }] } }
   pastPayments = [{ amountCents: 1000, status: 'paid' }]; used = 1000; budget = 2999
-  await expect(reviewCreatorResource({ ...review, adminViewCountThreshold: 20000 })).rejects.toThrow('exceed the sprint budget')
+  await expect(reviewCreatorResource({ ...review, adminViewCountThreshold: 20000 })).rejects.toThrow('exceed the shared campaign budget')
 })
 test('missing analytics cannot be approved and paid submissions require a creator rereview request', async () => {
   submission.analyticsScreenshotUrl = null

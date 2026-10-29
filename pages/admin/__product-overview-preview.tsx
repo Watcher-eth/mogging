@@ -30,7 +30,7 @@ import { Button } from '@/components/ui/button'
 import { RefreshCw } from 'lucide-react'
 
 // Same read-only aggregates and cache policy as the authenticated dashboard.
-const getReport = unstable_cache(getAnalyticsDashboard, ['admin-analytics-pacific-v4'], { revalidate: 60 })
+const getReport = unstable_cache(getAnalyticsDashboard, ['admin-analytics-revenue-comparison-v6'], { revalidate: 60 })
 type PreviewProps = { data: AnalyticsDashboard | null; error: string | null }
 
 export default function LocalAnalyticsPreview({ data, error }: PreviewProps) {
@@ -116,7 +116,7 @@ export const getServerSideProps: GetServerSideProps<PreviewProps> = async ({ req
   if (!isLocalAnalyticsPreview(process.env.NODE_ENV, req.headers, req.socket.remoteAddress)) return { notFound: true }
   if (query.page !== undefined && (typeof query.page !== 'string' || !['overview', 'acquisition', 'experiments', 'onboarding', 'revenue', 'retention', 'creator-attribution', 'creator-performance', 'creator-economics', 'authentication', 'purchases', 'scans', 'engagement', 'referrals', 'notifications', 'attribution-ledger', 'data-health', 'backend-reliability'].includes(query.page))) return { notFound: true }
   const section = query.page === 'notifications' ? 'Notifications' : query.page === 'attribution-ledger' ? 'AttributionLedger' : query.page === 'data-health' ? 'Quality' : query.page === 'backend-reliability' ? 'Reliability' : query.page === 'referrals' ? 'Referrals' : query.page === 'engagement' ? 'Engagement' : query.page === 'scans' ? 'Scans' : query.page === 'purchases' ? 'Purchases' : query.page === 'authentication' ? 'Authentication' : query.page === 'creator-economics' ? 'CreatorEconomics' : query.page === 'creator-performance' ? 'CreatorPerformance' : query.page === 'creator-attribution' ? 'CreatorAttribution' : query.page === 'retention' ? 'Retention' : query.page === 'revenue' ? 'Revenue' : query.page === 'onboarding' ? 'Onboarding' : query.page === 'experiments' ? 'Experiments' : query.page === 'acquisition' ? 'Acquisition' : 'Overview'
-  const filters = analyticsFilters.safeParse({ days: query.days ?? (section === 'Reliability' ? '1' : section === 'Quality' ? '7' : section === 'Retention' ? '90' : ['Experiments', 'Onboarding', 'Revenue', 'CreatorAttribution', 'CreatorPerformance', 'CreatorEconomics', 'Authentication', 'Purchases', 'Scans', 'Engagement', 'Referrals', 'Notifications', 'AttributionLedger'].includes(section) ? '30' : '7'), platform: ['Experiments', 'Revenue', 'CreatorAttribution', 'CreatorPerformance', 'CreatorEconomics', 'Scans', 'Referrals', 'Notifications', 'AttributionLedger', 'Quality', 'Reliability'].includes(section) ? 'all' : ['Onboarding','Purchases'].includes(section) && query.platform === 'web' ? 'all' : query.platform, section })
+  const filters = analyticsFilters.safeParse({ days: query.days ?? (['Reliability', 'Revenue'].includes(section) ? '1' : section === 'Quality' ? '7' : section === 'Retention' ? '90' : ['Experiments', 'Onboarding', 'Revenue', 'CreatorAttribution', 'CreatorPerformance', 'CreatorEconomics', 'Authentication', 'Purchases', 'Scans', 'Engagement', 'Referrals', 'Notifications', 'AttributionLedger'].includes(section) ? '30' : '7'), platform: ['Experiments', 'Revenue', 'CreatorAttribution', 'CreatorPerformance', 'CreatorEconomics', 'Scans', 'Referrals', 'Notifications', 'AttributionLedger', 'Quality', 'Reliability'].includes(section) ? 'all' : ['Onboarding','Purchases'].includes(section) && query.platform === 'web' ? 'all' : query.platform, section })
   if (!filters.success) return { notFound: true }
   try {
     const data = await getReport(filters.data)
@@ -140,6 +140,8 @@ export const getServerSideProps: GetServerSideProps<PreviewProps> = async ({ req
       ...(section === 'Retention' ? { retention: data.retention, retentionWeekly: data.retentionWeekly ?? [], retentionCoverage: data.retentionCoverage ?? [], featureRetention: data.featureRetention ?? [], membershipActivation: data.membershipActivation ?? [] } : {}),
       ...(section === 'Revenue' ? {
         revenue: data.revenue, revenueTotals: data.revenueTotals ?? [], revenueDaily: data.revenueDaily,
+        revenueFinancials: data.revenueFinancials ?? [], revenueSources: data.revenueSources ?? [], revenueCountries: data.revenueCountries ?? [],
+        revenueProceedsDaily: data.revenueProceedsDaily ?? [], revenueSubscriptionOverview: data.revenueSubscriptionOverview ?? [], revenueSubscriptionProducts: data.revenueSubscriptionProducts ?? [],
         revenueActivity: data.revenueActivity ?? [], revenueComparison: data.revenueComparison ?? [],
         billingReporting: data.billingReporting ?? [], billingProducts: data.billingProducts,
         billingDimensions: data.billingDimensions, billing: data.billing,

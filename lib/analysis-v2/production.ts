@@ -20,7 +20,7 @@ export function webPhotoHash(contentHash: string, owner: string, scan: string) {
   return createHash('sha256').update(`web-v2:${owner}:${scan}:${contentHash}`).digest('hex')
 }
 
-async function overview(imageDataUrl: string, signal: AbortSignal, mobile = false) {
+export async function requestReportOverview(imageDataUrl: string, signal: AbortSignal, mobile = false) {
   return requestMoonshotJson({ stage: 'overview', signal, parse: parseWebOverview,
     body: { model: model(), thinking: { type: 'disabled' }, temperature: .6, max_tokens: mobile ? 4600 : 3600, response_format: { type: 'json_object' }, messages: [
       { role: 'system', content: 'Assess visible facial appearance for an entertainment report. Do not infer identity, ethnicity, health diagnoses, intelligence or worth. No medical treatments or fabricated population percentiles. Cosmetic scores are subjective: 0–2 markedly weak, 3–4 weak, 5–6 ordinary, 7–8 strong, 9–10 exceptional. Write specific, useful observations of this photo; avoid generic category definitions and process/uncertainty disclaimers. Never invent hidden features.' },
@@ -42,7 +42,7 @@ async function analyzeAndSaveExpanded(input: AnalyzeAndSaveInput, reservationId?
       try {
         const geometry = data.mesh ? measureLandmarks(data.mesh) : null
         const [overviewResult, details] = await Promise.all([
-          overview(data.imageData, controller.signal, mobile),
+          requestReportOverview(data.imageData, controller.signal, mobile),
           evaluateV2({ imageDataUrl: data.imageData, geometry }, { signal: controller.signal, graded: true }),
         ])
         const assessment = overviewResult.value
