@@ -54,7 +54,7 @@ export async function createSupportDataSource(userId: string): Promise<SupportDa
     async campaigns(id) {
       const c = schema.creatorSprints
       const rows = await db.select({ id: c.id, name: c.name, description: c.description, startsAt: c.startsAt, endsAt: c.endsAt, status: c.status, terms: c.terms }).from(c)
-        .where(and(inArray(c.status, ['published', 'ended']), campaignAccessSql(ownerId), id ? eq(c.id, id) : undefined)).orderBy(desc(c.startsAt)).limit(id ? 1 : 6)
+        .where(and(inArray(c.status, ['published', 'ended']), campaignAccessSql(ownerId), id ? eq(c.id, id) : undefined)).orderBy(sql`case when ${c.status} = 'published' and ${c.startsAt} <= now() and ${c.endsAt} > now() then 0 when ${c.status} = 'published' and ${c.startsAt} > now() then 1 else 2 end`, desc(c.startsAt)).limit(id ? 1 : 6)
       return rows.map(row => ({ ...row, status: row.status as 'published' | 'ended', startsAt: row.startsAt.toISOString(), endsAt: row.endsAt.toISOString() }))
     },
     async payments(submissionId) {

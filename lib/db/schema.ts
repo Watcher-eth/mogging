@@ -136,6 +136,14 @@ export const accounts = pgTable(
   })
 )
 
+// Discord identity links are separate from sign-in accounts: linking never enables Discord login.
+export const creatorDiscordLinks = pgTable('creator_discord_links', {
+  userId: text('user_id').primaryKey().references(() => users.id, { onDelete: 'cascade' }),
+  discordUserId: text('discord_user_id').notNull(),
+  discordUsername: text('discord_username').notNull(),
+  createdAt: timestamp('created_at', { mode: 'date' }).notNull().defaultNow(),
+}, table => ({ discordUserUnique: uniqueIndex('creator_discord_links_discord_user_unique').on(table.discordUserId) }))
+
 export const sessions = pgTable('sessions', {
   sessionToken: text('session_token').primaryKey(),
   userId: text('user_id')
