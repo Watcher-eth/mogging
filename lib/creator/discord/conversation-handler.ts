@@ -19,7 +19,7 @@ export async function handleDiscordTurn(turn: DiscordSupportTurn) {
   const redis = discordStore(), command = turn.command
   const reply = (text: string, link = false) => turn.reply(supportHelpReply(text, link))
   if (command === 'connect') return reply('Connect your own Creator Studio account to see your submissions, campaign terms, and analytics privately. Only messages you send to this bot are used; your other Discord conversations stay private.', true)
-  if (command === 'help') return reply('DM me normally to ask about campaigns, submissions, earnings, referrals, or analytics. Connect your Creator Studio account first. Server commands /ask, /submissions, /performance, and /campaigns also work. You share 4 support messages per day across DMs, server commands, and Creator Studio, resetting at midnight UTC. Type “allowance” to check your remaining messages or “reset” for a fresh conversation. Connecting, help, checking your allowance, and resetting are free.', true)
+  if (command === 'help') return reply('DM me normally to ask about campaigns, submissions, earnings, referrals, or analytics. Connect your Creator Studio account first. Server commands /ask, /submissions, /performance, and /campaigns also work. Standard accounts share 4 support messages per day across DMs, server commands, and Creator Studio, resetting at midnight UTC. Type “allowance” to check your remaining messages or “reset” for a fresh conversation. Connecting, help, checking your allowance, and resetting are free.', true)
   const link = await resolveDiscordCreator(turn.userId)
   if (!link) return reply('Connect your Creator Studio account first so I can read your own creator information. Then message me here normally—no /ask needed. Your Discord name or server role is never used to match private records.', true)
   await requireCreator(link.userId)
@@ -27,7 +27,7 @@ export async function handleDiscordTurn(turn: DiscordSupportTurn) {
   const memoryKey = `creator-discord:conversation:${context}`
   if (command === 'allowance') {
     const allowance = await readSupportAllowance(link.userId)
-    return reply(`You have ${allowance.remaining} of 4 support messages left today across Discord and Creator Studio. Your allowance resets at midnight UTC.`)
+    return reply(allowance.unlimited ? 'You have unlimited support messages across Discord and Creator Studio. Your account has no daily message limit.' : `You have ${allowance.remaining} of 4 support messages left today across Discord and Creator Studio. Your allowance resets at midnight UTC.`)
   }
   const lockKey = `creator-discord:busy:${link.userId}`, lockToken = turn.messageId
   if (!await redis.set(lockKey, lockToken, { nx: true, ex: 120 })) return reply('I’m finishing your previous question. Please try again in a moment; this request hasn’t used a message.')

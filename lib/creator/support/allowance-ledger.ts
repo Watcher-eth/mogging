@@ -1,6 +1,9 @@
 import type { Redis } from '@upstash/redis'
 import { ApiError } from '@/lib/api/http'
-import { SUPPORT_DAILY_MESSAGES, supportAllowance, supportDay } from './allowance'
+import { SUPPORT_DAILY_MESSAGES, supportAllowance, supportDay, unlimitedSupportAllowance } from './allowance'
+
+// Server-managed entitlement keyed by the authenticated app user, never a Discord name or client flag.
+export const unlimitedSupportKey = (creatorId: string) => `creator-support:unlimited:v1:${creatorId}`
 
 export function createSupportAllowanceStore(redis: Pick<Redis, 'get' | 'eval'> | null, production = false) {
   // Development only. Production must share a durable counter across instances.
@@ -16,12 +19,14 @@ export function createSupportAllowanceStore(redis: Pick<Redis, 'get' | 'eval'> |
   function requireStore() { if (!redis && production) throw new ApiError(503, 'Creator support is temporarily unavailable') }
   async function readSupportAllowance(creatorId: string, now = Date.now()) {
     requireStore()
+    if (redis && await redis.get(unlimitedSupportKey(creatorId)) === true) return unlimitedSupportAllowance(now)
     const key = counterKey(creatorId, now)
     const count = redis ? Number(await redis.get<number>(key) ?? 0) : memory.get(key)?.count ?? 0
     return supportAllowance(count, now)
   }
   async function reserveSupportMessage(creatorId: string, now = Date.now()) {
     requireStore()
+    if (redis && await redis.get(unlimitedSupportKey(creatorId)) === true) return { accepted: true, allowance: unlimitedSupportAllowance(now), async refund() {} }
     const key = counterKey(creatorId, now)
     const { resetsAt } = supportDay(now)
     let count: number

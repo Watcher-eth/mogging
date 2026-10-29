@@ -123,7 +123,7 @@ function SupportChatSession({ demo = false, compact = false, onClose, ownerKey }
       <PromptInput className={styles.composer} value={draft} onValueChange={setDraft} onSubmit={() => void send(draft)} isLoading={pending} maxHeight={140}>
         <PromptInputTextarea ref={inputRef} maxLength={1500} disabled={dailyLimitReached} placeholder={compact ? 'Message…' : 'Message Mogging Support…'} aria-label="Message Mogging Support" />
         <PromptInputActions className={styles.composerToolbar}>
-          <span className={styles.allowance} role="status">{dailyLimitReached ? 'Daily limit reached · resets at 00:00 UTC' : allowance ? `${allowance.remaining} of ${SUPPORT_DAILY_MESSAGES} messages left today` : `${SUPPORT_DAILY_MESSAGES} messages per day`}</span>
+          <span className={styles.allowance} role="status">{allowance?.unlimited ? 'Unlimited support messages' : dailyLimitReached ? 'Daily limit reached · resets at 00:00 UTC' : allowance ? `${allowance.remaining} of ${SUPPORT_DAILY_MESSAGES} messages left today` : `${SUPPORT_DAILY_MESSAGES} messages per day`}</span>
           <PromptInputAction tooltip={pending ? 'Stop response' : 'Send message'}>
             <button className={styles.send} type="button" disabled={!pending && (!draft.trim() || dailyLimitReached)} aria-label={pending ? 'Stop response' : 'Send message'} onClick={() => { if (pending) { abort.current?.abort(); setPending(false) } else void send(draft) }}>{pending ? <X size={17} /> : <ArrowUp size={18} />}</button>
           </PromptInputAction>

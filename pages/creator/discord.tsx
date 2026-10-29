@@ -59,7 +59,7 @@ export default function CreatorDiscordPage() {
         </> : null}
         {message || callbackError ? <p className="mt-4 text-sm text-red-600" role="alert">{message || callbackError}</p> : null}
       </div>
-      <p className="mt-5 text-xs leading-5 text-muted-foreground">Your four daily support messages are shared across DMs, server commands, and Creator Studio, resetting at midnight UTC. Connecting, help, checking your allowance, and disconnecting don’t use a message. Only messages you send to this bot are used; your other Discord conversations stay private.</p>
+      <p className="mt-5 text-xs leading-5 text-muted-foreground">The standard allowance is four daily support messages shared across DMs, server commands, and Creator Studio, resetting at midnight UTC. Connecting, help, checking your allowance, and disconnecting don’t use a message. Only messages you send to this bot are used; your other Discord conversations stay private.</p>
       <Link href="/creator/support" className="mt-5 inline-flex text-sm font-medium text-[#00A8EF] hover:underline">Open Creator Studio support →</Link>
     </div>
   </CreatorShell>

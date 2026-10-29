@@ -6,6 +6,13 @@ import type { SupportResponse } from '../support/contracts'
 import { sendPrivateReply } from './private-reply'
 import { discordInteractionSchema } from './interactions'
 
+test('unlimited accounts get a clear allowance footer without a numeric daily cap', async () => {
+  const response: SupportResponse = { text: 'Here are your results.', artifacts: [], engine: 'instant', sampleData: false, usage: { inputTokens: 0, outputTokens: 0, modelCalls: 0 }, allowance: { unlimited: true, limit: null, remaining: null, resetsAt: '2026-10-30T00:00:00Z' } }
+  const { payload } = await renderDiscordSupport(response, 'Show my results')
+  expect(payload.embeds?.[0].footer?.text).toBe('Unlimited support messages across Discord and Creator Studio')
+  expect(JSON.stringify(payload)).not.toContain('null of 4')
+})
+
 test('renders at most two relevant sections and only first-party navigation', async () => {
   const source = createDemoDataSource()
   const response = await runSupportAgent({ input: { message: 'What is the status of my submissions?' }, source, memory: [], sampleData: true })

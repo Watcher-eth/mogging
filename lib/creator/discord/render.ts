@@ -95,7 +95,7 @@ export async function renderDiscordSupport(result: SupportResponse, question: st
   for (const a of selected) if (a.type === 'action') links.set(portal(destinations[a.destination].href), destinations[a.destination].label)
   const payload: DiscordReply = { content: truncate(safeText(result.text), 1900), allowed_mentions: { parse: [] }, embeds: views.map(v => ({ title: truncate(v.title.replace(/@/g, '@\u200b'), 100), description: truncate(v.text, 1600), color: 0x00a8ef, url: v.url })) }
   if (result.allowance) {
-    const footer = { text: `${result.allowance.remaining} of 4 messages left today across Discord and Creator Studio · Resets midnight UTC` }
+    const footer = { text: result.allowance.unlimited ? 'Unlimited support messages across Discord and Creator Studio' : `${result.allowance.remaining} of 4 messages left today across Discord and Creator Studio · Resets midnight UTC` }
     if (payload.embeds?.length) payload.embeds[payload.embeds.length - 1].footer = footer
     else payload.embeds = [{ footer }]
   }

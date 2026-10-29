@@ -1,5 +1,5 @@
 import { describe, test, expect } from 'bun:test'
-import { createSupportAllowanceStore } from './allowance-ledger'
+import { createSupportAllowanceStore, unlimitedSupportKey } from './allowance-ledger'
 import { supportDay } from './allowance'
 import { relevantRequirementIds } from './requirement-focus'
 
@@ -31,6 +31,38 @@ describe('four creator messages per UTC day', () => {
     await expect(store.reserveSupportMessage('creator')).rejects.toThrow('temporarily unavailable')
     await expect(store.readSupportAllowance('creator')).rejects.toThrow('temporarily unavailable')
   })
+})
+
+test('a server-managed unlimited entitlement bypasses only its authenticated creator’s daily cap and is revocable', async () => {
+  const now = Date.parse('2026-10-29T22:00:00Z')
+  const values = new Map<string, unknown>()
+  let writes = 0
+  const redis = {
+    get: async (key: string) => values.get(key) ?? null,
+    eval: async (_script: string, keys: string[], args: number[]) => {
+      writes++
+      const count = Number(values.get(keys[0]) ?? 0)
+      if (count >= args[0]) return -1
+      values.set(keys[0], count + 1)
+      return count + 1
+    },
+  } as unknown as NonNullable<Parameters<typeof createSupportAllowanceStore>[0]>
+  const store = createSupportAllowanceStore(redis, true)
+  const exhausted = `creator-support:daily:v1:2026-10-29:creator-owner`
+  values.set(exhausted, 4)
+  values.set(unlimitedSupportKey('creator-owner'), true)
+  const turns = await Promise.all(Array.from({ length: 12 }, () => store.reserveSupportMessage('creator-owner', now)))
+  expect(turns.every(turn => turn.accepted && turn.allowance.unlimited)).toBe(true)
+  for (const turn of turns) await turn.refund()
+  expect(writes).toBe(0)
+  expect(values.get(exhausted)).toBe(4)
+  expect(await store.readSupportAllowance('creator-owner', now)).toMatchObject({ unlimited: true, limit: null, remaining: null })
+  const ordinary = await Promise.all(Array.from({ length: 5 }, () => store.reserveSupportMessage('another-creator', now)))
+  expect(ordinary.filter(turn => turn.accepted)).toHaveLength(4)
+  expect((await store.readSupportAllowance('mvpmogs', now)).unlimited).toBeUndefined()
+  values.delete(unlimitedSupportKey('creator-owner'))
+  expect((await store.readSupportAllowance('creator-owner', now)).remaining).toBe(0)
+  expect((await store.reserveSupportMessage('creator-owner', now)).accepted).toBe(false)
 })
 
 test('requirements focus selects relevant concepts without emphasizing a general request', () => {
