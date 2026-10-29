@@ -20,5 +20,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     const { state, url } = await beginDiscordLink(userId)
     res.setHeader('Set-Cookie', `${LINK_COOKIE}=${state}; HttpOnly; SameSite=Lax; Path=${CALLBACK_PATH}; Max-Age=600${portalOrigin().startsWith('https:') ? '; Secure' : ''}`)
     return json(res, 200, { url })
-  } catch (error) { return handleApiError(error, res) }
+  } catch (error) {
+    // Deployment diagnostics belong to the machine endpoint, not the creator-facing flow.
+    return handleApiError(error instanceof ApiError && error.status === 503 ? new ApiError(503, 'Discord support is temporarily unavailable. Please try again soon.') : error, res)
+  }
 }
