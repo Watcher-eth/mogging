@@ -8,7 +8,7 @@ export function isGeneralVideoPerformanceQuestion(message: string) {
     || /\bhow (?:well )?(?:did|do|does|is|are|has|have)\b[\s\S]*\b(?:do|done|did|doing|went|go|gone)\b/i.test(message)
   )
 }
-export function asksForViews(message: string) { return /\b(?:views?|view counts?)\b/i.test(message) }
+export function asksForViews(message: string) { return /\b(?:views|view counts?)\b/i.test(message) }
 export function asksForContentGuidance(message: string) {
   return /\b(?:requirements?|rules?|eligible|eligibility|qualif\w*|brief|allowed|prohibited|cta|hook|caption)\b|\b(?:how|help)\b.*\bsubmit\b|\b(?:why|explain)\b.*\b(?:rejected|rejection|decision)\b/i.test(message)
 }

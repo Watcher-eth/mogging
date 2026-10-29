@@ -40,3 +40,22 @@ test('conversion-only answers stay focused and guidance requires explicit intent
   expect(asksForContentGuidance('How can I meet the CTA requirements?')).toBe(true)
   expect(asksForContentGuidance('Explain why it was rejected')).toBe(true)
 })
+
+test('campaign policy questions and navigation do not accidentally fetch account views', () => {
+  for (const question of [
+    'Explain how my campaign’s view milestones and verified audience affect my earnings.',
+    'Explain my campaign views requirements',
+    'Help me view my campaign',
+  ]) expect(isConversionQuestion(question)).toBe(false)
+  expect(isConversionQuestion('Show my video views this week')).toBe(true)
+  expect(isConversionQuestion('Show my video view count')).toBe(true)
+  expect(isConversionQuestion('How did my campaign videos perform this week?')).toBe(true)
+})
+
+test('campaign milestone explanation reaches model handling instead of the views shortcut', async () => {
+  const source = createDemoDataSource()
+  source.videoAnalytics = async () => { throw new Error('Unrelated analytics must not be fetched') }
+  const result = await runSupportAgent({ input: { message: 'Explain how my campaign’s view milestones and verified audience affect my earnings.' }, source, memory: [], sampleData: false })
+  expect(result.engine).toBe('unavailable') // Missing provider key reaches the model-connectivity check.
+  expect(result.artifacts).toEqual([])
+})

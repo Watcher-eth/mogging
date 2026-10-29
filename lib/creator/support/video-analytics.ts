@@ -28,6 +28,8 @@ export function conversionWindow(query: VideoAnalyticsQuery, now = new Date()): 
   return { start: start.toISOString(), end: end.toISOString(), label, days: Math.round((end.getTime() - start.getTime()) / 86400000), timeZone: 'UTC' }
 }
 export function isConversionQuestion(message: string) {
+  // Policy explanations may mention view thresholds without asking for account analytics.
+  if (/\b(?:milestones?|requirements?|rules?|eligib\w*|qualif\w*)\b/i.test(message) && !isGeneralVideoPerformanceQuestion(message)) return false
   return isGeneralVideoPerformanceQuestion(message) || (asksForViews(message) && /\b(?:my|this|that|video|videos|post|posts|chart|graph)\b/i.test(message)) || /\b(convert(?:ed|ing|s)?|conversions?|analytics|downloads?|link (?:clicks|presses)|revenue|performance)\b/i.test(message)
     && !/^(?:what (?:is|are|does)|define|explain (?:the )?(?:meaning|definition))\b/i.test(message)
 }

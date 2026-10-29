@@ -56,10 +56,10 @@ describe('database ownership boundary', () => {
     expect(overview.groups).toHaveLength(3)
     for (const status of ['pending', 'in_review', 'approved', 'paid', 'rejected']) expect(queries.some(q => q.params.includes(status) && q.params.includes('owner-profile'))).toBe(true)
   })
-  test('campaign access always excludes drafts', async () => {
+  test('campaign access excludes drafts and enforces creator visibility', async () => {
     const source = await createSupportDataSource('signed-in-user'); queries.length = 0
     await source.campaigns('draft-id')
-    expect(queries[0].params).toEqual(['published', 'ended', 'draft-id'])
+    expect(queries[0].params).toEqual(['published', 'ended', 'owner-profile', 'owner-profile', 'draft-id'])
   })
   test('suspended creators cannot acquire a data source', async () => {
     suspended = true
