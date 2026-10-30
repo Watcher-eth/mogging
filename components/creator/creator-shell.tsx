@@ -133,7 +133,7 @@ function CreatorNavigation() {
         <SidebarGroup>
           <SidebarGroupLabel>Creator Studio</SidebarGroupLabel>
           <SidebarGroupContent><SidebarMenu aria-label="Creator Studio navigation">
-            {creatorNav.map((item) => <SidebarMenuItem key={item.href}><SidebarMenuButton asChild isActive={router.pathname === item.href || item.href === '/creator/studio' && studioPaths.has(router.pathname)} tooltip={item.label} className="creator-nav-link"><Link href={item.href} aria-label={item.label} aria-current={router.pathname === item.href || item.href === '/creator/studio' && studioPaths.has(router.pathname) ? 'page' : undefined} onClick={() => setOpenMobile(false)}><CreatorIcon name={item.asset} className="size-5" /><span>{item.label}</span></Link></SidebarMenuButton></SidebarMenuItem>)}
+            {creatorNav.map((item) => <SidebarMenuItem key={item.href}><SidebarMenuButton asChild isActive={router.pathname === item.href || item.href === '/creator/studio' && studioPaths.has(router.pathname)} tooltip={item.label} className="creator-nav-link"><Link href={item.href} aria-label={item.label} aria-current={router.pathname === item.href || item.href === '/creator/studio' && studioPaths.has(router.pathname) ? 'page' : undefined} onClick={() => setOpenMobile(false)}><CreatorIcon name={item.asset} className="size-5" /><span className="inline-flex items-center gap-2"><span>{item.label}</span>{item.href === '/creator/studio' ? <span className="shrink-0 rounded-full bg-[#eaf7ff] px-1.5 py-0.5 text-[9px] font-medium leading-none text-[#008bd0] group-data-[collapsible=icon]:hidden">New</span> : null}</span></Link></SidebarMenuButton></SidebarMenuItem>)}
           </SidebarMenu></SidebarGroupContent>
         </SidebarGroup>
         <SidebarGroup>

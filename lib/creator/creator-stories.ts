@@ -32,6 +32,7 @@ async function readJson(url: string) {
 }
 export function creatorStoryOptions(story: CreatorStory): CreatorStoryOption[] {
   return [{ id: story.id, title: story.title, kind: story.kind ?? 'feature-story', recording: story.recording }, ...story.alternatives ?? []]
+    .toSorted((a, b) => Number(b.kind === 'score-walkthrough') - Number(a.kind === 'score-walkthrough'))
 }
 export async function loadCreatorStoryCatalog(subjectId: string): Promise<CreatorStory> {
   return readJson(`/creator/stories/${subjectId}/story.json`)
@@ -39,7 +40,7 @@ export async function loadCreatorStoryCatalog(subjectId: string): Promise<Creato
 export async function loadCreatorStory(subjectId: string, storyId?: string) {
   const base = await loadCreatorStoryCatalog(subjectId)
   const stories = creatorStoryOptions(base)
-  const option = stories.find(option => option.id === (storyId ?? base.id))
+  const option = stories.find(option => option.id === (storyId ?? stories[0]?.id))
   if (!option || Boolean(option.recording) === Boolean(option.draft)) throw new Error('Choose an available story for this person.')
   const story = { ...base, ...option, recording: option.recording, draft: option.draft }
   const [resource, analysis] = await Promise.all([readJson(option.recording ?? option.draft!), base.analysis ? readJson(base.analysis).then(value => creatorSubjectAnalysisSchema.parse(value)) : undefined])
