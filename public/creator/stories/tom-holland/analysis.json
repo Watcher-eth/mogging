@@ -1,0 +1,2474 @@
+{
+  "version": 1,
+  "subjectId": "tom-holland",
+  "subject": "Tom Holland",
+  "analyzedAt": "2026-10-29T02:34:59.524Z",
+  "provider": "moonshot",
+  "model": "kimi-k2.6",
+  "promptVersion": "web-v2-1",
+  "scope": "Single front-facing source photograph; subjective cosmetic appearance assessment, not a person-invariant measurement.",
+  "source": {
+    "imageId": "tom-front",
+    "file": "/creator/stories/tom-holland/tom-front.png",
+    "sha256": "9a1cef87c49a032f2e1c410c75835a647c7bd93d7bb9a35cf273b0df62f7f2dc",
+    "width": 1200,
+    "height": 1772,
+    "submittedMaxEdge": 1600
+  },
+  "result": {
+    "faceDetected": true,
+    "pslScore": 7,
+    "harmonyScore": 7,
+    "symmetryScore": 7,
+    "proportionalityScore": 7,
+    "averagenessScore": 6,
+    "dimorphismScore": 5,
+    "angularityScore": 5,
+    "metricScores": [
+      {
+        "name": "Skin quality",
+        "score": 6,
+        "category": "skin"
+      },
+      {
+        "name": "Presentation",
+        "score": 7,
+        "category": "presentation"
+      }
+    ],
+    "landmarks": {
+      "version": 1,
+      "source": "mediapipe-face-landmarker",
+      "confidence": 0.925853709832142,
+      "image": {
+        "width": 1200,
+        "height": 1772
+      },
+      "anchors": {
+        "leftEyeOuter": {
+          "x": 0.3945405185222626,
+          "y": 0.24775061011314392
+        },
+        "leftEyeInner": {
+          "x": 0.4612134099006653,
+          "y": 0.24692103266716003
+        },
+        "rightEyeInner": {
+          "x": 0.5451210737228394,
+          "y": 0.24419721961021423
+        },
+        "rightEyeOuter": {
+          "x": 0.6116839647293091,
+          "y": 0.24034544825553894
+        },
+        "leftPupil": {
+          "x": 0.42312514781951904,
+          "y": 0.24330438673496246
+        },
+        "rightPupil": {
+          "x": 0.5848179459571838,
+          "y": 0.2383369505405426
+        },
+        "leftBrow": {
+          "x": 0.3944253921508789,
+          "y": 0.21392126381397247
+        },
+        "rightBrow": {
+          "x": 0.6036815643310547,
+          "y": 0.20452149212360382
+        },
+        "noseBridge": {
+          "x": 0.5003681182861328,
+          "y": 0.23766779899597168
+        },
+        "noseTip": {
+          "x": 0.5037834644317627,
+          "y": 0.30848637223243713
+        },
+        "mouthLeft": {
+          "x": 0.4334995746612549,
+          "y": 0.3481215834617615
+        },
+        "mouthRight": {
+          "x": 0.5913374423980713,
+          "y": 0.3407614827156067
+        },
+        "mouthCenter": {
+          "x": 0.5102465152740479,
+          "y": 0.34419429302215576
+        },
+        "upperLip": {
+          "x": 0.5090228319168091,
+          "y": 0.33741065859794617
+        },
+        "lowerLip": {
+          "x": 0.5129289627075195,
+          "y": 0.3757127523422241
+        },
+        "leftCheek": {
+          "x": 0.33078575134277344,
+          "y": 0.2827407717704773
+        },
+        "rightCheek": {
+          "x": 0.6878349781036377,
+          "y": 0.26988139748573303
+        },
+        "chin": {
+          "x": 0.5186983346939087,
+          "y": 0.43836498260498047
+        },
+        "jawLeft": {
+          "x": 0.3744192123413086,
+          "y": 0.3850181996822357
+        },
+        "jawRight": {
+          "x": 0.6601089239120483,
+          "y": 0.37457865476608276
+        },
+        "forehead": {
+          "x": 0.4932842552661896,
+          "y": 0.15807463228702545
+        }
+      },
+      "contours": {
+        "faceOutline": [
+          {
+            "x": 0.4932842552661896,
+            "y": 0.15807463228702545
+          },
+          {
+            "x": 0.5408260226249695,
+            "y": 0.15687930583953857
+          },
+          {
+            "x": 0.5822433233261108,
+            "y": 0.15994426608085632
+          },
+          {
+            "x": 0.6227365136146545,
+            "y": 0.1682930737733841
+          },
+          {
+            "x": 0.6508810520172119,
+            "y": 0.18242359161376953
+          },
+          {
+            "x": 0.6699672937393188,
+            "y": 0.2007216066122055
+          },
+          {
+            "x": 0.6810128688812256,
+            "y": 0.22047686576843262
+          },
+          {
+            "x": 0.6869513988494873,
+            "y": 0.24560943245887756
+          },
+          {
+            "x": 0.6878349781036377,
+            "y": 0.26988139748573303
+          },
+          {
+            "x": 0.686803936958313,
+            "y": 0.2952248156070709
+          },
+          {
+            "x": 0.6833279132843018,
+            "y": 0.3224045932292938
+          },
+          {
+            "x": 0.6746107339859009,
+            "y": 0.3512783646583557
+          },
+          {
+            "x": 0.6601089239120483,
+            "y": 0.37457865476608276
+          },
+          {
+            "x": 0.6428629159927368,
+            "y": 0.3914986848831177
+          },
+          {
+            "x": 0.6202692985534668,
+            "y": 0.40718501806259155
+          },
+          {
+            "x": 0.6000277996063232,
+            "y": 0.41848504543304443
+          },
+          {
+            "x": 0.578050971031189,
+            "y": 0.42811301350593567
+          },
+          {
+            "x": 0.5520796775817871,
+            "y": 0.4353506565093994
+          },
+          {
+            "x": 0.5186983346939087,
+            "y": 0.43836498260498047
+          },
+          {
+            "x": 0.4853189289569855,
+            "y": 0.43759921193122864
+          },
+          {
+            "x": 0.4591521918773651,
+            "y": 0.4317989945411682
+          },
+          {
+            "x": 0.4370867908000946,
+            "y": 0.42366233468055725
+          },
+          {
+            "x": 0.416500449180603,
+            "y": 0.4139889180660248
+          },
+          {
+            "x": 0.3929736018180847,
+            "y": 0.4002065658569336
+          },
+          {
+            "x": 0.3744192123413086,
+            "y": 0.3850181996822357
+          },
+          {
+            "x": 0.35708165168762207,
+            "y": 0.36300545930862427
+          },
+          {
+            "x": 0.3440427780151367,
+            "y": 0.3344948887825012
+          },
+          {
+            "x": 0.33581095933914185,
+            "y": 0.307699590921402
+          },
+          {
+            "x": 0.33078575134277344,
+            "y": 0.2827407717704773
+          },
+          {
+            "x": 0.3273255527019501,
+            "y": 0.25860634446144104
+          },
+          {
+            "x": 0.32850295305252075,
+            "y": 0.23344947397708893
+          },
+          {
+            "x": 0.3348117470741272,
+            "y": 0.21316823363304138
+          },
+          {
+            "x": 0.34869956970214844,
+            "y": 0.19408346712589264
+          },
+          {
+            "x": 0.3717830181121826,
+            "y": 0.17843621969223022
+          },
+          {
+            "x": 0.40723782777786255,
+            "y": 0.16721296310424805
+          },
+          {
+            "x": 0.44649913907051086,
+            "y": 0.1608874648809433
+          },
+          {
+            "x": 0.4932842552661896,
+            "y": 0.15807463228702545
+          }
+        ],
+        "leftEye": [
+          {
+            "x": 0.3945405185222626,
+            "y": 0.24775061011314392
+          },
+          {
+            "x": 0.39753302931785583,
+            "y": 0.24562165141105652
+          },
+          {
+            "x": 0.4013519883155823,
+            "y": 0.24319538474082947
+          },
+          {
+            "x": 0.4082253575325012,
+            "y": 0.24034009873867035
+          },
+          {
+            "x": 0.4198644757270813,
+            "y": 0.23806677758693695
+          },
+          {
+            "x": 0.4322834312915802,
+            "y": 0.23804844915866852
+          },
+          {
+            "x": 0.4456319808959961,
+            "y": 0.24056611955165863
+          },
+          {
+            "x": 0.45623600482940674,
+            "y": 0.2443581223487854
+          },
+          {
+            "x": 0.4612134099006653,
+            "y": 0.24692103266716003
+          },
+          {
+            "x": 0.45760804414749146,
+            "y": 0.24754825234413147
+          },
+          {
+            "x": 0.4492506682872772,
+            "y": 0.24797126650810242
+          },
+          {
+            "x": 0.4373016655445099,
+            "y": 0.24939927458763123
+          },
+          {
+            "x": 0.42520979046821594,
+            "y": 0.2507351338863373
+          },
+          {
+            "x": 0.4132229685783386,
+            "y": 0.2511242628097534
+          },
+          {
+            "x": 0.4055216610431671,
+            "y": 0.2504023313522339
+          },
+          {
+            "x": 0.40018430352211,
+            "y": 0.2494519054889679
+          },
+          {
+            "x": 0.3945405185222626,
+            "y": 0.24775061011314392
+          }
+        ],
+        "rightEye": [
+          {
+            "x": 0.5451210737228394,
+            "y": 0.24419721961021423
+          },
+          {
+            "x": 0.5497596263885498,
+            "y": 0.24128475785255432
+          },
+          {
+            "x": 0.5599285364151001,
+            "y": 0.23695695400238037
+          },
+          {
+            "x": 0.5726420283317566,
+            "y": 0.23353168368339539
+          },
+          {
+            "x": 0.5851729512214661,
+            "y": 0.23275548219680786
+          },
+          {
+            "x": 0.5963848829269409,
+            "y": 0.23408031463623047
+          },
+          {
+            "x": 0.6040120124816895,
+            "y": 0.23659899830818176
+          },
+          {
+            "x": 0.6082715392112732,
+            "y": 0.23860689997673035
+          },
+          {
+            "x": 0.6116839647293091,
+            "y": 0.24034544825553894
+          },
+          {
+            "x": 0.6061811447143555,
+            "y": 0.24251633882522583
+          },
+          {
+            "x": 0.6003649830818176,
+            "y": 0.24374744296073914
+          },
+          {
+            "x": 0.5923072099685669,
+            "y": 0.24473246932029724
+          },
+          {
+            "x": 0.580881655216217,
+            "y": 0.24520671367645264
+          },
+          {
+            "x": 0.568306028842926,
+            "y": 0.24475516378879547
+          },
+          {
+            "x": 0.5568495988845825,
+            "y": 0.2443794161081314
+          },
+          {
+            "x": 0.5490363240242004,
+            "y": 0.24441535770893097
+          },
+          {
+            "x": 0.5451210737228394,
+            "y": 0.24419721961021423
+          }
+        ],
+        "leftBrow": [
+          {
+            "x": 0.356373131275177,
+            "y": 0.22854265570640564
+          },
+          {
+            "x": 0.37077343463897705,
+            "y": 0.21970266103744507
+          },
+          {
+            "x": 0.3944253921508789,
+            "y": 0.21392126381397247
+          },
+          {
+            "x": 0.4263654947280884,
+            "y": 0.21348252892494202
+          },
+          {
+            "x": 0.4624256193637848,
+            "y": 0.21505403518676758
+          }
+        ],
+        "rightBrow": [
+          {
+            "x": 0.5341485738754272,
+            "y": 0.21111612021923065
+          },
+          {
+            "x": 0.5705395936965942,
+            "y": 0.20644505321979523
+          },
+          {
+            "x": 0.6036815643310547,
+            "y": 0.20452149212360382
+          },
+          {
+            "x": 0.629805326461792,
+            "y": 0.20914116501808167
+          },
+          {
+            "x": 0.6468535661697388,
+            "y": 0.21745611727237701
+          }
+        ],
+        "noseBridge": [
+          {
+            "x": 0.5003681182861328,
+            "y": 0.23766779899597168
+          },
+          {
+            "x": 0.5009338855743408,
+            "y": 0.24937644600868225
+          },
+          {
+            "x": 0.5010847449302673,
+            "y": 0.26118654012680054
+          },
+          {
+            "x": 0.5016127228736877,
+            "y": 0.27185630798339844
+          },
+          {
+            "x": 0.5018926858901978,
+            "y": 0.2833807170391083
+          },
+          {
+            "x": 0.5026838779449463,
+            "y": 0.29744812846183777
+          },
+          {
+            "x": 0.5037834644317627,
+            "y": 0.30848637223243713
+          }
+        ],
+        "noseBase": [
+          {
+            "x": 0.45699167251586914,
+            "y": 0.3072830140590668
+          },
+          {
+            "x": 0.46206533908843994,
+            "y": 0.3124903738498688
+          },
+          {
+            "x": 0.4848231077194214,
+            "y": 0.3166464865207672
+          },
+          {
+            "x": 0.5059230327606201,
+            "y": 0.31742823123931885
+          },
+          {
+            "x": 0.5270386934280396,
+            "y": 0.3148076832294464
+          },
+          {
+            "x": 0.5502756834030151,
+            "y": 0.30912771821022034
+          },
+          {
+            "x": 0.5539709329605103,
+            "y": 0.30330148339271545
+          }
+        ],
+        "mouth": [
+          {
+            "x": 0.4334995746612549,
+            "y": 0.3481215834617615
+          },
+          {
+            "x": 0.4400768280029297,
+            "y": 0.344798743724823
+          },
+          {
+            "x": 0.45014747977256775,
+            "y": 0.34160658717155457
+          },
+          {
+            "x": 0.46455520391464233,
+            "y": 0.33872002363204956
+          },
+          {
+            "x": 0.4856708347797394,
+            "y": 0.3360995054244995
+          },
+          {
+            "x": 0.5090228319168091,
+            "y": 0.33741065859794617
+          },
+          {
+            "x": 0.5319308042526245,
+            "y": 0.3341931700706482
+          },
+          {
+            "x": 0.5542721152305603,
+            "y": 0.33457621932029724
+          },
+          {
+            "x": 0.5710762739181519,
+            "y": 0.3361856937408447
+          },
+          {
+            "x": 0.5831524729728699,
+            "y": 0.33825209736824036
+          },
+          {
+            "x": 0.5913374423980713,
+            "y": 0.3407614827156067
+          },
+          {
+            "x": 0.5835856199264526,
+            "y": 0.3501519560813904
+          },
+          {
+            "x": 0.5721940398216248,
+            "y": 0.35922521352767944
+          },
+          {
+            "x": 0.5565842390060425,
+            "y": 0.3674238920211792
+          },
+          {
+            "x": 0.5364153981208801,
+            "y": 0.3730526268482208
+          },
+          {
+            "x": 0.5129289627075195,
+            "y": 0.3757127523422241
+          },
+          {
+            "x": 0.4900228679180145,
+            "y": 0.3751501441001892
+          },
+          {
+            "x": 0.470068097114563,
+            "y": 0.37132528424263
+          },
+          {
+            "x": 0.45404762029647827,
+            "y": 0.3644106686115265
+          },
+          {
+            "x": 0.4426088035106659,
+            "y": 0.35685256123542786
+          },
+          {
+            "x": 0.4334995746612549,
+            "y": 0.3481215834617615
+          }
+        ],
+        "jawline": [
+          {
+            "x": 0.3744192123413086,
+            "y": 0.3850181996822357
+          },
+          {
+            "x": 0.3929736018180847,
+            "y": 0.4002065658569336
+          },
+          {
+            "x": 0.416500449180603,
+            "y": 0.4139889180660248
+          },
+          {
+            "x": 0.4370867908000946,
+            "y": 0.42366233468055725
+          },
+          {
+            "x": 0.4591521918773651,
+            "y": 0.4317989945411682
+          },
+          {
+            "x": 0.4853189289569855,
+            "y": 0.43759921193122864
+          },
+          {
+            "x": 0.5186983346939087,
+            "y": 0.43836498260498047
+          },
+          {
+            "x": 0.5520796775817871,
+            "y": 0.4353506565093994
+          },
+          {
+            "x": 0.578050971031189,
+            "y": 0.42811301350593567
+          },
+          {
+            "x": 0.6000277996063232,
+            "y": 0.41848504543304443
+          },
+          {
+            "x": 0.6202692985534668,
+            "y": 0.40718501806259155
+          },
+          {
+            "x": 0.6428629159927368,
+            "y": 0.3914986848831177
+          },
+          {
+            "x": 0.6601089239120483,
+            "y": 0.37457865476608276
+          }
+        ],
+        "cheekbones": [
+          {
+            "x": 0.33078575134277344,
+            "y": 0.2827407717704773
+          },
+          {
+            "x": 0.3463282883167267,
+            "y": 0.2765277624130249
+          },
+          {
+            "x": 0.37321093678474426,
+            "y": 0.2732439339160919
+          },
+          {
+            "x": 0.39220768213272095,
+            "y": 0.27566730976104736
+          },
+          {
+            "x": 0.42156869173049927,
+            "y": 0.27338162064552307
+          },
+          {
+            "x": 0.4430885314941406,
+            "y": 0.2780309021472931
+          },
+          {
+            "x": 0.4591992497444153,
+            "y": 0.2720918655395508
+          },
+          {
+            "x": 0.46053990721702576,
+            "y": 0.282086580991745
+          },
+          {
+            "x": 0.4612402021884918,
+            "y": 0.2898239493370056
+          },
+          {
+            "x": 0.45678389072418213,
+            "y": 0.29774191975593567
+          },
+          {
+            "x": 0.4523398280143738,
+            "y": 0.30216315388679504
+          },
+          {
+            "x": 0.43967586755752563,
+            "y": 0.3107851445674896
+          },
+          {
+            "x": 0.40091246366500854,
+            "y": 0.3116212785243988
+          },
+          {
+            "x": 0.37920546531677246,
+            "y": 0.2979975640773773
+          },
+          {
+            "x": 0.4165560305118561,
+            "y": 0.2851833999156952
+          },
+          {
+            "x": 0.4269425868988037,
+            "y": 0.29833459854125977
+          },
+          {
+            "x": 0.42361825704574585,
+            "y": 0.32201531529426575
+          },
+          {
+            "x": 0.3889866769313812,
+            "y": 0.3290195167064667
+          },
+          {
+            "x": 0.3683915138244629,
+            "y": 0.3229373097419739
+          },
+          {
+            "x": 0.3513231575489044,
+            "y": 0.31982022523880005
+          },
+          {
+            "x": 0.35622212290763855,
+            "y": 0.33939459919929504
+          },
+          {
+            "x": 0.36984819173812866,
+            "y": 0.3514522314071655
+          },
+          {
+            "x": 0.39069968461990356,
+            "y": 0.3607431948184967
+          },
+          {
+            "x": 0.41311386227607727,
+            "y": 0.3822931945323944
+          },
+          {
+            "x": 0.43428361415863037,
+            "y": 0.3964928686618805
+          },
+          {
+            "x": 0.45564979314804077,
+            "y": 0.40842127799987793
+          },
+          {
+            "x": 0.4836982786655426,
+            "y": 0.4160800874233246
+          },
+          {
+            "x": 0.5159757733345032,
+            "y": 0.41724225878715515
+          },
+          {
+            "x": 0.5487855076789856,
+            "y": 0.41385945677757263
+          },
+          {
+            "x": 0.576340913772583,
+            "y": 0.40413838624954224
+          },
+          {
+            "x": 0.5964998602867126,
+            "y": 0.3905716836452484
+          },
+          {
+            "x": 0.6157532930374146,
+            "y": 0.37513014674186707
+          },
+          {
+            "x": 0.6352826356887817,
+            "y": 0.35193493962287903
+          },
+          {
+            "x": 0.6552658081054688,
+            "y": 0.34120622277259827
+          },
+          {
+            "x": 0.6676218509674072,
+            "y": 0.3279588520526886
+          },
+          {
+            "x": 0.6688522696495056,
+            "y": 0.3080931305885315
+          },
+          {
+            "x": 0.6506015062332153,
+            "y": 0.3127448558807373
+          },
+          {
+            "x": 0.6302156448364258,
+            "y": 0.3200782537460327
+          },
+          {
+            "x": 0.5932121276855469,
+            "y": 0.3155929744243622
+          },
+          {
+            "x": 0.5848355293273926,
+            "y": 0.29248562455177307
+          },
+          {
+            "x": 0.5935345888137817,
+            "y": 0.27844876050949097
+          },
+          {
+            "x": 0.6340913772583008,
+            "y": 0.28854477405548096
+          },
+          {
+            "x": 0.613997757434845,
+            "y": 0.3039058446884155
+          },
+          {
+            "x": 0.5738741159439087,
+            "y": 0.30570971965789795
+          },
+          {
+            "x": 0.5585234761238098,
+            "y": 0.2980279326438904
+          },
+          {
+            "x": 0.5519570112228394,
+            "y": 0.2939795255661011
+          },
+          {
+            "x": 0.5472191572189331,
+            "y": 0.2864985466003418
+          },
+          {
+            "x": 0.5472161769866943,
+            "y": 0.2787495255470276
+          },
+          {
+            "x": 0.5476884841918945,
+            "y": 0.26872456073760986
+          },
+          {
+            "x": 0.5651535987854004,
+            "y": 0.2731580436229706
+          },
+          {
+            "x": 0.5872611999511719,
+            "y": 0.267118901014328
+          },
+          {
+            "x": 0.6171300411224365,
+            "y": 0.26728177070617676
+          },
+          {
+            "x": 0.636809766292572,
+            "y": 0.26355117559432983
+          },
+          {
+            "x": 0.6878349781036377,
+            "y": 0.26988139748573303
+          }
+        ]
+      },
+      "quality": {
+        "score": 0.925853709832142,
+        "anchorCount": 21,
+        "contourPointCount": 183,
+        "faceCoverage": 0.10147823958951463,
+        "rollRadians": -0.045334249413808196,
+        "symmetryError": 0.012707039713859558,
+        "warnings": []
+      }
+    },
+    "report": {
+      "summary": "Youthful, approachable features with balanced proportions. Strong brows and expressive eyes anchor an open, symmetrical smile. Soft jawline and rounded cheek contours suggest a boyish charm that translates well to screen. Grooming is casual and event-appropriate.",
+      "potential": {
+        "score": 7,
+        "label": "Polished Casual",
+        "summary": "Refined grooming could elevate event presence without sacrificing accessibility.",
+        "focusAreas": [
+          "Brow grooming for cleaner arch definition",
+          "Lightweight matte product for forehead shine control",
+          "Subtle jawline contour for added structure on camera"
+        ]
+      },
+      "categories": [
+        {
+          "id": "eyes",
+          "title": "Eyes",
+          "subtitle": "Periocular balance and eye-line structure",
+          "scoreLabel": "Eye area",
+          "score": 7,
+          "features": [
+            {
+              "label": "Eye spacing",
+              "value": "0.46\u00d7"
+            },
+            {
+              "label": "Inner-eye gap",
+              "value": "0.85\u00d7"
+            },
+            {
+              "label": "Outer-corner tilt",
+              "value": "L 5.0\u00b0 \u00b7 R 3.0\u00b0"
+            },
+            {
+              "label": "Vertical eye opening",
+              "value": "L 0.55\u00d7 \u00b7 R 0.52\u00d7"
+            },
+            {
+              "label": "Eye shape",
+              "value": "Almond"
+            },
+            {
+              "label": "Lower scleral exposure",
+              "value": "L 0.05\u00d7 \u00b7 R 0.05\u00d7"
+            }
+          ],
+          "explanation": "Dark brown eyes with visible upper lid exposure and slight natural fold. Direct gaze creates engagement; moderate brow ridge shadow adds depth without heaviness.",
+          "recommendation": "Retake under consistent lighting and a neutral expression before judging the eye area across reports.",
+          "eyeColor": "dark brown"
+        },
+        {
+          "id": "nose",
+          "title": "Nose",
+          "subtitle": "Bridge alignment and central facial axis",
+          "scoreLabel": "Nasal balance",
+          "score": 6,
+          "features": [
+            {
+              "label": "Nose-base width",
+              "value": "0.22\u00d7"
+            },
+            {
+              "label": "Nose / inner-eye gap",
+              "value": "1.05\u00d7"
+            },
+            {
+              "label": "Nose length",
+              "value": "0.42\u00d7"
+            },
+            {
+              "label": "Nostril visibility",
+              "value": "L 0.08\u00d7 \u00b7 R 0.07\u00d7"
+            },
+            {
+              "label": "Nose-wing angle",
+              "value": "L 25.0\u00b0 \u00b7 R 22.0\u00b0"
+            },
+            {
+              "label": "Bridge / base width",
+              "value": "0.35\u00d7"
+            }
+          ],
+          "explanation": "Straight bridge with rounded tip and moderate projection. Nasal width aligns with interocular distance; subtle columellar show visible beneath.",
+          "recommendation": "Compare several neutral front images before deciding whether nose balance is the main limiter."
+        },
+        {
+          "id": "mouth",
+          "title": "Mouth",
+          "subtitle": "Lip shape, width, and lower-third fit",
+          "scoreLabel": "Mouth harmony",
+          "score": 7,
+          "features": [
+            {
+              "label": "Mouth / pupil spacing",
+              "value": "1.30\u00d7"
+            },
+            {
+              "label": "Visible lip fullness",
+              "value": "Moderate"
+            },
+            {
+              "label": "Cupid\u2019s bow",
+              "value": "Soft"
+            },
+            {
+              "label": "Cupid\u2019s bow depth",
+              "value": "0.05\u00d7"
+            },
+            {
+              "label": "Lip-contour appearance",
+              "value": "Even"
+            }
+          ],
+          "explanation": "Broad smile revealing even upper teeth with minimal gingival display. Vermilion border is well-defined; lower lip fuller than upper in repose.",
+          "recommendation": "Use neutral expression consistency and simple grooming before judging mouth balance."
+        },
+        {
+          "id": "jaw",
+          "title": "Jaw",
+          "subtitle": "Mandible definition and chin support",
+          "scoreLabel": "Jawline",
+          "score": 6,
+          "features": [
+            {
+              "label": "Jaw / cheek width",
+              "value": "0.85\u00d7"
+            },
+            {
+              "label": "Chin / lower-face height",
+              "value": "0.40\u00d7"
+            },
+            {
+              "label": "Chin / jaw width",
+              "value": "0.75\u00d7"
+            },
+            {
+              "label": "Chin shape",
+              "value": "Tapered"
+            },
+            {
+              "label": "Jaw outline",
+              "value": "Tapered"
+            }
+          ],
+          "explanation": "Softly tapered mandible with rounded chin point. No sharp gonial angle visible; youthful submental contour without definition.",
+          "recommendation": "Track straight-on posture and repeat scans before judging lower-third structure."
+        },
+        {
+          "id": "dimorphism",
+          "title": "Dimorphism",
+          "subtitle": "Sex-typical cues weighted against harmony",
+          "scoreLabel": "Dimorphism",
+          "score": 5,
+          "features": [
+            {
+              "label": "Brow frame",
+              "value": "visible structure"
+            },
+            {
+              "label": "Lower third",
+              "value": "structured contour"
+            },
+            {
+              "label": "Cue strength",
+              "value": "moderate signal"
+            },
+            {
+              "label": "Feature contrast",
+              "value": "balanced contrast"
+            }
+          ],
+          "explanation": "Dimorphism is scored from sex-typical facial cues while penalizing traits that overpower harmony or proportional balance.",
+          "recommendation": "Use grooming and styling first; align brows, hair, and lower-third presentation before judging contrast."
+        },
+        {
+          "id": "face-shape",
+          "title": "Face shape",
+          "subtitle": "Frame, thirds, and silhouette continuity",
+          "scoreLabel": "Face shape",
+          "score": 7,
+          "features": [
+            {
+              "label": "Visible face width / height",
+              "value": "0.75\u00d7"
+            },
+            {
+              "label": "Face shape",
+              "value": "Oval"
+            },
+            {
+              "label": "Temple / cheek width",
+              "value": "0.85\u00d7"
+            },
+            {
+              "label": "Forehead / cheek width",
+              "value": "0.90\u00d7"
+            },
+            {
+              "label": "Upper-to-lower face taper",
+              "value": "1.15\u00d7"
+            }
+          ],
+          "explanation": "Compact facial framework with balanced vertical fifths. Forehead height moderate; facial width greatest at cheek level, tapering to chin.",
+          "recommendation": "Improve haircut, framing, and camera posture first because those change the visible outline fastest."
+        },
+        {
+          "id": "facial-fat",
+          "title": "Facial definition",
+          "subtitle": "Cheek and lower-face clarity",
+          "scoreLabel": "Definition score",
+          "score": 6,
+          "features": [
+            {
+              "label": "Cheek landmark height",
+              "value": "0.55\u00d7"
+            },
+            {
+              "label": "Cheek width / eye span",
+              "value": "1.10\u00d7"
+            },
+            {
+              "label": "Midface width / height",
+              "value": "1.00\u00d7"
+            },
+            {
+              "label": "Cheek transition",
+              "value": "Smooth"
+            }
+          ],
+          "explanation": "Full malar pads with prominent smile creases. Soft tissue volume creates rounded contour under lateral eye; no hollow visible.",
+          "recommendation": "Retake future scans with the same lighting, posture, and camera distance before judging soft-tissue fullness."
+        },
+        {
+          "id": "biological-age",
+          "title": "Skin Age",
+          "subtitle": "Visible age cues",
+          "scoreLabel": "Age signal",
+          "score": 6.4,
+          "features": [
+            {
+              "label": "Apparent age",
+              "value": "29 years"
+            },
+            {
+              "label": "Texture age cue",
+              "value": "Younger"
+            },
+            {
+              "label": "Under-eye cue",
+              "value": "low shadowing"
+            },
+            {
+              "label": "Skin damage",
+              "value": "low visible signal"
+            }
+          ],
+          "explanation": "Even tone with faint forehead sheen under event lighting. Minor texture visible on nasal bridge and chin; no prominent discoloration.",
+          "recommendation": "Keep capture conditions consistent so future reports compare visible age cues fairly."
+        },
+        {
+          "id": "symmetry",
+          "title": "Symmetry",
+          "subtitle": "Left-right balance across visible landmarks",
+          "scoreLabel": "Symmetry",
+          "score": 7,
+          "features": [
+            {
+              "label": "Eye-corner height balance",
+              "value": "0.8%"
+            },
+            {
+              "label": "Brow height balance",
+              "value": "1.2%"
+            },
+            {
+              "label": "Nose-wing balance",
+              "value": "2.5%"
+            },
+            {
+              "label": "Nose axis alignment",
+              "value": "1.0%"
+            },
+            {
+              "label": "Chin midline alignment",
+              "value": "0.5%"
+            },
+            {
+              "label": "Ear-position balance",
+              "value": "1.5%"
+            }
+          ],
+          "explanation": "Bilateral correspondence strong at rest; smile introduces mild left-right variance in lip elevation and cheek fullness. Ear placement appears level.",
+          "recommendation": "Retake future scans straight-on before judging whether the asymmetry is persistent."
+        },
+        {
+          "id": "sun-damage",
+          "title": "UV context",
+          "subtitle": "UV context and visible tone",
+          "scoreLabel": "UV context",
+          "score": 6,
+          "features": [
+            {
+              "label": "Pigmentation",
+              "value": "low visible pigment"
+            },
+            {
+              "label": "Redness",
+              "value": "mild redness"
+            },
+            {
+              "label": "Texture",
+              "value": "stable texture"
+            },
+            {
+              "label": "UV sensitivity",
+              "value": "tracked context"
+            }
+          ],
+          "explanation": "Even tone with faint forehead sheen under event lighting. Minor texture visible on nasal bridge and chin; no prominent discoloration.",
+          "recommendation": "Use consistent outdoor context and neutral lighting so future scans compare visible tone and texture fairly."
+        },
+        {
+          "id": "overall",
+          "title": "Overall",
+          "subtitle": "Final calibrated assessment",
+          "scoreLabel": "Overall score",
+          "score": 7.3,
+          "features": [
+            {
+              "label": "Eye area",
+              "value": "7.0/10"
+            },
+            {
+              "label": "Jaw & chin",
+              "value": "5.7/10"
+            },
+            {
+              "label": "Cheekbone structure",
+              "value": "5.7/10"
+            },
+            {
+              "label": "Facial thirds",
+              "value": "6.4/10"
+            },
+            {
+              "label": "Symmetry",
+              "value": "7.0/10"
+            },
+            {
+              "label": "Skin quality",
+              "value": "6.5/10"
+            }
+          ],
+          "explanation": "The overall score is the public report score on a 0 to 10 scale. PSL calibration remains a secondary rubric signal for comparison contexts.",
+          "recommendation": "Improve the lowest-scoring category first; one focused change beats scattered glow-up advice."
+        }
+      ],
+      "protocolContext": {
+        "faceShape": "oval",
+        "hairTexture": "wavy",
+        "visibleConcerns": []
+      }
+    }
+  },
+  "webReport": {
+    "version": 2,
+    "summary": "Youthful, approachable features with balanced proportions. Strong brows and expressive eyes anchor an open, symmetrical smile. Soft jawline and rounded cheek contours suggest a boyish charm that translates well to screen. Grooming is casual and event-appropriate.",
+    "overallScore": 7,
+    "categories": [
+      {
+        "id": "eyes",
+        "score": 7,
+        "explanation": "Dark brown eyes with visible upper lid exposure and slight natural fold. Direct gaze creates engagement; moderate brow ridge shadow adds depth without heaviness."
+      },
+      {
+        "id": "brows",
+        "score": 7,
+        "explanation": "Full, moderately arched brows with soft density and natural taper toward temples. Slight asymmetry in peak height; left brow sits marginally higher at rest."
+      },
+      {
+        "id": "nose",
+        "score": 6,
+        "explanation": "Straight bridge with rounded tip and moderate projection. Nasal width aligns with interocular distance; subtle columellar show visible beneath."
+      },
+      {
+        "id": "mouth",
+        "score": 7,
+        "explanation": "Broad smile revealing even upper teeth with minimal gingival display. Vermilion border is well-defined; lower lip fuller than upper in repose."
+      },
+      {
+        "id": "jaw",
+        "score": 6,
+        "explanation": "Softly tapered mandible with rounded chin point. No sharp gonial angle visible; youthful submental contour without definition."
+      },
+      {
+        "id": "cheeks",
+        "score": 6,
+        "explanation": "Full malar pads with prominent smile creases. Soft tissue volume creates rounded contour under lateral eye; no hollow visible."
+      },
+      {
+        "id": "face",
+        "score": 7,
+        "explanation": "Compact facial framework with balanced vertical fifths. Forehead height moderate; facial width greatest at cheek level, tapering to chin."
+      },
+      {
+        "id": "proportions",
+        "score": 7,
+        "explanation": "Eye spacing equals one eye width; mouth width aligns with medial iris landmarks. Lower face slightly shorter than midface in this expression."
+      },
+      {
+        "id": "symmetry",
+        "score": 7,
+        "explanation": "Bilateral correspondence strong at rest; smile introduces mild left-right variance in lip elevation and cheek fullness. Ear placement appears level."
+      },
+      {
+        "id": "skin",
+        "score": 6,
+        "explanation": "Even tone with faint forehead sheen under event lighting. Minor texture visible on nasal bridge and chin; no prominent discoloration."
+      },
+      {
+        "id": "hair",
+        "score": 7,
+        "explanation": "Medium brown with warm undertones, styled in textured sweep with volume at crown. Side part with controlled wave; clean hairline with slight widow's peak."
+      },
+      {
+        "id": "ears",
+        "score": 6,
+        "explanation": "Medium-set ears with visible helix rim and attached lobes. Right ear more fully exposed; left partially obscured by hair sweep."
+      }
+    ],
+    "entries": [
+      {
+        "id": "eyes.spacing",
+        "value": 0.46,
+        "evidence": "pupil centers narrow relative to cheek span",
+        "source": "llm-estimate",
+        "grade": 7,
+        "positions": [
+          0.7
+        ]
+      },
+      {
+        "id": "eyes.inner-gap",
+        "value": 0.85,
+        "evidence": "inner corners slightly closer than mean eye width",
+        "source": "llm-estimate",
+        "grade": null,
+        "positions": []
+      },
+      {
+        "id": "eyes.aspect",
+        "value": null,
+        "evidence": "Neutral open eyes are not established.",
+        "source": "llm-estimate",
+        "grade": null,
+        "positions": []
+      },
+      {
+        "id": "eyes.canthal-tilt",
+        "value": [
+          5,
+          3
+        ],
+        "evidence": "slight upward tilt both sides, left more positive",
+        "source": "llm-estimate",
+        "grade": 7,
+        "positions": [
+          0.6,
+          0.55
+        ]
+      },
+      {
+        "id": "eyes.opening",
+        "value": [
+          0.55,
+          0.52
+        ],
+        "evidence": "lid opening about half iris diameter, left slightly more open",
+        "source": "llm-estimate",
+        "grade": 6,
+        "positions": [
+          0.6,
+          0.55
+        ]
+      },
+      {
+        "id": "eyes.shape",
+        "value": "almond",
+        "evidence": "tapered inner corners, smooth outer sweep",
+        "source": "llm-estimate",
+        "grade": null,
+        "positions": []
+      },
+      {
+        "id": "eyes.upper-lid",
+        "value": null,
+        "evidence": "Neutral open eyes are not established.",
+        "source": "llm-estimate",
+        "grade": null,
+        "positions": []
+      },
+      {
+        "id": "eyes.lower-sclera",
+        "value": [
+          0.05,
+          0.05
+        ],
+        "evidence": "minimal strip below iris both eyes",
+        "source": "llm-estimate",
+        "grade": null,
+        "positions": []
+      },
+      {
+        "id": "eyes.crease",
+        "value": "visible",
+        "evidence": "supratarsal crease apparent on both upper lids",
+        "source": "llm-estimate",
+        "grade": null,
+        "positions": []
+      },
+      {
+        "id": "eyes.orbital-contour",
+        "value": "prominent-looking",
+        "evidence": "forward-projecting orbital globe, convex lid surface",
+        "source": "llm-estimate",
+        "grade": null,
+        "positions": []
+      },
+      {
+        "id": "eyes.under-eye-fullness",
+        "value": null,
+        "evidence": "Even lighting is not established.",
+        "source": "llm-estimate",
+        "grade": null,
+        "positions": []
+      },
+      {
+        "id": "eyes.lashes",
+        "value": null,
+        "evidence": "Capture detail is insufficient or uncertain.",
+        "source": "llm-estimate",
+        "grade": null,
+        "positions": []
+      },
+      {
+        "id": "brows.tilt",
+        "value": [
+          8,
+          6
+        ],
+        "evidence": "medial-to-lateral rise both sides, left steeper",
+        "source": "llm-estimate",
+        "grade": null,
+        "positions": []
+      },
+      {
+        "id": "brows.eye-distance",
+        "value": [
+          0.35,
+          0.38
+        ],
+        "evidence": "brow sits close above lid, left slightly tighter",
+        "source": "llm-estimate",
+        "grade": 6,
+        "positions": [
+          0.55,
+          0.6
+        ]
+      },
+      {
+        "id": "brows.length",
+        "value": [
+          1.1,
+          1.05
+        ],
+        "evidence": "brow extends slightly beyond eye width both sides",
+        "source": "llm-estimate",
+        "grade": 7,
+        "positions": [
+          0.65,
+          0.6
+        ]
+      },
+      {
+        "id": "brows.thickness",
+        "value": 0.12,
+        "evidence": "moderate uniform thickness, no segmentation available",
+        "source": "llm-estimate",
+        "grade": null,
+        "positions": []
+      },
+      {
+        "id": "brows.density",
+        "value": null,
+        "evidence": "Even lighting is not established.",
+        "source": "llm-estimate",
+        "grade": null,
+        "positions": []
+      },
+      {
+        "id": "brows.arch",
+        "value": [
+          155,
+          160
+        ],
+        "evidence": "gentle arch, flatter on right",
+        "source": "llm-estimate",
+        "grade": null,
+        "positions": []
+      },
+      {
+        "id": "brows.tail",
+        "value": [
+          -15,
+          -12
+        ],
+        "evidence": "downward sweep in outer third both sides",
+        "source": "llm-estimate",
+        "grade": null,
+        "positions": []
+      },
+      {
+        "id": "brows.position",
+        "value": "aligned",
+        "evidence": "medial start near inner corner, tail near outer corner",
+        "source": "llm-estimate",
+        "grade": null,
+        "positions": []
+      },
+      {
+        "id": "nose.width",
+        "value": 0.22,
+        "evidence": "moderate width relative to cheek span",
+        "source": "llm-estimate",
+        "grade": 6,
+        "positions": [
+          0.55
+        ]
+      },
+      {
+        "id": "nose.eye-gap-ratio",
+        "value": 1.05,
+        "evidence": "nose-wing width approximately equals inner-eye distance",
+        "source": "llm-estimate",
+        "grade": null,
+        "positions": []
+      },
+      {
+        "id": "nose.length",
+        "value": 0.42,
+        "evidence": "nasal root at glabella to tip below midface",
+        "source": "llm-estimate",
+        "grade": null,
+        "positions": []
+      },
+      {
+        "id": "nose.bridge",
+        "value": null,
+        "evidence": "A side capture is required.",
+        "source": "llm-estimate",
+        "grade": null,
+        "positions": []
+      },
+      {
+        "id": "nose.tip-shape",
+        "value": null,
+        "evidence": "A side capture is required.",
+        "source": "llm-estimate",
+        "grade": null,
+        "positions": []
+      },
+      {
+        "id": "nose.rotation",
+        "value": null,
+        "evidence": "A relaxed neutral mouth is required.",
+        "source": "llm-estimate",
+        "grade": null,
+        "positions": []
+      },
+      {
+        "id": "nose.projection",
+        "value": null,
+        "evidence": "A side capture is required.",
+        "source": "llm-estimate",
+        "grade": null,
+        "positions": []
+      },
+      {
+        "id": "nose.nostril-visibility",
+        "value": [
+          0.08,
+          0.07
+        ],
+        "evidence": "small visible aperture, slightly more left",
+        "source": "llm-estimate",
+        "grade": null,
+        "positions": []
+      },
+      {
+        "id": "nose.alar-angle",
+        "value": [
+          25,
+          22
+        ],
+        "evidence": "moderate flare from vertical, left slightly more angled",
+        "source": "llm-estimate",
+        "grade": null,
+        "positions": []
+      },
+      {
+        "id": "nose.bridge-width",
+        "value": 0.35,
+        "evidence": "narrow bridge relative to wing width",
+        "source": "llm-estimate",
+        "grade": null,
+        "positions": []
+      },
+      {
+        "id": "mouth.width",
+        "value": null,
+        "evidence": "A relaxed neutral mouth is required.",
+        "source": "llm-estimate",
+        "grade": null,
+        "positions": []
+      },
+      {
+        "id": "mouth.lip-ratio",
+        "value": null,
+        "evidence": "A relaxed neutral mouth is required.",
+        "source": "llm-estimate",
+        "grade": null,
+        "positions": []
+      },
+      {
+        "id": "mouth.corner-position",
+        "value": null,
+        "evidence": "A relaxed neutral mouth is required.",
+        "source": "llm-estimate",
+        "grade": null,
+        "positions": []
+      },
+      {
+        "id": "mouth.pupil-ratio",
+        "value": 1.3,
+        "evidence": "Wide mouth relative to eye spacing",
+        "source": "llm-estimate",
+        "grade": null,
+        "positions": []
+      },
+      {
+        "id": "mouth.fullness",
+        "value": "moderate",
+        "evidence": "Neither thin nor notably full",
+        "source": "llm-estimate",
+        "grade": null,
+        "positions": []
+      },
+      {
+        "id": "mouth.cupid-bow",
+        "value": "soft",
+        "evidence": "Rounded peaks, shallow definition",
+        "source": "llm-estimate",
+        "grade": null,
+        "positions": []
+      },
+      {
+        "id": "mouth.bow-depth",
+        "value": 0.05,
+        "evidence": "Minimal central notch visible",
+        "source": "llm-estimate",
+        "grade": null,
+        "positions": []
+      },
+      {
+        "id": "mouth.philtrum",
+        "value": null,
+        "evidence": "Smile distorts landmark heights",
+        "source": "llm-estimate",
+        "grade": null,
+        "positions": []
+      },
+      {
+        "id": "mouth.projection",
+        "value": null,
+        "evidence": "A side capture is required.",
+        "source": "llm-estimate",
+        "grade": null,
+        "positions": []
+      },
+      {
+        "id": "mouth.contour",
+        "value": "even",
+        "evidence": "Smooth vermilion borders visible",
+        "source": "llm-estimate",
+        "grade": null,
+        "positions": []
+      },
+      {
+        "id": "jaw.width",
+        "value": 0.85,
+        "evidence": "Jaw narrower than cheek width",
+        "source": "llm-estimate",
+        "grade": 6,
+        "positions": [
+          0.6
+        ]
+      },
+      {
+        "id": "jaw.angle",
+        "value": null,
+        "evidence": "A side capture is required.",
+        "source": "llm-estimate",
+        "grade": null,
+        "positions": []
+      },
+      {
+        "id": "jaw.projection",
+        "value": null,
+        "evidence": "A side capture is required.",
+        "source": "llm-estimate",
+        "grade": null,
+        "positions": []
+      },
+      {
+        "id": "jaw.height",
+        "value": 0.4,
+        "evidence": "Lower third moderately compact",
+        "source": "llm-estimate",
+        "grade": 6,
+        "positions": [
+          0.6
+        ]
+      },
+      {
+        "id": "jaw.chin-width",
+        "value": 0.75,
+        "evidence": "Tapered chin relative to jaw",
+        "source": "llm-estimate",
+        "grade": null,
+        "positions": []
+      },
+      {
+        "id": "jaw.chin-shape",
+        "value": "tapered",
+        "evidence": "Narrowing to rounded point",
+        "source": "llm-estimate",
+        "grade": null,
+        "positions": []
+      },
+      {
+        "id": "jaw.jaw-shape",
+        "value": "tapered",
+        "evidence": "Smooth curve to chin",
+        "source": "llm-estimate",
+        "grade": null,
+        "positions": []
+      },
+      {
+        "id": "jaw.definition",
+        "value": null,
+        "evidence": "A side capture is required.",
+        "source": "llm-estimate",
+        "grade": null,
+        "positions": []
+      },
+      {
+        "id": "jaw.under-chin",
+        "value": null,
+        "evidence": "A side capture is required.",
+        "source": "llm-estimate",
+        "grade": null,
+        "positions": []
+      },
+      {
+        "id": "jaw.chin-philtrum",
+        "value": null,
+        "evidence": "Philtrum height unreliable",
+        "source": "llm-estimate",
+        "grade": null,
+        "positions": []
+      },
+      {
+        "id": "cheeks.height",
+        "value": 0.55,
+        "evidence": "Mid-cheek below eye line",
+        "source": "llm-estimate",
+        "grade": 6,
+        "positions": [
+          0.6
+        ]
+      },
+      {
+        "id": "cheeks.width",
+        "value": 1.1,
+        "evidence": "Cheeks slightly wider than eye span",
+        "source": "llm-estimate",
+        "grade": 6,
+        "positions": [
+          0.6
+        ]
+      },
+      {
+        "id": "cheeks.midface",
+        "value": 1,
+        "evidence": "Balanced horizontal-vertical relationship",
+        "source": "llm-estimate",
+        "grade": 6,
+        "positions": [
+          0.6
+        ]
+      },
+      {
+        "id": "cheeks.contour",
+        "value": null,
+        "evidence": "Even lighting is not established.",
+        "source": "llm-estimate",
+        "grade": null,
+        "positions": []
+      },
+      {
+        "id": "cheeks.prominence",
+        "value": null,
+        "evidence": "A side capture is required.",
+        "source": "llm-estimate",
+        "grade": null,
+        "positions": []
+      },
+      {
+        "id": "cheeks.malar-transition",
+        "value": "smooth",
+        "evidence": "Gradual cheek-to-jaw flow",
+        "source": "llm-estimate",
+        "grade": null,
+        "positions": []
+      },
+      {
+        "id": "cheeks.paranasal",
+        "value": null,
+        "evidence": "A side capture is required.",
+        "source": "llm-estimate",
+        "grade": null,
+        "positions": []
+      },
+      {
+        "id": "cheeks.nasolabial-fold",
+        "value": null,
+        "evidence": "A relaxed neutral mouth is required.",
+        "source": "llm-estimate",
+        "grade": null,
+        "positions": []
+      },
+      {
+        "id": "face.frame",
+        "value": 0.75,
+        "evidence": "Cheek width moderate relative to height",
+        "source": "llm-estimate",
+        "grade": 6,
+        "positions": [
+          0.6
+        ]
+      },
+      {
+        "id": "face.forehead-height",
+        "value": null,
+        "evidence": "The complete actual hairline is not established.",
+        "source": "llm-estimate",
+        "grade": null,
+        "positions": []
+      },
+      {
+        "id": "face.forehead-slope",
+        "value": null,
+        "evidence": "A side capture is required.",
+        "source": "llm-estimate",
+        "grade": null,
+        "positions": []
+      },
+      {
+        "id": "face.shape",
+        "value": "oval",
+        "evidence": "Longer than wide, tapered chin",
+        "source": "llm-estimate",
+        "grade": null,
+        "positions": []
+      },
+      {
+        "id": "face.temple-width",
+        "value": 0.85,
+        "evidence": "Temples slightly narrower than cheeks",
+        "source": "llm-estimate",
+        "grade": null,
+        "positions": []
+      },
+      {
+        "id": "face.forehead-width",
+        "value": 0.9,
+        "evidence": "Forehead near cheek width",
+        "source": "llm-estimate",
+        "grade": null,
+        "positions": []
+      },
+      {
+        "id": "face.taper",
+        "value": 1.15,
+        "evidence": "Temples slightly wider than jaw",
+        "source": "llm-estimate",
+        "grade": null,
+        "positions": []
+      },
+      {
+        "id": "face.forehead-contour",
+        "value": null,
+        "evidence": "A side capture is required.",
+        "source": "llm-estimate",
+        "grade": null,
+        "positions": []
+      },
+      {
+        "id": "proportions.upper-third",
+        "value": null,
+        "evidence": "The complete actual hairline is not established.",
+        "source": "llm-estimate",
+        "grade": null,
+        "positions": []
+      },
+      {
+        "id": "proportions.middle-third",
+        "value": null,
+        "evidence": "The complete actual hairline is not established.",
+        "source": "llm-estimate",
+        "grade": null,
+        "positions": []
+      },
+      {
+        "id": "proportions.lower-third",
+        "value": null,
+        "evidence": "The complete actual hairline is not established.",
+        "source": "llm-estimate",
+        "grade": null,
+        "positions": []
+      },
+      {
+        "id": "proportions.fifths",
+        "value": null,
+        "evidence": "hairline obscured, fifths origin uncertain",
+        "source": "llm-estimate",
+        "grade": null,
+        "positions": []
+      },
+      {
+        "id": "proportions.lower-partition",
+        "value": 0.42,
+        "evidence": "mouth seam above chin midpoint",
+        "source": "llm-estimate",
+        "grade": 7,
+        "positions": [
+          0.7
+        ]
+      },
+      {
+        "id": "proportions.convexity",
+        "value": null,
+        "evidence": "A side capture is required.",
+        "source": "llm-estimate",
+        "grade": null,
+        "positions": []
+      },
+      {
+        "id": "proportions.vertical-alignment",
+        "value": [
+          0.01,
+          0.02,
+          -0.01
+        ],
+        "evidence": "nose centered, mouth slight right, chin centered",
+        "source": "llm-estimate",
+        "grade": null,
+        "positions": []
+      },
+      {
+        "id": "proportions.width-hierarchy",
+        "value": "temple > cheek > jaw, tapered oval",
+        "evidence": "temple width dominant, jaw narrowest",
+        "source": "llm-estimate",
+        "grade": null,
+        "positions": []
+      },
+      {
+        "id": "proportions.eye-mouth-height",
+        "value": 1.1,
+        "evidence": "eye line to mouth slightly exceeds mouth-chin",
+        "source": "llm-estimate",
+        "grade": null,
+        "positions": []
+      },
+      {
+        "id": "proportions.nose-lower-third",
+        "value": 0.55,
+        "evidence": "nose length about half lower third height",
+        "source": "llm-estimate",
+        "grade": null,
+        "positions": []
+      },
+      {
+        "id": "proportions.angle-coordination",
+        "value": null,
+        "evidence": "validated alar and jaw endpoints unavailable",
+        "source": "llm-estimate",
+        "grade": null,
+        "positions": []
+      },
+      {
+        "id": "proportions.summary",
+        "value": "5 proportion relationships available; approximate, without a combined grade.",
+        "evidence": "Derived only from accepted proportion entries.",
+        "source": "derived",
+        "grade": null
+      },
+      {
+        "id": "symmetry.eyes-height",
+        "value": 0.8,
+        "evidence": "left eye corners slightly higher, minimal roll",
+        "source": "llm-estimate",
+        "grade": 7,
+        "positions": [
+          0.7
+        ]
+      },
+      {
+        "id": "symmetry.eyes-opening",
+        "value": null,
+        "evidence": "Neutral open eyes are not established.",
+        "source": "llm-estimate",
+        "grade": null,
+        "positions": []
+      },
+      {
+        "id": "symmetry.brows-height",
+        "value": 1.2,
+        "evidence": "left brow marginally higher, smile distortion",
+        "source": "llm-estimate",
+        "grade": 6,
+        "positions": [
+          0.6
+        ]
+      },
+      {
+        "id": "symmetry.brows-shape",
+        "value": null,
+        "evidence": "brow contour insufficient for residual",
+        "source": "llm-estimate",
+        "grade": null,
+        "positions": []
+      },
+      {
+        "id": "symmetry.nose-wings",
+        "value": 2.5,
+        "evidence": "left alar slightly more visible, minor asymmetry",
+        "source": "llm-estimate",
+        "grade": null,
+        "positions": []
+      },
+      {
+        "id": "symmetry.nose-axis",
+        "value": 1,
+        "evidence": "tip near midline, base slight left deviation",
+        "source": "llm-estimate",
+        "grade": null,
+        "positions": []
+      },
+      {
+        "id": "symmetry.mouth-height",
+        "value": null,
+        "evidence": "A relaxed neutral mouth is required.",
+        "source": "llm-estimate",
+        "grade": null,
+        "positions": []
+      },
+      {
+        "id": "symmetry.lip-contour",
+        "value": null,
+        "evidence": "smile distorts lip contour",
+        "source": "llm-estimate",
+        "grade": null,
+        "positions": []
+      },
+      {
+        "id": "symmetry.chin-axis",
+        "value": 0.5,
+        "evidence": "chin nearly centered on axis",
+        "source": "llm-estimate",
+        "grade": 8,
+        "positions": [
+          0.8
+        ]
+      },
+      {
+        "id": "symmetry.jaw-outline",
+        "value": null,
+        "evidence": "validated contour unavailable",
+        "source": "llm-estimate",
+        "grade": null,
+        "positions": []
+      },
+      {
+        "id": "symmetry.cheek-outline",
+        "value": null,
+        "evidence": "Even lighting is not established.",
+        "source": "llm-estimate",
+        "grade": null,
+        "positions": []
+      },
+      {
+        "id": "symmetry.ears-position",
+        "value": 1.5,
+        "evidence": "left ear slightly higher, both visible",
+        "source": "llm-estimate",
+        "grade": null,
+        "positions": []
+      },
+      {
+        "id": "skin.texture",
+        "value": null,
+        "evidence": "Capture detail is insufficient or uncertain.",
+        "source": "llm-estimate",
+        "grade": null,
+        "positions": []
+      },
+      {
+        "id": "skin.tone",
+        "value": null,
+        "evidence": "Even lighting is not established.",
+        "source": "llm-estimate",
+        "grade": null,
+        "positions": []
+      },
+      {
+        "id": "skin.under-eye-contrast",
+        "value": null,
+        "evidence": "Even lighting is not established.",
+        "source": "llm-estimate",
+        "grade": null,
+        "positions": []
+      },
+      {
+        "id": "skin.blemishes",
+        "value": null,
+        "evidence": "Capture detail is insufficient or uncertain.",
+        "source": "llm-estimate",
+        "grade": null,
+        "positions": []
+      },
+      {
+        "id": "skin.pores",
+        "value": null,
+        "evidence": "Capture detail is insufficient or uncertain.",
+        "source": "llm-estimate",
+        "grade": null,
+        "positions": []
+      },
+      {
+        "id": "skin.shine",
+        "value": null,
+        "evidence": "Even lighting is not established.",
+        "source": "llm-estimate",
+        "grade": null,
+        "positions": []
+      },
+      {
+        "id": "skin.fine-lines",
+        "value": null,
+        "evidence": "A relaxed neutral mouth is required.",
+        "source": "llm-estimate",
+        "grade": null,
+        "positions": []
+      },
+      {
+        "id": "skin.marks",
+        "value": "localized",
+        "evidence": "few small forehead appearances",
+        "source": "llm-estimate",
+        "grade": null,
+        "positions": []
+      },
+      {
+        "id": "skin.under-eye-color",
+        "value": null,
+        "evidence": "Even lighting is not established.",
+        "source": "llm-estimate",
+        "grade": null,
+        "positions": []
+      },
+      {
+        "id": "skin.surface-pattern",
+        "value": "forehead",
+        "evidence": "texture detail isolated to forehead",
+        "source": "llm-estimate",
+        "grade": null,
+        "positions": []
+      },
+      {
+        "id": "skin.capture-effects",
+        "value": "highlight possible, makeup possible",
+        "evidence": "even skin suggests product, stage lighting",
+        "source": "llm-estimate",
+        "grade": null,
+        "positions": []
+      },
+      {
+        "id": "skin.priorities",
+        "value": "Retake in even light with sufficient facial detail before interpreting skin observations.",
+        "evidence": "Capture guidance only; no treatment or diagnosis inferred.",
+        "source": "derived",
+        "grade": null
+      },
+      {
+        "id": "hair.hairline-shape",
+        "value": null,
+        "evidence": "The complete actual hairline is not established.",
+        "source": "llm-estimate",
+        "grade": null,
+        "positions": []
+      },
+      {
+        "id": "hair.hairline-visibility",
+        "value": "partial",
+        "evidence": "temple peaks visible, center covered",
+        "source": "llm-estimate",
+        "grade": null,
+        "positions": []
+      },
+      {
+        "id": "hair.coverage",
+        "value": "dense frontal coverage, no scalp visible",
+        "evidence": "thick styled hair, full appearance",
+        "source": "llm-estimate",
+        "grade": null,
+        "positions": []
+      },
+      {
+        "id": "hair.frame",
+        "value": "moderate forehead exposure, lateral volume frames face",
+        "evidence": "swept up sides, oval contour",
+        "source": "llm-estimate",
+        "grade": null,
+        "positions": []
+      },
+      {
+        "id": "hair.volume",
+        "value": 1.15,
+        "evidence": "silhouette slightly wider than cheeks",
+        "source": "llm-estimate",
+        "grade": null,
+        "positions": []
+      },
+      {
+        "id": "hair.beard-style",
+        "value": "clean-shaven",
+        "evidence": "no facial hair visible",
+        "source": "llm-estimate",
+        "grade": null,
+        "positions": []
+      },
+      {
+        "id": "hair.grooming",
+        "value": null,
+        "evidence": "The chosen grooming style has not been supplied.",
+        "source": "llm-estimate",
+        "grade": null,
+        "positions": []
+      },
+      {
+        "id": "hair.beard-grooming",
+        "value": null,
+        "evidence": "The chosen grooming style has not been supplied.",
+        "source": "llm-estimate",
+        "grade": null,
+        "positions": []
+      },
+      {
+        "id": "ears.height",
+        "value": null,
+        "evidence": "A side capture is required.",
+        "source": "llm-estimate",
+        "grade": null,
+        "positions": []
+      },
+      {
+        "id": "ears.width",
+        "value": null,
+        "evidence": "A side capture is required.",
+        "source": "llm-estimate",
+        "grade": null,
+        "positions": []
+      },
+      {
+        "id": "ears.protrusion",
+        "value": null,
+        "evidence": "Unsupported observation format.",
+        "source": "llm-estimate",
+        "grade": null,
+        "positions": []
+      },
+      {
+        "id": "ears.vertical-position",
+        "value": [
+          0.55,
+          0.85,
+          0.52,
+          0.82
+        ],
+        "evidence": "top near brow level, bottom near nose base, symmetric",
+        "source": "llm-estimate",
+        "grade": null,
+        "positions": []
+      },
+      {
+        "id": "ears.shape",
+        "value": null,
+        "evidence": "A side capture is required.",
+        "source": "llm-estimate",
+        "grade": null,
+        "positions": []
+      },
+      {
+        "id": "ears.attachment",
+        "value": null,
+        "evidence": "A side capture is required.",
+        "source": "llm-estimate",
+        "grade": null,
+        "positions": []
+      }
+    ],
+    "eyeColor": "dark brown",
+    "hairColor": "brown",
+    "contours": {
+      "hair": [],
+      "ears": [
+        [
+          {
+            "x": 0.279,
+            "y": 0.252
+          },
+          {
+            "x": 0.285,
+            "y": 0.291
+          },
+          {
+            "x": 0.296,
+            "y": 0.323
+          },
+          {
+            "x": 0.316,
+            "y": 0.334
+          },
+          {
+            "x": 0.333,
+            "y": 0.328
+          },
+          {
+            "x": 0.339,
+            "y": 0.301
+          },
+          {
+            "x": 0.333,
+            "y": 0.273
+          },
+          {
+            "x": 0.316,
+            "y": 0.257
+          },
+          {
+            "x": 0.296,
+            "y": 0.249
+          }
+        ],
+        [
+          {
+            "x": 0.677,
+            "y": 0.249
+          },
+          {
+            "x": 0.696,
+            "y": 0.239
+          },
+          {
+            "x": 0.72,
+            "y": 0.239
+          },
+          {
+            "x": 0.737,
+            "y": 0.257
+          },
+          {
+            "x": 0.747,
+            "y": 0.279
+          },
+          {
+            "x": 0.747,
+            "y": 0.301
+          },
+          {
+            "x": 0.737,
+            "y": 0.316
+          },
+          {
+            "x": 0.72,
+            "y": 0.323
+          },
+          {
+            "x": 0.702,
+            "y": 0.316
+          },
+          {
+            "x": 0.688,
+            "y": 0.301
+          },
+          {
+            "x": 0.677,
+            "y": 0.279
+          }
+        ]
+      ]
+    },
+    "timingMs": 41723
+  },
+  "providerTiming": [
+    {
+      "stage": "overview",
+      "attempts": 1,
+      "headersMs": 3347,
+      "firstOutputMs": 3347,
+      "totalMs": 41723,
+      "usage": {
+        "prompt_tokens": 2793,
+        "completion_tokens": 1602
+      }
+    },
+    {
+      "stage": "rubric_batch_1",
+      "attempts": 1,
+      "headersMs": 3481,
+      "firstOutputMs": 3481,
+      "totalMs": 27078,
+      "usage": {
+        "prompt_tokens": 4630,
+        "completion_tokens": 929
+      },
+      "batch": 1,
+      "rubricCount": 36
+    },
+    {
+      "stage": "rubric_batch_2",
+      "attempts": 1,
+      "headersMs": 3538,
+      "firstOutputMs": 3538,
+      "totalMs": 22279,
+      "usage": {
+        "prompt_tokens": 4581,
+        "completion_tokens": 751
+      },
+      "batch": 2,
+      "rubricCount": 36
+    },
+    {
+      "stage": "rubric_batch_3",
+      "attempts": 1,
+      "headersMs": 3420,
+      "firstOutputMs": 3420,
+      "totalMs": 24483,
+      "usage": {
+        "prompt_tokens": 5011,
+        "completion_tokens": 986
+      },
+      "batch": 3,
+      "rubricCount": 42
+    }
+  ]
+}

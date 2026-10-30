@@ -25,14 +25,24 @@ export const mockEyePalette = [
 const mockHairPalette = ['#171417','#322623','#624532','#987555','#844732','#bc704b','#d39d71','#d5bd83','#eadfb6','#96939b','#eee9e7'].map((hex, index) => ({ hex, name: ['black','dark brown','brown','light brown','auburn','red','strawberry blond','blond','platinum blond','gray','white'][index] }))
 const sans = '-apple-system, BlinkMacSystemFont, "Helvetica Neue", Arial, sans-serif'
 
-export function drawMockReport(ctx: CanvasRenderingContext2D, slide: ContentSlide, image: HTMLImageElement | null, overlay: ReportOverlay | null, width: number, height: number, time: number, options: { interactiveChrome?: boolean; metricProgress?: number; growthProgress?: number; featureProgress?: (id: string, top: number) => number; actionState?: (text: string, index: number) => { reveal: number; checked: number }; paint?: CanvasPainter; regions?: ReportRegion[]; cull?: boolean } = {}) {
+export function animateMetricText(value: string, progress: number) {
+  if (progress >= 1) return value
+  return value.replace(/\d+(?:\.\d+)?/g, (number, offset: number) => /\/\s*$/.test(value.slice(0, offset)) ? number : (Number(number) * Math.max(0, progress)).toFixed(number.includes('.') ? number.split('.')[1].length : 0))
+}
+
+
+type MockReportOptions = { interactiveChrome?: boolean; metricProgress?: number; growthProgress?: number; featureProgress?: (id: string, top: number) => number; actionState?: (text: string, index: number) => { reveal: number; checked: number }; paint?: CanvasPainter; regions?: ReportRegion[]; cull?: boolean; viewportHeight?: number; deviceChrome?: boolean; presentation?: 'app' | 'video' }
+
+export function drawMockReport(ctx: CanvasRenderingContext2D, slide: ContentSlide, image: HTMLImageElement | null, overlay: ReportOverlay | null, width: number, height: number, time: number, paintOverlayOrOptions: typeof drawFaceTreatment | MockReportOptions = drawFaceTreatment, videoOptions: MockReportOptions = {}) {
+  const options = typeof paintOverlayOrOptions === 'function' ? videoOptions : paintOverlayOrOptions
+  const paintOverlay = typeof paintOverlayOrOptions === 'function' ? paintOverlayOrOptions : drawFaceTreatment
   const report = slide.mockReport
   if (!report) return
-  const { category } = report, w = mockReportSize.width, h = mockReportSize.height
+  const { category } = report, w = mockReportSize.width, h = options.viewportHeight ?? mockReportSize.height
   const paint = options.paint ?? paintCanvasNode
   const regions = options.regions ?? mockReportRegions(ctx, category)
   const contentTop = 0
-  const contentBottom = 84
+  const contentBottom = options.presentation === 'video' ? 0 : 84
   paint(ctx, { id: 'report', label: 'Report', frame: { x: 0, y: 0, width, height }, size: { width: w, height: h }, clip: true, draw: ctx => {
     ctx.textBaseline = 'top'; ctx.textAlign = 'left'
     paint(ctx, { id: 'background', label: 'Report background', frame: { x: 0, y: 0, width: w, height: h }, draw: ctx => { ctx.fillStyle = paper; ctx.fillRect(0, 0, w, h) } })
@@ -43,8 +53,8 @@ export function drawMockReport(ctx: CanvasRenderingContext2D, slide: ContentSlid
         if (region.id === 'hero') {
           paint(ctx, { id: 'hero', label: region.label, frame: region, draw: ctx => {
             if (image) paint(ctx, { id: 'portrait', label: 'Report portrait', frame: { x: 0, y: 0, width: w, height: mockReportHeroHeight }, clip: true, draw: ctx => {
-              drawReportPortrait(ctx, image, w, mockReportHeroHeight)
-              if (overlay) paint(ctx, { id: 'overlay', label: 'Face measurements', frame: { x: 0, y: 0, width: w, height: mockReportHeroHeight }, draw: ctx => drawFaceTreatment(ctx, overlay, w, time) })
+              drawReportPortrait(ctx, image, w, mockReportHeroHeight, overlay?.portraitCrop)
+              if (overlay) paint(ctx, { id: 'overlay', label: 'Face measurements', frame: { x: 0, y: 0, width: w, height: mockReportHeroHeight }, draw: ctx => paintOverlay(ctx, overlay, w, time) })
             } })
           } })
           paint(ctx, { id: 'hero-fade', label: 'Portrait fade', frame: { x: 0, y: 0, width: w, height: mockReportHeroHeight }, draw: ctx => {
@@ -75,8 +85,8 @@ export function drawMockReport(ctx: CanvasRenderingContext2D, slide: ContentSlid
       }
     } })
     paint(ctx, { id: 'report-finish', label: 'App controls', frame: { x: 0, y: 0, width: w, height: h }, draw: ctx => {
-      drawReportHeaderGlass(ctx, w, report.scroll)
-      drawChrome(ctx, category, options.interactiveChrome)
+      if (options.presentation === 'video') fade(ctx, h - 110, 110, '255,255,255')
+      else { drawReportHeaderGlass(ctx, w, report.scroll); drawChrome(ctx, category, options.interactiveChrome, h) }
     } })
   } })
 }
@@ -246,9 +256,9 @@ function glass(ctx: CanvasRenderingContext2D, x: number, y: number, width: numbe
   ctx.save(); ctx.strokeStyle = '#ffffffcc'; ctx.lineWidth = .7; ctx.beginPath(); ctx.roundRect(x, y, width, height, radius); ctx.stroke(); ctx.restore()
 }
 
-function drawChrome(ctx: CanvasRenderingContext2D, category: ReportCategory, interactive = false) {
+function drawChrome(ctx: CanvasRenderingContext2D, category: ReportCategory, interactive = false, viewportHeight = mockReportSize.height) {
   const title = category.title
-  const w = mockReportSize.width, h = mockReportSize.height
+  const w = mockReportSize.width, h = viewportHeight
 
   text(ctx, '9:41', 34, 19, 15, 600)
   box(ctx, w / 2 - 62, 11, 124, 36, 18, '#000')
@@ -343,7 +353,7 @@ function fade(ctx: CanvasRenderingContext2D, y: number, height: number, color = 
   ctx.fillStyle = gradient; ctx.fillRect(0, y, mockReportSize.width, height)
 }
 
-export function mockFeatureLayout(category: ReportCategory) {
+export function mockFeatureLayout(category: Pick<ReportCategory, 'features'> & Partial<ReportCategory>) {
   const isFull = (feature: ReportCategory['features'][number]) => {
     const style = feature.visual && feature.visual !== 'Text' ? reportTimelineStyle(feature.id ?? '', feature.label, feature.visual === 'Orbit') : null
     return style === 'dial' || style === 'tapered' || Boolean(feature.triangulation) || nativeMetricFeature(feature).visual === 'Capsule' || ['proportions.fifths', 'proportions.width-hierarchy', 'proportions.vertical-alignment'].includes(feature.id ?? '') || feature.value.length > 28

@@ -477,6 +477,13 @@
       "when": 1793318400001,
       "tag": "0067_creator_discord_links",
       "breakpoints": true
+    },
+    {
+      "idx": 68,
+      "version": "7",
+      "when": 1793322000000,
+      "tag": "0068_creator_studio",
+      "breakpoints": true
     }
   ]
 }

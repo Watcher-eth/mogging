@@ -27,6 +27,7 @@ export type GeneratorImage = {
   landmarks: import('@/lib/analysis/landmarks').FaceLandmarksPayload | null
   status: 'loading' | 'detecting' | 'ready' | 'warning' | 'no-face'
   warning?: string
+  retouch?: { feature: import('./video-semantics').SemanticBeat['feature']; operation: import('./video-semantics').SemanticBeat['operation']; baselineImageId: string }
 }
 
 export type ContentSlide = {
@@ -43,6 +44,8 @@ export type ContentSlide = {
   cta: string
   currentScore: string
   potentialScore: string
+  potentialScale?: 8 | 10
+  potentialCurrentScore?: number
   categoryScores: CategoryScore[]
   mockReport?: { category: import('./mobile-overlay-engine/report-data').ReportCategory; scroll: number }
 }

@@ -359,6 +359,7 @@ export function ReviewDialog({ target, creator, payments, metrics, open, onOpenC
   const initialStatus = target.resource === 'creator' ? target.item.authStatus === 'suspended' ? 'suspended' : 'verified' : target.item.status
   const [status, setStatus] = useState(initialStatus)
   const [reviewNote, setReviewNote] = useState(target.resource === 'account' || target.resource === 'submission' ? target.item.reviewNote || '' : '')
+  const [videoStudioAccess, setVideoStudioAccess] = useState(target.resource === 'creator' && Boolean(target.item.videoStudioAccess))
   const [amount, setAmount] = useState<string | null>(target.resource === 'payment' ? (target.item.amountCents / 100).toFixed(2) : target.resource === 'submission' ? initialPayoutAmount(target.item) || null : null)
   const [providerReference, setProviderReference] = useState(target.resource === 'payment' ? target.item.providerReference || '' : '')
   const [reviewDrafts, setReviewDrafts] = useState(() => target.resource === 'submission'
@@ -452,6 +453,7 @@ export function ReviewDialog({ target, creator, payments, metrics, open, onOpenC
         resource: target.resource,
         id: target.item.id,
         status,
+        ...(target.resource === 'creator' ? { videoStudioAccess } : {}),
         ...(['account', 'submission'].includes(target.resource) ? { reviewNote: reviewNote || null } : null),
         ...(target.resource === 'submission' ? {
           approvedAmountCents: status === 'approved' && amount !== null && !approveWithoutPayment ? payoutTotalCents : null,
@@ -533,6 +535,7 @@ export function ReviewDialog({ target, creator, payments, metrics, open, onOpenC
             <span className="text-sm font-medium">{target.resource === 'creator' ? 'Creator access' : 'Review status'}</span>
             <Select value={status} onValueChange={(value) => setStatus(value as typeof status)}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent>{statusOptions(target.resource).map((option) => <SelectItem key={option} value={option}>{target.resource === 'creator' && option === 'verified' ? 'Active' : statusLabel(option)}</SelectItem>)}</SelectContent></Select>
           </div> : null}
+          {canReview && target.resource === 'creator' ? <label className="mt-5 flex items-center gap-3 text-sm"><input type="checkbox" checked={videoStudioAccess} onChange={event => setVideoStudioAccess(event.target.checked)} className="size-4 rounded" />Creator Video Studio access</label> : null}
           {target.resource === 'account' ? <label className="mt-5 grid gap-2 text-sm font-medium">Review note<textarea value={reviewNote} onChange={(event) => setReviewNote(event.target.value.slice(0, 1000))} className="min-h-24 resize-y rounded-xl border border-zinc-200 p-3 text-sm outline-none transition-[border-color,box-shadow] duration-150 ease-out focus:border-zinc-400 focus:ring-4 focus:ring-zinc-100" placeholder="Visible to the creator" /></label> : null}
           {waitingForPayoutRequest ? <p role="note" className="mt-5 rounded-xl bg-amber-50 p-4 text-sm text-amber-900">Bundled payouts enabled. Hold this payment until the creator requests it through Pay me now in Money.</p> : null}
           {target.resource === 'payment' ? <div className="mt-5 grid gap-4 sm:grid-cols-2"><label className="grid gap-2 text-sm font-medium">Amount (USD)<input type="number" min="0" step="0.01" value={amount ?? ''} disabled={!canReview} onChange={(event) => setAmount(event.target.value)} className="h-12 rounded-xl border border-zinc-200 px-3.5 outline-none focus:border-zinc-400 focus:ring-4 focus:ring-zinc-100" /></label><label className="grid gap-2 text-sm font-medium">Provider reference<input value={providerReference} disabled={!canReview} onChange={(event) => setProviderReference(event.target.value)} className="h-12 rounded-xl border border-zinc-200 px-3.5 outline-none focus:border-zinc-400 focus:ring-4 focus:ring-zinc-100" placeholder="Transaction ID" /></label></div> : null}

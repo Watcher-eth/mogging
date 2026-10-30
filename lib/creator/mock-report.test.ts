@@ -1,13 +1,27 @@
 import { afterEach, expect, spyOn, test } from 'bun:test'
 import { randomScore, randomScorePair, scoreRanges, type ScoreRange } from './random-scores'
 import { reportCategories } from './mock-report-data'
-import { mockReportFormat, mockReportHeroHeight, mockReportSize, mockFeatureLayout, mockReportRegions } from './mock-report'
+import { nativeMetricFeature, drawFeatureCard, mockReportFormat, mockReportHeroHeight, mockReportSize, mockFeatureLayout, mockReportRegions } from './mock-report'
 import { sampleReportTour } from './report-tour'
 import { drawSlideFrame } from './export-slides'
 import type { ContentSlide } from './content-generator'
 
 let random: ReturnType<typeof spyOn> | undefined
 afterEach(() => random?.mockRestore())
+
+test('native cards keep unscored descriptions without inventing a chart', () => {
+  const scored = { label: 'Under-chin contour', value: 'Smooth transition', visual: 'Text', grade: 7.4 }
+  expect(nativeMetricFeature(scored).visual).toBe('Rail')
+  expect(scored.visual).toBe('Text')
+  expect(nativeMetricFeature({ label: 'Eye area', value: '8.1 / 10', visual: 'Text', scale: 'quality', positions: [.81] }).visual).toBe('Orbit')
+  const ctx = new Proxy({}, { get: (_, key) => key === 'measureText' ? (text: string) => ({ width: text.length * 7 }) : () => {}, set: () => true }) as CanvasRenderingContext2D
+  for (const [feature, chart] of [[scored, true], [{ label: 'Contour', value: 'Smooth transition', visual: 'Text' }, false]] as const) {
+    const parts: string[] = []
+    drawFeatureCard(ctx, feature, 354, 145, 1, 'metric', (_, node) => { parts.push(node.id) })
+    expect(parts.includes('metric/surface')).toBe(true)
+    expect(parts.includes('metric/visual')).toBe(chart)
+  }
+})
 
 test('random scores respect every range, including rounded endpoints and the PSL cap', () => {
   random = spyOn(Math, 'random')

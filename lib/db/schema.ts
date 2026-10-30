@@ -637,6 +637,7 @@ export const creatorProfiles = pgTable(
     socialHandle: text('social_handle'),
     bonusCheckedAt: timestamp('bonus_checked_at', { mode: 'date' }),
     bundledPayouts: boolean('bundled_payouts').notNull().default(false),
+    videoStudioAccess: boolean('video_studio_access').notNull().default(false),
     authStatus: creatorAuthStatusEnum('auth_status').notNull().default('pending'),
     paymentOption: creatorPaymentOptionEnum('payment_option').notNull().default('paypal'),
     paypalEmail: text('paypal_email'),
@@ -726,6 +727,19 @@ export const creatorSprints = pgTable('creator_sprints', {
   updatedAt: timestamp('updated_at', { mode: 'date' }).notNull().defaultNow(),
 })
 
+export const creatorStudioGenerations = pgTable('creator_studio_generations', {
+  id: text('id').primaryKey(),
+  creatorProfileId: text('creator_profile_id').notNull().references(() => creatorProfiles.id, { onDelete: 'cascade' }),
+  sprintId: text('sprint_id').notNull().references(() => creatorSprints.id),
+  sprintTerms: jsonb('sprint_terms').$type<import('../creator/sprints').SprintTerms>().notNull(),
+  formatId: text('format_id').notNull(),
+  personId: text('person_id').notNull(),
+  storyId: text('story_id').notNull(),
+  contentHash: text('content_hash').notNull(),
+  composition: jsonb('composition').$type<import('@/lib/creator/video-composition').VideoComposition>().notNull(),
+  createdAt: timestamp('created_at', { mode: 'date' }).notNull().defaultNow(),
+}, table => ({ creatorIndex: index('creator_studio_generations_creator_idx').on(table.creatorProfileId, table.createdAt) }))
+
 export const creatorSubmissions = pgTable(
   'creator_submissions',
   {
@@ -751,6 +765,7 @@ export const creatorSubmissions = pgTable(
     caption: text('caption'),
     postUrl: text('post_url'),
     postKey: text('post_key'),
+    studioGenerationId: text('studio_generation_id').references(() => creatorStudioGenerations.id),
     videoUrl: text('video_url'),
     videoStorageKey: text('video_storage_key'),
     videoContentType: text('video_content_type'),
@@ -773,6 +788,7 @@ export const creatorSubmissions = pgTable(
   },
   (table) => ({
     creatorIdx: index('creator_submissions_creator_profile_id_idx').on(table.creatorProfileId),
+    studioGenerationIdx: index('creator_submissions_studio_generation_idx').on(table.studioGenerationId),
     postKeyIdx: uniqueIndex('creator_submissions_post_key_unique').on(table.postKey).where(sql`${table.status} <> 'rejected'`),
     sprintIdx: index('creator_submissions_sprint_id_idx').on(table.sprintId),
     socialAccountIdx: index('creator_submissions_social_account_id_idx').on(table.socialAccountId),

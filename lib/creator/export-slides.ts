@@ -44,7 +44,8 @@ async function encodeMp4(args: RenderArgs, prepared: PreparedCanvas, onProgress?
   return encodeCanvasMp4(prepared.canvas, time => drawSlideFrame(prepared.ctx, args.slide, prepared.image, prepared.overlay, args.width, args.height, time, prepared.brand), args.slide.templateId === 'cta' ? REVEAL_DURATION_MS : 4000, onProgress)
 }
 
-export async function encodeCanvasMp4(canvas: HTMLCanvasElement, drawFrame: (timeMs: number) => void, durationMs: number, onProgress?: (progress: number) => void) {
+export async function encodeCanvasMp4(canvas: HTMLCanvasElement, drawFrame: (timeMs: number) => void, durationMs: number, onProgress?: (progress: number) => void, signal?: AbortSignal, audio?: AudioBuffer) {
+  signal?.throwIfAborted()
   if (typeof VideoEncoder === 'undefined' || typeof VideoFrame === 'undefined') throw new Error('Video export is not supported in this browser. Open this page in an up-to-date Safari or Chrome browser and try again.')
   const frameRate = 30
   const frameCount = Math.ceil(durationMs / 1000 * frameRate)
@@ -57,31 +58,59 @@ export async function encodeCanvasMp4(canvas: HTMLCanvasElement, drawFrame: (tim
     if (result.supported) { supportedConfig = result.config ?? candidate; break }
   }
   if (!supportedConfig) throw new Error('This browser cannot export MP4. Open this page in an up-to-date Safari or Chrome browser and try again.')
+  const audioConfig: AudioEncoderConfig | undefined = audio ? { codec: 'mp4a.40.2', sampleRate: audio.sampleRate, numberOfChannels: audio.numberOfChannels, bitrate: 128000 } : undefined
+  if (audioConfig && (typeof AudioEncoder === 'undefined' || typeof AudioData === 'undefined' || !(await AudioEncoder.isConfigSupported(audioConfig)).supported)) throw new Error('This browser cannot encode voiceover audio. Use a browser with AAC WebCodecs support.')
+  if (audio && Math.abs(audio.duration * 1000 - durationMs) > 1) throw new Error('Align the timeline to this voiceover before exporting')
 
   const { Muxer, ArrayBufferTarget } = await import('mp4-muxer')
   const target = new ArrayBufferTarget()
-  const muxer = new Muxer({ target, video: { codec: 'avc', width: canvas.width, height: canvas.height, frameRate }, fastStart: 'in-memory' })
+  const muxer = new Muxer({ target, video: { codec: 'avc', width: canvas.width, height: canvas.height, frameRate }, ...(audio ? { audio: { codec: 'aac' as const, numberOfChannels: audio.numberOfChannels, sampleRate: audio.sampleRate } } : {}), fastStart: 'in-memory', firstTimestampBehavior: 'offset' })
   let encoderError: Error | null = null
-  const encoder = new VideoEncoder({ output: (chunk, metadata) => muxer.addVideoChunk(chunk, metadata), error: (error) => { encoderError = error } })
+  let wakeAudio: (() => void) | null = null
+  const fail = (error: unknown) => { encoderError = error instanceof Error ? error : new Error(String(error)); wakeAudio?.() }
+  const encoder = new VideoEncoder({ output: (chunk, metadata) => { try { muxer.addVideoChunk(chunk, metadata) } catch (error) { fail(error) } }, error: fail })
+  let audioEncoder: AudioEncoder | null = null
+  let audioOffset = 0
   try {
     encoder.configure(supportedConfig)
+    if (audio) audioEncoder = new AudioEncoder({ output: (chunk, metadata) => { try { muxer.addAudioChunk(chunk, metadata) } catch (error) { fail(error) } }, error: fail })
+    audioEncoder?.addEventListener('dequeue', () => wakeAudio?.())
+    if (audioEncoder && audioConfig) audioEncoder.configure(audioConfig)
     const frameDuration = 1_000_000 / frameRate
     for (let index = 0; index < frameCount; index += 1) {
+      signal?.throwIfAborted()
       if (encoderError) throw encoderError
       drawFrame(index / frameRate * 1000)
       const frame = new VideoFrame(canvas, { timestamp: Math.round(index * frameDuration), duration: Math.round(frameDuration) })
       try { encoder.encode(frame, { keyFrame: index % (frameRate * 2) === 0 }) } finally { frame.close() }
+      if (audio && audioEncoder) {
+        const end = Math.min(audio.length, Math.ceil((index + 1) / frameRate * audio.sampleRate))
+        while (audioOffset < end) {
+          signal?.throwIfAborted()
+          const count = Math.min(1024, audio.length - audioOffset)
+          const data = new Float32Array(count * audio.numberOfChannels)
+          for (let channel = 0; channel < audio.numberOfChannels; channel++) data.set(audio.getChannelData(channel).subarray(audioOffset, audioOffset + count), channel * count)
+          const packet = new AudioData({ format: 'f32-planar', sampleRate: audio.sampleRate, numberOfFrames: count, numberOfChannels: audio.numberOfChannels, timestamp: Math.round(audioOffset / audio.sampleRate * 1000000), data })
+          try { audioEncoder.encode(packet) } finally { packet.close() }
+          audioOffset += count
+          if (audioEncoder.encodeQueueSize >= 8) { await new Promise<void>(resolve => { wakeAudio = resolve }); wakeAudio = null }
+          if (encoderError) throw encoderError
+        }
+      }
       // Keep queued full-resolution frames bounded on phones and slower encoders.
       if (encoder.encodeQueueSize >= 8) await encoder.flush()
       if (index % 8 === 0) { onProgress?.(index / frameCount); await new Promise<void>((resolve) => window.setTimeout(resolve, 0)) }
     }
     await encoder.flush()
+    await audioEncoder?.flush()
+    signal?.throwIfAborted()
     if (encoderError) throw encoderError
     muxer.finalize()
     onProgress?.(1)
     return new Blob([target.buffer], { type: 'video/mp4' })
   } finally {
     if (encoder.state !== 'closed') encoder.close()
+    if (audioEncoder && audioEncoder.state !== 'closed') audioEncoder.close()
   }
 }
 
@@ -161,7 +190,7 @@ export async function prepareCanvas({ slide, images, width, height }: RenderArgs
     ? { size: { width, height }, primitives: resolveShareOverallOverlay(enrichFaceLandmarks(source.landmarks),width,height), dots: [], value: '' }
     : legacy ? createReportOverlay(slide, source, slide.templateId === 'cta' ? { width: REVEAL_PORTRAIT_SIZE, height: REVEAL_PORTRAIT_SIZE } : { width, height })
     : isReport
-    ? createReportOverlay(slide, source, { width: mockReportSize.width, height: mockReportHeroHeight }, mockReportSize.width)
+    ? createReportOverlay(slide, source, { width: mockReportSize.width, height: mockReportHeroHeight }, mockReportSize.width, true)
     : posterOverlay ? createReportOverlay(slide, source, { width: width * (slide.templateId === 'afterimage' ? .95 : 1), height }) : null
 
   if (overlay && isReport) {

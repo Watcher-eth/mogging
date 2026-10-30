@@ -23,6 +23,8 @@ import { CreatorSetupChecklist } from './setup-checklist'
 import floatingStyles from './floating-actions.module.css'
 import { DiscordSupport } from './discord-support'
 
+const studioPaths = new Set(['/creator/studio', '/creator/cta-generator', '/creator/video-studio', '/creator/__studio-preview'])
+
 type CreatorNavItem = { href: string; label: string; asset: CreatorIconName }
 
 const creatorNav: ReadonlyArray<CreatorNavItem> = [
@@ -32,7 +34,7 @@ const creatorNav: ReadonlyArray<CreatorNavItem> = [
   { href: '/creator/accounts', label: 'Accounts', asset: 'accounts' },
   { href: '/creator/money', label: 'Money', asset: 'payouts' },
   { href: '/creator/conversions', label: 'Conversions', asset: 'conversions' },
-  { href: '/creator/cta-generator', label: 'CTA Studio', asset: 'cta' },
+  { href: '/creator/studio', label: 'Studio', asset: 'cta' },
 ]
 
 export function CreatorShell({ children, allowUnauthenticated = false }: { children: ReactNode; allowUnauthenticated?: boolean }) {
@@ -82,7 +84,7 @@ export function CreatorShell({ children, allowUnauthenticated = false }: { child
       </div>
       <CreatorWelcomeDialog open={welcome.open} onOpenChange={welcome.onOpenChange} />
       <div className={floatingStyles.root}>
-        <CreatorSetupChecklist />
+        {!studioPaths.has(router.pathname) ? <CreatorSetupChecklist /> : null}
         {router.pathname !== '/creator/support' && !router.pathname.includes('__') ? <CreatorSupportLauncher /> : null}
       </div>
       <TikTokAnchorOnboarding enabled={!welcome.open && !moreOpen && router.pathname === '/creator'} />
@@ -131,7 +133,7 @@ function CreatorNavigation() {
         <SidebarGroup>
           <SidebarGroupLabel>Creator Studio</SidebarGroupLabel>
           <SidebarGroupContent><SidebarMenu aria-label="Creator Studio navigation">
-            {creatorNav.map((item) => <SidebarMenuItem key={item.href}><SidebarMenuButton asChild isActive={router.pathname === item.href} tooltip={item.label} className="creator-nav-link"><Link href={item.href} aria-label={item.label} aria-current={router.pathname === item.href ? 'page' : undefined} onClick={() => setOpenMobile(false)}><CreatorIcon name={item.asset} className="size-5" /><span>{item.label}</span></Link></SidebarMenuButton></SidebarMenuItem>)}
+            {creatorNav.map((item) => <SidebarMenuItem key={item.href}><SidebarMenuButton asChild isActive={router.pathname === item.href || item.href === '/creator/studio' && studioPaths.has(router.pathname)} tooltip={item.label} className="creator-nav-link"><Link href={item.href} aria-label={item.label} aria-current={router.pathname === item.href || item.href === '/creator/studio' && studioPaths.has(router.pathname) ? 'page' : undefined} onClick={() => setOpenMobile(false)}><CreatorIcon name={item.asset} className="size-5" /><span>{item.label}</span></Link></SidebarMenuButton></SidebarMenuItem>)}
           </SidebarMenu></SidebarGroupContent>
         </SidebarGroup>
         <SidebarGroup>

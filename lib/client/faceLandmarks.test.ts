@@ -20,6 +20,9 @@ describe('local face detection', () => {
     if (result.status !== 'detected') throw new Error('Expected detection')
     expect(result.landmarks.quality?.rollRadians).toBeCloseTo(Math.PI / 4)
     expect(result.landmarks.anchors.leftPupil).toEqual({ x: .3, y: .3 })
+    const brow=result.landmarks.contours!.leftBrow!
+    expect(brow).toHaveLength(11)
+    expect(brow[0]).toEqual(brow.at(-1)!)
   })
   test('drops a broken contour without shifting the remaining vertex indices', () => {
     const points = detectedFace()

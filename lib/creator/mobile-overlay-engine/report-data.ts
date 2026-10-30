@@ -1,7 +1,10 @@
-import type { Triangulation } from './triangulation';
-export type ReportFeature = { label: string; value: string; measurement?: string; id?: string; visual?: string; positions?: number[]; grade?: number | null; scale?: 'range' | 'quality'; maximum?: number; axis?: { maximum: number; unit: '%' }; triangulation?: Triangulation };
+import { z } from 'zod'
+
+export const reportFeatureSchema = z.object({ label: z.string().max(160), value: z.string().max(1000), measurement: z.string().max(120).optional(), id: z.string().max(120).optional(), visual: z.string().max(80).optional(), positions: z.array(z.number().finite()).max(20).optional(), grade: z.number().finite().nullable().optional(), scale: z.enum(['range', 'quality']).optional(), maximum: z.number().positive().optional(), axis: z.object({ maximum: z.number().positive(), unit: z.literal('%') }).optional(), triangulation: z.object({ maximum: z.number().positive(), unit: z.enum(['/10','%','×']), axes: z.array(z.object({ id: z.string(), label: z.string(), value: z.number().finite().nullable() }).strict()).length(3) }).strict().optional() }).strict()
+export type ReportFeature = z.infer<typeof reportFeatureSchema>
 
 export type ReportCategory = {
+  assessmentId?: string;
   id: string;
   title: string;
   subtitle: string;

@@ -1,0 +1,295 @@
+{
+  "id": "clavicular-report-a",
+  "title": "Clavicular: what is actually carrying the eight?",
+  "subjectId": "clavicular",
+  "status": "recorded",
+  "audioStatus": "word-aligned",
+  "kind": "score-walkthrough",
+  "voice": {
+    "preset": "curious",
+    "voice": "Orus",
+    "direction": "A curious documentary storyteller following visible evidence. Open with a genuine question, then resolve it with clear observations. Conversational, purposeful and lightly animated, about 165 words per minute. No artificial cliffhangers, hype or celebrity imitation. Product mentions should feel like part of the demonstration."
+  },
+  "estimatedWords": 167,
+  "estimatedSeconds": 61.689,
+  "cuts": [
+    {
+      "seconds": 30,
+      "sections": [
+        "hook",
+        "eyes",
+        "invitation",
+        "takeaway"
+      ]
+    },
+    {
+      "seconds": 45,
+      "sections": [
+        "hook",
+        "eyes",
+        "jaw",
+        "brows",
+        "invitation",
+        "takeaway"
+      ]
+    },
+    {
+      "seconds": 60,
+      "sections": [
+        "hook",
+        "eyes",
+        "jaw",
+        "brows",
+        "result",
+        "invitation",
+        "takeaway"
+      ]
+    },
+    {
+      "seconds": 75,
+      "sections": [
+        "hook",
+        "eyes",
+        "jaw",
+        "brows",
+        "symmetry",
+        "result",
+        "invitation",
+        "takeaway"
+      ]
+    }
+  ],
+  "script": {
+    "version": 1,
+    "revision": "script-6022deec49183ee2",
+    "promotion": "contextual",
+    "cues": [
+      {
+        "id": "cue-63b0551ef98a21f6-0",
+        "sourceId": "hook",
+        "text": "Clavicular's report gives him an eight. Is the jawline carrying that score? Let's go through the categories.",
+        "delivery": {
+          "direction": "Direct, conversational report walkthrough. Let the score lead into one visible reason. Keep it brisk and connected, with no hype, celebrity impression or advertising voice. Read numbers naturally, not as a list.",
+          "emphasis": [],
+          "pauseAfterMs": 120
+        },
+        "section": {
+          "id": "hook",
+          "title": "More than a jawline",
+          "role": "hook",
+          "priority": 100,
+          "dependsOn": [],
+          "visuals": [
+            {
+              "treatment": "report",
+              "categoryId": "overall",
+              "focus": "scores",
+              "view": "front",
+              "reason": "Open overall; animate only its saved score, then its related feature rows. Keep the original assessed portrait. No before/after or invented values."
+            }
+          ]
+        }
+      },
+      {
+        "id": "cue-a95cacb7c5738f50-0",
+        "sourceId": "eyes",
+        "text": "On Mogging, his eye area gets eight out of ten. The outer corners rise slightly, and the iris has a clear dark ring around its edge.",
+        "delivery": {
+          "direction": "Direct, conversational report walkthrough. Let the score lead into one visible reason. Keep it brisk and connected, with no hype, celebrity impression or advertising voice. Read numbers naturally, not as a list.",
+          "emphasis": [],
+          "pauseAfterMs": 120
+        },
+        "section": {
+          "id": "eyes",
+          "title": "Eye area · 8",
+          "role": "explanation",
+          "priority": 95,
+          "dependsOn": [],
+          "visuals": [
+            {
+              "treatment": "report",
+              "categoryId": "eyes",
+              "focus": "scores",
+              "view": "front",
+              "reason": "Open eyes; animate only its saved score, then its related feature rows. Keep the original assessed portrait. No before/after or invented values."
+            }
+          ]
+        }
+      },
+      {
+        "id": "cue-b99d887c3ce73110-0",
+        "sourceId": "jaw",
+        "text": "Jaw and chin also gets eight. The lower border is easy to follow, with a broad corner leading into a defined, slightly square chin.",
+        "delivery": {
+          "direction": "Direct, conversational report walkthrough. Let the score lead into one visible reason. Keep it brisk and connected, with no hype, celebrity impression or advertising voice. Read numbers naturally, not as a list.",
+          "emphasis": [],
+          "pauseAfterMs": 120
+        },
+        "section": {
+          "id": "jaw",
+          "title": "Jaw and chin · 8",
+          "role": "explanation",
+          "priority": 85,
+          "dependsOn": [],
+          "visuals": [
+            {
+              "treatment": "report",
+              "categoryId": "jaw",
+              "focus": "scores",
+              "view": "front",
+              "reason": "Open jaw; animate only its saved score, then its related feature rows. Keep the original assessed portrait. No before/after or invented values."
+            }
+          ]
+        }
+      },
+      {
+        "id": "cue-a556e3f9f1817c25-0",
+        "sourceId": "brows",
+        "text": "His brows score seven. They're thick and dark, but the arch peaks aren't exactly level. That small difference is easier to see when the brows are isolated.",
+        "delivery": {
+          "direction": "Direct, conversational report walkthrough. Let the score lead into one visible reason. Keep it brisk and connected, with no hype, celebrity impression or advertising voice. Read numbers naturally, not as a list.",
+          "emphasis": [],
+          "pauseAfterMs": 120
+        },
+        "section": {
+          "id": "brows",
+          "title": "Brows · 7",
+          "role": "explanation",
+          "priority": 80,
+          "dependsOn": [],
+          "visuals": [
+            {
+              "treatment": "report",
+              "categoryId": "brows",
+              "focus": "scores",
+              "view": "front",
+              "reason": "Open brows; animate only its saved score, then its related feature rows. Keep the original assessed portrait. No before/after or invented values."
+            }
+          ]
+        }
+      },
+      {
+        "id": "cue-458db5b3f8ae0677-0",
+        "sourceId": "symmetry",
+        "text": "Symmetry still comes in at eight. A high score doesn't mean the two sides are identical. It means this photo shows close correspondence across the face.",
+        "delivery": {
+          "direction": "Direct, conversational report walkthrough. Let the score lead into one visible reason. Keep it brisk and connected, with no hype, celebrity impression or advertising voice. Read numbers naturally, not as a list.",
+          "emphasis": [],
+          "pauseAfterMs": 120
+        },
+        "section": {
+          "id": "symmetry",
+          "title": "Symmetry · 8",
+          "role": "explanation",
+          "priority": 50,
+          "dependsOn": [],
+          "visuals": [
+            {
+              "treatment": "report",
+              "categoryId": "symmetry",
+              "focus": "scores",
+              "view": "front",
+              "reason": "Open symmetry; animate only its saved score, then its related feature rows. Keep the original assessed portrait. No before/after or invented values."
+            }
+          ]
+        }
+      },
+      {
+        "id": "cue-c6568e5b53196f15-0",
+        "sourceId": "result",
+        "text": "So the overall eight isn't coming from the jaw alone. Several categories land at eight, while the brows sit a little lower. That's what the full report adds.",
+        "delivery": {
+          "direction": "Direct, conversational report walkthrough. Let the score lead into one visible reason. Keep it brisk and connected, with no hype, celebrity impression or advertising voice. Read numbers naturally, not as a list.",
+          "emphasis": [],
+          "pauseAfterMs": 120
+        },
+        "section": {
+          "id": "result",
+          "title": "The full report",
+          "role": "explanation",
+          "priority": 65,
+          "dependsOn": [],
+          "visuals": [
+            {
+              "treatment": "report",
+              "categoryId": "overall",
+              "focus": "scores",
+              "view": "front",
+              "reason": "Open overall; animate only its saved score, then its related feature rows. Keep the original assessed portrait. No before/after or invented values."
+            }
+          ]
+        }
+      },
+      {
+        "id": "cue-d01b2d65988c65e4-0",
+        "sourceId": "invitation",
+        "text": "If you want to see how your own eyes and brows score, go to Mogging.com.",
+        "delivery": {
+          "direction": "Direct, conversational report walkthrough. Let the score lead into one visible reason. Keep it brisk and connected, with no hype, celebrity impression or advertising voice. Read numbers naturally, not as a list.",
+          "emphasis": [],
+          "pauseAfterMs": 120
+        },
+        "section": {
+          "id": "invitation",
+          "title": "Your own breakdown",
+          "role": "cta",
+          "priority": 100,
+          "dependsOn": [],
+          "visuals": [
+            {
+              "treatment": "report",
+              "categoryId": "overall",
+              "focus": "scores",
+              "view": "front",
+              "reason": "Open overall; animate only its saved score, then its related feature rows. Keep the original assessed portrait. No before/after or invented values."
+            }
+          ]
+        }
+      },
+      {
+        "id": "cue-5ff96910ea7b4867-0",
+        "sourceId": "takeaway",
+        "text": "Get your face analysis.",
+        "delivery": {
+          "direction": "Direct, conversational report walkthrough. Let the score lead into one visible reason. Keep it brisk and connected, with no hype, celebrity impression or advertising voice. Read numbers naturally, not as a list.",
+          "emphasis": [],
+          "pauseAfterMs": 120
+        },
+        "section": {
+          "id": "takeaway",
+          "title": "Get your face analysis",
+          "role": "takeaway",
+          "priority": 100,
+          "dependsOn": [],
+          "visuals": [
+            {
+              "treatment": "report",
+              "categoryId": "overall",
+              "focus": "scores",
+              "view": "front",
+              "reason": "Open overall; animate only its saved score, then its related feature rows. Keep the original assessed portrait. No before/after or invented values."
+            }
+          ]
+        }
+      }
+    ],
+    "references": [
+      {
+        "id": "campaign-a",
+        "url": "https://www.tiktok.com/@themysteriousone099/video/7671344286583033110",
+        "title": "Compact campaign app audit",
+        "notes": "Existing visual audit: stable report shell, sequential category chapters. Source narration was not available.",
+        "status": "notes-only"
+      },
+      {
+        "id": "qoves-rating",
+        "url": "https://www.linkedin.com/posts/qoves_why-everyone-thinks-theyre-a-7-activity-7399408437794844672-dcke",
+        "title": "QOVES: Why everyone thinks they’re a 7",
+        "notes": "Question, visible evidence, then a plain-language explanation. Original wording; no borrowed study claims.",
+        "status": "transcript-reviewed"
+      }
+    ]
+  },
+  "assessmentId": "159d2b541e3c9ca42d1535e8562ac99f49e6271b4e6bc11301485ea8ae7446d4",
+  "recordedDurationMs": 51360
+}

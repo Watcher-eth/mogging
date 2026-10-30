@@ -1,0 +1,61 @@
+{
+  "id": "trump-a",
+  "title": "The portraits out of order",
+  "recording": "/creator/stories/trump/recording.json",
+  "images": [
+    {
+      "id": "trump-front",
+      "name": "Trump · Smiling portrait",
+      "dataUrl": "/creator/stories/trump/trump-front-supplied.png",
+      "width": 2250,
+      "height": 2850,
+      "status": "ready",
+      "landmarks": null
+    },
+    {
+      "id": "trump-later",
+      "name": "Trump · Serious portrait",
+      "dataUrl": "/creator/stories/trump/trump-later-supplied.png",
+      "width": 2550,
+      "height": 3300,
+      "status": "ready",
+      "landmarks": null
+    },
+    {
+      "id": "trump-editorial-low-key",
+      "name": "Trump · Low-key portrait",
+      "dataUrl": "/creator/stories/trump/trump-editorial-low-key.png",
+      "width": 960,
+      "height": 1200,
+      "status": "ready",
+      "landmarks": null
+    }
+  ],
+  "analysis": "/creator/stories/trump/analysis.json",
+  "evidence": {
+    "baselineId": "trump-front",
+    "comparisonId": "trump-later",
+    "topic": "whole",
+    "revealLabel": "2017 / 2025",
+    "photoComparison": true
+  },
+  "alternatives": [
+    {
+      "id": "trump-report-a",
+      "title": "Trump: the category above the overall",
+      "kind": "score-walkthrough",
+      "voice": {
+        "preset": "editorial",
+        "voice": "Iapetus",
+        "direction": "An engaging editorial face-analysis narrator. Measured, precise and quietly commanding, with warm late-night radio texture and a small spark of playful curiosity. Contained upbeat energy, not comedy or hype. Clear scientific vocabulary, conversational phrasing, approximately 175 words per minute. Light emphasis on contrasts; brief reflective pauses. Speak as an independent analyst, never imitate the person pictured."
+      },
+      "preview": "Trump's overall score here is five. One category comes in two points higher. Can you tell which one from this portrait?",
+      "recording": "/creator/stories/trump/report-recording.json"
+    }
+  ],
+  "portraitImageIds": [
+    "trump-front",
+    "trump-editorial-low-key",
+    "trump-later"
+  ]
+}

@@ -7,9 +7,11 @@ import { randomScore, randomScorePair } from '@/lib/creator/random-scores'
 import { FaceAlignmentEditor } from '@/components/creator/face-alignment-editor'
 import { CreatorStepper } from '@/components/creator/creator-stepper'
 import Image from 'next/image'
+import Link from 'next/link'
+import { useRouter } from 'next/router'
 import { LayoutGroup, MotionConfig, motion, useReducedMotion } from 'motion/react'
 import { useEffect, useRef, useState } from 'react'
-import { BookOpen, CalendarCheck2, ChartNoAxesCombined, FileChartColumn, Megaphone, Check, CheckCircle2, Download, FileArchive, Film, ImagePlus, Loader2, RefreshCw, Send, Trash2, UploadCloud, type LucideIcon } from 'lucide-react'
+import { ArrowLeft, BookOpen, CalendarCheck2, ChartNoAxesCombined, FileChartColumn, Megaphone, Check, CheckCircle2, Download, FileArchive, Film, ImagePlus, Loader2, RefreshCw, Send, Trash2, UploadCloud, type LucideIcon } from 'lucide-react'
 import useSWR from 'swr'
 import { toast } from 'sonner'
 import { Button } from '@/components/ui/button'
@@ -29,7 +31,7 @@ import { CreatorIcon, type CreatorIconName } from '@/components/creator/creator-
 const MockProgressGenerator = dynamic(() => import('@/components/creator/mock-progress-generator').then(module => module.MockProgressGenerator), { ssr: false })
 
 const generatorTabs = [
-  { id: 'cta', label: 'CTA generator', icon: Megaphone },
+  { id: 'cta', label: 'CTA assets', icon: Megaphone },
   { id: 'mock', label: 'Mock reports', icon: FileChartColumn },
   { id: 'progress', label: 'Mock Progress', icon: ChartNoAxesCombined },
   { id: 'protocol', label: 'Mock Protocol', icon: CalendarCheck2 },
@@ -58,9 +60,14 @@ function RatioSelector({ value, onChange, disabled }: { value: OutputFormatId; o
 }
 
 export default function CtaGeneratorPage() {
+  const { query } = useRouter()
   const reducedMotion = useReducedMotion()
   const transition = reducedMotion ? { duration: 0 } : generatorTransition
   const [mode, setMode] = useState<(typeof generatorTabs)[number]['id']>('cta')
+  useEffect(() => {
+    const requestedMode = generatorTabs.find(tab => tab.id === query.mode)?.id
+    if (requestedMode) setMode(requestedMode)
+  }, [query.mode])
   const [step, setStep] = useState<1 | 2 | 3>(1)
   const fileInputRef = useRef<HTMLInputElement>(null)
   const photoUrls = useRef(new Set<string>())
@@ -264,15 +271,16 @@ export default function CtaGeneratorPage() {
 
   return (
     <CreatorShell>
+      <Link href="/creator/studio" className="mb-4 inline-flex min-h-11 items-center gap-2 text-xs text-zinc-500 hover:text-zinc-950"><ArrowLeft className="size-3.5" />Studio</Link>
       <MotionConfig reducedMotion="user" transition={transition}>
       <LayoutGroup id="creator-studio">
       <CreatorHeader
         eyebrow="Creator Tools"
-        title="CTA Studio"
-        description="Create a CTA with your photos and report scores."
+        title={mode === 'mock' ? 'Create a mock scan' : mode === 'protocol' ? 'Create a protocol' : 'Create a CTA'}
+        description={mode === 'mock' ? 'Build an editable report with your photos and scores.' : 'Create a CTA with your photos and report scores.'}
         action={
           <div className="creator-generator-actions flex flex-col gap-3">
-            <div className="grid grid-cols-3 gap-1 rounded-[16px] bg-black/[0.045] p-1" role="tablist" aria-label="Generator">
+            <div className={cn('grid gap-1 rounded-[16px] bg-black/[0.045] p-1', 'grid-cols-3')} role="tablist" aria-label="Generator">
               {generatorTabs.map(tab => {
                 const active = mode === tab.id
                 return (

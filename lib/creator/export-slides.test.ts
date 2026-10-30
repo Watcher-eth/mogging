@@ -73,6 +73,45 @@ test('3× iPhone MP4 requests a codec level that supports its frame size', async
   expect(codecs).toEqual(['avc1.420033', 'avc1.4d0033'])
 })
 
+test('cancelled composition exports release the encoder and frame resources', async () => {
+  const controller = new AbortController()
+  let encoderClosed = false, frameClosed = false
+  replace('VideoEncoder', class {
+    static async isConfigSupported(config: VideoEncoderConfig) { return { supported: true, config } }
+    state = 'configured'; encodeQueueSize = 0
+    configure() {} encode() {} async flush() {}
+    close() { encoderClosed = true; this.state = 'closed' }
+  })
+  replace('VideoFrame', class { close() { frameClosed = true } })
+  await expect(encodeCanvasMp4({ width: 1080, height: 1920 } as HTMLCanvasElement, () => controller.abort(), 1000, undefined, controller.signal)).rejects.toThrow()
+  expect(encoderClosed).toBe(true)
+  expect(frameClosed).toBe(true)
+})
+
+test('voiceover export reports AAC failures and closes both encoders', async () => {
+  let videoClosed = false, audioClosed = false
+  replace('VideoEncoder', class {
+    static async isConfigSupported(config: VideoEncoderConfig) { return { supported: true, config } }
+    state = 'configured'; encodeQueueSize = 0
+    configure() {} encode() {} async flush() {}
+    close() { videoClosed = true; this.state = 'closed' }
+  })
+  replace('VideoFrame', class { close() {} })
+  replace('AudioData', class { close() {} })
+  replace('AudioEncoder', class {
+    static async isConfigSupported() { return { supported: true } }
+    state = 'configured'; encodeQueueSize = 0
+    constructor(private callbacks: AudioEncoderInit) {}
+    addEventListener() {}
+    configure() { this.callbacks.error(new DOMException('AAC failed')) }
+    close() { audioClosed = true; this.state = 'closed' }
+  })
+  const audio = { duration: 1, sampleRate: 48000, numberOfChannels: 1, length: 48000 } as AudioBuffer
+  await expect(encodeCanvasMp4({ width: 1080, height: 1920 } as HTMLCanvasElement, () => {}, 1000, undefined, undefined, audio)).rejects.toThrow('AAC failed')
+  expect(videoClosed).toBe(true)
+  expect(audioClosed).toBe(true)
+})
+
 
 test('exclusive CTA renders entered scores and the edited call to action with the small creator logo', () => {
   for (const height of [1080, 1620, 1920]) {

@@ -1,28 +1,60 @@
+import type { FaceLandmarksPayload } from './mobile-overlay-engine/landmarks'
+import { getImageTransform } from './mobile-overlay-engine/layout'
+import { smoothMotion } from './report-motion'
 
-const blurredPortraits = new WeakMap<HTMLImageElement, HTMLCanvasElement>()
+export type ReportPortraitCrop = { x:number; y:number; width:number; height:number }
+
+// The chin stays above the fade while the lower crop retains neck and shoulders.
+export function reportPortraitCrop(image: {width:number;height:number}, face?: FaceLandmarksPayload | null, viewport = {width:390,height:465}): ReportPortraitCrop | undefined {
+  if (!face || face.confidence < .58 || image.width <= 0 || image.height <= 0) return
+  const {forehead,chin} = face.anchors
+  if (!forehead || !chin || ![forehead.x,forehead.y,chin.x,chin.y].every(Number.isFinite) || chin.y-forehead.y < .04) return
+  const faceHeight=(chin.y-forehead.y)*image.height, baseline=getImageTransform(image,viewport,'cover')
+  const centerY=baseline.offsetY+(forehead.y+chin.y)/2*image.height*baseline.scale
+  const centerX=baseline.offsetX+(forehead.x+chin.x)/2*image.width*baseline.scale
+  if(faceHeight*baseline.scale/viewport.height >= .42 && centerY/viewport.height >= .18 && centerY/viewport.height <= .52 && centerX/viewport.width >= .3 && centerX/viewport.width <= .7) return
+  const outline=face.contours?.faceOutline?.filter(point=>Number.isFinite(point.x)) ?? []
+  const left=outline.length?Math.min(...outline.map(point=>point.x)):Math.min(forehead.x,chin.x)-faceHeight/image.width*.4
+  const right=outline.length?Math.max(...outline.map(point=>point.x)):Math.max(forehead.x,chin.x)+faceHeight/image.width*.4
+  const aspect=viewport.width/viewport.height
+  let width=Math.max(faceHeight*2.6*aspect,(right-left)*image.width*1.7),height=width/aspect
+  const fit=Math.min(1,image.width/width,image.height/height);width*=fit;height*=fit
+  const x=Math.max(0,Math.min(image.width-width,(left+right)/2*image.width-width/2))
+  const y=Math.max(0,Math.min(image.height-height,forehead.y*image.height-faceHeight*.45))
+  return {x:x/image.width,y:y/image.height,width:width/image.width,height:height/image.height}
+}
+export function reportPortraitProjection(image:{width:number;height:number},viewport:{width:number;height:number},crop?:ReportPortraitCrop){
+  if(!crop)return getImageTransform(image,viewport,'cover')
+  const scale=viewport.width/(crop.width*image.width)
+  return {scale,offsetX:-crop.x*image.width*scale,offsetY:-crop.y*image.height*scale,renderedWidth:image.width*scale,renderedHeight:image.height*scale}
+}
+const blurredPortraits = new WeakMap<HTMLImageElement, Map<string,HTMLCanvasElement>>()
 export const reportPortraitFade = {
   bottom: .44,
-  stops: [[0, 0], [.18, .03], [.4, .15], [.62, .42], [.82, .78], [.97, 1], [1, 1]],
+  stops: Array.from({ length: 33 }, (_, index) => [index / 32, smoothMotion(Math.min(1, index / 32 / .94))] as const),
   layers: [{ start: 0, blur: 2 }, { start: .2, blur: 4 }, { start: .4, blur: 8 }, { start: .6, blur: 13.3 }],
 } as const
 
-export function drawReportPortrait(ctx: CanvasRenderingContext2D, image: HTMLImageElement, width: number, height: number) {
+export function drawReportPortrait(ctx: CanvasRenderingContext2D, image: HTMLImageElement, width: number, height: number, crop?: ReportPortraitCrop) {
+  const placement=reportPortraitProjection(image,{width,height},crop)
   if (typeof document === 'undefined') {
-    const scale = Math.max(width / image.width, height / image.height)
-    ctx.drawImage(image, (width - image.width * scale) / 2, (height - image.height * scale) / 2, image.width * scale, image.height * scale)
+    ctx.drawImage(image,placement.offsetX,placement.offsetY,placement.renderedWidth,placement.renderedHeight)
     return
   }
-  let portrait = blurredPortraits.get(image)
+  let versions=blurredPortraits.get(image)
+  if(!versions){versions=new Map();blurredPortraits.set(image,versions)}
+  const key=JSON.stringify([width,height,crop])
+  let portrait = versions.get(key)
   if (!portrait) {
     const create = () => { const canvas = document.createElement('canvas'); canvas.width = Math.round(width * 3); canvas.height = Math.round(height * 3); return canvas }
     const source = create()
     portrait = create()
     const original = source.getContext('2d')!, composite = portrait.getContext('2d')!
-    const scale = Math.max(source.width / image.width, source.height / image.height)
-    original.drawImage(image, (source.width - image.width * scale) / 2, (source.height - image.height * scale) / 2, image.width * scale, image.height * scale)
+    original.drawImage(image,placement.offsetX*3,placement.offsetY*3,placement.renderedWidth*3,placement.renderedHeight*3)
     composite.drawImage(source, 0, 0)
     drawPortraitProgressiveBlur(composite, source.width, source.height, reportPortraitFade.bottom)
-    blurredPortraits.set(image, portrait)
+    if(versions.size>=4)versions.clear()
+    versions.set(key,portrait)
   }
   ctx.drawImage(portrait, 0, 0, width, height)
 }
@@ -30,12 +62,6 @@ export function drawReportPortraitFade(ctx: CanvasRenderingContext2D, width: num
   const top = height * (1 - reportPortraitFade.bottom), bottom = ctx.createLinearGradient(0, top, 0, height)
   reportPortraitFade.stops.forEach(([position, alpha]) => bottom.addColorStop(position, `rgba(255,255,255,${alpha})`))
   ctx.fillStyle = bottom; ctx.fillRect(0, top, width, height - top + 1)
-  const left = ctx.createLinearGradient(0, 0, width * .06, 0)
-  ;[[0,.38],[.16,.30],[.38,.16],[.64,.06],[.86,.01],[1,0]].forEach(([stop,alpha]) => left.addColorStop(stop, `rgba(255,255,255,${alpha})`))
-  ctx.fillStyle = left; ctx.fillRect(0, 0, width * .06, height)
-  const right = ctx.createLinearGradient(width * .96, 0, width, 0)
-  ;[[0,0],[.14,.01],[.36,.04],[.62,.12],[.84,.22],[1,.28]].forEach(([stop,alpha]) => right.addColorStop(stop, `rgba(255,255,255,${alpha})`))
-  ctx.fillStyle = right; ctx.fillRect(width * .96, 0, width * .04, height)
 }
 
 // Shared by report heroes and prepared cutouts. Blur only the lower region,
@@ -63,4 +89,21 @@ export function drawPortraitProgressiveBlur(ctx: CanvasRenderingContext2D, width
     blurred.fillStyle = mask; blurred.fillRect(0, 0, layer.width, layer.height)
     ctx.drawImage(layer, 0, top, width, fadeHeight)
   }
+}
+
+// Continue the photograph's last opaque band beneath its fade, without changing framing.
+const edgeBands = new WeakMap<CanvasRenderingContext2D, HTMLCanvasElement>()
+export function drawPortraitColorExtension(ctx: CanvasRenderingContext2D, width: number, bottom: number, imageBottom: number) {
+  if (typeof document === 'undefined' || imageBottom >= bottom || imageBottom <= 0) return
+  let band = edgeBands.get(ctx)
+  if (!band) { band = document.createElement('canvas'); edgeBands.set(ctx, band) }
+  const sampleHeight = Math.min(48, imageBottom), transform = ctx.getTransform()
+  const rasterWidth = Math.min(540, Math.round(width))
+  if (band.width !== rasterWidth || band.height !== 24) { band.width = rasterWidth; band.height = 24 }
+  const sample = band.getContext('2d')!
+  sample.clearRect(0, 0, band.width, band.height)
+  sample.drawImage(ctx.canvas, transform.e, transform.f + (imageBottom - sampleHeight) * transform.d, width * transform.a, sampleHeight * transform.d, 0, 0, band.width, band.height)
+  ctx.save(); ctx.filter = 'blur(16px)'
+  ctx.drawImage(band, -16, imageBottom - 20, width + 32, bottom - imageBottom + 52)
+  ctx.restore()
 }

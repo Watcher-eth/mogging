@@ -330,21 +330,11 @@ export async function getOrCreateCreatorProfile(userId: string, referralCode?: s
   })
 }
 
-export async function createCreatorSubmission(userId: string, input: CreatorSubmissionInput) {
-  input = creatorSubmissionSchema.parse(input)
-  const profile = await getOrCreateCreatorProfile(userId)
-  if (profile.authStatus === 'suspended') throw new CreatorServiceError(403, 'Your creator account is suspended')
-  const sprint = await db.query.creatorSprints.findFirst({ where: eq(schema.creatorSprints.id, input.sprintId) })
-  if (!sprint || sprintPhase({ ...sprint, startsAt: sprint.startsAt.toISOString(), endsAt: sprint.endsAt.toISOString() }) !== 'active') throw new CreatorServiceError(409, 'Choose an active campaign')
-  if (!canSeeCampaign(sprint.audience, profile.id)) throw new CreatorServiceError(404, 'Campaign not found')
-  if (input.viewCountThreshold < minimumSubmissionViews(sprint.terms)) throw new CreatorServiceError(400, `This campaign requires at least ${minimumSubmissionViews(sprint.terms).toLocaleString('en-US')} views`)
-  const format = sprintFormat(sprint.terms, input.formatId)
-  if (!format) throw new CreatorServiceError(400, 'Choose a format offered by this campaign')
-  if (!sprint.terms.platforms.includes(creatorPostPlatform(input.postUrl)!)) throw new CreatorServiceError(400, 'This platform is not accepted by the campaign')
+export async function verifyCreatorPublishedPost(creatorProfileId: string, input: { postUrl: string; socialAccountId?: string | null }) {
   let socialAccount = input.socialAccountId ? await db.query.creatorSocialAccounts.findFirst({
     where: and(
       eq(schema.creatorSocialAccounts.id, input.socialAccountId),
-      eq(schema.creatorSocialAccounts.creatorProfileId, profile.id)
+      eq(schema.creatorSocialAccounts.creatorProfileId, creatorProfileId)
     ),
   }) : null
   if (input.socialAccountId && !socialAccount) {
@@ -363,12 +353,27 @@ export async function createCreatorSubmission(userId: string, input: CreatorSubm
   catch { throw new CreatorServiceError(400, 'Could not verify this shared link. Open the video and paste its full TikTok or Instagram post URL instead.') }
   if (creatorPostPlatform(input.postUrl) === 'tiktok') {
     const handle = publishingTikTokHandle(postLink.url)
-    const accounts = await db.query.creatorSocialAccounts.findMany({ where: and(eq(schema.creatorSocialAccounts.creatorProfileId, profile.id), eq(schema.creatorSocialAccounts.platform, 'tiktok')) })
+    const accounts = await db.query.creatorSocialAccounts.findMany({ where: and(eq(schema.creatorSocialAccounts.creatorProfileId, creatorProfileId), eq(schema.creatorSocialAccounts.platform, 'tiktok')) })
     const publishingAccount = accounts.find(account => account.handle?.toLowerCase() === handle)
     if (socialAccount && socialAccount.id !== publishingAccount?.id) throw new CreatorServiceError(400, 'Choose the TikTok account that published this post')
     socialAccount = publishingAccount || null
     if (!socialAccount) throw new CreatorServiceError(400, 'Connect the TikTok account that published this post')
   }
+  return { socialAccount, postLink }
+}
+
+export async function createCreatorSubmission(userId: string, input: CreatorSubmissionInput) {
+  input = creatorSubmissionSchema.parse(input)
+  const profile = await getOrCreateCreatorProfile(userId)
+  if (profile.authStatus === 'suspended') throw new CreatorServiceError(403, 'Your creator account is suspended')
+  const sprint = await db.query.creatorSprints.findFirst({ where: eq(schema.creatorSprints.id, input.sprintId) })
+  if (!sprint || sprintPhase({ ...sprint, startsAt: sprint.startsAt.toISOString(), endsAt: sprint.endsAt.toISOString() }) !== 'active') throw new CreatorServiceError(409, 'Choose an active campaign')
+  if (!canSeeCampaign(sprint.audience, profile.id)) throw new CreatorServiceError(404, 'Campaign not found')
+  if (input.viewCountThreshold < minimumSubmissionViews(sprint.terms)) throw new CreatorServiceError(400, `This campaign requires at least ${minimumSubmissionViews(sprint.terms).toLocaleString('en-US')} views`)
+  const format = sprintFormat(sprint.terms, input.formatId)
+  if (!format) throw new CreatorServiceError(400, 'Choose a format offered by this campaign')
+  if (!sprint.terms.platforms.includes(creatorPostPlatform(input.postUrl)!)) throw new CreatorServiceError(400, 'This platform is not accepted by the campaign')
+  const { socialAccount, postLink } = await verifyCreatorPublishedPost(profile.id, input)
   const postKey = postLink.key
   await verifySubmissionAnalytics(userId, input)
   return db.transaction(async tx => {
@@ -460,7 +465,7 @@ export async function requestSubmissionReview(userId: string, submissionId: stri
     await requireSubmissionBudget(tx, budgetCampaignId, increment, { rereview: true, excludeSubmissionId: submission.id, committedAdjustmentCents: assignment ? submission.approvedAmountCents ?? 0 : 0 })
     await tx.insert(schema.creatorSubmissionMessages).values({ submissionId, authorUserId: userId, authorRole: 'creator', body: `Submitted fresh analytics for review: ${input.viewCountThreshold.toLocaleString('en-US')} views · ${input.usAudiencePercent}% Tier 1 audience.${submission.analyticsScreenshotUrl ? ` Previous evidence: ${submission.analyticsScreenshotUrl} (${submission.viewCountThreshold ?? 'unrecorded'} views).` : ''}` })
     const [record] = await tx.update(schema.creatorSubmissions).set({ ...assignment, analyticsScreenshotUrl: creatorAssetPublicUrl(input.analyticsStorageKey), analyticsStorageKey: input.analyticsStorageKey, analyticsContentType: input.analyticsContentType, analyticsSizeBytes: input.analyticsSizeBytes, viewCountThreshold: input.viewCountThreshold, usAudiencePercent: input.usAudiencePercent, status: 'in_review', reviewRequestedAt: now, updatedAt: now }).where(eq(schema.creatorSubmissions.id, submission.id)).returning()
-    await recordSubmissionUpdate(tx, submissionId, 'rereview_requested', null, now)
+    await recordSubmissionUpdate(tx, submissionId, submission.studioGenerationId && !submission.analyticsScreenshotUrl ? 'in_review' : 'rereview_requested', null, now)
     return record
   }).catch(rethrowCreatorPostConflict)
 }
