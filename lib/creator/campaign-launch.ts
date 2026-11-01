@@ -223,6 +223,22 @@ export const LAUNCH_CAMPAIGNS: LaunchCampaign[] = [
         url: "https://www.tiktok.com/@glowuptips.ken/photo/7692507048977714452",
         label: "Glow up tips \u00b7 slideshow",
       },
+      {
+        url: "https://www.tiktok.com/@glowtipsjjt/photo/7701776755761138965",
+        label: "@glowtipsjjt · slideshow",
+      },
+      {
+        url: "https://www.tiktok.com/@rudeus.clips/photo/7700491112489717022",
+        label: "@rudeus.clips · slideshow",
+      },
+      {
+        url: "https://www.tiktok.com/@bpedits520/video/7700534932782845202",
+        label: "@bpedits520",
+      },
+      {
+        url: "https://www.tiktok.com/@thebaddieoptimist/video/7700569689545510166",
+        label: "@thebaddieoptimist",
+      },
     ],
   },
 ];

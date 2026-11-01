@@ -43,7 +43,7 @@ export function revenueReportCTEs(days: number, start: string, end: string) {
     from revenue_fees group by 1
   ), revenue_sources as (
     select source,coalesce(currency,'UNKNOWN') as currency,
-      count(*) filter(where amount>0) as purchases,count(*) filter(where amount<0) as refund_transactions,
+      count(*) filter(where amount>0 and event_name<>'refund_reversed') as purchases,count(*) filter(where amount<0) as refund_transactions,
       coalesce(sum(amount) filter(where amount>0),0) as gross,coalesce(-sum(amount) filter(where amount<0),0) as refunds,
       sum(amount) as after_refunds,sum(taxes) as taxes,sum(fees) as fees,
       case when count(*) filter(where proceeds is null)=0 then sum(proceeds) end as proceeds,
@@ -51,7 +51,7 @@ export function revenueReportCTEs(days: number, start: string, end: string) {
       count(*) filter(where proceeds is null) as unknown_fee_events
     from revenue_fees group by 1,2 order by 1,2
   ), revenue_countries as (
-    select country,coalesce(currency,'UNKNOWN') as currency,count(*) filter(where amount>0) as purchases,
+    select country,coalesce(currency,'UNKNOWN') as currency,count(*) filter(where amount>0 and event_name<>'refund_reversed') as purchases,
       count(*) filter(where amount<0) as refund_transactions,
       coalesce(sum(amount) filter(where amount>0),0) as gross,coalesce(-sum(amount) filter(where amount<0),0) as refunds,
       sum(amount) as after_refunds,
@@ -86,6 +86,31 @@ export function revenueReportCTEs(days: number, start: string, end: string) {
       where f.provider=current.provider and f.subscription_id=current.subscription_id
       order by occurred_at desc,received_at desc,id desc limit 1) latest on true
     where current.snapshot=0
+  ), revenue_subscription_prices as (
+    select s.*,coalesce(p.currency,'UNKNOWN') as currency,
+      case when s.provider='revenuecat' and p.amount is not null and p.amount>=0 then p.amount *
+        case s.product when 'mogging.pro.weekly' then 4::numeric
+          when 'mogging.pro.monthly' then 1::numeric when 'mogging.pro.yearly' then 1::numeric/12 end
+      end as monthly_amount
+    from revenue_subscription_states s
+    left join lateral (
+      select amount,currency from subscription_facts f where f.provider=s.provider and f.subscription_id=s.subscription_id
+        and f.product_id=s.product and f.event_name in ('subscription_started','subscription_renewed','trial_converted','invoice_paid')
+        order by occurred_at desc,received_at desc,id desc limit 1
+    ) p on true
+  ), revenue_subscription_mrr as (
+    select source,currency,
+      count(*) filter(where not canceled and not billing_retry) as renewing_subscriptions,
+      count(*) filter(where canceled and not billing_retry) as cancelling_subscriptions,
+      count(*) filter(where billing_retry) as billing_retry_subscriptions,
+      sum(monthly_amount) filter(where not canceled and not billing_retry) as known_renewing_mrr,
+      case when count(*) filter(where not canceled and not billing_retry and monthly_amount is null)=0
+        then coalesce(sum(monthly_amount) filter(where not canceled and not billing_retry),0) end as renewing_mrr,
+      case when count(*) filter(where canceled and not billing_retry and monthly_amount is null)=0
+        then coalesce(sum(monthly_amount) filter(where canceled and not billing_retry),0) end as cancelling_mrr,
+      case when count(*) filter(where monthly_amount is null)=0 then sum(monthly_amount) end as active_access_mrr,
+      count(*) filter(where monthly_amount is null) as missing_price_subscriptions
+    from revenue_subscription_prices where has_access and not trial group by 1,2 order by 1,2
   ), revenue_subscription_overview as (
     select count(*) filter(where has_access and not canceled and not trial and not billing_retry) as auto_renewing,
       count(*) filter(where has_access and canceled and not trial) as cancelling,
