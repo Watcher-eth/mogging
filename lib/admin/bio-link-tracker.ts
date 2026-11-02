@@ -12,6 +12,20 @@ export function bioLinkMonth(date: string | Date) {
 
 export type BioLinkMonth = { submissions: AdminSubmission[]; verified: number }
 
+export function lastActiveLabel(value: string | null | undefined, now = Date.now()) {
+  if (!value || !Number.isFinite(Date.parse(value))) return 'Not recorded'
+  const minutes = Math.max(0, Math.floor((now - Date.parse(value)) / 60_000))
+  if (minutes < 1) return 'Just now'
+  if (minutes < 60) return `${minutes}m ago`
+  if (minutes < 1440) return `${Math.floor(minutes / 60)}h ago`
+  return `${Math.floor(minutes / 1440)}d ago`
+}
+
+export function activityDate(value: string | null | undefined) {
+  if (!value || !Number.isFinite(Date.parse(value))) return 'No recorded portal visit'
+  return new Intl.DateTimeFormat('en-US', { timeZone: 'America/Los_Angeles', dateStyle: 'medium', timeStyle: 'short' }).format(new Date(value)) + ' PT'
+}
+
 // Group by the video's original submission month, so later reviews do not move history.
 // Account IDs keep two handles belonging to the same creator independent.
 export function buildBioLinkTracker(submissions: AdminSubmission[]) {

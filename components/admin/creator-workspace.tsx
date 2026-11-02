@@ -2,7 +2,7 @@ import { getSubmissionPayoutEstimate, type AdminPayoutSelection } from '@/lib/ad
 import { SubmissionHistory } from './submission-history'
 import { submissionBonusPayments, reviewAudienceBonuses } from '@/lib/creator/bonus-payments'
 import { CreatorExclusivityReview } from './creator-exclusivity-review'
-import { BioLinkTracker } from './bio-link-tracker'
+import { SocialAccountsPanel } from './social-accounts-panel'
 import { hasLaunchCampaignBonuses, launchCampaign } from '@/lib/creator/campaign-launch'
 import dynamic from 'next/dynamic'
 import { canReceiveCreatorPayout, creatorBundlePlan, creatorUnpaidCents, remainingCreatorPaymentCents } from '@/lib/creator/money'
@@ -105,7 +105,7 @@ function DashboardView({ tab, data, onSelect, onRefresh }: { tab: Tab; data: Adm
   if (tab === 'attribution') return <CreatorAttributionDashboard data={data} onSelectCreator={(item) => onSelect({ resource: 'creator', item })} onSelectAccount={(item) => onSelect({ resource: 'account', item })} />
   if (tab === 'submissions') return <ResourceSection title="Video submissions"><SubmissionList items={data.submissions} payments={data.payments} onSelect={onSelect} /></ResourceSection>
   if (tab === 'cta-library') return <CtaLibraryAdminPanel />
-  if (tab === 'accounts') return <ResourceSection title="Social accounts"><BioLinkTracker accounts={data.accounts} submissions={data.submissions} onSelectSubmission={item => onSelect({ resource: 'submission', item })} /><AccountList items={data.accounts} onSelect={onSelect} /></ResourceSection>
+  if (tab === 'accounts') return <ResourceSection title="Social accounts"><SocialAccountsPanel data={data} onReviewAccount={item => onSelect({ resource: 'account', item })} onSelectSubmission={item => onSelect({ resource: 'submission', item })} /></ResourceSection>
   if (tab === 'payments') return <ResourceSection title="Creator payments"><PaymentsPanel data={data} onSelect={onSelect} onRefresh={onRefresh} /></ResourceSection>
   if (tab === 'creators') return <ResourceSection title="Creators"><div className="mb-5"><CreatorRegistrationMetrics creators={data.creators} accounts={data.accounts} /></div><CreatorList items={data.creators} accounts={data.accounts} onSelect={onSelect} /></ResourceSection>
   return <Overview data={data} onSelect={onSelect} onRefresh={onRefresh} />
@@ -195,11 +195,6 @@ function SubmissionList({ items, payments, onSelect }: { items: AdminSubmission[
   } title={item.creatorName} subtitle={`${item.title} · ${formatDate(item.createdAt)}`} status={item.status} unreadMessages={item.unreadMessages} meta={item.reviewRequestedAt ? 'Rereview requested' : paymentIds.has(item.id) ? 'Payment created' : ''} onClick={() => onSelect({ resource: 'submission', item })} />)}</div>
 }
 
-function AccountList({ items, onSelect }: { items: AdminAccount[]; onSelect: (target: ReviewTarget) => void }) {
-  if (!items.length) return <EmptyState title="No connected accounts" description="Accounts appear here when creators connect their TikTok or Instagram handle." />
-  return <div className="admin-list">{items.map((item) => <AccountRow key={item.id} item={item} onClick={() => onSelect({ resource: 'account', item })} />)}</div>
-}
-
 function AccountAvatar({ account }: { account: AdminAccount }) {
   return <Avatar.Root className="grid size-11 shrink-0 overflow-hidden rounded-full bg-zinc-100">
     <Avatar.Image src={account.avatarUrl || undefined} alt={`${creatorAccountLabel(account)} profile photo`} className="size-full object-cover" />
@@ -209,18 +204,6 @@ function AccountAvatar({ account }: { account: AdminAccount }) {
 
 function accountProfileUrl(account: AdminAccount) {
   return account.profileUrl || (account.handle ? `https://www.${account.platform}.com/${account.platform === 'tiktok' ? '@' : ''}${account.handle}` : null)
-}
-
-function AccountRow({ item, onClick }: { item: AdminAccount; onClick: () => void }) {
-  const profileUrl = accountProfileUrl(item)
-  return <article className="admin-resource-row min-w-0">
-    <button onClick={onClick} className="flex w-full min-w-0 items-center gap-3 text-left">
-      <AccountAvatar account={item} />
-      <span className="min-w-0 flex-1"><span className="block truncate text-sm font-semibold">{creatorAccountLabel(item)}</span><span className="mt-1 block truncate text-xs text-zinc-500">{item.creatorName} · {capitalize(item.platform)} · {formatDate(item.createdAt)}</span></span>
-      <StatusPill status="connected" /><ArrowUpRight className="size-4 shrink-0 text-zinc-400" />
-    </button>
-    {profileUrl ? <a href={profileUrl} target="_blank" rel="noopener noreferrer" className="mt-3 inline-flex min-h-11 max-w-full items-center gap-2 text-sm font-medium text-blue-600 underline underline-offset-4"><span className="[overflow-wrap:anywhere]">{profileUrl}</span><ArrowUpRight className="size-4 shrink-0" /></a> : <p className="mt-3 text-sm text-amber-700">Profile URL unavailable. Request the account’s username before review.</p>}
-  </article>
 }
 
 function PaymentsPanel({ data, onSelect, onRefresh }: { data: AdminDashboard; onSelect: (target: ReviewTarget) => void; onRefresh: () => Promise<void> }) {

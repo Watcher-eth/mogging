@@ -1,7 +1,18 @@
 import { expect, test } from 'bun:test'
 import type { AdminSubmission } from '@/components/admin/creator-types'
 import { LAUNCH_CAMPAIGNS, launchCampaignTerms } from '@/lib/creator/campaign-launch'
-import { bioLinkMonth, buildBioLinkTracker } from './bio-link-tracker'
+import { activityDate, bioLinkMonth, buildBioLinkTracker, lastActiveLabel } from './bio-link-tracker'
+
+test('last activity handles missing dates and displays the creator visit without inventing activity', () => {
+  const now = Date.parse('2026-11-02T12:00:00Z')
+  expect(lastActiveLabel(null, now)).toBe('Not recorded')
+  expect(lastActiveLabel('bad', now)).toBe('Not recorded')
+  expect(lastActiveLabel('2026-11-02T11:59:50Z', now)).toBe('Just now')
+  expect(lastActiveLabel('2026-11-02T11:55:00Z', now)).toBe('5m ago')
+  expect(lastActiveLabel('2026-11-02T10:00:00Z', now)).toBe('2h ago')
+  expect(lastActiveLabel('2026-10-30T12:00:00Z', now)).toBe('3d ago')
+  expect(activityDate('2026-11-02T12:00:00Z')).toContain('4:00 AM')
+})
 
 function video(id: string, overrides: Partial<AdminSubmission> = {}): AdminSubmission {
   return { id, socialAccountId: 'account-a', creatorProfileId: 'creator', createdAt: '2026-10-25T12:00:00Z', sprintId: 'campaign', sprintTerms: launchCampaignTerms(LAUNCH_CAMPAIGNS[0]), exclusivityConfirmed: false, ...overrides } as AdminSubmission

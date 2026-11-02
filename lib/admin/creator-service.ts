@@ -101,6 +101,10 @@ export async function getCreatorAdminDashboard() {
         cryptoNetwork: schema.creatorProfiles.cryptoNetwork,
         cryptoWalletAddress: schema.creatorProfiles.cryptoWalletAddress,
         createdAt: schema.creatorProfiles.createdAt,
+        lastActiveAt: sql<string | null>`(select to_char(max(a.occurred_at), 'YYYY-MM-DD"T"HH24:MI:SS.MS"Z"') from analytics_events a
+          where a.account_id = ${schema.users.id} and a.environment = 'production' and a.platform = 'web'
+          and a.event_name in ('page_viewed', 'page_exited') and a.properties->>'path' ~ '^/creator(/|$)'
+          and a.occurred_at <= now())`,
       })
       .from(schema.creatorProfiles)
       .innerJoin(schema.users, eq(schema.creatorProfiles.userId, schema.users.id))
@@ -219,8 +223,10 @@ export async function getCreatorAdminDashboard() {
   ])
 
   const attributionByAccountId = new Map(accountAttributionRows.map((report) => [report.socialAccountId, report]))
+  const lastActiveByCreator = new Map(creatorRows.map(creator => [creator.id, creator.lastActiveAt]))
   const accounts = accountRows.map((account) => ({
     ...account,
+    lastActiveAt: lastActiveByCreator.get(account.creatorProfileId) ?? null,
     attribution: attributionReportValues(attributionByAccountId.get(account.id)),
   }))
   const attributionByCreatorId = new Map<string, ReturnType<typeof emptyAttributionReport>>()

@@ -62,6 +62,7 @@ export type AdminCreator = {
 }
 
 export type AdminAccount = {
+  lastActiveAt?: string | null
   id: string
   creatorProfileId: string
   creatorName: string

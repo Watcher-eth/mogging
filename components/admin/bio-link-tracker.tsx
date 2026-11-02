@@ -1,16 +1,18 @@
 import { useMemo, useState } from 'react'
 import { Check, ChevronLeft, ChevronRight, Minus } from 'lucide-react'
-import { bioLinkMonth, buildBioLinkTracker } from '@/lib/admin/bio-link-tracker'
+import * as Avatar from '@radix-ui/react-avatar'
+import { activityDate, bioLinkMonth, buildBioLinkTracker, lastActiveLabel } from '@/lib/admin/bio-link-tracker'
 import { creatorAccountLabel } from '@/components/creator/types'
 import type { AdminAccount, AdminSubmission } from './creator-types'
 import { cn } from '@/lib/utils'
 
 const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
 
-export function BioLinkTracker({ accounts, submissions, onSelectSubmission }: {
+export function BioLinkTracker({ accounts, submissions, onSelectSubmission, onSelectAccount }: {
   accounts: AdminAccount[]
   submissions: AdminSubmission[]
   onSelectSubmission: (submission: AdminSubmission) => void
+  onSelectAccount: (account: AdminAccount) => void
 }) {
   const [year, setYear] = useState(() => Number(bioLinkMonth(new Date())!.slice(0, 4)))
   const [selected, setSelected] = useState<{ accountId: string; month: string } | null>(null)
@@ -22,7 +24,7 @@ export function BioLinkTracker({ accounts, submissions, onSelectSubmission }: {
 
   return <section aria-label="Monthly bio-link verification" className="mb-8 overflow-hidden rounded-2xl border border-zinc-200 bg-white">
     <div className="flex flex-wrap items-start justify-between gap-4 p-5">
-      <div><h2 className="text-lg font-semibold tracking-tight">Bio-link consistency</h2><p className="mt-1 max-w-2xl text-xs leading-5 text-zinc-500">Saved 30-day verification for each video, grouped by submission month in Los Angeles time. Only eligible campaign videos count. Select a month to review its videos.</p></div>
+      <div><h2 className="text-lg font-semibold tracking-tight">Accounts & bio-link consistency</h2><p className="mt-1 max-w-2xl text-xs leading-5 text-zinc-500">Open an account for its creator’s account cards, links, and videos. Monthly checks count eligible campaign videos by submission month, in Los Angeles time.</p></div>
       <div className="flex items-center gap-2">
         <button type="button" aria-label="Previous year" onClick={() => changeYear(-1)} className="grid size-11 place-items-center rounded-lg hover:bg-zinc-100 focus-visible:outline-sky-500"><ChevronLeft className="size-4" /></button>
         <span aria-live="polite" className="text-sm font-semibold tabular-nums">{year}</span>
@@ -33,15 +35,19 @@ export function BioLinkTracker({ accounts, submissions, onSelectSubmission }: {
       <span><span className="text-emerald-700">✓ All verified</span></span><span><span className="text-amber-700">◐ Partially verified</span></span><span>0/n Awaiting verification</span><span>— No eligible videos</span>
     </div>
     {accounts.length ? <div className="overflow-x-auto">
-      <table className="w-full min-w-[1000px] border-collapse text-left text-xs">
+      <table className="w-full min-w-[1180px] border-collapse text-left text-xs">
         <caption className="sr-only">Monthly verified video counts by social account. Consistency is the share of active months with every eligible video verified.</caption>
-        <thead className="border-y border-zinc-100 bg-zinc-50 text-zinc-500"><tr><th scope="col" className="min-w-48 px-5 py-3 font-medium">Social account</th>{monthNames.map(month => <th key={month} scope="col" className="px-1 py-3 text-center font-medium">{month}</th>)}<th scope="col" className="px-5 py-3 text-right font-medium">Consistency</th></tr></thead>
+        <thead className="border-y border-zinc-100 bg-zinc-50 text-zinc-500"><tr><th scope="col" className="min-w-60 px-5 py-3 font-medium">Social account</th><th scope="col" className="px-4 py-3 font-medium" title="Creator’s last recorded portal visit, shared across their accounts">Last active</th>{monthNames.map(month => <th key={month} scope="col" className="px-1 py-3 text-center font-medium">{month}</th>)}<th scope="col" className="px-5 py-3 text-right font-medium">Consistency</th></tr></thead>
         <tbody className="divide-y divide-zinc-100">{accounts.map(account => {
           const history = tracker.get(account.id)
           const active = months.flatMap(month => history?.get(month) ? [history.get(month)!] : [])
           const complete = active.filter(month => month.verified === month.submissions.length).length
           return <tr key={account.id}>
-            <th scope="row" className="px-5 py-4 font-medium"><span className="block">{creatorAccountLabel(account)}</span><span className="mt-1 block font-normal text-zinc-500">{account.creatorName} · {account.platform === 'tiktok' ? 'TikTok' : 'Instagram'}</span></th>
+            <th scope="row" className="px-4 py-3 font-medium"><button type="button" onClick={() => onSelectAccount(account)} aria-label={`View ${creatorAccountLabel(account)} and all linked accounts`} className="flex min-h-11 w-full items-center gap-3 rounded-lg p-1 text-left hover:bg-zinc-50 focus-visible:outline-sky-500">
+              <Avatar.Root className="grid size-9 shrink-0 overflow-hidden rounded-full bg-zinc-100"><Avatar.Image src={account.avatarUrl || undefined} alt="" className="size-full object-cover" /><Avatar.Fallback className="grid size-full place-items-center text-zinc-500">{creatorAccountLabel(account).replace(/^@/, '').charAt(0).toUpperCase()}</Avatar.Fallback></Avatar.Root>
+              <span><span className="block">{creatorAccountLabel(account)}</span><span className="mt-1 block font-normal text-zinc-500">{account.creatorName} · {account.platform === 'tiktok' ? 'TikTok' : 'Instagram'}</span><span className="mt-1 block text-[10px] font-normal text-zinc-400">{account.status === 'approved' ? 'Approved' : account.status === 'missing_information' ? 'Needs information' : 'Pending review'}</span></span>
+            </button></th>
+            <td className="whitespace-nowrap px-4 py-3" title={`${activityDate(account.lastActiveAt)} · creator portal activity`}><span className="block font-medium">{lastActiveLabel(account.lastActiveAt)}</span>{account.lastActiveAt ? <span className="mt-1 block text-[10px] text-zinc-400">Creator portal</span> : null}</td>
             {months.map((month, index) => {
               const entry = history?.get(month)
               const total = entry?.submissions.length || 0
