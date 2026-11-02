@@ -8,6 +8,13 @@ const post = (id: string, changes: Partial<AdminSubmission> = {}) => ({ id, crea
 const payment = (id: string, changes: Partial<AdminPayment> = {}) => ({ id, submissionId: 'one', creatorProfileId: 'creator', amountCents: 1000, currency: 'USD', status: 'paid', paidAt: '2026-10-21T18:00:00Z', ...changes } as AdminPayment)
 const data = (submissions: AdminSubmission[], payments: AdminPayment[] = []) => ({ submissions, payments, creators: [] } as Pick<AdminDashboard, 'submissions' | 'payments' | 'creators'>)
 
+test('recording observations report reach and coverage separately from paid and reviewed views', () => {
+  const report = buildCreatorPerformance({ submissions: [{ ...post('one'), observedViews: 123456 }, post('unreadable')], payments: [], creators: [] }, options)
+  expect(report.total).toMatchObject({ posts: 2, observedViews: 123456, observedPosts: 1, reviewedViews: 40000, costViews: 40000, earnedCents: 2000 })
+  expect(report.creators[0]).toMatchObject({ observedViews: 123456, observedPosts: 1 })
+  expect(report.daily.find(row => row.day === '2026-10-20')?.observedViews).toBe(123456)
+})
+
 test('views follow original submission day; later cash and rereview totals do not create another post', () => {
   const report = buildCreatorPerformance(data([post('one', { adminViewCountThreshold: 100000, viewCountThreshold: 30000, approvedAmountCents: 6500 })], [payment('old', { amountCents: 1500 }), payment('new', { amountCents: 5000 })]), options)
   expect(report.total.posts).toBe(1)

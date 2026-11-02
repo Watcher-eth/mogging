@@ -2,6 +2,7 @@ import useSWR from 'swr'
 import { CalendarDays,Check,Clock3,RotateCcw,Wallet } from 'lucide-react'
 import { apiGet } from '@/lib/api/client'
 import type { SubmissionHistoryEntry } from '@/lib/admin/submission-history'
+import { RecordingAnalytics } from './submission-audience-check'
 
 export type SubmissionHistoryData={ entries: SubmissionHistoryEntry[]; hasLegacyEvents: boolean }
 const money=(cents: number,currency='USD') => new Intl.NumberFormat('en-US',{ style: 'currency',currency }).format(cents/100)
@@ -28,6 +29,7 @@ export function SubmissionHistoryTimeline({ entries,hasLegacyEvents }: Submissio
           {entry.views!=null||entry.audiencePercent!=null? <p className="mt-1.5 text-xs tabular-nums text-zinc-600">{[entry.views!=null? `${entry.views.toLocaleString('en-US')} views`:null,entry.audiencePercent!=null? `${entry.audiencePercent}% Tier 1 audience`:null].filter(Boolean).join(' · ')}</p>:null}
           {entry.campaign? <p className="mt-1 text-xs text-zinc-400">{entry.campaign}</p>:null}
           {entry.detail? <p className="mt-2 whitespace-pre-wrap text-xs leading-5 text-zinc-500">{entry.detail}</p>:null}
+          {entry.analytics ? <RecordingAnalytics check={entry.analytics} /> : null}
           {entry.reference? <p className="mt-1.5 break-all text-[11px] text-zinc-400">Receipt: {entry.reference}</p>:null}
         </li>
       })}

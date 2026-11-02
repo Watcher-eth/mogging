@@ -13,7 +13,11 @@ export function creatorPerformanceInputQuery(now: Date) {
     select s.id,s.creator_profile_id as "creatorProfileId",p.display_name as "creatorName",
       s.platform,dates.submitted_at as "createdAt",s.sprint_id as "sprintId",s.status,
       s.approved_amount_cents as "approvedAmountCents",s.view_count_threshold as "viewCountThreshold",
-      s.admin_view_count_threshold as "adminViewCountThreshold",s.admin_us_audience_percent as "adminUsAudiencePercent"
+      s.admin_view_count_threshold as "adminViewCountThreshold",s.admin_us_audience_percent as "adminUsAudiencePercent",
+      (select (a.data#>>'{metrics,totalViews}')::float8 from creator_submission_analytics a
+        where a.submission_id = s.id and a.assessed_at < ${now.toISOString()}::timestamp
+          and a.data#>>'{metricsVerified,totalViews}' = 'true'
+        order by a.assessed_at desc limit 1) as "observedViews"
     from creator_submissions s join creator_profiles p on p.id = s.creator_profile_id
     cross join lateral (select coalesce((select min(u.created_at) from creator_submission_updates u
       where u.submission_id = s.id and u.type = 'submitted'),s.created_at) as submitted_at) dates
@@ -28,7 +32,8 @@ export function creatorPerformanceInputQuery(now: Date) {
     'payments',coalesce((select json_agg(p) from payments p),'[]'::json),
     'creators','[]'::json,
     'latestSubmission',(select max("createdAt") from posts),
-    'latestSubmissionUpdate',(select max(s.updated_at) from creator_submissions s where s.id in (select id from posts)),
+    'latestSubmissionUpdate',greatest((select max(s.updated_at) from creator_submissions s where s.id in (select id from posts)),
+      (select max(a.assessed_at) from creator_submission_analytics a where a.assessed_at < ${now.toISOString()}::timestamp and a.submission_id in (select id from posts))),
     'latestPaymentUpdate',(select max(p.updated_at) from creator_payments p where p.id in (select id from payments))
   ) as input`
 }

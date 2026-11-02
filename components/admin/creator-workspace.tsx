@@ -55,7 +55,7 @@ import { CREATOR_TIER1_AUDIENCE_TIERS, CREATOR_VIEW_THRESHOLDS } from '@/lib/cre
 import { AUDIENCE_MINIMUM_REJECTION, mergeCreatorSubmissionReviewResults, submissionReviewError, createSubmissionReviewDrafts } from '@/lib/creator/submission-review'
 import { SubmissionRequirementsReview } from '@/components/admin/submission-requirements-review'
 import { CreatorIcon, type CreatorIconName } from '@/components/creator/creator-icon'
-import { audienceReviewError, type AudienceCheck } from '@/lib/creator/audience-check'
+import { audienceReviewError, verifiedRecordingViews, type AudienceCheck } from '@/lib/creator/audience-check'
 import { SubmissionAudienceCheck } from './submission-audience-check'
 import { approvedUnpaidSubmissions, creatorOutstandingPaymentGroups, approvalKind, approvalSubmittedAt, approvalTypes, getSubmissionReviewQueues, hasPayoutDestination, isNewInLastDay, publishedVideoEmbedUrl, walletExplorerUrl } from '@/lib/admin/creator-overview'
 import type {
@@ -349,9 +349,7 @@ export function ReviewDialog({ target, creator, payments, metrics, open, onOpenC
   const [videoStudioAccess, setVideoStudioAccess] = useState(target.resource === 'creator' && Boolean(target.item.videoStudioAccess))
   const [amount, setAmount] = useState<string | null>(target.resource === 'payment' ? (target.item.amountCents / 100).toFixed(2) : target.resource === 'submission' ? initialPayoutAmount(target.item) || null : null)
   const [providerReference, setProviderReference] = useState(target.resource === 'payment' ? target.item.providerReference || '' : '')
-  const [adminViewCountThreshold, setAdminViewCountThreshold] = useState(() => target.resource === 'submission'
-    ? String((target.item.reviewRequestedAt ? target.item.viewCountThreshold : target.item.adminViewCountThreshold) ?? target.item.viewCountThreshold ?? '')
-    : '')
+  const [manualViewCountThreshold, setAdminViewCountThreshold] = useState<string | null>(null)
   const [manualAudiencePercent, setAdminUsAudiencePercent] = useState(() => target.resource === 'submission'
     ? String((target.item.reviewRequestedAt ? target.item.usAudiencePercent : target.item.adminUsAudiencePercent) ?? target.item.usAudiencePercent ?? (target.item.sprintTerms ? '' : 'base'))
     : 'base')
@@ -364,6 +362,10 @@ export function ReviewDialog({ target, creator, payments, metrics, open, onOpenC
     apiGet, { fallbackData: target.resource === 'submission' ? { check: target.item.audienceCheck ?? null, storageKey: target.item.analyticsStorageKey ?? null } : undefined,
       refreshInterval: data => !data?.check || ['queued', 'processing'].includes(data.check.status) ? 5000 : 0 })
   const audienceCheck = audienceData?.check
+  const automaticViews = target.resource === 'submission' && audienceData?.storageKey === target.item.analyticsStorageKey
+    ? verifiedRecordingViews(audienceCheck, target.item.analyticsStorageKey) : null
+  const adminViewCountThreshold = manualViewCountThreshold ?? (target.resource === 'submission'
+    ? String((!target.item.reviewRequestedAt ? target.item.adminViewCountThreshold : null) ?? automaticViews ?? target.item.viewCountThreshold ?? '') : '')
   const automaticAudience = audienceCheck?.status === 'verified' && typeof audienceCheck.percent === 'number'
     && audienceCheck.storageKey === audienceData?.storageKey && target.resource === 'submission' && audienceData.storageKey === target.item.analyticsStorageKey
   const adminUsAudiencePercent = target.resource === 'submission' && target.item.sprintTerms && !manualAudience && automaticAudience
@@ -404,7 +406,7 @@ export function ReviewDialog({ target, creator, payments, metrics, open, onOpenC
   const existingPayment = target.resource === 'submission' ? payments.find((payment) => payment.submissionId === target.item.id && ['pending', 'processing'].includes(payment.status)) : undefined
   const adminPayoutSelection = {
     viewCountThreshold: Number(adminViewCountThreshold),
-    usAudiencePercent: adminUsAudiencePercent === 'base' ? null : Number(adminUsAudiencePercent),
+    usAudiencePercent: adminUsAudiencePercent === 'base' || !adminUsAudiencePercent.trim() ? null : Number(adminUsAudiencePercent),
   }
   const submissionPayments = target.resource === 'submission' ? payments.filter(payment => payment.submissionId === target.item.id) : []
   const payoutEstimate = target.resource === 'submission' ? getSubmissionPayoutEstimate(adminPayoutSelection, target.item) : null

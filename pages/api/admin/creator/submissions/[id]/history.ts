@@ -12,12 +12,13 @@ export default async function handler(req: NextApiRequest,res: NextApiResponse) 
     if(typeof req.query.id!=='string') throw new ApiError(400,'Invalid submission')
     const post=await db.query.creatorSubmissions.findFirst({ where: eq(schema.creatorSubmissions.id,req.query.id) })
     if(!post||post.isDraft) throw new ApiError(404,'Submission not found')
-    const [updates,messages,payments]=await Promise.all([
+    const [updates,messages,payments,observations]=await Promise.all([
       db.query.creatorSubmissionUpdates.findMany({ where: eq(schema.creatorSubmissionUpdates.submissionId,post.id),orderBy: [asc(schema.creatorSubmissionUpdates.createdAt),asc(schema.creatorSubmissionUpdates.id)] }),
       db.query.creatorSubmissionMessages.findMany({ where: and(eq(schema.creatorSubmissionMessages.submissionId,post.id),eq(schema.creatorSubmissionMessages.authorRole,'creator'),like(schema.creatorSubmissionMessages.body,'Submitted fresh analytics for review:%')) }),
       db.query.creatorPayments.findMany({ where: and(eq(schema.creatorPayments.creatorProfileId,post.creatorProfileId),or(eq(schema.creatorPayments.submissionId,post.id),...['audience','exclusivity','conversion'].map(kind => like(schema.creatorPayments.bonusKey,`${kind}:${post.id}:%`)))) }),
+      db.query.creatorSubmissionAnalytics.findMany({ where: eq(schema.creatorSubmissionAnalytics.submissionId,post.id),orderBy: [asc(schema.creatorSubmissionAnalytics.assessedAt)] }),
     ])
     res.setHeader('Cache-Control','private, no-store')
-    return json(res,200,{ entries: submissionHistory(post,updates,messages,payments),hasLegacyEvents: !updates.some(u => u.type==='submitted'&&u.historySnapshot)||updates.some(u => !u.historySnapshot) })
+    return json(res,200,{ entries: submissionHistory(post,updates,messages,payments,observations),hasLegacyEvents: !updates.some(u => u.type==='submitted'&&u.historySnapshot)||updates.some(u => !u.historySnapshot) })
   } catch(error) { return handleApiError(error,res) }
 }

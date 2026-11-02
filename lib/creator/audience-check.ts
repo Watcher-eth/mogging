@@ -2,12 +2,23 @@ import { CREATOR_TIER_ONE_COUNTRIES } from './audience'
 import { sprintPayoutCents, type SprintTerms } from './sprints'
 
 export type AudienceCountry = { code: string; name: string; percent: number; precision: number; frameIds: string[] }
+export type AudienceMetrics = {
+  averageWatchTimeSeconds: number | null
+  dropOffTimeSeconds?: number | null
+  totalViewers: number | null
+  totalViews: number | null
+  totalViewsExact?: boolean
+  age: { range: string; percent: number }[]
+}
+export type AudienceMetric = keyof AudienceMetrics
 export type AudienceCheck = {
   version: 1
   storageKey: string
   status: 'queued' | 'processing' | 'verified' | 'needs_review'
   checkedAt?: string
   startedAt?: string
+  submittedAt?: string
+  context?: { creatorProfileId: string; socialAccountId: string | null; campaignId: string | null; platform: string; postUrl: string | null }
   reason?: string
   costUsd?: number
   countries?: AudienceCountry[]
@@ -17,11 +28,20 @@ export type AudienceCheck = {
   maximumPercent?: number
   evidenceSeconds?: number[]
   verification?: { scope: number | null; countries: Record<string, number | null>; secondReadingMatched?: boolean }
-  metrics?: { averageWatchTimeSeconds: number | null; dropOffTimeSeconds?: number | null; totalViewers: number | null; totalViews: number | null; age: { range: string; percent: number }[] }
-  review?: { source: 'automatic' | 'manual'; percent: number; reviewerId: string; reviewedAt: string }
+  metrics?: AudienceMetrics
+  metricsVerified?: Partial<Record<AudienceMetric, boolean>>
+  metricsConfidence?: Partial<Record<AudienceMetric, number | null>>
+  metricsEvidenceSeconds?: number[]
+  review?: { source: 'automatic' | 'manual'; percent: number; views?: number; viewsSource?: 'automatic' | 'manual'; reviewerId: string; reviewedAt: string }
 }
 
-export const queuedAudienceCheck = (storageKey: string): AudienceCheck => ({ version: 1, storageKey, status: 'queued' })
+export const queuedAudienceCheck = (storageKey: string): AudienceCheck => ({ version: 1, storageKey, status: 'queued', submittedAt: new Date().toISOString() })
+
+export function verifiedRecordingViews(check: AudienceCheck | null | undefined, storageKey: string | null | undefined) {
+  const views = check?.metrics?.totalViews
+  return storageKey && check?.storageKey === storageKey && check.metricsVerified?.totalViews && check.metricsVerified.totalViewsExact && check.metrics?.totalViewsExact
+    && typeof views === 'number' && Number.isSafeInteger(views) && views >= 0 && views <= 2_000_000_000 ? views : null
+}
 const names = new Intl.DisplayNames(['en'], { type: 'region', fallback: 'none' })
 const normalize = (value: string) => value.toLowerCase().replace(/[^a-z]/g, '')
 const tierOne = new Set(CREATOR_TIER_ONE_COUNTRIES.map(normalize))

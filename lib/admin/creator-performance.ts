@@ -20,10 +20,10 @@ function shiftDay(day: string, days: number) {
   date.setUTCDate(date.getUTCDate() + days)
   return date.toISOString().slice(0, 10)
 }
-type Totals = { posts: number; approvedPosts: number; reportedViews: number; reviewedViews: number; costViews: number; earnedCents: number; paidCents: number; unpaidCents: number }
-const emptyTotals = (): Totals => ({ posts: 0, approvedPosts: 0, reportedViews: 0, reviewedViews: 0, costViews: 0, earnedCents: 0, paidCents: 0, unpaidCents: 0 })
+type Totals = { posts: number; approvedPosts: number; reportedViews: number; reviewedViews: number; observedViews: number; observedPosts: number; costViews: number; earnedCents: number; paidCents: number; unpaidCents: number }
+const emptyTotals = (): Totals => ({ posts: 0, approvedPosts: 0, reportedViews: 0, reviewedViews: 0, observedViews: 0, observedPosts: 0, costViews: 0, earnedCents: 0, paidCents: 0, unpaidCents: 0 })
 function add(total: Totals, item: Totals) {
-  for (const key of ['posts', 'approvedPosts', 'reportedViews', 'reviewedViews', 'costViews', 'earnedCents', 'paidCents', 'unpaidCents'] as const) total[key] += item[key]
+  for (const key of ['posts', 'approvedPosts', 'reportedViews', 'reviewedViews', 'observedViews', 'observedPosts', 'costViews', 'earnedCents', 'paidCents', 'unpaidCents'] as const) total[key] += item[key]
 }
 export function viewCpm(cents: number, views: number) { return views > 0 ? cents / 100 / views * 1000 : null }
 function postPlatform(platform: string) {
@@ -32,7 +32,7 @@ function postPlatform(platform: string) {
 }
 
 export type PerformanceInput = {
-  submissions: Array<Pick<AdminDashboard['submissions'][number], 'id' | 'creatorProfileId' | 'creatorName' | 'platform' | 'createdAt' | 'sprintId' | 'status' | 'approvedAmountCents' | 'viewCountThreshold' | 'adminViewCountThreshold' | 'adminUsAudiencePercent'>>
+  submissions: Array<Pick<AdminDashboard['submissions'][number], 'id' | 'creatorProfileId' | 'creatorName' | 'platform' | 'createdAt' | 'sprintId' | 'status' | 'approvedAmountCents' | 'viewCountThreshold' | 'adminViewCountThreshold' | 'adminUsAudiencePercent'> & { observedViews?: number | null }>
   payments: Array<Pick<AdminDashboard['payments'][number], 'id' | 'submissionId' | 'creatorProfileId' | 'amountCents' | 'currency' | 'status' | 'paidAt'>>
   creators: Array<Pick<AdminDashboard['creators'][number], 'id' | 'displayName'>>
 }
@@ -63,6 +63,7 @@ export function buildCreatorPerformance(data: PerformanceInput, options: { days:
     const approved = s.status === 'approved' || s.status === 'paid' || earnedCents > 0
     return { id: s.id, creatorId: s.creatorProfileId, creatorName: s.creatorName, platform: postPlatform(s.platform), day: performanceDay(s.createdAt),
       posts: 1, approvedPosts: Number(approved), reportedViews: Math.max(0, s.viewCountThreshold || 0, reviewedViews), reviewedViews,
+      observedViews: Math.max(0, s.observedViews ?? 0), observedPosts: Number(typeof s.observedViews === 'number' && Number.isFinite(s.observedViews)),
       costViews: approved ? reviewedViews : 0, earnedCents, paidCents, unpaidCents: Math.max(0, earnedCents - paidCents) }
   })
   const firstDay = [...posts.flatMap(p => p.day ? [p.day] : []), ...cashByDay.keys()].sort()[0] || today

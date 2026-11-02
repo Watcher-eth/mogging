@@ -1115,6 +1115,13 @@ export const creatorPaymentReceipts = pgTable('creator_payment_receipts', {
   image: text('image').notNull(),
 })
 
+export const creatorSubmissionAnalytics = pgTable('creator_submission_analytics', {
+  submissionId: text('submission_id').notNull().references(() => creatorSubmissions.id, { onDelete: 'cascade' }),
+  storageKey: text('storage_key').notNull(),
+  assessedAt: timestamp('assessed_at', { mode: 'date' }).notNull(),
+  data: jsonb('data').$type<import('../creator/audience-check').AudienceCheck>().notNull(),
+}, table => [primaryKey({ columns: [table.submissionId, table.storageKey] }), index('creator_submission_analytics_time_idx').on(table.submissionId, table.assessedAt)])
+
 export const creatorAttributionMetrics = pgTable(
   'creator_attribution_metrics',
   {

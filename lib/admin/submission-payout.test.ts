@@ -23,3 +23,9 @@ test('MGC verified audience tiers apply before admin approval', () => {
   expect(getSubmissionPayoutEstimate({ viewCountThreshold: 100000, usAudiencePercent: 22.5 }, { sprintTerms: mgc })?.payout).toBe(42.25)
   expect(getSubmissionPayoutEstimate({ viewCountThreshold: 100000, usAudiencePercent: 14.9 }, { sprintTerms: mgc })?.payout).toBe(0)
 })
+
+test('missing audience and views remain unknown rather than displaying a zero-dollar estimate', () => {
+  expect(getSubmissionPayoutEstimate({ viewCountThreshold: 100000, usAudiencePercent: null }, { sprintTerms: mgc })).toBeNull()
+  expect(getSubmissionPayoutEstimate({ viewCountThreshold: 0, usAudiencePercent: 32 }, { sprintTerms: mgc })).toBeNull()
+  expect(getSubmissionPayoutEstimate({ viewCountThreshold: 100000, usAudiencePercent: 0 }, { sprintTerms: mgc })?.payout).toBe(0)
+})

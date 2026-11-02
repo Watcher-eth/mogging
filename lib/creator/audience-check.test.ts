@@ -1,9 +1,21 @@
 import { expect, test } from 'bun:test'
-import { assessAudience, audienceReviewError, stableAudiencePayout, type AudienceCheck, type AudienceCountry } from './audience-check'
+import { assessAudience, audienceReviewError, stableAudiencePayout, verifiedRecordingViews, type AudienceCheck, type AudienceCountry } from './audience-check'
 import { defaultCreatorSprintTerms } from './sprint-defaults'
 
 const terms = defaultCreatorSprintTerms()
 const country = (code: string, name: string, percent: number): AudienceCountry => ({ code, name, percent, precision: 1, frameIds: ['tail-1', 'tail-2'] })
+
+test('earnings use only exact independently verified views from the current recording, even if audience needs review', () => {
+  const check: AudienceCheck = { version: 1, storageKey: 'current', status: 'needs_review',
+    metrics: { totalViews: 123456, totalViewsExact: true, totalViewers: null, averageWatchTimeSeconds: null, age: [] },
+    metricsVerified: { totalViews: true, totalViewsExact: true } }
+  expect(verifiedRecordingViews(check, 'current')).toBe(123456)
+  expect(verifiedRecordingViews(check, 'replaced')).toBeNull()
+  expect(verifiedRecordingViews({ ...check, metricsVerified: undefined }, 'current')).toBeNull()
+  expect(verifiedRecordingViews({ ...check, metricsVerified: { totalViews: true } }, 'current')).toBeNull()
+  expect(verifiedRecordingViews({ ...check, metrics: { ...check.metrics!, totalViewsExact: false } }, 'current')).toBeNull()
+  expect(verifiedRecordingViews({ ...check, metrics: { ...check.metrics!, totalViews: 3_000_000_000 } }, 'current')).toBeNull()
+})
 
 test('accepts an established top payout tier while preserving uncertainty in hidden countries', () => {
   const result = assessAudience([country('US', 'United States', 60), country('BR', 'Brazil', 10)], terms)

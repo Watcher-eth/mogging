@@ -1,4 +1,5 @@
 import type { SubmissionHistorySnapshot } from '@/lib/creator/updates'
+import type { AudienceCheck } from '@/lib/creator/audience-check'
 
 export type SubmissionHistoryEntry={
   id: string
@@ -11,6 +12,7 @@ export type SubmissionHistoryEntry={
   currency?: string
   campaign?: string|null
   reference?: string|null
+  analytics?: AudienceCheck
 }
 type Update={ id: string; type: string; createdAt: Date|string; note: string|null; historySnapshot?: SubmissionHistorySnapshot|null }
 type Payment={ id: string; amountCents: number; currency: string; status: string; paidAt: Date|string|null; createdAt: Date|string; providerReference: string|null; bonusKey?: string|null; bonusNote?: string|null }
@@ -18,7 +20,7 @@ type Message={ id: string; body: string; createdAt: Date|string }
 const date=(value: Date|string) => new Date(value).toISOString()
 const labels: Record<string,string>={ submitted: 'First submitted',rereview_requested: 'Rereview requested',approved: 'Approved',rejected: 'Rejected',pending: 'Awaiting review',in_review: 'Review started',feedback: 'Review feedback' }
 
-export function submissionHistory(post: { id: string; createdAt: Date|string; viewCountThreshold: number|null; usAudiencePercent: number|null; reviewRequestedAt?: Date|string|null },updates: Update[],messages: Message[],payments: Payment[]) {
+export function submissionHistory(post: { id: string; createdAt: Date|string; viewCountThreshold: number|null; usAudiencePercent: number|null; reviewRequestedAt?: Date|string|null },updates: Update[],messages: Message[],payments: Payment[],observations: { storageKey: string; assessedAt: Date|string; data: AudienceCheck }[] = []) {
   const fresh=messages.flatMap(message => {
     const match=/^Submitted fresh analytics for review: ([\d,]+) views · ([\d.]+)% Tier 1 audience\./.exec(message.body)
     if(!match) return []
@@ -45,5 +47,7 @@ id: `event:${update.id}`,at: date(update.createdAt),title: labels[update.type]||
     const bonus=Boolean(payment.bonusKey)
     entries.push({ id: `payment:${payment.id}`,at: date(payment.status==='paid'&&payment.paidAt? payment.paidAt:payment.createdAt),title: payment.status==='paid'? (bonus? 'Bonus paid':'Paid'):bonus? (payment.status==='pending'? 'Bonus added':`Bonus ${payment.status}`):payment.status==='pending'? 'Payment scheduled':`Payment ${payment.status}`,amountCents: payment.amountCents,currency: payment.currency,reference: payment.providerReference,detail: bonus? payment.bonusNote:payment.status==='paid'? null:`Current payment status: ${payment.status}` })
   }
+  for (const observation of observations) entries.push({ id: `recording:${observation.storageKey}`, at: date(observation.assessedAt),
+    title: 'Analytics assessed', detail: observation.data.reason, analytics: observation.data })
   return entries.sort((a,b) => Date.parse(a.at)-Date.parse(b.at)||a.id.localeCompare(b.id))
 }

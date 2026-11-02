@@ -90,13 +90,17 @@ test('campaign approval cannot bypass an unreadable audience without manual conf
   expect(writes).toBe(0)
 })
 
-test('automatic campaign approval uses the checked audience and records its source', async () => {
+test('automatic campaign approval uses checked audience and views and records their sources', async () => {
   const terms = defaultCreatorSprintTerms()
+  const views = input().adminViewCountThreshold
   submission = { ...submission, sprintId: 'campaign', sprintTerms: terms, analyticsScreenshotUrl: 'https://example.com/evidence.mp4',
-    audienceCheck: { version: 1, status: 'verified', storageKey: 'current-evidence', percent: 60, minimumPercent: 59.95, maximumPercent: 90 } }
+    audienceCheck: { version: 1, status: 'verified', storageKey: 'current-evidence', percent: 60, minimumPercent: 59.95, maximumPercent: 90,
+      metrics: { totalViews: views, totalViewsExact: true, totalViewers: null, averageWatchTimeSeconds: null, age: [] },
+      metricsVerified: { totalViews: true, totalViewsExact: true } } }
   const reviewChecklist = sprintReviewItems(terms, 'custom-video-v1').map(({ id }) => ({ id, met: true, note: null }))
   const saved = await reviewCreatorResource({ ...approval(), adminUsAudiencePercent: 60, manualAudienceConfirmed: false, reviewChecklist }, 'reviewer')
-  expect(saved).toMatchObject({ adminUsAudiencePercent: 60, audienceCheck: { review: { source: 'automatic', percent: 60, reviewerId: 'reviewer' } } })
+  expect(saved).toMatchObject({ adminUsAudiencePercent: 60, adminViewCountThreshold: views,
+    audienceCheck: { review: { source: 'automatic', percent: 60, views, viewsSource: 'automatic', reviewerId: 'reviewer' } } })
 })
 
 test('even an explicit manual override cannot approve a replaced recording', async () => {

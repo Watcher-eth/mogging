@@ -1,8 +1,20 @@
 import { expect,test } from 'bun:test'
 import { submissionHistory } from './submission-history'
+import type { AudienceCheck } from '@/lib/creator/audience-check'
 const first='2026-10-20T12:00:00Z',approved='2026-10-21T12:00:00Z',rereview='2026-10-23T12:00:00Z'
 const post={ id: 'post',createdAt: first,viewCountThreshold: 100000,usAudiencePercent: 60,reviewRequestedAt: rereview }
 const snapshot={ submittedViews: 20000,submittedAudiencePercent: 40,verifiedViews: 20000,verifiedAudiencePercent: 38,approvedAmountCents: 1500,campaignId: 'old',campaignName: 'Old campaign' }
+test('analytics recordings retain separate cumulative view counts and optional age/watch metrics across rereviews', () => {
+  const original: AudienceCheck = { version: 1, storageKey: 'old', status: 'verified', metrics: {
+    totalViews: 20000, totalViewers: 15000, averageWatchTimeSeconds: 11.7, age: [{ range: '18-24', percent: 39 }] } }
+  const next: AudienceCheck = { ...original, storageKey: 'new', metrics: { ...original.metrics!, totalViews: 100000 } }
+  const entries = submissionHistory(post, [], [], [], [
+    { storageKey: 'old', assessedAt: first, data: original }, { storageKey: 'new', assessedAt: rereview, data: next },
+  ]).filter(entry => entry.analytics)
+  expect(entries.map(entry => entry.analytics?.metrics?.totalViews)).toEqual([20000, 100000])
+  expect(entries[0].analytics?.metrics?.age).toEqual([{ range: '18-24', percent: 39 }])
+  expect(entries[1].analytics?.metrics?.averageWatchTimeSeconds).toBe(11.7)
+})
 test('timeline preserves first metrics, rereview metrics, approval amounts and separate partial payouts in chronological order',() => {
   const entries=submissionHistory(post,[
     { id: 'approval2',type: 'approved',createdAt: '2026-10-24T12:00:00Z',note: null,historySnapshot: { ...snapshot,verifiedViews: 100000,verifiedAudiencePercent: 60,approvedAmountCents: 3000,campaignName: 'General' } },

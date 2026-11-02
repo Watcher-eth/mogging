@@ -1,4 +1,4 @@
-import { audienceReviewError, type AudienceCheck } from '@/lib/creator/audience-check'
+import { audienceReviewError, verifiedRecordingViews, type AudienceCheck } from '@/lib/creator/audience-check'
 import { lockCampaignBudget } from '@/lib/creator/campaign-budget-service'
 import { assertCreatorReferralPaymentsEligible, refreshCreatorReferralBonuses } from '@/lib/creator/creator-referrals'
 import { campaignCommittedCents, campaignPendingCents } from '@/lib/creator/campaign-accounting'
@@ -528,6 +528,8 @@ async function reviewSprintSubmission(input: Extract<CreatorAdminReviewInput, { 
       // A manual review closes any pending job; its result must never replace the moderator's decision.
       ...(input.manualAudienceConfirmed && ['queued', 'processing'].includes(submission.audienceCheck?.status ?? 'queued') ? { status: 'needs_review' as const } : {}),
       review: { source: input.manualAudienceConfirmed ? 'manual' : 'automatic', percent: input.adminUsAudiencePercent!,
+        views: input.adminViewCountThreshold,
+        viewsSource: verifiedRecordingViews(submission.audienceCheck, submission.analyticsStorageKey) === input.adminViewCountThreshold ? 'automatic' : 'manual',
         reviewerId: reviewerId || 'admin', reviewedAt: new Date().toISOString() },
     } : submission.audienceCheck
     const expected = sprintReviewItems(submission.sprintTerms, submission.formatId || '')
