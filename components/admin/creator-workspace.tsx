@@ -2,6 +2,7 @@ import { getSubmissionPayoutEstimate, type AdminPayoutSelection } from '@/lib/ad
 import { SubmissionHistory } from './submission-history'
 import { submissionBonusPayments, reviewAudienceBonuses } from '@/lib/creator/bonus-payments'
 import { CreatorExclusivityReview } from './creator-exclusivity-review'
+import { BioLinkTracker } from './bio-link-tracker'
 import { hasLaunchCampaignBonuses, launchCampaign } from '@/lib/creator/campaign-launch'
 import dynamic from 'next/dynamic'
 import { canReceiveCreatorPayout, creatorBundlePlan, creatorUnpaidCents, remainingCreatorPaymentCents } from '@/lib/creator/money'
@@ -104,7 +105,7 @@ function DashboardView({ tab, data, onSelect, onRefresh }: { tab: Tab; data: Adm
   if (tab === 'attribution') return <CreatorAttributionDashboard data={data} onSelectCreator={(item) => onSelect({ resource: 'creator', item })} onSelectAccount={(item) => onSelect({ resource: 'account', item })} />
   if (tab === 'submissions') return <ResourceSection title="Video submissions"><SubmissionList items={data.submissions} payments={data.payments} onSelect={onSelect} /></ResourceSection>
   if (tab === 'cta-library') return <CtaLibraryAdminPanel />
-  if (tab === 'accounts') return <ResourceSection title="Social accounts"><AccountList items={data.accounts} onSelect={onSelect} /></ResourceSection>
+  if (tab === 'accounts') return <ResourceSection title="Social accounts"><BioLinkTracker accounts={data.accounts} submissions={data.submissions} onSelectSubmission={item => onSelect({ resource: 'submission', item })} /><AccountList items={data.accounts} onSelect={onSelect} /></ResourceSection>
   if (tab === 'payments') return <ResourceSection title="Creator payments"><PaymentsPanel data={data} onSelect={onSelect} onRefresh={onRefresh} /></ResourceSection>
   if (tab === 'creators') return <ResourceSection title="Creators"><div className="mb-5"><CreatorRegistrationMetrics creators={data.creators} accounts={data.accounts} /></div><CreatorList items={data.creators} accounts={data.accounts} onSelect={onSelect} /></ResourceSection>
   return <Overview data={data} onSelect={onSelect} onRefresh={onRefresh} />
@@ -497,7 +498,7 @@ export function ReviewDialog({ target, creator, payments, metrics, open, onOpenC
                 </div>
               </Tabs.Content>
               <Tabs.Content value="review" className="outline-none">
-                {hasLaunchCampaignBonuses(target.item) ? <CreatorExclusivityReview key={target.item.id} submission={target.item} onSaved={onRefresh} /> : null}
+                {hasLaunchCampaignBonuses(target.item) ? <CreatorExclusivityReview key={`${target.item.id}-${target.item.exclusivityConfirmed}`} submission={target.item} onSaved={onRefresh} /> : null}
 
                 <SubmissionRequirementsReview campaignName={campaignCriteriaName} items={reviewChecklist} status={status} onChange={setReviewChecklist} />
                 {reducedApproval ? <p className="mt-3 rounded-xl bg-amber-50 p-3 text-xs leading-5 text-amber-900">Approving with a reduced payout. Unmet requirements and the adjustment reason remain visible to the creator.</p> : null}
