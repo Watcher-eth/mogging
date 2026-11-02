@@ -46,6 +46,14 @@ export function ExperimentsReport({ data }: { data: AnalyticsDashboard }) {
       <Stat title="Difference · B minus A" value={summary.difference} note="Percentage points · mature click rates; not a winner declaration" />
       <Stat title="Eligible browsers" value={count(eligible)} note={`${count(pending)} awaiting a full seven-day follow-up`} />
     </div>
+    <Panel title="Business outcome · verified paid checkout" description="Seven-day paid-entry rate, with recent entrants kept separate."
+      note="Positive-amount, server-confirmed Stripe checkouts matched to the same recorded assignment after exposure, within seven days and inside the selected reporting window. Counts are converting browser entries, not payment transactions, new customers or completed analysis reports. Missing paid-outcome fields remain unavailable rather than zero.">
+      <div className="admin-stats-grid">
+        {rows.map((row, index) => <Stat key={String(row.variant)} title={`${index === 0 ? 'A' : 'B'} · Paid-entry rate`} value={String(row.mature_paid_rate)} note={`${row.mature_paid_checkouts === null ? 'Unavailable' : count(row.mature_paid_checkouts)} paid entries / ${count(row.mature)} eligible browsers`} />)}
+      </div>
+      <p className="mt-4 text-xs leading-5 text-zinc-500">This is a business diagnostic for the existing experiment. Its original App Store-interest primary outcome and decision rule remain unchanged. New experiments will specify paid purchases as their primary objective before launch.</p>
+      <Link className="mt-4 inline-block text-sm font-medium text-[#008ac5] underline underline-offset-4" href="/admin/analytics/revenue">Verified billing, refunds and currencies →</Link>
+    </Panel>
     <Panel title="Primary outcome · App Store interest" description={`Mature App Store click rate · ${confidence} confidence intervals`} note={measurements}>
       {comparable ? <Bars maximum={100} format={value => `${value.toFixed(1)}%`} rows={rows.map((row, index) => ({ label: index === 0 ? 'A · Control' : 'B · Treatment', value: Number(row.mature_store_clicks) / Number(row.mature) * 100, detail: `${row.variant} · ${count(row.mature_store_clicks)} of ${count(row.mature)} eligible browsers · ${confidence} interval: ${row.interval}` }))} /> : <p className="admin-empty">Both variants need eligible browsers before a mature rate comparison is available. Pending visitors are not counted as failures.</p>}
       <p className="mt-4 text-sm leading-6 text-zinc-500">App Store clicks measure interest. They do not establish downloads, paying customers, or revenue.</p>

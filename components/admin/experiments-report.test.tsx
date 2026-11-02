@@ -8,7 +8,7 @@ function snapshot(mature = 1000): AnalyticsDashboard {
     generatedAt: '2026-10-27T21:00:00Z', filters: { days: '30', platform: 'all', section: 'Experiments' },
     landingExperiments: ['a', 'b'].map((variant, index) => ({ experiment_id: 'landing_homepage_v3', variant,
       visitors: 1100, homepage_visitors: 1100, mature, mature_store_clicks: mature ? index ? 250 : 200 : 0,
-      pending: 1100 - mature, paid_checkouts: index ? 3 : 2,
+      pending: 1100 - mature, paid_checkouts: index ? 3 : 2, mature_paid_checkouts: index ? 3 : 2,
       first_exposure: '2026-10-01T12:00:00', latest_exposure: '2026-10-27T20:30:00',
     })), landingExperimentDaily: [], landingHandoffs: [],
   } as unknown as AnalyticsDashboard
@@ -26,6 +26,10 @@ test('active test leads with mature rates and effect size, without declaring a w
   expect(html).toContain('1:30 PM PDT')
   expect(html).not.toContain('id="landing_hero_v1"')
   expect(html).toContain('Explore downstream outcomes and exclusions')
+  expect(html).toContain('Business outcome · verified paid checkout')
+  expect(html).toContain('0.2%')
+  expect(html).toContain('0.3%')
+  expect(html).toContain('original App Store-interest primary outcome')
 })
 
 test('immature cohorts have no rates or lift, even when assignments exist', () => {

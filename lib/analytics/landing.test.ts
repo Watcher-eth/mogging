@@ -81,3 +81,12 @@ test('archived homepage cookies and checkout attribution survive the iPhone-prev
   const current = createLandingAssignment('00000000-0000-4000-8000-000000000002')
   expect(readLandingCookie(`mogging_landing_v2=${serializeLandingAssignment(old)}; mogging_landing_v3=${serializeLandingAssignment(current)}`)).toEqual(current)
 })
+
+test('paid-entry diagnostics separate mature zero, missing outcomes and pending cohorts', () => {
+  const base = { experiment_id: 'landing_homepage_v3', variant: 'a', visitors: 40, mature: 20, pending: 20 }
+  const paid = landingExperimentRows([{ ...base, mature_paid_checkouts: 2 }], 'landing_homepage_v3')[0]
+  expect(paid).toMatchObject({ mature_paid_checkouts: 2, mature_paid_rate: '10.0%' })
+  expect(landingExperimentRows([{ ...base, mature_paid_checkouts: 0 }], 'landing_homepage_v3')[0].mature_paid_rate).toBe('0.0%')
+  expect(landingExperimentRows([base], 'landing_homepage_v3')[0]).toMatchObject({ mature_paid_checkouts: null, mature_paid_rate: '—' })
+  expect(landingExperimentRows([{ ...base, mature: 0, mature_paid_checkouts: 0 }], 'landing_homepage_v3')[0].mature_paid_rate).toBe('—')
+})

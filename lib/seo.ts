@@ -38,8 +38,8 @@ export const pageLastModified: Record<string, string> = {
   '/es': '2026-10-28',
   '/fr': '2026-10-28',
   '/zh-Hans': '2026-10-28',
-  '/what-is-mogging': '2026-10-28',
-  '/how-face-analysis-works': '2026-10-28',
+  '/what-is-mogging': '2026-11-02',
+  '/how-face-analysis-works': '2026-11-02',
 }
 
 export const mobileApplicationSchema = {

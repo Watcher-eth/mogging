@@ -5,6 +5,7 @@ import * as m from 'motion/react-m'
 import { ArrowUpRight } from 'lucide-react'
 import { SeoHead } from '@/components/app/seo-head'
 import { appStoreUrl, canonicalUrl, siteUrl } from '@/lib/seo'
+import { trackWebEvent } from '@/lib/analytics/client'
 import { Accordion, AccordionItem, AccordionTrigger, AccordionContent, AccordionChevron } from '@/components/ui/accordion'
 import styles from './guide-page.module.css'
 
@@ -18,6 +19,11 @@ export function GuidePage({ title, description, path, eyebrow, heading, intro, v
   chapters: { id: string; label: string }[]; children: ReactNode
 }) {
   const url = canonicalUrl(path), entrance = useEntrance()
+  const trackDestination = (destination: 'app_store' | 'web_analysis') => {
+    const properties = { path, surface: 'editorial_guide', placement: 'guide_footer', destination }
+    trackWebEvent('landing_cta_clicked', properties)
+    if (destination === 'app_store') trackWebEvent('app_store_redirected', properties)
+  }
   return <LazyMotion features={domAnimation}>
     <SeoHead title={`${title} | Mogging`} description={description} path={path} structuredData={{
       '@context': 'https://schema.org', '@graph': [
@@ -30,7 +36,7 @@ export function GuidePage({ title, description, path, eyebrow, heading, intro, v
       <m.header {...entrance} className={styles.hero}><div className={styles.heroCopy}><p className={styles.eyebrow}>{eyebrow}</p><h1>{heading}</h1><p className={styles.lead}>{intro}</p><a className={styles.textLink} href={`#${chapters[0].id}`}>Take a closer look <ArrowUpRight size={15} /></a></div><div className={styles.heroVisual}>{visual}</div></m.header>
       <nav className={styles.chapters} aria-label="On this page">{chapters.map((chapter, index) => <a key={chapter.id} href={`#${chapter.id}`}><span>0{index + 1}</span>{chapter.label}</a>)}</nav>
       {children}
-      <m.aside {...entrance} className={styles.end}><p className={styles.eyebrow}>YOUR NEXT STEP</p><h2>Get to know your face.<br />Build your own plan.</h2><div className={styles.links}><a className={styles.button} href={appStoreUrl}>Get Mogging for iPhone <ArrowUpRight size={15} /></a><Link className={styles.textLink} href="/analysis">Try web analysis <ArrowUpRight size={15} /></Link></div><p className={styles.fine}>Free to download. Evaluations and Pro features require a purchase.</p><Link className={styles.related} href={path === '/what-is-mogging' ? '/how-face-analysis-works' : '/what-is-mogging'}>{path === '/what-is-mogging' ? 'How the analysis works' : 'What is mogging?'} <ArrowUpRight size={14} /></Link></m.aside>
+      <m.aside {...entrance} className={styles.end}><p className={styles.eyebrow}>YOUR NEXT STEP</p><h2>Get to know your face.<br />Build your own plan.</h2><div className={styles.links}><a className={styles.button} href={appStoreUrl} onClick={() => trackDestination('app_store')}>Get Mogging for iPhone <ArrowUpRight size={15} /></a><Link className={styles.textLink} href="/analysis" onClick={() => trackDestination('web_analysis')}>Try web analysis <ArrowUpRight size={15} /></Link></div><p className={styles.fine}>Free to download. Evaluations and Pro features require a purchase.</p><Link className={styles.related} href={path === '/what-is-mogging' ? '/how-face-analysis-works' : '/what-is-mogging'}>{path === '/what-is-mogging' ? 'How the analysis works' : 'What is mogging?'} <ArrowUpRight size={14} /></Link></m.aside>
     </article>
   </LazyMotion>
 }

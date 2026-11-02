@@ -19,12 +19,15 @@ export function landingExperimentRows(rows: MetricRow[], experimentId: string): 
     const homepageVisitors = Number(row?.homepage_visitors ?? visitors)
     const mature = Number(row?.mature ?? 0)
     const matureClicks = Number(row?.mature_store_clicks ?? 0)
+    const maturePaid = row?.mature_paid_checkouts == null ? null : Number(row.mature_paid_checkouts)
     const interval = landingRateInterval(matureClicks, mature, experiment.status === 'active' ? 1.959963985 : 2.241402728)
     return {
       variant: `${variant.toUpperCase()} · ${variant === 'a' ? experiment.control : experiment.treatment}`,
       visitors, homepage_visitors: homepageVisitors, store_clicks: Number(row?.store_clicks ?? 0),
       observed_store_rate: homepageVisitors ? `${(Number(row?.store_clicks ?? 0) / homepageVisitors * 100).toFixed(1)}%` : '—',
       mature, pending: Number(row?.pending ?? 0),
+      mature_paid_checkouts: maturePaid,
+      mature_paid_rate: mature && maturePaid !== null ? `${(maturePaid / mature * 100).toFixed(1)}%` : '—',
       mature_store_rate: mature ? `${(matureClicks / mature * 100).toFixed(1)}%` : '—',
       mature_store_clicks: matureClicks,
       first_exposure: row?.first_exposure ?? null,
