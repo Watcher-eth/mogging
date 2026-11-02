@@ -52,7 +52,7 @@ import { cn } from '@/lib/utils'
 import { CreatorProgramSettings } from '@/components/admin/creator-economics-dashboard'
 import { CreatorAttributionDashboard, CreatorAttributionReport } from '@/components/admin/creator-attribution-dashboard'
 import { CREATOR_TIER1_AUDIENCE_TIERS, CREATOR_VIEW_THRESHOLDS } from '@/lib/creator/payouts'
-import { mergeCreatorSubmissionReviewResults, submissionReviewError, createSubmissionReviewDrafts } from '@/lib/creator/submission-review'
+import { AUDIENCE_MINIMUM_REJECTION, mergeCreatorSubmissionReviewResults, submissionReviewError, createSubmissionReviewDrafts } from '@/lib/creator/submission-review'
 import { SubmissionRequirementsReview } from '@/components/admin/submission-requirements-review'
 import { CreatorIcon, type CreatorIconName } from '@/components/creator/creator-icon'
 import { audienceReviewError, type AudienceCheck } from '@/lib/creator/audience-check'
@@ -345,19 +345,10 @@ export function ReviewDialog({ target, creator, payments, metrics, open, onOpenC
   const waitingForPayoutRequest = target.resource === 'payment' && creator?.bundledPayouts && !['processing', 'paid'].includes(target.item.status)
   const canReview = !waitingForPayoutRequest && !(target.resource === 'payment' && target.item.payoutRequestId)
   const initialStatus = target.resource === 'creator' ? target.item.authStatus === 'suspended' ? 'suspended' : 'verified' : target.item.status
-  const [status, setStatus] = useState(initialStatus)
   const [reviewNote, setReviewNote] = useState(target.resource === 'account' || target.resource === 'submission' ? target.item.reviewNote || '' : '')
   const [videoStudioAccess, setVideoStudioAccess] = useState(target.resource === 'creator' && Boolean(target.item.videoStudioAccess))
   const [amount, setAmount] = useState<string | null>(target.resource === 'payment' ? (target.item.amountCents / 100).toFixed(2) : target.resource === 'submission' ? initialPayoutAmount(target.item) || null : null)
   const [providerReference, setProviderReference] = useState(target.resource === 'payment' ? target.item.providerReference || '' : '')
-  const [reviewDrafts, setReviewDrafts] = useState(() => target.resource === 'submission'
-    ? createSubmissionReviewDrafts(target.item.sprintTerms ? sprintReviewItems(target.item.sprintTerms, target.item.formatId || '').map(item => ({ ...item, met: target.item.reviewChecklist?.find(row => row.id === item.id)?.met || false, note: target.item.reviewChecklist?.find(row => row.id === item.id)?.note || null })) : mergeCreatorSubmissionReviewResults(target.item.formatId, target.item.reviewChecklist), initialStatus, target.item.reviewChecklist)
-    : { approval: [], rejection: [] })
-  const reviewMode = status === 'rejected' ? 'rejection' : 'approval'
-  const reviewChecklist = reviewDrafts[reviewMode]
-  function setReviewChecklist(items: typeof reviewChecklist) {
-    setReviewDrafts(drafts => ({ ...drafts, [reviewMode]: items }))
-  }
   const [adminViewCountThreshold, setAdminViewCountThreshold] = useState(() => target.resource === 'submission'
     ? String((target.item.reviewRequestedAt ? target.item.viewCountThreshold : target.item.adminViewCountThreshold) ?? target.item.viewCountThreshold ?? '')
     : '')
@@ -377,6 +368,28 @@ export function ReviewDialog({ target, creator, payments, metrics, open, onOpenC
     && audienceCheck.storageKey === audienceData?.storageKey && target.resource === 'submission' && audienceData.storageKey === target.item.analyticsStorageKey
   const adminUsAudiencePercent = target.resource === 'submission' && target.item.sprintTerms && !manualAudience && automaticAudience
     ? String(audienceCheck.percent) : manualAudiencePercent
+  const pendingSubmission = target.resource === 'submission' && ['pending', 'in_review'].includes(initialStatus)
+  const audienceBelowMinimum = pendingSubmission && Boolean(target.item.sprintTerms)
+    && Boolean(target.item.analyticsStorageKey) && audienceData?.storageKey === target.item.analyticsStorageKey
+    && (manualAudience ? manualAudienceConfirmed : automaticAudience)
+    && adminUsAudiencePercent.trim() !== '' && Number.isFinite(Number(adminUsAudiencePercent))
+    && Number(adminUsAudiencePercent) >= 0 && Number(adminUsAudiencePercent) < 15
+  // Defaults follow completed checks; explicit reviewer choices take precedence.
+  const [selectedStatus, setStatus] = useState<string | null>(null)
+  const status = selectedStatus ?? (audienceBelowMinimum ? 'rejected' : initialStatus)
+  const [reviewDrafts, setReviewDrafts] = useState(() => target.resource === 'submission'
+    ? createSubmissionReviewDrafts(target.item.sprintTerms ? sprintReviewItems(target.item.sprintTerms, target.item.formatId || '').map(item => ({ ...item, met: target.item.reviewChecklist?.find(row => row.id === item.id)?.met || false, note: target.item.reviewChecklist?.find(row => row.id === item.id)?.note || null })) : mergeCreatorSubmissionReviewResults(target.item.formatId, target.item.reviewChecklist), initialStatus, target.item.reviewChecklist)
+    : { approval: [], rejection: [] })
+  const [audienceReasonEdited, setAudienceReasonEdited] = useState(false)
+  const reviewMode = status === 'rejected' ? 'rejection' : 'approval'
+  const reviewChecklist = reviewDrafts[reviewMode].map(item => pendingSubmission && reviewMode === 'rejection'
+    && !audienceReasonEdited && item.id === AUDIENCE_MINIMUM_REJECTION.id ? { ...item, met: !audienceBelowMinimum } : item)
+  function setReviewChecklist(items: typeof reviewChecklist) {
+    const previousAudience = reviewChecklist.find(item => item.id === AUDIENCE_MINIMUM_REJECTION.id)
+    const nextAudience = items.find(item => item.id === AUDIENCE_MINIMUM_REJECTION.id)
+    if (previousAudience?.met !== nextAudience?.met || previousAudience?.note !== nextAudience?.note) setAudienceReasonEdited(true)
+    setReviewDrafts(drafts => ({ ...drafts, [reviewMode]: items }))
+  }
   function changeAudienceMode(manual: boolean) {
     if (manual) setAdminUsAudiencePercent(adminUsAudiencePercent)
     setManualAudience(manual)
@@ -516,7 +529,7 @@ export function ReviewDialog({ target, creator, payments, metrics, open, onOpenC
 
                 <SubmissionRequirementsReview campaignName={campaignCriteriaName} items={reviewChecklist} status={status} onChange={setReviewChecklist} />
                 {reducedApproval ? <p className="mt-3 rounded-xl bg-amber-50 p-3 text-xs leading-5 text-amber-900">Approving with a reduced payout. Unmet requirements and the adjustment reason remain visible to the creator.</p> : null}
-                <p className="mt-3 text-xs leading-5 text-zinc-400">Approval checks and rejection reasons are separate. Only manually selected reasons are included in a rejection.</p>
+                <p className="mt-3 text-xs leading-5 text-zinc-400">Approval checks and rejection reasons are separate. Review the selected reasons before saving; you can change the status and any reason.</p>
                 <p className="mt-4 text-xs text-zinc-500">Save the review here. Adjust verified metrics or payout in Earnings, and send general feedback in Messages.</p>
               </Tabs.Content>
               <Tabs.Content value="earnings" className="outline-none">
