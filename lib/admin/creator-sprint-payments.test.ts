@@ -106,6 +106,8 @@ const review = {
   status: 'approved' as const,
   adminViewCountThreshold: 5000,
   adminUsAudiencePercent: 40,
+  audienceEvidenceKey: 'current-evidence',
+  manualAudienceConfirmed: true,
   reviewChecklist: sprintReviewItems(terms, 'f').map((item) => ({
     id: item.id,
     met: true,
@@ -122,6 +124,7 @@ beforeEach(() => {
     status: 'pending',
     approvedAmountCents: null,
     analyticsScreenshotUrl: 'https://media.example/fresh.mp4',
+    analyticsStorageKey: 'current-evidence',
   }
   payment = undefined
   pastPayments = []

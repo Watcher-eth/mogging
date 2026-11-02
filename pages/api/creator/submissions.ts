@@ -1,4 +1,5 @@
 import { CREATOR_INVITER_COOKIE, readCreatorInviter } from '@/lib/creator/creator-referral-cookie'
+import { waitUntil } from '@vercel/functions'
 import { getOrCreateCreatorProfile } from '@/lib/creator/service'
 import { monitorBackend } from '@/lib/reliability/monitor'
 import type { NextApiRequest, NextApiResponse } from 'next'
@@ -24,6 +25,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
       if (referralCode) await getOrCreateCreatorProfile(session.user.id, referralCode)
       const input = parseBody(creatorSubmissionSchema, req.body)
       const submission = await createCreatorSubmission(session.user.id, input)
+      waitUntil(import('@/lib/creator/audience-check-worker').then(worker => worker.reconcileAudienceChecks(1, submission.id)).catch(() => {}))
       return json(res, 201, { submission })
     }
     return methodNotAllowed(res, ['GET', 'POST'])
@@ -33,3 +35,4 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
 }
 
 export default monitorBackend('creator/submissions',handler)
+export const config = { maxDuration: 300 }

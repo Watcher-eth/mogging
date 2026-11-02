@@ -484,6 +484,13 @@
       "when": 1793322000000,
       "tag": "0068_creator_studio",
       "breakpoints": true
+    },
+    {
+      "idx": 69,
+      "version": "7",
+      "when": 1793656800000,
+      "tag": "0069_creator_audience_checks",
+      "breakpoints": true
     }
   ]
 }

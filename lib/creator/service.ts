@@ -1,3 +1,4 @@
+import { queuedAudienceCheck } from './audience-check'
 import { lockCampaignBudget, requireSubmissionBudget } from './campaign-budget-service'
 import { requestedIncrementCents } from './campaign-budget-state'
 import { canSeeCampaign } from './campaign-access'
@@ -415,6 +416,7 @@ export async function createCreatorSubmission(userId: string, input: CreatorSubm
       analyticsStorageKey: input.analyticsStorageKey,
       analyticsContentType: input.analyticsContentType,
       analyticsSizeBytes: input.analyticsSizeBytes,
+      audienceCheck: queuedAudienceCheck(input.analyticsStorageKey),
       viewCountThreshold: input.viewCountThreshold,
       usAudiencePercent: input.usAudiencePercent ?? null,
     }
@@ -464,7 +466,7 @@ export async function requestSubmissionReview(userId: string, submissionId: stri
     const increment = requestedIncrementCents(sprintPayoutCents(assignment?.sprintTerms ?? submission.sprintTerms, input.viewCountThreshold, input.usAudiencePercent), submission.approvedAmountCents ?? 0)
     await requireSubmissionBudget(tx, budgetCampaignId, increment, { rereview: true, excludeSubmissionId: submission.id, committedAdjustmentCents: assignment ? submission.approvedAmountCents ?? 0 : 0 })
     await tx.insert(schema.creatorSubmissionMessages).values({ submissionId, authorUserId: userId, authorRole: 'creator', body: `Submitted fresh analytics for review: ${input.viewCountThreshold.toLocaleString('en-US')} views · ${input.usAudiencePercent}% Tier 1 audience.${submission.analyticsScreenshotUrl ? ` Previous evidence: ${submission.analyticsScreenshotUrl} (${submission.viewCountThreshold ?? 'unrecorded'} views).` : ''}` })
-    const [record] = await tx.update(schema.creatorSubmissions).set({ ...assignment, analyticsScreenshotUrl: creatorAssetPublicUrl(input.analyticsStorageKey), analyticsStorageKey: input.analyticsStorageKey, analyticsContentType: input.analyticsContentType, analyticsSizeBytes: input.analyticsSizeBytes, viewCountThreshold: input.viewCountThreshold, usAudiencePercent: input.usAudiencePercent, status: 'in_review', reviewRequestedAt: now, updatedAt: now }).where(eq(schema.creatorSubmissions.id, submission.id)).returning()
+    const [record] = await tx.update(schema.creatorSubmissions).set({ ...assignment, analyticsScreenshotUrl: creatorAssetPublicUrl(input.analyticsStorageKey), analyticsStorageKey: input.analyticsStorageKey, audienceCheck: queuedAudienceCheck(input.analyticsStorageKey), analyticsContentType: input.analyticsContentType, analyticsSizeBytes: input.analyticsSizeBytes, viewCountThreshold: input.viewCountThreshold, usAudiencePercent: input.usAudiencePercent, status: 'in_review', reviewRequestedAt: now, updatedAt: now }).where(eq(schema.creatorSubmissions.id, submission.id)).returning()
     await recordSubmissionUpdate(tx, submissionId, submission.studioGenerationId && !submission.analyticsScreenshotUrl ? 'in_review' : 'rereview_requested', null, now)
     return record
   }).catch(rethrowCreatorPostConflict)

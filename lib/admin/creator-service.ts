@@ -1,3 +1,4 @@
+import { audienceReviewError, type AudienceCheck } from '@/lib/creator/audience-check'
 import { lockCampaignBudget } from '@/lib/creator/campaign-budget-service'
 import { assertCreatorReferralPaymentsEligible, refreshCreatorReferralBonuses } from '@/lib/creator/creator-referrals'
 import { campaignCommittedCents, campaignPendingCents } from '@/lib/creator/campaign-accounting'
@@ -51,6 +52,8 @@ export const creatorAdminReviewSchema = z.discriminatedUnion('resource', [
     approveWithoutPayment: z.boolean().optional(),
     adminViewCountThreshold: z.number().int().nonnegative().max(2_000_000_000),
     adminUsAudiencePercent: z.number().min(0).max(100).nullable(),
+    audienceEvidenceKey: z.string().min(1).max(500).optional().nullable(),
+    manualAudienceConfirmed: z.boolean().optional(),
   }),
   z.object({
     resource: z.literal('payment'),
@@ -165,6 +168,8 @@ export async function getCreatorAdminDashboard() {
         videoContentType: schema.creatorSubmissions.videoContentType,
         videoSizeBytes: schema.creatorSubmissions.videoSizeBytes,
         analyticsScreenshotUrl: schema.creatorSubmissions.analyticsScreenshotUrl,
+        analyticsStorageKey: schema.creatorSubmissions.analyticsStorageKey,
+        audienceCheck: schema.creatorSubmissions.audienceCheck,
         analyticsContentType: schema.creatorSubmissions.analyticsContentType,
         analyticsSizeBytes: schema.creatorSubmissions.analyticsSizeBytes,
         viewCountThreshold: schema.creatorSubmissions.viewCountThreshold,
@@ -513,6 +518,18 @@ async function reviewSprintSubmission(input: Extract<CreatorAdminReviewInput, { 
     if (submission.status === 'paid' && !submission.reviewRequestedAt) throw new ApiError(409, 'The creator must submit fresh analytics before rereview')
     if (input.status === 'approved' && !submission.analyticsScreenshotUrl) throw new ApiError(409, 'Fresh analytics evidence is required before approval')
     if (input.status === 'paid') throw new ApiError(400, 'Mark the payment sent to complete a cashout')
+    if (input.status === 'approved') {
+      const error = audienceReviewError(submission.audienceCheck, submission.analyticsStorageKey, input.audienceEvidenceKey,
+        input.adminUsAudiencePercent, Boolean(input.manualAudienceConfirmed), submission.sprintTerms)
+      if (error) throw new ApiError(409, error)
+    }
+    const audienceCheck: AudienceCheck | null = input.status === 'approved' && submission.analyticsStorageKey ? {
+      ...(submission.audienceCheck ?? { version: 1, storageKey: submission.analyticsStorageKey, status: 'needs_review' }),
+      // A manual review closes any pending job; its result must never replace the moderator's decision.
+      ...(input.manualAudienceConfirmed && ['queued', 'processing'].includes(submission.audienceCheck?.status ?? 'queued') ? { status: 'needs_review' as const } : {}),
+      review: { source: input.manualAudienceConfirmed ? 'manual' : 'automatic', percent: input.adminUsAudiencePercent!,
+        reviewerId: reviewerId || 'admin', reviewedAt: new Date().toISOString() },
+    } : submission.audienceCheck
     const expected = sprintReviewItems(submission.sprintTerms, submission.formatId || '')
     if (expected.length && input.reviewChecklist.some(item => item.id === AUDIENCE_MINIMUM_REJECTION.id)) expected.push(AUDIENCE_MINIMUM_REJECTION)
     // An open admin tab may still send rules retired since the modal was loaded.
@@ -550,7 +567,7 @@ async function reviewSprintSubmission(input: Extract<CreatorAdminReviewInput, { 
       ? Math.max(0, sprintPayoutCents(submission.sprintTerms, submission.viewCountThreshold ?? 0, submission.usAudiencePercent) - (amountCents || 0)) : 0
     const allocatedAfterReview = used.cents - previous + (amountCents || 0) + (used.other_pending_cents ?? 0) + nextPendingCents
     if (input.status !== 'rejected' && allocatedAfterReview > budgetOwner.budget_cents) throw new ApiError(409, 'This review would exceed the shared campaign budget after pending requests')
-    const [record] = await tx.update(schema.creatorSubmissions).set({ status: input.status, reviewRequestedAt: ['approved', 'rejected'].includes(input.status) ? null : submission.reviewRequestedAt, approvedAmountCents: amountCents, adminViewCountThreshold: input.adminViewCountThreshold, adminUsAudiencePercent: input.adminUsAudiencePercent, reviewChecklist: reviewChecklist.map(item => ({ ...item, note: item.note || null })), reviewNote: input.reviewNote || null, updatedAt: new Date() }).where(eq(schema.creatorSubmissions.id, submission.id)).returning()
+    const [record] = await tx.update(schema.creatorSubmissions).set({ audienceCheck, status: input.status, reviewRequestedAt: ['approved', 'rejected'].includes(input.status) ? null : submission.reviewRequestedAt, approvedAmountCents: amountCents, adminViewCountThreshold: input.adminViewCountThreshold, adminUsAudiencePercent: input.adminUsAudiencePercent, reviewChecklist: reviewChecklist.map(item => ({ ...item, note: item.note || null })), reviewNote: input.reviewNote || null, updatedAt: new Date() }).where(eq(schema.creatorSubmissions.id, submission.id)).returning()
     await appendReviewMessage(tx, submission, input.reviewNote, reviewerId)
     await recordReviewUpdate(tx, submission, { ...input, approvedAmountCents: record.approvedAmountCents })
     return record

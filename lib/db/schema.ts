@@ -774,6 +774,7 @@ export const creatorSubmissions = pgTable(
     analyticsStorageKey: text('analytics_storage_key'),
     analyticsContentType: text('analytics_content_type'),
     analyticsSizeBytes: integer('analytics_size_bytes'),
+    audienceCheck: jsonb('audience_check').$type<import('../creator/audience-check').AudienceCheck>(),
     viewCountThreshold: integer('view_count_threshold'),
     usAudiencePercent: real('us_audience_percent'),
     adminViewCountThreshold: integer('admin_view_count_threshold'),

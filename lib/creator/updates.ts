@@ -1,4 +1,5 @@
 export type SubmissionHistorySnapshot = {
+  audienceReview?: import('./audience-check').AudienceCheck['review']
   submittedViews: number | null
   submittedAudiencePercent: number | null
   verifiedViews: number | null
