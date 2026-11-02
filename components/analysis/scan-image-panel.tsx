@@ -9,10 +9,12 @@ import { processingOverlaySteps } from '@/lib/creator/mobile-overlay-engine/proc
 import { getReportOverlayPreset } from '@/lib/creator/mobile-overlay-engine/report-presets'
 import { FaceOverlay, type LoadedImage } from './face-overlay'
 
-export function ScanImagePanel({ imageSrc, landmarks, variant = 'analysis', paused = false }: {
+export function ScanImagePanel({ imageSrc, landmarks, variant = 'analysis', paused = false, fit = 'contain', showLabel = true }: {
   imageSrc: string | null
   landmarks: FaceLandmarksPayload | null
   variant?: 'analysis' | 'paywall'
+  showLabel?: boolean
+  fit?: 'contain' | 'cover'
   paused?: boolean
 }) {
   const panelRef = useRef<HTMLDivElement>(null)
@@ -56,14 +58,14 @@ export function ScanImagePanel({ imageSrc, landmarks, variant = 'analysis', paus
 
   return (
     <div ref={panelRef} style={variant === 'analysis' && image ? { aspectRatio: image.width / image.height } : undefined} className={`relative w-full overflow-hidden bg-white ${variant === 'paywall' ? 'h-[min(38svh,340px)] min-h-[220px]' : 'aspect-[4/5] max-w-[620px]'}`}>
-      {imageSrc ? <Image className="object-contain object-center" src={imageSrc} alt="Your facial analysis preview" fill sizes={variant === 'paywall' ? '500px' : '(min-width: 1024px) 45vw, 100vw'} onLoad={event => {
+      {imageSrc ? <Image className={fit === 'cover' ? 'object-cover object-center' : 'object-contain object-center'} src={imageSrc} alt="Your facial analysis preview" fill sizes={variant === 'paywall' ? '500px' : '(min-width: 1024px) 45vw, 100vw'} onLoad={event => {
         const photo = event.currentTarget
         setImage(previous => previous?.src === photo.currentSrc ? previous : { src: photo.currentSrc, width: photo.naturalWidth, height: photo.naturalHeight })
       }} /> : null}
       <AnimatePresence>
-        {!paused && usable && image && enriched ? <FaceOverlay key={`${image.src}:${step.categoryId}`} categoryId={step.categoryId} preset={getReportOverlayPreset(step.categoryId)} landmarks={enriched} image={image} fit="contain" /> : null}
+        {!paused && usable && image && enriched ? <FaceOverlay key={`${image.src}:${step.categoryId}`} categoryId={step.categoryId} preset={getReportOverlayPreset(step.categoryId)} landmarks={enriched} image={image} fit={fit} /> : null}
       </AnimatePresence>
-      {usable && !paused ? <div className="pointer-events-none absolute bottom-4 left-4 rounded-lg border border-white/35 bg-white/15 px-3 py-2 font-mono text-[10px] uppercase tracking-wide text-white shadow-sm backdrop-blur-md" aria-hidden="true">{step.label}</div> : null}
+      {showLabel && usable && !paused ? <div className="pointer-events-none absolute bottom-4 left-4 rounded-lg border border-white/35 bg-white/15 px-3 py-2 font-mono text-[10px] uppercase tracking-wide text-white shadow-sm backdrop-blur-md" aria-hidden="true">{step.label}</div> : null}
       {variant === 'paywall' ? <motion.div className="pointer-events-none absolute inset-x-0 bottom-0 h-[35%]" initial={{ opacity: reduceMotion ? 1 : 0 }} animate={{ opacity: 1 }} transition={{ duration: reduceMotion ? 0 : .6, ease: [.22, 1, .36, 1] }} style={{ background: 'linear-gradient(to bottom, rgba(255,255,255,0) 0%, rgba(255,255,255,.015) 10%, rgba(255,255,255,.06) 20%, rgba(255,255,255,.15) 35%, rgba(255,255,255,.33) 50%, rgba(255,255,255,.58) 65%, rgba(255,255,255,.8) 80%, rgba(255,255,255,.95) 90%, #fff 100%)' }} /> : null}
     </div>
   )

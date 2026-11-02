@@ -1,0 +1,33 @@
+{
+  "status": "local implementation verified; not deployed",
+  "preview": "http://127.0.0.1:3332/__paywall-preview",
+  "productionBuild": "passed",
+  "typecheck": "passed",
+  "focusedTests": {
+    "passed": 45,
+    "failed": 0
+  },
+  "localizationCheck": "passed",
+  "browserChecks": [
+    "375px mobile layout",
+    "visible checkout and recurring billing terms",
+    "rapid plan changes update checkout price",
+    "one-time report mode",
+    "loading disables purchase and plan changes",
+    "two-photo batch disables weekly and selects monthly",
+    "three-photo batch uses three-report pack",
+    "recoverable error presentation",
+    "close and reopen dialog"
+  ],
+  "liveSubscriptionPricesVerified": {
+    "weekly": 4.99,
+    "monthly": 9.99,
+    "yearly": 49.99,
+    "currency": "USD"
+  },
+  "limitations": [
+    "No live payment taken",
+    "Provider checkout completion not exercised end-to-end in this local environment"
+  ],
+  "screenshot": "artifacts/analysis/web-paywall-preview.png"
+}

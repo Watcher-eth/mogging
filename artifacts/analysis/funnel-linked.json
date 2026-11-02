@@ -1,0 +1,65 @@
+{
+  "mobile_start_cohorts": [
+    {
+      "label": "14 days",
+      "accounts": 663,
+      "first_paid_after_start": 32
+    },
+    {
+      "label": "30 days",
+      "accounts": 800,
+      "first_paid_after_start": 38
+    },
+    {
+      "label": "7 days",
+      "accounts": 338,
+      "first_paid_after_start": 17
+    }
+  ],
+  "web_paywall_cohorts": [
+    {
+      "label": "14 days",
+      "accounts": 279,
+      "first_paid_after_paywall": 3
+    },
+    {
+      "label": "30 days",
+      "accounts": 304,
+      "first_paid_after_paywall": 3
+    },
+    {
+      "label": "7 days",
+      "accounts": 170,
+      "first_paid_after_paywall": 2
+    }
+  ],
+  "billing_duplicates": [
+    {
+      "provider": "revenuecat",
+      "events": 47,
+      "transactions": 47
+    },
+    {
+      "provider": "stripe",
+      "events": 4,
+      "transactions": 4
+    }
+  ],
+  "web_failures": [
+    {
+      "http_status": null,
+      "stage": "checkout_create",
+      "events": 1
+    },
+    {
+      "http_status": null,
+      "stage": "checkout_open",
+      "events": 1
+    },
+    {
+      "http_status": null,
+      "stage": "entitlements",
+      "events": 6
+    }
+  ]
+}

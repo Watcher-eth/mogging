@@ -1,0 +1,372 @@
+{
+  "funnels": [
+    {
+      "label": "30 days",
+      "start_at": "2026-10-03T21:57:47",
+      "channel": "mobile",
+      "paywall_people": 1684,
+      "paywall_events": 2386,
+      "start_people": 800,
+      "starts": 996,
+      "checkout_sessions": 0
+    },
+    {
+      "label": "30 days",
+      "start_at": "2026-10-03T21:57:47",
+      "channel": "web",
+      "paywall_people": 308,
+      "paywall_events": 630,
+      "start_people": 278,
+      "starts": 296,
+      "checkout_sessions": 296
+    },
+    {
+      "label": "14 days",
+      "start_at": "2026-10-19T21:57:47",
+      "channel": "mobile",
+      "paywall_people": 1389,
+      "paywall_events": 1919,
+      "start_people": 663,
+      "starts": 820,
+      "checkout_sessions": 0
+    },
+    {
+      "label": "14 days",
+      "start_at": "2026-10-19T21:57:47",
+      "channel": "web",
+      "paywall_people": 283,
+      "paywall_events": 579,
+      "start_people": 244,
+      "starts": 258,
+      "checkout_sessions": 258
+    },
+    {
+      "label": "7 days",
+      "start_at": "2026-10-26T21:57:47",
+      "channel": "mobile",
+      "paywall_people": 721,
+      "paywall_events": 987,
+      "start_people": 338,
+      "starts": 424,
+      "checkout_sessions": 0
+    },
+    {
+      "label": "7 days",
+      "start_at": "2026-10-26T21:57:47",
+      "channel": "web",
+      "paywall_people": 172,
+      "paywall_events": 344,
+      "start_people": 145,
+      "starts": 152,
+      "checkout_sessions": 152
+    }
+  ],
+  "new_paid": [
+    {
+      "label": "7 days",
+      "provider": "stripe",
+      "customers": 2
+    },
+    {
+      "label": "14 days",
+      "provider": "stripe",
+      "customers": 3
+    },
+    {
+      "label": "14 days",
+      "provider": "revenuecat",
+      "customers": 32
+    },
+    {
+      "label": "7 days",
+      "provider": "revenuecat",
+      "customers": 18
+    },
+    {
+      "label": "30 days",
+      "provider": "revenuecat",
+      "customers": 38
+    },
+    {
+      "label": "30 days",
+      "provider": "stripe",
+      "customers": 4
+    }
+  ],
+  "stripe_cohorts": [
+    {
+      "label": "14 days",
+      "sessions": 258,
+      "people": 244,
+      "mature_sessions": 234,
+      "paid_sessions": 3,
+      "paid_people": 3
+    },
+    {
+      "label": "30 days",
+      "sessions": 296,
+      "people": 278,
+      "mature_sessions": 272,
+      "paid_sessions": 4,
+      "paid_people": 4
+    },
+    {
+      "label": "7 days",
+      "sessions": 152,
+      "people": 145,
+      "mature_sessions": 128,
+      "paid_sessions": 2,
+      "paid_people": 2
+    }
+  ],
+  "web_products": [
+    {
+      "product": "evaluation",
+      "starts": 265,
+      "people": 249,
+      "paid": 4
+    },
+    {
+      "product": "evaluation_pack_3",
+      "starts": 30,
+      "people": 30,
+      "paid": 0
+    },
+    {
+      "product": "mobile_subscription_monthly",
+      "starts": 1,
+      "people": 1,
+      "paid": 0
+    }
+  ],
+  "cross_channel": [
+    {
+      "web_starters": 278,
+      "subsequently_paid_mobile": 0,
+      "also_started_mobile": 3
+    }
+  ],
+  "failure_reasons": [
+    {
+      "platform": "ios",
+      "stage": "product_loading",
+      "reason": "offline_connection",
+      "n": 1
+    },
+    {
+      "platform": "ios",
+      "stage": "store_purchase",
+      "reason": "purchase_not_allowed",
+      "n": 8
+    },
+    {
+      "platform": "ios",
+      "stage": "store_purchase",
+      "reason": "store_problem",
+      "n": 8
+    },
+    {
+      "platform": "ios",
+      "stage": null,
+      "reason": "product_unavailable",
+      "n": 1
+    },
+    {
+      "platform": "ios",
+      "stage": null,
+      "reason": "store_or_sync",
+      "n": 3
+    },
+    {
+      "platform": "ios",
+      "stage": null,
+      "reason": "store_purchase_failed",
+      "n": 5
+    },
+    {
+      "platform": "web",
+      "stage": "checkout_create",
+      "reason": "request_failed",
+      "n": 1
+    },
+    {
+      "platform": "web",
+      "stage": "checkout_open",
+      "reason": "request_failed",
+      "n": 1
+    },
+    {
+      "platform": "web",
+      "stage": "entitlements",
+      "reason": "request_failed",
+      "n": 6
+    }
+  ],
+  "web_daily": [
+    {
+      "day": "2026-10-10",
+      "starts": 3,
+      "paid": 0
+    },
+    {
+      "day": "2026-10-11",
+      "starts": 1,
+      "paid": 0
+    },
+    {
+      "day": "2026-10-12",
+      "starts": 1,
+      "paid": 0
+    },
+    {
+      "day": "2026-10-13",
+      "starts": 2,
+      "paid": 0
+    },
+    {
+      "day": "2026-10-14",
+      "starts": 3,
+      "paid": 0
+    },
+    {
+      "day": "2026-10-15",
+      "starts": 4,
+      "paid": 1
+    },
+    {
+      "day": "2026-10-16",
+      "starts": 1,
+      "paid": 0
+    },
+    {
+      "day": "2026-10-17",
+      "starts": 12,
+      "paid": 0
+    },
+    {
+      "day": "2026-10-18",
+      "starts": 4,
+      "paid": 0
+    },
+    {
+      "day": "2026-10-19",
+      "starts": 8,
+      "paid": 0
+    },
+    {
+      "day": "2026-10-20",
+      "starts": 7,
+      "paid": 0
+    },
+    {
+      "day": "2026-10-21",
+      "starts": 11,
+      "paid": 1
+    },
+    {
+      "day": "2026-10-22",
+      "starts": 20,
+      "paid": 0
+    },
+    {
+      "day": "2026-10-23",
+      "starts": 11,
+      "paid": 0
+    },
+    {
+      "day": "2026-10-24",
+      "starts": 10,
+      "paid": 0
+    },
+    {
+      "day": "2026-10-25",
+      "starts": 20,
+      "paid": 0
+    },
+    {
+      "day": "2026-10-26",
+      "starts": 28,
+      "paid": 0
+    },
+    {
+      "day": "2026-10-27",
+      "starts": 11,
+      "paid": 0
+    },
+    {
+      "day": "2026-10-28",
+      "starts": 17,
+      "paid": 0
+    },
+    {
+      "day": "2026-10-29",
+      "starts": 24,
+      "paid": 1
+    },
+    {
+      "day": "2026-10-30",
+      "starts": 26,
+      "paid": 0
+    },
+    {
+      "day": "2026-10-31",
+      "starts": 32,
+      "paid": 0
+    },
+    {
+      "day": "2026-11-01",
+      "starts": 21,
+      "paid": 1
+    },
+    {
+      "day": "2026-11-02",
+      "starts": 19,
+      "paid": 0
+    }
+  ],
+  "web_paid_mobile_history": 0,
+  "coverage": [
+    {
+      "platform": "ios",
+      "event_name": "checkout_started",
+      "first": "2026-10-11T23:06:41.021",
+      "last": "2026-11-02T21:11:31.685"
+    },
+    {
+      "platform": "ios",
+      "event_name": "paywall_viewed",
+      "first": "2026-10-04T01:14:02.612",
+      "last": "2026-11-02T21:31:35.062"
+    },
+    {
+      "platform": "ios",
+      "event_name": "purchase_completed",
+      "first": "2026-10-09T07:34:55.255",
+      "last": "2026-11-02T20:15:58.474"
+    },
+    {
+      "platform": "ios",
+      "event_name": "purchase_started",
+      "first": "2026-10-04T01:15:29.75",
+      "last": "2026-11-02T21:11:31.582"
+    },
+    {
+      "platform": "server",
+      "event_name": "checkout_completed",
+      "first": "2026-10-15T18:41:39",
+      "last": "2026-11-01T22:45:49"
+    },
+    {
+      "platform": "server",
+      "event_name": "checkout_started",
+      "first": "2026-10-10T13:53:12.661",
+      "last": "2026-11-02T21:42:43.615"
+    },
+    {
+      "platform": "web",
+      "event_name": "paywall_viewed",
+      "first": "2026-10-16T06:23:00.906",
+      "last": "2026-11-02T21:51:25.999"
+    }
+  ]
+}

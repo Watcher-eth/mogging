@@ -9,9 +9,14 @@ import { env } from '@/lib/env'
 import { getAccountCreatorAttribution, recordCreatorCheckout, resolveCreatorAttribution, stripeAttributionMetadata } from '@/lib/creator/attribution'
 import { getCheckoutLineItem, getProductConfig, getEntitlementSummary } from '@/lib/payments/entitlements'
 import { getStripe } from '@/lib/payments/stripe'
+import { validateCheckoutProduct } from '@/lib/payments/checkout-price'
 import type { PaymentProduct } from '@/lib/db/schema'
 
 const checkoutSchema = z.object({
+  attemptId: z.string().uuid().optional(),
+  flowId: z.string().uuid().optional(),
+  unitAmount: z.number().int().nonnegative().optional(),
+  currency: z.string().regex(/^[a-z]{3}$/).optional(),
   imageCount: z.number().int().min(1).max(3),
   mobileInstallId: z.string().trim().min(8).max(120),
 })
@@ -32,6 +37,12 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
     const origin = getRequestOrigin(req)
     const productId: PaymentProduct = input.imageCount > 1 ? 'evaluation_pack_3' : 'evaluation'
     const product = getProductConfig(productId)
+    const price = await validateCheckoutProduct(productId, product)
+    const amount = price?.unit_amount ?? product.unitAmount
+    const currency = price?.currency ?? 'usd'
+    if ((input.unitAmount !== undefined && input.unitAmount !== amount) || (input.currency && input.currency !== currency)) {
+      throw new ApiError(409, 'The price has changed. Please reload the plans')
+    }
     const stripe = getStripe()
     const attribution = await resolveCreatorAttribution({
       req,
@@ -46,6 +57,8 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
     const checkout = await stripe.checkout.sessions.create({
       branding_settings: { display_name: 'Mogging' },
       mode: product.mode,
+      currency,
+      adaptive_pricing: { enabled: false },
       payment_method_types: ['card'],
       allow_promotion_codes: true,
       client_reference_id: accountId,
@@ -57,6 +70,8 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
         source: 'web_analysis',
         ...(landingAssignment ? { landingAssignment: req.cookies[LANDING_COOKIE]! } : {}),
         imageCount: String(input.imageCount),
+        ...(input.attemptId ? { attemptId: input.attemptId, paywallVersion: '2' } : {}),
+        ...(input.flowId ? { flowId: input.flowId } : {}),
         accountId,
         userId: accountId,
         ...stripeAttributionMetadata(accountAttribution),
@@ -70,7 +85,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
     }
 
     await recordCreatorCheckout(accountAttribution, checkout)
-    await recordServerEvent({ eventName: 'checkout_started', accountId, sessionId: checkout.id, source: 'web_analysis', properties: { product: productId, ...landingProperties(landingAssignment) } })
+    await recordServerEvent({ eventName: 'checkout_started', accountId, sessionId: checkout.id, source: 'web_analysis', properties: { product: productId, attempt_id: input.attemptId, flow_id: input.flowId, ...(input.attemptId ? { paywall_version: '2' } : {}), ...landingProperties(landingAssignment) } })
 
     return json(res, 200, {
       url: checkout.url,

@@ -5,7 +5,7 @@ import type { DesktopReportCategory } from './analysis-report'
 import styles from './analysis-report.module.css'
 
 export function ReportCategorySelector({ categories, activeCategory, score, onSelect }: {
-  categories: DesktopReportCategory[]; activeCategory: DesktopReportCategory; score: number; onSelect: (id: string) => void
+  categories: DesktopReportCategory[]; activeCategory: DesktopReportCategory; score: number | null; onSelect: (id: string) => void
 }) {
   const [open, setOpen] = useState(false)
   const root = useRef<HTMLDivElement>(null)
@@ -28,7 +28,7 @@ export function ReportCategorySelector({ categories, activeCategory, score, onSe
       if (mobile) { setOpen(false); trigger.current?.focus({ preventScroll: true }) }
     }}>
     <span>[ {String(categoryIndex + 1).padStart(3, '0')} ]</span><span>{category.title}</span>
-    <span className={styles.categoryScore}>{category.id === 'overall' ? score.toFixed(1) : ''}</span>
+    <span className={styles.categoryScore}>{category.id === 'overall' ? score?.toFixed(1) ?? '—' : ''}</span>
   </button>)
 
   return <>

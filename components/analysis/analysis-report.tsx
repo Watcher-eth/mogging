@@ -27,7 +27,7 @@ export function AnalysisReport({ categories, initialCategoryId, imageSrc, landma
   initialCategoryId?: string
   imageSrc: string
   landmarks: FaceLandmarksPayload | null
-  score: number
+  score: number | null
   pslScore?: number | null
   children: ReactNode
   naturalImage?: boolean
@@ -36,7 +36,7 @@ export function AnalysisReport({ categories, initialCategoryId, imageSrc, landma
   const [activeCategoryId, setActiveCategoryId] = useState(initialCategoryId ?? categories[0]?.id)
   const activeCategory = categories.find(category => category.id === activeCategoryId) ?? categories[0]
   if (!activeCategory) return null
-  const overlayValue = activeCategory.id === 'overall'
+  const overlayValue = score === null ? undefined : activeCategory.id === 'overall'
     ? pslScore == null ? undefined : `${pslScore.toFixed(1)} / 8`
     : `${activeCategory.score.toFixed(1)} / 10`
 
@@ -44,7 +44,7 @@ export function AnalysisReport({ categories, initialCategoryId, imageSrc, landma
     <MotionConfig reducedMotion="user"><div className={styles.layout}>
       <aside className={styles.sidebar}>
         <div>
-          <p className="font-mono text-[10px] uppercase tracking-wide text-muted-foreground">Final analysis //</p>
+          <p className="font-mono text-[10px] uppercase tracking-wide text-muted-foreground">{score === null ? 'Report preview //' : 'Final analysis //'}</p>
           <h2 className={styles.title}>Your Report</h2>
           <ReportCategorySelector categories={categories} activeCategory={activeCategory} score={score} onSelect={setActiveCategoryId} />
         </div>

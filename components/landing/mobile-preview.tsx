@@ -492,9 +492,9 @@ function CameraContent({ active }: { active: boolean }) {
 const EvaluationContent = dynamic(() => import('./report-preview').then(module => module.ReportPreview), { ssr: false });
 const ProgressContent = dynamic(() => import('@/components/creator/progress-preview').then(module => module.ProgressDemo), { ssr: false });
 
-export const EvaluationPreview = memo(function EvaluationPreview({ startAt = 0 }: { startAt?: number }) {
+export const EvaluationPreview = memo(function EvaluationPreview({ startAt = 0, playback = 'auto' }: { startAt?: number; playback?: 'auto' | 'still' }) {
   const { t } = useTranslation();
-  return <Frame chrome={false} label={t("demo.evaluationFrame")}>{active => <EvaluationContent active={active} startAt={startAt} />}</Frame>;
+  return <Frame chrome={false} label={t("demo.evaluationFrame")}>{active => <EvaluationContent active={playback === 'auto' && active} startAt={startAt} playback={playback} />}</Frame>;
 });
 
 export const ProgressPreview = memo(function ProgressPreview() {
