@@ -1,7 +1,45 @@
 import { expect, test } from 'bun:test'
-import type { AdminSubmission } from '@/components/admin/creator-types'
+import type { AdminAccount, AdminSubmission } from '@/components/admin/creator-types'
 import { LAUNCH_CAMPAIGNS, launchCampaignTerms } from '@/lib/creator/campaign-launch'
-import { activityDate, bioLinkMonth, buildBioLinkTracker, lastActiveLabel } from './bio-link-tracker'
+import { accountConsistency, activityDate, bioLinkMonth, buildBioLinkTracker, filterAndSortAccounts, lastActiveLabel } from './bio-link-tracker'
+
+const accounts = [
+  { id: 'a', handle: 'alpha', creatorName: 'Jane Smith', creatorEmail: 'jane@example.com', platform: 'tiktok', lastActiveAt: '2026-11-02T12:00:00Z', createdAt: '2026-10-01T12:00:00Z' },
+  { id: 'b', handle: 'beta', creatorName: 'Alex', creatorEmail: 'alex@example.com', platform: 'instagram', lastActiveAt: '2026-10-30T12:00:00Z', createdAt: '2026-10-02T12:00:00Z' },
+  { id: 'c', handle: 'gamma', creatorName: 'Jane Smith', creatorEmail: 'jane@example.com', platform: 'instagram', lastActiveAt: null, createdAt: '2026-10-03T12:00:00Z' },
+] as AdminAccount[]
+
+test('sorts activity in either direction, keeps unknown activity last, and leaves input unchanged', () => {
+  const tracker = buildBioLinkTracker([])
+  const ids = (sort: 'active-desc' | 'active-asc' | 'connected-desc') => filterAndSortAccounts(accounts, tracker, 2026, '', sort).map(account => account.id)
+  expect(ids('active-desc')).toEqual(['a', 'b', 'c'])
+  expect(ids('active-asc')).toEqual(['b', 'a', 'c'])
+  expect(ids('connected-desc')).toEqual(['c', 'b', 'a'])
+  expect(accounts.map(account => account.id)).toEqual(['a', 'b', 'c'])
+})
+
+test('consistency sorting uses selected-year completed months and distinguishes zero from no history', () => {
+  const tracker = buildBioLinkTracker([
+    video('a-sep', { socialAccountId: 'a', createdAt: '2026-09-25T12:00:00Z', exclusivityConfirmed: true }),
+    video('a-oct', { socialAccountId: 'a' }),
+    video('b-oct', { socialAccountId: 'b' }),
+    video('b-old', { socialAccountId: 'b', createdAt: '2025-10-25T12:00:00Z', exclusivityConfirmed: true }),
+  ])
+  expect(accountConsistency(tracker.get('a'), 2026)).toEqual({ active: 2, complete: 1, rate: 0.5 })
+  expect(filterAndSortAccounts(accounts, tracker, 2026, '', 'consistency-desc').map(account => account.id)).toEqual(['a', 'b', 'c'])
+  expect(filterAndSortAccounts(accounts, tracker, 2026, '', 'consistency-asc').map(account => account.id)).toEqual(['b', 'a', 'c'])
+  expect(filterAndSortAccounts(accounts, tracker, 2025, '', 'consistency-desc')[0].id).toBe('b')
+})
+
+test('search matches handles, creator names, emails and platforms with multiple case-insensitive terms', () => {
+  const tracker = buildBioLinkTracker([])
+  const find = (query: string) => filterAndSortAccounts(accounts, tracker, 2026, query, 'active-desc').map(account => account.id)
+  expect(find('  @ALPHA  ')).toEqual(['a'])
+  expect(find('jane INSTAGRAM')).toEqual(['c'])
+  expect(find('alex@example.com')).toEqual(['b'])
+  expect(find('missing')).toEqual([])
+  expect(find('   ')).toHaveLength(3)
+})
 
 test('last activity handles missing dates and displays the creator visit without inventing activity', () => {
   const now = Date.parse('2026-11-02T12:00:00Z')

@@ -26,6 +26,10 @@ test('renders account history, partial months, and consistency using only active
   expect(html).toContain('Last active')
   expect(html).toContain('Creator portal')
   expect(html).toContain('View @creator and all linked accounts')
+  expect(html).toContain('Search accounts')
+  expect(html).toContain('Sort accounts')
+  expect(html).toContain('aria-sort="descending"')
+  expect(html).toContain('Last active · newest first')
 })
 
 test('empty state does not invent verification history', () => {
