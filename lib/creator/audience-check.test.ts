@@ -1,5 +1,5 @@
 import { expect, test } from 'bun:test'
-import { assessAudience, audienceReviewError, stableAudiencePayout, verifiedRecordingViews, type AudienceCheck, type AudienceCountry } from './audience-check'
+import { assessAudience, audienceReviewError, audienceListTotalConsistent, stableAudiencePayout, verifiedRecordingViews, type AudienceCheck, type AudienceCountry } from './audience-check'
 import { defaultCreatorSprintTerms } from './sprint-defaults'
 
 const terms = defaultCreatorSprintTerms()
@@ -28,10 +28,28 @@ test('requires manual review when Other or rounding could change a payout or bon
   expect(stableAudiencePayout(terms, 29.95, 30.05)).toBe(false)
 })
 
+test('displayed-country policy accepts independently verified named shares without allocating Other', () => {
+  const countries = [country('US', 'United States', 18.7), country('BR', 'Brazil', 20)]
+  const check: AudienceCheck = { version: 1, basis: 'displayed_countries', storageKey: 'current', status: 'verified',
+    countries, otherPercent: 61.3, percent: 18.7, minimumPercent: 18.65, maximumPercent: 80.05 }
+  expect(audienceReviewError(check, 'current', 'current', 18.7, false, terms)).toBeNull()
+  expect(audienceReviewError({ ...check, basis: undefined }, 'current', 'current', 18.7, false, terms)).not.toBeNull()
+  expect(audienceReviewError({ ...check, percent: 20 }, 'current', 'current', 20, false, terms)).not.toBeNull()
+  expect(audienceReviewError({ ...check, countries: [] }, 'current', 'current', 18.7, false, terms)).not.toBeNull()
+})
+
 test('rejects duplicate, mismatched and impossible country lists instead of summing them', () => {
   expect(() => assessAudience([country('US', 'United States', 60), country('US', 'United States', 60)], terms)).toThrow()
   expect(() => assessAudience([country('US', 'Brazil', 60)], terms)).toThrow()
   expect(() => assessAudience([country('US', 'United States', 60), country('BR', 'Brazil', 40.2)], terms)).toThrow()
+})
+
+test('omitted rows cannot pass verification when named countries and Other fail to reconcile', () => {
+  const partial = [country('US', 'United States', 18.5), country('BR', 'Brazil', 13.7)]
+  expect(audienceListTotalConsistent(partial, 60.5)).toBe(false)
+  expect(audienceListTotalConsistent([country('US', 'United States', 23), country('BR', 'Brazil', 16.1)], 60.5)).toBe(true)
+  const check: AudienceCheck = { version: 1, basis: 'displayed_countries', storageKey: 'current', status: 'verified', countries: partial, percent: 18.5, otherPercent: 60.5 }
+  expect(audienceReviewError(check, 'current', 'current', 18.5, false, terms)).not.toBeNull()
 })
 
 test('approval requires current verified evidence or explicit manual confirmation', () => {

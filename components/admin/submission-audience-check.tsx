@@ -17,12 +17,12 @@ export function SubmissionAudienceCheck({ check, manual, confirmed, onManualChan
     <div className="flex items-start gap-2.5">
       <Icon aria-hidden="true" className={`mt-0.5 size-4 shrink-0 ${verified ? 'text-emerald-600' : pending ? 'text-zinc-400 motion-safe:animate-spin' : 'text-amber-600'}`} />
       <div><h3 className="text-sm font-semibold">{manual && confirmed ? 'Audience checked manually' : verified ? 'Audience checked automatically' : pending ? 'Checking audience…' : 'Audience needs manual review'}</h3>
-        <p className="mt-1 text-xs leading-5 text-zinc-500">{manual && confirmed ? 'Manual audience review is confirmed. Editing the percentage requires confirmation again.' : verified ? 'The readable country data establishes the payout tier. You can override it below.' : pending ? 'The recording is queued for an automatic check. You can review it manually now.' : check?.reason || 'The audience could not be read. Check the recording before approving.'}</p>
+        <p className="mt-1 text-xs leading-5 text-zinc-500">{manual && confirmed ? 'Manual audience review is confirmed. Editing the percentage requires confirmation again.' : verified ? 'The displayed Tier 1 countries establish the payout tier. You can override it below.' : pending ? 'The recording is queued for an automatic check. You can review it manually now.' : check?.reason || 'The audience could not be read. Check the recording before approving.'}</p>
       </div>
     </div>
     {check?.percent !== undefined ? <div className="mt-4 rounded-xl bg-zinc-50 p-3">
       <p className="text-xs text-zinc-500">Visible Tier 1 audience</p><p className="mt-1 text-xl font-semibold tabular-nums">{check.percent}%</p>
-      <p className="mt-1 text-[11px] leading-5 text-zinc-500">Unshown countries and rounded values allow {check.minimumPercent}–{check.maximumPercent}%.{verified ? ' The payout tier is the same across this range.' : ''}</p>
+      <p className="mt-1 text-[11px] leading-5 text-zinc-500">{check.basis === 'displayed_countries' ? 'The payout tier uses the displayed country percentages. Other stays unallocated.' : <>Unshown countries and rounded values allow {check.minimumPercent}–{check.maximumPercent}%.{verified ? ' The payout tier is the same across this range.' : ''}</>}</p>
     </div> : null}
     <RecordingAnalytics check={check} />
     <label className="mt-4 flex min-h-10 cursor-pointer items-start gap-2.5 text-xs font-medium leading-5"><input type="checkbox" className="mt-1 size-4 shrink-0 accent-zinc-900" checked={manual} onChange={event => onManualChange(event.target.checked)} />{verified ? 'Override audience manually' : 'Review audience manually'}</label>

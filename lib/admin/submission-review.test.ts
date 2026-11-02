@@ -111,6 +111,21 @@ test('even an explicit manual override cannot approve a replaced recording', asy
   expect(writes).toBe(0)
 })
 
+test('displayed-country approval calculates the saved Tier C rate without allocating Other', async () => {
+  const terms = defaultCreatorSprintTerms()
+  submission = { ...submission, sprintId: 'campaign', sprintTerms: terms, analyticsScreenshotUrl: 'https://example.com/evidence.mp4',
+    audienceCheck: { version: 1, basis: 'displayed_countries', status: 'verified', storageKey: 'current-evidence',
+      percent: 18.7, otherPercent: 61.3, minimumPercent: 18.65, maximumPercent: 80.05, countries: [
+        { code: 'US', name: 'United States', percent: 18.7, precision: 1, frameIds: ['country'] },
+        { code: 'BR', name: 'Brazil', percent: 20, precision: 1, frameIds: ['country'] },
+      ] } }
+  const reviewChecklist = sprintReviewItems(terms, 'custom-video-v1').map(({ id }) => ({ id, met: true, note: null }))
+  const saved = await reviewCreatorResource({ ...approval(null, null), adminViewCountThreshold: 50000,
+    adminUsAudiencePercent: 18.7, manualAudienceConfirmed: false, reviewChecklist }, 'reviewer')
+  expect(saved).toMatchObject({ approvedAmountCents: 1400, adminUsAudiencePercent: 18.7,
+    audienceCheck: { review: { source: 'automatic', percent: 18.7 } } })
+})
+
 test('payout schema rejects negative or fractional cents', () => {
   for (const approvedAmountCents of [-1, 1.5, 2_000_000_001]) {
     expect(creatorAdminReviewSchema.safeParse({ ...approval(), approvedAmountCents }).success).toBe(false)

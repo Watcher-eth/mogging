@@ -13,6 +13,7 @@ export type AudienceMetrics = {
 export type AudienceMetric = keyof AudienceMetrics
 export type AudienceCheck = {
   version: 1
+  basis?: 'displayed_countries'
   storageKey: string
   status: 'queued' | 'processing' | 'verified' | 'needs_review'
   checkedAt?: string
@@ -20,6 +21,9 @@ export type AudienceCheck = {
   submittedAt?: string
   context?: { creatorProfileId: string; socialAccountId: string | null; campaignId: string | null; platform: string; postUrl: string | null }
   reason?: string
+  diagnostics?: { stage: 'video' | 'classification' | 'extraction' | 'verification'; errorCode?: string;
+    scope?: string; issues?: string[]; frames?: { id: string; seconds: number; category: string; confidence: number }[];
+    secondReading?: { scope: string; completeVisibleList: boolean; countries: { code: string; percent: number }[]; issues: string[] } }
   costUsd?: number
   countries?: AudienceCountry[]
   otherPercent?: number | null
@@ -27,7 +31,7 @@ export type AudienceCheck = {
   minimumPercent?: number
   maximumPercent?: number
   evidenceSeconds?: number[]
-  verification?: { scope: number | null; countries: Record<string, number | null>; secondReadingMatched?: boolean }
+  verification?: { scope: number | null; coverage?: number | null; countries: Record<string, number | null>; secondReadingMatched?: boolean; correctedReadingConfirmed?: boolean }
   metrics?: AudienceMetrics
   metricsVerified?: Partial<Record<AudienceMetric, boolean>>
   metricsConfidence?: Partial<Record<AudienceMetric, number | null>>
@@ -80,15 +84,26 @@ export function assessAudience(countries: AudienceCountry[], terms: SprintTerms)
     stable: stableAudiencePayout(terms, minimumPercent, maximumPercent) }
 }
 
+export function audienceListTotalConsistent(countries: ReadonlyArray<Pick<AudienceCountry, 'percent' | 'precision'>>, otherPercent: number | null | undefined) {
+  if (otherPercent == null) return true
+  if (!Number.isFinite(otherPercent) || otherPercent < 0 || otherPercent > 100) return false
+  const total = countries.reduce((sum, country) => sum + country.percent, otherPercent)
+  const rounding = countries.reduce((sum, country) => sum + 0.5 * 10 ** -country.precision, 0.5)
+  return Math.abs(total - 100) <= rounding + 0.001
+}
+
 export function audienceReviewError(check: AudienceCheck | null | undefined, storageKey: string | null | undefined,
   evidenceKey: string | null | undefined, percent: number | null, manual: boolean, terms: SprintTerms) {
   if (!storageKey || evidenceKey !== storageKey) return 'The analytics recording changed. Refresh this submission before saving.'
   if (percent === null || !Number.isFinite(percent) || percent < 0 || percent > 100) return 'Enter the Tier 1 audience percentage after checking the recording.'
   if (manual) return null
-  if (check?.storageKey !== storageKey || check.status !== 'verified' || check.percent !== percent
-    || check.minimumPercent === undefined || check.maximumPercent === undefined
-    || !stableAudiencePayout(terms, check.minimumPercent, check.maximumPercent)) {
-    return 'Audience needs manual review. Check the recording and confirm the audience in Earnings.'
+  const error = 'Audience needs manual review. Check the recording and confirm the audience in Earnings.'
+  if (check?.storageKey !== storageKey || check.status !== 'verified' || check.percent !== percent) return error
+  if (check.basis === 'displayed_countries') {
+    try { return assessAudience(check.countries ?? [], terms).percent === percent
+      && audienceListTotalConsistent(check.countries ?? [], check.otherPercent) ? null : error }
+    catch { return error }
   }
-  return null
+  return check.minimumPercent !== undefined && check.maximumPercent !== undefined
+    && stableAudiencePayout(terms, check.minimumPercent, check.maximumPercent) ? null : error
 }
