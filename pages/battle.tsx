@@ -1,6 +1,6 @@
 import { clampPslScore } from '@/lib/analysis/score-scale'
 import { Loader2, RefreshCw, SlidersHorizontal, X } from 'lucide-react'
-import Image from 'next/image'
+import { SkeletonImage } from '@/components/ui/skeleton-image'
 import { motion } from 'motion/react'
 import NumberFlow from '@number-flow/react'
 import { useCallback, useEffect, useRef, useState, type CSSProperties, type ReactNode } from 'react'
@@ -705,11 +705,10 @@ function BattleCandidate({
         onClick={onVote}
         type="button"
       >
-        <Image
+        <SkeletonImage
           alt={displayName}
           className="object-cover grayscale-[0.08] transition duration-700 ease-out group-hover:scale-[1.025]"
           src={photo.imageUrl}
-          fill
           priority
           sizes="(min-width: 1024px) 50vw, 100vw"
         />

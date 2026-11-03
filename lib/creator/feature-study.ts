@@ -1,3 +1,4 @@
+import { applyGlassInk } from './glass-overlay'
 import { drawPortraitInstruments, drawPortraitParticles, instrumentOwnsGuides, type PortraitInstrument } from './portrait-instruments'
 import { z } from 'zod'
 import { measuredProportionWarp, drawNaturalFreckles } from './portrait-detail-edits'
@@ -30,7 +31,7 @@ type Point = { x: number; y: number }
 type Frame = { x: number; y: number; width: number; height: number }
 export type FeaturePhoto = { image: HTMLCanvasElement | HTMLImageElement; landmarks: FaceLandmarksPayload | null | undefined; headTop?: number }
 
-const hero = { x: 60, y: 500, width: 960, height: videoSize.height - 500 }
+const hero = { x: 0, y: 500, width: videoSize.width, height: videoSize.height - 500 }
 export function featureFrames(layout: FeatureStudy['layout']): Frame[] {
   if (layout === 'compare') return [0, 1].map(i => ({ x: 64 + i * 486, y: 660, width: 466, height: 1130 }))
   if (layout === 'grid') return [0, 1, 2, 3].map(i => ({ x: 64 + i % 2 * 486, y: 550 + Math.floor(i / 2) * 716, width: 466, height: 686 }))
@@ -99,8 +100,7 @@ function drawNote(ctx: CanvasRenderingContext2D, photo: FeaturePhoto, study: Fea
   const ry = rx * (study.topic === 'philtrum' ? 1 : .58)
   const matrix = ctx.getTransform(), unit = 1 / Math.max(.01, Math.hypot(matrix.a, matrix.b))
   ctx.save()
-  ctx.strokeStyle = '#fff'; ctx.fillStyle = '#fff'; ctx.lineWidth = 2.5 * unit; ctx.lineCap = 'round'
-  ctx.shadowColor = '#0009'; ctx.shadowBlur = 3 * unit
+  applyGlassInk(ctx, unit, 2.5)
   ctx.beginPath()
   const steps = study.annotationStyle === 'guide' ? -1 : Math.ceil(72 * progress)
   for (let i = 0; i <= steps; i++) {
@@ -276,15 +276,19 @@ export function drawFeatureStudy(ctx: CanvasRenderingContext2D, study: FeatureSt
       const split = item.image.width * featureWipeProgress(localMs, _durationMs, reduced)
       ctx.save(); ctx.beginPath(); ctx.rect(0, 0, split, item.image.height); ctx.clip(); drawEdit(); ctx.restore()
       const unit = item.image.width / placement.width
-      ctx.save(); ctx.strokeStyle = '#fff'; ctx.lineWidth = 2 * unit; ctx.shadowColor = '#0008'; ctx.shadowBlur = 3 * unit
+      ctx.save(); applyGlassInk(ctx, unit, 2)
       ctx.beginPath(); ctx.moveTo(split, 0); ctx.lineTo(split, item.image.height); ctx.stroke(); ctx.restore()
     } else drawEdit()
     if (!textureEdit && study.topic === 'freckles' && item.landmarks) drawNaturalFreckles(ctx,item.image,item.landmarks,Math.max(0,edit))
     if (index===0 && instrument) {
       if (instrument.particles!=='none' || instrument.trails) drawPortraitParticles(ctx,item.image,instrument,localMs,reduced)
-      drawPortraitInstruments(ctx,item.landmarks,item.image.width,item.image.height,instrument,localMs,reduced)
+      if(!activity) drawPortraitInstruments(ctx,item.landmarks,item.image.width,item.image.height,instrument,localMs,reduced)
     }
-    if (index === 0 && activity && !instrumentOwnsGuides(instrument)) drawPortraitActivity(ctx, activity, item.image.width, item.image.height, registeredWarp ?? (!textureEdit && item.landmarks ? featureWarp(item.landmarks, study.topic, edit, study.adjustment) : undefined))
+    if (index === 0 && activity) {
+      const warp=registeredWarp ?? (!textureEdit && item.landmarks ? featureWarp(item.landmarks,study.topic,edit,study.adjustment) : undefined)
+      drawPortraitActivity(ctx,activity,item.image.width,item.image.height,warp)
+
+    }
     if (!activity && !instrumentOwnsGuides(instrument) && index === 0 && frames.length === 1) drawNote(ctx, photo, study, reduced ? 1 : smoothMotion((localMs - 400) / 650))
     ctx.restore()
     const fadeOpacity = (prior.length === 1 ? 1 - progress : 0) + (frames.length === 1 ? progress : 0)

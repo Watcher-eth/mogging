@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import Image from 'next/image'
+import { SkeletonImage } from '@/components/ui/skeleton-image'
 import { ArrowUpRight, Film } from 'lucide-react'
 import { useSubmissionPostPreview } from './submission-post-preview'
 import { sprintMoney } from '@/lib/creator/sprints'
@@ -14,7 +14,7 @@ function PostPreview({ video }: { video: CreatorConversionVideo }) {
   const source = preview?.thumbnailUrl;
   return <span ref={ref} className={styles.postPreview} aria-hidden="true">
     {source && source !== failed
-      ? <Image src={source} alt="" fill sizes="44px" unoptimized referrerPolicy="no-referrer" onError={() => setFailed(source)} />
+      ? <SkeletonImage src={source} alt="" sizes="44px" unoptimized referrerPolicy="no-referrer" onError={() => setFailed(source)} />
       : <Film size={17} />}
   </span>;
 }

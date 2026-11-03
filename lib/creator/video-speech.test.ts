@@ -1,5 +1,5 @@
 import { expect, test } from 'bun:test'
-import { deliverySchema, geminiSpeechRequest, pcmWave, voiceDirection, voiceDirectionSchema } from './video-speech'
+import { alignSpeechWords, geminiWordTimes, deliverySchema, geminiSpeechRequest, pcmWave, voiceDirection, voiceDirectionSchema } from './video-speech'
 import { assembleSpeech, speechBrief } from './video-voiceover'
 import { compileAnalysisVideo, parseComposition } from './video-composition'
 import { scriptToPlan } from './script-edit'
@@ -52,4 +52,32 @@ test('selected catalog voices survive validation and keep verbatim speech', () =
     expect(request.generation_config.speech_config).toEqual([{ voice }])
     expect(request.input[0].content[0].text).toBe('One feature. One story.')
   }
+})
+
+
+test('measured captions preserve approved decimal and brand tokens across ASR word splits',()=>{
+  const raw=['Mugging','dot','com','rates','it','seven','point','five'].map((text,i)=>({text,startMs:i*100,endMs:(i+1)*100}))
+  expect(alignSpeechWords('Mogging.com rates it 7.5.',raw)).toEqual([{text:'Mogging.com',startMs:0,endMs:300},{text:'rates',startMs:300,endMs:400},{text:'it',startMs:400,endMs:500},{text:'7.5',startMs:500,endMs:800}])
+  expect(()=>alignSpeechWords('Mogging.com rates it 8.',raw)).toThrow('differ')
+})
+
+
+test('rounded transcription endpoints stop at real audio duration without accepting unrelated timestamps',()=>{
+  const words=[{text:'Hello',start_offset:'0s',end_offset:'1.0s'}]
+  expect(geminiWordTimes(words,960,'Hello')).toEqual([{text:'Hello',startMs:0,endMs:960}])
+  expect(()=>geminiWordTimes(words,600,'Hello')).toThrow('outside the audio')
+})
+
+
+test('the verified brand ASR spelling keeps the approved caption word',()=>{
+  expect(alignSpeechWords('Mogging gives this example 7.5 out of ten.',[
+    {text:'Marging',startMs:200,endMs:600},{text:'gives',startMs:600,endMs:800},{text:'this',startMs:800,endMs:900},{text:'example',startMs:900,endMs:1400},{text:'7.5',startMs:1400,endMs:2200},{text:'out',startMs:2200,endMs:2300},{text:'of',startMs:2300,endMs:2400},{text:'10.',startMs:2400,endMs:2600}
+  ]).map(word=>word.text)).toEqual(['Mogging','gives','this','example','7.5','out','of','ten'])
+})
+
+
+test('forced alignment tolerates only a small brand spelling error, never a different score or ordinary word',()=>{
+  expect(alignSpeechWords('Mogging scores 7.5.',[{text:'Mocking',startMs:0,endMs:300},{text:'scores',startMs:300,endMs:600},{text:'7.5',startMs:600,endMs:1100}])[0]).toEqual({text:'Mogging',startMs:0,endMs:300})
+  expect(()=>alignSpeechWords('Jaw scores 7.5.',[{text:'Saw',startMs:0,endMs:300},{text:'scores',startMs:300,endMs:600},{text:'7.5',startMs:600,endMs:1100}])).toThrow('differ')
+  expect(()=>alignSpeechWords('Mogging scores 7.5.',[{text:'Mocking',startMs:0,endMs:300},{text:'scores',startMs:300,endMs:600},{text:'8',startMs:600,endMs:1100}])).toThrow('differ')
 })

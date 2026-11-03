@@ -1,0 +1,46 @@
+{
+  "mode": "built-in image_gen",
+  "assets": [
+    {
+      "id": "tom-prada-red-study",
+      "subject": "tom-holland",
+      "source": "/Users/watcher/.codex/generated_images/01a19397-62cb-7a93-a3e6-1f6c3323d9b3/exec-9b895859-70a5-46c1-b671-c134fa655292.png",
+      "filename": "tom-prada-red-study.png",
+      "name": "Red jacket · generated campaign study",
+      "prompt": "Use case: identity-preserve. Create ONE photorealistic vertical 9:16 portrait study of Tom Holland based on the supplied authentic Prada SS2022 red-jacket campaign reference. This is a campaign-inspired reconstruction, not a new official campaign photograph. Preserve his exact recognizable identity, age, natural facial anatomy, nose, cheek and jaw shape, skin texture, swept dark hair. Keep the deep red leather jacket over a dark polo, the slight body lean and the off-camera sideways glance with a restrained closed mouth. Frame full hair, neck, shoulders and upper chest, arms can remain outside crop. White seamless studio backdrop with barely cool soft light, a very faint blue cast in illumination only, natural skin tone. Clean portrait, no fashion masthead, no added text, no logos, no collage, no facial beautifying or sharper jaw.",
+      "kind": "generated-study",
+      "savedPath": "/Users/watcher/Documents/Codex/2026-10-27/ca/work/studio-release/app/public/creator/stories/tom-holland/tom-prada-red-study.png"
+    },
+    {
+      "id": "tom-prada-cardigan-study",
+      "subject": "tom-holland",
+      "source": "/Users/watcher/.codex/generated_images/01a19397-62cb-7a93-a3e6-1f6c3323d9b3/exec-686f6a39-af14-4e74-9d92-cea7d82be5cd.png",
+      "filename": "tom-prada-cardigan-study.png",
+      "name": "Dark cardigan · generated campaign study",
+      "prompt": "Use case: identity-preserve. Create ONE photorealistic vertical 9:16 portrait of Tom Holland based specifically on the RIGHT-HAND portrait in the supplied authentic Prada SS2022 campaign spread, not the garment detail at left. This is an illustrative campaign-inspired reconstruction. Preserve his exact face, actual eye shape, brows, nose, cheek and jaw proportions, natural skin texture and short swept-back hair. Dark black ribbed open cardigan with deep V opening as in the real reference, shoulders relaxed, head slightly turned and raised, gaze just above and off-camera, mouth relaxed almost closed. Show whole hair with breathing room, neck, shoulders and upper chest. White seamless studio backdrop, soft slightly cool light with barely perceptible blue tint only in illumination and natural skin color. No text, brand mark, collage, added muscularity, beautifying retouching or anatomical changes.",
+      "kind": "generated-study",
+      "savedPath": "/Users/watcher/Documents/Codex/2026-10-27/ca/work/studio-release/app/public/creator/stories/tom-holland/tom-prada-cardigan-study.png"
+    },
+    {
+      "id": "tom-prada-red-source",
+      "subject": "tom-holland",
+      "source": "/private/tmp/round3-revision6/prada-hero.jpg",
+      "filename": "tom-prada-red-source.jpg",
+      "name": "Official Prada SS2022 · red-jacket reference",
+      "url": "https://www.prada.com/content/dam/pradanux/pradasphere/2022/campaign/ss22_men/hero/hero_banner_MB.jpg",
+      "kind": "original-reference",
+      "savedPath": "/Users/watcher/Documents/Codex/2026-10-27/ca/work/studio-release/app/public/creator/stories/tom-holland/tom-prada-red-source.jpg"
+    },
+    {
+      "id": "tom-prada-cardigan-source",
+      "subject": "tom-holland",
+      "source": "/private/tmp/round3-revision6/prada-banner2.jpg",
+      "filename": "tom-prada-cardigan-source.jpg",
+      "name": "Official Prada SS2022 · cardigan reference",
+      "url": "https://www.prada.com/content/dam/pradanux/pradasphere/2022/campaign/ss22_men/banner_2/card_landscape_DT.jpg",
+      "kind": "original-reference",
+      "savedPath": "/Users/watcher/Documents/Codex/2026-10-27/ca/work/studio-release/app/public/creator/stories/tom-holland/tom-prada-cardigan-source.jpg"
+    }
+  ],
+  "disclosure": "Generated studies illustrate the referenced appearance. Original photographs remain the evidence for campaign context and dated appearance changes."
+}

@@ -1,5 +1,4 @@
-import { LockedReportPreview } from '@/components/payments/locked-report-preview'
-import { AnalysisUnlockDialog, type AnalysisPurchase } from '@/components/payments/analysis-unlock-dialog'
+import type { AnalysisPurchase } from '@/components/payments/analysis-unlock-dialog'
 import type { CheckoutQuote } from '@/components/payments/membership-offer'
 import { flushWebAnalytics } from '@/lib/analytics/client'
 import type { WebReport } from '@/lib/analysis-v2/report-schema'
@@ -41,12 +40,14 @@ import {
 import { parseFaceLandmarksPayload, type FaceLandmarksPayload } from '@/lib/analysis/landmarks'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
-import { LoginDialog } from '@/components/app/app-shell'
+import { LoginDialog } from '@/components/app/login-dialog'
 import { SeoHead } from '@/components/app/seo-head'
 import { CaptureFrame, type CaptureFrameImagePosition } from '@/components/analysis/capture-frame'
 import { TextLoop } from '@/components/core/text-loop'
 import { TextShimmer } from '@/components/core/text-shimmer'
 
+const LockedReportPreview = dynamic(() => import('@/components/payments/locked-report-preview').then(module => module.LockedReportPreview))
+const AnalysisUnlockDialog = dynamic(() => import('@/components/payments/analysis-unlock-dialog').then(module => module.AnalysisUnlockDialog))
 const ScanImagePanel = dynamic(() => import('@/components/analysis/scan-image-panel').then(module => module.ScanImagePanel))
 
 const WebAnalysisReport = dynamic(() => import('@/components/analysis/v2/web-analysis-report').then(module => module.WebAnalysisReport))

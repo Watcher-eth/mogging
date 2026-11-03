@@ -7,7 +7,7 @@ import { reportCategories } from './mock-report-data'
 import { mockReportRegions } from './mock-report'
 import type { AnalysisPostInput } from './analysis-post'
 import type { CanvasElement } from './canvas-layout'
-import { captionDesign, portraitStage, videoContent, videoSize } from './video-layout'
+import { captionDesign, portraitStage, videoContent, videoSize, reportCaptionFrame, sceneFrame } from './video-layout'
 import { featureComponent } from './report-choreography'
 
 test('component captions retain finite positions after report rendering restores canvas state', () => {
@@ -66,6 +66,13 @@ test('component captions retain finite positions after report rendering restores
   expect(metric.width).toBe(videoContent.width)
   expect(images).toHaveLength(0)
   expect(calls).toHaveLength(0)
+  const reportScene={...scene,source:{...scene.source,kind:'report' as const}}
+  const reportPrepared={...prepared,composition:{...composition,scenes:[reportScene]}}
+  const reportLayout=inspectVideoScene(reportPrepared,reportScene.id,1600)
+  expect(sceneFrame(reportScene,1600)).toEqual({x:0,y:0,...videoSize})
+  expect(reportLayout.find(element=>element.id==='headline')!.frame).toEqual(reportCaptionFrame)
+  expect(reportCaptionFrame.y).toBeGreaterThan(videoSize.height*.7)
+  expect(reportCaptionFrame.y+reportCaptionFrame.height).toBeLessThan(videoSize.height*.85)
 })
 
 test('cinematic cuts continuously blend both screens and reduced motion bypasses the blend', () => {

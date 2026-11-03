@@ -1,7 +1,6 @@
-import { scriptTokens } from './video-script'
-import { sceneSpeechWords } from './video-voiceover'
 import { drawMetricTimeline } from './video-timeline'
-import { videoSize, videoContent, smoothMotion } from './video-layout'
+import { videoSize, videoContent, scorePresentation, smoothMotion } from './video-layout'
+import { scriptTokens, sceneSpeechWords } from './video-script'
 import type { ReportCategory } from './mobile-overlay-engine/report-data'
 import type { VideoScene } from './video-composition'
 
@@ -13,13 +12,16 @@ export function spokenScoreCallouts(text: string, reports: ReportCategory[], fal
   const tokens = scriptTokens(text).map(token => token.text.toLowerCase())
   const result: NonNullable<VideoScene['scoreCallouts']> = []
   for (const [word, token] of tokens.entries()) {
-    const value = numbers[token] ?? (/^\d+(?:\.\d+)?$/.test(token) ? Number(token) : NaN)
+    if (tokens[word - 1] === 'point') continue
+    let value = numbers[token] ?? (/^\d+(?:\.\d+)?$/.test(token) ? Number(token) : NaN)
+    const decimal = tokens[word + 1] === 'point' ? numbers[tokens[word + 2]] : undefined
+    if (decimal !== undefined) value += decimal / 10
     if (!Number.isFinite(value) || value > 10) continue
     const before = tokens.slice(Math.max(0, word - 9), word).join(' ')
     const context = tokens.slice(Math.max(0, word - 9), word + 5).join(' ')
-    if (!/\b(score|scores|scoring|gets?|overall|another|at|in|is|gives|report)\b/.test(context)) continue
-    if (/\bpsl\b/.test(before)) continue
-    if (/\b(points?|years?|categories|things)\b/.test(tokens[word + 1] ?? '') || tokens[word - 1] === 'of') continue
+    if (!/\b(score|scores|scoring|gets?|overall|another|at|in|is|gives|report)\b/.test(context) && !/^out of (?:ten|10)\b/.test(tokens.slice(word + 1, word + 5).join(' '))) continue
+    if (/\bpsl\b/.test(before) || tokens[word - 1] === 'of') continue
+    if (decimal === undefined && /^(?:points?|years?|categories|things)$/.test(tokens[word + 1] ?? '')) continue
     const mentions = reports.flatMap(report => {
       const pattern = names[report.id]
       if (!pattern) return []
@@ -27,33 +29,61 @@ export function spokenScoreCallouts(text: string, reports: ReportCategory[], fal
       for (let i = Math.max(0, word - 9); i <= Math.min(tokens.length - 1, word + 2); i++) if (pattern.test(tokens[i])) index = i
       return index < 0 ? [] : [{ report, distance: Math.abs(word - index) }]
     }).sort((a, b) => a.distance - b.distance)
-    const report = mentions[0]?.report ?? reports.find(report => report.id === fallback)
-    if (!report || report.score !== value) continue
-    result.push({ label: report.title, value, word })
+    const shared = /\b(?:each|both)\b/.test(before)
+    const matched = shared ? mentions.map(item => item.report) : [mentions[0]?.report ?? reports.find(report => report.id === fallback)]
+    for (const report of matched) {
+      if (!report || report.score !== value) continue
+      result.push({ label: report.title, value, word: decimal === undefined ? word : word + 2 })
+    }
   }
   return result.length ? result.slice(0, 6) : undefined
 }
 
-export function activeSpokenScore(scene: VideoScene, localMs: number) {
+export function activeSpokenScores(scene: VideoScene, localMs: number) {
   const words = sceneSpeechWords(scene)
-  return scene.scoreCallouts?.findLast(cue => localMs >= (words[cue.word]?.startMs ?? Infinity))
+  const last = scene.scoreCallouts?.findLast(cue => localMs >= (words[cue.word]?.startMs ?? Infinity))
+  return last ? scene.scoreCallouts!.filter(cue => cue.word === last.word) : []
+}
+export function activeSpokenScore(scene: VideoScene, localMs: number) {
+  return activeSpokenScores(scene, localMs).at(-1)
 }
 
+
 export function drawSpokenScore(ctx: CanvasRenderingContext2D, scene: VideoScene, localMs: number, reduced: boolean) {
-  if (scene.source.kind !== 'portrait') return
-  const cue = activeSpokenScore(scene, localMs)
-  if (!cue) return
-  const start = sceneSpeechWords(scene)[cue.word].startMs
-  const amount = reduced ? 1 : smoothMotion((localMs - start) / 360)
-  const meter = reduced ? 1 : smoothMotion((localMs - start - 80) / 720)
-  const width = videoContent.width, left = videoContent.inset, top = videoSize.height - 470
-  ctx.save(); ctx.globalAlpha *= amount; ctx.translate(left, top + (1 - amount) * 12)
-  const wash = ctx.createLinearGradient(0, -80, 0, videoSize.height - top)
-  wash.addColorStop(0, '#ffffff00'); wash.addColorStop(.25, '#ffffffed'); wash.addColorStop(1, '#ffffff')
-  ctx.fillStyle = wash; ctx.fillRect(-left, -80, videoSize.width, videoSize.height - top + 80)
-  ctx.fillStyle = '#747b83'; ctx.font = '400 28px monospace'; ctx.textAlign = 'left'; ctx.fillText(cue.label.toUpperCase(), 0, 42)
-  ctx.fillStyle = '#12171d'; ctx.font = '500 68px "Mogging Share",Arial,sans-serif'; ctx.textAlign = 'right'; ctx.fillText(`${cue.value.toFixed(1)} / 10`, width, 48)
-  ctx.translate(0, 74)
-  drawMetricTimeline(ctx, { width, height: 200, position: cue.value / 10, progress: meter, variant: 0, ink:'#12171d', muted:'#777', line:'#ddd', accent:'#ff9900', labels:true, maximum:10 })
-  ctx.restore()
+  if (scene.source.kind !== "portrait")
+    return;
+  const active = activeSpokenScores(scene, localMs);
+  const cue = active.at(-1);
+  if (!cue)
+    return;
+  const start = sceneSpeechWords(scene)[cue.word].startMs;
+  const amount = reduced ? 1 : smoothMotion((localMs - start) / 360);
+  const meter = reduced ? 1 : smoothMotion((localMs - start - 80) / 720);
+  const width = videoContent.width, left = videoContent.inset, top = scorePresentation.top;
+  ctx.save();
+  ctx.globalAlpha *= amount;
+  const y = top + (1 - amount) * 12;
+  const wash = ctx.createLinearGradient(0, y - 280, 0, y - 40);
+  wash.addColorStop(0, "#ffffff00");
+  wash.addColorStop(1, "#ffffff");
+  ctx.fillStyle = wash;
+  ctx.fillRect(0, y - 280, videoSize.width, videoSize.height - y + 280);
+  ctx.translate(left, y);
+  ctx.scale(scorePresentation.scale, scorePresentation.scale);
+  for (const [index, item] of active.entries()) {
+    ctx.save();
+    ctx.translate(0, index * 190);
+    ctx.fillStyle = "#535b64";
+    ctx.font = "500 48px monospace";
+    ctx.textAlign = "left";
+    ctx.fillText(item.label.toUpperCase(), 0, 42);
+    ctx.fillStyle = "#12171d";
+    ctx.font = '500 68px "Mogging Share",Arial,sans-serif';
+    ctx.textAlign = "right";
+    ctx.fillText(`${item.value.toFixed(1)} / 10`, width, 48);
+    ctx.translate(0, 74);
+    drawMetricTimeline(ctx, { width, height: active.length > 1 ? 100 : 200, position: item.value / 10, progress: meter, variant: 0, ink: "#12171d", muted: "#777", line: "#ddd", accent: "#ff9900", labels: true, maximum: 10 });
+    ctx.restore();
+  }
+  ctx.restore();
 }

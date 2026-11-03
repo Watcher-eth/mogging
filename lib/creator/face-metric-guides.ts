@@ -1,5 +1,5 @@
 import { reportPortraitProjection } from './report-portrait'
-import { facialDetailGuides } from './facial-detail-guides'
+import { visibleFaceSides, facialDetailGuides } from './facial-detail-guides'
 import registry from '@/lib/analysis-v2/rubric-registry.json'
 import type { FaceLandmarksPayload, FaceAnchorKey, FaceContourKey, NormalizedPoint } from './mobile-overlay-engine/landmarks'
 import type { ReportOverlay } from './report-overlay'
@@ -14,12 +14,16 @@ const line = (from?: Point, to?: Point): Path[] => valid(from) && valid(to) ? [[
 const anchors = (...pairs: Array<[FaceAnchorKey, FaceAnchorKey]>) => (face: FaceLandmarksPayload) => pairs.flatMap(([from, to]) => line(face.anchors[from], face.anchors[to]))
 // Preserve detector topology. Never close an open brow or bridge a broken path.
 export const faceContourPaths = (face: FaceLandmarksPayload, key: FaceContourKey): Path[] => {
+  const side=key.startsWith('left')?'left':key.startsWith('right')?'right':undefined
+  if(side&&!visibleFaceSides(face).includes(side))return []
   const points=face.contours?.[key]
   if (!points || points.length<3 || !points.every(valid)) return []
   const ratio=face.image.height/face.image.width
   const span=face.anchors.leftPupil && face.anchors.rightPupil ? Math.hypot(face.anchors.leftPupil.x-face.anchors.rightPupil.x,(face.anchors.leftPupil.y-face.anchors.rightPupil.y)*ratio) : .2
   if (points.slice(1).some((p,i)=>Math.hypot(p.x-points[i].x,(p.y-points[i].y)*ratio)>span*1.5)) return []
-  return [points]
+  const brow=key==='leftBrow'||key==='rightBrow'
+  const gap=Math.hypot(points[0].x-points.at(-1)!.x,(points[0].y-points.at(-1)!.y)*ratio)
+  return [brow&&points.length>=6&&gap>0&&gap<span*.25?[...points,points[0]]:points]
 }
 export function faceContourEdge(face: FaceLandmarksPayload,key: FaceContourKey,upper: boolean): Path[] {
   const points=faceContourPaths(face,key)[0],a=face.anchors.leftPupil,b=face.anchors.rightPupil
@@ -27,9 +31,14 @@ export function faceContourEdge(face: FaceLandmarksPayload,key: FaceContourKey,u
   if ((key==='leftBrow' || key==='rightBrow') && points.length<=5) return upper?[points]:[]
   const ratio=face.image.height/face.image.width,angle=Math.atan2((b.y-a.y)*ratio,b.x-a.x)
   const local=(p:Point)=>({x:p.x*Math.cos(angle)+p.y*ratio*Math.sin(angle),y:-p.x*Math.sin(angle)+p.y*ratio*Math.cos(angle)})
-  const mapped=points.map(p=>({p,...local(p)})),mid=(Math.min(...mapped.map(p=>p.y))+Math.max(...mapped.map(p=>p.y)))/2
-  const edge=mapped.filter(p=>upper?p.y<=mid:p.y>=mid).sort((a,b)=>a.x-b.x).map(p=>p.p)
-  return edge.length>=3?[edge]:[]
+  const closed=points.length>3&&points[0].x===points.at(-1)!.x&&points[0].y===points.at(-1)!.y
+  if(!closed)return upper?[points]:[]
+  const ring=points.slice(0,-1),mapped=ring.map(local)
+  const left=mapped.reduce((best,p,i)=>p.x<mapped[best].x?i:best,0),right=mapped.reduce((best,p,i)=>p.x>mapped[best].x?i:best,0)
+  const walk=(direction:number)=>{const path:Point[]=[];for(let i=left;path.length<=ring.length;i=(i+direction+ring.length)%ring.length){path.push(ring[i]);if(i===right)break}return path}
+  const paths=[walk(1),walk(-1)],mean=(path:Point[])=>path.reduce((sum,p)=>sum+local(p).y,0)/path.length
+  paths.sort((a,b)=>mean(a)-mean(b))
+  return paths[upper?0:1].length>=3?[paths[upper?0:1]]:[]
 }
 const outlines = (...keys: FaceContourKey[]) => (face: FaceLandmarksPayload) => keys.flatMap(key=>faceContourPaths(face,key))
 function extent(face: FaceLandmarksPayload, key: FaceContourKey, axis: 'x' | 'y') {

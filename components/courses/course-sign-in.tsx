@@ -1,9 +1,7 @@
 import { useState, type FormEvent } from 'react'
 import { signIn } from 'next-auth/react'
 import { useRouter } from 'next/router'
-import dynamic from 'next/dynamic'
-
-const LoginDialog = dynamic(() => import('@/components/app/app-shell').then(module => module.LoginDialog), { ssr: false })
+import { LoginDialog } from '@/components/app/login-dialog'
 export function CourseSignIn() {
   const [open, setOpen] = useState(false), router = useRouter()
   return <><button className="c-button c-button-dark" onClick={() => setOpen(true)}>Sign in</button>{open && <LoginDialog open={open} onOpenChange={setOpen} callbackUrl={router.asPath}><EmailSignIn /></LoginDialog>}</>

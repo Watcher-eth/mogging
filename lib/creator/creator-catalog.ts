@@ -5,9 +5,10 @@ import { productionPolicy, productionCut, productionTimeline, productionWritingB
 import { videoSize } from './video-layout'
 import type { VideoDirection, VideoRecipe } from './video-composition'
 import type { VideoScriptExample } from './video-script-examples'
-import { subjectStudies } from './video-subject-studies'
+import editorialCatalog from '../../public/creator/round3-catalog.json'
 import { scriptToPlan } from './script-edit'
 import { voiceDirection } from './video-speech'
+import { subjectStudies } from './video-subject-studies'
 
 // Creator styles are the existing rendering recipes, with one vocabulary in the UI.
 export const creatorVideoStyles = [
@@ -16,6 +17,7 @@ export const creatorVideoStyles = [
   { id: 'measurement-explainer', label: 'Feature breakdown', detail: 'Detail-led. Face guides, measurements and clear explanations.' },
   { id: 'feature-study', label: 'Feature study', detail: 'One feature at a time. Drawn notes, controlled face edits and continuous photo grids.' },
   { id: 'hybrid-story', label: 'Visual story', detail: 'Story-led. Portraits, graphic comparisons and app proof.' },
+  { id: 'documentary-studio', label: 'Documentary Studio', detail: 'Cinematic sets, photographic evidence, 3D structure and precise face annotations.' },
 ] as const satisfies ReadonlyArray<{ id: VideoRecipe; label: string; detail: string }>
 
 export function creatorStyleDirections(example: VideoScriptExample, recipe: VideoRecipe) {
@@ -35,29 +37,9 @@ export function creatorStyleDirections(example: VideoScriptExample, recipe: Vide
   }))
 }
 
-const drafts = {
-  clavicular: `What can a face photo actually tell you?
-Use this Clavicular portrait to separate visible shape from the way a photograph presents it.
-Start with the whole face before zooming into a single feature.
-The jaw contour is the visible boundary of the lower face. A stronger shadow can make that boundary easier to see.
-That does not mean the underlying structure changed.
-The eye area needs the same context. Brows, eyelids and expression all affect what draws attention.
-Now compare the cheek and jaw contours without treating either one as the whole story.
-Camera distance and head angle can change their apparent relationship.
-The Mogging demo keeps the image beside the relevant feature, so the explanation stays grounded.
-These report values are illustrative, not measured ratings of Clavicular.
-For your own comparisons, use clear originals and repeat the same photo setup.
-Understand the detail, keep the whole face in view, and explore your starting point with Mogging.`,
-}
 function draft(title: string, script: string): VideoScriptExample {
   return { title, script, readingPace: 165, recipe: 'portrait-audit', durationSeconds: Math.round(scriptToPlan(script, 165).duration), voice: voiceDirection('editorial'), disclosure: 'Editorial photo study · UI values illustrative · No endorsement implied' }
 }
-const clavicularStudioPhotos = ['front', 'three-quarter', 'profile'].map(view => ({
-  id: `clavicular-studio-${view}-20261027`, name: `Clavicular · ${view} · AI-generated editorial portrait`,
-  dataUrl: `/creator/examples/clavicular-studio-20261027/clavicular-${view}-4k.jpg`,
-  width: 2160, height: 3840, status: 'ready' as const, landmarks: null,
-}))
-
 const studioPhotos = (subject: 'marlon' | 'johnson') => ['front', 'three-quarter', 'profile'].map(view => ({
   id: `${subject}-studio-${view}-20261027`, name: `${subject} · ${view} · AI editorial portrait · upscaled 4K export`,
   dataUrl: `/creator/examples/${subject}-studio-20261027/${subject}-${view}-4k.jpg`,
@@ -71,20 +53,20 @@ const darkStudioPhotos = (subject: 'marlon' | 'johnson') => studioPhotos(subject
   width: 941, height: 1672,
 }))
 
-const storyPhoto = (subject: string, id: string, width: number, height: number) => ({ id, name: subject, dataUrl: `/creator/stories/${subject}/${id}.png`, width, height, status: 'ready' as const, landmarks: null })
-
-const storyPhotos = (...args: Parameters<typeof storyPhoto>) => [storyPhoto(...args)]
-
-export const creatorSubjects = [
-  { id: 'marlon', name: 'Marlon', initials: 'M', productionImages: studioPhotos('marlon'), darkImages: darkStudioPhotos('marlon'), example: subjectStudies[0] },
-  { id: 'johnson', name: 'The Rock', initials: 'TR', productionImages: studioPhotos('johnson'), darkImages: darkStudioPhotos('johnson'), example: subjectStudies[1] },
-  { id: 'trump', name: 'Trump', initials: 'DT', productionImages: storyPhotos('trump','trump-front-supplied',2250,2850), example: draft('Trump · The portraits out of order', 'Which Trump portrait came first?') },
-  { id: 'tom-holland', name: 'Tom Holland', initials: 'TH', productionImages: storyPhotos('tom-holland','tom-editorial-front-bw',1920,2400), example: draft('Tom Holland · Two paths to one ratio', 'Which Tom Holland looks better?') },
-  { id: 'zendaya', name: 'Zendaya', initials: 'Z', productionImages: storyPhotos('zendaya','zendaya-editorial-three-quarter',4024,6048), example: draft('Zendaya · The line beyond the eye', 'What makes this eye look longer?') },
-  { id: 'clavicular', name: 'Clavicular', initials: 'C', example: { ...draft('Clavicular · Shape and presentation', drafts.clavicular), images: clavicularStudioPhotos, disclosure: 'AI-generated editorial portraits · Report values illustrative · No endorsement implied' } },
-] as const
+const round3Ids = ['marlon', 'v', 'jordan-barrett', 'tom-holland', 'zeta', 'clavicular'] as const
+export const creatorSubjects = [...round3Ids.map(id => {
+  const entry = editorialCatalog.find(subject => subject.id === id)!
+  const images: GeneratorImage[] = entry.images.map(image => ({ ...image, status: 'ready', landmarks: null }))
+  return { id, name: entry.name, initials: entry.name.split(' ').map(word => word[0]).join(''), productionImages: images,
+    ...(id === 'marlon' ? { darkImages: darkStudioPhotos('marlon').map((image,index)=>({...image,id:images[index].id})) } : {}),
+    example: { ...draft(entry.title, entry.script), readingPace: entry.pace, images } }
+}),
+  { id: 'johnson' as const, name: 'The Rock', initials: 'TR', productionImages: studioPhotos('johnson'), darkImages: darkStudioPhotos('johnson'), example: subjectStudies[1] },
+  { id: 'trump' as const, name: 'Trump', initials: 'DT', productionImages: [{ id: 'trump-front', name: 'Trump · Smiling portrait', dataUrl: '/creator/stories/trump/trump-front-supplied.png', width: 2250, height: 2850, status: 'ready' as const, landmarks: null }], example: draft('Trump · The portraits out of order', 'Which Trump portrait came first?') },
+  { id: 'zendaya' as const, name: 'Zendaya', initials: 'Z', productionImages: [{ id: 'zendaya-front', name: 'Zendaya', dataUrl: '/creator/stories/zendaya/zendaya-front.png', width: 1600, height: 2000, status: 'ready' as const, landmarks: null }], example: draft('Zendaya · The shape beyond the eye', 'What makes this eye look longer?') },
+]
 export const creatorSubjectPhotos = (subject: (typeof creatorSubjects)[number], theme: 'light' | 'dark' = 'light'): GeneratorImage[] | undefined => {
-  const photos = theme === 'dark' && 'darkImages' in subject ? subject.darkImages : 'productionImages' in subject ? subject.productionImages : subject.example.images
+  const photos = theme === 'dark' && 'darkImages' in subject ? subject.darkImages ?? subject.productionImages : subject.productionImages
   return photos
 }
 export type CreatorSubjectId = (typeof creatorSubjects)[number]['id'] | 'custom' | 'project'

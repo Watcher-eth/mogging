@@ -1,7 +1,7 @@
 import { parseFaceLandmarksPayload } from '@/lib/analysis/landmarks'
 import portrait from './primer-portrait.json'
 import { useSession } from 'next-auth/react'
-import dynamic from 'next/dynamic'
+import { LoginDialog } from '@/components/app/login-dialog'
 import { useTranslation } from 'react-i18next'
 import useSWR from 'swr'
 import { formatStripePrice, type SubscriptionPrices, type SubscriptionProduct } from '@/lib/payments/subscription-prices'
@@ -21,7 +21,6 @@ type CheckoutResponse = {
 
 const portraitLandmarks = parseFaceLandmarksPayload(portrait)
 const webInstallStorageKey = 'mogging:web2app:web-install-id'
-const LoginDialog = dynamic(() => import('@/components/app/app-shell').then(module => module.LoginDialog))
 
 export function WebCheckout({ embedded = false, preview = false }: { embedded?: boolean; preview?: boolean }) {
   const router = useRouter()
@@ -30,8 +29,18 @@ export function WebCheckout({ embedded = false, preview = false }: { embedded?: 
   const offerRef = useRef<HTMLElement>(null)
   const { t, i18n } = useTranslation()
   const [currency, setCurrency] = useState<string>()
+  const [nearOffer, setNearOffer] = useState(!embedded)
+  useEffect(() => {
+    const node = offerRef.current
+    if (nearOffer || !node) return
+    const observer = new IntersectionObserver(([entry]) => {
+      if (entry.isIntersecting) setNearOffer(true)
+    }, { rootMargin: '500px' })
+    observer.observe(node)
+    return () => observer.disconnect()
+  }, [nearOffer])
   const { data: prices, error: priceError, mutate: reloadPrices } = useSWR<SubscriptionPrices>(
-    `/api/payments/subscription-prices${currency ? `?currency=${currency}` : ''}`,
+    nearOffer ? `/api/payments/subscription-prices${currency ? `?currency=${currency}` : ''}` : null,
     apiGet,
     { shouldRetryOnError: false, revalidateOnFocus: false },
   )
@@ -135,7 +144,7 @@ export function WebCheckout({ embedded = false, preview = false }: { embedded?: 
   if (installId) loginParams.set('install_id', installId)
 
   return <><section ref={offerRef} className={embedded ? styles.embedded : styles.standalone}>
-    <div className={styles.preview}><ReportUnlockPreview imageSrc="/landing/report-city-portrait.webp" landmarks={portraitLandmarks} variant="example" /></div>
+    <div className={styles.preview}><ReportUnlockPreview imageSrc={nearOffer ? "/landing/report-city-portrait.webp" : null} landmarks={portraitLandmarks} variant="example" /></div>
     <div className={styles.offer}>
       {!embedded ? <header><p className={styles.eyebrow}>Mogging Pro</p><h1 className={styles.title}>{t('plan.checkoutTitle')}</h1><p className={styles.description}>{t('plan.checkoutDescription')}</p></header> : null}
       <MembershipValue />

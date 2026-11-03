@@ -29,7 +29,7 @@ export function AppNav({ activePath }: { activePath?: string }) {
             href={item.href}
             aria-label={t(item.label)}
             title={t(item.label)}
-            prefetch={router.pathname !== '/'}
+            prefetch={false}
             onClick={() => {
               if (router.pathname !== '/' || item.href !== '/analysis') return
               trackWebEvent('landing_cta_clicked', { surface: 'landing', path: '/', destination: 'web_analysis', placement: 'navigation' })

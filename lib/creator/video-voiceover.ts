@@ -1,7 +1,7 @@
 import { z } from 'zod'
 import { arrangeVideoScenes, ensureEarlyAppProof, parseComposition, retimeVideoScene, spokenWordSchema, type VideoComposition, type VideoScene } from './video-composition'
 import { pcmWave, voiceDirection } from './video-speech'
-import { normalizedScriptWord, scriptTokens, scriptWords } from './video-script'
+import { normalizedScriptWord, scriptTokens, scriptWords, sceneSpeechWords } from './video-script'
 
 const alignmentSchema = z.object({ words: z.array(spokenWordSchema).min(1).max(5000), scriptRevision: z.string().optional(), audioSha256: z.string().regex(/^[a-f0-9]{64}$/).optional(), provider: z.enum(['google-stt', 'imported']).optional() }).strict()
 const tokens = (text: string) => scriptTokens(text).map(word => word.text)
@@ -9,11 +9,7 @@ const normalized = normalizedScriptWord
 
 export type VideoVoiceover = { file: Blob; name: string; url: string; buffer: AudioBuffer }
 
-export function sceneSpeechWords(scene: Pick<VideoScene, 'words' | 'narration' | 'durationMs'>) {
-  if (scene.words?.length) return scene.words
-  const words = scene.narration.split(/\s+/).filter(Boolean), step = Math.max(1, scene.durationMs - 300) / Math.max(1, words.length)
-  return words.map((text, index) => ({ text, startMs: 150 + index * step, endMs: 150 + (index + 1) * step }))
-}
+export { sceneSpeechWords } from './video-script'
 
 export function captionWordCues(scene: Pick<VideoScene, 'words' | 'narration' | 'durationMs'>, text: string) {
   const speech = sceneSpeechWords(scene), words = text.split(/\s+/).filter(Boolean)

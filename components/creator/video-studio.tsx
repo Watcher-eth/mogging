@@ -1,3 +1,7 @@
+import { DocumentarySceneEditor } from './documentary-scene-editor'
+import {editorialRatingReports,editorialRatingInput,editorialRatingVisibility} from '@/lib/creator/private-character'
+import { PrivateCharacterStudio } from './private-character-studio'
+import type { PrivateCharacterDetail } from '@/lib/creator/private-character'
 import { creatorAnalysisInput, creatorAnalysisReports, creatorStoryDirections, creatorStoryOptions, loadCreatorStoryCatalog, loadCreatorStory, type CreatorStory, type CreatorStoryOption, type CreatorSubjectAnalysis } from '@/lib/creator/creator-stories'
 import { featureTopics, featureTopicLabels, type FeatureTopic } from '@/lib/creator/feature-study'
 import { createFeatureStudyDraft } from '@/lib/creator/feature-study-script'
@@ -14,7 +18,7 @@ import { CustomVideoEditor } from './custom-video-editor'
 import { VideoCompositionPlayer } from './video-composition-player'
 import { compileAnalysisVideo, videoImageIds, type VideoRecipe, type VideoComposition } from '@/lib/creator/video-composition'
 import { prepareVideo, exportCompositionMp4, type PreparedVideo } from '@/lib/creator/video-renderer'
-import { videoSize } from '@/lib/creator/video-layout'
+import { videoExportSize } from '@/lib/creator/video-layout'
 import { creatorSubjects, creatorSubjectPhotos, creatorVideoStyles, validateCreatorPhotos, type CreatorSubjectId } from '@/lib/creator/creator-catalog'
 import { reportCategories } from '@/lib/creator/mock-report-data'
 import { downloadBlob } from '@/lib/creator/export-slides'
@@ -28,16 +32,17 @@ import { decodeVoiceover, type VideoVoiceover } from '@/lib/creator/video-voiceo
 import { voiceDirection } from '@/lib/creator/video-speech'
 import styles from './video-studio.module.css'
 
-type Props = { input: AnalysisPostInput; plan: AnalysisPostPlan; images: GeneratorImage[]; trackExports?: boolean; previewSubmission?: boolean }
-type Selection = { id: CreatorSubjectId; name: string; images: GeneratorImage[]; darkImages?: GeneratorImage[]; story?: CreatorStory; stories?: CreatorStoryOption[]; analysis?: CreatorSubjectAnalysis }
+type Props = { input: AnalysisPostInput; plan: AnalysisPostPlan; images: GeneratorImage[]; trackExports?: boolean; previewSubmission?: boolean; privatePreview?: boolean }
+type Selection = { id: string; name: string; title?: string; images: GeneratorImage[]; assets?: GeneratorImage[]; darkImages?: GeneratorImage[]; story?: CreatorStory; stories?: CreatorStoryOption[]; analysis?: CreatorSubjectAnalysis; editorialRatings?: PrivateCharacterDetail['editorialRatings'] }
 
-const styleIcons = { 'portrait-audit': ScanFace, 'report-led': PanelsTopLeft, 'measurement-explainer': Ruler, 'feature-study': Focus, 'hybrid-story': Clapperboard }
+const styleIcons = { 'portrait-audit': ScanFace, 'report-led': PanelsTopLeft, 'measurement-explainer': Ruler, 'feature-study': Focus, 'hybrid-story': Clapperboard, 'documentary-studio': Clapperboard }
+const defaultLength: ProductionLength = 45
 
-export default function VideoStudio({ input, plan, images, trackExports = false, previewSubmission = false }: Props) {
+export default function VideoStudio({ input, plan, images, trackExports = false, previewSubmission = false, privatePreview = false }: Props) {
   const { data: exports, mutate: refreshExports } = useSWR<{ generations: StudioExport[] }>(trackExports ? '/api/creator/studio' : null, apiGet)
   const [postExport, setPostExport] = useState<StudioExport | null>(() => previewSubmission ? { id: 'preview', title: 'Tom Holland · Detailed analysis', campaignName: 'Mogging Detailed Analysis MGC', minimumViews: 5000 } : null)
   const [master, setMaster] = useState<VideoScript | null>(null)
-  const [length, setLength] = useState<ProductionLength>(75)
+  const [length, setLength] = useState<ProductionLength>(defaultLength)
   const [sectionIds, setSectionIds] = useState<string[] | undefined>()
   const [voice, setVoice] = useState(() => voiceDirection('editorial'))
   const [featureAmount, setFeatureAmount] = useState(1)
@@ -66,18 +71,20 @@ export default function VideoStudio({ input, plan, images, trackExports = false,
   const [photoError, setPhotoError] = useState('')
   const [error, setError] = useState('')
   const [progress, setProgress] = useState<number | null>(null)
+  const privateReadyRef = useRef<(() => void) | null>(null)
   const photoTriggerRef = useRef<HTMLElement | null>(null)
   const urlsRef = useRef(new Set<string>())
   const photoCacheRef = useRef(new Map<string, GeneratorImage>())
   const abortRef = useRef<AbortController | null>(null)
-  const sourceImages = selection?.images ?? images
-  const studioInput = useMemo(() => selection ? creatorAnalysisInput(input, selection.name, selection.analysis) : input, [input, selection])
-  const studioReports = useMemo(() => selection?.analysis ? creatorAnalysisReports(selection.analysis) : reportCategories, [selection])
+  const sourceImages = useMemo(() => recipe === 'documentary-studio' && selection?.assets ? selection.assets.map(image => selection.images.find(ready => ready.id === image.id) ?? image) : selection?.images ?? images, [recipe, selection, images])
+  const studioInput = useMemo(() => selection?.editorialRatings ? editorialRatingInput(input,selection.name,selection.editorialRatings) : selection ? creatorAnalysisInput(input, selection.name, selection.analysis) : input, [input, selection])
+  const studioReports = useMemo(() => selection?.editorialRatings ? editorialRatingReports(selection.editorialRatings,selection.story?.images[0]?.id) : selection?.analysis ? creatorAnalysisReports(selection.analysis) : reportCategories, [selection])
   const cut = useMemo(() => master ? productionCut(master, length, sectionIds) : null, [master, length, sectionIds])
   const baseComposition = useMemo(() => {
     if (cut) {
       const directions = selection?.story ? creatorStoryDirections(selection.story, cut, studioInput, sourceImages, studioReports, recipe, variation) : undefined
-      return { ...compileProductionVideo(cut, studioInput, sourceImages, studioReports, recipe, voice, variation, featureTopic, featureAmount, directions), title: selection?.story?.title ?? `${selection?.name ?? input.subject} · Modular editorial`, disclosure: selection?.analysis ? 'Editorial photo study · Saved front-photo assessment · No endorsement implied' : 'Editorial photo study · No measured subject scores supplied' }
+      const compiled=compileProductionVideo(cut, studioInput, sourceImages, studioReports, recipe, voice, variation, featureTopic, featureAmount, directions)
+      return { ...(selection?.editorialRatings?editorialRatingVisibility(compiled,selection.editorialRatings):compiled), title: selection?.title ?? selection?.story?.title ?? `${selection?.name ?? input.subject} · Modular editorial`, disclosure: selection?.editorialRatings ? 'Creator’s subjective ratings · No new provider analysis' : selection?.analysis ? 'Editorial photo study · Saved front-photo assessment · No endorsement implied' : 'Editorial photo study · No measured subject scores supplied' }
     }
     return compileAnalysisVideo(plan, input, sourceImages.map(image => image.id), 'brand', reportCategories, { recipe })
   }, [selection, recipe, input, studioInput, studioReports, plan, sourceImages, cut, voice, variation, featureTopic, featureAmount])
@@ -90,16 +97,17 @@ export default function VideoStudio({ input, plan, images, trackExports = false,
   }, [writing, cut, selection, studioInput, studioReports, sourceImages, recipe, variation, featureTopic, featureAmount])
   const draft = customComposition ?? baseComposition
   const renderImages = useMemo(() => {
-    if (theme !== 'dark' || !selection?.darkImages) return sourceImages
+    if (draft.recipe === 'documentary-studio' || theme !== 'dark' || !selection?.darkImages) return sourceImages
     const registered = videoImageIds(draft.scenes.filter(scene => scene.featureStudy))
     return sourceImages.map(image => registered.has(image.id) ? image : selection.darkImages!.find(dark => dark.id === image.id) ?? image)
   }, [theme, selection, sourceImages, draft])
   const activeAudio = audioCut?.source === draft ? audioCut : null
-  const composition = useMemo(() => ({ ...(activeAudio?.composition ?? draft), theme }), [draft, theme, activeAudio])
+  const composition = useMemo(() => ({ ...(activeAudio?.composition ?? draft), theme: recipe === 'documentary-studio' ? 'dark' as const : theme }), [draft, theme, activeAudio, recipe])
   const timingIssues = activeAudio ? productionTimingIssues(composition, length) : []
   const [preparation, setPreparation] = useState<{ source: typeof composition; video: PreparedVideo } | null>(null)
   const prepared = preparation?.source === composition ? preparation.video : null
   const busy = loading || progress !== null || generating !== null
+  useEffect(() => { if (prepared && activeAudio && privateReadyRef.current) { privateReadyRef.current(); privateReadyRef.current = null } }, [prepared, activeAudio])
 
   useEffect(() => {
     let disposed = false
@@ -111,7 +119,7 @@ export default function VideoStudio({ input, plan, images, trackExports = false,
 
   // Hot updates must also discover new scripts for a person already open in the studio.
   useEffect(() => {
-    if (!selection || selection.id === 'custom' || selection.stories) return
+    if (!selection || selection.id === 'custom' || selection.id.startsWith('private:') || selection.stories) return
     let disposed = false
     const subjectId = selection.id
     void loadCreatorStoryCatalog(subjectId).then(catalog => {
@@ -122,10 +130,10 @@ export default function VideoStudio({ input, plan, images, trackExports = false,
 
   useEffect(() => {
     if (!selection) return
-    let disposed = false
+    let disposed = false, prepared: PreparedVideo | undefined
     setError('')
-    void prepareVideo(composition, renderImages).then(video => { if (!disposed) setPreparation({ source: composition, video }) }).catch(reason => { if (!disposed) setError(reason instanceof Error ? reason.message : 'Could not prepare the preview') })
-    return () => { disposed = true }
+    void prepareVideo(composition, renderImages).then(video => { prepared = video; if (disposed) video.documentary?.dispose(); else setPreparation({ source: composition, video }) }).catch(reason => { if (!disposed) setError(reason instanceof Error ? reason.message : 'Could not prepare the preview') })
+    return () => { disposed = true; prepared?.documentary?.dispose() }
   }, [selection, composition, renderImages])
   useEffect(() => {
     const urls = urlsRef.current
@@ -149,7 +157,7 @@ export default function VideoStudio({ input, plan, images, trackExports = false,
   }, [draft, clips])
 
   function startScript(name: string, topic = featureTopic) {
-    setMaster(recipe === 'feature-study' ? createFeatureStudyDraft(name, topic) : createProductionDraft(name)); setLength(75); setSectionIds(undefined); setVariation(0); setClips(new Map()); setAudioCut(null); setMode('format')
+    setMaster(recipe === 'feature-study' ? createFeatureStudyDraft(name, topic) : createProductionDraft(name)); setLength(defaultLength); setSectionIds(undefined); setVariation(0); setClips(new Map()); setAudioCut(null); setMode('format')
   }
   function approveScript(script: VideoScript) {
     // Validate the requested cut before committing a new master; no stale audio is attached to edited wording.
@@ -182,13 +190,16 @@ export default function VideoStudio({ input, plan, images, trackExports = false,
   }
 
   async function detectPhotos(photos: GeneratorImage[]) {
-    const { detectFaceLandmarksFromDataUrl } = await import('@/lib/client/faceLandmarks')
+    const { detectFaceLandmarksFromDataUrl, hasCurrentFaceContours } = await import('@/lib/client/faceLandmarks')
     const result: GeneratorImage[] = []
     for (const photo of photos) {
       const cached = photoCacheRef.current.get(photo.dataUrl)
-      if (cached) { result.push(cached); continue }
-      if (photo.landmarks) { result.push(photo); continue }
+      if (cached && hasCurrentFaceContours(cached.landmarks)) { result.push(cached); continue }
+      if (hasCurrentFaceContours(photo.landmarks)) { result.push(photo); continue }
       const detected = await detectFaceLandmarksFromDataUrl(photo.dataUrl)
+      if (detected.status !== 'detected' && /profile/.test(photo.id)) {
+        const image = { ...photo, landmarks: null }; photoCacheRef.current.set(photo.dataUrl, image); result.push(image); continue
+      }
       if (detected.status !== 'detected') throw new Error(`${photo.name}: ${detected.message}`)
       const image = { ...photo, landmarks: detected.landmarks }
       photoCacheRef.current.set(photo.dataUrl, image); result.push(image)
@@ -198,6 +209,13 @@ export default function VideoStudio({ input, plan, images, trackExports = false,
   function openPhotoDialog(target: CreatorSubjectId) {
     photoTriggerRef.current = document.activeElement as HTMLElement | null
     setCustomTarget(target); setPhotoError(''); setFrontPhotos([]); setSidePhoto(null)
+  }
+  async function selectPrivateCharacter(character:PrivateCharacterDetail) {
+    const photos=await detectPhotos(character.images)
+    const saved=character.recording?restoreProductionRecording(character.recording):{script:character.script,voice:voiceDirection('editorial'),clips:new Map<string,SectionAudio>()}
+    setMaster(saved.script);setVoice(saved.voice);setClips(saved.clips);setRecipe('portrait-audit');setFeatureAmount(0);setLength(60);setSectionIds(undefined);setVariation(0);setAudioCut(null);setMode('format');setCustomComposition(null);setSeekMs(0)
+    setSelection({id:`private:${character.id}`,name:character.name,title:character.title,images:photos,analysis:character.analysis,editorialRatings:character.editorialRatings})
+    await new Promise<void>((resolve,reject)=>{const timer=setTimeout(()=>{privateReadyRef.current=null;reject(new Error('Your story is saved. Reopen it to finish preparing the preview.'))},30000);privateReadyRef.current=()=>{clearTimeout(timer);resolve()}})
   }
   async function selectPerson(subject: (typeof creatorSubjects)[number]) {
     if (busy) return
@@ -209,9 +227,9 @@ export default function VideoStudio({ input, plan, images, trackExports = false,
         detectPhotos(saved.story.images),
         'darkImages' in subject ? detectPhotos(creatorSubjectPhotos(subject, 'dark')!.map((photo, index) => ({ ...photo, id: index === 0 ? saved.story.images[0].id : photo.id }))) : undefined,
       ])
-      setMaster(saved.script); setVoice(saved.voice); setClips(saved.clips); setLength(75); setSectionIds(undefined); setVariation(0); setAudioCut(null); setMode('format')
-      const extras = featureVariantPhotos(subject.id, photos[0].id).filter(photo => !photos.some(existing => existing.id === photo.id || existing.retouch && photo.retouch && existing.retouch.feature === photo.retouch.feature && existing.retouch.operation === photo.retouch.operation))
-      setCustomComposition(null); setSeekMs(0); setSelection({ id: subject.id, name: subject.name, images: [...photos, ...extras], darkImages, story: saved.story, stories: saved.stories, analysis: saved.analysis }); setCustomTarget(null)
+      setMaster(saved.script); setVoice(saved.voice); setClips(saved.clips); setLength(saved.story.defaultLength ?? defaultLength); setSectionIds(undefined); setVariation(0); setAudioCut(null); setMode('format')
+      const extras = (saved.script.cues.some(cue => cue.section?.visuals.some(visual => visual.imageId)) ? [] : featureVariantPhotos(subject.id, photos[0].id)).filter(photo => !photos.some(existing => existing.id === photo.id || existing.retouch && photo.retouch && existing.retouch.feature === photo.retouch.feature && existing.retouch.operation === photo.retouch.operation))
+      setCustomComposition(null); setSeekMs(0); setSelection({ id: subject.id, name: subject.name, images: [...photos, ...extras], assets: saved.assets, darkImages, story: saved.story, stories: saved.stories, analysis: saved.analysis }); setCustomTarget(null)
     } catch (reason) { toast.error(reason instanceof Error ? reason.message : 'Could not load this person') }
     finally { setLoading(false) }
   }
@@ -220,9 +238,10 @@ export default function VideoStudio({ input, plan, images, trackExports = false,
     setLoading(true)
     try {
       const saved = await loadCreatorStory(selection.id, storyId)
+      const photos = await detectPhotos(saved.story.images)
       setMaster(saved.script); setVoice(saved.voice); setClips(saved.clips); setAudioCut(null)
-      setLength(75); setSectionIds(undefined); setVariation(0); setCustomComposition(null); setSeekMs(0)
-      setSelection({ ...selection, story: saved.story, stories: saved.stories, analysis: saved.analysis })
+      setLength(saved.story.defaultLength ?? defaultLength); setSectionIds(undefined); setVariation(0); setCustomComposition(null); setSeekMs(0)
+      setSelection({ ...selection, images: photos, assets: saved.assets, darkImages: undefined, story: saved.story, stories: saved.stories, analysis: saved.analysis })
       if (saved.story.kind === 'score-walkthrough') setRecipe('report-led')
     } catch (reason) { toast.error(reason instanceof Error ? reason.message : 'Could not load this story') }
     finally { setLoading(false) }
@@ -315,7 +334,7 @@ export default function VideoStudio({ input, plan, images, trackExports = false,
 
     <div className={styles.studioLayout}>
       <h1 className={styles.studioTitle}>Creator video studio</h1>
-      <div className={styles.studioToolbar}><nav className={styles.editorModes} aria-label="Studio navigation"><button type="button" aria-pressed={!editing && !writing} onClick={() => { setMode('format') }}>Format</button><button type="button" disabled={!selection || busy} aria-pressed={editing} onClick={() => { if (!customComposition) { setCustomComposition(baseComposition); setSeekMs(customClipPreviewTime(baseComposition.scenes[0])) } setMode('clips') }}>Edit clips</button><button type="button" disabled={!selection || busy} aria-pressed={writing} onClick={() => { setMode('script') }}>Script & voice</button></nav><button type="button" role="switch" aria-checked={theme === 'dark'} aria-label="Dark mode" disabled={busy} className={styles.themeToggle} onClick={() => setTheme(current => current === 'light' ? 'dark' : 'light')}><Moon size={16} aria-hidden="true" /><span>Dark mode</span><span aria-hidden="true" className={styles.themeTrack} /></button></div>
+      <div className={styles.studioToolbar}><nav className={styles.editorModes} aria-label="Studio navigation"><button type="button" aria-pressed={!editing && !writing} onClick={() => { setMode('format') }}>Format</button><button type="button" disabled={!selection || busy} aria-pressed={editing} onClick={() => { if (!customComposition) { setCustomComposition(baseComposition); setSeekMs(customClipPreviewTime(baseComposition.scenes[0])) } setMode('clips') }}>Edit clips</button><button type="button" disabled={!selection || busy} aria-pressed={writing} onClick={() => { setMode('script') }}>Script & voice</button></nav><button type="button" role="switch" aria-checked={recipe === 'documentary-studio' || theme === 'dark'} aria-label="Dark mode" disabled={busy || recipe === 'documentary-studio'} className={styles.themeToggle} onClick={() => setTheme(current => current === 'light' ? 'dark' : 'light')}><Moon size={16} aria-hidden="true" /><span>Dark mode</span><span aria-hidden="true" className={styles.themeTrack} /></button></div>
       <section className={styles.studioPreview}>
         {selection && !prepared && !error ? <span role="status" className="sr-only">Preparing selected style…</span> : null}
         {error ? <p role="alert" className="text-sm text-red-700">{error}</p> : null}
@@ -332,6 +351,7 @@ export default function VideoStudio({ input, plan, images, trackExports = false,
             <span className={styles.personText}><strong>{subject.name}</strong><span>{storyCounts[subject.id] === undefined ? 'Scripts' : `${storyCounts[subject.id]} ${storyCounts[subject.id] === 1 ? 'Script' : 'Scripts'}`}</span></span>
           </button>)}<button type="button" aria-pressed={selection?.id === 'custom'} className={styles.person} onClick={() => openPhotoDialog('custom')}><span className={styles.personAvatar}><Plus size={25} aria-hidden="true" /></span><span className={styles.personText}><strong>Your own person</strong><span>Upload photos</span></span></button></div>
 
+          <PrivateCharacterStudio enabled={trackExports} preview={privatePreview} selectedId={selection?.id} onSelect={selectPrivateCharacter} />
           {loading ? <p role="status" className="text-xs text-zinc-500">Loading story & photos…</p> : null}
         </fieldset>
         {storyPicker}
@@ -364,11 +384,11 @@ export default function VideoStudio({ input, plan, images, trackExports = false,
         </fieldset></> : null}
         {customComposition ? <fieldset id="custom-video-editor" hidden={!editing} disabled={busy} className="min-w-0"><legend className="sr-only">Clip editor</legend>
           <p className={styles.editingContext}>{selection?.name} · Based on {creatorVideoStyles.find(style => style.id === recipe)?.label}</p>
-          <CustomVideoEditor composition={composition} prepared={prepared} images={renderImages} input={studioInput} reports={studioReports} playhead={playhead} onChange={setCustomComposition} onSeek={setSeekMs} />
+          {recipe === 'documentary-studio' ? <DocumentarySceneEditor composition={composition} prepared={prepared} images={renderImages} onChange={setCustomComposition} onSeek={setSeekMs} /> : <CustomVideoEditor composition={composition} prepared={prepared} images={renderImages} input={studioInput} reports={studioReports} playhead={playhead} onChange={setCustomComposition} onSeek={setSeekMs} />}
         </fieldset> : null}
         <div className="grid gap-3 pb-8 pt-3">
           <button type="button" disabled={!prepared || busy || timingIssues.length > 0} onClick={() => void downloadVideo()} className={styles.download}>{progress !== null ? <Loader2 className="size-5 animate-spin" /> : <Download size={20} />}{progress !== null ? `Downloading ${Math.round(progress * 100)}%` : 'Download video'}</button>
-          <p className="text-center text-[10px] leading-4 text-zinc-400">{videoSize.width} × {videoSize.height} · MP4 · {activeAudio ? 'Voiceover included' : 'Silent preview'}</p>
+          <p className="text-center text-[10px] leading-4 text-zinc-400">{videoExportSize.width} × {videoExportSize.height} · MP4 · {activeAudio ? 'Voiceover included' : 'Silent preview'}</p>
           {timingIssues.map(issue => <p key={issue} role="alert" className="text-xs leading-5 text-red-700">{issue}</p>)}
           {progress !== null ? <button type="button" className="text-xs text-zinc-500" onClick={() => abortRef.current?.abort()}>Cancel</button> : null}
         </div>

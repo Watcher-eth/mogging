@@ -40,6 +40,10 @@ export type FaceLandmarkContours = {
   mouth?: NormalizedPoint[]
   jawline?: NormalizedPoint[]
   cheekbones?: NormalizedPoint[]
+  leftCheekbone?: NormalizedPoint[]
+  rightCheekbone?: NormalizedPoint[]
+  leftSubmalar?: NormalizedPoint[]
+  rightSubmalar?: NormalizedPoint[]
 }
 
 export type FaceLandmarkQuality = {

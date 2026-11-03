@@ -1,5 +1,6 @@
+import { creatorStoryOptions } from './creator-stories'
 import { isVideoCta } from './video-branding'
-import { portraitEffectsLab } from './video-subject-studies'
+import { portraitEffectsLab, subjectStudies } from './video-subject-studies'
 import { videoSize } from './video-layout'
 import { expect, test } from 'bun:test'
 import { creatorSubjects, creatorSubjectPhotos, creatorVideoStyles, creatorStyleDirections, customVideoExample, validateCreatorPhotos } from './creator-catalog'
@@ -11,6 +12,7 @@ import { reportCategories } from './mock-report-data'
 import type { AnalysisPostInput } from './analysis-post'
 
 const input: AnalysisPostInput = { formatId: 'feature-audit', subject: 'Sample', hook: '', overallScore: '7.1', potentialScore: '8.2', strongestFeature: 'Eye area', strongestScore: '8.1', opportunityFeature: 'Jaw definition', opportunityScore: '6.2', recommendation: '', productFeatures: [], cta: '' }
+const existingStyles = creatorVideoStyles.filter(style => style.id !== 'documentary-studio')
 const compile = (script: string, recipe: VideoComposition['recipe']) => compileAnalysisVideo(scriptToPlan(script, 165), input, ['face'], 'brand', reportCategories, { recipe })
 
 test('Full HD validates both orientations and rejects small, invalid or excessive uploads', () => {
@@ -19,10 +21,10 @@ test('Full HD validates both orientations and rejects small, invalid or excessiv
 })
 
 test('all launch subjects and the custom draft compile in the five preset styles', () => {
-  expect(creatorSubjects.map(subject => subject.id)).toEqual(['marlon', 'johnson', 'trump', 'tom-holland', 'zendaya', 'clavicular'])
-  expect(new Set(creatorVideoStyles.map(style => style.id)).size).toBe(5)
+  expect(creatorSubjects.map(subject => subject.id)).toEqual(['marlon', 'v', 'jordan-barrett', 'tom-holland', 'zeta', 'clavicular', 'johnson', 'trump', 'zendaya'])
+  expect(new Set(creatorVideoStyles.map(style => style.id)).size).toBe(6)
   for (const example of [...creatorSubjects.map(subject => subject.example), customVideoExample('Custom')]) {
-    for (const style of creatorVideoStyles) {
+    for (const style of existingStyles) {
       const video = compileAnalysisVideo(scriptToPlan(example.script, example.readingPace), input, example.images?.map(image => image.id) ?? ['face'], 'brand', reportCategories, { recipe: style.id, directions: creatorStyleDirections(example, style.id) })
       expect(narrationText(video).replace(/\s+/g, ' ')).toBe(example.script.replace(/\s+/g, ' '))
       expect(video.recipe).toBe(style.id)
@@ -37,7 +39,7 @@ test('all styles retain measured recording identity, duration, pauses and exact 
   const words = scriptWords(initial.script!).map((word, index) => ({ text: word.text, startMs: 150 + index * 210, endMs: 280 + index * 210 }))
   const duration = words.at(-1)!.endMs + 700
   const source = alignVideoVoiceover(initial, { words }, duration)
-  for (const style of creatorVideoStyles) {
+  for (const style of existingStyles) {
     const target = retainVideoVoiceover(source, compile(script, style.id), duration)
     expect(target.timing).toBe('words')
     expect(target.durationMs).toBe(duration)
@@ -51,7 +53,7 @@ test('speech without measured words survives style changes without claiming meas
   const script = creatorSubjects[1].example.script
   const initial = compile(script, 'portrait-audit')
   const source = assembleSpeech(initial, initial.scenes.map(scene => ({ sceneId: scene.id, pcm: new Uint8Array(Math.ceil(scene.durationMs / 1000) * 48000) }))).composition
-  for (const style of creatorVideoStyles) {
+  for (const style of existingStyles) {
     const target = retainVideoVoiceover(source, compile(script, style.id), source.durationMs)
     expect(target.durationMs).toBe(source.durationMs)
     expect(target.timing).toBe('segments')
@@ -72,8 +74,7 @@ test('legacy projects migrate to the wider tall layout without changing their sc
 })
 
 test('last two styles have visual content on every beat and keep their distinct grammar', () => {
-  for (const subject of creatorSubjects.slice(0, 2)) {
-    const example = subject.example
+  for (const example of subjectStudies.slice(0, 2)) {
     const make = (recipe: VideoComposition['recipe']) => compileAnalysisVideo(scriptToPlan(example.script, example.readingPace), input, example.images!.map(image => image.id), 'brand', reportCategories, { recipe, directions: creatorStyleDirections(example, recipe) })
     const kinetic = make('minimal-explainer'), story = make('hybrid-story')
     expect(kinetic.scenes.filter(scene => scene.source.kind === 'explainer').every(scene => scene.graphic!.items.length > 0)).toBe(true)
@@ -91,7 +92,7 @@ test('last two styles have visual content on every beat and keep their distinct 
 
 
 test('authored lighting and reversible photo edits survive all five creator styles', () => {
-  for (const style of creatorVideoStyles) {
+  for (const style of existingStyles) {
     const e = portraitEffectsLab
     const composition = compileAnalysisVideo(scriptToPlan(e.script, e.readingPace), input, e.images!.map(image => image.id), 'brand', reportCategories, { recipe: style.id, directions: creatorStyleDirections(e, style.id) })
     expect(composition.scenes.some(scene => scene.photoStudy)).toBe(true)
@@ -116,8 +117,10 @@ test('authored feature boards stay focused without injecting generic report grid
 
 
 test('alternate angles remain available across presets and Clavicular uses all three views for narrated context', () => {
-  const example = creatorSubjects.find(subject => subject.id === 'clavicular')!.example
-  for (const style of creatorVideoStyles) {
+  const base = creatorSubjects.find(subject => subject.id === 'clavicular')!.example
+  const angled = ['front','three-quarter','profile'].map(view=>({id:`clavicular-studio-${view}-20261027`,name:view,dataUrl:`/creator/examples/clavicular-studio-20261027/clavicular-${view}-4k.jpg`,width:2160,height:3840,status:'ready' as const,landmarks:null}))
+  const example = {...base,images:angled,script:'Start with the whole face in the front portrait. Now compare the cheek and jaw contours. The side profile shows how head angle and camera distance affect the outline.'}
+  for (const style of existingStyles) {
     const video = compileAnalysisVideo(scriptToPlan(example.script, example.readingPace), input, example.images!.map(image => image.id), 'brand', reportCategories, { recipe: style.id, directions: creatorStyleDirections(example, style.id) })
     for (const photo of example.images!) expect(video.scenes.some(scene => scene.source.imageId === photo.id)).toBe(true)
     expect(video.scenes.some(scene => scene.profileStudy && /head angle|camera distance/i.test(scene.narration))).toBe(true)
@@ -148,11 +151,15 @@ test('recorded stories retain measured audio and saved photo scores across the e
     const story = read(`/creator/stories/${subject.id}/story.json`), saved = restoreProductionRecording(read(story.recording))
     const analysis = creatorSubjectAnalysisSchema.parse(read(story.analysis))
     expect(analysis.subjectId).toBe(subject.id)
+    const options=creatorStoryOptions(story)
+    expect(options[0].id).toBe(story.id)
+    const recording = ['johnson', 'trump', 'zendaya'].includes(subject.id) ? 'recording.json' : 'round3-recording.json'
+    expect(options[0].recording).toBe(`/creator/stories/${subject.id}/${recording}`)
     expect(analysis.source.imageId).toBe(story.images[0].id)
     expect(productionWritingBrief(saved.script, analysis).subjectAnalysis?.source.sha256).toBe(analysis.source.sha256)
     const reports = creatorAnalysisReports(analysis), actual = creatorAnalysisInput(input, subject.name, analysis)
     const clocks = new Set<string>(), recordings = new Set<string>()
-    for (const style of creatorVideoStyles) {
+    for (const style of existingStyles) {
       const directions = creatorStoryDirections(story, saved.script, actual, story.images, reports, style.id, 0)
       const video = compileProductionVideo(saved.script, actual, story.images, reports, style.id, saved.voice, 0, 'philtrum', 1, directions)
       expect(video.scenes.some(scene => scene.featureStudy?.layout === 'compare')).toBe(false)
@@ -194,14 +201,14 @@ test('new score stories bind narrated categories to saved scores and keep all fo
   const { creatorStoryOptions, creatorAnalysisInput, creatorAnalysisReports, creatorStoryDirections, creatorSubjectAnalysisSchema } = await import('./creator-stories')
   const { validateProductionScript, productionCut, compileProductionVideo, restoreProductionRecording, assembleProductionAudio } = await import('./video-production')
   const read = (url: string) => JSON.parse(readFileSync(`public${url}`, 'utf8'))
-  for (const subject of creatorSubjects) {
+  for (const subject of [{id:'marlon',name:'Marlon'},{id:'johnson',name:'The Rock'},{id:'trump',name:'Trump'},{id:'tom-holland',name:'Tom Holland'},{id:'zendaya',name:'Zendaya'},{id:'clavicular',name:'Clavicular'}]) {
     const manifest = read(`/creator/stories/${subject.id}/story.json`)
     const options = creatorStoryOptions(manifest)
-    expect(options).toHaveLength(2)
-    expect(options[0].recording).toBeTruthy()
-    expect(options[0].kind).toBe('score-walkthrough')
-    expect(options[1].kind).toBe('feature-story')
-    const next = options[0], draft = read(`/creator/stories/${subject.id}/report-story.json`)
+    expect(options[0].id).toBe(manifest.id)
+    expect(options.some(option => option.kind === 'feature-story')).toBe(true)
+    const next = options.find(option => option.kind === 'score-walkthrough')!
+    expect(next.recording).toBeTruthy()
+    const draft = read(`/creator/stories/${subject.id}/report-story.json`)
     expect(next.draft).toBeUndefined()
     const saved = restoreProductionRecording(read(next.recording!))
     expect(saved.clips.size).toBe(draft.script.cues.length)
@@ -223,7 +230,7 @@ test('new score stories bind narrated categories to saved scores and keep all fo
       expect(cut.cues.at(-1)!.sourceId).toBe('takeaway')
     }
     const signatures = new Set<string>()
-    for (const style of creatorVideoStyles) {
+    for (const style of existingStyles) {
       const story = { ...manifest, ...next }
       const directions = creatorStoryDirections(story, script, actual, manifest.images, reports, style.id, 0)
       const video = compileProductionVideo(script, actual, manifest.images, reports, style.id, draft.voice, 0, 'philtrum', 1, directions)
@@ -271,8 +278,94 @@ test('portrait score cues follow spoken numbers without revealing an unnamed cat
   expect(spokenScoreCallouts('His jaw gets nine.', reports, 'jaw')).toBeUndefined()
   expect(spokenScoreCallouts("Marlon's a seven in this report.", reports, 'overall')?.[0]).toMatchObject({label:'Overall',value:7,word:2})
   expect(spokenScoreCallouts('His PSL score is seven.', reports, 'overall')).toBeUndefined()
+  const current = [{ id:'jaw',title:'Jaw & chin',score:8 },{ id:'cheeks',title:'Cheek area',score:8 },{ id:'eyes',title:'Eye area',score:7.5 }] as typeof reportCategories
+  expect(spokenScoreCallouts('His jaw and cheek area each get eight out of ten.',current,'jaw')?.map(cue=>[cue.label,cue.value])).toEqual([['Cheek area',8],['Jaw & chin',8]])
+  expect(spokenScoreCallouts('The eye area gets seven point five out of ten.',current,'eyes')?.map(cue=>[cue.label,cue.value])).toEqual([['Eye area',7.5]])
+
   const scene = { scoreCallouts:cues, words:Array.from({length:13},(_,i)=>({text:'word',startMs:i*200,endMs:i*200+150})) } as VideoComposition['scenes'][number]
   expect(activeSpokenScore(scene,799)).toBeUndefined()
   expect(activeSpokenScore(scene,800)?.value).toBe(7)
   expect(activeSpokenScore(scene,2200)?.value).toBe(6)
+})
+
+
+test('approved editorial images and crop reveals survive all five styles without unspoken rulers', async () => {
+  const {readFileSync}=await import('node:fs')
+  const {creatorAnalysisInput,creatorAnalysisReports,creatorStoryDirections}=await import('./creator-stories')
+  const {restoreProductionRecording,compileProductionVideo,productionCut}=await import('./video-production')
+  const {showsFeatureMetric}=await import('./report-choreography')
+  const read=(url:string)=>JSON.parse(readFileSync(`public${url}`,'utf8'))
+  for(const subject of creatorSubjects.slice(0,6)){
+    const base=read(`/creator/stories/${subject.id}/story.json`),saved=restoreProductionRecording(read(base.recording)),analysis=read(base.analysis)
+    const images=base.imageIds.map((id:string)=>base.images.find((image:{id:string})=>image.id===id))
+    const reports=creatorAnalysisReports(analysis),actual=creatorAnalysisInput(input,subject.name,analysis)
+    expect(productionCut(saved.script,45).cues.map(cue=>cue.text)).toEqual(saved.script.cues.map(cue=>cue.text))
+    for(const style of existingStyles){
+      const directions=creatorStoryDirections(base,saved.script,actual,images,reports,style.id,0)
+      const comp=compileProductionVideo(saved.script,actual,images,reports,style.id,saved.voice,0,'philtrum',1,directions)
+      for(const scene of comp.scenes){
+        for (const action of scene.portraitProgram?.actions ?? []) {
+          expect(action.guide.includes(':')).toBe(true)
+          expect(action.label).not.toMatch(/[0-9]/)
+          expect(action.word).toBeLessThan(scene.portraitProgram!.wordCount)
+        }
+        if (['portrait','report'].includes(scene.source.kind)) expect(scene.portraitProgram).toBeDefined()
+        if (scene.source.kind==='portrait' && /profile|three-quarter/.test(scene.source.imageId??'')) {
+          expect(scene.profileStudy).toBeDefined()
+          expect(scene.featureStudy).toBeUndefined()
+          if (scene.portraitProgram) {
+            expect(scene.portraitProgram.view).toBeDefined()
+            expect(scene.portraitProgram.actions[0].word).toBe(0)
+            expect(scene.portraitProgram.actions.every(action=>action.labelWord!==undefined)).toBe(true)
+            expect(scene.portraitProgram.actions.every(action=>action.guide.startsWith('profile:'))).toBe(true)
+          }
+        }
+        expect(scene.photoStudy).toBeUndefined()
+        expect(scene.featureStudy?.edit??0).toBe(0)
+        if(scene.scoreCallouts?.length)expect(scene.source.imageId).toBe(analysis.source.imageId)
+        if(scene.source.kind==='portrait'&&!scene.scoreCallouts?.length)expect(showsFeatureMetric(scene)).toBe(false)
+      }
+      expect(comp.scenes.some(scene=>scene.portraitProgram?.actions.length)).toBe(true)
+      if(subject.id==='v'){
+        expect(comp.scenes.find(scene=>scene.narration.startsWith('Zooming'))?.portraitCrop).toBeDefined()
+        expect(comp.scenes.find(scene=>scene.narration.startsWith('Pull back'))?.portraitCrop).toBeUndefined()
+      }
+    }
+  }
+})
+
+test('Documentary Studio keeps the recorded story, real comparison bindings and spoken scores on one audio clock', async () => {
+  const { restoreProductionRecording, compileProductionVideo, assembleProductionAudio } = await import('./video-production')
+  const { creatorSubjectAnalysisSchema, creatorAnalysisInput, creatorAnalysisReports } = await import('./creator-stories')
+  const manifest = await Bun.file('public/creator/stories/clavicular/story.json').json()
+  const saved = restoreProductionRecording(await Bun.file('public' + manifest.recording).json())
+  const analysis = creatorSubjectAnalysisSchema.parse(await Bun.file('public' + manifest.analysis).json())
+  const actual = creatorAnalysisInput(input, 'Clavicular', analysis)
+  const film = compileProductionVideo(saved.script, actual, manifest.images, creatorAnalysisReports(analysis), 'documentary-studio', saved.voice)
+  const assembled = assembleProductionAudio(film, saved.clips)
+  expect(creatorVideoStyles.some(style => style.id === film.recipe)).toBe(true)
+  expect(assembled.composition.script).toEqual(saved.script)
+  expect(assembled.composition.voice).toEqual(saved.voice)
+  expect(assembled.composition.scenes.map(scene => scene.documentary?.kind)).toEqual(['stage', 'comparison', 'inspection', 'relations', 'conclusion'])
+  const comparison = assembled.composition.scenes[1]
+  expect([comparison.source.imageId, comparison.source.secondaryImageId]).toEqual(['clavicular-june-after-source', 'clavicular-june-before-source'])
+  expect(comparison.portraitProgram?.actions.every(action => action.feature === 'nose')).toBe(true)
+  expect(assembled.composition.scenes[2].scoreCallouts?.map(score => [score.label, score.value])).toEqual([['Nose', 7], ['Jaw & chin', 8]])
+  expect(assembled.composition.timing).toBe('words')
+  expect(assembled.file.size).toBeGreaterThan(1_000_000)
+  // A generated study or an unrelated before/after set must not become change evidence.
+  const unmatched = manifest.images.map((photo: any) => ({ ...photo, comparison: photo.comparison ? { ...photo.comparison, feature: 'brows' } : undefined }))
+  expect(compileProductionVideo(saved.script, actual, unmatched, creatorAnalysisReports(analysis), 'documentary-studio', saved.voice).scenes.some(scene => scene.documentary?.kind === 'comparison')).toBe(false)
+})
+
+test('media crop checks account for portrait extraction, feature crops and camera zoom', async () => {
+  const { mediaCropFit, requireUsableMedia } = await import('./media-asset')
+  expect(mediaCropFit({ width: 3840, height: 2160 }, { width: 1080, height: 1920 }, undefined, 1.5)).toMatchObject({ native: false, width: 810, height: 1440 })
+  expect(mediaCropFit({ width: 2160, height: 3840 }, { width: 1080, height: 1920 }, undefined, 2).native).toBe(true)
+  expect(mediaCropFit({ width: 2160, height: 3840 }, { width: 1080, height: 1920 }, { width: .2, height: .2 }).native).toBe(false)
+  expect(() => mediaCropFit({ width: 0, height: 2160 }, { width: 1080, height: 1920 })).toThrow()
+  const asset = { id: 'private-source', kind: 'image' as const, url: 'https://public.example.com/source.jpg', width: 2160, height: 3840, role: 'evidence' as const, scope: { kind: 'private' as const, ownerId: 'creator' }, source: { provider: 'upload', url: 'https://www.mogging.com/creator', license: 'Creator upload', usage: 'owned' as const } }
+  expect(() => requireUsableMedia(asset)).toThrow('authenticated creator URL')
+  expect(() => requireUsableMedia({ ...asset, url: '/api/creator/media/source' })).not.toThrow()
+  expect(() => requireUsableMedia({ ...asset, url: '/api/creator/media/source', source: { ...asset.source, usage: 'review' } })).toThrow('Review usage rights')
 })

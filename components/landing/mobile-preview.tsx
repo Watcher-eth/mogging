@@ -2,6 +2,7 @@ import dynamic from "next/dynamic";
 import { useTranslation } from "react-i18next";
 import type { resources } from "@/lib/i18n/catalogs";
 import Image from "next/image";
+import { SkeletonImage } from "@/components/ui/skeleton-image";
 import { AnimatePresence, useReducedMotion } from "motion/react";
 import * as m from "motion/react-m";
 import {
@@ -295,10 +296,9 @@ function ScanContent({ active, priority }: { active: boolean; priority: boolean 
         <p>{t("demo.anchoring")}</p>
       </header>
       <m.div className={styles.scannerCard}>
-        <Image
+        <SkeletonImage
           src={previewPortrait.src}
           alt={t("demo.scanAlt")}
-          fill
           sizes="242px"
           priority={priority}
           className={styles.photo}
@@ -441,10 +441,9 @@ function CameraContent({ active }: { active: boolean }) {
   return (
     <div className={styles.camera}>
       <div className={styles.cameraImage}>
-        <Image
+        <SkeletonImage
           src={previewPortrait.src}
           alt={t("demo.captureAlt")}
-          fill
           sizes="350px"
           className={styles.photo}
         />

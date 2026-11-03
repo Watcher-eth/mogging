@@ -1,14 +1,16 @@
+import { applyGlassInk } from './glass-overlay'
 import { originalVideoContext } from './video-theme'
 import { sampleCaptionAppearance, annotationAppearance } from './caption-contrast'
 import { z } from 'zod'
 import { scriptTokens, scriptVisualSeed } from './video-script'
 import { visualFeatures, decodeVisualBeat, type SemanticBeat } from './video-semantics'
-import { facialDetailGuides } from './facial-detail-guides'
+import { jawOutline, visibleFaceSides, facialDetailGuides } from './facial-detail-guides'
 import { faceMetricGuides, metricFaceOverlay, narratedFaceMetric, faceContourPaths, faceContourEdge } from './face-metric-guides'
 import { morphFaceOverlay } from './face-overlay-morph'
-import { revealContour, faceRegionContours, smoothContour } from './video-face-treatment'
+import { revealContour, faceRegionContours, glassSurface } from './video-face-treatment'
 import { profileGeometry, anglePaths, type ProfileStudy } from './video-profile'
 import { smoothMotion } from './video-layout'
+import type { VideoScene } from './video-composition'
 import type { GeneratorImage } from './content-generator'
 import type { ReportOverlay } from './report-overlay'
 import type { PortraitWarp } from './video-portrait-effects'
@@ -16,10 +18,18 @@ import { warpDestinationPoint } from './video-portrait-effects'
 
 export const portraitProgramSchema = z.object({
   wordCount: z.number().int().min(1).max(5000),
+  view: z.enum(['three-quarter','profile']).optional(),
   actions: z.array(z.object({ word: z.number().int().min(0), feature: z.enum(visualFeatures), guide: z.string().max(100),
-    labelWord: z.number().int().min(0).optional(), stroke: z.enum(['solid', 'dotted', 'dashed']).optional(), treatment: z.enum(['trace', 'bracket', 'callout', 'landmarks', 'inset']), label: z.string().max(45) }).strict()).min(1).max(96),
+    labelWord: z.number().int().min(0).optional(), stroke: z.enum(['solid', 'dotted', 'dashed']).optional(), treatment: z.enum(['trace', 'bracket', 'callout', 'landmarks', 'inset', 'arrow', 'highlight', 'scribble', 'note']), label: z.string().max(45) }).strict()).min(1).max(96),
 }).strict()
 export type PortraitProgram = z.infer<typeof portraitProgramSchema>
+const portraitTreatments: Record<string, PortraitProgram['actions'][number]['treatment'][]> = {
+  'portrait-audit': ['trace','arrow','highlight','bracket','landmarks'],
+  'report-led': ['callout','bracket','trace','arrow'],
+  'measurement-explainer': ['bracket','landmarks','arrow','trace'],
+  'feature-study': ['highlight','scribble','note','arrow','trace'],
+  'hybrid-story': ['callout','arrow','note','scribble','highlight'],
+}
 type Point = { x: number; y: number }
 type SubjectMask = {width:number;height:number;alpha:Uint8ClampedArray}
 const subjectMasks = new WeakMap<HTMLCanvasElement|HTMLImageElement,SubjectMask>()
@@ -28,8 +38,8 @@ function portraitSubjectMask(image?: HTMLCanvasElement|HTMLImageElement): Subjec
   const cached=subjectMasks.get(image);if(cached)return cached
   try {const canvas=document.createElement('canvas');canvas.width=64;canvas.height=96;const ctx=canvas.getContext('2d',{willReadFrequently:true})!;ctx.drawImage(image,0,0,64,96);const pixels=ctx.getImageData(0,0,64,96).data;const mask={width:64,height:96,alpha:Uint8ClampedArray.from({length:64*96},(_,i)=>pixels[i*4+3])};subjectMasks.set(image,mask);return mask}catch{return}
 }
-export type PreparedPortraitProgram = { mask?:SubjectMask; wordCount: number; actions: Array<PortraitProgram['actions'][number] & { overlay: ReportOverlay }>; width: number; height: number }
-export type PortraitActivity = { mask?:SubjectMask; from?: ReportOverlay; to: ReportOverlay; treatment: PortraitProgram['actions'][number]['treatment']; label: string; stroke?: 'solid' | 'dotted' | 'dashed'; focus?: ReportOverlay; previousFocus?: ReportOverlay; labelPhase: number; elapsedMs: number; phase: number; blend: number; first: boolean; reduced: boolean }
+export type PreparedPortraitProgram = { view?: 'three-quarter'|'profile'; mask?:SubjectMask; wordCount: number; actions: Array<PortraitProgram['actions'][number] & { overlay: ReportOverlay }>; width: number; height: number }
+export type PortraitActivity = { guide?: string; feature?: string; index?: number; view?: 'three-quarter'|'profile'; mask?:SubjectMask; from?: ReportOverlay; to: ReportOverlay; treatment: PortraitProgram['actions'][number]['treatment']; label: string; stroke?: 'solid' | 'dotted' | 'dashed'; focus?: ReportOverlay; previousFocus?: ReportOverlay; labelPhase: number; elapsedMs: number; phase: number; blend: number; first: boolean; reduced: boolean }
 const categories: Record<SemanticBeat['feature'], string[]> = { whole: ['face-shape', 'proportions'], philtrum: [], freckles: [], 'facial-hair': ['mouth', 'jaw'], ears: [], symmetry: ['symmetry'], dimorphism: ['jaw', 'brows', 'face-shape'], eyes: ['eyes'], brows: ['brows'], nose: ['nose'], lips: ['mouth'], jaw: ['jaw'], cheeks: ['cheeks'] }
 const customGuides: Partial<Record<SemanticBeat['feature'], string[]>> = {
   philtrum: ['philtrum:bracket', 'philtrum:axis', 'philtrum:lip'], freckles: ['skin:bridge', 'skin:left-cheek', 'skin:right-cheek'],
@@ -87,8 +97,7 @@ export function planPortraitProgram(text: string, feature: SemanticBeat['feature
   const litGuides = feature === 'nose' ? ['plane:nose', 'nose.bridge'] : feature === 'jaw' ? ['plane:chin', 'jaw.jaw-shape'] : ['plane:left-cheek', 'plane:right-cheek', 'cheeks.contour']
   const explicit = named && categories[feature].includes(named.category) ? [named] : []
   const choices = view !== 'front' ? guides : intent === 'lighting' ? litGuides : explicit.length ? explicit.flatMap(metric => relatedGuides(metric.id)) : guides.length ? guides : ['face.shape']
-  const styles = intent === 'lighting' ? ['trace', 'landmarks', 'callout', 'trace'] as const : format === 'measurement-explainer' ? ['bracket', 'trace', 'landmarks', 'callout'] as const
-    : format === 'feature-study' || format === 'hybrid-story' ? ['callout', 'trace', 'bracket', 'landmarks'] as const : ['trace', 'landmarks', 'callout', 'bracket'] as const
+  const styles: PortraitProgram['actions'][number]['treatment'][] = intent === 'lighting' ? ['trace','landmarks','callout'] : portraitTreatments[format] ?? portraitTreatments['portrait-audit']
   // Explicit feature words own focus changes; cadence fills the space between them.
   const locked = ['philtrum', 'freckles', 'facial-hair', 'ears'].includes(feature)
   const mentions = locked ? [] : words.flatMap((token, word) => {
@@ -126,26 +135,97 @@ export function planPortraitProgram(text: string, feature: SemanticBeat['feature
     }
     const metric = faceMetricGuides.find(metric => metric.id === guide)
     const regionLabel = guide.startsWith('plane:') ? guide.slice(6).replace('-', ' ') : undefined
-    const treatment = ['detail:brow-outline','eyes.shape','mouth.contour','nose.nostril-visibility'].includes(guide) && (Math.floor(seed/4) + index) % 3 === 0 ? 'inset' as const : guide.startsWith('detail:') ? 'trace' as const : styles[(seed + index) % styles.length]
+    const treatment = ['detail:brow-outline','eyes.shape','mouth.contour','nose.nostril-visibility'].includes(guide) && (Math.floor(seed/4) + index) % 3 === 0 ? 'inset' as const : styles[(seed + index) % styles.length]
     return { word, feature: localFeature, guide, labelWord: annotation?.labelWord, stroke: facialDetailGuides.find(detail => detail.id === guide)?.stroke ?? (['solid', 'dotted', 'dashed'] as const)[(seed + index) % 3], treatment, label: annotation?.label ?? regionLabel ?? metric?.label ?? (localFeature === 'whole' ? 'Face outline' : localFeature.replace('-', ' ')) }
   })
   return { wordCount: Math.max(1, words.length), actions }
 }
+// Editorial guides follow named features without adding inferred measurements.
+const editorialGuides: Record<string, { label: string; stroke?: 'solid' | 'dotted' | 'dashed' }> = {
+  'detail:jaw-outline': { label: 'Jawline' }, 'detail:jaw-frame': { label: 'Jawline frame' },
+  'detail:jaw-offset': { label: 'Bilateral jaw trace', stroke: 'dotted' }, 'detail:gonial': { label: 'Gonial angle' },
+  'detail:cheeks': { label: 'Cheekbone arcs' }, 'detail:cheek-frame': { label: 'Cheekbone frame' },
+  'detail:under-cheekbones': { label: 'Under cheekbone', stroke: 'dashed' }, 'detail:cheek-levels': { label: 'Cheekbone / lower contour', stroke: 'dotted' },
+  'detail:eyes': { label: 'Eye contours' }, 'detail:eye-left': { label: 'Eye contour' }, 'detail:eye-right': { label: 'Eye contour' },
+  'detail:eye-brow-left': { label: 'Eye and brow' }, 'detail:eye-brow-right': { label: 'Eye and brow' },
+  'detail:brow-upper': { label: 'Brow line' }, 'detail:brow-outline': { label: 'Brow contours' },
+  'detail:brow-outline-left': { label: 'Brow contour' }, 'detail:brow-outline-right': { label: 'Brow contour' },
+  'detail:nose-axis': { label: 'Nose bridge' }, 'detail:nose-base': { label: 'Nostril base' },
+  'philtrum:lip': { label: 'Lip contour' }, 'detail:lip-bracket': { label: 'Lip frame' },
+}
+const editorialFeatures: Array<{ pattern: RegExp; feature: SemanticBeat['feature']; guides: string[] }> = [
+  { pattern: /^(?:jaw|jawline|gonial)$/, feature: 'jaw', guides: ['detail:jaw-outline','detail:jaw-frame','detail:gonial','detail:jaw-offset'] },
+  { pattern: /^chin$/, feature: 'jaw', guides: ['detail:jaw-frame','detail:jaw-outline'] },
+  { pattern: /^(?:cheek|cheeks|cheekbone|cheekbones)$/, feature: 'cheeks', guides: ['detail:cheeks','detail:cheek-frame','detail:under-cheekbones','detail:cheek-levels'] },
+  { pattern: /^(?:eye|eyes|gaze|glance)$/, feature: 'eyes', guides: ['detail:eyes','detail:eye-left','detail:eye-right','detail:eye-brow-left','detail:eye-brow-right'] },
+  { pattern: /^(?:brow|brows|eyebrow|eyebrows)$/, feature: 'brows', guides: ['detail:brow-upper','detail:brow-outline','detail:brow-outline-left','detail:brow-outline-right'] },
+  { pattern: /^(?:nose|bridge|tip)$/, feature: 'nose', guides: ['detail:nose-axis'] },
+  { pattern: /^(?:nostril|nostrils)$/, feature: 'nose', guides: ['detail:nose-base'] },
+  { pattern: /^(?:lip|lips|mouth)$/, feature: 'lips', guides: ['philtrum:lip','detail:lip-bracket'] },
+]
+export function narratedPortraitProgram(text: string, format: string, variant = 0, fallbackFeature = 'whole'): PortraitProgram {
+  const words = scriptTokens(text), seed = scriptVisualSeed(text,format) + variant
+  const treatments = portraitTreatments[format] ?? portraitTreatments['portrait-audit']
+  const mentions = words.flatMap((token,word) => {
+    const named = editorialFeatures.find(item=>item.pattern.test(token.text.toLowerCase().replace(/[^a-z]/g,'')))
+    return named ? [{word,...named}] : []
+  })
+  const fallback = editorialFeatures.find(item=>item.feature === (fallbackFeature === 'mouth' ? 'lips' : fallbackFeature))
+  const starts = [...new Set([0,...mentions.map(item=>item.word),...Array.from({length:Math.ceil(words.length/8)},(_,i)=>i*8)])].sort((a,b)=>a-b)
+  const actions: PortraitProgram['actions'] = starts.map((word,index)=>{
+    const named = mentions.findLast(item=>item.word<=word) ?? mentions[0] ?? fallback
+    const feature = named?.feature ?? 'whole'
+    const local = words.slice(word,word+8).map(token=>token.text).join(' ')
+    const guides = feature==='jaw' && /\b(?:gonial|jaw angle)\b/i.test(local) ? ['detail:gonial'] : named?.guides ?? ['face:outline']
+    const guide = guides[(seed+index)%guides.length], detail = editorialGuides[guide]
+    return {word,labelWord:word,feature,guide,label:detail?.label ?? 'Face outline',stroke:detail?.stroke ?? 'solid',treatment:treatments[(seed+index)%treatments.length]}
+  })
+  return {wordCount:Math.max(1,words.length),actions}
+}
+
+export type PortraitProgramRun = {program:PortraitProgram;startMs:number;durationMs:number;words:Array<{startMs:number}>}
+// A photograph owns one annotation clock, even when captions split it into scenes.
+export function portraitProgramRuns(scenes: readonly VideoScene[]): Map<string,PortraitProgramRun> {
+  const runs = new Map<string,PortraitProgramRun>()
+  let run:PortraitProgramRun|undefined, previous:VideoScene|undefined
+  for(const scene of scenes) {
+    const program=scene.portraitProgram
+    const same = run && previous && scene.source.kind===previous.source.kind && scene.source.imageId===previous.source.imageId
+      && (scene.source.kind!=='report'||scene.source.categoryId===previous.source.categoryId&&scene.cueId===previous.cueId)
+      && JSON.stringify(scene.portraitCrop)===JSON.stringify(previous.portraitCrop) && program?.view===previous.portraitProgram?.view
+    if(!program || !['portrait','report'].includes(scene.source.kind)){run=undefined;previous=scene;continue}
+    if(!same) run={program:{...program,wordCount:0,actions:[]},startMs:scene.startMs,durationMs:0,words:[]}
+    const current=run!, offset=current.program.wordCount, count=Math.max(program.wordCount,scene.words?.length??0)
+    current.program.actions.push(...program.actions.map(action=>({...action,word:action.word+offset,labelWord:action.labelWord===undefined?undefined:action.labelWord+offset})))
+    current.words.push(...Array.from({length:count},(_,i)=>({startMs:scene.startMs-current.startMs+(scene.words?.[i]?.startMs??i/count*scene.durationMs)})))
+    current.program.wordCount+=count
+    current.durationMs=scene.startMs+scene.durationMs-current.startMs
+    runs.set(scene.id,current);previous=scene
+  }
+  return runs
+}
+
 function customPaths(source: GeneratorImage, guide: string): Point[][] {
   const face = source.landmarks, a = face?.anchors
   if (!face || !a || face.confidence < .58) return []
+  const detail = facialDetailGuides.find(detail => detail.id === guide.replace('detail:', 'detail.'))
+  if (detail && guide.startsWith('detail:')) return detail.paths(face)
+  if (guide === 'face:outline') return faceContourPaths(face, 'faceOutline')
+  if (guide === 'detail:jaw-outline') return jawOutline(face)
+  if (guide === 'detail:cheeks') return facialDetailGuides.find(guide => guide.id === 'detail.cheekbones')!.paths(face)
+  if (guide === 'detail:nose-base') return faceContourPaths(face, 'noseBase')
   if (guide.startsWith('plane:')) return faceRegionContours(face, 'overall').filter(region => region.id === guide.slice(6)).map(region => [...region.points, region.points[0]])
   const line = (...points: Array<Point | undefined>) => points.every(Boolean) ? [points as Point[]] : []
   const nose = face.contours?.noseBase?.[3] ?? a.noseTip
   const upper = a.upperLip ?? a.mouthCenter
   const span = a.leftPupil && a.rightPupil ? Math.abs(a.rightPupil.x - a.leftPupil.x) : .2
-  const sides = guide.endsWith('-left') ? ['left'] as const : guide.endsWith('-right') ? ['right'] as const : ['left','right'] as const
+  const sides = (guide.endsWith('-left') ? ['left'] as const : guide.endsWith('-right') ? ['right'] as const : ['left','right'] as const).filter(side=>visibleFaceSides(face).includes(side))
   // A five-point brow is an open upper edge, not a complete eyebrow polygon.
   const detectedPath = (points: Point[] | undefined) => points && points.length>=3 ? [points] : []
   if (guide.startsWith('detail:brow-outline')) return sides.flatMap(side=>faceContourPaths(face,side==='left'?'leftBrow':'rightBrow'))
   if (guide === 'detail:brow-upper') return sides.flatMap(side=>faceContourEdge(face,side==='left'?'leftBrow':'rightBrow',true))
   if (guide.startsWith('detail:eye-brow')) return sides.flatMap(side=>[...detectedPath(face.contours?.[side==='left'?'leftEye':'rightEye']),...detectedPath(face.contours?.[side==='left'?'leftBrow':'rightBrow'])])
-  if (guide === 'detail:eye-left' || guide === 'detail:eye-right') return sides.flatMap(side=>detectedPath(face.contours?.[side==='left'?'leftEye':'rightEye']))
+  if (guide === 'detail:eyes' || guide === 'detail:eye-left' || guide === 'detail:eye-right') return sides.flatMap(side=>detectedPath(face.contours?.[side==='left'?'leftEye':'rightEye']))
   if (guide.startsWith('detail:jaw-')) {
     const chin=a.chin
     if(!chin)return []
@@ -195,28 +275,31 @@ export function preparePortraitProgram(program: PortraitProgram, source: Generat
         .map(guide => ({ guide, overlay: metricFaceOverlay(base, source, guide.id) })).find(item => item.overlay.primitives.length)
       if (fallback) { overlay = fallback.overlay; resolved = { ...action, guide: fallback.guide.id, label: fallback.guide.label } }
     }
-    const curved = /^detail\.(?:jaw-offset|under-eyes|cheekbones|eye-creases|mouth-creases|smile-lines)$/.test(action.guide) || /(?:contour|shape|arch|tail|upper-lid|^plane:|^profile:|detail:brow-outline|detail:brow-upper|detail:eye|detail:jaw-)/.test(action.guide)
-    if (curved) overlay = { ...overlay, primitives: overlay.primitives.map((primitive, index) => {
-      if (primitive.kind !== 'polyline' || primitive.pixelPoints.length < 3 || action.guide === 'profile:angle') return primitive
-      const points = primitive.pixelPoints, closed = points[0].x === points.at(-1)!.x && points[0].y === points.at(-1)!.y
-      return { ...primitive, pixelPoints: smoothContour(closed ? points.slice(0, -1) : points, closed) }
-    }) }
     return { ...resolved, overlay }
   }).filter(action => action.overlay.primitives.length)
-  return { mask:portraitSubjectMask(image), wordCount: program.wordCount, width: source.width, height: source.height, actions }
+  return { view:program.view, mask:portraitSubjectMask(image), wordCount: program.wordCount, width: source.width, height: source.height, actions }
 }
-const overlayDwellMs = 1800
-const overlayTailMs = 1500
+export const portraitOverlayMinimumMs = 2000
+const overlayRevealMs = 250
+export const portraitOverlayWindowMs = portraitOverlayMinimumMs + overlayRevealMs
+export function portraitProgramSchedule(program: PreparedPortraitProgram, durationMs: number, words?: Array<{startMs:number}>) {
+  const scheduled: Array<{action:PreparedPortraitProgram['actions'][number];start:number}> = []
+  const interval=portraitOverlayWindowMs, count=Math.max(1,words?.length??program.wordCount)
+  if(durationMs<interval)return scheduled
+  const cues=program.actions.map((action,index)=>({action,start:index===0?0:words?.[action.word]?.startMs??action.word/count*durationMs}))
+  for(const [index,cue] of cues.entries()) {
+    const previous=scheduled.at(-1)
+    // A decorative repeat must not delay the next named anatomical feature.
+    const change=previous && cue.action.feature===previous.action.feature ? cues.find((next,i)=>i>index&&next.action.feature!==cue.action.feature) : undefined
+    if(change && change.start-cue.start<interval && durationMs-change.start>=interval)continue
+    if(!previous || cue.start-previous.start>=interval && durationMs-cue.start>=interval)scheduled.push(cue)
+  }
+  return scheduled
+}
 
 export function samplePortraitProgram(program: PreparedPortraitProgram, timeMs: number, durationMs: number, words?: Array<{ startMs: number }>, reduced = false, previous?: PreparedPortraitProgram): PortraitActivity | undefined {
   const count = Math.max(1, words?.length ?? program.wordCount)
-  // Coalesce crowded word cues on the actual recording clock. Keep a readable
-  // 1.8-second dwell and absorb short tails into the preceding overlay.
-  const scheduled: Array<{ action: PreparedPortraitProgram['actions'][number]; start: number }> = []
-  for (const action of program.actions) {
-    const start = words?.[action.word]?.startMs ?? action.word / count * durationMs
-    if (!scheduled.length || start - scheduled.at(-1)!.start >= overlayDwellMs && durationMs - start >= overlayTailMs) scheduled.push({ action, start })
-  }
+  const scheduled = portraitProgramSchedule(program,durationMs,words)
   const actions = scheduled.map(item => item.action), starts = scheduled.map(item => item.start)
   if (!actions.length) return
   const index = Math.max(0, starts.findLastIndex(start => start <= timeMs)), action = actions[index]
@@ -225,9 +308,9 @@ export function samplePortraitProgram(program: PreparedPortraitProgram, timeMs: 
   const prior = actions[index - 1] ?? previous?.actions.at(-1)
   const from = prior && adjacentPortraitGuides(prior, action, program.width, program.height) ? prior.overlay : undefined
   const labelStart = action.labelWord === undefined ? start : words?.[action.labelWord]?.startMs ?? action.labelWord / count * durationMs
-  const labelPhase = reduced ? 1 : Math.max(0, Math.min(1, (timeMs - Math.max(start + 320, labelStart)) / Math.min(650, 45 * action.label.length + 120)))
-  return { mask:program.mask, focus: program.actions[0]?.overlay, previousFocus: previous?.actions[0]?.overlay, labelPhase, elapsedMs: Math.max(0,timeMs-start), from, to: action.overlay, label: action.label, treatment: action.treatment, stroke: action.stroke, phase,
-    blend: reduced ? 1 : smoothMotion((timeMs - start) / Math.min(420, (end - start) * .4)), first: !from, reduced }
+  const labelPhase = reduced ? 1 : Math.max(0, Math.min(1, (timeMs - Math.max(start, labelStart)) / overlayRevealMs))
+  return { guide:action.guide, feature:action.feature, index, view:program.view, mask:program.mask, focus: action.overlay, previousFocus: previous?.actions[0]?.overlay, labelPhase, elapsedMs: Math.max(0,timeMs-start), from, to: action.overlay, label: action.label, treatment: action.treatment, stroke: action.stroke, phase,
+    blend: reduced ? 1 : smoothMotion((timeMs - start) / overlayRevealMs), first: !from, reduced }
 }
 // Morph only a nearby contour within the same anatomical family and visual
 // treatment. A different instrument or feature gets its own point-to-line reveal.
@@ -242,76 +325,90 @@ function adjacentPortraitGuides(from: PreparedPortraitProgram['actions'][number]
 }
 export function drawPortraitActivity(ctx: CanvasRenderingContext2D, activity: PortraitActivity, width: number, height: number, warp?: PortraitWarp) {
   ctx = originalVideoContext(ctx)
-  const geometry = activity.from ? morphFaceOverlay(activity.from, activity.to, activity.blend) : activity.to
-  const paths = geometry.primitives.flatMap(primitive => primitive.kind === 'polyline' ? [primitive.pixelPoints] : [])
-  if (!paths.length) return
-  const move = (p: Point) => { if (!warp) return p; const q = warpDestinationPoint({ x: p.x / width, y: p.y / height }, warp); return { x: q.x * width, y: q.y * height } }
-  const transform = ctx.getTransform(), unit = 1 / Math.max(.01, Math.hypot(transform.a, transform.b))
-  const phase = activity.reduced ? 1 : activity.phase
-  // Work in photograph coordinates, but keep annotations inside the visible
-  // video safe area when the image extends far outside the close-up viewport.
-  const mapped = Number.isFinite(transform.e) && Number.isFinite(transform.d) && transform.a > 0 && transform.d > 0
-  const safe = mapped ? { left: Math.max(0,(64-transform.e)/transform.a), right: Math.min(width,(1016-transform.e)/transform.a), top: Math.max(0,(540-transform.f)/transform.d), bottom: Math.min(height,(1960-transform.f)/transform.d) } : {left:0,right:width,top:0,bottom:height}
-  ctx.save(); ctx.globalAlpha *= activity.reduced || activity.from ? 1 : smoothMotion((1-phase)/.07); ctx.strokeStyle = '#fff'; ctx.fillStyle = '#fff'; ctx.lineWidth = 2 * unit; ctx.lineCap = 'round'; ctx.lineJoin = 'round'; ctx.shadowColor = '#0008'; ctx.shadowBlur = 2 * unit
-  const solid = !activity.stroke || activity.stroke === 'solid'
-  ctx.setLineDash(activity.stroke === 'dotted' ? [.7 * unit, 6 * unit] : activity.stroke === 'dashed' ? [10 * unit, 7 * unit] : [])
-  for (const [index, points] of paths.entries()) {
-    const amount = activity.reduced || !activity.first ? 1 : smoothMotion((activity.elapsedMs - index * 110) / 460)
-    const path = revealContour(points.map(move), amount)
-    ctx.beginPath(); path.forEach((point, i) => i ? ctx.lineTo(point.x, point.y) : ctx.moveTo(point.x, point.y))
-    if (solid) {
-      ctx.save(); ctx.strokeStyle = '#ffffff38'; ctx.lineWidth = 4 * unit; ctx.shadowColor = '#ffffff40'; ctx.shadowBlur = 3 * unit; ctx.stroke(); ctx.restore()
-      ctx.strokeStyle = '#ffffffe6'; ctx.lineWidth = 1.8 * unit
+  const geometry = activity.from ? morphFaceOverlay(activity.from,activity.to,activity.blend) : activity.to
+  const move=(p:Point)=>{if(!warp)return p;const q=warpDestinationPoint({x:p.x/width,y:p.y/height},warp);return{x:q.x*width,y:q.y*height}}
+  const paths=geometry.primitives.flatMap(p=>p.kind==='polyline'?[p.pixelPoints.map(move)]:[])
+  if(!paths.length)return
+  const transform=ctx.getTransform(),unit=1/Math.max(.01,Math.hypot(transform.a,transform.b))
+  const mapped=Number.isFinite(transform.e)&&Number.isFinite(transform.d)&&transform.a>0&&transform.d>0
+  const safe=mapped?{left:Math.max(0,(120-transform.e)/transform.a),right:Math.min(width,(1016-transform.e)/transform.a),top:Math.max(0,(540-transform.f)/transform.d),bottom:Math.min(height,(1960-transform.f)/transform.d)}:{left:0,right:width,top:0,bottom:height}
+  if(safe.right<=safe.left || safe.bottom<=safe.top)return
+  const reveal=activity.reduced?1:smoothMotion(activity.elapsedMs/overlayRevealMs)
+  const points=paths.flat(),left=Math.min(...points.map(p=>p.x)),right=Math.max(...points.map(p=>p.x)),top=Math.min(...points.map(p=>p.y)),bottom=Math.max(...points.map(p=>p.y))
+  ctx.save();ctx.lineCap='round';ctx.lineJoin='round';ctx.shadowBlur=0
+  const line=(points:Point[],weight=activity.view?4.2:3.4)=>{
+    ctx.beginPath();points.forEach((p,i)=>i?ctx.lineTo(p.x,p.y):ctx.moveTo(p.x,p.y))
+    applyGlassInk(ctx,unit,weight);ctx.stroke()
+  }
+  ctx.setLineDash(activity.stroke==='dotted'?[1*unit,7*unit]:activity.stroke==='dashed'?[12*unit,8*unit]:[])
+  for(const path of paths) {
+    const visible=revealContour(path,reveal)
+    if(activity.treatment==='highlight') {
+      ctx.beginPath();visible.forEach((p,i)=>i?ctx.lineTo(p.x,p.y):ctx.moveTo(p.x,p.y))
+      ctx.strokeStyle='#fff1c733';ctx.lineWidth=18*unit;ctx.stroke()
     }
-    ctx.stroke()
-    // A travelling registered marker develops the guide after the geometry handoff.
-    const revealed = revealContour(points.map(move), .08 + .92 * phase), marker = revealed.at(-1)
-    if (marker && amount > 0 && activity.treatment === 'landmarks') { ctx.beginPath(); ctx.arc(marker.x, marker.y, 3.2 * unit, 0, Math.PI * 2); ctx.fill() }
+    line(visible)
   }
   ctx.setLineDash([])
-  const points = paths.flat().map(move), left = Math.min(...points.map(p => p.x)), right = Math.max(...points.map(p => p.x)), top = Math.min(...points.map(p => p.y)), bottom = Math.max(...points.map(p => p.y))
-  if (activity.treatment === 'landmarks') {
-    for (const [i, point] of [points[0], points.at(-1)!].entries()) { ctx.save(); ctx.globalAlpha *= smoothMotion((phase - i * .15) / .4); ctx.beginPath(); ctx.arc(point.x, point.y, 4 * unit, 0, Math.PI * 2); ctx.stroke(); ctx.restore() }
-  } else if (activity.treatment === 'inset') {
-    // Redraw actual registered contours in a compact specimen panel; no generic eyebrow icon.
-    const panelWidth = Math.min((safe.right-safe.left)*.9,400*unit), panelHeight=110*unit
-    const x=Math.max(safe.left+12*unit,Math.min(safe.right-panelWidth-12*unit,(left+right-panelWidth)/2)), y=Math.max(safe.top+48*unit,Math.min(safe.bottom-panelHeight-16*unit,top-panelHeight-38*unit))
-    ctx.save(); ctx.globalAlpha *= smoothMotion(phase/.25); ctx.shadowBlur=0
-    ctx.fillStyle='#20202045';ctx.strokeStyle='#ffffff99';ctx.lineWidth=1.2*unit
-    ctx.beginPath();ctx.roundRect(x,y,panelWidth,panelHeight,12*unit);ctx.fill();ctx.stroke()
-    const scale=Math.min((panelWidth-32*unit)/Math.max(1,right-left),(panelHeight-36*unit)/Math.max(1,bottom-top))
-    ctx.setLineDash([1*unit,4*unit]);ctx.strokeStyle='#fff'
-    for (const path of paths) {
-      const reveal=revealContour(path.map(move),smoothMotion((phase-.15)/.4))
-      ctx.beginPath();reveal.forEach((p,i)=>{const px=x+panelWidth/2+(p.x-(left+right)/2)*scale,py=y+panelHeight/2+(p.y-(top+bottom)/2)*scale;i?ctx.lineTo(px,py):ctx.moveTo(px,py)});ctx.stroke()
+  ctx.save();ctx.globalAlpha*=reveal
+  if(activity.treatment==='bracket') {
+    const pad=14*unit,length=24*unit,l=left-pad,r=right+pad,t=top-pad,b=bottom+pad
+    for(const [x,y,sx,sy] of [[l,t,1,1],[r,t,-1,1],[l,b,1,-1],[r,b,-1,-1]]) line([{x:x+sx*length,y},{x,y},{x,y:y+sy*length}],2.6)
+  } else if(activity.treatment==='scribble') {
+    const cx=(left+right)/2,cy=(top+bottom)/2,rx=(right-left)/2+20*unit,ry=(bottom-top)/2+18*unit
+    line(Array.from({length:70},(_,i)=>{const a=i/69*Math.PI*2.12,jitter=1+Math.sin(i*1.7)*.024;return{x:cx+Math.cos(a)*rx*jitter,y:cy+Math.sin(a)*ry*jitter}}),2.5)
+  } else if(activity.treatment==='landmarks') {
+    for(const path of paths)for(const point of [path[0],path[Math.floor(path.length/2)],path.at(-1)!]) {
+      ctx.beginPath();ctx.arc(point.x,point.y,5*unit,0,Math.PI*2);applyGlassInk(ctx,unit);ctx.fill()
     }
-    ctx.restore()
+  } else if(activity.treatment==='inset') {
+    const panelWidth=Math.min((safe.right-safe.left)*.9,400*unit),panelHeight=110*unit
+    const x=Math.max(safe.left+12*unit,Math.min(safe.right-panelWidth-12*unit,(left+right-panelWidth)/2)),y=Math.max(safe.top+48*unit,Math.min(safe.bottom-panelHeight-16*unit,top-panelHeight-38*unit))
+    glassSurface(ctx,x,y,panelWidth,panelHeight,12*unit)
+    const scale=Math.min((panelWidth-32*unit)/Math.max(1,right-left),(panelHeight-36*unit)/Math.max(1,bottom-top))
+    for(const path of paths)line(path.map(p=>({x:x+panelWidth/2+(p.x-(left+right)/2)*scale,y:y+panelHeight/2+(p.y-(top+bottom)/2)*scale})),2.5)
   }
-  // One short annotation per overlay; full text determines placement before any
-  // letters appear. Revealing characters never recenters or rewraps the label.
-  const label = activity.label.toUpperCase()
-  ctx.font=`400 ${27*unit}px "SFMono-Regular",Consolas,monospace`;ctx.textAlign='left';ctx.shadowColor='#0008';ctx.shadowBlur=2*unit
-  const labelLines=portraitLabelLines(ctx,label,Math.min((safe.right-safe.left)*.9,330*unit))
-  const labelWidth=Math.max(...labelLines.map(line=>ctx.measureText(line).width))
-  const onRight=(left+right)/2<width/2
-  let labelX=onRight?right+22*unit:left-labelWidth-22*unit
-  let labelY=(top+bottom)/2
-  if (labelX<safe.left+16*unit || labelX+labelWidth>safe.right-16*unit || activity.treatment==='inset') {
+  ctx.restore()
+  if(!activity.label.trim()){ctx.restore();return}
+  const handwritten=activity.treatment==='note'||activity.treatment==='scribble',label=handwritten?activity.label:activity.label.toUpperCase()
+  const fontSize=36*unit,lineHeight=42*unit
+  ctx.font=handwritten?`italic 500 ${fontSize}px "Mogging Share",sans-serif`:`400 ${fontSize}px "SFMono-Regular",Consolas,monospace`
+  ctx.textAlign='left';ctx.textBaseline='alphabetic'
+  const labelLines=portraitLabelLines(ctx,label,Math.min((safe.right-safe.left)*.9,390*unit))
+  const labelWidth=Math.max(...labelLines.map(line=>ctx.measureText(line).width)),onRight=(left+right)/2<width/2
+  let labelX=onRight?right+26*unit:left-labelWidth-26*unit,labelY=(top+bottom)/2
+  if(labelX<safe.left+16*unit||labelX+labelWidth>safe.right-16*unit||activity.treatment==='inset') {
     labelX=Math.max(safe.left+16*unit,Math.min(safe.right-labelWidth-16*unit,(left+right-labelWidth)/2))
-    labelY=Math.max(32*unit,top-24*unit)
-    if(activity.treatment==='inset') labelY=Math.max(32*unit,top-162*unit)
+    labelY=top-(activity.treatment==='inset'?162:30)*unit
   }
-  labelY=Math.max(safe.top+32*unit,Math.min(safe.bottom-labelLines.length*32*unit,labelY))
-  const placed=placePortraitAnnotation({x:labelX,y:labelY-27*unit,width:labelWidth,height:labelLines.length*32*unit},safe,unit,width,height,activity.mask)
-  labelX=placed.x;labelY=placed.y+27*unit
-  const labelFrame=placed
-  ctx.fillStyle=portraitAnnotationInk(ctx,labelFrame,activity.to.faceBoundary?.map(move))
-  ctx.shadowColor=ctx.fillStyle==='#171717'?'#ffffffb3':'#000b'
+  labelY=Math.max(safe.top+fontSize,Math.min(safe.bottom-labelLines.length*lineHeight,labelY))
+  const placed=placePortraitAnnotation({x:labelX,y:labelY-fontSize,width:labelWidth,height:labelLines.length*lineHeight},safe,unit,width,height,activity.mask)
+  labelX=placed.x;labelY=placed.y+fontSize
+  if(activity.treatment==='arrow'||activity.treatment==='callout') {
+    const center={x:placed.x+placed.width/2,y:placed.y+placed.height/2}
+    const target=points.reduce((best,p)=>Math.hypot(p.x-center.x,p.y-center.y)<Math.hypot(best.x-center.x,best.y-center.y)?p:best)
+    const origin={x:Math.max(placed.x,Math.min(placed.x+placed.width,target.x)),y:Math.max(placed.y,Math.min(placed.y+placed.height,target.y))}
+    if(Math.hypot(target.x-origin.x,target.y-origin.y)>18*unit) {
+      ctx.save();ctx.globalAlpha*=reveal
+      const elbow={x:(origin.x+target.x)/2,y:origin.y}
+      line([origin,elbow,target],2.5)
+      const angle=Math.atan2(target.y-elbow.y,target.x-elbow.x),size=11*unit
+      if(activity.treatment==='arrow') line([{x:target.x-size*Math.cos(angle-.5),y:target.y-size*Math.sin(angle-.5)},target,{x:target.x-size*Math.cos(angle+.5),y:target.y-size*Math.sin(angle+.5)}],2.5)
+      else {ctx.beginPath();ctx.arc(target.x,target.y,4*unit,0,Math.PI*2);ctx.fillStyle='#fff';ctx.fill()}
+      ctx.restore()
+    }
+  }
+  ctx.fillStyle=portraitAnnotationInk(ctx,placed,activity.to.faceBoundary?.map(move));ctx.shadowColor='#ffffff66';ctx.shadowBlur=4*unit
   let letters=0
   for(const [index,line] of labelLines.entries()) {
-    const total=labelLines.join('').length, progress=activity.labelPhase*(total+3)
-    drawPortraitLabel(ctx,line,labelX,labelY+index*32*unit,(progress-letters)/(line.length+3),activity.reduced)
-    letters+=line.length
+    const progress=activity.labelPhase*(labelLines.join('').length+3)
+    drawPortraitLabel(ctx,line,labelX,labelY+index*lineHeight,(progress-letters)/(line.length+3),activity.reduced);letters+=line.length
+  }
+  if(handwritten) {
+    ctx.save();ctx.globalAlpha*=reveal
+    const y=labelY+(labelLines.length-1)*lineHeight+9*unit
+    line(Array.from({length:16},(_,i)=>({x:labelX+labelWidth*i/15,y:y+Math.sin(i*.8)*2*unit})),2)
+    ctx.restore()
   }
   ctx.restore()
 }

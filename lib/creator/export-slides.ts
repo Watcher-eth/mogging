@@ -44,7 +44,7 @@ async function encodeMp4(args: RenderArgs, prepared: PreparedCanvas, onProgress?
   return encodeCanvasMp4(prepared.canvas, time => drawSlideFrame(prepared.ctx, args.slide, prepared.image, prepared.overlay, args.width, args.height, time, prepared.brand), args.slide.templateId === 'cta' ? REVEAL_DURATION_MS : 4000, onProgress)
 }
 
-export async function encodeCanvasMp4(canvas: HTMLCanvasElement, drawFrame: (timeMs: number) => void, durationMs: number, onProgress?: (progress: number) => void, signal?: AbortSignal, audio?: AudioBuffer) {
+export async function encodeCanvasMp4(canvas: HTMLCanvasElement, drawFrame: (timeMs: number) => void | Promise<void>, durationMs: number, onProgress?: (progress: number) => void, signal?: AbortSignal, audio?: AudioBuffer) {
   signal?.throwIfAborted()
   if (typeof VideoEncoder === 'undefined' || typeof VideoFrame === 'undefined') throw new Error('Video export is not supported in this browser. Open this page in an up-to-date Safari or Chrome browser and try again.')
   const frameRate = 30
@@ -80,7 +80,7 @@ export async function encodeCanvasMp4(canvas: HTMLCanvasElement, drawFrame: (tim
     for (let index = 0; index < frameCount; index += 1) {
       signal?.throwIfAborted()
       if (encoderError) throw encoderError
-      drawFrame(index / frameRate * 1000)
+      await drawFrame(index / frameRate * 1000)
       const frame = new VideoFrame(canvas, { timestamp: Math.round(index * frameDuration), duration: Math.round(frameDuration) })
       try { encoder.encode(frame, { keyFrame: index % (frameRate * 2) === 0 }) } finally { frame.close() }
       if (audio && audioEncoder) {

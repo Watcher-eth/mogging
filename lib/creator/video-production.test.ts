@@ -52,7 +52,7 @@ test('section identity and approved words survive all visual styles and alternat
     const cta = video.scenes.find(scene => scene.cueId === 'cta')!
     expect(cta.source.kind).toBe('portrait')
     expect(cta.source.overlay).toBe('none')
-    expect(cta.portraitProgram).toBeUndefined()
+    expect(cta.portraitProgram).toBeDefined()
     expect(cta.focus).toBe('hero')
   }
   const portrait = compile()
@@ -174,6 +174,7 @@ test('every creator format varies actual visual decisions across people without 
         focus: scene.focus,
         editorial: scene.editorial,
         photoStudy: scene.photoStudy,
+        guides: scene.portraitProgram?.actions.map(action => [action.guide, action.treatment, action.stroke]),
         print: scene.portraitFX?.print,
         lighting: scene.portraitFX?.lighting,
         graphic: scene.graphic && [scene.graphic.layout, scene.graphic.variant],

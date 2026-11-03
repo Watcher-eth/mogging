@@ -47,3 +47,15 @@ export function drawMoggingWatermark(ctx: CanvasRenderingContext2D, ink: string)
   if (ink === '#fff') { ctx.shadowColor = '#0001'; ctx.shadowBlur = 4 }
   ctx.fillText('Mogging', 0, 18); ctx.restore()
 }
+
+export function drawScanInvitation(ctx: CanvasRenderingContext2D, brand: CreatorBrand | null, frame: { x: number; y: number; width: number; height: number }, ink = '#171717') {
+  const text = 'Get your scan on Mogging.com', size = 40, gap = 12
+  ctx.save(); ctx.font = '500 40px "Mogging Share", Arial, sans-serif'
+  ctx.textBaseline = 'middle'; ctx.textAlign = 'left'
+  const width = ctx.measureText(text).width + (brand ? size + gap : 0), x = frame.x + (frame.width-width)/2
+  ctx.fillStyle = ink === '#fff' ? '#12121470' : '#ffffffb3'
+  ctx.beginPath(); ctx.roundRect(x-10,frame.y,width+20,frame.height,frame.height/2);ctx.fill()
+  if (brand) { ctx.save();ctx.beginPath();ctx.roundRect(x,frame.y+(frame.height-size)/2,size,size,10);ctx.clip();ctx.drawImage(brand.logo,x,frame.y+(frame.height-size)/2,size,size);ctx.restore() }
+  ctx.fillStyle = ink; ctx.fillText(text,x+(brand ? size+gap : 0),frame.y+frame.height/2)
+  ctx.restore()
+}

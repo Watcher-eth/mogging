@@ -1,3 +1,6 @@
+import { compileDocumentaryVideo } from './video-documentary-plan'
+import { voiceDirection } from './video-speech'
+import { documentaryShotSchema, mediaAssetSchema } from './media-asset'
 import { portraitInstrumentSchema } from './portrait-instruments'
 import { decodeVisualBeat } from './video-semantics'
 import { portraitProgramSchema, planPortraitProgram } from './portrait-program'
@@ -10,7 +13,7 @@ import { photoStudySchema } from './video-photo-study'
 import { profileStudySchema } from './video-profile'
 import { editorialStudyMotion, editorialStudySchema } from './video-editorial-study'
 import { deliverySchema, voiceDirectionSchema } from './video-speech'
-import { scriptVisualSeed, type VideoScript, bindScriptScenes, createVideoScript, scriptRevision, normalizedScriptWord, recordingSchema, scriptRangeSchema, scriptSchema, scriptTokens, scriptWords } from './video-script'
+import { portraitCropSchema, scriptVisualSeed, type VideoScript, bindScriptScenes, createVideoScript, scriptRevision, normalizedScriptWord, recordingSchema, scriptRangeSchema, scriptSchema, scriptTokens, scriptWords } from './video-script'
 import { motionPrimitives, primitiveDefinition, type MotionPrimitiveId } from './motion-primitives'
 import type { AnalysisPostInput, AnalysisPostPlan } from './analysis-post'
 import { reportFeatureSchema, type ReportCategory } from './mobile-overlay-engine/report-data'
@@ -25,6 +28,7 @@ export const videoRecipes = {
   'minimal-explainer': 'Minimal kinetic explainer',
   'hybrid-story': 'Explainer + app proof',
   'feature-study': 'Focused feature study',
+  'documentary-studio': 'Documentary Studio',
 } as const
 export type VideoRecipe = keyof typeof videoRecipes
 
@@ -54,17 +58,19 @@ export type MotionTrack = z.infer<typeof motionTrackSchema>
 export const spokenWordSchema = z.object({ text: z.string().min(1).max(200), startMs: z.number().finite().min(0), endMs: z.number().finite().min(0), wordId: z.string().max(140).optional() }).strict()
 
 const reportSchema = z.object({
-  assessmentId: z.string().optional(),
+  assessmentId: z.string().optional(), assessmentImageId: z.string().max(100).optional(),
   id: z.string().max(80), title: z.string().max(120), subtitle: z.string().max(300), scoreLabel: z.string().max(120), score: z.number().min(0).max(10),
   explanation: z.string().max(5000), recommendation: z.string().max(5000), eyeColor: z.string().max(30).optional(), hairColor: z.string().max(30).optional(),
   features: z.array(reportFeatureSchema).max(100),
 }).strict()
 
 export const videoSceneSchema = z.object({
+  documentary: documentaryShotSchema.optional(),
+  portraitCrop: portraitCropSchema.optional(),
   id: z.string().min(1).max(100), label: z.string().max(120), startMs: z.number().finite().min(0), durationMs: z.number().finite().min(100).max(180000),
   source: z.object({ potentialScale: z.union([z.literal(8),z.literal(10)]).optional(), potentialCurrentScore: z.number().finite().min(0).max(10).optional(), hidePotential: z.boolean().optional(), hideScores: z.boolean().optional(), kind: z.enum(['portrait', 'report', 'component', 'title', 'screen', 'explainer']), imageId: z.string().max(100).nullable(), secondaryImageId: z.string().max(100).nullable().optional(), categoryId: z.string().max(80), overlay: z.enum(['none', 'category', 'face-map']), currentScore: z.number().finite().min(0).max(10), potentialScore: z.number().finite().min(0).max(10), metricScore: z.number().finite().min(0).max(10), report: reportSchema.optional(), captureInsets: z.object({ top: z.number().min(0).max(.2), bottom: z.number().min(0).max(.2) }).strict().optional() }).strict(),
   customSlideId: z.string().max(80).optional(),
-  text: z.string().max(240), subtitle: z.string().max(500), narration: z.string().max(5000).default(''), cueId: z.string().max(160).default(''), focus: z.string().max(160).default('scores'),
+  text: z.string().max(1200), subtitle: z.string().max(500), narration: z.string().max(5000).default(''), cueId: z.string().max(160).default(''), focus: z.string().max(160).default('scores'),
   framing: z.enum(['full', 'captioned', 'device', 'detail']).default('full'), tracks: z.array(motionTrackSchema).max(30),
   layout: z.enum(['stacked', 'split', 'portrait']).default('stacked'),
   words: z.array(spokenWordSchema).max(5000).optional(),
@@ -84,13 +90,14 @@ export type VideoScene = z.infer<typeof videoSceneSchema>
 export function videoImageIds(scenes: VideoScene[]) {
   return new Set(scenes.flatMap(scene => [scene.source.imageId, scene.source.secondaryImageId, ...(scene.study?.references.map(reference => reference.imageId) ?? []), ...(scene.featureStudy?.images ?? [])]).filter((id): id is string => Boolean(id)))
 }
-export type VideoDirection = { scoreCallouts?: VideoScene['scoreCallouts']; kind: 'portrait' | 'explainer' | 'report' | 'component'; imageId?: string; categoryId?: string; graphic?: VideoScene['graphic']; photoStudy?: VideoScene['photoStudy']; portraitFX?: VideoScene['portraitFX']; profileStudy?: VideoScene['profileStudy']; editorial?: VideoScene['editorial']; study?: VideoScene['study']; featureStudy?: VideoScene['featureStudy']; portraitProgram?: VideoScene['portraitProgram']; delivery?: VideoScene['delivery']; focus?: string; emphasis?: 'section-lift' | 'section-expand' | 'border-beam' }
+export type VideoDirection = { overlay?: VideoScene['source']['overlay']; portraitCrop?: VideoScene['portraitCrop']; scoreCallouts?: VideoScene['scoreCallouts']; kind: 'portrait' | 'explainer' | 'report' | 'component'; imageId?: string; categoryId?: string; graphic?: VideoScene['graphic']; photoStudy?: VideoScene['photoStudy']; portraitFX?: VideoScene['portraitFX']; profileStudy?: VideoScene['profileStudy']; editorial?: VideoScene['editorial']; study?: VideoScene['study']; featureStudy?: VideoScene['featureStudy']; portraitProgram?: VideoScene['portraitProgram']; delivery?: VideoScene['delivery']; focus?: string; emphasis?: 'section-lift' | 'section-expand' | 'border-beam' }
 
 export const compositionSchema = z.object({
   version: z.literal(1), title: z.string().min(1).max(160), disclosure: z.string().max(240).optional(), width: z.preprocess(width => width === 1080 ? videoSize.width : width, z.literal(videoSize.width)), height: z.preprocess(height => height === 1920 ? videoSize.height : height, z.literal(videoSize.height)), fps: z.literal(30),
   style: z.enum(['creator', 'diagnostic', 'brand']), theme: z.enum(['light', 'dark']).default('light'), durationMs: z.number().finite().min(100).max(180000), scenes: z.array(videoSceneSchema).min(1).max(250),
-  recipe: z.enum(['report-led', 'portrait-audit', 'measurement-explainer', 'minimal-explainer', 'hybrid-story', 'feature-study']).default('report-led'), variation: z.number().int().min(0).max(9999).default(0),
+  recipe: z.enum(['report-led', 'portrait-audit', 'measurement-explainer', 'minimal-explainer', 'hybrid-story', 'feature-study', 'documentary-studio']).default('report-led'), variation: z.number().int().min(0).max(9999).default(0),
   voice: voiceDirectionSchema.optional(), timing: z.enum(['estimated', 'segments', 'words']).optional(),
+  media: z.array(mediaAssetSchema).max(40).optional(),
   script: scriptSchema.optional(), recording: recordingSchema.optional(),
 }).strict().superRefine((composition, ctx) => {
   let end = 0
@@ -100,7 +107,7 @@ export const compositionSchema = z.object({
     if (scene.study && (scene.source.kind !== 'portrait' || scene.photoStudy)) ctx.addIssue({ code: 'custom', path: ['scenes', index, 'study'], message: 'Editorial studies need an unmodified portrait source.' })
     if (scene.portraitFX && scene.source.kind !== 'portrait') ctx.addIssue({ code: 'custom', path: ['scenes', index, 'portraitFX'], message: 'Portrait effects belong only to portrait scenes.' })
     if (scene.photoStudy && scene.source.kind !== 'portrait') ctx.addIssue({ code: 'custom', path: ['scenes', index, 'photoStudy'], message: 'Illustrative image variations belong only to portrait scenes, never report measurements.' })
-    if (scene.portraitProgram && scene.source.kind !== 'portrait') ctx.addIssue({ code: 'custom', path: ['scenes', index, 'portraitProgram'], message: 'Portrait programs belong only to photographic portrait scenes.' })
+    if (scene.portraitProgram && !['portrait','report'].includes(scene.source.kind)) ctx.addIssue({ code: 'custom', path: ['scenes', index, 'portraitProgram'], message: 'Face annotation programs require a portrait or report photo.' })
     if (scene.portraitProgram?.actions.some(action => action.word >= scriptTokens(scene.narration).length || action.labelWord !== undefined && action.labelWord >= scriptTokens(scene.narration).length)) ctx.addIssue({ code: 'custom', path: ['scenes', index, 'portraitProgram'], message: 'Visual actions must address words in their original scene.' })
     if (scene.profileStudy && (scene.source.kind !== 'portrait' || scene.photoStudy)) ctx.addIssue({ code: 'custom', path: ['scenes', index, 'profileStudy'], message: 'Profile annotations need an unmodified portrait scene.' })
     if (scene.source.kind === 'explainer' && !scene.graphic) ctx.addIssue({ code: 'custom', path: ['scenes', index, 'graphic'], message: 'Explainer scenes need a graphic layout' })
@@ -251,6 +258,10 @@ export function createMotionTrack(primitive: MotionPrimitiveId, target: TrackTar
 }
 
 export function compileAnalysisVideo(plan: AnalysisPostPlan, input: AnalysisPostInput, imageIds: string[], style: VideoStyleId, reports: ReportCategory[], options: { recipe?: VideoRecipe; variation?: number; directions?: Record<string, VideoDirection>; script?: VideoScript } = {}): VideoComposition {
+  if (options.recipe === 'documentary-studio') {
+    const script = options.script ?? createVideoScript(plan.scenes.map(cue => ({ ...cue, delivery: options.directions?.[cue.id]?.delivery })))
+    return parseComposition(compileDocumentaryVideo(script, input, imageIds.map(id => ({ id })), reports, voiceDirection('editorial'), options.variation ?? 0, plan.scenes.map(scene => Math.round((scene.end - scene.start) * 1000))))
+  }
   const readScore = (value: string, fallback: number) => value.trim() && Number.isFinite(Number(value)) ? Math.max(0, Math.min(10, Number(value))) : fallback
   const currentScore = readScore(input.overallScore, 7.1)
   const potentialScore = readScore(input.potentialScore, 8.2)
@@ -364,7 +375,8 @@ export function compileAnalysisVideo(plan: AnalysisPostPlan, input: AnalysisPost
       const categoryId = direction.categoryId ?? 'overall'
       const category = categoryId === 'overall' ? overallReport : reports.find(item => item.id === categoryId)
       if (direction.imageId && !imageIds.includes(direction.imageId)) throw new Error(`Missing directed image: ${direction.imageId}`)
-      scene.source = { ...scene.source, kind: direction.kind, imageId: portrait || component || report ? direction.imageId ?? imageIds[0] ?? null : null, secondaryImageId: null, categoryId, overlay: portrait ? 'face-map' : component ? 'category' : 'none', report: category, metricScore: category?.score ?? scene.source.metricScore }
+      scene.source = { ...scene.source, kind: direction.kind, imageId: portrait || component || report ? direction.imageId ?? imageIds[0] ?? null : null, secondaryImageId: null, categoryId, overlay: direction.overlay ?? (portrait ? 'face-map' : component ? 'category' : 'none'), report: category, metricScore: category?.score ?? scene.source.metricScore }
+      scene.portraitCrop = portrait ? direction.portraitCrop : undefined
       scene.scoreCallouts = portrait ? direction.scoreCallouts : undefined
       scene.graphic = direction.kind === 'explainer' ? direction.graphic : undefined
       scene.photoStudy = portrait ? direction.photoStudy : undefined
@@ -372,7 +384,7 @@ export function compileAnalysisVideo(plan: AnalysisPostPlan, input: AnalysisPost
       scene.profileStudy = portrait ? direction.profileStudy : undefined
       scene.study = portrait ? direction.study : undefined
       scene.featureStudy = portrait ? direction.featureStudy : undefined
-      scene.portraitProgram = portrait ? direction.portraitProgram : undefined
+      scene.portraitProgram = portrait || direction.kind === 'report' ? direction.portraitProgram : undefined
       if (scene.featureStudy) scene.source.overlay = 'none'
       if (scene.study?.references.some(reference => !imageIds.includes(reference.imageId))) throw new Error('An editorial study reference photo is missing.')
       scene.editorial = portrait ? direction.editorial ?? (categoryId === 'overall' ? 'context' : direction.profileStudy ? 'compare' : 'detail') : undefined
@@ -424,7 +436,7 @@ export function compileAnalysisVideo(plan: AnalysisPostPlan, input: AnalysisPost
     if (scene.graphic?.layout === 'story' && index && scenes[index - 1].source.kind === 'portrait') scene.tracks = scene.tracks.map(track => track.target === 'content' && primitiveDefinition(track.primitive).category === 'transition' ? createMotionTrack('hard-cut', 'content', scene.durationMs) : track)
   }
   for (const scene of scenes) {
-    if (scene.source.kind !== 'portrait' || scene.photoStudy || scene.profileStudy || scene.portraitFX?.lighting) continue
+    if (scene.source.kind !== 'portrait' || scene.photoStudy || scene.profileStudy || scene.portraitFX?.lighting || options.directions?.[scene.cueId]?.overlay === 'none') continue
     const metric = narratedFaceMetric(scene.narration, scene.source.categoryId)
     if (metric) scene.focus = `metric:${metric.id}`
     if (recipe === 'measurement-explainer' && !['overall', 'symmetry', 'proportions'].includes(scene.source.categoryId)) {
@@ -432,14 +444,15 @@ export function compileAnalysisVideo(plan: AnalysisPostPlan, input: AnalysisPost
       if (scene.study && ['compare', 'recap'].includes(scene.study.operation)) scene.study = undefined
     }
   }
+  const ownsTreatment = (scene: VideoScene, key: 'portraitProgram' | 'portraitFX') => Object.hasOwn(options.directions?.[scene.cueId] ?? {}, key)
   // Legacy script compilers share the production action engine; authored multi-card studies own their choreography.
-  for (const scene of scenes) if (scene.source.kind === 'portrait' && !scene.portraitProgram && !scene.study && scene.narration) {
+  for (const scene of scenes) if (scene.source.kind === 'portrait' && !ownsTreatment(scene, 'portraitProgram') && !scene.portraitProgram && !scene.study && scene.narration) {
     const feature = decodeVisualBeat(scene.narration).feature
     scene.portraitProgram = planPortraitProgram(scene.narration, feature, recipe, variation, scene.profileStudy?.view ?? 'front')
   }
   // One accent per four eligible portraits, spread across all format grammars.
   // Explicit editor choices keep ownership; reports, edits and lighting stay intact.
-  const trackerCandidates=scenes.filter(scene=>scene.source.kind==='portrait' && !scene.customSlideId && !scene.portraitFX?.instrument && !scene.photoStudy && !scene.profileStudy && !scene.study && !scene.portraitFX?.lighting && !scene.featureStudy?.edit && !/mogging\.com|Get your face analysis/i.test(scene.narration))
+  const trackerCandidates=scenes.filter(scene=>!ownsTreatment(scene, 'portraitFX') && scene.source.kind==='portrait' && !scene.customSlideId && !scene.portraitFX?.instrument && !scene.photoStudy && !scene.profileStudy && !scene.study && !scene.portraitFX?.lighting && !scene.featureStudy?.edit && !/mogging\.com|Get your face analysis/i.test(scene.narration))
   for(let start=0;start<trackerCandidates.length;start+=4) {
     const seed=scriptVisualSeed(recipe,String(variation),String(start))
     if(trackerCandidates.length<3 && seed%3!==0)continue
@@ -450,7 +463,7 @@ export function compileAnalysisVideo(plan: AnalysisPostPlan, input: AnalysisPost
   // Hold a print treatment across a portrait run; alternate paper and colour print, then return to natural colour.
   let printChapter = -1, printImage: string | null = null
   for (const scene of scenes) {
-    const eligible = ['portrait-audit', 'measurement-explainer', 'hybrid-story'].includes(recipe) && scene.source.kind === 'portrait' && !scene.portraitFX?.print && !scene.portraitFX?.lighting && !scene.photoStudy && !scene.profileStudy && !scene.featureStudy && !['compare', 'recap', 'light'].includes(scene.study?.operation ?? '')
+    const eligible = !ownsTreatment(scene, 'portraitFX') && ['portrait-audit', 'measurement-explainer', 'hybrid-story'].includes(recipe) && scene.source.kind === 'portrait' && !scene.portraitFX?.print && !scene.portraitFX?.lighting && !scene.photoStudy && !scene.profileStudy && !scene.featureStudy && !['compare', 'recap', 'light'].includes(scene.study?.operation ?? '')
     if (!eligible) { printImage = null; continue }
     if (!scene.source.imageId) continue
     if (scene.source.imageId !== printImage) { printChapter++; printImage = scene.source.imageId }

@@ -6,10 +6,10 @@ import { videoSize } from './video-layout'
 
 // Conservative content area checked in TikTok Studio's Feed preview. The live
 // interface varies with device, caption length and anchors; this is not an ad template.
-export const videoBrandSafeArea = { x: 120, y: 660, width: videoSize.width - 240, height: 1180 } as const
+export const videoBrandSafeArea = { x: 120, y: 88, width: videoSize.width - 240, height: 1736 } as const
 export type BrandObstacle = CanvasRect & { weight: number }
 export function isVideoInvitation(cue?: { text: string; section?: { role: string } }) {
-  return Boolean(cue && (cue.section?.role === 'cta' || cue.section?.role === 'product' && /\bmogging(?:\.com)?\b/i.test(cue.text) && /if you want|go to|try|use|get your/i.test(cue.text)))
+  return Boolean(cue && (cue.section?.role === 'cta' || ['product','takeaway'].includes(cue.section?.role ?? '') && /\bmogging(?:\.com)?\b/i.test(cue.text) && /\b(?:if you want|go to|try|use|get your|check your|see how|see which|find your|visit|compare your|explore how|explore your)\b/i.test(cue.text)))
 }
 export function isVideoCta(composition: VideoComposition, scene: VideoScene) {
   return isVideoInvitation(composition.script?.cues.find(cue => cue.id === scene.scriptRange?.cueId)) || scene.focus === 'action-plan'
@@ -33,10 +33,11 @@ export function brandFaceObstacles(landmarks: FaceLandmarksPayload | null | unde
 }
 const overlap = (a: CanvasRect, b: CanvasRect) => Math.max(0,Math.min(a.x+a.width,b.x+b.width)-Math.max(a.x,b.x)) * Math.max(0,Math.min(a.y+a.height,b.y+b.height)-Math.max(a.y,b.y))
 export function videoBrandFrame(cta: boolean, obstacles: BrandObstacle[] = []): CanvasRect {
-  const width = cta ? 690 : 160, height = cta ? 100 : 36
-  const x = cta ? (videoSize.width-width)/2 : videoBrandSafeArea.x
-  const top = videoBrandSafeArea.y, bottom = top+videoBrandSafeArea.height-height
-  const preferred = cta ? 1650 : top
+  if (cta) return { x: (videoSize.width-690)/2, y: videoBrandSafeArea.y, width: 690, height: 52 }
+  const width = 160, height = 36
+  const x = videoBrandSafeArea.x
+  const top = 560, bottom = videoBrandSafeArea.y+videoBrandSafeArea.height-height
+  const preferred = top
   let best = { x, y: top, width, height }, cost = Infinity
   for (let y=top; y<=bottom; y+=24) {
     const frame = { x,y,width,height }

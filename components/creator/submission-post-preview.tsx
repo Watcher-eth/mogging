@@ -1,4 +1,4 @@
-import Image from 'next/image'
+import { SkeletonImage } from '@/components/ui/skeleton-image'
 import { useEffect, useRef, useState, type CSSProperties } from 'react'
 import { Film } from 'lucide-react'
 import useSWR from 'swr'
@@ -30,7 +30,7 @@ export function SubmissionPostPreview({ preview, videoUrl, platform, className, 
   return (
     <span className={cn("relative block aspect-[9/16] w-20 shrink-0 overflow-hidden rounded-xl bg-zinc-950 sm:w-24", className)} style={style} aria-hidden="true">
       {source && failedSource !== source ? (
-        <Image src={source} alt="" fill sizes="96px" unoptimized className="object-contain" referrerPolicy="no-referrer" onError={() => setFailedSource(source)} />
+        <SkeletonImage src={source} alt="" sizes="96px" unoptimized className="object-contain" referrerPolicy="no-referrer" onError={() => setFailedSource(source)} />
       ) : videoUrl ? (
         <video src={videoUrl} muted playsInline preload="metadata" className="size-full object-contain" />
       ) : (

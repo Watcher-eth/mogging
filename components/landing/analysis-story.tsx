@@ -4,6 +4,7 @@ import * as m from 'motion/react-m'
 import { Check, ArrowUpRight } from 'lucide-react'
 import { MetricTimeline, type TimelineAxis } from '@/components/analysis/v2/metric-timeline'
 import NumberFlow from '@number-flow/react'
+import { ImageSkeleton } from '@/components/ui/skeleton-image'
 import { reportCategories } from '@/lib/creator/mock-report-data'
 import { preciseFaceOverlay, drawFaceTreatment } from '@/lib/creator/face-treatment'
 import { drawReportPortrait, drawReportPortraitFade } from '@/lib/creator/report-portrait'
@@ -41,13 +42,19 @@ function useVisibleCanvas(width: number, height: number, draw: (ctx: CanvasRende
   useEffect(() => {
     const canvas = ref.current, ctx = canvas?.getContext('2d')
     if (!canvas || !ctx) return
-    canvas.width = Math.round(width * 3); canvas.height = Math.round(height * 3)
+    const scale = Math.min(3, window.devicePixelRatio || 1)
+    const pixelWidth = Math.round(width * scale)
+    const pixelHeight = Math.round(height * scale)
+    if (canvas.width !== pixelWidth || canvas.height !== pixelHeight) {
+      canvas.width = pixelWidth
+      canvas.height = pixelHeight
+    }
     let frame = 0, last = performance.now()
     function paint(now: number) {
       cancelAnimationFrame(frame)
       if (visible && !document.hidden) elapsed.current += Math.min(50, now - last)
       last = now
-      ctx!.setTransform(3, 0, 0, 3, 0, 0); ctx!.clearRect(0, 0, width, height)
+      ctx!.setTransform(scale, 0, 0, scale, 0, 0); ctx!.clearRect(0, 0, width, height)
       draw(ctx!, reduced ? 4000 : elapsed.current)
       if (visible && !document.hidden && !reduced && elapsed.current < 2400) frame = requestAnimationFrame(paint)
     }
@@ -58,14 +65,34 @@ function useVisibleCanvas(width: number, height: number, draw: (ctx: CanvasRende
   return ref
 }
 
+let portraitRequest: Promise<HTMLImageElement> | undefined
+function loadPortrait() {
+  if (!portraitRequest) {
+    const photo = new window.Image()
+    photo.src = previewPortrait.src
+    portraitRequest = photo.decode().then(() => photo).catch(error => {
+      portraitRequest = undefined
+      throw error
+    })
+  }
+  return portraitRequest
+}
+
 export function ReportPortraitDemo({ category, narration }: { category: string; narration: string }) {
   const [image, setImage] = useState<HTMLImageElement | null>(null)
+  const portraitRef = useRef<HTMLDivElement>(null)
+  const nearby = useInView(portraitRef, { once: true, margin: '300px' })
+  const [failed, setFailed] = useState(false)
   useEffect(() => {
+    if (!nearby) return
     let disposed = false
-    const photo = new window.Image(); photo.src = previewPortrait.src
-    void photo.decode().then(() => { if (!disposed) setImage(photo) }).catch(() => {})
+    void loadPortrait().then(photo => {
+      if (!disposed) setImage(photo)
+    }).catch(() => {
+      if (!disposed) setFailed(true)
+    })
     return () => { disposed = true }
-  }, [])
+  }, [nearby])
   const overlay = useMemo(() => preciseFaceOverlay({ size: { width: 390, height: 520 }, primitives: [], dots: [] }, { ...portrait.image, landmarks: previewLandmarks }, category, narration, category === 'skin'), [category, narration])
   const draw = useCallback((ctx: CanvasRenderingContext2D, elapsed: number) => {
     if (!image) return
@@ -74,7 +101,7 @@ export function ReportPortraitDemo({ category, narration }: { category: string; 
     drawReportPortraitFade(ctx, 390, 520)
   }, [image, overlay])
   const ref = useVisibleCanvas(390, 520, draw)
-  return <div className={styles.portrait}><canvas ref={ref} role="img" aria-label={`Example portrait with ${narration.toLowerCase()} mapped using the app’s face overlays`} /><span>Eric, 27 NYC</span></div>
+  return <div ref={portraitRef} className={styles.portrait}>{!image && !failed && <div className="pointer-events-none absolute inset-0"><ImageSkeleton /></div>}<canvas ref={ref} role="img" aria-label={`Example portrait with ${narration.toLowerCase()} mapped using the app’s face overlays`} /><span>Eric, 27 NYC</span></div>
 }
 
 export function ReportMetricDemo({ metric, axis }: { metric: ReportFeature; axis?: TimelineAxis }) {

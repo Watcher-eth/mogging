@@ -37,7 +37,7 @@ const profileImage = (mirror = false) => {
   return { id: 'profile', name: 'Profile', dataUrl: '/profile.png', status: 'ready', width: 1200, height: 2000, landmarks: {
     version: 1, source: 'mediapipe-face-landmarker', confidence: .95, image: { width: 1200, height: 2000 },
     anchors: { noseTip: point(.2,.48), noseBridge: point(.26,.37), leftCheek: point(.32,.47), rightCheek: point(.8,.47), jawLeft: jaw[0], jawRight: jaw[12], chin: jaw[6], upperLip: point(.22,.56), mouthCenter: point(.23,.58), lowerLip: point(.23,.6) },
-    contours: { jawline: jaw, faceOutline: [point(.5,.2),point(.8,.3),point(.8,.47),...jaw.slice().reverse(),point(.32,.47)], noseBase: [point(.23,.51), point(.24,.51), point(.25,.51), point(.24,.52)] },
+    contours: { jawline: [point(.28,.47),point(.29,.56),...jaw,point(.79,.56),point(.8,.47)], faceOutline: [point(.5,.2),point(.8,.3),point(.8,.47),...jaw.slice().reverse(),point(.32,.47)], noseBase: [point(.23,.51), point(.24,.51), point(.25,.51), point(.24,.52)] },
   } } as GeneratorImage
 }
 

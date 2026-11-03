@@ -1,10 +1,14 @@
 import type { VideoScene } from './video-composition'
 
 export const videoSize = { width: 1316, height: 2340 } as const
+export const videoExportSize = { width: 1080, height: 1920 } as const
 export const videoMotion = { cutMs: 300, portraitEnterMs: 420, styleWaveMs: 300, reportWaveMs: 260, reportWaveGapMs: 12000, reportWaveLimit: 2 } as const
-export const videoContent = { inset: 120, width: videoSize.width - 240, captionTop: 400 } as const
-export const portraitStage = { x: 0, y: videoContent.captionTop + 220, width: videoSize.width, height: videoSize.height - videoContent.captionTop - 320 } as const
-export const captionDesign = { inset: videoContent.inset, width: videoContent.width, top: videoContent.captionTop - 40, bottomInset: 120, weight: 400, lineHeight: 1.16, focusMs: 420, inactiveOpacity: .5, inactiveBlur: .7 } as const
+export const videoContent = { inset: 120, width: videoSize.width - 240, captionTop: 384, tickerTop: 88 } as const
+export const portraitStage = { x: 0, y: videoContent.captionTop + 80, width: videoSize.width, height: videoSize.height - videoContent.captionTop - 80 } as const
+export const captionDesign = { inset: 164, width: videoSize.width - 328, top: videoContent.captionTop - 64, weight: 400, lineHeight: 1.16, focusMs: 420, inactiveOpacity: .5, inactiveBlur: .7 } as const
+export const videoContentSafeFrame = { x: 120, y: 600, width: 980, height: 1200 } as const
+export const reportCaptionFrame = { x: 0, y: videoSize.height - 550, width: videoSize.width, height: 190 } as const
+export const scorePresentation = { top: 1580, scale: .78 } as const
 export type VideoFrame = { x: number; y: number; width: number; height: number }
 export function hasCaption(scene: Pick<VideoScene, 'framing'> & { source?: Pick<VideoScene['source'], 'kind'> }) {
   if (scene.source?.kind === 'report' || scene.source?.kind === 'screen') return false
@@ -23,10 +27,10 @@ export function elementEntrance(localMs: number, startMs = 0, durationMs = 700) 
   return smoothMotion((localMs - startMs) / durationMs)
 }
 export function featureStageLayout(region: { width: number; height: number }, _layout: VideoScene['layout'] = 'stacked', focus = '') {
-  const scale = Math.min(videoContent.width / region.width, 420 / region.height)
+  const scale = Math.min(900 / region.width, 360 / region.height)
   const width = region.width * scale, height = region.height * scale
-  const metricY = 1700 + (420 - height) / 2
-  return { face: { ...portraitStage, height: Math.min(portraitStage.height, videoSize.height - 120 - portraitStage.y, metricY + 400 - portraitStage.y) }, metric: { x: (videoSize.width - width) / 2, y: metricY, width, height } }
+  const metricY = 1460 + (360 - height) / 2
+  return { face: { ...portraitStage, height: Math.min(portraitStage.height, videoSize.height - 120 - portraitStage.y, metricY - 60 - portraitStage.y) }, metric: { x: (videoSize.width - width) / 2, y: metricY, width, height } }
 }
 
 export function sharesPortrait(previous: VideoScene | undefined, next: VideoScene) {

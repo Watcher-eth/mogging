@@ -4,7 +4,7 @@ import { reportFeatureSchema, type ReportFeature, type ReportCategory } from './
 import { drawFeatureCard, mockFeatureLayout } from './mock-report'
 import type { CanvasPainter, CanvasRect } from './canvas-layout'
 import type { VideoScene } from './video-composition'
-import { videoSize, videoContent, captionDesign, elementEntrance, smoothMotion } from './video-layout'
+import { videoContentSafeFrame, videoSize, videoContent, captionDesign, elementEntrance, smoothMotion } from './video-layout'
 import { drawRollingNumber, rollingNumberWidth } from './rolling-number'
 import type { AnalysisPostInput } from './analysis-post'
 import { buildCategoryActionPlan } from './mobile-overlay-engine/category-action-plan'
@@ -154,15 +154,16 @@ export function explainerTextHeight(ctx: CanvasRenderingContext2D, text: string,
 export function explainerLayout(graphic: ExplainerGraphic, captionHeight: number = explainerCaptionFrame.height): { headline: CanvasRect; items: CanvasRect[] } {
   const layout = explainerContentLayout(graphic)
   if (isPhotoReference(graphic)) {
-    const top = explainerCaptionFrame.y + captionHeight + 48, bottom = videoSize.height - 220
-    return { headline: explainerCaptionFrame, items: [{ x: captionDesign.inset, y: top, width: captionDesign.width, height: Math.max(1, bottom - top) }] }
+    const top = explainerCaptionFrame.y + captionHeight + 48, bottom = videoContentSafeFrame.y + videoContentSafeFrame.height
+    return { headline: explainerCaptionFrame, items: [{ x: videoContentSafeFrame.x, y: top, width: videoContentSafeFrame.width, height: Math.max(1, bottom - top) }] }
   }
   if (!layout.items.length) return layout
   const left = Math.min(...layout.items.map(item => item.x)), right = Math.max(...layout.items.map(item => item.x + item.width))
   const top = Math.min(...layout.items.map(item => item.y)), bottom = Math.max(...layout.items.map(item => item.y + item.height))
-  const scale = Math.min((videoSize.height - 268 - explainerCaptionFrame.y - captionHeight) / (bottom - top), videoContent.width / (right - left))
-  const center = (explainerCaptionFrame.y + captionHeight + videoSize.height - 220) / 2
-  return { headline: explainerCaptionFrame, items: layout.items.map(item => ({ x: videoSize.width / 2 + (item.x - (left + right) / 2) * scale, y: center + (item.y - (top + bottom) / 2) * scale, width: item.width * scale, height: item.height * scale })) }
+  const safeBottom=videoContentSafeFrame.y+videoContentSafeFrame.height
+  const scale = Math.min((safeBottom - 48 - explainerCaptionFrame.y - captionHeight) / (bottom - top), videoContentSafeFrame.width / (right - left))
+  const center = (explainerCaptionFrame.y + captionHeight + safeBottom) / 2
+  return { headline: explainerCaptionFrame, items: layout.items.map(item => ({ x: videoContentSafeFrame.x + videoContentSafeFrame.width / 2 + (item.x - (left + right) / 2) * scale, y: center + (item.y - (top + bottom) / 2) * scale, width: item.width * scale, height: item.height * scale })) }
 }
 
 const instrumentBounds: Partial<Record<ExplainerGraphic['layout'], { width: number; height: number; top: number }>> = {

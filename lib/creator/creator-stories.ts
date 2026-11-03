@@ -1,3 +1,7 @@
+import profileGuides from '@/public/creator/profile-guides.json'
+import { profileStudySchema, profileFeatureForText, profileFeatureLabels, type ProfileStudy } from './video-profile'
+import { narratedPortraitProgram } from './portrait-program'
+import { portraitEffectsSchema } from './video-portrait-effects'
 import { spokenScoreCallouts } from './spoken-score'
 import { z } from 'zod'
 import { reportTriangulation } from './report-triangulation'
@@ -11,7 +15,7 @@ import type { AnalysisPostInput } from './analysis-post'
 import type { GeneratorImage } from './content-generator'
 import type { ReportCategory } from './mobile-overlay-engine/report-data'
 import type { VideoDirection, VideoRecipe } from './video-composition'
-import type { VideoScript } from './video-script'
+import { scriptTokens, type VideoScript } from './video-script'
 import type { SemanticBeat } from './video-semantics'
 
 export const creatorSubjectAnalysisSchema = z.object({
@@ -20,7 +24,7 @@ export const creatorSubjectAnalysisSchema = z.object({
   result: analysisProviderResultSchema, webReport: webReportSchema,
 })
 export type CreatorSubjectAnalysis = z.infer<typeof creatorSubjectAnalysisSchema>
-export type CreatorStoryOption = { id: string; title: string; kind?: 'feature-story' | 'score-walkthrough'; recording?: string; draft?: string; voice?: VoiceDirection; preview?: string }
+export type CreatorStoryOption = { id: string; title: string; kind?: 'feature-story' | 'score-walkthrough'; recording?: string; draft?: string; voice?: VoiceDirection; preview?: string; imageIds?: string[]; defaultLength?: 45 | 60 }
 export type CreatorStory = CreatorStoryOption & {
   images: GeneratorImage[]; portraitImageIds?: string[]; analysis?: string; alternatives?: CreatorStoryOption[];
   evidence: { baselineId: string; comparisonId: string; topic: SemanticBeat['feature']; revealLabel: string; photoComparison?: boolean; revealEdit?: number }
@@ -31,8 +35,8 @@ async function readJson(url: string) {
   return response.json()
 }
 export function creatorStoryOptions(story: CreatorStory): CreatorStoryOption[] {
-  return [{ id: story.id, title: story.title, kind: story.kind ?? 'feature-story', recording: story.recording }, ...story.alternatives ?? []]
-    .toSorted((a, b) => Number(b.kind === 'score-walkthrough') - Number(a.kind === 'score-walkthrough'))
+  return [{ id: story.id, title: story.title, kind: story.kind ?? 'feature-story', recording: story.recording, imageIds: story.imageIds, defaultLength: story.defaultLength }, ...story.alternatives ?? []]
+    .toSorted((a, b) => Number(b.id === story.id) - Number(a.id === story.id) || Number(b.kind === 'score-walkthrough') - Number(a.kind === 'score-walkthrough'))
 }
 export async function loadCreatorStoryCatalog(subjectId: string): Promise<CreatorStory> {
   return readJson(`/creator/stories/${subjectId}/story.json`)
@@ -42,12 +46,12 @@ export async function loadCreatorStory(subjectId: string, storyId?: string) {
   const stories = creatorStoryOptions(base)
   const option = stories.find(option => option.id === (storyId ?? stories[0]?.id))
   if (!option || Boolean(option.recording) === Boolean(option.draft)) throw new Error('Choose an available story for this person.')
-  const story = { ...base, ...option, recording: option.recording, draft: option.draft }
+  const story = { ...base, ...option, recording: option.recording, draft: option.draft, images: option.imageIds ? option.imageIds.map(id => { const image = base.images.find(image => image.id === id); if (!image) throw new Error('A story image is missing.'); return image }) : base.images }
   const [resource, analysis] = await Promise.all([readJson(option.recording ?? option.draft!), base.analysis ? readJson(base.analysis).then(value => creatorSubjectAnalysisSchema.parse(value)) : undefined])
   if (analysis && (analysis.subjectId !== subjectId || analysis.source.imageId !== base.images[0]?.id)) throw new Error('The saved analysis does not match this person’s source portrait.')
   if (option.draft && (resource.subjectId !== subjectId || resource.assessmentId !== analysis?.source.sha256)) throw new Error('Review this score story against the current saved portrait assessment before using it.')
   const saved = option.recording ? restoreProductionRecording(resource) : { script: validateProductionScript(resource.script), voice: voiceDirectionSchema.parse(option.voice), clips: new Map<string, SectionAudio>() }
-  return { story, stories, analysis, ...saved }
+  return { story, stories, assets: base.images, analysis, ...saved }
 }
 
 // Use only the saved provider observations: no preview values or guessed missing metrics.
@@ -57,7 +61,7 @@ export function creatorAnalysisReports(analysis: CreatorSubjectAnalysis): Report
   const categories: ReportCategory[] = web.categories.map(category => {
     const id = category.id === 'face' ? 'face-shape' : category.id
     const group = buildWebRubricGroups(id, web.entries)[0]
-    return { assessmentId: analysis.source.sha256, id, title: group?.title ?? id, subtitle: group?.title ?? id, scoreLabel: group?.title ?? id, score: category.score,
+    return { assessmentId: analysis.source.sha256, assessmentImageId: analysis.source.imageId, id, title: group?.title ?? id, subtitle: group?.title ?? id, scoreLabel: group?.title ?? id, score: category.score,
       features: (group?.rubrics ?? []).map(feature => ({ ...feature, triangulation: reportTriangulation(feature.id,entries) })), explanation: category.explanation, recommendation: category.recommendation ?? '', ...(id === 'eyes' && web.eyeColor ? { eyeColor: web.eyeColor } : {}) }
   })
   const result = analysis.result
@@ -87,8 +91,62 @@ export function creatorAnalysisInput(input: AnalysisPostInput, subject: string, 
 export function creatorStoryDirections(story: CreatorStory, script: VideoScript, input: AnalysisPostInput, images: GeneratorImage[], reports: ReportCategory[], recipe: VideoRecipe, variation: number) {
   const directions: Record<string, VideoDirection> = {}, evidence = story.evidence
   const portraits = (story.portraitImageIds ?? []).flatMap(id => images.find(image => image.id === id) ?? [])
+  let effectUsed = false
   const planningImages = portraits.length ? [...portraits, ...images.filter(image => !portraits.includes(image))] : images
   for (const shot of productionVisualPlan(script, input, planningImages, reports, recipe, variation)) {
+    const visuals = shot.cue.section!.visuals
+    const explicit = visuals.find(visual => visual.imageId && visual.match && shot.beat.quote.toLowerCase().includes(visual.match.toLowerCase())) ?? visuals.find(visual => visual.imageId && !visual.match)
+    if (explicit?.imageId) {
+      if (!images.some(image => image.id === explicit.imageId)) throw new Error('The approved shot references a missing image.')
+      const assessed = explicit.imageId === images[0]?.id
+      const scores = explicit.focus === 'scores' ? spokenScoreCallouts(shot.beat.quote, reports, explicit.categoryId) : undefined
+      const categoryId = scores?.[0] ? reports.find(report => report.title === scores[0].label)?.id ?? explicit.categoryId : explicit.categoryId
+      const kind = shot.cue.section!.role === 'takeaway' || visuals.some(visual => visual.crop) || explicit.crop || explicit.treatment === 'detail' || scores && scores.length > 1 ? 'portrait' : assessed && recipe === 'report-led' ? 'report' : 'portrait'
+      // Registered source photos own their identity and category. Never inherit a
+      // synthetic edit or an unrelated comparison from the generic director.
+      directions[shot.id] = {
+        kind, imageId: explicit.imageId, categoryId, overlay: 'none', portraitCrop: explicit.crop,
+        editorial: explicit.treatment === 'detail' ? 'detail' : 'context',
+        focus: scores?.length ? 'scores' : 'features', scoreCallouts: kind === 'portrait' ? scores ?? [] : undefined,
+        emphasis: kind === 'report' ? 'section-lift' : undefined,
+        featureStudy: recipe === 'feature-study' && kind === 'portrait' && !scores?.length && !explicit.crop && !visuals.some(visual => visual.crop)
+          ? { topic: shot.beat.feature, edit: 0, editMode: 'warp', layout: explicit.treatment === 'detail' ? 'detail' : 'hero', motion: 'hold', annotation: '', images: [] } : undefined,
+        graphic: undefined, photoStudy: undefined, portraitFX: undefined, profileStudy: undefined, study: undefined, portraitProgram: undefined,
+      }
+      if (!/profile/.test(explicit.imageId)) {
+        const program = narratedPortraitProgram(shot.beat.quote, recipe, variation, categoryId)
+        directions[shot.id].portraitProgram = program
+        if (kind === 'portrait' && !explicit.crop && !effectUsed && !scores?.length && ['feature-study', 'hybrid-story'].includes(recipe)) {
+          if (recipe === 'feature-study' || shot.cue.sourceId === 'hook') {
+            directions[shot.id].portraitFX = portraitEffectsSchema.parse({ instrument: { scan: true, strength: .3 } })
+            effectUsed = true
+          } else if (assessed && program) {
+            const feature = program.actions[0].feature
+            const target = feature === 'brows' ? 'eyes' : feature === 'lips' ? 'mouth' : feature
+            directions[shot.id].portraitFX = portraitEffectsSchema.parse({ lighting: { preset: 'spot', target, side: 'both', ambientEv: -.35, intensity: .7, color: 'natural' } })
+            effectUsed = true
+          }
+        }
+      }
+      const view = /profile/.test(explicit.imageId) ? 'profile' : /three-quarter/.test(explicit.imageId) ? 'three-quarter' : undefined
+      if (view && kind === 'portrait') {
+        const authored = (profileGuides as Record<string, {dataUrl:string;side:ProfileStudy['side'];contours:ProfileStudy['contours'];angle?:ProfileStudy['angle']}>)[explicit.imageId]
+        const image = images.find(image=>image.id===explicit.imageId)!
+        const profile = profileStudySchema.parse({view,side:'left',...(authored?.dataUrl===image.dataUrl?{contours:authored.contours,angle:authored.angle,side:authored.side}:{}),feature:profileFeatureForText(shot.beat.quote,categoryId)})
+        const program = narratedPortraitProgram(shot.beat.quote,recipe,variation,categoryId)
+        const tokens=scriptTokens(shot.beat.quote)
+        const actions = program?.actions.map((action,index)=>{
+          const feature: ProfileStudy['feature'] = action.feature==='cheeks' ? action.guide.includes('under-') ? 'under-cheek' : 'cheek'
+            : action.feature==='jaw' ? action.guide.includes('gonial') ? 'angle' : profile.feature==='chin' || /chin/i.test(tokens[action.word]?.text??'') ? 'chin' : 'jaw'
+            : action.feature==='lips' ? 'lips' : action.feature==='eyes'||action.feature==='brows'||action.feature==='nose' ? action.feature : profile.feature
+          return {...action,word:index===0?0:action.word,labelWord:action.word,guide:`profile:${feature}`,label:profileFeatureLabels[feature],stroke:'solid' as const}
+        })
+        directions[shot.id] = {...directions[shot.id],editorial:'context',featureStudy:undefined,portraitFX:undefined,profileStudy:profile,
+          portraitProgram:program?{...program,view,actions:actions!}:undefined}
+      }
+
+      continue
+    }
     if (portraits.length) {
       directions[shot.id] = shot.direction
       // Wider context shots can vary; precise feature shots retain the registered close-up.

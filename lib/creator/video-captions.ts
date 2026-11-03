@@ -9,7 +9,7 @@ export function captionLines(scene: VideoScene, measure: (text: string) => numbe
   const lines: ReturnType<typeof captionWordCues>[] = []
   for (const cue of captionWordCues(scene, scene.text)) {
     const line = lines.at(-1)
-    if (!line || measure([...line.map(word => word.text), cue.text].join(' ')) > captionDesign.width) lines.push([cue])
+    if (!line || measure([...line.map(word => word.text), cue.text].join(' ')) > captionStyle(scene).width) lines.push([cue])
     else line.push(cue)
   }
   return lines
@@ -26,10 +26,10 @@ export function captionScroll(lines: ReturnType<typeof captionLines>, time: numb
 }
 
 export function captionStyle(scene: VideoScene) {
-  const report = ['report', 'screen'].includes(scene.source.kind)
-  const imageCaption = report || scene.source.kind === 'portrait' && scene.source.overlay === 'face-map' || scene.graphic?.layout === 'story'
-  const size = report ? 68 : imageCaption ? 72 : scene.source.kind === 'explainer' ? 76 : 68
-  return { report, imageCaption, size, height: size * captionDesign.lineHeight * (scene.source.kind === 'explainer' ? 4 : 2) }
+  const report = ['report', 'screen'].includes(scene.source?.kind??'')
+  const imageCaption = report || scene.source?.kind === 'portrait' && scene.source.overlay === 'face-map' || scene.graphic?.layout === 'story'
+  const size = report ? 68 : imageCaption ? 84 : scene.source?.kind === 'explainer' ? 84 : 76
+  return { report, imageCaption, size, width: report || scene.documentary ? 916 : captionDesign.width, height: size * captionDesign.lineHeight * (scene.source?.kind === 'explainer' ? 4 : 2) }
 }
 
 export function drawLyricsCaption(ctx: CanvasRenderingContext2D, scene: VideoScene, time: number, reduced: boolean, ink: string, handoff?: CaptionHandoff) {
@@ -42,7 +42,7 @@ export function drawLyricsCaption(ctx: CanvasRenderingContext2D, scene: VideoSce
 }
 
 function drawCaption(ctx: CanvasRenderingContext2D, scene: VideoScene, time: number, reduced: boolean, ink: string, offsetY = 0, rolling = false) {
-  const { report, imageCaption, size, height } = captionStyle(scene)
+  const { report, imageCaption, size, height, width:captionWidth } = captionStyle(scene)
   ctx.save(); ctx.font = `${captionDesign.weight} ${size}px "Mogging Share", Arial, sans-serif`
   ctx.textAlign = 'left'; ctx.textBaseline = 'alphabetic'; ctx.fillStyle = ink
   if (ink === '#fff') {
@@ -55,7 +55,7 @@ function drawCaption(ctx: CanvasRenderingContext2D, scene: VideoScene, time: num
   const focus = sampleAppearance('text-scale', Math.max(0, time - (lines[active]?.[0].startMs ?? 0)) / captionDesign.focusMs, reduced).opacity
   const scroll = captionScroll(lines, time, reduced)
   const entrance = sampleAppearance('text-slide', time / captionDesign.focusMs, reduced)
-  ctx.beginPath(); ctx.rect(captionDesign.inset - 8, 0, captionDesign.width + 16, height); ctx.clip(); ctx.beginPath()
+  ctx.beginPath(); ctx.rect(captionDesign.inset - 8, 0, captionWidth + 16, height); ctx.clip(); ctx.beginPath()
   ctx.translate(0, offsetY)
   lines.forEach((line, index) => {
     const focused = active === index, previous = active - 1 === index
