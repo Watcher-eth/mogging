@@ -1,6 +1,6 @@
 {
-  "id": "zeta-round3",
-  "title": "Zeta\u2019s eyes versus the higher score",
+  "id": "zeta-feature-study",
+  "title": "Which jaw looks sharper?",
   "status": "recorded",
   "audioStatus": "word-aligned",
   "images": [
@@ -3099,11 +3099,10 @@
   ],
   "analysis": "/creator/stories/zeta/analysis.json",
   "kind": "feature-story",
-  "recording": "/creator/stories/zeta/round3-recording.json",
+  "recording": "/creator/stories/zeta/feature-study-recording.json",
   "imageIds": [
     "zeta-front",
-    "zeta-three-quarter",
-    "zeta-profile"
+    "zeta-three-quarter"
   ],
   "defaultLength": 45,
   "evidence": {
@@ -3113,5 +3112,19 @@
     "revealLabel": "",
     "revealEdit": 0
   },
-  "alternatives": []
+  "alternatives": [
+    {
+      "id": "zeta-round3",
+      "title": "Zeta’s eyes versus the higher score",
+      "kind": "feature-story",
+      "recording": "/creator/stories/zeta/round3-recording.json",
+      "defaultLength": 45,
+      "imageIds": [
+        "zeta-front",
+        "zeta-three-quarter",
+        "zeta-profile"
+      ]
+    }
+  ],
+  "featureOpening": "jaw-choice"
 }

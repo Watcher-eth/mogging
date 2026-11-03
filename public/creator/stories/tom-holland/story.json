@@ -1,7 +1,7 @@
 {
-  "id": "tom-holland-round3",
-  "title": "Prada\u2019s version of Tom Holland",
-  "recording": "/creator/stories/tom-holland/round3-recording.json",
+  "id": "tom-holland-feature-study",
+  "title": "Which photo is hiding a grin?",
+  "recording": "/creator/stories/tom-holland/feature-study-recording.json",
   "images": [
     {
       "id": "tom-front",
@@ -2775,7 +2775,7 @@
     },
     {
       "id": "tom-editorial-front-bw",
-      "name": "Tom Holland \u00b7 Black-and-white editorial portrait",
+      "name": "Tom Holland · Black-and-white editorial portrait",
       "dataUrl": "/creator/stories/tom-holland/tom-editorial-front-bw.png",
       "width": 1920,
       "height": 2400,
@@ -2784,7 +2784,7 @@
     },
     {
       "id": "tom-editorial-action",
-      "name": "Tom Holland \u00b7 Action photograph",
+      "name": "Tom Holland · Action photograph",
       "dataUrl": "/creator/stories/tom-holland/tom-editorial-action.png",
       "width": 980,
       "height": 1225,
@@ -2793,7 +2793,7 @@
     },
     {
       "id": "tom-editorial-three-quarter-glasses",
-      "name": "Tom Holland \u00b7 Glasses portrait",
+      "name": "Tom Holland · Glasses portrait",
       "dataUrl": "/creator/stories/tom-holland/tom-editorial-three-quarter-glasses.png",
       "width": 1044,
       "height": 1600,
@@ -2802,7 +2802,7 @@
     },
     {
       "id": "tom-prada-red-study",
-      "name": "Red jacket \u00b7 generated campaign study",
+      "name": "Red jacket · generated campaign study",
       "dataUrl": "/creator/stories/tom-holland/tom-prada-red-study.png",
       "width": 941,
       "height": 1672,
@@ -3833,7 +3833,7 @@
     },
     {
       "id": "tom-prada-cardigan-study",
-      "name": "Dark cardigan \u00b7 generated campaign study",
+      "name": "Dark cardigan · generated campaign study",
       "dataUrl": "/creator/stories/tom-holland/tom-prada-cardigan-study.png",
       "width": 941,
       "height": 1672,
@@ -4864,7 +4864,7 @@
     },
     {
       "id": "tom-prada-red-source",
-      "name": "Official Prada SS2022 \u00b7 red-jacket reference",
+      "name": "Official Prada SS2022 · red-jacket reference",
       "dataUrl": "/creator/stories/tom-holland/tom-prada-red-source.jpg",
       "width": 748,
       "height": 1000,
@@ -4873,12 +4873,22 @@
     },
     {
       "id": "tom-prada-cardigan-source",
-      "name": "Official Prada SS2022 \u00b7 cardigan reference",
+      "name": "Official Prada SS2022 · cardigan reference",
       "dataUrl": "/creator/stories/tom-holland/tom-prada-cardigan-source.jpg",
       "width": 3360,
       "height": 1584,
       "status": "ready",
       "provenance": "original-reference"
+    },
+    {
+      "id": "tom-feature-study-grin",
+      "name": "Tom Holland · smiling studio reconstruction",
+      "dataUrl": "/creator/stories/tom-holland/tom-feature-study-grin.jpg",
+      "width": 1032,
+      "height": 1524,
+      "status": "ready",
+      "provenance": "AI-generated editorial reconstruction of the saved smiling portrait",
+      "landmarks": null
     }
   ],
   "analysis": "/creator/stories/tom-holland/analysis.json",
@@ -4889,6 +4899,18 @@
     "revealLabel": "Philtrum / upper lip"
   },
   "alternatives": [
+    {
+      "id": "tom-holland-round3",
+      "title": "Prada’s version of Tom Holland",
+      "kind": "feature-story",
+      "recording": "/creator/stories/tom-holland/round3-recording.json",
+      "defaultLength": 45,
+      "imageIds": [
+        "tom-front",
+        "tom-prada-red-study",
+        "tom-prada-cardigan-study"
+      ]
+    },
     {
       "id": "tom-holland-b",
       "title": "The number that leaves something out",
@@ -4935,11 +4957,11 @@
   ],
   "kind": "feature-story",
   "imageIds": [
-    "tom-front",
-    "tom-prada-red-study",
-    "tom-prada-cardigan-study"
+    "tom-feature-study-grin",
+    "tom-prada-red-study"
   ],
   "defaultLength": 45,
   "status": "recorded",
-  "audioStatus": "word-aligned"
+  "audioStatus": "word-aligned",
+  "featureOpening": "smile-choice"
 }

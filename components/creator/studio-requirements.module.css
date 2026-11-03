@@ -1,0 +1,52 @@
+.graphic { position: relative; display: grid; place-items: center; height: 252px; overflow: hidden; border-radius: 20px; background: #f7f8fa; color: #27292d; }
+.brand { display: inline-flex; align-items: center; gap: 3px; font-size: 11px; font-weight: 650; letter-spacing: -.3px; }
+.upload, .submission { position: absolute; width: min(290px, calc(100% - 40px)); }
+.uploadHeader, .profileHeader { display: flex; align-items: center; justify-content: space-between; font-size: 10px; color: #81858d; }
+.uploadBody { display: flex; align-items: center; gap: 20px; margin-top: 15px; }
+.video { position: relative; flex-shrink: 0; width: 76px; height: 132px; overflow: hidden; border-radius: 8px; background: #e1e3e6; color: white; }
+.videoShade { position: absolute; inset: 0; background: linear-gradient(transparent 40%, #0009); }
+.videoTitle { position: absolute; bottom: 10px; left: 7px; width: 44px; font-size: 9px; font-weight: 600; line-height: 1.2; }
+.videoActions { position: absolute; right: 5px; bottom: 10px; display: grid; gap: 8px; }
+.uploadDetails { flex: 1; min-width: 0; font-size: 11px; }
+.uploadDetails p { font-weight: 600; }
+.uploadDetails > span { display: block; margin-top: 5px; font-size: 10px; color: #91959d; }
+.track { height: 3px; margin-top: 15px; overflow: hidden; border-radius: 4px; background: #e0e3e7; }
+.track div { height: 100%; transform-origin: left; border-radius: inherit; background: #3d424a; }
+.uploadDetails .published { display: flex; align-items: center; gap: 4px; color: #444a52; margin-top: 10px; }
+.submission { padding: 18px; background: white; border: 1px solid #eceef1; border-radius: 16px; box-shadow: 0 8px 24px #20262e05; }
+.formEyebrow { font-size: 9px; color: #92969e; }
+.submission > p { margin-top: 5px; font-size: 16px; font-weight: 550; letter-spacing: -.5px; }
+.fieldLabel { display: block; margin-top: 15px; margin-bottom: 6px; font-size: 10px; color: #737981; }
+.urlField { display: flex; align-items: center; gap: 7px; height: 34px; padding: 0 9px; border: 1px solid #dce0e5; border-radius: 7px; color: #535a63; }
+.urlField svg { flex-shrink: 0; color: #9b9fa6; }
+.typedUrl { white-space: nowrap; font-size: 9px; clip-path: inset(0 100% 0 0); animation: typeUrl 1.4s steps(32, end) 2.15s forwards; }
+.submitButton { display: flex; justify-content: center; align-items: center; gap: 6px; height: 31px; margin-top: 10px; border-radius: 20px; background: #292c31; color: white; font-size: 10px; }
+.tracking { display: block; margin-top: 8px; text-align: center; color: #8b9098; font-size: 9px; }
+.profile { width: min(290px, calc(100% - 40px)); padding: 15px 18px; background: white; border: 1px solid #eceef1; border-radius: 15px; box-shadow: 0 8px 24px #20262e05; }
+.profileHeader > span:first-child { color: #303239; font-weight: 600; }
+.identity { display: flex; align-items: center; gap: 11px; margin-top: 12px; }
+.avatar { width: 48px; height: 48px; border-radius: 50%; object-fit: cover; object-position: center 20%; }
+.identity strong { display: block; font-size: 15px; font-weight: 650; letter-spacing: -.4px; }
+.identity div > span { display: block; margin-top: 2px; font-size: 10px; color: #7a7f87; }
+.stats { display: flex; justify-content: space-between; margin-top: 11px; font-size: 9px; color: #8a8d93; }
+.stats strong { margin-right: 2px; font-size: 10px; color: #303239; }
+.profileActions { display: flex; gap: 6px; margin-top: 10px; font-size: 10px; text-align: center; }
+.profileActions span { padding: 5px 14px; border: 1px solid #eceef0; border-radius: 4px; font-weight: 550; }
+.profileActions span:first-child { color: white; background: #fe2c55; border-color: #fe2c55; }
+.bio { margin-top: 10px; font-size: 10px; line-height: 1.55; color: #565a61; }
+.bioLink { display: flex; align-items: center; gap: 5px; margin-top: 5px; font-size: 10px; font-weight: 600; }
+.bioLink span { background: linear-gradient(105deg, #454a52 35%, #b9bec5 47%, #454a52 59%); background-size: 230% 100%; background-clip: text; -webkit-background-clip: text; color: transparent; animation: shimmer 2s ease-in-out .4s 2; }
+.anchorScene { width: 100%; display: flex; flex-direction: column; align-items: center; }
+.anchorBrand { display: flex; align-items: center; gap: 10px; color: #5b6068; }
+.anchorBrand > span:last-child { border-left: 1px solid #d9dde2; padding-left: 10px; font-size: 10px; color: #9b9fa7; }
+.anchorMark { position: relative; display: grid; place-items: center; margin: 19px 0 20px; color: #484d55; }
+.particle { position: absolute; left: calc(50% - 1px); top: calc(50% - 1px); width: 2px; height: 2px; border-radius: 50%; background: #858c96; }
+.anchorTag { display: flex; align-items: center; gap: 6px; padding: 10px 13px; border: 1px solid #e6e9ed; border-radius: 8px; background: #ffffffb3; font-size: 10px; color: #555c65; }
+.anchorTag strong { font-weight: 600; }
+.anchorTag > span { padding-left: 6px; border-left: 1px solid #e2e5e9; color: #9398a0; font-size: 9px; }
+@keyframes typeUrl { to { clip-path: inset(0); } }
+@keyframes shimmer { from { background-position: 120% 0; } to { background-position: -100% 0; } }
+@media (prefers-reduced-motion: reduce) {
+  .typedUrl { animation: none; clip-path: none; }
+  .bioLink span { animation: none; background: none; color: #454a52; }
+}

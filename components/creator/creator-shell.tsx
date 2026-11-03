@@ -1,6 +1,7 @@
 import dynamic from 'next/dynamic'
 const CreatorSupportLauncher = dynamic(() => import('./support/support-launcher').then(m => m.CreatorSupportLauncher), { ssr: false })
 import { TikTokAnchorOnboarding } from './tiktok-anchor-onboarding'
+import { StudioRequirementsReminder } from './studio-requirements-dialog'
 import { CreatorWelcomeDialog, useCreatorWelcome } from './creator-welcome'
 import { Sidebar, SidebarContent, SidebarHeader, SidebarFooter, SidebarGroup, SidebarGroupLabel, SidebarGroupContent, SidebarMenu, SidebarMenuItem, SidebarMenuButton, SidebarInset, SidebarTrigger, useSidebar } from '@/components/ui/sidebar'
 import { creatorGuideTopics, creatorGuideTopic, creatorGuideHref } from '@/lib/creator/guide-navigation'
@@ -83,6 +84,7 @@ export function CreatorShell({ children, allowUnauthenticated = false }: { child
         <SidebarInset className="creator-page creator-enter min-w-0 bg-white" key={router.pathname}>{children}</SidebarInset>
       </div>
       <CreatorWelcomeDialog open={welcome.open} onOpenChange={welcome.onOpenChange} />
+      {router.pathname === '/creator/video-studio' && welcome.ready && !welcome.open && !moreOpen ? <StudioRequirementsReminder key={session?.user?.id} /> : null}
       <div className={floatingStyles.root}>
         {!studioPaths.has(router.pathname) ? <CreatorSetupChecklist /> : null}
         {router.pathname !== '/creator/support' && !router.pathname.includes('__') ? <CreatorSupportLauncher /> : null}

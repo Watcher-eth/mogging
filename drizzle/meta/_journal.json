@@ -488,22 +488,36 @@
     {
       "idx": 69,
       "version": "7",
-      "when": 1793656800000,
-      "tag": "0069_creator_audience_checks",
+      "when": 1793408400000,
+      "tag": "0069_studio_requirements_reminder",
       "breakpoints": true
     },
     {
       "idx": 70,
       "version": "7",
-      "when": 1793656800001,
-      "tag": "0070_creator_submission_analytics",
+      "when": 1793491189341,
+      "tag": "0070_creator_retainer_terms",
       "breakpoints": true
     },
     {
       "idx": 71,
       "version": "7",
-      "when": 1793656800002,
+      "when": 1793510677702,
       "tag": "0071_creator_private_characters",
+      "breakpoints": true
+    },
+    {
+      "idx": 72,
+      "version": "7",
+      "when": 1793656800000,
+      "tag": "0069_creator_audience_checks",
+      "breakpoints": true
+    },
+    {
+      "idx": 73,
+      "version": "7",
+      "when": 1793656800001,
+      "tag": "0070_creator_submission_analytics",
       "breakpoints": true
     }
   ]

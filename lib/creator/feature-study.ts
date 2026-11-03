@@ -1,3 +1,4 @@
+import { drawEditorialLeader } from './editorial-motion'
 import { applyGlassInk } from './glass-overlay'
 import { drawPortraitInstruments, drawPortraitParticles, instrumentOwnsGuides, type PortraitInstrument } from './portrait-instruments'
 import { z } from 'zod'
@@ -16,6 +17,8 @@ export type FeatureTopic = typeof featureTopics[number]
 export const featureTopicLabels: Record<FeatureTopic, string> = { philtrum: 'Philtrum length', freckles: 'Freckles', 'facial-hair': 'Facial hair', ears: 'Ear prominence', symmetry: 'Facial symmetry', dimorphism: 'Facial shape' }
 export const featureStudySchema = z.object({
   topic: z.enum(visualFeatures), layout: z.enum(['hero', 'detail', 'compare', 'grid']),
+  opening: z.enum(['lip-choice', 'jaw-choice', 'smile-choice']).optional(),
+  phase: z.enum(['hold', 'clue', 'reveal']).optional(),
   motion: z.enum(['hold', 'push', 'pull']).optional(),
   annotationStyle: z.enum(['circle', 'guide', 'leader']).optional(),
   comparison: z.enum(['blend', 'wipe']).optional(),
@@ -233,9 +236,111 @@ function editForCell(study: FeatureStudy, index: number) {
   return index === (single ? 0 : 1) ? study.edit : 0
 }
 
-export function drawFeatureStudy(ctx: CanvasRenderingContext2D, study: FeatureStudy, photo: FeaturePhoto, variants: FeaturePhoto[], localMs: number, _durationMs: number, reduced: boolean, previous?: FeatureStudy, activity?: PortraitActivity, instrument?: PortraitInstrument) {
+function drawGuessSpinner(ctx: CanvasRenderingContext2D, y: number, timeMs: number, opacity: number, reduced: boolean) {
+  if (opacity <= 0) return
+  const active = reduced ? 0 : Math.floor(timeMs / 78) % 12
+  ctx.save()
+  ctx.translate(videoSize.width / 2, y)
+  ctx.strokeStyle = '#30363b'
+  ctx.lineWidth = 7
+  ctx.lineCap = 'round'
+  for (let index = 0; index < 12; index++) {
+    const angle = index * Math.PI / 6
+    const age = (active - index + 12) % 12
+    ctx.globalAlpha = opacity * (.12 + .72 * (1 - age / 11))
+    ctx.beginPath()
+    ctx.moveTo(Math.cos(angle) * 22, Math.sin(angle) * 22)
+    ctx.lineTo(Math.cos(angle) * 37, Math.sin(angle) * 37)
+    ctx.stroke()
+  }
+  ctx.restore()
+}
+
+function drawFeatureOpening(ctx: CanvasRenderingContext2D, study: FeatureStudy, photos: FeaturePhoto[], localMs: number, durationMs: number, reduced: boolean, clockMs: number) {
+  const { width } = videoSize
+  const smile = study.opening === 'smile-choice'
+  const reveal = study.phase === 'reveal' ? reduced ? 1 : smoothMotion(localMs / Math.min(850, durationMs)) : 0
+  const inset = width * .045 // Match the TikTok feed description inset on both sides.
+  const gap = 16
+  const cardWidth = (width - inset * 2 - gap) / 2
+  const y = smile ? 635 : 520
+  const height = 1360
+  const maskY = y + 1035
+  const alignment = photos.map(({ landmarks }) => {
+    const a = landmarks?.anchors
+    const mouth = a?.mouthCenter ?? { x: .5, y: .58 }
+    const lipTop = Math.min(a?.upperLip?.y ?? mouth.y - .014, a?.mouthLeft?.y ?? mouth.y, a?.mouthRight?.y ?? mouth.y)
+    const eyes = a?.leftPupil && a.rightPupil ? (a.leftPupil.y + a.rightPupil.y) / 2 : lipTop - .115
+    return { mouth, lipTop, gap: Math.max(.06, lipTop - eyes) }
+  })
+  const eyeToLip = Math.max(420, ...photos.map((photo, index) => alignment[index].gap * photo.image.height * cardWidth / photo.image.width))
+  photos.forEach((photo, index) => {
+    const x = inset + index * (cardWidth + gap)
+    const { mouth, lipTop, gap: anchorGap } = alignment[index]
+    const a = photo.landmarks?.anchors
+    const chin = a?.chin ?? { x: .5, y: .72 }
+    const focus = smile ? mouth : chin
+    const faceWidth = a?.leftCheek && a.rightCheek ? Math.abs(a.rightCheek.x - a.leftCheek.x) : .51
+    const zoom = 1.62 - reveal * .56
+    const scale = smile ? eyeToLip / (anchorGap * photo.image.height)
+      : Math.max(cardWidth / photo.image.width, cardWidth * .72 * zoom / Math.max(.24, faceWidth) / photo.image.width)
+    const w = photo.image.width * scale, h = photo.image.height * scale
+    const px = Math.max(x + cardWidth - w, Math.min(x, x + cardWidth / 2 - focus.x * w))
+    const py = smile ? maskY + 18 - lipTop * h : y + height * (.72 - reveal * .07) - focus.y * h
+    const cover = maskY + (y + height - maskY) * reveal
+    ctx.save()
+    ctx.beginPath()
+    ctx.roundRect(x, y, cardWidth, height, 26)
+    ctx.clip()
+    ctx.fillStyle = '#fff'
+    ctx.fillRect(x, y, cardWidth, height)
+    if (!smile && reveal < 1) {
+      const cropTop = py + (mouth.y - (chin.y - mouth.y) * .75) * h
+      ctx.beginPath()
+      ctx.rect(x, Math.max(y, cropTop + (y - cropTop) * reveal), cardWidth, height)
+      ctx.clip()
+    }
+    ctx.drawImage(photo.image, px, py, w, h)
+    const bottom = ctx.createLinearGradient(0, y + height - 135, 0, y + height)
+    bottom.addColorStop(0, '#ffffff00')
+    bottom.addColorStop(1, '#fff')
+    ctx.fillStyle = bottom
+    ctx.fillRect(x, y + height - 135, cardWidth, 135)
+    if (smile && reveal < 1) {
+      const mask = ctx.createLinearGradient(0, cover - 12, 0, cover)
+      mask.addColorStop(0, '#ffffff00')
+      mask.addColorStop(1, '#fff')
+      ctx.fillStyle = mask
+      ctx.fillRect(x, cover - 12, cardWidth, Math.max(12, y + height - cover + 12))
+    }
+    if (smile && study.phase === 'clue') {
+      const nose = a?.noseTip ?? { x: mouth.x, y: mouth.y - .045 }
+      const edge = a?.mouthLeft ?? { x: mouth.x - .07, y: mouth.y }
+      const target = { x: px + (nose.x + edge.x) / 2 * w, y: py + (nose.y * .7 + edge.y * .3) * h }
+      const progress = reduced ? 1 : smoothMotion(localMs / 480)
+      applyGlassInk(ctx, 1, 3.5)
+      drawEditorialLeader(ctx, { x: target.x - 85, y: target.y - 46 }, { x: target.x - 48, y: target.y - 46 }, target, progress, 1)
+    }
+    ctx.restore()
+    if (smile) {
+      ctx.save()
+      ctx.fillStyle = '#6b7280'
+      ctx.font = '34px monospace'
+      ctx.textAlign = 'center'
+      ctx.fillText(index ? 'B' : 'A', x + cardWidth / 2, cover + 49)
+      ctx.restore()
+    }
+  })
+  if (smile) drawGuessSpinner(ctx, maskY + 175, clockMs, 1 - smoothMotion(reveal * 4), reduced)
+}
+
+export function drawFeatureStudy(ctx: CanvasRenderingContext2D, study: FeatureStudy, photo: FeaturePhoto, variants: FeaturePhoto[], localMs: number, _durationMs: number, reduced: boolean, previous?: FeatureStudy, activity?: PortraitActivity, instrument?: PortraitInstrument, clockMs = localMs) {
   const dark = isDarkVideoContext(ctx), ink = dark ? '#f2eee5' : '#171717', panel = dark ? '#1b1b1b' : '#f5f4f1'
   ctx = originalVideoContext(ctx)
+  if (study.opening && variants[0]) {
+    drawFeatureOpening(ctx, study, [photo, variants[0]], localMs, _durationMs, reduced, clockMs)
+    return
+  }
   const frames = featureFrames(study.layout), prior = featureFrames(previous?.layout ?? study.layout)
   const progress = reduced ? 1 : smoothMotion(localMs / 560)
   const textureEdit = study.editMode === 'photo'

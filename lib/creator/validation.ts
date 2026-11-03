@@ -58,6 +58,7 @@ export const creatorProfileSchema = z
 
 export const MINIMUM_SUBMISSION_VIEWS = 20_000
 export function minimumSubmissionViews(terms?: SprintTerms | null) {
+  if (terms?.retainer) return 0
   return terms && launchCampaign(terms) ? Math.min(...terms.milestones.map(item => item.views)) : MINIMUM_SUBMISSION_VIEWS
 }
 
@@ -77,7 +78,7 @@ export const creatorSubmissionSchema = z.object({
   analyticsContentType: z.enum(CREATOR_VIDEO_TYPES),
   analyticsSizeBytes: z.number().int().positive().max(MAX_CREATOR_ANALYTICS_VIDEO_BYTES),
   // The service validates the selected campaign's minimum from saved terms.
-  viewCountThreshold: z.number().int().min(5_000, 'Your post has not reached the minimum views yet.').max(2_000_000_000),
+  viewCountThreshold: z.number().int().nonnegative().max(2_000_000_000),
   usAudiencePercent: z.number().min(0).max(100),
 })
 

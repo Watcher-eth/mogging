@@ -6,9 +6,11 @@ import type { MetricRow } from './analytics'
 
 export type PurchaseFlowReport = {
   summary: MetricRow[]; daily: MetricRow[]; outcomes: MetricRow[]; surfaces: MetricRow[];
-  failures: MetricRow[]; feedback: MetricRow[]; support: MetricRow[]; coverage: MetricRow[]; handoffs: MetricRow[]
+  failures: MetricRow[]; feedback: MetricRow[]; support: MetricRow[]; coverage: MetricRow[]; handoffs: MetricRow[]; interruptions?: MetricRow[]; builds?: MetricRow[]; stripeActivity?: MetricRow[]
 }
 
+// Provider recovery requires one account/product/time-matched store request across all attempts,
+// including attempts outside the selected window. Silence never becomes a cancellation.
 // Full-window aggregates, independent of the capped, authenticated timeline endpoint.
 // The parent e snapshot already applies platform, customer and runtime exclusions.
 export function purchaseFlowCTEs(start: string, end: string, days: number) {
@@ -18,7 +20,7 @@ export function purchaseFlowCTEs(start: string, end: string, days: number) {
   ), purchase_flow_attempt_events as materialized (
     select * from (
       select actor,platform,properties->>'attempt_id' as attempt_id,
-        min(occurred_at) filter(where event_name='purchase_started') over(partition by actor,platform,properties->>'attempt_id') as started,
+        account_id,app_version,min(occurred_at) filter(where event_name='purchase_started') over(partition by actor,platform,properties->>'attempt_id') as started,
         event_name,occurred_at,received_at,properties
       from purchase_flow_events a where actor is not null and nullif(properties->>'attempt_id','') is not null
         and not exists(select 1 from scoped_events bad where (bad.audience='sandbox' or bad.properties->>'transaction_id' in (select transaction_id from sandbox_transactions))
@@ -26,28 +28,50 @@ export function purchaseFlowCTEs(start: string, end: string, days: number) {
     ) linked where started is not null and occurred_at >= started
   ), purchase_flow_matches as (
     select a.actor,a.platform,a.attempt_id,bool_or(b.environment='production') as verified,
+      bool_and(b.occurred_at<a.started-interval '5 seconds') as existing_purchase,
       max(b.received_at) filter(where b.environment='production') as latest_billing_receipt
     from purchase_flow_attempt_events a join subscription_events b
-      on b.provider='revenuecat' and b.environment='production' and b.transaction_id=a.properties->>'transaction_id'
-      and b.product_id=a.properties->>'productId'
+      on b.provider='revenuecat' and b.environment='production' and b.product_id=a.properties->>'productId'
+      and (b.transaction_id=a.properties->>'transaction_id' or (
+        a.event_name='checkout_started' and a.account_id is not null and b.account_id=a.account_id
+        and ((a.platform='ios' and b.properties->>'store'='APP_STORE') or (a.platform='android' and b.properties->>'store' in ('PLAY_STORE','GOOGLE_PLAY')))
+        and b.transaction_id is not null
+        and b.occurred_at>=a.occurred_at-interval '5 seconds' and b.occurred_at<=a.occurred_at+interval '10 minutes'
+        and (select count(distinct (coalesce(other.mobile_install_id,other.anonymous_id,other.account_id),other.platform,other.properties->>'attempt_id'))
+          from analytics_events other where other.account_id=a.account_id and other.event_name='checkout_started'
+            and other.environment='production' and other.platform in ('ios','android')
+            and nullif(other.properties->>'attempt_id','') is not null and other.properties->>'productId'=b.product_id
+            and coalesce(other.properties->>'runtime_environment','unknown') not in ('sandbox','development','test')
+            and coalesce(other.properties->>'store_environment','unknown')<>'sandbox'
+            and other.occurred_at>=b.occurred_at-interval '10 minutes' and other.occurred_at<=b.occurred_at+interval '5 seconds')=1
+        and not exists(select 1 from purchase_flow_attempt_events known where known.actor=a.actor and known.platform=a.platform
+          and known.attempt_id=a.attempt_id and known.event_name='purchase_completed'
+          and nullif(known.properties->>'transaction_id','') is not null and known.properties->>'transaction_id'<>b.transaction_id)
+      ))
       and b.event_name in ('subscription_started','trial_started','one_time_purchase')
-      and b.occurred_at >= a.started - interval '5 seconds' and b.occurred_at < ${end}::timestamp
+      and b.occurred_at < ${end}::timestamp
       and b.received_at < ${end}::timestamp and ${customerAccount(sql`coalesce(b.account_id,b.external_user_id)`)}
     group by a.actor,a.platform,a.attempt_id
   ), purchase_flow_flags as (
     select a.actor,a.platform,a.attempt_id,a.started,
       (array_agg(a.properties order by occurred_at,received_at) filter(where event_name='purchase_started'))[1] as context,
+      (array_agg(a.app_version order by occurred_at,received_at) filter(where event_name='purchase_started'))[1] as release,
+      (array_agg(event_name order by occurred_at desc,received_at desc))[1] as last_event,
+      (array_agg(properties order by occurred_at desc,received_at desc))[1] as last_context,
+      max(occurred_at) as last_observation,
+      bool_or(event_name='purchase_recovered' or event_name='purchase_reconciled') as recovery_checked,
       bool_or(event_name='checkout_started') as requested,
       bool_or(event_name='purchase_completed' or (event_name='purchase_reconciled' and properties->>'result' in ('provider_purchase_observed','activated'))) or coalesce(m.verified,false) as purchased,
       bool_or(event_name='purchase_activated' or (event_name='purchase_reconciled' and properties->>'result'='activated')) as activated,
-      coalesce(m.verified,false) as verified,m.latest_billing_receipt,
+      coalesce(m.verified,false) as verified,coalesce(m.existing_purchase,false) as existing_purchase,m.latest_billing_receipt,
       (array_agg(event_name order by occurred_at desc,received_at desc) filter(where event_name in ('purchase_cancelled','purchase_failed','purchase_pending','purchase_activation_failed','purchase_account_required')))[1] as terminal,
       (array_agg(properties order by occurred_at desc,received_at desc) filter(where event_name in ('purchase_cancelled','purchase_failed','purchase_pending','purchase_activation_failed','purchase_account_required')))[1] as terminal_context,
       (array_agg(properties->>'feedback_reason' order by occurred_at desc,received_at desc) filter(where event_name='purchase_cancel_feedback'))[1] as feedback
     from purchase_flow_attempt_events a left join purchase_flow_matches m using(actor,platform,attempt_id)
-    group by a.actor,a.platform,a.attempt_id,a.started,m.verified,m.latest_billing_receipt
+    group by a.actor,a.platform,a.attempt_id,a.started,m.verified,m.existing_purchase,m.latest_billing_receipt
   ), purchase_flow_attempts as materialized (
     select *,case
+      when activated and existing_purchase then 'existing_access'
       when activated and purchased then 'activated'
       when activated then 'activation_only'
       when purchased then case when terminal='purchase_activation_failed' then 'purchased_access_failed' when terminal='purchase_account_required' then 'account_required' else 'purchased_access_pending' end
@@ -61,8 +85,13 @@ export function purchaseFlowCTEs(start: string, end: string, days: number) {
     select count(*) as attempts,count(distinct actor) as devices,
       count(*) filter(where requested) as requested,count(*) filter(where purchased) as purchased,
       count(*) filter(where verified) as verified,count(*) filter(where purchased and activated) as activated,
+      count(*) filter(where outcome='existing_access') as restored_access,
       count(*) filter(where outcome='cancelled') as cancellations,
       count(*) filter(where outcome in ('preparation_failed','store_failed','purchased_access_failed')) as errors,
+      count(*) filter(where outcome='store_failed' and terminal_context->>'error_code'='3') as restricted,
+      count(*) filter(where outcome in ('preparation_failed','store_failed','purchased_access_failed') and coalesce(terminal_context->>'error_code','')<>'3') as technical_errors,
+      count(*) filter(where outcome='unresolved') as unresolved,
+      count(*) filter(where outcome='pending') as pending,
       count(*) filter(where outcome in ('purchased_access_failed','purchased_access_pending','account_required')) as access_unconfirmed,
       count(*) filter(where outcome in ('pending','in_progress','unresolved')) as incomplete
     from purchase_flow_attempts
@@ -86,6 +115,22 @@ export function purchaseFlowCTEs(start: string, end: string, days: number) {
       count(*) as attempts,count(distinct actor) as affected_devices
     from purchase_flow_attempts where outcome in ('preparation_failed','store_failed','purchased_access_failed')
     group by 1,2,3,4 order by count(*) desc,1,2,3,4
+  ), purchase_flow_interruptions as (
+    select coalesce(release,'unknown') as release,platform,
+      coalesce(nullif(last_context->>'purchase_stage',''),'unknown') as stage,
+      case when recovery_checked then 'recovery_unconfirmed'
+        when last_context->>'app_state' in ('inactive','background') then 'app_left_active_state'
+        when requested then 'no_store_callback' else 'before_store_request' end as evidence,
+      count(*) as attempts,count(distinct actor) as devices,min(started) as oldest_attempt,max(last_observation) as latest_observation
+    from purchase_flow_attempts where outcome='unresolved' group by 1,2,3,4 order by count(*) desc,1,2,3,4
+  ), purchase_flow_builds as (
+    select coalesce(release,'unknown') as release,platform,count(*) as attempts,
+      count(*) filter(where purchased) as purchased,count(*) filter(where activated and purchased) as activated,
+      count(*) filter(where outcome='cancelled') as cancellations,
+      count(*) filter(where outcome in ('preparation_failed','store_failed','purchased_access_failed')) as errors,
+      count(*) filter(where outcome='unresolved') as unresolved,
+      count(*) filter(where outcome='pending') as pending
+    from purchase_flow_attempts group by 1,2 order by count(*) desc,1,2
   ), purchase_flow_feedback as (
     select feedback as reason,count(*) as responses from purchase_flow_attempts where feedback is not null group by feedback order by count(*) desc,feedback
   ), purchase_flow_support as (
@@ -101,6 +146,13 @@ export function purchaseFlowCTEs(start: string, end: string, days: number) {
       max(occurred_at) as latest_event,max(received_at) as latest_receipt,
       (select max(latest_billing_receipt) from purchase_flow_matches) as latest_billing_receipt
     from purchase_flow_events
+  ), purchase_flow_stripe_activity as (
+    select event_name,coalesce(nullif(properties->>'decline_code',''),nullif(properties->>'failure_code',''),'not_recorded') as reason,
+      count(*) as events,count(distinct coalesce('account:' || account_id,'stripe:' || external_user_id)) as customers,
+      max(occurred_at) as latest_event
+    from billing_history where provider='stripe' and occurred_at>=${start}::timestamp
+      and event_name in ('payment_failed','checkout_expired','checkout_confirmed','billing_issue_started')
+    group by 1,2 order by count(*) desc,1,2
   ), purchase_flow_handoffs as (
     select case when consumed_at < ${end}::timestamp then 'consumed' when expires_at <= ${end}::timestamp then 'expired' else 'awaiting' end as status,
       count(*) as handoffs,count(distinct user_id) as accounts
@@ -114,10 +166,13 @@ export function purchaseFlowCTEs(start: string, end: string, days: number) {
       'outcomes',coalesce((select json_agg(r) from purchase_flow_outcomes r),'[]'::json),
       'surfaces',coalesce((select json_agg(r) from purchase_flow_surfaces r),'[]'::json),
       'failures',coalesce((select json_agg(r) from purchase_flow_failures r),'[]'::json),
+      'interruptions',coalesce((select json_agg(r) from purchase_flow_interruptions r),'[]'::json),
+      'builds',coalesce((select json_agg(r) from purchase_flow_builds r),'[]'::json),
       'feedback',coalesce((select json_agg(r) from purchase_flow_feedback r),'[]'::json),
       'support',coalesce((select json_agg(r) from purchase_flow_support r),'[]'::json),
       'coverage',(select json_agg(r) from purchase_flow_coverage r),
-      'handoffs',coalesce((select json_agg(r) from purchase_flow_handoffs r),'[]'::json)
+      'handoffs',coalesce((select json_agg(r) from purchase_flow_handoffs r),'[]'::json),
+      'stripeActivity',coalesce((select json_agg(r) from purchase_flow_stripe_activity r),'[]'::json)
     ) as report
   )`
 }

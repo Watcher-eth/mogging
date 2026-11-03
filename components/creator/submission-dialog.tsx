@@ -436,7 +436,7 @@ export function SubmissionDialog({
                             required
                           />
                           <p className="mt-1 text-xs text-zinc-500">
-                            Submit as soon as you reach {minimumViews.toLocaleString('en-US')} views. Request rereview at each new milestone.
+                            {sprint?.terms.retainer ? `Retainer: $${(sprint.terms.retainer.amountCents / 100).toFixed(2)} per approved video with at least ${sprint.terms.minimumTier1Percent}% Tier 1 audience. No minimum views.` : <>Submit as soon as you reach {minimumViews.toLocaleString('en-US')} views. Request rereview at each new milestone.</>}
                           </p>
                         </Field>
                         <div className="creator-field-label">

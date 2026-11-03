@@ -1,3 +1,4 @@
+import { CreatorFixedRateNotice } from './creator-fixed-rate-notice'
 import { getSubmissionPayoutEstimate, type AdminPayoutSelection } from '@/lib/admin/submission-payout'
 import { SubmissionHistory } from './submission-history'
 import { submissionBonusPayments, reviewAudienceBonuses } from '@/lib/creator/bonus-payments'
@@ -508,6 +509,7 @@ export function ReviewDialog({ target, creator, payments, metrics, open, onOpenC
             {campaignName ? <div className="mt-3 rounded-xl border border-sky-100 bg-sky-50 px-3.5 py-2.5"><p className="text-[10px] font-semibold uppercase tracking-wider text-sky-700">Campaign</p><p className="mt-0.5 text-sm font-semibold text-sky-950">{campaignName}</p></div> : null}
             <DialogDescription className="[overflow-wrap:anywhere]">{reviewSubtitle(target)}</DialogDescription>
           </DialogHeader>
+          {target.resource === 'submission' || target.resource === 'creator' ? <CreatorFixedRateNotice agreement={target.resource === 'creator' ? target.item.retainerTerms : creator?.retainerTerms} submission={target.resource === 'submission' ? target.item : undefined} /> : null}
           {target.resource === 'submission' ? <Tabs.Root value={tab} onValueChange={setTab} className="mt-4 flex min-h-0 flex-1 flex-col">
             <Tabs.List aria-label="Submission review" className="flex shrink-0 gap-1 overflow-x-auto rounded-full bg-zinc-100 p-1">{['video', 'review', 'earnings', 'warnings', 'attribution', 'messages', 'history'].map(value => <Tabs.Trigger key={value} value={value} className="min-h-11 min-w-[84px] flex-1 rounded-full px-2 text-[11px] font-medium capitalize text-zinc-500 data-[state=active]:bg-white data-[state=active]:text-zinc-900 data-[state=active]:shadow-sm sm:text-sm">{capitalize(value)}{value === 'warnings' && activeWarningCount ? <span className="ml-1 rounded-full bg-amber-100 px-1.5 py-0.5 text-[10px] font-semibold text-amber-800">{activeWarningCount}</span> : null}{value === 'messages' && target.item.unreadMessages ? <span className="ml-1 rounded-full bg-[#007aff] px-1.5 py-0.5 text-[10px] text-white">{target.item.unreadMessages}</span> : null}</Tabs.Trigger>)}</Tabs.List>
             <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain">

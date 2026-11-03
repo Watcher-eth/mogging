@@ -1,4 +1,6 @@
 import { downloadCue, useQuietCue } from '@/lib/audio/sounds'
+import { bufferToWav } from '@web-kits/audio'
+import { mixVideoSounds, suggestVideoSounds, videoSounds, type SoundCue, type VideoSound } from '@/lib/creator/video-sound'
 import { DocumentarySceneEditor } from './documentary-scene-editor'
 import {editorialRatingReports,editorialRatingInput,editorialRatingVisibility} from '@/lib/creator/private-character'
 import { PrivateCharacterStudio } from './private-character-studio'
@@ -104,6 +106,39 @@ export default function VideoStudio({ input, plan, images, trackExports = false,
   }, [theme, selection, sourceImages, draft])
   const activeAudio = audioCut?.source === draft ? audioCut : null
   const composition = useMemo(() => ({ ...(activeAudio?.composition ?? draft), theme: recipe === 'documentary-studio' ? 'dark' as const : theme }), [draft, theme, activeAudio, recipe])
+  const [automaticSounds, setAutomaticSounds] = useState<boolean>()
+  const [soundChoice, setSoundChoice] = useState<VideoSound>('click')
+  const [soundLevel, setSoundLevel] = useState(65)
+  const [soundEdits, setSoundEdits] = useState<{ cut: typeof draft; cues: SoundCue[] }>()
+  const [soundMix, setSoundMix] = useState<{ plan: SoundCue[]; voice?: AudioBuffer; level: number; duration: number; buffer?: AudioBuffer; url?: string; error?: boolean }>()
+  const voiceBuffer = activeAudio?.audio.buffer
+  const duration = composition.durationMs
+  const manualSounds = soundEdits?.cut === draft ? soundEdits.cues : undefined
+  const useAutomaticSounds = automaticSounds ?? composition.scenes.some(scene => scene.featureStudy?.opening === 'smile-choice')
+  const soundPlan = useMemo(() => [
+    ...(useAutomaticSounds ? suggestVideoSounds(composition) : []),
+    ...manualSounds ?? [],
+  ], [useAutomaticSounds, composition, manualSounds])
+  const soundActive = soundPlan.length > 0 && soundLevel > 0
+  const currentMix = soundMix?.plan === soundPlan && soundMix.voice === voiceBuffer && soundMix.level === soundLevel && soundMix.duration === duration ? soundMix : undefined
+  const mixingSound = soundActive && !currentMix
+  useEffect(() => {
+    if (!soundActive) return
+    let disposed = false
+    let url: string | undefined
+    void mixVideoSounds(duration, voiceBuffer, soundPlan, soundLevel / 100).then(buffer => {
+      if (disposed || !buffer) return
+      url = URL.createObjectURL(bufferToWav(buffer))
+      setSoundMix({ plan: soundPlan, voice: voiceBuffer, level: soundLevel, duration, buffer, url })
+    }).catch(() => {
+      if (!disposed) setSoundMix({ plan: soundPlan, voice: voiceBuffer, level: soundLevel, duration, error: true })
+    })
+    return () => { disposed = true; if (url) URL.revokeObjectURL(url) }
+  }, [soundActive, soundPlan, soundLevel, duration, voiceBuffer])
+  function addSoundAtPlayhead() {
+    const cue = { sound: soundChoice, timeMs: Math.min(duration - 1, Math.round(previewPositionRef.current)) }
+    setSoundEdits({ cut: draft, cues: [...manualSounds ?? [], cue] })
+  }
   const timingIssues = activeAudio ? productionTimingIssues(composition, length) : []
   const [preparation, setPreparation] = useState<{ source: typeof composition; video: PreparedVideo } | null>(null)
   const prepared = preparation?.source === composition ? preparation.video : null
@@ -142,7 +177,7 @@ export default function VideoStudio({ input, plan, images, trackExports = false,
   }, [])
 
   useEffect(() => {
-    if (!clips.size || !draft.script) { setAudioStatus('No voiceover recorded. Preview and export are silent.'); return }
+    if (!clips.size || !draft.script) { setAudioStatus('No voiceover recorded.'); return }
     let disposed = false
     let url: string | undefined
     try {
@@ -228,6 +263,7 @@ export default function VideoStudio({ input, plan, images, trackExports = false,
         detectPhotos(saved.story.images),
         'darkImages' in subject ? detectPhotos(creatorSubjectPhotos(subject, 'dark')!.map((photo, index) => ({ ...photo, id: index === 0 ? saved.story.images[0].id : photo.id }))) : undefined,
       ])
+      if (saved.story.featureOpening) setRecipe('feature-study')
       setMaster(saved.script); setVoice(saved.voice); setClips(saved.clips); setLength(saved.story.defaultLength ?? defaultLength); setSectionIds(undefined); setVariation(0); setAudioCut(null); setMode('format')
       const extras = (saved.script.cues.some(cue => cue.section?.visuals.some(visual => visual.imageId)) ? [] : featureVariantPhotos(subject.id, photos[0].id)).filter(photo => !photos.some(existing => existing.id === photo.id || existing.retouch && photo.retouch && existing.retouch.feature === photo.retouch.feature && existing.retouch.operation === photo.retouch.operation))
       setCustomComposition(null); setSeekMs(0); setSelection({ id: subject.id, name: subject.name, images: [...photos, ...extras], assets: saved.assets, darkImages, story: saved.story, stories: saved.stories, analysis: saved.analysis }); setCustomTarget(null)
@@ -243,7 +279,8 @@ export default function VideoStudio({ input, plan, images, trackExports = false,
       setMaster(saved.script); setVoice(saved.voice); setClips(saved.clips); setAudioCut(null)
       setLength(saved.story.defaultLength ?? defaultLength); setSectionIds(undefined); setVariation(0); setCustomComposition(null); setSeekMs(0)
       setSelection({ ...selection, images: photos, assets: saved.assets, darkImages: undefined, story: saved.story, stories: saved.stories, analysis: saved.analysis })
-      if (saved.story.kind === 'score-walkthrough') setRecipe('report-led')
+      if (saved.story.featureOpening) setRecipe('feature-study')
+      else if (saved.story.kind === 'score-walkthrough') setRecipe('report-led')
     } catch (reason) { toast.error(reason instanceof Error ? reason.message : 'Could not load this story') }
     finally { setLoading(false) }
   }
@@ -289,10 +326,10 @@ export default function VideoStudio({ input, plan, images, trackExports = false,
   const playDownload = useQuietCue(downloadCue)
 
   async function downloadVideo() {
-    if (!prepared || busy || timingIssues.length) return
+    if (!prepared || busy || timingIssues.length || mixingSound || soundActive && currentMix?.error) return
     const controller = new AbortController(); abortRef.current = controller; setProgress(0)
     try {
-      const video = await exportCompositionMp4(prepared, setProgress, controller.signal, activeAudio?.audio.buffer)
+      const video = await exportCompositionMp4(prepared, setProgress, controller.signal, soundActive ? currentMix?.buffer : voiceBuffer)
       if (controller.signal.aborted) return
       if (trackExports) {
         const bytes = await video.arrayBuffer()
@@ -342,7 +379,7 @@ export default function VideoStudio({ input, plan, images, trackExports = false,
       <section className={styles.studioPreview}>
         {selection && !prepared && !error ? <span role="status" className="sr-only">Preparing selected style…</span> : null}
         {error ? <p role="alert" className="text-sm text-red-700">{error}</p> : null}
-        <VideoCompositionPlayer prepared={prepared} composition={composition} seekMs={seekMs} audioUrl={activeAudio?.audio.url} onTime={time => { previewPositionRef.current = time; if (customComposition) setPlayhead(time) }} />
+        <VideoCompositionPlayer prepared={prepared} composition={composition} seekMs={seekMs} audioUrl={soundActive && currentMix?.url ? currentMix.url : activeAudio?.audio.url} onTime={time => { previewPositionRef.current = time; if (customComposition) setPlayhead(time) }} />
       </section>
       <div className={styles.studioEditor}>
 
@@ -390,9 +427,23 @@ export default function VideoStudio({ input, plan, images, trackExports = false,
           <p className={styles.editingContext}>{selection?.name} · Based on {creatorVideoStyles.find(style => style.id === recipe)?.label}</p>
           {recipe === 'documentary-studio' ? <DocumentarySceneEditor composition={composition} prepared={prepared} images={renderImages} onChange={setCustomComposition} onSeek={setSeekMs} /> : <CustomVideoEditor composition={composition} prepared={prepared} images={renderImages} input={studioInput} reports={studioReports} playhead={playhead} onChange={setCustomComposition} onSeek={setSeekMs} />}
         </fieldset> : null}
+        {selection ? <fieldset disabled={busy} className="grid gap-3 rounded-2xl border border-neutral-200 p-4 text-sm">
+          <legend className="px-2 font-medium">Sound effects</legend>
+          <label className="flex items-center gap-2"><input type="checkbox" checked={useAutomaticSounds} onChange={event => setAutomaticSounds(event.target.checked)} /> Accent reveals and report transitions</label>
+          <label className="grid gap-1 text-xs">Effects level <input type="range" min={0} max={100} value={soundLevel} onChange={event => setSoundLevel(Number(event.target.value))} /></label>
+          <div className="flex flex-wrap gap-2">
+            <select aria-label="Sound effect" value={soundChoice} onChange={event => setSoundChoice(event.target.value as VideoSound)} className="rounded-lg bg-neutral-100 px-3 py-2">{Object.entries(videoSounds).map(([id, label]) => <option key={id} value={id}>{label}</option>)}</select>
+            <button type="button" disabled={!prepared || (manualSounds?.length ?? 0) >= 30} onClick={addSoundAtPlayhead} className="rounded-lg border px-3 py-2">Add at playhead</button>
+          </div>
+          {manualSounds?.length ? <ul className="grid gap-2 text-xs">{manualSounds.map((cue, index) => <li key={index} className="flex justify-between gap-2">
+            <button type="button" onClick={() => setSeekMs(cue.timeMs)}>{(cue.timeMs / 1000).toFixed(2)}s · {videoSounds[cue.sound]}</button>
+            <button type="button" aria-label={`Remove ${videoSounds[cue.sound]} at ${(cue.timeMs / 1000).toFixed(2)} seconds`} onClick={() => setSoundEdits({ cut: draft, cues: manualSounds.filter((_, i) => i !== index) })}>Remove</button>
+          </li>)}</ul> : null}
+          <p className="text-xs text-neutral-500" role="status">{mixingSound ? 'Mixing sound effects…' : soundActive && currentMix?.error ? 'Could not mix audio. Change the effects level to retry.' : soundPlan.length ? `${soundPlan.length} cues · preview and export` : 'Scrub to the moment you want to accent.'}</p>
+        </fieldset> : null}
         <div className="grid gap-3 pb-8 pt-3">
-          <button type="button" disabled={!prepared || busy || timingIssues.length > 0} onClick={() => void downloadVideo()} className={styles.download}>{progress !== null ? <Loader2 className="size-5 animate-spin" /> : <Download size={20} />}{progress !== null ? `Downloading ${Math.round(progress * 100)}%` : 'Download video'}</button>
-          <p className="text-center text-[10px] leading-4 text-zinc-400">{videoExportSize.width} × {videoExportSize.height} · MP4 · {activeAudio ? 'Voiceover included' : 'Silent preview'}</p>
+          <button type="button" disabled={!prepared || busy || timingIssues.length > 0 || mixingSound || soundActive && currentMix?.error} onClick={() => void downloadVideo()} className={styles.download}>{progress !== null ? <Loader2 className="size-5 animate-spin" /> : <Download size={20} />}{progress !== null ? `Downloading ${Math.round(progress * 100)}%` : 'Download video'}</button>
+          <p className="text-center text-[10px] leading-4 text-zinc-400">{videoExportSize.width} × {videoExportSize.height} · MP4 · {activeAudio ? soundActive ? 'Voiceover and effects' : 'Voiceover included' : soundActive ? 'Sound effects' : 'Silent preview'}</p>
           {timingIssues.map(issue => <p key={issue} role="alert" className="text-xs leading-5 text-red-700">{issue}</p>)}
           {progress !== null ? <button type="button" className="text-xs text-zinc-500" onClick={() => abortRef.current?.abort()}>Cancel</button> : null}
         </div>

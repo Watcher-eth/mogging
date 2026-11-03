@@ -1,5 +1,6 @@
+import { creatorRetainerTerms } from './retainer'
 import { isDeepStrictEqual } from 'node:util'
-import { and, desc, eq, or, sql } from 'drizzle-orm'
+import { and, desc, eq, isNull, lte, ne, or, sql } from 'drizzle-orm'
 import { z } from 'zod'
 import { db, schema } from '@/lib/db'
 import { ApiError } from '@/lib/api/http'
@@ -27,11 +28,25 @@ export async function requireVideoStudioAccess(userId: string) {
   return profile
 }
 
+export async function claimStudioRequirementsReminder(userId: string) {
+  const profile = await requireVideoStudioAccess(userId)
+  const [claimed] = await db.update(schema.creatorProfiles)
+    .set({ studioRequirementsSeenAt: sql`now()` })
+    .where(and(
+      eq(schema.creatorProfiles.id, profile.id),
+      eq(schema.creatorProfiles.videoStudioAccess, true),
+      ne(schema.creatorProfiles.authStatus, 'suspended'),
+      or(isNull(schema.creatorProfiles.studioRequirementsSeenAt), lte(schema.creatorProfiles.studioRequirementsSeenAt, sql`now() - interval '7 days'`)),
+    ))
+    .returning({ id: schema.creatorProfiles.id })
+  return { show: Boolean(claimed) }
+}
+
 export async function listStudioGenerations(userId: string) {
   const profile = await requireVideoStudioAccess(userId)
   const generations = await db.query.creatorStudioGenerations.findMany({ where: eq(schema.creatorStudioGenerations.creatorProfileId, profile.id), orderBy: [desc(schema.creatorStudioGenerations.createdAt)], limit: 20 })
   const submissions = await db.select({ id: schema.creatorSubmissions.id, generationId: schema.creatorSubmissions.studioGenerationId }).from(schema.creatorSubmissions).where(eq(schema.creatorSubmissions.creatorProfileId, profile.id))
-  return generations.filter(generation => !submissions.some(post => post.generationId === generation.id)).map(generation => ({ id: generation.id, title: generation.composition.title, campaignName: generation.sprintTerms.mgcSourceCampaignId ? 'Mogging Detailed Analysis MGC' : launchCampaign(generation.sprintTerms)?.name ?? 'Campaign', minimumViews: Math.min(...generation.sprintTerms.milestones.map(item => item.views)) }))
+  return generations.filter(generation => !submissions.some(post => post.generationId === generation.id)).map(generation => ({ id: generation.id, title: generation.composition.title, campaignName: generation.sprintTerms.mgcSourceCampaignId ? 'Mogging Detailed Analysis MGC' : launchCampaign(generation.sprintTerms)?.name ?? 'Campaign', minimumViews: Math.min(...creatorRetainerTerms(generation.sprintTerms, profile.retainerTerms).milestones.map(item => item.views)) }))
 }
 
 export async function registerStudioGeneration(userId: string, value: unknown) {
@@ -45,7 +60,7 @@ export async function registerStudioGeneration(userId: string, value: unknown) {
   await db.insert(schema.creatorStudioGenerations).values({ ...input, creatorProfileId: profile.id, sprintId: campaign.id, sprintTerms: campaign.terms, formatId: format.id }).onConflictDoNothing({ target: schema.creatorStudioGenerations.id })
   const saved = await db.query.creatorStudioGenerations.findFirst({ where: eq(schema.creatorStudioGenerations.id, input.id) })
   if (!saved || saved.creatorProfileId !== profile.id || saved.contentHash !== input.contentHash || saved.personId !== input.personId || saved.storyId !== input.storyId || !isDeepStrictEqual(saved.composition, JSON.parse(JSON.stringify(input.composition)))) throw new ApiError(409, 'This export identity has already been used')
-  return { id: saved.id, title: saved.composition.title, campaignName: saved.sprintTerms.mgcSourceCampaignId ? 'Mogging Detailed Analysis MGC' : launchCampaign(saved.sprintTerms)?.name ?? campaign.name, minimumViews: Math.min(...saved.sprintTerms.milestones.map(item => item.views)) }
+  return { id: saved.id, title: saved.composition.title, campaignName: saved.sprintTerms.mgcSourceCampaignId ? 'Mogging Detailed Analysis MGC' : launchCampaign(saved.sprintTerms)?.name ?? campaign.name, minimumViews: Math.min(...creatorRetainerTerms(saved.sprintTerms, profile.retainerTerms).milestones.map(item => item.views)) }
 }
 
 export async function submitStudioPost(userId: string, value: unknown) {
@@ -69,8 +84,9 @@ export async function submitStudioPost(userId: string, value: unknown) {
     await requireSubmissionBudget(tx, campaign.id, 0)
     const format = sprintFormat(generation.sprintTerms, generation.formatId)
     if (!format) throw new ApiError(409, 'The saved campaign format is unavailable')
-    const [submission] = await tx.insert(schema.creatorSubmissions).values({ creatorProfileId: profile.id, socialAccountId: socialAccount?.id, studioGenerationId: generation.id, sprintId: generation.sprintId, sprintTerms: generation.sprintTerms, formatId: generation.formatId, title: generation.composition.title, platform: platform === 'tiktok' ? 'TikTok' : 'Instagram Reels', postUrl: postLink.url, postKey: postLink.key, requirementsConfirmedAt: new Date(), isDraft: false, status: 'pending' }).returning()
-    await recordSubmissionUpdate(tx, submission.id, 'submitted', 'Posted from Creator Video Studio. Analytics can be added at the first campaign milestone.')
+    const submissionTerms = creatorRetainerTerms(generation.sprintTerms, profile.retainerTerms)
+    const [submission] = await tx.insert(schema.creatorSubmissions).values({ creatorProfileId: profile.id, socialAccountId: socialAccount?.id, studioGenerationId: generation.id, sprintId: generation.sprintId, sprintTerms: submissionTerms, formatId: generation.formatId, title: generation.composition.title, platform: platform === 'tiktok' ? 'TikTok' : 'Instagram Reels', postUrl: postLink.url, postKey: postLink.key, requirementsConfirmedAt: new Date(), isDraft: false, status: 'pending' }).returning()
+    await recordSubmissionUpdate(tx, submission.id, 'submitted', submissionTerms.retainer ? 'Posted under the per-video retainer. Add analytics to verify the minimum audience; no view minimum applies.' : 'Posted from Creator Video Studio. Analytics can be added at the first campaign milestone.')
     return submission
   }).catch(rethrowCreatorPostConflict)
 }

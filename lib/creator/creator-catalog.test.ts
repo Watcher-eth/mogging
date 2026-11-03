@@ -148,7 +148,10 @@ test('recorded stories retain measured audio and saved photo scores across the e
   const { createHash } = await import('node:crypto')
   const read = (path: string) => JSON.parse(readFileSync(`public${path}`, 'utf8'))
   for (const subject of creatorSubjects) {
-    const story = read(`/creator/stories/${subject.id}/story.json`), saved = restoreProductionRecording(read(story.recording))
+    const manifest = read(`/creator/stories/${subject.id}/story.json`)
+    const legacy = manifest.featureOpening ? manifest.alternatives.find((option: { id: string }) => option.id === `${subject.id}-round3`) : undefined
+    const story = legacy ? { ...manifest, ...legacy, featureOpening: undefined } : manifest
+    const saved = restoreProductionRecording(read(story.recording))
     const analysis = creatorSubjectAnalysisSchema.parse(read(story.analysis))
     expect(analysis.subjectId).toBe(subject.id)
     const options=creatorStoryOptions(story)
@@ -158,6 +161,15 @@ test('recorded stories retain measured audio and saved photo scores across the e
     expect(analysis.source.imageId).toBe(story.images[0].id)
     expect(productionWritingBrief(saved.script, analysis).subjectAnalysis?.source.sha256).toBe(analysis.source.sha256)
     const reports = creatorAnalysisReports(analysis), actual = creatorAnalysisInput(input, subject.name, analysis)
+    if (manifest.featureOpening) {
+      expect(creatorStoryOptions(manifest)[0].recording).toBe(manifest.recording)
+      const approved = restoreProductionRecording(read(manifest.recording))
+      const approvedImages = manifest.imageIds.map((id: string) => manifest.images.find((image: { id: string }) => image.id === id))
+      const directions = creatorStoryDirections(manifest, approved.script, actual, approvedImages, reports, 'feature-study', 0)
+      const video = compileProductionVideo(approved.script, actual, approvedImages, reports, 'feature-study', approved.voice, 0, 'philtrum', 1, directions)
+      expect(video.scenes.some(scene => scene.featureStudy?.opening === manifest.featureOpening)).toBe(true)
+      expect(assembleProductionAudio(video, approved.clips).alignmentError).toBeUndefined()
+    }
     const clocks = new Set<string>(), recordings = new Set<string>()
     for (const style of existingStyles) {
       const directions = creatorStoryDirections(story, saved.script, actual, story.images, reports, style.id, 0)
@@ -296,7 +308,10 @@ test('approved editorial images and crop reveals survive all five styles without
   const {showsFeatureMetric}=await import('./report-choreography')
   const read=(url:string)=>JSON.parse(readFileSync(`public${url}`,'utf8'))
   for(const subject of creatorSubjects.slice(0,6)){
-    const base=read(`/creator/stories/${subject.id}/story.json`),saved=restoreProductionRecording(read(base.recording)),analysis=read(base.analysis)
+    const manifest=read(`/creator/stories/${subject.id}/story.json`)
+    const legacy=manifest.featureOpening ? manifest.alternatives.find((option: { id: string })=>option.id===`${subject.id}-round3`) : undefined
+    const base=legacy ? {...manifest,...legacy,featureOpening:undefined} : manifest
+    const saved=restoreProductionRecording(read(base.recording)),analysis=read(base.analysis)
     const images=base.imageIds.map((id:string)=>base.images.find((image:{id:string})=>image.id===id))
     const reports=creatorAnalysisReports(analysis),actual=creatorAnalysisInput(input,subject.name,analysis)
     expect(productionCut(saved.script,45).cues.map(cue=>cue.text)).toEqual(saved.script.cues.map(cue=>cue.text))
