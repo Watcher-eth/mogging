@@ -75,7 +75,7 @@ export default function LegacyHomepage({assignment, preview}: {assignment: Landi
 
             <ReviewsSection />
 
-            <m.div {...entrance} data-landing-section="web_checkout" className="mx-auto mt-16 w-full max-w-5xl min-[1440px]:max-w-[var(--page-max)] sm:mt-20"><WebCheckout embedded preview={preview} /></m.div>
+            <m.div {...entrance} data-landing-section="web_checkout" className="mx-auto mt-16 w-full max-w-5xl min-[1440px]:max-w-[var(--page-max)] sm:mt-20"><WebCheckout embedded showReport preview={preview} /></m.div>
           </div>
         </section>
       </main>

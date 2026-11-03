@@ -16,6 +16,8 @@ const requiredSources = [
   ['components/creator/account-link.tsx', 'SkeletonAvatar'],
   ['components/admin/creator-workspace.tsx', 'SkeletonAvatar'],
   ['components/landing/web-checkout.tsx', './checkout-report'],
+  ['components/landing/legacy-homepage.tsx', '<WebCheckout embedded showReport'],
+  ['pages/index.tsx', '<WebCheckout embedded showReport'],
 ]
 
 for (const [file, reference] of requiredSources) {
