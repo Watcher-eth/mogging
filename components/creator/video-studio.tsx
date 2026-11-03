@@ -1,4 +1,3 @@
-import { downloadCue, useQuietCue } from '@/lib/audio/sounds'
 import { bufferToWav } from '@web-kits/audio'
 import { mixVideoSounds, suggestVideoSounds, videoSounds, type SoundCue, type VideoSound } from '@/lib/creator/video-sound'
 import { DocumentarySceneEditor } from './documentary-scene-editor'
@@ -106,19 +105,18 @@ export default function VideoStudio({ input, plan, images, trackExports = false,
   }, [theme, selection, sourceImages, draft])
   const activeAudio = audioCut?.source === draft ? audioCut : null
   const composition = useMemo(() => ({ ...(activeAudio?.composition ?? draft), theme: recipe === 'documentary-studio' ? 'dark' as const : theme }), [draft, theme, activeAudio, recipe])
-  const [automaticSounds, setAutomaticSounds] = useState<boolean>()
+  const [automaticSounds, setAutomaticSounds] = useState(true)
   const [soundChoice, setSoundChoice] = useState<VideoSound>('click')
-  const [soundLevel, setSoundLevel] = useState(65)
+  const [soundLevel, setSoundLevel] = useState(50)
   const [soundEdits, setSoundEdits] = useState<{ cut: typeof draft; cues: SoundCue[] }>()
   const [soundMix, setSoundMix] = useState<{ plan: SoundCue[]; voice?: AudioBuffer; level: number; duration: number; buffer?: AudioBuffer; url?: string; error?: boolean }>()
   const voiceBuffer = activeAudio?.audio.buffer
   const duration = composition.durationMs
   const manualSounds = soundEdits?.cut === draft ? soundEdits.cues : undefined
-  const useAutomaticSounds = automaticSounds ?? composition.scenes.some(scene => scene.featureStudy?.opening === 'smile-choice')
   const soundPlan = useMemo(() => [
-    ...(useAutomaticSounds ? suggestVideoSounds(composition) : []),
+    ...(automaticSounds ? suggestVideoSounds(composition) : []),
     ...manualSounds ?? [],
-  ], [useAutomaticSounds, composition, manualSounds])
+  ], [automaticSounds, composition, manualSounds])
   const soundActive = soundPlan.length > 0 && soundLevel > 0
   const currentMix = soundMix?.plan === soundPlan && soundMix.voice === voiceBuffer && soundMix.level === soundLevel && soundMix.duration === duration ? soundMix : undefined
   const mixingSound = soundActive && !currentMix
@@ -323,8 +321,6 @@ export default function VideoStudio({ input, plan, images, trackExports = false,
     } catch (reason) { URL.revokeObjectURL(url); toast.error(reason instanceof Error ? reason.message : 'Could not register the edited photo.') }
     finally { setLoading(false) }
   }
-  const playDownload = useQuietCue(downloadCue)
-
   async function downloadVideo() {
     if (!prepared || busy || timingIssues.length || mixingSound || soundActive && currentMix?.error) return
     const controller = new AbortController(); abortRef.current = controller; setProgress(0)
@@ -339,7 +335,6 @@ export default function VideoStudio({ input, plan, images, trackExports = false,
         void refreshExports()
       }
       downloadBlob(video, `${selection?.name.toLowerCase().replace(/[^a-z0-9]+/g, '-') ?? 'mogging'}-${customComposition ? 'custom' : recipe}.mp4`)
-      playDownload()
     } catch (reason) { if (!controller.signal.aborted) toast.error(reason instanceof Error ? reason.message : 'Could not download the video') }
     finally { abortRef.current = null; setProgress(null) }
   }
@@ -404,7 +399,9 @@ export default function VideoStudio({ input, plan, images, trackExports = false,
               <Icon size={20} strokeWidth={1.5} className={styles.styleIcon} aria-hidden="true" /><span className="flex-1"><span className="block text-sm font-medium">{style.label}</span><span className="mt-1 block text-[11px] leading-4 text-zinc-500">{style.detail}</span></span><span className={styles.selectionBox} aria-hidden="true"><Check size={12} strokeWidth={2.5} /></span>
             </button>
           })}</div>
-          {recipe === 'feature-study' ? <div className="grid gap-3">
+          {recipe === 'feature-study' ? <details className="rounded-xl border border-neutral-200 px-3">
+            <summary className="cursor-pointer py-3 text-sm font-medium">Customize study</summary>
+            <div className="grid gap-3 pb-3">
             <label className="text-xs font-medium" htmlFor="feature-topic">Study topic</label>
             <select id="feature-topic" className="min-h-11 rounded-xl bg-neutral-100 px-3 text-sm" value={featureTopic} onChange={event => { setFeatureTopic(event.target.value as FeatureTopic); setFeatureAmount(1); setCustomComposition(null); setSeekMs(0) }}>{featureTopics.map(topic => <option key={topic} value={topic}>{featureTopicLabels[topic]}</option>)}</select>{['freckles', 'facial-hair'].includes(featureTopic) && !sourceImages.some(image => image.retouch?.feature === featureTopic) ? <p role="status" className="text-xs leading-5 text-neutral-500">Upload an edited copy below to show this change. The preview keeps the original unchanged until then.</p> : null}<label className="grid gap-2 text-xs" htmlFor="feature-amount">
             <span className="flex justify-between">
@@ -419,17 +416,19 @@ export default function VideoStudio({ input, plan, images, trackExports = false,
             <label className="grid gap-2 text-xs font-medium">Edited portrait <span className="font-normal text-neutral-500">Optional: upload an edited copy of the same front photo for freckles, hair, ear swaps or other retouching. Keep pose, crop and lighting unchanged. Minimum Full HD.</span>
             <input className="text-xs file:mr-3 file:rounded-full file:border-0 file:bg-neutral-100 file:px-4 file:py-2 file:text-neutral-900" aria-label="Edited comparison portrait" type="file" accept="image/jpeg,image/png,image/webp" disabled={busy} onChange={event => { void uploadFeatureEdit(event.target.files?.[0]); event.target.value = '' }} />
             </label>
-            <p className="text-xs leading-5 text-neutral-500">Preview the visual treatment with your current script, or start a focused topic script. Starting a new script clears its previous voice recording.</p>
-            </div> : null}
+            <p className="text-xs leading-5 text-neutral-500">Starting a new script clears the current voice recording.</p>
+            </div>
+          </details> : null}
 
         </fieldset></> : null}
         {customComposition ? <fieldset id="custom-video-editor" hidden={!editing} disabled={busy} className="min-w-0"><legend className="sr-only">Clip editor</legend>
           <p className={styles.editingContext}>{selection?.name} · Based on {creatorVideoStyles.find(style => style.id === recipe)?.label}</p>
           {recipe === 'documentary-studio' ? <DocumentarySceneEditor composition={composition} prepared={prepared} images={renderImages} onChange={setCustomComposition} onSeek={setSeekMs} /> : <CustomVideoEditor composition={composition} prepared={prepared} images={renderImages} input={studioInput} reports={studioReports} playhead={playhead} onChange={setCustomComposition} onSeek={setSeekMs} />}
         </fieldset> : null}
-        {selection ? <fieldset disabled={busy} className="grid gap-3 rounded-2xl border border-neutral-200 p-4 text-sm">
-          <legend className="px-2 font-medium">Sound effects</legend>
-          <label className="flex items-center gap-2"><input type="checkbox" checked={useAutomaticSounds} onChange={event => setAutomaticSounds(event.target.checked)} /> Accent reveals and report transitions</label>
+        {selection ? <details className="rounded-xl border border-neutral-200 px-3">
+          <summary className="cursor-pointer py-3 text-sm font-medium">Sound effects <span className="ml-2 text-xs font-normal text-neutral-500">{soundActive ? automaticSounds ? 'Auto' : 'Custom' : 'Off'}</span></summary>
+          <fieldset disabled={busy} className="grid gap-3 pb-3 text-sm">
+          <label className="flex items-center gap-2"><input type="checkbox" checked={automaticSounds} onChange={event => setAutomaticSounds(event.target.checked)} /> Add sounds to key moments</label>
           <label className="grid gap-1 text-xs">Effects level <input type="range" min={0} max={100} value={soundLevel} onChange={event => setSoundLevel(Number(event.target.value))} /></label>
           <div className="flex flex-wrap gap-2">
             <select aria-label="Sound effect" value={soundChoice} onChange={event => setSoundChoice(event.target.value as VideoSound)} className="rounded-lg bg-neutral-100 px-3 py-2">{Object.entries(videoSounds).map(([id, label]) => <option key={id} value={id}>{label}</option>)}</select>
@@ -439,8 +438,9 @@ export default function VideoStudio({ input, plan, images, trackExports = false,
             <button type="button" onClick={() => setSeekMs(cue.timeMs)}>{(cue.timeMs / 1000).toFixed(2)}s · {videoSounds[cue.sound]}</button>
             <button type="button" aria-label={`Remove ${videoSounds[cue.sound]} at ${(cue.timeMs / 1000).toFixed(2)} seconds`} onClick={() => setSoundEdits({ cut: draft, cues: manualSounds.filter((_, i) => i !== index) })}>Remove</button>
           </li>)}</ul> : null}
-          <p className="text-xs text-neutral-500" role="status">{mixingSound ? 'Mixing sound effects…' : soundActive && currentMix?.error ? 'Could not mix audio. Change the effects level to retry.' : soundPlan.length ? `${soundPlan.length} cues · preview and export` : 'Scrub to the moment you want to accent.'}</p>
-        </fieldset> : null}
+          </fieldset>
+        </details> : null}
+        {soundActive && currentMix?.error ? <p role="alert" className="text-xs text-red-700">Could not mix audio. Adjust the effects level to retry.</p> : null}
         <div className="grid gap-3 pb-8 pt-3">
           <button type="button" disabled={!prepared || busy || timingIssues.length > 0 || mixingSound || soundActive && currentMix?.error} onClick={() => void downloadVideo()} className={styles.download}>{progress !== null ? <Loader2 className="size-5 animate-spin" /> : <Download size={20} />}{progress !== null ? `Downloading ${Math.round(progress * 100)}%` : 'Download video'}</button>
           <p className="text-center text-[10px] leading-4 text-zinc-400">{videoExportSize.width} × {videoExportSize.height} · MP4 · {activeAudio ? soundActive ? 'Voiceover and effects' : 'Voiceover included' : soundActive ? 'Sound effects' : 'Silent preview'}</p>

@@ -264,8 +264,16 @@ const presets: Record<string, OverlayPreset> = {
   "biological-age": {
     id: "report-biological-age",
     footer: "[ 008 ] BIOLOGICAL AGE",
-    skinFaceMap: true,
     primitives: [
+      box("age-eye-box", [...detail.leftEye, ...detail.rightEye], 3, 2.5, 80),
+      line("eye-texture", common.leftEyeInner, common.rightEyeInner, 180),
+      line("nose-mouth", common.noseTip, common.mouthCenter, 280),
+      line("mouth-chin", common.mouthCenter, common.chin, 380),
+      dot("left-eye", common.leftEyeInner, 0),
+      dot("right-eye", common.rightEyeInner, 70),
+      dot("nose", common.noseTip, 140),
+      dot("mouth", common.mouthCenter, 210),
+      dot("chin", common.chin, 280),
       label("age-label", "Skin Age", "[ measured ]", at("rightEyeInner", 62, 46, offset(6, 8))),
     ],
   },
@@ -306,16 +314,17 @@ const presets: Record<string, OverlayPreset> = {
   "sun-damage": {
     id: "report-sun-damage",
     footer: "[ 011 ] SUN DAMAGE",
-    skinFaceMap: true,
     primitives: [
+      dot("forehead", at("forehead", 50, 31, offset(3.5, 7)), 0),
+      dot("left-cheek", common.leftCheek, 120),
+      dot("right-cheek", common.rightCheek, 240),
+      line("uv-zone", at("forehead", 50, 31, offset(3.5, 7)), common.rightCheek, 360, true),
       label("uv-label", "UV signal", "[ low ]", at("rightEyeOuter", 68, 39, offset(6.5, 2.5))),
     ],
   },
 };
 
 const aliases: Record<string, keyof typeof presets> = {
-  skin: "biological-age",
-  "skin-quality": "biological-age",
   "skin-age": "biological-age",
 };
 

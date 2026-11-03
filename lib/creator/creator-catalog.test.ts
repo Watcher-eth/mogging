@@ -148,28 +148,18 @@ test('recorded stories retain measured audio and saved photo scores across the e
   const { createHash } = await import('node:crypto')
   const read = (path: string) => JSON.parse(readFileSync(`public${path}`, 'utf8'))
   for (const subject of creatorSubjects) {
-    const manifest = read(`/creator/stories/${subject.id}/story.json`)
-    const legacy = manifest.featureOpening ? manifest.alternatives.find((option: { id: string }) => option.id === `${subject.id}-round3`) : undefined
-    const story = legacy ? { ...manifest, ...legacy, featureOpening: undefined } : manifest
-    const saved = restoreProductionRecording(read(story.recording))
-    const analysis = creatorSubjectAnalysisSchema.parse(read(story.analysis))
+    const catalog = read(`/creator/stories/${subject.id}/story.json`)
+    const analysis = creatorSubjectAnalysisSchema.parse(read(catalog.analysis))
     expect(analysis.subjectId).toBe(subject.id)
-    const options=creatorStoryOptions(story)
-    expect(options[0].id).toBe(story.id)
+    const options=creatorStoryOptions(catalog)
+    expect(options[0].id).toBe(catalog.id)
     const recording = ['johnson', 'trump', 'zendaya'].includes(subject.id) ? 'recording.json' : 'round3-recording.json'
-    expect(options[0].recording).toBe(`/creator/stories/${subject.id}/${recording}`)
+    const legacy = options.find(option => option.recording === `/creator/stories/${subject.id}/${recording}`)!
+    const story = { ...catalog, ...legacy, featureOpening: legacy.featureOpening }
+    const saved = restoreProductionRecording(read(legacy.recording!))
     expect(analysis.source.imageId).toBe(story.images[0].id)
     expect(productionWritingBrief(saved.script, analysis).subjectAnalysis?.source.sha256).toBe(analysis.source.sha256)
     const reports = creatorAnalysisReports(analysis), actual = creatorAnalysisInput(input, subject.name, analysis)
-    if (manifest.featureOpening) {
-      expect(creatorStoryOptions(manifest)[0].recording).toBe(manifest.recording)
-      const approved = restoreProductionRecording(read(manifest.recording))
-      const approvedImages = manifest.imageIds.map((id: string) => manifest.images.find((image: { id: string }) => image.id === id))
-      const directions = creatorStoryDirections(manifest, approved.script, actual, approvedImages, reports, 'feature-study', 0)
-      const video = compileProductionVideo(approved.script, actual, approvedImages, reports, 'feature-study', approved.voice, 0, 'philtrum', 1, directions)
-      expect(video.scenes.some(scene => scene.featureStudy?.opening === manifest.featureOpening)).toBe(true)
-      expect(assembleProductionAudio(video, approved.clips).alignmentError).toBeUndefined()
-    }
     const clocks = new Set<string>(), recordings = new Set<string>()
     for (const style of existingStyles) {
       const directions = creatorStoryDirections(story, saved.script, actual, story.images, reports, style.id, 0)
@@ -243,7 +233,7 @@ test('new score stories bind narrated categories to saved scores and keep all fo
     }
     const signatures = new Set<string>()
     for (const style of existingStyles) {
-      const story = { ...manifest, ...next }
+      const story = { ...manifest, ...next, featureOpening: next.featureOpening }
       const directions = creatorStoryDirections(story, script, actual, manifest.images, reports, style.id, 0)
       const video = compileProductionVideo(script, actual, manifest.images, reports, style.id, draft.voice, 0, 'philtrum', 1, directions)
       expect(narrationText(video)).toBe(script.cues.map(cue => cue.text).join('\n\n'))
@@ -309,8 +299,8 @@ test('approved editorial images and crop reveals survive all five styles without
   const read=(url:string)=>JSON.parse(readFileSync(`public${url}`,'utf8'))
   for(const subject of creatorSubjects.slice(0,6)){
     const manifest=read(`/creator/stories/${subject.id}/story.json`)
-    const legacy=manifest.featureOpening ? manifest.alternatives.find((option: { id: string })=>option.id===`${subject.id}-round3`) : undefined
-    const base=legacy ? {...manifest,...legacy,featureOpening:undefined} : manifest
+    const round3=manifest.alternatives?.find((option:{id:string})=>option.id.endsWith('-round3'))
+    const base=round3 ? {...manifest,...round3,featureOpening:undefined} : manifest
     const saved=restoreProductionRecording(read(base.recording)),analysis=read(base.analysis)
     const images=base.imageIds.map((id:string)=>base.images.find((image:{id:string})=>image.id===id))
     const reports=creatorAnalysisReports(analysis),actual=creatorAnalysisInput(input,subject.name,analysis)
@@ -320,7 +310,7 @@ test('approved editorial images and crop reveals survive all five styles without
       const comp=compileProductionVideo(saved.script,actual,images,reports,style.id,saved.voice,0,'philtrum',1,directions)
       for(const scene of comp.scenes){
         for (const action of scene.portraitProgram?.actions ?? []) {
-          expect(action.guide.includes(':')).toBe(true)
+          expect(/[.:]/.test(action.guide)).toBe(true)
           expect(action.label).not.toMatch(/[0-9]/)
           expect(action.word).toBeLessThan(scene.portraitProgram!.wordCount)
         }

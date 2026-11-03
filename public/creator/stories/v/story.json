@@ -1,6 +1,6 @@
 {
-  "id": "v-round3",
-  "title": "What a close-up hides about V\u2019s jaw",
+  "id": "v-jaw-width-study",
+  "title": "Which version of V has the sharper jaw?",
   "status": "recorded",
   "audioStatus": "word-aligned",
   "images": [
@@ -2799,7 +2799,7 @@
   ],
   "analysis": "/creator/stories/v/analysis.json",
   "kind": "feature-story",
-  "recording": "/creator/stories/v/round3-recording.json",
+  "recording": "/creator/stories/v/feature-study-recording.json",
   "imageIds": [
     "v-front",
     "v-three-quarter",
@@ -2813,5 +2813,19 @@
     "revealLabel": "",
     "revealEdit": 0
   },
-  "alternatives": []
+  "alternatives": [
+    {
+      "id": "v-round3",
+      "title": "What a close-up hides about V’s jaw",
+      "kind": "feature-story",
+      "recording": "/creator/stories/v/round3-recording.json",
+      "defaultLength": 45,
+      "imageIds": [
+        "v-front",
+        "v-three-quarter",
+        "v-profile"
+      ]
+    }
+  ],
+  "featureOpening": "jaw-width-choice"
 }

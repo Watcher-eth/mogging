@@ -77,9 +77,9 @@ export function refinePhotographedContours(face:FaceLandmarksPayload,pixels:Pixe
   if(jaw&&jaw.length>=9){
     const sample=(x:number,y:number)=>{const px=Math.max(0,Math.min(pixels.width-1,Math.round(x))),py=Math.max(0,Math.min(pixels.height-1,Math.round(y))),i=(py*pixels.width+px)*4;return [pixels.data[i],pixels.data[i+1],pixels.data[i+2]]}
     const radius=Math.max(3,Math.min(8,span*.035))
-    const fitted=jaw.map((p,i)=>{
+    const offsets=jaw.map((p,i)=>{
       const a=toPixel(jaw[Math.max(0,i-1)]),b=toPixel(jaw[Math.min(jaw.length-1,i+1)]),q=toPixel(p),length=Math.hypot(b.x-a.x,b.y-a.y)
-      if(length<1)return p
+      if(length<1)return { point: q, nx: 0, ny: 0, shift: 0 }
       const nx=-(b.y-a.y)/length,ny=(b.x-a.x)/length
       let best=0,bestScore=20
       for(let d=-radius;d<=radius;d++){
@@ -87,7 +87,17 @@ export function refinePhotographedContours(face:FaceLandmarksPayload,pixels:Pixe
         const contrast=Math.sqrt(inner.reduce((sum,v,c)=>sum+(v-outer[c])**2,0)/3),score=contrast-Math.abs(d)*2
         if(score>bestScore){best=d;bestScore=score}
       }
-      return {x:Math.max(0,Math.min(1,(q.x+nx*best)/pixels.width)),y:Math.max(0,Math.min(1,(q.y+ny*best)/pixels.height))}
+      return { point: q, nx, ny, shift: best }
+    })
+    const fitted = offsets.map(({ point, nx, ny, shift }, i) => {
+      // An isolated texture edge should not pull a single jaw point off the silhouette.
+      const adjacent = offsets.slice(Math.max(0, i - 1), i + 2).map(sample => sample.shift)
+      const median = quantile(adjacent, .5)
+      const settled = Math.max(median - 2, Math.min(median + 2, shift))
+      return {
+        x: Math.max(0, Math.min(1, (point.x + nx * settled) / pixels.width)),
+        y: Math.max(0, Math.min(1, (point.y + ny * settled) / pixels.height)),
+      }
     })
     const replacements=new Map(jaw.map((p,i)=>[`${p.x},${p.y}`,fitted[i]]))
     contours.jawline=fitted

@@ -103,18 +103,19 @@ test('layout categories and portrait looks form separate complete groups', () =>
 })
 
 
-test('Paper and Color print recur without covering lighting or shape edits', () => {
-  for (const recipe of ['portrait-audit', 'measurement-explainer', 'hybrid-story'] as const) {
-    const composition = compileAnalysisVideo(scriptToPlan(example.script, example.readingPace), input, example.images!.map(image => image.id), 'brand', reportCategories, { recipe, directions: creatorStyleDirections(example, recipe) })
-    const printed = composition.scenes.filter(scene => scene.portraitFX?.print === 'cmyk')
-    expect(printed.length).toBeGreaterThan(0)
-    expect(composition.scenes.some(scene=>scene.portraitFX?.print==='paper')).toBe(true)
-    expect(printed.every(scene => customSlides.some(slide => slide.id === customSlideId(scene)))).toBe(true)
-    expect(printed.every(scene => scene.source.kind === 'portrait' && !scene.portraitFX?.lighting && !scene.photoStudy && !scene.profileStudy)).toBe(true)
-    expect(composition.scenes.filter(scene => scene.source.kind === 'portrait' && !scene.portraitFX?.print).length).toBeGreaterThan(0)
+test('print variants only texture an eligible editorial chapter', () => {
+  const plan = scriptToPlan('Start with the whole face. The camera changes how the portrait reads from this angle. Notice the nose width relative to the eyes. End with the whole face.', 165)
+  const imageId = example.images![0].id
+  const directions = Object.fromEntries(plan.scenes.map(scene => [scene.id, { kind: 'portrait' as const, imageId, editorial: 'context' as const, categoryId: 'overall' }]))
+  for (const recipe of ['portrait-audit', 'report-led', 'hybrid-story'] as const) {
+    const composition = compileAnalysisVideo(plan, input, [imageId], 'brand', reportCategories, { recipe, directions, variation: 1 })
+    const printed = composition.scenes.filter(scene => scene.portraitFX?.print)
+    if (recipe === 'hybrid-story') {
+      expect(printed).toHaveLength(1)
+      expect(printed[0].narration).toContain('camera')
+      expect(printed[0].portraitFX?.print).toBe('cmyk')
+    } else expect(printed).toHaveLength(0)
   }
-  const report = compileAnalysisVideo(scriptToPlan(example.script, example.readingPace), input, example.images!.map(image => image.id), 'brand', reportCategories, { recipe: 'report-led', directions: creatorStyleDirections(example, 'report-led') })
-  expect(report.scenes.some(scene => scene.portraitFX?.print)).toBe(false)
 })
 
 

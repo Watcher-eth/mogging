@@ -69,7 +69,7 @@ function drawEditorial(ctx: CanvasRenderingContext2D, slide: ContentSlide, width
 
 let shareFont: Promise<void> | undefined
 export function loadShareFont() {
-  if (!shareFont) shareFont = new FontFace('Mogging Share', 'url(/fonts/Geist-Regular.woff2)').load().then(font => { document.fonts.add(font) }).catch(error => { shareFont = undefined; throw error })
+  if (!shareFont) shareFont = new FontFace('Mogging Share', 'url(/fonts/Geist-Regular.ttf)').load().then(font => { document.fonts.add(font) }).catch(error => { shareFont = undefined; throw error })
   return shareFont
 }
 

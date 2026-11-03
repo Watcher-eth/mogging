@@ -76,14 +76,21 @@ export function drawEditorialSplit(ctx: CanvasRenderingContext2D, frame: Frame, 
 export function drawEditorialInset(ctx: CanvasRenderingContext2D, frame: Frame, progress: number, drawContent: (frame: Frame) => void) {
   const t = editorialEase(progress)
   if (t === 0) return
-  const scale = lerp(.91, 1, t)
-  const visible = { x: frame.x, y: frame.y + (1 - t) * 22, w: frame.w * scale, h: frame.h * scale }
+  const edge = frame.x + frame.w * t
+  const slant = Math.min(frame.h * .36, frame.w * (1 - t))
   ctx.save()
-  ctx.globalAlpha *= t
+  ctx.globalAlpha *= Math.min(1, t * 3)
   ctx.beginPath()
-  ctx.roundRect(visible.x, visible.y, visible.w, visible.h, 17)
+  ctx.roundRect(frame.x, frame.y, frame.w, frame.h, 17)
   ctx.clip()
-  drawContent(visible)
+  ctx.beginPath()
+  ctx.moveTo(frame.x, frame.y)
+  ctx.lineTo(edge + slant, frame.y)
+  ctx.lineTo(edge, frame.y + frame.h)
+  ctx.lineTo(frame.x, frame.y + frame.h)
+  ctx.closePath()
+  ctx.clip()
+  drawContent(frame)
   ctx.restore()
 }
 
@@ -138,4 +145,83 @@ export function drawEditorialLeader(ctx: CanvasRenderingContext2D, from: Point, 
     }
   }
   ctx.stroke()
+}
+
+/** An unnumbered rail tracks a visual reveal without implying a measurement. */
+export function drawEditorialRevealRail(ctx: CanvasRenderingContext2D, center: Point, progress: number) {
+  const width = 240
+  const left = center.x - width / 2
+  const cursor = left + clamp(progress) * width
+  ctx.save()
+  ctx.lineCap = 'round'
+  ctx.lineWidth = 2
+  ctx.strokeStyle = 'rgba(41,50,59,.4)'
+  ctx.beginPath()
+  for (let index = 0; index <= 16; index++) {
+    const x = left + width * index / 16
+    const height = index % 4 === 0 ? 13 : 6
+    ctx.moveTo(x, center.y - height / 2)
+    ctx.lineTo(x, center.y + height / 2)
+  }
+  ctx.stroke()
+  ctx.strokeStyle = '#303942'
+  ctx.lineWidth = 4
+  ctx.beginPath()
+  ctx.moveTo(cursor, center.y - 13)
+  ctx.lineTo(cursor, center.y + 13)
+  ctx.stroke()
+  ctx.restore()
+}
+
+/** Short strokes follow the local direction of a detected contour. */
+export function editorialHatchStrokes(points: readonly Point[], unit: number): Point[][] {
+  const strokes: Point[][] = []
+  let distance = 0
+  let nextMark = 16 * unit
+  for (let index = 1; index < points.length && strokes.length < 18; index++) {
+    const a = points[index - 1], b = points[index]
+    const dx = b.x - a.x, dy = b.y - a.y
+    const length = Math.hypot(dx, dy)
+    if (!length) continue
+    while (nextMark <= distance + length && strokes.length < 18) {
+      const t = (nextMark - distance) / length
+      const x = a.x + dx * t, y = a.y + dy * t
+      const offset = (7 + strokes.length % 3 * 2) * unit
+      strokes.push([{ x, y }, {
+        x: x + (dx * .55 - dy) / length * offset,
+        y: y + (dy * .55 + dx) / length * offset,
+      }])
+      nextMark += 17 * unit
+    }
+    distance += length
+  }
+  return strokes
+}
+
+/** A registered feature locator. Tick marks expand from the point of interest. */
+export function drawEditorialLocator(ctx: CanvasRenderingContext2D, target: Point, axis: Point, progress: number) {
+  const t = editorialEase(progress)
+  if (!t) return
+  const length = Math.hypot(axis.x, axis.y)
+  if (length < 1) return
+  const dx = axis.x / length, dy = axis.y / length
+  ctx.save()
+  ctx.globalAlpha *= t
+  ctx.strokeStyle = 'rgba(250,252,255,.82)'
+  ctx.shadowColor = 'rgba(23,31,40,.23)'
+  ctx.shadowBlur = 5
+  ctx.lineWidth = 1.5
+  ctx.lineCap = 'round'
+  ctx.beginPath()
+  for (const side of [-1, 1]) for (let i = 1; i <= 3; i++) {
+    const distance = (8 + i * 8) * t * side
+    const x = target.x + dx * distance, y = target.y + dy * distance
+    const tick = (i === 3 ? 9 : 4) * t
+    ctx.moveTo(x - dy * tick, y + dx * tick)
+    ctx.lineTo(x + dy * tick, y - dx * tick)
+  }
+  ctx.stroke()
+  ctx.beginPath(); ctx.arc(target.x, target.y, 2.2 * t, 0, Math.PI * 2)
+  ctx.fillStyle = '#f8fbff'; ctx.fill()
+  ctx.restore()
 }

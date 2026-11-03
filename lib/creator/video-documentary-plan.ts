@@ -30,7 +30,7 @@ export function compileDocumentaryVideo(script: VideoScript, input: AnalysisPost
       framing: 'full', layout: 'portrait', focus: 'hero', tracks: [],
       documentary: { kind, label: index === 0 ? input.subject : cue.section?.title ?? `Scene ${index + 1}` },
       scoreCallouts: kind === 'inspection' ? spokenScoreCallouts(text, boundReports, category) : undefined,
-      portraitProgram: planPortraitProgram(text, feature, 'feature-study', variation + index, 'front'),
+      portraitProgram: planPortraitProgram(text, feature, 'documentary-studio', variation + index, 'front'),
     }
   })
   return { version: 1, title: `${input.subject} · Documentary Studio`, ...videoSize, fps: 30, durationMs: startMs, recipe: 'documentary-studio', style: 'brand', theme: 'dark', variation: variation % 10000, voice, script, scenes: bindScriptScenes(script, scenes) }

@@ -51,19 +51,26 @@ export function suggestVideoSounds(composition: VideoComposition): SoundCue[] {
     const study = scene.featureStudy
     const reveal = study?.phase === 'reveal' && previous?.featureStudy?.phase !== 'reveal'
     const wipe = study?.comparison === 'wipe' && previous?.featureStudy?.comparison !== 'wipe'
-    const newReport = scene.source.kind === 'report' && (previous?.source.kind !== 'report' || previous.source.categoryId !== scene.source.categoryId)
-    const transition = scene.tracks.find(track => track.target === 'content' && ['wipe-left', 'wipe-right', 'wipe-up', 'screen-push', 'card-reveal'].includes(track.primitive))
-    const sound = reveal || wipe || transition && previous?.cueId !== scene.cueId ? 'sweep'
-      : newReport ? scene.focus === 'scores' ? 'ratchet' : 'tap'
-      : !index && study?.opening ? 'click' : undefined
-    const offset = wipe ? Math.min(330, scene.durationMs * .16) : transition?.startMs ?? 0
+    const scoreReport = scene.source.kind === 'report' && scene.focus === 'scores'
+      && (previous?.source.kind !== 'report' || previous.source.categoryId !== scene.source.categoryId)
+    const authoredBoundary = previous && (previous.scriptRange?.cueId ?? previous.cueId) !== (scene.scriptRange?.cueId ?? scene.cueId)
+    const transition = authoredBoundary && scene.tracks.find(track => track.target === 'content')
+    const newPhoto = authoredBoundary && Boolean(scene.source.imageId) && previous.source.imageId !== scene.source.imageId
+    const recipe = composition.recipe
+    const sound = reveal || wipe ? 'sweep'
+      : scoreReport ? 'ratchet'
+      : transition && ['wipe-left', 'wipe-right', 'wipe-up', 'screen-push', 'card-reveal'].includes(transition.primitive) ? 'sweep'
+      : newPhoto && recipe === 'measurement-explainer' ? 'click'
+      : newPhoto && recipe === 'feature-study' ? 'tap'
+      : !index && study?.opening === 'jaw-choice' ? 'click' : undefined
+    const offset = reveal ? 0 : wipe ? Math.min(330, scene.durationMs * .16) : scoreReport ? 100 : transition ? transition.startMs : 0
     const timeMs = scene.startMs + offset
-    if (sound && timeMs < composition.durationMs - 150 && timeMs - (cues.at(-1)?.timeMs ?? -Infinity) >= 1400) cues.push({ sound, timeMs })
+    if (sound && timeMs < composition.durationMs - 150 && timeMs - (cues.at(-1)?.timeMs ?? -Infinity) >= 1800) cues.push({ sound, timeMs })
   }
-  const opening = composition.scenes.findIndex(scene => scene.featureStudy?.opening === 'smile-choice' && scene.featureStudy.phase === 'hold')
+  const opening = composition.scenes.findIndex(({ featureStudy }) => (featureStudy?.opening === 'smile-choice' || featureStudy?.opening === 'jaw-width-choice') && featureStudy.phase === 'hold')
   if (opening >= 0) {
-    const start = composition.scenes[opening].startMs
-    const reveal = composition.scenes.slice(opening + 1).find(scene => scene.featureStudy?.opening !== 'smile-choice' || scene.featureStudy.phase === 'reveal')
+    const { startMs: start, featureStudy } = composition.scenes[opening]
+    const reveal = composition.scenes.slice(opening + 1).find(scene => scene.featureStudy?.opening !== featureStudy?.opening || scene.featureStudy?.phase === 'reveal')
     const durationMs = (reveal?.startMs ?? composition.durationMs) - start
     if (durationMs > 300) cues.push({ sound: 'timer', timeMs: start, durationMs })
   }
