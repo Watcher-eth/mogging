@@ -334,7 +334,7 @@ function drawFeatureOpening(ctx: CanvasRenderingContext2D, study: FeatureStudy, 
   if (smile) drawGuessSpinner(ctx, maskY + 175, clockMs, 1 - smoothMotion(reveal * 4), reduced)
 }
 
-export function drawFeatureStudy(ctx: CanvasRenderingContext2D, study: FeatureStudy, photo: FeaturePhoto, variants: FeaturePhoto[], localMs: number, _durationMs: number, reduced: boolean, previous?: FeatureStudy, activity?: PortraitActivity, instrument?: PortraitInstrument, clockMs = localMs) {
+export function drawFeatureStudy(ctx: CanvasRenderingContext2D, study: FeatureStudy, photo: FeaturePhoto, variants: FeaturePhoto[], localMs: number, _durationMs: number, reduced: boolean, previous?: FeatureStudy, activity?: PortraitActivity, instrument?: PortraitInstrument, clockMs = localMs, captureMetric?: (ctx: CanvasRenderingContext2D, width: number, height: number, warp?: ReturnType<typeof featureWarp>) => void) {
   const dark = isDarkVideoContext(ctx), ink = dark ? '#f2eee5' : '#171717', panel = dark ? '#1b1b1b' : '#f5f4f1'
   ctx = originalVideoContext(ctx)
   if (study.opening && variants[0]) {
@@ -392,6 +392,7 @@ export function drawFeatureStudy(ctx: CanvasRenderingContext2D, study: FeatureSt
     if (index === 0 && activity) {
       const warp=registeredWarp ?? (!textureEdit && item.landmarks ? featureWarp(item.landmarks,study.topic,edit,study.adjustment) : undefined)
       drawPortraitActivity(ctx,activity,item.image.width,item.image.height,warp)
+      if (frames.length === 1 && prior.length === 1) captureMetric?.(ctx, item.image.width, item.image.height, warp)
 
     }
     if (!activity && !instrumentOwnsGuides(instrument) && index === 0 && frames.length === 1) drawNote(ctx, photo, study, reduced ? 1 : smoothMotion((localMs - 400) / 650))

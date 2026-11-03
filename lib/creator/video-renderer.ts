@@ -1,7 +1,8 @@
+import { capturePortraitMetric, drawPortraitMetricPill, type CapturedPortraitMetric } from './portrait-metric'
 import type { DocumentaryRenderer } from './video-documentary'
 import { drawPortraitInstruments, drawPortraitParticles, preparePortraitParticles, instrumentOwnsGuides } from './portrait-instruments'
 import { reportPortraitProjection, drawPortraitColorExtension } from './report-portrait'
-import { drawSpokenScore } from './spoken-score'
+import { activeSpokenScore, drawSpokenScore } from './spoken-score'
 import { drawScientificEvidence } from './video-research'
 import { scriptVisualSeed } from './video-script'
 import { portraitOverlayWindowMs, narratedPortraitProgram, portraitProgramRuns, preparePortraitProgram, samplePortraitProgram, drawPortraitActivity, type PortraitProgramRun, type PreparedPortraitProgram } from './portrait-program'
@@ -590,6 +591,7 @@ function renderScene(ctx: CanvasRenderingContext2D, prepared: PreparedVideo, sce
   const activeLighting = blendLight ? toLight ?? neutralPortraitLighting : asset.lighting ? lightFor(scene, localMs) : undefined
   const fromLighting = blendLight ? fromLight ?? neutralPortraitLighting : undefined
 
+  let pill: CapturedPortraitMetric | undefined
   const accent = videoStyles[prepared.composition.style].accent
   ctx.save(); ctx.setTransform(1, 0, 0, 1, 0, 0); ctx.globalAlpha = 1; ctx.filter = 'none'; ctx.imageSmoothingEnabled = true; ctx.imageSmoothingQuality = 'high'; ctx.clearRect(0, 0, W, H)
   ctx.fillStyle = '#fff'; ctx.fillRect(0, 0, W, H)
@@ -599,7 +601,9 @@ function renderScene(ctx: CanvasRenderingContext2D, prepared: PreparedVideo, sce
   const frame = sceneFrame(scene, localMs, asset.initialFrame, reduced)
   if (scene.featureStudy && asset.portrait) {
     const previous = prepared.composition.scenes[prepared.composition.scenes.indexOf(scene) - 1]
-    drawFeatureStudy(ctx, scene.featureStudy, { image: asset.portrait, landmarks: asset.studyLandmarks, headTop: asset.portraitHeadTop }, asset.featurePhotos ?? [], localMs, scene.durationMs, reduced, previous?.source.imageId === scene.source.imageId ? previous.featureStudy : undefined, activity, scene.portraitFX?.instrument)
+    drawFeatureStudy(ctx, scene.featureStudy, { image: asset.portrait, landmarks: asset.studyLandmarks, headTop: asset.portraitHeadTop }, asset.featurePhotos ?? [], localMs, scene.durationMs, reduced, previous?.source.imageId === scene.source.imageId ? previous.featureStudy : undefined, activity, scene.portraitFX?.instrument, scene.startMs + localMs, (overlayCtx, width, height, warp) => {
+      if (activity) pill = capturePortraitMetric(overlayCtx, scene, activity, asset.studyLandmarks, localMs, width, height, warp)
+    })
   } else if (scene.source.kind === 'explainer') {
     const previous = prepared.composition.scenes[prepared.composition.scenes.findIndex(item => item.id === scene.id) - 1]
     drawExplainer(ctx, scene, localMs, reduced, paint, previous?.source.kind === 'explainer' ? previous.graphic : undefined, measuring ? undefined : prepared.anatomy, asset.anatomyRegistration, asset.graphicCaptionHeight, asset.graphicSpecimen, asset.graphicStartMs === undefined ? undefined : { elapsed: scene.startMs + localMs - asset.graphicStartMs, duration: asset.graphicEndMs! - asset.graphicStartMs })
@@ -685,6 +689,7 @@ function renderScene(ctx: CanvasRenderingContext2D, prepared: PreparedVideo, sce
           if (activity) {
             const warp=scene.photoStudy ? photoStudyGesture(scene.photoStudy,photoStudyRegions(asset.studyLandmarks,scene.photoStudy.feature),studyClock!.timeMs,studyClock!.durationMs,reduced,asset.studyLandmarks).warp : undefined
             drawPortraitActivity(ctx,activity,picture.width,picture.height,warp)
+            if (!showsFeatureMetric(scene)) pill = capturePortraitMetric(ctx, scene, activity, asset.studyLandmarks, localMs, picture.width, picture.height, warp)
           }
           if (!activity && scene.study) paint(ctx, { id: 'overlay', label: `Study · ${scene.study.operation}`, frame: { x: 0, y: 0, width: picture.width, height: picture.height }, draw: ctx => {
             if (measuring) return
@@ -748,7 +753,9 @@ function renderScene(ctx: CanvasRenderingContext2D, prepared: PreparedVideo, sce
     if (localMs < track.startMs) continue
     if (track.target === 'decoration' || track.primitive === 'metric-bar-fill' || track.primitive === 'shimmer-pass') drawDecoration(ctx, prepared, scene, track, localMs, accent, reduced)
   }
-  if (!measuring) drawSpokenScore(ctx,scene,localMs,reduced)
+  const pillVisible = pill && (reduced || pill.opacity > 0) && drawPortraitMetricPill(originalVideoContext(ctx), pill, reduced)
+  const score = pillVisible ? activeSpokenScore(scene, localMs) : undefined
+  if (!measuring && !(pillVisible && score?.label === pill?.metric.label && score?.value === pill?.metric.value)) drawSpokenScore(ctx,scene,localMs,reduced)
   if (!measuring) drawScientificEvidence(ctx,prepared.composition,scene.startMs+localMs,reduced)
   if (chrome) drawSceneChrome(ctx, prepared, scene, localMs, reduced, paint, measuring, captionHandoff)
   ctx.restore()
