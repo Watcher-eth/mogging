@@ -9,6 +9,7 @@
     "start": "next start",
     "lint": "next lint",
     "test": "bun scripts/tests/run.mjs",
+    "verify:creator-analytics": "bun scripts/tests/verify-creator-analytics.ts && DATABASE_URL=postgres://fixture:fixture@127.0.0.1:1/fixture bun test lib/creator/audience-check.test.ts lib/admin/submission-history.test.ts lib/admin/submission-payout.test.ts lib/admin/submission-review.test.ts components/admin/creator-payout-decision.test.tsx",
     "test:courses": "bun run scripts/tests/courses.ts",
     "test:courses-credentials": "bun run scripts/tests/courses-credentials.ts",
     "typecheck": "tsc --noEmit",

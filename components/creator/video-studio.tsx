@@ -1,3 +1,4 @@
+import { downloadCue, useQuietCue } from '@/lib/audio/sounds'
 import { DocumentarySceneEditor } from './documentary-scene-editor'
 import {editorialRatingReports,editorialRatingInput,editorialRatingVisibility} from '@/lib/creator/private-character'
 import { PrivateCharacterStudio } from './private-character-studio'
@@ -285,6 +286,8 @@ export default function VideoStudio({ input, plan, images, trackExports = false,
     } catch (reason) { URL.revokeObjectURL(url); toast.error(reason instanceof Error ? reason.message : 'Could not register the edited photo.') }
     finally { setLoading(false) }
   }
+  const playDownload = useQuietCue(downloadCue)
+
   async function downloadVideo() {
     if (!prepared || busy || timingIssues.length) return
     const controller = new AbortController(); abortRef.current = controller; setProgress(0)
@@ -299,6 +302,7 @@ export default function VideoStudio({ input, plan, images, trackExports = false,
         void refreshExports()
       }
       downloadBlob(video, `${selection?.name.toLowerCase().replace(/[^a-z0-9]+/g, '-') ?? 'mogging'}-${customComposition ? 'custom' : recipe}.mp4`)
+      playDownload()
     } catch (reason) { if (!controller.signal.aborted) toast.error(reason instanceof Error ? reason.message : 'Could not download the video') }
     finally { abortRef.current = null; setProgress(null) }
   }

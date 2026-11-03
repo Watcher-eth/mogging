@@ -25,6 +25,7 @@ const Analytics = dynamic(() => import('@/components/app/analytics').then(module
 
 export default function App({ Component, pageProps: { session, ...pageProps } }: AppProps) {
   const router = useRouter()
+  const soundRoute = soundRoutes.has(router.pathname) || router.pathname === '/creator' || router.pathname.startsWith('/creator/')
   const courseRoute = router.pathname === '/courses'
     || router.pathname.startsWith('/courses/')
     || router.pathname === '/creator/courses'
@@ -38,7 +39,7 @@ export default function App({ Component, pageProps: { session, ...pageProps } }:
       {process.env.NODE_ENV !== 'production' && router.pathname === '/creator/__support-demo' ? null : <Analytics />}
       <SWRConfig value={swrConfig}>
         <PageSound
-          silent={!soundRoutes.has(router.pathname)}
+          silent={!soundRoute}
           enabled={soundEnabled}
           volume={soundVolume}
           onEnabledChange={setSoundEnabled}

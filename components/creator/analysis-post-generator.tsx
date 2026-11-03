@@ -1,3 +1,4 @@
+import { copyCue, useQuietCue } from '@/lib/audio/sounds'
 import Image from 'next/image'
 import dynamic from 'next/dynamic'
 import { useState } from 'react'
@@ -42,6 +43,7 @@ export function AnalysisPostGenerator({ images, onOpenAssets, onOpenMockReport }
   const [view, setView] = useState<'storyboard' | 'script'>('storyboard')
   const [videoOpen, setVideoOpen] = useState(false)
   const photo = images[0]
+  const playCopy = useQuietCue(copyCue)
 
   function patch(value: Partial<AnalysisPostInput>) {
     setInput(current => ({ ...current, ...value }))
@@ -55,6 +57,7 @@ export function AnalysisPostGenerator({ images, onOpenAssets, onOpenMockReport }
   async function copy(value: string, label: string) {
     try {
       await navigator.clipboard.writeText(value)
+      playCopy()
       toast.success(`${label} copied`)
     } catch {
       toast.error(`Could not copy ${label.toLowerCase()}`)

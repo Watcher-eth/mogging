@@ -30,7 +30,7 @@ import { toast } from 'sonner'
 import { useSound } from '@web-kits/audio/react'
 import useSWR from 'swr'
 import { apiGet, apiPost, ApiClientError } from '@/lib/api/client'
-import { selectSound } from '@/lib/audio/sounds'
+import { downloadCue, expandCue, selectSound, useQuietCue } from '@/lib/audio/sounds'
 import {
   clearAnalysisDraft,
   loadAnalysisDraft,
@@ -193,6 +193,7 @@ export default function AnalysisPage() {
   const router = useRouter()
   const { status } = useSession()
   const playSelect = useSound(selectSound)
+  const playExpand = useQuietCue(expandCue)
   const { data: appConfig } = useSWR<AppConfig>('/api/app-config', apiGet, {
     shouldRetryOnError: false,
   })
@@ -303,6 +304,7 @@ export default function AnalysisPage() {
     }
 
     setStep('upload')
+    playExpand()
   }
 
   async function startCheckout(product: AnalysisPurchase, quote: CheckoutQuote) {
@@ -1333,6 +1335,7 @@ function ShareSheet({
   onClose: () => void
   onCreate: () => Promise<string | null>
 }) {
+  const playDownload = useQuietCue(downloadCue)
   const [shareImageUrl, setShareImageUrl] = useState<string | null>(null)
   const [shareImageBlob, setShareImageBlob] = useState<Blob | null>(null)
   const [shareImageSize, setShareImageSize] = useState<{ width: number; height: number } | null>(null)
@@ -1408,6 +1411,11 @@ function ShareSheet({
     }
   }, [shareImageUrl])
 
+  function downloadReportImage(url: string) {
+    downloadShareImage(url)
+    playDownload()
+  }
+
   async function ensureShareUrl() {
     return shareUrl ?? await onCreate()
   }
@@ -1433,7 +1441,7 @@ function ShareSheet({
       }
 
       if (shareImageUrl) {
-        downloadShareImage(shareImageUrl)
+        downloadReportImage(shareImageUrl)
         toast.success('Share image downloaded')
       }
     } finally {
@@ -1519,7 +1527,7 @@ function ShareSheet({
             {shareImageUrl ? (
               <button
                 className="mt-3 flex w-full items-center justify-center gap-2 font-mono text-[10px] uppercase tracking-wide text-muted-foreground transition-colors hover:text-black"
-                onClick={() => downloadShareImage(shareImageUrl)}
+                onClick={() => downloadReportImage(shareImageUrl)}
                 type="button"
               >
                 <Download className="size-3.5" aria-hidden="true" />

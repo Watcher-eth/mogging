@@ -1,3 +1,4 @@
+import { copyCue, useQuietCue } from '@/lib/audio/sounds'
 import * as Dialog from '@radix-ui/react-dialog'
 import { AnimatePresence, LayoutGroup, motion, useReducedMotion } from 'motion/react'
 import { useEffect, useId, useState } from 'react'
@@ -9,6 +10,7 @@ import { sprintMoney } from '@/lib/creator/sprints'
 import type { CreatorReferralReport } from '@/lib/creator/creator-referral-policy'
 
 function InviteLink({ report }: { report: CreatorReferralReport }) {
+  const playCopy = useQuietCue(copyCue)
   const [copied, setCopied] = useState(false)
   const reduced = useReducedMotion()
   useEffect(() => {
@@ -17,7 +19,12 @@ function InviteLink({ report }: { report: CreatorReferralReport }) {
     return () => clearTimeout(timeout)
   }, [copied])
   async function copy() {
-    try { await navigator.clipboard.writeText(report.inviteUrl); setCopied(true); toast.success('Creator invite link copied') }
+    try {
+      await navigator.clipboard.writeText(report.inviteUrl)
+      playCopy()
+      setCopied(true)
+      toast.success('Creator invite link copied')
+    }
     catch { toast.error('Could not copy. Select and copy your link below.') }
   }
   return <div className="mt-6 flex items-center gap-3 rounded-2xl border border-dashed border-zinc-300 p-3">

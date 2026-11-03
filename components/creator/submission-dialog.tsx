@@ -1,3 +1,4 @@
+import { successCue, useQuietCue } from '@/lib/audio/sounds'
 import { campaignBudgetState, requestedIncrementCents, canReserveSubmission } from '@/lib/creator/campaign-budget-state'
 import { CampaignSubmissionBudget } from './campaign-submission-budget'
 import { campaignVersionGroups } from '@/lib/creator/campaign-versions'
@@ -206,6 +207,8 @@ export function SubmissionDialog({
       )
     changeStep(step + 1)
   }
+  const playSuccess = useQuietCue(successCue)
+
   async function submit(event: FormEvent) {
     event.preventDefault()
     if (!checkMinimumViews()) return
@@ -251,6 +254,7 @@ export function SubmissionDialog({
         viewCountThreshold: Number(views),
         usAudiencePercent: Number(audience),
       })
+      playSuccess()
       toast.success(existingSubmission ? 'Updated analytics submitted for review' : 'Video submitted for review')
       await onSubmitted()
       onOpenChange(false)
