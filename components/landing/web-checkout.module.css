@@ -1,7 +1,6 @@
-.standalone { display: grid; grid-template-columns: minmax(0,1fr) minmax(0,1fr); max-width: 980px; margin: 48px auto; border: 1px solid #ededf0; border-radius: 36px; overflow: hidden; background: #fff; color: #171b20; }
-.preview { min-height: 100%; background: #fafafa; overflow: hidden; }
-.offer { padding: 32px; display: grid; gap: 22px; }
-.embedded .offer { padding: 0; }
+.offerOnly { max-width: 440px; margin-inline: auto; }
+.standalone { margin: 48px auto; border: 1px solid #ededf0; border-radius: 36px; background: #fff; color: #171b20; }
+.offer { grid-area: offer; min-width: 0; display: grid; gap: 22px; }
 .eyebrow { text-transform: uppercase; color: #8a8e96; font-size: 10px; letter-spacing: .12em; margin-bottom: 12px; }
 .title { font-size: 34px; font-weight: 600; letter-spacing: -.055em; line-height: 1.1; }
 .description { color: #81868e; font-size: 13px; line-height: 1.7; margin-top: 12px; }
@@ -15,9 +14,26 @@
 .cta:focus-visible { outline: 2px solid #17191c; outline-offset: 4px; }
 .status { font-size: 12px; color: #878b93; text-align: center; }
 .status button { text-decoration: underline; margin-left: 5px; }
-@media(max-width:767px) { .standalone { grid-template-columns: minmax(0,1fr); max-width: 480px; margin: 20px auto; } .offer { padding: 24px; } .title { font-size: 30px; } }
+@media(max-width:767px) { .standalone { margin-block: 20px; } .title { font-size: 30px; } }
 @media(prefers-reduced-motion:reduce) { .cta { transition: none; } .cta:active { transform: none; } }
 
-.embedded { display: grid; grid-template-columns: minmax(0,1fr) minmax(0,1fr); gap: 48px; max-width: 980px; margin-inline: auto; }
-.embedded .preview { border-radius: 28px; }
-@media(max-width:767px) { .embedded { grid-template-columns: minmax(0,1fr); gap: 20px; max-width: 480px; } .embedded .preview { display: none; } }
+
+.embedded, .standalone {
+  display: grid;
+  grid-template-columns: minmax(0,1fr) minmax(340px, 30%);
+  grid-template-areas: "report offer";
+  align-items: start;
+  gap: clamp(24px, 4vw, 56px);
+}
+.embedded:has(.intro) { grid-template-areas: "intro intro" "report offer"; }
+.intro { grid-area: intro; }
+.standalone { max-width: min(100% - 32px, 94rem); padding: clamp(16px, 3vw, 40px); }
+.preview { grid-area: report; container-type: inline-size; min-width: 0; min-height: 400px; overflow: visible; }
+@media (max-width: 959px) {
+  .embedded, .standalone { grid-template-columns: minmax(0,1fr); grid-template-areas: "offer" "report"; }
+  .embedded:has(.intro) { grid-template-areas: "report" "intro" "offer"; }
+}
+
+@media (min-width: 1440px) {
+  .embedded { grid-template-columns: minmax(0,1fr) minmax(340px, 25%); gap: 36px; }
+}

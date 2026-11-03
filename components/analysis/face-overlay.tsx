@@ -1,3 +1,4 @@
+import { extendReportForehead, getReportFaceVisibility } from '@/lib/client/report-face-visibility'
 import { motion, useReducedMotion } from 'motion/react'
 import { useEffect, useRef } from 'react'
 import type { FaceLandmarksPayload } from '@/lib/creator/mobile-overlay-engine/landmarks'
@@ -28,8 +29,14 @@ export function FaceOverlay({ preset, landmarks, image, value, appearance = 'rep
     const ctx = canvas?.getContext('2d')
     if (!canvas || !ctx) return
     const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)')
+    const needsMask = appearance === 'report' && Boolean(categoryId) && categoryId !== 'hair' && categoryId !== 'ears'
     const portrait = new window.Image()
+    let mask: HTMLCanvasElement | null | undefined = needsMask ? undefined : null
+    let displayLandmarks = landmarks
+    let disposed = false
     let start: number | null = null
+    let networkTime = 0
+    let lastNetworkFrame: number | null = null
     let frame = 0
     let visible = false
     let draw = () => {}
@@ -44,28 +51,55 @@ export function FaceOverlay({ preset, landmarks, image, value, appearance = 'rep
       const size = { width: 360, height: glass ? image.height / image.width * 360 : height / width * 360 }
       const base: ReportOverlay = {
         size,
-        primitives: preset ? resolveOverlayPreset({ preset, landmarks, imageSize: image, viewport: size, fit: glass ? 'contain' : fit }).primitives : [],
-        dots: preset ? [] : getFaceMapDots(landmarks, image, size, faceMapPointCount),
+        primitives: preset ? resolveOverlayPreset({ preset, landmarks: displayLandmarks, imageSize: image, viewport: size, fit: glass ? 'contain' : fit }).primitives : [],
+        dots: preset ? [] : getFaceMapDots(displayLandmarks, image, size, faceMapPointCount),
         value,
         labelAppearance: appearance === 'scan' ? 'scan' : undefined,
         labelScale: appearance === 'report' ? .6 : 1,
       }
-      const overlay = glass && !['hair', 'ears'].includes(categoryId!) ? preciseFaceOverlay(base, { ...image, landmarks }, categoryId!, '', ['skin', 'cheeks'].includes(categoryId!)) : base
+      const overlay = glass && !['hair', 'ears'].includes(categoryId!) ? preciseFaceOverlay(base, { ...image, landmarks: displayLandmarks }, categoryId!, '', categoryId === 'cheeks') : base
       const end = Math.max(glass ? 850 + overlay.primitives.length * 100 : preset ? 0 : 2800, ...overlay.primitives.map((primitive) => (primitive.animation?.delay ?? 0) + Math.max(980, primitive.animation?.duration ?? 760) + 150))
+      const continuous = overlay.skinNetwork && overlay.dots.length > 0
+      const placement = getImageTransform(image, { width, height }, fit)
+      const outline = displayLandmarks.contours?.faceOutline
+      const boundary = needsMask && outline && outline.length >= 3 ? new Path2D() : null
+      if (boundary && outline) {
+        outline.forEach((point, index) => {
+          const projected = projectImagePoint(point, image, placement)
+          if (index === 0) boundary.moveTo(projected.x, projected.y)
+          else boundary.lineTo(projected.x, projected.y)
+        })
+        boundary.closePath()
+      }
       draw = () => {
         cancelAnimationFrame(frame)
-        if (!visible || document.hidden) return
-        start ??= performance.now()
-        const elapsed = reducedMotion.matches ? end : Math.min(end, performance.now() - start)
+        if (!visible || document.hidden || mask === undefined) {
+          lastNetworkFrame = null
+          return
+        }
+        const now = performance.now()
+        start ??= now
+        if (continuous) {
+          networkTime += lastNetworkFrame === null ? 0 : Math.min(50, now - lastNetworkFrame)
+          lastNetworkFrame = now
+        }
+        const elapsed = reducedMotion.matches ? end : continuous ? networkTime : Math.min(end, now - start)
         ctx.setTransform(dpr, 0, 0, dpr, 0, 0)
         ctx.clearRect(0, 0, width, height)
+        ctx.save()
+        if (boundary) ctx.clip(boundary)
         if (glass) {
-          const placement = getImageTransform(image, { width, height }, fit)
-          if (portrait.complete && portrait.naturalWidth) ctx.drawImage(portrait, placement.offsetX, placement.offsetY, placement.renderedWidth, placement.renderedHeight)
           ctx.save(); ctx.translate(placement.offsetX, placement.offsetY)
-          drawFaceTreatment(ctx, overlay, placement.renderedWidth, elapsed, reducedMotion.matches, 1, { appearance: { pattern: 'dotted', opacity: .82, markers: true, regions: ['skin', 'cheeks'].includes(categoryId!) } }); ctx.restore()
+          drawFaceTreatment(ctx, overlay, placement.renderedWidth, elapsed, reducedMotion.matches, 1, { appearance: { pattern: 'dotted', opacity: .82, markers: true, regions: categoryId === 'cheeks' } }); ctx.restore()
         } else drawReportOverlay(ctx, overlay, width, elapsed)
-        if (elapsed < end) frame = requestAnimationFrame(draw)
+        ctx.restore()
+        if (mask) {
+          ctx.save()
+          ctx.globalCompositeOperation = 'destination-in'
+          ctx.drawImage(mask, placement.offsetX, placement.offsetY, placement.renderedWidth, placement.renderedHeight)
+          ctx.restore()
+        }
+        if (!reducedMotion.matches && (continuous || elapsed < end)) frame = requestAnimationFrame(draw)
       }
       draw()
     }
@@ -79,9 +113,24 @@ export function FaceOverlay({ preset, landmarks, image, value, appearance = 'rep
     const observer = new ResizeObserver(resize)
     observer.observe(canvas)
     reducedMotion.addEventListener('change', resize)
-    portrait.onload = resize; portrait.src = image.src
+    if (needsMask) {
+      portrait.onload = () => {
+        void getReportFaceVisibility(portrait).then(result => {
+          if (disposed) return
+          mask = result
+          displayLandmarks = result ? extendReportForehead(landmarks, result) : landmarks
+          canvas.dataset.faceVisibility = result ? 'segmented' : 'outline'
+          resize()
+        })
+      }
+      portrait.onerror = () => {
+        mask = null
+        draw()
+      }
+      portrait.src = image.src
+    }
     resize()
-    return () => { portrait.onload = null; cancelAnimationFrame(frame); observer.disconnect(); visibility.disconnect(); document.removeEventListener('visibilitychange', resume); reducedMotion.removeEventListener('change', resize) }
+    return () => { disposed = true; portrait.onload = null; portrait.onerror = null; cancelAnimationFrame(frame); observer.disconnect(); visibility.disconnect(); document.removeEventListener('visibilitychange', resume); reducedMotion.removeEventListener('change', resize) }
   }, [preset, landmarks, image, value, appearance, faceMapPointCount, categoryId, fit])
   return (
     <motion.div className="pointer-events-none absolute inset-0" initial={{ opacity: 0 }} animate={{ opacity: 1, transition: { duration: reduceMotion ? 0 : appearance === 'scan' ? .52 : .18 } }} exit={{ opacity: 0, transition: { duration: reduceMotion ? 0 : appearance === 'scan' ? .76 : .18 } }} aria-hidden="true">

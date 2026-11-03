@@ -1,3 +1,4 @@
+import { buildFaceMapPoints, SKIN_FACE_MAP_COUNT } from "./face-map-points";
 import type { FaceLandmarksPayload, NormalizedPoint } from "./landmarks";
 import { getImageTransform, normalizeImageSize, projectImagePoint, type ImageFit, type Size } from "./layout";
 import type { OverlayPointRef, OverlayPreset, OverlayPrimitive } from "./schema";
@@ -40,10 +41,18 @@ export function resolveOverlayPreset({
   return {
     id: preset.id,
     footer: preset.footer,
-    primitives: preset.primitives.flatMap((primitive) => {
-      const resolved = resolvePrimitive(primitive, landmarks, sourceImageSize, transform);
-      return resolved ? [resolved] : [];
-    }),
+    primitives: [
+      ...(preset.skinFaceMap ? buildFaceMapPoints(landmarks).slice(0, SKIN_FACE_MAP_COUNT).map((point, index): ResolvedPrimitive => ({
+        id: `face-map-${index}`, kind: "point", at: { point },
+        point: projectImagePoint(point, sourceImageSize, transform),
+        radius: 1.15, tone: "dot",
+        animation: { delay: point.y * 1000, duration: 220 },
+      })) : []),
+      ...preset.primitives.flatMap((primitive) => {
+        const resolved = resolvePrimitive(primitive, landmarks, sourceImageSize, transform);
+        return resolved ? [resolved] : [];
+      }),
+    ],
   };
 }
 

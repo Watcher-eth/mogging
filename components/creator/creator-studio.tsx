@@ -1,6 +1,6 @@
 import Link from 'next/link'
 import { ArrowUpRight, LockKeyhole } from 'lucide-react'
-import Image from 'next/image'
+import { SkeletonImage } from '@/components/ui/skeleton-image'
 import { toast } from 'sonner'
 import useSWRImmutable from 'swr/immutable'
 import { apiGet } from '@/lib/api/client'
@@ -20,7 +20,7 @@ function StudioPreviewStack({ kind }: { kind: Creation }) {
   return <div className={styles.illustration} aria-hidden="true">
     <div className={`${styles.stack} ${styles[kind]}`}>
       {(kind === 'scan' ? ['zendaya', 'marlon', 'tom-holland'] : kind === 'post' ? ['tom-holland', 'zendaya', 'marlon'] : ['marlon', 'tom-holland', 'zendaya']).map(person => <div key={person} className={`${styles.screen} ${kind !== 'post' ? styles.phone : ''}`}>
-        <Image src={`/creator/studio-previews/${kind === 'scan' ? 'mock-scan' : kind}-${person}${kind === 'cta' ? '-report' : ''}.webp`} alt="" width={540} height={kind === 'scan' ? 1169 : 960} sizes="(max-width: 640px) 50px, 94px" />
+        <span className="relative block size-full"><SkeletonImage src={`/creator/studio-previews/${kind === 'scan' ? 'mock-scan' : kind}-${person}${kind === 'cta' ? '-report' : ''}.webp`} alt="" sizes="(max-width: 640px) 50px, 94px" /></span>
       </div>)}
     </div>
   </div>

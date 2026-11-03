@@ -1,17 +1,15 @@
-import { parseFaceLandmarksPayload } from '@/lib/analysis/landmarks'
-import portrait from './primer-portrait.json'
-import { useSession } from 'next-auth/react'
 import dynamic from 'next/dynamic'
+import { useSession } from 'next-auth/react'
+import { LoginDialog } from '@/components/app/login-dialog'
 import { useTranslation } from 'react-i18next'
 import useSWR from 'swr'
 import { formatStripePrice, type SubscriptionPrices, type SubscriptionProduct } from '@/lib/payments/subscription-prices'
 import { useRouter } from 'next/router'
 import { Loader2, ArrowRight } from 'lucide-react'
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 import { toast } from 'sonner'
 import { apiGet, apiPost, ApiClientError } from '@/lib/api/client'
 import { membershipPlans, MembershipPlans, MembershipValue, MembershipTerms, AppAccessNote, CheckoutLegal, AppContinueLink } from '@/components/payments/membership-offer'
-import { ReportUnlockPreview } from '@/components/payments/report-unlock-preview'
 import styles from './web-checkout.module.css'
 import { trackWebEvent, flushWebAnalytics } from '@/lib/analytics/client'
 
@@ -19,19 +17,28 @@ type CheckoutResponse = {
   url: string
 }
 
-const portraitLandmarks = parseFaceLandmarksPayload(portrait)
+const CheckoutReport = dynamic(() => import('./checkout-report'))
 const webInstallStorageKey = 'mogging:web2app:web-install-id'
-const LoginDialog = dynamic(() => import('@/components/app/app-shell').then(module => module.LoginDialog))
 
-export function WebCheckout({ embedded = false, preview = false }: { embedded?: boolean; preview?: boolean }) {
+export function WebCheckout({ embedded = false, preview = false, intro, showReport = !embedded }: { embedded?: boolean; preview?: boolean; intro?: ReactNode; showReport?: boolean }) {
   const router = useRouter()
   const { status } = useSession()
   const [loginOpen, setLoginOpen] = useState(false)
   const offerRef = useRef<HTMLElement>(null)
   const { t, i18n } = useTranslation()
   const [currency, setCurrency] = useState<string>()
+  const [nearOffer, setNearOffer] = useState(!embedded)
+  useEffect(() => {
+    const node = offerRef.current
+    if (nearOffer || !node) return
+    const observer = new IntersectionObserver(([entry]) => {
+      if (entry.isIntersecting) setNearOffer(true)
+    }, { rootMargin: '500px' })
+    observer.observe(node)
+    return () => observer.disconnect()
+  }, [nearOffer])
   const { data: prices, error: priceError, mutate: reloadPrices } = useSWR<SubscriptionPrices>(
-    `/api/payments/subscription-prices${currency ? `?currency=${currency}` : ''}`,
+    nearOffer ? `/api/payments/subscription-prices${currency ? `?currency=${currency}` : ''}` : null,
     apiGet,
     { shouldRetryOnError: false, revalidateOnFocus: false },
   )
@@ -134,8 +141,9 @@ export function WebCheckout({ embedded = false, preview = false }: { embedded?: 
   const loginParams = new URLSearchParams({ product: selectedProduct, source })
   if (installId) loginParams.set('install_id', installId)
 
-  return <><section ref={offerRef} className={embedded ? styles.embedded : styles.standalone}>
-    <div className={styles.preview}><ReportUnlockPreview imageSrc="/landing/report-city-portrait.webp" landmarks={portraitLandmarks} variant="example" /></div>
+  return <><section ref={offerRef} className={embedded ? showReport ? styles.embedded : styles.offerOnly : styles.standalone}>
+    {showReport && <div className={styles.preview}>{nearOffer ? <CheckoutReport /> : null}</div>}
+    {intro && <header className={styles.intro}>{intro}</header>}
     <div className={styles.offer}>
       {!embedded ? <header><p className={styles.eyebrow}>Mogging Pro</p><h1 className={styles.title}>{t('plan.checkoutTitle')}</h1><p className={styles.description}>{t('plan.checkoutDescription')}</p></header> : null}
       <MembershipValue />
@@ -146,11 +154,11 @@ export function WebCheckout({ embedded = false, preview = false }: { embedded?: 
         if (!preview) trackWebEvent('plan_selected', { plan: product, surface: 'landing', paywall_version: '2' })
         setSelectedProduct(product)
       }} />
-      <MembershipTerms prices={prices} selected={selectedProduct} />
+      <MembershipTerms prices={prices} selected={selectedProduct} showRenewal={!embedded} />
       {!prices ? <p role="status" className={styles.status}>{t(priceError ? 'plan.unavailable' : 'plan.loading')}{priceError ? <button type="button" onClick={() => void reloadPrices()}>{t('plan.retry')}</button> : null}</p> : null}
       <button type="button" onClick={startWebCheckout} disabled={checkoutLoading || !prices} className={styles.cta}>{checkoutLoading ? <Loader2 size={17} className="animate-spin" /> : null}{checkoutLoading ? t('membership.opening') : t('plan.continue', { plan: t(selectedTier.label) })}{!checkoutLoading && prices ? <span>{formatStripePrice(prices.amounts[selectedProduct], prices.currency, i18n.language)}</span> : null}{!checkoutLoading ? <ArrowRight size={17} /> : null}</button>
       <CheckoutLegal />
-      <AppContinueLink />
+      {!embedded && <AppContinueLink />}
     </div>
   </section><LoginDialog open={loginOpen} onOpenChange={setLoginOpen} callbackUrl={`/app?${loginParams}`} /></>
 }

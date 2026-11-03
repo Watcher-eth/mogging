@@ -1,5 +1,4 @@
-import { LockedReportPreview } from '@/components/payments/locked-report-preview'
-import { AnalysisUnlockDialog, type AnalysisPurchase } from '@/components/payments/analysis-unlock-dialog'
+import type { AnalysisPurchase } from '@/components/payments/analysis-unlock-dialog'
 import type { CheckoutQuote } from '@/components/payments/membership-offer'
 import { flushWebAnalytics } from '@/lib/analytics/client'
 import type { WebReport } from '@/lib/analysis-v2/report-schema'
@@ -21,7 +20,7 @@ import {
   X,
 } from 'lucide-react'
 import { useSession } from 'next-auth/react'
-import Image from 'next/image'
+import { SkeletonImage } from '@/components/ui/skeleton-image'
 import dynamic from 'next/dynamic'
 import Link from 'next/link'
 import { IntroFacePreview } from '@/components/analysis/intro-face-preview'
@@ -41,12 +40,14 @@ import {
 import { parseFaceLandmarksPayload, type FaceLandmarksPayload } from '@/lib/analysis/landmarks'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
-import { LoginDialog } from '@/components/app/app-shell'
+import { LoginDialog } from '@/components/app/login-dialog'
 import { SeoHead } from '@/components/app/seo-head'
 import { CaptureFrame, type CaptureFrameImagePosition } from '@/components/analysis/capture-frame'
 import { TextLoop } from '@/components/core/text-loop'
 import { TextShimmer } from '@/components/core/text-shimmer'
 
+const LockedReportPreview = dynamic(() => import('@/components/payments/locked-report-preview').then(module => module.LockedReportPreview))
+const AnalysisUnlockDialog = dynamic(() => import('@/components/payments/analysis-unlock-dialog').then(module => module.AnalysisUnlockDialog))
 const ScanImagePanel = dynamic(() => import('@/components/analysis/scan-image-panel').then(module => module.ScanImagePanel))
 
 const WebAnalysisReport = dynamic(() => import('@/components/analysis/v2/web-analysis-report').then(module => module.WebAnalysisReport))
@@ -608,7 +609,7 @@ export default function AnalysisPage() {
       />
       <input ref={uploadInputRef} className="hidden" type="file" accept="image/*" multiple onChange={handleFiles} />
 
-      <section className="min-h-[calc(100svh-5rem)] overflow-hidden bg-white">
+      <section className="public-frame min-h-[calc(100svh-5rem)] overflow-hidden bg-white">
         <AnimatePresence mode="wait">
           {step === 'intro' ? (
             <ScreenMotion key="intro">
@@ -764,7 +765,7 @@ function ScreenMotion({ children }: { children: ReactNode }) {
 
 function IntroScreen({ onBegin }: { onBegin: () => void }) {
   return (
-    <div className="grid min-h-[calc(100svh-5rem)] gap-8 px-5 py-6 sm:px-10 sm:py-8 lg:grid-cols-[1.08fr_0.92fr] lg:gap-16 xl:gap-24 2xl:gap-32">
+    <div className="grid min-h-[calc(100svh-5rem)] gap-8 public-gutters py-6 sm:py-8 lg:grid-cols-[1.08fr_0.92fr] lg:gap-16 xl:gap-24 2xl:gap-32">
       <aside className="flex flex-col justify-between gap-10 min-w-0" style={{ containerType: 'inline-size' }}>
         <div>
           <div className="flex gap-6 font-mono text-[10px] uppercase tracking-wide text-muted-foreground">
@@ -847,7 +848,7 @@ function UploadScreen({
   const uploadButtonClass = 'h-10 rounded-xl border border-zinc-300 bg-white px-5 text-sm font-medium text-black shadow-none hover:bg-zinc-50'
 
   return (
-    <div className="grid min-h-[calc(100svh-5rem)] content-between px-5 py-6 sm:px-10 sm:py-8">
+    <div className="grid min-h-[calc(100svh-5rem)] content-between public-gutters py-6 sm:py-8">
       <div className="grid min-h-[calc(100svh-10rem)] gap-8 lg:grid-cols-[0.76fr_1fr_0.76fr]">
         <div className="flex flex-col justify-center">
           <h1 className="max-w-[240px] text-4xl font-semibold leading-[0.9] tracking-[-0.06em] sm:text-5xl">
@@ -1069,7 +1070,7 @@ function ActualAnalysisScreen({
   return (
     <>
       {!isUnlocked ? <LockedReportPreview imageSrc={imageSrc ?? previewPhotoUrl} landmarks={landmarks} onUnlock={onPaymentRequired} /> : (
-      <div className="grid min-h-[calc(100svh-5rem)] gap-12 px-5 py-6 sm:px-10 sm:py-8 lg:grid-cols-[minmax(0,620px)_minmax(0,620px)] lg:items-center lg:justify-between lg:gap-20 xl:gap-28 2xl:gap-40">
+      <div className="grid min-h-[calc(100svh-5rem)] gap-12 public-gutters py-6 sm:py-8 lg:grid-cols-[minmax(0,620px)_minmax(0,620px)] lg:items-center lg:justify-between lg:gap-20 xl:gap-28 2xl:gap-40">
         <div className="grid place-items-center lg:justify-items-start">
           <div className="flex aspect-[4/5] w-full max-w-[620px] flex-col">
             <div>
@@ -1469,7 +1470,7 @@ function ShareSheet({
               }}
             >
               {shareImageUrl ? (
-                <Image className="object-cover" src={shareImageUrl} alt="Shareable report card preview" fill sizes="430px" unoptimized />
+                <SkeletonImage className="object-cover" src={shareImageUrl} alt="Shareable report card preview" sizes="430px" unoptimized />
               ) : (
                 <div className="grid h-full place-items-center text-center">
                   <div>

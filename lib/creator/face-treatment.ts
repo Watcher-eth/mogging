@@ -1,3 +1,5 @@
+import { drawSkinNetwork } from './mobile-overlay-engine/skin-network'
+import { buildFaceMapPoints, isSkinOverlayCategory, SKIN_FACE_MAP_COUNT } from './mobile-overlay-engine/face-map-points'
 import { reportPortraitProjection } from './report-portrait'
 import { originalVideoContext, isDarkVideoContext } from './video-theme'
 import { metricFaceOverlay } from './face-metric-guides'
@@ -42,12 +44,20 @@ export function faceRegionContours(landmarks: FaceLandmarksPayload, category: st
 }
 
 export function preciseFaceOverlay(overlay: ReportOverlay, source: { width: number; height: number; landmarks?: FaceLandmarksPayload | null }, category: string, narration = '', regions = false, metricId?: string): ReportOverlay {
-  if (metricId) return metricFaceOverlay(overlay, source, metricId)
+  const skin = isSkinOverlayCategory(category)
+  if (metricId && !skin) return metricFaceOverlay(overlay, source, metricId)
   const landmarks = source.landmarks
-  if (!landmarks) return overlay
+  if (!landmarks) return skin ? { ...overlay, primitives: [], dots: [], measurement: undefined } : overlay
   if (landmarks.confidence < .58) return { ...overlay, primitives: [], dots: [], measurement: undefined }
   const projection = reportPortraitProjection(source, overlay.size, overlay.portraitCrop)
   const point = (point: PixelPoint) => projectImagePoint(point, source, projection)
+  if (skin) {
+    const points = buildFaceMapPoints(landmarks).slice(0, SKIN_FACE_MAP_COUNT)
+    const top = Math.min(...points.map(item => item.y))
+    const span = Math.max(.001, Math.max(...points.map(item => item.y)) - top)
+    const dots = points.map(item => ({ ...point(item), band: Math.min(17, Math.floor((item.y - top) / span * 18)) }))
+    return { ...overlay, primitives: [], dots, measurement: undefined, skinNetwork: true }
+  }
   const kind: FaceMeasurement['kind'] | undefined = /symmetr|balance|harmon/i.test(narration) ? 'symmetry' : /thirds?|proportions/i.test(narration) ? 'thirds' : /tilt|canthal/i.test(narration) ? 'tilt' : /inner.eye|intercanthal|gap/i.test(narration) ? 'inner-spacing' : /spacing|pupils?/i.test(narration) ? 'spacing' : /\b(?:facial|face|jaw|cheek(?:bone)?)\s+width\b|\bwidth\s+(?:of|across)\b/i.test(narration) ? 'width' : !narration && ['overall', 'symmetry'].includes(category) ? 'symmetry' : category === 'proportions' ? 'thirds' : category === 'face-shape' ? 'width' : undefined
   const measurement = kind && Math.abs(landmarks.quality?.yawRadians ?? 0) < .35 ? { kind, anchors: Object.fromEntries(Object.entries(landmarks.anchors).filter((entry): entry is [string, PixelPoint] => Boolean(entry[1] && Number.isFinite(entry[1].x) && Number.isFinite(entry[1].y))).map(([key, value]) => [key, point(value)])) } : undefined
   const anchors: FaceAnchorKey[] = /inner.eye|inner eye|intercanthal|gap/i.test(narration) ? ['leftEyeInner', 'rightEyeInner'] : /pupils?|spacing/i.test(narration) ? ['leftPupil', 'rightPupil'] : /tilt|canthal|corners?/i.test(narration) && (category === 'eyes' || /\beyes?|eyelids?|canthal\b/i.test(narration)) ? ['leftEyeInner', 'leftEyeOuter', 'rightEyeInner', 'rightEyeOuter'] : /chin height/i.test(narration) ? ['lowerLip', 'chin'] : /thirds?|proportions/i.test(narration) ? ['forehead', 'noseTip', 'chin'] : /skin|texture|complexion/i.test(narration) ? ['forehead', 'leftCheek', 'rightCheek'] : []
@@ -94,7 +104,7 @@ export function preciseFaceOverlay(overlay: ReportOverlay, source: { width: numb
     const closed = !partial && ['leftEye', 'rightEye', 'mouth', 'faceOutline'].includes(key)
     primitives.push({ ...(native?.kind === 'polyline' ? native : {}), id: `feature-${key}${partial ? '-partial' : ''}`, kind: 'polyline', points: [], closed, pixelPoints: smoothContour(points.map(point), closed) })
   }
-  if (regions || category === 'skin') for (const region of faceRegionContours(landmarks, category === 'skin' ? 'overall' : category)) primitives.push({ id: `region-${region.id}`, kind: 'polyline', points: [], closed: true, pixelPoints: smoothContour(region.points.map(point), true) })
+  if (regions) for (const region of faceRegionContours(landmarks, category)) primitives.push({ id: `region-${region.id}`, kind: 'polyline', points: [], closed: true, pixelPoints: smoothContour(region.points.map(point), true) })
   return { ...overlay, measurement, faceBoundary: landmarks.contours?.faceOutline?.map(point), dots: [], primitives }
 }
 
@@ -243,6 +253,12 @@ export function drawFaceTreatment(ctx: CanvasRenderingContext2D, overlay: Report
   ctx.globalAlpha *= appearance.opacity; ctx.strokeStyle = appearance.color ?? '#fff'; ctx.fillStyle = appearance.color ?? '#fff'
   ctx.lineWidth = (appearance.contrast ? 2.4 : 1.8) * unit; ctx.lineCap = 'round'; ctx.lineJoin = 'round'
   ctx.shadowColor = appearance.contrast ? overlayOutlineColor(appearance.color) : 'rgba(15,22,28,.45)'; ctx.shadowBlur = (appearance.contrast ? 3 : 2.5) * unit
+  if (overlay.skinNetwork && overlay.dots.length) {
+    ctx.save()
+    ctx.globalAlpha *= reveal * exit
+    drawSkinNetwork(ctx, overlay.dots, timeMs, reduced)
+    ctx.restore()
+  }
   if (overlay.measurement) drawMeasurement(ctx, overlay.measurement, timeMs, reduced, reveal * exit, appearance, unit)
   const primitives = overlay.primitives.filter(primitive => primitive.kind === 'polyline' || primitive.kind === 'point')
   let marker = 0

@@ -1,7 +1,8 @@
+import { drawSkinNetwork } from './mobile-overlay-engine/skin-network'
 import { reportPortraitCrop, reportPortraitProjection, type ReportPortraitCrop } from './report-portrait'
 import { preciseFaceOverlay } from './face-treatment'
 import { categoryScoreMax, getOverlayPreset, type ContentSlide, type GeneratorImage } from './content-generator'
-import { buildFaceMapPoints } from './mobile-overlay-engine/face-map-points'
+import { buildFaceMapPoints, isSkinOverlayCategory } from './mobile-overlay-engine/face-map-points'
 import { projectImagePoint } from './mobile-overlay-engine/layout'
 import { enrichFaceLandmarks } from './mobile-overlay-engine/enrich-landmarks'
 import { isFaceLandmarksUsable } from './mobile-overlay-engine/landmarks'
@@ -16,22 +17,23 @@ export function createReportOverlay(slide: ContentSlide, image: GeneratorImage, 
   const size = { width: referenceWidth, height: viewport.height / viewport.width * referenceWidth }
   const landmarks = enrichFaceLandmarks(image.landmarks)
   const usable = isFaceLandmarksUsable(landmarks, 0.58)
-  const primitives = usable && slide.overlayStyle !== 'face-map'
+  const skin = isSkinOverlayCategory(slide.categoryId)
+  const primitives = usable && !skin && slide.overlayStyle !== 'face-map'
     ? resolveOverlayPreset({ preset: getOverlayPreset(slide), landmarks, viewport: size, imageSize: image, fit: 'cover' }).primitives
     : []
   const score = slide.categoryScores.find((item) => item.categoryId === slide.categoryId)?.value || slide.currentScore
   const portraitCrop = frameFace ? reportPortraitCrop(image, landmarks, size) : undefined
   const transform = reportPortraitProjection(image, size, portraitCrop)
-  const samples = usable && slide.overlayStyle === 'face-map' ? buildFaceMapPoints(landmarks) : []
+  const samples = usable && !skin && slide.overlayStyle === 'face-map' ? buildFaceMapPoints(landmarks) : []
   const top = Math.min(...samples.map((point) => point.y))
   const bottom = Math.max(...samples.map((point) => point.y))
   const dots = samples.map((point) => ({ ...projectImagePoint(point, image, transform), band: Math.min(17, Math.floor((point.y - top) / Math.max(.001, bottom - top) * 18)) }))
   const overlay = { size, primitives, dots, portraitCrop, value: `${score.trim() || '—'} / ${categoryScoreMax(slide.categoryId)}` }
-  return slide.mockReport ? preciseFaceOverlay(overlay, { ...image, landmarks }, slide.categoryId, '', ['skin', 'cheeks'].includes(slide.categoryId)) : overlay
+  return slide.mockReport || skin ? preciseFaceOverlay(overlay, { ...image, landmarks }, slide.categoryId, '', slide.categoryId === 'cheeks') : overlay
 }
 
 export type FaceMeasurement = { kind: 'symmetry' | 'thirds' | 'spacing' | 'inner-spacing' | 'tilt' | 'width'; anchors: Partial<Record<string, PixelPoint>> }
-export type ReportOverlay = { portraitCrop?: ReportPortraitCrop; size: Size; primitives: ResolvedPrimitive[]; dots: Array<PixelPoint & { band: number }>; measurement?: FaceMeasurement; faceBoundary?: PixelPoint[]; value?: string; labelLayout?: 'mobile'; labelAppearance?: 'scan'; labelScale?: number; ink?: string; pointAppearance?: 'minimal' }
+export type ReportOverlay = { skinNetwork?: boolean; portraitCrop?: ReportPortraitCrop; size: Size; primitives: ResolvedPrimitive[]; dots: Array<PixelPoint & { band: number }>; measurement?: FaceMeasurement; faceBoundary?: PixelPoint[]; value?: string; labelLayout?: 'mobile'; labelAppearance?: 'scan'; labelScale?: number; ink?: string; pointAppearance?: 'minimal' }
 
 export function drawReportOverlay(ctx: CanvasRenderingContext2D, overlay: ReportOverlay, width: number, timeMs: number, labels = true) {
   const ink = overlay.ink ?? '255,255,255'
@@ -43,7 +45,11 @@ export function drawReportOverlay(ctx: CanvasRenderingContext2D, overlay: Report
   ctx.beginPath()
   ctx.rect(0, 0, overlay.size.width, overlay.size.height)
   ctx.clip()
-  for (const dot of overlay.dots) {
+  if (overlay.skinNetwork && overlay.dots.length) {
+    ctx.fillStyle = ctx.strokeStyle = `rgb(${ink})`
+    drawSkinNetwork(ctx, overlay.dots, timeMs)
+  }
+  for (const dot of overlay.skinNetwork ? [] : overlay.dots) {
     ctx.save()
     ctx.globalAlpha *= clamp((timeMs / 2800 - dot.band / 18) * 18, 0, 1) * .9
     ctx.fillStyle = `rgb(${ink})`
@@ -63,6 +69,13 @@ export function drawReportOverlay(ctx: CanvasRenderingContext2D, overlay: Report
     ctx.lineCap = 'round'
     ctx.lineJoin = 'round'
     if (primitive.kind === 'point') {
+      if (primitive.id.startsWith('face-map-')) {
+        ctx.globalAlpha *= progress * .9
+        ctx.translate(primitive.point.x, primitive.point.y)
+        ctx.fillStyle = `rgb(${ink})`
+        circle(ctx, primitive.radius ?? 1.15); ctx.fill(); ctx.restore()
+        continue
+      }
       if (overlay.pointAppearance === 'minimal') {
         ctx.globalAlpha *= progress
         ctx.translate(primitive.point.x,primitive.point.y)

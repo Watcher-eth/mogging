@@ -1,4 +1,4 @@
-import Image from 'next/image'
+import { SkeletonImage } from '@/components/ui/skeleton-image'
 import { AnimatePresence, motion, useReducedMotion } from 'motion/react'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import type { FaceLandmarksPayload } from '@/lib/analysis/landmarks'
@@ -58,7 +58,7 @@ export function ScanImagePanel({ imageSrc, landmarks, variant = 'analysis', paus
 
   return (
     <div ref={panelRef} style={variant === 'analysis' && image ? { aspectRatio: image.width / image.height } : undefined} className={`relative w-full overflow-hidden bg-white ${variant === 'paywall' ? 'h-[min(38svh,340px)] min-h-[220px]' : 'aspect-[4/5] max-w-[620px]'}`}>
-      {imageSrc ? <Image className={fit === 'cover' ? 'object-cover object-center' : 'object-contain object-center'} src={imageSrc} alt="Your facial analysis preview" fill sizes={variant === 'paywall' ? '500px' : '(min-width: 1024px) 45vw, 100vw'} onLoad={event => {
+      {imageSrc ? <SkeletonImage className={fit === 'cover' ? 'object-cover object-center' : 'object-contain object-center'} src={imageSrc} alt="Your facial analysis preview" sizes={variant === 'paywall' ? '500px' : '(min-width: 1024px) 45vw, 100vw'} onLoad={event => {
         const photo = event.currentTarget
         setImage(previous => previous?.src === photo.currentSrc ? previous : { src: photo.currentSrc, width: photo.naturalWidth, height: photo.naturalHeight })
       }} /> : null}

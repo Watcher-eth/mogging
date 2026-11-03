@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react'
 import { ArrowDown, ArrowUp, Check, ChevronLeft, ChevronRight, ChevronsUpDown, Minus, Search } from 'lucide-react'
-import * as Avatar from '@radix-ui/react-avatar'
+import { SkeletonAvatar } from '@/components/ui/skeleton-avatar'
 import { accountConsistency, activityDate, bioLinkMonth, buildBioLinkTracker, filterAndSortAccounts, lastActiveLabel, type AccountSort } from '@/lib/admin/bio-link-tracker'
 import { creatorAccountLabel } from '@/components/creator/types'
 import type { AdminAccount, AdminSubmission } from './creator-types'
@@ -51,7 +51,7 @@ export function BioLinkTracker({ accounts, submissions, onSelectSubmission, onSe
           const { active, complete, rate } = accountConsistency(history, year)
           return <tr key={account.id}>
             <th scope="row" className="px-4 py-3 font-medium"><button type="button" onClick={() => onSelectAccount(account)} aria-label={`View ${creatorAccountLabel(account)} and all linked accounts`} className="flex min-h-11 w-full items-center gap-3 rounded-lg p-1 text-left hover:bg-zinc-50 focus-visible:outline-sky-500">
-              <Avatar.Root className="grid size-9 shrink-0 overflow-hidden rounded-full bg-zinc-100"><Avatar.Image src={account.avatarUrl || undefined} alt="" className="size-full object-cover" /><Avatar.Fallback className="grid size-full place-items-center text-zinc-500">{creatorAccountLabel(account).replace(/^@/, '').charAt(0).toUpperCase()}</Avatar.Fallback></Avatar.Root>
+              <SkeletonAvatar src={account.avatarUrl} alt="" size={36} className="size-9 rounded-full bg-zinc-100" fallback={<span className="grid size-full place-items-center text-zinc-500">{creatorAccountLabel(account).replace(/^@/, '').charAt(0).toUpperCase()}</span>} />
               <span><span className="block">{creatorAccountLabel(account)}</span><span className="mt-1 block font-normal text-zinc-500">{account.creatorName} · {account.platform === 'tiktok' ? 'TikTok' : 'Instagram'}</span><span className="mt-1 block text-[10px] font-normal text-zinc-400">{account.status === 'approved' ? 'Approved' : account.status === 'missing_information' ? 'Needs information' : 'Pending review'}</span></span>
             </button></th>
             <td className="whitespace-nowrap px-4 py-3" title={`${activityDate(account.lastActiveAt)} · creator portal activity`}><span className="block font-medium">{lastActiveLabel(account.lastActiveAt)}</span>{account.lastActiveAt ? <span className="mt-1 block text-[10px] text-zinc-400">Creator portal</span> : null}</td>

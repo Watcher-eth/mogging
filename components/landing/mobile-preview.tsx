@@ -1,7 +1,9 @@
+import { SkinNetworkSvg } from "@/components/analysis/skin-network-svg";
 import dynamic from "next/dynamic";
 import { useTranslation } from "react-i18next";
 import type { resources } from "@/lib/i18n/catalogs";
 import Image from "next/image";
+import { SkeletonImage } from "@/components/ui/skeleton-image";
 import { AnimatePresence, useReducedMotion } from "motion/react";
 import * as m from "motion/react-m";
 import {
@@ -205,6 +207,9 @@ const scannerHeight = scannerWidth / 0.68;
 const scanGeometry = processingOverlayPresets.map((preset) =>
   resolvePreviewOverlay(preset, scannerHeight, scannerWidth),
 );
+const scanSkinPoints = scanGeometry.map(primitives => primitives.flatMap(primitive =>
+  primitive.kind === "point" && primitive.id.startsWith("face-map-") ? [primitive.point] : [],
+));
 const captureGeometry = resolvePreviewOverlay(reportOverlayPresets.overall, 844);
 const overlayLabelKeys = {
   "Eye alignment": "demo.eyeAlignment",
@@ -295,10 +300,9 @@ function ScanContent({ active, priority }: { active: boolean; priority: boolean 
         <p>{t("demo.anchoring")}</p>
       </header>
       <m.div className={styles.scannerCard}>
-        <Image
+        <SkeletonImage
           src={previewPortrait.src}
           alt={t("demo.scanAlt")}
-          fill
           sizes="242px"
           priority={priority}
           className={styles.photo}
@@ -328,7 +332,8 @@ function ScanContent({ active, priority }: { active: boolean; priority: boolean 
               className={styles.overlay}
               viewBox={`0 0 ${scannerWidth} ${scannerHeight}`}
             >
-              {scanGeometry[scene].map((primitive) => (
+              {scanSkinPoints[scene].length > 0 ? <SkinNetworkSvg points={scanSkinPoints[scene]} active={active} /> : null}
+              {scanGeometry[scene].filter(primitive => !primitive.id.startsWith("face-map-")).map((primitive) => (
                 <Primitive key={primitive.id} primitive={primitive} />
               ))}
             </svg>
@@ -441,10 +446,9 @@ function CameraContent({ active }: { active: boolean }) {
   return (
     <div className={styles.camera}>
       <div className={styles.cameraImage}>
-        <Image
+        <SkeletonImage
           src={previewPortrait.src}
           alt={t("demo.captureAlt")}
-          fill
           sizes="350px"
           className={styles.photo}
         />
@@ -603,8 +607,8 @@ function ProtocolContent({ active }: { active: boolean }) {
                 className={`${styles.taskEntry} ${done ? styles.completed : ""}`}
                 style={
                   {
-                    top: (hour - 6) * 54 + 8,
-                    animationDelay: `${480 + index * 360}ms`,
+                    top: `calc(${hour - 6} * var(--protocol-hour) + 8px)`,
+                    animationDelay: `${90 + index * 70}ms`,
                     "--task-color": color,
                   } as CSSProperties
                 }

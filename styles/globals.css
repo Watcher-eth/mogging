@@ -11,7 +11,8 @@
 
 @layer base {
   :root {
-    --page-max: 72rem;
+    --page-max: 66.6rem;
+    --page-gutter: 1.5rem;
     --workspace-max: 90rem;
     --legal-page-max: 98.75rem;
     --background: 0 0% 98%;
@@ -120,6 +121,20 @@
 
 .creator-list-item {
   animation: creator-enter 220ms cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+@media (min-width: 640px) {
+  :root { --page-gutter: 2.5rem; }
+}
+
+.public-frame {
+  width: 100%;
+  max-width: var(--page-max);
+  margin-inline: auto;
+}
+
+.public-gutters {
+  padding-inline: var(--page-gutter);
 }
 
 @layer components {
@@ -541,7 +556,7 @@
 /* Wider page frames only on large laptops and desktop displays. */
 @media (min-width: 1440px) {
   :root {
-    --page-max: min(105rem, calc(100vw - 6rem));
+    --page-max: min(97.125rem, calc(92.5vw - 5.55rem));
     --workspace-max: 120rem;
     --legal-page-max: var(--page-max);
     --campaign-page-max: var(--workspace-max);

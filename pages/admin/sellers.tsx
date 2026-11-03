@@ -1,7 +1,7 @@
 import useSWR from 'swr'
 import { toast } from 'sonner'
 import { useState } from 'react'
-import { CreatorHeader } from '@/components/creator/creator-shell'
+import { CreatorHeader } from '@/components/creator/creator-header'
 import { AdminPasswordGate } from '@/components/admin/admin-password-gate'
 import { Button } from '@/components/ui/button'
 import { Notice } from '@/components/admin/analytics-ui'

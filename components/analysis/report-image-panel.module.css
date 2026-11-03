@@ -22,3 +22,20 @@
   .portrait { container-type: size; width: 100%; height: 100%; min-height: 0; aspect-ratio: auto; align-items: start; }
   .media { width: min(100cqw,calc(100cqh * var(--portrait-ratio))); }
 }
+
+.clearPortrait { container-type: normal; height: auto; aspect-ratio: var(--portrait-ratio); border-radius: 10px 10px 0 0; background: transparent; }
+.clearPortrait .media { width: 100%; mask-image: none; }
+.featheredBlur {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background-position: center;
+  background-size: contain;
+  background-repeat: no-repeat;
+  filter: blur(5px);
+  mask-image: linear-gradient(to bottom, transparent 84%, #0002 89%, #0008 94%, #000 100%);
+}
+.clearPortrait .wash {
+  inset: 84% 0 0;
+  background: linear-gradient(to bottom, #fff0, #ffffff05 20%, #ffffff24 45%, #ffffff80 72%, #fff);
+}

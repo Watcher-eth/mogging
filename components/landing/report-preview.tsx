@@ -5,12 +5,13 @@ import { Pause, Play, ChevronDown, X, Check, ChartNoAxesColumn, ScanFace, Eye, W
 import { reportGlassInk } from '@/lib/creator/report-glass'
 import styles from './report-preview.module.css'
 import { reportCategories, buildMockOverallCategory } from '@/lib/creator/mock-report-data'
-import { drawMockReport, drawReportComponent, mockReportRegions, mockReportScrollMax, mockReportSize, mockReportFormat } from '@/lib/creator/mock-report'
+import { drawMockReport, drawReportComponent, mockReportRegions, mockReportScrollMax, mockReportSize, mockReportFormat, mockReportHeroHeight } from '@/lib/creator/mock-report'
 import { createCanvasPainter } from '@/lib/creator/canvas-layout'
 import { prepareCanvas } from '@/lib/creator/export-slides'
 import { nativeReportEntry, sampleReportTour, reportInstrumentIsVisible } from '@/lib/creator/report-tour'
 import type { ContentSlide, GeneratorImage } from '@/lib/creator/content-generator'
 import { previewLandmarks, previewPortrait } from './overlay'
+import { createReportOverlay } from '@/lib/creator/report-overlay'
 
 const images: GeneratorImage[] = [{ id: 'example-portrait', name: 'Example portrait', dataUrl: previewPortrait.src, width: previewPortrait.width, height: previewPortrait.height,
   landmarks: { ...previewLandmarks, source: 'apple-vision' }, status: 'ready' }]
@@ -37,6 +38,11 @@ export function ReportPreview({ active, startAt = 0, playback = 'auto' }: { acti
   const category = useMemo(() => categoryId === 'overall' ? buildMockOverallCategory('7.2', {}) : reportCategories.find(item => item.id === categoryId)!, [categoryId])
   const slide = useMemo<ContentSlide>(() => ({ id: 'homepage-report', templateId: 'mock-report', imageId: images[0].id, categoryId,
     currentScore: '7.2', potentialScore: '8.5', categoryScores: [], mockReport: { category, scroll: 0 }, eyebrow: '', headline: '', supportingCopy: '', metricLabel: category.title, metricValue: String(category.score), cta: '' }), [category, categoryId])
+  const initialSlide = useRef(slide).current
+  const overlay = useMemo(() => {
+    const result = createReportOverlay(slide, images[0], { width: mockReportSize.width, height: mockReportHeroHeight }, mockReportSize.width, true)
+    return { ...result, labelLayout: 'mobile' as const, value: categoryId === 'overall' ? `${(Number(slide.currentScore) * .8).toFixed(1)} / 8` : `${category.score.toFixed(1)} / 10` }
+  }, [slide, categoryId, category.score])
   const maximum = useMemo(() => mockReportScrollMax(category), [category])
 
   useEffect(() => { autoplay.current = true; setPlaying(playback === 'auto'); setCategoryId('overall'); setScroll(0) }, [startAt, playback])
@@ -47,10 +53,10 @@ export function ReportPreview({ active, startAt = 0, playback = 'auto' }: { acti
   useEffect(() => {
     let disposed = false
     setError(null); clock.current = startAt; entries.current.clear(); ownership.current = null
-    void prepareCanvas({ slide, images, ...format }).then(value => { if (!disposed) setPrepared(value) })
+    void prepareCanvas({ slide: initialSlide, images, ...format }).then(value => { if (!disposed) setPrepared(value) })
       .catch(reason => { if (!disposed) setError(reason instanceof Error ? reason.message : 'Could not load the report.') })
     return () => { disposed = true }
-  }, [slide, startAt, format])
+  }, [initialSlide, startAt, format])
 
   useEffect(() => {
     const context = canvas.current?.getContext('2d'), floating = popout.current?.getContext('2d')
@@ -99,7 +105,7 @@ export function ReportPreview({ active, startAt = 0, playback = 'auto' }: { acti
       const lift = owner?.lift ?? 0
       // The focused node has exactly one renderer for the entire lift and return.
       const paint = createCanvasPainter(node => region && floating && node.id === region.id ? { opacity: 0 } : {})
-      drawMockReport(context, current, prepared.image, prepared.overlay, format.width, format.height, reduced ? 4000 : clock.current, {
+      drawMockReport(context, current, prepared.image, overlay, format.width, format.height, reduced ? 4000 : clock.current, {
         paint, cull: true, regions, interactiveChrome: true, metricProgress: reduced || playback === 'still' ? 1 : nativeReportEntry(animationTime.current),
         growthProgress: progress('potential', regions.find(region => region.id === 'potential')!.y),
         featureProgress: progress, actionState: tour.region.id === 'action-plan' ? actionState : undefined,
@@ -132,10 +138,18 @@ export function ReportPreview({ active, startAt = 0, playback = 'auto' }: { acti
     const visibility = () => { previous = performance.now(); draw(previous) }
     draw(previous); document.addEventListener('visibilitychange', visibility); window.addEventListener('scroll', visibility, { passive: true }); window.addEventListener('resize', visibility)
     return () => { cancelAnimationFrame(frame); document.removeEventListener('visibilitychange', visibility); window.removeEventListener('scroll', visibility); window.removeEventListener('resize', visibility); floating?.clearRect(0, 0, 2600, mockReportFormat.height) }
-  }, [prepared, slide, category, maximum, playing, scroll, active, reduced, portal, playback, format])
+  }, [prepared, slide, category, overlay, maximum, playing, scroll, active, reduced, portal, playback, format])
 
   function pause() { autoplay.current = false; setScroll(scroller.current?.scrollTop ?? 0); setPlaying(false) }
-  function selectCategory(value: string) { pause(); setCategoryId(value); setScroll(0); if (scroller.current) scroller.current.scrollTop = 0 }
+  function selectCategory(value: string) {
+    pause()
+    clock.current = startAt
+    entries.current.clear()
+    ownership.current = null
+    setCategoryId(value)
+    setScroll(0)
+    if (scroller.current) scroller.current.scrollTop = 0
+  }
   function toggleTour() { if (playing) pause(); else { clock.current = 0; autoplay.current = true; setPlaying(true) } }
 
   return <>

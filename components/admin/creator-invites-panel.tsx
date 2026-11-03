@@ -1,3 +1,4 @@
+import { SkeletonImage } from '@/components/ui/skeleton-image'
 import { useState, type FormEvent } from 'react'
 import useSWR from 'swr'
 import { toast } from 'sonner'
@@ -65,8 +66,7 @@ export function CreatorInvitesPanel() {
       {!created.avatarFound ? <p className="mt-2 text-xs text-amber-700">TikTok did not return a profile photo. The card uses their initial. Revoke and recreate with a TikTok CDN photo URL to include their photo.</p> : null}
       <input aria-label="Creator invite link" readOnly value={url} className="creator-field mt-3 w-full text-xs" onFocus={(event) => event.currentTarget.select()} />
       <div className="mt-3 flex gap-3"><Button type="button" variant="outline" className="rounded-full" onClick={() => void navigator.clipboard.writeText(url).then(() => toast.success('Invite link copied')).catch(() => toast.error('Select the link above and copy it manually'))}>Copy link</Button><Button asChild variant="outline" className="rounded-full"><a href={created.path} target="_blank" rel="noreferrer">Preview invitation</a></Button></div>
-      {/* eslint-disable-next-line @next/next/no-img-element */}
-      <img src={`/api/og/creator-invite?token=${created.path.split('/').pop()}`} alt="Personalized creator link preview" width={1200} height={630} className="mt-5 w-full max-w-2xl rounded-2xl border border-zinc-200" />
+      <div className="relative mt-5 aspect-[1200/630] w-full max-w-2xl overflow-hidden rounded-2xl border border-zinc-200"><SkeletonImage src={`/api/og/creator-invite?token=${created.path.split('/').pop()}`} alt="Personalized creator link preview" sizes="(min-width: 768px) 672px, 90vw" unoptimized /></div>
     </div> : null}
     <div className="mt-8 border-t border-zinc-100 pt-5"><h3 className="text-sm font-medium">Recent invitations</h3>
       {error ? <p role="alert" className="mt-3 text-sm text-red-600">Could not load invitations. <button className="underline" onClick={() => void mutate()}>Try again</button></p> : !data ? <Loader2 aria-label="Loading invitations" className="mt-4 size-5 animate-spin" /> : !data.invites.length ? <p className="mt-3 text-sm text-zinc-500">No invitations yet.</p> : <ul className="mt-3 divide-y divide-zinc-100">{data.invites.map((invite) => {

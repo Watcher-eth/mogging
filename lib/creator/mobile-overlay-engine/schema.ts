@@ -93,5 +93,6 @@ export type OverlayPrimitive =
 export type OverlayPreset = {
   id: string;
   footer: string;
+  skinFaceMap?: boolean;
   primitives: OverlayPrimitive[];
 };

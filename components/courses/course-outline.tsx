@@ -1,6 +1,6 @@
 import { Accordion, AccordionItem, AccordionTrigger, AccordionContent, AccordionChevron } from '@/components/ui/accordion'
 import { useState, type ReactNode, type ComponentType } from 'react'
-import Image from 'next/image'
+import { SkeletonImage } from '@/components/ui/skeleton-image'
 import { Check, FileText, Play } from 'lucide-react'
 import { AnimatePresence, motion } from 'motion/react'
 import type { CourseContent, CourseLesson } from '@/lib/courses/validation'
@@ -99,10 +99,9 @@ export function CourseOutline({
                             className={`c-outline-lesson-icon ${image ? 'has-thumbnail' : ''} ${isComplete ? 'is-complete' : ''}`}
                           >
                             {image && (
-                              <Image
+                              <SkeletonImage
                                 src={image}
                                 alt=""
-                                fill
                                 sizes="48px"
                                 unoptimized={image.startsWith('blob:') || image.startsWith('/api/')}
                               />

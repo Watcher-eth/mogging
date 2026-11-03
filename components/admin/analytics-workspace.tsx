@@ -1,33 +1,39 @@
-import { NotificationsDashboard } from './notifications-dashboard'
-import { AttributionLedgerDashboard } from './attribution-ledger-dashboard'
-import { DataHealthDashboard } from './data-health-dashboard'
-import { ReferralsDashboard } from './referrals-dashboard'
-import { EngagementDashboard } from './engagement-dashboard'
-import { ScansDashboard } from './scans-dashboard'
-import { AuthenticationDashboard } from './authentication-dashboard'
-import { PurchaseFlowDashboard } from './purchase-flow-dashboard'
-import { ExperimentsReport } from './experiments-report'
+import dynamic from 'next/dynamic'
 import { useRouter } from 'next/router'
 import useSWR from 'swr'
 import { RefreshCw } from 'lucide-react'
 import { AdminPasswordGate } from './admin-password-gate'
-import { CreatorHeader } from '@/components/creator/creator-shell'
+import { CreatorHeader } from '@/components/creator/creator-header'
 import { Button } from '@/components/ui/button'
 import { apiGet, ApiClientError } from '@/lib/api/client'
 import { adminPage } from '@/lib/admin/navigation'
 import { formatReportingTime } from '@/lib/admin/reporting-time'
 import type { AnalyticsDashboard } from '@/lib/admin/analytics'
 import { AnalyticsSelect } from './analytics-select'
-import { ReliabilityDashboard } from './reliability-report'
 import { ProductOverview } from './product-overview'
-import { AcquisitionDashboard } from './acquisition-dashboard'
-import { OnboardingDashboard } from './onboarding-dashboard'
-import { CreatorEconomicsOverview } from './creator-economics-overview'
-import CreatorPerformanceDashboard from './creator-performance-dashboard'
-import { CreatorAttributionOverview } from './creator-attribution-overview'
-import { RetentionDashboard } from './retention-dashboard'
-import { RevenueDashboard } from './revenue-dashboard'
 import { Notice, label } from './analytics-ui'
+
+function ReportLoading() {
+  return <Notice>Loading reporting snapshot…</Notice>
+}
+
+const NotificationsDashboard = dynamic(() => import('./notifications-dashboard').then(module => module.NotificationsDashboard), { loading: ReportLoading })
+const AttributionLedgerDashboard = dynamic(() => import('./attribution-ledger-dashboard').then(module => module.AttributionLedgerDashboard), { loading: ReportLoading })
+const DataHealthDashboard = dynamic(() => import('./data-health-dashboard').then(module => module.DataHealthDashboard), { loading: ReportLoading })
+const ReferralsDashboard = dynamic(() => import('./referrals-dashboard').then(module => module.ReferralsDashboard), { loading: ReportLoading })
+const EngagementDashboard = dynamic(() => import('./engagement-dashboard').then(module => module.EngagementDashboard), { loading: ReportLoading })
+const ScansDashboard = dynamic(() => import('./scans-dashboard').then(module => module.ScansDashboard), { loading: ReportLoading })
+const AuthenticationDashboard = dynamic(() => import('./authentication-dashboard').then(module => module.AuthenticationDashboard), { loading: ReportLoading })
+const PurchaseFlowDashboard = dynamic(() => import('./purchase-flow-dashboard').then(module => module.PurchaseFlowDashboard), { loading: ReportLoading })
+const ExperimentsReport = dynamic(() => import('./experiments-report').then(module => module.ExperimentsReport), { loading: ReportLoading })
+const ReliabilityDashboard = dynamic(() => import('./reliability-report').then(module => module.ReliabilityDashboard), { loading: ReportLoading })
+const AcquisitionDashboard = dynamic(() => import('./acquisition-dashboard').then(module => module.AcquisitionDashboard), { loading: ReportLoading })
+const OnboardingDashboard = dynamic(() => import('./onboarding-dashboard').then(module => module.OnboardingDashboard), { loading: ReportLoading })
+const CreatorEconomicsOverview = dynamic(() => import('./creator-economics-overview').then(module => module.CreatorEconomicsOverview), { loading: ReportLoading })
+const CreatorPerformanceDashboard = dynamic(() => import('./creator-performance-dashboard'), { loading: ReportLoading })
+const CreatorAttributionOverview = dynamic(() => import('./creator-attribution-overview').then(module => module.CreatorAttributionOverview), { loading: ReportLoading })
+const RetentionDashboard = dynamic(() => import('./retention-dashboard').then(module => module.RetentionDashboard), { loading: ReportLoading })
+const RevenueDashboard = dynamic(() => import('./revenue-dashboard').then(module => module.RevenueDashboard), { loading: ReportLoading })
 
 export default function AnalyticsAdminPage() {
   const router = useRouter()

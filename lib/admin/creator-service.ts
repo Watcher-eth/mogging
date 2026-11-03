@@ -85,7 +85,7 @@ export const CREATOR_CONVERSION_BONUS_CAP_RATE = 0.25
 export type CreatorAdminReviewInput = z.infer<typeof creatorAdminReviewSchema>
 export type CreatorAdminPaymentInput = z.infer<typeof creatorAdminPaymentSchema>
 
-export async function getCreatorAdminDashboard() {
+export async function getCreatorAdminDashboard({ includeCoverage = true } = {}) {
   const [creatorRows, accountRows, submissions, payments, attributionMetrics, settingsRecord, accountAttributionRows, payoutRequests, creatorCoverage, warningRows] = await Promise.all([
     db
       .select({
@@ -223,7 +223,7 @@ export async function getCreatorAdminDashboard() {
     }),
     getCreatorAttributionReport(),
     db.query.creatorPayoutRequests.findMany({ where: eq(schema.creatorPayoutRequests.status, 'pending'), orderBy: [desc(schema.creatorPayoutRequests.requestedAt)] }),
-    getCreatorCoverage(),
+    includeCoverage ? getCreatorCoverage() : undefined,
     listCreatorInternalWarnings(),
   ])
 

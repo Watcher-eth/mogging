@@ -45,3 +45,19 @@ test('brow outlines retain their upper and lower edges and close around the feat
     expect(brow.pixelPoints.at(-1)).toEqual(brow.pixelPoints[0])
   }
 })
+
+test('skin reports and scan previews use the same 70 face-map positions', async () => {
+  const { preciseFaceOverlay } = await import('./face-treatment')
+  const { getReportOverlayPreset } = await import('./mobile-overlay-engine/report-presets')
+  const { resolveOverlayPreset } = await import('./mobile-overlay-engine/resolve')
+  const { default: portrait } = await import('../../components/landing/primer-portrait.json')
+  const landmarks = portrait as FaceLandmarksPayload
+  const size = landmarks.image
+  for (const category of ['skin', 'skin-quality', 'skin-age', 'biological-age', 'sun-damage']) {
+    const report = preciseFaceOverlay({ size, primitives: [], dots: [] }, { ...size, landmarks }, category, 'Skin texture and tone', true)
+    const scan = resolveOverlayPreset({ preset: getReportOverlayPreset(category), landmarks, viewport: size })
+    expect(report.primitives).toEqual([])
+    expect(report.dots).toHaveLength(70)
+    expect(scan.primitives.flatMap(item => item.kind === 'point' ? [item.point] : [])).toEqual(report.dots.map(({ x, y }) => ({ x, y })))
+  }
+})

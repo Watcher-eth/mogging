@@ -56,14 +56,14 @@ export function MembershipPlans({ prices, selected, onSelect, minimumCredits = 1
   </div>
 }
 
-export function MembershipTerms({ prices, selected }: { prices?: SubscriptionPrices; selected: SubscriptionProduct }) {
+export function MembershipTerms({ prices, selected, compactOnMobile, showRenewal = true }: { prices?: SubscriptionPrices; selected: SubscriptionProduct; compactOnMobile?: boolean; showRenewal?: boolean }) {
   const { t, i18n } = useTranslation()
   const reduce = useReducedMotion()
   const plan = membershipPlans.find(plan => plan.id === selected)!
-  return <div className={styles.terms} aria-live="polite" aria-atomic="true">
+  return <div className={cn(styles.terms, compactOnMobile && styles.compactTerms)} aria-live="polite" aria-atomic="true">
     <AnimatePresence mode="wait" initial={false}><motion.div key={selected} initial={{ opacity: 0, y: reduce ? 0 : 4, filter: reduce ? 'none' : 'blur(2px)' }} animate={{ opacity: 1, y: 0, filter: 'blur(0px)' }} exit={{ opacity: 0 }} transition={{ duration: reduce ? 0 : .16 }}>
       <strong>{selected === 'mobile_subscription_weekly' ? t('membership.weeklyCredits') : t('membership.monthlyCredits')}</strong>
-      <span>{prices ? `${formatStripePrice(prices.amounts[selected], prices.currency, i18n.language)} ${t(plan.cadence)}. ` : ''}{t('membership.renewal')}</span>
+      {showRenewal && <span>{prices ? `${formatStripePrice(prices.amounts[selected], prices.currency, i18n.language)} ${t(plan.cadence)}. ` : ''}{t('membership.renewal')}</span>}
     </motion.div></AnimatePresence>
   </div>
 }
