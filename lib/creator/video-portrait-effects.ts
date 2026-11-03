@@ -21,7 +21,7 @@ export type PortraitEffects = z.infer<typeof portraitEffectsSchema>
 export type PortraitLighting = z.infer<typeof portraitLightingSchema>
 export const neutralPortraitLighting = portraitLightingSchema.parse({ preset: 'soft', target: 'whole', ambientEv: 0, intensity: 0, color: 'natural' })
 export type WarpRegion = { x: number; y: number; rx: number; ry: number }
-export type PortraitWarp = { regions: WarpRegion[]; strengths: number[]; mode: 'pinch' | 'stretch' | 'drag'; axis: 'x' | 'y' | 'both'; shifts?: Array<{ x: number; y: number }> }
+export type PortraitWarp = { regions: WarpRegion[]; strengths: number[]; mode: 'pinch' | 'stretch' | 'drag'; axis: 'x' | 'y' | 'both'; shifts?: Array<{ x: number; y: number }>; pins?: WarpRegion[] }
 
 export function portraitLightGeometry(landmarks: FaceLandmarksPayload | null | undefined, light: PortraitLighting) {
   const anchors = landmarks?.anchors
@@ -74,7 +74,8 @@ export function warpSourcePoint(point: { x: number; y: number }, warp: PortraitW
     else { const sign = warp.mode === 'stretch' ? -1 : 1; horizontal += (point.x - region.x) * strength * weight * axisX * sign; vertical += (point.y - region.y) * strength * weight * axisY * sign }
   })
   const normalization = warp.mode === 'drag' ? Math.max(1, weights) : 1
-  return { x: point.x + horizontal / normalization, y: point.y + vertical / normalization }
+  const protection = 1 - Math.max(0, ...(warp.pins ?? []).map(pin => Math.max(0, 1 - ((point.x-pin.x)/pin.rx)**2 - ((point.y-pin.y)/pin.ry)**2)**3))
+  return { x: point.x + horizontal * protection / normalization, y: point.y + vertical * protection / normalization }
 }
 
 export function warpDestinationPoint(point: { x: number; y: number }, warp: PortraitWarp) {
@@ -107,7 +108,7 @@ function createRenderer(): EffectRenderer {
   }
   const vertex = shader(gl.VERTEX_SHADER, 'attribute vec2 position; varying vec2 uv; void main(){uv=vec2(position.x*.5+.5,.5-position.y*.5);gl_Position=vec4(position,0.,1.);}')
   const fragment = shader(gl.FRAGMENT_SHADER, `precision highp float;
-varying vec2 uv; uniform sampler2D photo; uniform sampler2D matte; uniform vec4 regionA; uniform vec4 regionB; uniform vec4 regionC; uniform vec4 regionD; uniform vec4 strengths; uniform vec4 shiftsX; uniform vec4 shiftsY; uniform vec2 axes; uniform float warpMode;
+varying vec2 uv; uniform sampler2D photo; uniform sampler2D matte; uniform vec4 regionA; uniform vec4 regionB; uniform vec4 regionC; uniform vec4 regionD; uniform vec4 pinA; uniform vec4 pinB; uniform vec4 pinC; uniform vec4 pinD; uniform vec4 strengths; uniform vec4 shiftsX; uniform vec4 shiftsY; uniform vec2 axes; uniform float warpMode;
 uniform vec4 face; uniform vec2 target; uniform vec3 lightPosition; uniform vec4 illumination; uniform vec4 priorIllumination; uniform vec2 priorTarget; uniform float priorDirection; uniform float lightMix; uniform float lighting;
 vec3 offset(vec2 point,vec4 region,float strength,vec2 shift){vec2 delta=(point-region.xy)/max(region.zw,vec2(.001));float weight=pow(max(0.,1.-dot(delta,delta)),3.);vec2 move=warpMode>1.5?-shift*weight*axes:(point-region.xy)*strength*weight*axes*(warpMode>.5?-1.:1.);return vec3(move,weight);}
 float exposureField(vec2 samplePoint,vec4 settings,vec2 aimTarget,float directionX){
@@ -121,7 +122,7 @@ float exposureField(vec2 samplePoint,vec4 settings,vec2 aimTarget,float directio
   float field=settings.w<.5?spot:settings.w<1.5?directional:settings.w<2.5?rim:1.;
   return mix(settings.x,settings.y,field);
 }
-void main(){vec3 displacement=offset(uv,regionA,strengths.x,vec2(shiftsX.x,shiftsY.x))+offset(uv,regionB,strengths.y,vec2(shiftsX.y,shiftsY.y))+offset(uv,regionC,strengths.z,vec2(shiftsX.z,shiftsY.z))+offset(uv,regionD,strengths.w,vec2(shiftsX.w,shiftsY.w));vec2 samplePoint=uv+displacement.xy/(warpMode>1.5?max(1.,displacement.z):1.);vec4 original=texture2D(photo,clamp(samplePoint,vec2(0.),vec2(1.)));vec3 result=original.rgb;
+void main(){vec3 displacement=offset(uv,regionA,strengths.x,vec2(shiftsX.x,shiftsY.x))+offset(uv,regionB,strengths.y,vec2(shiftsX.y,shiftsY.y))+offset(uv,regionC,strengths.z,vec2(shiftsX.z,shiftsY.z))+offset(uv,regionD,strengths.w,vec2(shiftsX.w,shiftsY.w));float protection=1.-max(max(offset(uv,pinA,0.,vec2(0.)).z,offset(uv,pinB,0.,vec2(0.)).z),max(offset(uv,pinC,0.,vec2(0.)).z,offset(uv,pinD,0.,vec2(0.)).z));vec2 samplePoint=uv+displacement.xy*protection/(warpMode>1.5?max(1.,displacement.z):1.);vec4 original=texture2D(photo,clamp(samplePoint,vec2(0.),vec2(1.)));vec3 result=original.rgb;
 if(lighting>.0001){
   float subjectMask=texture2D(matte,clamp(samplePoint,vec2(0.),vec2(1.))).a;
   // Blend whole-subject exposure fields, never two differently cropped photographs.
@@ -142,7 +143,7 @@ gl_FragColor=vec4(result,original.a);}`)
   gl.bindBuffer(gl.ARRAY_BUFFER, buffer); gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([-1, -1, 1, -1, -1, 1, 1, 1]), gl.STATIC_DRAW)
   const position = gl.getAttribLocation(program, 'position')
   gl.enableVertexAttribArray(position); gl.vertexAttribPointer(position, 2, gl.FLOAT, false, 0, 0)
-  const names = ['photo', 'matte', 'regionA', 'regionB', 'regionC', 'regionD', 'strengths', 'shiftsX', 'shiftsY', 'axes', 'warpMode', 'face', 'target', 'lightPosition', 'illumination', 'priorIllumination', 'priorTarget', 'priorDirection', 'lightMix', 'lighting']
+  const names = ['photo', 'matte', 'regionA', 'regionB', 'regionC', 'regionD', 'pinA', 'pinB', 'pinC', 'pinD', 'strengths', 'shiftsX', 'shiftsY', 'axes', 'warpMode', 'face', 'target', 'lightPosition', 'illumination', 'priorIllumination', 'priorTarget', 'priorDirection', 'lightMix', 'lighting']
   canvas.addEventListener('webglcontextlost', event => { event.preventDefault(); if (renderer?.gl === gl) renderer = undefined })
   return { canvas, gl, materials: new Map(), locations: Object.fromEntries(names.map(name => [name, gl.getUniformLocation(program, name)])) }
 }
@@ -175,6 +176,8 @@ export function drawPortraitEffects(ctx: CanvasRenderingContext2D, image: HTMLIm
   gl.activeTexture(gl.TEXTURE0); gl.bindTexture(gl.TEXTURE_2D, material.photo); gl.uniform1i(locations.photo, 0)
   gl.activeTexture(gl.TEXTURE1); gl.bindTexture(gl.TEXTURE_2D, material.mask); gl.uniform1i(locations.matte, 1)
   const warp = options.warp
+  if (warp && (warp.pins?.length ?? 0) > 4) throw new Error('Portrait edits support up to four fixed feature anchors.')
+  for (const [index, name] of ['pinA','pinB','pinC','pinD'].entries()) { const pin=warp?.pins?.[index]; gl.uniform4f(locations[name],pin?.x ?? -10,pin?.y ?? -10,pin?.rx ?? .01,pin?.ry ?? .01) }
   if (warp && warp.regions.length > 4) throw new Error('Portrait edits support up to four registered control regions.')
   for (const [index, name] of ['regionA', 'regionB', 'regionC', 'regionD'].entries()) { const region = warp?.regions[index]; gl.uniform4f(locations[name], region?.x ?? -10, region?.y ?? -10, region?.rx ?? .01, region?.ry ?? .01) }
   gl.uniform4f(locations.strengths, warp?.strengths[0] ?? 0, warp?.strengths[1] ?? 0, warp?.strengths[2] ?? 0, warp?.strengths[3] ?? 0)

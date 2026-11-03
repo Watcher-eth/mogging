@@ -1,0 +1,1740 @@
+{
+  "version": 1,
+  "subjectId": "zeta",
+  "subject": "Zeta",
+  "analyzedAt": "2026-10-31T20:25:13.643Z",
+  "provider": "moonshot",
+  "model": "kimi-k2.6",
+  "promptVersion": "web-v2-1",
+  "scope": "Actual app assessment of the AI-generated front studio portrait; subjective photo-specific appearance scores, not measurements or an assessment of the real reference photographs.",
+  "source": {
+    "imageId": "zeta-front",
+    "sha256": "10ac822fe76463748711b3d103e797f89632213a891130c725ed3ef27d08e373",
+    "width": 941,
+    "height": 1672,
+    "file": "/Users/watcher/Documents/Codex/2026-10-27/ca/work/studio-release/app/public/creator/stories/zeta/zeta-front.png"
+  },
+  "result": {
+    "faceDetected": true,
+    "pslScore": 7,
+    "harmonyScore": 7.5,
+    "symmetryScore": 8,
+    "proportionalityScore": 7.5,
+    "averagenessScore": 6,
+    "dimorphismScore": 7.5,
+    "angularityScore": 7.5,
+    "metricScores": [
+      {
+        "name": "Skin quality",
+        "score": 6.5,
+        "category": "skin"
+      },
+      {
+        "name": "Presentation",
+        "score": 8,
+        "category": "presentation"
+      }
+    ],
+    "landmarks": {},
+    "report": {
+      "summary": "Strong masculine bone structure with prominent brow ridge, defined jaw, and balanced proportions. Thick textured hair with natural wave and volume frames the face well. Direct gaze and neutral expression project intensity. Minor asymmetry in brow height and slight facial marks add character rather than detract.",
+      "potential": {
+        "score": 7,
+        "label": "Polished Intensity",
+        "summary": "Refined grooming could elevate the strong structural base. Brow tidying would enhance symmetry. Skin luminosity and lip conditioning would soften the intense resting expression for broader casting range.",
+        "focusAreas": [
+          "Brow grooming for symmetry",
+          "Skin luminosity and even tone",
+          "Lip conditioning for softer expression",
+          "Hair styling versatility for volume control"
+        ]
+      },
+      "categories": [
+        {
+          "id": "eyes",
+          "title": "Eyes",
+          "subtitle": "Periocular balance and eye-line structure",
+          "scoreLabel": "Eye area",
+          "score": 7.5,
+          "features": [
+            {
+              "label": "Eye spacing",
+              "value": "0.42×"
+            },
+            {
+              "label": "Inner-eye gap",
+              "value": "1.10×"
+            },
+            {
+              "label": "Eye aspect ratio",
+              "value": "L 1.60× · R 1.60×"
+            },
+            {
+              "label": "Outer-corner tilt",
+              "value": "L 3.0° · R 3.0°"
+            },
+            {
+              "label": "Vertical eye opening",
+              "value": "L 0.35× · R 0.35×"
+            },
+            {
+              "label": "Eye shape",
+              "value": "Almond"
+            }
+          ],
+          "explanation": "Deep-set blue eyes with visible upper lid exposure and slight hooding from the brow ridge. The inner corners are sharp, and the gaze is direct and intense. Some natural redness in the waterline is visible.",
+          "recommendation": "Retake under consistent lighting and a neutral expression before judging the eye area across reports.",
+          "eyeColor": "blue"
+        },
+        {
+          "id": "nose",
+          "title": "Nose",
+          "subtitle": "Bridge alignment and central facial axis",
+          "scoreLabel": "Nasal balance",
+          "score": 7,
+          "features": [
+            {
+              "label": "Nose-base width",
+              "value": "0.22×"
+            },
+            {
+              "label": "Nose / inner-eye gap",
+              "value": "0.95×"
+            },
+            {
+              "label": "Nose length",
+              "value": "0.42×"
+            },
+            {
+              "label": "Nostril visibility",
+              "value": "L 0.03× · R 0.03×"
+            },
+            {
+              "label": "Nose-wing angle",
+              "value": "L 15.0° · R 15.0°"
+            },
+            {
+              "label": "Bridge / base width",
+              "value": "0.55×"
+            }
+          ],
+          "explanation": "Straight nasal bridge with a narrow dorsum and refined tip. The nose projects moderately with visible nostril definition from this frontal angle. Slight shadowing emphasizes its three-dimensional structure.",
+          "recommendation": "Compare several neutral front images before deciding whether nose balance is the main limiter."
+        },
+        {
+          "id": "mouth",
+          "title": "Mouth",
+          "subtitle": "Lip shape, width, and lower-third fit",
+          "scoreLabel": "Mouth harmony",
+          "score": 6.5,
+          "features": [
+            {
+              "label": "Mouth / nose width",
+              "value": "0.95×"
+            },
+            {
+              "label": "Lower / upper lip height",
+              "value": "1.10×"
+            },
+            {
+              "label": "Mouth-corner inclination",
+              "value": "-2.0°"
+            },
+            {
+              "label": "Mouth / pupil spacing",
+              "value": "1.00×"
+            },
+            {
+              "label": "Visible lip fullness",
+              "value": "Moderate"
+            },
+            {
+              "label": "Cupid’s bow",
+              "value": "Defined"
+            }
+          ],
+          "explanation": "Full upper and lower lips with a defined vermilion border and neutral resting position. The philtrum is moderately deep. Slight natural color variation across the lip surface is visible.",
+          "recommendation": "Use neutral expression consistency and simple grooming before judging mouth balance."
+        },
+        {
+          "id": "jaw",
+          "title": "Jaw",
+          "subtitle": "Mandible definition and chin support",
+          "scoreLabel": "Jawline",
+          "score": 8,
+          "features": [
+            {
+              "label": "Jaw / cheek width",
+              "value": "0.82×"
+            },
+            {
+              "label": "Chin / lower-face height",
+              "value": "0.38×"
+            },
+            {
+              "label": "Chin / jaw width",
+              "value": "0.75×"
+            },
+            {
+              "label": "Chin shape",
+              "value": "Tapered"
+            },
+            {
+              "label": "Jaw outline",
+              "value": "Angular"
+            },
+            {
+              "label": "Chin / philtrum height",
+              "value": "1.50×"
+            }
+          ],
+          "explanation": "Strong, squared mandible with pronounced masseter definition and a well-defined chin. The jaw angle is close to 90 degrees, contributing significant masculine angularity. Clean submental area with no visible soft tissue.",
+          "recommendation": "Keep neck posture consistent; the jaw already has enough visible structure."
+        },
+        {
+          "id": "dimorphism",
+          "title": "Dimorphism",
+          "subtitle": "Sex-typical cues weighted against harmony",
+          "scoreLabel": "Dimorphism",
+          "score": 7.5,
+          "features": [
+            {
+              "label": "Brow frame",
+              "value": "visible structure"
+            },
+            {
+              "label": "Lower third",
+              "value": "structured contour"
+            },
+            {
+              "label": "Cue strength",
+              "value": "strong signal"
+            },
+            {
+              "label": "Feature contrast",
+              "value": "balanced contrast"
+            }
+          ],
+          "explanation": "Dimorphism is scored from sex-typical facial cues while penalizing traits that overpower harmony or proportional balance.",
+          "recommendation": "Use grooming and styling first; align brows, hair, and lower-third presentation before judging contrast."
+        },
+        {
+          "id": "face-shape",
+          "title": "Face shape",
+          "subtitle": "Frame, thirds, and silhouette continuity",
+          "scoreLabel": "Face shape",
+          "score": 7.5,
+          "features": [
+            {
+              "label": "Visible face width / height",
+              "value": "0.78×"
+            },
+            {
+              "label": "Face shape",
+              "value": "Oval"
+            },
+            {
+              "label": "Temple / cheek width",
+              "value": "0.85×"
+            },
+            {
+              "label": "Forehead / cheek width",
+              "value": "0.92×"
+            },
+            {
+              "label": "Upper-to-lower face taper",
+              "value": "1.12×"
+            }
+          ],
+          "explanation": "Oval-to-square facial shape with balanced vertical thirds. The forehead is moderately exposed beneath the hairline. Overall structural robustness combined with refined features creates versatile screen presence.",
+          "recommendation": "Improve haircut, framing, and camera posture first because those change the visible outline fastest."
+        },
+        {
+          "id": "facial-fat",
+          "title": "Facial definition",
+          "subtitle": "Cheek and lower-face clarity",
+          "scoreLabel": "Definition score",
+          "score": 7,
+          "features": [
+            {
+              "label": "Cheek landmark height",
+              "value": "0.55×"
+            },
+            {
+              "label": "Cheek width / eye span",
+              "value": "1.05×"
+            },
+            {
+              "label": "Midface width / height",
+              "value": "0.90×"
+            },
+            {
+              "label": "Cheek contour",
+              "value": "Flatter-looking"
+            },
+            {
+              "label": "Cheek transition",
+              "value": "Smooth"
+            },
+            {
+              "label": "Visible nasolabial folds",
+              "value": "Not apparent"
+            }
+          ],
+          "explanation": "High, prominent cheekbones with subtle hollowing beneath them. The zygomatic arches are clearly defined, creating visible lateral facial width. Skin texture shows natural pores and a few scattered marks.",
+          "recommendation": "Retake future scans with the same lighting, posture, and camera distance before judging soft-tissue fullness."
+        },
+        {
+          "id": "biological-age",
+          "title": "Skin Age",
+          "subtitle": "Visible age cues",
+          "scoreLabel": "Age signal",
+          "score": 7,
+          "features": [
+            {
+              "label": "Visible texture",
+              "value": "1 / 4"
+            },
+            {
+              "label": "Visible tone variation",
+              "value": "0 / 4"
+            },
+            {
+              "label": "Under-eye contrast",
+              "value": "1 / 4"
+            },
+            {
+              "label": "Visible blemish appearance",
+              "value": "1 / 4"
+            },
+            {
+              "label": "Visible pore detail",
+              "value": "Fine"
+            },
+            {
+              "label": "Surface shine",
+              "value": "Localized"
+            }
+          ],
+          "explanation": "Even base tone with natural texture, visible pores, and a few scattered flat marks on the cheeks and neck. Slight shine on the forehead and nose suggests normal sebaceous activity. No active inflammation visible.",
+          "recommendation": "Keep capture conditions consistent so future reports compare visible age cues fairly."
+        },
+        {
+          "id": "symmetry",
+          "title": "Symmetry",
+          "subtitle": "Left-right balance across visible landmarks",
+          "scoreLabel": "Symmetry",
+          "score": 7.5,
+          "features": [
+            {
+              "label": "Eye-corner height balance",
+              "value": "1.5%"
+            },
+            {
+              "label": "Eye-opening balance",
+              "value": "0.0%"
+            },
+            {
+              "label": "Brow height balance",
+              "value": "1.8%"
+            },
+            {
+              "label": "Nose-wing balance",
+              "value": "2.0%"
+            },
+            {
+              "label": "Nose axis alignment",
+              "value": "1.5%"
+            },
+            {
+              "label": "Mouth-corner height balance",
+              "value": "1.2%"
+            }
+          ],
+          "explanation": "Good overall bilateral symmetry with minor deviations: left brow slightly elevated, subtle nasal tip deviation, and mild asymmetry in the upper lip. These are common and do not significantly disrupt facial balance.",
+          "recommendation": "Retake future scans straight-on before judging whether the asymmetry is persistent."
+        },
+        {
+          "id": "sun-damage",
+          "title": "UV context",
+          "subtitle": "UV context and visible tone",
+          "scoreLabel": "UV context",
+          "score": 6.5,
+          "features": [
+            {
+              "label": "Visible texture",
+              "value": "1 / 4"
+            },
+            {
+              "label": "Visible tone variation",
+              "value": "0 / 4"
+            },
+            {
+              "label": "Under-eye contrast",
+              "value": "1 / 4"
+            },
+            {
+              "label": "Visible blemish appearance",
+              "value": "1 / 4"
+            },
+            {
+              "label": "Visible pore detail",
+              "value": "Fine"
+            },
+            {
+              "label": "Surface shine",
+              "value": "Localized"
+            }
+          ],
+          "explanation": "Even base tone with natural texture, visible pores, and a few scattered flat marks on the cheeks and neck. Slight shine on the forehead and nose suggests normal sebaceous activity. No active inflammation visible.",
+          "recommendation": "Use consistent outdoor context and neutral lighting so future scans compare visible tone and texture fairly."
+        },
+        {
+          "id": "overall",
+          "title": "Overall",
+          "subtitle": "Final calibrated assessment",
+          "scoreLabel": "Overall score",
+          "score": 7.9,
+          "features": [
+            {
+              "label": "Eye area",
+              "value": "7.7/10"
+            },
+            {
+              "label": "Jaw & chin",
+              "value": "7.5/10"
+            },
+            {
+              "label": "Cheekbone structure",
+              "value": "7.5/10"
+            },
+            {
+              "label": "Facial thirds",
+              "value": "7.4/10"
+            },
+            {
+              "label": "Symmetry",
+              "value": "8.0/10"
+            },
+            {
+              "label": "Skin quality",
+              "value": "7.2/10"
+            }
+          ],
+          "explanation": "The overall score is the public report score on a 0 to 10 scale. PSL calibration remains a secondary rubric signal for comparison contexts.",
+          "recommendation": "Improve the lowest-scoring category first; one focused change beats scattered glow-up advice."
+        }
+      ],
+      "protocolContext": {
+        "faceShape": "square",
+        "hairTexture": "wavy",
+        "visibleConcerns": [
+          "marks"
+        ]
+      }
+    }
+  },
+  "webReport": {
+    "version": 2,
+    "summary": "Strong masculine bone structure with prominent brow ridge, defined jaw, and balanced proportions. Thick textured hair with natural wave and volume frames the face well. Direct gaze and neutral expression project intensity. Minor asymmetry in brow height and slight facial marks add character rather than detract.",
+    "overallScore": 7.5,
+    "categories": [
+      {
+        "id": "eyes",
+        "score": 7.5,
+        "explanation": "Deep-set blue eyes with visible upper lid exposure and slight hooding from the brow ridge. The inner corners are sharp, and the gaze is direct and intense. Some natural redness in the waterline is visible."
+      },
+      {
+        "id": "brows",
+        "score": 7,
+        "explanation": "Thick, dark, slightly arched brows with moderate density and visible individual hairs. The left brow sits marginally higher than the right, creating subtle asymmetry. Good horizontal extension toward the temples."
+      },
+      {
+        "id": "nose",
+        "score": 7,
+        "explanation": "Straight nasal bridge with a narrow dorsum and refined tip. The nose projects moderately with visible nostril definition from this frontal angle. Slight shadowing emphasizes its three-dimensional structure."
+      },
+      {
+        "id": "mouth",
+        "score": 6.5,
+        "explanation": "Full upper and lower lips with a defined vermilion border and neutral resting position. The philtrum is moderately deep. Slight natural color variation across the lip surface is visible."
+      },
+      {
+        "id": "jaw",
+        "score": 8,
+        "explanation": "Strong, squared mandible with pronounced masseter definition and a well-defined chin. The jaw angle is close to 90 degrees, contributing significant masculine angularity. Clean submental area with no visible soft tissue."
+      },
+      {
+        "id": "cheeks",
+        "score": 7,
+        "explanation": "High, prominent cheekbones with subtle hollowing beneath them. The zygomatic arches are clearly defined, creating visible lateral facial width. Skin texture shows natural pores and a few scattered marks."
+      },
+      {
+        "id": "face",
+        "score": 7.5,
+        "explanation": "Oval-to-square facial shape with balanced vertical thirds. The forehead is moderately exposed beneath the hairline. Overall structural robustness combined with refined features creates versatile screen presence."
+      },
+      {
+        "id": "proportions",
+        "score": 7.5,
+        "explanation": "Facial thirds are relatively balanced with the lower face perhaps marginally longer. The interocular distance aligns with the width of one eye. Ear placement and size appear proportionate to the cranium."
+      },
+      {
+        "id": "symmetry",
+        "score": 7.5,
+        "explanation": "Good overall bilateral symmetry with minor deviations: left brow slightly elevated, subtle nasal tip deviation, and mild asymmetry in the upper lip. These are common and do not significantly disrupt facial balance."
+      },
+      {
+        "id": "skin",
+        "score": 6.5,
+        "explanation": "Even base tone with natural texture, visible pores, and a few scattered flat marks on the cheeks and neck. Slight shine on the forehead and nose suggests normal sebaceous activity. No active inflammation visible."
+      },
+      {
+        "id": "hair",
+        "score": 8,
+        "explanation": "Dense, dark brown hair with natural wave and significant volume on top. The cut has layered texture with longer fringe falling across the forehead and shorter sides. Healthy sheen with some flyaways indicating thickness."
+      },
+      {
+        "id": "ears",
+        "score": 6.5,
+        "explanation": "Medium-sized ears set at average projection with simple lobe attachment. Small stud earrings in both lobes are visible. The upper helix is partially obscured by hair on both sides."
+      }
+    ],
+    "entries": [
+      {
+        "id": "eyes.spacing",
+        "value": 0.42,
+        "evidence": "pupil centers moderately spaced relative to cheek width",
+        "source": "llm-estimate",
+        "grade": 7,
+        "positions": [
+          0.7
+        ]
+      },
+      {
+        "id": "eyes.inner-gap",
+        "value": 1.1,
+        "evidence": "inner corners slightly wider than mean eye width",
+        "source": "llm-estimate",
+        "grade": null,
+        "positions": []
+      },
+      {
+        "id": "eyes.aspect",
+        "value": [
+          1.6,
+          1.6
+        ],
+        "evidence": "both eyes similarly horizontally elongated",
+        "source": "llm-estimate",
+        "grade": 7,
+        "positions": [
+          0.6,
+          0.6
+        ]
+      },
+      {
+        "id": "eyes.canthal-tilt",
+        "value": [
+          3,
+          3
+        ],
+        "evidence": "slight positive tilt bilaterally",
+        "source": "llm-estimate",
+        "grade": 7,
+        "positions": [
+          0.55,
+          0.55
+        ]
+      },
+      {
+        "id": "eyes.opening",
+        "value": [
+          0.35,
+          0.35
+        ],
+        "evidence": "moderately open relative to iris size",
+        "source": "llm-estimate",
+        "grade": 6,
+        "positions": [
+          0.5,
+          0.5
+        ]
+      },
+      {
+        "id": "eyes.shape",
+        "value": "almond",
+        "evidence": "tapered outer corners with smooth curve",
+        "source": "llm-estimate",
+        "grade": null,
+        "positions": []
+      },
+      {
+        "id": "eyes.upper-lid",
+        "value": [
+          0.08,
+          0.08
+        ],
+        "evidence": "minimal visible upper lid strip",
+        "source": "llm-estimate",
+        "grade": null,
+        "positions": []
+      },
+      {
+        "id": "eyes.lower-sclera",
+        "value": [
+          0,
+          0
+        ],
+        "evidence": "no visible sclera below iris",
+        "source": "llm-estimate",
+        "grade": null,
+        "positions": []
+      },
+      {
+        "id": "eyes.crease",
+        "value": "visible",
+        "evidence": "clear supratarsal crease both sides",
+        "source": "llm-estimate",
+        "grade": null,
+        "positions": []
+      },
+      {
+        "id": "eyes.orbital-contour",
+        "value": "prominent-looking",
+        "evidence": "well-defined orbital rim contour",
+        "source": "llm-estimate",
+        "grade": null,
+        "positions": []
+      },
+      {
+        "id": "eyes.under-eye-fullness",
+        "value": "slight",
+        "evidence": "minimal soft tissue beneath eyes",
+        "source": "llm-estimate",
+        "grade": null,
+        "positions": []
+      },
+      {
+        "id": "eyes.lashes",
+        "value": "moderate",
+        "evidence": "visible but not dense lash line",
+        "source": "llm-estimate",
+        "grade": null,
+        "positions": []
+      },
+      {
+        "id": "brows.tilt",
+        "value": [
+          8,
+          8
+        ],
+        "evidence": "gentle upward slope laterally both sides",
+        "source": "llm-estimate",
+        "grade": 6,
+        "positions": [
+          0.55,
+          0.55
+        ]
+      },
+      {
+        "id": "brows.eye-distance",
+        "value": [
+          0.6,
+          0.6
+        ],
+        "evidence": "moderate gap above upper lid",
+        "source": "llm-estimate",
+        "grade": 6,
+        "positions": [
+          0.5,
+          0.5
+        ]
+      },
+      {
+        "id": "brows.length",
+        "value": [
+          1.3,
+          1.3
+        ],
+        "evidence": "brows extend beyond lateral canthus",
+        "source": "llm-estimate",
+        "grade": 7,
+        "positions": [
+          0.6,
+          0.6
+        ]
+      },
+      {
+        "id": "brows.thickness",
+        "value": 0.12,
+        "evidence": "moderately thick relative to eye width",
+        "source": "llm-estimate",
+        "grade": null,
+        "positions": []
+      },
+      {
+        "id": "brows.density",
+        "value": "high apparent coverage",
+        "evidence": "uniform dark fill without gaps",
+        "source": "llm-estimate",
+        "grade": null,
+        "positions": []
+      },
+      {
+        "id": "brows.arch",
+        "value": [
+          150,
+          150
+        ],
+        "evidence": "soft rounded arch both sides",
+        "source": "llm-estimate",
+        "grade": null,
+        "positions": []
+      },
+      {
+        "id": "brows.tail",
+        "value": [
+          -5,
+          -5
+        ],
+        "evidence": "slight downward turn at outer third",
+        "source": "llm-estimate",
+        "grade": null,
+        "positions": []
+      },
+      {
+        "id": "brows.position",
+        "value": "aligned",
+        "evidence": "medial start near inner corner, tail beyond outer corner",
+        "source": "llm-estimate",
+        "grade": null,
+        "positions": []
+      },
+      {
+        "id": "nose.width",
+        "value": 0.22,
+        "evidence": "moderately narrow relative to cheek width",
+        "source": "llm-estimate",
+        "grade": 7,
+        "positions": [
+          0.35
+        ]
+      },
+      {
+        "id": "nose.eye-gap-ratio",
+        "value": 0.95,
+        "evidence": "nose wing nearly equals inner-eye distance",
+        "source": "llm-estimate",
+        "grade": null,
+        "positions": []
+      },
+      {
+        "id": "nose.length",
+        "value": 0.42,
+        "evidence": "mid-length nasal proportion",
+        "source": "llm-estimate",
+        "grade": null,
+        "positions": []
+      },
+      {
+        "id": "nose.bridge",
+        "value": null,
+        "evidence": "A side capture is required.",
+        "source": "llm-estimate",
+        "grade": null,
+        "positions": []
+      },
+      {
+        "id": "nose.tip-shape",
+        "value": null,
+        "evidence": "A side capture is required.",
+        "source": "llm-estimate",
+        "grade": null,
+        "positions": []
+      },
+      {
+        "id": "nose.rotation",
+        "value": null,
+        "evidence": "A side capture is required.",
+        "source": "llm-estimate",
+        "grade": null,
+        "positions": []
+      },
+      {
+        "id": "nose.projection",
+        "value": null,
+        "evidence": "A side capture is required.",
+        "source": "llm-estimate",
+        "grade": null,
+        "positions": []
+      },
+      {
+        "id": "nose.nostril-visibility",
+        "value": [
+          0.03,
+          0.03
+        ],
+        "evidence": "minimal nostril show from frontal pose",
+        "source": "llm-estimate",
+        "grade": null,
+        "positions": []
+      },
+      {
+        "id": "nose.alar-angle",
+        "value": [
+          15,
+          15
+        ],
+        "evidence": "modest flare from vertical both sides",
+        "source": "llm-estimate",
+        "grade": null,
+        "positions": []
+      },
+      {
+        "id": "nose.bridge-width",
+        "value": 0.55,
+        "evidence": "moderately narrow bridge relative to wings",
+        "source": "llm-estimate",
+        "grade": null,
+        "positions": []
+      },
+      {
+        "id": "mouth.width",
+        "value": 0.95,
+        "evidence": "Corners align with alar bases; balanced proportion",
+        "source": "llm-estimate",
+        "grade": 7,
+        "positions": [
+          0.7
+        ]
+      },
+      {
+        "id": "mouth.lip-ratio",
+        "value": 1.1,
+        "evidence": "Lower lip slightly fuller than upper",
+        "source": "llm-estimate",
+        "grade": 6,
+        "positions": [
+          0.6
+        ]
+      },
+      {
+        "id": "mouth.corner-position",
+        "value": -2,
+        "evidence": "Slight downturn at rest",
+        "source": "llm-estimate",
+        "grade": 5,
+        "positions": [
+          0.45
+        ]
+      },
+      {
+        "id": "mouth.pupil-ratio",
+        "value": 1,
+        "evidence": "Mouth width matches interpupillary span",
+        "source": "llm-estimate",
+        "grade": null,
+        "positions": []
+      },
+      {
+        "id": "mouth.fullness",
+        "value": "moderate",
+        "evidence": "Neither thin nor notably full",
+        "source": "llm-estimate",
+        "grade": null,
+        "positions": []
+      },
+      {
+        "id": "mouth.cupid-bow",
+        "value": "defined",
+        "evidence": "Clear central notch and peaks",
+        "source": "llm-estimate",
+        "grade": null,
+        "positions": []
+      },
+      {
+        "id": "mouth.bow-depth",
+        "value": 0.08,
+        "evidence": "Visible notch relative to width",
+        "source": "llm-estimate",
+        "grade": null,
+        "positions": []
+      },
+      {
+        "id": "mouth.philtrum",
+        "value": 1.2,
+        "evidence": "Moderate length relative to upper lip",
+        "source": "llm-estimate",
+        "grade": null,
+        "positions": []
+      },
+      {
+        "id": "mouth.projection",
+        "value": null,
+        "evidence": "A side capture is required.",
+        "source": "llm-estimate",
+        "grade": null,
+        "positions": []
+      },
+      {
+        "id": "mouth.contour",
+        "value": "even",
+        "evidence": "Smooth vermilion borders",
+        "source": "llm-estimate",
+        "grade": null,
+        "positions": []
+      },
+      {
+        "id": "jaw.width",
+        "value": 0.82,
+        "evidence": "Jaw narrower than cheek width",
+        "source": "llm-estimate",
+        "grade": 6,
+        "positions": [
+          0.6
+        ]
+      },
+      {
+        "id": "jaw.angle",
+        "value": null,
+        "evidence": "A side capture is required.",
+        "source": "llm-estimate",
+        "grade": null,
+        "positions": []
+      },
+      {
+        "id": "jaw.projection",
+        "value": null,
+        "evidence": "A side capture is required.",
+        "source": "llm-estimate",
+        "grade": null,
+        "positions": []
+      },
+      {
+        "id": "jaw.height",
+        "value": 0.38,
+        "evidence": "Lower face compact",
+        "source": "llm-estimate",
+        "grade": 6,
+        "positions": [
+          0.6
+        ]
+      },
+      {
+        "id": "jaw.chin-width",
+        "value": 0.75,
+        "evidence": "Moderate chin width",
+        "source": "llm-estimate",
+        "grade": null,
+        "positions": []
+      },
+      {
+        "id": "jaw.chin-shape",
+        "value": "tapered",
+        "evidence": "Narrowing toward chin point",
+        "source": "llm-estimate",
+        "grade": null,
+        "positions": []
+      },
+      {
+        "id": "jaw.jaw-shape",
+        "value": "angular",
+        "evidence": "Defined lateral contours",
+        "source": "llm-estimate",
+        "grade": null,
+        "positions": []
+      },
+      {
+        "id": "jaw.definition",
+        "value": null,
+        "evidence": "A side capture is required.",
+        "source": "llm-estimate",
+        "grade": null,
+        "positions": []
+      },
+      {
+        "id": "jaw.under-chin",
+        "value": null,
+        "evidence": "A side capture is required.",
+        "source": "llm-estimate",
+        "grade": null,
+        "positions": []
+      },
+      {
+        "id": "jaw.chin-philtrum",
+        "value": 1.5,
+        "evidence": "Chin segment exceeds philtrum height",
+        "source": "llm-estimate",
+        "grade": null,
+        "positions": []
+      },
+      {
+        "id": "cheeks.height",
+        "value": 0.55,
+        "evidence": "Mid-cheek position",
+        "source": "llm-estimate",
+        "grade": 6,
+        "positions": [
+          0.6
+        ]
+      },
+      {
+        "id": "cheeks.width",
+        "value": 1.05,
+        "evidence": "Cheeks slightly wider than eye span",
+        "source": "llm-estimate",
+        "grade": 5,
+        "positions": [
+          0.5
+        ]
+      },
+      {
+        "id": "cheeks.midface",
+        "value": 0.9,
+        "evidence": "Moderate horizontal spread",
+        "source": "llm-estimate",
+        "grade": 5,
+        "positions": [
+          0.5
+        ]
+      },
+      {
+        "id": "cheeks.contour",
+        "value": "flatter-looking",
+        "evidence": "Less convex profile",
+        "source": "llm-estimate",
+        "grade": null,
+        "positions": []
+      },
+      {
+        "id": "cheeks.prominence",
+        "value": null,
+        "evidence": "A side capture is required.",
+        "source": "llm-estimate",
+        "grade": null,
+        "positions": []
+      },
+      {
+        "id": "cheeks.malar-transition",
+        "value": "smooth",
+        "evidence": "Gradual cheek-to-jaw flow",
+        "source": "llm-estimate",
+        "grade": null,
+        "positions": []
+      },
+      {
+        "id": "cheeks.paranasal",
+        "value": null,
+        "evidence": "A side capture is required.",
+        "source": "llm-estimate",
+        "grade": null,
+        "positions": []
+      },
+      {
+        "id": "cheeks.nasolabial-fold",
+        "value": "not apparent",
+        "evidence": "Neutral expression smooth",
+        "source": "llm-estimate",
+        "grade": null,
+        "positions": []
+      },
+      {
+        "id": "face.frame",
+        "value": 0.78,
+        "evidence": "Cheek width within facial height",
+        "source": "llm-estimate",
+        "grade": 6,
+        "positions": [
+          0.6
+        ]
+      },
+      {
+        "id": "face.forehead-height",
+        "value": null,
+        "evidence": "The complete actual hairline is not established.",
+        "source": "llm-estimate",
+        "grade": null,
+        "positions": []
+      },
+      {
+        "id": "face.forehead-slope",
+        "value": null,
+        "evidence": "A side capture is required.",
+        "source": "llm-estimate",
+        "grade": null,
+        "positions": []
+      },
+      {
+        "id": "face.shape",
+        "value": "oval",
+        "evidence": "Longer than wide, tapered jaw",
+        "source": "llm-estimate",
+        "grade": null,
+        "positions": []
+      },
+      {
+        "id": "face.temple-width",
+        "value": 0.85,
+        "evidence": "Temples narrower than cheeks",
+        "source": "llm-estimate",
+        "grade": null,
+        "positions": []
+      },
+      {
+        "id": "face.forehead-width",
+        "value": 0.92,
+        "evidence": "Forehead near cheek width",
+        "source": "llm-estimate",
+        "grade": null,
+        "positions": []
+      },
+      {
+        "id": "face.taper",
+        "value": 1.12,
+        "evidence": "Temples slightly wider than jaw",
+        "source": "llm-estimate",
+        "grade": null,
+        "positions": []
+      },
+      {
+        "id": "face.forehead-contour",
+        "value": null,
+        "evidence": "A side capture is required.",
+        "source": "llm-estimate",
+        "grade": null,
+        "positions": []
+      },
+      {
+        "id": "proportions.upper-third",
+        "value": null,
+        "evidence": "The complete actual hairline is not established.",
+        "source": "llm-estimate",
+        "grade": null,
+        "positions": []
+      },
+      {
+        "id": "proportions.middle-third",
+        "value": null,
+        "evidence": "The complete actual hairline is not established.",
+        "source": "llm-estimate",
+        "grade": null,
+        "positions": []
+      },
+      {
+        "id": "proportions.lower-third",
+        "value": null,
+        "evidence": "The complete actual hairline is not established.",
+        "source": "llm-estimate",
+        "grade": null,
+        "positions": []
+      },
+      {
+        "id": "proportions.fifths",
+        "value": null,
+        "evidence": "hairline obscured; fifths require complete facial width anchors",
+        "source": "llm-estimate",
+        "grade": null,
+        "positions": []
+      },
+      {
+        "id": "proportions.lower-partition",
+        "value": 0.42,
+        "evidence": "mouth seam near mid-subnasale-to-chin; balanced lower face",
+        "source": "llm-estimate",
+        "grade": 6,
+        "positions": [
+          0.6
+        ]
+      },
+      {
+        "id": "proportions.convexity",
+        "value": null,
+        "evidence": "A side capture is required.",
+        "source": "llm-estimate",
+        "grade": null,
+        "positions": []
+      },
+      {
+        "id": "proportions.vertical-alignment",
+        "value": [
+          0.02,
+          -0.01,
+          0.01
+        ],
+        "evidence": "nose, mouth, chin well-centered; minimal deviation",
+        "source": "llm-estimate",
+        "grade": null,
+        "positions": []
+      },
+      {
+        "id": "proportions.width-hierarchy",
+        "value": null,
+        "evidence": "Unsupported observation format.",
+        "source": "llm-estimate",
+        "grade": null,
+        "positions": []
+      },
+      {
+        "id": "proportions.eye-mouth-height",
+        "value": 1.1,
+        "evidence": "eye-line to mouth slightly exceeds mouth-to-chin",
+        "source": "llm-estimate",
+        "grade": null,
+        "positions": []
+      },
+      {
+        "id": "proportions.nose-lower-third",
+        "value": 0.75,
+        "evidence": "nose length substantial relative to lower third height",
+        "source": "llm-estimate",
+        "grade": null,
+        "positions": []
+      },
+      {
+        "id": "proportions.angle-coordination",
+        "value": null,
+        "evidence": "validated alar and jaw contour endpoints not established from frontal alone",
+        "source": "llm-estimate",
+        "grade": null,
+        "positions": []
+      },
+      {
+        "id": "proportions.summary",
+        "value": "4 proportion relationships available; approximate, without a combined grade.",
+        "evidence": "Derived only from accepted proportion entries.",
+        "source": "derived",
+        "grade": null
+      },
+      {
+        "id": "symmetry.eyes-height",
+        "value": 1.5,
+        "evidence": "minimal vertical eye corner difference; well-aligned",
+        "source": "llm-estimate",
+        "grade": 7,
+        "positions": [
+          0.7
+        ]
+      },
+      {
+        "id": "symmetry.eyes-opening",
+        "value": 0,
+        "evidence": "Calculated from accepted left/right eye aspect ratios.",
+        "source": "derived",
+        "grade": null,
+        "positions": []
+      },
+      {
+        "id": "symmetry.brows-height",
+        "value": 1.8,
+        "evidence": "brow anchors nearly level; slight asymmetry",
+        "source": "llm-estimate",
+        "grade": 7,
+        "positions": [
+          0.7
+        ]
+      },
+      {
+        "id": "symmetry.brows-shape",
+        "value": null,
+        "evidence": "brow contour detail insufficient for mirrored residual",
+        "source": "llm-estimate",
+        "grade": null,
+        "positions": []
+      },
+      {
+        "id": "symmetry.nose-wings",
+        "value": 2,
+        "evidence": "minor left-right wing distance variation",
+        "source": "llm-estimate",
+        "grade": null,
+        "positions": []
+      },
+      {
+        "id": "symmetry.nose-axis",
+        "value": 1.5,
+        "evidence": "tip nearly centered; minimal lateral offset",
+        "source": "llm-estimate",
+        "grade": null,
+        "positions": []
+      },
+      {
+        "id": "symmetry.mouth-height",
+        "value": 1.2,
+        "evidence": "mouth corners level; slight differential",
+        "source": "llm-estimate",
+        "grade": 7,
+        "positions": [
+          0.7
+        ]
+      },
+      {
+        "id": "symmetry.lip-contour",
+        "value": null,
+        "evidence": "precise lip contour extraction uncertain",
+        "source": "llm-estimate",
+        "grade": null,
+        "positions": []
+      },
+      {
+        "id": "symmetry.chin-axis",
+        "value": 0.8,
+        "evidence": "chin centered on facial axis",
+        "source": "llm-estimate",
+        "grade": 8,
+        "positions": [
+          0.8
+        ]
+      },
+      {
+        "id": "symmetry.jaw-outline",
+        "value": null,
+        "evidence": "validated jaw contour not established",
+        "source": "llm-estimate",
+        "grade": null,
+        "positions": []
+      },
+      {
+        "id": "symmetry.cheek-outline",
+        "value": null,
+        "evidence": "even lighting but contour extraction uncertain",
+        "source": "llm-estimate",
+        "grade": null,
+        "positions": []
+      },
+      {
+        "id": "symmetry.ears-position",
+        "value": 1,
+        "evidence": "both ears visible; similar vertical placement",
+        "source": "llm-estimate",
+        "grade": null,
+        "positions": []
+      },
+      {
+        "id": "skin.texture",
+        "value": 1,
+        "evidence": "localized fine detail on forehead and nose",
+        "source": "llm-estimate",
+        "grade": 6,
+        "positions": [
+          0.6
+        ]
+      },
+      {
+        "id": "skin.tone",
+        "value": 0,
+        "evidence": "minimal local variation; even complexion",
+        "source": "llm-estimate",
+        "grade": 8,
+        "positions": [
+          0.8
+        ]
+      },
+      {
+        "id": "skin.under-eye-contrast",
+        "value": 1,
+        "evidence": "slight shadow under eyes; likely lighting",
+        "source": "llm-estimate",
+        "grade": 6,
+        "positions": [
+          0.6
+        ]
+      },
+      {
+        "id": "skin.blemishes",
+        "value": 1,
+        "evidence": "isolated small appearances; few visible marks",
+        "source": "llm-estimate",
+        "grade": 7,
+        "positions": [
+          0.7
+        ]
+      },
+      {
+        "id": "skin.pores",
+        "value": "fine",
+        "evidence": "visible only in limited areas; good resolution",
+        "source": "llm-estimate",
+        "grade": null,
+        "positions": []
+      },
+      {
+        "id": "skin.shine",
+        "value": "localized",
+        "evidence": "subtle sheen on forehead and nose",
+        "source": "llm-estimate",
+        "grade": null,
+        "positions": []
+      },
+      {
+        "id": "skin.fine-lines",
+        "value": "not apparent",
+        "evidence": "smooth skin; no visible lines at neutral",
+        "source": "llm-estimate",
+        "grade": null,
+        "positions": []
+      },
+      {
+        "id": "skin.marks",
+        "value": "localized",
+        "evidence": "few small marks on cheeks and neck",
+        "source": "llm-estimate",
+        "grade": null,
+        "positions": []
+      },
+      {
+        "id": "skin.under-eye-color",
+        "value": "slight tonal deepening",
+        "evidence": "local contrast under eyes; shadow-related",
+        "source": "llm-estimate",
+        "grade": null,
+        "positions": []
+      },
+      {
+        "id": "skin.surface-pattern",
+        "value": "forehead, nose, chin",
+        "evidence": "fine texture visible in T-zone",
+        "source": "llm-estimate",
+        "grade": null,
+        "positions": []
+      },
+      {
+        "id": "skin.capture-effects",
+        "value": "even light, possible smoothing",
+        "evidence": "clean studio appearance; minimal artifacts",
+        "source": "llm-estimate",
+        "grade": null,
+        "positions": []
+      },
+      {
+        "id": "skin.priorities",
+        "value": "Review capture effects: even light, possible smoothing. Compare observations under consistent lighting.",
+        "evidence": "Capture guidance only; no treatment or diagnosis inferred.",
+        "source": "derived",
+        "grade": null
+      },
+      {
+        "id": "hair.hairline-shape",
+        "value": null,
+        "evidence": "The complete actual hairline is not established.",
+        "source": "llm-estimate",
+        "grade": null,
+        "positions": []
+      },
+      {
+        "id": "hair.hairline-visibility",
+        "value": "obscured",
+        "evidence": "fringe falls across forehead; boundary hidden",
+        "source": "llm-estimate",
+        "grade": null,
+        "positions": []
+      },
+      {
+        "id": "hair.coverage",
+        "value": "dense frontal coverage with visible scalp obscured",
+        "evidence": "thick hair mass; no scalp visible",
+        "source": "llm-estimate",
+        "grade": null,
+        "positions": []
+      },
+      {
+        "id": "hair.frame",
+        "value": "forehead largely covered; lateral volume frames jaw",
+        "evidence": "soft contour; face shape partially softened",
+        "source": "llm-estimate",
+        "grade": null,
+        "positions": []
+      },
+      {
+        "id": "hair.volume",
+        "value": 1.3,
+        "evidence": "silhouette width exceeds cheek width; full style",
+        "source": "llm-estimate",
+        "grade": null,
+        "positions": []
+      },
+      {
+        "id": "hair.beard-style",
+        "value": "clean-shaven",
+        "evidence": "no facial hair visible",
+        "source": "llm-estimate",
+        "grade": null,
+        "positions": []
+      },
+      {
+        "id": "hair.grooming",
+        "value": null,
+        "evidence": "The chosen grooming style has not been supplied.",
+        "source": "llm-estimate",
+        "grade": null,
+        "positions": []
+      },
+      {
+        "id": "hair.beard-grooming",
+        "value": null,
+        "evidence": "The chosen grooming style has not been supplied.",
+        "source": "llm-estimate",
+        "grade": null,
+        "positions": []
+      },
+      {
+        "id": "ears.height",
+        "value": null,
+        "evidence": "A side capture is required.",
+        "source": "llm-estimate",
+        "grade": null,
+        "positions": []
+      },
+      {
+        "id": "ears.width",
+        "value": null,
+        "evidence": "A side capture is required.",
+        "source": "llm-estimate",
+        "grade": null,
+        "positions": []
+      },
+      {
+        "id": "ears.protrusion",
+        "value": null,
+        "evidence": "Unsupported observation format.",
+        "source": "llm-estimate",
+        "grade": null,
+        "positions": []
+      },
+      {
+        "id": "ears.vertical-position",
+        "value": [
+          0.72,
+          0.62,
+          0.45,
+          0.38
+        ],
+        "evidence": "top near brow level, bottom above nose base",
+        "source": "llm-estimate",
+        "grade": null,
+        "positions": []
+      },
+      {
+        "id": "ears.shape",
+        "value": null,
+        "evidence": "A side capture is required.",
+        "source": "llm-estimate",
+        "grade": null,
+        "positions": []
+      },
+      {
+        "id": "ears.attachment",
+        "value": null,
+        "evidence": "A side capture is required.",
+        "source": "llm-estimate",
+        "grade": null,
+        "positions": []
+      }
+    ],
+    "eyeColor": "blue",
+    "hairColor": "brown",
+    "contours": {
+      "hair": [
+        [
+          {
+            "x": 0.146,
+            "y": 0.383
+          },
+          {
+            "x": 0.128,
+            "y": 0.294
+          },
+          {
+            "x": 0.165,
+            "y": 0.2
+          },
+          {
+            "x": 0.263,
+            "y": 0.139
+          },
+          {
+            "x": 0.362,
+            "y": 0.107
+          },
+          {
+            "x": 0.486,
+            "y": 0.089
+          },
+          {
+            "x": 0.612,
+            "y": 0.103
+          },
+          {
+            "x": 0.727,
+            "y": 0.139
+          },
+          {
+            "x": 0.825,
+            "y": 0.204
+          },
+          {
+            "x": 0.871,
+            "y": 0.283
+          },
+          {
+            "x": 0.846,
+            "y": 0.368
+          },
+          {
+            "x": 0.816,
+            "y": 0.387
+          },
+          {
+            "x": 0.838,
+            "y": 0.296
+          },
+          {
+            "x": 0.768,
+            "y": 0.217
+          },
+          {
+            "x": 0.668,
+            "y": 0.164
+          },
+          {
+            "x": 0.542,
+            "y": 0.136
+          },
+          {
+            "x": 0.412,
+            "y": 0.139
+          },
+          {
+            "x": 0.293,
+            "y": 0.175
+          },
+          {
+            "x": 0.213,
+            "y": 0.239
+          },
+          {
+            "x": 0.178,
+            "y": 0.316
+          },
+          {
+            "x": 0.185,
+            "y": 0.375
+          }
+        ]
+      ],
+      "ears": [
+        [
+          {
+            "x": 0.174,
+            "y": 0.36
+          },
+          {
+            "x": 0.158,
+            "y": 0.398
+          },
+          {
+            "x": 0.185,
+            "y": 0.455
+          },
+          {
+            "x": 0.227,
+            "y": 0.463
+          },
+          {
+            "x": 0.235,
+            "y": 0.43
+          },
+          {
+            "x": 0.225,
+            "y": 0.389
+          },
+          {
+            "x": 0.202,
+            "y": 0.365
+          },
+          {
+            "x": 0.783,
+            "y": 0.384
+          },
+          {
+            "x": 0.763,
+            "y": 0.405
+          },
+          {
+            "x": 0.752,
+            "y": 0.445
+          },
+          {
+            "x": 0.755,
+            "y": 0.468
+          },
+          {
+            "x": 0.791,
+            "y": 0.459
+          },
+          {
+            "x": 0.804,
+            "y": 0.42
+          },
+          {
+            "x": 0.798,
+            "y": 0.388
+          }
+        ]
+      ]
+    },
+    "timingMs": 27525
+  },
+  "providerTiming": [
+    {
+      "stage": "overview",
+      "attempts": 1,
+      "headersMs": 3005,
+      "firstOutputMs": 3006,
+      "totalMs": 27524,
+      "usage": {
+        "prompt_tokens": 2445,
+        "completion_tokens": 1159
+      }
+    },
+    {
+      "stage": "rubric_batch_1",
+      "attempts": 1,
+      "headersMs": 3705,
+      "firstOutputMs": 3706,
+      "totalMs": 20274,
+      "usage": {
+        "prompt_tokens": 4282,
+        "completion_tokens": 862
+      },
+      "batch": 1,
+      "rubricCount": 36
+    },
+    {
+      "stage": "rubric_batch_2",
+      "attempts": 1,
+      "headersMs": 3210,
+      "firstOutputMs": 3210,
+      "totalMs": 17627,
+      "usage": {
+        "prompt_tokens": 4233,
+        "completion_tokens": 752
+      },
+      "batch": 2,
+      "rubricCount": 36
+    },
+    {
+      "stage": "rubric_batch_3",
+      "attempts": 1,
+      "headersMs": 3219,
+      "firstOutputMs": 3219,
+      "totalMs": 24738,
+      "usage": {
+        "prompt_tokens": 4663,
+        "completion_tokens": 1036
+      },
+      "batch": 3,
+      "rubricCount": 42
+    }
+  ]
+}

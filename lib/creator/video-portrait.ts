@@ -31,7 +31,7 @@ export function portraitContextRegion(image: { width: number; height: number }, 
 export function portraitImageFrame(image: { width: number; height: number }, stage: { width: number; height: number }, focus?: VideoFrame, landmarks?: GeneratorImage['landmarks'], headTop?: number, maximumZoom = 1.45, fillBottom = false): VideoFrame {
   const context = portraitContextRegion(image, landmarks, headTop)
   const fullWidth = stage.width / image.width
-  const base = context ? Math.min(stage.width / context.width, stage.height * .94 / context.height) : fullWidth
+  const base = Math.max(fullWidth, context ? Math.min(stage.width / context.width, stage.height * .94 / context.height) : fullWidth)
   const framingScale = focus ? Math.max(base, Math.min(base * maximumZoom, stage.width * .86 / focus.width, stage.height * .86 / focus.height)) : base
   const scale = fillBottom ? Math.max(framingScale,stage.height/image.height) : framingScale
   const width = image.width * scale, height = image.height * scale

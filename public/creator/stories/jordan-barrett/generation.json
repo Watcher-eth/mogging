@@ -1,0 +1,27 @@
+{
+  "mode": "built-in image_gen",
+  "status": "ready-for-review",
+  "assets": [
+    {
+      "id": "jordan-barrett-front",
+      "source": "/Users/watcher/.codex/generated_images/01a19397-62cb-7a93-a3e6-1f6c3323d9b3/exec-081d8d19-59f0-41a0-bb79-c5cdba8b3d1d.png",
+      "prompt": "Use case: identity-preserve. Create ONE photorealistic FRONT studio portrait of Jordan Barrett, exact person shown in the three identity references. Reference 1 is the detailed beach fashion portrait; references 2 and 3 support identity and natural facial proportions. Preserve his real cheek shape, eye shape and spacing, nose, lips and jaw, with natural skin texture and blond/dark-blond tousled hair. Straight-on front head and shoulders, eye-level camera, upright head, neutral relaxed expression without the dramatic lowered-chin gaze of reference 1. Plain black crewneck. Vertical 9:16; whole hair with breathing room, neck, shoulders and upper chest. White seamless background, soft studio lighting very slightly cool with barely perceptible blue tint in light only, natural skin tone. No labels, collage, logos, jewelry, beauty retouching or anatomical enhancement."
+    },
+    {
+      "id": "jordan-barrett-three-quarter",
+      "source": "/Users/watcher/.codex/generated_images/01a19397-62cb-7a93-a3e6-1f6c3323d9b3/exec-66d9aa94-5920-409a-a374-ba1af8baccac.png",
+      "prompt": "Use case: identity-preserve. ONE photorealistic studio portrait of Jordan Barrett, exact person in the references. Reference 1 is his completed studio front: match identity, tousled blond hair, natural skin texture, black crewneck, backdrop and lighting. Reference 2 supports real identity and angle. Preserve actual cheek, nose, lip, jaw and chin proportions without anatomical enhancement. Neutral expression, relaxed closed lips, eye-level camera. Vertical 9:16, full hair with breathing room, neck, shoulders and upper chest. White seamless background, soft studio light very slightly cool with barely perceptible blue tint only in illumination; natural skin color. No text, collage, labels, beauty retouching or exaggerated jaw. Pose: THREE-QUARTER view, turn head and shoulders 45 degrees toward image left."
+    },
+    {
+      "id": "jordan-barrett-profile",
+      "source": "/Users/watcher/.codex/generated_images/01a19397-62cb-7a93-a3e6-1f6c3323d9b3/exec-652af882-bd41-4501-a347-c7e9478676b5.png",
+      "prompt": "Use case: identity-preserve. ONE photorealistic studio portrait of Jordan Barrett, exact person in the references. Reference 1 is his completed studio front: match identity, tousled blond hair, natural skin texture, black crewneck, backdrop and lighting. Reference 2 supports real identity and angle. Preserve actual cheek, nose, lip, jaw and chin proportions without anatomical enhancement. Neutral expression, relaxed closed lips, eye-level camera. Vertical 9:16, full hair with breathing room, neck, shoulders and upper chest. White seamless background, soft studio light very slightly cool with barely perceptible blue tint only in illumination; natural skin color. No text, collage, labels, beauty retouching or exaggerated jaw. Pose: TRUE SIDE PROFILE, turn head and shoulders 90 degrees toward image left, only one eye visible."
+    },
+    {
+      "id": "jordan-reference",
+      "source": "/var/folders/b5/bypf54694xz5_4h0qn1qpws80000gn/T/codex-clipboard-2cdcf7c4-379c-44fd-a010-e367ffd7a7de.png",
+      "reference": true,
+      "prompt": null
+    }
+  ]
+}

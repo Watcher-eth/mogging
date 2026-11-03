@@ -1,0 +1,229 @@
+{
+  "id": "tom-holland-round3",
+  "subjectId": "tom-holland",
+  "title": "Prada’s version of Tom Holland",
+  "voice": {
+    "preset": "editorial",
+    "voice": "Puck",
+    "direction": "Independent narrator, never imitate the person pictured. Brisk upbeat conversational English, approximately 205 words per minute. Read the exact transcript only, without introductions, explanations or extra endings. Tell one connected story with natural contractions, purposeful emphasis and distinct energy between the opening, observation, score and payoff. No slow documentary voice, dramatic trailer voice, monotone list or advertising voice. Do not slow down for the product mention. Mogging.com is pronounced Mogging dot com; Clavicular is kluh-VIK-yuh-ler; Zeta is ZAY-tuh. Read digits and scores clearly. Keep pauses brief but let the visual idea land. Brisk, upbeat, conversational Puck. One narrator and one cohesive argument, with distinct energy for setup, evidence and payoff. Do not generate audio before explicit script approval. VERBATIM RECORDING: every word of the supplied transcript must be spoken in order, including every Mogging mention and possessive. Do not add connective words, paraphrase, simplify, or omit brand names. Mogging is MOG-ing, rhyming with dog, not mocking. Clavicular is CLAV-ick-you-lur. Make both proper names clear while keeping natural English phrasing. Record this complete section as part of one connected story. Keep the same accent, pitch, volume and upbeat conversational energy between sections; no introductory or closing flourish. Read the exact words, including articles and contractions."
+  },
+  "script": {
+    "version": 1,
+    "revision": "script-529c477213a4240f",
+    "promotion": "contextual",
+    "cues": [
+      {
+        "id": "cue-1eae3fc4312d3d25-0",
+        "sourceId": "hook",
+        "text": "Prada hired the face of Spider-Man and gave him almost nothing heroic to do.",
+        "delivery": {
+          "direction": "Open with upbeat curiosity and a connected thought; no dramatic trailer voice.",
+          "emphasis": [],
+          "paceWpm": 202,
+          "pauseAfterMs": 0
+        },
+        "section": {
+          "id": "hook",
+          "title": "Opening",
+          "role": "hook",
+          "priority": 100,
+          "dependsOn": [],
+          "visuals": [
+            {
+              "treatment": "portrait",
+              "imageId": "tom-prada-red-study",
+              "categoryId": "eyes",
+              "focus": "features",
+              "view": "front",
+              "reason": "Open on the new red-jacket campaign-inspired study; label reconstruction discreetly in review. Source is the actual official SS2022 red-jacket photograph."
+            }
+          ]
+        }
+      },
+      {
+        "id": "cue-5af7899a1769d241-0",
+        "sourceId": "expression",
+        "text": "Across these portraits, a crease in the forehead and a glance away from the camera do most of the acting. It feels like you've caught him mid-thought.",
+        "delivery": {
+          "direction": "Explain the visible relationship naturally; vary emphasis and leave a clean visual hold.",
+          "emphasis": [],
+          "paceWpm": 190,
+          "pauseAfterMs": 0
+        },
+        "section": {
+          "id": "expression",
+          "title": "Expression",
+          "role": "explanation",
+          "priority": 100,
+          "dependsOn": [
+            "hook"
+          ],
+          "visuals": [
+            {
+              "treatment": "detail",
+              "imageId": "tom-prada-cardigan-study",
+              "categoryId": "eyes",
+              "focus": "features",
+              "view": "front",
+              "reason": "Show the red-jacket study for the off-camera gaze and forehead crease, then the restrained cardigan expression. Do not invent a white-shirt image."
+            },
+            {
+              "treatment": "detail",
+              "imageId": "tom-prada-cardigan-study",
+              "match": "mid-thought",
+              "categoryId": "eyes",
+              "focus": "features",
+              "view": "front",
+              "reason": "Show the red-jacket study for the off-camera gaze and forehead crease, then the restrained cardigan expression. Do not invent a white-shirt image."
+            }
+          ]
+        }
+      },
+      {
+        "id": "cue-0aedd0180b7f51ff-0",
+        "sourceId": "score",
+        "text": "His eye area gets seven out of ten in this saved Mogging photo. Put that familiar smile beside the campaign expressions, and you can see how much the mood changes.",
+        "delivery": {
+          "direction": "Say each score clearly, then carry the same thought forward. Do not turn the number into a verdict.",
+          "emphasis": [],
+          "paceWpm": 188,
+          "pauseAfterMs": 0
+        },
+        "section": {
+          "id": "score",
+          "title": "Score",
+          "role": "explanation",
+          "priority": 100,
+          "dependsOn": [
+            "expression"
+          ],
+          "visuals": [
+            {
+              "treatment": "portrait",
+              "imageId": "tom-front",
+              "categoryId": "eyes",
+              "focus": "scores",
+              "view": "front",
+              "reason": "Cut to the exact saved smiling tom-front photograph for Eye area. Clear score before recalling campaign studies; it is not a Prada rating."
+            }
+          ]
+        }
+      },
+      {
+        "id": "cue-2748e29e4e08ea39-0",
+        "sourceId": "meaning",
+        "text": "Prada's own brief talked about small actions and reactions. The face stays familiar; the performance changes what you expect from it.",
+        "delivery": {
+          "direction": "Explain the visible relationship naturally; vary emphasis and leave a clean visual hold.",
+          "emphasis": [],
+          "paceWpm": 194,
+          "pauseAfterMs": 0
+        },
+        "section": {
+          "id": "meaning",
+          "title": "Meaning",
+          "role": "explanation",
+          "priority": 100,
+          "dependsOn": [
+            "score"
+          ],
+          "visuals": [
+            {
+              "treatment": "portrait",
+              "imageId": "tom-prada-red-study",
+              "categoryId": "eyes",
+              "focus": "features",
+              "view": "front",
+              "reason": "Alternate the two generated campaign studies without reshaping the face. Keep the official references available in review."
+            },
+            {
+              "treatment": "portrait",
+              "imageId": "tom-prada-cardigan-study",
+              "match": "Prada",
+              "categoryId": "eyes",
+              "focus": "features",
+              "view": "front",
+              "reason": "Alternate the two generated campaign studies without reshaping the face. Keep the official references available in review."
+            },
+            {
+              "treatment": "portrait",
+              "imageId": "tom-prada-cardigan-study",
+              "match": "performance",
+              "categoryId": "eyes",
+              "focus": "features",
+              "view": "front",
+              "reason": "Alternate the two generated campaign studies without reshaping the face. Keep the official references available in review."
+            }
+          ]
+        }
+      },
+      {
+        "id": "cue-f196c726924f0b6c-0",
+        "sourceId": "outro",
+        "text": "See what your own eye area and proportions bring to the picture on Mogging.com, before the styling does.",
+        "delivery": {
+          "direction": "Resolve the story through the invitation; warm, direct and conversational, with no extra tagline.",
+          "emphasis": [],
+          "paceWpm": 198,
+          "pauseAfterMs": 0
+        },
+        "section": {
+          "id": "outro",
+          "title": "Takeaway",
+          "role": "takeaway",
+          "priority": 100,
+          "dependsOn": [
+            "meaning"
+          ],
+          "visuals": [
+            {
+              "treatment": "portrait",
+              "imageId": "tom-front",
+              "categoryId": "eyes",
+              "focus": "features",
+              "view": "front",
+              "reason": "Resolve on the actual scored portrait and contextual Mogging.com lockup."
+            }
+          ]
+        }
+      }
+    ]
+  },
+  "status": "recorded",
+  "assessmentId": "9a1cef87c49a032f2e1c410c75835a647c7bd93d7bb9a35cf273b0df62f7f2dc",
+  "imageIds": [
+    "tom-front",
+    "tom-prada-red-study",
+    "tom-prada-cardigan-study"
+  ],
+  "defaultLength": 45,
+  "recordedDurationMs": 29160,
+  "audioStatus": "word-aligned",
+  "sections": [
+    {
+      "id": "hook",
+      "startMs": 0,
+      "durationMs": 3800
+    },
+    {
+      "id": "expression",
+      "startMs": 3800,
+      "durationMs": 6000
+    },
+    {
+      "id": "score",
+      "startMs": 9800,
+      "durationMs": 8050
+    },
+    {
+      "id": "meaning",
+      "startMs": 17850,
+      "durationMs": 6100
+    },
+    {
+      "id": "outro",
+      "startMs": 23950,
+      "durationMs": 5210
+    }
+  ]
+}

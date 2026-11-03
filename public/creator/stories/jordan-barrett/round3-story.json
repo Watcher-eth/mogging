@@ -1,0 +1,211 @@
+{
+  "id": "jordan-barrett-round3",
+  "subjectId": "jordan-barrett",
+  "title": "Jordan Barrett’s cheekbones need the whole face",
+  "voice": {
+    "preset": "editorial",
+    "voice": "Iapetus",
+    "direction": "Independent narrator, never imitate the person pictured. Brisk upbeat conversational English, approximately 205 words per minute. Read the exact transcript only, without introductions, explanations or extra endings. Tell one connected story with natural contractions, purposeful emphasis and distinct energy between the opening, observation, score and payoff. No slow documentary voice, dramatic trailer voice, monotone list or advertising voice. Do not slow down for the product mention. Mogging.com is pronounced Mogging dot com; Clavicular is kluh-VIK-yuh-ler; Zeta is ZAY-tuh. Read digits and scores clearly. Keep pauses brief but let the visual idea land. Brisk, upbeat, conversational Iapetus. One narrator and one cohesive argument, with distinct energy for setup, evidence and payoff. Do not generate audio before explicit script approval. VERBATIM RECORDING: every word of the supplied transcript must be spoken in order, including every Mogging mention and possessive. Do not add connective words, paraphrase, simplify, or omit brand names. Mogging is MOG-ing, rhyming with dog, not mocking. Clavicular is CLAV-ick-you-lur. Make both proper names clear while keeping natural English phrasing. Record this complete section as part of one connected story. Keep the same accent, pitch, volume and upbeat conversational energy between sections; no introductory or closing flourish. Read the exact words, including articles and contractions."
+  },
+  "script": {
+    "version": 1,
+    "revision": "script-18f655eaae3cf49f",
+    "promotion": "contextual",
+    "cues": [
+      {
+        "id": "cue-87c184484a9acd62-0",
+        "sourceId": "hook",
+        "text": "Jordan Barrett's cheekbones jump out in a close-up. The side views show why they work as part of a bigger shape.",
+        "delivery": {
+          "direction": "Open with upbeat curiosity and a connected thought; no dramatic trailer voice.",
+          "emphasis": [],
+          "paceWpm": 202,
+          "pauseAfterMs": 0
+        },
+        "section": {
+          "id": "hook",
+          "title": "Opening",
+          "role": "hook",
+          "priority": 100,
+          "dependsOn": [],
+          "visuals": [
+            {
+              "treatment": "portrait",
+              "imageId": "jordan-barrett-front",
+              "categoryId": "cheeks",
+              "focus": "features",
+              "view": "front",
+              "reason": "Use the existing generated front studio view only. No beach photograph or campaign context."
+            }
+          ]
+        }
+      },
+      {
+        "id": "cue-bf09789660f8d8d0-0",
+        "sourceId": "shape",
+        "text": "From the front, the cheek area sits above a narrower lower face. Turn to three-quarter and the contour beneath the cheek becomes easier to follow.",
+        "delivery": {
+          "direction": "Explain the visible relationship naturally; vary emphasis and leave a clean visual hold.",
+          "emphasis": [],
+          "paceWpm": 190,
+          "pauseAfterMs": 0
+        },
+        "section": {
+          "id": "shape",
+          "title": "Shape",
+          "role": "explanation",
+          "priority": 100,
+          "dependsOn": [
+            "hook"
+          ],
+          "visuals": [
+            {
+              "treatment": "detail",
+              "imageId": "jordan-barrett-three-quarter",
+              "categoryId": "cheeks",
+              "focus": "features",
+              "view": "three-quarter",
+              "reason": "Begin with a brief front recall, then hold the three-quarter study. Follow the real visible cheek contour only."
+            },
+            {
+              "treatment": "detail",
+              "imageId": "jordan-barrett-front",
+              "match": "From the front",
+              "categoryId": "cheeks",
+              "focus": "features",
+              "view": "three-quarter",
+              "reason": "Begin with a brief front recall, then hold the three-quarter study. Follow the real visible cheek contour only."
+            }
+          ]
+        }
+      },
+      {
+        "id": "cue-b7f643722eeca966-0",
+        "sourceId": "score",
+        "text": "His cheek area scores seven out of ten in the front portrait's Mogging report. That number describes the image; the profile explains more of the relationship.",
+        "delivery": {
+          "direction": "Say each score clearly, then carry the same thought forward. Do not turn the number into a verdict.",
+          "emphasis": [],
+          "paceWpm": 188,
+          "pauseAfterMs": 0
+        },
+        "section": {
+          "id": "score",
+          "title": "Score",
+          "role": "explanation",
+          "priority": 100,
+          "dependsOn": [
+            "shape"
+          ],
+          "visuals": [
+            {
+              "treatment": "portrait",
+              "imageId": "jordan-barrett-front",
+              "categoryId": "cheeks",
+              "focus": "scores",
+              "view": "front",
+              "reason": "Return to the exact assessed front portrait for the score. Do not attach it to the profile or infer a change between images."
+            }
+          ]
+        }
+      },
+      {
+        "id": "cue-7cd9fa71d22fee50-0",
+        "sourceId": "profile",
+        "text": "The nose, lips and chin add another outline entirely. A cheekbone crop leaves all of that out.",
+        "delivery": {
+          "direction": "Explain the visible relationship naturally; vary emphasis and leave a clean visual hold.",
+          "emphasis": [],
+          "paceWpm": 194,
+          "pauseAfterMs": 0
+        },
+        "section": {
+          "id": "profile",
+          "title": "Profile",
+          "role": "explanation",
+          "priority": 100,
+          "dependsOn": [
+            "score"
+          ],
+          "visuals": [
+            {
+              "treatment": "detail",
+              "imageId": "jordan-barrett-profile",
+              "categoryId": "cheeks",
+              "focus": "features",
+              "view": "profile",
+              "reason": "Hold the existing profile at its native proportions; no angle measurement or beauty edit."
+            }
+          ]
+        }
+      },
+      {
+        "id": "cue-84113a1bdfde038a-0",
+        "sourceId": "outro",
+        "text": "Curious which features give your own face its shape? Explore the full picture on Mogging.com, from cheekbones to proportions.",
+        "delivery": {
+          "direction": "Resolve the story through the invitation; warm, direct and conversational, with no extra tagline.",
+          "emphasis": [],
+          "paceWpm": 198,
+          "pauseAfterMs": 0
+        },
+        "section": {
+          "id": "outro",
+          "title": "Takeaway",
+          "role": "takeaway",
+          "priority": 100,
+          "dependsOn": [
+            "profile"
+          ],
+          "visuals": [
+            {
+              "treatment": "portrait",
+              "imageId": "jordan-barrett-front",
+              "categoryId": "cheeks",
+              "focus": "features",
+              "view": "front",
+              "reason": "End on the front portrait with a story-specific Mogging.com lockup."
+            }
+          ]
+        }
+      }
+    ]
+  },
+  "status": "recorded",
+  "assessmentId": "043da34453554837cb545510db71d48798dd11134f4be71dbc5f297c17032401",
+  "imageIds": [
+    "jordan-barrett-front",
+    "jordan-barrett-three-quarter",
+    "jordan-barrett-profile"
+  ],
+  "defaultLength": 45,
+  "recordedDurationMs": 30440,
+  "audioStatus": "word-aligned",
+  "sections": [
+    {
+      "id": "hook",
+      "startMs": 0,
+      "durationMs": 5000
+    },
+    {
+      "id": "shape",
+      "startMs": 5000,
+      "durationMs": 7300
+    },
+    {
+      "id": "score",
+      "startMs": 12300,
+      "durationMs": 7200
+    },
+    {
+      "id": "profile",
+      "startMs": 19500,
+      "durationMs": 5050
+    },
+    {
+      "id": "outro",
+      "startMs": 24550,
+      "durationMs": 5890
+    }
+  ]
+}

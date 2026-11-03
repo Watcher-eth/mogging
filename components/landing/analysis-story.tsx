@@ -94,7 +94,7 @@ export function ReportPortraitDemo({ category, narration, metricId }: { category
     })
     return () => { disposed = true }
   }, [nearby])
-  const overlay = useMemo(() => preciseFaceOverlay({ size: { width: 390, height: 520 }, primitives: [], dots: [] }, { ...portrait.image, landmarks: previewLandmarks }, category, narration), [category, narration])
+  const overlay = useMemo(() => preciseFaceOverlay({ size: { width: 390, height: 520 }, primitives: [], dots: [] }, { ...portrait.image, landmarks: previewLandmarks }, category, narration, category === 'skin', metricId), [category, narration, metricId])
   const draw = useCallback((ctx: CanvasRenderingContext2D, elapsed: number, reduced: boolean) => {
     if (!image) return
     drawReportPortrait(ctx, image, 390, 520)

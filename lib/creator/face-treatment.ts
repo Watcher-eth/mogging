@@ -1,15 +1,16 @@
 import { drawSkinNetwork } from './mobile-overlay-engine/skin-network'
 import { buildFaceMapPoints, isSkinOverlayCategory, SKIN_FACE_MAP_COUNT } from './mobile-overlay-engine/face-map-points'
+import { cheekArches } from './facial-detail-guides'
 import { reportPortraitProjection } from './report-portrait'
 import { originalVideoContext, isDarkVideoContext } from './video-theme'
-import { metricFaceOverlay } from './face-metric-guides'
+import { faceContourPaths, faceContourEdge, metricFaceOverlay } from './face-metric-guides'
 import type { FaceMeasurement, ReportOverlay } from './report-overlay'
 import type { PixelPoint, ResolvedPrimitive } from './mobile-overlay-engine/resolve'
 import type { FaceLandmarksPayload, NormalizedPoint } from './mobile-overlay-engine/landmarks'
 import { projectImagePoint } from './mobile-overlay-engine/layout'
 import { smoothMotion } from './report-motion'
 import type { FaceAnchorKey, FaceContourKey } from './mobile-overlay-engine/landmarks'
-import { defaultGlassOverlay, overlayOutlineColor, type GlassOverlay } from './glass-overlay'
+import { defaultGlassOverlay, applyGlassInk, type GlassOverlay } from './glass-overlay'
 
 export function faceFeatureContours(category: string, narration = ''): FaceContourKey[] {
   const keys: FaceContourKey[] = []
@@ -63,32 +64,19 @@ export function preciseFaceOverlay(overlay: ReportOverlay, source: { width: numb
   const anchors: FaceAnchorKey[] = /inner.eye|inner eye|intercanthal|gap/i.test(narration) ? ['leftEyeInner', 'rightEyeInner'] : /pupils?|spacing/i.test(narration) ? ['leftPupil', 'rightPupil'] : /tilt|canthal|corners?/i.test(narration) && (category === 'eyes' || /\beyes?|eyelids?|canthal\b/i.test(narration)) ? ['leftEyeInner', 'leftEyeOuter', 'rightEyeInner', 'rightEyeOuter'] : /chin height/i.test(narration) ? ['lowerLip', 'chin'] : /thirds?|proportions/i.test(narration) ? ['forehead', 'noseTip', 'chin'] : /skin|texture|complexion/i.test(narration) ? ['forehead', 'leftCheek', 'rightCheek'] : []
   const primitives: ResolvedPrimitive[] = anchors.flatMap(key => landmarks.anchors[key] ? [{ id: `feature-${key}`, kind: 'point' as const, at: { anchor: key }, point: point(landmarks.anchors[key]!), radius: 3 }] : [])
   if (!anchors.length) for (const key of faceFeatureContours(category, narration)) {
-    let points = landmarks.contours?.[key]?.filter(point => Number.isFinite(point.x) && Number.isFinite(point.y)) ?? []
+    let points = faceContourPaths(landmarks,key)[0] ?? []
     if (key === 'cheekbones') {
-      const center = landmarks.anchors.noseTip?.x ?? .5
-      for (const side of [-1, 1]) {
-        const cheek = points.filter(point => (point.x - center) * side > .02)
-        if (cheek.length >= 3) primitives.push({ id: `feature-cheek-${side}`, kind: 'polyline', points: [], closed: false, pixelPoints: smoothContour(cheek.map(point)) })
-        else {
-          const anchor = landmarks.anchors[side < 0 ? 'leftCheek' : 'rightCheek']
-          if (anchor) primitives.push({ id: `feature-cheek-${side}`, kind: 'point', at: { point: anchor }, point: point(anchor), radius: 4 })
-        }
-      }
+      for(const [side,path] of cheekArches(landmarks,/under.?cheek|submalar/i.test(narration)).entries()) primitives.push({id:`feature-cheek-${side}`,kind:'polyline',points:[],closed:false,pixelPoints:path.map(point)})
       continue
     }
     const pairedSections = key === 'mouth' ? /upper and lower[ -]lips?/i.test(narration) : ['leftEye', 'rightEye'].includes(key) && /upper and lower[ -](?:eye)?lids?/i.test(narration)
     if (pairedSections && points.length >= 4) {
-      const center = (Math.min(...points.map(point => point.y)) + Math.max(...points.map(point => point.y))) / 2
-      for (const section of ['upper', 'lower']) {
-        const edge = points.filter(point => section === 'upper' ? point.y <= center : point.y >= center).sort((left, right) => left.x - right.x)
-        if (edge.length >= 3) primitives.push({ id: `feature-${key}-${section}`, kind: 'polyline', points: [], closed: false, pixelPoints: smoothContour(edge.map(point)) })
-      }
+      for(const section of ['upper','lower']) for(const edge of faceContourEdge(landmarks,key,section==='upper')) primitives.push({id:`feature-${key}-${section}`,kind:'polyline',points:[],closed:false,pixelPoints:edge.map(point)})
       continue
     }
     const partial = key === 'mouth' ? /(?:upper|lower)[ -]lips?/i.test(narration) : ['leftEye', 'rightEye'].includes(key) && /(?:upper|lower)[ -](?:eye)?lids?/i.test(narration)
     if (partial && points.length) {
-      const center = (Math.min(...points.map(point => point.y)) + Math.max(...points.map(point => point.y))) / 2
-      points = points.filter(point => /upper/i.test(narration) ? point.y <= center : point.y >= center).sort((left, right) => left.x - right.x)
+      points=faceContourEdge(landmarks,key,/upper/i.test(narration))[0]??[]
     }
     if (key === 'jawline' && /chin|taper/i.test(narration) && points.length > 5) {
       const chin = landmarks.anchors.chin
@@ -101,8 +89,8 @@ export function preciseFaceOverlay(overlay: ReportOverlay, source: { width: numb
     }
     if (points.length < 3) continue
     const native = overlay.primitives.find(primitive => primitive.kind === 'polyline' && primitive.id.replace(/[^a-z]/gi, '').toLowerCase().includes(key.toLowerCase()))
-    const closed = !partial && ['leftEye', 'rightEye', 'mouth', 'faceOutline'].includes(key)
-    primitives.push({ ...(native?.kind === 'polyline' ? native : {}), id: `feature-${key}${partial ? '-partial' : ''}`, kind: 'polyline', points: [], closed, pixelPoints: smoothContour(points.map(point), closed) })
+    const closed = !partial && points.length>3 && points[0].x===points.at(-1)!.x && points[0].y===points.at(-1)!.y
+    primitives.push({ ...(native?.kind === 'polyline' ? native : {}), id: `feature-${key}${partial ? '-partial' : ''}`, kind: 'polyline', points: [], closed, pixelPoints: points.map(point) })
   }
   if (regions) for (const region of faceRegionContours(landmarks, category)) primitives.push({ id: `region-${region.id}`, kind: 'polyline', points: [], closed: true, pixelPoints: smoothContour(region.points.map(point), true) })
   return { ...overlay, measurement, faceBoundary: landmarks.contours?.faceOutline?.map(point), dots: [], primitives }
@@ -165,7 +153,7 @@ function drawMeasurement(ctx: CanvasRenderingContext2D, measurement: FaceMeasure
     for (const point of [from, to]) line({ x: point.x - normal.x * 3, y: point.y - normal.y * 3 }, { x: point.x + normal.x * 3, y: point.y + normal.y * 3 }, index + 1)
   }
   ctx.save(); ctx.translate(origin.x, origin.y); ctx.rotate(rotation)
-  ctx.strokeStyle = appearance.color ?? '#fff'; ctx.lineWidth = appearance.contrast ? 2.4 * unit : 1.05; ctx.lineCap = 'round'; ctx.shadowColor = appearance.contrast ? overlayOutlineColor(appearance.color) : '#10203090'; ctx.shadowBlur = appearance.contrast ? 3 * unit : 2
+  applyGlassInk(ctx, unit, appearance.contrast ? 2.4 : 1.8, appearance.color)
   if (measurement.kind === 'spacing' || measurement.kind === 'inner-spacing') {
     const first = points[measurement.kind === 'spacing' ? 'leftPupil' : 'leftEyeInner'], second = points[measurement.kind === 'spacing' ? 'rightPupil' : 'rightEyeInner']
     if (first && second) span(first, second, -distance * .16, 0)
@@ -203,7 +191,7 @@ function drawMeasurement(ctx: CanvasRenderingContext2D, measurement: FaceMeasure
 
 const glassSurfaces = new WeakMap<CanvasRenderingContext2D, HTMLCanvasElement>()
 
-function glassSurface(ctx: CanvasRenderingContext2D, x: number, y: number, width: number, height: number, radius: number) {
+export function glassSurface(ctx: CanvasRenderingContext2D, x: number, y: number, width: number, height: number, radius: number) {
   ctx.save()
   ctx.beginPath(); ctx.roundRect(x, y, width, height, radius); ctx.clip()
   if (typeof HTMLCanvasElement !== 'undefined' && ctx.canvas instanceof HTMLCanvasElement) {
@@ -228,7 +216,7 @@ export function drawGlassLabel(ctx: CanvasRenderingContext2D, label: string, wid
   const x = right ? width - labelWidth - 20 : 20, y = height - labelHeight - 20
   glassSurface(ctx, x, y, labelWidth, labelHeight, 12)
   ctx.fillStyle = 'rgba(255,255,255,.96)'; ctx.textAlign = 'left'; ctx.textBaseline = 'middle'
-  ctx.shadowColor = 'rgba(12,18,24,.65)'; ctx.shadowBlur = 6
+  ctx.shadowColor = 'rgba(231,244,255,.42)'; ctx.shadowBlur = 4
   ctx.fillText(label, x + padding, y + labelHeight / 2, labelWidth - padding * 2); ctx.restore()
 }
 
@@ -237,7 +225,6 @@ function glassMarker(ctx: CanvasRenderingContext2D, point: PixelPoint, label: st
   ctx.save(); ctx.setLineDash([]); ctx.lineWidth = .7 * unit; ctx.strokeStyle = appearance.color ?? 'rgba(255,255,255,.38)'
   ctx.beginPath(); ctx.moveTo(point.x, point.y - 3 * unit); ctx.lineTo(point.x, y + side); ctx.stroke()
   glassSurface(ctx, x, y, side, side, 6 * unit)
-  if (appearance.contrast) { ctx.fillStyle = `${overlayOutlineColor(appearance.color)}d9`; ctx.beginPath(); ctx.roundRect(x, y, side, side, 6 * unit); ctx.fill() }
   ctx.fillStyle = appearance.color ?? 'rgba(255,255,255,.94)'; ctx.font = `500 ${13 * unit}px ui-monospace, monospace`; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'
   ctx.fillText(label, point.x, y + side / 2); ctx.restore()
 }
@@ -250,9 +237,8 @@ export function drawFaceTreatment(ctx: CanvasRenderingContext2D, overlay: Report
   ctx.save(); ctx.scale(width / overlay.size.width, width / overlay.size.width)
   const transform = ctx.getTransform(), scale = typeof transform?.a === 'number' ? Math.hypot(transform.a, transform.b) : 1
   const unit = 1 / Math.max(.001, scale)
-  ctx.globalAlpha *= appearance.opacity; ctx.strokeStyle = appearance.color ?? '#fff'; ctx.fillStyle = appearance.color ?? '#fff'
-  ctx.lineWidth = (appearance.contrast ? 2.4 : 1.8) * unit; ctx.lineCap = 'round'; ctx.lineJoin = 'round'
-  ctx.shadowColor = appearance.contrast ? overlayOutlineColor(appearance.color) : 'rgba(15,22,28,.45)'; ctx.shadowBlur = (appearance.contrast ? 3 : 2.5) * unit
+  ctx.globalAlpha *= appearance.opacity
+  applyGlassInk(ctx, unit, appearance.contrast ? 2.4 : 1.8, appearance.color)
   if (overlay.skinNetwork && overlay.dots.length) {
     ctx.save()
     ctx.globalAlpha *= reveal * exit
@@ -276,7 +262,6 @@ export function drawFaceTreatment(ctx: CanvasRenderingContext2D, overlay: Report
       }
       const visible = revealContour(points, amount)
       trace(ctx, visible, primitive.closed && amount >= 1)
-      if (appearance.contrast) { ctx.save(); ctx.strokeStyle = overlayOutlineColor(appearance.color); ctx.lineWidth += 1.8 * unit; ctx.stroke(); ctx.restore() }
       ctx.stroke()
       const tip = visible.at(-1)!
       ctx.setLineDash([]); ctx.beginPath(); ctx.arc(tip.x, tip.y, 1.7 * unit, 0, Math.PI * 2); ctx.fill()

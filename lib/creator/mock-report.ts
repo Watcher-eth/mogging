@@ -392,7 +392,7 @@ export type ReportRegion = { showVisual?: boolean; id: string; label: string; x:
 export function mockReportRegions(ctx: CanvasRenderingContext2D, category: ReportCategory): ReportRegion[] {
   const regions: ReportRegion[] = [
     { id: 'hero', label: 'Face scan', x: 0, y: 0, width: 390, height: mockReportHeroHeight },
-    { id: 'scores', label: 'Overall & potential scores', x: 12, y: mockReportHeroHeight - 80, width: 366, height: 110 },
+    { id: 'scores', label: 'Overall & potential scores', x: 24, y: mockReportHeroHeight - 80, width: 300, height: 110 },
   ]
   let top = mockReportHeroHeight - 76 + 112
   if (category.id !== 'overall') {

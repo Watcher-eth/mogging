@@ -89,7 +89,7 @@ test('measurement instruments follow detected anchors, compensate for eye roll a
 })
 
 test('pupil and inner-corner cues select real app anchors; upper and lower lids use different contour sections', () => {
-  const source = { width: 360, height: 500, landmarks: { anchors: { leftPupil: { x: .3, y: .4 }, rightPupil: { x: .7, y: .4 }, leftEyeInner: { x: .4, y: .4 }, rightEyeInner: { x: .6, y: .4 } }, contours: { leftEye: [{ x: .2, y: .4 }, { x: .3, y: .35 }, { x: .4, y: .4 }, { x: .3, y: .45 }], rightEye: [{ x: .6, y: .4 }, { x: .7, y: .35 }, { x: .8, y: .4 }, { x: .7, y: .45 }] } } } as GeneratorImage
+  const source = { width: 360, height: 500, landmarks: { image: { width: 360, height: 500 }, anchors: { leftPupil: { x: .3, y: .4 }, rightPupil: { x: .7, y: .4 }, leftEyeInner: { x: .4, y: .4 }, rightEyeInner: { x: .6, y: .4 } }, contours: { leftEye: [{ x: .2, y: .4 }, { x: .3, y: .35 }, { x: .4, y: .4 }, { x: .3, y: .45 }, { x: .2, y: .4 }], rightEye: [{ x: .6, y: .4 }, { x: .7, y: .35 }, { x: .8, y: .4 }, { x: .7, y: .45 }, { x: .6, y: .4 }] } } } as GeneratorImage
   const base: ReportOverlay = { size: { width: 360, height: 500 }, primitives: [], dots: [] }
   expect(preciseFaceOverlay(base, source, 'eyes', 'Pupil spacing').primitives.map(item => item.id)).toEqual(['feature-leftPupil', 'feature-rightPupil'])
   expect(preciseFaceOverlay(base, source, 'eyes', 'The inner-eye gap').primitives.map(item => item.id)).toEqual(['feature-leftEyeInner', 'feature-rightEyeInner'])
@@ -102,7 +102,7 @@ test('pupil and inner-corner cues select real app anchors; upper and lower lids 
 })
 
 test('a brow-corner explanation keeps eyebrow contours instead of selecting eye-corner anchors', () => {
-  const source = { width: 360, height: 500, landmarks: { anchors: { leftEyeInner: { x: .4, y: .4 }, rightEyeInner: { x: .6, y: .4 } }, contours: { leftBrow: [{ x: .2, y: .35 }, { x: .3, y: .3 }, { x: .4, y: .34 }], rightBrow: [{ x: .6, y: .34 }, { x: .7, y: .3 }, { x: .8, y: .35 }] } } } as GeneratorImage
+  const source = { width: 360, height: 500, landmarks: { image: { width: 360, height: 500 }, anchors: { leftEyeInner: { x: .4, y: .4 }, rightEyeInner: { x: .6, y: .4 } }, contours: { leftBrow: [{ x: .2, y: .35 }, { x: .3, y: .3 }, { x: .4, y: .34 }], rightBrow: [{ x: .6, y: .34 }, { x: .7, y: .3 }, { x: .8, y: .35 }] } } } as GeneratorImage
   const overlay = preciseFaceOverlay({ size: { width: 360, height: 500 }, primitives: [], dots: [] }, source, 'brows', 'The brow is a contour rather than a straight line; its corners give us useful reference points.')
   expect(overlay.primitives.map(primitive => primitive.id)).toEqual(['feature-leftBrow', 'feature-rightBrow'])
   expect(overlay.primitives.every(primitive => primitive.kind === 'polyline')).toBe(true)

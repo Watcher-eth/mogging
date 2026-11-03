@@ -22,6 +22,7 @@ const isTopic = (feature: string): feature is FeatureTopic => (topicFeatures as 
 const categoryFor: Record<SemanticBeat['feature'], string> = { whole: 'overall', philtrum: 'mouth', freckles: 'skin', 'facial-hair': 'jaw', ears: 'face-shape', symmetry: 'symmetry', dimorphism: 'face-shape', eyes: 'eyes', brows: 'eyes', nose: 'nose', lips: 'mouth', jaw: 'jaw', cheeks: 'cheeks' }
 // A format owns its visual vocabulary; meaning and available evidence still own the subject.
 const grammar: Record<VideoRecipe, VisualPrimitive[]> = {
+  'documentary-studio': ['portrait', 'detail', 'compare', 'callout'],
   'portrait-audit': ['portrait', 'callout', 'detail', 'wipe', 'profile', 'compare', 'measurement', 'grid'],
   'report-led': ['report', 'report-grid', 'measurement', 'detail', 'portrait', 'callout'],
   'measurement-explainer': ['component', 'measurement', 'detail', 'callout', 'edit', 'compare', 'profile', 'portrait'],

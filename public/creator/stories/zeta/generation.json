@@ -1,0 +1,21 @@
+{
+  "mode": "built-in image_gen",
+  "status": "ready-for-review",
+  "assets": [
+    {
+      "id": "zeta-front",
+      "source": "/Users/watcher/.codex/generated_images/01a19397-62cb-7a93-a3e6-1f6c3323d9b3/exec-8ab7ccbd-f835-41bd-80d4-1ef16eb7799e.png",
+      "prompt": "Use case: identity-preserve. Make ONE photorealistic studio FRONT portrait of Zeta, the dark-haired man in these references. Reference 1: identity FRONT. Reference 2: identity and actual side proportions. Preserve same identity, dark textured fringe, gray-green eyes, full natural lips, actual jaw and cheek proportions, natural skin texture and small skin marks. Straight-on front head and shoulders, eye-level camera, neutral expression and relaxed closed lips. Black crewneck, no necklace. Vertical 9:16 with full hair, neck, shoulders, upper chest and breathing room. White seamless background, soft studio lighting just very slightly cool, barely perceptible blue in illumination only; skin remains naturally colored. No labels, collage, smoothing, anatomical enhancement or beautifying changes."
+    },
+    {
+      "id": "zeta-three-quarter",
+      "source": "/Users/watcher/.codex/generated_images/01a19397-62cb-7a93-a3e6-1f6c3323d9b3/exec-ddb9bc18-c49a-4a66-a8df-1cd667c8f5d1.png",
+      "prompt": "Use case: identity-preserve. ONE photorealistic studio THREE-QUARTER portrait of Zeta, the exact dark-haired man in references. Reference 1 is the completed front studio portrait: match identity, hairstyle, black crewneck, natural skin texture and photographic treatment. Reference 2 is real identity/angle support. Turn head and shoulders about 45 degrees toward image left. Neutral relaxed lips, no pout or added squint. Preserve actual nose, lips, cheeks and jaw without enhancement. Vertical 9:16, whole hair with breathing room, neck, shoulders, upper chest. White seamless backdrop, soft slightly cool studio light with barely perceptible blue tint in illumination only, natural skin color. No labels, collage, beauty retouching, anatomical alteration."
+    },
+    {
+      "id": "zeta-profile",
+      "source": "/Users/watcher/.codex/generated_images/01a19397-62cb-7a93-a3e6-1f6c3323d9b3/exec-7e691a9f-43b0-4870-b4ff-1f1d2288f9f8.png",
+      "prompt": "Use case: identity-preserve. ONE photorealistic studio true side PROFILE of Zeta. Same dark-haired man as reference 1 (completed front studio portrait) and reference 2 (real supporting angled photograph). Head and shoulders turned 90 degrees toward image left, only one eye visible, eye-level camera, relaxed closed lips and neutral expression. Preserve exact identity, dark textured fringe, skin marks, actual nose, jaw and chin, black crewneck and natural skin texture. No anatomical enhancement. Vertical 9:16 with entire hair, neck, shoulders and upper chest; headroom. White seamless background, soft studio light very slightly cool, barely perceptible blue tint only in lighting, skin naturally colored. No text, collage, smoothing, exaggerated jaw or beautifying changes."
+    }
+  ]
+}

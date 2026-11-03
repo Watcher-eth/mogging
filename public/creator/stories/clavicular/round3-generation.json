@@ -1,0 +1,46 @@
+{
+  "mode": "built-in image_gen",
+  "assets": [
+    {
+      "id": "clavicular-june-before-study",
+      "subject": "clavicular",
+      "source": "/Users/watcher/.codex/generated_images/01a19397-62cb-7a93-a3e6-1f6c3323d9b3/exec-8405b716-4b74-4d91-aa4e-c47184ceb33e.png",
+      "filename": "clavicular-june-before-study.png",
+      "name": "Earlier appearance · generated study",
+      "prompt": "Use case: identity-preserve. Create ONE photorealistic vertical 9:16 studio portrait study of Clavicular based ONLY on the exact face in this supplied real earlier photograph used as the BEFORE image in the June 8 2026 comparison. This is an illustrative reconstruction of that observed appearance, not documentary evidence. Preserve his actual identity and visible nose bridge, nostril-base width, nose tip, eyes, lips, cheeks, jaw and brows from this specific reference; do not improve, slim, enlarge or alter any facial feature. Retain swept-back dark-blond/light-brown hair and natural skin texture. Use neutral eye-level front pose, relaxed closed mouth, plain black crewneck, white seamless backdrop and soft slightly cool studio illumination with barely blue tint only in lighting, natural skin. Entire hair, neck, shoulders and upper chest visible with headroom. No text, labels, split screen, collage, logos, skin smoothing or new anatomical modifications.",
+      "kind": "generated-study",
+      "savedPath": "/Users/watcher/Documents/Codex/2026-10-27/ca/work/studio-release/app/public/creator/stories/clavicular/clavicular-june-before-study.png"
+    },
+    {
+      "id": "clavicular-june-after-study",
+      "subject": "clavicular",
+      "source": "/Users/watcher/.codex/generated_images/01a19397-62cb-7a93-a3e6-1f6c3323d9b3/exec-9809c405-73ce-4b8c-a560-ada847869819.png",
+      "filename": "clavicular-june-after-study.png",
+      "name": "Early June reveal · generated study",
+      "prompt": "Use case: identity-preserve. Create ONE photorealistic vertical 9:16 studio portrait study of Clavicular based ONLY on the exact face in this supplied real kitchen selfie used as the AFTER image in the June 8 2026 comparison. It is an illustrative reconstruction of the early June appearance in this photo, not a prediction or final healed outcome. Preserve his exact visible nose bridge, nostril-base width, tip orientation, fullness around the nose, eyes, brows, lips, cheeks and jaw from this reference. Do not remove visible early fullness or invent a more ideal result. Match his tousled light-brown/dark-blond hair and natural skin texture. Neutral eye-level front pose, relaxed closed mouth, plain black crewneck, white seamless background, soft slightly cool studio illumination with barely blue in light only, natural skin tone. Whole hair with headroom, neck, shoulders and upper chest. No watermark or text, no collage, no logos, no slimming, no beautifying retouching or further anatomical changes.",
+      "kind": "generated-study",
+      "savedPath": "/Users/watcher/Documents/Codex/2026-10-27/ca/work/studio-release/app/public/creator/stories/clavicular/clavicular-june-after-study.png"
+    },
+    {
+      "id": "clavicular-june-before-source",
+      "subject": "clavicular",
+      "source": "/private/tmp/round3-revision6/clav-june-before.jpg",
+      "filename": "clavicular-june-before-source.jpg",
+      "name": "June 8 comparison post · earlier photo",
+      "url": "https://x.com/clippedszn/status/2064102618142556315",
+      "kind": "original-reference",
+      "savedPath": "/Users/watcher/Documents/Codex/2026-10-27/ca/work/studio-release/app/public/creator/stories/clavicular/clavicular-june-before-source.jpg"
+    },
+    {
+      "id": "clavicular-june-after-source",
+      "subject": "clavicular",
+      "source": "/private/tmp/round3-revision6/clav-june-after.jpg",
+      "filename": "clavicular-june-after-source.jpg",
+      "name": "June 8 comparison post · early reveal photo",
+      "url": "https://x.com/clippedszn/status/2064102618142556315",
+      "kind": "original-reference",
+      "savedPath": "/Users/watcher/Documents/Codex/2026-10-27/ca/work/studio-release/app/public/creator/stories/clavicular/clavicular-june-after-source.jpg"
+    }
+  ],
+  "disclosure": "Generated studies illustrate the referenced appearance. Original photographs remain the evidence for campaign context and dated appearance changes."
+}

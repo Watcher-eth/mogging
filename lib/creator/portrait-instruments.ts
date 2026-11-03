@@ -152,7 +152,7 @@ export function drawPortraitInstruments(ctx: CanvasRenderingContext2D, face: Fac
         color=onFace?'#fff':sampleCaptionAppearance(ctx,frame,dark?'#fff':'#111',annotationAppearance).ink
         if(cache.size>96)cache.clear();cache.set(key,color)
       }
-      ctx.fillStyle=color;ctx.shadowColor=color==='#fff'?'#000b':'#ffffff80';ctx.shadowBlur=3*unit;ctx.fillText(label,position.x,position.y)
+      ctx.fillStyle=color;ctx.shadowColor='#ffffff66';ctx.shadowBlur=3*unit;ctx.fillText(label,position.x,position.y)
     }
     ctx.restore()
   });ctx.restore()

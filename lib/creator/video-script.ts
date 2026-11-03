@@ -1,6 +1,8 @@
+import type { VideoScene } from './video-composition'
 import { z } from 'zod'
 import { deliverySchema } from './video-speech'
 import { semanticSectionSchema } from './video-semantics'
+import { studyBindingSchema } from './creator-studies'
 
 export const scriptTokens = (text: string) => [...text.matchAll(/[\p{L}\p{N}]+(?:['’.][\p{L}\p{N}]+)*/gu)].map(match => ({ text: match[0], offset: match.index }))
 export const normalizedScriptWord = (text: string) => scriptTokens(text).map(word => word.text).join('').normalize('NFKC').toLocaleLowerCase('en').replace(/’/g, "'")
@@ -19,12 +21,15 @@ export function scriptVisualSeed(...parts: string[]) {
   return (seed ^ seed >>> 16) >>> 0
 }
 
+export const portraitCropSchema = z.object({ x: z.number().min(0).max(1), y: z.number().min(0).max(1), width: z.number().positive().max(1), height: z.number().positive().max(1) }).strict()
 export const sectionVisualSchema = z.object({
+  crop: portraitCropSchema.optional(),
   treatment: z.enum(['portrait', 'detail', 'measurement', 'profile', 'lighting', 'comparison', 'report', 'grid']),
+  imageId: z.string().min(1).max(160).optional(), match: z.string().min(1).max(160).optional(),
   categoryId: z.string().min(1).max(80), focus: z.string().max(160).optional(),
   view: z.enum(['front', 'three-quarter', 'profile']).default('front'),
   reason: z.string().min(1).max(300),
-  styles: z.array(z.enum(['portrait-audit', 'report-led', 'measurement-explainer', 'hybrid-story', 'minimal-explainer', 'feature-study'])).max(6).optional(),
+  styles: z.array(z.enum(['portrait-audit', 'report-led', 'measurement-explainer', 'hybrid-story', 'minimal-explainer', 'feature-study', 'documentary-studio'])).max(7).optional(),
 }).strict()
 export const scriptSectionSchema = z.object({
   id: z.string().min(1).max(80), title: z.string().min(1).max(100),
@@ -33,10 +38,12 @@ export const scriptSectionSchema = z.object({
   dependsOn: z.array(z.string().min(1).max(80)).max(12).default([]),
   visuals: z.array(sectionVisualSchema).min(1).max(12),
   semantic: semanticSectionSchema.optional(),
+  evidence: z.array(studyBindingSchema).max(2).optional(),
 }).strict()
 export type ScriptSection = z.infer<typeof scriptSectionSchema>
 export const scriptReferenceSchema = z.object({ id: z.string().min(1).max(80), url: z.url().max(2000).optional(), title: z.string().min(1).max(160), transcript: z.string().max(12000).optional(), notes: z.string().max(3000), status: z.enum(['notes-only', 'transcript-reviewed']) }).strict()
 export const scriptSchema = z.object({ version: z.literal(1), revision: z.string().max(80), promotion: z.enum(['early-score', 'contextual']).optional(), cues: z.array(z.object({ id: z.string().max(100), sourceId: z.string().max(160), text: z.string().min(1).max(5000), delivery: deliverySchema.optional(), section: scriptSectionSchema.optional() }).strict()).min(1).max(250), references: z.array(scriptReferenceSchema).max(20).optional() }).strict().superRefine((script, context) => {
+  script.cues.forEach((cue,index)=>cue.section?.evidence?.forEach(binding=>{if(!cue.text.includes(binding.anchor))context.addIssue({code:'custom',path:['cues',index,'section','evidence'],message:'Scientific evidence needs an exact relevant narration anchor.'})}))
   if (script.revision !== scriptRevision(script.cues)) context.addIssue({ code: 'custom', path: ['revision'], message: 'Script revision does not match its approved content and delivery' })
   if (new Set(script.cues.map(cue => cue.id)).size !== script.cues.length) context.addIssue({ code: 'custom', path: ['cues'], message: 'Script cue IDs must be unique' })
 })
@@ -75,4 +82,10 @@ export function bindScriptScenes<Scene extends { cueId: string; narration: strin
 }
 export async function audioFingerprint(file: Blob) {
   return [...new Uint8Array(await crypto.subtle.digest('SHA-256', await file.arrayBuffer()))].map(byte => byte.toString(16).padStart(2, '0')).join('')
+}
+
+export function sceneSpeechWords(scene: Pick<VideoScene, 'words' | 'narration' | 'durationMs'>) {
+  if (scene.words?.length) return scene.words
+  const words = scene.narration.split(/\s+/).filter(Boolean), step = Math.max(1, scene.durationMs - 300) / Math.max(1, words.length)
+  return words.map((text, index) => ({ text, startMs: 150 + index * step, endMs: 150 + (index + 1) * step }))
 }

@@ -30,7 +30,8 @@ test('every topic has complete modular cuts, an early CTA and bounded master len
 })
 
 test('compilation preserves recording identity, assigns semantic layouts and uses procedural freckles without inventing a registered texture photo', () => {
-  const images = [...creatorSubjectPhotos(creatorSubjects[0])!,...featureVariantPhotos('marlon')]
+  const original = {id:'marlon-studio-front-20261027',name:'Marlon original study reference',dataUrl:'/creator/examples/marlon-studio-20261027/marlon-front-4k.jpg',width:2160,height:3840,status:'ready' as const,landmarks:null}
+  const images = [original,...creatorSubjectPhotos(creatorSubjects[0])!,...featureVariantPhotos('marlon')]
   for (const topic of featureTopics) {
     const script = createFeatureStudyDraft('Marlon',topic)
     const video = compileProductionVideo(script,input,images,reportCategories,'feature-study',voice,0,topic)
@@ -177,11 +178,15 @@ test('single-image studies retain the source through the viewport bottom beneath
   const photo = {image:{width:2160,height:3840} as HTMLCanvasElement,landmarks}
   for (const layout of ['hero','detail'] as const) {
     const stage=featureFrames(layout)[0]
+    expect(stage.x).toBe(0)
+    expect(stage.width).toBe(1316)
     expect(stage.y+stage.height).toBe(2340)
     expect(featureClipFrame(layout,stage).height).toBe(2340)
     const placement=featurePlacement(photo,layout,stage,'philtrum')
     for (const motion of ['hold','push','pull'] as const) for (const progress of [0,.5,1]) {
       const camera=featureCameraFrame(placement,motion,progress)
+      expect(camera.x).toBeLessThanOrEqual(.001)
+      expect(camera.x+camera.width).toBeGreaterThanOrEqual(1316-.001)
       expect(camera.y+camera.height).toBeGreaterThanOrEqual(2340-.001)
       expect(camera.width/camera.height).toBeCloseTo(2160/3840)
     }

@@ -4,7 +4,7 @@ import { captionDesign, portraitStage, videoSize } from './video-layout'
 import type { VideoScene } from './video-composition'
 
 test('normal portraits reserve caption clearance and occupy at most three quarters of the viewport', () => {
-  expect(captionDesign.top).toBeGreaterThanOrEqual(360)
+  expect(captionDesign.top).toBeGreaterThanOrEqual(videoSize.height * .14)
   for (const stage of ['context', 'detail', 'compare'] as const) {
     const frame = editorialPortraitStage(stage)
     expect(frame).toEqual(portraitStage)
@@ -126,4 +126,15 @@ test('bottom-filling feature portraits keep the original aspect and extend throu
       expect(Object.values(frame).every(Number.isFinite)).toBe(true)
     }
   }
+})
+
+
+test('face-aware tall portraits always cover the complete frame width',()=>{
+  const image={width:1024,height:1536},stage={width:1316,height:1100}
+  const landmarks={confidence:1,anchors:{forehead:{x:.46,y:.08},chin:{x:.54,y:.84},leftCheek:{x:.16,y:.45},rightCheek:{x:.83,y:.45}}} as Parameters<typeof portraitImageFrame>[3]
+  const frame=portraitImageFrame(image,stage,undefined,landmarks)
+  expect(frame.width).toBeGreaterThanOrEqual(stage.width)
+  expect(frame.x).toBeLessThanOrEqual(0)
+  expect(frame.x+frame.width).toBeGreaterThanOrEqual(stage.width)
+  expect(frame.width/frame.height).toBeCloseTo(image.width/image.height)
 })

@@ -1,0 +1,22 @@
+{
+  "mode": "built-in image_gen",
+  "status": "ready-for-review",
+  "assets": [
+    {
+      "id": "v-front",
+      "source": "/Users/watcher/.codex/generated_images/01a17fa4-229d-70f1-ba7c-f1d65ad9aa5b/exec-90a2ec75-fd10-454b-9bb1-029c6630a52a.png",
+      "prompt": null,
+      "note": "Reused completed front portrait from recovery handoff."
+    },
+    {
+      "id": "v-three-quarter",
+      "source": "/Users/watcher/.codex/generated_images/01a19397-62cb-7a93-a3e6-1f6c3323d9b3/exec-8d56acfd-d401-4dd5-b2bf-0b79342b2dac.png",
+      "prompt": "Use case: identity-preserve. Create ONE photorealistic studio portrait of V (Vmogsu), the exact same person in the supplied references. First image is the matching studio front portrait: preserve his identity, hair, natural skin texture, proportions, black crewneck and studio style. Second is supporting identity/side reference only. Turn head and shoulders to a three-quarter view toward image right (about 45 degrees), neutral relaxed lips and expression, eyes in direction of head. Vertical 9:16. White seamless background, soft very slightly cooler light with barely perceptible blue tint in lighting only, natural skin color. Include entire hair with breathing room, neck, shoulders and upper chest. No labels, no collage, no beauty retouching or anatomical changes."
+    },
+    {
+      "id": "v-profile",
+      "source": "/Users/watcher/.codex/generated_images/01a19397-62cb-7a93-a3e6-1f6c3323d9b3/exec-e87566bf-1a65-461b-92bc-6ca0c8c9bac9.png",
+      "prompt": "Use case: identity-preserve. Create ONE photorealistic studio portrait of V (Vmogsu), exact same person as reference 1 (matching studio front) and reference 2 (identity side support). True side PROFILE facing image right, head and shoulders turned 90 degrees, only one eye visible, neutral closed relaxed mouth. Preserve identity, actual nose/chin proportions, hairstyle, natural skin texture and sparse chin hair. Black crewneck. Vertical 9:16. White seamless background, soft very slightly cooler lighting, barely perceptible blue tint in light only; natural skin tone. Include entire hair with breathing room, neck, shoulders and upper chest. No labels, collage, retouching, sharpening of jaw or beautifying anatomical changes."
+    }
+  ]
+}

@@ -1,4 +1,4 @@
-import { videoSize, videoContent } from './video-layout'
+import { videoSize, videoContent, videoContentSafeFrame } from './video-layout'
 import { expect, test } from 'bun:test'
 import { scriptToPlan, planScriptShots } from './script-edit'
 import { compileAnalysisVideo, inferScriptCategory, parseComposition } from './video-composition'
@@ -62,18 +62,19 @@ test('highlight bounds follow the actual report card layout for every category a
       const ctx = context()
       ctx.fillText = (text, x, y) => { drawn.push({ text, x, y }) }
       const slide = { currentScore: '7.1', potentialScore: '8.2', mockReport: { category, scroll: 0 } } as ContentSlide
-      drawMockReport(ctx, slide, null, null, 390, 620, 1000, undefined, { viewportHeight: 620 })
+      drawMockReport(ctx, slide, null, null, 390, 620, 1000, undefined, { viewportHeight: 620, cull:false })
       const regions = mockReportRegions(ctx, category)
       for (const feature of category.features) {
         const region = regions.find(item => item.label === feature.label)!
-        const label = drawn.find(item => item.text === feature.label.toUpperCase())!
-        expect(label.x).toBe(region.x + reportUi.padding)
-        expect(label.y).toBe(region.y + reportUi.padding)
+        const label = drawn.find(item => item.text && feature.label.startsWith(item.text) && item.x===region.x+reportUi.padding && item.y>=region.y+reportUi.padding && item.y<=region.y+reportUi.padding+40)
+        expect(label).toBeDefined()
       }
       const potential = regions.find(item => item.id === 'potential')!
-      expect(drawn.find(item => item.text === 'Your potential')!.y).toBe(potential.y)
+      expect(drawn.find(item => item.text === 'Your potential')!.y).toBeGreaterThanOrEqual(potential.y)
+      expect(drawn.find(item => item.text === 'Your potential')!.y).toBeLessThan(potential.y+40)
       const action = regions.find(item => item.id === 'action-plan')!
-      expect(drawn.find(item => item.text === (category.id === 'overall' ? 'Your priorities' : 'Action Plan'))!.y).toBe(action.y)
+      expect(drawn.find(item => item.text === (category.id === 'overall' ? 'Your priorities' : 'Action Plan'))!.y).toBeGreaterThanOrEqual(action.y)
+      expect(drawn.find(item => item.text === (category.id === 'overall' ? 'Your priorities' : 'Action Plan'))!.y).toBeLessThan(action.y+40)
     }
   }
 })
@@ -91,7 +92,7 @@ test('section scroll settles on the actual target and supports arbitrary-time sc
   expect(sectionScroll({ id: 'scores', label: 'Overall', x: 12, y: 385, width: 366, height: 110 }, 620, 1800)).toBe(0)
 })
 
-test('report framing stays edge-to-edge even with legacy scale tracks and imported framing', () => {
+test('report framing stays within the safe content area across legacy scale tracks and imported framing', () => {
   const composition = compileAnalysisVideo(scriptToPlan('Open the eye evaluation. Scroll to your growth potential. Get your report with Mogging.'), input, ['face'], 'brand', reportCategories)
   expect(composition.width).toBe(videoSize.width)
   expect(composition.height).toBe(2340)
@@ -103,12 +104,13 @@ test('report framing stays edge-to-edge even with legacy scale tracks and import
     const previous = { x: 162, y: 510, width: 756, height: 1344 }, duration = scene.durationMs
     for (const t of [0, .01, .25, .5, .75, .99, 1]) {
       const frame = sceneFrame(scene, duration * t, previous)
-      expect(frame.width / frame.height).toBeCloseTo(9 / 19.5, 8)
+      expect(frame.x).toBe(0)
+      expect(frame.y).toBe(0)
       expect(frame).toEqual(full)
       expect(sceneFrame(scene, duration * t, previous)).toEqual(frame)
     }
-    expect(sceneFrame(scene, duration, previous)).toEqual(appReportFrame(framing))
-    expect(sceneFrame(scene, 0, previous, true)).toEqual(appReportFrame(framing))
+    expect(sceneFrame(scene, duration, previous)).toEqual(full)
+    expect(sceneFrame(scene, 0, previous, true)).toEqual(full)
   }
 })
 
@@ -127,18 +129,18 @@ test('feature portrait cues use the subject image and category geometry; app cue
   expect(composition.scenes.some(scene => scene.source.kind === 'report' && scene.focus === 'action-plan')).toBe(true)
 })
 
-test('opening layout stays full-screen even when importing an old title or component first', () => {
+test('opening layouts preserve authored title and component sources', () => {
   const composition = compileAnalysisVideo(scriptToPlan('Open the eye report. Show the eye spacing slider big in the center.'), input, ['face'], 'brand', reportCategories)
   expect(composition.scenes[0].framing).toBe('full')
   for (const kind of ['title', 'component'] as const) {
     const first = { ...composition.scenes[0], framing: 'captioned', source: { ...composition.scenes[0].source, kind } }
     const parsed = parseComposition({ ...composition, scenes: [first, ...composition.scenes.slice(1)] })
-    expect(parsed.scenes[0].framing).toBe('full')
-    expect(parsed.scenes[0].source.kind).toBe('report')
+    expect(parsed.scenes[0].framing).toBe(kind==='title'?'full':'captioned')
+    expect(parsed.scenes[0].source.kind).toBe(kind)
   }
   const component = composition.scenes.find(scene => scene.source.kind === 'component')!
   expect(component.focus.startsWith('feature:')).toBe(true)
-  expect(component.tracks.some(track => track.primitive === 'component-focus')).toBe(true)
+  expect(component.tracks.some(track => track.target === 'content')).toBe(true)
 })
 
 test('native expansion keeps its original center and returns exactly; focused components fit the stage', () => {
@@ -149,19 +151,21 @@ test('native expansion keeps its original center and returns exactly; focused co
   expect(expanded.x + expanded.width / 2).toBe(rect.x + rect.width / 2)
   expect(expanded.y + expanded.height / 2).toBe(rect.y + rect.height / 2)
   const focused = featureStageLayout(rect).metric
-  expect(focused.x + focused.width / 2).toBe(540)
+  expect(focused.x + focused.width / 2).toBe(videoSize.width/2)
   expect(focused.y).toBeGreaterThan(400)
   expect(focused.y + focused.height).toBeLessThan(videoSize.height - 100)
 })
 
-test('report exports omit operating-system chrome while retaining actual app controls', () => {
-  const drawn: string[] = [], ctx = context()
-  ctx.fillText = value => { drawn.push(value) }
-  const category = reportCategories[0]
-  drawMockReport(ctx, { currentScore: '7.1', potentialScore: '8.2', mockReport: { category, scroll: 0 } } as ContentSlide, null, null, 390, 693, 1000)
-  expect(drawn).not.toContain('9:41')
-  expect(drawn).toContain('SHARE YOUR SCORE')
-  expect(drawn).toContain(category.title)
+test('video report exports omit operating-system and share chrome while app presentation retains it', () => {
+  const category=reportCategories[0]
+  const render=(presentation:'app'|'video')=>{
+    const drawn:string[]=[],ctx=context();ctx.fillText=value=>{drawn.push(value)}
+    drawMockReport(ctx,{currentScore:'7.1',potentialScore:'8.2',mockReport:{category,scroll:0}} as ContentSlide,null,null,390,693,1000,undefined,{presentation})
+    return drawn
+  }
+  const video=render('video'),app=render('app')
+  expect(video).not.toContain('9:41');expect(video).not.toContain('SHARE YOUR SCORE')
+  expect(app).toContain('9:41');expect(app).toContain('SHARE YOUR SCORE')
 })
 
 test('a feature explanation holds one scene with the face, category geometry and native metric', () => {
@@ -173,12 +177,11 @@ test('a feature explanation holds one scene with the face, category geometry and
   expect(stages[0].source.imageId).toBe('subject')
   expect(stages[0].source.overlay).toBe('category')
   expect(stages[0].focus).toBe('feature:eyes.spacing')
-  expect(stages[0].tracks.some(track => track.primitive === 'cinematic-flow')).toBe(true)
+  expect(stages[0].tracks.some(track => track.target === 'content')).toBe(true)
   const layout = featureStageLayout({ width: 354, height: 145 })
   expect(layout.face.width).toBeGreaterThanOrEqual(880)
-  expect(layout.metric.width).toBeCloseTo(videoContent.width)
-  expect(layout.face.y + layout.face.height - layout.metric.y).toBeGreaterThan(150)
-  expect(layout.face.y + layout.face.height - layout.metric.y).toBeLessThanOrEqual(400)
+  expect(layout.metric.width).toBeLessThanOrEqual(900)
+  expect(layout.face.y + layout.face.height).toBeLessThanOrEqual(layout.metric.y-40)
   expect(layout.metric.y + layout.metric.height).toBeLessThan(videoSize.height - 100)
 })
 

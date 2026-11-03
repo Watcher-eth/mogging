@@ -100,12 +100,10 @@ function roundPoint(point: { x: number; y: number }) {
 }
 
 describe('mobile report overlay parity', () => {
-  test('normalizes raw detector contours before resolving every category', () => {
+  test('preserves raw detector vertices and topology when resolving every category', () => {
     const raw = { ...fixture, contours: { ...fixture.contours, leftEye: [{ x: .3, y: .3 }, { x: .4, y: .3 }, { x: .4, y: .4 }, { x: .3, y: .4 }] } }
     const enriched = enrichFaceLandmarks(raw)!
-    expect(enriched.contours?.leftEye).toHaveLength(16)
-    expect(enriched.contours?.leftEye?.at(-1)?.x).toBeCloseTo(enriched.contours!.leftEye![0].x)
-    expect(enriched.contours?.leftEye?.at(-1)?.y).toBeCloseTo(enriched.contours!.leftEye![0].y)
+    expect(enriched.contours?.leftEye).toEqual(raw.contours.leftEye)
     expect(enrichFaceLandmarks(enriched)).toEqual(enriched)
     const image: GeneratorImage = { id: 'fit', name: 'fit', dataUrl: '', width: 1600, height: 900, landmarks: { ...raw, source: 'mediapipe-face-landmarker' }, status: 'ready' }
     for (const category of Object.keys(reportOverlayPresets)) {

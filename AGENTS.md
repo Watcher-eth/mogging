@@ -21,3 +21,10 @@ Current project skill folders include:
 - `.agents/vercel-react-best-practices`
 
 Backend work should at minimum check `.agents/next-best-practices` before implementation. Frontend or React component work should also check the Vercel React/composition skills and `emil-design-eng` when design quality is relevant.
+
+
+## Creator video presentation
+
+Preserve the established caption animation. Use Torph for new smooth text/value replacements and deterministic segment matching in Canvas exports. Keep documentary experiments scoped to their selected format. Face guides use translucent glass strokes and frosted surfaces, with no black under-strokes or dark edge shadows.
+
+Every Creator Studio script and style uses the shared 1080 × 1920 (9:16) preview canvas and MP4 export size. The simulator models the TikTok Studio Feed composer with a 9:19.5 phone, a 10% bottom navigation area, and centered cover cropping that preserves the video aspect ratio. Keep the compact scan invitation immediately under the status/notch area and photographic captions below the feed header. Report/app UI fills the video and retains bottom captions; keep its important readouts clear of TikTok controls. Preserve existing characters, scripts and recordings.

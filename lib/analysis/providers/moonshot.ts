@@ -9,7 +9,7 @@ const earlyTransport = /"transportCode":"(?:EAI_AGAIN|ENOTFOUND|ECONNREFUSED|ECO
 // One request owner for every scan pipeline. A retry shares the original deadline;
 // only the failed assessment is regenerated, never a completed sibling or a scan credit.
 export async function requestMoonshotJson<T>(options: {
-  stage: string; body: Record<string, unknown>; parse: (value: unknown) => T;
+  stage: string; body: Record<string, unknown>; onContent?: (content: string) => void; parse: (value: unknown) => T;
   signal?: AbortSignal; timeoutMs?: number; apiKey?: string; baseUrl?: string;
   fetcher?: (url: string, options: RequestInit) => Promise<Response>; now?: () => number;
 }): Promise<{ value: T; timing: ProviderTiming }> {
@@ -51,7 +51,7 @@ export async function requestMoonshotJson<T>(options: {
             ? await readStream(response, controller.signal, () => {
               firstOutputMs ??= now() - started
               console.info('analyze:provider-first-output', { stage: options.stage, attempt, elapsedMs: firstOutputMs })
-            }) : await response.json()
+            }, options.onContent) : await response.json()
           completion = completionSchema.parse(raw)
         } catch (error) {
           if (error instanceof TypeError) throw transportFailure(error, stage)
@@ -138,7 +138,7 @@ function pause(ms: number, signal: AbortSignal) {
 }
 
 // Partial output never counts as a report, even if its current JSON happens to parse.
-async function readStream(response: Response, signal: AbortSignal, firstOutput: () => void): Promise<Completion> {
+async function readStream(response: Response, signal: AbortSignal, firstOutput: () => void, onContent?: (content: string) => void): Promise<Completion> {
   if (!response.body) throw transportFailure(null, 'response_body')
   const reader = response.body.getReader(), decoder = new TextDecoder()
   let buffer = '', content = '', finishReason: string | null = null, usage: Completion['usage']
@@ -161,7 +161,7 @@ async function readStream(response: Response, signal: AbortSignal, firstOutput: 
         const event = JSON.parse(data)
         if (event.error) throw new AnalysisProviderError('provider_unavailable', 'Image analysis stream was interrupted', true, undefined, JSON.stringify({ stage: 'response_body' }))
         const choice = event.choices?.[0], text = choice?.delta?.content
-        if (typeof text === 'string' && text) { if (!outputStarted) firstOutput(); outputStarted = true; content += text }
+        if (typeof text === 'string' && text) { if (!outputStarted) firstOutput(); outputStarted = true; content += text; onContent?.(content) }
         if (typeof choice?.finish_reason === 'string') finishReason = choice.finish_reason
         usage = event.usage ?? usage
       }
