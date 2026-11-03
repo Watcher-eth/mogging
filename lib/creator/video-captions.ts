@@ -27,8 +27,8 @@ export function captionScroll(lines: ReturnType<typeof captionLines>, time: numb
 
 export function captionStyle(scene: VideoScene) {
   const report = ['report', 'screen'].includes(scene.source?.kind??'')
-  const imageCaption = report || scene.source?.kind === 'portrait' && scene.source.overlay === 'face-map' || scene.graphic?.layout === 'story'
-  const size = report ? 68 : imageCaption ? 84 : scene.source?.kind === 'explainer' ? 84 : 76
+  const imageCaption = report || Boolean(scene.documentary) || scene.source?.kind === 'portrait' && scene.source.overlay === 'face-map' || scene.graphic?.layout === 'story'
+  const size = report ? 68 : scene.documentary ? 78 : imageCaption ? 84 : scene.source?.kind === 'explainer' ? 84 : 76
   return { report, imageCaption, size, width: report || scene.documentary ? 916 : captionDesign.width, height: size * captionDesign.lineHeight * (scene.source?.kind === 'explainer' ? 4 : 2) }
 }
 
@@ -43,12 +43,18 @@ export function drawLyricsCaption(ctx: CanvasRenderingContext2D, scene: VideoSce
 
 function drawCaption(ctx: CanvasRenderingContext2D, scene: VideoScene, time: number, reduced: boolean, ink: string, offsetY = 0, rolling = false) {
   const { report, imageCaption, size, height, width:captionWidth } = captionStyle(scene)
+  const documentary = Boolean(scene.documentary)
   ctx.save(); ctx.font = `${captionDesign.weight} ${size}px "Mogging Share", Arial, sans-serif`
   ctx.textAlign = 'left'; ctx.textBaseline = 'alphabetic'; ctx.fillStyle = ink
   if (ink === '#fff') {
     const glass = ctx.createLinearGradient(0, 0, 0, size * 2.4)
     glass.addColorStop(0, '#fff'); glass.addColorStop(.5, '#fffffff5'); glass.addColorStop(1, '#ffffffdc')
     ctx.fillStyle = glass; ctx.shadowColor = '#000000a6'; ctx.shadowBlur = 9; ctx.shadowOffsetY = 2
+  }
+  if (documentary) {
+    ctx.strokeStyle = ink === '#fff' ? '#151515' : '#fff'
+    ctx.lineWidth = 3
+    ctx.lineJoin = 'round'
   }
   const lines = captionLines(scene, text => ctx.measureText(text).width)
   const active = Math.max(0, lines.findLastIndex(line => time >= line[0].startMs))
@@ -65,11 +71,12 @@ function drawCaption(ctx: CanvasRenderingContext2D, scene: VideoScene, time: num
     for (const word of line) {
       const width = ctx.measureText(word.text).width
       const fill = reduced ? 1 : Math.max(0, Math.min(1, (time - word.startMs) / Math.max(1, word.endMs - word.startMs)))
-      const inactiveOpacity = report ? .82 : imageCaption || ink === '#fff' ? .72 : captionDesign.inactiveOpacity
+      const inactiveOpacity = documentary ? .88 : report ? .82 : imageCaption || ink === '#fff' ? .72 : captionDesign.inactiveOpacity
       ctx.save(); ctx.globalAlpha *= reduced ? 1 : inactiveOpacity + (1 - inactiveOpacity) * attention
       ctx.translate(0, (reduced || rolling ? 0 : entrance.y / 100 * size) - (reduced ? 0 : 3 * attention))
       ctx.filter = reduced ? 'none' : `blur(${captionDesign.inactiveBlur * (1 - attention)}px)`
-      ctx.save(); ctx.globalAlpha *= reduced ? 1 : report ? .68 : imageCaption ? .72 : ink === '#fff' ? .62 : .32; ctx.fillText(word.text, offset, baseline); ctx.restore()
+      if (documentary) ctx.strokeText(word.text, offset, baseline)
+      ctx.save(); ctx.globalAlpha *= reduced ? 1 : documentary ? .82 : report ? .68 : imageCaption ? .72 : ink === '#fff' ? .62 : .32; ctx.fillText(word.text, offset, baseline); ctx.restore()
       if (fill > 0) {
         ctx.beginPath(); ctx.rect(offset - 1, baseline - size, (width + 2) * fill, size * 1.3); ctx.clip(); ctx.beginPath()
         ctx.fillText(word.text, offset, baseline)

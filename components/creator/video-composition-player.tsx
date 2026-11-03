@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, type CSSProperties } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { BatteryFull, Bookmark, Heart, Home, MessageCircle, Music2, Pause, Play, Plus, RotateCcw, RotateCw, Search, Share2, Signal, UserRound, Users, Wifi } from 'lucide-react'
 import { drawVideoFrame, type PreparedVideo } from '@/lib/creator/video-renderer'
 import { videoExportSize } from '@/lib/creator/video-layout'
@@ -142,7 +142,7 @@ export function VideoCompositionPlayer({ prepared, composition, seekMs, onTime, 
     if (positionRef.current >= composition.durationMs - 1) seek(0)
     setPlaybackError(''); setPlaying(current => !current)
   }
-  return <div className={styles.player} style={{ '--video-aspect': `${videoExportSize.width} / ${videoExportSize.height}` } as CSSProperties}>
+  return <div className={styles.player}>
     {audioUrl ? <audio ref={audioRef} src={audioUrl} preload="auto" onEnded={() => { setPlaying(false); seek(composition.durationMs - 1) }} /> : null}
     {playbackError ? <p role="alert" className="text-xs text-red-700">{playbackError}</p> : null}
     <div className={styles.composerFrame} aria-label="TikTok feed preview">

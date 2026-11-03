@@ -7,7 +7,8 @@ import { decodeVisualBeat } from './video-semantics'
 import * as THREE from 'three'
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js'
 import { activeScene, type VideoComposition, type VideoScene } from './video-composition'
-import { drawLyricsCaption } from './video-captions'
+import { captionStyle, drawLyricsCaption } from './video-captions'
+import { sampleCaptionAppearance } from './caption-contrast'
 import { videoSize, captionDesign, smoothMotion } from './video-layout'
 import { preparePortraitProgram, samplePortraitProgram, planPortraitProgram, type PreparedPortraitProgram } from './portrait-program'
 import { portraitMetricFor, drawPortraitMetricPill } from './portrait-metric'
@@ -110,7 +111,6 @@ export async function prepareDocumentary(composition: VideoComposition, images: 
   world.add(new THREE.HemisphereLight('#c4d7de', '#171e19', .65))
   const rim = new THREE.DirectionalLight('#a9d0c0', 3); rim.position.set(4, 5, -2); world.add(rim)
   const sets = new Map<string, Set>(), shots = documentaryShots(composition), videos = new Map<string, HTMLVideoElement>()
-  const caption = canvas(videoSize.width, 240), captionContext = caption.getContext('2d')!
   let disposed = false
   try {
     const media = new Map((composition.media ?? []).map(asset => [asset.id, asset]))
@@ -128,14 +128,15 @@ export async function prepareDocumentary(composition: VideoComposition, images: 
     }))
     if (shots.some(shot => shot.kind === 'anatomy')) model ??= new GLTFLoader().loadAsync('/models/scattering-skull.glb').catch(error => { model = undefined; throw error })
     const gltf = shots.some(shot => shot.kind === 'anatomy') ? await model : undefined
-    function addPhoto(set: Set, id: string, x: number, y: number, width: number, height: number, rotation = 0, crop?: { x: number; y: number; width: number; height: number }) {
+    function addPhoto(set: Set, id: string, x: number, y: number, width: number, height: number, rotation = 0, crop?: { x: number; y: number; width: number; height: number }, fullWidth = false) {
       const source = images.find(image => image.id === id), image = decoded.get(id)
       if (!source || !image) throw new Error('A documentary photograph is missing')
       const surface = canvas(Math.min(1536, source.width), Math.round(Math.min(1536, source.width) * source.height / source.width)), texture = map(surface)
       const region = crop ?? { x: 0, y: 0, width: 1, height: 1 }
       const ratio = source.width * region.width / (source.height * region.height), planeRatio = width / height
-      const u = ratio > planeRatio ? region.width * planeRatio / ratio : region.width
-      const v = ratio > planeRatio ? region.height : region.height * ratio / planeRatio
+      // Extend the source edges across the frame while keeping the portrait scale uniform.
+      const u = fullWidth || ratio > planeRatio ? region.width * planeRatio / ratio : region.width
+      const v = fullWidth || ratio > planeRatio ? region.height : region.height * ratio / planeRatio
       texture.repeat.set(u, v); texture.offset.set(region.x + (region.width - u) / 2, 1 - region.y - region.height + (region.height - v) / 2)
       const mesh = new THREE.Mesh(new THREE.PlaneGeometry(width, height), new THREE.MeshBasicMaterial({ map: texture, toneMapped: false }))
       mesh.position.set(x, y, .04); mesh.rotation.y = rotation
@@ -177,7 +178,7 @@ export async function prepareDocumentary(composition: VideoComposition, images: 
           }
         })
       } else if (shot.kind !== 'media') {
-        addPhoto(set, id, 0, 3.85, 4.24, 7.54, shot.kind === 'conclusion' ? -.025 : .025)
+        addPhoto(set, id, 0, 3.85, 5.95, 7.54, shot.kind === 'conclusion' ? -.025 : .025, undefined, true)
       }
       set.photos.forEach(photo => {
         if (scene.portraitProgram) {
@@ -194,9 +195,9 @@ export async function prepareDocumentary(composition: VideoComposition, images: 
     function placeCamera(shot: Shot, local: number, reduced: boolean) {
       const p = reduced ? .5 : smoothMotion(local / shot.durationMs)
       const inspection = shot.kind === 'inspection', anatomy = shot.kind === 'anatomy', portrait = ['stage','inspection','conclusion'].includes(shot.kind)
-      camera.position.set((anatomy ? -.9 : -.2) + p * (anatomy ? 1.7 : .38), anatomy ? 4.2 : portrait ? 3.65 : 4.0, (portrait ? 9.3 : 10.5) - p * (inspection ? .65 : .45))
-      camera.lookAt(0, anatomy ? 3.7 : portrait ? 3.5 : 3.85, 0)
-      if (shot.kind === 'stage' && !reduced) { const enter = 1 - Math.pow(1 - Math.min(1, local / 2200), 3); camera.position.x += 1.4 * (1 - enter); camera.position.z += 1.4 * (1 - enter); camera.lookAt(0, 3.5, 0) }
+      camera.position.set((anatomy ? -.9 : -.2) + p * (anatomy ? 1.7 : .38), anatomy ? 4.2 : portrait ? 3.65 : 4.0, (portrait ? 10.96 : 10.5) - p * (inspection ? .65 : .45))
+      camera.lookAt(0, anatomy ? 3.7 : portrait ? 3.62 : 3.85, 0)
+      if (shot.kind === 'stage' && !reduced) { const enter = 1 - Math.pow(1 - Math.min(1, local / 2200), 3); camera.position.x += 1.4 * (1 - enter); camera.position.z += 1.4 * (1 - enter); camera.lookAt(0, 3.62, 0) }
       camera.updateMatrixWorld(true)
     }
     const assetFits: DocumentaryRenderer['assetFits'] = []
@@ -210,15 +211,16 @@ export async function prepareDocumentary(composition: VideoComposition, images: 
           const parameters = (photo.mesh.geometry as THREE.PlaneGeometry).parameters
           const corners = [-1, 1].flatMap(x => [-1, 1].map(y => photo.mesh.localToWorld(new THREE.Vector3(x * parameters.width / 2, y * parameters.height / 2, 0)).project(camera)))
           const width = (Math.max(...corners.map(p => p.x)) - Math.min(...corners.map(p => p.x))) * 540, height = (Math.max(...corners.map(p => p.y)) - Math.min(...corners.map(p => p.y))) * 960
-          coverage = Math.min(coverage, mediaCropFit(photo.source, { width, height }, { width: photo.texture.repeat.x, height: photo.texture.repeat.y }).coverage)
+          coverage = Math.min(coverage, mediaCropFit(photo.source, { width: width / Math.max(1, photo.texture.repeat.x), height }, { width: Math.min(1, photo.texture.repeat.x), height: photo.texture.repeat.y }).coverage)
         }
         assetFits.push({ sceneId: shot.scene.id, imageId: photo.source.id, coverage })
         if (coverage < 1) throw new Error(`The ${shot.kind} close-up needs a higher-resolution image: ${photo.source.name} (${Math.round(coverage * 100)}% native coverage)`)
       }
     })
     function find(time: number) { const index = Math.max(0, shots.findLastIndex(shot => shot.startMs <= time)); return { shot: shots[index], set: sets.get(String(index))! } }
-    captionContext.font=`500 ${pillMotion.fontSize}px ${font}`
-    const pillTrack=createPortraitPillTrack(text=>captionContext.measureText(text).width,time=>{
+    const measurementContext = canvas(1, 1).getContext('2d')!
+    measurementContext.font=`500 ${pillMotion.fontSize}px ${font}`
+    const pillTrack=createPortraitPillTrack(text=>measurementContext.measureText(text).width,time=>{
       const {shot,set}=find(time),scene=activeScene(composition,time),photo=set.photos.find(p=>p.source.id===scene.source.imageId)
       if(!photo)return
       const local=time-shot.startMs,study=shot.scene.photoStudy
@@ -261,7 +263,6 @@ export async function prepareDocumentary(composition: VideoComposition, images: 
         } else { renderer.render(world, camera); ctx.drawImage(renderer.domElement, 0, 0, videoSize.width, videoSize.height) }
         if (shot.kind === 'media') { const asset = media.get(shot.scene.documentary?.mediaId ?? '')!; if (asset.source.usage !== 'owned') { ctx.font = `400 24px ${font}`; ctx.fillStyle = '#fff'; ctx.shadowColor = '#000'; ctx.shadowBlur = 6; ctx.fillText([asset.source.author, asset.source.provider, asset.source.license].filter(Boolean).join(' · '), 120, 1660, 1000); ctx.shadowBlur = 0 } }
         const fade = ctx.createLinearGradient(0, 1380, 0, videoSize.height); fade.addColorStop(0, '#15191500'); fade.addColorStop(.55, '#151915b0'); fade.addColorStop(1, '#151915f2'); ctx.fillStyle = fade; ctx.fillRect(0, 1380, videoSize.width, videoSize.height - 1380)
-        const header=ctx.createLinearGradient(0,0,0,480);header.addColorStop(0,'#fff');header.addColorStop(.55,'#fffffff5');header.addColorStop(1,'#ffffff00');ctx.fillStyle=header;ctx.fillRect(0,0,videoSize.width,480)
         const scene = activeScene(composition, time), sceneTime = time - scene.startMs
         const pillFrame=pillTrack.sample(time,reduced)
         for(const photo of set.photos) {
@@ -281,9 +282,20 @@ export async function prepareDocumentary(composition: VideoComposition, images: 
           ctx.save(); const enter = reduced ? 1 : smoothMotion(sceneTime / 350); ctx.globalAlpha = enter; ctx.translate(0, 14 * (1 - enter))
           drawScanInvitation(ctx, brand, videoBrandFrame(true)); ctx.restore()
         }
-        captionContext.clearRect(0, 0, caption.width, caption.height); drawLyricsCaption(captionContext, scene, sceneTime, reduced, '#171b1f')
-        captionContext.globalCompositeOperation = 'destination-in'; const mask = captionContext.createLinearGradient(0, 0, 0, 240); mask.addColorStop(0, 'transparent'); mask.addColorStop(.09, '#000'); mask.addColorStop(.87, '#000'); mask.addColorStop(1, 'transparent'); captionContext.fillStyle = mask; captionContext.fillRect(0, 0, caption.width, caption.height); captionContext.globalCompositeOperation = 'source-over'
-        ctx.drawImage(caption, 0, captionDesign.top)
+        if (scene.text) {
+          const { width, height } = captionStyle(scene)
+          const leftShift = 22
+          const frame = { x: captionDesign.inset - leftShift, y: captionDesign.top, width, height }
+          const { ink } = sampleCaptionAppearance(ctx, frame, '#fff')
+          const previous = activeScene(composition, scene.startMs - 1)
+          const handoff = previous !== scene && sceneTime < captionDesign.focusMs
+            ? { previous, progress: smoothMotion(sceneTime / captionDesign.focusMs) }
+            : undefined
+          ctx.save()
+          ctx.translate(-leftShift, frame.y)
+          drawLyricsCaption(ctx, scene, sceneTime, reduced, ink, handoff)
+          ctx.restore()
+        }
         ctx.restore()
       },
       dispose() {

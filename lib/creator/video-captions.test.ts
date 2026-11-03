@@ -14,8 +14,8 @@ test('lyrics wrap the complete text without changing word timing or word order',
 test('one regular font is used throughout, with prominent report captions and larger explainers', () => {
   const fonts: string[] = []
   const ctx = new Proxy({}, { get: (_, key) => key === 'measureText' ? (text: string) => ({ width: text.length * 20 }) : key === 'globalAlpha' ? 1 : () => {}, set: (_, key, value) => { if (key === 'font') fonts.push(value); return true } }) as CanvasRenderingContext2D
-  for (const kind of ['report', 'portrait', 'explainer'] as const) drawLyricsCaption(ctx, { source: { kind }, text: 'Look at the eyes.', narration: 'Look at the eyes.', durationMs: 3000 } as VideoScene, 1500, true, '#000')
-  expect(fonts.map(font => font.match(/^400 (\d+)px/)?.[1])).toEqual(['68', '68', '76'])
+  for (const [kind, documentary] of [['report', undefined], ['portrait', undefined], ['explainer', undefined], ['portrait', { kind: 'stage' }]] as const) drawLyricsCaption(ctx, { source: { kind }, documentary, text: 'Look at the eyes.', narration: 'Look at the eyes.', durationMs: 3000 } as VideoScene, 1500, true, '#000')
+  expect(fonts.map(font => font.match(/^400 (\d+)px/)?.[1])).toEqual(['68', '76', '84', '78'])
   expect(fonts.every(font => font.includes('Mogging Share'))).toBe(true)
 })
 
@@ -38,7 +38,7 @@ test('full-photo captions are slightly larger without changing the original regu
   let font = ''
   const ctx = new Proxy({}, { get: (_, key) => key === 'measureText' ? (text: string) => ({ width: text.length * 20 }) : key === 'globalAlpha' ? 1 : () => {}, set: (_, key, value) => { if (key === 'font') font = value; return true } }) as CanvasRenderingContext2D
   drawLyricsCaption(ctx, { source: { kind: 'portrait', overlay: 'face-map' }, text: 'Look at the eyes.', narration: 'Look at the eyes.', durationMs: 3000 } as VideoScene, 1500, true, '#000')
-  expect(font).toStartWith('400 72px "Mogging Share"')
+  expect(font).toStartWith('400 84px "Mogging Share"')
 })
 
 
