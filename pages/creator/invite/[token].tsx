@@ -5,9 +5,9 @@ import Link from 'next/link'
 import { useRouter } from 'next/router'
 import { useSession } from 'next-auth/react'
 import { useCallback, useEffect, useState } from 'react'
-import { SkeletonAvatar } from '@/components/ui/skeleton-avatar'
+import * as Avatar from '@radix-ui/react-avatar'
 import { ArrowRight, Check, Loader2 } from 'lucide-react'
-import { LoginDialog } from '@/components/app/login-dialog'
+import { LoginDialog } from '@/components/app/app-shell'
 import { Button } from '@/components/ui/button'
 import { CreatorIcon } from '@/components/creator/creator-icon'
 import { apiPost } from '@/lib/api/client'
@@ -73,7 +73,10 @@ export default function CreatorInvitePage({ invite, token, url, imageUrl }: Prop
         <Link href="/creator" className="mb-8 flex items-center justify-center gap-3 text-sm font-medium"><Image src="/favicon.png" width={32} height={32} alt="" className="rounded-[9px]" />Mogging / Creator Studio</Link>
         <div className="creator-surface rounded-[28px] p-7 shadow-[0_2px_12px_rgba(24,26,29,0.035)] sm:p-9">
           <div className="flex items-center gap-4">
-            <SkeletonAvatar src={invite.avatarUrl} alt="" size={64} referrerPolicy="no-referrer" className="size-16 rounded-full bg-[#f4f5f6]" fallback={<span className="grid size-full place-items-center text-2xl">{invite.displayName[0]}</span>} />
+            <Avatar.Root className="flex size-16 shrink-0 overflow-hidden rounded-full bg-[#f4f5f6]">
+              {invite.avatarUrl ? <Avatar.Image src={invite.avatarUrl} alt="" referrerPolicy="no-referrer" className="size-full object-cover" /> : null}
+              <Avatar.Fallback className="grid size-full place-items-center text-2xl">{invite.displayName[0]}</Avatar.Fallback>
+            </Avatar.Root>
             <div className="min-w-0"><h1 className="truncate text-xl font-medium tracking-tight">{invite.displayName}</h1><p className="mt-1 text-sm text-[#73777d]">@{invite.handle} · TikTok</p></div>
           </div>
           <h2 className="mt-7 text-[2rem] font-medium leading-tight tracking-[-0.05em]">{ready ? 'We’ve got you started.' : invite.state === 'claimed' ? 'Your invitation was claimed.' : 'Let’s get you a fresh link.'}</h2>

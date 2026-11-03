@@ -44,6 +44,7 @@ export function directVisualBeats(section: ScriptSection, text: string, recipe: 
     const seed = scriptVisualSeed(original?.id ?? input.subject, recipe, beat.quote)
     const authored = section.visuals.find(visual => visual.styles?.includes(recipe)) ?? section.visuals[0]
     const categoryId = beat.feature === 'whole' ? authored.categoryId : categoryFor[beat.feature]
+    const editorial = recipe === 'feature-study'
     const topic = isTopic(beat.feature) ? beat.feature : undefined
     const edited = images.findLast(image => image.retouch?.feature === beat.feature && image.retouch.baselineImageId === original?.id && (beat.operation === 'none' || image.retouch.operation === beat.operation))
     const studyTopic = topic ?? (recipe === 'feature-study' || edited ? beat.feature : undefined)
@@ -64,15 +65,15 @@ export function directVisualBeats(section: ScriptSection, text: string, recipe: 
     else if (beat.intent === 'context') eligible = ['portrait', 'detail']
     else if (beat.intent === 'lighting') eligible = ['lighting']
     else if (beat.intent === 'views') eligible = profile && beat.view === 'profile' ? ['profile'] : ['portrait']
-    else if (beat.intent === 'edit') eligible = supportedEdit ? topic ? ['edit', 'wipe', 'compare'] : ['edit'] : ['portrait', 'detail']
-    else if (beat.intent === 'compare') eligible = supportedEdit && topic ? /\b(?:side by side|beside each other|both versions together)\b/i.test(beat.quote) ? ['compare', 'wipe'] : ['wipe', 'detail', 'portrait'] : ['portrait', 'detail']
+    else if (beat.intent === 'edit') eligible = supportedEdit ? topic || editorial ? ['wipe', 'edit', 'compare'] : ['edit'] : ['portrait', 'detail']
+    else if (beat.intent === 'compare') eligible = supportedEdit && (topic || editorial) ? /\b(?:side by side|beside each other|both versions together)\b/i.test(beat.quote) ? ['compare', 'wipe'] : ['wipe', 'detail', 'portrait'] : ['portrait', 'detail']
     else if (beat.intent === 'measure') eligible = topic ? ['callout', 'detail', 'measurement'] : ['measurement', 'detail']
     else eligible = topic ? ['portrait', 'detail', 'callout'] : ['portrait', 'detail', 'measurement']
     if (recipe === 'report-led' && ['observe', 'measure'].includes(beat.intent)) eligible.push('report', 'report-grid')
     const measured = [input.overallScore, input.strongestScore, input.opportunityScore].some(value => value?.trim())
     const illustrative = !['edit', 'compare', 'lighting', 'views'].includes(beat.intent) && !['takeaway', 'cta', 'product'].includes(section.role)
-    if (illustrative && recipe === 'report-led') eligible = ['report', 'report-grid', 'component']
-    if (illustrative && recipe === 'measurement-explainer') eligible = beat.feature === 'whole' ? ['portrait', 'component'] : ['component', 'measurement']
+    if (illustrative && recipe === 'report-led') eligible = ['report']
+    if (illustrative && recipe === 'measurement-explainer') eligible = beat.feature === 'whole' ? ['portrait'] : ['detail', 'measurement', 'callout']
     if (illustrative && recipe === 'hybrid-story') eligible.push('grid')
     if (!measured && eligible.some(primitive => ['report', 'report-grid', 'component'].includes(primitive))) missing.push('App preview only: no measured subject scores were supplied.')
     if (history.slice(history.findLastIndex(item => item.primitive === 'grid')).reduce((ms, item) => ms + item.quote.split(/\s+/).length / 165 * 60000, 0) < 16000 && history.some(item => item.primitive === 'grid')) eligible = eligible.filter(item => item !== 'grid')
@@ -105,12 +106,12 @@ export function directVisualBeats(section: ScriptSection, text: string, recipe: 
     }
     else if (primitive === 'profile') direction = { ...base, profileStudy: { view: 'profile', side: 'left', feature: profileFeatureForText(beat.quote, categoryId) }, editorial: 'compare' }
     else if (primitive === 'lighting') direction = { ...base, portraitFX: { lighting: { preset: /\b(?:soft|softer|frontal|diffuse|even)\b/i.test(beat.quote) && !/\bside\b/i.test(beat.quote) ? 'soft' : 'split', target: 'whole', side: seed % 2 ? 'left' : 'right', lightX: seed % 2 ? -.7 : .7, lightY: -.4, radius: 1.5, intensity: 1.5, ambientEv: -.65, depth: 1.2, color: 'natural' } } }
-    else if (studyTopic && original && image?.id === original.id && primitive !== 'measurement' && (topic || primitive !== 'edit')) {
+    else if (studyTopic && original && image?.id === original.id && primitive !== 'measurement' && (topic || editorial || primitive !== 'edit')) {
       const layout: FeatureStudy['layout'] = primitive === 'grid' ? 'grid' : primitive === 'compare' ? 'compare' : primitive === 'detail' || primitive === 'callout' ? 'detail' : 'hero'
       // Positive philtrum drag increases length; a shortening reverses that displacement.
       const sign = ['shorten', 'narrow'].includes(beat.operation) ? -1 : 1
       const edit = ['edit', 'compare', 'wipe', 'grid'].includes(primitive) && supportedEdit ? sign * amount : 0
-      direction = { ...base, focus: 'hero', featureStudy: { topic: studyTopic, layout, edit, motion: primitive === 'detail' ? (['hold', 'push', 'pull'] as const)[(seed + variant) % 3] : primitive === 'portrait' ? (seed % 2 ? 'pull' : 'hold') : 'hold', annotationStyle: primitive === 'callout' ? 'leader' : primitive === 'detail' ? 'guide' : 'circle', annotation: primitive === 'callout' || primitive === 'detail' ? studyTopic.replace('-', ' ') : '', editMode: edited ? 'photo' : 'warp', comparison: primitive === 'wipe' ? 'wipe' : 'blend', images: [edited?.id ?? original!.id, angled?.id ?? original!.id, profile?.id ?? original!.id] } }
+      direction = { ...base, focus: 'hero', featureStudy: { editorial, topic: studyTopic, layout, edit, motion: layout === 'detail' ? (['push', 'pan-left', 'pan-right'] as const)[(seed + variant) % 3] : layout === 'hero' ? 'pull' : 'hold', annotationStyle: primitive === 'callout' ? 'leader' : primitive === 'detail' ? 'guide' : 'circle', annotation: primitive === 'callout' || primitive === 'detail' ? studyTopic.replace('-', ' ') : '', editMode: edited ? 'photo' : 'warp', comparison: primitive === 'wipe' ? 'wipe' : 'blend', images: [edited?.id ?? original!.id, (angled ?? profile)?.id ?? original!.id, profile?.id ?? original!.id] } }
     } else if (primitive === 'edit') direction = { ...base, photoStudy: { feature: beat.feature as 'eyes' | 'brows' | 'nose' | 'lips' | 'jaw' | 'cheeks', mode: 'stretch', axis: /\b(?:width|wide\w*|narrow\w*|broader)\b/i.test(beat.quote) ? 'x' : ['shorten', 'lengthen'].includes(beat.operation) || /\b(?:thick\w*|thin\w*|height|fuller)\b/i.test(beat.quote) ? 'y' : 'x', amount: (['shorten', 'narrow', 'remove'].includes(beat.operation) ? -.055 : .055) * amount, cursor: false } }
     if (direction.kind === 'portrait' && !direction.featureStudy && !direction.study) direction.portraitProgram = planPortraitProgram(beat.quote, beat.feature, recipe, variant + seed, image?.id === profile?.id && profile ? 'profile' : image?.id === angled?.id && angled ? 'three-quarter' : beat.view)
     const decision = { primitive, feature: beat.feature, intent: beat.intent, quote: beat.quote, reason: `${beat.rationale}${direction.portraitProgram ? ` ${direction.portraitProgram.actions.length} linked visual actions follow the narration.` : ''}`, missing, alternatives }

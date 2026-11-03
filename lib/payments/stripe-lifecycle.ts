@@ -118,7 +118,6 @@ export async function recordStripeBillingEvent(event: Stripe.Event) {
     eventName: 'checkout_completed', sessionId: session.id, accountId,
     platform: 'server', source: 'stripe_verified', environment: session.livemode ? 'production' : 'development',
     occurredAt: new Date(event.created * 1000), properties: {
-      attempt_id: session.metadata?.attemptId, flow_id: session.metadata?.flowId, paywall_version: session.metadata?.paywallVersion,
       product: session.metadata?.product || 'unknown', mode: session.mode, status: session.payment_status,
       price: session.amount_total, currency: session.currency,
       ...landingProperties(parseLandingAssignment(session.metadata?.landingAssignment)),

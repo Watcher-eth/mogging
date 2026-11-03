@@ -1,6 +1,7 @@
 import dynamic from 'next/dynamic'
 const CreatorSupportLauncher = dynamic(() => import('./support/support-launcher').then(m => m.CreatorSupportLauncher), { ssr: false })
 import { TikTokAnchorOnboarding } from './tiktok-anchor-onboarding'
+import { StudioRequirementsReminder } from './studio-requirements-dialog'
 import { CreatorWelcomeDialog, useCreatorWelcome } from './creator-welcome'
 import { Sidebar, SidebarContent, SidebarHeader, SidebarFooter, SidebarGroup, SidebarGroupLabel, SidebarGroupContent, SidebarMenu, SidebarMenuItem, SidebarMenuButton, SidebarInset, SidebarTrigger, useSidebar } from '@/components/ui/sidebar'
 import { creatorGuideTopics, creatorGuideTopic, creatorGuideHref } from '@/lib/creator/guide-navigation'
@@ -83,6 +84,7 @@ export function CreatorShell({ children, allowUnauthenticated = false }: { child
         <SidebarInset className="creator-page creator-enter min-w-0 bg-white" key={router.pathname}>{children}</SidebarInset>
       </div>
       <CreatorWelcomeDialog open={welcome.open} onOpenChange={welcome.onOpenChange} />
+      {router.pathname === '/creator/video-studio' && welcome.ready && !welcome.open && !moreOpen ? <StudioRequirementsReminder key={session?.user?.id} /> : null}
       <div className={floatingStyles.root}>
         {!studioPaths.has(router.pathname) ? <CreatorSetupChecklist /> : null}
         {router.pathname !== '/creator/support' && !router.pathname.includes('__') ? <CreatorSupportLauncher /> : null}
@@ -92,7 +94,18 @@ export function CreatorShell({ children, allowUnauthenticated = false }: { child
   )
 }
 
-export { CreatorHeader } from './creator-header'
+export function CreatorHeader({ eyebrow, title, description, action, titleAccessory, eyebrowAccessory }: { eyebrow: string; title: string; description: string; action?: ReactNode; titleAccessory?: ReactNode; eyebrowAccessory?: ReactNode }) {
+  return (
+    <header className="creator-page-header">
+      <div className={cn("min-w-0", (titleAccessory || eyebrowAccessory) && "flex-1")}>
+        <div className={cn("items-center justify-between gap-3 text-[11px] font-semibold uppercase tracking-[0.13em] text-[#858a91]", eyebrowAccessory ? "flex" : "hidden sm:flex")}><span>{eyebrow}</span>{eyebrowAccessory}</div>
+        <div className="mt-2 flex items-center justify-between gap-3"><h1 className="text-[1.75rem] font-medium leading-[1.15] tracking-[-0.035em] text-[#181a1d] sm:text-[2.25rem]">{title}</h1>{titleAccessory}</div>
+        <p className="mt-0.5 max-w-2xl text-sm leading-5 sm:text-[15px] sm:leading-6 text-[#73777d]">{description}</p>
+      </div>
+      {action ? <div className="creator-header-action">{action}</div> : null}
+    </header>
+  )
+}
 
 export const fieldClass = 'creator-field'
 export const areaClass = 'creator-field min-h-28 resize-y py-3'
@@ -122,13 +135,13 @@ function CreatorNavigation() {
         <SidebarGroup>
           <SidebarGroupLabel>Creator Studio</SidebarGroupLabel>
           <SidebarGroupContent><SidebarMenu aria-label="Creator Studio navigation">
-            {creatorNav.map((item) => <SidebarMenuItem key={item.href}><SidebarMenuButton asChild isActive={router.pathname === item.href || item.href === '/creator/studio' && studioPaths.has(router.pathname)} tooltip={item.label} className="creator-nav-link"><Link href={item.href} prefetch={false} aria-label={item.label} aria-current={router.pathname === item.href || item.href === '/creator/studio' && studioPaths.has(router.pathname) ? 'page' : undefined} onClick={() => setOpenMobile(false)}><CreatorIcon name={item.asset} className="size-5" /><span className="inline-flex items-center gap-2"><span>{item.label}</span>{item.href === '/creator/studio' ? <span className="shrink-0 rounded-full bg-[#eaf7ff] px-1.5 py-0.5 text-[9px] font-medium leading-none text-[#008bd0] group-data-[collapsible=icon]:hidden">New</span> : null}</span></Link></SidebarMenuButton></SidebarMenuItem>)}
+            {creatorNav.map((item) => <SidebarMenuItem key={item.href}><SidebarMenuButton asChild isActive={router.pathname === item.href || item.href === '/creator/studio' && studioPaths.has(router.pathname)} tooltip={item.label} className="creator-nav-link"><Link href={item.href} aria-label={item.label} aria-current={router.pathname === item.href || item.href === '/creator/studio' && studioPaths.has(router.pathname) ? 'page' : undefined} onClick={() => setOpenMobile(false)}><CreatorIcon name={item.asset} className="size-5" /><span className="inline-flex items-center gap-2"><span>{item.label}</span>{item.href === '/creator/studio' ? <span className="shrink-0 rounded-full bg-[#eaf7ff] px-1.5 py-0.5 text-[9px] font-medium leading-none text-[#008bd0] group-data-[collapsible=icon]:hidden">New</span> : null}</span></Link></SidebarMenuButton></SidebarMenuItem>)}
           </SidebarMenu></SidebarGroupContent>
         </SidebarGroup>
         <SidebarGroup>
           <SidebarGroupLabel>Creator guide</SidebarGroupLabel>
           <SidebarGroupContent><SidebarMenu aria-label="Guide topics">
-            {creatorGuideTopics.map((item) => <SidebarMenuItem key={item.id}><SidebarMenuButton asChild isActive={inGuide && topic === item.id} tooltip={item.label} className="creator-guide-nav-link"><Link href={creatorGuideHref(item.id)} prefetch={false} aria-label={item.label} aria-current={inGuide && topic === item.id ? 'page' : undefined} onClick={() => setOpenMobile(false)}><CreatorIcon name={item.icon} className="size-4" /><span>{item.label}</span></Link></SidebarMenuButton></SidebarMenuItem>)}
+            {creatorGuideTopics.map((item) => <SidebarMenuItem key={item.id}><SidebarMenuButton asChild isActive={inGuide && topic === item.id} tooltip={item.label} className="creator-guide-nav-link"><Link href={creatorGuideHref(item.id)} aria-label={item.label} aria-current={inGuide && topic === item.id ? 'page' : undefined} onClick={() => setOpenMobile(false)}><CreatorIcon name={item.icon} className="size-4" /><span>{item.label}</span></Link></SidebarMenuButton></SidebarMenuItem>)}
           </SidebarMenu></SidebarGroupContent>
         </SidebarGroup>
       </SidebarContent>

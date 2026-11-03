@@ -12,12 +12,12 @@ import { subjectStudies } from './video-subject-studies'
 
 // Creator styles are the existing rendering recipes, with one vocabulary in the UI.
 export const creatorVideoStyles = [
-  { id: 'portrait-audit', label: 'Portrait study', detail: 'Photo-led. Close-ups, contours and gentle camera moves.' },
-  { id: 'report-led', label: 'App walkthrough', detail: 'Report-led. Scrolling results and focused feature cards.' },
-  { id: 'measurement-explainer', label: 'Feature breakdown', detail: 'Detail-led. Face guides, measurements and clear explanations.' },
-  { id: 'feature-study', label: 'Feature study', detail: 'One feature at a time. Drawn notes, controlled face edits and continuous photo grids.' },
-  { id: 'hybrid-story', label: 'Visual story', detail: 'Story-led. Portraits, graphic comparisons and app proof.' },
-  { id: 'documentary-studio', label: 'Documentary Studio', detail: 'Cinematic sets, photographic evidence, 3D structure and precise face annotations.' },
+  { id: 'portrait-audit', label: 'Portrait study', detail: 'The default. Natural portraits, precise contours and gentle movement.' },
+  { id: 'report-led', label: 'App walkthrough', detail: 'Native report screens, animated score timelines and focused feature cards.' },
+  { id: 'measurement-explainer', label: 'Feature breakdown', detail: 'Editorial close-ups, feature lighting and continuous zooms between details.' },
+  { id: 'feature-study', label: 'Feature study', detail: 'Hand-drawn arrows, frosted strokes, panning close-ups and controlled comparisons.' },
+  { id: 'hybrid-story', label: 'Visual story', detail: 'Photo sequences, evidence inserts and graphic transitions that follow the story.' },
+  { id: 'documentary-studio', label: 'Documentary Studio', detail: 'A separate cinematic edit with 3D sets, evidence boards and restrained annotations.' },
 ] as const satisfies ReadonlyArray<{ id: VideoRecipe; label: string; detail: string }>
 
 export function creatorStyleDirections(example: VideoScriptExample, recipe: VideoRecipe) {

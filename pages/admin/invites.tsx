@@ -1,4 +1,4 @@
-import { CreatorHeader } from '@/components/creator/creator-header'
+import { CreatorHeader } from '@/components/creator/creator-shell'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog'
 import { useMemo, useState, type FormEvent } from 'react'
 import useSWR from 'swr'

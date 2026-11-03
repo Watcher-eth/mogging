@@ -85,7 +85,7 @@ export const CREATOR_CONVERSION_BONUS_CAP_RATE = 0.25
 export type CreatorAdminReviewInput = z.infer<typeof creatorAdminReviewSchema>
 export type CreatorAdminPaymentInput = z.infer<typeof creatorAdminPaymentSchema>
 
-export async function getCreatorAdminDashboard({ includeCoverage = true } = {}) {
+export async function getCreatorAdminDashboard() {
   const [creatorRows, accountRows, submissions, payments, attributionMetrics, settingsRecord, accountAttributionRows, payoutRequests, creatorCoverage, warningRows] = await Promise.all([
     db
       .select({
@@ -94,6 +94,7 @@ export async function getCreatorAdminDashboard({ includeCoverage = true } = {}) 
         displayName: schema.creatorProfiles.displayName,
         bundledPayouts: schema.creatorProfiles.bundledPayouts,
         videoStudioAccess: schema.creatorProfiles.videoStudioAccess,
+        retainerTerms: schema.creatorProfiles.retainerTerms,
         email: schema.users.email,
         image: schema.users.image,
         primaryContact: schema.creatorProfiles.socialHandle,
@@ -104,10 +105,6 @@ export async function getCreatorAdminDashboard({ includeCoverage = true } = {}) 
         cryptoNetwork: schema.creatorProfiles.cryptoNetwork,
         cryptoWalletAddress: schema.creatorProfiles.cryptoWalletAddress,
         createdAt: schema.creatorProfiles.createdAt,
-        lastActiveAt: sql<string | null>`(select to_char(max(a.occurred_at), 'YYYY-MM-DD"T"HH24:MI:SS.MS"Z"') from analytics_events a
-          where a.account_id = ${schema.users.id} and a.environment = 'production' and a.platform = 'web'
-          and a.event_name in ('page_viewed', 'page_exited') and a.properties->>'path' ~ '^/creator(/|$)'
-          and a.occurred_at <= now())`,
       })
       .from(schema.creatorProfiles)
       .innerJoin(schema.users, eq(schema.creatorProfiles.userId, schema.users.id))
@@ -223,15 +220,13 @@ export async function getCreatorAdminDashboard({ includeCoverage = true } = {}) 
     }),
     getCreatorAttributionReport(),
     db.query.creatorPayoutRequests.findMany({ where: eq(schema.creatorPayoutRequests.status, 'pending'), orderBy: [desc(schema.creatorPayoutRequests.requestedAt)] }),
-    includeCoverage ? getCreatorCoverage() : undefined,
+    getCreatorCoverage(),
     listCreatorInternalWarnings(),
   ])
 
   const attributionByAccountId = new Map(accountAttributionRows.map((report) => [report.socialAccountId, report]))
-  const lastActiveByCreator = new Map(creatorRows.map(creator => [creator.id, creator.lastActiveAt]))
   const accounts = accountRows.map((account) => ({
     ...account,
-    lastActiveAt: lastActiveByCreator.get(account.creatorProfileId) ?? null,
     attribution: attributionReportValues(attributionByAccountId.get(account.id)),
   }))
   const attributionByCreatorId = new Map<string, ReturnType<typeof emptyAttributionReport>>()
@@ -545,6 +540,7 @@ async function reviewSprintSubmission(input: Extract<CreatorAdminReviewInput, { 
     if (reviewError) throw new ApiError(400, reviewError)
     const calculated = sprintPayoutCents(submission.sprintTerms, input.adminViewCountThreshold, input.adminUsAudiencePercent)
     const preservedCents = submission.reviewRequestedAt || payments.some(payment => payment.status === 'paid') ? submission.approvedAmountCents || 0 : 0
+    if (submission.sprintTerms.retainer && input.status === 'approved' && input.approvedAmountCents != null && input.approvedAmountCents !== Math.max(preservedCents, calculated)) throw new ApiError(400, 'Retainer earnings are fixed by the saved agreement and verified audience; reject an ineligible post instead of changing its rate.')
     if (input.approveWithoutPayment) {
       if (input.status !== 'approved' || !submission.reviewRequestedAt || !preservedCents) throw new ApiError(400, 'No-payment approval is only available for a paid rereview')
       if (remainingCreatorPaymentCents(preservedCents, payments) !== 0) throw new ApiError(409, 'Existing approved earnings must be paid before closing a rereview without payment')

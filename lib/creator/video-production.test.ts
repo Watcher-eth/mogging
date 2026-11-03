@@ -236,13 +236,14 @@ test('unscored reports keep native preview layouts without fabricating visible n
   for (const scene of preview.scenes.filter(scene => scene.graphic?.layout === 'dashboard')) expect(scene.graphic!.items.every(item => !item.value && !item.detail)).toBe(true)
 })
 
-test('format projection retains native reports, measurement components and evidence grids', () => {
+test('format projection separates native reports, editorial close-ups and evidence grids', () => {
   const report = compile(75, 'report-led'), measurement = compile(75, 'measurement-explainer'), visual = compile(75, 'hybrid-story'), portrait = compile(75, 'portrait-audit')
   expect(report.scenes.some(scene => scene.source.kind === 'report')).toBe(true)
-  expect(measurement.scenes.some(scene => scene.source.kind === 'component')).toBe(true)
+  expect(measurement.scenes.some(scene => scene.source.kind === 'portrait' && scene.editorial === 'detail' &&
+    scene.tracks.some(track => track.elementId === 'subject' && ['slow-push', 'pan-left', 'pan-right'].includes(track.primitive)))).toBe(true)
   expect(visual.scenes.some(scene => scene.study?.operation === 'recap')).toBe(true)
   expect(portrait.scenes.some(scene => scene.portraitProgram?.actions.length)).toBe(true)
-  const signature = (video: ReturnType<typeof compile>) => JSON.stringify(video.scenes.map(scene => [scene.source.kind, scene.study?.operation, scene.featureStudy?.layout, scene.graphic?.layout]))
+  const signature = (video: ReturnType<typeof compile>) => JSON.stringify(video.scenes.map(scene => [scene.source.kind, scene.editorial, scene.study?.operation, scene.featureStudy?.layout, scene.graphic?.layout]))
   expect(new Set([report, measurement, visual, portrait].map(signature)).size).toBe(4)
 })
 

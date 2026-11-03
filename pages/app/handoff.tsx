@@ -1,4 +1,3 @@
-import { motion, useReducedMotion } from 'motion/react'
 import Head from 'next/head'
 import Link from 'next/link'
 import { useRouter } from 'next/router'
@@ -18,7 +17,6 @@ type HandoffResponse = {
 
 export default function PaymentHandoffPage() {
   const router = useRouter()
-  const reduceMotion = useReducedMotion()
   const { status } = useSession()
   const sessionId = singleQueryValue(router.query.session_id)
   const suppliedToken = singleQueryValue(router.query.token)
@@ -82,13 +80,12 @@ export default function PaymentHandoffPage() {
         <meta name="referrer" content="no-referrer" />
       </Head>
       <main className="mx-auto flex min-h-[calc(100vh-5rem)] w-full max-w-3xl items-center px-5 py-12 sm:px-10">
-        <motion.section initial={{ opacity: 0, y: reduceMotion ? 0 : 12 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: reduceMotion ? 0 : .26, ease: [.22, 1, .36, 1] }} className="w-full rounded-[32px] border border-zinc-100 bg-white p-7 shadow-[0_20px_80px_#00000005] sm:p-12">
-          <div className="mb-7 grid size-14 place-items-center rounded-2xl bg-zinc-50 text-zinc-800" aria-hidden="true">{token ? <Check size={26} strokeWidth={1.5} /> : <Download size={24} strokeWidth={1.5} />}</div>
-          <p className="text-[10px] font-medium uppercase tracking-[.12em] text-zinc-400">{token ? 'Payment confirmed' : 'Purchase activation'}</p>
-          <h1 className="mt-5 max-w-2xl text-4xl font-semibold tracking-[-.055em] leading-[1.05] text-black sm:text-5xl">
+        <section className="w-full border-y border-zinc-200 py-10 sm:py-14">
+          <p className="font-mono text-xs font-semibold uppercase text-zinc-500">{token ? 'Payment confirmed' : 'Purchase activation'}</p>
+          <h1 className="mt-5 max-w-2xl text-4xl font-semibold tracking-normal text-black sm:text-6xl">
             {token ? 'Your Mogging access is ready.' : 'Continue your Mogging purchase.'}
           </h1>
-          <p className="mt-5 max-w-xl text-base leading-7 text-zinc-500">
+          <p className="mt-5 max-w-xl text-lg leading-8 text-zinc-600">
             Open the app to continue your evaluation. You can also sign in to the app with the same account you used at checkout to restore your purchase.
           </p>
 
@@ -104,7 +101,7 @@ export default function PaymentHandoffPage() {
               <div>
                 <p className="text-sm text-zinc-600">Sign in with the account used at checkout to continue.</p>
                 <Link
-                  className="mt-5 inline-flex h-12 items-center gap-2 rounded-full bg-black px-6 text-sm font-semibold text-white"
+                  className="mt-5 inline-flex h-12 items-center gap-2 bg-black px-6 text-sm font-semibold text-white"
                   href={`/?login=1&next=${encodeURIComponent(router.asPath)}`}
                 >
                   Sign in <ArrowUpRight className="h-4 w-4" />
@@ -125,21 +122,21 @@ export default function PaymentHandoffPage() {
                 <a
                   href={appUrl}
                   onClick={() => trackWebEvent('handoff_opened', { destination: 'installed_app' })}
-                  className="inline-flex h-14 items-center justify-center gap-2 rounded-full bg-black transition-transform active:scale-[.98] motion-reduce:transform-none px-6 text-sm font-semibold text-white"
+                  className="inline-flex h-14 items-center justify-center gap-2 bg-black px-6 text-sm font-semibold text-white"
                 >
                   <Check className="h-5 w-5" /> Open Mogging
                 </a>
                 <a
                   href={appStoreUrl}
                   onClick={() => trackWebEvent('handoff_opened', { destination: 'app_store' })}
-                  className="inline-flex h-14 items-center justify-center gap-2 rounded-full border border-zinc-200 transition-transform active:scale-[.98] motion-reduce:transform-none px-6 text-sm font-semibold text-black"
+                  className="inline-flex h-14 items-center justify-center gap-2 border border-zinc-300 px-6 text-sm font-semibold text-black"
                 >
                   <Download className="h-5 w-5" /> Download the app
                 </a>
               </div>
             ) : null}
           </div>
-        </motion.section>
+        </section>
       </main>
     </>
   )

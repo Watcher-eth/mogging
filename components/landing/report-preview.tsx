@@ -5,13 +5,12 @@ import { Pause, Play, ChevronDown, X, Check, ChartNoAxesColumn, ScanFace, Eye, W
 import { reportGlassInk } from '@/lib/creator/report-glass'
 import styles from './report-preview.module.css'
 import { reportCategories, buildMockOverallCategory } from '@/lib/creator/mock-report-data'
-import { drawMockReport, drawReportComponent, mockReportRegions, mockReportScrollMax, mockReportSize, mockReportFormat, mockReportHeroHeight } from '@/lib/creator/mock-report'
+import { drawMockReport, drawReportComponent, mockReportRegions, mockReportScrollMax, mockReportSize, mockReportFormat } from '@/lib/creator/mock-report'
 import { createCanvasPainter } from '@/lib/creator/canvas-layout'
 import { prepareCanvas } from '@/lib/creator/export-slides'
 import { nativeReportEntry, sampleReportTour, reportInstrumentIsVisible } from '@/lib/creator/report-tour'
 import type { ContentSlide, GeneratorImage } from '@/lib/creator/content-generator'
 import { previewLandmarks, previewPortrait } from './overlay'
-import { createReportOverlay } from '@/lib/creator/report-overlay'
 
 const images: GeneratorImage[] = [{ id: 'example-portrait', name: 'Example portrait', dataUrl: previewPortrait.src, width: previewPortrait.width, height: previewPortrait.height,
   landmarks: { ...previewLandmarks, source: 'apple-vision' }, status: 'ready' }]
@@ -20,10 +19,9 @@ const categoryIcons: Record<string, typeof ScanFace> = { overall: ChartNoAxesCol
 function CategoryIcon({ id }: { id: string }) { const Icon = categoryIcons[id] ?? ScanFace; return <Icon size={16} /> }
 type Prepared = Awaited<ReturnType<typeof prepareCanvas>>
 
-export function ReportPreview({ active, startAt = 0, playback = 'auto' }: { active: boolean; startAt?: number; playback?: 'auto' | 'still' }) {
-  const format = playback === 'still' ? mockReportSize : mockReportFormat
+export function ReportPreview({ active, startAt = 0 }: { active: boolean; startAt?: number }) {
   const [categoryId, setCategoryId] = useState('overall')
-  const [playing, setPlaying] = useState(playback === 'auto')
+  const [playing, setPlaying] = useState(true)
   const [scroll, setScroll] = useState(0)
   const [prepared, setPrepared] = useState<Prepared | null>(null)
   const [error, setError] = useState<string | null>(null)
@@ -38,25 +36,19 @@ export function ReportPreview({ active, startAt = 0, playback = 'auto' }: { acti
   const category = useMemo(() => categoryId === 'overall' ? buildMockOverallCategory('7.2', {}) : reportCategories.find(item => item.id === categoryId)!, [categoryId])
   const slide = useMemo<ContentSlide>(() => ({ id: 'homepage-report', templateId: 'mock-report', imageId: images[0].id, categoryId,
     currentScore: '7.2', potentialScore: '8.5', categoryScores: [], mockReport: { category, scroll: 0 }, eyebrow: '', headline: '', supportingCopy: '', metricLabel: category.title, metricValue: String(category.score), cta: '' }), [category, categoryId])
-  const initialSlide = useRef(slide).current
-  const overlay = useMemo(() => {
-    const result = createReportOverlay(slide, images[0], { width: mockReportSize.width, height: mockReportHeroHeight }, mockReportSize.width, true)
-    return { ...result, labelLayout: 'mobile' as const, value: categoryId === 'overall' ? `${(Number(slide.currentScore) * .8).toFixed(1)} / 8` : `${category.score.toFixed(1)} / 10` }
-  }, [slide, categoryId, category.score])
   const maximum = useMemo(() => mockReportScrollMax(category), [category])
 
-  useEffect(() => { autoplay.current = true; setPlaying(playback === 'auto'); setCategoryId('overall'); setScroll(0) }, [startAt, playback])
+  useEffect(() => { autoplay.current = true; setPlaying(true); setCategoryId('overall'); setScroll(0) }, [startAt])
   useEffect(() => {
-    if (playback === 'still') return
     setPortal(scroller.current?.closest('[data-preview-device]')?.querySelector<HTMLElement>('[data-preview-popout]') ?? null)
-  }, [playback])
+  }, [])
   useEffect(() => {
     let disposed = false
     setError(null); clock.current = startAt; entries.current.clear(); ownership.current = null
-    void prepareCanvas({ slide: initialSlide, images, ...format }).then(value => { if (!disposed) setPrepared(value) })
+    void prepareCanvas({ slide, images, ...mockReportFormat }).then(value => { if (!disposed) setPrepared(value) })
       .catch(reason => { if (!disposed) setError(reason instanceof Error ? reason.message : 'Could not load the report.') })
     return () => { disposed = true }
-  }, [initialSlide, startAt, format])
+  }, [slide, startAt])
 
   useEffect(() => {
     const context = canvas.current?.getContext('2d'), floating = popout.current?.getContext('2d')
@@ -81,7 +73,7 @@ export function ReportPreview({ active, startAt = 0, playback = 'auto' }: { acti
       const viewportBottom = Math.min(734, (window.innerHeight - (bounds?.top ?? 0)) / deviceScale)
       let entering = false
       const progress = (id: string, top: number) => {
-        if (reduced || playback === 'still') return 1
+        if (reduced) return 1
         const region = regions.find(item => item.id === id)
         const height = region ? Math.max(40, region.height - 100) : 120
         const chartTop = top + (id.startsWith('feature:') ? 50 : 0)
@@ -105,8 +97,8 @@ export function ReportPreview({ active, startAt = 0, playback = 'auto' }: { acti
       const lift = owner?.lift ?? 0
       // The focused node has exactly one renderer for the entire lift and return.
       const paint = createCanvasPainter(node => region && floating && node.id === region.id ? { opacity: 0 } : {})
-      drawMockReport(context, current, prepared.image, overlay, format.width, format.height, reduced ? 4000 : clock.current, {
-        paint, cull: true, regions, interactiveChrome: true, metricProgress: reduced || playback === 'still' ? 1 : nativeReportEntry(animationTime.current),
+      drawMockReport(context, current, prepared.image, prepared.overlay, mockReportFormat.width, mockReportFormat.height, reduced ? 4000 : clock.current, {
+        paint, cull: true, regions, interactiveChrome: true, metricProgress: reduced ? 1 : nativeReportEntry(animationTime.current),
         growthProgress: progress('potential', regions.find(region => region.id === 'potential')!.y),
         featureProgress: progress, actionState: tour.region.id === 'action-plan' ? actionState : undefined,
       })
@@ -138,25 +130,17 @@ export function ReportPreview({ active, startAt = 0, playback = 'auto' }: { acti
     const visibility = () => { previous = performance.now(); draw(previous) }
     draw(previous); document.addEventListener('visibilitychange', visibility); window.addEventListener('scroll', visibility, { passive: true }); window.addEventListener('resize', visibility)
     return () => { cancelAnimationFrame(frame); document.removeEventListener('visibilitychange', visibility); window.removeEventListener('scroll', visibility); window.removeEventListener('resize', visibility); floating?.clearRect(0, 0, 2600, mockReportFormat.height) }
-  }, [prepared, slide, category, overlay, maximum, playing, scroll, active, reduced, portal, playback, format])
+  }, [prepared, slide, category, maximum, playing, scroll, active, reduced, portal])
 
   function pause() { autoplay.current = false; setScroll(scroller.current?.scrollTop ?? 0); setPlaying(false) }
-  function selectCategory(value: string) {
-    pause()
-    clock.current = startAt
-    entries.current.clear()
-    ownership.current = null
-    setCategoryId(value)
-    setScroll(0)
-    if (scroller.current) scroller.current.scrollTop = 0
-  }
+  function selectCategory(value: string) { pause(); setCategoryId(value); setScroll(0); if (scroller.current) scroller.current.scrollTop = 0 }
   function toggleTour() { if (playing) pause(); else { clock.current = 0; autoplay.current = true; setPlaying(true) } }
 
   return <>
     <div ref={scroller} className="h-full overflow-y-auto overscroll-contain [scrollbar-width:none]" onWheel={pause} onTouchStart={pause}
       onScroll={event => { if (!autoplay.current) setScroll(event.currentTarget.scrollTop) }}>
       <div style={{ height: mockReportSize.height + maximum }}><div className="sticky top-0 h-[844px]">
-        <canvas ref={canvas} width={format.width} height={format.height} role="img" aria-label={`Interactive ${category.title} evaluation. Current score 7.2, potential 8.5.`} className="block h-[844px] w-[390px]" />
+        <canvas ref={canvas} width={mockReportFormat.width} height={mockReportFormat.height} role="img" aria-label={`Interactive ${category.title} evaluation. Current score 7.2, potential 8.5.`} className="block h-[844px] w-[390px]" />
         <details ref={menu} className={styles.menu} onBlur={event => { if (!event.currentTarget.contains(event.relatedTarget)) event.currentTarget.open = false }} onToggle={event => { if (event.currentTarget.open) pause() }} onKeyDown={event => { if (event.key === 'Escape' && menu.current) { menu.current.open = false; menu.current.querySelector('summary')?.focus() } }}>
           <summary aria-label={`Preview report category: ${category.title}`} className={styles.glass}>
             <CategoryIcon id={categoryId} /><span>{category.title}</span><ChevronDown size={13} />
@@ -168,7 +152,7 @@ export function ReportPreview({ active, startAt = 0, playback = 'auto' }: { acti
           </div>
         </details>
         <button ref={close} type="button" aria-label="Close report preview" className={`${styles.glass} ${styles.close}`} onClick={() => { pause(); scroller.current?.closest('[data-preview-device]')?.scrollIntoView({ behavior: reduced ? 'instant' : 'smooth', block: 'center' }) }}><X size={17} /></button>
-        {!reduced && playback !== 'still' ? <button type="button" aria-label={playing ? 'Pause report tour' : 'Play report tour'} onClick={toggleTour} className="absolute bottom-[96px] right-[18px] flex h-9 items-center gap-1.5 rounded-full border border-black/5 bg-white/90 px-3 text-xs text-zinc-600 shadow-sm backdrop-blur-sm active:scale-95">
+        {!reduced ? <button type="button" aria-label={playing ? 'Pause report tour' : 'Play report tour'} onClick={toggleTour} className="absolute bottom-[96px] right-[18px] flex h-9 items-center gap-1.5 rounded-full border border-black/5 bg-white/90 px-3 text-xs text-zinc-600 shadow-sm backdrop-blur-sm active:scale-95">
           {playing ? <Pause size={12} /> : <Play size={12} />}{playing ? 'Pause tour' : 'Play tour'}
         </button> : null}
         {error ? <p role="alert" className="absolute inset-x-6 top-32 text-sm">{error}</p> : null}

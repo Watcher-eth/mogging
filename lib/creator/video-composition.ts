@@ -90,7 +90,7 @@ export type VideoScene = z.infer<typeof videoSceneSchema>
 export function videoImageIds(scenes: VideoScene[]) {
   return new Set(scenes.flatMap(scene => [scene.source.imageId, scene.source.secondaryImageId, ...(scene.study?.references.map(reference => reference.imageId) ?? []), ...(scene.featureStudy?.images ?? [])]).filter((id): id is string => Boolean(id)))
 }
-export type VideoDirection = { overlay?: VideoScene['source']['overlay']; portraitCrop?: VideoScene['portraitCrop']; scoreCallouts?: VideoScene['scoreCallouts']; kind: 'portrait' | 'explainer' | 'report' | 'component'; imageId?: string; categoryId?: string; graphic?: VideoScene['graphic']; photoStudy?: VideoScene['photoStudy']; portraitFX?: VideoScene['portraitFX']; profileStudy?: VideoScene['profileStudy']; editorial?: VideoScene['editorial']; study?: VideoScene['study']; featureStudy?: VideoScene['featureStudy']; portraitProgram?: VideoScene['portraitProgram']; delivery?: VideoScene['delivery']; focus?: string; emphasis?: 'section-lift' | 'section-expand' | 'border-beam' }
+export type VideoDirection = { closingReport?: boolean; overlay?: VideoScene['source']['overlay']; portraitCrop?: VideoScene['portraitCrop']; scoreCallouts?: VideoScene['scoreCallouts']; kind: 'portrait' | 'explainer' | 'report' | 'component'; imageId?: string; categoryId?: string; graphic?: VideoScene['graphic']; photoStudy?: VideoScene['photoStudy']; portraitFX?: VideoScene['portraitFX']; profileStudy?: VideoScene['profileStudy']; editorial?: VideoScene['editorial']; study?: VideoScene['study']; featureStudy?: VideoScene['featureStudy']; portraitProgram?: VideoScene['portraitProgram']; delivery?: VideoScene['delivery']; focus?: string; emphasis?: 'section-lift' | 'section-expand' | 'border-beam' }
 
 export const compositionSchema = z.object({
   version: z.literal(1), title: z.string().min(1).max(160), disclosure: z.string().max(240).optional(), width: z.preprocess(width => width === 1080 ? videoSize.width : width, z.literal(videoSize.width)), height: z.preprocess(height => height === 1920 ? videoSize.height : height, z.literal(videoSize.height)), fps: z.literal(30),
@@ -221,7 +221,7 @@ export function choreographVideoTransitions(composition: VideoComposition): Vide
     const ripple = reportBoundary && scene.source.kind === 'report' && rippleCount < videoMotion.reportWaveLimit && scene.startMs - lastRippleMs >= videoMotion.reportWaveGapMs
     if (ripple) { lastRippleMs = scene.startMs; rippleCount++ }
     const primitive = ripple ? 'liquid-ripple' : reportBoundary ? 'crossfade' : 'cinematic-flow'
-    const durationMs = ripple ? videoMotion.reportWaveMs : reportBoundary ? 180 : videoMotion.portraitEnterMs
+    const durationMs = ripple ? videoMotion.reportWaveMs : reportBoundary ? 180 : composition.recipe === 'measurement-explainer' ? 520 : videoMotion.portraitEnterMs
     return { ...scene, tracks: scene.tracks.map(track => track.target === 'content' && primitiveDefinition(track.primitive).category === 'transition'
       ? { ...track, primitive, durationMs: Math.min(durationMs, scene.durationMs * .25) } : track) }
   }) }
@@ -391,7 +391,10 @@ export function compileAnalysisVideo(plan: AnalysisPostPlan, input: AnalysisPost
       scene.delivery = direction.delivery
       scene.focus = direction.focus ?? 'hero'; scene.framing = report ? 'full' : 'captioned'; scene.layout = 'portrait'
       scene.label = portrait ? scene.study ? `Visual argument · ${scene.study.operation}` : `Photo study · ${scene.source.categoryId}` : report ? `Report · ${direction.emphasis ?? 'overview'}` : `Educational · ${scene.graphic?.layout}`
-      scene.tracks = [createMotionTrack(index ? portrait && scenes[index - 1].source.kind === 'portrait' ? 'cinematic-flow' : portrait ? 'focus-cut' : 'layout-morph' : 'hard-cut', 'content', scene.durationMs), { ...createMotionTrack('caption-swish', 'text', scene.durationMs), durationMs: scene.durationMs }]
+      const previous = scenes[index - 1]
+      const storyCut = recipe === 'hybrid-story' && previous && previous.source.imageId !== scene.source.imageId && !report
+      const transition = !previous ? 'hard-cut' : storyCut ? 'wipe-up' : portrait && previous.source.kind === 'portrait' ? 'cinematic-flow' : portrait ? 'focus-cut' : 'layout-morph'
+      scene.tracks = [createMotionTrack(transition, 'content', scene.durationMs), { ...createMotionTrack('caption-swish', 'text', scene.durationMs), durationMs: scene.durationMs }]
       if (scene.study) scene.tracks[0].durationMs = Math.min(editorialStudyMotion.reframeMs, scene.durationMs * .4)
       if (portrait && !scene.study && !scene.featureStudy) {
         const movement = scene.editorial === 'context' ? 'pull-out' : 'slow-push'
@@ -429,8 +432,14 @@ export function compileAnalysisVideo(plan: AnalysisPostPlan, input: AnalysisPost
     }
     if (scene.source.kind === 'portrait' && !scene.photoStudy && !scene.profileStudy && !scene.featureStudy && !scene.study) {
       if (scene.source.categoryId !== 'overall' && /close.?up|zoom|inspect|detail|eyelids?|nasal bridge|jaw contour/i.test(scene.narration)) scene.editorial = 'detail'
-      if (!scene.tracks.some(track => track.target === 'element' && track.elementId === 'subject')) scene.tracks.push({ ...createMotionTrack(scene.editorial === 'detail' ? 'slow-push' : 'pull-out', 'element', scene.durationMs), elementId: 'subject', durationMs: scene.durationMs, intensity: .85 })
-      else scene.tracks = scene.tracks.map(track => track.target === 'element' && track.elementId === 'subject' ? { ...track, intensity: Math.max(.85, track.intensity) } : track)
+      if (recipe === 'measurement-explainer' && scene.editorial === 'detail' && !scene.portraitCrop && !scene.scoreCallouts?.length) {
+        const feature = decodeVisualBeat(scene.narration).feature
+        const y = feature === 'eyes' || feature === 'brows' ? .35 : feature === 'jaw' || feature === 'lips' ? .66 : .5
+        const movement = feature === 'cheeks' ? (variation % 2 ? 'pan-right' : 'pan-left') : 'slow-push'
+        scene.tracks = scene.tracks.filter(track => track.elementId !== 'subject')
+        scene.tracks.push({ ...createMotionTrack(movement, 'element', scene.durationMs), elementId: 'subject', durationMs: scene.durationMs, intensity: 1.2, anchor: { x: .5, y } })
+      } else if (!scene.tracks.some(track => track.target === 'element' && track.elementId === 'subject')) scene.tracks.push({ ...createMotionTrack(scene.editorial === 'detail' ? 'slow-push' : 'pull-out', 'element', scene.durationMs), elementId: 'subject', durationMs: scene.durationMs, intensity: .85 })
+      else scene.tracks = scene.tracks.map(track => track.target === 'element' && track.elementId === 'subject' ? { ...track, intensity: Math.max(recipe === 'portrait-audit' ? .35 : .7, track.intensity) } : track)
     }
     if (scene.graphic?.items.some(item => item.diagram)) scene.source.secondaryImageId ??= imageIds[0] ?? null
     if (scene.graphic?.layout === 'story' && index && scenes[index - 1].source.kind === 'portrait') scene.tracks = scene.tracks.map(track => track.target === 'content' && primitiveDefinition(track.primitive).category === 'transition' ? createMotionTrack('hard-cut', 'content', scene.durationMs) : track)
@@ -460,15 +469,19 @@ export function compileAnalysisVideo(plan: AnalysisPostPlan, input: AnalysisPost
     const combined=recipe==='feature-study' && seed%3===0
     scene.portraitFX={...scene.portraitFX,instrument:portraitInstrumentSchema.parse({trackers:seed%3===1?'dense':'sparse',links:seed%3!==2,scan:combined,trails:combined})}
   }
-  // Hold a print treatment across a portrait run; alternate paper and colour print, then return to natural colour.
-  let printChapter = -1, printImage: string | null = null
-  for (const scene of scenes) {
-    const eligible = !ownsTreatment(scene, 'portraitFX') && ['portrait-audit', 'measurement-explainer', 'hybrid-story'].includes(recipe) && scene.source.kind === 'portrait' && !scene.portraitFX?.print && !scene.portraitFX?.lighting && !scene.photoStudy && !scene.profileStudy && !scene.featureStudy && !['compare', 'recap', 'light'].includes(scene.study?.operation ?? '')
-    if (!eligible) { printImage = null; continue }
-    if (!scene.source.imageId) continue
-    if (scene.source.imageId !== printImage) { printChapter++; printImage = scene.source.imageId }
-    const print = (['paper','cmyk','paper',undefined] as const)[printChapter%4]
-    if (print) scene.portraitFX = { ...scene.portraitFX, print }
+  // A print is a brief chapter texture. Keep skin, scores, comparisons and relighting in natural color.
+  if (recipe === 'hybrid-story' || recipe === 'measurement-explainer') {
+    const scene = scenes.slice(1, -1).find(scene => {
+      const beat = decodeVisualBeat(scene.narration)
+      return scene.source.kind === 'portrait' && scene.editorial === 'context' &&
+        ['context', 'observe'].includes(beat.intent) && /\b(?:photo|portrait|camera|editorial|image|framing)\b/i.test(scene.narration) &&
+        !scene.scoreCallouts?.length && !scene.portraitCrop && !scene.portraitFX?.print && !scene.portraitFX?.lighting &&
+        !scene.photoStudy && !scene.profileStudy && !scene.featureStudy && !scene.study
+    })
+    if (scene) {
+      const prints = recipe === 'hybrid-story' ? ['paper', 'cmyk', 'vintage'] as const : ['paper', 'graphite', 'editorial-dither'] as const
+      scene.portraitFX = { ...scene.portraitFX, print: prints[variation % prints.length] }
+    }
   }
   for (const [index, scene] of scenes.entries()) {
     const previous = scenes[index - 1]

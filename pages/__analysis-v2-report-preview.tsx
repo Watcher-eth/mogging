@@ -10,9 +10,24 @@ import { V2ReportDetail } from '@/components/analysis/v2/report-detail'
 import { ScanImagePanel } from '@/components/analysis/scan-image-panel'
 import { buildWebRubricGroups } from '@/lib/analysis-v2/web-report'
 import sampleEntries from '@/lib/analysis-v2/sample-entries.json'
-import { designIllustrations, designValues } from '@/lib/analysis-v2/preview-fixtures'
+import { designValues } from '@/lib/analysis-v2/preview-fixtures'
 import type { RubricEstimate } from '@/lib/analysis-v2/evaluator'
 
+// These markers/scores are deliberately illustrative, not calibrated measurements or model grades.
+const illustrations: Record<string, { positions: number[]; grade?: number }> = {
+  'eyes.spacing': { positions: [.46] }, 'eyes.aspect': { positions: [.45, .53] },
+  'eyes.canthal-tilt': { positions: [.57, .61] }, 'eyes.opening': { positions: [.42, .48] },
+  'brows.tilt': { positions: [.61, .64] }, 'brows.eye-distance': { positions: [.44] }, 'brows.length': { positions: [.56] },
+  'nose.width': { positions: [.58] }, 'mouth.width': { positions: [.53] }, 'mouth.lip-ratio': { positions: [.63] }, 'mouth.corner-position': { positions: [.48] },
+  'jaw.width': { positions: [.51] }, 'jaw.height': { positions: [.65] },
+  'cheeks.height': { positions: [.61] }, 'cheeks.width': { positions: [.43] }, 'cheeks.midface': { positions: [.56] },
+  'face.frame': { positions: [.58] }, 'proportions.lower-partition': { positions: [], grade: 8.2 },
+  'symmetry.eyes-height': { positions: [], grade: 8.5 }, 'symmetry.brows-height': { positions: [], grade: 7.3 },
+  'symmetry.mouth-height': { positions: [], grade: 8.1 }, 'symmetry.chin-axis': { positions: [], grade: 8.9 },
+  'skin.texture': { positions: [], grade: 7.5 }, 'skin.tone': { positions: [], grade: 8 },
+  'skin.under-eye-contrast': { positions: [], grade: 6.5 }, 'skin.blemishes': { positions: [], grade: 7.5 },
+}
+const designIllustrations = Object.fromEntries(registry.categories.flatMap(category => category.rubrics.filter(rubric => rubric.visual !== 'Text').map(rubric => [rubric.id, illustrations[rubric.id] ?? (rubric.visual === 'Rail' ? { positions: [], grade: 7.4 } : { positions: [.5] })])))
 const entries = (sampleEntries as RubricEstimate[]).map(entry => entry.id === 'brows.arch' && typeof entry.value === 'string' ? { ...entry, value: null } : entry)
 const descriptions: Record<string, string> = {
   eyes: 'Almond-shaped contours and a visible lid crease define the eye area. The outer corners rise above the inner corners, with similar opening and tilt on both sides.',
@@ -29,7 +44,7 @@ const descriptions: Record<string, string> = {
   ears: 'Ear placement is considered in relation to the brow, nose and facial width. The visible contour describes ear shape and how it sits beside the face.',
 }
 const labels: Record<string, string> = { eyes: 'Eyes', brows: 'Brows', nose: 'Nose', mouth: 'Mouth', jaw: 'Jaw', cheeks: 'Cheeks', face: 'Face shape', proportions: 'Proportions', symmetry: 'Symmetry', skin: 'Skin', hair: 'Hair', ears: 'Ears' }
-const categories: DesktopReportCategory[] = registry.categories.map(category => ({ id: category.id === 'face' ? 'face-shape' : category.id, title: labels[category.id], subtitle: category.title, scoreLabel: category.title, score: 7.4, features: [], explanation: descriptions[category.id], ...(category.id === 'eyes' ? { eyeColor: 'blue' } : category.id === 'hair' ? { hairColor: 'brown', overlayPreset: previewHairOverlay } : category.id === 'ears' ? { overlayPreset: previewEarOverlay } : {}) }))
+const categories: DesktopReportCategory[] = registry.categories.map(category => ({ id: category.id === 'face' ? 'face-shape' : category.id, title: labels[category.id], subtitle: category.title, scoreLabel: category.title, score: 7.4, features: [], explanation: descriptions[category.id], ...(category.id === 'eyes' ? { eyeColor: 'blue' } : category.id === 'hair' ? { hairColor: 'brown', overlayPreset: previewHairOverlay } : category.id === 'ears' ? { overlayPreset: previewEarOverlay } : category.id === 'skin' ? { overlayPreset: null, faceMapPointCount: 60 } : {}) }))
 const overallFeatures = createOverallFeatureGrid(() => 7.4, 7.4)
 categories.push({ id: 'overall', title: 'Overall', subtitle: 'Facial harmony, structure and balance', scoreLabel: 'Mogging Score', score: 7.4, features: overallFeatures, explanation: 'Eye area, jaw and chin, cheekbones, facial thirds, symmetry and skin quality contribute to the complete assessment. PSL is shown separately on its eight-point scale.' })
 const overallGroups: WebRubricGroup[] = [{

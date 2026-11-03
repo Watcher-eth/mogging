@@ -1,11 +1,5 @@
 import { isFaceLandmarksUsable, type FaceLandmarksPayload, type NormalizedPoint } from "./landmarks";
 
-export const SKIN_FACE_MAP_COUNT = 70;
-
-export function isSkinOverlayCategory(category?: string) {
-  return category !== undefined && ["skin", "skin-quality", "skin-age", "biological-age", "sun-damage"].includes(category);
-}
-
 // Decorative samples anchored to the detected outline, not additional measured landmarks.
 export function buildFaceMapPoints(landmarks: FaceLandmarksPayload | null): NormalizedPoint[] {
   if (!isFaceLandmarksUsable(landmarks, 0.2)) return [];

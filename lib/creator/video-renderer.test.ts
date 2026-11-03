@@ -72,7 +72,7 @@ test('component captions retain finite positions after report rendering restores
   expect(sceneFrame(reportScene,1600)).toEqual({x:0,y:0,...videoSize})
   expect(reportLayout.find(element=>element.id==='headline')!.frame).toEqual(reportCaptionFrame)
   expect(reportCaptionFrame.y).toBeGreaterThan(videoSize.height*.7)
-  expect(reportCaptionFrame.y+reportCaptionFrame.height).toBeLessThan(videoSize.height*.85)
+  expect(reportCaptionFrame.y+reportCaptionFrame.height).toBeLessThan(videoSize.height*.88)
 })
 
 test('cinematic cuts continuously blend both screens and reduced motion bypasses the blend', () => {

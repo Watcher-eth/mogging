@@ -1,6 +1,3 @@
-import { LazyMotion, domAnimation } from 'motion/react'
-import * as m from 'motion/react-m'
-import { useHomepageEntrance } from './use-homepage-entrance'
 import { SeoHead } from '@/components/app/seo-head'
 import { appStoreUrl, siteUrl } from '@/lib/seo'
 import { EvaluationPreview, ProtocolPreview, ProgressPreview } from './mobile-preview'
@@ -26,8 +23,7 @@ const averageRating = (reviewCards.reduce((sum, review) => sum + review.rating, 
 
 export default function LegacyHomepage({assignment, preview}: {assignment: LandingAssignment; preview: boolean}) {
   const {sections, trackDestination} = useLandingTracking(assignment, preview)
-  const entrance = useHomepageEntrance()
-  return <LazyMotion features={domAnimation}>
+  return <>
       <SeoHead
         title="Mogging App | Face Analysis & Personalized Routines"
         description="Discover Mogging, the comprehensive face analysis app. Get detailed facial reports, personalized routines, and track your progress. Download Mogging for iPhone."
@@ -42,7 +38,7 @@ export default function LegacyHomepage({assignment, preview}: {assignment: Landi
       />
 
       <main ref={sections} className="min-h-[calc(100vh-5rem)] overflow-hidden bg-white text-black">
-        <section className="public-frame public-gutters flex min-h-[calc(100vh-5rem)] flex-col items-center py-8 sm:py-12">
+        <section className="mx-auto flex min-h-[calc(100vh-5rem)] w-full max-w-7xl min-[1440px]:max-w-[var(--page-max)] flex-col items-center px-5 py-8 sm:px-10 sm:py-12">
           <div
             className="flex w-full flex-col items-center"
           >
@@ -69,21 +65,20 @@ export default function LegacyHomepage({assignment, preview}: {assignment: Landi
           >
             <div className="flex snap-x snap-mandatory gap-5 overflow-x-auto pb-4 sm:gap-6 lg:grid lg:grid-cols-3 lg:overflow-visible">
               {[EvaluationPreview, ProtocolPreview, ProgressPreview].map((Preview, index) => (
-                <m.div {...entrance} key={index} className="w-[74vw] min-w-[260px] max-w-[340px] shrink-0 snap-start sm:w-[280px] lg:w-auto lg:min-w-0 lg:max-w-none"><Preview /></m.div>
+                <div key={index} className="w-[74vw] min-w-[260px] max-w-[340px] shrink-0 snap-start sm:w-[280px] lg:w-auto lg:min-w-0 lg:max-w-none"><Preview /></div>
               ))}
             </div>
 
             <ReviewsSection />
 
-            <m.div {...entrance} data-landing-section="web_checkout" className="mx-auto mt-16 w-full max-w-5xl min-[1440px]:max-w-[var(--page-max)] sm:mt-20"><WebCheckout embedded preview={preview} /></m.div>
+            <div data-landing-section="web_checkout" className="mx-auto mt-16 w-full max-w-5xl min-[1440px]:max-w-[var(--page-max)] sm:mt-20"><WebCheckout embedded preview={preview} /></div>
           </div>
         </section>
       </main>
-  </LazyMotion>
+  </>
 }
 
 function ReviewsSection() {
-  const entrance = useHomepageEntrance()
   const viewportRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
@@ -109,7 +104,7 @@ function ReviewsSection() {
   }
 
   return (
-    <m.section {...entrance} data-landing-section="reviews" aria-labelledby="reviews-title" className="mx-auto mt-16 w-full py-2 text-zinc-950 sm:mt-20">
+    <section data-landing-section="reviews" aria-labelledby="reviews-title" className="mx-auto mt-16 w-full py-2 text-zinc-950 sm:mt-20">
       <div className="mb-7 flex flex-wrap items-center justify-between gap-4 px-1">
         <div>
           <h2 id="reviews-title" className="text-[1.7rem] font-semibold leading-none tracking-[-0.04em] sm:text-[2rem]">Reviews</h2>
@@ -191,7 +186,7 @@ function ReviewsSection() {
           .reviews-group[aria-hidden='true'] { display: none; }
         }
       `}</style>
-    </m.section>
+    </section>
   )
 }
 

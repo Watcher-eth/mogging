@@ -58,20 +58,43 @@ function eyeEdge(face: FaceLandmarksPayload, upper: boolean, offset: number): Pa
 function gonial(face: FaceLandmarksPayload): Path[] {
   return visibleFaceSides(face).flatMap(side=>{const corner=jawCorner(face,side);if(!corner)return [];const {from,vertex,to}=corner;return [...corner.arms,curve(mix(vertex,from,.35),mix(from,to,.25),mix(vertex,to,.35))]})
 }
-export function cheekArches(face:FaceLandmarksPayload,under=false):Path[] {
-  const c=face.contours,keys=under?['leftSubmalar','rightSubmalar'] as const:['leftCheekbone','rightCheekbone'] as const
-  const visible=visibleFaceSides(face)
-  const paths=keys.flatMap((key,index)=>visible.includes(index===0?'left':'right')&&c?.[key]?.length?[c[key]!]:[])
-  if(paths.length)return paths
-  if(under)return []
-  const points=c?.cheekbones??[]
-  return points.length>=14?[points.slice(0,5),points.slice(-7).reverse().slice(0,5)]:[]
+function cheekPath(face: FaceLandmarksPayload, side: 'left' | 'right', under: boolean): Path {
+  const contours = face.contours
+  const split = contours?.[`${side}${under ? 'Submalar' : 'Cheekbone'}`]
+  const legacy = contours?.cheekbones
+  // The legacy mesh stores both cheeks in one chain. Only read the known ends.
+  const path = split?.length ? split : !under && legacy?.length === 54
+    ? side === 'left' ? legacy.slice(0, 5) : legacy.slice(-4).reverse()
+    : []
+  return path.length >= 3 && path.every(p => Number.isFinite(p.x) && Number.isFinite(p.y)) ? path : []
 }
-const underCheekArches=(face:FaceLandmarksPayload)=>cheekArches(face,true)
+
+export function cheekArches(face: FaceLandmarksPayload, under = false): Path[] {
+  return visibleFaceSides(face).map(side => cheekPath(face, side, under)).filter(path => path.length)
+}
+
+export function cheekboneRegions(face: FaceLandmarksPayload) {
+  return visibleFaceSides(face).flatMap(side => {
+    const ridge = cheekPath(face, side, false), lower = cheekPath(face, side, true)
+    if (!ridge.length || !lower.length) return []
+    return [{ id: `${side}-cheek`, points: [...ridge, ...lower.toReversed()] }]
+  })
+}
+
+const underCheekArches = (face: FaceLandmarksPayload) => cheekArches(face, true)
 function cheekFrames(face: FaceLandmarksPayload): Path[] {
-  const f = frame(face)
-  if (!f) return []
-  return cheekArches(face).flatMap(path => [path, ...[path[0],path.at(-1)!].map(point => [f.move(point,0,-.055),f.move(point,0,.055)])])
+  const ratio = face.image.height / face.image.width
+  return cheekArches(face).flatMap(path => {
+    const start = path[0], end = path.at(-1)!
+    const dx = end.x - start.x, dy = (end.y - start.y) * ratio
+    const length = Math.hypot(dx, dy)
+    if (length < .01) return [path]
+    const offset = { x: -dy * .08, y: dx * .08 / ratio }
+    return [path, ...[start, end].map(p => [
+      { x: p.x - offset.x, y: p.y - offset.y },
+      { x: p.x + offset.x, y: p.y + offset.y },
+    ])]
+  })
 }
 function smileLines(face: FaceLandmarksPayload): Path[] {
   const f=frame(face),base=face.contours?.noseBase
@@ -99,6 +122,7 @@ function thirds(face: FaceLandmarksPayload): Path[] {
 }
 export const facialDetailGuides: DetailGuide[] = [
   { id:'detail.jaw-frame',category:'jaw',label:'Jawline frame',detail:'Paired contour frames follow the visible jaw sides toward the detected chin.',match:/jaw(?:line)? fram/i,stroke:'solid',paths:visibleJawSides },
+  { id:'detail.cheek-area',category:'cheeks',label:'Upper cheek area',detail:'Frames the visible cheek surface between the upper and lower mesh tracks.',match:/upper cheek area|cheekbone area/i,stroke:'solid',paths:face=>cheekboneRegions(face).map(({points})=>[...points,points[0]]) },
   { id:'detail.cheek-frame',category:'cheeks',label:'Cheekbone frame',detail:'Detected cheekbone arcs receive short framing caps at their ends.',match:/cheekbone fram/i,stroke:'solid',paths:cheekFrames },
   { id:'detail.under-cheekbones',category:'cheeks',label:'Under cheekbone',detail:'A guide below each detected cheekbone arc frames the under-cheekbone region without estimating tissue depth.',match:/under.?cheekbone|submalar/i,stroke:'dashed',paths:underCheekArches },
   { id:'detail.cheek-levels',category:'cheeks',label:'Cheekbone / lower contour',detail:'Paired upper and lower guides distinguish the cheekbone arc from the region below it.',match:/cheek.*(?:upper and lower|levels)/i,stroke:'dotted',paths:face=>[...cheekArches(face),...underCheekArches(face)] },

@@ -1,5 +1,5 @@
 import Link from 'next/link'
-import { SkeletonImage } from '@/components/ui/skeleton-image'
+import Image from 'next/image'
 import { useId, useRef, useState } from 'react'
 import { useInView, useReducedMotion } from 'motion/react'
 import NumberFlow, { type Format } from '@number-flow/react'
@@ -65,7 +65,7 @@ function BonusEarned({ cents, active }: { cents: number; active: boolean }) {
 function ProfileAvatar({ account }: { account: CreatorSocialAccount }) {
   const [failed, setFailed] = useState(false)
   const label = creatorAccountLabel(account)
-  return <span className={styles.avatar} role="img" aria-label={label} title={label}><span aria-hidden="true">{(account.displayName || account.handle || 'M').replace('@', '').slice(0, 2).toUpperCase()}</span>{account.avatarUrl && !failed ? <SkeletonImage src={account.avatarUrl} alt="" sizes="120px" unoptimized onError={() => setFailed(true)} /> : null}</span>
+  return <span className={styles.avatar} role="img" aria-label={label} title={label}><span aria-hidden="true">{(account.displayName || account.handle || 'M').replace('@', '').slice(0, 2).toUpperCase()}</span>{account.avatarUrl && !failed ? <Image src={account.avatarUrl} alt="" width={80} height={80} unoptimized onError={() => setFailed(true)} /> : null}</span>
 }
 
 function ViewsGraphic({ posts }: { posts: CreatorSubmission[] }) {

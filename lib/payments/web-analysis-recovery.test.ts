@@ -17,13 +17,7 @@ function route(file: string, overrides: Record<string, unknown> = {}) {
     getEntitlementSummary: async () => ({ evaluationCredits: 0 }),
     confirmCheckoutForAccount: async () => ({ mobileInstallId: 'fixture-install', source: 'web_analysis' }),
     createPaymentHandoff: async () => ({ token: 'mobile-token' }),
-    getProductConfig: (id: string) => ({ mode: id.startsWith('mobile_subscription_') ? 'subscription' : 'payment', unitAmount: 499 }),
-    validateCheckoutProduct: async () => ({ unit_amount: 499, currency: 'usd' }),
-    readLandingCookie: () => null, serializeLandingAssignment: () => '',
-    paymentProductSchemaValues: ['evaluation','evaluation_pack_3','mobile_subscription_weekly','mobile_subscription_monthly','mobile_subscription_yearly'],
-    locales: ['en','de','es','fr','zh'], generatePaymentActivationCode: () => 'fixture-code',
-    getStoredMobileCreatorAttribution: async () => null, getCreatorStripeCustomer: async () => 'cus_fixture',
-    db: { transaction: async (fn: any) => fn({ execute: async () => {} }) }, sql: () => '', getCheckoutLineItem: () => ({}),
+    getProductConfig: () => ({ mode: 'payment' }), getCheckoutLineItem: () => ({}),
     resolveCreatorAttribution: async () => null, getAccountCreatorAttribution: async () => null, stripeAttributionMetadata: () => ({}),
     parseLandingAssignment: () => null, landingProperties: () => ({}), LANDING_COOKIE: 'landing',
     recordCreatorCheckout: async () => {}, recordServerEvent: async () => {},
@@ -105,45 +99,4 @@ test('real confirmation checks Stripe ownership/payment and never grants a paid 
   expect(await scope.confirm('cs_live_fixture', 'buyer')).toEqual({ userId: 'buyer', creditBalance: 1 })
   await scope.confirm('cs_live_fixture', 'buyer')
   expect(grants).toBe(1)
-})
-
-
-test('the report quote must still match at checkout; stale prices do not create a session', async () => {
-  const f = route('checkout')
-  expect((await f.run({ imageCount: 1, mobileInstallId: 'fixture-install', unitAmount: 999, currency: 'usd' } as any)).status).toBe(409)
-  expect(f.calls).toHaveLength(0)
-  await f.run({ imageCount: 1, mobileInstallId: 'fixture-install', unitAmount: 499, currency: 'usd' } as any)
-  expect(f.calls[0].currency).toBe('usd')
-  expect(f.calls[0].adaptive_pricing.enabled).toBe(false)
-})
-
-test('Pro checkout resumes a saved web analysis while homepage subscriptions retain mobile handoff', async () => {
-  const body = { product: 'mobile_subscription_monthly', mobileInstallId: 'fixture-install', source: 'web_analysis', unitAmount: 499, currency: 'usd' }
-  const web = route('web-checkout', { priceAmounts: () => ({ usd: 499 }) })
-  expect((await web.run({ ...body, returnTo: 'analysis' } as any)).status).toBe(200)
-  expect(web.calls[0].mode).toBe('subscription')
-  expect(web.calls[0].success_url).toBe('https://www.mogging.com/analysis?checkout=success&session_id={CHECKOUT_SESSION_ID}')
-  expect(web.calls[0].cancel_url).toBe('https://www.mogging.com/analysis?checkout=cancelled')
-  expect(web.calls[0].subscription_data.metadata.accountId).toBe('buyer')
-  const mobile = route('web-checkout', { priceAmounts: () => ({ usd: 499 }) })
-  await mobile.run(body as any)
-  expect(mobile.calls[0].success_url).toBe('https://www.mogging.com/app/handoff?session_id={CHECKOUT_SESSION_ID}')
-})
-
-
-test('report quote endpoint returns the configured provider price and rejects other products', async () => {
-  const scope: any = { z, ApiError,
-    getProductConfig: () => ({unitAmount: 999}),
-    validateCheckoutProduct: async () => ({currency: 'eur', unit_amount: 599}),
-    methodNotAllowed: () => ({status: 405}),
-    json: (_res: unknown, status: number, data: unknown) => ({status, data}),
-    handleApiError: (error: any) => ({status: error.status || 400}),
-  }
-  const source = readFileSync(new URL('../../pages/api/payments/report-price.ts', import.meta.url),'utf8').replace(/^import .*\n/gm,'').replace('export default async function handler','async function handler')
-  compile(source+'\nglobalThis.handler=handler',scope)
-  const run = (product: string) => scope.handler({method:'GET',query:{product}},{setHeader() {}})
-  expect(await run('evaluation')).toEqual({status:200,data:{product:'evaluation',currency:'eur',amount:599}})
-  expect((await run('mobile_lifetime')).status).toBe(400)
-  scope.validateCheckoutProduct = async () => ({currency:'usd',unit_amount:null})
-  expect((await run('evaluation')).status).toBe(503)
 })

@@ -1,5 +1,4 @@
 import Head from 'next/head'
-import { SkeletonImage } from '@/components/ui/skeleton-image'
 import Image from 'next/image'
 import Link from 'next/link'
 import { useRouter } from 'next/router'
@@ -117,10 +116,11 @@ export function CourseImage({
   sizes?: string
 }) {
   return (
-    <SkeletonImage
+    <Image
       src={course.image}
       unoptimized={course.image.startsWith("https:")}
       alt=""
+      fill
       sizes={sizes}
       priority={priority}
       className={`c-course-image image-${course.id}`}
@@ -210,7 +210,6 @@ export function CourseTile({
     <Link
       className={`c-tile ${index !== undefined ? 'c-tile-ranked' : ''}`}
       href={learning ? `/courses/learn/${course.id}` : courseHref(course)}
-      prefetch={false}
     >
       <div className="c-tile-visual">
         <CourseImage course={course} />

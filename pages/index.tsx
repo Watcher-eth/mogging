@@ -1,4 +1,3 @@
-import { useHomepageEntrance } from '@/components/landing/use-homepage-entrance'
 import { Accordion, AccordionItem, AccordionTrigger, AccordionContent, AccordionChevron } from '@/components/ui/accordion'
 import { useTranslation } from 'react-i18next';
 import { useRouter } from 'next/router';
@@ -14,7 +13,7 @@ import {
   ProtocolPreview,
   ProgressPreview,
 } from "@/components/landing/mobile-preview";
-import { LazyMotion, domAnimation } from "motion/react";
+import { LazyMotion, domAnimation, useReducedMotion } from "motion/react";
 import * as m from "motion/react-m";
 import { WebCheckout } from "@/components/landing/web-checkout";
 import { AnalysisStory } from "@/components/landing/analysis-story";
@@ -49,7 +48,8 @@ export default function HomePage(props: Props) {
 function NewHomepage({ assignment, preview }: Props) {
   const { locale } = useRouter();
   const { t } = useTranslation();
-  const entrance = useHomepageEntrance();
+  const reduced = useReducedMotion();
+  const entrance = { initial: { opacity: reduced ? 1 : 0, y: reduced ? 0 : 24 }, whileInView: { opacity: 1, y: 0 }, viewport: { once: true, amount: .12 }, transition: { duration: reduced ? 0 : .4, ease: [.16, 1, .3, 1] as [number, number, number, number] } };
   const { sections, trackDestination } = useLandingTracking(assignment, preview);
 
   function downloadButton(placement: string, compact = false) {
@@ -197,8 +197,7 @@ function NewHomepage({ assignment, preview }: Props) {
           </m.section>
           <m.section {...entrance} data-landing-section="web_analysis" aria-labelledby="web-title" className="border-y border-zinc-100 bg-[#f7f7f8] py-14 sm:py-20">
             <div className="mx-auto max-w-[var(--page-max)] px-6 sm:px-10">
-              <WebCheckout embedded showReport preview={preview} intro={
-              <div className="flex flex-col justify-between gap-6 lg:flex-row lg:items-end">
+              <div className="mb-10 flex flex-col justify-between gap-6 lg:flex-row lg:items-end">
                 <div className="max-w-xl">
                   <p className="text-xs font-semibold uppercase tracking-[.16em] text-zinc-500">
               {t("landing.webEyebrow")}
@@ -212,7 +211,7 @@ function NewHomepage({ assignment, preview }: Props) {
                 </div>
                 <Link href="/analysis" prefetch={false} onClick={() => trackDestination("web_analysis", "web_section")} className="inline-flex items-center gap-2 text-sm font-medium text-zinc-500 hover:text-black">{t("landing.withoutApp")} <ArrowRight className="size-4" /></Link>
               </div>
-              } />
+              <WebCheckout embedded preview={preview} />
             </div>
           </m.section>
 
@@ -238,9 +237,9 @@ function NewHomepage({ assignment, preview }: Props) {
 
 function LandingFaq() {
   const { t } = useTranslation();
-  const entrance = useHomepageEntrance();
+  const reduced = useReducedMotion();
   return (
-          <m.section {...entrance}
+          <m.section initial={{ opacity: reduced ? 1 : 0, y: reduced ? 0 : 20 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true, amount: .2 }} transition={{ duration: reduced ? 0 : .4, ease: [.16, 1, .3, 1] }}
             data-landing-section="faq"
             aria-labelledby="faq-title"
             className="mx-auto max-w-[var(--page-max)] border-t border-zinc-100 px-6 py-14 sm:px-10"

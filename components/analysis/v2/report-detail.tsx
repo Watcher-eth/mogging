@@ -5,7 +5,7 @@ import { AnimatedGroup } from '@/components/core/animated-group'
 import { motion, useReducedMotion } from 'motion/react'
 import styles from './rubrics.module.css'
 
-export function V2ReportDetail({ category, groups, embedded = false }: { category: DesktopReportCategory; groups: WebRubricGroup[]; embedded?: boolean }) {
+export function V2ReportDetail({ category, groups }: { category: DesktopReportCategory; groups: WebRubricGroup[] }) {
   const reduced = useReducedMotion()
   const summary = category.id === 'overall'
   const rubrics = layoutWebRubrics(groups.flatMap(group => group.rubrics), summary ? 'summary' : 'detail')
@@ -15,7 +15,7 @@ export function V2ReportDetail({ category, groups, embedded = false }: { categor
     {category.id === 'eyes' && category.eyeColor ? <div className="mt-3"><ReportColorPalette color={category.eyeColor} ribbon /></div> : null}
     {category.id === 'hair' && category.hairColor ? <div className="mt-3"><ReportColorPalette color={category.hairColor} kind="hair" ribbon /></div> : null}
     </AnimatedGroup>
-    <motion.div layout="position" className={`${styles.grid} mt-3`} data-embedded={embedded || undefined}>{(embedded ? rubrics.slice(0, 6) : rubrics).map(({ rubric, full }, index) => {
+    <motion.div layout="position" className={`${styles.grid} mt-3`}>{rubrics.map(({ rubric, full }, index) => {
       const score = rubric.scale === 'quality' && /^\d.*\/\s*\d/.test(rubric.value)
       const hasVisual = rubric.visual !== 'Text' && (rubric.visual === 'Rail' ? rubric.grade !== null : rubric.positions.length > 0)
       return <motion.div key={rubric.id} data-rubric={rubric.id} layout="position" initial={reduced ? false : { opacity: 0, y: 12 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true, amount: .12 }}

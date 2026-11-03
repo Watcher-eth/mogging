@@ -23,12 +23,12 @@
 .styleOption:hover:not(:disabled) { opacity: .65; }
 .styleIcon { flex-shrink: 0; color: #737373; }
 .person:focus-visible,.styleOption:focus-visible { outline: 2px solid #008dc9; outline-offset: 5px; border-radius: 8px; }
-.player { --phone-ratio: 9 / 19.5; --feed-nav-height: 10%; --preview-width: clamp(240px,calc((100dvh - 220px)*var(--phone-ratio)),390px); display: grid; justify-items: center; gap: 8px; width: 100%; }
+.player { --phone-ratio: 9 / 19.5; --feed-nav-height: calc(100% - 100cqw * 16 / 9); --preview-width: clamp(240px,calc((100dvh - 220px)*var(--phone-ratio)),390px); display: grid; justify-items: center; gap: 8px; width: 100%; }
 .composerFrame { position: relative; width: min(100%,var(--preview-width)); aspect-ratio: var(--phone-ratio); overflow: hidden; border: 0; box-shadow: 0 0 0 1px #161823; border-radius: 20px; background: white; container-type: inline-size; }
-.previewContent { position: absolute; inset: 0 0 var(--feed-nav-height); }
+.previewContent { position: absolute; inset: 0 0 auto; aspect-ratio: 9 / 16; }
 .videoSurface { position: relative; width: 100%; height: 100%; overflow: hidden; background: white; }
-.videoCanvas { display: block; width: 100%; height: 100%; object-fit: cover; object-position: center; }
-.waveCanvas { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; object-position: center; pointer-events: none; }
+.videoCanvas { display: block; width: 100%; height: 100%; object-fit: contain; object-position: center; }
+.waveCanvas { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: contain; object-position: center; pointer-events: none; }
 .empty { position: absolute; inset: 0; display: grid; place-items: center; color: #a1a1aa; font-size: 12px; text-align: center; padding: 24px; }
 .feedChrome { position: absolute; inset: 0; pointer-events: none; color: #161823; font-size: 3.8cqw; text-shadow: none; }
 .feedChrome::before { content: ''; position: absolute; inset: 65% 0 var(--feed-nav-height); background: linear-gradient(transparent,#fff); }
@@ -41,13 +41,13 @@
 .feedHeader strong { position: relative; font-weight: 650; }
 .feedHeader strong::after { content: ''; position: absolute; bottom: -5px; width: 22px; height: 2px; border-radius: 2px; left: 50%; transform: translateX(-50%); background: currentColor; }
 .feedHeader > svg { width: 5cqw; height: 5cqw; margin-left: auto; }
-.feedActions { position: absolute; bottom: 18%; right: 4%; display: grid; justify-items: center; gap: 5cqw; }
+.feedActions { position: absolute; bottom: calc(var(--feed-nav-height) + 8%); right: 4%; display: grid; justify-items: center; gap: 5cqw; }
 .feedActions > svg { width: 8cqw; height: 8cqw; stroke-width: 1.5; }
 .feedAvatar { position: relative; display: grid; place-items: center; width: 11cqw; height: 11cqw; border: 1px solid white; border-radius: 50%; background: #7e858d; color: white; text-shadow: none; font-weight: 600; }
 .feedAvatar svg { position: absolute; bottom: -2cqw; left: 3cqw; width: 5cqw; height: 5cqw; padding: 1px; border-radius: 50%; background: #fe2c55; }
 .feedRecord { display: grid; place-items: center; width: 10cqw; height: 10cqw; border: 3px solid #252525; border-radius: 50%; background: #575759; color: white; }
 .feedRecord svg { width: 4cqw; height: 4cqw; }
-.feedDescription { position: absolute; bottom: 11%; left: 4.5%; right: 20%; line-height: 1.4; }
+.feedDescription { position: absolute; bottom: calc(var(--feed-nav-height) + 1%); left: 4.5%; right: 20%; line-height: 1.4; }
 .feedDescription strong { font-size: 4cqw; font-weight: 650; }
 .feedDescription p { display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; overflow: hidden; margin: 4px 0; font-size: 3.5cqw; }
 .feedDescription > span { display: flex; align-items: center; gap: 4px; white-space: nowrap; font-size: 3.2cqw; }

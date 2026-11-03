@@ -7,7 +7,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   try {
     if (req.method !== 'GET') return methodNotAllowed(res, ['GET'])
     await requireCreatorAdmin(req, res)
-    return json(res, 200, await getCreatorAdminDashboard({ includeCoverage: req.query.coverage !== '0' }))
+    return json(res, 200, await getCreatorAdminDashboard())
   } catch (error) {
     return handleApiError(error, res)
   }

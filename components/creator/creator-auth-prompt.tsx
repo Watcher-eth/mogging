@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { ArrowRight } from 'lucide-react'
-import { LoginDialog } from '@/components/app/login-dialog'
+import { LoginDialog } from '@/components/app/app-shell'
 import { Button } from '@/components/ui/button'
 import { CreatorAuthSurface } from './creator-auth-surface'
 

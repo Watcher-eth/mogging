@@ -2,7 +2,7 @@ import { refinePhotographedContours } from './refineFaceContours'
 import type { LandmarkInput } from '@/lib/analysis-v2/measurements'
 import type { FaceLandmarksPayload, NormalizedPoint } from '@/lib/analysis/landmarks'
 
-export const faceContourRevision = 'mediapipe-contours-20261031-v5'
+export const faceContourRevision = 'mediapipe-contours-20261102-v6'
 export const hasCurrentFaceContours = (face?: FaceLandmarksPayload|null) => face?.source==='mediapipe-face-landmarker' && face.detectorRevision===faceContourRevision
 
 const wasmBaseUrl = 'https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.35/wasm'

@@ -1,8 +1,8 @@
+import { CreatorFixedRateNotice } from './creator-fixed-rate-notice'
 import { getSubmissionPayoutEstimate, type AdminPayoutSelection } from '@/lib/admin/submission-payout'
 import { SubmissionHistory } from './submission-history'
 import { submissionBonusPayments, reviewAudienceBonuses } from '@/lib/creator/bonus-payments'
 import { CreatorExclusivityReview } from './creator-exclusivity-review'
-import { SocialAccountsPanel } from './social-accounts-panel'
 import { hasLaunchCampaignBonuses, launchCampaign } from '@/lib/creator/campaign-launch'
 import dynamic from 'next/dynamic'
 import { canReceiveCreatorPayout, creatorBundlePlan, creatorUnpaidCents, remainingCreatorPaymentCents } from '@/lib/creator/money'
@@ -13,13 +13,12 @@ import * as Tabs from '@radix-ui/react-tabs'
 import { SubmissionConversation } from '@/components/creator/submission-conversation'
 import { CreatorSprintsPanel } from '@/components/admin/creator-sprints-panel'
 import { sprintReviewItems } from '@/lib/creator/sprints'
-import { SkeletonAvatar } from '@/components/ui/skeleton-avatar'
+import * as Avatar from '@radix-ui/react-avatar'
 import { creatorAccountLabel } from '@/components/creator/types'
 import Image from 'next/image'
-import { SkeletonImage } from '@/components/ui/skeleton-image'
 import Link from 'next/link'
 import { useRouter } from 'next/router'
-import { CreatorHeader } from '@/components/creator/creator-header'
+import { CreatorHeader } from '@/components/creator/creator-shell'
 import { adminPage } from '@/lib/admin/navigation'
 import { useMemo, useRef, useState } from 'react'
 import {
@@ -74,14 +73,11 @@ type Tab = 'settings' | 'overview' | 'metrics' | 'performance' | 'attribution' |
 
 export default function CreatorAdminPage() {
   const { data: access, error: accessError, isLoading: accessLoading, mutate: mutateAccess } = useSWR<{ unlocked: boolean; email: string }>('/api/admin/creator/session', apiGet)
+  const { data, error, isLoading, mutate } = useSWR<AdminDashboard>(access?.unlocked ? '/api/admin/creator' : null, apiGet, { refreshInterval: 30_000 })
+  const dashboard = data ? normalizeAdminDashboard(data) : null
   const router = useRouter()
   const page = adminPage(router.pathname)
   const tab = (page?.section || 'overview') as Tab
-  const usesDashboard = tab !== 'invites' && tab !== 'cta-library'
-  const needsCoverage = tab === 'settings' || tab === 'attribution'
-  const dashboardUrl = needsCoverage ? '/api/admin/creator' : '/api/admin/creator?coverage=0'
-  const { data, error, isLoading, mutate } = useSWR<AdminDashboard>(access?.unlocked && usesDashboard ? dashboardUrl : null, apiGet, { refreshInterval: 30_000 })
-  const dashboard = useMemo(() => data ? normalizeAdminDashboard(data) : null, [data])
   const [selected, setSelected] = useState<ReviewTarget | null>(null)
   const reviewTarget = selected?.resource === 'submission'
     ? { resource: 'submission' as const, item: dashboard?.submissions.find(item => item.id === selected.item.id) || selected.item }
@@ -97,7 +93,7 @@ export default function CreatorAdminPage() {
     <div className="w-full">
       <CreatorHeader eyebrow="Creator program" title={page?.title || 'Review queue'} description={page?.description || 'The next approvals that need your attention.'} />
 
-      {tab === 'invites' ? <CreatorInvitesPanel /> : tab === 'cta-library' ? <CtaLibraryAdminPanel /> : error ? <p role="alert" className="admin-notice">Could not load the workspace. <button className="underline" onClick={() => void mutate()}>Try again</button></p> : isLoading || !dashboard ? <CenteredLoader /> : <DashboardView tab={tab} data={dashboard} onSelect={setSelected} onRefresh={async () => { await mutate() }} />}
+      {error ? <p role="alert" className="admin-notice">Could not load the workspace. <button className="underline" onClick={() => void mutate()}>Try again</button></p> : isLoading || !dashboard ? <CenteredLoader /> : <DashboardView tab={tab} data={dashboard} onSelect={setSelected} onRefresh={async () => { await mutate() }} />}
       {selected ? <ReviewDialog key={`${selected.resource}-${selected.item.id}`} target={reviewTarget!} creator={selected.resource !== 'creator' ? dashboard?.creators.find(creator => creator.id === selected.item.creatorProfileId) : undefined} payments={dashboard?.payments || []} metrics={dashboard?.attributionMetrics || []} open onOpenChange={(open) => { if (!open) setSelected(null) }} onRefresh={async () => { await mutate() }} onSaved={async () => { await mutate(); setSelected(null) }} /> : null}
     </div>
   )
@@ -105,10 +101,12 @@ export default function CreatorAdminPage() {
 
 function DashboardView({ tab, data, onSelect, onRefresh }: { tab: Tab; data: AdminDashboard; onSelect: (target: ReviewTarget) => void; onRefresh: () => Promise<void> }) {
   if (tab === 'sprints') return <CreatorSprintsPanel submissions={data.submissions} payments={data.payments} onSelectSubmission={(item) => onSelect({ resource: 'submission', item })} />
+  if (tab === 'invites') return <CreatorInvitesPanel />
   if (tab === 'settings') return <CreatorProgramSettings data={data} onRefresh={onRefresh} />
   if (tab === 'attribution') return <CreatorAttributionDashboard data={data} onSelectCreator={(item) => onSelect({ resource: 'creator', item })} onSelectAccount={(item) => onSelect({ resource: 'account', item })} />
   if (tab === 'submissions') return <ResourceSection title="Video submissions"><SubmissionList items={data.submissions} payments={data.payments} onSelect={onSelect} /></ResourceSection>
-  if (tab === 'accounts') return <ResourceSection title="Social accounts"><SocialAccountsPanel data={data} onReviewAccount={item => onSelect({ resource: 'account', item })} onSelectSubmission={item => onSelect({ resource: 'submission', item })} /></ResourceSection>
+  if (tab === 'cta-library') return <CtaLibraryAdminPanel />
+  if (tab === 'accounts') return <ResourceSection title="Social accounts"><AccountList items={data.accounts} onSelect={onSelect} /></ResourceSection>
   if (tab === 'payments') return <ResourceSection title="Creator payments"><PaymentsPanel data={data} onSelect={onSelect} onRefresh={onRefresh} /></ResourceSection>
   if (tab === 'creators') return <ResourceSection title="Creators"><div className="mb-5"><CreatorRegistrationMetrics creators={data.creators} accounts={data.accounts} /></div><CreatorList items={data.creators} accounts={data.accounts} onSelect={onSelect} /></ResourceSection>
   return <Overview data={data} onSelect={onSelect} onRefresh={onRefresh} />
@@ -137,7 +135,7 @@ function CtaReviewCard({ item, onSaved }: { item: CreatorCtaLibraryItem; onSaved
       setSaving(null)
     }
   }
-  return <article className="overflow-hidden rounded-2xl border border-zinc-200 bg-white shadow-[0_8px_30px_rgba(15,23,42,0.035)]"><div className="relative aspect-video bg-zinc-950">{video ? <video className="size-full object-contain" src={item.assetUrl} controls preload="metadata" /> : <SkeletonImage src={item.assetUrl} alt={item.title} sizes="(min-width: 1024px) 50vw, 100vw" className="object-contain" unoptimized />}</div><div className="p-5"><div className="flex items-start justify-between gap-3"><div className="min-w-0"><h3 className="truncate text-base font-semibold">{item.title}</h3><p className="mt-1 text-xs text-zinc-500">{item.creatorName} · {video ? 'Video (MP4)' : 'Screenshot (PNG)'} · {formatDate(String(item.createdAt))}</p></div><StatusPill status={item.status} /></div><div className="mt-4 grid grid-cols-2 gap-2 rounded-xl bg-zinc-50 p-3 text-xs"><span><span className="block text-zinc-400">Template</span><span className="mt-1 block font-medium">{item.templateId}</span></span><span><span className="block text-zinc-400">Canvas</span><span className="mt-1 block font-medium">{item.formatId}</span></span></div><label className="mt-4 grid gap-2 text-xs font-medium">Review note<textarea className="min-h-20 resize-y rounded-xl border border-zinc-200 p-3 text-sm outline-none focus:border-zinc-400 focus:ring-4 focus:ring-zinc-100" value={reviewNote} maxLength={1000} placeholder="Optional feedback visible to the creator" onChange={(event) => setReviewNote(event.target.value)} /></label><div className="mt-4 grid grid-cols-2 gap-2"><Button variant="outline" className="rounded-xl" disabled={saving !== null} onClick={() => void review('rejected')}>{saving === 'rejected' ? <Loader2 className="animate-spin" /> : <XCircle />}Reject</Button><Button className="rounded-xl" disabled={saving !== null} onClick={() => void review('approved')}>{saving === 'approved' ? <Loader2 className="animate-spin" /> : <CheckCircle2 />}Approve</Button></div></div></article>
+  return <article className="overflow-hidden rounded-2xl border border-zinc-200 bg-white shadow-[0_8px_30px_rgba(15,23,42,0.035)]"><div className="aspect-video bg-zinc-950">{video ? <video className="size-full object-contain" src={item.assetUrl} controls preload="metadata" /> : <div role="img" aria-label={item.title} className="size-full bg-contain bg-center bg-no-repeat" style={{ backgroundImage: `url(${JSON.stringify(item.assetUrl)})` }} />}</div><div className="p-5"><div className="flex items-start justify-between gap-3"><div className="min-w-0"><h3 className="truncate text-base font-semibold">{item.title}</h3><p className="mt-1 text-xs text-zinc-500">{item.creatorName} · {video ? 'Video (MP4)' : 'Screenshot (PNG)'} · {formatDate(String(item.createdAt))}</p></div><StatusPill status={item.status} /></div><div className="mt-4 grid grid-cols-2 gap-2 rounded-xl bg-zinc-50 p-3 text-xs"><span><span className="block text-zinc-400">Template</span><span className="mt-1 block font-medium">{item.templateId}</span></span><span><span className="block text-zinc-400">Canvas</span><span className="mt-1 block font-medium">{item.formatId}</span></span></div><label className="mt-4 grid gap-2 text-xs font-medium">Review note<textarea className="min-h-20 resize-y rounded-xl border border-zinc-200 p-3 text-sm outline-none focus:border-zinc-400 focus:ring-4 focus:ring-zinc-100" value={reviewNote} maxLength={1000} placeholder="Optional feedback visible to the creator" onChange={(event) => setReviewNote(event.target.value)} /></label><div className="mt-4 grid grid-cols-2 gap-2"><Button variant="outline" className="rounded-xl" disabled={saving !== null} onClick={() => void review('rejected')}>{saving === 'rejected' ? <Loader2 className="animate-spin" /> : <XCircle />}Reject</Button><Button className="rounded-xl" disabled={saving !== null} onClick={() => void review('approved')}>{saving === 'approved' ? <Loader2 className="animate-spin" /> : <CheckCircle2 />}Approve</Button></div></div></article>
 }
 
 function Overview({ data, onSelect, onRefresh }: { data: AdminDashboard; onSelect: (target: ReviewTarget) => void; onRefresh: () => Promise<void> }) {
@@ -191,19 +189,42 @@ function SubmissionList({ items, payments, onSelect }: { items: AdminSubmission[
   const paymentIds = new Set(payments.map((payment) => payment.submissionId))
   if (!items.length) return <EmptyState title="No video submissions" description="Creator uploads will appear here." />
   return <div className="admin-list">{items.map((item) => <ResourceRow key={item.id} leading={
-    <SkeletonAvatar src={item.creatorAvatarUrl} alt={`${item.creatorName} profile photo`} size={44} className="size-11 rounded-full bg-zinc-100" fallback={<span className="grid size-full place-items-center text-zinc-500"><Camera className="size-5" /></span>} />
+    <Avatar.Root className="grid size-11 shrink-0 overflow-hidden rounded-full bg-zinc-100">
+      <Avatar.Image src={item.creatorAvatarUrl || undefined} alt={`${item.creatorName} profile photo`} className="size-full object-cover" />
+      <Avatar.Fallback className="grid size-full place-items-center text-zinc-500"><Camera className="size-5" /></Avatar.Fallback>
+    </Avatar.Root>
   } title={item.creatorName} subtitle={`${item.title} · ${formatDate(item.createdAt)}`} status={item.status} unreadMessages={item.unreadMessages} meta={[
     item.reviewRequestedAt ? 'Rereview requested' : paymentIds.has(item.id) ? 'Payment created' : '',
     item.audienceCheck?.status === 'needs_review' && !item.audienceCheck.review ? 'Audience needs manual review' : item.audienceCheck?.status === 'verified' ? 'Audience checked' : '',
   ].filter(Boolean).join(' · ')} onClick={() => onSelect({ resource: 'submission', item })} />)}</div>
 }
 
+function AccountList({ items, onSelect }: { items: AdminAccount[]; onSelect: (target: ReviewTarget) => void }) {
+  if (!items.length) return <EmptyState title="No connected accounts" description="Accounts appear here when creators connect their TikTok or Instagram handle." />
+  return <div className="admin-list">{items.map((item) => <AccountRow key={item.id} item={item} onClick={() => onSelect({ resource: 'account', item })} />)}</div>
+}
+
 function AccountAvatar({ account }: { account: AdminAccount }) {
-  return <SkeletonAvatar src={account.avatarUrl} alt={`${creatorAccountLabel(account)} profile photo`} size={44} className="size-11 rounded-full bg-zinc-100" fallback={<span className="grid size-full place-items-center text-sm font-semibold text-zinc-500">{creatorAccountLabel(account).replace(/^@/, '').charAt(0).toUpperCase()}</span>} />
+  return <Avatar.Root className="grid size-11 shrink-0 overflow-hidden rounded-full bg-zinc-100">
+    <Avatar.Image src={account.avatarUrl || undefined} alt={`${creatorAccountLabel(account)} profile photo`} className="size-full object-cover" />
+    <Avatar.Fallback className="grid size-full place-items-center text-sm font-semibold text-zinc-500">{creatorAccountLabel(account).replace(/^@/, '').charAt(0).toUpperCase()}</Avatar.Fallback>
+  </Avatar.Root>
 }
 
 function accountProfileUrl(account: AdminAccount) {
   return account.profileUrl || (account.handle ? `https://www.${account.platform}.com/${account.platform === 'tiktok' ? '@' : ''}${account.handle}` : null)
+}
+
+function AccountRow({ item, onClick }: { item: AdminAccount; onClick: () => void }) {
+  const profileUrl = accountProfileUrl(item)
+  return <article className="admin-resource-row min-w-0">
+    <button onClick={onClick} className="flex w-full min-w-0 items-center gap-3 text-left">
+      <AccountAvatar account={item} />
+      <span className="min-w-0 flex-1"><span className="block truncate text-sm font-semibold">{creatorAccountLabel(item)}</span><span className="mt-1 block truncate text-xs text-zinc-500">{item.creatorName} · {capitalize(item.platform)} · {formatDate(item.createdAt)}</span></span>
+      <StatusPill status="connected" /><ArrowUpRight className="size-4 shrink-0 text-zinc-400" />
+    </button>
+    {profileUrl ? <a href={profileUrl} target="_blank" rel="noopener noreferrer" className="mt-3 inline-flex min-h-11 max-w-full items-center gap-2 text-sm font-medium text-blue-600 underline underline-offset-4"><span className="[overflow-wrap:anywhere]">{profileUrl}</span><ArrowUpRight className="size-4 shrink-0" /></a> : <p className="mt-3 text-sm text-amber-700">Profile URL unavailable. Request the account’s username before review.</p>}
+  </article>
 }
 
 function PaymentsPanel({ data, onSelect, onRefresh }: { data: AdminDashboard; onSelect: (target: ReviewTarget) => void; onRefresh: () => Promise<void> }) {
@@ -508,6 +529,7 @@ export function ReviewDialog({ target, creator, payments, metrics, open, onOpenC
             {campaignName ? <div className="mt-3 rounded-xl border border-sky-100 bg-sky-50 px-3.5 py-2.5"><p className="text-[10px] font-semibold uppercase tracking-wider text-sky-700">Campaign</p><p className="mt-0.5 text-sm font-semibold text-sky-950">{campaignName}</p></div> : null}
             <DialogDescription className="[overflow-wrap:anywhere]">{reviewSubtitle(target)}</DialogDescription>
           </DialogHeader>
+          {target.resource === 'submission' || target.resource === 'creator' ? <CreatorFixedRateNotice agreement={target.resource === 'creator' ? target.item.retainerTerms : creator?.retainerTerms} submission={target.resource === 'submission' ? target.item : undefined} /> : null}
           {target.resource === 'submission' ? <Tabs.Root value={tab} onValueChange={setTab} className="mt-4 flex min-h-0 flex-1 flex-col">
             <Tabs.List aria-label="Submission review" className="flex shrink-0 gap-1 overflow-x-auto rounded-full bg-zinc-100 p-1">{['video', 'review', 'earnings', 'warnings', 'attribution', 'messages', 'history'].map(value => <Tabs.Trigger key={value} value={value} className="min-h-11 min-w-[84px] flex-1 rounded-full px-2 text-[11px] font-medium capitalize text-zinc-500 data-[state=active]:bg-white data-[state=active]:text-zinc-900 data-[state=active]:shadow-sm sm:text-sm">{capitalize(value)}{value === 'warnings' && activeWarningCount ? <span className="ml-1 rounded-full bg-amber-100 px-1.5 py-0.5 text-[10px] font-semibold text-amber-800">{activeWarningCount}</span> : null}{value === 'messages' && target.item.unreadMessages ? <span className="ml-1 rounded-full bg-[#007aff] px-1.5 py-0.5 text-[10px] text-white">{target.item.unreadMessages}</span> : null}</Tabs.Trigger>)}</Tabs.List>
             <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain">
@@ -523,7 +545,7 @@ export function ReviewDialog({ target, creator, payments, metrics, open, onOpenC
                 </div>
               </Tabs.Content>
               <Tabs.Content value="review" className="outline-none">
-                {hasLaunchCampaignBonuses(target.item) ? <CreatorExclusivityReview key={`${target.item.id}-${target.item.exclusivityConfirmed}`} submission={target.item} onSaved={onRefresh} /> : null}
+                {hasLaunchCampaignBonuses(target.item) ? <CreatorExclusivityReview key={target.item.id} submission={target.item} onSaved={onRefresh} /> : null}
 
                 <SubmissionRequirementsReview campaignName={campaignCriteriaName} items={reviewChecklist} status={status} onChange={setReviewChecklist} />
                 {reducedApproval ? <p className="mt-3 rounded-xl bg-amber-50 p-3 text-xs leading-5 text-amber-900">Approving with a reduced payout. Unmet requirements and the adjustment reason remain visible to the creator.</p> : null}

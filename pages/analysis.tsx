@@ -1,6 +1,3 @@
-import type { AnalysisPurchase } from '@/components/payments/analysis-unlock-dialog'
-import type { CheckoutQuote } from '@/components/payments/membership-offer'
-import { flushWebAnalytics } from '@/lib/analytics/client'
 import type { WebReport } from '@/lib/analysis-v2/report-schema'
 import { reportCategoryDefaults as reportCategories } from '@/components/analysis/report-category-defaults'
 import { pslToOverallScore } from '@/lib/analysis/score-scale'
@@ -13,6 +10,7 @@ import {
   CreditCard,
   Download,
   ScanFace,
+  Gem,
   Loader2,
   Share2,
   Sparkles,
@@ -20,7 +18,7 @@ import {
   X,
 } from 'lucide-react'
 import { useSession } from 'next-auth/react'
-import { SkeletonImage } from '@/components/ui/skeleton-image'
+import Image from 'next/image'
 import dynamic from 'next/dynamic'
 import Link from 'next/link'
 import { IntroFacePreview } from '@/components/analysis/intro-face-preview'
@@ -40,14 +38,19 @@ import {
 import { parseFaceLandmarksPayload, type FaceLandmarksPayload } from '@/lib/analysis/landmarks'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
-import { LoginDialog } from '@/components/app/login-dialog'
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog'
+import { LoginDialog } from '@/components/app/app-shell'
 import { SeoHead } from '@/components/app/seo-head'
 import { CaptureFrame, type CaptureFrameImagePosition } from '@/components/analysis/capture-frame'
 import { TextLoop } from '@/components/core/text-loop'
 import { TextShimmer } from '@/components/core/text-shimmer'
 
-const LockedReportPreview = dynamic(() => import('@/components/payments/locked-report-preview').then(module => module.LockedReportPreview))
-const AnalysisUnlockDialog = dynamic(() => import('@/components/payments/analysis-unlock-dialog').then(module => module.AnalysisUnlockDialog))
 const ScanImagePanel = dynamic(() => import('@/components/analysis/scan-image-panel').then(module => module.ScanImagePanel))
 
 const WebAnalysisReport = dynamic(() => import('@/components/analysis/v2/web-analysis-report').then(module => module.WebAnalysisReport))
@@ -220,7 +223,7 @@ export default function AnalysisPage() {
     if (viewedAnalysisId) trackWebEvent('report_viewed', { report_id: viewedAnalysisId, surface: 'web_analysis', flow_id: analyticsFlow.current })
   }, [viewedAnalysisId])
   useEffect(() => {
-    if (paymentDialogOpen) trackWebEvent('paywall_viewed', { surface: 'web_analysis', paywall_id: 'web_analysis', paywall_version: '2', flow_id: analyticsFlow.current })
+    if (paymentDialogOpen) trackWebEvent('paywall_viewed', { surface: 'web_analysis', paywall_id: 'web_analysis', paywall_version: '1', flow_id: analyticsFlow.current })
   }, [paymentDialogOpen])
   const [checkoutLoading, setCheckoutLoading] = useState(false)
   const [shareOpen, setShareOpen] = useState(false)
@@ -307,21 +310,14 @@ export default function AnalysisPage() {
     playExpand()
   }
 
-  async function startCheckout(product: AnalysisPurchase, quote: CheckoutQuote) {
-    if (checkoutLoading || status === 'loading') return
-    if (status !== 'authenticated') {
-      try { await saveAnalysisDraft({ gender, images, savedAt: Date.now() }) }
-      catch { setError('Your browser could not save your photos. Please try a regular browser window before continuing.'); return }
+  async function startCheckout() {
+    if (authRequired && status !== 'authenticated') {
       setLoginOpen(true)
       return
     }
 
     setCheckoutLoading(true)
     setError(null)
-    const attemptId = crypto.randomUUID()
-    const purchaseContext = { surface: 'web_analysis', flow_id: analyticsFlow.current, attempt_id: attemptId, product, paywall_version: '2' }
-    trackWebEvent('purchase_started', purchaseContext)
-    void flushWebAnalytics()
     let checkoutStage = 'entitlements'
 
     try {
@@ -334,9 +330,6 @@ export default function AnalysisPage() {
         await runActualAnalysis(images, paymentInstallId, gender)
         return
       }
-      if (product.startsWith('mobile_subscription_') && access.entitlements.subscription.active) {
-        throw new Error('Your Pro membership is already active. Choose Report only for an additional evaluation.')
-      }
       checkoutStage = 'draft_save'
       await saveAnalysisDraft({
         gender,
@@ -344,16 +337,14 @@ export default function AnalysisPage() {
         savedAt: Date.now(),
       })
       checkoutStage = 'checkout_create'
-      const subscription = product.startsWith('mobile_subscription_')
-      const response = await apiPost<CheckoutResponse>(subscription ? '/api/payments/web-checkout' : '/api/payments/checkout', {
-        ...(subscription ? { product, returnTo: 'analysis', source: 'web_analysis' } : { imageCount: images.length }),
+      const response = await apiPost<CheckoutResponse>('/api/payments/checkout', {
+        imageCount: images.length,
         mobileInstallId: paymentInstallId,
-        ...quote, attemptId, flowId: analyticsFlow.current || undefined,
       })
       checkoutStage = 'checkout_redirect'
       window.location.href = response.url
     } catch (checkoutError) {
-      trackWebEvent('purchase_failed', { ...purchaseContext, purchase_stage: checkoutStage, reason_code: checkoutError instanceof ApiClientError ? checkoutError.code : checkoutStage === 'draft_save' ? 'draft_storage_unavailable' : 'request_failed', http_status: checkoutError instanceof ApiClientError ? checkoutError.status : undefined })
+      trackWebEvent('purchase_failed', { surface: 'web_analysis', purchase_stage: checkoutStage, reason_code: checkoutError instanceof ApiClientError ? checkoutError.code : checkoutStage === 'draft_save' ? 'draft_storage_unavailable' : 'request_failed', http_status: checkoutError instanceof ApiClientError ? checkoutError.status : undefined })
       setError(checkoutError instanceof ApiClientError ? checkoutError.message : checkoutStage === 'draft_save' ? 'Your browser could not save your photos for checkout. Free up storage or try a regular browser window, then retry. You have not been charged.' : 'Unable to open checkout. Please check your connection and retry.')
     } finally {
       setCheckoutLoading(false)
@@ -611,7 +602,7 @@ export default function AnalysisPage() {
       />
       <input ref={uploadInputRef} className="hidden" type="file" accept="image/*" multiple onChange={handleFiles} />
 
-      <section className="public-frame min-h-[calc(100svh-5rem)] overflow-hidden bg-white">
+      <section className="min-h-[calc(100svh-5rem)] overflow-hidden bg-white">
         <AnimatePresence mode="wait">
           {step === 'intro' ? (
             <ScreenMotion key="intro">
@@ -644,7 +635,6 @@ export default function AnalysisPage() {
           {step === 'preview-analysis' ? (
             <ScreenMotion key="preview-analysis">
               <ActualAnalysisScreen
-                imageCount={images.length}
                 checkoutError={error}
                 checkoutLoading={checkoutLoading}
                 imageSrc={selectedImage?.dataUrl ?? images[0]?.dataUrl ?? previewImage}
@@ -664,7 +654,6 @@ export default function AnalysisPage() {
           {step === 'payment' ? (
             <ScreenMotion key="payment">
               <ActualAnalysisScreen
-                imageCount={images.length}
                 checkoutError={error}
                 checkoutLoading={checkoutLoading}
                 imageSrc={selectedImage?.dataUrl ?? images[0]?.dataUrl ?? previewImage}
@@ -684,7 +673,6 @@ export default function AnalysisPage() {
           {step === 'actual-analysis' ? (
             <ScreenMotion key="actual-analysis">
               <ActualAnalysisScreen
-                imageCount={images.length}
                 checkoutError={error}
                 checkoutLoading={checkoutLoading}
                 imageSrc={selectedImage?.dataUrl ?? images[0]?.dataUrl ?? previewImage}
@@ -767,7 +755,7 @@ function ScreenMotion({ children }: { children: ReactNode }) {
 
 function IntroScreen({ onBegin }: { onBegin: () => void }) {
   return (
-    <div className="grid min-h-[calc(100svh-5rem)] gap-8 public-gutters py-6 sm:py-8 lg:grid-cols-[1.08fr_0.92fr] lg:gap-16 xl:gap-24 2xl:gap-32">
+    <div className="grid min-h-[calc(100svh-5rem)] gap-8 px-5 py-6 sm:px-10 sm:py-8 lg:grid-cols-[1.08fr_0.92fr] lg:gap-16 xl:gap-24 2xl:gap-32">
       <aside className="flex flex-col justify-between gap-10 min-w-0" style={{ containerType: 'inline-size' }}>
         <div>
           <div className="flex gap-6 font-mono text-[10px] uppercase tracking-wide text-muted-foreground">
@@ -850,7 +838,7 @@ function UploadScreen({
   const uploadButtonClass = 'h-10 rounded-xl border border-zinc-300 bg-white px-5 text-sm font-medium text-black shadow-none hover:bg-zinc-50'
 
   return (
-    <div className="grid min-h-[calc(100svh-5rem)] content-between public-gutters py-6 sm:py-8">
+    <div className="grid min-h-[calc(100svh-5rem)] content-between px-5 py-6 sm:px-10 sm:py-8">
       <div className="grid min-h-[calc(100svh-10rem)] gap-8 lg:grid-cols-[0.76fr_1fr_0.76fr]">
         <div className="flex flex-col justify-center">
           <h1 className="max-w-[240px] text-4xl font-semibold leading-[0.9] tracking-[-0.06em] sm:text-5xl">
@@ -1045,7 +1033,6 @@ function PaymentStep({
 }
 
 function ActualAnalysisScreen({
-  imageCount,
   checkoutError,
   checkoutLoading,
   imageSrc,
@@ -1057,13 +1044,12 @@ function ActualAnalysisScreen({
   paymentDialogOpen,
   progress,
 }: {
-  imageCount: number
   checkoutError: string | null
   checkoutLoading: boolean
   imageSrc: string | null
   isUnlocked: boolean
   landmarks: FaceLandmarksPayload | null
-  onCheckout: (product: AnalysisPurchase, quote: CheckoutQuote) => void
+  onCheckout: () => void
   onPaymentDialogChange: (open: boolean) => void
   onPaymentRequired: () => void
   paymentDialogOpen: boolean
@@ -1071,8 +1057,7 @@ function ActualAnalysisScreen({
 }) {
   return (
     <>
-      {!isUnlocked ? <LockedReportPreview imageSrc={imageSrc ?? previewPhotoUrl} landmarks={landmarks} onUnlock={onPaymentRequired} /> : (
-      <div className="grid min-h-[calc(100svh-5rem)] gap-12 public-gutters py-6 sm:py-8 lg:grid-cols-[minmax(0,620px)_minmax(0,620px)] lg:items-center lg:justify-between lg:gap-20 xl:gap-28 2xl:gap-40">
+      <div className="grid min-h-[calc(100svh-5rem)] gap-12 px-5 py-6 sm:px-10 sm:py-8 lg:grid-cols-[minmax(0,620px)_minmax(0,620px)] lg:items-center lg:justify-between lg:gap-20 xl:gap-28 2xl:gap-40">
         <div className="grid place-items-center lg:justify-items-start">
           <div className="flex aspect-[4/5] w-full max-w-[620px] flex-col">
             <div>
@@ -1102,10 +1087,7 @@ function ActualAnalysisScreen({
         </div>
       </div>
 
-      )}
-
-      <AnalysisUnlockDialog
-        imageCount={imageCount}
+      <AnalysisPaymentDialog
         imageSrc={imageSrc}
         landmarks={landmarks}
         error={checkoutError}
@@ -1219,6 +1201,57 @@ function AnalysisTimeline({
         )
       })}
     </div>
+  )
+}
+
+function AnalysisPaymentDialog({
+  imageSrc,
+  landmarks,
+  error,
+  loading,
+  onCheckout,
+  onOpenChange,
+  open,
+}: {
+  error: string | null
+  loading: boolean
+  onCheckout: () => void
+  onOpenChange: (open: boolean) => void
+  open: boolean
+  imageSrc: string | null
+  landmarks: FaceLandmarksPayload | null
+}) {
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="max-h-[calc(100svh-2rem)] overflow-y-auto rounded-[28px] border-0 bg-white p-0 shadow-[0_28px_90px_rgba(15,23,42,0.2)] sm:max-w-[500px]">
+        <ScanImagePanel key={imageSrc} imageSrc={imageSrc} landmarks={landmarks} variant="paywall" />
+
+        <div className="px-6 pb-6 pt-5">
+          <DialogHeader>
+            <DialogTitle className="text-3xl leading-none tracking-[-0.055em]">
+              Discover your true potential
+            </DialogTitle>
+            <DialogDescription className="max-w-md">
+              See your strongest features and biggest opportunities. Unlock your full report and a personalized, non-surgical protocol to improve your looks and work toward your true potential.
+            </DialogDescription>
+          </DialogHeader>
+
+          {error ? <p className="mt-4 text-sm text-destructive">{error}</p> : null}
+
+          <button
+            className="mt-6 flex min-h-14 w-full items-center justify-center gap-3 rounded-full bg-[#e5f2ff] px-5 py-3 text-base font-semibold text-[#007aff] transition-[background-color,transform] duration-150 ease-out hover:bg-[#d6eaff] active:scale-[0.98] disabled:opacity-60"
+            disabled={loading}
+            onClick={onCheckout}
+            type="button"
+          >
+            <ScanFace className="size-6 shrink-0" aria-hidden="true" />
+            <span>
+              {loading ? 'Opening checkout...' : 'Get your full analysis now'}
+            </span>
+          </button>
+        </div>
+      </DialogContent>
+    </Dialog>
   )
 }
 
@@ -1478,7 +1511,7 @@ function ShareSheet({
               }}
             >
               {shareImageUrl ? (
-                <SkeletonImage className="object-cover" src={shareImageUrl} alt="Shareable report card preview" sizes="430px" unoptimized />
+                <Image className="object-cover" src={shareImageUrl} alt="Shareable report card preview" fill sizes="430px" unoptimized />
               ) : (
                 <div className="grid h-full place-items-center text-center">
                   <div>

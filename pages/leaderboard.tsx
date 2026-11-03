@@ -4,7 +4,6 @@ import { AnimatePresence, LayoutGroup, motion } from 'motion/react'
 import { Calendar, LinkIcon, MapPin, Palette, SlidersHorizontal, Trophy, VenusAndMars, X } from 'lucide-react'
 import { useSession } from 'next-auth/react'
 import Image from 'next/image'
-import { ImageSkeleton, SkeletonImage } from '@/components/ui/skeleton-image'
 import { useEffect, useMemo, useRef, useState, type CSSProperties } from 'react'
 import { createPortal } from 'react-dom'
 import { useSound } from '@web-kits/audio/react'
@@ -160,7 +159,7 @@ export default function LeaderboardPage() {
         path="/leaderboard"
       />
       <LayoutGroup id="leaderboard-profile">
-      <section className="public-frame public-gutters min-h-[calc(100vh-5rem)] bg-white py-14 text-black">
+      <section className="min-h-[calc(100vh-5rem)] bg-white px-5 py-14 text-black sm:px-10">
       <style jsx global>{`
         @keyframes leaderboard-enter {
           from {
@@ -330,10 +329,11 @@ function TopEntry({ elevated, entry, index, onOpen }: { elevated?: boolean; entr
         transition={{ type: 'spring', stiffness: 260, damping: 28, mass: 0.9 }}
       >
         <div className={elevated ? 'relative aspect-[3/4]' : 'relative aspect-[3/3.65]'}>
-          <SkeletonImage
+          <Image
             alt=""
             className="object-cover grayscale-[0.1] transition duration-500 ease-out group-hover:scale-[1.035]"
             src={entry.imageUrl || '/model.png'}
+            fill
             priority={entry.rank <= 3}
             sizes="(min-width: 640px) 230px, 80vw"
           />
@@ -555,10 +555,11 @@ function RankRow({ entry, index, onOpen }: { entry: LeaderboardEntry; index: num
           layout="position"
           transition={{ type: 'spring', stiffness: 260, damping: 28, mass: 0.9 }}
         >
-          <SkeletonImage
+          <Image
             alt=""
             className="object-cover grayscale-[0.1] transition-transform duration-300 ease-out group-hover:scale-105"
             src={entry.imageUrl || '/model.png'}
+            fill
             sizes="48px"
           />
         </motion.span>
@@ -706,9 +707,9 @@ function LeaderboardProfileDialog({
                         transition={{ type: 'spring', stiffness: 230, damping: 27, mass: 0.95 }}
                       >
                         {loading && !profile ? (
-                          <ImageSkeleton />
+                          <div className="h-full w-full animate-pulse bg-zinc-200" />
                         ) : (
-                          <SkeletonImage className="object-contain grayscale-[0.06]" src={heroImage} alt={name} sizes="(min-width: 1024px) 42vw, 92vw" />
+                          <Image className="object-contain grayscale-[0.06]" src={heroImage} alt={name} fill sizes="(min-width: 1024px) 42vw, 92vw" />
                         )}
                       </motion.div>
 
@@ -716,7 +717,7 @@ function LeaderboardProfileDialog({
                         <div className="grid grid-cols-3 gap-4 sm:gap-5">
                           {photos.slice(1, 4).map((photo) => (
                             <div key={photo.id} className="relative aspect-square overflow-hidden rounded-[4px] bg-zinc-100">
-                              <SkeletonImage className="object-cover grayscale-[0.08]" src={photo.imageUrl || '/model.png'} alt="" sizes="140px" />
+                              <Image className="object-cover grayscale-[0.08]" src={photo.imageUrl || '/model.png'} alt="" fill sizes="140px" />
                             </div>
                           ))}
                         </div>
@@ -793,10 +794,11 @@ function CurrentUserRankBar({ entry }: { entry: LeaderboardEntry | null }) {
     <div className="fixed inset-x-5 bottom-5 z-40 mx-auto max-w-3xl border border-black bg-white px-4 py-3 text-black shadow-[0_18px_50px_rgba(15,23,42,0.12)] sm:bottom-6">
       <div className="grid grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-4">
         <span className="relative block size-12 shrink-0 overflow-hidden rounded-full bg-zinc-100">
-          <SkeletonImage
+          <Image
             alt=""
             className="object-cover grayscale-[0.1]"
             src={entry.imageUrl || '/model.png'}
+            fill
             sizes="48px"
           />
         </span>

@@ -22,36 +22,35 @@ export type DesktopReportCategory = {
   faceMapPointCount?: number
 }
 
-export function AnalysisReport({ categories, initialCategoryId, imageSrc, landmarks, score, pslScore, children, renderDetails, naturalImage = false, embedded = false }: {
+export function AnalysisReport({ categories, initialCategoryId, imageSrc, landmarks, score, pslScore, children, renderDetails, naturalImage = false }: {
   categories: DesktopReportCategory[]
   initialCategoryId?: string
   imageSrc: string
   landmarks: FaceLandmarksPayload | null
-  score: number | null
+  score: number
   pslScore?: number | null
   children: ReactNode
   naturalImage?: boolean
-  embedded?: boolean
   renderDetails?: (category: DesktopReportCategory) => ReactNode
 }) {
   const [activeCategoryId, setActiveCategoryId] = useState(initialCategoryId ?? categories[0]?.id)
   const activeCategory = categories.find(category => category.id === activeCategoryId) ?? categories[0]
   if (!activeCategory) return null
-  const overlayValue = score === null ? undefined : activeCategory.id === 'overall'
+  const overlayValue = activeCategory.id === 'overall'
     ? pslScore == null ? undefined : `${pslScore.toFixed(1)} / 8`
     : `${activeCategory.score.toFixed(1)} / 10`
 
   return (
-    <MotionConfig reducedMotion="user"><div className={embedded ? `${styles.layout} ${styles.embedded}` : styles.layout}>
-      {!embedded && <aside className={styles.sidebar}>
+    <MotionConfig reducedMotion="user"><div className={styles.layout}>
+      <aside className={styles.sidebar}>
         <div>
-          <p className="font-mono text-[10px] uppercase tracking-wide text-muted-foreground">{score === null ? 'Report preview //' : 'Final analysis //'}</p>
+          <p className="font-mono text-[10px] uppercase tracking-wide text-muted-foreground">Final analysis //</p>
           <h2 className={styles.title}>Your Report</h2>
           <ReportCategorySelector categories={categories} activeCategory={activeCategory} score={score} onSelect={setActiveCategoryId} />
         </div>
 
         <div className="hidden lg:grid">{children}</div>
-      </aside>}
+      </aside>
 
       <section className={styles.stage}>
         <div className={styles.content}>
@@ -62,7 +61,6 @@ export function AnalysisReport({ categories, initialCategoryId, imageSrc, landma
             landmarks={landmarks}
             value={overlayValue}
             naturalImage={naturalImage}
-            clearPortrait={embedded}
           />
           <div key={activeCategory.id} className={styles.details} role="region" aria-label={`${activeCategory.title} report details`} tabIndex={0}>
             {renderDetails ? renderDetails(activeCategory) : <ReportDetailPanel category={activeCategory} />}

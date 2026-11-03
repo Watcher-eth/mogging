@@ -1,5 +1,3 @@
-import registry from './rubric-registry.json'
-
 // Complete design inventory only. These values are not observations of the sample photo.
 export const designValues: Record<string, string | number | number[]> = {
   "eyes.spacing": 0.42,
@@ -179,19 +177,3 @@ export const designValues: Record<string, string | number | number[]> = {
   "ears.shape": "Rounded",
   "ears.attachment": "Attached"
 }
-
-// These markers/scores are deliberately illustrative, not calibrated measurements or model grades.
-const illustrations: Record<string, { positions: number[]; grade?: number }> = {
-  'eyes.spacing': { positions: [.46] }, 'eyes.aspect': { positions: [.45, .53] },
-  'eyes.canthal-tilt': { positions: [.57, .61] }, 'eyes.opening': { positions: [.42, .48] },
-  'brows.tilt': { positions: [.61, .64] }, 'brows.eye-distance': { positions: [.44] }, 'brows.length': { positions: [.56] },
-  'nose.width': { positions: [.58] }, 'mouth.width': { positions: [.53] }, 'mouth.lip-ratio': { positions: [.63] }, 'mouth.corner-position': { positions: [.48] },
-  'jaw.width': { positions: [.51] }, 'jaw.height': { positions: [.65] },
-  'cheeks.height': { positions: [.61] }, 'cheeks.width': { positions: [.43] }, 'cheeks.midface': { positions: [.56] },
-  'face.frame': { positions: [.58] }, 'proportions.lower-partition': { positions: [], grade: 8.2 },
-  'symmetry.eyes-height': { positions: [], grade: 8.5 }, 'symmetry.brows-height': { positions: [], grade: 7.3 },
-  'symmetry.mouth-height': { positions: [], grade: 8.1 }, 'symmetry.chin-axis': { positions: [], grade: 8.9 },
-  'skin.texture': { positions: [], grade: 7.5 }, 'skin.tone': { positions: [], grade: 8 },
-  'skin.under-eye-contrast': { positions: [], grade: 6.5 }, 'skin.blemishes': { positions: [], grade: 7.5 },
-}
-export const designIllustrations = Object.fromEntries(registry.categories.flatMap(category => category.rubrics.filter(rubric => rubric.visual !== 'Text').map(rubric => [rubric.id, illustrations[rubric.id] ?? (rubric.visual === 'Rail' ? { positions: [], grade: 7.4 } : { positions: [.5] })])))

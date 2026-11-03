@@ -1,7 +1,7 @@
 {
-  "id": "marlon-round3",
-  "title": "Marlon\u2019s outline changes as he turns",
-  "recording": "/creator/stories/marlon/round3-recording.json",
+  "id": "marlon-feature-study",
+  "title": "Same chin, different impression",
+  "recording": "/creator/stories/marlon/feature-study-recording.json",
   "images": [
     {
       "id": "marlon-front",
@@ -1904,7 +1904,7 @@
     },
     {
       "id": "marlon-studio-three-quarter-20261027",
-      "name": "marlon \u00b7 three-quarter \u00b7 AI editorial portrait \u00b7 upscaled 4K export",
+      "name": "marlon · three-quarter · AI editorial portrait · upscaled 4K export",
       "dataUrl": "/creator/examples/marlon-studio-20261027/marlon-three-quarter-4k.jpg",
       "width": 2160,
       "height": 3840,
@@ -3076,7 +3076,7 @@
     },
     {
       "id": "marlon-studio-profile-20261027",
-      "name": "marlon \u00b7 profile \u00b7 AI editorial portrait \u00b7 upscaled 4K export",
+      "name": "marlon · profile · AI editorial portrait · upscaled 4K export",
       "dataUrl": "/creator/examples/marlon-studio-20261027/marlon-profile-4k.jpg",
       "width": 2160,
       "height": 3840,
@@ -4113,6 +4113,18 @@
   },
   "alternatives": [
     {
+      "id": "marlon-round3",
+      "title": "Marlon’s outline changes as he turns",
+      "kind": "feature-story",
+      "recording": "/creator/stories/marlon/round3-recording.json",
+      "defaultLength": 45,
+      "imageIds": [
+        "marlon-front",
+        "marlon-studio-three-quarter-20261027",
+        "marlon-studio-profile-20261027"
+      ]
+    },
+    {
       "id": "marlon-a",
       "title": "Sharper is not always better",
       "kind": "feature-story",
@@ -4146,10 +4158,10 @@
   "kind": "feature-story",
   "imageIds": [
     "marlon-front",
-    "marlon-studio-three-quarter-20261027",
-    "marlon-studio-profile-20261027"
+    "marlon-thinner-lips"
   ],
   "defaultLength": 45,
   "status": "recorded",
-  "audioStatus": "word-aligned"
+  "audioStatus": "word-aligned",
+  "featureOpening": "lip-choice"
 }

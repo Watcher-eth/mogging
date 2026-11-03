@@ -1,4 +1,3 @@
-import { SkinNetworkSvg } from './skin-network-svg'
 import Image from 'next/image'
 import { motion, useReducedMotion } from 'motion/react'
 import { useEffect, useId, useRef, useState } from 'react'
@@ -6,6 +5,7 @@ import { enrichFaceLandmarks } from '@/lib/creator/mobile-overlay-engine/enrich-
 import { reportOverlayPresets } from '@/lib/creator/mobile-overlay-engine/report-presets'
 import { resolveOverlayPreset, type PixelPoint, type ResolvedPrimitive } from '@/lib/creator/mobile-overlay-engine/resolve'
 import type { FaceLandmarksPayload } from '@/lib/creator/mobile-overlay-engine/landmarks'
+import { buildFaceMapPoints } from '@/lib/creator/mobile-overlay-engine/face-map-points'
 import type { OverlayPreset, OverlayPrimitive } from '@/lib/creator/mobile-overlay-engine/schema'
 import portrait from './intro-portrait.json'
 
@@ -152,11 +152,22 @@ const presets: OverlayPreset[] = Object.entries(reportOverlayPresets).map(([cate
     ] }
     case 'facial-fat': return { ...preset, primitives: preset.primitives.filter((p) => p.id !== 'facial-fat-box') }
     case 'biological-age': return { ...preset, footer: '[ 008 ] SKIN AGE', primitives: [
+      ...buildFaceMapPoints(landmarks).slice(0, 60).map((p, index) => dot(`face-map-${index}`, p.x, p.y, 2.6)),
       label('face-map-label', 'Skin age', 0.63, 0.59),
     ] }
-    case 'sun-damage': return { ...preset, primitives: [
-      label('sun-label', 'Sunspots / cheek texture', 0.62, 0.55),
-    ] }
+    case 'sun-damage': {
+      const leftEye = landmarks.anchors.leftPupil!, rightEye = landmarks.anchors.rightPupil!
+      const mouth = landmarks.anchors.mouthCenter!
+      const cheek = (eye: PixelPoint, side: number) => ({ x: eye.x + side * 0.025, y: eye.y + (mouth.y - eye.y) * 0.56 })
+      const cheeks = [cheek(leftEye, -1), cheek(rightEye, 1)]
+      return { ...preset, primitives: [
+        ...cheeks.flatMap((center, side) => [
+          contour(`cheek-zone-${side}`, Array.from({ length: 24 }, (_, index) => ({ x: center.x + Math.cos(index / 24 * Math.PI * 2) * 0.06, y: center.y + Math.sin(index / 24 * Math.PI * 2) * 0.036 }))),
+          ...[[0, 0], [-0.025, -0.007], [0.022, 0.013], [0.012, -0.018], [-0.017, 0.016]].map(([dx, dy], index) => dot(`sunspot-${side}-${index}`, center.x + dx, center.y + dy, 3)),
+        ]),
+        label('sun-label', 'Sunspots / cheek texture', 0.62, 0.55),
+      ] }
+    }
     default: return preset
   }
 })
@@ -165,8 +176,7 @@ const overlays = presets.map((preset) => {
   return {
     paths: primitives.filter((primitive): primitive is Shape => primitive.kind !== 'label' && primitive.kind !== 'point')
       .map((primitive) => ({ primitive, d: primitivePath(primitive) })),
-    skinPoints: preset.skinFaceMap ? primitives.flatMap(primitive => primitive.kind === 'point' ? [primitive.point] : []) : [],
-    dots: preset.skinFaceMap ? [] : primitives.filter((primitive) => primitive.kind === 'point'),
+    dots: primitives.filter((primitive) => primitive.kind === 'point'),
     labels: primitives.filter((primitive) => primitive.kind === 'label').map((primitive) => {
       const width = Math.max(180, primitive.title.length * 12 + 40)
       return {
@@ -260,7 +270,6 @@ export function IntroFacePreview() {
               />
             )
           })}
-          {showingReport && overlay.skinPoints.length > 0 && <SkinNetworkSvg key={active} points={overlay.skinPoints} />}
           {Array.from({ length: dotCount }, (_, index) => {
             const dot = showingReport ? overlay.dots[index] : undefined
             return (

@@ -2,7 +2,7 @@ import { followerLabel, tiktokAnchorEligible } from '@/lib/creator/tiktok-anchor
 import { TikTokAccountDialog } from '@/components/creator/tiktok-anchor-onboarding'
 import { AnimatedDialogPanel } from '@/components/ui/animated-dialog-panel'
 import { useEffect, useState } from 'react'
-import { SkeletonAvatar } from '@/components/ui/skeleton-avatar'
+import * as Avatar from '@radix-ui/react-avatar'
 import { AnimatedGroup } from '@/components/core/animated-group'
 import useSWR from 'swr'
 import { ArrowUpRight, Check, Loader2, Plus, Trash2, Users } from 'lucide-react'
@@ -106,7 +106,12 @@ function AccountsContent() {
             <article className="flex h-full min-w-0 flex-col rounded-[28px] border border-black/[0.06] bg-white p-5 shadow-[0_2px_4px_rgba(0,0,0,0.02),0_12px_32px_-12px_rgba(0,0,0,0.12)] sm:p-6" key={account.id}>
               <div className="flex items-start justify-between gap-4">
                 <div className="relative shrink-0">
-                  <SkeletonAvatar src={account.avatarUrl} alt={`${creatorAccountLabel(account)} profile photo`} size={72} referrerPolicy="no-referrer" className="size-[72px] rounded-full bg-[#f2f3f5] ring-1 ring-black/[0.04]" fallback={<span className="grid size-full place-items-center bg-gradient-to-b from-[#eaf3ff] to-[#dceaff] text-2xl font-medium text-[#5076a6]">{(account.displayName || account.handle || account.platform).replace(/^@/, '').slice(0, 2).toUpperCase()}</span>} />
+                  <Avatar.Root className="flex size-[72px] overflow-hidden rounded-full bg-[#f2f3f5] ring-1 ring-black/[0.04]">
+                    <Avatar.Image src={account.avatarUrl || undefined} alt={`${creatorAccountLabel(account)} profile photo`} referrerPolicy="no-referrer" className="size-full object-cover" />
+                    <Avatar.Fallback className="grid size-full place-items-center bg-gradient-to-b from-[#eaf3ff] to-[#dceaff] text-2xl font-medium text-[#5076a6]">
+                      {(account.displayName || account.handle || account.platform).replace(/^@/, '').slice(0, 2).toUpperCase()}
+                    </Avatar.Fallback>
+                  </Avatar.Root>
                   <span className="absolute -bottom-1 -right-1 grid size-7 place-items-center overflow-hidden rounded-full bg-white ring-[3px] ring-white shadow-sm">
                     <SocialPlatformLogo platform={account.platform} className="!size-[18px]" />
                     <span className="sr-only">{account.platform === 'tiktok' ? 'TikTok' : 'Instagram'}</span>

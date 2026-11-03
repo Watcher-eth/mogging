@@ -1,5 +1,5 @@
 import { reportPortraitProjection } from './report-portrait'
-import { visibleFaceSides, facialDetailGuides } from './facial-detail-guides'
+import { visibleFaceSides, facialDetailGuides, jawOutline, cheekArches } from './facial-detail-guides'
 import registry from '@/lib/analysis-v2/rubric-registry.json'
 import type { FaceLandmarksPayload, FaceAnchorKey, FaceContourKey, NormalizedPoint } from './mobile-overlay-engine/landmarks'
 import type { ReportOverlay } from './report-overlay'
@@ -8,8 +8,7 @@ import { projectImagePoint } from './mobile-overlay-engine/layout'
 type Point = NormalizedPoint
 type Path = Point[]
 type Guide = { match: RegExp; paths: (face: FaceLandmarksPayload) => Path[] }
-const valid = (point: Point | undefined): point is Point => Boolean(point && Number.isFinite(point.x) && Number.isFinite(point.y))
-const contour = (face: FaceLandmarksPayload, key: FaceContourKey) => face.contours?.[key]?.filter(valid) ?? []
+const valid = (point: Point | undefined): point is Point => Boolean(point && point.x >= 0 && point.x <= 1 && point.y >= 0 && point.y <= 1)
 const line = (from?: Point, to?: Point): Path[] => valid(from) && valid(to) ? [[from, { x: (from.x + to.x) / 2, y: (from.y + to.y) / 2 }, to]] : []
 const anchors = (...pairs: Array<[FaceAnchorKey, FaceAnchorKey]>) => (face: FaceLandmarksPayload) => pairs.flatMap(([from, to]) => line(face.anchors[from], face.anchors[to]))
 // Preserve detector topology. Never close an open brow or bridge a broken path.
@@ -42,13 +41,11 @@ export function faceContourEdge(face: FaceLandmarksPayload,key: FaceContourKey,u
 }
 const outlines = (...keys: FaceContourKey[]) => (face: FaceLandmarksPayload) => keys.flatMap(key=>faceContourPaths(face,key))
 function extent(face: FaceLandmarksPayload, key: FaceContourKey, axis: 'x' | 'y') {
-  const points = contour(face, key)
-  if (points.length < 3) return []
-  const sorted = [...points].sort((a, b) => a[axis] - b[axis])
-  const first = sorted[0], last = sorted[sorted.length - 1]
-  const other = axis === 'x' ? 'y' : 'x'
-  const center = (Math.min(...points.map(point => point[other])) + Math.max(...points.map(point => point[other]))) / 2
-  return line({ ...first, [other]: center }, { ...last, [other]: center })
+  const points = faceContourPaths(face, key)[0]
+  if (!points) return []
+  const first = points.reduce((best, point) => point[axis] < best[axis] ? point : best)
+  const last = points.reduce((best, point) => point[axis] > best[axis] ? point : best)
+  return first === last ? [] : line(first, last)
 }
 const extents = (axis: 'x' | 'y', ...keys: FaceContourKey[]) => (face: FaceLandmarksPayload) => keys.flatMap(key => extent(face, key, axis))
 const lid = (upper: boolean, ...keys: FaceContourKey[]) => (face: FaceLandmarksPayload) => keys.flatMap(key=>faceContourEdge(face,key,upper))
@@ -89,31 +86,28 @@ const definitions: Record<string, Guide> = {
   'jaw.height': { match: /chin height|lower.face height/i, paths: anchors(['lowerLip', 'chin']) },
   'jaw.chin-shape': { match: /chin shape|chin contour|chin taper/i, paths: face => {
     const chin = face.anchors.chin
-    const points = contour(face, 'jawline').filter(point => chin && Math.abs(point.x - chin.x) < .14)
-    return points.length >= 3 ? [points] : []
+    const jaw = faceContourPaths(face, 'jawline')[0]
+    if (!valid(chin) || !jaw || jaw.length < 5) return []
+    const ratio = face.image.height / face.image.width
+    const distance = (p: Point) => Math.hypot(p.x - chin.x, (p.y - chin.y) * ratio)
+    const center = jaw.reduce((best, point, i) => distance(point) < distance(jaw[best]) ? i : best, 0)
+    const reach = Math.max(1, Math.round(jaw.length * .11))
+    return [jaw.slice(Math.max(0, center - reach), center + reach + 1)]
   } },
-  'jaw.jaw-shape': { match: /jaw contour|jaw shape|jawline|jaw outline/i, paths: outlines('jawline') },
+  'jaw.jaw-shape': { match: /jaw contour|jaw shape|jawline|jaw outline/i, paths: jawOutline },
   'cheeks.width': { match: /cheek(?:bone)?s?.*(?:width|wide|broad)|upper (?:frame )?width/i, paths: anchors(['leftCheek', 'rightCheek'], ['leftEyeOuter', 'rightEyeOuter']) },
   'cheeks.height': { match: /cheek.*height|cheek.*position/i, paths: anchors(['leftEyeOuter', 'leftCheek'], ['rightEyeOuter', 'rightCheek']) },
   'cheeks.midface': { match: /midface|mid.face/i, paths: both(anchors(['noseBridge', 'mouthCenter']), anchors(['leftCheek', 'rightCheek'])) },
-  'cheeks.contour': { match: /cheek contour|cheek surfaces?|cheek outline/i, paths: face => [-1, 1].flatMap(side => {
-    const center = face.anchors.noseTip?.x
-    if (center === undefined) return []
-    const points = contour(face, 'cheekbones').filter(point => (point.x - center) * side > .02)
-    return points.length >= 3 ? [points] : []
-  }) },
-  'face.taper': { match: /face taper|lower.face taper|frame.*narrows/i, paths: face => {
-    const { leftCheek, rightCheek, chin } = face.anchors
-    return leftCheek && rightCheek && chin ? faceContourPaths(face,'jawline') : []
-  } },
+  'cheeks.contour': { match: /cheek contour|cheek surfaces?|cheek outline/i, paths: cheekArches },
+  'face.taper': { match: /face taper|lower.face taper|frame.*narrows/i, paths: anchors(['chin', 'noseTip']) },
   'face.shape': { match: /face shape|face outline|face frame/i, paths: face => {
     const {noseTip,leftCheek,rightCheek}=face.anchors
     if (!noseTip || !leftCheek || !rightCheek) return []
     const left=Math.abs(noseTip.x-leftCheek.x),right=Math.abs(noseTip.x-rightCheek.x)
     // A projected oval crosses the nose on turned faces. Show the observed lower frame instead.
-    return Math.max(left,right)>Math.min(left,right)*1.65 ? faceContourPaths(face,'jawline') : faceContourPaths(face,'faceOutline')
+    return Math.max(left,right)>Math.min(left,right)*1.65 ? jawOutline(face) : faceContourPaths(face,'faceOutline')
   } },
-  'proportions.vertical-alignment': { match: /vertical alignment|facial midline/i, paths: both(centerLine, anchors(['noseBridge', 'noseTip'], ['mouthCenter', 'chin'])) },
+  'proportions.vertical-alignment': { match: /vertical alignment|facial midline/i, paths: anchors(['noseBridge', 'noseTip'], ['noseTip', 'mouthCenter'], ['mouthCenter', 'chin']) },
   'proportions.width-hierarchy': { match: /width hierarchy|width relationships/i, paths: anchors(['leftCheek', 'rightCheek'], ['jawLeft', 'jawRight'], ['mouthLeft', 'mouthRight']) },
   'proportions.eye-mouth-height': { match: /eye.*mouth.*height|eye.to.mouth/i, paths: anchors(['leftPupil', 'mouthLeft'], ['rightPupil', 'mouthRight'], ['mouthCenter', 'chin']) },
   'symmetry.eyes-height': { match: /eye.*height.*symmetr|eye alignment|eye level/i, paths: anchors(['leftEyeOuter', 'rightEyeOuter'], ['leftEyeInner', 'rightEyeInner']) },

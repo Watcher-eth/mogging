@@ -1,10 +1,10 @@
 import { expect, test } from 'bun:test'
-import { editorialPortraitStage, portraitDetailRegion, portraitIsDetail, portraitImageFrame, portraitFadeStart, drawPortraitEdgeFade, registeredPortraitCrop } from './video-portrait'
+import { editorialPortraitStage, portraitDetailRegion, portraitIsDetail, portraitImageFrame, portraitFadeStart, drawPortraitEdgeFade, scorePortraitFrame, registeredPortraitCrop } from './video-portrait'
 import { captionDesign, portraitStage, videoSize } from './video-layout'
 import type { VideoScene } from './video-composition'
 
-test('normal portraits reserve caption clearance and occupy at most three quarters of the viewport', () => {
-  expect(captionDesign.top).toBeGreaterThanOrEqual(videoSize.height * .14)
+test('portrait layouts reserve caption clearance and score portraits preserve the top of the subject', () => {
+  expect(captionDesign.top).toBeGreaterThanOrEqual(videoSize.height * .13)
   for (const stage of ['context', 'detail', 'compare'] as const) {
     const frame = editorialPortraitStage(stage)
     expect(frame).toEqual(portraitStage)
@@ -12,9 +12,12 @@ test('normal portraits reserve caption clearance and occupy at most three quarte
     expect(frame.width).toBe(videoSize.width)
     expect(frame.x + frame.width).toBe(videoSize.width)
     expect(frame.y).toBeGreaterThanOrEqual(captionDesign.top + 80)
-    expect(frame.height).toBeLessThanOrEqual(videoSize.height * .75)
-    expect(frame.y + frame.height).toBeLessThan(videoSize.height)
+    expect(frame.y + frame.height).toBe(videoSize.height)
   }
+  const frame = scorePortraitFrame({ width: 1080, height: 1920 }, videoSize, 20)
+  expect(frame.width).toBeGreaterThanOrEqual(videoSize.width)
+  expect(frame.y + frame.height).toBeGreaterThanOrEqual(videoSize.height)
+  expect(frame.y + 20 * frame.width / 1080).toBeCloseTo(videoSize.height * .11)
 })
 
 test('detail crops follow detected geometry, remain in the source and reject missing landmarks', () => {

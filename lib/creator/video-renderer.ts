@@ -1,9 +1,9 @@
 import type { DocumentaryRenderer } from './video-documentary'
 import { drawPortraitInstruments, drawPortraitParticles, preparePortraitParticles, instrumentOwnsGuides } from './portrait-instruments'
 import { reportPortraitProjection, drawPortraitColorExtension } from './report-portrait'
-import { drawSpokenScore } from './spoken-score'
+import { activeSpokenScore, drawSpokenScore } from './spoken-score'
 import { drawScientificEvidence } from './video-research'
-import { scriptVisualSeed } from './video-script'
+import { sceneSpeechWords, scriptVisualSeed } from './video-script'
 import { portraitOverlayWindowMs, narratedPortraitProgram, portraitProgramRuns, preparePortraitProgram, samplePortraitProgram, drawPortraitActivity, type PortraitProgramRun, type PreparedPortraitProgram } from './portrait-program'
 import { drawFeatureStudy, prepareFeatureEdit, type FeaturePhoto } from './feature-study'
 import { videoThemeContext, originalVideoContext, darkVideoColor } from './video-theme'
@@ -27,8 +27,8 @@ import type { ContentSlide, GeneratorImage } from './content-generator'
 import { primitiveProgress, sampleMotionPrimitive, primitiveDefinition, type MotionSample } from './motion-primitives'
 import { activeScene, parseComposition, videoImageIds, videoStyles, type MotionTrack, type VideoComposition, type VideoScene } from './video-composition'
 import { reportEmphasis, reportEmphasisPrimitives, drawAppReport, drawFeatureMetric, reportMotion, reportEntryTimes, reportMetricCues, featureComponent, showsFeatureMetric, expandInPlace, type AppReportAsset } from './report-choreography'
-import { videoSize, videoExportSize, videoContent, scorePresentation, videoMotion, sharesPortrait, sharesReport, captionDesign, reportCaptionFrame, appReportFrame, hasCaption, sceneFrame, featureStageLayout, elementEntrance, smoothMotion, sharedElementMotion, type VideoFrame } from './video-layout'
-import { editorialPortraitStage, portraitDetailRegion, preparePortrait, portraitSubject, portraitIsDetail, portraitImageFrame, drawPortraitEdgeFade, registeredPortraitCrop } from './video-portrait'
+import { videoSize, videoExportSize, videoContent, videoMotion, sharesPortrait, sharesReport, captionDesign, reportCaptionFrame, appReportFrame, hasCaption, sceneFrame, featureStageLayout, elementEntrance, smoothMotion, sharedElementMotion, type VideoFrame } from './video-layout'
+import { editorialPortraitStage, portraitDetailRegion, preparePortrait, portraitSubject, portraitIsDetail, portraitImageFrame, scorePortraitFrame, drawPortraitEdgeFade, registeredPortraitCrop } from './video-portrait'
 import { drawStudyBackdrop, drawStudyReferences, studyPortraitFrame, studyReferenceImageId, type StudyReference } from './video-editorial-study'
 import { drawScanInvitation, drawMoggingWatermark, loadCreatorBrand, type CreatorBrand } from './brand'
 import { videoTickerMotion, brandFaceObstacles, isVideoCta, videoBrandFrame, type BrandObstacle } from './video-branding'
@@ -43,7 +43,7 @@ const font = '"Mogging Share", Inter, -apple-system, BlinkMacSystemFont, "Helvet
 
 type PortraitPrintBlend={from:HTMLCanvasElement|HTMLImageElement;to:HTMLCanvasElement|HTMLImageElement;progress:number}
 
-type SceneAsset = AppReportAsset & { brandFrame?: VideoFrame; program?: PreparedPortraitProgram; programRun?: PortraitProgramRun; featurePhotos?: FeaturePhoto[]; portraitHeadTop?: number; overlayCues?: Array<{ startMs: number; overlay: ReportOverlay }>; portraitSourceRect?: VideoFrame; graphicCaptionHeight?: number; graphicStartMs?: number; graphicEndMs?: number; graphicSpecimen?: StudyReference; lighting?: PortraitLighting; effectMask?: HTMLCanvasElement; secondary: HTMLImageElement | null; portrait: HTMLCanvasElement | HTMLImageElement | null; anatomyRegistration?: AnatomyRegistration; studyLandmarks?: FaceLandmarksPayload | null; profile?: ProfileGeometry; studyReferences?: StudyReference[]; studyStartMs?: number; studyOperationStartMs?: number; studyOperationEndMs?: number }
+type SceneAsset = AppReportAsset & { comparison?: { image: HTMLImageElement; label: string; crop?: VideoFrame }; brandFrame?: VideoFrame; program?: PreparedPortraitProgram; programRun?: PortraitProgramRun; scorePrograms?: Map<string, PreparedPortraitProgram>; featurePhotos?: FeaturePhoto[]; portraitHeadTop?: number; overlayCues?: Array<{ startMs: number; overlay: ReportOverlay }>; portraitSourceRect?: VideoFrame; graphicCaptionHeight?: number; graphicStartMs?: number; graphicEndMs?: number; graphicSpecimen?: StudyReference; lighting?: PortraitLighting; effectMask?: HTMLCanvasElement; secondary: HTMLImageElement | null; portrait: HTMLCanvasElement | HTMLImageElement | null; anatomyRegistration?: AnatomyRegistration; studyLandmarks?: FaceLandmarksPayload | null; profile?: ProfileGeometry; studyReferences?: StudyReference[]; studyStartMs?: number; studyOperationStartMs?: number; studyOperationEndMs?: number }
 export type PreparedVideo = {
   composition: VideoComposition
   scenes: Map<string, SceneAsset>
@@ -74,13 +74,32 @@ export async function prepareVideo(compositionValue: VideoComposition, images: G
     const landmarks=await getReportImageLandmarks(source.dataUrl,source.dataUrl)
     return landmarks ? {...source,landmarks} : source
   }))
+  const comparisonSources = new Map<string, { id: string; label: string }>()
+  const viewSuffix = /[-_](?:front(?:al)?|three[-_]quarter|angle(?:d)?|profile|side)(?:[-_](?:left|right))?$/i
+  for (const scene of composition.scenes) {
+    if (scene.source.kind !== 'portrait' || scene.editorial !== 'compare' || scene.study || scene.profileStudy || scene.photoStudy) continue
+    const primary = images.find(image => image.id === scene.source.imageId)
+    if (!primary) continue
+    const family = primary.id.replace(viewSuffix, '')
+    const alternatives = images.filter(image => image.id !== primary.id && image.dataUrl !== primary.dataUrl && !image.retouch && image.id.replace(viewSuffix, '') === family)
+    const angled = alternatives.find(image => /three[-_]quarter|angle(?:d)?$/i.test(image.id))
+    const profile = alternatives.find(image => /(?:profile|side)(?:[-_](?:left|right))?$/i.test(image.id))
+    const secondary = images.find(image => image.id === scene.source.secondaryImageId && image.id !== primary.id && image.dataUrl !== primary.dataUrl)
+    const selected = angled ?? profile ?? secondary
+    if (selected) comparisonSources.set(scene.id, { id: selected.id, label: selected === angled ? 'Three-quarter view' : selected === profile ? 'Side view' : 'Alternate view' })
+  }
+  const optionalIds = new Set([...comparisonSources.values()].map(source => source.id))
   const decoded = new Map<string, HTMLImageElement>()
-  await Promise.all([...requiredIds].map(async id => {
+  await Promise.all([...new Set([...requiredIds, ...optionalIds])].map(async id => {
     const source = images.find(image => image.id === id)
     if (!source) throw new Error('A video photo or app screen is missing. Add it again or rebuild the video.')
     const image = new Image()
-    await new Promise<void>((resolve, reject) => { image.onload = () => resolve(); image.onerror = () => reject(new Error(`Could not load ${source.name}`)); image.src = source.dataUrl })
-    decoded.set(source.id, image)
+    try {
+      await new Promise<void>((resolve, reject) => { image.onload = () => resolve(); image.onerror = () => reject(new Error(`Could not load ${source.name}`)); image.src = source.dataUrl })
+      decoded.set(source.id, image)
+    } catch (error) {
+      if (requiredIds.has(id)) throw error
+    }
   }))
   if (composition.recipe === 'documentary-studio') {
     const { prepareDocumentary } = await import('./video-documentary')
@@ -148,7 +167,7 @@ export async function prepareVideo(compositionValue: VideoComposition, images: G
     const slide: ContentSlide = {
       id: scene.id, templateId: 'mock-report', imageId: scene.source.imageId, categoryId: scene.source.categoryId,
       eyebrow: '', headline: scene.text, supportingCopy: '', metricLabel: scene.source.report?.title ?? scene.source.categoryId,
-      metricValue: `${scene.source.metricScore.toFixed(1)} / 10`, cta: '', currentScore: scene.source.currentScore.toFixed(1), potentialScore: scene.source.potentialScore.toFixed(1), potentialScale: scene.source.potentialScale, potentialCurrentScore: scene.source.potentialCurrentScore,
+      metricValue: `${scene.source.metricScore.toFixed(1)} / 10`, cta: '', currentScore: scene.source.currentScore.toFixed(1), potentialScore: scene.source.hidePotential ? '' : scene.source.potentialScore.toFixed(1), potentialScale: scene.source.potentialScale, potentialCurrentScore: scene.source.potentialCurrentScore,
       categoryScores: [{ categoryId: scene.source.categoryId, label: scene.source.report?.title ?? scene.source.categoryId, value: scene.source.metricScore.toFixed(1) }],
       overlayStyle: scene.source.overlay === 'face-map' ? 'face-map' : 'category',
       mockReport: { category: scene.source.report ? { ...scene.source.report, score: scene.source.metricScore, features: scene.source.report.features.map(feature => ({ ...feature })) } : buildMockOverallCategory(String(scene.source.currentScore), {}), scroll: 0 },
@@ -159,7 +178,7 @@ export async function prepareVideo(compositionValue: VideoComposition, images: G
     if (overlay && source) overlay = preciseFaceOverlay(overlay, portrait?.source ?? source, scene.photoStudy ? scene.photoStudy.feature === 'face-width' ? 'face-shape' : scene.photoStudy.feature === 'lips' ? 'mouth' : scene.photoStudy.feature : scene.source.categoryId, scene.customSlideId?.startsWith('overlay-') || composition.recipe === 'measurement-explainer' ? '' : scene.narration, scene.portraitFX?.overlay?.regions || scene.study?.operation === 'planes' || Boolean(scene.photoStudy && ['cheeks', 'jaw'].includes(scene.photoStudy.feature)), scene.focus.startsWith('metric:') ? scene.focus.slice(7) : undefined)
     if (overlay) { overlay.ink = '255,255,255'; overlay.pointAppearance = 'minimal'; overlay.labelAppearance = 'scan'; overlay.labelScale = .85 }
     if (!source && !['title', 'explainer'].includes(scene.source.kind)) throw new Error(`Choose a source photo or app screen for ${scene.label}.`)
-    const asset: SceneAsset = { image: source ? decoded.get(source.id) ?? null : null, secondary: scene.source.secondaryImageId ? decoded.get(scene.source.secondaryImageId) ?? null : null, portrait: portrait && scene.portraitFX?.print ? await preparePortraitPrint(portrait.canvas, scene.portraitFX.print, purpose) : portrait?.canvas ?? null, overlay, slide, scrollMax: mockReportScrollMax(slide.mockReport!.category), regions: mockReportRegions(measurement, slide.mockReport!.category), initialScroll: scene.source.categoryId === priorCategory ? priorScroll : 0, initialFrame: priorFrame, continuousReport: sharesReport(previousScene, scene) }
+    const asset: SceneAsset = { image: source ? decoded.get(source.id) ?? null : null, secondary: scene.source.secondaryImageId ? decoded.get(scene.source.secondaryImageId) ?? null : null, portrait: portrait && scene.portraitFX?.print ? await preparePortraitPrint(portrait.canvas, scene.portraitFX.print, purpose) : portrait?.canvas ?? null, overlay, slide, scrollMax: mockReportScrollMax(slide.mockReport!.category, scene.source.kind === 'report'), regions: mockReportRegions(measurement, slide.mockReport!.category, scene.source.kind === 'report'), initialScroll: scene.source.categoryId === priorCategory ? priorScroll : 0, initialFrame: priorFrame, continuousReport: sharesReport(previousScene, scene) }
     if (portrait && source && overlay && composition.recipe !== 'measurement-explainer' && !scene.focus.startsWith('metric:') && !scene.customSlideId?.startsWith('overlay-') && !scene.profileStudy && !scene.photoStudy && !scene.portraitProgram && scene.words?.length) {
       asset.overlayCues = narratedFaceOverlays(overlay, portrait.source, scene.source.categoryId, scene.words, scene.portraitFX?.overlay?.regions || scene.study?.operation === 'planes')
       asset.overlay = asset.overlayCues[0]?.overlay ?? overlay
@@ -171,15 +190,43 @@ export async function prepareVideo(compositionValue: VideoComposition, images: G
     if(run && source) {
       if(!programs.has(run)) {
         const program=preparePortraitProgram(run.program,portrait?.source??source,profile,portrait?.canvas??decoded.get(source.id))
+        if (scene.source.kind === 'portrait' && ['feature-study', 'measurement-explainer'].includes(composition.recipe)) {
+          program.holdShortShot = true
+        }
+        if (scene.source.kind === 'portrait' && composition.recipe === 'measurement-explainer') {
+          program.actions = program.actions.map((action, index) => index % 3 === 0 && action.guide !== 'face.taper'
+            ? { ...action, treatment: 'mesh' } : action)
+        }
+        if (scene.source.kind === 'portrait' && composition.recipe === 'feature-study') {
+          // Use editorial ink for the plain measurement treatments in older saved cuts.
+          program.actions = program.actions.map(action => action.guide !== 'face.taper' && ['trace', 'bracket', 'landmarks', 'caliper'].includes(action.treatment)
+            ? { ...action, treatment: 'ink-callout' } : action)
+        }
         programs.set(run,scene.source.kind==='report'?{...program,actions:program.actions.slice(0,1)}:program)
       }
       asset.program=programs.get(run);asset.programRun=run
     }
-    asset.portraitHoldMs=scene.source.kind==='report'&&scene.focus==='features'&&asset.program?.actions.length?portraitOverlayWindowMs:0
+    if (portrait && source && scene.scoreCallouts?.length && !scene.profileStudy) {
+      asset.scorePrograms = new Map(scene.scoreCallouts.map(({ label }) => {
+        const program = narratedPortraitProgram(label, composition.recipe, composition.variation)
+        const prepared = preparePortraitProgram(program, portrait.source, undefined, portrait.canvas)
+        if (composition.recipe === 'feature-study') {
+          prepared.actions = prepared.actions.map(action => ({ ...action, treatment: 'ink-callout' }))
+        }
+        return [label, prepared]
+      }))
+    }
+    asset.portraitHoldMs=scene.source.kind==='report'&&scene.focus==='features'&&asset.program?.actions.length?(composition.recipe === 'report-led' ? Math.min(550, scene.durationMs * .2) : portraitOverlayWindowMs):0
     if (scene.source.kind === 'report') { asset.entryTimes = reportEntryTimes(scene, asset); priorScroll = reportMotion(scene, asset, scene.durationMs).scroll; priorCategory = scene.source.categoryId } else priorCategory = ''
     priorFrame = appReportFrame(scene.framing)
     if (previousScene && showsFeatureMetric(previousScene) && showsFeatureMetric(scene) && previousScene.source.kind === scene.source.kind && previousScene.focus === scene.focus && previousScene.source.categoryId === scene.source.categoryId && JSON.stringify(previousScene.source.report) === JSON.stringify(scene.source.report)) {
       asset.metricStartMs = scenes.get(previousScene.id)?.metricStartMs ?? previousScene.startMs
+    }
+    const comparison = comparisonSources.get(scene.id)
+    const comparisonImage = comparison && decoded.get(comparison.id)
+    if (comparison && comparisonImage) {
+      const reference = prepareReference({ ...comparison, imageId: comparison.id, categoryId: scene.source.categoryId })
+      asset.comparison = { image: comparisonImage, label: comparison.label, crop: reference?.crop }
     }
     scenes.set(scene.id, asset)
     asset.portraitSourceRect = portrait?.sourceRect
@@ -187,6 +234,16 @@ export async function prepareVideo(compositionValue: VideoComposition, images: G
     asset.studyLandmarks = portrait?.source.landmarks ?? source?.landmarks
     if (scene.source.kind === 'portrait') {
       asset.lighting = scene.portraitFX?.lighting ?? (scene.study?.operation === 'light' ? portraitLightingSchema.parse({ target: scene.source.categoryId === 'jaw' ? 'jaw' : 'cheeks', color: scene.study?.operation === 'light' ? 'selective' : 'natural' }) : undefined)
+      if (!asset.lighting && composition.recipe === 'measurement-explainer' && scene.editorial === 'detail' &&
+        !scene.portraitCrop && !scene.scoreCallouts?.length && !scene.profileStudy && !scene.featureStudy && !scene.photoStudy && !scene.portraitFX?.print) {
+        const feature = scene.source.categoryId
+        const target = feature === 'brows' ? 'eyes' : feature
+        if (target === 'eyes' || target === 'nose' || target === 'jaw' || target === 'cheeks' || target === 'mouth') {
+          const light = portraitLightingSchema.parse({ preset: 'spot', target, side: 'both', intensity: .65, ambientEv: -.28, radius: 1.15 })
+          try { portraitLightGeometry(asset.studyLandmarks, light); asset.lighting = light }
+          catch { /* A photograph without reliable anchors keeps its source lighting. */ }
+        }
+      }
       if (asset.lighting && source && portrait) {
         portraitLightGeometry(asset.studyLandmarks, asset.lighting)
         asset.effectMask = portrait.canvas instanceof HTMLCanvasElement ? portrait.canvas : await portraitSubject(decoded.get(source.id)!, source)
@@ -352,10 +409,10 @@ export function createVideoPainter(scene: VideoScene, localMs: number, reduced: 
       const scoreValue = node.id.endsWith('/value') && isReportScoreElement(node.id)
       const scoreTarget = emphasis.section === 'scores' ? node.id.startsWith('scores/') : emphasis.section === 'potential' ? node.id === 'potential/value' || node.id === 'scores/potential/value' : node.id === `${emphasis.section}/value` || node.id === emphasis.section
       if (scoreValue && scoreTarget && !reduced) {
-        effect.scale = (effect.scale ?? 1) * (1 + emphasis.amount * .045)
+        effect.scale = (effect.scale ?? 1) * (1 + emphasis.amount * .012)
         effect.anchor = { x: node.id === 'scores/current/value' ? 0 : 1, y: .5 }
       } else if (emphasis.section === node.id && !isReportScoreElement(node.id)) {
-        effect.highlight = { color: '#32b1ed', amount: emphasis.amount, endColor: '#32b1ed' }
+        effect.highlight = { color: '#89b5c9', endColor: '#89b5c966', amount: emphasis.amount * .42, lineWidth: .85 }
       }
     }
     return { ...effect, ...override?.(node, effect) }
@@ -578,7 +635,9 @@ function renderScene(ctx: CanvasRenderingContext2D, prepared: PreparedVideo, sce
   if (cue && cueIndex > 0) morph = { from: original.overlayCues![cueIndex - 1].overlay, to: cue.overlay, progress: reduced ? 1 : smoothMotion((localMs - cue.startMs) / videoMotion.styleWaveMs) }
   const previousScene = prepared.composition.scenes[prepared.composition.scenes.indexOf(scene) - 1]
   const studyClock=scene.photoStudy?photoStudyClock(prepared.composition.scenes,scene,localMs):undefined
-  const activity = !measuring && asset.program && asset.programRun ? samplePortraitProgram(asset.program,scene.startMs+localMs-asset.programRun.startMs,asset.programRun.durationMs,asset.programRun.words,reduced) : undefined
+  const score = activeSpokenScore(scene, localMs)
+  const scoreProgram = score && asset.scorePrograms?.get(score.label)
+  const activity = !measuring && score && scoreProgram ? samplePortraitProgram(scoreProgram, localMs - (sceneSpeechWords(scene)[score.word]?.startMs ?? 0), portraitOverlayWindowMs, undefined, reduced) : !measuring && asset.program && asset.programRun ? samplePortraitProgram(asset.program,scene.startMs+localMs-asset.programRun.startMs,asset.programRun.durationMs,asset.programRun.words,reduced) : undefined
   const lightFor = (target: VideoScene, time: number) => {
     const light = prepared.scenes.get(target.id)?.lighting
     return light ? samplePortraitLighting(light, target.narration, time, target.durationMs, target.words, reduced) : undefined
@@ -599,7 +658,13 @@ function renderScene(ctx: CanvasRenderingContext2D, prepared: PreparedVideo, sce
   const frame = sceneFrame(scene, localMs, asset.initialFrame, reduced)
   if (scene.featureStudy && asset.portrait) {
     const previous = prepared.composition.scenes[prepared.composition.scenes.indexOf(scene) - 1]
-    drawFeatureStudy(ctx, scene.featureStudy, { image: asset.portrait, landmarks: asset.studyLandmarks, headTop: asset.portraitHeadTop }, asset.featurePhotos ?? [], localMs, scene.durationMs, reduced, previous?.source.imageId === scene.source.imageId ? previous.featureStudy : undefined, activity, scene.portraitFX?.instrument)
+    const study = scene.featureStudy
+    const cueScenes = study.opening || study.editorial && study.comparison === 'wipe'
+      ? prepared.composition.scenes.filter(candidate => candidate.scriptRange?.cueId === scene.scriptRange?.cueId && candidate.featureStudy?.opening === study.opening && candidate.featureStudy?.comparison === study.comparison)
+      : []
+    const studyTime = scene.startMs + localMs - (cueScenes[0]?.startMs ?? scene.startMs)
+    const studyDuration = cueScenes.length ? cueScenes.at(-1)!.startMs + cueScenes.at(-1)!.durationMs - cueScenes[0].startMs : scene.durationMs
+    drawFeatureStudy(ctx, study, { image: asset.portrait, landmarks: asset.studyLandmarks, headTop: asset.portraitHeadTop }, asset.featurePhotos ?? [], studyTime, studyDuration, reduced, previous?.source.imageId === scene.source.imageId && !previous.featureStudy?.opening ? previous.featureStudy : undefined, activity, scene.portraitFX?.instrument, scene.startMs + localMs)
   } else if (scene.source.kind === 'explainer') {
     const previous = prepared.composition.scenes[prepared.composition.scenes.findIndex(item => item.id === scene.id) - 1]
     drawExplainer(ctx, scene, localMs, reduced, paint, previous?.source.kind === 'explainer' ? previous.graphic : undefined, measuring ? undefined : prepared.anatomy, asset.anatomyRegistration, asset.graphicCaptionHeight, asset.graphicSpecimen, asset.graphicStartMs === undefined ? undefined : { elapsed: scene.startMs + localMs - asset.graphicStartMs, duration: asset.graphicEndMs! - asset.graphicStartMs })
@@ -629,50 +694,46 @@ function renderScene(ctx: CanvasRenderingContext2D, prepared: PreparedVideo, sce
   } else {
     const photoStudy = scene.source.overlay === 'face-map' || Boolean(scene.photoStudy)
     const operationMs = scene.startMs + localMs - (asset.studyOperationStartMs ?? scene.startMs)
-    const detail = portraitIsDetail(scene)
+    const priorCrop = previousScene?.source.imageId === scene.source.imageId ? previousScene.portraitCrop : undefined
+    const detail = Boolean(scene.portraitCrop) || portraitIsDetail(scene)
     let portraitFrame = scene.study ? studyPortraitFrame(scene.study.operation) : scene.editorial || scene.photoStudy ? editorialPortraitStage(scene.editorial) : photoStudy ? { x: 0, y: 0, width: W, height: H } : featureStageLayout({ width: 354, height: 145 }, scene.layout, !detail && scene.focus !== 'action-plan' ? 'scores' : scene.focus).face
     if (showsFeatureMetric(scene)) portraitFrame = { ...portraitFrame, y: captionDesign.top + 220, height: featureComponent(asset, scene).frame.y - (captionDesign.top + 220) + 120 }
     if (detail) portraitFrame = { ...portraitFrame, height: Math.max(portraitFrame.height, H - portraitFrame.y) }
-    if (scene.scoreCallouts?.length) portraitFrame = {...portraitFrame,height:Math.min(portraitFrame.height,scorePresentation.top-120-portraitFrame.y)}
+    const scorePortrait = scene.source.kind === 'portrait' && Boolean(scene.scoreCallouts?.length) && !scene.portraitCrop
+    if (scorePortrait) portraitFrame = { x: 0, y: 0, width: W, height: H }
     const overlayDuration = scene.study ? (asset.studyOperationEndMs ?? scene.startMs + scene.durationMs) - (asset.studyOperationStartMs ?? scene.startMs) : scene.durationMs
     const stageHeight = portraitFrame.height / (portraitFrame.width / W)
     const fadeHeight = Math.max(stageHeight, (H - portraitFrame.y) * W / portraitFrame.width)
     if (scene.study && !asset.profile) paint(ctx, { id: `study/${scene.study.id}/background`, label: 'Faint editorial grid', frame: { x: 0, y: 0, width: W, height: H }, draw: drawStudyBackdrop })
     let fadeProtectedBottom: number | undefined, fadeImageBottom: number | undefined
-    if (scene.study?.operation !== 'recap') paint(ctx, { id: 'portrait', label: 'Portrait & measurements', frame: { ...portraitFrame, height: fadeHeight * portraitFrame.width / W }, size: { width: W, height: fadeHeight }, clip: !detail, draw: (ctx, paint) => {
+    if (scene.study?.operation !== 'recap') paint(ctx, { id: 'portrait', label: 'Portrait & measurements', frame: { ...portraitFrame, height: fadeHeight * portraitFrame.width / W }, size: { width: W, height: fadeHeight }, clip: !detail && !priorCrop, draw: (ctx, paint) => {
       ctx.save()
-      applyTracks(ctx, scene.tracks.filter(track => detail && track.target === 'camera' && !['report-scroll', 'layout-scale'].includes(track.primitive)), localMs, reduced)
+      applyTracks(ctx, scene.tracks.filter(track => detail && !scene.portraitCrop && track.target === 'camera' && !['report-scroll', 'layout-scale'].includes(track.primitive)), localMs, reduced)
       const picture = asset.portrait
       let protectedBottom: number | undefined
       let imageBottom = stageHeight
       if (picture) {
-        const priorCrop = previousScene?.source.imageId === scene.source.imageId ? previousScene.portraitCrop : undefined
-        if (scene.portraitCrop || priorCrop && localMs < 900) {
-          const full = { x: 0, y: 0, width: 1, height: 1 }, from = priorCrop ?? scene.portraitCrop ?? full, to = scene.portraitCrop ?? full
-          const t = reduced || !priorCrop ? 1 : smoothMotion(localMs / 900)
-          const crop = { x: from.x + (to.x-from.x)*t, y: from.y+(to.y-from.y)*t, width: from.width+(to.width-from.width)*t, height: from.height+(to.height-from.height)*t }
-          const sw = picture.width*crop.width, sh = picture.height*crop.height, scale = W/sw
-          const width = sw*scale, height = sh*scale, x=(W-width)/2, y=Math.max(0,(stageHeight-height)*.35)
-          paint(ctx,{id:'subject',label:'Approved source crop',frame:{x,y,width,height},size:{width:sw,height:sh},draw:ctx=>{
-            ctx.drawImage(picture,picture.width*crop.x,picture.height*crop.y,sw,sh,0,0,sw,sh)
-            if(activity){ctx.save();ctx.translate(-picture.width*crop.x,-picture.height*crop.y);drawPortraitActivity(ctx,activity,picture.width,picture.height);ctx.restore()}
-          }})
-          fadeProtectedBottom = portraitFrame.y + (y+height*.68)*portraitFrame.width/W
-          fadeImageBottom = fadeProtectedBottom
-          ctx.restore(); return
-        }
+        const cropFocus = (crop: NonNullable<VideoScene['portraitCrop']>) => ({
+          x: crop.x * picture.width, y: crop.y * picture.height,
+          width: crop.width * picture.width, height: crop.height * picture.height,
+        })
         const activeReference = asset.studyReferences?.find(reference => reference.id === scene.study?.activeId && reference.imageId === scene.source.imageId)
         const inspectCrop = scene.study?.operation === 'inspect' && activeReference && asset.portraitSourceRect ? registeredPortraitCrop(activeReference.crop, asset.portraitSourceRect, picture.width, picture.height) : undefined
         const focusOverlay = asset.overlay
         const points = focusOverlay?.primitives.flatMap(primitive => primitive.kind === 'polyline' ? primitive.pixelPoints.map(point => ({ x: point.x / focusOverlay!.size.width * picture.width, y: point.y / focusOverlay!.size.height * picture.height })) : []) ?? []
-        const focus = detail ? inspectCrop ?? portraitDetailRegion(points, picture.width, picture.height) ?? undefined : undefined
+        const focus = scene.portraitCrop ? cropFocus(scene.portraitCrop) : detail && !scorePortrait ? inspectCrop ?? portraitDetailRegion(points, picture.width, picture.height) ?? undefined : undefined
         const fillBottom = detail || prepared.composition.recipe === 'measurement-explainer'
-        const destination = portraitImageFrame(picture, { width: W, height: stageHeight }, focus, asset.studyLandmarks, asset.portraitHeadTop, prepared.composition.recipe === 'measurement-explainer' ? 2.8 : 1.45, fillBottom)
-        const context = portraitImageFrame(picture, { width: W, height: stageHeight }, undefined, asset.studyLandmarks, asset.portraitHeadTop, 1.45, fillBottom)
-        const previous = prepared.composition.scenes[prepared.composition.scenes.indexOf(scene) - 1]
-        const continuedDetail = previous?.source.imageId === scene.source.imageId && previous.source.categoryId === scene.source.categoryId && portraitIsDetail(previous)
-        const zoom = !focus || reduced || continuedDetail ? 1 : smoothMotion((scene.study ? operationMs : localMs) / Math.min(1200, scene.durationMs * .35))
-        const { x, y, width, height } = Object.fromEntries(Object.entries(destination).map(([key, value]) => [key, context[key as keyof VideoFrame] + (value - context[key as keyof VideoFrame]) * zoom])) as VideoFrame
+        const context = scorePortrait ? scorePortraitFrame(picture, { width: W, height: stageHeight }, asset.portraitHeadTop) : portraitImageFrame(picture, { width: W, height: stageHeight }, undefined, asset.studyLandmarks, asset.portraitHeadTop, 1.45, fillBottom)
+        const focusFrame = (region: VideoFrame) => {
+          const frame = portraitImageFrame(picture, { width: W, height: stageHeight }, region, asset.studyLandmarks, asset.portraitHeadTop, 1.22, fillBottom)
+          const headTop = asset.portraitHeadTop ?? 0
+          return { ...frame, y: Math.max(frame.y, -headTop * frame.height / picture.height) }
+        }
+        const destination = focus ? focusFrame(focus) : context
+        const origin = priorCrop ? focusFrame(cropFocus(priorCrop)) : context
+        const continuedDetail = !priorCrop && !scene.portraitCrop && previousScene?.source.imageId === scene.source.imageId && previousScene.source.categoryId === scene.source.categoryId && portraitIsDetail(previousScene)
+        const zoom = reduced || continuedDetail ? 1 : smoothMotion((scene.study ? operationMs : localMs) / Math.min(1050, scene.durationMs * .4))
+        const { x, y, width, height } = Object.fromEntries(Object.entries(destination).map(([key, value]) => [key, origin[key as keyof VideoFrame] + (value - origin[key as keyof VideoFrame]) * zoom])) as VideoFrame
         imageBottom = y + height
         const protectedY = focus ? focus.y + focus.height : asset.studyLandmarks?.anchors.chin ? asset.studyLandmarks.anchors.chin.y * picture.height : asset.profile?.faceBottom
         if (protectedY !== undefined) protectedBottom = y + protectedY * height / picture.height
@@ -682,6 +743,23 @@ function renderScene(ctx: CanvasRenderingContext2D, prepared: PreparedVideo, sce
           else if (scene.photoStudy) drawPhotoStudy(ctx, picture, asset.studyLandmarks, scene.photoStudy, studyClock!.timeMs, studyClock!.durationMs, reduced, { lighting: activeLighting, mask: asset.effectMask, overlay: activity ? undefined : asset.overlay, appearance: faceAppearance, paint, measuring })
           else if (activeLighting && !measuring) drawPortraitEffects(ctx, picture, { landmarks: asset.studyLandmarks, lighting: activeLighting, fromLighting, lightingMix: blendLight ? lightHandoff!.progress : undefined, mask: asset.effectMask, timeMs: localMs, reduced })
           else ctx.drawImage(picture, 0, 0)
+          const spotlight = focus ?? (priorCrop ? cropFocus(priorCrop) : undefined)
+          if (spotlight && !measuring) {
+            const transform = ctx.getTransform()
+            const x = spotlight.x + spotlight.width / 2, y = spotlight.y + spotlight.height / 2
+            const cx = transform.a * x + transform.c * y + transform.e
+            const cy = transform.b * x + transform.d * y + transform.f
+            const scale = Math.hypot(transform.a, transform.b)
+            const radius = Math.max(spotlight.width, spotlight.height) * .55 * scale
+            ctx.save()
+            ctx.setTransform(1, 0, 0, 1, 0, 0)
+            const shade = ctx.createRadialGradient(cx, cy, radius, cx, cy, radius + picture.width * .48 * scale)
+            shade.addColorStop(0, 'rgba(22, 19, 25, 0)')
+            shade.addColorStop(1, `rgba(22, 19, 25, ${.15 * (focus ? zoom : 1 - zoom)})`)
+            ctx.fillStyle = shade
+            ctx.fillRect(0, 0, W, H)
+            ctx.restore()
+          }
           if (activity) {
             const warp=scene.photoStudy ? photoStudyGesture(scene.photoStudy,photoStudyRegions(asset.studyLandmarks,scene.photoStudy.feature),studyClock!.timeMs,studyClock!.durationMs,reduced,asset.studyLandmarks).warp : undefined
             drawPortraitActivity(ctx,activity,picture.width,picture.height,warp)
@@ -720,21 +798,37 @@ function renderScene(ctx: CanvasRenderingContext2D, prepared: PreparedVideo, sce
     } })
     if (!measuring && asset.portrait) {
       ctx.save(); ctx.setTransform(1, 0, 0, 1, 0, 0)
-      if (!scene.portraitCrop) drawPortraitColorExtension(ctx, W, H, fadeImageBottom ?? H)
-      const fadeEnd = scene.portraitCrop ? Math.min(H, fadeImageBottom ?? H) : H
-      drawPortraitEdgeFade(ctx, W, fadeEnd, fadeProtectedBottom)
-      if (scene.portraitCrop && fadeEnd < H) { ctx.fillStyle = '#fff'; ctx.fillRect(0, fadeEnd, W, H-fadeEnd) }
+      drawPortraitColorExtension(ctx, W, H, fadeImageBottom ?? H)
+      if (!scorePortrait) drawPortraitEdgeFade(ctx, W, H, fadeProtectedBottom)
       ctx.restore()
     }
     if (scene.study && !asset.profile && ['compare', 'recap'].includes(scene.study.operation) && asset.studyReferences) drawStudyReferences(ctx, paint, scene.study, asset.studyReferences, scene.startMs + localMs - (asset.studyStartMs ?? scene.startMs), reduced, { elapsed: operationMs, duration: overlayDuration })
-    if (!scene.study && !asset.profile && scene.editorial === 'compare' && asset.portrait && !scene.photoStudy) {
-      const picture = asset.portrait
-      const points = asset.overlay?.primitives.flatMap(primitive => primitive.kind === 'polyline' ? primitive.pixelPoints : primitive.kind === 'point' ? [primitive.point] : []).map(point => ({ x: point.x * picture.width / asset.overlay!.size.width, y: point.y * picture.height / asset.overlay!.size.height })) ?? []
-      const crop = portraitDetailRegion(points, picture.width, picture.height)
-      if (crop) paint(ctx, { id: 'feature-detail', label: 'Registered anatomical detail', frame: { x: 60, y: 770, width: 330, height: 300 }, opacity: reduced ? 1 : elementEntrance(localMs, 240, 620), draw: ctx => {
-        ctx.fillStyle = '#69737b'; ctx.font = `20px ${font}`; ctx.fillText('DETAIL / ' + scene.source.categoryId.toUpperCase(), 0, 22)
-        ctx.save(); ctx.beginPath(); ctx.roundRect(0, 52, 330, 238, 30); ctx.clip(); ctx.fillStyle = '#fff'; ctx.fillRect(0, 52, 330, 238)
-        ctx.drawImage(picture, crop.x, crop.y, crop.width, crop.height, 0, 52, 330, 238); ctx.restore()
+    if (asset.comparison) {
+      const { image, label, crop } = asset.comparison
+      paint(ctx, { id: 'feature-detail', label, frame: { x: videoContent.inset, y: 770, width: 250, height: 230 }, opacity: reduced ? 1 : elementEntrance(localMs, 240, 620), draw: ctx => {
+        const raw = originalVideoContext(ctx)
+        const appearance = sampleCaptionAppearance(raw, { x: 0, y: 0, width: 190, height: 30 }, '#171717')
+        raw.save()
+        raw.fillStyle = appearance.ink
+        raw.font = `500 22px ${font}`
+        if (appearance.tint !== 'none') {
+          raw.shadowColor = appearance.tint === 'light' ? '#ffffffde' : '#000000de'
+          raw.shadowBlur = 8
+        }
+        raw.fillText(label, 0, 22)
+        raw.restore()
+        const frame = { x: 0, y: 40, width: 250, height: 190 }
+        ctx.save()
+        ctx.beginPath(); ctx.roundRect(frame.x, frame.y, frame.width, frame.height, 22); ctx.clip()
+        if (crop) {
+          const scale = Math.min(frame.width / crop.width, frame.height / crop.height)
+          const width = image.width * scale, height = image.height * scale
+          const x = Math.min(0, Math.max(frame.width - width, frame.width / 2 - (crop.x + crop.width / 2) * scale))
+          const y = Math.min(0, Math.max(frame.height - height, frame.height / 2 - (crop.y + crop.height / 2) * scale))
+          if (width >= frame.width && height >= frame.height) ctx.drawImage(image, x, frame.y + y, width, height)
+          else cover(ctx, image, frame)
+        } else cover(ctx, image, frame)
+        ctx.restore()
       } })
     }
     if (showsFeatureMetric(scene)) {
@@ -748,7 +842,7 @@ function renderScene(ctx: CanvasRenderingContext2D, prepared: PreparedVideo, sce
     if (localMs < track.startMs) continue
     if (track.target === 'decoration' || track.primitive === 'metric-bar-fill' || track.primitive === 'shimmer-pass') drawDecoration(ctx, prepared, scene, track, localMs, accent, reduced)
   }
-  if (!measuring) drawSpokenScore(ctx,scene,localMs,reduced)
+  if (!measuring) drawSpokenScore(ctx, scene, localMs, reduced, prepared.composition.recipe, prepared.composition.variation)
   if (!measuring) drawScientificEvidence(ctx,prepared.composition,scene.startMs+localMs,reduced)
   if (chrome) drawSceneChrome(ctx, prepared, scene, localMs, reduced, paint, measuring, captionHandoff)
   ctx.restore()
@@ -764,8 +858,8 @@ function drawSceneChrome(ctx: CanvasRenderingContext2D, prepared: PreparedVideo,
     const captionOnImage = Boolean(asset.anatomyRegistration) || scene.source.kind === 'screen' || photoCaption || scene.source.kind === 'report' && (mockReportHeroHeight - reportMotion(scene, asset, localMs, reduced).scroll) * W / mockReportSize.width > 220
     const ink = reportCaption ? '#171a20' : captionOnImage ? '#fff' : scene.source.kind === 'explainer' ? explainerPalette(explainerTone(scene.graphic!)).ink : '#000'
     if (!measuring) {
-      if (reportCaption) drawCaptionBackdrop(ctx, { edge: 'bottom', role: 'report', tint: 'light', height: H-reportCaptionFrame.y+64, theme: prepared.composition.theme })
-      if (photoCaption) drawCaptionBackdrop(ctx, { edge: 'bottom', role: 'brand', theme: prepared.composition.theme })
+      if (reportCaption) drawCaptionBackdrop(originalVideoContext(ctx), { edge: 'bottom', role: 'report', tint: 'light', theme: prepared.composition.theme })
+      else if (photoCaption) drawCaptionBackdrop(ctx, { edge: 'bottom', role: 'brand', theme: prepared.composition.theme })
     }
     const cta = isVideoCta(prepared.composition, scene)
     const frame = asset.brandFrame ?? videoBrandFrame(cta)
@@ -778,7 +872,8 @@ function drawSceneChrome(ctx: CanvasRenderingContext2D, prepared: PreparedVideo,
         else drawMoggingWatermark(raw, appearance.ink)
         raw.restore()
       } })
-    paint(ctx, { id: 'headline', label: 'Headline', frame: reportCaption ? reportCaptionFrame : scene.source.kind === 'explainer' && !asset.anatomyRegistration ? explainerLayout(scene.graphic!).headline : { x: 0, y: captionDesign.top, width: W, height: 190 }, draw: ctx => drawText(ctx, captionHandoff?.next ?? scene, captionHandoff?.time ?? localMs, accent, reduced, ink, captionHandoff, prepared.composition.theme) })
+    const editorialContrast = scene.source.kind === 'portrait' && ['measurement-explainer', 'feature-study', 'hybrid-story'].includes(prepared.composition.recipe)
+    paint(ctx, { id: 'headline', label: 'Headline', frame: reportCaption ? reportCaptionFrame : scene.source.kind === 'explainer' && !asset.anatomyRegistration ? explainerLayout(scene.graphic!).headline : { x: 0, y: captionDesign.top, width: W, height: 190 }, draw: ctx => drawText(ctx, captionHandoff?.next ?? scene, captionHandoff?.time ?? localMs, accent, reduced, ink, captionHandoff, prepared.composition.theme, editorialContrast) })
   }
 }
 
@@ -827,16 +922,19 @@ function cover(ctx: CanvasRenderingContext2D, image: HTMLImageElement | HTMLCanv
   ctx.drawImage(image, rect.x + (rect.width - image.width * scale) / 2, rect.y + (rect.height - image.height * scale) / 2, image.width * scale, image.height * scale)
 }
 
-function drawText(ctx: CanvasRenderingContext2D, scene: VideoScene, localMs: number, accent: string, reduced: boolean, ink = '#000', handoff?: CaptionHandoff, theme: 'light' | 'dark' = 'light') {
+function drawText(ctx: CanvasRenderingContext2D, scene: VideoScene, localMs: number, accent: string, reduced: boolean, ink = '#000', handoff?: CaptionHandoff, theme: 'light' | 'dark' = 'light', editorialContrast = false) {
   ctx = originalVideoContext(ctx)
   ctx.save()
   if (!handoff) applyTracks(ctx, scene.tracks.filter(track => track.target === 'text' && ['entry', 'exit'].includes(primitiveDefinition(track.primitive).category)), localMs, reduced)
-  const frame = { x: captionDesign.inset, y: 0, width: captionStyle(scene).width, height: captionStyle(scene).height }
-  const bottom = ['report', 'screen'].includes(scene.source.kind)
-  const surface = bottom ? { ink: theme === 'dark' ? '#fff' : '#000', light: 0, dark: 0 } : settleCaptionAppearance(ctx, sampleCaptionAppearance(ctx, frame, theme === 'dark' ? '#fff' : ink), scene.startMs + localMs, reduced)
+  const { inset, width, height } = captionStyle(scene)
+  const frame = { x: inset, y: 0, width, height }
+  const appearance = sampleCaptionAppearance(ctx, frame, theme === 'dark' ? '#fff' : ink)
+  const surface = appearance && !editorialContrast && !scene.scoreCallouts?.length
+    ? settleCaptionAppearance(ctx, appearance, scene.startMs + localMs, reduced)
+    : { ink: appearance?.ink ?? (theme === 'dark' ? '#fff' : '#000'), light: 0, dark: 0 }
   drawAdaptiveCaptionTint(ctx, frame, 'light', surface.light)
   drawAdaptiveCaptionTint(ctx, frame, 'dark', surface.dark)
-  drawLyricsCaption(ctx, scene, localMs, reduced, surface.ink, handoff)
+  drawLyricsCaption(ctx, scene, localMs, reduced, surface.ink, handoff, editorialContrast)
   if (scene.subtitle && !/^mogging\.com$/i.test(scene.subtitle.trim())) {
     ctx.save(); ctx.font = `500 32px ${font}`; ctx.fillStyle = theme === 'dark' ? darkVideoColor(accent) : accent; ctx.textAlign = 'left'
     ctx.fillText(scene.subtitle, 90, scene.source.kind === 'title' ? 1770 : captionDesign.top - 100); ctx.restore()

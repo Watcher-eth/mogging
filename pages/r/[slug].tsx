@@ -4,7 +4,7 @@ import Link from 'next/link'
 import { useEffect, useState } from 'react'
 import { useSession } from 'next-auth/react'
 import { trackWebEvent } from '@/lib/analytics/client'
-import { SkeletonAvatar } from '@/components/ui/skeleton-avatar'
+import * as Avatar from '@radix-ui/react-avatar'
 import type { GetServerSideProps, NextApiRequest, NextApiResponse } from 'next'
 import { ArrowRight, Check, Copy, Sparkles } from 'lucide-react'
 import { Button } from '@/components/ui/button'
@@ -83,7 +83,10 @@ export default function CreatorLinkPage(props: CreatorLinkPageProps) {
     </header>
     <section className="mx-auto flex w-full max-w-[520px] flex-col items-center px-6 pb-10 pt-9 text-center sm:pt-12">
       <div className="relative mb-7">
-        <SkeletonAvatar src={props.avatarUrl} alt={props.creator} size={160} referrerPolicy="no-referrer" className="size-36 rounded-full border-[5px] border-white bg-[#eef0f2] shadow-[0_6px_24px_rgba(24,26,29,0.10)] sm:size-40" fallback={<span className="grid size-full place-items-center text-5xl font-medium text-[#73777d]">{Array.from(props.creator)[0]}</span>} />
+        <Avatar.Root className="flex size-36 overflow-hidden rounded-full border-[5px] border-white bg-[#eef0f2] shadow-[0_6px_24px_rgba(24,26,29,0.10)] sm:size-40">
+          {props.avatarUrl ? <Avatar.Image src={props.avatarUrl} alt={props.creator} referrerPolicy="no-referrer" className="size-full object-cover" /> : null}
+          <Avatar.Fallback className="grid size-full place-items-center text-5xl font-medium text-[#73777d]">{Array.from(props.creator)[0]}</Avatar.Fallback>
+        </Avatar.Root>
         <Image src="/favicon.png" alt="Mogging" width={48} height={48} className="absolute -bottom-1 -right-1 rounded-[15px] border-[3px] border-white shadow-sm" />
       </div>
       <p className="flex max-w-full items-center gap-2 rounded-full border border-black/[0.05] bg-white/90 px-4 py-2.5 text-sm shadow-[0_2px_8px_rgba(24,26,29,0.03)]"><Sparkles className="size-4 shrink-0 text-[#00A8EF]" /><span className="truncate">An invite from <strong className="font-medium">{props.creator}</strong></span></p>

@@ -148,13 +148,15 @@ test('recorded stories retain measured audio and saved photo scores across the e
   const { createHash } = await import('node:crypto')
   const read = (path: string) => JSON.parse(readFileSync(`public${path}`, 'utf8'))
   for (const subject of creatorSubjects) {
-    const story = read(`/creator/stories/${subject.id}/story.json`), saved = restoreProductionRecording(read(story.recording))
-    const analysis = creatorSubjectAnalysisSchema.parse(read(story.analysis))
+    const catalog = read(`/creator/stories/${subject.id}/story.json`)
+    const analysis = creatorSubjectAnalysisSchema.parse(read(catalog.analysis))
     expect(analysis.subjectId).toBe(subject.id)
-    const options=creatorStoryOptions(story)
-    expect(options[0].id).toBe(story.id)
+    const options=creatorStoryOptions(catalog)
+    expect(options[0].id).toBe(catalog.id)
     const recording = ['johnson', 'trump', 'zendaya'].includes(subject.id) ? 'recording.json' : 'round3-recording.json'
-    expect(options[0].recording).toBe(`/creator/stories/${subject.id}/${recording}`)
+    const legacy = options.find(option => option.recording === `/creator/stories/${subject.id}/${recording}`)!
+    const story = { ...catalog, ...legacy, featureOpening: legacy.featureOpening }
+    const saved = restoreProductionRecording(read(legacy.recording!))
     expect(analysis.source.imageId).toBe(story.images[0].id)
     expect(productionWritingBrief(saved.script, analysis).subjectAnalysis?.source.sha256).toBe(analysis.source.sha256)
     const reports = creatorAnalysisReports(analysis), actual = creatorAnalysisInput(input, subject.name, analysis)
@@ -231,7 +233,7 @@ test('new score stories bind narrated categories to saved scores and keep all fo
     }
     const signatures = new Set<string>()
     for (const style of existingStyles) {
-      const story = { ...manifest, ...next }
+      const story = { ...manifest, ...next, featureOpening: next.featureOpening }
       const directions = creatorStoryDirections(story, script, actual, manifest.images, reports, style.id, 0)
       const video = compileProductionVideo(script, actual, manifest.images, reports, style.id, draft.voice, 0, 'philtrum', 1, directions)
       expect(narrationText(video)).toBe(script.cues.map(cue => cue.text).join('\n\n'))

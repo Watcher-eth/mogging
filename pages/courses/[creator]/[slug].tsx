@@ -1,7 +1,7 @@
 import { coursePageProps, type CoursePageProps } from '@/lib/courses/pages'
 import { useRouter } from 'next/router'
 import Link from 'next/link'
-import { SkeletonImage } from '@/components/ui/skeleton-image'
+import Image from 'next/image'
 import { ArrowLeft, ArrowUpRight, Check, Play } from 'lucide-react'
 import {
   CourseHero,
@@ -124,12 +124,12 @@ function CourseTileImage({
   course: DemoCourse
   index: number
 }) {
-  const src = index === 1 ? course.avatar : course.image
   return (
-    <SkeletonImage
-      src={src}
+    <Image
+      src={index === 1 ? course.avatar : course.image}
       alt=""
-      unoptimized={src.startsWith('https:')}
+      fill
+      unoptimized
       sizes="(max-width: 700px) 75vw, 300px"
       style={{
         objectFit: 'cover',

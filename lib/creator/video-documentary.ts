@@ -284,15 +284,14 @@ export async function prepareDocumentary(composition: VideoComposition, images: 
         }
         if (scene.text) {
           const { width, height } = captionStyle(scene)
-          const leftShift = 22
-          const frame = { x: captionDesign.inset - leftShift, y: captionDesign.top, width, height }
+          const frame = { x: captionDesign.inset, y: captionDesign.top, width, height }
           const { ink } = sampleCaptionAppearance(ctx, frame, '#fff')
           const previous = activeScene(composition, scene.startMs - 1)
           const handoff = previous !== scene && sceneTime < captionDesign.focusMs
             ? { previous, progress: smoothMotion(sceneTime / captionDesign.focusMs) }
             : undefined
           ctx.save()
-          ctx.translate(-leftShift, frame.y)
+          ctx.translate(0, frame.y)
           drawLyricsCaption(ctx, scene, sceneTime, reduced, ink, handoff)
           ctx.restore()
         }

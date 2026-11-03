@@ -14,11 +14,8 @@ import { generatePaymentActivationCode, getCheckoutLineItem, getProductConfig, p
 import { locales } from '@/lib/i18n/locales'
 import { priceAmounts } from '@/lib/payments/subscription-prices'
 import { getStripe } from '@/lib/payments/stripe'
-import { validateCheckoutProduct } from '@/lib/payments/checkout-price'
 
 const checkoutSchema = z.object({
-  attemptId: z.string().uuid().optional(),
-  flowId: z.string().uuid().optional(),
   product: z.enum(paymentProductSchemaValues),
   mobileInstallId: z.string().trim().min(8).max(120),
   returnLocale: z.enum(locales).optional(),
@@ -26,7 +23,6 @@ const checkoutSchema = z.object({
   unitAmount: z.number().int().nonnegative().optional(),
   locale: z.enum(['en', 'de', 'es', 'fr', 'zh']).optional(),
   source: z.string().trim().max(80).optional(),
-  returnTo: z.literal('analysis').optional(),
 })
 
 async function handler(req: NextApiRequest, res: NextApiResponse) {
@@ -84,7 +80,6 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
                 (input.unitAmount === undefined || session.metadata?.quotedUnitAmount === String(input.unitAmount)) &&
                 (!input.locale || session.locale === input.locale) &&
                 (!input.returnLocale || session.metadata?.returnLocale === input.returnLocale) &&
-                session.metadata?.returnTo === input.returnTo &&
                 session.metadata?.creatorClickId === attribution.clickId &&
                 session.metadata?.mobileInstallId === input.mobileInstallId &&
                 session.metadata?.landingAssignment === (landingAssignment ? serializeLandingAssignment(landingAssignment) : undefined)
@@ -109,9 +104,6 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
         ...(product.mode === 'payment' ? { payment_intent_data: { metadata: { product: input.product, accountId, userId: accountId, source } } } : {}),
         metadata: {
           product: input.product,
-          ...(input.attemptId ? { attemptId: input.attemptId, paywallVersion: '2' } : {}),
-          ...(input.flowId ? { flowId: input.flowId } : {}),
-          ...(input.returnTo ? { returnTo: input.returnTo } : {}),
           ...(input.returnLocale ? { returnLocale: input.returnLocale } : {}),
           ...(input.unitAmount !== undefined ? { quotedUnitAmount: String(input.unitAmount) } : {}),
           mobileInstallId: input.mobileInstallId,
@@ -139,8 +131,8 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
               },
             }
           : null),
-        success_url: input.returnTo === 'analysis' ? `${origin}/analysis?checkout=success&session_id={CHECKOUT_SESSION_ID}` : `${origin}/app/handoff?session_id={CHECKOUT_SESSION_ID}`,
-        cancel_url: input.returnTo === 'analysis' ? `${origin}/analysis?checkout=cancelled` : `${origin}${input.returnLocale && input.returnLocale !== 'en' ? `/${input.returnLocale}` : ''}/?checkout=cancelled&product=${input.product}`,
+        success_url: `${origin}/app/handoff?session_id={CHECKOUT_SESSION_ID}`,
+        cancel_url: `${origin}${input.returnLocale && input.returnLocale !== 'en' ? `/${input.returnLocale}` : ''}/?checkout=cancelled&product=${input.product}`,
       })
     })
 
@@ -156,7 +148,6 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
       source,
       properties: {
         product: input.product,
-        attempt_id: input.attemptId, flow_id: input.flowId, ...(input.attemptId ? { paywall_version: '2' } : {}),
         ...landingProperties(landingAssignment),
         mobileInstallId: input.mobileInstallId,
       },
@@ -170,6 +161,76 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
   }
 }
 
+async function validateCheckoutProduct(productId: string, product: ReturnType<typeof getProductConfig>) {
+  if (!product.priceId && product.unitAmount < 50) {
+    throw new ApiError(503, `${product.name} is missing a valid checkout price`)
+  }
+
+  if (product.mode === 'subscription' && !product.interval && !product.priceId) {
+    throw new ApiError(503, `${product.name} is missing a subscription interval`)
+  }
+
+  if (process.env.NODE_ENV === 'production' && product.mode === 'subscription' && !product.priceId) {
+    throw new ApiError(503, `${product.name} is missing its Stripe price ID (${productId})`)
+  }
+
+  if (!product.priceId) return
+
+  const priceEnvName = getStripePriceEnvName(productId)
+  if (!/^price_[A-Za-z0-9]+$/.test(product.priceId)) {
+    throw new ApiError(503, `${product.name} has an invalid Stripe price ID in ${priceEnvName}`)
+  }
+
+  const price = await getStripe().prices.retrieve(product.priceId, { expand: ['currency_options'] }).catch((error: unknown) => {
+    if (isMissingStripePriceError(error)) {
+      throw new ApiError(
+        503,
+        `${product.name} uses a Stripe price ID that does not exist for the configured STRIPE_SECRET_KEY. Update ${priceEnvName}.`
+      )
+    }
+    throw error
+  })
+  if (!price.active) {
+    throw new ApiError(503, `${product.name} uses an inactive Stripe price in ${priceEnvName}`)
+  }
+
+  if (product.mode === 'subscription') {
+    if (!price.recurring) {
+      throw new ApiError(503, `${product.name} must use a recurring Stripe price`)
+    }
+    if (product.interval && price.recurring.interval !== product.interval) {
+      throw new ApiError(503, `${product.name} Stripe price must recur every ${product.interval}, not ${price.recurring.interval}`)
+    }
+    return price
+  }
+
+  if (price.recurring) {
+    throw new ApiError(503, `${product.name} must use a one-time Stripe price`)
+  }
+  return price
+}
+
+function getStripePriceEnvName(productId: string) {
+  if (productId === 'evaluation') return 'STRIPE_EVALUATION_PRICE_ID'
+  if (productId === 'evaluation_pack_3') return 'STRIPE_EVALUATION_PACK_3_PRICE_ID'
+  if (productId === 'mobile_subscription_weekly') return 'STRIPE_MOBILE_WEEKLY_PRICE_ID'
+  if (productId === 'mobile_subscription_monthly') return 'STRIPE_MOBILE_MONTHLY_PRICE_ID'
+  if (productId === 'mobile_subscription_yearly') return 'STRIPE_MOBILE_YEARLY_PRICE_ID'
+  if (productId === 'mobile_lifetime') return 'STRIPE_MOBILE_LIFETIME_PRICE_ID'
+  if (productId === 'extra_potential_image') return 'STRIPE_EXTRA_POTENTIAL_IMAGE_PRICE_ID'
+  return 'STRIPE_*_PRICE_ID'
+}
+
+function isMissingStripePriceError(error: unknown) {
+  if (!error || typeof error !== 'object') return false
+  const record = error as { type?: unknown; code?: unknown; param?: unknown; statusCode?: unknown }
+  return (
+    record.type === 'StripeInvalidRequestError' &&
+    record.code === 'resource_missing' &&
+    record.param === 'price' &&
+    record.statusCode === 404
+  )
+}
 
 function getRequestOrigin(req: NextApiRequest) {
   const forwardedProto = req.headers['x-forwarded-proto']

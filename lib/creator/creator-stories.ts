@@ -1,7 +1,6 @@
 import profileGuides from '@/public/creator/profile-guides.json'
 import { profileStudySchema, profileFeatureForText, profileFeatureLabels, type ProfileStudy } from './video-profile'
 import { narratedPortraitProgram } from './portrait-program'
-import { portraitEffectsSchema } from './video-portrait-effects'
 import { spokenScoreCallouts } from './spoken-score'
 import { z } from 'zod'
 import { reportTriangulation } from './report-triangulation'
@@ -24,7 +23,8 @@ export const creatorSubjectAnalysisSchema = z.object({
   result: analysisProviderResultSchema, webReport: webReportSchema,
 })
 export type CreatorSubjectAnalysis = z.infer<typeof creatorSubjectAnalysisSchema>
-export type CreatorStoryOption = { id: string; title: string; kind?: 'feature-story' | 'score-walkthrough'; recording?: string; draft?: string; voice?: VoiceDirection; preview?: string; imageIds?: string[]; defaultLength?: 45 | 60 }
+type FeatureOpening = 'lip-choice' | 'jaw-choice' | 'smile-choice'
+export type CreatorStoryOption = { id: string; title: string; kind?: 'feature-story' | 'score-walkthrough'; recording?: string; draft?: string; voice?: VoiceDirection; preview?: string; imageIds?: string[]; defaultLength?: 45 | 60; featureOpening?: FeatureOpening }
 export type CreatorStory = CreatorStoryOption & {
   images: GeneratorImage[]; portraitImageIds?: string[]; analysis?: string; alternatives?: CreatorStoryOption[];
   evidence: { baselineId: string; comparisonId: string; topic: SemanticBeat['feature']; revealLabel: string; photoComparison?: boolean; revealEdit?: number }
@@ -35,7 +35,7 @@ async function readJson(url: string) {
   return response.json()
 }
 export function creatorStoryOptions(story: CreatorStory): CreatorStoryOption[] {
-  return [{ id: story.id, title: story.title, kind: story.kind ?? 'feature-story', recording: story.recording, imageIds: story.imageIds, defaultLength: story.defaultLength }, ...story.alternatives ?? []]
+  return [{ id: story.id, title: story.title, kind: story.kind ?? 'feature-story', recording: story.recording, imageIds: story.imageIds, defaultLength: story.defaultLength, featureOpening: story.featureOpening }, ...story.alternatives ?? []]
     .toSorted((a, b) => Number(b.id === story.id) - Number(a.id === story.id) || Number(b.kind === 'score-walkthrough') - Number(a.kind === 'score-walkthrough'))
 }
 export async function loadCreatorStoryCatalog(subjectId: string): Promise<CreatorStory> {
@@ -46,7 +46,7 @@ export async function loadCreatorStory(subjectId: string, storyId?: string) {
   const stories = creatorStoryOptions(base)
   const option = stories.find(option => option.id === (storyId ?? stories[0]?.id))
   if (!option || Boolean(option.recording) === Boolean(option.draft)) throw new Error('Choose an available story for this person.')
-  const story = { ...base, ...option, recording: option.recording, draft: option.draft, images: option.imageIds ? option.imageIds.map(id => { const image = base.images.find(image => image.id === id); if (!image) throw new Error('A story image is missing.'); return image }) : base.images }
+  const story = { ...base, ...option, featureOpening: option.featureOpening, recording: option.recording, draft: option.draft, images: option.imageIds ? option.imageIds.map(id => { const image = base.images.find(image => image.id === id); if (!image) throw new Error('A story image is missing.'); return image }) : base.images }
   const [resource, analysis] = await Promise.all([readJson(option.recording ?? option.draft!), base.analysis ? readJson(base.analysis).then(value => creatorSubjectAnalysisSchema.parse(value)) : undefined])
   if (analysis && (analysis.subjectId !== subjectId || analysis.source.imageId !== base.images[0]?.id)) throw new Error('The saved analysis does not match this person’s source portrait.')
   if (option.draft && (resource.subjectId !== subjectId || resource.assessmentId !== analysis?.source.sha256)) throw new Error('Review this score story against the current saved portrait assessment before using it.')
@@ -91,9 +91,27 @@ export function creatorAnalysisInput(input: AnalysisPostInput, subject: string, 
 export function creatorStoryDirections(story: CreatorStory, script: VideoScript, input: AnalysisPostInput, images: GeneratorImage[], reports: ReportCategory[], recipe: VideoRecipe, variation: number) {
   const directions: Record<string, VideoDirection> = {}, evidence = story.evidence
   const portraits = (story.portraitImageIds ?? []).flatMap(id => images.find(image => image.id === id) ?? [])
-  let effectUsed = false
+  const editorial = recipe === 'feature-study'
+  const alternate = portraits.find(image => /three-quarter/.test(image.id)) ?? portraits.find(image => /profile/.test(image.id))
   const planningImages = portraits.length ? [...portraits, ...images.filter(image => !portraits.includes(image))] : images
   for (const shot of productionVisualPlan(script, input, planningImages, reports, recipe, variation)) {
+    if (editorial && story.featureOpening) {
+      const opening = story.featureOpening
+      const cue = shot.cue.sourceId
+      const [front, alternate] = images
+      const categoryId = opening === 'jaw-choice' ? 'jaw' : 'mouth'
+      const base = { kind: 'portrait' as const, imageId: front.id, categoryId, overlay: 'none' as const, editorial: 'context' as const, portraitProgram: undefined, photoStudy: undefined, portraitFX: undefined, study: undefined, profileStudy: undefined, featureStudy: undefined, graphic: undefined }
+      if (cue === 'score' || cue === 'close' || cue === 'closing-lead') {
+        directions[shot.id] = { ...base, kind: 'report', closingReport: cue === 'close', focus: cue === 'score' ? 'scores' : 'features' }
+      } else if (cue === 'hook' || cue === 'proof' || opening === 'smile-choice') {
+        directions[shot.id] = { ...base, featureStudy: { topic: opening === 'jaw-choice' ? 'jaw' : 'lips', layout: 'compare', edit: 0, editMode: 'warp', annotation: '', images: [alternate.id], opening, phase: opening === 'jaw-choice' && cue === 'proof' || opening === 'smile-choice' && cue === 'reveal' ? 'reveal' : opening === 'smile-choice' && cue === 'proof' ? 'clue' : 'hold' } }
+      } else if (opening === 'lip-choice' && cue === 'evidence') {
+        directions[shot.id] = { ...base, featureStudy: { editorial: true, topic: 'lips', layout: 'hero', edit: -1, editMode: 'photo', comparison: 'wipe', images: [alternate.id], annotation: 'Lip to chin', annotationStyle: 'leader', footnote: '' } }
+      } else {
+        directions[shot.id] = { ...base, imageId: opening === 'jaw-choice' ? alternate.id : front.id, portraitProgram: narratedPortraitProgram(shot.beat.quote, recipe, variation, categoryId) }
+      }
+      continue
+    }
     const visuals = shot.cue.section!.visuals
     const explicit = visuals.find(visual => visual.imageId && visual.match && shot.beat.quote.toLowerCase().includes(visual.match.toLowerCase())) ?? visuals.find(visual => visual.imageId && !visual.match)
     if (explicit?.imageId) {
@@ -102,31 +120,23 @@ export function creatorStoryDirections(story: CreatorStory, script: VideoScript,
       const scores = explicit.focus === 'scores' ? spokenScoreCallouts(shot.beat.quote, reports, explicit.categoryId) : undefined
       const categoryId = scores?.[0] ? reports.find(report => report.title === scores[0].label)?.id ?? explicit.categoryId : explicit.categoryId
       const kind = shot.cue.section!.role === 'takeaway' || visuals.some(visual => visual.crop) || explicit.crop || explicit.treatment === 'detail' || scores && scores.length > 1 ? 'portrait' : assessed && recipe === 'report-led' ? 'report' : 'portrait'
+      const featureDetail = explicit.treatment === 'detail' || shot.cue.section!.role !== 'hook' &&
+        shot.cue.section!.role !== 'takeaway' && shot.beat.feature !== 'whole' && ['observe', 'measure'].includes(shot.beat.intent)
+      const storyInsert = ['compare', 'views'].includes(shot.beat.intent) || /\b(?:works? together|as part of|relationship|relative to)\b/i.test(shot.beat.quote)
       // Registered source photos own their identity and category. Never inherit a
       // synthetic edit or an unrelated comparison from the generic director.
       directions[shot.id] = {
         kind, imageId: explicit.imageId, categoryId, overlay: 'none', portraitCrop: explicit.crop,
-        editorial: explicit.treatment === 'detail' ? 'detail' : 'context',
-        focus: scores?.length ? 'scores' : 'features', scoreCallouts: kind === 'portrait' ? scores ?? [] : undefined,
+        editorial: recipe === 'hybrid-story' && !explicit.crop && !scores?.length && storyInsert ? 'compare'
+          : explicit.treatment === 'detail' || recipe === 'measurement-explainer' && !scores?.length && shot.beat.feature !== 'whole' ? 'detail' : 'context',
+        focus: scores?.length ? 'scores' : kind === 'report' ? shot.direction.focus ?? 'features' : 'features', scoreCallouts: kind === 'portrait' ? scores ?? [] : undefined,
         emphasis: kind === 'report' ? 'section-lift' : undefined,
         featureStudy: recipe === 'feature-study' && kind === 'portrait' && !scores?.length && !explicit.crop && !visuals.some(visual => visual.crop)
-          ? { topic: shot.beat.feature, edit: 0, editMode: 'warp', layout: explicit.treatment === 'detail' ? 'detail' : 'hero', motion: 'hold', annotation: '', images: [] } : undefined,
+          ? { editorial, topic: shot.beat.feature, edit: 0, editMode: 'warp', layout: featureDetail ? 'detail' : 'hero', motion: featureDetail && variation % 3 === 0 ? 'push' : variation % 2 ? 'pan-right' : 'pan-left', annotation: '', images: featureDetail && alternate && alternate.id !== explicit.imageId ? [explicit.imageId, alternate.id] : [] } : undefined,
         graphic: undefined, photoStudy: undefined, portraitFX: undefined, profileStudy: undefined, study: undefined, portraitProgram: undefined,
       }
       if (!/profile/.test(explicit.imageId)) {
-        const program = narratedPortraitProgram(shot.beat.quote, recipe, variation, categoryId)
-        directions[shot.id].portraitProgram = program
-        if (kind === 'portrait' && !explicit.crop && !effectUsed && !scores?.length && ['feature-study', 'hybrid-story'].includes(recipe)) {
-          if (recipe === 'feature-study' || shot.cue.sourceId === 'hook') {
-            directions[shot.id].portraitFX = portraitEffectsSchema.parse({ instrument: { scan: true, strength: .3 } })
-            effectUsed = true
-          } else if (assessed && program) {
-            const feature = program.actions[0].feature
-            const target = feature === 'brows' ? 'eyes' : feature === 'lips' ? 'mouth' : feature
-            directions[shot.id].portraitFX = portraitEffectsSchema.parse({ lighting: { preset: 'spot', target, side: 'both', ambientEv: -.35, intensity: .7, color: 'natural' } })
-            effectUsed = true
-          }
-        }
+        directions[shot.id].portraitProgram = narratedPortraitProgram(shot.beat.quote, recipe, variation, categoryId)
       }
       const view = /profile/.test(explicit.imageId) ? 'profile' : /three-quarter/.test(explicit.imageId) ? 'three-quarter' : undefined
       if (view && kind === 'portrait') {
@@ -181,7 +191,7 @@ export function creatorStoryDirections(story: CreatorStory, script: VideoScript,
     const opening = shot.cue.sourceId === 'hook', reveal = shot.cue.sourceId === 'reveal'
     if ((opening || reveal) && ['portrait-audit','feature-study'].includes(recipe)) {
       directions[shot.id] = { kind: 'portrait', imageId: evidence.baselineId, editorial: opening ? 'context' : 'detail',
-        featureStudy: { topic: evidence.topic, layout: reveal && recipe === 'feature-study' ? 'detail' : 'hero', editMode: 'photo', comparison: 'blend', motion: reveal ? 'push' : 'hold', edit: reveal ? evidence.revealEdit ?? 1 : 1, annotation: reveal && recipe === 'feature-study' ? evidence.revealLabel : '', images: [evidence.comparisonId], labels: ['A','B'], footnote: '' },
+        featureStudy: { editorial, topic: evidence.topic, layout: reveal && editorial ? 'detail' : 'hero', editMode: 'photo', comparison: editorial ? 'wipe' : 'blend', motion: reveal ? 'push' : 'hold', edit: reveal ? evidence.revealEdit ?? 1 : 1, annotation: reveal && recipe === 'feature-study' ? evidence.revealLabel : '', images: [evidence.comparisonId], labels: ['A','B'], footnote: '' },
         photoStudy: undefined, portraitFX: undefined, profileStudy: undefined, study: undefined, portraitProgram: undefined }
     } else if (shot.direction.featureStudy?.layout === 'compare') {
       directions[shot.id] = { ...shot.direction, featureStudy: { ...shot.direction.featureStudy, layout: 'hero', comparison: 'blend' } }

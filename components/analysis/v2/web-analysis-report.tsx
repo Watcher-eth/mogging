@@ -21,13 +21,14 @@ function contourOverlay(id: 'hair' | 'ears', report: WebReport): OverlayPreset {
   })) }
 }
 
-export function WebAnalysisReport({ report, imageSrc, landmarks, pslScore, children, embedded = false }: { report: WebReport; imageSrc: string; landmarks: FaceLandmarksPayload | null; pslScore: number; children?: ReactNode; embedded?: boolean }) {
+export function WebAnalysisReport({ report, imageSrc, landmarks, pslScore, children }: { report: WebReport; imageSrc: string; landmarks: FaceLandmarksPayload | null; pslScore: number; children?: ReactNode }) {
   const categories: DesktopReportCategory[] = registry.categories.filter(definition => definition.rubrics.some(rubric => rubric.output !== 'D' && report.entries.some(entry => entry.id === rubric.id && entry.value !== null))).map(definition => {
     const category = report.categories.find(item => item.id === definition.id)!
     return { id: definition.id === 'face' ? 'face-shape' : definition.id, title: titles[definition.id], subtitle: definition.title, scoreLabel: definition.title, score: category.score, features: [], explanation: category.explanation,
       ...(definition.id === 'eyes' ? { eyeColor: report.eyeColor ?? undefined } : {}),
       ...(definition.id === 'hair' ? { hairColor: report.hairColor ?? undefined, overlayPreset: contourOverlay('hair', report) } : {}),
       ...(definition.id === 'ears' ? { overlayPreset: contourOverlay('ears', report) } : {}),
+      ...(definition.id === 'skin' ? { overlayPreset: null, faceMapPointCount: 60 } : {}),
     }
   })
   const getScore = (id: string) => report.categories.find(category => category.id === id)!.score
@@ -36,6 +37,5 @@ export function WebAnalysisReport({ report, imageSrc, landmarks, pslScore, child
     const score = id === 'psl' ? pslScore : getScore(id)
     return { id: `overall.${id}`, label, value: `${score.toFixed(1)} / ${max}`, visual: 'Orbit', scale: 'quality', positions: [score / max], grade: null }
   }) }]
-  const content = <AnalysisReport naturalImage embedded={embedded} initialCategoryId={embedded ? "overall" : undefined} categories={categories} imageSrc={imageSrc} landmarks={landmarks} score={report.overallScore} pslScore={pslScore} renderDetails={category => <V2ReportDetail embedded={embedded} category={category} groups={category.id === 'overall' ? overallGroups : [...buildWebRubricGroups(category.id, report.entries), ...(category.id === 'cheeks' ? buildCheekContextGroups(report.entries) : [])]} />}>{children}</AnalysisReport>
-  return embedded ? content : <div className={styles.reportShell}>{content}</div>
+  return <div className={styles.reportShell}><AnalysisReport naturalImage categories={categories} imageSrc={imageSrc} landmarks={landmarks} score={report.overallScore} pslScore={pslScore} renderDetails={category => <V2ReportDetail category={category} groups={category.id === 'overall' ? overallGroups : [...buildWebRubricGroups(category.id, report.entries), ...(category.id === 'cheeks' ? buildCheekContextGroups(report.entries) : [])]} />}>{children}</AnalysisReport></div>
 }

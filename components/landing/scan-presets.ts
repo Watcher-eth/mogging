@@ -159,8 +159,63 @@ export const processingOverlayPresets = (
     {
       id: 'processing-skin-protocol',
       footer: '',
-      skinFaceMap: true,
       primitives: [
+        {
+          id: 'skin-forehead',
+          kind: 'point',
+          at: {
+            anchor: 'forehead',
+            fallback: { x: 0.51, y: 0.24 },
+            offset: { x: 0.035, y: 0.08 },
+          },
+          radius: 8,
+          tone: 'halo',
+          animation: {
+            delay: 120,
+            duration: 420,
+            pulse: true,
+            entrance: 'scale',
+          },
+        },
+        {
+          id: 'skin-left-cheek',
+          kind: 'point',
+          at: { anchor: 'leftCheek', fallback: { x: 0.35, y: 0.52 } },
+          radius: 7,
+          tone: 'halo',
+          animation: {
+            delay: 260,
+            duration: 420,
+            pulse: true,
+            entrance: 'scale',
+          },
+        },
+        {
+          id: 'skin-right-cheek',
+          kind: 'point',
+          at: { anchor: 'rightCheek', fallback: { x: 0.66, y: 0.52 } },
+          radius: 7,
+          tone: 'halo',
+          animation: {
+            delay: 400,
+            duration: 420,
+            pulse: true,
+            entrance: 'scale',
+          },
+        },
+        {
+          id: 'skin-priority-line',
+          kind: 'line',
+          from: { anchor: 'rightCheek', fallback: { x: 0.66, y: 0.52 } },
+          to: {
+            anchor: 'rightCheek',
+            fallback: { x: 0.66, y: 0.52 },
+            offset: { x: 0.12, y: 0.12 },
+          },
+          strokeWidth: 0.86,
+          opacity: 0.72,
+          animation: { delay: 680, duration: 820, entrance: 'draw' },
+        },
         {
           id: 'skin-protocol-label',
           kind: 'label',

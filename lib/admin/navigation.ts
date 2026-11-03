@@ -20,7 +20,7 @@ export const adminNavigation = [
     { href: '/admin/creator-performance', title: 'Creator performance', description: 'Content reach, earned creator costs, and post payouts.', section: 'CreatorPerformance', icon: 'overview' },
     { href: '/admin/economics', title: 'Creator economics', description: 'Attributed revenue, creator compensation, and acquisition measurement.', section: 'CreatorEconomics', icon: 'payouts' },
     { href: '/admin/analytics/authentication', title: 'Authentication', description: 'Sign-in activity, authentication issues, and account continuity.', section: 'Authentication', icon: 'accounts' },
-    { href: '/admin/analytics/purchases', title: 'Purchase flow', description: 'Purchase attempts, billing confirmation, and access activation.', section: 'Purchases', icon: 'payouts' },
+    { href: '/admin/analytics/purchases', title: 'Purchases', description: 'All-source purchases, repeat buyers, purchase timing and mobile attempt diagnostics.', section: 'Purchases', icon: 'payouts' },
     { href: '/admin/analytics/scans', title: 'Scans', description: 'Completed evaluations, request reliability, and report availability.', section: 'Scans', icon: 'overview' },
     { href: '/admin/analytics/engagement', title: 'Engagement', description: 'Meaningful product use, feature adoption, and completed actions.', section: 'Engagement', icon: 'overview' },
     { href: '/admin/analytics/referrals', title: 'Referrals', description: 'Credited signups, referred customer outcomes, and scan rewards.', section: 'Referrals', icon: 'accounts' },

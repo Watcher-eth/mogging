@@ -4,10 +4,11 @@ import { sampleCaptionAppearance, annotationAppearance } from './caption-contras
 import { z } from 'zod'
 import { scriptTokens, scriptVisualSeed } from './video-script'
 import { visualFeatures, decodeVisualBeat, type SemanticBeat } from './video-semantics'
-import { jawOutline, visibleFaceSides, facialDetailGuides } from './facial-detail-guides'
+import { jawOutline, jawSides, visibleFaceSides, facialDetailGuides } from './facial-detail-guides'
 import { faceMetricGuides, metricFaceOverlay, narratedFaceMetric, faceContourPaths, faceContourEdge } from './face-metric-guides'
 import { morphFaceOverlay } from './face-overlay-morph'
-import { revealContour, faceRegionContours, glassSurface } from './video-face-treatment'
+import { drawSkinNetwork } from './mobile-overlay-engine/skin-network'
+import { revealContour, faceRegionContours, glassSurface, glassMarker } from './video-face-treatment'
 import { profileGeometry, anglePaths, type ProfileStudy } from './video-profile'
 import { smoothMotion } from './video-layout'
 import type { VideoScene } from './video-composition'
@@ -20,17 +21,20 @@ export const portraitProgramSchema = z.object({
   wordCount: z.number().int().min(1).max(5000),
   view: z.enum(['three-quarter','profile']).optional(),
   actions: z.array(z.object({ word: z.number().int().min(0), feature: z.enum(visualFeatures), guide: z.string().max(100),
-    labelWord: z.number().int().min(0).optional(), stroke: z.enum(['solid', 'dotted', 'dashed']).optional(), treatment: z.enum(['trace', 'bracket', 'callout', 'landmarks', 'inset', 'arrow', 'highlight', 'scribble', 'note']), label: z.string().max(45) }).strict()).min(1).max(96),
+    labelWord: z.number().int().min(0).optional(), stroke: z.enum(['solid', 'dotted', 'dashed']).optional(), treatment: z.enum(['trace', 'bracket', 'callout', 'landmarks', 'inset', 'arrow', 'highlight', 'scribble', 'note', 'ribbon', 'caliper', 'mesh', 'ink-callout']), label: z.string().max(45) }).strict()).min(1).max(96),
 }).strict()
 export type PortraitProgram = z.infer<typeof portraitProgramSchema>
 const portraitTreatments: Record<string, PortraitProgram['actions'][number]['treatment'][]> = {
-  'portrait-audit': ['trace','arrow','highlight','bracket','landmarks'],
-  'report-led': ['callout','bracket','trace','arrow'],
-  'measurement-explainer': ['bracket','landmarks','arrow','trace'],
-  'feature-study': ['highlight','scribble','note','arrow','trace'],
-  'hybrid-story': ['callout','arrow','note','scribble','highlight'],
+  'portrait-audit': ['trace', 'landmarks', 'highlight', 'trace'],
+  'report-led': ['callout', 'inset', 'callout'],
+  'measurement-explainer': ['mesh', 'caliper', 'landmarks', 'mesh', 'highlight', 'bracket'],
+  'feature-study': ['ink-callout', 'scribble', 'mesh', 'arrow', 'landmarks', 'ribbon', 'highlight', 'trace'],
+  'hybrid-story': ['arrow', 'note', 'arrow'],
+  'documentary-studio': ['trace', 'callout', 'landmarks'],
 }
 type Point = { x: number; y: number }
+type ReportDetail = { contours: Point[][]; guides: Point[][]; anchors: Point[]; markers: Point[] }
+const networkNodes = new WeakMap<Point[], Point[]>()
 type SubjectMask = {width:number;height:number;alpha:Uint8ClampedArray}
 const subjectMasks = new WeakMap<HTMLCanvasElement|HTMLImageElement,SubjectMask>()
 function portraitSubjectMask(image?: HTMLCanvasElement|HTMLImageElement): SubjectMask|undefined {
@@ -38,8 +42,8 @@ function portraitSubjectMask(image?: HTMLCanvasElement|HTMLImageElement): Subjec
   const cached=subjectMasks.get(image);if(cached)return cached
   try {const canvas=document.createElement('canvas');canvas.width=64;canvas.height=96;const ctx=canvas.getContext('2d',{willReadFrequently:true})!;ctx.drawImage(image,0,0,64,96);const pixels=ctx.getImageData(0,0,64,96).data;const mask={width:64,height:96,alpha:Uint8ClampedArray.from({length:64*96},(_,i)=>pixels[i*4+3])};subjectMasks.set(image,mask);return mask}catch{return}
 }
-export type PreparedPortraitProgram = { view?: 'three-quarter'|'profile'; mask?:SubjectMask; wordCount: number; actions: Array<PortraitProgram['actions'][number] & { overlay: ReportOverlay }>; width: number; height: number }
-export type PortraitActivity = { guide?: string; feature?: string; index?: number; view?: 'three-quarter'|'profile'; mask?:SubjectMask; from?: ReportOverlay; to: ReportOverlay; treatment: PortraitProgram['actions'][number]['treatment']; label: string; stroke?: 'solid' | 'dotted' | 'dashed'; focus?: ReportOverlay; previousFocus?: ReportOverlay; labelPhase: number; elapsedMs: number; phase: number; blend: number; first: boolean; reduced: boolean }
+export type PreparedPortraitProgram = { holdShortShot?: boolean; view?: 'three-quarter'|'profile'; mask?:SubjectMask; wordCount: number; actions: Array<PortraitProgram['actions'][number] & { overlay: ReportOverlay; reportDetail?: ReportDetail }>; width: number; height: number }
+export type PortraitActivity = { reportDetail?: ReportDetail; guide?: string; feature?: string; index?: number; view?: 'three-quarter'|'profile'; mask?:SubjectMask; from?: ReportOverlay; to: ReportOverlay; treatment: PortraitProgram['actions'][number]['treatment']; label: string; stroke?: 'solid' | 'dotted' | 'dashed'; focus?: ReportOverlay; previousFocus?: ReportOverlay; labelPhase: number; elapsedMs: number; phase: number; blend: number; first: boolean; reduced: boolean }
 const categories: Record<SemanticBeat['feature'], string[]> = { whole: ['face-shape', 'proportions'], philtrum: [], freckles: [], 'facial-hair': ['mouth', 'jaw'], ears: [], symmetry: ['symmetry'], dimorphism: ['jaw', 'brows', 'face-shape'], eyes: ['eyes'], brows: ['brows'], nose: ['nose'], lips: ['mouth'], jaw: ['jaw'], cheeks: ['cheeks'] }
 const customGuides: Partial<Record<SemanticBeat['feature'], string[]>> = {
   philtrum: ['philtrum:bracket', 'philtrum:axis', 'philtrum:lip'], freckles: ['skin:bridge', 'skin:left-cheek', 'skin:right-cheek'],
@@ -144,7 +148,7 @@ export function planPortraitProgram(text: string, feature: SemanticBeat['feature
 const editorialGuides: Record<string, { label: string; stroke?: 'solid' | 'dotted' | 'dashed' }> = {
   'detail:jaw-outline': { label: 'Jawline' }, 'detail:jaw-frame': { label: 'Jawline frame' },
   'detail:jaw-offset': { label: 'Bilateral jaw trace', stroke: 'dotted' }, 'detail:gonial': { label: 'Gonial angle' },
-  'detail:cheeks': { label: 'Cheekbone arcs' }, 'detail:cheek-frame': { label: 'Cheekbone frame' },
+  'detail:cheek-area': { label: 'Upper cheek area' }, 'detail:cheeks': { label: 'Cheekbone arcs' }, 'detail:cheek-frame': { label: 'Cheekbone frame' },
   'detail:under-cheekbones': { label: 'Under cheekbone', stroke: 'dashed' }, 'detail:cheek-levels': { label: 'Cheekbone / lower contour', stroke: 'dotted' },
   'detail:eyes': { label: 'Eye contours' }, 'detail:eye-left': { label: 'Eye contour' }, 'detail:eye-right': { label: 'Eye contour' },
   'detail:eye-brow-left': { label: 'Eye and brow' }, 'detail:eye-brow-right': { label: 'Eye and brow' },
@@ -155,8 +159,8 @@ const editorialGuides: Record<string, { label: string; stroke?: 'solid' | 'dotte
 }
 const editorialFeatures: Array<{ pattern: RegExp; feature: SemanticBeat['feature']; guides: string[] }> = [
   { pattern: /^(?:jaw|jawline|gonial)$/, feature: 'jaw', guides: ['detail:jaw-outline','detail:jaw-frame','detail:gonial','detail:jaw-offset'] },
-  { pattern: /^chin$/, feature: 'jaw', guides: ['detail:jaw-frame','detail:jaw-outline'] },
-  { pattern: /^(?:cheek|cheeks|cheekbone|cheekbones)$/, feature: 'cheeks', guides: ['detail:cheeks','detail:cheek-frame','detail:under-cheekbones','detail:cheek-levels'] },
+  { pattern: /^chin$/, feature: 'jaw', guides: ['jaw.chin-shape','jaw.height'] },
+  { pattern: /^(?:cheek|cheeks|cheekbone|cheekbones)$/, feature: 'cheeks', guides: ['detail:cheeks','detail:cheek-frame','detail:under-cheekbones','detail:cheek-levels','detail:cheek-area'] },
   { pattern: /^(?:eye|eyes|gaze|glance)$/, feature: 'eyes', guides: ['detail:eyes','detail:eye-left','detail:eye-right','detail:eye-brow-left','detail:eye-brow-right'] },
   { pattern: /^(?:brow|brows|eyebrow|eyebrows)$/, feature: 'brows', guides: ['detail:brow-upper','detail:brow-outline','detail:brow-outline-left','detail:brow-outline-right'] },
   { pattern: /^(?:nose|bridge|tip)$/, feature: 'nose', guides: ['detail:nose-axis'] },
@@ -221,16 +225,14 @@ function customPaths(source: GeneratorImage, guide: string): Point[][] {
   const span = a.leftPupil && a.rightPupil ? Math.abs(a.rightPupil.x - a.leftPupil.x) : .2
   const sides = (guide.endsWith('-left') ? ['left'] as const : guide.endsWith('-right') ? ['right'] as const : ['left','right'] as const).filter(side=>visibleFaceSides(face).includes(side))
   // A five-point brow is an open upper edge, not a complete eyebrow polygon.
-  const detectedPath = (points: Point[] | undefined) => points && points.length>=3 ? [points] : []
   if (guide.startsWith('detail:brow-outline')) return sides.flatMap(side=>faceContourPaths(face,side==='left'?'leftBrow':'rightBrow'))
   if (guide === 'detail:brow-upper') return sides.flatMap(side=>faceContourEdge(face,side==='left'?'leftBrow':'rightBrow',true))
-  if (guide.startsWith('detail:eye-brow')) return sides.flatMap(side=>[...detectedPath(face.contours?.[side==='left'?'leftEye':'rightEye']),...detectedPath(face.contours?.[side==='left'?'leftBrow':'rightBrow'])])
-  if (guide === 'detail:eyes' || guide === 'detail:eye-left' || guide === 'detail:eye-right') return sides.flatMap(side=>detectedPath(face.contours?.[side==='left'?'leftEye':'rightEye']))
-  if (guide.startsWith('detail:jaw-')) {
-    const chin=a.chin
-    if(!chin)return []
-    const points=face.contours?.jawline?.filter(p=>guide.endsWith('-left')?p.x<=chin.x:p.x>=chin.x)??[]
-    return points.length>=3?[points]:[]
+  if (guide.startsWith('detail:eye-brow')) return sides.flatMap(side=>[...faceContourPaths(face, side === 'left' ? 'leftEye' : 'rightEye'),...faceContourPaths(face, side === 'left' ? 'leftBrow' : 'rightBrow')])
+  if (guide === 'detail:eyes' || guide === 'detail:eye-left' || guide === 'detail:eye-right') return sides.flatMap(side=>faceContourPaths(face, side === 'left' ? 'leftEye' : 'rightEye'))
+  if (guide === 'detail:jaw-left' || guide === 'detail:jaw-right') {
+    const side = guide === 'detail:jaw-left' ? 'left' : 'right'
+    const path = visibleFaceSides(face).includes(side) ? jawSides(face)[side === 'left' ? 0 : 1] : undefined
+    return path ? [path] : []
   }
   if (guide.startsWith('detail:brow-gap')) return sides.flatMap(side => {
     const brow = a[`${side}Brow`], pupil = a[`${side}Pupil`]
@@ -247,13 +249,47 @@ function customPaths(source: GeneratorImage, guide: string): Point[][] {
   if (guide === 'detail:nose-axis') return line(a.noseBridge,a.noseTip)
   if (guide === 'philtrum:bracket' && nose && upper) { const x = (nose.x + upper.x) / 2 + span * .18, tick = span * .06; return [[{ x: x - tick, y: nose.y }, { x, y: nose.y }, { x, y: upper.y }, { x: x - tick, y: upper.y }]] }
   if (guide === 'philtrum:axis') return line(nose, upper, a.mouthCenter)
-  if (guide === 'philtrum:lip') return face.contours?.mouth?.length ? [face.contours.mouth.filter(p => p.y <= (a.mouthCenter?.y ?? 1))] : line(a.mouthLeft, upper, a.mouthRight)
+  if (guide === 'philtrum:lip') return faceContourEdge(face, 'mouth', true)
   if (guide.startsWith('ears:')) return []
+  if (!guide.startsWith('skin:')) return []
   const center = guide === 'skin:bridge' ? nose : guide === 'skin:left-cheek' || guide === 'ears:left' ? a.leftCheek : a.rightCheek
   if (!center) return []
   // Editorial callouts indicate a region, never invented freckles or measured values.
   return [Array.from({ length: 49 }, (_, i) => { const angle = i / 48 * Math.PI * 2; return { x: center.x + Math.cos(angle) * span * .3, y: center.y + Math.sin(angle) * span * .3 * source.width / source.height } })]
 }
+function eyeReportDetail(source: GeneratorImage, feature: string, guide: string): ReportDetail | undefined {
+  const face = source.landmarks
+  if (!face || face.confidence < .58 || (feature !== 'eyes' && feature !== 'brows')) return
+  const detail: ReportDetail = { contours: [], guides: [], anchors: [], markers: [] }
+  const pixel = (p: Point) => ({ x: p.x * source.width, y: p.y * source.height })
+  const outerCorners: Point[] = []
+  for (const side of visibleFaceSides(face)) {
+    if (guide.endsWith('-left') && side !== 'left' || guide.endsWith('-right') && side !== 'right') continue
+    const eye = faceContourPaths(face, `${side}Eye`)
+    const brow = faceContourPaths(face, `${side}Brow`)
+    const pupil = face.anchors[`${side}Pupil`]
+    const outer = face.anchors[`${side}EyeOuter`]
+    const inner = face.anchors[`${side}EyeInner`]
+    const browAnchor = face.anchors[`${side}Brow`]
+    if (feature === 'eyes' && eye.length) {
+      detail.contours.push(...eye)
+      for (const point of [outer, inner, pupil]) if (point) detail.anchors.push(point)
+      if (outer) { outerCorners.push(outer); detail.markers.push(outer) }
+    }
+    if (feature === 'brows' && brow.length) {
+      detail.contours.push(...brow, ...eye)
+      if (browAnchor && pupil && eye.length) {
+        detail.guides.push([browAnchor, pupil])
+        detail.anchors.push(pupil)
+        detail.markers.push(browAnchor)
+      }
+    }
+  }
+  if (outerCorners.length === 2) detail.guides.push(outerCorners)
+  if (!detail.contours.length) return
+  return { contours: detail.contours.map(path => path.map(pixel)), guides: detail.guides.map(path => path.map(pixel)), anchors: detail.anchors.map(pixel), markers: detail.markers.map(pixel) }
+}
+
 export function preparePortraitProgram(program: PortraitProgram, source: GeneratorImage, profile?: ProfileStudy, image?: HTMLCanvasElement|HTMLImageElement): PreparedPortraitProgram {
   const base: ReportOverlay = { size: { width: source.width, height: source.height }, primitives: [], dots: [], faceBoundary: source.landmarks?.contours?.faceOutline?.map(p=>({x:p.x*source.width,y:p.y*source.height})) }
   const actions = program.actions.map(action => {
@@ -275,7 +311,8 @@ export function preparePortraitProgram(program: PortraitProgram, source: Generat
         .map(guide => ({ guide, overlay: metricFaceOverlay(base, source, guide.id) })).find(item => item.overlay.primitives.length)
       if (fallback) { overlay = fallback.overlay; resolved = { ...action, guide: fallback.guide.id, label: fallback.guide.label } }
     }
-    return { ...resolved, overlay }
+    if (resolved.guide === 'face.taper') resolved = { ...resolved, label: 'Chin to nose tip', treatment: 'trace', stroke: 'dotted' }
+    return { ...resolved, overlay, reportDetail: eyeReportDetail(source, resolved.feature, resolved.guide) }
   }).filter(action => action.overlay.primitives.length)
   return { view:program.view, mask:portraitSubjectMask(image), wordCount: program.wordCount, width: source.width, height: source.height, actions }
 }
@@ -285,7 +322,10 @@ export const portraitOverlayWindowMs = portraitOverlayMinimumMs + overlayRevealM
 export function portraitProgramSchedule(program: PreparedPortraitProgram, durationMs: number, words?: Array<{startMs:number}>) {
   const scheduled: Array<{action:PreparedPortraitProgram['actions'][number];start:number}> = []
   const interval=portraitOverlayWindowMs, count=Math.max(1,words?.length??program.wordCount)
-  if(durationMs<interval)return scheduled
+  if (durationMs < interval) {
+    const action = program.actions[0]
+    return program.holdShortShot && action ? [{ action, start: 0 }] : scheduled
+  }
   const cues=program.actions.map((action,index)=>({action,start:index===0?0:words?.[action.word]?.startMs??action.word/count*durationMs}))
   for(const [index,cue] of cues.entries()) {
     const previous=scheduled.at(-1)
@@ -307,9 +347,9 @@ export function samplePortraitProgram(program: PreparedPortraitProgram, timeMs: 
   const phase = reduced ? 1 : Math.max(0, Math.min(1, (timeMs - start) / Math.max(1, end - start)))
   const prior = actions[index - 1] ?? previous?.actions.at(-1)
   const from = prior && adjacentPortraitGuides(prior, action, program.width, program.height) ? prior.overlay : undefined
-  const labelStart = action.labelWord === undefined ? start : words?.[action.labelWord]?.startMs ?? action.labelWord / count * durationMs
+  const labelStart = action.labelWord === undefined || durationMs < portraitOverlayWindowMs ? start : words?.[action.labelWord]?.startMs ?? action.labelWord / count * durationMs
   const labelPhase = reduced ? 1 : Math.max(0, Math.min(1, (timeMs - Math.max(start, labelStart)) / overlayRevealMs))
-  return { guide:action.guide, feature:action.feature, index, view:program.view, mask:program.mask, focus: action.overlay, previousFocus: previous?.actions[0]?.overlay, labelPhase, elapsedMs: Math.max(0,timeMs-start), from, to: action.overlay, label: action.label, treatment: action.treatment, stroke: action.stroke, phase,
+  return { reportDetail: action.reportDetail, guide:action.guide, feature:action.feature, index, view:program.view, mask:program.mask, focus: action.overlay, previousFocus: previous?.actions[0]?.overlay, labelPhase, elapsedMs: Math.max(0,timeMs-start), from, to: action.overlay, label: action.label, treatment: action.treatment, stroke: action.stroke, phase,
     blend: reduced ? 1 : smoothMotion((timeMs - start) / overlayRevealMs), first: !from, reduced }
 }
 // Morph only a nearby contour within the same anatomical family and visual
@@ -327,7 +367,7 @@ export function drawPortraitActivity(ctx: CanvasRenderingContext2D, activity: Po
   ctx = originalVideoContext(ctx)
   const geometry = activity.from ? morphFaceOverlay(activity.from,activity.to,activity.blend) : activity.to
   const move=(p:Point)=>{if(!warp)return p;const q=warpDestinationPoint({x:p.x/width,y:p.y/height},warp);return{x:q.x*width,y:q.y*height}}
-  const paths=geometry.primitives.flatMap(p=>p.kind==='polyline'?[p.pixelPoints.map(move)]:[])
+  const paths=geometry.primitives.flatMap(p=>p.kind==='polyline'?[warp ? p.pixelPoints.map(move) : p.pixelPoints]:[])
   if(!paths.length)return
   const transform=ctx.getTransform(),unit=1/Math.max(.01,Math.hypot(transform.a,transform.b))
   const mapped=Number.isFinite(transform.e)&&Number.isFinite(transform.d)&&transform.a>0&&transform.d>0
@@ -336,30 +376,107 @@ export function drawPortraitActivity(ctx: CanvasRenderingContext2D, activity: Po
   const reveal=activity.reduced?1:smoothMotion(activity.elapsedMs/overlayRevealMs)
   const points=paths.flat(),left=Math.min(...points.map(p=>p.x)),right=Math.max(...points.map(p=>p.x)),top=Math.min(...points.map(p=>p.y)),bottom=Math.max(...points.map(p=>p.y))
   ctx.save();ctx.lineCap='round';ctx.lineJoin='round';ctx.shadowBlur=0
-  const line=(points:Point[],weight=activity.view?4.2:3.4)=>{
+  const line=(points:Point[],weight=activity.view?2.4:2.1)=>{
+    if (points.length < 2) return
     ctx.beginPath();points.forEach((p,i)=>i?ctx.lineTo(p.x,p.y):ctx.moveTo(p.x,p.y))
-    applyGlassInk(ctx,unit,weight);ctx.stroke()
+    applyGlassInk(ctx,unit,weight,'rgba(248,251,255,.73)');ctx.stroke()
   }
   ctx.setLineDash(activity.stroke==='dotted'?[1*unit,7*unit]:activity.stroke==='dashed'?[12*unit,8*unit]:[])
-  for(const path of paths) {
-    const visible=revealContour(path,reveal)
-    if(activity.treatment==='highlight') {
-      ctx.beginPath();visible.forEach((p,i)=>i?ctx.lineTo(p.x,p.y):ctx.moveTo(p.x,p.y))
-      ctx.strokeStyle='#fff1c733';ctx.lineWidth=18*unit;ctx.stroke()
-    }
-    line(visible)
+  const pathReveal = (index: number) => {
+    const delay = Math.min(index * 14, 42)
+    return activity.reduced ? 1 : smoothMotion((activity.elapsedMs - delay) / (overlayRevealMs - delay))
+  }
+  for (const [index, path] of paths.entries()) {
+    const visible = revealContour(path, pathReveal(index))
+    if (activity.treatment === 'ribbon' || activity.treatment === 'highlight') {
+      ctx.save()
+      const ribbon = activity.treatment === 'ribbon'
+      ctx.setLineDash(ribbon ? [8 * unit, 5 * unit] : [])
+      ctx.globalAlpha *= .25
+      line(visible, 5)
+      ctx.restore()
+      line(visible, ribbon ? 1.7 : 2.1)
+    } else if (activity.treatment === 'caliper') {
+      const start = path[0], end = path.at(-1)
+      if (!start || !end) continue
+      const dx = end.x - start.x, dy = end.y - start.y, length = Math.hypot(dx, dy)
+      if (length < 12 * unit) { line(visible); continue }
+      const nx = -dy / length * 12 * unit, ny = dx / length * 12 * unit
+      ctx.setLineDash([])
+      line(visible, 2.4)
+      const tickReveal = smoothMotion((pathReveal(index) - .65) / .35)
+      if (tickReveal > 0) for (const p of [start, end]) {
+        line(revealContour([{ x: p.x - nx, y: p.y - ny }, { x: p.x + nx, y: p.y + ny }], tickReveal), 2.4)
+      }
+    } else if (!['bracket', 'landmarks', 'scribble', 'inset', 'mesh', 'ink-callout'].includes(activity.treatment)) line(visible)
   }
   ctx.setLineDash([])
   ctx.save();ctx.globalAlpha*=reveal
   if(activity.treatment==='bracket') {
-    const pad=14*unit,length=24*unit,l=left-pad,r=right+pad,t=top-pad,b=bottom+pad
-    for(const [x,y,sx,sy] of [[l,t,1,1],[r,t,-1,1],[l,b,1,-1],[r,b,-1,-1]]) line([{x:x+sx*length,y},{x,y},{x,y:y+sy*length}],2.6)
-  } else if(activity.treatment==='scribble') {
-    const cx=(left+right)/2,cy=(top+bottom)/2,rx=(right-left)/2+20*unit,ry=(bottom-top)/2+18*unit
-    line(Array.from({length:70},(_,i)=>{const a=i/69*Math.PI*2.12,jitter=1+Math.sin(i*1.7)*.024;return{x:cx+Math.cos(a)*rx*jitter,y:cy+Math.sin(a)*ry*jitter}}),2.5)
-  } else if(activity.treatment==='landmarks') {
-    for(const path of paths)for(const point of [path[0],path[Math.floor(path.length/2)],path.at(-1)!]) {
-      ctx.beginPath();ctx.arc(point.x,point.y,5*unit,0,Math.PI*2);applyGlassInk(ctx,unit);ctx.fill()
+    for (const [index, path] of paths.entries()) {
+      const xs = path.map(point => point.x), ys = path.map(point => point.y)
+      const settle = activity.reduced ? 1 : smoothMotion(activity.elapsedMs / 430)
+      const pad = (7 + 11 * (1 - settle)) * unit
+      const l = Math.min(...xs) - pad, r = Math.max(...xs) + pad
+      const t = Math.min(...ys) - pad, b = Math.max(...ys) + pad
+      const length = Math.min(16 * unit, (r - l) / 3, (b - t) / 3)
+      for (const [x,y,sx,sy] of [[l,t,1,1],[r,t,-1,1],[l,b,1,-1],[r,b,-1,-1]]) {
+        line(revealContour([{x:x+sx*length,y},{x,y},{x,y:y+sy*length}], pathReveal(index)), 2.2)
+      }
+    }
+  } else if(activity.treatment==='scribble' || activity.treatment==='ink-callout') {
+    // Trace each registered contour separately so paired features never get a
+    // single ellipse across the nose or an oversized box around the face.
+    for (const [index, path] of paths.entries()) {
+      const closed = path.length > 3 && Math.hypot(path[0].x - path.at(-1)!.x, path[0].y - path.at(-1)!.y) < unit
+      const sketch = path.map((point, i) => {
+        if (i === 0 || i === path.length - 1) return point
+        const previous = path[i - 1], next = path[i + 1]
+        const dx = next.x - previous.x, dy = next.y - previous.y
+        const offset = Math.sin(i * 2.4) * 1.3 * unit / Math.max(unit, Math.hypot(dx, dy))
+        return { x: point.x - dy * offset, y: point.y + dx * offset }
+      })
+      const visible = revealContour(sketch, pathReveal(index))
+      if (activity.treatment === 'ink-callout' && visible.length > 1) {
+        ctx.save()
+        ctx.globalAlpha *= .22
+        line(visible, 5)
+        ctx.restore()
+      }
+      line(visible, closed ? 3.2 : 2.5)
+    }
+  } else if (activity.treatment === 'mesh' || activity.treatment === 'landmarks') {
+    const mesh = activity.treatment === 'mesh'
+    let marker = 0
+    for (const [index, path] of paths.entries()) {
+      const progress = pathReveal(index)
+      if (progress <= 0) continue
+      line(revealContour(path, progress), 1.7)
+      if (mesh) {
+        let nodes = networkNodes.get(path)
+        if (!nodes) {
+          nodes = Array.from({ length: 12 }, (_, i) => revealContour(path, i / 11).at(-1)!)
+          networkNodes.set(path, nodes)
+        }
+        ctx.save()
+        ctx.strokeStyle = ctx.fillStyle = '#f8fbff'
+        drawSkinNetwork(ctx, nodes, activity.elapsedMs, activity.reduced)
+        ctx.restore()
+      }
+      for (const fraction of activity.reportDetail ? [] : mesh ? [.55] : [.25, .75]) {
+        const anchor = revealContour(path, fraction).at(-1)!
+        if (marker >= 4 || anchor.x < safe.left || anchor.x > safe.right || anchor.y < safe.top + 43 * unit || anchor.y > safe.bottom) continue
+        const amount = activity.reduced ? 1 : smoothMotion((activity.elapsedMs - 110 - marker * 65) / 220)
+        const point = revealContour(path, fraction * (.8 + .2 * amount)).at(-1)!
+        const number = String(++marker).padStart(2, '0')
+        if (amount <= 0) continue
+        ctx.save()
+        ctx.globalAlpha *= amount
+        applyGlassInk(ctx, unit)
+        ctx.beginPath(); ctx.arc(point.x, point.y, 2.6 * unit, 0, Math.PI * 2); ctx.fill()
+        glassMarker(ctx, point, number, .8 * unit)
+        ctx.restore()
+      }
     }
   } else if(activity.treatment==='inset') {
     const panelWidth=Math.min((safe.right-safe.left)*.9,400*unit),panelHeight=110*unit
@@ -369,9 +486,34 @@ export function drawPortraitActivity(ctx: CanvasRenderingContext2D, activity: Po
     for(const path of paths)line(path.map(p=>({x:x+panelWidth/2+(p.x-(left+right)/2)*scale,y:y+panelHeight/2+(p.y-(top+bottom)/2)*scale})),2.5)
   }
   ctx.restore()
+  if (activity.reportDetail) {
+    const { contours, guides, anchors, markers } = activity.reportDetail
+    ctx.save()
+    ctx.globalAlpha *= .7
+    ctx.setLineDash([1 * unit, 4 * unit])
+    for (const [index, path] of contours.entries()) {
+      line(revealContour(path.map(move), pathReveal(index)), 1.35)
+    }
+    const acquire = activity.reduced ? 1 : smoothMotion((activity.elapsedMs - 100) / 260)
+    ctx.setLineDash([5 * unit, 5 * unit])
+    for (const guide of guides) line(revealContour(guide.map(move), acquire), 1.25)
+    ctx.globalAlpha *= acquire
+    for (const point of anchors.map(move)) {
+      ctx.beginPath(); ctx.arc(point.x, point.y, 2.6 * unit, 0, Math.PI * 2)
+      applyGlassInk(ctx, unit)
+      ctx.fill()
+    }
+    markers.map(move).forEach((point, index) => {
+      if (point.x < safe.left + 14 * unit || point.x > safe.right - 14 * unit || point.y < safe.top + 40 * unit || point.y > safe.bottom) return
+      if (acquire > 0) glassMarker(ctx, point, String(index + 1).padStart(2, '0'), .82 * unit)
+    })
+    ctx.restore()
+  }
   if(!activity.label.trim()){ctx.restore();return}
-  const handwritten=activity.treatment==='note'||activity.treatment==='scribble',label=handwritten?activity.label:activity.label.toUpperCase()
-  const fontSize=36*unit,lineHeight=42*unit
+  const arrow = activity.treatment === 'arrow' || activity.treatment === 'ink-callout'
+  const handwritten = arrow || activity.treatment === 'note' || activity.treatment === 'scribble'
+  const label = handwritten ? activity.label : activity.label.toUpperCase()
+  const fontSize=(activity.treatment === 'ink-callout' ? 36 : arrow ? 30 : 36)*unit,lineHeight=fontSize+6*unit
   ctx.font=handwritten?`italic 500 ${fontSize}px "Mogging Share",sans-serif`:`400 ${fontSize}px "SFMono-Regular",Consolas,monospace`
   ctx.textAlign='left';ctx.textBaseline='alphabetic'
   const labelLines=portraitLabelLines(ctx,label,Math.min((safe.right-safe.left)*.9,390*unit))
@@ -382,19 +524,45 @@ export function drawPortraitActivity(ctx: CanvasRenderingContext2D, activity: Po
     labelY=top-(activity.treatment==='inset'?162:30)*unit
   }
   labelY=Math.max(safe.top+fontSize,Math.min(safe.bottom-labelLines.length*lineHeight,labelY))
-  const placed=placePortraitAnnotation({x:labelX,y:labelY-fontSize,width:labelWidth,height:labelLines.length*lineHeight},safe,unit,width,height,activity.mask)
+  let placed=placePortraitAnnotation({x:labelX,y:labelY-fontSize,width:labelWidth,height:labelLines.length*lineHeight},safe,unit,width,height,activity.mask)
+  if (arrow) {
+    const center = { x: placed.x + placed.width / 2, y: placed.y + placed.height / 2 }
+    const target = points.reduce((best, p) => Math.hypot(p.x-center.x,p.y-center.y) < Math.hypot(best.x-center.x,best.y-center.y) ? p : best)
+    const above = target.y - placed.height - 42 * unit
+    const y = above >= safe.top ? above : Math.min(safe.bottom - placed.height, target.y + 42 * unit)
+    const x = Math.max(safe.left, Math.min(safe.right - placed.width, target.x - placed.width / 2 + (onRight ? 24 : -24) * unit))
+    placed = { ...placed, x, y }
+  }
   labelX=placed.x;labelY=placed.y+fontSize
-  if(activity.treatment==='arrow'||activity.treatment==='callout') {
+  if(arrow || activity.treatment==='callout') {
     const center={x:placed.x+placed.width/2,y:placed.y+placed.height/2}
     const target=points.reduce((best,p)=>Math.hypot(p.x-center.x,p.y-center.y)<Math.hypot(best.x-center.x,best.y-center.y)?p:best)
     const origin={x:Math.max(placed.x,Math.min(placed.x+placed.width,target.x)),y:Math.max(placed.y,Math.min(placed.y+placed.height,target.y))}
     if(Math.hypot(target.x-origin.x,target.y-origin.y)>18*unit) {
       ctx.save();ctx.globalAlpha*=reveal
-      const elbow={x:(origin.x+target.x)/2,y:origin.y}
-      line([origin,elbow,target],2.5)
-      const angle=Math.atan2(target.y-elbow.y,target.x-elbow.x),size=11*unit
-      if(activity.treatment==='arrow') line([{x:target.x-size*Math.cos(angle-.5),y:target.y-size*Math.sin(angle-.5)},target,{x:target.x-size*Math.cos(angle+.5),y:target.y-size*Math.sin(angle+.5)}],2.5)
-      else {ctx.beginPath();ctx.arc(target.x,target.y,4*unit,0,Math.PI*2);ctx.fillStyle='#fff';ctx.fill()}
+      if (arrow) {
+        const dx = target.x - origin.x, dy = target.y - origin.y
+        const distance = Math.hypot(dx, dy)
+        const bend = Math.min(12 * unit, distance * .3) * (dx < 0 ? -1 : 1)
+        const shaft = Array.from({ length: 25 }, (_, i) => {
+          const t = i / 24
+          const bow = 4 * t * (1 - t) * (bend + Math.sin(t * Math.PI * 3) * unit)
+          return { x: origin.x + t * dx - bow * dy / distance, y: origin.y + t * dy + bow * dx / distance }
+        })
+        line(revealContour(shaft, Math.min(1, reveal / .85)), 2.8)
+        const angle = Math.atan2(target.y - shaft[23].y, target.x - shaft[23].x)
+        const tipLength = 12 * unit * Math.max(0, (reveal - .85) / .15)
+        if (tipLength > 0) line([
+          { x: target.x - tipLength * Math.cos(angle - .58), y: target.y - tipLength * Math.sin(angle - .58) },
+          target,
+          { x: target.x - tipLength * Math.cos(angle + .58), y: target.y - tipLength * Math.sin(angle + .58) },
+        ], 2.8)
+      } else {
+        line(revealContour([origin, { x: (origin.x + target.x) / 2, y: origin.y }, target], reveal), 2.5)
+        if (reveal > .9) {
+          ctx.beginPath();ctx.arc(target.x,target.y,4*unit,0,Math.PI*2);ctx.fillStyle='#fff';ctx.fill()
+        }
+      }
       ctx.restore()
     }
   }
@@ -404,11 +572,9 @@ export function drawPortraitActivity(ctx: CanvasRenderingContext2D, activity: Po
     const progress=activity.labelPhase*(labelLines.join('').length+3)
     drawPortraitLabel(ctx,line,labelX,labelY+index*lineHeight,(progress-letters)/(line.length+3),activity.reduced);letters+=line.length
   }
-  if(handwritten) {
-    ctx.save();ctx.globalAlpha*=reveal
+  if(handwritten && activity.labelPhase > 0) {
     const y=labelY+(labelLines.length-1)*lineHeight+9*unit
-    line(Array.from({length:16},(_,i)=>({x:labelX+labelWidth*i/15,y:y+Math.sin(i*.8)*2*unit})),2)
-    ctx.restore()
+    line(revealContour(Array.from({length:16},(_,i)=>({x:labelX+labelWidth*i/15,y:y+Math.sin(i*.8)*2*unit})),activity.labelPhase),2)
   }
   ctx.restore()
 }
