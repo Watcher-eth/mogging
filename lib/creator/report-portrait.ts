@@ -9,14 +9,6 @@ export function reportPortraitCrop(image: {width:number;height:number}, face?: F
   if (!face || face.confidence < .58 || image.width <= 0 || image.height <= 0) return
   const {forehead,chin} = face.anchors
   if (!forehead || !chin || ![forehead.x,forehead.y,chin.x,chin.y].every(Number.isFinite) || chin.y-forehead.y < .04) return
-  const fullWidthHeight = viewport.width * image.height / image.width
-  const centered = (forehead.x + chin.x) / 2
-  if (image.height > image.width && centered >= .35 && centered <= .65 && fullWidthHeight * .86 >= viewport.height && chin.y * fullWidthHeight * .86 + 14 <= viewport.height * .88) {
-    // Keep hair and chin visible in the shorter report hero. The background
-    // extends to the edges while the face and its guides keep one scale.
-    const width = 1 / .86
-    return { x: (1 - width) / 2, y: -14 / (fullWidthHeight * .86), width, height: viewport.height / (fullWidthHeight * .86) }
-  }
   const faceHeight=(chin.y-forehead.y)*image.height, baseline=getImageTransform(image,viewport,'cover')
   const centerY=baseline.offsetY+(forehead.y+chin.y)/2*image.height*baseline.scale
   const centerX=baseline.offsetX+(forehead.x+chin.x)/2*image.width*baseline.scale
@@ -58,14 +50,7 @@ export function drawReportPortrait(ctx: CanvasRenderingContext2D, image: HTMLIma
     const source = create()
     portrait = create()
     const original = source.getContext('2d')!, composite = portrait.getContext('2d')!
-    const x = placement.offsetX * 3, y = placement.offsetY * 3
-    const drawnWidth = placement.renderedWidth * 3, drawnHeight = placement.renderedHeight * 3
-    original.drawImage(image, x, y, drawnWidth, drawnHeight)
-    if (x > 0) {
-      original.drawImage(image, 0, 0, 1, image.height, 0, y, x + 1, drawnHeight)
-      original.drawImage(image, image.width - 1, 0, 1, image.height, x + drawnWidth - 1, y, source.width - x - drawnWidth + 1, drawnHeight)
-    }
-    if (y > 0) original.drawImage(source, 0, Math.ceil(y), source.width, 1, 0, 0, source.width, Math.ceil(y))
+    original.drawImage(image, placement.offsetX * 3, placement.offsetY * 3, placement.renderedWidth * 3, placement.renderedHeight * 3)
     composite.drawImage(source, 0, 0)
     drawPortraitProgressiveBlur(composite, source.width, source.height, reportPortraitFade.bottom)
     if(versions.size>=4)versions.clear()
