@@ -56,10 +56,10 @@ function drawStyledCover(ctx: CanvasRenderingContext2D, slide: ContentSlide, ima
     const available = width - inset * 2
     const shortTitle = title.length <= 3
     const preferredSize = width * (shortTitle ? .28 : .26)
-    ctx.font = `700 ${preferredSize}px "Mogging Share", Arial, sans-serif`
+    ctx.font = `900 ${preferredSize}px Arial, sans-serif`
     const naturalWidth = ctx.measureText(title).width
     const fontSize = preferredSize * Math.min(1, available / Math.max(1, naturalWidth))
-    ctx.font = `700 ${fontSize}px "Mogging Share", Arial, sans-serif`
+    ctx.font = `900 ${fontSize}px Arial, sans-serif`
     const metrics = ctx.measureText(title)
     const glyphHeight = metrics.actualBoundingBoxAscent + metrics.actualBoundingBoxDescent
     const headY = portraitTop + (artwork?.headTop ?? 0) * photo.scale * zoom
