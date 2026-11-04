@@ -13,7 +13,7 @@ import type { FaceAnchorKey, FaceContourKey } from './mobile-overlay-engine/land
 import { defaultGlassOverlay, applyGlassInk, type GlassOverlay } from './glass-overlay'
 
 export function ctaFaceTreatment(category: string, width: number) {
-  const pattern = category === 'jaw' ? 'solid' : ['overall', 'symmetry', 'proportions', 'face-shape', 'nose'].includes(category) ? 'dashed' : 'dotted'
+  const pattern = category === 'jaw' ? 'solid' : ['overall', 'symmetry', 'proportions', 'face-shape', 'nose', 'dimorphism', 'facial-fat'].includes(category) ? 'dashed' : 'dotted'
   return {
     appearance: { pattern, opacity: .68, markers: false, regions: category === 'cheeks' } satisfies GlassOverlay,
     inkScale: Math.max(1, width / 460),

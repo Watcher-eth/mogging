@@ -35,7 +35,7 @@ export function createReportOverlay(slide: ContentSlide, image: GeneratorImage, 
 }
 
 export type FaceMeasurement = { kind: 'symmetry' | 'thirds' | 'spacing' | 'inner-spacing' | 'tilt' | 'width'; anchors: Partial<Record<string, PixelPoint>> }
-export type ReportOverlay = { skinNetwork?: boolean; portraitCrop?: ReportPortraitCrop; size: Size; primitives: ResolvedPrimitive[]; dots: Array<PixelPoint & { band: number }>; measurement?: FaceMeasurement; faceBoundary?: PixelPoint[]; value?: string; labelLayout?: 'mobile'; labelAppearance?: 'scan'; labelScale?: number; ink?: string; pointAppearance?: 'minimal' }
+export type ReportOverlay = { useReportPrimitives?: boolean; skinNetwork?: boolean; portraitCrop?: ReportPortraitCrop; size: Size; primitives: ResolvedPrimitive[]; dots: Array<PixelPoint & { band: number }>; measurement?: FaceMeasurement; faceBoundary?: PixelPoint[]; value?: string; labelLayout?: 'mobile'; labelAppearance?: 'scan'; labelScale?: number; ink?: string; pointAppearance?: 'minimal' }
 
 export function drawReportOverlay(ctx: CanvasRenderingContext2D, overlay: ReportOverlay, width: number, timeMs: number, labels = true) {
   const ink = overlay.ink ?? '255,255,255'
@@ -71,6 +71,13 @@ export function drawReportOverlay(ctx: CanvasRenderingContext2D, overlay: Report
     ctx.lineCap = 'round'
     ctx.lineJoin = 'round'
     if (primitive.kind === 'point') {
+      if (primitive.id.startsWith('face-map-')) {
+        ctx.globalAlpha *= progress * .9
+        ctx.translate(primitive.point.x, primitive.point.y)
+        ctx.fillStyle = `rgb(${ink})`
+        circle(ctx, primitive.radius ?? 1.15); ctx.fill(); ctx.restore()
+        continue
+      }
       if (overlay.pointAppearance === 'minimal') {
         ctx.globalAlpha *= progress
         ctx.translate(primitive.point.x,primitive.point.y)

@@ -1,3 +1,5 @@
+import { createCtaPhotoOverlay } from './export-slides'
+import portrait from '@/components/landing/primer-portrait.json'
 import { enrichFaceLandmarks } from './mobile-overlay-engine/enrich-landmarks'
 import { preciseFaceOverlay } from './face-treatment'
 import { isSkinOverlayCategory } from './mobile-overlay-engine/face-map-points'
@@ -7,7 +9,7 @@ import { getImageTransform, projectImagePoint } from '@/lib/creator/mobile-overl
 import { reportOverlayPresets } from '@/lib/creator/mobile-overlay-engine/report-presets'
 import { resolveOverlayPreset } from '@/lib/creator/mobile-overlay-engine/resolve'
 import type { FaceLandmarksPayload } from '@/lib/creator/mobile-overlay-engine/landmarks'
-import { creatorTemplateOptions, GLAMOUR_CREATOR_PROFILE_ID, generateSlides, type GeneratorImage } from './content-generator'
+import { categoryOptions, creatorTemplateOptions, GLAMOUR_CREATOR_PROFILE_ID, generateSlides, type GeneratorImage } from './content-generator'
 
 const fixture: FaceLandmarksPayload = {
   version: 1,
@@ -204,4 +206,16 @@ test('report-style CTA jaw excludes the cheeks and preserves the jaw in photo co
     x: point.x * fixture.image.width,
     y: point.y * fixture.image.height,
   })))
+})
+
+test('every CTA category has visible photo geometry on the bundled portrait', () => {
+  const source: GeneratorImage = { id: 'portrait', name: 'Portrait', dataUrl: '', ...portrait.image, landmarks: portrait as GeneratorImage['landmarks'], status: 'ready' }
+  for (const { id } of categoryOptions) {
+    const [slide] = generateSlides({ images: [source], selectedCategories: [id], primaryCategory: id, campaignGoal: 'traffic', tone: 'direct', offer: '', seed: 0 })
+    const overlay = createCtaPhotoOverlay(slide, source)
+    expect(Boolean(overlay.dots.length || overlay.measurement || overlay.primitives.some(primitive => primitive.kind !== 'label'))).toBe(true)
+    if (['psl', 'dimorphism', 'cheekbones'].includes(id)) {
+      expect(overlay.primitives.some(primitive => primitive.id.startsWith('metric-'))).toBe(true)
+    }
+  }
 })

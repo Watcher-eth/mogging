@@ -56,10 +56,10 @@ function drawStyledCover(ctx: CanvasRenderingContext2D, slide: ContentSlide, ima
     const available = width - inset * 2
     const shortTitle = title.length <= 3
     const preferredSize = width * (shortTitle ? .28 : .26)
-    ctx.font = `900 ${preferredSize}px Arial, sans-serif`
+    ctx.font = `700 ${preferredSize}px "Mogging Share", Arial, sans-serif`
     const naturalWidth = ctx.measureText(title).width
     const fontSize = preferredSize * Math.min(1, available / Math.max(1, naturalWidth))
-    ctx.font = `900 ${fontSize}px Arial, sans-serif`
+    ctx.font = `700 ${fontSize}px "Mogging Share", Arial, sans-serif`
     const metrics = ctx.measureText(title)
     const glyphHeight = metrics.actualBoundingBoxAscent + metrics.actualBoundingBoxDescent
     const headY = portraitTop + (artwork?.headTop ?? 0) * photo.scale * zoom
@@ -79,7 +79,7 @@ function drawStyledCover(ctx: CanvasRenderingContext2D, slide: ContentSlide, ima
   ctx.filter = 'none'
   if (overlay) {
     ctx.translate(photo.offsetX, photo.offsetY)
-    if (!performance && slide.overlayStyle === 'face-map' && !overlay.skinNetwork) {
+    if (overlay.useReportPrimitives || (!performance && slide.overlayStyle === 'face-map' && !overlay.skinNetwork)) {
       drawReportOverlay(ctx, overlay, photo.renderedWidth, time * 1.5, false)
     } else {
       drawFaceTreatment(ctx, overlay, photo.renderedWidth, time, false, progress, ctaFaceTreatment(slide.categoryId, width))
@@ -175,7 +175,7 @@ export function drawPortraitCover(ctx: CanvasRenderingContext2D, slide: ContentS
     ctx.translate(width * .5 * (1 - zoom), height * .42 * (1 - zoom))
     ctx.scale(zoom, zoom)
     ctx.translate(frame.offsetX, frame.offsetY)
-    if (slide.overlayStyle === 'face-map' && !overlay.skinNetwork) drawReportOverlay(ctx, overlay, frame.renderedWidth, time * 1.5, false)
+    if (overlay.useReportPrimitives || (slide.overlayStyle === 'face-map' && !overlay.skinNetwork)) drawReportOverlay(ctx, overlay, frame.renderedWidth, time * 1.5, false)
     else drawFaceTreatment(ctx, overlay, frame.renderedWidth, time, false, 1, ctaFaceTreatment(slide.categoryId, width))
     ctx.restore()
   }

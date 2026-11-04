@@ -64,7 +64,7 @@ export function drawScoreReveal(ctx: CanvasRenderingContext2D, slide: ContentSli
       ctx.drawImage(portrait, 0, 0, photoWidth, portrait.naturalHeight * zoom)
       if (overlay) {
         const overlayTime = Math.max(0, time - 650)
-        if (slide.overlayStyle === 'face-map' && !overlay.skinNetwork) drawReportOverlay(ctx, overlay, photoWidth, overlayTime, false)
+        if (overlay.useReportPrimitives || (slide.overlayStyle === 'face-map' && !overlay.skinNetwork)) drawReportOverlay(ctx, overlay, photoWidth, overlayTime, false)
         else drawFaceTreatment(ctx, overlay, photoWidth, overlayTime, false, 1, ctaFaceTreatment(slide.categoryId, width))
       }
     }

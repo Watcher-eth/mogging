@@ -182,6 +182,27 @@ export function buildZip(files: Array<{ name: string; data: Uint8Array }>) {
   return new Blob([buffer], { type: 'application/zip' })
 }
 
+const ctaMetricGuides: Record<string, string> = {
+  psl: 'face.shape',
+  dimorphism: 'detail.dimorphism',
+  'facial-fat': 'detail.under-cheekbones',
+  cheekbones: 'detail.cheekbones',
+}
+
+export function createCtaPhotoOverlay(slide: ContentSlide, source: GeneratorImage) {
+  const overlay = createReportOverlay(slide, source, source)
+  if (overlay.skinNetwork || slide.overlayStyle === 'face-map') return overlay
+  const category = slide.categoryId
+  const photo = { ...source, landmarks: enrichFaceLandmarks(source.landmarks) }
+  const precise = preciseFaceOverlay(overlay, photo, category, '', false, ctaMetricGuides[category])
+  if (precise.primitives.length || precise.measurement) return precise
+  if (category === 'cheekbones') {
+    const widthGuide = preciseFaceOverlay(overlay, photo, category, '', false, 'cheeks.width')
+    if (widthGuide.primitives.length) return widthGuide
+  }
+  return { ...overlay, useReportPrimitives: true }
+}
+
 export async function prepareCanvas({ slide, images, width, height }: RenderArgs) {
   const canvas = document.createElement('canvas'); canvas.width = width; canvas.height = height
   const ctx = canvas.getContext('2d', { alpha: false }); if (!ctx) throw new Error('Canvas export is unavailable')
@@ -194,17 +215,13 @@ export async function prepareCanvas({ slide, images, width, height }: RenderArgs
   const source = { ...selectedImage, width: image.naturalWidth, height: image.naturalHeight }
   const imageSpace = portraitCover || slide.templateId === 'cta'
   const overlaySlide = slide.templateId === 'performance' ? { ...slide, overlayStyle: 'category' as const } : slide
-  let overlay: ReportOverlay | null = imageSpace
-    ? createReportOverlay(overlaySlide, source, source)
+  const overlay: ReportOverlay | null = imageSpace
+    ? createCtaPhotoOverlay(overlaySlide, source)
     : isReport
       ? createReportOverlay(slide, source, { width: mockReportSize.width, height: mockReportHeroHeight }, mockReportSize.width, true)
       : slide.templateId === 'afterimage'
         ? createReportOverlay(slide, source, { width: width * .95, height })
         : null
-  if (imageSpace && overlay && !overlay.skinNetwork && overlaySlide.overlayStyle !== 'face-map') {
-    overlay = preciseFaceOverlay(overlay, { ...source, landmarks: enrichFaceLandmarks(source.landmarks) }, slide.categoryId, '', slide.categoryId === 'cheeks')
-  }
-
   if (overlay && isReport) {
     overlay.labelLayout = 'mobile'
     overlay.value = slide.categoryId === 'overall' ? `${(Number(slide.currentScore) * .8).toFixed(1)} / 8` : `${Number(slide.categoryScores[0]?.value ?? slide.currentScore).toFixed(1)} / 10`
