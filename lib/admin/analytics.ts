@@ -593,7 +593,10 @@ export function analyticsQuery(filters: AnalyticsFilters, now: Date) {
         (select count(*) from payment_entitlements p where p.stripe_checkout_session_id like 'cs_live_%'
           and p.id not in (select id from excluded_entitlements)
           and not exists(select 1 from subscription_events s where s.provider = 'stripe'
-            and s.provider_event_id = 'checkout:' || p.stripe_checkout_session_id)) as unrecorded_stripe_purchases,
+            and s.environment = 'production' and s.amount > 0
+            and case when p.stripe_subscription_id is not null then
+              s.subscription_id = p.stripe_subscription_id and s.event_name in ('invoice_paid','subscription_renewed')
+            else s.provider_event_id = 'checkout:' || p.stripe_checkout_session_id end)) as unrecorded_stripe_purchases,
         (select occurred_at from analytics_events where event_name = 'backend_billing_reconciliation'
           and environment = 'production' and source = 'backend' and occurred_at < ${end}::timestamp order by occurred_at desc limit 1) as recovery_checked_at,
         (select properties->>'webhook_ready' from analytics_events where event_name = 'backend_billing_reconciliation'
