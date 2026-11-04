@@ -2,7 +2,12 @@ import { DEFAULT_TEXT_MORPH_OPTIONS, diffSegments, type Segment } from 'torph'
 import type { PortraitMetric } from './portrait-metric'
 
 export const pillMotion = { durationMs: DEFAULT_TEXT_MORPH_OPTIONS.duration, padding: 16, height: 52, fontSize: 32 } as const
-export const portraitMetricText = (metric: PortraitMetric) => (metric.unit === '/10' && !Number.isInteger(metric.value) ? String(metric.value) : metric.value.toFixed(1)) + (metric.unit === '/10' ? ' / 10' : metric.unit)
+export const portraitMetricText = (metric: PortraitMetric) => {
+  const score = metric.unit === '/10' || metric.unit === '/8'
+  const value = score && !Number.isInteger(metric.value) ? String(metric.value) : metric.value.toFixed(1)
+  return score ? `${value} / ${metric.unit.slice(1)}` : value + metric.unit
+}
+
 type Glyph = Segment & { x: number; y: number; opacity: number }
 export type PillFrame = { width: number; opacity: number; glyphs: Glyph[]; metric?: PortraitMetric }
 type Transition = { at: number; from: PillFrame; to: PillFrame }

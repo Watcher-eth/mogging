@@ -1,5 +1,7 @@
-import { loadCreatorBrand, drawBrandLockup, type CreatorBrand } from './brand'
+import { loadCreatorBrand, drawTemplateBrandRow, drawTemplateInvitation, type CreatorBrand } from './brand'
 import { categoryScoreMax, type ContentSlide } from './content-generator'
+import { elementEntrance } from './video-layout'
+import { ctaFaceTreatment, drawFaceTreatment } from './face-treatment'
 import { drawReportOverlay, type ReportOverlay } from './report-overlay'
 
 // One timeline and composition for the live preview, still image, and video.
@@ -35,18 +37,17 @@ export function drawScoreReveal(ctx: CanvasRenderingContext2D, slide: ContentSli
   const columns = stats.length > 8 ? 3 : 2
   const rows = Math.ceil(stats.length / columns)
   const compact = height / width < 1.4
-  const rowHeight = 128
+  const rowHeight = 140
   const panelTop = compact ? 684 : 790
-  const panelHeight = rows ? rows * rowHeight + 44 : 0
+  const panelHeight = rows ? rows * rowHeight + 32 : 0
   const contentHeight = panelTop + panelHeight + 24
-  const scale = Math.min(width / 1000, height / (contentHeight + 100))
+  const scale = Math.min(width / 790, height * .84 / contentHeight)
   ctx.save()
-  ctx.fillStyle = '#050607'; ctx.fillRect(0, 0, width, height)
+  ctx.fillStyle = '#111'; ctx.fillRect(0, 0, width, height)
   ctx.translate((width - 900 * scale) / 2, (height - contentHeight * scale) / 2)
   ctx.scale(scale, scale)
   ctx.textBaseline = 'middle'; ctx.lineCap = 'round'
 
-  drawBrandLockup(ctx, brand, 150, 0, 600)
   entrance(ctx, time, 80, () => {
     const category = revealCategory(slide)
     const label = (category?.label ?? slide.metricLabel).replace(/\s+(analysis|score)$/i, '')
@@ -54,16 +55,18 @@ export function drawScoreReveal(ctx: CanvasRenderingContext2D, slide: ContentSli
   })
 
   entrance(ctx, time, 260, () => {
-    const size = compact ? 260 : 320, x = (900 - size) / 2, y = 112
+    const size = compact ? 300 : 380, x = (900 - size) / 2, y = 112
     ctx.save(); ctx.beginPath(); ctx.arc(450, y + size / 2, size / 2, 0, Math.PI * 2); ctx.clip()
     if (portrait) {
       const zoom = Math.max(size / portrait.naturalWidth, size / portrait.naturalHeight)
-      ctx.drawImage(portrait, x + (size - portrait.naturalWidth * zoom) / 2, y + (size - portrait.naturalHeight * zoom) / 2, portrait.naturalWidth * zoom, portrait.naturalHeight * zoom)
-    }
-    if (overlay) {
-      ctx.save(); ctx.translate(x, y); ctx.scale(size / REVEAL_PORTRAIT_SIZE, size / REVEAL_PORTRAIT_SIZE)
-      drawReportOverlay(ctx, { ...overlay, pointAppearance: 'minimal' }, REVEAL_PORTRAIT_SIZE, Math.max(0, time - 650), false)
-      ctx.restore()
+      ctx.translate(x + (size - portrait.naturalWidth * zoom) / 2, y + (size - portrait.naturalHeight * zoom) / 2)
+      const photoWidth = portrait.naturalWidth * zoom
+      ctx.drawImage(portrait, 0, 0, photoWidth, portrait.naturalHeight * zoom)
+      if (overlay) {
+        const overlayTime = Math.max(0, time - 650)
+        if (slide.overlayStyle === 'face-map' && !overlay.skinNetwork) drawReportOverlay(ctx, overlay, photoWidth, overlayTime, false)
+        else drawFaceTreatment(ctx, overlay, photoWidth, overlayTime, false, 1, ctaFaceTreatment(slide.categoryId, width))
+      }
     }
     ctx.restore()
   })
@@ -81,6 +84,8 @@ export function drawScoreReveal(ctx: CanvasRenderingContext2D, slide: ContentSli
       const y = panelTop + 34 + row * rowHeight
       const delay = 1650 + index * Math.min(motion.stagger, 600 / Math.max(1, stats.length))
       entrance(ctx, time, delay, () => {
+        ctx.fillStyle = '#ffffff10'
+        ctx.beginPath(); ctx.roundRect(x - 12, y - 22, barWidth + 24, 119, 22); ctx.fill()
         text(ctx, stat.label.toUpperCase(), x, y, 25, '#aeb9ba', 'left', 400, barWidth)
         text(ctx, stat.value.trim() || '—', x, y + 33, 34, '#f4f5f3', 'left', 500)
         text(ctx, `/ ${categoryScoreMax(stat.categoryId)}`, x + barWidth, y + 33, 22, '#829093', 'right')
@@ -89,6 +94,8 @@ export function drawScoreReveal(ctx: CanvasRenderingContext2D, slide: ContentSli
     })
   }
   ctx.restore()
+  drawTemplateBrandRow(ctx, brand, width, height * .04)
+  drawTemplateInvitation(ctx, brand, width, height, '#fff')
 }
 
 function glassRail(ctx: CanvasRenderingContext2D, x: number, y: number, width: number, progress: number) {
@@ -149,10 +156,7 @@ function entrance(ctx: CanvasRenderingContext2D, time: number, delay: number, dr
   ctx.save(); ctx.globalAlpha *= progress; ctx.translate(0, (1 - progress) * motion.rise); draw(); ctx.restore()
 }
 
-function ease(time: number, delay: number, duration: number) {
-  const progress = Math.max(0, Math.min(1, (time - delay) / duration))
-  return 1 - (1 - progress) ** 3
-}
+function ease(time: number, delay: number, duration: number) { return elementEntrance(time, delay, duration) }
 
 function ratio(value: string, maximum = 10) {
   const number = Number(value)

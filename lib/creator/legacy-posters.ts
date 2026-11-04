@@ -1,70 +1,206 @@
-import { drawBrandLockup } from './brand'
-import type { ContentSlide } from './content-generator'
+import { drawTemplateBrandRow, drawTemplateInvitation, type CreatorBrand } from './brand'
+import { categoryScoreMax, type ContentSlide, type GeneratorImage } from './content-generator'
+import { ctaFaceTreatment, drawFaceTreatment } from './face-treatment'
 import { drawReportOverlay, type ReportOverlay } from './report-overlay'
-import type { RevealBrand } from './score-reveal'
-import { drawShareOverallOverlay } from '@/lib/sharing/overall-overlay'
-import { shareCardLayout } from '@/lib/sharing/share-card'
+import { drawPortraitProgressiveBlur, reportPortraitProjection } from './report-portrait'
+import { preparePortraitPrint } from './editorial-posters'
+import { portraitSubject, preparePortrait } from './video-portrait'
+import { drawPortraitMetricPill } from './portrait-metric'
+import { elementEntrance, videoMotion } from './video-layout'
 
-export function drawLegacyPoster(ctx: CanvasRenderingContext2D, slide: ContentSlide, image: HTMLImageElement | null, overlay: ReportOverlay | null, width: number, height: number, timeMs: number, brand: RevealBrand | null) {
-  ctx.save(); ctx.textBaseline = 'top'; ctx.textAlign = 'left'
-  ctx.fillStyle = '#09090b'; ctx.fillRect(0,0,width,height)
-  if (image) drawCover(ctx,image,0,0,width,height)
-  if (slide.templateId === 'score-potential') {
-    drawMobileShare(ctx,slide,overlay,width,height,timeMs)
-    const square = height / width < 1.2
-    const brandWidth = width * (square ? .30 : .36)
-    const scoreHeight = shareCardLayout.scoreSize * width / shareCardLayout.width * (square ? .86 : 1)
-    const scoreCenterY = height * .945 - scoreHeight / 2
-    drawBrandLockup(ctx, brand, (width - brandWidth) / 2, scoreCenterY - brandWidth * .125 / 2, brandWidth)
+const coverArtwork = new WeakMap<HTMLImageElement, { canvas: HTMLCanvasElement; headTop?: number }>()
+
+export async function prepareCoverArtwork(slide: ContentSlide, image: HTMLImageElement, source: GeneratorImage) {
+  if (slide.templateId === 'editorial') {
+    const portrait = await preparePortrait(image, source).catch(() => null)
+    if (portrait) coverArtwork.set(image, portrait)
+    return
   }
-  else {
-    const gradient=ctx.createLinearGradient(0,0,0,height)
-    gradient.addColorStop(0,'rgba(0,0,0,.45)'); gradient.addColorStop(.5,'rgba(0,0,0,.05)'); gradient.addColorStop(1,'rgba(0,0,0,.95)')
-    ctx.fillStyle=gradient; ctx.fillRect(0,0,width,height)
-    if (overlay) drawReportOverlay(ctx,overlay,width,timeMs,false)
-    drawEditorial(ctx,slide,width,height,timeMs,brand)
+  if (slide.templateId !== 'performance') return
+  const subject = await portraitSubject(image, source).catch(() => image)
+  const artwork = await preparePortraitPrint(subject, 'graphite').catch(() => subject)
+  if (artwork instanceof HTMLCanvasElement) coverArtwork.set(image, { canvas: artwork })
+}
+
+export function styledCoverViewport(slide: ContentSlide, width: number, height: number) {
+  return { width, height: height * (slide.templateId === 'performance' ? .84 : slide.templateId === 'editorial' ? .82 : 1) }
+}
+
+function drawStyledCover(ctx: CanvasRenderingContext2D, slide: ContentSlide, image: HTMLImageElement, overlay: ReportOverlay | null, width: number, height: number, time: number, brand: CreatorBrand | null) {
+  const performance = slide.templateId === 'performance'
+  const paper = performance ? '#121212' : '#fff'
+  const ink = performance ? '#fff' : '#25221e'
+  const artwork = coverArtwork.get(image)
+  const inset = width * .07
+  const progress = elementEntrance(time, 150, 1380)
+  const pan = elementEntrance(time, 0, 1750)
+  const zoom = performance ? 1.04 + .035 * pan : .96 + .02 * pan
+  const travel = width * (performance ? .024 : -.016)
+  const panX = width * .5 * (1 - zoom) + travel * (pan - .5)
+  const top = height * (performance ? .16 : .20)
+  const portraitTop = top + height * .012 * (1 - pan)
+  const feature = slide.categoryScores.find(score => score.categoryId === slide.categoryId)
+  const label = feature?.label || slide.metricLabel
+  const { width: photoWidth, height: photoHeight } = styledCoverViewport(slide, width, height)
+  const photo = reportPortraitProjection({ width: image.naturalWidth, height: image.naturalHeight }, { width: photoWidth, height: photoHeight })
+
+  ctx.save()
+  ctx.fillStyle = paper
+  ctx.fillRect(0, 0, width, height)
+  if (!performance) {
+    ctx.save()
+    ctx.fillStyle = ink
+    ctx.textAlign = 'center'
+    ctx.textBaseline = 'alphabetic'
+    const title = label.toUpperCase()
+    const available = width - inset * 2
+    const shortTitle = title.length <= 3
+    const preferredSize = width * (shortTitle ? .28 : .26)
+    ctx.font = `900 ${preferredSize}px Arial, sans-serif`
+    const naturalWidth = ctx.measureText(title).width
+    const fontSize = preferredSize * Math.min(1, available / Math.max(1, naturalWidth))
+    ctx.font = `900 ${fontSize}px Arial, sans-serif`
+    const metrics = ctx.measureText(title)
+    const glyphHeight = metrics.actualBoundingBoxAscent + metrics.actualBoundingBoxDescent
+    const headY = portraitTop + (artwork?.headTop ?? 0) * photo.scale * zoom
+    ctx.fillText(title, width / 2, headY + glyphHeight * (shortTitle ? .49 : .32) - metrics.actualBoundingBoxDescent, available)
+    ctx.restore()
   }
+  ctx.save()
+  ctx.beginPath()
+  ctx.rect(0, top, photoWidth, photoHeight)
+  ctx.clip()
+  // Keep the source's upper edge and shift registered overlays with it.
+  ctx.translate(panX, portraitTop)
+  ctx.scale(zoom, zoom)
+  ctx.translate(0, -photo.offsetY)
+  if (performance) ctx.filter = 'grayscale(.55) contrast(1.08) brightness(.93)'
+  ctx.drawImage(artwork?.canvas ?? image, photo.offsetX, photo.offsetY, photo.renderedWidth, photo.renderedHeight)
+  ctx.filter = 'none'
+  if (overlay) {
+    ctx.translate(photo.offsetX, photo.offsetY)
+    if (!performance && slide.overlayStyle === 'face-map' && !overlay.skinNetwork) {
+      drawReportOverlay(ctx, overlay, photo.renderedWidth, time * 1.5, false)
+    } else {
+      drawFaceTreatment(ctx, overlay, photo.renderedWidth, time, false, progress, ctaFaceTreatment(slide.categoryId, width))
+    }
+  }
+  ctx.restore()
+
+  if (performance) {
+    const fade = ctx.createLinearGradient(0, height * .67, 0, height * .98)
+    fade.addColorStop(0, '#12121200')
+    fade.addColorStop(1, paper)
+    ctx.fillStyle = fade
+    ctx.fillRect(0, height * .67, width, height * .33)
+  } else {
+    const fade = ctx.createLinearGradient(0, height * .73, 0, height * .93)
+    fade.addColorStop(0, '#fff0')
+    fade.addColorStop(1, '#fff')
+    ctx.fillStyle = fade
+    ctx.fillRect(0, height * .73, width, height * .27)
+  }
+
+  const jaw = overlay?.primitives.find(primitive => primitive.id === 'feature-jawline')
+  const jawBottom = slide.categoryId === 'jaw' && overlay && jaw?.kind === 'polyline'
+    ? portraitTop + Math.max(...jaw.pixelPoints.map(point => point.y)) * photo.renderedWidth / overlay.size.width * zoom
+    : 0
+  ctx.fillStyle = ink
+  ctx.textBaseline = 'top'
+  const reveal = elementEntrance(time, 690, videoMotion.portraitEnterMs)
+  if (performance) {
+    ctx.globalAlpha = reveal
+    ctx.font = `600 ${width * .105}px "Mogging Share", Arial`
+    ctx.textAlign = 'center'
+    ctx.fillText(label, width / 2, height * .81 + width * .02 * (1 - reveal), width - inset * 2)
+    ctx.globalAlpha = 1
+    const percent = Number(slide.topPercent)
+    if (Number.isFinite(percent) && percent > 0 && percent <= 100) {
+      drawPortraitMetricPill(ctx, {
+        metric: { label, value: percent, unit: '%', basis: 'assessment', imageId: slide.imageId ?? slide.id },
+        chin: { x: width * .5, y: Math.max(height * .66, jawBottom) },
+        opacity: reveal,
+      }, false, undefined, `Top ${percent}%`)
+    }
+    ctx.textAlign = 'left'
+    ctx.globalAlpha = 1
+  } else {
+    const score = (slide.categoryId === 'overall' ? slide.currentScore : feature?.value)?.trim()
+    const maximum = categoryScoreMax(slide.categoryId)
+    const value = score ? Number(score) : NaN
+    if (Number.isFinite(value) && value >= 0 && value <= maximum) {
+      drawPortraitMetricPill(ctx, {
+        metric: { label, value, unit: maximum === 8 ? '/8' : '/10', basis: 'assessment', imageId: slide.imageId ?? slide.id },
+        chin: { x: width * .5, y: Math.max(height * .69, jawBottom) + width * .035 * (1 - reveal) },
+        opacity: reveal,
+      })
+    }
+  }
+  drawTemplateBrandRow(ctx, brand, width, height * .04, ink)
+  drawTemplateInvitation(ctx, brand, width, height, ink)
   ctx.restore()
 }
 
-function drawEditorial(ctx: CanvasRenderingContext2D, slide: ContentSlide, width: number, height: number, timeMs: number, brand: RevealBrand | null) {
-  const square = height / width < 1.2
-  if (square) withEnter(ctx, enter(timeMs, 420, 520), () => drawBrandLockup(ctx, brand, width * .13, height * .035, width * .74))
-  else drawBrandPair(ctx, brand, width, height, timeMs)
-  const size = width * .075
-  const scale = width / shareCardLayout.width
-  const labelY = height - height * .055 - shareCardLayout.scoreLabelSize * scale
-  const valueY = labelY - (shareCardLayout.scoreSize + 12) * scale
-  const headlineBottom = valueY - width * .05
-  const headline = slide.headline.trim() && slide.headline.length <= 48 ? slide.headline : 'Time to ascend.'
-  ctx.font = `800 ${shareCardLayout.scoreSize * scale}px "Mogging Share", Arial`
-  const scoreWidths = [slide.currentScore, slide.potentialScore].map(value => ctx.measureText(formatShareScore(value)).width)
-  const left = shareCardLayout.inset * scale + scoreWidths[0] + width * .025
-  const right = width - shareCardLayout.inset * scale - scoreWidths[1] - width * .025
-  const headlineWidth = square ? Math.max(width * .15, right - left) : width * .86
-  let headlineSize = square ? width * .035 : size
-  let lines = wrapText(ctx, headline, headlineWidth, `500 ${headlineSize}px Arial`)
-  if (!square) lines = lines.slice(0, 2)
-  while (square && lines.length > 2 && headlineSize > width * .022) {
-    headlineSize -= 1
-    lines = wrapText(ctx, headline, headlineWidth, `500 ${headlineSize}px Arial`)
+export function drawPortraitCover(ctx: CanvasRenderingContext2D, slide: ContentSlide, image: HTMLImageElement | null, overlay: ReportOverlay | null, width: number, height: number, time: number, brand: CreatorBrand | null) {
+  if (image && (slide.templateId === 'performance' || slide.templateId === 'editorial')) {
+    drawStyledCover(ctx, slide, image, overlay, width, height, time, brand)
+    return
   }
-  withEnter(ctx, enter(timeMs, 850, 520), () => {
-    ctx.fillStyle = '#fff'; ctx.font = `500 ${headlineSize}px Arial`; ctx.textAlign = 'center'
-    const centerX = square ? (left + right) / 2 : width / 2
-    const top = square ? valueY + shareCardLayout.scoreSize * scale / 2 - lines.length * headlineSize * .52 : headlineBottom - lines.length * headlineSize * 1.04
-    lines.slice(0, 2).forEach((line, index) => ctx.fillText(line, centerX, top + index * headlineSize * 1.04, headlineWidth))
+  const inset = width * .065
+  const camera = elementEntrance(time, 0, 1550)
+  const zoom = 1 + camera * .035
+  ctx.save()
+  ctx.fillStyle = '#111'
+  ctx.fillRect(0, 0, width, height)
+  const frame = image ? reportPortraitProjection({ width: image.naturalWidth, height: image.naturalHeight }, { width, height }) : null
+  if (image && frame) {
+    ctx.save()
+    ctx.translate(width * .5 * (1 - zoom), height * .42 * (1 - zoom))
+    ctx.scale(zoom, zoom)
+    ctx.drawImage(image, frame.offsetX, frame.offsetY, frame.renderedWidth, frame.renderedHeight)
+    ctx.restore()
+    drawPortraitProgressiveBlur(ctx, width, height, .31)
+  }
+
+  const shade = ctx.createLinearGradient(0, 0, 0, height)
+  shade.addColorStop(0, '#111b')
+  shade.addColorStop(.27, '#1110')
+  shade.addColorStop(.61, '#1110')
+  shade.addColorStop(1, '#111')
+  ctx.fillStyle = shade
+  ctx.fillRect(0, 0, width, height)
+
+  if (overlay && frame) {
+    ctx.save()
+    ctx.translate(width * .5 * (1 - zoom), height * .42 * (1 - zoom))
+    ctx.scale(zoom, zoom)
+    ctx.translate(frame.offsetX, frame.offsetY)
+    if (slide.overlayStyle === 'face-map' && !overlay.skinNetwork) drawReportOverlay(ctx, overlay, frame.renderedWidth, time * 1.5, false)
+    else drawFaceTreatment(ctx, overlay, frame.renderedWidth, time, false, 1, ctaFaceTreatment(slide.categoryId, width))
+    ctx.restore()
+  }
+
+  ctx.textBaseline = 'top'
+
+  const entrance = elementEntrance(time, 290, videoMotion.portraitEnterMs)
+  ctx.save()
+  ctx.globalAlpha = entrance
+  ctx.translate(0, width * .022 * (1 - entrance))
+  const scores = [slide.currentScore, slide.potentialScore]
+  scores.forEach((score, index) => {
+    const x = index ? width - inset : inset
+    ctx.textAlign = index ? 'right' : 'left'
+    ctx.fillStyle = '#fff'
+    ctx.font = `500 ${width * .128}px "Mogging Share", Arial`
+    ctx.fillText(score.trim() || '—', x, height - width * .27, width * .42)
+    ctx.fillStyle = '#ffffff99'
+    ctx.font = `500 ${width * .024}px "Mogging Share", Arial`
+    if (score.trim()) ctx.fillText('OUT OF 10', x, height - width * .135)
   })
-  withEnter(ctx, enter(timeMs, 1050, 520), () => {
-    for (const [index, score] of [slide.currentScore, slide.potentialScore].entries()) {
-      const x = index === 0 ? shareCardLayout.inset * scale : width - shareCardLayout.inset * scale
-      ctx.textAlign = index === 0 ? 'left' : 'right'
-      ctx.font = `800 ${shareCardLayout.scoreSize * scale}px "Mogging Share", Arial`; ctx.fillStyle = index === 0 ? '#fff' : 'rgba(255,255,255,.8)'
-      ctx.fillText(formatShareScore(score), x, valueY)
-      ctx.font = `800 ${shareCardLayout.scoreLabelSize * scale}px "Mogging Share", Arial`; ctx.fillStyle = 'rgba(255,255,255,.86)'
-      ctx.fillText(index === 0 ? 'TOTAL SCORE' : 'POTENTIAL', x, labelY)
-    }
-  })
+  ctx.restore()
+  drawTemplateBrandRow(ctx, brand, width, height * .04)
+  drawTemplateInvitation(ctx, brand, width, height, '#fff')
+  ctx.restore()
 }
 
 let shareFont: Promise<void> | undefined
@@ -72,56 +208,3 @@ export function loadShareFont() {
   if (!shareFont) shareFont = new FontFace('Mogging Share', 'url(/fonts/Geist-Regular.ttf)').load().then(font => { document.fonts.add(font) }).catch(error => { shareFont = undefined; throw error })
   return shareFont
 }
-
-function drawMobileShare(ctx: CanvasRenderingContext2D, slide: ContentSlide, overlay: ReportOverlay | null, width: number, height: number, timeMs: number) {
-  const scale = width / shareCardLayout.width
-  for (const css of shareCardLayout.gradients) {
-    const angle = Number(css.match(/(\d+)deg/)?.[1] ?? 180) * Math.PI / 180
-    const dx = Math.sin(angle), dy = -Math.cos(angle), length = Math.abs(width * dx) + Math.abs(height * dy)
-    const gradient = ctx.createLinearGradient(width / 2 - dx * length / 2, height / 2 - dy * length / 2, width / 2 + dx * length / 2, height / 2 + dy * length / 2)
-    for (const match of css.matchAll(/(rgba\([^)]+\)) (\d+)%/g)) gradient.addColorStop(Number(match[2]) / 100, match[1])
-    ctx.fillStyle = gradient; ctx.fillRect(0, 0, width, height)
-  }
-  if (overlay) drawShareOverallOverlay(ctx, overlay.primitives, width, timeMs)
-  const square = height / width < 1.2
-  const top = square ? height * .035 : shareCardLayout.headerTop * scale, inset = shareCardLayout.inset * scale
-  const text = (value: string, x: number, y: number, size: number, align: CanvasTextAlign = 'left', alpha = 1) => {
-    ctx.textAlign = align; ctx.font = `800 ${size * scale}px "Mogging Share", Arial`; ctx.fillStyle = `rgba(255,255,255,${alpha})`; ctx.fillText(value, x, y)
-  }
-  withEnter(ctx, enter(timeMs, 300, 480), () => {
-    text('MOGGING.COM', inset, top, shareCardLayout.headingSize)
-    text('FACIAL AESTHETIC', inset, top + 46 * scale, shareCardLayout.subheadingSize, 'left', .76)
-
-  })
-  const scoreSize = shareCardLayout.scoreSize * (height / width < 1.2 ? .86 : 1)
-  const valueTop = height - height * .055 - scoreSize * scale
-  withEnter(ctx, enter(timeMs, 1050, 520), () => {
-    text('TOTAL SCORE', inset, valueTop - 43 * scale, shareCardLayout.scoreLabelSize)
-    text(formatShareScore(slide.currentScore), inset - 8 * scale, valueTop, scoreSize)
-    text('POTENTIAL', width - inset, valueTop - 43 * scale, shareCardLayout.scoreLabelSize, 'right')
-    text(formatShareScore(slide.potentialScore), width - inset + 20 * scale, valueTop, scoreSize, 'right', .8)
-  })
-}
-
-function formatShareScore(value: string) { return value.trim() && Number.isFinite(Number(value)) ? Number(value).toFixed(1) : '--' }
-
-function drawBrandPair(ctx: CanvasRenderingContext2D, brand: RevealBrand | null, width: number, height: number, timeMs: number) {
-  withEnter(ctx, enter(timeMs, 420, 520), () => {
-    const size = width * .085, gap = width * .025
-    const x = (width - size * 2 - gap) / 2, y = height * .08
-    if (brand) {
-      ctx.drawImage(brand.logo, x, y, size, size)
-      ctx.drawImage(brand.appStore, x + size + gap, y, size, size)
-    }
-  })
-}
-
-function withEnter(ctx: CanvasRenderingContext2D, progress: number, draw: () => void) { if (progress <= 0) return; ctx.save(); ctx.globalAlpha = progress; ctx.translate(0, (1 - progress) * 8); draw(); ctx.restore() }
-type EasingCurve = [number, number, number, number]
-function enter(timeMs: number, delay: number, duration: number, curve: EasingCurve = [0.23, 1, 0.32, 1]) { const value = Math.max(0, Math.min(1, (timeMs - delay) / duration)); return cubicBezierY(value, curve) }
-function cubicBezierY(x: number, [x1, y1, x2, y2]: EasingCurve) { let t = x; for (let index = 0; index < 5; index += 1) { const currentX = bezier(t, x1, x2) - x, derivative = bezierDerivative(t, x1, x2); if (Math.abs(derivative) < 1e-6) break; t = Math.max(0, Math.min(1, t - currentX / derivative)) } return bezier(t, y1, y2) }
-function bezier(t: number, p1: number, p2: number) { const inverse = 1 - t; return 3 * inverse * inverse * t * p1 + 3 * inverse * t * t * p2 + t * t * t }
-function bezierDerivative(t: number, p1: number, p2: number) { const inverse = 1 - t; return 3 * inverse * inverse * p1 + 6 * inverse * t * (p2 - p1) + 3 * t * t * (1 - p2) }
-function drawCover(ctx: CanvasRenderingContext2D, image: HTMLImageElement, x: number, y: number, width: number, height: number) { const scale = Math.max(width / image.naturalWidth, height / image.naturalHeight), renderedWidth = image.naturalWidth * scale, renderedHeight = image.naturalHeight * scale; ctx.drawImage(image, x + (width - renderedWidth) / 2, y + (height - renderedHeight) / 2, renderedWidth, renderedHeight) }
-function wrapText(ctx: CanvasRenderingContext2D, text: string, maxWidth: number, font: string) { ctx.font = font; const words = text.split(/\s+/), lines: string[] = []; let line = ''; words.forEach((word) => { const test = line ? `${line} ${word}` : word; if (ctx.measureText(test).width > maxWidth && line) { lines.push(line); line = word } else line = test }); if (line) lines.push(line); return lines.slice(0, 5) }
-function roundedRect(ctx: CanvasRenderingContext2D, x: number, y: number, width: number, height: number, radius: number) { ctx.beginPath(); ctx.roundRect(x, y, width, height, radius) }

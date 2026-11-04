@@ -6,7 +6,7 @@ import { activeSpokenScores } from './spoken-score'
 import { scriptVisualSeed } from './video-script'
 import { warpDestinationPoint, type PortraitWarp } from './video-portrait-effects'
 
-export type PortraitMetric = { label: string; value: number; unit: '/10' | '%' | '°' | '×'; basis: 'assessment' | 'image-plane' | 'illustration'; imageId: string }
+export type PortraitMetric = { label: string; value: number; unit: '/10' | '/8' | '%' | '°' | '×'; basis: 'assessment' | 'image-plane' | 'illustration'; imageId: string }
 export type CapturedPortraitMetric = { metric: PortraitMetric; chin: NormalizedPoint; opacity: number }
 const category = (label: string) => /brow/i.test(label) ? 'brows' : /jaw|chin/i.test(label) ? 'jaw' : /cheek/i.test(label) ? 'cheeks' : /nose/i.test(label) ? 'nose' : /eye/i.test(label) ? 'eyes' : /lip|mouth/i.test(label) ? 'mouth' : /overall|whole/i.test(label) ? 'overall' : label
 export const overlayPillEligible = (cue: string, guide: string, index = 0) => scriptVisualSeed(cue, guide, String(index)) % 3 === 0
@@ -67,18 +67,18 @@ export function capturePortraitMetric(ctx: CanvasRenderingContext2D, scene: Vide
   return { metric, chin: { x: a*x + c*y + e, y: b*x + d*y + f }, opacity: progress * progress * (3 - 2*progress) }
 }
 
-export function drawPortraitMetricPill(ctx: CanvasRenderingContext2D, captured: CapturedPortraitMetric, reduced = false, motion?: PillFrame) {
-  const scale=ctx.canvas.width/1316,{metric,chin}=captured,height=pillMotion.height*scale,gap=16*scale
+export function drawPortraitMetricPill(ctx: CanvasRenderingContext2D, captured: CapturedPortraitMetric, reduced = false, motion?: PillFrame, displayText = portraitMetricText(captured.metric)) {
+  const scale=ctx.canvas.width/1316,{chin}=captured,height=pillMotion.height*scale,gap=16*scale
   if(chin.x<0 || chin.x>ctx.canvas.width || chin.y<ctx.canvas.height*.22 || chin.y+gap+height>ctx.canvas.height*.79)return
   ctx.save();ctx.setTransform(1,0,0,1,0,0)
   ctx.globalAlpha*=motion?motion.opacity:reduced?1:captured.opacity
   ctx.font=`500 ${pillMotion.fontSize*scale}px "Mogging Share", Arial, sans-serif`
-  const text=portraitMetricText(metric),width=(motion?.width ?? ctx.measureText(text).width/scale+pillMotion.padding*2)*scale
+  const text=displayText,width=(motion?.width ?? ctx.measureText(text).width/scale+pillMotion.padding*2)*scale
   const x=Math.max(ctx.canvas.width*.07,Math.min(ctx.canvas.width*.9-width,chin.x-width/2)),y=chin.y+gap
   ctx.shadowColor='rgba(12,18,24,.1)';ctx.shadowBlur=14*scale;ctx.shadowOffsetY=3*scale
   ctx.fillStyle='rgba(255,255,255,.96)';ctx.strokeStyle='rgba(30,40,50,.1)';ctx.lineWidth=scale
   ctx.beginPath();ctx.roundRect(x,y,width,height,height/2);ctx.fill();ctx.shadowColor='transparent';ctx.stroke()
-  ctx.clip();ctx.fillStyle='#171b1f';ctx.textBaseline='middle'
+  ctx.clip();ctx.fillStyle='#171b1f';ctx.textBaseline='middle';ctx.textAlign='left'
   if(motion){for(const glyph of motion.glyphs){if(glyph.opacity<.001)continue;ctx.save();ctx.globalAlpha*=glyph.opacity;ctx.filter=`blur(${(1-glyph.opacity)*1.2*scale}px)`;ctx.fillText(glyph.string,x+glyph.x*scale,y+height*.53+glyph.y*scale);ctx.restore()}}
   else ctx.fillText(text,x+pillMotion.padding*scale,y+height*.53)
   ctx.restore()

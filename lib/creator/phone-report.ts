@@ -1,7 +1,8 @@
-import { drawBrandLockup, type CreatorBrand } from './brand'
+import { drawTemplateBrandRow, drawTemplateInvitation, type CreatorBrand } from './brand'
 import { loadPosterAssets } from './editorial-posters'
 import type { ContentSlide } from './content-generator'
 import { drawMockReport } from './mock-report'
+import { elementEntrance, videoMotion } from './video-layout'
 import type { ReportOverlay } from './report-overlay'
 
 const reportCanvases = new WeakMap<CanvasRenderingContext2D, HTMLCanvasElement>()
@@ -35,13 +36,14 @@ export function drawPhoneReport(ctx: CanvasRenderingContext2D, slide: ContentSli
     ctx.beginPath(); ctx.moveTo(0,y); ctx.lineTo(width,y); ctx.stroke()
   }
   ctx.textBaseline = 'top'; ctx.textAlign = 'center'; ctx.fillStyle = '#09090b'
-  ctx.font = `600 ${width * (square ? .065 : .078)}px "Poster Brand", sans-serif`
-  ctx.fillText(slide.headline || 'Ascend Now', width / 2, height * .06)
-  drawBrandLockup(ctx,brand,width*.19,height*(square ? .14 : .13),width*.62,'#09090b')
+  ctx.font = `600 ${width * (square ? .057 : .068)}px "Poster Brand", sans-serif`
+  const headline = !slide.headline || slide.headline === 'Ascend Now' ? 'Understand your face today' : slide.headline
+  ctx.fillText(headline, width / 2, height * .12, width * .86)
+  drawTemplateBrandRow(ctx, brand, width, height * .04, '#09090b')
 
-  const progress = 1 - Math.pow(1 - Math.min(1, time / 800), 3)
+  const progress = elementEntrance(time, 0, videoMotion.portraitEnterMs)
   const phoneHeight = square ? height * (1 - .235) / .75 : Math.min(height * .94, width * 1.95), phoneWidth = phoneHeight * 1350 / 2760
-  const x = (width - phoneWidth) / 2, y = height * (square ? .235 : .205) + (1 - progress) * height * .72
+  const x = (width - phoneWidth) / 2, y = height * (square ? .235 : .205) + (1 - progress) * height * .085
   ctx.save(); ctx.shadowColor = 'rgba(0,0,0,.20)'; ctx.shadowBlur = width * .045; ctx.shadowOffsetY = width * .015
   ctx.drawImage(frame, x, y, phoneWidth, phoneHeight); ctx.restore()
   // Published Apple frame screen coordinates, not a recreated device outline.
@@ -52,6 +54,7 @@ export function drawPhoneReport(ctx: CanvasRenderingContext2D, slide: ContentSli
   ctx.imageSmoothingEnabled = true; ctx.imageSmoothingQuality = 'high'
   ctx.drawImage(report, screenX, screenY, screenWidth, screenHeight); ctx.restore()
   ctx.drawImage(frame, x, y, phoneWidth, phoneHeight)
+  drawTemplateInvitation(ctx, brand, width, height, '#fff')
   ctx.restore()
 }
 
@@ -65,7 +68,11 @@ function renderEmbeddedReport(ctx: CanvasRenderingContext2D, slide: ContentSlide
   const resolution = Math.ceil(Math.max(1560, screenWidth * 3))
   if (report.width !== resolution) { report.width = resolution; report.height = Math.ceil(resolution * 844 / 390) }
   const reportCtx = report.getContext('2d')!
-  drawMockReport(reportCtx, slide, photo, overlay, report.width, report.height, time)
+  const reportSlide = slide.mockReport ? {
+    ...slide,
+    mockReport: { ...slide.mockReport, scroll: slide.mockReport.scroll + 75 * elementEntrance(time, 400, 1050) },
+  } : slide
+  drawMockReport(reportCtx, reportSlide, photo, overlay, report.width, report.height, time)
   return report
 }
 
@@ -103,6 +110,7 @@ export function drawHandheldReport(ctx: CanvasRenderingContext2D, slide: Content
   const reflection = ctx.createLinearGradient(screenX,screenY,screenX + screenWidth,screenY + screenHeight)
   reflection.addColorStop(0,'rgba(255,255,255,.08)'); reflection.addColorStop(.45,'rgba(255,255,255,0)'); reflection.addColorStop(1,'rgba(0,0,0,.10)')
   ctx.fillStyle = reflection; ctx.fillRect(screenX,screenY,screenWidth,screenHeight); ctx.restore()
-  drawBrandLockup(ctx,brand,width*.10,square ? height * .055 : Math.max(height*.085,offsetY + 270 * scale),width*.80)
+  drawTemplateBrandRow(ctx, brand, width, height * .04)
+  drawTemplateInvitation(ctx, brand, width, height, '#fff')
   ctx.restore()
 }

@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import type { ContentSlide, GeneratorImage } from '@/lib/creator/content-generator'
 import { mockReportFormat } from '@/lib/creator/mock-report'
-import { prepareCanvas, drawSlideFrame } from '@/lib/creator/export-slides'
+import { prepareCanvas, drawSlideFrame, slideDuration } from '@/lib/creator/export-slides'
 
 export function ContentSlidePreview({ slide, images, format, active = true }: { active?: boolean; slide: ContentSlide; images: GeneratorImage[]; format: { width: number; height: number } }) {
   const canvasRef = useRef<HTMLCanvasElement>(null)
@@ -23,11 +23,12 @@ export function ContentSlidePreview({ slide, images, format, active = true }: { 
       canvas.width = width
       canvas.height = height
       const start = performance.now()
+      const duration = slideDuration(slide)
       draw = () => {
         cancelAnimationFrame(frame)
-        const time = reduced.matches || !active ? 4000 : slide.templateId === 'mock-report' ? performance.now() - start : Math.min(4000, performance.now() - start)
+        const time = reduced.matches || !active ? duration : slide.templateId === 'mock-report' ? performance.now() - start : Math.min(duration, performance.now() - start)
         drawSlideFrame(ctx, slide, prepared.image, prepared.overlay, width, height, time, prepared.brand)
-        if (active && !document.hidden && !reduced.matches && (slide.templateId === 'mock-report' || time < 4000)) frame = requestAnimationFrame(draw!)
+        if (active && !document.hidden && !reduced.matches && (slide.templateId === 'mock-report' || time < duration)) frame = requestAnimationFrame(draw!)
       }
       reduced.addEventListener('change', draw)
       document.addEventListener('visibilitychange', draw)

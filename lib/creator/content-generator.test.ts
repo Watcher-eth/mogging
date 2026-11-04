@@ -1,4 +1,6 @@
 import { enrichFaceLandmarks } from './mobile-overlay-engine/enrich-landmarks'
+import { preciseFaceOverlay } from './face-treatment'
+import { isSkinOverlayCategory } from './mobile-overlay-engine/face-map-points'
 import { createReportOverlay } from './report-overlay'
 import { describe, expect, test } from 'bun:test'
 import { getImageTransform, projectImagePoint } from '@/lib/creator/mobile-overlay-engine/layout'
@@ -68,9 +70,9 @@ describe('canonical creator overlay projection', () => {
   test('rotates multiple usable uploads through selected report categories', () => {
     const usableImages: GeneratorImage[] = ['a', 'b'].map((id) => ({ id, name: `${id}.jpg`, dataUrl: 'data:', width: 1600, height: 900, landmarks: fixture as never, status: 'ready' }))
     const slides = generateSlides({ campaignGoal: 'traffic', tone: 'curious', selectedCategories: ['eyes', 'nose', 'mouth'], images: usableImages, offer: 'Mogging', seed: 1, currentScore: '6.7', potentialScore: '8.4', scoreValues: { eyes: '7.1', nose: '6.2', mouth: '7.6' } })
-    expect(slides.map((slide) => slide.templateId)).toEqual(['score-potential', 'precision', 'cta', 'performance', 'phone-report', 'afterimage', 'editorial', 'handheld-report'])
-    expect(slides.map((slide) => slide.imageId)).toEqual(['a', 'b', 'b', 'a', 'a', 'b', 'b', 'a'])
-    expect(slides[6].templateId).toBe('editorial')
+    expect(slides.map((slide) => slide.templateId)).toEqual(['score-potential', 'cta', 'performance', 'phone-report', 'editorial', 'handheld-report'])
+    expect(slides.map((slide) => slide.imageId)).toEqual(['a', 'b', 'a', 'a', 'b', 'a'])
+    expect(slides[4].templateId).toBe('editorial')
     expect(slides.at(-1)?.templateId).toBe('handheld-report')
     expect(slides.filter(slide => !['cta','phone-report','handheld-report'].includes(slide.templateId)).every((slide) => slide.metricValue === '7.1 / 10')).toBe(true)
     expect(slides.every((slide) => slide.currentScore === '6.7' && slide.potentialScore === '8.4')).toBe(true)
@@ -111,6 +113,11 @@ describe('mobile report overlay parity', () => {
       const preview = createReportOverlay(slide, image, { width: 360, height: 640 })
       const png = createReportOverlay(slide, image, { width: 1080, height: 1920 })
       expect(preview).toEqual(png)
+      if (isSkinOverlayCategory(category)) {
+        expect(preview.skinNetwork).toBe(true)
+        expect(preview.dots).toHaveLength(70)
+        continue
+      }
       expect(preview.primitives).toEqual(resolveOverlayPreset({ preset: reportOverlayPresets[category], landmarks: enriched, viewport: preview.size, imageSize: raw.image, fit: 'cover' }).primitives)
     }
   })
@@ -184,4 +191,17 @@ describe('creator-exclusive CTA templates', () => {
   test('does not bypass face validation for the exclusive template', () => {
     expect(generateSlides({ ...args, creatorProfileId: GLAMOUR_CREATOR_PROFILE_ID, images: args.images.map(image => ({ ...image, status: 'no-face' as const })) })).toEqual([])
   })
+})
+
+test('report-style CTA jaw excludes the cheeks and preserves the jaw in photo coordinates', () => {
+  const points = fixture.contours!.jawline!
+  const landmarks = { ...fixture, contours: { ...fixture.contours, jawline: [
+    { x: .32, y: .58 }, ...points, { x: .7, y: .58 },
+  ] } }
+  const overlay = preciseFaceOverlay({ size: fixture.image, primitives: [], dots: [] }, { ...fixture.image, landmarks }, 'jaw')
+  const jaw = overlay.primitives.find(primitive => primitive.id === 'feature-jawline')
+  expect(jaw?.kind === 'polyline' && jaw.pixelPoints).toEqual(points.map(point => ({
+    x: point.x * fixture.image.width,
+    y: point.y * fixture.image.height,
+  })))
 })
