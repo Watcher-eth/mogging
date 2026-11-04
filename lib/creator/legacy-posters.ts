@@ -16,8 +16,8 @@ export async function prepareCoverArtwork(slide: ContentSlide, image: HTMLImageE
     if (portrait) coverArtwork.set(image, portrait)
     return
   }
-  if (slide.templateId !== 'performance') return
-  const subject = await portraitSubject(image, source).catch(() => image)
+  if (slide.templateId !== 'performance' && slide.templateId !== 'score-potential') return
+  const subject = slide.templateId === 'performance' ? await portraitSubject(image, source).catch(() => image) : image
   const artwork = await preparePortraitPrint(subject, 'graphite').catch(() => subject)
   if (artwork instanceof HTMLCanvasElement) coverArtwork.set(image, { canvas: artwork })
 }
@@ -157,7 +157,7 @@ export function drawPortraitCover(ctx: CanvasRenderingContext2D, slide: ContentS
     ctx.save()
     ctx.translate(width * .5 * (1 - zoom), height * .42 * (1 - zoom))
     ctx.scale(zoom, zoom)
-    ctx.drawImage(image, frame.offsetX, frame.offsetY, frame.renderedWidth, frame.renderedHeight)
+    ctx.drawImage(coverArtwork.get(image)?.canvas ?? image, frame.offsetX, frame.offsetY, frame.renderedWidth, frame.renderedHeight)
     ctx.restore()
     drawPortraitProgressiveBlur(ctx, width, height, .31)
   }
