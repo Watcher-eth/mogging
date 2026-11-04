@@ -78,6 +78,26 @@ export function RevenueDashboard({ data, days }: { data: AnalyticsDashboard; day
   const change = (metric: string, currencyValue?: string, lowerIsBetter = false) => <MetricChange current={comparison?.[`current_${metric}`]} previous={comparison?.[`previous_${metric}`]} days={days} currency={currencyValue} lowerIsBetter={lowerIsBetter} unavailable={comparisonUnavailable} />
   const currencyLabel = currency === 'UNKNOWN' ? 'Unspecified currency' : currency
 
+  const sourceRevenue = data.revenueSources ?? []
+  const sourceMrr = data.revenueSubscriptionMrr ?? []
+  const channels = [
+    { label: 'RevenueCat stores', matches: (source: unknown) => source !== 'Stripe' },
+    { label: 'Stripe', matches: (source: unknown) => source === 'Stripe' },
+    { label: 'Combined recorded', matches: () => true },
+  ].map(({ label, matches }) => {
+    const revenue = sourceRevenue.filter(row => matches(row.source))
+    const mrr = sourceMrr.filter(row => matches(row.source))
+    const missingUsd = revenue.reduce((total, row) => total + Number(row.missing_usd_events ?? 0), 0)
+    const missingMrr = mrr.reduce((total, row) => total + Number(row.missing_mrr_usd_subscriptions ?? 0), 0)
+    const revenueUsd = revenue.reduce((total, row) => total + Number(row.comparable_usd ?? 0), 0)
+    const mrrUsd = mrr.reduce((total, row) => total + Number(row.active_mrr_usd ?? 0), 0)
+    const partial = (value: number, missing: number, available: boolean) => available ? `${amount(value, 'USD')}${missing ? ' (partial)' : ''}` : '—'
+    return { channel: label,
+      revenue_after_refunds_usd: partial(revenueUsd, missingUsd, revenue.some(row => row.comparable_usd != null)),
+      active_mrr_usd: partial(mrrUsd, missingMrr, mrr.some(row => row.active_mrr_usd != null)),
+      events_missing_usd: missingUsd, subscriptions_missing_usd_mrr: missingMrr }
+  })
+
   return <>
     <div className="mb-5 flex flex-wrap items-center justify-between gap-4">
       <p className="text-xs leading-5 text-zinc-500">{days === 1 ? 'Last 24 hours' : `Last ${days} days`} · Apple + Google Play + Stripe · Pacific time · One currency at a time</p>
@@ -87,6 +107,10 @@ export function RevenueDashboard({ data, days }: { data: AnalyticsDashboard; day
     {incomplete > 0 ? <Notice>{count(incomplete)} monetary billing events in this period have no recorded amount across all currencies. Monetary totals exclude those unknown amounts.</Notice> : null}
     {currency === 'UNKNOWN' ? <Notice>These billing records do not identify a currency. Their amounts cannot be combined with other currency totals.</Notice> : null}
     {!currency ? <Notice>No verified monetary billing records are available. Subscription access is reported separately below.</Notice> : null}
+    <Panel title="Revenue and MRR by billing channel" description="USD comparison · revenue for the selected period · MRR at the latest snapshot"
+      note="Revenue is recorded payments after refunds, before fees and taxes. Active MRR includes paid subscriptions through expiry, even when renewal is off. RevenueCat uses its recorded USD amounts. Stripe contributes USD charges and subscriptions. Partial figures omit records without a USD amount.">
+      <Table rows={channels} columns={['channel', 'revenue_after_refunds_usd', 'active_mrr_usd', 'events_missing_usd', 'subscriptions_missing_usd_mrr']} />
+    </Panel>
     <div className="admin-stats-grid xl:!grid-cols-5">
       <Stat title="Revenue" change={change('gross', currency)} value={amount(period?.gross, currency)} note="Customer payments before refunds, fees and taxes" />
       <Stat title="Refunds and deductions" change={change('refunds', currency, true)} value={amount(period?.refunds, currency)} note="Selected period · recorded negative billing amounts" />
@@ -131,7 +155,7 @@ export function RevenueDashboard({ data, days }: { data: AnalyticsDashboard; day
         renewing_mrr: amount(row.renewing_mrr, String(row.currency)),
         cancelling_mrr: amount(row.cancelling_mrr, String(row.currency)),
         active_access_mrr: amount(row.active_access_mrr, String(row.currency)),
-      }))} columns={['source', 'currency', 'renewing_subscriptions', 'renewing_mrr', 'cancelling_subscriptions', 'cancelling_mrr', 'active_access_mrr', 'missing_price_subscriptions']} />
+      }))} columns={['source', 'currency', 'active_access_mrr', 'renewing_subscriptions', 'renewing_mrr', 'cancelling_subscriptions', 'cancelling_mrr', 'missing_price_subscriptions']} />
     </Panel>
     <Panel title="Churn and new purchases" description="Selected period · all currencies" note="Start-cohort churn is the share of subscriptions with confirmed access at the start of the period that have ended by the snapshot cutoff. It excludes customers who joined and left within this period, and is not a cancellation-request rate. A reactivated subscription that still has access is not lost. No starting subscriptions means the rate is unavailable.">
       <div className="admin-stats-grid">
