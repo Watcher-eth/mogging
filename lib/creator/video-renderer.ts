@@ -159,7 +159,8 @@ export async function prepareVideo(compositionValue: VideoComposition, images: G
   let previousScene: VideoScene | undefined
   const annotationRuns=portraitProgramRuns(composition.scenes.map((scene,index)=>{
     const photographed=scene.source.kind==='portrait'||scene.source.kind==='report'&&['scores','features'].includes(scene.focus)
-    return {...scene,portraitProgram:photographed?scene.portraitProgram??(!scene.profileStudy?narratedPortraitProgram(scene.narration,composition.recipe,index,scene.source.categoryId):undefined):undefined}
+    const comparison = scene.featureStudy?.editorial && ['compare', 'evidence'].includes(scene.featureStudy.layout)
+    return {...scene,portraitProgram:photographed && !comparison?scene.portraitProgram??(!scene.profileStudy?narratedPortraitProgram(scene.narration,composition.recipe,index,scene.source.categoryId):undefined):undefined}
   }))
   const programs=new Map<PortraitProgramRun,PreparedPortraitProgram>()
   for (const scene of composition.scenes) {
@@ -174,7 +175,7 @@ export async function prepareVideo(compositionValue: VideoComposition, images: G
       overlayStyle: scene.source.overlay === 'face-map' ? 'face-map' : 'category',
       mockReport: { category: scene.source.report ? { ...scene.source.report, score: scene.source.metricScore, features: scene.source.report.features.map(feature => ({ ...feature })) } : buildMockOverallCategory(String(scene.source.currentScore), {}), scroll: 0 },
     }
-    const portrait = source && !['report', 'screen', 'explainer'].includes(scene.source.kind) ? scene.source.overlay === 'face-map' && !scene.editorial && !scene.study && !scene.photoStudy ? { canvas: decoded.get(source.id)!, source, sourceRect: { x: 0, y: 0, width: decoded.get(source.id)!.width, height: decoded.get(source.id)!.height } } : await preparePortrait(decoded.get(source.id)!, source) : null
+    const portrait = source && !['report', 'screen', 'explainer'].includes(scene.source.kind) ? scene.featureStudy?.layout === 'evidence' ? {canvas:decoded.get(source.id)!,source} : scene.source.overlay === 'face-map' && !scene.editorial && !scene.study && !scene.photoStudy ? { canvas: decoded.get(source.id)!, source, sourceRect: { x: 0, y: 0, width: decoded.get(source.id)!.width, height: decoded.get(source.id)!.height } } : await preparePortrait(decoded.get(source.id)!, source) : null
     const viewport = portrait ? { width: portrait.canvas.width, height: portrait.canvas.height } : { width: mockReportSize.width, height: mockReportHeroHeight }
     let overlay: ReportOverlay | null = source && (Boolean(portrait) || scene.source.overlay !== 'none' || scene.source.kind === 'report') ? createReportOverlay({ ...slide, overlayStyle: 'category' }, portrait?.source ?? source, viewport, 360, scene.source.kind === 'report') : null
     if (overlay && source) overlay = preciseFaceOverlay(overlay, portrait?.source ?? source, scene.photoStudy ? scene.photoStudy.feature === 'face-width' ? 'face-shape' : scene.photoStudy.feature === 'lips' ? 'mouth' : scene.photoStudy.feature : scene.source.categoryId, scene.customSlideId?.startsWith('overlay-') || composition.recipe === 'measurement-explainer' ? '' : scene.narration, scene.portraitFX?.overlay?.regions || scene.study?.operation === 'planes' || Boolean(scene.photoStudy && ['cheeks', 'jaw'].includes(scene.photoStudy.feature)), scene.focus.startsWith('metric:') ? scene.focus.slice(7) : undefined)

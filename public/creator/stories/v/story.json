@@ -1,6 +1,6 @@
 {
-  "id": "v-jaw-width-study",
-  "title": "Which version of V has the sharper jaw?",
+  "id": "v-cheek-hollows",
+  "title": "Would a sharper face actually suit V better?",
   "status": "recorded",
   "audioStatus": "word-aligned",
   "images": [
@@ -2790,6 +2790,15 @@
       "height": 1672,
       "status": "ready",
       "provenance": "AI-generated identity-reference reconstruction"
+    },
+    {
+      "id": "v-hollow-cheeks",
+      "name": "V \u00b7 deeper cheek hollows \u00b7 illustrative edit",
+      "dataUrl": "/creator/stories/v/v-hollow-cheeks.png",
+      "width": 941,
+      "height": 1672,
+      "status": "ready",
+      "landmarks": null
     }
   ],
   "portraitImageIds": [
@@ -2799,13 +2808,14 @@
   ],
   "analysis": "/creator/stories/v/analysis.json",
   "kind": "feature-story",
-  "recording": "/creator/stories/v/feature-study-recording.json",
+  "recording": "/creator/stories/v/cheek-hollows-recording.json",
   "imageIds": [
     "v-front",
+    "v-hollow-cheeks",
     "v-three-quarter",
     "v-profile"
   ],
-  "defaultLength": 45,
+  "defaultLength": 60,
   "evidence": {
     "baselineId": "v-front",
     "comparisonId": "v-front",
@@ -2815,8 +2825,21 @@
   },
   "alternatives": [
     {
+      "id": "v-jaw-width-study",
+      "title": "Which version of V has the sharper jaw?",
+      "kind": "feature-story",
+      "recording": "/creator/stories/v/feature-study-recording.json",
+      "defaultLength": 45,
+      "imageIds": [
+        "v-front",
+        "v-three-quarter",
+        "v-profile"
+      ],
+      "featureOpening": "jaw-width-choice"
+    },
+    {
       "id": "v-round3",
-      "title": "What a close-up hides about V’s jaw",
+      "title": "What a close-up hides about V\u2019s jaw",
       "kind": "feature-story",
       "recording": "/creator/stories/v/round3-recording.json",
       "defaultLength": 45,
@@ -2827,5 +2850,168 @@
       ]
     }
   ],
-  "featureOpening": "jaw-width-choice"
+  "directions": {
+    "hook": {
+      "kind": "portrait",
+      "imageId": "v-front",
+      "categoryId": "cheeks",
+      "overlay": "none",
+      "editorial": "context",
+      "featureStudy": {
+        "editorial": true,
+        "topic": "cheeks",
+        "layout": "compare",
+        "edit": 1,
+        "editMode": "photo",
+        "motion": "hold",
+        "annotation": "",
+        "images": [
+          "v-hollow-cheeks"
+        ],
+        "footnote": "",
+        "labels": [
+          "A",
+          "B"
+        ]
+      }
+    },
+    "choice": {
+      "kind": "portrait",
+      "imageId": "v-front",
+      "categoryId": "cheeks",
+      "overlay": "none",
+      "editorial": "context",
+      "featureStudy": {
+        "editorial": true,
+        "topic": "cheeks",
+        "layout": "compare",
+        "edit": 1,
+        "editMode": "photo",
+        "motion": "hold",
+        "annotation": "",
+        "images": [
+          "v-hollow-cheeks"
+        ],
+        "footnote": "",
+        "labels": [
+          "A",
+          "B"
+        ]
+      }
+    },
+    "edit": {
+      "kind": "portrait",
+      "imageId": "v-hollow-cheeks",
+      "categoryId": "cheeks",
+      "overlay": "none",
+      "editorial": "context",
+      "featureStudy": {
+        "editorial": true,
+        "topic": "cheeks",
+        "layout": "hero",
+        "edit": 0,
+        "editMode": "photo",
+        "motion": "hold",
+        "annotation": "",
+        "images": [],
+        "footnote": "Illustrative edit"
+      },
+      "portraitProgram": {
+        "wordCount": 28,
+        "actions": [
+          {
+            "word": 0,
+            "labelWord": 0,
+            "feature": "cheeks",
+            "guide": "detail:under-cheekbones",
+            "label": "Cheek transition",
+            "stroke": "dotted",
+            "treatment": "ink-callout"
+          }
+        ]
+      }
+    },
+    "original": {
+      "kind": "portrait",
+      "imageId": "v-hollow-cheeks",
+      "categoryId": "cheeks",
+      "overlay": "none",
+      "editorial": "context",
+      "featureStudy": {
+        "editorial": true,
+        "topic": "cheeks",
+        "layout": "hero",
+        "edit": 1,
+        "editMode": "photo",
+        "motion": "hold",
+        "annotation": "",
+        "images": [
+          "v-front"
+        ],
+        "footnote": "",
+        "comparison": "wipe"
+      },
+      "portraitProgram": {
+        "wordCount": 20,
+        "actions": [
+          {
+            "word": 0,
+            "labelWord": 0,
+            "feature": "cheeks",
+            "guide": "detail:under-cheekbones",
+            "label": "Cheek transition",
+            "stroke": "dotted",
+            "treatment": "ink-callout"
+          }
+        ]
+      }
+    },
+    "identity": {
+      "kind": "portrait",
+      "imageId": "v-front",
+      "categoryId": "cheeks",
+      "overlay": "none",
+      "editorial": "context",
+      "featureStudy": {
+        "editorial": true,
+        "topic": "cheeks",
+        "layout": "hero",
+        "edit": 0,
+        "editMode": "photo",
+        "motion": "hold",
+        "annotation": "",
+        "images": [],
+        "footnote": ""
+      },
+      "portraitProgram": {
+        "wordCount": 24,
+        "actions": [
+          {
+            "word": 0,
+            "labelWord": 0,
+            "feature": "cheeks",
+            "guide": "detail:under-cheekbones",
+            "label": "Cheek transition",
+            "stroke": "dotted",
+            "treatment": "ink-callout"
+          }
+        ]
+      }
+    },
+    "score": {
+      "kind": "report",
+      "imageId": "v-front",
+      "categoryId": "cheeks",
+      "overlay": "category",
+      "focus": "scores"
+    },
+    "close": {
+      "kind": "report",
+      "imageId": "v-front",
+      "categoryId": "cheeks",
+      "overlay": "category",
+      "focus": "features",
+      "closingReport": true
+    }
+  }
 }

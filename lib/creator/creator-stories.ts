@@ -24,7 +24,7 @@ export const creatorSubjectAnalysisSchema = z.object({
 })
 export type CreatorSubjectAnalysis = z.infer<typeof creatorSubjectAnalysisSchema>
 type FeatureOpening = 'lip-choice' | 'jaw-choice' | 'jaw-width-choice' | 'smile-choice'
-export type CreatorStoryOption = { id: string; title: string; kind?: 'feature-story' | 'score-walkthrough'; recording?: string; draft?: string; voice?: VoiceDirection; preview?: string; imageIds?: string[]; defaultLength?: 45 | 60; featureOpening?: FeatureOpening }
+export type CreatorStoryOption = { id: string; title: string; kind?: 'feature-story' | 'score-walkthrough'; recording?: string; draft?: string; voice?: VoiceDirection; preview?: string; imageIds?: string[]; defaultLength?: 45 | 60; featureOpening?: FeatureOpening; directions?: Record<string, VideoDirection>; editorialRatings?: Array<{feature:string;score:number}> }
 export type CreatorStory = CreatorStoryOption & {
   images: GeneratorImage[]; portraitImageIds?: string[]; analysis?: string; alternatives?: CreatorStoryOption[];
   evidence: { baselineId: string; comparisonId: string; topic: SemanticBeat['feature']; revealLabel: string; photoComparison?: boolean; revealEdit?: number }
@@ -35,7 +35,7 @@ async function readJson(url: string) {
   return response.json()
 }
 export function creatorStoryOptions(story: CreatorStory): CreatorStoryOption[] {
-  return [{ id: story.id, title: story.title, kind: story.kind ?? 'feature-story', recording: story.recording, imageIds: story.imageIds, defaultLength: story.defaultLength, featureOpening: story.featureOpening }, ...story.alternatives ?? []]
+  return [{ id: story.id, title: story.title, kind: story.kind ?? 'feature-story', recording: story.recording, imageIds: story.imageIds, defaultLength: story.defaultLength, featureOpening: story.featureOpening, directions: story.directions, editorialRatings: story.editorialRatings }, ...story.alternatives ?? []]
     .toSorted((a, b) => Number(b.id === story.id) - Number(a.id === story.id) || Number(b.kind === 'score-walkthrough') - Number(a.kind === 'score-walkthrough'))
 }
 export async function loadCreatorStoryCatalog(subjectId: string): Promise<CreatorStory> {
@@ -46,7 +46,7 @@ export async function loadCreatorStory(subjectId: string, storyId?: string) {
   const stories = creatorStoryOptions(base)
   const option = stories.find(option => option.id === (storyId ?? stories[0]?.id))
   if (!option || Boolean(option.recording) === Boolean(option.draft)) throw new Error('Choose an available story for this person.')
-  const story = { ...base, ...option, featureOpening: option.featureOpening, recording: option.recording, draft: option.draft, images: option.imageIds ? option.imageIds.map(id => { const image = base.images.find(image => image.id === id); if (!image) throw new Error('A story image is missing.'); return image }) : base.images }
+  const story = { ...base, ...option, featureOpening: option.featureOpening, directions: option.directions, editorialRatings: option.editorialRatings, recording: option.recording, draft: option.draft, images: option.imageIds ? option.imageIds.map(id => { const image = base.images.find(image => image.id === id); if (!image) throw new Error('A story image is missing.'); return image }) : base.images }
   const [resource, analysis] = await Promise.all([readJson(option.recording ?? option.draft!), base.analysis ? readJson(base.analysis).then(value => creatorSubjectAnalysisSchema.parse(value)) : undefined])
   if (analysis && (analysis.subjectId !== subjectId || analysis.source.imageId !== base.images[0]?.id)) throw new Error('The saved analysis does not match this person’s source portrait.')
   if (option.draft && (resource.subjectId !== subjectId || resource.assessmentId !== analysis?.source.sha256)) throw new Error('Review this score story against the current saved portrait assessment before using it.')
@@ -95,6 +95,11 @@ export function creatorStoryDirections(story: CreatorStory, script: VideoScript,
   const alternate = portraits.find(image => /three-quarter/.test(image.id)) ?? portraits.find(image => /profile/.test(image.id))
   const planningImages = portraits.length ? [...portraits, ...images.filter(image => !portraits.includes(image))] : images
   for (const shot of productionVisualPlan(script, input, planningImages, reports, recipe, variation)) {
+    const authored = story.directions?.[shot.cue.sourceId]
+    if (authored) {
+      directions[shot.id] = { portraitProgram: undefined, photoStudy: undefined, portraitFX: undefined, study: undefined, profileStudy: undefined, featureStudy: undefined, graphic: undefined, ...authored }
+      continue
+    }
     const cue = shot.cue.sourceId
     const requiresComparison = story.featureOpening === 'jaw-width-choice' && ['hook', 'proof', 'reveal'].includes(cue)
     if (story.featureOpening && (editorial || requiresComparison)) {

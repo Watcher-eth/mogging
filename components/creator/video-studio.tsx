@@ -227,6 +227,7 @@ export default function VideoStudio({ input, plan, images, trackExports = false,
     const { detectFaceLandmarksFromDataUrl, hasCurrentFaceContours } = await import('@/lib/client/faceLandmarks')
     const result: GeneratorImage[] = []
     for (const photo of photos) {
+      if (photo.purpose === 'reference') { result.push(photo); continue }
       const cached = photoCacheRef.current.get(photo.dataUrl)
       if (cached && hasCurrentFaceContours(cached.landmarks)) { result.push(cached); continue }
       if (hasCurrentFaceContours(photo.landmarks)) { result.push(photo); continue }
@@ -261,10 +262,10 @@ export default function VideoStudio({ input, plan, images, trackExports = false,
         detectPhotos(saved.story.images),
         'darkImages' in subject ? detectPhotos(creatorSubjectPhotos(subject, 'dark')!.map((photo, index) => ({ ...photo, id: index === 0 ? saved.story.images[0].id : photo.id }))) : undefined,
       ])
-      if (saved.story.featureOpening) setRecipe('feature-study')
+      if (saved.story.featureOpening || saved.story.directions) setRecipe('feature-study')
       setMaster(saved.script); setVoice(saved.voice); setClips(saved.clips); setLength(saved.story.defaultLength ?? defaultLength); setSectionIds(undefined); setVariation(0); setAudioCut(null); setMode('format')
       const extras = (saved.script.cues.some(cue => cue.section?.visuals.some(visual => visual.imageId)) ? [] : featureVariantPhotos(subject.id, photos[0].id)).filter(photo => !photos.some(existing => existing.id === photo.id || existing.retouch && photo.retouch && existing.retouch.feature === photo.retouch.feature && existing.retouch.operation === photo.retouch.operation))
-      setCustomComposition(null); setSeekMs(0); setSelection({ id: subject.id, name: subject.name, images: [...photos, ...extras], assets: saved.assets, darkImages, story: saved.story, stories: saved.stories, analysis: saved.analysis }); setCustomTarget(null)
+      setCustomComposition(null); setSeekMs(0); setSelection({ id: subject.id, name: subject.name, images: [...photos, ...extras], assets: saved.assets, darkImages, story: saved.story, stories: saved.stories, analysis: saved.analysis, editorialRatings: saved.story.editorialRatings }); setCustomTarget(null)
     } catch (reason) { toast.error(reason instanceof Error ? reason.message : 'Could not load this person') }
     finally { setLoading(false) }
   }
@@ -276,8 +277,8 @@ export default function VideoStudio({ input, plan, images, trackExports = false,
       const photos = await detectPhotos(saved.story.images)
       setMaster(saved.script); setVoice(saved.voice); setClips(saved.clips); setAudioCut(null)
       setLength(saved.story.defaultLength ?? defaultLength); setSectionIds(undefined); setVariation(0); setCustomComposition(null); setSeekMs(0)
-      setSelection({ ...selection, images: photos, assets: saved.assets, darkImages: undefined, story: saved.story, stories: saved.stories, analysis: saved.analysis })
-      if (saved.story.featureOpening) setRecipe('feature-study')
+      setSelection({ ...selection, images: photos, assets: saved.assets, darkImages: undefined, story: saved.story, stories: saved.stories, analysis: saved.analysis, editorialRatings: saved.story.editorialRatings })
+      if (saved.story.featureOpening || saved.story.directions) setRecipe('feature-study')
       else if (saved.story.kind === 'score-walkthrough') setRecipe('report-led')
     } catch (reason) { toast.error(reason instanceof Error ? reason.message : 'Could not load this story') }
     finally { setLoading(false) }

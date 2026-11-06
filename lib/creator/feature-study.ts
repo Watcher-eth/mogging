@@ -19,7 +19,7 @@ export const featureStudySchema = z.object({
   editorial: z.boolean().optional(),
   opening: z.enum(['lip-choice', 'jaw-choice', 'jaw-width-choice', 'smile-choice']).optional(),
   phase: z.enum(['hold', 'clue', 'reveal']).optional(),
-  topic: z.enum(visualFeatures), layout: z.enum(['hero', 'detail', 'compare', 'grid']),
+  topic: z.enum(visualFeatures), layout: z.enum(['hero', 'detail', 'compare', 'grid', 'evidence']),
   motion: z.enum(['hold', 'push', 'pull', 'pan-left', 'pan-right']).optional(),
   annotationStyle: z.enum(['circle', 'guide', 'leader']).optional(),
   comparison: z.enum(['blend', 'wipe']).optional(),
@@ -369,6 +369,21 @@ function drawFeatureOpening(ctx: CanvasRenderingContext2D, study: FeatureStudy, 
 export function drawFeatureStudy(ctx: CanvasRenderingContext2D, study: FeatureStudy, photo: FeaturePhoto, variants: FeaturePhoto[], localMs: number, _durationMs: number, reduced: boolean, previous?: FeatureStudy, activity?: PortraitActivity, instrument?: PortraitInstrument, clockMs = localMs, captureMetric?: (ctx: CanvasRenderingContext2D, width: number, height: number, warp?: ReturnType<typeof featureWarp>) => void) {
   const dark = isDarkVideoContext(ctx), ink = dark ? '#f2eee5' : '#171717', panel = dark ? '#1b1b1b' : '#f5f4f1'
   ctx = originalVideoContext(ctx)
+  if (study.layout === 'evidence') {
+    const width = videoSize.width - videoContent.inset * 2
+    const height = width * photo.image.height / photo.image.width
+    const frame = {x:videoContent.inset,y:720,width,height}
+    const scale = reduced ? 1 : 1 + .018 * smoothMotion(localMs / _durationMs)
+    ctx.save(); ctx.translate(videoSize.width / 2, frame.y + height / 2); ctx.scale(scale, scale)
+    ctx.drawImage(photo.image, -width / 2, -height / 2, width, height); ctx.restore()
+    ctx.save(); ctx.fillStyle='#70757b'; ctx.font='400 23px "Mogging Share",Arial,sans-serif'
+    ctx.textAlign='left'; ctx.fillText('2020',frame.x,frame.y+height+38)
+    ctx.textAlign='right'; ctx.fillText('2023',frame.x+width,frame.y+height+38)
+    ctx.textAlign='center'; ctx.font='400 19px "Mogging Share",Arial,sans-serif'
+    ctx.fillText('Kareem Shami · published comparison / The Guardian', videoSize.width/2, frame.y+height+85)
+    ctx.restore()
+    return
+  }
   if (study.opening && variants[0]) {
     drawFeatureOpening(ctx, study, [photo, variants[0]], localMs, _durationMs, reduced, clockMs)
     return
