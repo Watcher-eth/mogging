@@ -6,7 +6,7 @@ import { activeSpokenScore, drawSpokenScore } from './spoken-score'
 import { drawScientificEvidence } from './video-research'
 import { sceneSpeechWords, scriptVisualSeed } from './video-script'
 import { portraitOverlayWindowMs, narratedPortraitProgram, portraitProgramRuns, preparePortraitProgram, samplePortraitProgram, drawPortraitActivity, type PortraitProgramRun, type PreparedPortraitProgram } from './portrait-program'
-import { drawFeatureStudy, prepareFeatureEdit, type FeaturePhoto } from './feature-study'
+import { drawFeatureStudy, prepareFeatureEdit, comparisonSceneClock, type FeaturePhoto } from './feature-study'
 import { videoThemeContext, originalVideoContext, darkVideoColor } from './video-theme'
 import { portraitOverlayAppearance } from './portrait-print'
 import { preparePortraitPrint } from './editorial-posters'
@@ -680,7 +680,7 @@ function renderScene(ctx: CanvasRenderingContext2D, prepared: PreparedVideo, sce
     const studyDuration = cueScenes.length ? cueScenes.at(-1)!.startMs + cueScenes.at(-1)!.durationMs - cueScenes[0].startMs : scene.durationMs
     drawFeatureStudy(ctx, study, { image: asset.portrait, landmarks: asset.studyLandmarks, headTop: asset.portraitHeadTop }, asset.featurePhotos ?? [], studyTime, studyDuration, reduced, previous?.source.imageId === scene.source.imageId && !previous.featureStudy?.opening ? previous.featureStudy : undefined, activity, scene.portraitFX?.instrument, scene.startMs + localMs, (overlayCtx, width, height, warp) => {
       if (activity) pill = capturePortraitMetric(overlayCtx, scene, activity, asset.studyLandmarks, localMs, width, height, warp)
-    })
+    }, comparisonSceneClock(prepared.composition.scenes, scene, localMs))
   } else if (scene.source.kind === 'explainer') {
     const previous = prepared.composition.scenes[prepared.composition.scenes.findIndex(item => item.id === scene.id) - 1]
     drawExplainer(ctx, scene, localMs, reduced, paint, previous?.source.kind === 'explainer' ? previous.graphic : undefined, measuring ? undefined : prepared.anatomy, asset.anatomyRegistration, asset.graphicCaptionHeight, asset.graphicSpecimen, asset.graphicStartMs === undefined ? undefined : { elapsed: scene.startMs + localMs - asset.graphicStartMs, duration: asset.graphicEndMs! - asset.graphicStartMs })

@@ -56,15 +56,36 @@ export function featureFrameAt(from: Frame, to: Frame, timeMs: number, reduced =
   const t = smoothMotion(timeMs / 560)
   return Object.fromEntries(Object.entries(to).map(([key, value]) => [key, from[key as keyof Frame] + (value - from[key as keyof Frame]) * t])) as Frame
 }
-// Both photographs share one camera move: the expanding card pushes its neighbour away.
-export function evidenceComparisonFrames(timeMs: number, durationMs: number, reduced = false): Frame[] {
-  const pair = featureFrames('compare'), full = featureFrames('hero')[0]
-  const offLeft = { ...full, x: -full.width - 22 }, offRight = { ...full, x: full.width + 22 }
+// One clock owns the pair, expansion and return so caption cuts never restart the move.
+export function comparisonFrames(timeMs: number, durationMs: number, reduced = false, pair = featureFrames('compare'), full = featureFrames('hero')[0]): Frame[] {
   if (reduced) return pair
-  const time = Math.max(0, Math.min(1, timeMs / Math.max(1, durationMs)))
-  const move = (from: Frame[], to: Frame[], progress: number) => from.map((frame, index) => featureFrameAt(frame, to[index], progress * 560))
-  if (time < .52) return move(pair, [offLeft, full], (time - .12) / .20)
-  return move([offLeft, full], [full, offRight], (time - .52) / .24)
+  const right = [{ ...full, x: -full.width - 22 }, full], left = [full, { ...full, x: full.width + 22 }]
+  const duration = Math.max(1, durationMs), intro = Math.min(2400, duration * .35)
+  const travel = 780, hold = 1500, pause = 450
+  const phases = [
+    { from: pair, to: pair, duration: intro },
+    { from: pair, to: right, duration: travel },
+    { from: right, to: right, duration: hold },
+    { from: right, to: pair, duration: travel },
+    { from: pair, to: pair, duration: pause },
+    { from: pair, to: left, duration: travel },
+    { from: left, to: left, duration: hold },
+    { from: left, to: pair, duration: travel },
+  ]
+  let time = Math.max(0, timeMs) % phases.reduce((sum, phase) => sum + phase.duration, 0)
+  for (const phase of phases) {
+    if (time <= phase.duration) return phase.from.map((frame, index) => featureFrameAt(frame, phase.to[index], time / phase.duration * 560))
+    time -= phase.duration
+  }
+  return pair
+}
+export function comparisonSceneClock(scenes: Array<{ startMs: number; durationMs: number; source: { imageId?: string | null }; featureStudy?: FeatureStudy }>, scene: typeof scenes[number], localMs: number) {
+  let first = scenes.findIndex(candidate => candidate.startMs === scene.startMs), last = first
+  if (first < 0) return { timeMs: localMs, durationMs: scene.durationMs }
+  const same = (other: typeof scene) => other.source.imageId === scene.source.imageId && other.featureStudy?.layout === scene.featureStudy?.layout && other.featureStudy?.opening === scene.featureStudy?.opening && other.featureStudy?.topic === scene.featureStudy?.topic && JSON.stringify(other.featureStudy?.images) === JSON.stringify(scene.featureStudy?.images)
+  while (first > 0 && same(scenes[first - 1])) first--
+  while (last < scenes.length - 1 && same(scenes[last + 1])) last++
+  return { timeMs: scene.startMs + localMs - scenes[first].startMs, durationMs: scenes[last].startMs + scenes[last].durationMs - scenes[first].startMs }
 }
 function requiredPoint(point: Point | undefined, name: string): Point {
   if (!point || !Number.isFinite(point.x) || !Number.isFinite(point.y)) throw new Error(`This feature study needs a detected ${name}.`)
@@ -275,7 +296,7 @@ function drawGuessSpinner(ctx: CanvasRenderingContext2D, y: number, timeMs: numb
   ctx.restore()
 }
 
-function drawFeatureOpening(ctx: CanvasRenderingContext2D, study: FeatureStudy, photos: FeaturePhoto[], localMs: number, durationMs: number, reduced: boolean, clockMs: number) {
+function drawFeatureOpening(ctx: CanvasRenderingContext2D, study: FeatureStudy, photos: FeaturePhoto[], localMs: number, durationMs: number, reduced: boolean, clockMs: number, comparisonClock: { timeMs: number; durationMs: number }) {
   const { width } = videoSize
   const smile = study.opening === 'smile-choice'
   const jawWidth = study.opening === 'jaw-width-choice'
@@ -294,8 +315,12 @@ function drawFeatureOpening(ctx: CanvasRenderingContext2D, study: FeatureStudy, 
     return { mouth, lipTop, gap: Math.max(.06, lipTop - eyes) }
   })
   const eyeToLip = Math.max(420, ...photos.map((photo, index) => alignment[index].gap * photo.image.height * cardWidth / photo.image.width))
+  const pair = photos.map((_, index) => ({ x: inset + index * (cardWidth + gap), y, width: cardWidth, height }))
+  const frames = comparisonFrames(comparisonClock.timeMs, comparisonClock.durationMs, reduced, pair, { x: 0, y, width, height: videoSize.height - y })
+  const expansion = Math.max(...frames.map(frame => (frame.width - cardWidth) / (width - cardWidth)))
   photos.forEach((photo, index) => {
-    const x = inset + index * (cardWidth + gap)
+    const { x, y, width: cardWidth, height } = frames[index]
+    const maskY = y + height * (1035 / 1360)
     const { mouth, lipTop, gap: anchorGap } = alignment[index]
     const a = photo.landmarks?.anchors
     const chin = a?.chin ?? { x: .5, y: .72 }
@@ -373,50 +398,41 @@ function drawFeatureOpening(ctx: CanvasRenderingContext2D, study: FeatureStudy, 
       ctx.restore()
     }
   })
-  if (jawWidth) drawGuessSpinner(ctx, y + height + 135, clockMs, 1 - smoothMotion(reveal * 4), reduced)
-  if (smile) drawGuessSpinner(ctx, maskY + 175, clockMs, 1 - smoothMotion(reveal * 4), reduced)
+  if (jawWidth) drawGuessSpinner(ctx, y + height + 135, clockMs, (1 - smoothMotion(reveal * 4)) * (1 - expansion), reduced)
+  if (smile) drawGuessSpinner(ctx, maskY + 175, clockMs, (1 - smoothMotion(reveal * 4)) * (1 - expansion), reduced)
 }
 
-export function drawFeatureStudy(ctx: CanvasRenderingContext2D, study: FeatureStudy, photo: FeaturePhoto, variants: FeaturePhoto[], localMs: number, _durationMs: number, reduced: boolean, previous?: FeatureStudy, activity?: PortraitActivity, instrument?: PortraitInstrument, clockMs = localMs, captureMetric?: (ctx: CanvasRenderingContext2D, width: number, height: number, warp?: ReturnType<typeof featureWarp>) => void) {
+export function drawFeatureStudy(ctx: CanvasRenderingContext2D, study: FeatureStudy, photo: FeaturePhoto, variants: FeaturePhoto[], localMs: number, _durationMs: number, reduced: boolean, previous?: FeatureStudy, activity?: PortraitActivity, instrument?: PortraitInstrument, clockMs = localMs, captureMetric?: (ctx: CanvasRenderingContext2D, width: number, height: number, warp?: ReturnType<typeof featureWarp>) => void, comparisonClock = { timeMs: localMs, durationMs: _durationMs }) {
   const dark = isDarkVideoContext(ctx), ink = dark ? '#f2eee5' : '#171717', panel = dark ? '#1b1b1b' : '#f5f4f1'
   ctx = originalVideoContext(ctx)
   if (study.layout === 'evidence') {
-    const spotlight = study.comparison === 'spotlight'
-    const width = videoSize.width - videoContent.inset * 2
-    const height = width * photo.image.height / photo.image.width
-    const frames = spotlight ? evidenceComparisonFrames(localMs, _durationMs, reduced) : [{x:videoContent.inset,y:720,width,height}]
-    const order = spotlight && localMs / _durationMs >= .52 ? [1, 0] : frames.map((_, index) => index)
-    for (const index of order) {
-      const frame = frames[index], sourceWidth = spotlight ? photo.image.width / 2 - 4 : photo.image.width
-      const sourceX = spotlight ? index * (photo.image.width / 2) + (index ? 4 : 0) : 0
+    const frames = comparisonFrames(comparisonClock.timeMs, comparisonClock.durationMs, reduced)
+    frames.forEach((frame, index) => {
+      const sourceWidth = photo.image.width / 2 - 4, sourceX = index * (photo.image.width / 2) + (index ? 4 : 0)
       const scale = Math.max(frame.width / sourceWidth, frame.height / photo.image.height)
       const w = sourceWidth * scale, h = photo.image.height * scale
-      ctx.save(); ctx.beginPath(); ctx.roundRect(frame.x, frame.y, frame.width, frame.height, spotlight ? 22 : 0); ctx.clip()
+      ctx.save(); ctx.beginPath(); ctx.roundRect(frame.x, frame.y, frame.width, frame.height, 22); ctx.clip()
       ctx.drawImage(photo.image, sourceX, 0, sourceWidth, photo.image.height, frame.x + (frame.width - w) / 2, frame.y + (frame.height - h) / 2, w, h)
       ctx.restore()
       ctx.save(); ctx.fillStyle='#70757b'; ctx.font='400 23px "Mogging Share",Arial,sans-serif'; ctx.textAlign='center'
-      if (spotlight) ctx.fillText(index ? '2023' : '2020', frame.x + frame.width / 2, Math.min(frame.y + frame.height + 38, videoSize.height - 100))
-      else {
-        ctx.textAlign='left'; ctx.fillText('2020',frame.x,frame.y+height+38)
-        ctx.textAlign='right'; ctx.fillText('2023',frame.x+width,frame.y+height+38)
-      }
+      ctx.fillText(study.labels?.[index] ?? (index ? 'After' : 'Before'), frame.x + frame.width / 2, Math.min(frame.y + frame.height + 38, videoSize.height - 100))
       ctx.restore()
-    }
-    if (spotlight) {
-      const fade = ctx.createLinearGradient(0, videoSize.height - 330, 0, videoSize.height)
-      fade.addColorStop(0, '#ffffff00'); fade.addColorStop(1, '#fff')
-      ctx.fillStyle=fade; ctx.fillRect(0,videoSize.height-330,videoSize.width,330)
-    }
+    })
+    const fade = ctx.createLinearGradient(0, videoSize.height - 330, 0, videoSize.height)
+    fade.addColorStop(0, '#ffffff00'); fade.addColorStop(1, '#fff')
+    ctx.fillStyle=fade; ctx.fillRect(0,videoSize.height-330,videoSize.width,330)
     ctx.save(); ctx.fillStyle='#70757b'; ctx.font='400 19px "Mogging Share",Arial,sans-serif'; ctx.textAlign='center'
-    ctx.fillText('Kareem Shami · published comparison / The Guardian',videoSize.width/2,spotlight ? videoSize.height-65 : 720+height+85)
+    if (study.footnote) ctx.fillText(study.footnote,videoSize.width/2,videoSize.height-65)
     ctx.restore()
     return
   }
   if (study.opening && variants[0]) {
-    drawFeatureOpening(ctx, study, [photo, variants[0]], localMs, _durationMs, reduced, clockMs)
+    drawFeatureOpening(ctx, study, [photo, variants[0]], localMs, _durationMs, reduced, clockMs, comparisonClock)
     return
   }
-  const frames = featureFrames(study.layout), prior = featureFrames(previous?.layout ?? study.layout)
+  const comparing = study.layout === 'compare'
+  const frames = comparing ? comparisonFrames(comparisonClock.timeMs, comparisonClock.durationMs, reduced) : featureFrames(study.layout)
+  const prior = comparing && (!previous || previous.layout === 'compare') ? frames : featureFrames(previous?.layout ?? study.layout)
   const progress = reduced ? 1 : smoothMotion(localMs / 560)
   const textureEdit = study.editMode === 'photo'
   const count = Math.max(frames.length, prior.length)
@@ -432,7 +448,7 @@ export function drawFeatureStudy(ctx: CanvasRenderingContext2D, study: FeatureSt
       before = featureCameraFrame(before, previous?.motion, 1)
       after = featureCameraFrame(after, study.motion, localMs / _durationMs)
     }
-    const placement = featureFrameAt(before, after, localMs, reduced)
+    const placement = comparing && (!previous || previous.layout === 'compare') ? after : featureFrameAt(before, after, localMs, reduced)
     if (index === 0) primary = placement
     const initialEdit = previous ? editForCell(previous, index) : 0
     const development = reduced || study.comparison === 'wipe' || textureEdit && study.layout === 'compare' ? 1 : smoothMotion(localMs / Math.max(700, _durationMs * .78))
@@ -493,6 +509,14 @@ export function drawFeatureStudy(ctx: CanvasRenderingContext2D, study: FeatureSt
       ctx.fillText(study.labels?.[index] ?? (study.editorial && study.layout === 'compare' ? ['A', 'B'][index] : undefined) ?? ['Original', 'Edited illustration', 'Three-quarter', 'Profile'][index], target.x, target.y + target.height + 34)
       ctx.restore()
     }
+  }
+  if (comparing) {
+    const baseWidth = featureFrames('compare')[0].width
+    const expansion = Math.max(...frames.map(frame => (frame.width - baseWidth) / (videoSize.width - baseWidth)))
+    ctx.save(); ctx.globalAlpha *= expansion
+    const fade = ctx.createLinearGradient(0, videoSize.height - 330, 0, videoSize.height)
+    fade.addColorStop(0, '#ffffff00'); fade.addColorStop(1, '#fff')
+    ctx.fillStyle = fade; ctx.fillRect(0, videoSize.height - 330, videoSize.width, 330); ctx.restore()
   }
   if (study.editorial && study.comparison === 'wipe' && study.edit && !reduced && !instrument) {
     const amount = featureWipeProgress(localMs, _durationMs)

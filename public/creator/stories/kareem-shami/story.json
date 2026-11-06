@@ -160,8 +160,12 @@
         "motion": "hold",
         "annotation": "",
         "images": [],
-        "footnote": "",
-        "comparison": "spotlight"
+        "footnote": "Kareem Shami \u00b7 published comparison / The Guardian",
+        "comparison": "spotlight",
+        "labels": [
+          "2020",
+          "2023"
+        ]
       }
     },
     "reverse": {
@@ -284,8 +288,12 @@
         "motion": "hold",
         "annotation": "",
         "images": [],
-        "footnote": "",
-        "comparison": "spotlight"
+        "footnote": "Kareem Shami \u00b7 published comparison / The Guardian",
+        "comparison": "spotlight",
+        "labels": [
+          "2020",
+          "2023"
+        ]
       }
     },
     "hair-return": {

@@ -1,5 +1,5 @@
 import { expect, test } from 'bun:test'
-import { drawFeatureStudy, registeredFeatureWarp, featureClipFrame, featureFrames, featureFrameAt, featurePlacement, featureRegistration, featureTopics, featureWarp, featureCameraFrame, featureCardOpacity, evidenceComparisonFrames } from './feature-study'
+import { drawFeatureStudy, registeredFeatureWarp, featureClipFrame, featureFrames, featureFrameAt, featurePlacement, featureRegistration, featureTopics, featureWarp, featureCameraFrame, featureCardOpacity, comparisonFrames, comparisonSceneClock } from './feature-study'
 import { productionVisualPlan } from './video-production'
 import { createFeatureStudyDraft } from './feature-study-script'
 import { compileProductionVideo, reviseProductionScript, productionCut, productionTimeline, sectionAudioKey } from './video-production'
@@ -209,16 +209,30 @@ test('registered shape edits retain source anatomy, cap movement and do not comp
 })
 
 
-test('evidence comparison pushes each neighbour off screen while preserving continuous shared frames', () => {
-  const duration = 8000, pair = featureFrames('compare'), full = featureFrames('hero')[0]
-  expect(evidenceComparisonFrames(0, duration)).toEqual(pair)
-  expect(evidenceComparisonFrames(3200, duration)[1]).toEqual(full)
-  expect(evidenceComparisonFrames(7000, duration)[0]).toEqual(full)
-  expect(evidenceComparisonFrames(7000, duration)[1].x).toBeGreaterThanOrEqual(full.width)
-  expect(evidenceComparisonFrames(3200, duration)[0].x + full.width).toBeLessThan(0)
-  expect(evidenceComparisonFrames(4000, duration, true)).toEqual(pair)
-  for (const boundary of [.12, .32, .52, .76]) {
-    const before=evidenceComparisonFrames(duration*boundary-.01,duration),after=evidenceComparisonFrames(duration*boundary+.01,duration)
+test('two-photo comparisons expand within 3.5 seconds, return to the pair and alternate without jumps', () => {
+  const pair = featureFrames('compare'), full = featureFrames('hero')[0]
+  expect(comparisonFrames(0,10000)).toEqual(pair)
+  expect(comparisonFrames(3400,10000)[1]).toEqual(full)
+  expect(comparisonFrames(5600,10000)).toEqual(pair)
+  expect(comparisonFrames(7100,10000)[0]).toEqual(full)
+  expect(comparisonFrames(9100,10000)).toEqual(pair)
+  expect(comparisonFrames(3400,10000)[0].x+full.width).toBeLessThan(0)
+  expect(comparisonFrames(7100,10000)[1].x).toBeGreaterThanOrEqual(full.width)
+  expect(comparisonFrames(7100,10000,true)).toEqual(pair)
+  for (const duration of [3500,6000,10000,60000]) {
+    expect(comparisonFrames(Math.min(2400,duration*.35)+781,duration)[1]).toEqual(full)
+    expect(comparisonFrames(3499,60000)[1]).toEqual(full)
+  }
+  for (const boundary of [2400,3180,4680,5460,5910,6690,8190,8970]) {
+    const before=comparisonFrames(boundary-.01,10000),after=comparisonFrames(boundary+.01,10000)
     for (let i=0;i<2;i++) for (const key of ['x','y','width','height'] as const) expect(Math.abs(before[i][key]-after[i][key])).toBeLessThan(.01)
   }
+})
+
+test('comparison motion continues through adjacent captions and reveal phases but resets for different photos', () => {
+  const study = {topic:'jaw',layout:'compare',edit:0,editMode:'warp',annotation:'',images:['b'],opening:'jaw-choice',phase:'hold'} as const
+  const base = {startMs:0,durationMs:2000,source:{imageId:'a'},featureStudy:{...study,images:[...study.images]}}
+  const scenes = [base,{...base,startMs:2000,featureStudy:{...base.featureStudy,phase:'reveal' as const}},{...base,startMs:4000,source:{imageId:'c'}}]
+  expect(comparisonSceneClock(scenes,scenes[1],1300)).toEqual({timeMs:3300,durationMs:4000})
+  expect(comparisonSceneClock(scenes,scenes[2],1300)).toEqual({timeMs:1300,durationMs:2000})
 })
