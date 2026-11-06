@@ -21,6 +21,7 @@ export const featureStudySchema = z.object({
   phase: z.enum(['hold', 'clue', 'reveal']).optional(),
   topic: z.enum(visualFeatures), layout: z.enum(['hero', 'detail', 'compare', 'grid', 'evidence']),
   motion: z.enum(['hold', 'push', 'pull', 'pan-left', 'pan-right']).optional(),
+  guidesDuringEdit: z.boolean().optional(),
   annotationStyle: z.enum(['circle', 'guide', 'leader']).optional(),
   comparison: z.enum(['blend', 'wipe']).optional(),
   labels: z.array(z.string().max(60)).max(4).optional(),
@@ -439,7 +440,7 @@ export function drawFeatureStudy(ctx: CanvasRenderingContext2D, study: FeatureSt
       }
     } else drawEdit()
     if (!textureEdit && study.topic === 'freckles' && item.landmarks) drawNaturalFreckles(ctx,item.image,item.landmarks,Math.max(0,edit))
-    const showGuides = !study.editorial || study.comparison !== 'wipe' || reduced || localMs >= _durationMs * .72
+    const showGuides = study.guidesDuringEdit || !study.editorial || study.comparison !== 'wipe' || reduced || localMs >= _durationMs * .72
     if (index===0 && instrument && showGuides) {
       if (instrument.particles!=='none' || instrument.trails) drawPortraitParticles(ctx,item.image,instrument,localMs,reduced)
       if(!activity) drawPortraitInstruments(ctx,item.landmarks,item.image.width,item.image.height,instrument,localMs,reduced)

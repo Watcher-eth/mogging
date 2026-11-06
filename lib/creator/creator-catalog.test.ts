@@ -374,3 +374,26 @@ test('media crop checks account for portrait extraction, feature crops and camer
   expect(() => requireUsableMedia({ ...asset, url: '/api/creator/media/source' })).not.toThrow()
   expect(() => requireUsableMedia({ ...asset, url: '/api/creator/media/source', source: { ...asset.source, usage: 'review' } })).toThrow('Review usage rights')
 })
+
+test('authored cue annotations remain valid when the narrator section splits into caption scenes', async () => {
+  const { readFileSync } = await import('node:fs')
+  const { creatorAnalysisInput, creatorAnalysisReports, creatorStoryDirections } = await import('./creator-stories')
+  const { editorialRatingInput, editorialRatingReports } = await import('./private-character')
+  const { restoreProductionRecording, compileProductionVideo } = await import('./video-production')
+  const { scriptTokens } = await import('./video-script')
+  const read = (url: string) => JSON.parse(readFileSync(`public${url}`, 'utf8'))
+  for (const person of ['v', 'kareem-shami']) {
+    const story = read(`/creator/stories/${person}/story.json`)
+    const saved = restoreProductionRecording(read(story.recording))
+    const analysis = story.analysis ? read(story.analysis) : undefined
+    const actual = story.editorialRatings ? editorialRatingInput(input, person, story.editorialRatings) : creatorAnalysisInput(input, person, analysis)
+    const reports = story.editorialRatings ? editorialRatingReports(story.editorialRatings, story.images[0].id) : creatorAnalysisReports(analysis)
+    const images = story.imageIds.map((id: string) => story.images.find((image: {id: string}) => image.id === id))
+    const directions = creatorStoryDirections(story, saved.script, actual, images, reports, 'feature-study', 0)
+    const video = compileProductionVideo(saved.script, actual, images, reports, 'feature-study', saved.voice, 0, 'philtrum', 1, directions)
+    expect(video.scenes.length).toBeGreaterThan(saved.script.cues.length)
+    for (const scene of video.scenes) for (const action of scene.portraitProgram?.actions ?? []) {
+      expect(action.word).toBeLessThan(scriptTokens(scene.narration).length)
+    }
+  }
+})

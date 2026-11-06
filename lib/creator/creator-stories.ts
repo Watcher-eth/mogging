@@ -97,7 +97,19 @@ export function creatorStoryDirections(story: CreatorStory, script: VideoScript,
   for (const shot of productionVisualPlan(script, input, planningImages, reports, recipe, variation)) {
     const authored = story.directions?.[shot.cue.sourceId]
     if (authored) {
-      directions[shot.id] = { portraitProgram: undefined, photoStudy: undefined, portraitFX: undefined, study: undefined, profileStudy: undefined, featureStudy: undefined, graphic: undefined, ...authored }
+      let portraitProgram = authored.portraitProgram
+      if (portraitProgram) {
+        const offset = shot.cue.text.indexOf(shot.beat.quote)
+        const start = scriptTokens(shot.cue.text).filter(token => token.offset < offset).length
+        const count = scriptTokens(shot.beat.quote).length
+        const prior = portraitProgram.actions.findLast(action => action.word <= start)
+        const actions = portraitProgram.actions.filter(action => action.word > start && action.word < start + count)
+        portraitProgram = { wordCount: count, actions: [
+          ...(prior ? [{ ...prior, word: 0, labelWord: 0 }] : []),
+          ...actions.map(action => ({ ...action, word: action.word - start, labelWord: action.labelWord === undefined ? undefined : Math.max(0, Math.min(count - 1, action.labelWord - start)) })),
+        ] }
+      }
+      directions[shot.id] = { portraitProgram: undefined, photoStudy: undefined, portraitFX: undefined, study: undefined, profileStudy: undefined, featureStudy: undefined, graphic: undefined, ...authored, ...(portraitProgram ? {portraitProgram} : {}) }
       continue
     }
     const cue = shot.cue.sourceId

@@ -672,9 +672,10 @@ function renderScene(ctx: CanvasRenderingContext2D, prepared: PreparedVideo, sce
   if (scene.featureStudy && asset.portrait) {
     const previous = prepared.composition.scenes[prepared.composition.scenes.indexOf(scene) - 1]
     const study = scene.featureStudy
-    const cueScenes = study.opening || study.editorial && study.comparison === 'wipe'
-      ? prepared.composition.scenes.filter(candidate => candidate.scriptRange?.cueId === scene.scriptRange?.cueId && candidate.featureStudy?.opening === study.opening && candidate.featureStudy?.comparison === study.comparison)
-      : []
+    const cueScenes = prepared.composition.scenes.filter(candidate =>
+      candidate.scriptRange?.cueId === scene.scriptRange?.cueId &&
+      candidate.source.imageId === scene.source.imageId &&
+      JSON.stringify(candidate.featureStudy) === JSON.stringify(study))
     const studyTime = scene.startMs + localMs - (cueScenes[0]?.startMs ?? scene.startMs)
     const studyDuration = cueScenes.length ? cueScenes.at(-1)!.startMs + cueScenes.at(-1)!.durationMs - cueScenes[0].startMs : scene.durationMs
     drawFeatureStudy(ctx, study, { image: asset.portrait, landmarks: asset.studyLandmarks, headTop: asset.portraitHeadTop }, asset.featurePhotos ?? [], studyTime, studyDuration, reduced, previous?.source.imageId === scene.source.imageId && !previous.featureStudy?.opening ? previous.featureStudy : undefined, activity, scene.portraitFX?.instrument, scene.startMs + localMs, (overlayCtx, width, height, warp) => {

@@ -2884,18 +2884,30 @@
       "featureStudy": {
         "editorial": true,
         "topic": "cheeks",
-        "layout": "compare",
+        "layout": "hero",
         "edit": 1,
         "editMode": "photo",
-        "motion": "hold",
+        "motion": "push",
         "annotation": "",
         "images": [
           "v-hollow-cheeks"
         ],
         "footnote": "",
-        "labels": [
-          "A",
-          "B"
+        "comparison": "wipe",
+        "guidesDuringEdit": true
+      },
+      "portraitProgram": {
+        "wordCount": 20,
+        "actions": [
+          {
+            "word": 0,
+            "labelWord": 0,
+            "feature": "cheeks",
+            "guide": "detail:under-cheekbones",
+            "label": "Cheek hollow",
+            "stroke": "dotted",
+            "treatment": "highlight"
+          }
         ]
       }
     },
@@ -2911,10 +2923,10 @@
         "layout": "hero",
         "edit": 0,
         "editMode": "photo",
-        "motion": "hold",
+        "motion": "pan-left",
         "annotation": "",
         "images": [],
-        "footnote": "Illustrative edit"
+        "footnote": ""
       },
       "portraitProgram": {
         "wordCount": 28,
@@ -2924,9 +2936,18 @@
             "labelWord": 0,
             "feature": "cheeks",
             "guide": "detail:under-cheekbones",
-            "label": "Cheek transition",
+            "label": "Submalar contour",
             "stroke": "dotted",
-            "treatment": "ink-callout"
+            "treatment": "ink-hatch"
+          },
+          {
+            "word": 14,
+            "labelWord": 14,
+            "feature": "cheeks",
+            "guide": "detail:cheek-area",
+            "label": "Cheek structure",
+            "stroke": "dashed",
+            "treatment": "landmarks"
           }
         ]
       }
@@ -2943,7 +2964,7 @@
         "layout": "hero",
         "edit": 1,
         "editMode": "photo",
-        "motion": "hold",
+        "motion": "pull",
         "annotation": "",
         "images": [
           "v-front"
@@ -2958,10 +2979,10 @@
             "word": 0,
             "labelWord": 0,
             "feature": "cheeks",
-            "guide": "detail:under-cheekbones",
-            "label": "Cheek transition",
-            "stroke": "dotted",
-            "treatment": "ink-callout"
+            "guide": "detail:cheek-frame",
+            "label": "Cheekbone width",
+            "stroke": "solid",
+            "treatment": "caliper"
           }
         ]
       }
@@ -2978,7 +2999,7 @@
         "layout": "hero",
         "edit": 0,
         "editMode": "photo",
-        "motion": "hold",
+        "motion": "pan-right",
         "annotation": "",
         "images": [],
         "footnote": ""
@@ -2991,9 +3012,18 @@
             "labelWord": 0,
             "feature": "cheeks",
             "guide": "detail:under-cheekbones",
-            "label": "Cheek transition",
+            "label": "Soft transition",
             "stroke": "dotted",
-            "treatment": "ink-callout"
+            "treatment": "mesh"
+          },
+          {
+            "word": 12,
+            "labelWord": 12,
+            "feature": "jaw",
+            "guide": "detail:jaw-outline",
+            "label": "Cheek to chin",
+            "stroke": "dashed",
+            "treatment": "landmarks"
           }
         ]
       }
