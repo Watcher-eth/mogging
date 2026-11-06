@@ -23,7 +23,7 @@ export const featureStudySchema = z.object({
   motion: z.enum(['hold', 'push', 'pull', 'pan-left', 'pan-right']).optional(),
   guidesDuringEdit: z.boolean().optional(),
   annotationStyle: z.enum(['circle', 'guide', 'leader']).optional(),
-  comparison: z.enum(['blend', 'wipe']).optional(),
+  comparison: z.enum(['blend', 'wipe', 'spotlight']).optional(),
   labels: z.array(z.string().max(60)).max(4).optional(),
   footnote: z.string().max(120).optional(),
   adjustment: z.enum(['thirds','width']).optional(),
@@ -55,6 +55,16 @@ export function featureFrameAt(from: Frame, to: Frame, timeMs: number, reduced =
   if (timeMs <= 0) return { ...from }
   const t = smoothMotion(timeMs / 560)
   return Object.fromEntries(Object.entries(to).map(([key, value]) => [key, from[key as keyof Frame] + (value - from[key as keyof Frame]) * t])) as Frame
+}
+// Both photographs share one camera move: the expanding card pushes its neighbour away.
+export function evidenceComparisonFrames(timeMs: number, durationMs: number, reduced = false): Frame[] {
+  const pair = featureFrames('compare'), full = featureFrames('hero')[0]
+  const offLeft = { ...full, x: -full.width - 22 }, offRight = { ...full, x: full.width + 22 }
+  if (reduced) return pair
+  const time = Math.max(0, Math.min(1, timeMs / Math.max(1, durationMs)))
+  const move = (from: Frame[], to: Frame[], progress: number) => from.map((frame, index) => featureFrameAt(frame, to[index], progress * 560))
+  if (time < .52) return move(pair, [offLeft, full], (time - .12) / .20)
+  return move([offLeft, full], [full, offRight], (time - .52) / .24)
 }
 function requiredPoint(point: Point | undefined, name: string): Point {
   if (!point || !Number.isFinite(point.x) || !Number.isFinite(point.y)) throw new Error(`This feature study needs a detected ${name}.`)
@@ -371,17 +381,34 @@ export function drawFeatureStudy(ctx: CanvasRenderingContext2D, study: FeatureSt
   const dark = isDarkVideoContext(ctx), ink = dark ? '#f2eee5' : '#171717', panel = dark ? '#1b1b1b' : '#f5f4f1'
   ctx = originalVideoContext(ctx)
   if (study.layout === 'evidence') {
+    const spotlight = study.comparison === 'spotlight'
     const width = videoSize.width - videoContent.inset * 2
     const height = width * photo.image.height / photo.image.width
-    const frame = {x:videoContent.inset,y:720,width,height}
-    const scale = reduced ? 1 : 1 + .018 * smoothMotion(localMs / _durationMs)
-    ctx.save(); ctx.translate(videoSize.width / 2, frame.y + height / 2); ctx.scale(scale, scale)
-    ctx.drawImage(photo.image, -width / 2, -height / 2, width, height); ctx.restore()
-    ctx.save(); ctx.fillStyle='#70757b'; ctx.font='400 23px "Mogging Share",Arial,sans-serif'
-    ctx.textAlign='left'; ctx.fillText('2020',frame.x,frame.y+height+38)
-    ctx.textAlign='right'; ctx.fillText('2023',frame.x+width,frame.y+height+38)
-    ctx.textAlign='center'; ctx.font='400 19px "Mogging Share",Arial,sans-serif'
-    ctx.fillText('Kareem Shami · published comparison / The Guardian', videoSize.width/2, frame.y+height+85)
+    const frames = spotlight ? evidenceComparisonFrames(localMs, _durationMs, reduced) : [{x:videoContent.inset,y:720,width,height}]
+    const order = spotlight && localMs / _durationMs >= .52 ? [1, 0] : frames.map((_, index) => index)
+    for (const index of order) {
+      const frame = frames[index], sourceWidth = spotlight ? photo.image.width / 2 - 4 : photo.image.width
+      const sourceX = spotlight ? index * (photo.image.width / 2) + (index ? 4 : 0) : 0
+      const scale = Math.max(frame.width / sourceWidth, frame.height / photo.image.height)
+      const w = sourceWidth * scale, h = photo.image.height * scale
+      ctx.save(); ctx.beginPath(); ctx.roundRect(frame.x, frame.y, frame.width, frame.height, spotlight ? 22 : 0); ctx.clip()
+      ctx.drawImage(photo.image, sourceX, 0, sourceWidth, photo.image.height, frame.x + (frame.width - w) / 2, frame.y + (frame.height - h) / 2, w, h)
+      ctx.restore()
+      ctx.save(); ctx.fillStyle='#70757b'; ctx.font='400 23px "Mogging Share",Arial,sans-serif'; ctx.textAlign='center'
+      if (spotlight) ctx.fillText(index ? '2023' : '2020', frame.x + frame.width / 2, Math.min(frame.y + frame.height + 38, videoSize.height - 100))
+      else {
+        ctx.textAlign='left'; ctx.fillText('2020',frame.x,frame.y+height+38)
+        ctx.textAlign='right'; ctx.fillText('2023',frame.x+width,frame.y+height+38)
+      }
+      ctx.restore()
+    }
+    if (spotlight) {
+      const fade = ctx.createLinearGradient(0, videoSize.height - 330, 0, videoSize.height)
+      fade.addColorStop(0, '#ffffff00'); fade.addColorStop(1, '#fff')
+      ctx.fillStyle=fade; ctx.fillRect(0,videoSize.height-330,videoSize.width,330)
+    }
+    ctx.save(); ctx.fillStyle='#70757b'; ctx.font='400 19px "Mogging Share",Arial,sans-serif'; ctx.textAlign='center'
+    ctx.fillText('Kareem Shami · published comparison / The Guardian',videoSize.width/2,spotlight ? videoSize.height-65 : 720+height+85)
     ctx.restore()
     return
   }

@@ -1,5 +1,5 @@
 import { expect, test } from 'bun:test'
-import { drawFeatureStudy, registeredFeatureWarp, featureClipFrame, featureFrames, featureFrameAt, featurePlacement, featureRegistration, featureTopics, featureWarp, featureCameraFrame, featureCardOpacity } from './feature-study'
+import { drawFeatureStudy, registeredFeatureWarp, featureClipFrame, featureFrames, featureFrameAt, featurePlacement, featureRegistration, featureTopics, featureWarp, featureCameraFrame, featureCardOpacity, evidenceComparisonFrames } from './feature-study'
 import { productionVisualPlan } from './video-production'
 import { createFeatureStudyDraft } from './feature-study-script'
 import { compileProductionVideo, reviseProductionScript, productionCut, productionTimeline, sectionAudioKey } from './video-production'
@@ -206,4 +206,19 @@ test('registered shape edits retain source anatomy, cap movement and do not comp
   const point = { x: .5, y: .5 }, region = { ...point, rx: .2, ry: .2 }, shift = { x: .01, y: .015 }
   const overlapping = { mode: 'drag' as const, axis: 'both' as const, regions: [region, region, region], strengths: [0,0,0], shifts: [shift,shift,shift] }
   expect(warpSourcePoint(point, overlapping)).toEqual({ x: .49, y: .485 })
+})
+
+
+test('evidence comparison pushes each neighbour off screen while preserving continuous shared frames', () => {
+  const duration = 8000, pair = featureFrames('compare'), full = featureFrames('hero')[0]
+  expect(evidenceComparisonFrames(0, duration)).toEqual(pair)
+  expect(evidenceComparisonFrames(3200, duration)[1]).toEqual(full)
+  expect(evidenceComparisonFrames(7000, duration)[0]).toEqual(full)
+  expect(evidenceComparisonFrames(7000, duration)[1].x).toBeGreaterThanOrEqual(full.width)
+  expect(evidenceComparisonFrames(3200, duration)[0].x + full.width).toBeLessThan(0)
+  expect(evidenceComparisonFrames(4000, duration, true)).toEqual(pair)
+  for (const boundary of [.12, .32, .52, .76]) {
+    const before=evidenceComparisonFrames(duration*boundary-.01,duration),after=evidenceComparisonFrames(duration*boundary+.01,duration)
+    for (let i=0;i<2;i++) for (const key of ['x','y','width','height'] as const) expect(Math.abs(before[i][key]-after[i][key])).toBeLessThan(.01)
+  }
 })

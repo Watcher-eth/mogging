@@ -160,7 +160,8 @@
         "motion": "hold",
         "annotation": "",
         "images": [],
-        "footnote": ""
+        "footnote": "",
+        "comparison": "spotlight"
       }
     },
     "reverse": {
@@ -175,10 +176,11 @@
         "layout": "hero",
         "edit": 0,
         "editMode": "photo",
-        "motion": "hold",
+        "motion": "push",
         "annotation": "",
         "images": [],
-        "footnote": ""
+        "footnote": "",
+        "guidesDuringEdit": true
       },
       "portraitProgram": {
         "wordCount": 4,
@@ -207,13 +209,14 @@
         "layout": "hero",
         "edit": 1,
         "editMode": "photo",
-        "motion": "hold",
+        "motion": "pan-left",
         "annotation": "",
         "images": [
           "kareem-earlier-hair"
         ],
         "footnote": "Hairstyle illustration",
-        "comparison": "wipe"
+        "comparison": "wipe",
+        "guidesDuringEdit": true
       },
       "portraitProgram": {
         "wordCount": 8,
@@ -225,7 +228,7 @@
             "guide": "detail:jaw-outline",
             "label": "Same jaw",
             "stroke": "dotted",
-            "treatment": "landmarks"
+            "treatment": "caliper"
           }
         ]
       }
@@ -242,13 +245,14 @@
         "layout": "hero",
         "edit": 1,
         "editMode": "photo",
-        "motion": "hold",
+        "motion": "push",
         "annotation": "",
         "images": [
           "kareem-earlier-hair-glasses"
         ],
         "footnote": "Accessory illustration",
-        "comparison": "wipe"
+        "comparison": "wipe",
+        "guidesDuringEdit": true
       },
       "portraitProgram": {
         "wordCount": 7,
@@ -260,7 +264,7 @@
             "guide": "detail:brow-outline",
             "label": "New framing",
             "stroke": "dotted",
-            "treatment": "bracket"
+            "treatment": "landmarks"
           }
         ]
       }
@@ -280,7 +284,8 @@
         "motion": "hold",
         "annotation": "",
         "images": [],
-        "footnote": ""
+        "footnote": "",
+        "comparison": "spotlight"
       }
     },
     "hair-return": {
@@ -295,13 +300,14 @@
         "layout": "hero",
         "edit": 1,
         "editMode": "photo",
-        "motion": "hold",
+        "motion": "pull",
         "annotation": "",
         "images": [
           "kareem-current-glasses"
         ],
         "footnote": "Hairstyle illustration",
-        "comparison": "wipe"
+        "comparison": "wipe",
+        "guidesDuringEdit": true
       },
       "portraitProgram": {
         "wordCount": 18,
@@ -322,7 +328,7 @@
             "guide": "detail:cheek-frame",
             "label": "Cheekbone width",
             "stroke": "dotted",
-            "treatment": "caliper"
+            "treatment": "mesh"
           }
         ]
       }
@@ -339,13 +345,14 @@
         "layout": "hero",
         "edit": 1,
         "editMode": "photo",
-        "motion": "hold",
+        "motion": "pan-right",
         "annotation": "",
         "images": [
           "kareem-front"
         ],
         "footnote": "Accessory illustration",
-        "comparison": "wipe"
+        "comparison": "wipe",
+        "guidesDuringEdit": true
       },
       "portraitProgram": {
         "wordCount": 18,
@@ -366,7 +373,7 @@
             "guide": "detail:jaw-outline",
             "label": "Same jaw",
             "stroke": "dotted",
-            "treatment": "ink-callout"
+            "treatment": "landmarks"
           }
         ]
       }
