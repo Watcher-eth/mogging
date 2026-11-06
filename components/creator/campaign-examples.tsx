@@ -3,9 +3,10 @@ import { ArrowRight, ChevronLeft, ChevronRight } from 'lucide-react'
 import type { LaunchCampaign } from '@/lib/creator/campaign-launch'
 import styles from './launch-campaign-detail.module.css'
 
-export function ExampleCarousel({ campaign }: { campaign: LaunchCampaign }) {
+export function ExampleCarousel({ campaign, className = '', caption = 'campaign' }: { caption?: 'campaign'|'example'; campaign: Pick<LaunchCampaign,'name'|'description'|'examples'>; className?:string }) {
   const headingId = useId()
   const [active, setActive] = useState(0);
+  const videos = useRef(new Map<number, HTMLVideoElement>());
   const frames = useRef(new Map<number, HTMLIFrameElement>());
   const touchStart = useRef<number | null>(null);
   const count = campaign.examples.length;
@@ -13,6 +14,7 @@ export function ExampleCarousel({ campaign }: { campaign: LaunchCampaign }) {
     setActive((index + count) % count);
   }
   useEffect(() => {
+    for(const [index,video] of videos.current)if(index!==active)video.pause();
     for (const frame of frames.current.values())
       frame.contentWindow?.postMessage(
         { type: "pause", "x-tiktok-player": true },
@@ -21,7 +23,7 @@ export function ExampleCarousel({ campaign }: { campaign: LaunchCampaign }) {
   }, [active]);
   return (
     <section
-      className={styles.examples}
+      className={`${styles.examples} ${className}`}
       aria-labelledby={headingId}
     >
       <div className={styles.sectionHeading}>
@@ -70,7 +72,11 @@ export function ExampleCarousel({ campaign }: { campaign: LaunchCampaign }) {
               aria-hidden={!selected}
               inert={!selected}
             >
-              <iframe
+              {/\.(?:mp4|webm)(?:$|\?)/.test(example.url) ? <video
+                ref={video=>{if(video)videos.current.set(index,video);else videos.current.delete(index)}}
+                src={example.url} poster={example.poster} controls playsInline preload={selected?'auto':'none'}
+                aria-label={`${campaign.name} — ${example.label}`} tabIndex={selected?0:-1}
+              /> : <iframe
                 ref={(frame) => {
                   if (frame) frames.current.set(index, frame);
                   else frames.current.delete(index);
@@ -81,7 +87,7 @@ export function ExampleCarousel({ campaign }: { campaign: LaunchCampaign }) {
                 allow="fullscreen; encrypted-media; picture-in-picture"
                 allowFullScreen
                 tabIndex={selected ? 0 : -1}
-              />
+              />}
               {!selected ? <span className={styles.videoShade} /> : null}
             </div>
           );
@@ -113,10 +119,10 @@ export function ExampleCarousel({ campaign }: { campaign: LaunchCampaign }) {
           target="_blank"
           rel="noreferrer"
         >
-          View original post <ArrowRight size={14} />
+          {/\.(?:mp4|webm)(?:$|\?)/.test(campaign.examples[active].url) ? 'Open example video' : 'View original post'} <ArrowRight size={14} />
         </a>
         <h3>{campaign.name}</h3>
-        <p>{campaign.description}</p>
+        <p>{caption==='example'?campaign.examples[active].label:campaign.description}</p>
       </div>
       <div className={styles.dots} aria-label="Choose an example">
         {campaign.examples.map((example, index) => (

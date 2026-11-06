@@ -13,7 +13,7 @@ export type LaunchCampaign = {
   description: string;
   milestones: SprintTerms["milestones"];
   contentRules: { title: string; detail: string }[];
-  examples: { url: string; label: string }[];
+  examples: { url: string; label: string; poster?: string }[];
 };
 export const LAUNCH_CAMPAIGNS: LaunchCampaign[] = [
   {

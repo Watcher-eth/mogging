@@ -192,27 +192,40 @@ export async function prepareDocumentary(composition: VideoComposition, images: 
         drawInk(photo, shot, 0, false)
       })
     }
+    const cameraFits = new Map<Shot,number>()
     function placeCamera(shot: Shot, local: number, reduced: boolean) {
       const p = reduced ? .5 : smoothMotion(local / shot.durationMs)
       const inspection = shot.kind === 'inspection', anatomy = shot.kind === 'anatomy', portrait = ['stage','inspection','conclusion'].includes(shot.kind)
       camera.position.set((anatomy ? -.9 : -.2) + p * (anatomy ? 1.7 : .38), anatomy ? 4.2 : portrait ? 3.65 : 4.0, (portrait ? 10.96 : 10.5) - p * (inspection ? .65 : .45))
       camera.lookAt(0, anatomy ? 3.7 : portrait ? 3.62 : 3.85, 0)
       if (shot.kind === 'stage' && !reduced) { const enter = 1 - Math.pow(1 - Math.min(1, local / 2200), 3); camera.position.x += 1.4 * (1 - enter); camera.position.z += 1.4 * (1 - enter); camera.lookAt(0, 3.62, 0) }
+      const focus=new THREE.Vector3(0,anatomy?3.7:portrait?3.62:3.85,0)
+      camera.position.sub(focus).multiplyScalar(cameraFits.get(shot)??1).add(focus);camera.lookAt(focus)
       camera.updateMatrixWorld(true)
+    }
+    function nativeCoverage(shot:Shot,photo:Photo) {
+      let coverage=Infinity
+      for(const time of [0,shot.durationMs/2,shot.durationMs-1]){
+        placeCamera(shot,time,false)
+        const parameters=(photo.mesh.geometry as THREE.PlaneGeometry).parameters
+        const corners=[-1,1].flatMap(x=>[-1,1].map(y=>photo.mesh.localToWorld(new THREE.Vector3(x*parameters.width/2,y*parameters.height/2,0)).project(camera)))
+        const width=(Math.max(...corners.map(p=>p.x))-Math.min(...corners.map(p=>p.x)))*540,height=(Math.max(...corners.map(p=>p.y))-Math.min(...corners.map(p=>p.y)))*960
+        coverage=Math.min(coverage,mediaCropFit(photo.source,{width:width/Math.max(1,photo.texture.repeat.x),height},{width:Math.min(1,photo.texture.repeat.x),height:photo.texture.repeat.y}).coverage)
+      }
+      return coverage
     }
     const assetFits: DocumentaryRenderer['assetFits'] = []
     world.updateMatrixWorld(true)
     shots.forEach((shot, index) => {
       const set = sets.get(String(index))!
+      // Preserve native detail by fitting the camera, rather than enlarging source pixels.
+      for(let attempt=0;attempt<3&&set.photos.length;attempt++){
+        const coverage=Math.min(...set.photos.map(photo=>nativeCoverage(shot,photo)))
+        if(coverage>=1)break
+        cameraFits.set(shot,(cameraFits.get(shot)??1)*1.015/coverage)
+      }
       for (const photo of set.photos) {
-        let coverage = Infinity
-        for (const time of [0, shot.durationMs / 2, shot.durationMs - 1]) {
-          placeCamera(shot, time, false)
-          const parameters = (photo.mesh.geometry as THREE.PlaneGeometry).parameters
-          const corners = [-1, 1].flatMap(x => [-1, 1].map(y => photo.mesh.localToWorld(new THREE.Vector3(x * parameters.width / 2, y * parameters.height / 2, 0)).project(camera)))
-          const width = (Math.max(...corners.map(p => p.x)) - Math.min(...corners.map(p => p.x))) * 540, height = (Math.max(...corners.map(p => p.y)) - Math.min(...corners.map(p => p.y))) * 960
-          coverage = Math.min(coverage, mediaCropFit(photo.source, { width: width / Math.max(1, photo.texture.repeat.x), height }, { width: Math.min(1, photo.texture.repeat.x), height: photo.texture.repeat.y }).coverage)
-        }
+        const coverage=nativeCoverage(shot,photo)
         assetFits.push({ sceneId: shot.scene.id, imageId: photo.source.id, coverage })
         if (coverage < 1) throw new Error(`The ${shot.kind} close-up needs a higher-resolution image: ${photo.source.name} (${Math.round(coverage * 100)}% native coverage)`)
       }

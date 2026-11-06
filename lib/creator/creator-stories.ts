@@ -95,10 +95,17 @@ export function creatorStoryDirections(story: CreatorStory, script: VideoScript,
   const alternate = portraits.find(image => /three-quarter/.test(image.id)) ?? portraits.find(image => /profile/.test(image.id))
   const planningImages = portraits.length ? [...portraits, ...images.filter(image => !portraits.includes(image))] : images
   for (const shot of productionVisualPlan(script, input, planningImages, reports, recipe, variation)) {
-    const authored = story.directions?.[shot.cue.sourceId]
+    let authored = story.directions?.[shot.cue.sourceId]
+    if(authored?.featureStudy&&!editorial){
+      const study=authored.featureStudy
+      // Keep evidence and actual edits; let the chosen editing recipe own ordinary shots.
+      authored=study.edit!==0||study.layout==='evidence'||study.opening ? {
+        ...authored,featureStudy:{...study,editorial:false,motion:recipe==='measurement-explainer'?'push':recipe==='hybrid-story'?'pan-left':study.motion},
+      } : {...shot.direction,imageId:shot.direction.kind==='portrait'?authored.imageId:shot.direction.imageId,categoryId:authored.categoryId}
+    }
     if (authored) {
       let portraitProgram = authored.portraitProgram
-      if (portraitProgram) {
+      if (portraitProgram && portraitProgram === story.directions?.[shot.cue.sourceId]?.portraitProgram) {
         const offset = shot.cue.text.indexOf(shot.beat.quote)
         const start = scriptTokens(shot.cue.text).filter(token => token.offset < offset).length
         const count = scriptTokens(shot.beat.quote).length

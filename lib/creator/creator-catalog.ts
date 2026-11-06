@@ -10,15 +10,28 @@ import { scriptToPlan } from './script-edit'
 import { voiceDirection } from './video-speech'
 import { subjectStudies } from './video-subject-studies'
 
-// Creator styles are the existing rendering recipes, with one vocabulary in the UI.
+// Editing recipes keep their renderer IDs; content styles own the higher-level choice.
 export const creatorVideoStyles = [
   { id: 'portrait-audit', label: 'Portrait study', detail: 'The default. Natural portraits, precise contours and gentle movement.' },
   { id: 'report-led', label: 'App walkthrough', detail: 'Native report screens, animated score timelines and focused feature cards.' },
   { id: 'measurement-explainer', label: 'Feature breakdown', detail: 'Editorial close-ups, feature lighting and continuous zooms between details.' },
-  { id: 'feature-study', label: 'Feature study', detail: 'Hand-drawn arrows, frosted strokes, panning close-ups and controlled comparisons.' },
+  { id: 'feature-study', label: 'Editorial study', detail: 'Hand-drawn arrows, frosted strokes, panning close-ups and controlled comparisons.' },
   { id: 'hybrid-story', label: 'Visual story', detail: 'Photo sequences, evidence inserts and graphic transitions that follow the story.' },
-  { id: 'documentary-studio', label: 'Documentary Studio', detail: 'A separate cinematic edit with 3D sets, evidence boards and restrained annotations.' },
+  { id: 'documentary-studio', label: 'Cinematic documentary', detail: 'A separate cinematic edit with 3D sets, evidence boards and restrained annotations.' },
 ] as const satisfies ReadonlyArray<{ id: VideoRecipe; label: string; detail: string }>
+
+export const creatorContentStyles = [
+  {id:'mogging-editorial',name:'Mogging Editorial',description:'Face-led analysis. Clean portraits, native reports and precise visual detail.',recipes:['portrait-audit','report-led','measurement-explainer','hybrid-story'],defaultRecipe:'portrait-audit'},
+  {id:'qoves',name:'Qoves',description:'One question. A visual experiment. A reveal worth staying for.',recipes:['feature-study'],defaultRecipe:'feature-study'},
+  {id:'fern',name:'Fern',description:'Cinematic explanations. Evidence, dimensional scenes and a wider story.',recipes:['documentary-studio'],defaultRecipe:'documentary-studio'},
+] as const satisfies ReadonlyArray<{id:string;name:string;description:string;recipes:readonly VideoRecipe[];defaultRecipe:VideoRecipe}>
+export type CreatorContentStyleId = typeof creatorContentStyles[number]['id']
+export function creatorContentStyle(recipe:VideoRecipe) {
+  return creatorContentStyles.find(style=>(style.recipes as readonly VideoRecipe[]).includes(recipe)) ?? creatorContentStyles[0]
+}
+export function contentStyleSupportsScript(contentStyle:CreatorContentStyleId,story:{kind?:string}) {
+  return contentStyle!=='qoves'||story.kind!=='score-walkthrough'
+}
 
 export function creatorStyleDirections(example: VideoScriptExample, recipe: VideoRecipe) {
   const directions: Record<string, VideoDirection> = { ...example.directions }

@@ -3,7 +3,7 @@ import { isVideoCta } from './video-branding'
 import { portraitEffectsLab, subjectStudies } from './video-subject-studies'
 import { videoSize } from './video-layout'
 import { expect, test } from 'bun:test'
-import { creatorSubjects, creatorSubjectPhotos, creatorVideoStyles, creatorStyleDirections, customVideoExample, validateCreatorPhotos } from './creator-catalog'
+import { creatorSubjects, creatorSubjectPhotos, creatorVideoStyles, creatorContentStyles, creatorContentStyle, contentStyleSupportsScript, creatorStyleDirections, customVideoExample, validateCreatorPhotos } from './creator-catalog'
 import { compileAnalysisVideo, parseComposition, type VideoComposition } from './video-composition'
 import { scriptToPlan } from './script-edit'
 import { scriptWords } from './video-script'
@@ -395,5 +395,36 @@ test('authored cue annotations remain valid when the narrator section splits int
     for (const scene of video.scenes) for (const action of scene.portraitProgram?.actions ?? []) {
       expect(action.word).toBeLessThan(scriptTokens(scene.narration).length)
     }
+  }
+})
+
+
+test('content styles partition editing recipes and Qoves only offers story scripts',()=>{
+  expect(creatorContentStyles.map(style=>style.name)).toEqual(['Mogging Editorial','Qoves','Fern'])
+  expect(creatorContentStyles.flatMap(style=>[...style.recipes]).toSorted()).toEqual(creatorVideoStyles.map(style=>style.id).toSorted())
+  expect(creatorContentStyle('report-led').id).toBe('mogging-editorial')
+  expect(creatorContentStyle('feature-study').id).toBe('qoves')
+  expect(creatorContentStyle('documentary-studio').id).toBe('fern')
+  const choices=[{kind:'feature-story'},{kind:'score-walkthrough'},{}]
+  expect(choices.filter(story=>contentStyleSupportsScript('qoves',story))).toEqual([choices[0],choices[2]])
+  for(const id of ['mogging-editorial','fern'] as const)expect(choices.every(story=>contentStyleSupportsScript(id,story))).toBe(true)
+})
+
+test('all content style recipes retain a saved story and its photo edits without overriding ordinary shot grammar',async()=>{
+  const {editorialRatingInput,editorialRatingReports}=await import('./private-character')
+  const {creatorStoryDirections}=await import('./creator-stories')
+  const {restoreProductionRecording,compileProductionVideo}=await import('./video-production')
+  const story=await Bun.file('public/creator/stories/kareem-shami/story.json').json()
+  const saved=restoreProductionRecording(await Bun.file('public'+story.recording).json())
+  const actual=editorialRatingInput(input,'Kareem Shami',story.editorialRatings),reports=editorialRatingReports(story.editorialRatings,story.images[0].id)
+  for(const recipe of creatorVideoStyles.map(style=>style.id)){
+    const directions=creatorStoryDirections(story,saved.script,actual,story.images,reports,recipe,0)
+    const video=compileProductionVideo(saved.script,actual,story.images,reports,recipe,saved.voice,0,'philtrum',1,directions)
+    expect(video.recipe).toBe(recipe);expect(video.script).toEqual(saved.script)
+    if(recipe==='report-led'){
+      expect(video.scenes.some(scene=>scene.source.kind==='report')).toBe(true)
+      expect(video.scenes.some(scene=>scene.scriptRange?.cueId===saved.script.cues.find(cue=>cue.sourceId==='hair')?.id&&scene.featureStudy?.edit===1)).toBe(true)
+    }
+    if(recipe==='feature-study')expect(video.scenes.some(scene=>scene.featureStudy?.editorial)).toBe(true)
   }
 })

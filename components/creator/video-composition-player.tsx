@@ -8,7 +8,7 @@ import styles from './video-studio.module.css'
 
 const playbackTime = (ms: number) => `${Math.floor(ms / 60000)}:${String(Math.floor(ms / 1000) % 60).padStart(2, '0')}`
 
-export function VideoCompositionPlayer({ prepared, composition, seekMs, onTime, audioUrl }: { prepared: PreparedVideo | null; composition: VideoComposition; seekMs: number; onTime: (time: number) => void; audioUrl?: string }) {
+export function VideoCompositionPlayer({ prepared, composition, seekMs, onTime, audioUrl, suspended = false }: { suspended?:boolean; prepared: PreparedVideo | null; composition: VideoComposition; seekMs: number; onTime: (time: number) => void; audioUrl?: string }) {
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const rippleCanvasRef = useRef<HTMLCanvasElement>(null)
   const rippleRendererRef = useRef<ReturnType<typeof createPreviewRipple>>(null)
@@ -23,6 +23,7 @@ export function VideoCompositionPlayer({ prepared, composition, seekMs, onTime, 
   const [position, setPosition] = useState(0)
   const [playbackError, setPlaybackError] = useState('')
   useEffect(() => { onTimeRef.current = onTime }, [onTime])
+  useEffect(()=>{if(suspended){audioRef.current?.pause();setPlaying(false)}},[suspended])
   useEffect(() => () => {
     rippleRendererRef.current?.dispose(); rippleRendererRef.current = null
     rippleRef.current = null; displayedRef.current = null
