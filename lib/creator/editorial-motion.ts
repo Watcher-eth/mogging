@@ -95,9 +95,10 @@ export function drawEditorialInset(ctx: CanvasRenderingContext2D, frame: Frame, 
 }
 
 const revealLayers = new WeakMap<CanvasRenderingContext2D, HTMLCanvasElement>()
+const revealMasks = new WeakMap<CanvasRenderingContext2D, HTMLCanvasElement>()
 
 /** Reveal a registered edit across the same portrait with a soft moving edge. */
-export function drawEditorialFeatheredReveal(ctx: CanvasRenderingContext2D, width: number, height: number, progress: number, drawEdit: (target: CanvasRenderingContext2D) => void) {
+export function drawEditorialFeatheredReveal(ctx: CanvasRenderingContext2D, width: number, height: number, progress: number, drawEdit: (target: CanvasRenderingContext2D) => void, rolling = false) {
   const amount = clamp(progress)
   if (amount <= 0) return
   if (amount >= 1) { drawEdit(ctx); return }
@@ -113,16 +114,20 @@ export function drawEditorialFeatheredReveal(ctx: CanvasRenderingContext2D, widt
   const surface = layer.getContext('2d')!
   surface.clearRect(0, 0, width, height)
   drawEdit(surface)
-  const feather = Math.min(width * .04, width * Math.min(amount, 1 - amount))
-  const edge = width * amount
-  const gradient = surface.createLinearGradient(edge - feather, 0, edge + feather, 0)
-  gradient.addColorStop(0, '#fff')
-  gradient.addColorStop(1, '#fff0')
-  surface.save()
-  surface.globalCompositeOperation = 'destination-in'
-  surface.fillStyle = gradient
-  surface.fillRect(0, 0, width, height)
-  surface.restore()
+  let mask = revealMasks.get(ctx)
+  if (!mask) { mask = document.createElement('canvas'); revealMasks.set(ctx, mask) }
+  if (mask.width !== width || mask.height !== height) { mask.width = width; mask.height = height }
+  const ink = mask.getContext('2d')!
+  ink.clearRect(0, 0, width, height)
+  const feather = Math.min(width * .04, width * Math.min(amount, 1 - amount)), bands = rolling ? 48 : 1
+  for (let band = 0; band < bands; band++) {
+    const y = band / bands * height
+    const edge = width * amount + (rolling ? Math.sin(band / bands * Math.PI) * width * .09 * Math.sin(amount * Math.PI) : 0)
+    const gradient = ink.createLinearGradient(edge - feather, 0, edge + feather, 0)
+    gradient.addColorStop(0, '#fff'); gradient.addColorStop(1, '#fff0')
+    ink.fillStyle = gradient; ink.fillRect(0, y, width, height / bands + 1)
+  }
+  surface.save(); surface.globalCompositeOperation = 'destination-in'; surface.drawImage(mask, 0, 0); surface.restore()
   ctx.drawImage(layer, 0, 0)
 }
 

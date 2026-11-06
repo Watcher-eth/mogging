@@ -54,3 +54,12 @@ export function sharesPortrait(previous: VideoScene | undefined, next: VideoScen
 export function sharesReport(previous: VideoScene | undefined, next: VideoScene) {
   return previous?.source.kind === 'report' && next.source.kind === 'report' && previous.source.imageId === next.source.imageId && previous.source.categoryId === next.source.categoryId && previous.source.currentScore === next.source.currentScore && previous.source.potentialScore === next.source.potentialScore && previous.source.metricScore === next.source.metricScore && JSON.stringify(previous.source.report) === JSON.stringify(next.source.report)
 }
+
+// A shared camera moves between photographs placed at different depths and heights.
+export function spatialPhotoMotion(progress: number, variant = 0) {
+  const t = sharedElementMotion(progress), arc = Math.sin(t * Math.PI)
+  const routes = [[.95,-.23],[-.90,.18],[.70,.32],[-.75,-.26]]
+  const [x,y] = routes[((variant % routes.length)+routes.length)%routes.length]
+  const dx=x*videoSize.width,dy=y*videoSize.height,curve=arc*(110+Math.abs(dy)*.5)
+  return { scale:1-.10*arc,previous:{x:-dx*t,y:-dy*t+curve},next:{x:dx*(1-t),y:dy*(1-t)+curve} }
+}

@@ -34,7 +34,7 @@ export const featureStudySchema = z.object({
 export type FeatureStudy = z.infer<typeof featureStudySchema>
 type Point = { x: number; y: number }
 type Frame = { x: number; y: number; width: number; height: number }
-export type FeaturePhoto = { image: HTMLCanvasElement | HTMLImageElement; landmarks: FaceLandmarksPayload | null | undefined; headTop?: number }
+export type FeaturePhoto = { original?: HTMLCanvasElement | HTMLImageElement; image: HTMLCanvasElement | HTMLImageElement; landmarks: FaceLandmarksPayload | null | undefined; headTop?: number }
 
 const hero = { x: 0, y: 500, width: videoSize.width, height: videoSize.height - 500 }
 export function featureFrames(layout: FeatureStudy['layout']): Frame[] {
@@ -56,12 +56,19 @@ export function featureFrameAt(from: Frame, to: Frame, timeMs: number, reduced =
   const t = smoothMotion(timeMs / 560)
   return Object.fromEntries(Object.entries(to).map(([key, value]) => [key, from[key as keyof Frame] + (value - from[key as keyof Frame]) * t])) as Frame
 }
+export function comparisonTiming(durationMs: number) {
+  return {intro:Math.min(2400,Math.max(1,durationMs)*.35),travel:780,hold:1500,pause:450}
+}
+export function comparisonExpansionTimes(durationMs: number) {
+  const {intro,travel,hold,pause}=comparisonTiming(durationMs),cycle=intro+travel*4+hold*2+pause,times:number[]=[]
+  for(let start=0;start<durationMs;start+=cycle) for(const offset of [intro,intro+travel*2+hold+pause]) if(start+offset<durationMs-250)times.push(start+offset)
+  return times
+}
 // One clock owns the pair, expansion and return so caption cuts never restart the move.
 export function comparisonFrames(timeMs: number, durationMs: number, reduced = false, pair = featureFrames('compare'), full = featureFrames('hero')[0]): Frame[] {
   if (reduced) return pair
   const right = [{ ...full, x: -full.width - 22 }, full], left = [full, { ...full, x: full.width + 22 }]
-  const duration = Math.max(1, durationMs), intro = Math.min(2400, duration * .35)
-  const travel = 780, hold = 1500, pause = 450
+  const {intro,travel,hold,pause}=comparisonTiming(durationMs)
   const phases = [
     { from: pair, to: pair, duration: intro },
     { from: pair, to: right, duration: travel },
@@ -74,18 +81,36 @@ export function comparisonFrames(timeMs: number, durationMs: number, reduced = f
   ]
   let time = Math.max(0, timeMs) % phases.reduce((sum, phase) => sum + phase.duration, 0)
   for (const phase of phases) {
-    if (time <= phase.duration) return phase.from.map((frame, index) => featureFrameAt(frame, phase.to[index], time / phase.duration * 560))
+    if (time <= phase.duration) return phase.from.map((frame, index) => {
+      const progress=time/phase.duration,placed=featureFrameAt(frame,phase.to[index],progress*560)
+      const moving=phase.from!==phase.to,arc=moving?Math.sin(smoothMotion(progress)*Math.PI)*45:0
+      return {...placed,y:placed.y+arc*(index?-1:1)}
+    })
     time -= phase.duration
   }
   return pair
 }
-export function comparisonSceneClock(scenes: Array<{ startMs: number; durationMs: number; source: { imageId?: string | null }; featureStudy?: FeatureStudy }>, scene: typeof scenes[number], localMs: number) {
+export function comparisonSceneClock(scenes: Array<{ startMs: number; durationMs: number; source: { imageId?: string | null }; featureStudy?: FeatureStudy }>, scene: typeof scenes[number], localMs: number): { timeMs: number; durationMs: number; previousFrame?: Frame } {
   let first = scenes.findIndex(candidate => candidate.startMs === scene.startMs), last = first
   if (first < 0) return { timeMs: localMs, durationMs: scene.durationMs }
   const same = (other: typeof scene) => other.source.imageId === scene.source.imageId && other.featureStudy?.layout === scene.featureStudy?.layout && other.featureStudy?.opening === scene.featureStudy?.opening && other.featureStudy?.topic === scene.featureStudy?.topic && JSON.stringify(other.featureStudy?.images) === JSON.stringify(scene.featureStudy?.images)
   while (first > 0 && same(scenes[first - 1])) first--
   while (last < scenes.length - 1 && same(scenes[last + 1])) last++
-  return { timeMs: scene.startMs + localMs - scenes[first].startMs, durationMs: scenes[last].startMs + scenes[last].durationMs - scenes[first].startMs }
+  const previous = scenes[first - 1]
+  let previousFrame: Frame | undefined
+  if (scene.featureStudy?.layout !== 'compare' && previous?.featureStudy?.layout === 'compare' && !previous.featureStudy.opening && previous.source.imageId === scene.source.imageId) {
+    const clock = comparisonSceneClock(scenes, previous, previous.durationMs)
+    const visible = (frame: Frame) => Math.max(0,Math.min(videoSize.width,frame.x+frame.width)-Math.max(0,frame.x))*Math.max(0,Math.min(videoSize.height,frame.y+frame.height)-Math.max(0,frame.y))
+    previousFrame = comparisonFrames(clock.timeMs,clock.durationMs).reduce((active,frame)=>visible(frame)>visible(active)?frame:active)
+  }
+  return { timeMs: scene.startMs + localMs - scenes[first].startMs, durationMs: scenes[last].startMs + scenes[last].durationMs - scenes[first].startMs, ...(previousFrame ? { previousFrame } : {}) }
+}
+function drawBackgroundRoll(ctx: CanvasRenderingContext2D, width: number, height: number, progress: number, original: (target: CanvasRenderingContext2D) => void, foreground: (target: CanvasRenderingContext2D) => void) {
+  if (progress >= 1) { foreground(ctx); return }
+  original(ctx)
+  drawEditorialFeatheredReveal(ctx, width, height, progress, target => {
+    target.fillStyle = '#fff'; target.fillRect(0, 0, width, height); foreground(target)
+  }, true)
 }
 function requiredPoint(point: Point | undefined, name: string): Point {
   if (!point || !Number.isFinite(point.x) || !Number.isFinite(point.y)) throw new Error(`This feature study needs a detected ${name}.`)
@@ -296,7 +321,7 @@ function drawGuessSpinner(ctx: CanvasRenderingContext2D, y: number, timeMs: numb
   ctx.restore()
 }
 
-function drawFeatureOpening(ctx: CanvasRenderingContext2D, study: FeatureStudy, photos: FeaturePhoto[], localMs: number, durationMs: number, reduced: boolean, clockMs: number, comparisonClock: { timeMs: number; durationMs: number }) {
+function drawFeatureOpening(ctx: CanvasRenderingContext2D, study: FeatureStudy, photos: FeaturePhoto[], localMs: number, durationMs: number, reduced: boolean, clockMs: number, comparisonClock: { timeMs: number; durationMs: number; matteProgress?: number }) {
   const { width } = videoSize
   const smile = study.opening === 'smile-choice'
   const jawWidth = study.opening === 'jaw-width-choice'
@@ -345,29 +370,29 @@ function drawFeatureOpening(ctx: CanvasRenderingContext2D, study: FeatureStudy, 
       ctx.rect(x, Math.max(y, cropTop + (y - cropTop) * reveal), cardWidth, height)
       ctx.clip()
     }
-    if (jawWidth && a?.jawLeft && a.jawRight && photo.landmarks) {
-      const regions = [a.jawLeft, a.jawRight].map(point => ({ ...point, rx: .16, ry: .085 }))
-      const amount = index ? .11 + reveal * .07 : 0
-      const warp: PortraitWarp = { regions, strengths: [-amount, amount], mode: 'drag', axis: 'x' }
-      ctx.save(); ctx.translate(px, py); ctx.scale(scale, scale)
-      if (index) drawPortraitEffects(ctx, photo.image, { landmarks: photo.landmarks, warp })
-      else ctx.drawImage(photo.image, 0, 0)
-      const jawline = photo.landmarks.contours?.jawline
-      if (jawline && reveal > 0) {
-        const unit = 1 / scale
-        applyGlassInk(ctx, unit, 2.5)
-        ctx.setLineDash([unit, 5 * unit])
-        const points = jawline.map(point => warpDestinationPoint(point, warp))
-        ctx.beginPath()
-        for (const [i, point] of points.slice(0, Math.max(2, Math.ceil(points.length * reveal))).entries()) {
-          const x = point.x * photo.image.width, y = point.y * photo.image.height
-          if (i) ctx.lineTo(x, y)
-          else ctx.moveTo(x, y)
-        }
-        ctx.stroke()
+    const warp: PortraitWarp | undefined = jawWidth && a?.jawLeft && a.jawRight ? {
+      regions: [a.jawLeft,a.jawRight].map(point=>({...point,rx:.16,ry:.085})),
+      strengths: index ? [-.11-reveal*.07,.11+reveal*.07] : [0,0], mode:'drag',axis:'x',
+    } : undefined
+    const drawImage = (target: CanvasRenderingContext2D, image: FeaturePhoto['image']) => {
+      if (warp && index && photo.landmarks) drawPortraitEffects(target,image,{landmarks:photo.landmarks,warp})
+      else target.drawImage(image,0,0)
+    }
+    ctx.save(); ctx.translate(px,py); ctx.scale(scale,scale)
+    const matte = Math.max(comparisonClock.matteProgress ?? 0, (cardWidth - pair[index].width) / (width - pair[index].width))
+    if (photo.original) drawBackgroundRoll(ctx,photo.image.width,photo.image.height,matte,target=>drawImage(target,photo.original!),target=>drawImage(target,photo.image))
+    else drawImage(ctx,photo.image)
+    const jawline = photo.landmarks?.contours?.jawline
+    if (warp && jawline && reveal > 0) {
+      const unit=1/scale; applyGlassInk(ctx,unit,2.5); ctx.setLineDash([unit,5*unit])
+      ctx.beginPath()
+      for (const [i,point] of jawline.map(point=>warpDestinationPoint(point,warp)).slice(0,Math.max(2,Math.ceil(jawline.length*reveal))).entries()) {
+        const x=point.x*photo.image.width,y=point.y*photo.image.height
+        if(i)ctx.lineTo(x,y);else ctx.moveTo(x,y)
       }
-      ctx.restore()
-    } else ctx.drawImage(photo.image, px, py, w, h)
+      ctx.stroke()
+    }
+    ctx.restore()
     const bottom = ctx.createLinearGradient(0, y + height - 135, 0, y + height)
     bottom.addColorStop(0, '#ffffff00')
     bottom.addColorStop(1, '#fff')
@@ -402,17 +427,20 @@ function drawFeatureOpening(ctx: CanvasRenderingContext2D, study: FeatureStudy, 
   if (smile) drawGuessSpinner(ctx, maskY + 175, clockMs, (1 - smoothMotion(reveal * 4)) * (1 - expansion), reduced)
 }
 
-export function drawFeatureStudy(ctx: CanvasRenderingContext2D, study: FeatureStudy, photo: FeaturePhoto, variants: FeaturePhoto[], localMs: number, _durationMs: number, reduced: boolean, previous?: FeatureStudy, activity?: PortraitActivity, instrument?: PortraitInstrument, clockMs = localMs, captureMetric?: (ctx: CanvasRenderingContext2D, width: number, height: number, warp?: ReturnType<typeof featureWarp>) => void, comparisonClock = { timeMs: localMs, durationMs: _durationMs }) {
+export function drawFeatureStudy(ctx: CanvasRenderingContext2D, study: FeatureStudy, photo: FeaturePhoto, variants: FeaturePhoto[], localMs: number, _durationMs: number, reduced: boolean, previous?: FeatureStudy, activity?: PortraitActivity, instrument?: PortraitInstrument, clockMs = localMs, captureMetric?: (ctx: CanvasRenderingContext2D, width: number, height: number, warp?: ReturnType<typeof featureWarp>) => void, comparisonClock: { timeMs: number; durationMs: number; previousFrame?: Frame; matteProgress?: number } = { timeMs: localMs, durationMs: _durationMs }) {
   const dark = isDarkVideoContext(ctx), ink = dark ? '#f2eee5' : '#171717', panel = dark ? '#1b1b1b' : '#f5f4f1'
   ctx = originalVideoContext(ctx)
   if (study.layout === 'evidence') {
     const frames = comparisonFrames(comparisonClock.timeMs, comparisonClock.durationMs, reduced)
     frames.forEach((frame, index) => {
-      const sourceWidth = photo.image.width / 2 - 4, sourceX = index * (photo.image.width / 2) + (index ? 4 : 0)
-      const scale = Math.max(frame.width / sourceWidth, frame.height / photo.image.height)
-      const w = sourceWidth * scale, h = photo.image.height * scale
+      const item = variants[index]
+      if (!item) throw new Error('Prepare both before-and-after portraits before rendering their comparison.')
+      const scale = Math.max(frame.width / item.image.width, frame.height / item.image.height)
+      const w = item.image.width * scale, h = item.image.height * scale
+      const expansion = Math.max(0, Math.min(1, (frame.width - featureFrames('compare')[index].width) / (videoSize.width - featureFrames('compare')[index].width)))
       ctx.save(); ctx.beginPath(); ctx.roundRect(frame.x, frame.y, frame.width, frame.height, 22); ctx.clip()
-      ctx.drawImage(photo.image, sourceX, 0, sourceWidth, photo.image.height, frame.x + (frame.width - w) / 2, frame.y + (frame.height - h) / 2, w, h)
+      ctx.translate(frame.x + (frame.width - w) / 2, frame.y + (frame.height - h) / 2); ctx.scale(scale, scale)
+      drawBackgroundRoll(ctx,item.image.width,item.image.height,Math.max(expansion,comparisonClock.matteProgress ?? 0),target=>target.drawImage(item.original ?? item.image,0,0),target=>target.drawImage(item.image,0,0))
       ctx.restore()
       ctx.save(); ctx.fillStyle='#70757b'; ctx.font='400 23px "Mogging Share",Arial,sans-serif'; ctx.textAlign='center'
       ctx.fillText(study.labels?.[index] ?? (index ? 'After' : 'Before'), frame.x + frame.width / 2, Math.min(frame.y + frame.height + 38, videoSize.height - 100))
@@ -432,7 +460,7 @@ export function drawFeatureStudy(ctx: CanvasRenderingContext2D, study: FeatureSt
   }
   const comparing = study.layout === 'compare'
   const frames = comparing ? comparisonFrames(comparisonClock.timeMs, comparisonClock.durationMs, reduced) : featureFrames(study.layout)
-  const prior = comparing && (!previous || previous.layout === 'compare') ? frames : featureFrames(previous?.layout ?? study.layout)
+  const prior = comparisonClock.previousFrame ? [comparisonClock.previousFrame] : comparing && (!previous || previous.layout === 'compare') ? frames : featureFrames(previous?.layout ?? study.layout)
   const progress = reduced ? 1 : smoothMotion(localMs / 560)
   const textureEdit = study.editMode === 'photo'
   const count = Math.max(frames.length, prior.length)
@@ -459,17 +487,23 @@ export function drawFeatureStudy(ctx: CanvasRenderingContext2D, study: FeatureSt
     const clip = featureFrameAt(featureClipFrame(previous?.layout ?? study.layout, from), featureClipFrame(study.layout, target), localMs, reduced)
     const radius = 22 * ((prior.length > 1 ? 1 - progress : 0) + (frames.length > 1 ? progress : 0))
     ctx.beginPath(); ctx.roundRect(clip.x, clip.y, clip.width, clip.height, radius); ctx.clip()
-    if (frames.length > 1) { ctx.fillStyle = panel; ctx.fillRect(frame.x, frame.y, frame.width, frame.height) }
+    if (frames.length > 1) { ctx.fillStyle = comparing ? '#fff' : panel; ctx.fillRect(frame.x, frame.y, frame.width, frame.height) }
     ctx.translate(placement.x, placement.y); ctx.scale(placement.width / item.image.width, placement.height / item.image.height)
     let registeredWarp: PortraitWarp | undefined
-    const drawEdit = (target = ctx) => {
+    const drawEdit = (target = ctx, raw = false) => {
+      const source = raw && photo.original ? { ...photo, image: photo.original } : photo
+      const variant = variants[0] && raw && variants[0].original ? { ...variants[0], image: variants[0].original } : variants[0]
       if (textureEdit) {
-        if (edit && variants[0]) registeredWarp = drawRegisteredEdit(target, photo, variants[0], study.topic, edit)
-        else target.drawImage(item.image, 0, 0)
-      } else if (edit && item.landmarks) drawPortraitEffects(target, item.image, { landmarks: item.landmarks, warp: featureWarp(item.landmarks, study.topic, edit, study.adjustment) })
-      else target.drawImage(item.image, 0, 0)
+        if (edit && variant) registeredWarp = drawRegisteredEdit(target, source, variant, study.topic, edit)
+        else target.drawImage(raw ? item.original ?? item.image : item.image, 0, 0)
+      } else if (edit && item.landmarks) drawPortraitEffects(target, raw ? item.original ?? item.image : item.image, { landmarks: item.landmarks, warp: featureWarp(item.landmarks, study.topic, edit, study.adjustment) })
+      else target.drawImage(raw ? item.original ?? item.image : item.image, 0, 0)
     }
-    if (study.comparison === 'wipe' && edit) {
+    if ((comparing || comparisonClock.previousFrame) && photo.original) {
+      const base = featureFrames('compare')[0].width
+      const expansion = Math.max(0, Math.min(1, ((comparing ? frame.width : comparisonClock.previousFrame!.width) - base) / (videoSize.width - base)))
+      drawBackgroundRoll(ctx,item.image.width,item.image.height,Math.max(comparisonClock.matteProgress ?? 0,comparing ? expansion : Math.max(expansion,progress)),target=>drawEdit(target,true),target=>drawEdit(target))
+    } else if (study.comparison === 'wipe' && edit) {
       ctx.drawImage(item.image, 0, 0)
       const reveal = study.editorial && reduced ? 1 : featureWipeProgress(localMs, _durationMs, reduced)
       if (study.editorial && typeof document !== 'undefined') {
