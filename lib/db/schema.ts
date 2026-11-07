@@ -640,6 +640,8 @@ export const creatorProfiles = pgTable(
     bonusCheckedAt: timestamp('bonus_checked_at', { mode: 'date' }),
     bundledPayouts: boolean('bundled_payouts').notNull().default(false),
     videoStudioAccess: boolean('video_studio_access').notNull().default(false),
+    retainerTerms: jsonb('retainer_terms').$type<import('../creator/retainer').CreatorRetainer>(),
+    studioRequirementsSeenAt: timestamp('studio_requirements_seen_at', { mode: 'date' }),
     authStatus: creatorAuthStatusEnum('auth_status').notNull().default('pending'),
     paymentOption: creatorPaymentOptionEnum('payment_option').notNull().default('paypal'),
     paypalEmail: text('paypal_email'),
@@ -1451,6 +1453,7 @@ export const billingReconciliationState = pgTable('billing_reconciliation_state'
   leaseUntil: timestamp('lease_until', { withTimezone: true }),
   updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
 })
+
 
 export const creatorPrivateStudioWorkspaces = pgTable('creator_private_studio_workspaces', {
   id: text('id').primaryKey(),

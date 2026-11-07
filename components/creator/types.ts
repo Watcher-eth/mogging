@@ -1,4 +1,5 @@
 export type CreatorProfile = {
+  retainerTerms?: import('@/lib/creator/retainer').CreatorRetainer | null
   videoStudioAccess?: boolean
   bundledPayouts?: boolean
   id: string

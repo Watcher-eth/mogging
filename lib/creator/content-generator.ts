@@ -19,6 +19,7 @@ export type CategoryScore = {
 }
 
 export type GeneratorImage = {
+  purpose?: 'reference';
   id: string
   name: string
   dataUrl: string

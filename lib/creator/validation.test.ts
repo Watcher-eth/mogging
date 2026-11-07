@@ -32,13 +32,15 @@ describe('creator input validation', () => {
       expect(creatorProfileSchema.safeParse({ ...profile, paypalMeUrl }).success).toBe(false)
     }
   })
-  test('rejects tampered thresholds, missing confirmation and invalid file metadata', () => {
+  test('validates view counts, confirmations and evidence; services enforce the saved view minimum', () => {
     const input = {sprintId:'00000000-0000-4000-8000-000000000004', formatId:'general', requirementsConfirmed:true, postUrl:'https://www.tiktok.com/@nate/video/123', analyticsVideoUrl:'/test.mp4', analyticsPhysicalRecordingConfirmed:true, analyticsStorageKey:'test', analyticsContentType:'video/mp4', analyticsSizeBytes:100, viewCountThreshold:40000, usAudiencePercent:40}
     expect(creatorSubmissionSchema.safeParse(input).success).toBe(true)
     expect(creatorSubmissionSchema.safeParse({...input, postUrl:'https://www.tiktok.com/@nate/photo/123'}).success).toBe(true)
     expect(creatorSubmissionSchema.safeParse({...input, viewCountThreshold:20000}).success).toBe(true)
     expect(creatorSubmissionSchema.safeParse({...input, viewCountThreshold:5000}).success).toBe(true)
-    for (const patch of [{viewCountThreshold:0}, {viewCountThreshold:4999}, {viewCountThreshold:-1}, {requirementsConfirmed:false}, {analyticsSizeBytes:0}, {analyticsSizeBytes:262144001}, {analyticsPhysicalRecordingConfirmed:false}, {analyticsContentType:'image/png'}, {analyticsContentType:'text/html'}, {usAudiencePercent:101}]) expect(creatorSubmissionSchema.safeParse({...input,...patch}).success).toBe(false)
+    // Zero/low views are syntactically valid for retainers; the service must enforce the creator's actual terms.
+    for (const views of [0,4999]) expect(creatorSubmissionSchema.safeParse({...input,viewCountThreshold:views}).success).toBe(true)
+    for (const patch of [{viewCountThreshold:-1}, {viewCountThreshold:0.5}, {viewCountThreshold:2_000_000_001}, {requirementsConfirmed:false}, {analyticsSizeBytes:0}, {analyticsSizeBytes:262144001}, {analyticsPhysicalRecordingConfirmed:false}, {analyticsContentType:'image/png'}, {analyticsContentType:'text/html'}, {usAudiencePercent:101}]) expect(creatorSubmissionSchema.safeParse({...input,...patch}).success).toBe(false)
   })
 })
 

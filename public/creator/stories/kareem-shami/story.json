@@ -1,0 +1,433 @@
+{
+  "id": "kareem-reverse-glowup",
+  "title": "Play Kareem\u2019s glow-up backwards",
+  "kind": "feature-story",
+  "recording": "/creator/stories/kareem-shami/reverse-glowup-recording.json",
+  "defaultLength": 60,
+  "images": [
+    {
+      "id": "kareem-front",
+      "name": "kareem-front",
+      "dataUrl": "/creator/stories/kareem-shami/front.png",
+      "width": 941,
+      "height": 1672,
+      "status": "ready",
+      "landmarks": null
+    },
+    {
+      "id": "kareem-earlier-hair",
+      "name": "kareem-earlier-hair",
+      "dataUrl": "/creator/stories/kareem-shami/earlier-hair.png",
+      "width": 941,
+      "height": 1672,
+      "status": "ready",
+      "landmarks": null
+    },
+    {
+      "id": "kareem-earlier-hair-glasses",
+      "name": "kareem-earlier-hair-glasses",
+      "dataUrl": "/creator/stories/kareem-shami/earlier-hair-glasses.png",
+      "width": 941,
+      "height": 1672,
+      "status": "ready",
+      "landmarks": null
+    },
+    {
+      "id": "kareem-current-glasses",
+      "name": "kareem-current-glasses",
+      "dataUrl": "/creator/stories/kareem-shami/current-hair-glasses.png",
+      "width": 941,
+      "height": 1672,
+      "status": "ready",
+      "landmarks": null
+    },
+    {
+      "id": "kareem-three-quarter",
+      "name": "kareem-three-quarter",
+      "dataUrl": "/creator/stories/kareem-shami/three-quarter.png",
+      "width": 941,
+      "height": 1672,
+      "status": "ready",
+      "landmarks": null
+    },
+    {
+      "id": "kareem-profile",
+      "name": "kareem-profile",
+      "dataUrl": "/creator/stories/kareem-shami/profile.png",
+      "width": 941,
+      "height": 1672,
+      "status": "ready",
+      "landmarks": null
+    },
+    {
+      "id": "kareem-outfit",
+      "name": "kareem-outfit",
+      "dataUrl": "/creator/stories/kareem-shami/reference-outfit-glasses.png",
+      "width": 941,
+      "height": 1672,
+      "status": "ready",
+      "landmarks": null
+    },
+    {
+      "id": "kareem-history",
+      "name": "Kareem \u00b7 real 2020 / 2023 comparison",
+      "dataUrl": "/creator/stories/kareem-shami/real-before-after-source.jpg",
+      "width": 1600,
+      "height": 960,
+      "status": "ready",
+      "landmarks": null,
+      "purpose": "reference"
+    }
+  ],
+  "imageIds": [
+    "kareem-front",
+    "kareem-earlier-hair",
+    "kareem-earlier-hair-glasses",
+    "kareem-current-glasses",
+    "kareem-three-quarter",
+    "kareem-profile",
+    "kareem-outfit",
+    "kareem-history"
+  ],
+  "portraitImageIds": [
+    "kareem-front",
+    "kareem-three-quarter",
+    "kareem-profile"
+  ],
+  "evidence": {
+    "baselineId": "kareem-front",
+    "comparisonId": "kareem-earlier-hair",
+    "topic": "whole",
+    "revealLabel": "",
+    "revealEdit": 0
+  },
+  "editorialRatings": [
+    {
+      "feature": "overall",
+      "score": 8
+    },
+    {
+      "feature": "proportions",
+      "score": 8
+    },
+    {
+      "feature": "jaw",
+      "score": 8.2
+    },
+    {
+      "feature": "cheeks",
+      "score": 8
+    },
+    {
+      "feature": "brows",
+      "score": 8
+    },
+    {
+      "feature": "eyes",
+      "score": 7.8
+    },
+    {
+      "feature": "nose",
+      "score": 7.5
+    },
+    {
+      "feature": "mouth",
+      "score": 7.6
+    },
+    {
+      "feature": "skin",
+      "score": 7.7
+    },
+    {
+      "feature": "potential",
+      "score": 8.5
+    }
+  ],
+  "alternatives": [],
+  "directions": {
+    "hook": {
+      "kind": "portrait",
+      "imageId": "kareem-history",
+      "categoryId": "proportions",
+      "overlay": "none",
+      "editorial": "context",
+      "featureStudy": {
+        "editorial": true,
+        "topic": "whole",
+        "layout": "evidence",
+        "edit": 0,
+        "editMode": "photo",
+        "motion": "hold",
+        "annotation": "",
+        "images": [],
+        "footnote": "Kareem Shami \u00b7 published comparison / The Guardian",
+        "comparison": "spotlight",
+        "labels": [
+          "2020",
+          "2023"
+        ]
+      }
+    },
+    "reverse": {
+      "kind": "portrait",
+      "imageId": "kareem-front",
+      "categoryId": "proportions",
+      "overlay": "none",
+      "editorial": "context",
+      "featureStudy": {
+        "editorial": true,
+        "topic": "whole",
+        "layout": "hero",
+        "edit": 0,
+        "editMode": "photo",
+        "motion": "push",
+        "annotation": "",
+        "images": [],
+        "footnote": "",
+        "guidesDuringEdit": true
+      },
+      "portraitProgram": {
+        "wordCount": 4,
+        "actions": [
+          {
+            "word": 0,
+            "labelWord": 0,
+            "feature": "whole",
+            "guide": "face:outline",
+            "label": "Face frame",
+            "stroke": "dotted",
+            "treatment": "landmarks"
+          }
+        ]
+      }
+    },
+    "hair": {
+      "kind": "portrait",
+      "imageId": "kareem-front",
+      "categoryId": "proportions",
+      "overlay": "none",
+      "editorial": "context",
+      "featureStudy": {
+        "editorial": true,
+        "topic": "whole",
+        "layout": "hero",
+        "edit": 1,
+        "editMode": "photo",
+        "motion": "pan-left",
+        "annotation": "",
+        "images": [
+          "kareem-earlier-hair"
+        ],
+        "footnote": "Hairstyle illustration",
+        "comparison": "wipe",
+        "guidesDuringEdit": true
+      },
+      "portraitProgram": {
+        "wordCount": 8,
+        "actions": [
+          {
+            "word": 0,
+            "labelWord": 0,
+            "feature": "jaw",
+            "guide": "detail:jaw-outline",
+            "label": "Same jaw",
+            "stroke": "dotted",
+            "treatment": "caliper"
+          }
+        ]
+      }
+    },
+    "glasses": {
+      "kind": "portrait",
+      "imageId": "kareem-earlier-hair",
+      "categoryId": "proportions",
+      "overlay": "none",
+      "editorial": "context",
+      "featureStudy": {
+        "editorial": true,
+        "topic": "whole",
+        "layout": "hero",
+        "edit": 1,
+        "editMode": "photo",
+        "motion": "push",
+        "annotation": "",
+        "images": [
+          "kareem-earlier-hair-glasses"
+        ],
+        "footnote": "Accessory illustration",
+        "comparison": "wipe",
+        "guidesDuringEdit": true
+      },
+      "portraitProgram": {
+        "wordCount": 7,
+        "actions": [
+          {
+            "word": 0,
+            "labelWord": 0,
+            "feature": "brows",
+            "guide": "detail:brow-outline",
+            "label": "New framing",
+            "stroke": "dotted",
+            "treatment": "landmarks"
+          }
+        ]
+      }
+    },
+    "history": {
+      "kind": "portrait",
+      "imageId": "kareem-history",
+      "categoryId": "proportions",
+      "overlay": "none",
+      "editorial": "context",
+      "featureStudy": {
+        "editorial": true,
+        "topic": "whole",
+        "layout": "evidence",
+        "edit": 0,
+        "editMode": "photo",
+        "motion": "hold",
+        "annotation": "",
+        "images": [],
+        "footnote": "Kareem Shami \u00b7 published comparison / The Guardian",
+        "comparison": "spotlight",
+        "labels": [
+          "2020",
+          "2023"
+        ]
+      }
+    },
+    "hair-return": {
+      "kind": "portrait",
+      "imageId": "kareem-earlier-hair-glasses",
+      "categoryId": "proportions",
+      "overlay": "none",
+      "editorial": "context",
+      "featureStudy": {
+        "editorial": true,
+        "topic": "whole",
+        "layout": "hero",
+        "edit": 1,
+        "editMode": "photo",
+        "motion": "pull",
+        "annotation": "",
+        "images": [
+          "kareem-current-glasses"
+        ],
+        "footnote": "Hairstyle illustration",
+        "comparison": "wipe",
+        "guidesDuringEdit": true
+      },
+      "portraitProgram": {
+        "wordCount": 18,
+        "actions": [
+          {
+            "word": 0,
+            "labelWord": 0,
+            "feature": "whole",
+            "guide": "face:outline",
+            "label": "Face frame",
+            "stroke": "dotted",
+            "treatment": "landmarks"
+          },
+          {
+            "word": 9,
+            "labelWord": 9,
+            "feature": "cheeks",
+            "guide": "detail:cheek-frame",
+            "label": "Cheekbone width",
+            "stroke": "dotted",
+            "treatment": "mesh"
+          }
+        ]
+      }
+    },
+    "glasses-off": {
+      "kind": "portrait",
+      "imageId": "kareem-current-glasses",
+      "categoryId": "proportions",
+      "overlay": "none",
+      "editorial": "context",
+      "featureStudy": {
+        "editorial": true,
+        "topic": "whole",
+        "layout": "hero",
+        "edit": 1,
+        "editMode": "photo",
+        "motion": "pan-right",
+        "annotation": "",
+        "images": [
+          "kareem-front"
+        ],
+        "footnote": "Accessory illustration",
+        "comparison": "wipe",
+        "guidesDuringEdit": true
+      },
+      "portraitProgram": {
+        "wordCount": 18,
+        "actions": [
+          {
+            "word": 0,
+            "labelWord": 0,
+            "feature": "brows",
+            "guide": "detail:brow-outline",
+            "label": "Brow frame",
+            "stroke": "dotted",
+            "treatment": "landmarks"
+          },
+          {
+            "word": 9,
+            "labelWord": 9,
+            "feature": "jaw",
+            "guide": "detail:jaw-outline",
+            "label": "Same jaw",
+            "stroke": "dotted",
+            "treatment": "landmarks"
+          }
+        ]
+      }
+    },
+    "score": {
+      "kind": "report",
+      "imageId": "kareem-front",
+      "categoryId": "proportions",
+      "overlay": "category",
+      "focus": "scores",
+      "portraitProgram": {
+        "wordCount": 21,
+        "actions": [
+          {
+            "word": 0,
+            "labelWord": 0,
+            "feature": "cheeks",
+            "guide": "detail:cheek-frame",
+            "label": "Cheekbone frame",
+            "stroke": "dotted",
+            "treatment": "landmarks"
+          }
+        ]
+      }
+    },
+    "close": {
+      "kind": "report",
+      "imageId": "kareem-front",
+      "categoryId": "proportions",
+      "overlay": "category",
+      "focus": "feature:editorial.jaw",
+      "closingReport": true,
+      "portraitProgram": {
+        "wordCount": 25,
+        "actions": [
+          {
+            "word": 0,
+            "labelWord": 0,
+            "feature": "cheeks",
+            "guide": "detail:cheek-frame",
+            "label": "Cheekbone frame",
+            "stroke": "dotted",
+            "treatment": "landmarks"
+          }
+        ]
+      }
+    }
+  }
+}

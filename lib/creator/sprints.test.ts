@@ -1,3 +1,7 @@
+import { creatorRetainerSchema, creatorRetainerTerms } from './retainer'
+import { minimumSubmissionViews } from './validation'
+import { hasLaunchCampaignBonuses } from './campaign-launch'
+import { getSubmissionPayoutEstimate } from '@/lib/admin/submission-payout'
 import { campaignHasAudienceBands, defaultCreatorSprintTerms } from './sprint-defaults'
 import { expect, test } from 'bun:test'
 import {
@@ -318,4 +322,42 @@ test('Custom-only historical campaigns inherit the shared rules when no General 
   const items = sprintReviewItems(saved, 'custom-video-v1')
   expect(items.some(item => item.label.includes('Tom Welling'))).toBe(true)
   expect(items.some(item => item.label.includes('Engagement farms'))).toBe(true)
+})
+
+const retainerAgreement = { id: '4f731d5c-0c37-4f97-a168-4fa6b7b922f9', amountCents: 1000, minimumTier1Percent: 22.5,
+  startsAt: '2026-10-31T22:00:00.000Z', endsAt: '2026-11-10T22:00:00.000Z' }
+const retainerStart = new Date(retainerAgreement.startsAt)
+test('retainer pays exactly $10 from zero views at Tier B and above, using the same admin and campaign payout calculation', () => {
+  const original = defaultCreatorSprintTerms()
+  const terms = creatorRetainerTerms(original, retainerAgreement, retainerStart)
+  expect(sprintTermsSchema.safeParse(terms).success).toBe(true)
+  expect(minimumSubmissionViews(terms)).toBe(0)
+  for (const views of [0,1,5000,100000,10000000]) {
+    for (const audience of [22.5,30,40,100]) {
+      expect(sprintPayoutCents(terms,views,audience)).toBe(1000)
+      expect(getSubmissionPayoutEstimate({viewCountThreshold:views,usAudiencePercent:audience},{sprintTerms:terms})?.payout).toBe(10)
+    }
+    for (const audience of [null,0,15,22.49]) expect(sprintPayoutCents(terms,views,audience)).toBe(0)
+  }
+  expect(hasLaunchCampaignBonuses({sprintId:'campaign',sprintTerms:{...terms,bonusBudgetCents:5000}})).toBe(false)
+  expect(original).toEqual(defaultCreatorSprintTerms())
+})
+test('retainer activation and expiry only affect new submissions; saved earnings survive the ten-day cutoff', () => {
+  const original = defaultCreatorSprintTerms()
+  const before = new Date(+retainerStart-1),end = new Date(retainerAgreement.endsAt)
+  expect(creatorRetainerTerms(original,retainerAgreement,before)).toBe(original)
+  const saved = creatorRetainerTerms(original,retainerAgreement,new Date(+end-1))
+  expect(creatorRetainerTerms(original,retainerAgreement,end)).toBe(original)
+  expect(creatorRetainerTerms(original,null,retainerStart)).toBe(original)
+  expect(sprintPayoutCents(saved,0,22.5)).toBe(1000)
+  expect(minimumSubmissionViews(original)).toBeGreaterThan(0)
+  expect(sprintPayoutCents(original,0,40)).toBe(0)
+})
+test('invalid or inconsistent retainer agreements cannot silently create an unrestricted rate', () => {
+  const original = defaultCreatorSprintTerms()
+  expect(creatorRetainerSchema.safeParse({...retainerAgreement,endsAt:retainerAgreement.startsAt}).success).toBe(false)
+  expect(creatorRetainerTerms(original,{...retainerAgreement,amountCents:-1},retainerStart)).toBe(original)
+  expect(sprintTermsSchema.safeParse({...original,milestones:[{views:0,amountCents:1000}]}).success).toBe(false)
+  const valid = creatorRetainerTerms(original,retainerAgreement,retainerStart)
+  expect(sprintTermsSchema.safeParse({...valid,milestones:[{views:0,amountCents:5000}]}).success).toBe(false)
 })

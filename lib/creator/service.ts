@@ -1,4 +1,5 @@
 import { queuedAudienceCheck } from './audience-check'
+import { creatorRetainerTerms } from './retainer'
 import { lockCampaignBudget, requireSubmissionBudget } from './campaign-budget-service'
 import { requestedIncrementCents } from './campaign-budget-state'
 import { canSeeCampaign } from './campaign-access'
@@ -379,7 +380,8 @@ export async function createCreatorSubmission(userId: string, input: CreatorSubm
   const sprint = await db.query.creatorSprints.findFirst({ where: eq(schema.creatorSprints.id, input.sprintId) })
   if (!sprint || sprintPhase({ ...sprint, startsAt: sprint.startsAt.toISOString(), endsAt: sprint.endsAt.toISOString() }) !== 'active') throw new CreatorServiceError(409, 'Choose an active campaign')
   if (!canSeeCampaign(sprint.audience, profile.id)) throw new CreatorServiceError(404, 'Campaign not found')
-  if (input.viewCountThreshold < minimumSubmissionViews(sprint.terms)) throw new CreatorServiceError(400, `This campaign requires at least ${minimumSubmissionViews(sprint.terms).toLocaleString('en-US')} views`)
+  const terms = creatorRetainerTerms(sprint.terms, profile.retainerTerms)
+  if (input.viewCountThreshold < minimumSubmissionViews(terms)) throw new CreatorServiceError(400, `This campaign requires at least ${minimumSubmissionViews(terms).toLocaleString('en-US')} views`)
   const format = sprintFormat(sprint.terms, input.formatId)
   if (!format) throw new CreatorServiceError(400, 'Choose a format offered by this campaign')
   if (!sprint.terms.platforms.includes(creatorPostPlatform(input.postUrl)!)) throw new CreatorServiceError(400, 'This platform is not accepted by the campaign')
@@ -401,12 +403,14 @@ export async function createCreatorSubmission(userId: string, input: CreatorSubm
       if (!input.postedAt && !draft.postedAt) throw new CreatorServiceError(400, 'Add this post’s publication time')
       if (!code || !captionContainsCreatorCode(input.caption || draft.caption || '', code.slug)) throw new CreatorServiceError(400, 'Include the prepared post’s exact creator code in its published caption')
     }
-    await requireSubmissionBudget(tx, sprint.id, sprintPayoutCents(draft?.sprintTerms || sprint.terms, input.viewCountThreshold, input.usAudiencePercent))
+    const submissionTerms = creatorRetainerTerms(draft?.sprintTerms || sprint.terms, profile.retainerTerms)
+    if (input.viewCountThreshold < minimumSubmissionViews(submissionTerms)) throw new CreatorServiceError(400, 'The submission minimum changed. Refresh the campaign before submitting.')
+    await requireSubmissionBudget(tx, sprint.id, sprintPayoutCents(submissionTerms, input.viewCountThreshold, input.usAudiencePercent))
     const values = {
       creatorProfileId: profile.id,
       socialAccountId: socialAccount?.id || null,
       sprintId: sprint.id,
-      sprintTerms: draft?.sprintTerms || sprint.terms,
+      sprintTerms: submissionTerms,
       formatId: format.id,
       requirementsConfirmedAt: new Date(),
       title: format.name,

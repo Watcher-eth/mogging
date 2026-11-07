@@ -42,6 +42,7 @@ export type AdminCreatorWarning = {
 }
 
 export type AdminCreator = {
+  retainerTerms?: import('@/lib/creator/retainer').CreatorRetainer | null
   videoStudioAccess?: boolean
   bundledPayouts?: boolean
   id: string

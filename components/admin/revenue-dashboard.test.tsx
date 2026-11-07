@@ -155,7 +155,17 @@ test('combined USD headlines and stream breakdown use the same international tot
   data.revenueComparison!.push({currency:'USD_TOTAL',current_gross:48.693,previous_gross:49.882,current_net:48.693,previous_net:49.882,current_new_customers:6,missing_amount_events:0})
   data.revenueStreamComparison!.push({source:'Apple App Store',currency:'USD_TOTAL',current_net:33.713,previous_net:49.882,current_gross:33.713},
     {source:'Stripe',currency:'USD_TOTAL',current_net:14.98,previous_net:0,current_gross:14.98})
+  data.revenueSources = [
+    { source:'Apple App Store',currency:'EUR',comparable_usd:33.713,missing_usd_events:0 },
+    { source:'Apple App Store',currency:'USD_TOTAL',comparable_usd:33.713,missing_usd_events:0 },
+    { source:'Stripe',currency:'USD',comparable_usd:14.98,missing_usd_events:0 },
+    { source:'Stripe',currency:'USD_TOTAL',comparable_usd:null,missing_usd_events:1 },
+  ]
   const html=renderToStaticMarkup(<RevenueDashboard data={data} days={1} />)
+  const combined = html.slice(html.indexOf('Combined recorded')).split('</tr>')[0]
+  expect(combined).toContain('$48.69')
+  expect(combined).not.toContain('(partial)')
+  expect(html).not.toContain('$82.41')
   expect(html).toContain('Total gross collections')
   expect(html).toContain('>$48.69</p>')
   expect(html).toContain('$33.71')

@@ -51,7 +51,7 @@ test('a complete five-beat story keeps its payoff instead of rejecting an arbitr
 
 test('editorial ratings expose only approved grades without inheriting provider or potential scores',()=>{
  const ratings=[{feature:'brows',score:8},{feature:'jaw',score:7.3}]
- expect(editorialRatingReports(ratings).map(report=>[report.id,report.score,report.subtitle])).toEqual([['brows',8,'Creator rating'],['jaw',7.3,'Creator rating']])
+ expect(editorialRatingReports(ratings).map(report=>[report.id,report.score,report.subtitle])).toEqual([['brows',8,'Brows'],['jaw',7.3,'Jaw & chin']])
  const input=editorialRatingInput({overallScore:'7.5',potentialScore:'8',potentialCurrentScore:7,potentialScale:8} as Parameters<typeof editorialRatingInput>[0],'',ratings)
  expect(input.overallScore).toBe('');expect(input.potentialScore).toBe('');expect(input.potentialCurrentScore).toBeUndefined()
  expect(input.strongestScore).toBe('8');expect(input.opportunityScore).toBe('7.3')

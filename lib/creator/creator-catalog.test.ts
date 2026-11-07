@@ -3,7 +3,7 @@ import { isVideoCta } from './video-branding'
 import { portraitEffectsLab, subjectStudies } from './video-subject-studies'
 import { videoSize } from './video-layout'
 import { expect, test } from 'bun:test'
-import { creatorSubjects, creatorSubjectPhotos, creatorVideoStyles, creatorStyleDirections, customVideoExample, validateCreatorPhotos } from './creator-catalog'
+import { creatorSubjects, creatorSubjectPhotos, creatorVideoStyles, creatorContentStyles, creatorContentStyle, contentStyleSupportsScript, creatorStyleDirections, customVideoExample, validateCreatorPhotos } from './creator-catalog'
 import { compileAnalysisVideo, parseComposition, type VideoComposition } from './video-composition'
 import { scriptToPlan } from './script-edit'
 import { scriptWords } from './video-script'
@@ -148,13 +148,15 @@ test('recorded stories retain measured audio and saved photo scores across the e
   const { createHash } = await import('node:crypto')
   const read = (path: string) => JSON.parse(readFileSync(`public${path}`, 'utf8'))
   for (const subject of creatorSubjects) {
-    const story = read(`/creator/stories/${subject.id}/story.json`), saved = restoreProductionRecording(read(story.recording))
-    const analysis = creatorSubjectAnalysisSchema.parse(read(story.analysis))
+    const catalog = read(`/creator/stories/${subject.id}/story.json`)
+    const analysis = creatorSubjectAnalysisSchema.parse(read(catalog.analysis))
     expect(analysis.subjectId).toBe(subject.id)
-    const options=creatorStoryOptions(story)
-    expect(options[0].id).toBe(story.id)
+    const options=creatorStoryOptions(catalog)
+    expect(options[0].id).toBe(catalog.id)
     const recording = ['johnson', 'trump', 'zendaya'].includes(subject.id) ? 'recording.json' : 'round3-recording.json'
-    expect(options[0].recording).toBe(`/creator/stories/${subject.id}/${recording}`)
+    const legacy = options.find(option => option.recording === `/creator/stories/${subject.id}/${recording}`)!
+    const story = { ...catalog, ...legacy, featureOpening: legacy.featureOpening }
+    const saved = restoreProductionRecording(read(legacy.recording!))
     expect(analysis.source.imageId).toBe(story.images[0].id)
     expect(productionWritingBrief(saved.script, analysis).subjectAnalysis?.source.sha256).toBe(analysis.source.sha256)
     const reports = creatorAnalysisReports(analysis), actual = creatorAnalysisInput(input, subject.name, analysis)
@@ -231,7 +233,7 @@ test('new score stories bind narrated categories to saved scores and keep all fo
     }
     const signatures = new Set<string>()
     for (const style of existingStyles) {
-      const story = { ...manifest, ...next }
+      const story = { ...manifest, ...next, featureOpening: next.featureOpening }
       const directions = creatorStoryDirections(story, script, actual, manifest.images, reports, style.id, 0)
       const video = compileProductionVideo(script, actual, manifest.images, reports, style.id, draft.voice, 0, 'philtrum', 1, directions)
       expect(narrationText(video)).toBe(script.cues.map(cue => cue.text).join('\n\n'))
@@ -296,7 +298,10 @@ test('approved editorial images and crop reveals survive all five styles without
   const {showsFeatureMetric}=await import('./report-choreography')
   const read=(url:string)=>JSON.parse(readFileSync(`public${url}`,'utf8'))
   for(const subject of creatorSubjects.slice(0,6)){
-    const base=read(`/creator/stories/${subject.id}/story.json`),saved=restoreProductionRecording(read(base.recording)),analysis=read(base.analysis)
+    const manifest=read(`/creator/stories/${subject.id}/story.json`)
+    const round3=manifest.alternatives?.find((option:{id:string})=>option.id.endsWith('-round3'))
+    const base=round3 ? {...manifest,...round3,featureOpening:undefined} : manifest
+    const saved=restoreProductionRecording(read(base.recording)),analysis=read(base.analysis)
     const images=base.imageIds.map((id:string)=>base.images.find((image:{id:string})=>image.id===id))
     const reports=creatorAnalysisReports(analysis),actual=creatorAnalysisInput(input,subject.name,analysis)
     expect(productionCut(saved.script,45).cues.map(cue=>cue.text)).toEqual(saved.script.cues.map(cue=>cue.text))
@@ -305,7 +310,7 @@ test('approved editorial images and crop reveals survive all five styles without
       const comp=compileProductionVideo(saved.script,actual,images,reports,style.id,saved.voice,0,'philtrum',1,directions)
       for(const scene of comp.scenes){
         for (const action of scene.portraitProgram?.actions ?? []) {
-          expect(action.guide.includes(':')).toBe(true)
+          expect(/[.:]/.test(action.guide)).toBe(true)
           expect(action.label).not.toMatch(/[0-9]/)
           expect(action.word).toBeLessThan(scene.portraitProgram!.wordCount)
         }
@@ -368,4 +373,58 @@ test('media crop checks account for portrait extraction, feature crops and camer
   expect(() => requireUsableMedia(asset)).toThrow('authenticated creator URL')
   expect(() => requireUsableMedia({ ...asset, url: '/api/creator/media/source' })).not.toThrow()
   expect(() => requireUsableMedia({ ...asset, url: '/api/creator/media/source', source: { ...asset.source, usage: 'review' } })).toThrow('Review usage rights')
+})
+
+test('authored cue annotations remain valid when the narrator section splits into caption scenes', async () => {
+  const { readFileSync } = await import('node:fs')
+  const { creatorAnalysisInput, creatorAnalysisReports, creatorStoryDirections } = await import('./creator-stories')
+  const { editorialRatingInput, editorialRatingReports } = await import('./private-character')
+  const { restoreProductionRecording, compileProductionVideo } = await import('./video-production')
+  const { scriptTokens } = await import('./video-script')
+  const read = (url: string) => JSON.parse(readFileSync(`public${url}`, 'utf8'))
+  for (const person of ['v', 'kareem-shami']) {
+    const story = read(`/creator/stories/${person}/story.json`)
+    const saved = restoreProductionRecording(read(story.recording))
+    const analysis = story.analysis ? read(story.analysis) : undefined
+    const actual = story.editorialRatings ? editorialRatingInput(input, person, story.editorialRatings) : creatorAnalysisInput(input, person, analysis)
+    const reports = story.editorialRatings ? editorialRatingReports(story.editorialRatings, story.images[0].id) : creatorAnalysisReports(analysis)
+    const images = story.imageIds.map((id: string) => story.images.find((image: {id: string}) => image.id === id))
+    const directions = creatorStoryDirections(story, saved.script, actual, images, reports, 'feature-study', 0)
+    const video = compileProductionVideo(saved.script, actual, images, reports, 'feature-study', saved.voice, 0, 'philtrum', 1, directions)
+    expect(video.scenes.length).toBeGreaterThan(saved.script.cues.length)
+    for (const scene of video.scenes) for (const action of scene.portraitProgram?.actions ?? []) {
+      expect(action.word).toBeLessThan(scriptTokens(scene.narration).length)
+    }
+  }
+})
+
+
+test('content styles partition editing recipes and Qoves only offers story scripts',()=>{
+  expect(creatorContentStyles.map(style=>style.name)).toEqual(['Mogging Editorial','Qoves','Fern'])
+  expect(creatorContentStyles.flatMap(style=>[...style.recipes]).toSorted()).toEqual(creatorVideoStyles.map(style=>style.id).toSorted())
+  expect(creatorContentStyle('report-led').id).toBe('mogging-editorial')
+  expect(creatorContentStyle('feature-study').id).toBe('qoves')
+  expect(creatorContentStyle('documentary-studio').id).toBe('fern')
+  const choices=[{kind:'feature-story'},{kind:'score-walkthrough'},{}]
+  expect(choices.filter(story=>contentStyleSupportsScript('qoves',story))).toEqual([choices[0],choices[2]])
+  for(const id of ['mogging-editorial','fern'] as const)expect(choices.every(story=>contentStyleSupportsScript(id,story))).toBe(true)
+})
+
+test('all content style recipes retain a saved story and its photo edits without overriding ordinary shot grammar',async()=>{
+  const {editorialRatingInput,editorialRatingReports}=await import('./private-character')
+  const {creatorStoryDirections}=await import('./creator-stories')
+  const {restoreProductionRecording,compileProductionVideo}=await import('./video-production')
+  const story=await Bun.file('public/creator/stories/kareem-shami/story.json').json()
+  const saved=restoreProductionRecording(await Bun.file('public'+story.recording).json())
+  const actual=editorialRatingInput(input,'Kareem Shami',story.editorialRatings),reports=editorialRatingReports(story.editorialRatings,story.images[0].id)
+  for(const recipe of creatorVideoStyles.map(style=>style.id)){
+    const directions=creatorStoryDirections(story,saved.script,actual,story.images,reports,recipe,0)
+    const video=compileProductionVideo(saved.script,actual,story.images,reports,recipe,saved.voice,0,'philtrum',1,directions)
+    expect(video.recipe).toBe(recipe);expect(video.script).toEqual(saved.script)
+    if(recipe==='report-led'){
+      expect(video.scenes.some(scene=>scene.source.kind==='report')).toBe(true)
+      expect(video.scenes.some(scene=>scene.scriptRange?.cueId===saved.script.cues.find(cue=>cue.sourceId==='hair')?.id&&scene.featureStudy?.edit===1)).toBe(true)
+    }
+    if(recipe==='feature-study')expect(video.scenes.some(scene=>scene.featureStudy?.editorial)).toBe(true)
+  }
 })

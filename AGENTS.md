@@ -28,3 +28,9 @@ Backend work should at minimum check `.agents/next-best-practices` before implem
 Preserve the established caption animation. Use Torph for new smooth text/value replacements and deterministic segment matching in Canvas exports. Keep documentary experiments scoped to their selected format. Face guides use translucent glass strokes and frosted surfaces, with no black under-strokes or dark edge shadows.
 
 Every Creator Studio script and style uses the shared 1080 × 1920 (9:16) preview canvas and MP4 export size. The simulator models the TikTok Studio Feed composer with a 9:19.5 phone, a 10% bottom navigation area, and centered cover cropping that preserves the video aspect ratio. Keep the compact scan invitation immediately under the status/notch area and photographic captions below the feed header. Report/app UI fills the video and retains bottom captions; keep its important readouts clear of TikTok controls. Preserve existing characters, scripts and recordings.
+
+Two-photo video comparisons use a shared continuous camera: expand one photograph within 3.5 seconds, push its neighbour offscreen, return to the pair, then expand the other. Keep the motion continuous through caption and reveal-phase cuts; preserve masks and reveal timing.
+
+Photo expansions remove backgrounds with a soft rolling reveal on the same motion clock. Photograph changes pan and zoom through a shared spatial canvas with varied heights and directions; keep captions stationary and preserve report/documentary handoffs.
+
+Creator video content styles are Mogging Editorial (portrait-audit, report-led, measurement-explainer, hybrid-story), Qoves (feature-study; story scripts only), and Fern (documentary-studio). Derive the content style from the selected recipe; loading people or scripts must preserve it. Reuse the campaign examples carousel for style previews. Fern fits its camera to native image detail instead of relaxing resolution checks.

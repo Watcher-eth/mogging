@@ -1,3 +1,4 @@
+import {TimeBars} from './time-bars'
 import { AnalyticsLink as Link } from './analytics-link'
 import { useState } from 'react'
 import { Disclosure, DisclosureSummary, AccordionContent } from '@/components/ui/accordion'
@@ -49,6 +50,7 @@ function MetricChange({ current, previous, days, unavailable = false, lowerIsBet
 
 export function RevenueDashboard({ data, days }: { data: AnalyticsDashboard; days: number }) {
   const [selectedCurrency, setSelectedCurrency] = useState('')
+  const [selectedMetric,setSelectedMetric]=useState('net')
   const currencies = [...new Set([...(data.revenueTotals ?? []), ...(data.revenue ?? [])].map(row => String(row.currency)))].sort((a, b) => a === b ? 0 : a === TOTAL_USD ? -1 : b === TOTAL_USD ? 1 : a === 'USD' ? -1 : b === 'USD' ? 1 : a.localeCompare(b))
   const currency = currencies.includes(selectedCurrency) ? selectedCurrency : currencies[0] ?? ''
   const lifetime = data.revenueTotals?.find(row => row.currency === currency)
@@ -64,7 +66,7 @@ export function RevenueDashboard({ data, days }: { data: AnalyticsDashboard; day
   const stripeCoveredThrough = Number.isFinite(stripeCoverageSeconds) && stripeCoverageSeconds > 0
     ? new Date(stripeCoverageSeconds * 1000).toISOString() : null
   const incomplete = Number(reporting?.missing_amount_events ?? 0)
-  const rows = (data.revenueDaily ?? []).filter(row => row.currency === currency).map((row): MetricRow => ({ ...row, proceeds: data.revenueProceedsDaily?.find(p => p.day === row.day && p.currency === currency)?.proceeds ?? null }))
+  const rows = (data.revenueDaily ?? []).filter(row => row.currency === currency).map((row): MetricRow => ({ ...row, proceeds: data.revenueProceedsDaily?.find(p => p.day === row.day && p.currency === currency)?.proceeds ?? (row.net != null && Number(row.net) === 0 && Number(row.missing_amount_events) === 0 ? 0 : null) }))
   const financials = data.revenueFinancials?.find(row => row.currency === currency)
   const state = data.revenueSubscriptionOverview?.[0]
   const starting = Number(state?.starting_subscriptions ?? 0)
@@ -103,6 +105,26 @@ export function RevenueDashboard({ data, days }: { data: AnalyticsDashboard; day
   const missingConversions = Number(period?.missing_amount_events ?? 0)
   const currencyCode = currency === TOTAL_USD ? 'USD' : currency
 
+  const sourceRevenue = (data.revenueSources ?? []).filter(row => row.currency !== TOTAL_USD)
+  const sourceMrr = data.revenueSubscriptionMrr ?? []
+  const channels = [
+    { label: 'RevenueCat stores', matches: (source: unknown) => source !== 'Stripe' },
+    { label: 'Stripe', matches: (source: unknown) => source === 'Stripe' },
+    { label: 'Combined recorded', matches: () => true },
+  ].map(({ label, matches }) => {
+    const revenue = sourceRevenue.filter(row => matches(row.source))
+    const mrr = sourceMrr.filter(row => matches(row.source))
+    const missingUsd = revenue.reduce((total, row) => total + Number(row.missing_usd_events ?? 0), 0)
+    const missingMrr = mrr.reduce((total, row) => total + Number(row.missing_mrr_usd_subscriptions ?? 0), 0)
+    const revenueUsd = revenue.reduce((total, row) => total + Number(row.comparable_usd ?? 0), 0)
+    const mrrUsd = mrr.reduce((total, row) => total + Number(row.active_mrr_usd ?? 0), 0)
+    const partial = (value: number, missing: number, available: boolean) => available ? `${amount(value, 'USD')}${missing ? ' (partial)' : ''}` : '—'
+    return { channel: label,
+      revenue_after_refunds_usd: partial(revenueUsd, missingUsd, revenue.some(row => row.comparable_usd != null)),
+      active_mrr_usd: partial(mrrUsd, missingMrr, mrr.some(row => row.active_mrr_usd != null)),
+      events_missing_usd: missingUsd, subscriptions_missing_usd_mrr: missingMrr }
+  })
+
   return <>
     <div className="mb-5 flex flex-wrap items-center justify-between gap-4">
       <p className="text-xs leading-5 text-zinc-500">{days === 1 ? 'Last 24 hours' : `Last ${days} days`} · All platforms · Pacific time · Provider-confirmed payments</p>
@@ -113,6 +135,10 @@ export function RevenueDashboard({ data, days }: { data: AnalyticsDashboard; day
     {currency === TOTAL_USD && missingConversions > 0 ? <Notice>{count(missingConversions)} payments lack a recorded USD amount or provider conversion. The displayed total is a known minimum; original amounts are retained below.</Notice> : null}
     {currency === 'UNKNOWN' ? <Notice>These billing records do not identify a currency. Their amounts cannot be combined with other currency totals.</Notice> : null}
     {!currency ? <Notice>No verified monetary billing records are available. Subscription access is reported separately below.</Notice> : null}
+    <Panel title="Revenue and MRR by billing channel" description="USD comparison · revenue for the selected period · MRR at the latest snapshot"
+      note="Revenue is recorded payments after refunds, before fees and taxes. Active MRR includes paid subscriptions through expiry, even when renewal is off. RevenueCat uses its recorded USD amounts. Stripe contributes USD charges and subscriptions. Partial figures omit records without a USD amount.">
+      <Table rows={channels} columns={['channel', 'revenue_after_refunds_usd', 'active_mrr_usd', 'events_missing_usd', 'subscriptions_missing_usd_mrr']} />
+    </Panel>
     <div className="admin-stats-grid xl:!grid-cols-5">
       <Stat title={currency === TOTAL_USD ? "Total gross collections" : `Gross · ${currency} purchases`} change={change('gross', currency)} value={amount(period?.gross, currency)} note={missingConversions ? `${count(missingConversions)} payments lack an amount or USD conversion · known minimum` : "All recorded payments before refunds, fees and taxes"} />
       <Stat title="Refunds and deductions" change={change('refunds', currency, true)} value={amount(period?.refunds, currency)} note="Selected period · recorded negative billing amounts" />
@@ -126,10 +152,10 @@ export function RevenueDashboard({ data, days }: { data: AnalyticsDashboard; day
     {currency ? <p className="mb-5 text-sm leading-6 text-zinc-500">{comparisonText(comparison?.current_net, comparison?.previous_net, currency, Number(comparison?.missing_amount_events ?? 0) > 0 || missingPurchases > 0)}{comparison ? ` · Previous after refunds: ${amount(comparison.previous_net, currency)} · equal ${days === 1 ? '24-hour' : `${days}-day`} windows` : ''}</p> : null}
     {currency && !recorded ? <p className="mb-5 text-xs text-zinc-500">No billing events were recorded in {currencyLabel} during this period. Period totals show recorded zero activity; all-time totals retain earlier history.</p> : null}
     {Number(period?.unidentified_payments ?? 0) > 0 ? <p className="mb-5 text-xs text-zinc-500">{count(period?.unidentified_payments)} positive payment records have no customer identifier and are excluded from the customer count.</p> : null}
-    <Panel title="Revenue performance" description={`${days === 1 ? 'Hourly' : 'Daily'} billing activity · ${currencyLabel || 'No currency available'}`}
-      note="Source: deduplicated, production provider-confirmed billing events. After refunds means recorded positive payments less negative adjustments, before platform fees and transaction taxes. Estimated proceeds additionally deduct the displayed fee and tax assumptions. These billing-event totals are not business profit, MRR or ARR. Known internal accounts and sandbox billing are excluded. Revenue follows billing-event time in Pacific time; boundary buckets are partial. Missing buckets are omitted. Unknown amounts remain excluded rather than estimated. Paying customers are distinct account identities, or provider-scoped external identities where account linking is missing; cross-provider unlinked identities can represent the same person.">
-      <AnalyticsChart title="Revenue performance" rows={rows} metrics={revenueMetrics} days={days} currency={currencyCode || undefined} />
-      <DataDetails><Table rows={rows.map(row => ({ ...row, gross: amount(row.gross, currency), refunds: amount(row.refunds, currency), net: amount(row.net, currency) }))} columns={['day', 'gross', 'refunds', 'net', 'missing_amount_events']} /></DataDetails>
+    <Panel title="Revenue per day" action={<AnalyticsSelect label="Daily metric" value={selectedMetric} onChange={setSelectedMetric} options={revenueMetrics.map(m=>({value:m.key,label:m.label}))}/>} description={`${days === 1 ? 'Hourly' : 'Daily'} billing activity · ${currencyLabel || 'No currency available'}`}
+      note="Source: deduplicated, production provider-confirmed billing events. After refunds means recorded positive payments less negative adjustments, before platform fees and transaction taxes. Estimated proceeds additionally deduct the displayed fee and tax assumptions. These billing-event totals are not business profit, MRR or ARR. Known internal accounts and sandbox billing are excluded. Revenue follows billing-event time in Pacific time; boundary buckets are partial. Calendar buckets with no recorded monetary events show zero; this does not guarantee provider coverage. Unknown amounts remain excluded rather than estimated. Paying customers are distinct account identities, or provider-scoped external identities where account linking is missing; cross-provider unlinked identities can represent the same person.">
+      <TimeBars title={revenueMetrics.find(m=>m.key===selectedMetric)!.label} rows={rows} metrics={revenueMetrics.filter(m=>m.key===selectedMetric)} days={days} currency={currencyCode || undefined} />
+      <DataDetails><Table rows={rows.map(row => ({ ...row, gross: amount(row.gross, currency), refunds: amount(row.refunds, currency), net: amount(row.net, currency), proceeds: amount(row.proceeds, currency) }))} columns={['day', 'gross', 'refunds', 'net', 'proceeds', 'missing_amount_events']} /></DataDetails>
     </Panel>
     <Panel title="Revenue streams" description={`${currencyLabel || 'No currency available'} · after refunds · compared with the preceding equal period`}>
       {streamMetrics.length ? <AnalyticsChart title="Revenue after refunds by stream" rows={[...streamDays.values()]} metrics={streamMetrics} days={days} currency={currencyCode || undefined} /> : null}
@@ -180,6 +206,13 @@ export function RevenueDashboard({ data, days }: { data: AnalyticsDashboard; day
       </div>
       <Table rows={(data.revenueSubscriptionProducts ?? []).map(row => ({ ...row, product: productName(row.product) }))} columns={['source', 'product', 'auto_renewing', 'cancelling', 'trials', 'billing_retry', 'ended', 'unknown_expiry']} />
     </Panel>
+    <Panel title="Monthly recurring revenue" description="Latest recorded state · each currency separately" note="Renewing MRR excludes opt-outs, trials, expired or refunded access and billing retry. Active-access MRR also includes cancelled subscriptions until expiry. Weekly prices ×4; annual prices ÷12. Gross, before tax and fees. Missing prices stay unknown; currencies are never added together. These are webhook-derived figures, not an independently reconciled provider snapshot.">
+      <Table rows={(data.revenueSubscriptionMrr ?? []).map(row => ({ ...row,
+        renewing_mrr: amount(row.renewing_mrr, String(row.currency)),
+        cancelling_mrr: amount(row.cancelling_mrr, String(row.currency)),
+        active_access_mrr: amount(row.active_access_mrr, String(row.currency)),
+      }))} columns={['source', 'currency', 'active_access_mrr', 'renewing_subscriptions', 'renewing_mrr', 'cancelling_subscriptions', 'cancelling_mrr', 'missing_price_subscriptions']} />
+    </Panel>
     <Panel title="Churn and new purchases" description="Selected period · all currencies" note="Start-cohort churn is the share of subscriptions with confirmed access at the start of the period that have ended by the snapshot cutoff. It excludes customers who joined and left within this period, and is not a cancellation-request rate. A reactivated subscription that still has access is not lost. No starting subscriptions means the rate is unavailable.">
       <div className="admin-stats-grid">
         <Stat title="Start-cohort churn" value={state && starting > 0 ? `${(churned / starting * 100).toFixed(1)}%` : '—'} note={`${count(churned)} lost from ${count(starting)} subscriptions active at period start`} />
@@ -204,13 +237,21 @@ export function RevenueDashboard({ data, days }: { data: AnalyticsDashboard; day
       <p className="mt-3 text-xs leading-5 text-zinc-500">Covered amounts use the recorded USD value or the provider’s USD conversion. A blank total means coverage is incomplete. Event coverage refers to recorded transactions with a known original amount.</p>
     </Panel>
     <Panel title="Source and currency detail" description="Selected period · each source and original currency listed separately">
-      <Table rows={(data.revenueSources ?? []).filter(row => row.currency !== TOTAL_USD).map(row => ({ source: row.source, currency: row.currency, purchases: row.purchases, refunds_count: row.refund_transactions, revenue: amount(row.gross, String(row.currency)), refunds: amount(row.refunds, String(row.currency)), after_refunds: amount(row.after_refunds, String(row.currency)), estimated_proceeds: amount(row.proceeds, String(row.currency)), provider_estimated_proceeds: amount(row.provider_estimated_proceeds, String(row.currency)) }))} columns={['source', 'currency', 'purchases', 'refunds_count', 'revenue', 'refunds', 'after_refunds', 'estimated_proceeds', 'provider_estimated_proceeds']} />
+      <Bars labelWidth={180} format={v=>amount(v,currency)} rows={(data.revenueSources??[]).filter(r=>r.currency===currency).map(r=>({label:String(r.source),value:r.after_refunds==null?null:Number(r.after_refunds),detail:`${count(r.purchases)} paid transactions · ${count(r.refund_transactions)} refunds`}))}/>
+      <DataDetails><Table rows={(data.revenueSources ?? []).filter(row => row.currency !== TOTAL_USD).map(row => ({ source: row.source, currency: row.currency, purchases: row.purchases, refunds_count: row.refund_transactions, revenue: amount(row.gross, String(row.currency)), refunds: amount(row.refunds, String(row.currency)), after_refunds: amount(row.after_refunds, String(row.currency)), estimated_proceeds: amount(row.proceeds, String(row.currency)), provider_estimated_proceeds: amount(row.provider_estimated_proceeds, String(row.currency)) }))} columns={['source', 'currency', 'purchases', 'refunds_count', 'revenue', 'refunds', 'after_refunds', 'estimated_proceeds', 'provider_estimated_proceeds']} /></DataDetails>
     </Panel>
     <Panel title="Currencies and purchase countries" description="Selected period · no currencies are added together" note="Country comes from billing-provider metadata and can be unknown. This is the purchase country, not necessarily the customer's current location. Apple Sales and Trends and RevenueCat may convert all currencies to USD with different rates; Apple financial reports also use fiscal months and settled transactions.">
       <h3 className="mb-3 text-sm font-medium">Currency totals</h3>
       <Table rows={currencies.filter(value => value !== TOTAL_USD).map(value => { const current = data.revenue?.find(row => row.currency === value); const finance = data.revenueFinancials?.find(row => row.currency === value); const allTime = data.revenueTotals?.find(row => row.currency === value); return { currency: value, revenue: amount(current ? current.gross : 0, value), refunds: amount(current ? current.refunds : 0, value), after_refunds: amount(current ? current.net : 0, value), estimated_proceeds: amount(finance?.proceeds, value), lifetime_after_refunds: amount(allTime?.net, value) } })} columns={['currency', 'revenue', 'refunds', 'after_refunds', 'estimated_proceeds', 'lifetime_after_refunds']} />
       <h3 className="mb-3 mt-6 text-sm font-medium">Purchase countries</h3>
-      <Table rows={(data.revenueCountries ?? []).filter(row => row.currency !== TOTAL_USD).map(row => ({ country: countryName(row.country), currency: row.currency, purchases: row.purchases, refund_transactions: row.refund_transactions, revenue: amount(row.gross, String(row.currency)), refunds: amount(row.refunds, String(row.currency)), after_refunds: amount(row.after_refunds, String(row.currency)), estimated_proceeds: amount(row.proceeds, String(row.currency)) }))} columns={['country', 'currency', 'purchases', 'refund_transactions', 'revenue', 'refunds', 'after_refunds', 'estimated_proceeds']} />
+      <Bars labelWidth={160} format={v=>amount(v,currency)} rows={(data.revenueCountries??[]).filter(r=>r.currency===currency).sort((a,b)=>Number(b.gross)-Number(a.gross)).slice(0,10).map(r=>({label:countryName(r.country),value:r.gross==null?null:Number(r.gross),detail:`${count(r.purchases)} purchases`}))}/>
+      <p className="my-3 text-xs text-zinc-500">Top ten countries by gross revenue in {currencyLabel || 'the selected currency'}. All countries and currencies remain in the table.</p>
+      <DataDetails>
+      <Table rows={(data.revenueCountries ?? []).filter(row => row.currency !== TOTAL_USD).map(row => ({ country: countryName(row.country), currency: row.currency, purchases: row.purchases, refund_transactions: row.refund_transactions, revenue: amount(row.gross, String(row.currency)), refunds: amount(row.refunds, String(row.currency)), after_refunds: amount(row.after_refunds, String(row.currency)), estimated_proceeds: amount(row.proceeds, String(row.currency)) }))} columns={['country', 'currency', 'purchases', 'refund_transactions', 'revenue', 'refunds', 'after_refunds', 'estimated_proceeds']} /></DataDetails>
+    </Panel>
+    <Panel title="From checkout to revenue" description="Sales and purchase reliability answer different questions">
+      <p className="text-sm leading-6 text-zinc-500">This page combines confirmed billing amounts across payment channels. Stripe web checkouts can unlock the mobile app; they are not Apple purchases. Store cancellations, incomplete payment sheets and client purchase taps are excluded from revenue.</p>
+      <Link className="mt-4 inline-flex text-sm font-medium underline underline-offset-4" href={{pathname:'/admin/analytics/purchases',query:{days:String(days)}}}>View payment channels, buyer conversion and checkout issues →</Link>
     </Panel>
     <Panel title="Reporting coverage and methodology" description="Billing observation times, currency detail and reconciliation status.">
       <dl className="grid gap-5 text-sm sm:grid-cols-3">

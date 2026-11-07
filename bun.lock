@@ -38,7 +38,7 @@
         "@upstash/redis": "^1.37.0",
         "@vercel/functions": "^3.9.11",
         "@vercel/og": "^0.11.1",
-        "@web-kits/audio": "^0.1.0",
+        "@web-kits/audio": "0.2.0",
         "@ybouane/liquidglass": "1.0.3",
         "ai": "^7.0.154",
         "autoprefixer": "^10.5.0",
@@ -812,7 +812,7 @@
 
     "@vladfrangu/async_event_emitter": ["@vladfrangu/async_event_emitter@2.4.7", "", {}, "sha512-Xfe6rpCTxSxfbswi/W/Pz7zp1WWSNn4A0eW4mLkQUewCrXXtMj31lCg+iQyTkh/CkusZSq9eDflu7tjEDXUY6g=="],
 
-    "@web-kits/audio": ["@web-kits/audio@0.1.0", "", { "dependencies": { "@clack/prompts": "^0.9.1", "picocolors": "^1.1.1" }, "peerDependencies": { "react": ">=18" }, "optionalPeers": ["react"], "bin": { "audio": "dist/bin.js" } }, "sha512-jaS9Z6MSilo4SN9dUpztvqZhRkJWd8ABcB38Vdqpsh5UbKxYUBC9qq0a/YUC+RPzG8Iy5/wpycIV4d18ewX0rg=="],
+    "@web-kits/audio": ["@web-kits/audio@0.2.0", "", { "dependencies": { "@clack/prompts": "^0.9.1", "picocolors": "^1.1.1" }, "peerDependencies": { "react": ">=18" }, "optionalPeers": ["react"], "bin": { "audio": "dist/bin.js" } }, "sha512-4naddQeSNBPsgQUEoCqes9jlNg3u+XDYu8x73I9YcxuWIdN1YhCSR+ANtOE61vllU55EY7e/eVKc48rsIRieSw=="],
 
     "@workflow/serde": ["@workflow/serde@4.1.0-beta.2", "", {}, "sha512-8kkeoQKLDaKXefjV5dbhBj2aErfKp1Mc4pb6tj8144cF+Em5SPbyMbyLCHp+BVrFfFVCBluCtMx+jjvaFVZGww=="],
 

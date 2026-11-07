@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useRef, useState, type CSSProperties } from 'react'
 import { BatteryFull, Bookmark, Heart, Home, MessageCircle, Music2, Pause, Play, Plus, RotateCcw, RotateCw, Search, Share2, Signal, UserRound, Users, Wifi } from 'lucide-react'
 import { drawVideoFrame, type PreparedVideo } from '@/lib/creator/video-renderer'
 import { videoExportSize } from '@/lib/creator/video-layout'
@@ -8,7 +8,7 @@ import styles from './video-studio.module.css'
 
 const playbackTime = (ms: number) => `${Math.floor(ms / 60000)}:${String(Math.floor(ms / 1000) % 60).padStart(2, '0')}`
 
-export function VideoCompositionPlayer({ prepared, composition, seekMs, onTime, audioUrl }: { prepared: PreparedVideo | null; composition: VideoComposition; seekMs: number; onTime: (time: number) => void; audioUrl?: string }) {
+export function VideoCompositionPlayer({ prepared, composition, seekMs, onTime, audioUrl, suspended = false }: { suspended?:boolean; prepared: PreparedVideo | null; composition: VideoComposition; seekMs: number; onTime: (time: number) => void; audioUrl?: string }) {
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const rippleCanvasRef = useRef<HTMLCanvasElement>(null)
   const rippleRendererRef = useRef<ReturnType<typeof createPreviewRipple>>(null)
@@ -23,6 +23,7 @@ export function VideoCompositionPlayer({ prepared, composition, seekMs, onTime, 
   const [position, setPosition] = useState(0)
   const [playbackError, setPlaybackError] = useState('')
   useEffect(() => { onTimeRef.current = onTime }, [onTime])
+  useEffect(()=>{if(suspended){audioRef.current?.pause();setPlaying(false)}},[suspended])
   useEffect(() => () => {
     rippleRendererRef.current?.dispose(); rippleRendererRef.current = null
     rippleRef.current = null; displayedRef.current = null
@@ -44,7 +45,11 @@ export function VideoCompositionPlayer({ prepared, composition, seekMs, onTime, 
     let cancelled = false
     if (playing && prepared) {
       audio.currentTime = positionRef.current / 1000
-      void audio.play().catch(() => { if (!cancelled) { setPlaybackError('Could not play the voiceover. Try again.'); setPlaying(false) } })
+      void audio.play().catch((error: unknown) => {
+        if (cancelled || error instanceof DOMException && error.name === 'AbortError') return
+        setPlaybackError('Could not play the preview audio. Try again.')
+        setPlaying(false)
+      })
     } else audio.pause()
     return () => { cancelled = true; audio.pause() }
   }, [playing, prepared, audioUrl])
@@ -142,7 +147,7 @@ export function VideoCompositionPlayer({ prepared, composition, seekMs, onTime, 
     if (positionRef.current >= composition.durationMs - 1) seek(0)
     setPlaybackError(''); setPlaying(current => !current)
   }
-  return <div className={styles.player}>
+  return <div className={styles.player} style={{ '--video-aspect': `${videoExportSize.width} / ${videoExportSize.height}` } as CSSProperties}>
     {audioUrl ? <audio ref={audioRef} src={audioUrl} preload="auto" onEnded={() => { setPlaying(false); seek(composition.durationMs - 1) }} /> : null}
     {playbackError ? <p role="alert" className="text-xs text-red-700">{playbackError}</p> : null}
     <div className={styles.composerFrame} aria-label="TikTok feed preview">

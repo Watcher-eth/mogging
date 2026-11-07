@@ -29,24 +29,52 @@ export type RevenueCatSubscriber = {
   }>>
 }
 
+// Share concurrent verification for the same provider identity without caching access.
+// Only the idempotent GET is retried; a payment is never submitted here.
+const subscriberRequests = new Map<string, Promise<RevenueCatSubscriber | null>>()
+async function loadRevenueCatSubscriber(appUserId: string): Promise<RevenueCatSubscriber | null> {
+  for (let attempt = 0; attempt < 2; attempt++) {
+    try {
+      const response = await fetch(`https://api.revenuecat.com/v1/subscribers/${encodeURIComponent(appUserId)}`, {
+        headers: { Authorization: `Bearer ${env.REVENUECAT_SECRET_API_KEY}`, Accept: 'application/json' },
+        signal: AbortSignal.timeout(5_000), cache: 'no-store',
+      })
+      if (response.status === 404) return null
+      if (!response.ok) {
+        if (attempt === 0 && (response.status === 429 || response.status >= 500)) {
+          await response.body?.cancel()
+          await new Promise(resolve => setTimeout(resolve, 250))
+          continue
+        }
+        throw new ApiError(503, 'Your purchase could not be verified yet. Please retry.')
+      }
+      const body = await response.json() as { subscriber?: RevenueCatSubscriber }
+      if (!body.subscriber) throw new ApiError(503, 'Your purchase could not be verified yet. Please retry.')
+      return body.subscriber
+    } catch (error) {
+      if (attempt === 1 || error instanceof ApiError) throw error
+      await new Promise(resolve => setTimeout(resolve, 250))
+    }
+  }
+  return null
+}
 export async function fetchRevenueCatSubscriber(appUserId: string, required = false): Promise<RevenueCatSubscriber | null> {
   if (!env.REVENUECAT_SECRET_API_KEY) {
     if (required) throw new ApiError(503, 'Purchases are temporarily unavailable. Please try again later.')
     return null
   }
-  const response = await fetch(`https://api.revenuecat.com/v1/subscribers/${encodeURIComponent(appUserId)}`, {
-    headers: { Authorization: `Bearer ${env.REVENUECAT_SECRET_API_KEY}`, Accept: 'application/json' },
-    signal: AbortSignal.timeout(15_000),
-    cache: 'no-store',
-  })
-  if (response.status === 404) return null
-  if (!response.ok) {
+  let request = subscriberRequests.get(appUserId)
+  if (!request) {
+    request = loadRevenueCatSubscriber(appUserId)
+    subscriberRequests.set(appUserId, request)
+  }
+  try { return await request }
+  catch {
     if (required) throw new ApiError(503, 'Your purchase could not be verified yet. Please retry.')
     return null
+  } finally {
+    if (subscriberRequests.get(appUserId) === request) subscriberRequests.delete(appUserId)
   }
-  const body = await response.json() as { subscriber?: RevenueCatSubscriber }
-  if (!body.subscriber && required) throw new ApiError(503, 'Your purchase could not be verified yet. Please retry.')
-  return body.subscriber ?? null
 }
 
 export function readRevenueCatPro(subscriber: RevenueCatSubscriber | null) {

@@ -3,7 +3,7 @@ import { z } from 'zod'
 export { TIKTOK_ANCHOR_REQUIREMENT } from './post-guidance'
 
 export const TIKTOK_ANCHOR_INVITE =
-  'https://www.tiktok.com/t/ZS9UbGge4he6k-yHKKf/'
+  'https://www.tiktok.com/t/ZS9UgQb9Cp1Eq-WbUok/#linkSource=DirectLink'
 export const FOLLOWER_RANGES = [
   { value: 'under_1k', label: 'Under 1,000' },
   { value: '1k_5k', label: '1,000–4,999' },

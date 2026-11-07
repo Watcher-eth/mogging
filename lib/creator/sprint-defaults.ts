@@ -12,7 +12,7 @@ export const CREATOR_AUDIENCE_BANDS = [
 export function campaignAudienceBands(terms?: SprintTerms) {
   const first = terms?.milestones[0]
   const tierA = first?.audienceRates?.find(rate => rate.amountCents === first.amountCents)?.audiencePercent
-  return CREATOR_AUDIENCE_BANDS.filter(band => band.minimumPercent >= (terms?.minimumTier1Percent ?? 10)).map(band => band.tier === 'A' && tierA === 32 ? { ...band, minimumPercent: 32 } : band)
+  return CREATOR_AUDIENCE_BANDS.filter(band => band.minimumPercent >= (terms?.minimumTier1Percent ?? 10)).map(band => terms?.retainer ? { ...band, payoutPercent: 100 } : band.tier === 'A' && tierA === 32 ? { ...band, minimumPercent: 32 } : band)
 }
 
 export function campaignAudienceRates(amountCents: number, tierAMinimumPercent = 30, minimumPercent = 10) {
@@ -44,6 +44,7 @@ export function campaignHasAudienceBands(terms: SprintTerms) {
 }
 
 export function campaignRegionRates(terms: SprintTerms) {
+  if (terms.retainer) return `$${(terms.retainer.amountCents / 100).toFixed(2)} per video · ${terms.minimumTier1Percent}%+ Tier 1 audience · no minimum views.`
   return campaignHasAudienceBands(terms)
     ? `Region rates: ${[...campaignAudienceBands(terms)].reverse().map(band => `Tier ${band.tier} ${band.tier === 'A' ? 'pays ' : ''}${band.payoutPercent}%`).join(' · ')}.`
     : `Region rates: Tier 1 audience ${terms.minimumTier1Percent}–${terms.maximumTier1Percent}%; payouts follow the campaign’s audience rates.`

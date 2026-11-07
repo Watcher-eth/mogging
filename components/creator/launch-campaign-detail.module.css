@@ -402,17 +402,17 @@
 }
 .carousel {
   position: relative;
-  height: 510px;
+  height: var(--example-carousel-height,510px);
   isolation: isolate;
   touch-action: pan-y;
 }
 .videoCard {
-  --card-width: 270px;
+  --card-width: var(--example-card-width,270px);
   position: absolute;
   left: 50%;
   top: 12px;
   width: var(--card-width);
-  height: 480px;
+  height: calc(var(--card-width)*16/9);
   border-radius: 10px;
   overflow: hidden;
   background: #e3e8ec;
@@ -425,7 +425,7 @@
     opacity 260ms cubic-bezier(0.22, 1, 0.36, 1);
   opacity: calc(1 - var(--depth) * 0.2);
 }
-.videoCard iframe {
+.videoCard iframe, .videoCard video {
   width: 100%;
   height: 100%;
   border: 0;

@@ -4,7 +4,7 @@ import {AnalyticsLink,AnalyticsPreviewLinks,analyticsPreviewHref} from './analyt
 import {adminNavigation,analyticsPreviewPages} from '@/lib/admin/navigation'
 test('every analytics page has a local-only navigation counterpart',()=>{
  for(const item of adminNavigation.find(group=>group.label==='Analytics')!.items)expect(analyticsPreviewPages[item.href]).toBeTruthy()
- expect(Object.keys(analyticsPreviewPages)).toHaveLength(18)
+ expect(Object.keys(analyticsPreviewPages)).toHaveLength(19)
 })
 test('local analytics detail links retain filters and point to their selected preview',()=>{
  expect(analyticsPreviewHref({pathname:'/admin/analytics/scans',query:{days:'90',platform:'ios'}})).toEqual({pathname:'/admin/__product-overview-preview',query:{page:'scans',days:'90',platform:'ios'}})

@@ -68,7 +68,7 @@
     "@upstash/redis": "^1.37.0",
     "@vercel/functions": "^3.9.11",
     "@vercel/og": "^0.11.1",
-    "@web-kits/audio": "^0.1.0",
+    "@web-kits/audio": "0.2.0",
     "@ybouane/liquidglass": "1.0.3",
     "ai": "^7.0.154",
     "autoprefixer": "^10.5.0",

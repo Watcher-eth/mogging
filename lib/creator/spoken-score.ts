@@ -1,8 +1,10 @@
-import { drawMetricTimeline } from './video-timeline'
-import { videoSize, videoContent, scorePresentation, smoothMotion } from './video-layout'
+import { drawMetricTimeline, metricTimelineVariant } from './video-timeline'
+import { videoContent, scorePresentation, smoothMotion } from './video-layout'
 import { scriptTokens, sceneSpeechWords } from './video-script'
 import type { ReportCategory } from './mobile-overlay-engine/report-data'
-import type { VideoScene } from './video-composition'
+import type { VideoRecipe, VideoScene } from './video-composition'
+
+const scoreEntrance = { duration: 380, rise: 28, textDelay: 65, textDuration: 235, meterDelay: 120, meterDuration: 620 } as const
 
 const numbers: Record<string, number> = { one:1, two:2, three:3, four:4, five:5, six:6, seven:7, eight:8, nine:9, ten:10 }
 const names: Record<string, RegExp> = { overall:/^overall$/, eyes:/^eyes?$/, brows:/^(?:brows?|eyebrows?)$/, jaw:/^(?:jaw|jawline|chin)$/, mouth:/^(?:mouth|lips?)$/, cheeks:/^(?:cheeks?|cheekbones?)$/, symmetry:/^symmetry$/, nose:/^nose$/ }
@@ -40,50 +42,56 @@ export function spokenScoreCallouts(text: string, reports: ReportCategory[], fal
 }
 
 export function activeSpokenScores(scene: VideoScene, localMs: number) {
+  const cues = scene.scoreCallouts
+  if (!cues?.length) return []
   const words = sceneSpeechWords(scene)
-  const last = scene.scoreCallouts?.findLast(cue => localMs >= (words[cue.word]?.startMs ?? Infinity))
-  return last ? scene.scoreCallouts!.filter(cue => cue.word === last.word) : []
+  const last = cues.findLast(cue => localMs >= (words[cue.word]?.startMs ?? Infinity))
+  return last ? cues.filter(cue => cue.word === last.word) : []
 }
 export function activeSpokenScore(scene: VideoScene, localMs: number) {
   return activeSpokenScores(scene, localMs).at(-1)
 }
 
 
-export function drawSpokenScore(ctx: CanvasRenderingContext2D, scene: VideoScene, localMs: number, reduced: boolean) {
-  if (scene.source.kind !== "portrait")
-    return;
-  const active = activeSpokenScores(scene, localMs);
-  const cue = active.at(-1);
-  if (!cue)
-    return;
-  const start = sceneSpeechWords(scene)[cue.word].startMs;
-  const amount = reduced ? 1 : smoothMotion((localMs - start) / 360);
-  const meter = reduced ? 1 : smoothMotion((localMs - start - 80) / 720);
-  const width = videoContent.width, left = videoContent.inset, top = scorePresentation.top;
-  ctx.save();
-  ctx.globalAlpha *= amount;
-  const y = top + (1 - amount) * 12;
-  const wash = ctx.createLinearGradient(0, y - 280, 0, y - 40);
-  wash.addColorStop(0, "#ffffff00");
-  wash.addColorStop(1, "#ffffff");
-  ctx.fillStyle = wash;
-  ctx.fillRect(0, y - 280, videoSize.width, videoSize.height - y + 280);
-  ctx.translate(left, y);
-  ctx.scale(scorePresentation.scale, scorePresentation.scale);
+export function drawSpokenScore(ctx: CanvasRenderingContext2D, scene: VideoScene, localMs: number, reduced: boolean, recipe: VideoRecipe, variation: number) {
+  if (scene.source.kind !== 'portrait') return
+  const active = activeSpokenScores(scene, localMs)
+  const cue = active.at(-1)
+  if (!cue) return
+  const start = sceneSpeechWords(scene)[cue.word].startMs
+  const elapsed = localMs - start
+  const { duration, rise, textDelay, textDuration, meterDelay, meterDuration } = scoreEntrance
+  const enter = reduced ? 1 : 1 - (1 - Math.min(1, elapsed / duration)) ** 3
+  const text = reduced ? 1 : smoothMotion((elapsed - textDelay) / textDuration)
+  const meter = reduced ? 1 : smoothMotion((elapsed - meterDelay) / meterDuration)
+  const { top, width, rowHeight } = scorePresentation
+  const compact = recipe === 'portrait-audit' || recipe === 'hybrid-story' || active.length > 2
+  ctx.save()
+  ctx.globalAlpha *= enter
+  ctx.translate(videoContent.inset, top - Math.max(0, active.length - 3) * 58 + (1 - enter) * rise)
+  ctx.fillStyle = '#fffffff0'
+  ctx.beginPath()
+  ctx.roundRect(0, 0, width, compact ? 28 + active.length * 58 : 38 + active.length * rowHeight, 24)
+  ctx.fill()
   for (const [index, item] of active.entries()) {
-    ctx.save();
-    ctx.translate(0, index * 190);
-    ctx.fillStyle = "#535b64";
-    ctx.font = "500 48px monospace";
-    ctx.textAlign = "left";
-    ctx.fillText(item.label.toUpperCase(), 0, 42);
-    ctx.fillStyle = "#12171d";
-    ctx.font = '500 68px "Mogging Share",Arial,sans-serif';
-    ctx.textAlign = "right";
-    ctx.fillText(`${item.value.toFixed(1)} / 10`, width, 48);
-    ctx.translate(0, 74);
-    drawMetricTimeline(ctx, { width, height: active.length > 1 ? 100 : 200, position: item.value / 10, progress: meter, variant: 0, ink: "#12171d", muted: "#777", line: "#ddd", accent: "#ff9900", labels: true, maximum: 10 });
-    ctx.restore();
+    ctx.save()
+    ctx.translate(25, 16 + index * (compact ? 58 : rowHeight))
+    const innerWidth = width - 50
+    ctx.globalAlpha *= text
+    ctx.fillStyle = '#48515b'
+    ctx.font = recipe === 'measurement-explainer' ? '500 31px monospace' : '500 34px "Mogging Share", Arial, sans-serif'
+    ctx.textAlign = 'left'
+    ctx.fillText(item.label, 0, 39, innerWidth - 182)
+    ctx.fillStyle = '#12171d'
+    ctx.font = '500 42px "Mogging Share", Arial, sans-serif'
+    ctx.textAlign = 'right'
+    ctx.fillText(`${item.value.toFixed(1)} / 10`, innerWidth, 39)
+    if (!compact) {
+      ctx.translate(0, 41)
+      const variant = recipe === 'measurement-explainer' ? 0 : metricTimelineVariant(item.label, item.label, variation)
+      drawMetricTimeline(ctx, { width: innerWidth, height: 57, position: item.value / 10, progress: meter, variant, ink: '#12171d', muted: '#75808a', line: '#dde2e6', accent: '#a76a22', labels: false })
+    }
+    ctx.restore()
   }
-  ctx.restore();
+  ctx.restore()
 }

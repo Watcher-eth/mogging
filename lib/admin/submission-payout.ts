@@ -11,7 +11,8 @@ export function getSubmissionPayoutEstimate(selection: AdminPayoutSelection, sub
   if (submission?.sprintTerms) {
     if (selection.usAudiencePercent === null || !Number.isFinite(selection.usAudiencePercent)
       || selection.usAudiencePercent < 0 || selection.usAudiencePercent > 100
-      || !Number.isSafeInteger(selection.viewCountThreshold) || selection.viewCountThreshold <= 0) return null
+      || !Number.isSafeInteger(selection.viewCountThreshold) || selection.viewCountThreshold < 0
+      || (selection.viewCountThreshold === 0 && !submission.sprintTerms.retainer)) return null
     return { payout: sprintPayoutCents(submission.sprintTerms, selection.viewCountThreshold, selection.usAudiencePercent) / 100, isCapped: false }
   }
   if (!selection.viewCountThreshold || !CREATOR_VIEW_THRESHOLDS.some(item => item.views === selection.viewCountThreshold)) return null

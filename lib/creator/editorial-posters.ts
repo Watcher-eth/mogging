@@ -18,7 +18,7 @@ export function posterFamily(template: ContentSlide['templateId']): PosterFamily
 }
 export function loadPosterAssets() {
   return assets ??= Promise.all([
-    new FontFace('Poster Brand', 'url(/fonts/Geist-Regular.woff2)', { weight: '400' }),
+    new FontFace('Poster Brand', 'url(/fonts/Geist-Regular.ttf)', { weight: '400' }),
   ].map(async font => { await font.load(); document.fonts.add(font) }).concat([new Promise<void>((resolve, reject) => {
     const image = new Image(); image.onload = () => { brandIcon = image; resolve() }; image.onerror = () => reject(new Error('Brand icon could not be loaded'))
     image.src = '/landing/mogging-logo.png'

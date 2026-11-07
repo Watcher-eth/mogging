@@ -27,12 +27,13 @@ export type PrivateCharacterEvent={stage:'analyzing'|'writing'|'speaking'|'ready
 
 // Creator-approved subjective ratings stay separate from provider assessments.
 export function editorialRatingReports(ratings:NonNullable<PrivateCharacterDetail['editorialRatings']>,imageId?:string):ReportCategory[] {
-  const titles:Record<string,string>={overall:'Overall',brows:'Brows',jaw:'Jaw & chin',eyes:'Eye area',mouth:'Mouth & lips'}
-  return ratings.map(rating=>({assessmentId:imageId?`editorial:${imageId}`:undefined,assessmentImageId:imageId,id:rating.feature,title:titles[rating.feature]??rating.feature,subtitle:'Creator rating',scoreLabel:'Creator rating',score:rating.score,features:[],explanation:'',recommendation:''}))
+  const titles:Record<string,string>={overall:'Overall',brows:'Brows',jaw:'Jaw & chin',eyes:'Eye area',mouth:'Mouth & lips',cheeks:'Cheekbone structure',nose:'Nose',proportions:'Facial proportions',skin:'Skin quality'}
+  return ratings.filter(rating=>rating.feature!=='potential').map(rating=>({assessmentId:imageId?`editorial:${imageId}`:undefined,assessmentImageId:imageId,id:rating.feature,title:titles[rating.feature]??rating.feature,subtitle:titles[rating.feature]??rating.feature,scoreLabel:titles[rating.feature]??rating.feature,score:rating.score,
+    features:rating.feature==='overall'||rating.feature==='proportions'?ratings.filter(item=>!['overall','potential','proportions'].includes(item.feature)).map(item=>({id:`editorial.${item.feature}`,label:titles[item.feature]??item.feature,value:`${item.score.toFixed(1)} / 10`,visual:['jaw','cheeks'].includes(item.feature)?'Rail':'Text',positions:[item.score/10],grade:null,scale:'quality' as const})):[],explanation:'',recommendation:''}))
 }
 export function editorialRatingInput(input:AnalysisPostInput,subject:string,ratings:NonNullable<PrivateCharacterDetail['editorialRatings']>):AnalysisPostInput {
-  const features=ratings.filter(rating=>rating.feature!=='overall').toSorted((a,b)=>b.score-a.score),strongest=features[0],opportunity=features.length>1?features.at(-1):undefined
-  return {...input,subject,overallScore:ratings.find(rating=>rating.feature==='overall')?.score.toString()??'',potentialScore:'',potentialScale:undefined,potentialCurrentScore:undefined,strongestFeature:strongest?.feature??'',strongestScore:strongest?.score.toString()??'',opportunityFeature:opportunity?.feature??'',opportunityScore:opportunity?.score.toString()??''}
+  const features=ratings.filter(rating=>!['overall','potential'].includes(rating.feature)).toSorted((a,b)=>b.score-a.score),strongest=features[0],opportunity=features.length>1?features.at(-1):undefined
+  return {...input,subject,overallScore:ratings.find(rating=>rating.feature==='overall')?.score.toString()??'',potentialScore:ratings.find(rating=>rating.feature==='potential')?.score.toString()??'',potentialScale:ratings.some(rating=>rating.feature==='potential')?10:undefined,potentialCurrentScore:undefined,strongestFeature:strongest?.feature??'',strongestScore:strongest?.score.toString()??'',opportunityFeature:opportunity?.feature??'',opportunityScore:opportunity?.score.toString()??''}
 }
 
 export function editorialRatingVisibility(composition:VideoComposition,ratings:NonNullable<PrivateCharacterDetail['editorialRatings']>):VideoComposition {

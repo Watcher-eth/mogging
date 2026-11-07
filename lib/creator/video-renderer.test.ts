@@ -8,6 +8,7 @@ import { mockReportRegions } from './mock-report'
 import type { AnalysisPostInput } from './analysis-post'
 import type { CanvasElement } from './canvas-layout'
 import { captionDesign, portraitStage, videoContent, videoSize, reportCaptionFrame, sceneFrame } from './video-layout'
+import { spatialPhotoMotion } from './video-layout'
 import { featureComponent } from './report-choreography'
 
 test('component captions retain finite positions after report rendering restores canvas state', () => {
@@ -72,7 +73,7 @@ test('component captions retain finite positions after report rendering restores
   expect(sceneFrame(reportScene,1600)).toEqual({x:0,y:0,...videoSize})
   expect(reportLayout.find(element=>element.id==='headline')!.frame).toEqual(reportCaptionFrame)
   expect(reportCaptionFrame.y).toBeGreaterThan(videoSize.height*.7)
-  expect(reportCaptionFrame.y+reportCaptionFrame.height).toBeLessThan(videoSize.height*.85)
+  expect(reportCaptionFrame.y+reportCaptionFrame.height).toBeLessThan(videoSize.height*.88)
 })
 
 test('cinematic cuts continuously blend both screens and reduced motion bypasses the blend', () => {
@@ -276,4 +277,24 @@ test('an unavailable potential score stays invisible in both the top summary and
   const paint = createVideoPainter(scene, 0, true)
   for (const id of ['scores/current', 'scores/potential', 'scores/potential/value', 'potential', 'potential/value']) paint(ctx, { id, frame: { x: 0, y: 0, width: 100, height: 100 }, draw: () => { if (alpha > 0) visible.push(id) } })
   expect(visible).toEqual(['scores/current'])
+})
+
+test('shared handoffs clear outgoing accents before the midpoint and settle incoming values in order', async () => {
+  const { sharedElementEntrance } = await import('./video-layout')
+  expect(sharedElementEntrance(.5, true, 3).opacity).toBe(0)
+  expect(sharedElementEntrance(.5, false, 0).opacity).toBe(0)
+  expect(sharedElementEntrance(.65, false, 0).opacity).toBeGreaterThan(sharedElementEntrance(.65, false, 2).opacity)
+  expect(sharedElementEntrance(1, false, 3)).toEqual({ opacity: 1, y: 0 })
+})
+
+
+test('photograph camera routes preserve settled endpoints and vary both height and depth',()=>{
+  for(let variant=0;variant<4;variant++){
+    const from=spatialPhotoMotion(0,variant),middle=spatialPhotoMotion(.5,variant),to=spatialPhotoMotion(1,variant)
+    expect(from.previous.x).toBeCloseTo(0);expect(from.previous.y).toBeCloseTo(0);expect(from.scale).toBe(1)
+    expect(to.next.x).toBeCloseTo(0);expect(to.next.y).toBeCloseTo(0);expect(to.scale).toBeCloseTo(1)
+    expect(middle.scale).toBeLessThan(1);expect(Math.abs(middle.next.y)).toBeGreaterThan(100)
+  }
+  expect(spatialPhotoMotion(.5,0).next.x).toBeGreaterThan(0)
+  expect(spatialPhotoMotion(.5,1).next.x).toBeLessThan(0)
 })

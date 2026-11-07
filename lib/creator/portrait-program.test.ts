@@ -3,6 +3,7 @@ import { createHash } from 'node:crypto'
 import { profileStudySchema, profileGeometry, registerProfileStudy } from './video-profile'
 import { readFileSync } from 'node:fs'
 import { isVideoCta } from './video-branding'
+import { cheekboneRegions } from './facial-detail-guides'
 import {faceContourPaths,faceContourEdge} from './face-metric-guides'
 import { videoThemeContext } from './video-theme'
 import { expect, test } from 'bun:test'
@@ -228,9 +229,9 @@ test('dark mode never inverts portrait-program strokes or annotation ink', () =>
   const strokes:string[]=[]
   const native={globalAlpha:1,save(){},restore(){},getTransform(){return{a:1,b:0}},setLineDash(){},beginPath(){},moveTo(){},lineTo(){},stroke(){},fill(){},arc(){},roundRect(){},measureText(text:string){return{width:text.length*12}},fillText(){},set strokeStyle(value:string){strokes.push(value)}} as unknown as CanvasRenderingContext2D
   const prepared=preparePortraitProgram(planPortraitProgram(text,'jaw','feature-study',0,'front'),source)
-  const activity={...samplePortraitProgram(prepared,1200,5000)!,phase:.6,labelPhase:1}
+  const activity={...samplePortraitProgram(prepared,1200,5000)!,phase:.6,labelPhase:1,treatment:'trace' as const}
   drawPortraitActivity(videoThemeContext(native,'dark'),activity,1200,1800)
-  expect(strokes).toContain('rgba(255,255,255,.88)')
+  expect(strokes).toContain('rgba(248,251,255,.73)')
   expect(strokes.some(color=>color.startsWith('rgba(17,17,17'))).toBe(false)
 })
 
@@ -248,7 +249,7 @@ test('the same spoken brow feature produces genuinely different registered views
   expect(guides.has('detail:brow-outline-right')).toBe(true)
   expect(guides.has('detail:brow-outline')).toBe(true)
   expect(geometries.size).toBeGreaterThanOrEqual(4)
-  expect(treatments.has('inset')).toBe(true);expect(treatments.has('trace')).toBe(true)
+  expect(treatments.has('inset')).toBe(true);expect(treatments.has('trace')).toBe(true);expect(treatments.has('ribbon')).toBe(true)
 })
 test('eye and jaw alternatives change actual anatomy paths while remaining within the narrated feature',()=>{
   for(const [text,feature] of [['Follow this eye shape as the outline draws around the eyelid.','eyes'],['Follow the jaw outline from the lower face toward the chin.','jaw']] as const){
@@ -280,19 +281,23 @@ test('annotation placement moves off a mixed shoulder/background boundary into a
 })
 
 
-test('arrows, brackets and scribbles add distinct stable marks to the registered contour',()=>{
+test('portrait treatments remain distinct and deterministic on the same registered feature',()=>{
   const prepared=preparePortraitProgram(planPortraitProgram(text,'jaw','portrait-audit',0,'front'),source)
   const activity={...samplePortraitProgram(prepared,1200,5000)!,first:true,elapsedMs:800,labelPhase:1}
   const paths=(treatment:typeof activity.treatment)=>{
-    const lines:number[][]=[]
-    const ctx={globalAlpha:1,save(){},restore(){},getTransform(){return{a:1,b:0}},setLineDash(){},beginPath(){},closePath(){},moveTo(x:number,y:number){lines.push([x,y])},lineTo(x:number,y:number){lines.at(-1)!.push(x,y)},stroke(){},fill(){},arc(){},measureText(text:string){return{width:text.length*8}},fillText(){}} as unknown as CanvasRenderingContext2D
+    const lines:number[][]=[], weights:number[]=[]
+    const ctx={globalAlpha:1,save(){},restore(){},getTransform(){return{a:1,b:0}},setLineDash(){},beginPath(){},closePath(){},moveTo(x:number,y:number){lines.push([x,y])},lineTo(x:number,y:number){lines.at(-1)!.push(x,y)},strokeRect(){},roundRect(){},clip(){},fillRect(){},stroke(this: {lineWidth: number}){weights.push(this.lineWidth)},lineWidth:0,fill(){},arc(){},measureText(text:string){return{width:text.length*8}},fillText(){}} as unknown as CanvasRenderingContext2D
     drawPortraitActivity(ctx,{...activity,treatment},1200,1800)
-    return lines
+    return {lines,weights}
   }
-  for(const treatment of ['callout','arrow','bracket','scribble','note'] as const) {
+  for(const treatment of ['callout','arrow','bracket','scribble','note','ribbon','caliper','mesh','ink-callout'] as const) {
     expect(paths(treatment)).not.toEqual(paths('trace'))
     expect(paths(treatment)).toEqual(paths(treatment))
-    expect(paths(treatment)[0]).toEqual(paths('trace')[0])
+    if (['bracket', 'scribble'].includes(treatment)) expect(paths(treatment).lines[0]).not.toEqual(paths('trace').lines[0])
+    if (treatment === 'caliper') {
+      expect(paths(treatment).lines[0]).toEqual(paths('trace').lines[0])
+      expect(paths(treatment).lines.length).toBeGreaterThan(paths('trace').lines.length)
+    }
   }
 })
 
@@ -373,6 +378,17 @@ test('angled cheek guides trace one visible cheekbone arc', () => {
 })
 
 
+test('cheek regions stay separate and drop the hidden side on a turned portrait', () => {
+  const photo = JSON.parse(readFileSync('public/creator/stories/marlon/story.json', 'utf8')).images[0] as GeneratorImage
+  const face = photo.landmarks!
+  const front = cheekboneRegions({ ...face, quality: { ...face.quality!, yawRadians: 0 } })
+  expect(front.map(region => region.id)).toEqual(['left-cheek', 'right-cheek'])
+  expect(Math.max(...front[0].points.map(point => point.x))).toBeLessThan(Math.min(...front[1].points.map(point => point.x)))
+  const turned = cheekboneRegions({ ...face, quality: { ...face.quality!, yawRadians: .8 } })
+  expect(turned).toHaveLength(1)
+  expect(front).toContainEqual(turned[0])
+})
+
 test('annotation clocks span caption cuts and restart for a new image or crop',()=>{
   const program=narratedPortraitProgram('Look at the jawline and cheekbones.','feature-study')
   const scene=(id:string,startMs:number,durationMs:number,imageId='face')=>({id,startMs,durationMs,source:{kind:'portrait',imageId},portraitProgram:program,words:scriptTokens('Look at the jawline and cheekbones.').map((_,i)=>({startMs:i*200}))}) as Parameters<typeof portraitProgramRuns>[0][number]
@@ -384,6 +400,10 @@ test('annotation clocks span caption cuts and restart for a new image or crop',(
   const prepared=preparePortraitProgram(run.program,source)
   expect(samplePortraitProgram(prepared,1100,run.durationMs,run.words)!.to).toBe(samplePortraitProgram(prepared,1300,run.durationMs,run.words)!.to)
   expect(portraitProgramSchedule(prepared,run.durationMs,run.words)).toHaveLength(1)
+  const shortShot = samplePortraitProgram({ ...prepared, holdShortShot: true }, 800, 1500, run.words)
+  expect(shortShot?.to).toBe(prepared.actions[0].overlay)
+  expect(shortShot?.labelPhase).toBe(1)
+
   expect(runs.get('c')).not.toBe(run)
   expect(runs.get('d')).not.toBe(runs.get('c'))
   expect(samplePortraitProgram(prepared,500,2200)).toBeUndefined()
@@ -467,4 +487,30 @@ test('compact Torph pills fit their content and preserve continuity when retarge
   expect(track.sample(1100).width).toBe(measure(portraitMetricText(metric(9)))+pillMotion.padding*2)
   expect(track.sample(1850).opacity).toBe(0)
   expect(track.sample(600,true).width).toBe(measure(portraitMetricText(metric(8.25)))+pillMotion.padding*2)
+})
+
+test('the taper reference joins the chin and nose tip in a dotted guide', () => {
+  const action = preparePortraitProgram({
+    wordCount: 1, actions: [{ word: 0, feature: 'whole', guide: 'face.taper', treatment: 'highlight', label: 'Face taper' }],
+  }, source).actions[0]
+  const path = action.overlay.primitives[0]
+  if (path.kind !== 'polyline') throw new Error('Expected a chin-to-nose reference line')
+  const { chin, noseTip } = source.landmarks!.anchors
+  expect(action.stroke).toBe('dotted')
+  expect(path.pixelPoints[0]).toEqual({ x: chin!.x * source.width, y: chin!.y * source.height })
+  expect(path.pixelPoints.at(-1)).toEqual({ x: noseTip!.x * source.width, y: noseTip!.y * source.height })
+})
+
+test('report detail follows the selected eye and connects the brow to its pupil', () => {
+  const photo = JSON.parse(readFileSync('public/creator/stories/marlon/story.json', 'utf8')).images[0] as GeneratorImage
+  const face = photo.landmarks!
+  const registered = { ...photo, landmarks: { ...face, quality: { ...face.quality!, yawRadians: 0 } } }
+  const program = preparePortraitProgram({ wordCount: 1, actions: [
+    { word: 0, feature: 'eyes', guide: 'detail:eye-left', treatment: 'trace', label: 'Eye contour' },
+    { word: 0, feature: 'brows', guide: 'detail:brow-outline-left', treatment: 'trace', label: 'Brow contour' },
+  ] }, registered)
+  const pixel = (point: { x: number; y: number }) => ({ x: point.x * photo.width, y: point.y * photo.height })
+  expect(program.actions[0].reportDetail?.markers).toEqual([pixel(face.anchors.leftEyeOuter!)])
+  expect(program.actions[0].reportDetail?.guides).toEqual([])
+  expect(program.actions[1].reportDetail?.guides).toEqual([[pixel(face.anchors.leftBrow!), pixel(face.anchors.leftPupil!)]])
 })

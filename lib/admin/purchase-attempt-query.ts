@@ -18,7 +18,7 @@ export function purchaseAttemptsQuery(filters: AnalyticsFilters, now: Date) {
       and a.occurred_at >= ${start}::timestamp and a.occurred_at < ${now.toISOString()}::timestamp
     group by 1,2,3,4 order by started desc limit 2001
   ), attempts as (
-    select s.*, jsonb_agg(jsonb_build_object('event',a.event_name,'at',to_char(a.occurred_at,'YYYY-MM-DD"T"HH24:MI:SS.MS"Z"'),'properties',a.properties)
+    select s.id,s.device,s.platform,s.release,s.started, jsonb_agg(jsonb_build_object('event',a.event_name,'at',to_char(a.occurred_at,'YYYY-MM-DD"T"HH24:MI:SS.MS"Z"'),'properties',a.properties)
       order by a.occurred_at,a.received_at,a.id) as events,
       coalesce(bool_or(exists(select 1 from subscription_events b
         where b.provider = 'revenuecat' and b.environment = 'production'

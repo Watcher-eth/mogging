@@ -3,7 +3,7 @@ import postgres from 'postgres'
 import { drizzle } from 'drizzle-orm/postgres-js'
 import * as schema from '@/lib/db/schema'
 import { LAUNCH_CAMPAIGNS, launchCampaignTerms } from './campaign-launch'
-import { sprintPayoutCents } from './sprints'
+import { sprintPayoutCents, sprintReviewItems } from './sprints'
 import { compileAnalysisVideo } from './video-composition'
 import { buildAnalysisPost, type AnalysisPostInput } from './analysis-post'
 import { reportCategories } from './mock-report-data'
@@ -18,8 +18,10 @@ const client = postgres(url ?? 'postgres://test@127.0.0.1:1/unused', { max: 3, p
 mock.module('@/lib/db', () => ({ db: drizzle(client, { schema }), schema }))
 mock.module('@/lib/env', () => ({ env: { CREATOR_ACCOUNT_REQUIRED_FOR_SUBMISSION: true } }))
 mock.module('@/lib/storage/videos', () => ({ creatorAssetPublicUrl: (key: string) => `https://media.example/${key}`, verifyCreatorRecordingUpload: async () => {} }))
-const { registerStudioGeneration, submitStudioPost } = await import('./studio-submission')
-const { requestSubmissionReview } = await import('./service')
+const { claimStudioRequirementsReminder, registerStudioGeneration, submitStudioPost } = await import('./studio-submission')
+const { requestSubmissionReview, createCreatorSubmission } = await import('./service')
+const { reviewCreatorResource } = await import('@/lib/admin/creator-service')
+const { listCreatorSprints } = await import('./sprint-service')
 const creatorId = crypto.randomUUID(), userId = crypto.randomUUID(), accountId = crypto.randomUUID(), campaignId = crypto.randomUUID(), sourceId = crypto.randomUUID(), comparisonId = crypto.randomUUID()
 const terms = launchCampaignTerms(LAUNCH_CAMPAIGNS.find(campaign => campaign.key === 'detailed-analysis')!)
 terms.mgcSourceCampaignId = sourceId
@@ -90,4 +92,54 @@ integration('feature breakdown selects Face Feature Comparison', async () => {
   const receipt = await registerStudioGeneration(userId,{...exported(),composition:{...composition,recipe:'measurement-explainer'}})
   const [saved] = await client`select sprint_id from creator_studio_generations where id=${receipt.id}`
   expect(saved.sprint_id).toBe(comparisonId)
+})
+
+integration('shows requirements once per creator per seven days, including simultaneous opens', async () => {
+  const results = await Promise.all([claimStudioRequirementsReminder(userId), claimStudioRequirementsReminder(userId)])
+  expect(results.filter(result => result.show)).toHaveLength(1)
+  expect((await claimStudioRequirementsReminder(userId)).show).toBe(false)
+  await client`update creator_profiles set studio_requirements_seen_at=now()-interval '6 days 23 hours' where id=${creatorId}`
+  expect((await claimStudioRequirementsReminder(userId)).show).toBe(false)
+  await client`update creator_profiles set studio_requirements_seen_at=now()-interval '7 days' where id=${creatorId}`
+  expect((await claimStudioRequirementsReminder(userId)).show).toBe(true)
+})
+
+integration('requirements reminders do not grant access to suspended or locked creators', async () => {
+  await client`update creator_profiles set auth_status='suspended' where id=${creatorId}`
+  await expect(claimStudioRequirementsReminder(userId)).rejects.toThrow('access')
+  await client`update creator_profiles set auth_status='verified',video_studio_access=false where id=${creatorId}`
+  await expect(claimStudioRequirementsReminder(userId)).rejects.toThrow('access')
+  await client`update creator_profiles set video_studio_access=true where id=${creatorId}`
+})
+
+integration('retainer snapshots govern Studio and regular submissions, budget reservations and review after expiry', async () => {
+  const now = Date.now(), agreement = {id:crypto.randomUUID(),amountCents:1000,minimumTier1Percent:22.5,
+    startsAt:new Date(now-86400000).toISOString(),endsAt:new Date(now+10*86400000).toISOString()}
+  await client`update creator_profiles set retainer_terms=${JSON.stringify(agreement)}::text::jsonb where id=${creatorId}`
+  try {
+    const campaigns = await listCreatorSprints(false,userId)
+    expect(campaigns.find(campaign=>campaign.id===campaignId)?.terms.retainer?.id).toBe(agreement.id)
+    const receipt = await registerStudioGeneration(userId,exported())
+    expect(receipt.minimumViews).toBe(0)
+    const submission = await submitStudioPost(userId,post(receipt.id))
+    expect(submission.sprintTerms?.retainer?.id).toBe(agreement.id)
+    const reviewed = await requestSubmissionReview(userId,submission.id,{...evidence(0),usAudiencePercent:22.5})
+    expect(reviewed.status).toBe('in_review')
+    const [pending] = await client`select creator_campaign_expected_payout(sprint_terms,view_count_threshold,us_audience_percent) cents from creator_submissions where id=${submission.id}`
+    expect(pending.cents).toBe(1000)
+    const regular = await createCreatorSubmission(userId,{...evidence(0),usAudiencePercent:22.5,sprintId:campaignId,formatId:terms.formats[0].id,requirementsConfirmed:true,socialAccountId:accountId,postUrl:post(receipt.id).postUrl})
+    expect(regular.sprintTerms?.retainer?.id).toBe(agreement.id)
+    expect(sprintPayoutCents(regular.sprintTerms!,0,22.5)).toBe(1000)
+    await client`update creator_profiles set retainer_terms=${JSON.stringify({...agreement,endsAt:new Date(now-1000).toISOString()})}::text::jsonb where id=${creatorId}`
+    expect((await registerStudioGeneration(userId,exported())).minimumViews).toBe(5000)
+    await expect(createCreatorSubmission(userId,{...evidence(0),sprintId:campaignId,formatId:terms.formats[0].id,requirementsConfirmed:true,socialAccountId:accountId,postUrl:post(receipt.id).postUrl})).rejects.toThrow('at least')
+    const approval = {resource:'submission' as const,id:submission.id,status:'approved' as const,adminViewCountThreshold:0,adminUsAudiencePercent:22.5,
+      reviewChecklist:sprintReviewItems(reviewed.sprintTerms!,reviewed.formatId!).map(item=>({id:item.id,met:true,note:null}))}
+    await expect(reviewCreatorResource({...approval,approvedAmountCents:5000,reviewNote:'Attempted override'})).rejects.toThrow('Retainer earnings are fixed')
+    await expect(reviewCreatorResource({...approval,approvedAmountCents:1000,adminUsAudiencePercent:22.49})).rejects.toThrow('Retainer earnings are fixed')
+    const approved = await reviewCreatorResource(approval)
+    expect(approved).toMatchObject({approvedAmountCents:1000,status:'approved'})
+    const [extras] = await client`select count(*)::int count from creator_payments where submission_id=${submission.id} and bonus_key is not null`
+    expect(extras.count).toBe(0)
+  } finally {await client`update creator_profiles set retainer_terms=null where id=${creatorId}`}
 })

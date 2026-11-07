@@ -16,7 +16,7 @@ const questions = [
 
 // Per-creator, versioned dismissal: revisiting routes does not replay the intro.
 export function useCreatorWelcome(userId?: string, enabled = true) {
-  const [open, setOpen] = useState(false)
+  const [open, setOpen] = useState<boolean | null>(null)
   const storageKey = userId ? `mogging:creator-intro:v1:${userId}` : null
   useEffect(() => {
     if (!enabled || !storageKey) return
@@ -30,7 +30,7 @@ export function useCreatorWelcome(userId?: string, enabled = true) {
       try { localStorage.setItem(storageKey, 'seen') } catch { /* Storage may be disabled. */ }
     }
   }
-  return { open, onOpenChange }
+  return { open: open === true, ready: open !== null, onOpenChange }
 }
 
 export function CreatorWelcomeDialog({ open, onOpenChange }: { open: boolean; onOpenChange: (open: boolean) => void }) {

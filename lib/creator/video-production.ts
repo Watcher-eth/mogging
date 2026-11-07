@@ -109,7 +109,7 @@ export function compileProductionVideo(script: VideoScript, input: AnalysisPostI
   const shots = productionVisualPlan(script, input, images, reports, recipe, variant, featureTopic, featureAmount).map(shot => {
     const direction = { ...shot.direction, ...authoredDirections[shot.id] }
     // Preserve the authored portrait and its registered guides for the closing invitation.
-    return { ...shot, direction: isVideoInvitation(shot.cue) ? { kind: 'portrait' as const, imageId: direction.imageId ?? images[0]?.id, categoryId: direction.categoryId, focus: 'hero', editorial: 'context' as const, ...(direction.portraitProgram ? { portraitProgram: direction.portraitProgram } : {}), ...(direction.profileStudy ? { profileStudy: direction.profileStudy } : {}) } : direction }
+    return { ...shot, direction: isVideoInvitation(shot.cue) && !authoredDirections[shot.id]?.closingReport ? { kind: 'portrait' as const, imageId: direction.imageId ?? images[0]?.id, categoryId: direction.categoryId, focus: 'hero', editorial: 'context' as const, ...(direction.portraitProgram ? { portraitProgram: direction.portraitProgram } : {}), ...(direction.profileStudy ? { profileStudy: direction.profileStudy } : {}) } : direction }
   })
   const assetIds = new Set(images.map(image => image.id))
   for (const direction of Object.values(authoredDirections)) {
