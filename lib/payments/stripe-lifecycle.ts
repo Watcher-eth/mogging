@@ -2,7 +2,7 @@ import { allocateCreatorBillingEvent } from '@/lib/creator/billing-attribution'
 import { createHash } from 'node:crypto'
 import { landingProperties, parseLandingAssignment } from '@/lib/analytics/landing'
 import type Stripe from 'stripe'
-import { and, eq, or } from 'drizzle-orm'
+import { and, eq, or, sql } from 'drizzle-orm'
 import { db, schema } from '@/lib/db'
 
 const object = (value: unknown): Record<string, unknown> => value && typeof value === 'object' ? value as Record<string, unknown> : {}
@@ -58,13 +58,14 @@ export function normalizeStripeLifecycle(event: Stripe.Event) {
   const first = (items: unknown) => object(Array.isArray(items) ? items[0] : null)
   const periodEnd = value.current_period_end ?? first(object(value.items).data).current_period_end ?? object(first(object(value.lines).data).period).end
   return {
-    provider: 'stripe', providerEventId: refundId ? `refund:${refundId}` : eventName === 'one_time_purchase' ? `checkout:${id(value)}` : event.id,
+    provider: 'stripe', providerEventId: refundId ? `refund:${refundId}` : event.type.startsWith('checkout.session.') && ['one_time_purchase','checkout_confirmed'].includes(eventName) ? `checkout:${id(value)}` : event.id,
     providerType: event.type, eventName, environment: event.livemode ? 'production' : 'sandbox',
     externalUserId: id(value.customer), subscriptionId: event.type.startsWith('customer.subscription.') ? id(value) : subscription,
     transactionId: id(value.payment_intent) || id(value.charge), productId: typeof metadata.product === 'string' ? metadata.product : null,
     amount: amount == null ? null : String(amount), currency, occurredAt: new Date(event.created * 1000),
     properties: { creator_click_id: typeof metadata.creatorClickId === 'string' ? metadata.creatorClickId : null,
       invoice_id: event.type === 'invoice.paid' ? id(value) : null,
+      checkout_session_id: event.type.startsWith('checkout.session.') ? id(value) : null,
       expiration_at_ms: typeof periodEnd === 'number' && Number.isFinite(periodEnd) ? periodEnd * 1000 : null, timestamp_estimated: event.id.startsWith('checkout:'), status: value.status ?? null, cancel_at_period_end: value.cancel_at_period_end ?? null,
       period_type: value.status === 'trialing' ? 'TRIAL' : 'NORMAL',
       cancel_reason: object(value.cancellation_details).reason ?? null, billing_reason: value.billing_reason ?? null,
@@ -82,7 +83,9 @@ export async function recordStripeLifecycle(event: Stripe.Event) {
     fact.subscriptionId ? eq(schema.paymentEntitlements.stripeSubscriptionId, fact.subscriptionId) : undefined,
   ].filter(value => value !== undefined)
   const entitlement = identifiers.length ? await db.query.paymentEntitlements.findFirst({
-    where: or(...identifiers), columns: { userId: true },
+    where: fact.subscriptionId ? eq(schema.paymentEntitlements.stripeSubscriptionId, fact.subscriptionId)
+      : fact.transactionId ? eq(schema.paymentEntitlements.stripePaymentIntentId, fact.transactionId) : or(...identifiers),
+    columns: { userId: true, product: true },
   }) : null
   // Refund objects do not carry customer IDs. Prior invoice facts still link them to the payer.
   const prior = !candidateAccountId && !entitlement?.userId && fact.transactionId
@@ -90,10 +93,25 @@ export async function recordStripeLifecycle(event: Stripe.Event) {
       where: and(eq(schema.subscriptionEvents.provider, 'stripe'), eq(schema.subscriptionEvents.transactionId, fact.transactionId)),
       columns: { accountId: true, externalUserId: true },
     }) : null
+  if (!fact.productId && (fact.subscriptionId || fact.transactionId)) fact.productId = entitlement?.product ?? null
   const candidate = candidateAccountId || entitlement?.userId || prior?.accountId
   fact.externalUserId ||= prior?.externalUserId ?? null
   const user = candidate ? await db.query.users.findFirst({ where: eq(schema.users.id, candidate), columns: { id: true } }) : null
-  await db.insert(schema.subscriptionEvents).values({ ...fact, accountId: user?.id }).onConflictDoNothing()
+  await db.insert(schema.subscriptionEvents).values({ ...fact, accountId: user?.id }).onConflictDoUpdate({
+    target: [schema.subscriptionEvents.provider, schema.subscriptionEvents.providerEventId],
+    // A replay can fill linkage that was unavailable before entitlement creation.
+    // Preserve financial amounts, event time and the original provider payload.
+    set: { accountId: sql`coalesce(${schema.subscriptionEvents.accountId}, excluded.account_id)`,
+      productId: sql`coalesce(${schema.subscriptionEvents.productId}, excluded.product_id)`,
+      externalUserId: sql`coalesce(${schema.subscriptionEvents.externalUserId}, excluded.external_user_id)`,
+      subscriptionId: sql`coalesce(${schema.subscriptionEvents.subscriptionId}, excluded.subscription_id)`,
+      transactionId: sql`coalesce(${schema.subscriptionEvents.transactionId}, excluded.transaction_id)`,
+      occurredAt: sql`case when ${schema.subscriptionEvents.properties}->>'timestamp_estimated'='true'
+        and excluded.properties->>'timestamp_estimated'='false' then excluded.occurred_at else ${schema.subscriptionEvents.occurredAt} end`,
+      properties: sql`case when ${schema.subscriptionEvents.properties}->>'timestamp_estimated'='true'
+        and excluded.properties->>'timestamp_estimated'='false' then ${schema.subscriptionEvents.properties} || excluded.properties
+        else ${schema.subscriptionEvents.properties} end` },
+  })
   const stored = await db.query.subscriptionEvents.findFirst({ where: and(eq(schema.subscriptionEvents.provider, 'stripe'), eq(schema.subscriptionEvents.providerEventId, fact.providerEventId)) })
   if (stored && stored.environment === 'production' && !['allocated', 'not_applicable', 'internal'].includes(stored.creatorAttributionStatus)) await allocateCreatorBillingEvent(stored).catch(() => { console.warn('creator:billing-allocation-pending') })
 }
@@ -118,7 +136,8 @@ export async function recordStripeBillingEvent(event: Stripe.Event) {
     eventName: 'checkout_completed', sessionId: session.id, accountId,
     platform: 'server', source: 'stripe_verified', environment: session.livemode ? 'production' : 'development',
     occurredAt: new Date(event.created * 1000), properties: {
-      attempt_id: session.metadata?.attemptId, flow_id: session.metadata?.flowId, paywall_version: session.metadata?.paywallVersion,
+      ...stripeJourneyProperties(session.metadata), paywall_version: session.metadata?.paywallVersion,
+      provider: 'stripe', surface: session.metadata?.source, offering: session.metadata?.returnOffer === '1' ? 'stripe_return' : undefined,
       product: session.metadata?.product || 'unknown', mode: session.mode, status: session.payment_status,
       price: session.amount_total, currency: session.currency,
       ...landingProperties(parseLandingAssignment(session.metadata?.landingAssignment)),
@@ -128,7 +147,8 @@ export async function recordStripeBillingEvent(event: Stripe.Event) {
 
 export async function recordVerifiedStripeCheckout(session: Stripe.Checkout.Session) {
   await recordStripeBillingEvent({
-    id: `checkout:${session.id}`, type: 'checkout.session.completed', created: Math.floor(Date.now() / 1000),
+    id: `checkout:${session.id}`, type: 'checkout.session.completed', created: session.created || Math.floor(Date.now() / 1000),
     livemode: session.livemode, data: { object: session },
   } as Stripe.Event)
 }
+import { stripeJourneyProperties } from '@/lib/analytics/web-context'

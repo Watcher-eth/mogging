@@ -2,6 +2,10 @@ import { describe, expect, test } from 'bun:test'
 import { creatorPostUrlSchema, creatorProfileSchema, creatorSocialAccountSchema, creatorSubmissionSchema } from './validation'
 
 describe('creator input validation', () => {
+  test('bank transfer requires receiving details and does not require unrelated payout fields', () => {
+    expect(creatorProfileSchema.safeParse({ displayName: 'Creator', paymentOption: 'bank_transfer' }).success).toBe(false)
+    expect(creatorProfileSchema.safeParse({ displayName: 'Creator', paymentOption: 'bank_transfer', bankTransferDetails: 'Account holder / bank / country / IBAN / SWIFT' }).success).toBe(true)
+  })
   test('accepts supported published posts and short TikTok links', () => {
     for (const url of ['https://www.tiktok.com/@nate/video/123456789', 'https://www.tiktok.com/@nate/photo/123456789', 'https://vm.tiktok.com/Ab123/', 'https://www.tiktok.com/t/Ab123/?share=1', 'https://instagram.com/reel/ABC_123/', 'https://www.instagram.com/p/ABC-123/']) expect(creatorPostUrlSchema.safeParse(url).success).toBe(true)
   })

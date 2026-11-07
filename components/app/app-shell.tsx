@@ -72,12 +72,15 @@ export function AppShell({ children }: AppShellProps) {
   const { data: session, status } = useSession()
   const router = useRouter()
   const pendingAuthRedirect = getSafeAuthRedirect(router.query.next)
+  const memberPreview = process.env.NODE_ENV === 'development' && router.pathname === '/__member-preview'
   const creatorRoute = router.pathname === '/creator' || router.pathname.startsWith('/creator/')
   const creatorSetup = router.pathname === '/creator/setup'
   const creatorSupport = router.pathname === '/creator/support' || router.pathname === '/creator/__support-demo'
   const creatorReferral = router.pathname === '/r/[slug]'
   const creatorSignIn = router.pathname.startsWith('/creator') && status === 'unauthenticated'
-  const immersive = router.pathname === '/__analysis-v2-report-preview' || router.pathname === '/' || router.pathname === '/analysis' || router.pathname === '/leaderboard' || router.pathname === '/battle' || router.pathname === '/app' || router.pathname === '/app/handoff'
+  const pwaHome = router.pathname === '/app/home'
+  const pwaScan = router.pathname === '/analysis' && router.query.from === 'app'
+  const immersive = pwaHome || router.pathname === '/__analysis-v2-report-preview' || router.pathname === '/' || router.pathname === '/analysis' || router.pathname === '/leaderboard' || router.pathname === '/battle' || router.pathname === '/app' || router.pathname === '/app/handoff'
   const [loginOpen, setLoginOpen] = useState(false)
   const [accountOpen, setAccountOpen] = useState(false)
   const [editOpen, setEditOpen] = useState(false)
@@ -99,6 +102,12 @@ export function AppShell({ children }: AppShellProps) {
       shouldRetryOnError: false,
     }
   )
+  const { data: memberAccess } = useSWR<{ entitlements: { subscription: { active: boolean } } }>(
+    status === 'authenticated' && session?.user?.id && !creatorRoute && !creatorReferral
+      ? ['/api/payments/entitlements', session.user.id] : null,
+    ([url]: [string, string]) => apiGet(url),
+    { shouldRetryOnError: false },
+  )
   const { data: appConfig } = useSWRImmutable<AppConfig>('/api/app-config', apiGet, {
     shouldRetryOnError: false,
   })
@@ -112,12 +121,12 @@ export function AppShell({ children }: AppShellProps) {
   )
 
   useEffect(() => {
-    if (creatorRoute || status !== 'authenticated' || !dashboard?.user || dismissedProfileSetupRef.current) return
+    if (pwaHome || pwaScan || creatorRoute || status !== 'authenticated' || !dashboard?.user || dismissedProfileSetupRef.current) return
     if (dashboard.user.profileCompleted) return
 
     setLoginOpen(false)
     setProfileSetupOpen(true)
-  }, [creatorRoute, dashboard?.user, status])
+  }, [creatorRoute, dashboard?.user, pwaHome, pwaScan, status])
 
   useEffect(() => {
     if (!router.isReady || router.query.login !== '1') return
@@ -169,8 +178,8 @@ export function AppShell({ children }: AppShellProps) {
   }
 
   return (
-    <div className={creatorRoute ? 'creator-app flex min-h-dvh flex-col' : immersive ? 'min-h-screen bg-white' : 'min-h-screen bg-background'}>
-      {!creatorRoute && !creatorReferral ? <AppHeader>
+    <div data-analysis-shell={router.pathname === '/analysis' || undefined} className={creatorRoute ? 'creator-app flex min-h-dvh flex-col' : immersive ? 'min-h-screen bg-white' : 'min-h-screen bg-background'}>
+      {!creatorRoute && !creatorReferral && !pwaHome ? <AppHeader member={memberPreview || memberAccess?.entitlements.subscription.active === true}>
             {status === 'loading' ? (
               <div className="h-8 w-14 animate-pulse rounded-lg border border-zinc-200 bg-white sm:h-10 sm:w-24" />
             ) : session?.user ? (
@@ -249,7 +258,7 @@ export function AppShell({ children }: AppShellProps) {
         {creatorRoute && !creatorSignIn && !creatorSetup ? <SidebarProvider className="min-h-0 flex-1 flex-col">{children}</SidebarProvider> : children}
       </main>
 
-      {!creatorSetup && !creatorReferral && !creatorSupport ? <footer className="border-t border-zinc-200 bg-white py-8 text-sm text-zinc-600">
+      {!creatorSetup && !creatorReferral && !creatorSupport && !pwaHome ? <footer className="border-t border-zinc-200 bg-white py-8 text-sm text-zinc-600">
         <nav aria-label={t('footer.resources')} className="public-frame public-gutters flex flex-wrap gap-x-6 gap-y-4">
           <Link href="/what-is-mogging" prefetch={false} className="hover:text-black">{t('footer.what')}</Link>
           <Link href="/how-face-analysis-works" prefetch={false} className="hover:text-black">{t('footer.how')}</Link>
@@ -280,7 +289,7 @@ export function AppShell({ children }: AppShellProps) {
       />
       <ProfileSetupDialog
         dashboard={dashboard ?? null}
-        open={profileSetupOpen && !creatorRoute && !creatorReferral}
+        open={profileSetupOpen && !creatorRoute && !creatorReferral && !pwaHome && !pwaScan}
         onOpenChange={(nextOpen) => {
           if (!nextOpen) dismissedProfileSetupRef.current = true
           setProfileSetupOpen(nextOpen)

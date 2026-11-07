@@ -1,5 +1,5 @@
 import { recordServerEvent } from '@/lib/analytics/events'
-import { LANDING_COOKIE, landingProperties, parseLandingAssignment } from '@/lib/analytics/landing'
+import { landingProperties, readLandingCookie, serializeLandingAssignment } from '@/lib/analytics/landing'
 import { monitorBackend } from '@/lib/reliability/monitor'
 import type { NextApiRequest, NextApiResponse } from 'next'
 import { z } from 'zod'
@@ -15,6 +15,8 @@ import type { PaymentProduct } from '@/lib/db/schema'
 const checkoutSchema = z.object({
   attemptId: z.string().uuid().optional(),
   flowId: z.string().uuid().optional(),
+  flowVersion: z.string().max(80).optional(),
+  entryMode: z.enum(['photo_first', 'onboarding_first']).optional(),
   unitAmount: z.number().int().nonnegative().optional(),
   currency: z.string().regex(/^[a-z]{3}$/).optional(),
   imageCount: z.number().int().min(1).max(3),
@@ -33,7 +35,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
     const accountId = await getRequestUserId(req, res)
     if (!accountId) throw new ApiError(401, 'Sign in before starting checkout')
     const access = await getEntitlementSummary({ userId: accountId, mobileInstallId: input.mobileInstallId })
-    if (access.evaluationCredits >= input.imageCount) return json(res, 200, { url: '/analysis?resume=1' })
+    if (access.evaluationCredits >= input.imageCount) return json(res, 200, { url: '/analysis?start=1&resumePhoto=1' })
     const origin = getRequestOrigin(req)
     const productId: PaymentProduct = input.imageCount > 1 ? 'evaluation_pack_3' : 'evaluation'
     const product = getProductConfig(productId)
@@ -53,7 +55,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
       },
     })
     const accountAttribution = attribution || await getAccountCreatorAttribution(accountId)
-    const landingAssignment = parseLandingAssignment(req.cookies[LANDING_COOKIE])
+    const landingAssignment = readLandingCookie(req.headers.cookie ?? '')
     const checkout = await stripe.checkout.sessions.create({
       branding_settings: { display_name: 'Mogging' },
       mode: product.mode,
@@ -68,10 +70,12 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
         product: productId,
         mobileInstallId: input.mobileInstallId,
         source: 'web_analysis',
-        ...(landingAssignment ? { landingAssignment: req.cookies[LANDING_COOKIE]! } : {}),
+        ...(landingAssignment ? { landingAssignment: serializeLandingAssignment(landingAssignment) } : {}),
         imageCount: String(input.imageCount),
         ...(input.attemptId ? { attemptId: input.attemptId, paywallVersion: '2' } : {}),
         ...(input.flowId ? { flowId: input.flowId } : {}),
+          ...(input.flowVersion ? { flowVersion: input.flowVersion } : {}),
+          ...(input.entryMode ? { entryMode: input.entryMode } : {}),
         accountId,
         userId: accountId,
         ...stripeAttributionMetadata(accountAttribution),
@@ -85,10 +89,10 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
     }
 
     await recordCreatorCheckout(accountAttribution, checkout)
-    await recordServerEvent({ eventName: 'checkout_started', accountId, sessionId: checkout.id, source: 'web_analysis', properties: { product: productId, attempt_id: input.attemptId, flow_id: input.flowId, ...(input.attemptId ? { paywall_version: '2' } : {}), ...landingProperties(landingAssignment) } })
+    await recordServerEvent({ eventName: 'checkout_started', accountId, sessionId: checkout.id, source: 'web_analysis', properties: { product: productId, attempt_id: input.attemptId, flow_id: input.flowId, flow_version: input.flowVersion, entry_mode: input.entryMode, ...(input.attemptId ? { paywall_version: '2' } : {}), ...landingProperties(landingAssignment) } })
 
     return json(res, 200, {
-      url: checkout.url,
+      url: checkout.url, sessionId: checkout.id,
     })
   } catch (error) {
     return handleApiError(error, res)

@@ -1,0 +1,3736 @@
+{
+  "window": {
+    "start": "2026-10-06T07:00:00Z",
+    "endExclusive": "2026-11-05T08:00:00Z",
+    "reportingTimezone": "America/Los_Angeles",
+    "appleWindow": "2026-10-06 through 2026-11-04; Apple daily reporting boundaries"
+  },
+  "creator": {
+    "posts": [
+      {
+        "posts": 150,
+        "views": 12792009,
+        "status": "paid",
+        "included": true,
+        "platform": "TikTok",
+        "dated_posts": 5,
+        "approved_cents": 404953
+      },
+      {
+        "posts": 43,
+        "views": 2223157,
+        "status": "paid",
+        "included": true,
+        "platform": "Instagram Reels",
+        "dated_posts": 0,
+        "approved_cents": 81360
+      },
+      {
+        "posts": 8,
+        "views": 768800,
+        "status": "rejected",
+        "included": true,
+        "platform": "TikTok",
+        "dated_posts": 0,
+        "approved_cents": null
+      },
+      {
+        "posts": 2,
+        "views": 163900,
+        "status": "approved",
+        "included": true,
+        "platform": "Instagram Reels",
+        "dated_posts": 0,
+        "approved_cents": 4500
+      },
+      {
+        "posts": 21,
+        "views": 2559000,
+        "status": "approved",
+        "included": true,
+        "platform": "TikTok",
+        "dated_posts": 0,
+        "approved_cents": 58046
+      },
+      {
+        "posts": 6,
+        "views": 440883,
+        "status": "rejected",
+        "included": true,
+        "platform": "Instagram Reels",
+        "dated_posts": 1,
+        "approved_cents": null
+      }
+    ],
+    "weeks": [
+      {
+        "week": "2026-10-05",
+        "posts": 1,
+        "views": 73000,
+        "approved_cents": 4500
+      },
+      {
+        "week": "2026-10-12",
+        "posts": 28,
+        "views": 2772302,
+        "approved_cents": 114975
+      },
+      {
+        "week": "2026-10-19",
+        "posts": 97,
+        "views": 8097838,
+        "approved_cents": 240748
+      },
+      {
+        "week": "2026-10-26",
+        "posts": 66,
+        "views": 5545109,
+        "approved_cents": 122779
+      },
+      {
+        "week": "2026-11-02",
+        "posts": 38,
+        "views": 2459500,
+        "approved_cents": 65857
+      }
+    ],
+    "clicks": [
+      {
+        "actors": 666,
+        "clicks": 847,
+        "is_bot": false,
+        "source": "browser",
+        "placement": null
+      },
+      {
+        "actors": 100,
+        "clicks": 100,
+        "is_bot": true,
+        "source": "browser",
+        "placement": null
+      },
+      {
+        "actors": 0,
+        "clicks": 4,
+        "is_bot": false,
+        "source": "creator_code",
+        "placement": null
+      }
+    ],
+    "payments": [
+      {
+        "cents": 516091,
+        "status": "paid",
+        "currency": "USD",
+        "included": true,
+        "payments": 265,
+        "paid_window_cents": 516091
+      },
+      {
+        "cents": 5000,
+        "status": "pending",
+        "currency": "USD",
+        "included": true,
+        "payments": 5,
+        "paid_window_cents": null
+      },
+      {
+        "cents": 31000,
+        "status": "paid",
+        "currency": "USD",
+        "included": false,
+        "payments": 3,
+        "paid_window_cents": null
+      }
+    ],
+    "all_posts": [
+      {
+        "posts": 3,
+        "views": 940000,
+        "included": false,
+        "platform": "tiktok"
+      },
+      {
+        "posts": 1,
+        "views": 250000,
+        "included": false,
+        "platform": "Instagram Reels"
+      },
+      {
+        "posts": 51,
+        "views": 2827940,
+        "included": true,
+        "platform": "Instagram Reels"
+      },
+      {
+        "posts": 180,
+        "views": 16158709,
+        "included": true,
+        "platform": "TikTok"
+      }
+    ],
+    "attribution": [
+      {
+        "cents": 0,
+        "events": 19,
+        "accounts": 19,
+        "currency": "USD",
+        "event_type": "signup"
+      },
+      {
+        "cents": 0,
+        "events": 7,
+        "accounts": 7,
+        "currency": "USD",
+        "event_type": "checkout"
+      },
+      {
+        "cents": 0,
+        "events": 1,
+        "accounts": 1,
+        "currency": "USD",
+        "event_type": "paywall_view"
+      },
+      {
+        "cents": 0,
+        "events": 35,
+        "accounts": 25,
+        "currency": "USD",
+        "event_type": "claim"
+      }
+    ]
+  },
+  "economics": {
+    "ocr": {
+      "submissions": 230,
+      "ocr_verified": 0,
+      "reviewed_views": 230,
+      "post_date_known": 6
+    },
+    "creators": [
+      {
+        "posts": 61,
+        "views": 5511714,
+        "clicks": null,
+        "visitors": null,
+        "display_name": "Jannis M\u00fcpller",
+        "social_handle": null,
+        "approved_cents": 206673,
+        "audience_percent": 49.3
+      },
+      {
+        "posts": 16,
+        "views": 3008000,
+        "clicks": 332,
+        "visitors": 270,
+        "display_name": "ascendic international",
+        "social_handle": null,
+        "approved_cents": 86413,
+        "audience_percent": 36.4
+      },
+      {
+        "posts": 18,
+        "views": 1655200,
+        "clicks": null,
+        "visitors": null,
+        "display_name": "Bannu",
+        "social_handle": null,
+        "approved_cents": 44750,
+        "audience_percent": 48
+      },
+      {
+        "posts": 10,
+        "views": 1570900,
+        "clicks": 21,
+        "visitors": 15,
+        "display_name": "Uis Jaw",
+        "social_handle": null,
+        "approved_cents": 30350,
+        "audience_percent": 56.5
+      },
+      {
+        "posts": 12,
+        "views": 1117200,
+        "clicks": 21,
+        "visitors": 15,
+        "display_name": "zukai method",
+        "social_handle": null,
+        "approved_cents": 36125,
+        "audience_percent": 44
+      },
+      {
+        "posts": 10,
+        "views": 564100,
+        "clicks": 97,
+        "visitors": 80,
+        "display_name": "Ezekiel macabata",
+        "social_handle": null,
+        "approved_cents": 21063,
+        "audience_percent": 38.3
+      },
+      {
+        "posts": 12,
+        "views": 562400,
+        "clicks": 4,
+        "visitors": 3,
+        "display_name": "\u0414\u0456\u043c\u0430",
+        "social_handle": null,
+        "approved_cents": 13285,
+        "audience_percent": 26.4
+      },
+      {
+        "posts": 3,
+        "views": 552000,
+        "clicks": null,
+        "visitors": null,
+        "display_name": "IBlameBP",
+        "social_handle": null,
+        "approved_cents": 1200,
+        "audience_percent": 13.1
+      },
+      {
+        "posts": 14,
+        "views": 436700,
+        "clicks": 16,
+        "visitors": 4,
+        "display_name": "PRIME",
+        "social_handle": "https://www.tiktok.com/@primezila",
+        "approved_cents": 17270,
+        "audience_percent": 43.9
+      },
+      {
+        "posts": 6,
+        "views": 385600,
+        "clicks": 8,
+        "visitors": 8,
+        "display_name": "\ud835\udc00\ud835\udc11\ud835\udc00\ud835\udc15\ud835\udc08\ud835\udc17",
+        "social_handle": null,
+        "approved_cents": 14000,
+        "audience_percent": 52
+      },
+      {
+        "posts": 9,
+        "views": 362709,
+        "clicks": null,
+        "visitors": null,
+        "display_name": "Saad Lazkani",
+        "social_handle": null,
+        "approved_cents": 12300,
+        "audience_percent": 43.1
+      },
+      {
+        "posts": 3,
+        "views": 349600,
+        "clicks": null,
+        "visitors": null,
+        "display_name": "Universal PSL",
+        "social_handle": null,
+        "approved_cents": 3435,
+        "audience_percent": 39.5
+      },
+      {
+        "posts": 5,
+        "views": 294143,
+        "clicks": null,
+        "visitors": null,
+        "display_name": "Haris Ibn Hanif",
+        "social_handle": null,
+        "approved_cents": 6200,
+        "audience_percent": 14.1
+      },
+      {
+        "posts": 3,
+        "views": 270000,
+        "clicks": 10,
+        "visitors": 5,
+        "display_name": "silver.psl1",
+        "social_handle": null,
+        "approved_cents": 8250,
+        "audience_percent": 60.8
+      },
+      {
+        "posts": 7,
+        "views": 266300,
+        "clicks": null,
+        "visitors": null,
+        "display_name": "Lucas Mammadov",
+        "social_handle": null,
+        "approved_cents": 5986,
+        "audience_percent": 25.8
+      },
+      {
+        "posts": 2,
+        "views": 220000,
+        "clicks": null,
+        "visitors": null,
+        "display_name": "Bpedits",
+        "social_handle": null,
+        "approved_cents": 5250,
+        "audience_percent": 39.7
+      },
+      {
+        "posts": 1,
+        "views": 205550,
+        "clicks": null,
+        "visitors": null,
+        "display_name": "ADARSH RAWAT",
+        "social_handle": null,
+        "approved_cents": null,
+        "audience_percent": 8
+      },
+      {
+        "posts": 1,
+        "views": 190000,
+        "clicks": 35,
+        "visitors": 30,
+        "display_name": "Tgk:Hardmaxxing1",
+        "social_handle": null,
+        "approved_cents": null,
+        "audience_percent": 7
+      },
+      {
+        "posts": 6,
+        "views": 154500,
+        "clicks": null,
+        "visitors": null,
+        "display_name": "Malik Irfan",
+        "social_handle": null,
+        "approved_cents": 1860,
+        "audience_percent": 15.8
+      },
+      {
+        "posts": 3,
+        "views": 152300,
+        "clicks": 34,
+        "visitors": 27,
+        "display_name": "Prenzzz Hstls",
+        "social_handle": null,
+        "approved_cents": 5313,
+        "audience_percent": 28.8
+      },
+      {
+        "posts": 2,
+        "views": 128100,
+        "clicks": null,
+        "visitors": null,
+        "display_name": "demised",
+        "social_handle": null,
+        "approved_cents": 7100,
+        "audience_percent": 28
+      },
+      {
+        "posts": 1,
+        "views": 126000,
+        "clicks": null,
+        "visitors": null,
+        "display_name": "Max Hope",
+        "social_handle": null,
+        "approved_cents": null,
+        "audience_percent": 11.8
+      },
+      {
+        "posts": 3,
+        "views": 124500,
+        "clicks": null,
+        "visitors": null,
+        "display_name": "Bjorni Aliaj",
+        "social_handle": null,
+        "approved_cents": 4820,
+        "audience_percent": 30
+      },
+      {
+        "posts": 1,
+        "views": 102900,
+        "clicks": 9,
+        "visitors": 9,
+        "display_name": "Louie \u201cLui\u201d",
+        "social_handle": null,
+        "approved_cents": 3000,
+        "audience_percent": 64.9
+      },
+      {
+        "posts": 2,
+        "views": 98000,
+        "clicks": null,
+        "visitors": null,
+        "display_name": "gloob",
+        "social_handle": null,
+        "approved_cents": 2263,
+        "audience_percent": 27.2
+      },
+      {
+        "posts": 4,
+        "views": 82500,
+        "clicks": null,
+        "visitors": null,
+        "display_name": "Jordan Exa",
+        "social_handle": null,
+        "approved_cents": 1160,
+        "audience_percent": 15.4
+      },
+      {
+        "posts": 1,
+        "views": 73000,
+        "clicks": null,
+        "visitors": null,
+        "display_name": "Solako",
+        "social_handle": "solako.ascend",
+        "approved_cents": 4500,
+        "audience_percent": 39
+      },
+      {
+        "posts": 2,
+        "views": 61700,
+        "clicks": 23,
+        "visitors": 20,
+        "display_name": "Rahim Brutal",
+        "social_handle": null,
+        "approved_cents": 1000,
+        "audience_percent": 16.4
+      },
+      {
+        "posts": 2,
+        "views": 52000,
+        "clicks": null,
+        "visitors": null,
+        "display_name": "Ben Withpsl",
+        "social_handle": null,
+        "approved_cents": 1200,
+        "audience_percent": 19.7
+      },
+      {
+        "posts": 1,
+        "views": 45633,
+        "clicks": null,
+        "visitors": null,
+        "display_name": "Imran Akhtar",
+        "social_handle": null,
+        "approved_cents": null,
+        "audience_percent": 8.7
+      },
+      {
+        "posts": 1,
+        "views": 43000,
+        "clicks": null,
+        "visitors": null,
+        "display_name": "Chaudhary Mazz",
+        "social_handle": null,
+        "approved_cents": 320,
+        "audience_percent": 15.3
+      },
+      {
+        "posts": 2,
+        "views": 40900,
+        "clicks": null,
+        "visitors": null,
+        "display_name": "sparky`",
+        "social_handle": null,
+        "approved_cents": 1040,
+        "audience_percent": 24.4
+      },
+      {
+        "posts": 1,
+        "views": 27200,
+        "clicks": null,
+        "visitors": null,
+        "display_name": "Davyd",
+        "social_handle": null,
+        "approved_cents": 800,
+        "audience_percent": 67.5
+      },
+      {
+        "posts": 1,
+        "views": 26000,
+        "clicks": null,
+        "visitors": null,
+        "display_name": "Beauty Glamour",
+        "social_handle": null,
+        "approved_cents": 813,
+        "audience_percent": 23
+      },
+      {
+        "posts": 1,
+        "views": 26000,
+        "clicks": null,
+        "visitors": null,
+        "display_name": "lookism6",
+        "social_handle": null,
+        "approved_cents": null,
+        "audience_percent": 64.2
+      },
+      {
+        "posts": 1,
+        "views": 21100,
+        "clicks": null,
+        "visitors": null,
+        "display_name": "ZORO",
+        "social_handle": null,
+        "approved_cents": null,
+        "audience_percent": 15.9
+      },
+      {
+        "posts": 1,
+        "views": 20300,
+        "clicks": null,
+        "visitors": null,
+        "display_name": "Sparks ;)",
+        "social_handle": null,
+        "approved_cents": 600,
+        "audience_percent": 16
+      },
+      {
+        "posts": 1,
+        "views": 20000,
+        "clicks": null,
+        "visitors": null,
+        "display_name": "Mogged Marlon",
+        "social_handle": null,
+        "approved_cents": 520,
+        "audience_percent": 23
+      }
+    ],
+    "campaigns": [
+      {
+        "events": 1,
+        "event_type": "paywall_view",
+        "click_linked": 1,
+        "install_linked": 1
+      },
+      {
+        "events": 7,
+        "event_type": "checkout",
+        "click_linked": 7,
+        "install_linked": 7
+      },
+      {
+        "events": 19,
+        "event_type": "signup",
+        "click_linked": 19,
+        "install_linked": 1
+      },
+      {
+        "events": 35,
+        "event_type": "claim",
+        "click_linked": 35,
+        "install_linked": 2
+      }
+    ],
+    "recent_posts": [
+      {
+        "posts": 68,
+        "views": 5699990,
+        "period": "earlier",
+        "approved_cents": 246110
+      },
+      {
+        "posts": 86,
+        "views": 7556950,
+        "period": "previous7",
+        "approved_cents": 163369
+      },
+      {
+        "posts": 76,
+        "views": 5690809,
+        "period": "last7",
+        "approved_cents": 139380
+      }
+    ],
+    "recent_spend": [
+      {
+        "period": "earlier",
+        "payments": 77,
+        "paid_cents": 201410
+      },
+      {
+        "period": "previous7",
+        "payments": 93,
+        "paid_cents": 167066
+      },
+      {
+        "period": "last7",
+        "payments": 95,
+        "paid_cents": 147615
+      }
+    ],
+    "apple_campaign": {
+      "rows": 0,
+      "sales": null,
+      "downloads": null
+    }
+  },
+  "cohorts": {
+    "steps": [
+      {
+        "step": "primer",
+        "actors": 1,
+        "events": 3,
+        "platform": "android"
+      },
+      {
+        "step": "primer",
+        "actors": 2856,
+        "events": 7550,
+        "platform": "ios"
+      },
+      {
+        "step": "protocol_preview",
+        "actors": 2778,
+        "events": 7189,
+        "platform": "ios"
+      },
+      {
+        "step": "age",
+        "actors": 2729,
+        "events": 5984,
+        "platform": "ios"
+      },
+      {
+        "step": "height",
+        "actors": 2640,
+        "events": 5720,
+        "platform": "ios"
+      },
+      {
+        "step": "gender",
+        "actors": 2616,
+        "events": 5435,
+        "platform": "ios"
+      },
+      {
+        "step": "experience",
+        "actors": 2614,
+        "events": 5406,
+        "platform": "ios"
+      },
+      {
+        "step": "goals",
+        "actors": 2606,
+        "events": 5374,
+        "platform": "ios"
+      },
+      {
+        "step": "time",
+        "actors": 2574,
+        "events": 6019,
+        "platform": "ios"
+      },
+      {
+        "step": "commit",
+        "actors": 2572,
+        "events": 6605,
+        "platform": "ios"
+      },
+      {
+        "step": "authentication",
+        "actors": 2569,
+        "events": 5275,
+        "platform": "ios"
+      },
+      {
+        "step": "weight",
+        "actors": 2525,
+        "events": 5267,
+        "platform": "ios"
+      },
+      {
+        "step": "upload",
+        "actors": 2125,
+        "events": 4420,
+        "platform": "ios"
+      },
+      {
+        "step": "paywall_plans",
+        "actors": 1894,
+        "events": 2306,
+        "platform": "ios"
+      },
+      {
+        "step": "scan_preview",
+        "actors": 1891,
+        "events": 1982,
+        "platform": "ios"
+      },
+      {
+        "step": "methods",
+        "actors": 864,
+        "events": 1773,
+        "platform": "ios"
+      },
+      {
+        "step": "evaluation_processing",
+        "actors": 60,
+        "events": 61,
+        "platform": "ios"
+      },
+      {
+        "step": "impressions",
+        "actors": 17,
+        "events": 33,
+        "platform": "ios"
+      },
+      {
+        "step": "dating",
+        "actors": 16,
+        "events": 31,
+        "platform": "ios"
+      },
+      {
+        "step": "relevance",
+        "actors": 15,
+        "events": 30,
+        "platform": "ios"
+      },
+      {
+        "step": "agency",
+        "actors": 15,
+        "events": 30,
+        "platform": "ios"
+      },
+      {
+        "step": "mechanism",
+        "actors": 15,
+        "events": 68,
+        "platform": "ios"
+      },
+      {
+        "step": "motivation",
+        "actors": 15,
+        "events": 30,
+        "platform": "ios"
+      },
+      {
+        "step": "transformation",
+        "actors": 15,
+        "events": 30,
+        "platform": "ios"
+      },
+      {
+        "step": "obstacle",
+        "actors": 9,
+        "events": 28,
+        "platform": "ios"
+      },
+      {
+        "step": "protocol_bridge",
+        "actors": 8,
+        "events": 8,
+        "platform": "ios"
+      },
+      {
+        "step": "reveal",
+        "actors": 8,
+        "events": 35,
+        "platform": "ios"
+      },
+      {
+        "step": "location",
+        "actors": 7,
+        "events": 20,
+        "platform": "ios"
+      },
+      {
+        "step": "evidence",
+        "actors": 7,
+        "events": 28,
+        "platform": "ios"
+      },
+      {
+        "step": "dating_confidence",
+        "actors": 3,
+        "events": 6,
+        "platform": "ios"
+      },
+      {
+        "step": "generating",
+        "actors": 3,
+        "events": 6,
+        "platform": "ios"
+      },
+      {
+        "step": "report_preview",
+        "actors": 2,
+        "events": 4,
+        "platform": "ios"
+      },
+      {
+        "step": "intro",
+        "actors": 1008,
+        "events": 2247,
+        "platform": "web"
+      },
+      {
+        "step": "upload",
+        "actors": 438,
+        "events": 683,
+        "platform": "web"
+      },
+      {
+        "step": "actual-analysis",
+        "actors": 379,
+        "events": 560,
+        "platform": "web"
+      },
+      {
+        "step": "results",
+        "actors": 12,
+        "events": 28,
+        "platform": "web"
+      },
+      {
+        "step": "preview-analysis",
+        "actors": 3,
+        "events": 3,
+        "platform": "web"
+      },
+      {
+        "step": "story",
+        "actors": 1,
+        "events": 1,
+        "platform": "web"
+      }
+    ],
+    "cohort": {
+      "auth": 2101,
+      "photos": 1924,
+      "reports": 57,
+      "attempts": 930,
+      "installs": 2859,
+      "paywalls": 1898,
+      "purchases": 50,
+      "evaluations": 55
+    },
+    "ordered": {
+      "auth": 2101,
+      "installs": 2859,
+      "photos_after_auth": 1906,
+      "purchases_ordered": 48,
+      "attempts_after_paywall": 919,
+      "paywalls_after_photo_auth": 1876
+    },
+    "auth_web": {
+      "error_actors": 754,
+      "subsequently_linked_or_checkout": 621
+    },
+    "coverage": [
+      {
+        "events": 301,
+        "provider": "stripe",
+        "usd_known": 0,
+        "first_event": "2026-10-11T13:53:12",
+        "creator_linked": 0,
+        "appsflyer_linked": 0
+      },
+      {
+        "events": 116,
+        "provider": "revenuecat",
+        "usd_known": 57,
+        "first_event": "2026-10-01T14:56:00.913",
+        "creator_linked": 0,
+        "appsflyer_linked": 107
+      }
+    ],
+    "retention": [
+      {
+        "day": 1,
+        "eligible": 2733,
+        "retained": 104
+      },
+      {
+        "day": 7,
+        "eligible": 1836,
+        "retained": 17
+      },
+      {
+        "day": 14,
+        "eligible": 658,
+        "retained": 0
+      }
+    ],
+    "billing_usd": [
+      {
+        "usd": 0,
+        "events": 36,
+        "provider": "revenuecat",
+        "customers": 35,
+        "local_usd": 0,
+        "event_name": "cancellation_scheduled",
+        "missing_usd": 16
+      },
+      {
+        "usd": null,
+        "events": 10,
+        "provider": "revenuecat",
+        "customers": 3,
+        "local_usd": 69.91,
+        "event_name": "one_time_purchase",
+        "missing_usd": 10
+      },
+      {
+        "usd": 0,
+        "events": 11,
+        "provider": "revenuecat",
+        "customers": 11,
+        "local_usd": 0,
+        "event_name": "subscription_expired",
+        "missing_usd": 3
+      },
+      {
+        "usd": null,
+        "events": 1,
+        "provider": "revenuecat",
+        "customers": 1,
+        "local_usd": 0,
+        "event_name": "subscription_reactivated",
+        "missing_usd": 1
+      },
+      {
+        "usd": null,
+        "events": 1,
+        "provider": "revenuecat",
+        "customers": 1,
+        "local_usd": -4.99,
+        "event_name": "subscription_refunded",
+        "missing_usd": 1
+      },
+      {
+        "usd": 26.671,
+        "events": 8,
+        "provider": "revenuecat",
+        "customers": 6,
+        "local_usd": 29.94,
+        "event_name": "subscription_renewed",
+        "missing_usd": 3
+      },
+      {
+        "usd": 196.027,
+        "events": 48,
+        "provider": "revenuecat",
+        "customers": 48,
+        "local_usd": 139.78,
+        "event_name": "subscription_started",
+        "missing_usd": 24
+      },
+      {
+        "usd": null,
+        "events": 1,
+        "provider": "stripe",
+        "customers": 1,
+        "local_usd": null,
+        "event_name": "checkout_confirmed",
+        "missing_usd": 0
+      },
+      {
+        "usd": null,
+        "events": 292,
+        "provider": "stripe",
+        "customers": 276,
+        "local_usd": null,
+        "event_name": "checkout_expired",
+        "missing_usd": 0
+      },
+      {
+        "usd": 4.99,
+        "events": 1,
+        "provider": "stripe",
+        "customers": 1,
+        "local_usd": 4.99,
+        "event_name": "invoice_paid",
+        "missing_usd": 0
+      },
+      {
+        "usd": 19.96,
+        "events": 4,
+        "provider": "stripe",
+        "customers": 4,
+        "local_usd": 19.96,
+        "event_name": "one_time_purchase",
+        "missing_usd": 0
+      },
+      {
+        "usd": null,
+        "events": 2,
+        "provider": "stripe",
+        "customers": 2,
+        "local_usd": null,
+        "event_name": "payment_failed",
+        "missing_usd": 0
+      },
+      {
+        "usd": null,
+        "events": 1,
+        "provider": "stripe",
+        "customers": 1,
+        "local_usd": null,
+        "event_name": "subscription_started",
+        "missing_usd": 0
+      }
+    ],
+    "week_events": [
+      {
+        "actors": 1,
+        "events": 1,
+        "period": "earlier",
+        "platform": "android",
+        "event_name": "app_first_open"
+      },
+      {
+        "actors": 658,
+        "events": 658,
+        "period": "earlier",
+        "platform": "ios",
+        "event_name": "app_first_open"
+      },
+      {
+        "actors": 105,
+        "events": 127,
+        "period": "earlier",
+        "platform": "ios",
+        "event_name": "checkout_started"
+      },
+      {
+        "actors": 9,
+        "events": 20,
+        "period": "earlier",
+        "platform": "ios",
+        "event_name": "evaluation_completed"
+      },
+      {
+        "actors": 423,
+        "events": 581,
+        "period": "earlier",
+        "platform": "ios",
+        "event_name": "paywall_viewed"
+      },
+      {
+        "actors": 8,
+        "events": 15,
+        "period": "earlier",
+        "platform": "ios",
+        "event_name": "purchase_completed"
+      },
+      {
+        "actors": 202,
+        "events": 245,
+        "period": "earlier",
+        "platform": "ios",
+        "event_name": "purchase_started"
+      },
+      {
+        "actors": 2,
+        "events": 2,
+        "period": "earlier",
+        "platform": "server",
+        "event_name": "checkout_completed"
+      },
+      {
+        "actors": 57,
+        "events": 65,
+        "period": "earlier",
+        "platform": "server",
+        "event_name": "checkout_started"
+      },
+      {
+        "actors": 417,
+        "events": 435,
+        "period": "earlier",
+        "platform": "web",
+        "event_name": "app_store_redirected"
+      },
+      {
+        "actors": 853,
+        "events": 1140,
+        "period": "earlier",
+        "platform": "web",
+        "event_name": "landing_viewed"
+      },
+      {
+        "actors": 48,
+        "events": 112,
+        "period": "earlier",
+        "platform": "web",
+        "event_name": "paywall_viewed"
+      },
+      {
+        "actors": 1023,
+        "events": 1023,
+        "period": "last7",
+        "platform": "ios",
+        "event_name": "app_first_open"
+      },
+      {
+        "actors": 366,
+        "events": 502,
+        "period": "last7",
+        "platform": "ios",
+        "event_name": "checkout_started"
+      },
+      {
+        "actors": 27,
+        "events": 29,
+        "period": "last7",
+        "platform": "ios",
+        "event_name": "evaluation_completed"
+      },
+      {
+        "actors": 734,
+        "events": 1041,
+        "period": "last7",
+        "platform": "ios",
+        "event_name": "paywall_viewed"
+      },
+      {
+        "actors": 25,
+        "events": 26,
+        "period": "last7",
+        "platform": "ios",
+        "event_name": "purchase_completed"
+      },
+      {
+        "actors": 364,
+        "events": 469,
+        "period": "last7",
+        "platform": "ios",
+        "event_name": "purchase_started"
+      },
+      {
+        "actors": 3,
+        "events": 3,
+        "period": "last7",
+        "platform": "server",
+        "event_name": "checkout_completed"
+      },
+      {
+        "actors": 110,
+        "events": 117,
+        "period": "last7",
+        "platform": "server",
+        "event_name": "checkout_started"
+      },
+      {
+        "actors": 873,
+        "events": 964,
+        "period": "last7",
+        "platform": "web",
+        "event_name": "app_store_redirected"
+      },
+      {
+        "actors": 3,
+        "events": 3,
+        "period": "last7",
+        "platform": "web",
+        "event_name": "evaluation_completed"
+      },
+      {
+        "actors": 1466,
+        "events": 2056,
+        "period": "last7",
+        "platform": "web",
+        "event_name": "landing_viewed"
+      },
+      {
+        "actors": 339,
+        "events": 546,
+        "period": "last7",
+        "platform": "web",
+        "event_name": "paywall_viewed"
+      },
+      {
+        "actors": 2,
+        "events": 2,
+        "period": "last7",
+        "platform": "web",
+        "event_name": "purchase_started"
+      },
+      {
+        "actors": 1178,
+        "events": 1178,
+        "period": "previous7",
+        "platform": "ios",
+        "event_name": "app_first_open"
+      },
+      {
+        "actors": 381,
+        "events": 471,
+        "period": "previous7",
+        "platform": "ios",
+        "event_name": "checkout_started"
+      },
+      {
+        "actors": 19,
+        "events": 20,
+        "period": "previous7",
+        "platform": "ios",
+        "event_name": "evaluation_completed"
+      },
+      {
+        "actors": 791,
+        "events": 1072,
+        "period": "previous7",
+        "platform": "ios",
+        "event_name": "paywall_viewed"
+      },
+      {
+        "actors": 17,
+        "events": 17,
+        "period": "previous7",
+        "platform": "ios",
+        "event_name": "purchase_completed"
+      },
+      {
+        "actors": 371,
+        "events": 448,
+        "period": "previous7",
+        "platform": "ios",
+        "event_name": "purchase_started"
+      },
+      {
+        "actors": 113,
+        "events": 116,
+        "period": "previous7",
+        "platform": "server",
+        "event_name": "checkout_started"
+      },
+      {
+        "actors": 774,
+        "events": 854,
+        "period": "previous7",
+        "platform": "web",
+        "event_name": "app_store_redirected"
+      },
+      {
+        "actors": 1,
+        "events": 1,
+        "period": "previous7",
+        "platform": "web",
+        "event_name": "evaluation_completed"
+      },
+      {
+        "actors": 1097,
+        "events": 1484,
+        "period": "previous7",
+        "platform": "web",
+        "event_name": "landing_viewed"
+      },
+      {
+        "actors": 130,
+        "events": 252,
+        "period": "previous7",
+        "platform": "web",
+        "event_name": "paywall_viewed"
+      }
+    ],
+    "week_billing": [
+      {
+        "usd": null,
+        "events": 3,
+        "period": "earlier",
+        "provider": "revenuecat",
+        "customers": 3,
+        "event_name": "cancellation_scheduled"
+      },
+      {
+        "usd": null,
+        "events": 10,
+        "period": "earlier",
+        "provider": "revenuecat",
+        "customers": 3,
+        "event_name": "one_time_purchase"
+      },
+      {
+        "usd": null,
+        "events": 7,
+        "period": "earlier",
+        "provider": "revenuecat",
+        "customers": 7,
+        "event_name": "subscription_started"
+      },
+      {
+        "usd": null,
+        "events": 46,
+        "period": "earlier",
+        "provider": "stripe",
+        "customers": 41,
+        "event_name": "checkout_expired"
+      },
+      {
+        "usd": 9.98,
+        "events": 2,
+        "period": "earlier",
+        "provider": "stripe",
+        "customers": 2,
+        "event_name": "one_time_purchase"
+      },
+      {
+        "usd": 0,
+        "events": 20,
+        "period": "last7",
+        "provider": "revenuecat",
+        "customers": 20,
+        "event_name": "cancellation_scheduled"
+      },
+      {
+        "usd": 0,
+        "events": 8,
+        "period": "last7",
+        "provider": "revenuecat",
+        "customers": 8,
+        "event_name": "subscription_expired"
+      },
+      {
+        "usd": 26.671,
+        "events": 6,
+        "period": "last7",
+        "provider": "revenuecat",
+        "customers": 6,
+        "event_name": "subscription_renewed"
+      },
+      {
+        "usd": 196.027,
+        "events": 24,
+        "period": "last7",
+        "provider": "revenuecat",
+        "customers": 24,
+        "event_name": "subscription_started"
+      },
+      {
+        "usd": null,
+        "events": 1,
+        "period": "last7",
+        "provider": "stripe",
+        "customers": 1,
+        "event_name": "checkout_confirmed"
+      },
+      {
+        "usd": null,
+        "events": 134,
+        "period": "last7",
+        "provider": "stripe",
+        "customers": 127,
+        "event_name": "checkout_expired"
+      },
+      {
+        "usd": 4.99,
+        "events": 1,
+        "period": "last7",
+        "provider": "stripe",
+        "customers": 1,
+        "event_name": "invoice_paid"
+      },
+      {
+        "usd": 9.98,
+        "events": 2,
+        "period": "last7",
+        "provider": "stripe",
+        "customers": 2,
+        "event_name": "one_time_purchase"
+      },
+      {
+        "usd": null,
+        "events": 2,
+        "period": "last7",
+        "provider": "stripe",
+        "customers": 2,
+        "event_name": "payment_failed"
+      },
+      {
+        "usd": null,
+        "events": 1,
+        "period": "last7",
+        "provider": "stripe",
+        "customers": 1,
+        "event_name": "subscription_started"
+      },
+      {
+        "usd": null,
+        "events": 13,
+        "period": "previous7",
+        "provider": "revenuecat",
+        "customers": 12,
+        "event_name": "cancellation_scheduled"
+      },
+      {
+        "usd": null,
+        "events": 3,
+        "period": "previous7",
+        "provider": "revenuecat",
+        "customers": 3,
+        "event_name": "subscription_expired"
+      },
+      {
+        "usd": null,
+        "events": 1,
+        "period": "previous7",
+        "provider": "revenuecat",
+        "customers": 1,
+        "event_name": "subscription_reactivated"
+      },
+      {
+        "usd": null,
+        "events": 1,
+        "period": "previous7",
+        "provider": "revenuecat",
+        "customers": 1,
+        "event_name": "subscription_refunded"
+      },
+      {
+        "usd": null,
+        "events": 2,
+        "period": "previous7",
+        "provider": "revenuecat",
+        "customers": 2,
+        "event_name": "subscription_renewed"
+      },
+      {
+        "usd": null,
+        "events": 17,
+        "period": "previous7",
+        "provider": "revenuecat",
+        "customers": 17,
+        "event_name": "subscription_started"
+      },
+      {
+        "usd": null,
+        "events": 112,
+        "period": "previous7",
+        "provider": "stripe",
+        "customers": 108,
+        "event_name": "checkout_expired"
+      }
+    ],
+    "auth_recovery": {
+      "recovered": 93,
+      "failed_actors": 172
+    },
+    "cancellation_timing": null
+  },
+  "canonical": {
+    "pages": [
+      {
+        "path": "/",
+        "views": 8573,
+        "actors": 5171
+      },
+      {
+        "path": "/analysis",
+        "views": 3245,
+        "actors": 1035
+      },
+      {
+        "path": "/app/mobile-auth",
+        "views": 1740,
+        "actors": 1421
+      },
+      {
+        "path": "/auth/error",
+        "views": 864,
+        "actors": 754
+      },
+      {
+        "path": "/[referral]",
+        "views": 500,
+        "actors": 260
+      },
+      {
+        "path": "/r/[slug]",
+        "views": 451,
+        "actors": 323
+      },
+      {
+        "path": "/leaderboard",
+        "views": 180,
+        "actors": 103
+      },
+      {
+        "path": "/app",
+        "views": 131,
+        "actors": 71
+      },
+      {
+        "path": "/battle",
+        "views": 98,
+        "actors": 67
+      },
+      {
+        "path": "/what-is-mogging",
+        "views": 91,
+        "actors": 78
+      },
+      {
+        "path": "/how-face-analysis-works",
+        "views": 76,
+        "actors": 52
+      },
+      {
+        "path": "/_error",
+        "views": 38,
+        "actors": 20
+      },
+      {
+        "path": "/support",
+        "views": 37,
+        "actors": 22
+      },
+      {
+        "path": "/auth/register",
+        "views": 28,
+        "actors": 16
+      },
+      {
+        "path": "/faq",
+        "views": 27,
+        "actors": 16
+      },
+      {
+        "path": "/privacy",
+        "views": 22,
+        "actors": 17
+      },
+      {
+        "path": "/tos",
+        "views": 13,
+        "actors": 12
+      },
+      {
+        "path": "/app/handoff",
+        "views": 4,
+        "actors": 1
+      },
+      {
+        "path": "/__face-study-render",
+        "views": 2,
+        "actors": 2
+      }
+    ],
+    "errors": [
+      {
+        "code": null,
+        "stage": null,
+        "actors": 0,
+        "events": 6226,
+        "reason": null,
+        "failure": null,
+        "platform": "server",
+        "event_name": "backend_alert"
+      },
+      {
+        "code": "ERR_REQUEST_UNKNOWN",
+        "stage": null,
+        "actors": 88,
+        "events": 115,
+        "reason": "authentication_failed",
+        "failure": null,
+        "platform": "ios",
+        "event_name": "account_auth_failed"
+      },
+      {
+        "code": "http_404",
+        "stage": null,
+        "actors": 49,
+        "events": 77,
+        "reason": "authentication_failed",
+        "failure": null,
+        "platform": "ios",
+        "event_name": "account_auth_failed"
+      },
+      {
+        "code": "account_not_found",
+        "stage": null,
+        "actors": 18,
+        "events": 25,
+        "reason": "authentication_failed",
+        "failure": null,
+        "platform": "ios",
+        "event_name": "account_auth_failed"
+      },
+      {
+        "code": "http_409",
+        "stage": null,
+        "actors": 10,
+        "events": 17,
+        "reason": "authentication_failed",
+        "failure": null,
+        "platform": "ios",
+        "event_name": "account_auth_failed"
+      },
+      {
+        "code": null,
+        "stage": null,
+        "actors": 8,
+        "events": 16,
+        "reason": "authentication_or_activation_failed",
+        "failure": null,
+        "platform": "ios",
+        "event_name": "account_auth_failed"
+      },
+      {
+        "code": "3",
+        "stage": null,
+        "actors": 11,
+        "events": 13,
+        "reason": "purchase_not_allowed",
+        "failure": null,
+        "platform": "ios",
+        "event_name": "purchase_failed"
+      },
+      {
+        "code": null,
+        "stage": null,
+        "actors": 3,
+        "events": 12,
+        "reason": "analysis_failed",
+        "failure": null,
+        "platform": "ios",
+        "event_name": "evaluation_failed"
+      },
+      {
+        "code": null,
+        "stage": null,
+        "actors": 5,
+        "events": 12,
+        "reason": "request_failed",
+        "failure": null,
+        "platform": "ios",
+        "event_name": "evaluation_failed"
+      },
+      {
+        "code": "2",
+        "stage": null,
+        "actors": 10,
+        "events": 10,
+        "reason": "store_problem",
+        "failure": null,
+        "platform": "ios",
+        "event_name": "purchase_failed"
+      },
+      {
+        "code": null,
+        "stage": null,
+        "actors": 8,
+        "events": 8,
+        "reason": "request_failed",
+        "failure": null,
+        "platform": "web",
+        "event_name": "purchase_failed"
+      },
+      {
+        "code": null,
+        "stage": null,
+        "actors": 7,
+        "events": 7,
+        "reason": "http_402",
+        "failure": null,
+        "platform": "ios",
+        "event_name": "evaluation_failed"
+      },
+      {
+        "code": null,
+        "stage": null,
+        "actors": 3,
+        "events": 5,
+        "reason": "store_purchase_failed",
+        "failure": null,
+        "platform": "ios",
+        "event_name": "purchase_failed"
+      },
+      {
+        "code": "http_401",
+        "stage": null,
+        "actors": 1,
+        "events": 3,
+        "reason": "authentication_failed",
+        "failure": null,
+        "platform": "ios",
+        "event_name": "account_auth_failed"
+      },
+      {
+        "code": "unknown_error",
+        "stage": null,
+        "actors": 3,
+        "events": 3,
+        "reason": "authentication_failed",
+        "failure": null,
+        "platform": "ios",
+        "event_name": "account_auth_failed"
+      },
+      {
+        "code": null,
+        "stage": null,
+        "actors": 1,
+        "events": 3,
+        "reason": "store_or_sync",
+        "failure": null,
+        "platform": "ios",
+        "event_name": "purchase_failed"
+      },
+      {
+        "code": "provider_not_active",
+        "stage": null,
+        "actors": 3,
+        "events": 3,
+        "reason": "authentication_failed",
+        "failure": null,
+        "platform": "ios",
+        "event_name": "account_auth_failed"
+      },
+      {
+        "code": "network_error",
+        "stage": null,
+        "actors": 2,
+        "events": 2,
+        "reason": "authentication_failed",
+        "failure": null,
+        "platform": "ios",
+        "event_name": "account_auth_failed"
+      },
+      {
+        "code": null,
+        "stage": null,
+        "actors": 1,
+        "events": 2,
+        "reason": "bad_request",
+        "failure": null,
+        "platform": "web",
+        "event_name": "evaluation_failed"
+      },
+      {
+        "code": null,
+        "stage": null,
+        "actors": 1,
+        "events": 1,
+        "reason": "http_409",
+        "failure": null,
+        "platform": "ios",
+        "event_name": "evaluation_failed"
+      },
+      {
+        "code": "35",
+        "stage": null,
+        "actors": 1,
+        "events": 1,
+        "reason": "offline_connection",
+        "failure": null,
+        "platform": "ios",
+        "event_name": "purchase_failed"
+      },
+      {
+        "code": null,
+        "stage": null,
+        "actors": 1,
+        "events": 1,
+        "reason": "product_unavailable",
+        "failure": null,
+        "platform": "ios",
+        "event_name": "purchase_failed"
+      }
+    ],
+    "events": [
+      {
+        "first": "2026-10-14T00:36:41.855",
+        "actors": 1,
+        "events": 1,
+        "platform": "android",
+        "event_name": "account_auth_cancelled"
+      },
+      {
+        "first": "2026-10-14T00:35:43.844",
+        "actors": 1,
+        "events": 1,
+        "platform": "android",
+        "event_name": "account_auth_started"
+      },
+      {
+        "first": "2026-10-14T00:32:41.765",
+        "actors": 1,
+        "events": 1,
+        "platform": "android",
+        "event_name": "app_first_open"
+      },
+      {
+        "first": "2026-10-14T00:32:41.78",
+        "actors": 1,
+        "events": 4,
+        "platform": "android",
+        "event_name": "app_opened"
+      },
+      {
+        "first": "2026-10-14T00:32:41.892",
+        "actors": 1,
+        "events": 3,
+        "platform": "android",
+        "event_name": "attribution_diagnostic"
+      },
+      {
+        "first": "2026-10-14T00:32:41.766",
+        "actors": 1,
+        "events": 2,
+        "platform": "android",
+        "event_name": "onboarding_started"
+      },
+      {
+        "first": "2026-10-14T00:34:23.546",
+        "actors": 1,
+        "events": 1,
+        "platform": "android",
+        "event_name": "onboarding_step_exited"
+      },
+      {
+        "first": "2026-10-14T00:32:42.087",
+        "actors": 1,
+        "events": 3,
+        "platform": "android",
+        "event_name": "onboarding_step_viewed"
+      },
+      {
+        "first": "2026-10-14T00:34:23.546",
+        "actors": 1,
+        "events": 4,
+        "platform": "android",
+        "event_name": "screen_exited"
+      },
+      {
+        "first": "2026-10-14T00:32:42.184",
+        "actors": 1,
+        "events": 6,
+        "platform": "android",
+        "event_name": "screen_viewed"
+      },
+      {
+        "first": "2026-10-07T02:03:26.943",
+        "actors": 904,
+        "events": 1131,
+        "platform": "ios",
+        "event_name": "account_auth_cancelled"
+      },
+      {
+        "first": "2026-10-06T09:31:34.418",
+        "actors": 2103,
+        "events": 2161,
+        "platform": "ios",
+        "event_name": "account_authenticated"
+      },
+      {
+        "first": "2026-10-06T23:09:02.44",
+        "actors": 172,
+        "events": 261,
+        "platform": "ios",
+        "event_name": "account_auth_failed"
+      },
+      {
+        "first": "2026-10-06T09:31:26.705",
+        "actors": 2392,
+        "events": 3653,
+        "platform": "ios",
+        "event_name": "account_auth_started"
+      },
+      {
+        "first": "2026-10-06T09:30:06.732",
+        "actors": 2859,
+        "events": 2859,
+        "platform": "ios",
+        "event_name": "app_first_open"
+      },
+      {
+        "first": "2026-10-06T09:30:06.737",
+        "actors": 2883,
+        "events": 16714,
+        "platform": "ios",
+        "event_name": "app_opened"
+      },
+      {
+        "first": "2026-10-06T09:30:06.732",
+        "actors": 2881,
+        "events": 6798,
+        "platform": "ios",
+        "event_name": "attribution_diagnostic"
+      },
+      {
+        "first": "2026-10-06T17:53:56.974",
+        "actors": 196,
+        "events": 394,
+        "platform": "ios",
+        "event_name": "attribution_link_received"
+      },
+      {
+        "first": "2026-10-07T22:59:27.631",
+        "actors": 2660,
+        "events": 2664,
+        "platform": "ios",
+        "event_name": "attribution_resolved"
+      },
+      {
+        "first": "2026-10-06T21:28:06.544",
+        "actors": 3,
+        "events": 29,
+        "platform": "ios",
+        "event_name": "battle_vote_selected"
+      },
+      {
+        "first": "2026-10-06T20:15:36.086",
+        "actors": 58,
+        "events": 358,
+        "platform": "ios",
+        "event_name": "category_viewed"
+      },
+      {
+        "first": "2026-10-11T23:06:41.021",
+        "actors": 845,
+        "events": 1100,
+        "platform": "ios",
+        "event_name": "checkout_started"
+      },
+      {
+        "first": "2026-10-09T07:35:17.368",
+        "actors": 61,
+        "events": 66,
+        "platform": "ios",
+        "event_name": "consent_result"
+      },
+      {
+        "first": "2026-10-09T07:35:58.795",
+        "actors": 55,
+        "events": 69,
+        "platform": "ios",
+        "event_name": "evaluation_completed"
+      },
+      {
+        "first": "2026-10-09T07:39:48.841",
+        "actors": 9,
+        "events": 32,
+        "platform": "ios",
+        "event_name": "evaluation_failed"
+      },
+      {
+        "first": "2026-10-09T07:35:17.374",
+        "actors": 62,
+        "events": 107,
+        "platform": "ios",
+        "event_name": "evaluation_started"
+      },
+      {
+        "first": "2026-10-14T20:45:24.828",
+        "actors": 1581,
+        "events": 3737,
+        "platform": "ios",
+        "event_name": "face_capture_result"
+      },
+      {
+        "first": "2026-10-14T20:45:14.434",
+        "actors": 1583,
+        "events": 3794,
+        "platform": "ios",
+        "event_name": "face_capture_started"
+      },
+      {
+        "first": "2026-11-03T00:31:48.69",
+        "actors": 1,
+        "events": 1,
+        "platform": "ios",
+        "event_name": "guest_account_saved"
+      },
+      {
+        "first": "2026-10-19T06:06:09.974",
+        "actors": 1,
+        "events": 1,
+        "platform": "ios",
+        "event_name": "guest_recovery_completed"
+      },
+      {
+        "first": "2026-10-19T06:06:09.971",
+        "actors": 1,
+        "events": 1,
+        "platform": "ios",
+        "event_name": "guest_recovery_started"
+      },
+      {
+        "first": "2026-10-19T06:06:09.042",
+        "actors": 3,
+        "events": 3,
+        "platform": "ios",
+        "event_name": "guest_session_ready"
+      },
+      {
+        "first": "2026-10-06T09:31:34.417",
+        "actors": 2138,
+        "events": 2956,
+        "platform": "ios",
+        "event_name": "identity_linked"
+      },
+      {
+        "first": "2026-10-17T15:21:22.636",
+        "actors": 54,
+        "events": 54,
+        "platform": "ios",
+        "event_name": "onboarding_completed"
+      },
+      {
+        "first": "2026-10-21T07:49:49.691",
+        "actors": 15,
+        "events": 328,
+        "platform": "ios",
+        "event_name": "onboarding_interaction"
+      },
+      {
+        "first": "2026-10-06T09:30:06.732",
+        "actors": 2879,
+        "events": 3949,
+        "platform": "ios",
+        "event_name": "onboarding_started"
+      },
+      {
+        "first": "2026-10-06T19:51:22.77",
+        "actors": 764,
+        "events": 1617,
+        "platform": "ios",
+        "event_name": "onboarding_step_back"
+      },
+      {
+        "first": "2026-10-06T09:30:17.072",
+        "actors": 2805,
+        "events": 33686,
+        "platform": "ios",
+        "event_name": "onboarding_step_completed"
+      },
+      {
+        "first": "2026-10-06T21:27:26.977",
+        "actors": 2812,
+        "events": 39062,
+        "platform": "ios",
+        "event_name": "onboarding_step_exited"
+      },
+      {
+        "first": "2026-10-06T19:34:06.526",
+        "actors": 127,
+        "events": 139,
+        "platform": "ios",
+        "event_name": "onboarding_step_skipped"
+      },
+      {
+        "first": "2026-10-06T09:30:07.253",
+        "actors": 2870,
+        "events": 43067,
+        "platform": "ios",
+        "event_name": "onboarding_step_viewed"
+      },
+      {
+        "first": "2026-10-06T09:33:45.827",
+        "actors": 86,
+        "events": 189,
+        "platform": "ios",
+        "event_name": "paywall_dismissed"
+      },
+      {
+        "first": "2026-10-19T17:54:46.566",
+        "actors": 35,
+        "events": 35,
+        "platform": "ios",
+        "event_name": "paywall_offer_dismissed"
+      },
+      {
+        "first": "2026-10-21T13:54:29.574",
+        "actors": 35,
+        "events": 47,
+        "platform": "ios",
+        "event_name": "paywall_offer_unavailable"
+      },
+      {
+        "first": "2026-10-18T20:12:15.574",
+        "actors": 221,
+        "events": 221,
+        "platform": "ios",
+        "event_name": "paywall_offer_unlocked"
+      },
+      {
+        "first": "2026-10-06T09:33:44.607",
+        "actors": 1903,
+        "events": 2299,
+        "platform": "ios",
+        "event_name": "paywall_products_loaded"
+      },
+      {
+        "first": "2026-10-06T09:33:44.54",
+        "actors": 1908,
+        "events": 2694,
+        "platform": "ios",
+        "event_name": "paywall_viewed"
+      },
+      {
+        "first": "2026-10-06T09:31:36.504",
+        "actors": 2119,
+        "events": 3144,
+        "platform": "ios",
+        "event_name": "permission_prompted"
+      },
+      {
+        "first": "2026-10-06T09:31:38.489",
+        "actors": 2117,
+        "events": 3140,
+        "platform": "ios",
+        "event_name": "permission_result"
+      },
+      {
+        "first": "2026-10-17T13:20:38.594",
+        "actors": 737,
+        "events": 950,
+        "platform": "ios",
+        "event_name": "photo_picker_result"
+      },
+      {
+        "first": "2026-10-14T20:45:25.04",
+        "actors": 1706,
+        "events": 2079,
+        "platform": "ios",
+        "event_name": "photo_preparation_completed"
+      },
+      {
+        "first": "2026-10-14T20:45:24.957",
+        "actors": 1709,
+        "events": 4172,
+        "platform": "ios",
+        "event_name": "photo_preparation_stage"
+      },
+      {
+        "first": "2026-10-14T20:45:24.828",
+        "actors": 1710,
+        "events": 2089,
+        "platform": "ios",
+        "event_name": "photo_preparation_started"
+      },
+      {
+        "first": "2026-10-06T09:33:35.679",
+        "actors": 1926,
+        "events": 2322,
+        "platform": "ios",
+        "event_name": "photo_selected"
+      },
+      {
+        "first": "2026-10-06T19:34:45.822",
+        "actors": 860,
+        "events": 1159,
+        "platform": "ios",
+        "event_name": "photo_source_selected"
+      },
+      {
+        "first": "2026-10-12T08:02:10.846",
+        "actors": 10,
+        "events": 11,
+        "platform": "ios",
+        "event_name": "photo_validation_failed"
+      },
+      {
+        "first": "2026-10-07T16:20:48.525",
+        "actors": 311,
+        "events": 629,
+        "platform": "ios",
+        "event_name": "plan_selected"
+      },
+      {
+        "first": "2026-11-03T00:34:03.321",
+        "actors": 1,
+        "events": 1,
+        "platform": "ios",
+        "event_name": "progress_exited"
+      },
+      {
+        "first": "2026-11-03T00:33:22.467",
+        "actors": 1,
+        "events": 2,
+        "platform": "ios",
+        "event_name": "progress_viewed"
+      },
+      {
+        "first": "2026-10-19T23:39:39.88",
+        "actors": 13,
+        "events": 34,
+        "platform": "ios",
+        "event_name": "protocol_task_completed"
+      },
+      {
+        "first": "2026-10-06T20:15:00.531",
+        "actors": 63,
+        "events": 325,
+        "platform": "ios",
+        "event_name": "protocol_viewed"
+      },
+      {
+        "first": "2026-10-19T11:39:08.505",
+        "actors": 45,
+        "events": 46,
+        "platform": "ios",
+        "event_name": "purchase_activated"
+      },
+      {
+        "first": "2026-10-26T17:50:32.418",
+        "actors": 3,
+        "events": 3,
+        "platform": "ios",
+        "event_name": "purchase_activation_failed"
+      },
+      {
+        "first": "2026-10-17T13:21:12.138",
+        "actors": 792,
+        "events": 2092,
+        "platform": "ios",
+        "event_name": "purchase_app_state"
+      },
+      {
+        "first": "2026-10-18T20:12:15.382",
+        "actors": 258,
+        "events": 259,
+        "platform": "ios",
+        "event_name": "purchase_cancel_feedback"
+      },
+      {
+        "first": "2026-10-07T20:02:43.499",
+        "actors": 772,
+        "events": 952,
+        "platform": "ios",
+        "event_name": "purchase_cancelled"
+      },
+      {
+        "first": "2026-10-09T07:34:55.255",
+        "actors": 50,
+        "events": 58,
+        "platform": "ios",
+        "event_name": "purchase_completed"
+      },
+      {
+        "first": "2026-10-09T12:25:24.756",
+        "actors": 27,
+        "events": 33,
+        "platform": "ios",
+        "event_name": "purchase_failed"
+      },
+      {
+        "first": "2026-10-30T10:39:38.788",
+        "actors": 1,
+        "events": 1,
+        "platform": "ios",
+        "event_name": "purchase_pending"
+      },
+      {
+        "first": "2026-10-22T07:25:06.388",
+        "actors": 12,
+        "events": 20,
+        "platform": "ios",
+        "event_name": "purchase_reconciled"
+      },
+      {
+        "first": "2026-10-22T07:25:06.374",
+        "actors": 11,
+        "events": 13,
+        "platform": "ios",
+        "event_name": "purchase_recovered"
+      },
+      {
+        "first": "2026-10-10T01:56:59.768",
+        "actors": 129,
+        "events": 202,
+        "platform": "ios",
+        "event_name": "purchase_restored"
+      },
+      {
+        "first": "2026-10-17T13:21:11.996",
+        "actors": 819,
+        "events": 3113,
+        "platform": "ios",
+        "event_name": "purchase_stage_changed"
+      },
+      {
+        "first": "2026-10-07T20:02:40.914",
+        "actors": 931,
+        "events": 1162,
+        "platform": "ios",
+        "event_name": "purchase_started"
+      },
+      {
+        "first": "2026-10-07T01:52:17.588",
+        "actors": 495,
+        "events": 1241,
+        "platform": "ios",
+        "event_name": "referral_invite_created"
+      },
+      {
+        "first": "2026-10-18T20:05:26.67",
+        "actors": 799,
+        "events": 1090,
+        "platform": "ios",
+        "event_name": "referral_invite_opened"
+      },
+      {
+        "first": "2026-10-09T07:35:03.434",
+        "actors": 11,
+        "events": 28,
+        "platform": "ios",
+        "event_name": "repeat_evaluation_started"
+      },
+      {
+        "first": "2026-10-19T06:06:10.681",
+        "actors": 2,
+        "events": 2,
+        "platform": "ios",
+        "event_name": "reports_sync_completed"
+      },
+      {
+        "first": "2026-10-06T20:15:36.086",
+        "actors": 58,
+        "events": 128,
+        "platform": "ios",
+        "event_name": "report_viewed"
+      },
+      {
+        "first": "2026-10-18T12:08:25.209",
+        "actors": 1,
+        "events": 1,
+        "platform": "ios",
+        "event_name": "restore_failed"
+      },
+      {
+        "first": "2026-10-10T01:56:58.668",
+        "actors": 131,
+        "events": 204,
+        "platform": "ios",
+        "event_name": "restore_started"
+      },
+      {
+        "first": "2026-10-06T09:30:27.38",
+        "actors": 2870,
+        "events": 26105,
+        "platform": "ios",
+        "event_name": "screen_exited"
+      },
+      {
+        "first": "2026-10-14T19:05:25.854",
+        "actors": 99,
+        "events": 317,
+        "platform": "ios",
+        "event_name": "screenshot_taken"
+      },
+      {
+        "first": "2026-10-06T09:30:07.263",
+        "actors": 2875,
+        "events": 27083,
+        "platform": "ios",
+        "event_name": "screen_viewed"
+      },
+      {
+        "first": "2026-10-21T07:48:58.313",
+        "actors": 26,
+        "events": 39,
+        "platform": "ios",
+        "event_name": "session_started"
+      },
+      {
+        "first": "2026-10-06T21:30:59.135",
+        "actors": 24,
+        "events": 39,
+        "platform": "ios",
+        "event_name": "settings_opened"
+      },
+      {
+        "first": "2026-10-22T05:26:33.038",
+        "actors": 6,
+        "events": 10,
+        "platform": "ios",
+        "event_name": "share_started"
+      },
+      {
+        "first": "2026-10-07T16:12:07.756",
+        "actors": 0,
+        "events": 6226,
+        "platform": "server",
+        "event_name": "backend_alert"
+      },
+      {
+        "first": "2026-10-15T19:25:49.277",
+        "actors": 0,
+        "events": 4732,
+        "platform": "server",
+        "event_name": "backend_billing_reconciliation"
+      },
+      {
+        "first": "2026-10-08T22:31:44.141",
+        "actors": 0,
+        "events": 112,
+        "platform": "server",
+        "event_name": "backend_evaluation_started"
+      },
+      {
+        "first": "2026-10-06T07:00:27.214",
+        "actors": 0,
+        "events": 426856,
+        "platform": "server",
+        "event_name": "backend_request"
+      },
+      {
+        "first": "2026-10-15T18:41:39",
+        "actors": 5,
+        "events": 5,
+        "platform": "server",
+        "event_name": "checkout_completed"
+      },
+      {
+        "first": "2026-10-10T13:53:12.661",
+        "actors": 280,
+        "events": 298,
+        "platform": "server",
+        "event_name": "checkout_started"
+      },
+      {
+        "first": "2026-10-08T05:42:29.011",
+        "actors": 655,
+        "events": 655,
+        "platform": "server",
+        "event_name": "identity_linked"
+      },
+      {
+        "first": "2026-10-24T15:53:43.849",
+        "actors": 4,
+        "events": 4,
+        "platform": "server",
+        "event_name": "referral_reward_notification_sent"
+      },
+      {
+        "first": "2026-10-06T16:09:39.551",
+        "actors": 2057,
+        "events": 2253,
+        "platform": "web",
+        "event_name": "app_store_redirected"
+      },
+      {
+        "first": "2026-10-22T02:19:15.135",
+        "actors": 270,
+        "events": 340,
+        "platform": "web",
+        "event_name": "attribution_diagnostic"
+      },
+      {
+        "first": "2026-10-10T18:27:31.129",
+        "actors": 2150,
+        "events": 2235,
+        "platform": "web",
+        "event_name": "destination_selected"
+      },
+      {
+        "first": "2026-10-27T22:49:18.464",
+        "actors": 4,
+        "events": 4,
+        "platform": "web",
+        "event_name": "evaluation_completed"
+      },
+      {
+        "first": "2026-10-21T01:04:20.567",
+        "actors": 1,
+        "events": 2,
+        "platform": "web",
+        "event_name": "evaluation_failed"
+      },
+      {
+        "first": "2026-10-21T01:04:18.556",
+        "actors": 5,
+        "events": 6,
+        "platform": "web",
+        "event_name": "evaluation_started"
+      },
+      {
+        "first": "2026-10-06T19:34:01.74",
+        "actors": 1401,
+        "events": 2568,
+        "platform": "web",
+        "event_name": "identity_linked"
+      },
+      {
+        "first": "2026-10-06T16:09:39.551",
+        "actors": 2062,
+        "events": 2408,
+        "platform": "web",
+        "event_name": "landing_cta_clicked"
+      },
+      {
+        "first": "2026-10-06T09:00:28.816",
+        "actors": 2537,
+        "events": 7772,
+        "platform": "web",
+        "event_name": "landing_section_viewed"
+      },
+      {
+        "first": "2026-10-06T07:05:34.1",
+        "actors": 3388,
+        "events": 4680,
+        "platform": "web",
+        "event_name": "landing_viewed"
+      },
+      {
+        "first": "2026-10-06T13:22:01.707",
+        "actors": 1035,
+        "events": 3522,
+        "platform": "web",
+        "event_name": "onboarding_step_viewed"
+      },
+      {
+        "first": "2026-10-06T07:05:52.015",
+        "actors": 6543,
+        "events": 14972,
+        "platform": "web",
+        "event_name": "page_exited"
+      },
+      {
+        "first": "2026-10-06T07:05:34.111",
+        "actors": 7120,
+        "events": 16120,
+        "platform": "web",
+        "event_name": "page_viewed"
+      },
+      {
+        "first": "2026-11-05T04:27:28.122",
+        "actors": 3,
+        "events": 4,
+        "platform": "web",
+        "event_name": "paywall_dismissed"
+      },
+      {
+        "first": "2026-11-05T04:07:58.872",
+        "actors": 4,
+        "events": 10,
+        "platform": "web",
+        "event_name": "paywall_products_loaded"
+      },
+      {
+        "first": "2026-10-16T06:23:00.906",
+        "actors": 516,
+        "events": 910,
+        "platform": "web",
+        "event_name": "paywall_viewed"
+      },
+      {
+        "first": "2026-10-09T13:25:23.804",
+        "actors": 84,
+        "events": 187,
+        "platform": "web",
+        "event_name": "plan_selected"
+      },
+      {
+        "first": "2026-10-19T18:51:34.365",
+        "actors": 8,
+        "events": 8,
+        "platform": "web",
+        "event_name": "purchase_failed"
+      },
+      {
+        "first": "2026-11-03T09:09:14.34",
+        "actors": 2,
+        "events": 2,
+        "platform": "web",
+        "event_name": "purchase_started"
+      },
+      {
+        "first": "2026-10-07T16:12:27.338",
+        "actors": 12,
+        "events": 28,
+        "platform": "web",
+        "event_name": "report_viewed"
+      }
+    ],
+    "purchase": {
+      "daily": [
+        {
+          "day": "2026-10-17T07:00:00Z",
+          "attempts": 4,
+          "activated": 0,
+          "purchased": 0
+        },
+        {
+          "day": "2026-10-18T07:00:00Z",
+          "attempts": 17,
+          "activated": 0,
+          "purchased": 0
+        },
+        {
+          "day": "2026-10-19T07:00:00Z",
+          "attempts": 23,
+          "activated": 5,
+          "purchased": 5
+        },
+        {
+          "day": "2026-10-20T07:00:00Z",
+          "attempts": 19,
+          "activated": 0,
+          "purchased": 0
+        },
+        {
+          "day": "2026-10-21T07:00:00Z",
+          "attempts": 45,
+          "activated": 1,
+          "purchased": 1
+        },
+        {
+          "day": "2026-10-22T07:00:00Z",
+          "attempts": 60,
+          "activated": 2,
+          "purchased": 2
+        },
+        {
+          "day": "2026-10-23T07:00:00Z",
+          "attempts": 51,
+          "activated": 1,
+          "purchased": 1
+        },
+        {
+          "day": "2026-10-24T07:00:00Z",
+          "attempts": 98,
+          "activated": 4,
+          "purchased": 4
+        },
+        {
+          "day": "2026-10-25T07:00:00Z",
+          "attempts": 66,
+          "activated": 4,
+          "purchased": 4
+        },
+        {
+          "day": "2026-10-26T07:00:00Z",
+          "attempts": 64,
+          "activated": 4,
+          "purchased": 4
+        },
+        {
+          "day": "2026-10-27T07:00:00Z",
+          "attempts": 53,
+          "activated": 1,
+          "purchased": 1
+        },
+        {
+          "day": "2026-10-28T07:00:00Z",
+          "attempts": 56,
+          "activated": 1,
+          "purchased": 1
+        },
+        {
+          "day": "2026-10-29T07:00:00Z",
+          "attempts": 47,
+          "activated": 4,
+          "purchased": 4
+        },
+        {
+          "day": "2026-10-30T07:00:00Z",
+          "attempts": 64,
+          "activated": 3,
+          "purchased": 3
+        },
+        {
+          "day": "2026-10-31T07:00:00Z",
+          "attempts": 65,
+          "activated": 2,
+          "purchased": 2
+        },
+        {
+          "day": "2026-11-01T07:00:00Z",
+          "attempts": 66,
+          "activated": 2,
+          "purchased": 2
+        },
+        {
+          "day": "2026-11-02T08:00:00Z",
+          "attempts": 86,
+          "activated": 4,
+          "purchased": 4
+        },
+        {
+          "day": "2026-11-03T08:00:00Z",
+          "attempts": 79,
+          "activated": 5,
+          "purchased": 5
+        },
+        {
+          "day": "2026-11-04T08:00:00Z",
+          "attempts": 61,
+          "activated": 6,
+          "purchased": 6
+        }
+      ],
+      "summary": [
+        {
+          "errors": 24,
+          "devices": 821,
+          "attempts": 1024,
+          "verified": 45,
+          "activated": 49,
+          "purchased": 49,
+          "requested": 1020,
+          "incomplete": 101,
+          "cancellations": 850,
+          "access_unconfirmed": 0
+        }
+      ],
+      "support": [
+        {
+          "events": 202,
+          "devices": 129,
+          "event_name": "purchase_restored"
+        },
+        {
+          "events": 1,
+          "devices": 1,
+          "event_name": "restore_failed"
+        },
+        {
+          "events": 204,
+          "devices": 131,
+          "event_name": "restore_started"
+        }
+      ],
+      "coverage": [
+        {
+          "latest_event": "2026-11-05T07:27:47.851",
+          "start_events": 1162,
+          "paywall_views": 2694,
+          "latest_receipt": "2026-11-05T08:48:32.775762",
+          "detailed_starts": 1025,
+          "paywall_devices": 1908,
+          "unlinked_starts": 137,
+          "latest_billing_receipt": "2026-11-05T01:51:50.649261",
+          "runtime_unconfirmed_events": 1117
+        }
+      ],
+      "failures": [
+        {
+          "stage": "store_purchase",
+          "reason": "purchase_not_allowed",
+          "outcome": "store_failed",
+          "attempts": 13,
+          "error_code": "3",
+          "affected_devices": 11
+        },
+        {
+          "stage": "store_purchase",
+          "reason": "store_problem",
+          "outcome": "store_failed",
+          "attempts": 10,
+          "error_code": "2",
+          "affected_devices": 10
+        },
+        {
+          "stage": "product_loading",
+          "reason": "offline_connection",
+          "outcome": "preparation_failed",
+          "attempts": 1,
+          "error_code": "35",
+          "affected_devices": 1
+        }
+      ],
+      "feedback": [
+        {
+          "reason": "price",
+          "responses": 198
+        },
+        {
+          "reason": "not_ready",
+          "responses": 40
+        },
+        {
+          "reason": "other",
+          "responses": 13
+        },
+        {
+          "reason": "payment_trouble",
+          "responses": 8
+        }
+      ],
+      "handoffs": [],
+      "outcomes": [
+        {
+          "devices": 683,
+          "outcome": "cancelled",
+          "attempts": 850
+        },
+        {
+          "devices": 100,
+          "outcome": "unresolved",
+          "attempts": 100
+        },
+        {
+          "devices": 47,
+          "outcome": "activated",
+          "attempts": 49
+        },
+        {
+          "devices": 21,
+          "outcome": "store_failed",
+          "attempts": 23
+        },
+        {
+          "devices": 1,
+          "outcome": "pending",
+          "attempts": 1
+        },
+        {
+          "devices": 1,
+          "outcome": "preparation_failed",
+          "attempts": 1
+        }
+      ],
+      "surfaces": [
+        {
+          "surface": "onboarding_paywall",
+          "attempts": 967,
+          "platform": "ios",
+          "verified": 44,
+          "activated": 48,
+          "purchased": 48,
+          "cancellations": 797,
+          "purchase_type": "subscription"
+        },
+        {
+          "surface": "onboarding_feedback_offer",
+          "attempts": 51,
+          "platform": "ios",
+          "verified": 0,
+          "activated": 0,
+          "purchased": 0,
+          "cancellations": 50,
+          "purchase_type": "subscription"
+        },
+        {
+          "surface": "creator_offer",
+          "attempts": 3,
+          "platform": "ios",
+          "verified": 0,
+          "activated": 0,
+          "purchased": 0,
+          "cancellations": 1,
+          "purchase_type": "subscription"
+        },
+        {
+          "surface": "scan_upgrade",
+          "attempts": 3,
+          "platform": "ios",
+          "verified": 1,
+          "activated": 1,
+          "purchased": 1,
+          "cancellations": 2,
+          "purchase_type": "scan"
+        }
+      ]
+    },
+    "versions": [
+      {
+        "actors": 7181,
+        "attempts": 2,
+        "platform": "web",
+        "app_version": null
+      },
+      {
+        "actors": 2514,
+        "attempts": 1019,
+        "platform": "ios",
+        "app_version": "1.41(80)"
+      },
+      {
+        "actors": 939,
+        "attempts": 0,
+        "platform": "server",
+        "app_version": null
+      },
+      {
+        "actors": 242,
+        "attempts": 107,
+        "platform": "ios",
+        "app_version": "0.1.70(74)"
+      },
+      {
+        "actors": 90,
+        "attempts": 30,
+        "platform": "ios",
+        "app_version": "0.1.65(69)"
+      },
+      {
+        "actors": 14,
+        "attempts": 0,
+        "platform": "ios",
+        "app_version": "0.1.60(63)"
+      },
+      {
+        "actors": 14,
+        "attempts": 0,
+        "platform": "ios",
+        "app_version": "0.1.63(67)"
+      },
+      {
+        "actors": 8,
+        "attempts": 0,
+        "platform": "ios",
+        "app_version": "1.48(87)"
+      },
+      {
+        "actors": 4,
+        "attempts": 2,
+        "platform": "ios",
+        "app_version": "1.49(88)"
+      },
+      {
+        "actors": 4,
+        "attempts": 0,
+        "platform": "ios",
+        "app_version": "1.47(86)"
+      },
+      {
+        "actors": 3,
+        "attempts": 0,
+        "platform": "ios",
+        "app_version": "1.43(82)"
+      },
+      {
+        "actors": 3,
+        "attempts": 4,
+        "platform": "ios",
+        "app_version": "0.1.74(78)"
+      },
+      {
+        "actors": 3,
+        "attempts": 0,
+        "platform": "ios",
+        "app_version": "1.50(89)"
+      },
+      {
+        "actors": 3,
+        "attempts": 0,
+        "platform": "ios",
+        "app_version": null
+      },
+      {
+        "actors": 2,
+        "attempts": 0,
+        "platform": "ios",
+        "app_version": "1.45(84)"
+      },
+      {
+        "actors": 2,
+        "attempts": 0,
+        "platform": "ios",
+        "app_version": "1.51(90)"
+      },
+      {
+        "actors": 2,
+        "attempts": 0,
+        "platform": "ios",
+        "app_version": "0.1.57(60)"
+      },
+      {
+        "actors": 2,
+        "attempts": 0,
+        "platform": "ios",
+        "app_version": "1.44(83)"
+      },
+      {
+        "actors": 1,
+        "attempts": 0,
+        "platform": "android",
+        "app_version": "0.1.72(76)"
+      },
+      {
+        "actors": 1,
+        "attempts": 0,
+        "platform": "ios",
+        "app_version": "1.51(91)"
+      },
+      {
+        "actors": 1,
+        "attempts": 0,
+        "platform": "ios",
+        "app_version": "0.1.73(77)"
+      },
+      {
+        "actors": 1,
+        "attempts": 0,
+        "platform": "ios",
+        "app_version": "0.1.72(76)"
+      },
+      {
+        "actors": 1,
+        "attempts": 0,
+        "platform": "ios",
+        "app_version": "0.1.66(70)"
+      }
+    ]
+  },
+  "billing": {
+    "cohort": {
+      "renewed": 6,
+      "cancelled": 35,
+      "customers": 48,
+      "median_hours_to_cancel": 0.19275833333333334
+    },
+    "payers": {
+      "charges": 71,
+      "customers": 54,
+      "web_customers": 5,
+      "mobile_customers": 49
+    },
+    "timing": [
+      {
+        "bucket": "1d_to_7d",
+        "customers": 6
+      },
+      {
+        "bucket": "1h_to_1d",
+        "customers": 6
+      },
+      {
+        "bucket": "under_1h",
+        "customers": 22
+      },
+      {
+        "bucket": "7d_plus",
+        "customers": 1
+      }
+    ],
+    "usd_coverage": [
+      {
+        "charges": 1,
+        "currency": "SAR",
+        "provider": "revenuecat",
+        "usd_known": 5.325,
+        "missing_fx": 0
+      },
+      {
+        "charges": 10,
+        "currency": "EUR",
+        "provider": "revenuecat",
+        "usd_known": 49.16,
+        "missing_fx": 4
+      },
+      {
+        "charges": 37,
+        "currency": "USD",
+        "provider": "revenuecat",
+        "usd_known": 239.63,
+        "missing_fx": 0
+      },
+      {
+        "charges": 1,
+        "currency": "SEK",
+        "provider": "revenuecat",
+        "usd_known": 7.025,
+        "missing_fx": 0
+      },
+      {
+        "charges": 1,
+        "currency": "ZAR",
+        "provider": "revenuecat",
+        "usd_known": null,
+        "missing_fx": 1
+      },
+      {
+        "charges": 2,
+        "currency": "BRL",
+        "provider": "revenuecat",
+        "usd_known": 16.566,
+        "missing_fx": 0
+      },
+      {
+        "charges": 1,
+        "currency": "KRW",
+        "provider": "revenuecat",
+        "usd_known": null,
+        "missing_fx": 1
+      },
+      {
+        "charges": 1,
+        "currency": "AED",
+        "provider": "revenuecat",
+        "usd_known": 5.443,
+        "missing_fx": 0
+      },
+      {
+        "charges": 5,
+        "currency": "GBP",
+        "provider": "revenuecat",
+        "usd_known": 40.2,
+        "missing_fx": 1
+      },
+      {
+        "charges": 1,
+        "currency": "DKK",
+        "provider": "revenuecat",
+        "usd_known": 13.285,
+        "missing_fx": 0
+      },
+      {
+        "charges": 3,
+        "currency": "CAD",
+        "provider": "revenuecat",
+        "usd_known": 4.995,
+        "missing_fx": 2
+      },
+      {
+        "charges": 2,
+        "currency": "AUD",
+        "provider": "revenuecat",
+        "usd_known": 10.536,
+        "missing_fx": 1
+      },
+      {
+        "charges": 5,
+        "currency": "USD",
+        "provider": "stripe",
+        "usd_known": 24.95,
+        "missing_fx": 0
+      },
+      {
+        "charges": 1,
+        "currency": "MXN",
+        "provider": "revenuecat",
+        "usd_known": 5.263,
+        "missing_fx": 0
+      }
+    ],
+    "current_states": [
+      {
+        "provider": "revenuecat",
+        "event_name": "subscription_expired",
+        "subscriptions": 12
+      },
+      {
+        "provider": "revenuecat",
+        "event_name": "subscription_renewed",
+        "subscriptions": 4
+      },
+      {
+        "provider": "revenuecat",
+        "event_name": "subscription_started",
+        "subscriptions": 9
+      },
+      {
+        "provider": "revenuecat",
+        "event_name": "cancellation_scheduled",
+        "subscriptions": 24
+      },
+      {
+        "provider": "stripe",
+        "event_name": "subscription_started",
+        "subscriptions": 1
+      }
+    ],
+    "cancel_engagement": [
+      {
+        "cancelled": false,
+        "customers": 13,
+        "report_viewers": 13,
+        "task_completers": 4
+      },
+      {
+        "cancelled": true,
+        "customers": 35,
+        "report_viewers": 32,
+        "task_completers": 7
+      }
+    ]
+  },
+  "activation": {
+    "checkout": {
+      "accounts": 280,
+      "sessions": 298,
+      "completed": 5
+    },
+    "activation": {
+      "purchasers": 50,
+      "report_viewed": 45,
+      "task_completed": 11,
+      "evaluation_completed": 45
+    },
+    "event_latency": [
+      {
+        "events": 39062,
+        "p50_ms": 6858,
+        "p95_ms": 43207,
+        "platform": "ios",
+        "event_name": "onboarding_step_exited"
+      },
+      {
+        "events": 26105,
+        "p50_ms": 9916,
+        "p95_ms": 90546,
+        "platform": "ios",
+        "event_name": "screen_exited"
+      },
+      {
+        "events": 19865,
+        "p50_ms": 4958,
+        "p95_ms": 18049,
+        "platform": "ios",
+        "event_name": "onboarding_step_completed"
+      },
+      {
+        "events": 14972,
+        "p50_ms": 5548,
+        "p95_ms": 66715,
+        "platform": "web",
+        "event_name": "page_exited"
+      },
+      {
+        "events": 4172,
+        "p50_ms": 106,
+        "p95_ms": 443,
+        "platform": "ios",
+        "event_name": "photo_preparation_stage"
+      },
+      {
+        "events": 3737,
+        "p50_ms": 17118,
+        "p95_ms": 92661,
+        "platform": "ios",
+        "event_name": "face_capture_result"
+      },
+      {
+        "events": 3113,
+        "p50_ms": 92,
+        "p95_ms": 212,
+        "platform": "ios",
+        "event_name": "purchase_stage_changed"
+      },
+      {
+        "events": 2147,
+        "p50_ms": 8335,
+        "p95_ms": 20331,
+        "platform": "ios",
+        "event_name": "account_authenticated"
+      },
+      {
+        "events": 2092,
+        "p50_ms": 3079,
+        "p95_ms": 15335,
+        "platform": "ios",
+        "event_name": "purchase_app_state"
+      },
+      {
+        "events": 2079,
+        "p50_ms": 212,
+        "p95_ms": 801,
+        "platform": "ios",
+        "event_name": "photo_preparation_completed"
+      },
+      {
+        "events": 1576,
+        "p50_ms": 2484,
+        "p95_ms": 18856,
+        "platform": "ios",
+        "event_name": "onboarding_step_back"
+      },
+      {
+        "events": 1131,
+        "p50_ms": 21236,
+        "p95_ms": 137483,
+        "platform": "ios",
+        "event_name": "account_auth_cancelled"
+      },
+      {
+        "events": 1025,
+        "p50_ms": 0,
+        "p95_ms": 1,
+        "platform": "ios",
+        "event_name": "purchase_started"
+      },
+      {
+        "events": 1021,
+        "p50_ms": 165,
+        "p95_ms": 258,
+        "platform": "ios",
+        "event_name": "checkout_started"
+      },
+      {
+        "events": 950,
+        "p50_ms": 7808,
+        "p95_ms": 58709,
+        "platform": "ios",
+        "event_name": "photo_picker_result"
+      },
+      {
+        "events": 850,
+        "p50_ms": 4320,
+        "p95_ms": 10317,
+        "platform": "ios",
+        "event_name": "purchase_cancelled"
+      },
+      {
+        "events": 259,
+        "p50_ms": 9223,
+        "p95_ms": 15685,
+        "platform": "ios",
+        "event_name": "purchase_cancel_feedback"
+      },
+      {
+        "events": 245,
+        "p50_ms": 5743,
+        "p95_ms": 29088,
+        "platform": "ios",
+        "event_name": "account_auth_failed"
+      },
+      {
+        "events": 189,
+        "p50_ms": 6223,
+        "p95_ms": 114623,
+        "platform": "ios",
+        "event_name": "paywall_dismissed"
+      },
+      {
+        "events": 130,
+        "p50_ms": 5077,
+        "p95_ms": 13095,
+        "platform": "ios",
+        "event_name": "onboarding_step_skipped"
+      }
+    ],
+    "scan_recovery": {
+      "recovered": 2,
+      "failed_devices": 9
+    },
+    "checkout_sources": [
+      {
+        "source": "homepage",
+        "product": "mobile_subscription_monthly",
+        "accounts": 1,
+        "sessions": 1
+      },
+      {
+        "source": "mobile_paywall",
+        "product": "mobile_subscription_weekly",
+        "accounts": 1,
+        "sessions": 1
+      },
+      {
+        "source": "web_analysis",
+        "product": "evaluation",
+        "accounts": 249,
+        "sessions": 265
+      },
+      {
+        "source": "web_analysis",
+        "product": "evaluation_pack_3",
+        "accounts": 30,
+        "sessions": 30
+      },
+      {
+        "source": "web_analysis",
+        "product": "mobile_subscription_weekly",
+        "accounts": 1,
+        "sessions": 1
+      }
+    ],
+    "event_property_coverage": [
+      {
+        "events": 1,
+        "flow_id": 0,
+        "variant": 0,
+        "platform": "android",
+        "attempt_id": 0,
+        "event_name": "app_first_open"
+      },
+      {
+        "events": 2859,
+        "flow_id": 0,
+        "variant": 0,
+        "platform": "ios",
+        "attempt_id": 0,
+        "event_name": "app_first_open"
+      },
+      {
+        "events": 1100,
+        "flow_id": 1099,
+        "variant": 0,
+        "platform": "ios",
+        "attempt_id": 1021,
+        "event_name": "checkout_started"
+      },
+      {
+        "events": 2694,
+        "flow_id": 2658,
+        "variant": 0,
+        "platform": "ios",
+        "attempt_id": 0,
+        "event_name": "paywall_viewed"
+      },
+      {
+        "events": 58,
+        "flow_id": 54,
+        "variant": 0,
+        "platform": "ios",
+        "attempt_id": 49,
+        "event_name": "purchase_completed"
+      },
+      {
+        "events": 5,
+        "flow_id": 0,
+        "variant": 0,
+        "platform": "server",
+        "attempt_id": 1,
+        "event_name": "checkout_completed"
+      },
+      {
+        "events": 298,
+        "flow_id": 1,
+        "variant": 0,
+        "platform": "server",
+        "attempt_id": 2,
+        "event_name": "checkout_started"
+      },
+      {
+        "events": 910,
+        "flow_id": 716,
+        "variant": 0,
+        "platform": "web",
+        "attempt_id": 0,
+        "event_name": "paywall_viewed"
+      }
+    ]
+  },
+  "acquisition": {
+    "receipts": [
+      {
+        "last": "2026-11-05T20:17:51.720518",
+        "first": "2026-10-15T19:25:51.788311",
+        "provider": "stripe",
+        "receipts": 307,
+        "unprocessed": false
+      },
+      {
+        "last": "2026-10-29T19:45:48.457112",
+        "first": "2026-10-21T17:00:48.629766",
+        "provider": "stripe_reconciliation",
+        "receipts": 1178,
+        "unprocessed": true
+      },
+      {
+        "last": "2026-10-24T22:35:48.41671",
+        "first": "2026-10-15T19:25:49.913847",
+        "provider": "stripe_reconciliation",
+        "receipts": 2622,
+        "unprocessed": false
+      },
+      {
+        "last": "2026-11-05T23:37:25.118517",
+        "first": "2026-09-29T11:33:16.389454",
+        "provider": "revenuecat",
+        "receipts": 156,
+        "unprocessed": false
+      }
+    ],
+    "variants": [
+      {
+        "events": 205,
+        "devices": 150,
+        "variant": "a",
+        "event_name": "landing_viewed",
+        "experiment": "landing_homepage_v2",
+        "landing_variant": null
+      },
+      {
+        "events": 214,
+        "devices": 162,
+        "variant": "b",
+        "event_name": "landing_viewed",
+        "experiment": "landing_homepage_v2",
+        "landing_variant": null
+      },
+      {
+        "events": 2037,
+        "devices": 1501,
+        "variant": "a",
+        "event_name": "landing_viewed",
+        "experiment": "landing_homepage_v3",
+        "landing_variant": null
+      },
+      {
+        "events": 2224,
+        "devices": 1587,
+        "variant": "b",
+        "event_name": "landing_viewed",
+        "experiment": "landing_homepage_v3",
+        "landing_variant": null
+      }
+    ],
+    "redirects": [
+      {
+        "events": 838,
+        "devices": 810,
+        "placement": "automatic_iphone"
+      },
+      {
+        "events": 702,
+        "devices": 700,
+        "placement": "iphone_handoff"
+      },
+      {
+        "events": 568,
+        "devices": 531,
+        "placement": "hero"
+      },
+      {
+        "events": 78,
+        "devices": 44,
+        "placement": "copy_and_install"
+      },
+      {
+        "events": 25,
+        "devices": 15,
+        "placement": "direct_install"
+      },
+      {
+        "events": 14,
+        "devices": 14,
+        "placement": "features"
+      },
+      {
+        "events": 12,
+        "devices": 12,
+        "placement": "footer"
+      },
+      {
+        "events": 7,
+        "devices": 7,
+        "placement": "progress"
+      },
+      {
+        "events": 4,
+        "devices": 4,
+        "placement": "leaderboard"
+      },
+      {
+        "events": 4,
+        "devices": 3,
+        "placement": null
+      },
+      {
+        "events": 1,
+        "devices": 1,
+        "placement": "how_it_works"
+      }
+    ],
+    "web_sources": [
+      {
+        "source": "unattributed",
+        "devices": 1904
+      },
+      {
+        "source": "ig",
+        "devices": 587
+      },
+      {
+        "source": "www.google.com",
+        "devices": 412
+      },
+      {
+        "source": "com.google.android.googlequicksearchbox",
+        "devices": 317
+      },
+      {
+        "source": "www.tiktok.com",
+        "devices": 72
+      },
+      {
+        "source": "tiktok",
+        "devices": 67
+      },
+      {
+        "source": "chatgpt.com",
+        "devices": 16
+      },
+      {
+        "source": "www.bing.com",
+        "devices": 11
+      },
+      {
+        "source": "search.brave.com",
+        "devices": 11
+      },
+      {
+        "source": "accounts.google.com",
+        "devices": 7
+      },
+      {
+        "source": "www.facebook.com",
+        "devices": 5
+      },
+      {
+        "source": "l.facebook.com",
+        "devices": 4
+      },
+      {
+        "source": "accounts.google.com.mx",
+        "devices": 4
+      },
+      {
+        "source": "accounts.youtube.com",
+        "devices": 3
+      },
+      {
+        "source": "x.com",
+        "devices": 3
+      },
+      {
+        "source": "duckduckgo.com",
+        "devices": 3
+      },
+      {
+        "source": "instagram",
+        "devices": 2
+      },
+      {
+        "source": "l.instagram.com",
+        "devices": 2
+      },
+      {
+        "source": "yandex.uz",
+        "devices": 2
+      },
+      {
+        "source": "yandex.ru",
+        "devices": 2
+      }
+    ],
+    "install_sources": [
+      {
+        "source": "unattributed",
+        "installs": 2859,
+        "creator_linked": 0
+      }
+    ]
+  },
+  "measurement": {
+    "ocr": {
+      "last": "2026-11-05T21:31:41.454",
+      "rows": 56,
+      "first": "2026-11-02T21:38:21.624",
+      "submissions": 54
+    },
+    "post_keys": {
+      "rows": 230,
+      "urls": 230,
+      "post_keys": 222,
+      "no_postkey": 7
+    },
+    "post_metrics": {
+      "rows": 0,
+      "views": null,
+      "clicks": null,
+      "payers": null,
+      "installs": null
+    },
+    "reconciliation": [
+      {
+        "state": {
+          "audit": null,
+          "auditedAt": 1793921750,
+          "incremental": null,
+          "coveredUntil": 1793924148
+        },
+        "provider": "stripe",
+        "updated_at": "2026-11-06T00:15:48.669117+00:00"
+      }
+    ],
+    "webhook_receipts": {
+      "last": "2026-11-05T23:37:25.118517",
+      "first": "2026-09-29T11:33:16.389454",
+      "receipts": 4263,
+      "unprocessed": 1178
+    }
+  }
+}

@@ -4,16 +4,24 @@ import type {
   CreatorProfile,
   CreatorSubmission,
 } from '@/components/creator/types'
-type PayoutDetails = Pick<CreatorProfile, 'paymentOption' | 'paypalEmail' | 'cryptoNetwork' | 'cryptoWalletAddress'>
+type PayoutDetails = Pick<CreatorProfile, 'paymentOption' | 'paypalEmail' | 'cryptoNetwork' | 'cryptoWalletAddress' | 'bankTransferDetails'>
+
+export function creatorPaymentLabel(option: CreatorProfile['paymentOption']) {
+  return { paypal: 'PayPal', crypto: 'Crypto', bank_transfer: 'Bank transfer' }[option]
+}
+
+export function creatorPayoutDestination(profile: PayoutDetails) {
+  return (profile.paymentOption === 'paypal' ? profile.paypalEmail : profile.paymentOption === 'crypto' ? profile.cryptoWalletAddress : profile.bankTransferDetails)?.trim() || null
+}
 
 export function hasCreatorPayoutMethod(
   profile: PayoutDetails | null | undefined,
 ) {
   return Boolean(
     profile &&
-    (profile.paymentOption === 'paypal'
-      ? profile.paypalEmail
-      : profile.cryptoNetwork && profile.cryptoWalletAddress),
+    creatorPayoutDestination(profile) &&
+    (profile.paymentOption !== 'crypto' || profile.cryptoNetwork?.trim()) &&
+    (profile.paymentOption !== 'bank_transfer' || profile.bankTransferDetails!.trim().length >= 20),
   )
 }
 // Saving valid payout details makes a creator ready; suspension is a separate gate.
@@ -64,6 +72,18 @@ export function remainingCreatorPaymentCents(totalCents: number, payments: Pick<
 
 export function creatorUnpaidCents(submission: EarningsSubmission, payments: Pick<CreatorPayment, 'submissionId' | 'amountCents' | 'status'>[]) {
   return remainingCreatorPaymentCents(creatorEarnedCents(submission), payments.filter(payment => payment.submissionId === submission.id), false)
+}
+
+export function creatorSubmissionAwaitingPayout(submission: EarningsSubmission, payments: Pick<CreatorPayment, 'submissionId' | 'amountCents' | 'status'>[]) {
+  return ['approved', 'paid'].includes(submission.status) && creatorUnpaidCents(submission, payments) > 0
+}
+
+export function creatorMissingPaymentData(profile: PayoutDetails | null | undefined, submissions: EarningsSubmission[], payments: Pick<CreatorPayment, 'submissionId' | 'amountCents' | 'status'>[]) {
+  return Boolean(profile && !hasCreatorPayoutMethod(profile) && submissions.some(submission => creatorSubmissionAwaitingPayout(submission, payments)))
+}
+
+export function canUseCreatorBankTransfer(profile: PayoutDetails | null | undefined, submissions: EarningsSubmission[], payments: Pick<CreatorPayment, 'submissionId' | 'amountCents' | 'status'>[]) {
+  return profile?.paymentOption === 'bank_transfer' || creatorMissingPaymentData(profile, submissions, payments)
 }
 
 // Existing pending transfers can join a bundle. Processing transfers and open

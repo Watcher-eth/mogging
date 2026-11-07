@@ -1,3 +1,4 @@
+import { MissingPaymentData } from '@/components/creator/missing-payment-data'
 import { SubmissionCard, StatusStamp } from '@/components/creator/submission-card'
 import { SubmissionBonusBreakdown, CampaignBonusAwards } from '@/components/creator/submission-bonuses'
 import { submissionBonusPayments, campaignBonusPayments, bonusPaymentTotal, type BonusPayment } from '@/lib/creator/bonus-payments'
@@ -21,7 +22,7 @@ import type { CreatorPostPreview } from '@/lib/creator/post-preview'
 import { apiGet } from '@/lib/api/client'
 import { mergeCreatorSubmissionReviewResults, withAudienceRejectionReason } from '@/lib/creator/submission-review'
 import { sprintReviewItems } from '@/lib/creator/sprints'
-import { creatorEarnedCents } from '@/lib/creator/money'
+import { creatorMissingPaymentData, creatorEarnedCents } from '@/lib/creator/money'
 import { cn } from '@/lib/utils'
 import { TooltipProvider } from '@/components/ui/tooltip'
 import { groupSubmissionDays } from '@/lib/creator/submission-timeline'
@@ -82,11 +83,12 @@ function SubmissionsContent() {
           </select>
         </span>
       } title="Submissions" description="Follow every video from review through approval and payout." action={<Button asChild className="h-11 rounded-full px-5"><Link href="/creator/submissions?new=1">New Submission</Link></Button>} />
+      <MissingPaymentData data={data} />
       <CampaignBonusAwards bonuses={campaignBonusPayments(data?.payments || [])} />
       <TooltipProvider delayDuration={150}>
         {isLoading ? <div className="grid min-h-64 place-items-center"><Loader2 className="size-5 animate-spin text-zinc-400" /></div> : days.length ? <div className="grid gap-4">{days.map(day => <section key={day.key} aria-label={day.label}>
           <h2 className="mb-2 px-1 text-[11px] font-medium text-zinc-400">{day.label}</h2>
-          <div className="grid gap-2">{day.submissions.map(submission => <SubmissionCard key={submission.id} submission={submission} bonuses={submissionBonusPayments(submission, data?.payments || [])} payment={paymentBySubmission.get(submission.id)} accountHandle={data?.socialAccounts.find(account => account.id === submission.socialAccountId)?.handle} onClick={() => setSelectedId(submission.id)} />)}</div>
+          <div className="grid gap-2">{day.submissions.map(submission => <SubmissionCard missingPaymentData={Boolean(data && creatorMissingPaymentData(data.profile, [submission], data.payments))} key={submission.id} submission={submission} bonuses={submissionBonusPayments(submission, data?.payments || [])} payment={paymentBySubmission.get(submission.id)} accountHandle={data?.socialAccounts.find(account => account.id === submission.socialAccountId)?.handle} onClick={() => setSelectedId(submission.id)} />)}</div>
         </section>)}</div> : <EmptyState filtered={filter !== 'all'} />}
       </TooltipProvider>
       <SubmissionDialog key={selected?.id || "closed"} submission={selected} bonuses={selected ? submissionBonusPayments(selected, data?.payments || []) : []} payment={selected ? paymentBySubmission.get(selected.id) : undefined} payments={selected ? (data?.payments || []).filter(payment => payment.submissionId === selected.id) : []} linkedToApprovedAccount={Boolean(selected?.socialAccountId && accountStatusById.get(selected.socialAccountId) === 'approved')} open={Boolean(selected)} onOpenChange={(open) => { if (!open) setSelectedId(null) }} onUpdateAnalytics={() => { setAnalyticsId(selected!.id); setSelectedId(null) }} />

@@ -1,3 +1,4 @@
+import { hasCreatorPayoutMethod } from '@/lib/creator/money'
 import Link from 'next/link'
 import { BorderBeam } from '@/components/ui/border-beam'
 import { useEffect, useId, useRef, useState } from 'react'
@@ -21,9 +22,7 @@ export function creatorSetupComplete(data: CreatorDashboard) {
 }
 
 function hasPayoutInformation({ profile }: CreatorDashboard) {
-  return Boolean(profile && (profile.paymentOption === 'paypal'
-    ? profile.paypalEmail
-    : profile.cryptoNetwork && profile.cryptoWalletAddress))
+  return hasCreatorPayoutMethod(profile)
 }
 
 export function CreatorSetupChecklist() {

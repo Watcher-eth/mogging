@@ -13,7 +13,7 @@ export default function LoginDialogContent({
   open,
   children,
 }: {
-  audience?: 'app' | 'creator'
+  audience?: 'app' | 'creator' | 'scan'
   callbackUrl: string
   onOpenChange: (open: boolean) => void
   open: boolean
@@ -104,7 +104,7 @@ export default function LoginDialogContent({
           <div className="pointer-events-none absolute inset-x-0 top-0 h-64 bg-[radial-gradient(ellipse_70%_48%_at_50%_10%,rgba(244,244,245,0.82)_0%,rgba(255,255,255,0)_72%)]" />
 
           <div className="relative">
-            <div className="relative mx-[-52px] h-[160px]">
+            {audience === 'scan' ? <img src="/scan/icon-192.png" alt="" className="mx-auto my-4 size-16 rounded-2xl" /> : <div className="relative mx-[-52px] h-[160px]">
               {modelImages.map((src, index) => {
                 const layout = bubbleLayout[index]
 
@@ -134,16 +134,14 @@ export default function LoginDialogContent({
               <div className="absolute left-1/2 top-[76%] z-30 grid size-9 -translate-x-1/2 -translate-y-1/2 place-items-center rounded-full bg-white text-[30px] font-light leading-none text-black shadow-[0_18px_42px_rgba(15,23,42,0.18),inset_0_1px_0_rgba(255,255,255,0.9)]">
                 <span className="relative -top-[2px]">+</span>
               </div>
-            </div>
+            </div>}
 
             <DialogHeader className="relative mx-auto mt-2 max-w-[330px] text-left">
               <DialogTitle className="text-3xl font-semibold leading-[1.06] tracking-[-0.055em]">
-                Enter Mogging.
-                <br />
-                Rate. Battle. Rank.
+                {audience === 'scan' ? 'Sign in to Mogging' : <>Enter Mogging.<br />Rate. Battle. Rank.</>}
               </DialogTitle>
               <DialogDescription className="mt-3 max-w-[310px] text-left text-sm leading-5 text-zinc-500">
-                Sign in first. If this is your first time, you will set your profile after auth.
+                {audience === 'scan' ? 'Use the same account you used at checkout.' : 'Sign in first. If this is your first time, you will set your profile after auth.'}
               </DialogDescription>
             </DialogHeader>
           </div>

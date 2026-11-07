@@ -2,7 +2,12 @@ import { DEFAULT_TEXT_MORPH_OPTIONS, diffSegments, type Segment } from 'torph'
 import type { PortraitMetric } from './portrait-metric'
 
 export const pillMotion = { durationMs: DEFAULT_TEXT_MORPH_OPTIONS.duration, padding: 16, height: 52, fontSize: 32 } as const
-export const portraitMetricText = (metric: PortraitMetric) => (metric.unit === '/10' && !Number.isInteger(metric.value) ? String(metric.value) : metric.value.toFixed(1)) + (metric.unit === '/10' ? ' / 10' : metric.unit)
+export const portraitMetricText = (metric: PortraitMetric) => {
+  const score = metric.unit === '/10' || metric.unit === '/8'
+  const value = score && !Number.isInteger(metric.value) ? String(metric.value) : metric.value.toFixed(1)
+  return score ? `${value} / ${metric.unit.slice(1)}` : value + metric.unit
+}
+
 type Glyph = Segment & { x: number; y: number; opacity: number }
 export type PillFrame = { width: number; opacity: number; glyphs: Glyph[]; metric?: PortraitMetric }
 type Transition = { at: number; from: PillFrame; to: PillFrame }
@@ -43,4 +48,64 @@ export function createPortraitPillTrack(measure:(text:string)=>number, metricAt:
     segments=next;lastKey=key
   }
   return {sample(time:number,reduced=false){const index=transitions.findLastIndex(t=>t.at<=time);return index<0?{width:0,opacity:0,glyphs:[]} as PillFrame:sample(transitions[index],time,reduced)}}
+}
+
+
+const textDiffs = new Map<string, { from: Segment[]; to: Segment[] }>()
+
+export function drawVideoTextMorph(ctx: CanvasRenderingContext2D, previous: string, next: string, x: number, y: number, progress: number, maxWidth: number) {
+  if (previous === next || progress >= 1) {
+    ctx.fillText(next, x, y, maxWidth)
+    return
+  }
+  const key = JSON.stringify([previous, next])
+  let segments = textDiffs.get(key)
+  if (!segments) {
+    const from = diffSegments([], previous, 'en').segments
+    segments = { from, to: diffSegments(from, next, 'en').segments }
+    if (textDiffs.size >= 128) textDiffs.clear()
+    textDiffs.set(key, segments)
+  }
+  const amount = ease(progress)
+  const right = ctx.textAlign === 'right'
+  const layout = (parts: Segment[], text: string) => {
+    const width = ctx.measureText(text).width
+    const scale = Math.min(1, maxWidth / Math.max(1, width))
+    let prefix = ''
+    return parts.map(part => {
+      const left = x + (ctx.measureText(prefix).width - (right ? width : 0)) * scale
+      prefix += part.string
+      return { ...part, left, scale }
+    })
+  }
+  const from = layout(segments.from, previous)
+  const to = layout(segments.to, next)
+  const old = new Map(from.map(glyph => [glyph.id, glyph]))
+  const retained = new Set(to.map(glyph => glyph.id))
+  ctx.save()
+  ctx.textAlign = 'left'
+  const draw = (text: string, left: number, baseline: number, scale: number, opacity: number) => {
+    ctx.save()
+    ctx.globalAlpha *= opacity
+    ctx.translate(left, baseline)
+    ctx.scale(scale, 1)
+    ctx.fillText(text, 0, 0)
+    ctx.restore()
+  }
+  for (const glyph of from) {
+    if (!retained.has(glyph.id)) draw(glyph.string, glyph.left, y - amount * 12, glyph.scale, 1 - amount)
+  }
+  for (const glyph of to) {
+    const prior = old.get(glyph.id)
+    if (prior) {
+      const left = prior.left + (glyph.left - prior.left) * amount
+      const scale = prior.scale + (glyph.scale - prior.scale) * amount
+      if (prior.string === glyph.string) draw(glyph.string, left, y, scale, 1)
+      else {
+        draw(prior.string, left, y - amount * 12, scale, 1 - amount)
+        draw(glyph.string, left, y + (1 - amount) * 12, scale, amount)
+      }
+    } else draw(glyph.string, glyph.left, y + (1 - amount) * 12, glyph.scale, amount)
+  }
+  ctx.restore()
 }

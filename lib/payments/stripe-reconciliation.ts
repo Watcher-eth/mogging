@@ -1,3 +1,5 @@
+import type Stripe from 'stripe'
+import { recordStripeLifecycle, recordVerifiedStripeCheckout } from './stripe-lifecycle'
 import { getStripe } from './stripe'
 import { processStripeEvent } from './stripe-events'
 import { recordBackendRequest } from '@/lib/reliability/monitor'
@@ -11,6 +13,41 @@ const eventTypes = [
   'payment_intent.payment_failed', 'refund.created', 'refund.updated', 'charge.refunded', 'charge.dispute.created',
 ] as const
 
+// Repair durable checkout links as well as the recent event feed. A delivered
+// webhook can predate entitlement creation; an event receipt alone is not proof
+// that its customer/product linkage is complete.
+async function repairRecordedCheckouts(stripe: Stripe) {
+  const rows = await db.execute(sql`select p.stripe_checkout_session_id as id from payment_entitlements p
+    where p.stripe_checkout_session_id like 'cs_live_%' and (
+      not exists(select 1 from subscription_events b where b.provider='stripe' and b.provider_event_id='checkout:'||p.stripe_checkout_session_id)
+      or exists(select 1 from subscription_events b where b.provider='stripe' and b.subscription_id=p.stripe_subscription_id
+        and b.event_name in ('invoice_paid','subscription_renewed','one_time_purchase')
+        and (b.account_id is null or b.product_id is null)))
+    order by p.created_at desc limit 10`)
+  const deadline = Date.now()+20_000
+  let repaired=0, deferred=0
+  for (const row of rows) {
+    if (Date.now()>=deadline) { deferred++; continue }
+    try {
+      const session = await stripe.checkout.sessions.retrieve(String(row.id), { expand: ['invoice'] })
+      if (!session.livemode || session.status!=='complete') { deferred++; continue }
+      await recordVerifiedStripeCheckout(session)
+      const invoice = session.invoice && typeof session.invoice==='object' ? session.invoice : null
+      if (invoice?.status==='paid') {
+        const prior = await db.query.subscriptionEvents.findFirst({ where: and(eq(schema.subscriptionEvents.provider,'stripe'),
+          sql`${schema.subscriptionEvents.properties}->>'invoice_id'=${invoice.id}`), columns: { providerEventId:true } })
+        await recordStripeLifecycle({ id: prior?.providerEventId || `invoice:${invoice.id}`, type:'invoice.paid',
+          created:invoice.status_transitions.paid_at || invoice.created,livemode:true,data:{object:invoice} } as Stripe.Event)
+      }
+      repaired++
+    } catch {
+      // Keep the discrepancy visible and retry later; never invent a paid outcome.
+      deferred++
+    }
+  }
+  return { repaired, deferred }
+}
+
 export async function reconcileStripeBilling(now = new Date()) {
   const started = Date.now(), lease = crypto.randomUUID()
   // One lease across cron invocations, including five-minute boundaries. State
@@ -23,6 +60,7 @@ export async function reconcileStripeBilling(now = new Date()) {
   if (!claimed.length) return { ran: false, busy: true, eventsChecked: 0 }
   try {
     const stripe = getStripe()
+    const checkoutRepair = await repairRecordedCheckouts(stripe)
     let state = claimed[0].state as StripeRecoveryState | null
     if (!state) {
       const checkpoint = await db.query.analyticsEvents.findFirst({
@@ -68,9 +106,10 @@ export async function reconcileStripeBilling(now = new Date()) {
       eventId: crypto.randomUUID(), eventName: result.partial ? 'backend_billing_reconciliation_progress' : 'backend_billing_reconciliation', platform: 'server', source: 'backend',
       environment: process.env.VERCEL_ENV || 'production', occurredAt: now, exportedAt: now,
       properties: { provider: 'stripe', events_checked: result.checked, events_recovered: result.recovered, webhook_ready: webhookReady,
+        checkout_links_repaired: checkoutRepair.repaired, checkout_links_deferred: checkoutRepair.deferred,
         partial: result.partial, covered_until: state.coveredUntil, audit_covered_until: state.auditedAt },
     })
-    return { ran: true, eventsChecked: result.checked, recovered: result.recovered, partial: result.partial }
+    return { ran: true, eventsChecked: result.checked, recovered: result.recovered, partial: result.partial, ...checkoutRepair }
   } catch (error) {
     await recordBackendRequest('payments/stripe-recovery-pass', { outcome: 'failed', code: 'billing_reconciliation_failed', alert: true }, Date.now() - started)
     throw error

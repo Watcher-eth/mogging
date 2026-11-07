@@ -1,5 +1,5 @@
-import { AnimatePresence, MotionConfig, motion } from 'motion/react'
-import { ArrowRight, Share2 } from 'lucide-react'
+import { AnimatePresence, MotionConfig, motion, useReducedMotion } from 'motion/react'
+import { ArrowRight, ChevronLeft, ChevronRight, Share2 } from 'lucide-react'
 import { useState, type ReactNode } from 'react'
 import type { FaceLandmarksPayload } from '@/lib/analysis/landmarks'
 import type { OverlayPreset } from '@/lib/creator/mobile-overlay-engine/schema'
@@ -22,19 +22,29 @@ export type DesktopReportCategory = {
   faceMapPointCount?: number
 }
 
-export function AnalysisReport({ categories, initialCategoryId, imageSrc, landmarks, score, pslScore, children, renderDetails, naturalImage = false, embedded = false }: {
+export type ReportPortrait = { src: string; landmarks: FaceLandmarksPayload | null; label: string; side?: boolean }
+
+export function AnalysisReport({ categories, initialCategoryId, imageSrc, landmarks, score, pslScore, potentialScore, mobileScan = false, children, renderDetails, naturalImage = false, embedded = false, portraits = [], portraitLayoutId }:  {
   categories: DesktopReportCategory[]
   initialCategoryId?: string
   imageSrc: string
   landmarks: FaceLandmarksPayload | null
   score: number | null
   pslScore?: number | null
+  potentialScore?: number | null
+  mobileScan?: boolean
   children: ReactNode
   naturalImage?: boolean
   embedded?: boolean
+  portraits?: ReportPortrait[]
+  portraitLayoutId?: string
   renderDetails?: (category: DesktopReportCategory) => ReactNode
 }) {
   const [activeCategoryId, setActiveCategoryId] = useState(initialCategoryId ?? categories[0]?.id)
+  const [photoIndex, setPhotoIndex] = useState(0)
+  const reducedMotion = useReducedMotion()
+  const photos = [{ src: imageSrc, landmarks, label: 'Front', side: false }, ...portraits]
+  const photo = photos[photoIndex] ?? photos[0]
   const activeCategory = categories.find(category => category.id === activeCategoryId) ?? categories[0]
   if (!activeCategory) return null
   const overlayValue = score === null ? undefined : activeCategory.id === 'overall'
@@ -55,18 +65,38 @@ export function AnalysisReport({ categories, initialCategoryId, imageSrc, landma
 
       <section className={styles.stage}>
         <div className={styles.content}>
-          <ReportImagePanel
-            key={imageSrc}
-            category={activeCategory}
-            imageSrc={imageSrc}
-            landmarks={landmarks}
-            value={overlayValue}
-            naturalImage={naturalImage}
-            clearPortrait={embedded}
-          />
-          <div key={activeCategory.id} className={styles.details} role="region" aria-label={`${activeCategory.title} report details`} tabIndex={0}>
-            {renderDetails ? renderDetails(activeCategory) : <ReportDetailPanel category={activeCategory} />}
-          </div>
+          <motion.div layoutId={mobileScan ? undefined : portraitLayoutId} className={styles.portraitStage}>
+            <AnimatePresence initial={false} mode="popLayout">
+              <motion.div key={photo.src} className={styles.portraitFrame}
+                initial={reducedMotion || mobileScan ? false : { opacity: 0, filter: 'blur(5px)', x: 8 }}
+                animate={{ opacity: 1, filter: 'blur(0px)', x: 0 }}
+                exit={reducedMotion ? { opacity: 0 } : { opacity: 0, filter: 'blur(5px)', x: -8 }}
+                transition={{ duration: reducedMotion ? 0 : .24, ease: [0.22, 1, 0.36, 1] }}>
+                <ReportImagePanel category={activeCategory} imageSrc={photo.src} landmarks={photo.landmarks}
+                  value={photo.side ? undefined : overlayValue} side={photo.side} mobileScan={mobileScan} naturalImage={naturalImage} clearPortrait={embedded} />
+              </motion.div>
+            </AnimatePresence>
+            {photos.length > 1 && <div className={styles.portraitSelector} role="group" aria-label="Report photos">
+              <button type="button" aria-label="Previous photo" onClick={() => setPhotoIndex((photoIndex - 1 + photos.length) % photos.length)}><ChevronLeft size={16} /></button>
+              <span aria-live="polite">{photo.label}</span>
+              <button type="button" aria-label="Next photo" onClick={() => setPhotoIndex((photoIndex + 1) % photos.length)}><ChevronRight size={16} /></button>
+            </div>}
+          </motion.div>
+          {mobileScan && <motion.div className={styles.scanScores} layout="position"
+            initial={reducedMotion ? false : { opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: .32, delay: .14 }}>
+            <div><small>Mogging Score</small><strong data-locked={score === null || undefined}>{score === null ? '—.—' : score.toFixed(1)}</strong><span>/ 10</span></div>
+            {(potentialScore != null || score === null) && <div><small>Potential</small><strong data-locked={score === null || undefined}>{potentialScore?.toFixed(1) ?? '—.—'}</strong><span>/ 10</span></div>}
+          </motion.div>}
+          <AnimatePresence initial={false} mode={mobileScan ? 'wait' : 'sync'}>
+            <motion.div key={activeCategory.id} className={styles.details} role="region" aria-label={`${activeCategory.title} report details`} tabIndex={0}
+              initial={mobileScan && !reducedMotion ? { opacity: 0, y: 10, filter: 'blur(4px)' } : false}
+              animate={{ opacity: 1, y: 0, filter: 'blur(0px)' }}
+              exit={mobileScan && !reducedMotion ? { opacity: 0, y: -5 } : undefined}
+              transition={{ duration: reducedMotion ? 0 : .2, ease: [.23, 1, .32, 1] }}>
+              {renderDetails ? renderDetails(activeCategory) : <ReportDetailPanel category={activeCategory} />}
+            </motion.div>
+          </AnimatePresence>
         </div>
       </section>
 

@@ -1,3 +1,4 @@
+import { MissingPaymentData } from '@/components/creator/missing-payment-data'
 import Link from 'next/link'
 import styles from './money.module.css'
 import { useRouter } from 'next/router'
@@ -14,6 +15,8 @@ import { apiGet } from '@/lib/api/client'
 import {
   creatorBundlePlan,
   creatorMoneySummary,
+  creatorMissingPaymentData,
+  creatorPaymentLabel,
   creatorUnpaidCents,
   hasCreatorPayoutMethod,
 } from '@/lib/creator/money'
@@ -105,6 +108,7 @@ function MoneyContent() {
         }
       />
       </div>
+      <MissingPaymentData data={data} />
       <StudioTabs value={tab} onChange={change} items={tabs}>
         <StudioTabContent value="wallet">
           <section className="creator-surface overflow-hidden">
@@ -134,9 +138,7 @@ function MoneyContent() {
                         {payment.bonusNote || submission?.title || 'Creator payout'}
                       </h2>
                       <p className="mt-1 text-xs text-zinc-500">
-                        {payment.paymentOption === 'paypal'
-                          ? 'PayPal'
-                          : 'Crypto'}
+                        {creatorPaymentLabel(payment.paymentOption)}
                         {payment.paidAt
                           ? ` · ${new Date(payment.paidAt).toLocaleDateString()}`
                           : ''}
@@ -195,7 +197,7 @@ function MoneyContent() {
                     </div>
                     <div className="mt-4 flex justify-between border-t border-zinc-100 pt-4 text-xs">
                       <span className="rounded-lg bg-[#f5f6f7] px-3 py-1 text-zinc-600">
-                        {payment
+                        {creatorMissingPaymentData(data.profile, [submission], data.payments) ? 'Missing Payment Data' : payment
                           ? payment.status === 'processing'
                             ? 'Processing'
                             : payment.status === 'failed'

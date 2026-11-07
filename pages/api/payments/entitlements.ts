@@ -6,10 +6,11 @@ import { getRequestUserId } from '@/lib/auth/mobile-session'
 import { getEntitlementSummary } from '@/lib/payments/entitlements'
 
 const querySchema = z.object({
-  mobileInstallId: z.string().trim().min(8).max(120),
+  mobileInstallId: z.string().trim().min(8).max(120).optional(),
 })
 
 async function handler(req: NextApiRequest, res: NextApiResponse) {
+  res.setHeader('Cache-Control', 'private, no-store')
   if (req.method !== 'GET') return methodNotAllowed(res, ['GET'])
 
   try {

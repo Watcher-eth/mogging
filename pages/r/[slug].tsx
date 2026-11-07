@@ -11,9 +11,9 @@ import { Button } from '@/components/ui/button'
 import { MoggingWordmark } from '@/components/brand/mogging-wordmark'
 import { getOrSetAnonymousActorId } from '@/lib/auth/anonymous'
 import { createCreatorAttributionClick, setCreatorAttributionCookie } from '@/lib/creator/attribution'
-import { homepageDestinationCookie } from '@/lib/homepage-routing'
+import { EvaluationChoices } from '@/components/landing/evaluation-choices'
 import { creatorLinkPlatform } from '@/lib/creator/link-routing'
-import { siteUrl } from '@/lib/seo'
+import { appStoreUrl, siteUrl } from '@/lib/seo'
 
 type CreatorLinkPageProps = {
   creator: string
@@ -23,6 +23,7 @@ type CreatorLinkPageProps = {
   code: string
   deepLinkUrl: string
   storeUrl: string | null
+  iosStoreUrl: string | null
   webUrl: string
   clickId: string
   trackingLinkId: string
@@ -97,16 +98,18 @@ export default function CreatorLinkPage(props: CreatorLinkPageProps) {
         </button>
         <span role="status" className="sr-only">{copied === 'code' ? 'Creator code copied' : copied === 'link' ? 'Referral link copied' : ''}</span>
       </div>
+      <div className="mt-6">
+        <EvaluationChoices storeHref={props.iosStoreUrl || appStoreUrl} webHref={props.webUrl}
+          track={destination => trackWebEvent(destination === 'app_store' ? 'app_store_redirected' : 'landing_cta_clicked', { ...eventContext, destination, placement: 'creator_landing' })} />
+      </div>
       {props.storeUrl ? <>
-        <Button type="button" onClick={() => void copyAndInstall()} className="mt-6 h-14 w-full rounded-full bg-[#00A8EF] text-base font-medium text-white hover:bg-[#0099da]">Copy referral and install<ArrowRight /></Button>
-        <p className="mt-3 text-xs leading-5 text-[#73777d]">After installing, paste this link in the app’s creator field to recover your referral.</p>
+        <Button type="button" variant="ghost" onClick={() => void copyAndInstall()} className="mt-3 min-h-11 rounded-full text-sm">Copy referral and install<ArrowRight /></Button>
+        <p className="mt-2 text-xs leading-5 text-[#73777d]">After installing, paste this link in the app’s creator field to recover your referral.</p>
         {copyError ? <p role="alert" className="mt-2 text-xs text-red-700">Copying is unavailable in this browser. Keep your creator code or reopen this link after installing.</p> : null}
-        <a href={props.storeUrl} onClick={() => trackWebEvent('app_store_redirected', { ...eventContext, destination: 'app_store', placement: 'direct_install' })} className="mt-3 inline-flex min-h-11 items-center text-sm underline underline-offset-4">Install without copying</a>
-      </> : <Button asChild className="mt-6 h-14 w-full rounded-full bg-[#00A8EF] text-base text-white"><a href={props.webUrl}>Get your Mogging Scan now<ArrowRight /></a></Button>}
+      </> : null}
       <Link href={`/r/${encodeURIComponent(props.code)}?login=1&next=${encodeURIComponent(`/r/${props.code}?fallback=1`)}`} className="mt-3 inline-flex min-h-11 items-center text-sm font-medium text-[#00A8EF]">{accountSaved ? 'Referral saved to your account' : 'Save my referral to my account'}</Link>
       <a href={props.deepLinkUrl} className="mt-4 inline-flex min-h-11 items-center gap-1.5 text-sm font-medium">Already have the app? Open Mogging<ArrowRight className="size-4" /></a>
       <p className="mt-3 max-w-[360px] text-xs leading-5 text-[#93979d]">After installing, reopen this link or enter this creator code in the app before purchasing so your creator gets credit.</p>
-      {props.storeUrl ? <a href={props.webUrl} onClick={() => { document.cookie = homepageDestinationCookie('web', location.protocol === 'https:') }} className="mt-3 inline-flex min-h-11 items-center text-xs text-[#73777d] underline underline-offset-4">Continue on the website</a> : null}
       <nav aria-label="Legal" className="mt-8 flex gap-5 text-xs text-[#93979d]"><Link href="/privacy">Privacy</Link><Link href="/tos">Terms</Link></nav>
     </section>
   </div>
@@ -133,7 +136,7 @@ export const getServerSideProps: GetServerSideProps<CreatorLinkPageProps> = asyn
   setCreatorAttributionCookie(res as NextApiResponse, attribution.token)
   const device = creatorLinkPlatform(userAgent)
   const storeUrl = device === 'android' ? attribution.link.androidAppStoreUrl : attribution.link.iosAppStoreUrl
-  const webUrl = new URL('/', 'https://www.mogging.com')
+  const webUrl = new URL('/analysis?start=1', siteUrl)
   const account = await import('@/lib/db').then(({ db }) => db.query.creatorSocialAccounts.findFirst({
     where: (accounts, { eq }) => eq(accounts.id, attribution.link.socialAccountId),
     columns: { handle: true, displayName: true, platform: true, avatarUrl: true },
@@ -143,7 +146,6 @@ export const getServerSideProps: GetServerSideProps<CreatorLinkPageProps> = asyn
   webUrl.searchParams.set('utm_medium', attribution.click.isBot ? 'preview' : 'creator')
   webUrl.searchParams.set('utm_campaign', attribution.link.slug)
   webUrl.searchParams.set('utm_content', account.handle || attribution.link.socialAccountId)
-  webUrl.searchParams.set('attribution_token', attribution.token)
 
   return {
     props: {
@@ -156,7 +158,8 @@ export const getServerSideProps: GetServerSideProps<CreatorLinkPageProps> = asyn
       code: slug,
       deepLinkUrl: attribution.deepLinkUrl,
       storeUrl,
-      webUrl: webUrl.toString(),
+      iosStoreUrl: attribution.link.iosAppStoreUrl,
+      webUrl: webUrl.pathname + webUrl.search,
     },
   }
 }

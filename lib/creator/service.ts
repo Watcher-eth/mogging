@@ -18,6 +18,7 @@ import { env } from '@/lib/env'
 import { creatorReferralHandle, ensureCreatorTrackingLink } from '@/lib/creator/attribution'
 import { captionContainsCreatorCode } from './post-guidance'
 import { minimumSubmissionViews } from './validation'
+import { canUseCreatorBankTransfer } from './money'
 
 export { creatorProfileSchema, creatorSubmissionSchema, creatorSocialAccountSchema } from './validation'
 import { creatorSubmissionAnalyticsSchema, type CreatorSubmissionAnalyticsInput, creatorSubmissionSchema, creatorPostPlatform, type CreatorProfileInput, type CreatorSubmissionInput, type CreatorSocialAccountInput } from './validation'
@@ -114,17 +115,25 @@ export async function saveCreatorProfile(userId: string, input: CreatorProfileIn
     paypalMeUrl: input.paymentOption === 'paypal' ? input.paypalMeUrl || null : null,
     cryptoNetwork: input.paymentOption === 'crypto' ? input.cryptoNetwork : null,
     cryptoWalletAddress: input.paymentOption === 'crypto' ? input.cryptoWalletAddress : null,
+    bankTransferDetails: input.paymentOption === 'bank_transfer' ? input.bankTransferDetails : null,
     updatedAt: new Date(),
   } as const
 
   return db.transaction(async tx => {
+    if (input.paymentOption === 'bank_transfer') {
+      const [existing] = await tx.select().from(schema.creatorProfiles).where(eq(schema.creatorProfiles.userId, userId)).for('update')
+      const [submissions, payments] = existing ? await Promise.all([
+        tx.query.creatorSubmissions.findMany({ where: eq(schema.creatorSubmissions.creatorProfileId, existing.id) }),
+        tx.query.creatorPayments.findMany({ where: eq(schema.creatorPayments.creatorProfileId, existing.id) }),
+      ]) : [[], []]
+      if (!canUseCreatorBankTransfer(existing, submissions, payments)) throw new CreatorServiceError(403, 'Bank transfer is only available for approved unpaid submissions with missing payout details')
+    }
     const [profile] = await tx.insert(schema.creatorProfiles).values(values)
       .onConflictDoUpdate({ target: schema.creatorProfiles.userId, set: values }).returning()
-    // Unrequested bonuses follow the chosen destination; requested payouts keep
+    // Unrequested payments follow the chosen destination; requested payouts keep
     // the payment method captured when the creator requested them.
     await tx.update(schema.creatorPayments).set({ paymentOption: profile.paymentOption }).where(and(
       eq(schema.creatorPayments.creatorProfileId, profile.id),
-      or(isNotNull(schema.creatorPayments.bonusSprintId), isNotNull(schema.creatorPayments.creatorReferralAwardId)),
       eq(schema.creatorPayments.status, 'pending'),
       isNull(schema.creatorPayments.payoutRequestId),
     ))

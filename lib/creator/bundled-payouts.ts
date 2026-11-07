@@ -5,7 +5,7 @@ import { z } from 'zod'
 import { db, schema } from '@/lib/db'
 import { ApiError } from '@/lib/api/http'
 import { normalizePaymentReceipt, paymentReceiptSchema } from '@/lib/admin/payment-receipt'
-import { creatorBundlePlan, creatorEarnedCents, canReceiveCreatorPayout, remainingCreatorPaymentCents } from './money'
+import { creatorBundlePlan, creatorEarnedCents, canReceiveCreatorPayout, creatorPayoutDestination, remainingCreatorPaymentCents } from './money'
 
 export const payoutPreferenceSchema = z.object({ bundledPayouts: z.boolean() })
 export const payoutRequestSchema = z.object({ expectedAmountCents: z.number().int().positive() })
@@ -52,7 +52,7 @@ export async function requestBundledPayout(userId: string, expectedAmountCents: 
     const [request] = await tx.insert(schema.creatorPayoutRequests).values({
       creatorProfileId: profile.id, amountCents: plan.amountCents,
       paymentOption: profile.paymentOption,
-      destination: (profile.paymentOption === 'paypal' ? profile.paypalEmail : profile.cryptoWalletAddress)!,
+      destination: creatorPayoutDestination(profile)!,
       network: profile.paymentOption === 'crypto' ? profile.cryptoNetwork : null,
     }).returning()
     for (const line of plan.lines) {

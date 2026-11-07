@@ -1,3 +1,5 @@
+import type { FaceLandmarksPayload } from '@/lib/analysis/landmarks'
+import { getStroke } from 'perfect-freehand'
 import { applyGlassInk } from './glass-overlay'
 import { originalVideoContext } from './video-theme'
 import { sampleCaptionAppearance, annotationAppearance } from './caption-contrast'
@@ -216,6 +218,17 @@ function customPaths(source: GeneratorImage, guide: string): Point[][] {
   if (guide === 'detail:nose-base') return faceContourPaths(face, 'noseBase')
   if (guide.startsWith('plane:')) return faceRegionContours(face, 'overall').filter(region => region.id === guide.slice(6)).map(region => [...region.points, region.points[0]])
   const line = (...points: Array<Point | undefined>) => points.every(Boolean) ? [points as Point[]] : []
+  const contour = (...keys: Array<keyof NonNullable<FaceLandmarksPayload['contours']>>) =>
+    keys.flatMap(key => faceContourPaths(face, key))
+  if (guide === 'study:pupil-axis') return [...contour('leftEye', 'rightEye'), ...line(a.leftPupil, a.rightPupil)]
+  if (guide === 'study:brow-spacing') return [...contour('leftBrow', 'rightBrow'), ...line(a.leftBrow, a.leftPupil), ...line(a.leftPupil, a.rightPupil)]
+  if (guide === 'study:nose-axis') return [...contour('noseBridge', 'noseBase'), ...line(a.noseBridge, a.noseTip)]
+  if (guide === 'study:mouth-width') return [...contour('mouth'), ...line(a.mouthLeft, a.mouthRight)]
+  if (guide === 'study:philtrum') return [...contour('noseBase'), ...line(a.noseTip, a.upperLip)]
+  if (guide === 'study:paired-eyes') return [...line(a.leftEyeInner, a.leftEyeOuter), ...line(a.rightEyeInner, a.rightEyeOuter)]
+  if (guide === 'study:face-proportions') return [...line(a.forehead, a.chin), ...line(a.noseTip, a.chin)]
+  if (guide === 'study:jaw-bend') return line(a.leftCheek, a.jawLeft, a.chin)
+  if (guide === 'study:jaw-span') return [...jawOutline(face), ...line(a.jawLeft, a.jawRight), ...line(a.leftCheek, a.rightCheek)]
   const nose = face.contours?.noseBase?.[3] ?? a.noseTip
   const upper = a.upperLip ?? a.mouthCenter
   const span = a.leftPupil && a.rightPupil ? Math.abs(a.rightPupil.x - a.leftPupil.x) : .2
@@ -323,7 +336,22 @@ function adjacentPortraitGuides(from: PreparedPortraitProgram['actions'][number]
   const x = center(a), y = center(b)
   return Math.hypot((x.x-y.x)/width, (x.y-y.y)/height) < .09
 }
-export function drawPortraitActivity(ctx: CanvasRenderingContext2D, activity: PortraitActivity, width: number, height: number, warp?: PortraitWarp) {
+// Independent technical diagrams, drawn in screen coordinates rather than copied from landmarks.
+const studyDiagrams: Record<string, { note: string; paths: number[][][] }> = {
+  'face:outline': { note: 'Centerline reference', paths: [[[10,30],[174,30]],[[92,4],[92,62]],[[74,50],[112,50]],[[74,45],[74,55]],[[112,45],[112,55]]] },
+  'study:pupil-axis': { note: 'Tilt relative to horizontal', paths: [[[10,48],[175,48]],[[10,48],[175,12]],[[58,48],[57,39],[54,32]]] },
+  'study:brow-spacing': { note: 'Brow span / pupil span', paths: [[[18,8],[18,54]],[[10,8],[26,8]],[[10,54],[26,54]],[[53,54],[175,54]],[[53,47],[53,61]],[[175,47],[175,61]]] },
+  'study:nose-axis': { note: 'Image-plane distance', paths: [[[20,14],[162,52]],[[18,23],[22,5]],[[160,61],[164,43]],[[83,18],[79,36]]] },
+  'study:mouth-width': { note: 'Corner-to-corner span', paths: [[[14,33],[174,33]],[[14,20],[14,46]],[[174,20],[174,46]],[[26,26],[14,33],[26,40]],[[162,26],[174,33],[162,40]]] },
+  'study:philtrum': { note: 'Image-plane distance', paths: [[[70,10],[126,10]],[[70,56],[126,56]],[[98,10],[98,56]],[[92,18],[98,10],[104,18]],[[92,48],[98,56],[104,48]]] },
+  'study:jaw-bend': { note: 'Frontal contour angle', paths: [[[18,8],[65,53],[166,32]],[[48,36],[55,29],[65,26],[75,28],[82,33],[86,48]]] },
+  'study:paired-eyes': { note: 'Inner to outer canthus', paths: [[[8,25],[72,25]],[[8,16],[8,34]],[[72,16],[72,34]],[[105,25],[173,25]],[[105,16],[105,34]],[[173,16],[173,34]],[[90,8],[90,52]]] },
+  'study:face-proportions': { note: 'Lower span / total span', paths: [[[55,4],[55,62]],[[45,4],[65,4]],[[45,62],[65,62]],[[114,32],[114,62]],[[104,32],[124,32]],[[104,62],[124,62]],[[55,32],[114,32]]] },
+  'study:skin-light': { note: 'Light direction changes shadows', paths: [[[8,6],[48,37],[35,34]],[[26,4],[68,37],[55,34]],[[45,4],[88,37],[75,34]],[[8,57],[38,57],[51,48],[65,58],[80,58],[96,48],[111,57],[176,57]]] },
+  'study:skin-color': { note: 'Compare regional tone', paths: [[[14,10],[67,10],[67,54],[14,54],[14,10]],[[114,10],[167,10],[167,54],[114,54],[114,10]],[[78,26],[103,26]],[[78,38],[103,38]]] },
+}
+
+export function drawPortraitActivity(ctx: CanvasRenderingContext2D, activity: PortraitActivity, width: number, height: number, warp?: PortraitWarp, reportInk = false, measurement?: { value: number; unit: string }, ink?: string) {
   ctx = originalVideoContext(ctx)
   const geometry = activity.from ? morphFaceOverlay(activity.from,activity.to,activity.blend) : activity.to
   const move=(p:Point)=>{if(!warp)return p;const q=warpDestinationPoint({x:p.x/width,y:p.y/height},warp);return{x:q.x*width,y:q.y*height}}
@@ -338,7 +366,11 @@ export function drawPortraitActivity(ctx: CanvasRenderingContext2D, activity: Po
   ctx.save();ctx.lineCap='round';ctx.lineJoin='round';ctx.shadowBlur=0
   const line=(points:Point[],weight=activity.view?4.2:3.4)=>{
     ctx.beginPath();points.forEach((p,i)=>i?ctx.lineTo(p.x,p.y):ctx.moveTo(p.x,p.y))
-    applyGlassInk(ctx,unit,weight);ctx.stroke()
+    if (ink) {
+      ctx.strokeStyle = ink
+      ctx.lineWidth = weight * unit
+    } else applyGlassInk(ctx,unit,weight)
+    ctx.stroke()
   }
   ctx.setLineDash(activity.stroke==='dotted'?[1*unit,7*unit]:activity.stroke==='dashed'?[12*unit,8*unit]:[])
   for(const path of paths) {
@@ -347,7 +379,12 @@ export function drawPortraitActivity(ctx: CanvasRenderingContext2D, activity: Po
       ctx.beginPath();visible.forEach((p,i)=>i?ctx.lineTo(p.x,p.y):ctx.moveTo(p.x,p.y))
       ctx.strokeStyle='#fff1c733';ctx.lineWidth=18*unit;ctx.stroke()
     }
-    line(visible)
+    if (!reportInk) line(visible)
+    else if (activity.guide?.startsWith('study:') && (paths.at(-1) === path || activity.guide === 'study:paired-eyes' || activity.guide === 'study:face-proportions')) {
+      // Add the measured span after the anatomical contour starts to settle.
+      const spanProgress = activity.reduced ? 1 : smoothMotion((activity.elapsedMs - 420) / 840)
+      if (spanProgress > 0) line(revealContour(path, spanProgress), 1.9)
+    }
   }
   ctx.setLineDash([])
   ctx.save();ctx.globalAlpha*=reveal
@@ -356,7 +393,22 @@ export function drawPortraitActivity(ctx: CanvasRenderingContext2D, activity: Po
     for(const [x,y,sx,sy] of [[l,t,1,1],[r,t,-1,1],[l,b,1,-1],[r,b,-1,-1]]) line([{x:x+sx*length,y},{x,y},{x,y:y+sy*length}],2.6)
   } else if(activity.treatment==='scribble') {
     const cx=(left+right)/2,cy=(top+bottom)/2,rx=(right-left)/2+20*unit,ry=(bottom-top)/2+18*unit
-    line(Array.from({length:70},(_,i)=>{const a=i/69*Math.PI*2.12,jitter=1+Math.sin(i*1.7)*.024;return{x:cx+Math.cos(a)*rx*jitter,y:cy+Math.sin(a)*ry*jitter}}),2.5)
+    const steps = Math.ceil(reveal * 69)
+    const points = Array.from({ length: steps + 1 }, (_, i) => {
+      const angle = i / 69 * Math.PI * 2.12
+      const jitter = 1 + Math.sin(i * 1.7) * .024
+      return [cx + Math.cos(angle) * rx * jitter, cy + Math.sin(angle) * ry * jitter,
+        .45 + .3 * Math.sin(angle + .4) ** 2]
+    })
+    const stroke = getStroke(points, {
+      size: 5 * unit, thinning: .75, smoothing: .45, streamline: .25,
+      simulatePressure: false, last: reveal >= 1, start: { taper: 16 * unit }, end: { taper: 30 * unit },
+    })
+    ctx.beginPath()
+    stroke.forEach(([x, y], i) => i ? ctx.lineTo(x, y) : ctx.moveTo(x, y))
+    ctx.closePath()
+    applyGlassInk(ctx, unit)
+    ctx.fill()
   } else if(activity.treatment==='landmarks') {
     for(const path of paths)for(const point of [path[0],path[Math.floor(path.length/2)],path.at(-1)!]) {
       ctx.beginPath();ctx.arc(point.x,point.y,5*unit,0,Math.PI*2);applyGlassInk(ctx,unit);ctx.fill()
@@ -370,9 +422,9 @@ export function drawPortraitActivity(ctx: CanvasRenderingContext2D, activity: Po
   }
   ctx.restore()
   if(!activity.label.trim()){ctx.restore();return}
-  const handwritten=activity.treatment==='note'||activity.treatment==='scribble',label=handwritten?activity.label:activity.label.toUpperCase()
-  const fontSize=36*unit,lineHeight=42*unit
-  ctx.font=handwritten?`italic 500 ${fontSize}px "Mogging Share",sans-serif`:`400 ${fontSize}px "SFMono-Regular",Consolas,monospace`
+  const handwritten=reportInk||activity.treatment==='note'||activity.treatment==='scribble',label=handwritten?activity.label:activity.label.toUpperCase()
+  const fontSize=(reportInk ? 27 : 36)*unit,lineHeight=fontSize+6*unit
+  ctx.font=reportInk?`400 ${fontSize}px -apple-system, "SF Pro Text", system-ui`:handwritten?`italic 500 ${fontSize}px "Mogging Share",sans-serif`:`400 ${fontSize}px "SFMono-Regular",Consolas,monospace`
   ctx.textAlign='left';ctx.textBaseline='alphabetic'
   const labelLines=portraitLabelLines(ctx,label,Math.min((safe.right-safe.left)*.9,390*unit))
   const labelWidth=Math.max(...labelLines.map(line=>ctx.measureText(line).width)),onRight=(left+right)/2<width/2
@@ -391,20 +443,48 @@ export function drawPortraitActivity(ctx: CanvasRenderingContext2D, activity: Po
     if(Math.hypot(target.x-origin.x,target.y-origin.y)>18*unit) {
       ctx.save();ctx.globalAlpha*=reveal
       const elbow={x:(origin.x+target.x)/2,y:origin.y}
-      line([origin,elbow,target],2.5)
+      if (reportInk) {
+        const curve = Array.from({ length: 25 }, (_, i) => {
+          const t = i / 24, rest = 1 - t
+          return { x: rest * rest * origin.x + 2 * rest * t * elbow.x + t * t * target.x,
+            y: rest * rest * origin.y + 2 * rest * t * elbow.y + t * t * target.y }
+        })
+        line(revealContour(curve, reveal), 3)
+      } else line([origin,elbow,target],2.5)
       const angle=Math.atan2(target.y-elbow.y,target.x-elbow.x),size=11*unit
-      if(activity.treatment==='arrow') line([{x:target.x-size*Math.cos(angle-.5),y:target.y-size*Math.sin(angle-.5)},target,{x:target.x-size*Math.cos(angle+.5),y:target.y-size*Math.sin(angle+.5)}],2.5)
+      if(activity.treatment==='arrow' && (!reportInk || reveal > .85)) line([{x:target.x-size*Math.cos(angle-.5),y:target.y-size*Math.sin(angle-.5)},target,{x:target.x-size*Math.cos(angle+.5),y:target.y-size*Math.sin(angle+.5)}],2.5)
       else {ctx.beginPath();ctx.arc(target.x,target.y,4*unit,0,Math.PI*2);ctx.fillStyle='#fff';ctx.fill()}
       ctx.restore()
     }
   }
-  ctx.fillStyle=portraitAnnotationInk(ctx,placed,activity.to.faceBoundary?.map(move));ctx.shadowColor='#ffffff66';ctx.shadowBlur=4*unit
+  ctx.fillStyle=ink ?? portraitAnnotationInk(ctx,placed,activity.to.faceBoundary?.map(move));ctx.shadowColor=ink ? '#ffffff88' : '#ffffff66';ctx.shadowBlur=(reportInk ? 1 : 4)*unit
   let letters=0
   for(const [index,line] of labelLines.entries()) {
     const progress=activity.labelPhase*(labelLines.join('').length+3)
     drawPortraitLabel(ctx,line,labelX,labelY+index*lineHeight,(progress-letters)/(line.length+3),activity.reduced);letters+=line.length
   }
-  if(handwritten) {
+  if (measurement) {
+    const unitLabel = measurement.unit === 'px' ? ' px' : measurement.unit
+    const text = `${measurement.value}${unitLabel}`
+    ctx.save()
+    ctx.shadowBlur = 0
+    ctx.globalAlpha *= activity.reduced ? 1 : smoothMotion((activity.elapsedMs - 450) / 450)
+    ctx.font = `400 ${28 * unit}px "Mogging Share", Arial, sans-serif`
+    const pillHeight = 48 * unit
+    const pillWidth = Math.min(ctx.measureText(text).width + 40 * unit, safe.right - safe.left)
+    const x = Math.max(safe.left, Math.min(safe.right - pillWidth, (left + right - pillWidth) / 2))
+    const y = Math.max(safe.top, Math.min(safe.bottom - pillHeight, bottom + 24 * unit))
+    ctx.beginPath()
+    ctx.roundRect(x, y, pillWidth, pillHeight, pillHeight / 2)
+    ctx.fillStyle = '#fff'
+    ctx.fill()
+    ctx.fillStyle = '#14202a'
+    ctx.textAlign = 'center'
+    ctx.textBaseline = 'middle'
+    ctx.fillText(text, x + pillWidth / 2, y + pillHeight / 2, Math.max(1, pillWidth - 24 * unit))
+    ctx.restore()
+  }
+  if(handwritten && !reportInk) {
     ctx.save();ctx.globalAlpha*=reveal
     const y=labelY+(labelLines.length-1)*lineHeight+9*unit
     line(Array.from({length:16},(_,i)=>({x:labelX+labelWidth*i/15,y:y+Math.sin(i*.8)*2*unit})),2)
@@ -460,4 +540,74 @@ export function placePortraitAnnotation(frame:{x:number;y:number;width:number;he
     return Math.max(1-coverage,coverage*.88)-Math.hypot(rect.x-frame.x,rect.y-frame.y)/Math.max(width,height)*.08
   }
   return candidates.reduce((best,next)=>score(next)>score(best)+.02?next:best)
+}
+
+const studySketchSlots = [
+  { x: .168, y: .62 }, { x: .674, y: .29 },
+  { x: .674, y: .62 }, { x: .168, y: .32 },
+] as const
+
+export function drawStudyMarginDiagram(
+  ctx: CanvasRenderingContext2D, guide: string, time: number, reduced: boolean,
+  width: number, height: number, ink: string, chapter: number, seed: number,
+) {
+  const diagram = studyDiagrams[guide]
+  if (!diagram) return
+  const slot = (seed + chapter * (seed % 2 ? 3 : 1)) % studySketchSlots.length
+  const draw = (slotIndex: number, detail: boolean) => {
+    const { x, y } = studySketchSlots[slotIndex]
+    const elapsed = time - (detail ? 1450 : 520)
+    const progress = reduced ? 1 : smoothMotion(elapsed / 900)
+    if (progress <= 0) return
+    const size = detail ? .57 : .84 + ((seed + chapter) % 4) * .05
+    ctx.save()
+    ctx.translate(width * x, height * y)
+    ctx.scale(size, size)
+    ctx.globalAlpha *= (detail ? .55 : .86) * progress
+    ctx.strokeStyle = ink
+    ctx.fillStyle = ink
+    ctx.lineWidth = detail ? 2.2 : 1.8
+    ctx.lineCap = 'round'
+    ctx.lineJoin = 'round'
+    const paths = detail ? diagram.paths.slice(0, 2) : diagram.paths
+    for (const [index, path] of paths.entries()) {
+      const age = elapsed - index * 100
+      const reveal = reduced ? 1 : smoothMotion(age / 850)
+      if (reveal <= 0) continue
+      const angle = reduced || index % 2 === 0 ? 0 : Math.sin(age / 630 + chapter) * .065
+      const [originX, originY] = path[0]
+      const points = path.map(([px, py]) => ({
+        x: px - (py - originY) * angle,
+        y: py + (px - originX) * angle,
+      }))
+      const trace = (end: number) => {
+        ctx.beginPath()
+        revealContour(points, end).forEach((point, i) => i ? ctx.lineTo(point.x, point.y) : ctx.moveTo(point.x, point.y))
+        ctx.stroke()
+      }
+      ctx.save()
+      ctx.globalAlpha *= .57
+      trace(reveal)
+      ctx.restore()
+      // A moving pencil dash retraces the construction after the lines land.
+      if (!reduced && reveal >= 1 && index < 2) {
+        ctx.save()
+        const head = Math.min(1, (age % 2300) / 1800)
+        const tip = revealContour(points, head).at(-1)!
+        const tail = revealContour(points, Math.max(0, head - .16)).at(-1)!
+        ctx.beginPath()
+        ctx.moveTo(tail.x, tail.y)
+        ctx.lineTo(tip.x, tip.y)
+        ctx.stroke()
+        ctx.restore()
+      }
+    }
+    if (!detail) {
+      ctx.font = '400 27px "Chalkboard SE", "Segoe Print", system-ui'
+      ctx.fillText(diagram.note, 0, 94, width * .16)
+    }
+    ctx.restore()
+  }
+  draw(slot, false)
+  if ((chapter + seed) % 3 === 1) draw(slot ^ 1, true)
 }

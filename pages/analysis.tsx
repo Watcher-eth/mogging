@@ -1,3 +1,19 @@
+import { useWebStep } from '@/hooks/use-web-step'
+import { webJourneyContext, restoreWebJourney } from '@/lib/analytics/web-journey'
+import { rememberStripeAttempt, takeStripeAttempt, readStripeAttempt, clearStripeAttempt, stripeAttemptProperties } from '@/lib/client/stripe-attempt'
+import { usePortraitHandoff } from '@/components/analysis/use-portrait-handoff'
+import { ensureAnalysisWebInstallId } from '@/lib/client/analysis-install'
+import { ScanInstallGuide } from '@/components/analysis/scan-install-guide'
+import { TextMorph } from 'torph/react'
+import sampleLandmarks from '@/components/analysis/scan-welcome-landmarks.json'
+import sampleRubrics from '@/lib/analysis-v2/sample-entries.json'
+import rubricRegistry from '@/lib/analysis-v2/rubric-registry.json'
+import { MobileCaptureChrome, MobileCaptureRing } from '@/components/analysis/guided-web-capture'
+import { useScanFeedback } from '@/hooks/use-scan-feedback'
+import { MobileScanOnboarding } from '@/components/analysis/mobile-scan-onboarding'
+import { MobileScanWelcome, ScanPwaHead, scanPart, scanSequence, useMobileScan } from '@/components/analysis/mobile-scan-pwa'
+import { useDesktop } from '@/components/landing/use-desktop'
+import type { GetServerSideProps } from 'next'
 import type { AnalysisPurchase } from '@/components/payments/analysis-unlock-dialog'
 import type { CheckoutQuote } from '@/components/payments/membership-offer'
 import { flushWebAnalytics } from '@/lib/analytics/client'
@@ -5,10 +21,12 @@ import type { WebReport } from '@/lib/analysis-v2/report-schema'
 import { reportCategoryDefaults as reportCategories } from '@/components/analysis/report-category-defaults'
 import { pslToOverallScore } from '@/lib/analysis/score-scale'
 import { trackWebEvent } from '@/lib/analytics/client'
-import { AnimatePresence, motion } from 'motion/react'
+import { AnimatePresence, LayoutGroup, MotionConfig, motion, useReducedMotion } from 'motion/react'
 import {
   ArrowRight,
   Camera,
+  ImagePlus,
+  RotateCcw,
   Check,
   CreditCard,
   Download,
@@ -25,7 +43,7 @@ import dynamic from 'next/dynamic'
 import Link from 'next/link'
 import { IntroFacePreview } from '@/components/analysis/intro-face-preview'
 import { useRouter } from 'next/router'
-import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties, type ChangeEvent, type ReactNode } from 'react'
+import { forwardRef, useCallback, useEffect, useMemo, useRef, useState, type CSSProperties, type ChangeEvent, type ReactNode } from 'react'
 import { toast } from 'sonner'
 import { useSound } from '@web-kits/audio/react'
 import useSWR from 'swr'
@@ -36,6 +54,8 @@ import {
   loadAnalysisDraft,
   saveAnalysisDraft,
   type AnalysisDraftImage,
+  loadAnalysisSidePhoto,
+  saveAnalysisSidePhoto,
 } from '@/lib/client/analysisDraft'
 import { parseFaceLandmarksPayload, type FaceLandmarksPayload } from '@/lib/analysis/landmarks'
 import { Badge } from '@/components/ui/badge'
@@ -56,7 +76,7 @@ const LegacyAnalysisReport = dynamic(() => import('@/components/analysis/v2/web-
 const ReportActions = dynamic(() => import('@/components/analysis/analysis-report').then((module) => module.ReportActions))
 const CameraSheet = dynamic(() => import('@/components/analysis/camera-sheet').then((module) => module.CameraSheet))
 
-type FlowStep = 'intro' | 'upload' | 'preview-analysis' | 'payment' | 'actual-analysis' | 'results'
+type FlowStep = 'intro' | 'story' | 'upload' | 'preview-analysis' | 'payment' | 'actual-analysis' | 'results'
 
 type AnalysisResponse = {
   canManage?: boolean;
@@ -81,6 +101,25 @@ type AnalysisResponse = {
     failureReason?: string | null
   }
   deduped: boolean
+}
+
+const sampleWalkthroughReport: AnalysisResponse = {
+  photo: { id: 'walkthrough-photo', imageUrl: '/scan/welcome.jpg', imageHash: 'walkthrough' },
+  analysis: {
+    id: 'walkthrough-report', status: 'complete', pslScore: 6.2, harmonyScore: 7.8,
+    dimorphismScore: 7.7, angularityScore: 7.9, percentile: null, tier: null, tierDescription: null,
+    landmarks: sampleLandmarks,
+    metrics: {
+      report: { summary: 'Illustrative evaluation.', potential: { score: 6.7 }, categories: [] },
+      webReportV2: {
+        version: 2, summary: 'Illustrative evaluation for the walkthrough.', overallScore: 7.8,
+        categories: rubricRegistry.categories.map(category => ({ id: category.id, score: 7.8, explanation: 'Sample observations for this evaluation category.' })),
+        entries: sampleRubrics as WebReport['entries'],
+        eyeColor: 'green', hairColor: 'brown', contours: { hair: [], ears: [] }, timingMs: 0,
+      },
+    },
+  },
+  deduped: false,
 }
 
 type AnalysisMetrics = Record<string, unknown> & {
@@ -116,6 +155,7 @@ type AnalysisReportCategory = {
 
 type AnalysisReport = {
   summary: string
+  potential?: { score?: number }
   categories: AnalysisReportCategory[]
 }
 
@@ -127,16 +167,17 @@ type ShareResponse = {
 
 type AppConfig = {
   features: {
-    authRequired: boolean
     paidAnalysisRequired: boolean
   }
 }
 
 type CheckoutResponse = {
   url: string
+  sessionId?: string
 }
 
 type PaymentAccessResponse = {
+  analytics?: { flow_id?: string; attempt_id?: string; flow_version?: string }
   entitlements: {
     mobileInstallId: string
     evaluationCredits: number
@@ -150,7 +191,6 @@ type PaymentAccessResponse = {
 
 type ImageFramePositions = Record<string, CaptureFrameImagePosition>
 const defaultFramePosition: CaptureFrameImagePosition = { x: 50, y: 50, scale: 1 }
-const analysisWebInstallStorageKey = 'mogging:analysis:web-install-id'
 
 const pseudoAnalysisItems = [
   'Detecting facial reference lines',
@@ -189,44 +229,64 @@ const analysisTimeline = [
     substeps: ['Calibrating PSL estimate', 'Writing evidence-weighted summary', 'Preparing shareable result'],
   },
 ]
-export default function AnalysisPage() {
+type AnalysisEntryProps = { startWithPhoto: boolean; previewMobile: boolean; walkthrough: boolean; sampleReport: boolean }
+
+export const getServerSideProps: GetServerSideProps<AnalysisEntryProps> = async ({ query }) => ({
+  props: {
+    startWithPhoto: query.start === '1',
+    sampleReport: process.env.NODE_ENV === 'development' && query.preview === 'mobile' && query.walkthrough === '1' && query.report === 'sample',
+    previewMobile: process.env.NODE_ENV === 'development' && query.preview === 'mobile',
+    walkthrough: process.env.NODE_ENV === 'development' && query.preview === 'mobile' && query.walkthrough === '1',
+  },
+})
+
+export default function AnalysisPage({ startWithPhoto, previewMobile, walkthrough, sampleReport }: AnalysisEntryProps) {
   const router = useRouter()
+  const mobileDevice = useMobileScan()
+  const mobileScan = previewMobile || mobileDevice
   const { status } = useSession()
   const playSelect = useSound(selectSound)
   const playExpand = useQuietCue(expandCue)
   const { data: appConfig } = useSWR<AppConfig>('/api/app-config', apiGet, {
     shouldRetryOnError: false,
   })
-  const authRequired = appConfig?.features.authRequired ?? false
   const paidAnalysisRequired = appConfig?.features.paidAnalysisRequired ?? false
+  const desktop = useDesktop()
+  const sideInputRef = useRef<HTMLInputElement | null>(null)
   const uploadInputRef = useRef<HTMLInputElement | null>(null)
   const [images, setImages] = useState<AnalysisDraftImage[]>([])
   const [selectedImageId, setSelectedImageId] = useState<string | null>(null)
   const [gender, setGender] = useState<'male' | 'female' | 'other'>('other')
-  const [step, setStep] = useState<FlowStep>('intro')
-  const analyticsFlow = useRef<string>('')
+  const [step, setStep] = useState<FlowStep>(sampleReport ? 'results' : startWithPhoto ? 'upload' : 'intro')
   useEffect(() => {
-    analyticsFlow.current ||= crypto.randomUUID()
-    trackWebEvent('onboarding_step_viewed', { step, flow_id: analyticsFlow.current, surface: 'web_analysis' })
-  }, [step])
+    setStep(current => current === 'intro' || current === 'upload'
+      ? startWithPhoto ? 'upload' : 'intro'
+      : current)
+  }, [startWithPhoto])
+  useWebStep(step, !walkthrough)
   const [progress, setProgress] = useState(0)
-  const [results, setResults] = useState<AnalysisResponse[]>([])
+  const [sidePortrait, setSidePortrait] = useState<AnalysisDraftImage | null>(null)
+  const [results, setResults] = useState<AnalysisResponse[]>(sampleReport ? [sampleWalkthroughReport] : [])
+  const [offerInstall, setOfferInstall] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [cameraOpen, setCameraOpen] = useState(false)
   const [analysisUnlocked, setAnalysisUnlocked] = useState(false)
+  const [returnOfferSessionId, setReturnOfferSessionId] = useState<string | null>(null)
   const [paymentDialogOpen, setPaymentDialogOpen] = useState(false)
   const viewedAnalysisId = step === 'results' ? results[0]?.analysis.id : undefined
   useEffect(() => {
-    if (viewedAnalysisId) trackWebEvent('report_viewed', { report_id: viewedAnalysisId, surface: 'web_analysis', flow_id: analyticsFlow.current })
-  }, [viewedAnalysisId])
+    if (!walkthrough && viewedAnalysisId) trackWebEvent('report_viewed', { report_id: viewedAnalysisId, surface: 'web_analysis', flow_id: webJourneyContext().flow_id })
+  }, [viewedAnalysisId, walkthrough])
   useEffect(() => {
-    if (paymentDialogOpen) trackWebEvent('paywall_viewed', { surface: 'web_analysis', paywall_id: 'web_analysis', paywall_version: '2', flow_id: analyticsFlow.current })
-  }, [paymentDialogOpen])
+    if (!walkthrough && paymentDialogOpen) trackWebEvent('paywall_viewed', { surface: 'web_analysis', paywall_id: 'web_analysis', paywall_version: '2', flow_id: webJourneyContext().flow_id })
+  }, [paymentDialogOpen, walkthrough])
   const [checkoutLoading, setCheckoutLoading] = useState(false)
   const [shareOpen, setShareOpen] = useState(false)
   const [shareUrl, setShareUrl] = useState<string | null>(null)
   const [shareLoading, setShareLoading] = useState(false)
   const [loginOpen, setLoginOpen] = useState(false)
+  const [preparingScan, setPreparingScan] = useState(false)
+  const [loginCallback, setLoginCallback] = useState('/analysis?start=1&resumePhoto=1')
   const loadedAnalysisIdRef = useRef<string | null>(null)
   const resumedCheckoutRef = useRef<string | null>(null)
   const analysisRunningRef = useRef(false)
@@ -236,7 +296,8 @@ export default function AnalysisPage() {
   const primaryResult = results[0]
   const primaryScore = primaryResult?.analysis.pslScore ?? null
   const isPreparingUploads = Object.values(landmarkPendingIds).some(Boolean)
-  const canStart = images.length > 0 && step === 'upload' && !isPreparingUploads
+  const reportCount = images.filter(image => image.view !== 'side').length
+  const canStart = images.some(image => image.view !== 'side') && step === 'upload' && !isPreparingUploads && !preparingScan && (walkthrough || status !== 'loading')
 
   const selectedImage = useMemo(
     () => images.find((image) => image.id === selectedImageId) ?? images[images.length - 1] ?? null,
@@ -244,12 +305,24 @@ export default function AnalysisPage() {
   )
   const previewImage = selectedImage?.dataUrl ?? null
 
-  async function handleFiles(event: ChangeEvent<HTMLInputElement>) {
-    const files = Array.from(event.target.files || []).slice(0, 3 - images.length)
+  async function handleFiles(event: ChangeEvent<HTMLInputElement>, side = false) {
+    const remaining = Math.max(0, 3 - images.length)
+    const files = Array.from(event.target.files || []).slice(0, side ? Math.min(1, remaining) : remaining)
     if (files.length === 0) return
 
-    const nextImages = await Promise.all(files.map(readImageFile))
-    const visibleNextImages = nextImages.slice(0, Math.max(0, 3 - images.length))
+    const started = Date.now()
+    if (!walkthrough) trackWebEvent('photo_preparation_started', { surface: 'web_analysis', count: files.length, source: 'picker' })
+    let nextImages: AnalysisDraftImage[]
+    try { nextImages = await Promise.all(files.map(readImageFile)) } catch {
+      if (!walkthrough) trackWebEvent('photo_validation_failed', { surface: 'web_analysis', reason_code: 'image_read_failed', duration_ms: Date.now() - started })
+      setError('Could not open that image. Please try another image.')
+      return
+    }
+    if (!walkthrough) {
+      trackWebEvent('photo_selected', { surface: 'web_analysis', count: nextImages.length, source: 'picker' })
+      trackWebEvent('photo_preparation_completed', { surface: 'web_analysis', count: nextImages.length, duration_ms: Date.now() - started })
+    }
+    const visibleNextImages = nextImages.slice(0, Math.max(0, 3 - images.length)).map(image => side ? { ...image, view: 'side' as const } : image)
     setImages((current) => [...current, ...visibleNextImages].slice(0, 3))
     setSelectedImageId(visibleNextImages[visibleNextImages.length - 1]?.id ?? null)
     setImageFramePositions((current) => ({
@@ -266,28 +339,55 @@ export default function AnalysisPage() {
     })
   }
 
+  const [previewDeadline, setPreviewDeadline] = useState<number | null>(null)
+
   async function startPseudoAnalysis() {
     if (!canStart) return
-    playSelect()
-    if (authRequired && status !== 'authenticated') {
-      setLoginOpen(true)
+    if (walkthrough) {
+      setPreviewDeadline(Date.now() + 10_000)
+      setAnalysisUnlocked(false)
+      setStep('preview-analysis')
       return
     }
-
-    const preparedImages = await prepareImagesForAnalysis(images, imageFramePositions)
+    if (!mobileScan) playSelect()
+    setPreparingScan(true)
+    let preparedImages: AnalysisDraftImage[]
+    try {
+      preparedImages = await prepareImagesForAnalysis(images, imageFramePositions)
+      if (status !== 'authenticated') {
+        await saveAnalysisDraft({ gender, images: preparedImages, savedAt: Date.now() })
+        const returnUrl = new URL(router.asPath, window.location.origin)
+        returnUrl.searchParams.set('start', '1')
+        returnUrl.searchParams.set('resumePhoto', '1')
+        setLoginCallback(returnUrl.pathname + returnUrl.search)
+        setLoginOpen(true)
+        return
+      }
+    } catch {
+      toast.error('Could not prepare your photos. Please try again.')
+      return
+    } finally {
+      setPreparingScan(false)
+    }
 
     setImages(preparedImages)
+    setImageFramePositions({})
     setError(null)
     setAnalysisUnlocked(true)
     setPaymentDialogOpen(false)
     setProgress(18)
-    setStep('actual-analysis')
+    setPreviewDeadline(null)
+    const previewEnds = Date.now() + 10_000
+    setStep(mobileScan ? 'preview-analysis' : 'actual-analysis')
 
     try {
       const installId = ensureAnalysisWebInstallId()
       const access = await apiGet<PaymentAccessResponse>(`/api/payments/entitlements?mobileInstallId=${encodeURIComponent(installId)}`)
-      if (access.entitlements.evaluationCredits >= preparedImages.length) {
+      if (access.entitlements.evaluationCredits >= reportCount) {
+        setStep('actual-analysis')
         await runActualAnalysis(preparedImages, installId, gender)
+      } else if (mobileScan) {
+        setPreviewDeadline(previewEnds)
       } else {
         setAnalysisUnlocked(false)
       }
@@ -297,19 +397,50 @@ export default function AnalysisPage() {
     }
   }
 
-  function beginAssessment() {
-    if (authRequired && status !== 'authenticated') {
-      setLoginOpen(true)
-      return
-    }
-
+  function retakePhoto() {
+    setImages([])
+    setSelectedImageId(null)
+    setImageFramePositions({})
     setStep('upload')
-    playExpand()
   }
 
+  function beginAssessment() {
+    setStep('upload')
+    if (!mobileScan) playExpand()
+  }
+
+  useEffect(() => {
+    if (step !== 'preview-analysis' || previewDeadline === null) return
+    const timer = window.setTimeout(() => {
+      setAnalysisUnlocked(false)
+      setStep('actual-analysis')
+    }, Math.max(0, previewDeadline - Date.now()))
+    return () => window.clearTimeout(timer)
+  }, [step, previewDeadline])
+
+  const [walkthroughProcessing, setWalkthroughProcessing] = useState(false)
+  useEffect(() => {
+    if (!walkthroughProcessing) return
+    const finish = window.setTimeout(() => {
+      setResults([sampleWalkthroughReport])
+      setWalkthroughProcessing(false)
+      setStep('results')
+    }, 7600)
+    return () => window.clearTimeout(finish)
+  }, [walkthroughProcessing])
+
   async function startCheckout(product: AnalysisPurchase, quote: CheckoutQuote) {
+    if (walkthrough) {
+      setPaymentDialogOpen(false)
+      setAnalysisUnlocked(true)
+      setProgress(18)
+      setOfferInstall(true)
+      setWalkthroughProcessing(true)
+      return
+    }
     if (checkoutLoading || status === 'loading') return
     if (status !== 'authenticated') {
+      trackWebEvent('account_auth_started', { surface: 'web_analysis', auth_stage: 'checkout' })
       try { await saveAnalysisDraft({ gender, images, savedAt: Date.now() }) }
       catch { setError('Your browser could not save your photos. Please try a regular browser window before continuing.'); return }
       setLoginOpen(true)
@@ -319,15 +450,15 @@ export default function AnalysisPage() {
     setCheckoutLoading(true)
     setError(null)
     const attemptId = crypto.randomUUID()
-    const purchaseContext = { surface: 'web_analysis', flow_id: analyticsFlow.current, attempt_id: attemptId, product, paywall_version: '2' }
-    trackWebEvent('purchase_started', purchaseContext)
-    void flushWebAnalytics()
+    const purchaseContext = { surface: 'web_analysis', flow_id: webJourneyContext().flow_id, attempt_id: attemptId, product, paywall_version: '2' }
     let checkoutStage = 'entitlements'
+    trackWebEvent('purchase_started', { ...purchaseContext, provider: 'stripe', purchase_stage: checkoutStage })
 
     try {
       const paymentInstallId = ensureAnalysisWebInstallId()
       const access = await apiGet<PaymentAccessResponse>(`/api/payments/entitlements?mobileInstallId=${encodeURIComponent(paymentInstallId)}`)
-      if (access.entitlements.evaluationCredits >= images.length) {
+      if (access.entitlements.evaluationCredits >= reportCount) {
+        trackWebEvent('purchase_reconciled', { ...purchaseContext, provider: 'stripe', result: 'existing_access' })
         setAnalysisUnlocked(true)
         setPaymentDialogOpen(false)
         setStep('actual-analysis')
@@ -338,19 +469,26 @@ export default function AnalysisPage() {
         throw new Error('Your Pro membership is already active. Choose Report only for an additional evaluation.')
       }
       checkoutStage = 'draft_save'
+      trackWebEvent('purchase_stage_changed', { ...purchaseContext, provider: 'stripe', purchase_stage: checkoutStage })
       await saveAnalysisDraft({
         gender,
         images,
         savedAt: Date.now(),
       })
       checkoutStage = 'checkout_create'
+      trackWebEvent('purchase_stage_changed', { ...purchaseContext, provider: 'stripe', purchase_stage: checkoutStage })
       const subscription = product.startsWith('mobile_subscription_')
       const response = await apiPost<CheckoutResponse>(subscription ? '/api/payments/web-checkout' : '/api/payments/checkout', {
-        ...(subscription ? { product, returnTo: 'analysis', source: 'web_analysis' } : { imageCount: images.length }),
+        ...(subscription ? { product, returnTo: 'analysis', source: 'web_analysis' } : { imageCount: reportCount }),
         mobileInstallId: paymentInstallId,
-        ...quote, attemptId, flowId: analyticsFlow.current || undefined,
+        ...quote, attemptId, flowId: webJourneyContext().flow_id, flowVersion: webJourneyContext().flow_version, entryMode: webJourneyContext().entry_mode,
       })
       checkoutStage = 'checkout_redirect'
+      if (response.sessionId) {
+        rememberStripeAttempt('web_analysis', { attempt_id: attemptId, product, flow_id: webJourneyContext().flow_id, sessionId: response.sessionId })
+        trackWebEvent('purchase_stage_changed', { ...purchaseContext, provider: 'stripe', purchase_stage: 'checkout_redirect' })
+        void flushWebAnalytics()
+      }
       window.location.href = response.url
     } catch (checkoutError) {
       trackWebEvent('purchase_failed', { ...purchaseContext, purchase_stage: checkoutStage, reason_code: checkoutError instanceof ApiClientError ? checkoutError.code : checkoutStage === 'draft_save' ? 'draft_storage_unavailable' : 'request_failed', http_status: checkoutError instanceof ApiClientError ? checkoutError.status : undefined })
@@ -361,7 +499,8 @@ export default function AnalysisPage() {
   }
 
   const runActualAnalysis = useCallback(async (draftImages: AnalysisDraftImage[], paymentInstallId: string, analysisGender: 'male' | 'female' | 'other') => {
-    if (draftImages.length === 0) {
+    const frontImages = draftImages.filter(image => image.view !== 'side')
+    if (frontImages.length === 0) {
       setStep('upload')
       setError('Upload an image before starting analysis.')
       return
@@ -371,12 +510,12 @@ export default function AnalysisPage() {
 
     const analyticsStarted = Date.now()
     const attemptId = crypto.randomUUID()
-    trackWebEvent('evaluation_started', { attempt_id: attemptId, flow_id: analyticsFlow.current, surface: 'web_analysis' })
+    trackWebEvent('evaluation_started', { attempt_id: attemptId, flow_id: webJourneyContext().flow_id, surface: 'web_analysis' })
     try {
       const analysisResults: AnalysisResponse[] = []
 
-      for (const [index, image] of draftImages.entries()) {
-        setProgress(Math.round(30 + (index / draftImages.length) * 62))
+      for (const [index, image] of frontImages.entries()) {
+        setProgress(Math.round(30 + (index / frontImages.length) * 62))
         const result = await apiPost<AnalysisResponse>('/api/web/analyze', {
           imageData: image.dataUrl,
           gender: analysisGender,
@@ -387,19 +526,24 @@ export default function AnalysisPage() {
           landmarks: image.landmarks ?? null,
           mesh: image.mesh ?? null,
         }, {
-          headers: buildPaidAnalysisHeaders(paymentInstallId),
+          headers: { ...buildPaidAnalysisHeaders(paymentInstallId), 'x-mogging-flow-id': webJourneyContext().flow_id || '', 'x-mogging-evaluation-id': attemptId },
         })
         if (result.analysis.status !== 'complete') throw new Error(result.analysis.failureReason ?? 'Unable to complete this analysis. Please retry.')
         analysisResults.push(result)
       }
 
       setProgress(100)
+      const side = draftImages.find(image => image.view === 'side')
+      setSidePortrait(side ?? null)
+      if (side) await saveAnalysisSidePhoto(analysisResults[0].analysis.id, side).catch(() => {
+        toast.info('The side photo is available for this session.')
+      })
       setResults(analysisResults)
-      trackWebEvent('evaluation_completed', { report_id: analysisResults[0]?.analysis.id, attempt_id: attemptId, flow_id: analyticsFlow.current, duration_ms: Date.now() - analyticsStarted, surface: 'web_analysis' })
+      trackWebEvent('evaluation_completed', { report_id: analysisResults[0]?.analysis.id, attempt_id: attemptId, flow_id: webJourneyContext().flow_id, duration_ms: Date.now() - analyticsStarted, surface: 'web_analysis' })
       setStep('results')
       await clearAnalysisDraft()
     } catch (analysisError) {
-      trackWebEvent('evaluation_failed', { attempt_id: attemptId, flow_id: analyticsFlow.current, duration_ms: Date.now() - analyticsStarted, reason_code: analysisError instanceof ApiClientError ? analysisError.code : 'request_failed', http_status: analysisError instanceof ApiClientError ? analysisError.status : undefined, surface: 'web_analysis' })
+      trackWebEvent('evaluation_failed', { attempt_id: attemptId, flow_id: webJourneyContext().flow_id, duration_ms: Date.now() - analyticsStarted, reason_code: analysisError instanceof ApiClientError ? analysisError.code : 'request_failed', http_status: analysisError instanceof ApiClientError ? analysisError.status : undefined, surface: 'web_analysis' })
       setStep('actual-analysis')
       setError(analysisError instanceof Error ? analysisError.message : 'Analysis failed')
     } finally {
@@ -418,6 +562,11 @@ export default function AnalysisPage() {
         apiPost<PaymentAccessResponse>('/api/payments/confirm', { sessionId }),
         loadAnalysisDraft(),
       ])
+      const purchase = readStripeAttempt('web_analysis', sessionId)
+      if (confirmation.analytics?.flow_id) { restoreWebJourney(confirmation.analytics.flow_id) }
+      if (purchase?.flow_id) { restoreWebJourney(purchase.flow_id) }
+      trackWebEvent('purchase_activated', { surface: 'web_analysis', provider: 'stripe', ...confirmation.analytics, ...stripeAttemptProperties(purchase) })
+      clearStripeAttempt('web_analysis')
       const installId = ensureAnalysisWebInstallId(confirmation.entitlements.mobileInstallId)
       // Remove the return parameters before changing screens, so retries cannot re-run checkout recovery.
       await router.replace('/analysis', undefined, { shallow: true })
@@ -429,36 +578,64 @@ export default function AnalysisPage() {
       setImages(draft.images)
       setSelectedImageId(draft.images[draft.images.length - 1]?.id ?? null)
       setGender(draft.gender)
-      if (confirmation.entitlements.evaluationCredits < draft.images.length) {
+      if (confirmation.entitlements.evaluationCredits < draft.images.filter(image => image.view !== 'side').length) {
         setStep('upload')
         setError('Your payment is confirmed. Select one photo per available scan credit to continue.')
         return
       }
+      setOfferInstall(mobileScan && (/iPhone|iPad|iPod/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1))
+        && !window.matchMedia('(display-mode: standalone)').matches
+        && !(navigator as Navigator & { standalone?: boolean }).standalone)
       await runActualAnalysis(draft.images, installId, draft.gender)
     } catch (caught) {
       setStep('upload')
-      trackWebEvent('purchase_activation_failed', { surface: 'web_analysis', purchase_stage: 'checkout_return', reason_code: caught instanceof ApiClientError ? caught.code : 'request_failed', http_status: caught instanceof ApiClientError ? caught.status : undefined })
-      setError(caught instanceof Error ? caught.message : 'Unable to restore your purchase. Please try again.')
+      trackWebEvent('purchase_activation_failed', { surface: 'web_analysis', ...stripeAttemptProperties(readStripeAttempt('web_analysis', sessionId)), purchase_stage: 'checkout_return', reason_code: caught instanceof ApiClientError ? caught.code : 'request_failed', http_status: caught instanceof ApiClientError ? caught.status : undefined })
+      const message = caught instanceof Error ? caught.message : 'Unable to restore your purchase. Please try again.'
+      setError(message)
+      toast.error(message, { action: { label: 'Retry confirmation', onClick: () => { void resumeAfterPayment(sessionId) } } })
     }
-  }, [router, runActualAnalysis])
+  }, [mobileScan, router, runActualAnalysis])
 
   useEffect(() => {
-    if (!router.isReady || status !== 'authenticated' || router.query.checkout !== 'success') return
+    if (!router.isReady || router.query.checkout !== 'success') return
+    if (status === 'unauthenticated') {
+      setLoginCallback(router.asPath)
+      setLoginOpen(true)
+      return
+    }
+    if (status !== 'authenticated') return
     const sessionId = typeof router.query.session_id === 'string' ? router.query.session_id : null
     if (!sessionId || resumedCheckoutRef.current === sessionId) return
     resumedCheckoutRef.current = sessionId
     void resumeAfterPayment(sessionId)
-  }, [resumeAfterPayment, router.isReady, router.query.checkout, router.query.session_id, status])
+  }, [resumeAfterPayment, router.asPath, router.isReady, router.query.checkout, router.query.session_id, status])
 
   useEffect(() => {
-    if (!router.isReady || status !== 'authenticated' || router.query.checkout === 'success' || step !== 'intro') return
+    if (!router.isReady || status !== 'authenticated' || router.query.resumePhoto !== '1') return
+    let cancelled = false
+    void loadAnalysisDraft().then(draft => {
+      if (cancelled || !draft?.images.length) return
+      setImages(current => current.length ? current : draft.images)
+      setGender(draft.gender)
+    }).catch(() => {
+      if (!cancelled) toast.error('Could not restore your photo. Please select it again.')
+    })
+    return () => { cancelled = true }
+  }, [router.isReady, router.query.resumePhoto, status])
+
+  useEffect(() => {
+    if (!router.isReady || walkthrough || status !== 'authenticated' || router.query.checkout || router.query.analysisId || step !== 'intro') return
     let cancelled = false
     const installId = ensureAnalysisWebInstallId()
     void Promise.all([
       apiGet<PaymentAccessResponse>(`/api/payments/entitlements?mobileInstallId=${encodeURIComponent(installId)}`),
       loadAnalysisDraft(),
     ]).then(([access, draft]) => {
-      if (cancelled || !draft?.images.length || access.entitlements.evaluationCredits < 1) return
+      if (cancelled) return
+      if (!draft?.images.length || access.entitlements.evaluationCredits < 1) {
+        if (mobileScan && access.entitlements.subscription.active) void router.replace('/app/home')
+        return
+      }
       setImages(draft.images)
       setSelectedImageId(draft.images[draft.images.length - 1]?.id ?? null)
       setGender(draft.gender)
@@ -466,16 +643,33 @@ export default function AnalysisPage() {
       toast.info('Your paid scan is ready. Review your photo and continue.')
     }).catch(() => { /* The upload action checks access again before offering payment. */ })
     return () => { cancelled = true }
-  }, [router.isReady, router.query.checkout, status, step])
+  }, [mobileScan, router, status, step, walkthrough])
 
   useEffect(() => {
-    if (paidAnalysisRequired && router.isReady && router.query.checkout === 'cancelled') {
-      setStep('actual-analysis')
+    if (!router.isReady || router.query.checkout !== 'cancelled') return
+    let cancelled = false
+    void loadAnalysisDraft().catch(() => null).then(draft => {
+      if (cancelled) return
+      const purchase = takeStripeAttempt('web_analysis')
+      if (purchase?.flow_id) { restoreWebJourney(purchase.flow_id) }
+      if (purchase) trackWebEvent('purchase_cancelled', { surface: 'web_analysis', provider: 'stripe', reason_code: 'checkout_return', ...stripeAttemptProperties(purchase) })
+      void router.replace('/analysis', undefined, { shallow: true })
+      if (!draft?.images.length) {
+        setStep('upload')
+        toast.info('Checkout was cancelled. Select a photo to continue.')
+        return
+      }
+      setImages(draft.images)
+      setSelectedImageId(draft.images.at(-1)?.id ?? null)
+      setGender(draft.gender)
       setAnalysisUnlocked(false)
+      setStep('actual-analysis')
+      setReturnOfferSessionId(purchase?.sessionId ?? null)
       setPaymentDialogOpen(true)
-      setError('Payment was cancelled. Your uploaded images are still ready.')
-    }
-  }, [paidAnalysisRequired, router.isReady, router.query.checkout])
+      if (!mobileScan) toast.info('Checkout was cancelled. Your photo is ready to use.')
+    })
+    return () => { cancelled = true }
+  }, [mobileScan, router])
 
   useEffect(() => {
     if (!router.isReady) return
@@ -488,8 +682,10 @@ export default function AnalysisPage() {
     setError(null)
 
     void apiGet<AnalysisResponse>(`/api/analysis/${encodeURIComponent(analysisId)}`)
-      .then((result) => {
+      .then(async (result) => {
+        const side = result.canManage ? await loadAnalysisSidePhoto(analysisId).catch(() => null) : null
         if (cancelled) return
+        setSidePortrait(side)
         setResults([result])
         setStep('results')
         setImages([])
@@ -508,6 +704,10 @@ export default function AnalysisPage() {
   }, [router.isReady, router.query.analysisId])
 
   async function createShare() {
+    if (walkthrough) {
+      toast.info('Sharing is disabled in the sample walkthrough.')
+      return null
+    }
     if (!primaryResult) return null
 
     try {
@@ -602,26 +802,51 @@ export default function AnalysisPage() {
     }
   }
 
+  const scanFrame = useRef<HTMLElement>(null)
+  const portraitStage = step === 'upload' ? 'review'
+    : step === 'preview-analysis' || (step === 'actual-analysis' && analysisUnlocked) ? 'scanner'
+    : (step === 'actual-analysis' || (step === 'results' && !offerInstall)) ? 'report' : null
+  usePortraitHandoff(scanFrame, mobileScan ? portraitStage : null)
+
+  const captureSurface = mobileScan && (step === 'upload' || cameraOpen)
+
   return (
-    <div className="min-h-[calc(100svh-5rem)] w-full bg-white">
+    <div data-scan-step={step} data-capture-surface={captureSurface || undefined} className="scan-flow min-h-[calc(100svh-5rem)] w-full bg-white" data-mobile-scan={mobileScan || undefined} data-scan-preview={previewMobile || undefined}>
+      <ScanPwaHead mobile={mobileScan && !walkthrough} dark={captureSurface} />
+      {walkthrough && <div className="pointer-events-none fixed inset-x-0 top-1 z-[60] mx-auto w-fit rounded-full bg-zinc-900 px-2.5 py-1 text-[10px] font-medium text-white">Sample walkthrough</div>}
       <SeoHead
         title="Mogging Analysis"
         description="Upload your face photo and generate a private PSL report with facial feature annotations."
         path="/analysis"
       />
-      <input ref={uploadInputRef} className="hidden" type="file" accept="image/*" multiple onChange={handleFiles} />
+      <input ref={uploadInputRef} className="hidden" type="file" accept="image/*" multiple={!mobileScan} onChange={handleFiles} />
 
-      <section className="public-frame min-h-[calc(100svh-5rem)] overflow-hidden bg-white">
-        <AnimatePresence mode="wait">
+      {desktop && <input ref={sideInputRef} className="hidden" type="file" accept="image/*" onChange={event => void handleFiles(event, true)} />}
+      <MotionConfig reducedMotion="user"><LayoutGroup id="desktop-analysis">
+      <section ref={scanFrame} className="public-frame relative min-h-[calc(100svh-5rem)] overflow-hidden bg-white">
+        <AnimatePresence mode={(mobileScan && step !== 'story') || step === 'results' ? 'popLayout' : 'wait'}>
           {step === 'intro' ? (
-            <ScreenMotion key="intro">
-              <IntroScreen onBegin={beginAssessment} />
+            <ScreenMotion key="intro" managedMotion={mobileScan}>
+              {mobileScan ? <MobileScanWelcome onBegin={() => setStep('story')} onSignIn={() => {
+                setLoginCallback(router.asPath)
+                setLoginOpen(true)
+              }} /> : <IntroScreen onBegin={beginAssessment} />}
+            </ScreenMotion>
+          ) : null}
+
+          {step === 'story' ? (
+            <ScreenMotion key="story" managedMotion>
+              <MobileScanOnboarding analyticsEnabled={!walkthrough} onComplete={profile => {
+                setGender(profile)
+                beginAssessment()
+              }} />
             </ScreenMotion>
           ) : null}
 
           {step === 'upload' ? (
-            <ScreenMotion key="upload">
+            <ScreenMotion key="upload" managedMotion={mobileScan}>
               <UploadScreen
+                mobileScan={mobileScan}
                 images={images}
                 isPreparingUploads={isPreparingUploads}
                 previewImage={previewImage}
@@ -629,6 +854,10 @@ export default function AnalysisPage() {
                 selectedImageId={selectedImage?.id ?? null}
                 canStart={canStart}
                 onCamera={() => setCameraOpen(true)}
+                onUseSample={walkthrough ? () => {
+                  setImages([{ id: 'walkthrough', name: 'Sample portrait', dataUrl: '/scan/welcome.jpg', landmarks: sampleLandmarks as FaceLandmarksPayload }])
+                  setSelectedImageId('walkthrough')
+                } : undefined}
                 onImagePositionChange={(position) => {
                   if (!selectedImage) return
                   setImageFramePositions((current) => ({ ...current, [selectedImage.id]: position }))
@@ -637,25 +866,31 @@ export default function AnalysisPage() {
                 onSelect={setSelectedImageId}
                 onStart={startPseudoAnalysis}
                 onUpload={() => uploadInputRef.current?.click()}
+                onUploadSide={desktop && images.some(image => image.view !== 'side') && !images.some(image => image.view === 'side') ? () => sideInputRef.current?.click() : undefined}
               />
             </ScreenMotion>
           ) : null}
 
           {step === 'preview-analysis' ? (
-            <ScreenMotion key="preview-analysis">
-              <ActualAnalysisScreen
-                imageCount={images.length}
+            <ScreenMotion key="preview-analysis" managedMotion={mobileScan}>
+              <ActualAnalysisScreen preparingPreview
+                mobileScan={mobileScan}
+                walkthrough={walkthrough}
+                onRetake={retakePhoto}
+                onRetry={() => setStep('upload')}
+                imageCount={reportCount}
                 checkoutError={error}
                 checkoutLoading={checkoutLoading}
-                imageSrc={selectedImage?.dataUrl ?? images[0]?.dataUrl ?? previewImage}
+                imageSrc={images.find(image => image.view !== 'side')?.dataUrl ?? previewImage}
                 isUnlocked={analysisUnlocked}
-                landmarks={selectedImage?.landmarks ?? images[0]?.landmarks ?? null}
+                landmarks={images.find(image => image.view !== 'side')?.landmarks ?? null}
+                returnOfferSessionId={returnOfferSessionId}
                 paymentDialogOpen={paymentDialogOpen}
                 progress={progress}
                 onCheckout={startCheckout}
                 onPaymentDialogChange={setPaymentDialogOpen}
                 onPaymentRequired={() => {
-                  if (paidAnalysisRequired) setPaymentDialogOpen(true)
+                  if (paidAnalysisRequired || walkthrough) setPaymentDialogOpen(true)
                 }}
               />
             </ScreenMotion>
@@ -664,59 +899,84 @@ export default function AnalysisPage() {
           {step === 'payment' ? (
             <ScreenMotion key="payment">
               <ActualAnalysisScreen
-                imageCount={images.length}
+                mobileScan={mobileScan}
+                walkthrough={walkthrough}
+                onRetake={retakePhoto}
+                onRetry={() => setStep('upload')}
+                imageCount={reportCount}
                 checkoutError={error}
                 checkoutLoading={checkoutLoading}
-                imageSrc={selectedImage?.dataUrl ?? images[0]?.dataUrl ?? previewImage}
+                imageSrc={images.find(image => image.view !== 'side')?.dataUrl ?? previewImage}
                 isUnlocked={analysisUnlocked}
-                landmarks={selectedImage?.landmarks ?? images[0]?.landmarks ?? null}
+                landmarks={images.find(image => image.view !== 'side')?.landmarks ?? null}
+                returnOfferSessionId={returnOfferSessionId}
                 paymentDialogOpen={paymentDialogOpen}
                 progress={progress}
                 onCheckout={startCheckout}
                 onPaymentDialogChange={setPaymentDialogOpen}
                 onPaymentRequired={() => {
-                  if (paidAnalysisRequired) setPaymentDialogOpen(true)
+                  if (paidAnalysisRequired || walkthrough) setPaymentDialogOpen(true)
                 }}
               />
             </ScreenMotion>
           ) : null}
 
           {step === 'actual-analysis' ? (
-            <ScreenMotion key="actual-analysis">
+            <ScreenMotion key="actual-analysis" managedMotion={mobileScan}>
               <ActualAnalysisScreen
-                imageCount={images.length}
+                mobileScan={mobileScan}
+                walkthrough={walkthrough}
+                onRetake={retakePhoto}
+                onRetry={() => setStep('upload')}
+                imageCount={reportCount}
                 checkoutError={error}
                 checkoutLoading={checkoutLoading}
-                imageSrc={selectedImage?.dataUrl ?? images[0]?.dataUrl ?? previewImage}
+                imageSrc={images.find(image => image.view !== 'side')?.dataUrl ?? previewImage}
                 isUnlocked={analysisUnlocked}
-                landmarks={selectedImage?.landmarks ?? images[0]?.landmarks ?? null}
+                landmarks={images.find(image => image.view !== 'side')?.landmarks ?? null}
+                returnOfferSessionId={returnOfferSessionId}
                 paymentDialogOpen={paymentDialogOpen}
                 progress={progress}
                 onCheckout={startCheckout}
                 onPaymentDialogChange={setPaymentDialogOpen}
                 onPaymentRequired={() => {
-                  if (paidAnalysisRequired) setPaymentDialogOpen(true)
+                  if (paidAnalysisRequired || walkthrough) setPaymentDialogOpen(true)
                 }}
               />
             </ScreenMotion>
           ) : null}
 
-          {step === 'results' ? (
-            <ScreenMotion key="results">
+          {step === 'results' && offerInstall ? (
+            <ScreenMotion key="install">
+              <ScanInstallGuide onContinue={() => setOfferInstall(false)} onOpenApp={() => void router.push(walkthrough ? '/app/home?preview=1' : '/app/home')} />
+            </ScreenMotion>
+          ) : null}
+
+          {step === 'results' && !offerInstall ? (
+            <ScreenMotion key="results" managedMotion={mobileScan}>
               <ProcessScreen wide>
+                {mobileScan && <button type="button" className="scan-retake" aria-label="Close report" onClick={() => { if (walkthrough || window.matchMedia('(display-mode: standalone)').matches || router.query.from === 'app') void router.push(walkthrough ? '/app/home?preview=1' : '/app/home'); else setStep('intro') }}><X size={20} /></button>}
                 <ResultsStep
+                  mobileScan={mobileScan}
                   primaryScore={primaryScore}
                   results={results}
+                  sidePortrait={desktop ? sidePortrait : null}
                   onOpenShare={() => setShareOpen(true)}
                   onReset={() => {
                     setImages([])
                     setSelectedImageId(null)
                     setImageFramePositions({})
                     setResults([])
+                    setSidePortrait(null)
                     setStep('intro')
                     setShareUrl(null)
                   }}
                 />
+                {mobileScan && <div className="mobile-report-share-dock">
+                  <button type="button" className="mobile-report-share-button" onClick={() => setShareOpen(true)}>
+                    <Share2 size={18} aria-hidden="true" /> Share report
+                  </button>
+                </div>}
               </ProcessScreen>
             </ScreenMotion>
           ) : null}
@@ -731,39 +991,43 @@ export default function AnalysisPage() {
         onClose={() => setShareOpen(false)}
         onCreate={createShare}
       />
-      {cameraOpen ? (
+      {(mobileScan || cameraOpen) ? (
         <CameraSheet
+          analyticsEnabled={!walkthrough}
+          fullscreen={mobileScan}
           open={cameraOpen}
           onCapture={addCameraImage}
           onClose={() => setCameraOpen(false)}
           onUpload={() => {
             setCameraOpen(false)
-            window.setTimeout(() => uploadInputRef.current?.click(), 160)
+            uploadInputRef.current?.click()
           }}
         />
       ) : null}
+      </LayoutGroup></MotionConfig>
       <LoginDialog
         open={loginOpen}
         onOpenChange={setLoginOpen}
-        callbackUrl={router.asPath || '/analysis'}
+        callbackUrl={loginCallback}
       />
     </div>
   )
 }
 
-function ScreenMotion({ children }: { children: ReactNode }) {
+const ScreenMotion = forwardRef<HTMLDivElement, { children: ReactNode; managedMotion?: boolean }>(function ScreenMotion({ children, managedMotion }, ref) {
   return (
     <motion.div
-      className="min-h-[calc(100svh-5rem)]"
-      initial={{ opacity: 0, y: 18, scale: 0.992 }}
-      animate={{ opacity: 1, y: 0, scale: 1 }}
-      exit={{ opacity: 0, y: -14, scale: 0.992 }}
+      ref={ref}
+      className="scan-screen min-h-[calc(100svh-5rem)]"
+      initial={managedMotion ? false : { opacity: 0, y: 18, scale: 0.992 }}
+      animate={managedMotion ? undefined : { opacity: 1, y: 0, scale: 1 }}
+      exit={managedMotion ? undefined : { opacity: 0, y: -14, scale: 0.992 }}
       transition={{ duration: 0.34, ease: [0.23, 1, 0.32, 1] }}
     >
-      {children}
+      <AnimatePresence propagate>{children}</AnimatePresence>
     </motion.div>
   )
-}
+})
 
 function IntroScreen({ onBegin }: { onBegin: () => void }) {
   return (
@@ -821,6 +1085,7 @@ function IntroScreen({ onBegin }: { onBegin: () => void }) {
 }
 
 function UploadScreen({
+  mobileScan,
   canStart,
   imagePosition,
   images,
@@ -831,9 +1096,12 @@ function UploadScreen({
   onSelect,
   onStart,
   onUpload,
+  onUploadSide,
+  onUseSample,
   previewImage,
   selectedImageId,
 }: {
+  mobileScan: boolean
   canStart: boolean
   imagePosition: CaptureFrameImagePosition
   images: AnalysisDraftImage[]
@@ -844,9 +1112,45 @@ function UploadScreen({
   onSelect: (id: string) => void
   onStart: () => void
   onUpload: () => void
+  onUseSample?: () => void
+  onUploadSide?: () => void
   previewImage: string | null
   selectedImageId: string | null
 }) {
+  const feedback = useScanFeedback()
+  if (mobileScan) return (
+    <motion.div className="mobile-capture-screen" variants={scanSequence} initial="enter" animate="visible" exit="leave">
+      {previewImage && <div data-scan-portrait="review" className="mobile-capture-photo">
+        <CaptureFrame bare className="!absolute !inset-0 !h-full !max-w-none !rounded-none !shadow-none"
+          imageSrc={previewImage} imageAlt="Your selected photo" imagePosition={imagePosition}
+          onImagePositionChange={onImagePositionChange} />
+      </div>}
+      <div className="guided-scan-shade" aria-hidden="true" />
+      <MobileCaptureRing />
+      <motion.div variants={scanPart} custom={0}><MobileCaptureChrome /></motion.div>
+      {!previewImage && <motion.div className="mobile-capture-permission" variants={scanPart}>
+        <h2>Camera permission required</h2>
+        <p>Allow camera access to capture a front-facing reference image.</p>
+        {onUseSample && <button type="button" className="mt-4 rounded-full bg-white/15 px-4 py-2 text-sm" onClick={onUseSample}>Use sample photo</button>}
+      </motion.div>}
+      <AnimatePresence mode="wait">
+        <motion.div key={previewImage ? 'review-actions' : 'capture-actions'} className="mobile-capture-dock" variants={scanPart} custom={20}>
+          <motion.button type="button" className="mobile-capture-icon" aria-label="Choose a photo from your library"
+            whileTap={{ scale: .94 }} onClick={() => { feedback(); onUpload() }}><ImagePlus size={24} /></motion.button>
+          {previewImage ? <>
+            <motion.button type="button" className="mobile-capture-primary" disabled={!canStart}
+              whileTap={{ scale: .95 }} onClick={() => { feedback(); onStart() }}>
+              {isPreparingUploads ? <Loader2 size={21} className="animate-spin" /> : <ScanFace size={21} />} Use photo
+            </motion.button>
+            <motion.button type="button" className="mobile-capture-icon" aria-label="Retake photo" whileTap={{ scale: .94 }}
+              onClick={() => { feedback(); if (selectedImageId) onRemove(selectedImageId) }}><RotateCcw size={22} /></motion.button>
+          </> : <motion.button type="button" className="mobile-capture-primary" whileTap={{ scale: .95 }}
+            onClick={() => { feedback(); onCamera() }}><Camera size={17} /> Allow camera</motion.button>}
+        </motion.div>
+      </AnimatePresence>
+    </motion.div>
+  )
+
   const uploadButtonClass = 'h-10 rounded-xl border border-zinc-300 bg-white px-5 text-sm font-medium text-black shadow-none hover:bg-zinc-50'
 
   return (
@@ -857,7 +1161,7 @@ function UploadScreen({
             Upload your image
           </h1>
           <p className="mt-5 max-w-[240px] text-sm leading-5 text-muted-foreground">
-            Take or upload up to three clear front-facing photos.
+            Upload a clear front-facing photo. You can include up to three photos per checkout.
           </p>
           <div className="mt-7 flex flex-wrap gap-2">
             <Button className={uploadButtonClass} onClick={onUpload} variant="outline" disabled={images.length >= 3}>
@@ -869,8 +1173,9 @@ function UploadScreen({
               Camera
             </Button>
           </div>
+          {onUploadSide && <button type="button" className="mt-3 self-start text-sm font-medium underline underline-offset-4 disabled:opacity-50" disabled={images.length >= 3} onClick={onUploadSide}>Add side photo <span className="font-normal text-zinc-500">(optional, saved in this browser)</span></button>}
           <Button className="mt-4 hidden h-11 w-full max-w-[260px] justify-between rounded-sm font-mono text-[11px] uppercase lg:flex" onClick={onStart} disabled={!canStart}>
-            {isPreparingUploads ? 'Uploading' : 'Continue'}
+            {isPreparingUploads ? 'Preparing photo' : 'Continue'}
             {isPreparingUploads ? <Loader2 className="size-4 animate-spin" aria-hidden="true" /> : <ArrowRight className="size-4" aria-hidden="true" />}
           </Button>
         </div>
@@ -950,7 +1255,7 @@ function UploadScreen({
             <li>▪ Keep neutral expression</li>
           </ul>
           <Button className="mt-6 h-11 w-full justify-between rounded-sm font-mono text-[11px] uppercase lg:hidden" onClick={onStart} disabled={!canStart}>
-            {isPreparingUploads ? 'Uploading' : 'Continue'}
+            {isPreparingUploads ? 'Preparing photo' : 'Continue'}
             {isPreparingUploads ? <Loader2 className="size-4 animate-spin" aria-hidden="true" /> : <ArrowRight className="size-4" aria-hidden="true" />}
           </Button>
         </div>
@@ -1044,7 +1349,25 @@ function PaymentStep({
   )
 }
 
+const scanStatusLabels = ['Preparing image signal', 'Locking facial geometry', 'Mapping eye region', 'Tracing nose axis', 'Measuring midface balance', 'Reading cheekbone structure', 'Framing jawline vectors', 'Checking symmetry', 'Mapping skin regions', 'Preparing feature chapters']
+
+function ScanProcessingLabel({ preparingPreview }: { preparingPreview: boolean }) {
+  const [index, setIndex] = useState(0)
+  const reduced = useReducedMotion()
+  useEffect(() => {
+    if (preparingPreview || reduced) return
+    const timer = window.setInterval(() => setIndex(current => (current + 1) % scanStatusLabels.length), 2700)
+    return () => window.clearInterval(timer)
+  }, [preparingPreview, reduced])
+  return <p className="mobile-scan-shimmer"><TextMorph>{preparingPreview ? 'Mapping facial landmarks' : scanStatusLabels[index]}</TextMorph></p>
+}
+
 function ActualAnalysisScreen({
+  preparingPreview = false,
+  mobileScan,
+  walkthrough,
+  onRetake,
+  onRetry,
   imageCount,
   checkoutError,
   checkoutLoading,
@@ -1055,8 +1378,14 @@ function ActualAnalysisScreen({
   onPaymentDialogChange,
   onPaymentRequired,
   paymentDialogOpen,
+  returnOfferSessionId,
   progress,
 }: {
+  preparingPreview?: boolean
+  mobileScan: boolean
+  walkthrough: boolean
+  onRetake: () => void
+  onRetry: () => void
   imageCount: number
   checkoutError: string | null
   checkoutLoading: boolean
@@ -1067,11 +1396,31 @@ function ActualAnalysisScreen({
   onPaymentDialogChange: (open: boolean) => void
   onPaymentRequired: () => void
   paymentDialogOpen: boolean
+  returnOfferSessionId: string | null
   progress: number
 }) {
+  const feedback = useScanFeedback()
+  if (mobileScan && (isUnlocked || preparingPreview)) return (
+    <motion.div className="mobile-scan-processing" initial={{ backgroundColor: '#121212' }} animate={{ backgroundColor: '#030303' }}>
+      <motion.header initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: .48, delay: .4 }}>
+        <h1>{preparingPreview ? 'Facial scan' : 'Portrait study'}</h1>
+        <p>{preparingPreview ? 'Anchoring detected landmarks' : 'Preparing your guided walkthrough'}</p>
+      </motion.header>
+      <div data-scan-portrait="scanner" className="mobile-scan-processing-photo">
+        <ScanImagePanel imageSrc={imageSrc} landmarks={landmarks} variant="scanner" fit="cover" showLabel={false} />
+      </div>
+      <motion.div className="mobile-scan-processing-status" initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: .45, delay: .58 }} role="status">
+        {checkoutError ? <>
+          <strong>Evaluation paused</strong><p>{checkoutError}</p>
+          <motion.button type="button" className="mobile-capture-primary" whileTap={{ scale: .95 }} onClick={() => { feedback(); onRetry() }}>Retry evaluation</motion.button>
+        </> : <ScanProcessingLabel preparingPreview={preparingPreview} />}
+      </motion.div>
+    </motion.div>
+  )
+
   return (
     <>
-      {!isUnlocked ? <LockedReportPreview imageSrc={imageSrc ?? previewPhotoUrl} landmarks={landmarks} onUnlock={onPaymentRequired} /> : (
+      {!isUnlocked ? <LockedReportPreview imageSrc={imageSrc ?? previewPhotoUrl} landmarks={landmarks} onUnlock={onPaymentRequired} onRetake={mobileScan ? onRetake : undefined} /> : (
       <div className="grid min-h-[calc(100svh-5rem)] gap-12 public-gutters py-6 sm:py-8 lg:grid-cols-[minmax(0,620px)_minmax(0,620px)] lg:items-center lg:justify-between lg:gap-20 xl:gap-28 2xl:gap-40">
         <div className="grid place-items-center lg:justify-items-start">
           <div className="flex aspect-[4/5] w-full max-w-[620px] flex-col">
@@ -1098,19 +1447,22 @@ function ActualAnalysisScreen({
         </div>
 
         <div className="grid place-items-center lg:justify-items-end">
-          <ScanImagePanel key={imageSrc} imageSrc={imageSrc} landmarks={landmarks} paused={paymentDialogOpen} />
+          <motion.div layoutId="analysis-portrait" className="w-full max-w-[390px]"><ScanImagePanel key={imageSrc} imageSrc={imageSrc} landmarks={landmarks} paused={paymentDialogOpen} /></motion.div>
         </div>
       </div>
 
       )}
 
       <AnalysisUnlockDialog
+        walkthrough={walkthrough}
+        fullscreen={mobileScan}
         imageCount={imageCount}
         imageSrc={imageSrc}
         landmarks={landmarks}
         error={checkoutError}
         loading={checkoutLoading}
         open={paymentDialogOpen}
+        returnOfferSessionId={returnOfferSessionId}
         onCheckout={onCheckout}
         onOpenChange={onPaymentDialogChange}
       />
@@ -1223,19 +1575,31 @@ function AnalysisTimeline({
 }
 
 function ResultsStep({
+  mobileScan,
   primaryScore,
   results,
+  sidePortrait,
   onOpenShare,
   onReset,
 }: {
+  mobileScan: boolean
   primaryScore: number | null
   results: AnalysisResponse[]
+  sidePortrait: AnalysisDraftImage | null
   onOpenShare: () => void
   onReset: () => void
 }) {
   const primaryResult = results[0]
+  const portraits = [
+    ...(sidePortrait ? [{ src: sidePortrait.dataUrl, landmarks: sidePortrait.landmarks ?? null, side: true, label: 'Side' }] : []),
+    ...results.slice(1).map((result, index) => ({ src: result.photo.imageUrl, landmarks: getReportLandmarks(result), label: `Photo ${index + 2}` })),
+  ]
   const landmarks = useMemo(() => getReportLandmarks(primaryResult), [primaryResult])
   const score = getReportOverallScore(primaryResult, primaryScore)
+  const potential = getAnalysisReport(primaryResult)?.potential?.score
+  const potentialScore = typeof potential === 'number' && Number.isFinite(potential) && potential >= 1 && potential <= 8
+    ? pslToOverallScore(potential)
+    : null
   const categories = reportCategories.map(category => {
     const report = getReportCategoryData(category.id, primaryResult)
     return {
@@ -1250,13 +1614,13 @@ function ResultsStep({
     }
   })
   if (primaryResult?.analysis.metrics.webReportV2?.version === 2) {
-    return <WebAnalysisReport report={primaryResult.analysis.metrics.webReportV2} imageSrc={primaryResult.photo.imageUrl} landmarks={landmarks} pslScore={primaryScore ?? 1}>
-      <ReportActions score={primaryResult.analysis.metrics.webReportV2.overallScore} onOpenShare={onOpenShare} onReset={onReset} />
+    return <WebAnalysisReport mobileScan={mobileScan} potentialScore={potentialScore} initialCategoryId={mobileScan ? "overall" : undefined} portraitLayoutId="analysis-portrait" portraits={portraits} report={primaryResult.analysis.metrics.webReportV2} imageSrc={primaryResult.photo.imageUrl} landmarks={landmarks} pslScore={primaryScore ?? 1}>
+      {!mobileScan && <ReportActions score={primaryResult.analysis.metrics.webReportV2.overallScore} onOpenShare={onOpenShare} onReset={onReset} />}
     </WebAnalysisReport>
   }
   return (
-    <LegacyAnalysisReport categories={categories} imageSrc={primaryResult?.photo.imageUrl ?? previewPhotoUrl} landmarks={landmarks} score={score} pslScore={primaryScore}>
-      <ReportActions score={score} onOpenShare={onOpenShare} onReset={onReset} />
+    <LegacyAnalysisReport mobileScan={mobileScan} potentialScore={potentialScore} initialCategoryId={mobileScan ? "overall" : undefined} portraitLayoutId="analysis-portrait" portraits={portraits} categories={categories} imageSrc={primaryResult?.photo.imageUrl ?? previewPhotoUrl} landmarks={landmarks} score={score} pslScore={primaryScore}>
+      {!mobileScan && <ReportActions score={score} onOpenShare={onOpenShare} onReset={onReset} />}
     </LegacyAnalysisReport>
   )
 }
@@ -1684,21 +2048,6 @@ async function cropImageDataUrlToFrame(dataUrl: string, position: CaptureFrameIm
 
   context.drawImage(image, sourceX, sourceY, sourceWidth, sourceHeight, 0, 0, canvas.width, canvas.height)
   return canvas.toDataURL('image/jpeg', 0.92)
-}
-
-function ensureAnalysisWebInstallId(preferredInstallId?: string | null) {
-  const preferred = preferredInstallId?.trim()
-  if (preferred && preferred.length >= 8) {
-    window.localStorage.setItem(analysisWebInstallStorageKey, preferred)
-    return preferred
-  }
-
-  const existing = window.localStorage.getItem(analysisWebInstallStorageKey)
-  if (existing && existing.length >= 8) return existing
-
-  const next = `web_analysis_${crypto.randomUUID()}`
-  window.localStorage.setItem(analysisWebInstallStorageKey, next)
-  return next
 }
 
 function buildPaidAnalysisHeaders(paymentInstallId: string | null): HeadersInit | undefined {

@@ -9,8 +9,9 @@ mock.module('@/lib/admin/creator-auth', () => ({
 }))
 mock.module('@/lib/api/rateLimit', () => ({ enforceRateLimit: async () => {} }))
 mock.module('next/cache', () => ({
-  unstable_cache: (_load: unknown, _key: string[], options: { revalidate: number }) => {
-    expect(options.revalidate).toBe(60)
+  unstable_cache: (_load: unknown, key: string[], options: { revalidate: number }) => {
+    expect(options.revalidate).toBe(key[0] === 'admin-apple-sales-v1' ? 900 : 60)
+    if (key[0] === 'admin-apple-sales-v1' || key[0] === 'admin-revenuecat-provider-metrics-v1') return async () => ({ available: false })
     return async (filters: unknown) => { cacheReads++; return { filters } }
   },
 }))
@@ -38,6 +39,9 @@ test('cached analytics remain admin-only, private, and validated on every reques
   const performance = await request({ section: 'CreatorPerformance', days: '30' })
   expect(performance.status).toBe(200)
   expect(performance.body.data.filters).toEqual({ days: '30', platform: 'all', section: 'CreatorPerformance' })
+  const fortnight = await request({ section: 'CreatorPerformance', days: '14' })
+  expect(fortnight.status).toBe(200)
+  expect(fortnight.body.data.filters.days).toBe('14')
   const economics = await request({ section: 'CreatorEconomics', days: '30' })
   expect(economics.status).toBe(200)
   expect(economics.body.data.filters).toEqual({ days: '30', platform: 'all', section: 'CreatorEconomics' })
@@ -61,5 +65,5 @@ test('cached analytics remain admin-only, private, and validated on every reques
   expect((await request({}, 'POST')).status).toBe(405)
   authorized = false
   expect((await request({ section: 'Revenue' })).status).toBe(401)
-  expect(cacheReads).toBe(12)
+  expect(cacheReads).toBe(13)
 })

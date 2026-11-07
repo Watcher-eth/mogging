@@ -1,3 +1,4 @@
+import { validateWebReturnOffer } from '@/lib/payments/web-return-offer'
 import { readLandingCookie, serializeLandingAssignment, landingProperties } from '@/lib/analytics/landing'
 import { monitorBackend } from '@/lib/reliability/monitor'
 import type { NextApiRequest, NextApiResponse } from 'next'
@@ -19,6 +20,8 @@ import { validateCheckoutProduct } from '@/lib/payments/checkout-price'
 const checkoutSchema = z.object({
   attemptId: z.string().uuid().optional(),
   flowId: z.string().uuid().optional(),
+  flowVersion: z.string().max(80).optional(),
+  entryMode: z.enum(['photo_first', 'onboarding_first']).optional(),
   product: z.enum(paymentProductSchemaValues),
   mobileInstallId: z.string().trim().min(8).max(120),
   returnLocale: z.enum(locales).optional(),
@@ -26,7 +29,8 @@ const checkoutSchema = z.object({
   unitAmount: z.number().int().nonnegative().optional(),
   locale: z.enum(['en', 'de', 'es', 'fr', 'zh']).optional(),
   source: z.string().trim().max(80).optional(),
-  returnTo: z.literal('analysis').optional(),
+  returnOfferSessionId: z.string().regex(/^cs_(?:test_|live_)?[A-Za-z0-9]+$/).max(200).optional(),
+  returnTo: z.enum(['analysis', 'scan-app-evaluation', 'scan-app-progress']).optional(),
 })
 
 async function handler(req: NextApiRequest, res: NextApiResponse) {
@@ -41,7 +45,15 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
     const input = parseBody(checkoutSchema, req.body)
     const accountId = await getRequestUserId(req, res)
     if (!accountId) throw new ApiError(401, 'Sign in before starting checkout')
+    if (input.returnOfferSessionId && (input.product !== 'mobile_subscription_monthly' || input.returnTo !== 'analysis')) {
+      throw new ApiError(400, 'Select monthly Pro to use this offer')
+    }
     const origin = getRequestOrigin(req)
+    const scanTab = input.returnTo === 'scan-app-progress' ? 'progress' : input.returnTo === 'scan-app-evaluation' ? 'evaluation' : null
+    if (scanTab && input.product !== 'evaluation' && input.product !== 'evaluation_pack_3') {
+      throw new ApiError(400, 'Select a scan pack for this checkout')
+    }
+    const scanReturn = scanTab ? `${origin}/app/home?tab=${scanTab}` : null
     const product = getProductConfig(input.product)
     const price = await validateCheckoutProduct(input.product, product)
     if (input.currency || input.unitAmount !== undefined) {
@@ -69,8 +81,11 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
       // Serialize this account's eligibility check and session creation, including retries.
       await tx.execute(sql`select pg_advisory_xact_lock(hashtextextended(${`creator-discount:${accountId}`}, 0))`)
       const customer = product.mode === 'subscription' ? await getCreatorStripeCustomer(accountId) : undefined
-      let discounted = false
-      if (input.product === 'mobile_subscription_monthly' && attribution) {
+      const previousOfferSession = input.returnOfferSessionId
+        ? await validateWebReturnOffer(accountId, input.returnOfferSessionId, customer!)
+        : null
+      let discounted = Boolean(previousOfferSession)
+      if (!previousOfferSession && input.product === 'mobile_subscription_monthly' && attribution) {
         discounted = await isCreatorDiscountEligible(accountId, attribution)
         if (discounted) {
           const subscriptions = await getStripe().subscriptions.list({ customer: customer!, status: 'all', limit: 1 })
@@ -88,7 +103,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
                 session.metadata?.creatorClickId === attribution.clickId &&
                 session.metadata?.mobileInstallId === input.mobileInstallId &&
                 session.metadata?.landingAssignment === (landingAssignment ? serializeLandingAssignment(landingAssignment) : undefined)
-              if (matches) return session
+              if (matches && session.metadata?.attemptId === input.attemptId) return session
               // Keep creator, installation, and experiment credit with the matching checkout.
               await getStripe().checkout.sessions.expire(session.id)
             }
@@ -97,7 +112,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
           }
         }
       }
-      return getStripe().checkout.sessions.create({
+      const created = await getStripe().checkout.sessions.create({
         mode: product.mode,
         ...(input.currency ? { currency: input.currency, adaptive_pricing: { enabled: false } } : {}),
         ...(input.locale ? { locale: input.locale } : {}),
@@ -109,8 +124,11 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
         ...(product.mode === 'payment' ? { payment_intent_data: { metadata: { product: input.product, accountId, userId: accountId, source } } } : {}),
         metadata: {
           product: input.product,
+          ...(previousOfferSession ? { returnOffer: '1' } : {}),
           ...(input.attemptId ? { attemptId: input.attemptId, paywallVersion: '2' } : {}),
           ...(input.flowId ? { flowId: input.flowId } : {}),
+          ...(input.flowVersion ? { flowVersion: input.flowVersion } : {}),
+          ...(input.entryMode ? { entryMode: input.entryMode } : {}),
           ...(input.returnTo ? { returnTo: input.returnTo } : {}),
           ...(input.returnLocale ? { returnLocale: input.returnLocale } : {}),
           ...(input.unitAmount !== undefined ? { quotedUnitAmount: String(input.unitAmount) } : {}),
@@ -139,9 +157,17 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
               },
             }
           : null),
-        success_url: input.returnTo === 'analysis' ? `${origin}/analysis?checkout=success&session_id={CHECKOUT_SESSION_ID}` : `${origin}/app/handoff?session_id={CHECKOUT_SESSION_ID}`,
-        cancel_url: input.returnTo === 'analysis' ? `${origin}/analysis?checkout=cancelled` : `${origin}${input.returnLocale && input.returnLocale !== 'en' ? `/${input.returnLocale}` : ''}/?checkout=cancelled&product=${input.product}`,
-      })
+        success_url: scanReturn ? `${scanReturn}&scan_checkout=success&session_id={CHECKOUT_SESSION_ID}` : input.returnTo === 'analysis' ? `${origin}/analysis?checkout=success&session_id={CHECKOUT_SESSION_ID}` : `${origin}/app/handoff?session_id={CHECKOUT_SESSION_ID}`,
+        cancel_url: scanReturn ? `${scanReturn}&scan_checkout=cancelled` : input.returnTo === 'analysis' ? `${origin}/analysis?checkout=cancelled` : `${origin}${input.returnLocale && input.returnLocale !== 'en' ? `/${input.returnLocale}` : ''}/?checkout=cancelled&product=${input.product}`,
+      }, previousOfferSession ? { idempotencyKey: `web-return:${previousOfferSession.id}:${input.attemptId ?? 'default'}` } : undefined)
+      if (previousOfferSession) {
+        try { await getStripe().checkout.sessions.expire(previousOfferSession.id) }
+        catch (error) {
+          await getStripe().checkout.sessions.expire(created.id).catch(() => undefined)
+          throw error
+        }
+      }
+      return created
     })
 
     if (!checkout.url) {
@@ -155,15 +181,15 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
       sessionId: checkout.id,
       source,
       properties: {
-        product: input.product,
-        attempt_id: input.attemptId, flow_id: input.flowId, ...(input.attemptId ? { paywall_version: '2' } : {}),
+        product: input.product, provider: 'stripe', surface: source, offering: input.returnOfferSessionId ? 'stripe_return' : undefined,
+        attempt_id: input.attemptId, flow_id: input.flowId, flow_version: input.flowVersion, entry_mode: input.entryMode, ...(input.attemptId ? { paywall_version: '2' } : {}),
         ...landingProperties(landingAssignment),
         mobileInstallId: input.mobileInstallId,
       },
     })
 
     return json(res, 200, {
-      url: checkout.url,
+      url: checkout.url, sessionId: checkout.id,
     })
   } catch (error) {
     return handleApiError(error, res)

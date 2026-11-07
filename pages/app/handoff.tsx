@@ -8,6 +8,8 @@ import { ArrowUpRight, Check, Download, Loader2 } from 'lucide-react'
 import { apiPost, ApiClientError } from '@/lib/api/client'
 import { trackWebEvent } from '@/lib/analytics/client'
 
+import { stripeAttemptProperties, takeStripeAttempt } from '@/lib/client/stripe-attempt'
+
 const appStoreUrl = 'https://apps.apple.com/us/app/mogging-face-rating/id6771414050'
 
 type HandoffResponse = {
@@ -44,6 +46,8 @@ export default function PaymentHandoffPage() {
           await router.replace(result.analysisUrl)
           return
         }
+        const purchase = sessionId ? takeStripeAttempt('landing', sessionId) : null
+        if (purchase) trackWebEvent('purchase_activated', { surface: 'landing', provider: 'stripe', ...stripeAttemptProperties(purchase) })
         setHandoff(result)
         timer = setTimeout(() => setRetry(value => value + 1), Math.max(1000, Date.parse(result.expiresAt) - Date.now() + 100))
         trackWebEvent('handoff_created', { stripeCheckoutSessionId: sessionId })

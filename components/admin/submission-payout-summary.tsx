@@ -2,7 +2,7 @@ import type { BonusTarget } from '@/lib/creator/campaign-bonuses'
 import { bonusPaymentStatus, bonusPaymentTotal } from '@/lib/creator/bonus-payments'
 import { Disclosure, DisclosureSummary, AccordionContent } from '@/components/ui/accordion'
 import type { AdminPayment } from './creator-types'
-import { remainingCreatorPaymentCents } from '@/lib/creator/money'
+import { creatorPaymentLabel, remainingCreatorPaymentCents } from '@/lib/creator/money'
 
 const money = (cents: number, currency = 'USD') => new Intl.NumberFormat('en-US', { style: 'currency', currency }).format(cents / 100)
 const date = (value: string) => new Intl.DateTimeFormat('en-US', { month: 'short', day: 'numeric', year: 'numeric' }).format(new Date(value))
@@ -33,7 +33,7 @@ export function SubmissionPayoutSummary({ totalCents, payments, bonuses = [], pr
     {settled.length > 0 ? <Disclosure className="mt-4 border-t border-zinc-100 pt-3">
       <DisclosureSummary className="min-h-8 cursor-pointer text-xs font-medium">Paid history ({settled.length})</DisclosureSummary><AccordionContent>
       <ul className="mt-2 divide-y divide-zinc-100">{settled.map(payment => <li key={payment.id} className="flex items-start justify-between gap-4 py-3 text-xs">
-        <div className="min-w-0"><p className="font-medium">{payment.paymentOption === 'paypal' ? 'PayPal' : 'Crypto'} · {date(payment.paidAt || payment.createdAt)}</p>{payment.providerReference ? <p className="mt-1 break-all text-zinc-500">{payment.providerReference}</p> : null}{payment.hasReceipt ? <a href={`/api/admin/creator/payments/${payment.id}/receipt`} target="_blank" rel="noreferrer" className="mt-2 inline-flex min-h-8 items-center text-[#007aff] underline underline-offset-4">View receipt</a> : null}</div>
+        <div className="min-w-0"><p className="font-medium">{creatorPaymentLabel(payment.paymentOption)} · {date(payment.paidAt || payment.createdAt)}</p>{payment.providerReference ? <p className="mt-1 break-all text-zinc-500">{payment.providerReference}</p> : null}{payment.hasReceipt ? <a href={`/api/admin/creator/payments/${payment.id}/receipt`} target="_blank" rel="noreferrer" className="mt-2 inline-flex min-h-8 items-center text-[#007aff] underline underline-offset-4">View receipt</a> : null}</div>
         <span className="shrink-0 font-semibold tabular-nums">{money(payment.amountCents, payment.currency)}</span>
       </li>)}</ul>
     </AccordionContent></Disclosure> : null}

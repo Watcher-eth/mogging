@@ -50,11 +50,12 @@ export type AdminCreator = {
   image: string | null
   primaryContact: string | null
   authStatus: CreatorStatus
-  paymentOption: 'paypal' | 'crypto'
+  paymentOption: 'paypal' | 'crypto' | 'bank_transfer'
   paypalEmail: string | null
   paypalMeUrl?: string | null
   cryptoNetwork: string | null
   cryptoWalletAddress: string | null
+  bankTransferDetails?: string | null
   accountCount: number
   warnings?: AdminCreatorWarning[]
   attribution: AdminAttributionReport
@@ -143,7 +144,7 @@ export type AdminPayment = {
   amountCents: number
   currency: string
   status: PaymentStatus
-  paymentOption: 'paypal' | 'crypto'
+  paymentOption: 'paypal' | 'crypto' | 'bank_transfer'
   providerReference: string | null
   hasReceipt?: boolean
   paidAt: string | null

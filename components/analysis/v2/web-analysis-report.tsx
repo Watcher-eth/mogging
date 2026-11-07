@@ -11,7 +11,7 @@ import styles from './rubrics.module.css'
 const titles: Record<string, string> = { eyes: 'Eyes', brows: 'Brows', nose: 'Nose', mouth: 'Mouth', jaw: 'Jaw', cheeks: 'Cheeks', face: 'Face shape', proportions: 'Proportions', symmetry: 'Symmetry', skin: 'Skin', hair: 'Hair', ears: 'Ears' }
 
 export function LegacyAnalysisReport(props: Omit<ComponentProps<typeof AnalysisReport>, 'renderDetails'>) {
-  return <div className={styles.reportShell}><AnalysisReport {...props} naturalImage renderDetails={category => <V2ReportDetail category={category} groups={buildLegacyRubricGroups(category)} />} /></div>
+  return <div className={styles.reportShell}><AnalysisReport {...props} naturalImage renderDetails={category => <V2ReportDetail mobile={props.mobileScan} category={category} groups={buildLegacyRubricGroups(category)} />} /></div>
 }
 
 function contourOverlay(id: 'hair' | 'ears', report: WebReport): OverlayPreset {
@@ -21,7 +21,7 @@ function contourOverlay(id: 'hair' | 'ears', report: WebReport): OverlayPreset {
   })) }
 }
 
-export function WebAnalysisReport({ report, imageSrc, landmarks, pslScore, children, embedded = false }: { report: WebReport; imageSrc: string; landmarks: FaceLandmarksPayload | null; pslScore: number; children?: ReactNode; embedded?: boolean }) {
+export function WebAnalysisReport({ report, imageSrc, landmarks, pslScore, children, embedded = false, portraits, portraitLayoutId, initialCategoryId, mobileScan, potentialScore }: { report: WebReport; imageSrc: string; landmarks: FaceLandmarksPayload | null; pslScore: number; children?: ReactNode; embedded?: boolean; portraits?: ComponentProps<typeof AnalysisReport>['portraits']; portraitLayoutId?: string; initialCategoryId?: string; mobileScan?: boolean; potentialScore?: number | null }) {
   const categories: DesktopReportCategory[] = registry.categories.filter(definition => definition.rubrics.some(rubric => rubric.output !== 'D' && report.entries.some(entry => entry.id === rubric.id && entry.value !== null))).map(definition => {
     const category = report.categories.find(item => item.id === definition.id)!
     return { id: definition.id === 'face' ? 'face-shape' : definition.id, title: titles[definition.id], subtitle: definition.title, scoreLabel: definition.title, score: category.score, features: [], explanation: category.explanation,
@@ -36,6 +36,6 @@ export function WebAnalysisReport({ report, imageSrc, landmarks, pslScore, child
     const score = id === 'psl' ? pslScore : getScore(id)
     return { id: `overall.${id}`, label, value: `${score.toFixed(1)} / ${max}`, visual: 'Orbit', scale: 'quality', positions: [score / max], grade: null }
   }) }]
-  const content = <AnalysisReport naturalImage embedded={embedded} initialCategoryId={embedded ? "overall" : undefined} categories={categories} imageSrc={imageSrc} landmarks={landmarks} score={report.overallScore} pslScore={pslScore} renderDetails={category => <V2ReportDetail embedded={embedded} category={category} groups={category.id === 'overall' ? overallGroups : [...buildWebRubricGroups(category.id, report.entries), ...(category.id === 'cheeks' ? buildCheekContextGroups(report.entries) : [])]} />}>{children}</AnalysisReport>
+  const content = <AnalysisReport naturalImage mobileScan={mobileScan} potentialScore={potentialScore} embedded={embedded} portraits={portraits} portraitLayoutId={portraitLayoutId} initialCategoryId={embedded ? "overall" : initialCategoryId} categories={categories} imageSrc={imageSrc} landmarks={landmarks} score={report.overallScore} pslScore={pslScore} renderDetails={category => <V2ReportDetail mobile={mobileScan} embedded={embedded} category={category} groups={category.id === 'overall' ? overallGroups : [...buildWebRubricGroups(category.id, report.entries), ...(category.id === 'cheeks' ? buildCheekContextGroups(report.entries) : [])]} />}>{children}</AnalysisReport>
   return embedded ? content : <div className={styles.reportShell}>{content}</div>
 }

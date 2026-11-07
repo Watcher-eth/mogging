@@ -1,3 +1,6 @@
+import dynamic from 'next/dynamic'
+import { useDesktop } from './use-desktop'
+import { EvaluationChoices } from './evaluation-choices'
 import { LazyMotion, domAnimation } from 'motion/react'
 import * as m from 'motion/react-m'
 import { useHomepageEntrance } from './use-homepage-entrance'
@@ -8,6 +11,9 @@ import { useEffect, useRef } from 'react'
 import type { LandingAssignment } from '@/lib/analytics/landing'
 import { WebCheckout } from './web-checkout'
 import { useLandingTracking } from './use-landing-tracking'
+
+const DesktopScanPreview = dynamic(() => import('./desktop-scan-preview').then(module => module.DesktopScanPreview))
+const DesktopMemberPreview = dynamic(() => import('./desktop-member-preview').then(module => module.DesktopMemberPreview))
 
 const reviewCards = [
   { author: 'ryan.k', title: 'Finally knew where to start', rating: 5, body: 'I had about 20 things I thought I needed to fix. The report helped me narrow it down, and the protocol is simple enough that I actually use it.' },
@@ -27,6 +33,7 @@ const averageRating = (reviewCards.reduce((sum, review) => sum + review.rating, 
 export default function LegacyHomepage({assignment, preview}: {assignment: LandingAssignment; preview: boolean}) {
   const {sections, trackDestination} = useLandingTracking(assignment, preview)
   const entrance = useHomepageEntrance()
+  const desktop = useDesktop()
   return <LazyMotion features={domAnimation}>
       <SeoHead
         title="Mogging App | Face Analysis & Personalized Routines"
@@ -44,34 +51,34 @@ export default function LegacyHomepage({assignment, preview}: {assignment: Landi
       <main ref={sections} className="min-h-[calc(100vh-5rem)] overflow-hidden bg-white text-black">
         <section className="public-frame public-gutters flex min-h-[calc(100vh-5rem)] flex-col items-center py-8 sm:py-12">
           <div
-            className="flex w-full flex-col items-center"
+            className={desktop ? "grid w-full grid-cols-2 items-center gap-12" : "flex w-full flex-col items-center"}
           >
-            <a
-              href={appStoreUrl}
-              onClick={() => trackDestination('app_store', 'hero')}
-              className="inline-flex items-center gap-3 rounded-full border border-zinc-200 bg-zinc-50 px-5 py-2.5 text-base font-semibold text-black shadow-[0_10px_34px_rgba(15,23,42,0.08)] transition duration-200 hover:border-zinc-300 hover:bg-white active:scale-[0.985]"
-            >
-              <AppStoreMark className="size-8" />
-              <span>View Mogging on the App Store</span>
-            </a>
-
-            <p className="mt-10 font-mono text-sm font-bold uppercase tracking-normal text-zinc-500 sm:text-base">Ascend now with</p>
-            <h1 className="mt-5 max-w-6xl text-center text-[3.6rem] font-semibold leading-[0.9] tracking-[-0.075em] text-black sm:text-[7rem] lg:text-[8.6rem]">
+            <div className={desktop ? '' : 'contents'}>
+            <p className="font-mono text-sm font-bold uppercase tracking-normal text-zinc-500 sm:text-base">Ascend now with</p>
+            <h1 className="mt-5 max-w-6xl text-center text-[3.6rem] font-semibold leading-[0.9] tracking-[-0.075em] text-black sm:text-[7rem] lg:text-[clamp(4rem,6vw,7rem)] lg:text-left">
               Mogging. Your face, in focus.
             </h1>
-            <p className="mt-7 max-w-3xl text-center text-xl leading-8 text-zinc-500 sm:text-2xl sm:leading-9">
+            <p className="mt-7 max-w-3xl text-center text-xl leading-8 text-zinc-500 sm:text-2xl sm:leading-9 lg:text-left">
               Explore your facial features with a comprehensive report, a detailed face map, and a personalized routine. Keep track of your photos and progress in the Mogging app.
             </p>
+            <div className="mt-8">
+              <EvaluationChoices showDesktopDownload track={destination => trackDestination(destination, 'hero')} />
+            </div>
+            </div>
+            {desktop && <div className="min-h-0 self-stretch [contain:size]"><DesktopScanPreview /></div>}
           </div>
 
           <div data-landing-section="screenshots"
             className="mx-auto mt-16 w-full max-w-[var(--page-max)] sm:mt-20"
           >
-            <div className="flex snap-x snap-mandatory gap-5 overflow-x-auto pb-4 sm:gap-6 lg:grid lg:grid-cols-3 lg:overflow-visible">
+            {desktop ? <div className="grid items-start gap-10 lg:grid-cols-2">
+              <DesktopMemberPreview view="protocol" compact />
+              <DesktopMemberPreview view="progress" compact />
+            </div> : <div className="flex snap-x snap-mandatory gap-5 overflow-x-auto pb-4 sm:gap-6 lg:grid lg:grid-cols-3 lg:overflow-visible">
               {[EvaluationPreview, ProtocolPreview, ProgressPreview].map((Preview, index) => (
                 <m.div {...entrance} key={index} className="w-[74vw] min-w-[260px] max-w-[340px] shrink-0 snap-start sm:w-[280px] lg:w-auto lg:min-w-0 lg:max-w-none"><Preview /></m.div>
               ))}
-            </div>
+            </div>}
 
             <ReviewsSection />
 
@@ -192,23 +199,5 @@ function ReviewsSection() {
         }
       `}</style>
     </m.section>
-  )
-}
-
-function AppStoreMark({ className }: { className?: string }) {
-  return (
-    <svg className={className} viewBox="0 0 48 48" aria-hidden="true" role="img">
-      <rect width="48" height="48" rx="12" fill="url(#app-store-mark-gradient)" />
-      <path
-        d="M19.75 31.9h-5.4a2 2 0 0 1 0-4h7.58l2.33-4.06-4.88-8.45a2 2 0 1 1 3.46-2l3.73 6.47 3.72-6.47a2 2 0 1 1 3.47 2L24.3 31.9a2.61 2.61 0 0 1-4.55 0Zm13.9 0h-5.43l2.31-4h3.12a2 2 0 1 1 0 4Zm-18.1 5.44a2 2 0 0 1-.74-2.73l1.26-2.18h4.62l-2.4 4.17a2 2 0 0 1-2.74.74Z"
-        fill="white"
-      />
-      <defs>
-        <linearGradient id="app-store-mark-gradient" x1="8" x2="42" y1="40" y2="7" gradientUnits="userSpaceOnUse">
-          <stop stopColor="#0A84FF" />
-          <stop offset="1" stopColor="#5AC8FA" />
-        </linearGradient>
-      </defs>
-    </svg>
   )
 }

@@ -1,8 +1,10 @@
+import { distributionMeasurementQuery, type DistributionMeasurement } from './distribution-measurement'
 import { sql } from 'drizzle-orm'
 import { db } from '@/lib/db'
 import { buildCreatorPerformance, type CreatorPerformanceReport, type PerformanceInput } from './creator-performance'
 
 export type CreatorPerformanceSnapshot = {
+  distribution?: DistributionMeasurement
   reports: Record<'all' | 'tiktok' | 'instagram', CreatorPerformanceReport>
   latestSubmission: string | null; latestSubmissionUpdate: string | null; latestPaymentUpdate: string | null
 }
@@ -44,7 +46,9 @@ export async function getCreatorPerformanceSnapshot(days: number, now: Date): Pr
     await tx.execute(sql`set local statement_timeout = '12s'`)
     const [result] = await tx.execute(creatorPerformanceInputQuery(now))
     const input = result.input as PerformanceInput & Omit<CreatorPerformanceSnapshot, 'reports'>
+    const [measurement] = await tx.execute(distributionMeasurementQuery(days, now))
     return {
+      distribution: measurement.data as DistributionMeasurement,
       reports: {
         all: buildCreatorPerformance(input, { days, platform: 'all', now }),
         tiktok: buildCreatorPerformance(input, { days, platform: 'tiktok', now }),

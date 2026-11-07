@@ -26,6 +26,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
   try {
     const session = await getAuthSession(req, res)
     if (!session?.user?.id) return redirect('auth_required')
+    if (process.env.TIKTOK_CREATOR_VIDEO_SCOPE_ENABLED !== 'true') return redirect('not_configured')
     if (!env.TIKTOK_CLIENT_KEY || !env.TIKTOK_CLIENT_SECRET) return redirect('not_configured')
 
     const state = typeof req.query.state === 'string' ? req.query.state : ''

@@ -47,3 +47,52 @@
 @container (min-width: 880px) {
   .embedded .content { grid-template-columns: minmax(0,.85fr) minmax(0,1fr); }
 }
+
+.portraitStage { position: relative; min-width: 0; min-height: 0; isolation: isolate; }
+.portraitFrame { height: 100%; min-width: 0; }
+.portraitSelector { position: absolute; z-index: 2; bottom: 8px; left: 50%; transform: translateX(-50%); display: flex; align-items: center; gap: 6px; background: #ffffffe0; backdrop-filter: blur(12px); border-radius: 999px; font-size: 11px; white-space: nowrap; }
+.portraitSelector button { display: grid; place-items: center; width: 38px; height: 38px; border-radius: inherit; }
+.portraitSelector button:hover { background: #0000000d; }
+.portraitSelector button:focus-visible { outline: 2px solid currentColor; }
+
+:global(.scan-flow[data-mobile-scan]) .layout { position: relative; height: auto; padding: 0 0 max(16px, env(safe-area-inset-bottom)); display: grid; grid-template-columns: minmax(0,1fr); gap: 14px; overflow: visible; }
+:global(.scan-flow[data-mobile-scan]) .sidebar { position: absolute; top: max(16px, env(safe-area-inset-top)); left: 16px; z-index: 30; width: min(280px, calc(100% - 80px)); background: transparent; }
+:global(.scan-flow[data-mobile-scan]) .sidebar > div:first-child > :is(p,h2),
+:global(.scan-flow[data-mobile-scan]) .desktopCategories,
+:global(.scan-flow[data-mobile-scan]) .sidebar > div:nth-child(2) { display: none; }
+:global(.scan-flow[data-mobile-scan]) .mobileCategories { display: block; margin-top: 0; height: 44px; width: fit-content; max-width: 100%; }
+:global(.scan-flow[data-mobile-scan]) .categoryTrigger { width: auto; height: 44px; padding: 0 13px; gap: 9px; border: 1px solid #ffffff75; border-radius: 999px; background: #ffffff65; backdrop-filter: blur(14px); }
+:global(.scan-flow[data-mobile-scan]) .categoryTrigger small { display: none; }
+:global(.scan-flow[data-mobile-scan]) .categoryPopup { width: min(280px, 76vw); }
+:global(.scan-flow[data-mobile-scan]) .stage,
+:global(.scan-flow[data-mobile-scan]) .content,
+:global(.scan-flow[data-mobile-scan]) .details { height: auto; overflow: visible; grid-template-columns: minmax(0,1fr); }
+:global(.scan-flow[data-mobile-scan]) .details,
+:global(.scan-flow[data-mobile-scan]) .layout > div:last-child { display: block; padding-inline: 18px; }
+
+.categoryIcon { display: none; }
+:global(.scan-flow[data-mobile-scan]) .categoryIcon { display: block; flex-shrink: 0; }
+:global(.scan-flow[data-mobile-scan]) .categoryNumber { display: none; }
+:global(.scan-flow[data-mobile-scan]) .categoryList { background: #f4f4f5d9; backdrop-filter: blur(28px) saturate(140%); border: 1px solid #ffffff9c; box-shadow: 0 12px 34px #15162120; }
+:global(.scan-flow[data-mobile-scan]) .categoryOption { grid-template-columns: 22px minmax(0,1fr) auto; gap: 10px; color: #292b32; font-family: inherit; font-size: 14px; text-transform: none; letter-spacing: 0; }
+:global(.scan-flow[data-mobile-scan]) .categoryOption[aria-pressed=true] { background: #ffffffc9; }
+:global(.scan-flow[data-mobile-scan]) .categoryTrigger { color: #303640; }
+.scanScores { position: relative; z-index: 1; display: flex; justify-content: space-between; gap: 14px; padding-inline: 20px; margin-top: -70px; color: #101114; }
+.scanScores > div { display: grid; gap: 5px; }
+.scanScores > div:nth-child(2) { text-align: right; color: #9b9ba3; }
+.scanScores small { font-family: monospace; font-size: 10px; text-transform: uppercase; }
+.scanScores strong { font-size: clamp(36px, 11vw, 44px); font-weight: 600; line-height: 1.05; font-variant-numeric: tabular-nums; letter-spacing: -.04em; }
+.scanScores span { color: #74747f; font-size: 13px; }
+@media (prefers-reduced-motion: no-preference) {
+  :global(.scan-flow[data-mobile-scan]) :is(.categoryTrigger,.categoryOption) { transition: scale 150ms ease-out, background-color 160ms, color 160ms; }
+  :global(.scan-flow[data-mobile-scan]) :is(.categoryTrigger,.categoryOption):active { scale: .95; }
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  :global(.scan-flow[data-mobile-scan]) :is(.scanScores,.details) { transition: visibility 0s; }
+  :global(.scan-flow[data-mobile-scan]) .content:has(:global([data-portrait-entering])) :is(.scanScores,.details) { visibility: hidden; }
+  :global(.scan-flow[data-mobile-scan]) .content:has(:global([data-portrait-entering])) { --portrait-detail-opacity: 0; }
+  :global(.scan-flow[data-mobile-scan]) .content :is(.scanScores,.details) > * { opacity: var(--portrait-detail-opacity,1); transition: opacity 340ms ease-out; }
+}
+
+.scanScores strong[data-locked] { filter: blur(5px); user-select: none; }

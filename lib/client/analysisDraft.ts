@@ -10,6 +10,7 @@ export type AnalysisDraftImage = {
   id: string
   name: string
   dataUrl: string
+  view?: 'side'
   hairColor?: HairColor | null
   skinColor?: SkinColor | null
   landmarks?: FaceLandmarksPayload | null
@@ -24,10 +25,18 @@ export type AnalysisDraft = {
 
 export const saveAnalysisDraft = (draft: AnalysisDraft) => updateDraft(draft)
 
-export async function loadAnalysisDraft() {
+export const saveAnalysisSidePhoto = (reportId: string, image: AnalysisDraftImage) =>
+  updateDraft(image, `side:${reportId}`)
+
+export const loadAnalysisSidePhoto = (reportId: string) =>
+  readDraft<AnalysisDraftImage>(`side:${reportId}`)
+
+export const loadAnalysisDraft = () => readDraft<AnalysisDraft>(DRAFT_KEY)
+
+async function readDraft<T>(key: string) {
   const db = await openDraftDb()
-  const draft = await requestToPromise<AnalysisDraft | undefined>(
-    db.transaction(STORE_NAME, 'readonly').objectStore(STORE_NAME).get(DRAFT_KEY)
+  const draft = await requestToPromise<T | undefined>(
+    db.transaction(STORE_NAME, 'readonly').objectStore(STORE_NAME).get(key)
   )
   db.close()
 
@@ -36,7 +45,7 @@ export async function loadAnalysisDraft() {
 
 export const clearAnalysisDraft = () => updateDraft()
 
-async function updateDraft(draft?: AnalysisDraft) {
+async function updateDraft(draft?: AnalysisDraft | AnalysisDraftImage, key = DRAFT_KEY) {
   const db = await openDraftDb()
   try {
     await new Promise<void>((resolve, reject) => {
@@ -45,8 +54,8 @@ async function updateDraft(draft?: AnalysisDraft) {
       transaction.onabort = () => reject(transaction.error ?? new Error('Unable to save checkout photos'))
       transaction.onerror = () => reject(transaction.error ?? new Error('Unable to save checkout photos'))
       const store = transaction.objectStore(STORE_NAME)
-      if (draft) store.put(draft, DRAFT_KEY)
-      else store.delete(DRAFT_KEY)
+      if (draft) store.put(draft, key)
+      else store.delete(key)
     })
   } finally { db.close() }
 }

@@ -1,4 +1,7 @@
-import { revenueReportCTEs } from './revenue-report'
+import { webJourneyCTEs, webJourneyDimensions, type WebJourneyReport } from './web-journey-query'
+import type { getAppStoreSales } from './app-store-sales'
+import type { RevenueCatMetrics } from './revenuecat-metrics'
+import { revenueReportCTEs, revenueReportingCTEs } from './revenue-report'
 import { notificationsCTEs, ledgerCTEs, dataHealthCTEs, type NotificationsData, type LedgerData, type DataHealthData } from './operations-analytics'
 import { getReliabilityData, type ReliabilityData } from './reliability'
 import { referralsCTEs, type ReferralsReport } from './referrals-query'
@@ -22,8 +25,10 @@ import { reportingBucket } from './reporting-bucket'
 import { ADMIN_REPORTING_TIME_ZONE } from './reporting-time'
 
 export const analyticsFilters = z.object({
-  days: z.enum(['1', '7', '30', '90']).default('7'),
-  section: z.enum(['Overview', 'Acquisition', 'Experiments', 'Onboarding', 'Revenue', 'Retention', 'CreatorAttribution', 'CreatorPerformance', 'CreatorEconomics', 'Authentication', 'Purchases', 'Scans', 'Engagement', 'Referrals', 'Notifications', 'AttributionLedger', 'Quality', 'Reliability']).optional(),
+  days: z.enum(['1', '7', '14', '30', '90']).default('7'),
+  section: z.enum(['Overview', 'Acquisition', 'Experiments', 'Onboarding', 'Revenue', 'Retention', 'CreatorAttribution', 'CreatorPerformance', 'CreatorEconomics', 'Authentication', 'WebJourney', 'Purchases', 'Scans', 'Engagement', 'Referrals', 'Notifications', 'AttributionLedger', 'Quality', 'Reliability']).optional(),
+  webVersion: z.string().max(80).optional(),
+  webDimension: z.enum(webJourneyDimensions).optional(),
   platform: z.enum(['all', 'web', 'ios', 'android']).default('all'),
 })
 export type AnalyticsFilters = z.infer<typeof analyticsFilters>
@@ -59,6 +64,10 @@ export type AnalyticsDashboard = {
   onboardingScreens: MetricRow[]; onboardingFriction: MetricRow[]
   revenueTotals?: MetricRow[]; revenueActivity?: MetricRow[]
   revenueComparison?: MetricRow[]; billingReporting?: MetricRow[]
+  appStoreSales?: Awaited<ReturnType<typeof getAppStoreSales>>
+  revenueCatMetrics?: RevenueCatMetrics
+  revenueUsdCoverage?: MetricRow[]
+  revenueStreamComparison?: MetricRow[]; revenueStreamDaily?: MetricRow[]
   revenueFinancials?: MetricRow[]; revenueSources?: MetricRow[]; revenueCountries?: MetricRow[]; revenueProceedsDaily?: MetricRow[]
   revenueSubscriptionOverview?: MetricRow[]; revenueSubscriptionProducts?: MetricRow[]
   billing: MetricRow[]; revenue: MetricRow[]; revenueDaily: MetricRow[]; retention: MetricRow[]; cancellations: MetricRow[]
@@ -74,6 +83,7 @@ export type AnalyticsDashboard = {
   referrals?: ReferralsReport | null
   engagement?: EngagementReport | null
   scans?: ScansReport | null
+  webJourney?: WebJourneyReport | null
   purchaseFlow?: PurchaseFlowReport | null
   authentication?: AuthenticationReport | null
   creatorEconomics?: CreatorEconomicsReport | null
@@ -114,12 +124,13 @@ const sectionReports: Record<NonNullable<AnalyticsFilters['section']>, readonly 
   Acquisition: ['daily', 'acquisition', 'acquisition_summary', 'landing_summary', 'web_audience', 'landing_sections', 'landing_placements', 'landing_sources'],
   Experiments: ['landing_handoffs', 'landing_experiments', 'landing_experiment_daily'],
   Onboarding: ['onboarding_summary', 'onboarding_daily', 'onboarding', 'onboarding_screens', 'onboarding_friction', 'onboarding_revisions', 'steps', 'screens'],
-  Revenue: ['revenue_financials', 'revenue_sources', 'revenue_countries', 'revenue_proceeds_daily', 'revenue_subscription_overview', 'revenue_subscription_products', 'revenue', 'revenue_totals', 'revenue_comparison', 'revenue_activity', 'revenue_daily', 'billing', 'billing_products', 'billing_dimensions', 'billing_reporting'],
+  Revenue: ['revenue_usd_coverage', 'revenue_stream_comparison', 'revenue_stream_daily', 'revenue_financials', 'revenue_sources', 'revenue_countries', 'revenue_proceeds_daily', 'revenue_subscription_overview', 'revenue_subscription_products', 'revenue', 'revenue_totals', 'revenue_comparison', 'revenue_activity', 'revenue_daily', 'billing', 'billing_products', 'billing_dimensions', 'billing_reporting'],
   CreatorAttribution: ['creator_attribution'],
   CreatorPerformance: [],
   CreatorEconomics: ['creator_economics'],
   Retention: ['feature_retention', 'membership_activation', 'retention', 'retention_weekly', 'retention_coverage'],
   Authentication: ['daily', 'authentication'],
+  WebJourney: ['web_journey'],
   Purchases: ['purchase_flow'],
   Scans: ['scans'],
   Engagement: ['engagement'],
@@ -272,7 +283,7 @@ export function analyticsQuery(filters: AnalyticsFilters, now: Date) {
         and occurred_at < ${end}::timestamp
     ), b as materialized (
       select * from billing_history where occurred_at >= ${start}::timestamp
-    ), ${['CreatorAttribution', 'CreatorEconomics', 'AttributionLedger'].includes(filters.section ?? '') ? creatorAttributionCTEs(filters.section === 'CreatorEconomics' ? '1970-01-01T00:00:00Z' : start, end, Number(filters.days)) : sql`creator_attribution as (select null::json as report)`}, ${filters.section === 'CreatorEconomics' ? creatorEconomicsCTEs(start, end, Number(filters.days)) : sql`creator_economics as (select null::json as report)`}, ${filters.section === 'Authentication' ? authenticationCTEs(start, end, filters.platform) : sql`authentication as (select null::json as report)`}, ${filters.section === 'Purchases' ? purchaseFlowCTEs(start, end, Number(filters.days)) : sql`purchase_flow as (select null::json as report)`}, ${filters.section === 'Scans' ? scansCTEs(start, end, Number(filters.days)) : sql`scans as (select null::json as report)`}, ${filters.section === 'Engagement' ? engagementCTEs(Number(filters.days)) : sql`engagement as (select null::json as report)`}, ${filters.section === 'Referrals' ? referralsCTEs(start, end, Number(filters.days)) : sql`referrals as (select null::json as report)`}, ${filters.section === 'Notifications' ? notificationsCTEs(start,end,Number(filters.days)) : sql`notifications as (select null::json as report)`}, ${filters.section === 'AttributionLedger' ? ledgerCTEs(Number(filters.days)) : sql`attribution_ledger as (select null::json as report)`}, ${filters.section === 'Quality' ? dataHealthCTEs(start,end,Number(filters.days)) : sql`data_health as (select null::json as report)`}, ${sql.join([...onboarding.ctes, ...paywall.ctes, ...web.ctes], sql`,`)},
+    ), ${filters.section === 'WebJourney' ? webJourneyCTEs(start,end,Number(filters.days),filters.webVersion,filters.webDimension) : sql`web_journey as (select null::json as report)`}, ${revenueReportingCTEs(start)}, ${['CreatorAttribution', 'CreatorEconomics', 'AttributionLedger'].includes(filters.section ?? '') ? creatorAttributionCTEs(filters.section === 'CreatorEconomics' ? '1970-01-01T00:00:00Z' : start, end, Number(filters.days)) : sql`creator_attribution as (select null::json as report)`}, ${filters.section === 'CreatorEconomics' ? creatorEconomicsCTEs(start, end, Number(filters.days)) : sql`creator_economics as (select null::json as report)`}, ${filters.section === 'Authentication' ? authenticationCTEs(start, end, filters.platform) : sql`authentication as (select null::json as report)`}, ${filters.section === 'Purchases' ? purchaseFlowCTEs(start, end, Number(filters.days)) : sql`purchase_flow as (select null::json as report)`}, ${filters.section === 'Scans' ? scansCTEs(start, end, Number(filters.days)) : sql`scans as (select null::json as report)`}, ${filters.section === 'Engagement' ? engagementCTEs(Number(filters.days)) : sql`engagement as (select null::json as report)`}, ${filters.section === 'Referrals' ? referralsCTEs(start, end, Number(filters.days)) : sql`referrals as (select null::json as report)`}, ${filters.section === 'Notifications' ? notificationsCTEs(start,end,Number(filters.days)) : sql`notifications as (select null::json as report)`}, ${filters.section === 'AttributionLedger' ? ledgerCTEs(Number(filters.days)) : sql`attribution_ledger as (select null::json as report)`}, ${filters.section === 'Quality' ? dataHealthCTEs(start,end,Number(filters.days)) : sql`data_health as (select null::json as report)`}, ${sql.join([...onboarding.ctes, ...paywall.ctes, ...web.ctes], sql`,`)},
     daily as (
       select ${reportingBucket(sql`occurred_at`, Number(filters.days))} as day, count(distinct actor) as actors,
         count(distinct actor) filter (where platform = 'web' and event_name = 'page_viewed'
@@ -326,9 +337,14 @@ export function analyticsQuery(filters: AnalyticsFilters, now: Date) {
         coalesce(bool_or((o.event_name = 'landing_cta_clicked' and o.properties->>'path' = '/' and o.properties->>'destination' = 'web_analysis') or (o.event_name = 'page_viewed' and o.properties->>'path' = '/analysis')),false) as web_analysis,
         coalesce(bool_or(o.event_name = 'paywall_viewed' and o.properties->>'surface' = 'web_analysis'),false) as paywall,
         coalesce(bool_or(o.event_name = 'checkout_started' and o.platform = 'server'),false) as checkout,
-        coalesce(bool_or(o.event_name = 'checkout_completed' and o.platform = 'server' and o.properties->>'status' = 'paid'
-          and case when jsonb_typeof(o.properties->'price') = 'number' then (o.properties->>'price')::numeric > 0 else false end),false) as paid
-      from landing_entries l left join reported_events o on o.properties->>'landing_id' = l.landing_id
+        coalesce(bool_or(o.positive_checkout),false) as paid,
+        coalesce(bool_or(o.positive_checkout and o.properties->>'mode' = 'subscription'),false) as subscribed,
+        coalesce(bool_or(o.positive_checkout and o.properties->>'mode' = 'payment'),false) as one_time_sale
+      from landing_entries l left join (
+        select *, event_name = 'checkout_completed' and platform = 'server' and properties->>'status' = 'paid'
+          and case when jsonb_typeof(properties->'price') = 'number' then (properties->>'price')::numeric > 0 else false end as positive_checkout
+        from reported_events
+      ) o on o.properties->>'landing_id' = l.landing_id
         and o.occurred_at >= l.at and o.occurred_at <= l.at + interval '7 days'
         and o.properties->>'experiment_id' = l.experiment_id and o.properties->>'variant' = l.variant
         and o.event_name in ('app_store_redirected','landing_cta_clicked','page_viewed','paywall_viewed','checkout_started','checkout_completed','landing_section_viewed')
@@ -339,6 +355,8 @@ export function analyticsQuery(filters: AnalyticsFilters, now: Date) {
         count(*) filter(where l.store and not l.handoff) as store_clicks, count(*) filter(where l.web_analysis) as web_starts,
         count(*) filter(where l.paywall) as paywalls, count(*) filter(where l.checkout) as checkouts,
         count(*) filter(where l.paid) as paid_checkouts,
+        count(*) filter(where l.subscribed) as subscription_buyers,
+        count(*) filter(where l.one_time_sale) as one_time_buyers,
         count(*) filter(where l.at <= ${end}::timestamp - interval '7 days' and (not l.handoff)) as mature,
         count(*) filter(where l.store and not l.handoff and l.at <= ${end}::timestamp - interval '7 days') as mature_store_clicks,
         count(*) filter(where l.paid and not l.handoff and l.at <= ${end}::timestamp - interval '7 days') as mature_paid_checkouts,
@@ -542,7 +560,7 @@ export function analyticsQuery(filters: AnalyticsFilters, now: Date) {
         case when count(amount) > 0 then coalesce(sum(amount) filter(where amount > 0),0)::text end as gross,
         case when count(amount) > 0 then coalesce(-sum(amount) filter(where amount < 0),0)::text end as refunds,
         sum(amount)::text as net, count(*) filter(where amount is null and ${monetaryBillingEvent}) as missing_amount_events
-      from b group by 1,2,3 order by events desc limit 100
+      from revenue_reporting_period group by 1,2,3 order by events desc limit 100
     ), billing_dimension_counts as (
       select provider, event_name as event, p.key as dimension, p.value, count(*) as events
       from b cross join lateral jsonb_each_text(properties) p
@@ -555,35 +573,40 @@ export function analyticsQuery(filters: AnalyticsFilters, now: Date) {
       ) ranked where rank <= 20 order by dimension,events desc
     ), revenue as (
       select coalesce(currency, 'UNKNOWN') as currency,
-        count(distinct coalesce('account:' || account_id, provider || ':external:' || external_user_id)) filter(where amount > 0) as paying_customers,
+        count(distinct coalesce('account:' || account_id, provider || ':external:' || external_user_id)) filter(where original_amount > 0) as paying_customers,
         count(*) filter(where amount > 0 and account_id is null and external_user_id is null) as unidentified_payments,
         case when count(amount) > 0 then coalesce(sum(amount) filter (where amount > 0), 0)::text end as gross,
         case when count(amount) > 0 then coalesce(-sum(amount) filter (where amount < 0), 0)::text end as refunds,
         sum(amount)::text as net,
         count(*) filter (where amount is null and ${monetaryBillingEvent}) as missing_amount_events
-      from b group by 1 order by 1
+      from revenue_reporting_period group by 1 order by 1
     ), billing_customer_first_paid as (
       select coalesce('account:' || account_id, provider || ':external:' || external_user_id) as customer,
         min(occurred_at) as first_paid_at
-      from billing_history where amount>0
+      from revenue_reporting_history where original_amount>0
       group by 1
     ), revenue_comparison as (
       select coalesce(h.currency,'UNKNOWN') as currency,
         coalesce(sum(h.amount) filter(where h.occurred_at >= ${start}::timestamp),0)::text as current_net,
         coalesce(sum(h.amount) filter(where h.occurred_at < ${start}::timestamp),0)::text as previous_net,
-        coalesce(sum(h.amount) filter(where h.amount>0 and h.occurred_at >= ${start}::timestamp),0)::text as current_gross,
-        coalesce(sum(h.amount) filter(where h.amount>0 and h.occurred_at < ${start}::timestamp),0)::text as previous_gross,
+        coalesce(sum(h.amount) filter(where h.original_amount>0 and h.occurred_at >= ${start}::timestamp),0)::text as current_gross,
+        coalesce(sum(h.amount) filter(where h.original_amount>0 and h.occurred_at < ${start}::timestamp),0)::text as previous_gross,
         coalesce(-sum(h.amount) filter(where h.amount<0 and h.occurred_at >= ${start}::timestamp),0)::text as current_refunds,
         coalesce(-sum(h.amount) filter(where h.amount<0 and h.occurred_at < ${start}::timestamp),0)::text as previous_refunds,
-        count(distinct first.customer) filter(where h.amount>0 and h.occurred_at >= ${start}::timestamp) as current_paying_customers,
-        count(distinct first.customer) filter(where h.amount>0 and h.occurred_at < ${start}::timestamp) as previous_paying_customers,
-        count(distinct first.customer) filter(where h.amount>0 and h.occurred_at >= ${start}::timestamp and first.first_paid_at >= ${start}::timestamp) as current_new_customers,
-        count(distinct first.customer) filter(where h.amount>0 and h.occurred_at < ${start}::timestamp and first.first_paid_at >= ${start}::timestamp - ${Number(filters.days)}::integer * interval '1 day') as previous_new_customers,
+        count(distinct first.customer) filter(where h.original_amount>0 and h.occurred_at >= ${start}::timestamp) as current_paying_customers,
+        count(distinct first.customer) filter(where h.original_amount>0 and h.occurred_at < ${start}::timestamp) as previous_paying_customers,
+        count(distinct first.customer) filter(where h.original_amount>0 and h.occurred_at >= ${start}::timestamp and first.first_paid_at >= ${start}::timestamp) as current_new_customers,
+        count(distinct first.customer) filter(where h.original_amount>0 and h.occurred_at < ${start}::timestamp and first.first_paid_at >= ${start}::timestamp - ${Number(filters.days)}::integer * interval '1 day') as previous_new_customers,
         count(*) filter(where h.amount is null and ${monetaryBillingEvent}) as missing_amount_events
-      from billing_history h left join billing_customer_first_paid first
+      from revenue_reporting_history h left join billing_customer_first_paid first
         on first.customer=coalesce('account:' || h.account_id,h.provider || ':external:' || h.external_user_id)
       where h.occurred_at >= ${start}::timestamp - ${Number(filters.days)}::integer * interval '1 day'
       group by 1
+    ), stripe_recovery as (
+      select occurred_at,properties from analytics_events
+      where event_name in ('backend_billing_reconciliation','backend_billing_reconciliation_progress')
+        and environment='production' and source='backend' and properties->>'provider'='stripe'
+        and occurred_at < ${end}::timestamp
     ), billing_reporting as (
       select max(occurred_at) as latest_event, max(received_at) as latest_receipt,
         count(*) filter(where occurred_at >= ${start}::timestamp and amount is null and ${monetaryBillingEvent}) as missing_amount_events,
@@ -592,10 +615,10 @@ export function analyticsQuery(filters: AnalyticsFilters, now: Date) {
           and p.id not in (select id from excluded_entitlements)
           and not exists(select 1 from subscription_events s where s.provider = 'stripe'
             and s.provider_event_id = 'checkout:' || p.stripe_checkout_session_id)) as unrecorded_stripe_purchases,
-        (select occurred_at from analytics_events where event_name = 'backend_billing_reconciliation'
-          and environment = 'production' and source = 'backend' and occurred_at < ${end}::timestamp order by occurred_at desc limit 1) as recovery_checked_at,
-        (select properties->>'webhook_ready' from analytics_events where event_name = 'backend_billing_reconciliation'
-          and environment = 'production' and source = 'backend' and occurred_at < ${end}::timestamp order by occurred_at desc limit 1) as webhook_ready
+        (select occurred_at from stripe_recovery order by occurred_at desc limit 1) as recovery_checked_at,
+        (select properties->>'covered_until' from stripe_recovery order by occurred_at desc limit 1) as stripe_covered_until,
+        (select properties->>'webhook_ready' from stripe_recovery where properties->>'webhook_ready' is not null order by occurred_at desc limit 1) as webhook_ready,
+        max(received_at) filter(where provider='revenuecat') as revenuecat_latest_receipt
       from billing_history
     ), revenue_totals as (
       select coalesce(currency, 'UNKNOWN') as currency, sum(amount)::text as net,
@@ -605,7 +628,7 @@ export function analyticsQuery(filters: AnalyticsFilters, now: Date) {
         count(*) filter(where amount is null and ${monetaryBillingEvent}) as missing_amount_events,
         count(*) filter(where amount is null and ${monetaryBillingEvent}
           and occurred_at >= ${end}::timestamp - interval '48 hours') as recent_missing_amount_events
-      from billing_history group by 1 having count(amount) > 0 or count(*) filter(where ${monetaryBillingEvent}) > 0
+      from revenue_reporting_history group by 1 having count(amount) > 0 or count(*) filter(where ${monetaryBillingEvent}) > 0
       order by 1
     ), subscription_identities as (
       select distinct provider,subscription_id from billing_history where subscription_id is not null
@@ -670,7 +693,7 @@ export function analyticsQuery(filters: AnalyticsFilters, now: Date) {
         case when count(amount) > 0 then coalesce(-sum(amount) filter (where amount < 0), 0)::text end as refunds,
         sum(amount)::text as net,
         count(*) filter (where amount is null and ${monetaryBillingEvent}) as missing_amount_events
-      from b group by 1,2 order by 1,2
+      from revenue_reporting_period group by 1,2 order by 1,2
     ), ${revenueReportCTEs(Number(filters.days), start, end)}, paid_history as materialized (
       select account_id, min(occurred_at) as first_paid,
         min(occurred_at) filter(where event_name <> 'one_time_purchase') as first_membership
@@ -842,6 +865,7 @@ export function analyticsQuery(filters: AnalyticsFilters, now: Date) {
       'referrals', ${include('referrals', sql`(select report from referrals)`, sql`null::json`)},
       'engagement', ${include('engagement', sql`(select report from engagement)`, sql`null::json`)},
       'scans', ${include('scans', sql`(select report from scans)`, sql`null::json`)},
+      'webJourney', ${include('web_journey', sql`(select report from web_journey)`, sql`null::json`)},
       'purchaseFlow', ${include('purchase_flow', sql`(select report from purchase_flow)`, sql`null::json`)},
       'authentication', ${include('authentication', sql`(select report from authentication)`, sql`null::json`)},
       'creatorEconomics', ${include('creator_economics', sql`(select report from creator_economics)`, sql`null::json`)},
@@ -869,8 +893,9 @@ export function analyticsQuery(filters: AnalyticsFilters, now: Date) {
       'acquisitionSummary', ${rows('acquisition_summary')}, 'landingSummary', ${rows('landing_summary')}, 'steps', ${rows('steps')},
       'onboardingScreens', ${rows('onboarding_screens')}, 'onboardingSummary', ${rows('onboarding_summary')}, 'onboardingDaily', ${rows('onboarding_daily')},
       'onboardingFriction', ${rows('onboarding_friction')}, 'screens', ${rows('screens')}, 'billing', ${rows('billing')}, 'revenue', ${rows('revenue')},
-      'revenueTotals', ${rows('revenue_totals')}, 'revenueActivity', ${rows('revenue_activity')}, 'revenueDaily', ${rows('revenue_daily')},
-      'revenueFinancials', ${rows('revenue_financials')}, 'revenueSources', ${rows('revenue_sources')}, 'revenueCountries', ${rows('revenue_countries')}, 'revenueProceedsDaily', ${rows('revenue_proceeds_daily')}, 'revenueSubscriptionOverview', ${rows('revenue_subscription_overview')}, 'revenueSubscriptionProducts', ${rows('revenue_subscription_products')}, 'revenueComparison', ${rows('revenue_comparison')}, 'billingReporting', ${rows('billing_reporting')}, 'retention', ${rows('retention')}, 'retentionWeekly', ${rows('retention_weekly')}, 'retentionCoverage', ${rows('retention_coverage')}, 'featureUsage', ${rows('feature_usage')}, 'featureRetention', ${rows('feature_retention')}, 'cancellations', ${rows('cancellations')},
+      'revenueTotals', ${rows('revenue_totals')}, 'revenueActivity', ${rows('revenue_activity')}, 'revenueDaily', ${rows('revenue_daily')}
+    ) || jsonb_build_object(
+      'revenueUsdCoverage', ${rows('revenue_usd_coverage')}, 'revenueStreamComparison', ${rows('revenue_stream_comparison')}, 'revenueStreamDaily', ${rows('revenue_stream_daily')}, 'revenueFinancials', ${rows('revenue_financials')}, 'revenueSources', ${rows('revenue_sources')}, 'revenueCountries', ${rows('revenue_countries')}, 'revenueProceedsDaily', ${rows('revenue_proceeds_daily')}, 'revenueSubscriptionOverview', ${rows('revenue_subscription_overview')}, 'revenueSubscriptionProducts', ${rows('revenue_subscription_products')}, 'revenueComparison', ${rows('revenue_comparison')}, 'billingReporting', ${rows('billing_reporting')}, 'retention', ${rows('retention')}, 'retentionWeekly', ${rows('retention_weekly')}, 'retentionCoverage', ${rows('retention_coverage')}, 'featureUsage', ${rows('feature_usage')}, 'featureRetention', ${rows('feature_retention')}, 'cancellations', ${rows('cancellations')},
       'actions', ${rows('actions')}, 'releases', ${rows('releases')},
       'eventMetrics', ${rows('event_metrics')}, 'eventPlatforms', ${rows('event_platforms')}, 'dimensions', ${rows('dimensions')},
       'eventDelivery', ${rows('event_delivery')}, 'contextCoverage', ${rows('context_coverage')}, 'billingProducts', ${rows('billing_products')}, 'billingDimensions', ${rows('billing_dimensions')}
@@ -882,7 +907,7 @@ const pending = new Map<string, Promise<AnalyticsDashboard>>()
 export function getAnalyticsDashboard(filters: AnalyticsFilters) {
   if (['Onboarding','Purchases'].includes(filters.section ?? '') && filters.platform === 'web') filters = { ...filters, platform: 'all' }
   if (['Scans','Referrals','Notifications','AttributionLedger','Quality','Reliability'].includes(filters.section ?? '')) filters = { ...filters, platform: 'all' }
-  const key = `${filters.days}:${filters.platform}:${filters.section ?? 'all'}`
+  const key = JSON.stringify(filters)
   const found = pending.get(key)
   if (found) return found
   const now = new Date()

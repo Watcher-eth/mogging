@@ -13,6 +13,7 @@ import { hairColorSchema, normalizeApparentAge, skinColorSchema } from '@/lib/ap
 import { db, schema } from '@/lib/db'
 import { env } from '@/lib/env'
 import { reserveEvaluation, finishEvaluation } from '@/lib/payments/entitlements'
+import { recordServerEvent } from '@/lib/analytics/events'
 
 export function createAnalyzeHandler(run: typeof analyzeAndSave = analyzeAndSave, bodySchema: ZodType<AnalyzeAndSaveInput> = analyzeAndSaveSchema, requestNamespace = '') {
 return async function handler(req: NextApiRequest, res: NextApiResponse) {
@@ -24,6 +25,23 @@ return async function handler(req: NextApiRequest, res: NextApiResponse) {
   const startedAt = Date.now()
   let reservation: Awaited<ReturnType<typeof reserveEvaluation>> | null = null
   let generationReturned = false
+  let analyticsAccountId: string | undefined
+  const header = (name: string) => typeof req.headers[name] === 'string' ? req.headers[name] as string : ''
+  const validId = (value: string) => /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(value)
+  const flowId = header('x-mogging-flow-id')
+  const evaluationId = header('x-mogging-evaluation-id')
+  const trackedWeb = requestNamespace === 'web-v2:' && validId(flowId) && validId(evaluationId)
+  async function recordOutcome(eventName: 'evaluation_request_started' | 'evaluation_request_completed' | 'evaluation_request_failed', result?: unknown, reason?: string) {
+    if (!trackedWeb) return
+    const analysis = result && typeof result === 'object' && 'analysis' in result ? result.analysis as { id?: unknown } : null
+    const hash = createHash('sha256').update(`${analyticsAccountId}:${requestId}:${eventName}`).digest('hex')
+    await recordServerEvent({ eventName, eventId: `${hash.slice(0,8)}-${hash.slice(8,12)}-5${hash.slice(13,16)}-a${hash.slice(17,20)}-${hash.slice(20,32)}`,
+      accountId: analyticsAccountId, sessionId: requestId, source: 'web_analysis', properties: {
+        surface: 'web_analysis', flow_id: flowId, attempt_id: evaluationId, evaluation_id: evaluationId, request_id: requestId,
+        ...(typeof analysis?.id === 'string' ? { report_id: analysis.id } : {}),
+        duration_ms: Date.now() - startedAt, reason_code: reason,
+      } })
+  }
 
   try {
     await enforceRateLimit(req, res, { key: 'analyze', limit: 10, windowMs: 60 * 60 * 1000 })
@@ -38,6 +56,7 @@ return async function handler(req: NextApiRequest, res: NextApiResponse) {
       hasLandmarks: Boolean(body.landmarks),
     })
     const userId = await userIdPromise
+    analyticsAccountId = userId || undefined
     if (env.AUTH_REQUIRED && !userId) {
       throw new ApiError(401, 'Authentication required')
     }
@@ -47,6 +66,7 @@ return async function handler(req: NextApiRequest, res: NextApiResponse) {
       throw new ApiError(401, 'Sign in before generating a paid report')
     }
     if (clientRequestId.length > 200) throw new ApiError(400, 'Invalid scan request ID')
+    await recordOutcome('evaluation_request_started')
 
     const [anonymousProfile, userProfile] = await Promise.all([
       anonymousActorId ? getAnonymousProfile(anonymousActorId) : null,
@@ -76,11 +96,19 @@ return async function handler(req: NextApiRequest, res: NextApiResponse) {
           // Existing mobile builds retry a dropped connection immediately. Wait
           // for their original request instead of returning a terminal-looking 409.
           const completed = await waitForExistingEvaluation(`${userId}:${requestId}`, startedAt + 105_000)
-          if (completed) return json(res, 200, completed)
+          if (completed) {
+            const analysis = completed.analysis as { status?: string } | undefined
+            await recordOutcome(analysis?.status === 'complete' ? 'evaluation_request_completed' : 'evaluation_request_failed', completed)
+            return json(res, 200, completed)
+          }
         }
         throw error
       }
-      if (reservation.result) return json(res, 200, { ...reservation.result, entitlements: reservation.summary })
+      if (reservation.result) {
+        const saved = reservation.result.analysis as { status?: string } | undefined
+        await recordOutcome(saved?.status === 'complete' ? 'evaluation_request_completed' : 'evaluation_request_failed', reservation.result)
+        return json(res, 200, { ...reservation.result, entitlements: reservation.summary })
+      }
     }
 
     console.info('analyze:access-ready', { requestId, elapsedMs: Date.now() - startedAt })
@@ -104,6 +132,7 @@ return async function handler(req: NextApiRequest, res: NextApiResponse) {
     } : null
     const response = { ...result, entitlements, share: null }
     if (reservation) await finishEvaluation(reservation.id, response, successful)
+    await recordOutcome(successful ? 'evaluation_request_completed' : 'evaluation_request_failed', response, successful ? undefined : 'evaluation_failed')
 
     console.info('analyze:finish', {
       requestId,
@@ -117,6 +146,7 @@ return async function handler(req: NextApiRequest, res: NextApiResponse) {
 
     return json(res, result.deduped ? 200 : 201, response)
   } catch (error) {
+    await recordOutcome('evaluation_request_failed', undefined, error instanceof ApiError ? error.code : 'request_failed')
     if (reservation && !generationReturned) {
       await finishEvaluation(reservation.id, { analysis: { status: 'failed', failureReason: 'Unable to generate report. Please retry.' } }, false)
         .catch(refundError => console.error('analyze:credit-return-failed', reservation?.id, refundError))

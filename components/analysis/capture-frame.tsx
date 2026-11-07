@@ -12,6 +12,7 @@ export type CaptureFrameImagePosition = {
 }
 
 type CaptureFrameProps = {
+  bare?: boolean
   action?: ReactNode
   className?: string
   imageAlt?: string
@@ -31,6 +32,7 @@ type CaptureFrameProps = {
 
 export function CaptureFrame({
   action,
+  bare = false,
   className = '',
   imageAlt = 'Face alignment preview',
   imagePosition = { x: 50, y: 50, scale: 1 },
@@ -141,7 +143,7 @@ export function CaptureFrame({
     >
       {imageSrc ? (
         <Image
-          className="object-cover"
+          className={bare ? 'object-contain' : 'object-cover'}
           src={imageSrc}
           alt={imageAlt}
           fill
@@ -161,6 +163,7 @@ export function CaptureFrame({
         </div>
       )}
 
+      {!bare && <>
       <div className={`absolute inset-0 ${muted ? 'opacity-80' : ''}`}>
         <div className="absolute inset-0 bg-[radial-gradient(ellipse_50%_35%_at_50%_45%,rgba(0,0,0,0)_0%,rgba(0,0,0,0)_48%,rgba(0,0,0,0.18)_58%,rgba(0,0,0,0.58)_100%)]" />
         <div className="absolute inset-x-0 top-0 h-44 bg-gradient-to-b from-black/60 via-black/24 to-transparent" />
@@ -199,6 +202,7 @@ export function CaptureFrame({
         <p className={`${imageSrc ? '' : hasMedia ? 'mt-3' : 'mt-1.5'} text-sm font-medium text-white/62 sm:text-base`}>{hasMedia ? subtitle : 'Use a clear, front-facing image'}</p>
       </div>
 
+      </>}
       {action ? <div className="absolute inset-x-0 bottom-7 px-8">{action}</div> : null}
     </div>
   )

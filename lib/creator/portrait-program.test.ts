@@ -285,7 +285,7 @@ test('arrows, brackets and scribbles add distinct stable marks to the registered
   const activity={...samplePortraitProgram(prepared,1200,5000)!,first:true,elapsedMs:800,labelPhase:1}
   const paths=(treatment:typeof activity.treatment)=>{
     const lines:number[][]=[]
-    const ctx={globalAlpha:1,save(){},restore(){},getTransform(){return{a:1,b:0}},setLineDash(){},beginPath(){},moveTo(x:number,y:number){lines.push([x,y])},lineTo(x:number,y:number){lines.at(-1)!.push(x,y)},stroke(){},fill(){},arc(){},measureText(text:string){return{width:text.length*8}},fillText(){}} as unknown as CanvasRenderingContext2D
+    const ctx={globalAlpha:1,save(){},restore(){},getTransform(){return{a:1,b:0}},setLineDash(){},beginPath(){},closePath(){},moveTo(x:number,y:number){lines.push([x,y])},lineTo(x:number,y:number){lines.at(-1)!.push(x,y)},stroke(){},fill(){},arc(){},measureText(text:string){return{width:text.length*8}},fillText(){}} as unknown as CanvasRenderingContext2D
     drawPortraitActivity(ctx,{...activity,treatment},1200,1800)
     return lines
   }

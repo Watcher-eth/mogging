@@ -17,7 +17,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         (select count(*)::int from analytics_events where environment = 'production' and exported_at is null) as pending_events,
         (select min(received_at) from analytics_events where environment = 'production' and exported_at is null) as oldest_pending_event,
         (select count(*)::int from subscription_events where environment = 'production' and exported_at is null) as pending_billing_events,
-        (select count(*)::int from billing_webhook_receipts where processed_at is null and received_at < now() - interval '10 minutes') as unfinished_webhooks,
+        (select count(*)::int from billing_webhook_receipts where split_part(id,':',1) in ('stripe','revenuecat') and processed_at is null and received_at < now() - interval '10 minutes') as unfinished_webhooks,
         (select max(received_at) from subscription_events where provider = 'revenuecat') as last_revenuecat_receipt,
         (select max(received_at) from subscription_events where provider = 'stripe') as last_stripe_receipt,
         (select count(*)::int from payment_entitlements p where stripe_checkout_session_id like 'cs_live_%'

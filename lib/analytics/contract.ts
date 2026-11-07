@@ -31,7 +31,7 @@ export type AnalyticsProperties = Record<string, string | number | boolean | nul
 // demographics, coordinates, user input, or report scores leave the product.
 const propertyKeys = new Set([
   'course_id', 'lesson_id', 'lesson_index', 'lesson_count', 'completed_count', 'revisit', 'history_state', 'profile_type',
-  'account_type', 'runtime_environment', 'screen', 'previous_screen', 'step', 'step_index', 'step_count', 'onboarding_version', 'flow_id', 'attempt_id', 'request_id',
+  'account_type', 'runtime_environment', 'screen', 'previous_screen', 'flow_version', 'entry_mode', 'browser_family', 'device_platform', 'step', 'step_index', 'step_count', 'onboarding_version', 'flow_id', 'attempt_id', 'request_id',
   'stage_duration_ms', 'previous_stage_duration_ms', 'previous_stage', 'purchase_tracking_version', 'purchase_kind', 'transaction_id', 'os_version', 'store_environment', 'app_state', 'feedback_reason',
   'action', 'duration_ms', 'surface', 'plan', 'product', 'productId', 'product_id', 'offering',
   'paywall_id', 'paywall_version', 'default_plan', 'product_count', 'products_loaded',
@@ -41,7 +41,7 @@ const propertyKeys = new Set([
   'destination', 'placement', 'path', 'referrer_host', 'first_referrer_host', 'category', 'task_id', 'tab',
   'report_id', 'evaluation_id', 'success', 'count', 'push_id', 'campaign_id', 'creative_id',
   'creator_tracking_link_id', 'creator_first_tracking_link_id', 'creator_click_id',
-  'locale', 'timezone',
+  'locale', 'timezone', 'country', 'device_platform', 'browser_family', 'flow_version', 'entry_mode',
   'appsflyer_id', 'experiment_id', 'variant', 'landing_id', 'landing_version', 'price', 'currency', 'retry', 'first_evaluation',
   'utm_source', 'utm_medium', 'utm_campaign', 'utm_content', 'utm_term',
   'first_utm_source', 'first_utm_medium', 'first_utm_campaign', 'first_utm_content', 'first_utm_term',
@@ -51,7 +51,7 @@ export function sanitizeProperties(input: Record<string, unknown>): AnalyticsPro
   const output: AnalyticsProperties = {}
   let budget = 2000
   // Correlation and required event fields survive long attribution context.
-  const keys = new Set(['step', 'step_index', 'step_count', 'onboarding_version', 'flow_id', 'action', 'screen', 'course_id', 'lesson_id', 'duration_ms', 'permission', 'attempt_id', 'evaluation_id', 'request_id', 'report_id', 'transaction_id', 'reason_code', 'error_code', ...Object.keys(input).slice(0, 80)])
+  const keys = new Set(['flow_version', 'entry_mode', 'browser_family', 'device_platform', 'step', 'step_index', 'step_count', 'onboarding_version', 'flow_id', 'action', 'screen', 'course_id', 'lesson_id', 'duration_ms', 'permission', 'attempt_id', 'evaluation_id', 'request_id', 'report_id', 'transaction_id', 'reason_code', 'error_code', ...Object.keys(input).slice(0, 80)])
   for (const key of keys) {
     if (!propertyKeys.has(key)) continue
     const value = input[key]

@@ -35,7 +35,8 @@ export function purchaseAttemptsQuery(filters: AnalyticsFilters, now: Date) {
       and a.occurred_at >= s.started and a.occurred_at >= ${start}::timestamp
       and (a.event_name like 'purchase_%' or a.event_name = 'checkout_started') and a.occurred_at < ${now.toISOString()}::timestamp
     group by s.id,s.device,s.platform,s.release,s.started
-  ) select * from attempts order by started desc`
+  ) select id,device,platform,release,to_char(started,'YYYY-MM-DD"T"HH24:MI:SS.MS"Z"') as started,
+    events,verified,sandbox from attempts order by attempts.started desc`
 }
 export async function getPurchaseAttempts(filters: AnalyticsFilters) {
   const now = new Date()

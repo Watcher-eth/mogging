@@ -31,3 +31,24 @@
 @container (min-width: 360px) {
   .grid[data-embedded] { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 }
+
+.groups[data-hero] { height: 100%; }
+.groups[data-hero] .grid { height: 100%; grid-template-columns: repeat(2, minmax(0, 1fr)); grid-template-rows: repeat(2, minmax(0, 1fr)); gap: 8px; }
+.groups[data-hero] .metric { min-height: 0; padding: 10px 12px; gap: 5px; border-radius: 14px; }
+.groups[data-hero] .full { grid-column: 1 / -1; }
+.groups[data-hero] .metricHeader { flex-wrap: wrap; gap: 5px; }
+.groups[data-hero] .score { font-size: clamp(1rem, 1.7vw, 1.5rem); }
+
+:global(html):has(:global(.scan-flow[data-mobile-scan]) .reportShell),
+:global(body):has(:global(.scan-flow[data-mobile-scan]) .reportShell) { position: static; height: auto; overflow: visible; }
+:global(.scan-flow[data-mobile-scan]) .reportShell { height: auto; display: block; }
+:global(.scan-flow[data-mobile-scan]) .grid { grid-template-columns: repeat(2,minmax(0,1fr)); gap: 10px; }
+:global(.scan-flow[data-mobile-scan]) .metric { min-width: 0; padding: 15px; border-radius: 20px; }
+
+.lockedValue { color: #646873; font-size: 23px; filter: blur(4px); user-select: none; }
+
+.groups[data-mobile-report] .grid { margin-top: 0; }
+.groups[data-mobile-report] .metric { min-height: 128px; padding: 16px; gap: 12px; background: #f5f6f7; }
+.groups[data-mobile-report] .metric:not(.observation,.scoreOnly) { min-height: 170px; }
+.groups[data-mobile-report] .metricHeader > p { color: #191b1e; font: 500 13px/1.2 system-ui,sans-serif; text-transform: none; letter-spacing: 0; }
+.groups[data-mobile-report] .score { align-self: flex-start; font-size: 27px; line-height: 1.1; }

@@ -25,7 +25,8 @@ export const creatorProfileSchema = z
   .object({
     displayName: z.string().trim().min(2).max(80),
     socialHandle: z.string().trim().max(120).optional().nullable(),
-    paymentOption: z.enum(['paypal', 'crypto']),
+    paymentOption: z.enum(['paypal', 'crypto', 'bank_transfer']),
+    bankTransferDetails: z.string().trim().max(1500).optional().nullable(),
     paypalEmail: z.string().trim().email().optional().nullable(),
     paypalMeUrl: z.string().trim().max(2048).refine((value) => {
       if (!value) return true
@@ -38,6 +39,9 @@ export const creatorProfileSchema = z
     cryptoWalletAddress: z.string().trim().max(180).optional().nullable(),
   })
   .superRefine((value, ctx) => {
+    if (value.paymentOption === 'bank_transfer' && (!value.bankTransferDetails || value.bankTransferDetails.length < 20)) {
+      ctx.addIssue({ code: 'custom', path: ['bankTransferDetails'], message: 'Add the account holder, bank, country, account number or IBAN, and SWIFT or routing code' })
+    }
     if (value.paymentOption === 'paypal' && !value.paypalEmail) {
       ctx.addIssue({ code: 'custom', path: ['paypalEmail'], message: 'PayPal email is required' })
     }

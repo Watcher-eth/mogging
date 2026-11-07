@@ -24,7 +24,11 @@ export function ExperimentsReport({ data }: { data: AnalyticsDashboard }) {
   const days = Number(data.filters.days)
   const latest = rows.map(row => row.latest_exposure).filter((value): value is string => typeof value === 'string').sort((a, b) => landingEventTime(b) - landingEventTime(a))[0]
   const daily = (data.landingExperimentDaily ?? []).filter(row => row.experiment_id === experiment.id)
-  const confidence = experiment.status === 'active' ? '95%' : '97.5%'
+  const paidPrimary = experiment.status === 'active'
+  const confidence = paidPrimary ? '95%' : '97.5%'
+  const outcome = paidPrimary ? 'Paid conversion' : 'App Store click'
+  const conversions = paidPrimary ? 'paying browsers' : 'clicks'
+  const digits = paidPrimary ? 2 : 1
   const measurements = 'Each browser assignment is deduplicated in the selected period. Outcomes must follow exposure, match its experiment and variant, occur within seven days, and fall inside the selected period. Only browsers with a complete seven-day follow-up enter mature rates. Assignments with a recorded iPhone handoff are excluded from both rate numerators and denominators. App Store clicks exclude automatic iPhone redirects and handoff buttons. Cookies or devices changing can create another assignment. Missing events and blockers can affect results. Confidence intervals describe uncertainty; they do not give the probability a variant is the winner.'
 
   return <>
@@ -41,16 +45,21 @@ export function ExperimentsReport({ data }: { data: AnalyticsDashboard }) {
     {days <= 7 ? <Notice>This period has no full seven-day follow-up for recent entrants. Choose Last 30 or 90 days to compare mature outcomes.</Notice> : null}
     {summary.imbalance ? <Notice>The recorded split is unexpectedly uneven. Investigate assignment and event delivery before interpreting results (allocation check: p &lt; 0.001).</Notice> : null}
     <div className="admin-stats-grid">
-      <Stat title="A · App Store click rate" value={String(control.mature_store_rate)} note={`${count(control.mature_store_clicks)} clicks / ${count(control.mature)} eligible browsers · ${confidence} interval: ${control.interval}`} />
-      <Stat title="B · App Store click rate" value={String(treatment.mature_store_rate)} note={`${count(treatment.mature_store_clicks)} clicks / ${count(treatment.mature)} eligible browsers · ${confidence} interval: ${treatment.interval}`} />
-      <Stat title="Difference · B minus A" value={summary.difference} note="Percentage points · mature click rates; not a winner declaration" />
+      <Stat title={`A · ${outcome} rate`} value={String(control.mature_conversion_rate)} note={`${count(control.mature_conversions)} ${conversions} / ${count(control.mature)} eligible browsers · ${confidence} interval: ${control.interval}`} />
+      <Stat title={`B · ${outcome} rate`} value={String(treatment.mature_conversion_rate)} note={`${count(treatment.mature_conversions)} ${conversions} / ${count(treatment.mature)} eligible browsers · ${confidence} interval: ${treatment.interval}`} />
+      <Stat title="Difference · B minus A" value={summary.difference} note="Percentage points · mature conversion rates; not a winner declaration" />
       <Stat title="Eligible browsers" value={count(eligible)} note={`${count(pending)} awaiting a full seven-day follow-up`} />
     </div>
-    <Panel title="Primary outcome · App Store interest" description={`Mature App Store click rate · ${confidence} confidence intervals`} note={measurements}>
-      {comparable ? <Bars maximum={100} format={value => `${value.toFixed(1)}%`} rows={rows.map((row, index) => ({ label: index === 0 ? 'A · Control' : 'B · Treatment', value: Number(row.mature_store_clicks) / Number(row.mature) * 100, detail: `${row.variant} · ${count(row.mature_store_clicks)} of ${count(row.mature)} eligible browsers · ${confidence} interval: ${row.interval}` }))} /> : <p className="admin-empty">Both variants need eligible browsers before a mature rate comparison is available. Pending visitors are not counted as failures.</p>}
-      <p className="mt-4 text-sm leading-6 text-zinc-500">App Store clicks measure interest. They do not establish downloads, paying customers, or revenue.</p>
+    <Panel title={`Primary outcome · ${paidPrimary ? 'Sales & subscriptions' : 'App Store interest'}`} description={`Mature ${outcome.toLowerCase()} rate · ${confidence} confidence intervals`} note={measurements}>
+      {comparable ? <Bars maximum={100} format={value => `${value.toFixed(digits)}%`} rows={rows.map((row, index) => ({ label: index === 0 ? 'A · Control' : 'B · Treatment', value: Number(row.mature_conversions) / Number(row.mature) * 100, detail: `${row.variant} · ${count(row.mature_conversions)} of ${count(row.mature)} eligible browsers · ${confidence} interval: ${row.interval}` }))} /> : <p className="admin-empty">Both variants need eligible browsers before a mature rate comparison is available. Pending visitors are not counted as failures.</p>}
+      <p className="mt-4 text-sm leading-6 text-zinc-500">{paidPrimary ? 'A browser converts after at least one verified, positive Stripe payment for a subscription or one-time purchase. Multiple payments from the same browser count once. Native App Store purchases have no reliable experiment assignment and are excluded.' : 'App Store clicks measure interest. They do not establish downloads, paying customers, or revenue.'}</p>
+      {paidPrimary && <div className="mt-5">
+        <p className="mb-2 text-sm font-medium">Observed paying browsers by purchase type</p>
+        <Table rows={rows} columns={['variant', 'paid_checkouts', 'subscription_buyers', 'one_time_buyers']} />
+        <p className="mt-2 text-xs text-zinc-500">Includes recent browsers still in follow-up. A browser can appear in both purchase types.</p>
+      </div>}
       <p className="mt-3 text-xs leading-5 text-zinc-500">Review checkpoints: at least {experiment.minimumDays} observed days and {count(experiment.minimumVisitors)} eligible browsers per variant. Currently {summary.elapsedDays} observed days · A {count(control.mature)} · B {count(treatment.mature)}. Reaching a checkpoint does not guarantee enough statistical power or a winner.</p>
-      <DataDetails><Table rows={rows} columns={['variant', 'mature', 'mature_store_clicks', 'mature_store_rate', 'interval']} /><p className="mt-3 text-xs text-zinc-500">Relative lift of B vs A: {summary.lift}. Undefined when A has no mature clicks. Intervals use the existing Wilson method.</p></DataDetails>
+      <DataDetails><Table rows={rows} columns={['variant', 'mature', 'mature_conversions', 'mature_conversion_rate', 'interval']} /><p className="mt-3 text-xs text-zinc-500">Relative lift of B vs A: {summary.lift}. Undefined when A has no mature conversions. Intervals use the existing Wilson method.</p></DataDetails>
     </Panel>
     <Panel title="Traffic allocation over time" description={`${summary.total ? count(summary.total) : 'No'} recorded browser assignments · A ${count(control.visitors)} / B ${count(treatment.visitors)}`} note="Each point groups a browser's first recorded entry for this experiment in the selected window by Pacific-time entry date. These are assignment counts, not conversions. Boundary buckets are partial; missing buckets are omitted. Counts describe the selected period rather than the entire experiment lifetime.">
       <AnalyticsChart title="Experiment traffic allocation" rows={daily} fitToData metrics={[
@@ -62,9 +71,9 @@ export function ExperimentsReport({ data }: { data: AnalyticsDashboard }) {
     <Panel title="Secondary outcomes & diagnostics" description="Supporting evidence, separate from the primary test outcome.">
       <Disclosure className="admin-data-details"><DisclosureSummary>Explore downstream outcomes and exclusions</DisclosureSummary><AccordionContent>
         <p className="mt-4 text-xs leading-5 text-zinc-500">Observed counts for all assigned browsers, including recent entrants. Outcomes can overlap and are still developing; these are not mature conversion rates. Paid entries require a positive, server-confirmed paid checkout and are not payment transaction totals.</p>
-        <Table rows={rows.map(row => ({ variant: row.variant, assignments: row.visitors, pending: row.pending, web_analysis_starts: row.browser_starts, paywalls: row.paywalls, entries_with_paid_checkout: row.paid_checkouts }))} columns={['variant', 'assignments', 'pending', 'web_analysis_starts', 'paywalls', 'entries_with_paid_checkout']} />
+        <Table rows={rows.map(row => ({ variant: row.variant, assignments: row.visitors, pending: row.pending, web_analysis_starts: row.browser_starts, paywalls: row.paywalls, app_store_clicks: row.store_clicks, checkout_starts: row.checkouts, paying_browsers: row.paid_checkouts, subscription_buyers: row.subscription_buyers, one_time_buyers: row.one_time_buyers }))} columns={['variant', 'assignments', 'pending', 'web_analysis_starts', 'paywalls', 'app_store_clicks', 'checkout_starts', 'paying_browsers', 'subscription_buyers', 'one_time_buyers']} />
         <h3 className="mb-3 mt-6 text-sm font-medium">iPhone handoff context</h3>
-        <p className="mb-3 text-xs leading-5 text-zinc-500">These shared handoffs happen before homepage treatment and are excluded from the primary click metric. Counts cover the selected period across tests; do not add them to variant conversions.</p>
+        <p className="mb-3 text-xs leading-5 text-zinc-500">These shared handoffs happen before homepage treatment and are excluded from the primary comparison. Counts cover the selected period across tests; do not add them to variant conversions.</p>
         <Table rows={data.landingHandoffs ?? []} columns={['placement', 'destination', 'browsers']} />
         <p className="mt-4 text-xs text-zinc-500">Experiment ID: {experiment.id} · Assignment cookie lasts 90 days. Archived treatments retain their original definitions.</p>
       </AccordionContent></Disclosure>

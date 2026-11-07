@@ -1,6 +1,23 @@
 import { expect, test } from 'bun:test'
-import { canReceiveCreatorPayout, creatorBundlePlan, creatorMoneySummary, remainingCreatorPaymentCents } from './money'
+import { canReceiveCreatorPayout, canUseCreatorBankTransfer, creatorMissingPaymentData, creatorBundlePlan, creatorMoneySummary, remainingCreatorPaymentCents } from './money'
 import type { CreatorPayment, CreatorSubmission } from '@/components/creator/types'
+
+test('bank transfer is restricted to reviewed unpaid earnings with missing selected payment details', () => {
+  const profile = { paymentOption: 'paypal' as const, paypalEmail: null, cryptoNetwork: null, cryptoWalletAddress: null }
+  const post = { id: 'owed', sprintId: 'campaign', status: 'approved', approvedAmountCents: 1000 } as CreatorSubmission
+  expect(creatorMissingPaymentData(profile, [post], [])).toBe(true)
+  expect(canUseCreatorBankTransfer(profile, [post], [])).toBe(true)
+  const complete = { ...profile, paypalEmail: 'creator@example.com' }
+  expect(canUseCreatorBankTransfer(complete, [post], [])).toBe(false)
+  expect(canUseCreatorBankTransfer(profile, [{ ...post, status: 'pending', approvedAmountCents: null }], [])).toBe(false)
+  expect(canUseCreatorBankTransfer(profile, [{ ...post, approvedAmountCents: 0 }], [])).toBe(false)
+  expect(canUseCreatorBankTransfer(profile, [post], [{ submissionId: post.id, amountCents: 1000, status: 'paid' }])).toBe(false)
+  expect(creatorMissingPaymentData({ ...profile, paymentOption: 'crypto', cryptoNetwork: 'USDC on Solana', paypalEmail: 'unused@example.com' }, [post], [])).toBe(true)
+  const bank = { ...profile, paymentOption: 'bank_transfer' as const, bankTransferDetails: 'Account holder / bank / country / IBAN / SWIFT' }
+  expect(canReceiveCreatorPayout({ ...bank, authStatus: 'pending' })).toBe(true)
+  expect(creatorMissingPaymentData(bank, [post], [])).toBe(false)
+  expect(canUseCreatorBankTransfer(bank, [], [])).toBe(true)
+})
 test('a second milestone leaves only its increase unpaid', () => {
   const submission = {id:'s', sprintId:'campaign', status:'approved',approvedAmountCents:3000} as CreatorSubmission
   const payments = [{submissionId:'s',amountCents:1000,status:'paid'}] as CreatorPayment[]

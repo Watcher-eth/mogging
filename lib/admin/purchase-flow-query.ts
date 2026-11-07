@@ -6,7 +6,7 @@ import type { MetricRow } from './analytics'
 
 export type PurchaseFlowReport = {
   summary: MetricRow[]; daily: MetricRow[]; outcomes: MetricRow[]; surfaces: MetricRow[];
-  failures: MetricRow[]; feedback: MetricRow[]; support: MetricRow[]; coverage: MetricRow[]; handoffs: MetricRow[]
+  failures: MetricRow[]; feedback: MetricRow[]; support: MetricRow[]; coverage: MetricRow[]; handoffs: MetricRow[]; catalog?: MetricRow[]
 }
 
 // Full-window aggregates, independent of the capped, authenticated timeline endpoint.
@@ -91,6 +91,15 @@ export function purchaseFlowCTEs(start: string, end: string, days: number) {
   ), purchase_flow_support as (
     select event_name,count(*) as events,count(distinct actor) as devices from purchase_flow_events
     where event_name in ('restore_started','restore_failed','purchase_restored','activation_code_redeemed') group by event_name order by event_name
+  ), purchase_flow_catalog as (
+    select coalesce(app_version,'unknown') as release,
+      case properties->>'product_count' when '3' then 'complete' when '0' then 'empty'
+        when '1' then 'partial' when '2' then 'partial' else 'unknown' end as availability,
+      coalesce(properties->>'reason_code','not_recorded') as reason,
+      count(*) as loads,count(distinct actor) as devices,
+      round(avg(case when properties->>'duration_ms' ~ '^[0-9]{1,9}$' then (properties->>'duration_ms')::numeric end)) as average_ms
+    from purchase_flow_events where event_name='paywall_products_loaded'
+    group by 1,2,3 order by loads desc
   ), purchase_flow_coverage as (
     select count(*) filter(where event_name='purchase_started') as start_events,
       count(*) filter(where event_name='purchase_started' and (nullif(properties->>'attempt_id','') is null or actor is null)) as unlinked_starts,
@@ -116,6 +125,7 @@ export function purchaseFlowCTEs(start: string, end: string, days: number) {
       'failures',coalesce((select json_agg(r) from purchase_flow_failures r),'[]'::json),
       'feedback',coalesce((select json_agg(r) from purchase_flow_feedback r),'[]'::json),
       'support',coalesce((select json_agg(r) from purchase_flow_support r),'[]'::json),
+      'catalog',coalesce((select json_agg(r) from purchase_flow_catalog r),'[]'::json),
       'coverage',(select json_agg(r) from purchase_flow_coverage r),
       'handoffs',coalesce((select json_agg(r) from purchase_flow_handoffs r),'[]'::json)
     ) as report

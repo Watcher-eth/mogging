@@ -5,11 +5,12 @@ export type CreatorProfile = {
   displayName: string
   socialHandle: string | null
   authStatus: 'pending' | 'verified' | 'suspended'
-  paymentOption: 'paypal' | 'crypto'
+  paymentOption: 'paypal' | 'crypto' | 'bank_transfer'
   paypalEmail: string | null
   paypalMeUrl?: string | null
   cryptoNetwork: string | null
   cryptoWalletAddress: string | null
+  bankTransferDetails?: string | null
 }
 
 export type CreatorSubmission = {
@@ -56,7 +57,7 @@ export type CreatorPayment = {
   amountCents: number
   currency: string
   status: 'pending' | 'processing' | 'paid' | 'failed' | 'cancelled'
-  paymentOption: 'paypal' | 'crypto'
+  paymentOption: 'paypal' | 'crypto' | 'bank_transfer'
   paidAt: string | null
 }
 
@@ -113,7 +114,7 @@ export type CreatorPayoutRequest = {
   creatorProfileId: string
   amountCents: number
   status: 'pending' | 'paid'
-  paymentOption: 'paypal' | 'crypto'
+  paymentOption: 'paypal' | 'crypto' | 'bank_transfer'
   destination: string
   network: string | null
   requestedAt: string

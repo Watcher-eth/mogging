@@ -12,10 +12,12 @@ test.skipIf(!url)('homepage reporting deduplicates exposure and only credits mat
     await client.begin(async tx => {
       await tx`create temporary table analytics_events (event_name text, occurred_at timestamp, received_at timestamp default now(), account_id text, anonymous_id text, mobile_install_id text, platform text, app_version text, properties jsonb, session_id text, source text, schema_version integer default 1, environment text) on commit drop`
       await tx`create temporary table subscription_events (id text, provider text, provider_event_id text, provider_type text, event_name text, account_id text, external_user_id text, subscription_id text, transaction_id text, amount numeric, currency text, product_id text, properties jsonb, environment text, occurred_at timestamp, received_at timestamp, exported_at timestamp) on commit drop`
-      await tx.unsafe(`create temporary table users (id text,analytics_internal boolean default false) on commit drop;
+      await tx.unsafe(`create temporary table users (id text,created_at timestamp,analytics_internal boolean default false) on commit drop;
+        create temporary table creator_tracking_links (id text, slug text, social_account_id text) on commit drop;
+        create temporary table creator_social_accounts (id text, handle text, display_name text, platform text) on commit drop;
         create temporary table photos (id text,source text,user_id text) on commit drop;
         create temporary table analyses (id text,photo_id text,status text,created_at timestamp) on commit drop;
-        create temporary table payment_entitlements (id text,user_id text,mobile_install_id text,source text,stripe_checkout_session_id text,metadata jsonb) on commit drop;
+        create temporary table payment_entitlements (id text,user_id text,mobile_install_id text,source text,stripe_checkout_session_id text,stripe_subscription_id text,metadata jsonb) on commit drop;
         create temporary table scan_reservations (id text,user_id text,entitlement_id text,status text,created_at timestamp,result jsonb) on commit drop;
         create temporary table referral_signups (referred_user_id text,inviter_user_id text,created_at timestamptz) on commit drop;`)
       async function event(name: string, id: string, variant: string, at: string, extra: Record<string, unknown> = {}, platform = 'web', experiment = 'landing_homepage_v2', version = '2', environment = 'production') {
@@ -38,7 +40,9 @@ test.skipIf(!url)('homepage reporting deduplicates exposure and only credits mat
       await event('app_store_redirected','new','b','2026-09-10') // before exposure
       await event('app_store_redirected','new','a','2026-09-12') // wrong variant
       await event('app_store_redirected','new','b','2026-09-20') // outside seven days
-      await event('checkout_completed','new','b','2026-09-12',{status:'paid',price:9.99},'server')
+      await event('checkout_completed','new','b','2026-09-12',{status:'paid',price:999,mode:'subscription'},'server')
+      await event('checkout_completed','new','b','2026-09-13',{status:'paid',price:499,mode:'payment'},'server')
+      await event('checkout_completed','new','b','2026-09-14',{status:'paid',price:999,mode:'subscription'},'server')
       await event('checkout_completed','old','a','2026-09-12',{status:'paid',price:0},'server')
       await event('landing_viewed','legacy','a','2026-09-13',{},'web','landing_hero_v1','1')
       await event('app_store_redirected','legacy','a','2026-09-14',{},'web','landing_hero_v1','1')
@@ -56,7 +60,7 @@ test.skipIf(!url)('homepage reporting deduplicates exposure and only credits mat
       expect(result.data.landingSections).toEqual([{section:'reviews',visitors:1}])
       expect(result.data.landingPlacements).toEqual([{placement:'hero',destination:'app_store',visitors:1}])
       expect(rows.find((row: {experiment_id:string;variant:string})=>row.experiment_id==='landing_homepage_v2'&&row.variant==='a')).toMatchObject({visitors:2,homepage_visitors:1,store_clicks:1,mature:1,mature_store_clicks:1,paid_checkouts:0})
-      expect(rows.find((row: {experiment_id:string;variant:string})=>row.experiment_id==='landing_homepage_v2'&&row.variant==='b')).toMatchObject({visitors:1,store_clicks:0,mature:1,mature_store_clicks:0,paid_checkouts:1})
+      expect(rows.find((row: {experiment_id:string;variant:string})=>row.experiment_id==='landing_homepage_v2'&&row.variant==='b')).toMatchObject({visitors:1,store_clicks:0,mature:1,mature_store_clicks:0,paid_checkouts:1,mature_paid_checkouts:1,subscription_buyers:1,one_time_buyers:1})
       expect(rows.find((row: {experiment_id:string;variant:string})=>row.experiment_id==='landing_hero_v1'&&row.variant==='a')).toMatchObject({visitors:1,store_clicks:1})
       expect(result.data.landingHandoffs).toEqual(expect.arrayContaining([
         {placement:'automatic_iphone',destination:'app_store',browsers:1},

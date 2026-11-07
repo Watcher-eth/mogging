@@ -10,12 +10,16 @@ export const CREATOR_MONTHLY_COUPON = 'mogging_creator_first_month_10'
 // History includes expired, refunded and trial subscriptions: this is a first-subscription offer.
 export async function isCreatorDiscountEligible(accountId: string, attribution: CreatorAttributionContext | null) {
   if (!attribution) return false
-  const [link, entitlement, event] = await Promise.all([
-    db.query.creatorTrackingLinks.findFirst({ where: and(eq(schema.creatorTrackingLinks.id, attribution.trackingLinkId), eq(schema.creatorTrackingLinks.isActive, true)), columns: { id: true } }),
+  const link = await db.query.creatorTrackingLinks.findFirst({ where: and(eq(schema.creatorTrackingLinks.id, attribution.trackingLinkId), eq(schema.creatorTrackingLinks.isActive, true)), columns: { id: true } })
+  return Boolean(link && await isFirstSubscriptionEligible(accountId))
+}
+
+export async function isFirstSubscriptionEligible(accountId: string) {
+  const [entitlement, event] = await Promise.all([
     db.query.paymentEntitlements.findFirst({ where: and(eq(schema.paymentEntitlements.userId, accountId), inArray(schema.paymentEntitlements.product, ['mobile_subscription_weekly', 'mobile_subscription_monthly', 'mobile_subscription_yearly', 'mobile_lifetime'])), columns: { id: true } }),
     db.query.subscriptionEvents.findFirst({ where: and(eq(schema.subscriptionEvents.accountId, accountId), inArray(schema.subscriptionEvents.eventName, ['trial_started', 'subscription_started', 'trial_converted', 'subscription_renewed', 'cancellation_scheduled', 'subscription_refunded', 'subscription_expired', 'subscription_reactivated'])), columns: { id: true } }),
   ])
-  if (!link || entitlement || event) return false
+  if (entitlement || event) return false
   const subscriber = await fetchRevenueCatSubscriber(accountId, true)
   return !Object.keys(subscriber?.subscriptions ?? {}).length && !Object.keys(subscriber?.entitlements ?? {}).length
 }

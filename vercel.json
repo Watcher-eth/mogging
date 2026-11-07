@@ -31,6 +31,10 @@
     {
       "path": "/api/cron/creator-attribution",
       "schedule": "*/5 * * * *"
+    },
+    {
+      "path": "/api/cron/creator-video-metrics",
+      "schedule": "*/15 * * * *"
     }
   ]
 }

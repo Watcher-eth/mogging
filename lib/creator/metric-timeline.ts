@@ -51,11 +51,31 @@ export function metricTimelineGeometry({ width, height, positions = [], progress
   return { ticks, cursors, majorLength, balanced, curved, sparse, baseY, bottom, place }
 }
 
-type TimelineOptions = GeometryOptions & { position?: number; ink: string; muted: string; line: string; accent: string; cursorLabel?: string; paintLabel?: (ctx: CanvasRenderingContext2D, frame: { x: number; y: number; width: number; height: number }, draw: (ctx: CanvasRenderingContext2D) => void) => void }
+type TimelineOptions = GeometryOptions & { morphFrom?: { variant: number; position: number; amount: number }; position?: number; ink: string; muted: string; line: string; accent: string; cursorLabel?: string; paintLabel?: (ctx: CanvasRenderingContext2D, frame: { x: number; y: number; width: number; height: number }, draw: (ctx: CanvasRenderingContext2D) => void) => void }
 
 export function drawMetricTimeline(ctx: CanvasRenderingContext2D, options: TimelineOptions) {
   const { width, height, progress, ink, muted, labels = true, cursorLabel } = options
   const geometry = metricTimelineGeometry({ ...options, labels, positions: options.positions ?? (options.position === undefined ? [] : [options.position]) })
+  const from = options.morphFrom
+  if (from && from.amount < 1) {
+    const previous = metricTimelineGeometry({ ...options, variant: from.variant, positions: [from.position], progress: 1 })
+    const mix = (a: number, b: number) => a + (b - a) * from.amount
+    const position = (old: { x: number; y: number; rotation: number }, next: { x: number; y: number; rotation: number }) =>
+      ({ x: mix(old.x, next.x), y: mix(old.y, next.y), rotation: mix(old.rotation, next.rotation) })
+    const baseline = (point: { x: number; y: number; rotation: number }, length: number, centered: boolean) =>
+      ({ ...point, y: point.y + (centered ? -length / 2 : 0) + (geometry.balanced ? length / 2 : 0) })
+    const oldTicks = new Map(previous.ticks.map(tick => [tick.value, tick]))
+    const newValues = new Set(geometry.ticks.map(tick => tick.value))
+    geometry.ticks = geometry.ticks.map(tick => {
+      const old = oldTicks.get(tick.value)
+      return { ...tick, ...position(baseline(old ?? previous.place(tick.value), old?.length ?? tick.length, previous.balanced), tick),
+        opacity: mix(old?.opacity ?? 0, tick.opacity), length: mix(old?.length ?? tick.length, tick.length) }
+    }).concat(previous.ticks.filter(tick => !newValues.has(tick.value)).map(tick => ({
+      ...tick, ...position(baseline(tick, tick.length, previous.balanced), geometry.place(tick.value)), opacity: tick.opacity * (1 - from.amount),
+    })))
+    geometry.cursors = geometry.cursors.map((cursor, index) => position(baseline(previous.cursors[index] ?? cursor, previous.majorLength, previous.balanced), cursor))
+    geometry.majorLength = mix(previous.majorLength, geometry.majorLength)
+  }
   const { majorLength, balanced } = geometry
   const accent = geometry.sparse ? metricTimelinePalette.warm : options.accent
   ctx.save(); ctx.lineCap = 'round'

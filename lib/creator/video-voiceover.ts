@@ -114,7 +114,7 @@ export function assembleSpeech(composition: VideoComposition, segments: Array<{ 
     chunks.push(segment.pcm, pause)
     for (const word of segment.words ?? []) observed.push({ ...word, startMs: startMs + word.startMs, endMs: startMs + word.endMs })
     const retimed = retimeVideoScene(scene, durationMs)
-    const next = { ...retimed, startMs, words: undefined, tracks: retimed.tracks.map(track => ({ ...track, wordId: undefined })) }
+    const next = { ...retimed, startMs, words: composition.privateStudy ? segment.words : undefined, tracks: retimed.tracks.map(track => ({ ...track, wordId: undefined })) }
     startMs += durationMs
     return next
   })

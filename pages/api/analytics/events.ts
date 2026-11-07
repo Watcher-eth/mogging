@@ -1,3 +1,4 @@
+import { getRequestLocation } from '@/lib/geo/request'
 import { isRetiredAnalyticsSurface } from '@/lib/analytics/contract'
 import { monitorBackend } from '@/lib/reliability/monitor'
 import type { NextApiRequest, NextApiResponse } from 'next'
@@ -8,6 +9,7 @@ import { analyticsEventSchema, recordAnalyticsEvents } from '@/lib/analytics/eve
 import { getRequestUserId } from '@/lib/auth/mobile-session'
 import { db, schema } from '@/lib/db'
 import { and, eq, inArray } from 'drizzle-orm'
+import { webRequestContext } from '@/lib/analytics/web-context'
 
 export const config = { api: { bodyParser: { sizeLimit: '192kb' } } }
 
@@ -36,6 +38,7 @@ export async function handler(req: NextApiRequest, res: NextApiResponse) {
       columns: { userId: true },
     }) : []
     const ownedIds = new Set([accountId, ...claimed.map(guest => guest.userId)])
+    const browserContext = webRequestContext(req.headers['user-agent'] || '')
     const events = valid.filter(event => !isRetiredAnalyticsSurface(event.properties.screen) && !isRetiredAnalyticsSurface(event.properties.path)
       && event.platform !== 'server'
       && !/^(revenuecat|stripe):/.test(event.anonymousId || '')
@@ -46,6 +49,9 @@ export async function handler(req: NextApiRequest, res: NextApiResponse) {
       accountId: accountId && event.accountId && ownedIds.has(event.accountId) ? accountId : undefined,
       environment: process.env.VERCEL_ENV && process.env.VERCEL_ENV !== 'production' ? 'development' as const : event.environment,
       source: event.platform === 'web' ? 'web' : 'mobile',
+      properties: event.platform === 'web' ? {
+        ...event.properties, ...browserContext, country: getRequestLocation(req).country,
+      } : event.properties,
     }))
 
     await recordAnalyticsEvents(events)

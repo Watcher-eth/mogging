@@ -5,7 +5,7 @@ const event = (type: string, object: Record<string, unknown>, previous_attribute
   id: 'evt_test', type, created: 1000, livemode: false, data: { object, previous_attributes },
 }) as unknown as Stripe.Event
 test('subscription checkout does not double-count invoice revenue', () => {
-  expect(normalizeStripeLifecycle(event('checkout.session.completed', { id: 'cs', mode: 'subscription', payment_status: 'paid', amount_total: 999 }))?.amount).toBeNull()
+  expect(normalizeStripeLifecycle(event('checkout.session.completed', { id: 'cs', mode: 'subscription', payment_status: 'paid', amount_total: 999 }))).toMatchObject({ amount: null, providerEventId: 'checkout:cs', eventName: 'checkout_confirmed' })
   expect(normalizeStripeLifecycle(event('invoice.paid', { id: 'in', amount_paid: 999, currency: 'usd', billing_reason: 'subscription_cycle' }))).toMatchObject({ amount: '9.99', eventName: 'subscription_renewed' })
 })
 test('delayed checkout and refund notifications have transaction-level dedupe keys', () => {

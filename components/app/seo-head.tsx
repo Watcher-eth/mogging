@@ -39,7 +39,7 @@ export function SeoHead({
       )}
       <title key="title">{title}</title>
       <meta key="description" name="description" content={description} />
-      <meta key="apple-itunes-app" name="apple-itunes-app" content={`app-id=${iosAppStoreId}, app-argument=${canonicalUrl}`} />
+      {router.pathname !== '/analysis' && <meta key="apple-itunes-app" name="apple-itunes-app" content={`app-id=${iosAppStoreId}, app-argument=${canonicalUrl}`} />}
       {router.pathname === '/' && locales.map(locale => <link key={`alternate-${locale}`} rel="alternate" hrefLang={locale} href={`${siteUrl}${locale === 'en' ? '/' : `/${locale}`}`} />)}
       {router.pathname === '/' && <link key="alternate-default" rel="alternate" hrefLang="x-default" href={`${siteUrl}/`} />}
       <link key="canonical" rel="canonical" href={canonicalUrl} />

@@ -3,27 +3,28 @@ import Link from 'next/link'
 import { useId } from 'react'
 import { AnimatePresence, motion, useReducedMotion } from 'motion/react'
 import { useTranslation } from 'react-i18next'
-import { ArrowUpRight, Check, ChartNoAxesCombined, ScanFace, ListChecks, ShieldCheck } from 'lucide-react'
+import { ArrowUpRight, Bell, Check, ChartNoAxesCombined, ScanFace, ListChecks, ShieldCheck } from 'lucide-react'
 import { formatStripePrice, type SubscriptionPrices, type SubscriptionProduct } from '@/lib/payments/subscription-prices'
 import { cn } from '@/lib/utils'
 import styles from './membership-offer.module.css'
 const EvaluationPreview = dynamic(() => import('@/components/landing/mobile-preview').then(module => module.EvaluationPreview), { ssr: false })
 
 export type ReportPrice = { product: 'evaluation' | 'evaluation_pack_3'; currency: string; amount: number }
-export type CheckoutQuote = { currency: string; unitAmount: number }
+export type CheckoutQuote = { currency: string; unitAmount: number; returnOfferSessionId?: string }
 export const membershipPlans = [
   { id: 'mobile_subscription_weekly', label: 'plan.weekly', cadence: 'plan.weekCadence', credits: 1 },
   { id: 'mobile_subscription_monthly', label: 'plan.monthly', cadence: 'plan.monthCadence', credits: 2 },
   { id: 'mobile_subscription_yearly', label: 'plan.yearly', cadence: 'plan.yearCadence', credits: 2 },
 ] as const
 
-export function MembershipValue() {
+export function MembershipValue({ scan = false }: { scan?: boolean }) {
   const { t } = useTranslation()
   return <div className={styles.benefits}>
     {[
       { Icon: ScanFace, title: t('membership.evaluation'), detail: t('membership.evaluationDetail') },
       { Icon: ListChecks, title: t('membership.protocol'), detail: t('membership.protocolDetail') },
-      { Icon: ChartNoAxesCombined, title: t('membership.progress'), detail: t('membership.progressDetail') },
+      { Icon: ChartNoAxesCombined, title: scan ? 'Track progress over time' : t('membership.progress'), detail: t('membership.progressDetail') },
+      ...(scan ? [{ Icon: Bell, title: 'Reminders to stay on track', detail: '' }] : []),
     ].map(({ Icon, title, detail }) => <div className={styles.benefit} key={title}><Icon size={19} strokeWidth={1.6} aria-hidden="true" /><div><strong>{title}</strong><p>{detail}</p></div></div>)}
   </div>
 }

@@ -1,6 +1,8 @@
 import { beforeEach, expect, mock, test } from 'bun:test'
 import { creatorSocialAccountSchema } from './validation'
 
+mock.module('@/lib/reliability/monitor', () => ({ monitorBackend: (_name: string, handler: unknown) => handler }))
+
 let session: { user: { id: string; email: string } } | null
 const addAccount = mock(async (_userId: string, input: unknown) => ({ id: 'account', ...input as object }))
 mock.module('@/lib/auth/session', () => ({ getAuthSession: async () => session }))
@@ -60,4 +62,28 @@ test('Instagram manual connection remains available to other creators', async ()
   session!.user.email = 'other@gmail.com'
   expect((await connect({ platform: 'instagram', identity: 'creator' })).statusCode).toBe(201)
   expect(addAccount).toHaveBeenCalledTimes(1)
+})
+
+test('pending TikTok approval hides OAuth and blocks consent redirects', async () => {
+  const previous = process.env.TIKTOK_CREATOR_VIDEO_SCOPE_ENABLED
+  process.env.TIKTOK_CREATOR_VIDEO_SCOPE_ENABLED = 'false'
+  try {
+    const { default: oauth } = await import('../../pages/api/creator/oauth/tiktok/start')
+    for (const method of ['GET','POST']) {
+      const headers: Record<string, unknown> = {}
+      const res: any = { statusCode: 200,
+        status(code: number) { this.statusCode = code; return this },
+        json(payload: unknown) { this.payload = payload; return this },
+        setHeader(name: string, value: unknown) { headers[name] = value },
+      }
+      await oauth({ method, body: {}, headers: {}, cookies: {} } as any, res)
+      expect(res.statusCode).toBe(method === 'GET' ? 200 : 410)
+      if (method === 'GET') expect(res.payload.data.available).toBe(false)
+      expect(headers['Set-Cookie']).toBeUndefined()
+      expect(headers.Location).toBeUndefined()
+    }
+  } finally {
+    if (previous === undefined) delete process.env.TIKTOK_CREATOR_VIDEO_SCOPE_ENABLED
+    else process.env.TIKTOK_CREATOR_VIDEO_SCOPE_ENABLED = previous
+  }
 })

@@ -47,3 +47,38 @@
 
 .pro > div:first-child { gap: 8px; }
 .pro > div:first-child strong { font-size: 12px; }
+
+.dialog[data-scan-fullscreen] {
+  inset: 0; transform: none; width: 100%; height: 100dvh; max-width: none; max-height: none;
+  border-radius: 0; grid-template-columns: minmax(0,1fr); grid-template-rows: clamp(190px, 34svh, 420px) minmax(0,1fr);
+}
+.dialog[data-scan-fullscreen] > button { top: max(16px, env(safe-area-inset-top)); background: #ffffff70; backdrop-filter: blur(14px); border-radius: 999px; }
+.dialog[data-scan-fullscreen] .content { max-height: none; }
+.dialog[data-scan-fullscreen] .scroll { flex: 1; grid-auto-rows: max-content; align-content: space-evenly; padding: 8px 22px; gap: clamp(12px, 1.8svh, 20px); }
+.dialog[data-scan-fullscreen] .pro { gap: clamp(14px, 2svh, 22px); }
+.dialog[data-scan-fullscreen] .pro > div:first-child { gap: 12px; }
+.dialog[data-scan-fullscreen] .pro > div:first-child strong { font-size: 14px; }
+.dialog[data-scan-fullscreen] .footer { padding: 10px 22px max(14px, env(safe-area-inset-bottom)); }
+.dialog[data-scan-fullscreen] .title { font-size: clamp(27px, 7vw, 31px); font-weight: 700; }
+.dialog[data-scan-fullscreen] .cta { min-height: 56px; font-size: 14px; }
+.dialog[data-scan-fullscreen] .artBlur, .dialog[data-scan-fullscreen] .art::after { inset: 55% 0 0; }
+.subtitle { margin-top: 8px; color: #575760; font-size: 14px; line-height: 20px; font-weight: 600; }
+@media (prefers-reduced-motion: no-preference) {
+  .dialog[data-scan-fullscreen] .cta:active { transform: scale(.95); }
+}
+
+.dialog[data-scan-fullscreen] .modes { justify-self: start; padding: 3px; }
+.dialog[data-scan-fullscreen] .modes button { min-width: 54px; padding: 6px 10px; }
+
+@media (min-width: 640px) {
+  :global(body):has(:global(.scan-flow[data-scan-preview])) .dialog[data-scan-fullscreen] { width: 430px; margin-inline: auto; }
+}
+.returnOffer { display: grid; gap: 8px; padding: 16px; border: 1px solid #e6e8ec; border-radius: 19px; background: #f6f7f9; }
+.returnOffer small,.returnOffer p { color: #626a76; font-size: 12px; }
+.returnOffer strong { font-size: 17px; letter-spacing: -.025em; }
+.returnOffer > button:last-child,.creatorToggle { justify-self: center; display: inline-flex; align-items: center; gap: 6px; min-height: 30px; color: #464b54; font-size: 12px; font-weight: 600; }
+.creatorForm { display: grid; grid-template-columns: minmax(0,1fr) auto; gap: 6px; }
+.creatorForm input { width: 100%; min-height: 38px; padding-inline: 12px; border: 1px solid #dddfe3; border-radius: 11px; font-size: 16px; }
+.creatorForm button { padding-inline: 12px; border-radius: 11px; background: #121417; color: white; font-size: 12px; }
+.creatorForm button:disabled { opacity: .5; }
+.creatorForm p { grid-column: 1 / -1; color: #5b626e; font-size: 11px; }

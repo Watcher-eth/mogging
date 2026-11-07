@@ -12,14 +12,15 @@ import { drawReportOverlay, type ReportOverlay } from '@/lib/creator/report-over
 
 export type LoadedImage = { src: string; width: number; height: number }
 
-export function FaceOverlay({ preset, landmarks, image, value, appearance = 'report', faceMapPointCount, categoryId, fit = 'cover' }: {
+export function FaceOverlay({ preset, landmarks, image, value, appearance = 'report', faceMapPointCount, categoryId, fadeDurations, fit = 'cover' }: {
   preset: OverlayPreset | null
   landmarks: FaceLandmarksPayload
   image: LoadedImage
   value?: string
-  appearance?: 'report' | 'scan'
+  appearance?: 'report' | 'scan' | 'primer'
   faceMapPointCount?: number
   categoryId?: string
+  fadeDurations?: { enter: number; exit: number }
   fit?: ImageFit
 }) {
   const canvasRef = useRef<HTMLCanvasElement>(null)
@@ -48,12 +49,13 @@ export function FaceOverlay({ preset, landmarks, image, value, appearance = 'rep
       canvas.width = Math.round(width * dpr)
       canvas.height = Math.round(height * dpr)
       const glass = appearance === 'report' && Boolean(categoryId)
-      const size = { width: 360, height: glass ? image.height / image.width * 360 : height / width * 360 }
+      const size = appearance === 'primer' ? { width, height } : { width: 360, height: glass ? image.height / image.width * 360 : height / width * 360 }
       const base: ReportOverlay = {
         size,
         primitives: preset ? resolveOverlayPreset({ preset, landmarks: displayLandmarks, imageSize: image, viewport: size, fit: glass ? 'contain' : fit }).primitives : [],
         dots: preset ? [] : getFaceMapDots(displayLandmarks, image, size, faceMapPointCount),
         value,
+        nativePrimer: appearance === 'primer',
         labelAppearance: appearance === 'scan' ? 'scan' : undefined,
         labelScale: appearance === 'report' ? .6 : 1,
       }
@@ -133,7 +135,7 @@ export function FaceOverlay({ preset, landmarks, image, value, appearance = 'rep
     return () => { disposed = true; portrait.onload = null; portrait.onerror = null; cancelAnimationFrame(frame); observer.disconnect(); visibility.disconnect(); document.removeEventListener('visibilitychange', resume); reducedMotion.removeEventListener('change', resize) }
   }, [preset, landmarks, image, value, appearance, faceMapPointCount, categoryId, fit])
   return (
-    <motion.div className="pointer-events-none absolute inset-0" initial={{ opacity: 0 }} animate={{ opacity: 1, transition: { duration: reduceMotion ? 0 : appearance === 'scan' ? .52 : .18 } }} exit={{ opacity: 0, transition: { duration: reduceMotion ? 0 : appearance === 'scan' ? .76 : .18 } }} aria-hidden="true">
+    <motion.div className="pointer-events-none absolute inset-0" initial={{ opacity: 0 }} animate={{ opacity: 1, transition: { duration: reduceMotion ? 0 : fadeDurations?.enter ?? (appearance === 'scan' ? .52 : .18) } }} exit={{ opacity: 0, transition: { duration: reduceMotion ? 0 : fadeDurations?.exit ?? (appearance === 'scan' ? .76 : .18) } }} aria-hidden="true">
       <canvas ref={canvasRef} className="absolute inset-0 size-full" />
     </motion.div>
   )

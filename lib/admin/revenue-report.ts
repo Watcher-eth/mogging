@@ -5,12 +5,44 @@ import { reportingBucket } from './reporting-bucket'
 // separate so a 30% RevenueCat setting cannot silently replace this assumption.
 export const APP_STORE_COMMISSION_RATE = 0.15
 
+const billingSource = sql`case when provider='stripe' then 'Stripe'
+  when properties->>'store'='APP_STORE' then 'Apple App Store'
+  when properties->>'store' in ('PLAY_STORE','GOOGLE_PLAY') then 'Google Play'
+  else provider || ' · ' || coalesce(properties->>'store','unknown store') end`
+
+// One reporting projection feeds headlines, products and charts. Provider USD
+// prices are used verbatim; missing conversions remain unknown, never zero.
+export function revenueReportingCTEs(start: string) {
+  const fields = sql`h.id,h.provider,h.provider_event_id,h.provider_type,h.event_name,h.environment,h.account_id,h.external_user_id,
+    h.subscription_id,h.transaction_id,h.product_id,h.properties,h.occurred_at,h.received_at`
+  return sql`revenue_reporting_history as materialized (
+    select ${fields},h.currency,h.amount,h.amount as original_amount from billing_history h
+    union all
+    select ${fields},'USD_TOTAL' as currency,
+      case when upper(h.currency)='USD' then h.amount
+        when jsonb_typeof(h.properties->'usd_amount')='number' then (h.properties->>'usd_amount')::numeric end as amount,
+      h.amount as original_amount from billing_history h
+  ), revenue_reporting_period as materialized (
+    select * from revenue_reporting_history where occurred_at>=${start}::timestamp
+  )`
+}
+
 export function revenueReportCTEs(days: number, start: string, end: string) {
-  return sql`revenue_money as materialized (
-    select *, case when provider='stripe' then 'Stripe'
-      when properties->>'store'='APP_STORE' then 'Apple App Store'
-      when properties->>'store' in ('PLAY_STORE','GOOGLE_PLAY') then 'Google Play'
-      else provider || ' · ' || coalesce(properties->>'store','unknown store') end as source,
+  return sql`revenue_stream_events as materialized (
+    select ${billingSource} as source, coalesce(currency,'UNKNOWN') as currency, occurred_at, amount
+    from revenue_reporting_history where amount<>0
+      and occurred_at >= ${start}::timestamp - ${days}::integer * interval '1 day'
+  ), revenue_stream_comparison as (
+    select source,currency,
+      coalesce(sum(amount) filter(where occurred_at>=${start}::timestamp),0) as current_net,
+      coalesce(sum(amount) filter(where occurred_at<${start}::timestamp),0) as previous_net,
+      coalesce(sum(amount) filter(where amount>0 and occurred_at>=${start}::timestamp),0) as current_gross
+    from revenue_stream_events group by 1,2 order by 1,2
+  ), revenue_stream_daily as (
+    select ${reportingBucket(sql`occurred_at`,days)} as day,source,currency,sum(amount) as net
+    from revenue_stream_events where occurred_at>=${start}::timestamp group by 1,2,3 order by 1,2,3
+  ), revenue_money as materialized (
+    select *, ${billingSource} as source,
       coalesce(nullif(upper(properties->>'country'),''),'Unknown') as country,
       case when jsonb_typeof(properties->'tax_percentage')='number'
         and (properties->>'tax_percentage')::numeric between 0 and 1
@@ -18,7 +50,7 @@ export function revenueReportCTEs(days: number, start: string, end: string) {
       case when jsonb_typeof(properties->'commission_percentage')='number'
         and (properties->>'commission_percentage')::numeric between 0 and 1
         then (properties->>'commission_percentage')::numeric end as provider_commission
-    from b where amount<>0
+    from revenue_reporting_period where amount<>0
   ), revenue_fees as materialized (
     select *, amount*tax_rate as taxes,
       case when source='Apple App Store' then amount*(1-coalesce(tax_rate,0))*${APP_STORE_COMMISSION_RATE}::numeric
@@ -50,6 +82,15 @@ export function revenueReportCTEs(days: number, start: string, end: string) {
       case when count(*) filter(where provider_proceeds is null)=0 then sum(provider_proceeds) end as provider_estimated_proceeds,
       count(*) filter(where proceeds is null) as unknown_fee_events
     from revenue_fees group by 1,2 order by 1,2
+  ), revenue_usd_coverage as (
+    select source,count(*) as monetary_events,count(usd_amount) as covered_events,
+      sum(usd_amount) as covered_after_refunds,
+      case when count(usd_amount)=count(*) then sum(usd_amount) end as after_refunds
+    from (
+      select source,case when currency='USD' then amount
+        when jsonb_typeof(properties->'usd_amount')='number' then (properties->>'usd_amount')::numeric
+        end as usd_amount from revenue_money where currency<>'USD_TOTAL'
+    ) observed group by 1 order by 1
   ), revenue_countries as (
     select country,coalesce(currency,'UNKNOWN') as currency,count(*) filter(where amount>0) as purchases,
       count(*) filter(where amount<0) as refund_transactions,
@@ -63,7 +104,9 @@ export function revenueReportCTEs(days: number, start: string, end: string) {
     from revenue_fees group by 1,2
   ), revenue_subscription_states as (
     select current.provider,current.subscription_id,
-      coalesce(latest.product_id,'Unknown product') as product,
+      coalesce(latest.product_id,(select f.product_id from subscription_facts f where f.provider=current.provider
+        and f.subscription_id=current.subscription_id and f.product_id is not null
+        order by f.occurred_at desc,f.received_at desc,f.id desc limit 1),'Unknown product') as product,
       case when current.provider='stripe' then 'Stripe'
         when latest.properties->>'store'='APP_STORE' then 'Apple App Store'
         when latest.properties->>'store' in ('PLAY_STORE','GOOGLE_PLAY') then 'Google Play'

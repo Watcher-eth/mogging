@@ -1,6 +1,8 @@
 import { landingProperties, readLandingCookie, type LandingAssignment } from './landing'
 import { sanitizeProperties, isRetiredAnalyticsSurface, type AnalyticsEventName } from './contract'
+import { webFlowContext } from './web-context'
 import { acquisitionReferrer } from './acquisition'
+import { webJourneyContext, resetWebJourney } from './web-journey'
 type Event = { eventId: string; occurredAt: string; [key: string]: unknown }
 const key = 'mogging.analytics.v2'
 let initialized = false
@@ -65,6 +67,7 @@ export function identifyWebAnalytics(id?: string) {
     if (previous && previous !== id) {
       browserId = crypto.randomUUID()
       sessionId = ''
+      resetWebJourney()
       localStorage.setItem('mogging.analytics.anonymous-id', browserId)
     }
     if (id) localStorage.setItem(`${key}.account`, id)
@@ -83,8 +86,9 @@ export function trackWebEvent(eventName: AnalyticsEventName, properties: Record<
   queue.push({ eventId: crypto.randomUUID(), eventName, anonymousId: browserId, accountId, sessionId,
     platform: 'web', source: 'mogging.com', schemaVersion: 1,
     environment: process.env.NODE_ENV === 'production' ? 'production' : 'development',
-    properties: sanitizeProperties({ ...context, path, ...properties }), occurredAt: new Date(now).toISOString() })
+    properties: sanitizeProperties({ ...context, ...webFlowContext(location.pathname, location.search), ...webJourneyContext(), path, ...properties }), occurredAt: new Date(now).toISOString() })
   queue = queue.slice(-100)
+  persist()
   schedule()
 }
 export function trackWebPage(route: string) {

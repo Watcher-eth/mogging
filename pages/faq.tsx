@@ -11,7 +11,7 @@ const groups = [
   { id: 'getting-started', title: 'Getting started', questions: [
     { id: 'what-is-mogging', question: 'What does the Mogging app do?', answer: 'Mogging turns a face photo into a detailed feature report. The app brings your evaluations, personalized Protocol and report history together, so you can understand your features and build a daily routine.', link: { href: '/', label: 'Explore the app' } },
     { id: 'free', question: 'Is Mogging free to download?', answer: 'Yes. Downloading the iPhone app is free. Evaluations and Pro features require a purchase. You can review the available plans before paying.' },
-    { id: 'devices', question: 'Can I use Mogging without an iPhone?', answer: 'You can start a paid face analysis in your browser. The mobile app is available for iPhone, with an Android app coming soon.', link: { href: '/analysis', label: 'Try web analysis' } },
+    { id: 'devices', question: 'Can I use Mogging without an iPhone?', answer: 'You can start a paid face analysis in your browser. The mobile app is available for iPhone, with an Android app coming soon.', link: { href: '/analysis?start=1', label: 'Try web analysis' } },
     { id: 'photo', question: 'What makes a good scan photo?', answer: 'Use a clear, front-facing photo with even lighting and a relaxed expression. Keep the face unobstructed, avoid beauty filters and extreme angles, and use the original image rather than a low-resolution screenshot.' },
   ] },
   { id: 'reports', title: 'Your report', questions: [

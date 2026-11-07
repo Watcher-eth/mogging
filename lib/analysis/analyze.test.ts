@@ -48,3 +48,22 @@ test('explicit persistence requirement also protects the expanded scan path', as
   await expect(f.run(input, undefined, { requirePersistence: true })).rejects.toThrow('scan credit is still available')
   expect(f.saved()).toBe(0)
 })
+
+test.each(['face-study', 'face-model'])('%s persists landmarks without calling the rating provider', async presentation => {
+  const f = fixture()
+  const landmarks = { version: 1, source: 'apple-vision', confidence: 0.9, image: { width: 600, height: 800 },
+    anchors: { leftPupil: { x: 0.35, y: 0.4 }, rightPupil: { x: 0.65, y: 0.42 } } }
+  const studyContext = { goals: ['jaw'], previousAnalysisId: 'prior-study' }
+  const result = await f.run({ ...input, landmarks, studyContext }, 'reserved-study', { presentation, requirePersistence: true })
+  expect(result.analysis).toMatchObject({ status: 'complete', metrics: { presentation, studyContext }, landmarks })
+  expect(result.analysis.pslScore).toBeUndefined()
+  expect(f.providerCalls()).toBe(0)
+  expect(f.saved()).toBe(1)
+})
+
+test.each(['face-study', 'face-model'])('%s with unusable landmarks cannot complete a paid reservation', async presentation => {
+  const f = fixture()
+  await expect(f.run(input, 'reserved-study', { presentation })).rejects.toMatchObject({ status: 422 })
+  expect(f.saved()).toBe(0)
+  expect(f.providerCalls()).toBe(0)
+})

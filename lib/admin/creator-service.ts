@@ -103,6 +103,7 @@ export async function getCreatorAdminDashboard({ includeCoverage = true } = {}) 
         paypalMeUrl: schema.creatorProfiles.paypalMeUrl,
         cryptoNetwork: schema.creatorProfiles.cryptoNetwork,
         cryptoWalletAddress: schema.creatorProfiles.cryptoWalletAddress,
+        bankTransferDetails: schema.creatorProfiles.bankTransferDetails,
         createdAt: schema.creatorProfiles.createdAt,
         lastActiveAt: sql<string | null>`(select to_char(max(a.occurred_at), 'YYYY-MM-DD"T"HH24:MI:SS.MS"Z"') from analytics_events a
           where a.account_id = ${schema.users.id} and a.environment = 'production' and a.platform = 'web'

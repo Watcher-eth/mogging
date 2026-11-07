@@ -1,6 +1,6 @@
 // Enable after TikTok approves user.info.profile, then redeploy.
-export function creatorTikTokScopes(profileEnabled = process.env.TIKTOK_CREATOR_PROFILE_SCOPE_ENABLED === 'true') {
-  return profileEnabled ? 'user.info.basic,user.info.stats,user.info.profile' : 'user.info.basic,user.info.stats'
+export function creatorTikTokScopes(profileEnabled = process.env.TIKTOK_CREATOR_PROFILE_SCOPE_ENABLED === 'true', videoEnabled = process.env.TIKTOK_CREATOR_VIDEO_SCOPE_ENABLED === 'true') {
+  return ['user.info.basic', 'user.info.stats', ...(profileEnabled ? ['user.info.profile'] : []), ...(videoEnabled ? ['video.list'] : [])].join(',')
 }
 
 export function creatorTikTokFields(grantedScopes = '') {

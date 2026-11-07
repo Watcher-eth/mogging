@@ -20,7 +20,7 @@ export function LanguageSelect() {
     <Select.Trigger
       aria-label={`${t('language')}: ${localeNames[current]}`}
       title={localeNames[current]}
-      className="flex h-8 w-9 items-center justify-center rounded-md border-0 bg-transparent text-lg outline-none hover:bg-zinc-100 focus-visible:bg-zinc-100 data-[state=open]:bg-zinc-100 sm:h-10 sm:w-10"
+      className="flex h-8 w-7 items-center justify-center rounded-md border-0 bg-transparent text-lg outline-none hover:bg-zinc-100 focus-visible:bg-zinc-100 data-[state=open]:bg-zinc-100 sm:h-10 sm:w-10"
     >
       <Select.Value><span aria-hidden="true">{localeFlags[current]}</span></Select.Value>
     </Select.Trigger>

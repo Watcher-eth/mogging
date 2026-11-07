@@ -34,6 +34,30 @@ describe.skipIf(!testUrl)('bundled payouts database integration', () => {
     return database.db.query.creatorPayments.findMany({ where: eq(database.schema.creatorPayments.creatorProfileId, profileId) })
   }
 
+  test('bank fallback is enforced by the server and preserves paid history and captured destinations', async () => {
+    const { saveCreatorProfile } = await import('./service')
+    const { db, schema } = database
+    const f = await fixture()
+    const input = { displayName: 'Bundle test', paymentOption: 'bank_transfer' as const, bankTransferDetails: 'Test Holder / Test Bank / GB / USD / GB00TEST123456789 / TESTGB00' }
+    await expect(saveCreatorProfile(f.userId, input)).rejects.toMatchObject({ status: 403 })
+    await db.update(schema.creatorProfiles).set({ paypalEmail: null }).where(eq(schema.creatorProfiles.id, f.profile.id))
+    const [pending] = await db.insert(schema.creatorPayments).values({ creatorProfileId: f.profile.id, submissionId: f.first.id, amountCents: 2000, status: 'pending', paymentOption: 'paypal' }).returning()
+    const profile = await saveCreatorProfile(f.userId, input)
+    expect(profile.paymentOption).toBe('bank_transfer')
+    const payments = await records(f.profile.id)
+    expect(payments.find(p => p.id === f.prior.id)?.paymentOption).toBe('paypal')
+    expect(payments.find(p => p.id === pending.id)?.paymentOption).toBe('bank_transfer')
+    const request = await payouts.requestBundledPayout(f.userId, 3500)
+    expect(request).toMatchObject({ paymentOption: 'bank_transfer', destination: input.bankTransferDetails })
+    await saveCreatorProfile(f.userId, { ...input, bankTransferDetails: 'Updated Test Holder / Other Bank / GB / USD / OTHERACCOUNT12345 / TESTGB00' })
+    const captured = await db.query.creatorPayoutRequests.findFirst({ where: eq(schema.creatorPayoutRequests.id, request.id) })
+    expect(captured?.destination).toBe(input.bankTransferDetails)
+    const noEarnings = await fixture()
+    await db.update(schema.creatorProfiles).set({ paypalEmail: null }).where(eq(schema.creatorProfiles.id, noEarnings.profile.id))
+    await db.update(schema.creatorSubmissions).set({ approvedAmountCents: 0 }).where(eq(schema.creatorSubmissions.creatorProfileId, noEarnings.profile.id))
+    await expect(saveCreatorProfile(noEarnings.userId, input)).rejects.toMatchObject({ status: 403 })
+  })
+
   test('3500 total minus 1500 already paid, plus 1500 new earnings, reserves exactly 3500', async () => {
     const f = await fixture()
     const request = await payouts.requestBundledPayout(f.userId, 3500)

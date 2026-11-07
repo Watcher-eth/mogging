@@ -1,6 +1,7 @@
 import {
   type AnyPgColumn,
   boolean,
+  bigint,
   date,
   check,
   index,
@@ -27,7 +28,7 @@ export const photoSetTypeEnum = pgEnum('photo_set_type', ['single', 'before_afte
 export const analysisStatusEnum = pgEnum('analysis_status', ['pending', 'processing', 'complete', 'failed'])
 export const ratingAlgorithmEnum = pgEnum('rating_algorithm', ['trueskill_v1'])
 export const creatorAuthStatusEnum = pgEnum('creator_auth_status', ['pending', 'verified', 'suspended'])
-export const creatorPaymentOptionEnum = pgEnum('creator_payment_option', ['paypal', 'crypto'])
+export const creatorPaymentOptionEnum = pgEnum('creator_payment_option', ['paypal', 'crypto', 'bank_transfer'])
 export const creatorSubmissionStatusEnum = pgEnum('creator_submission_status', [
   'pending',
   'in_review',
@@ -645,6 +646,7 @@ export const creatorProfiles = pgTable(
     paypalMeUrl: text('paypal_me_url'),
     cryptoNetwork: text('crypto_network'),
     cryptoWalletAddress: text('crypto_wallet_address'),
+    bankTransferDetails: text('bank_transfer_details'),
     createdAt: timestamp('created_at', { mode: 'date' }).notNull().defaultNow(),
     updatedAt: timestamp('updated_at', { mode: 'date' }).notNull().defaultNow(),
   },
@@ -1122,6 +1124,27 @@ export const creatorSubmissionAnalytics = pgTable('creator_submission_analytics'
   assessedAt: timestamp('assessed_at', { mode: 'date' }).notNull(),
   data: jsonb('data').$type<import('../creator/audience-check').AudienceCheck>().notNull(),
 }, table => [primaryKey({ columns: [table.submissionId, table.storageKey] }), index('creator_submission_analytics_time_idx').on(table.submissionId, table.assessedAt)])
+
+export const creatorVideoObservations = pgTable('creator_video_observations', {
+  postKey: text('post_key').notNull(),
+  source: text('source').notNull(),
+  observedAt: timestamp('observed_at', { mode: 'date' }).notNull(),
+  submissionId: text('submission_id').notNull().references(() => creatorSubmissions.id, { onDelete: 'cascade' }),
+  measuredAt: timestamp('measured_at', { mode: 'date' }),
+  views: bigint('views', { mode: 'number' }).notNull(),
+  likes: bigint('likes', { mode: 'number' }),
+  comments: bigint('comments', { mode: 'number' }),
+  shares: bigint('shares', { mode: 'number' }),
+}, table => [primaryKey({ columns: [table.postKey, table.source, table.observedAt] }), index('creator_video_observations_submission_idx').on(table.submissionId, table.observedAt)])
+
+export const creatorVideoSyncState = pgTable('creator_video_sync_state', {
+  cursor: integer('cursor').notNull().default(0),
+  accountId: text('account_id').primaryKey().references(() => creatorSocialAccounts.id, { onDelete: 'cascade' }),
+  status: text('status').notNull(),
+  checkedAt: timestamp('checked_at', { mode: 'date' }).notNull(),
+  syncedAt: timestamp('synced_at', { mode: 'date' }),
+  nextAttemptAt: timestamp('next_attempt_at', { mode: 'date' }).notNull(),
+})
 
 export const creatorAttributionMetrics = pgTable(
   'creator_attribution_metrics',

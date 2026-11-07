@@ -5,11 +5,11 @@ import { sampleAppearance } from './motion-presets'
 import { captionDesign } from './video-layout'
 export { captionDesign } from './video-layout'
 
-export function captionLines(scene: VideoScene, measure: (text: string) => number) {
+export function captionLines(scene: VideoScene, measure: (text: string) => number, width = captionStyle(scene).width) {
   const lines: ReturnType<typeof captionWordCues>[] = []
   for (const cue of captionWordCues(scene, scene.text)) {
     const line = lines.at(-1)
-    if (!line || measure([...line.map(word => word.text), cue.text].join(' ')) > captionStyle(scene).width) lines.push([cue])
+    if (!line || measure([...line.map(word => word.text), cue.text].join(' ')) > width) lines.push([cue])
     else line.push(cue)
   }
   return lines
@@ -32,19 +32,23 @@ export function captionStyle(scene: VideoScene) {
   return { report, imageCaption, size, width: report || scene.documentary ? 916 : captionDesign.width, height: size * captionDesign.lineHeight * (scene.source?.kind === 'explainer' ? 4 : 2) }
 }
 
-export function drawLyricsCaption(ctx: CanvasRenderingContext2D, scene: VideoScene, time: number, reduced: boolean, ink: string, handoff?: CaptionHandoff) {
+export function drawLyricsCaption(ctx: CanvasRenderingContext2D, scene: VideoScene, time: number, reduced: boolean, ink: string, handoff?: CaptionHandoff, width?: number, weight: number = captionDesign.weight, fontSize?: number) {
   if (!reduced && handoff && handoff.previous.text !== scene.text) {
     const amount = Math.max(0, Math.min(1, handoff.progress))
     const distance = Math.max(captionStyle(scene).height, captionStyle(handoff.previous).height)
     if (amount < 1) drawCaption(ctx, handoff.previous, handoff.previous.durationMs - 1, false, ink, -distance * amount, true)
     if (amount > 0) drawCaption(ctx, scene, time, false, ink, distance * (1 - amount), true)
-  } else drawCaption(ctx, scene, time, reduced, ink)
+  } else drawCaption(ctx, scene, time, reduced, ink, 0, false, width, weight, fontSize)
 }
 
-function drawCaption(ctx: CanvasRenderingContext2D, scene: VideoScene, time: number, reduced: boolean, ink: string, offsetY = 0, rolling = false) {
-  const { report, imageCaption, size, height, width:captionWidth } = captionStyle(scene)
+function drawCaption(ctx: CanvasRenderingContext2D, scene: VideoScene, time: number, reduced: boolean, ink: string, offsetY = 0, rolling = false, width?: number, weight: number = captionDesign.weight, fontSize?: number) {
+  const style = captionStyle(scene)
+  const { report, imageCaption, width:defaultWidth } = style
+  const size = fontSize ?? style.size
+  const height = style.height * size / style.size
+  const captionWidth = width ?? defaultWidth
   const documentary = Boolean(scene.documentary)
-  ctx.save(); ctx.font = `${captionDesign.weight} ${size}px "Mogging Share", Arial, sans-serif`
+  ctx.save(); ctx.font = `${weight} ${size}px "Mogging Share", Arial, sans-serif`
   ctx.textAlign = 'left'; ctx.textBaseline = 'alphabetic'; ctx.fillStyle = ink
   if (ink === '#fff') {
     const glass = ctx.createLinearGradient(0, 0, 0, size * 2.4)
@@ -56,7 +60,7 @@ function drawCaption(ctx: CanvasRenderingContext2D, scene: VideoScene, time: num
     ctx.lineWidth = 3
     ctx.lineJoin = 'round'
   }
-  const lines = captionLines(scene, text => ctx.measureText(text).width)
+  const lines = captionLines(scene, text => ctx.measureText(text).width, captionWidth)
   const active = Math.max(0, lines.findLastIndex(line => time >= line[0].startMs))
   const focus = sampleAppearance('text-scale', Math.max(0, time - (lines[active]?.[0].startMs ?? 0)) / captionDesign.focusMs, reduced).opacity
   const scroll = captionScroll(lines, time, reduced)

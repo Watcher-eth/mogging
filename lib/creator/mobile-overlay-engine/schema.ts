@@ -64,6 +64,8 @@ export type OverlayPrimitive =
       kind: "polyline";
       points: OverlayPointRef[];
       closed?: boolean;
+      dotted?: boolean;
+      markers?: boolean;
       dashed?: boolean;
       strokeWidth?: number;
       opacity?: number;

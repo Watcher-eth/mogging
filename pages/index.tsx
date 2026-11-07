@@ -1,3 +1,5 @@
+import { useDesktop } from '@/components/landing/use-desktop'
+import { EvaluationChoices } from "@/components/landing/evaluation-choices";
 import { useHomepageEntrance } from '@/components/landing/use-homepage-entrance'
 import { Accordion, AccordionItem, AccordionTrigger, AccordionContent, AccordionChevron } from '@/components/ui/accordion'
 import { useTranslation } from 'react-i18next';
@@ -19,11 +21,10 @@ import * as m from "motion/react-m";
 import { WebCheckout } from "@/components/landing/web-checkout";
 import { AnalysisStory } from "@/components/landing/analysis-story";
 import { EvaluationStats } from "@/components/landing/evaluation-stats";
-import { useCallback, useState } from "react";
 import { SeoHead } from "@/components/app/seo-head";
 import { appStoreUrl, siteUrl } from "@/lib/seo";
-import { AppStoreHandoff } from "@/components/landing/app-store-handoff";
-import { HOMEPAGE_DESTINATION_COOKIE, shouldRouteHomepageToStore } from "@/lib/homepage-routing";
+import { AppStoreHandoff } from '@/components/landing/app-store-handoff';
+import { HOMEPAGE_DESTINATION_COOKIE, shouldRouteHomepageToStore } from '@/lib/homepage-routing';
 import {
   createLandingAssignment,
   isActiveLandingAssignment,
@@ -34,15 +35,15 @@ import {
   type LandingAssignment,
 } from "@/lib/analytics/landing";
 
+const DesktopScanPreview = dynamic(() => import('@/components/landing/desktop-scan-preview').then(module => module.DesktopScanPreview))
+const DesktopMemberPreview = dynamic(() => import('@/components/landing/desktop-member-preview').then(module => module.DesktopMemberPreview))
 const LegacyHomepage = dynamic(() => import("@/components/landing/legacy-homepage"));
 
 type Props = { assignment: LandingAssignment; preview: boolean; routeToStore: boolean };
 
 export default function HomePage(props: Props) {
   const locale = useRouter().locale;
-  const [routeToStore, setRouteToStore] = useState(props.routeToStore);
-  const continueOnWebsite = useCallback(() => setRouteToStore(false), []);
-  if (routeToStore) return <AppStoreHandoff assignment={props.assignment} onContinue={continueOnWebsite} />;
+  if (props.routeToStore) return <AppStoreHandoff assignment={props.assignment} />;
   return (!locale || locale === "en") && props.assignment.arm.endsWith("_a") ? <LegacyHomepage {...props} /> : <NewHomepage {...props} />;
 }
 
@@ -50,19 +51,11 @@ function NewHomepage({ assignment, preview }: Props) {
   const { locale } = useRouter();
   const { t } = useTranslation();
   const entrance = useHomepageEntrance();
+  const desktop = useDesktop();
   const { sections, trackDestination } = useLandingTracking(assignment, preview);
 
-  function downloadButton(placement: string, compact = false) {
-    return (
-      <a
-        href={appStoreUrl}
-        onClick={() => trackDestination("app_store", placement)}
-        className={`inline-flex items-center justify-center gap-3 rounded-full bg-[#09090b] font-semibold text-white transition-transform duration-300 [transition-timing-function:cubic-bezier(0.16,1,0.3,1)] hover:scale-[1.035] active:scale-[0.98] motion-reduce:transform-none focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-black ${compact ? "h-12 px-5 text-sm" : "h-14 w-full px-7 text-base sm:w-auto"}`}
-      >
-        <AppleMark />
-        {t(compact ? "landing.get" : "landing.download")}
-      </a>
-    );
+  function downloadButton(placement: string) {
+    return <EvaluationChoices showDesktopDownload={placement === "hero" || placement === "footer"} track={destination => trackDestination(destination, placement)} />;
   }
 
   return (
@@ -94,7 +87,7 @@ function NewHomepage({ assignment, preview }: Props) {
       <main
         className="overflow-hidden bg-white text-zinc-950"
       >
-        <m.section {...entrance} initial={false} className="mx-auto grid max-w-[var(--page-max)] items-center px-6 pb-14 pt-6 sm:px-10 lg:min-h-[730px] lg:grid-cols-2 lg:gap-24 lg:py-12">
+        <m.section {...entrance} initial={false} className="mx-auto grid max-w-[var(--page-max)] content-center items-center px-6 pb-14 pt-6 sm:px-10 lg:min-h-[730px] lg:grid-cols-2 lg:gap-12 lg:py-12">
           <div className="text-center lg:text-left">
             <p className="mb-4 hidden text-xs font-medium uppercase tracking-[0.16em] text-zinc-400 lg:block">
               {t("landing.tagline")}
@@ -106,31 +99,19 @@ function NewHomepage({ assignment, preview }: Props) {
               {t("landing.description")}
             </p>
             <div className="mt-7">{downloadButton("hero")}</div>
-            <p className="mt-3 text-xs text-zinc-400">
-              {t("landing.availability")}
-            </p>
-            <Link
-              href="/analysis" prefetch={false}
-              onClick={() => trackDestination("web_analysis", "hero")}
-              className="mt-5 inline-flex items-center gap-2 text-sm font-medium text-zinc-500 hover:text-black"
-            >
-              {t("landing.browser")}{" "}
-              <ArrowRight className="size-4" />
-            </Link>
+            {!desktop && <p className="mt-3 text-xs text-zinc-400">{t("landing.availability")}</p>}
           </div>
-          <div className="mt-10 flex justify-center lg:mt-0 lg:justify-end">
-            <div className="w-full max-w-[350px]">
-              <ScanReportPreview />
-            </div>
+          <div className={desktop ? "flex min-h-0 self-stretch justify-end [contain:size]" : "mt-10 flex justify-center lg:mt-0 lg:justify-end"}>
+            {desktop ? <DesktopScanPreview /> : <div className="w-full max-w-[350px]"><ScanReportPreview /></div>}
           </div>
         </m.section>
 
-        <div ref={sections}>
+        <div ref={sections} className="[--feature-spacing:88px] lg:[--feature-spacing:104px]">
           <AnalysisStory />
           <m.section {...entrance}
             data-landing-section="features"
             aria-labelledby="features-title"
-            className="mx-auto max-w-[var(--page-max)] px-6 py-12 sm:px-10 sm:py-20"
+            className="mx-auto max-w-[var(--page-max)] px-6 pb-[var(--feature-spacing)] pt-12 sm:px-10 sm:pt-20"
           >
             <div className="mb-14 text-center">
               <p className="text-xs font-medium uppercase tracking-[0.16em] text-zinc-400">
@@ -160,7 +141,7 @@ function NewHomepage({ assignment, preview }: Props) {
                 <EvaluationStats />
               </div>
             </div>
-            <div className="mt-24 grid items-center gap-10 lg:grid-cols-2 lg:gap-24">
+            <div className="mt-[calc(2*var(--feature-spacing))] grid items-center gap-10 lg:grid-cols-2 lg:gap-24">
               <div className="order-2 mx-auto w-full text-center lg:order-1 lg:mx-0 lg:text-left">
                 <p className="text-xs font-medium uppercase tracking-widest text-zinc-400">
               {t("landing.protocol")}
@@ -173,14 +154,14 @@ function NewHomepage({ assignment, preview }: Props) {
             </p>
                 <div className="mt-7">{downloadButton("features")}</div>
               </div>
-              <div className="order-1 flex justify-center lg:order-2 lg:justify-end">
-                <ProtocolPreview />
+              <div className={desktop ? "order-2 min-h-0 self-stretch overflow-auto [contain:size]" : "order-1 flex justify-center lg:order-2 lg:justify-end"}>
+                {desktop ? <DesktopMemberPreview view="protocol" compact /> : <ProtocolPreview />}
               </div>
             </div>
           </m.section>
 
-          <m.section {...entrance} data-landing-section="progress" aria-labelledby="progress-title" className="mx-auto grid max-w-[var(--page-max)] items-center gap-10 px-6 py-14 sm:px-10 sm:py-20 lg:grid-cols-2 lg:gap-24">
-            <div className="flex justify-center lg:justify-start"><ProgressPreview /></div>
+          <m.section {...entrance} data-landing-section="progress" aria-labelledby="progress-title" className="mx-auto grid max-w-[var(--page-max)] items-center gap-10 px-6 py-[var(--feature-spacing)] sm:px-10 lg:grid-cols-2 lg:gap-24">
+            <div className={desktop ? "min-h-0 self-stretch overflow-auto [contain:size]" : "flex justify-center lg:justify-start"}>{desktop ? <DesktopMemberPreview view="progress" compact /> : <ProgressPreview />}</div>
             <div className="text-center lg:text-left">
               <p className="text-xs font-medium uppercase tracking-widest text-zinc-400">
               {t("landing.progress")}
@@ -210,7 +191,7 @@ function NewHomepage({ assignment, preview }: Props) {
               {t("landing.webDescription")}
             </p>
                 </div>
-                <Link href="/analysis" prefetch={false} onClick={() => trackDestination("web_analysis", "web_section")} className="inline-flex items-center gap-2 text-sm font-medium text-zinc-500 hover:text-black">{t("landing.withoutApp")} <ArrowRight className="size-4" /></Link>
+                <Link href="/analysis?start=1" prefetch={false} onClick={() => trackDestination("web_analysis", "web_section")} className="inline-flex items-center gap-2 text-sm font-medium text-zinc-500 hover:text-black">{t("landing.withoutApp")} <ArrowRight className="size-4" /></Link>
               </div>
               } />
             </div>
@@ -280,19 +261,6 @@ function LandingFaq() {
   );
 }
 
-function AppleMark() {
-  return (
-    <svg
-      viewBox="0 0 24 24"
-      fill="currentColor"
-      className="size-5 shrink-0"
-      aria-hidden="true"
-    >
-      <path d="M17.05 12.54c.03 3.12 2.74 4.16 2.77 4.17-.02.07-.43 1.48-1.42 2.93-.86 1.25-1.76 2.5-3.16 2.53-1.38.03-1.82-.82-3.4-.82-1.58 0-2.07.8-3.38.85-1.35.05-2.38-1.36-3.24-2.61-1.77-2.56-3.12-7.24-1.3-10.4A5.04 5.04 0 0 1 8.18 6.6c1.34-.03 2.6.9 3.4.9.79 0 2.28-1.11 3.84-.95.65.03 2.5.26 3.7 2.02-.1.07-2.21 1.29-2.07 3.97ZM14.5 4.88c.71-.86 1.19-2.06 1.06-3.25-1.02.04-2.26.68-2.99 1.54-.66.76-1.24 1.98-1.08 3.14 1.14.09 2.3-.58 3.01-1.43Z" />
-    </svg>
-  );
-}
-
 export const getServerSideProps: GetServerSideProps<Props> = async ({
   req,
   res,
@@ -320,15 +288,13 @@ export const getServerSideProps: GetServerSideProps<Props> = async ({
       "Set-Cookie",
       `${LANDING_COOKIE}=${serializeLandingAssignment(assignment)}; Path=/; Max-Age=7776000; SameSite=Lax${process.env.NODE_ENV === "production" ? "; Secure" : ""}`,
     );
-  const routeToStore = shouldRouteHomepageToStore(req.headers["user-agent"] || '', req.cookies[HOMEPAGE_DESTINATION_COOKIE], Boolean(previewArm) || automated);
-  // Creator visitors keep the recovery page instead of losing their referral in the generic store redirect.
-  if (typeof query.attribution_token === 'string' || (routeToStore && !query.login && req.cookies.mogging_creator_attribution)) {
+  if (typeof query.attribution_token === 'string') {
     const { resolveCreatorAttribution, setCreatorAttributionCookie } = await import('@/lib/creator/attribution');
     const referral = await resolveCreatorAttribution({ req: req as NextApiRequest, token: typeof query.attribution_token === 'string' ? query.attribution_token : null });
     if (referral?.creatorSlug) {
       setCreatorAttributionCookie(res as NextApiResponse, referral.token);
-      if (routeToStore && !query.login) return { redirect: { destination: `/r/${encodeURIComponent(referral.creatorSlug)}?fallback=1&attribution_token=${encodeURIComponent(referral.token)}`, permanent: false } };
     }
   }
+  const routeToStore = !query.login && shouldRouteHomepageToStore(req.headers['user-agent'] || '', req.cookies[HOMEPAGE_DESTINATION_COOKIE], Boolean(previewArm) || automated);
   return { props: { assignment, preview: localizedPreview || Boolean(previewArm) || automated, routeToStore } };
 };

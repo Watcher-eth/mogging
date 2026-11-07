@@ -248,6 +248,10 @@ export async function grantEntitlementFromCheckoutSession({
       source: session.metadata?.source ?? null,
       metadata: {
         checkoutMode: session.mode,
+        flowId: session.metadata?.flowId,
+        attemptId: session.metadata?.attemptId,
+        flowVersion: session.metadata?.flowVersion,
+        entryMode: session.metadata?.entryMode,
         stripePaymentStatus: session.payment_status,
         originalMobileInstallId: metadataInstallId ?? null,
         accountId,

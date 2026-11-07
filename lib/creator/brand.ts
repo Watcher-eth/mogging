@@ -48,14 +48,62 @@ export function drawMoggingWatermark(ctx: CanvasRenderingContext2D, ink: string)
   ctx.fillText('Mogging', 0, 18); ctx.restore()
 }
 
-export function drawScanInvitation(ctx: CanvasRenderingContext2D, brand: CreatorBrand | null, frame: { x: number; y: number; width: number; height: number }, ink = '#171717') {
-  const text = 'Get your scan on Mogging.com', size = 40, gap = 12
-  ctx.save(); ctx.font = '500 40px "Mogging Share", Arial, sans-serif'
+export function drawScanInvitation(ctx: CanvasRenderingContext2D, brand: CreatorBrand | null, frame: { x: number; y: number; width: number; height: number }, ink = '#171717', scale = 1) {
+  const text = 'Get your scan on Mogging.com', size = 40 * scale, gap = 12 * scale
+  ctx.save(); ctx.font = `500 ${size}px "Mogging Share", Arial, sans-serif`
   ctx.textBaseline = 'middle'; ctx.textAlign = 'left'
   const width = ctx.measureText(text).width + (brand ? size + gap : 0), x = frame.x + (frame.width-width)/2
   ctx.fillStyle = ink === '#fff' ? '#12121470' : '#ffffffb3'
   ctx.beginPath(); ctx.roundRect(x-10,frame.y,width+20,frame.height,frame.height/2);ctx.fill()
   if (brand) { ctx.save();ctx.beginPath();ctx.roundRect(x,frame.y+(frame.height-size)/2,size,size,10);ctx.clip();ctx.drawImage(brand.logo,x,frame.y+(frame.height-size)/2,size,size);ctx.restore() }
   ctx.fillStyle = ink; ctx.fillText(text,x+(brand ? size+gap : 0),frame.y+frame.height/2)
+  ctx.restore()
+}
+
+export function drawTemplateBrandRow(ctx: CanvasRenderingContext2D, brand: CreatorBrand | null, width: number, y: number, ink?: string) {
+  const x = width * .055
+  const height = width * .15
+  const iconSize = width * .075
+  const padding = width * .025
+  const textX = x + padding + iconSize + width * .02
+  ctx.save()
+  ctx.beginPath()
+  ctx.roundRect(x, y, width * .89, height, width * .035)
+  ctx.clip()
+  ctx.filter = `blur(${width * .018}px)`
+  ctx.drawImage(ctx.canvas, 0, 0)
+  ctx.filter = 'none'
+  ctx.fillStyle = 'rgba(245,245,247,.88)'
+  ctx.fillRect(x, y, width * .89, height)
+  if (brand) {
+    ctx.save()
+    ctx.beginPath()
+    ctx.roundRect(x + padding, y + padding, iconSize, iconSize, iconSize * .23)
+    ctx.clip()
+    ctx.drawImage(brand.logo, x + padding, y + padding, iconSize, iconSize)
+    ctx.restore()
+  }
+  ctx.textAlign = 'left'
+  ctx.textBaseline = 'top'
+  ctx.fillStyle = '#1c1c1e'
+  ctx.font = `600 ${width * .033}px -apple-system, BlinkMacSystemFont, "SF Pro Text", "Mogging Share", Arial, sans-serif`
+  ctx.fillText('Mogging Face scan', textX, y + padding)
+  ctx.fillStyle = '#6e6e73'
+  ctx.textAlign = 'right'
+  ctx.font = `400 ${width * .024}px -apple-system, BlinkMacSystemFont, "SF Pro Text", "Mogging Share", Arial, sans-serif`
+  ctx.fillText('now', x + width * .89 - padding, y + padding)
+  ctx.textAlign = 'left'
+  ctx.fillStyle = '#3a3a3c'
+  ctx.font = `400 ${width * .032}px -apple-system, BlinkMacSystemFont, "SF Pro Text", "Mogging Share", Arial, sans-serif`
+  ctx.fillText('Get your scan and uncover your', textX, y + width * .067)
+  ctx.fillText('true potential today', textX, y + width * .101)
+  ctx.restore()
+}
+
+export function drawTemplateInvitation(ctx: CanvasRenderingContext2D, brand: CreatorBrand | null, width: number, bottom: number, ink?: string) {
+  const scale = width / 1316
+  ctx.save()
+  ctx.scale(scale, scale)
+  drawScanInvitation(ctx, brand, { x: 0, y: bottom / scale - 112, width: 1316, height: 92 }, ink, 1.45)
   ctx.restore()
 }

@@ -39,3 +39,9 @@
   inset: 84% 0 0;
   background: linear-gradient(to bottom, #fff0, #ffffff05 20%, #ffffff24 45%, #ffffff80 72%, #fff);
 }
+
+:global(.scan-flow[data-mobile-scan]) .portrait { --side-wash: none; min-height: 0; height: auto; aspect-ratio: auto; container-type: normal; }
+:global(.scan-flow[data-mobile-scan]) .media { width: 100%; height: clamp(350px,55svh,560px); aspect-ratio: auto; mask-image: none; }
+:global(.scan-flow[data-mobile-scan]) :is(.leftBlur,.rightBlur) { display: none; }
+:global(.scan-flow[data-mobile-scan]) .bottomBlur { inset: 51% 0 0; }
+:global(.scan-flow[data-mobile-scan]) .wash { background: linear-gradient(180deg,transparent 51%,#ffffff10 61%,#ffffff44 72%,#ffffff9c 85%,#ffffffe8 96%,white); }

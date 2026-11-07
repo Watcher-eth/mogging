@@ -1,5 +1,5 @@
 import { portraitPrintStyles, portraitPrintPaperAlpha, preservePortraitTone, type PortraitPrint } from './portrait-print'
-import { drawBrandLockup, type CreatorBrand } from './brand'
+import { drawTemplateBrandRow, type CreatorBrand } from './brand'
 import { drawReportOverlay, type ReportOverlay } from './report-overlay'
 import { enrichFaceLandmarks } from './mobile-overlay-engine/enrich-landmarks'
 import { getImageTransform, projectImagePoint } from './mobile-overlay-engine/layout'
@@ -280,7 +280,7 @@ export function drawPoster(ctx: CanvasRenderingContext2D, slide: ContentSlide, i
   const inset=width*.055, right=width-inset
   const square = height / width < 1.2
   if (square && family === 'afterimage') {
-    drawBrandLockup(ctx, brand, width * .13, height * .035, width * .74, ink)
+    drawTemplateBrandRow(ctx, brand, width, height * .035, ink)
   } else {
     ctx.save(); ctx.letterSpacing=`${-width*.00065}px`
     text(ctx,'mogging.com',inset,height*(family==='precision' ? .025 : .045),width*.035,ink,square ? 650 : 400,square ? sans : '"Poster Brand", sans-serif')

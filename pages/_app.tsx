@@ -33,9 +33,11 @@ export default function App({ Component, pageProps: { session, ...pageProps } }:
   const [soundEnabled, setSoundEnabled] = useState(true)
   const [soundVolume, setSoundVolume] = useState(0.82)
 
+  if (router.pathname === "/__face-study-render") return <Component {...pageProps} />
+
   return (
     <LocalizationProvider locale={router.locale ?? 'en'}>
-    <SessionProvider session={session}>
+    <SessionProvider session={session} refetchInterval={router.pathname === '/app/home' || router.pathname === '/analysis' ? 300 : 0} refetchWhenOffline={false}>
       {process.env.NODE_ENV !== 'production' && router.pathname === '/creator/__support-demo' ? null : <Analytics />}
       <SWRConfig value={swrConfig}>
         <PageSound

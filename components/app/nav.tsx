@@ -1,4 +1,4 @@
-import { ScanFace, Trophy, Swords } from 'lucide-react'
+import { ChartNoAxesCombined, ListChecks, ScanFace, Swords, Trophy } from 'lucide-react'
 import { trackWebEvent, flushWebAnalytics } from '@/lib/analytics/client'
 import { useTranslation } from 'react-i18next'
 import Link from 'next/link'
@@ -14,21 +14,32 @@ const navItems = [
   { href: '/battle', label: 'nav.battle', icon: Swords },
 ] as const
 
-export function AppNav({ activePath }: { activePath?: string }) {
+const memberItems = [
+  { href: '/protocol', label: 'Protocol', icon: ListChecks },
+  { href: '/progress', label: 'Progress', icon: ChartNoAxesCombined },
+] as const
+
+export function AppNav({ activePath, member }: { activePath?: string; member?: boolean }) {
   const router = useRouter()
   const { t } = useTranslation()
 
   return (
-    <nav className="flex min-w-0 items-center justify-center gap-2 max-[360px]:col-span-3 max-[360px]:row-start-2 max-[360px]:gap-6 sm:gap-8">
-      {navItems.map((item) => {
-        const active = (activePath ?? router.pathname).startsWith(item.href)
+    <nav className="flex min-w-0 items-center justify-center gap-1 overflow-x-auto overscroll-x-contain [scrollbar-width:none] max-[480px]:gap-0 sm:gap-4 md:gap-6">
+      {(member ? [...navItems, ...memberItems] : navItems).map((item) => {
+        const isMemberItem = item.href === '/protocol' || item.href === '/progress'
+        const label = isMemberItem ? item.label : t(item.label)
+        const memberPreview = process.env.NODE_ENV === 'development' && router.pathname === '/__member-preview'
+        const href = memberPreview && isMemberItem ? `/__member-preview?view=${item.href.slice(1)}` : item.href
+        const currentPath = memberPreview ? (router.query.view === 'protocol' ? '/protocol' : '/progress') : router.pathname
+        const active = (activePath ?? currentPath).startsWith(item.href)
 
         return (
           <Link
             key={item.href}
-            href={item.href}
-            aria-label={t(item.label)}
-            title={t(item.label)}
+            href={href}
+            aria-label={label}
+            title={label}
+            aria-current={active ? 'page' : undefined}
             prefetch={false}
             onClick={() => {
               if (router.pathname !== '/' || item.href !== '/analysis') return
@@ -36,12 +47,12 @@ export function AppNav({ activePath }: { activePath?: string }) {
               void flushWebAnalytics()
             }}
             className={cn(
-              'group relative flex h-9 w-8 shrink-0 items-center justify-center min-[481px]:h-auto min-[481px]:w-auto min-[481px]:py-2 text-[11px] font-medium text-black/45 transition-[color,transform] duration-200 ease-out hover:-translate-y-0.5 hover:text-black active:scale-[0.98] sm:text-sm',
+              'group relative flex h-10 w-7 shrink-0 items-center justify-center md:h-auto md:w-auto md:py-2 text-[11px] font-medium text-black/45 transition-[color,transform] duration-200 ease-out hover:-translate-y-0.5 hover:text-black active:scale-[0.98] sm:text-sm',
               active && 'text-black'
             )}
           >
-            <item.icon className="size-[18px] min-[481px]:hidden" aria-hidden="true" />
-            <span className="block max-[480px]:hidden">{t(item.label)}</span>
+            <item.icon className="size-[18px] md:hidden" aria-hidden="true" />
+            <span className="hidden md:block">{label}</span>
             {active ? (
               <LazyMotion features={loadNavMotion}><m.span
                 layoutId="app-nav-active-pill"

@@ -1,0 +1,8 @@
+stage,count,definition
+First mobile open,2859,New installation cohort; excludes known internal/test sessions
+Authenticated,2101,73.5% of new installations; observed after first open
+Photo selected,1924,67.3% of new installations; observed after first open
+Paywall seen,1898,66.4% of new installations; observed after first open
+Purchase started,930,32.5% of new installations; observed after first open
+Purchase completed,50,"1.75% of new installations; client record, not necessarily first-ever customer"
+Evaluation completed,55,Includes returning/previously entitled customers; not a sequential count after the purchase row

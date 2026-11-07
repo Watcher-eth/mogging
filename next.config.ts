@@ -21,8 +21,9 @@ const immutableAssetPaths = [
 ]
 
 const nextConfig: NextConfig = {
-  serverExternalPackages: ['ffmpeg-static'],
+  serverExternalPackages: ['ffmpeg-static', '@sparticuz/chromium'],
   outputFileTracingIncludes: {
+    '/api/mobile/v2/face-study-video': ['./node_modules/@mediapipe/tasks-vision/wasm/*', './node_modules/ffmpeg-static/ffmpeg', './node_modules/@sparticuz/chromium/bin/**'],
     '/api/cron/creator-audience': ['./node_modules/ffmpeg-static/ffmpeg'],
     '/api/creator/submissions': ['./node_modules/ffmpeg-static/ffmpeg'],
     '/api/creator/submissions/*/rereview': ['./node_modules/ffmpeg-static/ffmpeg'],
@@ -38,6 +39,17 @@ const nextConfig: NextConfig = {
   },
   async headers() {
     return [
+      {
+        source: '/scan/sw.js',
+        headers: [
+          { key: 'Service-Worker-Allowed', value: '/' },
+          { key: 'Cache-Control', value: 'no-cache' },
+        ],
+      },
+      {
+        source: '/analysis',
+        headers: [{ key: 'Permissions-Policy', value: 'camera=(self), microphone=()' }],
+      },
       {
         source: '/.well-known/apple-app-site-association',
         headers: [

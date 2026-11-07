@@ -20,7 +20,8 @@ const jawlineIndices = [234, 93, 132, 58, 172, 136, 150, 149, 176, 148, 152, 377
 const cheekboneIndices = [234, 116, 117, 118, 119, 100, 47, 126, 209, 49, 129, 203, 205, 50, 101, 36, 206, 207, 187, 147, 213, 192, 214, 210, 211, 32, 208, 199, 428, 262, 431, 430, 434, 416, 433, 376, 411, 427, 426, 266, 330, 280, 425, 423, 358, 279, 429, 355, 277, 329, 348, 347, 346, 454]
 
 type FaceLandmarkerInstance = {
-  detect: (image: HTMLImageElement) => {
+  detect: (image: HTMLImageElement | HTMLCanvasElement) => {
+    facialTransformationMatrixes?: Array<{ data: number[] }>
     faceLandmarks?: Array<Array<{ x: number; y: number; z?: number }>>
   }
 }
@@ -184,6 +185,38 @@ function pickMany(points: Array<{ x: number; y: number }>, indices: number[]): N
   return selected.every((point): point is NormalizedPoint => Boolean(point)) ? selected : []
 }
 
+export async function createWebCameraPoseReader() {
+  const detector = await getFaceLandmarker()
+  const canvas = document.createElement('canvas')
+  const context = canvas.getContext('2d', { willReadFrequently: true })
+  if (!context) throw new Error('Camera processing unavailable')
+  return (video: HTMLVideoElement) => {
+    const width = Math.min(video.videoWidth, 480)
+    const height = Math.round(video.videoHeight * width / video.videoWidth)
+    if (canvas.width !== width || canvas.height !== height) {
+      canvas.width = width
+      canvas.height = height
+    }
+    context.drawImage(video, 0, 0, width, height)
+    const result = detector.detect(canvas)
+    const faces = result.faceLandmarks ?? []
+    if (faces.length !== 1) return { status: faces.length ? 'multiple' : 'missing' } as const
+    const face = faces[0]
+    const matrix = result.facialTransformationMatrixes?.[0]?.data
+    if (!matrix || !face[152] || !face[10] || !face[1]) return { status: 'missing' } as const
+    const degrees = 180 / Math.PI
+    return {
+      status: 'found',
+      yaw: Math.atan2(-matrix[2], Math.hypot(matrix[0], matrix[1])) * degrees,
+      pitch: Math.atan2(matrix[6], matrix[10]) * degrees,
+      roll: Math.atan2(matrix[1], matrix[0]) * degrees,
+      centerX: face[1].x,
+      centerY: (face[10].y + face[152].y) / 2,
+      height: face[152].y - face[10].y,
+    } as const
+  }
+}
+
 async function getFaceLandmarker() {
   if (!landmarkerPromise) {
     landmarkerPromise = createFaceLandmarker().catch((error) => {
@@ -204,7 +237,7 @@ async function createFaceLandmarker(): Promise<FaceLandmarkerInstance> {
     minFaceDetectionConfidence: .6,
     minFacePresenceConfidence: .6,
     outputFaceBlendshapes: false,
-    outputFacialTransformationMatrixes: false,
+    outputFacialTransformationMatrixes: true,
   })
   try { return await create('GPU') } catch { return await create('CPU') }
 }

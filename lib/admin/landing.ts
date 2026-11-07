@@ -19,17 +19,21 @@ export function landingExperimentRows(rows: MetricRow[], experimentId: string): 
     const homepageVisitors = Number(row?.homepage_visitors ?? visitors)
     const mature = Number(row?.mature ?? 0)
     const matureClicks = Number(row?.mature_store_clicks ?? 0)
-    const interval = landingRateInterval(matureClicks, mature, experiment.status === 'active' ? 1.959963985 : 2.241402728)
+    const matureConversions = experiment.status === 'active' ? Number(row?.mature_paid_checkouts ?? 0) : matureClicks
+    const digits = experiment.status === 'active' ? 2 : 1
+    const interval = landingRateInterval(matureConversions, mature, experiment.status === 'active' ? 1.959963985 : 2.241402728)
     return {
       variant: `${variant.toUpperCase()} · ${variant === 'a' ? experiment.control : experiment.treatment}`,
       visitors, homepage_visitors: homepageVisitors, store_clicks: Number(row?.store_clicks ?? 0),
       observed_store_rate: homepageVisitors ? `${(Number(row?.store_clicks ?? 0) / homepageVisitors * 100).toFixed(1)}%` : '—',
       mature, pending: Number(row?.pending ?? 0),
-      mature_store_rate: mature ? `${(matureClicks / mature * 100).toFixed(1)}%` : '—',
-      mature_store_clicks: matureClicks,
+      mature_conversions: matureConversions,
+      mature_conversion_rate: mature ? `${(matureConversions / mature * 100).toFixed(digits)}%` : '—',
+      subscription_buyers: Number(row?.subscription_buyers ?? 0),
+      one_time_buyers: Number(row?.one_time_buyers ?? 0),
       first_exposure: row?.first_exposure ?? null,
       latest_exposure: row?.latest_exposure ?? null,
-      interval: interval ? `${interval[0].toFixed(1)}–${interval[1].toFixed(1)}%` : '—',
+      interval: interval ? `${interval[0].toFixed(digits)}–${interval[1].toFixed(digits)}%` : '—',
       browser_starts: Number(row?.web_starts ?? 0), paywalls: Number(row?.paywalls ?? 0),
       checkouts: Number(row?.checkouts ?? 0), paid_checkouts: Number(row?.paid_checkouts ?? 0),
     }
@@ -45,11 +49,11 @@ export function landingExperimentSummary(rows: MetricRow[], experimentId: string
   const exposures = variants.map(row => landingEventTime(row.first_exposure)).filter(Number.isFinite)
   const elapsedDays = exposures.length ? Math.max(0, Math.floor((now.getTime() - Math.min(...exposures)) / 86400_000)) : 0
   const enough = variants.every(row => Number(row.mature) >= experiment.minimumVisitors) && elapsedDays >= experiment.minimumDays
-  const rateA = Number(a.mature) ? Number(a.mature_store_clicks) / Number(a.mature) : null
-  const rateB = Number(b.mature) ? Number(b.mature_store_clicks) / Number(b.mature) : null
+  const rateA = Number(a.mature) ? Number(a.mature_conversions) / Number(a.mature) : null
+  const rateB = Number(b.mature) ? Number(b.mature_conversions) / Number(b.mature) : null
   return { total, imbalance, elapsedDays,
     status: experiment.status === 'archived' ? 'Archived' : !total ? 'Awaiting first exposure' : imbalance ? 'Check traffic allocation' : enough ? 'Checkpoints met · review uncertainty' : 'Collecting data',
-    difference: rateA != null && rateB != null ? `${rateB > rateA ? '+' : ''}${((rateB - rateA) * 100).toFixed(1)} pp` : '—',
+    difference: rateA != null && rateB != null ? `${rateB > rateA ? '+' : ''}${((rateB - rateA) * 100).toFixed(experiment.status === 'active' ? 2 : 1)} pp` : '—',
     lift: rateA != null && rateA > 0 && rateB != null ? `${((rateB / rateA - 1) * 100).toFixed(1)}%` : '—',
   }
 }

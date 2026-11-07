@@ -1,10 +1,14 @@
+import { drawVideoTextMorph } from './video-pill-morph'
+import { studyTimelineMotion, studyTimelineVariant } from './mobile-face-study-motion'
+import { drawReportOverlay } from './report-overlay'
+import { drawMetricTimeline, metricTimelineGeometry } from './metric-timeline'
 import type { DocumentaryRenderer } from './video-documentary'
 import { drawPortraitInstruments, drawPortraitParticles, preparePortraitParticles, instrumentOwnsGuides } from './portrait-instruments'
 import { reportPortraitProjection, drawPortraitColorExtension } from './report-portrait'
 import { drawSpokenScore } from './spoken-score'
 import { drawScientificEvidence } from './video-research'
 import { scriptVisualSeed } from './video-script'
-import { portraitOverlayWindowMs, narratedPortraitProgram, portraitProgramRuns, preparePortraitProgram, samplePortraitProgram, drawPortraitActivity, type PortraitProgramRun, type PreparedPortraitProgram } from './portrait-program'
+import { portraitOverlayWindowMs, narratedPortraitProgram, portraitProgramRuns, preparePortraitProgram, samplePortraitProgram, drawPortraitActivity, drawStudyMarginDiagram, type PortraitProgramRun, type PreparedPortraitProgram } from './portrait-program'
 import { drawFeatureStudy, prepareFeatureEdit, type FeaturePhoto } from './feature-study'
 import { videoThemeContext, originalVideoContext, darkVideoColor } from './video-theme'
 import { portraitOverlayAppearance } from './portrait-print'
@@ -49,6 +53,7 @@ export type PreparedVideo = {
   scenes: Map<string, SceneAsset>
   incoming: HTMLCanvasElement
   outgoing: HTMLCanvasElement
+  studyAvatar?: HTMLImageElement
   brand?: CreatorBrand
   documentary?: DocumentaryRenderer
   anatomy?: AnatomyRenderer
@@ -62,7 +67,7 @@ function surface() {
 
 const featureLandmarks = new Map<string, Promise<FaceLandmarksPayload>>()
 
-export async function prepareVideo(compositionValue: VideoComposition, images: GeneratorImage[], purpose: 'video' | 'selection' = 'video'): Promise<PreparedVideo> {
+export async function prepareVideo(compositionValue: VideoComposition, images: GeneratorImage[], purpose: 'video' | 'selection' = 'video', options: { keepPortraitBackground?: boolean } = {}): Promise<PreparedVideo> {
   const composition = parseComposition(compositionValue)
   const [brand, anatomy] = await Promise.all([loadCreatorBrand(), composition.scenes.some(scene => scene.source.kind === 'explainer' && (scene.graphic?.layout === 'story')) ? import('./video-anatomy').then(module => module.prepareAnatomyRenderer()) : undefined, document.fonts.ready, loadShareFont().then(() => document.fonts.load('400 64px "Mogging Share"')), loadMockReportSymbols()])
   const requiredIds = videoImageIds(composition.scenes)
@@ -153,11 +158,24 @@ export async function prepareVideo(compositionValue: VideoComposition, images: G
       overlayStyle: scene.source.overlay === 'face-map' ? 'face-map' : 'category',
       mockReport: { category: scene.source.report ? { ...scene.source.report, score: scene.source.metricScore, features: scene.source.report.features.map(feature => ({ ...feature })) } : buildMockOverallCategory(String(scene.source.currentScore), {}), scroll: 0 },
     }
-    const portrait = source && !['report', 'screen', 'explainer'].includes(scene.source.kind) ? scene.source.overlay === 'face-map' && !scene.editorial && !scene.study && !scene.photoStudy ? { canvas: decoded.get(source.id)!, source, sourceRect: { x: 0, y: 0, width: decoded.get(source.id)!.width, height: decoded.get(source.id)!.height } } : await preparePortrait(decoded.get(source.id)!, source) : null
+    const original = source && decoded.get(source.id)
+    const useOriginal = options.keepPortraitBackground || (scene.source.overlay === 'face-map' && !scene.editorial && !scene.study && !scene.photoStudy)
+    // The optional cutout can depend on model assets. Keep the portrait
+    // and continue the guide if the model is unavailable or slow to start.
+    const cutout = composition.privateStudy && scene.studyCutout && source && original
+      ? await Promise.race([
+        preparePortrait(original, source).catch(() => null),
+        new Promise<null>(resolve => setTimeout(() => resolve(null), 3500)),
+      ]) : null
+    const portrait = cutout ?? (source && original && !['report', 'screen', 'explainer'].includes(scene.source.kind)
+      ? useOriginal
+        ? { canvas: original, source, sourceRect: { x: 0, y: 0, width: original.width, height: original.height } }
+        : await preparePortrait(original, source)
+      : null)
     const viewport = portrait ? { width: portrait.canvas.width, height: portrait.canvas.height } : { width: mockReportSize.width, height: mockReportHeroHeight }
-    let overlay: ReportOverlay | null = source && (Boolean(portrait) || scene.source.overlay !== 'none' || scene.source.kind === 'report') ? createReportOverlay({ ...slide, overlayStyle: 'category' }, portrait?.source ?? source, viewport, 360, scene.source.kind === 'report') : null
-    if (overlay && source) overlay = preciseFaceOverlay(overlay, portrait?.source ?? source, scene.photoStudy ? scene.photoStudy.feature === 'face-width' ? 'face-shape' : scene.photoStudy.feature === 'lips' ? 'mouth' : scene.photoStudy.feature : scene.source.categoryId, scene.customSlideId?.startsWith('overlay-') || composition.recipe === 'measurement-explainer' ? '' : scene.narration, scene.portraitFX?.overlay?.regions || scene.study?.operation === 'planes' || Boolean(scene.photoStudy && ['cheeks', 'jaw'].includes(scene.photoStudy.feature)), scene.focus.startsWith('metric:') ? scene.focus.slice(7) : undefined)
-    if (overlay) { overlay.ink = '255,255,255'; overlay.pointAppearance = 'minimal'; overlay.labelAppearance = 'scan'; overlay.labelScale = .85 }
+    let overlay: ReportOverlay | null = source && (Boolean(portrait) || scene.source.overlay !== 'none' || scene.source.kind === 'report') ? createReportOverlay({ ...slide, overlayStyle: 'category', mockReport: composition.privateStudy ? undefined : slide.mockReport }, portrait?.source ?? source, viewport, 360, scene.source.kind === 'report', composition.privateStudy) : null
+    if (overlay && source && !composition.privateStudy) overlay = preciseFaceOverlay(overlay, portrait?.source ?? source, scene.photoStudy ? scene.photoStudy.feature === 'face-width' ? 'face-shape' : scene.photoStudy.feature === 'lips' ? 'mouth' : scene.photoStudy.feature : scene.source.categoryId, scene.customSlideId?.startsWith('overlay-') || composition.recipe === 'measurement-explainer' ? '' : scene.narration, scene.portraitFX?.overlay?.regions || scene.study?.operation === 'planes' || Boolean(scene.photoStudy && ['cheeks', 'jaw'].includes(scene.photoStudy.feature)), scene.focus.startsWith('metric:') ? scene.focus.slice(7) : undefined)
+    if (overlay && !composition.privateStudy) { overlay.ink = '255,255,255'; overlay.pointAppearance = 'minimal'; overlay.labelAppearance = 'scan'; overlay.labelScale = .85 }
     if (!source && !['title', 'explainer'].includes(scene.source.kind)) throw new Error(`Choose a source photo or app screen for ${scene.label}.`)
     const asset: SceneAsset = { image: source ? decoded.get(source.id) ?? null : null, secondary: scene.source.secondaryImageId ? decoded.get(scene.source.secondaryImageId) ?? null : null, portrait: portrait && scene.portraitFX?.print ? await preparePortraitPrint(portrait.canvas, scene.portraitFX.print, purpose) : portrait?.canvas ?? null, overlay, slide, scrollMax: mockReportScrollMax(slide.mockReport!.category), regions: mockReportRegions(measurement, slide.mockReport!.category), initialScroll: scene.source.categoryId === priorCategory ? priorScroll : 0, initialFrame: priorFrame, continuousReport: sharesReport(previousScene, scene) }
     if (portrait && source && overlay && composition.recipe !== 'measurement-explainer' && !scene.focus.startsWith('metric:') && !scene.customSlideId?.startsWith('overlay-') && !scene.profileStudy && !scene.photoStudy && !scene.portraitProgram && scene.words?.length) {
@@ -246,6 +264,16 @@ export async function prepareVideo(compositionValue: VideoComposition, images: G
     if (!asset.portrait || warmed.has(asset.portrait) || !(asset.lighting || scene.photoStudy || scene.featureStudy?.edit && (scene.featureStudy.editMode === 'warp' || ['lips','brows','philtrum'].includes(scene.featureStudy.topic)))) continue
     preparePortraitEffects(asset.portrait, { landmarks: asset.studyLandmarks, lighting: asset.lighting, mask: asset.effectMask })
     warmed.add(asset.portrait)
+  }
+  if (composition.privateStudy) {
+    const headTops = new Map(composition.scenes.flatMap(scene => {
+      const top = scenes.get(scene.id)?.portraitHeadTop
+      return top === undefined ? [] : [[scene.source.imageId, top] as const]
+    }))
+    for (const scene of composition.scenes) {
+      const asset = scenes.get(scene.id)
+      if (asset) asset.portraitHeadTop ??= headTops.get(scene.source.imageId)
+    }
   }
   const prepared = { composition, scenes, incoming: surface(), outgoing: surface(), brand, anatomy }
   if (composition.scenes.some(scene => scene.tracks.some(track => track.primitive === 'liquid-ripple'))) prepareVideoRipple(prepared.incoming)
@@ -400,6 +428,61 @@ export function inspectVideoScene(prepared: PreparedVideo, sceneId: string, loca
   return result
 }
 
+const studyBackgroundHandoffMs = 2200
+
+function studyBackgroundHandoff(prepared: PreparedVideo, previous: VideoScene | undefined, scene: VideoScene) {
+  if (!prepared.composition.privateStudy || previous?.source.imageId !== scene.source.imageId) return
+  const prior = prepared.scenes.get(previous.id)?.portrait
+  const next = prepared.scenes.get(scene.id)?.portrait
+  if (prior && next && (prior instanceof HTMLCanvasElement) !== (next instanceof HTMLCanvasElement)) {
+    return { cutout: prior instanceof HTMLCanvasElement ? prior : next, restoring: prior instanceof HTMLCanvasElement }
+  }
+}
+
+const studyEdgeCache = new WeakMap<HTMLImageElement, [number[], number[]]>()
+
+function isLightStudyScene(scene?: VideoScene) {
+  const guide = scene?.portraitProgram?.actions[0]?.guide
+  return scene?.source.categoryId === 'overall' || guide === 'study:nose-axis' || guide === 'study:skin-color'
+}
+
+function studyEdgeColors(prepared: PreparedVideo, scene: VideoScene, previous: VideoScene | undefined, time: number, reduced: boolean) {
+  const light = Number(isLightStudyScene(scene))
+  const previousLight = previous ? Number(isLightStudyScene(previous)) : light
+  const themeProgress = reduced ? 1 : sharedElementMotion(time / studyBackgroundHandoffMs)
+  const tone = previousLight + (light - previousLight) * themeProgress
+  const base = [16, 24, 32].map(channel => Math.round(channel + (255 - channel) * tone))
+  const photo = prepared.scenes.get(scene.id)?.image
+  let edges = photo && studyEdgeCache.get(photo)
+  if (photo && !edges) {
+    const canvas = document.createElement('canvas')
+    canvas.width = canvas.height = 4
+    const sample = canvas.getContext('2d', { willReadFrequently: true })!
+    sample.drawImage(photo, 0, 0, 4, 4)
+    const pixels = sample.getImageData(0, 0, 4, 4).data
+    const edge = (row: number) => base.map((_, channel) => (pixels[row * 16 + channel] + pixels[row * 16 + 12 + channel]) / 2)
+    edges = [edge(0), edge(3)]
+    studyEdgeCache.set(photo, edges)
+  }
+  const handoff = studyBackgroundHandoff(prepared, previous, scene)
+  const progress = reduced ? 1 : sharedElementMotion(time / studyBackgroundHandoffMs)
+  const cutout = prepared.scenes.get(scene.id)?.portrait instanceof HTMLCanvasElement
+  const blend = handoff ? (handoff.restoring ? progress : 1 - progress) : cutout ? 0 : 1
+  // The foreground changes over a shorter window to keep it legible against the moving gradient.
+  const inkProgress = sharedElementMotion((tone - .43) / .14)
+  const mix = (dark: number[], light: number[]) => dark.map((value, index) =>
+    Math.round(value + (light[index] - value) * inkProgress))
+  const ink = mix([255, 255, 255], [24, 32, 41])
+  return {
+    edges: (edges ?? [base, base]).map(edge => base.map((channel, index) =>
+      Math.round(channel + (edge[index] - channel) * blend * (.34 - .24 * tone))).join(' ')),
+    ink: `rgb(${ink.join(' ')})`,
+    lightAmount: tone,
+    muted: `rgb(${mix([189, 201, 210], [86, 97, 108]).join(' ')})`,
+    accent: `rgb(${mix([134, 219, 255], [8, 118, 156]).join(' ')})`,
+  }
+}
+
 export function drawVideoFrame(ctx: CanvasRenderingContext2D, prepared: PreparedVideo, timeMs: number, width: number, height: number, reducedMotion = false, inspect?: (element: CanvasElement) => void) {
   if (prepared.documentary) return prepared.documentary.draw(ctx, Math.max(0, Math.min(prepared.composition.durationMs - .001, timeMs)), width, height, reducedMotion)
   const { composition } = prepared
@@ -410,12 +493,18 @@ export function drawVideoFrame(ctx: CanvasRenderingContext2D, prepared: Prepared
   const incoming = prepared.incoming.getContext('2d')!
   const transition = scene.featureStudy || prepared.scenes.get(scene.id)?.continuousReport ? undefined : scene.tracks.find(track => track.target === 'content' && primitiveDefinition(track.primitive).category === 'transition' && localMs >= track.startMs && localMs < track.startMs + track.durationMs)
   const previous = composition.scenes[index - 1]
+  // A guide uses one registered portrait. Paint it directly at the export
+  // resolution to avoid rasterizing and downsampling a full Creator Studio frame.
+  if (composition.privateStudy && (!previous || previous.source.imageId === scene.source.imageId)) {
+    renderScene(ctx, prepared, scene, localMs, reducedMotion, createVideoPainter(scene, localMs, reducedMotion, inspect), undefined, false, undefined, true, undefined, width / W, height / H)
+    return
+  }
   const graphicMorph = transition?.primitive === 'layout-morph' && previous?.source.kind === 'explainer' && scene.source.kind === 'explainer' && explainerTone(previous.graphic!) === explainerTone(scene.graphic!) && scene.graphic!.items.some(item => continuesGraphicItem(previous.graphic, scene.graphic!, item.id))
   const imageId = sharedImageId(prepared, scene)
   const continuousPortrait = Boolean(imageId && imageId === sharedImageId(prepared, previous))
   const linearTransition = transition && linearPortraitTransitions.has(transition.primitive)
-  const shared = !reducedMotion && previous && (graphicMorph || linearTransition && continuousPortrait || transition && ['cinematic-flow', 'transition-panel'].includes(transition.primitive) && previous.source.imageId === scene.source.imageId && (hasCaption(previous) || hasCaption(scene)) && (prepared.scenes.get(previous.id)?.portrait || prepared.scenes.get(scene.id)?.portrait))
-  const stationary = Boolean(!shared && transition && previous && !reducedMotion && transition.primitive !== 'hard-cut' && stationarySceneChrome(previous,scene) && ['cinematic-flow','transition-panel','crossfade','focus-cut','luma-cut','match-reframe','layout-morph','screen-push','wipe-left','wipe-right','wipe-up','card-reveal'].includes(transition.primitive))
+  const shared = !composition.privateStudy && !reducedMotion && previous && (graphicMorph || linearTransition && continuousPortrait || transition && ['cinematic-flow', 'transition-panel'].includes(transition.primitive) && previous.source.imageId === scene.source.imageId && (hasCaption(previous) || hasCaption(scene)) && (prepared.scenes.get(previous.id)?.portrait || prepared.scenes.get(scene.id)?.portrait))
+  const stationary = Boolean(!composition.privateStudy && !shared && transition && previous && !reducedMotion && transition.primitive !== 'hard-cut' && stationarySceneChrome(previous,scene) && ['cinematic-flow','transition-panel','crossfade','focus-cut','luma-cut','match-reframe','layout-morph','screen-push','wipe-left','wipe-right','wipe-up','card-reveal'].includes(transition.primitive))
   const featureHandoff = !reducedMotion && previous?.featureStudy && scene.featureStudy && localMs < 560 && stationarySceneChrome(previous,scene) ? {previous,next:scene,time:localMs,progress:sharedElementMotion(localMs/560)} : undefined
   if (shared) drawSharedElements(incoming, prepared, previous, scene, progress(transition!, localMs, false), localMs, inspect)
   else {
@@ -431,14 +520,19 @@ export function drawVideoFrame(ctx: CanvasRenderingContext2D, prepared: Prepared
   ctx.setTransform(scale, 0, 0, scale, (width - W * scale) / 2, (height - H * scale) / 2)
   ctx.beginPath(); ctx.rect(0, 0, W, H); ctx.clip()
   ctx.globalAlpha = 1; ctx.filter = 'none'; ctx.fillStyle = composition.theme === 'dark' ? '#111' : '#fff'; ctx.fillRect(0, 0, W, H)
-  if (shared || !transition || index === 0 || reducedMotion || transition.primitive === 'hard-cut') ctx.drawImage(prepared.incoming, 0, 0)
+  if (shared || (composition.privateStudy && previous?.source.imageId === scene.source.imageId) || !transition || index === 0 || reducedMotion || transition.primitive === 'hard-cut') ctx.drawImage(prepared.incoming, 0, 0)
   else {
     if (outgoingSceneCache.get(prepared) !== `${previous.id}:${stationary}`) {
       renderScene(prepared.outgoing.getContext('2d')!, prepared, previous, previous.durationMs - 1, reducedMotion, undefined, undefined, false, undefined, !stationary)
       outgoingSceneCache.set(prepared, `${previous.id}:${stationary}`)
     }
     const amount = progress(transition, localMs, false)
-    if (stationary) drawContentTransition(ctx,prepared.outgoing,prepared.incoming,transition,amount,scriptVisualSeed(scene.id,composition.recipe,scene.narration))
+    if (composition.privateStudy) {
+      ctx.drawImage(prepared.outgoing, 0, 0)
+      ctx.globalAlpha = smoothMotion(amount)
+      ctx.drawImage(prepared.incoming, 0, 0)
+      ctx.globalAlpha = 1
+    } else if (stationary) drawContentTransition(ctx,prepared.outgoing,prepared.incoming,transition,amount,scriptVisualSeed(scene.id,composition.recipe,scene.narration))
     else if (transition.primitive !== 'liquid-ripple' || !drawVideoRipple(ctx, prepared.outgoing, prepared.incoming, transition, amount)) drawTransition(videoThemeContext(ctx, composition.theme), prepared.outgoing, prepared.incoming, transition, amount, Boolean(scene.study && previous.study?.id === scene.study.id))
   }
   if(stationary) {
@@ -450,6 +544,7 @@ export function drawVideoFrame(ctx: CanvasRenderingContext2D, prepared: Prepared
 }
 
 function drawVideoTicker(ctx: CanvasRenderingContext2D, prepared: PreparedVideo, timeMs: number, reduced: boolean) {
+  if (prepared.composition.privateStudy) return
   const motion = videoTickerMotion(timeMs, reduced)
   if (!motion || motion.opacity <= 0 || !prepared.brand || isVideoCta(prepared.composition, activeScene(prepared.composition,timeMs))) return
   const raw = originalVideoContext(ctx), frame = videoBrandFrame(true)
@@ -564,7 +659,67 @@ function drawTransition(ctx: CanvasRenderingContext2D, previous: HTMLCanvasEleme
   ctx.restore()
 }
 
-function renderScene(ctx: CanvasRenderingContext2D, prepared: PreparedVideo, scene: VideoScene, localMs: number, reduced: boolean, paint: CanvasPainter = createVideoPainter(scene, localMs, reduced, undefined, undefined, prepared.scenes.get(scene.id)?.entryTimes, prepared.scenes.get(scene.id)?.narratedMetrics), morph?: FaceMorph, measuring = false, captionHandoff?: CaptionHandoff & { next: VideoScene; time: number }, chrome = true, printBlend?:PortraitPrintBlend) {
+const studyBackdrops = new WeakMap<HTMLImageElement, HTMLCanvasElement>()
+
+function studyBackdrop(image: HTMLImageElement) {
+  const cached = studyBackdrops.get(image)
+  if (cached) return cached
+  const canvas = document.createElement('canvas')
+  canvas.width = W / 6
+  canvas.height = H / 6
+  const ctx = canvas.getContext('2d')!
+  ctx.filter = 'blur(7px)'
+  cover(ctx, image, { x: -15, y: -15, width: canvas.width + 30, height: canvas.height + 30 })
+  studyBackdrops.set(image, canvas)
+  return canvas
+}
+
+function privatePortraitFrame(scene: VideoScene, asset: SceneAsset): VideoFrame | undefined {
+  const picture = asset.portrait
+  if (!picture) return
+  const anchors = asset.studyLandmarks?.anchors
+  const guide = scene.portraitProgram?.actions[0]?.guide
+  const targets = {
+    'study:pupil-axis': [anchors?.leftPupil, anchors?.rightPupil, .06, .37],
+    'study:brow-spacing': [anchors?.leftBrow, anchors?.leftPupil, .32, .42],
+    'study:nose-axis': [anchors?.noseBridge, anchors?.noseTip, .27, .44],
+    'study:mouth-width': [anchors?.mouthLeft, anchors?.mouthRight, .24, .52],
+    'study:philtrum': [anchors?.noseTip, anchors?.upperLip, .34, .48],
+    'study:paired-eyes': [anchors?.leftPupil, anchors?.rightPupil, .26, .39],
+    'study:face-proportions': [anchors?.noseTip, anchors?.chin, .04, .56],
+    'study:skin-light': [anchors?.leftCheek, anchors?.noseTip, .24, .49],
+    'study:skin-color': [anchors?.rightCheek, anchors?.forehead, .17, .42],
+    'study:jaw-bend': [anchors?.jawLeft, anchors?.chin, .08, .51],
+  } as const
+  const target = targets[guide as keyof typeof targets]
+  const [a, b, magnification, screenY] = target ?? [anchors?.noseTip, anchors?.noseTip, scene.studyCutout ? .12 : 0, .42]
+  const fitWidth = W / picture.width
+  const chin = anchors?.chin?.y ?? .75
+  const head = asset.portraitHeadTop !== undefined
+    ? asset.portraitHeadTop / picture.height : Math.max(0, (anchors?.forehead?.y ?? .3) - .24)
+  const faceSpan = Math.max(.12, chin - head)
+  const safeScale = (1470 - 150) / (picture.height * faceSpan)
+  const fitHeight = H / picture.height
+  const fillScale = Math.max(fitWidth, Math.min(fitHeight, safeScale))
+  const scale = Math.max(fillScale, Math.min(fillScale * (1 + magnification * .8), safeScale))
+  const width = picture.width * scale
+  const height = picture.height * scale
+  const centerX = ((a?.x ?? .5) + (b?.x ?? .5)) / 2
+  const centerY = ((a?.y ?? .5) + (b?.y ?? .5)) / 2
+  // Keep the chin above the footer gradient, even if the source has empty space above the head.
+  const topLimit = 150 - head * height
+  const bottomLimit = 1470 - chin * height
+  return {
+    x: Math.max(W - width, Math.min(0, W / 2 - centerX * width)),
+    y: Math.max(topLimit, Math.min(bottomLimit,
+      height >= H ? Math.max(H - height, Math.min(0, H * screenY - centerY * height))
+        : H * screenY - centerY * height)),
+    width,
+    height,
+  }
+}
+
+function renderScene(ctx: CanvasRenderingContext2D, prepared: PreparedVideo, scene: VideoScene, localMs: number, reduced: boolean, paint: CanvasPainter = createVideoPainter(scene, localMs, reduced, undefined, undefined, prepared.scenes.get(scene.id)?.entryTimes, prepared.scenes.get(scene.id)?.narratedMetrics), morph?: FaceMorph, measuring = false, captionHandoff?: CaptionHandoff & { next: VideoScene; time: number }, chrome = true, printBlend?:PortraitPrintBlend, scaleX = 1, scaleY = 1) {
   ctx = videoThemeContext(ctx, prepared.composition.theme)
   const faceAppearance = portraitOverlayAppearance(scene.portraitFX?.print, scene.portraitFX?.overlay)
   const freeze = scene.tracks.find(track => track.primitive === 'freeze-frame')
@@ -577,6 +732,7 @@ function renderScene(ctx: CanvasRenderingContext2D, prepared: PreparedVideo, sce
   const asset = cue ? { ...original, overlay: cue.overlay } : original
   if (cue && cueIndex > 0) morph = { from: original.overlayCues![cueIndex - 1].overlay, to: cue.overlay, progress: reduced ? 1 : smoothMotion((localMs - cue.startMs) / videoMotion.styleWaveMs) }
   const previousScene = prepared.composition.scenes[prepared.composition.scenes.indexOf(scene) - 1]
+  const studyColors = prepared.composition.privateStudy && !measuring ? studyEdgeColors(prepared, scene, previousScene, localMs, reduced) : undefined
   const studyClock=scene.photoStudy?photoStudyClock(prepared.composition.scenes,scene,localMs):undefined
   const activity = !measuring && asset.program && asset.programRun ? samplePortraitProgram(asset.program,scene.startMs+localMs-asset.programRun.startMs,asset.programRun.durationMs,asset.programRun.words,reduced) : undefined
   const lightFor = (target: VideoScene, time: number) => {
@@ -591,7 +747,7 @@ function renderScene(ctx: CanvasRenderingContext2D, prepared: PreparedVideo, sce
   const fromLighting = blendLight ? fromLight ?? neutralPortraitLighting : undefined
 
   const accent = videoStyles[prepared.composition.style].accent
-  ctx.save(); ctx.setTransform(1, 0, 0, 1, 0, 0); ctx.globalAlpha = 1; ctx.filter = 'none'; ctx.imageSmoothingEnabled = true; ctx.imageSmoothingQuality = 'high'; ctx.clearRect(0, 0, W, H)
+  ctx.save(); ctx.setTransform(scaleX, 0, 0, scaleY, 0, 0); ctx.globalAlpha = 1; ctx.filter = 'none'; ctx.imageSmoothingEnabled = true; ctx.imageSmoothingQuality = 'high'; ctx.clearRect(0, 0, W, H)
   ctx.fillStyle = '#fff'; ctx.fillRect(0, 0, W, H)
   ctx.save()
   applyTracks(ctx, scene.tracks.filter(track => track.target === 'content' && primitiveDefinition(track.primitive).category !== 'transition'), localMs, reduced)
@@ -631,17 +787,32 @@ function renderScene(ctx: CanvasRenderingContext2D, prepared: PreparedVideo, sce
     const operationMs = scene.startMs + localMs - (asset.studyOperationStartMs ?? scene.startMs)
     const detail = portraitIsDetail(scene)
     let portraitFrame = scene.study ? studyPortraitFrame(scene.study.operation) : scene.editorial || scene.photoStudy ? editorialPortraitStage(scene.editorial) : photoStudy ? { x: 0, y: 0, width: W, height: H } : featureStageLayout({ width: 354, height: 145 }, scene.layout, !detail && scene.focus !== 'action-plan' ? 'scores' : scene.focus).face
-    if (showsFeatureMetric(scene)) portraitFrame = { ...portraitFrame, y: captionDesign.top + 220, height: featureComponent(asset, scene).frame.y - (captionDesign.top + 220) + 120 }
+    const privateStudy = prepared.composition.privateStudy
+    if (privateStudy) {
+      const backdrop = ctx.createLinearGradient(0, 0, 0, H)
+      backdrop.addColorStop(0, `rgb(${studyColors?.edges[0] ?? '16 24 32'})`)
+      backdrop.addColorStop(1, `rgb(${studyColors?.edges[1] ?? '16 24 32'})`)
+      ctx.fillStyle = backdrop
+      ctx.fillRect(0, 0, W, H)
+      if (asset.image) {
+        ctx.save()
+        ctx.globalAlpha = .35
+        ctx.drawImage(studyBackdrop(asset.image), 0, 0, W, H)
+        ctx.restore()
+      }
+    }
+    if (privateStudy) portraitFrame = { x: 0, y: 0, width: W, height: H }
+    if (!privateStudy && showsFeatureMetric(scene)) portraitFrame = { ...portraitFrame, y: captionDesign.top + 220, height: featureComponent(asset, scene).frame.y - (captionDesign.top + 220) + 120 }
     if (detail) portraitFrame = { ...portraitFrame, height: Math.max(portraitFrame.height, H - portraitFrame.y) }
     if (scene.scoreCallouts?.length) portraitFrame = {...portraitFrame,height:Math.min(portraitFrame.height,scorePresentation.top-120-portraitFrame.y)}
     const overlayDuration = scene.study ? (asset.studyOperationEndMs ?? scene.startMs + scene.durationMs) - (asset.studyOperationStartMs ?? scene.startMs) : scene.durationMs
     const stageHeight = portraitFrame.height / (portraitFrame.width / W)
     const fadeHeight = Math.max(stageHeight, (H - portraitFrame.y) * W / portraitFrame.width)
     if (scene.study && !asset.profile) paint(ctx, { id: `study/${scene.study.id}/background`, label: 'Faint editorial grid', frame: { x: 0, y: 0, width: W, height: H }, draw: drawStudyBackdrop })
-    let fadeProtectedBottom: number | undefined, fadeImageBottom: number | undefined
+    let fadeProtectedBottom: number | undefined, fadeImageBottom: number | undefined, fadeImageTop: number | undefined
     if (scene.study?.operation !== 'recap') paint(ctx, { id: 'portrait', label: 'Portrait & measurements', frame: { ...portraitFrame, height: fadeHeight * portraitFrame.width / W }, size: { width: W, height: fadeHeight }, clip: !detail, draw: (ctx, paint) => {
       ctx.save()
-      applyTracks(ctx, scene.tracks.filter(track => detail && track.target === 'camera' && !['report-scroll', 'layout-scale'].includes(track.primitive)), localMs, reduced)
+      applyTracks(ctx, scene.tracks.filter(track => !privateStudy && detail && track.target === 'camera' && !['report-scroll', 'layout-scale'].includes(track.primitive)), localMs, reduced)
       const picture = asset.portrait
       let protectedBottom: number | undefined
       let imageBottom = stageHeight
@@ -672,7 +843,33 @@ function renderScene(ctx: CanvasRenderingContext2D, prepared: PreparedVideo, sce
         const previous = prepared.composition.scenes[prepared.composition.scenes.indexOf(scene) - 1]
         const continuedDetail = previous?.source.imageId === scene.source.imageId && previous.source.categoryId === scene.source.categoryId && portraitIsDetail(previous)
         const zoom = !focus || reduced || continuedDetail ? 1 : smoothMotion((scene.study ? operationMs : localMs) / Math.min(1200, scene.durationMs * .35))
-        const { x, y, width, height } = Object.fromEntries(Object.entries(destination).map(([key, value]) => [key, context[key as keyof VideoFrame] + (value - context[key as keyof VideoFrame]) * zoom])) as VideoFrame
+        const placement = Object.fromEntries(Object.entries(destination).map(([key, value]) => [key, context[key as keyof VideoFrame] + (value - context[key as keyof VideoFrame]) * zoom])) as VideoFrame
+        const backgroundHandoff = studyBackgroundHandoff(prepared, previousScene, scene)
+        const backgroundProgress = reduced ? 1 : sharedElementMotion(localMs / studyBackgroundHandoffMs)
+        if (privateStudy) {
+          const target = privatePortraitFrame(scene, asset)!
+          const prior = previousScene && prepared.scenes.get(previousScene.id)
+          const priorFrame = prior && previousScene.source.imageId === scene.source.imageId
+            ? privatePortraitFrame(previousScene, prior) : undefined
+          const priorCrop = prior?.portraitSourceRect
+          const crop = asset.portraitSourceRect
+          // Register the cutout and the original against the same source photo.
+          const from = priorFrame && priorCrop && crop ? {
+            x: priorFrame.x + (crop.x - priorCrop.x) * priorFrame.width / priorCrop.width,
+            y: priorFrame.y + (crop.y - priorCrop.y) * priorFrame.height / priorCrop.height,
+            width: crop.width * priorFrame.width / priorCrop.width,
+            height: crop.height * priorFrame.height / priorCrop.height,
+          } : undefined
+          const travel = backgroundProgress
+          Object.assign(placement, from ? {
+            x: from.x + (target.x - from.x) * travel,
+            y: from.y + (target.y - from.y) * travel,
+            width: from.width + (target.width - from.width) * travel,
+            height: from.height + (target.height - from.height) * travel,
+          } : target)
+        }
+        const { x, y, width, height } = placement
+        fadeImageTop = portraitFrame.y + y * portraitFrame.width / W
         imageBottom = y + height
         const protectedY = focus ? focus.y + focus.height : asset.studyLandmarks?.anchors.chin ? asset.studyLandmarks.anchors.chin.y * picture.height : asset.profile?.faceBottom
         if (protectedY !== undefined) protectedBottom = y + protectedY * height / picture.height
@@ -681,10 +878,35 @@ function renderScene(ctx: CanvasRenderingContext2D, prepared: PreparedVideo, sce
           else if(printBlend && !measuring) drawPortraitPrintSweep(ctx,printBlend.from,printBlend.to,picture.width,picture.height,printBlend.progress)
           else if (scene.photoStudy) drawPhotoStudy(ctx, picture, asset.studyLandmarks, scene.photoStudy, studyClock!.timeMs, studyClock!.durationMs, reduced, { lighting: activeLighting, mask: asset.effectMask, overlay: activity ? undefined : asset.overlay, appearance: faceAppearance, paint, measuring })
           else if (activeLighting && !measuring) drawPortraitEffects(ctx, picture, { landmarks: asset.studyLandmarks, lighting: activeLighting, fromLighting, lightingMix: blendLight ? lightHandoff!.progress : undefined, mask: asset.effectMask, timeMs: localMs, reduced })
-          else ctx.drawImage(picture, 0, 0)
+          else {
+            ctx.save()
+            if (backgroundHandoff && asset.image && backgroundProgress < 1) {
+              ctx.drawImage(backgroundHandoff.cutout, 0, 0, picture.width, picture.height)
+              ctx.globalAlpha *= backgroundHandoff.restoring ? backgroundProgress : 1 - backgroundProgress
+              ctx.drawImage(asset.image, 0, 0, picture.width, picture.height)
+            } else ctx.drawImage(picture, 0, 0)
+            ctx.restore()
+          }
+          if (privateStudy && asset.overlay && !measuring) {
+            const outgoingOverlay = previousScene?.source.imageId === scene.source.imageId && prepared.scenes.get(previousScene.id)?.overlay
+            const overlayBlend = reduced ? 1 : sharedElementMotion(localMs / studyBackgroundHandoffMs)
+            if (outgoingOverlay && overlayBlend < 1) {
+              ctx.save()
+              ctx.globalAlpha *= 1 - overlayBlend
+              drawReportOverlay(ctx, { ...outgoingOverlay, ink: '255,255,255' }, picture.width, 3000, false)
+              ctx.restore()
+            }
+            ctx.save()
+            if (outgoingOverlay) ctx.globalAlpha *= overlayBlend
+            drawReportOverlay(ctx, { ...asset.overlay, ink: '255,255,255' }, picture.width, reduced ? 3000 : localMs - 130, false)
+            ctx.restore()
+          }
           if (activity) {
             const warp=scene.photoStudy ? photoStudyGesture(scene.photoStudy,photoStudyRegions(asset.studyLandmarks,scene.photoStudy.feature),studyClock!.timeMs,studyClock!.durationMs,reduced,asset.studyLandmarks).warp : undefined
-            drawPortraitActivity(ctx,activity,picture.width,picture.height,warp)
+            ctx.save()
+            if (privateStudy && previousScene && !reduced) ctx.globalAlpha *= sharedElementMotion((localMs - 300) / 1650)
+            drawPortraitActivity(ctx,activity,picture.width,picture.height,warp,privateStudy, undefined, privateStudy ? '#fff' : undefined)
+            ctx.restore()
           }
           if (!activity && scene.study) paint(ctx, { id: 'overlay', label: `Study · ${scene.study.operation}`, frame: { x: 0, y: 0, width: picture.width, height: picture.height }, draw: ctx => {
             if (measuring) return
@@ -718,7 +940,23 @@ function renderScene(ctx: CanvasRenderingContext2D, prepared: PreparedVideo, sce
         fadeImageBottom = portraitFrame.y + imageBottom*portraitFrame.width/W
       }
     } })
-    if (!measuring && asset.portrait) {
+    if (privateStudy && !measuring && fadeImageTop !== undefined && fadeImageTop > 0) {
+      const topEdge = ctx.createLinearGradient(0, fadeImageTop, 0, fadeImageTop + 160)
+      topEdge.addColorStop(0, `rgb(${studyColors?.edges[0] ?? '16 24 32'})`)
+      topEdge.addColorStop(1, `rgb(${studyColors?.edges[0] ?? '16 24 32'} / 0)`)
+      ctx.fillStyle = topEdge
+      ctx.fillRect(0, 0, W, fadeImageTop + 160)
+    }
+    if (privateStudy && !measuring && fadeImageBottom !== undefined && fadeImageBottom < H) {
+      const end = Math.max(1, fadeImageBottom)
+      const start = Math.max(0, Math.min(end - 1, Math.max(fadeProtectedBottom ?? 0, end - 420)))
+      const edge = ctx.createLinearGradient(0, start, 0, end)
+      edge.addColorStop(0, `rgb(${studyColors?.edges[1] ?? '16 24 32'} / 0)`)
+      edge.addColorStop(1, `rgb(${studyColors?.edges[1] ?? '16 24 32'})`)
+      ctx.fillStyle = edge
+      ctx.fillRect(0, start, W, H - start)
+    }
+    if (!privateStudy && !measuring && asset.portrait) {
       ctx.save(); ctx.setTransform(1, 0, 0, 1, 0, 0)
       if (!scene.portraitCrop) drawPortraitColorExtension(ctx, W, H, fadeImageBottom ?? H)
       const fadeEnd = scene.portraitCrop ? Math.min(H, fadeImageBottom ?? H) : H
@@ -737,7 +975,7 @@ function renderScene(ctx: CanvasRenderingContext2D, prepared: PreparedVideo, sce
         ctx.drawImage(picture, crop.x, crop.y, crop.width, crop.height, 0, 52, 330, 238); ctx.restore()
       } })
     }
-    if (showsFeatureMetric(scene)) {
+    if (!privateStudy && showsFeatureMetric(scene)) {
       const component = featureComponent(asset, scene)
       if (!measuring && component.region.id !== 'action-plan') drawCaptionBackdrop(ctx, { edge: 'bottom', tint: 'light', role: 'metric', height: H - component.frame.y + 80, theme: prepared.composition.theme })
       drawFeatureMetric(ctx, asset, scene, localMs, reduced, paint)
@@ -750,7 +988,8 @@ function renderScene(ctx: CanvasRenderingContext2D, prepared: PreparedVideo, sce
   }
   if (!measuring) drawSpokenScore(ctx,scene,localMs,reduced)
   if (!measuring) drawScientificEvidence(ctx,prepared.composition,scene.startMs+localMs,reduced)
-  if (chrome) drawSceneChrome(ctx, prepared, scene, localMs, reduced, paint, measuring, captionHandoff)
+  if (chrome && studyColors) drawPrivateStudyChrome(ctx, prepared.composition, scene, localMs, reduced, studyColors, prepared.studyAvatar)
+  else if (chrome) drawSceneChrome(ctx, prepared, scene, localMs, reduced, paint, measuring, captionHandoff)
   ctx.restore()
   ctx.restore()
 }
@@ -758,6 +997,9 @@ function renderScene(ctx: CanvasRenderingContext2D, prepared: PreparedVideo, sce
 function drawSceneChrome(ctx: CanvasRenderingContext2D, prepared: PreparedVideo, scene: VideoScene, localMs: number, reduced: boolean, paint: CanvasPainter, measuring = false, captionHandoff?: CaptionHandoff & { next: VideoScene; time: number }) {
   const asset=prepared.scenes.get(scene.id)!, accent=videoStyles[prepared.composition.style].accent
   ctx=videoThemeContext(originalVideoContext(ctx),prepared.composition.theme)
+  if (prepared.composition.privateStudy) {
+    return
+  }
   const reportCaption = scene.source.kind === 'report' || scene.source.kind === 'screen'
   const photoCaption = scene.source.kind === 'portrait' && !scene.editorial && !scene.study && !scene.photoStudy && scene.source.overlay === 'face-map'
   if (hasCaption(scene) || scene.source.kind === 'explainer' || reportCaption) {
@@ -769,7 +1011,7 @@ function drawSceneChrome(ctx: CanvasRenderingContext2D, prepared: PreparedVideo,
     }
     const cta = isVideoCta(prepared.composition, scene)
     const frame = asset.brandFrame ?? videoBrandFrame(cta)
-    if (cta || !reportCaption) paint(ctx, { id: 'brand', label: cta ? 'Mogging.com invitation' : 'Mogging watermark', frame,
+    if (!prepared.composition.privateStudy && (cta || !reportCaption)) paint(ctx, { id: 'brand', label: cta ? 'Mogging.com invitation' : 'Mogging watermark', frame,
       opacity: reduced ? 1 : elementEntrance(localMs, cta ? 120 : 0, cta ? 380 : 420), draw: ctx => {
         const raw = originalVideoContext(ctx)
         const appearance = sampleCaptionAppearance(raw, { x: 0, y: 0, width: frame.width, height: frame.height }, prepared.composition.theme === 'dark' ? '#fff' : '#171717', cta ? undefined : annotationAppearance)
@@ -780,6 +1022,185 @@ function drawSceneChrome(ctx: CanvasRenderingContext2D, prepared: PreparedVideo,
       } })
     paint(ctx, { id: 'headline', label: 'Headline', frame: reportCaption ? reportCaptionFrame : scene.source.kind === 'explainer' && !asset.anatomyRegistration ? explainerLayout(scene.graphic!).headline : { x: 0, y: captionDesign.top, width: W, height: 190 }, draw: ctx => drawText(ctx, captionHandoff?.next ?? scene, captionHandoff?.time ?? localMs, accent, reduced, ink, captionHandoff, prepared.composition.theme) })
   }
+}
+
+const studyCaptionSamples = new WeakMap<CanvasRenderingContext2D, {
+  scene: VideoScene
+  interval: number
+  appearance: ReturnType<typeof sampleCaptionAppearance>
+}>()
+
+function drawPrivateStudyChrome(ctx: CanvasRenderingContext2D, composition: VideoComposition, scene: VideoScene, localMs: number, reduced: boolean, palette: ReturnType<typeof studyEdgeColors>, avatar?: HTMLImageElement) {
+  const colors = palette.edges
+  const { ink } = palette
+  const chapter = composition.scenes.indexOf(scene)
+  // Keep text clear of the center crop on taller phones.
+  const inset = 174
+  const textWidth = W - 2 * inset
+  const metric = scene.studyMeasurement
+  const priorScene = composition.scenes[chapter - 1]
+  const priorMetric = priorScene?.studyMeasurement
+  const progress = reduced ? 1 : Math.max(0, Math.min(1, (localMs - studyTimelineMotion.delayMs) / studyTimelineMotion.durationMs))
+  const amount = smoothMotion(progress)
+  ctx.save()
+  const topEnd = 420 - 50 * palette.lightAmount
+  const top = ctx.createLinearGradient(0, 0, 0, topEnd)
+  top.addColorStop(0, `rgb(${colors[0]} / ${.94 - .18 * palette.lightAmount})`)
+  top.addColorStop(1, `rgb(${colors[0]} / 0)`)
+  ctx.fillStyle = top
+  ctx.fillRect(0, 0, W, topEnd)
+  const bottomStart = 1480 + 150 * palette.lightAmount
+  const bottom = ctx.createLinearGradient(0, bottomStart, 0, H)
+  bottom.addColorStop(0, `rgb(${colors[1]} / 0)`)
+  bottom.addColorStop(.38, `rgb(${colors[1]} / ${.70 - .23 * palette.lightAmount})`)
+  bottom.addColorStop(1, `rgb(${colors[1]})`)
+  ctx.fillStyle = bottom
+  ctx.fillRect(0, bottomStart, W, H - bottomStart)
+
+  ctx.fillStyle = ink
+  const readoutFont = '"Mogging Share", Arial, sans-serif'
+  const footer = H - 82
+  const captionSize = 68
+  const captionFrame = { x: inset, y: H * .73, width: textWidth, height: captionSize * captionDesign.lineHeight * 2 }
+  // Sampling forces a canvas readback. Reuse it briefly while the
+  // existing contrast transition continues interpolating every frame.
+  const interval = Math.floor(localMs / 150)
+  let sample = studyCaptionSamples.get(ctx)
+  if (!sample || sample.scene !== scene || sample.interval !== interval) {
+    sample = { scene, interval, appearance: sampleCaptionAppearance(ctx, captionFrame, palette.lightAmount > .5 ? '#000' : '#fff') }
+    studyCaptionSamples.set(ctx, sample)
+  }
+  const surface = settleCaptionAppearance(ctx, sample.appearance, scene.startMs + localMs, reduced)
+  drawAdaptiveCaptionTint(ctx, captionFrame, 'light', surface.light)
+  drawAdaptiveCaptionTint(ctx, captionFrame, 'dark', surface.dark)
+  ctx.save()
+  ctx.translate(captionFrame.x - captionDesign.inset, captionFrame.y)
+  const captionBlend = priorScene && !reduced ? sharedElementMotion(localMs / 620) : 1
+  const captionAlpha = ctx.globalAlpha
+  if (priorScene && captionBlend < 1) {
+    ctx.globalAlpha = captionAlpha * (1 - captionBlend)
+    drawLyricsCaption(ctx, priorScene, priorScene.durationMs - 1, reduced, surface.ink, undefined, captionFrame.width, 350, captionSize)
+  }
+  ctx.globalAlpha = captionAlpha * captionBlend
+  drawLyricsCaption(ctx, scene, localMs, reduced, surface.ink, undefined, captionFrame.width, 350, captionSize)
+  ctx.restore()
+  // Keep the compact measurement clear of both face annotations and captions.
+  if (metric) {
+    const text = `${metric.value}${metric.unit === 'px' ? ' px' : metric.unit}`
+    ctx.save()
+    ctx.globalAlpha *= amount
+    ctx.font = `400 24px ${readoutFont}`
+    const width = ctx.measureText(text).width + 28
+    const height = 38
+    const x = (W - width) / 2
+    const y = captionFrame.y - height - 70
+    ctx.beginPath(); ctx.roundRect(x, y, width, height, height / 2)
+    ctx.fillStyle = '#fff'; ctx.fill()
+    ctx.fillStyle = '#14202a'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'
+    ctx.fillText(text, W / 2, y + height / 2)
+    ctx.restore()
+  }
+  const guide = scene.portraitProgram?.actions[0]?.guide
+  if (guide) drawStudyMarginDiagram(ctx, guide, localMs, reduced, W, H, ink, chapter, composition.variation)
+  if (scene.studyReadout && !metric) {
+    ctx.save()
+    ctx.globalAlpha *= amount
+    ctx.fillStyle = ink
+    ctx.fillRect(inset, footer - 175, textWidth, 1.5)
+    ctx.font = `500 25px ${readoutFont}`
+    ctx.fillText(`FIELD NOTE  /  ${String(chapter + 1).padStart(2, '0')}`, inset, footer - 132)
+    ctx.font = `600 46px ${readoutFont}`
+    ctx.fillText(scene.studyReadout, inset, footer - 67, textWidth)
+    ctx.restore()
+  }
+  if (scene.subtitle) {
+    ctx.save()
+    ctx.globalAlpha *= amount
+    const y = footer - 52
+    ctx.font = `500 26px ${readoutFont}`
+    const pillWidth = Math.min(textWidth, ctx.measureText(scene.subtitle).width + 76)
+    ctx.strokeStyle = palette.ink.replace(')', ' / .33)')
+    ctx.lineWidth = 1.5
+    ctx.beginPath(); ctx.roundRect(inset, y, pillWidth, 52, 26); ctx.stroke()
+    if (avatar) {
+      ctx.save()
+      ctx.beginPath(); ctx.arc(inset + 28, y + 26, 18, 0, Math.PI * 2); ctx.clip()
+      cover(ctx, avatar, { x: inset + 10, y: y + 8, width: 36, height: 36 })
+      ctx.restore()
+    }
+    ctx.fillStyle = ink
+    ctx.fillText(scene.subtitle, inset + 56, y + 35, pillWidth - 68)
+    ctx.restore()
+  }
+
+  if (metric || priorMetric && progress < 1) {
+    const scaleBaseline = footer
+    const rulerInset = inset + 6
+    const rulerWidth = textWidth - 12
+    const display = (data: NonNullable<typeof metric>, shot: VideoScene, index: number) => {
+      const unit = data.unit === 'px' ? ' px' : data.unit
+      const maximum = data.unit === '°' ? (shot.source.categoryId === 'jaw' ? 180 : 90)
+        : data.unit === 'px' ? Math.max(20, Math.ceil(data.value / 20) * 20)
+          : Math.max(100, Math.ceil(data.value / 100) * 100)
+      const position = data.value / maximum
+      const variant = studyTimelineVariant(shot, index, composition.variation)
+      const { place } = metricTimelineGeometry({ width: rulerWidth, height: 112, positions: [position], progress: 1, variant })
+      return { value: `${data.value}${unit}`, name: data.name, minimum: `0${unit}`, maximumLabel: `${maximum}${unit}`,
+        maximum, position, variant, left: place(0).x, right: place(10).x }
+    }
+    const from = priorMetric ? display(priorMetric, priorScene, chapter - 1) : undefined
+    const to = metric ? display(metric, scene, chapter) : undefined
+    const endpoint = (side: 'left' | 'right') => {
+      const start = from?.[side] ?? to?.[side] ?? 0
+      return rulerInset + start + ((to?.[side] ?? start) - start) * amount
+    }
+    const left = endpoint('left'), right = endpoint('right')
+    const morph = (field: 'value' | 'name' | 'minimum' | 'maximumLabel', x: number, y: number, width: number) => {
+      const previous = from?.[field] ?? ''
+      const next = to?.[field] ?? ''
+      const inkOffset = (text: string) => {
+        const bounds = ctx.measureText(text)
+        const scale = Math.min(1, width / Math.max(1, bounds.width))
+        return (ctx.textAlign === 'right' ? -bounds.actualBoundingBoxRight : bounds.actualBoundingBoxLeft) * scale
+      }
+      const start = inkOffset(previous || next)
+      const end = inkOffset(next || previous)
+      drawVideoTextMorph(ctx, previous, next, x + start + (end - start) * amount, y, progress, width)
+    }
+    ctx.fillStyle = ink
+    ctx.font = `600 112px ${readoutFont}`
+    morph('value', left - 2.5, scaleBaseline - 174, textWidth * .42)
+    ctx.font = `500 40px ${readoutFont}`
+    ctx.textAlign = 'right'
+    morph('name', right + 2.5, scaleBaseline - 178, textWidth * .55)
+    ctx.textAlign = 'left'
+    ctx.save()
+    ctx.translate(rulerInset, scaleBaseline - 140)
+    const ruler = (data: NonNullable<typeof to>, opacity: number, position: number, reveal = 1, morphFrom?: { variant: number; position: number; amount: number }) => {
+      if (opacity <= 0) return
+      ctx.save()
+      ctx.globalAlpha *= opacity
+      drawMetricTimeline(ctx, {
+        width: rulerWidth, height: 112, maximum: data.maximum, position,
+        progress: reveal, variant: data.variant, morphFrom, labels: false,
+        ink, muted: palette.muted, line: '#4c6473',
+        accent: palette.accent,
+      })
+      ctx.restore()
+    }
+    if (from && to) {
+      ruler(to, 1, to.position, 1, { variant: from.variant, position: from.position, amount })
+    } else {
+      if (from) ruler(from, 1 - amount, from.position)
+      if (to) ruler(to, amount, to.position, from ? 1 : amount)
+    }
+    ctx.restore()
+    ctx.font = '500 23px "SFMono-Regular", monospace'
+    morph('minimum', left, scaleBaseline, textWidth / 2)
+    ctx.textAlign = 'right'
+    morph('maximumLabel', right, scaleBaseline, textWidth / 2)
+  }
+  ctx.restore()
 }
 
 // Only pin chrome whose geometry and backdrop role are identical. A top/bottom
@@ -879,16 +1300,17 @@ function drawDecoration(ctx: CanvasRenderingContext2D, prepared: PreparedVideo, 
   ctx.restore()
 }
 
-export async function exportCompositionMp4(prepared: PreparedVideo, onProgress?: (progress: number) => void, signal?: AbortSignal, audio?: AudioBuffer) {
+export async function exportCompositionMp4(prepared: PreparedVideo, onProgress?: (progress: number) => void, signal?: AbortSignal, audio?: AudioBuffer, bitrate?: number) {
   const { encodeCanvasMp4 } = await import('./export-slides')
   const canvas = document.createElement('canvas')
-  canvas.width = videoExportSize.width; canvas.height = videoExportSize.height
+  const size = prepared.composition.privateStudy ? { width: 720, height: 1280 } : videoExportSize
+  canvas.width = size.width; canvas.height = size.height
   const ctx = canvas.getContext('2d', { alpha: false })!
   // Preview and export need separate video decoders; their seek clocks must never compete.
   const footage = prepared.composition.scenes.some(scene => scene.documentary?.kind === 'media') ? await prepared.documentary?.fork() : undefined
   const target = footage ? { ...prepared, documentary: footage } : prepared
   try {
-    return await encodeCanvasMp4(canvas, async time => { await target.documentary?.seekMedia(time, signal); drawVideoFrame(ctx, target, time, canvas.width, canvas.height) }, target.composition.durationMs, onProgress, signal, audio)
+    return await encodeCanvasMp4(canvas, async time => { await target.documentary?.seekMedia(time, signal); drawVideoFrame(ctx, target, time, canvas.width, canvas.height) }, target.composition.durationMs, onProgress, signal, audio, bitrate)
   } finally { footage?.dispose() }
 }
 

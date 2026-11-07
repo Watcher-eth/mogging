@@ -42,6 +42,7 @@ export type ContentSlide = {
   metricLabel: string
   metricValue: string
   cta: string
+  topPercent?: string
   currentScore: string
   potentialScore: string
   potentialScale?: 8 | 10
@@ -79,11 +80,9 @@ export function categoryScoreMax(categoryId: string) { return categoryId === 'ps
 
 export const templateOptions: Array<{ id: SlideTemplateId; label: string; description: string }> = [
   { id: 'score-potential', label: 'Report share · Score & potential', description: 'The app’s portrait share layout with score and potential' },
-  { id: 'precision', label: 'Precision · Feature study', description: 'Monochrome editorial slices and one selected feature score' },
   { id: 'cta', label: 'Face scan · Score reveal', description: 'Animated category rings and report stats' },
-  { id: 'performance', label: 'Performance · Score cover', description: 'Sculptural monochrome portrait and a commanding score' },
+  { id: 'performance', label: 'Performance · Score cover', description: 'Monochrome portrait with a prominent score and subtle face tracking' },
   { id: 'phone-report', label: 'Report · iPhone edition', description: 'The actual report inside an iPhone frame' },
-  { id: 'afterimage', label: 'Afterimage · Motion edition', description: 'A sharp portrait and teal light trails, with current and potential scores' },
   { id: 'editorial', label: 'Portrait · Glow-up', description: 'A portrait with your glow-up headline' },
   { id: 'handheld-report', label: 'Report · In your hand', description: 'A photographed handheld phone with your live report' },
 ]
@@ -143,15 +142,12 @@ export function generateSlides({
   return [
     ...exclusive,
     { id: makeId('score-potential'), templateId: 'score-potential', imageId: readyImages[0].id, categoryId: featuredCategory, eyebrow: '', headline: 'Mogging', supportingCopy: '', metricLabel: categoryLabel, metricValue, cta: '', ...shared },
-    { id: makeId('precision'), templateId: 'precision', imageId: readyImages[1 % readyImages.length].id, categoryId: featuredCategory,
-      eyebrow: '', headline: 'Feature study', supportingCopy: 'Understand the details. Build your next move.', metricLabel: categoryLabel, metricValue, cta: 'Start at Mogging.com', ...shared },
     { id: makeId('cta'), templateId: 'cta', imageId: readyImages.at(-1)?.id ?? readyImages[0].id, categoryId: featuredCategory, eyebrow: 'Mogging', headline: 'Mogging', supportingCopy: '', metricLabel: categoryLabel, metricValue: '[ mapped ]', cta: '', ...shared },
     { id: makeId('performance'), templateId: 'performance', imageId: readyImages[0].id, categoryId: featuredCategory,
       eyebrow: '', headline: 'See what makes you stand out.', supportingCopy: 'A clearer picture of your potential.', metricLabel: categoryLabel, metricValue, cta: 'Start at Mogging.com', ...shared },
     { id: makeId('phone-report'), templateId: 'phone-report', imageId: readyImages[0].id, categoryId: 'overall',
-      eyebrow: '', headline: 'Ascend Now', supportingCopy: 'mogging.com', metricLabel: 'Overall', metricValue: currentScore, cta: '', ...shared,
-      mockReport: { category: buildMockOverallCategory(currentScore, scoreValues), scroll: 0 } },    { id: makeId('afterimage'), templateId: 'afterimage', imageId: readyImages[1 % readyImages.length].id, categoryId: featuredCategory,
-      eyebrow: '', headline: 'See where you can improve.', supportingCopy: '', metricLabel: categoryLabel, metricValue, cta: '', ...shared },
+      eyebrow: '', headline: 'Understand your face today', supportingCopy: 'mogging.com', metricLabel: 'Overall', metricValue: currentScore, cta: '', ...shared,
+      mockReport: { category: buildMockOverallCategory(currentScore, scoreValues), scroll: 0 } },
     { id: makeId('editorial'), templateId: 'editorial', imageId: readyImages[1 % readyImages.length].id, categoryId: featuredCategory, eyebrow: '', headline: hook, supportingCopy: '', metricLabel: categoryLabel, metricValue, cta: 'mogging.com', ...shared },
     { id: makeId('handheld-report'), templateId: 'handheld-report', imageId: readyImages[0].id, categoryId: 'overall',
       eyebrow: '', headline: 'Mogging: Face Scan', supportingCopy: '', metricLabel: 'Overall', metricValue: currentScore, cta: '', ...shared,

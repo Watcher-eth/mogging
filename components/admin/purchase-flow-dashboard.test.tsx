@@ -56,3 +56,13 @@ test('zero purchase buckets do not claim a visible shared purchase and activatio
   const html=renderToStaticMarkup(<PurchaseFlowDashboard data={data} days={30} />)
   expect(html).not.toContain('one line represents both')
 })
+
+test('missing prices remain visible separately from attempted purchases and by release', () => {
+  const data=snapshot()
+  data.purchaseFlow!.catalog=[{release:'1.52(92)',availability:'empty',reason:'product_request_timed_out',loads:3,devices:1,average_ms:15000}]
+  const html=renderToStaticMarkup(<PurchaseFlowDashboard data={data} days={14} />)
+  expect(html).toContain('Subscription price loading')
+  expect(html).toContain('1.52(92)')
+  expect(html).toContain('No plans loaded')
+  expect(html).toContain('not every paywall view or Apple review session')
+})

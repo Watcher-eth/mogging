@@ -12,6 +12,15 @@ import { smoothMotion } from './report-motion'
 import type { FaceAnchorKey, FaceContourKey } from './mobile-overlay-engine/landmarks'
 import { defaultGlassOverlay, applyGlassInk, type GlassOverlay } from './glass-overlay'
 
+export function ctaFaceTreatment(category: string, width: number) {
+  const pattern = category === 'jaw' ? 'solid' : ['overall', 'symmetry', 'proportions', 'face-shape', 'nose', 'dimorphism', 'facial-fat'].includes(category) ? 'dashed' : 'dotted'
+  return {
+    appearance: { pattern, opacity: .68, markers: false, regions: category === 'cheeks' } satisfies GlassOverlay,
+    inkScale: Math.max(1, width / 460),
+    hold: true,
+  }
+}
+
 export function faceFeatureContours(category: string, narration = ''): FaceContourKey[] {
   const keys: FaceContourKey[] = []
   if (/\b(brows?|eyebrows?)\b/i.test(narration)) keys.push('leftBrow', 'rightBrow')
@@ -78,14 +87,20 @@ export function preciseFaceOverlay(overlay: ReportOverlay, source: { width: numb
     if (partial && points.length) {
       points=faceContourEdge(landmarks,key,/upper/i.test(narration))[0]??[]
     }
+    if (key === 'jawline' && category === 'jaw' && !narration) {
+      const { mouthCenter, chin, forehead } = landmarks.anchors
+      if (mouthCenter && chin && forehead) {
+        const axis = { x: (chin.x - forehead.x) * source.width, y: (chin.y - forehead.y) * source.height }
+        const depth = (point: NormalizedPoint) => (point.x - mouthCenter.x) * source.width * axis.x + (point.y - mouthCenter.y) * source.height * axis.y
+        // The mesh's jaw arc starts at the temples. Keep the section below the upper lip.
+        const start = points.findIndex(point => depth(point) >= depth(landmarks.anchors.upperLip ?? mouthCenter))
+        const end = points.findLastIndex(point => depth(point) >= depth(landmarks.anchors.upperLip ?? mouthCenter))
+        if (start >= 0 && end - start >= 2) points = points.slice(start, end + 1)
+      }
+    }
     if (key === 'jawline' && /chin|taper/i.test(narration) && points.length > 5) {
       const chin = landmarks.anchors.chin
       if (chin) points = points.filter(point => Math.abs(point.x - chin.x) < .17)
-    }
-    if (key === 'jawline' && points.length > 4 && landmarks.anchors.jawLeft && landmarks.anchors.jawRight) {
-      const nearest = (anchor: PixelPoint) => points.reduce((best, candidate, index) => Math.hypot(candidate.x - anchor.x, candidate.y - anchor.y) < Math.hypot(points[best].x - anchor.x, points[best].y - anchor.y) ? index : best, 0)
-      const left = nearest(landmarks.anchors.jawLeft), right = nearest(landmarks.anchors.jawRight)
-      if (Math.abs(right - left) >= 2) points = points.slice(Math.min(left, right), Math.max(left, right) + 1)
     }
     if (points.length < 3) continue
     const native = overlay.primitives.find(primitive => primitive.kind === 'polyline' && primitive.id.replace(/[^a-z]/gi, '').toLowerCase().includes(key.toLowerCase()))
@@ -229,14 +244,14 @@ function glassMarker(ctx: CanvasRenderingContext2D, point: PixelPoint, label: st
   ctx.fillText(label, point.x, y + side / 2); ctx.restore()
 }
 
-export function drawFaceTreatment(ctx: CanvasRenderingContext2D, overlay: ReportOverlay, width: number, timeMs: number, reduced = false, reveal = 1, options: { appearance?: GlassOverlay; durationMs?: number; hold?: boolean } = {}) {
+export function drawFaceTreatment(ctx: CanvasRenderingContext2D, overlay: ReportOverlay, width: number, timeMs: number, reduced = false, reveal = 1, options: { appearance?: GlassOverlay; durationMs?: number; hold?: boolean; inkScale?: number } = {}) {
   const dark = isDarkVideoContext(ctx)
   ctx = originalVideoContext(ctx)
   const appearance = { ...(options.appearance ?? defaultGlassOverlay), ...(dark ? {color:'#fff'} : {}) }
   const exit = reduced || options.hold || options.durationMs === undefined ? 1 : smoothMotion((options.durationMs - timeMs) / 300)
   ctx.save(); ctx.scale(width / overlay.size.width, width / overlay.size.width)
   const transform = ctx.getTransform(), scale = typeof transform?.a === 'number' ? Math.hypot(transform.a, transform.b) : 1
-  const unit = 1 / Math.max(.001, scale)
+  const unit = (options.inkScale ?? 1) / Math.max(.001, scale)
   ctx.globalAlpha *= appearance.opacity
   applyGlassInk(ctx, unit, appearance.contrast ? 2.4 : 1.8, appearance.color)
   if (overlay.skinNetwork && overlay.dots.length) {
@@ -255,7 +270,7 @@ export function drawFaceTreatment(ctx: CanvasRenderingContext2D, overlay: Report
     ctx.setLineDash(appearance.pattern === 'dotted' ? [.5 * unit, 4.5 * unit] : appearance.pattern === 'dashed' ? [7 * unit, 5 * unit] : [])
     if (primitive.kind === 'polyline') {
       const points = primitive.pixelPoints
-      if (points.length < 3) { ctx.restore(); return }
+      if (points.length < 2) { ctx.restore(); return }
       if (appearance.regions && primitive.closed && overlay.faceBoundary?.length) {
         ctx.save(); trace(ctx, overlay.faceBoundary, true); ctx.clip()
         trace(ctx, points, true); ctx.globalAlpha *= .08 * amount; ctx.fill(); ctx.restore()

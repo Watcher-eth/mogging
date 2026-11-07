@@ -7,7 +7,7 @@ import { submissionAge } from '@/lib/creator/submission-timeline'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 import { cn } from '@/lib/utils'
 
-export function SubmissionCard({ submission, payment, accountHandle, onClick, bonuses, className }: { className?: string; bonuses: BonusPayment[]; submission: CreatorSubmission; payment?: CreatorPayment; accountHandle?: string | null; onClick: () => void }) {
+export function SubmissionCard({ submission, payment, accountHandle, onClick, bonuses, className, missingPaymentData = false }: { missingPaymentData?: boolean; className?: string; bonuses: BonusPayment[]; submission: CreatorSubmission; payment?: CreatorPayment; accountHandle?: string | null; onClick: () => void }) {
   const { ref, preview, visible } = useSubmissionPostPreview(submission)
   const bonusCents = bonusPaymentTotal(bonuses)
   const baseAmount = submission.sprintId && creatorEarnedCents(submission) > 0 ? formatMoney(creatorEarnedCents(submission), 'USD') : payment ? formatMoney(payment.amountCents, payment.currency) : submission.status === 'approved' ? formatMoney(creatorEarnedCents(submission), 'USD') : null
@@ -43,6 +43,7 @@ export function SubmissionCard({ submission, payment, accountHandle, onClick, bo
           {username ? <><span aria-hidden="true" className="px-0.5 text-zinc-300">·</span><span className="min-w-0 truncate text-xs font-normal text-zinc-500">@{username}</span></> : null}
         </span>
         <span className="mt-2 flex flex-wrap items-center gap-2">
+          {missingPaymentData ? <span className="rounded-full border border-amber-200 bg-amber-50 px-2 py-1 text-[11px] font-semibold text-amber-900">Missing Payment Data</span> : null}
           {amount ? <span className="text-sm font-semibold">{amount}</span> : null}
           {bonusCents > 0 ? <span className="inline-flex items-center gap-1 rounded-md border border-amber-200/70 bg-amber-50 px-1.5 py-0.5 text-[10px] font-medium text-amber-800"><Sparkles aria-hidden="true" className="size-3" />+{formatMoney(bonusCents, 'USD')} bonus</span> : null}
           {submission.unreadMessages ? <span aria-label={`${submission.unreadMessages} new messages`} className="inline-flex items-center gap-1 rounded-lg bg-[#007aff] px-2 py-1 text-[11px] font-semibold text-white"><MessageCircle className="size-3" aria-hidden="true" />{submission.unreadMessages}</span> : null}

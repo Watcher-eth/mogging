@@ -8,6 +8,7 @@ function snapshot(mature = 1000): AnalyticsDashboard {
     generatedAt: '2026-10-27T21:00:00Z', filters: { days: '30', platform: 'all', section: 'Experiments' },
     landingExperiments: ['a', 'b'].map((variant, index) => ({ experiment_id: 'landing_homepage_v3', variant,
       visitors: 1100, homepage_visitors: 1100, mature, mature_store_clicks: mature ? index ? 250 : 200 : 0,
+      mature_paid_checkouts: mature ? index ? 3 : 2 : 0,
       pending: 1100 - mature, paid_checkouts: index ? 3 : 2,
       first_exposure: '2026-10-01T12:00:00', latest_exposure: '2026-10-27T20:30:00',
     })), landingExperimentDaily: [], landingHandoffs: [],
@@ -16,9 +17,10 @@ function snapshot(mature = 1000): AnalyticsDashboard {
 
 test('active test leads with mature rates and effect size, without declaring a winner', () => {
   const html = renderToStaticMarkup(<ExperimentsReport data={snapshot()} />)
-  expect(html).toContain('20.0%')
-  expect(html).toContain('25.0%')
-  expect(html).toContain('+5.0 pp')
+  expect(html).toContain('Primary outcome · Sales &amp; subscriptions')
+  expect(html).toContain('0.20%')
+  expect(html).toContain('0.30%')
+  expect(html).toContain('+0.10 pp')
   expect(html).toContain('200 awaiting a full seven-day follow-up')
   expect(html).toContain('Checkpoints met · review uncertainty')
   expect(html).toContain('not a winner declaration')

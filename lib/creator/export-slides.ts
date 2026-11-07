@@ -1,14 +1,20 @@
 import { drawGlamourGuidance, prepareGlamourImage } from './glamour-guidance'
-import { drawLegacyPoster, loadShareFont } from './legacy-posters'
-import { resolveShareOverallOverlay } from '@/lib/sharing/overall-overlay'
+import { drawPortraitCover, loadShareFont, prepareCoverArtwork } from './legacy-posters'
+import { preciseFaceOverlay } from './face-treatment'
 import { enrichFaceLandmarks } from './mobile-overlay-engine/enrich-landmarks'
 import { preparePoster, drawPoster, posterFamily } from './editorial-posters'
 import { loadPhoneFrame, drawPhoneReport, loadHandheldPhone, drawHandheldReport } from './phone-report'
 import { type ContentSlide, type GeneratorImage } from './content-generator'
 import { createReportOverlay, type ReportOverlay } from './report-overlay'
-import { drawScoreReveal, loadRevealBrand, REVEAL_DURATION_MS, REVEAL_PORTRAIT_SIZE, type RevealBrand } from './score-reveal'
+import { drawScoreReveal, loadRevealBrand, REVEAL_DURATION_MS, type RevealBrand } from './score-reveal'
 
 import { drawMockReport, mockReportFormat, mockReportSize, mockReportHeroHeight, loadMockReportSymbols } from './mock-report'
+
+export const CTA_CLIP_DURATION_MS = 2000
+
+export function slideDuration(slide: ContentSlide) {
+  return slide.templateId === 'mock-report' ? 4000 : CTA_CLIP_DURATION_MS
+}
 
 type RenderArgs = { slide: ContentSlide; images: GeneratorImage[]; width: number; height: number }
 
@@ -19,7 +25,7 @@ export async function renderSlidePng(args: RenderArgs) {
     args = { ...args, width: mockReportFormat.width, height: Math.round(args.height * scale) }
   }
   const { canvas, ctx, image, overlay, brand } = await prepareCanvas(args)
-  await drawSlideFrame(ctx, args.slide, image, overlay, args.width, args.height, 4000, brand)
+  await drawSlideFrame(ctx, args.slide, image, overlay, args.width, args.height, slideDuration(args.slide), brand)
   return await new Promise<Blob>((resolve, reject) => canvas.toBlob((blob) => blob ? resolve(blob) : reject(new Error('PNG export failed')), 'image/png'))
 }
 
@@ -41,10 +47,10 @@ export async function renderSlideMp4(args: RenderArgs, onProgress?: (progress: n
 type PreparedCanvas = Awaited<ReturnType<typeof prepareCanvas>>
 
 async function encodeMp4(args: RenderArgs, prepared: PreparedCanvas, onProgress?: (progress: number) => void) {
-  return encodeCanvasMp4(prepared.canvas, time => drawSlideFrame(prepared.ctx, args.slide, prepared.image, prepared.overlay, args.width, args.height, time, prepared.brand), args.slide.templateId === 'cta' ? REVEAL_DURATION_MS : 4000, onProgress)
+  return encodeCanvasMp4(prepared.canvas, time => drawSlideFrame(prepared.ctx, args.slide, prepared.image, prepared.overlay, args.width, args.height, time, prepared.brand), slideDuration(args.slide), onProgress)
 }
 
-export async function encodeCanvasMp4(canvas: HTMLCanvasElement, drawFrame: (timeMs: number) => void | Promise<void>, durationMs: number, onProgress?: (progress: number) => void, signal?: AbortSignal, audio?: AudioBuffer) {
+export async function encodeCanvasMp4(canvas: HTMLCanvasElement, drawFrame: (timeMs: number) => void | Promise<void>, durationMs: number, onProgress?: (progress: number) => void, signal?: AbortSignal, audio?: AudioBuffer, bitrate = 8_000_000) {
   signal?.throwIfAborted()
   if (typeof VideoEncoder === 'undefined' || typeof VideoFrame === 'undefined') throw new Error('Video export is not supported in this browser. Open this page in an up-to-date Safari or Chrome browser and try again.')
   const frameRate = 30
@@ -53,7 +59,7 @@ export async function encodeCanvasMp4(canvas: HTMLCanvasElement, drawFrame: (tim
   // Retina iPhone exports exceed Level 4’s frame-size limit.
   const codecs = canvas.width * canvas.height > 2_097_152 ? ['avc1.420033', 'avc1.4d0033'] : ['avc1.420028', 'avc1.4d002a']
   for (const codec of codecs) {
-    const candidate: VideoEncoderConfig = { codec, width: canvas.width, height: canvas.height, bitrate: 8_000_000, framerate: frameRate, avc: { format: 'avc' } }
+    const candidate: VideoEncoderConfig = { codec, width: canvas.width, height: canvas.height, bitrate, framerate: frameRate, avc: { format: 'avc' } }
     const result = await VideoEncoder.isConfigSupported(candidate)
     if (result.supported) { supportedConfig = result.config ?? candidate; break }
   }
@@ -127,7 +133,7 @@ async function recordMp4(args: RenderArgs, prepared: PreparedCanvas, mimeType: s
     const stopped = new Promise<void>((resolve) => { recorder!.onstop = () => resolve() })
     recorder.start()
     const start = performance.now()
-    const duration = args.slide.templateId === 'cta' ? REVEAL_DURATION_MS : 4000
+    const duration = slideDuration(args.slide)
     let elapsed = 0
     while (elapsed < duration) {
       if (recordingError) throw recordingError
@@ -176,36 +182,60 @@ export function buildZip(files: Array<{ name: string; data: Uint8Array }>) {
   return new Blob([buffer], { type: 'application/zip' })
 }
 
+const ctaMetricGuides: Record<string, string> = {
+  psl: 'face.shape',
+  dimorphism: 'detail.dimorphism',
+  'facial-fat': 'detail.under-cheekbones',
+  cheekbones: 'detail.cheekbones',
+}
+
+export function createCtaPhotoOverlay(slide: ContentSlide, source: GeneratorImage) {
+  const overlay = createReportOverlay(slide, source, source)
+  if (overlay.skinNetwork || slide.overlayStyle === 'face-map') return overlay
+  const category = slide.categoryId
+  const photo = { ...source, landmarks: enrichFaceLandmarks(source.landmarks) }
+  const precise = preciseFaceOverlay(overlay, photo, category, '', false, ctaMetricGuides[category])
+  if (precise.primitives.length || precise.measurement) return precise
+  if (category === 'cheekbones') {
+    const widthGuide = preciseFaceOverlay(overlay, photo, category, '', false, 'cheeks.width')
+    if (widthGuide.primitives.length) return widthGuide
+  }
+  return { ...overlay, useReportPrimitives: true }
+}
+
 export async function prepareCanvas({ slide, images, width, height }: RenderArgs) {
   const canvas = document.createElement('canvas'); canvas.width = width; canvas.height = height
   const ctx = canvas.getContext('2d', { alpha: false }); if (!ctx) throw new Error('Canvas export is unavailable')
-  const source = images.find((item) => item.id === slide.imageId && item.status === 'ready')
-  if (!source) throw new Error('This template’s photo is no longer available. Add a clear photo and generate the set again.')
+  const selectedImage = images.find((item) => item.id === slide.imageId && item.status === 'ready')
+  if (!selectedImage) throw new Error('This template’s photo is no longer available. Add a clear photo and generate the set again.')
   const isReport = ['mock-report', 'phone-report', 'handheld-report'].includes(slide.templateId)
   const glamour = slide.templateId === 'glamour-guidance'
-  const legacy = ['score-potential','editorial','cta'].includes(slide.templateId)
-  const [image, brand] = await Promise.all([loadImage(source.dataUrl), loadRevealBrand(), loadShareFont(), isReport ? loadMockReportSymbols() : null, slide.templateId === 'phone-report' ? loadPhoneFrame() : slide.templateId === 'handheld-report' ? loadHandheldPhone() : null])
-  const posterOverlay = ['performance','afterimage'].includes(slide.templateId)
-  const overlay: ReportOverlay | null = slide.templateId === 'score-potential'
-    ? { size: { width, height }, primitives: resolveShareOverallOverlay(enrichFaceLandmarks(source.landmarks),width,height), dots: [], value: '' }
-    : legacy ? createReportOverlay(slide, source, slide.templateId === 'cta' ? { width: REVEAL_PORTRAIT_SIZE, height: REVEAL_PORTRAIT_SIZE } : { width, height })
+  const portraitCover = ['score-potential', 'editorial', 'performance'].includes(slide.templateId)
+  const [image, brand] = await Promise.all([loadImage(selectedImage.dataUrl), loadRevealBrand(), loadShareFont(), isReport ? loadMockReportSymbols() : null, slide.templateId === 'phone-report' ? loadPhoneFrame() : slide.templateId === 'handheld-report' ? loadHandheldPhone() : null])
+  const source = { ...selectedImage, width: image.naturalWidth, height: image.naturalHeight }
+  const imageSpace = portraitCover || slide.templateId === 'cta'
+  const overlaySlide = slide.templateId === 'performance' ? { ...slide, overlayStyle: 'category' as const } : slide
+  const overlay: ReportOverlay | null = imageSpace
+    ? createCtaPhotoOverlay(overlaySlide, source)
     : isReport
-    ? createReportOverlay(slide, source, { width: mockReportSize.width, height: mockReportHeroHeight }, mockReportSize.width, true)
-    : posterOverlay ? createReportOverlay(slide, source, { width: width * (slide.templateId === 'afterimage' ? .95 : 1), height }) : null
-
+      ? createReportOverlay(slide, source, { width: mockReportSize.width, height: mockReportHeroHeight }, mockReportSize.width, true)
+      : slide.templateId === 'afterimage'
+        ? createReportOverlay(slide, source, { width: width * .95, height })
+        : null
   if (overlay && isReport) {
     overlay.labelLayout = 'mobile'
     overlay.value = slide.categoryId === 'overall' ? `${(Number(slide.currentScore) * .8).toFixed(1)} / 8` : `${Number(slide.categoryScores[0]?.value ?? slide.currentScore).toFixed(1)} / 10`
   }
-  if (!isReport && !legacy && !glamour) await preparePoster(image, width, height, posterFamily(slide.templateId), source.landmarks)
+  if (!isReport && !portraitCover && slide.templateId !== 'cta' && !glamour) await preparePoster(image, width, height, posterFamily(slide.templateId), source.landmarks)
+  if (portraitCover) await prepareCoverArtwork(slide, image, source)
   if (glamour) await prepareGlamourImage(image)
   return { canvas, ctx, image, overlay, brand }
 }
 
 export function drawSlideFrame(ctx: CanvasRenderingContext2D, slide: ContentSlide, image: HTMLImageElement | null, overlay: ReportOverlay | null, width: number, height: number, timeMs: number, brand: RevealBrand | null) {
   if (slide.templateId === 'glamour-guidance') drawGlamourGuidance(ctx, slide, image, width, height, timeMs)
-  else if (slide.templateId === 'cta') drawScoreReveal(ctx,slide,image,overlay,brand,width,height,timeMs)
-  else if (['score-potential','editorial'].includes(slide.templateId)) drawLegacyPoster(ctx,slide,image,overlay,width,height,timeMs,brand)
+  else if (slide.templateId === 'cta') drawScoreReveal(ctx,slide,image,overlay,brand,width,height,timeMs * REVEAL_DURATION_MS / CTA_CLIP_DURATION_MS)
+  else if (['score-potential', 'editorial', 'performance'].includes(slide.templateId)) drawPortraitCover(ctx,slide,image,overlay,width,height,timeMs,brand)
   else if (slide.templateId === 'phone-report') drawPhoneReport(ctx, slide, image, overlay, width, height, timeMs, brand)
   else if (slide.templateId === 'handheld-report') drawHandheldReport(ctx, slide, image, overlay, width, height, timeMs, brand)
   else if (slide.templateId === 'mock-report') drawMockReport(ctx, slide, image, overlay, width, height, timeMs)

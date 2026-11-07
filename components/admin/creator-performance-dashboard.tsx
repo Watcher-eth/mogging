@@ -78,6 +78,22 @@ export default function CreatorPerformanceDashboard({ data, attributionHref = '/
     {platform === 'all' ? <Panel title="Platform mix" description="Selected submission period · current reported reach and earned costs.">
       <Table rows={report.platforms.map(row => ({ platform: row.platform === 'tiktok' ? 'TikTok' : row.platform === 'instagram' ? 'Instagram' : row.platform, posts: row.posts, reported_views: row.reportedViews, reviewed_views: row.reviewedViews, earned_cost: usd(row.earnedCents / 100), unpaid_on_these_posts: usd(row.unpaidCents / 100), cost_per_1000_reviewed_views: usd(viewCpm(row.earnedCents, row.costViews)) }))} columns={['platform', 'posts', 'reported_views', 'reviewed_views', 'earned_cost', 'unpaid_on_these_posts', 'cost_per_1000_reviewed_views']} />
     </Panel> : null}
+    {snapshot.distribution ? <>
+      <Panel title="Distribution → paying customers" description={`Observed connections · rolling ${report.days} days · all social platforms`}
+        note="Views are lifetime counts as last observed, not unique viewers. Period growth requires exact observations from the same source at both boundaries; missing baselines remain blank. Creator and post counts exclude the existing experimental creators. Link clicks exclude known bots. Bio links prove the creator, not a particular video. Paying accounts require positive provider-confirmed payments; completed evaluations come from the server reservation ledger after a payment. These are observed associations, not causal ROAS. Recent buyers have had less time to activate. Unidentified buyers cannot be counted as accounts.">
+        <Table rows={snapshot.distribution.creators} columns={['creator','posts','reported_lifetime_views','measured_lifetime_views','measured_posts','measured_views_gained','posts_with_period_baseline','link_clicks','post_linked_clicks','attributed_paying_accounts','purchasers_with_completed_evaluation']} />
+        <DataDetails><Table rows={snapshot.distribution.billing.map(row => ({ ...row, gross: new Intl.NumberFormat('en-US', { style: 'currency', currency: String(row.currency) }).format(Number(row.gross_cents) / 100), refunds: new Intl.NumberFormat('en-US', { style: 'currency', currency: String(row.currency) }).format(Number(row.refund_cents) / 100) }))} columns={['creator','provider','currency','gross','refunds']} />
+          <p className="mt-3 text-xs text-zinc-500">Creator-attributed provider payments only. Stripe and RevenueCat remain separate, as do currencies. This does not represent all company revenue; unattributed sales remain in the Revenue dashboard.</p></DataDetails>
+      </Panel>
+      <Panel title="Video measurement coverage" description="Current connection status for accounts with submissions · all social platforms">
+        <Table rows={snapshot.distribution.coverage} columns={['platform','status','accounts','posts_without_canonical_id','checked_at','synced_at']} />
+        <p className="mt-4 text-xs leading-5 text-zinc-500">TikTok requires approved video.list permission and renewed creator consent. The API supplies views, likes, comments and shares; audience locations and watch retention still depend on verified analytics recordings. Blank sync times mean no successful collection. Manual account connections remain usable for submissions.</p>
+      </Panel>
+      <Panel title="Web flow measurement" description={`Browser and experience cohorts · rolling ${report.days} days`}
+        note="These are distinct accounts or anonymous browsers per event, not a strictly ordered funnel or a payment ledger. Signing in can split an actor; a person can appear in multiple cohorts. Client access confirmations are not verified sales. Browser and flow labels start with this release; older events stay not_recorded rather than being guessed. Use this breakdown to compare stable experiences, and the Revenue dashboard for provider-confirmed sales.">
+        <Table rows={snapshot.distribution.funnel} columns={['browser','flow','entry','onboarding_accounts_or_browsers','paywall_accounts_or_browsers','purchase_starters','client_access_confirmations','report_viewers']} />
+      </Panel>
+    </> : null}
     <Panel title="Data sources and coverage" description="Database observation times and reporting exclusions.">
       <dl className="grid gap-5 text-sm sm:grid-cols-3">{[
         ['Snapshot generated', data.generatedAt], ['Latest submission update', snapshot.latestSubmissionUpdate], ['Latest paid-record update', snapshot.latestPaymentUpdate],

@@ -1,0 +1,58 @@
+.screen { min-height: var(--scan-viewport-height, 100dvh); display: flex; flex-direction: column; gap: clamp(12px,2svh,20px); padding: max(12px,env(safe-area-inset-top)) 22px max(14px,env(safe-area-inset-bottom)); text-align: center; background: #fff; }
+.top { position: relative; display: flex; justify-content: flex-end; align-items: center; min-height: 36px; color: #62636b; font-size: 13px; font-weight: 600; }
+.back { position: absolute; left: 0; width: 36px; height: 36px; display: grid; place-items: center; border-radius: 50%; background: #f3f3f5; }
+.screen header p,.instruction small { color: #666872; font-size: 12px; font-weight: 600; }
+.screen h1 { max-width: 13ch; margin: 5px auto 0; font-size: clamp(28px,8vw,37px); font-weight: 650; line-height: 1.04; letter-spacing: -.06em; }
+.device { position: relative; isolation: isolate; flex: none; width: min(100%, 244px, 23svh); aspect-ratio: 9 / 19.5; margin: auto; overflow: hidden; border: 5px solid #17181b; border-radius: 29px; background: #fff; color: #141418; box-shadow: 0 0 0 1px #4b4b50, 0 12px 32px #161a3028; font: 500 10px/1.25 -apple-system,BlinkMacSystemFont,system-ui,sans-serif; }
+.device svg { width: 12px; height: 12px; flex-shrink: 0; }
+.status { position: absolute; z-index: 6; inset: 8px 12px auto; display: flex; align-items: center; justify-content: space-between; pointer-events: none; }
+.status span { display: flex; align-items: center; gap: 2px; }
+.status svg { width: 9px; height: 9px; }
+.status svg:last-child { width: 13px; }
+.island { position: absolute; z-index: 7; inset: 5px 0 auto; width: 27%; height: 14px; margin-inline: auto; background: #111; border-radius: 99px; pointer-events: none; }
+.website { position: absolute; inset: 26px 0 43px; display: grid; justify-items: center; align-content: start; gap: 5px; padding: 8px 10px; background: #fff; }
+.website b { font-size: 13px; letter-spacing: -.045em; }
+.websitePortrait { width: 100%; height: clamp(60px,23svh,190px); border-radius: 12px; background: linear-gradient(#fff0 64%,#fff),url('/scan/welcome.jpg') center 32% / cover; }
+.website strong { font-size: 15px; letter-spacing: -.045em; }
+.website > span { color: #747781; }
+.toolbar { position: absolute; z-index: 1; inset: auto 5px 13px; display: flex; align-items: center; gap: 4px; }
+.toolbar > :is(div,span,button) { display: flex; align-items: center; justify-content: center; min-width: 25px; height: 25px; gap: 3px; border-radius: 99px; background: #f8f8f9ec; box-shadow: 0 1px 5px #10122120; }
+.toolbar > div { flex: 1; justify-content: space-around; font-size: 9px; }
+.toolbar div svg { width: 9px; height: 9px; }
+.toolbar > span,.toolbar button:disabled { color: #696970; }
+.homeIndicator { position: absolute; z-index: 7; inset: auto 0 3px; width: 34%; height: 3px; margin-inline: auto; border-radius: 99px; background: #111; pointer-events: none; }
+.menu,.sheet,.install,.home { position: absolute; z-index: 3; }
+.menu { inset: auto 6px 44px auto; width: 76%; padding: 5px; border-radius: 15px; background: #f9f9fbec; backdrop-filter: blur(18px); box-shadow: 0 4px 20px #0003; }
+.menu > :is(div,button),.actions > :is(div,button) { display: flex; width: 100%; align-items: center; gap: 7px; min-height: 26px; padding: 4px 6px; border-radius: 7px; text-align: left; }
+.sheet { inset: auto 0 0; padding: 6px 8px 16px; border-radius: 19px 19px 0 0; background: #eeeef4; box-shadow: 0 -80px 0 200px #0003; }
+.handle { width: 20px; height: 3px; margin: 0 auto 5px; background: #b9b9c1; border-radius: 9px; }
+.shareHeader,.installName { display: flex; align-items: center; gap: 6px; padding: 7px 4px; text-align: left; }
+.shareHeader > div,.installName > div { flex: 1; }
+.device small { display: block; color: #6b6b75; font-size: 8px; }
+.appIcon { display: block; width: 26px; height: 26px; flex: none; border-radius: 7px; background: url('/scan/icon-192.png') center / cover; box-shadow: 0 2px 5px #0002; }
+.shareApps { display: flex; justify-content: space-around; gap: 4px; padding: 5px 0 8px; font-size: 7px; }
+.shareApps span::before { content: ''; display: block; width: 19px; height: 19px; margin: 0 auto 3px; border-radius: 5px; background: linear-gradient(#68c8ff,#1675ec); }
+.shareApps span:nth-child(2)::before { background: linear-gradient(#84ee80,#26bc39); }
+.actions { border-radius: 9px; padding: 3px; background: #fff; }
+.install { inset: 0; padding: 28px 6px 16px; background: #f2f2f7; }
+.installHeader { display: flex; justify-content: space-between; align-items: center; gap: 2px; padding: 5px 1px; font-size: 8px; }
+.installHeader :is(span,button) { color: #0764d5; padding: 3px; border-radius: 7px; }
+.installName,.installToggle { margin-top: 7px; padding: 7px; border-radius: 9px; background: #fff; }
+.installToggle { display: flex; justify-content: space-between; align-items: center; font-size: 9px; }
+.toggle { width: 21px; height: 12px; border-radius: 99px; background: #28ba56; padding: 1px; }
+.toggle::after { content: ''; display: block; margin-left: auto; width: 10px; height: 10px; border-radius: 50%; background: white; }
+.home { inset: 0; padding: 35px 12px 15px; background: radial-gradient(at 14% 12%,#d2e5ff,transparent 65%),linear-gradient(135deg,#aec1e6,#b5a2d0); }
+.homeIcons { display: grid; grid-template-columns: repeat(4,1fr); gap: 10px 6px; margin-bottom: 10px; }
+.homeIcons span,.homeDock span { width: 21px; aspect-ratio: 1; margin-inline: auto; border-radius: 6px; background: linear-gradient(#fff,#c1d5ef); }
+.homeIcons span:nth-child(2n),.homeDock span:nth-child(2n) { background: linear-gradient(#a6f0c9,#61c8a0); }
+.home > button { display: grid; justify-items: center; gap: 3px; font-size: 8px; }
+.homeDock { position: absolute; inset: auto 7px 13px; display: flex; padding: 7px 4px; border-radius: 13px; background: #ffffff70; }
+.device [data-highlight] { outline: 1.5px solid #2084ff; outline-offset: 1px; background-color: #e0efff; }
+@media (prefers-reduced-motion:no-preference) {
+  .device [data-highlight] { animation: highlight 1.8s ease-out 2; }
+}
+@keyframes highlight { 50% { box-shadow: 0 0 0 4px #2084ff35; } }
+.instruction h2 { margin-top: 3px; font-size: 21px; font-weight: 650; letter-spacing: -.035em; }
+.copy { position: relative; min-height: 3.8em; margin: 4px auto 0; max-width: 39ch; font-size: 13px; line-height: 1.4; color: #62636b; }
+.copy p { width: 100%; }
+.screen footer { margin-top: auto; }

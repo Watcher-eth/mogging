@@ -1,3 +1,4 @@
+import { portraitStudyPreset } from './mobile-overlay-engine/portrait-study-presets'
 import { drawSkinNetwork } from './mobile-overlay-engine/skin-network'
 import { reportPortraitCrop, reportPortraitProjection, type ReportPortraitCrop } from './report-portrait'
 import { preciseFaceOverlay } from './face-treatment'
@@ -13,13 +14,13 @@ type Drawing = Exclude<ResolvedPrimitive, { kind: 'label' | 'point' }>
 
 // Mobile report styles use logical points. One reference viewport keeps the
 // preview and high-resolution exports identical, including stroke weights.
-export function createReportOverlay(slide: ContentSlide, image: GeneratorImage, viewport: Size, referenceWidth = 360, frameFace = false): ReportOverlay {
+export function createReportOverlay(slide: ContentSlide, image: GeneratorImage, viewport: Size, referenceWidth = 360, frameFace = false, portraitStudy = false): ReportOverlay {
   const size = { width: referenceWidth, height: viewport.height / viewport.width * referenceWidth }
   const landmarks = enrichFaceLandmarks(image.landmarks)
   const usable = isFaceLandmarksUsable(landmarks, 0.58)
   const skin = isSkinOverlayCategory(slide.categoryId)
   const primitives = usable && !skin && slide.overlayStyle !== 'face-map'
-    ? resolveOverlayPreset({ preset: getOverlayPreset(slide), landmarks, viewport: size, imageSize: image, fit: 'cover' }).primitives
+    ? resolveOverlayPreset({ preset: portraitStudy ? portraitStudyPreset(slide.categoryId, landmarks?.contours) : getOverlayPreset(slide), landmarks, viewport: size, imageSize: image, fit: 'cover' }).primitives
     : []
   const score = slide.categoryScores.find((item) => item.categoryId === slide.categoryId)?.value || slide.currentScore
   const portraitCrop = frameFace ? reportPortraitCrop(image, landmarks, size) : undefined
@@ -29,11 +30,13 @@ export function createReportOverlay(slide: ContentSlide, image: GeneratorImage, 
   const bottom = Math.max(...samples.map((point) => point.y))
   const dots = samples.map((point) => ({ ...projectImagePoint(point, image, transform), band: Math.min(17, Math.floor((point.y - top) / Math.max(.001, bottom - top) * 18)) }))
   const overlay = { size, primitives, dots, portraitCrop, value: `${score.trim() || '—'} / ${categoryScoreMax(slide.categoryId)}` }
-  return slide.mockReport || skin ? preciseFaceOverlay(overlay, { ...image, landmarks }, slide.categoryId, '', slide.categoryId === 'cheeks') : overlay
+  return slide.mockReport || skin
+    ? preciseFaceOverlay(overlay, { ...image, landmarks }, slide.categoryId, '', slide.categoryId === 'cheeks')
+    : overlay
 }
 
 export type FaceMeasurement = { kind: 'symmetry' | 'thirds' | 'spacing' | 'inner-spacing' | 'tilt' | 'width'; anchors: Partial<Record<string, PixelPoint>> }
-export type ReportOverlay = { skinNetwork?: boolean; portraitCrop?: ReportPortraitCrop; size: Size; primitives: ResolvedPrimitive[]; dots: Array<PixelPoint & { band: number }>; measurement?: FaceMeasurement; faceBoundary?: PixelPoint[]; value?: string; labelLayout?: 'mobile'; labelAppearance?: 'scan'; labelScale?: number; ink?: string; pointAppearance?: 'minimal' }
+export type ReportOverlay = { nativePrimer?: boolean; useReportPrimitives?: boolean; skinNetwork?: boolean; portraitCrop?: ReportPortraitCrop; size: Size; primitives: ResolvedPrimitive[]; dots: Array<PixelPoint & { band: number }>; measurement?: FaceMeasurement; faceBoundary?: PixelPoint[]; value?: string; labelLayout?: 'mobile'; labelAppearance?: 'scan'; labelScale?: number; ink?: string; pointAppearance?: 'minimal' }
 
 export function drawReportOverlay(ctx: CanvasRenderingContext2D, overlay: ReportOverlay, width: number, timeMs: number, labels = true) {
   const ink = overlay.ink ?? '255,255,255'
@@ -69,6 +72,20 @@ export function drawReportOverlay(ctx: CanvasRenderingContext2D, overlay: Report
     ctx.lineCap = 'round'
     ctx.lineJoin = 'round'
     if (primitive.kind === 'point') {
+      if (overlay.nativePrimer) {
+        const scale = primitive.animation?.entrance === 'scale' ? progress : 1
+        ctx.globalAlpha *= progress
+        ctx.translate(primitive.point.x, primitive.point.y)
+        ctx.lineWidth = .7
+        ctx.strokeStyle = 'rgba(255,255,255,.86)'
+        circle(ctx, (primitive.radius ?? 10) * scale)
+        ctx.stroke()
+        ctx.fillStyle = 'rgba(255,255,255,.96)'
+        circle(ctx, .9 * scale)
+        ctx.fill()
+        ctx.restore()
+        continue
+      }
       if (primitive.id.startsWith('face-map-')) {
         ctx.globalAlpha *= progress * .9
         ctx.translate(primitive.point.x, primitive.point.y)
@@ -104,7 +121,7 @@ export function drawReportOverlay(ctx: CanvasRenderingContext2D, overlay: Report
       circle(ctx, 2.2 * scale)
       ctx.fill()
     } else {
-      const paths = preparedPaths(primitive)
+      const paths = preparedPaths(primitive, overlay.nativePrimer)
       if (primitive.kind === 'region' || (primitive.kind === 'box' && primitive.fillOpacity)) {
         ctx.globalAlpha *= progress
         ctx.fillStyle = `rgba(${ink},${primitive.fillOpacity ?? .08})`
@@ -117,10 +134,27 @@ export function drawReportOverlay(ctx: CanvasRenderingContext2D, overlay: Report
       }
       ctx.lineWidth = primitive.strokeWidth ?? (primitive.kind === 'region' ? .45 : .9)
       ctx.strokeStyle = `rgba(${ink},${primitive.opacity ?? (primitive.kind === 'region' ? .42 : .72)})`
-      ctx.setLineDash(primitive.dashed ? [1.7, 3.8] : [])
+      ctx.setLineDash(primitive.kind === 'polyline' && primitive.dotted
+        ? overlay.nativePrimer ? [.5, 3.2] : [.1, 2.5]
+        : primitive.dashed ? overlay.nativePrimer ? [4, 3.5] : [1.7, 3.8] : [])
+      if (overlay.nativePrimer) {
+        ctx.shadowColor = 'rgba(18,26,34,.32)'
+        ctx.shadowOffsetY = .5
+        ctx.shadowBlur = 1
+      }
       ctx.beginPath()
       tracePaths(ctx, paths, progress)
       ctx.stroke()
+      if (!overlay.nativePrimer && primitive.kind === 'polyline' && primitive.markers) {
+        const points = primitive.pixelPoints
+        ctx.fillStyle = ctx.strokeStyle
+        for (let index = 0; index < points.length * progress; index += Math.max(1, Math.round(points.length / 7))) {
+          const point = points[index]
+          ctx.beginPath()
+          ctx.arc(point.x, point.y, 1.15, 0, Math.PI * 2)
+          ctx.fill()
+        }
+      }
     }
     ctx.restore()
   }
@@ -132,7 +166,7 @@ function circle(ctx: CanvasRenderingContext2D, radius: number) {
   ctx.arc(0, 0, radius, 0, Math.PI * 2)
 }
 
-function primitivePaths(primitive: Drawing): PixelPoint[][] {
+function primitivePaths(primitive: Drawing, smooth: boolean): PixelPoint[][] {
   if (primitive.kind === 'line') return [[primitive.fromPoint, primitive.toPoint]]
   if (primitive.kind === 'box') {
     const { x, y, width: w, height: h } = primitive.rect
@@ -146,17 +180,42 @@ function primitivePaths(primitive: Drawing): PixelPoint[][] {
     ]
   }
   const points = primitive.pixelPoints
-  return [primitive.kind === 'region' || primitive.closed ? [...points, points[0]] : points]
+  const closed = primitive.kind === 'region' || primitive.closed
+  if (smooth && primitive.kind === 'polyline' && points.length > 2) {
+    const midpoint = (a: PixelPoint, b: PixelPoint) => ({ x: (a.x + b.x) / 2, y: (a.y + b.y) / 2 })
+    const first = points[0]
+    const last = points[points.length - 1]
+    const path = [closed ? midpoint(last, first) : first]
+    points.forEach((control, index) => {
+      if (!closed && index === points.length - 1) {
+        path.push(control)
+        return
+      }
+      const from = path[path.length - 1]
+      const to = midpoint(control, points[(index + 1) % points.length])
+      for (let sample = 1; sample <= 8; sample++) {
+        const t = sample / 8
+        const u = 1 - t
+        path.push({ x: u * u * from.x + 2 * u * t * control.x + t * t * to.x,
+          y: u * u * from.y + 2 * u * t * control.y + t * t * to.y })
+      }
+    })
+    return [path]
+  }
+  return [closed ? [...points, points[0]] : points]
 }
 
 type PreparedPaths = { paths: { points: PixelPoint[]; lengths: number[] }[]; length: number }
 const pathCache = new WeakMap<Drawing, PreparedPaths>()
 
-function preparedPaths(primitive: Drawing): PreparedPaths {
-  const cached = pathCache.get(primitive)
+const primerPathCache = new WeakMap<Drawing, PreparedPaths>()
+
+function preparedPaths(primitive: Drawing, primer = false): PreparedPaths {
+  const cache = primer ? primerPathCache : pathCache
+  const cached = cache.get(primitive)
   if (cached) return cached
   let length = 0
-  const paths = primitivePaths(primitive).map((points) => {
+  const paths = primitivePaths(primitive, primer).map((points) => {
     const lengths = points.slice(1).map((point, index) => {
       const segment = Math.hypot(point.x - points[index].x, point.y - points[index].y)
       length += segment
@@ -165,7 +224,7 @@ function preparedPaths(primitive: Drawing): PreparedPaths {
     return { points, lengths }
   })
   const prepared = { paths, length }
-  pathCache.set(primitive, prepared)
+  cache.set(primitive, prepared)
   return prepared
 }
 

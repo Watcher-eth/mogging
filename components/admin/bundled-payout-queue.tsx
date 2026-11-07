@@ -1,3 +1,4 @@
+import { creatorPaymentLabel } from '@/lib/creator/money'
 import { useState } from 'react'
 import { Loader2, Wallet } from 'lucide-react'
 import { toast } from 'sonner'
@@ -44,10 +45,10 @@ function RecordBundle({ request, data, onClose, onSaved }: { request: CreatorPay
   return <Dialog open onOpenChange={open => { if (!open && !saving) onClose() }}><DialogContent className="max-h-[90dvh] max-w-lg overflow-y-auto rounded-[28px] p-6">
     <DialogHeader className="pr-8 text-left"><DialogTitle>Record bundled payout</DialogTitle><DialogDescription>{creator?.displayName} · One combined transfer</DialogDescription></DialogHeader>
     <p className="text-4xl font-semibold tabular-nums">{sprintMoney(request.amountCents)}</p>
-    <div className="rounded-xl bg-zinc-50 p-4 text-sm"><p className="font-semibold">{request.paymentOption === 'paypal' ? 'PayPal' : request.network || 'Crypto'}</p><p className="mt-2 select-text break-all text-zinc-600">{request.destination}</p><p className="mt-2 text-xs text-zinc-400">Payout destination saved with this request.</p></div>
+    <div className="rounded-xl bg-zinc-50 p-4 text-sm"><p className="font-semibold">{request.paymentOption === 'crypto' ? request.network || 'Crypto' : creatorPaymentLabel(request.paymentOption)}</p><p className="mt-2 select-text break-all text-zinc-600">{request.destination}</p><p className="mt-2 text-xs text-zinc-400">Payout destination saved with this request.</p></div>
     <PayoutVideoBreakdown data={data} requestId={request.id} lines={payoutRequestLines(records, request.id)} />
     <p className="text-xs leading-5 text-zinc-500">Includes reviewed earnings at the time of the request. Later earnings stay for the next bundle. Only mark paid after sending the full transfer; this settles all included records together.</p>
-    <label className="grid gap-2 text-sm font-medium">{request.paymentOption === 'paypal' ? 'Payment reference (optional)' : 'Transaction hash'}<input className="creator-field" value={reference} onChange={event => setReference(event.target.value)} maxLength={180} /></label>
+    <label className="grid gap-2 text-sm font-medium">{request.paymentOption === 'crypto' ? 'Transaction hash' : 'Payment reference (optional)'}<input className="creator-field" value={reference} onChange={event => setReference(event.target.value)} maxLength={180} /></label>
     {request.paymentOption === 'paypal' ? <label className="grid gap-2 text-sm font-medium">Shared receipt (optional)<input type="file" accept="image/png,image/jpeg,image/webp" className="min-w-0 text-xs" onChange={event => { const file = event.target.files?.[0]; if (file && file.size > 5 * 1024 * 1024) { event.target.value = ''; setReceipt(null); toast.error('Choose a receipt up to 5 MB'); return }; setReceipt(file || null) }} /><span className="text-xs font-normal text-zinc-500">The same proof is attached to every included payment.</span></label> : null}
     <div className="flex justify-end gap-2"><Button variant="ghost" onClick={onClose} disabled={saving}>Cancel</Button><Button onClick={() => void save()} disabled={saving}>{saving ? <Loader2 className="size-4 animate-spin" /> : <Wallet className="size-4" />}Mark {sprintMoney(request.amountCents)} paid</Button></div>
   </DialogContent></Dialog>

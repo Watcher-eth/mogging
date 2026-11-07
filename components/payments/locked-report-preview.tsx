@@ -1,6 +1,6 @@
 import { V2ReportDetail } from '@/components/analysis/v2/report-detail'
 import { useEffect, useRef } from 'react'
-import { LockKeyhole, ArrowRight } from 'lucide-react'
+import { LockKeyhole, ArrowRight, RotateCcw } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { AnalysisReport } from '@/components/analysis/analysis-report'
 import { reportCategoryDefaults } from '@/components/analysis/report-category-defaults'
@@ -16,25 +16,28 @@ const categories = [
   })),
 ]
 
-export function LockedReportPreview({ imageSrc, landmarks, onUnlock }: {
-  imageSrc: string; landmarks: FaceLandmarksPayload | null; onUnlock: () => void
+export function LockedReportPreview({ imageSrc, landmarks, onUnlock, onRetake }: {
+  imageSrc: string; landmarks: FaceLandmarksPayload | null; onUnlock: () => void; onRetake?: () => void
 }) {
   const { t } = useTranslation()
   const offered = useRef(false)
   useEffect(() => {
-    if (offered.current) return
+    if (onRetake || offered.current) return
     const timer = setTimeout(() => { offered.current = true; onUnlock() }, 1200)
     return () => clearTimeout(timer)
-  }, [onUnlock])
+  }, [onRetake, onUnlock])
 
   return <div className={styles.preview}>
-    <AnalysisReport categories={categories} initialCategoryId="overall" imageSrc={imageSrc} landmarks={landmarks} score={null}
+    {onRetake && <button type="button" className="scan-retake" aria-label="Retake photo" onClick={onRetake}><RotateCcw size={20} /></button>}
+    <AnalysisReport mobileScan={Boolean(onRetake)} portraitLayoutId={onRetake ? "analysis-portrait" : undefined} categories={categories} initialCategoryId="overall" imageSrc={imageSrc} landmarks={landmarks} score={null}
       renderDetails={category => <div className={styles.lockedDetails}>
-        <div className={styles.blurred} aria-hidden="true" inert><V2ReportDetail category={category} groups={[{ id: category.id, title: category.title, rubrics: category.features.map((feature, index) => ({ id: `${category.id}.preview-${index}`, label: feature.label, value: '—', visual: 'Orbit', scale: 'quality', positions: [.5], grade: null })) }]} /></div>
-        <div className={styles.lock}><LockKeyhole size={18} strokeWidth={1.5} /><p>{t('membership.privatePreview')}</p><span>{t('membership.previewNote')}</span></div>
+        <div className={onRetake ? undefined : styles.blurred} aria-hidden={!onRetake || undefined} inert={!onRetake}><V2ReportDetail mobile={Boolean(onRetake)} locked={Boolean(onRetake)} category={category} groups={[{ id: category.id, title: category.title, rubrics: category.features.map((feature, index) => ({ id: `${category.id}.preview-${index}`, label: feature.label, value: '—', visual: 'Orbit', scale: 'quality', positions: [.5], grade: null })) }]} /></div>
+        {!onRetake && <div className={styles.lock}><LockKeyhole size={18} strokeWidth={1.5} /><p>{t('membership.privatePreview')}</p><span>{t('membership.previewNote')}</span></div>}
       </div>}>
+      <div className={styles.previewDock}>
       <button type="button" onClick={onUnlock} className={styles.unlock}>{t('membership.unlockReport')}<ArrowRight size={15} /></button>
       <p className={styles.note}>{t('membership.previewNote')}</p>
+      </div>
     </AnalysisReport>
   </div>
 }

@@ -10,6 +10,7 @@ import { ApiError, handleApiError, json, methodNotAllowed, parseBody } from './h
 
 test('paid scan reproduces the old HTTP 400, fixes JSON headers and recovers already loaded web bundles', async () => {
   let reservations = 0, generated = 0, finished = 0
+  const events: any[] = []
   let saved: unknown = null
   const scope: any = { Date, Promise, Math, Number, JSON, createHash, randomUUID, ApiError, handleApiError, json, methodNotAllowed, parseBody,
     console: { info() {}, error() {}, warn() {} }, env: { AUTH_REQUIRED: true },
@@ -18,6 +19,7 @@ test('paid scan reproduces the old HTTP 400, fixes JSON headers and recovers alr
     hairColorSchema: { safeParse: () => ({}) }, skinColorSchema: { safeParse: () => ({}) }, normalizeApparentAge: () => null,
     reserveEvaluation: async () => { if (!saved) reservations++; return { id: 'paid-reservation', result: saved, summary: { evaluationCredits: 0 } } },
     finishEvaluation: async (_id: string, result: unknown, success: boolean) => { expect(success).toBe(true); saved = result; finished++ },
+    recordServerEvent: async (event: unknown) => { events.push(event) },
     markEvaluationStarted: () => {}, createAnalysisShare: async () => null,
   }
   const source = readFileSync(new URL('../analysis/handler.ts', import.meta.url), 'utf8').replace(/^import .*\n/gm, '').replace(/^export /gm, '')
@@ -38,7 +40,8 @@ test('paid scan reproduces the old HTTP 400, fixes JSON headers and recovers alr
     const address = server.address() as { port: number }
     const url = `http://127.0.0.1:${address.port}/api/web/analyze`
     const body = { imageData: 'test-image-provider-stub', photoType: 'front', gender: 'male' }
-    const headers = { 'x-mogging-request-id': 'paid-scan', 'x-mogging-mobile-install-id': 'web-install' }
+    const flowId = randomUUID(), evaluationId = randomUUID()
+    const headers = { 'x-mogging-request-id': 'paid-scan', 'x-mogging-mobile-install-id': 'web-install', 'x-mogging-flow-id': flowId, 'x-mogging-evaluation-id': evaluationId }
     // The previous object spread replaced Content-Type with the paid request headers.
     const broken = await fetch(url, { method: 'POST', headers, body: JSON.stringify(body) })
     expect(broken.status).toBe(400)
@@ -54,6 +57,11 @@ test('paid scan reproduces the old HTTP 400, fixes JSON headers and recovers alr
     const legacyRetry = await fetch(url, { method: 'POST', headers, body: JSON.stringify(body) })
     expect(legacyRetry.status).toBe(200)
     expect((await legacyRetry.json()).data.analysis.id).toBe('saved-report')
+    const completedEvents = events.filter(event => event.eventName === 'evaluation_request_completed')
+    expect(completedEvents).toHaveLength(2)
+    expect(completedEvents[0].eventId).toBe(completedEvents[1].eventId)
+    expect(completedEvents[0].properties).toMatchObject({ flow_id: flowId, evaluation_id: evaluationId, report_id: 'saved-report' })
+    expect(JSON.stringify(events)).not.toContain('test-image-provider-stub')
     const invalid = await fetch(url, { method: 'POST', headers, body: 'not JSON' })
     expect(invalid.status).toBe(400)
     expect({ reservations, generated, finished }).toEqual({ reservations: 1, generated: 1, finished: 1 })

@@ -105,3 +105,13 @@ export function createCompatibleReport(result: AnalysisProviderResult, web: WebR
 
 export const analyzeAndSaveWeb = (input: AnalyzeAndSaveInput, reservationId?: string) => analyzeAndSaveExpanded(input, reservationId)
 export const analyzeAndSaveMobile = (input: AnalyzeAndSaveInput, reservationId?: string) => analyzeAndSaveExpanded(input, reservationId, true)
+
+export function saveMobileFaceStudy(input: AnalyzeAndSaveInput, reservationId?: string) {
+  const scan = reservationId ?? randomUUID()
+  return analyzeAndSave(input, reservationId, {
+    presentation: 'face-study',
+    requirePersistence: true,
+    promptVersion: 'face-study-1',
+    photoHash: hash => webPhotoHash(hash, input.userId ?? 'anonymous', scan),
+  })
+}

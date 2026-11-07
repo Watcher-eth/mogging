@@ -12,6 +12,11 @@ function snapshot(): AnalyticsDashboard {
     revenueComparison: [{ currency: 'USD', current_net: '90', previous_net: '60', missing_amount_events: 0 }],
     revenueFinancials: [{ currency: 'USD', gross: 100, refunds: 10, after_refunds: 90, taxes: 0, fees: 13.5, proceeds: 76.5, known_proceeds: 76.5, unknown_fee_events: 0, commission_mismatches: 1 }],
     revenueSubscriptionOverview: [{ auto_renewing: 8, cancelling: 2, trials: 0, billing_retry: 0, access_total: 10, ended: 3, starting_subscriptions: 10, churned_starting_subscriptions: 2, ended_in_period: 3, cancellation_requests: 4 }],
+    revenueStreamComparison: [
+      { source: 'Apple App Store', currency: 'USD', current_net: 70, previous_net: 50, current_gross: 80 },
+      { source: 'Stripe', currency: 'USD', current_net: 20, previous_net: 10, current_gross: 20 },
+    ],
+    revenueUsdCoverage: [{ source: 'Apple App Store', after_refunds: null, covered_after_refunds: 82.34, covered_events: 3, monetary_events: 4 }],
     revenueSources: [{ source: 'Apple App Store', currency: 'USD', purchases: 3, refund_transactions: 1, gross: 100, refunds: 10, after_refunds: 90, proceeds: 76.5, provider_estimated_proceeds: 63 }],
     revenueCountries: [{ country: 'US', currency: 'USD', purchases: 3, refund_transactions: 1, gross: 100, refunds: 10, after_refunds: 90, proceeds: 76.5 }],
     revenueDaily: [], billingProducts: [], billingDimensions: [], billing: [],
@@ -34,6 +39,11 @@ test('period revenue, lifetime totals and currencies remain distinct', () => {
   expect(html).toContain('all-time after refunds: $500.00')
   expect(html).toContain('50.0% vs previous period')
   expect(html).toContain('Previous after refunds: $60.00')
+  expect(html).toContain('+40.0% vs previous period')
+  expect(html).toContain('+100.0% vs previous period')
+  expect(html).toContain('80.0%')
+  expect(html).toContain('$82.34')
+  expect(html).toContain('3 / 4')
   expect(html).not.toContain('$790.00')
   expect(html).toContain('>7</p>')
   expect(html).toContain('100 all time')
@@ -135,4 +145,24 @@ test('headline comparisons show growth, decline and first-time paying customers 
   data.revenueComparison![0].missing_amount_events = 1
   const incomplete = renderToStaticMarkup(<RevenueDashboard data={data} days={1} />)
   expect(incomplete).not.toContain('+25.0% versus previous 24 hours')
+})
+
+
+test('combined USD headlines and stream breakdown use the same international totals', () => {
+  const data=snapshot()
+  data.revenue.push({ currency:'USD_TOTAL',gross:48.693,refunds:0,net:48.693,paying_customers:7,missing_amount_events:0 })
+  data.revenueTotals!.push({ currency:'USD_TOTAL',net:400 })
+  data.revenueComparison!.push({currency:'USD_TOTAL',current_gross:48.693,previous_gross:49.882,current_net:48.693,previous_net:49.882,current_new_customers:6,missing_amount_events:0})
+  data.revenueStreamComparison!.push({source:'Apple App Store',currency:'USD_TOTAL',current_net:33.713,previous_net:49.882,current_gross:33.713},
+    {source:'Stripe',currency:'USD_TOTAL',current_net:14.98,previous_net:0,current_gross:14.98})
+  const html=renderToStaticMarkup(<RevenueDashboard data={data} days={1} />)
+  expect(html).toContain('Total gross collections')
+  expect(html).toContain('>$48.69</p>')
+  expect(html).toContain('$33.71')
+  expect(html).toContain('$14.98')
+  expect(html).toContain('69.2%')
+  expect(html).toContain('30.8%')
+  expect(html).toContain('>7</p>')
+  expect(html).toContain('>6</p>')
+  expect(html).not.toContain('USD_TOTAL purchases')
 })

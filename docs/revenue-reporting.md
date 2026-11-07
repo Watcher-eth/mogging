@@ -1,6 +1,6 @@
 # Revenue reporting
 
-The Revenue page uses deduplicated production billing events and excludes known internal accounts. Dates are Pacific time. Amounts remain in the original purchase currency; USD means USD-denominated purchases, not a converted global total.
+The Revenue page uses deduplicated production billing events and excludes known internal accounts. Dates are Pacific time. The default Total · USD view combines USD-denominated payments with provider-recorded USD conversions for international payments. Headlines, stream charts, product charts and growth use this same basis. Original-currency views remain available as explicitly labelled purchase subsets. Missing historical conversions remain visible as gaps; known sums are labelled as minimums, never presented as complete totals.
 
 | Previous presentation | Current presentation | Reason |
 | --- | --- | --- |
@@ -43,3 +43,67 @@ Sources:
 ## Verification
 
 TypeScript and targeted lint passed. Dashboard, reporting-window, fee-policy and billing-normalization tests passed. Read-only synthetic PostgreSQL fixtures verified signed refunds, fee reversals, tax-before-commission arithmetic, separate currencies and unknown fee handling. Production read-only queries and the local-only browser preview verified actual subscription totals and currency switching. No production financial records were altered.
+
+## Direct provider checks
+
+- Stripe webhooks feed the ledger. The five-minute recovery job scans the Stripe API and advances its checkpoint only after processing an entire interval. The dashboard shows that checkpoint separately from the last job invocation and keeps the last explicit webhook configuration result.
+- RevenueCat webhooks feed the ledger. The admin API also reads the project Overview from RevenueCat API v2, cached separately for 60 seconds. Set `REVENUECAT_METRICS_PROJECT_ID` and a dedicated `REVENUECAT_METRICS_API_KEY` with `charts_metrics:overview:read` in production. The existing purchase-verification key has a different purpose.
+- App Store Connect Sales and Trends is a daily comparison feed. Configure the `ASC_REPORT_*` variables with a Sales and Reports team key, the sales vendor number, and the parent SKU `app.mogging.scan`. The dashboard requests the report from two Pacific calendar days ago and displays purchase-side estimated proceeds by currency. Refunds and adjustments are outside that comparison. Monthly financial reports remain the settlement source. The same daily report can be checked manually with `asc analytics sales --vendor "$ASC_REPORT_VENDOR_NUMBER" --type SALES --subtype SUMMARY --frequency DAILY --date YYYY-MM-DD` using the reporting key.
+
+Provider snapshots are shown separately from ledger totals. They do not create billing events or modify entitlements.
+
+
+## Video-to-sale measurement
+
+The Creator Performance report now offers a 14-day window and joins creator reach,
+non-bot referral clicks, provider-confirmed attributed payments and subsequent
+completed server-side evaluations. Bio-link traffic remains creator-level;
+post-specific credit requires a recorded submission ID on the actual click.
+Currencies and Stripe/RevenueCat totals remain separate. Client access events are
+not sales. Unattributed sales still belong in the Revenue report.
+
+`creator_video_observations` retains source and observation time. Reported payout
+thresholds are lower-bound baselines, not exact impressions. Only exact verified
+recordings with matching storage keys and authenticated TikTok API counts supply
+measured growth. Growth requires an opening observation from the same source;
+missing history stays unavailable. Collection does not rewrite payout amounts or
+reviewed view thresholds. Hourly API snapshots are idempotent. The 15-minute cron
+rotates through accounts and canonical post IDs; unavailable/private videos are
+not represented as zero and cannot starve later posts.
+
+Before deploying, apply only the additive migration:
+`bun run db:migrate --only 0072_creator_video_observations`.
+Do not run unrelated pending migrations. This does not change report visibility.
+
+TikTok automatic collection needs approved `video.list` permission and creator
+consent. Keep `TIKTOK_CREATOR_VIDEO_SCOPE_ENABLED=false` until the **live** app
+configuration confirms approval, then enable it and have creators connect again
+from Accounts. Refreshing a token cannot add a scope. Profile permission remains
+separately gated. Never match an unverified manual handle to a provider account.
+The standard video query supplies views, likes, comments and shares, not watch
+retention or audience locations; those still require verified recordings.
+
+Web events now retain coarse browser/platform and flow version/entry labels.
+Historical missing labels are not backfilled with guesses. The original checkout
+flow ID survives Stripe return through evaluation completion. The data-health
+webhook backlog excludes reconciliation-job receipts, which are not provider
+webhook deliveries.
+
+Verification: targeted provider/contract/admin tests, TypeScript, an isolated local
+PostgreSQL fixture covering retries, partial video access, recording provenance,
+view growth and payment-to-evaluation joins, and a read-only production schema
+compatibility query. The fixture script refuses databases outside its dedicated
+localhost test database (`scripts/tests/creator-video-metrics.ts`).
+
+
+## Stripe checkout linkage repair
+
+The reconciliation job checks durable entitlement checkout IDs against Stripe as
+well as consuming recent provider events. Subscription checkout confirmation has
+a canonical `checkout:<session>` key, while the paid invoice owns revenue. These
+must never both add income. For an existing invoice, repair retains its original
+provider-event ID and actual invoice paid time. Replays fill missing account,
+subscription, transaction and product links without replacing known amounts.
+A later webhook can replace an explicitly estimated checkout timestamp with its
+provider event time. Incomplete or unverifiable checkouts remain unresolved;
+recovery cannot fabricate success or change access.

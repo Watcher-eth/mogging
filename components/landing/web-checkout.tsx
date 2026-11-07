@@ -1,3 +1,4 @@
+import { webJourneyContext } from '@/lib/analytics/web-journey'
 import dynamic from 'next/dynamic'
 import { useSession } from 'next-auth/react'
 import { LoginDialog } from '@/components/app/login-dialog'
@@ -13,8 +14,11 @@ import { membershipPlans, MembershipPlans, MembershipValue, MembershipTerms, App
 import styles from './web-checkout.module.css'
 import { trackWebEvent, flushWebAnalytics } from '@/lib/analytics/client'
 
+import { rememberStripeAttempt, stripeAttemptProperties, takeStripeAttempt } from '@/lib/client/stripe-attempt'
+
 type CheckoutResponse = {
   url: string
+  sessionId: string
 }
 
 const CheckoutReport = dynamic(() => import('./checkout-report'))
@@ -71,8 +75,12 @@ export function WebCheckout({ embedded = false, preview = false, intro, showRepo
       void router.replace(
         `/app/handoff?session_id=${encodeURIComponent(sessionId)}`,
       )
-    } else if (router.query.checkout === 'cancelled') {
+    } else if (!preview && router.query.checkout === 'cancelled') {
+      const attempt = takeStripeAttempt('landing')
+      if (attempt) trackWebEvent('purchase_cancelled', { surface: 'landing', provider: 'stripe', reason_code: 'checkout_return', ...stripeAttemptProperties(attempt) })
       toast.error(t('plan.cancelled'))
+      const { checkout: _checkout, ...query } = router.query
+      void router.replace({ pathname: router.pathname, query }, undefined, { shallow: true, scroll: false })
     }
   }, [
     router,
@@ -80,6 +88,7 @@ export function WebCheckout({ embedded = false, preview = false, intro, showRepo
     router.query.checkout,
     router.query.product,
     sessionId,
+    preview,
     t,
   ])
 
@@ -100,7 +109,8 @@ export function WebCheckout({ embedded = false, preview = false, intro, showRepo
     if (preview) { toast.info('Design preview — no checkout or payment is created.'); return }
     if (status !== 'authenticated') { setLoginOpen(true); return }
     const attemptId = crypto.randomUUID()
-    const purchaseContext = { surface: 'landing', product: selectedProduct, paywall_id: 'web_membership', paywall_version: '2', attempt_id: attemptId }
+    const journey = webJourneyContext()
+    const purchaseContext = { ...journey, surface: 'landing', provider: 'stripe', product: selectedProduct, paywall_id: 'web_membership', paywall_version: '2', attempt_id: attemptId }
     trackWebEvent('purchase_started', purchaseContext)
     trackWebEvent('landing_cta_clicked', {
       destination: 'web_checkout',
@@ -117,7 +127,7 @@ export function WebCheckout({ embedded = false, preview = false, intro, showRepo
         '/api/payments/web-checkout',
         {
           product: selectedProduct,
-          attemptId,
+          attemptId, flowId: journey.flow_id, flowVersion: journey.flow_version, entryMode: journey.entry_mode,
           mobileInstallId: nextInstallId,
           source,
           returnLocale: router.locale ?? 'en',
@@ -126,6 +136,7 @@ export function WebCheckout({ embedded = false, preview = false, intro, showRepo
           locale: i18n.language.startsWith('zh') ? 'zh' : i18n.language.split('-')[0],
         },
       )
+      rememberStripeAttempt('landing', { attempt_id: attemptId, flow_id: journey.flow_id, product: selectedProduct, sessionId: response.sessionId })
       window.location.href = response.url
     } catch (error) {
       if (!preview) trackWebEvent('purchase_failed', { ...purchaseContext, purchase_stage: 'checkout_create', reason_code: error instanceof ApiClientError ? error.code : 'request_failed' })

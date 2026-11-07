@@ -1,11 +1,11 @@
-import { useState, type FormEvent } from 'react'
+import { useEffect, useState, type FormEvent } from 'react'
 import { Check, Loader2 } from 'lucide-react'
 import { toast } from 'sonner'
 import { Button } from '@/components/ui/button'
 import { SocialPlatformLogo } from '@/components/brand/social-platform-logo'
 import { Field, fieldClass } from './creator-shell'
 import type { CreatorSocialAccount } from './types'
-import { apiPost, ApiClientError } from '@/lib/api/client'
+import { apiGet, apiPost, ApiClientError } from '@/lib/api/client'
 import { CreatorReferralCode, CreatorReferralDetails } from './referral-details'
 import { cn } from '@/lib/utils'
 import { FollowerRangeSelect } from './tiktok-anchor-onboarding'
@@ -25,6 +25,24 @@ export function ConnectAccountForm({
   counts: { tiktok: number; instagram: number }
 }) {
   const [busy, setBusy] = useState(false)
+  const [videoAnalyticsAvailable, setVideoAnalyticsAvailable] = useState(false)
+  useEffect(() => {
+    let active = true
+    void apiGet<{ available: boolean }>('/api/creator/oauth/tiktok/start').then(result => {
+      if (active) setVideoAnalyticsAvailable(result.available)
+    }).catch(() => {})
+    return () => { active = false }
+  }, [])
+  async function authorizeVideoAnalytics() {
+    setBusy(true)
+    try {
+      const result = await apiPost<{ url: string }>('/api/creator/oauth/tiktok/start', {})
+      window.location.assign(result.url)
+    } catch (error) {
+      toast.error(error instanceof ApiClientError ? error.message : 'Could not connect TikTok analytics')
+      setBusy(false)
+    }
+  }
   const [identity, setIdentity] = useState('')
   const [followerRange, setFollowerRange] = useState<FollowerRange | ''>('')
   const [connected, setConnected] = useState<CreatorSocialAccount | null>(null)
@@ -82,6 +100,7 @@ export function ConnectAccountForm({
   }
   return (
     <form onSubmit={connect} className="creator-dialog-form grid gap-5 p-6 sm:p-7">
+      {platform === 'tiktok' && videoAnalyticsAvailable ? <Button type="button" variant="outline" disabled={busy} onClick={authorizeVideoAnalytics}>Connect automatic TikTok analytics</Button> : null}
       <div className="grid grid-cols-2 gap-2">
         {(['tiktok', 'instagram'] as const).map((option) => (
           <button

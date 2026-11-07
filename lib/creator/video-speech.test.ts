@@ -5,6 +5,7 @@ import { compileAnalysisVideo, parseComposition } from './video-composition'
 import { scriptToPlan } from './script-edit'
 import type { AnalysisPostInput } from './analysis-post'
 import { scriptRevision } from './video-script'
+import { compileMobileFaceStudy } from './mobile-face-study'
 
 const input: AnalysisPostInput = { formatId: 'score-reveal', subject: 'Sample', hook: '', overallScore: '7', potentialScore: '8', strongestFeature: 'Eyes', strongestScore: '8', opportunityFeature: 'Jaw', opportunityScore: '6', recommendation: '', productFeatures: [], cta: '' }
 
@@ -36,6 +37,29 @@ test('speech clips retime scenes from PCM sample counts and keep words explicitl
   expect(speechBrief(result.composition).scenes[0].text).toBe(composition.scenes[0].narration)
   expect(() => assembleSpeech(composition, [])).toThrow('complete scene list')
   expect(() => assembleSpeech(composition, segments.map(segment => ({ ...segment, sceneId: 'wrong' })))).toThrow('identity')
+})
+
+test('private portrait chapters retain measured speech cues on the local audio clock', () => {
+  const composition = compileMobileFaceStudy({
+    version: 1, source: 'apple-vision', confidence: .9, image: { width: 600, height: 800 },
+    anchors: { leftPupil: { x: .3, y: .4 }, rightPupil: { x: .7, y: .4 } },
+  }, 'portrait', { goals: ['eyes', 'jaw'], returning: false, protocolTaskKeys: ['brow-set', 'unrecognized', 'gentle-cleanser'], checkIn: { change: 'same', effort: 'too-much' } })
+  const segments = composition.scenes.map((scene, index) => ({
+    sceneId: scene.id, pcm: new Uint8Array(48000 * (index + 1)),
+    words: index === 0 ? [{ text: 'Before', startMs: 100, endMs: 250 }] : undefined,
+  }))
+  const { composition: narrated } = assembleSpeech(composition, segments)
+  expect(narrated.scenes.every(scene => scene.source.kind === 'portrait' && scene.source.hideScores)).toBe(true)
+  expect(narrated.scenes[1].startMs).toBe(1500)
+  expect(narrated.scenes[2].startMs).toBe(4000)
+  expect(narrated.scenes[0].words).toEqual(segments[0].words)
+  expect(narrated.scenes[1].words).toBeUndefined()
+  expect(narrated.scenes[0].portraitProgram?.actions[0].labelWord).toBeGreaterThan(0)
+  expect(narrated.scenes.at(-1)?.narration).toContain('spoolie step in your Protocol')
+  expect(narrated.scenes[0].narration).toContain('the frame around your eyes and your jawline')
+  expect(narrated.scenes.at(-1)?.narration).toContain('starting to feel like too much')
+  expect(narrated.scenes.at(-1)?.narration).not.toContain('gentle cleanser step')
+  expect(narrated.scenes.at(-1)?.narration).not.toContain('unrecognized')
 })
 
 test('invalid audio and out-of-range delivery controls fail closed', () => {

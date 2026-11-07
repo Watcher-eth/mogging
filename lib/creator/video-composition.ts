@@ -65,6 +65,12 @@ const reportSchema = z.object({
 }).strict()
 
 export const videoSceneSchema = z.object({
+  studyCutout: z.literal(true).optional(),
+  studyReadout: z.string().max(100).optional(),
+  studyMeasurement: z.object({
+    name: z.string().max(80), value: z.number().finite().nonnegative(), unit: z.enum(['%', '°', 'px']),
+    reference: z.string().max(100),
+  }).optional(),
   documentary: documentaryShotSchema.optional(),
   portraitCrop: portraitCropSchema.optional(),
   id: z.string().min(1).max(100), label: z.string().max(120), startMs: z.number().finite().min(0), durationMs: z.number().finite().min(100).max(180000),
@@ -93,7 +99,7 @@ export function videoImageIds(scenes: VideoScene[]) {
 export type VideoDirection = { overlay?: VideoScene['source']['overlay']; portraitCrop?: VideoScene['portraitCrop']; scoreCallouts?: VideoScene['scoreCallouts']; kind: 'portrait' | 'explainer' | 'report' | 'component'; imageId?: string; categoryId?: string; graphic?: VideoScene['graphic']; photoStudy?: VideoScene['photoStudy']; portraitFX?: VideoScene['portraitFX']; profileStudy?: VideoScene['profileStudy']; editorial?: VideoScene['editorial']; study?: VideoScene['study']; featureStudy?: VideoScene['featureStudy']; portraitProgram?: VideoScene['portraitProgram']; delivery?: VideoScene['delivery']; focus?: string; emphasis?: 'section-lift' | 'section-expand' | 'border-beam' }
 
 export const compositionSchema = z.object({
-  version: z.literal(1), title: z.string().min(1).max(160), disclosure: z.string().max(240).optional(), width: z.preprocess(width => width === 1080 ? videoSize.width : width, z.literal(videoSize.width)), height: z.preprocess(height => height === 1920 ? videoSize.height : height, z.literal(videoSize.height)), fps: z.literal(30),
+  version: z.literal(1), privateStudy: z.literal(true).optional(), title: z.string().min(1).max(160), disclosure: z.string().max(240).optional(), width: z.preprocess(width => width === 1080 ? videoSize.width : width, z.literal(videoSize.width)), height: z.preprocess(height => height === 1920 ? videoSize.height : height, z.literal(videoSize.height)), fps: z.literal(30),
   style: z.enum(['creator', 'diagnostic', 'brand']), theme: z.enum(['light', 'dark']).default('light'), durationMs: z.number().finite().min(100).max(180000), scenes: z.array(videoSceneSchema).min(1).max(250),
   recipe: z.enum(['report-led', 'portrait-audit', 'measurement-explainer', 'minimal-explainer', 'hybrid-story', 'feature-study', 'documentary-studio']).default('report-led'), variation: z.number().int().min(0).max(9999).default(0),
   voice: voiceDirectionSchema.optional(), timing: z.enum(['estimated', 'segments', 'words']).optional(),
@@ -189,7 +195,7 @@ export function activeScene(composition: VideoComposition, timeMs: number) {
 }
 
 export function ensureEarlyAppProof(composition: VideoComposition, imageId = composition.scenes.find(scene => scene.source.imageId)?.source.imageId): VideoComposition {
-  if (composition.script?.cues.every(cue => cue.section) || composition.durationMs < 10000 || !imageId) return composition
+  if (composition.privateStudy || composition.script?.cues.every(cue => cue.section) || composition.durationMs < 10000 || !imageId) return composition
   const visible = (scene: VideoScene) => Math.min(10000, scene.startMs + scene.durationMs) - scene.startMs - 600 >= 2000
   if (composition.scenes.some(scene => ['report', 'screen'].includes(scene.source.kind) && visible(scene))) return composition
   const candidates = composition.scenes.filter(scene => (scene.source.imageId || imageId) && visible(scene))
@@ -249,7 +255,7 @@ export function arrangeVideoScenes(composition: VideoComposition, scenes: VideoS
 
 export function retimeVideoScene(scene: VideoScene, durationMs: number): VideoScene {
   const ratio = durationMs / scene.durationMs
-  return { ...scene, durationMs, words: scene.words?.map(word => ({ ...word, startMs: word.startMs * ratio, endMs: word.endMs * ratio })), tracks: scene.tracks.map(track => ({ ...track, startMs: track.startMs * ratio, durationMs: track.durationMs * ratio })) }
+  return { ...scene, durationMs, words: scene.words?.map(word => ({ ...word, startMs: word.startMs * ratio, endMs: word.endMs * ratio })), tracks: scene.tracks.map(track => ({ ...track, startMs: track.startMs * ratio, durationMs: Math.max(1, track.durationMs * ratio) })) }
 }
 
 export function createMotionTrack(primitive: MotionPrimitiveId, target: TrackTarget, sceneDuration: number): MotionTrack {

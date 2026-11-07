@@ -1,7 +1,7 @@
 import { SkeletonImage } from '@/components/ui/skeleton-image'
 import { AnimatePresence, motion, useReducedMotion } from 'motion/react'
 import { useEffect, useMemo, useRef, useState } from 'react'
-import type { FaceLandmarksPayload } from '@/lib/analysis/landmarks'
+import type { FaceLandmarksPayload } from '@/lib/creator/mobile-overlay-engine/landmarks'
 import { getReportImageLandmarks } from '@/lib/client/report-landmarks'
 import { enrichFaceLandmarks } from '@/lib/creator/mobile-overlay-engine/enrich-landmarks'
 import { isFaceLandmarksUsable } from '@/lib/creator/mobile-overlay-engine/landmarks'
@@ -9,10 +9,12 @@ import { processingOverlaySteps } from '@/lib/creator/mobile-overlay-engine/proc
 import { getReportOverlayPreset } from '@/lib/creator/mobile-overlay-engine/report-presets'
 import { FaceOverlay, type LoadedImage } from './face-overlay'
 
+const scannerSteps = ['skin', 'eyes', 'brows', 'nose', 'jaw', 'cheeks', 'symmetry', 'mouth'].map(categoryId => ({ categoryId, label: '' }))
+
 export function ScanImagePanel({ imageSrc, landmarks, variant = 'analysis', paused = false, fit = 'contain', showLabel = true }: {
   imageSrc: string | null
   landmarks: FaceLandmarksPayload | null
-  variant?: 'analysis' | 'paywall'
+  variant?: 'analysis' | 'paywall' | 'scanner'
   showLabel?: boolean
   fit?: 'contain' | 'cover'
   paused?: boolean
@@ -26,7 +28,8 @@ export function ScanImagePanel({ imageSrc, landmarks, variant = 'analysis', paus
   const measured = isFaceLandmarksUsable(landmarks) ? landmarks : detected
   const enriched = useMemo(() => enrichFaceLandmarks(measured), [measured])
   const usable = isFaceLandmarksUsable(enriched, .2)
-  const step = processingOverlaySteps[phase]
+  const step = variant === 'scanner' ? scannerSteps[phase] : processingOverlaySteps[phase]
+  const faceMap = variant === 'scanner' && phase === 0
 
   useEffect(() => {
     setDetected(null)
@@ -52,18 +55,19 @@ export function ScanImagePanel({ imageSrc, landmarks, variant = 'analysis', paus
 
   useEffect(() => {
     if (!visible || paused || reduceMotion || !usable || !image) return
-    const timer = setTimeout(() => setPhase(current => (current + 1) % processingOverlaySteps.length), 3400)
+    const timer = setTimeout(() => setPhase(current => (current + 1) % (variant === 'scanner' ? scannerSteps.length : processingOverlaySteps.length)), variant === 'scanner' ? (faceMap ? 4000 : 2800) : 3400)
     return () => clearTimeout(timer)
-  }, [visible, paused, reduceMotion, usable, image, phase])
+  }, [visible, paused, reduceMotion, usable, image, phase, variant, faceMap])
 
   return (
-    <div ref={panelRef} style={variant === 'analysis' && image ? { aspectRatio: image.width / image.height } : undefined} className={`relative w-full overflow-hidden bg-white ${variant === 'paywall' ? 'h-[min(38svh,340px)] min-h-[220px]' : 'aspect-[4/5] max-w-[620px]'}`}>
-      {imageSrc ? <SkeletonImage className={fit === 'cover' ? 'object-cover object-center' : 'object-contain object-center'} src={imageSrc} alt="Your facial analysis preview" sizes={variant === 'paywall' ? '500px' : '(min-width: 1024px) 45vw, 100vw'} onLoad={event => {
+    <div ref={panelRef} style={variant === 'analysis' && image ? { aspectRatio: image.width / image.height } : undefined} className={`relative w-full overflow-hidden bg-white ${variant === 'paywall' ? 'h-[min(38svh,340px)] min-h-[220px]' : variant === 'scanner' ? 'h-full' : 'aspect-[4/5] max-w-[620px]'}`}>
+      {imageSrc ? <SkeletonImage className={fit === 'cover' ? 'object-cover object-center' : 'object-contain object-center'} src={imageSrc} alt="Your facial analysis preview" priority={variant === 'scanner'} sizes={variant === 'paywall' ? '500px' : '(min-width: 1024px) 45vw, 100vw'} onLoad={event => {
         const photo = event.currentTarget
         setImage(previous => previous?.src === photo.currentSrc ? previous : { src: photo.currentSrc, width: photo.naturalWidth, height: photo.naturalHeight })
       }} /> : null}
+      {variant === 'scanner' && <div className="scan-processing-treatment" data-mapping={faceMap || undefined} aria-hidden="true"><span /></div>}
       <AnimatePresence>
-        {!paused && usable && image && enriched ? <FaceOverlay key={`${image.src}:${step.categoryId}`} categoryId={step.categoryId} preset={getReportOverlayPreset(step.categoryId)} landmarks={enriched} image={image} fit={fit} /> : null}
+        {!paused && usable && image && enriched ? <FaceOverlay key={`${image.src}:${step.categoryId}`} categoryId={faceMap ? undefined : step.categoryId} preset={faceMap ? null : getReportOverlayPreset(step.categoryId)} appearance={variant === 'scanner' ? 'scan' : 'report'} landmarks={enriched} image={image} fit={fit} faceMapPointCount={faceMap ? 70 : undefined} /> : null}
       </AnimatePresence>
       {showLabel && usable && !paused ? <div className="pointer-events-none absolute bottom-4 left-4 rounded-lg border border-white/35 bg-white/15 px-3 py-2 font-mono text-[10px] uppercase tracking-wide text-white shadow-sm backdrop-blur-md" aria-hidden="true">{step.label}</div> : null}
       {variant === 'paywall' ? <motion.div className="pointer-events-none absolute inset-x-0 bottom-0 h-[35%]" initial={{ opacity: reduceMotion ? 1 : 0 }} animate={{ opacity: 1 }} transition={{ duration: reduceMotion ? 0 : .6, ease: [.22, 1, .36, 1] }} style={{ background: 'linear-gradient(to bottom, rgba(255,255,255,0) 0%, rgba(255,255,255,.015) 10%, rgba(255,255,255,.06) 20%, rgba(255,255,255,.15) 35%, rgba(255,255,255,.33) 50%, rgba(255,255,255,.58) 65%, rgba(255,255,255,.8) 80%, rgba(255,255,255,.95) 90%, #fff 100%)' }} /> : null}

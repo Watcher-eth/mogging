@@ -1,3 +1,5 @@
+import { stripeJourneyProperties } from '@/lib/analytics/web-context'
+import { createHash } from 'node:crypto'
 import { expect, test } from 'bun:test'
 import { readFileSync } from 'node:fs'
 import { runInNewContext } from 'node:vm'
@@ -8,7 +10,7 @@ const compile = (source: string, scope: Record<string, unknown>) => runInNewCont
 function route(file: string, overrides: Record<string, unknown> = {}) {
   const calls: any[] = []
   const scope: any = {
-    z, ApiError, env: { STRIPE_SECRET_KEY: 'fixture' },
+    z, ApiError, stripeJourneyProperties, createHash, env: { STRIPE_SECRET_KEY: 'fixture' },
     parseBody: (schema: any, body: unknown) => schema.parse(body),
     json: (_res: unknown, status: number, data: unknown) => ({ status, data }),
     methodNotAllowed: () => ({ status: 405 }),
@@ -42,7 +44,7 @@ test('website checkout returns to analysis, not mobile handoff', async () => {
 })
 test('existing credits bypass Stripe checkout entirely', async () => {
   const f = route('checkout', { getEntitlementSummary: async () => ({ evaluationCredits: 1 }) })
-  expect(await f.run({ imageCount: 1, mobileInstallId: 'fixture-install' } as any)).toEqual({ status: 200, data: { url: '/analysis?resume=1' } })
+  expect(await f.run({ imageCount: 1, mobileInstallId: 'fixture-install' } as any)).toEqual({ status: 200, data: { url: '/analysis?start=1&resumePhoto=1' } })
   expect(f.calls).toHaveLength(0)
 })
 test('confirmation requires the signed-in buyer and preserves ownership rejection', async () => {
@@ -68,7 +70,9 @@ test('paid return restores the saved photo and gender, confirms ownership and ru
   const end = source.indexOf('\n  useEffect(', start)
   const calls: any[] = [], steps: string[] = []
   const draft = { gender: 'male', images: [{ id: 'photo', dataUrl: 'fixture-photo' }] }
-  const scope: any = { useCallback: (fn: unknown) => fn, encodeURIComponent,
+  const scope: any = { useCallback: (fn: unknown) => fn, encodeURIComponent, mobileScan: false,
+    setOfferInstall() {}, readStripeAttempt: () => null, clearStripeAttempt() {}, restoreWebJourney() {}, analyticsFlow: { current: "flow" }, takeStripeAttempt: () => null, stripeAttemptProperties: () => ({}),
+    trackWebEvent() {}, toast: { error() {} },
     router: { replace: async () => {} }, setError() {}, setAnalysisUnlocked() {}, setPaymentDialogOpen() {}, setProgress() {}, setImages() {}, setSelectedImageId() {}, setGender() {},
     setStep: (step: string) => steps.push(step),
     apiPost: async (path: string, body: unknown) => { calls.push([path, body]); return { entitlements: { mobileInstallId: 'paid-install', evaluationCredits: 1 } } },
@@ -131,8 +135,51 @@ test('Pro checkout resumes a saved web analysis while homepage subscriptions ret
 })
 
 
+test('return offer only applies to monthly analysis checkout and replaces the previous session', async () => {
+  const previous = 'cs_live_previous'
+  const expired: string[] = []
+  const validated: string[] = []
+  const created: any[] = []
+  const routeFixture = route('web-checkout', {
+    CREATOR_MONTHLY_COUPON: 'first-month',
+    validateWebReturnOffer: async (accountId: string, sessionId: string) => {
+      expect(accountId).toBe('buyer')
+      validated.push(sessionId)
+      return { id: sessionId }
+    },
+    getStripe: () => ({ checkout: { sessions: {
+      create: async (options: unknown) => { created.push(options); return { id: 'cs_live_replacement', url: 'https://checkout.stripe.com/fixture' } },
+      expire: async (id: string) => { expired.push(id) },
+    } } }),
+  })
+  const body = { product: 'mobile_subscription_monthly', mobileInstallId: 'fixture-install', returnTo: 'analysis', returnOfferSessionId: previous }
+  expect((await routeFixture.run({ ...body, product: 'evaluation' } as any)).status).toBe(400)
+  expect((await routeFixture.run(body as any)).status).toBe(200)
+  expect(validated).toEqual([previous])
+  expect(created[0].discounts).toEqual([{ coupon: 'first-month' }])
+  expect(created[0].metadata.returnOffer).toBe('1')
+  expect(expired).toEqual([previous])
+})
+
+test('an open Stripe checkout must belong to the buyer to unlock the return offer', async () => {
+  const source = readFileSync(new URL('./web-return-offer.ts', import.meta.url), 'utf8')
+    .replace(/^import .*\n/gm, '').replace('export async function', 'async function')
+  const scope: any = {
+    ApiError, CREATOR_MONTHLY_COUPON: 'first-month',
+    isFirstSubscriptionEligible: async () => true,
+    getStripe: () => ({
+      checkout: { sessions: { retrieve: async () => ({ client_reference_id: 'owner', metadata: { source: 'web_analysis' }, status: 'open', payment_status: 'unpaid' }) } },
+      subscriptions: { list: async () => ({ data: [] }) },
+      coupons: { retrieve: async () => ({ valid: true, percent_off: 10, duration: 'once' }) },
+    }),
+  }
+  compile(source + '\nglobalThis.validate = validateWebReturnOffer', scope)
+  await expect(scope.validate('other-account', 'cs_live_fixture', 'cus_other')).rejects.toMatchObject({ status: 409 })
+  await expect(scope.validate('owner', 'cs_live_fixture', 'cus_owner')).resolves.toMatchObject({ status: 'open' })
+})
+
 test('report quote endpoint returns the configured provider price and rejects other products', async () => {
-  const scope: any = { z, ApiError,
+  const scope: any = { z, createHash, stripeJourneyProperties, ApiError,
     getProductConfig: () => ({unitAmount: 999}),
     validateCheckoutProduct: async () => ({currency: 'eur', unit_amount: 599}),
     methodNotAllowed: () => ({status: 405}),
@@ -146,4 +193,22 @@ test('report quote endpoint returns the configured provider price and rejects ot
   expect((await run('mobile_lifetime')).status).toBe(400)
   scope.validateCheckoutProduct = async () => ({currency:'usd',unit_amount:null})
   expect((await run('evaluation')).status).toBe(503)
+})
+
+
+test('verified access returns original journey context and deduplicates activation callbacks', async () => {
+  const events: any[] = []
+  const metadata = { flowId: crypto.randomUUID(), attemptId: crypto.randomUUID(), flowVersion: 'fixture', entryMode: 'photo_first' }
+  const f = route('confirm', {
+    confirmCheckoutForAccount: async () => ({ mobileInstallId: 'fixture', source: 'web_analysis', product: 'evaluation', metadata }),
+    getEntitlementSummary: async () => ({ evaluationCredits: 1, subscription: { active: false } }),
+    recordServerEvent: async (event: unknown) => events.push(event),
+  })
+  const first = await f.run()
+  expect(first.status).toBe(200)
+  expect(first.data.analytics).toMatchObject({ flow_id: metadata.flowId, attempt_id: metadata.attemptId })
+  await f.run()
+  expect(events).toHaveLength(2)
+  expect(events[0].eventId).toBe(events[1].eventId)
+  expect(events[0]).toMatchObject({ eventName: 'purchase_activated', accountId: 'buyer', source: 'stripe_access_verified' })
 })

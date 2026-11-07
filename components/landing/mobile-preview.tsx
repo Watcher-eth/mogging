@@ -394,7 +394,8 @@ export const ScanReportPreview = memo(function ScanReportPreview() {
   const { t } = useTranslation();
   const reduced = useReducedMotion();
   const [phase, setPhase] = useState<"scan" | "report">("scan");
-  const report = reduced || phase === "report";
+  useEffect(() => { if (reduced) setPhase("report"); }, [reduced]);
+  const report = phase === "report";
   return (
     <div>
         <Frame priority chrome={!report} dark={!report} label={`${t("demo.scanFrame")} · ${t("demo.evaluationFrame")}`}>

@@ -2,8 +2,8 @@ import { expect, test } from 'bun:test'
 import { creatorTikTokFields, creatorTikTokScopes } from './tiktok-permissions'
 
 test('pending profile scope is opt-in', () => {
-  expect(creatorTikTokScopes(false)).toBe('user.info.basic,user.info.stats')
-  expect(creatorTikTokScopes(true)).toBe('user.info.basic,user.info.stats,user.info.profile')
+  expect(creatorTikTokScopes(false, false)).toBe('user.info.basic,user.info.stats')
+  expect(creatorTikTokScopes(true, false)).toBe('user.info.basic,user.info.stats,user.info.profile')
 })
 test('profile fields follow granted permissions, including partial consent', () => {
   for (const scopes of ['', 'user.info.basic', 'user.info.basic,user.info.stats', 'user.info.profile.extra']) {
@@ -25,4 +25,9 @@ test('all profile and statistics fields are requested only when their scopes are
     expect(creatorTikTokFields('user.info.basic')).not.toContain(field)
     expect(creatorTikTokFields('user.info.stats.extra')).not.toContain(field)
   }
+})
+
+test('video access is requested only after explicit approval configuration', () => {
+  expect(creatorTikTokScopes(false, true)).toBe('user.info.basic,user.info.stats,video.list')
+  expect(creatorTikTokScopes(true, true)).toContain('user.info.profile,video.list')
 })

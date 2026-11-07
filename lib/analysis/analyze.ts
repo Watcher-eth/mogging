@@ -14,8 +14,19 @@ import { saveAnalysisResult } from './service'
 import { faceLandmarksPayloadSchema } from './landmarks'
 import type { AnalysisProvider, AnalysisProviderResult } from './schema'
 
+export const studyContextSchema = z.object({
+  goals: z.array(z.string().max(32)).max(11),
+  checkIn: z.object({
+    change: z.enum(['improving', 'same', 'worse']),
+    effort: z.enum(['manageable', 'too-much']),
+  }).optional(),
+  protocolTaskKeys: z.array(z.string().max(80)).max(3).optional(),
+  previousAnalysisId: z.string().min(1).max(100).optional(),
+})
+
 export const analyzeAndSaveSchema = z.object({
   imageData: z.string().min(1),
+  studyContext: studyContextSchema.optional(),
   gender: z.enum(['male', 'female', 'other']).default('other'),
   photoType: z.enum(['face', 'body', 'outfit']).default('face'),
   userId: z.string().min(1).nullable().optional(),
@@ -38,12 +49,19 @@ type AnalysisOptions = {
   metrics?: (result: AnalysisProviderResult) => Record<string, unknown>
   photoHash?: (contentHash: string) => string
   requirePersistence?: boolean
+  presentation?: "face-study" | "face-model"
 }
 
 export async function analyzeAndSave(input: AnalyzeAndSaveInput, reservationId?: string, options: AnalysisOptions = {}) {
   const provider = options.provider ?? analysisProvider
   const promptVersion = options.promptVersion ?? ANALYSIS_PROMPT_VERSION
   const data = analyzeAndSaveSchema.parse(input)
+  const geometricPresentation = options.presentation === "face-study" || options.presentation === "face-model"
+  const studyLandmarks = geometricPresentation ? data.landmarks : null
+  if (geometricPresentation && (
+    data.photoType !== "face" || !studyLandmarks || studyLandmarks.source === "kimi-vision-estimate"
+    || studyLandmarks.confidence < 0.5 || !studyLandmarks.anchors.leftPupil || !studyLandmarks.anchors.rightPupil
+  )) throw new ApiError(422, 'Use a clear photo with both eyes visible. Your scan credit is still available.')
   const storageStarted = Date.now()
   const storedImageResult = await storeImageDataUrl(data.imageData)
     .then((storedImage) => ({ ok: true as const, storedImage }))
@@ -53,7 +71,19 @@ export async function analyzeAndSave(input: AnalyzeAndSaveInput, reservationId?:
     console.error('Image storage failed during analysis', storedImageResult.error)
     // Do not start paid provider work for a photo we cannot retain. The handler
     // returns the reservation before the client retries this known storage failure.
-    if (reservationId || options.requirePersistence) throw new ApiError(503, 'Unable to save the report image. Please retry; your scan credit is still available.', 'image_storage_unavailable')
+    if (reservationId || options.requirePersistence || studyLandmarks) throw new ApiError(503, 'Unable to save the report image. Please retry; your scan credit is still available.', 'image_storage_unavailable')
+  }
+  if (studyLandmarks && storedImageResult.ok) {
+    const photo = await saveAnalyzedPhoto(data, storedImageResult.storedImage, options)
+    const saved = await saveAnalysisResult({
+      photoId: photo.photo.id,
+      status: 'complete',
+      metrics: { presentation: options.presentation, studyContext: data.studyContext },
+      landmarks: studyLandmarks,
+      model: 'landmarks',
+      promptVersion,
+    }, reservationId ? { id: reservationId, ...photo } : undefined)
+    return { ...photo, analysis: saved.analysis }
   }
   const providerResultPromise = provider
     .analyzeFace({
@@ -146,22 +176,7 @@ export async function analyzeAndSave(input: AnalyzeAndSaveInput, reservationId?:
     }
   }
 
-  const photoResult = await createPhotoRecord({
-    userId: data.userId ?? null,
-    anonymousActorId: data.anonymousActorId ?? null,
-    imageUrl: storedImage.imageUrl,
-    imageStorageKey: storedImage.imageStorageKey,
-    imageHash: options.photoHash?.(storedImage.imageHash) ?? storedImage.imageHash,
-    name: data.name ?? null,
-    caption: data.caption ?? null,
-    gender: data.gender,
-    age: normalizeApparentAge(data.age),
-    hairColor: data.hairColor ?? null,
-    skinColor: data.skinColor ?? null,
-    photoType: data.photoType,
-    latitude: data.latitude ?? null,
-    longitude: data.longitude ?? null,
-  })
+  const photoResult = await saveAnalyzedPhoto(data, storedImage, options)
   const result = providerResult.result
   const pslScore = computePslScore(result)
   const report = normalizeAnalysisReport(result.report, pslScore, result) ?? createFallbackAnalysisReport(result, pslScore)
@@ -193,6 +208,25 @@ export async function analyzeAndSave(input: AnalyzeAndSaveInput, reservationId?:
     analysis: analysisResult.analysis,
     deduped: photoResult.deduped,
   }
+}
+
+function saveAnalyzedPhoto(data: AnalyzeAndSaveInput, storedImage: Awaited<ReturnType<typeof storeImageDataUrl>>, options: AnalysisOptions) {
+  return createPhotoRecord({
+    userId: data.userId ?? null,
+    anonymousActorId: data.anonymousActorId ?? null,
+    imageUrl: storedImage.imageUrl,
+    imageStorageKey: storedImage.imageStorageKey,
+    imageHash: options.photoHash?.(storedImage.imageHash) ?? storedImage.imageHash,
+    name: data.name ?? null,
+    caption: data.caption ?? null,
+    gender: data.gender,
+    age: normalizeApparentAge(data.age),
+    hairColor: data.hairColor ?? null,
+    skinColor: data.skinColor ?? null,
+    photoType: data.photoType,
+    latitude: data.latitude ?? null,
+    longitude: data.longitude ?? null,
+  })
 }
 
 function createTransientAnalysisResult(

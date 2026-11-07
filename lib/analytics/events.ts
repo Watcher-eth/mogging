@@ -62,12 +62,14 @@ export async function recordAnalyticsEvents(events: AnalyticsEventInput[]) {
 }
 
 export async function recordServerEvent({
+  eventId,
   eventName,
   accountId,
   sessionId,
   source,
   properties = {},
 }: {
+  eventId?: string
   eventName: AnalyticsEventName
   accountId?: string | null
   sessionId?: string | null
@@ -76,7 +78,7 @@ export async function recordServerEvent({
 }) {
   try {
     await recordAnalyticsEvents([analyticsEventSchema.parse({
-      eventId: crypto.randomUUID(),
+      eventId: eventId || crypto.randomUUID(),
       eventName,
       accountId: accountId || undefined,
       sessionId: sessionId || undefined,
