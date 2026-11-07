@@ -1,6 +1,10 @@
 {
   "crons": [
     {
+      "path": "/api/cron/face-model-reports",
+      "schedule": "* * * * *"
+    },
+    {
       "path": "/api/cron/creator-audience",
       "schedule": "* * * * *"
     },

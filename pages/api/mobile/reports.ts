@@ -16,15 +16,25 @@ export async function handler(req: NextApiRequest, res: NextApiResponse) {
     // Older apps render every history item as a scored report. Filter before
     // pagination so their cursors and page sizes still describe their history.
     const legacyReportsOnly = req.query.includeFaceStudies === '1' ? undefined
-      : sql`${schema.analyses.metrics}->>'presentation' IS DISTINCT FROM 'face-study'`
+      : and(
+        sql`${schema.analyses.metrics}->>'presentation' IS DISTINCT FROM 'face-study'`,
+        sql`${schema.analyses.metrics}->>'presentation' IS DISTINCT FROM 'face-model'`,
+      )
+    const webReports = req.query.includeWebReports === '1' ? undefined
+      : sql`${schema.analyses.metrics}->>'webOnly' IS DISTINCT FROM 'true'`
     const cursor = before ? z.tuple([z.string().datetime(), z.string().min(1).max(100)]).parse(before.split('|')) : null
     const rows = await db.select({ photo: schema.photos, analysis: schema.analyses }).from(schema.analyses)
       .innerJoin(schema.photos, eq(schema.photos.id, schema.analyses.photoId))
       .where(and(eq(schema.photos.userId, userId), eq(schema.photos.photoType, 'face'), eq(schema.analyses.status, 'complete'),
-        legacyReportsOnly,
+        legacyReportsOnly, webReports,
         cursor ? or(lt(schema.analyses.createdAt, new Date(cursor[0])), and(eq(schema.analyses.createdAt, new Date(cursor[0])), lt(schema.analyses.id, cursor[1]))) : undefined))
       .orderBy(desc(schema.analyses.createdAt), desc(schema.analyses.id)).limit(50)
-    return json(res, 200, { reports: rows.map(({ photo, analysis }) => ({
+    const queued = req.query.includeWebReports === '1' ? await db.select({ id: schema.analyses.id })
+      .from(schema.analyses).innerJoin(schema.photos, eq(schema.photos.id, schema.analyses.photoId))
+      .where(and(eq(schema.photos.userId, userId),
+        sql`${schema.analyses.metrics}->>'presentation' = 'face-model'`,
+        sql`${schema.analyses.metrics} #>> '{webAnalysis,status}' IN ('pending', 'processing')`)).limit(1) : null
+    return json(res, 200, { ...(queued ? { processing: queued.length > 0 } : {}), reports: rows.map(({ photo, analysis }) => ({
       photo: { id: photo.id, imageUrl: photo.imageUrl, gender: photo.gender }, analysis,
     })), next: rows.length === 50 ? `${rows[rows.length - 1].analysis.createdAt.toISOString()}|${rows[rows.length - 1].analysis.id}` : null })
   } catch (error) { return handleApiError(error, res) }

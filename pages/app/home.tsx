@@ -178,7 +178,7 @@ export default function ScanHome({ tab, preview, userId, signedIn, now, progress
   </div>
 }
 
-type ReportPage = { reports: { photo: { imageUrl: string }; analysis: { id: string; createdAt: string; metrics?: { webReportV2?: { overallScore?: number; entries?: { id: string; value: unknown }[] }; report?: { categories?: { id: string; score: number }[] } } } }[]; next: string | null }
+type ReportPage = { processing?: boolean; reports: { photo: { imageUrl: string }; analysis: { id: string; createdAt: string; metrics?: { webReportV2?: { overallScore?: number; entries?: { id: string; value: unknown }[] }; report?: { categories?: { id: string; score: number }[] } } } }[]; next: string | null }
 const evaluationReadings = [
   { id: 'skin.pores', title: 'Skin', label: 'Pore appearance' },
   { id: 'skin.fine-lines', title: 'Skin Age', label: 'Visible fine lines' },
@@ -189,7 +189,7 @@ const evaluationReadings = [
 ]
 
 function Evaluations({ preview, now, onNewScan }: { preview: boolean; now: number; onNewScan: () => void }) {
-  const { data, error, setSize, isValidating } = useSWRInfinite<ReportPage>((index, previous) => preview || (index > 0 && !previous?.next) ? null : index === 0 ? '/api/mobile/reports' : `/api/mobile/reports?before=${encodeURIComponent(previous!.next!)}`, apiGet)
+  const { data, error, setSize, isValidating } = useSWRInfinite<ReportPage>((index, previous) => preview || (index > 0 && !previous?.next) ? null : index === 0 ? '/api/mobile/reports?includeWebReports=1' : `/api/mobile/reports?includeWebReports=1&before=${encodeURIComponent(previous!.next!)}`, apiGet, { refreshInterval: pages => pages?.some(page => page.processing) ? 5000 : 0 })
   const reports = preview ? [{ photo: { imageUrl: '/scan/welcome.jpg' }, analysis: { id: 'sample', createdAt: new Date(now).toISOString(), metrics: { webReportV2: { overallScore: 7.8, entries: sampleEntries } } } }] : data?.flatMap(page => page.reports) ?? []
   const latest = reports[0]
   const score = latest?.analysis.metrics?.webReportV2?.overallScore ?? latest?.analysis.metrics?.report?.categories?.find(category => category.id === 'overall')?.score
@@ -201,6 +201,7 @@ function Evaluations({ preview, now, onNewScan }: { preview: boolean; now: numbe
   const reportHref = (id: string) => preview ? '/analysis?preview=mobile&walkthrough=1&report=sample' : `/analysis?analysisId=${encodeURIComponent(id)}&from=app`
   return <section className="scan-evaluations">
     <header><h1>Evaluations</h1><button type="button" className="scan-home-primary" onClick={onNewScan}><Plus size={19} /> New</button></header>
+    {data?.[0]?.processing && <p role="status">Your new analysis is being prepared. It will appear here automatically.</p>}
     {latest && score != null && <Link className="scan-evaluation-overall" href={reportHref(latest.analysis.id)}>
       <div className="scan-evaluation-summary-row"><b>Overall</b><small>{new Date(latest.analysis.createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}</small></div>
       <MobileScoreGauge score={score} light />

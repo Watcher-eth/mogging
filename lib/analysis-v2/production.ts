@@ -29,7 +29,7 @@ export async function requestReportOverview(imageDataUrl: string, signal: AbortS
   })
 }
 
-async function analyzeAndSaveExpanded(input: AnalyzeAndSaveInput, reservationId?: string, mobile = false) {
+async function analyzeAndSaveExpanded(input: AnalyzeAndSaveInput, reservationId?: string, mobile = false, faceModelId?: string) {
   const data = webAnalyzeSchema.parse(input)
   let webReport: WebReport | null = null
   let providerTiming: ProviderTiming[] = []
@@ -71,11 +71,13 @@ async function analyzeAndSaveExpanded(input: AnalyzeAndSaveInput, reservationId?
     },
   }
   try {
-    const scan = reservationId ?? randomUUID()
+    const scan = faceModelId ?? reservationId ?? randomUUID()
     return await analyzeAndSave(data, reservationId, {
       provider, promptVersion: mobile ? 'mobile-v2-1' : 'web-v2-1', requirePersistence: true,
       photoHash: hash => webPhotoHash(hash, data.userId ?? data.anonymousActorId ?? 'anonymous', scan),
-      metrics: () => webReport ? { webReportV2: webReport, providerTiming } : {},
+      metrics: () => ({ ...(webReport ? { webReportV2: webReport, providerTiming } : {}),
+        ...(faceModelId ? { webOnly: true, sourceFaceModelId: faceModelId } : {}),
+      }),
     })
   } finally {
     clearTimeout(timer)
@@ -105,6 +107,8 @@ export function createCompatibleReport(result: AnalysisProviderResult, web: WebR
 
 export const analyzeAndSaveWeb = (input: AnalyzeAndSaveInput, reservationId?: string) => analyzeAndSaveExpanded(input, reservationId)
 export const analyzeAndSaveMobile = (input: AnalyzeAndSaveInput, reservationId?: string) => analyzeAndSaveExpanded(input, reservationId, true)
+// No reservation: the originating 3D scan already paid for this private web report.
+export const analyzeAndSaveModelReport = (input: AnalyzeAndSaveInput, modelId: string) => analyzeAndSaveExpanded(input, undefined, true, modelId)
 
 export function saveMobileFaceStudy(input: AnalyzeAndSaveInput, reservationId?: string) {
   const scan = reservationId ?? randomUUID()

@@ -78,7 +78,9 @@ export async function analyzeAndSave(input: AnalyzeAndSaveInput, reservationId?:
     const saved = await saveAnalysisResult({
       photoId: photo.photo.id,
       status: 'complete',
-      metrics: { presentation: options.presentation, studyContext: data.studyContext },
+      metrics: { presentation: options.presentation, studyContext: data.studyContext,
+        ...(options.presentation === 'face-model' ? { webAnalysis: { status: 'pending', attempts: 0 } } : {}),
+      },
       landmarks: studyLandmarks,
       model: 'landmarks',
       promptVersion,

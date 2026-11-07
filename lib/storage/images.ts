@@ -1,6 +1,6 @@
-import { mkdir, rm, writeFile } from 'fs/promises'
+import { mkdir, readFile, rm, writeFile } from 'fs/promises'
 import path from 'path'
-import { DeleteObjectsCommand, PutObjectCommand, S3Client } from '@aws-sdk/client-s3'
+import { DeleteObjectsCommand, GetObjectCommand, PutObjectCommand, S3Client } from '@aws-sdk/client-s3'
 import { z } from 'zod'
 import { env, isR2Configured } from '@/lib/env'
 import { computeImageHash } from '@/lib/photos/imageHash'
@@ -35,6 +35,22 @@ export class ImageStorageError extends Error {
 }
 
 const imageKeyPattern = /^[a-f0-9]{64}\.(jpg|png|webp)$/
+
+export async function readStoredImageDataUrl(key: string) {
+  if (!imageKeyPattern.test(key)) throw new ImageStorageError(400, 'Invalid image storage key')
+  let buffer: Uint8Array
+  if (isR2Configured()) {
+    const object = await getR2Client().send(new GetObjectCommand({ Bucket: env.R2_BUCKET_NAME, Key: key }),
+      { abortSignal: AbortSignal.timeout(20_000) })
+    if (!object.Body || (object.ContentLength ?? 0) > MAX_IMAGE_BYTES) throw new ImageStorageError(413, 'Image is unavailable')
+    buffer = await object.Body.transformToByteArray()
+  } else {
+    buffer = await readFile(path.join(path.resolve(env.IMAGE_STORAGE_DIR || './public/uploads'), key))
+  }
+  if (!buffer.byteLength || buffer.byteLength > MAX_IMAGE_BYTES) throw new ImageStorageError(413, 'Image is unavailable')
+  const mime = key.endsWith('.png') ? 'image/png' : key.endsWith('.webp') ? 'image/webp' : 'image/jpeg'
+  return `data:${mime};base64,${Buffer.from(buffer).toString('base64')}`
+}
 
 export function storedImageKeyFromUrl(url: string | null) {
   if (!url) return null
