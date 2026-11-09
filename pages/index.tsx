@@ -11,7 +11,6 @@ import Image from "next/image";
 import Link from "next/link";
 import { ArrowRight } from "lucide-react";
 import {
-  ScanReportPreview,
   EvaluationPreview,
   ProtocolPreview,
   ProgressPreview,
@@ -23,11 +22,12 @@ import { AnalysisStory } from "@/components/landing/analysis-story";
 import { EvaluationStats } from "@/components/landing/evaluation-stats";
 import { SeoHead } from "@/components/app/seo-head";
 import { appStoreUrl, siteUrl } from "@/lib/seo";
-import { PhonePwaEntry } from '@/components/landing/phone-pwa-entry';
+import { phonePwaEntryPath } from '@/lib/homepage-routing';
 import { isPhoneUserAgent } from '@/lib/analysis/phone-layout';
 import { usePhoneLayout } from '@/hooks/use-phone-layout';
 import {
   createLandingAssignment,
+  DEFAULT_LANDING_ARM,
   isActiveLandingAssignment,
   LANDING_COOKIE,
   landingArms,
@@ -36,26 +36,24 @@ import {
   type LandingAssignment,
 } from "@/lib/analytics/landing";
 
-const DesktopScanPreview = dynamic(() => import('@/components/landing/desktop-scan-preview').then(module => module.DesktopScanPreview))
 const DesktopMemberPreview = dynamic(() => import('@/components/landing/desktop-member-preview').then(module => module.DesktopMemberPreview))
 const LegacyHomepage = dynamic(() => import("@/components/landing/legacy-homepage"));
 
-type Props = { assignment: LandingAssignment; preview: boolean; phoneEntry: boolean; desktopPreview: boolean };
+type Props = { assignment: LandingAssignment | null; preview: boolean; phoneEntry: boolean };
 
 export default function HomePage(props: Props) {
-  const locale = useRouter().locale;
-  const phone = usePhoneLayout(props.phoneEntry);
-  if (phone && !props.desktopPreview) return <PhonePwaEntry assignment={props.assignment} preview={props.preview} />;
-  const homepage = (!locale || locale === "en") && props.assignment.arm.endsWith("_a") ? <LegacyHomepage {...props} /> : <NewHomepage {...props} />;
-  return props.desktopPreview ? homepage : <div data-desktop-entry="">{homepage}</div>;
+  if (props.assignment?.arm === landingArms[0]) {
+    return <LegacyHomepage assignment={props.assignment} preview={props.preview} />;
+  }
+  return <NewHomepage {...props} />;
 }
 
-function NewHomepage({ assignment, preview }: Props) {
+function NewHomepage({ assignment, preview, phoneEntry }: Props) {
   const { locale } = useRouter();
   const { t } = useTranslation();
   const entrance = useHomepageEntrance();
   const desktop = useDesktop();
-  const phone = usePhoneLayout(true);
+  const phone = usePhoneLayout(phoneEntry);
   const { sections, trackDestination } = useLandingTracking(assignment, preview);
 
   function downloadButton(placement: string) {
@@ -105,8 +103,10 @@ function NewHomepage({ assignment, preview }: Props) {
             <div className="mt-7">{downloadButton("hero")}</div>
             {!desktop && <p className="mt-3 text-xs text-zinc-400">{t("landing.availability")}</p>}
           </div>
-          <div className={desktop ? "flex min-h-0 self-stretch justify-end [contain:size]" : "mt-10 flex justify-center lg:mt-0 lg:justify-end"}>
-            {desktop ? <DesktopScanPreview /> : <div className="w-full max-w-[350px]"><ScanReportPreview /></div>}
+          <div className="mt-10 flex justify-center lg:mt-0">
+            <div className="w-full max-w-[320px] lg:max-w-[clamp(270px,25vw,330px)]">
+              <EvaluationPreview playback="still" />
+            </div>
           </div>
         </m.section>
 
@@ -271,27 +271,40 @@ export const getServerSideProps: GetServerSideProps<Props> = async ({
   query,
   locale,
 }) => {
-  const requestedPreview = query.landing_preview === "homepage_a" ? "homepage_v3_a" : query.landing_preview === "homepage_b" ? "homepage_v3_b" : query.landing_preview;
-  const previewArm =
-    process.env.NODE_ENV !== "production" &&
-    typeof requestedPreview === "string" &&
-    landingArms.includes(requestedPreview as (typeof landingArms)[number])
-      ? requestedPreview
-      : null;
-  const localizedPreview = Boolean(locale && locale !== "en");
+  const requestedPreview = query.landing_preview;
+  const previewMatch = process.env.NODE_ENV !== "production" && typeof requestedPreview === "string"
+    ? /^homepage(?:_v[34])?_([ab])$/.exec(requestedPreview)
+    : null;
+  const previewArm = previewMatch ? landingArms[previewMatch[1] === 'a' ? 0 : 1] : null;
+  const localized = Boolean(locale && locale !== "en");
   const automated = /bot\b|crawler|spider|slurp|facebookexternalhit|bingpreview|headlesschrome|lighthouse/i.test(req.headers["user-agent"] ?? "");
-  const saved = parseLandingAssignment(req.cookies[LANDING_COOKIE]);
-  const existing = isActiveLandingAssignment(saved) ? saved : null;
-  const assignment = localizedPreview ? { id: crypto.randomUUID(), arm: "homepage_v3_b" as const } : previewArm
-    ? { id: crypto.randomUUID(), arm: previewArm as LandingAssignment["arm"] }
-    : automated ? { id: crypto.randomUUID(), arm: "homepage_v3_b" as const } : (existing ?? createLandingAssignment(crypto.randomUUID()));
-  // Render the assigned content on the server: no variant flash or client-side fetch.
+  const phoneEntry = !automated && isPhoneUserAgent(req.headers['user-agent'] ?? '', req.headers['sec-ch-ua-mobile']?.toString());
+  const handoff = phonePwaEntryPath(query);
+  const redirect = phoneEntry && !previewArm && handoff !== '/analysis';
+  const cookie = req.cookies[LANDING_COOKIE];
+  const saved = parseLandingAssignment(cookie);
+  let assignment: LandingAssignment | null = null;
+
+  if (previewArm && !localized) {
+    assignment = { id: crypto.randomUUID(), arm: previewArm };
+  } else if (!previewArm && !automated && !redirect) {
+    if (phoneEntry && !localized) {
+      assignment = isActiveLandingAssignment(saved) ? saved : createLandingAssignment(crypto.randomUUID());
+    } else {
+      assignment = saved?.arm === DEFAULT_LANDING_ARM ? saved : { id: crypto.randomUUID(), arm: DEFAULT_LANDING_ARM };
+    }
+  }
+
   res.setHeader("Cache-Control", "private, no-store");
-  if (!localizedPreview && !previewArm && !automated && !existing)
-    res.setHeader(
-      "Set-Cookie",
-      `${LANDING_COOKIE}=${serializeLandingAssignment(assignment)}; Path=/; Max-Age=7776000; SameSite=Lax${process.env.NODE_ENV === "production" ? "; Secure" : ""}`,
-    );
+  if (assignment && !previewArm) {
+    const cookieValue = serializeLandingAssignment(assignment);
+    if (cookie !== cookieValue) {
+      res.setHeader(
+        "Set-Cookie",
+        `${LANDING_COOKIE}=${cookieValue}; Path=/; Max-Age=7776000; SameSite=Lax${process.env.NODE_ENV === "production" ? "; Secure" : ""}`,
+      );
+    }
+  }
   if (typeof query.attribution_token === 'string') {
     const { resolveCreatorAttribution, setCreatorAttributionCookie } = await import('@/lib/creator/attribution');
     const referral = await resolveCreatorAttribution({ req: req as NextApiRequest, token: typeof query.attribution_token === 'string' ? query.attribution_token : null });
@@ -299,6 +312,6 @@ export const getServerSideProps: GetServerSideProps<Props> = async ({
       setCreatorAttributionCookie(res as NextApiResponse, referral.token);
     }
   }
-  const phoneEntry = !automated && isPhoneUserAgent(req.headers['user-agent'] ?? '', req.headers['sec-ch-ua-mobile']?.toString());
-  return { props: { assignment, preview: localizedPreview || Boolean(previewArm) || automated, phoneEntry, desktopPreview: Boolean(previewArm) } };
+  if (redirect) return { redirect: { destination: handoff, permanent: false } };
+  return { props: { assignment, preview: Boolean(previewArm) || automated, phoneEntry } };
 };

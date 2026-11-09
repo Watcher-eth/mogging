@@ -31,8 +31,7 @@ function init() {
   } catch { browserId ||= crypto.randomUUID() }
   const params = new URLSearchParams(location.search)
   // The cookie owns assignment lifetime; persisted acquisition cannot extend it.
-  for (const field of ['landing_id', 'landing_version', 'experiment_id', 'variant']) delete context[field]
-  Object.assign(context, landingProperties(readLandingCookie(document.cookie)))
+  applyLandingAssignment(readLandingCookie(document.cookie))
   context.locale = navigator.language
   context.timezone = Intl.DateTimeFormat().resolvedOptions().timeZone
   for (const name of ['utm_source', 'utm_medium', 'utm_campaign', 'utm_content', 'utm_term']) {
@@ -55,9 +54,13 @@ function persist() {
   try { sessionStorage.setItem(key, JSON.stringify({ queue, context, sessionId, lastActive })) } catch {}
 }
 function schedule(delay = retry) { if (!timer) timer = setTimeout(() => { timer = undefined; void flushWebAnalytics() }, delay) }
-export function setLandingAnalytics(assignment: LandingAssignment) {
-  init()
+function applyLandingAssignment(assignment: LandingAssignment | null) {
+  for (const field of ['landing_id', 'landing_version', 'experiment_id', 'variant']) delete context[field]
   Object.assign(context, landingProperties(assignment))
+}
+export function setLandingAnalytics(assignment: LandingAssignment | null) {
+  init()
+  applyLandingAssignment(assignment)
 }
 export function identifyWebAnalytics(id?: string) {
   init()

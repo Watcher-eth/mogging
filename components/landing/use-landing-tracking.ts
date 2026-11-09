@@ -2,7 +2,7 @@ import { useEffect, useRef } from 'react'
 import { setLandingAnalytics, trackWebEvent, flushWebAnalytics } from '@/lib/analytics/client'
 import { landingProperties, type LandingAssignment } from '@/lib/analytics/landing'
 
-export function useLandingTracking(assignment: LandingAssignment, preview: boolean) {
+export function useLandingTracking(assignment: LandingAssignment | null, preview: boolean) {
   const sections = useRef<HTMLDivElement>(null)
   useEffect(() => {
     if (preview) return

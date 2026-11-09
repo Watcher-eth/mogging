@@ -13,15 +13,16 @@ export function landingRateInterval(successes: number, trials: number, z = 2.241
 
 export function landingExperimentRows(rows: MetricRow[], experimentId: string): MetricRow[] {
   const experiment = landingExperiments.find(experiment => experiment.id === experimentId)!
+  const paid = Number(experiment.version) >= 3
   return ['a', 'b'].map(variant => {
     const row = rows.find(row => row.experiment_id === experimentId && row.variant === variant)
     const visitors = Number(row?.visitors ?? 0)
     const homepageVisitors = Number(row?.homepage_visitors ?? visitors)
     const mature = Number(row?.mature ?? 0)
     const matureClicks = Number(row?.mature_store_clicks ?? 0)
-    const matureConversions = experiment.status === 'active' ? Number(row?.mature_paid_checkouts ?? 0) : matureClicks
-    const digits = experiment.status === 'active' ? 2 : 1
-    const interval = landingRateInterval(matureConversions, mature, experiment.status === 'active' ? 1.959963985 : 2.241402728)
+    const matureConversions = paid ? Number(row?.mature_paid_checkouts ?? 0) : matureClicks
+    const digits = Number(experiment.version) >= 3 ? 2 : 1
+    const interval = landingRateInterval(matureConversions, mature, paid ? 1.959963985 : 2.241402728)
     return {
       variant: `${variant.toUpperCase()} · ${variant === 'a' ? experiment.control : experiment.treatment}`,
       visitors, homepage_visitors: homepageVisitors, store_clicks: Number(row?.store_clicks ?? 0),
@@ -45,7 +46,9 @@ export function landingExperimentSummary(rows: MetricRow[], experimentId: string
   const variants = landingExperimentRows(rows, experimentId)
   const [a, b] = variants
   const total = Number(a.visitors) + Number(b.visitors)
-  const imbalance = total >= 100 && (Number(a.visitors) - Number(b.visitors)) ** 2 / total > 10.827566171
+  const controlShare = 'controlShare' in experiment ? experiment.controlShare : 0.5
+  const expectedControl = total * controlShare
+  const imbalance = total >= 100 && (Number(a.visitors) - expectedControl) ** 2 / (expectedControl * (1 - controlShare)) > 10.827566171
   const exposures = variants.map(row => landingEventTime(row.first_exposure)).filter(Number.isFinite)
   const elapsedDays = exposures.length ? Math.max(0, Math.floor((now.getTime() - Math.min(...exposures)) / 86400_000)) : 0
   const enough = variants.every(row => Number(row.mature) >= experiment.minimumVisitors) && elapsedDays >= experiment.minimumDays
@@ -53,7 +56,7 @@ export function landingExperimentSummary(rows: MetricRow[], experimentId: string
   const rateB = Number(b.mature) ? Number(b.mature_conversions) / Number(b.mature) : null
   return { total, imbalance, elapsedDays,
     status: experiment.status === 'archived' ? 'Archived' : !total ? 'Awaiting first exposure' : imbalance ? 'Check traffic allocation' : enough ? 'Checkpoints met · review uncertainty' : 'Collecting data',
-    difference: rateA != null && rateB != null ? `${rateB > rateA ? '+' : ''}${((rateB - rateA) * 100).toFixed(experiment.status === 'active' ? 2 : 1)} pp` : '—',
+    difference: rateA != null && rateB != null ? `${rateB > rateA ? '+' : ''}${((rateB - rateA) * 100).toFixed(Number(experiment.version) >= 3 ? 2 : 1)} pp` : '—',
     lift: rateA != null && rateA > 0 && rateB != null ? `${((rateB / rateA - 1) * 100).toFixed(1)}%` : '—',
   }
 }

@@ -11,7 +11,7 @@ const webTest = 'web-analysis'
 const paywallTest = 'web-paywall'
 const defaultTest = landingExperiments[0]
 const options = [
-  { value: defaultTest.id, label: 'Homepage · Old vs new' },
+  { value: defaultTest.id, label: 'Mobile homepage · Old vs new' },
   { value: paywallTest, label: 'Web paywall · A/B tests' },
   { value: webTest, label: 'Web analysis · Old vs new' },
   ...landingExperiments.slice(1).map(item => ({ value: item.id, label: 'Archived · ' + item.name })),
@@ -32,7 +32,7 @@ function HomepageExperiment({ data, experiment }: { data: AnalyticsDashboard; ex
   const rows = landingExperimentRows(data.landingExperiments ?? [], experiment.id)
   const summary = landingExperimentSummary(data.landingExperiments ?? [], experiment.id, new Date(data.generatedAt))
   const latest = Math.max(...rows.map(row => landingEventTime(row.latest_exposure)).filter(Number.isFinite))
-  const outcome = experiment.status === 'active' ? 'Paid conversion' : 'App Store click rate'
+  const outcome = Number(experiment.version) >= 3 ? 'Paid conversion' : 'App Store click rate'
   const labels = [experiment.control, experiment.treatment]
   return <>
     <div className="admin-stats-grid">
@@ -43,7 +43,7 @@ function HomepageExperiment({ data, experiment }: { data: AnalyticsDashboard; ex
     {summary.imbalance && <Notice>The recorded allocation is unexpectedly uneven. Check exposure delivery before interpreting the result.</Notice>}
     <Panel title="Homepage exposure over time"
       description={`${count(summary.total)} assigned browsers · ${Number.isFinite(latest) ? 'Latest exposure ' + formatReportingTime(new Date(latest), { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit', timeZoneName: 'short' }) : 'No observed exposures in this period'}`}
-      note="The live comparison counts browsers that reached an actual homepage, excluding automatic handoffs. Paid conversion uses verified positive Stripe payments within seven days. Recent browsers appear as pending until they have seven days of follow-up. Native purchases cannot be matched reliably to a homepage assignment.">
+      note={experiment.status === 'active' ? "English mobile homepage traffic is split 30% old and 70% new. Paid conversion uses verified Stripe payments within seven days. Recent browsers are pending until they have seven days of follow-up." : "Archived experiment results use the original conversion metric and a seven-day follow-up window."}>
       <AnalyticsChart title="Homepage assignments" rows={(data.landingExperimentDaily ?? []).filter(row => row.experiment_id === experiment.id)} fitToData days={Number(data.filters.days)}
         metrics={[{ key: 'control', label: labels[0], color: chartColors.blue }, { key: 'treatment', label: labels[1], color: chartColors.violet }]} />
       <DataDetails><Table rows={rows} columns={['variant', 'visitors', 'mature', 'pending', 'mature_conversions', 'mature_conversion_rate', 'interval', 'paywalls', 'checkouts', 'subscription_buyers']} /></DataDetails>

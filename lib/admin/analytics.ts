@@ -15,7 +15,7 @@ import { getCreatorPerformanceSnapshot, type CreatorPerformanceSnapshot } from '
 import { creatorAttributionCTEs, type CreatorAttributionData } from './creator-attribution-query'
 import { audienceCTEs, eventAudience, customerEvent, customerAccount } from './audience'
 import { paywallExperimentCTEs } from './paywall-experiments'
-import { landingExperiments } from '@/lib/analytics/landing'
+import { LANDING_VERSION, landingExperiments } from '@/lib/analytics/landing'
 import { excludedAcquisitionHost } from '@/lib/analytics/acquisition'
 import { sql, type SQL } from 'drizzle-orm'
 import { z } from 'zod'
@@ -353,8 +353,12 @@ export function analyticsQuery(filters: AnalyticsFilters, now: Date) {
       from e where platform = 'web' and event_name = 'landing_viewed' and properties->>'path' = '/'
         and nullif(properties->>'landing_id','') is not null
         and coalesce(properties->>'placement','homepage') = 'homepage'
-        and exists (select 1 from landing_definitions d where d.experiment_id = properties->>'experiment_id' and d.version = properties->>'landing_version')
-        and properties->>'variant' in ('a','b')
+        and (
+          (properties->>'experiment_id' is null and properties->>'variant' is null and properties->>'landing_version' = ${LANDING_VERSION})
+          or (properties->>'variant' in ('a','b') and exists (
+            select 1 from landing_definitions d where d.experiment_id = properties->>'experiment_id' and d.version = properties->>'landing_version'
+          ))
+        )
       order by properties->>'landing_id', occurred_at
     ), landing_outcomes as materialized (
       select l.*,
@@ -372,7 +376,8 @@ export function analyticsQuery(filters: AnalyticsFilters, now: Date) {
         from reported_events
       ) o on o.properties->>'landing_id' = l.landing_id
         and o.occurred_at >= l.at and o.occurred_at <= l.at + interval '7 days'
-        and o.properties->>'experiment_id' = l.experiment_id and o.properties->>'variant' = l.variant
+        and (o.properties->>'experiment_id') is not distinct from l.experiment_id
+        and (o.properties->>'variant') is not distinct from l.variant
         and o.event_name in ('app_store_redirected','landing_cta_clicked','page_viewed','paywall_viewed','checkout_started','checkout_completed','landing_section_viewed')
       group by l.landing_id,l.experiment_id,l.variant,l.source,l.at,l.latest_exposure
     ), landing_experiments as (
@@ -395,7 +400,7 @@ export function analyticsQuery(filters: AnalyticsFilters, now: Date) {
       select experiment_id, ${reportingBucket(sql`at`, Number(filters.days))} as day,
         count(*) filter(where variant = 'a') as control,
         count(*) filter(where variant = 'b') as treatment
-      from landing_entries group by 1,2 order by 1,2
+      from landing_entries where experiment_id is not null group by 1,2 order by 1,2
     ), landing_handoffs as (
       select properties->>'placement' as placement, properties->>'destination' as destination,
         count(distinct properties->>'landing_id') as browsers
