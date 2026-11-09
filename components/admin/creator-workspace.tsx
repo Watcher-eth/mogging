@@ -14,7 +14,7 @@ import { BundledPayoutQueue, PayoutVideoBreakdown } from '@/components/admin/bun
 import * as Tabs from '@radix-ui/react-tabs'
 import { SubmissionConversation } from '@/components/creator/submission-conversation'
 import { CreatorSprintsPanel } from '@/components/admin/creator-sprints-panel'
-import { CampaignDropTargets, CampaignSubmissionMoves, DraggableCampaignSubmission } from './campaign-submission-move'
+import { CampaignReviewQueue, CampaignSubmissionMoves, DraggableCampaignSubmission } from './campaign-submission-move'
 import { sprintReviewItems, type CreatorSprint } from '@/lib/creator/sprints'
 import { SkeletonAvatar } from '@/components/ui/skeleton-avatar'
 import { creatorAccountLabel } from '@/components/creator/types'
@@ -182,16 +182,15 @@ function Overview({ data, onSelect, onRefresh }: { data: AdminDashboard; onSelec
           <Button variant={reviewed ? 'default' : 'outline'} size="sm" aria-pressed={reviewed} onClick={() => setReviewed(true)}>Approved &amp; paid</Button>
           {reviewed ? <input type="search" aria-label="Find reviewed submissions" placeholder="Find a creator or submission" value={search} onChange={event => { setSearch(event.target.value); setReviewedLimit(30) }} className="creator-field !w-auto" /> : null}
         </div>
-        <div className="sticky top-0 z-10 mb-4 rounded-xl bg-white/95 py-2 backdrop-blur-sm empty:hidden"><CampaignDropTargets /></div>
         {reviewed ? (
           reviewedPosts.length ? <div className="creator-surface px-3">
             <div className="admin-list">{reviewedPosts.slice(0, reviewedLimit).map(item => row({ resource: 'submission', item }))}</div>
             {reviewedPosts.length > reviewedLimit ? <Button className="m-3" size="sm" variant="outline" onClick={() => setReviewedLimit(limit => limit + 30)}>Show more</Button> : null}
           </div> : <EmptyState title="No matching submissions" description="Approved and paid submissions will appear here." />
-        ) : attentionCount ? <div className="grid gap-6">{reviewQueues.map(queue => <section key={queue.id} aria-labelledby={`review-queue-${queue.id}`} className="overflow-hidden rounded-2xl border border-zinc-200 bg-white">
+        ) : attentionCount ? <div className="grid gap-6">{reviewQueues.map(queue => <CampaignReviewQueue key={queue.id} queueId={queue.id} label={queue.label}>
           <div className="flex items-center justify-between gap-3 px-5 py-4"><div><h3 id={`review-queue-${queue.id}`} className="text-sm font-semibold">{queue.label}</h3><p className="mt-1 text-xs text-zinc-400">Oldest submission first</p></div><span className="rounded-full bg-zinc-100 px-2.5 py-1 text-xs font-semibold tabular-nums text-zinc-600">{queue.items.length}</span></div>
           {queue.items.length ? <div className="admin-list px-3">{queue.items.map(row)}</div> : <p className="border-t border-zinc-100 px-5 py-5 text-sm text-zinc-400">No submissions waiting.</p>}
-        </section>)}</div> : <EmptyState title="You’re all caught up" description="New submissions ready for review will appear here." />}
+        </CampaignReviewQueue>)}</div> : <EmptyState title="You’re all caught up" description="New submissions ready for review will appear here." />}
       </section>
     </CampaignSubmissionMoves>
   )

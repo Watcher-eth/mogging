@@ -9,6 +9,7 @@ import { canSeeCampaign } from '@/lib/creator/campaign-access'
 import { sprintMoney, sprintPhase, sprintPayoutCents, type CreatorSprint } from '@/lib/creator/sprints'
 import { creatorRetainerTerms } from '@/lib/creator/retainer'
 import type { AdminSubmission } from './creator-types'
+import { submissionReviewQueueId, type SubmissionReviewQueueId } from '@/lib/admin/creator-overview'
 
 type CampaignSubmission = AdminSubmission
 const dragType = 'application/x-mogging-submission'
@@ -17,7 +18,7 @@ const MoveContext = createContext<{
   destinationsFor: (submission: CampaignSubmission) => CreatorSprint[]
   dragged: CampaignSubmission | null
   setDragged: (submission: CampaignSubmission | null) => void
-  open: (submission: CampaignSubmission, targetId: string) => void
+  open: (submission: CampaignSubmission, targetId: string, campaignIds?: string[]) => void
 } | null>(null)
 
 export function CampaignSubmissionMoves({ campaigns, onMoved, children }: {
@@ -26,7 +27,7 @@ export function CampaignSubmissionMoves({ campaigns, onMoved, children }: {
   children: ReactNode
 }) {
   const [dragged, setDragged] = useState<CampaignSubmission | null>(null)
-  const [moving, setMoving] = useState<{ submission: CampaignSubmission; targetId: string } | null>(null)
+  const [moving, setMoving] = useState<{ submission: CampaignSubmission; targetId: string; campaignIds?: string[] } | null>(null)
   const activeCampaigns = campaigns.filter(campaign =>
     sprintPhase(campaign) === 'active' && campaign.terms.formats.some(format => format.active),
   )
@@ -37,7 +38,7 @@ export function CampaignSubmissionMoves({ campaigns, onMoved, children }: {
 
   return <MoveContext.Provider value={{
     activeCampaigns, destinationsFor, dragged, setDragged,
-    open: (submission, targetId) => setMoving({ submission, targetId }),
+    open: (submission, targetId, campaignIds) => setMoving({ submission, targetId, campaignIds }),
   }}>
     {children}
     {moving && sourceId ? (
@@ -45,7 +46,7 @@ export function CampaignSubmissionMoves({ campaigns, onMoved, children }: {
         sourceId={sourceId}
         sourceName={campaigns.find(campaign => campaign.id === sourceId)?.name ?? moving.submission.sprintName ?? 'its current campaign'}
         submission={moving.submission}
-        campaigns={destinationsFor(moving.submission)}
+        campaigns={destinationsFor(moving.submission).filter(campaign => !moving.campaignIds || moving.campaignIds.includes(campaign.id))}
         initialTargetId={moving.targetId}
         onClose={() => setMoving(null)}
         onMoved={onMoved}
@@ -116,6 +117,44 @@ export function CampaignDropTargets({ sourceId }: { sourceId?: string }) {
       </span>
     })}
   </div>
+}
+
+export function CampaignReviewQueue({ queueId, label, children }: {
+  queueId: SubmissionReviewQueueId
+  label: string
+  children: ReactNode
+}) {
+  const move = useContext(MoveContext)
+  const [hovered, setHovered] = useState(false)
+  const destinations = move?.dragged ? move.destinationsFor(move.dragged).filter(campaign =>
+    campaign.terms.formats.some(format => submissionReviewQueueId({
+      formatId: format.id, sprintTerms: campaign.terms, sprintName: campaign.name, title: '',
+    }) === queueId),
+  ) : []
+  const acceptsDrop = destinations.length > 0
+
+  return <section
+    aria-labelledby={`review-queue-${queueId}`}
+    aria-label={label}
+    className={`overflow-hidden rounded-2xl border bg-white transition-colors ${acceptsDrop && hovered ? 'border-sky-400 ring-2 ring-sky-100' : 'border-zinc-200'}`}
+    onDragOver={event => {
+      if (!acceptsDrop || !event.dataTransfer.types.includes(dragType)) return
+      event.preventDefault()
+      event.dataTransfer.dropEffect = 'move'
+      setHovered(true)
+    }}
+    onDragLeave={event => {
+      if (event.relatedTarget instanceof Node && event.currentTarget.contains(event.relatedTarget)) return
+      setHovered(false)
+    }}
+    onDrop={event => {
+      setHovered(false)
+      if (!move?.dragged || !acceptsDrop || event.dataTransfer.getData(dragType) !== move.dragged.id) return
+      event.preventDefault()
+      move.open(move.dragged, destinations.length === 1 ? destinations[0].id : '', destinations.map(campaign => campaign.id))
+      move.setDragged(null)
+    }}
+  >{children}</section>
 }
 
 function MoveSubmissionDialog({

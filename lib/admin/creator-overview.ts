@@ -43,7 +43,7 @@ export function getApprovalQueue(data: AdminDashboard): ApprovalTarget[] {
   })
 }
 
-export function submissionReviewQueueId(submission: AdminSubmission): SubmissionReviewQueueId {
+export function submissionReviewQueueId(submission: Pick<AdminSubmission, 'sprintTerms' | 'formatId' | 'sprintName' | 'title'>): SubmissionReviewQueueId {
   const format = submission.sprintTerms?.formats.find(item => item.id === submission.formatId)
   const identity = [submission.formatId, format?.name, submission.sprintName, submission.title].filter(Boolean).join(' ').toLowerCase()
   if (identity.includes('general-looksmaxxing') || identity.includes('general looksmaxxing')) return 'general-looksmaxxing'
