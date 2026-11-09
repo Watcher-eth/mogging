@@ -79,12 +79,18 @@
 .dayControls button { display: grid; place-items: center; min-width: 38px; min-height: 38px; padding-inline: 10px; border: 1px solid #e8eaed; border-radius: 999px; color: #363940; font-size: 13px; font-weight: 600; }
 .dayControls button:hover:not(:disabled) { background: #f5f6f7; }
 .dayControls button:disabled { opacity: .42; }
-.page[data-wide] { width: 100%; }
-.page[data-wide] .calendar { display: grid; grid-template-columns: minmax(0,1fr) auto; gap: 14px; align-items: center; margin-block: var(--scan-protocol-date-margin, 12px 16px); padding-inline: var(--scan-protocol-content-inset, 0px); }
+.page[data-wide] {
+  --protocol-content-inset: var(--scan-protocol-content-inset, 0px);
+  --protocol-task-start: calc(var(--protocol-content-inset) + 78px + clamp(32px, 5vw, 112px));
+  --protocol-task-icon-size: 42px;
+  width: 100%;
+}
+.page[data-wide] .calendar { display: grid; grid-template-columns: minmax(0,1fr) auto; gap: 14px; align-items: center; margin-block: var(--scan-protocol-date-margin, 12px 16px); padding-inline: var(--protocol-content-inset); }
 .page[data-wide] .days { padding-inline: 4px; }
-.page[data-wide] .hour { padding-inline-start: 0; }
-.page[data-wide] .now::before { left: 0; }
-.page[data-wide] .noTasks { left: calc(var(--scan-protocol-content-inset, 0px) + 78px); }
-.page[data-wide] .task { left: calc(var(--scan-protocol-content-inset, 0px) + 78px); right: calc(var(--scan-protocol-content-inset, 0px) + 24px); }
-.page[data-wide] .taskBody { padding-left: 14px; }
+.page[data-wide] .hour { padding-inline-start: var(--protocol-content-inset); }
+.page[data-wide] .now::before { left: var(--protocol-content-inset); }
+.page[data-wide] .noTasks { left: var(--protocol-task-start); }
+.page[data-wide] .task { left: var(--protocol-task-start); right: var(--protocol-content-inset); }
+.page[data-wide] .taskBody { grid-template-columns: var(--protocol-task-icon-size) minmax(0, 1fr); gap: 4px 12px; padding-block: 1px; padding-left: 14px; }
+.page[data-wide] .taskIcon { width: var(--protocol-task-icon-size); height: var(--protocol-task-icon-size); }
 .sheet[data-wide] { max-width: 540px; }
