@@ -1,3 +1,4 @@
+import { CreatorAnchorTile } from './creator-anchor-tile'
 import { CreatorReferralsSection } from './creator-referrals'
 import { useState } from "react";
 import Image from "next/image";
@@ -74,6 +75,7 @@ export function CreatorConversions({ report, showBonuses = report.bonusesAvailab
         </div>
         <p className={styles.chartCaption}>Daily activity · All time · UTC</p>
       </section>
+      <div className={styles.anchorSection}><CreatorAnchorTile /></div>
       {showBonuses ? <section className={styles.conversionBrief}>
         <Image className={styles.referralArtwork} src="/creator/achievements/referral-five-percent.png" alt="" width={112} height={112} sizes="112px" />
         <div>

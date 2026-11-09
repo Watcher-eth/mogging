@@ -42,6 +42,15 @@ export function tiktokAnchorEligible(
     : followers.count >= 1000
 }
 
+type AnchorAccount = NonNullable<Parameters<typeof tiktokAnchorEligible>[0]> & {
+  tiktokAnchorJoinedAt?: Date | string | null
+}
+
+export function tiktokAnchorReminderAccount<T extends AnchorAccount>(accounts: readonly T[]) {
+  if (accounts.some(account => account.platform === 'tiktok' && account.tiktokAnchorJoinedAt)) return undefined
+  return accounts.find(account => tiktokAnchorEligible(account) === true)
+}
+
 export function accountFollowers(account: {
   followers?: CreatorFollowers | null
   oauthProfile?: Record<string, unknown> | null

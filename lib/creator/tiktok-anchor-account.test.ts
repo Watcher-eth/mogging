@@ -9,6 +9,15 @@ let account: any
 let writes: any[]
 let oauthCount: number | null
 let token: string | null
+let now: number
+const reminders = new Map<string, number>()
+const claimReminder = mock(async (key: string, _value: boolean, options: { nx: true; ex: number }) => {
+  if (options.nx && (reminders.get(key) ?? 0) > now) return null
+  reminders.set(key, now + options.ex * 1000)
+  return 'OK'
+})
+mock.module('@upstash/redis', () => ({ Redis: class { set = claimReminder } }))
+mock.module('@/lib/env', () => ({ env: { UPSTASH_REDIS_REST_URL: 'https://fixture.test', UPSTASH_REDIS_REST_TOKEN: 'fixture' } }))
 const predicates: unknown[][] = []
 const dialect = new PgDialect()
 mock.module('@/lib/auth/session', () => ({
@@ -35,6 +44,7 @@ mock.module('@/lib/db', () => ({
     query: {
       creatorProfiles: { findFirst: async () => profile },
       creatorSocialAccounts: {
+        findMany: async ({ where }: any) => account && dialect.sqlToQuery(where).params.includes(account.creatorProfileId) ? [account] : [],
         findFirst: async ({ where }: any) => {
           const params = dialect.sqlToQuery(where).params
           predicates.push(params)
@@ -62,7 +72,8 @@ mock.module('@/lib/db', () => ({
 const { default: handler } = await import(
   '../../pages/api/creator/accounts/[id]/tiktok-anchor'
 )
-async function patch(body: unknown, method = 'PATCH') {
+const { default: reminderHandler } = await import('../../pages/api/creator/tiktok-anchor-reminder')
+async function patch(body: unknown, method = 'PATCH', route = handler) {
   const res: any = {
     statusCode: 200,
     headers: {},
@@ -78,7 +89,7 @@ async function patch(body: unknown, method = 'PATCH') {
       return this
     },
   }
-  await handler({ method, query: { id }, body } as any, res)
+  await route({ method, query: { id }, body } as any, res)
   return res
 }
 beforeEach(() => {
@@ -87,6 +98,9 @@ beforeEach(() => {
   writes = []
   predicates.length = 0
   token = null
+  now = Date.now()
+  reminders.clear()
+  claimReminder.mockClear()
   oauthCount = null
   account = {
     id,
@@ -167,4 +181,22 @@ test('anonymous, suspended and invalid requests cannot write account state', asy
     expect((await patch(body)).statusCode).toBe(400)
   expect((await patch({}, 'POST')).statusCode).toBe(405)
   expect(writes).toHaveLength(0)
+})
+
+
+test('the optional reminder is claimed once per creator per 24 hours, and stops after joining', async () => {
+  const open = async () => (await patch({}, 'POST', reminderHandler)).payload.data.accountId
+  const concurrent = await Promise.all([open(), open()])
+  expect(concurrent.filter(Boolean)).toEqual([id])
+  expect(claimReminder).toHaveBeenCalledWith('creator:tiktok-anchor-reminder:creator', true, { nx: true, ex: 86400 })
+
+  now += 86_400_000
+  expect(await open()).toBe(id)
+  now += 86_400_000
+  account.tiktokAnchorJoinedAt = new Date()
+  expect(await open()).toBeNull()
+  account.tiktokAnchorJoinedAt = null
+  account.followers.count = 999
+  expect(await open()).toBeNull()
+  expect(claimReminder).toHaveBeenCalledTimes(3)
 })

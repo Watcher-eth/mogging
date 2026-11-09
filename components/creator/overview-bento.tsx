@@ -14,7 +14,7 @@ import styles from './overview-bento.module.css'
 const currencyFormat = (cents: number): Format => ({ style: 'currency', currency: 'USD', maximumFractionDigits: cents % 100 ? 2 : 0 })
 const number = (value: number) => new Intl.NumberFormat('en-US', { notation: value >= 10000 ? 'compact' : 'standard', maximumFractionDigits: 1 }).format(value)
 
-export function OverviewBento({ data, onAccountSaved }: { data: CreatorDashboard; onAccountSaved: () => Promise<unknown> }) {
+export function OverviewBento({ data }: { data: CreatorDashboard }) {
   const metrics = creatorOverviewMetrics(data)
   const ref = useRef<HTMLDivElement>(null)
   const visible = useInView(ref, { amount: 0.1 })
@@ -41,7 +41,7 @@ export function OverviewBento({ data, onAccountSaved }: { data: CreatorDashboard
       <div className={styles.tileBottom}><p className={styles.value}><OverviewNumber value={data.socialAccounts.length} order={4} /></p></div>
       <div className={styles.avatars}>{data.socialAccounts.slice(0, 3).map(account => <ProfileAvatar key={`${account.id}:${account.avatarUrl}`} account={account} />)}{!data.socialAccounts.length ? <span className={styles.avatar}><Plus size={26} aria-hidden="true" /></span> : null}</div>
     </Link>
-    <CreatorAnchorTile accounts={data.socialAccounts} onAccountSaved={onAccountSaved} />
+    <CreatorAnchorTile />
     <Link href="/creator/money" className={`${styles.tile} ${styles.bonuses}`}>
       <div className={styles.topline}><span><Sparkles size={15} aria-hidden="true" />Bonuses</span><BonusEarned cents={metrics.bonusPaidCents} active={visible} /></div>
       <div className={styles.tileBottom}><p className={styles.value}><OverviewNumber value={metrics.bonusCents / 100} order={5} format={currencyFormat(metrics.bonusCents)} /></p><div className={styles.bonusFooter}><span><OverviewNumber value={metrics.bonusOutstandingCents / 100} order={6} format={currencyFormat(metrics.bonusOutstandingCents)} /> outstanding</span></div></div><div className={styles.visual}><GoldCoin /></div>

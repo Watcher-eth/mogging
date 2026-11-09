@@ -1,6 +1,6 @@
 import dynamic from 'next/dynamic'
 const CreatorSupportLauncher = dynamic(() => import('./support/support-launcher').then(m => m.CreatorSupportLauncher), { ssr: false })
-import { TikTokAnchorOnboarding } from './tiktok-anchor-onboarding'
+import { TikTokAnchorSetup } from './tiktok-anchor-onboarding'
 import { StudioRequirementsReminder } from './studio-requirements-dialog'
 import { CreatorWelcomeDialog, useCreatorWelcome } from './creator-welcome'
 import { Sidebar, SidebarContent, SidebarHeader, SidebarFooter, SidebarGroup, SidebarGroupLabel, SidebarGroupContent, SidebarMenu, SidebarMenuItem, SidebarMenuButton, SidebarInset, SidebarTrigger, useSidebar } from '@/components/ui/sidebar'
@@ -67,6 +67,11 @@ export function CreatorShell({ children, allowUnauthenticated = false }: { child
 
   if (router.pathname === '/creator/setup') return <>{children}</>
 
+  const anchorPage = router.pathname === '/creator' || router.pathname === '/creator/conversions'
+  const content = anchorPage
+    ? <TikTokAnchorSetup key={session?.user?.id} autoOpen={welcome.ready && !welcome.open && !moreOpen}>{children}</TikTokAnchorSetup>
+    : children
+
   return (
     <div className="creator-portal creator-workspace-shell flex w-full flex-1 flex-col">
       <header className="creator-toolbar">
@@ -81,7 +86,7 @@ export function CreatorShell({ children, allowUnauthenticated = false }: { child
       <Dialog open={moreOpen} onOpenChange={setMoreOpen}><DialogContent className="creator-dialog p-5"><DialogHeader className="creator-dialog-header text-left"><DialogTitle className="creator-dialog-title">Creator Studio</DialogTitle><DialogDescription>Account and support.</DialogDescription></DialogHeader><button type="button" onClick={() => { setMoreOpen(false); welcome.onOpenChange(true) }} className="min-h-11 text-left text-sm font-medium text-[#00A8EF]">Creator quick guide</button><div className="flex items-center justify-between border-t pt-3 text-sm"><Link href="/support" onClick={() => setMoreOpen(false)} className="creator-button p-3">Support</Link><button className="flex min-h-11 items-center gap-2 px-3" onClick={() => void signOut({ callbackUrl: '/' })}><LogOut className="size-4" />Sign out</button></div></DialogContent></Dialog>
       <div className="creator-workspace flex min-w-0 flex-1">
         <CreatorNavigation />
-        <SidebarInset className="creator-page creator-enter min-w-0 bg-white" key={router.pathname}>{children}</SidebarInset>
+        <SidebarInset className="creator-page creator-enter min-w-0 bg-white" key={router.pathname}>{content}</SidebarInset>
       </div>
       <CreatorWelcomeDialog open={welcome.open} onOpenChange={welcome.onOpenChange} />
       {router.pathname === '/creator/video-studio' && welcome.ready && !welcome.open && !moreOpen ? <StudioRequirementsReminder key={session?.user?.id} /> : null}
@@ -89,7 +94,6 @@ export function CreatorShell({ children, allowUnauthenticated = false }: { child
         {!studioPaths.has(router.pathname) ? <CreatorSetupChecklist /> : null}
         {router.pathname !== '/creator/support' && !router.pathname.includes('__') ? <CreatorSupportLauncher /> : null}
       </div>
-      <TikTokAnchorOnboarding enabled={!welcome.open && !moreOpen && router.pathname === '/creator'} />
     </div>
   )
 }

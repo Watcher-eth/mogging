@@ -16,7 +16,7 @@ export default function CreatorOverviewPage() {
 }
 
 function OverviewContent() {
-  const { data, isLoading, mutate } = useSWR<CreatorDashboard>('/api/creator', apiGet, {
+  const { data, isLoading } = useSWR<CreatorDashboard>('/api/creator', apiGet, {
     refreshInterval: 30_000,
   })
 
@@ -48,7 +48,7 @@ function OverviewContent() {
         description="Your reach, reviews, and rewards in one place."
         eyebrowAccessory={<InviteCreators />}
       />
-      <OverviewBento data={data} onAccountSaved={mutate} />
+      <OverviewBento data={data} />
       <CreatorUpdates data={data} />
     </>
   )

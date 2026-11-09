@@ -1,5 +1,5 @@
 import Image from 'next/image'
-import { useEffect, useState } from 'react'
+import { createContext, useContext, useEffect, useRef, useState, type ReactNode } from 'react'
 import useSWR from 'swr'
 import { ArrowUpRight, Check, Copy, Link2, Loader2, Users } from 'lucide-react'
 import { toast } from 'sonner'
@@ -11,10 +11,11 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog'
 import { Button } from '@/components/ui/button'
-import { apiGet, apiPatch } from '@/lib/api/client'
+import { apiGet, apiPatch, apiPost } from '@/lib/api/client'
 import {
   FOLLOWER_RANGES,
   tiktokAnchorEligible,
+  tiktokAnchorReminderAccount,
   TIKTOK_ANCHOR_INVITE,
   type FollowerRange,
 } from '@/lib/creator/tiktok-anchor'
@@ -317,60 +318,52 @@ export function TikTokAccountDialog({
   )
 }
 
-export function TikTokAnchorOnboarding({ enabled }: { enabled: boolean }) {
+const AnchorSetupContext = createContext<{ account?: CreatorSocialAccount; open: () => void } | null>(null)
+
+export function useTikTokAnchorSetup() {
+  return useContext(AnchorSetupContext)
+}
+
+export function TikTokAnchorSetup({ children, autoOpen = false }: { children: ReactNode; autoOpen?: boolean }) {
   const { data, mutate } = useSWR<CreatorDashboard>('/api/creator', apiGet)
-  const [dismissed, setDismissed] = useState<string[] | null>(null)
-  const candidates = (data?.socialAccounts || []).filter(
-    (account) =>
-      account.platform === 'tiktok' &&
-      tiktokAnchorEligible(account) === true && !account.tiktokAnchorJoinedAt
-  )
-  const key = candidates
-    .map(
-      (account) =>
-        `${account.id}:anchor`
-    )
-    .join(',')
+  const [selectedId, setSelectedId] = useState<string | null>(null)
+  const opened = useRef(false)
+  const reminder = useRef<Promise<{ accountId: string | null }> | null>(null)
+  const accounts = data?.socialAccounts ?? []
+  const eligible = data?.profile?.authStatus === 'suspended' ? [] : accounts.filter(item => tiktokAnchorEligible(item) === true)
+  const account = eligible.find(item => !item.tiktokAnchorJoinedAt) ?? eligible[0]
+  const selected = eligible.find(item => item.id === selectedId)
+  const canAutoOpen = autoOpen && Boolean(data?.profile && account && tiktokAnchorReminderAccount(accounts))
+
   useEffect(() => {
-    setDismissed(
-      key.split(',').filter((id) => {
-        try {
-          return (
-            sessionStorage.getItem(`mogging:tiktok-anchor:optional:v1:${id}`) === 'later'
-          )
-        } catch {
-          return false
-        }
-      })
-    )
-  }, [key])
-  if (!enabled || !dismissed || data?.profile?.authStatus === 'suspended')
-    return null
-  const account = candidates.find(
-    (item) =>
-      !dismissed.includes(
-        `${item.id}:anchor`
-      )
-  )
-  if (!account) return null
-  const id = `${account.id}:anchor`
+    if (!canAutoOpen || opened.current) return
+    let active = true
+    reminder.current ??= apiPost<{ accountId: string | null }>('/api/creator/tiktok-anchor-reminder', {})
+    void reminder.current.then(({ accountId }) => {
+      if (!active || !accountId || opened.current) return
+      opened.current = true
+      setSelectedId(accountId)
+    }).catch(() => {
+      // Manual setup remains available even if the reminder service is unreachable.
+    })
+    return () => { active = false }
+  }, [canAutoOpen])
+
   return (
-    <TikTokAccountDialog
-      key={id}
-      account={account}
-      mode="anchor"
-      open
-      onSaved={() => mutate()}
-      onOpenChange={(open) => {
-        if (!open) {
-          try {
-            sessionStorage.setItem(`mogging:tiktok-anchor:optional:v1:${id}`, 'later')
-          } catch {
-            /* A browser may disable session storage. */
-          }
-          setDismissed((items) => [...(items || []), id])
-        }
-      }}
-    />
+    <AnchorSetupContext.Provider value={{ account, open: () => {
+      if (!account) return
+      opened.current = true
+      setSelectedId(account.id)
+    } }}>
+      {children}
+      {selected ? <TikTokAccountDialog
+        key={selected.id}
+        account={selected}
+        mode="anchor"
+        open
+        onSaved={() => mutate()}
+        onOpenChange={open => { if (!open) setSelectedId(null) }}
+      /> : null}
+    </AnchorSetupContext.Provider>
   )
 }
