@@ -172,7 +172,7 @@ export default function ScanHome({ tab, preview, userId, signedIn, now, phoneEnt
         <LoginDialog audience="scan" open={loginOpen} onOpenChange={setLoginOpen} callbackUrl={sessionId ? `${returnPath}&scan_checkout=success&session_id=${encodeURIComponent(sessionId)}` : href(tab)} />
       </section> : <>
         <AnimatePresence initial={false} mode="wait" custom={direction}>
-          <motion.div key={activeTab} className="scan-home-screen" custom={direction}
+          <motion.div key={activeTab} className="scan-home-screen" data-full-protocol={desktop && activeTab === 'protocol' && Boolean(preview || protocol) || undefined} custom={direction}
             variants={{ enter: (dir: number) => ({ opacity: 0, x: dir * 18 }), visible: { opacity: 1, x: 0 }, exit: (dir: number) => ({ opacity: 0, x: -dir * 12 }) }}
             initial="enter" animate="visible" exit="exit" transition={{ duration: .22, ease: [.23, 1, .32, 1] }}>
             {activeTab === 'evaluation' && <Evaluations preview={preview} desktop={desktop} onNewScan={openCredits}

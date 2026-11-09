@@ -720,17 +720,27 @@ body:has(.scan-flow[data-scan-preview]) nextjs-portal { display: none; }
 .scan-home-selected { position: absolute; z-index: -1; inset: 0; border-radius: 999px; background: #fff; }
 .scan-home[data-dark] .scan-home-selected { background: #ffffff25; }
 @media (min-width: 744px) {
-  .scan-home[data-desktop] { position: relative; max-width: var(--page-max); }
+  .scan-home[data-desktop] { --scan-home-topbar-height: 76px; position: relative; max-width: var(--page-max); }
+  .scan-home[data-desktop]:has(.scan-home-screen[data-full-protocol]) {
+    --scan-protocol-content-inset: max(var(--page-gutter), calc((100vw - var(--page-max)) / 2 + var(--page-gutter)));
+    max-width: none;
+  }
   .scan-home[data-desktop] .scan-home-screen { padding: 6.75rem var(--page-gutter) 3rem; }
+  .scan-home[data-desktop] .scan-home-screen[data-full-protocol] {
+    --scan-protocol-calendar-height: calc(var(--scan-viewport-height, 100dvh) - var(--scan-home-topbar-height));
+    --scan-protocol-date-margin: 0;
+    padding: var(--scan-home-topbar-height) 0 0;
+    scrollbar-width: none;
+  }
   .scan-home[data-desktop] .scan-home-topbar {
     position: absolute;
     z-index: 21;
-    inset: 0 var(--page-gutter) auto;
+    inset: 0 var(--scan-protocol-content-inset, var(--page-gutter)) auto;
     display: grid;
     grid-template-columns: minmax(0,1fr) auto minmax(0,1fr);
     align-items: center;
     gap: clamp(8px, 2vw, 26px);
-    height: 76px;
+    height: var(--scan-home-topbar-height);
     background: #fff;
   }
   .scan-home-brand { display: inline-flex; align-items: center; justify-self: start; gap: .65rem; color: #191c21; font-size: 1.18rem; font-weight: 680; letter-spacing: -.045em; }

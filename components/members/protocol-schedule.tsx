@@ -9,7 +9,6 @@ import styles from './protocol-schedule.module.css'
 
 type Day = { key: string; day: Date; tasks: ProtocolTask[] }
 const hours = Array.from({ length: 14 }, (_, i) => i + 6)
-const hourHeight = 54
 const ease = [.22, 1, .36, 1] as const
 const dayLabel = new Intl.DateTimeFormat('en-US', { weekday: 'long', month: 'short', day: 'numeric' })
 const taskIcons = { skin: Droplet, eyes: Eye, jaw: ScanFace }
@@ -39,7 +38,7 @@ export function ProtocolSchedule({ desktop, days, date, today, completed, onDay,
   const done = new Set(completed)
   const scheduled = scheduleProtocolTasks(tasks, 6)
   const color = done.size > 100 ? '#ffb340' : done.size > 50 ? '#a78bfa' : done.size > 25 ? '#38c8ef' : done.size > 10 ? '#34d399' : '#58bdff'
-  const time = now ? (now.getHours() + now.getMinutes() / 60 - 6) * hourHeight : -1
+  const time = now ? now.getHours() + now.getMinutes() / 60 - 6 : -1
   const isDone = (item: ProtocolTask) => done.has(`${date}:${item.key}`)
 
   useEffect(() => {
@@ -71,8 +70,8 @@ export function ProtocolSchedule({ desktop, days, date, today, completed, onDay,
     if (finish && !reduced) setCelebration(value => value + 1)
   }
 
-  return <section className={styles.page} data-wide={desktop || undefined}>
-    <header className={styles.header}>
+  return <section className={styles.page} data-wide={desktop || undefined} aria-label={desktop ? 'Protocol' : undefined}>
+    {!desktop && <header className={styles.header}>
       <h1>Protocol</h1>
       <div>
         <motion.span className={styles.badge} style={{ background: color }} aria-label={`${done.size} tasks completed`}>
@@ -82,7 +81,7 @@ export function ProtocolSchedule({ desktop, days, date, today, completed, onDay,
         </motion.span>
         <button type="button" aria-label="Protocol options" onClick={() => { setTask(null); setSheetOpen(true) }}><Settings size={18} /></button>
       </div>
-    </header>
+    </header>}
     {hasEvaluation ? <>
       <div className={styles.calendar}>
       <LayoutGroup>
@@ -131,7 +130,7 @@ export function ProtocolSchedule({ desktop, days, date, today, completed, onDay,
             {scheduled.map(({ item, hour, durationHours }, index) => {
               const checked = isDone(item)
               return <motion.div key={item.key} className={styles.task} data-done={checked || undefined}
-                style={{ ...tone(item), top: (hour - 6) * hourHeight + 8, height: Math.max(56, durationHours * hourHeight - 14) }}
+                style={{ ...tone(item), top: `calc(var(--protocol-hour-height) * ${hour - 6} + 8px)`, height: `max(56px, calc(var(--protocol-hour-height) * ${durationHours} - 14px))` }}
                 initial={reduced ? false : { opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}
                 transition={{ duration: reduced ? 0 : .4, delay: reduced ? 0 : index * .08, ease }}>
                 <button type="button" className={styles.taskBody} onClick={() => { buzz(); setTask(item); setSheetOpen(true) }}>
@@ -144,7 +143,7 @@ export function ProtocolSchedule({ desktop, days, date, today, completed, onDay,
                 </button>
               </motion.div>
             })}
-            {date === today && time >= 0 && time <= hourHeight * hours.length && <div className={styles.now} style={{ top: time }} aria-hidden="true" />}
+            {date === today && time >= 0 && time <= hours.length && <div className={styles.now} style={{ top: `calc(var(--protocol-hour-height) * ${time})` }} aria-hidden="true" />}
           </motion.div>}
         </AnimatePresence>
       </motion.div>

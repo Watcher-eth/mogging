@@ -21,8 +21,8 @@
 .dayDot[data-empty] { visibility: hidden; }
 .dayDot[data-done] { opacity: .36; }
 .schedule { position: relative; overflow: clip; touch-action: pan-y pinch-zoom; }
-.timeline { position: relative; width: 100%; }
-.hour { height: 54px; border-top: 1px solid #ececef; padding: 6px 0 0 18px; color: #73737d; font-size: 12px; font-weight: 700; font-variant-numeric: tabular-nums; }
+.timeline { --protocol-hour-height: max(54px, calc((var(--scan-protocol-calendar-height, 0px) - 78px) / 14)); position: relative; width: 100%; }
+.hour { height: var(--protocol-hour-height); border-top: 1px solid #ececef; padding: 6px 0 0 18px; color: #73737d; font-size: 12px; font-weight: 700; font-variant-numeric: tabular-nums; }
 .now { position: absolute; z-index: 2; pointer-events: none; inset-inline: 0; height: 2px; background: #8edbff; }
 .now::before { content: ''; position: absolute; left: 12px; top: -3px; width: 8px; height: 8px; border-radius: 50%; background: #48b9ff; }
 .noTasks { position: absolute; top: 14px; left: 78px; padding: 6px 12px; color: #686872; background: white; font-size: 13px; }
@@ -80,11 +80,11 @@
 .dayControls button:hover:not(:disabled) { background: #f5f6f7; }
 .dayControls button:disabled { opacity: .42; }
 .page[data-wide] { width: 100%; }
-.page[data-wide] .header { margin-inline: 0; }
-.page[data-wide] .header h1 { font-size: clamp(30px, 4vw, 42px); line-height: 1.1; letter-spacing: -.045em; }
-.page[data-wide] .calendar { display: grid; grid-template-columns: minmax(0,1fr) auto; gap: 14px; align-items: center; margin-block: 12px 16px; }
+.page[data-wide] .calendar { display: grid; grid-template-columns: minmax(0,1fr) auto; gap: 14px; align-items: center; margin-block: var(--scan-protocol-date-margin, 12px 16px); padding-inline: var(--scan-protocol-content-inset, 0px); }
 .page[data-wide] .days { padding-inline: 4px; }
-.page[data-wide] .hour:first-child { border-top: 0; }
-.page[data-wide] .task { right: 24px; }
+.page[data-wide] .hour { padding-inline-start: 0; }
+.page[data-wide] .now::before { left: 0; }
+.page[data-wide] .noTasks { left: calc(var(--scan-protocol-content-inset, 0px) + 78px); }
+.page[data-wide] .task { left: calc(var(--scan-protocol-content-inset, 0px) + 78px); right: calc(var(--scan-protocol-content-inset, 0px) + 24px); }
 .page[data-wide] .taskBody { padding-left: 14px; }
 .sheet[data-wide] { max-width: 540px; }
