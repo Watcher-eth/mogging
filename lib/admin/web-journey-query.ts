@@ -2,30 +2,30 @@ import { sql } from 'drizzle-orm'
 import { db } from '@/lib/db'
 import { audienceCTEs, customerEvent } from './audience'
 import { reportingBucket } from './reporting-bucket'
-import { WEB_FLOW_VERSION, webJourneyDimensions } from '@/lib/analytics/web-context'
+import { WEB_ANALYSIS_VARIANTS, WEB_FLOW_VERSION, webJourneyDimensions } from '@/lib/analytics/web-context'
 import { WEB_ANALYSIS_CREATOR_COUPON } from '@/lib/payments/web-analysis-plans'
 import { webChannel } from './analytics-channel'
 import type { MetricRow } from './analytics'
 
 export { webJourneyDimensions } from '@/lib/analytics/web-context'
 export type WebJourneyDimension = typeof webJourneyDimensions[number]
-export type WebJourneyReport = { version: string; dimension: string; summary: MetricRow[]; funnel: MetricRow[]; daily: MetricRow[]; segments: MetricRow[]; channels: MetricRow[]; steps: MetricRow[]; issues: MetricRow[]; catalog: MetricRow[]; planOffers: MetricRow[]; versions: MetricRow[]; coverage: MetricRow[]; journeys: MetricRow[]; outcomes: MetricRow[]; postPurchase: MetricRow[] }
+export type WebJourneyReport = { version: string; dimension: string; summary: MetricRow[]; funnel: MetricRow[]; daily: MetricRow[]; segments: MetricRow[]; channels: MetricRow[]; onboardingDaily?: MetricRow[]; onboardingIssues?: MetricRow[]; experiments?: MetricRow[]; steps: MetricRow[]; issues: MetricRow[]; catalog: MetricRow[]; planOffers: MetricRow[]; versions: MetricRow[]; coverage: MetricRow[]; journeys: MetricRow[]; outcomes: MetricRow[]; postPurchase: MetricRow[] }
 
 // reported_events includes browser activity and the customer-filtered server records.
 // Billing and access are joined by exact checkout IDs. Account activity is never
 // silently reassigned to a journey using a nearby timestamp.
-export function webJourneyCTEs(start: string, end: string, days: number, version = WEB_FLOW_VERSION, dimension: WebJourneyDimension = 'channel', detail: 'Onboarding' | 'Purchases' | 'WebJourney' = 'WebJourney') {
+export function webJourneyCTEs(start: string, end: string, days: number, version = WEB_FLOW_VERSION, dimension: WebJourneyDimension = 'channel', detail: 'Onboarding' | 'Purchases' | 'WebJourney' | 'Experiments' = 'WebJourney') {
   const segment = sql.identifier(dimension)
   const channel = webChannel(sql`properties`, true)
   const fromLanding = sql`((event_name in ('landing_viewed','page_viewed') and properties->>'path'='/')
     or (event_name='attribution_diagnostic' and properties->>'action'='creator_landing_viewed'
       and properties->>'surface'='creator_landing'))`
   return sql`wj_events as materialized (
-    select event_name,platform,source,properties,session_id,account_id,occurred_at,actor
+    select event_name,platform,source,properties,session_id,account_id,occurred_at,actor,properties->>'flow_id' as flow_id
     from reported_events where platform in ('web','server')
       and nullif(properties->>'flow_id','') is not null
   ), wj_flows as materialized (
-    select properties->>'flow_id' as flow_id,
+    select flow_id,
       min(occurred_at) filter(where platform='web' and (${fromLanding} or properties->>'path'='/analysis' or (event_name='paywall_viewed' and properties->>'surface' in ('web_analysis','landing','scan_app_credits')))) as started,
       coalesce((array_agg(properties->>'flow_version' order by occurred_at) filter(where nullif(properties->>'flow_version','') is not null))[1],'legacy') as version,
       coalesce((array_agg(properties->>'browser_family' order by occurred_at) filter(where properties->>'browser_family' is not null))[1],'unknown') as browser,
@@ -54,15 +54,15 @@ export function webJourneyCTEs(start: string, end: string, days: number, version
       min(occurred_at) filter(where event_name='report_viewed') as report_at,
       max(occurred_at) filter(where platform='server' and event_name='evaluation_request_completed' and source='web_analysis') as evaluated_at,
       bool_or(event_name='purchase_reconciled' and properties->>'result'='existing_access') as existing_access
-    from wj_events group by 1
+    from wj_events group by flow_id
   ), wj_cohort as materialized (
-    select * from wj_flows where started >= ${start}::timestamp and started < ${end}::timestamp and version=${version}
+    select * from wj_flows where started >= ${start}::timestamp and started < ${end}::timestamp and ${detail === 'Experiments' ? sql`analysis_at is not null` : sql`version=${version}`}
   ), wj_checkouts as materialized (
-    select a.session_id as checkout_id,a.properties->>'flow_id' as flow_id,
+    select a.session_id as checkout_id,a.flow_id as flow_id,
       min(nullif(a.properties->>'attempt_id','')) as attempt_id,
       min(a.account_id) as account_id,min(a.occurred_at) filter(where a.event_name='checkout_started') as created_at,
       min(a.occurred_at) filter(where a.event_name='checkout_started' and a.source='web_analysis') as analysis_checkout_at
-    from wj_events a join wj_cohort c on c.flow_id=a.properties->>'flow_id'
+    from wj_events a join wj_cohort c on c.flow_id=a.flow_id
     where a.platform='server' and ((a.event_name='checkout_started') or (a.event_name='checkout_completed' and a.source='stripe_verified')) and a.session_id ~ '^cs_live_'
     group by 1,2
   ), wj_verified_checkouts as (
@@ -96,8 +96,8 @@ export function webJourneyCTEs(start: string, end: string, days: number, version
       bool_or(creator_discount) filter(where paid_at is not null) as creator_discount
     from wj_receipts group by flow_id
   ), wj_report_deliveries as (
-    select ev.properties->>'flow_id' as flow_id,max(ev.occurred_at) as evaluated_at
-    from wj_events ev join wj_events viewed on viewed.properties->>'flow_id'=ev.properties->>'flow_id'
+    select ev.flow_id as flow_id,max(ev.occurred_at) as evaluated_at
+    from wj_events ev join wj_events viewed on viewed.flow_id=ev.flow_id
       and viewed.properties->>'report_id'=ev.properties->>'report_id'
       and viewed.event_name='report_viewed' and viewed.platform='web'
     where ev.platform='server' and ev.event_name='evaluation_request_completed' and ev.source='web_analysis'
@@ -176,24 +176,56 @@ export function webJourneyCTEs(start: string, end: string, days: number, version
     select c.channel,a.properties->>'step' as step,count(distinct c.flow_id) filter(where event_name='onboarding_step_viewed') as viewed,
       count(distinct c.flow_id) filter(where event_name='onboarding_step_completed') as completed,
       round((percentile_cont(.5) within group(order by case when a.properties->>'duration_ms' ~ '^[0-9]{1,9}$' then (a.properties->>'duration_ms')::numeric end) filter(where event_name='onboarding_step_exited'))::numeric) as median_ms
-    from wj_events a join wj_cohort c on c.flow_id=a.properties->>'flow_id'
-    where a.event_name in ('onboarding_step_viewed','onboarding_step_completed','onboarding_step_exited') and (a.properties->>'step' like 'profile.%' or a.properties->>'step' like 'capture.%' or a.properties->>'step' in ('intro','upload','preview-analysis','report-preview','actual-analysis','results'))
+    from wj_events a join wj_cohort c on c.flow_id=a.flow_id
+    where a.event_name in ('onboarding_step_viewed','onboarding_step_completed','onboarding_step_exited') and (a.properties->>'step' like 'profile.%' or a.properties->>'step' like 'capture.%' or a.properties->>'step' in ('intro','story','upload','desktop-setup','desktop-scan','preview-analysis','report-preview','actual-analysis','results'))
     group by 1,2 order by channel,viewed desc,step
+  ), wj_onboarding_daily as (
+    select channel,${reportingBucket(sql`analysis_at`, days)} as day,count(*) as analysis_opened,
+      count(*) filter(where photo_at>=analysis_at) as photo_ready,
+      count(*) filter(where analysis_paywall_at>=analysis_at) as analysis_paywalls,
+      count(*) filter(where evaluated_at>=analysis_at) as evaluations_completed
+    from wj_cohort where analysis_at is not null group by 1,2 order by 2,1
+  ), wj_experiment_cohorts as (
+    select *,case
+      when version in ('web_scan_2026_11_05','web_scan_2026_11_06_v3') then 'old'
+      when analysis_variant=${WEB_ANALYSIS_VARIANTS.mobile} and channel='mobile_web' then 'new'
+      when analysis_variant=${WEB_ANALYSIS_VARIANTS.desktop} and channel='desktop_web' then 'new'
+      when channel='mobile_web' and analysis_variant='unassigned' and version=${WEB_FLOW_VERSION} then 'new'
+    end as variant
+    from wj_cohort
+    where channel in ('mobile_web','desktop_web')
+  ), wj_experiment_results as (
+    select c.channel,c.variant,count(*) as started,
+      count(*) filter(where c.analysis_at <= ${end}::timestamp-interval '24 hours') as mature,
+      count(*) filter(where c.capture_at between c.analysis_at and c.analysis_at+interval '24 hours') as capture_opened,
+      count(*) filter(where c.photo_at between c.analysis_at and c.analysis_at+interval '24 hours') as photo_ready,
+      count(*) filter(where c.analysis_paywall_at between c.analysis_at and c.analysis_at+interval '24 hours') as paywalls,
+      count(*) filter(where c.analysis_at <= ${end}::timestamp-interval '24 hours' and outcome.paid) as paid,
+      count(*) filter(where c.analysis_at <= ${end}::timestamp-interval '24 hours' and outcome.subscribed) as subscribed,
+      count(*) filter(where c.analysis_at <= ${end}::timestamp-interval '24 hours' and outcome.checkout) as checkouts
+    from wj_experiment_cohorts c left join (
+      select x.flow_id,bool_or(r.analysis_checkout_at between x.analysis_at and x.analysis_at+interval '24 hours') as checkout,
+        bool_or(r.paid_at between x.analysis_at and x.analysis_at+interval '24 hours') as paid,
+        bool_or(r.paid_at between x.analysis_at and x.analysis_at+interval '24 hours' and r.subscription) as subscribed
+      from wj_experiment_cohorts x join wj_receipts r using (flow_id)
+      where r.analysis_checkout_at>=x.analysis_at group by x.flow_id
+    ) outcome using(flow_id)
+    where c.variant is not null group by 1,2 order by 1,2 desc
   ), wj_issues as (
     select c.channel,event_name,coalesce(a.properties->>'purchase_stage',a.properties->>'step',a.properties->>'mode','unknown') as stage,
       coalesce(a.properties->>'reason_code',a.properties->>'result','unknown') as reason,count(*) as events,count(distinct c.flow_id) as journeys
-    from wj_events a join wj_cohort c on c.flow_id=a.properties->>'flow_id'
+    from wj_events a join wj_cohort c on c.flow_id=a.flow_id
     where a.event_name in ('purchase_failed','purchase_activation_failed','evaluation_request_failed','photo_validation_failed')
       or (a.event_name='paywall_products_loaded' and a.properties->>'products_loaded'='false')
-      or (a.event_name='permission_result' and a.properties->>'result'='failed')
+      or (a.event_name='permission_result' and a.properties->>'result' in ('failed','denied'))
       or (a.event_name in ('photo_preparation_stage','face_capture_result') and a.properties->>'result' in ('failed','stalled'))
-    group by 1,2,3,4 order by journeys desc
+    group by 1,2,3,4 order by journeys desc limit 100
   ), wj_catalog as (
     select c.channel,coalesce(a.properties->>'mode','unknown') as mode,
       case when a.properties->>'products_loaded'='true' then 'loaded' when a.properties->>'products_loaded'='false' then 'failed' else 'unconfirmed' end as result,
       count(*) as loads,count(distinct c.flow_id) as journeys,
       round((percentile_cont(.5) within group(order by case when a.properties->>'duration_ms' ~ '^[0-9]{1,9}$' then (a.properties->>'duration_ms')::numeric end))::numeric) as median_ms
-    from wj_events a join wj_cohort c on c.flow_id=a.properties->>'flow_id' where a.event_name='paywall_products_loaded' group by 1,2,3
+    from wj_events a join wj_cohort c on c.flow_id=a.flow_id where a.event_name='paywall_products_loaded' group by 1,2,3
   ), wj_plan_impressions as materialized (
     select c.channel,c.browser,c.flow_id,a.occurred_at,
       a.properties->>'product' as product,a.properties->>'offering' as offering,
@@ -202,12 +234,12 @@ export function webJourneyCTEs(start: string, end: string, days: number, version
       a.properties->>'creator_discount' as creator_discount,
       a.properties->>'status'='available' as available,
       a.properties->>'default_plan'=a.properties->>'product' as selected_by_default
-    from wj_events a join wj_cohort c on c.flow_id=a.properties->>'flow_id'
+    from wj_events a join wj_cohort c on c.flow_id=a.flow_id
     where a.platform='web' and a.event_name='paywall_plan_viewed' and a.properties->>'surface'='web_analysis'
   ), wj_plan_checkouts as (
     select impression.*,r.paid_at,
       coalesce(a.properties->>'creator_discount'=${WEB_ANALYSIS_CREATOR_COUPON},false) as creator_discount_applied
-    from wj_receipts r join wj_events a on a.session_id=r.checkout_id and a.properties->>'flow_id'=r.flow_id
+    from wj_receipts r join wj_events a on a.session_id=r.checkout_id and a.flow_id=r.flow_id
       and a.platform='server' and a.event_name='checkout_started' and a.source='web_analysis'
     join lateral (
       select i.* from wj_plan_impressions i
@@ -239,7 +271,7 @@ export function webJourneyCTEs(start: string, end: string, days: number, version
       bool_or(a.event_name='purchase_failed') as failed,
       bool_or(a.event_name='purchase_reconciled' and a.properties->>'result'='existing_access') as existing_access,
       bool_or(r.checkout_id is not null) as created
-    from wj_events a join wj_cohort c on c.flow_id=a.properties->>'flow_id'
+    from wj_events a join wj_cohort c on c.flow_id=a.flow_id
     left join wj_receipts r on r.flow_id=c.flow_id and r.attempt_id=a.properties->>'attempt_id'
     where nullif(a.properties->>'attempt_id','') is not null
     group by 1,2,3
@@ -286,9 +318,12 @@ export function webJourneyCTEs(start: string, end: string, days: number, version
   ), web_journey as (
     select json_build_object(
       'version',${version}::text,
-      'channels',coalesce((select json_agg(r) from wj_channels r),'[]'::json),
-      'steps',${detail !== 'Purchases' ? sql`coalesce((select json_agg(r)from wj_steps r),'[]'::json)` : sql`'[]'::json`},
-      'outcomes',${detail !== 'Onboarding' ? sql`coalesce((select json_agg(r)from wj_outcomes r),'[]'::json)` : sql`'[]'::json`}
+      'channels',${detail === 'Experiments' ? sql`'[]'::json` : sql`coalesce((select json_agg(r) from wj_channels r),'[]'::json)`},
+      'onboardingDaily',${detail === 'Onboarding' ? sql`coalesce((select json_agg(r) from wj_onboarding_daily r),'[]'::json)` : sql`'[]'::json`},
+      'onboardingIssues',${detail === 'Onboarding' ? sql`coalesce((select json_agg(r) from wj_issues r),'[]'::json)` : sql`'[]'::json`},
+      'experiments',${detail === 'Experiments' ? sql`coalesce((select json_agg(r) from wj_experiment_results r),'[]'::json)` : sql`'[]'::json`},
+      'steps',${detail === 'Onboarding' || detail === 'WebJourney' ? sql`coalesce((select json_agg(r)from wj_steps r),'[]'::json)` : sql`'[]'::json`},
+      'outcomes',${detail === 'WebJourney' || detail === 'Purchases' ? sql`coalesce((select json_agg(r)from wj_outcomes r),'[]'::json)` : sql`'[]'::json`}
     )::jsonb ${detail === 'WebJourney' ? sql`|| jsonb_build_object('dimension',${dimension}::text,
       'summary',(select json_agg(r) from wj_summary r),
       'funnel',(select json_build_array(

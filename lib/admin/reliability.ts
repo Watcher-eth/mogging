@@ -19,6 +19,8 @@ export type ReliabilityData = {
   failures:MetricRow[]
   recent:MetricRow[]
   clients:MetricRow[]
+  auth:MetricRow[]
+  evaluations:MetricRow[]
   notifications:MetricRow[]
   stalled:MetricRow[]
   unresolved_count:number
@@ -62,8 +64,25 @@ export function reliabilityQuery(days:number,now:Date) {
     select feature,code,outcome,count(*) as events,max(occurred_at) as latest_event from requests where not signal and code is distinct from 'input_no_face' and outcome in ('failed','degraded') group by 1,2,3 order by events desc limit 100
   ), recent as (
     select feature,code,outcome,duration_ms,trace,occurred_at as latest_event from requests where not signal and code is distinct from 'input_no_face' and outcome in ('failed','degraded') order by occurred_at desc limit 50
+  ), auth_events as materialized (
+    select platform,event_name,properties from analytics_events a where a.environment='production'
+      and a.platform in ('web','ios','android') and a.occurred_at>=${start}::timestamp and a.occurred_at<${end}::timestamp
+      and a.event_name in ('account_auth_started','account_authenticated','account_auth_failed','account_post_login_failed')
+      and ${customerEvent('a')}
+  ), auth as (
+    select platform,count(*) filter(where event_name='account_auth_started') as attempts,
+      count(*) filter(where event_name='account_authenticated') as signed_in,
+      count(*) filter(where event_name='account_auth_failed') as sign_in_errors,
+      count(*) filter(where event_name='account_post_login_failed') as setup_errors
+    from auth_events group by platform order by platform
+  ), evaluations as (
+    select count(*) as requests,count(*) filter(where r.status='complete') as completed,
+      count(*) filter(where r.status='failed') as failed,count(*) filter(where r.status='pending') as pending,
+      count(*) filter(where r.status='complete' and nullif(r.result->'analysis'->>'id','') is null) as missing_report
+    from scan_reservations r where r.created_at>=${start}::timestamp and r.created_at<${end}::timestamp
+      and r.entitlement_id not in (select id from excluded_entitlements)
   ), clients as (
-    select event_name as event,platform,app_version as release,coalesce(properties->>'reason_code','unspecified') as code,count(*) as events,max(occurred_at) as latest_event from analytics_events client where ${customerEvent('client')} and platform in ('web','ios','android') and event_name in ('evaluation_failed','photo_validation_failed','purchase_failed','restore_failed','account_auth_failed','account_post_login_failed','share_failed') and occurred_at>=${start}::timestamp and occurred_at<${end}::timestamp group by 1,2,3,4 order by events desc limit 100
+    select event_name as event,platform,app_version as release,coalesce(properties->>'reason_code','unspecified') as code,count(*) as events,max(occurred_at) as latest_event from analytics_events client where ${customerEvent('client')} and platform in ('web','ios','android') and event_name in ('evaluation_failed','evaluation_request_failed','photo_validation_failed','purchase_failed','restore_failed','account_auth_failed','account_post_login_failed','share_failed') and occurred_at>=${start}::timestamp and occurred_at<${end}::timestamp group by 1,2,3,4 order by events desc limit 100
   ), notifications as (
     select properties->>'feature' as feature,properties->>'code' as code,properties->>'status' as status,count(*) as events,max(occurred_at) as latest_event from analytics_events where event_name='backend_alert' and environment='production' and source='backend' and occurred_at>=${start}::timestamp and occurred_at<${end}::timestamp group by 1,2,3 order by latest_event desc limit 50
   ), unresolved as materialized (
@@ -78,7 +97,7 @@ export function reliabilityQuery(days:number,now:Date) {
   alert_summary as (select properties->>'status' as status,count(*) as records,max(occurred_at) as latest_event
     from analytics_events where event_name='backend_alert' and environment='production' and source='backend'
       and occurred_at>=${start}::timestamp and occurred_at<${end}::timestamp group by 1)
-  select json_build_object('unresolved_count',(select count(*) from unresolved),'alertSummary',${rows('alert_summary')},'summary',(select row_to_json(s) from summary s),'features',${rows('features')},'daily',${rows('daily')},'failures',${rows('failures')},'recent',${rows('recent')},'clients',${rows('clients')},'notifications',${rows('notifications')},'stalled',${rows('stalled')}) as data`
+  select json_build_object('unresolved_count',(select count(*) from unresolved),'alertSummary',${rows('alert_summary')},'summary',(select row_to_json(s) from summary s),'features',${rows('features')},'daily',${rows('daily')},'failures',${rows('failures')},'recent',${rows('recent')},'clients',${rows('clients')},'auth',${rows('auth')},'evaluations',${rows('evaluations')},'notifications',${rows('notifications')},'stalled',${rows('stalled')}) as data`
 }
 export async function getReliabilityData(days:number):Promise<ReliabilityData> {
   const [health,report] = await Promise.all([
@@ -86,10 +105,11 @@ export async function getReliabilityData(days:number):Promise<ReliabilityData> {
     db.transaction(async tx=>{
       await tx.execute(sql`set transaction read only`)
       await tx.execute(sql`set local statement_timeout = '8s'`)
+      await tx.execute(sql`set local jit=off`)
       const [row]=await tx.execute(reliabilityQuery(days,new Date()))
       return row.data as Omit<ReliabilityData,'health'|'alerts'|'generatedAt'|'available'|'runtime'>
     }).catch(()=>null),
   ])
   return {runtime:process.env.VERCEL_ENV || process.env.NODE_ENV || 'unknown',generatedAt:new Date().toISOString(),health,alerts:reliabilityAlertStatus(),available:Boolean(report),
-    ...(report || {summary:{},features:[],daily:[],failures:[],recent:[],clients:[],notifications:[],stalled:[],unresolved_count:0,alertSummary:[]})}
+    ...(report || {summary:{},features:[],daily:[],failures:[],recent:[],clients:[],auth:[],evaluations:[],notifications:[],stalled:[],unresolved_count:0,alertSummary:[]})}
 }

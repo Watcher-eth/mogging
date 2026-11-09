@@ -23,7 +23,7 @@ import CreatorPerformanceDashboard from '@/components/admin/creator-performance-
 import { CreatorAttributionOverview } from '@/components/admin/creator-attribution-overview'
 import { RetentionDashboard } from '@/components/admin/retention-dashboard'
 import { RevenueDashboard } from '@/components/admin/revenue-dashboard'
-import { OnboardingDashboard } from '@/components/admin/onboarding-dashboard'
+import { OnboardingDashboard, WebOnboardingDashboard } from '@/components/admin/onboarding-dashboard'
 import { AcquisitionDashboard } from '@/components/admin/acquisition-dashboard'
 import { CreatorHeader } from '@/components/creator/creator-header'
 import { AnalyticsSelect } from '@/components/admin/analytics-select'
@@ -31,7 +31,7 @@ import { Button } from '@/components/ui/button'
 import { RefreshCw } from 'lucide-react'
 
 // Same read-only aggregates and cache policy as the authenticated dashboard.
-const getReport = unstable_cache(getAnalyticsDashboard, ['admin-analytics-revenue-comparison-v6'], { revalidate: 60 })
+const getReport = unstable_cache(getAnalyticsDashboard, ['admin-analytics-workspace-preview-v13'], { revalidate: 60 })
 type PreviewProps = { data: AnalyticsDashboard | null; error: string | null }
 
 export default function LocalAnalyticsPreview({ data, error }: PreviewProps) {
@@ -101,13 +101,17 @@ export default function LocalAnalyticsPreview({ data, error }: PreviewProps) {
     <div className="admin-report-toolbar">
       <div className="flex flex-wrap items-center gap-3">
         <AnalyticsSelect label="Period" value={days} onChange={value => { void update({ ...router.query, days: value }) }} options={['1','7','14','30','90'].map(value => ({value, label:value === '1' ? performance ? 'Today' : 'Last 24 hours' : `Last ${value} days`}))} />
-        {!webJourneys && !notifications && !ledger && !health && !reliability && !experiments && !revenue && !attribution && !performance && !economics && !scans && !referrals ? <AnalyticsSelect label="Platform" value={platform} onChange={value => { void update({ ...router.query, platform: value }) }} options={[{value:'all',label:'All platforms'},{value:'ios',label:'iOS'},{value:'android',label:'Android'},...(!purchases && !onboarding ? [{value:'web',label:'Web'}] : [])]} /> : null}
+        {onboarding && <div className="admin-view-switch" role="group" aria-label="Onboarding view">
+          <button aria-pressed={platform !== 'web'} onClick={() => void update({ ...router.query, platform: 'all' })}>Mobile app</button>
+          <button aria-pressed={platform === 'web'} onClick={() => void update({ ...router.query, platform: 'web' })}>Web</button>
+        </div>}
+        {!webJourneys && !notifications && !ledger && !health && !reliability && !experiments && !revenue && !attribution && !performance && !economics && !scans && !referrals && !(onboarding && platform === 'web') ? <AnalyticsSelect label="Platform" value={platform} onChange={value => { void update({ ...router.query, platform: value }) }} options={[{value:'all',label:'All platforms'},{value:'ios',label:'iOS'},{value:'android',label:'Android'},...(!purchases && !onboarding ? [{value:'web',label:'Web'}] : [])]} /> : null}
         <Button variant="ghost" aria-label="Refresh analytics" disabled={refreshing} onClick={() => { void update() }}><RefreshCw className={`size-4 ${refreshing ? 'animate-spin' : ''}`} /></Button>
       </div>
       <span className="text-xs text-zinc-500">{data ? `Snapshot ${formatReportingTime(data.generatedAt, { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit', timeZoneName: 'short' })}` : 'No snapshot available'} · Real data</span>
     </div>
     {error ? <p role="alert" className="admin-notice">{error}</p> : null}
-    {data ? webJourneys ? <WebJourneyDashboard data={data} days={Number(days)} /> : notifications ? <NotificationsDashboard data={data} days={Number(days)} /> : ledger ? <AttributionLedgerDashboard data={data} days={Number(days)} /> : health ? <DataHealthDashboard data={data} days={Number(days)} /> : reliability ? data.reliability ? <ReliabilityDashboard data={data.reliability} days={Number(days)} /> : null : referrals ? <ReferralsDashboard data={data} days={Number(days)} /> : engagement ? <EngagementDashboard data={data} days={Number(days)} /> : scans ? <ScansDashboard data={data} days={Number(days)} /> : purchases ? <PurchaseFlowDashboard data={data} days={Number(days)} /> : authentication ? <AuthenticationDashboard data={data} days={Number(days)} /> : economics ? <CreatorEconomicsOverview data={data} days={Number(days)} /> : performance ? <CreatorPerformanceDashboard data={data} attributionHref="/admin/__product-overview-preview?page=creator-attribution&days=30&platform=all" /> : attribution ? <CreatorAttributionOverview data={data} days={Number(days)} /> : retention ? <RetentionDashboard data={data} days={Number(days)} /> : revenue ? <RevenueDashboard data={data} days={Number(days)} /> : onboarding ? <OnboardingDashboard data={data} days={Number(days)} /> : experiments ? <ExperimentsReport data={data} /> : acquisition ? <AcquisitionDashboard data={data} days={Number(days)} /> : <ProductOverview data={data} days={Number(days)} /> : null}
+    {data ? webJourneys ? <WebJourneyDashboard data={data} days={Number(days)} /> : notifications ? <NotificationsDashboard data={data} days={Number(days)} /> : ledger ? <AttributionLedgerDashboard data={data} days={Number(days)} /> : health ? <DataHealthDashboard data={data} days={Number(days)} /> : reliability ? data.reliability ? <ReliabilityDashboard data={data.reliability} days={Number(days)} /> : null : referrals ? <ReferralsDashboard data={data} days={Number(days)} /> : engagement ? <EngagementDashboard data={data} days={Number(days)} /> : scans ? <ScansDashboard data={data} days={Number(days)} /> : purchases ? <PurchaseFlowDashboard data={data} days={Number(days)} /> : authentication ? <AuthenticationDashboard data={data} days={Number(days)} /> : economics ? <CreatorEconomicsOverview data={data} days={Number(days)} /> : performance ? <CreatorPerformanceDashboard data={data} attributionHref="/admin/__product-overview-preview?page=creator-attribution&days=30&platform=all" /> : attribution ? <CreatorAttributionOverview data={data} days={Number(days)} /> : retention ? <RetentionDashboard data={data} days={Number(days)} /> : revenue ? <RevenueDashboard data={data} days={Number(days)} /> : onboarding ? (platform === 'web' ? <WebOnboardingDashboard data={data} days={Number(days)} /> : <OnboardingDashboard data={data} days={Number(days)} />) : experiments ? <ExperimentsReport data={data} /> : acquisition ? <AcquisitionDashboard data={data} days={Number(days)} /> : <ProductOverview data={data} days={Number(days)} /> : null}
   </AnalyticsPreviewLinks>
 }
 
@@ -116,9 +120,9 @@ export const getServerSideProps: GetServerSideProps<PreviewProps> = async ({ req
   res.setHeader('X-Frame-Options', 'SAMEORIGIN')
   res.setHeader('Cross-Origin-Resource-Policy', 'same-origin')
   if (!isLocalAnalyticsPreview(process.env.NODE_ENV, req.headers, req.socket.remoteAddress)) return { notFound: true }
-  if (query.page !== undefined && (typeof query.page !== 'string' || !['overview', 'acquisition', 'experiments', 'onboarding', 'revenue', 'retention', 'creator-attribution', 'creator-performance', 'creator-economics', 'authentication', 'purchases', 'scans', 'engagement', 'referrals', 'notifications', 'attribution-ledger', 'data-health', 'backend-reliability'].includes(query.page))) return { notFound: true }
+  if (query.page !== undefined && (typeof query.page !== 'string' || !['overview', 'acquisition', 'web-journeys', 'experiments', 'onboarding', 'revenue', 'retention', 'creator-attribution', 'creator-performance', 'creator-economics', 'authentication', 'purchases', 'scans', 'engagement', 'referrals', 'notifications', 'attribution-ledger', 'data-health', 'backend-reliability'].includes(query.page))) return { notFound: true }
   const section = query.page === 'notifications' ? 'Notifications' : query.page === 'attribution-ledger' ? 'AttributionLedger' : query.page === 'data-health' ? 'Quality' : query.page === 'backend-reliability' ? 'Reliability' : query.page === 'referrals' ? 'Referrals' : query.page === 'engagement' ? 'Engagement' : query.page === 'scans' ? 'Scans' : query.page === 'web-journeys' ? 'WebJourney' : query.page === 'purchases' ? 'Purchases' : query.page === 'authentication' ? 'Authentication' : query.page === 'creator-economics' ? 'CreatorEconomics' : query.page === 'creator-performance' ? 'CreatorPerformance' : query.page === 'creator-attribution' ? 'CreatorAttribution' : query.page === 'retention' ? 'Retention' : query.page === 'revenue' ? 'Revenue' : query.page === 'onboarding' ? 'Onboarding' : query.page === 'experiments' ? 'Experiments' : query.page === 'acquisition' ? 'Acquisition' : 'Overview'
-  const filters = analyticsFilters.safeParse({ days: query.days ?? (['Reliability', 'Revenue'].includes(section) ? '1' : section === 'Quality' ? '7' : section === 'Retention' ? '90' : ['Experiments', 'Onboarding', 'Revenue', 'CreatorAttribution', 'CreatorPerformance', 'CreatorEconomics', 'Authentication', 'Purchases', 'Scans', 'Engagement', 'Referrals', 'Notifications', 'AttributionLedger'].includes(section) ? '30' : '7'), platform: ['Experiments', 'Revenue', 'CreatorAttribution', 'CreatorPerformance', 'CreatorEconomics', 'Scans', 'Referrals', 'Notifications', 'AttributionLedger', 'Quality', 'Reliability'].includes(section) ? 'all' : ['Onboarding','Purchases'].includes(section) && query.platform === 'web' ? 'all' : query.platform, section })
+  const filters = analyticsFilters.safeParse({ days: query.days ?? (['Reliability', 'Revenue'].includes(section) ? '1' : section === 'Quality' ? '7' : section === 'Retention' ? '90' : ['Experiments', 'Onboarding', 'Revenue', 'CreatorAttribution', 'CreatorPerformance', 'CreatorEconomics', 'Authentication', 'Purchases', 'Scans', 'Engagement', 'Referrals', 'Notifications', 'AttributionLedger'].includes(section) ? '30' : '7'), platform: ['Experiments', 'Revenue', 'CreatorAttribution', 'CreatorPerformance', 'CreatorEconomics', 'Scans', 'Referrals', 'Notifications', 'AttributionLedger', 'Quality', 'Reliability'].includes(section) ? 'all' : section === 'Purchases' && query.platform === 'web' ? 'all' : query.platform, section })
   if (!filters.success) return { notFound: true }
   try {
     const data = await getReport(filters.data)
@@ -155,6 +159,7 @@ export const getServerSideProps: GetServerSideProps<PreviewProps> = async ({ req
         steps: data.steps, screens: data.screens, eventMetrics: data.eventMetrics,
         eventPlatforms: data.eventPlatforms, dimensions: data.dimensions, contextCoverage: data.contextCoverage,
       } : {}),
+      ...(['Experiments','Onboarding','WebJourney','Purchases'].includes(section) ? { webJourney: data.webJourney } : {}),
       ...(section === 'Experiments' ? { landingExperiments: data.landingExperiments, landingExperimentDaily: data.landingExperimentDaily ?? [], landingHandoffs: data.landingHandoffs ?? [] } : {}),
       ...(section === 'Acquisition' ? {
         acquisition: data.acquisition, acquisitionSummary: data.acquisitionSummary ?? [],

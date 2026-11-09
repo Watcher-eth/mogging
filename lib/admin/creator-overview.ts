@@ -130,7 +130,6 @@ export function creatorPaymentQueue(data: Pick<AdminDashboard, 'creators' | 'sub
   })).filter(({ plan }) => plan.amountCents > 0)
 
   const scheduledBySubmission = new Map<string, AdminPayment>()
-  const paymentsById = new Map(data.payments.map(payment => [payment.id, payment]))
   const requests = (data.payoutRequests ?? []).filter(request => request.status === 'pending')
   const requestIds = new Set(requests.map(request => request.id))
   const requestPayments = new Map<string, AdminPayment[]>()
@@ -192,15 +191,6 @@ export function creatorPaymentQueue(data: Pick<AdminDashboard, 'creators' | 'sub
   for (const payment of data.payments) {
     if (payment.status !== 'processing' || (payment.payoutRequestId && requestIds.has(payment.payoutRequestId))) continue
     addBalance('processing', payment.amountCents, payment.currency)
-  }
-  for (const { plan } of held) {
-    for (const line of plan.lines) {
-      addBalance('held', line.newCents, 'USD')
-      for (const id of line.pendingIds) {
-        const payment = paymentsById.get(id)!
-        addBalance('held', payment.amountCents, payment.currency)
-      }
-    }
   }
   for (const submission of data.submissions) {
     if (submission.status !== 'in_review' || !submission.reviewRequestedAt || creators.get(submission.creatorProfileId)?.bundledPayouts) continue

@@ -3,6 +3,7 @@ import { locales } from '@/lib/i18n/locales'
 // Coarse categories only; never retain the raw user agent in product events.
 export const webJourneyDimensions = ['channel', 'browser', 'device', 'country', 'source', 'campaign', 'creator', 'entry', 'plan', 'experiment', 'analysis_variant'] as const
 export const WEB_FLOW_VERSION = 'web_scan_2026_11_07_v4'
+export const WEB_ANALYSIS_VARIANTS = { mobile: 'mobile_guided_v1', desktop: 'desktop_guided_v3' } as const
 
 export function stripeJourneyProperties(metadata: Record<string, string | undefined> | null | undefined) {
   return { flow_id: metadata?.flowId, attempt_id: metadata?.attemptId, flow_version: metadata?.flowVersion, entry_mode: metadata?.entryMode, web_surface: metadata?.webSurface }

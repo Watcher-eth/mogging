@@ -2,8 +2,8 @@ import { ScanPwaHead } from '@/components/app/scan-pwa-head'
 import Link from 'next/link'
 import { useRouter } from 'next/router'
 import { useEffect } from 'react'
-import { flushWebAnalytics, setLandingAnalytics, trackWebEvent } from '@/lib/analytics/client'
-import { landingProperties, type LandingAssignment } from '@/lib/analytics/landing'
+import { flushWebAnalytics, trackWebEvent } from '@/lib/analytics/client'
+import { type LandingAssignment } from '@/lib/analytics/landing'
 import { phoneViewportQuery } from '@/lib/analysis/phone-layout'
 import { phonePwaEntryPath } from '@/lib/homepage-routing'
 
@@ -13,8 +13,7 @@ export function PhonePwaEntry({ assignment, preview }: { assignment?: LandingAss
   useEffect(() => {
     if (!router.isReady || !window.matchMedia(phoneViewportQuery).matches) return
     if (assignment && !preview) {
-      setLandingAnalytics(assignment)
-      const properties = { ...landingProperties(assignment), path: '/', surface: 'landing', placement: 'automatic_mobile_web' }
+      const properties = { landing_id: null, experiment_id: null, variant: null, landing_version: null, path: '/', surface: 'landing', placement: 'automatic_mobile_web' }
       trackWebEvent('landing_viewed', properties)
       trackWebEvent('destination_selected', { ...properties, destination: 'web_analysis' })
       void flushWebAnalytics()

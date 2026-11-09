@@ -180,3 +180,9 @@
   overflow: hidden;
   background: #ffffff26;
 }
+
+.dialog[data-paywall-length='short'] .desktopArt { height: clamp(132px, 18svh, 175px); }
+.dialog[data-paywall-length='short'][data-scan-fullscreen] .scroll { align-content: start; gap: 12px; }
+.dialog[data-paywall-length='short'][data-scan-fullscreen] .pro { gap: 12px; }
+.dialog[data-paywall-length='short'][data-scan-fullscreen][data-offer='pro'] { grid-template-rows: clamp(108px, 18svh, 195px) minmax(0,1fr); }
+.dialog[data-paywall-length='short'][data-desktop-analysis] { height: min(600px, calc(100svh - 80px)); }

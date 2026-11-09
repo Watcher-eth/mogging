@@ -78,7 +78,7 @@ export default function CreatorAdminPage() {
   const { data: access, error: accessError, isLoading: accessLoading, mutate: mutateAccess } = useSWR<{ unlocked: boolean; email: string }>('/api/admin/creator/session', apiGet)
   const router = useRouter()
   const page = adminPage(router.pathname)
-  const tab = (page?.section || 'overview') as Tab
+  const tab = (router.pathname === '/admin/invitations' ? 'invites' : router.pathname === '/admin/cta-library' ? 'cta-library' : page?.section || 'overview') as Tab
   const usesDashboard = tab !== 'invites' && tab !== 'cta-library'
   const needsCoverage = tab === 'settings' || tab === 'attribution'
   const dashboardUrl = needsCoverage ? '/api/admin/creator' : '/api/admin/creator?coverage=0'
@@ -92,7 +92,7 @@ export default function CreatorAdminPage() {
       : selected
 
   if (accessError) return <p role="alert" className="admin-notice">Could not verify admin access. Reload to retry.</p>
-  if (accessLoading) return <CenteredLoader />
+  if (accessLoading && !access) return <CenteredLoader />
   if (!access?.unlocked || (error instanceof ApiClientError && error.status === 401)) return <AdminPasswordGate onUnlocked={() => void mutateAccess()} />
 
   return (
@@ -235,11 +235,11 @@ function PaymentsPanel({ data, onSelect, onRefresh }: { data: AdminDashboard; on
   return <>
     <section aria-label="Payout totals" className="mb-7 overflow-hidden rounded-2xl border border-emerald-200 bg-emerald-50/50">
       <div className="flex flex-wrap items-end justify-between gap-4 px-5 py-4">
-        <div><p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-emerald-700">Total outstanding</p><p className="mt-1 max-w-xl text-xs leading-5 text-zinc-600">Unpaid earnings and scheduled payouts across all payment methods.</p></div>
-        <p className="text-3xl font-semibold tracking-[-0.04em] tabular-nums">{showAmounts('outstanding')}</p>
+        <div><p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-emerald-700">To pay now</p><p className="mt-1 max-w-xl text-xs leading-5 text-zinc-600">Requested payouts and earnings due after approval, across all payment methods.</p></div>
+        <p className="text-3xl font-semibold tracking-[-0.04em] tabular-nums">{showAmounts('ready')}</p>
       </div>
       <dl className="flex flex-wrap gap-x-7 gap-y-3 border-t border-emerald-100 px-5 py-3">
-        {[['ready', 'To pay now'], ['held', 'On hold · not requested'], ['processing', 'Processing'], ...(totals.has('review') ? [['review', 'Under re-review']] : [])].map(([key, label]) => <div key={key}>
+        {[['processing', 'Processing'], ...(totals.has('review') ? [['review', 'Under re-review']] : [])].map(([key, label]) => <div key={key}>
           <dt className="text-xs font-medium text-zinc-600">{label}</dt>
           <dd className="mt-1 text-lg font-semibold tabular-nums">{showAmounts(key)}</dd>
         </div>)}

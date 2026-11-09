@@ -1,2 +1,4 @@
-export { default } from '@/components/admin/analytics-workspace'
-export { adminPageProps as getServerSideProps } from '@/lib/admin/page'
+import { adminRedirect } from '@/lib/admin/page'
+
+export default function MovedAdminPage() { return null }
+export const getServerSideProps = adminRedirect('/admin/attribution?view=reach')

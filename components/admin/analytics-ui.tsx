@@ -1,5 +1,7 @@
 import { Disclosure, DisclosureSummary, AccordionContent } from '@/components/ui/accordion'
-import { useId, type ReactNode } from 'react'
+import { useId, useSyncExternalStore, type ReactNode } from 'react'
+import { useReducedMotion } from 'motion/react'
+import { TextMorph } from 'torph/react'
 import dynamic from 'next/dynamic'
 const CategoryChart = dynamic(() => import('./category-chart').then(module => module.CategoryChart), { ssr: false })
 import type { MetricRow } from '@/lib/admin/analytics'
@@ -13,8 +15,14 @@ export const money = (value: unknown, currency: string) => value == null ? '—'
 export function Notice({ children }: { children: ReactNode }) {
   return <div role="status" className="admin-notice">{children}</div>
 }
+const subscribeToHydration = () => () => {}
+const hydrated = () => true
+const serverRender = () => false
+
 export function Stat({ title, value, note, change }: { title: string; value: string; note: string; change?: ReactNode }) {
-  return <div className="admin-metric"><p className="text-xs text-[#73777d]">{title}</p><div className="mt-3 flex flex-wrap items-baseline gap-x-3 gap-y-1"><p className="text-[32px] font-medium tabular-nums tracking-[-0.045em] text-[#181a1d]">{value}</p>{change}</div><p className="mt-2 text-xs leading-5 text-[#858a91]">{note}</p></div>
+  const reduced = useReducedMotion()
+  const animate = useSyncExternalStore(subscribeToHydration, hydrated, serverRender) && !reduced
+  return <div className="admin-metric"><p className="text-xs text-[#73777d]">{title}</p><div className="mt-3 flex flex-wrap items-baseline gap-x-3 gap-y-1"><p className="text-[32px] font-medium tabular-nums tracking-[-0.045em] text-[#181a1d]">{animate ? <TextMorph duration={220}>{value}</TextMorph> : value}</p>{change}</div><p className="mt-2 text-xs leading-5 text-[#858a91]">{note}</p></div>
 }
 export function Panel({ title, description, note, children, action }: { title: string; description?: string; note?: string; children: ReactNode; action?: ReactNode }) {
   const id = useId()
@@ -36,7 +44,7 @@ export function Table({ rows, columns }: { rows: MetricRow[]; columns: string[] 
 export function DataDetails({ children }: { children: ReactNode }) {
   return <Disclosure className="admin-data-details"><DisclosureSummary>View underlying data</DisclosureSummary><AccordionContent><div className="mt-4">{children}</div></AccordionContent></Disclosure>
 }
-export function ComparisonBars({ rows, series }: { rows: Array<{ label: string; values: number[]; detail?: string }>; series: Array<{ label: string; color: string }> }) {
+export function ComparisonBars({ rows, series }: { rows: Array<{ label: string; values: Array<number | null>; detail?: string }>; series: Array<{ label: string; color: string }> }) {
   return <CategoryChart rows={rows} series={series} format={count} />
 }
 export function Bars({ rows, format = count, maximum, presentation, labelWidth, animated, color = '#00A8EF' }: { rows: Array<{ label: string; value: number | null; detail?: string }>; format?: (value: number) => string; maximum?: number; presentation?: 'standard' | 'inline'; labelWidth?: number; animated?: boolean; color?: string }) {

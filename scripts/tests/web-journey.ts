@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict'
 import postgres from 'postgres'
 import { PgDialect } from 'drizzle-orm/pg-core'
+import { paywallExperimentCTEs } from '../../lib/admin/paywall-experiments'
 import { webJourneyCTEs } from '../../lib/admin/web-journey-query'
 import { WEB_ANALYSIS_CREATOR_COUPON } from '../../lib/payments/web-analysis-plans'
 import { WEB_FLOW_VERSION } from '../../lib/analytics/web-context'
@@ -70,4 +71,33 @@ try{
  assert.equal(r.steps.find((step:any)=>step.step==='profile.motivation').completed,1)
  const [legacy]=await query('legacy');assert.equal(legacy.report.summary[0].journeys,1)
  console.log('PASS: ordered web funnel, server-only payment proof, duplicate receipts, clock skew, legacy isolation, existing access, missing browser path, mature D1/D7 follow-up')
+ const experiment = (unit: string, arm = 'control') => ({
+   paywall_experiment_id: 'fixture_length', paywall_experiment_unit: unit.repeat(32), paywall_experiment_arm: arm,
+   paywall_experiment_surface: 'mobile', paywall_experiment_kind: 'length', paywall_experiment_ends_at: base + 5 * 86400_000,
+   paywall_experiment_minimum: 500,
+ })
+ const control = experiment('a')
+ const treatment = experiment('b', 'treatment')
+ const pending = experiment('c', 'treatment')
+ await event('test-a', 'paywall_plan_viewed', 10, control)
+ await event('test-a', 'paywall_plan_viewed', 11, control)
+ await event('test-a', 'onboarding_interaction', 12, { ...control, action: 'checkout_tapped' })
+ await event('test-a', 'checkout_started', 13, control, 'server', 'cs_test_a')
+ const payment = { mode: 'subscription', status: 'paid', price: 1799, currency: 'usd' }
+ await event('test-a', 'checkout_completed', 14, { ...control, ...payment }, 'server', 'cs_test_a', null, 'stripe_verified')
+ await event('test-a', 'checkout_completed', 15, { ...control, ...payment }, 'server', 'cs_test_a', null, 'stripe_verified')
+ await event('test-b', 'paywall_plan_viewed', 10, { ...treatment, browser_family: 'tiktok' })
+ await event('test-b', 'purchase_failed', 12, treatment)
+ await event('test-b', 'checkout_completed', 15, { ...treatment, ...payment }, 'web', 'fake')
+ await event('test-b', 'checkout_completed', 16, { ...treatment, ...payment, price: 0 }, 'server', 'free', null, 'stripe_verified')
+ await event('test-b', 'checkout_completed', 1500, { ...treatment, ...payment }, 'server', 'late', null, 'stripe_verified')
+ await event('test-c', 'paywall_plan_viewed', 1500, pending)
+ const experimentSql = new PgDialect().sqlToQuery(paywallExperimentCTEs('2026-10-02T02:00:00Z'))
+ const rows = await db.unsafe(`with ${experimentSql.sql} select * from paywall_experiments`, experimentSql.params as any[])
+ const a = rows.find(row => row.arm === 'control' && row.browser === 'all')!
+ const b = rows.find(row => row.arm === 'treatment' && row.browser === 'all')!
+ assert.deepEqual([a.exposed, a.mature, a.tapped, a.checkouts, a.paid, a.first_charge_usd_cents].map(Number), [1, 1, 1, 1, 1, 1799])
+ assert.deepEqual([b.exposed, b.mature, b.checkout_failures, b.paid].map(Number), [2, 1, 1, 0])
+ assert(rows.some(row => row.arm === 'treatment' && row.browser === 'tiktok' && Number(row.mature) === 1))
+ console.log('PASS: browser-level paywall experiments, verified positive payments only, duplicate receipts, 24-hour maturity and browser diagnostics')
 }finally{await db.end()}

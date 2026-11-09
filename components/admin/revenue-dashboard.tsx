@@ -48,7 +48,7 @@ function MetricChange({ current, previous, days, unavailable = false, lowerIsBet
   return <span className={`text-xs font-medium tabular-nums ${color}`} title={`Compared with previous ${period}: ${currency ? amount(previous, currency) : count(previous)}`} aria-label={`${text} versus previous ${period}`}>{delta > 0 ? '↗ ' : delta < 0 ? '↘ ' : ''}{text}</span>
 }
 
-export function RevenueDashboard({ data, days }: { data: AnalyticsDashboard; days: number }) {
+export function RevenueDashboard({ data, days, providerStatus }: { data: AnalyticsDashboard; days: number; providerStatus?: 'loading' | 'unavailable' }) {
   const [selectedCurrency, setSelectedCurrency] = useState('')
   const [selectedMetric,setSelectedMetric]=useState('net')
   const currencies = [...new Set([...(data.revenueTotals ?? []), ...(data.revenue ?? [])].map(row => String(row.currency)))].sort((a, b) => a === b ? 0 : a === TOTAL_USD ? -1 : b === TOTAL_USD ? 1 : a === 'USD' ? -1 : b === 'USD' ? 1 : a.localeCompare(b))
@@ -190,7 +190,7 @@ export function RevenueDashboard({ data, days }: { data: AnalyticsDashboard; day
           provider_updated: timestamp(new Date(metric.last_updated_at).toISOString()),
         }))} columns={['metric', 'value', 'period', 'provider_updated']} />
         <p className="mt-3 text-xs text-zinc-500">API checked {timestamp(providerMetrics.checkedAt)}. Project-wide metrics may include stores already represented in the billing ledger.</p>
-      </> : <Notice>{providerMetrics?.status === 'unavailable'
+      </> : <Notice>{providerStatus === 'loading' ? 'Loading the RevenueCat snapshot…' : providerStatus === 'unavailable' || providerMetrics?.status === 'unavailable'
         ? 'RevenueCat metrics could not be refreshed. The transaction ledger remains available.'
         : 'The direct RevenueCat metrics connection requires a project ID and a v2 read-only metrics key.'}</Notice>}
     </Panel>
@@ -200,7 +200,7 @@ export function RevenueDashboard({ data, days }: { data: AnalyticsDashboard; day
           currency: row.currency, units: row.positiveUnits, estimated_proceeds: amount(row.estimatedProceeds, row.currency),
         }))} columns={['currency', 'units', 'estimated_proceeds']} />
         <p className="mt-3 text-xs text-zinc-500">Report date {appleSales.date}. Excludes {count(appleSales.adjustments)} adjustment or unusable rows. Apple’s monthly financial reports show settled proceeds.</p>
-      </> : <Notice>{appleSales?.status === 'unavailable'
+      </> : <Notice>{providerStatus === 'loading' ? 'Loading the Apple sales snapshot…' : providerStatus === 'unavailable' ? 'Apple sales could not be refreshed.' : appleSales?.status === 'unavailable'
         ? `Apple’s report for ${appleSales.date} is unavailable.`
         : 'Direct Apple sales reports require a reporting key, vendor number and app SKU.'}</Notice>}
     </Panel>

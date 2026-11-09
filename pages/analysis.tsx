@@ -1,5 +1,6 @@
 import { countryFromTimeZone, skipEthnicity } from '@/components/analysis/population-distribution'
 import type { BasicReport as BasicReportData } from '@/lib/analysis-v2/basic-preview'
+import { WEB_ANALYSIS_VARIANTS } from '@/lib/analytics/web-context'
 import { useWebStep } from '@/hooks/use-web-step'
 import { webJourneyContext, restoreWebJourney } from '@/lib/analytics/web-journey'
 import { rememberStripeAttempt, takeStripeAttempt, readStripeAttempt, clearStripeAttempt, stripeAttemptProperties } from '@/lib/client/stripe-attempt'
@@ -18,6 +19,7 @@ import { ScanPwaHead } from '@/components/app/scan-pwa-head'
 import { MobileScanWelcome, scanPart, scanSequence } from '@/components/analysis/mobile-scan-pwa'
 import type { GetServerSideProps } from 'next'
 import type { AnalysisPurchase } from '@/components/payments/analysis-unlock-dialog'
+import { paywallExperimentProperties } from '@/lib/payments/paywall-experiment'
 import type { CheckoutQuote } from '@/components/payments/membership-offer'
 import { flushWebAnalytics } from '@/lib/analytics/client'
 import type { WebReport } from '@/lib/analysis-v2/report-schema'
@@ -285,7 +287,7 @@ export default function AnalysisPage({ startWithPhoto, phoneEntry, previewDevice
   const desktopPreview = !mobileScan && step === 'actual-analysis' && !analysisUnlocked
   const desktopReport = desktopPreview || (!mobileScan && step === 'results' && !offerInstall)
   const desktopStep = step === 'desktop-setup' ? `profile.${setupStep}` : step === 'upload' ? `capture.${captureStep}` : step
-  const completeStep = useWebStep(desktopPreview ? 'report-preview' : mobileScan ? step : desktopStep, !walkthrough, mobileScan ? undefined : 'desktop_guided_v3')
+  const completeStep = useWebStep(desktopPreview ? 'report-preview' : mobileScan ? step : desktopStep, !walkthrough, mobileScan ? WEB_ANALYSIS_VARIANTS.mobile : WEB_ANALYSIS_VARIANTS.desktop)
   const viewedAnalysisId = step === 'results' ? results[0]?.analysis.id : undefined
   useEffect(() => {
     if (!walkthrough && viewedAnalysisId) trackWebEvent('report_viewed', { report_id: viewedAnalysisId, surface: 'web_analysis', flow_id: webJourneyContext().flow_id })
@@ -295,6 +297,7 @@ export default function AnalysisPage({ startWithPhoto, phoneEntry, previewDevice
   }, [mobileScan, paymentDialogOpen, walkthrough])
   const [checkoutStatus, setCheckoutStatus] = useState<string | null>(null)
   const checkoutLoading = checkoutStatus !== null
+  const checkoutInFlight = useRef(false)
   const [shareOpen, setShareOpen] = useState(false)
   const [shareUrl, setShareUrl] = useState<string | null>(null)
   const [shareLoading, setShareLoading] = useState(false)
@@ -703,14 +706,16 @@ export default function AnalysisPage({ startWithPhoto, phoneEntry, previewDevice
       setWalkthroughProcessing(true)
       return
     }
-    if (checkoutLoading || status === 'loading') return
+    if (checkoutInFlight.current || status === 'loading') return
+    const { experiment, ...paymentQuote } = quote
     const guestCheckout = status !== 'authenticated'
 
+    checkoutInFlight.current = true
     setCheckoutStatus(guestCheckout ? 'Saving your photos…' : 'Checking scan access…')
     setError(null)
     const checkoutImageCount = images.filter(image => image.view !== 'side').length
     const attemptId = crypto.randomUUID()
-    const purchaseContext = { surface: 'web_analysis', flow_id: webJourneyContext().flow_id, attempt_id: attemptId, product, paywall_version: mobileScan ? '2' : '3' }
+    const purchaseContext = { surface: 'web_analysis', flow_id: webJourneyContext().flow_id, attempt_id: attemptId, product, paywall_version: mobileScan ? '2' : '3', ...paywallExperimentProperties(experiment) }
     let checkoutStage = guestCheckout ? 'draft_save' : 'entitlements'
     trackWebEvent('purchase_started', { ...purchaseContext, provider: 'stripe', purchase_stage: checkoutStage })
 
@@ -744,7 +749,7 @@ export default function AnalysisPage({ startWithPhoto, phoneEntry, previewDevice
         ...(subscription ? { product, returnTo: 'analysis', source: 'web_analysis' } : {}),
         imageCount: checkoutImageCount,
         mobileInstallId: paymentInstallId,
-        ...quote, ...(guestCheckout ? { guestCheckout: true } : {}), attemptId, paywallVersion: purchaseContext.paywall_version, flowId: webJourneyContext().flow_id, flowVersion: webJourneyContext().flow_version, entryMode: webJourneyContext().entry_mode,
+        ...paymentQuote, ...(subscription && experiment ? { paywallExperimentId: experiment.id, paywallExperimentUnit: experiment.unit } : {}), ...(guestCheckout ? { guestCheckout: true } : {}), attemptId, paywallVersion: purchaseContext.paywall_version, flowId: webJourneyContext().flow_id, flowVersion: webJourneyContext().flow_version, entryMode: webJourneyContext().entry_mode,
       })
       checkoutStage = 'checkout_redirect'
       setCheckoutStatus('Opening Stripe…')
@@ -759,9 +764,10 @@ export default function AnalysisPage({ startWithPhoto, phoneEntry, previewDevice
       trackWebEvent('purchase_failed', { ...purchaseContext, purchase_stage: checkoutStage, reason_code: checkoutError instanceof ApiClientError ? checkoutError.code : checkoutStage === 'draft_save' ? 'draft_storage_unavailable' : 'request_failed', http_status: checkoutError instanceof ApiClientError ? checkoutError.status : undefined })
       setError(checkoutError instanceof ApiClientError ? checkoutError.message : checkoutStage === 'draft_save' ? 'Your browser could not save your photos for checkout. Free up storage or try a regular browser window, then retry. You have not been charged.' : 'Unable to open checkout. Please check your connection and retry.')
     } finally {
+      checkoutInFlight.current = false
       setCheckoutStatus(null)
     }
-  }, [checkoutLoading, gender, images, mobileScan, preferences, privacyAccepted, runActualAnalysis, status, walkthrough])
+  }, [gender, images, mobileScan, preferences, privacyAccepted, runActualAnalysis, status, walkthrough])
 
   const resumeAfterPayment = useCallback(async (sessionId: string, retryRequestId?: string | null) => {
     const purchase = readStripeAttempt('web_analysis', sessionId)

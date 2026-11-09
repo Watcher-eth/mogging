@@ -1,90 +1,134 @@
 import { useState } from 'react'
-import { AnalyticsLink as Link } from './analytics-link'
-import type { AnalyticsDashboard } from '@/lib/admin/analytics'
+import type { AnalyticsDashboard, MetricRow } from '@/lib/admin/analytics'
 import { landingExperiments } from '@/lib/analytics/landing'
-import { landingEventTime, landingExperimentRows, landingExperimentSummary } from '@/lib/admin/landing'
+import { landingEventTime, landingExperimentRows, landingExperimentSummary, landingRateInterval } from '@/lib/admin/landing'
 import { formatReportingTime } from '@/lib/admin/reporting-time'
-import { Disclosure, DisclosureSummary, AccordionContent } from '@/components/ui/accordion'
 import { AnalyticsSelect } from './analytics-select'
 import { AnalyticsChart, chartColors } from './analytics-chart'
-import { Bars, DataDetails, Notice, Panel, Stat, Table, count } from './analytics-ui'
+import { ComparisonBars, DataDetails, Notice, Panel, Stat, Table, analyticsChannelLabel, count, percent } from './analytics-ui'
 
-const timestamp = (value: string) => formatReportingTime(value, { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit', timeZoneName: 'short' })
-const defaultTest = landingExperiments.find(experiment => experiment.status === 'active') ?? landingExperiments[0]
+const webTest = 'web-analysis'
+const paywallTest = 'web-paywall'
+const defaultTest = landingExperiments[0]
+const options = [
+  { value: defaultTest.id, label: 'Homepage · Old vs new' },
+  { value: paywallTest, label: 'Web paywall · A/B tests' },
+  { value: webTest, label: 'Web analysis · Old vs new' },
+  ...landingExperiments.slice(1).map(item => ({ value: item.id, label: 'Archived · ' + item.name })),
+]
 
 export function ExperimentsReport({ data }: { data: AnalyticsDashboard }) {
-  const [selected, setSelected] = useState<string>(defaultTest.id)
+  const [selected, setSelected] = useState<string>((data.paywallExperiments?.length ?? 0) > 0 ? paywallTest : defaultTest.id)
   const experiment = landingExperiments.find(item => item.id === selected) ?? defaultTest
-  const rows = landingExperimentRows(data.landingExperiments ?? [], experiment.id)
-  const [control, treatment] = rows
-  const summary = landingExperimentSummary(data.landingExperiments ?? [], experiment.id, new Date(data.generatedAt))
-  const eligible = Number(control.mature) + Number(treatment.mature)
-  const pending = Number(control.pending) + Number(treatment.pending)
-  const comparable = rows.every(row => Number(row.mature) > 0)
-  const days = Number(data.filters.days)
-  const latest = rows.map(row => row.latest_exposure).filter((value): value is string => typeof value === 'string').sort((a, b) => landingEventTime(b) - landingEventTime(a))[0]
-  const daily = (data.landingExperimentDaily ?? []).filter(row => row.experiment_id === experiment.id)
-  const paidPrimary = experiment.status === 'active'
-  const confidence = paidPrimary ? '95%' : '97.5%'
-  const outcome = paidPrimary ? 'Paid conversion' : 'App Store click'
-  const conversions = paidPrimary ? 'paying browsers' : 'clicks'
-  const digits = paidPrimary ? 2 : 1
-  const measurements = 'Each browser assignment is deduplicated in the selected period. Outcomes must follow exposure, match its experiment and variant, occur within seven days, and fall inside the selected period. Only browsers with a complete seven-day follow-up enter mature rates. Assignments with a recorded iPhone handoff are excluded from both rate numerators and denominators. App Store clicks exclude automatic iPhone redirects and handoff buttons. Cookies or devices changing can create another assignment. Missing events and blockers can affect results. Confidence intervals describe uncertainty; they do not give the probability a variant is the winner.'
-
   return <>
-    <div className="mb-5 flex flex-wrap items-center justify-between gap-4">
-      <AnalyticsSelect label="Test" value={experiment.id} onChange={setSelected} options={landingExperiments.map(item => ({ value: item.id, label: `${item.status === 'active' ? 'Active' : 'Archived'} · ${item.name}` }))} />
-      <p className="text-xs text-zinc-500">{days === 1 ? 'Last 24 hours' : `Last ${days} days`} · Website experiments · Pacific time</p>
+    <div className="mb-5"><AnalyticsSelect label="Experiment" value={selected} onChange={setSelected} options={options} /></div>
+    <div key={selected} className="admin-report-enter">
+      {selected === paywallTest ? <PaywallExperiments data={data} /> : selected === webTest ? <WebAnalysisComparison data={data} /> : <HomepageExperiment data={data} experiment={experiment} />}
     </div>
-    <div className="mb-6">
-      <p className="text-xs font-medium text-zinc-500">{experiment.status === 'active' ? 'Live test · 50/50 assignment' : 'Archived · historical results only'}</p>
-      <h2 className="mt-2 text-xl font-medium tracking-tight">{experiment.name}</h2>
-      <p className="mt-2 text-sm leading-6 text-zinc-500">A: {experiment.control} · B: {experiment.treatment}</p>
-      <p className="mt-2 text-sm font-medium">{summary.status}</p>
-    </div>
-    {days <= 7 ? <Notice>This period has no full seven-day follow-up for recent entrants. Choose Last 30 or 90 days to compare mature outcomes.</Notice> : null}
-    {summary.imbalance ? <Notice>The recorded split is unexpectedly uneven. Investigate assignment and event delivery before interpreting results (allocation check: p &lt; 0.001).</Notice> : null}
+  </>
+}
+
+function HomepageExperiment({ data, experiment }: { data: AnalyticsDashboard; experiment: typeof landingExperiments[number] }) {
+  const rows = landingExperimentRows(data.landingExperiments ?? [], experiment.id)
+  const summary = landingExperimentSummary(data.landingExperiments ?? [], experiment.id, new Date(data.generatedAt))
+  const latest = Math.max(...rows.map(row => landingEventTime(row.latest_exposure)).filter(Number.isFinite))
+  const outcome = experiment.status === 'active' ? 'Paid conversion' : 'App Store click rate'
+  const labels = [experiment.control, experiment.treatment]
+  return <>
     <div className="admin-stats-grid">
-      <Stat title={`A · ${outcome} rate`} value={String(control.mature_conversion_rate)} note={`${count(control.mature_conversions)} ${conversions} / ${count(control.mature)} eligible browsers · ${confidence} interval: ${control.interval}`} />
-      <Stat title={`B · ${outcome} rate`} value={String(treatment.mature_conversion_rate)} note={`${count(treatment.mature_conversions)} ${conversions} / ${count(treatment.mature)} eligible browsers · ${confidence} interval: ${treatment.interval}`} />
-      <Stat title="Difference · B minus A" value={summary.difference} note="Percentage points · mature conversion rates; not a winner declaration" />
-      <Stat title="Eligible browsers" value={count(eligible)} note={`${count(pending)} awaiting a full seven-day follow-up`} />
+      {rows.map((row, index) => <Stat key={row.variant} title={labels[index]} value={String(row.mature_conversion_rate)}
+        note={`${count(row.mature_conversions)} conversions / ${count(row.mature)} eligible browsers · ${outcome}`} />)}
+      <Stat title="Change" value={summary.difference} note={summary.status} />
     </div>
-    <Panel title={`Primary outcome · ${paidPrimary ? 'Sales & subscriptions' : 'App Store interest'}`} description={`Mature ${outcome.toLowerCase()} rate · ${confidence} confidence intervals`} note={measurements}>
-      {comparable ? <Bars maximum={100} format={value => `${value.toFixed(digits)}%`} rows={rows.map((row, index) => ({ label: index === 0 ? 'A · Control' : 'B · Treatment', value: Number(row.mature_conversions) / Number(row.mature) * 100, detail: `${row.variant} · ${count(row.mature_conversions)} of ${count(row.mature)} eligible browsers · ${confidence} interval: ${row.interval}` }))} /> : <p className="admin-empty">Both variants need eligible browsers before a mature rate comparison is available. Pending visitors are not counted as failures.</p>}
-      <p className="mt-4 text-sm leading-6 text-zinc-500">{paidPrimary ? 'A browser converts after at least one verified, positive Stripe payment for a subscription or one-time purchase. Multiple payments from the same browser count once. Native App Store purchases have no reliable experiment assignment and are excluded.' : 'App Store clicks measure interest. They do not establish downloads, paying customers, or revenue.'}</p>
-      {paidPrimary && <div className="mt-5">
-        <p className="mb-2 text-sm font-medium">Observed paying browsers by purchase type</p>
-        <Table rows={rows} columns={['variant', 'paid_checkouts', 'subscription_buyers', 'one_time_buyers']} />
-        <p className="mt-2 text-xs text-zinc-500">Includes recent browsers still in follow-up. A browser can appear in both purchase types.</p>
-      </div>}
-      <p className="mt-3 text-xs leading-5 text-zinc-500">Review checkpoints: at least {experiment.minimumDays} observed days and {count(experiment.minimumVisitors)} eligible browsers per variant. Currently {summary.elapsedDays} observed days · A {count(control.mature)} · B {count(treatment.mature)}. Reaching a checkpoint does not guarantee enough statistical power or a winner.</p>
-      <DataDetails><Table rows={rows} columns={['variant', 'mature', 'mature_conversions', 'mature_conversion_rate', 'interval']} /><p className="mt-3 text-xs text-zinc-500">Relative lift of B vs A: {summary.lift}. Undefined when A has no mature conversions. Intervals use the existing Wilson method.</p></DataDetails>
-    </Panel>
-    <Panel title="Traffic allocation over time" description={`${summary.total ? count(summary.total) : 'No'} recorded browser assignments · A ${count(control.visitors)} / B ${count(treatment.visitors)}`} note="Each point groups a browser's first recorded entry for this experiment in the selected window by Pacific-time entry date. These are assignment counts, not conversions. Boundary buckets are partial; missing buckets are omitted. Counts describe the selected period rather than the entire experiment lifetime.">
-      <AnalyticsChart title="Experiment traffic allocation" rows={daily} fitToData metrics={[
-        { key: 'control', label: 'A · Control', color: chartColors.blue },
-        { key: 'treatment', label: 'B · Treatment', color: chartColors.violet },
-      ]} days={days} />
-      <DataDetails><Table rows={daily} columns={['day', 'control', 'treatment']} /></DataDetails>
-    </Panel>
-    <Panel title="Secondary outcomes & diagnostics" description="Supporting evidence, separate from the primary test outcome.">
-      <Disclosure className="admin-data-details"><DisclosureSummary>Explore downstream outcomes and exclusions</DisclosureSummary><AccordionContent>
-        <p className="mt-4 text-xs leading-5 text-zinc-500">Observed counts for all assigned browsers, including recent entrants. Outcomes can overlap and are still developing; these are not mature conversion rates. Paid entries require a positive, server-confirmed paid checkout and are not payment transaction totals.</p>
-        <Table rows={rows.map(row => ({ variant: row.variant, assignments: row.visitors, pending: row.pending, web_analysis_starts: row.browser_starts, paywalls: row.paywalls, app_store_clicks: row.store_clicks, checkout_starts: row.checkouts, paying_browsers: row.paid_checkouts, subscription_buyers: row.subscription_buyers, one_time_buyers: row.one_time_buyers }))} columns={['variant', 'assignments', 'pending', 'web_analysis_starts', 'paywalls', 'app_store_clicks', 'checkout_starts', 'paying_browsers', 'subscription_buyers', 'one_time_buyers']} />
-        <h3 className="mb-3 mt-6 text-sm font-medium">iPhone handoff context</h3>
-        <p className="mb-3 text-xs leading-5 text-zinc-500">These shared handoffs happen before homepage treatment and are excluded from the primary comparison. Counts cover the selected period across tests; do not add them to variant conversions.</p>
-        <Table rows={data.landingHandoffs ?? []} columns={['placement', 'destination', 'browsers']} />
-        <p className="mt-4 text-xs text-zinc-500">Experiment ID: {experiment.id} · Assignment cookie lasts 90 days. Archived treatments retain their original definitions.</p>
-      </AccordionContent></Disclosure>
-    </Panel>
-    <Panel title="Data sources & freshness" description="Experiment entry events and matched outcomes from the analytics database.">
-      <dl className="grid gap-5 text-sm sm:grid-cols-2">
-        <div><dt className="text-zinc-500">Snapshot generated</dt><dd className="mt-1 font-medium">{timestamp(data.generatedAt)}</dd></div>
-        <div><dt className="text-zinc-500">Latest recorded entry · selected test</dt><dd className="mt-1 font-medium">{latest ? timestamp(latest) : 'No entries observed in this window'}</dd></div>
-      </dl>
-      <p className="mt-5 text-xs leading-5 text-zinc-500">Checks every minute while visible and when you return to this tab. Server snapshots use a 60-second cache with background revalidation. Entry time is a client event timestamp, not ingestion time. Fresh snapshots do not establish complete tracking.</p>
-      <Link className="mt-5 inline-block text-sm font-medium text-[#008ac5] underline underline-offset-4" href="/admin/analytics/quality">Data health →</Link>
+    {summary.imbalance && <Notice>The recorded allocation is unexpectedly uneven. Check exposure delivery before interpreting the result.</Notice>}
+    <Panel title="Homepage exposure over time"
+      description={`${count(summary.total)} assigned browsers · ${Number.isFinite(latest) ? 'Latest exposure ' + formatReportingTime(new Date(latest), { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit', timeZoneName: 'short' }) : 'No observed exposures in this period'}`}
+      note="The live comparison counts browsers that reached an actual homepage, excluding automatic handoffs. Paid conversion uses verified positive Stripe payments within seven days. Recent browsers appear as pending until they have seven days of follow-up. Native purchases cannot be matched reliably to a homepage assignment.">
+      <AnalyticsChart title="Homepage assignments" rows={(data.landingExperimentDaily ?? []).filter(row => row.experiment_id === experiment.id)} fitToData days={Number(data.filters.days)}
+        metrics={[{ key: 'control', label: labels[0], color: chartColors.blue }, { key: 'treatment', label: labels[1], color: chartColors.violet }]} />
+      <DataDetails><Table rows={rows} columns={['variant', 'visitors', 'mature', 'pending', 'mature_conversions', 'mature_conversion_rate', 'interval', 'paywalls', 'checkouts', 'subscription_buyers']} /></DataDetails>
     </Panel>
   </>
+}
+
+const analysisStages = [
+  ['started', 'Opened analysis'], ['capture_opened', 'Reached capture'], ['photo_ready', 'Photo ready'], ['paywalls', 'Reached paywall'],
+] as const
+function WebAnalysisComparison({ data }: { data: AnalyticsDashboard }) {
+  const observed = data.webJourney?.experiments ?? []
+  return <>
+    <Notice>This compares tracked rollout cohorts. Traffic, offers and tracking coverage can differ by version. Journeys without a known version are excluded. Checkout and paid rates require a full 24 hours of follow-up.</Notice>
+    {['mobile_web', 'desktop_web'].map(channel => {
+      const rows: MetricRow[] = ['old', 'new'].map(variant => observed.find(row => row.channel === channel && row.variant === variant) ?? { variant, started: null, mature: null, paid: null, subscribed: null, checkouts: null })
+      return <Panel key={channel} title={analyticsChannelLabel(channel)} description="First 24 hours after entering analysis. Capture and paywall counts include recent journeys.">
+        {rows.some(row => row.started != null) && <ComparisonBars rows={analysisStages.map(([key, label]) => ({ label, values: rows.map(row => row[key] == null ? null : Number(row[key])) }))}
+          series={[{ label: 'Old flow', color: chartColors.blue }, { label: 'New flow', color: chartColors.violet }]} />}
+        <Table rows={rows.map(row => ({ ...row, checkout_rate: percent(Number(row.checkouts), Number(row.mature)), paid_rate: percent(Number(row.paid), Number(row.mature)) }))}
+          columns={['variant', 'started', 'mature', 'checkouts', 'checkout_rate', 'paid', 'paid_rate', 'subscribed']} />
+      </Panel>
+    })}
+  </>
+}
+
+const usd = new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' })
+const metric = (row: MetricRow, key: string) => Number(row[key] ?? 0)
+
+function PaywallExperiments({ data }: { data: AnalyticsDashboard }) {
+  const results = data.paywallExperiments ?? []
+  const groups = new Map<string, MetricRow[]>()
+  for (const row of results) {
+    const key = `${row.experiment_id} · ${row.surface}`
+    const group = groups.get(key)
+    if (group) group.push(row)
+    else groups.set(key, [row])
+  }
+  if (!groups.size) return <Notice>No paywall experiments have recorded an exposure in this date range.</Notice>
+  return <>
+    <Notice>One exposure per browser and device category. Paid results use Stripe-confirmed subscription starts within 24 hours of the first plan impression. Use the full enrollment date range for decisions.</Notice>
+    {[...groups].map(([key, rows]) => <PaywallExperiment key={key} name={key} rows={rows} now={Date.parse(data.generatedAt)} />)}
+  </>
+}
+
+function PaywallExperiment({ name, rows, now }: { name: string; rows: MetricRow[]; now: number }) {
+  const [control, treatment] = ['control', 'treatment'].map(arm => rows.find(row => row.arm === arm && row.browser === 'all') ?? { arm })
+  const sample = [control, treatment]
+  const exposed = sample.map(row => metric(row, 'exposed'))
+  const total = exposed[0] + exposed[1]
+  const allocationMismatch = total >= 100 && (exposed[0] - exposed[1]) ** 2 / total > 10.827566171
+  const end = Math.max(...sample.map(row => metric(row, 'ends_at')))
+  const minimum = Math.max(...sample.map(row => metric(row, 'minimum_per_arm')))
+  const mature = sample.map(row => metric(row, 'mature'))
+  const paid = sample.map(row => metric(row, 'paid'))
+  const ready = now >= end + 86_400_000 && mature.every(n => n >= minimum)
+  const intervals = paid.map((n, index) => landingRateInterval(n, mature[index], 1.959963985))
+  let status = 'Enrollment open'
+  if (allocationMismatch) status = 'Check allocation before interpreting'
+  else if (now >= end && now < end + 86_400_000) status = 'Waiting for 24-hour outcomes'
+  else if (now >= end && !ready) status = 'Inconclusive · too few exposures'
+  else if (ready) status = 'Ready to review · check uncertainty and guardrails'
+  const tableRow = (row: MetricRow) => {
+    const n = metric(row, 'mature')
+    const buyers = metric(row, 'paid')
+    return {
+      browser: row.browser ?? 'all', arm: row.arm, exposed: metric(row, 'exposed'), pending: metric(row, 'exposed') - n,
+      tapped: metric(row, 'tapped'), checkouts: metric(row, 'checkouts'), checkout_failures: metric(row, 'checkout_failures'),
+      paid: buyers, paid_rate: percent(buyers, n),
+      first_charge_per_exposure: n && buyers === metric(row, 'paid_usd') ? usd.format(metric(row, 'first_charge_usd_cents') / (n * 100)) : '—',
+    }
+  }
+  const columns = ['arm', 'exposed', 'pending', 'tapped', 'checkouts', 'checkout_failures', 'paid', 'paid_rate', 'first_charge_per_exposure']
+  return <Panel title={name} description={`${status} · ${count(minimum)} mature exposures per arm required · Enrollment ends ${formatReportingTime(new Date(end), { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit', timeZoneName: 'short' })}`}
+    note="First-charge revenue is gross USD before refunds and fees. It is hidden when paid outcomes use another currency. Browser breakdowns diagnose friction and are exploratory.">
+    <div className="admin-stats-grid">
+      {sample.map((row, index) => {
+        const interval = intervals[index]
+        return <Stat key={String(row.arm)} title={index === 0 ? 'Current paywall' : 'Variant'} value={percent(paid[index], mature[index])}
+          note={`${count(paid[index])} paid / ${count(mature[index])} mature${interval ? ` · 95% CI ${interval[0].toFixed(1)}–${interval[1].toFixed(1)}%` : ''}`} />
+      })}
+      <Stat title="Change" value={mature.every(Boolean) ? `${((paid[1] / mature[1] - paid[0] / mature[0]) * 100).toFixed(2)} pp` : '—'}
+        note="Variant minus current paywall" />
+    </div>
+    <Table rows={sample.map(tableRow)} columns={columns} />
+    <DataDetails><Table rows={rows.filter(row => row.browser !== 'all').map(tableRow)} columns={['browser', ...columns]} /></DataDetails>
+  </Panel>
 }

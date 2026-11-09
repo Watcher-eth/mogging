@@ -34,7 +34,7 @@ test('intervals preserve uncertainty in empty, zero-conversion, and small cohort
 test('reporting includes unobserved variants and separates pending from mature conversion rates', () => {
   const rows = landingExperimentRows([{ experiment_id: 'landing_hero_v1', variant: 'b', visitors: 20, store_clicks: 6, mature: 10, mature_store_clicks: 2, pending: 10, web_starts: 1, paid_checkouts: 1 }], 'landing_hero_v1')
   expect(rows[0]).toMatchObject({ visitors: 0, observed_store_rate: '—', interval: '—' })
-  expect(rows[1]).toMatchObject({ visitors: 20, observed_store_rate: '30.0%', mature_store_rate: '20.0%', pending: 10, paid_checkouts: 1 })
+  expect(rows[1]).toMatchObject({ visitors: 20, observed_store_rate: '30.0%', mature_conversion_rate: '20.0%', pending: 10, paid_checkouts: 1 })
 })
 
 test('new assignments take precedence while historical Stripe metadata stays readable', () => {
@@ -57,14 +57,14 @@ test('allocation warnings take precedence over large apparent improvements', () 
   expect(landingExperimentSummary(rows,'landing_homepage_v3',new Date('2026-10-05'))).toMatchObject({status:'Check traffic allocation',imbalance:true})
 })
 test('balanced mature cohorts expose effect size without declaring a winner', () => {
-  const rows = ['a','b'].map((variant,i)=>({experiment_id:'landing_homepage_v3',variant,visitors:1000,mature:1000,mature_store_clicks:i?250:200,first_exposure:'2026-09-01'}))
-  expect(landingExperimentSummary(rows,'landing_homepage_v3',new Date('2026-10-05'))).toMatchObject({status:'Checkpoints met · review uncertainty',difference:'+5.0 pp',lift:'25.0%',imbalance:false})
+  const rows = ['a','b'].map((variant,i)=>({experiment_id:'landing_homepage_v3',variant,visitors:1000,mature:1000,mature_paid_checkouts:i?250:200,first_exposure:'2026-09-01'}))
+  expect(landingExperimentSummary(rows,'landing_homepage_v3',new Date('2026-10-05'))).toMatchObject({status:'Checkpoints met · review uncertainty',difference:'+5.00 pp',lift:'25.0%',imbalance:false})
 })
 
 
 test('handoff-only assignments do not dilute homepage click rates', () => {
-  const [row] = landingExperimentRows([{experiment_id:'landing_homepage_v3',variant:'a',visitors:100,homepage_visitors:80,store_clicks:8,mature:40,mature_store_clicks:4,pending:40}], 'landing_homepage_v3')
-  expect(row).toMatchObject({visitors:100,homepage_visitors:80,observed_store_rate:'10.0%',mature_store_rate:'10.0%'})
+  const [row] = landingExperimentRows([{experiment_id:'landing_homepage_v3',variant:'a',visitors:100,homepage_visitors:80,store_clicks:8,mature:40,mature_paid_checkouts:4,pending:40}], 'landing_homepage_v3')
+  expect(row).toMatchObject({visitors:100,homepage_visitors:80,observed_store_rate:'10.0%',mature_conversion_rate:'10.00%'})
 })
 
 test('experiment timestamps without an offset retain their stored UTC meaning', () => {

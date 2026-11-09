@@ -8,12 +8,13 @@ import { ArrowUpRight, Bell, BookOpen, Check, ChartNoAxesCombined, ScanFace, Lis
 import { formatStripePrice, type SubscriptionPrices, type SubscriptionProduct } from '@/lib/payments/subscription-prices'
 import { cn } from '@/lib/utils'
 import { webAnalysisCheckoutLimit, webAnalysisPlans, webAnalysisProducts, type WebAnalysisProduct } from '@/lib/payments/web-analysis-plans'
+import type { PaywallExposure } from '@/lib/payments/paywall-experiment'
 import styles from './membership-offer.module.css'
 const EvaluationPreview = dynamic(() => import('@/components/landing/mobile-preview').then(module => module.EvaluationPreview), { ssr: false })
 
 export type ReportPrice = { product: 'evaluation' | 'evaluation_pack_3'; currency: string; amount: number }
-export type CheckoutQuote = { currency: string; unitAmount: number; returnOfferSessionId?: string; starterIntro?: true; creatorDiscount?: true }
-export type WebAnalysisPrices = { currency: string; amounts: Record<WebAnalysisProduct, number>; starterIntro?: number }
+export type CheckoutQuote = { currency: string; unitAmount: number; returnOfferSessionId?: string; starterIntro?: true; creatorDiscount?: true; experiment?: PaywallExposure }
+export type WebAnalysisPrices = { currency: string; amounts: Record<WebAnalysisProduct, number>; starterIntro?: number; experiment?: PaywallExposure }
 export const membershipPlans = [
   { id: 'mobile_subscription_weekly', label: 'plan.weekly', cadence: 'plan.weekCadence', credits: 1 },
   { id: 'mobile_subscription_monthly', label: 'plan.monthly', cadence: 'plan.monthCadence', credits: 2 },
@@ -76,14 +77,15 @@ const webPlanNames: Record<WebAnalysisProduct, string> = {
   web_basic_weekly: 'Basic', web_basic_monthly: 'Starter', web_pro_monthly: 'Pro',
 }
 
-export function WebAnalysisPlanOptions({ prices, selected, onSelect, imageCount, disabled }: {
+export function WebAnalysisPlanOptions({ prices, selected, onSelect, imageCount, disabled, compact }: {
+  compact?: boolean
   prices?: WebAnalysisPrices; selected: WebAnalysisProduct; onSelect: (plan: WebAnalysisProduct) => void; imageCount: number; disabled: boolean
 }) {
   const { i18n } = useTranslation()
   const id = useId()
   const reduce = useReducedMotion()
   return <>
-    <WebAnalysisPlanBenefits product={selected} />
+    {compact ? <details className={styles.planDetails}><summary>What’s included</summary><WebAnalysisPlanBenefits product={selected} /></details> : <WebAnalysisPlanBenefits product={selected} />}
     <div className={cn(styles.plans, styles.webPlans)} role="group" aria-label="Analysis plans">
       {webAnalysisProducts.map(product => {
         const plan = webAnalysisPlans[product]

@@ -166,6 +166,9 @@ export async function recordStripeBillingEvent(event: Stripe.Event) {
     platform: 'server', source: 'stripe_verified', environment: session.livemode ? 'production' : 'development',
     occurredAt: new Date(event.created * 1000), properties: {
       ...stripeJourneyProperties(session.metadata), paywall_version: session.metadata?.paywallVersion,
+      paywall_experiment_id: session.metadata?.paywallExperimentId,
+      paywall_experiment_unit: session.metadata?.paywallExperimentUnit,
+      paywall_experiment_arm: session.metadata?.paywallExperimentArm,
       creator_tracking_link_id: session.metadata?.creatorTrackingLinkId, creator_discount: session.metadata?.creatorDiscount,
       provider: 'stripe', surface: session.metadata?.source, offering: session.metadata?.returnOffer === '1' ? 'stripe_return' : undefined,
       product: session.metadata?.product || 'unknown', mode: session.mode, status: session.payment_status,
@@ -177,7 +180,7 @@ export async function recordStripeBillingEvent(event: Stripe.Event) {
 
 export async function recordVerifiedStripeCheckout(session: Stripe.Checkout.Session) {
   await recordStripeBillingEvent({
-    id: `checkout:${session.id}`, type: 'checkout.session.completed', created: session.created || Math.floor(Date.now() / 1000),
+    id: `checkout:${session.id}`, type: 'checkout.session.completed', created: (session.metadata?.paywallExperimentId ? 0 : session.created) || Math.floor(Date.now() / 1000),
     livemode: session.livemode, data: { object: session },
   } as Stripe.Event)
 }

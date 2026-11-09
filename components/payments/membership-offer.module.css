@@ -71,3 +71,7 @@ button.plan:active { transform: scale(.98); }
   .webBenefits { gap: 9px 10px; }
   .webBenefits li { font-size: 12px; }
 }
+
+.planDetails { color: #575760; font-size: 13px; }
+.planDetails summary { cursor: pointer; width: fit-content; padding-block: 4px; }
+.planDetails[open] summary { margin-bottom: 8px; }

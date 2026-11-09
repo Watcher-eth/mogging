@@ -39,6 +39,14 @@ export function ReliabilityDashboard({data,days}:{data:ReliabilityData;days:numb
     <Bars animated maximum={issueMaximum} labelWidth={250} rows={data.failures.slice(0,8).map(row=>({label:`${featureLabel(row.feature)} · ${label(row.code)}`,value:Number(row.events)}))}/>
     <DataDetails><Table rows={data.failures.map(row=>({...row,feature:featureLabel(row.feature),code:label(row.code),outcome:label(row.outcome),latest_event:time(row.latest_event)}))} columns={['feature','code','outcome','events','latest_event']}/><p className="mt-3 text-xs leading-5 text-zinc-500">Up to 100 issue groups. Recent trace details below retain up to 50 records.</p><Table rows={data.recent.map(row=>({...row,latest_event:time(row.latest_event)}))} columns={['feature','code','outcome','duration_ms','trace','latest_event']}/></DataDetails>
    </Panel>
+   <Panel title="Sign-in and evaluation health" description="Sign-in events by platform and evaluation outcomes from the server ledger.">
+    <div className="admin-section-grid">
+      <div><h3 className="mb-2 text-sm">Sign-in activity</h3><Table rows={data.auth ?? []} columns={['platform','attempts','signed_in','sign_in_errors','setup_errors']}/></div>
+      <div><h3 className="mb-2 text-sm">Evaluation requests</h3><Table rows={data.evaluations ?? []} columns={['requests','completed','failed','pending','missing_report']}/></div>
+    </div>
+    <DataDetails><Table rows={data.clients.filter(row=>/^(account_|evaluation_|photo_)/.test(String(row.event))).map(row=>({...row,latest_event:time(row.latest_event)}))}
+      columns={['event','platform','release','code','events','latest_event']}/></DataDetails>
+   </Panel>
    <Panel title="Evaluation follow-up" description="Production starts without a matching final server marker in the last 24 hours."
     note="Starts are deduplicated by recorded trace and must be older than five minutes. A final production backend marker for the same trace resolves the signal. Missing telemetry, interruption or genuinely unfinished work can all leave an unresolved start. The headline is uncapped; the detail list retains up to 50 traces. This signal does not establish a failed scan or active processing.">
     <p className="text-sm leading-6 text-zinc-500">{count(data.unresolved_count)} unresolved starts. {count(data.stalled.length)} recent trace references are available for operational follow-up.</p>

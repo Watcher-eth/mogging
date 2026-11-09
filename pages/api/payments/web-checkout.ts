@@ -20,6 +20,8 @@ import { getWebStarterIntroCoupon, validateCheckoutProduct } from '@/lib/payment
 import { createWebCheckoutGuest, rememberWebCheckoutGuest } from '@/lib/payments/guest-checkout'
 import { isWebAnalysisProduct, WEB_ANALYSIS_CREATOR_COUPON, webAnalysisCheckoutLimit, webStarterIntro } from '@/lib/payments/web-analysis-plans'
 import { readStarterIntro, requireActiveStarterIntro, starterIntroCookie } from '@/lib/payments/web-starter-intro'
+import { checkoutPaywallExperiment, getPaywallTreatmentPrice, paywallPriceProduct } from '@/lib/payments/paywall-experiment-server'
+import { paywallExperimentProperties } from '@/lib/payments/paywall-experiment'
 
 const checkoutSchema = z.object({
   attemptId: z.string().uuid().optional(),
@@ -27,6 +29,8 @@ const checkoutSchema = z.object({
   flowVersion: z.string().max(80).optional(),
   paywallVersion: z.enum(['2', '3']).optional(),
   webPriceVariant: z.literal('mobile').optional(),
+  paywallExperimentId: z.string().regex(/^[a-z][a-z0-9_]{2,63}$/).optional(),
+  paywallExperimentUnit: z.string().regex(/^[a-f0-9]{32}$/).optional(),
   guestCheckout: z.literal(true).optional(),
   imageCount: z.number().int().positive().optional(),
   entryMode: z.enum(['photo_first', 'onboarding_first']).optional(),
@@ -60,6 +64,17 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
     const webPlan = isWebAnalysisProduct(productId)
     const mobileWeb = input.webPriceVariant === 'mobile'
     const isAnalysisCheckout = input.returnTo === 'analysis' && input.source === 'web_analysis'
+    if (input.paywallExperimentId && (!isAnalysisCheckout || mobileWeb || !env.NEXTAUTH_SECRET)) {
+      throw new ApiError(400, 'This paywall experiment is unavailable for this checkout')
+    }
+    const experiment = input.paywallExperimentId && env.NEXTAUTH_SECRET
+      ? checkoutPaywallExperiment(req, input.paywallExperimentId, webPlan ? 'desktop' : 'mobile', env.NEXTAUTH_SECRET) : null
+    if (input.paywallExperimentUnit !== experiment?.exposure.unit) {
+      throw new ApiError(409, 'Reopen the paywall to refresh your plans.')
+    }
+    if (experiment?.config.kind === 'price' && (input.currency !== 'usd' || input.unitAmount == null || input.starterIntro || input.returnOfferSessionId)) {
+      throw new ApiError(409, 'Reopen the paywall to refresh your plans.')
+    }
     if (webPlan && !isAnalysisCheckout) throw new ApiError(400, 'Select this plan from web analysis')
     if (webPlan && (input.imageCount ?? 1) > webAnalysisCheckoutLimit(productId)) {
       throw new ApiError(400, 'Select a plan with enough scans for these photos')
@@ -84,7 +99,11 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
     }
     const scanReturn = scanTab ? `${origin}/app/home?tab=${scanTab}` : null
     const product = getProductConfig(input.product)
-    const price = await validateCheckoutProduct(input.product, product, mobileWeb)
+    const standardPrice = await validateCheckoutProduct(input.product, product, mobileWeb)
+    const useTreatmentPrice = experiment?.config.kind === 'price' && experiment.exposure.arm === 'treatment'
+      && productId === paywallPriceProduct(experiment.exposure.surface)
+    const price = useTreatmentPrice && experiment.config.kind === 'price'
+      ? await getPaywallTreatmentPrice(experiment.config, standardPrice) : standardPrice
     const introCoupon = input.starterIntro && price ? await getWebStarterIntroCoupon(price, mobileWeb).catch(() => null) : null
     if (input.starterIntro && !introCoupon) throw new ApiError(503, 'The first-month offer is temporarily unavailable')
     if (input.currency || input.unitAmount !== undefined) {
@@ -136,6 +155,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
               session.metadata?.returnTo === input.returnTo &&
               session.metadata?.creatorClickId === attribution.clickId &&
               session.metadata?.mobileInstallId === input.mobileInstallId &&
+              session.metadata?.paywallExperimentUnit === experiment?.exposure.unit &&
               session.metadata?.landingAssignment === (landingAssignment ? serializeLandingAssignment(landingAssignment) : undefined)
             if (matches && session.metadata?.attemptId === input.attemptId) return session
             // Keep creator, installation, and experiment credit with the matching checkout.
@@ -159,7 +179,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
         ...(introCoupon || discounted ? { discounts: [{ coupon: introCoupon ?? couponId }] } : { allow_promotion_codes: true }),
         ...(customer ? { customer } : {}),
         client_reference_id: accountId,
-        line_items: [webPlan && price ? { price: price.id, quantity: 1 } : getCheckoutLineItem(input.product)],
+        line_items: [(webPlan || useTreatmentPrice) && price ? { price: price.id, quantity: 1 } : getCheckoutLineItem(input.product)],
         ...(product.mode === 'payment' ? { payment_intent_data: { metadata: { ...channelMetadata, product: input.product, accountId, userId: accountId, source } } } : {}),
         metadata: {
           ...channelMetadata,
@@ -173,6 +193,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
           ...(input.returnTo ? { returnTo: input.returnTo } : {}),
           ...(input.returnLocale ? { returnLocale: input.returnLocale } : {}),
           ...(input.unitAmount !== undefined ? { quotedUnitAmount: String(input.unitAmount) } : {}),
+          ...(experiment ? { paywallExperimentId: experiment.exposure.id, paywallExperimentUnit: experiment.exposure.unit, paywallExperimentArm: experiment.exposure.arm } : {}),
           mobileInstallId: input.mobileInstallId,
           source,
           ...(activationCode ? { activationCode } : {}),
@@ -187,7 +208,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
               subscription_data: {
                 metadata: {
                   ...channelMetadata,
-                  ...(webPlan && price ? { recurringAmount: String(price.unit_amount), recurringCurrency: price.currency } : {}),
+                  ...((webPlan || useTreatmentPrice) && price ? { recurringAmount: String(price.unit_amount), recurringCurrency: price.currency } : {}),
                   product: input.product,
                   mobileInstallId: input.mobileInstallId,
                   source,
@@ -228,6 +249,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
         product: input.product, provider: 'stripe', surface: source, offering: introCoupon ? 'starter_intro' : input.returnOfferSessionId ? 'stripe_return' : undefined,
         attempt_id: input.attemptId, flow_id: input.flowId, flow_version: input.flowVersion, entry_mode: input.entryMode, ...(input.attemptId ? { paywall_version: input.paywallVersion ?? '2' } : {}),
         ...landingProperties(landingAssignment),
+        ...paywallExperimentProperties(experiment?.exposure),
         mobileInstallId: input.mobileInstallId,
       },
     })

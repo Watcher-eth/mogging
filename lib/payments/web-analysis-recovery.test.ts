@@ -1,3 +1,6 @@
+import { assignPaywallExperiment, checkoutPaywallExperiment, parsePaywallExperiment, paywallPriceProduct, validatePaywallTreatmentPrice } from './paywall-experiment-server'
+import { paywallExperimentProperties } from './paywall-experiment'
+import type Stripe from 'stripe'
 import { stripeJourneyProperties, webRequestContext } from '@/lib/analytics/web-context'
 import { getWebAnalysisPrice, getWebStarterIntro, isWebAnalysisProduct, WEB_ANALYSIS_CREATOR_COUPON, webAnalysisCheckoutLimit, webAnalysisProductForLookupKey, webAnalysisProducts, webStarterIntro } from './web-analysis-plans'
 import { issueStarterIntro, readStarterIntro, requireActiveStarterIntro, starterIntroCookie } from './web-starter-intro'
@@ -14,7 +17,7 @@ function route(file: string, overrides: Record<string, unknown> = {}) {
   const calls: any[] = []
   const headers: Record<string, unknown> = {}
   const scope: any = {
-    z, ApiError, stripeJourneyProperties, webRequestContext, createHash, env: { STRIPE_SECRET_KEY: 'fixture', NEXTAUTH_SECRET: introSecret },
+    z, ApiError, paywallExperimentProperties, paywallPriceProduct, checkoutPaywallExperiment, stripeJourneyProperties, webRequestContext, createHash, env: { STRIPE_SECRET_KEY: 'fixture', NEXTAUTH_SECRET: introSecret },
     parseBody: (schema: any, body: unknown) => schema.parse(body),
     json: (_res: unknown, status: number, data: unknown) => ({ status, data }),
     methodNotAllowed: () => ({ status: 405 }),
@@ -347,4 +350,54 @@ test('verified access returns original journey context and deduplicates activati
   expect(events).toHaveLength(2)
   expect(events[0].eventId).toBe(events[1].eventId)
   expect(events[0]).toMatchObject({ eventName: 'purchase_activated', accountId: 'buyer', source: 'stripe_access_verified' })
+})
+
+test('experimental checkout charges only the assigned monthly Stripe price and rejects mismatched quotes', async () => {
+  const previous = process.env.WEB_PAYWALL_EXPERIMENT
+  const now = Date.now()
+  const day = 86_400_000
+  const raw = JSON.stringify({
+    id: 'desktop_price_fixture', kind: 'price', surface: 'desktop',
+    startsAt: new Date(now - day).toISOString(), endsAt: new Date(now + 3 * day).toISOString(),
+    stripePriceId: 'price_treatment', unitAmount: 1599,
+  })
+  const config = parsePaywallExperiment(raw)!
+  const standard = {
+    id: 'price_standard', active: true, livemode: false, currency: 'usd', unit_amount: 1799,
+    product: 'prod_starter', type: 'recurring', billing_scheme: 'per_unit', tax_behavior: 'exclusive',
+    recurring: { interval: 'month', interval_count: 1, usage_type: 'licensed' },
+  } as Stripe.Price
+  const treatment = { ...standard, id: 'price_treatment', unit_amount: 1599 }
+  const f = route('web-checkout', {
+    validateCheckoutProduct: async () => standard,
+    getPaywallTreatmentPrice: async (priceConfig: Parameters<typeof validatePaywallTreatmentPrice>[0], control: Stripe.Price) =>
+      validatePaywallTreatmentPrice(priceConfig, control, treatment),
+    priceAmounts: (price: Stripe.Price) => ({ usd: price.unit_amount }),
+    getCheckoutLineItem: (_product: unknown, price: Stripe.Price) => ({ price: price.id, quantity: 1 }),
+  })
+  const body = { product: 'web_basic_monthly', source: 'web_analysis', returnTo: 'analysis', mobileInstallId: 'fixture-install', currency: 'usd' }
+  const visitors = Array.from({ length: 60 }, () => {
+    const visitor = crypto.randomUUID()
+    return { visitor, exposure: assignPaywallExperiment(config, visitor, 'desktop', introSecret) }
+  })
+  process.env.WEB_PAYWALL_EXPERIMENT = raw
+  try {
+    for (const arm of ['control', 'treatment'] as const) {
+      const { visitor, exposure } = visitors.find(item => item.exposure.arm === arm)!
+      expect(assignPaywallExperiment(config, visitor, 'desktop', introSecret)).toEqual(exposure)
+      const unitAmount = arm === 'control' ? 1799 : 1599
+      const request = { ...body, paywallExperimentId: exposure.id, paywallExperimentUnit: exposure.unit, unitAmount }
+      const cookies = { mogging_paywall_visitor: visitor }
+      expect((await f.run(request as any, cookies)).status).toBe(200)
+      expect(f.calls.at(-1).line_items).toEqual([{ price: arm === 'control' ? standard.id : treatment.id, quantity: 1 }])
+      expect(f.calls.at(-1).metadata.paywallExperimentUnit).toBe(exposure.unit)
+      expect((await f.run({ ...request, unitAmount: unitAmount + 100 } as any, cookies)).status).toBe(409)
+      expect((await f.run({ ...request, paywallExperimentUnit: 'f'.repeat(32) } as any, cookies)).status).toBe(409)
+      expect((await f.run(request as any)).status).toBe(409)
+    }
+    expect(f.calls).toHaveLength(2)
+  } finally {
+    if (previous === undefined) delete process.env.WEB_PAYWALL_EXPERIMENT
+    else process.env.WEB_PAYWALL_EXPERIMENT = previous
+  }
 })

@@ -5,6 +5,7 @@ import { useTranslation } from 'react-i18next'
 import Image from 'next/image'
 import Link from 'next/link'
 import useSWR from 'swr'
+import { paywallExperimentProperties, type PaywallExposure } from '@/lib/payments/paywall-experiment'
 import { useSession } from 'next-auth/react'
 import { AnimatePresence, motion, useReducedMotion } from 'motion/react'
 import { ArrowRight, FileText, Loader2, LockKeyhole, ScanFace, ShieldCheck, Tag, Timer } from 'lucide-react'
@@ -96,7 +97,7 @@ export function AnalysisUnlockDialog({ fullscreen, desktopAnalysis, webCatalog, 
   const paywallVersion = desktopAnalysis ? '3' : '2'
   const paywallEvent = { surface: 'web_analysis', provider: 'stripe', paywall_version: paywallVersion }
   const track = (event: Parameters<typeof trackWebEvent>[0], properties: Record<string, string> = {}) => {
-    if (!walkthrough) trackWebEvent(event, { ...paywallEvent, ...properties })
+    if (!walkthrough) trackWebEvent(event, { ...paywallEvent, ...paywallExperimentProperties(experiment), ...properties })
   }
 
   const { data: creatorOfferData, mutate: reloadCreatorOffer } = useSWR<{ offer: { name: string; avatarUrl: string | null; percent: number } | null }>(
@@ -127,14 +128,16 @@ export function AnalysisUnlockDialog({ fullscreen, desktopAnalysis, webCatalog, 
   const webPlan = webAnalysisCheckoutLimit(selectedWeb) >= imageCount ? selectedWeb : 'web_pro_monthly'
   const selectedProduct = webCatalog ? webPlan : selectedPlan
   const reportProduct = imageCount > 1 ? 'evaluation_pack_3' : 'evaluation'
-  const { data: fetchedSubscriptions, error: subscriptionError, isValidating: loadingSubscriptions, mutate: retrySubscriptions } = useSWR<SubscriptionPrices>(loadPrices && !webCatalog ? '/api/payments/subscription-prices' : null, apiGet, { revalidateOnFocus: false, shouldRetryOnError: false, keepPreviousData: true })
-  const webCatalogUrl = `/api/payments/subscription-prices?catalog=${fullscreen ? 'web-analysis-mobile' : 'web-analysis'}`
+  const { data: fetchedSubscriptions, error: subscriptionError, isValidating: loadingSubscriptions, mutate: retrySubscriptions } = useSWR<SubscriptionPrices & { experiment?: PaywallExposure }>(loadPrices && !webCatalog ? `/api/payments/subscription-prices${fullscreen ? '?experiment=mobile' : ''}` : null, apiGet, { revalidateOnFocus: false, shouldRetryOnError: false, keepPreviousData: true })
+  const webCatalogUrl = `/api/payments/subscription-prices?catalog=${fullscreen ? 'web-analysis-mobile' : 'web-analysis&experiment=desktop'}`
   const { data: fetchedWebPrices, error: webPriceError, isValidating: loadingWebPrices, mutate: retryWebPrices } = useSWR<WebAnalysisPrices>(loadPrices && webCatalog ? webCatalogUrl : null, apiGet, { revalidateOnFocus: false, shouldRetryOnError: false })
   const webPrices = walkthrough ? walkthroughWebPrices(Boolean(fullscreen)) : fetchedWebPrices
   const intro = webCatalog && webPrices?.starterIntro != null && imageCount <= webAnalysisCheckoutLimit(webStarterIntro.product)
     ? { currency: webPrices.currency, first: webPrices.starterIntro, renewal: webPrices.amounts[webStarterIntro.product] } : null
   const { data: fetchedReportQuote, error: reportError, isValidating: loadingReportPrice, mutate: retryReport } = useSWR<ReportPrice>(loadPrices && !webCatalog && !desktopAnalysis ? `/api/payments/report-price?product=${reportProduct}` : null, apiGet, { revalidateOnFocus: false, shouldRetryOnError: false, keepPreviousData: true })
-  const offerKey = open && !webCatalog && !walkthrough && status === 'authenticated' && returnOfferSessionId && imageCount <= 2 ? returnOfferSessionId : null
+  const experiment = !walkthrough ? (webCatalog ? fetchedWebPrices?.experiment : fetchedSubscriptions?.experiment) : undefined
+  const shortPaywall = experiment?.kind === 'length' && experiment.arm === 'treatment'
+  const offerKey = experiment?.kind !== 'price' && open && !webCatalog && !walkthrough && status === 'authenticated' && returnOfferSessionId && imageCount <= 2 ? returnOfferSessionId : null
   const { data: returnOffer, error: returnOfferError } = useSWR(offerKey ? ['web-return-offer', offerKey] : null,
     ([, sessionId]) => apiPost<{ eligible: boolean }>('/api/payments/return-offer', { sessionId }), { shouldRetryOnError: false, revalidateOnFocus: false })
   const subscriptions = walkthrough ? walkthroughPrices : fetchedSubscriptions
@@ -236,11 +239,11 @@ export function AnalysisUnlockDialog({ fullscreen, desktopAnalysis, webCatalog, 
       offering: 'standard' | 'starter_intro' | 'stripe_return', defaultPlan: AnalysisPurchase, available: boolean) => {
       if (!Number.isInteger(amount) || amount < 0 || !Number.isInteger(firstPayment) || firstPayment < 0) return
       const creatorDiscount = offering === 'standard' && Boolean(creatorOffer)
-      const key = JSON.stringify(['plan', product, amount, currency, firstPayment, offering, creatorDiscount, defaultPlan, available])
+      const key = JSON.stringify(['plan', experiment?.unit, product, amount, currency, firstPayment, offering, creatorDiscount, defaultPlan, available])
       if (seen.current.has(key)) return
       seen.current.add(key)
       trackWebEvent('paywall_plan_viewed', {
-        ...paywallEvent, product, currency, price: amount, first_payment_price: firstPayment,
+        ...paywallEvent, ...paywallExperimentProperties(experiment), product, currency, price: amount, first_payment_price: firstPayment,
         default_plan: defaultPlan, creator_discount: creatorDiscount, offering,
         status: available ? 'available' : 'unavailable',
       })
@@ -346,7 +349,7 @@ export function AnalysisUnlockDialog({ fullscreen, desktopAnalysis, webCatalog, 
         <p>{formatStripePrice(Math.round(monthly * .9), subscriptions.currency, i18n.language)} for your first month, then {formatStripePrice(monthly, subscriptions.currency, i18n.language)}/month. Renews until canceled.</p>
         <button type="button" className={styles.cta} disabled={loading || creatorStatus === 'applying'} onClick={() => {
           track('plan_selected', { plan: 'mobile_subscription_monthly', offering: 'stripe_return' })
-          onCheckout('mobile_subscription_monthly', { currency: subscriptions.currency, unitAmount: monthly, returnOfferSessionId: offerKey })
+          onCheckout('mobile_subscription_monthly', { currency: subscriptions.currency, unitAmount: monthly, returnOfferSessionId: offerKey, experiment })
         }}>Finish with 10% off <ArrowRight size={16} /></button>
         <button type="button" disabled={loading} onClick={() => { setDismissedOffer(offerKey); track('paywall_offer_dismissed', { offering: 'stripe_return' }) }}>Back to plans</button>
       </section>}
@@ -361,8 +364,8 @@ export function AnalysisUnlockDialog({ fullscreen, desktopAnalysis, webCatalog, 
           </div>
           <p>Then {formatStripePrice(intro.renewal, intro.currency, i18n.language)}/month from month two.</p>
           <WebAnalysisPlanBenefits product={webStarterIntro.product} />
-        </section> : pro ? webCatalog ? <WebAnalysisPlanOptions prices={webPrices} selected={webPlan} imageCount={imageCount} disabled={loading || startingIntro}
-          onSelect={plan => { if (fullscreen && webPlan !== plan) feedback('selection'); setSelectedWeb(plan); track('plan_selected', { plan }) }} /> : <><MembershipValue scan={fullscreen} />{!fullscreen && <AppAccessNote />}<MembershipPlans prices={subscriptions} selected={selectedPlan} onSelect={selectPlan} minimumCredits={imageCount} disabled={loading} /></> : <><div className={styles.reportOffer}><span>{imageCount > 1 ? t('membership.threeReports') : t('membership.oneReport')}</span><strong>{report ? formatStripePrice(report.amount, report.currency, i18n.language) : '—'}<small>{t('membership.once')}</small></strong><p>{t('membership.reportDetail')}</p></div><p className={styles.reportNote}>{imageCount > 2 ? t('membership.batch') : t('membership.proDifference')}</p></>}
+        </section> : pro ? webCatalog ? <WebAnalysisPlanOptions compact={shortPaywall} prices={webPrices} selected={webPlan} imageCount={imageCount} disabled={loading || startingIntro}
+          onSelect={plan => { if (fullscreen && webPlan !== plan) feedback('selection'); setSelectedWeb(plan); track('plan_selected', { plan }) }} /> : <>{shortPaywall ? <details className={planStyles.planDetails}><summary>What’s included</summary><MembershipValue scan={fullscreen} /></details> : <MembershipValue scan={fullscreen} />}{!fullscreen && <AppAccessNote />}<MembershipPlans prices={subscriptions} selected={selectedPlan} onSelect={selectPlan} minimumCredits={imageCount} disabled={loading} /></> : <><div className={styles.reportOffer}><span>{imageCount > 1 ? t('membership.threeReports') : t('membership.oneReport')}</span><strong>{report ? formatStripePrice(report.amount, report.currency, i18n.language) : '—'}<small>{t('membership.once')}</small></strong><p>{t('membership.reportDetail')}</p></div><p className={styles.reportNote}>{imageCount > 2 ? t('membership.batch') : t('membership.proDifference')}</p></>}
       </motion.div></AnimatePresence>
       {priceError && !pricePending ? <p role="alert" className={styles.error}>{t('plan.unavailable')} <button type="button" onClick={retry}>{t('plan.retry')}</button></p> : null}
       {error ? <p role="alert" className={styles.error}>{error}{!loading ? <button type="button" onClick={retry}>{t('plan.retry')}</button> : null}</p> : null}
@@ -374,13 +377,13 @@ export function AnalysisUnlockDialog({ fullscreen, desktopAnalysis, webCatalog, 
           if (showIntro && intro) {
             if (!deadline || deadline <= Date.now()) { expireIntro(); return }
             track('plan_selected', { plan: webStarterIntro.product, offering: 'starter_intro' })
-            onCheckout(webStarterIntro.product, { currency: intro.currency, unitAmount: intro.renewal, starterIntro: true })
+            onCheckout(webStarterIntro.product, { currency: intro.currency, unitAmount: intro.renewal, starterIntro: true, experiment })
             return
           }
           if (price?.unitAmount == null) return
           track('onboarding_interaction', { action: 'checkout_tapped', product: pro ? selectedProduct : reportProduct })
           if (fullscreen) feedback('action')
-          onCheckout(pro ? selectedProduct : reportProduct, creatorOffer ? { ...price, creatorDiscount: true } : price)
+          onCheckout(pro ? selectedProduct : reportProduct, { ...price, experiment, ...(creatorOffer ? { creatorDiscount: true } : {}) })
         }}>
         {checkoutPending && <Loader2 size={17} className="motion-safe:animate-spin" aria-hidden="true" />}
         {!checkoutPending && desktopAnalysis && <ScanFace size={17} aria-hidden="true" />}
@@ -412,7 +415,7 @@ export function AnalysisUnlockDialog({ fullscreen, desktopAnalysis, webCatalog, 
       {!desktopAnalysis && <CheckoutLegal />}</footer>
     </div>
   </>
-  return <Dialog open={open} onOpenChange={next => next ? onOpenChange(true) : void close()}><DialogContent aria-describedby={undefined} className={styles.dialog} overlayClassName={desktopAnalysis ? 'bg-black/25 backdrop-blur-md' : undefined} data-desktop-analysis={desktopAnalysis || undefined} data-scan-fullscreen={fullscreen || undefined} data-offer={showIntro ? 'starter-intro' : pro ? 'pro' : 'report'}>
+  return <Dialog open={open} onOpenChange={next => next ? onOpenChange(true) : void close()}><DialogContent aria-describedby={undefined} className={styles.dialog} overlayClassName={desktopAnalysis ? 'bg-black/25 backdrop-blur-md' : undefined} data-desktop-analysis={desktopAnalysis || undefined} data-scan-fullscreen={fullscreen || undefined} data-paywall-length={shortPaywall && pro && !showIntro && !showReturnOffer ? 'short' : undefined} data-offer={showIntro ? 'starter-intro' : pro ? 'pro' : 'report'}>
     {content}
     {desktopAnalysis && <div className={styles.stripeBadge}>
       <ShieldCheck size={13} aria-hidden="true" /> Secure checkout with <Image src="/courses/stripe-wordmark-white.svg" alt="Stripe" width={39} height={16} />

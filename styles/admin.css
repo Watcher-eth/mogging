@@ -53,3 +53,21 @@
 .admin-course-content .c-button-dark { background: #00A8EF; color: white; }
 
 @media (min-width: 1440px) { .admin-page { padding-inline: 32px; } }
+
+
+@keyframes admin-enter {
+  from { opacity: 0; transform: translateY(5px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+.admin-page-enter { animation: admin-enter 180ms cubic-bezier(.22, 1, .36, 1) backwards; }
+.admin-report-enter { animation: admin-enter 220ms cubic-bezier(.22, 1, .36, 1) backwards; }
+.admin-view-switch { display: inline-flex; flex-wrap: wrap; gap: 2px; padding: 3px; border-radius: 14px; background: #f2f4f6; }
+.admin-view-switch button { min-height: 34px; padding: 6px 12px; border-radius: 11px; color: #52565c; font-size: 12px; transition: background-color 140ms ease, color 140ms ease, transform 120ms ease; }
+.admin-view-switch button:hover { background: #e9edf1; }
+.admin-view-switch button[aria-pressed="true"] { background: #fff; color: #181a1d; }
+.admin-navigation .creator-nav-link { transition: background-color 140ms ease, color 140ms ease; }
+
+.admin-loading { padding-block: 6px 20px; }
+.admin-loading-tile, .admin-loading-chart { display: block; border-radius: 14px; background: #f5f6f8; }
+.admin-loading-tile { height: 88px; }
+.admin-loading-chart { height: clamp(160px, 28vw, 260px); }

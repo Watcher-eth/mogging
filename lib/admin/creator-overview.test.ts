@@ -138,7 +138,7 @@ test('processing transfers and different currencies are never included in the am
   expect(groups.flatMap(group=>group.lines).some(line=>line.id==='bundle')).toBe(false)
 })
 
-test('the outstanding payout balance survives reservations, failed batches and confirmed payment', () => {
+test('the outstanding payout balance excludes unrequested earnings through reservation and settlement', () => {
   const at = '2026-11-08'
   const creators = [
     { id: 'individual', paymentOption: 'crypto', cryptoNetwork: 'USDC on Solana' },
@@ -155,25 +155,26 @@ test('the outstanding payout balance survives reservations, failed batches and c
   ] as AdminPayment[]
   const payoutRequests = [{ id: 'request', creatorProfileId: 'bundle', amountCents: 1000, status: 'pending', paymentOption: 'paypal' }] as AdminDashboard['payoutRequests']
   const queue = () => creatorPaymentQueue({ creators, submissions, payments, payoutRequests })
-  const balances = () => ['outstanding', 'ready', 'held', 'processing'].map(bucket => queue().totals.get(bucket)?.get('USD') ?? 0)
+  const balances = () => ['outstanding', 'ready', 'processing'].map(bucket => queue().totals.get(bucket)?.get('USD') ?? 0)
 
-  expect(balances()).toEqual([9000, 6000, 3000, 0])
+  expect(balances()).toEqual([6000, 6000, 0])
+  expect(queue().held[0]?.plan.amountCents).toBe(3000)
   expect(queue().totals.get('solana')?.get('USD')).toBe(5000)
   expect(queue().totals.get('paypal')?.get('USD')).toBe(1000)
   expect(queue().history).toEqual([])
 
   payments[0].status = payments[1].status = 'processing'
-  expect(balances()).toEqual([9000, 0, 3000, 6000])
+  expect(balances()).toEqual([6000, 0, 6000])
 
   payments[0].status = 'pending'
-  expect(balances()).toEqual([9000, 5000, 3000, 1000])
+  expect(balances()).toEqual([6000, 5000, 1000])
 
   payments[1].status = 'paid'
-  expect(balances()).toEqual([8000, 5000, 3000, 0])
+  expect(balances()).toEqual([5000, 5000, 0])
 
   payments[0].status = 'cancelled'
   submissions[0].status = 'in_review'
   submissions[0].reviewRequestedAt = at
-  expect(balances()).toEqual([8000, 0, 3000, 0])
+  expect(balances()).toEqual([5000, 0, 0])
   expect(queue().totals.get('review')?.get('USD')).toBe(5000)
 })
