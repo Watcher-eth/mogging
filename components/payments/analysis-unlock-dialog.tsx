@@ -68,10 +68,11 @@ function StarterIntroTimer({ deadline }: { deadline: number }) {
 }
 
 export type AnalysisPurchase = ReportPrice['product'] | SubscriptionProduct | WebAnalysisProduct
-export function AnalysisUnlockDialog({ fullscreen, desktopAnalysis, webCatalog, walkthrough, imageSrc, landmarks, imageCount, open, onOpenChange, onCheckout, loading, loadingLabel, error, returnOfferSessionId, initialProduct }: {
+export function AnalysisUnlockDialog({ fullscreen, desktopAnalysis, webCatalog, onboardingExperiment, walkthrough, imageSrc, landmarks, imageCount, open, onOpenChange, onCheckout, loading, loadingLabel, error, returnOfferSessionId, initialProduct }: {
   fullscreen?: boolean; walkthrough?: boolean; imageSrc: string | null; landmarks: FaceLandmarksPayload | null; imageCount: number; open: boolean; onOpenChange: (open: boolean) => void;
   desktopAnalysis?: boolean;
   webCatalog?: boolean;
+  onboardingExperiment?: PaywallExposure | null;
   initialProduct?: string;
   onCheckout: (product: AnalysisPurchase, quote: CheckoutQuote) => void; loading: boolean; error: string | null; returnOfferSessionId?: string | null
   loadingLabel?: string
@@ -128,14 +129,17 @@ export function AnalysisUnlockDialog({ fullscreen, desktopAnalysis, webCatalog, 
   const webPlan = webAnalysisCheckoutLimit(selectedWeb) >= imageCount ? selectedWeb : 'web_pro_monthly'
   const selectedProduct = webCatalog ? webPlan : selectedPlan
   const reportProduct = imageCount > 1 ? 'evaluation_pack_3' : 'evaluation'
+  const reportChoice = !desktopAnalysis && (fullscreen || !webCatalog)
   const { data: fetchedSubscriptions, error: subscriptionError, isValidating: loadingSubscriptions, mutate: retrySubscriptions } = useSWR<SubscriptionPrices & { experiment?: PaywallExposure }>(loadPrices && !webCatalog ? `/api/payments/subscription-prices${fullscreen ? '?experiment=mobile' : ''}` : null, apiGet, { revalidateOnFocus: false, shouldRetryOnError: false, keepPreviousData: true })
-  const webCatalogUrl = `/api/payments/subscription-prices?catalog=${fullscreen ? 'web-analysis-mobile' : 'web-analysis&experiment=desktop'}`
+  const webCatalogUrl = fullscreen
+    ? '/api/payments/subscription-prices?catalog=web-analysis-mobile&experiment=mobile'
+    : '/api/payments/subscription-prices?catalog=web-analysis&experiment=desktop'
   const { data: fetchedWebPrices, error: webPriceError, isValidating: loadingWebPrices, mutate: retryWebPrices } = useSWR<WebAnalysisPrices>(loadPrices && webCatalog ? webCatalogUrl : null, apiGet, { revalidateOnFocus: false, shouldRetryOnError: false })
   const webPrices = walkthrough ? walkthroughWebPrices(Boolean(fullscreen)) : fetchedWebPrices
-  const intro = webCatalog && webPrices?.starterIntro != null && imageCount <= webAnalysisCheckoutLimit(webStarterIntro.product)
+  const intro = webCatalog && !fullscreen && webPrices?.starterIntro != null && imageCount <= webAnalysisCheckoutLimit(webStarterIntro.product)
     ? { currency: webPrices.currency, first: webPrices.starterIntro, renewal: webPrices.amounts[webStarterIntro.product] } : null
-  const { data: fetchedReportQuote, error: reportError, isValidating: loadingReportPrice, mutate: retryReport } = useSWR<ReportPrice>(loadPrices && !webCatalog && !desktopAnalysis ? `/api/payments/report-price?product=${reportProduct}` : null, apiGet, { revalidateOnFocus: false, shouldRetryOnError: false, keepPreviousData: true })
-  const experiment = !walkthrough ? (webCatalog ? fetchedWebPrices?.experiment : fetchedSubscriptions?.experiment) : undefined
+  const { data: fetchedReportQuote, error: reportError, isValidating: loadingReportPrice, mutate: retryReport } = useSWR<ReportPrice>(loadPrices && reportChoice ? `/api/payments/report-price?product=${reportProduct}` : null, apiGet, { revalidateOnFocus: false, shouldRetryOnError: false, keepPreviousData: true })
+  const experiment = !walkthrough ? onboardingExperiment ?? (webCatalog ? fetchedWebPrices?.experiment : fetchedSubscriptions?.experiment) : undefined
   const shortPaywall = experiment?.kind === 'length' && experiment.arm === 'treatment'
   const offerKey = experiment?.kind !== 'price' && open && !webCatalog && !walkthrough && status === 'authenticated' && returnOfferSessionId && imageCount <= 2 ? returnOfferSessionId : null
   const { data: returnOffer, error: returnOfferError } = useSWR(offerKey ? ['web-return-offer', offerKey] : null,
@@ -143,7 +147,7 @@ export function AnalysisUnlockDialog({ fullscreen, desktopAnalysis, webCatalog, 
   const subscriptions = walkthrough ? walkthroughPrices : fetchedSubscriptions
   const reportQuote = walkthrough ? { product: reportProduct, currency: 'usd', amount: 599 } as const : fetchedReportQuote
   const report = reportQuote?.product === reportProduct ? reportQuote : undefined
-  const pro = webCatalog || desktopAnalysis || mode === 'pro' && imageCount <= 2
+  const pro = !reportChoice || mode === 'pro' && (webCatalog || imageCount <= 2)
   const showIntro = Boolean(pro && intro && introWindow && panel !== 'plans')
   const monthly = subscriptions?.amounts.mobile_subscription_monthly
   const showReturnOffer = Boolean(offerKey && dismissedOffer !== offerKey && returnOffer?.eligible && monthly != null)
@@ -276,14 +280,15 @@ export function AnalysisUnlockDialog({ fullscreen, desktopAnalysis, webCatalog, 
   const selectMode = (next: 'pro' | 'report') => { if (fullscreen && mode !== next) feedback('selection'); setMode(next); track('plan_selected', { plan: next === 'pro' ? selectedProduct : reportProduct }) }
   const selectPlan = (plan: SubscriptionProduct) => { if (fullscreen && selectedPlan !== plan) feedback('selection'); setSelected(plan); track('plan_selected', { plan }) }
 
-  const modes = !webCatalog && !desktopAnalysis && imageCount <= 2 ? <div className={styles.modes} role="group" aria-label={t('membership.purchaseType')}>{(['pro', 'report'] as const).map(item => <button key={item} type="button" disabled={loading} aria-pressed={pro === (item === 'pro')} onClick={() => selectMode(item)}>{fullscreen ? (item === 'pro' ? 'Pro' : 'Report') : (item === 'pro' ? t('membership.pro') : t('membership.reportOnly'))}</button>)}</div> : null
+  const modes = reportChoice && imageCount <= 2 ? <div className={styles.modes} role="group" aria-label={t('membership.purchaseType')}>{(['pro', 'report'] as const).map(item => <button key={item} type="button" disabled={loading} aria-pressed={pro === (item === 'pro')} onClick={() => selectMode(item)}>{fullscreen ? (item === 'pro' ? webCatalog ? 'Membership' : 'Pro' : 'Report') : (item === 'pro' ? t('membership.pro') : t('membership.reportOnly'))}</button>)}</div> : null
 
   const title = showIntro ? 'See your full face map for less' : desktopAnalysis || fullscreen ? t('paywall.title') : t('membership.unlock')
   const planOverlay = showIntro || webPlan === 'web_basic_monthly' ? 'overall' : webPlan === 'web_pro_monthly' ? 'symmetry' : 'eyes'
   const planHook = showIntro ? 'Get the full picture today. Use your next scans to see what changes.'
     : webPlan === 'web_pro_monthly' ? 'Get a plan tailored to your goals and see what changes over time.'
       : webPlan === 'web_basic_weekly' ? 'Start with one scan and see where to focus first.'
-        : 'See what your front and side photos reveal, then check in as you make changes.'
+        : fullscreen ? 'Find your starting point and check in as you make changes.'
+          : 'See what your front and side photos reveal, then check in as you make changes.'
   const close = async () => {
     if (loading || startingIntro) return
     if (intro && panel === 'plans' && pro && !introWindow) {

@@ -9,21 +9,26 @@ import { ComparisonBars, DataDetails, Notice, Panel, Stat, Table, analyticsChann
 
 const webTest = 'web-analysis'
 const paywallTest = 'web-paywall'
+const onboardingTest = 'web-onboarding'
 const defaultTest = landingExperiments[0]
 const options = [
   { value: defaultTest.id, label: 'Mobile homepage · Old vs new' },
+  { value: onboardingTest, label: 'Web onboarding · Full vs short' },
   { value: paywallTest, label: 'Web paywall · A/B tests' },
   { value: webTest, label: 'Web analysis · Old vs new' },
   ...landingExperiments.slice(1).map(item => ({ value: item.id, label: 'Archived · ' + item.name })),
 ]
 
 export function ExperimentsReport({ data }: { data: AnalyticsDashboard }) {
-  const [selected, setSelected] = useState<string>((data.paywallExperiments?.length ?? 0) > 0 ? paywallTest : defaultTest.id)
-  const experiment = landingExperiments.find(item => item.id === selected) ?? defaultTest
+  const initial = data.paywallExperiments?.some(row => row.kind === 'onboarding') ? onboardingTest
+    : data.paywallExperiments?.length ? paywallTest : defaultTest.id
+  const [selected, setSelected] = useState<string>()
+  const current = selected ?? initial
+  const experiment = landingExperiments.find(item => item.id === current) ?? defaultTest
   return <>
-    <div className="mb-5"><AnalyticsSelect label="Experiment" value={selected} onChange={setSelected} options={options} /></div>
-    <div key={selected} className="admin-report-enter">
-      {selected === paywallTest ? <PaywallExperiments data={data} /> : selected === webTest ? <WebAnalysisComparison data={data} /> : <HomepageExperiment data={data} experiment={experiment} />}
+    <div className="mb-5"><AnalyticsSelect label="Experiment" value={current} onChange={setSelected} options={options} /></div>
+    <div key={current} className="admin-report-enter">
+      {current === onboardingTest || current === paywallTest ? <PaywallExperiments data={data} onboarding={current === onboardingTest} /> : current === webTest ? <WebAnalysisComparison data={data} /> : <HomepageExperiment data={data} experiment={experiment} />}
     </div>
   </>
 }
@@ -73,8 +78,8 @@ function WebAnalysisComparison({ data }: { data: AnalyticsDashboard }) {
 const usd = new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' })
 const metric = (row: MetricRow, key: string) => Number(row[key] ?? 0)
 
-function PaywallExperiments({ data }: { data: AnalyticsDashboard }) {
-  const results = data.paywallExperiments ?? []
+function PaywallExperiments({ data, onboarding }: { data: AnalyticsDashboard; onboarding: boolean }) {
+  const results = (data.paywallExperiments ?? []).filter(row => (row.kind === 'onboarding') === onboarding)
   const groups = new Map<string, MetricRow[]>()
   for (const row of results) {
     const key = `${row.experiment_id} · ${row.surface}`
@@ -82,14 +87,27 @@ function PaywallExperiments({ data }: { data: AnalyticsDashboard }) {
     if (group) group.push(row)
     else groups.set(key, [row])
   }
-  if (!groups.size) return <Notice>No paywall experiments have recorded an exposure in this date range.</Notice>
+  if (!groups.size) return <Notice>{onboarding ? 'Waiting for the first onboarding assignments in this date range.' : 'No paywall experiments recorded an exposure in this date range.'}</Notice>
   return <>
-    <Notice>One exposure per browser and device category. Paid results use Stripe-confirmed subscription starts within 24 hours of the first plan impression. Use the full enrollment date range for decisions.</Notice>
-    {[...groups].map(([key, rows]) => <PaywallExperiment key={key} name={key} rows={rows} now={Date.parse(data.generatedAt)} />)}
+    <Notice>{onboarding ? 'Mobile and desktop each split eligible browsers 50/50. Outcomes use the first 24 hours after onboarding entry. Use the full enrollment date range for decisions.'
+      : 'One exposure per browser and device category. Paid results use Stripe-confirmed subscription starts within 24 hours of seeing the first plan. Use the full enrollment date range for decisions.'}</Notice>
+    {[...groups].map(([key, rows]) => <PaywallExperiment key={key} name={key} rows={rows} now={Date.parse(data.generatedAt)}
+      daily={(data.onboardingExperimentDaily ?? []).filter(row => row.experiment_id === rows[0].experiment_id && row.surface === rows[0].surface)} />)}
   </>
 }
 
-function PaywallExperiment({ name, rows, now }: { name: string; rows: MetricRow[]; now: number }) {
+const onboardingSeries = [
+  { label: 'Full onboarding', color: chartColors.blue },
+  { label: 'Short onboarding', color: chartColors.violet },
+]
+const onboardingStages = [
+  ['photo_ready', 'Photos ready'], ['paywall_reached', 'Paywall reached'], ['checkouts', 'Checkout started'],
+] as const
+const percentage = (value: number) => `${value.toFixed(1)}%`
+
+function PaywallExperiment({ name, rows, now, daily }: { name: string; rows: MetricRow[]; now: number; daily: MetricRow[] }) {
+  const onboarding = rows[0].kind === 'onboarding'
+  const testLabel = onboarding ? 'Onboarding' : rows[0].kind === 'price' ? 'Price' : 'Paywall length'
   const [control, treatment] = ['control', 'treatment'].map(arm => rows.find(row => row.arm === arm && row.browser === 'all') ?? { arm })
   const sample = [control, treatment]
   const exposed = sample.map(row => metric(row, 'exposed'))
@@ -99,6 +117,9 @@ function PaywallExperiment({ name, rows, now }: { name: string; rows: MetricRow[
   const minimum = Math.max(...sample.map(row => metric(row, 'minimum_per_arm')))
   const mature = sample.map(row => metric(row, 'mature'))
   const paid = sample.map(row => metric(row, 'paid'))
+  const revenue = sample.map((row, index) => mature[index] && paid[index] === metric(row, 'paid_usd')
+    ? metric(row, 'first_charge_usd_cents') / (mature[index] * 100) : null)
+  const device = rows[0].surface === 'mobile' ? 'Mobile web' : 'Desktop web'
   const ready = now >= end + 86_400_000 && mature.every(n => n >= minimum)
   const intervals = paid.map((n, index) => landingRateInterval(n, mature[index], 1.959963985))
   const rates = paid.map((n, index) => mature[index] ? n * 100 / mature[index] : null)
@@ -120,25 +141,52 @@ function PaywallExperiment({ name, rows, now }: { name: string; rows: MetricRow[
     const buyers = metric(row, 'paid')
     return {
       browser: row.browser ?? 'all', arm: row.arm, exposed: metric(row, 'exposed'), pending: metric(row, 'exposed') - n,
+      photo_ready: metric(row, 'photo_ready'), paywall_reached: metric(row, 'paywall_reached'),
       tapped: metric(row, 'tapped'), checkouts: metric(row, 'checkouts'), checkout_failures: metric(row, 'checkout_failures'),
-      paid: buyers, paid_rate: percent(buyers, n),
+      paid: buyers, observed_paid: metric(row, 'observed_paid'), paid_rate: percent(buyers, n),
       first_charge_per_exposure: n && buyers === metric(row, 'paid_usd') ? usd.format(metric(row, 'first_charge_usd_cents') / (n * 100)) : '—',
     }
   }
-  const columns = ['arm', 'exposed', 'pending', 'tapped', 'checkouts', 'checkout_failures', 'paid', 'paid_rate', 'first_charge_per_exposure']
-  return <Panel title={name} description={`${rows[0].kind === 'price' ? 'Price' : 'Length'} test · ${status} · ${count(minimum)} mature exposures per arm required · Enrollment ends ${formatReportingTime(new Date(end), { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit', timeZoneName: 'short' })}`}
+  const columns = ['arm', 'exposed', 'pending', ...(onboarding ? ['photo_ready', 'paywall_reached'] : []), 'tapped', 'checkouts', 'checkout_failures', 'observed_paid', 'paid', 'paid_rate', 'first_charge_per_exposure']
+  return <Panel title={onboarding ? `${device} · Full vs short` : name} description={`${testLabel} test · ${status} · ${count(minimum)} mature exposures per arm required · Enrollment ends ${formatReportingTime(new Date(end), { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit', timeZoneName: 'short' })}`}
     note="First-charge revenue is gross USD before refunds and fees. It is hidden when paid outcomes use another currency. Browser breakdowns diagnose friction and are exploratory.">
+    {onboarding && <div className="mb-5 text-sm leading-6 text-[#73777d]">
+      {rows[0].surface === 'mobile'
+        ? 'Short skips obstacles, experience, methods and time commitment.'
+        : 'Short skips ethnicity and combines photo consent with the scan action.'}
+    </div>}
     <div className="admin-stats-grid">
       {sample.map((row, index) => {
         const interval = intervals[index]
-        return <Stat key={String(row.arm)} title={index === 0 ? 'Current paywall' : 'Variant'} value={percent(paid[index], mature[index])}
+        return <Stat key={String(row.arm)} title={onboarding ? index === 0 ? 'Full onboarding' : 'Short onboarding' : index === 0 ? 'Current paywall' : 'Variant'} value={percent(paid[index], mature[index])}
           note={`${count(paid[index])} paid / ${count(mature[index])} mature${interval ? ` · 95% CI ${interval[0].toFixed(1)}–${interval[1].toFixed(1)}%` : ''}`} />
       })}
       <Stat title="Change" value={difference !== null ? `${difference.toFixed(2)} pp` : '—'}
         note={ready && !allocationMismatch && differenceInterval
           ? `95% CI ${differenceInterval[0].toFixed(2)} to ${differenceInterval[1].toFixed(2)} pp`
-          : 'Variant minus current paywall'} />
+          : 'Treatment minus control'} />
     </div>
+    {onboarding && <>
+      <div className="my-6">
+        <h3 className="text-sm font-medium">Assignments by day</h3>
+        <p className="mb-2 text-xs text-[#73777d]">All entrants, including those still in their first 24 hours.</p>
+        <ComparisonBars series={onboardingSeries} rows={daily.map(row => ({
+          label: formatReportingTime(String(row.day), { month: 'short', day: 'numeric' }),
+          values: [metric(row, 'control'), metric(row, 'treatment')],
+        }))} />
+      </div>
+      <div className="my-6">
+        <h3 className="text-sm font-medium">Funnel reach</h3>
+        <p className="mb-2 text-xs text-[#73777d]">Share of each variant’s entrants with a full 24 hours of follow-up.</p>
+        {mature.some(Boolean) ? <ComparisonBars series={onboardingSeries} maximum={100} format={percentage} rows={onboardingStages.map(([key, label]) => ({
+          label, values: sample.map((row, index) => mature[index] ? metric(row, key) * 100 / mature[index] : null),
+        }))} /> : <p className="admin-empty">Funnel comparisons appear after the first 24 hours of follow-up.</p>}
+      </div>
+      {revenue.some(value => value !== null) && <div className="my-6">
+        <h3 className="text-sm font-medium">First-payment revenue per entrant</h3>
+        <ComparisonBars series={onboardingSeries} format={value => usd.format(value)} rows={[{ label: 'USD per entrant', values: revenue }]} />
+      </div>}
+    </>}
     <Table rows={sample.map(tableRow)} columns={columns} />
     <DataDetails><Table rows={rows.filter(row => row.browser !== 'all').map(tableRow)} columns={['browser', ...columns]} /></DataDetails>
   </Panel>

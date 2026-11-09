@@ -59,6 +59,7 @@ export type AnalyticsDashboard = {
   paywall: Array<{ name: string; actors: number }>
   web: Array<{ name: string; actors: number }>
   paywallExperiments?: MetricRow[]
+  onboardingExperimentDaily?: MetricRow[]
   landingHandoffs?: MetricRow[]; webAudience?: MetricRow[]; landingExperiments: MetricRow[]; landingSections: MetricRow[]; landingSources: MetricRow[]; landingPlacements: MetricRow[]
   daily: MetricRow[]; acquisition: MetricRow[]; steps: MetricRow[]; screens: MetricRow[]
   acquisitionSummary?: MetricRow[]; landingSummary?: MetricRow[]
@@ -128,7 +129,7 @@ function funnel(name: string, events: string[], platform: SQL) {
 const sectionReports: Record<NonNullable<AnalyticsFilters['section']>, readonly string[]> = {
   Overview: ['event_summary', 'daily', 'scanLedger', 'paid_delivery'],
   Acquisition: ['event_summary', 'daily', 'acquisition', 'acquisition_summary', 'landing_summary', 'web_audience', 'landing_sections', 'landing_placements', 'landing_sources'],
-  Experiments: ['paywall_experiments', 'web_journey', 'landing_handoffs', 'landing_experiments', 'landing_experiment_daily'],
+  Experiments: ['paywall_experiments', 'onboarding_experiment_daily', 'web_journey', 'landing_handoffs', 'landing_experiments', 'landing_experiment_daily'],
   Onboarding: ['web_journey', 'onboarding_channels', 'onboarding_summary', 'onboarding_daily', 'onboarding_screens', 'onboarding_friction', 'onboarding_revisions'],
   Revenue: ['purchase_behavior', 'revenue_subscription_mrr', 'revenue_usd_coverage', 'revenue_stream_comparison', 'revenue_stream_daily', 'revenue_financials', 'revenue_channels', 'revenue_sources', 'revenue_countries', 'revenue_proceeds_daily', 'revenue_subscription_overview', 'revenue_subscription_products', 'revenue', 'revenue_totals', 'revenue_comparison', 'revenue_activity', 'revenue_daily', 'billing', 'billing_products', 'billing_dimensions', 'billing_reporting'],
   CreatorAttribution: ['creator_attribution'],
@@ -937,7 +938,7 @@ export function analyticsQuery(filters: AnalyticsFilters, now: Date) {
         'failures', count(*) filter (where event_name = 'evaluation_failed'), 'latest_event', max(occurred_at)) from e)`, sql`'{}'::json`)},
       'audienceBreakdown', ${rows('audience_breakdown')}, 'onboarding', ${include('onboarding', onboarding.result)}, 'paywall', ${include('paywall', paywall.result)}, 'web', ${include('web', web.result)},
       'landingHandoffs', ${rows('landing_handoffs')}, 'webAudience', ${rows('web_audience')}, 'landingExperiments', ${rows('landing_experiments')},
-      'paywallExperiments', ${rows('paywall_experiments')}, 'landingExperimentDaily', ${rows('landing_experiment_daily')}, 'landingSources', ${rows('landing_sources')},
+      'paywallExperiments', ${rows('paywall_experiments')}, 'onboardingExperimentDaily', ${rows('onboarding_experiment_daily')}, 'landingExperimentDaily', ${rows('landing_experiment_daily')}, 'landingSources', ${rows('landing_sources')},
       'landingSections', ${rows('landing_sections')}, 'landingPlacements', ${rows('landing_placements')},
       'daily', ${rows('daily')}, 'acquisition', ${rows('acquisition')},
       'acquisitionSummary', ${rows('acquisition_summary')}, 'landingSummary', ${rows('landing_summary')}, 'steps', ${rows('steps')},

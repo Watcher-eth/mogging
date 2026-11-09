@@ -1,5 +1,6 @@
 import { createHmac, randomUUID } from 'node:crypto'
-import type { NextApiRequest, NextApiResponse } from 'next'
+import type { NextApiRequest } from 'next'
+import type { ServerResponse } from 'node:http'
 import { z } from 'zod'
 import type Stripe from 'stripe'
 import { ApiError } from '@/lib/api/http'
@@ -17,8 +18,10 @@ const fields = {
   endsAt: z.string().datetime(),
   minimumPerArm: z.number().int().min(100).max(100_000).default(500),
 }
+const surfaces = z.enum(['mobile', 'desktop', 'both'])
 const configSchema = z.discriminatedUnion('kind', [
-  z.object({ ...fields, kind: z.literal('length'), surface: z.enum(['mobile', 'desktop', 'both']) }).strict(),
+  z.object({ ...fields, kind: z.literal('length'), surface: surfaces }).strict(),
+  z.object({ ...fields, kind: z.literal('onboarding'), surface: surfaces }).strict(),
   z.object({
     ...fields, kind: z.literal('price'), surface: z.enum(['mobile', 'desktop']),
     stripePriceId: z.string().regex(/^price_[A-Za-z0-9]+$/), unitAmount: z.number().int().min(50).max(100_000),
@@ -29,7 +32,7 @@ export function parsePaywallExperiment(raw?: string) {
   if (!raw) return null
   const config = configSchema.parse(JSON.parse(raw))
   const duration = Date.parse(config.endsAt) - Date.parse(config.startsAt)
-  if (duration < 3 * day || duration > 5 * day) throw new Error('Paywall experiments must run for three to five days')
+  if (duration < 4 * day || duration > 5 * day) throw new Error('Web analysis experiments must run for four to five days')
   return config
 }
 
@@ -54,16 +57,16 @@ function configuration() {
   }
 }
 
-function setVisitor(res: NextApiResponse, id: string) {
+function setVisitor(res: ServerResponse, id: string) {
   const previous = res.getHeader('Set-Cookie')
   const cookies = Array.isArray(previous) ? previous : previous ? [String(previous)] : []
   res.setHeader('Set-Cookie', [...cookies, `${cookieName}=${id}; Path=/; Max-Age=2592000; HttpOnly; SameSite=Lax${process.env.NODE_ENV === 'production' ? '; Secure' : ''}`])
 }
 
-export function quotePaywallExperiment(req: NextApiRequest, res: NextApiResponse, surface: PaywallSurface, secret: string): Assignment | null {
+export function quotePaywallExperiment(req: Pick<NextApiRequest, 'cookies'>, res: ServerResponse, surface: PaywallSurface, secret: string, placement: 'paywall' | 'onboarding' = 'paywall'): Assignment | null {
   const config = configuration()
   const now = Date.now()
-  if (!config || (config.surface !== 'both' && config.surface !== surface) || now < Date.parse(config.startsAt) || now >= Date.parse(config.endsAt)) return null
+  if (!config || (placement === 'onboarding') !== (config.kind === 'onboarding') || (config.surface !== 'both' && config.surface !== surface) || now < Date.parse(config.startsAt) || now >= Date.parse(config.endsAt)) return null
   const existing = visitorId.safeParse(req.cookies[cookieName])
   const id = existing.success ? existing.data : randomUUID()
   if (!existing.success) setVisitor(res, id)
@@ -82,8 +85,8 @@ export function checkoutPaywallExperiment(req: NextApiRequest, id: string, surfa
   return { config, exposure: assignPaywallExperiment(config, visitor.data, surface, secret) }
 }
 
-export function paywallPriceProduct(surface: PaywallSurface) {
-  return surface === 'mobile' ? 'mobile_subscription_monthly' : 'web_basic_monthly'
+export function paywallPriceProduct() {
+  return 'web_basic_monthly' as const
 }
 
 function stripeProduct(price: Stripe.Price) {
@@ -103,9 +106,9 @@ export function validatePaywallTreatmentPrice(config: PriceConfig, control: Stri
 }
 
 export async function getPaywallTreatmentPrice(config: PriceConfig, control?: Stripe.Price) {
-  const product = paywallPriceProduct(config.surface)
+  const product = paywallPriceProduct()
   const [standard, treatment] = await Promise.all([
-    control ?? validateCheckoutProduct(product, getProductConfig(product)),
+    control ?? validateCheckoutProduct(product, getProductConfig(product), config.surface === 'mobile'),
     getStripe().prices.retrieve(config.stripePriceId),
   ])
   return validatePaywallTreatmentPrice(config, standard, treatment)

@@ -1,34 +1,36 @@
 # Web paywall experiments
 
-The current analysis paywalls are the control. Start with a shorter mobile web paywall that keeps the photo, pricing, billing terms, plan selector and primary action. The detailed benefits can be expanded. Desktop uses the same experiment machinery and a separate readout.
+The current analysis paywalls are the control. The experiment can compare onboarding, paywall length, or recurring price. Choose one test at a time. The shorter paywall keeps the photo, pricing, billing terms, plan selector and primary action. The detailed benefits can be expanded.
 
 ## Run a test
 
-- Pick one change and one primary metric. The primary outcome is a positive, Stripe-confirmed subscription payment within 24 hours of the browser’s first recorded plan impression. One browser counts once per device category. Use first-charge dollars per exposed browser alongside paid conversion for price tests.
+- Pick one change and one primary metric. The primary outcome is a positive, Stripe-confirmed subscription payment within 24 hours of onboarding entry for an onboarding test or the first recorded plan impression for a paywall test. One browser counts once per device category. Use first-charge dollars per exposed browser alongside paid conversion for price tests.
 - Put `WEB_PAYWALL_EXPERIMENT` in the web deployment’s server environment. Leave it unset to serve the existing paywalls. One experiment can enroll at a time. Use a new ID for each test and keep that ID and configuration stable through the final 24-hour conversion window. For a rollback, unset the variable. Open checkout pages created before rollback retain their Stripe price.
-- Choose a fixed three-to-five-day enrollment window and a sample requirement per arm. Mobile and desktop have independent allocations and results even if both run a length test. Review under **Admin → Analytics → Experiments → Web paywall · A/B tests** using a date range that contains the entire experiment.
+- Choose a fixed four-to-five-day enrollment window and a sample requirement per arm. Mobile and desktop have independent allocations and results even if both run a length test. Review under **Admin → Analytics → Experiments → Web paywall · A/B tests** using a date range that contains the entire experiment.
 - Price tests change the default monthly plan on one surface. Use an existing active USD monthly Stripe price on the exact same Stripe product as the control. The server checks the amount, currency, interval, tax settings and live/test mode. Existing mobile and desktop catalogs, plan entitlements and creator eligibility remain separate. Intro offers are withheld in both price arms so the tested amount is visible. Never change the underlying control price mid-test.
 
-Five-day length example. Use future timestamps when activating.
+Run the onboarding test first with both surfaces and the standard price and paywall on each. Desktop control keeps ethnicity and a dedicated privacy consent step. Desktop treatment omits ethnicity and collects consent with the scan action. Mobile control keeps the full questionnaire. Mobile treatment omits obstacles, experience, methods and time commitment. Both record whether questions were selected, skipped or defaulted without sending the answers to analytics. New visitors arriving through public photo-first links are eligible. App entry, checkout return and photo recovery links retain their existing entry behavior.
+
+Five-day onboarding example. Use future timestamps when activating.
 
 ```json
 {
-  "id": "mobile_short_v1",
-  "kind": "length",
-  "surface": "mobile",
+  "id": "guided_onboarding_v1",
+  "kind": "onboarding",
+  "surface": "both",
   "startsAt": "2026-11-10T18:00:00Z",
   "endsAt": "2026-11-15T18:00:00Z",
   "minimumPerArm": 500
 }
 ```
 
-Price tests use `"kind": "price"`, `"surface": "mobile"` or `"desktop"`, a `"stripePriceId"` and the matching integer `"unitAmount"` in cents. Confirm the treatment price in Stripe test mode first. Checkout rejects a stale price or mismatched assignment before opening Stripe.
+After the onboarding readout, fix the selected onboarding and run a paywall length test with `"kind": "length"` and a new ID. For a price comparison, fix the layout and use a new ID. Price tests use `"kind": "price"`, `"surface": "mobile"` or `"desktop"`, a `"stripePriceId"` and the matching integer `"unitAmount"` in cents. Confirm the treatment price in Stripe test mode first. Checkout rejects a stale price or mismatched assignment before opening Stripe.
 
 ## Validate before release
 
 - Run `bun test lib/payments/web-analysis-recovery.test.ts lib/analytics/contract.test.ts`.
 - Run `bun scripts/tests/web-journey.ts` with `WEB_JOURNEY_TEST_DATABASE_URL` pointing to the isolated localhost `web_journey_test` PostgreSQL database on port 55448. The fixture uses temporary tables.
-- Start a local development server on port 3393, then run `bun scripts/tests/web-paywall-browser.ts`. Set `WEB_PAYWALL_BROWSER_EXECUTABLE` to a local Chrome binary or use the installed Playwright Chromium. Set `WEB_PAYWALL_BROWSER=webkit` to run with Playwright WebKit. The browser test uses demo photos and mocks every payment request. It checks upload, preview, both arms, displayed price, stale-quote recovery and the hosted-checkout redirect.
+- Start a local development server on port 3393, then run `bun scripts/tests/web-paywall-browser.ts`. Set `WEB_PAYWALL_BROWSER_EXECUTABLE` to a local Chrome binary or use the installed Playwright Chromium. Set `WEB_PAYWALL_BROWSER=webkit` to run with Playwright WebKit. The browser test uses demo photos and mocks every payment request. It checks upload, preview, both arms, displayed price, stale-quote recovery and the hosted-checkout redirect. To traverse the onboarding arms, start the server with an active onboarding fixture and supply its ID as `WEB_ONBOARDING_TEST_ID` and the same local `NEXTAUTH_SECRET` to the browser script.
 - Before live enrollment, run a Stripe test-mode payment on each changed surface. Check the presented amount and renewal interval in Stripe, cancel and retry, restore the photos on return, confirm that access is granted once and that the report opens. Smoke-test a physical iPhone in Safari and the Instagram and TikTok in-app browsers. Check camera permission denial, upload fallback, interrupted connectivity and back navigation.
 
 ## Read results and decide

@@ -64,11 +64,11 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
     const webPlan = isWebAnalysisProduct(productId)
     const mobileWeb = input.webPriceVariant === 'mobile'
     const isAnalysisCheckout = input.returnTo === 'analysis' && input.source === 'web_analysis'
-    if (input.paywallExperimentId && (!isAnalysisCheckout || mobileWeb || !env.NEXTAUTH_SECRET)) {
+    if (input.paywallExperimentId && (!isAnalysisCheckout || !webPlan || !env.NEXTAUTH_SECRET)) {
       throw new ApiError(400, 'This paywall experiment is unavailable for this checkout')
     }
     const experiment = input.paywallExperimentId && env.NEXTAUTH_SECRET
-      ? checkoutPaywallExperiment(req, input.paywallExperimentId, webPlan ? 'desktop' : 'mobile', env.NEXTAUTH_SECRET) : null
+      ? checkoutPaywallExperiment(req, input.paywallExperimentId, mobileWeb ? 'mobile' : 'desktop', env.NEXTAUTH_SECRET) : null
     if (input.paywallExperimentUnit !== experiment?.exposure.unit) {
       throw new ApiError(409, 'Reopen the paywall to refresh your plans.')
     }
@@ -101,7 +101,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
     const product = getProductConfig(input.product)
     const standardPrice = await validateCheckoutProduct(input.product, product, mobileWeb)
     const useTreatmentPrice = experiment?.config.kind === 'price' && experiment.exposure.arm === 'treatment'
-      && productId === paywallPriceProduct(experiment.exposure.surface)
+      && productId === paywallPriceProduct()
     const price = useTreatmentPrice && experiment.config.kind === 'price'
       ? await getPaywallTreatmentPrice(experiment.config, standardPrice) : standardPrice
     const introCoupon = input.starterIntro && price ? await getWebStarterIntroCoupon(price, mobileWeb).catch(() => null) : null

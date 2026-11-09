@@ -18,13 +18,13 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     const catalog = web
       ? await getWebAnalysisCatalog(req.query.catalog === 'web-analysis-mobile')
       : await getSubscriptionPrices(currency ?? preferredCurrency(getRequestLocation(req).country))
-    const surface = req.query.experiment === 'mobile' && !req.query.catalog ? 'mobile'
+    const surface = req.query.experiment === 'mobile' && req.query.catalog === 'web-analysis-mobile' ? 'mobile'
       : req.query.experiment === 'desktop' && req.query.catalog === 'web-analysis' ? 'desktop' : null
     const assignment = surface && env.NEXTAUTH_SECRET ? quotePaywallExperiment(req, res, surface, env.NEXTAUTH_SECRET) : null
     if (!assignment) return json(res, 200, catalog)
-    if (assignment.config.kind === 'length') return json(res, 200, { ...catalog, experiment: assignment.exposure })
+    if (assignment.config.kind !== 'price') return json(res, 200, { ...catalog, experiment: assignment.exposure })
     if (catalog.currency !== 'usd') return json(res, 200, catalog)
-    const product = paywallPriceProduct(assignment.exposure.surface)
+    const product = paywallPriceProduct()
     const control = (catalog.amounts as Record<string, number>)[product]
     if (control === assignment.config.unitAmount) return json(res, 200, catalog)
     // Check the treatment for both arms before enrolling anyone.

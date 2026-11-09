@@ -29,7 +29,7 @@ const copy = {
   review: ['Review your framing.', 'Keep the face centered. Drag the portrait or adjust the zoom if needed.'],
 } as const
 
-export function DesktopCapture({ step, direction, images, selected, position, photoStatus, frontLandmarksPending, canSubmit, consent, error, onPosition, onSelect, onBack, onContinue, onChooseFront, onChooseSide, onCamera, onRemove }: {
+export function DesktopCapture({ step, direction, images, selected, position, photoStatus, frontLandmarksPending, canSubmit, consent, submitLabel = 'Scan my photos', setupSteps, error, onPosition, onSelect, onBack, onContinue, onChooseFront, onChooseSide, onCamera, onRemove }: {
   step: DesktopCaptureStep
   direction: 1 | -1
   images: AnalysisDraftImage[]
@@ -39,6 +39,8 @@ export function DesktopCapture({ step, direction, images, selected, position, ph
   frontLandmarksPending: boolean
   canSubmit: boolean
   consent?: ReactNode
+  submitLabel?: string
+  setupSteps?: Parameters<typeof DesktopStep>[0]['setupSteps']
   error: string | null
   onPosition: (value: CaptureFrameImagePosition) => void
   onSelect: (id: string) => void
@@ -63,7 +65,7 @@ export function DesktopCapture({ step, direction, images, selected, position, ph
   const replace = (isReview ? portrait?.view === 'side' : isSide) ? onChooseSide : onChooseFront
   const fit = isReview && (position.scale !== 1 || position.x !== 50 || position.y !== 50) ? 'cover' : 'contain'
   const submitScan = isReview || Boolean(isSide && portrait)
-  const continueLabel = loadingPhoto ? 'Preparing photo' : submitScan ? 'Scan my photos'
+  const continueLabel = loadingPhoto ? 'Preparing photo' : submitScan ? submitLabel
     : scanFront ? 'Scanning photo' : portrait ? 'Continue' : isSide ? 'Choose side photo' : 'Choose front photo'
   const actionIcon = loadingPhoto ? undefined : submitScan || scanFront ? ScanFace : portrait ? undefined : Images
   useEffect(() => {
@@ -76,7 +78,7 @@ export function DesktopCapture({ step, direction, images, selected, position, ph
     onContinue()
   }
 
-  return <DesktopStep step={step} direction={direction} title={title} description={description} onBack={onBack}
+  return <DesktopStep step={step} setupSteps={setupSteps} direction={direction} title={title} description={description} onBack={onBack}
     onContinue={isReview || portrait ? advance : replace} continueLabel={continueLabel}
     actionIcon={actionIcon}
     secondaryAction={portrait && !front && <button type="button" className="desktop-replace-photo" onClick={replace} disabled={loadingPhoto} aria-label="Replace photo"><RotateCcw size={18} /></button>}

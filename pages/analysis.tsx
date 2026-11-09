@@ -19,7 +19,8 @@ import { ScanPwaHead } from '@/components/app/scan-pwa-head'
 import { MobileScanWelcome, scanPart, scanSequence } from '@/components/analysis/mobile-scan-pwa'
 import type { GetServerSideProps } from 'next'
 import type { AnalysisPurchase } from '@/components/payments/analysis-unlock-dialog'
-import { paywallExperimentProperties } from '@/lib/payments/paywall-experiment'
+import { quotePaywallExperiment } from '@/lib/payments/paywall-experiment-server'
+import { paywallExperimentProperties, type PaywallExposure } from '@/lib/payments/paywall-experiment'
 import type { CheckoutQuote } from '@/components/payments/membership-offer'
 import { flushWebAnalytics } from '@/lib/analytics/client'
 import type { WebReport } from '@/lib/analysis-v2/report-schema'
@@ -68,7 +69,7 @@ import { LoginDialog } from '@/components/app/login-dialog'
 import { SeoHead } from '@/components/app/seo-head'
 import { CaptureFrame, type CaptureFrameImagePosition } from '@/components/analysis/capture-frame'
 import { desktopCaptureViewport } from '@/components/analysis/face-guide'
-import { DesktopSetup, desktopSetupSteps, desktopCaptureSteps, getDesktopReportFocus, type AnalysisGender, type DesktopCaptureStep, type DesktopAnalysisPreferences } from '@/components/analysis/desktop-onboarding'
+import { DesktopSetup, desktopSetupSteps, desktopShortSetupSteps, desktopFullSetupSteps, desktopCaptureSteps, getDesktopReportFocus, type AnalysisGender, type DesktopCaptureStep, type DesktopAnalysisPreferences } from '@/components/analysis/desktop-onboarding'
 import { DesktopCapture } from '@/components/analysis/desktop-capture'
 import { AnalysisProgress } from '@/components/analysis/analysis-progress'
 
@@ -215,24 +216,36 @@ type ImageFramePositions = Record<string, CaptureFrameImagePosition>
 const defaultFramePosition: CaptureFrameImagePosition = { x: 50, y: 50, scale: 1 }
 
 const previewPhotoUrl = '/model.png'
-type AnalysisEntryProps = { country: string | null; startWithPhoto: boolean; phoneEntry: boolean; previewDevice: 'mobile' | 'desktop' | null; walkthrough: boolean; sampleReport: boolean }
+type AnalysisEntryProps = { country: string | null; startWithPhoto: boolean; phoneEntry: boolean; previewDevice: 'mobile' | 'desktop' | null; walkthrough: boolean; sampleReport: boolean; assignedOnboarding: PaywallExposure | null }
 
-export const getServerSideProps: GetServerSideProps<AnalysisEntryProps> = async ({ query, req }) => ({
-  props: {
+export const getServerSideProps: GetServerSideProps<AnalysisEntryProps> = async ({ query, req, res }) => {
+  const phoneEntry = isPhoneUserAgent(req.headers['user-agent'] ?? '', req.headers['sec-ch-ua-mobile']?.toString())
+  const secret = process.env.NEXTAUTH_SECRET
+  const eligible = !query.from && !query.checkout && !query.analysisId && !query.preview && !query.resumePhoto && !query.basic
+  const assignedOnboarding = eligible && secret
+    ? quotePaywallExperiment(req, res, phoneEntry ? 'mobile' : 'desktop', secret, 'onboarding')?.exposure ?? null
+    : null
+  if (assignedOnboarding) res.setHeader('Cache-Control', 'private, no-store')
+  return { props: {
+    assignedOnboarding,
     country: getRequestLocation(req).country,
-    phoneEntry: isPhoneUserAgent(req.headers['user-agent'] ?? '', req.headers['sec-ch-ua-mobile']?.toString()),
-    startWithPhoto: query.start === '1',
+    phoneEntry,
+    startWithPhoto: query.start === '1' && !assignedOnboarding,
     sampleReport: process.env.NODE_ENV === 'development' && (query.preview === 'mobile' || query.preview === 'desktop') && query.walkthrough === '1' && query.report === 'sample',
     previewDevice: process.env.NODE_ENV === 'development' && (query.preview === 'mobile' || query.preview === 'desktop') ? query.preview : null,
     walkthrough: process.env.NODE_ENV === 'development' && (query.preview === 'mobile' || query.preview === 'desktop') && query.walkthrough === '1',
-  },
-})
+  } }
+}
 
-export default function AnalysisPage({ startWithPhoto, phoneEntry, previewDevice, walkthrough, sampleReport, country: requestCountry }: AnalysisEntryProps) {
+export default function AnalysisPage({ startWithPhoto, phoneEntry, previewDevice, walkthrough, sampleReport, assignedOnboarding, country: requestCountry }: AnalysisEntryProps) {
   const router = useRouter()
   const phoneLayout = usePhoneLayout(phoneEntry)
   const previewMobile = previewDevice === 'mobile'
   const mobileScan = previewDevice ? previewMobile : phoneLayout
+  const onboardingExperiment = !walkthrough && assignedOnboarding?.surface === (mobileScan ? 'mobile' : 'desktop') ? assignedOnboarding : null
+  const desktopArm = mobileScan ? undefined : onboardingExperiment?.arm
+  const setupSteps = desktopArm === 'treatment' ? desktopShortSetupSteps : desktopArm === 'control' ? desktopFullSetupSteps : desktopSetupSteps
+  const inlineConsent = desktopArm === 'treatment'
   const { status, data: session } = useSession()
   const playSelect = useSound(selectSound)
   const sideInputRef = useRef<HTMLInputElement | null>(null)
@@ -253,7 +266,7 @@ export default function AnalysisPage({ startWithPhoto, phoneEntry, previewDevice
     if (!detectedCountry && !mobileScan) setBrowserCountry(countryFromTimeZone(Intl.DateTimeFormat().resolvedOptions().timeZone))
   }, [detectedCountry, mobileScan])
   const [privacyAccepted, setPrivacyAccepted] = useState(false)
-  const setupStep = desktopSetupSteps[setupIndex]
+  const setupStep = setupSteps[setupIndex] ?? setupSteps[0]
   const entryStep = startWithPhoto ? 'upload' : mobileScan ? 'intro' : 'desktop-setup'
   const [step, setStep] = useState<FlowStep>(sampleReport ? 'results' : entryStep)
   useEffect(() => {
@@ -287,14 +300,27 @@ export default function AnalysisPage({ startWithPhoto, phoneEntry, previewDevice
   const desktopPreview = !mobileScan && step === 'actual-analysis' && !analysisUnlocked
   const desktopReport = desktopPreview || (!mobileScan && step === 'results' && !offerInstall)
   const desktopStep = step === 'desktop-setup' ? `profile.${setupStep}` : step === 'upload' ? `capture.${captureStep}` : step
-  const completeStep = useWebStep(desktopPreview ? 'report-preview' : mobileScan ? step : desktopStep, !walkthrough, mobileScan ? WEB_ANALYSIS_VARIANTS.mobile : WEB_ANALYSIS_VARIANTS.desktop)
+  const completeStep = useWebStep(desktopPreview ? 'report-preview' : mobileScan ? step : desktopStep, !walkthrough, mobileScan ? WEB_ANALYSIS_VARIANTS.mobile : WEB_ANALYSIS_VARIANTS.desktop, onboardingExperiment)
+  const enteredExperiment = useRef<string | undefined>(undefined)
+  useEffect(() => {
+    if (!onboardingExperiment || enteredExperiment.current === onboardingExperiment.unit || (step !== 'intro' && step !== 'desktop-setup')) return
+    enteredExperiment.current = onboardingExperiment.unit
+    trackWebEvent('onboarding_interaction', { surface: 'web_analysis', action: 'experiment_entered', ...paywallExperimentProperties(onboardingExperiment) })
+  }, [onboardingExperiment, step])
+  const desktopConsentNotice = <div className="max-w-sm space-y-2 text-sm">
+    {!inlineConsent && <label className="flex cursor-pointer items-center gap-2">
+      <input type="checkbox" className="size-4 shrink-0 accent-black" checked={privacyAccepted} onChange={event => setPrivacyAccepted(event.target.checked)} />
+      I agree to photo processing for my analysis.
+    </label>}
+    <p className="text-xs text-zinc-600">{inlineConsent && 'By selecting Agree and scan my photos, you agree to photo processing for your analysis. '}Mogging sends your photos to Moonshot/Kimi to generate your private analysis. <a className="underline" href="/privacy#third-party-processing" target="_blank" rel="noreferrer">Privacy policy</a></p>
+  </div>
   const viewedAnalysisId = step === 'results' ? results[0]?.analysis.id : undefined
   useEffect(() => {
     if (!walkthrough && viewedAnalysisId) trackWebEvent('report_viewed', { report_id: viewedAnalysisId, surface: 'web_analysis', flow_id: webJourneyContext().flow_id })
   }, [viewedAnalysisId, walkthrough])
   useEffect(() => {
-    if (!walkthrough && paymentDialogOpen) trackWebEvent('paywall_viewed', { surface: 'web_analysis', paywall_id: 'web_analysis', paywall_version: mobileScan ? '2' : '3', flow_id: webJourneyContext().flow_id })
-  }, [mobileScan, paymentDialogOpen, walkthrough])
+    if (!walkthrough && paymentDialogOpen) trackWebEvent('paywall_viewed', { surface: 'web_analysis', paywall_id: 'web_analysis', paywall_version: mobileScan ? '2' : '3', flow_id: webJourneyContext().flow_id, ...paywallExperimentProperties(onboardingExperiment) })
+  }, [mobileScan, onboardingExperiment, paymentDialogOpen, walkthrough])
   const [checkoutStatus, setCheckoutStatus] = useState<string | null>(null)
   const checkoutLoading = checkoutStatus !== null
   const checkoutInFlight = useRef(false)
@@ -389,7 +415,7 @@ export default function AnalysisPage({ startWithPhoto, phoneEntry, previewDevice
   const [previewDeadline, setPreviewDeadline] = useState<number | null>(null)
 
   async function startPseudoAnalysis() {
-    if (!canStart || (!mobileScan && !privacyAccepted && !walkthrough)) return
+    if (!canStart || (!mobileScan && !privacyAccepted && !inlineConsent && !walkthrough)) return
     if (walkthrough) {
       if (!mobileScan) {
         beginDesktopScan(images)
@@ -401,6 +427,7 @@ export default function AnalysisPage({ startWithPhoto, phoneEntry, previewDevice
       return
     }
     if (!mobileScan) {
+      if (inlineConsent) setPrivacyAccepted(true)
       trackWebEvent('consent_result', { surface: 'web_analysis', step: `capture.${captureStep}`, result: 'accepted' })
       playSelect()
     }
@@ -473,7 +500,7 @@ export default function AnalysisPage({ startWithPhoto, phoneEntry, previewDevice
   function advanceDesktopSetup() {
     completeStep()
     setDesktopDirection(1)
-    if (setupIndex === desktopSetupSteps.length - 1) {
+    if (setupIndex === setupSteps.length - 1) {
       setCaptureStep('front')
       setStep('upload')
     } else setSetupIndex(setupIndex + 1)
@@ -746,10 +773,10 @@ export default function AnalysisPage({ startWithPhoto, phoneEntry, previewDevice
       trackWebEvent('purchase_stage_changed', { ...purchaseContext, provider: 'stripe', purchase_stage: checkoutStage })
       const subscription = product !== 'evaluation' && product !== 'evaluation_pack_3'
       const response = await apiPost<CheckoutResponse>(subscription ? '/api/payments/web-checkout' : '/api/payments/checkout', {
-        ...(subscription ? { product, returnTo: 'analysis', source: 'web_analysis' } : {}),
+        ...(subscription ? { product, returnTo: 'analysis', source: 'web_analysis', ...(mobileScan && isWebAnalysisProduct(product) ? { webPriceVariant: 'mobile' } : {}) } : {}),
         imageCount: checkoutImageCount,
         mobileInstallId: paymentInstallId,
-        ...paymentQuote, ...(subscription && experiment ? { paywallExperimentId: experiment.id, paywallExperimentUnit: experiment.unit } : {}), ...(guestCheckout ? { guestCheckout: true } : {}), attemptId, paywallVersion: purchaseContext.paywall_version, flowId: webJourneyContext().flow_id, flowVersion: webJourneyContext().flow_version, entryMode: webJourneyContext().entry_mode,
+        ...paymentQuote, ...(subscription && experiment ? { paywallExperimentId: experiment.id, paywallExperimentUnit: experiment.unit } : {}), ...(guestCheckout ? { guestCheckout: true } : {}), attemptId, paywallVersion: purchaseContext.paywall_version, flowId: webJourneyContext().flow_id, flowVersion: webJourneyContext().flow_version, entryMode: experiment?.kind === 'onboarding' ? 'onboarding_first' : webJourneyContext().entry_mode,
       })
       checkoutStage = 'checkout_redirect'
       setCheckoutStatus('Opening Stripe…')
@@ -1150,7 +1177,7 @@ export default function AnalysisPage({ startWithPhoto, phoneEntry, previewDevice
 
           {step === 'story' ? (
             <ScreenMotion key="story" managedMotion>
-              <MobileScanOnboarding analyticsEnabled={!walkthrough} onComplete={profile => {
+              <MobileScanOnboarding experiment={onboardingExperiment} analyticsEnabled={!walkthrough} onComplete={profile => {
                 setGender(profile)
                 beginAssessment()
               }} />
@@ -1159,27 +1186,23 @@ export default function AnalysisPage({ startWithPhoto, phoneEntry, previewDevice
 
           {!mobileScan && (step === 'desktop-setup' || step === 'upload') ? (
             <ScreenMotion key="desktop-onboarding" managedMotion>
-              {step === 'desktop-setup' ? <DesktopSetup step={setupStep} direction={desktopDirection}
+              {step === 'desktop-setup' ? <DesktopSetup step={setupStep} setupSteps={setupSteps} direction={desktopDirection}
+                privacy={{ accepted: privacyAccepted, notice: desktopConsentNotice }}
                 gender={chosenProfile} preferences={preferences} country={country}
                 background={background} onBackground={setBackground}
                 onGender={value => { setChosenProfile(value); setGender(value) }} onPreferences={setPreferences}
                 onBack={setupIndex > 0 && !startWithPhoto ? goBackDesktopSetup : undefined} onContinue={advanceDesktopSetup} />
-              : <DesktopCapture step={captureStep} direction={desktopDirection} images={images} selected={selectedImage ?? undefined}
+              : <DesktopCapture step={captureStep} setupSteps={setupSteps} direction={desktopDirection} images={images} selected={selectedImage ?? undefined}
                 position={selectedImage ? imageFramePositions[selectedImage.id] ?? defaultFramePosition : defaultFramePosition}
                 photoStatus={desktopPhotoStatus ?? preparingScan ?? (captureStep !== 'front' && isPreparingUploads ? 'Finding facial landmarks…' : null)}
-                frontLandmarksPending={captureStep === 'front' && isPreparingUploads} canSubmit={canStart && (privacyAccepted || walkthrough)} error={error} onSelect={setSelectedImageId}
-                consent={!walkthrough && <div className="max-w-sm space-y-2 text-sm">
-                  <label className="flex cursor-pointer items-center gap-2">
-                    <input type="checkbox" className="size-4 shrink-0 accent-black" checked={privacyAccepted} onChange={event => setPrivacyAccepted(event.target.checked)} />
-                    I agree to photo processing for my analysis.
-                  </label>
-                  <p className="text-xs text-zinc-600">Mogging sends your photos to Moonshot/Kimi to generate your private analysis. <a className="underline" href="/privacy#third-party-processing" target="_blank" rel="noreferrer">Privacy policy</a></p>
-                </div>}
+                frontLandmarksPending={captureStep === 'front' && isPreparingUploads} canSubmit={canStart && (privacyAccepted || inlineConsent || walkthrough)} error={error} onSelect={setSelectedImageId}
+                submitLabel={inlineConsent ? 'Agree and scan my photos' : undefined}
+                consent={!walkthrough && desktopArm !== 'control' && desktopConsentNotice}
                 onPosition={position => {
                   if (selectedImage) setImageFramePositions(current => ({ ...current, [selectedImage.id]: position }))
                 }}
                 onBack={captureStep !== 'front' ? () => goToCapture(captureStep === 'side' ? 'front' : 'side')
-                  : !startWithPhoto ? () => { setDesktopDirection(-1); setSetupIndex(desktopSetupSteps.length - 1); setStep('desktop-setup') } : undefined}
+                  : !startWithPhoto ? () => { setDesktopDirection(-1); setSetupIndex(setupSteps.length - 1); setStep('desktop-setup') } : undefined}
                 onContinue={advanceDesktopCapture} onChooseFront={() => {
                   if (captureStep === 'front' && images.some(image => image.view !== 'side')) setDesktopPhotoStatus('Choose a replacement photo…')
                   uploadInputRef.current?.click()
@@ -1217,6 +1240,7 @@ export default function AnalysisPage({ startWithPhoto, phoneEntry, previewDevice
             <ScreenMotion key="preview-analysis" managedMotion={mobileScan}>
               <ActualAnalysisScreen preparingPreview
                 mobileScan={mobileScan}
+                onboardingExperiment={onboardingExperiment}
                 walkthrough={walkthrough}
                 onRetake={retakePhoto}
                 onRetry={retryAnalysis}
@@ -1240,6 +1264,7 @@ export default function AnalysisPage({ startWithPhoto, phoneEntry, previewDevice
             <ScreenMotion key="payment">
               <ActualAnalysisScreen
                 mobileScan={mobileScan}
+                onboardingExperiment={onboardingExperiment}
                 walkthrough={walkthrough}
                 onRetake={retakePhoto}
                 onRetry={retryAnalysis}
@@ -1263,6 +1288,7 @@ export default function AnalysisPage({ startWithPhoto, phoneEntry, previewDevice
             <ScreenMotion key="actual-analysis" managedMotion>
               <ActualAnalysisScreen
                 mobileScan={mobileScan}
+                onboardingExperiment={onboardingExperiment}
                 walkthrough={walkthrough}
                 onRetake={retakePhoto}
                 onRetry={retryAnalysis}
@@ -1443,6 +1469,7 @@ function ActualAnalysisScreen({
   sidePhoto,
   basicValues,
   mobileScan,
+  onboardingExperiment,
   walkthrough,
   onRetake,
   onRetry,
@@ -1460,6 +1487,7 @@ function ActualAnalysisScreen({
   returnProduct,
   progress,
 }: {
+  onboardingExperiment?: PaywallExposure | null
   preparingPreview?: boolean
   frontPhoto?: AnalysisDraftImage
   sidePhoto?: AnalysisDraftImage
@@ -1522,7 +1550,8 @@ function ActualAnalysisScreen({
         walkthrough={walkthrough}
         fullscreen={mobileScan}
         desktopAnalysis={!mobileScan && !isUnlocked}
-        webCatalog={!mobileScan}
+        webCatalog
+        onboardingExperiment={onboardingExperiment}
         initialProduct={returnProduct}
         imageCount={imageCount}
         imageSrc={imageSrc}

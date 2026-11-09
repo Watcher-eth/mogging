@@ -44,8 +44,8 @@ export function Table({ rows, columns }: { rows: MetricRow[]; columns: string[] 
 export function DataDetails({ children }: { children: ReactNode }) {
   return <Disclosure className="admin-data-details"><DisclosureSummary>View underlying data</DisclosureSummary><AccordionContent><div className="mt-4">{children}</div></AccordionContent></Disclosure>
 }
-export function ComparisonBars({ rows, series }: { rows: Array<{ label: string; values: Array<number | null>; detail?: string }>; series: Array<{ label: string; color: string }> }) {
-  return <CategoryChart rows={rows} series={series} format={count} />
+export function ComparisonBars({ rows, series, format = count, maximum }: { rows: Array<{ label: string; values: Array<number | null>; detail?: string }>; series: Array<{ label: string; color: string }>; format?: (value: number) => string; maximum?: number }) {
+  return <CategoryChart rows={rows} series={series} format={format} maximum={maximum} />
 }
 export function Bars({ rows, format = count, maximum, presentation, labelWidth, animated, color = '#00A8EF' }: { rows: Array<{ label: string; value: number | null; detail?: string }>; format?: (value: number) => string; maximum?: number; presentation?: 'standard' | 'inline'; labelWidth?: number; animated?: boolean; color?: string }) {
   return <CategoryChart rows={rows.map(({ value, ...row }) => ({ ...row, values: [value] }))} series={[{ label: 'Observed', color }]} format={format} maximum={maximum} presentation={presentation} labelWidth={labelWidth} animated={animated} />

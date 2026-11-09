@@ -8,7 +8,9 @@ import { StudioGuide } from './studio-guide'
 
 export const desktopSetupSteps = ['ethnicity', 'profile', 'age', 'focus', 'recap'] as const
 export const desktopCaptureSteps = ['front', 'side', 'review'] as const
-export type DesktopSetupStep = typeof desktopSetupSteps[number]
+export type DesktopSetupStep = typeof desktopSetupSteps[number] | 'privacy'
+export const desktopShortSetupSteps = desktopSetupSteps.filter(step => step !== 'ethnicity')
+export const desktopFullSetupSteps = [...desktopSetupSteps, 'privacy'] as const
 export type DesktopCaptureStep = typeof desktopCaptureSteps[number]
 export type AnalysisGender = 'male' | 'female' | 'other'
 
@@ -64,6 +66,7 @@ function GoalIcon({ goal }: { goal: Goal }) {
 }
 
 const headings = {
+  privacy: ['Photo privacy', 'Review how your photos are processed before you start.'],
   profile: ['What gender are you?', 'Choose the option that best describes you.'],
   age: ['What’s your age range?', 'Add context to your starting point. This is optional.'],
   ethnicity: ['What’s your ethnicity?', 'You can skip this question.'],
@@ -75,7 +78,8 @@ const ease = [.22, 1, .36, 1] as const
 const actionMorphMs = 320
 const rowHeight = 62
 
-export function DesktopStep({ step, direction, title, description, children, media, bareMedia, onBack, onContinue, actionIcon: ActionIcon, secondaryAction, continueLabel = 'Continue', disabled = false, busy = false }: {
+export function DesktopStep({ step, direction, title, description, children, media, bareMedia, onBack, onContinue, actionIcon: ActionIcon, secondaryAction, continueLabel = 'Continue', disabled = false, busy = false, setupSteps = desktopSetupSteps }: {
+  setupSteps?: readonly DesktopSetupStep[]
   step: DesktopSetupStep | DesktopCaptureStep
   direction: 1 | -1
   title: string
@@ -94,8 +98,8 @@ export function DesktopStep({ step, direction, title, description, children, med
   const reduce = useReducedMotion()
   const heading = useRef<HTMLHeadingElement>(null)
   const hasMounted = useRef(false)
-  const index = [...desktopSetupSteps, ...desktopCaptureSteps].findIndex(item => item === step)
-  const total = desktopSetupSteps.length + desktopCaptureSteps.length
+  const index = [...setupSteps, ...desktopCaptureSteps].findIndex(item => item === step)
+  const total = setupSteps.length + desktopCaptureSteps.length
   useLayoutEffect(() => {
     window.scrollTo({ top: 0, behavior: 'instant' })
     if (hasMounted.current) heading.current?.focus({ preventScroll: true })
@@ -139,7 +143,9 @@ export function DesktopStep({ step, direction, title, description, children, med
   </div>
 }
 
-export function DesktopSetup({ step, direction, gender, preferences, country, background, onBackground, onGender, onPreferences, onBack, onContinue }: {
+export function DesktopSetup({ step, direction, gender, preferences, country, background, onBackground, onGender, onPreferences, onBack, onContinue, setupSteps = desktopSetupSteps, privacy }: {
+  setupSteps?: readonly DesktopSetupStep[]
+  privacy?: { accepted: boolean; notice: ReactNode }
   step: DesktopSetupStep
   direction: 1 | -1
   gender: AnalysisGender | null
@@ -169,10 +175,10 @@ export function DesktopSetup({ step, direction, gender, preferences, country, ba
       <FocusParticles focus={activeGoal?.id} accent={activeGoal?.color} />
       <GoalPills goals={selectedGoals} />
     </>
-    : step === 'recap' ? <StudioGuide kind="distance" distanceVariant={gender === 'male' ? 'male' : 'female'} />
+    : step === 'recap' || step === 'privacy' ? <StudioGuide kind="distance" distanceVariant={gender === 'male' ? 'male' : 'female'} />
     : null
-  return <DesktopStep step={step} direction={direction} title={title} description={cohort ? `${cohort.region.scope === 'country' ? `You’re one of about ${cohort.count} ${cohort.group} in your country.` : `Our ${cohort.region.name} reference includes about ${cohort.count} ${cohort.group}.`} ${description}` : description} onBack={onBack} onContinue={onContinue}
-    disabled={step === 'profile' && !gender || step === 'focus' && !goals.length}
+  return <DesktopStep step={step} setupSteps={setupSteps} direction={direction} title={title} description={cohort ? `${cohort.region.scope === 'country' ? `You’re one of about ${cohort.count} ${cohort.group} in your country.` : `Our ${cohort.region.name} reference includes about ${cohort.count} ${cohort.group}.`} ${description}` : description} onBack={onBack} onContinue={onContinue}
+    disabled={step === 'privacy' && !privacy?.accepted || step === 'profile' && !gender || step === 'focus' && !goals.length}
     continueLabel={step === 'recap' ? 'I’m ready to invest in myself'
       : step === 'focus' ? 'Save' : step === 'ethnicity' && background === skipEthnicity ? 'Skip for now' : 'Continue'}
     actionIcon={step === 'recap' ? Target : undefined} media={media} bareMedia={step !== 'recap'}>
@@ -183,6 +189,7 @@ export function DesktopSetup({ step, direction, gender, preferences, country, ba
       </motion.button>)}
     </div>}
     {step === 'age' && <SelectionWheel label="Age range" options={ageBands} value={preferences.ageBand ?? ageBands[0]} onChange={ageBand => onPreferences({ ...preferences, ageBand })} />}
+    {step === 'privacy' && privacy?.notice}
     {step === 'ethnicity' && <SelectionWheel key={country} label="Ethnic background" options={ethnicityOptions(country)} value={background} onChange={onBackground} formatValue={formatEthnicityLabel} />}
     {step === 'focus' && <div className="onboarding-choice-grid" role="group" aria-label="Your goals">
       {focuses.map(item => <motion.button key={item.id} type="button" aria-pressed={goals.includes(item.id)}
@@ -192,7 +199,7 @@ export function DesktopSetup({ step, direction, gender, preferences, country, ba
         <GoalIcon goal={item} /><span>{item.label}</span>
       </motion.button>)}
     </div>}
-    {step === 'recap' && <StartingStats goals={selectedGoals.map(goal => goal.label)} age={preferences.ageBand} gender={gender} background={background} country={country} />}
+    {step === 'recap' && <StartingStats goals={selectedGoals.map(goal => goal.label)} age={preferences.ageBand} gender={gender} background={setupSteps.includes('ethnicity') ? background : undefined} country={country} />}
   </DesktopStep>
 }
 
@@ -272,14 +279,14 @@ function StartingStats({ goals, age, gender, background, country }: {
   goals: string[]
   age?: string
   gender: AnalysisGender | null
-  background: string
+  background?: string
   country: string | null
 }) {
   const region = populationRegion(country)
   const rows = [
     [UsersRound, 'Gender', profiles.find(item => item.id === gender)?.label ?? 'Not specified'],
     [CalendarDays, 'Age range', age && age !== ageBands[0] ? age : 'Not specified'],
-    [CircleUserRound, 'Ethnicity', background === skipEthnicity ? 'Not specified' : formatEthnicityLabel(background)],
+    ...(background === undefined ? [] : [[CircleUserRound, 'Ethnicity', background === skipEthnicity ? 'Not specified' : formatEthnicityLabel(background)] as const]),
     [Globe2, 'Region', region.scope === 'country' ? region.name : `${region.name} (reference)`],
   ] as const
   return <section className="desktop-starting-stats" aria-label="Your stats">

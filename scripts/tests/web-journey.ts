@@ -92,12 +92,21 @@ try{
  await event('test-b', 'checkout_completed', 16, { ...treatment, ...payment, price: 0 }, 'server', 'free', null, 'stripe_verified')
  await event('test-b', 'checkout_completed', 1500, { ...treatment, ...payment }, 'server', 'late', null, 'stripe_verified')
  await event('test-c', 'paywall_plan_viewed', 1500, pending)
+ const onboard = { ...experiment('d'), paywall_experiment_id: 'fixture_onboarding', paywall_experiment_kind: 'onboarding' }
+ const dropout = { ...onboard, paywall_experiment_unit: 'e'.repeat(32) }
+ await event('onboard-a', 'onboarding_interaction', 1, { ...onboard, action: 'experiment_entered' })
+ await event('onboard-b', 'onboarding_interaction', 1, { ...dropout, action: 'experiment_entered' })
+ await event('onboard-a', 'onboarding_step_completed', 3, { ...onboard, step: 'upload' })
+ await event('onboard-a', 'paywall_viewed', 4, onboard)
+ await event('onboard-a', 'checkout_completed', 5, { ...onboard, ...payment }, 'server', 'cs_test_onboard', null, 'stripe_verified')
  const experimentSql = new PgDialect().sqlToQuery(paywallExperimentCTEs('2026-10-02T02:00:00Z'))
  const rows = await db.unsafe(`with ${experimentSql.sql} select * from paywall_experiments`, experimentSql.params as any[])
- const a = rows.find(row => row.arm === 'control' && row.browser === 'all')!
+ const a = rows.find(row => row.kind === 'length' && row.arm === 'control' && row.browser === 'all')!
  const b = rows.find(row => row.arm === 'treatment' && row.browser === 'all')!
  assert.deepEqual([a.exposed, a.mature, a.tapped, a.checkouts, a.paid, a.first_charge_usd_cents].map(Number), [1, 1, 1, 1, 1, 1799])
  assert.deepEqual([b.exposed, b.mature, b.checkout_failures, b.paid].map(Number), [2, 1, 1, 0])
  assert(rows.some(row => row.arm === 'treatment' && row.browser === 'tiktok' && Number(row.mature) === 1))
+ const onboarding = rows.find(row => row.kind === 'onboarding' && row.browser === 'all')!
+ assert.deepEqual([onboarding.exposed, onboarding.photo_ready, onboarding.paywall_reached, onboarding.paid].map(Number), [2, 1, 1, 1])
  console.log('PASS: browser-level paywall experiments, verified positive payments only, duplicate receipts, 24-hour maturity and browser diagnostics')
 }finally{await db.end()}
