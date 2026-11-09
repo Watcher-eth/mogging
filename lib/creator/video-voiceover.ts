@@ -39,6 +39,9 @@ export async function decodeVoiceover(file: Blob, name: string): Promise<VideoVo
   const context = new OfflineAudioContext(2, 1, 48000)
   const buffer = await context.decodeAudioData(await file.arrayBuffer())
   if (buffer.duration <= 0 || buffer.duration > 180 || buffer.numberOfChannels > 2) throw new Error('Use a mono or stereo voiceover under three minutes')
+  const audible = Array.from({ length: buffer.numberOfChannels }, (_, channel) => channel)
+    .some(channel => buffer.getChannelData(channel).some(sample => Math.abs(sample) > 1 / 32768))
+  if (!audible) throw new Error('This recording contains no audible narration.')
   return { file, name, buffer, url: URL.createObjectURL(file) }
 }
 

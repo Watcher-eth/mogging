@@ -1,12 +1,12 @@
 import { videoExportCacheKey, readVideoExport, saveVideoExport } from './video-export-cache'
 import { drawSculptureReport, drawSculptureReportInvitation, sculptureReportMetric } from './sculpture-report'
 import { drawSculptureCaption } from './sculpture-script-renderer'
-import { sculptureNarrationGuides, sculptureSceneClock, sculptureStagedTreatment, type SculptureStudy } from './cephra-study'
+import { sculptureSceneClock, sculptureWithRecordedGuides } from './cephra-study'
 import type { SculptureRenderer } from './sculpture-renderer'
 import { loadContextVideo, seekContextVideo, releaseContextVideo } from './context-video'
 import { decodeVisualBeat } from './video-semantics'
 import { prepareEditorialCursors } from './editorial-cursor'
-import { renderEditorialScene, editorialSceneClock, sharesEditorialCue, editorialWordEvents, editorialSharedPose, hasEditorialPortraitPose, registeredEditorialEvidence, type EditorialPhoto } from './editorial-scenes'
+import { renderEditorialScene, editorialSceneClock, sharesEditorialCue, editorialSharedPose, hasEditorialPortraitPose, registeredEditorialEvidence, type EditorialPhoto } from './editorial-scenes'
 import { drawVideoTextMorph } from './video-pill-morph'
 import { studyTimelineMotion, studyTimelineVariant } from './mobile-face-study-motion'
 import { drawReportOverlay } from './report-overlay'
@@ -16,7 +16,7 @@ import { drawPortraitInstruments, drawPortraitParticles, preparePortraitParticle
 import { reportPortraitProjection, drawPortraitColorExtension } from './report-portrait'
 import { drawSpokenScore } from './spoken-score'
 import { drawScientificEvidence } from './video-research'
-import { scriptVisualSeed, sceneSpeechWords, sceneWordStart } from './video-script'
+import { editorialCueTiming, scriptVisualSeed, sceneWordStart } from './video-script'
 import { portraitOverlayWindowMs, narratedPortraitProgram, portraitProgramRuns, preparePortraitProgram, samplePortraitProgram, drawPortraitActivity, drawStudyPortraitActivity, drawStudyMarginDiagram, type PortraitProgramRun, type PreparedPortraitProgram } from './portrait-program'
 import { drawFeatureStudy, prepareFeatureEdit, type FeaturePhoto } from './feature-study'
 import { videoThemeContext, originalVideoContext, darkVideoColor } from './video-theme'
@@ -90,27 +90,6 @@ async function prepareContextForVideo(prepared:PreparedVideo){
 }
 
 /** Preview and export use the same source clock, including explicit source-frame holds. */
-const resolvedSculptureGuides=new WeakMap<VideoScene,SculptureStudy>()
-function sculptureWithRecordedGuides(scenes:VideoScene[],startIndex:number,duration:number){
-  const first=scenes[startIndex],study=first.sculpture!
-  if(!sculptureStagedTreatment(study.treatment))return study
-  const cached=resolvedSculptureGuides.get(first)
-  if(cached)return cached
-  const words=[]
-  for(let i=startIndex;i<scenes.length && scenes[i].startMs<first.startMs+duration;i++){
-    const scene=scenes[i]
-    for(const word of scene.words??[])words.push({text:word.text,startMs:scene.startMs-first.startMs+word.startMs})
-  }
-  const cues=sculptureNarrationGuides(study,words)
-  const resolved={...study,
-    narrationTriggerMs:study.narrationTriggerMs??cues.narrationTriggerMs,
-    guideMiddleMs:study.guideMiddleMs??cues.guideMiddleMs,
-    guideEndMs:study.guideEndMs??cues.guideEndMs,
-    guideConnectMs:study.guideConnectMs??cues.guideConnectMs,
-  }
-  resolvedSculptureGuides.set(first,resolved)
-  return resolved
-}
 export async function seekPreparedMedia(prepared:PreparedVideo,time:number,signal?:AbortSignal){
   await prepared.documentary?.seekMedia(time,signal)
   const sculptScene=activeScene(prepared.composition,time)
@@ -588,12 +567,7 @@ function sharesEditorialPortrait(previous: VideoScene | undefined, next: VideoSc
 function editorialPlayback(prepared: PreparedVideo, scene: VideoScene, localMs: number) {
   const photos = prepared.scenes.get(scene.id)?.presentationPhotos
   if (!scene.presentation || !photos?.[0]) return
-  const clock = editorialSceneClock(prepared.composition.scenes, scene, localMs)
-  const cueStart = scene.startMs + localMs - clock.time
-  const words = scene.presentation.beats ? prepared.composition.scenes
-    .filter(candidate => candidate.startMs >= cueStart && candidate.startMs < cueStart + clock.duration)
-    .flatMap(candidate => sceneSpeechWords(candidate).map(word => ({ text: word.text, startMs: candidate.startMs + word.startMs - cueStart }))) : []
-  const events = editorialWordEvents(scene.presentation.beats, words)
+  const { clock, cueStart, events } = editorialCueTiming(prepared.composition.scenes, scene, localMs)
   const media = prepared.composition.media?.find(asset => asset.id === scene.presentation?.mediaId)
   const presentation = media ? { ...scene.presentation, assetCaption: scene.presentation.assetCaption ?? media.source.author } : scene.presentation
   return {
@@ -1456,7 +1430,7 @@ function drawDecoration(ctx: CanvasRenderingContext2D, prepared: PreparedVideo, 
   ctx.restore()
 }
 
-export async function exportCompositionMp4(prepared: PreparedVideo, onProgress?: (progress: number) => void, signal?: AbortSignal, audio?: AudioBuffer, bitrate?: number, onStatus?: (status: string) => void, onRemaining?: (seconds: number | null) => void) {
+export async function exportCompositionMp4(prepared: PreparedVideo, audio: AudioBuffer, onProgress?: (progress: number) => void, signal?: AbortSignal, bitrate?: number, onStatus?: (status: string) => void, onRemaining?: (seconds: number | null) => void) {
   onRemaining?.(null)
   signal?.throwIfAborted()
   const cacheKey = await videoExportCacheKey(prepared.composition,audio)

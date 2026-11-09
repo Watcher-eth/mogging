@@ -91,7 +91,10 @@ test('cancelled composition exports release the encoder and frame resources', as
   expect(frameClosed).toBe(true)
 })
 
-test('voiceover export reports AAC failures and closes both encoders', async () => {
+test.each([
+  ['AAC failed', true],
+  ['did not encode the audio track', false],
+])('voiceover export reports %s and closes both encoders', async (message, failOnConfigure) => {
   let videoClosed = false, audioClosed = false
   replace('VideoEncoder', class {
     static async isConfigSupported(config: VideoEncoderConfig) { return { supported: true, config } }
@@ -106,11 +109,13 @@ test('voiceover export reports AAC failures and closes both encoders', async () 
     state = 'configured'; encodeQueueSize = 0
     constructor(private callbacks: AudioEncoderInit) {}
     addEventListener() {}
-    configure() { this.callbacks.error(new DOMException('AAC failed')) }
+    configure() { if (failOnConfigure) this.callbacks.error(new DOMException('AAC failed')) }
+    encode() {} async flush() {}
     close() { audioClosed = true; this.state = 'closed' }
   })
-  const audio = { duration: 1, sampleRate: 48000, numberOfChannels: 1, length: 48000 } as AudioBuffer
-  await expect(encodeCanvasMp4({ width: 1080, height: 1920 } as HTMLCanvasElement, () => {}, 1000, undefined, undefined, audio)).rejects.toThrow('AAC failed')
+  const audio = { duration: 1, sampleRate: 48000, numberOfChannels: 1, length: 48000, getChannelData: () => new Float32Array(48000) } as unknown as AudioBuffer
+  const canvas = { width: 1080, height: 1920, getContext: () => ({ getImageData: () => ({ data: new Uint8ClampedArray(4) }) }) } as unknown as HTMLCanvasElement
+  await expect(encodeCanvasMp4(canvas, () => {}, 1000, undefined, undefined, audio)).rejects.toThrow(message)
   expect(videoClosed).toBe(true)
   expect(audioClosed).toBe(true)
 })

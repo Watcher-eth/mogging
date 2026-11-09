@@ -1,4 +1,4 @@
-import { editorialPresentationSchema } from './editorial-scenes'
+import { editorialPresentationSchema, editorialSceneClock, editorialWordEvents } from './editorial-scenes'
 import type { VideoScene } from './video-composition'
 import { z } from 'zod'
 import { deliverySchema } from './video-speech'
@@ -94,4 +94,13 @@ export function sceneSpeechWords(scene: Pick<VideoScene, 'words' | 'narration' |
 
 export function sceneWordStart(scene: Pick<VideoScene, 'words' | 'narration' | 'durationMs'>, index: number) {
   return sceneSpeechWords(scene)[index]?.startMs ?? scene.durationMs
+}
+
+export function editorialCueTiming(scenes: VideoScene[], scene: VideoScene, localMs: number) {
+  const clock = editorialSceneClock(scenes, scene, localMs)
+  const cueStart = scene.startMs + localMs - clock.time
+  const words = scene.presentation?.beats ? scenes
+    .filter(candidate => candidate.startMs >= cueStart && candidate.startMs < cueStart + clock.duration)
+    .flatMap(candidate => sceneSpeechWords(candidate).map(word => ({ text: word.text, startMs: candidate.startMs + word.startMs - cueStart }))) : []
+  return { clock, cueStart, events: editorialWordEvents(scene.presentation?.beats, words) }
 }

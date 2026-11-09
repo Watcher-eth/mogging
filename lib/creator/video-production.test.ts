@@ -7,6 +7,7 @@ import { reportCategories } from './mock-report-data'
 import { voiceDirection } from './video-speech'
 import { scriptTokens, scriptRevision } from './video-script'
 import { narrationText } from './video-voiceover'
+import { suggestVideoSounds } from './video-sound'
 import type { AnalysisPostInput } from './analysis-post'
 
 const input: AnalysisPostInput = { formatId: 'feature-audit', subject: 'Marlon', hook: '', overallScore: '7.1', potentialScore: '8.2', strongestFeature: 'Eye area', strongestScore: '8.1', opportunityFeature: 'Jaw definition', opportunityScore: '6.2', recommendation: '', productFeatures: [], cta: '' }
@@ -261,4 +262,23 @@ test('reassembling an already measured video replaces its clock after restoring 
   expect(second.composition.timing).toBe('words')
   expect(await second.file.arrayBuffer()).toEqual(await first.file.arrayBuffer())
   expect(second.composition.recording).toEqual(first.composition.recording)
+})
+
+test('export sounds use the recorded cursor beat across caption fragments and accent the next report', () => {
+  const base = compile(45, 'editorial-story')
+  const [first, second, report] = base.scenes
+  const presentation = { kind: 'cursor-tour' as const, variant: 0, imageIds: [], referenceIndex: 0,
+    beats: [{ feature: 'brows' as const, anchor: 'the brow' }] }
+  const scenes = [
+    { ...first, startMs: 0, durationMs: 1000, presentation, tracks: [], featureStudy: undefined,
+      narration: 'Look at', words: [{ text: 'Look', startMs: 100, endMs: 250 }, { text: 'at', startMs: 250, endMs: 360 }] },
+    { ...second, source: first.source, scriptRange: first.scriptRange, startMs: 1000, durationMs: 3000,
+      presentation, tracks: [], featureStudy: undefined, narration: 'the brow',
+      words: [{ text: 'the', startMs: 350, endMs: 460 }, { text: 'brow', startMs: 460, endMs: 600 }] },
+    { ...report, source: { ...report.source, kind: 'report' as const }, focus: 'category-score',
+      startMs: 4000, durationMs: 3000, presentation: undefined, featureStudy: undefined, tracks: [] },
+  ]
+  expect(suggestVideoSounds({ ...base, scenes, durationMs: 7000 })).toEqual([
+    { sound: 'click', timeMs: 1350 }, { sound: 'ratchet', timeMs: 4100 },
+  ])
 })

@@ -117,10 +117,10 @@ export default function VideoStudio({ input, plan, images, trackExports = false,
   const renderImages=sourceImages
   const voiceBuffer=activeAudio?.audio.buffer
   const soundPlan=useMemo(()=>suggestVideoSounds(composition),[composition])
-  const [soundMix,setSoundMix]=useState<{source:typeof composition;voice?:AudioBuffer;buffer?:AudioBuffer;url?:string;error?:boolean}>()
+  const [soundMix,setSoundMix]=useState<{source:typeof composition;voice:AudioBuffer} & ({buffer:AudioBuffer;url:string;error?:never}|{buffer?:never;url?:never;error:true})>()
   const currentMix=soundMix?.source===composition && soundMix.voice===voiceBuffer?soundMix:undefined
   const soundActive=soundPlan.length>0
-  const mixingSound=soundActive&&!currentMix
+  const outputAudio=soundActive?currentMix?.buffer:voiceBuffer
   const timingIssues=activeAudio?productionTimingIssues(composition,length):[]
   const [preparation,setPreparation]=useState<{source:typeof composition;video:PreparedVideo}|null>(null)
   const prepared=preparation?.source===composition?preparation.video:null
@@ -153,12 +153,13 @@ export default function VideoStudio({ input, plan, images, trackExports = false,
     return()=>{disposed=true;if(url)URL.revokeObjectURL(url)}
   },[draft,clips])
   useEffect(()=>{
-    if(!soundActive)return
+    if(!voiceBuffer || !soundActive)return
     let disposed=false,url:string|undefined
     void mixVideoSounds(composition.durationMs,voiceBuffer,soundPlan,.5).then(buffer=>{
       if(disposed)return
-      if(buffer)url=URL.createObjectURL(bufferToWav(buffer))
-      setSoundMix({source:composition,voice:voiceBuffer,buffer:buffer??undefined,url})
+      if(!buffer)throw new Error('Could not mix this recording.')
+      url=URL.createObjectURL(bufferToWav(buffer))
+      setSoundMix({source:composition,voice:voiceBuffer,buffer,url})
     }).catch(()=>{if(!disposed)setSoundMix({source:composition,voice:voiceBuffer,error:true})})
     return()=>{disposed=true;if(url)URL.revokeObjectURL(url)}
   },[composition,voiceBuffer,soundPlan,soundActive])
@@ -228,10 +229,10 @@ export default function VideoStudio({ input, plan, images, trackExports = false,
   }
   function edit(){if(!customComposition){setCustomComposition(baseComposition);setSeekMs(customClipPreviewTime(baseComposition.scenes[0]))}setEditing(true)}
   async function downloadVideo() {
-    if (!prepared || !activeAudio || busy || timingIssues.length || mixingSound || currentMix?.error) return
+    if (!prepared || !outputAudio || busy || timingIssues.length) return
     const controller = new AbortController(); abortRef.current = controller; setProgress(0);setDownloaded(false);setExportStatus('Preparing video…');setRemainingSeconds(null);setSeekMs(previewPositionRef.current)
     try {
-      const video = await exportCompositionMp4(prepared, setProgress, controller.signal, soundActive ? currentMix?.buffer : voiceBuffer, undefined, setExportStatus, setRemainingSeconds)
+      const video = await exportCompositionMp4(prepared, outputAudio, setProgress, controller.signal, undefined, setExportStatus, setRemainingSeconds)
       if (controller.signal.aborted) return
       if (trackExports) {
         const bytes = await video.arrayBuffer()
@@ -249,7 +250,7 @@ export default function VideoStudio({ input, plan, images, trackExports = false,
   }
 
   useEffect(()=>setDownloaded(false),[composition])
-  const ready=Boolean(prepared && activeAudio && !mixingSound && !currentMix?.error && !error)
+  const ready=Boolean(prepared && outputAudio && !error)
   const pageTitle=step==='style'?'Choose a content style':step==='sculpture'?'Choose your sculpture':step==='person'?'Who’s the post about?':editing?'Make it yours':'Your post'
   const ease=[.22,1,.36,1] as const
   return <div className={styles.studio}>

@@ -1,7 +1,7 @@
 // Two recent exports, bounded to 120 MB. Failure/eviction never blocks rendering.
 const cacheName = 'mogging-video-exports-studio-v4'
-// Bump when the same composition can render different frames.
-const rendererRevision = 20
+// Bump when the same composition can render different frames or audio.
+const rendererRevision = 21
 const maximumBytes = 60 * 1024 * 1024
 const digest = async (data: BufferSource) => Array.from(new Uint8Array(await crypto.subtle.digest('SHA-256', data)), byte => byte.toString(16).padStart(2, '0')).join('')
 

@@ -1,5 +1,9 @@
 import { renderToBuffer, type Layer, type SoundDefinition } from '@web-kits/audio'
-import type { VideoComposition } from './video-composition'
+import { editorialCursorTiming } from './editorial-cursor'
+import { sharesEditorialCue } from './editorial-scenes'
+import { sculptureSample, sculptureSceneClock, sculptureWithRecordedGuides } from './cephra-study'
+import { editorialCueTiming, sceneWordStart } from './video-script'
+import type { VideoComposition, VideoScene } from './video-composition'
 
 export const videoSounds = {
   click: 'Precision click',
@@ -44,30 +48,60 @@ function sample(sound: VideoSound) {
   return pending
 }
 
-export function suggestVideoSounds(composition: VideoComposition): SoundCue[] {
-  const cues: SoundCue[] = []
-  for (const [index, scene] of composition.scenes.entries()) {
-    const previous = composition.scenes[index - 1]
-    const study = scene.featureStudy
-    const reveal = false
-    const wipe = study?.comparison === 'wipe' && previous?.featureStudy?.comparison !== 'wipe'
-    const scoreReport = scene.source.kind === 'report' && scene.focus === 'scores'
-      && (previous?.source.kind !== 'report' || previous.source.categoryId !== scene.source.categoryId)
-    const authoredBoundary = previous && (previous.scriptRange?.cueId ?? previous.cueId) !== (scene.scriptRange?.cueId ?? scene.cueId)
-    const transition = authoredBoundary && scene.tracks.find(track => track.target === 'content')
-    const newPhoto = authoredBoundary && Boolean(scene.source.imageId) && previous.source.imageId !== scene.source.imageId
-    const recipe = composition.recipe
-    const sound = reveal || wipe ? 'sweep'
-      : scoreReport ? 'ratchet'
-      : transition && ['wipe-left', 'wipe-right', 'wipe-up', 'screen-push', 'card-reveal'].includes(transition.primitive) ? 'sweep'
-      : newPhoto && recipe === 'measurement-explainer' ? 'click'
-      : newPhoto && ['feature-study','hybrid-story','report-led','portrait-audit'].includes(recipe) ? 'sweep'
-      : undefined
-    const offset = reveal ? 0 : wipe ? Math.min(330, scene.durationMs * .16) : scoreReport ? 100 : transition ? transition.startMs : 0
-    const timeMs = scene.startMs + offset
-    if (sound && timeMs < composition.durationMs - 150 && timeMs - (cues.at(-1)?.timeMs ?? -Infinity) >= 1800) cues.push({ sound, timeMs })
+function sceneSound(composition: VideoComposition, scene: VideoScene, index: number): SoundCue | undefined {
+  const previous = composition.scenes[index - 1]
+  const at = (sound: VideoSound, offset = 0): SoundCue | undefined =>
+    offset < scene.durationMs ? { sound, timeMs: scene.startMs + offset } : undefined
+  const study = scene.featureStudy
+  if (study?.revealWord !== undefined) return at('sweep', sceneWordStart(scene, study.revealWord))
+  if (study?.comparison === 'wipe' && !sharesEditorialCue(scene, previous, 'featureStudy')) {
+    return at('sweep', Math.min(330, scene.durationMs * .16))
   }
-  return cues.sort((a, b) => a.timeMs - b.timeMs)
+
+  if (scene.source.kind === 'report' && ['scores', 'category-score'].includes(scene.focus) &&
+      (previous?.source.kind !== 'report' || previous.source.categoryId !== scene.source.categoryId)) return at('ratchet', 100)
+
+  const presentation = scene.presentation
+  if (presentation && !sharesEditorialCue(scene, previous)) {
+    const { clock, events } = editorialCueTiming(composition.scenes, scene, 0)
+    const event = events[0]
+    const cursor = ['cursor-tour', 'feature-tray', 'feature-aperture', 'paired-detail', 'tile-expand'].includes(presentation.kind)
+    if (cursor && (event || presentation.kind === 'tile-expand')) {
+      const click = editorialCursorTiming(event?.atMs ?? 1800, presentation.variant, presentation.interaction)
+      if (click.clickAtMs < clock.duration) return { sound: 'click', timeMs: scene.startMs + click.clickAtMs }
+    }
+    if (['ink-pan', 'dash-timeline', 'face-window', 'glass-phone', 'tool-sweep', 'reference-flip'].includes(presentation.kind)) {
+      const offset = event?.atMs ?? 0
+      if (offset < clock.duration) return { sound: 'sweep', timeMs: scene.startMs + offset }
+    }
+  }
+  if (scene.sculpture && scene.sculpture.showGuides) {
+    const clock = sculptureSceneClock(composition.scenes, scene, 0)
+    if (clock.startIndex === index) {
+      const sculpture = sculptureWithRecordedGuides(composition.scenes, index, clock.duration)
+      const { clickAt } = sculptureSample(sculpture, 0, clock.duration)
+      const { clickAtMs } = editorialCursorTiming(clickAt, scene.sculpture.variant, 'click')
+      if (clickAtMs < clock.duration) return { sound: 'tap', timeMs: scene.startMs + clickAtMs }
+    }
+  }
+  if (!previous || (previous.scriptRange?.cueId ?? previous.cueId) === (scene.scriptRange?.cueId ?? scene.cueId)) return
+  const transition = scene.tracks.find(track => track.target === 'content' &&
+    ['wipe-left', 'wipe-right', 'wipe-up', 'screen-push', 'card-reveal'].includes(track.primitive))
+  if (transition) return at('sweep', transition.startMs)
+  if (scene.documentary && scene.documentary.kind !== previous.documentary?.kind &&
+      ['contact', 'media', 'registration'].includes(scene.documentary.kind)) return at('tap', 90)
+  if (scene.source.imageId && previous.source.imageId !== scene.source.imageId) {
+    return at(composition.recipe === 'measurement-explainer' ? 'click' : 'sweep')
+  }
+}
+
+export function suggestVideoSounds(composition: VideoComposition): SoundCue[] {
+  const candidates = composition.scenes.flatMap((scene, index) => sceneSound(composition, scene, index) ?? [])
+  const cues: SoundCue[] = []
+  for (const cue of candidates.sort((a, b) => a.timeMs - b.timeMs)) {
+    if (cue.timeMs < composition.durationMs - 150 && cue.timeMs - (cues.at(-1)?.timeMs ?? -Infinity) >= 1800) cues.push(cue)
+  }
+  return cues
 }
 
 /** Mix once so the player and MP4 encoder share the same clock and waveform. */

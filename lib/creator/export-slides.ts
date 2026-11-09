@@ -79,9 +79,20 @@ export async function encodeCanvasMp4(canvas: HTMLCanvasElement, drawFrame: (tim
   const encoder = new VideoEncoder({ output: (chunk, metadata) => { try { muxer.addVideoChunk(chunk, metadata) } catch (error) { fail(error) } }, error: fail })
   let audioEncoder: AudioEncoder | null = null
   let audioOffset = 0
+  let audioChunks = 0
   try {
     encoder.configure(supportedConfig)
-    if (audio) audioEncoder = new AudioEncoder({ output: (chunk, metadata) => { try { muxer.addAudioChunk(chunk, metadata) } catch (error) { fail(error) } }, error: fail })
+    if (audio) audioEncoder = new AudioEncoder({
+      output: chunk => {
+        try {
+          // The muxer already writes AAC-LC config from our sample rate and channel count.
+          // Some Safari versions supply an invalid AudioSpecificConfig in the callback.
+          muxer.addAudioChunk(chunk)
+          audioChunks++
+        } catch (error) { fail(error) }
+      },
+      error: fail,
+    })
     audioEncoder?.addEventListener('dequeue', () => wakeAudio?.())
     if (audioEncoder && audioConfig) audioEncoder.configure(audioConfig)
     const frameDuration = 1_000_000 / frameRate
@@ -122,6 +133,7 @@ export async function encodeCanvasMp4(canvas: HTMLCanvasElement, drawFrame: (tim
     await audioEncoder?.flush()
     signal?.throwIfAborted()
     if (encoderError) throw encoderError
+    if (audio && !audioChunks) throw new Error('The browser did not encode the audio track. Try exporting again in Safari or Chrome.')
     muxer.finalize()
     onProgress?.(1)
     return new Blob([target.buffer], { type: 'video/mp4' })

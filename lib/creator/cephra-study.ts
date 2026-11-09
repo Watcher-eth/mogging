@@ -717,3 +717,25 @@ export function sculptureSceneClock(
       scenes[last].startMs + scenes[last].durationMs - scenes[first].startMs,
   };
 }
+
+const resolvedSculptureGuides=new WeakMap<VideoScene,SculptureStudy>()
+export function sculptureWithRecordedGuides(scenes:VideoScene[],startIndex:number,duration:number){
+  const first=scenes[startIndex],study=first.sculpture!
+  if(!sculptureStagedTreatment(study.treatment))return study
+  const cached=resolvedSculptureGuides.get(first)
+  if(cached)return cached
+  const words=[]
+  for(let i=startIndex;i<scenes.length && scenes[i].startMs<first.startMs+duration;i++){
+    const scene=scenes[i]
+    for(const word of scene.words??[])words.push({text:word.text,startMs:scene.startMs-first.startMs+word.startMs})
+  }
+  const cues=sculptureNarrationGuides(study,words)
+  const resolved={...study,
+    narrationTriggerMs:study.narrationTriggerMs??cues.narrationTriggerMs,
+    guideMiddleMs:study.guideMiddleMs??cues.guideMiddleMs,
+    guideEndMs:study.guideEndMs??cues.guideEndMs,
+    guideConnectMs:study.guideConnectMs??cues.guideConnectMs,
+  }
+  resolvedSculptureGuides.set(first,resolved)
+  return resolved
+}
