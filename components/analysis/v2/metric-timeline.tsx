@@ -6,7 +6,7 @@ import styles from './metric-timeline.module.css'
 const svgNumber = (value: number) => Number(value.toFixed(3))
 export type TimelineAxis = { minimum: number; maximum: number; unit: string; digits: number }
 
-export function MetricTimeline({ kind, positions, grade, scale = 'range', label = '', value = '', axis, onPositionChange }: { kind: string; positions: number[]; grade: number | null; scale?: 'range' | 'quality'; label?: string; value?: string; axis?: TimelineAxis; onPositionChange?: (position: number) => void }) {
+export function MetricTimeline({ kind, positions, grade, scale = 'range', label = '', value = '', axis, denseTicks, onPositionChange }: { kind: string; positions: number[]; grade: number | null; scale?: 'range' | 'quality'; label?: string; value?: string; axis?: TimelineAxis; denseTicks?: boolean; onPositionChange?: (position: number) => void }) {
   const root = useRef<HTMLDivElement>(null)
   const entered = useInView(root, { once: true, amount: .25 })
   const reduced = useReducedMotion()
@@ -18,12 +18,14 @@ export function MetricTimeline({ kind, positions, grade, scale = 'range', label 
   const active = (kind === 'Rail' ? grade === null ? [] : [grade / 10] : positions).filter(Number.isFinite)
   if (!active.length) return null
   const numericScore = scale === 'quality' && /^\d.*\/\s*\d/.test(value)
-  const variant = metricTimelineVariant(label, label), maximum = Number(value.match(/\/\s*(\d+)/)?.[1] ?? 10)
+  const reportAxis = axis && !onPositionChange
+  const variant = reportAxis ? 2 : metricTimelineVariant(label, label), maximum = Number(value.match(/\/\s*(\d+)/)?.[1] ?? 10)
   const curved = [1, 4, 7].includes(variant), height = curved ? 340 : 260
-  const geometry = metricTimelineGeometry({ width: 876, height, positions: active, variant, progress: 1, labels: numericScore, maximum })
+  const geometry = metricTimelineGeometry({ width: 876, height, positions: active, variant, progress: 1, labels: numericScore, maximum, denseTicks })
   const { ink, muted } = metricTimelinePalette
   const accent = geometry.sparse ? metricTimelinePalette.warm : metricTimelinePalette.accent
-  const cursorLabel = numericScore ? '' : value.length <= 38 ? value : ''
+  const cursorLabel = numericScore || reportAxis || value.length > 38 ? '' : value
+  const axisDivisions = axis?.unit === '' && axis.minimum === 0 && axis.maximum === 4 ? 4 : 5
   const labelSize = Math.min(64, 760 / Math.max(1, cursorLabel.length * .55)), labelHalf = cursorLabel.length * labelSize * .28
   const labelY = geometry.bottom + labelSize + 42
   const explore = (clientX: number, element: HTMLElement) => {
@@ -40,7 +42,14 @@ export function MetricTimeline({ kind, positions, grade, scale = 'range', label 
       <path d={`M0 ${geometry.balanced ? -tick.length / 2 : 0} V${geometry.balanced ? tick.length / 2 : tick.length}`} strokeWidth={tick.weight} opacity={svgNumber(tick.opacity)} />
     </g>)}</g>
     {geometry.ticks.filter(tick => tick.label !== undefined).map(tick => <text key={tick.value} x={svgNumber(tick.x - Math.sin(tick.rotation) * (geometry.balanced ? tick.length / 2 : tick.length))} y={svgNumber(tick.y + Math.cos(tick.rotation) * (geometry.balanced ? tick.length / 2 : tick.length) + 38)} textAnchor="middle" fill={muted} fontSize="32">{tick.label}</text>)}
-    {axis ? [0, .2, .4, .6, .8, 1].map(position => { const point = geometry.place(position * 10); return <text key={position} x={svgNumber(point.x)} y={svgNumber(point.y + Math.cos(point.rotation) * (geometry.balanced ? geometry.majorLength / 2 : geometry.majorLength) + 40)} textAnchor="middle" fill={muted} fontSize="26">{(axis.minimum + position * (axis.maximum - axis.minimum)).toFixed(axis.digits)}{axis.unit}</text> }) : null}
+    {axis ? Array.from({ length: axisDivisions + 1 }, (_, index) => {
+      const position = index / axisDivisions
+      const point = geometry.place(position * 10)
+      const size = reportAxis ? 42 : 26
+      return <text key={position} x={svgNumber(point.x)} y={svgNumber(point.y + Math.cos(point.rotation) * (geometry.balanced ? geometry.majorLength / 2 : geometry.majorLength) + size + 14)}
+        textAnchor={reportAxis ? index === 0 ? 'start' : index === axisDivisions ? 'end' : 'middle' : 'middle'}
+        fill={muted} fontSize={size}>{(axis.minimum + position * (axis.maximum - axis.minimum)).toFixed(axis.digits)}{axis.unit}</text>
+    }) : null}
     {geometry.cursors.map((_, index) => <TimelineCursor key={index} position={active[index]} geometry={geometry} tracking={variant === 3} progress={progress} color={index ? ink : accent} weight={index ? 7 : geometry.sparse ? 16 : 9}
       label={index ? '' : cursorLabel} labelSize={labelSize} labelHalf={labelHalf} labelY={labelY} />)}
   </svg>{onPositionChange && axis ? <input className={styles.timelineControl} type="range" min={0} max={1} step={.005} value={active[0]} aria-label={`Explore ${label.toLowerCase()}`} aria-valuetext={`${(axis.minimum + active[0] * (axis.maximum - axis.minimum)).toFixed(axis.digits)}${axis.unit}`} onChange={event => onPositionChange(Number(event.target.value))} onPointerMove={event => { if (event.pointerType === 'mouse' && !event.buttons) explore(event.clientX, event.currentTarget) }} /> : null}</div>

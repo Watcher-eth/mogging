@@ -106,13 +106,13 @@ export function MobileScanOnboarding({ onComplete, analyticsEnabled = false }: {
           {wheel && options ? <motion.div variants={scanPart}>
             <ScanWheel options={options} value={selected[0] ?? fallback} label={heading?.title ?? 'Select an option'}
               age={step === 'age'} onChange={choose} />
-          </motion.div> : options ? <motion.div className={styles.onboardingOptions} variants={scanSequence}>
+          </motion.div> : options ? <motion.div className="onboarding-choice-grid" data-mobile="" variants={scanSequence} role="group" aria-label={heading?.title?.replace('\n', ' ')}>
             {options.map(option => {
               const Icon = choiceIcons[step]?.[option.id]
               return <motion.button key={option.id} type="button" variants={scanPart} aria-pressed={selected.includes(option.id)}
               whileTap={reduced ? undefined : { scale: .97 }} onClick={() => { feedback('selection'); choose(option.id) }}>
-              {Icon && <Icon size={18} aria-hidden="true" />}
-              {option.label}{multiple && selected.includes(option.id) && <Check size={15} />}
+              {Icon && <Icon size={20} strokeWidth={1.65} aria-hidden="true" />}
+              <span>{option.label}</span>
             </motion.button>
             })}
           </motion.div> : <motion.div variants={scanPart}><StoryArtwork step={step} motivation={answers.motivation?.[0]} goals={answers.goals} commitment={answers.time?.[0]} /></motion.div>}

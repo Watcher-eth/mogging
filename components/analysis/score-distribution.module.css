@@ -1,0 +1,26 @@
+.distribution { --current-score: #df861d; --potential-score: #53b8f7; margin-top: 8px; color: #65717d; }
+.distribution svg { display: block; width: 100%; }
+.distributionCaption { fill: currentColor; font: var(--distribution-label-size, 8.5px) monospace; }
+.distributionBaseline { fill: none; stroke: var(--distribution-baseline, #c9d0d7); stroke-width: .75; }
+.distributionTick { stroke: var(--distribution-tick, #7e8b99); stroke-linecap: round; }
+.currentMark { color: var(--current-score); stroke: currentColor; stroke-linecap: round; }
+.potentialMark { color: var(--potential-score); stroke: currentColor; stroke-linecap: round; }
+.potentialPulse { opacity: .18; }
+.distributionLegend { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 4px 6px; margin-top: 4px; font-size: 10px; font-variant-numeric: tabular-nums; }
+.distributionLegend > span { display: inline-flex; align-items: center; gap: 4px; }
+.distributionLegend i { width: 5px; height: 5px; border-radius: 50%; background: currentColor; }
+.distribution[data-report-histogram] .distributionLegend { font-size: 12px; }
+@media (prefers-reduced-motion: no-preference) {
+  .distributionTick { transform-box: fill-box; transform-origin: bottom; animation: distribution-rise .38s cubic-bezier(.22,1,.36,1) both; }
+  svg > .potentialMark, svg > .currentMark { animation: distribution-marker-in .26s .32s ease-out both; }
+  .potentialPulse { animation: potential-pulse 2.4s ease-in-out infinite; }
+}
+@keyframes distribution-marker-in { from { opacity: 0; } to { opacity: 1; } }
+@keyframes distribution-rise {
+  from { transform: scaleY(.06); opacity: .25; }
+  to { transform: scaleY(1); opacity: 1; }
+}
+@keyframes potential-pulse {
+  0%, 100% { opacity: .1; }
+  50% { opacity: .36; }
+}

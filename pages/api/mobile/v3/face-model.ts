@@ -9,7 +9,7 @@ import { waitUntil } from '@vercel/functions'
 import { generateFaceModelReport } from '@/lib/analysis/face-model-report'
 
 // A separate endpoint keeps older apps' report and narrated-study contracts intact.
-export const config = { maxDuration: 120, api: { bodyParser: { sizeLimit: '12mb' } } }
+export const config = { maxDuration: 180, api: { bodyParser: { sizeLimit: '12mb' } } }
 const analyze = createAnalyzeHandler(async (input, reservationId) => {
   const scan = reservationId ?? randomUUID()
   const result = await analyzeAndSave(input, reservationId, {

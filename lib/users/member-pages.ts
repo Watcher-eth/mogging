@@ -5,7 +5,8 @@ import { getAuthSession } from '@/lib/auth/session'
 import { db, schema } from '@/lib/db'
 import { getEntitlementSummary } from '@/lib/payments/entitlements'
 import { deriveProtocolProfile } from '@/lib/creator/protocol-tasks'
-export type ProgressEvaluation = { id: string; date: string; scores: Record<string, number> }
+import { pslToOverallScore } from '@/lib/analysis/score-scale'
+export type ProgressEvaluation = { id: string; date: string; scores: Record<string, number>; potential?: number }
 
 export function memberPage(page: 'protocol' | 'progress'): GetServerSideProps {
   return async ({ req, res }) => {
@@ -42,7 +43,16 @@ export function memberPage(page: 'protocol' | 'progress'): GetServerSideProps {
       const overall = expanded?.overallScore
       if (typeof overall === 'number' && Number.isFinite(overall) && overall >= 0 && overall <= 10) scores.overall = overall
       else if (scores.overall === undefined && row.psl !== null && Number.isFinite(row.psl) && row.psl >= 0 && row.psl <= 8) scores.overall = row.psl * 1.25
-      if (Object.keys(scores).length) evaluations.push({ id: row.id, date: row.date.toISOString(), scores: { ...scores } })
+      if (Object.keys(scores).length) {
+        const potential = record(report?.potential)?.score ?? record(expanded?.potential)?.score
+        evaluations.push({
+          id: row.id,
+          date: row.date.toISOString(),
+          scores: { ...scores },
+          ...(page === 'progress' && typeof potential === 'number' && potential >= 1 && potential <= 8
+            ? { potential: pslToOverallScore(potential) } : {}),
+        })
+      }
     }
 
     const profile = deriveProtocolProfile({ report: latest, startedOn: evaluations.at(-1)?.date.slice(0, 10) })

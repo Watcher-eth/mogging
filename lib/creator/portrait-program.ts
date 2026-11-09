@@ -380,22 +380,7 @@ function adjacentPortraitGuides(from: PreparedPortraitProgram['actions'][number]
   const x = center(a), y = center(b)
   return Math.hypot((x.x-y.x)/width, (x.y-y.y)/height) < .09
 }
-// Independent technical diagrams, drawn in screen coordinates rather than copied from landmarks.
-const studyDiagrams: Record<string, { note: string; paths: number[][][] }> = {
-  'face:outline': { note: 'Centerline reference', paths: [[[10,30],[174,30]],[[92,4],[92,62]],[[74,50],[112,50]],[[74,45],[74,55]],[[112,45],[112,55]]] },
-  'study:pupil-axis': { note: 'Tilt relative to horizontal', paths: [[[10,48],[175,48]],[[10,48],[175,12]],[[58,48],[57,39],[54,32]]] },
-  'study:brow-spacing': { note: 'Brow span / pupil span', paths: [[[18,8],[18,54]],[[10,8],[26,8]],[[10,54],[26,54]],[[53,54],[175,54]],[[53,47],[53,61]],[[175,47],[175,61]]] },
-  'study:nose-axis': { note: 'Image-plane distance', paths: [[[20,14],[162,52]],[[18,23],[22,5]],[[160,61],[164,43]],[[83,18],[79,36]]] },
-  'study:mouth-width': { note: 'Corner-to-corner span', paths: [[[14,33],[174,33]],[[14,20],[14,46]],[[174,20],[174,46]],[[26,26],[14,33],[26,40]],[[162,26],[174,33],[162,40]]] },
-  'study:philtrum': { note: 'Image-plane distance', paths: [[[70,10],[126,10]],[[70,56],[126,56]],[[98,10],[98,56]],[[92,18],[98,10],[104,18]],[[92,48],[98,56],[104,48]]] },
-  'study:jaw-bend': { note: 'Frontal contour angle', paths: [[[18,8],[65,53],[166,32]],[[48,36],[55,29],[65,26],[75,28],[82,33],[86,48]]] },
-  'study:paired-eyes': { note: 'Inner to outer canthus', paths: [[[8,25],[72,25]],[[8,16],[8,34]],[[72,16],[72,34]],[[105,25],[173,25]],[[105,16],[105,34]],[[173,16],[173,34]],[[90,8],[90,52]]] },
-  'study:face-proportions': { note: 'Lower span / total span', paths: [[[55,4],[55,62]],[[45,4],[65,4]],[[45,62],[65,62]],[[114,32],[114,62]],[[104,32],[124,32]],[[104,62],[124,62]],[[55,32],[114,32]]] },
-  'study:skin-light': { note: 'Light direction changes shadows', paths: [[[8,6],[48,37],[35,34]],[[26,4],[68,37],[55,34]],[[45,4],[88,37],[75,34]],[[8,57],[38,57],[51,48],[65,58],[80,58],[96,48],[111,57],[176,57]]] },
-  'study:skin-color': { note: 'Compare regional tone', paths: [[[14,10],[67,10],[67,54],[14,54],[14,10]],[[114,10],[167,10],[167,54],[114,54],[114,10]],[[78,26],[103,26]],[[78,38],[103,38]]] },
-}
-
-export function drawPortraitActivity(ctx: CanvasRenderingContext2D, activity: PortraitActivity, width: number, height: number, warp?: PortraitWarp, reportInk = false, measurement?: { value: number; unit: string }, ink?: string) {
+export function drawPortraitActivity(ctx: CanvasRenderingContext2D, activity: PortraitActivity, width: number, height: number, warp?: PortraitWarp) {
   ctx = originalVideoContext(ctx)
   const geometry = activity.from ? morphFaceOverlay(activity.from,activity.to,activity.blend) : activity.to
   const move=(p:Point)=>{if(!warp)return p;const q=warpDestinationPoint({x:p.x/width,y:p.y/height},warp);return{x:q.x*width,y:q.y*height}}
@@ -411,11 +396,7 @@ export function drawPortraitActivity(ctx: CanvasRenderingContext2D, activity: Po
   const line=(points:Point[],weight=activity.view?2.4:2.1)=>{
     if (points.length < 2) return
     ctx.beginPath();points.forEach((p,i)=>i?ctx.lineTo(p.x,p.y):ctx.moveTo(p.x,p.y))
-    if (ink) {
-      ctx.strokeStyle = ink
-      ctx.lineWidth = weight * unit
-    } else applyGlassInk(ctx,unit,weight,'rgba(248,251,255,.73)')
-    ctx.stroke()
+    applyGlassInk(ctx,unit,weight,'rgba(248,251,255,.73)');ctx.stroke()
   }
   ctx.setLineDash(activity.stroke==='dotted'?[1*unit,7*unit]:activity.stroke==='dashed'?[12*unit,8*unit]:[])
   const pathReveal = (index: number) => {
@@ -424,12 +405,7 @@ export function drawPortraitActivity(ctx: CanvasRenderingContext2D, activity: Po
   }
   for (const [index, path] of paths.entries()) {
     const visible = revealContour(path, pathReveal(index))
-    if (reportInk) {
-      if (activity.guide?.startsWith('study:') && (paths.at(-1) === path || activity.guide === 'study:paired-eyes' || activity.guide === 'study:face-proportions')) {
-        const spanProgress = activity.reduced ? 1 : smoothMotion((activity.elapsedMs - 420) / 840)
-        if (spanProgress > 0) line(revealContour(path, spanProgress), 1.9)
-      }
-    } else if (activity.treatment === 'ribbon' || activity.treatment === 'highlight') {
+    if (activity.treatment === 'ribbon' || activity.treatment === 'highlight') {
       ctx.save()
       const ribbon = activity.treatment === 'ribbon'
       ctx.setLineDash(ribbon ? [8 * unit, 5 * unit] : [])
@@ -490,17 +466,7 @@ export function drawPortraitActivity(ctx: CanvasRenderingContext2D, activity: Po
         ctx.setLineDash([])
         continue
       }
-      if (activity.treatment === 'scribble') {
-        const stroke = getStroke(visible.map((p, i) => [p.x, p.y, .45 + .3 * Math.sin(i * .4) ** 2]), {
-          size: 5 * unit, thinning: .75, smoothing: .45, streamline: .25, simulatePressure: false,
-          last: pathReveal(index) >= 1, start: { taper: 16 * unit }, end: { taper: 30 * unit },
-        })
-        ctx.beginPath()
-        stroke.forEach(([x,y], i) => i ? ctx.lineTo(x,y) : ctx.moveTo(x,y))
-        ctx.closePath()
-        applyGlassInk(ctx, unit)
-        ctx.fill()
-      } else line(visible, closed ? 3.2 : 2.5)
+      line(visible, closed ? 3.2 : 2.5)
       if (activity.treatment === 'ink-hatch') {
         ctx.save()
         ctx.globalAlpha *= .54
@@ -574,10 +540,10 @@ export function drawPortraitActivity(ctx: CanvasRenderingContext2D, activity: Po
   }
   if(!activity.label.trim()){ctx.restore();return}
   const arrow = activity.treatment === 'arrow' || activity.treatment === 'ink-callout'
-  const handwritten = reportInk || arrow || activity.treatment === 'note' || activity.treatment === 'scribble' || activity.treatment === 'ink-hatch'
+  const handwritten = arrow || activity.treatment === 'note' || activity.treatment === 'scribble' || activity.treatment === 'ink-hatch'
   const label = handwritten ? activity.label : activity.label.toUpperCase()
-  const fontSize=(reportInk ? 27 : activity.treatment === 'ink-callout' ? 36 : arrow ? 30 : 36)*unit,lineHeight=fontSize+6*unit
-  ctx.font=reportInk?`400 ${fontSize}px -apple-system, "SF Pro Text", system-ui`:handwritten?`italic 500 ${fontSize}px "Mogging Share",sans-serif`:`400 ${fontSize}px "SFMono-Regular",Consolas,monospace`
+  const fontSize=(activity.treatment === 'ink-callout' ? 36 : arrow ? 30 : 36)*unit,lineHeight=fontSize+6*unit
+  ctx.font=handwritten?`italic 500 ${fontSize}px "Mogging Share",sans-serif`:`400 ${fontSize}px "SFMono-Regular",Consolas,monospace`
   ctx.textAlign='left';ctx.textBaseline='alphabetic'
   const labelLines=portraitLabelLines(ctx,label,Math.min((safe.right-safe.left)*.9,390*unit))
   const labelWidth=Math.max(...labelLines.map(line=>ctx.measureText(line).width)),onRight=(left+right)/2<width/2
@@ -603,18 +569,7 @@ export function drawPortraitActivity(ctx: CanvasRenderingContext2D, activity: Po
     const origin={x:Math.max(placed.x,Math.min(placed.x+placed.width,target.x)),y:Math.max(placed.y,Math.min(placed.y+placed.height,target.y))}
     if(Math.hypot(target.x-origin.x,target.y-origin.y)>18*unit) {
       ctx.save();ctx.globalAlpha*=reveal
-      if (reportInk) {
-        const elbow={x:(origin.x+target.x)/2,y:origin.y}
-        const curve = Array.from({ length: 25 }, (_, i) => {
-          const t = i / 24, rest = 1 - t
-          return { x: rest * rest * origin.x + 2 * rest * t * elbow.x + t * t * target.x,
-            y: rest * rest * origin.y + 2 * rest * t * elbow.y + t * t * target.y }
-        })
-        line(revealContour(curve, reveal), 3)
-      const angle=Math.atan2(target.y-elbow.y,target.x-elbow.x),size=11*unit
-      if(activity.treatment==='arrow' && (!reportInk || reveal > .85)) line([{x:target.x-size*Math.cos(angle-.5),y:target.y-size*Math.sin(angle-.5)},target,{x:target.x-size*Math.cos(angle+.5),y:target.y-size*Math.sin(angle+.5)}],2.5)
-      else {ctx.beginPath();ctx.arc(target.x,target.y,4*unit,0,Math.PI*2);ctx.fillStyle='#fff';ctx.fill()}
-      } else if (arrow) {
+      if (arrow) {
         const dx = target.x - origin.x, dy = target.y - origin.y
         const distance = Math.hypot(dx, dy)
         const curve = Math.min(19 * unit, distance * .28) * (onRight ? 1 : -1)
@@ -633,7 +588,7 @@ export function drawPortraitActivity(ctx: CanvasRenderingContext2D, activity: Po
       ctx.restore()
     }
   }
-  ctx.fillStyle=ink ?? portraitAnnotationInk(ctx,placed,activity.to.faceBoundary?.map(move));ctx.shadowColor=ink ? '#ffffff88' : '#ffffff66';ctx.shadowBlur=(reportInk ? 1 : 4)*unit
+  ctx.fillStyle=portraitAnnotationInk(ctx,placed,activity.to.faceBoundary?.map(move));ctx.shadowColor='#ffffff66';ctx.shadowBlur=4*unit
   let letters = 0
   const letterCount = labelLines.reduce((count, line) => count + Array.from(line).length, 0)
   const written = activity.labelPhase * (letterCount + 3)
@@ -641,7 +596,7 @@ export function drawPortraitActivity(ctx: CanvasRenderingContext2D, activity: Po
     const count = Array.from(text).length
     drawPortraitLabel(ctx, text, labelX, labelY + index * lineHeight,
       (written - letters) / (count + 3), activity.reduced, handwritten ? unit : 0)
-    if (handwritten && !reportInk) {
+    if (handwritten) {
       const underline = activity.reduced ? 1 : smoothMotion((written - letters - count * .68) / (count * .32 + 3))
       const y = labelY + index * lineHeight + 9 * unit
       const length = ctx.measureText(text).width
@@ -652,27 +607,6 @@ export function drawPortraitActivity(ctx: CanvasRenderingContext2D, activity: Po
       line(revealContour(stroke, underline), 1.65)
     }
     letters += count
-  }
-  if (measurement) {
-    const unitLabel = measurement.unit === 'px' ? ' px' : measurement.unit
-    const text = `${measurement.value}${unitLabel}`
-    ctx.save()
-    ctx.shadowBlur = 0
-    ctx.globalAlpha *= activity.reduced ? 1 : smoothMotion((activity.elapsedMs - 450) / 450)
-    ctx.font = `400 ${28 * unit}px "Mogging Share", Arial, sans-serif`
-    const pillHeight = 48 * unit
-    const pillWidth = Math.min(ctx.measureText(text).width + 40 * unit, safe.right - safe.left)
-    const x = Math.max(safe.left, Math.min(safe.right - pillWidth, (left + right - pillWidth) / 2))
-    const y = Math.max(safe.top, Math.min(safe.bottom - pillHeight, bottom + 24 * unit))
-    ctx.beginPath()
-    ctx.roundRect(x, y, pillWidth, pillHeight, pillHeight / 2)
-    ctx.fillStyle = '#fff'
-    ctx.fill()
-    ctx.fillStyle = '#14202a'
-    ctx.textAlign = 'center'
-    ctx.textBaseline = 'middle'
-    ctx.fillText(text, x + pillWidth / 2, y + pillHeight / 2, Math.max(1, pillWidth - 24 * unit))
-    ctx.restore()
   }
   ctx.restore()
 }
@@ -729,6 +663,165 @@ export function placePortraitAnnotation(frame:{x:number;y:number;width:number;he
   }
   return candidates.reduce((best,next)=>score(next)>score(best)+.02?next:best)
 }
+
+// Independent technical diagrams, drawn in screen coordinates rather than copied from landmarks.
+const studyDiagrams: Record<string, { note: string; paths: number[][][] }> = {
+  'face:outline': { note: 'Centerline reference', paths: [[[10,30],[174,30]],[[92,4],[92,62]],[[74,50],[112,50]],[[74,45],[74,55]],[[112,45],[112,55]]] },
+  'study:pupil-axis': { note: 'Tilt relative to horizontal', paths: [[[10,48],[175,48]],[[10,48],[175,12]],[[58,48],[57,39],[54,32]]] },
+  'study:brow-spacing': { note: 'Brow span / pupil span', paths: [[[18,8],[18,54]],[[10,8],[26,8]],[[10,54],[26,54]],[[53,54],[175,54]],[[53,47],[53,61]],[[175,47],[175,61]]] },
+  'study:nose-axis': { note: 'Image-plane distance', paths: [[[20,14],[162,52]],[[18,23],[22,5]],[[160,61],[164,43]],[[83,18],[79,36]]] },
+  'study:mouth-width': { note: 'Corner-to-corner span', paths: [[[14,33],[174,33]],[[14,20],[14,46]],[[174,20],[174,46]],[[26,26],[14,33],[26,40]],[[162,26],[174,33],[162,40]]] },
+  'study:philtrum': { note: 'Image-plane distance', paths: [[[70,10],[126,10]],[[70,56],[126,56]],[[98,10],[98,56]],[[92,18],[98,10],[104,18]],[[92,48],[98,56],[104,48]]] },
+  'study:jaw-bend': { note: 'Frontal contour angle', paths: [[[18,8],[65,53],[166,32]],[[48,36],[55,29],[65,26],[75,28],[82,33],[86,48]]] },
+  'study:paired-eyes': { note: 'Inner to outer canthus', paths: [[[8,25],[72,25]],[[8,16],[8,34]],[[72,16],[72,34]],[[105,25],[173,25]],[[105,16],[105,34]],[[173,16],[173,34]],[[90,8],[90,52]]] },
+  'study:face-proportions': { note: 'Lower span / total span', paths: [[[55,4],[55,62]],[[45,4],[65,4]],[[45,62],[65,62]],[[114,32],[114,62]],[[104,32],[124,32]],[[104,62],[124,62]],[[55,32],[114,32]]] },
+  'study:skin-light': { note: 'Light direction changes shadows', paths: [[[8,6],[48,37],[35,34]],[[26,4],[68,37],[55,34]],[[45,4],[88,37],[75,34]],[[8,57],[38,57],[51,48],[65,58],[80,58],[96,48],[111,57],[176,57]]] },
+  'study:skin-color': { note: 'Compare regional tone', paths: [[[14,10],[67,10],[67,54],[14,54],[14,10]],[[114,10],[167,10],[167,54],[114,54],[114,10]],[[78,26],[103,26]],[[78,38],[103,38]]] },
+}
+
+
+export function drawStudyPortraitActivity(ctx: CanvasRenderingContext2D, activity: PortraitActivity, width: number, height: number, warp?: PortraitWarp, reportInk = false, measurement?: { value: number; unit: string }, ink?: string) {
+  ctx = originalVideoContext(ctx)
+  const geometry = activity.from ? morphFaceOverlay(activity.from,activity.to,activity.blend) : activity.to
+  const move=(p:Point)=>{if(!warp)return p;const q=warpDestinationPoint({x:p.x/width,y:p.y/height},warp);return{x:q.x*width,y:q.y*height}}
+  const paths=geometry.primitives.flatMap(p=>p.kind==='polyline'?[p.pixelPoints.map(move)]:[])
+  if(!paths.length)return
+  const transform=ctx.getTransform(),unit=1/Math.max(.01,Math.hypot(transform.a,transform.b))
+  const mapped=Number.isFinite(transform.e)&&Number.isFinite(transform.d)&&transform.a>0&&transform.d>0
+  const safe=mapped?{left:Math.max(0,(120-transform.e)/transform.a),right:Math.min(width,(1016-transform.e)/transform.a),top:Math.max(0,(540-transform.f)/transform.d),bottom:Math.min(height,(1960-transform.f)/transform.d)}:{left:0,right:width,top:0,bottom:height}
+  if(safe.right<=safe.left || safe.bottom<=safe.top)return
+  const reveal=activity.reduced?1:smoothMotion(activity.elapsedMs/overlayRevealMs)
+  const points=paths.flat(),left=Math.min(...points.map(p=>p.x)),right=Math.max(...points.map(p=>p.x)),top=Math.min(...points.map(p=>p.y)),bottom=Math.max(...points.map(p=>p.y))
+  ctx.save();ctx.lineCap='round';ctx.lineJoin='round';ctx.shadowBlur=0
+  const line=(points:Point[],weight=activity.view?4.2:3.4)=>{
+    ctx.beginPath();points.forEach((p,i)=>i?ctx.lineTo(p.x,p.y):ctx.moveTo(p.x,p.y))
+    if (ink) {
+      ctx.strokeStyle = ink
+      ctx.lineWidth = weight * unit
+    } else applyGlassInk(ctx,unit,weight)
+    ctx.stroke()
+  }
+  ctx.setLineDash(activity.stroke==='dotted'?[1*unit,7*unit]:activity.stroke==='dashed'?[12*unit,8*unit]:[])
+  for(const path of paths) {
+    const visible=revealContour(path,reveal)
+    if(activity.treatment==='highlight') {
+      ctx.beginPath();visible.forEach((p,i)=>i?ctx.lineTo(p.x,p.y):ctx.moveTo(p.x,p.y))
+      ctx.strokeStyle='#fff1c733';ctx.lineWidth=18*unit;ctx.stroke()
+    }
+    if (!reportInk) line(visible)
+    else if (activity.guide?.startsWith('study:') && (paths.at(-1) === path || activity.guide === 'study:paired-eyes' || activity.guide === 'study:face-proportions')) {
+      // Add the measured span after the anatomical contour starts to settle.
+      const spanProgress = activity.reduced ? 1 : smoothMotion((activity.elapsedMs - 420) / 840)
+      if (spanProgress > 0) line(revealContour(path, spanProgress), 1.9)
+    }
+  }
+  ctx.setLineDash([])
+  ctx.save();ctx.globalAlpha*=reveal
+  if(activity.treatment==='bracket') {
+    const pad=14*unit,length=24*unit,l=left-pad,r=right+pad,t=top-pad,b=bottom+pad
+    for(const [x,y,sx,sy] of [[l,t,1,1],[r,t,-1,1],[l,b,1,-1],[r,b,-1,-1]]) line([{x:x+sx*length,y},{x,y},{x,y:y+sy*length}],2.6)
+  } else if(activity.treatment==='scribble') {
+    const cx=(left+right)/2,cy=(top+bottom)/2,rx=(right-left)/2+20*unit,ry=(bottom-top)/2+18*unit
+    const steps = Math.ceil(reveal * 69)
+    const points = Array.from({ length: steps + 1 }, (_, i) => {
+      const angle = i / 69 * Math.PI * 2.12
+      const jitter = 1 + Math.sin(i * 1.7) * .024
+      return [cx + Math.cos(angle) * rx * jitter, cy + Math.sin(angle) * ry * jitter,
+        .45 + .3 * Math.sin(angle + .4) ** 2]
+    })
+    const stroke = getStroke(points, {
+      size: 5 * unit, thinning: .75, smoothing: .45, streamline: .25,
+      simulatePressure: false, last: reveal >= 1, start: { taper: 16 * unit }, end: { taper: 30 * unit },
+    })
+    ctx.beginPath()
+    stroke.forEach(([x, y], i) => i ? ctx.lineTo(x, y) : ctx.moveTo(x, y))
+    ctx.closePath()
+    applyGlassInk(ctx, unit)
+    ctx.fill()
+  } else if(activity.treatment==='landmarks') {
+    for(const path of paths)for(const point of [path[0],path[Math.floor(path.length/2)],path.at(-1)!]) {
+      ctx.beginPath();ctx.arc(point.x,point.y,5*unit,0,Math.PI*2);applyGlassInk(ctx,unit);ctx.fill()
+    }
+  } else if(activity.treatment==='inset') {
+    const panelWidth=Math.min((safe.right-safe.left)*.9,400*unit),panelHeight=110*unit
+    const x=Math.max(safe.left+12*unit,Math.min(safe.right-panelWidth-12*unit,(left+right-panelWidth)/2)),y=Math.max(safe.top+48*unit,Math.min(safe.bottom-panelHeight-16*unit,top-panelHeight-38*unit))
+    glassSurface(ctx,x,y,panelWidth,panelHeight,12*unit)
+    const scale=Math.min((panelWidth-32*unit)/Math.max(1,right-left),(panelHeight-36*unit)/Math.max(1,bottom-top))
+    for(const path of paths)line(path.map(p=>({x:x+panelWidth/2+(p.x-(left+right)/2)*scale,y:y+panelHeight/2+(p.y-(top+bottom)/2)*scale})),2.5)
+  }
+  ctx.restore()
+  if(!activity.label.trim()){ctx.restore();return}
+  const handwritten=reportInk||activity.treatment==='note'||activity.treatment==='scribble',label=handwritten?activity.label:activity.label.toUpperCase()
+  const fontSize=(reportInk ? 27 : 36)*unit,lineHeight=fontSize+6*unit
+  ctx.font=reportInk?`400 ${fontSize}px -apple-system, "SF Pro Text", system-ui`:handwritten?`italic 500 ${fontSize}px "Mogging Share",sans-serif`:`400 ${fontSize}px "SFMono-Regular",Consolas,monospace`
+  ctx.textAlign='left';ctx.textBaseline='alphabetic'
+  const labelLines=portraitLabelLines(ctx,label,Math.min((safe.right-safe.left)*.9,390*unit))
+  const labelWidth=Math.max(...labelLines.map(line=>ctx.measureText(line).width)),onRight=(left+right)/2<width/2
+  let labelX=onRight?right+26*unit:left-labelWidth-26*unit,labelY=(top+bottom)/2
+  if(labelX<safe.left+16*unit||labelX+labelWidth>safe.right-16*unit||activity.treatment==='inset') {
+    labelX=Math.max(safe.left+16*unit,Math.min(safe.right-labelWidth-16*unit,(left+right-labelWidth)/2))
+    labelY=top-(activity.treatment==='inset'?162:30)*unit
+  }
+  labelY=Math.max(safe.top+fontSize,Math.min(safe.bottom-labelLines.length*lineHeight,labelY))
+  const placed=placePortraitAnnotation({x:labelX,y:labelY-fontSize,width:labelWidth,height:labelLines.length*lineHeight},safe,unit,width,height,activity.mask)
+  labelX=placed.x;labelY=placed.y+fontSize
+  if(activity.treatment==='arrow'||activity.treatment==='callout') {
+    const center={x:placed.x+placed.width/2,y:placed.y+placed.height/2}
+    const target=points.reduce((best,p)=>Math.hypot(p.x-center.x,p.y-center.y)<Math.hypot(best.x-center.x,best.y-center.y)?p:best)
+    const origin={x:Math.max(placed.x,Math.min(placed.x+placed.width,target.x)),y:Math.max(placed.y,Math.min(placed.y+placed.height,target.y))}
+    if(Math.hypot(target.x-origin.x,target.y-origin.y)>18*unit) {
+      ctx.save();ctx.globalAlpha*=reveal
+      const elbow={x:(origin.x+target.x)/2,y:origin.y}
+      if (reportInk) {
+        const curve = Array.from({ length: 25 }, (_, i) => {
+          const t = i / 24, rest = 1 - t
+          return { x: rest * rest * origin.x + 2 * rest * t * elbow.x + t * t * target.x,
+            y: rest * rest * origin.y + 2 * rest * t * elbow.y + t * t * target.y }
+        })
+        line(revealContour(curve, reveal), 3)
+      } else line([origin,elbow,target],2.5)
+      const angle=Math.atan2(target.y-elbow.y,target.x-elbow.x),size=11*unit
+      if(activity.treatment==='arrow' && (!reportInk || reveal > .85)) line([{x:target.x-size*Math.cos(angle-.5),y:target.y-size*Math.sin(angle-.5)},target,{x:target.x-size*Math.cos(angle+.5),y:target.y-size*Math.sin(angle+.5)}],2.5)
+      else {ctx.beginPath();ctx.arc(target.x,target.y,4*unit,0,Math.PI*2);ctx.fillStyle='#fff';ctx.fill()}
+      ctx.restore()
+    }
+  }
+  ctx.fillStyle=ink ?? portraitAnnotationInk(ctx,placed,activity.to.faceBoundary?.map(move));ctx.shadowColor=ink ? '#ffffff88' : '#ffffff66';ctx.shadowBlur=(reportInk ? 1 : 4)*unit
+  let letters=0
+  for(const [index,line] of labelLines.entries()) {
+    const progress=activity.labelPhase*(labelLines.join('').length+3)
+    drawPortraitLabel(ctx,line,labelX,labelY+index*lineHeight,(progress-letters)/(line.length+3),activity.reduced);letters+=line.length
+  }
+  if (measurement) {
+    const unitLabel = measurement.unit === 'px' ? ' px' : measurement.unit
+    const text = `${measurement.value}${unitLabel}`
+    ctx.save()
+    ctx.shadowBlur = 0
+    ctx.globalAlpha *= activity.reduced ? 1 : smoothMotion((activity.elapsedMs - 450) / 450)
+    ctx.font = `400 ${28 * unit}px "Mogging Share", Arial, sans-serif`
+    const pillHeight = 48 * unit
+    const pillWidth = Math.min(ctx.measureText(text).width + 40 * unit, safe.right - safe.left)
+    const x = Math.max(safe.left, Math.min(safe.right - pillWidth, (left + right - pillWidth) / 2))
+    const y = Math.max(safe.top, Math.min(safe.bottom - pillHeight, bottom + 24 * unit))
+    ctx.beginPath()
+    ctx.roundRect(x, y, pillWidth, pillHeight, pillHeight / 2)
+    ctx.fillStyle = '#fff'
+    ctx.fill()
+    ctx.fillStyle = '#14202a'
+    ctx.textAlign = 'center'
+    ctx.textBaseline = 'middle'
+    ctx.fillText(text, x + pillWidth / 2, y + pillHeight / 2, Math.max(1, pillWidth - 24 * unit))
+    ctx.restore()
+  }
+  if(handwritten && !reportInk) {
+    ctx.save();ctx.globalAlpha*=reveal
+    const y=labelY+(labelLines.length-1)*lineHeight+9*unit
+    line(Array.from({length:16},(_,i)=>({x:labelX+labelWidth*i/15,y:y+Math.sin(i*.8)*2*unit})),2)
+    ctx.restore()
+  }
+  ctx.restore()
+}
+
 
 const studySketchSlots = [
   { x: .168, y: .62 }, { x: .674, y: .29 },

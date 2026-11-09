@@ -1,8 +1,52 @@
 import { ApiError } from '@/lib/api/http'
-import { getProductConfig } from './entitlements'
+import type Stripe from 'stripe'
+import type { getProductConfig } from './entitlements'
 import { getStripe } from './stripe'
+import { getWebAnalysisPrice, getWebStarterIntro, isWebAnalysisProduct, webAnalysisProducts, type WebAnalysisProduct } from './web-analysis-plans'
 
-export async function validateCheckoutProduct(productId: string, product: ReturnType<typeof getProductConfig>) {
+function validateWebAnalysisPrice(plan: ReturnType<typeof getWebAnalysisPrice>, price: Stripe.Price | undefined) {
+  if (!price || price.billing_scheme !== 'per_unit' || price.currency !== 'usd' || price.unit_amount !== plan.unitAmount
+    || price.recurring?.interval !== plan.interval || price.recurring.interval_count !== 1) {
+    throw new ApiError(503, `${plan.name} is temporarily unavailable`)
+  }
+  return { ...price, unit_amount: price.unit_amount }
+}
+
+export function isWebStarterIntroCoupon(coupon: Stripe.Coupon, price: Stripe.Price, mobile = false) {
+  const intro = getWebStarterIntro(mobile)
+  const productId = typeof price.product === 'string' ? price.product : price.product.id
+  return coupon.valid && coupon.livemode === price.livemode && coupon.duration === 'once'
+    && coupon.currency === intro.currency && coupon.amount_off === intro.discount
+    && coupon.applies_to?.products.length === 1 && coupon.applies_to.products[0] === productId
+}
+
+export async function getWebStarterIntroCoupon(price: Stripe.Price, mobile = false) {
+  const coupon = await getStripe().coupons.retrieve(getWebStarterIntro(mobile).coupon, { expand: ['applies_to'] })
+  return isWebStarterIntroCoupon(coupon, price, mobile) ? coupon.id : null
+}
+
+export async function getWebAnalysisCatalog(mobile = false) {
+  const stripe = getStripe()
+  const intro = getWebStarterIntro(mobile)
+  const plans = webAnalysisProducts.map(product => [product, getWebAnalysisPrice(product, mobile)] as const)
+  const [{ data: prices }, coupon] = await Promise.all([
+    stripe.prices.list({ active: true, lookup_keys: plans.map(([, plan]) => plan.lookupKey) }),
+    stripe.coupons.retrieve(intro.coupon, { expand: ['applies_to'] }).catch(() => null),
+  ])
+  const amounts = Object.fromEntries(plans.map(([product, plan]) => {
+    const price = validateWebAnalysisPrice(plan, prices.find(item => item.lookup_key === plan.lookupKey))
+    return [product, price.unit_amount]
+  }))
+  const monthly = prices.find(price => price.lookup_key === getWebAnalysisPrice(intro.product, mobile).lookupKey)
+  return { currency: 'usd', amounts, ...(coupon && monthly && isWebStarterIntroCoupon(coupon, monthly, mobile) ? { starterIntro: intro.firstMonth } : {}) }
+}
+
+export async function validateCheckoutProduct(productId: string, product: ReturnType<typeof getProductConfig>, mobileWeb = false) {
+  if (isWebAnalysisProduct(productId)) {
+    const plan = getWebAnalysisPrice(productId, mobileWeb)
+    const [price] = (await getStripe().prices.list({ lookup_keys: [plan.lookupKey], active: true, limit: 1 })).data
+    return validateWebAnalysisPrice(plan, price)
+  }
   if (!product.priceId && product.unitAmount < 50) {
     throw new ApiError(503, `${product.name} is missing a valid checkout price`)
   }

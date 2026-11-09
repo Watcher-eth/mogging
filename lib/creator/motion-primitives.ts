@@ -1,3 +1,4 @@
+import { editorialKinds } from './editorial-scenes'
 import { sampleAppearance } from './motion-presets'
 
 export type MotionPrimitiveCategory = 'transition' | 'camera' | 'entry' | 'exit' | 'text' | 'cursor' | 'cinematic' | 'overlay' | 'report'
@@ -14,6 +15,7 @@ const define = <const T extends ReadonlyArray<readonly [string, string, string]>
   items.map(([id, label, description]) => ({ id: id as T[number][0], label, category, durationMs, description }))
 
 export const motionPrimitives = [
+  ...define('cinematic', 760, editorialKinds.map(kind => [`editorial-${kind}`, `Editorial · ${kind.replaceAll('-', ' ')}`, 'Feature-aware canvas composition with a stable recorded-cue clock.'] as const)),
   ...define('transition', 480, [
     ['transition-panel', 'Transition panel', 'Stagger outgoing content before incoming content settles inside the same continuously resized surface.'],
   ]),
@@ -125,12 +127,18 @@ export const motionPrimitives = [
     ['parallax-separate', 'Parallax separate', 'Offset foreground and background planes.'],
   ]),
   ...define('overlay', 600, [
+    ['region-patch', 'Frosted observation patch', 'A small detector-anchored translucent window; hold for two seconds without changing skin pixels.'],
+    ['focus-brackets', 'Anchored corner brackets', 'Short fixed corner strokes acquire a detected feature without rotating through the face.'],
+    ['anchor-ring', 'Anchored focus ring', 'Draw a small registered ring around a visible eye, then hold and clear it.'],
     ['measurement-sweep', 'Feature light isolation', 'Lead with photo-pixel exposure emphasis on supported features, then trace the contour within 2.4 seconds.'],
     ['landmark-halo', 'Contour anchors', 'Lead with sparse anchors on measured feature outlines, then transition within 2.4 seconds.'],
     ['landmark-stagger', 'Landmark stagger', 'Pop mapped face points in small groups.'],
     ['contour-trace', 'Contour trace', 'Draw jaw, cheek, or face contours progressively.'],
     ['metric-bar-fill', 'Metric bar fill', 'Fill a report measurement bar to its score.'],
     ['shimmer-pass', 'Shimmer pass', 'Move a narrow highlight across app UI.'],
+  ]),
+  ...define('transition', 1250, [
+    ['brush-reveal', 'Original-colour brush reveal', 'A deterministic irregular mask restores the original colour photo from monochrome; no exposure lift or face warp.'],
   ]),
 ] as const satisfies ReadonlyArray<MotionPrimitiveDefinition>
 
@@ -159,10 +167,13 @@ export function primitiveDefinition(id: MotionPrimitiveId) {
   return motionPrimitives.find(item => item.id === id)!
 }
 
+function isEditorialMotion(id:MotionPrimitiveId):id is `editorial-${typeof editorialKinds[number]}` { return id.startsWith('editorial-') }
+
 export function sampleMotionPrimitive(id: MotionPrimitiveId, rawProgress: number, intensity = 1): MotionSample {
   const progress = clamp(rawProgress)
   const ease = out(progress)
   const wave = Math.sin(progress * Math.PI)
+  if(isEditorialMotion(id))return { ...rest, reveal: ease, phase: progress }
   switch (id) {
     case 'in-view': case 'group-reveal': case 'text-scale': {
       const sample = sampleAppearance(id, progress)
@@ -181,6 +192,7 @@ export function sampleMotionPrimitive(id: MotionPrimitiveId, rawProgress: number
       return { ...rest, reveal: envelope, scale: 1 + envelope * .18 * intensity, glow: envelope, phase: progress }
     }
     case 'graphic-regroup': return { ...rest, reveal: inOut(progress), phase: progress }
+    case 'region-patch': case 'focus-brackets': case 'anchor-ring': case 'brush-reveal':
     case 'todo-check': case 'caption-swish': case 'measurement-sweep': case 'landmark-halo': return { ...rest, reveal: ease, phase: progress }
     case 'hard-cut': return { ...rest, phase: progress }
     case 'crossfade': case 'fade-in': return { ...rest, opacity: ease, phase: progress }

@@ -1,12 +1,12 @@
 import { useWebHaptics } from 'web-haptics/react'
-import { expandCue, useQuietCue } from '@/lib/audio/sounds'
+import { mutedTapCue, useQuietCue } from '@/lib/audio/sounds'
 
 export function useScanFeedback() {
-  const play = useQuietCue(expandCue)
+  const play = useQuietCue(mutedTapCue)
   const { trigger, isSupported } = useWebHaptics()
 
-  return (kind: 'light' | 'selection' = 'light') => {
-    play()
-    if (isSupported) void trigger(kind, { intensity: .35 })?.catch(() => {})
+  return (kind: 'light' | 'selection' | 'action' = 'light') => {
+    if (kind === 'action') play()
+    if (isSupported) void trigger(kind === 'selection' ? 'selection' : 'light', { intensity: .35 })?.catch(() => {})
   }
 }

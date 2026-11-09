@@ -2,7 +2,7 @@ export type CanvasRect = { x: number; y: number; width: number; height: number }
 export type CanvasPlacement = { a: number; b: number; c: number; d: number; e: number; f: number }
 export type CanvasEffect = {
   x?: number; y?: number; scale?: number; rotation?: number; opacity?: number; blur?: number; brightness?: number
-  anchor?: { x: number; y: number }; frame?: CanvasRect; highlight?: { color: string; amount: number; endColor?: string; lineWidth?: number }
+  anchor?: { x: number; y: number }; frame?: CanvasRect; highlight?: { color: string; amount: number; endColor?: string }
   reveal?: number
   placement?: CanvasPlacement; clip?: boolean
   shadow?: { color: string; blur: number; y: number }
@@ -66,7 +66,7 @@ export function createCanvasPainter(effectFor: (node: CanvasNode) => CanvasEffec
       ctx.save(); ctx.globalAlpha *= Math.min(1, effect.highlight.amount)
       const gradient = ctx.createLinearGradient(0, 0, size.width, size.height)
       gradient.addColorStop(0, effect.highlight.color); gradient.addColorStop(1, effect.highlight.endColor ?? '#64cda2')
-      ctx.strokeStyle = gradient; ctx.lineWidth = effect.highlight.lineWidth ?? 2
+      ctx.strokeStyle = gradient; ctx.lineWidth = 2
       ctx.beginPath(); ctx.roundRect(1, 1, Math.max(0, size.width - 2), Math.max(0, size.height - 2), Math.min(18, size.height / 4)); ctx.stroke(); ctx.restore()
     }
     if (!isReportScoreElement(node.id) && effect.beam && effect.beam.amount > 0) {

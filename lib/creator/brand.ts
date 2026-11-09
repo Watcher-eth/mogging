@@ -1,3 +1,8 @@
+import { videoTickerMotion, videoBrandFrame } from './video-branding'
+import { videoSize } from './video-layout'
+import { sampleCaptionAppearance } from './caption-contrast'
+import { originalVideoContext } from './video-theme'
+
 export type CreatorBrand = { logo: HTMLCanvasElement; appStore: HTMLImageElement }
 let loading: Promise<CreatorBrand> | undefined
 export function loadCreatorBrand() {
@@ -106,4 +111,17 @@ export function drawTemplateInvitation(ctx: CanvasRenderingContext2D, brand: Cre
   ctx.scale(scale, scale)
   drawScanInvitation(ctx, brand, { x: 0, y: bottom / scale - 112, width: 1316, height: 92 }, ink, 1.45)
   ctx.restore()
+}
+
+/** Shared composition-clock CTA: identical placement, contrast and cadence in every renderer. */
+export function drawScanTicker(ctx: CanvasRenderingContext2D, brand: CreatorBrand | null, timeMs: number, reduced = false, width: number = videoSize.width, height: number = videoSize.height, fallbackInk = '#171717') {
+  const motion = videoTickerMotion(timeMs,reduced)
+  if(!brand || !motion || motion.opacity<=0)return
+  const raw=originalVideoContext(ctx),frame=videoBrandFrame(true)
+  raw.save();raw.scale(width/videoSize.width,height/videoSize.height)
+  raw.globalAlpha*=motion.opacity;raw.translate(0,motion.offset)
+  const appearance=sampleCaptionAppearance(raw,frame,fallbackInk)
+  raw.filter=motion.blur?`blur(${motion.blur}px)`:'none'
+  drawScanInvitation(raw,brand,frame,appearance.ink)
+  raw.restore()
 }

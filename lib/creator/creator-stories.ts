@@ -1,3 +1,5 @@
+import { sculptureModelLabels, type SculptureMaterial, type SculptureModel } from './cephra-study'
+import { sculptureScripts, sculptureRecording, sculptureScriptById, sculptureReportSection, sculptureScriptStudy } from './cephra-scripts'
 import profileGuides from '@/public/creator/profile-guides.json'
 import { profileStudySchema, profileFeatureForText, profileFeatureLabels, type ProfileStudy } from './video-profile'
 import { narratedPortraitProgram } from './portrait-program'
@@ -5,7 +7,7 @@ import { spokenScoreCallouts } from './spoken-score'
 import { z } from 'zod'
 import { reportTriangulation } from './report-triangulation'
 import { isInstrumentGrid, reportScoreGrid } from './video-explainer'
-import { restoreProductionRecording, productionVisualPlan, validateProductionScript, type SectionAudio } from './video-production'
+import { restoreProductionRecording, productionCut, productionVisualPlan, validateProductionScript, type SectionAudio, type ProductionLength } from './video-production'
 import { buildWebRubricGroups } from '@/lib/analysis-v2/web-report'
 import { webReportSchema } from '@/lib/analysis-v2/report-schema'
 import { analysisProviderResultSchema } from '@/lib/analysis/schema'
@@ -14,7 +16,7 @@ import type { AnalysisPostInput } from './analysis-post'
 import type { GeneratorImage } from './content-generator'
 import type { ReportCategory } from './mobile-overlay-engine/report-data'
 import type { VideoDirection, VideoRecipe } from './video-composition'
-import { scriptTokens, type VideoScript } from './video-script'
+import { scriptTokens, scriptRevision, type VideoScript } from './video-script'
 import type { SemanticBeat } from './video-semantics'
 
 export const creatorSubjectAnalysisSchema = z.object({
@@ -24,9 +26,9 @@ export const creatorSubjectAnalysisSchema = z.object({
 })
 export type CreatorSubjectAnalysis = z.infer<typeof creatorSubjectAnalysisSchema>
 type FeatureOpening = 'lip-choice' | 'jaw-choice' | 'jaw-width-choice' | 'smile-choice'
-export type CreatorStoryOption = { id: string; title: string; kind?: 'feature-story' | 'score-walkthrough'; recording?: string; draft?: string; voice?: VoiceDirection; preview?: string; imageIds?: string[]; defaultLength?: 45 | 60; featureOpening?: FeatureOpening; directions?: Record<string, VideoDirection>; editorialRatings?: Array<{feature:string;score:number}> }
+export type CreatorStoryOption = { id: string; title: string; kind?: 'feature-story' | 'score-walkthrough' | 'sculpture-explainer'; sculptureScriptId?: string; recording?: string; draft?: string; voice?: VoiceDirection; preview?: string; imageIds?: string[]; defaultLength?: 45 | 60; featureOpening?: FeatureOpening; directions?: Record<string, VideoDirection>; editorialRatings?: Array<{feature:string;score:number}> }
 export type CreatorStory = CreatorStoryOption & {
-  images: GeneratorImage[]; portraitImageIds?: string[]; analysis?: string; alternatives?: CreatorStoryOption[];
+  media?: import('./media-asset').MediaAsset[]; images: GeneratorImage[]; portraitImageIds?: string[]; analysis?: string; alternatives?: CreatorStoryOption[];
   evidence: { baselineId: string; comparisonId: string; topic: SemanticBeat['feature']; revealLabel: string; photoComparison?: boolean; revealEdit?: number }
 }
 async function readJson(url: string) {
@@ -54,6 +56,38 @@ export async function loadCreatorStory(subjectId: string, storyId?: string) {
   return { story, stories, assets: base.images, analysis, ...saved }
 }
 
+/** Authored short cuts keep complete recorded sentences and their setup/payoff in order. */
+export function creatorStoryCut(master: VideoScript, seconds: ProductionLength, story?: CreatorStory) {
+  const sculpture=sculptureScriptById(story?.sculptureScriptId);
+  const ids=sculpture?.cuts?.[seconds as 30|45];
+  if(sculpture?.authored && !ids && (sculptureRecording(sculpture)?.durationMs??0)>seconds*1000)
+    throw new Error('The complete recorded demonstration exceeds this length.');
+  if(!sculpture || !ids)return productionCut(master,seconds);
+  const selected=new Set(ids),recording=sculptureRecording(sculpture);
+  if(!recording)throw new Error('Record the full sculpture story before creating shorter cuts.');
+  const duration=sculpture.sections.reduce((sum,section,index)=>sum+(selected.has(section.id??section.role)?recording.sections[index].durationMs:0),0);
+  if(duration>seconds*1000)throw new Error('This recorded cut exceeds its selected length.');
+  const cues=master.cues.filter(cue=>selected.has(cue.sourceId)).map(cue=>({...cue,section:{...cue.section!,dependsOn:cue.section!.dependsOn.filter(id=>selected.has(id))}}));
+  if(cues.length!==ids.length)throw new Error('A recorded section is missing from this cut.');
+  return validateProductionScript({...master,cues,revision:scriptRevision(cues)});
+}
+
+/** Sculpture stories own their recordings and images, independently of the people catalog. */
+export async function loadSculptureStory(scriptId: string, material: SculptureMaterial = 'matte', figure?: SculptureModel) {
+  const sculpture = sculptureScripts.find(script => script.id === scriptId);
+  if (!sculpture) throw new Error('This sculpture story is unavailable.');
+  const resource = await readJson(`/creator/sculpture/voices/${sculpture.id}-recording.json`);
+  const model = figure ?? sculpture.model;
+  const photo: GeneratorImage = {id:`sculpture-${model}-${material}`,name:sculptureModelLabels[model],
+    dataUrl:`/creator/sculpture/${model}-${material}.webp`,width:720,height:720,landmarks:null,status:'ready'};
+  const story: CreatorStory = {
+    id: sculpture.id, title: sculpture.title, kind: 'sculpture-explainer', sculptureScriptId: sculpture.id,
+    recording: `/creator/sculpture/voices/${sculpture.id}-recording.json`, images: [photo],
+    evidence: { baselineId: photo.id, comparisonId: photo.id, topic: 'whole', revealLabel: '' },
+  };
+  return { story, ...restoreProductionRecording(resource) };
+}
+
 // Use only the saved provider observations: no preview values or guessed missing metrics.
 export function creatorAnalysisReports(analysis: CreatorSubjectAnalysis): ReportCategory[] {
   const web = analysis.webReport
@@ -62,7 +96,9 @@ export function creatorAnalysisReports(analysis: CreatorSubjectAnalysis): Report
     const id = category.id === 'face' ? 'face-shape' : category.id
     const group = buildWebRubricGroups(id, web.entries)[0]
     return { assessmentId: analysis.source.sha256, assessmentImageId: analysis.source.imageId, id, title: group?.title ?? id, subtitle: group?.title ?? id, scoreLabel: group?.title ?? id, score: category.score,
-      features: (group?.rubrics ?? []).map(feature => ({ ...feature, triangulation: reportTriangulation(feature.id,entries) })), explanation: category.explanation, recommendation: category.recommendation ?? '', ...(id === 'eyes' && web.eyeColor ? { eyeColor: web.eyeColor } : {}) }
+      features: (group?.rubrics ?? []).map(({ id, label, value, measurement, visual, positions, grade, scale }) => ({
+        id, label, value, measurement, visual, positions, grade, scale, triangulation: reportTriangulation(id, entries),
+      })), explanation: category.explanation, recommendation: category.recommendation ?? '', ...(id === 'eyes' && web.eyeColor ? { eyeColor: web.eyeColor } : {}) }
   })
   const result = analysis.result
   const metrics = [
@@ -90,6 +126,16 @@ export function creatorAnalysisInput(input: AnalysisPostInput, subject: string, 
 // Evidence bindings supplement the existing director; the selected format still owns layout.
 export function creatorStoryDirections(story: CreatorStory, script: VideoScript, input: AnalysisPostInput, images: GeneratorImage[], reports: ReportCategory[], recipe: VideoRecipe, variation: number) {
   const directions: Record<string, VideoDirection> = {}, evidence = story.evidence
+  const sculpture = recipe==='sculpture-study' && sculptureScriptById(story.sculptureScriptId)
+  if(sculpture) {
+    for(const shot of productionVisualPlan(script,input,images,reports,recipe,variation)) {
+      const index=sculpture.sections.findIndex(section=>(section.id??section.role)===shot.cue.sourceId)
+      if(index<0)throw new Error('A sculpture section has no matching visual direction.')
+      directions[shot.id]=sculptureReportSection(sculpture.sections[index]) ? {kind:'report',categoryId:sculpture.categoryId,imageId:images[0].id,focus:sculpture.reportMetricId ? 'feature:'+sculpture.reportMetricId : 'category-score',closingReport:true} : {kind:'portrait',categoryId:sculpture.categoryId,imageId:images[0].id,overlay:'none',sculpture:sculptureScriptStudy(sculpture,index,variation)}
+    }
+    return directions
+  }
+
   const portraits = (story.portraitImageIds ?? []).flatMap(id => images.find(image => image.id === id) ?? [])
   const editorial = recipe === 'feature-study'
   const alternate = portraits.find(image => /three-quarter/.test(image.id)) ?? portraits.find(image => /profile/.test(image.id))
@@ -137,7 +183,7 @@ export function creatorStoryDirections(story: CreatorStory, script: VideoScript,
       } else {
         const program = narratedPortraitProgram(shot.beat.quote, recipe, variation, jawWidth ? 'cheeks' : categoryId)
         if (jawWidth) program.actions = program.actions.map((action, index) => index === 0
-          ? { ...action, feature: 'cheeks', guide: 'detail:under-cheekbones', treatment: 'ink-callout', stroke: 'dotted', label: 'Under the cheekbone' }
+          ? { ...action, feature: 'cheeks', guide: 'detail:under-cheekbones', treatment: 'callout', stroke: 'dotted', label: 'Under the cheekbone' }
           : action)
         directions[shot.id] = { ...base, imageId: jaw ? alternate.id : front.id, portraitProgram: program }
       }
@@ -220,7 +266,7 @@ export function creatorStoryDirections(story: CreatorStory, script: VideoScript,
       continue
     }
     const opening = shot.cue.sourceId === 'hook', reveal = shot.cue.sourceId === 'reveal'
-    if ((opening || reveal) && ['portrait-audit','feature-study'].includes(recipe)) {
+    if ((opening || reveal) && ['portrait-audit','feature-study'].includes(recipe) && [evidence.baselineId,evidence.comparisonId].every(id=>images.some(image=>image.id===id))) {
       directions[shot.id] = { kind: 'portrait', imageId: evidence.baselineId, editorial: opening ? 'context' : 'detail',
         featureStudy: { editorial, topic: evidence.topic, layout: reveal && editorial ? 'detail' : 'hero', editMode: 'photo', comparison: editorial ? 'wipe' : 'blend', motion: reveal ? 'push' : 'hold', edit: reveal ? evidence.revealEdit ?? 1 : 1, annotation: reveal && recipe === 'feature-study' ? evidence.revealLabel : '', images: [evidence.comparisonId], labels: ['A','B'], footnote: '' },
         photoStudy: undefined, portraitFX: undefined, profileStudy: undefined, study: undefined, portraitProgram: undefined }

@@ -90,6 +90,7 @@ test('rounded transcription endpoints stop at real audio duration without accept
   const words=[{text:'Hello',start_offset:'0s',end_offset:'1.0s'}]
   expect(geminiWordTimes(words,960,'Hello')).toEqual([{text:'Hello',startMs:0,endMs:960}])
   expect(()=>geminiWordTimes(words,600,'Hello')).toThrow('outside the audio')
+  expect(geminiWordTimes([{text:'A',start_offset:'0s',end_offset:'0s'},{text:'face',start_offset:'0s',end_offset:'0.5s'}],500,'A face')).toEqual([{text:'A',startMs:0,endMs:1},{text:'face',startMs:1,endMs:500}])
 })
 
 

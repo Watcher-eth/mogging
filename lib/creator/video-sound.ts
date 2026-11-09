@@ -1,5 +1,4 @@
 import { renderToBuffer, type Layer, type SoundDefinition } from '@web-kits/audio'
-import { comparisonSceneClock, comparisonExpansionTimes } from './feature-study'
 import type { VideoComposition } from './video-composition'
 
 export const videoSounds = {
@@ -50,7 +49,7 @@ export function suggestVideoSounds(composition: VideoComposition): SoundCue[] {
   for (const [index, scene] of composition.scenes.entries()) {
     const previous = composition.scenes[index - 1]
     const study = scene.featureStudy
-    const reveal = study?.phase === 'reveal' && previous?.featureStudy?.phase !== 'reveal'
+    const reveal = false
     const wipe = study?.comparison === 'wipe' && previous?.featureStudy?.comparison !== 'wipe'
     const scoreReport = scene.source.kind === 'report' && scene.focus === 'scores'
       && (previous?.source.kind !== 'report' || previous.source.categoryId !== scene.source.categoryId)
@@ -63,26 +62,10 @@ export function suggestVideoSounds(composition: VideoComposition): SoundCue[] {
       : transition && ['wipe-left', 'wipe-right', 'wipe-up', 'screen-push', 'card-reveal'].includes(transition.primitive) ? 'sweep'
       : newPhoto && recipe === 'measurement-explainer' ? 'click'
       : newPhoto && ['feature-study','hybrid-story','report-led','portrait-audit'].includes(recipe) ? 'sweep'
-      : !index && study?.opening === 'jaw-choice' ? 'click' : undefined
+      : undefined
     const offset = reveal ? 0 : wipe ? Math.min(330, scene.durationMs * .16) : scoreReport ? 100 : transition ? transition.startMs : 0
     const timeMs = scene.startMs + offset
     if (sound && timeMs < composition.durationMs - 150 && timeMs - (cues.at(-1)?.timeMs ?? -Infinity) >= 1800) cues.push({ sound, timeMs })
-  }
-  for (const scene of composition.scenes) {
-    if (!scene.featureStudy || !['compare','evidence'].includes(scene.featureStudy.layout)) continue
-    const clock=comparisonSceneClock(composition.scenes,scene,0)
-    if(clock.timeMs!==0)continue
-    for(const offset of comparisonExpansionTimes(clock.durationMs)){
-      const timeMs=scene.startMs+offset
-      if(!cues.some(cue=>Math.abs(cue.timeMs-timeMs)<400))cues.push({sound:'sweep',timeMs})
-    }
-  }
-  const opening = composition.scenes.findIndex(({ featureStudy }) => (featureStudy?.opening === 'smile-choice' || featureStudy?.opening === 'jaw-width-choice') && featureStudy.phase === 'hold')
-  if (opening >= 0) {
-    const { startMs: start, featureStudy } = composition.scenes[opening]
-    const reveal = composition.scenes.slice(opening + 1).find(scene => scene.featureStudy?.opening !== featureStudy?.opening || scene.featureStudy?.phase === 'reveal')
-    const durationMs = (reveal?.startMs ?? composition.durationMs) - start
-    if (durationMs > 300) cues.push({ sound: 'timer', timeMs: start, durationMs })
   }
   return cues.sort((a, b) => a.timeMs - b.timeMs)
 }

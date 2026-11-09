@@ -1,0 +1,438 @@
+{
+  "method": {
+    "references": 9,
+    "visualInspection": "1 fps contact sheets and targeted composition inspection; event boundaries approximate to \u00b10.5 s, not hand-verified on every decoded frame.",
+    "speech": "Gemini word-timed transcription retained privately with source media; proper-name transcription may be wrong. No copied narration in the new scripts.",
+    "frameIndex": "Every decoded frame indexed with timestamp and normalized low-resolution inter-frame change. This detects candidate edit boundaries; it is not semantic visual inspection.",
+    "adaptation": "Reference mechanics adapted to neutral sculpture, white cards, gray instruments and Mogging typography; no claim of exact 1:1 fidelity."
+  },
+  "references": [
+    {
+      "id": "7704787816353467680",
+      "url": "https://www.tiktok.com/@cephra3/video/7704787816353467680",
+      "title": "Philtrum: a measured relationship",
+      "duration": 17.3,
+      "frames": 519,
+      "words": 60,
+      "pacingWpm": 208,
+      "events": [
+        {
+          "from": 0,
+          "to": 2,
+          "observation": "Immediate same-face length comparison; slider, value and grade change together."
+        },
+        {
+          "from": 2,
+          "to": 5,
+          "observation": "Push toward the nose and upper lip. Endpoints establish the local vertical interval."
+        },
+        {
+          "from": 5,
+          "to": 10,
+          "observation": "Hold the close crop; move the mouth/upper-lip region while the short bracket follows."
+        },
+        {
+          "from": 10,
+          "to": 14,
+          "observation": "Change the demonstrated model and its reference range; preserve the graphic grammar."
+        },
+        {
+          "from": 14,
+          "to": 17.5,
+          "observation": "Pull back, acquire corners, then the brief product close."
+        }
+      ],
+      "notes": [
+        "Question \u2192 locate \u2192 sex-specific range \u2192 consequence \u2192 invitation.",
+        "The continuous face and persistent readout connect the explanation.",
+        "Do not adopt the reference\u2019s ideal ranges, age inference or grade as verified evidence."
+      ],
+      "primitives": [
+        "morph",
+        "datum",
+        "inset",
+        "acquire"
+      ]
+    },
+    {
+      "id": "7703892730501467424",
+      "url": "https://www.tiktok.com/@cephra3/video/7703892730501467424",
+      "title": "Jaw angle: construct, reveal, fold",
+      "duration": 28.535873,
+      "frames": 856,
+      "words": 87,
+      "pacingWpm": 183,
+      "events": [
+        {
+          "from": 0,
+          "to": 3,
+          "observation": "Profile establishes two jaw-corner states before explaining the construction."
+        },
+        {
+          "from": 3,
+          "to": 6,
+          "observation": "Push toward the ear; draw the descending ramus guide first."
+        },
+        {
+          "from": 6,
+          "to": 8,
+          "observation": "Draw the lower mandibular guide toward the chin. Stagger the angular arc after both legs."
+        },
+        {
+          "from": 8,
+          "to": 15,
+          "observation": "Registered mandible/teeth cutaway fades onto the same face. Small angle readout sits at the vertex."
+        },
+        {
+          "from": 15,
+          "to": 21,
+          "observation": "Hinge the rear guide about the jaw corner until it lies along the lower guide; a ratio annotation follows."
+        },
+        {
+          "from": 21,
+          "to": 26,
+          "observation": "Open and close the jaw corner while slider, angle and descriptive state respond."
+        },
+        {
+          "from": 26,
+          "to": 28.5,
+          "observation": "Pull back, restore the baseline, acquire corners and close."
+        }
+      ],
+      "notes": [
+        "Question \u2192 two-leg definition \u2192 bone context \u2192 ratio demonstration \u2192 contrasting extremes \u2192 invitation.",
+        "The folding guide is an explanatory action, not decoration.",
+        "Golden-ratio, ideal-angle and attractiveness claims are unverified; our model uses relative settings."
+      ],
+      "primitives": [
+        "angle",
+        "bone-window",
+        "fold-ratio",
+        "morph",
+        "acquire"
+      ]
+    },
+    {
+      "id": "7703220453979983137",
+      "url": "https://www.tiktok.com/@cephra3/video/7703220453979983137",
+      "title": "Perspective: keep the face framed",
+      "duration": 24.066667,
+      "frames": 722,
+      "words": 80,
+      "pacingWpm": 199,
+      "events": [
+        {
+          "from": 0,
+          "to": 4,
+          "observation": "Same frontal face changes apparent proportions; a distance ruler remains persistent."
+        },
+        {
+          "from": 4,
+          "to": 8,
+          "observation": "Bracket the nasal region; faint dimension grids and reference lines support the explanation."
+        },
+        {
+          "from": 8,
+          "to": 12,
+          "observation": "Matched feature insets distinguish nose, face width and ear visibility."
+        },
+        {
+          "from": 12,
+          "to": 16,
+          "observation": "An elliptical mirror/sweep graphic punctuates the comparison."
+        },
+        {
+          "from": 16,
+          "to": 21,
+          "observation": "Camera-distance example, constrained eye line and compensated framing make the variable legible."
+        },
+        {
+          "from": 21,
+          "to": 24.1,
+          "observation": "Return to the complete face with scanning brackets and the close."
+        }
+      ],
+      "notes": [
+        "Demonstration statement \u2192 physical explanation \u2192 visible consequences \u2192 familiar comparison \u2192 practical setup \u2192 invitation.",
+        "Use an actual perspective camera and compensate field of view; never fake perspective by stretching pixels.",
+        "Reference \u201cbetter\u201d judgments and exact recommended distances are not a calibrated personal assessment."
+      ],
+      "primitives": [
+        "perspective",
+        "datum",
+        "inset",
+        "mirror",
+        "card-merge"
+      ]
+    },
+    {
+      "id": "7701884172238998816",
+      "url": "https://www.tiktok.com/@cephra3/video/7701884172238998816",
+      "title": "Brows: comparison before explanation",
+      "duration": 15.3,
+      "frames": 459,
+      "words": 43,
+      "pacingWpm": 169,
+      "events": [
+        {
+          "from": 0,
+          "to": 4,
+          "observation": "Two small registered image cards make the eyebrow/no-eyebrow contrast visible. Cards expand and merge."
+        },
+        {
+          "from": 4,
+          "to": 8,
+          "observation": "Return to a large face. Local brow appearance changes while the rest of the face stays put."
+        },
+        {
+          "from": 8,
+          "to": 12,
+          "observation": "Localized contrast demonstration with persistent control panel and compact research attribution."
+        },
+        {
+          "from": 12,
+          "to": 15.5,
+          "observation": "Pull back to the face, corners and short invitation."
+        }
+      ],
+      "notes": [
+        "Research-led opening \u2192 recognizable difference \u2192 feature-specific claim \u2192 a second variable \u2192 invitation.",
+        "Distinct cuts compress the argument while retaining the same subject and camera.",
+        "Density, shape and contrast are different variables. Our current fiber material control demonstrates contrast only."
+      ],
+      "primitives": [
+        "card-merge",
+        "morph",
+        "inset",
+        "research"
+      ]
+    },
+    {
+      "id": "7702054345977777440",
+      "url": "https://www.tiktok.com/@cephra3/video/7702054345977777440",
+      "title": "Cheeks: build a coordinate system",
+      "duration": 16.438005,
+      "frames": 493,
+      "words": 49,
+      "pacingWpm": 179,
+      "events": [
+        {
+          "from": 0,
+          "to": 3,
+          "observation": "One frontal face demonstrates a higher/lower cheek position; the setting is visible before its definition."
+        },
+        {
+          "from": 3,
+          "to": 6,
+          "observation": "Draw the pupil datum, then a second horizontal line at the upper lip."
+        },
+        {
+          "from": 6,
+          "to": 9,
+          "observation": "Locate the widest cheek region; add width/vertical relations and faint underlying bone patches."
+        },
+        {
+          "from": 9,
+          "to": 13,
+          "observation": "Move that landmark vertically with the shape; the face, shadow and slider remain connected."
+        },
+        {
+          "from": 13,
+          "to": 16.4,
+          "observation": "Restore and pull back into the closing scan frame."
+        }
+      ],
+      "notes": [
+        "Binary question \u2192 locating procedure \u2192 relative position \u2192 visual contrast \u2192 invitation.",
+        "The guides are introduced in spoken order rather than appearing all at once.",
+        "A sculpture\u2019s cheek anchor can be surface-bound; a real portrait still needs its own registered anatomy."
+      ],
+      "primitives": [
+        "datum",
+        "thirds",
+        "region",
+        "bone-window",
+        "morph"
+      ]
+    },
+    {
+      "id": "7704300623637810465",
+      "url": "https://www.tiktok.com/@cephra3/video/7704300623637810465",
+      "title": "Midface: plane and signed relationship",
+      "duration": 22.766667,
+      "frames": 683,
+      "words": 79,
+      "pacingWpm": 208,
+      "events": [
+        {
+          "from": 0,
+          "to": 4,
+          "observation": "Front/angled face with an upper-jaw cutaway; orient to a profile for the test."
+        },
+        {
+          "from": 4,
+          "to": 7,
+          "observation": "Locate the brow/glabella datum and drop a vertical reference plane."
+        },
+        {
+          "from": 7,
+          "to": 10,
+          "observation": "Add a short horizontal relationship from the nasal base to that plane."
+        },
+        {
+          "from": 10,
+          "to": 14,
+          "observation": "Morph the midface support; maintain the reference plane and small signed offset readout."
+        },
+        {
+          "from": 14,
+          "to": 20,
+          "observation": "Reinforce the related nose/lip/cheek changes in a close profile crop."
+        },
+        {
+          "from": 20,
+          "to": 22.3,
+          "observation": "Pull out, acquire and close."
+        }
+      ],
+      "notes": [
+        "Provocative question \u2192 orient \u2192 locate \u2192 compare to a datum \u2192 visible relationships \u2192 invitation.",
+        "The reference plane persists while the feature moves, creating a stable explanation.",
+        "We do not reproduce the reference\u2019s diagnosis from a photo; this is an illustrative dimensional model."
+      ],
+      "primitives": [
+        "profile-plane",
+        "region",
+        "morph",
+        "comparison",
+        "acquire"
+      ]
+    },
+    {
+      "id": "7705508293069851937",
+      "url": "https://www.tiktok.com/@cephra3/video/7705508293069851937",
+      "title": "Recessed jaw: three-point profile construction",
+      "duration": 20,
+      "frames": 600,
+      "words": 67,
+      "pacingWpm": 201,
+      "events": [
+        {
+          "from": 0,
+          "to": 2.34,
+          "observation": "Preview two jaw states on the same face, then reset."
+        },
+        {
+          "from": 2.34,
+          "to": 7.58,
+          "observation": "Turn to profile and place the brow, under-nose, and chin points separately."
+        },
+        {
+          "from": 7.58,
+          "to": 10.85,
+          "observation": "Pull back to preserve all three marks. Draw both legs and reveal the angle."
+        },
+        {
+          "from": 12.4,
+          "to": 15.6,
+          "observation": "Hold the profile while the chin position and guide move together."
+        },
+        {
+          "from": 17.9,
+          "to": 20,
+          "observation": "Restore the face and move the guide into a scan outro."
+        }
+      ],
+      "notes": [
+        "Full clip sampled at 3 fps. Selected motion examined at its native 30 fps and compared with the creator-provided caption timings.",
+        "Use the choreography. Any facial thresholds or aesthetic, health or treatment claims from the reference require independent validation."
+      ],
+      "primitives": [
+        "profile-chain",
+        "morph",
+        "acquire"
+      ]
+    },
+    {
+      "id": "7705142571089136928",
+      "url": "https://www.tiktok.com/@cephra3/video/7705142571089136928",
+      "title": "Brow height relative to the eye opening",
+      "duration": 18.633,
+      "frames": 559,
+      "words": 66,
+      "pacingWpm": 213,
+      "events": [
+        {
+          "from": 0,
+          "to": 2.14,
+          "observation": "Preview low and high positions in a matched crop."
+        },
+        {
+          "from": 2.14,
+          "to": 6.68,
+          "observation": "Draw the pupil datum before building the first gap."
+        },
+        {
+          "from": 6.68,
+          "to": 8.82,
+          "observation": "Add the eye opening as a separate reference length."
+        },
+        {
+          "from": 14.34,
+          "to": 16.4,
+          "observation": "Morph brow height while both guides remain registered."
+        }
+      ],
+      "notes": [
+        "Full clip sampled at 3 fps. Selected motion examined at its native 30 fps and compared with the creator-provided caption timings.",
+        "Use the choreography. Any facial thresholds or aesthetic, health or treatment claims from the reference require independent validation."
+      ],
+      "primitives": [
+        "reference-ratio",
+        "landmark-gauge",
+        "morph"
+      ]
+    },
+    {
+      "id": "7704351931384270112",
+      "url": "https://www.tiktok.com/@cephra3/video/7704351931384270112",
+      "title": "Bone and surface: scan and separate",
+      "duration": 18.3,
+      "frames": 549,
+      "words": 64,
+      "pacingWpm": 210,
+      "events": [
+        {
+          "from": 1.65,
+          "to": 2.65,
+          "observation": "A horizontal light bar travels down. It reveals bone behind the moving edge."
+        },
+        {
+          "from": 4.35,
+          "to": 5.35,
+          "observation": "The surface retracts to a card and a second card turns out from behind it."
+        },
+        {
+          "from": 8.58,
+          "to": 13.34,
+          "observation": "Return to the same face with thin contour bands across the cheeks."
+        },
+        {
+          "from": 13.34,
+          "to": 16.7,
+          "observation": "Change the demonstrated support and retain the framing so the shadow change is legible."
+        }
+      ],
+      "notes": [
+        "Full clip sampled at 3 fps. Selected motion examined at its native 30 fps and compared with the creator-provided caption timings.",
+        "Use the choreography. Any facial thresholds or aesthetic, health or treatment claims from the reference require independent validation."
+      ],
+      "primitives": [
+        "layer-peel",
+        "bone-window",
+        "section-scan",
+        "morph"
+      ]
+    }
+  ]
+}

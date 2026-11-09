@@ -45,13 +45,6 @@ export function portraitImageFrame(image: { width: number; height: number }, sta
   }
 }
 
-/** A score overlays the portrait, so the face never needs a shorter stage. */
-export function scorePortraitFrame(image: { width: number; height: number }, stage: { width: number; height: number }, headTop = 0): VideoFrame {
-  const scale = Math.max(stage.width / image.width, stage.height / image.height)
-  const width = image.width * scale, height = image.height * scale
-  return { x: (stage.width - width) / 2, y: Math.max(stage.height - height, stage.height * .11 - headTop * scale), width, height }
-}
-
 export function portraitFadeStart(height: number, protectedBottom = 0) {
   return Math.max(height * .72, Math.min(height * .94, protectedBottom + height * .035))
 }

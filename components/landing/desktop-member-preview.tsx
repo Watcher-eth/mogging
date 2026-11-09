@@ -27,7 +27,7 @@ const protocolPreviewSlots = [
 export function DesktopMemberPreview({ view, now, compact = false, mobile = false, onNewScan }: { view: 'protocol' | 'progress'; now?: number; compact?: boolean; mobile?: boolean; onNewScan?: () => void }) {
   const [date] = useState(() => now ?? Date.now())
   const evaluations = samples.map((scores, index) => ({
-    id: `sample-${index}`, date: new Date(date - [2, 10, 24, 56][index] * 86_400_000).toISOString(), scores,
+    id: `sample-${index}`, date: new Date(date - [2, 10, 24, 56][index] * 86_400_000).toISOString(), scores, potential: 8.3,
   }))
   if (view === 'protocol' && compact) {
     return <ol aria-label="Sample Protocol timeline" className="flex h-full flex-col justify-center border-b border-zinc-100">

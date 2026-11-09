@@ -111,16 +111,16 @@ export function scriptGraphic(narration: string, source: VideoScene['source'], i
   const layout: ExplainerGraphic['layout'] = regroup ? 'constellation' : calendar ? 'calendar' : comparison ? 'comparison' : story ? 'story' : sequence ? 'sequence' : count ? variation % 2 || Number(count[1]) > 128 ? 'evidence' : 'constellation' : score ? scoreLayout === 2 ? 'dial' : scoreLayout === 1 ? 'evidence' : 'scale' : /\b(categories|pillars|features|eyes|jaw|symmetry)\b/i.test(narration) ? 'pillars' : 'statement'
   const item = (id: string, label: string, value = '', detail = '') => ({ id, label, value, detail })
   const items = regroup ? previous!.items : layout === 'calendar' ? [item('primary', 'Your weekly routine', String(frequency ? Number(frequency[1]) : days.length), 'days per week')]
-    : layout === 'story' ? [item('primary', 'Facial structure', '', 'Illustrative anatomy · not inferred from your photo')]
+    : layout === 'story' ? [item('primary', 'Facial structure', '', 'Facial structure')]
     : layout === 'comparison' ? [item('primary', input.strongestFeature || 'Strength', input.strongestScore, '/ 10'), item('secondary', input.opportunityFeature || 'Opportunity', input.opportunityScore, '/ 10')]
     : layout === 'sequence' ? [...(previous && ['comparison', 'dashboard'].includes(previous.layout) ? previous.items.slice(0, 2).map(item => ({ ...item, role: 'context' as const })) : []), ...(source.report ? buildCategoryActionPlan(source.report).items : []).concat(input.productFeatures).slice(0, 4).map((text, index) => item(`step-${index}`, text))]
     : layout === 'pillars' ? reportScoreGrid(source, input).items
     : layout === 'statement' ? [] : [item('primary', count ? count[2] : source.report?.title ?? 'Overall score', count ? count[1] : source.metricScore.toFixed(1), count ? '' : '/ 10')]
-  if (layout === 'statement') return previous ?? explainerGraphicSchema.parse({ layout: 'pillars', tone: 'light', items: [{ id: 'context', label: 'Whole-face context', detail: 'Illustrative reference · relationships before isolated features', diagram: 'profile' }] })
+  if (layout === 'statement') return previous ?? explainerGraphicSchema.parse({ layout: 'pillars', tone: 'light', items: [{ id: 'context', label: 'Whole-face context', detail: 'Relationships before isolated features', diagram: 'profile' }] })
   const dashboard = ['comparison', 'pillars', 'evidence'].includes(layout) && !count && items.every(isReportScore)
   const dashboardItems = items.length === 1 && dashboard ? [...items, item('strength', input.strongestFeature || 'Eye area', input.strongestScore, '/ 10'), item('opportunity', input.opportunityFeature || 'Jaw & chin', input.opportunityScore, '/ 10')] : items
   return explainerGraphicSchema.parse({ layout: dashboard ? 'dashboard' : layout, tone: dashboard ? 'light' : story && !comparison ? 'ink' : variation % 4 >= 2 ? 'ink' : 'light', variant: regroup ? previous!.variant : (variation + index) % 12, items: dashboard ? dashboardItems : items, days: layout === 'calendar' ? days : undefined,
-    count: layout === 'constellation' ? count ? Number(count[1]) : previous?.count : undefined, anatomy: layout === 'story' ? { focus: source.categoryId === 'jaw' ? 'jaw' : 'whole', action: 'focus' } : undefined, footnote: layout === 'constellation' ? 'Illustrative feature map · not a study population' : '' })
+    count: layout === 'constellation' ? count ? Number(count[1]) : previous?.count : undefined, anatomy: layout === 'story' ? { focus: source.categoryId === 'jaw' ? 'jaw' : 'whole', action: 'focus' } : undefined, footnote: layout === 'constellation' ? '' : '' })
 }
 const font = '"Mogging Share", Arial, sans-serif'
 export const explainerPalette = (tone: ExplainerGraphic['tone']) => tone === 'ink'

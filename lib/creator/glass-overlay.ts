@@ -8,6 +8,6 @@ export function applyGlassInk(ctx: CanvasRenderingContext2D, unit = 1, weight = 
   ctx.strokeStyle = ctx.fillStyle = color
   ctx.lineWidth = weight * unit
   ctx.lineCap = ctx.lineJoin = 'round'
-  ctx.shadowColor = 'rgba(231,244,255,.3)'
-  ctx.shadowBlur = 2.5 * unit
+  ctx.shadowColor = 'rgba(231,244,255,.42)'
+  ctx.shadowBlur = 4 * unit
 }

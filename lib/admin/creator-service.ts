@@ -205,6 +205,7 @@ export async function getCreatorAdminDashboard({ includeCoverage = true } = {}) 
         bonusNote: schema.creatorPayments.bonusNote,
         amountCents: schema.creatorPayments.amountCents,
         payoutRequestId: schema.creatorPayments.payoutRequestId,
+        cryptoChain: schema.creatorCryptoPayoutBatches.chain,
         currency: schema.creatorPayments.currency,
         status: schema.creatorPayments.status,
         paymentOption: schema.creatorPayments.paymentOption,
@@ -216,6 +217,7 @@ export async function getCreatorAdminDashboard({ includeCoverage = true } = {}) 
       .from(schema.creatorPayments)
       .innerJoin(schema.creatorProfiles, eq(schema.creatorPayments.creatorProfileId, schema.creatorProfiles.id))
       .leftJoin(schema.creatorPaymentReceipts, eq(schema.creatorPaymentReceipts.paymentId, schema.creatorPayments.id))
+      .leftJoin(schema.creatorCryptoPayoutBatches, eq(schema.creatorCryptoPayoutBatches.id, schema.creatorPayments.cryptoBatchId))
       .innerJoin(schema.users, eq(schema.creatorProfiles.userId, schema.users.id))
       .leftJoin(schema.creatorSubmissions, eq(schema.creatorPayments.submissionId, schema.creatorSubmissions.id))
       .orderBy(desc(schema.creatorPayments.createdAt)),
@@ -390,6 +392,7 @@ export async function reviewCreatorResource(input: CreatorAdminReviewInput, revi
         throw new ApiError(400, 'Complete every creator-guide review item before saving')
       }
       const payments = await tx.query.creatorPayments.findMany({ where: eq(schema.creatorPayments.submissionId, submission.id) })
+      if (payments.some(payment => payment.cryptoBatchId && payment.status === 'processing')) throw new ApiError(409, 'Wait for on-chain payout confirmation before changing the review')
       const calculated = Math.round(calculateCreatorPayout(input.adminViewCountThreshold, true, input.adminUsAudiencePercent).payout * 100)
       const approvedAmountCents = input.status === 'approved' ? reviewedPayoutCents(input, calculated, payments) : submission.approvedAmountCents
       if (input.status === 'approved' && approvedAmountCents !== (submission.approvedAmountCents ?? calculated) && payments.some(payment => ['pending', 'processing'].includes(payment.status))) throw new ApiError(409, 'Resolve the scheduled payment before adjusting earnings')
@@ -417,6 +420,7 @@ export async function reviewCreatorResource(input: CreatorAdminReviewInput, revi
     const [payment] = await tx.select().from(schema.creatorPayments).where(eq(schema.creatorPayments.id, input.id)).for('update')
     if (!payment) throw new ApiError(404, 'Creator payment not found')
     if ((payment.bonusSprintId || payment.creatorReferralAwardId) && input.amountCents !== undefined && input.amountCents !== payment.amountCents) throw new ApiError(409, 'Automatic bonus awards cannot be edited. Cancel an incorrect award instead.')
+    if (payment.cryptoBatchId) throw new ApiError(409, 'This payment is managed by on-chain reconciliation')
     if (payment.payoutRequestId) throw new ApiError(409, 'Record this payment through its bundled payout request')
     if (['pending', 'processing', 'paid'].includes(input.status)) {
       if (payment.creatorReferralAwardId && payment.status !== 'paid') await assertCreatorReferralPaymentsEligible(tx, [payment])

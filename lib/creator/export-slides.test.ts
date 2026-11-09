@@ -54,7 +54,7 @@ test('missing restored photo produces actionable error before encoding',async()=
 
 test('editorial covers preserve the distinction between total, feature, and potential scores', () => {
   const texts: string[] = []
-  const ctx = new Proxy({}, { get: (_target, key) => key === 'fillText' ? (text: string) => texts.push(text) : key === 'measureText' ? (text: string) => ({ width: text.length * 80 }) : () => {} }) as CanvasRenderingContext2D
+  const ctx = new Proxy({}, { get: (_target, key) => key === 'fillText' ? (text: string) => texts.push(text) : key === 'measureText' ? (text: string) => ({ width: text.length * 80 }) : key === 'createLinearGradient' ? () => ({ addColorStop() {} }) : () => {} }) as CanvasRenderingContext2D
   drawSlideFrame(ctx, { ...slide, templateId: 'performance' }, null, null, 1080, 1620, 4000, null)
   expect(texts).toContain('7'); expect(texts).not.toContain('MOGGING SCORE')
   texts.length = 0
@@ -83,7 +83,10 @@ test('cancelled composition exports release the encoder and frame resources', as
     close() { encoderClosed = true; this.state = 'closed' }
   })
   replace('VideoFrame', class { close() { frameClosed = true } })
-  await expect(encodeCanvasMp4({ width: 1080, height: 1920 } as HTMLCanvasElement, () => controller.abort(), 1000, undefined, controller.signal)).rejects.toThrow()
+  let draws = 0
+  const canvas = { width: 1080, height: 1920, getContext: () => ({ getImageData: () => ({ data: new Uint8ClampedArray(4) }) }) } as unknown as HTMLCanvasElement
+  await expect(encodeCanvasMp4(canvas, () => { if (++draws === 2) controller.abort() }, 1000, undefined, controller.signal)).rejects.toThrow()
+  expect(draws).toBe(2)
   expect(encoderClosed).toBe(true)
   expect(frameClosed).toBe(true)
 })
@@ -126,4 +129,32 @@ test('exclusive CTA renders entered scores and the edited call to action with th
     expect(texts).toContain('GET YOUR FACIAL ANALYSIS')
     expect(texts).toContain('MOGGING.COM')
   }
+})
+
+test('render ETA excludes cold setup, adapts to throughput, and finishes at zero', async () => {
+  const { createRenderEstimator, formatRenderRemaining } = await import('./export-progress')
+  let clock = 0
+  const estimate = createRenderEstimator(100, () => clock)
+  clock = 15000; expect(estimate(1)).toBeNull()
+  clock += 100; expect(estimate(2)).toBeNull()
+  clock += 100; expect(estimate(3)).toBeCloseTo(9.7)
+  for (let frame = 4; frame <= 10; frame++) { clock += 500; estimate(frame) }
+  clock += 500; expect(estimate(11)).toBeGreaterThan(30)
+  clock += 1000; expect(estimate(100)).toBe(0)
+  expect(formatRenderRemaining(null)).toBe('Estimating time remaining…')
+  expect(formatRenderRemaining(93)).toBe('About 2 min left')
+  expect(formatRenderRemaining(0)).toBe('Finishing download…')
+})
+
+test('cached video identity includes audio content and composition, not just title', async () => {
+  const { videoExportCacheKey } = await import('./video-export-cache')
+  replace('location', {origin:'https://www.mogging.com'})
+  const audio = (values:number[]) => ({sampleRate:24000,numberOfChannels:1,getChannelData:()=>new Float32Array(values)}) as unknown as AudioBuffer
+  const first = await videoExportCacheKey({title:'Same title',variation:1}, audio([.1,.2]))
+  const repeated = await videoExportCacheKey({title:'Same title',variation:1}, audio([.1,.2]))
+  const changedAudio = await videoExportCacheKey({title:'Same title',variation:1}, audio([.1,.3]))
+  const changedEdit = await videoExportCacheKey({title:'Same title',variation:2}, audio([.1,.2]))
+  expect(first.url).toBe(repeated.url)
+  expect(first.url).not.toBe(changedAudio.url)
+  expect(first.url).not.toBe(changedEdit.url)
 })

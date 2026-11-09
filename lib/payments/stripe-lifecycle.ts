@@ -1,5 +1,6 @@
 import { allocateCreatorBillingEvent } from '@/lib/creator/billing-attribution'
 import { createHash } from 'node:crypto'
+import { stripeJourneyProperties } from '@/lib/analytics/web-context'
 import { landingProperties, parseLandingAssignment } from '@/lib/analytics/landing'
 import type Stripe from 'stripe'
 import { and, eq, or, sql } from 'drizzle-orm'
@@ -8,9 +9,14 @@ import { db, schema } from '@/lib/db'
 const object = (value: unknown): Record<string, unknown> => value && typeof value === 'object' ? value as Record<string, unknown> : {}
 const id = (value: unknown): string | null => typeof value === 'string' ? value : typeof object(value).id === 'string' ? object(value).id as string : null
 
-export function normalizeStripeLifecycle(event: Stripe.Event) {
+type CheckoutObservation = Pick<Stripe.Event, 'id' | 'created' | 'livemode'> & {
+  type: 'checkout.session.observed'
+  data: { object: Stripe.Checkout.Session; previous_attributes?: undefined }
+}
+
+export function normalizeStripeLifecycle(event: Stripe.Event | CheckoutObservation) {
   const value = object(event.data.object)
-  const metadata = object(value.metadata)
+  const metadata = { ...object(object(object(value.parent).subscription_details).metadata ?? object(value.subscription_details).metadata), ...object(value.metadata) }
   const previous = object(event.data.previous_attributes)
   const subscription = id(object(object(value.parent).subscription_details).subscription) || id(value.subscription)
   let eventName = 'billing_other'
@@ -28,9 +34,12 @@ export function normalizeStripeLifecycle(event: Stripe.Event) {
         : value.cancel_at_period_end === false && previous.cancel_at_period_end === true ? 'subscription_reactivated'
         : previous.status === 'trialing' && value.status === 'active' ? 'trial_converted' : 'subscription_updated'
       break
+    case 'checkout.session.observed': eventName = 'checkout_status_observed'; break
     case 'checkout.session.completed':
     case 'checkout.session.async_payment_succeeded':
-      if (value.mode === 'payment' && value.payment_status === 'paid') {
+      if (value.payment_status !== 'paid') {
+        eventName = value.payment_status === 'no_payment_required' ? 'checkout_completed_without_payment' : 'checkout_payment_pending'
+      } else if (value.mode === 'payment') {
         eventName = 'one_time_purchase'
         amount = typeof value.amount_total === 'number' ? value.amount_total / 100 : null
       } else eventName = 'checkout_confirmed' // Invoice owns subscription revenue.
@@ -63,7 +72,18 @@ export function normalizeStripeLifecycle(event: Stripe.Event) {
     externalUserId: id(value.customer), subscriptionId: event.type.startsWith('customer.subscription.') ? id(value) : subscription,
     transactionId: id(value.payment_intent) || id(value.charge), productId: typeof metadata.product === 'string' ? metadata.product : null,
     amount: amount == null ? null : String(amount), currency, occurredAt: new Date(event.created * 1000),
-    properties: { creator_click_id: typeof metadata.creatorClickId === 'string' ? metadata.creatorClickId : null,
+    properties: {
+      web_surface: metadata.webSurface === 'mobile_web' || metadata.webSurface === 'desktop_web' ? metadata.webSurface : undefined,
+      recurring_unit_amount: typeof metadata.recurringAmount === 'string' && /^\d{1,8}$/.test(metadata.recurringAmount) ? Number(metadata.recurringAmount) : undefined,
+      recurring_currency: metadata.recurringCurrency === 'usd' ? 'USD' : undefined,
+      ...(event.type.startsWith('checkout.session.') ? {
+        ...stripeJourneyProperties(metadata as Record<string, string | undefined>),
+        surface: metadata.source ?? null,
+        payment_status: value.payment_status ?? null,
+        expires_at_ms: typeof value.expires_at === 'number' ? value.expires_at * 1000 : null,
+      } : {}),
+      creator_discount: typeof metadata.creatorDiscount === 'string' ? metadata.creatorDiscount : undefined,
+      creator_click_id: typeof metadata.creatorClickId === 'string' ? metadata.creatorClickId : null,
       invoice_id: event.type === 'invoice.paid' ? id(value) : null,
       checkout_session_id: event.type.startsWith('checkout.session.') ? id(value) : null,
       expiration_at_ms: typeof periodEnd === 'number' && Number.isFinite(periodEnd) ? periodEnd * 1000 : null, timestamp_estimated: event.id.startsWith('checkout:'), status: value.status ?? null, cancel_at_period_end: value.cancel_at_period_end ?? null,
@@ -73,7 +93,7 @@ export function normalizeStripeLifecycle(event: Stripe.Event) {
     candidateAccountId: typeof metadata.accountId === 'string' ? metadata.accountId : typeof metadata.userId === 'string' ? metadata.userId : null,
   }
 }
-export async function recordStripeLifecycle(event: Stripe.Event) {
+export async function recordStripeLifecycle(event: Stripe.Event | CheckoutObservation) {
   const normalized = normalizeStripeLifecycle(event)
   if (!normalized) return
   const { candidateAccountId, ...fact } = normalized
@@ -94,7 +114,7 @@ export async function recordStripeLifecycle(event: Stripe.Event) {
       columns: { accountId: true, externalUserId: true },
     }) : null
   if (!fact.productId && (fact.subscriptionId || fact.transactionId)) fact.productId = entitlement?.product ?? null
-  const candidate = candidateAccountId || entitlement?.userId || prior?.accountId
+  const candidate = entitlement?.userId || candidateAccountId || prior?.accountId
   fact.externalUserId ||= prior?.externalUserId ?? null
   const user = candidate ? await db.query.users.findFirst({ where: eq(schema.users.id, candidate), columns: { id: true } }) : null
   await db.insert(schema.subscriptionEvents).values({ ...fact, accountId: user?.id }).onConflictDoUpdate({
@@ -106,12 +126,15 @@ export async function recordStripeLifecycle(event: Stripe.Event) {
       externalUserId: sql`coalesce(${schema.subscriptionEvents.externalUserId}, excluded.external_user_id)`,
       subscriptionId: sql`coalesce(${schema.subscriptionEvents.subscriptionId}, excluded.subscription_id)`,
       transactionId: sql`coalesce(${schema.subscriptionEvents.transactionId}, excluded.transaction_id)`,
-      occurredAt: sql`case when ${schema.subscriptionEvents.properties}->>'timestamp_estimated'='true'
+      occurredAt: sql`case when excluded.event_name='checkout_status_observed' then greatest(excluded.occurred_at, ${schema.subscriptionEvents.occurredAt})
+        when ${schema.subscriptionEvents.properties}->>'timestamp_estimated'='true'
         and excluded.properties->>'timestamp_estimated'='false' then excluded.occurred_at else ${schema.subscriptionEvents.occurredAt} end`,
-      properties: sql`case when ${schema.subscriptionEvents.properties}->>'timestamp_estimated'='true'
+      properties: sql`case when excluded.event_name='checkout_status_observed' then excluded.properties
+        when ${schema.subscriptionEvents.properties}->>'timestamp_estimated'='true'
         and excluded.properties->>'timestamp_estimated'='false' then ${schema.subscriptionEvents.properties} || excluded.properties
         else ${schema.subscriptionEvents.properties} end` },
   })
+  if (fact.eventName === 'checkout_status_observed') return
   const stored = await db.query.subscriptionEvents.findFirst({ where: and(eq(schema.subscriptionEvents.provider, 'stripe'), eq(schema.subscriptionEvents.providerEventId, fact.providerEventId)) })
   if (stored && stored.environment === 'production' && !['allocated', 'not_applicable', 'internal'].includes(stored.creatorAttributionStatus)) await allocateCreatorBillingEvent(stored).catch(() => { console.warn('creator:billing-allocation-pending') })
 }
@@ -127,7 +150,13 @@ export async function recordStripeBillingEvent(event: Stripe.Event) {
     where: and(eq(schema.analyticsEvents.eventName, 'checkout_completed'), eq(schema.analyticsEvents.sessionId, session.id), eq(schema.analyticsEvents.platform, 'server')),
     columns: { id: true },
   })
-  if (prior) return
+  if (prior) {
+    const journey = stripeJourneyProperties(session.metadata)
+    if (journey.flow_id) await db.update(schema.analyticsEvents).set({
+      properties: sql`${schema.analyticsEvents.properties} || ${JSON.stringify(journey)}::jsonb`,
+    }).where(and(eq(schema.analyticsEvents.id, prior.id), sql`nullif(${schema.analyticsEvents.properties}->>'flow_id','') is null`))
+    return
+  }
   const fact = normalizeStripeLifecycle(event)!
   const accountId = fact.candidateAccountId ? (await db.query.users.findFirst({ where: eq(schema.users.id, fact.candidateAccountId), columns: { id: true } }))?.id : null
   const hash = createHash('sha256').update(`stripe-checkout:${session.id}`).digest('hex')
@@ -137,6 +166,7 @@ export async function recordStripeBillingEvent(event: Stripe.Event) {
     platform: 'server', source: 'stripe_verified', environment: session.livemode ? 'production' : 'development',
     occurredAt: new Date(event.created * 1000), properties: {
       ...stripeJourneyProperties(session.metadata), paywall_version: session.metadata?.paywallVersion,
+      creator_tracking_link_id: session.metadata?.creatorTrackingLinkId, creator_discount: session.metadata?.creatorDiscount,
       provider: 'stripe', surface: session.metadata?.source, offering: session.metadata?.returnOffer === '1' ? 'stripe_return' : undefined,
       product: session.metadata?.product || 'unknown', mode: session.mode, status: session.payment_status,
       price: session.amount_total, currency: session.currency,
@@ -151,4 +181,10 @@ export async function recordVerifiedStripeCheckout(session: Stripe.Checkout.Sess
     livemode: session.livemode, data: { object: session },
   } as Stripe.Event)
 }
-import { stripeJourneyProperties } from '@/lib/analytics/web-context'
+
+export async function recordStripeCheckoutStatus(session: Stripe.Checkout.Session, observedAt: Date) {
+  await recordStripeLifecycle({
+    id: `checkout-status:${session.id}`, type: 'checkout.session.observed',
+    created: Math.floor(+observedAt / 1000), livemode: session.livemode, data: { object: session },
+  })
+}

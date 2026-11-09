@@ -1,48 +1,38 @@
 type Point = { x: number; y: number }
 type Frame = Point & { w: number; h: number }
 
+/** A neutral prop follows the reveal edge, then leaves. It never edits the photograph. */
+export function drawEditorialTool(ctx:CanvasRenderingContext2D,frame:{x:number;y:number;width:number;height:number},progress:number,kind:'brush'|'clipper',reduced=false,variant=0){
+  if(reduced || progress<=0 || progress>=1)return
+  const t=editorialEase(progress),matrix=ctx.getTransform(),unit=1/Math.max(.01,Math.hypot(matrix.a,matrix.b))
+  ctx.save()
+  ctx.globalAlpha*=editorialEase(progress/.18)*(1-editorialEase((progress-.8)/.2))
+  const forward=variant%2?1-t:t,vertical=variant%3===1
+  ctx.translate(frame.x+frame.width*(vertical?.5:forward),frame.y+frame.height*(vertical?forward:.5-Math.sin(Math.PI*t)*(.08+variant*.02)))
+  ctx.rotate((vertical?Math.PI/2:0)-.2+Math.sin(Math.PI*t)*(.12+variant*.035));ctx.scale(unit,unit)
+  if(kind==='clipper'){
+    ctx.fillStyle='#f8f8f8';ctx.strokeStyle='#a4a4a4';ctx.lineWidth=1
+    ctx.beginPath();ctx.roundRect(-18,-9,36,76,12);ctx.fill();ctx.stroke()
+    const body=ctx.createLinearGradient(-18,0,18,0);body.addColorStop(0,'#e0e0e0');body.addColorStop(.5,'#fff');body.addColorStop(1,'#d6d6d6')
+    ctx.fillStyle=body;ctx.beginPath();ctx.roundRect(-14,5,28,55,8);ctx.fill()
+    ctx.fillStyle='#b4b4b4';ctx.fillRect(-21,-14,42,12)
+    ctx.strokeStyle='#777';for(let x=-19;x<=19;x+=4){ctx.beginPath();ctx.moveTo(x,-19);ctx.lineTo(x,-8);ctx.stroke()}
+    ctx.fillStyle='#a3a3a3';ctx.beginPath();ctx.roundRect(-4,23,8,13,3);ctx.fill()
+  }else{
+    ctx.fillStyle='#d3d3d3';ctx.beginPath();ctx.roundRect(-8,6,16,66,7);ctx.fill()
+    ctx.fillStyle='#a7a7a7';ctx.fillRect(-16,-3,32,16)
+    ctx.fillStyle='#e6e6e6';ctx.beginPath();ctx.roundRect(-20,-28,40,28,[9,9,2,2]);ctx.fill()
+    ctx.strokeStyle='#bbb';ctx.lineWidth=.8;for(let x=-16;x<=16;x+=5){ctx.beginPath();ctx.moveTo(x,-24);ctx.lineTo(x,-5);ctx.stroke()}
+  }
+  ctx.restore()
+}
+
 const clamp = (value: number) => Math.max(0, Math.min(1, value))
 export const editorialEase = (value: number) => {
   const t = clamp(value)
   return t * t * (3 - 2 * t)
 }
 const lerp = (a: number, b: number, t: number) => a + (b - a) * t
-
-/** Approach a point on the image, settle, then acknowledge the edit. */
-export function drawEditorialPointer(ctx: CanvasRenderingContext2D, from: Point, target: Point, progress: number) {
-  if (progress < 0 || progress >= 1) return
-  const t = editorialEase(progress / .64)
-  const x = lerp(from.x, target.x, t)
-  const y = lerp(from.y, target.y, t) - Math.sin(t * Math.PI) * Math.min(75, Math.abs(target.x - from.x) * .24)
-  const click = clamp((progress - .64) / .36)
-  ctx.save()
-  ctx.globalAlpha *= editorialEase(progress / .14) * (1 - editorialEase((progress - .82) / .18))
-  if (click > 0) {
-    ctx.beginPath()
-    ctx.arc(x, y, 8 + click * 22, 0, Math.PI * 2)
-    ctx.strokeStyle = `rgba(240,255,222,${1 - click})`
-    ctx.lineWidth = 2
-    ctx.stroke()
-  }
-  ctx.translate(x, y)
-  ctx.scale(1 - .12 * Math.sin(click * Math.PI), 1 - .12 * Math.sin(click * Math.PI))
-  ctx.beginPath()
-  ctx.moveTo(0, 0)
-  ctx.lineTo(4, 32)
-  ctx.lineTo(12, 23)
-  ctx.lineTo(19, 34)
-  ctx.lineTo(25, 30)
-  ctx.lineTo(17, 19)
-  ctx.lineTo(29, 18)
-  ctx.closePath()
-  ctx.lineJoin = 'round'
-  ctx.lineWidth = 2
-  ctx.strokeStyle = '#192018'
-  ctx.fillStyle = '#f9fff2'
-  ctx.fill()
-  ctx.stroke()
-  ctx.restore()
-}
 
 /** Keep the original framing fixed while the edited layer moves across it. */
 export function drawEditorialSplit(ctx: CanvasRenderingContext2D, frame: Frame, progress: number, drawEdit: () => void) {

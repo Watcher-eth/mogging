@@ -1,0 +1,326 @@
+{
+  "jaw-width": {
+    "label": "Jaw width",
+    "anchor": "jaw",
+    "measure": [
+      "chinLeft",
+      "jaw"
+    ],
+    "radius": [
+      0.012,
+      0.015
+    ]
+  },
+  "chin-projection": {
+    "label": "Chin projection",
+    "anchor": "chin",
+    "measure": [
+      "lowerLip",
+      "chin"
+    ],
+    "radius": [
+      0.02,
+      0.014
+    ]
+  },
+  "cheek-height": {
+    "label": "Cheekbone position",
+    "anchor": "cheek",
+    "measure": [
+      "eyeRight",
+      "cheek"
+    ],
+    "radius": [
+      0.02,
+      0.014
+    ]
+  },
+  "nose-projection": {
+    "label": "Nose projection",
+    "anchor": "nose",
+    "measure": [
+      "noseBase",
+      "nose"
+    ],
+    "radius": [
+      0.013,
+      0.014
+    ]
+  },
+  "philtrum-length": {
+    "label": "Philtrum length",
+    "anchor": "philtrum",
+    "measure": [
+      "noseBase",
+      "upperLip"
+    ],
+    "radius": [
+      0.009,
+      0.01
+    ]
+  },
+  "eye-tilt": {
+    "label": "Eye tilt",
+    "anchor": "eyeRight",
+    "measure": [
+      "eyeLeft",
+      "eyeRight"
+    ],
+    "radius": [
+      0.018,
+      0.008
+    ]
+  },
+  "midface-projection": {
+    "label": "Midface projection",
+    "anchor": "cheek",
+    "measure": [
+      "glabella",
+      "noseBase"
+    ],
+    "radius": [
+      0.025,
+      0.02
+    ]
+  },
+  "gonial-angle": {
+    "label": "Jaw angle",
+    "anchor": "jaw",
+    "measure": [
+      "ear",
+      "jaw"
+    ],
+    "radius": [
+      0.012,
+      0.014
+    ]
+  },
+  "lip-fullness": {
+    "label": "Lip fullness",
+    "anchor": "lip",
+    "measure": [
+      "upperLip",
+      "lowerLip"
+    ],
+    "radius": [
+      0.026,
+      0.01
+    ]
+  },
+  "brow-contrast": {
+    "label": "Brow contrast",
+    "anchor": "brow",
+    "measure": [
+      "eyeRight",
+      "brow"
+    ],
+    "radius": [
+      0.023,
+      0.008
+    ]
+  },
+  "camera-distance": {
+    "label": "Camera distance",
+    "anchor": "nose",
+    "measure": [
+      "nose",
+      "ear"
+    ],
+    "radius": [
+      0.013,
+      0.014
+    ]
+  },
+  "chin-height": {
+    "label": "Chin height",
+    "anchor": "chin",
+    "measure": [
+      "lowerLip",
+      "chin"
+    ],
+    "radius": [
+      0.022,
+      0.012
+    ]
+  },
+  "chin-width": {
+    "label": "Chin width",
+    "anchor": "chin",
+    "measure": [
+      "chinLeft",
+      "chinRight"
+    ],
+    "radius": [
+      0.022,
+      0.012
+    ]
+  },
+  "nose-width": {
+    "label": "Nose width",
+    "anchor": "noseBase",
+    "measure": [
+      "noseLeft",
+      "noseRight"
+    ],
+    "radius": [
+      0.018,
+      0.009
+    ]
+  },
+  "nose-tip": {
+    "label": "Nasal tip rotation",
+    "anchor": "nose",
+    "measure": [
+      "noseBase",
+      "nose"
+    ],
+    "radius": [
+      0.013,
+      0.012
+    ]
+  },
+  "nose-bridge": {
+    "label": "Nasal bridge",
+    "anchor": "nose",
+    "measure": [
+      "glabella",
+      "nose"
+    ],
+    "radius": [
+      0.009,
+      0.022
+    ]
+  },
+  "mouth-width": {
+    "label": "Mouth width",
+    "anchor": "lip",
+    "measure": [
+      "mouthLeft",
+      "mouthRight"
+    ],
+    "radius": [
+      0.029,
+      0.01
+    ]
+  },
+  "upper-lip": {
+    "label": "Upper lip projection",
+    "anchor": "upperLip",
+    "measure": [
+      "upperLip",
+      "lip"
+    ],
+    "radius": [
+      0.023,
+      0.005
+    ]
+  },
+  "lower-lip": {
+    "label": "Lower lip projection",
+    "anchor": "lowerLip",
+    "measure": [
+      "lip",
+      "lowerLip"
+    ],
+    "radius": [
+      0.023,
+      0.006
+    ]
+  },
+  "brow-height": {
+    "label": "Brow height",
+    "anchor": "brow",
+    "measure": [
+      "eyeRight",
+      "brow"
+    ],
+    "radius": [
+      0.023,
+      0.008
+    ]
+  },
+  "brow-arch": {
+    "label": "Brow arch",
+    "anchor": "brow",
+    "measure": [
+      "eyeRight",
+      "brow"
+    ],
+    "radius": [
+      0.023,
+      0.008
+    ]
+  },
+  "brow-ridge": {
+    "label": "Brow ridge",
+    "anchor": "brow",
+    "measure": [
+      "glabella",
+      "brow"
+    ],
+    "radius": [
+      0.023,
+      0.01
+    ]
+  },
+  "forehead-projection": {
+    "label": "Forehead projection",
+    "anchor": "forehead",
+    "measure": [
+      "glabella",
+      "forehead"
+    ],
+    "radius": [
+      0.029,
+      0.014
+    ]
+  },
+  "forehead-slope": {
+    "label": "Forehead slope",
+    "anchor": "forehead",
+    "measure": [
+      "glabella",
+      "forehead"
+    ],
+    "radius": [
+      0.029,
+      0.014
+    ]
+  },
+  "jaw-taper": {
+    "label": "Jaw taper",
+    "anchor": "jaw",
+    "measure": [
+      "chinLeft",
+      "jaw"
+    ],
+    "radius": [
+      0.012,
+      0.014
+    ]
+  },
+  "jaw-height": {
+    "label": "Jaw height",
+    "anchor": "jaw",
+    "measure": [
+      "ear",
+      "jaw"
+    ],
+    "radius": [
+      0.012,
+      0.014
+    ]
+  },
+  "cheek-projection": {
+    "label": "Cheek projection",
+    "anchor": "cheek",
+    "measure": [
+      "eyeRight",
+      "cheek"
+    ],
+    "radius": [
+      0.018,
+      0.015
+    ]
+  }
+}

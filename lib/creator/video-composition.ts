@@ -1,3 +1,5 @@
+import { sculptureSchema } from './cephra-study'
+import { editorialPresentationSchema, editorialKinds } from './editorial-scenes'
 import { compileDocumentaryVideo } from './video-documentary-plan'
 import { voiceDirection } from './video-speech'
 import { documentaryShotSchema, mediaAssetSchema } from './media-asset'
@@ -29,6 +31,8 @@ export const videoRecipes = {
   'hybrid-story': 'Explainer + app proof',
   'feature-study': 'Focused feature study',
   'documentary-studio': 'Documentary Studio',
+  'editorial-story': 'Editorial analysis',
+  'sculpture-study': 'Cephra sculpture study',
 } as const
 export type VideoRecipe = keyof typeof videoRecipes
 
@@ -65,12 +69,14 @@ const reportSchema = z.object({
 }).strict()
 
 export const videoSceneSchema = z.object({
-  studyCutout: z.literal(true).optional(),
+  sculpture: sculptureSchema.optional(),
   studyReadout: z.string().max(100).optional(),
+  studyCutout: z.literal(true).optional(),
   studyMeasurement: z.object({
     name: z.string().max(80), value: z.number().finite().nonnegative(), unit: z.enum(['%', '°', 'px']),
     reference: z.string().max(100),
   }).optional(),
+  captionScale: z.number().min(.8).max(1).optional(),
   documentary: documentaryShotSchema.optional(),
   portraitCrop: portraitCropSchema.optional(),
   id: z.string().min(1).max(100), label: z.string().max(120), startMs: z.number().finite().min(0), durationMs: z.number().finite().min(100).max(180000),
@@ -83,6 +89,7 @@ export const videoSceneSchema = z.object({
   scoreCallouts: z.array(z.object({ label: z.string().max(120), value: z.number().min(0).max(10), word: z.number().int().min(0) }).strict()).max(6).optional(),
   graphic: explainerGraphicSchema.optional(),
   photoStudy: photoStudySchema.optional(),
+  presentation: editorialPresentationSchema.optional(),
   featureStudy: featureStudySchema.optional(),
   portraitProgram: portraitProgramSchema.optional(),
   portraitFX: portraitEffectsSchema.optional(),
@@ -94,14 +101,14 @@ export const videoSceneSchema = z.object({
 }).strict()
 export type VideoScene = z.infer<typeof videoSceneSchema>
 export function videoImageIds(scenes: VideoScene[]) {
-  return new Set(scenes.flatMap(scene => [scene.source.imageId, scene.source.secondaryImageId, ...(scene.study?.references.map(reference => reference.imageId) ?? []), ...(scene.featureStudy?.images ?? [])]).filter((id): id is string => Boolean(id)))
+  return new Set(scenes.flatMap(scene => [scene.source.imageId, scene.source.secondaryImageId, ...(scene.study?.references.map(reference => reference.imageId) ?? []), ...(scene.featureStudy?.images ?? []), ...(scene.presentation?.imageIds ?? [])]).filter((id): id is string => Boolean(id)))
 }
-export type VideoDirection = { closingReport?: boolean; overlay?: VideoScene['source']['overlay']; portraitCrop?: VideoScene['portraitCrop']; scoreCallouts?: VideoScene['scoreCallouts']; kind: 'portrait' | 'explainer' | 'report' | 'component'; imageId?: string; categoryId?: string; graphic?: VideoScene['graphic']; photoStudy?: VideoScene['photoStudy']; portraitFX?: VideoScene['portraitFX']; profileStudy?: VideoScene['profileStudy']; editorial?: VideoScene['editorial']; study?: VideoScene['study']; featureStudy?: VideoScene['featureStudy']; portraitProgram?: VideoScene['portraitProgram']; delivery?: VideoScene['delivery']; focus?: string; emphasis?: 'section-lift' | 'section-expand' | 'border-beam' }
+export type VideoDirection = { sculpture?: z.infer<typeof sculptureSchema>; presentation?: VideoScene['presentation']; closingReport?: boolean; overlay?: VideoScene['source']['overlay']; portraitCrop?: VideoScene['portraitCrop']; scoreCallouts?: VideoScene['scoreCallouts']; kind: 'portrait' | 'explainer' | 'report' | 'component'; imageId?: string; categoryId?: string; graphic?: VideoScene['graphic']; photoStudy?: VideoScene['photoStudy']; portraitFX?: VideoScene['portraitFX']; profileStudy?: VideoScene['profileStudy']; editorial?: VideoScene['editorial']; study?: VideoScene['study']; featureStudy?: VideoScene['featureStudy']; portraitProgram?: VideoScene['portraitProgram']; delivery?: VideoScene['delivery']; focus?: string; emphasis?: 'section-lift' | 'section-expand' | 'border-beam' }
 
 export const compositionSchema = z.object({
   version: z.literal(1), privateStudy: z.literal(true).optional(), title: z.string().min(1).max(160), disclosure: z.string().max(240).optional(), width: z.preprocess(width => width === 1080 ? videoSize.width : width, z.literal(videoSize.width)), height: z.preprocess(height => height === 1920 ? videoSize.height : height, z.literal(videoSize.height)), fps: z.literal(30),
   style: z.enum(['creator', 'diagnostic', 'brand']), theme: z.enum(['light', 'dark']).default('light'), durationMs: z.number().finite().min(100).max(180000), scenes: z.array(videoSceneSchema).min(1).max(250),
-  recipe: z.enum(['report-led', 'portrait-audit', 'measurement-explainer', 'minimal-explainer', 'hybrid-story', 'feature-study', 'documentary-studio']).default('report-led'), variation: z.number().int().min(0).max(9999).default(0),
+  recipe: z.enum(['report-led', 'portrait-audit', 'measurement-explainer', 'minimal-explainer', 'hybrid-story', 'feature-study', 'documentary-studio', 'editorial-story', 'sculpture-study']).default('report-led'), variation: z.number().int().min(0).max(9999).default(0),
   voice: voiceDirectionSchema.optional(), timing: z.enum(['estimated', 'segments', 'words']).optional(),
   media: z.array(mediaAssetSchema).max(40).optional(),
   script: scriptSchema.optional(), recording: recordingSchema.optional(),
@@ -109,6 +116,9 @@ export const compositionSchema = z.object({
   let end = 0
   const sceneIds = new Set<string>()
   for (const [index, scene] of composition.scenes.entries()) {
+    if(scene.sculpture && (scene.source.kind!=='portrait' || scene.featureStudy || scene.presentation || scene.study || scene.photoStudy || scene.profileStudy || scene.portraitProgram || scene.portraitFX))ctx.addIssue({code:'custom',path:['scenes',index,'sculpture'],message:'Sculptures own an illustrative portrait scene.'})
+    if(scene.presentation?.mediaId && !composition.media?.some(asset=>asset.id===scene.presentation!.mediaId && asset.kind==='video'))ctx.addIssue({code:'custom',path:['scenes',index,'presentation','mediaId'],message:'A context inset needs its supplied video asset.'})
+    if(scene.presentation && (scene.source.kind!=='portrait' || scene.featureStudy || scene.photoStudy || scene.profileStudy || scene.study || scene.portraitFX?.print || scene.portraitFX?.lighting || scene.portraitFX?.overlay)) ctx.addIssue({code:'custom',path:['scenes',index,'presentation'],message:'An editorial presentation owns an unmodified photographic scene.'})
     if (scene.featureStudy && (scene.source.kind !== 'portrait' || scene.study || scene.photoStudy || scene.profileStudy || scene.portraitFX?.print || scene.portraitFX?.lighting || scene.portraitFX?.overlay)) ctx.addIssue({ code: 'custom', path: ['scenes', index, 'featureStudy'], message: 'Feature studies own their portrait treatment.' })
     if (scene.study && (scene.source.kind !== 'portrait' || scene.photoStudy)) ctx.addIssue({ code: 'custom', path: ['scenes', index, 'study'], message: 'Editorial studies need an unmodified portrait source.' })
     if (scene.portraitFX && scene.source.kind !== 'portrait') ctx.addIssue({ code: 'custom', path: ['scenes', index, 'portraitFX'], message: 'Portrait effects belong only to portrait scenes.' })
@@ -169,7 +179,7 @@ export type VideoComposition = z.infer<typeof compositionSchema>
 export function allowedPrimitives(target: TrackTarget) {
   if (target === 'element') return motionPrimitives.filter(item => ['entry', 'exit'].includes(item.category) || ['punch-in', 'slow-push', 'pull-out', 'pan-left', 'pan-right', 'pan-up', 'pan-down', 'snap-reframe', 'focus-rack', 'section-expand', 'gradient-outline', 'section-spotlight', 'border-beam', 'section-lift'].includes(item.id))
   const categories: Record<Exclude<TrackTarget, 'element'>, string[]> = { camera: ['camera'], content: ['transition', 'entry', 'exit'], text: ['text', 'entry', 'exit'], overlay: ['overlay', 'entry', 'exit'], decoration: ['cursor', 'cinematic'], report: ['report'] }
-  return motionPrimitives.filter(item => categories[target].includes(item.category))
+  return motionPrimitives.filter(item => item.id.startsWith('editorial-') ? target === 'content' : categories[target].includes(item.category))
 }
 
 export function parseComposition(value: unknown): VideoComposition {
@@ -179,6 +189,15 @@ export function parseComposition(value: unknown): VideoComposition {
   first.tracks = first.tracks.filter(track => track.primitive !== 'component-focus')
   let previousGraphic: VideoScene['graphic']
   for (const scene of composition.scenes) {
+    const editorialTrack = scene.tracks.findLast(track => track.primitive.startsWith('editorial-'))
+    if(editorialTrack) {
+      if(scene.source.kind!=='portrait' || scene.study || scene.photoStudy || scene.profileStudy || scene.portraitFX?.print || scene.portraitFX?.lighting || scene.featureStudy?.edit) throw new Error('Editorial scene primitives require an unmodified photographic scene; report layouts and shape edits retain their own renderer.')
+      const kind=editorialKinds.find(kind=>editorialTrack.primitive===`editorial-${kind}`)!
+      const presentation=editorialPresentationSchema.parse({...scene.presentation,kind,feature:scene.presentation?.feature??decodeVisualBeat(scene.narration).feature})
+      scene.presentation=presentation
+      scene.featureStudy=undefined
+      scene.portraitProgram=undefined
+    }
     if (scene.graphic) scene.graphic = stableInstrumentGrid(scene.graphic, previousGraphic)
     previousGraphic = scene.source.kind === 'explainer' ? scene.graphic : undefined
     scene.tracks = scene.tracks.filter(track => track.primitive !== 'border-beam' || !['scores', 'potential', 'category-score', 'hero', 'current-score', 'overall', 'overall-score'].includes(track.elementId ?? track.section ?? scene.focus))
@@ -221,6 +240,8 @@ const editPacing = {
   'minimal-explainer': { cut: 'layout-morph', alternate: 'crossfade', duration: 240, shared: 340 },
   'feature-study': { cut: 'focus-cut', alternate: 'match-reframe', duration: 310, shared: 560 },
   'hybrid-story': { cut: 'wipe-up', alternate: 'wipe-right', duration: 340, shared: 400 },
+  'editorial-story': { cut: 'match-reframe', alternate: 'focus-cut', duration: 320, shared: 540 },
+  'sculpture-study': { cut: 'match-reframe', alternate: 'focus-cut', duration: 300, shared: 550 },
   'documentary-studio': { cut: 'hard-cut', alternate: 'hard-cut', duration: 0, shared: 0 },
 } as const satisfies Record<VideoRecipe, {cut: MotionPrimitiveId; alternate: MotionPrimitiveId; duration: number; shared: number}>
 
@@ -228,6 +249,13 @@ export function choreographVideoTransitions(composition: VideoComposition): Vide
   let lastRippleMs = -Infinity, rippleCount = 0, cutIndex = 0
   const recipe = composition.recipe ?? 'report-led'
   const pacing = editPacing[recipe]
+  const editorial = recipe === 'editorial-story' || recipe === 'feature-study'
+  const editorialCuts = [
+    ['match-reframe','wipe-up','focus-cut'], ['layout-morph','card-reveal','wipe-right'],
+    ['luma-cut','match-reframe','focus-cut'], ['focus-cut','wipe-left','crossfade'],
+    ['screen-push','crossfade','wipe-up'], ['card-reveal','luma-cut','wipe-right'],
+  ] as const
+  const editorialCut = editorialCuts[(composition.variation ?? 0) % editorialCuts.length]
   return { ...composition, scenes: composition.scenes.map((scene, index) => {
     const previous = composition.scenes[index - 1]
     if (!previous || recipe === 'documentary-studio') return scene
@@ -236,6 +264,7 @@ export function choreographVideoTransitions(composition: VideoComposition): Vide
     const sameCue = (scene.scriptRange?.cueId ?? scene.cueId) === (previous.scriptRange?.cueId ?? previous.cueId)
     const sameStudy = scene.featureStudy && previous.featureStudy && samePhoto && sameCue &&
       scene.featureStudy.opening === previous.featureStudy.opening && scene.featureStudy.phase === previous.featureStudy.phase
+    const samePresentation=samePhoto && sameCue && scene.presentation && previous.presentation && JSON.stringify(scene.presentation)===JSON.stringify(previous.presentation)
     const ripple = recipe === 'report-led' && reportIn && !reportOut && rippleCount < videoMotion.reportWaveLimit && scene.startMs - lastRippleMs >= videoMotion.reportWaveGapMs
     let primitive: MotionPrimitiveId, durationMs: number
     if (ripple) {
@@ -243,11 +272,17 @@ export function choreographVideoTransitions(composition: VideoComposition): Vide
       primitive = 'liquid-ripple'; durationMs = videoMotion.reportWaveMs
     } else if (reportIn && reportOut) {
       primitive = sharesReport(previous, scene) ? 'hard-cut' : 'crossfade'; durationMs = 180
-    } else if (sameStudy) {
+    } else if (sameStudy || samePresentation) {
       primitive = 'hard-cut'; durationMs = 0
+    } else if (scene.presentation?.mediaId || previous.presentation?.mediaId) {
+      primitive='hard-cut';durationMs=0
     } else if (reportIn !== reportOut) {
       primitive = recipe === 'feature-study' && samePhoto ? 'cinematic-flow' : 'crossfade'
       durationMs = primitive === 'cinematic-flow' ? pacing.shared : 180
+    } else if (editorial && (scene.presentation || previous.presentation)) {
+      if (!sameCue) cutIndex++
+      primitive = editorialCut[cutIndex % editorialCut.length]
+      durationMs = pacing.duration
     } else if (sharesPortrait(previous, scene)) {
       primitive = 'cinematic-flow'; durationMs = pacing.shared
     } else {
@@ -284,7 +319,10 @@ export function arrangeVideoScenes(composition: VideoComposition, scenes: VideoS
 
 export function retimeVideoScene(scene: VideoScene, durationMs: number): VideoScene {
   const ratio = durationMs / scene.durationMs
-  return { ...scene, durationMs, words: scene.words?.map(word => ({ ...word, startMs: word.startMs * ratio, endMs: word.endMs * ratio })), tracks: scene.tracks.map(track => ({ ...track, startMs: track.startMs * ratio, durationMs: Math.max(1, track.durationMs * ratio) })) }
+  return { ...scene, durationMs, words: scene.words?.map(word => ({ ...word, startMs: word.startMs * ratio, endMs: word.endMs * ratio })), tracks: scene.tracks.map(track => {
+    const startMs=Math.min(durationMs-1,track.startMs*ratio);
+    return {...track,startMs,durationMs:Math.min(durationMs-startMs,Math.max(1,track.durationMs*ratio))};
+  }) }
 }
 
 export function createMotionTrack(primitive: MotionPrimitiveId, target: TrackTarget, sceneDuration: number): MotionTrack {
@@ -292,15 +330,15 @@ export function createMotionTrack(primitive: MotionPrimitiveId, target: TrackTar
   return { id: `${target}-${primitive}`, primitive, target, startMs: definition.category === 'exit' ? Math.max(0, sceneDuration - definition.durationMs) : 0, durationMs: Math.min(definition.durationMs, sceneDuration), intensity: 1, anchor: { x: .5, y: .5 } }
 }
 
-export function compileAnalysisVideo(plan: AnalysisPostPlan, input: AnalysisPostInput, imageIds: string[], style: VideoStyleId, reports: ReportCategory[], options: { recipe?: VideoRecipe; variation?: number; directions?: Record<string, VideoDirection>; script?: VideoScript } = {}): VideoComposition {
+export function compileAnalysisVideo(plan: AnalysisPostPlan, input: AnalysisPostInput, imageIds: string[], style: VideoStyleId, reports: ReportCategory[], options: { recipe?: VideoRecipe; variation?: number; directions?: Record<string, VideoDirection>; script?: VideoScript; media?: import('./media-asset').MediaAsset[] } = {}): VideoComposition {
   if (options.recipe === 'documentary-studio') {
     const script = options.script ?? createVideoScript(plan.scenes.map(cue => ({ ...cue, delivery: options.directions?.[cue.id]?.delivery })))
     return parseComposition(compileDocumentaryVideo(script, input, imageIds.map(id => ({ id })), reports, voiceDirection('editorial'), options.variation ?? 0, plan.scenes.map(scene => Math.round((scene.end - scene.start) * 1000))))
   }
   const readScore = (value: string, fallback: number) => value.trim() && Number.isFinite(Number(value)) ? Math.max(0, Math.min(10, Number(value))) : fallback
-  const currentScore = readScore(input.overallScore, 7.1)
+  const currentScore = readScore(input.overallScore, options.recipe==='sculpture-study' ? reports.find(report=>report.id==='overall')?.score ?? 7.1 : 7.1)
   const potentialScore = readScore(input.potentialScore, 8.2)
-  const overallReport = reports.find(report => report.id === 'overall' && report.assessmentId) ?? buildMockOverallCategory(String(currentScore), { [featureCategory(input.strongestFeature)]: input.strongestScore, [featureCategory(input.opportunityFeature)]: input.opportunityScore })
+  const overallReport = reports.find(report => report.id === 'overall' && (report.assessmentId || options.recipe === 'sculpture-study')) ?? buildMockOverallCategory(String(currentScore), { [featureCategory(input.strongestFeature)]: input.strongestScore, [featureCategory(input.opportunityFeature)]: input.opportunityScore })
   const scenes: VideoScene[] = []
   let previousCategory = 'overall'
   const shots = planScriptShots(plan, style === 'diagnostic' || options.recipe === 'report-led' || options.recipe === 'portrait-audit' ? 2300 : 2900)
@@ -418,9 +456,11 @@ export function compileAnalysisVideo(plan: AnalysisPostPlan, input: AnalysisPost
       scene.portraitFX = portrait ? direction.portraitFX : undefined
       scene.profileStudy = portrait ? direction.profileStudy : undefined
       scene.study = portrait ? direction.study : undefined
+      scene.presentation = portrait ? direction.presentation : undefined
+      scene.sculpture = portrait ? direction.sculpture : undefined
       scene.featureStudy = portrait ? direction.featureStudy : undefined
       scene.portraitProgram = portrait || direction.kind === 'report' ? direction.portraitProgram : undefined
-      if (scene.featureStudy) scene.source.overlay = 'none'
+      if (scene.featureStudy || scene.presentation) scene.source.overlay = 'none'
       if (scene.study?.references.some(reference => !imageIds.includes(reference.imageId))) throw new Error('An editorial study reference photo is missing.')
       scene.editorial = portrait ? direction.editorial ?? (categoryId === 'overall' ? 'context' : direction.profileStudy ? 'compare' : 'detail') : undefined
       scene.delivery = direction.delivery
@@ -444,6 +484,14 @@ export function compileAnalysisVideo(plan: AnalysisPostPlan, input: AnalysisPost
           if (direction.emphasis !== 'border-beam') scene.tracks.push({ ...createMotionTrack('border-beam', 'report', scene.durationMs), section: scene.focus, startMs, durationMs, intensity: .7 })
         }
       }
+    }
+    if(scene.sculpture) {
+      scene.captionScale=.8;
+      scene.presentation=undefined;scene.featureStudy=undefined;scene.photoStudy=undefined;scene.profileStudy=undefined;
+      scene.study=undefined;scene.portraitProgram=undefined;scene.portraitFX=undefined;scene.graphic=undefined;
+      scene.source={...scene.source,kind:'portrait',overlay:'none'};
+      scene.tracks=scene.tracks.filter(track=>track.target==='text');
+      continue;
     }
     if (!options.script && !direction && recipe !== 'report-led' && (scene.source.kind === 'report' || proofScene(scene)) && /\b(features|categories|scores|values|separates)\b/i.test(scene.narration)) {
       scene.graphic = reportScoreGrid(scene.source, input, variation + index)
@@ -485,7 +533,7 @@ export function compileAnalysisVideo(plan: AnalysisPostPlan, input: AnalysisPost
     if (scene.graphic?.layout === 'story' && index && scenes[index - 1].source.kind === 'portrait') scene.tracks = scene.tracks.map(track => track.target === 'content' && primitiveDefinition(track.primitive).category === 'transition' ? createMotionTrack('hard-cut', 'content', scene.durationMs) : track)
   }
   for (const scene of scenes) {
-    if (scene.source.kind !== 'portrait' || scene.photoStudy || scene.profileStudy || scene.portraitFX?.lighting || options.directions?.[scene.cueId]?.overlay === 'none') continue
+    if (scene.sculpture || scene.source.kind !== 'portrait' || scene.photoStudy || scene.profileStudy || scene.portraitFX?.lighting || options.directions?.[scene.cueId]?.overlay === 'none') continue
     const metric = narratedFaceMetric(scene.narration, scene.source.categoryId)
     if (metric) scene.focus = `metric:${metric.id}`
     if (recipe === 'measurement-explainer' && !['overall', 'symmetry', 'proportions'].includes(scene.source.categoryId)) {
@@ -495,13 +543,13 @@ export function compileAnalysisVideo(plan: AnalysisPostPlan, input: AnalysisPost
   }
   const ownsTreatment = (scene: VideoScene, key: 'portraitProgram' | 'portraitFX') => Object.hasOwn(options.directions?.[scene.cueId] ?? {}, key)
   // Legacy script compilers share the production action engine; authored multi-card studies own their choreography.
-  for (const scene of scenes) if (scene.source.kind === 'portrait' && !ownsTreatment(scene, 'portraitProgram') && !scene.portraitProgram && !scene.study && scene.narration) {
+  for (const scene of scenes) if (!scene.sculpture && scene.source.kind === 'portrait' && !ownsTreatment(scene, 'portraitProgram') && !scene.portraitProgram && !scene.study && scene.narration) {
     const feature = decodeVisualBeat(scene.narration).feature
     scene.portraitProgram = planPortraitProgram(scene.narration, feature, recipe, variation, scene.profileStudy?.view ?? 'front')
   }
   // One accent per four eligible portraits, spread across all format grammars.
   // Explicit editor choices keep ownership; reports, edits and lighting stay intact.
-  const trackerCandidates=scenes.filter(scene=>!ownsTreatment(scene, 'portraitFX') && scene.source.kind==='portrait' && !scene.customSlideId && !scene.portraitFX?.instrument && !scene.photoStudy && !scene.profileStudy && !scene.study && !scene.portraitFX?.lighting && !scene.featureStudy?.edit && !/mogging\.com|Get your face analysis/i.test(scene.narration))
+  const trackerCandidates=scenes.filter(scene=>!scene.sculpture && !ownsTreatment(scene, 'portraitFX') && scene.source.kind==='portrait' && !scene.customSlideId && !scene.portraitFX?.instrument && !scene.photoStudy && !scene.profileStudy && !scene.study && !scene.portraitFX?.lighting && !scene.featureStudy?.edit && !/mogging\.com|Get your face analysis/i.test(scene.narration))
   for(let start=0;start<trackerCandidates.length;start+=4) {
     const seed=scriptVisualSeed(recipe,String(variation),String(start))
     if(trackerCandidates.length<3 && seed%3!==0)continue
@@ -535,7 +583,7 @@ export function compileAnalysisVideo(plan: AnalysisPostPlan, input: AnalysisPost
     const wordIndex = track.wordIndex ?? (['text', 'overlay', 'report'].includes(track.target) ? 0 : undefined)
     return wordIndex === undefined || wordIndex >= scene.scriptRange.wordCount ? track : { ...track, wordId: `${scene.scriptRange.cueId}/word:${scene.scriptRange.startWord + wordIndex}` }
   }) }))
-  return parseComposition(choreographVideoTransitions(ensureEarlyAppProof({ version: 1, title: plan.title, width: videoSize.width, height: videoSize.height, fps: 30, durationMs: Math.round(plan.duration * 1000), style, theme: 'light', scenes: anchored, script, recipe, variation }, imageIds[0])))
+  return parseComposition(choreographVideoTransitions(ensureEarlyAppProof({ version: 1, title: plan.title, width: videoSize.width, height: videoSize.height, fps: 30, durationMs: Math.round(plan.duration * 1000), style, theme: 'light', scenes: anchored, script, recipe, variation, media: options.media }, imageIds[0])))
 }
 
 export function wantsFeaturePortrait(text: string, category: string, focus: string) {

@@ -75,6 +75,7 @@ export async function settleBundledPayout(input: z.infer<typeof settlePayoutRequ
     if (receipt && request.paymentOption !== 'paypal') throw new ApiError(400, 'Image receipts are for PayPal payments')
     const submissions = await tx.select().from(schema.creatorSubmissions).where(eq(schema.creatorSubmissions.creatorProfileId, request.creatorProfileId)).orderBy(asc(schema.creatorSubmissions.id)).for('update')
     const payments = await tx.select().from(schema.creatorPayments).where(eq(schema.creatorPayments.payoutRequestId, request.id)).for('update')
+    if (payments.some(payment => payment.cryptoBatchId)) throw new ApiError(409, 'This bundle is managed by on-chain reconciliation')
     if (!payments.length || payments.some(payment => !['pending', 'processing'].includes(payment.status) || payment.currency !== 'USD') || payments.reduce((sum, payment) => sum + payment.amountCents, 0) !== request.amountCents) throw new ApiError(409, 'This bundle needs review before recording payment')
     await assertCreatorReferralPaymentsEligible(tx, payments)
     const now = new Date()

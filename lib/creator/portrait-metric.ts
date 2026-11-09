@@ -55,18 +55,6 @@ export function portraitMetricFor(scene: VideoScene, activity: PortraitActivity 
   if (!edited && bound && category(report.id)===feature && !scene.scoreCallouts?.some(score=>category(score.label)===feature)) return {label:report.title,value:report.score,unit:'/10',basis:'assessment',imageId:scene.source.imageId}
 }
 
-export function capturePortraitMetric(ctx: CanvasRenderingContext2D, scene: VideoScene, activity: PortraitActivity, landmarks: FaceLandmarksPayload | null | undefined, localMs: number, width: number, height: number, warp?: PortraitWarp): CapturedPortraitMetric | undefined {
-  const chin = landmarks?.anchors.chin
-  if (!chin || !activity.to.primitives.length) return
-  const metric = portraitMetricFor(scene, activity, landmarks, localMs, warp)
-  if (!metric) return
-  const point = warp ? warpDestinationPoint(chin, warp) : chin
-  const {a, b, c, d, e, f} = ctx.getTransform()
-  const x = point.x * width, y = point.y * height
-  const progress = Math.min(1, activity.elapsedMs / 260)
-  return { metric, chin: { x: a*x + c*y + e, y: b*x + d*y + f }, opacity: progress * progress * (3 - 2*progress) }
-}
-
 export function drawPortraitMetricPill(ctx: CanvasRenderingContext2D, captured: CapturedPortraitMetric, reduced = false, motion?: PillFrame, displayText = portraitMetricText(captured.metric)) {
   const scale=ctx.canvas.width/1316,{chin}=captured,height=pillMotion.height*scale,gap=16*scale
   if(chin.x<0 || chin.x>ctx.canvas.width || chin.y<ctx.canvas.height*.22 || chin.y+gap+height>ctx.canvas.height*.79)return
@@ -82,5 +70,4 @@ export function drawPortraitMetricPill(ctx: CanvasRenderingContext2D, captured: 
   if(motion){for(const glyph of motion.glyphs){if(glyph.opacity<.001)continue;ctx.save();ctx.globalAlpha*=glyph.opacity;ctx.filter=`blur(${(1-glyph.opacity)*1.2*scale}px)`;ctx.fillText(glyph.string,x+glyph.x*scale,y+height*.53+glyph.y*scale);ctx.restore()}}
   else ctx.fillText(text,x+pillMotion.padding*scale,y+height*.53)
   ctx.restore()
-  return true
 }

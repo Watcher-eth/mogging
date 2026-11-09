@@ -20,7 +20,7 @@ export function TransitionPanel({ children, activeKey }: { children: ReactNode; 
   return <AnimatePresence initial={false} mode="wait"><Panel key={activeKey}>{children}</Panel></AnimatePresence>
 }
 
-export function TextEffect({ children, className, preset = 'text-blur' }: { children: string; className?: string; preset?: AppearancePreset }) {
+export function TextEffect({ children, className, preset = 'text-blur', delay = 0, duration = motionTiming.enter, visible = true }: { children: string; className?: string; preset?: AppearancePreset; delay?: number; duration?: number; visible?: boolean }) {
   const reduced = useReducedMotion()
-  return <span className={className}><span className="sr-only">{children}</span><motion.span key={children} aria-hidden="true" initial={reduced ? false : 'hidden'} animate="visible" transition={{ staggerChildren: reduced ? 0 : motionTiming.stagger }}>{children.split(/(\s+)/).map((segment, index) => <motion.span key={index} className="inline-block whitespace-pre" variants={appearanceVariants(preset)} transition={{ duration: reduced ? 0 : motionTiming.enter, ease: motionEase }}>{segment}</motion.span>)}</motion.span></span>
+  return <span className={className}><span className="sr-only">{children}</span><motion.span key={children} aria-hidden="true" initial={reduced ? false : 'hidden'} animate={visible || reduced ? 'visible' : 'hidden'} transition={{ staggerChildren: reduced ? 0 : motionTiming.stagger, delayChildren: reduced ? 0 : delay }}>{(children.match(/\S+\s*/g)??[]).map((segment, index) => <motion.span key={index} className="inline-block whitespace-pre" variants={appearanceVariants(preset)} transition={{ duration: reduced ? 0 : duration, ease: motionEase }}>{segment}</motion.span>)}</motion.span></span>
 }

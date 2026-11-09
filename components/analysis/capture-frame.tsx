@@ -16,6 +16,7 @@ type CaptureFrameProps = {
   action?: ReactNode
   className?: string
   imageAlt?: string
+  imageFit?: 'cover' | 'contain'
   imagePosition?: CaptureFrameImagePosition
   imageSrc?: string | null
   landmarks?: FaceLandmarksPayload | null
@@ -28,6 +29,7 @@ type CaptureFrameProps = {
   subtitle?: string
   title?: string
   videoRef?: RefObject<HTMLVideoElement | null>
+  viewport?: typeof captureViewport
 }
 
 export function CaptureFrame({
@@ -35,6 +37,7 @@ export function CaptureFrame({
   bare = false,
   className = '',
   imageAlt = 'Face alignment preview',
+  imageFit = bare ? 'contain' : 'cover',
   imagePosition = { x: 50, y: 50, scale: 1 },
   imageSrc,
   landmarks,
@@ -47,9 +50,10 @@ export function CaptureFrame({
   subtitle = 'Center your face in the frame',
   title = 'Look straight ahead',
   videoRef,
+  viewport = captureViewport,
 }: CaptureFrameProps) {
   const reduceMotion = useReducedMotion()
-  const guide = getFaceGuide(imageSrc ? landmarks : null, imagePosition)
+  const guide = getFaceGuide(imageSrc ? landmarks : null, imagePosition, viewport)
   const hasMedia = Boolean(imageSrc || videoRef)
   const clickSuppressedRef = useRef(false)
   const dragStateRef = useRef<{
@@ -143,7 +147,7 @@ export function CaptureFrame({
     >
       {imageSrc ? (
         <Image
-          className={bare ? 'object-contain' : 'object-cover'}
+          className={imageFit === 'contain' ? 'object-contain' : 'object-cover'}
           src={imageSrc}
           alt={imageAlt}
           fill
@@ -183,7 +187,7 @@ export function CaptureFrame({
         </div>
       ) : null}
 
-      <svg className="pointer-events-none absolute inset-0 h-full w-full" viewBox={`0 0 ${captureViewport.width} ${captureViewport.height}`} aria-hidden="true">
+      <svg className="pointer-events-none absolute inset-0 h-full w-full" viewBox={`0 0 ${viewport.width} ${viewport.height}`} aria-hidden="true">
         <motion.ellipse
           initial={false}
           animate={guide}

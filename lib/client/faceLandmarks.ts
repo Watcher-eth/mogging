@@ -34,8 +34,8 @@ export type FaceDetectionResult =
 
 // Existing photo uploads retain their nullable API; the creator UI can show
 // actionable failures instead of treating a blocked model download as no face.
-export async function extractFaceLandmarksFromDataUrl(dataUrl: string): Promise<FaceLandmarksPayload | null> {
-  const result = await detectFaceLandmarksFromDataUrl(dataUrl)
+export async function extractFaceLandmarksFromDataUrl(dataUrl: string, profile = false): Promise<FaceLandmarksPayload | null> {
+  const { detection: result } = await detectWebAnalysisEvidence(dataUrl, profile)
   return result.status === 'detected' ? result.landmarks : null
 }
 
@@ -44,20 +44,24 @@ export async function detectFaceLandmarksFromDataUrl(dataUrl: string): Promise<F
 }
 
 // A single detector pass supplies both the existing overlay anchors and web v2 geometry.
-export async function detectWebAnalysisEvidence(dataUrl: string): Promise<{ detection: FaceDetectionResult; mesh: LandmarkInput | null }> {
+export async function detectWebAnalysisEvidence(dataUrl: string, profile = false): Promise<{ detection: FaceDetectionResult; mesh: LandmarkInput | null }> {
   try {
     const [image, landmarker] = await Promise.all([loadImage(dataUrl), getFaceLandmarker()])
-    const result = landmarker.detect(image)
     const size = { width: image.naturalWidth, height: image.naturalHeight }
-    const detection = landmarksFromFaces(result.faceLandmarks ?? [], size)
+    let faces = landmarker.detect(image).faceLandmarks ?? []
+    let detection = landmarksFromFaces(faces, size)
+    if (profile && detection.status === 'no-face') {
+      faces = await detectCroppedProfile(image, landmarker)
+      detection = landmarksFromFaces(faces, size)
+    }
     if(detection.status==='detected') {
       const canvas=document.createElement('canvas'),scale=Math.min(1,1024/Math.max(size.width,size.height))
       canvas.width=Math.round(size.width*scale);canvas.height=Math.round(size.height*scale)
       const ctx=canvas.getContext('2d',{willReadFrequently:true})!
       ctx.drawImage(image,0,0,canvas.width,canvas.height)
-      detection.landmarks=refinePhotographedContours(detection.landmarks,ctx.getImageData(0,0,canvas.width,canvas.height))
+      detection.landmarks=refinePhotographedContours(detection.landmarks,ctx.getImageData(0,0,canvas.width,canvas.height), profile)
     }
-    const points = result.faceLandmarks?.[0]
+    const points = faces[0]
     const mesh = detection.status === 'detected' && points?.length === 478
       ? { ...size, points: points.map(point => ({ x: point.x, y: point.y, z: point.z ?? 0 })) }
       : null
@@ -65,6 +69,29 @@ export async function detectWebAnalysisEvidence(dataUrl: string): Promise<{ dete
   } catch {
     return { detection: { status: 'unavailable', message: 'Face detection could not load. Check your connection and retry, or try another browser.' }, mesh: null }
   }
+}
+
+async function detectCroppedProfile(image: HTMLImageElement, landmarker: FaceLandmarkerInstance) {
+  const { getProfileSilhouetteRegions } = await import('./profile-silhouette')
+  const silhouette = await getProfileSilhouetteRegions(image.src)
+  if (!silhouette?.skin.length) return []
+  const { naturalWidth: width, naturalHeight: height } = image
+  const xs = silhouette.skin.map(p => p.x), ys = silhouette.skin.map(p => p.y)
+  const faceWidth = (Math.max(...xs) - Math.min(...xs)) * width
+  const faceHeight = (Math.max(...ys) - Math.min(...ys)) * height
+  const size = Math.min(Math.max(faceWidth, faceHeight) * 1.45, width, height)
+  if (size < 32 || size >= Math.max(width, height) * .94) return []
+  const x = Math.min(width - size, Math.max(0, (Math.min(...xs) + Math.max(...xs)) * width / 2 - size / 2))
+  const y = Math.min(height - size, Math.max(0, (Math.min(...ys) + Math.max(...ys)) * height / 2 - size / 2))
+  const canvas = document.createElement('canvas')
+  canvas.width = canvas.height = Math.min(768, Math.round(size))
+  const ctx = canvas.getContext('2d')
+  if (!ctx) return []
+  ctx.drawImage(image, x, y, size, size, 0, 0, canvas.width, canvas.height)
+  return (landmarker.detect(canvas).faceLandmarks ?? []).map(face => face.map(point => ({
+    x: (x + point.x * size) / width, y: (y + point.y * size) / height,
+    z: point.z === undefined ? undefined : point.z * size / width,
+  })))
 }
 
 export function landmarksFromFaces(faces: Array<Array<{ x: number; y: number; z?:number }>>, image: { width: number; height: number }): FaceDetectionResult {
@@ -203,15 +230,16 @@ export async function createWebCameraPoseReader() {
     if (faces.length !== 1) return { status: faces.length ? 'multiple' : 'missing' } as const
     const face = faces[0]
     const matrix = result.facialTransformationMatrixes?.[0]?.data
-    if (!matrix || !face[152] || !face[10] || !face[1]) return { status: 'missing' } as const
+    if (!matrix || !face[152] || !face[10] || !face[234] || !face[454]) return { status: 'missing' } as const
     const degrees = 180 / Math.PI
     return {
       status: 'found',
       yaw: Math.atan2(-matrix[2], Math.hypot(matrix[0], matrix[1])) * degrees,
       pitch: Math.atan2(matrix[6], matrix[10]) * degrees,
       roll: Math.atan2(matrix[1], matrix[0]) * degrees,
-      centerX: face[1].x,
+      centerX: (face[234].x + face[454].x) / 2,
       centerY: (face[10].y + face[152].y) / 2,
+      width: Math.abs(face[454].x - face[234].x),
       height: face[152].y - face[10].y,
     } as const
   }

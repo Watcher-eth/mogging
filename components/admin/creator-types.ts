@@ -132,6 +132,7 @@ export type AdminSubmission = {
 }
 
 export type AdminPayment = {
+  cryptoChain?: import('@/lib/admin/crypto-payouts/shared').PayoutChain | null
   bonusSprintId?: string | null
   bonusKey?: string | null
   bonusNote?: string | null

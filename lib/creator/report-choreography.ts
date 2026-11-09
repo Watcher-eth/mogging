@@ -151,7 +151,7 @@ export function expandInPlace(rect: VideoFrame, frame: VideoFrame, amount: numbe
 }
 
 export function reportRegion(regions: ReportRegion[], id: string) {
-  return regions.find(region => region.id === id) ?? (id === 'category-score' ? regions.find(region => region.categorySummary) : undefined) ?? regions.find(region => region.id === 'features') ?? regions[0]
+  return regions.find(region => region.id === id) ?? regions.find(region => region.id === 'features') ?? regions[0]
 }
 
 export function sectionScroll(region: ReportRegion, viewportHeight: number, max: number) {
@@ -192,8 +192,7 @@ export function reportEmphasis(scene: VideoScene, localMs: number, reduced = fal
     section = scene.focus.startsWith('feature:') ? scene.focus : `feature:${features[index]?.id ?? index}`
   }
   if (!section.startsWith('feature:') && !['scores', 'category-score', 'potential', 'action-plan'].includes(section)) return null
-  const focusFadeMs = { enter: 280, exit: 360 }
-  const fade = reduced ? 1 : Math.min(elementEntrance(localMs, track.startMs, focusFadeMs.enter), elementEntrance(track.startMs + track.durationMs - localMs, 0, focusFadeMs.exit))
+  const fade = reduced ? 1 : Math.min(elementEntrance(localMs, track.startMs, 160), elementEntrance(track.startMs + track.durationMs - localMs, 0, 180))
   return { section, amount: fade * Math.min(1, track.intensity) }
 }
 

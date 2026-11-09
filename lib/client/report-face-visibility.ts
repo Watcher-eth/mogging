@@ -2,7 +2,7 @@ import type { FaceLandmarksPayload, NormalizedPoint } from '@/lib/creator/mobile
 import type { ImageSegmenter } from '@mediapipe/tasks-vision'
 
 let segmenter: Promise<ImageSegmenter> | undefined
-const masks = new Map<string, Promise<HTMLCanvasElement | null>>()
+const masks = new Map<string, Promise<{ face: HTMLCanvasElement; hairCenterX: number | null; hairOutline: NormalizedPoint[] } | null>>()
 
 async function createSegmenter() {
   const { ImageSegmenter, FilesetResolver } = await import('@mediapipe/tasks-vision')
@@ -17,7 +17,11 @@ async function createSegmenter() {
   })
 }
 
-export function getReportFaceVisibility(image: HTMLImageElement) {
+export async function getReportFaceVisibility(image: HTMLImageElement) {
+  return (await getPortraitSegmentation(image))?.face ?? null
+}
+
+export function getPortraitSegmentation(image: HTMLImageElement) {
   const key = image.currentSrc || image.src
   const cached = masks.get(key)
   if (cached) return cached
@@ -40,11 +44,26 @@ export function getReportFaceVisibility(image: HTMLImageElement) {
       const alpha = ctx.createImageData(mask.width, mask.height)
       // The model labels facial skin separately from hair and background.
       // Avoid brightness thresholds so shadows can retain their skin label.
+      let hairX = 0, hairCount = 0
+      const hairRows = Array.from({ length: mask.height }, () => ({ left: mask.width, right: -1 }))
       for (let i = 0; i < pixels.length; i++) {
         alpha.data[i * 4 + 3] = pixels[i] === 3 ? 255 : 0
+        if (pixels[i] === 1) {
+          const x = i % mask.width
+          const row = hairRows[Math.floor(i / mask.width)]
+          row.left = Math.min(row.left, x)
+          row.right = Math.max(row.right, x)
+          hairX += x
+          hairCount++
+        }
       }
       ctx.putImageData(alpha, 0, 0)
-      return canvas
+      const visibleHair = hairCount > pixels.length * .015
+      const hairEdges = hairRows.flatMap((row, y) => y % 3 === 0 && row.right > row.left
+        ? [{ left: { x: row.left / mask.width, y: y / mask.height }, right: { x: row.right / mask.width, y: y / mask.height } }]
+        : [])
+      const hairOutline = visibleHair ? [...hairEdges.map(row => row.left), ...hairEdges.toReversed().map(row => row.right)] : []
+      return { face: canvas, hairCenterX: visibleHair ? hairX / hairCount / mask.width : null, hairOutline }
     } finally {
       result.close()
     }

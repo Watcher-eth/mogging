@@ -1,4 +1,5 @@
 import type { FaceLandmarksPayload, NormalizedPoint } from '@/lib/analysis/landmarks'
+import { visibleProfileSide } from '@/lib/creator/facial-detail-guides'
 
 type Point = {x:number;y:number}
 type Pixels = {width:number;height:number;data:Uint8ClampedArray}
@@ -6,12 +7,16 @@ const quantile=(values:number[],fraction:number)=>values.toSorted((a,b)=>a-b)[Ma
 
 // Fit the visible hair boundary inside a small detector-registered search band.
 // The eye contour bounds that band, so eyelids cannot become an eyebrow.
-export function refinePhotographedContours(face:FaceLandmarksPayload,pixels:Pixels):FaceLandmarksPayload {
-  const {leftPupil,rightPupil}=face.anchors
-  if(!leftPupil||!rightPupil||!face.contours)return face
+export function refinePhotographedContours(face:FaceLandmarksPayload,pixels:Pixels,profile=false):FaceLandmarksPayload {
+  const {leftPupil,rightPupil,leftEyeOuter,leftEyeInner,rightEyeInner,rightEyeOuter}=face.anchors
+  const nearSide = profile ? visibleProfileSide(face) : null
+  const first = nearSide === 'left' ? leftEyeOuter : nearSide === 'right' ? rightEyeInner : leftPupil
+  const last = nearSide === 'left' ? leftEyeInner : nearSide === 'right' ? rightEyeOuter : rightPupil
+  if(!first||!last||!face.contours)return face
   const toPixel=(p:NormalizedPoint)=>({x:p.x*pixels.width,y:p.y*pixels.height})
-  const a=toPixel(leftPupil),b=toPixel(rightPupil),span=Math.hypot(b.x-a.x,b.y-a.y)
-  if(span<30)return face
+  const [a,b]=profile&&first.x>last.x?[toPixel(last),toPixel(first)]:[toPixel(first),toPixel(last)]
+  const span=Math.hypot(b.x-a.x,b.y-a.y)
+  if(span<(profile ? 12 : 30))return face
   const ux=(b.x-a.x)/span,uy=(b.y-a.y)/span
   const local=(p:NormalizedPoint)=>{const q=toPixel(p);return{x:q.x*ux+q.y*uy,y:-q.x*uy+q.y*ux}}
   const world=(p:Point)=>({x:(p.x*ux-p.y*uy)/pixels.width,y:(p.x*uy+p.y*ux)/pixels.height})
@@ -30,7 +35,7 @@ export function refinePhotographedContours(face:FaceLandmarksPayload,pixels:Pixe
     return hits.length>=2?[Math.min(...hits),Math.max(...hits)]:undefined
   }
   const contours={...face.contours},anchors={...face.anchors}
-  for(const side of ['left','right'] as const){
+  for(const side of nearSide ? [nearSide] : ['left','right'] as const){
     const key=side==='left'?'leftBrow':'rightBrow',raw=contours[key]
     if(!raw||raw.length<8||raw[0].x!==raw.at(-1)!.x||raw[0].y!==raw.at(-1)!.y)continue
     const ring=raw.map(local),eye=(contours[side==='left'?'leftEye':'rightEye']??[]).map(local)
@@ -74,7 +79,7 @@ export function refinePhotographedContours(face:FaceLandmarksPayload,pixels:Pixe
     if(anchors[key]) {const expected=local(anchors[key]!);anchors[key]=world(upper.reduce((best,p)=>Math.abs(p.x-expected.x)<Math.abs(best.x-expected.x)?p:best))}
   }
   const jaw=contours.jawline
-  if(jaw&&jaw.length>=9){
+  if(!profile&&jaw&&jaw.length>=9){
     const sample=(x:number,y:number)=>{const px=Math.max(0,Math.min(pixels.width-1,Math.round(x))),py=Math.max(0,Math.min(pixels.height-1,Math.round(y))),i=(py*pixels.width+px)*4;return [pixels.data[i],pixels.data[i+1],pixels.data[i+2]]}
     const radius=Math.max(3,Math.min(8,span*.035))
     const offsets=jaw.map((p,i)=>{

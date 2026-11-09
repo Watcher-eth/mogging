@@ -14,6 +14,8 @@ const scoped = new URL(url)
 scoped.searchParams.set('options', `-c search_path=${namespace} -c timezone=UTC`)
 process.env.DATABASE_URL = scoped.toString()
 process.env.NEXTAUTH_SECRET = 'isolated-scan-test-secret'
+delete process.env.UPSTASH_REDIS_REST_URL
+delete process.env.UPSTASH_REDIS_REST_TOKEN
 process.env.REVENUECAT_SECRET_API_KEY = 'isolated-provider-fixture'
 process.env.STRIPE_SECRET_KEY = 'sk_test_isolated_fixture'
 const sql = postgres(scoped.toString(), { max: 1 })
@@ -50,6 +52,7 @@ try {
   const { getEntitlementSummary, consumeEvaluationEntitlement, reserveEvaluation, finishEvaluation, creditRevenueCatScans, grantEntitlementFromCheckoutSession, revokeRevenueCatPurchase } = await import('../../lib/payments/entitlements')
   const { scanProducts } = await import('../../lib/payments/revenuecat')
   const { default: upgradesHandler } = await import('../../pages/api/payments/upgrades')
+  const { default: analyzeStatus } = await import('../../pages/api/web/analyze-status')
   const { default: webhookHandler } = await import('../../pages/api/payments/revenuecat-webhook')
   const { env } = await import('../../lib/env')
   const { saveAnalysisResult } = await import('../../lib/analysis/service')
@@ -92,11 +95,22 @@ try {
   assert.equal((await summary()).evaluationCredits, 0, 'restore cannot refill packs')
   subscriber.non_subscriptions[scanProducts[1].productId].push(purchase('pack-again'))
   assert.equal((await summary()).evaluationCredits, 3)
-  const reserved = await reserveEvaluation(owner, 'retry-id', 'same-body')
-  await assert.rejects(reserveEvaluation(owner, 'retry-id', 'same-body'), /still processing/)
-  await assert.rejects(reserveEvaluation(owner, 'retry-id', 'other-body'), /already used/)
+  async function readScanStatus(token?: string) {
+    let status = 200, body: any
+    await analyzeStatus({ method: 'GET', query: { requestId: 'retry-id' }, cookies: {}, headers: { authorization: token && `Bearer ${token}` } } as any,
+      { getHeader() {}, setHeader() {}, status(code: number) { status = code; return this }, json(value: unknown) { body = value } } as any)
+    return { status, scan: body?.data?.status }
+  }
+  const scanToken = 'test-token-012345678901234567890123456789'
+  assert.deepEqual(await readScanStatus(scanToken), { status: 200, scan: 'waiting' })
+  const reserved = await reserveEvaluation(owner, 'web-v2:retry-id', 'same-body')
+  assert.deepEqual(await readScanStatus(scanToken), { status: 200, scan: 'pending' })
+  assert.equal((await readScanStatus()).status, 401)
+  await assert.rejects(reserveEvaluation(owner, 'web-v2:retry-id', 'same-body'), /still processing/)
+  await assert.rejects(reserveEvaluation(owner, 'web-v2:retry-id', 'other-body'), /already used/)
   await finishEvaluation(reserved.id, { analysis: { status: 'complete', id: 'report' } }, true)
-  assert.deepEqual((await reserveEvaluation(owner, 'retry-id', 'same-body')).result, { analysis: { status: 'complete', id: 'report' } })
+  assert.deepEqual(await readScanStatus(scanToken), { status: 200, scan: 'complete' })
+  assert.deepEqual((await reserveEvaluation(owner, 'web-v2:retry-id', 'same-body')).result, { analysis: { status: 'complete', id: 'report' } })
   assert.equal((await summary()).evaluationCredits, 2, 'retry does not spend twice')
   const failed = await reserveEvaluation(owner, 'failed', 'body')
   await Promise.all([finishEvaluation(failed.id, {}, false), finishEvaluation(failed.id, {}, false)])
@@ -195,6 +209,33 @@ try {
   assert.equal((await getEntitlementSummary({ userId: 'stripe' })).evaluationCredits, 1)
   stripeSub.status = 'canceled'
   assert.equal((await getEntitlementSummary({ userId: 'stripe' })).evaluationCredits, 0)
+  for (const [tier, product, credits, interval] of [
+    ['basic', 'web_basic_weekly', 1, 'week'],
+    ['pro', 'web_pro_monthly', 8, 'month'],
+  ] as const) {
+    await sql`INSERT INTO users (id) VALUES (${tier})`
+    const subscription = {
+      id: `sub_web_${tier}`, status: 'active', customer: `cus_web_${tier}`,
+      start_date: stripeStart - 7 * 86400,
+      items: { data: [{
+        current_period_start: stripeStart,
+        current_period_end: stripeStart + 7 * 86400,
+        price: { lookup_key: `mogging_${product}_v1`, recurring: { interval } },
+      }] },
+    }
+    stripeSubscriptions.set(subscription.id, subscription)
+    await grantEntitlementFromCheckoutSession({ session: {
+      id: `cs_web_${tier}`, created: stripeStart, status: 'complete', payment_status: 'paid',
+      subscription, customer: subscription.customer, metadata: { accountId: tier, product },
+    } as any })
+    const access = await getEntitlementSummary({ userId: tier })
+    assert.equal(access.evaluationCredits, credits)
+    assert.equal(access.subscription.tier, tier)
+    assert.equal(access.subscription.active, tier === 'pro')
+    await consumeEvaluationEntitlement({ userId: tier })
+    subscription.items.data[0].current_period_start += 30
+    assert.equal((await getEntitlementSummary({ userId: tier })).evaluationCredits, credits - 1, 'billing renewals do not refill a monthly allowance')
+  }
   subscribers.set('buyer', { non_subscriptions: { [scanProducts[1].productId]: [purchase('refundable')] } })
   assert.equal((await summary()).evaluationCredits, 3)
   const refundable = await reserveEvaluation(owner, 'refund-in-flight', 'body')
@@ -349,6 +390,53 @@ try {
   assert.equal((await getEntitlementSummary(transportOwner)).evaluationCredits,0)
   assert.equal((await sql`SELECT count(*)::int as n FROM analyses WHERE photo_id='transport-photo'`)[0].n,1)
   console.log('PASS: interrupted scan refunds its credit; retry updates the same photo to a complete replayable report')
+
+  const { default: basicPreview } = await import('../../pages/api/web/basic-preview')
+  const { rubricVectorSizes } = await import('../../lib/analysis-v2/evaluator')
+  const { basicPreviewRubrics } = await import('../../lib/analysis-v2/basic-preview')
+  const { starterScanPeriod } = await import('../../lib/payments/scan-periods')
+  const februaryStart = new Date('2025-01-31T12:00:00Z')
+  assert.deepEqual(Array.from({ length: 28 }, (_, day) =>
+    starterScanPeriod(februaryStart, new Date(februaryStart.getTime() + day * 86_400_000)).start.toISOString())
+    .filter((value, index, all) => index === 0 || value !== all[index - 1]),
+    ['2025-01-31T12:00:00.000Z', '2025-02-07T12:00:00.000Z', '2025-02-14T12:00:00.000Z', '2025-02-21T12:00:00.000Z'])
+  process.env.MOONSHOT_API_KEY = 'local-provider-test-only'
+  let basicCalls = 0
+  globalThis.fetch = (async (url: string | URL | Request, init?: RequestInit) => {
+    if (!String(url).endsWith('/chat/completions')) return purchaseFetch(url, init)
+    basicCalls++
+    const content = JSON.parse(String(init?.body)).messages[1].content
+    const rubrics = JSON.parse(content.at(-1).text.split('Requested definitions: ')[1].split('\nUpstream geometry:')[0]) as { id: string; output: string }[]
+    assert(rubrics.every(({ id }) => basicPreviewRubrics.has(id)))
+    const capture = { front: true, side: true, hairline: true, neutralEyes: true, neutralMouth: true, bothEars: true, evenLight: true, detail: true }
+    const entries = rubrics.map(({ id, output }) => [id, output === 'T' ? 'oval' : rubricVectorSizes[id] ? Array(rubricVectorSizes[id]).fill(.5) : .5, 'Visible'])
+    return Response.json({ choices: [{ finish_reason: 'stop', message: { content: JSON.stringify({ capture, entries }) } }] })
+  }) as typeof fetch
+  const basicToken = 'basic-token-012345678901234567890123456789'
+  const secondToken = 'second-basic-token-012345678901234567890123456789'
+  await sql`INSERT INTO users(id) VALUES ('basic-preview-buyer'), ('basic-preview-other')`
+  await sql`INSERT INTO sessions VALUES (${basicToken}, 'basic-preview-buyer', now() + interval '1 day'),
+    (${secondToken}, 'basic-preview-other', now() + interval '1 day')`
+  const pair = { front: 'data:image/jpeg;base64,abcd', side: 'data:image/jpeg;base64,efgh', consent: true }
+  const basic = async (method: string, token: string, body?: unknown) => {
+    let data: any
+    const response = { statusCode: 200, setHeader() {}, getHeader() { return 'local-test' },
+      status(code: number) { this.statusCode = code; return this }, json(value: unknown) { data = value; return this } }
+    await basicPreview({ method, headers: { authorization: `Bearer ${token}`, 'x-forwarded-for': '127.0.0.99' }, body } as any, response as any)
+    return { status: response.statusCode, data }
+  }
+  assert.equal((await basic('POST', 'unknown-session-token-long-enough', pair)).status, 401)
+  assert.equal((await basic('POST', basicToken, { ...pair, consent: false })).status, 400)
+  assert.equal(basicCalls, 0)
+  const firstBasic = await basic('POST', basicToken, pair)
+  assert.equal(firstBasic.status, 200)
+  assert.equal(Object.keys(firstBasic.data.data.values).length, 12)
+  assert.deepEqual((await basic('GET', basicToken)).data.data.report, firstBasic.data.data)
+  assert.deepEqual((await basic('POST', basicToken, pair)).data, firstBasic.data)
+  assert.equal((await basic('GET', secondToken)).data.data.report, null, 'a signed-in stranger cannot read the preview')
+  assert.equal(basicCalls, 3, 'a completed preview is replayed without another provider run')
+  assert.equal((await getEntitlementSummary({ userId: 'basic-preview-buyer' })).evaluationCredits, 0, 'Basic cannot mint or spend a paid scan')
+  console.log('PASS: Basic consent, private persistence, one observation per category, replay without a charge, and Starter release windows')
 
   console.log('PASS: nullable consumable webhook, authorization, duplicate delivery, immediate authenticated sync, 3 packs + 3 singles -> 12 saved reports, request replay, exhaustion and restore')
   console.log('PASS: calendar limits, concurrency, replay, failures, expiry, restore, refunds, account isolation/deletion, preserved codes, unpaid checkout')

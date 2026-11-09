@@ -1,4 +1,4 @@
-import { AnimatePresence, motion, useReducedMotion } from 'motion/react'
+import { AnimatePresence, LayoutGroup, motion, useReducedMotion } from 'motion/react'
 import { Disclosure, DisclosureContent, DisclosureTrigger } from '@/components/core/disclosure'
 import Link from 'next/link'
 import { useEffect, useState } from 'react'
@@ -6,6 +6,9 @@ import { ArrowUpRight, Check, ChevronDown } from 'lucide-react'
 import { TextMorph } from 'torph/react'
 import { formatProtocolDate, scheduleProtocolTasks, selectProtocolTasks, type ProtocolPerson, type ProtocolProfile } from '@/lib/creator/protocol-tasks'
 import { trackWebEvent } from '@/lib/analytics/client'
+
+const protocolEase = [.22, 1, .36, 1] as const
+const scheduleDate = new Intl.DateTimeFormat('en-US', { weekday: 'long', month: 'short', day: 'numeric' })
 
 export default function ProtocolPage({ userId, profile, gender, hasEvaluation, preview, mobile = false }: {
   userId: string; profile: ProtocolProfile; gender: ProtocolPerson['gender']; hasEvaluation: boolean; preview?: boolean; mobile?: boolean
@@ -35,6 +38,9 @@ export default function ProtocolPage({ userId, profile, gender, hasEvaluation, p
   const tasks = days.find(day => day.key === date)?.tasks ?? []
   const schedule = scheduleProtocolTasks(tasks, 6)
   const done = tasks.filter(task => completed.includes(`${date}:${task.key}`)).length
+  const completion = `${done}/${tasks.length}`
+  const dateTitle = date === today ? 'Today’s schedule' : date ? scheduleDate.format(new Date(`${date}T12:00:00`)) : ''
+  const animateSchedule = !reduced
 
   function toggle(taskKey: string) {
     const id = `${date}:${taskKey}`
@@ -49,38 +55,49 @@ export default function ProtocolPage({ userId, profile, gender, hasEvaluation, p
     <header className="flex items-center justify-between gap-4">
       <h1 className="text-4xl font-semibold tracking-[-0.05em] sm:text-5xl">Protocol</h1>
       <div className="flex items-center gap-2">
-        {tasks.length ? <span aria-live="polite" aria-label={`${done} of ${tasks.length} tasks complete`} className="inline-flex h-9 items-center gap-1.5 rounded-full bg-zinc-100 px-3 text-sm font-semibold tabular-nums">
-          <Check size={15} aria-hidden="true" /><TextMorph>{`${done}/${tasks.length}`}</TextMorph>
+        {tasks.length ? <span role="status" aria-label={`${done} of ${tasks.length} tasks complete`} className="scan-protocol-count inline-flex h-9 items-center gap-1.5 rounded-full bg-zinc-100 px-3 text-sm font-semibold tabular-nums">
+          <Check size={15} aria-hidden="true" />{reduced ? completion : <TextMorph duration={220}>{completion}</TextMorph>}
         </span> : null}
         {!preview && !mobile && <Link href="/progress" aria-label="View progress" title="View progress" className="grid size-11 place-items-center rounded-full text-zinc-500 hover:bg-zinc-100 hover:text-black"><ArrowUpRight size={20} /></Link>}
       </div>
     </header>
     {hasEvaluation ? <div className="mt-5">
-      <div role="group" aria-label="Protocol day" className="grid w-full grid-flow-col auto-cols-[minmax(3rem,1fr)] gap-1 overflow-x-auto px-1 pb-5 pt-1 sm:gap-2">
+      <LayoutGroup>
+      <motion.div layoutScroll role="group" aria-label="Protocol day" className="scan-protocol-calendar grid w-full grid-flow-col auto-cols-[minmax(3rem,1fr)] gap-1 overflow-x-auto px-1 pb-5 pt-1 sm:gap-2">
         {days.map(({ key, day, tasks: dayTasks }) => {
           const isToday = key === today
           const isSelected = key === date
           const dayComplete = dayTasks.length > 0 && dayTasks.every(task => completed.includes(`${key}:${task.key}`))
-          return <button type="button" key={key} aria-pressed={isSelected} aria-label={day.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' })} onClick={() => setSelected(key)} className="flex min-h-[4.5rem] min-w-0 flex-col items-center justify-center gap-1.5 rounded-xl text-xs font-medium focus-visible:outline-2 focus-visible:outline-offset-2">
+          return <button type="button" key={key} aria-pressed={isSelected} aria-current={isToday ? 'date' : undefined} aria-label={`${scheduleDate.format(day)}${dayComplete ? ', complete' : ''}`} onClick={() => { setSelected(key); setExpandedTask(null) }} className="flex min-h-[4.5rem] min-w-0 flex-col items-center justify-center gap-1.5 rounded-xl text-xs font-medium focus-visible:outline-2 focus-visible:outline-offset-2">
             <span className={isToday ? 'text-sky-700' : isSelected ? 'text-zinc-950' : 'text-zinc-500'}>{isToday ? 'Today' : day.toLocaleDateString('en-US', { weekday: 'short' })}</span>
-            <span className={`grid size-9 place-items-center rounded-xl border text-sm font-semibold tabular-nums transition-colors ${isToday ? 'border-sky-200 bg-sky-100 text-sky-800' : isSelected ? 'border-zinc-950 bg-zinc-950 text-white' : 'border-zinc-200 text-zinc-800 hover:bg-zinc-100'}`}>
-              {dayComplete ? <Check size={15} aria-label="Complete" /> : day.getDate()}
+            <span className={`relative isolate grid size-9 place-items-center rounded-xl border text-sm font-semibold tabular-nums ${mobile ? 'scan-protocol-day-number' : isSelected ? 'border-zinc-950 bg-zinc-950 text-white' : isToday ? 'border-sky-200 bg-sky-100 text-sky-800' : 'border-zinc-200 text-zinc-800 hover:bg-zinc-100'}`}>
+              {mobile && isSelected && <motion.span aria-hidden="true" className="scan-protocol-day-selected" layoutId={animateSchedule ? 'protocol-day-selected' : undefined} transition={{ duration: .25, ease: protocolEase }} />}
+              {dayComplete ? <Check size={15} aria-hidden="true" /> : day.getDate()}
             </span>
             <span aria-hidden="true" className={`size-1 rounded-full ${isToday ? 'bg-sky-400' : isSelected ? 'bg-zinc-950' : 'bg-zinc-300'} ${dayTasks.length ? '' : 'invisible'}`} />
           </button>
         })}
-      </div>
-      {date && schedule.length ? <AnimatePresence initial={false} mode="wait"><motion.ol key={date} aria-label="Daily schedule" className={mobile ? "scan-protocol-schedule" : undefined} initial={mobile && !reduced ? { opacity: 0, x: 13 } : false} animate={{ opacity: 1, x: 0 }} exit={mobile && !reduced ? { opacity: 0, x: -10 } : undefined} transition={{ duration: mobile && !reduced ? .22 : 0 }}>
+      </motion.div>
+      </LayoutGroup>
+      {mobile && date && <div className="scan-protocol-agenda">
+        <h2>{reduced ? dateTitle : <TextMorph duration={240}>{dateTitle}</TextMorph>}</h2>
+        {tasks.length > 0 && <div className="scan-protocol-meter" role="progressbar" aria-label="Daily tasks complete" aria-valuenow={done} aria-valuemax={tasks.length}>
+          <motion.span initial={false} animate={{ scaleX: done / tasks.length }} transition={{ duration: reduced ? 0 : .26, ease: protocolEase }} />
+        </div>}
+      </div>}
+      {date && schedule.length ? <ol aria-label="Daily schedule" className={mobile ? "scan-protocol-schedule" : undefined}>
         {Array.from({ length: 14 }, (_, index) => {
           const hour = index + 6
           const slot = schedule.find(entry => entry.hour === hour)
-          return <li key={hour} className="grid min-h-8 grid-cols-[3rem_minmax(0,1fr)] items-start gap-2 border-t border-zinc-100 py-2 sm:grid-cols-[4rem_minmax(0,1fr)] sm:gap-4">
+          return <li key={hour} data-task={Boolean(slot) || undefined} className="grid min-h-8 grid-cols-[3rem_minmax(0,1fr)] items-start gap-2 border-t border-zinc-100 py-2 sm:grid-cols-[4rem_minmax(0,1fr)] sm:gap-4">
             <time className="pt-0.5 text-xs font-medium tabular-nums text-zinc-500" dateTime={`${String(hour).padStart(2, '0')}:00`}>{String(hour).padStart(2, '0')}:00</time>
             {slot ? (() => {
               const task = slot.item
               const taskId = `${date}:${task.key}`
               const marked = completed.includes(taskId)
-              return <div className="flex items-start gap-1 rounded-2xl border-l-[3px] px-2 sm:gap-3 sm:px-3" style={{ backgroundColor: `${task.color}14`, borderColor: task.color }}>
+              return <motion.div key={taskId} className="scan-protocol-task flex items-start gap-1 rounded-2xl border-l-[3px] px-2 sm:gap-3 sm:px-3"
+                data-complete={marked || undefined} style={{ backgroundColor: `${task.color}14`, borderColor: task.color }}
+                initial={animateSchedule ? { opacity: 0, y: 5 } : false} animate={{ opacity: 1, y: 0 }} transition={{ duration: .24, ease: protocolEase }}>
                 <Disclosure key={taskId} open={expandedTask === taskId} onOpenChange={open => setExpandedTask(open ? taskId : null)} className="min-w-0 flex-1">
                   <DisclosureTrigger className="group flex min-h-12 w-full cursor-pointer items-center gap-2 py-2 text-left text-sm font-semibold">
                     <span className={marked ? 'text-zinc-500 line-through' : 'text-zinc-950'}>{task.title}</span>
@@ -94,13 +111,16 @@ export default function ProtocolPage({ userId, profile, gender, hasEvaluation, p
                   </DisclosureContent>
                 </Disclosure>
                 <button type="button" aria-pressed={marked} aria-label={`${marked ? 'Undo completion for' : 'Complete'} ${task.title}`} onClick={() => toggle(task.key)} className="group grid size-11 shrink-0 place-items-center self-start">
-                  <span className="grid size-6 place-items-center rounded-[8px] border-2 border-white bg-transparent text-zinc-900 shadow-[0_0_0_1px_#18181b24] transition-shadow group-hover:shadow-[0_0_0_1px_#18181b55]">{marked ? <Check size={14} /> : null}</span>
+                  <span className="scan-protocol-check grid size-6 place-items-center rounded-[8px] border-2 border-white bg-transparent text-zinc-900 shadow-[0_0_0_1px_#18181b24] transition-shadow group-hover:shadow-[0_0_0_1px_#18181b55]">
+                    <AnimatePresence initial={false}>{marked && <motion.span key="check" initial={animateSchedule ? { opacity: 0, scale: .7 } : false} animate={{ opacity: 1, scale: 1 }}
+                      exit={{ opacity: 0 }} transition={{ duration: reduced ? 0 : .16, ease: protocolEase }}><Check size={14} aria-hidden="true" /></motion.span>}</AnimatePresence>
+                  </span>
                 </button>
-              </div>
+              </motion.div>
             })() : null}
           </li>
         })}
-      </motion.ol></AnimatePresence> : date ? <p className="border-t border-zinc-100 py-5 text-sm text-zinc-500">No tasks scheduled for this day.</p> : null}
+      </ol> : date ? <p className="border-t border-zinc-100 py-5 text-sm text-zinc-500">No tasks scheduled for this day.</p> : null}
       <p className="mt-4 text-xs text-zinc-500">Checkoffs are saved in this browser.</p>
     </div> : <div className="rounded-[1.75rem] bg-zinc-100 p-7"><p className="text-zinc-600">Complete your first evaluation to get a personalized routine.</p><Link href="/analysis?start=1" className="mt-5 inline-flex min-h-11 items-center rounded-full bg-zinc-950 px-5 text-sm font-semibold text-white">Start an evaluation</Link></div>}
   </section>

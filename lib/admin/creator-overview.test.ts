@@ -1,6 +1,6 @@
 import { describe, expect, test } from 'bun:test'
 import type { AdminAccount, AdminCreator, AdminDashboard, AdminPayment, AdminSubmission } from '@/components/admin/creator-types'
-import { approvedUnpaidSubmissions, creatorOutstandingPaymentGroups, approvalKind, getApprovalQueue, getSubmissionReviewQueues, isNewInLastDay, publishedVideoEmbedUrl, walletExplorerUrl } from './creator-overview'
+import { approvedUnpaidSubmissions, creatorOutstandingPaymentGroups, creatorPaymentQueue, approvalKind, getApprovalQueue, getSubmissionReviewQueues, isNewInLastDay, publishedVideoEmbedUrl, walletExplorerUrl } from './creator-overview'
 
 describe('admin overview approvals', () => {
   test('queues every submission without retired account or payout approval steps', () => {
@@ -136,4 +136,44 @@ test('processing transfers and different currencies are never included in the am
   expect(groups.find(group=>group.currency==='USD')).toMatchObject({amountCents:1500,processingCents:500})
   expect(groups.find(group=>group.currency==='EUR')).toMatchObject({amountCents:700,processingCents:0})
   expect(groups.flatMap(group=>group.lines).some(line=>line.id==='bundle')).toBe(false)
+})
+
+test('the outstanding payout balance survives reservations, failed batches and confirmed payment', () => {
+  const at = '2026-11-08'
+  const creators = [
+    { id: 'individual', paymentOption: 'crypto', cryptoNetwork: 'USDC on Solana' },
+    { id: 'bundle', paymentOption: 'paypal', bundledPayouts: true },
+  ] as AdminCreator[]
+  const submissions = [
+    { id: 'direct', creatorProfileId: 'individual', sprintId: 'campaign', approvedAmountCents: 5000, status: 'approved', createdAt: at },
+    { id: 'held', creatorProfileId: 'bundle', sprintId: 'campaign', approvedAmountCents: 3000, status: 'approved', createdAt: at },
+  ] as AdminSubmission[]
+  const payments = [
+    { id: 'direct-payment', submissionId: 'direct', creatorProfileId: 'individual', amountCents: 5000, status: 'pending', paymentOption: 'crypto', currency: 'USD', createdAt: at },
+    { id: 'bundle-payment', submissionId: null, creatorProfileId: 'bundle', amountCents: 1000, status: 'pending', paymentOption: 'paypal', payoutRequestId: 'request', currency: 'USD', createdAt: at },
+    { id: 'held-payment', submissionId: 'held', creatorProfileId: 'bundle', amountCents: 500, status: 'pending', paymentOption: 'paypal', currency: 'USD', createdAt: at },
+  ] as AdminPayment[]
+  const payoutRequests = [{ id: 'request', creatorProfileId: 'bundle', amountCents: 1000, status: 'pending', paymentOption: 'paypal' }] as AdminDashboard['payoutRequests']
+  const queue = () => creatorPaymentQueue({ creators, submissions, payments, payoutRequests })
+  const balances = () => ['outstanding', 'ready', 'held', 'processing'].map(bucket => queue().totals.get(bucket)?.get('USD') ?? 0)
+
+  expect(balances()).toEqual([9000, 6000, 3000, 0])
+  expect(queue().totals.get('solana')?.get('USD')).toBe(5000)
+  expect(queue().totals.get('paypal')?.get('USD')).toBe(1000)
+  expect(queue().history).toEqual([])
+
+  payments[0].status = payments[1].status = 'processing'
+  expect(balances()).toEqual([9000, 0, 3000, 6000])
+
+  payments[0].status = 'pending'
+  expect(balances()).toEqual([9000, 5000, 3000, 1000])
+
+  payments[1].status = 'paid'
+  expect(balances()).toEqual([8000, 5000, 3000, 0])
+
+  payments[0].status = 'cancelled'
+  submissions[0].status = 'in_review'
+  submissions[0].reviewRequestedAt = at
+  expect(balances()).toEqual([8000, 0, 3000, 0])
+  expect(queue().totals.get('review')?.get('USD')).toBe(5000)
 })

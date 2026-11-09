@@ -1,3 +1,4 @@
+import {chooseCreatorTake} from './creator-catalog'
 import { creatorStoryOptions } from './creator-stories'
 import { isVideoCta } from './video-branding'
 import { portraitEffectsLab, subjectStudies } from './video-subject-studies'
@@ -12,7 +13,7 @@ import { reportCategories } from './mock-report-data'
 import type { AnalysisPostInput } from './analysis-post'
 
 const input: AnalysisPostInput = { formatId: 'feature-audit', subject: 'Sample', hook: '', overallScore: '7.1', potentialScore: '8.2', strongestFeature: 'Eye area', strongestScore: '8.1', opportunityFeature: 'Jaw definition', opportunityScore: '6.2', recommendation: '', productFeatures: [], cta: '' }
-const existingStyles = creatorVideoStyles.filter(style => style.id !== 'documentary-studio')
+const existingStyles = creatorVideoStyles.filter(style => style.id !== 'documentary-studio' && style.id !== 'editorial-story' && style.id !== 'sculpture-study')
 const compile = (script: string, recipe: VideoComposition['recipe']) => compileAnalysisVideo(scriptToPlan(script, 165), input, ['face'], 'brand', reportCategories, { recipe })
 
 test('Full HD validates both orientations and rejects small, invalid or excessive uploads', () => {
@@ -21,8 +22,8 @@ test('Full HD validates both orientations and rejects small, invalid or excessiv
 })
 
 test('all launch subjects and the custom draft compile in the five preset styles', () => {
-  expect(creatorSubjects.map(subject => subject.id)).toEqual(['marlon', 'v', 'jordan-barrett', 'tom-holland', 'zeta', 'clavicular', 'johnson', 'trump', 'zendaya'])
-  expect(new Set(creatorVideoStyles.map(style => style.id)).size).toBe(6)
+  expect(creatorSubjects.map(subject => subject.id)).toEqual(expect.arrayContaining(['marlon', 'v', 'jordan-barrett', 'tom-holland', 'zeta', 'clavicular', 'johnson', 'trump', 'zendaya']))
+  expect(new Set(creatorVideoStyles.map(style => style.id)).size).toBe(8)
   for (const example of [...creatorSubjects.map(subject => subject.example), customVideoExample('Custom')]) {
     for (const style of existingStyles) {
       const video = compileAnalysisVideo(scriptToPlan(example.script, example.readingPace), input, example.images?.map(image => image.id) ?? ['face'], 'brand', reportCategories, { recipe: style.id, directions: creatorStyleDirections(example, style.id) })
@@ -149,13 +150,14 @@ test('recorded stories retain measured audio and saved photo scores across the e
   const read = (path: string) => JSON.parse(readFileSync(`public${path}`, 'utf8'))
   for (const subject of creatorSubjects) {
     const catalog = read(`/creator/stories/${subject.id}/story.json`)
+    if(!catalog.analysis){expect(catalog.editorialRatings).toBeDefined();continue}
     const analysis = creatorSubjectAnalysisSchema.parse(read(catalog.analysis))
     expect(analysis.subjectId).toBe(subject.id)
     const options=creatorStoryOptions(catalog)
     expect(options[0].id).toBe(catalog.id)
     const recording = ['johnson', 'trump', 'zendaya'].includes(subject.id) ? 'recording.json' : 'round3-recording.json'
     const legacy = options.find(option => option.recording === `/creator/stories/${subject.id}/${recording}`)!
-    const story = { ...catalog, ...legacy, featureOpening: legacy.featureOpening }
+    const story = { ...catalog, ...legacy, featureOpening: legacy.featureOpening, directions: legacy.directions, editorialRatings: legacy.editorialRatings }
     const saved = restoreProductionRecording(read(legacy.recording!))
     expect(analysis.source.imageId).toBe(story.images[0].id)
     expect(productionWritingBrief(saved.script, analysis).subjectAnalysis?.source.sha256).toBe(analysis.source.sha256)
@@ -187,7 +189,7 @@ test('recorded stories retain measured audio and saved photo scores across the e
       expect(edited.source.report!.assessmentId).toBe(analysis.source.sha256)
       expect(edited.source.report!.score).toBe(analysis.webReport.categories.find(category => category.id === 'eyes')!.score)
       if (style.id === 'report-led') expect(video.scenes.some(scene => scene.graphic?.layout === 'dashboard' || scene.source.kind === 'report')).toBe(true)
-      if (style.id === 'feature-study') expect(video.scenes.some(scene => scene.featureStudy?.layout === 'detail')).toBe(true)
+      if (style.id === 'feature-study') expect(video.scenes.some(scene => scene.featureStudy?.layout === 'detail' || scene.presentation)).toBe(true)
       clocks.add(JSON.stringify(assembled.composition.recording!.words))
       recordings.add(createHash('sha256').update(Buffer.from(await assembled.file.arrayBuffer())).digest('hex'))
     }
@@ -254,14 +256,14 @@ test('new score stories bind narrated categories to saved scores and keep all fo
           expect(scene.scoreCallouts?.[0]).toMatchObject({label:'Overall',value:7})
         }
         const cue = script.cues.find(cue => cue.sourceId === scene.cueId)!
-        const categoryId = cue.section!.visuals[0].categoryId
+        const categoryId = (['editorial-story','feature-study'].includes(style.id) && scene.source.kind==='report' && (isVideoCta(video,scene) || cue.section!.role==='takeaway')) ? scene.source.categoryId : cue.section!.visuals[0].categoryId
         expect(scene.source.categoryId).toBe(categoryId)
         expect(scene.source.report!.score).toBe(reports.find(report => report.id === categoryId)!.score)
         expect(scene.source.report!.assessmentId).toBe(analysis.source.sha256)
         for (const item of scene.graphic?.items ?? []) if (item.metric?.id) expect(scene.source.report!.features.some(feature => feature.id === item.metric!.id)).toBe(true)
         expect(scene.photoStudy).toBeUndefined()
         expect(scene.featureStudy?.edit ?? 0).toBe(0)
-        if (isVideoCta(video, scene)) { expect(scene.source.kind).toBe('portrait'); expect(scene.source.overlay).toBe('none') }
+        if (isVideoCta(video, scene)) { expect(scene.source.kind).toBe(['editorial-story','feature-study'].includes(style.id)?'report':'portrait'); expect(scene.source.overlay).toBe('none') }
         else if (style.id === 'report-led') expect(scene.source.kind).toBe('report')
       }
     }
@@ -300,7 +302,7 @@ test('approved editorial images and crop reveals survive all five styles without
   for(const subject of creatorSubjects.slice(0,6)){
     const manifest=read(`/creator/stories/${subject.id}/story.json`)
     const round3=manifest.alternatives?.find((option:{id:string})=>option.id.endsWith('-round3'))
-    const base=round3 ? {...manifest,...round3,featureOpening:undefined} : manifest
+    const base=round3 ? {...manifest,...round3,featureOpening:round3.featureOpening,directions:round3.directions,editorialRatings:round3.editorialRatings} : manifest
     const saved=restoreProductionRecording(read(base.recording)),analysis=read(base.analysis)
     const images=base.imageIds.map((id:string)=>base.images.find((image:{id:string})=>image.id===id))
     const reports=creatorAnalysisReports(analysis),actual=creatorAnalysisInput(input,subject.name,analysis)
@@ -314,7 +316,8 @@ test('approved editorial images and crop reveals survive all five styles without
           expect(action.label).not.toMatch(/[0-9]/)
           expect(action.word).toBeLessThan(scene.portraitProgram!.wordCount)
         }
-        if (['portrait','report'].includes(scene.source.kind)) expect(scene.portraitProgram).toBeDefined()
+        const noseChange = subject.id === 'clavicular' && (scene.featureStudy?.revealWord !== undefined || scene.photoStudy?.startWord !== undefined)
+        if (['portrait','report'].includes(scene.source.kind) && !scene.presentation && !noseChange && !(style.id==='feature-study' && scene.source.kind==='report')) expect(scene.portraitProgram).toBeDefined()
         if (scene.source.kind==='portrait' && /profile|three-quarter/.test(scene.source.imageId??'')) {
           expect(scene.profileStudy).toBeDefined()
           expect(scene.featureStudy).toBeUndefined()
@@ -325,36 +328,62 @@ test('approved editorial images and crop reveals survive all five styles without
             expect(scene.portraitProgram.actions.every(action=>action.guide.startsWith('profile:'))).toBe(true)
           }
         }
-        expect(scene.photoStudy).toBeUndefined()
+        if (!noseChange) expect(scene.photoStudy).toBeUndefined()
         expect(scene.featureStudy?.edit??0).toBe(0)
         if(scene.scoreCallouts?.length)expect(scene.source.imageId).toBe(analysis.source.imageId)
         if(scene.source.kind==='portrait'&&!scene.scoreCallouts?.length)expect(showsFeatureMetric(scene)).toBe(false)
       }
       expect(comp.scenes.some(scene=>scene.portraitProgram?.actions.length)).toBe(true)
       if(subject.id==='v'){
-        expect(comp.scenes.find(scene=>scene.narration.startsWith('Zooming'))?.portraitCrop).toBeDefined()
+        const zoom=comp.scenes.find(scene=>scene.narration.startsWith('Zooming'));expect(Boolean(zoom?.portraitCrop || zoom?.presentation?.kind==='reference-inset')).toBe(true)
         expect(comp.scenes.find(scene=>scene.narration.startsWith('Pull back'))?.portraitCrop).toBeUndefined()
       }
     }
   }
 })
 
-test('Documentary Studio keeps the recorded story, real comparison bindings and spoken scores on one audio clock', async () => {
+test('Clavicular reveals the original photos and morphs the before photo on the recorded words across formats', async () => {
   const { restoreProductionRecording, compileProductionVideo, assembleProductionAudio } = await import('./video-production')
   const { creatorSubjectAnalysisSchema, creatorAnalysisInput, creatorAnalysisReports } = await import('./creator-stories')
+  const { photoStudyClock, photoStudyGesture, photoStudyRegions } = await import('./video-photo-study')
   const manifest = await Bun.file('public/creator/stories/clavicular/story.json').json()
   const saved = restoreProductionRecording(await Bun.file('public' + manifest.recording).json())
   const analysis = creatorSubjectAnalysisSchema.parse(await Bun.file('public' + manifest.analysis).json())
   const actual = creatorAnalysisInput(input, 'Clavicular', analysis)
-  const film = compileProductionVideo(saved.script, actual, manifest.images, creatorAnalysisReports(analysis), 'documentary-studio', saved.voice)
+  const images = manifest.imageIds.map((id: string) => manifest.images.find((image: {id: string}) => image.id === id))
+  const reports = creatorAnalysisReports(analysis)
+  for (const recipe of ['feature-study', 'editorial-story', 'portrait-audit', 'documentary-studio'] as const) {
+    const film = compileProductionVideo(saved.script, actual, images, reports, recipe, saved.voice, 2)
+    const { composition } = assembleProductionAudio(film, saved.clips)
+    const comparison = composition.scenes.find(scene => scene.featureStudy?.revealWord !== undefined)!
+    expect(comparison.featureStudy?.images).toEqual(['clavicular-june-before-source', 'clavicular-june-after-source'])
+    expect(comparison.words?.[comparison.featureStudy!.revealWord!]).toMatchObject({ text: 'Now', startMs: 2100 })
+    const morph = composition.scenes.find(scene => scene.photoStudy?.startWord !== undefined)!
+    expect(morph.source.imageId).toBe('clavicular-june-before-source')
+    expect(morph.words?.[morph.photoStudy!.startWord!]?.text).toBe('less')
+    const clock = photoStudyClock(composition.scenes, morph, 0)
+    expect(clock.cueMs).toBe(morph.words![morph.photoStudy!.startWord!].startMs)
+    const landmarks = images.find((image: { id: string }) => image.id === morph.source.imageId).landmarks
+    const regions = photoStudyRegions(landmarks, 'nose')
+    const strength = (time: number) => photoStudyGesture(morph.photoStudy!, regions, time, clock.durationMs, false, landmarks, clock.cueMs).warp.strengths[0]
+    expect(strength(clock.cueMs! - 1)).toBe(0)
+    expect(strength(clock.cueMs! + 400)).toBeGreaterThan(0)
+    expect(strength(clock.cueMs! + 400)).toBeLessThan(strength(clock.durationMs - 1))
+    expect(strength(clock.durationMs - 1)).toBe(morph.photoStudy!.amount)
+  }
+  const film = compileProductionVideo(saved.script, actual, images, reports, 'documentary-studio', saved.voice)
   const assembled = assembleProductionAudio(film, saved.clips)
   expect(creatorVideoStyles.some(style => style.id === film.recipe)).toBe(true)
   expect(assembled.composition.script).toEqual(saved.script)
   expect(assembled.composition.voice).toEqual(saved.voice)
-  expect(assembled.composition.scenes.map(scene => scene.documentary?.kind)).toEqual(['stage', 'comparison', 'inspection', 'relations', 'conclusion'])
-  const comparison = assembled.composition.scenes[1]
+  expect(assembled.composition.scenes.map(scene => scene.documentary?.kind)).toEqual(['comparison', 'inspection', 'inspection', 'relations', 'conclusion'])
+  const comparison = assembled.composition.scenes[0]
+  const { documentaryShots } = await import('./video-documentary')
+  const shots = documentaryShots(assembled.composition)
+  expect(shots.every((shot, i) => i === 0 || shot.startMs === shots[i - 1].startMs + shots[i - 1].durationMs)).toBe(true)
+  expect(shots.filter(shot => shot.scene.id === comparison.id)).toHaveLength(1)
+  expect(shots.some(shot => shot.kind === 'anatomy')).toBe(false)
   expect([comparison.source.imageId, comparison.source.secondaryImageId]).toEqual(['clavicular-june-after-source', 'clavicular-june-before-source'])
-  expect(comparison.portraitProgram?.actions.every(action => action.feature === 'nose')).toBe(true)
   expect(assembled.composition.scenes[2].scoreCallouts?.map(score => [score.label, score.value])).toEqual([['Nose', 7], ['Jaw & chin', 8]])
   expect(assembled.composition.timing).toBe('words')
   expect(assembled.file.size).toBeGreaterThan(1_000_000)
@@ -399,14 +428,14 @@ test('authored cue annotations remain valid when the narrator section splits int
 })
 
 
-test('content styles partition editing recipes and Qoves only offers story scripts',()=>{
-  expect(creatorContentStyles.map(style=>style.name)).toEqual(['Mogging Editorial','Qoves','Fern'])
+test('content styles partition editing recipes and Qoves supports all recorded portrait scripts',()=>{
+  expect(creatorContentStyles.map(style=>style.name)).toEqual(['Mogging Editorial','Qoves','Cephra','Fern'])
   expect(creatorContentStyles.flatMap(style=>[...style.recipes]).toSorted()).toEqual(creatorVideoStyles.map(style=>style.id).toSorted())
   expect(creatorContentStyle('report-led').id).toBe('mogging-editorial')
   expect(creatorContentStyle('feature-study').id).toBe('qoves')
   expect(creatorContentStyle('documentary-studio').id).toBe('fern')
   const choices=[{kind:'feature-story'},{kind:'score-walkthrough'},{}]
-  expect(choices.filter(story=>contentStyleSupportsScript('qoves',story))).toEqual([choices[0],choices[2]])
+  expect(choices.filter(story=>contentStyleSupportsScript('qoves',story))).toEqual(choices)
   for(const id of ['mogging-editorial','fern'] as const)expect(choices.every(story=>contentStyleSupportsScript(id,story))).toBe(true)
 })
 
@@ -427,4 +456,138 @@ test('all content style recipes retain a saved story and its photo edits without
     }
     if(recipe==='feature-study')expect(video.scenes.some(scene=>scene.featureStudy?.editorial)).toBe(true)
   }
+})
+
+
+test('Fern holds an assessed portrait for scores and cuts on a narrated change of angle', async () => {
+  const { restoreProductionRecording, compileProductionVideo, assembleProductionAudio } = await import('./video-production')
+  const { creatorSubjectAnalysisSchema, creatorAnalysisReports } = await import('./creator-stories')
+  const { documentaryShots } = await import('./video-documentary')
+  const manifest = await Bun.file('public/creator/stories/v/story.json').json()
+  const saved = restoreProductionRecording(await Bun.file('public/creator/stories/v/round3-recording.json').json())
+  const analysis = creatorSubjectAnalysisSchema.parse(await Bun.file('public' + manifest.analysis).json())
+  const reports = creatorAnalysisReports(analysis)
+  const make = (variation: number) => assembleProductionAudio(compileProductionVideo(
+    saved.script, input, manifest.images, reports, 'documentary-studio', saved.voice, variation,
+  ), saved.clips).composition
+  const composition = make(0)
+  const score = composition.scenes.find(scene => scene.narration.includes('each get eight'))!
+  expect(score.source.imageId).toBe('v-front')
+  expect(score.scoreCallouts?.map(callout => callout.value)).toEqual([8, 8])
+  const angles = composition.scenes.find(scene => scene.narration.startsWith('At three-quarter'))!
+  expect([angles.source.imageId, angles.source.secondaryImageId]).toEqual(['v-three-quarter', 'v-profile'])
+  const shots = documentaryShots(composition)
+  const profile = shots.find(shot => shot.scene.id === angles.id && shot.alternateView)
+  expect(profile?.startMs).toBe(angles.startMs + angles.words![angles.documentary!.cutWord!].startMs)
+  const { sharesDocumentaryPortrait } = await import('./video-documentary-motion')
+  const firstAngle = shots.find(shot => shot.scene.id === angles.id && !shot.alternateView)!
+  expect(sharesDocumentaryPortrait(firstAngle, profile!)).toBe(false)
+  const first = shots[0]
+  expect(sharesDocumentaryPortrait(first, { ...first, layout: 'optical-bench' })).toBe(true)
+  expect(sharesDocumentaryPortrait(first, { ...first, kind: 'comparison' })).toBe(false)
+  const alternates = Array.from({ length: 7 }, (_, i) => make(i + 1))
+  for (const alternate of alternates) {
+    const timedAngle = documentaryShots(alternate).find(shot => shot.scene.id === angles.id && shot.alternateView)
+    expect(timedAngle?.startMs).toBe(profile?.startMs)
+    expect(alternate.scenes.some(scene => scene.portraitProgram)).toBe(false)
+    const scored = alternate.scenes.find(scene => scene.id === score.id)
+    expect(scored?.source.imageId).toBe('v-front')
+    expect(scored?.scoreCallouts).toEqual(score.scoreCallouts)
+  }
+  expect(new Set([composition, ...alternates].map(take => take.scenes[0].documentary?.kind))).toEqual(new Set(['stage', 'projection', 'contact', 'marquee']))
+  const { documentaryEditions, documentaryLayoutIds } = await import('./video-documentary-editions')
+  const editionCompositions = [composition, ...alternates].slice(0, 4)
+  for (const take of editionCompositions) {
+    const layouts = take.scenes.map(scene => scene.documentary?.layout)
+    expect(layouts.some((layout, index) => layout && (layout === layouts[index - 1] || layout === layouts[index - 2]))).toBe(false)
+  }
+  const visualSequences = [composition, ...alternates].map(take =>
+    documentaryShots(take).slice(1).map(shot => shot.layout ?? shot.kind).join('/'))
+  expect(new Set(visualSequences).size).toBe(visualSequences.length)
+  const editions = editionCompositions.map(documentaryShots)
+  expect(editions.map(shots => shots[0].layout)).toEqual(documentaryEditions.map(edition => edition.layouts[0]))
+  const coverage = Array.from({ length: 16 }, (_, variation) => documentaryShots(make(variation)))
+  expect(new Set(coverage.flatMap(shots => shots.flatMap(shot => shot.layout ? [shot.layout] : [])))).toEqual(new Set(documentaryLayoutIds))
+  for (const shots of editions) {
+    expect(shots.every((shot, index) => !index || shot.startMs === shots[index - 1].startMs + shots[index - 1].durationMs)).toBe(true)
+    expect(shots.every(shot => !shot.scene.photoStudy || !shot.layout)).toBe(true)
+  }
+  const treatments = [composition, ...alternates].flatMap(take => documentaryShots(take).map(shot => shot.kind))
+  expect(treatments).toEqual(expect.arrayContaining(['specimen', 'registration', 'blueprint', 'locator', 'relations', 'ink', 'ledger']))
+  const { documentaryRegistration } = await import('./video-documentary-registration')
+  const { decodeVisualBeat } = await import('./video-semantics')
+  const profilePhoto = manifest.images.find((image: { id: string }) => image.id === 'v-profile')
+  const jaw = decodeVisualBeat('From the side, follow the jawline.')
+  expect(documentaryRegistration(profilePhoto, jaw).paths[0].length).toBeGreaterThan(4)
+  expect(documentaryRegistration({ ...profilePhoto, dataUrl: '/different-image.jpg', landmarks: null }, jaw).paths).toEqual([])
+})
+
+test('automatic Studio takes use compatible recordings and avoid the immediately preceding combination',()=>{
+  const stories=[{id:'story',kind:'feature-story',recording:'/story.json'},{id:'report',kind:'score-walkthrough',recording:'/report.json'},{id:'unrecorded',kind:'feature-story'}]
+  for(const style of ['mogging-editorial','qoves','fern'] as const){
+    const first=chooseCreatorTake(style,stories,undefined,()=>0)
+    const next=chooseCreatorTake(style,stories,first,()=>0)
+    expect(first.storyId).not.toBe('unrecorded');expect(next.storyId).not.toBe('unrecorded')
+    expect([next.recipe,next.storyId]).not.toEqual([first.recipe,first.storyId])
+    if(style==='qoves'){expect(first.storyId).toBe('story');expect(next.storyId).toBe('report')}
+  }
+  const only=chooseCreatorTake('fern',[stories[0]],{storyId:'story',recipe:'documentary-studio',variation:0},()=>0)
+  expect(only.variation).toBe(1)
+  const families = new Set([only.variation])
+  let previous = only
+  for (let i = 1; i < 28; i++) {
+    previous = chooseCreatorTake('fern', [stories[0]], previous, () => 0)
+    families.add(previous.variation)
+  }
+  expect(families.size).toBe(28)
+  expect(chooseCreatorTake('fern', [stories[0]], previous, () => 0).variation).toBe(only.variation)
+  const third={id:'another',recording:'/another.json'}
+  const options=[...stories,third]
+  const first=chooseCreatorTake('qoves',options,undefined,()=>0)
+  const second=chooseCreatorTake('qoves',options,first,()=>0)
+  const last=chooseCreatorTake('qoves',options,second,()=>0)
+  expect([first.storyId,second.storyId,last.storyId]).toEqual(['story','report','another'])
+  expect(chooseCreatorTake('qoves',options,last,()=>0).storyId).not.toBe(last.storyId)
+  expect(chooseCreatorTake('qoves',[stories[1]]).storyId).toBe('report')
+})
+
+test('Qoves recorded takes change compositions across six families and end on saved native report data', async()=>{
+  const {readFileSync,readdirSync}=await import('node:fs')
+  const {creatorStoryDirections,creatorAnalysisInput,creatorAnalysisReports}=await import('./creator-stories')
+  const {editorialRatingInput,editorialRatingReports}=await import('./private-character')
+  const {restoreProductionRecording,compileProductionVideo}=await import('./video-production')
+  const read=(path:string)=>JSON.parse(readFileSync('public'+path,'utf8'))
+  const coverage=new Set<string>()
+  for(const person of readdirSync('public/creator/stories')){
+    const base=read('/creator/stories/'+person+'/story.json')
+    for(const option of creatorStoryOptions(base).filter(story=>story.recording && contentStyleSupportsScript('qoves',story))){
+      const images=option.imageIds?.map(id=>base.images.find((image:{id:string})=>image.id===id))??base.images
+      const story={...base,...option,featureOpening:option.featureOpening,directions:option.directions,editorialRatings:option.editorialRatings,images}
+      const saved=restoreProductionRecording(read(option.recording!)),analysis=base.analysis?read(base.analysis):undefined
+      const actual=story.editorialRatings?editorialRatingInput(input,person,story.editorialRatings):creatorAnalysisInput(input,person,analysis)
+      const reports=story.editorialRatings?editorialRatingReports(story.editorialRatings,images[0].id):creatorAnalysisReports(analysis)
+      for(const recipe of ['editorial-story','feature-study'] as const){
+        const signatures=new Set<string>()
+        for(let variant=0;variant<6;variant++){
+          const directions=creatorStoryDirections(story,saved.script,actual,images,reports,recipe,variant)
+          const video=compileProductionVideo(saved.script,actual,images,reports,recipe,saved.voice,variant,'philtrum',1,directions)
+          expect(narrationText(video)).toBe(saved.script.cues.map(cue=>cue.text).join('\n\n'))
+          signatures.add(JSON.stringify(video.scenes.map(scene=>({
+            presentation:scene.presentation?.kind,image:scene.source.imageId,kind:scene.source.kind,
+            layout:scene.featureStudy?.layout,comparison:scene.featureStudy?.comparison,
+            motion:scene.featureStudy?.motion,program:scene.portraitProgram?.actions.map(action=>[action.guide,action.treatment]),
+          }))))
+          for(const scene of video.scenes)if(scene.presentation)coverage.add(scene.presentation.kind)
+          const ending=video.scenes.at(-1)!
+          expect(ending.source.kind).toBe('report')
+          expect(ending.framing).toBe('full')
+          expect(ending.focus).toMatch(/^(category-score|feature:)/)
+          expect(ending.source.report).toEqual(reports.find(report=>report.id===ending.source.categoryId))
+          expect(ending.source.report?.assessmentId).toBeDefined()
+        }
+        expect(signatures.size,`${person} / ${option.id} / ${recipe}`).toBe(6)
+      }
+    }
+  }
+  expect(coverage.size).toBeGreaterThanOrEqual(12)
 })

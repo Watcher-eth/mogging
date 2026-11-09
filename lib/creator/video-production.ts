@@ -1,8 +1,12 @@
+import { cephraWritingBrief, planSculptureScenes } from './cephra-study'
+import { referenceEditorialBrief, referenceEditorialDirection } from './editorial-planning'
 import { scientificWritingBrief } from './creator-studies'
 import { compileDocumentaryVideo } from './video-documentary-plan'
+import { narratedNoseChange } from './video-nose-change'
 import { isVideoInvitation } from './video-branding'
 import type { CreatorSubjectAnalysis } from './creator-stories'
-import { mentionsVisualFeature } from './video-semantics'
+import { narratedFaceMetric } from './face-metric-guides'
+import { decodeVisualBeat, mentionsVisualFeature } from './video-semantics'
 import { type FeatureTopic } from './feature-study'
 import { directVisualBeats, type VisualDecision } from './video-director'
 import { z } from 'zod'
@@ -103,17 +107,37 @@ export function productionVisualPlan(script: VideoScript, input: AnalysisPostInp
   const context = recipe === 'feature-study' && mentionsVisualFeature(hook, topic) ? topic : 'whole'
   return script.cues.flatMap(cue => directVisualBeats(cue.section!, cue.text, recipe, images, reports, input, variant, history, context, amount).map((shot, index) => ({ ...shot, cue, id: `${cue.sourceId}/beat:${index}` })))
 }
-export function compileProductionVideo(script: VideoScript, input: AnalysisPostInput, images: GeneratorImage[], reports: ReportCategory[], recipe: VideoRecipe, voice: VoiceDirection, variant = 0, featureTopic: FeatureTopic = 'philtrum', featureAmount = 1, authoredDirections: Record<string, VideoDirection> = {}): VideoComposition {
+export function compileProductionVideo(script: VideoScript, input: AnalysisPostInput, images: GeneratorImage[], reports: ReportCategory[], recipe: VideoRecipe, voice: VoiceDirection, variant = 0, featureTopic: FeatureTopic = 'philtrum', featureAmount = 1, authoredDirections: Record<string, VideoDirection> = {}, media: import('./media-asset').MediaAsset[] = []): VideoComposition {
   validateProductionScript(script)
-  if (recipe === 'documentary-studio') return parseComposition(compileDocumentaryVideo(script, input, images, reports, voice, variant, script.cues.map(cue => sectionDurationMs(cue))))
-  const shots = productionVisualPlan(script, input, images, reports, recipe, variant, featureTopic, featureAmount).map(shot => {
-    const direction = { ...shot.direction, ...authoredDirections[shot.id] }
+  if (recipe === 'documentary-studio') return parseComposition(compileDocumentaryVideo(script, input, images, reports, voice, variant, script.cues.map(cue => sectionDurationMs(cue)), media))
+  const qoves = recipe === 'editorial-story' || recipe === 'feature-study'
+  const invitation = script.cues.findLast(cue => isVideoInvitation(cue))
+  const editorialHistory: import('./editorial-scenes').EditorialPresentation['kind'][] = []
+  const planShots = productionVisualPlan(script, input, images, reports, recipe, variant, featureTopic, featureAmount)
+  const closing = qoves ? editorialClosingReport(planShots, authoredDirections, reports) : undefined
+  const invitationIndex = planShots.findIndex(shot => shot.cue === invitation)
+  const closingStart = invitationIndex >= 0 && planShots.slice(invitationIndex).every(shot=>['cta','product','takeaway'].includes(shot.cue.section!.role)) ? invitationIndex : planShots.length-1
+  const shots = planShots.map((shot, index) => {
+    const authored=authoredDirections[shot.id]
+    const noseChange = recipe !== 'sculpture-study' && narratedNoseChange(images, shot.cue, shot.beat.quote)
+    if (noseChange) return { ...shot, direction: noseChange }
+    const merged = { ...shot.direction, ...authored }
+    if(authored && !authored.presentation)merged.presentation=undefined
+    if (qoves && (isVideoInvitation(shot.cue) || index >= closingStart)) {
+      return {...shot,direction:{kind:'report' as const,categoryId:closing?.report.id ?? 'overall',imageId:closing?.report.assessmentImageId && images.some(image=>image.id===closing.report.assessmentImageId) ? closing.report.assessmentImageId : images[0]?.id,focus:closing?.metric ? `feature:${closing.metric}` : 'category-score',emphasis:'section-lift' as const,closingReport:true}}
+    }
+    const direction = qoves ? referenceEditorialDirection(merged,shot.beat,shot.cue.section!,images,(scriptVisualSeed(input.subject,shot.beat.quote)+variant)%10000,shot.decision,editorialHistory,variant%6) : merged
+    if(recipe==='sculpture-study' && isVideoInvitation(shot.cue) && !authored?.closingReport) {
+      const categoryId=direction.categoryId && direction.categoryId!=='overall' ? direction.categoryId : shotsCategory(script)
+      const report=reports.find(report=>report.id===categoryId) ?? reports.find(report=>report.id==='overall')
+      return {...shot,direction:{kind:'report' as const,categoryId:report?.id ?? 'overall',imageId:report?.assessmentImageId ?? images[0]?.id,focus:report?.id==='overall'?'scores':'category-score',closingReport:true}}
+    }
     // Preserve the authored portrait and its registered guides for the closing invitation.
     return { ...shot, direction: isVideoInvitation(shot.cue) && !authoredDirections[shot.id]?.closingReport ? { kind: 'portrait' as const, imageId: direction.imageId ?? images[0]?.id, categoryId: direction.categoryId, focus: 'hero', editorial: 'context' as const, ...(direction.portraitProgram ? { portraitProgram: direction.portraitProgram } : {}), ...(direction.profileStudy ? { profileStudy: direction.profileStudy } : {}) } : direction }
   })
   const assetIds = new Set(images.map(image => image.id))
   for (const direction of Object.values(authoredDirections)) {
-    for (const id of [direction.imageId, ...(direction.featureStudy?.images ?? [])]) if (id && !assetIds.has(id)) throw new Error(`Authored visual references a missing image: ${id}`)
+    for (const id of [direction.imageId, ...(direction.featureStudy?.images ?? []), ...(direction.presentation?.imageIds ?? [])]) if (id && !assetIds.has(id)) throw new Error(`Authored visual references a missing image: ${id}`)
   }
   const timeline = productionTimeline(script)
   let start = 0
@@ -126,16 +150,54 @@ export function compileProductionVideo(script: VideoScript, input: AnalysisPostI
   const projection = createVideoScript(shots.map(shot => ({ id: shot.id, narration: shot.beat.quote, delivery: shot.cue.delivery })))
   projection.cues = projection.cues.map((cue, index) => ({ ...cue, section: { ...shots[index].cue.section!, semantic: undefined } }))
   const directions = Object.fromEntries(shots.map(shot => [shot.id, { ...shot.direction, delivery: shot.cue.delivery }]))
-  const variation = (scriptVisualSeed(images[0]?.id ?? input.subject, recipe) % 10000 + variant) % 10000
-  const compiled = compileAnalysisVideo(plan, input, images.map(image => image.id), 'brand', reports, { recipe, variation, directions, script: projection })
+  const variation = qoves ? variant % 10000 : (scriptVisualSeed(images[0]?.id ?? input.subject, recipe) % 10000 + variant) % 10000
+  const compiled = compileAnalysisVideo(plan, input, images.map(image => image.id), 'brand', reports, { recipe, variation, directions, script: projection, media })
   const originalIds = new Map(shots.map(shot => [shot.id, shot.cue.sourceId]))
   const unscored = ![input.overallScore, input.strongestScore, input.opportunityScore].some(value => value?.trim())
   const scenes = bindScriptScenes(script, compiled.scenes.map(scene => ({ ...scene, source: { ...scene.source, ...(unscored ? { hideScores: true } : {}) }, cueId: originalIds.get(scene.cueId)! }))).map(scene => {
     const invitation = isVideoInvitation(script.cues.find(cue => cue.sourceId === scene.cueId))
-    return { ...scene, ...(invitation ? { source: { ...scene.source, overlay: 'none' as const }, portraitFX: undefined, featureStudy: undefined, photoStudy: undefined, profileStudy: undefined, study: undefined, scoreCallouts: [] } : {}),
-      tracks: scene.tracks.filter(track => !invitation || track.target !== 'overlay').map(track => ({ ...track, ...(track.wordId ? { wordId: `${scene.scriptRange.cueId}/word:${scene.scriptRange.startWord + (track.wordIndex ?? 0)}` } : {}) })) }
+    return { ...scene, ...(['editorial-story','feature-study'].includes(recipe)?{captionScale:.9}:{}), ...(invitation ? { source: { ...scene.source, overlay: 'none' as const }, portraitFX: undefined, featureStudy: undefined, photoStudy: undefined, profileStudy: undefined, study: undefined, scoreCallouts: [] } : {}),
+      tracks: scene.tracks.filter(track => (!scene.presentation || ['text','content'].includes(track.target)) && (!invitation || track.target !== 'overlay')).map(track => ({ ...track, ...(track.wordId ? { wordId: `${scene.scriptRange.cueId}/word:${scene.scriptRange.startWord + (track.wordIndex ?? 0)}` } : {}) })) }
   })
-  return parseComposition({ ...compiled, voice, script, scenes })
+  return parseComposition({ ...compiled, voice, script, scenes:recipe==='sculpture-study'?planSculptureScenes(scenes,input.subject,variant):scenes })
+}
+
+function editorialClosingReport(shots:ReturnType<typeof productionVisualPlan>, authored:Record<string,VideoDirection>, reports:ReportCategory[]) {
+  const aliases:Partial<Record<string,string>>={lips:'mouth',philtrum:'mouth',freckles:'skin','facial-hair':'hair',dimorphism:'face-shape',whole:'overall'}
+  const categories = new Map<string,number>()
+  const metrics = new Map<string,number>()
+  for (const shot of shots) {
+    if (isVideoInvitation(shot.cue) || shot.cue.section?.role === 'product') continue
+    const feature=shot.beat.feature
+    const directed=authored[shot.id]?.categoryId
+    const metric=narratedFaceMetric(shot.beat.quote)
+    const category=metric?.category ?? (feature==='whole' ? directed : aliases[feature] ?? feature) ?? 'overall'
+    const weight=shot.cue.section?.role==='hook' || shot.cue.section?.role==='takeaway' ? 2 : 1
+    categories.set(category,(categories.get(category)??0)+weight)
+    if(metric)metrics.set(metric.id,(metrics.get(metric.id)??0)+weight)
+  }
+  const invitation=shots.findLast(shot=>isVideoInvitation(shot.cue))
+  const invitedFeature=invitation?decodeVisualBeat(invitation.cue.text).feature:'whole'
+  const invitedCategory=aliases[invitedFeature]??invitedFeature
+  const requested=invitedFeature!=='whole' ? reports.find(report=>report.id===invitedCategory) :
+    /\b(?:overall|report|breakdown)\b/i.test(shots[0]?.cue.text??'') ? reports.find(report=>report.id==='overall') : undefined
+  const report = requested ?? reports.filter(item=>item.id!=='overall' && categories.has(item.id))
+    .sort((a,b)=>categories.get(b.id)!-categories.get(a.id)!)[0] ?? reports.find(item=>item.id==='overall') ?? reports[0]
+  if (!report) return
+  const metric=report.features.filter(feature=>feature.id && metrics.has(feature.id))
+    .sort((a,b)=>metrics.get(b.id!)!-metrics.get(a.id!)!)[0]?.id
+  return {report,metric}
+}
+
+function shotsCategory(script:VideoScript) {
+  const text=script.cues.filter(cue=>!isVideoInvitation(cue)).map(cue=>cue.text).join(' ')
+  if(/philtrum|lips?|mouth/i.test(text))return 'mouth'
+  if(/jaw|chin|gonial/i.test(text))return 'jaw'
+  if(/brows?/i.test(text))return 'brows'
+  if(/eyes?/i.test(text))return 'eyes'
+  if(/nose|nasal/i.test(text))return 'nose'
+  if(/cheek/i.test(text))return 'cheeks'
+  return 'overall'
 }
 
 export type SectionAudio = { key: string; cueId: string; pcm: Uint8Array; words?: Array<{ text: string; startMs: number; endMs: number }> }
@@ -180,6 +242,8 @@ export function productionWritingBrief(script: VideoScript, subjectAnalysis?: Cr
     policy: { ...productionPolicy, ...(script.promotion === 'contextual' ? { promotion: 'contextual', ctaDeadlineSeconds: null, ctaTargetSeconds: null, mentions: 'One useful contextual mention; at most one additional closing invitation. No forced early interruption.' } : { promotion: 'early-score' }) },
     subjectAnalysis, scoreUse: 'Use a saved category score occasionally when it directly advances the argument, with its photo source and /8 or /10 scale. Weave it into the observation naturally, for example On Mogging, followed by the relevant finding. Do not force a score into every story, reveal a mystery early, or rerate edited and profile images as the baseline. Changed narration needs a newly approved recording.',
     scientificEvidence: scientificWritingBrief,
+    referenceEditorial: referenceEditorialBrief,
+    referenceSculpture: cephraWritingBrief,
     status: 'draft-needs-editorial-approval', script, references: script.references ?? [],
     // Story structure describes the argument; a format describes its visual presentation.
     storyStructures: [

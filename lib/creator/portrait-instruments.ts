@@ -85,6 +85,23 @@ export function sampleInstrumentTracks(face: FaceLandmarksPayload | null | undef
 
 }
 
+export function drawSpecimenFrame(ctx: CanvasRenderingContext2D, frame: {x:number;y:number;width:number;height:number}, timeMs:number, reduced=false, ink='#555', label='SURFACE / MODEL SPACE', space='3D') {
+  const {x:left,y:top,width,height}=frame, right=left+width,bottom=top+height;
+  const transform=ctx.getTransform(),unit=1/Math.max(.01,Math.hypot(transform.a,transform.b));
+  ctx.save();ctx.lineWidth=1.2*unit;ctx.lineCap='butt';
+    ctx.strokeStyle = ctx.fillStyle = ink
+    ctx.globalAlpha *= .2*trackerAcquisition(timeMs,0,reduced)
+    ctx.save();ctx.globalAlpha*=.32;ctx.strokeRect(left,top,right-left,bottom-top);ctx.restore();ctx.beginPath()
+    for(let i=0;i<=40;i++){
+      const length=(i%10===0?19:i%5===0?12:5)*unit, x=left+(right-left)*i/40,y=top+(bottom-top)*i/40
+      ctx.moveTo(x,top);ctx.lineTo(x,top-length);ctx.moveTo(x,bottom);ctx.lineTo(x,bottom+length)
+      ctx.moveTo(left,y);ctx.lineTo(left-length,y);ctx.moveTo(right,y);ctx.lineTo(right+length,y)
+    }
+    for(const [x,y] of [[left,top],[right,top],[left,bottom],[right,bottom]]){const d=24*unit;ctx.moveTo(x-d,y);ctx.lineTo(x+d,y);ctx.moveTo(x,y-d);ctx.lineTo(x,y+d)}
+    ctx.stroke();ctx.font=`400 ${17*unit}px monospace`;ctx.textAlign='left';ctx.fillText(label,left,top-39*unit);ctx.textAlign='right';ctx.fillText(space,right,bottom+44*unit)
+  ctx.restore();
+}
+
 export function drawPortraitInstruments(ctx: CanvasRenderingContext2D, face: FaceLandmarksPayload | null | undefined, width: number, height: number, settings: PortraitInstrument, timeMs: number, reduced: boolean) {
   const dark = isDarkVideoContext(ctx)
   ctx = originalVideoContext(ctx)
@@ -96,18 +113,7 @@ export function drawPortraitInstruments(ctx: CanvasRenderingContext2D, face: Fac
   const left = Math.max(.03,Math.min(...bounds.map(p=>p.x))-.1)*width, right = Math.min(.97,Math.max(...bounds.map(p=>p.x))+.1)*width
   const top = Math.max(.03,Math.min(...bounds.map(p=>p.y))-.12)*height, bottom = Math.min(.97,Math.max(...bounds.map(p=>p.y))+.1)*height
   ctx.save(); ctx.strokeStyle=ink; ctx.fillStyle=ink; ctx.lineWidth=1.2*unit; ctx.lineCap='butt'
-  if(settings.marks){
-    ctx.strokeStyle = ctx.fillStyle = dark ? '#fff' : '#111'
-    ctx.globalAlpha *= .2*trackerAcquisition(time,0,reduced)
-    ctx.save();ctx.globalAlpha*=.32;ctx.strokeRect(left,top,right-left,bottom-top);ctx.restore();ctx.beginPath()
-    for(let i=0;i<=40;i++){
-      const length=(i%10===0?19:i%5===0?12:5)*unit, x=left+(right-left)*i/40,y=top+(bottom-top)*i/40
-      ctx.moveTo(x,top);ctx.lineTo(x,top-length);ctx.moveTo(x,bottom);ctx.lineTo(x,bottom+length)
-      ctx.moveTo(left,y);ctx.lineTo(left-length,y);ctx.moveTo(right,y);ctx.lineTo(right+length,y)
-    }
-    for(const [x,y] of [[left,top],[right,top],[left,bottom],[right,bottom]]){const d=24*unit;ctx.moveTo(x-d,y);ctx.lineTo(x+d,y);ctx.moveTo(x,y-d);ctx.lineTo(x,y+d)}
-    ctx.stroke();ctx.font=`400 ${17*unit}px monospace`;ctx.textAlign='left';ctx.fillText('PORTRAIT / IMAGE SPACE',left,top-39*unit);ctx.textAlign='right';ctx.fillText('2D',right,bottom+44*unit)
-  }
+  if(settings.marks) drawSpecimenFrame(ctx,{x:left,y:top,width:right-left,height:bottom-top},time,reduced,dark?'#fff':'#111','PORTRAIT / IMAGE SPACE','2D');
   ctx.restore()
   if(settings.scan){
     const phase=reduced?.5:(timeMs%6000)/6000, y=top+(bottom-top)*phase, band=(bottom-top)*.07

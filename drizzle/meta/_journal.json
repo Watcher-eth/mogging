@@ -533,6 +533,13 @@
       "when": 1794010925478,
       "tag": "0073_creator_bank_transfer",
       "breakpoints": true
+    },
+    {
+      "idx": 76,
+      "version": "7",
+      "when": 1794108000000,
+      "tag": "0074_creator_crypto_payouts",
+      "breakpoints": true
     }
   ]
 }

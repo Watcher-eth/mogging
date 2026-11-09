@@ -1,6 +1,8 @@
 import { z } from 'zod'
 import type { FaceLandmarksPayload, NormalizedPoint } from '@/lib/analysis/landmarks'
-import { smoothMotion } from './video-layout'
+import { smoothMotion, videoSize } from './video-layout'
+import { sceneWordStart } from './video-script'
+import type { VideoScene } from './video-composition'
 import { drawPortraitEffects, warpDestinationPoint, type PortraitWarp, type PortraitLighting, type PortraitEffects, type WarpRegion } from './video-portrait-effects'
 import { faceContourPaths } from './face-metric-guides'
 import { drawFaceTreatment } from './video-face-treatment'
@@ -14,8 +16,21 @@ export const photoStudySchema = z.object({
   axis: z.enum(['x', 'y', 'both']).optional(),
   cursor: z.boolean().optional(),
   effect: z.enum(['shape','brow-contrast']).optional(),
+  startWord: z.number().int().nonnegative().optional(),
 }).strict().superRefine((study,ctx)=>{if(study.effect==='brow-contrast' && study.feature!=='brows')ctx.addIssue({code:'custom',message:'Brow contrast requires the detected brow contours.'})})
 export type PhotoStudy = z.infer<typeof photoStudySchema>
+
+export function drawPhotoStudyCueLabel(ctx: CanvasRenderingContext2D) {
+  ctx.save()
+  ctx.font = '500 25px "Mogging Share", Arial, sans-serif'
+  const label = 'Width illustration', width = ctx.measureText(label).width + 40
+  const x = 150, y = videoSize.height * .76
+  ctx.fillStyle = '#f9f9f9'
+  ctx.beginPath(); ctx.roundRect(x, y, width, 48, 24); ctx.fill()
+  ctx.fillStyle = '#343434'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'
+  ctx.fillText(label, x + width / 2, y + 24)
+  ctx.restore()
+}
 
 export function photoStudyRegions(landmarks: FaceLandmarksPayload | null | undefined, feature: PhotoStudy['feature']): WarpRegion[] {
   if (landmarks && (landmarks.confidence < .58 || Math.abs(landmarks.quality?.yawRadians ?? 0) > .65)) throw new Error('Use a clear, near-frontal photo for illustrative image variations.')
@@ -40,18 +55,23 @@ export function photoStudyRegions(landmarks: FaceLandmarksPayload | null | undef
 }
 
 // Caption cuts share one edit clock; a new caption must not restart the face deformation.
-export function photoStudyClock(scenes: Array<{cueId:string;startMs:number;durationMs:number;source:{imageId:string|null};photoStudy?:PhotoStudy}>, scene: typeof scenes[number], localMs: number) {
+export function photoStudyClock(scenes: Array<{cueId:string;startMs:number;durationMs:number;source:{imageId:string|null};photoStudy?:PhotoStudy;narration?:string;words?:VideoScene['words']}>, scene: typeof scenes[number], localMs: number) {
   let first=scenes.findIndex(s=>s.startMs===scene.startMs && s.cueId===scene.cueId),last=first
   if(first<0)return {timeMs:localMs,durationMs:scene.durationMs}
   const same=(other:typeof scene|undefined)=>other?.cueId===scene.cueId && other?.source.imageId===scene.source.imageId && JSON.stringify(other?.photoStudy)===JSON.stringify(scene.photoStudy)
   while(first>0 && same(scenes[first-1]))first--
   while(last<scenes.length-1 && same(scenes[last+1]))last++
-  return {timeMs:scene.startMs+localMs-scenes[first].startMs,durationMs:scenes[last].startMs+scenes[last].durationMs-scenes[first].startMs}
+  const start = scenes[first]
+  const cueMs = start.photoStudy?.startWord === undefined ? undefined
+    : sceneWordStart({ ...start, narration: start.narration ?? '' }, start.photoStudy.startWord)
+  return {timeMs:scene.startMs+localMs-start.startMs,durationMs:scenes[last].startMs+scenes[last].durationMs-start.startMs, ...(cueMs === undefined ? {} : { cueMs })}
 }
 
-export function photoStudyGesture(study: PhotoStudy, regions: WarpRegion[], timeMs: number, durationMs: number, reduced = false, landmarks?: FaceLandmarksPayload | null) {
+export function photoStudyGesture(study: PhotoStudy, regions: WarpRegion[], timeMs: number, durationMs: number, reduced = false, landmarks?: FaceLandmarksPayload | null, cueMs?: number) {
   const time = Math.max(0, Math.min(1, timeMs / Math.max(1, durationMs)))
-  const envelope = reduced ? 1 : smoothMotion((time-.12)/.18)*(1-smoothMotion((time-.82)/.16))
+  const envelope = cueMs === undefined
+    ? reduced ? 1 : smoothMotion((time-.12)/.18)*(1-smoothMotion((time-.82)/.16))
+    : reduced ? Number(timeMs >= cueMs) : smoothMotion((timeMs - cueMs) / Math.max(1, Math.min(850, durationMs - cueMs)))
   const contrast = study.effect==='brow-contrast' ? study.amount*envelope : 0
   const strength = study.effect==='brow-contrast' ? 0 : study.amount*envelope
   const mode=study.mode ?? (['cheeks','jaw','brows'].includes(study.feature)?'drag':'pinch')
@@ -121,9 +141,9 @@ export function warpStudyOverlay(overlay: ReportOverlay, warp: PortraitWarp): Re
     primitives: overlay.primitives.filter(primitive => primitive.kind === 'polyline' || primitive.kind === 'point').map(primitive => primitive.kind === 'polyline' ? { ...primitive, pixelPoints: primitive.pixelPoints.map(point) } : { ...primitive, point: point(primitive.point) }) }
 }
 
-export function drawPhotoStudy(ctx: CanvasRenderingContext2D, image: HTMLImageElement | HTMLCanvasElement, landmarks: FaceLandmarksPayload | null | undefined, study: PhotoStudy, timeMs: number, durationMs: number, reduced: boolean, effects: { lighting?: PortraitLighting; mask?: HTMLCanvasElement; overlay?: ReportOverlay | null; appearance?: PortraitEffects['overlay']; paint?: CanvasPainter; measuring?: boolean } = {}) {
+export function drawPhotoStudy(ctx: CanvasRenderingContext2D, image: HTMLImageElement | HTMLCanvasElement, landmarks: FaceLandmarksPayload | null | undefined, study: PhotoStudy, timeMs: number, durationMs: number, reduced: boolean, effects: { lighting?: PortraitLighting; mask?: HTMLCanvasElement; overlay?: ReportOverlay | null; appearance?: PortraitEffects['overlay']; paint?: CanvasPainter; measuring?: boolean; cueMs?: number } = {}) {
   const browEdit=study.effect==='brow-contrast'?prepareBrowContrast(image,landmarks):undefined
-  const gesture = photoStudyGesture(study, photoStudyRegions(landmarks, study.feature), timeMs, durationMs, reduced, landmarks)
+  const gesture = photoStudyGesture(study, photoStudyRegions(landmarks, study.feature), timeMs, durationMs, reduced, landmarks, effects.cueMs)
   if (effects.measuring || !effects.lighting && gesture.warp.strengths.every(strength => Math.abs(strength) < .00001)) ctx.drawImage(image, 0, 0)
   else drawPortraitEffects(ctx, image, { lighting: effects.lighting, mask: effects.mask, landmarks, timeMs, reduced, warp: gesture.warp })
   if(!effects.measuring && gesture.contrast && browEdit) {

@@ -11,16 +11,17 @@ export function nativeMetricHeight(feature: ReportFeature, width: number, full =
   return Math.max(full ? 70 : 64, timelineGeometry(width, style).height + (axis ? 12 : 0))
 }
 
-export function drawNativeReportMetric(ctx: CanvasRenderingContext2D, feature: ReportFeature, x: number, y: number, width: number, _height: number, progress = 1) {
+export function drawNativeReportMetric(ctx: CanvasRenderingContext2D, feature: ReportFeature, x: number, y: number, width: number, _height: number, progress = 1, options: {palette?:typeof timelinePalette;style?:import('./mobile-report-geometry').TimelineRailStyle;axisLabel?:(value:number)=>string;markerProgress?:number;markerFrom?:number;markerOpacity?:number} = {}) {
   if (feature.triangulation) { drawTriangulation(ctx, feature.triangulation, x, y, width, progress); return }
-  const selected = timelineStyle(feature.id ?? '', feature.label, feature.visual === 'Orbit')
+  const selected = options.style ?? timelineStyle(feature.id ?? '', feature.label, feature.visual === 'Orbit')
+  const palette = options.palette ?? timelinePalette
   const style = selected === 'triangulation' ? 'balanced' : selected
   const visual = { kind: feature.visual ?? 'Text', positions: feature.positions ?? [], grade: feature.grade ?? null, scale: feature.scale, maximum: feature.maximum, axis: feature.axis }
   const positions = timelinePositions(visual, false, style)
   if (!positions.length) return
   const geometry = timelineGeometry(width, style)
   ctx.save(); ctx.translate(x, y); ctx.lineCap = 'round'
-  ctx.save(); ctx.globalAlpha *= progress * .72; ctx.strokeStyle = timelinePalette.muted
+  ctx.save(); ctx.globalAlpha *= progress * .72; ctx.strokeStyle = palette.muted
   ctx.lineWidth = geometry.ticks[0].weight; ctx.beginPath()
   for (const [index, tick] of geometry.ticks.entries()) {
     // Match Skia's path reveal in the native entry animation.
@@ -29,16 +30,18 @@ export function drawNativeReportMetric(ctx: CanvasRenderingContext2D, feature: R
   }
   ctx.stroke(); ctx.restore()
   positions.forEach((position, index) => {
-    const point = timelinePoint(position * progress, width, style)
-    ctx.save(); ctx.globalAlpha *= progress; ctx.translate(point.x, point.y); ctx.rotate(point.rotation)
-    ctx.strokeStyle = index ? timelinePalette.ink : geometry.sparse ? timelinePalette.warm : timelinePalette.accent
+    const travel = options.markerProgress ?? progress
+    const origin = options.markerFrom ?? 0
+    const point = timelinePoint(origin + (position - origin) * travel, width, style)
+    ctx.save(); ctx.globalAlpha *= options.markerOpacity ?? progress; ctx.translate(point.x, point.y); ctx.rotate(point.rotation)
+    ctx.strokeStyle = index ? palette.ink : geometry.sparse ? palette.warm : palette.accent
     ctx.lineWidth = geometry.sparse ? 4.8 : 3
     ctx.beginPath(); ctx.moveTo(0, -4); ctx.lineTo(0, geometry.majorLength + 7); ctx.stroke()
-    ctx.fillStyle = timelinePalette.ink; ctx.beginPath(); ctx.arc(0, -10, 1.8, 0, Math.PI * 2); ctx.fill(); ctx.restore()
+    ctx.fillStyle = palette.ink; ctx.beginPath(); ctx.arc(0, -10, 1.8, 0, Math.PI * 2); ctx.fill(); ctx.restore()
   })
-  if (width > 200 || style === 'psl' || feature.axis) {
-    ctx.globalAlpha *= progress; ctx.fillStyle = timelinePalette.muted; ctx.font = '400 8px -apple-system, BlinkMacSystemFont, Arial'; ctx.textAlign = 'center'; ctx.textBaseline = 'top'
-    for (const item of timelineAxisLabels(width, style, visual)) ctx.fillText(item.text, item.x, item.y)
+  if (width > 200 || style === 'psl' || feature.axis || options.axisLabel) {
+    ctx.globalAlpha *= progress; ctx.fillStyle = palette.muted; ctx.font = '400 8px -apple-system, BlinkMacSystemFont, Arial'; ctx.textAlign = 'center'; ctx.textBaseline = 'top'
+    for (const item of timelineAxisLabels(width, style, visual)) ctx.fillText(options.axisLabel ? options.axisLabel(Number.parseFloat(item.text)) : item.text, item.x, item.y)
   }
   ctx.restore()
 }

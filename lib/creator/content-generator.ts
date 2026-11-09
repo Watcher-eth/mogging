@@ -19,7 +19,6 @@ export type CategoryScore = {
 }
 
 export type GeneratorImage = {
-  purpose?: 'reference';
   id: string
   name: string
   dataUrl: string
@@ -29,6 +28,7 @@ export type GeneratorImage = {
   status: 'loading' | 'detecting' | 'ready' | 'warning' | 'no-face'
   warning?: string
   retouch?: { feature: import('./video-semantics').SemanticBeat['feature']; operation: import('./video-semantics').SemanticBeat['operation']; baselineImageId: string }
+  comparison?: { group: string; state: 'before' | 'after'; feature: string }
 }
 
 export type ContentSlide = {

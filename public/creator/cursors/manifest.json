@@ -1,0 +1,56 @@
+{
+  "arrow" : {
+    "height" : 32,
+    "hotspot" : {
+      "x" : 2,
+      "y" : 2
+    },
+    "scale" : 4,
+    "width" : 24
+  },
+  "closed-hand" : {
+    "height" : 32,
+    "hotspot" : {
+      "x" : 16,
+      "y" : 17
+    },
+    "scale" : 4,
+    "width" : 32
+  },
+  "crosshair" : {
+    "height" : 24,
+    "hotspot" : {
+      "x" : 11,
+      "y" : 11
+    },
+    "scale" : 4,
+    "width" : 24
+  },
+  "open-hand" : {
+    "height" : 32,
+    "hotspot" : {
+      "x" : 16,
+      "y" : 17
+    },
+    "scale" : 4,
+    "width" : 32
+  },
+  "pointing-hand" : {
+    "height" : 32,
+    "hotspot" : {
+      "x" : 13,
+      "y" : 8
+    },
+    "scale" : 4,
+    "width" : 32
+  },
+  "resize-horizontal" : {
+    "height" : 24,
+    "hotspot" : {
+      "x" : 15,
+      "y" : 12
+    },
+    "scale" : 4,
+    "width" : 30
+  }
+}

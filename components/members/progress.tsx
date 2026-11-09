@@ -1,5 +1,5 @@
 import { trackWebEvent } from '@/lib/analytics/client'
-import { MobileScoreGauge } from './mobile-score-gauge'
+import { ScoreDistribution } from '@/components/analysis/score-distribution'
 import { ProgressSkinPortrait, type SkinPortrait } from '@/components/analysis/progress-skin-portrait'
 import Link from 'next/link'
 import { useEffect, useRef, useState } from 'react'
@@ -23,6 +23,7 @@ const dateLabel = (date: string) => new Date(date).toLocaleDateString('en-US', {
 
 export default function ProgressPage({ evaluations, focusIds, skinPortrait, preview, gridOnly = false, mobile = false, onNewScan }: { evaluations: ProgressEvaluation[]; focusIds: string[]; skinPortrait?: SkinPortrait | null; preview?: boolean; gridOnly?: boolean; mobile?: boolean; onNewScan?: () => void }) {
   const [metric, setMetric] = useState<string | null>(null)
+  const reduced = useReducedMotion()
   useEffect(() => { if (!preview) trackWebEvent('progress_viewed', { surface: 'scan_app', count: evaluations.length }) }, [preview, evaluations.length])
   const [expanded, setExpanded] = useState(false)
   const [drawerOpen, setDrawerOpen] = useState(false)
@@ -42,21 +43,29 @@ export default function ProgressPage({ evaluations, focusIds, skinPortrait, prev
 
   if (mobile) {
     const newHref = `/analysis?start=1&from=app${preview ? '&preview=mobile&walkthrough=1' : ''}`
-    const latestScore = latest?.scores.overall
+    const overall = evaluations.find(evaluation => evaluation.scores.overall !== undefined)
     const selectedArea = areas.find(([id]) => id === metric)
     const faceHistory = history.filter(area => area.id !== 'overall')
     return <section className="scan-progress">
       <header><h1>Progress</h1>{onNewScan ? <button type="button" onClick={onNewScan}><Plus size={18} /> New</button> : <Link href={newHref}><Plus size={18} /> New</Link>}</header>
       {latest ? <>
-        <button type="button" className="scan-progress-overall" onClick={() => showMetric('overall')} aria-label="Overall progress">
-          {latestScore === undefined ? <span>Overall history</span> : <MobileScoreGauge score={latestScore} />}
-          <span className="scan-progress-latest">Last Evaluation: {dateLabel(latest.date)} <ArrowUpRight size={15} /></span>
-        </button>
+        {overall && <div className="scan-progress-overall">
+          <div className="scan-progress-overall-heading">
+            <div><h2>Overall</h2><span>Reference distribution</span></div>
+            <button type="button" onClick={() => showMetric('overall')} aria-label="Overall progress"><ArrowUpRight size={19} aria-hidden="true" /></button>
+          </div>
+          <ScoreDistribution score={overall.scores.overall} potential={overall.potential} showSurvey />
+          <div className="scan-progress-overall-values">
+            <div data-reading="current"><span>Current</span><strong>{reduced ? overall.scores.overall.toFixed(1) : <TextMorph>{overall.scores.overall.toFixed(1)}</TextMorph>} <small>/ 10</small></strong></div>
+            {overall.potential != null && <div data-reading="potential"><span>Potential</span><strong>{reduced ? overall.potential.toFixed(1) : <TextMorph>{overall.potential.toFixed(1)}</TextMorph>}</strong></div>}
+          </div>
+          <span className="scan-progress-latest">Overall reading · {dateLabel(overall.date)}</span>
+        </div>}
         <h2>Your face</h2>
         <motion.div layout className="scan-progress-grid">{faceHistory.slice(0, expanded ? faceHistory.length : 6).map((area, index) =>
-          <motion.button layout type="button" key={area.id} data-kind={['field','bars','trend','orbit','line','horizontal'][index % 6]} onClick={() => showMetric(area.id)}>
+          <motion.button layout={!reduced} type="button" key={area.id} data-kind={['field','bars','trend','orbit','line','horizontal'][index % 6]} onClick={() => showMetric(area.id)}>
             <span>{area.title}<ArrowUpRight size={17} /></span>
-            <strong>{area.points.at(-1)!.score.toFixed(1)} <small>/ 10</small></strong>
+            <strong>{reduced ? area.points.at(-1)!.score.toFixed(1) : <TextMorph>{area.points.at(-1)!.score.toFixed(1)}</TextMorph>} <small>/ 10</small></strong>
             {area.id === 'skin' && skinPortrait ? <ProgressSkinPortrait {...skinPortrait} /> : <ProgressCardArt position={index % 6} points={area.points} title={area.title} color={area.color} />}
             {index % 6 === 1 && <small className="scan-progress-card-foot">{area.points.length === 1 ? '1 scan · Baseline' : `${area.points.length} scans`}</small>}
           </motion.button>)}

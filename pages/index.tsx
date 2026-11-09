@@ -23,8 +23,9 @@ import { AnalysisStory } from "@/components/landing/analysis-story";
 import { EvaluationStats } from "@/components/landing/evaluation-stats";
 import { SeoHead } from "@/components/app/seo-head";
 import { appStoreUrl, siteUrl } from "@/lib/seo";
-import { AppStoreHandoff } from '@/components/landing/app-store-handoff';
-import { HOMEPAGE_DESTINATION_COOKIE, shouldRouteHomepageToStore } from '@/lib/homepage-routing';
+import { PhonePwaEntry } from '@/components/landing/phone-pwa-entry';
+import { isPhoneUserAgent } from '@/lib/analysis/phone-layout';
+import { usePhoneLayout } from '@/hooks/use-phone-layout';
 import {
   createLandingAssignment,
   isActiveLandingAssignment,
@@ -39,12 +40,14 @@ const DesktopScanPreview = dynamic(() => import('@/components/landing/desktop-sc
 const DesktopMemberPreview = dynamic(() => import('@/components/landing/desktop-member-preview').then(module => module.DesktopMemberPreview))
 const LegacyHomepage = dynamic(() => import("@/components/landing/legacy-homepage"));
 
-type Props = { assignment: LandingAssignment; preview: boolean; routeToStore: boolean };
+type Props = { assignment: LandingAssignment; preview: boolean; phoneEntry: boolean; desktopPreview: boolean };
 
 export default function HomePage(props: Props) {
   const locale = useRouter().locale;
-  if (props.routeToStore) return <AppStoreHandoff assignment={props.assignment} />;
-  return (!locale || locale === "en") && props.assignment.arm.endsWith("_a") ? <LegacyHomepage {...props} /> : <NewHomepage {...props} />;
+  const phone = usePhoneLayout(props.phoneEntry);
+  if (phone && !props.desktopPreview) return <PhonePwaEntry assignment={props.assignment} preview={props.preview} />;
+  const homepage = (!locale || locale === "en") && props.assignment.arm.endsWith("_a") ? <LegacyHomepage {...props} /> : <NewHomepage {...props} />;
+  return props.desktopPreview ? homepage : <div data-desktop-entry="">{homepage}</div>;
 }
 
 function NewHomepage({ assignment, preview }: Props) {
@@ -52,6 +55,7 @@ function NewHomepage({ assignment, preview }: Props) {
   const { t } = useTranslation();
   const entrance = useHomepageEntrance();
   const desktop = useDesktop();
+  const phone = usePhoneLayout(true);
   const { sections, trackDestination } = useLandingTracking(assignment, preview);
 
   function downloadButton(placement: string) {
@@ -176,7 +180,7 @@ function NewHomepage({ assignment, preview }: Props) {
               <div className="mt-7">{downloadButton("progress")}</div>
             </div>
           </m.section>
-          <m.section {...entrance} data-landing-section="web_analysis" aria-labelledby="web-title" className="border-y border-zinc-100 bg-[#f7f7f8] py-14 sm:py-20">
+          {!phone && <m.section {...entrance} data-landing-section="web_analysis" aria-labelledby="web-title" className="border-y border-zinc-100 bg-[#f7f7f8] py-14 sm:py-20">
             <div className="mx-auto max-w-[var(--page-max)] px-6 sm:px-10">
               <WebCheckout embedded showReport preview={preview} intro={
               <div className="flex flex-col justify-between gap-6 lg:flex-row lg:items-end">
@@ -191,11 +195,11 @@ function NewHomepage({ assignment, preview }: Props) {
               {t("landing.webDescription")}
             </p>
                 </div>
-                <Link href="/analysis?start=1" prefetch={false} onClick={() => trackDestination("web_analysis", "web_section")} className="inline-flex items-center gap-2 text-sm font-medium text-zinc-500 hover:text-black">{t("landing.withoutApp")} <ArrowRight className="size-4" /></Link>
+                <Link href="/analysis" prefetch={false} onClick={() => trackDestination("web_analysis", "web_section")} className="inline-flex items-center gap-2 text-sm font-medium text-zinc-500 hover:text-black">{t("landing.withoutApp")} <ArrowRight className="size-4" /></Link>
               </div>
               } />
             </div>
-          </m.section>
+          </m.section>}
 
           <LandingFaq />
           <m.section {...entrance}
@@ -295,6 +299,6 @@ export const getServerSideProps: GetServerSideProps<Props> = async ({
       setCreatorAttributionCookie(res as NextApiResponse, referral.token);
     }
   }
-  const routeToStore = !query.login && shouldRouteHomepageToStore(req.headers['user-agent'] || '', req.cookies[HOMEPAGE_DESTINATION_COOKIE], Boolean(previewArm) || automated);
-  return { props: { assignment, preview: localizedPreview || Boolean(previewArm) || automated, routeToStore } };
+  const phoneEntry = !automated && isPhoneUserAgent(req.headers['user-agent'] ?? '', req.headers['sec-ch-ua-mobile']?.toString());
+  return { props: { assignment, preview: localizedPreview || Boolean(previewArm) || automated, phoneEntry, desktopPreview: Boolean(previewArm) } };
 };

@@ -1,4 +1,5 @@
-import { drawEditorialFeatheredReveal, drawEditorialInset, drawEditorialLeader, drawEditorialLocator, drawEditorialPointer, drawEditorialRevealRail } from './editorial-motion'
+import { sampleEditorialCursor, drawEditorialCursor, editorialCursorTiming } from './editorial-cursor'
+import { drawEditorialTool, drawEditorialFeatheredReveal, drawEditorialInset, drawEditorialLeader, drawEditorialLocator, drawEditorialRevealRail } from './editorial-motion'
 import { applyGlassInk } from './glass-overlay'
 import { drawPortraitInstruments, drawPortraitParticles, instrumentOwnsGuides, type PortraitInstrument } from './portrait-instruments'
 import { z } from 'zod'
@@ -23,7 +24,9 @@ export const featureStudySchema = z.object({
   motion: z.enum(['hold', 'push', 'pull', 'pan-left', 'pan-right']).optional(),
   guidesDuringEdit: z.boolean().optional(),
   annotationStyle: z.enum(['circle', 'guide', 'leader']).optional(),
+  tool: z.enum(['brush','clipper']).optional(),
   comparison: z.enum(['blend', 'wipe', 'spotlight']).optional(),
+  revealWord: z.number().int().nonnegative().optional(),
   labels: z.array(z.string().max(60)).max(4).optional(),
   footnote: z.string().max(120).optional(),
   adjustment: z.enum(['thirds','width']).optional(),
@@ -427,10 +430,52 @@ function drawFeatureOpening(ctx: CanvasRenderingContext2D, study: FeatureStudy, 
   if (smile) drawGuessSpinner(ctx, maskY + 175, clockMs, (1 - smoothMotion(reveal * 4)) * (1 - expansion), reduced)
 }
 
-export function drawFeatureStudy(ctx: CanvasRenderingContext2D, study: FeatureStudy, photo: FeaturePhoto, variants: FeaturePhoto[], localMs: number, _durationMs: number, reduced: boolean, previous?: FeatureStudy, activity?: PortraitActivity, instrument?: PortraitInstrument, clockMs = localMs, captureMetric?: (ctx: CanvasRenderingContext2D, width: number, height: number, warp?: ReturnType<typeof featureWarp>) => void, comparisonClock: { timeMs: number; durationMs: number; previousFrame?: Frame; matteProgress?: number } = { timeMs: localMs, durationMs: _durationMs }) {
+export function drawFeatureStudy(ctx: CanvasRenderingContext2D, study: FeatureStudy, photo: FeaturePhoto, variants: FeaturePhoto[], localMs: number, _durationMs: number, reduced: boolean, previous?: FeatureStudy, activity?: PortraitActivity, instrument?: PortraitInstrument, clockMs = localMs, captureMetric?: (ctx: CanvasRenderingContext2D, width: number, height: number, warp?: ReturnType<typeof featureWarp>) => void, comparisonClock: { timeMs: number; durationMs: number; previousFrame?: Frame; matteProgress?: number; revealMs?: number } = { timeMs: localMs, durationMs: _durationMs }) {
   const dark = isDarkVideoContext(ctx), ink = dark ? '#f2eee5' : '#171717', panel = dark ? '#1b1b1b' : '#f5f4f1'
   ctx = originalVideoContext(ctx)
   if (study.layout === 'evidence') {
+    if (comparisonClock.revealMs !== undefined) {
+      const age = localMs - comparisonClock.revealMs
+      const progress = reduced ? Number(age >= 0) : smoothMotion(age / 520)
+      const inset = 32, gap = 18, bottom = 2110
+      const cardWidth = (videoSize.width - inset * 2 - gap) / 2
+      const pair = [0, 1].map(index => ({ x: inset + index * (cardWidth + gap), y: 620, width: cardWidth, height: bottom - 620 }))
+      const hero = { x: inset, y: 600, width: videoSize.width - inset * 2, height: bottom - 600 }
+      const beforeFrame = featureFrameAt(hero, pair[0], (reduced ? progress : age / 520) * 560)
+      for (const [index, item] of variants.entries()) {
+        if (index > 1 || index === 1 && !progress) continue
+        const frame = index === 0 ? beforeFrame : pair[1]
+        const source = item.original ?? item.image
+        const anchors = item.landmarks?.anchors
+        const eyes = anchors?.leftPupil && anchors.rightPupil
+          ? { x: (anchors.leftPupil.x + anchors.rightPupil.x) / 2, y: (anchors.leftPupil.y + anchors.rightPupil.y) / 2 }
+          : undefined
+        const zoom = eyes ? 1 + .13 * (index === 0 ? progress : 1) : 1
+        const scale = Math.max(frame.width / source.width, frame.height / source.height) * zoom
+        const w = source.width * scale, h = source.height * scale
+        const x = frame.x + Math.min(0, Math.max(frame.width - w, frame.width / 2 - w * (eyes?.x ?? .5)))
+        const y = frame.y + Math.min(0, Math.max(frame.height - h, eyes ? frame.height * .41 - h * eyes.y : (frame.height - h) / 2))
+        ctx.save()
+        if (index === 1) {
+          const revealLeft = Math.max(frame.x, beforeFrame.x + beforeFrame.width + gap)
+          ctx.globalAlpha *= progress
+          ctx.beginPath(); ctx.rect(revealLeft, frame.y, Math.max(0, frame.x + frame.width - revealLeft), frame.height); ctx.clip()
+        }
+        ctx.beginPath(); ctx.roundRect(frame.x, frame.y, frame.width, frame.height, 24); ctx.clip()
+        ctx.drawImage(source, x, y, w, h)
+        const label = study.labels?.[index]
+        if (label) {
+          ctx.font = '500 31px "Mogging Share",Arial,sans-serif'
+          const labelX = frame.x + 24, labelY = frame.y + 26
+          ctx.fillStyle = '#fffffff0'
+          ctx.beginPath(); ctx.roundRect(labelX, labelY, ctx.measureText(label).width + 36, 52, 26); ctx.fill()
+          ctx.fillStyle = '#252525'; ctx.textAlign = 'left'; ctx.textBaseline = 'middle'
+          ctx.fillText(label, labelX + 18, labelY + 26)
+        }
+        ctx.restore()
+      }
+      return
+    }
     const frames = comparisonFrames(comparisonClock.timeMs, comparisonClock.durationMs, reduced)
     frames.forEach((frame, index) => {
       const item = variants[index]
@@ -458,6 +503,8 @@ export function drawFeatureStudy(ctx: CanvasRenderingContext2D, study: FeatureSt
     drawFeatureOpening(ctx, study, [photo, variants[0]], localMs, _durationMs, reduced, clockMs, comparisonClock)
     return
   }
+  const cursorDetail=Boolean(study.editorial && study.layout==='detail' && study.comparison!=='wipe' && !study.edit && variants[1] && study.images[1]!==study.images[0] && variants[1].landmarks && photo.landmarks && _durationMs>=2200)
+  const guideElapsed=cursorDetail?localMs-editorialCursorTiming(1460,0,undefined,reduced).clickAtMs:localMs-400
   const comparing = study.layout === 'compare'
   const frames = comparing ? comparisonFrames(comparisonClock.timeMs, comparisonClock.durationMs, reduced) : featureFrames(study.layout)
   const prior = comparisonClock.previousFrame ? [comparisonClock.previousFrame] : comparing && (!previous || previous.layout === 'compare') ? frames : featureFrames(previous?.layout ?? study.layout)
@@ -516,18 +563,22 @@ export function drawFeatureStudy(ctx: CanvasRenderingContext2D, study: FeatureSt
         ctx.beginPath(); ctx.moveTo(split, 0); ctx.lineTo(split, item.image.height); ctx.stroke(); ctx.restore()
       }
     } else drawEdit()
+    if(index===0 && study.tool && edit && study.editMode==='photo' && variants[0] && item.landmarks){
+      const target=featureTarget(item.landmarks,study.topic),w=target.eyeWidth*item.image.width
+      drawEditorialTool(ctx,{x:target.center.x*item.image.width-w,y:target.center.y*item.image.height-w*.35,width:w*2,height:w*.7},localMs/1400,study.tool,reduced)
+    }
     if (!textureEdit && study.topic === 'freckles' && item.landmarks) drawNaturalFreckles(ctx,item.image,item.landmarks,Math.max(0,edit))
-    const showGuides = study.guidesDuringEdit || !study.editorial || study.comparison !== 'wipe' || reduced || localMs >= _durationMs * .72
+    const showGuides = (!cursorDetail || guideElapsed>=0) && (study.guidesDuringEdit || !study.editorial || study.comparison !== 'wipe' || reduced || localMs >= _durationMs * .72)
     if (index===0 && instrument && showGuides) {
-      if (instrument.particles!=='none' || instrument.trails) drawPortraitParticles(ctx,item.image,instrument,localMs,reduced)
-      if(!activity) drawPortraitInstruments(ctx,item.landmarks,item.image.width,item.image.height,instrument,localMs,reduced)
+      if (instrument.particles!=='none' || instrument.trails) drawPortraitParticles(ctx,item.image,instrument,cursorDetail?guideElapsed:localMs,reduced)
+      if(!activity) drawPortraitInstruments(ctx,item.landmarks,item.image.width,item.image.height,instrument,cursorDetail?guideElapsed:localMs,reduced)
     }
     if (index === 0 && activity && showGuides) {
       const warp=registeredWarp ?? (!textureEdit && item.landmarks ? featureWarp(item.landmarks,study.topic,edit,study.adjustment) : undefined)
-      drawPortraitActivity(ctx,activity,item.image.width,item.image.height,warp)
+      drawPortraitActivity(ctx,cursorDetail?{...activity,phase:Math.min(activity.phase,smoothMotion(guideElapsed/650)),blend:Math.min(activity.blend,smoothMotion(guideElapsed/650)),labelPhase:Math.min(activity.labelPhase,smoothMotion(guideElapsed/650)),elapsedMs:Math.min(activity.elapsedMs,guideElapsed)}:activity,item.image.width,item.image.height,warp)
       if (frames.length === 1 && prior.length === 1) captureMetric?.(ctx, item.image.width, item.image.height, warp)
     }
-    if (showGuides && !activity && !instrumentOwnsGuides(instrument) && index === 0 && frames.length === 1) drawNote(ctx, photo, study, reduced ? 1 : smoothMotion((localMs - 400) / 650))
+    if (showGuides && !activity && !instrumentOwnsGuides(instrument) && index === 0 && frames.length === 1) drawNote(ctx, photo, study, reduced ? 1 : smoothMotion(guideElapsed / 650))
     ctx.restore()
     const fadeOpacity = (prior.length === 1 ? 1 - progress : 0) + (frames.length === 1 ? progress : 0)
     if (index === 0 && fadeOpacity > 0) {
@@ -562,7 +613,7 @@ export function drawFeatureStudy(ctx: CanvasRenderingContext2D, study: FeatureSt
     }
   }
   const reference = variants[1]
-  if (study.editorial && study.layout === 'detail' && study.comparison !== 'wipe' && !study.edit && reference && study.images[1] !== study.images[0] && reference.landmarks && photo.landmarks && primary && _durationMs >= 2200) {
+  if (cursorDetail && reference && reference.landmarks && photo.landmarks && primary) {
     const entry = reduced ? 1 : smoothMotion((localMs - 460) / 460)
     const exit = reduced ? 1 : smoothMotion((_durationMs - localMs) / 280)
     const card = { x: videoContent.inset, y: videoSize.height * .56, w: videoSize.width * .20, h: videoSize.width * .145 }
@@ -579,12 +630,9 @@ export function drawFeatureStudy(ctx: CanvasRenderingContext2D, study: FeatureSt
     const main = featureTarget(photo.landmarks, study.topic).center
     const target = { x: primary.x + main.x * primary.width, y: primary.y + main.y * primary.height }
     const origin = { x: card.x + card.w, y: card.y + card.h / 2 }
-    // Let the crop arrive first, then connect it to the corresponding feature.
-    const locator = reduced ? 1 : smoothMotion((localMs - 960) / 440)
-    drawEditorialLocator(ctx, target, { x: target.x - origin.x, y: target.y - origin.y }, locator)
-    if (!reduced && localMs > 960 && localMs < 1740) {
-      drawEditorialPointer(ctx, origin, target, (localMs - 960) / 780)
-    }
+    const cursor=sampleEditorialCursor(localMs,origin,target,1460,0,undefined,reduced)
+    if(cursor.clicked)drawEditorialLocator(ctx,target,{x:target.x-origin.x,y:target.y-origin.y},reduced?1:smoothMotion(cursor.effectMs/440))
+    drawEditorialCursor(ctx,cursor)
     ctx.restore()
   }
   if ((study.edit || frames.length > 1) && study.footnote !== '' && !(study.editorial && study.layout === 'compare' && study.footnote === undefined)) {

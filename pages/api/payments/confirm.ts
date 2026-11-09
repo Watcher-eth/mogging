@@ -7,6 +7,7 @@ import { monitorBackend } from '@/lib/reliability/monitor'
 import { createHash } from 'node:crypto'
 import { recordServerEvent } from '@/lib/analytics/events'
 import { stripeJourneyProperties } from '@/lib/analytics/web-context'
+import { verifyWebCheckoutGuest } from '@/lib/payments/guest-checkout'
 
 const inputSchema = z.object({ sessionId: z.string().trim().regex(/^cs_(?:test_|live_)?[A-Za-z0-9]+$/) })
 
@@ -15,6 +16,8 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
   try {
     const { sessionId } = parseBody(inputSchema, req.body)
     const userId = await getRequestUserId(req, res)
+    const guest = await verifyWebCheckoutGuest(req, sessionId, userId)
+    if (guest && !userId) return json(res, 200, { requiresSignIn: true })
     if (!userId) throw new ApiError(401, 'Sign in with the account used at checkout')
     const entitlement = await confirmCheckoutForAccount(sessionId, userId)
     const summary = await getEntitlementSummary({ userId, mobileInstallId: entitlement.mobileInstallId })

@@ -1,4 +1,5 @@
 import { z } from 'zod'
+import { documentaryLayoutIds } from './video-documentary-editions'
 
 const mediaFields = {
   id: z.string().min(1).max(160),
@@ -18,8 +19,8 @@ export const mediaAssetSchema = z.discriminatedUnion('kind', [
 ])
 export type MediaAsset = z.infer<typeof mediaAssetSchema>
 export const documentaryShotSchema = z.object({
-  kind: z.enum(['stage', 'comparison', 'inspection', 'anatomy', 'relations', 'media', 'conclusion']),
-  mediaId: z.string().optional(), label: z.string().max(100),
+  kind: z.enum(['stage', 'comparison', 'inspection', 'anatomy', 'relations', 'locator', 'projection', 'blueprint', 'specimen', 'registration', 'contact', 'dossier', 'marquee', 'ink', 'ledger', 'media', 'conclusion']),
+  layout: z.enum(documentaryLayoutIds).optional(), mediaId: z.string().optional(), cutWord: z.number().int().nonnegative().optional(), label: z.string().max(100),
 }).strict()
 
 // Evaluate the pixels actually used by a shot, including its largest camera move.

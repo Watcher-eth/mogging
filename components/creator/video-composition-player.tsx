@@ -1,6 +1,8 @@
-import { useEffect, useRef, useState, type CSSProperties } from 'react'
+import { AnimatePresence, motion } from 'motion/react'
+import { SkeletonBox } from 'skullet/react'
+import { useEffect, useRef, useState } from 'react'
 import { BatteryFull, Bookmark, Heart, Home, MessageCircle, Music2, Pause, Play, Plus, RotateCcw, RotateCw, Search, Share2, Signal, UserRound, Users, Wifi } from 'lucide-react'
-import { drawVideoFrame, type PreparedVideo } from '@/lib/creator/video-renderer'
+import { drawVideoFrame, seekPreparedMedia, type PreparedVideo } from '@/lib/creator/video-renderer'
 import { videoExportSize } from '@/lib/creator/video-layout'
 import { createPreviewRipple } from '@/lib/creator/preview-ripple'
 import type { VideoComposition } from '@/lib/creator/video-composition'
@@ -8,7 +10,7 @@ import styles from './video-studio.module.css'
 
 const playbackTime = (ms: number) => `${Math.floor(ms / 60000)}:${String(Math.floor(ms / 1000) % 60).padStart(2, '0')}`
 
-export function VideoCompositionPlayer({ prepared, composition, seekMs, onTime, audioUrl, suspended = false }: { suspended?:boolean; prepared: PreparedVideo | null; composition: VideoComposition; seekMs: number; onTime: (time: number) => void; audioUrl?: string }) {
+export function VideoCompositionPlayer({ prepared, composition, seekMs, onTime, audioUrl }: { prepared: PreparedVideo | null; composition: VideoComposition; seekMs: number; onTime: (time: number) => void; audioUrl?: string }) {
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const rippleCanvasRef = useRef<HTMLCanvasElement>(null)
   const rippleRendererRef = useRef<ReturnType<typeof createPreviewRipple>>(null)
@@ -17,13 +19,12 @@ export function VideoCompositionPlayer({ prepared, composition, seekMs, onTime, 
   const audioRef = useRef<HTMLAudioElement>(null)
   const positionRef = useRef(0)
   const onTimeRef = useRef(onTime)
-  const [hasFrame, setHasFrame] = useState(false)
+  const [paintedVideo, setPaintedVideo] = useState<PreparedVideo | null>(null)
   const [playing, setPlaying] = useState(false)
   const [reduced, setReduced] = useState(false)
   const [position, setPosition] = useState(0)
   const [playbackError, setPlaybackError] = useState('')
   useEffect(() => { onTimeRef.current = onTime }, [onTime])
-  useEffect(()=>{if(suspended){audioRef.current?.pause();setPlaying(false)}},[suspended])
   useEffect(() => () => {
     rippleRendererRef.current?.dispose(); rippleRendererRef.current = null
     rippleRef.current = null; displayedRef.current = null
@@ -45,15 +46,12 @@ export function VideoCompositionPlayer({ prepared, composition, seekMs, onTime, 
     let cancelled = false
     if (playing && prepared) {
       audio.currentTime = positionRef.current / 1000
-      void audio.play().catch((error: unknown) => {
-        if (cancelled || error instanceof DOMException && error.name === 'AbortError') return
-        setPlaybackError('Could not play the preview audio. Try again.')
-        setPlaying(false)
-      })
+      void audio.play().catch(() => { if (!cancelled) { setPlaybackError('Could not play the voiceover. Try again.'); setPlaying(false) } })
     } else audio.pause()
     return () => { cancelled = true; audio.pause() }
   }, [playing, prepared, audioUrl])
 
+  const pausedPosition = playing ? null : position
   useEffect(() => {
     const canvas = canvasRef.current, overlay = rippleCanvasRef.current
     const ctx = canvas?.getContext('2d')
@@ -85,7 +83,7 @@ export function VideoCompositionPlayer({ prepared, composition, seekMs, onTime, 
         let rippling = false
         if (ripple && !reduced) {
           if (ripple.started === undefined) {
-            await prepared.documentary?.seekMedia(positionRef.current, drawAbort.signal)
+            await seekPreparedMedia(prepared,positionRef.current,drawAbort.signal)
             if (drawAbort.signal.aborted) return
             drawVideoFrame(ctx, prepared, positionRef.current, canvas.width, canvas.height, reduced)
             canvas.dataset.renderedStyle = prepared.composition.recipe
@@ -102,13 +100,13 @@ export function VideoCompositionPlayer({ prepared, composition, seekMs, onTime, 
             positionRef.current = Math.min(prepared.composition.durationMs - 1, audioUrl && audio ? audio.paused ? positionRef.current : audio.currentTime * 1000 : positionRef.current + now - last)
           }
           overlay.style.visibility = 'hidden'
-          await prepared.documentary?.seekMedia(positionRef.current, drawAbort.signal)
+          await seekPreparedMedia(prepared,positionRef.current,drawAbort.signal)
           if (drawAbort.signal.aborted) return
           drawVideoFrame(ctx, prepared, positionRef.current, canvas.width, canvas.height, reduced)
           canvas.dataset.renderedStyle = prepared.composition.recipe
         }
         last = now
-        if (firstFrame) { setHasFrame(true); firstFrame = false }
+        if (firstFrame) { setPaintedVideo(prepared); firstFrame = false }
         const drawMs = performance.now() - drawStarted
         drawTotal += drawMs; drawCount++; if (drawMs > 1000 / 30) slowFrames++
         if (now - lastNotify > 100 || !playing && !rippling) {
@@ -127,7 +125,7 @@ export function VideoCompositionPlayer({ prepared, composition, seekMs, onTime, 
     const visibility = () => { if (document.hidden) setPlaying(false) }
     document.addEventListener('visibilitychange', visibility)
     return () => { drawAbort.abort(); cancelAnimationFrame(frame); document.removeEventListener('visibilitychange', visibility) }
-  }, [prepared, playing, reduced, seekMs, audioUrl])
+  }, [prepared, playing, reduced, seekMs, audioUrl, pausedPosition])
 
   function seek(value: number) {
     rippleRef.current = null
@@ -135,11 +133,7 @@ export function VideoCompositionPlayer({ prepared, composition, seekMs, onTime, 
     positionRef.current = Math.max(0, Math.min(value, composition.durationMs - 1))
     setPosition(positionRef.current); onTimeRef.current(positionRef.current)
     if (audioRef.current) audioRef.current.currentTime = positionRef.current / 1000
-    const ctx = canvasRef.current?.getContext('2d')
-    if (ctx && prepared) {
-      const time = positionRef.current
-      void (prepared.documentary?.seekMedia(time) ?? Promise.resolve()).then(() => { if (positionRef.current === time) drawVideoFrame(ctx, prepared, time, ctx.canvas.width, ctx.canvas.height, reduced) }).catch(error => setPlaybackError(error instanceof Error ? error.message : 'Could not seek this preview'))
-    }
+
   }
   function togglePlayback() {
     rippleRef.current = null
@@ -147,15 +141,19 @@ export function VideoCompositionPlayer({ prepared, composition, seekMs, onTime, 
     if (positionRef.current >= composition.durationMs - 1) seek(0)
     setPlaybackError(''); setPlaying(current => !current)
   }
-  return <div className={styles.player} style={{ '--video-aspect': `${videoExportSize.width} / ${videoExportSize.height}` } as CSSProperties}>
+  return <div className={styles.player}>
     {audioUrl ? <audio ref={audioRef} src={audioUrl} preload="auto" onEnded={() => { setPlaying(false); seek(composition.durationMs - 1) }} /> : null}
     {playbackError ? <p role="alert" className="text-xs text-red-700">{playbackError}</p> : null}
-    <div className={styles.composerFrame} aria-label="TikTok feed preview">
+    <div className={styles.composerFrame} data-theme={composition.theme} aria-label="TikTok feed preview">
       <div className={styles.previewContent}>
         <div className={styles.videoSurface} data-theme={composition.theme}>
           <canvas ref={canvasRef} width={videoExportSize.width} height={videoExportSize.height} className={styles.videoCanvas} role="img" aria-label={`Video preview: ${composition.title}`} />
           <canvas ref={rippleCanvasRef} width={videoExportSize.width} height={videoExportSize.height} aria-hidden="true" className={styles.waveCanvas} style={{ visibility: 'hidden' }} />
-          {!prepared && !hasFrame ? <div className={styles.empty}>Choose a person to start.</div> : null}
+          <AnimatePresence initial={false}>{(!prepared || paintedVideo!==prepared) && !playbackError?<motion.div key="preview-loading" className={styles.previewSkeleton} role="status" aria-label="Preparing video preview" initial={{opacity:0}} animate={{opacity:1}} exit={{opacity:0}} transition={{duration:reduced?0:.22}}>
+            <div className={styles.skeletonCaption}><SkeletonBox width="88%" height="18px" radius="7px"/><SkeletonBox width="65%" height="18px" radius="7px"/></div>
+            <div className={styles.skeletonFigure}><SkeletonBox width="100%" height="100%" radius="46% 46% 20% 20%"/></div>
+            <div className={styles.skeletonMetric}><SkeletonBox width="100%" height="6px" radius="4px"/><SkeletonBox width="38%" height="12px" radius="5px"/></div>
+          </motion.div>:null}</AnimatePresence>
         </div>
       </div>
       <div className={styles.feedChrome} aria-hidden="true">

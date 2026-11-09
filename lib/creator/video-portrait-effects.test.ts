@@ -42,21 +42,24 @@ test('all seven feature tools use real anchors, preserve pixel aspect and reject
   for (const feature of ['jaw', 'lips', 'brows'] as const) expect(() => photoStudyRegions({ ...landmarks, anchors: { leftPupil: landmarks.anchors.leftPupil, rightPupil: landmarks.anchors.rightPupil, noseTip: landmarks.anchors.noseTip } }, feature)).toThrow('anchors')
 })
 
-test('the cursor grabs the actual warped point, edits paired anchors in sequence and releases to the original', () => {
-  const study = { feature: 'cheeks' as const, amount: .24, mode: 'stretch' as const }, regions = photoStudyRegions(landmarks, study.feature)
+test('the cursor grabs the actual warped point, edits paired anchors together and releases to the original', () => {
+  const study = { feature: 'cheeks' as const, amount: .24, mode: 'stretch' as const, cursor: true }, regions = photoStudyRegions(landmarks, study.feature)
   expect(photoStudyGesture(study, regions, 0, 5000).warp.strengths).toEqual([0, 0])
   expect(photoStudyGesture(study, regions, 5000, 5000).warp.strengths).toEqual([0, 0])
   const first = photoStudyGesture(study, regions, 1000, 5000), second = photoStudyGesture(study, regions, 2000, 5000)
-  expect(first.pressed).toBe(true); expect(second.pressed).toBe(true)
-  expect(first.warp.strengths[0]).toBeGreaterThan(0); expect(first.warp.strengths[1]).toBe(0)
-  expect(second.warp.strengths[1]).toBeGreaterThan(0)
+  expect(first.pressed).toBe(true); expect(second.pressed).toBe(false)
+  expect(first.warp.strengths[0]).toBeGreaterThan(0)
+  expect(first.warp.strengths[1]).toBe(first.warp.strengths[0])
+  expect(second.warp.strengths[0]).toBeGreaterThan(first.warp.strengths[0])
   for (const time of [600, 1000, 1500, 1800, 3000, 4700]) {
     const gesture = photoStudyGesture(study, regions, time, 5000)
     const source = warpSourcePoint(gesture.target, gesture.warp)
     expect(source.x).toBeCloseTo(gesture.grab.x, 9); expect(source.y).toBeCloseTo(gesture.grab.y, 9)
     expect(gesture).toEqual(photoStudyGesture(study, regions, time, 5000))
   }
-  expect(photoStudyGesture(study, regions, 1000, 5000, true)).toEqual(photoStudyGesture(study, regions, 4000, 5000, true))
+  const reduced = photoStudyGesture(study, regions, 1000, 5000, true)
+  expect(reduced.opacity).toBe(0)
+  expect(reduced.warp).toEqual(photoStudyGesture(study, regions, 4000, 5000, true).warp)
   expect(photoStudyGesture({ ...study, cursor: false }, regions, 1000, 5000).opacity).toBe(0)
 })
 
@@ -102,9 +105,16 @@ test('light targets follow registered anatomical anchors and the head field incl
 })
 
 test('editorial zones use detected anatomy, fail closed without anchors and select the explanatory category', () => {
-  expect(faceRegionContours(landmarks, 'overall')).toHaveLength(5)
-  expect(faceRegionContours(landmarks, 'cheeks').map(region => region.id)).toEqual(['left-cheek', 'right-cheek'])
-  expect(faceRegionContours({ ...landmarks, anchors: {} }, 'cheeks')).toHaveLength(0)
+  const detectedCheeks = { ...landmarks, contours: {
+    ...landmarks.contours,
+    leftCheekbone: [{ x: .25, y: .48 }, { x: .3, y: .48 }, { x: .35, y: .5 }],
+    leftSubmalar: [{ x: .25, y: .52 }, { x: .3, y: .53 }, { x: .35, y: .54 }],
+    rightCheekbone: [{ x: .75, y: .48 }, { x: .7, y: .48 }, { x: .65, y: .5 }],
+    rightSubmalar: [{ x: .75, y: .52 }, { x: .7, y: .53 }, { x: .65, y: .54 }],
+  } }
+  expect(faceRegionContours(detectedCheeks, 'overall')).toHaveLength(5)
+  expect(faceRegionContours(detectedCheeks, 'cheeks').map(region => region.id)).toEqual(['left-cheek', 'right-cheek'])
+  expect(faceRegionContours(landmarks, 'cheeks')).toHaveLength(0)
   expect(faceRegionContours({ ...landmarks, confidence: .2 }, 'overall')).toHaveLength(0)
 })
 

@@ -8,7 +8,7 @@ import { formatReportingTime } from '@/lib/admin/reporting-time'
 import { AnalyticsChart, chartColors, type ChartMetric } from './analytics-chart'
 import { AnalyticsSelect } from './analytics-select'
 import { EventReport } from './tracking-report'
-import { Bars, ComparisonBars, DataDetails, Notice, Panel, Stat, Table, count, label, percent } from './analytics-ui'
+import { Bars, ComparisonBars, DataDetails, Notice, Panel, Stat, Table, count, label, percent, analyticsChannelLabel } from './analytics-ui'
 
 const metrics: ChartMetric[] = [
   { key: 'started', label: 'Onboarding starts', color: chartColors.blue },
@@ -41,7 +41,20 @@ export function OnboardingDashboard({ data, days }: { data: AnalyticsDashboard; 
   const platform = data.filters.platform === 'all' ? 'iOS and Android' : data.filters.platform === 'ios' ? 'iOS' : data.filters.platform === 'android' ? 'Android' : 'Web'
   const detailHref = (page: string) => ({ pathname: `/admin/analytics/${page}`, query: { days: String(days), platform: data.filters.platform } })
 
+  const web = data.webJourney
   return <>
+    {web && <Panel title="Web onboarding by device" description="Current tracking · from analysis entry through capture and evaluation">
+      <Table rows={web.channels.map(row => ({ ...row, channel: analyticsChannelLabel(row.channel),
+        analysis_to_photo: percent(Number(row.photo_ready), Number(row.analysis_opened)),
+      }))} columns={['channel', 'analysis_opened', 'capture_opened', 'photo_ready', 'analysis_to_photo', 'analysis_paywalls', 'evaluations_completed', 'report_viewed']} />
+      <DataDetails><Table rows={web.steps.map(row => ({ ...row, channel: analyticsChannelLabel(row.channel) }))}
+        columns={['channel', 'step', 'viewed', 'completed', 'median_ms']} /></DataDetails>
+    </Panel>}
+    <Panel title="App onboarding by platform" description="Tracked starts and completions for each native app">
+      <Table rows={(data.onboardingChannels ?? []).map(row => ({ ...row, channel: analyticsChannelLabel(row.channel),
+        seven_day_completion: percent(Number(row.eligible_completed), Number(row.eligible)),
+      }))} columns={['channel', 'started', 'completed', 'eligible', 'seven_day_completion']} />
+    </Panel>
     <p className="mb-5 text-xs leading-5 text-zinc-500">{days === 1 ? 'Last 24 hours' : `Last ${days} days`} · {platform} · Pacific time · Mobile onboarding flows</p>
     {data.filters.platform === 'web' ? <Notice>These onboarding cohorts cover the mobile app. Select iOS, Android or All platforms to review mobile onboarding performance.</Notice> : null}
     <div className="admin-stats-grid">

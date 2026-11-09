@@ -20,9 +20,9 @@ export function metricTimelineVariant(category: string, label = '', variation = 
 
 
 export const metricTimelinePalette = { ink: '#171d23', muted: '#83909d', line: '#dce2e8', accent: '#32b1ed', warm: '#ed982b' } as const
-type GeometryOptions = { width: number; height: number; positions?: number[]; progress: number; variant: number; labels?: boolean; maximum?: number }
+type GeometryOptions = { width: number; height: number; positions?: number[]; progress: number; variant: number; labels?: boolean; maximum?: number; denseTicks?: boolean }
 
-export function metricTimelineGeometry({ width, height, positions = [], progress, variant, labels = false, maximum = 10 }: GeometryOptions) {
+export function metricTimelineGeometry({ width, height, positions = [], progress, variant, labels = false, maximum = 10, denseTicks = false }: GeometryOptions) {
   const amount = Math.max(0, Math.min(1, progress)), style = ((variant % metricTimelineStyles.length) + metricTimelineStyles.length) % metricTimelineStyles.length
   const sparse = style >= 6, treatment = style === 6 ? 0 : style === 7 ? 4 : style
   const curved = treatment === 1 || treatment === 4, segmented = treatment === 2, tracking = treatment === 3, balanced = treatment === 5
@@ -37,14 +37,17 @@ export function metricTimelineGeometry({ width, height, positions = [], progress
   }
   const ticks = []
   const step = sparse ? labels && maximum > 0 ? 100 / maximum : 10 : segmented ? 5 : curved ? 2.5 : 2
-  for (let tick = 0; tick <= 100; tick += .5) {
+  const intervals = denseTicks && maximum > 0 ? maximum * 4 : 200
+  for (let index = 0; index <= intervals; index++) {
+    const tick = denseTicks ? index / intervals * 100 : index * .5
     const value = tick / 10
     const calibrated = value / 10 * maximum, labeled = labels && Math.abs(calibrated / 2 - Math.round(calibrated / 2)) < .000001, major = tick % 10 === 0 || labeled
-    if (tick % step !== 0 && !labeled) continue
+    if (!denseTicks && tick % step !== 0 && !labeled) continue
     const point = place(value)
     if (point.x < 0 || point.x > width) continue
-    const length = sparse ? majorLength * (tick % 20 === 0 || labeled ? 1 : .45) : major ? majorLength : majorLength * (tick % 5 === 0 ? .55 : .32)
-    ticks.push({ ...point, value, length, weight: sparse ? 10 : segmented ? 9 : tracking ? 6 : 5, opacity: (.42 + .58 * smoothMotion(amount * 1.6 - tick / 100 * .35)) * (current === undefined || value <= current ? 1 : .58), label: labeled ? String(Math.round(calibrated * 10) / 10) : undefined })
+    const length = denseTicks ? majorLength * (labeled ? 1 : index % 4 === 0 ? .62 : .28)
+      : sparse ? majorLength * (tick % 20 === 0 || labeled ? 1 : .45) : major ? majorLength : majorLength * (tick % 5 === 0 ? .55 : .32)
+    ticks.push({ ...point, value, length, weight: denseTicks ? 5 : sparse ? 10 : segmented ? 9 : tracking ? 6 : 5, opacity: (.42 + .58 * smoothMotion(amount * 1.6 - tick / 100 * .35)) * (current === undefined || value <= current ? 1 : .58), label: labeled ? String(Math.round(calibrated * 10) / 10) : undefined })
   }
   const cursors = values.map(place)
   const bottom = Math.max(baseY, ...ticks.map(tick => tick.y + Math.cos(tick.rotation) * (balanced ? tick.length / 2 : tick.length)), ...cursors.map(point => point.y + Math.cos(point.rotation) * (balanced ? majorLength / 2 + 13 : majorLength + 13)))

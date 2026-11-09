@@ -1,5 +1,5 @@
 import type Stripe from 'stripe'
-import { recordStripeLifecycle, recordVerifiedStripeCheckout } from './stripe-lifecycle'
+import { recordStripeCheckoutStatus, recordStripeLifecycle, recordVerifiedStripeCheckout } from './stripe-lifecycle'
 import { getStripe } from './stripe'
 import { processStripeEvent } from './stripe-events'
 import { recordBackendRequest } from '@/lib/reliability/monitor'
@@ -24,14 +24,39 @@ async function repairRecordedCheckouts(stripe: Stripe) {
         and b.event_name in ('invoice_paid','subscription_renewed','one_time_purchase')
         and (b.account_id is null or b.product_id is null)))
     order by p.created_at desc limit 10`)
+  const unchecked = await db.execute(sql`
+    select a.session_id as id
+    from analytics_events a
+    where a.event_name='checkout_started' and a.platform='server' and a.environment='production'
+      and a.session_id like 'cs_live_%' and a.occurred_at > now()-interval '30 days'
+      and (a.source in ('web_analysis','homepage','web2app','scan_app_credits') or a.properties->>'flow_id' is not null)
+      and (not exists(select 1 from analytics_events paid where paid.event_name='checkout_completed'
+          and paid.platform='server' and paid.source='stripe_verified' and paid.session_id=a.session_id)
+        or not exists(select 1 from payment_entitlements p where p.stripe_checkout_session_id=a.session_id))
+      and not exists(select 1 from subscription_events b where b.provider='stripe' and b.environment='production'
+        and b.properties->>'checkout_session_id'=a.session_id
+        and (b.event_name in ('checkout_expired','checkout_completed_without_payment') or (b.event_name='checkout_status_observed'
+          and (b.properties->>'status'='expired' or b.properties->>'payment_status'='no_payment_required'
+            or b.occurred_at>now()-interval '30 minutes'))))
+    group by a.session_id order by min(a.occurred_at) limit 10
+  `)
   const deadline = Date.now()+20_000
   let repaired=0, deferred=0
-  for (const row of rows) {
+  const ids = new Set([...unchecked, ...rows].map(row => String(row.id)))
+  for (const id of ids) {
     if (Date.now()>=deadline) { deferred++; continue }
     try {
-      const session = await stripe.checkout.sessions.retrieve(String(row.id), { expand: ['invoice'] })
-      if (!session.livemode || session.status!=='complete') { deferred++; continue }
-      await recordVerifiedStripeCheckout(session)
+      const session = await stripe.checkout.sessions.retrieve(id, { expand: ['invoice'] }, { timeout: 4000, maxNetworkRetries: 0 })
+      if (!session.livemode) { deferred++; continue }
+      await recordStripeCheckoutStatus(session, new Date())
+      if (session.status !== 'complete' || session.payment_status !== 'paid') continue
+      if (unchecked.some(row => row.id === id)) {
+        // The webhook may never arrive. Use its existing idempotent fulfillment path.
+        await processStripeEvent({ id: `checkout-recovery:${id}`, type: 'checkout.session.completed',
+          created: session.invoice && typeof session.invoice === 'object'
+            ? session.invoice.status_transitions.paid_at || session.created : session.created,
+          livemode: true, data: { object: session } } as unknown as Stripe.Event)
+      } else await recordVerifiedStripeCheckout(session)
       const invoice = session.invoice && typeof session.invoice==='object' ? session.invoice : null
       if (invoice?.status==='paid') {
         const prior = await db.query.subscriptionEvents.findFirst({ where: and(eq(schema.subscriptionEvents.provider,'stripe'),

@@ -1,5 +1,4 @@
 import { V2ReportDetail } from '@/components/analysis/v2/report-detail'
-import { useEffect, useRef } from 'react'
 import { LockKeyhole, ArrowRight, RotateCcw } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { AnalysisReport } from '@/components/analysis/analysis-report'
@@ -20,13 +19,6 @@ export function LockedReportPreview({ imageSrc, landmarks, onUnlock, onRetake }:
   imageSrc: string; landmarks: FaceLandmarksPayload | null; onUnlock: () => void; onRetake?: () => void
 }) {
   const { t } = useTranslation()
-  const offered = useRef(false)
-  useEffect(() => {
-    if (onRetake || offered.current) return
-    const timer = setTimeout(() => { offered.current = true; onUnlock() }, 1200)
-    return () => clearTimeout(timer)
-  }, [onRetake, onUnlock])
-
   return <div className={styles.preview}>
     {onRetake && <button type="button" className="scan-retake" aria-label="Retake photo" onClick={onRetake}><RotateCcw size={20} /></button>}
     <AnalysisReport mobileScan={Boolean(onRetake)} portraitLayoutId={onRetake ? "analysis-portrait" : undefined} categories={categories} initialCategoryId="overall" imageSrc={imageSrc} landmarks={landmarks} score={null}
@@ -35,8 +27,8 @@ export function LockedReportPreview({ imageSrc, landmarks, onUnlock, onRetake }:
         {!onRetake && <div className={styles.lock}><LockKeyhole size={18} strokeWidth={1.5} /><p>{t('membership.privatePreview')}</p><span>{t('membership.previewNote')}</span></div>}
       </div>}>
       <div className={styles.previewDock}>
-      <button type="button" onClick={onUnlock} className={styles.unlock}>{t('membership.unlockReport')}<ArrowRight size={15} /></button>
-      <p className={styles.note}>{t('membership.previewNote')}</p>
+      <button type="button" onClick={onUnlock} className={styles.unlock}>{onRetake ? t('membership.unlockReport') : 'View plans'}<ArrowRight size={15} /></button>
+      <p className={styles.note}>{onRetake ? t('membership.previewNote') : 'Compare report and membership options before you pay.'}</p>
       </div>
     </AnalysisReport>
   </div>

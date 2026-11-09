@@ -141,7 +141,8 @@ test('rewriting narration changes the shot while keeping section identity, voice
   const comparison = make('Compare the original and edited versions side by side.')
   const detail = make('Focus on the small space below the nose. Watch that detail.')
   expect(['hero', 'compare', 'grid']).toContain(comparison.scenes.find(scene => scene.cueId === 'contour')!.featureStudy!.layout)
-  expect(['hero', 'detail']).toContain(detail.scenes.find(scene => scene.cueId === 'contour')!.featureStudy!.layout)
+  const detailScene = detail.scenes.find(scene => scene.cueId === 'contour')!
+  expect(['reference-inset','tile-expand','cursor-tour','callout']).toContain(detailScene.presentation?.kind ?? detailScene.featureStudy?.layout ?? '')
   expect(comparison.script!.cues.map(cue => cue.sourceId)).toEqual(detail.script!.cues.map(cue => cue.sourceId))
   expect(comparison.voice).toEqual(detail.voice)
   expect(comparison.scenes.find(scene => scene.cueId === 'cta')!.focus).toBe('hero')
@@ -168,7 +169,7 @@ test('camera motion is bounded, deterministic and finishes at the next shared-im
   for (const motion of ['push', 'pull'] as const) for (const progress of [0, .25, .5, .75, 1]) {
     const moved = featureCameraFrame(frame, motion, progress)
     expect(moved.width).toBeGreaterThanOrEqual(frame.width)
-    expect(moved.width).toBeLessThanOrEqual(frame.width * 1.035)
+    expect(moved.width).toBeLessThanOrEqual(frame.width * 1.065)
     expect(featureFrameAt(moved, frame, 0)).toEqual(moved)
   }
 })

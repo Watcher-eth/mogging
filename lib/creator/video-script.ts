@@ -1,3 +1,4 @@
+import { editorialPresentationSchema } from './editorial-scenes'
 import type { VideoScene } from './video-composition'
 import { z } from 'zod'
 import { deliverySchema } from './video-speech'
@@ -23,13 +24,14 @@ export function scriptVisualSeed(...parts: string[]) {
 
 export const portraitCropSchema = z.object({ x: z.number().min(0).max(1), y: z.number().min(0).max(1), width: z.number().positive().max(1), height: z.number().positive().max(1) }).strict()
 export const sectionVisualSchema = z.object({
+  presentation: editorialPresentationSchema.optional(),
   crop: portraitCropSchema.optional(),
   treatment: z.enum(['portrait', 'detail', 'measurement', 'profile', 'lighting', 'comparison', 'report', 'grid']),
   imageId: z.string().min(1).max(160).optional(), match: z.string().min(1).max(160).optional(),
   categoryId: z.string().min(1).max(80), focus: z.string().max(160).optional(),
   view: z.enum(['front', 'three-quarter', 'profile']).default('front'),
   reason: z.string().min(1).max(300),
-  styles: z.array(z.enum(['portrait-audit', 'report-led', 'measurement-explainer', 'hybrid-story', 'minimal-explainer', 'feature-study', 'documentary-studio'])).max(7).optional(),
+  styles: z.array(z.enum(['portrait-audit', 'report-led', 'measurement-explainer', 'hybrid-story', 'minimal-explainer', 'feature-study', 'documentary-studio', 'editorial-story', 'sculpture-study'])).max(7).optional(),
 }).strict()
 export const scriptSectionSchema = z.object({
   id: z.string().min(1).max(80), title: z.string().min(1).max(100),
@@ -88,4 +90,8 @@ export function sceneSpeechWords(scene: Pick<VideoScene, 'words' | 'narration' |
   if (scene.words?.length) return scene.words
   const words = scene.narration.split(/\s+/).filter(Boolean), step = Math.max(1, scene.durationMs - 300) / Math.max(1, words.length)
   return words.map((text, index) => ({ text, startMs: 150 + index * step, endMs: 150 + (index + 1) * step }))
+}
+
+export function sceneWordStart(scene: Pick<VideoScene, 'words' | 'narration' | 'durationMs'>, index: number) {
+  return sceneSpeechWords(scene)[index]?.startMs ?? scene.durationMs
 }

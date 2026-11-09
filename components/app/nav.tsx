@@ -19,7 +19,7 @@ const memberItems = [
   { href: '/progress', label: 'Progress', icon: ChartNoAxesCombined },
 ] as const
 
-export function AppNav({ activePath, member }: { activePath?: string; member?: boolean }) {
+export function AppNav({ activePath, member, newMemberFeatures }: { activePath?: string; member?: boolean; newMemberFeatures?: boolean }) {
   const router = useRouter()
   const { t } = useTranslation()
 
@@ -52,7 +52,7 @@ export function AppNav({ activePath, member }: { activePath?: string; member?: b
             )}
           >
             <item.icon className="size-[18px] md:hidden" aria-hidden="true" />
-            <span className="hidden md:block">{label}</span>
+            <span className="hidden items-center gap-1.5 md:flex">{label}{isMemberItem && newMemberFeatures && <NewMemberPill />}</span>
             {active ? (
               <LazyMotion features={loadNavMotion}><m.span
                 layoutId="app-nav-active-pill"
@@ -71,4 +71,8 @@ export function AppNav({ activePath, member }: { activePath?: string; member?: b
       })}
     </nav>
   )
+}
+
+export function NewMemberPill({ className }: { className?: string }) {
+  return <span className={cn('rounded-full bg-sky-100 px-1.5 py-0.5 text-[9px] font-semibold leading-none text-sky-800', className)}>New</span>
 }

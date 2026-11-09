@@ -13,7 +13,7 @@ export default function LoginDialogContent({
   open,
   children,
 }: {
-  audience?: 'app' | 'creator' | 'scan'
+  audience?: 'app' | 'creator' | 'scan' | 'analysis-checkout'
   callbackUrl: string
   onOpenChange: (open: boolean) => void
   open: boolean
@@ -104,7 +104,7 @@ export default function LoginDialogContent({
           <div className="pointer-events-none absolute inset-x-0 top-0 h-64 bg-[radial-gradient(ellipse_70%_48%_at_50%_10%,rgba(244,244,245,0.82)_0%,rgba(255,255,255,0)_72%)]" />
 
           <div className="relative">
-            {audience === 'scan' ? <img src="/scan/icon-192.png" alt="" className="mx-auto my-4 size-16 rounded-2xl" /> : <div className="relative mx-[-52px] h-[160px]">
+            {audience === 'scan' || audience === 'analysis-checkout' ? <img src="/scan/icon-192.png" alt="" className="mx-auto my-4 size-16 rounded-2xl" /> : <div className="relative mx-[-52px] h-[160px]">
               {modelImages.map((src, index) => {
                 const layout = bubbleLayout[index]
 
@@ -138,10 +138,10 @@ export default function LoginDialogContent({
 
             <DialogHeader className="relative mx-auto mt-2 max-w-[330px] text-left">
               <DialogTitle className="text-3xl font-semibold leading-[1.06] tracking-[-0.055em]">
-                {audience === 'scan' ? 'Sign in to Mogging' : <>Enter Mogging.<br />Rate. Battle. Rank.</>}
+                {audience === 'analysis-checkout' ? 'Save your purchase' : audience === 'scan' ? 'Sign in to Mogging' : <>Enter Mogging.<br />Rate. Battle. Rank.</>}
               </DialogTitle>
               <DialogDescription className="mt-3 max-w-[310px] text-left text-sm leading-5 text-zinc-500">
-                {audience === 'scan' ? 'Use the same account you used at checkout.' : 'Sign in first. If this is your first time, you will set your profile after auth.'}
+                {audience === 'analysis-checkout' ? 'Sign in to save your paid analysis to your account and open your report.' : audience === 'scan' ? 'Use the same account you used at checkout.' : 'Sign in first. If this is your first time, you will set your profile after auth.'}
               </DialogDescription>
             </DialogHeader>
           </div>

@@ -8,13 +8,15 @@ import { db, schema } from '@/lib/db'
 import { env } from '@/lib/env'
 import { fetchRevenueCatSubscriber, readRevenueCatPro, readRevenueCatScanPurchases, readRevenueCatScanSubscription, type RevenueCatSubscriber } from '@/lib/payments/revenuecat'
 import { linkRevenueCatIdentity } from '@/lib/payments/billing-ledger'
-import { addCalendarMonths, scanPeriod } from './scan-periods'
+import { addCalendarMonths, monthlyScanPeriod, scanPeriod, starterScanPeriod, validDate } from './scan-periods'
 import { getStripe } from './stripe'
+import { isWebAnalysisProduct, webAnalysisPlans, webAnalysisProductForLookupKey, webAnalysisProducts } from './web-analysis-plans'
 import type { PaymentProduct } from '@/lib/db/schema'
 
 export const paymentProductSchemaValues = [
   'evaluation',
   'evaluation_pack_3',
+  ...webAnalysisProducts,
   'mobile_subscription_weekly',
   'mobile_subscription_monthly',
   'mobile_subscription_yearly',
@@ -40,6 +42,7 @@ export type EntitlementSummary = {
   }
   subscription: {
     active: boolean
+    tier?: 'basic' | 'pro'
     status: string | null
     currentPeriodEnd: string | null
   }
@@ -52,6 +55,13 @@ type EntitlementOwner = {
 }
 
 export function getProductConfig(product: PaymentProduct): ProductConfig {
+  if (isWebAnalysisProduct(product)) {
+    const plan = webAnalysisPlans[product]
+    return {
+      mode: 'subscription', name: plan.name, interval: plan.interval, unitAmount: plan.unitAmount, credits: 0,
+      description: plan.tier === 'pro' ? 'Eight scans per month, Protocol, and progress tracking.' : 'Two scans per month.',
+    }
+  }
   switch (product) {
     case 'evaluation':
       return {
@@ -177,7 +187,10 @@ export async function confirmCheckoutForAccount(sessionId: string, accountId: st
     return existing
   }
   const owner = session.metadata?.accountId || session.metadata?.userId
-  if (owner !== accountId || (session.client_reference_id && session.client_reference_id !== accountId)) {
+  const claimedGuest = existing && owner && owner !== accountId
+    ? await db.query.mobileGuests.findFirst({ where: and(eq(schema.mobileGuests.userId, owner), eq(schema.mobileGuests.claimedByUserId, accountId)), columns: { userId: true } })
+    : null
+  if ((owner !== accountId && !claimedGuest) || (session.client_reference_id && session.client_reference_id !== owner)) {
     throw new ApiError(403, 'Sign in with the account used at checkout')
   }
   if (session.status !== 'complete' || !['paid', 'no_payment_required'].includes(session.payment_status)) {
@@ -212,7 +225,7 @@ export async function grantEntitlementFromCheckoutSession({
   const subscription = typeof session.subscription === 'object' && session.subscription
     ? session.subscription
     : null
-  const subscriptionStatus = subscription?.status ?? (isProAccessProduct(product) ? 'active' : null)
+  const subscriptionStatus = subscription?.status ?? (isSubscriptionAccessProduct(product) ? 'active' : null)
   const currentPeriodEnd = readSubscriptionPeriodEnd(subscription)
   const paymentIntent = typeof session.payment_intent === 'string'
     ? await getStripe().paymentIntents.retrieve(session.payment_intent, { expand: ['latest_charge'] })
@@ -247,6 +260,7 @@ export async function grantEntitlementFromCheckoutSession({
       activationCodeRedeemedAt: null,
       source: session.metadata?.source ?? null,
       metadata: {
+        ...(isWebAnalysisProduct(product) && subscription?.start_date ? { scanAllowanceAnchor: new Date(subscription.start_date * 1000).toISOString() } : {}),
         checkoutMode: session.mode,
         flowId: session.metadata?.flowId,
         attemptId: session.metadata?.attemptId,
@@ -302,10 +316,12 @@ export async function redeemPaymentActivationCode({
 }
 
 export async function updateSubscriptionEntitlement(subscription: Stripe.Subscription) {
-  const interval = subscription.items?.data[0]?.price.recurring?.interval
-  const product = interval && ['week', 'month', 'year'].includes(interval)
+  const price = subscription.items?.data[0]?.price
+  const webProduct = webAnalysisProductForLookupKey(price?.lookup_key)
+  const interval = price?.recurring?.interval
+  const product = webProduct ?? (isWebAnalysisProduct(subscription.metadata?.product) ? subscription.metadata.product : interval && ['week', 'month', 'year'].includes(interval)
     ? ({ week: 'mobile_subscription_weekly', month: 'mobile_subscription_monthly', year: 'mobile_subscription_yearly' } as const)[interval as 'week' | 'month' | 'year']
-    : undefined
+    : undefined)
   const periodStart = readSubscriptionPeriodStart(subscription)
   await db
     .update(schema.paymentEntitlements)
@@ -349,8 +365,8 @@ type EntitlementRow = typeof schema.paymentEntitlements.$inferSelect
 export type PaymentTransaction = Parameters<Parameters<typeof db.transaction>[0]>[0]
 const reservationTimeoutMs = 5 * 60 * 1000
 
-function activePro(row: EntitlementRow, now: Date) {
-  if (!isProAccessProduct(row.product)) return false
+function activeSubscription(row: EntitlementRow, now: Date) {
+  if (!isSubscriptionAccessProduct(row.product)) return false
   if (!row.subscriptionStatus || !['active', 'trialing', 'complete'].includes(row.subscriptionStatus)) return false
   return row.product === 'mobile_lifetime' || Boolean(row.currentPeriodEnd && row.currentPeriodEnd > now)
 }
@@ -386,10 +402,9 @@ async function loadScanAccess(owner: EntitlementOwner, verifiedSubscriber?: Reve
   }))
   if (stripeIds.length) rows = await db.query.paymentEntitlements.findMany({ where: getOwnerWhere(owner) })
   const now = new Date()
-  const active = rows.filter(row => activePro(row, now))
+  const active = rows.filter(row => activeSubscription(row, now))
   const allowanceKeys: string[] = []
-  const grant = async (key: string, plan: 'weekly' | 'monthly' | 'yearly', start: Date, end: Date, sandbox = false) => {
-    const period = scanPeriod(plan, start, end, now)
+  const grant = async (key: string, period: ReturnType<typeof scanPeriod>, sandbox = false) => {
     if (!period) return
     const periodKey = `${key}:scans:${period.start.toISOString()}`
     const existing = await db.query.paymentEntitlements.findFirst({ where: eq(schema.paymentEntitlements.stripeCheckoutSessionId, periodKey), columns: { id: true } })
@@ -416,7 +431,23 @@ async function loadScanAccess(owner: EntitlementOwner, verifiedSubscriber?: Reve
   for (const row of active) {
     if (row.product === 'mobile_lifetime') continue
     if (!row.currentPeriodStart || !row.currentPeriodEnd) continue
-    await grant(row.stripeSubscriptionId || row.id, row.product.replace('mobile_subscription_', '') as 'weekly' | 'monthly' | 'yearly', row.currentPeriodStart, row.currentPeriodEnd)
+    const key = row.stripeSubscriptionId || row.id
+    if (isWebAnalysisProduct(row.product)) {
+      const plan = webAnalysisPlans[row.product]
+      const anchor = validDate(typeof row.metadata.scanAllowanceAnchor === 'string' ? row.metadata.scanAllowanceAnchor : null) ?? row.createdAt
+      const month = monthlyScanPeriod(anchor, now, plan.scans)
+      if (plan.tier === 'pro') {
+        await grant(key, month)
+      } else {
+        const previousKey = `${key}:scans:${month.start.toISOString()}`
+        // Honor a Starter subscriber's already-issued monthly allowance until it expires.
+        const existing = rows.find(item => item.stripeCheckoutSessionId === previousKey)
+        if (existing) allowanceKeys.push(previousKey)
+        else await grant(`${key}:starter`, starterScanPeriod(anchor, now))
+      }
+    } else {
+      await grant(key, scanPeriod(row.product.replace('mobile_subscription_', '') as 'weekly' | 'monthly' | 'yearly', row.currentPeriodStart, row.currentPeriodEnd, now))
+    }
   }
   for (const verified of subscribers) {
     const rc = readRevenueCatScanSubscription(verified)
@@ -429,24 +460,27 @@ async function loadScanAccess(owner: EntitlementOwner, verifiedSubscriber?: Reve
       currentPeriodStart: rc.start, currentPeriodEnd: rc.end,
     }).onConflictDoNothing({ target: schema.paymentEntitlements.stripeCheckoutSessionId })
     const ownerRow = await db.query.paymentEntitlements.findFirst({ where: eq(schema.paymentEntitlements.stripeCheckoutSessionId, rc.key) })
-    if (ownerRow?.userId === owner.userId) await grant(rc.key, rc.plan, rc.start, rc.end, rc.sandbox)
+    if (ownerRow?.userId === owner.userId) await grant(rc.key, scanPeriod(rc.plan, rc.start, rc.end, now), rc.sandbox)
   }
   rows = await db.query.paymentEntitlements.findMany({ where: getOwnerWhere(owner) })
   const spendable = rows.filter(row =>
-    ['evaluation', 'evaluation_pack_3'].includes(row.product) && row.creditBalance > 0
+    ['evaluation', 'evaluation_pack_3'].includes(row.product) && row.creditBalance > 0 && row.source !== 'web_basic_preview'
     && !['refunded', 'disputed'].includes(row.subscriptionStatus || '')
     && (!row.creditExpiresAt || row.creditExpiresAt > now)
     && (row.source !== 'subscription_allowance' || allowanceKeys.includes(row.stripeCheckoutSessionId))
   )
   const latest = active.sort((a, b) => (b.currentPeriodEnd?.getTime() || 0) - (a.currentPeriodEnd?.getTime() || 0))[0]
   const pro = readRevenueCatPro(subscriber)
+  const proActive = active.some(row => isProAccessProduct(row.product)) || Boolean(pro?.active)
+  const webTier = active.some(row => isWebAnalysisProduct(row.product)) ? (proActive ? 'pro' : 'basic') : undefined
   const lifetime = active.find(row => row.product === 'mobile_lifetime' || ['admin_invite_code', 'admin_referral_code'].includes(row.source || ''))
   const summary: EntitlementSummary = {
     mobileInstallId: owner.mobileInstallId || `account_${owner.userId}`,
     evaluationCredits: lifetime ? Number.MAX_SAFE_INTEGER : spendable.reduce((sum, row) => sum + row.creditBalance, 0),
     extras: { potentialImages: rows.filter(row => row.product === 'extra_potential_image' && !['refunded', 'disputed'].includes(row.subscriptionStatus || '')).reduce((sum, row) => sum + readPotentialImageExtras(row.metadata), 0) },
     subscription: {
-      active: Boolean(latest || pro?.active),
+      active: proActive,
+      ...(webTier ? { tier: webTier } : {}),
       status: latest?.subscriptionStatus ?? pro?.status ?? null,
       currentPeriodEnd: latest?.currentPeriodEnd?.toISOString() ?? pro?.currentPeriodEnd?.toISOString() ?? null,
     },
@@ -483,7 +517,7 @@ export async function reserveEvaluation(ownerInput: EntitlementOwner, requestId:
       // Recheck after locking: access may have expired or been revoked since reconciliation.
       const [current] = await tx.select().from(schema.paymentEntitlements)
         .where(and(eq(schema.paymentEntitlements.id, entitlementId), getOwnerWhere(owner))).for('update')
-      if (!current || !activePro(current, new Date())) throw new ApiError(402, 'This access has expired. Buy scans to continue.')
+      if (!current || !activeSubscription(current, new Date())) throw new ApiError(402, 'This access has expired. Buy scans to continue.')
     }
     if (!entitlementId) {
       const ids = access.spendable.map(row => row.id)
@@ -530,6 +564,7 @@ async function returnReservedCredit(tx: PaymentTransaction, entitlementId: strin
     .set({ creditBalance: sql`${schema.paymentEntitlements.creditBalance} + 1`, updatedAt: new Date() })
     .where(and(eq(schema.paymentEntitlements.id, entitlementId),
       inArray(schema.paymentEntitlements.product, ['evaluation', 'evaluation_pack_3']),
+      sql`coalesce(${schema.paymentEntitlements.source}, '') <> 'web_basic_preview'`,
       sql`coalesce(${schema.paymentEntitlements.subscriptionStatus}, '') not in ('refunded', 'disputed')`))
 }
 
@@ -641,14 +676,18 @@ export function isRedeemableEntitlement(row: typeof schema.paymentEntitlements.$
   if (['refunded', 'disputed'].includes(row.subscriptionStatus || '')) return false
   if (row.creditBalance > 0 && (!row.creditExpiresAt || row.creditExpiresAt.getTime() > Date.now())) return true
   if (row.product === 'extra_potential_image' && readPotentialImageExtras(row.metadata) > 0) return true
-  if (!isProAccessProduct(row.product)) return false
+  if (!isSubscriptionAccessProduct(row.product)) return false
   if (!row.subscriptionStatus || !['active', 'trialing', 'complete'].includes(row.subscriptionStatus)) return false
   if (row.product === 'mobile_lifetime') return true
   return Boolean(row.currentPeriodEnd && row.currentPeriodEnd.getTime() > Date.now())
 }
 
 function isProAccessProduct(product: PaymentProduct) {
-  return product.startsWith('mobile_subscription') || product === 'mobile_lifetime'
+  return product.startsWith('mobile_subscription') || product === 'mobile_lifetime' || product === 'web_pro_monthly'
+}
+
+function isSubscriptionAccessProduct(product: PaymentProduct) {
+  return isProAccessProduct(product) || isWebAnalysisProduct(product)
 }
 
 // Called only with a server-fetched subscriber, never client-supplied receipts or balances.

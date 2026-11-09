@@ -1,7 +1,8 @@
-import { useRef, useSyncExternalStore } from 'react'
+import { AnimatedGroup } from '@/components/core/animated-group'
+import { useEffect, useRef, useState, useSyncExternalStore } from 'react'
 import * as DialogPrimitive from '@radix-ui/react-dialog'
 import { AnimatePresence, motion } from 'motion/react'
-import { Check, Info, X } from 'lucide-react'
+import { Check, ChevronLeft, ChevronRight, Info, X } from 'lucide-react'
 import { creatorContentStyles, type CreatorContentStyleId } from '@/lib/creator/creator-catalog'
 import { ExampleCarousel } from './campaign-examples'
 import styles from './content-style-picker.module.css'
@@ -17,19 +18,40 @@ const ease = [0.22, 1, 0.36, 1] as const
 const exampleLabels = {
   'mogging-editorial': ['Feature breakdown · lighting and measurements', 'App walkthrough · scores and report detail'],
   qoves: ['A controlled comparison · V', 'A hidden-expression reveal · Tom Holland'],
-  fern: ['Dimensional feature mapping', 'Portrait-led opening · Kareem Shami'],
+  cephra: ['A sculptural change · continuous anatomy'],
+  fern: ['Evidence reel · Clavicular', '3D anatomy and landmark tracing · V'],
 }
 const asset = (id: CreatorContentStyleId, index: number, extension: string) => `/creator/content-styles/${id}-${index}.${extension}`
 
-export function ContentStylePicker({ value, disabled, onChange, previewId, onPreviewChange: setPreviewId }: { value: CreatorContentStyleId; disabled: boolean; onChange: (id: CreatorContentStyleId) => void; previewId: CreatorContentStyleId|null; onPreviewChange: (id:CreatorContentStyleId|null)=>void }) {
+export function ContentStylePicker({ value, disabled, onChange, previewId, onPreviewChange: setPreviewId }: { value: CreatorContentStyleId|undefined; disabled: boolean; onChange: (id: CreatorContentStyleId) => void; previewId: CreatorContentStyleId|null; onPreviewChange: (id:CreatorContentStyleId|null)=>void }) {
   const reduced=useSyncExternalStore(subscribeToMotion,reducedMotionSnapshot,serverMotionSnapshot)
+  const viewport=useRef<HTMLDivElement>(null)
+  const [active,setActive]=useState(0)
+  function updateActive(){
+    const element=viewport.current;if(!element)return
+    const center=element.getBoundingClientRect().left+element.clientWidth/2
+    const cards=Array.from(element.querySelectorAll<HTMLElement>('[data-style]'))
+    const distances=cards.map(card=>Math.abs(card.getBoundingClientRect().left+card.offsetWidth/2-center))
+    setActive(distances.indexOf(Math.min(...distances)))
+  }
+  function show(index:number){
+    const element=viewport.current,card=element?.querySelectorAll<HTMLElement>('[data-style]')[index]
+    if(!element || !card)return
+    element.scrollTo({left:element.scrollLeft+card.getBoundingClientRect().left-element.getBoundingClientRect().left-(element.clientWidth-card.offsetWidth)/2,behavior:reduced?'instant':'smooth'})
+  }
+  useEffect(()=>{
+    const mobile=window.matchMedia('(max-width:640px)').matches
+    if(!mobile || reduced)return
+    const videos=viewport.current?.querySelectorAll('video')
+    videos?.forEach((video,index)=>{if(index===active)void video.play().catch(()=>{});else video.pause()})
+    return()=>videos?.forEach(video=>video.pause())
+  },[active,reduced])
   const trigger = useRef<HTMLButtonElement | null>(null)
   const preview = creatorContentStyles.find(style => style.id === previewId)
   const transition = { duration: reduced ? 0 : .32, ease }
   return <div className={styles.picker}>
-    <div className={styles.heading}><span>01 · Content style</span><h2>How do you want to tell it?</h2></div>
-    <div className={styles.cards} role="group" aria-label="Content style">
-      {creatorContentStyles.map(style => <div key={style.id} className={styles.card} data-selected={style.id === value} data-style={style.id}>
+    <div ref={viewport} className={styles.viewport} onScroll={updateActive} role="region" aria-roledescription="carousel" aria-label="Content style"><AnimatedGroup className={styles.cards} preset="swing">
+      {creatorContentStyles.map((style,index) => <div key={style.id} className={styles.card} data-selected={style.id === value} data-style={style.id} data-active={index===active}>
         <button type="button" disabled={disabled} className={styles.choice} aria-pressed={style.id === value} onClick={() => onChange(style.id)}
           onMouseEnter={event => { if (!reduced) void event.currentTarget.querySelector('video')?.play().catch(() => {}) }}
           onMouseLeave={event => event.currentTarget.querySelector('video')?.pause()}>
@@ -38,6 +60,11 @@ export function ContentStylePicker({ value, disabled, onChange, previewId, onPre
         </button>
         <button type="button" className={styles.info} aria-label={`Preview ${style.name} examples`} onClick={event => { trigger.current = event.currentTarget; setPreviewId(style.id) }}><Info size={17} strokeWidth={1.6} /></button>
       </div>)}
+    </AnimatedGroup></div>
+    <div className={styles.carouselControls}>
+      <button type="button" aria-label="Previous content style" disabled={active===0} onClick={()=>show(active-1)}><ChevronLeft size={18}/></button>
+      <div className={styles.dots}>{creatorContentStyles.map((style,index)=><button type="button" key={style.id} aria-label={`Show ${style.name}`} aria-current={index===active?'true':undefined} onClick={()=>show(index)}><span/></button>)}</div>
+      <button type="button" aria-label="Next content style" disabled={active===creatorContentStyles.length-1} onClick={()=>show(active+1)}><ChevronRight size={18}/></button>
     </div>
     <DialogPrimitive.Root open={previewId !== null} onOpenChange={open => { if (!open) setPreviewId(null) }}>
       <AnimatePresence>

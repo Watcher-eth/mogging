@@ -20,7 +20,7 @@ export function reportPortraitCrop(image: {width:number;height:number}, face?: F
   let width=Math.max(faceHeight*2.6*aspect,(right-left)*image.width*1.7),height=width/aspect
   const fit=Math.min(1,image.width/width,image.height/height);width*=fit;height*=fit
   const x=Math.max(0,Math.min(image.width-width,(left+right)/2*image.width-width/2))
-  const y=Math.max(0,Math.min(image.height-height,forehead.y*image.height-faceHeight*(image.height > image.width ? .85 : .45)))
+  const y=Math.max(0,Math.min(image.height-height,forehead.y*image.height-faceHeight*.45))
   return {x:x/image.width,y:y/image.height,width:width/image.width,height:height/image.height}
 }
 export function reportPortraitProjection(image:{width:number;height:number},viewport:{width:number;height:number},crop?:ReportPortraitCrop){
@@ -30,7 +30,7 @@ export function reportPortraitProjection(image:{width:number;height:number},view
 }
 const blurredPortraits = new WeakMap<HTMLImageElement, Map<string,HTMLCanvasElement>>()
 export const reportPortraitFade = {
-  bottom: .28,
+  bottom: .44,
   stops: Array.from({ length: 33 }, (_, index) => [index / 32, smoothMotion(Math.min(1, index / 32 / .94))] as const),
   layers: [{ start: 0, blur: 2 }, { start: .2, blur: 4 }, { start: .4, blur: 8 }, { start: .6, blur: 13.3 }],
 } as const
@@ -50,7 +50,7 @@ export function drawReportPortrait(ctx: CanvasRenderingContext2D, image: HTMLIma
     const source = create()
     portrait = create()
     const original = source.getContext('2d')!, composite = portrait.getContext('2d')!
-    original.drawImage(image, placement.offsetX * 3, placement.offsetY * 3, placement.renderedWidth * 3, placement.renderedHeight * 3)
+    original.drawImage(image,placement.offsetX*3,placement.offsetY*3,placement.renderedWidth*3,placement.renderedHeight*3)
     composite.drawImage(source, 0, 0)
     drawPortraitProgressiveBlur(composite, source.width, source.height, reportPortraitFade.bottom)
     if(versions.size>=4)versions.clear()

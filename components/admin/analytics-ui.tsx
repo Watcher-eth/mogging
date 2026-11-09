@@ -25,6 +25,8 @@ const labels: Record<string, string> = {
   events: 'Events', accounts: 'Accounts', actors: 'Devices / browsers', unlinked_events: 'Unlinked billing events', flows: 'Flows', attempts: 'Attempts', unique_ids: 'Distinct IDs', clock_skew_events: 'Clock skew events', provider_type: 'Provider event type', first_opens: 'First app opens', purchase_completions: 'Purchase completions',
   purchase_actors: 'Purchasing devices', median_ms: 'Median time', p90_ms: '90th percentile time', p95_ms: '95th percentile time',
   median_evaluation_ms: 'Median scan time', evaluation_failures: 'Scan failures', evaluations_started: 'Scans started',
+  analysis_checkouts: 'Analysis checkouts', paywall_to_checkout: 'Paywall → checkout', first_payment_price: 'First-payment price',
+  creator_discount: 'Creator discount', default_journeys: 'Selected by default', discount_applied: 'Stripe discount applied',
   continuation: 'Continued %', drop_off: 'Drop-off %', affected_devices: 'Affected devices', missing_amount_events: 'Unknown amounts',
 }
 export function Table({ rows, columns }: { rows: MetricRow[]; columns: string[] }) {
@@ -39,4 +41,15 @@ export function ComparisonBars({ rows, series }: { rows: Array<{ label: string; 
 }
 export function Bars({ rows, format = count, maximum, presentation, labelWidth, animated, color = '#00A8EF' }: { rows: Array<{ label: string; value: number | null; detail?: string }>; format?: (value: number) => string; maximum?: number; presentation?: 'standard' | 'inline'; labelWidth?: number; animated?: boolean; color?: string }) {
   return <CategoryChart rows={rows.map(({ value, ...row }) => ({ ...row, values: [value] }))} series={[{ label: 'Observed', color }]} format={format} maximum={maximum} presentation={presentation} labelWidth={labelWidth} animated={animated} />
+}
+
+export function analyticsChannelLabel(value: unknown) {
+  switch (value) {
+    case 'ios': return 'iOS app'
+    case 'android': return 'Android app'
+    case 'mobile_web': return 'Mobile web'
+    case 'desktop_web': return 'Desktop web'
+    case 'unknown_web': return 'Web · device unknown'
+    default: return 'Unclassified'
+  }
 }

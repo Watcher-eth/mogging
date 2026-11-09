@@ -70,6 +70,15 @@ test('every mobile report category draws its complete feature grid and growth se
     expect(texts).toContain(category.id === 'overall' ? 'Your priorities' : 'Action Plan')
     for (const feature of category.features) expect(texts.join(' ').replace(/\s+/g, ' ')).toContain(feature.label)
     expect(saves).toBe(0)
+    if(category.id==='overall'){
+      texts.length=0
+      drawSlideFrame(ctx,{...slide,currentScore:'7',potentialScore:'6',potentialScale:8,potentialCurrentScore:6},null,null,mockReportFormat.width,mockReportFormat.height,4000,null)
+      expect(texts).toContain('POTENTIAL PSL')
+      expect(texts).toContain('/ 8')
+      expect(texts).toContain('/8')
+      expect(texts).toContain('Now 6.0')
+      expect(texts).not.toContain('Now 7.0')
+    }
     const regions = mockReportRegions(ctx, category), maximum = Math.max(...regions.map(region => region.y + region.height)) - 712
     for (const time of [0, 5200, 11000, 17000, 22000, 26400]) {
       const tour = sampleReportTour(time, regions, maximum)

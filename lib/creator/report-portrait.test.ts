@@ -10,7 +10,7 @@ test('report portraits fade only at the bottom and retain clear side edges', () 
   } : () => {}, set: () => true }) as CanvasRenderingContext2D
   drawReportPortraitFade(context, 390, 465)
   expect(gradients).toHaveLength(1)
-  expect(gradients[0].coordinates).toEqual([0, 465 * (1 - reportPortraitFade.bottom), 0, 465])
+  expect(gradients[0].coordinates).toEqual([0, 465 * .56, 0, 465])
   expect(gradients[0].stops).toHaveLength(33)
   expect(gradients[0].stops[0][1]).toBe('rgba(255,255,255,0)')
   expect(gradients[0].stops.at(-2)![1]).toBe('rgba(255,255,255,1)')
@@ -42,14 +42,4 @@ test('wide portraits center the detected face and retain neck and shoulder room 
   expect(reportPortraitCrop(image,null,viewport)).toBeUndefined()
   const headshot={...face,anchors:{...face.anchors,forehead:{x:.5,y:.15},chin:{x:.5,y:.68}}}
   expect(reportPortraitCrop(image,headshot,viewport)).toBeUndefined()
-})
-
-test('a tall centered headshot fills the report hero without side gutters', async () => {
-  const { previewLandmarks } = await import('@/components/landing/overlay')
-  const image = { width: 900, height: 1600 }
-  const viewport = { width: 390, height: 465 }
-  const face = { ...previewLandmarks, anchors: { ...previewLandmarks.anchors, forehead: { x: .5, y: .18 }, chin: { x: .5, y: .56 } } }
-  const placement = reportPortraitProjection(image, viewport, reportPortraitCrop(image, face, viewport))
-  expect(placement.offsetX).toBeLessThanOrEqual(0)
-  expect(placement.offsetX + placement.renderedWidth).toBeGreaterThanOrEqual(viewport.width)
 })

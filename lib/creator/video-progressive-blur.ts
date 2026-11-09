@@ -1,8 +1,8 @@
-import { videoSize, smoothMotion, reportCaptionFrame } from './video-layout'
+import { videoSize, smoothMotion } from './video-layout'
 
 export const captionBackdrop = { height: 360, width: 432, layers: 5, blur: 24 } as const
 export const brandBackdrop = { ...captionBackdrop, height: 190, layers: 4, blur: 18 } as const
-export const reportBackdrop = { ...captionBackdrop, height: 620, layers: 6, blur: 44 } as const
+export const reportBackdrop = { ...captionBackdrop, height: 558, layers: 6, blur: 44 } as const
 export const metricBackdrop = { ...captionBackdrop, height: 780, width: 540, layers: 6, blur: 32 } as const
 type BlurSurfaces = { source: HTMLCanvasElement; layer: HTMLCanvasElement; mask: HTMLCanvasElement }
 const surfaces = new WeakMap<CanvasRenderingContext2D, Map<string, BlurSurfaces>>()
@@ -25,13 +25,7 @@ export function drawCaptionBackdrop(ctx: CanvasRenderingContext2D, options: { ed
     cached = { source: create(), layer: create(), mask: create() }
     const maskCtx = cached.mask.getContext('2d')!
     const gradient = maskCtx.createLinearGradient(0, 0, 0, cached.mask.height)
-    if (role === 'report' && edge === 'bottom') {
-      const clearCaption = Math.max(0, Math.min(.95, (videoSize.height - reportCaptionFrame.y + 24) / config.height))
-      gradient.addColorStop(0, '#fff')
-      gradient.addColorStop(clearCaption, '#fff')
-      gradient.addColorStop(clearCaption + (1 - clearCaption) * .55, '#ffffff70')
-      gradient.addColorStop(1, '#fff0')
-    } else if (role === 'metric' || role === 'report') {
+    if (role === 'metric' || role === 'report') {
       for (let step = 0; step <= 16; step++) {
         const position = step / 16
         gradient.addColorStop(position, `rgba(255,255,255,${1 - smoothMotion(Math.max(0, (position - (role === 'report' ? .9 : .58)) / (role === 'report' ? .1 : .42)))})`)

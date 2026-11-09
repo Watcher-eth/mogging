@@ -1,3 +1,4 @@
+import { createRenderEstimator } from './export-progress'
 import { drawGlamourGuidance, prepareGlamourImage } from './glamour-guidance'
 import { drawPortraitCover, loadShareFont, prepareCoverArtwork } from './legacy-posters'
 import { preciseFaceOverlay } from './face-treatment'
@@ -50,11 +51,12 @@ async function encodeMp4(args: RenderArgs, prepared: PreparedCanvas, onProgress?
   return encodeCanvasMp4(prepared.canvas, time => drawSlideFrame(prepared.ctx, args.slide, prepared.image, prepared.overlay, args.width, args.height, time, prepared.brand), slideDuration(args.slide), onProgress)
 }
 
-export async function encodeCanvasMp4(canvas: HTMLCanvasElement, drawFrame: (timeMs: number) => void | Promise<void>, durationMs: number, onProgress?: (progress: number) => void, signal?: AbortSignal, audio?: AudioBuffer, bitrate = 8_000_000) {
+export async function encodeCanvasMp4(canvas: HTMLCanvasElement, drawFrame: (timeMs: number) => void | Promise<void>, durationMs: number, onProgress?: (progress: number) => void, signal?: AbortSignal, audio?: AudioBuffer, bitrate = 8_000_000, onRemaining?: (seconds: number | null) => void) {
   signal?.throwIfAborted()
   if (typeof VideoEncoder === 'undefined' || typeof VideoFrame === 'undefined') throw new Error('Video export is not supported in this browser. Open this page in an up-to-date Safari or Chrome browser and try again.')
   const frameRate = 30
   const frameCount = Math.ceil(durationMs / 1000 * frameRate)
+  onRemaining?.(null)
   let supportedConfig: VideoEncoderConfig | null = null
   // Retina iPhone exports exceed Level 4’s frame-size limit.
   const codecs = canvas.width * canvas.height > 2_097_152 ? ['avc1.420033', 'avc1.4d0033'] : ['avc1.420028', 'avc1.4d002a']
@@ -83,11 +85,17 @@ export async function encodeCanvasMp4(canvas: HTMLCanvasElement, drawFrame: (tim
     audioEncoder?.addEventListener('dequeue', () => wakeAudio?.())
     if (audioEncoder && audioConfig) audioEncoder.configure(audioConfig)
     const frameDuration = 1_000_000 / frameRate
+    const estimate = createRenderEstimator(frameCount)
+    let lastEstimateAt = 0
     for (let index = 0; index < frameCount; index += 1) {
       signal?.throwIfAborted()
       if (encoderError) throw encoderError
       await drawFrame(index / frameRate * 1000)
-      const frame = new VideoFrame(canvas, { timestamp: Math.round(index * frameDuration), duration: Math.round(frameDuration) })
+      signal?.throwIfAborted()
+      // Resolve WebGL/Canvas work before handing the frame to a separate codec.
+      // GPU-backed canvas snapshots can deadlock macOS encoders at a full queue.
+      const pixels=canvas.getContext('2d')!.getImageData(0,0,canvas.width,canvas.height)
+      const frame = new VideoFrame(pixels.data, {format:'RGBA',codedWidth:canvas.width,codedHeight:canvas.height,timestamp: Math.round(index * frameDuration), duration: Math.round(frameDuration) })
       try { encoder.encode(frame, { keyFrame: index % (frameRate * 2) === 0 }) } finally { frame.close() }
       if (audio && audioEncoder) {
         const end = Math.min(audio.length, Math.ceil((index + 1) / frameRate * audio.sampleRate))
@@ -105,7 +113,10 @@ export async function encodeCanvasMp4(canvas: HTMLCanvasElement, drawFrame: (tim
       }
       // Keep queued full-resolution frames bounded on phones and slower encoders.
       if (encoder.encodeQueueSize >= 8) await encoder.flush()
-      if (index % 8 === 0) { onProgress?.(index / frameCount); await new Promise<void>((resolve) => window.setTimeout(resolve, 0)) }
+      const remaining = estimate(index + 1), at = performance.now()
+      if (index===frameCount-1 || at-lastEstimateAt>=500) { onRemaining?.(remaining); lastEstimateAt=at }
+      onProgress?.((index + 1) / frameCount)
+      if (index % 8 === 0) await new Promise<void>((resolve) => window.setTimeout(resolve, 0))
     }
     await encoder.flush()
     await audioEncoder?.flush()

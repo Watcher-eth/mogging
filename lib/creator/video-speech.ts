@@ -86,5 +86,13 @@ export function geminiWordTimes(value:unknown,durationMs:number,text:string) {
   // Gemini offsets are rounded. Trim a small final overrun to the actual PCM end;
   // reject materially wrong intervals rather than inventing caption timing.
   if(aligned.some(word=>word.endMs>durationMs+200))throw new Error('Recognition timing extends outside the audio; review the recording.')
-  return googleWordTimes({results:[{alternatives:[{words:aligned.map(word=>({word:word.text,startTime:`${word.startMs/1000}s`,endTime:`${Math.min(word.endMs,durationMs)/1000}s`}))}]}]},durationMs)
+  let previous=0;
+  const rounded=aligned.map(word=>{
+    const startMs=Math.max(previous,word.startMs),endMs=Math.min(durationMs,Math.max(startMs+1,word.endMs));
+    // The provider sometimes rounds a very short word to a zero-length span.
+    // Preserve its observed location with the smallest valid interval, not an estimated reading pace.
+    if(startMs-word.startMs>2 || endMs<=startMs)throw new Error('Recognition timing overlaps materially; review the recording.');
+    previous=endMs;return {...word,startMs,endMs};
+  });
+  return googleWordTimes({results:[{alternatives:[{words:rounded.map(word=>({word:word.text,startTime:`${word.startMs/1000}s`,endTime:`${word.endMs/1000}s`}))}]}]},durationMs)
 }

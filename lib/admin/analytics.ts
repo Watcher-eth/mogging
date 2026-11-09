@@ -61,6 +61,7 @@ export type AnalyticsDashboard = {
   daily: MetricRow[]; acquisition: MetricRow[]; steps: MetricRow[]; screens: MetricRow[]
   acquisitionSummary?: MetricRow[]; landingSummary?: MetricRow[]
   landingExperimentDaily?: MetricRow[]
+  onboardingChannels?: MetricRow[]
   onboardingSummary?: MetricRow[]; onboardingDaily?: MetricRow[]
   onboardingScreens: MetricRow[]; onboardingFriction: MetricRow[]
   revenueTotals?: MetricRow[]; revenueActivity?: MetricRow[]
@@ -69,6 +70,7 @@ export type AnalyticsDashboard = {
   revenueCatMetrics?: RevenueCatMetrics
   revenueUsdCoverage?: MetricRow[]
   revenueStreamComparison?: MetricRow[]; revenueStreamDaily?: MetricRow[]
+  revenueChannels?: MetricRow[]
   revenueFinancials?: MetricRow[]; revenueSources?: MetricRow[]; revenueCountries?: MetricRow[]; revenueProceedsDaily?: MetricRow[]
   revenueSubscriptionOverview?: MetricRow[]; revenueSubscriptionProducts?: MetricRow[]; revenueSubscriptionMrr?: MetricRow[]
   billing: MetricRow[]; revenue: MetricRow[]; revenueDaily: MetricRow[]; retention: MetricRow[]; cancellations: MetricRow[]
@@ -125,15 +127,15 @@ const sectionReports: Record<NonNullable<AnalyticsFilters['section']>, readonly 
   Overview: ['daily', 'scanLedger', 'paid_delivery'],
   Acquisition: ['daily', 'acquisition', 'acquisition_summary', 'landing_summary', 'web_audience', 'landing_sections', 'landing_placements', 'landing_sources'],
   Experiments: ['landing_handoffs', 'landing_experiments', 'landing_experiment_daily'],
-  Onboarding: ['onboarding_summary', 'onboarding_daily', 'onboarding', 'onboarding_screens', 'onboarding_friction', 'onboarding_revisions', 'steps', 'screens'],
-  Revenue: ['purchase_behavior', 'revenue_subscription_mrr', 'revenue_usd_coverage', 'revenue_stream_comparison', 'revenue_stream_daily', 'revenue_financials', 'revenue_sources', 'revenue_countries', 'revenue_proceeds_daily', 'revenue_subscription_overview', 'revenue_subscription_products', 'revenue', 'revenue_totals', 'revenue_comparison', 'revenue_activity', 'revenue_daily', 'billing', 'billing_products', 'billing_dimensions', 'billing_reporting'],
+  Onboarding: ['web_journey', 'onboarding_channels', 'onboarding_summary', 'onboarding_daily', 'onboarding', 'onboarding_screens', 'onboarding_friction', 'onboarding_revisions', 'steps', 'screens'],
+  Revenue: ['purchase_behavior', 'revenue_subscription_mrr', 'revenue_usd_coverage', 'revenue_stream_comparison', 'revenue_stream_daily', 'revenue_financials', 'revenue_channels', 'revenue_sources', 'revenue_countries', 'revenue_proceeds_daily', 'revenue_subscription_overview', 'revenue_subscription_products', 'revenue', 'revenue_totals', 'revenue_comparison', 'revenue_activity', 'revenue_daily', 'billing', 'billing_products', 'billing_dimensions', 'billing_reporting'],
   CreatorAttribution: ['creator_attribution'],
   CreatorPerformance: [],
   CreatorEconomics: ['creator_economics'],
   Retention: ['feature_retention', 'membership_activation', 'retention', 'retention_weekly', 'retention_coverage'],
   Authentication: ['daily', 'authentication'],
   WebJourney: ['web_journey'],
-  Purchases: ['purchase_behavior', 'purchase_flow'],
+  Purchases: ['web_journey', 'purchase_behavior', 'purchase_flow'],
   Scans: ['scans'],
   Engagement: ['engagement'],
   Referrals: ['referrals'],
@@ -158,7 +160,10 @@ export function analyticsQuery(filters: AnalyticsFilters, now: Date) {
     ? trackingDefinitions.filter(definition => definition.section === filters.section).map(definition => definition.event) : null
   const eventReportFilter = reportEvents ? sql`event_name in (${sql.join(reportEvents.map(event => sql`${event}`), sql`,`)})` : sql`true`
   const dimensionSection = sql`case when p.key like '%utm_%' or p.key in ('campaign_id','creative_id','paidMedia','referrer_host') then 'Acquisition' else d.section end`
-  const contextDefinitions = sql.join(contextFields.map(field => sql`(${field}::text)`), sql`,`)
+  const coverageFields = filters.section === 'Onboarding' ? ['flow_id'] : contextFields
+  const contextDefinitions = sql.join(coverageFields.map(field => sql`(${field}::text)`), sql`,`)
+  const webJourneySection = filters.section === 'WebJourney' ? filters.section
+    : filters.platform === 'all' && (filters.section === 'Purchases' || filters.section === 'Onboarding') ? filters.section : undefined
   const reports = filters.section ? new Set(['audience_breakdown', ...sectionReports[filters.section]]) : null
   if (filters.section && eventReportSections.has(filters.section)) {
     for (const name of ['event_metrics', 'event_platforms', 'context_coverage']) reports!.add(name)
@@ -285,7 +290,7 @@ export function analyticsQuery(filters: AnalyticsFilters, now: Date) {
         and occurred_at < ${end}::timestamp
     ), ${!filters.section || ['Purchases','Revenue'].includes(filters.section) ? purchaseBehaviorCTEs(start,end,Number(filters.days)) : sql`purchase_behavior as (select null::json as report)`}, b as materialized (
       select * from billing_history where occurred_at >= ${start}::timestamp
-    ), ${filters.section === 'WebJourney' ? webJourneyCTEs(start,end,Number(filters.days),filters.webVersion,filters.webDimension) : sql`web_journey as (select null::json as report)`}, ${revenueReportingCTEs(start)}, ${['CreatorAttribution', 'CreatorEconomics', 'AttributionLedger'].includes(filters.section ?? '') ? creatorAttributionCTEs(filters.section === 'CreatorEconomics' ? '1970-01-01T00:00:00Z' : start, end, Number(filters.days)) : sql`creator_attribution as (select null::json as report)`}, ${filters.section === 'CreatorEconomics' ? creatorEconomicsCTEs(start, end, Number(filters.days)) : sql`creator_economics as (select null::json as report)`}, ${filters.section === 'Authentication' ? authenticationCTEs(start, end, filters.platform) : sql`authentication as (select null::json as report)`}, ${filters.section === 'Purchases' ? purchaseFlowCTEs(start, end, Number(filters.days)) : sql`purchase_flow as (select null::json as report)`}, ${filters.section === 'Scans' ? scansCTEs(start, end, Number(filters.days)) : sql`scans as (select null::json as report)`}, ${filters.section === 'Engagement' ? engagementCTEs(Number(filters.days)) : sql`engagement as (select null::json as report)`}, ${filters.section === 'Referrals' ? referralsCTEs(start, end, Number(filters.days)) : sql`referrals as (select null::json as report)`}, ${filters.section === 'Notifications' ? notificationsCTEs(start,end,Number(filters.days)) : sql`notifications as (select null::json as report)`}, ${filters.section === 'AttributionLedger' ? ledgerCTEs(Number(filters.days)) : sql`attribution_ledger as (select null::json as report)`}, ${filters.section === 'Quality' ? dataHealthCTEs(start,end,Number(filters.days)) : sql`data_health as (select null::json as report)`}, ${sql.join([...onboarding.ctes, ...paywall.ctes, ...web.ctes], sql`,`)},
+    ), ${webJourneySection ? webJourneyCTEs(start,end,Number(filters.days),filters.webVersion,filters.webDimension,webJourneySection) : sql`web_journey as (select null::json as report)`}, ${revenueReportingCTEs(start)}, ${['CreatorAttribution', 'CreatorEconomics', 'AttributionLedger'].includes(filters.section ?? '') ? creatorAttributionCTEs(filters.section === 'CreatorEconomics' ? '1970-01-01T00:00:00Z' : start, end, Number(filters.days)) : sql`creator_attribution as (select null::json as report)`}, ${filters.section === 'CreatorEconomics' ? creatorEconomicsCTEs(start, end, Number(filters.days)) : sql`creator_economics as (select null::json as report)`}, ${filters.section === 'Authentication' ? authenticationCTEs(start, end, filters.platform) : sql`authentication as (select null::json as report)`}, ${filters.section === 'Purchases' ? purchaseFlowCTEs(start, end, Number(filters.days)) : sql`purchase_flow as (select null::json as report)`}, ${filters.section === 'Scans' ? scansCTEs(start, end, Number(filters.days)) : sql`scans as (select null::json as report)`}, ${filters.section === 'Engagement' ? engagementCTEs(Number(filters.days)) : sql`engagement as (select null::json as report)`}, ${filters.section === 'Referrals' ? referralsCTEs(start, end, Number(filters.days)) : sql`referrals as (select null::json as report)`}, ${filters.section === 'Notifications' ? notificationsCTEs(start,end,Number(filters.days)) : sql`notifications as (select null::json as report)`}, ${filters.section === 'AttributionLedger' ? ledgerCTEs(Number(filters.days)) : sql`attribution_ledger as (select null::json as report)`}, ${filters.section === 'Quality' ? dataHealthCTEs(start,end,Number(filters.days)) : sql`data_health as (select null::json as report)`}, ${sql.join([...onboarding.ctes, ...paywall.ctes, ...web.ctes], sql`,`)},
     daily as (
       select ${reportingBucket(sql`occurred_at`, Number(filters.days))} as day, count(distinct actor) as actors,
         count(distinct actor) filter (where platform = 'web' and event_name = 'page_viewed'
@@ -444,19 +449,24 @@ export function analyticsQuery(filters: AnalyticsFilters, now: Date) {
         left join creator_source_labels labels on labels.source = a.source
       group by a.source,a.campaign order by actors desc limit 50
     ), onboarding_flow_events as materialized (
-      select actor, properties->>'flow_id' as flow_id, event_name, occurred_at
+      select actor, platform, properties->>'flow_id' as flow_id, event_name, occurred_at
       from e where platform in ('ios','android') and ${supportedOnboarding}
         and actor is not null and nullif(properties->>'flow_id','') is not null
         and event_name in ('onboarding_started','onboarding_completed')
     ), onboarding_entries as (
-      select actor, flow_id, min(occurred_at) as at from onboarding_flow_events
-      where event_name = 'onboarding_started' group by actor, flow_id
+      select actor, platform, flow_id, min(occurred_at) as at from onboarding_flow_events
+      where event_name = 'onboarding_started' group by actor, platform, flow_id
     ), onboarding_flow_outcomes as materialized (
-      select f.actor, f.flow_id, f.at, coalesce(bool_or(o.event_name = 'onboarding_completed'),false) as completed
+      select f.actor, f.platform, f.flow_id, f.at, coalesce(bool_or(o.event_name = 'onboarding_completed'),false) as completed
       from onboarding_entries f left join onboarding_flow_events o
-        on o.actor = f.actor and o.flow_id = f.flow_id and o.event_name = 'onboarding_completed'
+        on o.actor = f.actor and o.platform = f.platform and o.flow_id = f.flow_id and o.event_name = 'onboarding_completed'
         and o.occurred_at >= f.at and o.occurred_at <= f.at + interval '7 days'
-      group by f.actor, f.flow_id, f.at
+      group by f.actor, f.platform, f.flow_id, f.at
+    ), onboarding_channels as (
+      select platform as channel, count(*) as started, count(*) filter(where completed) as completed,
+        count(*) filter(where at <= ${end}::timestamp - interval '7 days') as eligible,
+        count(*) filter(where completed and at <= ${end}::timestamp - interval '7 days') as eligible_completed
+      from onboarding_flow_outcomes group by 1 order by 1
     ), onboarding_summary as (
       select count(*) as started, count(*) filter(where completed) as completed,
         count(*) filter(where at <= ${end}::timestamp - interval '7 days') as eligible,
@@ -904,11 +914,11 @@ export function analyticsQuery(filters: AnalyticsFilters, now: Date) {
       'landingSections', ${rows('landing_sections')}, 'landingPlacements', ${rows('landing_placements')},
       'daily', ${rows('daily')}, 'acquisition', ${rows('acquisition')},
       'acquisitionSummary', ${rows('acquisition_summary')}, 'landingSummary', ${rows('landing_summary')}, 'steps', ${rows('steps')},
-      'onboardingScreens', ${rows('onboarding_screens')}, 'onboardingSummary', ${rows('onboarding_summary')}, 'onboardingDaily', ${rows('onboarding_daily')},
+      'onboardingChannels', ${rows('onboarding_channels')}, 'onboardingScreens', ${rows('onboarding_screens')}, 'onboardingSummary', ${rows('onboarding_summary')}, 'onboardingDaily', ${rows('onboarding_daily')},
       'onboardingFriction', ${rows('onboarding_friction')}, 'screens', ${rows('screens')}, 'billing', ${rows('billing')}, 'revenue', ${rows('revenue')},
       'revenueTotals', ${rows('revenue_totals')}, 'revenueActivity', ${rows('revenue_activity')}, 'revenueDaily', ${rows('revenue_daily')}
     ) || jsonb_build_object(
-      'revenueUsdCoverage', ${rows('revenue_usd_coverage')}, 'revenueStreamComparison', ${rows('revenue_stream_comparison')}, 'revenueStreamDaily', ${rows('revenue_stream_daily')}, 'revenueFinancials', ${rows('revenue_financials')}, 'revenueSources', ${rows('revenue_sources')}, 'revenueCountries', ${rows('revenue_countries')}, 'revenueProceedsDaily', ${rows('revenue_proceeds_daily')}, 'revenueSubscriptionOverview', ${rows('revenue_subscription_overview')}, 'revenueSubscriptionProducts', ${rows('revenue_subscription_products')}, 'revenueComparison', ${rows('revenue_comparison')}, 'billingReporting', ${rows('billing_reporting')}, 'retention', ${rows('retention')}, 'retentionWeekly', ${rows('retention_weekly')}, 'retentionCoverage', ${rows('retention_coverage')}, 'featureUsage', ${rows('feature_usage')}, 'featureRetention', ${rows('feature_retention')}, 'cancellations', ${rows('cancellations')},
+      'revenueUsdCoverage', ${rows('revenue_usd_coverage')}, 'revenueStreamComparison', ${rows('revenue_stream_comparison')}, 'revenueStreamDaily', ${rows('revenue_stream_daily')}, 'revenueFinancials', ${rows('revenue_financials')}, 'revenueChannels', ${rows('revenue_channels')}, 'revenueSources', ${rows('revenue_sources')}, 'revenueCountries', ${rows('revenue_countries')}, 'revenueProceedsDaily', ${rows('revenue_proceeds_daily')}, 'revenueSubscriptionOverview', ${rows('revenue_subscription_overview')}, 'revenueSubscriptionProducts', ${rows('revenue_subscription_products')}, 'revenueComparison', ${rows('revenue_comparison')}, 'billingReporting', ${rows('billing_reporting')}, 'retention', ${rows('retention')}, 'retentionWeekly', ${rows('retention_weekly')}, 'retentionCoverage', ${rows('retention_coverage')}, 'featureUsage', ${rows('feature_usage')}, 'featureRetention', ${rows('feature_retention')}, 'cancellations', ${rows('cancellations')},
       'actions', ${rows('actions')}, 'releases', ${rows('releases')},
       'eventMetrics', ${rows('event_metrics')}, 'eventPlatforms', ${rows('event_platforms')}, 'dimensions', ${rows('dimensions')},
       'eventDelivery', ${rows('event_delivery')}, 'contextCoverage', ${rows('context_coverage')}, 'billingProducts', ${rows('billing_products')}, 'billingDimensions', ${rows('billing_dimensions')}

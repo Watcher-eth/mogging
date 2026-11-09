@@ -13,18 +13,23 @@ import { requestMoonshotJson, type ProviderTiming } from '@/lib/analysis/provide
 import { AnalysisProviderError } from '@/lib/analysis/errors'
 import { protocolFaceShapes, protocolHairTextures, protocolVisibleConcerns } from '@/lib/creator/protocol-tasks'
 
-export const webAnalyzeSchema = analyzeAndSaveSchema.extend({ mesh: landmarkInputSchema.nullable().optional() })
+export const webAnalyzeSchema = analyzeAndSaveSchema.extend({
+  mesh: landmarkInputSchema.nullable().optional(),
+  sideImageData: z.string().max(2_000_000).regex(/^data:image\/(?:jpeg|png|webp);base64,[A-Za-z0-9+/]+={0,2}$/).optional(),
+}).refine(input => !input.sideImageData || (input.photoType === 'face' && input.sideImageData !== input.imageData), {
+  message: 'Choose a separate side-profile photo.', path: ['sideImageData'],
+})
 const model = () => process.env.KIMI_ANALYSIS_MODEL === 'kimi-k2.5' ? 'kimi-k2.6' : process.env.KIMI_ANALYSIS_MODEL ?? 'kimi-k2.6'
 
 export function webPhotoHash(contentHash: string, owner: string, scan: string) {
   return createHash('sha256').update(`web-v2:${owner}:${scan}:${contentHash}`).digest('hex')
 }
 
-export async function requestReportOverview(imageDataUrl: string, signal: AbortSignal, mobile = false) {
+export async function requestReportOverview(imageDataUrl: string, signal: AbortSignal, mobile = false, sideImageData?: string) {
   return requestMoonshotJson({ stage: 'overview', signal, parse: parseWebOverview,
     body: { model: model(), thinking: { type: 'disabled' }, temperature: .6, max_tokens: mobile ? 4600 : 3600, response_format: { type: 'json_object' }, messages: [
       { role: 'system', content: 'Assess visible facial appearance for an entertainment report. Do not infer identity, ethnicity, health diagnoses, intelligence or worth. No medical treatments or fabricated population percentiles. Cosmetic scores are subjective: 0–2 markedly weak, 3–4 weak, 5–6 ordinary, 7–8 strong, 9–10 exceptional. Write specific, useful observations of this photo; avoid generic category definitions and process/uncertainty disclaimers. Never invent hidden features.' },
-      { role: 'user', content: [{ type: 'image_url', image_url: { url: imageDataUrl } }, { type: 'text', text: `Return JSON with faceDetected (boolean), pslScore (1–8), overallScore, harmonyScore, symmetryScore, proportionalityScore, averagenessScore, dimorphismScore, angularityScore (all other scores 0–10); summary (at most 90 words); categories (exactly one {id,score,explanation} per ID: ${registry.categories.map(category => category.id).join(',')}). Each category explanation: 2–3 concrete sentences about this person's visible features. ${mobile ? "Also include recommendation per category: 1–2 specific, realistic grooming, styling or cosmetic-care steps tied to the visible findings. For strong features use a useful maintenance step. Do not prescribe medical treatments, promise structural changes, give capture/retake instructions, or use the score alone as a cause. Keep advice relevant to that category." : ""} eyeColor (blue/gray/green/hazel/amber/brown/dark brown or null), hairColor (black/brown/blond/red/gray/other or null). contours:{hair:[],ears:[]} contains visible boundary paths, each an ordered array of 3–30 {x,y} points in normalized image coordinates 0–1 (image top-left=(0,0), bottom-right=(1,1)). Trace the actual OUTER hair silhouette and actual hairline if visible, maximum 3 paths. Trace visible outer ear contours, maximum 2 paths; no hidden ears, no invented geometry. Do not trace the face outline as hair or ears. Optional potential:{score:PSL1–8,label,summary,focusAreas:1–4 strings} describing realistic grooming/presentation opportunities, no medical advice. Optional protocolContext:{faceShape:${protocolFaceShapes.join("/")},hairTexture:${protocolHairTextures.join("/")},visibleConcerns:[]}. visibleConcerns may contain ONLY these exact strings: ${protocolVisibleConcerns.join(", ")}. Include only clearly visible cosmetic observations; omit uncertain context or use an empty concerns array. Never add new concern labels or diagnoses. If no usable face, faceDetected=false, keep valid numeric defaults and all category IDs with explanation 'No usable face detected.'` }] },
+      { role: 'user', content: [{ type: 'image_url', image_url: { url: imageDataUrl } }, ...(sideImageData ? [{ type: 'image_url', image_url: { url: sideImageData } }] : []), { type: 'text', text: `${sideImageData ? 'Image 1 is the intended frontal photo and image 2 the intended side profile of the same person. Use the side only where it is clearly a usable profile. Keep hair and ear contour coordinates in image 1. ' : ''}Return JSON with faceDetected (boolean), pslScore (1–8), overallScore, harmonyScore, symmetryScore, proportionalityScore, averagenessScore, dimorphismScore, angularityScore (all other scores 0–10); summary (at most 90 words); categories (exactly one {id,score,explanation} per ID: ${registry.categories.map(category => category.id).join(',')}). Each category explanation: 2–3 concrete sentences about this person's visible features. ${mobile ? "Also include recommendation per category: 1–2 specific, realistic grooming, styling or cosmetic-care steps tied to the visible findings. For strong features use a useful maintenance step. Do not prescribe medical treatments, promise structural changes, give capture/retake instructions, or use the score alone as a cause. Keep advice relevant to that category." : ""} eyeColor (blue/gray/green/hazel/amber/brown/dark brown or null), hairColor (black/brown/blond/red/gray/other or null). contours:{hair:[],ears:[]} contains visible boundary paths, each an ordered array of 3–30 {x,y} points in normalized image coordinates 0–1 (image top-left=(0,0), bottom-right=(1,1)). Trace the actual OUTER hair silhouette and actual hairline if visible, maximum 3 paths. Trace visible outer ear contours, maximum 2 paths; no hidden ears, no invented geometry. Do not trace the face outline as hair or ears. Optional potential:{score:PSL1–8,label,summary,focusAreas:1–4 strings} describing realistic grooming/presentation opportunities, no medical advice. Optional protocolContext:{faceShape:${protocolFaceShapes.join("/")},hairTexture:${protocolHairTextures.join("/")},visibleConcerns:[]}. visibleConcerns may contain ONLY these exact strings: ${protocolVisibleConcerns.join(", ")}. Include only clearly visible cosmetic observations; omit uncertain context or use an empty concerns array. Never add new concern labels or diagnoses. If no usable face, faceDetected=false, keep valid numeric defaults and all category IDs with explanation 'No usable face detected.'` }] },
     ] },
   })
 }
@@ -42,8 +47,8 @@ async function analyzeAndSaveExpanded(input: AnalyzeAndSaveInput, reservationId?
       try {
         const geometry = data.mesh ? measureLandmarks(data.mesh) : null
         const [overviewResult, details] = await Promise.all([
-          requestReportOverview(data.imageData, controller.signal, mobile),
-          evaluateV2({ imageDataUrl: data.imageData, geometry }, { signal: controller.signal, graded: true }),
+          requestReportOverview(data.imageData, controller.signal, mobile, data.sideImageData),
+          evaluateV2({ imageDataUrl: data.imageData, sideImageDataUrl: data.sideImageData, geometry }, { signal: controller.signal, graded: true }),
         ])
         const assessment = overviewResult.value
         providerTiming = [overviewResult.timing, ...details.timing.batches]

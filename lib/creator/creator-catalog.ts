@@ -1,3 +1,4 @@
+import { documentaryVariationCount } from './video-documentary-plan'
 import type { GeneratorImage } from './content-generator'
 import { profileFeatureForText } from './video-profile'
 import { createProductionDraft } from './production-drafts'
@@ -10,27 +11,65 @@ import { scriptToPlan } from './script-edit'
 import { voiceDirection } from './video-speech'
 import { subjectStudies } from './video-subject-studies'
 
-// Editing recipes keep their renderer IDs; content styles own the higher-level choice.
+// Creator styles are the existing rendering recipes, with one vocabulary in the UI.
 export const creatorVideoStyles = [
-  { id: 'portrait-audit', label: 'Portrait study', detail: 'The default. Natural portraits, precise contours and gentle movement.' },
-  { id: 'report-led', label: 'App walkthrough', detail: 'Native report screens, animated score timelines and focused feature cards.' },
-  { id: 'measurement-explainer', label: 'Feature breakdown', detail: 'Editorial close-ups, feature lighting and continuous zooms between details.' },
-  { id: 'feature-study', label: 'Editorial study', detail: 'Hand-drawn arrows, frosted strokes, panning close-ups and controlled comparisons.' },
-  { id: 'hybrid-story', label: 'Visual story', detail: 'Photo sequences, evidence inserts and graphic transitions that follow the story.' },
-  { id: 'documentary-studio', label: 'Cinematic documentary', detail: 'A separate cinematic edit with 3D sets, evidence boards and restrained annotations.' },
+  { id: 'portrait-audit', label: 'Portrait study', detail: 'Photo-led. Close-ups, contours and gentle camera moves.' },
+  { id: 'report-led', label: 'App walkthrough', detail: 'Report-led. Scrolling results and focused feature cards.' },
+  { id: 'measurement-explainer', label: 'Feature breakdown', detail: 'Detail-led. Face guides, measurements and clear explanations.' },
+  { id: 'feature-study', label: 'Feature study', detail: 'One feature at a time. Drawn notes, controlled face edits and continuous photo grids.' },
+  { id: 'hybrid-story', label: 'Visual story', detail: 'Story-led. Portraits, graphic comparisons and app proof.' },
+  { id: 'editorial-story', label: 'Evidence-led editorial', detail: 'Persistent portraits, feature trays, comparison grids and word-aligned evidence.' },
+  { id: 'sculpture-study', label: 'Cephra sculpture study', detail: 'Continuous 3D morphs, registered constructions and studio-lit material studies.' },
+  { id: 'documentary-studio', label: 'Documentary Studio', detail: 'Cinematic reconstruction, projected evidence, and archival cuts.' },
 ] as const satisfies ReadonlyArray<{ id: VideoRecipe; label: string; detail: string }>
 
 export const creatorContentStyles = [
   {id:'mogging-editorial',name:'Mogging Editorial',description:'Face-led analysis. Clean portraits, native reports and precise visual detail.',recipes:['portrait-audit','report-led','measurement-explainer','hybrid-story'],defaultRecipe:'portrait-audit'},
-  {id:'qoves',name:'Qoves',description:'One question. A visual experiment. A reveal worth staying for.',recipes:['feature-study'],defaultRecipe:'feature-study'},
-  {id:'fern',name:'Fern',description:'Cinematic explanations. Evidence, dimensional scenes and a wider story.',recipes:['documentary-studio'],defaultRecipe:'documentary-studio'},
+  {id:'qoves',name:'Qoves',description:'One question. A visual experiment. A reveal worth staying for.',recipes:['editorial-story','feature-study'],defaultRecipe:'editorial-story'},
+  {id:'cephra',name:'Cephra',description:'Facial anatomy, perspective and proportions. Sculptural explanations in motion.',recipes:['sculpture-study'],defaultRecipe:'sculpture-study'},
+  {id:'fern',name:'Fern',description:'Documentary cuts. Projected evidence, contour diagrams, and archive reels.',recipes:['documentary-studio'],defaultRecipe:'documentary-studio'},
 ] as const satisfies ReadonlyArray<{id:string;name:string;description:string;recipes:readonly VideoRecipe[];defaultRecipe:VideoRecipe}>
 export type CreatorContentStyleId = typeof creatorContentStyles[number]['id']
 export function creatorContentStyle(recipe:VideoRecipe) {
   return creatorContentStyles.find(style=>(style.recipes as readonly VideoRecipe[]).includes(recipe)) ?? creatorContentStyles[0]
 }
 export function contentStyleSupportsScript(contentStyle:CreatorContentStyleId,story:{kind?:string}) {
-  return contentStyle!=='qoves'||story.kind!=='score-walkthrough'
+  if(story.kind==='sculpture-explainer')return contentStyle==='cephra'
+  return contentStyle!=='cephra'||story.kind!=='score-walkthrough'
+}
+
+export type CreatorTake={storyId:string;recipe:VideoRecipe;variation:number;storyCycle?:string[]}
+/** Choose among approved recordings without synthesizing narration. */
+export function chooseCreatorTake(styleId:CreatorContentStyleId,stories:ReadonlyArray<{id:string;kind?:string;recording?:string}>,previous?:CreatorTake,random:()=>number=Math.random):CreatorTake{
+  const style=creatorContentStyles.find(style=>style.id===styleId)!
+  const specialized=styleId==='cephra' && stories.some(story=>story.kind==='sculpture-explainer' && story.recording)
+  const candidates=stories.filter(story=>story.recording && contentStyleSupportsScript(styleId,story) && (!specialized || story.kind==='sculpture-explainer')).flatMap(story=>style.recipes.map(recipe=>({storyId:story.id,recipe})))
+  if(!candidates.length)throw new Error('No recorded stories are ready for this person in this content style yet.')
+  if (styleId === 'qoves') {
+    const ids = [...new Set(candidates.map(take => take.storyId))]
+    const cycle = new Set((previous?.storyCycle ?? []).filter(id => ids.includes(id)))
+    if (previous && ids.includes(previous.storyId)) cycle.add(previous.storyId)
+    if (cycle.size === ids.length) cycle.clear()
+    const fresh = ids.filter(id => !cycle.has(id))
+    const alternatives = fresh.filter(id => id !== previous?.storyId)
+    const pool = alternatives.length ? alternatives : fresh
+    const storyId = pool[Math.min(pool.length - 1, Math.floor(random() * pool.length))]
+    const family = previous ? (previous.variation + 1) % 6 : Math.min(5, Math.floor(random() * 6))
+    const variation = 6 * Math.min(1665, Math.floor(random() * 1666)) + family
+    return { storyId, recipe: style.recipes[family % style.recipes.length], variation, storyCycle: [...cycle, storyId] }
+  }
+  const alternatives=candidates.filter(take=>take.storyId!==previous?.storyId || take.recipe!==previous?.recipe)
+  const choices=alternatives.length?alternatives:candidates
+  const selected=choices[Math.min(choices.length-1,Math.floor(random()*choices.length))]
+  if (styleId === 'fern') {
+    const families = documentaryVariationCount
+    const family = previous ? (previous.variation + 1) % families : Math.min(families - 1, Math.floor(random() * families))
+    const bands = Math.floor(10000 / families)
+    return { ...selected, variation: families * Math.min(bands - 1, Math.floor(random() * bands)) + family }
+  }
+  let variation=Math.floor(random()*10000)
+  if(selected.storyId===previous?.storyId && selected.recipe===previous.recipe && variation%6===previous.variation%6)variation=(variation+1)%10000
+  return {...selected,variation}
 }
 
 export function creatorStyleDirections(example: VideoScriptExample, recipe: VideoRecipe) {

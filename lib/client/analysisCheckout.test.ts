@@ -7,28 +7,32 @@ function checkout(overrides: Record<string, unknown> = {}) {
   const source = readFileSync(new URL('../../pages/analysis.tsx', import.meta.url), 'utf8')
   const calls: string[] = [], events: any[] = [], errors: string[] = []
   const context: any = {
-    walkthrough: false, status: 'authenticated', checkoutLoading: false, images: [{}, { view: 'side' }], reportCount: 1, gender: 'male', Date, Error, ApiClientError,
-    crypto, webJourneyContext: () => ({ flow_version: "test", entry_mode: "photo_first" }), analyticsFlow: { current: 'fixture' }, flushWebAnalytics() {},
-    setLoginOpen() {}, setCheckoutLoading() {}, setError: (error: string | null) => { if (error) errors.push(error) },
+    walkthrough: false, status: 'authenticated', checkoutLoading: false, images: [{}, { view: 'side' }], gender: 'male', mobileScan: false, Date, Error, ApiClientError,
+    preferences: { focus: 'eyes' }, privacyAccepted: true,
+    useCallback: (fn: Function) => fn, runActualAnalysis() {},
+    crypto, webJourneyContext: () => ({ flow_version: "test", entry_mode: "photo_first" }), flushWebAnalytics() {},
+    setLoginOpen() {}, setCheckoutStatus() {}, setError: (error: string | null) => { if (error) errors.push(error) },
     ensureAnalysisWebInstallId: () => 'checkout-test',
     apiGet: async () => { calls.push('entitlements'); return { entitlements: { evaluationCredits: 0, subscription: { active: false } } } },
-    saveAnalysisDraft: async () => { calls.push('draft') },
-    apiPost: async (_url: string, body: { imageCount: number }) => { expect(body.imageCount).toBe(1); calls.push('checkout'); return { url: 'https://checkout.stripe.com/test' } },
+    saveAnalysisDraft: async (draft: { preferences: { focus: string }; desktopConsent: boolean }) => { expect(draft.preferences.focus).toBe('eyes'); expect(draft.desktopConsent).toBe(true); calls.push('draft') },
+    apiPost: async (_url: string, body: { imageCount: number }) => { expect(body.imageCount).toBe(1); calls.push('checkout'); return { url: 'https://checkout.stripe.com/test', sessionId: 'cs_test_fixture' } },
+    saveCheckoutAnalysisDraft: async (_session: string, draft: { requestIds: string[] }) => { expect(draft.requestIds).toHaveLength(1); calls.push('checkout draft') },
+    rememberStripeAttempt() {},
     window: { location: { set href(_value: string) { calls.push('redirect') } } },
     trackWebEvent: (event: string, properties: unknown) => events.push({ event, properties }),
     ...overrides,
   }
-  const start = source.indexOf('  async function startCheckout(')
-  const end = source.indexOf('  const runActualAnalysis = useCallback', start)
+  const start = source.indexOf('  const startCheckout = useCallback(')
+  const end = source.indexOf('  const resumeAfterPayment = useCallback', start)
   runInNewContext(new Bun.Transpiler({ loader: 'tsx' }).transformSync(source.slice(start, end) + '\nglobalThis.checkout = startCheckout'), context)
-  return { run: () => context.checkout('report', {}), calls, events, errors }
+  return { run: () => context.checkout('evaluation', {}), calls, events, errors }
 }
 
 test('web checkout persists the draft before creating or opening payment', async () => {
   const h = checkout()
   await h.run()
-  expect(h.calls).toEqual(['entitlements', 'draft', 'checkout', 'redirect'])
-  expect(h.events.map(event => event.event)).toEqual(['purchase_started', 'purchase_stage_changed', 'purchase_stage_changed'])
+  expect(h.calls).toEqual(['entitlements', 'draft', 'checkout', 'checkout draft', 'redirect'])
+  expect(h.events.at(-1)).toMatchObject({ event: 'purchase_stage_changed', properties: { purchase_stage: 'checkout_redirect' } })
 })
 
 test('unavailable photo storage never creates checkout and identifies its stage', async () => {

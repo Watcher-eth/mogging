@@ -50,10 +50,15 @@ test('section identity and approved words survive all visual styles and alternat
     expect(video.script!.cues.map(cue => cue.id)).toEqual(master.cues.map(cue => cue.id))
     expect([...new Set(video.scenes.map(scene => scene.cueId))]).toEqual(master.cues.map(cue => cue.sourceId))
     const cta = video.scenes.find(scene => scene.cueId === 'cta')!
-    expect(cta.source.kind).toBe('portrait')
+    const qoves=['editorial-story','feature-study'].includes(video.recipe!)
+    const report=qoves || video.recipe==='sculpture-study'
+    expect(cta.source.kind).toBe(report?'report':'portrait')
     expect(cta.source.overlay).toBe('none')
-    expect(cta.portraitProgram).toBeDefined()
-    expect(cta.focus).toBe('hero')
+    if(qoves)expect(cta.source.report).toBeDefined()
+    else if(video.recipe === 'documentary-studio') expect(cta.documentary?.kind).toBeDefined()
+    else if(!report) expect(cta.portraitProgram).toBeDefined()
+    if(report)expect(cta.focus).toMatch(/^(category-score|feature:)/)
+    else expect(cta.focus).toBe('hero')
   }
   const portrait = compile()
   expect(portrait.scenes.find(scene => scene.cueId === 'contour')!.source.kind).toBe('portrait')
@@ -177,9 +182,10 @@ test('every creator format varies actual visual decisions across people without 
         guides: scene.portraitProgram?.actions.map(action => [action.guide, action.treatment, action.stroke]),
         print: scene.portraitFX?.print,
         lighting: scene.portraitFX?.lighting,
+        documentary: scene.documentary?.kind,
         graphic: scene.graphic && [scene.graphic.layout, scene.graphic.variant],
       }))))
-      expect(video.scenes.find(scene => scene.cueId === 'cta')!.focus).toBe('hero')
+      expect(video.scenes.find(scene => scene.cueId === 'cta')!.source.kind).toBe(['editorial-story','feature-study','sculpture-study'].includes(style.id)?'report':'portrait')
     }
     // Compare decisions, excluding subject IDs, text and numerical variation metadata.
     expect(signatures.size).toBeGreaterThanOrEqual(3)
@@ -236,13 +242,14 @@ test('unscored reports keep native preview layouts without fabricating visible n
   for (const scene of preview.scenes.filter(scene => scene.graphic?.layout === 'dashboard')) expect(scene.graphic!.items.every(item => !item.value && !item.detail)).toBe(true)
 })
 
-test('format projection retains native reports, measurement components and evidence grids', () => {
+test('format projection separates native reports, editorial close-ups and evidence grids', () => {
   const report = compile(75, 'report-led'), measurement = compile(75, 'measurement-explainer'), visual = compile(75, 'hybrid-story'), portrait = compile(75, 'portrait-audit')
   expect(report.scenes.some(scene => scene.source.kind === 'report')).toBe(true)
-  expect(measurement.scenes.some(scene => scene.source.kind === 'component')).toBe(true)
+  expect(measurement.scenes.some(scene => scene.source.kind === 'portrait' && scene.editorial === 'detail' &&
+    scene.tracks.some(track => track.elementId === 'subject' && ['slow-push', 'pan-left', 'pan-right'].includes(track.primitive)))).toBe(true)
   expect(visual.scenes.some(scene => scene.study?.operation === 'recap')).toBe(true)
   expect(portrait.scenes.some(scene => scene.portraitProgram?.actions.length)).toBe(true)
-  const signature = (video: ReturnType<typeof compile>) => JSON.stringify(video.scenes.map(scene => [scene.source.kind, scene.study?.operation, scene.featureStudy?.layout, scene.graphic?.layout]))
+  const signature = (video: ReturnType<typeof compile>) => JSON.stringify(video.scenes.map(scene => [scene.source.kind, scene.editorial, scene.study?.operation, scene.featureStudy?.layout, scene.graphic?.layout]))
   expect(new Set([report, measurement, visual, portrait].map(signature)).size).toBe(4)
 })
 

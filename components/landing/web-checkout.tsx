@@ -1,37 +1,32 @@
-import { webJourneyContext } from '@/lib/analytics/web-journey'
 import dynamic from 'next/dynamic'
-import { useSession } from 'next-auth/react'
-import { LoginDialog } from '@/components/app/login-dialog'
+import Link from 'next/link'
+import { useRouter } from 'next/router'
+import { ArrowRight } from 'lucide-react'
+import { useEffect, useRef, useState, type ReactNode } from 'react'
 import { useTranslation } from 'react-i18next'
 import useSWR from 'swr'
-import { formatStripePrice, type SubscriptionPrices, type SubscriptionProduct } from '@/lib/payments/subscription-prices'
-import { useRouter } from 'next/router'
-import { Loader2, ArrowRight } from 'lucide-react'
-import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 import { toast } from 'sonner'
-import { apiGet, apiPost, ApiClientError } from '@/lib/api/client'
-import { membershipPlans, MembershipPlans, MembershipValue, MembershipTerms, AppAccessNote, CheckoutLegal, AppContinueLink } from '@/components/payments/membership-offer'
+import { AppContinueLink, CheckoutLegal, WebAnalysisPlanOptions, type WebAnalysisPrices } from '@/components/payments/membership-offer'
+import { flushWebAnalytics, trackWebEvent } from '@/lib/analytics/client'
+import { apiGet } from '@/lib/api/client'
+import { stripeAttemptProperties, takeStripeAttempt } from '@/lib/client/stripe-attempt'
+import { isWebAnalysisProduct, type WebAnalysisProduct } from '@/lib/payments/web-analysis-plans'
 import styles from './web-checkout.module.css'
-import { trackWebEvent, flushWebAnalytics } from '@/lib/analytics/client'
-
-import { rememberStripeAttempt, stripeAttemptProperties, takeStripeAttempt } from '@/lib/client/stripe-attempt'
-
-type CheckoutResponse = {
-  url: string
-  sessionId: string
-}
 
 const CheckoutReport = dynamic(() => import('./checkout-report'))
-const webInstallStorageKey = 'mogging:web2app:web-install-id'
 
 export function WebCheckout({ embedded = false, preview = false, intro, showReport = !embedded }: { embedded?: boolean; preview?: boolean; intro?: ReactNode; showReport?: boolean }) {
   const router = useRouter()
-  const { status } = useSession()
-  const [loginOpen, setLoginOpen] = useState(false)
+  const { t } = useTranslation()
   const offerRef = useRef<HTMLElement>(null)
-  const { t, i18n } = useTranslation()
-  const [currency, setCurrency] = useState<string>()
   const [nearOffer, setNearOffer] = useState(!embedded)
+  const [selected, setSelected] = useState<WebAnalysisProduct>()
+  const plan = selected ?? (isWebAnalysisProduct(router.query.plan) ? router.query.plan : 'web_basic_monthly')
+  const { data: prices, error, mutate } = useSWR<WebAnalysisPrices>(
+    nearOffer ? '/api/payments/subscription-prices?catalog=web-analysis' : null,
+    apiGet,
+    { shouldRetryOnError: false, revalidateOnFocus: false },
+  )
   useEffect(() => {
     const node = offerRef.current
     if (nearOffer || !node) return
@@ -41,175 +36,37 @@ export function WebCheckout({ embedded = false, preview = false, intro, showRepo
     observer.observe(node)
     return () => observer.disconnect()
   }, [nearOffer])
-  const { data: prices, error: priceError, mutate: reloadPrices } = useSWR<SubscriptionPrices>(
-    nearOffer ? `/api/payments/subscription-prices${currency ? `?currency=${currency}` : ''}` : null,
-    apiGet,
-    { shouldRetryOnError: false, revalidateOnFocus: false },
-  )
-  const [selectedProduct, setSelectedProduct] = useState<SubscriptionProduct>(
-    'mobile_subscription_monthly',
-  )
-  const selectedTier = membershipPlans.find(tier => tier.id === selectedProduct)!
-  const [checkoutLoading, setCheckoutLoading] = useState(false)
-  const [webInstallId, setWebInstallId] = useState<string | null>(null)
-  const source = useMemo(
-    () => embedded ? 'homepage' : getSource(router.query.source, router.query.utm_source),
-    [embedded, router.query.source, router.query.utm_source],
-  )
-  const installId = useMemo(
-    () => firstQueryValue(router.query.install_id) || null,
-    [router.query.install_id],
-  )
-  const checkoutInstallId = installId ?? webInstallId
-  const sessionId = useMemo(
-    () => firstQueryValue(router.query.session_id) || null,
-    [router.query.session_id],
-  )
+
   useEffect(() => {
-    if (!router.isReady) return
-    setWebInstallId(ensureWebInstallId())
-    const product = readProduct(router.query.product)
-    if (product) setSelectedProduct(product)
-    // Older receipts used the homepage. Keep one verified activation flow.
-    if (router.query.checkout === 'success' && sessionId) {
-      void router.replace(
-        `/app/handoff?session_id=${encodeURIComponent(sessionId)}`,
-      )
-    } else if (!preview && router.query.checkout === 'cancelled') {
+    if (!router.isReady || preview) return
+    const { checkout, session_id: sessionId, ...query } = router.query
+    if (checkout === 'success' && typeof sessionId === 'string') {
+      void router.replace(`/app/handoff?session_id=${encodeURIComponent(sessionId)}`)
+    } else if (checkout === 'cancelled') {
       const attempt = takeStripeAttempt('landing')
       if (attempt) trackWebEvent('purchase_cancelled', { surface: 'landing', provider: 'stripe', reason_code: 'checkout_return', ...stripeAttemptProperties(attempt) })
       toast.error(t('plan.cancelled'))
-      const { checkout: _checkout, ...query } = router.query
       void router.replace({ pathname: router.pathname, query }, undefined, { shallow: true, scroll: false })
     }
-  }, [
-    router,
-    router.isReady,
-    router.query.checkout,
-    router.query.product,
-    sessionId,
-    preview,
-    t,
-  ])
+  }, [router, preview, t])
 
-  useEffect(() => {
-    const node = offerRef.current
-    if (!node || preview) return
-    const observer = new IntersectionObserver(([entry]) => {
-      if (!entry.isIntersecting) return
-      trackWebEvent('paywall_viewed', { surface: 'landing', paywall_id: 'web_membership', paywall_version: '2' })
-      observer.disconnect()
-    }, { threshold: .25 })
-    observer.observe(node)
-    return () => observer.disconnect()
-  }, [preview])
-
-  async function startWebCheckout() {
-    if (!prices || checkoutLoading) return
-    if (preview) { toast.info('Design preview — no checkout or payment is created.'); return }
-    if (status !== 'authenticated') { setLoginOpen(true); return }
-    const attemptId = crypto.randomUUID()
-    const journey = webJourneyContext()
-    const purchaseContext = { ...journey, surface: 'landing', provider: 'stripe', product: selectedProduct, paywall_id: 'web_membership', paywall_version: '2', attempt_id: attemptId }
-    trackWebEvent('purchase_started', purchaseContext)
-    trackWebEvent('landing_cta_clicked', {
-      destination: 'web_checkout',
-      plan: selectedProduct,
-      placement: embedded ? 'web_section' : 'web_checkout',
-    })
-    void flushWebAnalytics()
-    const nextInstallId = checkoutInstallId ?? ensureWebInstallId()
-    if (!checkoutInstallId) setWebInstallId(nextInstallId)
-
-    setCheckoutLoading(true)
-    try {
-      const response = await apiPost<CheckoutResponse>(
-        '/api/payments/web-checkout',
-        {
-          product: selectedProduct,
-          attemptId, flowId: journey.flow_id, flowVersion: journey.flow_version, entryMode: journey.entry_mode,
-          mobileInstallId: nextInstallId,
-          source,
-          returnLocale: router.locale ?? 'en',
-          currency: prices.availableCurrencies.length > 1 ? prices.currency : undefined,
-          unitAmount: prices.amounts[selectedProduct],
-          locale: i18n.language.startsWith('zh') ? 'zh' : i18n.language.split('-')[0],
-        },
-      )
-      rememberStripeAttempt('landing', { attempt_id: attemptId, flow_id: journey.flow_id, product: selectedProduct, sessionId: response.sessionId })
-      window.location.href = response.url
-    } catch (error) {
-      if (!preview) trackWebEvent('purchase_failed', { ...purchaseContext, purchase_stage: 'checkout_create', reason_code: error instanceof ApiClientError ? error.code : 'request_failed' })
-      toast.error(
-        t(error instanceof ApiClientError && error.status === 401 ? 'plan.signIn'
-          : error instanceof ApiClientError && error.status === 409 ? 'plan.changed' : 'plan.checkoutError'),
-      )
-      void reloadPrices()
-      setCheckoutLoading(false)
-    }
-  }
-
-  const loginParams = new URLSearchParams({ product: selectedProduct, source })
-  if (installId) loginParams.set('install_id', installId)
-
-  return <><section ref={offerRef} className={embedded ? showReport ? styles.embedded : styles.offerOnly : styles.standalone}>
+  return <section ref={offerRef} className={embedded ? showReport ? styles.embedded : styles.offerOnly : styles.standalone}>
     {showReport && <div className={styles.preview}>{nearOffer ? <CheckoutReport /> : null}</div>}
     {intro && <header className={styles.intro}>{intro}</header>}
     <div className={styles.offer}>
-      {!embedded ? <header><p className={styles.eyebrow}>Mogging Pro</p><h1 className={styles.title}>{t('plan.checkoutTitle')}</h1><p className={styles.description}>{t('plan.checkoutDescription')}</p></header> : null}
-      <MembershipValue />
-      <AppAccessNote />
-      {prices && prices.availableCurrencies.length > 1 ? <label className={styles.currency}>{t('plan.currency')}<select value={prices.currency} onChange={event => setCurrency(event.target.value)} disabled={checkoutLoading}>{prices.availableCurrencies.map(code => <option key={code} value={code}>{code.toUpperCase()}</option>)}</select></label> : null}
-      <MembershipPlans disabled={checkoutLoading} prices={prices} selected={selectedProduct} onSelect={product => {
-        if (checkoutLoading) return
-        if (!preview) trackWebEvent('plan_selected', { plan: product, surface: 'landing', paywall_version: '2' })
-        setSelectedProduct(product)
+      {!embedded && <header><p className={styles.eyebrow}>Mogging</p><h1 className={styles.title}>Choose your analysis plan</h1><p className={styles.description}>Start with your photos, then unlock your full report.</p></header>}
+      <WebAnalysisPlanOptions prices={prices} selected={plan} imageCount={1} disabled={false} onSelect={product => {
+        setSelected(product)
+        if (!preview) trackWebEvent('plan_selected', { plan: product, surface: 'landing', paywall_version: '3' })
       }} />
-      <MembershipTerms prices={prices} selected={selectedProduct} showRenewal={!embedded} />
-      {!prices ? <p role="status" className={styles.status}>{t(priceError ? 'plan.unavailable' : 'plan.loading')}{priceError ? <button type="button" onClick={() => void reloadPrices()}>{t('plan.retry')}</button> : null}</p> : null}
-      <button type="button" onClick={startWebCheckout} disabled={checkoutLoading || !prices} className={styles.cta}>{checkoutLoading ? <Loader2 size={17} className="animate-spin" /> : null}{checkoutLoading ? t('membership.opening') : t('plan.continue', { plan: t(selectedTier.label) })}{!checkoutLoading && prices ? <span>{formatStripePrice(prices.amounts[selectedProduct], prices.currency, i18n.language)}</span> : null}{!checkoutLoading ? <ArrowRight size={17} /> : null}</button>
+      {!prices && <p role="status" className={styles.status}>{t(error ? 'plan.unavailable' : 'plan.loading')}{error && <button type="button" onClick={() => void mutate()}>{t('plan.retry')}</button>}</p>}
+      <Link href={{ pathname: '/analysis', query: { plan } }} prefetch={false} className={styles.cta} onClick={() => {
+        if (preview) return
+        trackWebEvent('landing_cta_clicked', { destination: 'web_analysis', plan, placement: embedded ? 'web_section' : 'web_checkout' })
+        void flushWebAnalytics()
+      }}>{t('plan.start')}<ArrowRight size={17} aria-hidden="true" /></Link>
       <CheckoutLegal />
       {!embedded && <AppContinueLink />}
     </div>
-  </section><LoginDialog open={loginOpen} onOpenChange={setLoginOpen} callbackUrl={`/app?${loginParams}`} /></>
-}
-
-function getSource(
-  source: string | string[] | undefined,
-  utmSource: string | string[] | undefined,
-) {
-  const value = firstQueryValue(source) || firstQueryValue(utmSource)
-  if (!value) return 'web2app'
-
-  return (
-    value
-      .toLowerCase()
-      .replace(/[^a-z0-9_-]/g, '')
-      .slice(0, 80) || 'web2app'
-  )
-}
-
-function firstQueryValue(value: string | string[] | undefined) {
-  return Array.isArray(value) ? value[0] : value
-}
-
-function ensureWebInstallId() {
-  try {
-    const existing = window.localStorage.getItem(webInstallStorageKey)
-    if (existing && existing.length >= 8) return existing
-    const next = `web_${crypto.randomUUID()}`
-    window.localStorage.setItem(webInstallStorageKey, next)
-    return next
-  } catch { return `web_${crypto.randomUUID()}` }
-}
-
-function readProduct(
-  value: string | string[] | undefined,
-): SubscriptionProduct | null {
-  const product = firstQueryValue(value)
-  return product === 'mobile_subscription_weekly' ||
-    product === 'mobile_subscription_monthly' ||
-    product === 'mobile_subscription_yearly'
-    ? product
-    : null
+  </section>
 }

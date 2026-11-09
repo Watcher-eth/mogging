@@ -1,7 +1,6 @@
 import { useScanFeedback } from '@/hooks/use-scan-feedback'
-import Head from 'next/head'
 import { AnimatePresence, motion, useReducedMotion, type Variants } from 'motion/react'
-import { useEffect, useLayoutEffect, useState, useSyncExternalStore, type ReactNode } from 'react'
+import { useEffect, useState, type ReactNode } from 'react'
 import { FaceOverlay } from './face-overlay'
 import { welcomeOverlayPresets } from '@/lib/creator/welcome-overlay-presets'
 import { enrichWelcomeLandmarks } from '@/lib/creator/welcome-overlay-landmarks'
@@ -9,59 +8,6 @@ import type { FaceLandmarksPayload } from '@/lib/creator/mobile-overlay-engine/l
 import type { OverlayPreset } from '@/lib/creator/mobile-overlay-engine/schema'
 import welcomeLandmarks from './scan-welcome-landmarks.json'
 import styles from './mobile-scan-pwa.module.css'
-
-const mobileQuery = '(max-width: 767px), (pointer: coarse), (display-mode: standalone)'
-
-function subscribe(onChange: () => void) {
-  const media = window.matchMedia(mobileQuery)
-  media.addEventListener('change', onChange)
-  return () => media.removeEventListener('change', onChange)
-}
-
-export function useMobileScan() {
-  return useSyncExternalStore(subscribe, () => window.matchMedia(mobileQuery).matches, () => false)
-}
-
-const useViewportEffect = typeof window === 'undefined' ? useEffect : useLayoutEffect
-
-export function ScanPwaHead({ mobile, dark = false }: { mobile: boolean; dark?: boolean }) {
-  useViewportEffect(() => {
-    const viewport = window.visualViewport
-    let frame = 0
-    const measure = () => {
-      cancelAnimationFrame(frame)
-      frame = requestAnimationFrame(() => {
-        document.documentElement.style.setProperty('--scan-viewport-height', `${viewport?.height ?? window.innerHeight}px`)
-      })
-    }
-    measure()
-    viewport?.addEventListener('resize', measure)
-    window.addEventListener('resize', measure)
-    return () => {
-      cancelAnimationFrame(frame)
-      viewport?.removeEventListener('resize', measure)
-      window.removeEventListener('resize', measure)
-      document.documentElement.style.removeProperty('--scan-viewport-height')
-    }
-  }, [])
-
-  useEffect(() => {
-    if (mobile && 'serviceWorker' in navigator) {
-      void navigator.serviceWorker.register('/scan/sw.js', { scope: '/' }).catch(() => {
-        // The scan remains available in the browser when installation is unavailable.
-      })
-    }
-  }, [mobile])
-
-  return <Head>
-    <link rel="manifest" href="/scan/manifest.webmanifest" />
-    <link rel="apple-touch-icon" href="/scan/icon-192.png" />
-    <meta name="apple-mobile-web-app-capable" content="yes" />
-    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
-    <meta name="theme-color" content={dark ? "#030303" : "#ffffff"} />
-    <meta name="viewport" key="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
-  </Head>
-}
 
 const landmarks = welcomeLandmarks as FaceLandmarksPayload
 const renderLandmarks = enrichWelcomeLandmarks(landmarks) ?? landmarks
@@ -127,7 +73,7 @@ export function ScanButton({ children, onClick, disabled }: { children: ReactNod
   const reduced = useReducedMotion()
   return <motion.button type="button" className={styles.button} disabled={disabled}
     whileTap={disabled || reduced ? undefined : { scale: .95 }}
-    onClick={() => { feedback(); onClick() }}>{children}</motion.button>
+    onClick={() => { feedback('action'); onClick() }}>{children}</motion.button>
 }
 
 export function MobileScanStory({ onContinue }: { onContinue: () => void }) {

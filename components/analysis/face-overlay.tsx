@@ -6,7 +6,7 @@ import { buildFaceMapPoints } from '@/lib/creator/mobile-overlay-engine/face-map
 import { getImageTransform, projectImagePoint } from '@/lib/creator/mobile-overlay-engine/layout'
 import { resolveOverlayPreset } from '@/lib/creator/mobile-overlay-engine/resolve'
 import type { OverlayPreset } from '@/lib/creator/mobile-overlay-engine/schema'
-import { drawFaceTreatment, preciseFaceOverlay } from '@/lib/creator/face-treatment'
+import { drawFaceTreatment, preciseFaceOverlay, smoothContour } from '@/lib/creator/face-treatment'
 import type { ImageFit } from '@/lib/creator/mobile-overlay-engine/layout'
 import { drawReportOverlay, type ReportOverlay } from '@/lib/creator/report-overlay'
 
@@ -14,10 +14,10 @@ export type LoadedImage = { src: string; width: number; height: number }
 
 export function FaceOverlay({ preset, landmarks, image, value, appearance = 'report', faceMapPointCount, categoryId, fadeDurations, fit = 'cover' }: {
   preset: OverlayPreset | null
-  landmarks: FaceLandmarksPayload
+  landmarks: FaceLandmarksPayload | null
   image: LoadedImage
   value?: string
-  appearance?: 'report' | 'scan' | 'primer'
+  appearance?: 'report' | 'profile-report' | 'scan' | 'scan-detail' | 'primer'
   faceMapPointCount?: number
   categoryId?: string
   fadeDurations?: { enter: number; exit: number }
@@ -30,7 +30,7 @@ export function FaceOverlay({ preset, landmarks, image, value, appearance = 'rep
     const ctx = canvas?.getContext('2d')
     if (!canvas || !ctx) return
     const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)')
-    const needsMask = appearance === 'report' && Boolean(categoryId) && categoryId !== 'hair' && categoryId !== 'ears'
+    const needsMask = appearance === 'report' && Boolean(landmarks && categoryId) && categoryId !== 'hair' && categoryId !== 'ears'
     const portrait = new window.Image()
     let mask: HTMLCanvasElement | null | undefined = needsMask ? undefined : null
     let displayLandmarks = landmarks
@@ -43,12 +43,14 @@ export function FaceOverlay({ preset, landmarks, image, value, appearance = 'rep
     let draw = () => {}
     const resize = () => {
       cancelAnimationFrame(frame)
-      const { width, height } = canvas.getBoundingClientRect()
+      const { clientWidth: width, clientHeight: height } = canvas
       if (!width || !height) return
       const dpr = Math.min(window.devicePixelRatio || 1, 2)
       canvas.width = Math.round(width * dpr)
       canvas.height = Math.round(height * dpr)
-      const glass = appearance === 'report' && Boolean(categoryId)
+      const scanDetail = appearance === 'scan-detail'
+      const profileReport = appearance === 'profile-report'
+      const glass = scanDetail || profileReport || (appearance === 'report' && Boolean(categoryId))
       const size = appearance === 'primer' ? { width, height } : { width: 360, height: glass ? image.height / image.width * 360 : height / width * 360 }
       const base: ReportOverlay = {
         size,
@@ -59,11 +61,19 @@ export function FaceOverlay({ preset, landmarks, image, value, appearance = 'rep
         labelAppearance: appearance === 'scan' ? 'scan' : undefined,
         labelScale: appearance === 'report' ? .6 : 1,
       }
-      const overlay = glass && !['hair', 'ears'].includes(categoryId!) ? preciseFaceOverlay(base, { ...image, landmarks: displayLandmarks }, categoryId!, '', categoryId === 'cheeks') : base
-      const end = Math.max(glass ? 850 + overlay.primitives.length * 100 : preset ? 0 : 2800, ...overlay.primitives.map((primitive) => (primitive.animation?.delay ?? 0) + Math.max(980, primitive.animation?.duration ?? 760) + 150))
+      const overlay = profileReport
+        ? { ...base, primitives: base.primitives.map(primitive => primitive.kind === 'polyline' && primitive.pixelPoints.length > 2
+          ? { ...primitive, pixelPoints: smoothContour(primitive.pixelPoints, primitive.closed) } : primitive) }
+        : glass && categoryId && !['hair', 'ears'].includes(categoryId)
+          ? preciseFaceOverlay(base, { ...image, landmarks: displayLandmarks }, categoryId, '', categoryId === 'cheeks')
+          : base
+      const end = Math.max(glass ? 850 : preset ? 0 : 2800, ...overlay.primitives.map((primitive) => {
+        const { delay = 0, duration = 760 } = primitive.animation ?? {}
+        return delay + (profileReport && primitive.kind === 'point' ? duration : Math.max(980, duration) + 150)
+      }))
       const continuous = overlay.skinNetwork && overlay.dots.length > 0
       const placement = getImageTransform(image, { width, height }, fit)
-      const outline = displayLandmarks.contours?.faceOutline
+      const outline = displayLandmarks?.contours?.faceOutline
       const boundary = needsMask && outline && outline.length >= 3 ? new Path2D() : null
       if (boundary && outline) {
         outline.forEach((point, index) => {
@@ -92,7 +102,17 @@ export function FaceOverlay({ preset, landmarks, image, value, appearance = 'rep
         if (boundary) ctx.clip(boundary)
         if (glass) {
           ctx.save(); ctx.translate(placement.offsetX, placement.offsetY)
-          drawFaceTreatment(ctx, overlay, placement.renderedWidth, elapsed, reducedMotion.matches, 1, { appearance: { pattern: 'dotted', opacity: .82, markers: true, regions: categoryId === 'cheeks' } }); ctx.restore()
+          drawFaceTreatment(ctx, overlay, placement.renderedWidth, elapsed, reducedMotion.matches, 1, {
+            inkScale: scanDetail ? .74 : 1,
+            usePrimitiveStyles: profileReport,
+            appearance: {
+              pattern: scanDetail && !categoryId ? 'solid' : 'dotted',
+              opacity: scanDetail ? .95 : .82,
+              markers: !profileReport || categoryId !== 'skin',
+              regions: categoryId === 'cheeks',
+            },
+          })
+          ctx.restore()
         } else drawReportOverlay(ctx, overlay, width, elapsed)
         ctx.restore()
         if (mask) {
@@ -115,7 +135,7 @@ export function FaceOverlay({ preset, landmarks, image, value, appearance = 'rep
     const observer = new ResizeObserver(resize)
     observer.observe(canvas)
     reducedMotion.addEventListener('change', resize)
-    if (needsMask) {
+    if (needsMask && landmarks) {
       portrait.onload = () => {
         void getReportFaceVisibility(portrait).then(result => {
           if (disposed) return
@@ -141,7 +161,7 @@ export function FaceOverlay({ preset, landmarks, image, value, appearance = 'rep
   )
 }
 
-function getFaceMapDots(landmarks: FaceLandmarksPayload, image: LoadedImage, size: { width: number; height: number }, count?: number) {
+function getFaceMapDots(landmarks: FaceLandmarksPayload | null, image: LoadedImage, size: { width: number; height: number }, count?: number) {
   const points = buildFaceMapPoints(landmarks).slice(0, count)
   const transform = getImageTransform(image, size, 'cover')
   const top = Math.min(...points.map(point => point.y))

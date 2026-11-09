@@ -1,11 +1,11 @@
 import { expect, test } from 'bun:test'
 import { readFileSync } from 'node:fs'
 import { runInNewContext } from 'node:vm'
-import { WEB_FLOW_VERSION } from './web-context'
+import { WEB_FLOW_VERSION, webFlowContext } from './web-context'
 import { rememberStripeAttempt, readStripeAttempt, clearStripeAttempt } from '@/lib/client/stripe-attempt'
 
 function journey(storage: Map<string, string>, blocked = false) {
-  const scope: any = { WEB_FLOW_VERSION, crypto, Date, URLSearchParams, window: {}, location: { pathname: '/analysis', search: '?start=1&email=private' }, sessionStorage: {
+  const scope: any = { WEB_FLOW_VERSION, webFlowContext, crypto, Date, URLSearchParams, window: {}, location: { pathname: '/analysis', search: '?start=1&email=private' }, sessionStorage: {
     getItem: (key: string) => { if (blocked) throw Error(); return storage.get(key) ?? null },
     setItem: (key: string, value: string) => { if (blocked) throw Error(); storage.set(key, value) },
     removeItem: (key: string) => storage.delete(key),

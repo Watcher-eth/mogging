@@ -1,3 +1,4 @@
+import { planEditorialPresentation } from './editorial-planning'
 import { planPortraitProgram, portraitAnnotation } from './portrait-program'
 import { decodeVisualSection, validateSemanticSection, type SemanticBeat, type SemanticSection } from './video-semantics'
 import { scriptVisualSeed, type ScriptSection } from './video-script'
@@ -22,6 +23,8 @@ const isTopic = (feature: string): feature is FeatureTopic => (topicFeatures as 
 const categoryFor: Record<SemanticBeat['feature'], string> = { whole: 'overall', philtrum: 'mouth', freckles: 'skin', 'facial-hair': 'jaw', ears: 'face-shape', symmetry: 'symmetry', dimorphism: 'face-shape', eyes: 'eyes', brows: 'eyes', nose: 'nose', lips: 'mouth', jaw: 'jaw', cheeks: 'cheeks' }
 // A format owns its visual vocabulary; meaning and available evidence still own the subject.
 const grammar: Record<VideoRecipe, VisualPrimitive[]> = {
+  'sculpture-study': ['portrait', 'detail', 'callout', 'measurement', 'profile'],
+  'editorial-story': ['portrait', 'detail', 'callout', 'compare', 'wipe', 'measurement', 'profile'],
   'documentary-studio': ['portrait', 'detail', 'compare', 'callout'],
   'portrait-audit': ['portrait', 'callout', 'detail', 'wipe', 'profile', 'compare', 'measurement', 'grid'],
   'report-led': ['report', 'report-grid', 'measurement', 'detail', 'portrait', 'callout'],
@@ -114,6 +117,16 @@ export function directVisualBeats(section: ScriptSection, text: string, recipe: 
       direction = { ...base, focus: 'hero', featureStudy: { editorial, topic: studyTopic, layout, edit, motion: layout === 'detail' ? (['push', 'pan-left', 'pan-right'] as const)[(seed + variant) % 3] : layout === 'hero' ? 'pull' : 'hold', annotationStyle: primitive === 'callout' ? 'leader' : primitive === 'detail' ? 'guide' : 'circle', annotation: primitive === 'callout' || primitive === 'detail' ? studyTopic.replace('-', ' ') : '', editMode: edited ? 'photo' : 'warp', comparison: primitive === 'wipe' ? 'wipe' : 'blend', images: [edited?.id ?? original!.id, (angled ?? profile)?.id ?? original!.id, profile?.id ?? original!.id] } }
     } else if (primitive === 'edit') direction = { ...base, photoStudy: { feature: beat.feature as 'eyes' | 'brows' | 'nose' | 'lips' | 'jaw' | 'cheeks', mode: 'stretch', axis: /\b(?:width|wide\w*|narrow\w*|broader)\b/i.test(beat.quote) ? 'x' : ['shorten', 'lengthen'].includes(beat.operation) || /\b(?:thick\w*|thin\w*|height|fuller)\b/i.test(beat.quote) ? 'y' : 'x', amount: (['shorten', 'narrow', 'remove'].includes(beat.operation) ? -.055 : .055) * amount, cursor: false } }
     if (direction.kind === 'portrait' && !direction.featureStudy && !direction.study) direction.portraitProgram = planPortraitProgram(beat.quote, beat.feature, recipe, variant + seed, image?.id === profile?.id && profile ? 'profile' : image?.id === angled?.id && angled ? 'three-quarter' : beat.view)
+    const study = direction.featureStudy
+    const eligibleStudy = study && (study.editorial || ['portrait-audit','hybrid-story'].includes(recipe) && (seed+variant)%5===0)
+    const automatic = eligibleStudy && !study.edit && ['hero','detail'].includes(study.layout) && !['hook','cta','product','takeaway'].includes(section.role)
+      ? planEditorialPresentation(beat.quote,beat.feature,(seed+variant)>>>0,Boolean(angled||profile)) : undefined
+    const presentation = authored.presentation ?? automatic
+    if (presentation && direction.kind === 'portrait' && !study?.edit && !direction.photoStudy && !direction.study && !direction.profileStudy && !direction.portraitFX) {
+      direction.presentation = { ...presentation, feature: presentation.feature ?? beat.feature, imageIds: presentation.imageIds.length ? presentation.imageIds : [angled?.id,profile?.id].filter((id): id is string => Boolean(id) && id !== direction.imageId) }
+      direction.featureStudy = undefined
+      direction.portraitProgram = undefined
+    }
     const decision = { primitive, feature: beat.feature, intent: beat.intent, quote: beat.quote, reason: `${beat.rationale}${direction.portraitProgram ? ` ${direction.portraitProgram.actions.length} linked visual actions follow the narration.` : ''}`, missing, alternatives }
     history.push(decision)
     return { beat, direction, decision }

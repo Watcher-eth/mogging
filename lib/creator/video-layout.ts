@@ -3,13 +3,12 @@ import type { VideoScene } from './video-composition'
 export const videoSize = { width: 1316, height: 2340 } as const
 export const videoExportSize = { width: 1080, height: 1920 } as const
 export const videoMotion = { cutMs: 300, portraitEnterMs: 420, styleWaveMs: 300, reportWaveMs: 260, reportWaveGapMs: 12000, reportWaveLimit: 2 } as const
-const videoInset = 94.3
-export const videoContent = { inset: videoInset, width: videoSize.width - 2 * videoInset, captionTop: 384, tickerTop: 88 } as const
+export const videoContent = { inset: 120, width: videoSize.width - 240, captionTop: 384, tickerTop: 88 } as const
 export const portraitStage = { x: 0, y: videoContent.captionTop + 80, width: videoSize.width, height: videoSize.height - videoContent.captionTop - 80 } as const
-export const captionDesign = { inset: videoContent.inset, width: videoContent.width, top: videoContent.captionTop - 78, weight: 400, lineHeight: 1.16, focusMs: 420, inactiveOpacity: .5, inactiveBlur: .7 } as const
+export const captionDesign = { inset: 164, width: videoSize.width - 328, top: videoContent.captionTop - 64, weight: 400, lineHeight: 1.16, focusMs: 420, inactiveOpacity: .5, inactiveBlur: .7 } as const
 export const videoContentSafeFrame = { x: 120, y: 600, width: 980, height: 1200 } as const
-export const reportCaptionFrame = { x: 0, y: videoSize.height - 520, width: videoSize.width, height: 190 } as const
-export const scorePresentation = { top: 1810, width: 890, rowHeight: 104 } as const
+export const reportCaptionFrame = { x: 0, y: videoSize.height - 550, width: videoSize.width, height: 190 } as const
+export const scorePresentation = { top: 1580, scale: .78 } as const
 export type VideoFrame = { x: number; y: number; width: number; height: number }
 export function hasCaption(scene: Pick<VideoScene, 'framing'> & { source?: Pick<VideoScene['source'], 'kind'> }) {
   if (scene.source?.kind === 'report' || scene.source?.kind === 'screen') return false
@@ -27,19 +26,6 @@ import { smoothMotion } from './report-motion'
 export function elementEntrance(localMs: number, startMs = 0, durationMs = 700) {
   return smoothMotion((localMs - startMs) / durationMs)
 }
-// The shared surface moves through the full boundary. Supporting elements
-// finish their exit before the scene swaps, then arrive in reading order.
-export function sharedElementEntrance(progress: number, outgoing: boolean, order: number) {
-  const delay = Math.min(3, Math.max(0, order)) * .045
-  if (outgoing) {
-    const t = Math.max(0, Math.min(1, (progress - delay) / .34))
-    return { opacity: 1 - t * t, y: -8 * t * t }
-  }
-  const t = Math.max(0, Math.min(1, (progress - .5 - delay) / .34))
-  const settled = 1 - (1 - t) ** 3
-  return { opacity: settled, y: 12 * (1 - settled) }
-}
-
 export function featureStageLayout(region: { width: number; height: number }, _layout: VideoScene['layout'] = 'stacked', focus = '') {
   const scale = Math.min(900 / region.width, 360 / region.height)
   const width = region.width * scale, height = region.height * scale
@@ -53,13 +39,4 @@ export function sharesPortrait(previous: VideoScene | undefined, next: VideoScen
 
 export function sharesReport(previous: VideoScene | undefined, next: VideoScene) {
   return previous?.source.kind === 'report' && next.source.kind === 'report' && previous.source.imageId === next.source.imageId && previous.source.categoryId === next.source.categoryId && previous.source.currentScore === next.source.currentScore && previous.source.potentialScore === next.source.potentialScore && previous.source.metricScore === next.source.metricScore && JSON.stringify(previous.source.report) === JSON.stringify(next.source.report)
-}
-
-// A shared camera moves between photographs placed at different depths and heights.
-export function spatialPhotoMotion(progress: number, variant = 0) {
-  const t = sharedElementMotion(progress), arc = Math.sin(t * Math.PI)
-  const routes = [[.95,-.23],[-.90,.18],[.70,.32],[-.75,-.26]]
-  const [x,y] = routes[((variant % routes.length)+routes.length)%routes.length]
-  const dx=x*videoSize.width,dy=y*videoSize.height,curve=arc*(110+Math.abs(dy)*.5)
-  return { scale:1-.10*arc,previous:{x:-dx*t,y:-dy*t+curve},next:{x:dx*(1-t),y:dy*(1-t)+curve} }
 }

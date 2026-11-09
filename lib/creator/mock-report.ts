@@ -1,4 +1,3 @@
-import { videoContent, videoSize } from './video-layout'
 import { drawReportPortrait, drawReportPortraitFade } from './report-portrait'
 import { drawReportMetricTimeline, reportMetricHeight, reportTimelineStyle } from './metric-timeline'
 import { reportGlassInk, drawReportHeaderGlass } from './report-glass'
@@ -15,7 +14,7 @@ import { buildCategoryActionPlan } from './mobile-overlay-engine/category-action
 // mogging-mobile/src/screens/report-screen.tsx. Export uses the same painter.
 export const mockReportSize = { width: 390, height: 844 }
 export const mockReportFormat = { width: 1560, height: 3376 }
-export const mockReportHeroHeight = Math.round(mockReportSize.height * .48)
+export const mockReportHeroHeight = Math.round(mockReportSize.height * .55)
 const ink = reportUi.ink, paper = reportUi.panel, muted = reportUi.muted
 export const mockEyePalette = [
   { name: 'blue', hex: '#6ea5ce' }, { name: 'gray', hex: '#87989f' },
@@ -41,7 +40,7 @@ export function drawMockReport(ctx: CanvasRenderingContext2D, slide: ContentSlid
   if (!report) return
   const { category } = report, w = mockReportSize.width, h = options.viewportHeight ?? mockReportSize.height
   const paint = options.paint ?? paintCanvasNode
-  const regions = options.regions ?? mockReportRegions(ctx, category, options.presentation === 'video')
+  const regions = options.regions ?? mockReportRegions(ctx, category)
   const contentTop = 0
   const contentBottom = options.presentation === 'video' ? 0 : 84
   paint(ctx, { id: 'report', label: 'Report', frame: { x: 0, y: 0, width, height }, size: { width: w, height: h }, clip: true, draw: ctx => {
@@ -49,9 +48,8 @@ export function drawMockReport(ctx: CanvasRenderingContext2D, slide: ContentSlid
     paint(ctx, { id: 'background', label: 'Report background', frame: { x: 0, y: 0, width: w, height: h }, draw: ctx => { ctx.fillStyle = paper; ctx.fillRect(0, 0, w, h) } })
     paint(ctx, { id: 'report-viewport', label: 'Scrollable report', frame: { x: 0, y: contentTop, width: w, height: Math.max(0, h - contentTop - contentBottom) }, clip: true, draw: ctx => {
       ctx.translate(0, -report.scroll - contentTop)
-      for (const frame of regions) {
-        if (frame.id === 'features' || options.cull && (frame.y + frame.height < report.scroll + contentTop - 24 || frame.y > report.scroll + h - contentBottom + 24)) continue
-        const region = frame.designSize ? { ...frame, ...frame.designSize } : frame
+      for (const region of regions) {
+        if (region.id === 'features' || options.cull && (region.y + region.height < report.scroll + contentTop - 24 || region.y > report.scroll + h - contentBottom + 24)) continue
         if (region.id === 'hero') {
           paint(ctx, { id: 'hero', label: region.label, frame: region, draw: ctx => {
             if (image) paint(ctx, { id: 'portrait', label: 'Report portrait', frame: { x: 0, y: 0, width: w, height: mockReportHeroHeight }, clip: true, draw: ctx => {
@@ -63,7 +61,7 @@ export function drawMockReport(ctx: CanvasRenderingContext2D, slide: ContentSlid
             drawReportPortraitFade(ctx, w, mockReportHeroHeight)
           } })
         } else if ((region.id === 'eye-color' || region.id === 'hair-color')) {
-          paint(ctx, { id: region.id, label: region.label, frame, size: region, draw: ctx => {
+          paint(ctx, { id: region.id, label: region.label, frame: region, draw: ctx => {
             const palette = region.id === 'hair-color' ? mockHairPalette : mockEyePalette
             const selected = palette.find(shade => shade.name === (region.id === 'hair-color' ? category.hairColor : category.eyeColor))!
             card(ctx, 0, 0, region.width, region.height, 18)
@@ -73,7 +71,7 @@ export function drawMockReport(ctx: CanvasRenderingContext2D, slide: ContentSlid
           } })
 
         } else if (region.id === 'sources') {
-          paint(ctx, { id: region.id, label: region.label, frame, size: region, draw: ctx => {
+          paint(ctx, { id: region.id, label: region.label, frame: region, draw: ctx => {
             card(ctx, 0, 0, region.width, region.height, 18)
             label(ctx, 'Sources', 14, 14)
             paragraph(ctx, 'Cosmetic UV and visible age context only. This is not medical advice.', 14, 36, w - 64, 13, 19, muted)
@@ -82,18 +80,22 @@ export function drawMockReport(ctx: CanvasRenderingContext2D, slide: ContentSlid
           } })
         } else {
           const amount = region.id === 'potential' ? options.growthProgress ?? options.metricProgress ?? 1 : region.id.startsWith('feature:') ? options.featureProgress?.(region.id, region.y) ?? options.metricProgress ?? 1 : options.metricProgress ?? 1
-          drawReportComponent(ctx, slide, region, frame, Math.max(0, Math.min(1, amount)), paint, options.actionState)
+          drawReportComponent(ctx, slide, region, region, Math.max(0, Math.min(1, amount)), paint, options.actionState)
         }
       }
     } })
     paint(ctx, { id: 'report-finish', label: 'App controls', frame: { x: 0, y: 0, width: w, height: h }, draw: ctx => {
-      if (options.presentation !== 'video') { drawReportHeaderGlass(ctx, w, report.scroll); drawChrome(ctx, category, options.interactiveChrome, h) }
+      if (options.presentation === 'video') fade(ctx, h - 110, 110, '255,255,255')
+      else { drawReportHeaderGlass(ctx, w, report.scroll); drawChrome(ctx, category, options.interactiveChrome, h) }
     } })
   } })
 }
 
 export function nativeMetricFeature(feature: ReportCategory['features'][number]) {
-  return { ...feature, visual: feature.visual ?? 'Text' }
+  const graded = feature.grade != null && Number.isFinite(feature.grade)
+  const positioned = feature.positions?.some(Number.isFinite)
+  const inferred = graded && feature.scale !== 'quality' ? 'Rail' : 'Orbit'
+  return { ...feature, visual: (!feature.visual || feature.visual === 'Text') && (graded || positioned) ? inferred : feature.visual ?? 'Text' }
 }
 
 export function drawFeatureCard(ctx: CanvasRenderingContext2D, source: ReportCategory['features'][number], width: number, height: number, progress = 1, identity = source.id ?? source.label, paint: CanvasPainter = paintCanvasNode, showVisual = true) {
@@ -132,25 +134,14 @@ function numericText(ctx: CanvasRenderingContext2D, value: number, decimals: num
   drawRollingNumber(ctx, value, decimals, right ? x - width : x, y + size * .82, size, progress)
   ctx.restore(); return width
 }
-function drawScorePair(ctx: CanvasRenderingContext2D, slide: ContentSlide, width: number, progress: number, paint: CanvasPainter, category?: ReportCategory, rightClearance = 0) {
-  const columnWidth = (width - 18) / 2
-  const scores = [
-    { id: 'current', label: category?.title ?? 'Mogging Score', value: category ? String(category.score) : slide.currentScore, maximum: 10 },
-    { id: 'potential', label: 'Potential', value: slide.potentialScore, maximum: slide.potentialScale ?? 10 },
-  ]
-  for (const [index, item] of scores.entries()) {
-    const available = Boolean(item.value.trim()) && Number.isFinite(Number(item.value))
-    const id = available ? item.id : `${item.id}-unavailable`
-    paint(ctx, { id: `scores/${id}`, label: item.label, frame: { x: index ? width - columnWidth : 0, y: 0, width: columnWidth, height: 64 }, draw: ctx => {
-      const right = index === 1, edge = right ? columnWidth - rightClearance : 0
-      label(ctx, item.label, edge, 4, right, muted, columnWidth)
-      if (!available) { text(ctx, '—', edge, 23, 32, 400, muted, right); return }
-      const value = Number(item.value), size = 34, y = 22
-      const suffix = `/ ${item.maximum}`
-      ctx.font = `400 14px ${sans}`
-      const valueEdge = right ? edge - ctx.measureText(suffix).width - 5 : edge
-      const valueWidth = numericText(ctx, value, 1, valueEdge, y, size, 400, ink, category ? 1 : progress, right)
-      text(ctx, suffix, right ? edge : valueWidth + 5, y + 16, 14, 400, muted, right)
+function drawScorePair(ctx: CanvasRenderingContext2D, slide: ContentSlide, width: number, progress: number, paint: CanvasPainter) {
+  const columnWidth = (width - 24) / 2
+  for (const [index, item] of [{ id: 'current', label: 'Mogging Score', value: Number(slide.currentScore), maximum:10, color: ink }, { id: 'potential', label: slide.potentialScale===8?'Potential PSL':'Potential', value: Number(slide.potentialScore), maximum:slide.potentialScale??10, color: '#9b9ba3' }].entries()) {
+    paint(ctx, { id: `scores/${item.id}`, label: item.label, frame: { x: index ? width - 8 - columnWidth : 8, y: 0, width: columnWidth, height: 100 }, draw: ctx => {
+      const right = index === 1, edge = right ? columnWidth : 0
+      label(ctx, item.label, edge, 4, right, right ? '#a8a8af' : muted)
+      numericText(ctx, item.value, 1, edge, 24, 44, 600, item.color, progress, right)
+      text(ctx, `/ ${item.maximum}`, edge, 76, 13, 500, muted, right)
     } })
   }
 }
@@ -158,19 +149,20 @@ function drawScorePair(ctx: CanvasRenderingContext2D, slide: ContentSlide, width
 const potentialSummary = 'Potential reflects the most realistic lift if the lowest-scoring visible signals improve first.'
 function potentialHeight(ctx: CanvasRenderingContext2D) { return 160 + wrap(ctx, potentialSummary, 322, 15, 400).length * 22 }
 function drawPotential(ctx: CanvasRenderingContext2D, slide: ContentSlide, progress: number, paint: CanvasPainter) {
-  const width = 322, current = Math.max(0, Math.min(10, Number(slide.currentScore))), target = Math.max(0, Math.min(10, Number(slide.potentialScore)))
+  const maximum = slide.potentialScale ?? 10
+  const width = 322, current = Math.max(0, Math.min(maximum, slide.potentialCurrentScore ?? Number(slide.currentScore))), target = Math.max(0, Math.min(maximum, Number(slide.potentialScore)))
   text(ctx, 'Your potential', 0, 0, 24, 400)
-  text(ctx, 'Clear upside', 0, 29, 13, 400, muted)
-  text(ctx, '/10', width, 20, 14, 400, muted, true)
+  text(ctx, maximum===8?'PSL potential':target>current?'Clear upside':'Maintain your strengths', 0, 29, 13, 400, muted)
+  text(ctx, `/${maximum}`, width, 20, 14, 400, muted, true)
   paint(ctx, { id: 'potential/value', label: 'Potential value', frame: { x: width - 128, y: 0, width: 100, height: 44 }, draw: ctx => numericText(ctx, target, 1, 100, 0, 36, 400, reportUi.accent, progress, true) })
   box(ctx, 0, 77, width, 12, 6, '#efeff2')
-  const end = width * target / 10 * progress
+  const end = width * target / maximum * progress
   if (end > 0) {
     const gradient = ctx.createLinearGradient(0, 0, end, 0)
     gradient.addColorStop(0, '#53a553'); gradient.addColorStop(1, reportUi.accent)
     box(ctx, 0, 77, end, 12, 6, gradient)
   }
-  box(ctx, width * current / 10 * progress, 74, 2, 18, 1, '#ffffffcc')
+  box(ctx, width * current / maximum * progress, 74, 2, 18, 1, '#ffffffcc')
   const glass = ctx.createLinearGradient(end - 7, 70, end + 7, 96)
   glass.addColorStop(0, '#ffffff80'); glass.addColorStop(.32, '#ffffff0a'); glass.addColorStop(.68, '#ffffff08'); glass.addColorStop(1, '#ffffff60')
   ctx.save(); ctx.shadowColor = '#00000014'; ctx.shadowBlur = 3; ctx.shadowOffsetY = 1
@@ -223,17 +215,10 @@ export function drawReportComponent(ctx: CanvasRenderingContext2D, slide: Conten
       const width = region.width
       card(ctx, 0, 0, width, region.height, 22)
       text(ctx, category.title, 18, 18, 30, 400)
-      paint(ctx, { id: 'category-score/value', label: 'Category score', frame: { x: 18, y: 53, width: width - 88, height: 27 }, draw: ctx => {
-        const size = 24, edge = width - 88
-        numericText(ctx, category.score, 1, edge - 27, 0, size, 400, ink, progress, true)
-        text(ctx, '/ 10', edge, 10, 12, 400, muted, true)
-      } })
-      paint(ctx, { id: 'category-score/measurement', label: 'Category score timeline', frame: { x: 16, y: 79, width: width - 90, height: 51 }, draw: ctx => {
-        ctx.scale(.84, .7)
-        drawReportMetricTimeline(ctx, { id: 'category-score', label: 'Score', value: '', visual: 'Rail', grade: null, positions: [category.score / 10], scale: 'quality' }, 0, 0, (width - 90) / .84, 70, progress)
-      } })
+      paragraph(ctx, category.subtitle, 18, 69, width - 110, 13, 18, muted, 2)
+      numericText(ctx, category.score, 1, width - 18, 66, 24, 400, ink, progress, true)
     } else {
-      drawScorePair(ctx, slide, region.width, progress, paint, region.categorySummary ? category : undefined, region.scoreRightClearance)
+      drawScorePair(ctx, slide, region.width, progress, paint)
     }
   } })
 }
@@ -251,10 +236,10 @@ function reportActionHeight(ctx: CanvasRenderingContext2D, category: ReportCateg
   return 72 + (items.length ? items.reduce((height, item) => height + 24 + Math.max(24, wrap(ctx, item.label, 286, 15, 500).length * 22 + (item.detail ? 5 + wrap(ctx, item.detail, 286, 15, 400).length * 22 : 0)), 0) : 66)
 }
 
-export function mockReportScrollMax(category: ReportCategory, video = false) {
+export function mockReportScrollMax(category: ReportCategory) {
   const ctx = document.createElement('canvas').getContext('2d')
   if (!ctx) return 0
-  return Math.max(0, Math.ceil(Math.max(...mockReportRegions(ctx, category, video).map(region => region.y + region.height)) + 132 - mockReportSize.height))
+  return Math.max(0, Math.ceil(Math.max(...mockReportRegions(ctx, category).map(region => region.y + region.height)) + 132 - mockReportSize.height))
 }
 
 const glassSurfaces = new WeakMap<CanvasRenderingContext2D, HTMLCanvasElement>()
@@ -404,20 +389,19 @@ export function mockFeatureLayout(category: Pick<ReportCategory, 'features'> & P
   return { tiles, height: top }
 }
 
-export type ReportRegion = { scoreRightClearance?: number; designSize?: { width: number; height: number }; categorySummary?: boolean; showVisual?: boolean; id: string; label: string; x: number; y: number; width: number; height: number }
+export type ReportRegion = { showVisual?: boolean; id: string; label: string; x: number; y: number; width: number; height: number }
 
 // These are the same native-layout coordinates used by drawMockReport, before
 // scroll/parallax and delivery scaling. The editor never guesses card positions.
-export function mockReportRegions(ctx: CanvasRenderingContext2D, category: ReportCategory, video = false): ReportRegion[] {
-  const categorySummary = video && category.id !== 'overall'
+export function mockReportRegions(ctx: CanvasRenderingContext2D, category: ReportCategory): ReportRegion[] {
   const regions: ReportRegion[] = [
     { id: 'hero', label: 'Face scan', x: 0, y: 0, width: 390, height: mockReportHeroHeight },
-    { id: 'scores', label: categorySummary ? `${category.title} & potential scores` : 'Overall & potential scores', categorySummary, x: 36, y: mockReportHeroHeight - 52, width: 270, height: 70 },
+    { id: 'scores', label: 'Overall & potential scores', x: 24, y: mockReportHeroHeight - 80, width: 300, height: 110 },
   ]
-  let top = mockReportHeroHeight + 26
-  if (category.id !== 'overall' && !categorySummary) {
-    regions.push({ id: 'category-score', label: `${category.title} category score`, x: 18, y: top, width: 354, height: 130 })
-    top += 140
+  let top = mockReportHeroHeight - 76 + 112
+  if (category.id !== 'overall') {
+    regions.push({ id: 'category-score', label: `${category.title} category score`, x: 18, y: top, width: 354, height: 116 })
+    top += 126
   }
   if (category.id === 'eyes' && mockEyePalette.some(shade => shade.name === category.eyeColor)) {
     regions.push({ id: 'eye-color', label: 'Eye color', x: 18, y: top, width: 354, height: 91 }); top += 101
@@ -435,18 +419,7 @@ export function mockReportRegions(ctx: CanvasRenderingContext2D, category: Repor
   const actionHeight = reportActionHeight(ctx, category)
   regions.push({ id: 'action-plan', label: category.id === 'overall' ? 'Your priorities' : 'Action plan', x: 18, y: top, width: 354, height: actionHeight }); top += actionHeight
   if (['skin-age', 'sun-damage'].includes(category.id)) regions.push({ id: 'sources', label: 'Sources', x: 18, y: top + 18, width: 354, height: 150 })
-  if (!video) return regions
-  // Preserve native card proportions while leaving room for the feed crop and action rail.
-  const inset = mockReportSize.width * videoContent.inset / videoSize.width
-  const contentWidth = mockReportSize.width - 2 * inset
-  const scale = contentWidth / 354, contentTop = mockReportHeroHeight + 26
-  return regions.map(region => {
-    if (region.id === 'hero') return region
-    if (region.id === 'scores') return { ...region, x: inset, width: contentWidth, scoreRightClearance: 36 }
-    const { x, y, width, height } = region
-    return { ...region, x: inset + (x - 18) * scale, y: contentTop + (y - contentTop) * scale,
-      width: width * scale, height: height * scale, designSize: { width, height } }
-  })
+  return regions
 }
 
 

@@ -23,7 +23,7 @@ test('persistent reference identities enlarge into the recap without inventing n
   recap.forEach((frame, index) => {
     expect(frame.width * frame.height).toBeGreaterThan(rail[index].width * rail[index].height)
     expect(frame.y).toBeGreaterThan(350)
-    expect(frame.x + frame.width).toBeLessThanOrEqual(1080)
+    expect(frame.x + frame.width).toBeLessThanOrEqual(videoSize.width)
     expect(frame.y + frame.height).toBeLessThan(videoSize.height - 180)
   })
   expect(studyPortraitFrame('compare')).toEqual(studyPortraitFrame('planes'))
@@ -89,11 +89,11 @@ test('mosaics open from a seamless photo and smoothly rejoin on one operation cl
   expect(bottom.map(frame => frame.width).reduce((sum, width) => sum + width, 0)).toBe(top.width)
   expect(Math.abs(bottom[0].x - bottom[1].x)).toBe(bottom[0].width)
   const portrait = studyPortraitFrame('compare'), orbit = studyReferenceFrames(study)
-  expect(portrait.x + portrait.width / 2).toBe(540)
+  expect(portrait.x + portrait.width / 2).toBe(videoSize.width/2)
   expect(portrait.width).toBeGreaterThan(800)
   expect(Math.min(...orbit.map(frame => frame.x))).toBeGreaterThan(portrait.x)
   expect(Math.max(...orbit.map(frame => frame.x + frame.width))).toBeLessThan(portrait.x + portrait.width)
-  expect(orbit.some(frame => frame.x > 540)).toBe(true)
+  expect(orbit.some(frame => frame.x > videoSize.width/2)).toBe(true)
 })
 
 test('authored studies sustain an argument rather than rotating portrait, metric and dashboard templates', () => {
@@ -143,7 +143,7 @@ test('detail apertures follow the highlighted feature rather than a fixed square
   expect(jaw.height).toBeGreaterThan(jaw.width)
   expect(cheeks.width).toBeGreaterThan(cheeks.height)
   expect(mouth.width / mouth.height).toBeGreaterThan(1.5)
-  expect(frames.every(frame => frame.x >= 32 && frame.x + frame.width <= 1048)).toBe(true)
+  expect(frames.every(frame => frame.x >= 32 && frame.x + frame.width <= videoSize.width-32)).toBe(true)
 })
 
 

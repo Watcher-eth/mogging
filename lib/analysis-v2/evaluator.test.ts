@@ -22,9 +22,14 @@ test('starts all LLM batches before waiting for any, preserving complete results
   process.env.MOONSHOT_API_KEY = 'test-only'
   const resolvers: Array<(response: Response) => void> = []
     const estimatedBatches = rubricBatches.map(batch => batch.filter(rubric => rubric.output !== 'D'))
-  const fetcher = (() => new Promise<Response>(resolve => resolvers.push(resolve)))
+  const fetcher = (_url: string, options: RequestInit) => {
+    const content = JSON.parse(String(options.body)).messages[1].content
+    expect(content.filter((item: { type: string }) => item.type === 'image_url').map((item: { image_url: { url: string } }) => item.image_url.url))
+      .toEqual(['data:image/jpeg;base64,front', 'data:image/jpeg;base64,profile'])
+    return new Promise<Response>(resolve => resolvers.push(resolve))
+  }
   try {
-    const pending = evaluateV2({ imageDataUrl: 'data:image/jpeg;base64,test', geometry: null }, { fetcher })
+    const pending = evaluateV2({ imageDataUrl: 'data:image/jpeg;base64,front', sideImageDataUrl: 'data:image/jpeg;base64,profile', geometry: null }, { fetcher })
     expect(resolvers.length).toBe(3)
     resolvers.forEach((resolve, index) => resolve(Response.json({ choices: [{ finish_reason: 'stop', message: { content: JSON.stringify({ capture, entries: entries(estimatedBatches[index]) }) } }] })))
     const result = await pending
@@ -33,6 +38,32 @@ test('starts all LLM batches before waiting for any, preserving complete results
   } finally {
     if (originalKey === undefined) Reflect.deleteProperty(process.env, 'MOONSHOT_API_KEY')
     else process.env.MOONSHOT_API_KEY = originalKey
+  }
+})
+
+test('Basic analysis requests and returns only its preview rubrics', async () => {
+  const { basicCategories, basicPreviewRubrics } = await import('./basic-preview')
+  const previous = process.env.MOONSHOT_API_KEY
+  process.env.MOONSHOT_API_KEY = 'test-only'
+  const requests: string[] = []
+  try {
+    const result = await evaluateV2({ imageDataUrl: 'front', sideImageDataUrl: 'side', geometry: null }, {
+      only: basicPreviewRubrics,
+      fetcher: async (_url, options) => {
+        const content = JSON.parse(String(options.body)).messages[1].content
+        const prompt: string = content.at(-1).text
+        const selected = JSON.parse(prompt.split('Requested definitions: ')[1].split('\nUpstream geometry:')[0]) as typeof rubricBatches[number]
+        requests.push(...selected.map(rubric => rubric.id))
+        expect(content.filter((part: { type: string }) => part.type === 'image_url')).toHaveLength(2)
+        return Response.json({ choices: [{ finish_reason: 'stop', message: { content: JSON.stringify({ capture: { ...capture, side: true }, entries: entries(selected) }) } }] })
+      },
+    })
+    expect(requests.sort()).toEqual([...basicPreviewRubrics].sort())
+    expect(result.entries.filter(entry => basicPreviewRubrics.has(entry.id))).toHaveLength(basicCategories.length)
+    expect(result.entries.find(entry => entry.id === 'eyes.spacing')).toBeUndefined()
+  } finally {
+    if (previous === undefined) delete process.env.MOONSHOT_API_KEY
+    else process.env.MOONSHOT_API_KEY = previous
   }
 })
 

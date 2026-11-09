@@ -1,0 +1,1421 @@
+[
+  {
+    "id": "selfie-perspective-v4",
+    "title": "The face your selfie invents.",
+    "feature": "camera-distance",
+    "categoryId": "overall",
+    "model": "female",
+    "voice": "Kore",
+    "delivery": "Clear, warm and conversational. Speak directly to one viewer at 195 words per minute. Quick, connected delivery with changing emphasis. No theatrical suspense, no solemn narration. Read verbatim. Mogging rhymes with dog. Mogging.com is Mogging dot com.",
+    "sections": [
+      {
+        "role": "hook",
+        "text": "A close selfie can make your nose look roughly thirty percent wider relative to your cheeks.",
+        "treatment": "perspective",
+        "camera": "hold",
+        "action": "A constant-size face with a genuine camera-distance change; close view first. Add a small relative-width comparison, clearly labelled perspective.",
+        "id": "hook-0",
+        "study": {
+          "feature": "camera-distance",
+          "view": "front",
+          "from": -1,
+          "to": 1,
+          "instrument": "none",
+          "showMeasurements": false,
+          "restore": true
+        }
+      },
+      {
+        "role": "hook",
+        "text": "Your nose hasn't grown.",
+        "treatment": "morph",
+        "camera": "hold",
+        "action": "A constant-size face with a genuine camera-distance change; close view first. Add a small relative-width comparison, clearly labelled perspective.",
+        "id": "hook-1",
+        "study": {
+          "feature": "camera-distance",
+          "view": "front",
+          "from": 0,
+          "to": 0,
+          "instrument": "none",
+          "showMeasurements": false,
+          "showGuides": false
+        }
+      },
+      {
+        "role": "hook",
+        "text": "The rest of your face is being shown differently.",
+        "treatment": "perspective",
+        "camera": "pullback",
+        "action": "A constant-size face with a genuine camera-distance change; close view first. Add a small relative-width comparison, clearly labelled perspective.",
+        "id": "hook-2",
+        "study": {
+          "feature": "camera-distance",
+          "view": "front",
+          "from": 0,
+          "to": 0,
+          "instrument": "none",
+          "showMeasurements": false
+        }
+      },
+      {
+        "role": "locate",
+        "text": "The nose is closer to the lens than your ears, so it gets exaggerated.",
+        "treatment": "inset",
+        "camera": "hold",
+        "action": "Alternate a clean nose crop, a broad cheek contour, and ear-depth markers. Restore the same face between feature crops; no anatomical morph.",
+        "id": "locate-0",
+        "study": {
+          "feature": "nose-projection",
+          "view": "front",
+          "from": 0,
+          "to": 0,
+          "instrument": "none",
+          "showMeasurements": false
+        }
+      },
+      {
+        "role": "locate",
+        "text": "The ears recede, the cheeks feel narrower, and the centre of your face takes over.",
+        "treatment": "contour",
+        "camera": "hold",
+        "action": "Alternate a clean nose crop, a broad cheek contour, and ear-depth markers. Restore the same face between feature crops; no anatomical morph.",
+        "id": "locate-1",
+        "study": {
+          "feature": "cheek-height",
+          "view": "front",
+          "from": 0,
+          "to": 0,
+          "instrument": "none",
+          "showMeasurements": false,
+          "accent": "surface-net"
+        }
+      },
+      {
+        "role": "locate",
+        "text": "You can end up blaming your nose for a relationship the camera created.",
+        "treatment": "perspective",
+        "camera": "hold",
+        "action": "Alternate a clean nose crop, a broad cheek contour, and ear-depth markers. Restore the same face between feature crops; no anatomical morph.",
+        "id": "locate-2",
+        "study": {
+          "feature": "camera-distance",
+          "view": "front",
+          "from": -1,
+          "to": 1,
+          "instrument": "none",
+          "showMeasurements": false
+        }
+      },
+      {
+        "role": "reveal",
+        "text": "A 2018 study modelled this at twelve inches from the camera.",
+        "treatment": "research",
+        "camera": "hold",
+        "action": "Ward et al. source card enters beside a large twelve-inch-to-five-foot distance rail. Pull the camera back while compensating field of view; do not change the mesh.",
+        "id": "reveal-0",
+        "study": {
+          "feature": "camera-distance",
+          "view": "front",
+          "from": -1,
+          "to": -1,
+          "instrument": "linear",
+          "showMeasurements": true,
+          "reference": {
+            "title": "Ward et al. · 2018",
+            "detail": "12 inches → 5 feet · geometric model",
+            "url": "https://pmc.ncbi.nlm.nih.gov/articles/PMC5876805/"
+          }
+        }
+      },
+      {
+        "role": "reveal",
+        "text": "Its estimate was around thirty percent for men and twenty-nine percent for women.",
+        "treatment": "research",
+        "camera": "hold",
+        "action": "Ward et al. source card enters beside a large twelve-inch-to-five-foot distance rail. Pull the camera back while compensating field of view; do not change the mesh.",
+        "id": "reveal-1",
+        "study": {
+          "feature": "nose-width",
+          "view": "front",
+          "from": 0,
+          "to": 0,
+          "instrument": "none",
+          "showMeasurements": false,
+          "reference": {
+            "title": "Predicted relative nasal breadth",
+            "detail": "30% men · 29% women at 12 inches",
+            "url": "https://pmc.ncbi.nlm.nih.gov/articles/PMC5876805/"
+          }
+        }
+      },
+      {
+        "role": "reveal",
+        "text": "At five feet, that distortion was essentially gone.",
+        "treatment": "perspective",
+        "camera": "pullback",
+        "action": "Ward et al. source card enters beside a large twelve-inch-to-five-foot distance rail. Pull the camera back while compensating field of view; do not change the mesh.",
+        "id": "reveal-2",
+        "study": {
+          "feature": "camera-distance",
+          "view": "front",
+          "from": 1,
+          "to": 1,
+          "instrument": "none",
+          "showMeasurements": false
+        }
+      },
+      {
+        "role": "reveal",
+        "text": "Distance was the important change.",
+        "treatment": "morph",
+        "camera": "hold",
+        "action": "Ward et al. source card enters beside a large twelve-inch-to-five-foot distance rail. Pull the camera back while compensating field of view; do not change the mesh.",
+        "id": "reveal-3",
+        "study": {
+          "feature": "camera-distance",
+          "view": "front",
+          "from": 0,
+          "to": 0,
+          "instrument": "none",
+          "showMeasurements": false,
+          "showGuides": false
+        }
+      },
+      {
+        "role": "demonstrate",
+        "text": "But distance is only one part of how you read a face.",
+        "treatment": "depth-plane",
+        "camera": "turn",
+        "action": "Use a profile nose/chin datum, then a frontal cheek-width contour and a mouth inset merging into the whole face. Return every bounded anatomical demonstration to neutral; keep camera changes distinct from morphs.",
+        "id": "demonstrate-0",
+        "study": {
+          "feature": "nose-projection",
+          "view": "front",
+          "from": 0,
+          "to": 0,
+          "instrument": "none",
+          "showMeasurements": false
+        }
+      },
+      {
+        "role": "demonstrate",
+        "text": "From the side, your chin changes how prominent the nose looks beside it.",
+        "treatment": "profile-plane",
+        "camera": "hold",
+        "action": "Use a profile nose/chin datum, then a frontal cheek-width contour and a mouth inset merging into the whole face. Return every bounded anatomical demonstration to neutral; keep camera changes distinct from morphs.",
+        "id": "demonstrate-1",
+        "study": {
+          "feature": "chin-projection",
+          "view": "profile",
+          "from": 0,
+          "to": 0,
+          "instrument": "none",
+          "showMeasurements": false
+        },
+        "variationMorph": {
+          "from": 0,
+          "to": 0.18
+        }
+      },
+      {
+        "role": "demonstrate",
+        "text": "From the front, cheek width gives the middle of your face its frame.",
+        "treatment": "contour",
+        "camera": "hold",
+        "action": "Use a profile nose/chin datum, then a frontal cheek-width contour and a mouth inset merging into the whole face. Return every bounded anatomical demonstration to neutral; keep camera changes distinct from morphs.",
+        "id": "demonstrate-2",
+        "study": {
+          "feature": "cheek-height",
+          "view": "front",
+          "from": 0,
+          "to": 0,
+          "instrument": "none",
+          "showMeasurements": false
+        }
+      },
+      {
+        "role": "demonstrate",
+        "text": "Even the same mouth can feel more or less prominent when those surrounding proportions change.",
+        "treatment": "card-merge",
+        "camera": "hold",
+        "action": "Use a profile nose/chin datum, then a frontal cheek-width contour and a mouth inset merging into the whole face. Return every bounded anatomical demonstration to neutral; keep camera changes distinct from morphs.",
+        "id": "demonstrate-3",
+        "study": {
+          "feature": "mouth-width",
+          "view": "front",
+          "from": 0,
+          "to": 0,
+          "instrument": "none",
+          "showMeasurements": false
+        }
+      },
+      {
+        "role": "demonstrate",
+        "text": "A close selfie, a portrait and a profile are showing you different relationships.",
+        "treatment": "perspective",
+        "camera": "turn",
+        "action": "Use a profile nose/chin datum, then a frontal cheek-width contour and a mouth inset merging into the whole face. Return every bounded anatomical demonstration to neutral; keep camera changes distinct from morphs.",
+        "id": "demonstrate-4",
+        "study": {
+          "feature": "camera-distance",
+          "view": "front",
+          "from": 0,
+          "to": 0,
+          "instrument": "none",
+          "showMeasurements": false
+        }
+      },
+      {
+        "role": "demonstrate",
+        "text": "That is a much more useful starting point than deciding one feature is the problem.",
+        "treatment": "morph",
+        "camera": "pullback",
+        "action": "Use a profile nose/chin datum, then a frontal cheek-width contour and a mouth inset merging into the whole face. Return every bounded anatomical demonstration to neutral; keep camera changes distinct from morphs.",
+        "id": "demonstrate-5",
+        "study": {
+          "feature": "cheek-height",
+          "view": "front",
+          "from": 0,
+          "to": 0,
+          "instrument": "none",
+          "showMeasurements": false,
+          "showGuides": false
+        }
+      },
+      {
+        "role": "qualify",
+        "text": "If you want to see your own facial proportions and how they score together, go to Mogging.com.",
+        "treatment": "acquire",
+        "camera": "hold",
+        "action": "Show the native feature grid and grow the script-relevant metric into focus.",
+        "id": "qualify-0"
+      },
+      {
+        "role": "close",
+        "text": "Get your face analysis.",
+        "treatment": "acquire",
+        "camera": "hold",
+        "action": "Show the native feature grid and grow the script-relevant metric into focus.",
+        "id": "close-0"
+      }
+    ],
+    "references": [
+      {
+        "title": "Ward et al. · Nasal Distortion in Short-Distance Photographs · 2018",
+        "url": "https://pmc.ncbi.nlm.nih.gov/articles/PMC5876805/",
+        "note": "The 30%/29% prediction is relative nasal breadth at 12 inches, with bizygomatic breadth held constant; this is a geometric model, not a universal measured change in every selfie."
+      }
+    ],
+    "approvedNarrationSha256": "6ad78cb90686124d2c21d8e0d90a487c740f337d075a59329d1cb354f7ae511f",
+    "cuts": {
+      "30": [
+        "hook-0",
+        "hook-1",
+        "locate-0",
+        "reveal-0",
+        "reveal-1",
+        "reveal-2",
+        "reveal-3",
+        "qualify-0",
+        "close-0"
+      ],
+      "45": [
+        "hook-0",
+        "hook-1",
+        "locate-0",
+        "locate-1",
+        "locate-2",
+        "reveal-0",
+        "reveal-1",
+        "reveal-2",
+        "reveal-3",
+        "demonstrate-0",
+        "demonstrate-1",
+        "qualify-0",
+        "close-0"
+      ]
+    }
+  },
+  {
+    "id": "jaw-layers-v4",
+    "title": "The width under your cheekbones.",
+    "feature": "gonial-angle",
+    "categoryId": "jaw",
+    "model": "male",
+    "voice": "Puck",
+    "delivery": "Upbeat, clear and conversational at 195 words per minute. Talk to one viewer with quick changes in emphasis. Curious, slightly playful, no hype or documentary cadence. Read exactly. Mogging rhymes with dog. Mogging.com is Mogging dot com.",
+    "sections": [
+      {
+        "role": "hook",
+        "text": "A square jaw isn't one solid block of bone.",
+        "treatment": "bone-window",
+        "camera": "hold",
+        "action": "Open a broad registered cheek-to-jaw window with lighter growing dotted boundary. Show the masseter and its attachment sheets above the intact skull.",
+        "id": "hook-0",
+        "study": {
+          "feature": "jaw-width",
+          "view": "front",
+          "from": 0,
+          "to": 0,
+          "instrument": "none",
+          "showMeasurements": false,
+          "revealRegion": "jaw"
+        }
+      },
+      {
+        "role": "hook",
+        "text": "Part of the width you see below your cheekbones is muscle, and that changes how the whole lower face reads.",
+        "treatment": "bone-window",
+        "camera": "orbit",
+        "action": "Open a broad registered cheek-to-jaw window with lighter growing dotted boundary. Show the masseter and its attachment sheets above the intact skull.",
+        "id": "hook-1",
+        "study": {
+          "feature": "cheek-height",
+          "view": "front",
+          "from": 0,
+          "to": 0,
+          "instrument": "none",
+          "showMeasurements": false,
+          "revealRegion": "cheek"
+        }
+      },
+      {
+        "role": "locate",
+        "text": "Your masseter runs from the cheekbone arch to the side and angle of your jaw.",
+        "treatment": "bone-window",
+        "camera": "hold",
+        "action": "A restrained depth scan separates skin and registered illustrative anatomy. Trace the zygomatic arch, masseter origin and mandibular insertion in sequence, without inventing a muscle-thickness measurement.",
+        "id": "locate-0",
+        "study": {
+          "feature": "cheek-height",
+          "view": "front",
+          "from": 0,
+          "to": 0,
+          "instrument": "none",
+          "showMeasurements": false,
+          "revealRegion": "cheek",
+          "accent": "contour"
+        }
+      },
+      {
+        "role": "locate",
+        "text": "The outline in a front-facing photo combines that muscle, the bone beneath it, and the soft tissue above it.",
+        "treatment": "section-scan",
+        "camera": "hold",
+        "action": "A restrained depth scan separates skin and registered illustrative anatomy. Trace the zygomatic arch, masseter origin and mandibular insertion in sequence, without inventing a muscle-thickness measurement.",
+        "id": "locate-1",
+        "study": {
+          "feature": "jaw-width",
+          "view": "front",
+          "from": 0,
+          "to": 0,
+          "instrument": "none",
+          "showMeasurements": false
+        }
+      },
+      {
+        "role": "locate",
+        "text": "A photo cannot separate those layers for you.",
+        "treatment": "morph",
+        "camera": "pullback",
+        "action": "A restrained depth scan separates skin and registered illustrative anatomy. Trace the zygomatic arch, masseter origin and mandibular insertion in sequence, without inventing a muscle-thickness measurement.",
+        "id": "locate-2",
+        "study": {
+          "feature": "jaw-width",
+          "view": "front",
+          "from": 0,
+          "to": 0,
+          "instrument": "none",
+          "showMeasurements": false,
+          "showGuides": false
+        }
+      },
+      {
+        "role": "reveal",
+        "text": "Then there is the corner below your ear: the gonial angle.",
+        "treatment": "angle",
+        "camera": "hold",
+        "action": "Move from a frontal width ruler into a profile with staggered angle legs and arc. Place a large degree dial beside the left readout; use neutral gray on the white surface.",
+        "id": "reveal-0",
+        "study": {
+          "feature": "gonial-angle",
+          "view": "profile",
+          "from": 0,
+          "to": 0,
+          "instrument": "none",
+          "showMeasurements": false
+        },
+        "variationMorph": {
+          "from": 0,
+          "to": 0.18
+        }
+      },
+      {
+        "role": "reveal",
+        "text": "It tells you how the back of the jaw meets its lower edge.",
+        "treatment": "angle",
+        "camera": "hold",
+        "action": "Move from a frontal width ruler into a profile with staggered angle legs and arc. Place a large degree dial beside the left readout; use neutral gray on the white surface.",
+        "id": "reveal-1",
+        "study": {
+          "feature": "gonial-angle",
+          "view": "profile",
+          "from": 0,
+          "to": 0,
+          "instrument": "dial",
+          "showMeasurements": true
+        },
+        "variationMorph": {
+          "from": 0,
+          "to": 0.18
+        }
+      },
+      {
+        "role": "reveal",
+        "text": "Width and angle are different dimensions.",
+        "treatment": "datum",
+        "camera": "hold",
+        "action": "Move from a frontal width ruler into a profile with staggered angle legs and arc. Place a large degree dial beside the left readout; use neutral gray on the white surface.",
+        "id": "reveal-2",
+        "study": {
+          "feature": "jaw-width",
+          "view": "front",
+          "from": 0,
+          "to": 0,
+          "instrument": "none",
+          "showMeasurements": false
+        },
+        "variationMorph": {
+          "from": 0,
+          "to": 0.18
+        }
+      },
+      {
+        "role": "reveal",
+        "text": "Your jaw can be broad from the front and still slope gently from the side.",
+        "treatment": "contour",
+        "camera": "turn",
+        "action": "Move from a frontal width ruler into a profile with staggered angle legs and arc. Place a large degree dial beside the left readout; use neutral gray on the white surface.",
+        "id": "reveal-3",
+        "study": {
+          "feature": "gonial-angle",
+          "view": "front",
+          "from": 0,
+          "to": 0,
+          "instrument": "none",
+          "showMeasurements": false
+        },
+        "variationMorph": {
+          "from": 0,
+          "to": 0.18
+        }
+      },
+      {
+        "role": "demonstrate",
+        "text": "Your chin adds another piece.",
+        "treatment": "contour",
+        "camera": "hold",
+        "action": "Use separate chin-projection and chin-width constructions, then a cheek/jaw frame. A controlled key-light sweep demonstrates shadow while all morphs stay neutral. Keep each construction readable; do not stack every primitive.",
+        "id": "demonstrate-0",
+        "study": {
+          "feature": "chin-projection",
+          "view": "profile",
+          "from": 0,
+          "to": 0,
+          "instrument": "none",
+          "showMeasurements": false
+        },
+        "variationMorph": {
+          "from": 0,
+          "to": 0.18
+        }
+      },
+      {
+        "role": "demonstrate",
+        "text": "Projection is how far forward it sits; width is how much space it takes across the face.",
+        "treatment": "profile-plane",
+        "camera": "hold",
+        "action": "Use separate chin-projection and chin-width constructions, then a cheek/jaw frame. A controlled key-light sweep demonstrates shadow while all morphs stay neutral. Keep each construction readable; do not stack every primitive.",
+        "id": "demonstrate-1",
+        "study": {
+          "feature": "chin-projection",
+          "view": "profile",
+          "from": 0,
+          "to": 0,
+          "instrument": "none",
+          "showMeasurements": false
+        },
+        "variationMorph": {
+          "from": 0,
+          "to": 0.18
+        }
+      },
+      {
+        "role": "demonstrate",
+        "text": "Those can vary independently.",
+        "treatment": "datum",
+        "camera": "hold",
+        "action": "Use separate chin-projection and chin-width constructions, then a cheek/jaw frame. A controlled key-light sweep demonstrates shadow while all morphs stay neutral. Keep each construction readable; do not stack every primitive.",
+        "id": "demonstrate-2",
+        "study": {
+          "feature": "chin-width",
+          "view": "front",
+          "from": 0,
+          "to": 0.22,
+          "instrument": "none",
+          "showMeasurements": false,
+          "restore": true
+        }
+      },
+      {
+        "role": "demonstrate",
+        "text": "Higher up, your cheekbones create another width to compare with the jaw.",
+        "treatment": "surface-net",
+        "camera": "hold",
+        "action": "Use separate chin-projection and chin-width constructions, then a cheek/jaw frame. A controlled key-light sweep demonstrates shadow while all morphs stay neutral. Keep each construction readable; do not stack every primitive.",
+        "id": "demonstrate-3",
+        "study": {
+          "feature": "cheek-height",
+          "view": "front",
+          "from": 0,
+          "to": 0,
+          "instrument": "none",
+          "showMeasurements": false,
+          "accent": "contour"
+        }
+      },
+      {
+        "role": "demonstrate",
+        "text": "And light can sharpen the border between all of them: a deeper shadow looks like a stronger edge without adding any bone.",
+        "treatment": "contour",
+        "camera": "hold",
+        "action": "Use separate chin-projection and chin-width constructions, then a cheek/jaw frame. A controlled key-light sweep demonstrates shadow while all morphs stay neutral. Keep each construction readable; do not stack every primitive.",
+        "id": "demonstrate-4",
+        "study": {
+          "feature": "jaw-width",
+          "view": "three-quarter",
+          "from": 0,
+          "to": 0,
+          "instrument": "none",
+          "showMeasurements": false,
+          "lighting": "sweep"
+        }
+      },
+      {
+        "role": "demonstrate",
+        "text": "So the interesting part is how these features work together, not whether one angle hits an internet ideal.",
+        "treatment": "morph",
+        "camera": "pullback",
+        "action": "Use separate chin-projection and chin-width constructions, then a cheek/jaw frame. A controlled key-light sweep demonstrates shadow while all morphs stay neutral. Keep each construction readable; do not stack every primitive.",
+        "id": "demonstrate-5",
+        "study": {
+          "feature": "jaw-width",
+          "view": "front",
+          "from": 0,
+          "to": 0,
+          "instrument": "none",
+          "showMeasurements": false,
+          "showGuides": false
+        }
+      },
+      {
+        "role": "qualify",
+        "text": "If you want to see how your own jaw, chin and facial proportions score together, go to Mogging.com.",
+        "treatment": "acquire",
+        "camera": "hold",
+        "action": "Show the native feature grid and grow the script-relevant metric into focus.",
+        "id": "qualify-0"
+      },
+      {
+        "role": "close",
+        "text": "Get your face analysis.",
+        "treatment": "acquire",
+        "camera": "hold",
+        "action": "Show the native feature grid and grow the script-relevant metric into focus.",
+        "id": "close-0"
+      }
+    ],
+    "references": [
+      {
+        "title": "Masseter anatomy · origin and insertion",
+        "url": "https://www.ncbi.nlm.nih.gov/books/NBK539869/",
+        "note": "Supports the origin at the zygomatic arch and insertion on the lateral ramus/angle. No exercise, treatment or muscle-growth claim is made."
+      },
+      {
+        "title": "Tendon entheses of the human masticatory muscles",
+        "url": "https://pubmed.ncbi.nlm.nih.gov/10994993/",
+        "note": "Supports the explanatory attachment anatomy. The visual remains a simplified registered illustration, not a reconstruction from the viewer’s photo."
+      }
+    ],
+    "approvedNarrationSha256": "101492f0567885be5220314534a0c1f7167d36327bd3b544465576793d006a45",
+    "cuts": {
+      "30": [
+        "hook-0",
+        "hook-1",
+        "locate-0",
+        "reveal-0",
+        "reveal-1",
+        "reveal-2",
+        "demonstrate-0",
+        "demonstrate-1",
+        "qualify-0",
+        "close-0"
+      ],
+      "45": [
+        "hook-0",
+        "hook-1",
+        "locate-0",
+        "locate-1",
+        "locate-2",
+        "reveal-0",
+        "reveal-1",
+        "reveal-2",
+        "reveal-3",
+        "demonstrate-0",
+        "demonstrate-1",
+        "demonstrate-2",
+        "demonstrate-3",
+        "qualify-0",
+        "close-0"
+      ]
+    }
+  },
+  {
+    "id": "cephra-short-midface-datum",
+    "title": "Is your nose getting all the blame?",
+    "feature": "midface-projection",
+    "categoryId": "cheeks",
+    "model": "female",
+    "voice": "Kore",
+    "delivery": "Start like you’re calling out something the viewer has noticed in their own photos. Move briskly through the landmarks. Leave a beat before “Same nose.” Say Mogging dot com.",
+    "references": [
+      {
+        "title": "Head position and cephalometric evaluation of the soft-tissue facial profile",
+        "url": "https://pmc.ncbi.nlm.nih.gov/articles/PMC3667521/",
+        "note": "Supports holding the pose constant. The brow-to-nose guide compares the visible silhouette. It cannot establish skeletal position."
+      }
+    ],
+    "sections": [
+      {
+        "id": "profile-hook",
+        "role": "hook",
+        "text": "Think your nose sticks out too far? Look just below it.",
+        "treatment": "bone-window",
+        "camera": "hold",
+        "action": "Start tight on the intact three-quarter portrait. Flash the upper-jaw cutaway under the nose, then restore the surface as the turn starts.",
+        "study": {
+          "from": 0,
+          "to": 0,
+          "view": "three-quarter",
+          "instrument": "none",
+          "showMeasurements": false,
+          "revealRegion": "nose",
+          "restore": true,
+          "feature": "midface-projection",
+          "narrationTriggerMs": 2300
+        }
+      },
+      {
+        "id": "profile-turn",
+        "role": "locate",
+        "text": "Turn sideways. Keep your chin level and drop a line from between your brows.",
+        "treatment": "profile-offset",
+        "camera": "hold",
+        "action": "Turn the same bust into true profile. Lock head pitch and key light. Pin the glabella and draw a vertical datum.",
+        "study": {
+          "from": 0,
+          "to": 0,
+          "view": "profile",
+          "instrument": "none",
+          "showMeasurements": false,
+          "feature": "midface-projection",
+          "camera": "hold",
+          "showGuides": true,
+          "narrationTriggerMs": 3950,
+          "profileGuide": "datum"
+        }
+      },
+      {
+        "id": "profile-gap",
+        "role": "locate",
+        "text": "Now find the crease where your nose meets your upper lip. How far behind that line does it sit?",
+        "treatment": "profile-offset",
+        "camera": "push",
+        "action": "Place a small nose-base marker and extend a dotted horizontal offset to the datum. Hold with the tip unmarked.",
+        "study": {
+          "from": 0,
+          "to": 0,
+          "view": "profile",
+          "instrument": "none",
+          "showMeasurements": false,
+          "feature": "midface-projection",
+          "camera": "hold",
+          "narrationTriggerMs": 1900,
+          "guideEndMs": 3900,
+          "profileGuide": "offset"
+        }
+      },
+      {
+        "id": "profile-morph",
+        "role": "reveal",
+        "text": "Bring that area forward and the upper lip comes with it. Same nose. Different profile.",
+        "treatment": "profile-offset",
+        "camera": "hold",
+        "action": "Morph the region around the nasal base and upper lip. Fix brow, nasal tip, and chin in place. Let the offset shorten with the surface.",
+        "study": {
+          "from": 0,
+          "to": 0.32,
+          "view": "profile",
+          "instrument": "none",
+          "showMeasurements": true,
+          "feature": "midface-projection",
+          "narrationTriggerMs": 150,
+          "profileGuide": "persist"
+        }
+      },
+      {
+        "id": "profile-payoff",
+        "role": "demonstrate",
+        "text": "That little dip under the nose can change how prominent the whole nose looks.",
+        "treatment": "inset",
+        "camera": "pullback",
+        "action": "Use a nearby macro inset with the two profiles aligned at the nasal tip. Mark the dip, then let the inset merge back into the full profile.",
+        "study": {
+          "from": 0.32,
+          "to": 0.32,
+          "view": "profile",
+          "instrument": "none",
+          "showMeasurements": false,
+          "feature": "midface-projection",
+          "narrationTriggerMs": 800
+        }
+      },
+      {
+        "id": "profile-app",
+        "role": "qualify",
+        "text": "If you want to see how your profile fits together, go to Mogging.com.",
+        "treatment": "acquire",
+        "camera": "hold",
+        "action": "On “Mogging.com”, lift the populated Cheeks report grid over the same composition. Grow Paranasal contour into focus and hold its populated tile and visualization.",
+        "study": {
+          "from": 0,
+          "to": 0,
+          "view": "front",
+          "instrument": "none",
+          "showMeasurements": false,
+          "feature": "midface-projection"
+        }
+      },
+      {
+        "id": "profile-tag",
+        "role": "close",
+        "text": "Get your face analysis.",
+        "treatment": "acquire",
+        "camera": "hold",
+        "action": "Hold the populated grid and center the Mogging app lockup inside the feed safe area.",
+        "study": {
+          "from": 0,
+          "to": 0,
+          "view": "front",
+          "instrument": "none",
+          "showMeasurements": false,
+          "feature": "midface-projection"
+        }
+      }
+    ],
+    "reportMetricId": "cheeks.paranasal",
+    "material": "reflective",
+    "authored": true
+  },
+  {
+    "id": "cephra-short-matched-selfie",
+    "title": "Why your selfie and your mirror disagree",
+    "feature": "camera-distance",
+    "categoryId": "nose",
+    "model": "female",
+    "voice": "Puck",
+    "delivery": "Fast and conversational. Treat the first line like a genuine question. Give nose, cheeks and ears separate stresses, then leave space for the mirror beat. Say Mogging dot com.",
+    "references": [
+      {
+        "title": "Ward et al. · Nasal Distortion in Short-Distance Photographs",
+        "url": "https://journals.sagepub.com/doi/10.1001/jamafacial.2018.0009",
+        "note": "Models how short camera distances can make nasal breadth appear larger relative to the face."
+      },
+      {
+        "title": "Quantifying Facial Distortion in Modern Digital Photography",
+        "url": "https://onlinelibrary.wiley.com/doi/full/10.1002/lary.30935",
+        "note": "Experiment on facial distortion at short photography distances."
+      }
+    ],
+    "sections": [
+      {
+        "id": "selfie-hook",
+        "role": "hook",
+        "text": "Ever like your face in the mirror, then open the front camera and wonder what happened?",
+        "treatment": "perspective",
+        "camera": "hold",
+        "action": "Start on the farther portrait. Jump to the near perspective on the same blink with the eye line and portrait scale matched.",
+        "study": {
+          "from": 0.72,
+          "to": -0.66,
+          "view": "front",
+          "instrument": "none",
+          "showMeasurements": false,
+          "feature": "camera-distance",
+          "narrationTriggerMs": 2000
+        }
+      },
+      {
+        "id": "selfie-depth",
+        "role": "locate",
+        "text": "At arm’s length, your nose is a lot closer to the lens than your ears.",
+        "treatment": "perspective",
+        "camera": "hold",
+        "action": "Grow a compact distance rail. Draw a nasal bracket and a faint depth guide from nose tip to ear plane.",
+        "study": {
+          "from": -0.66,
+          "to": -0.66,
+          "view": "front",
+          "instrument": "linear",
+          "showMeasurements": false,
+          "feature": "camera-distance",
+          "narrationTriggerMs": 950,
+          "guideEndMs": 2750
+        }
+      },
+      {
+        "id": "selfie-proof",
+        "role": "reveal",
+        "text": "So the middle gets bigger, your cheeks look narrower, and your ears start to disappear.",
+        "treatment": "inset",
+        "camera": "hold",
+        "action": "Use three quick registered details of the same compensated pair. Swap central width, cheek silhouette, then visible ear area on the named words.",
+        "study": {
+          "from": -0.66,
+          "to": -0.66,
+          "view": "front",
+          "instrument": "none",
+          "showMeasurements": false,
+          "feature": "camera-distance",
+          "demo": "lens-detail",
+          "narrationTriggerMs": 250,
+          "guideEndMs": 1150,
+          "guideConnectMs": 2550
+        }
+      },
+      {
+        "id": "selfie-mirror",
+        "role": "demonstrate",
+        "text": "In the mirror, that extra distance makes the difference less obvious.",
+        "treatment": "mirror",
+        "camera": "hold",
+        "action": "Sweep a soft-edged oval mirror over the same portrait. Let the farther view show inside it while the near view remains outside.",
+        "study": {
+          "from": -0.66,
+          "to": -0.66,
+          "view": "front",
+          "instrument": "none",
+          "showMeasurements": false,
+          "feature": "camera-distance",
+          "demo": "lens-mirror",
+          "narrationTriggerMs": 200
+        }
+      },
+      {
+        "id": "selfie-match",
+        "role": "demonstrate",
+        "text": "Try it. Move the phone back, keep it at eye level, then crop in. There’s your face again.",
+        "treatment": "perspective",
+        "camera": "hold",
+        "action": "Reprise the near and far camera states with a continuous compensated dolly. Keep the eye line and bust height fixed.",
+        "study": {
+          "from": -0.66,
+          "to": 0.72,
+          "view": "front",
+          "instrument": "linear",
+          "showMeasurements": false,
+          "feature": "camera-distance",
+          "narrationTriggerMs": 550
+        }
+      },
+      {
+        "id": "selfie-app",
+        "role": "qualify",
+        "text": "If you want a closer look at your own proportions, go to Mogging.com.",
+        "treatment": "acquire",
+        "camera": "hold",
+        "action": "On “Mogging.com”, lift the populated Nose report grid over the same composition. Grow Nose-base width into focus and hold its populated tile and visualization.",
+        "study": {
+          "from": 0,
+          "to": 0,
+          "view": "front",
+          "instrument": "none",
+          "showMeasurements": false,
+          "feature": "camera-distance"
+        }
+      },
+      {
+        "id": "selfie-tag",
+        "role": "close",
+        "text": "Get your face analysis.",
+        "treatment": "acquire",
+        "camera": "hold",
+        "action": "Hold the populated grid and center the Mogging app lockup inside the feed safe area.",
+        "study": {
+          "from": 0,
+          "to": 0,
+          "view": "front",
+          "instrument": "none",
+          "showMeasurements": false,
+          "feature": "camera-distance"
+        }
+      }
+    ],
+    "reportMetricId": "nose.width",
+    "material": "matte",
+    "authored": true
+  },
+  {
+    "id": "cephra-short-canthal-tilt",
+    "title": "The angle at the edge of your eye",
+    "feature": "eye-tilt",
+    "categoryId": "eyes",
+    "model": "male",
+    "voice": "Iapetus",
+    "delivery": "Start with quick, genuine curiosity. Read the two dots in rhythm, then give “up, flat, down” three clearly separated hits. Say Mogging dot com.",
+    "references": [
+      {
+        "title": "Diagnostic analysis of vertical orbital dystopia and canthal tilt",
+        "url": "https://pubmed.ncbi.nlm.nih.gov/33377462/",
+        "note": "Defines the inclination between the two eye corners. Use the registered eyelid junctions and a level head pose."
+      }
+    ],
+    "sections": [
+      {
+        "id": "eye-hook",
+        "role": "hook",
+        "text": "Do your eyes tilt up or down? Two tiny dots give it away.",
+        "treatment": "acquire",
+        "camera": "hold",
+        "action": "Begin on a level, frontal bust. Flash one eye corner for the hook and clear it before the move.",
+        "study": {
+          "from": 0,
+          "to": 0,
+          "view": "front",
+          "instrument": "none",
+          "showMeasurements": false,
+          "feature": "eye-tilt",
+          "narrationTriggerMs": 2100
+        }
+      },
+      {
+        "id": "eye-locate",
+        "role": "locate",
+        "text": "Forget the brow. Find the corner next to your nose, then the little crease at the other end.",
+        "treatment": "inset",
+        "camera": "push",
+        "action": "Push into one eye on the same bust. Place the medial and lateral canthus markers independently. Register to where the lids actually meet.",
+        "study": {
+          "from": 0,
+          "to": 0,
+          "view": "front",
+          "instrument": "none",
+          "showMeasurements": false,
+          "feature": "eye-tilt",
+          "demo": "eye-dots",
+          "narrationTriggerMs": 2400,
+          "guideEndMs": 4600
+        }
+      },
+      {
+        "id": "eye-datum",
+        "role": "reveal",
+        "text": "Connect those two dots. Now compare that line with a level one.",
+        "treatment": "datum",
+        "camera": "hold",
+        "action": "Draw the corner-to-corner chord, then a dotted horizontal baseline through the inner corner. Bring in a restrained signed degree readout only after both lines are visible.",
+        "study": {
+          "from": 0,
+          "to": 0,
+          "view": "front",
+          "instrument": "none",
+          "showMeasurements": false,
+          "feature": "eye-tilt",
+          "demo": "eye-line",
+          "narrationTriggerMs": 900,
+          "guideEndMs": 3600
+        }
+      },
+      {
+        "id": "eye-sweep",
+        "role": "demonstrate",
+        "text": "Up is positive. Flat is neutral. Down is negative. That’s your canthal tilt.",
+        "treatment": "angle",
+        "camera": "hold",
+        "action": "Animate the lateral junction through three subtle poses while locking the inner anchor and pupil. Both lids follow the corner smoothly. Update the chord and numeric angle from the projected points.",
+        "study": {
+          "from": 0.78,
+          "to": -0.7,
+          "view": "front",
+          "instrument": "none",
+          "showMeasurements": false,
+          "feature": "eye-tilt",
+          "demo": "eye-tilt",
+          "narrationTriggerMs": 200,
+          "guideEndMs": 1300,
+          "guideConnectMs": 2500
+        }
+      },
+      {
+        "id": "eye-payoff",
+        "role": "demonstrate",
+        "text": "A slanted selfie can change what that line seems to say, so check it with your head level.",
+        "treatment": "comparison",
+        "camera": "pullback",
+        "action": "Briefly roll the whole frame with a fixed screen guide, then level it and pull back to a clean full face with two aligned guides.",
+        "study": {
+          "from": 0,
+          "to": 0,
+          "view": "front",
+          "instrument": "none",
+          "showMeasurements": false,
+          "feature": "eye-tilt",
+          "demo": "eye-level",
+          "narrationTriggerMs": 400,
+          "guideEndMs": 3800,
+          "morphReturnMs": 3800
+        }
+      },
+      {
+        "id": "eye-app",
+        "role": "qualify",
+        "text": "If you want to check your own eye proportions, go to Mogging.com.",
+        "treatment": "acquire",
+        "camera": "hold",
+        "action": "On “Mogging.com”, lift the populated Eyes report grid over the same composition. Grow Outer-corner tilt into focus and hold its populated tile and visualization.",
+        "study": {
+          "from": 0,
+          "to": 0,
+          "view": "front",
+          "instrument": "none",
+          "showMeasurements": false,
+          "feature": "eye-tilt"
+        }
+      },
+      {
+        "id": "eye-tag",
+        "role": "close",
+        "text": "Get your face analysis.",
+        "treatment": "acquire",
+        "camera": "hold",
+        "action": "Hold the populated grid and center the Mogging app lockup inside the feed safe area.",
+        "study": {
+          "from": 0,
+          "to": 0,
+          "view": "front",
+          "instrument": "none",
+          "showMeasurements": false,
+          "feature": "eye-tilt"
+        }
+      }
+    ],
+    "reportMetricId": "eyes.canthal-tilt",
+    "material": "reflective",
+    "authored": true
+  },
+  {
+    "id": "cephra-short-jaw-hinge",
+    "title": "Where your jawline actually turns",
+    "feature": "gonial-angle",
+    "categoryId": "jaw",
+    "model": "male",
+    "voice": "Orus",
+    "delivery": "Open with a challenge, keep the landmark section clipped and easy to follow, then let the fold feel like a second reveal. Say Mogging dot com.",
+    "references": [
+      {
+        "title": "Comparative assessment of cephalometric and photographic variables",
+        "url": "https://pubmed.ncbi.nlm.nih.gov/35911811/",
+        "note": "Distinguishes measurements made on a soft-tissue profile from skeletal measurements. The guide fold compares lengths separately from the angle."
+      }
+    ],
+    "sections": [
+      {
+        "id": "jaw-hook",
+        "role": "hook",
+        "text": "Your jaw can look wide and still lose that sharp corner. Here’s where it happens.",
+        "treatment": "morph",
+        "camera": "hold",
+        "action": "Open on two profile silhouettes of one bust registered at the ear and chin. Cycle the corner once and hold without labels.",
+        "study": {
+          "from": 0,
+          "to": 0.26,
+          "view": "profile",
+          "instrument": "none",
+          "showMeasurements": false,
+          "restore": true,
+          "feature": "gonial-angle",
+          "narrationTriggerMs": 2500
+        }
+      },
+      {
+        "id": "jaw-guides",
+        "role": "locate",
+        "text": "Look just below your ear. Follow the back edge down, then the bottom edge toward your chin.",
+        "treatment": "angle",
+        "camera": "push",
+        "action": "Push toward the gonial landmark below the ear. Draw the rear leg and then the mandibular-body guide, independently.",
+        "study": {
+          "from": 0,
+          "to": 0,
+          "view": "profile",
+          "instrument": "none",
+          "showMeasurements": false,
+          "feature": "gonial-angle",
+          "narrationTriggerMs": 900,
+          "guideEndMs": 5000,
+          "anglePhase": "guides"
+        }
+      },
+      {
+        "id": "jaw-bone",
+        "role": "reveal",
+        "text": "That turn is your gonial angle. Here’s what it looks like under the skin.",
+        "treatment": "bone-window",
+        "camera": "hold",
+        "action": "Draw a staggered angle arc only after both legs settle. Open a mandible cutaway from the same registered vertex.",
+        "study": {
+          "from": 0,
+          "to": 0,
+          "view": "profile",
+          "instrument": "none",
+          "showMeasurements": false,
+          "revealRegion": "jaw",
+          "feature": "gonial-angle",
+          "narrationTriggerMs": 3400,
+          "guideEndMs": 1200,
+          "anglePhase": "bone"
+        }
+      },
+      {
+        "id": "jaw-fold",
+        "role": "demonstrate",
+        "text": "Now fold the back line down. You can see how much of the lower edge it actually covers.",
+        "treatment": "fold-ratio",
+        "camera": "hold",
+        "action": "Fold the rear guide toward the lower guide around the fixed vertex. Keep both lengths constant and retain a faint ghost at the starting angle.",
+        "study": {
+          "from": 0,
+          "to": 0,
+          "view": "profile",
+          "instrument": "none",
+          "showMeasurements": false,
+          "feature": "gonial-angle",
+          "showGuides": true,
+          "narrationTriggerMs": 600,
+          "guideEndMs": 4400
+        }
+      },
+      {
+        "id": "jaw-open",
+        "role": "demonstrate",
+        "text": "Open up the angle and that corner softens. Close it and the turn gets sharper, even at the same width.",
+        "treatment": "angle",
+        "camera": "hold",
+        "action": "Restore the folded guide before easing the mandible through two angle states. Keep lateral width constant. Animate the arc and compact angle value with the landmark motion.",
+        "study": {
+          "from": 0,
+          "to": 0.34,
+          "view": "profile",
+          "instrument": "none",
+          "showMeasurements": false,
+          "feature": "gonial-angle",
+          "narrationTriggerMs": 400,
+          "guideEndMs": 3000,
+          "morphReturnMs": 3000
+        }
+      },
+      {
+        "id": "jaw-app",
+        "role": "qualify",
+        "text": "If you want to see what shapes your jawline, go to Mogging.com.",
+        "treatment": "acquire",
+        "camera": "hold",
+        "action": "On “Mogging.com”, lift the populated Jaw report grid over the same composition. Grow Profile jaw angle into focus and hold its populated tile and visualization.",
+        "study": {
+          "from": 0,
+          "to": 0,
+          "view": "front",
+          "instrument": "none",
+          "showMeasurements": false,
+          "feature": "gonial-angle"
+        }
+      },
+      {
+        "id": "jaw-tag",
+        "role": "close",
+        "text": "Get your face analysis.",
+        "treatment": "acquire",
+        "camera": "hold",
+        "action": "Hold the populated grid and center the Mogging app lockup inside the feed safe area.",
+        "study": {
+          "from": 0,
+          "to": 0,
+          "view": "front",
+          "instrument": "none",
+          "showMeasurements": false,
+          "feature": "gonial-angle"
+        }
+      }
+    ],
+    "reportMetricId": "jaw.angle",
+    "material": "matte",
+    "authored": true
+  },
+  {
+    "id": "cephra-short-palate-arch",
+    "title": "What your smile hides behind the front teeth",
+    "feature": "mouth-width",
+    "categoryId": "mouth",
+    "model": "female",
+    "voice": "Kore",
+    "delivery": "Open warmly and pivot fast on “behind.” Give the three checks different emphasis. Let the last distinction sound like the payoff. Say Mogging dot com.",
+    "references": [
+      {
+        "title": "Diagnostic methods for maxillary skeletal and dental transverse deficiencies",
+        "url": "https://pmc.ncbi.nlm.nih.gov/articles/PMC5033772/",
+        "note": "Orthodontic assessment may consider arch width, crossbite and crowding. The report tile measures visible mouth proportions only."
+      }
+    ],
+    "sections": [
+      {
+        "id": "palate-hook",
+        "role": "hook",
+        "text": "Could your smile hide a narrow upper arch? The interesting part is behind your front teeth.",
+        "treatment": "acquire",
+        "camera": "hold",
+        "action": "Open on a full front smile. Hold a beat on the upper front teeth before a match cut to a teeth-only model.",
+        "study": {
+          "from": 0,
+          "to": 0,
+          "view": "front",
+          "instrument": "none",
+          "showMeasurements": false,
+          "feature": "mouth-width",
+          "demo": "smile",
+          "narrationTriggerMs": 4500
+        }
+      },
+      {
+        "id": "palate-shape",
+        "role": "locate",
+        "text": "First, look from above. Does the arch curve like a U, or pinch in toward the front?",
+        "treatment": "contour",
+        "camera": "orbit",
+        "action": "Rotate to an overhead view of an anatomically modeled upper arch. Settle counter 1, then wipe between two arch forms with tooth positions following the curve.",
+        "study": {
+          "from": 0,
+          "to": 0,
+          "view": "front",
+          "instrument": "none",
+          "showMeasurements": false,
+          "feature": "mouth-width",
+          "demo": "arch",
+          "narrationTriggerMs": 1100,
+          "guideEndMs": 4600
+        }
+      },
+      {
+        "id": "palate-bite",
+        "role": "reveal",
+        "text": "Then look where the back teeth meet. If the uppers sit inside the lowers, that’s a crossbite.",
+        "treatment": "bone-window",
+        "camera": "hold",
+        "action": "Rotate to a side occlusion view of both arches. Settle counter 2. In the crossbite state, mark the upper and lower contacts with separate white and charcoal leaders.",
+        "study": {
+          "from": 0,
+          "to": 0,
+          "view": "front",
+          "instrument": "none",
+          "showMeasurements": false,
+          "feature": "mouth-width",
+          "demo": "bite",
+          "narrationTriggerMs": 1200,
+          "guideEndMs": 3600
+        }
+      },
+      {
+        "id": "palate-crowding",
+        "role": "demonstrate",
+        "text": "And if the front teeth overlap, you’re seeing a space problem. The arch is only one clue.",
+        "treatment": "inset",
+        "camera": "push",
+        "action": "Cut to a head-on dental close-up. Settle counter 3 and show the rotated incisor edge and the available space as separate details.",
+        "study": {
+          "from": 0,
+          "to": 0,
+          "view": "front",
+          "instrument": "none",
+          "showMeasurements": false,
+          "feature": "mouth-width",
+          "demo": "crowding",
+          "narrationTriggerMs": 550
+        }
+      },
+      {
+        "id": "palate-payoff",
+        "role": "demonstrate",
+        "text": "Those dark spaces at the edge of a smile? They can change with the smile itself.",
+        "treatment": "comparison",
+        "camera": "pullback",
+        "action": "Match back to the same smiling sculpture. Change lip and cheek expression with the dental geometry fixed. Fade the checklist as the smile fills the frame.",
+        "study": {
+          "from": 0,
+          "to": 0,
+          "view": "front",
+          "instrument": "none",
+          "showMeasurements": false,
+          "feature": "mouth-width",
+          "demo": "smile",
+          "narrationTriggerMs": 300,
+          "guideEndMs": 3400
+        }
+      },
+      {
+        "id": "palate-app",
+        "role": "qualify",
+        "text": "If you want to see how wide your smile reads in a photo, go to Mogging.com.",
+        "treatment": "acquire",
+        "camera": "hold",
+        "action": "On “Mogging.com”, lift the populated Mouth report grid over the same composition. Grow Mouth / nose width into focus and hold its populated tile and visualization.",
+        "study": {
+          "from": 0,
+          "to": 0,
+          "view": "front",
+          "instrument": "none",
+          "showMeasurements": false,
+          "feature": "mouth-width"
+        }
+      },
+      {
+        "id": "palate-tag",
+        "role": "close",
+        "text": "Get your face analysis.",
+        "treatment": "acquire",
+        "camera": "hold",
+        "action": "Hold the populated grid and center the Mogging app lockup inside the feed safe area.",
+        "study": {
+          "from": 0,
+          "to": 0,
+          "view": "front",
+          "instrument": "none",
+          "showMeasurements": false,
+          "feature": "mouth-width"
+        }
+      }
+    ],
+    "reportMetricId": "mouth.width",
+    "material": "reflective",
+    "authored": true
+  }
+]

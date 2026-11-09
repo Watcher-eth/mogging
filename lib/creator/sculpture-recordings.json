@@ -1,0 +1,6158 @@
+{
+  "mouth-in-context": {
+    "audio": "/creator/sculpture/voices/mouth-in-context.wav",
+    "durationMs": 31440,
+    "sections": [
+      {
+        "startMs": 0,
+        "durationMs": 3300,
+        "words": [
+          {
+            "text": "Your",
+            "startMs": 200,
+            "endMs": 400
+          },
+          {
+            "text": "lips",
+            "startMs": 400,
+            "endMs": 700
+          },
+          {
+            "text": "can",
+            "startMs": 700,
+            "endMs": 800
+          },
+          {
+            "text": "be",
+            "startMs": 800,
+            "endMs": 900
+          },
+          {
+            "text": "full",
+            "startMs": 900,
+            "endMs": 1400
+          },
+          {
+            "text": "and",
+            "startMs": 1400,
+            "endMs": 1600
+          },
+          {
+            "text": "still",
+            "startMs": 1600,
+            "endMs": 1900
+          },
+          {
+            "text": "look",
+            "startMs": 1900,
+            "endMs": 2100
+          },
+          {
+            "text": "small",
+            "startMs": 2100,
+            "endMs": 2400
+          },
+          {
+            "text": "in",
+            "startMs": 2400,
+            "endMs": 2500
+          },
+          {
+            "text": "your",
+            "startMs": 2500,
+            "endMs": 2600
+          },
+          {
+            "text": "face",
+            "startMs": 2600,
+            "endMs": 3200
+          }
+        ]
+      },
+      {
+        "startMs": 3300,
+        "durationMs": 6050,
+        "words": [
+          {
+            "text": "Before",
+            "startMs": 100,
+            "endMs": 400
+          },
+          {
+            "text": "you",
+            "startMs": 400,
+            "endMs": 500
+          },
+          {
+            "text": "blame",
+            "startMs": 500,
+            "endMs": 800
+          },
+          {
+            "text": "their",
+            "startMs": 800,
+            "endMs": 1000
+          },
+          {
+            "text": "size",
+            "startMs": 1000,
+            "endMs": 1500
+          },
+          {
+            "text": "look",
+            "startMs": 1500,
+            "endMs": 1800
+          },
+          {
+            "text": "at",
+            "startMs": 1800,
+            "endMs": 1900
+          },
+          {
+            "text": "the",
+            "startMs": 1900,
+            "endMs": 1901
+          },
+          {
+            "text": "space",
+            "startMs": 1901,
+            "endMs": 2400
+          },
+          {
+            "text": "above",
+            "startMs": 2400,
+            "endMs": 3000
+          },
+          {
+            "text": "them",
+            "startMs": 3000,
+            "endMs": 3200
+          },
+          {
+            "text": "The",
+            "startMs": 3800,
+            "endMs": 3801
+          },
+          {
+            "text": "shape",
+            "startMs": 3801,
+            "endMs": 4100
+          },
+          {
+            "text": "of",
+            "startMs": 4100,
+            "endMs": 4200
+          },
+          {
+            "text": "the",
+            "startMs": 4200,
+            "endMs": 4300
+          },
+          {
+            "text": "lips",
+            "startMs": 4300,
+            "endMs": 4600
+          },
+          {
+            "text": "is",
+            "startMs": 4600,
+            "endMs": 4800
+          },
+          {
+            "text": "only",
+            "startMs": 4800,
+            "endMs": 5000
+          },
+          {
+            "text": "part",
+            "startMs": 5000,
+            "endMs": 5300
+          },
+          {
+            "text": "of",
+            "startMs": 5300,
+            "endMs": 5400
+          },
+          {
+            "text": "what",
+            "startMs": 5400,
+            "endMs": 5500
+          },
+          {
+            "text": "you",
+            "startMs": 5500,
+            "endMs": 5600
+          },
+          {
+            "text": "see",
+            "startMs": 5600,
+            "endMs": 6000
+          }
+        ]
+      },
+      {
+        "startMs": 9350,
+        "durationMs": 5300,
+        "words": [
+          {
+            "text": "That",
+            "startMs": 50,
+            "endMs": 250
+          },
+          {
+            "text": "space",
+            "startMs": 250,
+            "endMs": 650
+          },
+          {
+            "text": "is",
+            "startMs": 650,
+            "endMs": 850
+          },
+          {
+            "text": "your",
+            "startMs": 850,
+            "endMs": 950
+          },
+          {
+            "text": "philtrum",
+            "startMs": 950,
+            "endMs": 1550
+          },
+          {
+            "text": "Lengthen",
+            "startMs": 2050,
+            "endMs": 2350
+          },
+          {
+            "text": "it",
+            "startMs": 2350,
+            "endMs": 2550
+          },
+          {
+            "text": "slightly",
+            "startMs": 2550,
+            "endMs": 3050
+          },
+          {
+            "text": "and",
+            "startMs": 3050,
+            "endMs": 3450
+          },
+          {
+            "text": "the",
+            "startMs": 3450,
+            "endMs": 3550
+          },
+          {
+            "text": "same",
+            "startMs": 3550,
+            "endMs": 3850
+          },
+          {
+            "text": "mouth",
+            "startMs": 3850,
+            "endMs": 4150
+          },
+          {
+            "text": "sits",
+            "startMs": 4150,
+            "endMs": 4350
+          },
+          {
+            "text": "lower",
+            "startMs": 4350,
+            "endMs": 4550
+          },
+          {
+            "text": "in",
+            "startMs": 4550,
+            "endMs": 4650
+          },
+          {
+            "text": "the",
+            "startMs": 4650,
+            "endMs": 4750
+          },
+          {
+            "text": "face",
+            "startMs": 4750,
+            "endMs": 5250
+          }
+        ]
+      },
+      {
+        "startMs": 14650,
+        "durationMs": 11150,
+        "words": [
+          {
+            "text": "Bring",
+            "startMs": 50,
+            "endMs": 150
+          },
+          {
+            "text": "it",
+            "startMs": 150,
+            "endMs": 350
+          },
+          {
+            "text": "back",
+            "startMs": 350,
+            "endMs": 850
+          },
+          {
+            "text": "and",
+            "startMs": 850,
+            "endMs": 950
+          },
+          {
+            "text": "the",
+            "startMs": 950,
+            "endMs": 1050
+          },
+          {
+            "text": "mouth",
+            "startMs": 1050,
+            "endMs": 1350
+          },
+          {
+            "text": "area",
+            "startMs": 1350,
+            "endMs": 1650
+          },
+          {
+            "text": "feels",
+            "startMs": 1650,
+            "endMs": 2050
+          },
+          {
+            "text": "more",
+            "startMs": 2050,
+            "endMs": 2250
+          },
+          {
+            "text": "compact",
+            "startMs": 2250,
+            "endMs": 2950
+          },
+          {
+            "text": "The",
+            "startMs": 3350,
+            "endMs": 3450
+          },
+          {
+            "text": "lips",
+            "startMs": 3450,
+            "endMs": 3650
+          },
+          {
+            "text": "have",
+            "startMs": 3650,
+            "endMs": 3950
+          },
+          {
+            "text": "not",
+            "startMs": 3950,
+            "endMs": 4150
+          },
+          {
+            "text": "gained",
+            "startMs": 4150,
+            "endMs": 4350
+          },
+          {
+            "text": "any",
+            "startMs": 4350,
+            "endMs": 4550
+          },
+          {
+            "text": "volume",
+            "startMs": 4550,
+            "endMs": 5050
+          },
+          {
+            "text": "Their",
+            "startMs": 5250,
+            "endMs": 5350
+          },
+          {
+            "text": "relationship",
+            "startMs": 5350,
+            "endMs": 6050
+          },
+          {
+            "text": "to",
+            "startMs": 6050,
+            "endMs": 6150
+          },
+          {
+            "text": "the",
+            "startMs": 6150,
+            "endMs": 6350
+          },
+          {
+            "text": "nose",
+            "startMs": 6350,
+            "endMs": 6950
+          },
+          {
+            "text": "has",
+            "startMs": 6950,
+            "endMs": 7250
+          },
+          {
+            "text": "changed",
+            "startMs": 7250,
+            "endMs": 7750
+          },
+          {
+            "text": "So",
+            "startMs": 8250,
+            "endMs": 8550
+          },
+          {
+            "text": "a",
+            "startMs": 8550,
+            "endMs": 8650
+          },
+          {
+            "text": "bigger",
+            "startMs": 8650,
+            "endMs": 8950
+          },
+          {
+            "text": "lip",
+            "startMs": 8950,
+            "endMs": 9250
+          },
+          {
+            "text": "is",
+            "startMs": 9250,
+            "endMs": 9350
+          },
+          {
+            "text": "not",
+            "startMs": 9350,
+            "endMs": 9650
+          },
+          {
+            "text": "automatically",
+            "startMs": 9650,
+            "endMs": 10250
+          },
+          {
+            "text": "a",
+            "startMs": 10250,
+            "endMs": 10251
+          },
+          {
+            "text": "better",
+            "startMs": 10251,
+            "endMs": 10550
+          },
+          {
+            "text": "fit",
+            "startMs": 10550,
+            "endMs": 10850
+          }
+        ]
+      },
+      {
+        "startMs": 25800,
+        "durationMs": 3900,
+        "words": [
+          {
+            "text": "If",
+            "startMs": 300,
+            "endMs": 400
+          },
+          {
+            "text": "you",
+            "startMs": 400,
+            "endMs": 500
+          },
+          {
+            "text": "want",
+            "startMs": 500,
+            "endMs": 600
+          },
+          {
+            "text": "to",
+            "startMs": 600,
+            "endMs": 700
+          },
+          {
+            "text": "see",
+            "startMs": 700,
+            "endMs": 800
+          },
+          {
+            "text": "how",
+            "startMs": 800,
+            "endMs": 1000
+          },
+          {
+            "text": "your",
+            "startMs": 1000,
+            "endMs": 1200
+          },
+          {
+            "text": "own",
+            "startMs": 1200,
+            "endMs": 1300
+          },
+          {
+            "text": "mouth",
+            "startMs": 1300,
+            "endMs": 1500
+          },
+          {
+            "text": "proportions",
+            "startMs": 1500,
+            "endMs": 2100
+          },
+          {
+            "text": "score",
+            "startMs": 2100,
+            "endMs": 2600
+          },
+          {
+            "text": "go",
+            "startMs": 2700,
+            "endMs": 2800
+          },
+          {
+            "text": "to",
+            "startMs": 2800,
+            "endMs": 2900
+          },
+          {
+            "text": "Mogging.com",
+            "startMs": 2900,
+            "endMs": 3900
+          }
+        ]
+      },
+      {
+        "startMs": 29700,
+        "durationMs": 1740,
+        "words": [
+          {
+            "text": "Get",
+            "startMs": 0,
+            "endMs": 200
+          },
+          {
+            "text": "your",
+            "startMs": 200,
+            "endMs": 400
+          },
+          {
+            "text": "face",
+            "startMs": 400,
+            "endMs": 600
+          },
+          {
+            "text": "analysis",
+            "startMs": 600,
+            "endMs": 1300
+          }
+        ]
+      }
+    ]
+  },
+  "jaw-around-the-corner": {
+    "audio": "/creator/sculpture/voices/jaw-around-the-corner.wav",
+    "durationMs": 25460,
+    "sections": [
+      {
+        "startMs": 0,
+        "durationMs": 3650,
+        "words": [
+          {
+            "text": "Why",
+            "startMs": 300,
+            "endMs": 400
+          },
+          {
+            "text": "does",
+            "startMs": 400,
+            "endMs": 600
+          },
+          {
+            "text": "your",
+            "startMs": 600,
+            "endMs": 700
+          },
+          {
+            "text": "jaw",
+            "startMs": 700,
+            "endMs": 900
+          },
+          {
+            "text": "look",
+            "startMs": 900,
+            "endMs": 1100
+          },
+          {
+            "text": "sharp",
+            "startMs": 1100,
+            "endMs": 1400
+          },
+          {
+            "text": "from",
+            "startMs": 1400,
+            "endMs": 1500
+          },
+          {
+            "text": "the",
+            "startMs": 1500,
+            "endMs": 1600
+          },
+          {
+            "text": "front",
+            "startMs": 1600,
+            "endMs": 1900
+          },
+          {
+            "text": "then",
+            "startMs": 1900,
+            "endMs": 2100
+          },
+          {
+            "text": "almost",
+            "startMs": 2100,
+            "endMs": 2400
+          },
+          {
+            "text": "disappear",
+            "startMs": 2400,
+            "endMs": 2800
+          },
+          {
+            "text": "when",
+            "startMs": 2800,
+            "endMs": 2900
+          },
+          {
+            "text": "you",
+            "startMs": 2900,
+            "endMs": 3100
+          },
+          {
+            "text": "turn",
+            "startMs": 3100,
+            "endMs": 3600
+          }
+        ]
+      },
+      {
+        "startMs": 3650,
+        "durationMs": 5600,
+        "words": [
+          {
+            "text": "Look",
+            "startMs": 50,
+            "endMs": 250
+          },
+          {
+            "text": "around",
+            "startMs": 250,
+            "endMs": 450
+          },
+          {
+            "text": "the",
+            "startMs": 450,
+            "endMs": 550
+          },
+          {
+            "text": "corner",
+            "startMs": 550,
+            "endMs": 850
+          },
+          {
+            "text": "just",
+            "startMs": 950,
+            "endMs": 1150
+          },
+          {
+            "text": "below",
+            "startMs": 1150,
+            "endMs": 1350
+          },
+          {
+            "text": "your",
+            "startMs": 1350,
+            "endMs": 1550
+          },
+          {
+            "text": "ear",
+            "startMs": 1550,
+            "endMs": 1850
+          },
+          {
+            "text": "A",
+            "startMs": 2150,
+            "endMs": 2151
+          },
+          {
+            "text": "wide",
+            "startMs": 2151,
+            "endMs": 2650
+          },
+          {
+            "text": "jaw",
+            "startMs": 2650,
+            "endMs": 2950
+          },
+          {
+            "text": "does",
+            "startMs": 2950,
+            "endMs": 3150
+          },
+          {
+            "text": "not",
+            "startMs": 3150,
+            "endMs": 3450
+          },
+          {
+            "text": "tell",
+            "startMs": 3450,
+            "endMs": 3550
+          },
+          {
+            "text": "you",
+            "startMs": 3550,
+            "endMs": 3650
+          },
+          {
+            "text": "how",
+            "startMs": 3650,
+            "endMs": 3850
+          },
+          {
+            "text": "steeply",
+            "startMs": 3850,
+            "endMs": 4250
+          },
+          {
+            "text": "its",
+            "startMs": 4250,
+            "endMs": 4350
+          },
+          {
+            "text": "lower",
+            "startMs": 4350,
+            "endMs": 4650
+          },
+          {
+            "text": "edge",
+            "startMs": 4650,
+            "endMs": 4850
+          },
+          {
+            "text": "meets",
+            "startMs": 4850,
+            "endMs": 5050
+          },
+          {
+            "text": "the",
+            "startMs": 5050,
+            "endMs": 5051
+          },
+          {
+            "text": "back",
+            "startMs": 5051,
+            "endMs": 5550
+          }
+        ]
+      },
+      {
+        "startMs": 9250,
+        "durationMs": 5100,
+        "words": [
+          {
+            "text": "That",
+            "startMs": 50,
+            "endMs": 250
+          },
+          {
+            "text": "meeting",
+            "startMs": 250,
+            "endMs": 550
+          },
+          {
+            "text": "point",
+            "startMs": 550,
+            "endMs": 750
+          },
+          {
+            "text": "makes",
+            "startMs": 750,
+            "endMs": 1050
+          },
+          {
+            "text": "the",
+            "startMs": 1050,
+            "endMs": 1150
+          },
+          {
+            "text": "gonial",
+            "startMs": 1150,
+            "endMs": 1550
+          },
+          {
+            "text": "angle",
+            "startMs": 1550,
+            "endMs": 1950
+          },
+          {
+            "text": "Open",
+            "startMs": 2350,
+            "endMs": 2550
+          },
+          {
+            "text": "the",
+            "startMs": 2550,
+            "endMs": 2551
+          },
+          {
+            "text": "angle",
+            "startMs": 2551,
+            "endMs": 2850
+          },
+          {
+            "text": "and",
+            "startMs": 2850,
+            "endMs": 2950
+          },
+          {
+            "text": "the",
+            "startMs": 2950,
+            "endMs": 3050
+          },
+          {
+            "text": "same",
+            "startMs": 3050,
+            "endMs": 3350
+          },
+          {
+            "text": "lower",
+            "startMs": 3350,
+            "endMs": 3550
+          },
+          {
+            "text": "face",
+            "startMs": 3550,
+            "endMs": 3850
+          },
+          {
+            "text": "reads",
+            "startMs": 3850,
+            "endMs": 4050
+          },
+          {
+            "text": "softer",
+            "startMs": 4050,
+            "endMs": 4350
+          },
+          {
+            "text": "from",
+            "startMs": 4350,
+            "endMs": 4550
+          },
+          {
+            "text": "the",
+            "startMs": 4550,
+            "endMs": 4650
+          },
+          {
+            "text": "side",
+            "startMs": 4650,
+            "endMs": 5050
+          }
+        ]
+      },
+      {
+        "startMs": 14350,
+        "durationMs": 7200,
+        "words": [
+          {
+            "text": "Bring",
+            "startMs": 50,
+            "endMs": 250
+          },
+          {
+            "text": "it",
+            "startMs": 250,
+            "endMs": 251
+          },
+          {
+            "text": "back",
+            "startMs": 251,
+            "endMs": 550
+          },
+          {
+            "text": "and",
+            "startMs": 550,
+            "endMs": 650
+          },
+          {
+            "text": "follow",
+            "startMs": 650,
+            "endMs": 850
+          },
+          {
+            "text": "the",
+            "startMs": 850,
+            "endMs": 950
+          },
+          {
+            "text": "edge",
+            "startMs": 950,
+            "endMs": 1150
+          },
+          {
+            "text": "again",
+            "startMs": 1150,
+            "endMs": 1550
+          },
+          {
+            "text": "But",
+            "startMs": 1550,
+            "endMs": 1750
+          },
+          {
+            "text": "keep",
+            "startMs": 1750,
+            "endMs": 1950
+          },
+          {
+            "text": "your",
+            "startMs": 1950,
+            "endMs": 2050
+          },
+          {
+            "text": "head",
+            "startMs": 2050,
+            "endMs": 2250
+          },
+          {
+            "text": "level",
+            "startMs": 2250,
+            "endMs": 2650
+          },
+          {
+            "text": "Tilting",
+            "startMs": 2750,
+            "endMs": 2950
+          },
+          {
+            "text": "your",
+            "startMs": 2950,
+            "endMs": 3150
+          },
+          {
+            "text": "chin",
+            "startMs": 3150,
+            "endMs": 3450
+          },
+          {
+            "text": "or",
+            "startMs": 3450,
+            "endMs": 3550
+          },
+          {
+            "text": "changing",
+            "startMs": 3550,
+            "endMs": 3850
+          },
+          {
+            "text": "the",
+            "startMs": 3850,
+            "endMs": 3851
+          },
+          {
+            "text": "light",
+            "startMs": 3851,
+            "endMs": 4050
+          },
+          {
+            "text": "can",
+            "startMs": 4050,
+            "endMs": 4150
+          },
+          {
+            "text": "change",
+            "startMs": 4150,
+            "endMs": 4450
+          },
+          {
+            "text": "that",
+            "startMs": 4450,
+            "endMs": 4550
+          },
+          {
+            "text": "outline",
+            "startMs": 4550,
+            "endMs": 4950
+          },
+          {
+            "text": "too",
+            "startMs": 4950,
+            "endMs": 5250
+          },
+          {
+            "text": "There",
+            "startMs": 5450,
+            "endMs": 5550
+          },
+          {
+            "text": "is",
+            "startMs": 5550,
+            "endMs": 5750
+          },
+          {
+            "text": "more",
+            "startMs": 5750,
+            "endMs": 5950
+          },
+          {
+            "text": "to",
+            "startMs": 5950,
+            "endMs": 6050
+          },
+          {
+            "text": "your",
+            "startMs": 6050,
+            "endMs": 6150
+          },
+          {
+            "text": "jaw",
+            "startMs": 6150,
+            "endMs": 6350
+          },
+          {
+            "text": "than",
+            "startMs": 6350,
+            "endMs": 6550
+          },
+          {
+            "text": "one",
+            "startMs": 6550,
+            "endMs": 6750
+          },
+          {
+            "text": "number",
+            "startMs": 6750,
+            "endMs": 7150
+          }
+        ]
+      },
+      {
+        "startMs": 21550,
+        "durationMs": 2650,
+        "words": [
+          {
+            "text": "To",
+            "startMs": 50,
+            "endMs": 150
+          },
+          {
+            "text": "see",
+            "startMs": 150,
+            "endMs": 250
+          },
+          {
+            "text": "how",
+            "startMs": 250,
+            "endMs": 350
+          },
+          {
+            "text": "your",
+            "startMs": 350,
+            "endMs": 450
+          },
+          {
+            "text": "jaw",
+            "startMs": 450,
+            "endMs": 650
+          },
+          {
+            "text": "and",
+            "startMs": 650,
+            "endMs": 750
+          },
+          {
+            "text": "chin",
+            "startMs": 750,
+            "endMs": 950
+          },
+          {
+            "text": "score",
+            "startMs": 950,
+            "endMs": 1150
+          },
+          {
+            "text": "together",
+            "startMs": 1150,
+            "endMs": 1550
+          },
+          {
+            "text": "go",
+            "startMs": 1550,
+            "endMs": 1650
+          },
+          {
+            "text": "to",
+            "startMs": 1650,
+            "endMs": 1750
+          },
+          {
+            "text": "Mogging.com",
+            "startMs": 1750,
+            "endMs": 2650
+          }
+        ]
+      },
+      {
+        "startMs": 24200,
+        "durationMs": 1260,
+        "words": [
+          {
+            "text": "Get",
+            "startMs": 0,
+            "endMs": 100
+          },
+          {
+            "text": "your",
+            "startMs": 100,
+            "endMs": 200
+          },
+          {
+            "text": "face",
+            "startMs": 200,
+            "endMs": 400
+          },
+          {
+            "text": "analysis",
+            "startMs": 400,
+            "endMs": 1000
+          }
+        ]
+      }
+    ]
+  },
+  "jaw-layers-v4": {
+    "audio": "/creator/sculpture/voices/jaw-layers-v4.wav",
+    "durationMs": 54800,
+    "sections": [
+      {
+        "startMs": 0,
+        "durationMs": 2850,
+        "words": [
+          {
+            "text": "A",
+            "startMs": 300,
+            "endMs": 400
+          },
+          {
+            "text": "square",
+            "startMs": 400,
+            "endMs": 700
+          },
+          {
+            "text": "jaw",
+            "startMs": 700,
+            "endMs": 1000
+          },
+          {
+            "text": "isn't",
+            "startMs": 1000,
+            "endMs": 1200
+          },
+          {
+            "text": "one",
+            "startMs": 1200,
+            "endMs": 1500
+          },
+          {
+            "text": "solid",
+            "startMs": 1500,
+            "endMs": 1900
+          },
+          {
+            "text": "block",
+            "startMs": 1900,
+            "endMs": 2200
+          },
+          {
+            "text": "of",
+            "startMs": 2200,
+            "endMs": 2300
+          },
+          {
+            "text": "bone",
+            "startMs": 2300,
+            "endMs": 2800
+          }
+        ]
+      },
+      {
+        "startMs": 2850,
+        "durationMs": 4400,
+        "words": [
+          {
+            "text": "Part",
+            "startMs": 50,
+            "endMs": 250
+          },
+          {
+            "text": "of",
+            "startMs": 250,
+            "endMs": 251
+          },
+          {
+            "text": "the",
+            "startMs": 251,
+            "endMs": 350
+          },
+          {
+            "text": "width",
+            "startMs": 350,
+            "endMs": 550
+          },
+          {
+            "text": "you",
+            "startMs": 550,
+            "endMs": 650
+          },
+          {
+            "text": "see",
+            "startMs": 650,
+            "endMs": 750
+          },
+          {
+            "text": "below",
+            "startMs": 750,
+            "endMs": 950
+          },
+          {
+            "text": "your",
+            "startMs": 950,
+            "endMs": 1050
+          },
+          {
+            "text": "cheekbones",
+            "startMs": 1050,
+            "endMs": 1450
+          },
+          {
+            "text": "is",
+            "startMs": 1450,
+            "endMs": 1650
+          },
+          {
+            "text": "muscle",
+            "startMs": 1650,
+            "endMs": 2150
+          },
+          {
+            "text": "and",
+            "startMs": 2250,
+            "endMs": 2350
+          },
+          {
+            "text": "that",
+            "startMs": 2350,
+            "endMs": 2450
+          },
+          {
+            "text": "changes",
+            "startMs": 2450,
+            "endMs": 2850
+          },
+          {
+            "text": "how",
+            "startMs": 2850,
+            "endMs": 2950
+          },
+          {
+            "text": "the",
+            "startMs": 2950,
+            "endMs": 3050
+          },
+          {
+            "text": "whole",
+            "startMs": 3050,
+            "endMs": 3250
+          },
+          {
+            "text": "lower",
+            "startMs": 3250,
+            "endMs": 3450
+          },
+          {
+            "text": "face",
+            "startMs": 3450,
+            "endMs": 3750
+          },
+          {
+            "text": "reads",
+            "startMs": 3750,
+            "endMs": 4150
+          }
+        ]
+      },
+      {
+        "startMs": 7250,
+        "durationMs": 3750,
+        "words": [
+          {
+            "text": "Your",
+            "startMs": 250,
+            "endMs": 350
+          },
+          {
+            "text": "masseter",
+            "startMs": 350,
+            "endMs": 850
+          },
+          {
+            "text": "runs",
+            "startMs": 850,
+            "endMs": 1150
+          },
+          {
+            "text": "from",
+            "startMs": 1150,
+            "endMs": 1250
+          },
+          {
+            "text": "the",
+            "startMs": 1250,
+            "endMs": 1350
+          },
+          {
+            "text": "cheekbone",
+            "startMs": 1350,
+            "endMs": 1750
+          },
+          {
+            "text": "arch",
+            "startMs": 1750,
+            "endMs": 1950
+          },
+          {
+            "text": "to",
+            "startMs": 1950,
+            "endMs": 2050
+          },
+          {
+            "text": "the",
+            "startMs": 2050,
+            "endMs": 2150
+          },
+          {
+            "text": "side",
+            "startMs": 2150,
+            "endMs": 2550
+          },
+          {
+            "text": "and",
+            "startMs": 2550,
+            "endMs": 2750
+          },
+          {
+            "text": "angle",
+            "startMs": 2750,
+            "endMs": 3050
+          },
+          {
+            "text": "of",
+            "startMs": 3050,
+            "endMs": 3150
+          },
+          {
+            "text": "your",
+            "startMs": 3150,
+            "endMs": 3250
+          },
+          {
+            "text": "jaw",
+            "startMs": 3250,
+            "endMs": 3550
+          }
+        ]
+      },
+      {
+        "startMs": 11000,
+        "durationMs": 4850,
+        "words": [
+          {
+            "text": "The",
+            "startMs": 200,
+            "endMs": 300
+          },
+          {
+            "text": "outline",
+            "startMs": 300,
+            "endMs": 600
+          },
+          {
+            "text": "in",
+            "startMs": 600,
+            "endMs": 700
+          },
+          {
+            "text": "a",
+            "startMs": 700,
+            "endMs": 800
+          },
+          {
+            "text": "front",
+            "startMs": 870,
+            "endMs": 1100
+          },
+          {
+            "text": "facing",
+            "startMs": 1100,
+            "endMs": 1380
+          },
+          {
+            "text": "photo",
+            "startMs": 1400,
+            "endMs": 1600
+          },
+          {
+            "text": "combines",
+            "startMs": 1600,
+            "endMs": 2000
+          },
+          {
+            "text": "that",
+            "startMs": 2000,
+            "endMs": 2200
+          },
+          {
+            "text": "muscle",
+            "startMs": 2200,
+            "endMs": 2600
+          },
+          {
+            "text": "the",
+            "startMs": 2600,
+            "endMs": 2700
+          },
+          {
+            "text": "bone",
+            "startMs": 2700,
+            "endMs": 2900
+          },
+          {
+            "text": "beneath",
+            "startMs": 2900,
+            "endMs": 3200
+          },
+          {
+            "text": "it",
+            "startMs": 3200,
+            "endMs": 3400
+          },
+          {
+            "text": "and",
+            "startMs": 3400,
+            "endMs": 3600
+          },
+          {
+            "text": "the",
+            "startMs": 3600,
+            "endMs": 3700
+          },
+          {
+            "text": "soft",
+            "startMs": 3700,
+            "endMs": 3900
+          },
+          {
+            "text": "tissue",
+            "startMs": 3900,
+            "endMs": 4200
+          },
+          {
+            "text": "above",
+            "startMs": 4200,
+            "endMs": 4400
+          },
+          {
+            "text": "it",
+            "startMs": 4400,
+            "endMs": 4800
+          }
+        ]
+      },
+      {
+        "startMs": 15850,
+        "durationMs": 2250,
+        "words": [
+          {
+            "text": "A",
+            "startMs": 50,
+            "endMs": 150
+          },
+          {
+            "text": "photo",
+            "startMs": 150,
+            "endMs": 450
+          },
+          {
+            "text": "cannot",
+            "startMs": 450,
+            "endMs": 750
+          },
+          {
+            "text": "separate",
+            "startMs": 750,
+            "endMs": 1150
+          },
+          {
+            "text": "those",
+            "startMs": 1150,
+            "endMs": 1250
+          },
+          {
+            "text": "layers",
+            "startMs": 1250,
+            "endMs": 1550
+          },
+          {
+            "text": "for",
+            "startMs": 1550,
+            "endMs": 1750
+          },
+          {
+            "text": "you",
+            "startMs": 1750,
+            "endMs": 1950
+          }
+        ]
+      },
+      {
+        "startMs": 18100,
+        "durationMs": 3000,
+        "words": [
+          {
+            "text": "Then",
+            "startMs": 300,
+            "endMs": 400
+          },
+          {
+            "text": "there",
+            "startMs": 400,
+            "endMs": 500
+          },
+          {
+            "text": "is",
+            "startMs": 500,
+            "endMs": 600
+          },
+          {
+            "text": "the",
+            "startMs": 600,
+            "endMs": 700
+          },
+          {
+            "text": "corner",
+            "startMs": 700,
+            "endMs": 1000
+          },
+          {
+            "text": "below",
+            "startMs": 1000,
+            "endMs": 1200
+          },
+          {
+            "text": "your",
+            "startMs": 1200,
+            "endMs": 1400
+          },
+          {
+            "text": "ear",
+            "startMs": 1400,
+            "endMs": 1700
+          },
+          {
+            "text": "the",
+            "startMs": 1800,
+            "endMs": 1900
+          },
+          {
+            "text": "gonial",
+            "startMs": 1900,
+            "endMs": 2400
+          },
+          {
+            "text": "angle",
+            "startMs": 2400,
+            "endMs": 2900
+          }
+        ]
+      },
+      {
+        "startMs": 21100,
+        "durationMs": 2450,
+        "words": [
+          {
+            "text": "It",
+            "startMs": 100,
+            "endMs": 200
+          },
+          {
+            "text": "tells",
+            "startMs": 200,
+            "endMs": 400
+          },
+          {
+            "text": "you",
+            "startMs": 400,
+            "endMs": 500
+          },
+          {
+            "text": "how",
+            "startMs": 500,
+            "endMs": 600
+          },
+          {
+            "text": "the",
+            "startMs": 600,
+            "endMs": 700
+          },
+          {
+            "text": "back",
+            "startMs": 700,
+            "endMs": 900
+          },
+          {
+            "text": "of",
+            "startMs": 900,
+            "endMs": 901
+          },
+          {
+            "text": "the",
+            "startMs": 901,
+            "endMs": 1000
+          },
+          {
+            "text": "jaw",
+            "startMs": 1000,
+            "endMs": 1200
+          },
+          {
+            "text": "meets",
+            "startMs": 1200,
+            "endMs": 1500
+          },
+          {
+            "text": "its",
+            "startMs": 1500,
+            "endMs": 1600
+          },
+          {
+            "text": "lower",
+            "startMs": 1600,
+            "endMs": 1900
+          },
+          {
+            "text": "edge",
+            "startMs": 1900,
+            "endMs": 2300
+          }
+        ]
+      },
+      {
+        "startMs": 23550,
+        "durationMs": 1750,
+        "words": [
+          {
+            "text": "Width",
+            "startMs": 150,
+            "endMs": 350
+          },
+          {
+            "text": "and",
+            "startMs": 350,
+            "endMs": 450
+          },
+          {
+            "text": "angle",
+            "startMs": 450,
+            "endMs": 750
+          },
+          {
+            "text": "are",
+            "startMs": 750,
+            "endMs": 850
+          },
+          {
+            "text": "different",
+            "startMs": 850,
+            "endMs": 1150
+          },
+          {
+            "text": "dimensions",
+            "startMs": 1150,
+            "endMs": 1750
+          }
+        ]
+      },
+      {
+        "startMs": 25300,
+        "durationMs": 3050,
+        "words": [
+          {
+            "text": "Your",
+            "startMs": 0,
+            "endMs": 100
+          },
+          {
+            "text": "jaw",
+            "startMs": 100,
+            "endMs": 300
+          },
+          {
+            "text": "can",
+            "startMs": 300,
+            "endMs": 400
+          },
+          {
+            "text": "be",
+            "startMs": 400,
+            "endMs": 500
+          },
+          {
+            "text": "broad",
+            "startMs": 500,
+            "endMs": 800
+          },
+          {
+            "text": "from",
+            "startMs": 800,
+            "endMs": 1000
+          },
+          {
+            "text": "the",
+            "startMs": 1000,
+            "endMs": 1100
+          },
+          {
+            "text": "front",
+            "startMs": 1100,
+            "endMs": 1300
+          },
+          {
+            "text": "and",
+            "startMs": 1300,
+            "endMs": 1500
+          },
+          {
+            "text": "still",
+            "startMs": 1500,
+            "endMs": 1700
+          },
+          {
+            "text": "slope",
+            "startMs": 1700,
+            "endMs": 2000
+          },
+          {
+            "text": "gently",
+            "startMs": 2000,
+            "endMs": 2300
+          },
+          {
+            "text": "from",
+            "startMs": 2300,
+            "endMs": 2400
+          },
+          {
+            "text": "the",
+            "startMs": 2400,
+            "endMs": 2500
+          },
+          {
+            "text": "side",
+            "startMs": 2500,
+            "endMs": 2900
+          }
+        ]
+      },
+      {
+        "startMs": 28350,
+        "durationMs": 1400,
+        "words": [
+          {
+            "text": "Your",
+            "startMs": 150,
+            "endMs": 250
+          },
+          {
+            "text": "chin",
+            "startMs": 250,
+            "endMs": 550
+          },
+          {
+            "text": "adds",
+            "startMs": 550,
+            "endMs": 750
+          },
+          {
+            "text": "another",
+            "startMs": 750,
+            "endMs": 950
+          },
+          {
+            "text": "piece",
+            "startMs": 950,
+            "endMs": 1350
+          }
+        ]
+      },
+      {
+        "startMs": 29750,
+        "durationMs": 3850,
+        "words": [
+          {
+            "text": "Projection",
+            "startMs": 50,
+            "endMs": 450
+          },
+          {
+            "text": "is",
+            "startMs": 450,
+            "endMs": 550
+          },
+          {
+            "text": "how",
+            "startMs": 550,
+            "endMs": 750
+          },
+          {
+            "text": "far",
+            "startMs": 750,
+            "endMs": 950
+          },
+          {
+            "text": "forward",
+            "startMs": 950,
+            "endMs": 1250
+          },
+          {
+            "text": "it",
+            "startMs": 1250,
+            "endMs": 1350
+          },
+          {
+            "text": "sits",
+            "startMs": 1350,
+            "endMs": 1650
+          },
+          {
+            "text": "width",
+            "startMs": 1650,
+            "endMs": 1950
+          },
+          {
+            "text": "is",
+            "startMs": 1950,
+            "endMs": 2050
+          },
+          {
+            "text": "how",
+            "startMs": 2050,
+            "endMs": 2150
+          },
+          {
+            "text": "much",
+            "startMs": 2150,
+            "endMs": 2350
+          },
+          {
+            "text": "space",
+            "startMs": 2350,
+            "endMs": 2549.9999999999964
+          },
+          {
+            "text": "it",
+            "startMs": 2549.9999999999964,
+            "endMs": 2650
+          },
+          {
+            "text": "takes",
+            "startMs": 2650,
+            "endMs": 2850
+          },
+          {
+            "text": "across",
+            "startMs": 2850,
+            "endMs": 3150
+          },
+          {
+            "text": "the",
+            "startMs": 3150,
+            "endMs": 3250
+          },
+          {
+            "text": "face",
+            "startMs": 3250,
+            "endMs": 3650
+          }
+        ]
+      },
+      {
+        "startMs": 33600,
+        "durationMs": 1600,
+        "words": [
+          {
+            "text": "Those",
+            "startMs": 200,
+            "endMs": 400
+          },
+          {
+            "text": "can",
+            "startMs": 400,
+            "endMs": 500
+          },
+          {
+            "text": "vary",
+            "startMs": 500,
+            "endMs": 800
+          },
+          {
+            "text": "independently",
+            "startMs": 800,
+            "endMs": 1400
+          }
+        ]
+      },
+      {
+        "startMs": 35200,
+        "durationMs": 3250,
+        "words": [
+          {
+            "text": "Higher",
+            "startMs": 200,
+            "endMs": 400
+          },
+          {
+            "text": "up",
+            "startMs": 400,
+            "endMs": 600
+          },
+          {
+            "text": "your",
+            "startMs": 600,
+            "endMs": 700
+          },
+          {
+            "text": "cheekbones",
+            "startMs": 700,
+            "endMs": 1300
+          },
+          {
+            "text": "create",
+            "startMs": 1300,
+            "endMs": 1600
+          },
+          {
+            "text": "another",
+            "startMs": 1600,
+            "endMs": 1900
+          },
+          {
+            "text": "width",
+            "startMs": 1900,
+            "endMs": 2100
+          },
+          {
+            "text": "to",
+            "startMs": 2100,
+            "endMs": 2200
+          },
+          {
+            "text": "compare",
+            "startMs": 2200,
+            "endMs": 2500
+          },
+          {
+            "text": "with",
+            "startMs": 2500,
+            "endMs": 2600
+          },
+          {
+            "text": "the",
+            "startMs": 2600,
+            "endMs": 2700
+          },
+          {
+            "text": "jaw",
+            "startMs": 2700,
+            "endMs": 3000
+          }
+        ]
+      },
+      {
+        "startMs": 38450,
+        "durationMs": 5400,
+        "words": [
+          {
+            "text": "And",
+            "startMs": 250,
+            "endMs": 450
+          },
+          {
+            "text": "light",
+            "startMs": 450,
+            "endMs": 650
+          },
+          {
+            "text": "can",
+            "startMs": 650,
+            "endMs": 850
+          },
+          {
+            "text": "sharpen",
+            "startMs": 850,
+            "endMs": 1150
+          },
+          {
+            "text": "the",
+            "startMs": 1150,
+            "endMs": 1151
+          },
+          {
+            "text": "border",
+            "startMs": 1151,
+            "endMs": 1450
+          },
+          {
+            "text": "between",
+            "startMs": 1450,
+            "endMs": 1650
+          },
+          {
+            "text": "all",
+            "startMs": 1650,
+            "endMs": 1850
+          },
+          {
+            "text": "of",
+            "startMs": 1850,
+            "endMs": 1950
+          },
+          {
+            "text": "them",
+            "startMs": 1950,
+            "endMs": 2150
+          },
+          {
+            "text": "a",
+            "startMs": 2350,
+            "endMs": 2351
+          },
+          {
+            "text": "deeper",
+            "startMs": 2351,
+            "endMs": 2650
+          },
+          {
+            "text": "shadow",
+            "startMs": 2650,
+            "endMs": 2950
+          },
+          {
+            "text": "looks",
+            "startMs": 2950,
+            "endMs": 3150
+          },
+          {
+            "text": "like",
+            "startMs": 3150,
+            "endMs": 3250
+          },
+          {
+            "text": "a",
+            "startMs": 3250,
+            "endMs": 3350
+          },
+          {
+            "text": "stronger",
+            "startMs": 3350,
+            "endMs": 3650
+          },
+          {
+            "text": "edge",
+            "startMs": 3650,
+            "endMs": 3950
+          },
+          {
+            "text": "without",
+            "startMs": 3950,
+            "endMs": 4350
+          },
+          {
+            "text": "adding",
+            "startMs": 4350,
+            "endMs": 4650
+          },
+          {
+            "text": "any",
+            "startMs": 4650,
+            "endMs": 4850
+          },
+          {
+            "text": "bone",
+            "startMs": 4850,
+            "endMs": 5150
+          }
+        ]
+      },
+      {
+        "startMs": 43850,
+        "durationMs": 4800,
+        "words": [
+          {
+            "text": "So",
+            "startMs": 250,
+            "endMs": 350
+          },
+          {
+            "text": "the",
+            "startMs": 350,
+            "endMs": 351
+          },
+          {
+            "text": "interesting",
+            "startMs": 351,
+            "endMs": 750
+          },
+          {
+            "text": "part",
+            "startMs": 750,
+            "endMs": 950
+          },
+          {
+            "text": "is",
+            "startMs": 950,
+            "endMs": 1050
+          },
+          {
+            "text": "how",
+            "startMs": 1050,
+            "endMs": 1250
+          },
+          {
+            "text": "these",
+            "startMs": 1250,
+            "endMs": 1450
+          },
+          {
+            "text": "features",
+            "startMs": 1450,
+            "endMs": 1750
+          },
+          {
+            "text": "work",
+            "startMs": 1750,
+            "endMs": 1850
+          },
+          {
+            "text": "together",
+            "startMs": 1850,
+            "endMs": 2350
+          },
+          {
+            "text": "not",
+            "startMs": 2450,
+            "endMs": 2650
+          },
+          {
+            "text": "whether",
+            "startMs": 2650,
+            "endMs": 2850
+          },
+          {
+            "text": "one",
+            "startMs": 2850,
+            "endMs": 3150
+          },
+          {
+            "text": "angle",
+            "startMs": 3150,
+            "endMs": 3450
+          },
+          {
+            "text": "hits",
+            "startMs": 3450,
+            "endMs": 3650
+          },
+          {
+            "text": "an",
+            "startMs": 3650,
+            "endMs": 3750
+          },
+          {
+            "text": "internet",
+            "startMs": 3750,
+            "endMs": 4150
+          },
+          {
+            "text": "ideal",
+            "startMs": 4150,
+            "endMs": 4650
+          }
+        ]
+      },
+      {
+        "startMs": 48650,
+        "durationMs": 4900,
+        "words": [
+          {
+            "text": "If",
+            "startMs": 150,
+            "endMs": 250
+          },
+          {
+            "text": "you",
+            "startMs": 250,
+            "endMs": 350
+          },
+          {
+            "text": "want",
+            "startMs": 350,
+            "endMs": 450
+          },
+          {
+            "text": "to",
+            "startMs": 450,
+            "endMs": 550
+          },
+          {
+            "text": "see",
+            "startMs": 550,
+            "endMs": 650
+          },
+          {
+            "text": "how",
+            "startMs": 650,
+            "endMs": 750
+          },
+          {
+            "text": "your",
+            "startMs": 750,
+            "endMs": 950
+          },
+          {
+            "text": "own",
+            "startMs": 950,
+            "endMs": 1050
+          },
+          {
+            "text": "jaw",
+            "startMs": 1050,
+            "endMs": 1350
+          },
+          {
+            "text": "chin",
+            "startMs": 1350,
+            "endMs": 1750
+          },
+          {
+            "text": "and",
+            "startMs": 1750,
+            "endMs": 1950
+          },
+          {
+            "text": "facial",
+            "startMs": 1950,
+            "endMs": 2150
+          },
+          {
+            "text": "proportions",
+            "startMs": 2150,
+            "endMs": 2650
+          },
+          {
+            "text": "score",
+            "startMs": 2650,
+            "endMs": 2950
+          },
+          {
+            "text": "together",
+            "startMs": 2950,
+            "endMs": 3450
+          },
+          {
+            "text": "go",
+            "startMs": 3750,
+            "endMs": 3850
+          },
+          {
+            "text": "to",
+            "startMs": 3850,
+            "endMs": 3950
+          },
+          {
+            "text": "Mogging.com",
+            "startMs": 3950,
+            "endMs": 4750
+          }
+        ]
+      },
+      {
+        "startMs": 53550,
+        "durationMs": 1250,
+        "words": [
+          {
+            "text": "Get",
+            "startMs": 150,
+            "endMs": 250
+          },
+          {
+            "text": "your",
+            "startMs": 250,
+            "endMs": 350
+          },
+          {
+            "text": "face",
+            "startMs": 350,
+            "endMs": 550
+          },
+          {
+            "text": "analysis",
+            "startMs": 550,
+            "endMs": 1050
+          }
+        ]
+      }
+    ]
+  },
+  "selfie-perspective-v4": {
+    "audio": "/creator/sculpture/voices/selfie-perspective-v4.wav",
+    "durationMs": 63520,
+    "sections": [
+      {
+        "startMs": 0,
+        "durationMs": 5050,
+        "words": [
+          {
+            "text": "A",
+            "startMs": 200,
+            "endMs": 300
+          },
+          {
+            "text": "close",
+            "startMs": 300,
+            "endMs": 700
+          },
+          {
+            "text": "selfie",
+            "startMs": 700,
+            "endMs": 1000
+          },
+          {
+            "text": "can",
+            "startMs": 1000,
+            "endMs": 1100
+          },
+          {
+            "text": "make",
+            "startMs": 1100,
+            "endMs": 1400
+          },
+          {
+            "text": "your",
+            "startMs": 1400,
+            "endMs": 1500
+          },
+          {
+            "text": "nose",
+            "startMs": 1500,
+            "endMs": 1800
+          },
+          {
+            "text": "look",
+            "startMs": 1800,
+            "endMs": 2000
+          },
+          {
+            "text": "roughly",
+            "startMs": 2000,
+            "endMs": 2400
+          },
+          {
+            "text": "thirty",
+            "startMs": 2404.7619999999997,
+            "endMs": 2829.762
+          },
+          {
+            "text": "percent",
+            "startMs": 2930.952,
+            "endMs": 3234.524
+          },
+          {
+            "text": "wider",
+            "startMs": 3300,
+            "endMs": 3700
+          },
+          {
+            "text": "relative",
+            "startMs": 3700,
+            "endMs": 4200
+          },
+          {
+            "text": "to",
+            "startMs": 4200,
+            "endMs": 4300
+          },
+          {
+            "text": "your",
+            "startMs": 4300,
+            "endMs": 4400
+          },
+          {
+            "text": "cheeks",
+            "startMs": 4400,
+            "endMs": 5000
+          }
+        ]
+      },
+      {
+        "startMs": 5050,
+        "durationMs": 1300,
+        "words": [
+          {
+            "text": "Your",
+            "startMs": 50,
+            "endMs": 150
+          },
+          {
+            "text": "nose",
+            "startMs": 150,
+            "endMs": 350
+          },
+          {
+            "text": "hasn't",
+            "startMs": 350,
+            "endMs": 650
+          },
+          {
+            "text": "grown",
+            "startMs": 650,
+            "endMs": 1250
+          }
+        ]
+      },
+      {
+        "startMs": 6350,
+        "durationMs": 2800,
+        "words": [
+          {
+            "text": "The",
+            "startMs": 50,
+            "endMs": 250
+          },
+          {
+            "text": "rest",
+            "startMs": 250,
+            "endMs": 550
+          },
+          {
+            "text": "of",
+            "startMs": 550,
+            "endMs": 650
+          },
+          {
+            "text": "your",
+            "startMs": 650,
+            "endMs": 750
+          },
+          {
+            "text": "face",
+            "startMs": 750,
+            "endMs": 1050
+          },
+          {
+            "text": "is",
+            "startMs": 1050,
+            "endMs": 1150
+          },
+          {
+            "text": "being",
+            "startMs": 1150,
+            "endMs": 1350
+          },
+          {
+            "text": "shown",
+            "startMs": 1350,
+            "endMs": 2050
+          },
+          {
+            "text": "differently",
+            "startMs": 2050,
+            "endMs": 2750
+          }
+        ]
+      },
+      {
+        "startMs": 9150,
+        "durationMs": 3650,
+        "words": [
+          {
+            "text": "The",
+            "startMs": 50,
+            "endMs": 250
+          },
+          {
+            "text": "nose",
+            "startMs": 250,
+            "endMs": 550
+          },
+          {
+            "text": "is",
+            "startMs": 550,
+            "endMs": 650
+          },
+          {
+            "text": "closer",
+            "startMs": 650,
+            "endMs": 950
+          },
+          {
+            "text": "to",
+            "startMs": 950,
+            "endMs": 1050
+          },
+          {
+            "text": "the",
+            "startMs": 1050,
+            "endMs": 1150
+          },
+          {
+            "text": "lens",
+            "startMs": 1150,
+            "endMs": 1450
+          },
+          {
+            "text": "than",
+            "startMs": 1450,
+            "endMs": 1550
+          },
+          {
+            "text": "your",
+            "startMs": 1550,
+            "endMs": 1750
+          },
+          {
+            "text": "ears",
+            "startMs": 1750,
+            "endMs": 2150
+          },
+          {
+            "text": "so",
+            "startMs": 2250,
+            "endMs": 2450
+          },
+          {
+            "text": "it",
+            "startMs": 2450,
+            "endMs": 2550
+          },
+          {
+            "text": "gets",
+            "startMs": 2550,
+            "endMs": 2650
+          },
+          {
+            "text": "exaggerated",
+            "startMs": 2650,
+            "endMs": 3550
+          }
+        ]
+      },
+      {
+        "startMs": 12800,
+        "durationMs": 4800,
+        "words": [
+          {
+            "text": "The",
+            "startMs": 100,
+            "endMs": 300
+          },
+          {
+            "text": "ears",
+            "startMs": 300,
+            "endMs": 600
+          },
+          {
+            "text": "recede",
+            "startMs": 600,
+            "endMs": 1300
+          },
+          {
+            "text": "the",
+            "startMs": 1300,
+            "endMs": 1400
+          },
+          {
+            "text": "cheeks",
+            "startMs": 1400,
+            "endMs": 1800
+          },
+          {
+            "text": "feel",
+            "startMs": 1800,
+            "endMs": 2000
+          },
+          {
+            "text": "narrower",
+            "startMs": 2000,
+            "endMs": 2800
+          },
+          {
+            "text": "and",
+            "startMs": 2900,
+            "endMs": 3100
+          },
+          {
+            "text": "the",
+            "startMs": 3100,
+            "endMs": 3200
+          },
+          {
+            "text": "centre",
+            "startMs": 3200,
+            "endMs": 3500
+          },
+          {
+            "text": "of",
+            "startMs": 3500,
+            "endMs": 3600
+          },
+          {
+            "text": "your",
+            "startMs": 3600,
+            "endMs": 3700
+          },
+          {
+            "text": "face",
+            "startMs": 3700,
+            "endMs": 4000
+          },
+          {
+            "text": "takes",
+            "startMs": 4000,
+            "endMs": 4200
+          },
+          {
+            "text": "over",
+            "startMs": 4200,
+            "endMs": 4700
+          }
+        ]
+      },
+      {
+        "startMs": 17600,
+        "durationMs": 3900,
+        "words": [
+          {
+            "text": "You",
+            "startMs": 100,
+            "endMs": 200
+          },
+          {
+            "text": "can",
+            "startMs": 200,
+            "endMs": 400
+          },
+          {
+            "text": "end",
+            "startMs": 400,
+            "endMs": 500
+          },
+          {
+            "text": "up",
+            "startMs": 500,
+            "endMs": 600
+          },
+          {
+            "text": "blaming",
+            "startMs": 600,
+            "endMs": 900
+          },
+          {
+            "text": "your",
+            "startMs": 900,
+            "endMs": 1100
+          },
+          {
+            "text": "nose",
+            "startMs": 1100,
+            "endMs": 1500
+          },
+          {
+            "text": "for",
+            "startMs": 1500,
+            "endMs": 1700
+          },
+          {
+            "text": "a",
+            "startMs": 1700,
+            "endMs": 1800
+          },
+          {
+            "text": "relationship",
+            "startMs": 1800,
+            "endMs": 2500
+          },
+          {
+            "text": "the",
+            "startMs": 2500,
+            "endMs": 2600
+          },
+          {
+            "text": "camera",
+            "startMs": 2600,
+            "endMs": 3100
+          },
+          {
+            "text": "created",
+            "startMs": 3100,
+            "endMs": 3700
+          }
+        ]
+      },
+      {
+        "startMs": 21500,
+        "durationMs": 3850,
+        "words": [
+          {
+            "text": "A",
+            "startMs": 200,
+            "endMs": 300
+          },
+          {
+            "text": "2018",
+            "startMs": 300,
+            "endMs": 1000
+          },
+          {
+            "text": "study",
+            "startMs": 1000,
+            "endMs": 1300
+          },
+          {
+            "text": "modelled",
+            "startMs": 1300,
+            "endMs": 1800
+          },
+          {
+            "text": "this",
+            "startMs": 1800,
+            "endMs": 2100
+          },
+          {
+            "text": "at",
+            "startMs": 2100,
+            "endMs": 2200
+          },
+          {
+            "text": "twelve",
+            "startMs": 2200,
+            "endMs": 2600
+          },
+          {
+            "text": "inches",
+            "startMs": 2600,
+            "endMs": 2900
+          },
+          {
+            "text": "from",
+            "startMs": 2900,
+            "endMs": 3000
+          },
+          {
+            "text": "the",
+            "startMs": 3000,
+            "endMs": 3200
+          },
+          {
+            "text": "camera",
+            "startMs": 3200,
+            "endMs": 3700
+          }
+        ]
+      },
+      {
+        "startMs": 25350,
+        "durationMs": 3750,
+        "words": [
+          {
+            "text": "Its",
+            "startMs": 150,
+            "endMs": 350
+          },
+          {
+            "text": "estimate",
+            "startMs": 350,
+            "endMs": 750
+          },
+          {
+            "text": "was",
+            "startMs": 750,
+            "endMs": 950
+          },
+          {
+            "text": "around",
+            "startMs": 950,
+            "endMs": 1250
+          },
+          {
+            "text": "thirty",
+            "startMs": 1250,
+            "endMs": 1440.9089999999997
+          },
+          {
+            "text": "percent",
+            "startMs": 1481.8179999999993,
+            "endMs": 1747.726999999999
+          },
+          {
+            "text": "for",
+            "startMs": 1750,
+            "endMs": 1850
+          },
+          {
+            "text": "men",
+            "startMs": 1850,
+            "endMs": 2150
+          },
+          {
+            "text": "and",
+            "startMs": 2150,
+            "endMs": 2250
+          },
+          {
+            "text": "twenty",
+            "startMs": 2313.2649999999994,
+            "endMs": 2537.7549999999974
+          },
+          {
+            "text": "nine",
+            "startMs": 2598.9799999999996,
+            "endMs": 2721.429
+          },
+          {
+            "text": "percent",
+            "startMs": 2782.653000000002,
+            "endMs": 3027.5509999999995
+          },
+          {
+            "text": "for",
+            "startMs": 3050,
+            "endMs": 3150
+          },
+          {
+            "text": "women",
+            "startMs": 3150,
+            "endMs": 3550
+          }
+        ]
+      },
+      {
+        "startMs": 29100,
+        "durationMs": 2850,
+        "words": [
+          {
+            "text": "At",
+            "startMs": 200,
+            "endMs": 400
+          },
+          {
+            "text": "five",
+            "startMs": 400,
+            "endMs": 700
+          },
+          {
+            "text": "feet",
+            "startMs": 700,
+            "endMs": 1100
+          },
+          {
+            "text": "that",
+            "startMs": 1200,
+            "endMs": 1400
+          },
+          {
+            "text": "distortion",
+            "startMs": 1400,
+            "endMs": 1800
+          },
+          {
+            "text": "was",
+            "startMs": 1800,
+            "endMs": 1900
+          },
+          {
+            "text": "essentially",
+            "startMs": 1900,
+            "endMs": 2300
+          },
+          {
+            "text": "gone",
+            "startMs": 2300,
+            "endMs": 2800
+          }
+        ]
+      },
+      {
+        "startMs": 31950,
+        "durationMs": 2050,
+        "words": [
+          {
+            "text": "Distance",
+            "startMs": 50,
+            "endMs": 650
+          },
+          {
+            "text": "was",
+            "startMs": 650,
+            "endMs": 850
+          },
+          {
+            "text": "the",
+            "startMs": 850,
+            "endMs": 950
+          },
+          {
+            "text": "important",
+            "startMs": 950,
+            "endMs": 1450
+          },
+          {
+            "text": "change",
+            "startMs": 1450,
+            "endMs": 1850
+          }
+        ]
+      },
+      {
+        "startMs": 34000,
+        "durationMs": 2700,
+        "words": [
+          {
+            "text": "But",
+            "startMs": 200,
+            "endMs": 300
+          },
+          {
+            "text": "distance",
+            "startMs": 300,
+            "endMs": 700
+          },
+          {
+            "text": "is",
+            "startMs": 700,
+            "endMs": 800
+          },
+          {
+            "text": "only",
+            "startMs": 800,
+            "endMs": 1000
+          },
+          {
+            "text": "one",
+            "startMs": 1000,
+            "endMs": 1300
+          },
+          {
+            "text": "part",
+            "startMs": 1300,
+            "endMs": 1500
+          },
+          {
+            "text": "of",
+            "startMs": 1500,
+            "endMs": 1600
+          },
+          {
+            "text": "how",
+            "startMs": 1600,
+            "endMs": 1700
+          },
+          {
+            "text": "you",
+            "startMs": 1700,
+            "endMs": 1900
+          },
+          {
+            "text": "read",
+            "startMs": 1900,
+            "endMs": 2000
+          },
+          {
+            "text": "a",
+            "startMs": 2000,
+            "endMs": 2100
+          },
+          {
+            "text": "face",
+            "startMs": 2100,
+            "endMs": 2600
+          }
+        ]
+      },
+      {
+        "startMs": 36700,
+        "durationMs": 3700,
+        "words": [
+          {
+            "text": "From",
+            "startMs": 100,
+            "endMs": 300
+          },
+          {
+            "text": "the",
+            "startMs": 300,
+            "endMs": 400
+          },
+          {
+            "text": "side",
+            "startMs": 400,
+            "endMs": 800
+          },
+          {
+            "text": "your",
+            "startMs": 800,
+            "endMs": 1000
+          },
+          {
+            "text": "chin",
+            "startMs": 1000,
+            "endMs": 1400
+          },
+          {
+            "text": "changes",
+            "startMs": 1400,
+            "endMs": 1900
+          },
+          {
+            "text": "how",
+            "startMs": 1900,
+            "endMs": 2000
+          },
+          {
+            "text": "prominent",
+            "startMs": 2000,
+            "endMs": 2400
+          },
+          {
+            "text": "the",
+            "startMs": 2400,
+            "endMs": 2500
+          },
+          {
+            "text": "nose",
+            "startMs": 2500,
+            "endMs": 2700
+          },
+          {
+            "text": "looks",
+            "startMs": 2700,
+            "endMs": 2900
+          },
+          {
+            "text": "beside",
+            "startMs": 2900,
+            "endMs": 3300
+          },
+          {
+            "text": "it",
+            "startMs": 3300,
+            "endMs": 3600
+          }
+        ]
+      },
+      {
+        "startMs": 40400,
+        "durationMs": 3550,
+        "words": [
+          {
+            "text": "From",
+            "startMs": 100,
+            "endMs": 200
+          },
+          {
+            "text": "the",
+            "startMs": 200,
+            "endMs": 300
+          },
+          {
+            "text": "front",
+            "startMs": 300,
+            "endMs": 900
+          },
+          {
+            "text": "cheek",
+            "startMs": 1000,
+            "endMs": 1300
+          },
+          {
+            "text": "width",
+            "startMs": 1300,
+            "endMs": 1600
+          },
+          {
+            "text": "gives",
+            "startMs": 1600,
+            "endMs": 1800
+          },
+          {
+            "text": "the",
+            "startMs": 1800,
+            "endMs": 1900
+          },
+          {
+            "text": "middle",
+            "startMs": 1900,
+            "endMs": 2200
+          },
+          {
+            "text": "of",
+            "startMs": 2200,
+            "endMs": 2300
+          },
+          {
+            "text": "your",
+            "startMs": 2300,
+            "endMs": 2400
+          },
+          {
+            "text": "face",
+            "startMs": 2400,
+            "endMs": 2600
+          },
+          {
+            "text": "its",
+            "startMs": 2600,
+            "endMs": 2800
+          },
+          {
+            "text": "frame",
+            "startMs": 2800,
+            "endMs": 3400
+          }
+        ]
+      },
+      {
+        "startMs": 43950,
+        "durationMs": 4950,
+        "words": [
+          {
+            "text": "Even",
+            "startMs": 150,
+            "endMs": 350
+          },
+          {
+            "text": "the",
+            "startMs": 350,
+            "endMs": 450
+          },
+          {
+            "text": "same",
+            "startMs": 450,
+            "endMs": 750
+          },
+          {
+            "text": "mouth",
+            "startMs": 750,
+            "endMs": 1050
+          },
+          {
+            "text": "can",
+            "startMs": 1050,
+            "endMs": 1250
+          },
+          {
+            "text": "feel",
+            "startMs": 1250,
+            "endMs": 1450
+          },
+          {
+            "text": "more",
+            "startMs": 1450,
+            "endMs": 1950
+          },
+          {
+            "text": "or",
+            "startMs": 1950,
+            "endMs": 2050
+          },
+          {
+            "text": "less",
+            "startMs": 2050,
+            "endMs": 2250
+          },
+          {
+            "text": "prominent",
+            "startMs": 2250,
+            "endMs": 2850
+          },
+          {
+            "text": "when",
+            "startMs": 2850,
+            "endMs": 2950
+          },
+          {
+            "text": "those",
+            "startMs": 2950,
+            "endMs": 3250
+          },
+          {
+            "text": "surrounding",
+            "startMs": 3250,
+            "endMs": 3750
+          },
+          {
+            "text": "proportions",
+            "startMs": 3750,
+            "endMs": 4350
+          },
+          {
+            "text": "change",
+            "startMs": 4350,
+            "endMs": 4750
+          }
+        ]
+      },
+      {
+        "startMs": 48900,
+        "durationMs": 4600,
+        "words": [
+          {
+            "text": "A",
+            "startMs": 200,
+            "endMs": 300
+          },
+          {
+            "text": "close",
+            "startMs": 300,
+            "endMs": 700
+          },
+          {
+            "text": "selfie",
+            "startMs": 700,
+            "endMs": 1100
+          },
+          {
+            "text": "a",
+            "startMs": 1100,
+            "endMs": 1300
+          },
+          {
+            "text": "portrait",
+            "startMs": 1300,
+            "endMs": 1700
+          },
+          {
+            "text": "and",
+            "startMs": 1700,
+            "endMs": 2000
+          },
+          {
+            "text": "a",
+            "startMs": 2000,
+            "endMs": 2001
+          },
+          {
+            "text": "profile",
+            "startMs": 2001,
+            "endMs": 2600
+          },
+          {
+            "text": "are",
+            "startMs": 2600,
+            "endMs": 2700
+          },
+          {
+            "text": "showing",
+            "startMs": 2700,
+            "endMs": 3000
+          },
+          {
+            "text": "you",
+            "startMs": 3000,
+            "endMs": 3100
+          },
+          {
+            "text": "different",
+            "startMs": 3100,
+            "endMs": 3600
+          },
+          {
+            "text": "relationships",
+            "startMs": 3600,
+            "endMs": 4500
+          }
+        ]
+      },
+      {
+        "startMs": 53500,
+        "durationMs": 4300,
+        "words": [
+          {
+            "text": "That",
+            "startMs": 100,
+            "endMs": 300
+          },
+          {
+            "text": "is",
+            "startMs": 300,
+            "endMs": 400
+          },
+          {
+            "text": "a",
+            "startMs": 400,
+            "endMs": 500
+          },
+          {
+            "text": "much",
+            "startMs": 500,
+            "endMs": 700
+          },
+          {
+            "text": "more",
+            "startMs": 700,
+            "endMs": 900
+          },
+          {
+            "text": "useful",
+            "startMs": 900,
+            "endMs": 1300
+          },
+          {
+            "text": "starting",
+            "startMs": 1300,
+            "endMs": 1600
+          },
+          {
+            "text": "point",
+            "startMs": 1600,
+            "endMs": 1900
+          },
+          {
+            "text": "than",
+            "startMs": 1900,
+            "endMs": 2100
+          },
+          {
+            "text": "deciding",
+            "startMs": 2100,
+            "endMs": 2500
+          },
+          {
+            "text": "one",
+            "startMs": 2500,
+            "endMs": 2900
+          },
+          {
+            "text": "feature",
+            "startMs": 2900,
+            "endMs": 3300
+          },
+          {
+            "text": "is",
+            "startMs": 3300,
+            "endMs": 3500
+          },
+          {
+            "text": "the",
+            "startMs": 3500,
+            "endMs": 3600
+          },
+          {
+            "text": "problem",
+            "startMs": 3600,
+            "endMs": 4100
+          }
+        ]
+      },
+      {
+        "startMs": 57800,
+        "durationMs": 4200,
+        "words": [
+          {
+            "text": "If",
+            "startMs": 200,
+            "endMs": 300
+          },
+          {
+            "text": "you",
+            "startMs": 300,
+            "endMs": 400
+          },
+          {
+            "text": "want",
+            "startMs": 400,
+            "endMs": 600
+          },
+          {
+            "text": "to",
+            "startMs": 600,
+            "endMs": 601
+          },
+          {
+            "text": "see",
+            "startMs": 601,
+            "endMs": 700
+          },
+          {
+            "text": "your",
+            "startMs": 700,
+            "endMs": 900
+          },
+          {
+            "text": "own",
+            "startMs": 900,
+            "endMs": 1000
+          },
+          {
+            "text": "facial",
+            "startMs": 1000,
+            "endMs": 1300
+          },
+          {
+            "text": "proportions",
+            "startMs": 1300,
+            "endMs": 1900
+          },
+          {
+            "text": "and",
+            "startMs": 1900,
+            "endMs": 2100
+          },
+          {
+            "text": "how",
+            "startMs": 2100,
+            "endMs": 2200
+          },
+          {
+            "text": "they",
+            "startMs": 2200,
+            "endMs": 2300
+          },
+          {
+            "text": "score",
+            "startMs": 2300,
+            "endMs": 2500
+          },
+          {
+            "text": "together",
+            "startMs": 2500,
+            "endMs": 3000
+          },
+          {
+            "text": "go",
+            "startMs": 3000,
+            "endMs": 3200
+          },
+          {
+            "text": "to",
+            "startMs": 3200,
+            "endMs": 3201
+          },
+          {
+            "text": "Mogging.com",
+            "startMs": 3201,
+            "endMs": 4100
+          }
+        ]
+      },
+      {
+        "startMs": 62000,
+        "durationMs": 1520,
+        "words": [
+          {
+            "text": "Get",
+            "startMs": 100,
+            "endMs": 200
+          },
+          {
+            "text": "your",
+            "startMs": 200,
+            "endMs": 400
+          },
+          {
+            "text": "face",
+            "startMs": 400,
+            "endMs": 600
+          },
+          {
+            "text": "analysis",
+            "startMs": 600,
+            "endMs": 1200
+          }
+        ]
+      }
+    ]
+  },
+  "cephra-short-midface-datum": {
+    "audio": "/creator/sculpture/voices/cephra-short-midface-datum.wav",
+    "durationMs": 30280,
+    "sections": [
+      {
+        "id": "profile-hook",
+        "startMs": 0,
+        "durationMs": 3550,
+        "words": [
+          {
+            "text": "Think",
+            "startMs": 200,
+            "endMs": 400
+          },
+          {
+            "text": "your",
+            "startMs": 400,
+            "endMs": 500
+          },
+          {
+            "text": "nose",
+            "startMs": 500,
+            "endMs": 800
+          },
+          {
+            "text": "sticks",
+            "startMs": 800,
+            "endMs": 1000
+          },
+          {
+            "text": "out",
+            "startMs": 1000,
+            "endMs": 1200
+          },
+          {
+            "text": "too",
+            "startMs": 1200,
+            "endMs": 1300
+          },
+          {
+            "text": "far",
+            "startMs": 1300,
+            "endMs": 1700
+          },
+          {
+            "text": "Look",
+            "startMs": 2000,
+            "endMs": 2300
+          },
+          {
+            "text": "just",
+            "startMs": 2300,
+            "endMs": 2800
+          },
+          {
+            "text": "below",
+            "startMs": 2800,
+            "endMs": 3200
+          },
+          {
+            "text": "it",
+            "startMs": 3200,
+            "endMs": 3500
+          }
+        ]
+      },
+      {
+        "id": "profile-turn",
+        "startMs": 3550,
+        "durationMs": 5150,
+        "words": [
+          {
+            "text": "Turn",
+            "startMs": 50,
+            "endMs": 250
+          },
+          {
+            "text": "sideways",
+            "startMs": 250,
+            "endMs": 950
+          },
+          {
+            "text": "Keep",
+            "startMs": 1450,
+            "endMs": 1650
+          },
+          {
+            "text": "your",
+            "startMs": 1650,
+            "endMs": 1750
+          },
+          {
+            "text": "chin",
+            "startMs": 1750,
+            "endMs": 2050
+          },
+          {
+            "text": "level",
+            "startMs": 2050,
+            "endMs": 2550
+          },
+          {
+            "text": "and",
+            "startMs": 2550,
+            "endMs": 3050
+          },
+          {
+            "text": "drop",
+            "startMs": 3050,
+            "endMs": 3350
+          },
+          {
+            "text": "a",
+            "startMs": 3350,
+            "endMs": 3450
+          },
+          {
+            "text": "line",
+            "startMs": 3450,
+            "endMs": 3850
+          },
+          {
+            "text": "from",
+            "startMs": 3850,
+            "endMs": 3950
+          },
+          {
+            "text": "between",
+            "startMs": 3950,
+            "endMs": 4350
+          },
+          {
+            "text": "your",
+            "startMs": 4350,
+            "endMs": 4450
+          },
+          {
+            "text": "brows",
+            "startMs": 4450,
+            "endMs": 4850
+          }
+        ]
+      },
+      {
+        "id": "profile-gap",
+        "startMs": 8700,
+        "durationMs": 5450,
+        "words": [
+          {
+            "text": "Now",
+            "startMs": 300,
+            "endMs": 500
+          },
+          {
+            "text": "find",
+            "startMs": 500,
+            "endMs": 800
+          },
+          {
+            "text": "the",
+            "startMs": 800,
+            "endMs": 900
+          },
+          {
+            "text": "crease",
+            "startMs": 900,
+            "endMs": 1300
+          },
+          {
+            "text": "where",
+            "startMs": 1300,
+            "endMs": 1400
+          },
+          {
+            "text": "your",
+            "startMs": 1400,
+            "endMs": 1500
+          },
+          {
+            "text": "nose",
+            "startMs": 1500,
+            "endMs": 1900
+          },
+          {
+            "text": "meets",
+            "startMs": 1900,
+            "endMs": 2100
+          },
+          {
+            "text": "your",
+            "startMs": 2100,
+            "endMs": 2300
+          },
+          {
+            "text": "upper",
+            "startMs": 2300,
+            "endMs": 2500
+          },
+          {
+            "text": "lip",
+            "startMs": 2500,
+            "endMs": 2900
+          },
+          {
+            "text": "How",
+            "startMs": 3400,
+            "endMs": 3700
+          },
+          {
+            "text": "far",
+            "startMs": 3700,
+            "endMs": 3900
+          },
+          {
+            "text": "behind",
+            "startMs": 3900,
+            "endMs": 4200
+          },
+          {
+            "text": "that",
+            "startMs": 4200,
+            "endMs": 4400
+          },
+          {
+            "text": "line",
+            "startMs": 4400,
+            "endMs": 4600
+          },
+          {
+            "text": "does",
+            "startMs": 4600,
+            "endMs": 4800
+          },
+          {
+            "text": "it",
+            "startMs": 4800,
+            "endMs": 4900
+          },
+          {
+            "text": "sit",
+            "startMs": 4900,
+            "endMs": 5300
+          }
+        ]
+      },
+      {
+        "id": "profile-morph",
+        "startMs": 14150,
+        "durationMs": 5950,
+        "words": [
+          {
+            "text": "Bring",
+            "startMs": 150,
+            "endMs": 350
+          },
+          {
+            "text": "that",
+            "startMs": 350,
+            "endMs": 550
+          },
+          {
+            "text": "area",
+            "startMs": 550,
+            "endMs": 850
+          },
+          {
+            "text": "forward",
+            "startMs": 850,
+            "endMs": 1750
+          },
+          {
+            "text": "and",
+            "startMs": 1850,
+            "endMs": 1950.0000000000018
+          },
+          {
+            "text": "the",
+            "startMs": 1950.0000000000018,
+            "endMs": 2150
+          },
+          {
+            "text": "upper",
+            "startMs": 2150,
+            "endMs": 2450
+          },
+          {
+            "text": "lip",
+            "startMs": 2450,
+            "endMs": 2650
+          },
+          {
+            "text": "comes",
+            "startMs": 2650,
+            "endMs": 2850
+          },
+          {
+            "text": "with",
+            "startMs": 2850,
+            "endMs": 3050
+          },
+          {
+            "text": "it",
+            "startMs": 3050,
+            "endMs": 3350
+          },
+          {
+            "text": "Same",
+            "startMs": 3450,
+            "endMs": 3750
+          },
+          {
+            "text": "nose",
+            "startMs": 3750,
+            "endMs": 4150
+          },
+          {
+            "text": "Different",
+            "startMs": 4550,
+            "endMs": 4850
+          },
+          {
+            "text": "profile",
+            "startMs": 4850,
+            "endMs": 5350
+          }
+        ]
+      },
+      {
+        "id": "profile-payoff",
+        "startMs": 20100,
+        "durationMs": 4650,
+        "words": [
+          {
+            "text": "That",
+            "startMs": 600,
+            "endMs": 800
+          },
+          {
+            "text": "little",
+            "startMs": 800,
+            "endMs": 1100
+          },
+          {
+            "text": "dip",
+            "startMs": 1100,
+            "endMs": 1500
+          },
+          {
+            "text": "under",
+            "startMs": 1500,
+            "endMs": 1600
+          },
+          {
+            "text": "the",
+            "startMs": 1600,
+            "endMs": 1700
+          },
+          {
+            "text": "nose",
+            "startMs": 1700,
+            "endMs": 2000
+          },
+          {
+            "text": "can",
+            "startMs": 2000,
+            "endMs": 2200
+          },
+          {
+            "text": "change",
+            "startMs": 2200,
+            "endMs": 2500
+          },
+          {
+            "text": "how",
+            "startMs": 2500,
+            "endMs": 2700
+          },
+          {
+            "text": "prominent",
+            "startMs": 2700,
+            "endMs": 3300
+          },
+          {
+            "text": "the",
+            "startMs": 3300,
+            "endMs": 3400
+          },
+          {
+            "text": "whole",
+            "startMs": 3400,
+            "endMs": 3700
+          },
+          {
+            "text": "nose",
+            "startMs": 3700,
+            "endMs": 4000
+          },
+          {
+            "text": "looks",
+            "startMs": 4000,
+            "endMs": 4400
+          }
+        ]
+      },
+      {
+        "id": "profile-app",
+        "startMs": 24750,
+        "durationMs": 4000,
+        "words": [
+          {
+            "text": "If",
+            "startMs": 250,
+            "endMs": 251
+          },
+          {
+            "text": "you",
+            "startMs": 251,
+            "endMs": 350
+          },
+          {
+            "text": "want",
+            "startMs": 350,
+            "endMs": 550
+          },
+          {
+            "text": "to",
+            "startMs": 550,
+            "endMs": 551
+          },
+          {
+            "text": "see",
+            "startMs": 551,
+            "endMs": 750
+          },
+          {
+            "text": "how",
+            "startMs": 750,
+            "endMs": 850
+          },
+          {
+            "text": "your",
+            "startMs": 850,
+            "endMs": 1050
+          },
+          {
+            "text": "profile",
+            "startMs": 1050,
+            "endMs": 1450
+          },
+          {
+            "text": "fits",
+            "startMs": 1450,
+            "endMs": 1650
+          },
+          {
+            "text": "together",
+            "startMs": 1650,
+            "endMs": 2250
+          },
+          {
+            "text": "go",
+            "startMs": 2250,
+            "endMs": 2450
+          },
+          {
+            "text": "to",
+            "startMs": 2450,
+            "endMs": 2650
+          },
+          {
+            "text": "Mogging.com",
+            "startMs": 2650,
+            "endMs": 3850
+          }
+        ]
+      },
+      {
+        "id": "profile-tag",
+        "startMs": 28750,
+        "durationMs": 1530,
+        "words": [
+          {
+            "text": "Get",
+            "startMs": 150,
+            "endMs": 250
+          },
+          {
+            "text": "your",
+            "startMs": 250,
+            "endMs": 450
+          },
+          {
+            "text": "face",
+            "startMs": 450,
+            "endMs": 650
+          },
+          {
+            "text": "analysis",
+            "startMs": 650,
+            "endMs": 1250
+          }
+        ]
+      }
+    ]
+  },
+  "cephra-short-matched-selfie": {
+    "audio": "/creator/sculpture/voices/cephra-short-matched-selfie.wav",
+    "durationMs": 22840,
+    "sections": [
+      {
+        "id": "selfie-hook",
+        "startMs": 0,
+        "durationMs": 3650,
+        "words": [
+          {
+            "text": "Ever",
+            "startMs": 300,
+            "endMs": 400
+          },
+          {
+            "text": "like",
+            "startMs": 400,
+            "endMs": 600
+          },
+          {
+            "text": "your",
+            "startMs": 600,
+            "endMs": 700
+          },
+          {
+            "text": "face",
+            "startMs": 700,
+            "endMs": 1000
+          },
+          {
+            "text": "in",
+            "startMs": 1000,
+            "endMs": 1000.9999999999999
+          },
+          {
+            "text": "the",
+            "startMs": 1000.9999999999999,
+            "endMs": 1100
+          },
+          {
+            "text": "mirror",
+            "startMs": 1100,
+            "endMs": 1400
+          },
+          {
+            "text": "then",
+            "startMs": 1400,
+            "endMs": 1700
+          },
+          {
+            "text": "open",
+            "startMs": 1700,
+            "endMs": 1900
+          },
+          {
+            "text": "the",
+            "startMs": 1900,
+            "endMs": 2000
+          },
+          {
+            "text": "front",
+            "startMs": 2000,
+            "endMs": 2200
+          },
+          {
+            "text": "camera",
+            "startMs": 2200,
+            "endMs": 2600
+          },
+          {
+            "text": "and",
+            "startMs": 2600,
+            "endMs": 2700
+          },
+          {
+            "text": "wonder",
+            "startMs": 2700,
+            "endMs": 2800
+          },
+          {
+            "text": "what",
+            "startMs": 2800,
+            "endMs": 3000
+          },
+          {
+            "text": "happened",
+            "startMs": 3000,
+            "endMs": 3500
+          }
+        ]
+      },
+      {
+        "id": "selfie-depth",
+        "startMs": 3650,
+        "durationMs": 3400,
+        "words": [
+          {
+            "text": "At",
+            "startMs": 150,
+            "endMs": 350
+          },
+          {
+            "text": "arm’s",
+            "startMs": 350,
+            "endMs": 650
+          },
+          {
+            "text": "length",
+            "startMs": 650,
+            "endMs": 950
+          },
+          {
+            "text": "your",
+            "startMs": 950,
+            "endMs": 1050
+          },
+          {
+            "text": "nose",
+            "startMs": 1050,
+            "endMs": 1350
+          },
+          {
+            "text": "is",
+            "startMs": 1350,
+            "endMs": 1450
+          },
+          {
+            "text": "a",
+            "startMs": 1450,
+            "endMs": 1550
+          },
+          {
+            "text": "lot",
+            "startMs": 1550,
+            "endMs": 1850
+          },
+          {
+            "text": "closer",
+            "startMs": 1850,
+            "endMs": 2150
+          },
+          {
+            "text": "to",
+            "startMs": 2150,
+            "endMs": 2250
+          },
+          {
+            "text": "the",
+            "startMs": 2250,
+            "endMs": 2350
+          },
+          {
+            "text": "lens",
+            "startMs": 2350,
+            "endMs": 2650
+          },
+          {
+            "text": "than",
+            "startMs": 2650,
+            "endMs": 2750
+          },
+          {
+            "text": "your",
+            "startMs": 2750,
+            "endMs": 2950
+          },
+          {
+            "text": "ears",
+            "startMs": 2950,
+            "endMs": 3350
+          }
+        ]
+      },
+      {
+        "id": "selfie-proof",
+        "startMs": 7050,
+        "durationMs": 4150,
+        "words": [
+          {
+            "text": "So",
+            "startMs": 50,
+            "endMs": 150
+          },
+          {
+            "text": "the",
+            "startMs": 150,
+            "endMs": 250
+          },
+          {
+            "text": "middle",
+            "startMs": 250,
+            "endMs": 450
+          },
+          {
+            "text": "gets",
+            "startMs": 450,
+            "endMs": 650
+          },
+          {
+            "text": "bigger",
+            "startMs": 650,
+            "endMs": 1050
+          },
+          {
+            "text": "your",
+            "startMs": 1050,
+            "endMs": 1150
+          },
+          {
+            "text": "cheeks",
+            "startMs": 1150,
+            "endMs": 1550
+          },
+          {
+            "text": "look",
+            "startMs": 1550,
+            "endMs": 1650
+          },
+          {
+            "text": "narrower",
+            "startMs": 1650,
+            "endMs": 2250
+          },
+          {
+            "text": "and",
+            "startMs": 2250,
+            "endMs": 2350
+          },
+          {
+            "text": "your",
+            "startMs": 2350,
+            "endMs": 2550
+          },
+          {
+            "text": "ears",
+            "startMs": 2550,
+            "endMs": 2750
+          },
+          {
+            "text": "start",
+            "startMs": 2750,
+            "endMs": 3050
+          },
+          {
+            "text": "to",
+            "startMs": 3050,
+            "endMs": 3250
+          },
+          {
+            "text": "disappear",
+            "startMs": 3250,
+            "endMs": 3950
+          }
+        ]
+      },
+      {
+        "id": "selfie-mirror",
+        "startMs": 11200,
+        "durationMs": 3050,
+        "words": [
+          {
+            "text": "In",
+            "startMs": 200,
+            "endMs": 300
+          },
+          {
+            "text": "the",
+            "startMs": 300,
+            "endMs": 400
+          },
+          {
+            "text": "mirror",
+            "startMs": 400,
+            "endMs": 600
+          },
+          {
+            "text": "that",
+            "startMs": 600,
+            "endMs": 800
+          },
+          {
+            "text": "extra",
+            "startMs": 800,
+            "endMs": 1100
+          },
+          {
+            "text": "distance",
+            "startMs": 1100,
+            "endMs": 1500
+          },
+          {
+            "text": "makes",
+            "startMs": 1500,
+            "endMs": 1700
+          },
+          {
+            "text": "the",
+            "startMs": 1700,
+            "endMs": 1800
+          },
+          {
+            "text": "difference",
+            "startMs": 1800,
+            "endMs": 2100
+          },
+          {
+            "text": "less",
+            "startMs": 2100,
+            "endMs": 2400
+          },
+          {
+            "text": "obvious",
+            "startMs": 2400,
+            "endMs": 3000
+          }
+        ]
+      },
+      {
+        "id": "selfie-match",
+        "startMs": 14250,
+        "durationMs": 4250,
+        "words": [
+          {
+            "text": "Try",
+            "startMs": 50,
+            "endMs": 250
+          },
+          {
+            "text": "it",
+            "startMs": 250,
+            "endMs": 550
+          },
+          {
+            "text": "Move",
+            "startMs": 550,
+            "endMs": 750
+          },
+          {
+            "text": "the",
+            "startMs": 750,
+            "endMs": 850
+          },
+          {
+            "text": "phone",
+            "startMs": 850,
+            "endMs": 1050
+          },
+          {
+            "text": "back",
+            "startMs": 1050,
+            "endMs": 1450
+          },
+          {
+            "text": "keep",
+            "startMs": 1450,
+            "endMs": 1550
+          },
+          {
+            "text": "it",
+            "startMs": 1550,
+            "endMs": 1650
+          },
+          {
+            "text": "at",
+            "startMs": 1650,
+            "endMs": 1750
+          },
+          {
+            "text": "eye",
+            "startMs": 1750,
+            "endMs": 1850.0000000000018
+          },
+          {
+            "text": "level",
+            "startMs": 1850.0000000000018,
+            "endMs": 2250
+          },
+          {
+            "text": "then",
+            "startMs": 2250,
+            "endMs": 2450
+          },
+          {
+            "text": "crop",
+            "startMs": 2450,
+            "endMs": 2750
+          },
+          {
+            "text": "in",
+            "startMs": 2750,
+            "endMs": 2950
+          },
+          {
+            "text": "There’s",
+            "startMs": 3250,
+            "endMs": 3450
+          },
+          {
+            "text": "your",
+            "startMs": 3450,
+            "endMs": 3550
+          },
+          {
+            "text": "face",
+            "startMs": 3550,
+            "endMs": 3750
+          },
+          {
+            "text": "again",
+            "startMs": 3750,
+            "endMs": 3950
+          }
+        ]
+      },
+      {
+        "id": "selfie-app",
+        "startMs": 18500,
+        "durationMs": 3050,
+        "words": [
+          {
+            "text": "If",
+            "startMs": 300,
+            "endMs": 400
+          },
+          {
+            "text": "you",
+            "startMs": 400,
+            "endMs": 401
+          },
+          {
+            "text": "want",
+            "startMs": 401,
+            "endMs": 500
+          },
+          {
+            "text": "a",
+            "startMs": 500,
+            "endMs": 600
+          },
+          {
+            "text": "closer",
+            "startMs": 600,
+            "endMs": 800
+          },
+          {
+            "text": "look",
+            "startMs": 800,
+            "endMs": 900
+          },
+          {
+            "text": "at",
+            "startMs": 900,
+            "endMs": 1000
+          },
+          {
+            "text": "your",
+            "startMs": 1000,
+            "endMs": 1200
+          },
+          {
+            "text": "own",
+            "startMs": 1200,
+            "endMs": 1400
+          },
+          {
+            "text": "proportions",
+            "startMs": 1400,
+            "endMs": 1900
+          },
+          {
+            "text": "go",
+            "startMs": 1900,
+            "endMs": 2000
+          },
+          {
+            "text": "to",
+            "startMs": 2000,
+            "endMs": 2100
+          },
+          {
+            "text": "Mogging.com",
+            "startMs": 2100,
+            "endMs": 3000
+          }
+        ]
+      },
+      {
+        "id": "selfie-tag",
+        "startMs": 21550,
+        "durationMs": 1290,
+        "words": [
+          {
+            "text": "Get",
+            "startMs": 50,
+            "endMs": 250
+          },
+          {
+            "text": "your",
+            "startMs": 250,
+            "endMs": 350
+          },
+          {
+            "text": "face",
+            "startMs": 350,
+            "endMs": 550
+          },
+          {
+            "text": "analysis",
+            "startMs": 550,
+            "endMs": 1050
+          }
+        ]
+      }
+    ]
+  },
+  "cephra-short-canthal-tilt": {
+    "audio": "/creator/sculpture/voices/cephra-short-canthal-tilt.wav",
+    "durationMs": 28280,
+    "sections": [
+      {
+        "id": "eye-hook",
+        "startMs": 0,
+        "durationMs": 3700,
+        "words": [
+          {
+            "text": "Do",
+            "startMs": 100,
+            "endMs": 200
+          },
+          {
+            "text": "your",
+            "startMs": 200,
+            "endMs": 400
+          },
+          {
+            "text": "eyes",
+            "startMs": 400,
+            "endMs": 600
+          },
+          {
+            "text": "tilt",
+            "startMs": 600,
+            "endMs": 900
+          },
+          {
+            "text": "up",
+            "startMs": 900,
+            "endMs": 1200
+          },
+          {
+            "text": "or",
+            "startMs": 1200,
+            "endMs": 1400
+          },
+          {
+            "text": "down",
+            "startMs": 1400,
+            "endMs": 1700
+          },
+          {
+            "text": "Two",
+            "startMs": 2100,
+            "endMs": 2200
+          },
+          {
+            "text": "tiny",
+            "startMs": 2200,
+            "endMs": 2500
+          },
+          {
+            "text": "dots",
+            "startMs": 2500,
+            "endMs": 2900
+          },
+          {
+            "text": "give",
+            "startMs": 2900,
+            "endMs": 3100
+          },
+          {
+            "text": "it",
+            "startMs": 3100,
+            "endMs": 3101
+          },
+          {
+            "text": "away",
+            "startMs": 3101,
+            "endMs": 3400
+          }
+        ]
+      },
+      {
+        "id": "eye-locate",
+        "startMs": 3700,
+        "durationMs": 5200,
+        "words": [
+          {
+            "text": "Forget",
+            "startMs": 300,
+            "endMs": 600
+          },
+          {
+            "text": "the",
+            "startMs": 600,
+            "endMs": 700
+          },
+          {
+            "text": "brow",
+            "startMs": 700,
+            "endMs": 1100
+          },
+          {
+            "text": "Find",
+            "startMs": 1700,
+            "endMs": 1900
+          },
+          {
+            "text": "the",
+            "startMs": 1900,
+            "endMs": 1901
+          },
+          {
+            "text": "corner",
+            "startMs": 1901,
+            "endMs": 2400
+          },
+          {
+            "text": "next",
+            "startMs": 2400,
+            "endMs": 2700
+          },
+          {
+            "text": "to",
+            "startMs": 2700,
+            "endMs": 2800
+          },
+          {
+            "text": "your",
+            "startMs": 2800,
+            "endMs": 2900
+          },
+          {
+            "text": "nose",
+            "startMs": 2900,
+            "endMs": 3400
+          },
+          {
+            "text": "then",
+            "startMs": 3500,
+            "endMs": 3700
+          },
+          {
+            "text": "the",
+            "startMs": 3700,
+            "endMs": 3800
+          },
+          {
+            "text": "little",
+            "startMs": 3800,
+            "endMs": 4000
+          },
+          {
+            "text": "crease",
+            "startMs": 4000,
+            "endMs": 4400
+          },
+          {
+            "text": "at",
+            "startMs": 4400,
+            "endMs": 4401.000000000001
+          },
+          {
+            "text": "the",
+            "startMs": 4401.000000000001,
+            "endMs": 4600
+          },
+          {
+            "text": "other",
+            "startMs": 4600,
+            "endMs": 4800
+          },
+          {
+            "text": "end",
+            "startMs": 4800,
+            "endMs": 5000
+          }
+        ]
+      },
+      {
+        "id": "eye-datum",
+        "startMs": 8900,
+        "durationMs": 4400,
+        "words": [
+          {
+            "text": "Connect",
+            "startMs": 200,
+            "endMs": 700
+          },
+          {
+            "text": "those",
+            "startMs": 700,
+            "endMs": 900
+          },
+          {
+            "text": "two",
+            "startMs": 900,
+            "endMs": 1100
+          },
+          {
+            "text": "dots",
+            "startMs": 1100,
+            "endMs": 1500
+          },
+          {
+            "text": "Now",
+            "startMs": 2100,
+            "endMs": 2200
+          },
+          {
+            "text": "compare",
+            "startMs": 2200,
+            "endMs": 2600
+          },
+          {
+            "text": "that",
+            "startMs": 2600,
+            "endMs": 3000
+          },
+          {
+            "text": "line",
+            "startMs": 3000,
+            "endMs": 3400
+          },
+          {
+            "text": "with",
+            "startMs": 3400,
+            "endMs": 3600
+          },
+          {
+            "text": "a",
+            "startMs": 3600,
+            "endMs": 3601
+          },
+          {
+            "text": "level",
+            "startMs": 3601,
+            "endMs": 3900
+          },
+          {
+            "text": "one",
+            "startMs": 3900,
+            "endMs": 4200
+          }
+        ]
+      },
+      {
+        "id": "eye-sweep",
+        "startMs": 13300,
+        "durationMs": 5600,
+        "words": [
+          {
+            "text": "Up",
+            "startMs": 200,
+            "endMs": 400
+          },
+          {
+            "text": "is",
+            "startMs": 400,
+            "endMs": 600
+          },
+          {
+            "text": "positive",
+            "startMs": 600,
+            "endMs": 1200
+          },
+          {
+            "text": "Flat",
+            "startMs": 1300,
+            "endMs": 1600
+          },
+          {
+            "text": "is",
+            "startMs": 1600,
+            "endMs": 1700
+          },
+          {
+            "text": "neutral",
+            "startMs": 1700,
+            "endMs": 2200
+          },
+          {
+            "text": "Down",
+            "startMs": 2500,
+            "endMs": 2900
+          },
+          {
+            "text": "is",
+            "startMs": 3000,
+            "endMs": 3100
+          },
+          {
+            "text": "negative",
+            "startMs": 3100,
+            "endMs": 3500
+          },
+          {
+            "text": "That’s",
+            "startMs": 4100,
+            "endMs": 4400
+          },
+          {
+            "text": "your",
+            "startMs": 4400,
+            "endMs": 4500
+          },
+          {
+            "text": "canthal",
+            "startMs": 4500,
+            "endMs": 4900
+          },
+          {
+            "text": "tilt",
+            "startMs": 4900,
+            "endMs": 5300
+          }
+        ]
+      },
+      {
+        "id": "eye-payoff",
+        "startMs": 18900,
+        "durationMs": 4650,
+        "words": [
+          {
+            "text": "A",
+            "startMs": 300,
+            "endMs": 400
+          },
+          {
+            "text": "slanted",
+            "startMs": 400,
+            "endMs": 800
+          },
+          {
+            "text": "selfie",
+            "startMs": 800,
+            "endMs": 1100
+          },
+          {
+            "text": "can",
+            "startMs": 1100,
+            "endMs": 1300
+          },
+          {
+            "text": "change",
+            "startMs": 1300,
+            "endMs": 1600
+          },
+          {
+            "text": "what",
+            "startMs": 1600,
+            "endMs": 1700
+          },
+          {
+            "text": "that",
+            "startMs": 1700,
+            "endMs": 1900
+          },
+          {
+            "text": "line",
+            "startMs": 1900,
+            "endMs": 2100
+          },
+          {
+            "text": "seems",
+            "startMs": 2100,
+            "endMs": 2400
+          },
+          {
+            "text": "to",
+            "startMs": 2400,
+            "endMs": 2600
+          },
+          {
+            "text": "say",
+            "startMs": 2600,
+            "endMs": 2800
+          },
+          {
+            "text": "so",
+            "startMs": 2800,
+            "endMs": 3100
+          },
+          {
+            "text": "check",
+            "startMs": 3300,
+            "endMs": 3500
+          },
+          {
+            "text": "it",
+            "startMs": 3500,
+            "endMs": 3600
+          },
+          {
+            "text": "with",
+            "startMs": 3600,
+            "endMs": 3700
+          },
+          {
+            "text": "your",
+            "startMs": 3700,
+            "endMs": 3800
+          },
+          {
+            "text": "head",
+            "startMs": 3800,
+            "endMs": 4000
+          },
+          {
+            "text": "level",
+            "startMs": 4000,
+            "endMs": 4300
+          }
+        ]
+      },
+      {
+        "id": "eye-app",
+        "startMs": 23550,
+        "durationMs": 3350,
+        "words": [
+          {
+            "text": "If",
+            "startMs": 350,
+            "endMs": 351
+          },
+          {
+            "text": "you",
+            "startMs": 351,
+            "endMs": 450
+          },
+          {
+            "text": "want",
+            "startMs": 450,
+            "endMs": 550
+          },
+          {
+            "text": "to",
+            "startMs": 550,
+            "endMs": 650
+          },
+          {
+            "text": "check",
+            "startMs": 650,
+            "endMs": 850
+          },
+          {
+            "text": "your",
+            "startMs": 850,
+            "endMs": 950
+          },
+          {
+            "text": "own",
+            "startMs": 950,
+            "endMs": 1050
+          },
+          {
+            "text": "eye",
+            "startMs": 1050,
+            "endMs": 1150
+          },
+          {
+            "text": "proportions",
+            "startMs": 1150,
+            "endMs": 1850
+          },
+          {
+            "text": "go",
+            "startMs": 1850,
+            "endMs": 1950
+          },
+          {
+            "text": "to",
+            "startMs": 1950,
+            "endMs": 2050
+          },
+          {
+            "text": "Mogging.com",
+            "startMs": 2050,
+            "endMs": 3150
+          }
+        ]
+      },
+      {
+        "id": "eye-tag",
+        "startMs": 26900,
+        "durationMs": 1380,
+        "words": [
+          {
+            "text": "Get",
+            "startMs": 200,
+            "endMs": 300
+          },
+          {
+            "text": "your",
+            "startMs": 300,
+            "endMs": 400
+          },
+          {
+            "text": "face",
+            "startMs": 400,
+            "endMs": 700
+          },
+          {
+            "text": "analysis",
+            "startMs": 700,
+            "endMs": 1200
+          }
+        ]
+      }
+    ]
+  },
+  "cephra-short-jaw-hinge": {
+    "audio": "/creator/sculpture/voices/cephra-short-jaw-hinge.wav",
+    "durationMs": 32800,
+    "sections": [
+      {
+        "id": "jaw-hook",
+        "startMs": 0,
+        "durationMs": 5000,
+        "words": [
+          {
+            "text": "Your",
+            "startMs": 200,
+            "endMs": 400
+          },
+          {
+            "text": "jaw",
+            "startMs": 400,
+            "endMs": 700
+          },
+          {
+            "text": "can",
+            "startMs": 700,
+            "endMs": 800
+          },
+          {
+            "text": "look",
+            "startMs": 800,
+            "endMs": 1000
+          },
+          {
+            "text": "wide",
+            "startMs": 1000,
+            "endMs": 1400
+          },
+          {
+            "text": "and",
+            "startMs": 1400,
+            "endMs": 1600
+          },
+          {
+            "text": "still",
+            "startMs": 1600,
+            "endMs": 2000
+          },
+          {
+            "text": "lose",
+            "startMs": 2000,
+            "endMs": 2300
+          },
+          {
+            "text": "that",
+            "startMs": 2300,
+            "endMs": 2500
+          },
+          {
+            "text": "sharp",
+            "startMs": 2500,
+            "endMs": 2900
+          },
+          {
+            "text": "corner",
+            "startMs": 2900,
+            "endMs": 3300
+          },
+          {
+            "text": "Here’s",
+            "startMs": 3900,
+            "endMs": 4100
+          },
+          {
+            "text": "where",
+            "startMs": 4100,
+            "endMs": 4200
+          },
+          {
+            "text": "it",
+            "startMs": 4200,
+            "endMs": 4300
+          },
+          {
+            "text": "happens",
+            "startMs": 4300,
+            "endMs": 4800
+          }
+        ]
+      },
+      {
+        "id": "jaw-guides",
+        "startMs": 5000,
+        "durationMs": 6000,
+        "words": [
+          {
+            "text": "Look",
+            "startMs": 200,
+            "endMs": 600
+          },
+          {
+            "text": "just",
+            "startMs": 600,
+            "endMs": 900
+          },
+          {
+            "text": "below",
+            "startMs": 900,
+            "endMs": 1200
+          },
+          {
+            "text": "your",
+            "startMs": 1200,
+            "endMs": 1300
+          },
+          {
+            "text": "ear",
+            "startMs": 1300,
+            "endMs": 1700
+          },
+          {
+            "text": "Follow",
+            "startMs": 2200,
+            "endMs": 2600
+          },
+          {
+            "text": "the",
+            "startMs": 2600,
+            "endMs": 2700
+          },
+          {
+            "text": "back",
+            "startMs": 2700,
+            "endMs": 3000
+          },
+          {
+            "text": "edge",
+            "startMs": 3000,
+            "endMs": 3200
+          },
+          {
+            "text": "down",
+            "startMs": 3200,
+            "endMs": 3600
+          },
+          {
+            "text": "then",
+            "startMs": 3900,
+            "endMs": 4200
+          },
+          {
+            "text": "the",
+            "startMs": 4200,
+            "endMs": 4300
+          },
+          {
+            "text": "bottom",
+            "startMs": 4300,
+            "endMs": 4700
+          },
+          {
+            "text": "edge",
+            "startMs": 4700,
+            "endMs": 5000
+          },
+          {
+            "text": "toward",
+            "startMs": 5000,
+            "endMs": 5200
+          },
+          {
+            "text": "your",
+            "startMs": 5200,
+            "endMs": 5400
+          },
+          {
+            "text": "chin",
+            "startMs": 5400,
+            "endMs": 5700
+          }
+        ]
+      },
+      {
+        "id": "jaw-bone",
+        "startMs": 11000,
+        "durationMs": 4400,
+        "words": [
+          {
+            "text": "That",
+            "startMs": 300,
+            "endMs": 500
+          },
+          {
+            "text": "turn",
+            "startMs": 500,
+            "endMs": 900
+          },
+          {
+            "text": "is",
+            "startMs": 900,
+            "endMs": 1000
+          },
+          {
+            "text": "your",
+            "startMs": 1000,
+            "endMs": 1200
+          },
+          {
+            "text": "gonial",
+            "startMs": 1200,
+            "endMs": 1600
+          },
+          {
+            "text": "angle",
+            "startMs": 1600,
+            "endMs": 2000
+          },
+          {
+            "text": "Here’s",
+            "startMs": 2700,
+            "endMs": 2900
+          },
+          {
+            "text": "what",
+            "startMs": 2900,
+            "endMs": 3000
+          },
+          {
+            "text": "it",
+            "startMs": 3000,
+            "endMs": 3100
+          },
+          {
+            "text": "looks",
+            "startMs": 3100,
+            "endMs": 3300
+          },
+          {
+            "text": "like",
+            "startMs": 3300,
+            "endMs": 3400
+          },
+          {
+            "text": "under",
+            "startMs": 3400,
+            "endMs": 3600
+          },
+          {
+            "text": "the",
+            "startMs": 3600,
+            "endMs": 3700
+          },
+          {
+            "text": "skin",
+            "startMs": 3700,
+            "endMs": 4000
+          }
+        ]
+      },
+      {
+        "id": "jaw-fold",
+        "startMs": 15400,
+        "durationMs": 5600,
+        "words": [
+          {
+            "text": "Now",
+            "startMs": 400,
+            "endMs": 600
+          },
+          {
+            "text": "fold",
+            "startMs": 600,
+            "endMs": 900
+          },
+          {
+            "text": "the",
+            "startMs": 900,
+            "endMs": 1000
+          },
+          {
+            "text": "back",
+            "startMs": 1000,
+            "endMs": 1200
+          },
+          {
+            "text": "line",
+            "startMs": 1200,
+            "endMs": 1600
+          },
+          {
+            "text": "down",
+            "startMs": 1600,
+            "endMs": 2000
+          },
+          {
+            "text": "You",
+            "startMs": 2700,
+            "endMs": 2800
+          },
+          {
+            "text": "can",
+            "startMs": 2800,
+            "endMs": 2900
+          },
+          {
+            "text": "see",
+            "startMs": 2900,
+            "endMs": 3100
+          },
+          {
+            "text": "how",
+            "startMs": 3100,
+            "endMs": 3200
+          },
+          {
+            "text": "much",
+            "startMs": 3200,
+            "endMs": 3400
+          },
+          {
+            "text": "of",
+            "startMs": 3400,
+            "endMs": 3500
+          },
+          {
+            "text": "the",
+            "startMs": 3500,
+            "endMs": 3600
+          },
+          {
+            "text": "lower",
+            "startMs": 3600,
+            "endMs": 3900
+          },
+          {
+            "text": "edge",
+            "startMs": 3900,
+            "endMs": 4200
+          },
+          {
+            "text": "it",
+            "startMs": 4200,
+            "endMs": 4400
+          },
+          {
+            "text": "actually",
+            "startMs": 4400,
+            "endMs": 4800
+          },
+          {
+            "text": "covers",
+            "startMs": 4800,
+            "endMs": 5200
+          }
+        ]
+      },
+      {
+        "id": "jaw-open",
+        "startMs": 21000,
+        "durationMs": 6200,
+        "words": [
+          {
+            "text": "Open",
+            "startMs": 400,
+            "endMs": 600
+          },
+          {
+            "text": "up",
+            "startMs": 600,
+            "endMs": 800
+          },
+          {
+            "text": "the",
+            "startMs": 800,
+            "endMs": 900
+          },
+          {
+            "text": "angle",
+            "startMs": 900,
+            "endMs": 1200
+          },
+          {
+            "text": "and",
+            "startMs": 1200,
+            "endMs": 1400
+          },
+          {
+            "text": "that",
+            "startMs": 1400,
+            "endMs": 1600
+          },
+          {
+            "text": "corner",
+            "startMs": 1600,
+            "endMs": 1900
+          },
+          {
+            "text": "softens",
+            "startMs": 1900,
+            "endMs": 2500
+          },
+          {
+            "text": "Close",
+            "startMs": 3000,
+            "endMs": 3300
+          },
+          {
+            "text": "it",
+            "startMs": 3300,
+            "endMs": 3400
+          },
+          {
+            "text": "and",
+            "startMs": 3400,
+            "endMs": 3600
+          },
+          {
+            "text": "the",
+            "startMs": 3600,
+            "endMs": 3700
+          },
+          {
+            "text": "turn",
+            "startMs": 3700,
+            "endMs": 3900
+          },
+          {
+            "text": "gets",
+            "startMs": 3900,
+            "endMs": 4100
+          },
+          {
+            "text": "sharper",
+            "startMs": 4100,
+            "endMs": 4600
+          },
+          {
+            "text": "even",
+            "startMs": 4800,
+            "endMs": 5000
+          },
+          {
+            "text": "at",
+            "startMs": 5000,
+            "endMs": 5100
+          },
+          {
+            "text": "the",
+            "startMs": 5100,
+            "endMs": 5200
+          },
+          {
+            "text": "same",
+            "startMs": 5200,
+            "endMs": 5500
+          },
+          {
+            "text": "width",
+            "startMs": 5500,
+            "endMs": 5800
+          }
+        ]
+      },
+      {
+        "id": "jaw-app",
+        "startMs": 27200,
+        "durationMs": 4100,
+        "words": [
+          {
+            "text": "If",
+            "startMs": 400,
+            "endMs": 600
+          },
+          {
+            "text": "you",
+            "startMs": 600,
+            "endMs": 601
+          },
+          {
+            "text": "want",
+            "startMs": 601,
+            "endMs": 800
+          },
+          {
+            "text": "to",
+            "startMs": 800,
+            "endMs": 801
+          },
+          {
+            "text": "see",
+            "startMs": 801,
+            "endMs": 1000
+          },
+          {
+            "text": "what",
+            "startMs": 1000,
+            "endMs": 1100
+          },
+          {
+            "text": "shapes",
+            "startMs": 1100,
+            "endMs": 1400
+          },
+          {
+            "text": "your",
+            "startMs": 1400,
+            "endMs": 1700
+          },
+          {
+            "text": "jawline",
+            "startMs": 1700,
+            "endMs": 2300
+          },
+          {
+            "text": "go",
+            "startMs": 2600,
+            "endMs": 2700
+          },
+          {
+            "text": "to",
+            "startMs": 2700,
+            "endMs": 2800
+          },
+          {
+            "text": "Mogging.com",
+            "startMs": 2800,
+            "endMs": 4000
+          }
+        ]
+      },
+      {
+        "id": "jaw-tag",
+        "startMs": 31300,
+        "durationMs": 1500,
+        "words": [
+          {
+            "text": "Get",
+            "startMs": 100,
+            "endMs": 300
+          },
+          {
+            "text": "your",
+            "startMs": 300,
+            "endMs": 400
+          },
+          {
+            "text": "face",
+            "startMs": 400,
+            "endMs": 600
+          },
+          {
+            "text": "analysis",
+            "startMs": 600,
+            "endMs": 1200
+          }
+        ]
+      }
+    ]
+  },
+  "cephra-short-palate-arch": {
+    "audio": "/creator/sculpture/voices/cephra-short-palate-arch.wav",
+    "durationMs": 33800,
+    "sections": [
+      {
+        "id": "palate-hook",
+        "startMs": 0,
+        "durationMs": 5900,
+        "words": [
+          {
+            "text": "Could",
+            "startMs": 300,
+            "endMs": 400
+          },
+          {
+            "text": "your",
+            "startMs": 400,
+            "endMs": 500
+          },
+          {
+            "text": "smile",
+            "startMs": 500,
+            "endMs": 1100
+          },
+          {
+            "text": "hide",
+            "startMs": 1100,
+            "endMs": 1600
+          },
+          {
+            "text": "a",
+            "startMs": 1600,
+            "endMs": 1700
+          },
+          {
+            "text": "narrow",
+            "startMs": 1700,
+            "endMs": 2300
+          },
+          {
+            "text": "upper",
+            "startMs": 2300,
+            "endMs": 2600
+          },
+          {
+            "text": "arch",
+            "startMs": 2600,
+            "endMs": 3000
+          },
+          {
+            "text": "The",
+            "startMs": 3500,
+            "endMs": 3600
+          },
+          {
+            "text": "interesting",
+            "startMs": 3600,
+            "endMs": 4100
+          },
+          {
+            "text": "part",
+            "startMs": 4100,
+            "endMs": 4300
+          },
+          {
+            "text": "is",
+            "startMs": 4300,
+            "endMs": 4500
+          },
+          {
+            "text": "behind",
+            "startMs": 4500,
+            "endMs": 4900
+          },
+          {
+            "text": "your",
+            "startMs": 4900,
+            "endMs": 5000
+          },
+          {
+            "text": "front",
+            "startMs": 5000,
+            "endMs": 5300
+          },
+          {
+            "text": "teeth",
+            "startMs": 5300,
+            "endMs": 5600
+          }
+        ]
+      },
+      {
+        "id": "palate-shape",
+        "startMs": 5900,
+        "durationMs": 6000,
+        "words": [
+          {
+            "text": "First",
+            "startMs": 300,
+            "endMs": 700
+          },
+          {
+            "text": "look",
+            "startMs": 700,
+            "endMs": 1100
+          },
+          {
+            "text": "from",
+            "startMs": 1100,
+            "endMs": 1300
+          },
+          {
+            "text": "above",
+            "startMs": 1300,
+            "endMs": 1600
+          },
+          {
+            "text": "Does",
+            "startMs": 2000,
+            "endMs": 2300
+          },
+          {
+            "text": "the",
+            "startMs": 2300,
+            "endMs": 2500
+          },
+          {
+            "text": "arch",
+            "startMs": 2500,
+            "endMs": 2900
+          },
+          {
+            "text": "curve",
+            "startMs": 2900,
+            "endMs": 3300
+          },
+          {
+            "text": "like",
+            "startMs": 3300,
+            "endMs": 3400
+          },
+          {
+            "text": "a",
+            "startMs": 3400,
+            "endMs": 3500
+          },
+          {
+            "text": "U",
+            "startMs": 3500,
+            "endMs": 4200
+          },
+          {
+            "text": "or",
+            "startMs": 4500,
+            "endMs": 4600
+          },
+          {
+            "text": "pinch",
+            "startMs": 4600,
+            "endMs": 4900
+          },
+          {
+            "text": "in",
+            "startMs": 4900,
+            "endMs": 5000
+          },
+          {
+            "text": "toward",
+            "startMs": 5000,
+            "endMs": 5300
+          },
+          {
+            "text": "the",
+            "startMs": 5300,
+            "endMs": 5400
+          },
+          {
+            "text": "front",
+            "startMs": 5400,
+            "endMs": 5700
+          }
+        ]
+      },
+      {
+        "id": "palate-bite",
+        "startMs": 11900,
+        "durationMs": 5850,
+        "words": [
+          {
+            "text": "Then",
+            "startMs": 300,
+            "endMs": 700
+          },
+          {
+            "text": "look",
+            "startMs": 700,
+            "endMs": 1000
+          },
+          {
+            "text": "where",
+            "startMs": 1000,
+            "endMs": 1100
+          },
+          {
+            "text": "the",
+            "startMs": 1100,
+            "endMs": 1200
+          },
+          {
+            "text": "back",
+            "startMs": 1200,
+            "endMs": 1600
+          },
+          {
+            "text": "teeth",
+            "startMs": 1600,
+            "endMs": 1900
+          },
+          {
+            "text": "meet",
+            "startMs": 1900,
+            "endMs": 2200
+          },
+          {
+            "text": "If",
+            "startMs": 2600,
+            "endMs": 2700
+          },
+          {
+            "text": "the",
+            "startMs": 2700,
+            "endMs": 2900
+          },
+          {
+            "text": "uppers",
+            "startMs": 2900,
+            "endMs": 3400
+          },
+          {
+            "text": "sit",
+            "startMs": 3400,
+            "endMs": 3600
+          },
+          {
+            "text": "inside",
+            "startMs": 3600,
+            "endMs": 4100
+          },
+          {
+            "text": "the",
+            "startMs": 4100,
+            "endMs": 4200.000000000002
+          },
+          {
+            "text": "lowers",
+            "startMs": 4200.000000000002,
+            "endMs": 4700
+          },
+          {
+            "text": "that’s",
+            "startMs": 4800,
+            "endMs": 5000
+          },
+          {
+            "text": "a",
+            "startMs": 5000,
+            "endMs": 5001
+          },
+          {
+            "text": "crossbite",
+            "startMs": 5001,
+            "endMs": 5600
+          }
+        ]
+      },
+      {
+        "id": "palate-crowding",
+        "startMs": 17750,
+        "durationMs": 5450,
+        "words": [
+          {
+            "text": "And",
+            "startMs": 250,
+            "endMs": 350
+          },
+          {
+            "text": "if",
+            "startMs": 350,
+            "endMs": 450
+          },
+          {
+            "text": "the",
+            "startMs": 450,
+            "endMs": 550
+          },
+          {
+            "text": "front",
+            "startMs": 550,
+            "endMs": 850
+          },
+          {
+            "text": "teeth",
+            "startMs": 850,
+            "endMs": 1050
+          },
+          {
+            "text": "overlap",
+            "startMs": 1050,
+            "endMs": 1750
+          },
+          {
+            "text": "you’re",
+            "startMs": 1950,
+            "endMs": 2050
+          },
+          {
+            "text": "seeing",
+            "startMs": 2050,
+            "endMs": 2450
+          },
+          {
+            "text": "a",
+            "startMs": 2450,
+            "endMs": 2550
+          },
+          {
+            "text": "space",
+            "startMs": 2550,
+            "endMs": 2850
+          },
+          {
+            "text": "problem",
+            "startMs": 2850,
+            "endMs": 3250
+          },
+          {
+            "text": "The",
+            "startMs": 3750,
+            "endMs": 3850
+          },
+          {
+            "text": "arch",
+            "startMs": 3850,
+            "endMs": 4150
+          },
+          {
+            "text": "is",
+            "startMs": 4150,
+            "endMs": 4450
+          },
+          {
+            "text": "only",
+            "startMs": 4450,
+            "endMs": 4750
+          },
+          {
+            "text": "one",
+            "startMs": 4750,
+            "endMs": 4950
+          },
+          {
+            "text": "clue",
+            "startMs": 4950,
+            "endMs": 5350
+          }
+        ]
+      },
+      {
+        "id": "palate-payoff",
+        "startMs": 23200,
+        "durationMs": 4400,
+        "words": [
+          {
+            "text": "Those",
+            "startMs": 100,
+            "endMs": 300
+          },
+          {
+            "text": "dark",
+            "startMs": 300,
+            "endMs": 600
+          },
+          {
+            "text": "spaces",
+            "startMs": 600,
+            "endMs": 1100
+          },
+          {
+            "text": "at",
+            "startMs": 1100,
+            "endMs": 1200
+          },
+          {
+            "text": "the",
+            "startMs": 1200,
+            "endMs": 1300
+          },
+          {
+            "text": "edge",
+            "startMs": 1300,
+            "endMs": 1500
+          },
+          {
+            "text": "of",
+            "startMs": 1500,
+            "endMs": 1600
+          },
+          {
+            "text": "a",
+            "startMs": 1600,
+            "endMs": 1601
+          },
+          {
+            "text": "smile",
+            "startMs": 1601,
+            "endMs": 2000
+          },
+          {
+            "text": "They",
+            "startMs": 2400,
+            "endMs": 2500
+          },
+          {
+            "text": "can",
+            "startMs": 2500,
+            "endMs": 2700
+          },
+          {
+            "text": "change",
+            "startMs": 2700,
+            "endMs": 3000
+          },
+          {
+            "text": "with",
+            "startMs": 3000,
+            "endMs": 3300
+          },
+          {
+            "text": "the",
+            "startMs": 3300,
+            "endMs": 3400
+          },
+          {
+            "text": "smile",
+            "startMs": 3400,
+            "endMs": 3700
+          },
+          {
+            "text": "itself",
+            "startMs": 3700,
+            "endMs": 4100
+          }
+        ]
+      },
+      {
+        "id": "palate-app",
+        "startMs": 27600,
+        "durationMs": 4650,
+        "words": [
+          {
+            "text": "If",
+            "startMs": 300,
+            "endMs": 400
+          },
+          {
+            "text": "you",
+            "startMs": 400,
+            "endMs": 500
+          },
+          {
+            "text": "want",
+            "startMs": 500,
+            "endMs": 700
+          },
+          {
+            "text": "to",
+            "startMs": 700,
+            "endMs": 701
+          },
+          {
+            "text": "see",
+            "startMs": 701,
+            "endMs": 900
+          },
+          {
+            "text": "how",
+            "startMs": 900,
+            "endMs": 1100
+          },
+          {
+            "text": "wide",
+            "startMs": 1100,
+            "endMs": 1500
+          },
+          {
+            "text": "your",
+            "startMs": 1500,
+            "endMs": 1600
+          },
+          {
+            "text": "smile",
+            "startMs": 1600,
+            "endMs": 2000
+          },
+          {
+            "text": "reads",
+            "startMs": 2000,
+            "endMs": 2200
+          },
+          {
+            "text": "in",
+            "startMs": 2200,
+            "endMs": 2201
+          },
+          {
+            "text": "a",
+            "startMs": 2201,
+            "endMs": 2300
+          },
+          {
+            "text": "photo",
+            "startMs": 2300,
+            "endMs": 2800
+          },
+          {
+            "text": "go",
+            "startMs": 3000,
+            "endMs": 3100
+          },
+          {
+            "text": "to",
+            "startMs": 3100,
+            "endMs": 3200
+          },
+          {
+            "text": "Mogging.com",
+            "startMs": 3200,
+            "endMs": 4500
+          }
+        ]
+      },
+      {
+        "id": "palate-tag",
+        "startMs": 32250,
+        "durationMs": 1550,
+        "words": [
+          {
+            "text": "Get",
+            "startMs": 150,
+            "endMs": 250
+          },
+          {
+            "text": "your",
+            "startMs": 250,
+            "endMs": 350
+          },
+          {
+            "text": "face",
+            "startMs": 350,
+            "endMs": 650
+          },
+          {
+            "text": "analysis",
+            "startMs": 650,
+            "endMs": 1250
+          }
+        ]
+      }
+    ]
+  }
+}
