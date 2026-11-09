@@ -100,6 +100,7 @@ export type AdminSubmission = {
   sprintTerms?: import('@/lib/creator/sprints').SprintTerms | null
   reviewRequestedAt?: string | null
   approvedAmountCents?: number | null
+  campaignPayoutCorrected?: boolean
   id: string
   creatorProfileId: string
   creatorName: string

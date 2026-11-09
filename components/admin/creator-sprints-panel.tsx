@@ -1,5 +1,5 @@
 import { CampaignSubmissionBudget } from '@/components/creator/campaign-submission-budget'
-import { canSeeCampaign, DEFAULT_CAMPAIGN_AUDIENCE, type CampaignAudience } from '@/lib/creator/campaign-access'
+import { DEFAULT_CAMPAIGN_AUDIENCE, type CampaignAudience } from '@/lib/creator/campaign-access'
 import { CampaignBudget } from '@/components/creator/campaign-budget'
 import { Disclosure, DisclosureSummary, AccordionContent } from '@/components/ui/accordion'
 import Link from 'next/link'
@@ -17,7 +17,6 @@ import {
   ArrowRight,
   ArrowUpRight,
   Pencil,
-  GripVertical,
   Search,
   Loader2,
   Plus,
@@ -34,7 +33,7 @@ import {
 } from '@/components/ui/dialog'
 import { Field, fieldClass } from '@/components/creator/creator-shell'
 import { defaultCreatorSprintTerms } from '@/lib/creator/sprint-defaults'
-import { apiGet, apiPatch, apiPost, ApiClientError } from '@/lib/api/client'
+import { apiGet, apiPost, ApiClientError } from '@/lib/api/client'
 import {
   sprintInputSchema,
   sprintMoney,
@@ -42,8 +41,6 @@ import {
   type CreatorSprint,
   type SprintTerms,
 } from '@/lib/creator/sprints'
-const submissionDragType = 'application/x-mogging-submission'
-
 type CampaignCreator = { id: string; displayName: string; socialHandle: string | null }
 
 const lines = (value: string) =>
@@ -55,12 +52,10 @@ export function CreatorSprintsPanel({
   submissions,
   payments,
   onSelectSubmission,
-  onRefresh,
 }: {
   submissions: AdminSubmission[]
   payments: AdminPayment[]
   onSelectSubmission: (submission: AdminSubmission) => void
-  onRefresh?: () => Promise<void>
 }) {
   const { data, error, isLoading, mutate } = useSWR<{
     sprints: CreatorSprint[]
@@ -71,9 +66,6 @@ export function CreatorSprintsPanel({
   const [query, setQuery] = useState('')
   const [selectedId, setSelectedId] = useState<string | null>(null)
   const [submissionStatus, setSubmissionStatus] = useState('all')
-  const [draggedId, setDraggedId] = useState<string | null>(null)
-  const [dropTargetId, setDropTargetId] = useState<string | null>(null)
-  const [moving, setMoving] = useState<{ submission: AdminSubmission; targetId: string } | null>(null)
   const campaigns = data?.sprints || []
   const selected = campaigns.find((campaign) => campaign.id === selectedId)
   const visible = campaigns.filter(
@@ -86,18 +78,6 @@ export function CreatorSprintsPanel({
   const campaignSubmissions = submissions.filter(
     (submission) => submission.sprintId === selectedId,
   )
-  const activeDestinations = campaigns.filter(campaign =>
-    campaign.id !== selectedId && sprintPhase(campaign) === 'active' && campaign.terms.formats.some(format => format.active),
-  )
-  const destinationsFor = (submission: AdminSubmission) => activeDestinations.filter(campaign =>
-    canSeeCampaign(campaign.audience, submission.creatorProfileId),
-  )
-  const draggedSubmission = campaignSubmissions.find(submission => submission.id === draggedId)
-  const dropDestinations = draggedSubmission ? destinationsFor(draggedSubmission) : activeDestinations
-  const endDrag = () => {
-    setDraggedId(null)
-    setDropTargetId(null)
-  }
   const filteredSubmissions = campaignSubmissions.filter(
     (submission) =>
       submissionStatus === 'all' ||
@@ -192,7 +172,7 @@ export function CreatorSprintsPanel({
                   </span>
                 </h2>
                 <p className="mt-1 text-xs text-zinc-500">
-                  Open a post to review it, or drag its handle onto another campaign to move it.
+                  Open a post to review its evidence, views, and earnings.
                 </p>
               </div>
               <select
@@ -208,101 +188,56 @@ export function CreatorSprintsPanel({
                 <option value="rejected">Rejected</option>
               </select>
             </div>
-            {filteredSubmissions.length > 0 && activeDestinations.length > 0 ? (
-              <div className="mb-3 flex flex-wrap items-center gap-2" aria-label="Campaign drop targets">
-                <span className="mr-1 text-xs font-medium text-zinc-500">Drop on campaign</span>
-                {dropDestinations.map(campaign => (
-                  <span
-                    key={campaign.id}
-                    onDragOver={event => {
-                      if (!draggedSubmission || !event.dataTransfer.types.includes(submissionDragType)) return
-                      event.preventDefault()
-                      event.dataTransfer.dropEffect = 'move'
-                      setDropTargetId(campaign.id)
-                    }}
-                    onDragLeave={() => setDropTargetId(id => id === campaign.id ? null : id)}
-                    onDrop={event => {
-                      if (!draggedSubmission || event.dataTransfer.getData(submissionDragType) !== draggedSubmission.id) return
-                      event.preventDefault()
-                      setMoving({ submission: draggedSubmission, targetId: campaign.id })
-                      endDrag()
-                    }}
-                    className={`rounded-xl border px-3 py-2 text-xs font-medium transition-colors ${dropTargetId === campaign.id ? 'border-sky-400 bg-sky-50 text-sky-800' : 'border-dashed border-zinc-200 bg-white text-zinc-600'}`}
-                  >
-                    {campaign.name}
-                  </span>
-                ))}
-              </div>
-            ) : null}
             {filteredSubmissions.length ? (
               <div className="divide-y divide-zinc-100 rounded-2xl border border-zinc-200 bg-white">
                 {filteredSubmissions.map((submission) => (
-                  <div key={submission.id} className="flex items-center rounded-2xl transition-colors hover:bg-zinc-50">
-                    <button
-                      type="button"
-                      onClick={() => onSelectSubmission(submission)}
-                      className="flex min-w-0 flex-1 items-center gap-4 p-4 text-left sm:p-5"
-                    >
-                      <span className="grid size-10 shrink-0 place-items-center rounded-xl bg-zinc-50">
-                        <SocialPlatformLogo
-                          platform={
-                            submission.platform === 'instagram'
-                              ? 'instagram'
-                              : 'tiktok'
-                          }
-                          className="size-5"
-                        />
+                  <button
+                    key={submission.id}
+                    type="button"
+                    onClick={() => onSelectSubmission(submission)}
+                    className="flex w-full items-center gap-4 p-4 text-left transition-colors hover:bg-zinc-50 sm:p-5"
+                  >
+                    <span className="grid size-10 shrink-0 place-items-center rounded-xl bg-zinc-50">
+                      <SocialPlatformLogo
+                        platform={
+                          submission.platform === 'instagram'
+                            ? 'instagram'
+                            : 'tiktok'
+                        }
+                        className="size-5"
+                      />
+                    </span>
+                    <span className="min-w-0 flex-1">
+                      <span className="block truncate text-sm font-semibold">
+                        {submission.title}
                       </span>
-                      <span className="min-w-0 flex-1">
-                        <span className="block truncate text-sm font-semibold">
-                          {submission.title}
-                        </span>
-                        <span className="mt-1 block text-xs text-zinc-500">
-                          {submission.creatorName}
-                          {submission.socialHandle
-                            ? ` · @${submission.socialHandle}`
-                            : ''}
-                        </span>
-                        <span className="mt-1 block text-xs capitalize text-zinc-500">
-                          {submission.status.replaceAll('_', ' ')}
-                          {submission.unreadMessages
-                            ? ` · ${submission.unreadMessages} unread`
-                            : ''}
-                        </span>
+                      <span className="mt-1 block text-xs text-zinc-500">
+                        {submission.creatorName}
+                        {submission.socialHandle
+                          ? ` · @${submission.socialHandle}`
+                          : ''}
                       </span>
-                      <span className="hidden text-right text-xs text-zinc-500 sm:block">
-                        <span className="block font-medium tabular-nums text-zinc-900">
-                          {submission.adminViewCountThreshold?.toLocaleString() ??
-                            '—'}{' '}
-                          verified views
-                        </span>
-                        <span className="mt-1 block">
-                          {submission.approvedAmountCents == null
-                            ? 'Not awarded'
-                            : sprintMoney(submission.approvedAmountCents)}
-                        </span>
+                      <span className="mt-1 block text-xs capitalize text-zinc-500">
+                        {submission.status.replaceAll('_', ' ')}
+                        {submission.unreadMessages
+                          ? ` · ${submission.unreadMessages} unread`
+                          : ''}
                       </span>
-                      <ArrowRight className="size-4 shrink-0 text-[#00A8EF]" />
-                    </button>
-                    {destinationsFor(submission).length > 0 ? (
-                      <button
-                        type="button"
-                        draggable
-                        title="Drag or click to move"
-                        aria-label={`Move ${submission.title} to another campaign`}
-                        onClick={() => setMoving({ submission, targetId: '' })}
-                        onDragStart={event => {
-                          event.dataTransfer.effectAllowed = 'move'
-                          event.dataTransfer.setData(submissionDragType, submission.id)
-                          setDraggedId(submission.id)
-                        }}
-                        onDragEnd={endDrag}
-                        className="mr-3 grid size-10 shrink-0 cursor-grab place-items-center rounded-xl text-zinc-400 transition-colors hover:bg-zinc-100 hover:text-zinc-800 active:cursor-grabbing"
-                      >
-                        <GripVertical className="size-5" aria-hidden />
-                      </button>
-                    ) : null}
-                  </div>
+                    </span>
+                    <span className="hidden text-right text-xs text-zinc-500 sm:block">
+                      <span className="block font-medium tabular-nums text-zinc-900">
+                        {submission.adminViewCountThreshold?.toLocaleString() ??
+                          '—'}{' '}
+                        verified views
+                      </span>
+                      <span className="mt-1 block">
+                        {submission.approvedAmountCents == null
+                          ? 'Not awarded'
+                          : sprintMoney(submission.approvedAmountCents)}
+                      </span>
+                    </span>
+                    <ArrowRight className="size-4 shrink-0 text-[#00A8EF]" />
+                  </button>
                 ))}
               </div>
             ) : (
@@ -319,16 +254,6 @@ export function CreatorSprintsPanel({
               </div>
             )}
           </section>
-          {moving ? (
-            <MoveSubmissionDialog
-              source={selected}
-              submission={moving.submission}
-              campaigns={destinationsFor(moving.submission)}
-              initialTargetId={moving.targetId}
-              onClose={() => setMoving(null)}
-              onMoved={() => Promise.all([mutate(), onRefresh?.()])}
-            />
-          ) : null}
         </>
       ) : (
         <>
@@ -521,87 +446,6 @@ export function CreatorSprintsPanel({
         </DialogContent>
       </Dialog>
     </>
-  )
-}
-
-function MoveSubmissionDialog({
-  source, submission, campaigns, initialTargetId, onClose, onMoved,
-}: {
-  source: CreatorSprint
-  submission: AdminSubmission
-  campaigns: CreatorSprint[]
-  initialTargetId: string
-  onClose: () => void
-  onMoved: () => Promise<unknown>
-}) {
-  const [targetId, setTargetId] = useState(initialTargetId)
-  const [selectedFormatId, setSelectedFormatId] = useState('')
-  const [saving, setSaving] = useState(false)
-  const [error, setError] = useState('')
-  const target = campaigns.find(campaign => campaign.id === targetId)
-  const formats = target?.terms.formats.filter(format => format.active) ?? []
-  const formatId = formats.length === 1 ? formats[0].id : selectedFormatId
-
-  async function submit(event: FormEvent) {
-    event.preventDefault()
-    if (saving || !target || !formatId) return
-    setSaving(true)
-    setError('')
-    try {
-      const result = await apiPatch<{ campaignName: string }>(
-        `/api/admin/creator/submissions/${encodeURIComponent(submission.id)}/campaign`,
-        { sourceId: source.id, targetId, formatId },
-      )
-      toast.success(`Moved to ${result.campaignName}`)
-      onClose()
-      void onMoved().catch(() => toast.error('Submission moved. Refresh to see the updated campaigns.'))
-    } catch (error) {
-      setError(error instanceof ApiClientError ? error.message : 'Could not move this submission. Try again.')
-      setSaving(false)
-    }
-  }
-
-  return (
-    <Dialog open onOpenChange={open => { if (!open && !saving) onClose() }}>
-      <DialogContent className="sm:max-w-md">
-        <DialogHeader>
-          <DialogTitle>Move submission</DialogTitle>
-          <DialogDescription>
-            Move “{submission.title}” from {source.name}. Previously approved earnings stay with the original campaign.
-          </DialogDescription>
-        </DialogHeader>
-        <form onSubmit={submit} className="space-y-4" aria-busy={saving}>
-          <label className="block space-y-2 text-sm font-medium">
-            <span>Destination campaign</span>
-            <select className={fieldClass} value={targetId} disabled={saving} onChange={event => {
-              setTargetId(event.target.value)
-              setSelectedFormatId('')
-              setError('')
-            }}>
-              <option value="">Choose a campaign</option>
-              {campaigns.map(campaign => <option key={campaign.id} value={campaign.id}>{campaign.name}</option>)}
-            </select>
-          </label>
-          {formats.length > 1 ? (
-            <label className="block space-y-2 text-sm font-medium">
-              <span>Format</span>
-              <select className={fieldClass} value={formatId} disabled={saving} onChange={event => setSelectedFormatId(event.target.value)}>
-                <option value="">Choose a format</option>
-                {formats.map(format => <option key={format.id} value={format.id}>{format.name}</option>)}
-              </select>
-            </label>
-          ) : null}
-          {error ? <p role="alert" className="text-sm text-red-700">{error}</p> : null}
-          <div className="flex justify-end gap-2 pt-2">
-            <Button type="button" variant="outline" onClick={onClose} disabled={saving}>Cancel</Button>
-            <Button type="submit" disabled={saving || !target || !formatId}>
-              {saving ? <Loader2 className="size-4 animate-spin" aria-hidden /> : null}
-              Move submission
-            </Button>
-          </div>
-        </form>
-      </DialogContent>
-    </Dialog>
   )
 }
 

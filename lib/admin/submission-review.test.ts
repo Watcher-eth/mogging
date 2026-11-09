@@ -14,10 +14,10 @@ let poolBudgetCents = 100000
 const priorPayments = [{ status: 'paid', amountCents: 1300 }]
 const tx = {
   execute: async () => [{ id: 'budget-owner', budget_cents: poolBudgetCents, terms: {}, cents: submission.approvedAmountCents || 0, amount_cents: 0, other_pending_cents: otherPendingCents }],
-  query: { creatorSubmissions: { findFirst: async () => undefined }, creatorPayments: { findMany: async () => priorPayments, findFirst: async () => undefined }, creatorProfiles: { findFirst: async () => ({ id: 'creator', authStatus: 'pending', paymentOption: 'paypal', paypalEmail: 'creator@example.com', bundledPayouts: false }) } },
+  query: { creatorSubmissions: { findFirst: async () => undefined, findMany: async () => [submission] }, creatorPayments: { findMany: async () => priorPayments.map(payment => ({ submissionId: submission.id, ...payment })), findFirst: async () => undefined }, creatorProfiles: { findFirst: async () => ({ id: 'creator', authStatus: 'pending', paymentOption: 'paypal', paypalEmail: 'creator@example.com', bundledPayouts: false }) } },
   select: (fields?: unknown) => ({ from: (table: unknown) => ({ where: () => fields
     ? Promise.resolve([{ cents: submission.approvedAmountCents || 0 }])
-    : { for: async () => table === schema.creatorSprints ? [{ id: 'campaign', budgetCents: 100000 }] : [submission] } }) }),
+    : { for: async () => table === schema.creatorSprints ? [{ id: 'campaign', budgetCents: 100000 }] : table === schema.creatorProfiles ? [{ id: 'creator', authStatus: 'pending', paymentOption: 'paypal', paypalEmail: 'creator@example.com' }] : [submission] } }) }),
   update: () => ({ set: (values: unknown) => ({ where: () => ({ returning: async () => { writes++; submission = { ...submission, ...values as object }; return [submission] } }) }) }),
   insert: () => ({ values: (values: object) => ({ returning: async () => [{ id: 'payment', ...values }] }) }),
 }
@@ -33,7 +33,7 @@ const input = () => {
   if (parsed.resource !== 'submission') throw new Error('Expected submission input')
   return parsed
 }
-beforeEach(() => { priorPayments.splice(0, priorPayments.length, { status: 'paid', amountCents: 1300 }); submission = { id: 'submission', analyticsStorageKey: 'current-evidence', formatId: 'custom-video-v1', status: 'pending', reviewNote: null }; writes = 0; otherPendingCents = 0; poolBudgetCents = 100000 })
+beforeEach(() => { priorPayments.splice(0, priorPayments.length, { status: 'paid', amountCents: 1300 }); submission = { id: 'submission', creatorProfileId: 'creator', analyticsStorageKey: 'current-evidence', formatId: 'custom-video-v1', status: 'pending', reviewNote: null }; writes = 0; otherPendingCents = 0; poolBudgetCents = 100000 })
 
 test('rejection persists only selected failures and their creator-visible feedback', async () => {
   const saved = await reviewCreatorResource(input())

@@ -18,7 +18,7 @@ export function BundledPayoutQueue({ data, onRefresh, method }: { data: AdminDas
     <h2 className="text-base font-semibold">Requested · ready for bundled payout <span className="ml-1 text-zinc-400">{pending.length}</span></h2>
     <p className="mt-1 text-xs leading-5 text-zinc-500">These creators tapped “Pay me now” in Money. Each request includes only the earnings available when the creator requested it.</p>
     <div className="mt-4 divide-y divide-sky-100">{pending.map(request => <div key={request.id} className="flex flex-wrap items-center justify-between gap-4 py-3">
-      <div><p className="text-sm font-semibold">{data.creators.find(creator => creator.id === request.creatorProfileId)?.displayName || 'Creator'}</p><span className="mt-1 inline-block rounded-full bg-emerald-100 px-2 py-1 text-[11px] font-semibold text-emerald-800">Creator requested payout</span><p className="mt-1 text-xs text-zinc-500">Requested {new Date(request.requestedAt).toLocaleDateString()} · {data.payments.filter(payment => payment.payoutRequestId === request.id).length} payment records</p></div>
+      <div><p className="text-sm font-semibold">{data.creators.find(creator => creator.id === request.creatorProfileId)?.displayName || 'Creator'}</p><span className="mt-1 inline-block rounded-full bg-emerald-100 px-2 py-1 text-[11px] font-semibold text-emerald-800">Creator requested payout</span><p className="mt-1 text-xs text-zinc-500">Requested {new Date(request.requestedAt).toLocaleDateString()} · {data.payments.filter(payment => payment.payoutRequestId === request.id && payment.status !== 'cancelled').length} payment records</p></div>
       <div className="flex items-center gap-4"><strong className="text-xl tabular-nums">{sprintMoney(request.amountCents)}</strong><Button variant="outline" className="rounded-full bg-white" disabled={data.payments.some(payment => payment.payoutRequestId === request.id && payment.cryptoChain)} onClick={() => setSelected(request)}>{data.payments.some(payment => payment.payoutRequestId === request.id && payment.cryptoChain) ? 'Verifying on-chain' : 'Review bundle'}</Button></div>
       <PayoutVideoBreakdown data={data} lines={payoutRequestLines(data.payments, request.id)} />
     </div>)}</div>
@@ -67,7 +67,7 @@ export function PayoutVideoBreakdown({ data, lines, requestId }: { data: AdminDa
 function payoutRequestLines(payments: AdminPayment[], requestId: string) {
   const amounts = new Map<string | null, number>()
   for (const payment of payments) {
-    if (payment.payoutRequestId === requestId) amounts.set(payment.submissionId, (amounts.get(payment.submissionId) || 0) + payment.amountCents)
+    if (payment.payoutRequestId === requestId && payment.status !== 'cancelled') amounts.set(payment.submissionId, (amounts.get(payment.submissionId) || 0) + payment.amountCents)
   }
   return [...amounts].map(([submissionId, amountCents]) => ({ submissionId, amountCents }))
 }

@@ -13,12 +13,13 @@ export function campaignContentBudgetCents(id: CampaignId) {
 export function campaignBonusBudgetCents(id: CampaignId) {
   return sql<number>`(select coalesce((budget_owner.terms->>'bonusBudgetCents')::int, 0) from creator_sprints budget_owner where budget_owner.id = ${campaignBudgetPoolId(id)})`
 }
-// A transferred rereview retains its prior earnings in the original budget.
+// Legacy transfers keep old commitments. Corrections charge the destination
+// the corrected approval and leave any historical excess with the source.
 export function campaignCommittedCents(id: CampaignId) {
   return sql<number>`(
     coalesce((select sum(s.approved_amount_cents) from creator_submissions s where ${campaignPoolMember(sql`s.sprint_id`, id)}), 0)
-    + coalesce((select sum(t.amount_cents) from creator_campaign_transfers t where ${campaignPoolMember(sql`t.from_sprint_id`, id)}), 0)
-    - coalesce((select sum(t.amount_cents) from creator_campaign_transfers t where ${campaignPoolMember(sql`t.to_sprint_id`, id)}), 0)
+    + coalesce((select sum(case when moved.campaign_payout_corrected then greatest(0, t.amount_cents - coalesce(moved.approved_amount_cents, 0)) else t.amount_cents end) from creator_campaign_transfers t join creator_submissions moved on moved.id = t.submission_id where ${campaignPoolMember(sql`t.from_sprint_id`, id)}), 0)
+    - coalesce((select sum(t.amount_cents) from creator_campaign_transfers t join creator_submissions moved on moved.id = t.submission_id where not moved.campaign_payout_corrected and ${campaignPoolMember(sql`t.to_sprint_id`, id)}), 0)
   )::float8`
 }
 // Pending requests reserve only the amount beyond previously approved earnings.
@@ -36,7 +37,7 @@ export function campaignBonusCommittedCents(id: CampaignId, paidOnly = false) {
 export function campaignPaidCents(id: CampaignId) {
   return sql<number>`(
     coalesce((select sum(p.amount_cents) from creator_payments p join creator_submissions s on s.id = p.submission_id where ${campaignPoolMember(sql`s.sprint_id`, id)} and p.status = 'paid' and p.currency = 'USD'), 0)
-    + coalesce((select sum(least(t.amount_cents, (select coalesce(sum(p.amount_cents), 0) from creator_payments p where p.submission_id = t.submission_id and p.status = 'paid' and p.currency = 'USD'))) from creator_campaign_transfers t where ${campaignPoolMember(sql`t.from_sprint_id`, id)}), 0)
-    - coalesce((select sum(least(t.amount_cents, (select coalesce(sum(p.amount_cents), 0) from creator_payments p where p.submission_id = t.submission_id and p.status = 'paid' and p.currency = 'USD'))) from creator_campaign_transfers t where ${campaignPoolMember(sql`t.to_sprint_id`, id)}), 0)
+    + coalesce((select sum(least(case when moved.campaign_payout_corrected then greatest(0, t.amount_cents - coalesce(moved.approved_amount_cents, 0)) else t.amount_cents end, (select coalesce(sum(p.amount_cents), 0) from creator_payments p where p.submission_id = t.submission_id and p.status = 'paid' and p.currency = 'USD'))) from creator_campaign_transfers t join creator_submissions moved on moved.id = t.submission_id where ${campaignPoolMember(sql`t.from_sprint_id`, id)}), 0)
+    - coalesce((select sum(least(case when moved.campaign_payout_corrected then greatest(0, t.amount_cents - coalesce(moved.approved_amount_cents, 0)) else t.amount_cents end, (select coalesce(sum(p.amount_cents), 0) from creator_payments p where p.submission_id = t.submission_id and p.status = 'paid' and p.currency = 'USD'))) from creator_campaign_transfers t join creator_submissions moved on moved.id = t.submission_id where ${campaignPoolMember(sql`t.to_sprint_id`, id)}), 0)
   )::float8`
 }

@@ -133,7 +133,7 @@ async function applyOutcomes(batch: Batch, outcomes: (Outcome | undefined)[], pr
     const affected = records.filter(payment => paidIds.has(payment.id))
     for (const requestId of new Set(affected.flatMap(payment => payment.payoutRequestId ? [payment.payoutRequestId] : []))) {
       await tx.update(requests).set({ status: 'paid', paidAt: now }).where(and(eq(requests.id, requestId), eq(requests.status, 'pending'),
-        sql`not exists (select 1 from creator_payments p where p.payout_request_id = ${requestId} and p.status <> 'paid')`))
+        sql`not exists (select 1 from creator_payments p where p.payout_request_id = ${requestId} and p.status not in ('paid', 'cancelled'))`))
     }
     for (const post of posts) {
       if (post.status !== 'approved' || !affected.some(payment => payment.submissionId === post.id)) continue

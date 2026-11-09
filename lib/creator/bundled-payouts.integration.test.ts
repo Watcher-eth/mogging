@@ -1,7 +1,7 @@
 import { afterAll, beforeAll, describe, expect, test } from 'bun:test'
-import { eq } from 'drizzle-orm'
+import { eq, sql } from 'drizzle-orm'
 import sharp from 'sharp'
-import { creatorBundlePlan } from './money'
+import { creatorBundlePlan, creatorContentBalances } from './money'
 import { defaultCreatorSprintTerms } from './sprint-defaults'
 
 const testUrl = process.env.TEST_BUNDLED_PAYOUT_DATABASE_URL
@@ -117,6 +117,42 @@ describe.skipIf(!testUrl)('bundled payouts database integration', () => {
     expect(proof[0]?.image).toBe(proof[1]?.image)
     const subs = await db.query.creatorSubmissions.findMany({ where: eq(schema.creatorSubmissions.creatorProfileId, f.profile.id) })
     expect(subs.every(s => s.status === 'paid')).toBe(true)
+  })
+
+  test('campaign correction reduces a queued bundle and offsets the settled excess against another submission', async () => {
+    const { moveCreatorSubmissions } = await import('@/lib/admin/move-creator-submissions')
+    const { campaignCommittedCents, campaignPaidCents } = await import('./campaign-accounting')
+    const f = await fixture()
+    const { db, schema } = database
+    const [destination] = await db.insert(schema.creatorSprints).values({
+      name: 'Lower payout', description: 'Test', status: 'published', budgetCents: 100_000,
+      startsAt: f.sprint.startsAt, endsAt: f.sprint.endsAt,
+      terms: { ...f.sprint.terms, milestones: [{ views: 1, amountCents: 1000 }] },
+    }).returning()
+    const request = await payouts.requestBundledPayout(f.userId, 3500)
+    const move = { submissionIds: [f.first.id], sourceId: f.sprint.id, targetId: destination.id,
+      formatId: destination.terms.formats.find(format => format.active)!.id, expectedPriorApproval: 3500, expectedApproval: 1000 }
+    const queued = (await records(f.profile.id)).find(p => p.submissionId === f.first.id && p.payoutRequestId === request.id)!
+    await db.update(schema.creatorPayments).set({ status: 'processing' }).where(eq(schema.creatorPayments.id, queued.id))
+    await expect(moveCreatorSubmissions(move)).rejects.toMatchObject({ status: 409 })
+    await db.update(schema.creatorPayments).set({ status: 'pending' }).where(eq(schema.creatorPayments.id, queued.id))
+    await expect(moveCreatorSubmissions({ ...move, expectedApproval: 900 })).rejects.toMatchObject({ status: 409 })
+    await moveCreatorSubmissions(move)
+    await expect(moveCreatorSubmissions(move)).rejects.toMatchObject({ status: 409 })
+    expect(await db.query.creatorPayoutRequests.findFirst({ where: eq(schema.creatorPayoutRequests.id, request.id) })).toMatchObject({ amountCents: 1000, status: 'pending' })
+    expect(await db.query.creatorPayments.findFirst({ where: eq(schema.creatorPayments.id, f.prior.id) })).toEqual(f.prior)
+    expect(await db.query.creatorPayments.findFirst({ where: eq(schema.creatorPayments.id, queued.id) })).toMatchObject({ status: 'cancelled' })
+    await expect(payouts.settleBundledPayout({ id: request.id, expectedAmountCents: 3500 })).rejects.toMatchObject({ status: 409 })
+    await payouts.settleBundledPayout({ id: request.id, expectedAmountCents: 1000 })
+    const posts = await db.query.creatorSubmissions.findMany({ where: eq(schema.creatorSubmissions.creatorProfileId, f.profile.id) })
+    expect(posts.find(post => post.id === f.first.id)).toMatchObject({ sprintId: destination.id, approvedAmountCents: 1000, status: 'paid' })
+    const balance = creatorContentBalances(posts, await records(f.profile.id))
+    expect(balance).toMatchObject({ overpaymentCents: 500, debtCents: 0 })
+    expect(balance.unpaid.get(f.second.id)).toBe(0)
+    expect(creatorBundlePlan(posts, await records(f.profile.id)).amountCents).toBe(0)
+    const [budget] = await db.execute(sql`select ${campaignCommittedCents(f.sprint.id)} as original_committed,
+      ${campaignPaidCents(f.sprint.id)} as original_paid, ${campaignPaidCents(destination.id)} as destination_paid`)
+    expect(budget).toMatchObject({ original_committed: 2000, original_paid: 1500, destination_paid: 1000 })
   })
 
   test('later earnings wait for a new request instead of changing the requested total', async () => {

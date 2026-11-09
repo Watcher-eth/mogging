@@ -8,19 +8,21 @@ const inputSchema = z.object({
   sourceId: z.string().min(1),
   targetId: z.string().min(1),
   formatId: z.string().min(1),
+  expectedPriorApproval: z.number().int().nonnegative().nullable(),
+  expectedApproval: z.number().int().nonnegative().nullable(),
 }).strict()
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   res.setHeader('Cache-Control', 'private, no-store')
   try {
     if (req.method !== 'PATCH') return methodNotAllowed(res, ['PATCH'])
-    await requireCreatorAdmin(req, res)
+    const { session } = await requireCreatorAdmin(req, res)
     if (req.headers['sec-fetch-site'] && req.headers['sec-fetch-site'] !== 'same-origin') {
-      throw new ApiError(403, 'Use the admin campaigns page to move a submission')
+      throw new ApiError(403, 'Use the admin review queue to move a submission')
     }
     const id = z.string().min(1).parse(req.query.id)
     const input = parseBody(inputSchema, req.body)
-    return json(res, 200, await moveCreatorSubmissions({ ...input, submissionIds: [id] }))
+    return json(res, 200, await moveCreatorSubmissions({ ...input, submissionIds: [id], reviewerId: session.user.id }))
   } catch (error) {
     return handleApiError(error, res)
   }

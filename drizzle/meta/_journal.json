@@ -547,6 +547,13 @@
       "when": 1794108000001,
       "tag": "0075_member_public_profiles",
       "breakpoints": true
+    },
+    {
+      "idx": 78,
+      "version": "7",
+      "when": 1794108000002,
+      "tag": "0076_creator_campaign_payout_corrections",
+      "breakpoints": true
     }
   ]
 }

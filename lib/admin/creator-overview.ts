@@ -1,4 +1,4 @@
-import { creatorBundlePlan, creatorEarnedCents, creatorUnpaidCents, hasCreatorPayoutMethod, remainingCreatorPaymentCents } from '@/lib/creator/money'
+import { creatorBundlePlan, creatorContentBalances, creatorUnpaidCents, hasCreatorPayoutMethod } from '@/lib/creator/money'
 import type { AdminCreator, AdminDashboard, AdminPayment, AdminSubmission, ReviewTarget } from '@/components/admin/creator-types'
 import { payoutChain } from './crypto-payouts/shared'
 
@@ -85,17 +85,40 @@ export function walletExplorerUrl(network: string | null, address: string | null
 
 export { publishedVideoEmbedUrl } from '@/lib/creator/post-embed'
 
-export function approvedUnpaidSubmissions(data: Pick<AdminDashboard, 'submissions' | 'payments'>) {
-  return data.submissions.filter(submission => submission.status === 'approved' && creatorUnpaidCents(submission, data.payments) > 0)
+export function adminContentBalances(data: Pick<AdminDashboard, 'submissions' | 'payments'>) {
+  const posts = new Map<string, AdminSubmission[]>()
+  const payments = new Map<string, AdminPayment[]>()
+  for (const submission of data.submissions) {
+    const list = posts.get(submission.creatorProfileId) ?? []
+    list.push(submission)
+    posts.set(submission.creatorProfileId, list)
+  }
+  for (const payment of data.payments) {
+    const list = payments.get(payment.creatorProfileId) ?? []
+    list.push(payment)
+    payments.set(payment.creatorProfileId, list)
+  }
+  const unpaid = new Map<string, number>()
+  const debts = new Map<string, number>()
+  for (const [creatorId, submissions] of posts) {
+    const balance = creatorContentBalances(submissions, payments.get(creatorId) ?? [])
+    for (const [id, amount] of balance.unpaid) unpaid.set(id, amount)
+    if (balance.debtCents) debts.set(creatorId, balance.debtCents)
+  }
+  return { unpaid, debts }
+}
+
+export function approvedUnpaidSubmissions(data: Pick<AdminDashboard, 'submissions' | 'payments'>, balances = adminContentBalances(data).unpaid) {
+  return data.submissions.filter(submission => submission.status === 'approved' && (balances.get(submission.id) ?? 0) > 0)
 }
 
 type OutstandingPaymentLine = { id: string; creatorProfileId: string; creatorName: string; title: string; submission?: AdminSubmission; payment?: AdminPayment; paidCents: number; processingCents: number; amountCents: number; kind: string; at: string; currency: string }
 
-export function creatorOutstandingPaymentGroups(submissions: AdminDashboard['submissions'], payments: AdminDashboard['payments'], otherPayments: AdminDashboard['payments'] = []) {
+export function creatorOutstandingPaymentGroups(submissions: AdminDashboard['submissions'], payments: AdminDashboard['payments'], otherPayments: AdminDashboard['payments'] = [], balances?: Map<string, number>) {
   const lines: OutstandingPaymentLine[] = submissions.map(submission => {
     const records = payments.filter(payment => payment.submissionId === submission.id)
     const paidCents = records.filter(payment => payment.status === 'paid').reduce((sum, payment) => sum + payment.amountCents, 0)
-    const outstandingCents = creatorUnpaidCents(submission, records)
+    const outstandingCents = balances?.get(submission.id) ?? creatorUnpaidCents(submission, records)
     const processingCents = Math.min(outstandingCents, records.filter(payment => payment.status === 'processing').reduce((sum, payment) => sum + payment.amountCents, 0))
     return { id: submission.id, creatorProfileId: submission.creatorProfileId, creatorName: submission.creatorName, title: submission.title, submission, payment: undefined, paidCents, processingCents, amountCents: outstandingCents - processingCents, kind: paidCents > 0 ? 'Rereview' : 'New submission', at: submission.updatedAt || submission.createdAt, currency: 'USD' }
   })
@@ -122,7 +145,8 @@ export function creatorOutstandingPaymentGroups(submissions: AdminDashboard['sub
 
 export function creatorPaymentQueue(data: Pick<AdminDashboard, 'creators' | 'submissions' | 'payments' | 'payoutRequests'>) {
   const creators = new Map(data.creators.map(creator => [creator.id, creator]))
-  const unpaid = approvedUnpaidSubmissions(data).filter(submission => !creators.get(submission.creatorProfileId)?.bundledPayouts)
+  const { unpaid: balances, debts } = adminContentBalances(data)
+  const unpaid = approvedUnpaidSubmissions(data, balances).filter(submission => !creators.get(submission.creatorProfileId)?.bundledPayouts)
   const unpaidIds = new Set(unpaid.map(submission => submission.id))
   const held = data.creators.filter(creator => creator.bundledPayouts).map(creator => ({
     creator,
@@ -152,7 +176,7 @@ export function creatorPaymentQueue(data: Pick<AdminDashboard, 'creators' | 'sub
   const history = data.payments.filter(payment => !active(payment) || (
     !payment.payoutRequestId && !heldIds.has(payment.id) && !standaloneIds.has(payment.id) && !unpaidIds.has(payment.submissionId ?? '')
   ))
-  const groups = creatorOutstandingPaymentGroups(unpaid, data.payments, standalone)
+  const groups = creatorOutstandingPaymentGroups(unpaid, data.payments, standalone, balances)
   const lineMethod = (line: OutstandingPaymentLine) => line.payment?.paymentOption ??
     scheduledBySubmission.get(line.submission?.id ?? '')?.paymentOption ?? creators.get(line.creatorProfileId)?.paymentOption ?? 'paypal'
   const optionKey = (method: AdminPayment['paymentOption'], network?: string | null) =>
@@ -195,7 +219,8 @@ export function creatorPaymentQueue(data: Pick<AdminDashboard, 'creators' | 'sub
   for (const submission of data.submissions) {
     if (submission.status !== 'in_review' || !submission.reviewRequestedAt || creators.get(submission.creatorProfileId)?.bundledPayouts) continue
     const records = data.payments.filter(payment => payment.submissionId === submission.id)
-    addBalance('review', remainingCreatorPaymentCents(creatorEarnedCents(submission), records), 'USD')
+    const reserved = records.filter(payment => ['pending', 'processing'].includes(payment.status)).reduce((sum, payment) => sum + payment.amountCents, 0)
+    addBalance('review', Math.max(0, (balances.get(submission.id) ?? 0) - reserved), 'USD')
   }
-  return { unpaid, held, history, groups, lineMethod, totals }
+  return { unpaid, held, history, groups, lineMethod, totals, balances, debts }
 }

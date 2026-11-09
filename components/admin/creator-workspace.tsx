@@ -7,14 +7,15 @@ import { CreatorExclusivityReview } from './creator-exclusivity-review'
 import { SocialAccountsPanel } from './social-accounts-panel'
 import { hasLaunchCampaignBonuses, launchCampaign } from '@/lib/creator/campaign-launch'
 import dynamic from 'next/dynamic'
-import { canReceiveCreatorPayout, creatorUnpaidCents, creatorPaymentLabel, creatorPayoutDestination, remainingCreatorPaymentCents } from '@/lib/creator/money'
+import { canReceiveCreatorPayout, creatorContentBalances, creatorPaymentLabel, creatorPayoutDestination, remainingCreatorPaymentCents } from '@/lib/creator/money'
 import { SubmissionPayoutSummary } from '@/components/admin/submission-payout-summary'
 import { CreatorWarningPanel } from '@/components/admin/creator-warning-panel'
 import { BundledPayoutQueue, PayoutVideoBreakdown } from '@/components/admin/bundled-payout-queue'
 import * as Tabs from '@radix-ui/react-tabs'
 import { SubmissionConversation } from '@/components/creator/submission-conversation'
 import { CreatorSprintsPanel } from '@/components/admin/creator-sprints-panel'
-import { sprintReviewItems } from '@/lib/creator/sprints'
+import { CampaignDropTargets, CampaignSubmissionMoves, DraggableCampaignSubmission } from './campaign-submission-move'
+import { sprintReviewItems, type CreatorSprint } from '@/lib/creator/sprints'
 import { SkeletonAvatar } from '@/components/ui/skeleton-avatar'
 import { creatorAccountLabel } from '@/components/creator/types'
 import Image from 'next/image'
@@ -91,6 +92,11 @@ export default function CreatorAdminPage() {
       ? { resource: 'creator' as const, item: dashboard?.creators.find(item => item.id === selected.item.id) || selected.item }
       : selected
 
+  const reviewBalance = reviewTarget?.resource === 'submission' && dashboard
+    ? creatorContentBalances(dashboard.submissions.filter(post => post.creatorProfileId === reviewTarget.item.creatorProfileId),
+        dashboard.payments.filter(payment => payment.creatorProfileId === reviewTarget.item.creatorProfileId))
+    : undefined
+
   if (accessError) return <p role="alert" className="admin-notice">Could not verify admin access. Reload to retry.</p>
   if (accessLoading && !access) return <CenteredLoader />
   if (!access?.unlocked || (error instanceof ApiClientError && error.status === 401)) return <AdminPasswordGate onUnlocked={() => void mutateAccess()} />
@@ -100,13 +106,13 @@ export default function CreatorAdminPage() {
       <CreatorHeader eyebrow="Creator program" title={page?.title || 'Review queue'} description={page?.description || 'The next approvals that need your attention.'} />
 
       {tab === 'invites' ? <CreatorInvitesPanel /> : tab === 'cta-library' ? <CtaLibraryAdminPanel /> : error ? <p role="alert" className="admin-notice">Could not load the workspace. <button className="underline" onClick={() => void mutate()}>Try again</button></p> : isLoading || !dashboard ? <CenteredLoader /> : <DashboardView tab={tab} data={dashboard} onSelect={setSelected} onRefresh={async () => { await mutate() }} />}
-      {selected ? <ReviewDialog key={`${selected.resource}-${selected.item.id}`} target={reviewTarget!} creator={selected.resource !== 'creator' ? dashboard?.creators.find(creator => creator.id === selected.item.creatorProfileId) : undefined} payments={dashboard?.payments || []} metrics={dashboard?.attributionMetrics || []} open onOpenChange={(open) => { if (!open) setSelected(null) }} onRefresh={async () => { await mutate() }} onSaved={async () => { await mutate(); setSelected(null) }} /> : null}
+      {selected ? <ReviewDialog key={`${selected.resource}-${selected.item.id}`} target={reviewTarget!} contentBalance={reviewBalance} creator={selected.resource !== 'creator' ? dashboard?.creators.find(creator => creator.id === selected.item.creatorProfileId) : undefined} payments={dashboard?.payments || []} metrics={dashboard?.attributionMetrics || []} open onOpenChange={(open) => { if (!open) setSelected(null) }} onRefresh={async () => { await mutate() }} onSaved={async () => { await mutate(); setSelected(null) }} /> : null}
     </div>
   )
 }
 
 function DashboardView({ tab, data, onSelect, onRefresh }: { tab: Tab; data: AdminDashboard; onSelect: (target: ReviewTarget) => void; onRefresh: () => Promise<void> }) {
-  if (tab === 'sprints') return <CreatorSprintsPanel submissions={data.submissions} payments={data.payments} onRefresh={onRefresh} onSelectSubmission={(item) => onSelect({ resource: 'submission', item })} />
+  if (tab === 'sprints') return <CreatorSprintsPanel submissions={data.submissions} payments={data.payments} onSelectSubmission={(item) => onSelect({ resource: 'submission', item })} />
   if (tab === 'settings') return <CreatorProgramSettings data={data} onRefresh={onRefresh} />
   if (tab === 'attribution') return <CreatorAttributionDashboard data={data} onSelectCreator={(item) => onSelect({ resource: 'creator', item })} onSelectAccount={(item) => onSelect({ resource: 'account', item })} />
   if (tab === 'submissions') return <ResourceSection title="Video submissions"><SubmissionList items={data.submissions} payments={data.payments} onSelect={onSelect} /></ResourceSection>
@@ -144,11 +150,24 @@ function CtaReviewCard({ item, onSaved }: { item: CreatorCtaLibraryItem; onSaved
 
 function Overview({ data, onSelect, onRefresh }: { data: AdminDashboard; onSelect: (target: ReviewTarget) => void; onRefresh: () => Promise<void> }) {
   const reviewQueues = useMemo(() => getSubmissionReviewQueues(data), [data])
+  const { data: campaigns, mutate: refreshCampaigns } = useSWR<{ sprints: CreatorSprint[] }>('/api/admin/creator/sprints', apiGet)
+  const [reviewed, setReviewed] = useState(false)
+  const [search, setSearch] = useState('')
+  const [reviewedLimit, setReviewedLimit] = useState(30)
+  const reviewedPosts = reviewed ? data.submissions.filter(item =>
+    ['approved', 'paid'].includes(item.status) && `${item.creatorName} ${item.socialHandle ?? ''} ${item.title} ${item.sprintName ?? ''}`.toLowerCase().includes(search.toLowerCase().trim()),
+  ) : []
+  const row = (target: Exclude<ReviewTarget, { resource: 'payment' }>) => {
+    const button = <QueueRow target={target} onClick={() => onSelect(target)} />
+    return target.resource === 'submission'
+      ? <DraggableCampaignSubmission key={target.item.id} submission={target.item}>{button}</DraggableCampaignSubmission>
+      : <div key={`${target.resource}-${target.item.id}`}>{button}</div>
+  }
   const attentionCount = reviewQueues.reduce((total, queue) => total + queue.items.length, 0)
   const outstandingCents = data.payments.filter((payment) => payment.status === 'pending' || payment.status === 'processing').reduce((total, payment) => total + payment.amountCents, 0)
 
   return (
-    <>
+    <CampaignSubmissionMoves campaigns={campaigns?.sprints ?? []} onMoved={() => Promise.all([onRefresh(), refreshCampaigns()])}>
 
       <div className="grid gap-3 sm:grid-cols-3">
         <Metric label="Videos" newValue={data.submissions.filter((item) => isNewInLastDay(item.createdAt)).length} value={data.submissions.length} detail={`${data.submissions.filter((item) => item.status === 'pending').length} awaiting review`} asset="submissions" />
@@ -158,12 +177,23 @@ function Overview({ data, onSelect, onRefresh }: { data: AdminDashboard; onSelec
       <div className="mt-7"><BundledPayoutQueue data={data} onRefresh={onRefresh} /></div>
       <section className="mt-7">
         <div className="mb-4"><p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-zinc-400">Review queues</p><div className="mt-2 flex flex-wrap items-baseline justify-between gap-2"><h2 className="text-2xl font-semibold tracking-[-0.045em]">First come, first served</h2><span className="text-xs tabular-nums text-zinc-400">{attentionCount} awaiting review</span></div></div>
-        {attentionCount ? <div className="grid gap-6">{reviewQueues.map(queue => <section key={queue.id} aria-labelledby={`review-queue-${queue.id}`} className="overflow-hidden rounded-2xl border border-zinc-200 bg-white">
+        <div className="mb-3 flex flex-wrap items-center gap-2">
+          <Button variant={reviewed ? 'outline' : 'default'} size="sm" aria-pressed={!reviewed} onClick={() => setReviewed(false)}>Awaiting review</Button>
+          <Button variant={reviewed ? 'default' : 'outline'} size="sm" aria-pressed={reviewed} onClick={() => setReviewed(true)}>Approved &amp; paid</Button>
+          {reviewed ? <input type="search" aria-label="Find reviewed submissions" placeholder="Find a creator or submission" value={search} onChange={event => { setSearch(event.target.value); setReviewedLimit(30) }} className="creator-field !w-auto" /> : null}
+        </div>
+        <div className="sticky top-0 z-10 mb-4 rounded-xl bg-white/95 py-2 backdrop-blur-sm empty:hidden"><CampaignDropTargets /></div>
+        {reviewed ? (
+          reviewedPosts.length ? <div className="creator-surface px-3">
+            <div className="admin-list">{reviewedPosts.slice(0, reviewedLimit).map(item => row({ resource: 'submission', item }))}</div>
+            {reviewedPosts.length > reviewedLimit ? <Button className="m-3" size="sm" variant="outline" onClick={() => setReviewedLimit(limit => limit + 30)}>Show more</Button> : null}
+          </div> : <EmptyState title="No matching submissions" description="Approved and paid submissions will appear here." />
+        ) : attentionCount ? <div className="grid gap-6">{reviewQueues.map(queue => <section key={queue.id} aria-labelledby={`review-queue-${queue.id}`} className="overflow-hidden rounded-2xl border border-zinc-200 bg-white">
           <div className="flex items-center justify-between gap-3 px-5 py-4"><div><h3 id={`review-queue-${queue.id}`} className="text-sm font-semibold">{queue.label}</h3><p className="mt-1 text-xs text-zinc-400">Oldest submission first</p></div><span className="rounded-full bg-zinc-100 px-2.5 py-1 text-xs font-semibold tabular-nums text-zinc-600">{queue.items.length}</span></div>
-          {queue.items.length ? <div className="admin-list px-3">{queue.items.map(target => <QueueRow key={`${target.resource}-${target.item.id}`} target={target} onClick={() => onSelect(target)} />)}</div> : <p className="border-t border-zinc-100 px-5 py-5 text-sm text-zinc-400">No submissions waiting.</p>}
+          {queue.items.length ? <div className="admin-list px-3">{queue.items.map(row)}</div> : <p className="border-t border-zinc-100 px-5 py-5 text-sm text-zinc-400">No submissions waiting.</p>}
         </section>)}</div> : <EmptyState title="You’re all caught up" description="New submissions ready for review will appear here." />}
       </section>
-    </>
+    </CampaignSubmissionMoves>
   )
 }
 
@@ -214,7 +244,7 @@ function PaymentsPanel({ data, onSelect, onRefresh }: { data: AdminDashboard; on
   const [selectedId, setSelectedId] = useState<string | null>(null)
   const [method, setMethod] = useState<AdminPayment['paymentOption']>('crypto')
   const methods = ['crypto', 'paypal', 'bank_transfer'] as const
-  const { unpaid, held, history, groups, lineMethod, totals } = creatorPaymentQueue(data)
+  const { unpaid, held, history, groups, lineMethod, totals, balances, debts } = creatorPaymentQueue(data)
   const selected = unpaid.find(item => item.id === selectedId)
   const methodGroups = groups.flatMap(group => {
     const lines = group.lines.filter(line => lineMethod(line) === method)
@@ -243,6 +273,7 @@ function PaymentsPanel({ data, onSelect, onRefresh }: { data: AdminDashboard; on
           <dt className="text-xs font-medium text-zinc-600">{label}</dt>
           <dd className="mt-1 text-lg font-semibold tabular-nums">{showAmounts(key)}</dd>
         </div>)}
+        {debts.size > 0 ? <div><dt className="text-xs font-medium text-zinc-600">Creator balance offsets</dt><dd className="mt-1 text-lg font-semibold tabular-nums">{formatMoney(-[...debts.values()].reduce((sum, amount) => sum + amount, 0), 'USD')}</dd></div> : null}
       </dl>
       <dl aria-label="To pay now by method" className="flex flex-wrap border-t border-emerald-100 bg-white/70">
         {options.map(option => <div key={option.id} className="min-w-32 flex-1 px-5 py-3">
@@ -273,11 +304,11 @@ function PaymentsPanel({ data, onSelect, onRefresh }: { data: AdminDashboard; on
       <div className="px-5"><PayoutVideoBreakdown data={data} lines={plan.lines} /></div>
     </section>)}</div></section> : null}
     {methodHistory.length ? <section className="mt-8"><h2 className="mb-3 text-sm font-semibold">Payment records</h2><PaymentList creators={data.creators} items={methodHistory} onSelect={onSelect} /></section> : null}
-    {selected ? <RecordPayoutDialog key={selected.id} submission={selected} creator={data.creators.find(item => item.id === selected.creatorProfileId)} payments={data.payments.filter(item => item.submissionId === selected.id)} onClose={() => setSelectedId(null)} onSaved={async () => { await onRefresh(); setSelectedId(null) }} /> : null}
+    {selected ? <RecordPayoutDialog key={selected.id} submission={selected} availableCents={balances.get(selected.id) ?? 0} creator={data.creators.find(item => item.id === selected.creatorProfileId)} payments={data.payments.filter(item => item.submissionId === selected.id)} onClose={() => setSelectedId(null)} onSaved={async () => { await onRefresh(); setSelectedId(null) }} /> : null}
   </>
 }
 
-function RecordPayoutDialog({ submission, creator, payments, onClose, onSaved }: { submission: AdminSubmission; creator?: AdminCreator; payments: AdminPayment[]; onClose: () => void; onSaved: () => Promise<void> }) {
+function RecordPayoutDialog({ submission, availableCents, creator, payments, onClose, onSaved }: { submission: AdminSubmission; availableCents: number; creator?: AdminCreator; payments: AdminPayment[]; onClose: () => void; onSaved: () => Promise<void> }) {
   const contentRef = useRef<HTMLDivElement>(null)
   const scheduled = payments.find(item => ['pending', 'processing'].includes(item.status)) || (!submission.sprintId ? payments.find(item => item.status !== 'paid') : undefined)
   const [reference, setReference] = useState(scheduled?.providerReference || '')
@@ -286,7 +317,7 @@ function RecordPayoutDialog({ submission, creator, payments, onClose, onSaved }:
   const paymentOption = scheduled?.paymentOption || creator?.paymentOption
   const crypto = paymentOption === 'crypto'
   const destination = creator ? creatorPayoutDestination({ ...creator, paymentOption: paymentOption || creator.paymentOption }) : null
-  const amount = scheduled?.amountCents ?? creatorUnpaidCents(submission, payments)
+  const amount = scheduled?.amountCents ?? availableCents
   async function save() {
     setSaving(true)
     try {
@@ -296,8 +327,8 @@ function RecordPayoutDialog({ submission, creator, payments, onClose, onSaved }:
         reader.onerror = () => reject(new Error('Could not read receipt'))
         reader.readAsDataURL(receipt)
       }) : undefined
-      if (scheduled) await apiPatch('/api/admin/creator/review', { resource: 'payment', id: scheduled.id, status: 'paid', providerReference: reference || null, receiptImage })
-      else await apiPost('/api/admin/creator/payments', { submissionId: submission.id, adminViewCountThreshold: submission.adminViewCountThreshold, adminUsAudiencePercent: submission.adminUsAudiencePercent, status: 'paid', providerReference: reference || null, receiptImage })
+      if (scheduled) await apiPatch('/api/admin/creator/review', { resource: 'payment', id: scheduled.id, expectedAmountCents: amount, status: 'paid', providerReference: reference || null, receiptImage })
+      else await apiPost('/api/admin/creator/payments', { submissionId: submission.id, expectedAmountCents: amount, adminViewCountThreshold: submission.adminViewCountThreshold, adminUsAudiencePercent: submission.adminUsAudiencePercent, status: 'paid', providerReference: reference || null, receiptImage })
       toast.success('Payout recorded')
       await onSaved()
     } catch (error) {
@@ -311,7 +342,7 @@ function RecordPayoutDialog({ submission, creator, payments, onClose, onSaved }:
     {paymentOption !== 'paypal' ? <label className="grid gap-2 text-sm font-medium">{crypto ? 'Transaction hash' : 'Bank transfer reference'}<input className="creator-field" value={reference} onChange={event => setReference(event.target.value)} maxLength={180} placeholder="Paste the transaction hash" /></label> : <label className="grid gap-2 text-sm font-medium">PayPal receipt<input type="file" accept="image/jpeg,image/png,image/webp" className="min-w-0 text-sm text-zinc-500 file:mr-3 file:rounded-full file:border-0 file:bg-sky-50 file:px-4 file:py-2 file:font-medium file:text-[#00A8EF]" onChange={event => { const file = event.target.files?.[0]; if (file && file.size > 5 * 1024 * 1024) { event.target.value = ''; setReceipt(null); toast.error('Choose a receipt image up to 5 MB'); return }; setReceipt(file || null) }} /><span className="text-xs font-normal text-zinc-500">JPG, PNG or WebP · up to 5 MB · optional</span></label>}
     {!scheduled && !canReceiveCreatorPayout(creator) ? <p className="text-xs text-amber-700">Save complete payout details and ensure creator access is active before recording a new payment.</p> : null}
     <p className="text-xs leading-5 text-zinc-500">Only mark paid after you have sent the money. This records your manual payout.</p>
-    <div className="flex justify-end gap-2"><Button variant="ghost" onClick={onClose} disabled={saving}>Cancel</Button><Button onClick={() => void save()} disabled={saving || Boolean(scheduled?.cryptoChain) || !destination || (!scheduled && !canReceiveCreatorPayout(creator))}>{saving ? <Loader2 className="size-4 animate-spin" /> : <CheckCircle2 className="size-4" />}Mark paid</Button></div>
+    <div className="flex justify-end gap-2"><Button variant="ghost" onClick={onClose} disabled={saving}>Cancel</Button><Button onClick={() => void save()} disabled={saving || amount <= 0 || Boolean(scheduled?.cryptoChain) || !destination || (!scheduled && !canReceiveCreatorPayout(creator))}>{saving ? <Loader2 className="size-4 animate-spin" /> : <CheckCircle2 className="size-4" />}Mark paid</Button></div>
   </DialogContent></Dialog>
 }
 
@@ -363,7 +394,7 @@ function QueueRow({ target, onClick }: { target: Exclude<ReviewTarget, { resourc
   </button>
 }
 
-export function ReviewDialog({ target, creator, payments, metrics, open, onOpenChange, onRefresh, onSaved }: { target: ReviewTarget; creator?: AdminCreator; payments: AdminPayment[]; metrics: AdminAttributionMetrics[]; open: boolean; onOpenChange: (open: boolean) => void; onRefresh: () => Promise<void>; onSaved: () => Promise<void> }) {
+export function ReviewDialog({ target, creator, payments, metrics, contentBalance, open, onOpenChange, onRefresh, onSaved }: { target: ReviewTarget; contentBalance?: ReturnType<typeof creatorContentBalances>; creator?: AdminCreator; payments: AdminPayment[]; metrics: AdminAttributionMetrics[]; open: boolean; onOpenChange: (open: boolean) => void; onRefresh: () => Promise<void>; onSaved: () => Promise<void> }) {
   const warningCreator = target.resource === 'creator' ? target.item : creator
   const activeWarningCount = warningCreator?.warnings?.filter(warning => !warning.resolvedAt).length || 0
   const campaign = target.resource === 'submission' && target.item.sprintTerms ? launchCampaign(target.item.sprintTerms) : null
@@ -443,6 +474,10 @@ export function ReviewDialog({ target, creator, payments, metrics, open, onOpenC
   ) : null
   const paidCents = submissionPayments.filter(payment => payment.status === 'paid').reduce((sum, payment) => sum + payment.amountCents, 0)
   const previouslyApprovedCents = target.resource === 'submission' ? target.item.approvedAmountCents || 0 : 0
+  const minimumApproval = target.resource === 'submission' && target.item.campaignPayoutCorrected ? previouslyApprovedCents : paidCents
+  const reservedContentCents = submissionPayments.filter(payment => ['pending', 'processing'].includes(payment.status)).reduce((sum, payment) => sum + payment.amountCents, 0)
+  const availableContentCents = target.resource === 'submission' && contentBalance?.overpaymentCents
+    ? Math.max(0, (contentBalance.unpaid.get(target.item.id) ?? 0) - reservedContentCents) : undefined
   const canApproveWithoutPayment = target.resource === 'submission' && Boolean(target.item.reviewRequestedAt) && previouslyApprovedCents > 0 && paidCents >= previouslyApprovedCents
   const payoutTotalCents = approveWithoutPayment ? previouslyApprovedCents : amount !== null ? amount.trim() ? Math.round(Number(amount) * 100) : null : calculatedTotalCents
   const approvedPayoutInput = approveWithoutPayment
@@ -465,7 +500,7 @@ export function ReviewDialog({ target, creator, payments, metrics, open, onOpenC
         : amount !== null
         ? !/^\d+(\.\d{1,2})?$/.test(amount) || !Number.isSafeInteger(payoutTotalCents) || payoutTotalCents! > 2_000_000_000
           ? 'Enter a valid USD amount with at most two decimals.'
-          : payoutTotalCents! < paidCents ? 'The approved total cannot be lower than payments already sent.'
+          : payoutTotalCents! < minimumApproval ? 'The approved total is below the minimum for this submission.'
           : payoutTotalCents !== calculatedTotalCents && !reviewNote.trim() ? 'Explain the payout adjustment for the creator.' : null
         : null
     : null
@@ -573,13 +608,13 @@ export function ReviewDialog({ target, creator, payments, metrics, open, onOpenC
                 </label> : null}
                 {status === 'rejected' ? <section aria-label="Rejected submission payout" className="mt-5 flex items-center justify-between gap-4 rounded-2xl border border-red-200 bg-red-50/70 p-4"><div><h3 className="text-sm font-semibold text-red-950">Rejected submission</h3><p className="mt-1 text-xs leading-5 text-red-900/70">This review creates no new earnings or payment.</p></div><div className="text-right"><p className="text-[10px] font-semibold uppercase tracking-[0.12em] text-red-700">Additional to pay</p><p className="mt-1 text-2xl font-semibold tabular-nums text-red-950">$0.00</p></div></section> : <section className="mt-5 rounded-2xl border border-zinc-200 p-4">
                   <div className="flex items-center justify-between gap-3"><p className="text-sm font-semibold">Post earnings · USD</p><button type="button" className="min-h-10 text-xs font-medium text-[#007aff] disabled:text-zinc-400" onClick={() => setAmount(null)} disabled={approveWithoutPayment}>Use calculated amount</button></div>
-                  <label className="mt-2 grid gap-2 text-xs text-zinc-500">Post earnings before bonuses, including prior content payments<input aria-label="Approved payout in USD" type="number" min={paidCents / 100} step="0.01" inputMode="decimal" value={approvedPayoutInput} placeholder="Choose views and audience first" onChange={event => setAmount(event.target.value)} className="creator-field text-lg font-semibold tabular-nums" disabled={Boolean(existingPayment) || approveWithoutPayment} /></label>
+                  <label className="mt-2 grid gap-2 text-xs text-zinc-500">Post earnings before bonuses, including prior content payments<input aria-label="Approved payout in USD" type="number" min={minimumApproval / 100} step="0.01" inputMode="decimal" value={approvedPayoutInput} placeholder="Choose views and audience first" onChange={event => setAmount(event.target.value)} className="creator-field text-lg font-semibold tabular-nums" disabled={Boolean(existingPayment) || approveWithoutPayment} /></label>
                   <p className="mt-2 text-xs leading-5 text-zinc-500">Calculated payout: {calculatedTotalCents === null ? '—' : formatMoney(calculatedTotalCents, 'USD')}. Enter a different total to apply a payout adjustment. Save the approved review before scheduling payment.</p>
                   <label className="mt-4 grid gap-2 text-xs font-semibold text-zinc-700">{approveWithoutPayment || payoutTotalCents === 0 ? 'No-payment explanation · required and shown to creator' : 'Adjustment reason · shown to creator'}<textarea value={reviewNote} onChange={event => setReviewNote(event.target.value)} maxLength={1000} placeholder={approveWithoutPayment || payoutTotalCents === 0 ? 'Explain why no payment is due, for example the verified audience is below the campaign minimum…' : 'Explain the rule violation and payout adjustment…'} className="creator-field min-h-20 resize-y py-3 font-normal" /></label>
                 </section>}
                 {status !== 'rejected' && hasLaunchCampaignBonuses(target.item) ? <p className="mt-4 text-xs leading-5 text-zinc-500">Qualifying bonuses are added automatically after approval and included in the creator’s balance and payouts.</p> : null}
-                {status === 'rejected' ? <p className="mt-5 rounded-xl bg-zinc-50 p-3 text-xs leading-5 text-zinc-600">No payment can be scheduled from a rejected review. Prior payment history remains visible below.</p> : approveWithoutPayment ? <p className="mt-5 rounded-xl bg-zinc-50 p-3 text-xs leading-5 text-zinc-600">No new payment will be scheduled. Saving closes this rereview while keeping the creator’s prior approved earnings and future rereview access.</p> : existingPayment ? <div className="mt-5 border-t border-zinc-100 pt-5"><p className="text-sm font-semibold">{existingPayment.payoutRequestId ? 'Included in requested bundle' : 'Payment scheduled'}</p><p className="mt-1 text-sm text-zinc-500">{formatMoney(existingPayment.amountCents, existingPayment.currency)} · {statusLabel(existingPayment.status)}</p>{existingPayment.payoutRequestId ? <Link href="/admin/payments" className="mt-2 inline-block text-xs text-[#007aff]">Review and record the complete bundle in Payments →</Link> : null}</div> : creator?.bundledPayouts ? <p className="mt-5 text-xs text-zinc-500">Save the review as usual. The creator can request these earnings from Money when ready.</p> : <CreatePayment submission={target.item} payments={submissionPayments} totalCents={payoutTotalCents} unsavedAdjustment={Boolean(adjustmentError) || (amount?.trim() ? payoutTotalCents !== target.item.approvedAmountCents : target.item.approvedAmountCents != null && target.item.approvedAmountCents !== calculatedTotalCents)} selection={adminPayoutSelection} onCreated={onSaved} />}
-                <SubmissionPayoutSummary totalCents={Number.isFinite(payoutTotalCents) ? payoutTotalCents : null} payments={submissionPayments} bonuses={submissionBonusPayments(target.item, payments)} projectedBonuses={projectedBonuses} additionalToPayOverrideCents={status === 'rejected' ? 0 : undefined} />
+                {status === 'rejected' ? <p className="mt-5 rounded-xl bg-zinc-50 p-3 text-xs leading-5 text-zinc-600">No payment can be scheduled from a rejected review. Prior payment history remains visible below.</p> : approveWithoutPayment ? <p className="mt-5 rounded-xl bg-zinc-50 p-3 text-xs leading-5 text-zinc-600">No new payment will be scheduled. Saving closes this rereview while keeping the creator’s prior approved earnings and future rereview access.</p> : existingPayment ? <div className="mt-5 border-t border-zinc-100 pt-5"><p className="text-sm font-semibold">{existingPayment.payoutRequestId ? 'Included in requested bundle' : 'Payment scheduled'}</p><p className="mt-1 text-sm text-zinc-500">{formatMoney(existingPayment.amountCents, existingPayment.currency)} · {statusLabel(existingPayment.status)}</p>{existingPayment.payoutRequestId ? <Link href="/admin/payments" className="mt-2 inline-block text-xs text-[#007aff]">Review and record the complete bundle in Payments →</Link> : null}</div> : creator?.bundledPayouts ? <p className="mt-5 text-xs text-zinc-500">Save the review as usual. The creator can request these earnings from Money when ready.</p> : <CreatePayment submission={target.item} payments={submissionPayments} totalCents={payoutTotalCents} availableCents={availableContentCents} unsavedAdjustment={Boolean(adjustmentError) || (amount?.trim() ? payoutTotalCents !== target.item.approvedAmountCents : target.item.approvedAmountCents != null && target.item.approvedAmountCents !== calculatedTotalCents)} selection={adminPayoutSelection} onCreated={onSaved} />}
+                <SubmissionPayoutSummary totalCents={Number.isFinite(payoutTotalCents) ? payoutTotalCents : null} payments={submissionPayments} bonuses={submissionBonusPayments(target.item, payments)} projectedBonuses={projectedBonuses} additionalToPayOverrideCents={status === 'rejected' ? 0 : payoutTotalCents === previouslyApprovedCents ? availableContentCents : undefined} />
               </Tabs.Content>
               <Tabs.Content value="warnings" className="outline-none">{creator ? <CreatorWarningPanel creator={creator} onRefresh={onRefresh} /> : <p className="mt-5 text-sm text-zinc-500">Creator details unavailable.</p>}</Tabs.Content>
               <Tabs.Content forceMount value="attribution" className="outline-none data-[state=inactive]:hidden"><AttributionEvidence submission={target.item} metrics={metrics.find(item => item.submissionId === target.item.id)} /></Tabs.Content>
@@ -672,8 +707,8 @@ export function AdminPayoutDecision({
   </section>
 }
 
-function CreatePayment({ submission, payments, totalCents, selection, unsavedAdjustment, onCreated }: { unsavedAdjustment: boolean; submission: AdminSubmission; payments: AdminDashboard['payments']; totalCents: number | null; selection: AdminPayoutSelection; onCreated: () => Promise<void> }) {
-  const amountCents = remainingCreatorPaymentCents(totalCents || 0, payments)
+function CreatePayment({ submission, payments, totalCents, availableCents, selection, unsavedAdjustment, onCreated }: { availableCents?: number; unsavedAdjustment: boolean; submission: AdminSubmission; payments: AdminDashboard['payments']; totalCents: number | null; selection: AdminPayoutSelection; onCreated: () => Promise<void> }) {
+  const amountCents = availableCents ?? remainingCreatorPaymentCents(totalCents || 0, payments)
   const needsApproval = unsavedAdjustment || (submission.status !== 'approved' || selection.viewCountThreshold !== submission.adminViewCountThreshold || selection.usAudiencePercent !== submission.adminUsAudiencePercent)
   const [creating, setCreating] = useState(false)
   async function create() {
@@ -682,6 +717,7 @@ function CreatePayment({ submission, payments, totalCents, selection, unsavedAdj
     try {
       await apiPost('/api/admin/creator/payments', {
         submissionId: submission.id,
+        expectedAmountCents: amountCents,
         adminViewCountThreshold: selection.viewCountThreshold,
         adminUsAudiencePercent: selection.usAudiencePercent,
         status: 'pending',

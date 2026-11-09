@@ -2,7 +2,7 @@ import { createHash, randomBytes } from 'node:crypto'
 import { and, asc, desc, eq, inArray, isNull, or, sql } from 'drizzle-orm'
 import { db, schema } from '@/lib/db'
 import { ApiError } from '@/lib/api/http'
-import { canReceiveCreatorPayout, creatorEarnedCents, remainingCreatorPaymentCents } from '@/lib/creator/money'
+import { canReceiveCreatorPayout, creatorContentBalances } from '@/lib/creator/money'
 import { assertCreatorReferralPaymentsEligible } from '@/lib/creator/creator-referrals'
 import { checkedPayoutRpc, payoutAddress, prepareChainProof, treasury } from './chains'
 import { payoutChain, payoutChains, type PayoutChain, type PayoutOutput } from './shared'
@@ -23,7 +23,7 @@ async function cryptoPlan(tx: Transaction | typeof db, chain: PayoutChain, lock 
   const ids = owners.map(owner => owner.id)
   const pending = tx.select().from(requests).where(and(inArray(requests.creatorProfileId, ids), eq(requests.status, 'pending'), eq(requests.paymentOption, 'crypto'))).orderBy(asc(requests.id))
   const bundles = await (lock ? pending.for('update') : pending)
-  const creatorSubmissions = tx.select().from(submissions).where(and(inArray(submissions.creatorProfileId, ids), inArray(submissions.status, ['approved', 'paid']))).orderBy(asc(submissions.id))
+  const creatorSubmissions = tx.select().from(submissions).where(and(inArray(submissions.creatorProfileId, ids), eq(submissions.isDraft, false))).orderBy(asc(submissions.id))
   const posts = await (lock ? creatorSubmissions.for('update') : creatorSubmissions)
   const creatorPayments = tx.select().from(payments).where(inArray(payments.creatorProfileId, ids)).orderBy(asc(payments.id))
   const ledger = await (lock ? creatorPayments.for('update') : creatorPayments)
@@ -35,10 +35,12 @@ async function cryptoPlan(tx: Transaction | typeof db, chain: PayoutChain, lock 
   for (const owner of owners) {
     if (owner.authStatus === 'suspended') continue
     const records = ledger.filter(payment => payment.creatorProfileId === owner.id)
+    const ownerPosts = posts.filter(post => post.creatorProfileId === owner.id && !post.isDraft)
+    const { unpaid } = creatorContentBalances(ownerPosts, records)
     const creator = { creatorProfileId: owner.id, name: owner.displayName }
     for (const request of bundles.filter(bundle => bundle.creatorProfileId === owner.id && payoutChain(bundle.network) === chain)) {
       const destination = payoutAddress(chain, request.destination)
-      const included = records.filter(payment => payment.payoutRequestId === request.id)
+      const included = records.filter(payment => payment.payoutRequestId === request.id && payment.status !== 'cancelled')
       if (!destination || destination === sender || !included.length || !included.every(spendable) ||
         included.reduce((sum, payment) => sum + payment.amountCents, 0) !== request.amountCents) continue
       for (const payment of included) lines.push({ ...creator, destination, amountCents: payment.amountCents, paymentId: payment.id })
@@ -50,12 +52,12 @@ async function cryptoPlan(tx: Transaction | typeof db, chain: PayoutChain, lock 
     for (const payment of records) {
       if (spendable(payment) && !payment.payoutRequestId && !payment.submissionId) lines.push({ ...creator, destination, amountCents: payment.amountCents, paymentId: payment.id })
     }
-    for (const post of posts.filter(post => post.creatorProfileId === owner.id && !post.isDraft)) {
+    for (const post of ownerPosts.filter(post => post.status === 'approved' || post.status === 'paid')) {
       const related = records.filter(payment => payment.submissionId === post.id)
       if (related.some(payment => payment.status === 'processing' || (payment.status !== 'cancelled' && payment.currency !== 'USD'))) continue
       const scheduled = related.filter(payment => payment.status === 'pending')
       if (scheduled.some(payment => !spendable(payment) || payment.payoutRequestId)) continue
-      const due = remainingCreatorPaymentCents(creatorEarnedCents(post), related, false)
+      const due = unpaid.get(post.id) ?? 0
       const scheduledCents = scheduled.reduce((total, payment) => total + payment.amountCents, 0)
       if (scheduledCents > due) continue
       for (const payment of scheduled) lines.push({ ...creator, destination, amountCents: payment.amountCents, paymentId: payment.id })
