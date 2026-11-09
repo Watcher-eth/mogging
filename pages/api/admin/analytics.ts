@@ -11,9 +11,10 @@ import { enforceRateLimit } from '@/lib/api/rateLimit'
 // Authentication still runs on every request before any cached data is read.
 const getReport = unstable_cache(getAnalyticsDashboard, ['admin-analytics-workspace-v13'], { revalidate: 60 })
 
-const getProviderMetrics = unstable_cache(getRevenueCatMetrics, ['admin-revenuecat-provider-metrics-v1'], { revalidate: 60 })
-
-const getAppleSales = unstable_cache(getAppStoreSales, ['admin-apple-sales-v1'], { revalidate: 900 })
+// Provider credentials can change on redeploy while Next's data cache persists.
+const providerCacheScope = process.env.VERCEL_DEPLOYMENT_ID ?? 'local'
+const getProviderMetrics = unstable_cache(getRevenueCatMetrics, ['admin-revenuecat-provider-metrics-v1', providerCacheScope], { revalidate: 60 })
+const getAppleSales = unstable_cache(getAppStoreSales, ['admin-apple-sales-v1', providerCacheScope], { revalidate: 900 })
 
 export const config = { maxDuration: 30 }
 

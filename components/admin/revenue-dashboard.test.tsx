@@ -1,6 +1,7 @@
-import { expect, test } from 'bun:test'
+import { expect, spyOn, test } from 'bun:test'
 import { renderToStaticMarkup } from 'react-dom/server'
 import type { AnalyticsDashboard } from '@/lib/admin/analytics'
+import { getRevenueCatMetrics } from '@/lib/admin/revenuecat-metrics'
 import { RevenueDashboard } from './revenue-dashboard'
 
 function snapshot(): AnalyticsDashboard {
@@ -175,4 +176,32 @@ test('combined USD headlines and stream breakdown use the same international tot
   expect(html).toContain('>7</p>')
   expect(html).toContain('>6</p>')
   expect(html).not.toContain('USD_TOTAL purchases')
+})
+
+
+test('RevenueCat metrics stay visible when the provider returns a null update time', async () => {
+  const env = {
+    REVENUECAT_METRICS_PROJECT_ID: 'fixture-project',
+    REVENUECAT_METRICS_API_KEY: 'fixture-key',
+  }
+  const previous = Object.keys(env).map(key => [key, process.env[key]] as const)
+  Object.assign(process.env, env)
+  const fetch = spyOn(globalThis, 'fetch').mockResolvedValueOnce(Response.json({
+    currency: 'USD',
+    metrics: [{ id: 'mrr', name: 'Provider MRR', period: 'P28D', value: 123.45, last_updated_at: null }],
+  }))
+  try {
+    const revenueCatMetrics = await getRevenueCatMetrics()
+    expect(revenueCatMetrics.status).toBe('ready')
+    const html = renderToStaticMarkup(<RevenueDashboard data={{ ...snapshot(), revenueCatMetrics }} days={30} />)
+    expect(html).toContain('Provider MRR')
+    expect(html).toContain('$123.45')
+    expect(html).toContain('No record available')
+  } finally {
+    fetch.mockRestore()
+    for (const [key, value] of previous) {
+      if (value === undefined) delete process.env[key]
+      else process.env[key] = value
+    }
+  }
 })

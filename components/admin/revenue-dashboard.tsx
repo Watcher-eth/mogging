@@ -187,7 +187,7 @@ export function RevenueDashboard({ data, days, providerStatus }: { data: Analyti
           metric: metric.name,
           value: /revenue|mrr/i.test(metric.id) ? amount(metric.value, providerMetrics.currency) : count(metric.value),
           period: metric.period === 'P0D' ? 'Current' : metric.period.replace(/^P(\d+)D$/, '$1 days'),
-          provider_updated: timestamp(new Date(metric.last_updated_at).toISOString()),
+          provider_updated: timestamp(metric.last_updated_at === null ? null : new Date(metric.last_updated_at).toISOString()),
         }))} columns={['metric', 'value', 'period', 'provider_updated']} />
         <p className="mt-3 text-xs text-zinc-500">API checked {timestamp(providerMetrics.checkedAt)}. Project-wide metrics may include stores already represented in the billing ledger.</p>
       </> : <Notice>{providerStatus === 'loading' ? 'Loading the RevenueCat snapshot…' : providerStatus === 'unavailable' || providerMetrics?.status === 'unavailable'

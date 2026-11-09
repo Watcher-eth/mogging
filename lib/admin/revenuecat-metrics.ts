@@ -7,7 +7,7 @@ const overview = z.object({
     name: z.string(),
     period: z.string(),
     value: z.number().finite(),
-    last_updated_at: z.number().finite(),
+    last_updated_at: z.number().finite().nullable(),
   })),
 })
 
