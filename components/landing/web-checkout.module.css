@@ -1,4 +1,23 @@
-.offerOnly { max-width: 440px; margin-inline: auto; }
+.offerOnly {
+  display: grid;
+  grid-template-areas: "intro" "offer";
+  gap: clamp(24px, 4vw, 44px);
+  max-width: 72rem;
+  margin-inline: auto;
+}
+.offerOnly .offer {
+  container: landing-checkout / inline-size;
+  gap: clamp(20px, 3vw, 36px);
+  padding: clamp(20px, 4vw, 52px);
+  border: 1px solid #e8e8eb;
+  border-radius: clamp(24px, 3vw, 36px);
+  background: #fff;
+  box-shadow: 0 20px 64px -42px #12182644;
+}
+.offerOnly .cta {
+  min-height: 56px;
+  font-size: 15px;
+}
 .standalone { margin: 48px auto; border: 1px solid #ededf0; border-radius: 36px; background: #fff; color: #171b20; }
 .offer { grid-area: offer; min-width: 0; display: grid; gap: 22px; }
 .eyebrow { text-transform: uppercase; color: #8a8e96; font-size: 10px; letter-spacing: .12em; margin-bottom: 12px; }

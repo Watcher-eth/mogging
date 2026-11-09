@@ -1,5 +1,5 @@
 import { useTranslation } from 'react-i18next'
-import Link from 'next/link'
+import { PublicFooter } from '@/components/app/public-footer'
 import { SkeletonAvatar } from '@/components/ui/skeleton-avatar'
 import motionStyles from '@/components/ui/surface-motion.module.css'
 import { useEffect, useRef, useState } from 'react'
@@ -71,6 +71,8 @@ export function AppShell({ children }: AppShellProps) {
   const { t } = useTranslation()
   const { data: session, status } = useSession()
   const router = useRouter()
+  const homepage = router.pathname === '/'
+  const Content = homepage ? 'div' : 'main'
   const pendingAuthRedirect = getSafeAuthRedirect(router.query.next)
   const memberPreview = process.env.NODE_ENV === 'development' && router.pathname === '/__member-preview'
   const creatorRoute = router.pathname === '/creator' || router.pathname.startsWith('/creator/')
@@ -256,20 +258,11 @@ export function AppShell({ children }: AppShellProps) {
             )}
       </AppHeader> : null}
 
-      <main className={creatorSignIn || creatorSetup || creatorReferral ? 'flex w-full flex-1 flex-col' : creatorRoute ? 'mx-auto flex w-full max-w-[var(--workspace-max)] flex-1 flex-col' : immersive ? 'w-full' : 'public-frame public-gutters py-8'}>
+      <Content className={creatorSignIn || creatorSetup || creatorReferral ? 'flex w-full flex-1 flex-col' : creatorRoute ? 'mx-auto flex w-full max-w-[var(--workspace-max)] flex-1 flex-col' : immersive ? 'w-full' : 'public-frame public-gutters py-8'}>
         {creatorRoute && !creatorSignIn && !creatorSetup ? <SidebarProvider className="min-h-0 flex-1 flex-col">{children}</SidebarProvider> : children}
-      </main>
+      </Content>
 
-      {!creatorSetup && !creatorReferral && !creatorSupport && !pwaHome ? <footer className="border-t border-zinc-200 bg-white py-8 text-sm text-zinc-600">
-        <nav aria-label={t('footer.resources')} className="public-frame public-gutters flex flex-wrap gap-x-6 gap-y-4">
-          <Link href="/what-is-mogging" prefetch={false} className="hover:text-black">{t('footer.what')}</Link>
-          <Link href="/how-face-analysis-works" prefetch={false} className="hover:text-black">{t('footer.how')}</Link>
-          <Link href="/faq" prefetch={false} className="hover:text-black">{t('footer.faq')}</Link>
-          <Link href="/support" prefetch={false} className="hover:text-black">{t('footer.support')}</Link>
-          <Link href="/privacy" prefetch={false} className="hover:text-black">{t('footer.privacy')}</Link>
-          <Link href="/tos" prefetch={false} className="hover:text-black">{t('footer.terms')}</Link>
-        </nav>
-      </footer> : null}
+      {!homepage && !creatorSetup && !creatorReferral && !creatorSupport && !pwaHome ? <PublicFooter /> : null}
 
       <LoginDialog
         open={loginOpen}
