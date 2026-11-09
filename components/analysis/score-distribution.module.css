@@ -24,3 +24,22 @@
   0%, 100% { opacity: .1; }
   50% { opacity: .36; }
 }
+
+.attractiveness { --distribution-tick: #84919d; --current-score: #ba6413; --potential-score: #087fb7; color: #151a20; }
+.attractivenessHeading { display: flex; align-items: baseline; flex-wrap: wrap; justify-content: space-between; gap: 4px 10px; }
+.attractivenessHeading h3 { font-size: 18px; font-weight: 650; letter-spacing: -.045em; }
+.attractivenessHeading > span, .attractivenessAxis, .attractiveness figcaption { color: #626b76; font-size: 11px; }
+.attractivenessReadings { display: flex; justify-content: space-between; gap: 12px; margin: 14px 0 18px; }
+.attractivenessReadings > div + div { text-align: right; }
+.attractivenessReadings span { display: flex; align-items: center; gap: 6px; color: #626b76; font-size: 12px; }
+.attractivenessReadings > div + div span { justify-content: flex-end; }
+.attractivenessReadings i { width: 7px; height: 7px; border-radius: 50%; background: var(--current-score); }
+.attractivenessReadings > div + div i { background: var(--potential-score); }
+.attractivenessReadings strong { font-size: clamp(22px, 7.4vw, 36px); line-height: 1.25; font-weight: 600; letter-spacing: -.06em; font-variant-numeric: tabular-nums; }
+.attractivenessReadings small { margin-inline-start: 4px; color: #626b76; font-size: 11px; }
+.attractivenessAxis { margin-bottom: 4px; }
+.attractiveness svg { display: block; width: 100%; }
+.attractivenessLabel { fill: #626b76; font: 9px ui-monospace, monospace; }
+.attractivenessGrid { stroke: #d8dde2; stroke-width: .75; }
+.attractivenessQuartile { stroke: #89939e; stroke-width: .8; stroke-linecap: round; }
+.attractiveness figcaption { margin-top: 6px; }

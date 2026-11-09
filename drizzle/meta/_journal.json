@@ -540,6 +540,13 @@
       "when": 1794108000000,
       "tag": "0074_creator_crypto_payouts",
       "breakpoints": true
+    },
+    {
+      "idx": 77,
+      "version": "7",
+      "when": 1794108000001,
+      "tag": "0075_member_public_profiles",
+      "breakpoints": true
     }
   ]
 }

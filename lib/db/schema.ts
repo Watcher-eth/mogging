@@ -116,6 +116,10 @@ export const users = pgTable(
   })
 )
 
+export const memberPublicProfiles = pgTable('member_public_profiles', {
+  userId: text('user_id').primaryKey().references(() => users.id, { onDelete: 'cascade' }),
+})
+
 export const accounts = pgTable(
   'accounts',
   {
