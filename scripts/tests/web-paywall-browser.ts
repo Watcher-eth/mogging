@@ -52,12 +52,12 @@ async function testPaywall(browser: Browser, surface: PaywallSurface, arm: Paywa
         return route.fulfill({ json: { data: { url: new URL('/fixture-stripe', origin).href, sessionId: 'cs_test_fixture' } } })
       }
       if (url.pathname === '/fixture-stripe') return route.fulfill({ body: 'Hosted checkout fixture' })
-      if (url.pathname.startsWith('/api/')) return route.fulfill({ json: { data: {} } })
+      if (url.pathname.startsWith('/api/')) return route.fulfill({ status: 404, json: { error: { message: 'Endpoint outside browser fixture' } } })
       return route.continue()
     })
 
     await page.goto(new URL('/analysis?start=1', origin).href, { waitUntil: 'domcontentloaded' })
-    await page.getByRole('button', { name: mobile ? /take photo|upload photo|choose photo/i : 'Choose front photo' }).first().waitFor()
+    await page.getByRole('button', { name: mobile ? 'Open camera' : 'Choose front photo' }).first().waitFor()
     await page.locator('input[type=file]').first().setInputFiles(front)
     if (mobile) {
       await page.getByRole('button', { name: 'Use photo', exact: true }).click()
@@ -82,7 +82,7 @@ async function testPaywall(browser: Browser, surface: PaywallSurface, arm: Paywa
     const beforeRetry = catalogRequests
     await Promise.all([
       page.waitForResponse(response => new URL(response.url()).pathname === '/api/payments/subscription-prices'),
-      alert.getByRole('button', { name: /retry/i }).click(),
+      alert.getByRole('button', { name: /try again|retry/i }).click(),
     ])
     assert(catalogRequests > beforeRetry, 'Retry refreshes the displayed catalog')
     await cta.click()

@@ -101,6 +101,15 @@ function PaywallExperiment({ name, rows, now }: { name: string; rows: MetricRow[
   const paid = sample.map(row => metric(row, 'paid'))
   const ready = now >= end + 86_400_000 && mature.every(n => n >= minimum)
   const intervals = paid.map((n, index) => landingRateInterval(n, mature[index], 1.959963985))
+  const rates = paid.map((n, index) => mature[index] ? n * 100 / mature[index] : null)
+  const [a, b] = rates
+  const [aInterval, bInterval] = intervals
+  const difference = a !== null && b !== null ? b - a : null
+  // Newcombe's interval combines the two Wilson intervals without pooling the arms.
+  const differenceInterval = a !== null && b !== null && difference !== null && aInterval && bInterval ? [
+    difference - Math.hypot(b - bInterval[0], aInterval[1] - a),
+    difference + Math.hypot(bInterval[1] - b, a - aInterval[0]),
+  ] : null
   let status = 'Enrollment open'
   if (allocationMismatch) status = 'Check allocation before interpreting'
   else if (now >= end && now < end + 86_400_000) status = 'Waiting for 24-hour outcomes'
@@ -117,7 +126,7 @@ function PaywallExperiment({ name, rows, now }: { name: string; rows: MetricRow[
     }
   }
   const columns = ['arm', 'exposed', 'pending', 'tapped', 'checkouts', 'checkout_failures', 'paid', 'paid_rate', 'first_charge_per_exposure']
-  return <Panel title={name} description={`${status} · ${count(minimum)} mature exposures per arm required · Enrollment ends ${formatReportingTime(new Date(end), { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit', timeZoneName: 'short' })}`}
+  return <Panel title={name} description={`${rows[0].kind === 'price' ? 'Price' : 'Length'} test · ${status} · ${count(minimum)} mature exposures per arm required · Enrollment ends ${formatReportingTime(new Date(end), { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit', timeZoneName: 'short' })}`}
     note="First-charge revenue is gross USD before refunds and fees. It is hidden when paid outcomes use another currency. Browser breakdowns diagnose friction and are exploratory.">
     <div className="admin-stats-grid">
       {sample.map((row, index) => {
@@ -125,8 +134,10 @@ function PaywallExperiment({ name, rows, now }: { name: string; rows: MetricRow[
         return <Stat key={String(row.arm)} title={index === 0 ? 'Current paywall' : 'Variant'} value={percent(paid[index], mature[index])}
           note={`${count(paid[index])} paid / ${count(mature[index])} mature${interval ? ` · 95% CI ${interval[0].toFixed(1)}–${interval[1].toFixed(1)}%` : ''}`} />
       })}
-      <Stat title="Change" value={mature.every(Boolean) ? `${((paid[1] / mature[1] - paid[0] / mature[0]) * 100).toFixed(2)} pp` : '—'}
-        note="Variant minus current paywall" />
+      <Stat title="Change" value={difference !== null ? `${difference.toFixed(2)} pp` : '—'}
+        note={ready && !allocationMismatch && differenceInterval
+          ? `95% CI ${differenceInterval[0].toFixed(2)} to ${differenceInterval[1].toFixed(2)} pp`
+          : 'Variant minus current paywall'} />
     </div>
     <Table rows={sample.map(tableRow)} columns={columns} />
     <DataDetails><Table rows={rows.filter(row => row.browser !== 'all').map(tableRow)} columns={['browser', ...columns]} /></DataDetails>
