@@ -138,6 +138,7 @@ export const getServerSideProps: GetServerSideProps<PreviewProps> = async ({ req
       ...(section === 'Referrals' ? { referrals: data.referrals } : {}),
       ...(section === 'Engagement' ? { engagement: data.engagement } : {}),
       ...(section === 'Scans' ? { scans: data.scans } : {}),
+      ...(['Purchases','Revenue'].includes(section) ? {purchaseBehavior:data.purchaseBehavior??null} : {}),
       ...(section === 'Purchases' ? { purchaseFlow: data.purchaseFlow } : {}),
       ...(section === 'Authentication' ? { authentication: data.authentication } : {}),
       ...(section === 'CreatorEconomics' ? { creatorEconomics: data.creatorEconomics } : {}),
