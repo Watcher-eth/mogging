@@ -118,9 +118,10 @@ export function directVisualBeats(section: ScriptSection, text: string, recipe: 
     } else if (primitive === 'edit') direction = { ...base, photoStudy: { feature: beat.feature as 'eyes' | 'brows' | 'nose' | 'lips' | 'jaw' | 'cheeks', mode: 'stretch', axis: /\b(?:width|wide\w*|narrow\w*|broader)\b/i.test(beat.quote) ? 'x' : ['shorten', 'lengthen'].includes(beat.operation) || /\b(?:thick\w*|thin\w*|height|fuller)\b/i.test(beat.quote) ? 'y' : 'x', amount: (['shorten', 'narrow', 'remove'].includes(beat.operation) ? -.055 : .055) * amount, cursor: false } }
     if (direction.kind === 'portrait' && !direction.featureStudy && !direction.study) direction.portraitProgram = planPortraitProgram(beat.quote, beat.feature, recipe, variant + seed, image?.id === profile?.id && profile ? 'profile' : image?.id === angled?.id && angled ? 'three-quarter' : beat.view)
     const study = direction.featureStudy
-    const eligibleStudy = study && (study.editorial || ['portrait-audit','hybrid-story'].includes(recipe) && (seed+variant)%5===0)
+    // Qoves takes choose automatic treatments once, after authored evidence is merged.
+    const eligibleStudy = study && ['portrait-audit','hybrid-story'].includes(recipe) && (seed+variant)%5===0
     const automatic = eligibleStudy && !study.edit && ['hero','detail'].includes(study.layout) && !['hook','cta','product','takeaway'].includes(section.role)
-      ? planEditorialPresentation(beat.quote,beat.feature,(seed+variant)>>>0,Boolean(angled||profile)) : undefined
+      ? planEditorialPresentation(beat.quote,beat.feature,(seed+variant)>>>0,Boolean(angled||profile),[],undefined,false) : undefined
     const presentation = authored.presentation ?? automatic
     if (presentation && direction.kind === 'portrait' && !study?.edit && !direction.photoStudy && !direction.study && !direction.profileStudy && !direction.portraitFX) {
       direction.presentation = { ...presentation, feature: presentation.feature ?? beat.feature, imageIds: presentation.imageIds.length ? presentation.imageIds : [angled?.id,profile?.id].filter((id): id is string => Boolean(id) && id !== direction.imageId) }

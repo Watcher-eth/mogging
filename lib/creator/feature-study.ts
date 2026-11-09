@@ -1,5 +1,5 @@
 import { sampleEditorialCursor, drawEditorialCursor, editorialCursorTiming } from './editorial-cursor'
-import { drawEditorialTool, drawEditorialFeatheredReveal, drawEditorialInset, drawEditorialLeader, drawEditorialLocator, drawEditorialRevealRail } from './editorial-motion'
+import { drawEditorialTool, drawEditorialFeatheredReveal, drawEditorialInset, drawEditorialLeader, drawEditorialLocator, drawEditorialWipeHandle } from './editorial-motion'
 import { applyGlassInk } from './glass-overlay'
 import { drawPortraitInstruments, drawPortraitParticles, instrumentOwnsGuides, type PortraitInstrument } from './portrait-instruments'
 import { z } from 'zod'
@@ -21,7 +21,7 @@ export const featureStudySchema = z.object({
   opening: z.enum(['lip-choice', 'jaw-choice', 'jaw-width-choice', 'smile-choice']).optional(),
   phase: z.enum(['hold', 'clue', 'reveal']).optional(),
   topic: z.enum(visualFeatures), layout: z.enum(['hero', 'detail', 'compare', 'grid', 'evidence']),
-  motion: z.enum(['hold', 'push', 'pull', 'pan-left', 'pan-right']).optional(),
+  motion: z.enum(['hold', 'push', 'pull', 'pan-left', 'pan-right', 'pan-up']).optional(),
   guidesDuringEdit: z.boolean().optional(),
   annotationStyle: z.enum(['circle', 'guide', 'leader']).optional(),
   tool: z.enum(['brush','clipper']).optional(),
@@ -68,26 +68,28 @@ export function comparisonExpansionTimes(durationMs: number) {
   return times
 }
 // One clock owns the pair, expansion and return so caption cuts never restart the move.
-export function comparisonFrames(timeMs: number, durationMs: number, reduced = false, pair = featureFrames('compare'), full = featureFrames('hero')[0]): Frame[] {
+export function comparisonFrames(timeMs: number, durationMs: number, reduced = false, pair = featureFrames('compare'), full = featureFrames('hero')[0], motion?: FeatureStudy['motion']): Frame[] {
   if (reduced) return pair
   const right = [{ ...full, x: -full.width - 22 }, full], left = [full, { ...full, x: full.width + 22 }]
   const {intro,travel,hold,pause}=comparisonTiming(durationMs)
+  const [first, second] = motion === 'pan-left' ? [left, right] : [right, left]
+  const pace = motion === 'push' ? .78 : motion === 'pull' ? 1.24 : 1
   const phases = [
-    { from: pair, to: pair, duration: intro },
-    { from: pair, to: right, duration: travel },
-    { from: right, to: right, duration: hold },
-    { from: right, to: pair, duration: travel },
+    { from: pair, to: pair, duration: motion === 'hold' ? intro + 280 : intro },
+    { from: pair, to: first, duration: travel * pace },
+    { from: first, to: first, duration: hold },
+    { from: first, to: pair, duration: travel * pace },
     { from: pair, to: pair, duration: pause },
-    { from: pair, to: left, duration: travel },
-    { from: left, to: left, duration: hold },
-    { from: left, to: pair, duration: travel },
+    { from: pair, to: second, duration: travel * pace },
+    { from: second, to: second, duration: hold },
+    { from: second, to: pair, duration: travel * pace },
   ]
   let time = Math.max(0, timeMs) % phases.reduce((sum, phase) => sum + phase.duration, 0)
   for (const phase of phases) {
     if (time <= phase.duration) return phase.from.map((frame, index) => {
       const progress=time/phase.duration,placed=featureFrameAt(frame,phase.to[index],progress*560)
       const moving=phase.from!==phase.to,arc=moving?Math.sin(smoothMotion(progress)*Math.PI)*45:0
-      return {...placed,y:placed.y+arc*(index?-1:1)}
+      return {...placed,y:placed.y+arc*(motion === 'pan-up' ? -2 : index ? -1 : 1)}
     })
     time -= phase.duration
   }
@@ -344,7 +346,7 @@ function drawFeatureOpening(ctx: CanvasRenderingContext2D, study: FeatureStudy, 
   })
   const eyeToLip = Math.max(420, ...photos.map((photo, index) => alignment[index].gap * photo.image.height * cardWidth / photo.image.width))
   const pair = photos.map((_, index) => ({ x: inset + index * (cardWidth + gap), y, width: cardWidth, height }))
-  const frames = comparisonFrames(comparisonClock.timeMs, comparisonClock.durationMs, reduced, pair, { x: 0, y, width, height: videoSize.height - y })
+  const frames = comparisonFrames(comparisonClock.timeMs, comparisonClock.durationMs, reduced, pair, { x: 0, y, width, height: videoSize.height - y }, study.motion)
   const expansion = Math.max(...frames.map(frame => (frame.width - cardWidth) / (width - cardWidth)))
   photos.forEach((photo, index) => {
     const { x, y, width: cardWidth, height } = frames[index]
@@ -510,6 +512,9 @@ export function drawFeatureStudy(ctx: CanvasRenderingContext2D, study: FeatureSt
   const prior = comparisonClock.previousFrame ? [comparisonClock.previousFrame] : comparing && (!previous || previous.layout === 'compare') ? frames : featureFrames(previous?.layout ?? study.layout)
   const progress = reduced ? 1 : smoothMotion(localMs / 560)
   const textureEdit = study.editMode === 'photo'
+  const wipe = study.comparison==='wipe'
+  const wipeProgress = featureWipeProgress(comparisonClock.timeMs,comparisonClock.durationMs,reduced)
+  const continuedWipe = wipe && comparisonClock.timeMs>localMs
   const count = Math.max(frames.length, prior.length)
   let primary: Frame | undefined
   for (let index = 0; index < count; index++) {
@@ -521,9 +526,9 @@ export function drawFeatureStudy(ctx: CanvasRenderingContext2D, study: FeatureSt
     let after = featurePlacement(item, index >= frames.length ? 'hero' : study.layout, target, study.topic, index===0?focusFor(activity?.focus):undefined)
     if (index === 0 && !reduced) {
       before = featureCameraFrame(before, previous?.motion, 1)
-      after = featureCameraFrame(after, study.motion, localMs / _durationMs)
+      after = featureCameraFrame(after, study.motion, wipe ? comparisonClock.timeMs/comparisonClock.durationMs : localMs/_durationMs)
     }
-    const placement = comparing && (!previous || previous.layout === 'compare') ? after : featureFrameAt(before, after, localMs, reduced)
+    const placement = continuedWipe || comparing && (!previous || previous.layout === 'compare') ? after : featureFrameAt(before, after, localMs, reduced)
     if (index === 0) primary = placement
     const initialEdit = previous ? editForCell(previous, index) : 0
     const development = reduced || study.comparison === 'wipe' || textureEdit && study.layout === 'compare' ? 1 : smoothMotion(localMs / Math.max(700, _durationMs * .78))
@@ -552,7 +557,7 @@ export function drawFeatureStudy(ctx: CanvasRenderingContext2D, study: FeatureSt
       drawBackgroundRoll(ctx,item.image.width,item.image.height,Math.max(comparisonClock.matteProgress ?? 0,comparing ? expansion : Math.max(expansion,progress)),target=>drawEdit(target,true),target=>drawEdit(target))
     } else if (study.comparison === 'wipe' && edit) {
       ctx.drawImage(item.image, 0, 0)
-      const reveal = study.editorial && reduced ? 1 : featureWipeProgress(localMs, _durationMs, reduced)
+      const reveal = study.editorial && reduced ? 1 : wipeProgress
       if (study.editorial && typeof document !== 'undefined') {
         drawEditorialFeatheredReveal(ctx, item.image.width, item.image.height, reveal, drawEdit)
       } else {
@@ -603,14 +608,12 @@ export function drawFeatureStudy(ctx: CanvasRenderingContext2D, study: FeatureSt
     fade.addColorStop(0, '#ffffff00'); fade.addColorStop(1, '#fff')
     ctx.fillStyle = fade; ctx.fillRect(0, videoSize.height - 330, videoSize.width, 330); ctx.restore()
   }
-  if (study.editorial && study.comparison === 'wipe' && study.edit && !reduced && !instrument) {
-    const amount = featureWipeProgress(localMs, _durationMs)
-    if (amount > 0 && amount < 1) {
-      ctx.save()
-      ctx.globalAlpha *= Math.min(1, amount * 8, (1 - amount) * 8)
-      drawEditorialRevealRail(ctx, { x: videoSize.width / 2, y: videoSize.height * .76 }, amount)
-      ctx.restore()
-    }
+  if (study.editorial && study.comparison === 'wipe' && study.edit && !reduced && !comparing && primary) {
+    const amount = wipeProgress
+    const frame = featureClipFrame(study.layout,frames[0])
+    const focus = photo.landmarks ? featureTarget(photo.landmarks,study.topic).center : {y:.48}
+    const y=Math.min(frame.y+frame.height-160,Math.max(videoSize.height*.30,primary.y+primary.height*focus.y))
+    drawEditorialWipeHandle(ctx,{x:frame.x,y:frame.y,w:frame.width,h:frame.height*.89},primary.x+primary.width*amount,y,amount)
   }
   const reference = variants[1]
   if (cursorDetail && reference && reference.landmarks && photo.landmarks && primary) {
@@ -645,7 +648,8 @@ export function drawFeatureStudy(ctx: CanvasRenderingContext2D, study: FeatureSt
 export function featureCameraFrame(frame: Frame, motion: FeatureStudy['motion'], progress: number): Frame {
   const t = smoothMotion(progress)
   const pan = motion === 'pan-left' ? -1 : motion === 'pan-right' ? 1 : 0
-  const scale = motion === 'push' ? 1 + .065 * t : motion === 'pull' ? 1 + .065 * (1 - t) : pan ? 1.055 : 1
-  return { x: frame.x - frame.width * (scale - 1) / 2 + pan * frame.width * .02 * (2 * t - 1), y: frame.y - frame.height * (scale - 1) / 2, width: frame.width * scale, height: frame.height * scale }
+  const vertical = motion === 'pan-up' ? -frame.height * .02 * (2 * t - 1) : 0
+  const scale = motion === 'push' ? 1 + .065 * t : motion === 'pull' ? 1 + .065 * (1 - t) : pan || motion === 'pan-up' ? 1.055 : 1
+  return { x: frame.x - frame.width * (scale - 1) / 2 + pan * frame.width * .02 * (2 * t - 1), y: frame.y - frame.height * (scale - 1) / 2 + vertical, width: frame.width * scale, height: frame.height * scale }
 }
 

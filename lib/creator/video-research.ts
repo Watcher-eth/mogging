@@ -1,5 +1,6 @@
 import { creatorStudies, type StudyBinding } from './creator-studies'
 import { sceneSpeechWords, scriptTokens } from './video-script'
+import { originalVideoContext } from './video-theme'
 import { smoothMotion } from './video-layout'
 import type { VideoComposition } from './video-composition'
 
@@ -32,5 +33,23 @@ export function drawStudyCard(ctx:CanvasRenderingContext2D,binding:StudyBinding,
 }
 export function drawScientificEvidence(ctx:CanvasRenderingContext2D,composition:VideoComposition,timeMs:number,reduced=false,top=580){
   const evidence=scientificEvidenceAt(composition,timeMs);if(!evidence)return
-  drawStudyCard(ctx,evidence.binding,timeMs-evidence.startMs,evidence.endMs-timeMs,reduced,top)
+  const elapsed=timeMs-evidence.startMs,remaining=evidence.endMs-timeMs
+  if(!['editorial-story','feature-study'].includes(composition.recipe)) {
+    drawStudyCard(ctx,evidence.binding,elapsed,remaining,reduced,top);return
+  }
+  const study=creatorStudies[evidence.binding.studyId],enter=reduced?1:smoothMotion(elapsed/420)
+  ctx=originalVideoContext(ctx)
+  ctx.save()
+  ctx.globalAlpha*=enter*(reduced?1:smoothMotion(remaining/260))
+  const x=128,y=top+870+14*(1-enter),w=494,h=126
+  const glass=ctx.createLinearGradient(x,y,x+w,y+h)
+  glass.addColorStop(0,'#343434e8');glass.addColorStop(1,'#191919df')
+  ctx.fillStyle=glass;ctx.strokeStyle='#ffffff74';ctx.lineWidth=1.5
+  ctx.beginPath();ctx.roundRect(x,y,w,h,24);ctx.fill();ctx.stroke()
+  ctx.textAlign='left';ctx.textBaseline='alphabetic'
+  ctx.fillStyle='#ffffffa8';ctx.font='500 21px Arial';ctx.fillText(`${study.authors} · ${study.year}`,x+19,y+30,w-63)
+  ctx.fillStyle='#fff';ctx.font='500 27px Arial';ctx.fillText(study.title,x+19,y+67,w-38)
+  ctx.fillStyle='#ffffffaa';ctx.font='400 19px Arial';ctx.fillText(study.journal,x+19,y+103,w-38)
+  ctx.strokeStyle='#ffffffb0';ctx.beginPath();ctx.roundRect(x+w-40,y+18,14,17,3);ctx.roundRect(x+w-36,y+22,14,17,3);ctx.stroke()
+  ctx.restore()
 }

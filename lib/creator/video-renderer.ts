@@ -6,7 +6,7 @@ import type { SculptureRenderer } from './sculpture-renderer'
 import { loadContextVideo, seekContextVideo, releaseContextVideo } from './context-video'
 import { decodeVisualBeat } from './video-semantics'
 import { prepareEditorialCursors } from './editorial-cursor'
-import { renderEditorialScene, editorialSceneClock, editorialWordEvents, type EditorialPhoto } from './editorial-scenes'
+import { renderEditorialScene, editorialSceneClock, sharesEditorialCue, editorialWordEvents, editorialSharedPose, hasEditorialPortraitPose, registeredEditorialEvidence, type EditorialPhoto } from './editorial-scenes'
 import { drawVideoTextMorph } from './video-pill-morph'
 import { studyTimelineMotion, studyTimelineVariant } from './mobile-face-study-motion'
 import { drawReportOverlay } from './report-overlay'
@@ -282,8 +282,11 @@ export async function prepareVideo(compositionValue: VideoComposition, images: G
       asset.metricStartMs = scenes.get(previousScene.id)?.metricStartMs ?? previousScene.startMs
     }
     if (scene.presentation && source) {
-      asset.presentationPhotos = [await featurePhoto(source.id), ...await Promise.all(scene.presentation.imageIds.map(id =>
-        ['device','document-lift','reference-hinge'].includes(scene.presentation!.kind) ? Promise.resolve({ image: decoded.get(id)! }) : featurePhoto(id)))]
+      asset.presentationPhotos = [await featurePhoto(source.id), ...await Promise.all(scene.presentation.imageIds.map(async id => {
+        if (['device', 'document-lift', 'reference-hinge'].includes(scene.presentation!.kind)) return { image: decoded.get(id)! }
+        const label = /three-quarter/.test(id) ? 'Three-quarter' : /profile/.test(id) ? 'Profile' : undefined
+        return { ...await featurePhoto(id), label }
+      }))]
     }
     scenes.set(scene.id, asset)
     asset.portraitSourceRect = portrait?.sourceRect
@@ -577,6 +580,28 @@ function studyEdgeColors(prepared: PreparedVideo, scene: VideoScene, previous: V
   }
 }
 
+function sharesEditorialPortrait(previous: VideoScene | undefined, next: VideoScene | undefined) {
+  return Boolean(previous && next && previous.source.imageId && previous.source.imageId === next.source.imageId &&
+    hasEditorialPortraitPose(previous.presentation) && hasEditorialPortraitPose(next.presentation))
+}
+
+function editorialPlayback(prepared: PreparedVideo, scene: VideoScene, localMs: number) {
+  const photos = prepared.scenes.get(scene.id)?.presentationPhotos
+  if (!scene.presentation || !photos?.[0]) return
+  const clock = editorialSceneClock(prepared.composition.scenes, scene, localMs)
+  const cueStart = scene.startMs + localMs - clock.time
+  const words = scene.presentation.beats ? prepared.composition.scenes
+    .filter(candidate => candidate.startMs >= cueStart && candidate.startMs < cueStart + clock.duration)
+    .flatMap(candidate => sceneSpeechWords(candidate).map(word => ({ text: word.text, startMs: candidate.startMs + word.startMs - cueStart }))) : []
+  const events = editorialWordEvents(scene.presentation.beats, words)
+  const media = prepared.composition.media?.find(asset => asset.id === scene.presentation?.mediaId)
+  const presentation = media ? { ...scene.presentation, assetCaption: scene.presentation.assetCaption ?? media.source.author } : scene.presentation
+  return {
+    presentation, primary: photos[0], references: photos.slice(1), clock, cueStart, events,
+    feature: presentation.feature ?? decodeVisualBeat(scene.narration).feature,
+  }
+}
+
 export function drawVideoFrame(ctx: CanvasRenderingContext2D, prepared: PreparedVideo, timeMs: number, width: number, height: number, reducedMotion = false, inspect?: (element: CanvasElement) => void) {
   if (prepared.documentary) return prepared.documentary.draw(ctx, Math.max(0, Math.min(prepared.composition.durationMs - .001, timeMs)), width, height, reducedMotion)
   const { composition } = prepared
@@ -603,8 +628,9 @@ export function drawVideoFrame(ctx: CanvasRenderingContext2D, prepared: Prepared
     return;
   }
   const incoming = prepared.incoming.getContext('2d')!
-  const transition = scene.featureStudy || prepared.scenes.get(scene.id)?.continuousReport ? undefined : scene.tracks.find(track => track.target === 'content' && primitiveDefinition(track.primitive).category === 'transition' && localMs >= track.startMs && localMs < track.startMs + track.durationMs)
   const previous = composition.scenes[index - 1]
+  const samePresentation = sharesEditorialCue(scene,previous)
+  const transition = scene.featureStudy || samePresentation || sharesEditorialPortrait(previous, scene) || prepared.scenes.get(scene.id)?.continuousReport ? undefined : scene.tracks.find(track => track.target === 'content' && primitiveDefinition(track.primitive).category === 'transition' && localMs >= track.startMs && localMs < track.startMs + track.durationMs)
   // A guide uses one registered portrait. Paint it directly at the export
   // resolution to avoid rasterizing and downsampling a full Creator Studio frame.
   if (composition.privateStudy && (!previous || previous.source.imageId === scene.source.imageId)) {
@@ -616,7 +642,10 @@ export function drawVideoFrame(ctx: CanvasRenderingContext2D, prepared: Prepared
   const continuousPortrait = Boolean(imageId && imageId === sharedImageId(prepared, previous))
   const linearTransition = transition && linearPortraitTransitions.has(transition.primitive)
   const shared = !composition.privateStudy && !reducedMotion && previous && !previous.presentation && !scene.presentation && (graphicMorph || linearTransition && continuousPortrait || transition && ['cinematic-flow', 'transition-panel'].includes(transition.primitive) && previous.source.imageId === scene.source.imageId && (hasCaption(previous) || hasCaption(scene)) && (prepared.scenes.get(previous.id)?.portrait || prepared.scenes.get(scene.id)?.portrait))
-  const stationary = Boolean(!composition.privateStudy && !shared && transition && previous && !reducedMotion && transition.primitive !== 'hard-cut' && stationarySceneChrome(previous,scene) && ['cinematic-flow','transition-panel','crossfade','focus-cut','luma-cut','match-reframe','layout-morph','screen-push','wipe-left','wipe-right','wipe-up','card-reveal'].includes(transition.primitive))
+  const registeredHandoff = continuousPortrait &&
+    registeredEditorialEvidence(previous?.presentation?.kind) &&
+    registeredEditorialEvidence(scene.presentation?.kind)
+  const stationary = Boolean(!composition.privateStudy && !shared && transition && previous && !reducedMotion && transition.primitive !== 'hard-cut' && stationarySceneChrome(previous,scene) && (registeredHandoff || ['cinematic-flow','transition-panel','crossfade','focus-cut','luma-cut','match-reframe','layout-morph','screen-push','wipe-left','wipe-right','wipe-up','card-reveal'].includes(transition.primitive)))
   const featureHandoff = !reducedMotion && previous?.featureStudy && scene.featureStudy && localMs < 560 && stationarySceneChrome(previous,scene) ? {previous,next:scene,time:localMs,progress:sharedElementMotion(localMs/560)} : undefined
   if (shared) drawSharedElements(incoming, prepared, previous, scene, progress(transition!, localMs, false), localMs, inspect)
   else {
@@ -639,7 +668,7 @@ export function drawVideoFrame(ctx: CanvasRenderingContext2D, prepared: Prepared
       outgoingSceneCache.set(prepared, `${previous.id}:${stationary}`)
     }
     const amount = progress(transition, localMs, false)
-    if (composition.privateStudy) {
+    if (composition.privateStudy || registeredHandoff) {
       ctx.drawImage(prepared.outgoing, 0, 0)
       ctx.globalAlpha = smoothMotion(amount)
       ctx.drawImage(prepared.incoming, 0, 0)
@@ -859,18 +888,28 @@ function renderScene(ctx: CanvasRenderingContext2D, prepared: PreparedVideo, sce
   applyTracks(ctx, scene.tracks.filter(track => track.target === 'content' && primitiveDefinition(track.primitive).category !== 'transition'), localMs, reduced)
   ctx.save()
   const frame = sceneFrame(scene, localMs, asset.initialFrame, reduced)
-  if (scene.presentation && asset.presentationPhotos?.[0]) {
-    const clock = editorialSceneClock(prepared.composition.scenes,scene,localMs)
-    const cueStart=scene.startMs+localMs-clock.time
-    const words=prepared.composition.scenes.filter(candidate=>candidate.startMs>=cueStart && candidate.startMs<cueStart+clock.duration).flatMap(candidate=>sceneSpeechWords(candidate).map(word=>({text:word.text,startMs:candidate.startMs+word.startMs-cueStart})))
-    const events=scene.presentation.beats?editorialWordEvents(scene.presentation.beats,words):undefined
-    const media=prepared.composition.media?.find(asset=>asset.id===scene.presentation?.mediaId)
-    const presentation=media?{...scene.presentation,assetCaption:scene.presentation.assetCaption??media.source.author}:scene.presentation
-    renderEditorialScene(ctx, presentation, scene.presentation.feature ?? decodeVisualBeat(scene.narration).feature, asset.presentationPhotos[0], asset.presentationPhotos.slice(1), { width: W, height: H }, clock.time, clock.duration, reduced, events)
+  const editorial = editorialPlayback(prepared, scene, localMs)
+  if (editorial) {
+    const transitionMs = 420
+    const size = { width: W, height: H }
+    const cueEnd = editorial.cueStart + editorial.clock.duration
+    const previous = editorial.cueStart > 0 ? activeScene(prepared.composition, editorial.cueStart - .001) : undefined
+    const next = cueEnd + .001 < prepared.composition.durationMs ? activeScene(prepared.composition, cueEnd + .001) : undefined
+    // The same camera interpolator spans the entire incoming cue, including its caption fragments.
+    const incoming = !reduced && editorial.clock.time < transitionMs && previous && sharesEditorialPortrait(previous, scene)
+      ? editorialPlayback(prepared, previous, previous.durationMs) : undefined
+    const from = incoming && editorialSharedPose(incoming.presentation, incoming.feature, incoming.primary,
+      incoming.references, size, incoming.clock.time, incoming.clock.duration, incoming.events)
+    const hold = !reduced && sharesEditorialPortrait(scene, next)
+    renderEditorialScene(ctx, editorial.presentation, editorial.feature, editorial.primary, editorial.references, size,
+      editorial.clock.time, editorial.clock.duration, reduced, editorial.events, { from, amount: editorial.clock.time / transitionMs, hold })
   } else if (scene.featureStudy && asset.portrait) {
     const previous = prepared.composition.scenes[prepared.composition.scenes.indexOf(scene) - 1]
     const revealWord = scene.featureStudy.revealWord
-    const comparisonClock = revealWord === undefined ? undefined : { timeMs: localMs, durationMs: scene.durationMs, revealMs: sceneWordStart(scene, revealWord) }
+    const clock = scene.featureStudy.comparison==='wipe' && !scene.featureStudy.opening && revealWord===undefined
+      ? editorialSceneClock(prepared.composition.scenes,scene,localMs,'featureStudy') : undefined
+    const comparisonClock = clock ? {timeMs:clock.time,durationMs:clock.duration}
+      : revealWord === undefined ? undefined : { timeMs: localMs, durationMs: scene.durationMs, revealMs: sceneWordStart(scene, revealWord) }
     drawFeatureStudy(ctx, scene.featureStudy, { image: asset.portrait, landmarks: asset.studyLandmarks, headTop: asset.portraitHeadTop }, asset.featurePhotos ?? [], localMs, scene.durationMs, reduced, previous?.source.imageId === scene.source.imageId ? previous.featureStudy : undefined, activity, scene.portraitFX?.instrument, localMs, undefined, comparisonClock)
   } else if (scene.source.kind === 'explainer') {
     const previous = prepared.composition.scenes[prepared.composition.scenes.findIndex(item => item.id === scene.id) - 1]

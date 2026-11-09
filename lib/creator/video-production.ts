@@ -1,5 +1,5 @@
 import { cephraWritingBrief, planSculptureScenes } from './cephra-study'
-import { referenceEditorialBrief, referenceEditorialDirection } from './editorial-planning'
+import { referenceEditorialBrief, referenceEditorialDirection, referenceFeatureStack, referencePortraitMotion } from './editorial-planning'
 import { scientificWritingBrief } from './creator-studies'
 import { compileDocumentaryVideo } from './video-documentary-plan'
 import { narratedNoseChange } from './video-nose-change'
@@ -135,6 +135,31 @@ export function compileProductionVideo(script: VideoScript, input: AnalysisPostI
     // Preserve the authored portrait and its registered guides for the closing invitation.
     return { ...shot, direction: isVideoInvitation(shot.cue) && !authoredDirections[shot.id]?.closingReport ? { kind: 'portrait' as const, imageId: direction.imageId ?? images[0]?.id, categoryId: direction.categoryId, focus: 'hero', editorial: 'context' as const, ...(direction.portraitProgram ? { portraitProgram: direction.portraitProgram } : {}), ...(direction.profileStudy ? { profileStudy: direction.profileStudy } : {}) } : direction }
   })
+  if (qoves) for (let first=0;first<shots.length;) {
+    let end=first+1
+    while (end<shots.length && shots[end].cue===shots[first].cue) end++
+    const group=shots.slice(first,end)
+    const photo=group[0].direction.imageId
+    const cue=group[0].cue, source=images.find(image=>image.id===photo)
+    const previousKinds=shots.slice(Math.max(0,first-4),first).flatMap(shot=>shot.direction.presentation?.kind??[])
+    if (source && !source.retouch && !/profile/.test(source.id) && sectionDurationMs(cue)>2200 && group.every(({direction,id})=>
+      direction.kind==='portrait' && direction.imageId===photo && !authoredDirections[id]?.presentation &&
+      !authoredDirections[id]?.portraitCrop && !direction.portraitCrop && !direction.scoreCallouts?.length && !direction.photoStudy && !direction.study &&
+      !direction.profileStudy && !direction.portraitFX?.lighting &&
+      !direction.featureStudy?.edit && !direction.featureStudy?.opening &&
+      !['compare','grid','evidence'].includes(direction.featureStudy?.layout??'') &&
+      (!direction.presentation || !['reference-flip','reference-hinge','research','claim','spotlight-sheet','context-triptych','portrait-radar'].includes(direction.presentation.kind)))) {
+      const named=group.find(shot=>shot.beat.feature!=='whole')?.beat.feature??'whole'
+      const list=group.length>1 && group.every(shot=>shot.direction.presentation) ? referenceFeatureStack(cue.text,variant) : undefined
+      const motion = referencePortraitMotion(cue.text, named, variant, previousKinds)
+      const chapter = variant % 3 === 1 ? list ?? motion : motion ?? list
+      if(chapter) for (const shot of group) {
+        shot.direction={...shot.direction,presentation:chapter,featureStudy:undefined,portraitProgram:undefined,portraitFX:undefined,overlay:'none'}
+        shot.decision.reason+=` Continuous cue: ${chapter.kind}.`
+      }
+    }
+    first=end
+  }
   const assetIds = new Set(images.map(image => image.id))
   for (const direction of Object.values(authoredDirections)) {
     for (const id of [direction.imageId, ...(direction.featureStudy?.images ?? []), ...(direction.presentation?.imageIds ?? [])]) if (id && !assetIds.has(id)) throw new Error(`Authored visual references a missing image: ${id}`)

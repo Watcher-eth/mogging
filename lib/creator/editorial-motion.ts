@@ -142,30 +142,23 @@ export function drawEditorialLeader(ctx: CanvasRenderingContext2D, from: Point, 
   ctx.stroke()
 }
 
-/** An unnumbered rail tracks a visual reveal without implying a measurement. */
-export function drawEditorialRevealRail(ctx: CanvasRenderingContext2D, center: Point, progress: number) {
-  const width = 240
-  const left = center.x - width / 2
-  const cursor = left + clamp(progress) * width
+/** The handle follows the actual projected edit boundary, not a second progress bar. */
+export function drawEditorialWipeHandle(ctx:CanvasRenderingContext2D, frame:Frame, edge:number, y:number, progress:number) {
+  const opacity=Math.min(1,progress*9,(1-progress)*9)
+  if(opacity<=0 || edge<frame.x+26 || edge>frame.x+frame.w-26)return
   ctx.save()
-  ctx.lineCap = 'round'
-  ctx.lineWidth = 2
-  ctx.strokeStyle = 'rgba(41,50,59,.4)'
-  ctx.beginPath()
-  for (let index = 0; index <= 16; index++) {
-    const x = left + width * index / 16
-    const height = index % 4 === 0 ? 13 : 6
-    ctx.moveTo(x, center.y - height / 2)
-    ctx.lineTo(x, center.y + height / 2)
+  ctx.globalAlpha*=opacity
+  const fade=ctx.createLinearGradient(edge,frame.y,edge,frame.y+frame.h)
+  fade.addColorStop(0,'#ffffff00');fade.addColorStop(.26,'#ffffffd9')
+  fade.addColorStop(.78,'#ffffffd9');fade.addColorStop(1,'#ffffff00')
+  ctx.strokeStyle=fade;ctx.lineWidth=3.1
+  ctx.beginPath();ctx.moveTo(edge,frame.y);ctx.lineTo(edge,frame.y+frame.h);ctx.stroke()
+  ctx.fillStyle='#fffffff0';ctx.beginPath();ctx.roundRect(edge-29,y-17,58,34,17);ctx.fill()
+  ctx.strokeStyle='#5e5552';ctx.lineWidth=2;ctx.lineCap='round';ctx.lineJoin='round';ctx.beginPath()
+  for(const sign of [-1,1]){
+    ctx.moveTo(edge+7*sign,y-5);ctx.lineTo(edge+12*sign,y);ctx.lineTo(edge+7*sign,y+5)
   }
-  ctx.stroke()
-  ctx.strokeStyle = '#303942'
-  ctx.lineWidth = 4
-  ctx.beginPath()
-  ctx.moveTo(cursor, center.y - 13)
-  ctx.lineTo(cursor, center.y + 13)
-  ctx.stroke()
-  ctx.restore()
+  ctx.stroke();ctx.restore()
 }
 
 /** Short strokes follow the local direction of a detected contour. */

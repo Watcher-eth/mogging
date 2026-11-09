@@ -1,9 +1,10 @@
 import {editorialCursorTiming,sampleEditorialCursor} from './editorial-cursor'
 import { expect, test } from 'bun:test'
-import { planEditorialPresentation } from './editorial-planning'
+import { planEditorialPresentation, referenceEditorialDirection, referenceFeatureStack, referencePortraitMotion } from './editorial-planning'
 import vStory from '../../public/creator/stories/v/story.json'
 import type { FaceLandmarksPayload } from '@/lib/analysis/landmarks'
-import { editorialFeatureGeometry, editorialSceneClock, editorialMicroLabel, editorialPresentationSchema, editorialWordEvents, editorialTileFrames } from './editorial-scenes'
+import { mixEditorialPose } from './editorial-layout'
+import { editorialSharedPose, editorialFeatureGeometry, editorialSceneClock, editorialMicroLabel, editorialPresentationSchema, editorialWordEvents, editorialTileFrames } from './editorial-scenes'
 import { compileProductionVideo } from './video-production'
 import { createFeatureStudyDraft } from './feature-study-script'
 import { creatorSubjects, creatorSubjectPhotos } from './creator-catalog'
@@ -52,6 +53,41 @@ test('automatic treatments follow narration and leave score delivery and clean v
   expect(editorialMicroLabel('Brow shape',0,2,true)).toBe('Brow shape')
 })
 
+test('the brow reference routes alternate treatments to their actual spoken evidence', () => {
+  const text='On a phone, look at the brows: the lower shape looks intense, then calm in this illustration.'
+  const planned=Array.from({length:36},(_,variation)=>referencePortraitMotion(text,'brows',variation)!)
+  const byKind=new Map(planned.map(p=>[p.kind,p]))
+  expect([...byKind.keys()].sort()).toEqual(['animated-cutaway','expression-rail','face-window','glass-phone','ink-pan','reaction-fountain'])
+  const speech=text.split(' ').map((word,i)=>({text:word,startMs:i*100}))
+  expect(editorialWordEvents(byKind.get('glass-phone')!.beats,speech)[0]?.atMs).toBe(0)
+  expect(editorialWordEvents(byKind.get('reaction-fountain')!.beats,speech).map(event=>event.label)).toEqual(['Intense','Calm'])
+  const tracking = 'Follow the brows across the eye line.'
+  const timeline = [0, 1, 2, 3].map(variant => referencePortraitMotion(tracking, 'brows', variant))
+    .find(presentation => presentation?.kind === 'dash-timeline')
+  expect(timeline?.beats?.[0]).toMatchObject({ feature: 'brows', anchor: 'across' })
+  expect(referencePortraitMotion('The brow scores eight out of ten.','brows',0)).toBeUndefined()
+})
+
+test('a contact sheet can hand the same portrait crop to a tracking guide', () => {
+  const image = { width: 900, height: 1600 } as HTMLImageElement
+  const photo = { image, landmarks: vStory.images[0].landmarks as FaceLandmarksPayload }
+  const size = { width: 900, height: 1600 }
+  const cue = [{ feature: 'brows', atMs: 200 }] as const
+  const sheet = editorialPresentationSchema.parse({ kind: 'spotlight-sheet' })
+  const trace = editorialPresentationSchema.parse({ kind: 'dash-timeline' })
+  const from = editorialSharedPose(sheet, 'brows', photo, [photo, photo], size, 2000, 2000, [...cue])!
+  const to = editorialSharedPose(trace, 'brows', photo, [], size, 600, 2000, [...cue])!
+  expect(from.frame.width).toBeLessThan(to.frame.width)
+  // Keep the clipped image fully covered at the seam and through the travel.
+  for (const progress of [0, .25, .5, .75, 1]) {
+    const { frame, image } = mixEditorialPose(from, to, progress)
+    expect(image.x).toBeLessThanOrEqual(frame.x + .001)
+    expect(image.y).toBeLessThanOrEqual(frame.y + .001)
+    expect(image.x + image.width).toBeGreaterThanOrEqual(frame.x + frame.width - .001)
+    expect(image.y + image.height).toBeGreaterThanOrEqual(frame.y + frame.height - .001)
+  }
+})
+
 test('registered scene primitives round-trip through composition parsing and retain reference assets', () => {
   const video = compile()
   const scene = video.scenes.find(scene => scene.source.kind==='portrait' && !scene.featureStudy?.edit && !scene.photoStudy && !scene.study && !scene.profileStudy && !scene.portraitFX)!
@@ -87,11 +123,30 @@ test('motion continues across adjacent recorded caption fragments but restarts f
 })
 
 test('visual arrivals follow exact spoken phrases, preserve pauses and omit an absent anchor', () => {
-  const beats=editorialPresentationSchema.parse({kind:'feature-tray',beats:[{feature:'brows',anchor:'the brows'},{feature:'lips',anchor:'lips'},{feature:'jaw',anchor:'the jaw'}]}).beats
-  const words=[{text:'First,',startMs:90},{text:'the',startMs:500},{text:'brows.',startMs:740},{text:'Then',startMs:2300},{text:'lips.',startMs:2900}]
-  expect(editorialWordEvents(beats,words)).toEqual([{feature:'brows',label:undefined,atMs:500},{feature:'lips',label:undefined,atMs:2900}])
+  const beats=editorialPresentationSchema.parse({kind:'feature-tray',beats:[{feature:'brows',anchor:'the brows'},{feature:'lips',anchor:'lips'},{feature:'jaw',anchor:'the jaw'},{feature:'lips',anchor:'lips'}]}).beats
+  const words=[{text:'First,',startMs:90},{text:'the',startMs:500},{text:'brows.',startMs:740},{text:'Then',startMs:2300},{text:'lips.',startMs:2900},{text:'Lips',startMs:3720}]
+  expect(editorialWordEvents(beats,words)).toEqual([{feature:'brows',label:undefined,atMs:500},{feature:'lips',label:undefined,atMs:2900},{feature:'lips',label:undefined,atMs:3720}])
 })
 
+test('feature chapters use ordered, distinct words and an angle flip requires the requested source', async()=>{
+  const chapter=referenceFeatureStack('The brows frame the eyes. The cheekbones taper into the jaw.',1)!
+  expect(chapter.kind).toBe('feature-stack')
+  expect(chapter.beats?.map(beat=>beat.feature)).toEqual(['brows','eyes','cheeks','jaw'])
+  expect(referenceFeatureStack('The brows frame the eyes. The cheekbones taper into the jaw.',0)).toBeUndefined()
+  expect(referenceFeatureStack('The edited brows frame the eyes, cheekbones and jaw.',1)).toBeUndefined()
+  expect(editorialPresentationSchema.safeParse({kind:'reference-flip'}).success).toBe(false)
+
+  const {decodeVisualBeat}=await import('./video-semantics')
+  const quote='The side profile makes the jaw contour easier to see.'
+  const cue=draft.cues.find(cue=>cue.section)!.section!
+  const front={...images[0],id:'subject-front'}, profile={...images[0],id:'subject-profile'}
+  const angled={...images[0],id:'subject-three-quarter'}
+  const direction={kind:'portrait' as const,imageId:front.id}
+  const plan=(seed:number,sources:typeof images)=>referenceEditorialDirection(direction,decodeVisualBeat(quote),cue,sources,seed)
+  const seed=Array.from({length:72},(_,seed)=>seed).find(seed=>plan(seed,[front,angled,profile]).presentation?.kind==='reference-flip')!
+  expect(plan(seed,[front,angled,profile]).presentation?.imageIds[0]).toBe(profile.id)
+  expect(plan(seed,[front,angled]).presentation?.kind).not.toBe('reference-flip')
+})
 test('comparison surfaces reserve caption and platform margins, including their label strip', () => {
   for(const count of [3,4]){
     const frames=editorialTileFrames(count,{width:1080,height:1920})
@@ -126,7 +181,7 @@ test('the Qoves editorial recipe reaches saved-story production without changing
   expect(creatorContentStyle('editorial-story').id).toBe('qoves')
   expect(creatorContentStyles.find(style=>style.id==='qoves')!.defaultRecipe).toBe('editorial-story')
   const brief=productionWritingBrief(saved.script).referenceEditorial
-  expect(brief.sources).toHaveLength(3)
+  expect(brief.sources.map(source=>source.id)).toContain('eye-window')
   expect(new Set(brief.structures.map(structure=>structure.id)).size).toBe(3)
 })
 
@@ -184,6 +239,8 @@ test('editorial sequencing balances treatments while preserving semantic and ass
     history.push(presentation.kind)
   }
   expect(new Set(history).size).toBeGreaterThanOrEqual(6)
+  expect(history).toContain('paired-detail')
+  expect(history).toContain('feature-aperture')
   expect(planEditorialPresentation('His jaw scores seven out of ten.','jaw',13,true,history)).toBeUndefined()
 })
 

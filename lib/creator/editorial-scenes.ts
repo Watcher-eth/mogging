@@ -1,4 +1,7 @@
-import { originalVideoContext } from './video-theme'
+import { drawEditorialPortraitMotion, editorialMotionLayout, portraitMotionKinds, portraitReactionStyles } from './editorial-portrait-motion'
+import { editorialBoard, editorialBoardKinds, drawEditorialBoard } from './editorial-boards'
+import { mixEditorialPose, type EditorialPortraitPose } from './editorial-layout'
+import { isDarkVideoContext, originalVideoContext } from './video-theme'
 import { z } from 'zod'
 import { diffSegments } from 'torph'
 import { visualFeatures } from './video-semantics'
@@ -8,9 +11,13 @@ import { editorialEase, drawEditorialTool } from './editorial-motion'
 import { sampleEditorialCursor, drawEditorialCursor, editorialCursorTiming } from './editorial-cursor'
 import type { FaceLandmarksPayload } from '@/lib/analysis/landmarks'
 
-export const editorialKinds = ['callout','network','card-morph','reference-inset','comparison','orbit','color-reveal','line-art','drafting','claim','research','device','domain','view-cone','feature-tray','cursor-tour','focus-grid','tile-expand','evidence-fan','swatch-strip','document-lift','reference-hinge','tool-sweep'] as const
+export const registeredEditorialEvidence = (kind?:string) =>
+  kind==='feature-aperture' || kind==='paired-detail' || kind==='feature-stack'
+
+export const editorialKinds = ['callout','network','card-morph','reference-inset','comparison','orbit','color-reveal','line-art','drafting','claim','research','device','domain','view-cone','feature-tray','cursor-tour','focus-grid','tile-expand','evidence-fan','swatch-strip','document-lift','reference-hinge','tool-sweep','feature-aperture','paired-detail','feature-stack','reference-flip',...portraitMotionKinds,...editorialBoardKinds] as const
 export const editorialPresentationSchema = z.object({
   kind:z.enum(editorialKinds), variant:z.number().int().min(0).max(5).default(0),
+  reactionStyle:z.enum(portraitReactionStyles).optional(),
   label:z.string().max(100).optional(), feature:z.enum(visualFeatures).optional(), imageIds:z.array(z.string().min(1).max(160)).max(96).default([]), referenceIndex:z.number().int().min(0).max(95).default(0), referenceMode:z.enum(['feature','asset']).optional(),
   claim:z.object({author:z.string().min(1).max(60),text:z.string().min(1).max(120),previousText:z.string().max(120).optional(),sourceUrl:z.url().refine(url=>/^https?:/.test(url)),reviewed:z.literal(true),avatarIndex:z.number().int().min(0).max(95).optional(),thought:z.boolean().default(false)}).strict().optional(),
   beats:z.array(z.object({feature:z.enum(visualFeatures),anchor:z.string().min(1).max(160),label:z.string().max(32).optional()}).strict()).max(5).optional(),
@@ -19,11 +26,13 @@ export const editorialPresentationSchema = z.object({
   selectedIndex:z.number().int().min(0).max(3).optional(),
   assetCaption:z.string().max(100).optional(),
   mediaId:z.string().min(1).max(160).optional(), mediaOffsetMs:z.number().min(0).max(180000).optional(), holdMediaAtMs:z.number().min(0).max(180000).optional(),
+  sampleColors:z.boolean().optional(),
   layers:z.array(z.enum(['tracks','links','labels'])).max(3).optional(),
   referenceCards:z.array(z.object({title:z.string().min(1).max(140),author:z.string().max(80),url:z.url().refine(url=>/^https?:/.test(url)),reviewed:z.literal(true),atMs:z.number().min(0).optional()}).strict()).max(5).optional(),
   studies:z.array(z.enum(['ward-2018','mogilski-welling-2018'])).max(2).optional(),
 }).strict().superRefine((value,ctx)=>{
-  if(value.mediaId && (value.kind!=='reference-hinge' || value.referenceIndex!==0))ctx.addIssue({code:'custom',message:'Context footage belongs to the primary hinged reference surface.'})
+  if(value.mediaId && (!['reference-hinge','glass-phone','animated-cutaway'].includes(value.kind) || value.referenceIndex!==0))ctx.addIssue({code:'custom',message:'Context footage needs a reference hinge, phone or cutaway.'})
+  if(value.kind==='reference-flip' && !value.imageIds[value.referenceIndex])ctx.addIssue({code:'custom',message:'A photo flip requires a second source image.'})
   if(value.kind==='claim'&&!value.claim)ctx.addIssue({code:'custom',message:'A claim carrier requires a reviewed attribution and source.'})
   if(value.kind==='research'&&!value.studies?.length&&!value.referenceCards?.length)ctx.addIssue({code:'custom',message:'A research stack requires curated study IDs.'})
 })
@@ -38,18 +47,24 @@ export type EditorialEvent={feature:typeof visualFeatures[number];atMs:number;la
 export function editorialWordEvents(beats:EditorialPresentation['beats'],words:Array<{text:string;startMs:number}>):EditorialEvent[]{
   const normalize=(value:string)=>value.toLowerCase().replace(/[^\p{L}\p{N}]/gu,'')
   const tokens=words.map(word=>normalize(word.text))
+  const nextOccurrence = new Map<string, number>()
   return (beats??[]).flatMap(beat=>{
     const phrase=beat.anchor.split(/\s+/).map(normalize).filter(Boolean)
-    const index=tokens.findIndex((_,i)=>phrase.length>0 && phrase.every((token,n)=>tokens[i+n]===token))
-    return index<0?[]:[{feature:beat.feature,label:beat.label,atMs:words[index].startMs}]
+    const key=phrase.join(' ')
+    const index=tokens.findIndex((_,i)=>i>=(nextOccurrence.get(key)??0) && phrase.length>0 && phrase.every((token,n)=>tokens[i+n]===token))
+    if(index<0)return []
+    nextOccurrence.set(key,index+phrase.length)
+    return [{feature:beat.feature,label:beat.label,atMs:words[index].startMs}]
   }).sort((a,b)=>a.atMs-b.atMs)
 }
-type EditorialCueScene={startMs:number;durationMs:number;source:{imageId?:string|null};scriptRange?:{cueId:string};presentation?:EditorialPresentation}
+type EditorialCueScene={startMs:number;durationMs:number;source:{imageId?:string|null};scriptRange?:{cueId:string};presentation?:EditorialPresentation;featureStudy?:unknown}
 
 /** Adjacent caption fragments share one motion clock; a later reuse starts fresh. */
-export function editorialSceneClock(scenes:EditorialCueScene[],scene:EditorialCueScene,localMs:number){
-  const index=scenes.indexOf(scene),key=JSON.stringify(scene.presentation)
-  const matches=(candidate:EditorialCueScene)=>Boolean(scene.scriptRange && candidate.scriptRange?.cueId===scene.scriptRange.cueId && candidate.source.imageId===scene.source.imageId && JSON.stringify(candidate.presentation)===key)
+export function sharesEditorialCue(scene:EditorialCueScene,candidate:EditorialCueScene|undefined,owner:'presentation'|'featureStudy'='presentation'){
+  return Boolean(scene.scriptRange && scene[owner] && candidate?.scriptRange?.cueId===scene.scriptRange.cueId && candidate.source.imageId===scene.source.imageId && JSON.stringify(candidate[owner])===JSON.stringify(scene[owner]))
+}
+export function editorialSceneClock(scenes:EditorialCueScene[],scene:EditorialCueScene,localMs:number,owner:'presentation'|'featureStudy'='presentation'){
+  const index=scenes.indexOf(scene),matches=(candidate:EditorialCueScene)=>sharesEditorialCue(scene,candidate,owner)
   let first=index,last=index
   while(first>0 && matches(scenes[first-1]))first--
   while(last+1<scenes.length && matches(scenes[last+1]))last++
@@ -130,6 +145,179 @@ function drawEditorialFeatureTour(ctx:CanvasRenderingContext2D,item:EditorialPho
   }
   drawEditorialCursor(ctx,cursor)
 
+}
+
+/** One photograph supplies every crop. The aperture never drifts away from its source pixels. */
+function drawEditorialEvidence(
+  ctx:CanvasRenderingContext2D, item:EditorialPhoto, size:{width:number;height:number},
+  time:number, duration:number, presentation:EditorialPresentation, reduced:boolean, events:EditorialEvent[],
+){
+  const {width:W,height:H}=size, v=presentation.variant
+  const targets=events.flatMap(event=>{
+    const geometry=editorialFeatureGeometry(item,event.feature)
+    return geometry?[{...event,geometry}]:[]
+  })
+  const scale=Math.max(W/item.image.width,H/item.image.height)
+  const offset=(W-item.image.width*scale)/2
+  const projected=targets.map(({geometry})=>({
+    x:offset+geometry.frame.x*scale,y:geometry.frame.y*scale,
+    width:geometry.frame.width*scale,height:geometry.frame.height*scale,
+  }))
+  const pair=presentation.kind==='paired-detail' && targets.length===2
+  const release=(i:number)=>targets[i+1] ? timing(i+1).clickAtMs : duration+160
+  const ending=reduced?1:editorialEase((duration-time)/(pair?135:245))
+  const timing=(i:number)=>editorialCursorTiming(targets[i].atMs,v,presentation.interaction,reduced)
+  const active=targets.findLastIndex((_,i)=>time>=timing(i).startMs)
+  for(const [i,event] of targets.entries()){
+    const frame=projected[i], click=timing(i).clickAtMs
+    const age=time-click
+    if(age<0 || (reduced && !pair && i<active))continue
+    const exit=pair||reduced?1:1-editorialEase((time-release(i)+160)/160)
+    const on=(reduced?1:editorialEase(age/(pair?260:370)))*ending*exit
+    if(on<=0)continue
+    ctx.save();ctx.globalAlpha*=on
+    if(pair){
+      const width=W*.35,height=H*.098
+      const dest={x:W*(i===0?.105:.485),y:H*(v%2?.725:.694),width,height}
+      const box={
+        x:mix(frame.x,dest.x,on),y:mix(frame.y,dest.y,on),
+        width:mix(frame.width,width,on),height:mix(frame.height,height,on),
+      }
+      paperSurface(ctx,{x:box.x-5,y:box.y-5,width:box.width+10,height:box.height+36},20)
+      photo(ctx,item,box,editorialInsetRegion(event.geometry.frame,item,width/height),15)
+      ctx.fillStyle='#555';ctx.font='500 21px Arial';ctx.textAlign='center'
+      ctx.fillText(event.label??labels[event.feature],box.x+box.width/2,box.y+box.height+22,box.width-10)
+    }else{
+      const height=Math.max(frame.height*1.45,H*.072)
+      const width=Math.max(frame.width*1.32,W*.22)
+      const box={
+        x:Math.max(3,Math.min(W-width-3,frame.x+(frame.width-width)/2)),
+        y:frame.y+(frame.height-height)/2,width,height,
+      }
+      const open=editorialEase(age/480)
+      const veil=ctx.createLinearGradient(0,box.y-height*.42,0,box.y+height*1.42)
+      const tint=v%2?'24,24,24':'250,250,250'
+      for(const [stop,alpha] of [[0,0],[.31,.28],[.69,.28],[1,0]])veil.addColorStop(stop,`rgba(${tint},${alpha})`)
+      ctx.save();ctx.fillStyle=veil
+      ctx.beginPath();ctx.rect(0,box.y-height*.42,W,height*1.84);ctx.roundRect(box.x,box.y,width,height,17);ctx.fill('evenodd');ctx.restore()
+      ctx.save();ctx.beginPath()
+      ctx.roundRect(box.x+(v%3===1?width*(1-open):0),box.y,width*open,height,17);ctx.clip()
+      ctx.strokeStyle='rgba(255,255,255,.82)';ctx.lineWidth=2
+      ctx.beginPath();ctx.roundRect(box.x+1,box.y+1,width-2,height-2,16);ctx.stroke();ctx.restore()
+      if(v%3===2 && event.geometry.paths.length){
+        const reveal=reduced?1:editorialEase((age-230)/280)
+        const plate={x:box.x+box.width*.12,y:box.y+box.height+15,width:Math.min(box.width*.76,W*.46),height:H*.058}
+        ctx.save();ctx.globalAlpha*=reveal
+        paperSurface(ctx,plate,20)
+        const bounds=event.geometry.frame
+        const scale=Math.min((plate.width-30)/bounds.width,(plate.height-22)/bounds.height)
+        const center={x:plate.x+plate.width/2,y:plate.y+plate.height/2}
+        ctx.strokeStyle='rgba(70,70,70,.78)';ctx.lineWidth=1.8;ctx.setLineDash([3,4])
+        for(const contour of event.geometry.paths)path(ctx,contour.map(point=>({
+          x:center.x+(point.x-bounds.x-bounds.width/2)*scale,
+          y:center.y+(point.y-bounds.y-bounds.height/2)*scale,
+        })),reveal)
+        ctx.restore()
+      }
+    }
+    if(i===active){
+      ctx.translate(offset,0);ctx.scale(scale,scale)
+      drawEditorialOverlaySet(ctx,item,event.feature,age,v,reduced,presentation.accents??['trace','brackets'])
+    }
+    ctx.restore()
+  }
+  if(active<0 || reduced)return
+  const frame=projected[active],target={x:frame.x+frame.width/2,y:frame.y+frame.height/2}
+  const from={x:target.x+W*(v%2?-.15:.15),y:target.y+H*.06}
+  drawEditorialCursor(ctx,sampleEditorialCursor(time,from,target,targets[active].atMs,v,presentation.interaction,reduced))
+}
+
+function drawEditorialFeatureStack(
+  ctx:CanvasRenderingContext2D,item:EditorialPhoto,size:{width:number;height:number},
+  time:number,duration:number,presentation:EditorialPresentation,reduced:boolean,events:EditorialEvent[],
+){
+  const {width:W,height:H}=size, v=presentation.variant
+  const scale=Math.max(W/item.image.width,H/item.image.height), offset=(W-item.image.width*scale)/2
+  const used=new Set<number>()
+  for(const [i,event] of events.entries()){
+    const g=editorialFeatureGeometry(item,event.feature)
+    if(!g)continue
+    const center={x:offset+(g.frame.x+g.frame.width/2)*scale,y:(g.frame.y+g.frame.height/2)*scale}
+    const side=(i+v)%2, w=W*.27,h=H*.038
+    const slots=Array.from({length:6},(_,slot)=>({
+      slot,x:W*(slot%2?.588:.067),y:H*(.32+Math.floor(slot/2)*.123),
+    })).filter(slot=>!used.has(slot.slot))
+    const cost=(slot:typeof slots[number])=>Math.abs(slot.y+h/2-center.y)+(slot.slot%2===side?0:H*.085)
+    const dest=slots.sort((a,b)=>cost(a)-cost(b))[0]
+    if(!dest)break
+    used.add(dest.slot)
+    const age=time-event.atMs
+    if(age<0)continue
+    const enter=reduced?1:editorialEase(age/340), opacity=enter*(reduced?1:editorialEase((duration-time)/240))
+    const right=dest.slot%2
+    const x=dest.x+(right?17:-17)*(1-enter), y=dest.y+10*(1-enter)
+    const join={x:right?x:x+w,y:y+h*.5}
+    const bend={x:join.x+(right?-22:22),y:join.y}
+    const candidates=g.points.map(point=>({x:offset+point.x*scale,y:point.y*scale}))
+    const distance=(point:Point)=>Math.hypot(point.x-bend.x,(point.y-bend.y)*.68)
+    const pin=candidates.reduce((nearest,point)=>distance(point)<distance(nearest)?point:nearest)
+    ctx.save();ctx.globalAlpha*=opacity
+    applyGlassInk(ctx,W/1080,1.8,'rgba(255,255,255,.86)')
+    ctx.setLineDash([2.5,4]);path(ctx,[pin,bend,join],reduced?1:editorialEase(age/260));ctx.setLineDash([])
+    const colors=presentation.sampleColors?editorialPhotoSwatches(item,event.feature):[]
+    ctx.fillStyle=colors[4]??'#fff';ctx.beginPath()
+    if(colors.length)ctx.roundRect(pin.x-8,pin.y-8,16,16,3)
+    else ctx.arc(pin.x,pin.y,3.5,0,Math.PI*2)
+    ctx.fill();if(colors.length)ctx.stroke()
+    ctx.shadowBlur=20;ctx.shadowColor='rgba(40,40,40,.18)'
+    ctx.fillStyle='rgba(33,33,35,.76)';ctx.strokeStyle='rgba(255,255,255,.50)';ctx.lineWidth=1
+    ctx.beginPath();ctx.roundRect(x,y,w,h,13);ctx.fill();ctx.stroke();ctx.shadowBlur=0
+    const glyph={x:x+w*.79,y:y+h*.52}
+    const diagramScale=Math.min((w*.28)/g.frame.width,(h*.45)/g.frame.height)
+    ctx.strokeStyle='rgba(255,255,255,.70)';ctx.lineWidth=1.3
+    if(colors.length)for(const [index,color] of [colors[1],colors[4],colors[7]].entries()){
+      ctx.fillStyle=color;ctx.beginPath();ctx.roundRect(glyph.x+(index-1)*19-7,glyph.y-7,14,14,3);ctx.fill();ctx.stroke()
+    }
+    else for(const contour of g.paths)path(ctx,contour.map(point=>({
+      x:glyph.x+(point.x-g.frame.x-g.frame.width/2)*diagramScale,
+      y:glyph.y+(point.y-g.frame.y-g.frame.height/2)*diagramScale,
+    })),reduced?1:editorialEase((age-120)/250))
+    ctx.fillStyle='#fff';ctx.font='500 20px Arial';ctx.textBaseline='middle'
+    ctx.fillText(event.label??labels[event.feature],x+17,y+h*.52,w*.59)
+    ctx.restore()
+  }
+}
+
+function drawEditorialReferenceFlip(
+  ctx:CanvasRenderingContext2D,primary:EditorialPhoto,alternate:EditorialPhoto,feature:typeof visualFeatures[number],
+  size:{width:number;height:number},time:number,variant:number,reduced:boolean,atMs:number|undefined,caption?:string,
+){
+  const {width:W,height:H}=size,w=W*.402,h=H*.37,y=H*.315
+  const a={x:W*.07,y,width:w,height:h},b={x:W*.497,y,width:w,height:h}
+  const g=editorialFeatureGeometry(primary,feature)
+  const detail=g&&editorialInsetRegion(g.frame,primary,w/h)
+  const settle=reduced?1:editorialEase(time/440)
+  const swing=atMs===undefined?0:reduced?Number(time>=atMs):editorialEase((time-atMs)/570)
+  const after=swing>=.5,turn=(after?1-swing:swing)*Math.PI
+  const sign=variant%2?-1:1
+  const label=(text:string,x:number)=>{
+    ctx.fillStyle='#636363';ctx.font='500 22px Arial';ctx.textAlign='center'
+    ctx.fillText(text,x+w/2,y+h+38,w)
+  }
+  ctx.save();ctx.globalAlpha*=settle;ctx.translate(0,18*(1-settle))
+  paperSurface(ctx,a,21);photo(ctx,primary,a,undefined,21)
+  label(primary.label??'Portrait',a.x)
+  ctx.save()
+  const squeeze=Math.max(.017,Math.cos(turn))
+  const anchor=b.x+w*(sign===1?0:1)
+  ctx.translate(anchor,y+h*.5);ctx.transform(squeeze,sign*Math.sin(turn)*.075,0,1,0,0)
+  ctx.translate(-anchor,-y-h*.5)
+  paperSurface(ctx,b,21);photo(ctx,after?alternate:primary,b,after?undefined:detail,21)
+  ctx.fillStyle=`rgba(45,45,45,${Math.sin(turn)*.15})`;ctx.beginPath();ctx.roundRect(b.x,b.y,w,h,21);ctx.fill()
+  ctx.restore()
+  if(swing<.44||swing>.56)label(after?caption??alternate.label??'Alternate view':detail?'Feature detail':'Same portrait',b.x)
+  if(after&&swing>.84)framedOverlays(ctx,alternate,b,undefined,feature,Math.max(0,time-(atMs??0)-480),variant,reduced,['trace'])
+  ctx.restore()
 }
 
 export function editorialTileFrames(count:number,size:{width:number;height:number},variant=0):EditorialFrame[]{
@@ -377,13 +565,99 @@ export function drawEditorialPerspective(ctx:CanvasRenderingContext2D,source:Edi
   const depth=Math.sin(yaw)*.22,cos=Math.max(.08,Math.cos(yaw)),n=24;ctx.save()
   for(let i=0;i<n;i++){const a=i/n,b=(i+1)/n,mid=(a+b)/2,s=1/(1+depth*(mid*2-1)),h=frame.height*s,x=frame.x+frame.width/2+(mid-.5)*frame.width*cos*s,w=frame.width*cos*s/n+1;ctx.drawImage(source,a*source.width,0,(b-a)*source.width,source.height,x-w/2,frame.y+(frame.height-h)/2,w,h)}ctx.restore()
 }
-export function renderEditorialScene(ctx:CanvasRenderingContext2D,presentation:EditorialPresentation,feature:typeof visualFeatures[number],primary:EditorialPhoto,references:EditorialPhoto[],size:{width:number;height:number},time:number,duration:number,reduced=false,events?:EditorialEvent[]){
+const registeredFullPortraitKinds: ReadonlySet<EditorialPresentation['kind']> = new Set(['callout', 'network', 'view-cone'])
+
+function fullPortraitPose(primary: EditorialPhoto, feature: typeof visualFeatures[number],
+  size: { width: number; height: number }, time: number, variant: number, reduced: boolean): EditorialPortraitPose {
+  const scale = Math.max(size.width / primary.image.width, size.height / primary.image.height)
+  const zoom = 1 + (variant % 3) * .1 * (reduced ? 1 : editorialEase(time / 800))
+  const region = editorialFeatureGeometry(primary, feature)?.frame
+  const centerX = region ? region.x + region.width / 2 : primary.image.width / 2
+  const centerY = region ? region.y + region.height / 2 : primary.image.height / 2
+  return {
+    frame: { x: 0, y: 0, ...size }, radius: 0,
+    image: { x: (size.width - primary.image.width * scale) / 2 - (zoom - 1) * centerX * scale,
+      y: -(zoom - 1) * centerY * scale, width: primary.image.width * scale * zoom, height: primary.image.height * scale * zoom },
+  }
+}
+
+type EditorialHandoff = { from?: EditorialPortraitPose; amount: number; hold: boolean }
+
+function isEditorialBoard(kind: EditorialPresentation['kind']): kind is typeof editorialBoardKinds[number] {
+  return editorialBoardKinds.some(candidate => candidate === kind)
+}
+
+function isSharedMotion(kind: EditorialPresentation['kind']): kind is typeof portraitMotionKinds[number] {
+  return portraitMotionKinds.some(candidate => candidate === kind) && kind !== 'animated-cutaway'
+}
+
+export function hasEditorialPortraitPose(presentation?: EditorialPresentation) {
+  return Boolean(presentation && !presentation.mediaId &&
+    (registeredFullPortraitKinds.has(presentation.kind) || isEditorialBoard(presentation.kind) || isSharedMotion(presentation.kind) && (presentation.kind !== 'glass-phone' || !presentation.imageIds.length)))
+}
+
+export function editorialSharedPose(
+  presentation: EditorialPresentation, feature: typeof visualFeatures[number], primary: EditorialPhoto, references: EditorialPhoto[],
+  size: { width: number; height: number }, time: number, duration: number, events: EditorialEvent[],
+) {
+  const { kind } = presentation
+  if (registeredFullPortraitKinds.has(kind)) return fullPortraitPose(primary, feature, size, time, presentation.variant, false)
+  if (isEditorialBoard(kind)) return editorialBoard(kind, presentation, primary, references, size, time, duration, events, false).main.pose
+  if (isSharedMotion(kind)) return editorialMotionLayout(kind, primary, editorialFeatureGeometry(primary, feature),
+    editorialFeatureGeometry(primary, 'whole'), size, time, duration, events[0]?.atMs ?? 0, presentation.variant, false,
+    feature === 'brows' || feature === 'eyes', true).pose
+}
+
+export function renderEditorialScene(ctx:CanvasRenderingContext2D,presentation:EditorialPresentation,feature:typeof visualFeatures[number],primary:EditorialPhoto,references:EditorialPhoto[],size:{width:number;height:number},time:number,duration:number,reduced=false,events?:EditorialEvent[],handoff?:EditorialHandoff){
+  const dark=isDarkVideoContext(ctx)
   ctx=originalVideoContext(ctx)
-  ctx.fillStyle='#fff';ctx.fillRect(0,0,size.width,size.height)
   const {width:W,height:H}=size,v=presentation.variant,t=reduced?1:editorialEase(time/760),hero={x:0,y:0,width:W,height:H},g=editorialFeatureGeometry(primary,feature),label=presentation.label??labels[feature],secondary=references[presentation.referenceIndex]
-  const sourceSpace=(draw:()=>void,item=primary)=>{const baseScale=Math.max(hero.width/item.image.width,hero.height/item.image.height),zoom=['callout','network','drafting','view-cone'].includes(presentation.kind)?1+(v%3)*.1*(reduced?1:editorialEase(time/800)):1,s=baseScale*zoom,c=editorialFeatureGeometry(item,feature)?.frame,x=(W-item.image.width*baseScale)/2-(zoom-1)*(c?c.x+c.width/2:item.image.width/2)*baseScale,y=hero.y-(zoom-1)*(c?c.y+c.height/2:item.image.height/2)*baseScale;ctx.save();ctx.translate(x,y);ctx.scale(s,s);draw();ctx.restore()}
-  const base=()=>sourceSpace(()=>ctx.drawImage(primary.image,0,0));ctx.save()
+  if (isEditorialBoard(presentation.kind)) {
+    const board = editorialBoard(presentation.kind, presentation, primary, references, size, time, duration, events ?? [], reduced)
+    const shared = handoff?.from && mixEditorialPose(handoff.from, board.main.pose, handoff.amount)
+    const exit = handoff?.hold && !reduced ? editorialEase((duration - time) / 250) : 1
+    board.emphasis *= exit
+    for (const item of board.items) item.alpha *= exit
+    drawEditorialBoard(ctx, board, size, dark, drawEditorialText, shared)
+    return
+  }
   switch(presentation.kind){
+    case 'ink-pan':case 'dash-timeline':case 'face-window':case 'glass-phone':case 'reaction-fountain':case 'expression-rail':case 'animated-cutaway':case 'feature-checklist':
+      drawEditorialPortraitMotion(ctx,presentation.kind,primary,g,editorialFeatureGeometry(primary,'whole'),secondary,size,time,duration,
+        events??[],v,label,reduced,drawEditorialText,presentation.assetCaption,dark,presentation.reactionStyle,feature==='brows'||feature==='eyes',
+        handoff?.from ? { from: handoff.from, amount: handoff.amount } : undefined, handoff?.hold)
+      return
+  }
+  const registeredFull = registeredFullPortraitKinds.has(presentation.kind)
+  ctx.fillStyle = registeredFull && handoff?.from ? (dark ? '#151515' : '#f5f4f3') : '#fff'
+  ctx.fillRect(0, 0, W, H)
+  const sourceSpace = (draw: () => void, item = primary) => {
+    const pose = fullPortraitPose(item, feature, size, time, registeredFull || presentation.kind === 'drafting' ? v : 0, reduced)
+    const shared = registeredFull && handoff?.from ? mixEditorialPose(handoff.from, pose, handoff.amount) : pose
+    const scale = shared.image.width / item.image.width
+    ctx.save()
+    if (registeredFull && handoff?.from) {
+      const { frame, radius } = shared
+      ctx.beginPath(); ctx.roundRect(frame.x, frame.y, frame.width, frame.height, radius); ctx.clip()
+    }
+    ctx.translate(shared.image.x, shared.image.y); ctx.scale(scale, scale)
+    draw()
+    ctx.restore()
+  }
+  const base=()=>sourceSpace(()=>ctx.drawImage(primary.image,0,0));ctx.save()
+  const guided = (draw: () => void) => {
+    ctx.save()
+    if (handoff?.hold && !reduced) ctx.globalAlpha *= editorialEase((duration - time) / 220)
+    sourceSpace(draw)
+    ctx.restore()
+  }
+  switch(presentation.kind){
+    case 'feature-stack':
+      base();drawEditorialFeatureStack(ctx,primary,size,time,duration,presentation,reduced,events??[]);break
+    case 'reference-flip':
+      if(secondary)drawEditorialReferenceFlip(ctx,primary,secondary,feature,size,time,v,reduced,events?.[0]?.atMs,presentation.assetCaption);else base();break
+    case 'feature-aperture':case 'paired-detail':
+      base();drawEditorialEvidence(ctx,primary,size,time,duration,presentation,reduced,events??[]);break
     case 'feature-tray':case 'cursor-tour':
       base();drawEditorialFeatureTour(ctx,primary,size,time,duration,v,reduced,presentation.kind==='feature-tray',events,presentation.accents,presentation.interaction);break
     case 'focus-grid':case 'tile-expand':case 'evidence-fan':
@@ -394,9 +668,9 @@ export function renderEditorialScene(ctx:CanvasRenderingContext2D,presentation:E
       base();if(secondary)drawEditorialReferencePlane(ctx,secondary,size,time,reduced,presentation.kind,presentation.assetCaption,presentation.holdMediaAtMs!==undefined,v);break
     case 'tool-sweep':
       base();if(g)sourceSpace(()=>drawEditorialTool(ctx,g.frame,reduced?1:time/1400,feature==='facial-hair'?'clipper':'brush',reduced,v));break
-    case 'callout':base();sourceSpace(()=>presentation.accents?drawEditorialOverlaySet(ctx,primary,feature,time,v,reduced,presentation.accents):drawEditorialAcquisition(ctx,primary,feature,time,v,reduced));break
-    case 'network':base();sourceSpace(()=>drawEditorialNetwork(ctx,primary,feature,time,v,reduced,presentation.layers));break
-    case 'view-cone':base();if(g&&g.points.length>3)sourceSpace(()=>{ctx.save();ctx.globalAlpha*=.09*t;ctx.fillStyle='#d1d1d1';ctx.beginPath();[g.points[0],g.points[Math.floor(g.points.length/3)],g.points[Math.floor(g.points.length*2/3)]].forEach((p,i)=>i?ctx.lineTo(p.x,p.y):ctx.moveTo(p.x,p.y));ctx.closePath();ctx.fill();ctx.restore();drawEditorialNetwork(ctx,primary,feature,time,v,reduced)});break
+    case 'callout':base();guided(()=>presentation.accents?drawEditorialOverlaySet(ctx,primary,feature,time,v,reduced,presentation.accents):drawEditorialAcquisition(ctx,primary,feature,time,v,reduced));break
+    case 'network':base();guided(()=>drawEditorialNetwork(ctx,primary,feature,time,v,reduced,presentation.layers));break
+    case 'view-cone':base();if(g&&g.points.length>3)guided(()=>{ctx.save();ctx.globalAlpha*=.09*t;ctx.fillStyle='#d1d1d1';ctx.beginPath();[g.points[0],g.points[Math.floor(g.points.length/3)],g.points[Math.floor(g.points.length*2/3)]].forEach((p,i)=>i?ctx.lineTo(p.x,p.y):ctx.moveTo(p.x,p.y));ctx.closePath();ctx.fill();ctx.restore();drawEditorialNetwork(ctx,primary,feature,time,v,reduced)});break
     case 'color-reveal':sourceSpace(()=>drawEditorialColorReveal(ctx,primary.image,primary.image.width,primary.image.height,reduced?1:editorialEase(time/1600),v));break
     case 'line-art':case 'drafting':{
       base();const art=editorialLineArt(primary);sourceSpace(()=>drawEditorialBrushLayer(ctx,primary.image.width,primary.image.height,t,()=>{ctx.fillStyle='#fff';ctx.fillRect(0,0,primary.image.width,primary.image.height);ctx.drawImage(art,0,0,primary.image.width,primary.image.height)},v))
