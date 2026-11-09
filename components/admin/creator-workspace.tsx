@@ -106,7 +106,7 @@ export default function CreatorAdminPage() {
 }
 
 function DashboardView({ tab, data, onSelect, onRefresh }: { tab: Tab; data: AdminDashboard; onSelect: (target: ReviewTarget) => void; onRefresh: () => Promise<void> }) {
-  if (tab === 'sprints') return <CreatorSprintsPanel submissions={data.submissions} payments={data.payments} onSelectSubmission={(item) => onSelect({ resource: 'submission', item })} />
+  if (tab === 'sprints') return <CreatorSprintsPanel submissions={data.submissions} payments={data.payments} onRefresh={onRefresh} onSelectSubmission={(item) => onSelect({ resource: 'submission', item })} />
   if (tab === 'settings') return <CreatorProgramSettings data={data} onRefresh={onRefresh} />
   if (tab === 'attribution') return <CreatorAttributionDashboard data={data} onSelectCreator={(item) => onSelect({ resource: 'creator', item })} onSelectAccount={(item) => onSelect({ resource: 'account', item })} />
   if (tab === 'submissions') return <ResourceSection title="Video submissions"><SubmissionList items={data.submissions} payments={data.payments} onSelect={onSelect} /></ResourceSection>
