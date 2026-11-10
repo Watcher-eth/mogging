@@ -96,7 +96,7 @@ export default function AnalyticsAdminPage() {
   }
   const refreshing = report.isValidating || reach.isValidating || providers.isValidating
   return <>
-    <CreatorHeader eyebrow="Analytics" title={page?.title || 'Product overview'} description={page?.description || 'Understand daily activity and the path to value.'} />
+    <CreatorHeader title={page?.title || 'Product overview'} description={page?.description || 'Understand daily activity and the path to value.'} />
     <div className="admin-report-toolbar">
       <div className="flex flex-wrap items-center gap-3">
         {options && view && <div className="admin-view-switch" role="group" aria-label={page?.title + ' view'}>
