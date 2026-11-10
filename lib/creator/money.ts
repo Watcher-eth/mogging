@@ -79,8 +79,8 @@ export function creatorContentBalances(submissions: EarningsSubmission[], paymen
   return { unpaid, debtCents, overpaymentCents }
 }
 
-export function creatorMoneySummary(
-  submissions: CreatorSubmission[],
+export function creatorMoneySummary<T extends EarningsSubmission>(
+  submissions: T[],
   payments: CreatorPayment[],
 ) {
   const cashouts = payments.filter((payment) => payment.status === 'paid')

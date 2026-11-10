@@ -48,7 +48,10 @@ export function SubmissionConversation({ submissionId, viewerRole, className, ac
     if (!active || !atBottom || !latest || !data?.[0]?.submission.unreadMessages || readInFlight.current) return
     readInFlight.current = true
     void apiPatch(endpoint, { messageId: latest.id }).then(async () => {
-      await Promise.all([refreshDashboard('/api/creator'), refreshDashboard('/api/admin/creator'), mutate()])
+      await Promise.all([
+        refreshDashboard(key => typeof key === 'string' && ['/api/creator', '/api/admin/creator'].some(path => key === path || key.startsWith(path + '?'))),
+        mutate(),
+      ])
     }).catch(() => { /* Keep unread counts; the next poll retries the read receipt. */ }).finally(() => { readInFlight.current = false })
   }, [active, atBottom, data, endpoint, refreshDashboard, mutate])
 

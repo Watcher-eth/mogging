@@ -4,7 +4,8 @@ import { AnimatedDialogPanel } from '@/components/ui/animated-dialog-panel'
 import { useEffect, useState } from 'react'
 import { SkeletonAvatar } from '@/components/ui/skeleton-avatar'
 import { AnimatedGroup } from '@/components/core/animated-group'
-import useSWR from 'swr'
+import useSWR, { useSWRConfig } from 'swr'
+import { useRouter } from 'next/router'
 import { ArrowUpRight, Check, Loader2, Plus, Trash2, Users } from 'lucide-react'
 import { toast } from 'sonner'
 import { Button } from '@/components/ui/button'
@@ -20,6 +21,7 @@ import { ConnectAccountForm } from '@/components/creator/connect-account-form'
 import { SocialPlatformLogo } from '@/components/brand/social-platform-logo'
 import {
   creatorAccountLabel,
+  creatorSetupStatusPath,
   type CreatorDashboard,
   type CreatorSocialAccount,
 } from '@/components/creator/types'
@@ -33,8 +35,10 @@ export default function CreatorAccountsPage() {
   )
 }
 function AccountsContent() {
+  const { pathname } = useRouter()
+  const { mutate: revalidate } = useSWRConfig()
   const { data, error, isLoading, mutate } = useSWR<CreatorDashboard>(
-    '/api/creator',
+    pathname === '/creator/accounts' ? '/api/creator?view=accounts' : '/api/creator',
     apiGet,
   )
   const profileId = data?.profile?.id
@@ -65,7 +69,7 @@ function AccountsContent() {
       await apiRequest(`/api/creator/accounts?id=${account.id}`, {
         method: 'DELETE',
       })
-      await mutate()
+      await Promise.all([mutate(), revalidate(creatorSetupStatusPath)])
       toast.success('Account removed')
     } catch (error) {
       toast.error(
@@ -186,7 +190,7 @@ function AccountsContent() {
             counts={counts}
             disabled={accounts.length >= 10 || counts[platform] >= 5}
             onConnected={async () => {
-              await mutate()
+              await Promise.all([mutate(), revalidate(creatorSetupStatusPath)])
               setOpen(false)
             }}
           />

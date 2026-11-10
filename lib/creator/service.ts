@@ -1,3 +1,4 @@
+import { unstable_cache } from 'next/cache'
 import { queuedAudienceCheck } from './audience-check'
 import { creatorRetainerTerms } from './retainer'
 import { lockCampaignBudget, requireSubmissionBudget } from './campaign-budget-service'
@@ -19,7 +20,7 @@ import { env } from '@/lib/env'
 import { creatorReferralHandle, ensureCreatorTrackingLink } from '@/lib/creator/attribution'
 import { captionContainsCreatorCode } from './post-guidance'
 import { minimumSubmissionViews } from './validation'
-import { canUseCreatorBankTransfer } from './money'
+import { canUseCreatorBankTransfer, hasCreatorPayoutMethod } from './money'
 
 export { creatorProfileSchema, creatorSubmissionSchema, creatorSocialAccountSchema } from './validation'
 import { creatorSubmissionAnalyticsSchema, type CreatorSubmissionAnalyticsInput, creatorSubmissionSchema, creatorPostPlatform, type CreatorProfileInput, type CreatorSubmissionInput, type CreatorSocialAccountInput } from './validation'
@@ -34,8 +35,54 @@ export type CreatorTikTokOAuthInput = {
   profile: TikTokUserInfo
 }
 
-export async function getCreatorDashboard(userId: string) {
-  const communityMetricsPromise = getCreatorCommunityMetrics()
+export const creatorDashboardViews = ['accounts', 'submissions', 'money', 'setup'] as const
+type CreatorDashboardView = Exclude<typeof creatorDashboardViews[number], 'money' | 'setup'>
+
+export async function getCreatorMoneyDashboard(userId: string) {
+  const row = await db.query.creatorProfiles.findFirst({
+    where: eq(schema.creatorProfiles.userId, userId),
+    with: {
+      submissions: {
+        columns: {
+          id: true, title: true, platform: true, postUrl: true, status: true, createdAt: true,
+          sprintId: true, approvedAmountCents: true, campaignPayoutCorrected: true,
+          adminViewCountThreshold: true, adminUsAudiencePercent: true,
+        },
+        where: eq(schema.creatorSubmissions.isDraft, false),
+        orderBy: [desc(schema.creatorSubmissions.createdAt)],
+      },
+      payments: { orderBy: [desc(schema.creatorPayments.createdAt)] },
+      payoutRequests: { orderBy: [desc(schema.creatorPayoutRequests.requestedAt)], limit: 100 },
+    },
+  })
+  if (!row) return { profile: null, submissions: [], payments: [], payoutRequests: [] }
+  const { submissions, payments, payoutRequests, ...profile } = row
+  return { profile, submissions, payments, payoutRequests }
+}
+
+export async function getCreatorSetupStatus(userId: string) {
+  const profile = schema.creatorProfiles
+  const [row] = await db.select({
+    paymentOption: profile.paymentOption, paypalEmail: profile.paypalEmail, cryptoNetwork: profile.cryptoNetwork,
+    cryptoWalletAddress: profile.cryptoWalletAddress, bankTransferDetails: profile.bankTransferDetails,
+    accountConnected: sql<boolean>`exists (select 1 from creator_social_accounts a where a.creator_profile_id = ${profile.id})`,
+    firstPostSubmitted: sql<boolean>`exists (select 1 from creator_submissions s where s.creator_profile_id = ${profile.id} and not s.is_draft)`,
+  }).from(profile).where(eq(profile.userId, userId)).limit(1)
+  return {
+    setup: {
+      accountConnected: row?.accountConnected ?? false,
+      firstPostSubmitted: row?.firstPostSubmitted ?? false,
+      payoutConfigured: hasCreatorPayoutMethod(row),
+    },
+  }
+}
+
+const readCreatorCommunityMetrics = unstable_cache(getCreatorCommunityMetrics, ['creator-community-metrics-v1'], { revalidate: 60 })
+
+export async function getCreatorDashboard(userId: string, view?: CreatorDashboardView | 'ledger') {
+  const useLedger = view !== 'accounts'
+  const useAccounts = view !== 'ledger'
+  const communityMetricsPromise = view ? undefined : readCreatorCommunityMetrics()
   const profile = await getCreatorProfile(userId)
   const featureFlags = {
     creatorAccountRequiredForSubmission: env.CREATOR_ACCOUNT_REQUIRED_FOR_SUBMISSION,
@@ -43,20 +90,20 @@ export async function getCreatorDashboard(userId: string) {
   if (!profile) return { profile: null, submissions: [], payments: [], payoutRequests: [], updates: [], socialAccounts: [], communityMetrics: await communityMetricsPromise, featureFlags }
 
   const [submissions, payments, socialAccounts, communityMetrics, payoutRequests, updates] = await Promise.all([
-    db.select({ ...getTableColumns(schema.creatorSubmissions), unreadMessages: submissionUnreadCount('creator') })
-      .from(schema.creatorSubmissions).where(and(eq(schema.creatorSubmissions.creatorProfileId, profile.id), eq(schema.creatorSubmissions.isDraft, false))).orderBy(desc(schema.creatorSubmissions.createdAt)),
-    db.query.creatorPayments.findMany({
+    useLedger ? db.select({ ...getTableColumns(schema.creatorSubmissions), unreadMessages: submissionUnreadCount('creator') })
+      .from(schema.creatorSubmissions).where(and(eq(schema.creatorSubmissions.creatorProfileId, profile.id), eq(schema.creatorSubmissions.isDraft, false))).orderBy(desc(schema.creatorSubmissions.createdAt)) : [],
+    useLedger ? db.query.creatorPayments.findMany({
       where: eq(schema.creatorPayments.creatorProfileId, profile.id),
       orderBy: [desc(schema.creatorPayments.createdAt)],
-    }),
-    db.query.creatorSocialAccounts.findMany({
+    }) : [],
+    useAccounts ? db.query.creatorSocialAccounts.findMany({
       where: eq(schema.creatorSocialAccounts.creatorProfileId, profile.id),
       orderBy: [desc(schema.creatorSocialAccounts.createdAt)],
       with: { trackingLink: true },
-    }),
+    }) : [],
     communityMetricsPromise,
-    db.query.creatorPayoutRequests.findMany({ where: eq(schema.creatorPayoutRequests.creatorProfileId, profile.id), orderBy: [desc(schema.creatorPayoutRequests.requestedAt)], limit: 100 }),
-    getCreatorSubmissionUpdates(profile.id),
+    !view ? db.query.creatorPayoutRequests.findMany({ where: eq(schema.creatorPayoutRequests.creatorProfileId, profile.id), orderBy: [desc(schema.creatorPayoutRequests.requestedAt)], limit: 100 }) : [],
+    view ? [] : getCreatorSubmissionUpdates(profile.id),
   ])
 
   const socialAccountsWithLinks = await Promise.all(socialAccounts.map(async (account) => {

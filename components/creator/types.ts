@@ -92,6 +92,15 @@ export type CreatorSocialAccount = {
   } | null
 }
 
+export const creatorSetupStatusPath = '/api/creator?view=setup'
+export type CreatorSetupStatus = { setup: { accountConnected: boolean; firstPostSubmitted: boolean; payoutConfigured: boolean } }
+
+export type CreatorMoneySubmission = Pick<CreatorSubmission,
+  'id' | 'title' | 'platform' | 'postUrl' | 'status' | 'createdAt' | 'sprintId' | 'approvedAmountCents' |
+  'campaignPayoutCorrected' | 'adminViewCountThreshold' | 'adminUsAudiencePercent'
+>
+export type CreatorMoneyData = Pick<CreatorDashboard, 'profile' | 'payments' | 'payoutRequests'> & { submissions: CreatorMoneySubmission[] }
+
 export type CreatorDashboard = {
   updates?: import('@/lib/creator/updates').CreatorUpdate[]
   payoutRequests?: CreatorPayoutRequest[]

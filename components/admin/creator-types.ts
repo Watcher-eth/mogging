@@ -187,6 +187,38 @@ export type AdminDashboard = {
   }
 }
 
+export type AdminQueueSubmission = Pick<AdminSubmission,
+  'id' | 'creatorProfileId' | 'creatorName' | 'socialHandle' | 'sprintId' | 'sprintName' |
+  'formatId' | 'title' | 'platform' | 'status' | 'approvedAmountCents' | 'adminViewCountThreshold' |
+  'adminUsAudiencePercent' | 'createdAt' | 'reviewRequestedAt' | 'studioGenerationId' | 'sprintTerms'
+> & { formatName?: string | null; retainerTerms?: import('@/lib/creator/retainer').CreatorRetainer | null;
+  hasAnalyticsRecording?: boolean; analyticsScreenshotUrl?: string | null }
+
+export type AdminBundleData = {
+  submissions: Pick<AdminSubmission, 'id' | 'title' | 'platform' | 'socialHandle' | 'sprintId' | 'approvedAmountCents' | 'status' | 'adminViewCountThreshold' | 'adminUsAudiencePercent'>[]
+  payments: Pick<AdminPayment, 'submissionId' | 'payoutRequestId' | 'amountCents' | 'status' | 'cryptoChain'>[]
+  creators: Pick<AdminCreator, 'id' | 'displayName'>[]
+  payoutRequests?: AdminDashboard['payoutRequests']
+}
+
+export type AdminQueueData = Omit<AdminBundleData, 'submissions'> & {
+  submissions: AdminQueueSubmission[]
+  counts: { videoCount: number; pendingCount: number; newVideos: number; accountCount: number; newAccounts: number; paymentCount: number; outstandingCents: number; newOutstandingCents: number }
+}
+
+export type AdminReviewedPage = {
+  submissions: AdminQueueSubmission[]
+  next: { before: string; beforeId: string } | null
+}
+
+export type AdminSubmissionReviewData = {
+  target: AdminSubmission
+  creator?: AdminCreator
+  payments: AdminPayment[]
+  metrics: AdminAttributionMetrics[]
+  balance: Omit<ReturnType<typeof import('@/lib/creator/money').creatorContentBalances>, 'unpaid'> & { unpaid: [string, number][] }
+}
+
 export type ReviewTarget =
   | { resource: 'creator'; item: AdminCreator }
   | { resource: 'account'; item: AdminAccount }

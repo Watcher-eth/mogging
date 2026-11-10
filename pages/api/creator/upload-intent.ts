@@ -21,7 +21,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
     if (req.method !== 'POST') return methodNotAllowed(res, ['POST'])
     const session = await getAuthSession(req, res)
     if (!session?.user?.id) throw new ApiError(401, 'Authentication required')
-    const dashboard = await getCreatorDashboard(session.user.id)
+    const dashboard = await getCreatorDashboard(session.user.id, process.env.PORTAL_SCOPED_READS_DISABLED === '1' ? undefined : 'accounts')
     if (env.CREATOR_ACCOUNT_REQUIRED_FOR_SUBMISSION && dashboard.socialAccounts.length === 0) {
       throw new ApiError(409, 'Connect a TikTok or Instagram account before uploading')
     }

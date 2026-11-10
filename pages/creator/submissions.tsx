@@ -12,7 +12,8 @@ import Link from 'next/link'
 import { useRouter } from 'next/router'
 import { useMemo, useState } from 'react'
 import { ArrowUpRight, ChevronDown, SlidersHorizontal, CircleAlert, Clock3, Loader2, RotateCcw, XCircle } from 'lucide-react'
-import useSWR from 'swr'
+import { creatorSetupStatusPath } from '@/components/creator/types'
+import useSWR, { useSWRConfig } from 'swr'
 import { Button } from '@/components/ui/button'
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { CreatorHeader, CreatorShell } from '@/components/creator/creator-shell'
@@ -42,12 +43,13 @@ export default function CreatorSubmissionsPage() {
 
 function SubmissionsContent() {
   const router = useRouter()
+  const { mutate: revalidate } = useSWRConfig()
   const newSubmissionOpen = router.query.new === '1'
   async function closeNewSubmission() {
     const { new: _, sprint: __, ...query } = router.query
     await router.replace({ pathname: router.pathname, query }, undefined, { shallow: true })
   }
-  const { data, isLoading, mutate } = useSWR<CreatorDashboard>('/api/creator', apiGet, { refreshInterval: 30_000 })
+  const { data, isLoading, mutate } = useSWR<CreatorDashboard>(router.pathname === '/creator/submissions' ? '/api/creator?view=submissions' : '/api/creator', apiGet, { refreshInterval: 30_000 })
   const [filter, setFilter] = useState<(typeof filters)[number]['value']>('all')
   const selectedId = typeof router.query.submission === 'string' ? router.query.submission : null
   function setSelectedId(id: string | null) {
@@ -97,7 +99,7 @@ function SubmissionsContent() {
         initialSprintId={typeof router.query.sprint === 'string' ? router.query.sprint : undefined}
         onOpenChange={open => { if (!open) void closeNewSubmission() }}
         onSubmitted={async () => {
-          await mutate()
+          await Promise.all([mutate(), revalidate(creatorSetupStatusPath)])
           await closeNewSubmission()
         }}
       /> : null}

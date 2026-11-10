@@ -2,7 +2,7 @@ import { creatorPaymentLabel } from '@/lib/creator/money'
 import { useState } from 'react'
 import { Loader2, Wallet } from 'lucide-react'
 import { toast } from 'sonner'
-import type { AdminDashboard, AdminPayment } from './creator-types'
+import type { AdminBundleData, AdminPayment } from './creator-types'
 import type { CreatorPayoutRequest } from '@/components/creator/types'
 import { creatorEarnedCents } from '@/lib/creator/money'
 import { sprintMoney } from '@/lib/creator/sprints'
@@ -10,7 +10,7 @@ import { apiPatch } from '@/lib/api/client'
 import { Button } from '@/components/ui/button'
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 
-export function BundledPayoutQueue({ data, onRefresh, method }: { data: AdminDashboard; onRefresh: () => Promise<void>; method?: AdminPayment['paymentOption'] }) {
+export function BundledPayoutQueue({ data, onRefresh, method }: { data: AdminBundleData; onRefresh: () => Promise<void>; method?: AdminPayment['paymentOption'] }) {
   const [selected, setSelected] = useState<CreatorPayoutRequest | null>(null)
   const pending = data.payoutRequests?.filter(request => request.status === 'pending' && (!method || request.paymentOption === method)) || []
   if (!pending.length) return null
@@ -26,7 +26,7 @@ export function BundledPayoutQueue({ data, onRefresh, method }: { data: AdminDas
   </section>
 }
 
-function RecordBundle({ request, data, onClose, onSaved }: { request: CreatorPayoutRequest; data: AdminDashboard; onClose: () => void; onSaved: () => Promise<void> }) {
+function RecordBundle({ request, data, onClose, onSaved }: { request: CreatorPayoutRequest; data: AdminBundleData; onClose: () => void; onSaved: () => Promise<void> }) {
   const [reference, setReference] = useState('')
   const [receipt, setReceipt] = useState<File | null>(null)
   const [saving, setSaving] = useState(false)
@@ -54,7 +54,7 @@ function RecordBundle({ request, data, onClose, onSaved }: { request: CreatorPay
   </DialogContent></Dialog>
 }
 
-export function PayoutVideoBreakdown({ data, lines, requestId }: { data: AdminDashboard; lines: { submissionId: string | null; amountCents: number }[]; requestId?: string }) {
+export function PayoutVideoBreakdown({ data, lines, requestId }: { data: AdminBundleData; lines: { submissionId: string | null; amountCents: number }[]; requestId?: string }) {
   return <ul className="w-full divide-y divide-zinc-100">{lines.map(line => {
     const submission = data.submissions.find(item => item.id === line.submissionId)
     const paid = line.submissionId ? data.payments.filter(payment => payment.submissionId === line.submissionId && payment.status === 'paid' && (!requestId || payment.payoutRequestId !== requestId)).reduce((sum, payment) => sum + payment.amountCents, 0) : 0
@@ -64,7 +64,7 @@ export function PayoutVideoBreakdown({ data, lines, requestId }: { data: AdminDa
 }
 
 
-function payoutRequestLines(payments: AdminPayment[], requestId: string) {
+function payoutRequestLines(payments: AdminBundleData['payments'], requestId: string) {
   const amounts = new Map<string | null, number>()
   for (const payment of payments) {
     if (payment.payoutRequestId === requestId && payment.status !== 'cancelled') amounts.set(payment.submissionId, (amounts.get(payment.submissionId) || 0) + payment.amountCents)

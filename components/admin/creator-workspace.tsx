@@ -14,8 +14,8 @@ import { BundledPayoutQueue, PayoutVideoBreakdown } from '@/components/admin/bun
 import * as Tabs from '@radix-ui/react-tabs'
 import { SubmissionConversation } from '@/components/creator/submission-conversation'
 import { CreatorSprintsPanel } from '@/components/admin/creator-sprints-panel'
-import { CampaignReviewQueue, CampaignSubmissionMoves, DraggableCampaignSubmission } from './campaign-submission-move'
-import { sprintReviewItems, type CreatorSprint } from '@/lib/creator/sprints'
+import { CampaignReviewQueue, CampaignSubmissionMoves, DraggableCampaignSubmission, type MoveCampaign } from './campaign-submission-move'
+import { sprintReviewItems } from '@/lib/creator/sprints'
 import { SkeletonAvatar } from '@/components/ui/skeleton-avatar'
 import { creatorAccountLabel } from '@/components/creator/types'
 import Image from 'next/image'
@@ -24,7 +24,7 @@ import Link from 'next/link'
 import { useRouter } from 'next/router'
 import { CreatorHeader } from '@/components/creator/creator-header'
 import { adminPage } from '@/lib/admin/navigation'
-import { useMemo, useRef, useState } from 'react'
+import { useDeferredValue, useEffect, useMemo, useRef, useState } from 'react'
 import {
   ArrowUpRight,
   BadgeCheck,
@@ -44,6 +44,7 @@ import {
   Wallet,
 } from 'lucide-react'
 import useSWR from 'swr'
+import useSWRInfinite from 'swr/infinite'
 import { toast } from 'sonner'
 import { Button } from '@/components/ui/button'
 import { AdminPasswordGate } from '@/components/admin/admin-password-gate'
@@ -69,6 +70,10 @@ import type {
   AdminCreator,
   AdminDashboard,
   AdminPayment,
+  AdminQueueData,
+  AdminQueueSubmission,
+  AdminReviewedPage,
+  AdminSubmissionReviewData,
   AdminSubmission,
   ReviewTarget,
 } from '@/components/admin/creator-types'
@@ -82,9 +87,13 @@ export default function CreatorAdminPage() {
   const tab = (router.pathname === '/admin/invitations' ? 'invites' : router.pathname === '/admin/cta-library' ? 'cta-library' : page?.section || 'overview') as Tab
   const usesDashboard = tab !== 'invites' && tab !== 'cta-library'
   const needsCoverage = tab === 'settings' || tab === 'attribution'
-  const dashboardUrl = needsCoverage ? '/api/admin/creator' : '/api/admin/creator?coverage=0'
-  const { data, error, isLoading, mutate } = useSWR<AdminDashboard>(access?.unlocked && usesDashboard ? dashboardUrl : null, apiGet, { refreshInterval: 30_000 })
-  const dashboard = useMemo(() => data ? normalizeAdminDashboard(data) : null, [data])
+  const dashboardUrl = router.pathname === '/admin/creators' ? '/api/admin/creator?coverage=0&view=queue'
+    : needsCoverage ? '/api/admin/creator' : '/api/admin/creator?coverage=0'
+  const { data, error, isLoading, mutate } = useSWR<AdminDashboard | AdminQueueData>(access?.unlocked && usesDashboard ? dashboardUrl : null, apiGet, { refreshInterval: 30_000 })
+  const queue = data && 'counts' in data ? data : null
+  const dashboard = useMemo(() => data && !('counts' in data) ? normalizeAdminDashboard(data) : null, [data])
+  const [queueSelection, setQueueSelection] = useState<string | null>(null)
+  const [historyVersion, setHistoryVersion] = useState(0)
   const [selected, setSelected] = useState<ReviewTarget | null>(null)
   const reviewTarget = selected?.resource === 'submission'
     ? { resource: 'submission' as const, item: dashboard?.submissions.find(item => item.id === selected.item.id) || selected.item }
@@ -105,10 +114,31 @@ export default function CreatorAdminPage() {
     <div className="w-full">
       <CreatorHeader eyebrow="Creator program" title={page?.title || 'Review queue'} description={page?.description || 'The next approvals that need your attention.'} />
 
-      {tab === 'invites' ? <CreatorInvitesPanel /> : tab === 'cta-library' ? <CtaLibraryAdminPanel /> : error ? <p role="alert" className="admin-notice">Could not load the workspace. <button className="underline" onClick={() => void mutate()}>Try again</button></p> : isLoading || !dashboard ? <CenteredLoader /> : <DashboardView tab={tab} data={dashboard} onSelect={setSelected} onRefresh={async () => { await mutate() }} />}
+      {tab === 'invites' ? <CreatorInvitesPanel /> : tab === 'cta-library' ? <CtaLibraryAdminPanel /> :
+        error && !data ? <p role="alert" className="admin-notice">Could not load the workspace. <button className="underline" onClick={() => void mutate()}>Try again</button></p> :
+        queue ? <Overview data={queue} historyVersion={historyVersion} onSelectSubmission={item => setQueueSelection(item.id)} onRefresh={async () => { await mutate() }} /> :
+        isLoading || !dashboard ? <CenteredLoader /> : <DashboardView tab={tab} data={dashboard} onSelect={setSelected} onRefresh={async () => { await mutate() }} />}
+      {queueSelection ? <ScopedSubmissionReview key={queueSelection} id={queueSelection} onClose={() => setQueueSelection(null)}
+        onRefresh={async () => { await mutate() }}
+        onSaved={async () => { setQueueSelection(null); setHistoryVersion(version => version + 1); await mutate() }} /> : null}
       {selected ? <ReviewDialog key={`${selected.resource}-${selected.item.id}`} target={reviewTarget!} contentBalance={reviewBalance} creator={selected.resource !== 'creator' ? dashboard?.creators.find(creator => creator.id === selected.item.creatorProfileId) : undefined} payments={dashboard?.payments || []} metrics={dashboard?.attributionMetrics || []} open onOpenChange={(open) => { if (!open) setSelected(null) }} onRefresh={async () => { await mutate() }} onSaved={async () => { await mutate(); setSelected(null) }} /> : null}
     </div>
   )
+}
+
+function ScopedSubmissionReview({ id, onClose, onRefresh, onSaved }: {
+  id: string; onClose: () => void; onRefresh: () => Promise<void>; onSaved: () => Promise<void>
+}) {
+  const { data, error, mutate } = useSWR<AdminSubmissionReviewData>(`/api/admin/creator?view=review&id=${encodeURIComponent(id)}`, apiGet, { refreshInterval: 30_000 })
+  if (!data) return <Dialog open onOpenChange={open => { if (!open) onClose() }}>
+    <DialogContent>
+      <DialogHeader><DialogTitle>Review submission</DialogTitle><DialogDescription>{error ? 'The submission could not load.' : 'Loading the submission and payment history.'}</DialogDescription></DialogHeader>
+      {error ? <Button variant="outline" onClick={() => void mutate()}>Try again</Button> : <CenteredLoader />}
+    </DialogContent>
+  </Dialog>
+  return <ReviewDialog target={{ resource: 'submission', item: data.target }} creator={data.creator} payments={data.payments} metrics={data.metrics}
+    contentBalance={{ ...data.balance, unpaid: new Map(data.balance.unpaid) }} open onOpenChange={open => { if (!open) onClose() }}
+    onRefresh={async () => { await Promise.all([mutate(), onRefresh()]) }} onSaved={onSaved} />
 }
 
 function DashboardView({ tab, data, onSelect, onRefresh }: { tab: Tab; data: AdminDashboard; onSelect: (target: ReviewTarget) => void; onRefresh: () => Promise<void> }) {
@@ -119,7 +149,10 @@ function DashboardView({ tab, data, onSelect, onRefresh }: { tab: Tab; data: Adm
   if (tab === 'accounts') return <ResourceSection title="Social accounts"><SocialAccountsPanel data={data} onReviewAccount={item => onSelect({ resource: 'account', item })} onSelectSubmission={item => onSelect({ resource: 'submission', item })} /></ResourceSection>
   if (tab === 'payments') return <ResourceSection title="Creator payments"><PaymentsPanel data={data} onSelect={onSelect} onRefresh={onRefresh} /></ResourceSection>
   if (tab === 'creators') return <ResourceSection title="Creators"><div className="mb-5"><CreatorRegistrationMetrics creators={data.creators} accounts={data.accounts} /></div><CreatorList items={data.creators} accounts={data.accounts} onSelect={onSelect} /></ResourceSection>
-  return <Overview data={data} onSelect={onSelect} onRefresh={onRefresh} />
+  return <Overview data={data} onSelectSubmission={item => {
+    const submission = data.submissions.find(row => row.id === item.id)
+    if (submission) onSelect({ resource: 'submission', item: submission })
+  }} onRefresh={onRefresh} />
 }
 
 function CtaLibraryAdminPanel() {
@@ -148,31 +181,55 @@ function CtaReviewCard({ item, onSaved }: { item: CreatorCtaLibraryItem; onSaved
   return <article className="overflow-hidden rounded-2xl border border-zinc-200 bg-white shadow-[0_8px_30px_rgba(15,23,42,0.035)]"><div className="relative aspect-video bg-zinc-950">{video ? <video className="size-full object-contain" src={item.assetUrl} controls preload="metadata" /> : <SkeletonImage src={item.assetUrl} alt={item.title} sizes="(min-width: 1024px) 50vw, 100vw" className="object-contain" unoptimized />}</div><div className="p-5"><div className="flex items-start justify-between gap-3"><div className="min-w-0"><h3 className="truncate text-base font-semibold">{item.title}</h3><p className="mt-1 text-xs text-zinc-500">{item.creatorName} · {video ? 'Video (MP4)' : 'Screenshot (PNG)'} · {formatDate(String(item.createdAt))}</p></div><StatusPill status={item.status} /></div><div className="mt-4 grid grid-cols-2 gap-2 rounded-xl bg-zinc-50 p-3 text-xs"><span><span className="block text-zinc-400">Template</span><span className="mt-1 block font-medium">{item.templateId}</span></span><span><span className="block text-zinc-400">Canvas</span><span className="mt-1 block font-medium">{item.formatId}</span></span></div><label className="mt-4 grid gap-2 text-xs font-medium">Review note<textarea className="min-h-20 resize-y rounded-xl border border-zinc-200 p-3 text-sm outline-none focus:border-zinc-400 focus:ring-4 focus:ring-zinc-100" value={reviewNote} maxLength={1000} placeholder="Optional feedback visible to the creator" onChange={(event) => setReviewNote(event.target.value)} /></label><div className="mt-4 grid grid-cols-2 gap-2"><Button variant="outline" className="rounded-xl" disabled={saving !== null} onClick={() => void review('rejected')}>{saving === 'rejected' ? <Loader2 className="animate-spin" /> : <XCircle />}Reject</Button><Button className="rounded-xl" disabled={saving !== null} onClick={() => void review('approved')}>{saving === 'approved' ? <Loader2 className="animate-spin" /> : <CheckCircle2 />}Approve</Button></div></div></article>
 }
 
-function Overview({ data, onSelect, onRefresh }: { data: AdminDashboard; onSelect: (target: ReviewTarget) => void; onRefresh: () => Promise<void> }) {
-  const reviewQueues = useMemo(() => getSubmissionReviewQueues(data), [data])
-  const { data: campaigns, mutate: refreshCampaigns } = useSWR<{ sprints: CreatorSprint[] }>('/api/admin/creator/sprints', apiGet)
+function Overview({ data, onSelectSubmission, onRefresh, historyVersion = 0 }: {
+  data: AdminDashboard | AdminQueueData
+  onSelectSubmission: (item: AdminQueueSubmission) => void
+  onRefresh: () => Promise<void>
+  historyVersion?: number
+}) {
+  const reviewQueues = useMemo(() => getSubmissionReviewQueues<AdminQueueSubmission>(data), [data])
+  const compact = 'counts' in data
+  const { data: campaigns, mutate: refreshCampaigns } = useSWR<{ sprints: MoveCampaign[] }>(
+    compact ? '/api/admin/creator/sprints?view=move' : '/api/admin/creator/sprints', apiGet,
+  )
   const [reviewed, setReviewed] = useState(false)
   const [search, setSearch] = useState('')
   const [reviewedLimit, setReviewedLimit] = useState(30)
-  const reviewedPosts = reviewed ? data.submissions.filter(item =>
-    ['approved', 'paid'].includes(item.status) && `${item.creatorName} ${item.socialHandle ?? ''} ${item.title} ${item.sprintName ?? ''}`.toLowerCase().includes(search.toLowerCase().trim()),
-  ) : []
-  const row = (target: Exclude<ReviewTarget, { resource: 'payment' }>) => {
-    const button = <QueueRow target={target} onClick={() => onSelect(target)} />
-    return target.resource === 'submission'
-      ? <DraggableCampaignSubmission key={target.item.id} submission={target.item}>{button}</DraggableCampaignSubmission>
-      : <div key={`${target.resource}-${target.item.id}`}>{button}</div>
-  }
+  const deferredSearch = useDeferredValue(search.trim())
+  const history = useSWRInfinite<AdminReviewedPage>((index, previous) => {
+    if (!compact || !reviewed || index && !previous?.next) return null
+    return '/api/admin/creator?' + new URLSearchParams({
+      view: 'reviewed', search: deferredSearch, ...(previous?.next ?? {}),
+    })
+  }, apiGet)
+  const { mutate: refreshHistory } = history
+  const historyVersionSeen = useRef(historyVersion)
+  useEffect(() => {
+    if (historyVersionSeen.current === historyVersion) return
+    historyVersionSeen.current = historyVersion
+    if (reviewed) void refreshHistory()
+  }, [historyVersion, reviewed, refreshHistory])
+  const reviewedPosts = !reviewed ? [] : compact
+    ? history.data?.flatMap(page => page.submissions) ?? []
+    : data.submissions.filter(item =>
+      ['approved', 'paid'].includes(item.status) && `${item.creatorName} ${item.socialHandle ?? ''} ${item.title} ${item.sprintName ?? ''}`.toLowerCase().includes(deferredSearch.toLowerCase()),
+    ).slice(0, reviewedLimit + 1)
+  const hasMore = compact ? Boolean(history.data?.at(-1)?.next) : reviewedPosts.length > reviewedLimit
+  const row = (item: AdminQueueSubmission) => (
+    <DraggableCampaignSubmission key={item.id} submission={item}>
+      <QueueRow item={item} onClick={() => onSelectSubmission(item)} />
+    </DraggableCampaignSubmission>
+  )
   const attentionCount = reviewQueues.reduce((total, queue) => total + queue.items.length, 0)
-  const outstandingCents = data.payments.filter((payment) => payment.status === 'pending' || payment.status === 'processing').reduce((total, payment) => total + payment.amountCents, 0)
+  const counts = compact ? data.counts : legacyQueueCounts(data)
 
   return (
-    <CampaignSubmissionMoves campaigns={campaigns?.sprints ?? []} onMoved={() => Promise.all([onRefresh(), refreshCampaigns()])}>
+    <CampaignSubmissionMoves campaigns={campaigns?.sprints ?? []} onMoved={() => Promise.all([onRefresh(), refreshCampaigns(), ...(reviewed && compact ? [refreshHistory()] : [])])}>
 
       <div className="grid gap-3 sm:grid-cols-3">
-        <Metric label="Videos" newValue={data.submissions.filter((item) => isNewInLastDay(item.createdAt)).length} value={data.submissions.length} detail={`${data.submissions.filter((item) => item.status === 'pending').length} awaiting review`} asset="submissions" />
-        <Metric label="Accounts" newValue={data.accounts.filter((item) => isNewInLastDay(item.createdAt)).length} value={data.accounts.length} detail="Connected publishing profiles" icon={BadgeCheck} />
-        <Metric label="Outstanding" newValue={formatMoney(data.payments.filter((item) => (item.status === 'pending' || item.status === 'processing') && isNewInLastDay(item.createdAt)).reduce((total, item) => total + item.amountCents, 0), 'USD')} value={formatMoney(outstandingCents, 'USD')} detail={`${data.payments.filter((item) => item.status === 'pending' || item.status === 'processing').length} payments`} icon={CircleDollarSign} />
+        <Metric label="Videos" newValue={counts.newVideos} value={counts.videoCount} detail={`${counts.pendingCount} awaiting review`} asset="submissions" />
+        <Metric label="Accounts" newValue={counts.newAccounts} value={counts.accountCount} detail="Connected publishing profiles" icon={BadgeCheck} />
+        <Metric label="Outstanding" newValue={formatMoney(counts.newOutstandingCents, 'USD')} value={formatMoney(counts.outstandingCents, 'USD')} detail={`${counts.paymentCount} payments`} icon={CircleDollarSign} />
       </div>
       <div className="mt-7"><BundledPayoutQueue data={data} onRefresh={onRefresh} /></div>
       <section className="mt-7">
@@ -180,20 +237,36 @@ function Overview({ data, onSelect, onRefresh }: { data: AdminDashboard; onSelec
         <div className="mb-3 flex flex-wrap items-center gap-2">
           <Button variant={reviewed ? 'outline' : 'default'} size="sm" aria-pressed={!reviewed} onClick={() => setReviewed(false)}>Awaiting review</Button>
           <Button variant={reviewed ? 'default' : 'outline'} size="sm" aria-pressed={reviewed} onClick={() => setReviewed(true)}>Approved &amp; paid</Button>
-          {reviewed ? <input type="search" aria-label="Find reviewed submissions" placeholder="Find a creator or submission" value={search} onChange={event => { setSearch(event.target.value); setReviewedLimit(30) }} className="creator-field !w-auto" /> : null}
+          {reviewed ? <input type="search" aria-label="Find reviewed submissions" placeholder="Find a creator or submission" value={search} maxLength={200} onChange={event => { setSearch(event.target.value); setReviewedLimit(30) }} className="creator-field !w-auto" /> : null}
         </div>
         {reviewed ? (
+          compact && history.error ? <p role="alert" className="admin-notice">Could not load reviewed submissions. <button className="underline" onClick={() => void history.mutate()}>Try again</button></p> :
+          compact && history.isLoading ? <CenteredLoader /> :
           reviewedPosts.length ? <div className="creator-surface px-3">
-            <div className="admin-list">{reviewedPosts.slice(0, reviewedLimit).map(item => row({ resource: 'submission', item }))}</div>
-            {reviewedPosts.length > reviewedLimit ? <Button className="m-3" size="sm" variant="outline" onClick={() => setReviewedLimit(limit => limit + 30)}>Show more</Button> : null}
+            <div className="admin-list">{(compact ? reviewedPosts : reviewedPosts.slice(0, reviewedLimit)).map(row)}</div>
+            {hasMore ? <Button className="m-3" size="sm" variant="outline" disabled={history.isValidating} onClick={() => { if (compact) void history.setSize(history.size + 1); else setReviewedLimit(limit => limit + 30) }}>Show more</Button> : null}
           </div> : <EmptyState title="No matching submissions" description="Approved and paid submissions will appear here." />
         ) : attentionCount ? <div className="grid gap-6">{reviewQueues.map(queue => <CampaignReviewQueue key={queue.id} queueId={queue.id} label={queue.label}>
           <div className="flex items-center justify-between gap-3 px-5 py-4"><div><h3 id={`review-queue-${queue.id}`} className="text-sm font-semibold">{queue.label}</h3><p className="mt-1 text-xs text-zinc-400">Oldest submission first</p></div><span className="rounded-full bg-zinc-100 px-2.5 py-1 text-xs font-semibold tabular-nums text-zinc-600">{queue.items.length}</span></div>
-          {queue.items.length ? <div className="admin-list px-3">{queue.items.map(row)}</div> : <p className="border-t border-zinc-100 px-5 py-5 text-sm text-zinc-400">No submissions waiting.</p>}
+          {queue.items.length ? <div className="admin-list px-3">{queue.items.map(target => row(target.item))}</div> : <p className="border-t border-zinc-100 px-5 py-5 text-sm text-zinc-400">No submissions waiting.</p>}
         </CampaignReviewQueue>)}</div> : <EmptyState title="You’re all caught up" description="New submissions ready for review will appear here." />}
       </section>
     </CampaignSubmissionMoves>
   )
+}
+
+function legacyQueueCounts(data: AdminDashboard): AdminQueueData['counts'] {
+  const outstanding = data.payments.filter(item => item.status === 'pending' || item.status === 'processing')
+  return {
+    videoCount: data.submissions.length,
+    pendingCount: data.submissions.filter(item => item.status === 'pending').length,
+    newVideos: data.submissions.filter(item => isNewInLastDay(item.createdAt)).length,
+    accountCount: data.accounts.length,
+    newAccounts: data.accounts.filter(item => isNewInLastDay(item.createdAt)).length,
+    paymentCount: outstanding.length,
+    outstandingCents: outstanding.reduce((total, item) => total + item.amountCents, 0),
+    newOutstandingCents: outstanding.filter(item => isNewInLastDay(item.createdAt)).reduce((total, item) => total + item.amountCents, 0),
+  }
 }
 
 function CreatorRegistrationMetrics({ creators, accounts }: { creators: AdminCreator[]; accounts: AdminAccount[] }) {
@@ -380,16 +453,13 @@ function ApprovalBadge({ target }: { target: Exclude<ReviewTarget, { resource: '
   return <span className={cn('inline-flex items-center rounded-lg border px-2.5 py-1 text-[11px] font-semibold', type.color)}>{type.label}</span>
 }
 
-function QueueRow({ target, onClick }: { target: Exclude<ReviewTarget, { resource: 'payment' }>; onClick: () => void }) {
-  const kind = approvalKind(target)
-  const submittedAt = approvalSubmittedAt(target)
-  const title = reviewTitle(target)
-  const subtitle = target.resource === 'creator' ? `${target.item.email} · ${creatorPaymentLabel(target.item.paymentOption)}` : `${target.item.creatorName} · ${capitalize(target.item.platform)}`
-  const Icon = kind === 'submission' ? Video : kind === 'account' ? BadgeCheck : Wallet
+function QueueRow({ item, onClick }: { item: AdminQueueSubmission; onClick: () => void }) {
+  const submittedAt = approvalSubmittedAt({ resource: 'submission', item })
+  const type = approvalTypes.submission
   return <button type="button" onClick={onClick} className="admin-resource-row flex w-full min-w-0 items-center gap-3 text-left">
-    {target.resource === 'account' ? <AccountAvatar account={target.item} /> : <span className={cn('grid size-11 shrink-0 place-items-center rounded-xl border', approvalTypes[kind].color)}><Icon className="size-5" /></span>}
-    <span className="min-w-0 flex-1"><ApprovalBadge target={target} /><span className="mt-2 block truncate text-sm font-semibold">{title}</span><span className="mt-1 block break-words text-xs text-zinc-500">{subtitle}</span><span className="mt-1 block text-xs text-zinc-400 sm:hidden">{formatDate(submittedAt)}</span></span>
-    <span className="hidden text-xs text-zinc-400 sm:block">{formatDate(submittedAt)}</span><StatusPill status={target.resource === 'creator' ? target.item.authStatus : target.item.status} /><ArrowUpRight className="size-4 shrink-0 text-zinc-400" />
+    <span className={cn('grid size-11 shrink-0 place-items-center rounded-xl border', type.color)}><Video className="size-5" /></span>
+    <span className="min-w-0 flex-1"><span className={cn('inline-flex items-center rounded-lg border px-2.5 py-1 text-[11px] font-semibold', type.color)}>{type.label}</span><span className="mt-2 block truncate text-sm font-semibold">{item.title}</span><span className="mt-1 block break-words text-xs text-zinc-500">{item.creatorName} · {capitalize(item.platform)}</span><span className="mt-1 block text-xs text-zinc-400 sm:hidden">{formatDate(submittedAt)}</span></span>
+    <span className="hidden text-xs text-zinc-400 sm:block">{formatDate(submittedAt)}</span><StatusPill status={item.status} /><ArrowUpRight className="size-4 shrink-0 text-zinc-400" />
   </button>
 }
 

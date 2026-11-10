@@ -4,11 +4,11 @@ import { Check, Info, Loader2, X } from 'lucide-react'
 import { useId, useState } from 'react'
 import { toast } from 'sonner'
 import { Button } from '@/components/ui/button'
-import type { CreatorDashboard } from './types'
+import type { CreatorMoneyData } from './types'
 import { apiPatch, apiPost } from '@/lib/api/client'
 import { creatorBundlePlan, canReceiveCreatorPayout } from '@/lib/creator/money'
 
-export function BundledPayoutControls({ data, onSaved }: { data: CreatorDashboard; onSaved: () => Promise<unknown> }) {
+export function BundledPayoutControls({ data, onSaved }: { data: CreatorMoneyData; onSaved: () => Promise<unknown> }) {
   const [busy, setBusy] = useState(false)
   const enabled = Boolean(data.profile?.bundledPayouts)
   const request = data.payoutRequests?.find(item => item.status === 'pending')

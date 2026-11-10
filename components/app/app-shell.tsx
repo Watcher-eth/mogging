@@ -98,7 +98,7 @@ export function AppShell({ children }: AppShellProps) {
   const dismissedProfileSetupRef = useRef(false)
   const accountRef = useRef<HTMLDivElement | null>(null)
   const { data: dashboard, mutate: mutateDashboard } = useSWR<CurrentUserDashboard>(
-    status === 'authenticated' ? '/api/user/me' : null,
+    status === 'authenticated' && !creatorRoute ? '/api/user/me' : null,
     apiGet,
     {
       revalidateOnFocus: true,

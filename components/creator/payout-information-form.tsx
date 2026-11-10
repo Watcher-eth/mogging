@@ -2,12 +2,12 @@ import { creatorProfileSchema } from '@/lib/creator/validation'
 import { useEffect, useState, type FormEvent } from 'react'
 import Image from 'next/image'
 import { Check, Info, Landmark, Loader2 } from 'lucide-react'
-import useSWR from 'swr'
+import useSWR, { useSWRConfig } from 'swr'
 import { toast } from 'sonner'
 import { Button } from '@/components/ui/button'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Field, fieldClass } from '@/components/creator/creator-shell'
-import type { CreatorDashboard, CreatorProfile } from '@/components/creator/types'
+import { creatorSetupStatusPath, type CreatorMoneyData, type CreatorProfile } from '@/components/creator/types'
 import { canUseCreatorBankTransfer, creatorPaymentLabel } from '@/lib/creator/money'
 import { apiGet, apiPatch, ApiClientError } from '@/lib/api/client'
 import { cn } from '@/lib/utils'
@@ -18,8 +18,9 @@ const cryptoNetworks = [
   { value: 'Ethereum', label: 'USDC on Ethereum', icon: '/brands/ethereum.png' },
 ] as const
 
-export function PayoutInformation({ email, onSaved, embedded = false }: { email: string; onSaved?: () => Promise<void>; embedded?: boolean }) {
-  const { data, mutate } = useSWR<CreatorDashboard>('/api/creator', apiGet)
+export function PayoutInformation({ email, onSaved, embedded = false, dashboardKey = '/api/creator' }: { email: string; onSaved?: () => Promise<void>; embedded?: boolean; dashboardKey?: string }) {
+  const { data, mutate } = useSWR<CreatorMoneyData>(dashboardKey, apiGet)
+  const { mutate: revalidate } = useSWRConfig()
   const profile = data?.profile
   const [paymentOption, setPaymentOption] = useState<CreatorProfile['paymentOption']>('paypal')
   const [bankTransferDetails, setBankTransferDetails] = useState('')
@@ -46,7 +47,7 @@ export function PayoutInformation({ email, onSaved, embedded = false }: { email:
     setSaving(true)
     try {
       await apiPatch('/api/creator', input.data)
-      await mutate()
+      await Promise.all([mutate(), revalidate(creatorSetupStatusPath)])
       toast.success('Payout information saved')
       await onSaved?.()
     } catch (error) {

@@ -55,36 +55,38 @@ export async function listCreatorSprints(
       when 'launch-detailed-analysis-v1' then 2
       else 3 end`)
   if (!rows.length) return []
-  const totals = await db
-    .select({
-      sprintId: schema.creatorSubmissions.sprintId,
-      status: schema.creatorSubmissions.status,
-      count: sql<number>`count(*)::int`,
-    })
-    .from(schema.creatorSubmissions)
-    .where(
-      inArray(
+  const [totals, spending] = await Promise.all([
+    db
+      .select({
+        sprintId: schema.creatorSubmissions.sprintId,
+        status: schema.creatorSubmissions.status,
+        count: sql<number>`count(*)::int`,
+      })
+      .from(schema.creatorSubmissions)
+      .where(
+        inArray(
+          schema.creatorSubmissions.sprintId,
+          rows.map((row) => row.id),
+        ),
+      )
+      .groupBy(
         schema.creatorSubmissions.sprintId,
-        rows.map((row) => row.id),
+        schema.creatorSubmissions.status,
       ),
-    )
-    .groupBy(
-      schema.creatorSubmissions.sprintId,
-      schema.creatorSubmissions.status,
-    )
-  const spending = await db.select({
-    id: schema.creatorSprints.id,
-    paidCents: campaignPaidCents(sql`creator_sprints.id`),
-    usedCents: campaignCommittedCents(sql`creator_sprints.id`),
-    pendingCents: campaignPendingCents(sql`creator_sprints.id`),
-    budgetCents: campaignContentBudgetCents(sql`creator_sprints.id`),
-    bonusBudgetCents: campaignBonusBudgetCents(sql`creator_sprints.id`),
-    poolId: campaignBudgetPoolId(sql`creator_sprints.id`),
-    poolName: sql<string>`(select owner.name from creator_sprints owner where owner.id = ${campaignBudgetPoolId(sql`creator_sprints.id`)})`,
-    sharedBudget: sql<boolean>`(select count(*) > 1 from creator_sprints sibling where coalesce(sibling.budget_pool_id, sibling.id) = ${campaignBudgetPoolId(sql`creator_sprints.id`)})`,
-    bonusUsedCents: campaignBonusCommittedCents(sql`creator_sprints.id`),
-    bonusPaidCents: campaignBonusCommittedCents(sql`creator_sprints.id`, true),
-  }).from(schema.creatorSprints).where(inArray(schema.creatorSprints.id, rows.map(row => row.id)))
+    db.select({
+      id: schema.creatorSprints.id,
+      paidCents: campaignPaidCents(sql`creator_sprints.id`),
+      usedCents: campaignCommittedCents(sql`creator_sprints.id`),
+      pendingCents: campaignPendingCents(sql`creator_sprints.id`),
+      budgetCents: campaignContentBudgetCents(sql`creator_sprints.id`),
+      bonusBudgetCents: campaignBonusBudgetCents(sql`creator_sprints.id`),
+      poolId: campaignBudgetPoolId(sql`creator_sprints.id`),
+      poolName: sql<string>`(select owner.name from creator_sprints owner where owner.id = ${campaignBudgetPoolId(sql`creator_sprints.id`)})`,
+      sharedBudget: sql<boolean>`(select count(*) > 1 from creator_sprints sibling where coalesce(sibling.budget_pool_id, sibling.id) = ${campaignBudgetPoolId(sql`creator_sprints.id`)})`,
+      bonusUsedCents: campaignBonusCommittedCents(sql`creator_sprints.id`),
+      bonusPaidCents: campaignBonusCommittedCents(sql`creator_sprints.id`, true),
+    }).from(schema.creatorSprints).where(inArray(schema.creatorSprints.id, rows.map(row => row.id))),
+  ])
   const spendingById = new Map(spending.map(row => [row.id, row]))
   return rows.map((row) => {
     const counts = {

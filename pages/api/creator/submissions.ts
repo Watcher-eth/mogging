@@ -17,7 +17,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
     if (!session?.user?.id) throw new ApiError(401, 'Authentication required')
 
     if (req.method === 'GET') {
-      const dashboard = await getCreatorDashboard(session.user.id)
+      const dashboard = await getCreatorDashboard(session.user.id, process.env.PORTAL_SCOPED_READS_DISABLED === '1' ? undefined : 'ledger')
       return json(res, 200, { submissions: dashboard.submissions, payments: dashboard.payments })
     }
     if (req.method === 'POST') {

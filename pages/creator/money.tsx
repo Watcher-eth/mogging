@@ -10,7 +10,7 @@ import { StudioTabs, StudioTabContent } from '@/components/creator/studio-tabs'
 import { PayoutInformation } from '@/components/creator/payout-information-form'
 import { PiggyBank } from '@/components/creator/piggy-bank'
 import { BundledPayoutControls } from '@/components/creator/bundled-payout-controls'
-import type { CreatorDashboard } from '@/components/creator/types'
+import type { CreatorMoneyData } from '@/components/creator/types'
 import { apiGet } from '@/lib/api/client'
 import {
   creatorBundlePlan,
@@ -37,8 +37,9 @@ export default function MoneyPage() {
 function MoneyContent() {
   const router = useRouter()
   const { data: session } = useSession()
-  const { data, isLoading, error, mutate } = useSWR<CreatorDashboard>(
-    '/api/creator',
+  const dashboardKey = router.pathname === '/creator/money' ? '/api/creator?view=money' : '/api/creator'
+  const { data, isLoading, error, mutate } = useSWR<CreatorMoneyData>(
+    dashboardKey,
     apiGet,
   )
   const tab = tabs.some((item) => item.value === router.query.tab)
@@ -232,10 +233,8 @@ function MoneyContent() {
         <StudioTabContent value="methods">
           <PayoutInformation
             email={session?.user?.email || ''}
-            onSaved={async () => {
-              await mutate()
-              change('wallet')
-            }}
+            dashboardKey={dashboardKey}
+            onSaved={async () => change('wallet')}
           />
         </StudioTabContent>
       </StudioTabs>

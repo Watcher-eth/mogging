@@ -1,9 +1,9 @@
 import Link from 'next/link'
 import { CircleAlert, ArrowUpRight } from 'lucide-react'
 import { creatorMissingPaymentData } from '@/lib/creator/money'
-import type { CreatorDashboard } from './types'
+import type { CreatorMoneyData } from './types'
 
-export function MissingPaymentData({ data }: { data?: CreatorDashboard }) {
+export function MissingPaymentData({ data }: { data?: CreatorMoneyData }) {
   if (!data || !creatorMissingPaymentData(data.profile, data.submissions, data.payments)) return null
   return <aside role="status" className="mb-6 flex flex-wrap items-center gap-3 rounded-2xl border border-amber-200 bg-amber-50 p-4 text-amber-950">
     <CircleAlert className="size-5 shrink-0" aria-hidden="true" />

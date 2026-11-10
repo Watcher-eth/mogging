@@ -1,5 +1,6 @@
 import { hasCreatorPayoutMethod } from '@/lib/creator/money'
 import Link from 'next/link'
+import { useRouter } from 'next/router'
 import { BorderBeam } from '@/components/ui/border-beam'
 import { useEffect, useId, useRef, useState } from 'react'
 import {
@@ -12,20 +13,13 @@ import { Check, ChevronRight, ChevronUp, Plus, X } from 'lucide-react'
 import useSWR from 'swr'
 import { apiGet } from '@/lib/api/client'
 import { cn } from '@/lib/utils'
-import type { CreatorDashboard } from './types'
+import { creatorSetupStatusPath, type CreatorDashboard, type CreatorSetupStatus } from './types'
 import floatingStyles from './floating-actions.module.css'
 
 const floatingPosition = 'relative shrink-0'
 
-export function creatorSetupComplete(data: CreatorDashboard) {
-  return data.socialAccounts.length > 0 && data.submissions.length > 0 && hasPayoutInformation(data)
-}
-
-function hasPayoutInformation({ profile }: CreatorDashboard) {
-  return hasCreatorPayoutMethod(profile)
-}
-
 export function CreatorSetupChecklist() {
+  const { pathname } = useRouter()
   const [expanded, setExpanded] = useState(false)
   const reduceMotion = useReducedMotion()
   const motionId = useId()
@@ -41,30 +35,35 @@ export function CreatorSetupChecklist() {
   const transition = reduceMotion
     ? { duration: 0 }
     : { type: 'spring' as const, stiffness: 340, damping: 32 }
-  const { data } = useSWR<CreatorDashboard>('/api/creator', apiGet, {
+  const dashboardAlreadyLoaded = pathname === '/creator' || pathname.includes('__')
+  const { data } = useSWR<CreatorDashboard | CreatorSetupStatus>(dashboardAlreadyLoaded ? '/api/creator' : creatorSetupStatusPath, apiGet, {
     refreshInterval: 30_000,
   })
   if (!data) return null
+  const setup = 'setup' in data ? data.setup : {
+    accountConnected: data.socialAccounts.length > 0, firstPostSubmitted: data.submissions.length > 0,
+    payoutConfigured: hasCreatorPayoutMethod(data.profile),
+  }
 
   const tasks = [
     {
       title: 'Connect a social account',
       description: 'Add the TikTok or Instagram account you publish from.',
       href: '/creator/accounts',
-      complete: data.socialAccounts.length > 0,
+      complete: setup.accountConnected,
     },
     {
       title: 'Add payout information',
       description: 'Choose PayPal or crypto for your earnings.',
       href: '/creator/money?tab=methods',
-      complete: hasPayoutInformation(data),
+      complete: setup.payoutConfigured,
     },
     {
       title: 'Submit your first video',
       description:
         'Choose a campaign and submit your first published post.',
       href: '/creator/submissions?new=1',
-      complete: data.submissions.length > 0,
+      complete: setup.firstPostSubmitted,
     },
   ]
   const completed = tasks.filter((task) => task.complete).length

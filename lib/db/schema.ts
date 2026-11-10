@@ -1223,6 +1223,14 @@ export const creatorProfilesRelations = relations(creatorProfiles, ({ one, many 
   payments: many(creatorPayments),
   socialAccounts: many(creatorSocialAccounts),
   ctaLibraryItems: many(creatorCtaLibraryItems),
+  payoutRequests: many(creatorPayoutRequests),
+}))
+
+export const creatorPayoutRequestsRelations = relations(creatorPayoutRequests, ({ one }) => ({
+  creatorProfile: one(creatorProfiles, {
+    fields: [creatorPayoutRequests.creatorProfileId],
+    references: [creatorProfiles.id],
+  }),
 }))
 
 export const creatorCtaLibraryItemsRelations = relations(creatorCtaLibraryItems, ({ one }) => ({

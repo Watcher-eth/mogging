@@ -8,21 +8,22 @@ import { apiPatch, ApiClientError } from '@/lib/api/client'
 import { canSeeCampaign } from '@/lib/creator/campaign-access'
 import { sprintMoney, sprintPhase, sprintPayoutCents, type CreatorSprint } from '@/lib/creator/sprints'
 import { creatorRetainerTerms } from '@/lib/creator/retainer'
-import type { AdminSubmission } from './creator-types'
+import type { AdminQueueSubmission } from './creator-types'
 import { submissionReviewQueueId, type SubmissionReviewQueueId } from '@/lib/admin/creator-overview'
 
-type CampaignSubmission = AdminSubmission
+type CampaignSubmission = AdminQueueSubmission
+export type MoveCampaign = Pick<CreatorSprint, 'id' | 'name' | 'status' | 'audience' | 'startsAt' | 'endsAt' | 'terms'>
 const dragType = 'application/x-mogging-submission'
 const MoveContext = createContext<{
-  activeCampaigns: CreatorSprint[]
-  destinationsFor: (submission: CampaignSubmission) => CreatorSprint[]
+  activeCampaigns: MoveCampaign[]
+  destinationsFor: (submission: CampaignSubmission) => MoveCampaign[]
   dragged: CampaignSubmission | null
   setDragged: (submission: CampaignSubmission | null) => void
   open: (submission: CampaignSubmission, targetId: string, campaignIds?: string[]) => void
 } | null>(null)
 
 export function CampaignSubmissionMoves({ campaigns, onMoved, children }: {
-  campaigns: CreatorSprint[]
+  campaigns: MoveCampaign[]
   onMoved: () => Promise<unknown>
   children: ReactNode
 }) {
@@ -163,7 +164,7 @@ function MoveSubmissionDialog({
   sourceId: string
   sourceName: string
   submission: CampaignSubmission
-  campaigns: CreatorSprint[]
+  campaigns: MoveCampaign[]
   initialTargetId: string
   onClose: () => void
   onMoved: () => Promise<unknown>
@@ -178,7 +179,7 @@ function MoveSubmissionDialog({
   const priorApproval = submission.approvedAmountCents ?? null
   const hasVerifiedMetrics = submission.adminViewCountThreshold != null && submission.adminUsAudiencePercent != null
   const correctedApproval = target && priorApproval !== null && hasVerifiedMetrics
-    ? sprintPayoutCents(creatorRetainerTerms(target.terms, submission.sprintTerms?.retainer, new Date(submission.createdAt)), submission.adminViewCountThreshold!, submission.adminUsAudiencePercent)
+    ? sprintPayoutCents(creatorRetainerTerms(target.terms, submission.retainerTerms ?? submission.sprintTerms?.retainer, new Date(submission.createdAt)), submission.adminViewCountThreshold!, submission.adminUsAudiencePercent)
     : null
   const missingMetrics = priorApproval !== null && !hasVerifiedMetrics
 

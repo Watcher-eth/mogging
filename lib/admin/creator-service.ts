@@ -9,11 +9,12 @@ import { submissionReviewError, AUDIENCE_MINIMUM_REJECTION } from '@/lib/creator
 import { rethrowCreatorPostConflict } from '@/lib/creator/post-identity'
 import { normalizePaymentReceipt, paymentReceiptSchema } from './payment-receipt'
 import { creatorContentPayout } from '@/lib/creator/content-payout'
-import { canReceiveCreatorPayout, remainingCreatorPaymentCents } from '@/lib/creator/money'
+import { canReceiveCreatorPayout, creatorContentBalances, remainingCreatorPaymentCents } from '@/lib/creator/money'
 import { submissionUnreadCount } from '@/lib/creator/submission-messages'
 import { sprintPayoutCents, sprintReviewItems } from '@/lib/creator/sprints'
-import { and, desc, eq, sql } from 'drizzle-orm'
+import { and, desc, eq, inArray, sql, type SQL } from 'drizzle-orm'
 import { z } from 'zod'
+import type { AdminQueueData } from '@/components/admin/creator-types'
 import { ApiError } from '@/lib/api/http'
 import { db, schema } from '@/lib/db'
 import { getCreatorCoverage } from './creator-coverage'
@@ -88,7 +89,92 @@ export const CREATOR_CONVERSION_BONUS_CAP_RATE = 0.25
 export type CreatorAdminReviewInput = z.infer<typeof creatorAdminReviewSchema>
 export type CreatorAdminPaymentInput = z.infer<typeof creatorAdminPaymentSchema>
 
-export async function getCreatorAdminDashboard({ includeCoverage = true } = {}) {
+function getAdminSubmissions(scope?: SQL, reviewId?: string) {
+  return db.select({
+    id: schema.creatorSubmissions.id,
+    unreadMessages: submissionUnreadCount('team'),
+    studioGenerationId: schema.creatorSubmissions.studioGenerationId,
+    creatorProfileId: schema.creatorSubmissions.creatorProfileId,
+    creatorName: schema.creatorProfiles.displayName,
+    creatorEmail: schema.users.email,
+    socialAccountId: schema.creatorSubmissions.socialAccountId,
+    socialHandle: schema.creatorSocialAccounts.handle,
+    creatorAvatarUrl: sql<string | null>`coalesce(nullif(${schema.creatorSocialAccounts.avatarUrl}, ''), ${schema.users.image})`,
+    socialAccountStatus: schema.creatorSocialAccounts.status,
+    sprintId: schema.creatorSubmissions.sprintId,
+    sprintName: schema.creatorSprints.name,
+    sprintTerms: reviewId ? sql<(typeof schema.creatorSubmissions.$inferSelect)['sprintTerms'] | null>`case when ${schema.creatorSubmissions.id} = ${reviewId} then ${schema.creatorSubmissions.sprintTerms} end` : schema.creatorSubmissions.sprintTerms,
+    approvedAmountCents: schema.creatorSubmissions.approvedAmountCents,
+    campaignPayoutCorrected: schema.creatorSubmissions.campaignPayoutCorrected,
+    reviewRequestedAt: schema.creatorSubmissions.reviewRequestedAt,
+    formatId: schema.creatorSubmissions.formatId,
+    requirementsConfirmedAt: schema.creatorSubmissions.requirementsConfirmedAt,
+    title: schema.creatorSubmissions.title,
+    platform: schema.creatorSubmissions.platform,
+    caption: schema.creatorSubmissions.caption,
+    postUrl: schema.creatorSubmissions.postUrl,
+    videoUrl: schema.creatorSubmissions.videoUrl,
+    videoContentType: schema.creatorSubmissions.videoContentType,
+    videoSizeBytes: schema.creatorSubmissions.videoSizeBytes,
+    analyticsScreenshotUrl: schema.creatorSubmissions.analyticsScreenshotUrl,
+    analyticsStorageKey: schema.creatorSubmissions.analyticsStorageKey,
+    audienceCheck: reviewId ? sql<(typeof schema.creatorSubmissions.$inferSelect)['audienceCheck'] | null>`case when ${schema.creatorSubmissions.id} = ${reviewId} then ${schema.creatorSubmissions.audienceCheck} end` : schema.creatorSubmissions.audienceCheck,
+    analyticsContentType: schema.creatorSubmissions.analyticsContentType,
+    analyticsSizeBytes: schema.creatorSubmissions.analyticsSizeBytes,
+    viewCountThreshold: schema.creatorSubmissions.viewCountThreshold,
+    usAudiencePercent: schema.creatorSubmissions.usAudiencePercent,
+    adminViewCountThreshold: schema.creatorSubmissions.adminViewCountThreshold,
+    adminUsAudiencePercent: schema.creatorSubmissions.adminUsAudiencePercent,
+    status: schema.creatorSubmissions.status,
+    exclusivityConfirmed: schema.creatorSubmissions.exclusivityConfirmed,
+    reviewNote: schema.creatorSubmissions.reviewNote,
+    reviewChecklist: reviewId ? sql<(typeof schema.creatorSubmissions.$inferSelect)['reviewChecklist'] | null>`case when ${schema.creatorSubmissions.id} = ${reviewId} then ${schema.creatorSubmissions.reviewChecklist} end` : schema.creatorSubmissions.reviewChecklist,
+    createdAt: schema.creatorSubmissions.createdAt,
+    updatedAt: schema.creatorSubmissions.updatedAt,
+  })
+    .from(schema.creatorSubmissions)
+    .leftJoin(schema.creatorSprints, eq(schema.creatorSubmissions.sprintId, schema.creatorSprints.id))
+    .innerJoin(schema.creatorProfiles, eq(schema.creatorSubmissions.creatorProfileId, schema.creatorProfiles.id))
+    .innerJoin(schema.users, eq(schema.creatorProfiles.userId, schema.users.id))
+    .leftJoin(schema.creatorSocialAccounts, eq(schema.creatorSubmissions.socialAccountId, schema.creatorSocialAccounts.id))
+    .where(and(eq(schema.creatorSubmissions.isDraft, false), scope))
+    .orderBy(desc(schema.creatorSubmissions.createdAt))
+}
+
+function getAdminPayments(scope?: SQL) {
+  return db
+    .select({
+      id: schema.creatorPayments.id,
+      creatorProfileId: schema.creatorPayments.creatorProfileId,
+      creatorName: schema.creatorProfiles.displayName,
+      creatorEmail: schema.users.email,
+      submissionId: schema.creatorPayments.submissionId,
+      submissionTitle: sql<string | null>`coalesce(${schema.creatorPayments.bonusNote}, ${schema.creatorSubmissions.title})`,
+      bonusSprintId: schema.creatorPayments.bonusSprintId,
+      bonusKey: schema.creatorPayments.bonusKey,
+      bonusNote: schema.creatorPayments.bonusNote,
+      amountCents: schema.creatorPayments.amountCents,
+      payoutRequestId: schema.creatorPayments.payoutRequestId,
+      cryptoChain: schema.creatorCryptoPayoutBatches.chain,
+      currency: schema.creatorPayments.currency,
+      status: schema.creatorPayments.status,
+      paymentOption: schema.creatorPayments.paymentOption,
+      providerReference: schema.creatorPayments.providerReference,
+      hasReceipt: sql<boolean>`${schema.creatorPaymentReceipts.paymentId} is not null`,
+      paidAt: schema.creatorPayments.paidAt,
+      createdAt: schema.creatorPayments.createdAt,
+    })
+    .from(schema.creatorPayments)
+    .innerJoin(schema.creatorProfiles, eq(schema.creatorPayments.creatorProfileId, schema.creatorProfiles.id))
+    .leftJoin(schema.creatorPaymentReceipts, eq(schema.creatorPaymentReceipts.paymentId, schema.creatorPayments.id))
+    .leftJoin(schema.creatorCryptoPayoutBatches, eq(schema.creatorCryptoPayoutBatches.id, schema.creatorPayments.cryptoBatchId))
+    .innerJoin(schema.users, eq(schema.creatorProfiles.userId, schema.users.id))
+    .leftJoin(schema.creatorSubmissions, eq(schema.creatorPayments.submissionId, schema.creatorSubmissions.id))
+    .where(scope)
+    .orderBy(desc(schema.creatorPayments.createdAt))
+}
+
+export async function getCreatorAdminDashboard({ includeCoverage = true, creatorId, reviewId }: { includeCoverage?: boolean; creatorId?: string; reviewId?: string } = {}) {
   const [creatorRows, accountRows, submissions, payments, attributionMetrics, settingsRecord, accountAttributionRows, payoutRequests, creatorCoverage, warningRows] = await Promise.all([
     db
       .select({
@@ -116,6 +202,7 @@ export async function getCreatorAdminDashboard({ includeCoverage = true } = {}) 
       })
       .from(schema.creatorProfiles)
       .innerJoin(schema.users, eq(schema.creatorProfiles.userId, schema.users.id))
+      .where(creatorId ? eq(schema.creatorProfiles.id, creatorId) : undefined)
       .orderBy(desc(schema.creatorProfiles.createdAt)),
     db
       .select({
@@ -145,94 +232,21 @@ export async function getCreatorAdminDashboard({ includeCoverage = true } = {}) 
       .innerJoin(schema.creatorProfiles, eq(schema.creatorSocialAccounts.creatorProfileId, schema.creatorProfiles.id))
       .innerJoin(schema.users, eq(schema.creatorProfiles.userId, schema.users.id))
       .leftJoin(schema.creatorTrackingLinks, eq(schema.creatorTrackingLinks.socialAccountId, schema.creatorSocialAccounts.id))
+      .where(creatorId ? eq(schema.creatorSocialAccounts.creatorProfileId, creatorId) : undefined)
       .orderBy(desc(schema.creatorSocialAccounts.createdAt)),
-    db
-      .select({
-        id: schema.creatorSubmissions.id,
-        unreadMessages: submissionUnreadCount('team'),
-        studioGenerationId: schema.creatorSubmissions.studioGenerationId,
-        creatorProfileId: schema.creatorSubmissions.creatorProfileId,
-        creatorName: schema.creatorProfiles.displayName,
-        creatorEmail: schema.users.email,
-        socialAccountId: schema.creatorSubmissions.socialAccountId,
-        socialHandle: schema.creatorSocialAccounts.handle,
-        creatorAvatarUrl: sql<string | null>`coalesce(nullif(${schema.creatorSocialAccounts.avatarUrl}, ''), ${schema.users.image})`,
-        socialAccountStatus: schema.creatorSocialAccounts.status,
-        sprintId: schema.creatorSubmissions.sprintId,
-        sprintName: schema.creatorSprints.name,
-        sprintTerms: schema.creatorSubmissions.sprintTerms,
-        approvedAmountCents: schema.creatorSubmissions.approvedAmountCents,
-        campaignPayoutCorrected: schema.creatorSubmissions.campaignPayoutCorrected,
-        reviewRequestedAt: schema.creatorSubmissions.reviewRequestedAt,
-        formatId: schema.creatorSubmissions.formatId,
-        requirementsConfirmedAt: schema.creatorSubmissions.requirementsConfirmedAt,
-        title: schema.creatorSubmissions.title,
-        platform: schema.creatorSubmissions.platform,
-        caption: schema.creatorSubmissions.caption,
-        postUrl: schema.creatorSubmissions.postUrl,
-        videoUrl: schema.creatorSubmissions.videoUrl,
-        videoContentType: schema.creatorSubmissions.videoContentType,
-        videoSizeBytes: schema.creatorSubmissions.videoSizeBytes,
-        analyticsScreenshotUrl: schema.creatorSubmissions.analyticsScreenshotUrl,
-        analyticsStorageKey: schema.creatorSubmissions.analyticsStorageKey,
-        audienceCheck: schema.creatorSubmissions.audienceCheck,
-        analyticsContentType: schema.creatorSubmissions.analyticsContentType,
-        analyticsSizeBytes: schema.creatorSubmissions.analyticsSizeBytes,
-        viewCountThreshold: schema.creatorSubmissions.viewCountThreshold,
-        usAudiencePercent: schema.creatorSubmissions.usAudiencePercent,
-        adminViewCountThreshold: schema.creatorSubmissions.adminViewCountThreshold,
-        adminUsAudiencePercent: schema.creatorSubmissions.adminUsAudiencePercent,
-        status: schema.creatorSubmissions.status,
-        exclusivityConfirmed: schema.creatorSubmissions.exclusivityConfirmed,
-        reviewNote: schema.creatorSubmissions.reviewNote,
-        reviewChecklist: schema.creatorSubmissions.reviewChecklist,
-        createdAt: schema.creatorSubmissions.createdAt,
-        updatedAt: schema.creatorSubmissions.updatedAt,
-      })
-      .from(schema.creatorSubmissions)
-      .leftJoin(schema.creatorSprints, eq(schema.creatorSubmissions.sprintId, schema.creatorSprints.id))
-      .innerJoin(schema.creatorProfiles, eq(schema.creatorSubmissions.creatorProfileId, schema.creatorProfiles.id))
-      .innerJoin(schema.users, eq(schema.creatorProfiles.userId, schema.users.id))
-      .leftJoin(schema.creatorSocialAccounts, eq(schema.creatorSubmissions.socialAccountId, schema.creatorSocialAccounts.id))
-      .where(eq(schema.creatorSubmissions.isDraft, false))
-      .orderBy(desc(schema.creatorSubmissions.createdAt)),
-    db
-      .select({
-        id: schema.creatorPayments.id,
-        creatorProfileId: schema.creatorPayments.creatorProfileId,
-        creatorName: schema.creatorProfiles.displayName,
-        creatorEmail: schema.users.email,
-        submissionId: schema.creatorPayments.submissionId,
-        submissionTitle: sql<string | null>`coalesce(${schema.creatorPayments.bonusNote}, ${schema.creatorSubmissions.title})`,
-        bonusSprintId: schema.creatorPayments.bonusSprintId,
-        bonusKey: schema.creatorPayments.bonusKey,
-        bonusNote: schema.creatorPayments.bonusNote,
-        amountCents: schema.creatorPayments.amountCents,
-        payoutRequestId: schema.creatorPayments.payoutRequestId,
-        cryptoChain: schema.creatorCryptoPayoutBatches.chain,
-        currency: schema.creatorPayments.currency,
-        status: schema.creatorPayments.status,
-        paymentOption: schema.creatorPayments.paymentOption,
-        providerReference: schema.creatorPayments.providerReference,
-        hasReceipt: sql<boolean>`${schema.creatorPaymentReceipts.paymentId} is not null`,
-        paidAt: schema.creatorPayments.paidAt,
-        createdAt: schema.creatorPayments.createdAt,
-      })
-      .from(schema.creatorPayments)
-      .innerJoin(schema.creatorProfiles, eq(schema.creatorPayments.creatorProfileId, schema.creatorProfiles.id))
-      .leftJoin(schema.creatorPaymentReceipts, eq(schema.creatorPaymentReceipts.paymentId, schema.creatorPayments.id))
-      .leftJoin(schema.creatorCryptoPayoutBatches, eq(schema.creatorCryptoPayoutBatches.id, schema.creatorPayments.cryptoBatchId))
-      .innerJoin(schema.users, eq(schema.creatorProfiles.userId, schema.users.id))
-      .leftJoin(schema.creatorSubmissions, eq(schema.creatorPayments.submissionId, schema.creatorSubmissions.id))
-      .orderBy(desc(schema.creatorPayments.createdAt)),
-    db.query.creatorAttributionMetrics.findMany(),
+    getAdminSubmissions(creatorId ? eq(schema.creatorSubmissions.creatorProfileId, creatorId) : undefined, reviewId),
+    getAdminPayments(creatorId ? sql`(${schema.creatorPayments.creatorProfileId} = ${creatorId}
+      or (${Boolean(reviewId)} and ${schema.creatorPayments.bonusSprintId} = (
+        select s.sprint_id from creator_submissions s where s.id = ${reviewId ?? ''}
+      )))` : undefined),
+    db.query.creatorAttributionMetrics.findMany({ where: creatorId ? sql`exists (select 1 from creator_submissions s where s.id = ${schema.creatorAttributionMetrics.submissionId} and s.creator_profile_id = ${creatorId})` : undefined }),
     db.query.creatorProgramSettings.findFirst({
       where: eq(schema.creatorProgramSettings.id, 'default'),
     }),
-    getCreatorAttributionReport(),
-    db.query.creatorPayoutRequests.findMany({ where: eq(schema.creatorPayoutRequests.status, 'pending'), orderBy: [desc(schema.creatorPayoutRequests.requestedAt)] }),
-    includeCoverage ? getCreatorCoverage() : undefined,
-    listCreatorInternalWarnings(),
+    creatorId ? [] : getCreatorAttributionReport(),
+    db.query.creatorPayoutRequests.findMany({ where: and(eq(schema.creatorPayoutRequests.status, 'pending'), creatorId ? eq(schema.creatorPayoutRequests.creatorProfileId, creatorId) : undefined), orderBy: [desc(schema.creatorPayoutRequests.requestedAt)] }),
+    includeCoverage && !creatorId ? getCreatorCoverage() : undefined,
+    listCreatorInternalWarnings(creatorId),
   ])
 
   const attributionByAccountId = new Map(accountAttributionRows.map((report) => [report.socialAccountId, report]))
@@ -282,6 +296,126 @@ export async function getCreatorAdminDashboard({ includeCoverage = true } = {}) 
       compensationCapRate: CREATOR_COMPENSATION_CAP_RATE,
       conversionBonusCapRate: CREATOR_CONVERSION_BONUS_CAP_RATE,
     },
+  }
+}
+
+const submission = schema.creatorSubmissions
+const payment = schema.creatorPayments
+const request = schema.creatorPayoutRequests
+
+const queueSubmissionFields = {
+  id: submission.id,
+  studioGenerationId: submission.studioGenerationId,
+  hasAnalyticsRecording: sql<boolean>`nullif(${submission.analyticsScreenshotUrl}, '') is not null`,
+  creatorProfileId: submission.creatorProfileId,
+  creatorName: schema.creatorProfiles.displayName,
+  socialHandle: schema.creatorSocialAccounts.handle,
+  sprintId: submission.sprintId,
+  sprintName: schema.creatorSprints.name,
+  formatId: submission.formatId,
+  formatName: sql<string | null>`(select format->>'name'
+    from jsonb_array_elements(case when jsonb_typeof(${submission.sprintTerms}->'formats') = 'array'
+      then ${submission.sprintTerms}->'formats' else '[]'::jsonb end) format
+    where format->>'id' = ${submission.formatId} limit 1)`,
+  retainerTerms: sql<NonNullable<(typeof submission.$inferSelect)['sprintTerms']>['retainer'] | null>`${submission.sprintTerms}->'retainer'`,
+  title: submission.title,
+  platform: submission.platform,
+  status: submission.status,
+  approvedAmountCents: submission.approvedAmountCents,
+  adminViewCountThreshold: submission.adminViewCountThreshold,
+  adminUsAudiencePercent: submission.adminUsAudiencePercent,
+  createdAt: submission.createdAt,
+  reviewRequestedAt: submission.reviewRequestedAt,
+}
+
+function getQueueSubmissionRows(scope: SQL | undefined) {
+  return db.select({
+    ...queueSubmissionFields,
+    cursorTime: sql<string>`to_char(${submission.createdAt}, 'YYYY-MM-DD"T"HH24:MI:SS.US"Z"')`,
+  })
+    .from(submission)
+    .leftJoin(schema.creatorSprints, eq(submission.sprintId, schema.creatorSprints.id))
+    .innerJoin(schema.creatorProfiles, eq(submission.creatorProfileId, schema.creatorProfiles.id))
+    .leftJoin(schema.creatorSocialAccounts, eq(submission.socialAccountId, schema.creatorSocialAccounts.id))
+    .where(and(eq(submission.isDraft, false), scope))
+}
+
+const requestedPayment = sql`exists (select 1 from creator_payout_requests pr
+  where pr.id = ${payment.payoutRequestId} and pr.status = 'pending')`
+const requestedSubmission = sql`exists (select 1 from creator_payments p join creator_payout_requests pr
+  on p.payout_request_id = pr.id and pr.status = 'pending'
+  where p.submission_id = ${submission.id} and p.status <> 'cancelled')`
+const queuedSubmission = sql`${submission.status} in ('pending', 'in_review')
+  and (${submission.studioGenerationId} is null or nullif(${submission.analyticsScreenshotUrl}, '') is not null)`
+
+export async function getCreatorReviewQueue(now = new Date()) {
+  const dayAgo = new Date(now.getTime() - 86_400_000).toISOString()
+  const cutoff = now.toISOString()
+  const recent = (column: SQL) => sql`${column} > ${dayAgo}::timestamp and ${column} <= ${cutoff}::timestamp`
+  const [counts, submissions, payouts, payments, creators] = await Promise.all([
+    db.execute<AdminQueueData['counts']>(sql`select
+      (select count(*)::int from creator_submissions where not is_draft) as "videoCount",
+      (select count(*)::int from creator_submissions where not is_draft and status = 'pending') as "pendingCount",
+      (select count(*)::int from creator_submissions where not is_draft and ${recent(sql`created_at`)}) as "newVideos",
+      (select count(*)::int from creator_social_accounts) as "accountCount",
+      (select count(*)::int from creator_social_accounts where ${recent(sql`created_at`)}) as "newAccounts",
+      count(*)::int as "paymentCount",
+      coalesce(sum(amount_cents), 0)::float8 as "outstandingCents",
+      coalesce(sum(amount_cents) filter (where ${recent(sql`created_at`)}), 0)::float8 as "newOutstandingCents"
+      from creator_payments where status in ('pending', 'processing')`),
+    getQueueSubmissionRows(sql`(${queuedSubmission}) or ${requestedSubmission}`).orderBy(desc(submission.createdAt), desc(submission.id)),
+    db.query.creatorPayoutRequests.findMany({ where: eq(request.status, 'pending'), orderBy: [desc(request.requestedAt)] }),
+    db.select({
+      submissionId: payment.submissionId, payoutRequestId: payment.payoutRequestId, amountCents: payment.amountCents,
+      status: payment.status, cryptoChain: schema.creatorCryptoPayoutBatches.chain,
+    }).from(payment).leftJoin(schema.creatorCryptoPayoutBatches, eq(schema.creatorCryptoPayoutBatches.id, payment.cryptoBatchId))
+      .where(sql`${requestedPayment} or (${payment.status} in ('paid', 'processing') and exists (
+        select 1 from creator_payments p join creator_payout_requests pr on pr.id = p.payout_request_id
+        where pr.status = 'pending' and p.status <> 'cancelled' and p.submission_id = ${payment.submissionId}
+      ))`),
+    db.select({ id: schema.creatorProfiles.id, displayName: schema.creatorProfiles.displayName })
+      .from(schema.creatorProfiles).where(sql`exists (select 1 from creator_payout_requests pr
+        where pr.creator_profile_id = ${schema.creatorProfiles.id} and pr.status = 'pending')`),
+  ])
+  return { counts: counts[0], submissions: submissions.map(({ cursorTime: _, ...row }) => row), payoutRequests: payouts, payments, creators }
+}
+
+const pageSize = 30
+
+export const reviewedSubmissionsQuery = z.object({
+  search: z.string().trim().max(200).default(''),
+  before: z.string().datetime().optional(),
+  beforeId: z.string().min(1).max(120).optional(),
+}).refine(query => Boolean(query.before) === Boolean(query.beforeId))
+
+export async function getReviewedCreatorSubmissions({ search, before, beforeId }: z.infer<typeof reviewedSubmissionsQuery>) {
+  const rows = await getQueueSubmissionRows(and(
+    inArray(submission.status, ['approved', 'paid']),
+    search ? sql`strpos(lower(concat_ws(' ', ${schema.creatorProfiles.displayName}, ${schema.creatorSocialAccounts.handle},
+      ${submission.title}, ${schema.creatorSprints.name})), lower(${search})) > 0` : undefined,
+    before ? sql`(${submission.createdAt}, ${submission.id}) < (${before}::timestamp, ${beforeId})` : undefined,
+  )).orderBy(desc(submission.createdAt), desc(submission.id)).limit(pageSize + 1)
+  const page = rows.slice(0, pageSize)
+  const last = page.at(-1)
+  return {
+    submissions: page.map(({ cursorTime: _, ...row }) => row),
+    next: last && rows.length > pageSize ? { before: last.cursorTime, beforeId: last.id } : null,
+  }
+}
+
+export async function getCreatorSubmissionReview(reviewId: string) {
+  const [owner] = await db.select({ creatorId: submission.creatorProfileId }).from(submission)
+    .where(and(eq(submission.id, reviewId), eq(submission.isDraft, false)))
+  if (!owner) throw new ApiError(404, 'Submission not found')
+  const data = await getCreatorAdminDashboard({ creatorId: owner.creatorId, reviewId })
+  const target = data.submissions.find(item => item.id === reviewId)
+  if (!target) throw new ApiError(404, 'Submission not found')
+  const balances = creatorContentBalances(data.submissions, data.payments.filter(row => row.creatorProfileId === owner.creatorId))
+  return {
+    target, creator: data.creators[0],
+    payments: data.payments.filter(row => row.submissionId === reviewId || row.bonusSprintId != null),
+    metrics: data.attributionMetrics.filter(row => row.submissionId === reviewId),
+    balance: { ...balances, unpaid: [...balances.unpaid] },
   }
 }
 

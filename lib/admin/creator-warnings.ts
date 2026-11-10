@@ -10,8 +10,8 @@ export const addCreatorWarningSchema = z.object({
 
 export const resolveCreatorWarningSchema = z.object({ id: z.string().trim().min(1).max(120) })
 
-export async function listCreatorInternalWarnings() {
-  return db.select().from(schema.creatorInternalWarnings).orderBy(desc(schema.creatorInternalWarnings.createdAt))
+export async function listCreatorInternalWarnings(creatorId?: string) {
+  return db.select().from(schema.creatorInternalWarnings).where(creatorId ? eq(schema.creatorInternalWarnings.creatorProfileId, creatorId) : undefined).orderBy(desc(schema.creatorInternalWarnings.createdAt))
 }
 
 export async function addCreatorInternalWarning(input: z.infer<typeof addCreatorWarningSchema>, adminEmail: string) {

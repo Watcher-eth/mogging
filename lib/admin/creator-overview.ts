@@ -1,5 +1,5 @@
 import { creatorBundlePlan, creatorContentBalances, creatorUnpaidCents, hasCreatorPayoutMethod } from '@/lib/creator/money'
-import type { AdminCreator, AdminDashboard, AdminPayment, AdminSubmission, ReviewTarget } from '@/components/admin/creator-types'
+import type { AdminCreator, AdminDashboard, AdminPayment, AdminQueueSubmission, AdminSubmission, ReviewTarget } from '@/components/admin/creator-types'
 import { payoutChain } from './crypto-payouts/shared'
 
 export type ApprovalTarget = Exclude<ReviewTarget, { resource: 'payment' }>
@@ -27,40 +27,44 @@ export function approvalKind(target: ApprovalTarget): ApprovalKind {
   return target.resource === 'creator' ? 'payout' : target.resource
 }
 
-export function approvalSubmittedAt(target: ApprovalTarget) {
+type QueueTarget<T extends AdminQueueSubmission = AdminQueueSubmission> = { resource: 'submission'; item: T }
+
+export function approvalSubmittedAt(target: ApprovalTarget | QueueTarget) {
   return target.resource === 'submission' && target.item.reviewRequestedAt
     ? target.item.reviewRequestedAt
     : target.item.createdAt
 }
 
-export function getApprovalQueue(data: AdminDashboard): ApprovalTarget[] {
-  return [
-    ...data.submissions.filter((item) => (item.status === 'pending' || item.status === 'in_review') && !(item.studioGenerationId && !item.analyticsScreenshotUrl)).map((item) => ({ resource: 'submission' as const, item })),
-  ].sort((a, b) => {
-    const aTime = Date.parse(approvalSubmittedAt(a))
-    const bTime = Date.parse(approvalSubmittedAt(b))
-    return (Number.isFinite(aTime) ? aTime : Number.MAX_SAFE_INTEGER) - (Number.isFinite(bTime) ? bTime : Number.MAX_SAFE_INTEGER)
-  })
+export function getApprovalQueue<T extends AdminQueueSubmission>(data: { submissions: T[] }): QueueTarget<T>[] {
+  return data.submissions
+    .filter(item => (item.status === 'pending' || item.status === 'in_review')
+      && (!item.studioGenerationId || (item.hasAnalyticsRecording ?? Boolean(item.analyticsScreenshotUrl))))
+    .map(item => ({ resource: 'submission' as const, item }))
+    .sort((a, b) => {
+      const aTime = Date.parse(approvalSubmittedAt(a))
+      const bTime = Date.parse(approvalSubmittedAt(b))
+      return (Number.isFinite(aTime) ? aTime : Number.MAX_SAFE_INTEGER) - (Number.isFinite(bTime) ? bTime : Number.MAX_SAFE_INTEGER)
+    })
 }
 
-export function submissionReviewQueueId(submission: Pick<AdminSubmission, 'sprintTerms' | 'formatId' | 'sprintName' | 'title'>): SubmissionReviewQueueId {
+export function submissionReviewQueueId(submission: Pick<AdminQueueSubmission, 'sprintTerms' | 'formatId' | 'sprintName' | 'title' | 'formatName'>): SubmissionReviewQueueId {
   const format = submission.sprintTerms?.formats.find(item => item.id === submission.formatId)
-  const identity = [submission.formatId, format?.name, submission.sprintName, submission.title].filter(Boolean).join(' ').toLowerCase()
+  const identity = [submission.formatId, submission.formatName ?? format?.name, submission.sprintName, submission.title].filter(Boolean).join(' ').toLowerCase()
   if (identity.includes('general-looksmaxxing') || identity.includes('general looksmaxxing')) return 'general-looksmaxxing'
   if (identity.includes('feature-comparison') || identity.includes('face feature comparison')) return 'feature-comparison'
   if (identity.includes('detailed-analysis') || identity.includes('detailed analysis')) return 'detailed-analysis'
   return 'other'
 }
 
-export function getSubmissionReviewQueues(data: AdminDashboard) {
-  const queues = new Map<SubmissionReviewQueueId, ApprovalTarget[]>([
+export function getSubmissionReviewQueues<T extends AdminQueueSubmission>(data: { submissions: T[] }) {
+  const queues = new Map<SubmissionReviewQueueId, QueueTarget<T>[]>([
     ['general-looksmaxxing', []],
     ['feature-comparison', []],
     ['detailed-analysis', []],
     ['other', []],
   ])
   for (const target of getApprovalQueue(data)) {
-    const queueId = target.resource === 'submission' ? submissionReviewQueueId(target.item) : 'other'
+    const queueId = submissionReviewQueueId(target.item)
     queues.get(queueId)!.push(target)
   }
   return [...queues].filter(([id, items]) => id !== 'other' || items.length).map(([id, items]) => ({ id, label: submissionReviewQueueLabels[id], items }))
