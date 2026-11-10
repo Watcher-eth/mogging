@@ -1,0 +1,3 @@
+.root { position:fixed; right:16px; bottom:max(16px,env(safe-area-inset-bottom)); z-index:40; display:flex; flex-direction:column; align-items:flex-end; gap:12px; max-width:calc(100vw - 32px); }
+.pill { box-sizing:border-box; display:flex; flex-shrink:0; align-items:center; justify-content:center; gap:8px; width:208px; max-width:100%; height:48px; padding:0 20px; border-radius:24px; font-size:14px; font-weight:500; }
+@media(min-width:640px) { .root { right:24px; bottom:24px; } }

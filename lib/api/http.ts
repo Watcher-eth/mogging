@@ -12,6 +12,8 @@ type ApiErrorCode =
   | 'provider_error'
   | 'image_storage_unavailable'
   | 'evaluation_processing'
+  | 'account_not_found'
+  | 'apple_email_required'
   | 'internal_error'
 
 export class ApiError extends Error {

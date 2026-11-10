@@ -71,7 +71,7 @@ export default function CreatorPerformanceDashboard({ data, attributionHref = '/
         ['Snapshot generated', data.generatedAt], ['Latest submission update', snapshot.latestSubmissionUpdate], ['Latest paid-record update', snapshot.latestPaymentUpdate],
       ].map(([title, value]) => <div key={title}><dt className="text-zinc-500">{title}</dt><dd className="mt-1 font-medium">{date(value)}</dd></div>)}</dl>
       <p className="mt-5 text-xs leading-5 text-zinc-500">Checks every minute while visible and on return to this tab. Snapshots use a 60-second cache with background revalidation. Update timestamps cover all submitted posts and paid records loaded for this report, before social-platform and experiment exclusions. They do not verify current social-platform view counts.</p>
-      <p className="mt-3 text-xs leading-5 text-zinc-500">Existing experimental exclusions are preserved: matheo.psl, bejapsl and Valerie. Drafts are excluded. Post views and costs follow submission date; current approved adjustments can change older cohorts.</p>
+      <p className="mt-3 text-xs leading-5 text-zinc-500">Existing experimental exclusions are preserved: matheo.psl, bejapsl, Jeff / youcalb and Valerie. Drafts are excluded. Post views and costs follow submission date; current approved adjustments can change older cohorts.</p>
       <DataDetails><Table rows={[
         { metric: 'Latest submitted post', value: date(snapshot.latestSubmission) },
         { metric: 'Paid records excluded because they are non-USD or not linked to a post', value: report.excludedPayments },

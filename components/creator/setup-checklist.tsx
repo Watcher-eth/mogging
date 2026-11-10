@@ -12,8 +12,9 @@ import useSWR from 'swr'
 import { apiGet } from '@/lib/api/client'
 import { cn } from '@/lib/utils'
 import type { CreatorDashboard } from './types'
+import floatingStyles from './floating-actions.module.css'
 
-const floatingPosition = 'fixed bottom-[max(16px,env(safe-area-inset-bottom))] right-4 z-40 sm:bottom-6 sm:right-6'
+const floatingPosition = 'relative shrink-0'
 
 export function creatorSetupComplete(data: CreatorDashboard) {
   return data.socialAccounts.length > 0 && data.submissions.length > 0 && hasPayoutInformation(data)
@@ -71,7 +72,7 @@ export function CreatorSetupChecklist() {
   if (completed === tasks.length) return <Link
     href="/creator/submissions?new=1"
     aria-label="New video"
-    className={cn(floatingPosition, 'isolate flex h-12 items-center justify-center gap-2 overflow-hidden rounded-full border border-white/20 bg-black px-5 text-white shadow-[0_6px_24px_rgba(0,0,0,0.2)] transition-[background-color,transform] duration-150 hover:bg-[#181a1d] active:scale-[0.97] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-zinc-500 focus-visible:ring-offset-4 motion-reduce:transition-none')}
+    className={cn(floatingPosition, floatingStyles.pill, 'isolate overflow-hidden border border-white/20 bg-black text-white shadow-[0_6px_24px_rgba(0,0,0,0.2)] transition-[background-color,transform] duration-150 hover:bg-[#181a1d] active:scale-[0.97] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-zinc-500 focus-visible:ring-offset-4 motion-reduce:transition-none')}
   ><Plus className="size-4" aria-hidden="true" /><span className="text-sm font-semibold">New video</span>{!reduceMotion ? <BorderBeam size={45} duration={6} borderWidth={1.5} colorFrom="#f5f5f5" colorTo="#8edbff" /> : null}</Link>
   const progress = completed / tasks.length
 
@@ -89,7 +90,7 @@ export function CreatorSetupChecklist() {
           initial={false}
           transition={transition}
           style={{ borderRadius: expanded ? 20 : 24 }}
-          className="relative border border-[#eceef0] bg-white shadow-[0_8px_40px_rgba(0,0,0,0.10)]"
+          className="relative bg-white ring-1 ring-inset ring-[#eceef0] shadow-[0_8px_40px_rgba(0,0,0,0.10)]"
         >
           <AnimatePresence initial={false} mode="popLayout">
             {expanded ? (
@@ -102,7 +103,7 @@ export function CreatorSetupChecklist() {
               >
                 <section
                   id="creator-setup-checklist"
-                  className="max-h-[calc(100dvh-32px)] w-[min(360px,calc(100vw-32px))] overflow-y-auto p-5"
+                  className="max-h-[calc(100dvh-120px)] w-[min(360px,calc(100vw-32px))] overflow-y-auto p-5"
                 >
                   <div className="flex items-center justify-between gap-3">
                     <motion.h2
@@ -200,7 +201,7 @@ export function CreatorSetupChecklist() {
                   ref={triggerRef}
                   aria-expanded={expanded}
                   aria-controls="creator-setup-checklist"
-                  className="flex min-h-11 items-center gap-2.5 rounded-[24px] px-4 py-2.5 text-sm font-medium hover:bg-[#f7f8f9]"
+                  className={cn(floatingStyles.pill, 'hover:bg-[#f7f8f9]')}
                 >
                   <svg
                     viewBox="0 0 24 24"

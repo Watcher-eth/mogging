@@ -1,3 +1,4 @@
+import { revenueReportCTEs } from './revenue-report'
 import { notificationsCTEs, ledgerCTEs, dataHealthCTEs, type NotificationsData, type LedgerData, type DataHealthData } from './operations-analytics'
 import { getReliabilityData, type ReliabilityData } from './reliability'
 import { referralsCTEs, type ReferralsReport } from './referrals-query'
@@ -58,6 +59,8 @@ export type AnalyticsDashboard = {
   onboardingScreens: MetricRow[]; onboardingFriction: MetricRow[]
   revenueTotals?: MetricRow[]; revenueActivity?: MetricRow[]
   revenueComparison?: MetricRow[]; billingReporting?: MetricRow[]
+  revenueFinancials?: MetricRow[]; revenueSources?: MetricRow[]; revenueCountries?: MetricRow[]; revenueProceedsDaily?: MetricRow[]
+  revenueSubscriptionOverview?: MetricRow[]; revenueSubscriptionProducts?: MetricRow[]
   billing: MetricRow[]; revenue: MetricRow[]; revenueDaily: MetricRow[]; retention: MetricRow[]; cancellations: MetricRow[]
   actions: MetricRow[]; releases: MetricRow[]
   eventMetrics: MetricRow[]; eventPlatforms: MetricRow[]; dimensions: MetricRow[]; billingProducts: MetricRow[]; billingDimensions: MetricRow[]; contextCoverage: MetricRow[]; eventDelivery: MetricRow[]
@@ -111,7 +114,7 @@ const sectionReports: Record<NonNullable<AnalyticsFilters['section']>, readonly 
   Acquisition: ['daily', 'acquisition', 'acquisition_summary', 'landing_summary', 'web_audience', 'landing_sections', 'landing_placements', 'landing_sources'],
   Experiments: ['landing_handoffs', 'landing_experiments', 'landing_experiment_daily'],
   Onboarding: ['onboarding_summary', 'onboarding_daily', 'onboarding', 'onboarding_screens', 'onboarding_friction', 'onboarding_revisions', 'steps', 'screens'],
-  Revenue: ['revenue', 'revenue_totals', 'revenue_comparison', 'revenue_activity', 'revenue_daily', 'billing', 'billing_products', 'billing_dimensions', 'billing_reporting'],
+  Revenue: ['revenue_financials', 'revenue_sources', 'revenue_countries', 'revenue_proceeds_daily', 'revenue_subscription_overview', 'revenue_subscription_products', 'revenue', 'revenue_totals', 'revenue_comparison', 'revenue_activity', 'revenue_daily', 'billing', 'billing_products', 'billing_dimensions', 'billing_reporting'],
   CreatorAttribution: ['creator_attribution'],
   CreatorPerformance: [],
   CreatorEconomics: ['creator_economics'],
@@ -621,7 +624,7 @@ export function analyticsQuery(filters: AnalyticsFilters, now: Date) {
           filter(where expires_at is not null or grace_ends_at is not null))[1] as ends_at,
         coalesce((array_agg(canceled order by occurred_at desc,received_at desc,id desc) filter(where canceled is not null))[1],false) as canceled,
         coalesce((array_agg(ended order by occurred_at desc,received_at desc,id desc) filter(where ended is not null))[1],false) as ended
-      from (values (0,${end}::timestamp),(1,${end}::timestamp - interval '24 hours')) snapshots(snapshot,at)
+      from (values (0,${end}::timestamp),(1,${end}::timestamp - interval '24 hours'),(2,${start}::timestamp)) snapshots(snapshot,at)
       join subscription_facts on occurred_at < at group by 1,2,3,4
     ), revenue_activity as (
       select 'new_subscriptions' as metric, count(*) as total,
@@ -653,7 +656,7 @@ export function analyticsQuery(filters: AnalyticsFilters, now: Date) {
         sum(amount)::text as net,
         count(*) filter (where amount is null and ${monetaryBillingEvent}) as missing_amount_events
       from b group by 1,2 order by 1,2
-    ), paid_history as materialized (
+    ), ${revenueReportCTEs(Number(filters.days), start, end)}, paid_history as materialized (
       select account_id, min(occurred_at) as first_paid,
         min(occurred_at) filter(where event_name <> 'one_time_purchase') as first_membership
       from subscription_events paid
@@ -852,7 +855,7 @@ export function analyticsQuery(filters: AnalyticsFilters, now: Date) {
       'onboardingScreens', ${rows('onboarding_screens')}, 'onboardingSummary', ${rows('onboarding_summary')}, 'onboardingDaily', ${rows('onboarding_daily')},
       'onboardingFriction', ${rows('onboarding_friction')}, 'screens', ${rows('screens')}, 'billing', ${rows('billing')}, 'revenue', ${rows('revenue')},
       'revenueTotals', ${rows('revenue_totals')}, 'revenueActivity', ${rows('revenue_activity')}, 'revenueDaily', ${rows('revenue_daily')},
-      'revenueComparison', ${rows('revenue_comparison')}, 'billingReporting', ${rows('billing_reporting')}, 'retention', ${rows('retention')}, 'retentionWeekly', ${rows('retention_weekly')}, 'retentionCoverage', ${rows('retention_coverage')}, 'featureUsage', ${rows('feature_usage')}, 'featureRetention', ${rows('feature_retention')}, 'cancellations', ${rows('cancellations')},
+      'revenueFinancials', ${rows('revenue_financials')}, 'revenueSources', ${rows('revenue_sources')}, 'revenueCountries', ${rows('revenue_countries')}, 'revenueProceedsDaily', ${rows('revenue_proceeds_daily')}, 'revenueSubscriptionOverview', ${rows('revenue_subscription_overview')}, 'revenueSubscriptionProducts', ${rows('revenue_subscription_products')}, 'revenueComparison', ${rows('revenue_comparison')}, 'billingReporting', ${rows('billing_reporting')}, 'retention', ${rows('retention')}, 'retentionWeekly', ${rows('retention_weekly')}, 'retentionCoverage', ${rows('retention_coverage')}, 'featureUsage', ${rows('feature_usage')}, 'featureRetention', ${rows('feature_retention')}, 'cancellations', ${rows('cancellations')},
       'actions', ${rows('actions')}, 'releases', ${rows('releases')},
       'eventMetrics', ${rows('event_metrics')}, 'eventPlatforms', ${rows('event_platforms')}, 'dimensions', ${rows('dimensions')},
       'eventDelivery', ${rows('event_delivery')}, 'contextCoverage', ${rows('context_coverage')}, 'billingProducts', ${rows('billing_products')}, 'billingDimensions', ${rows('billing_dimensions')}

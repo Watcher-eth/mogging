@@ -20,6 +20,7 @@ import { cn } from '@/lib/utils'
 import { CreatorAuthPrompt } from './creator-auth-prompt'
 import { CreatorIcon, type CreatorIconName } from './creator-icon'
 import { CreatorSetupChecklist } from './setup-checklist'
+import floatingStyles from './floating-actions.module.css'
 import { DiscordSupport } from './discord-support'
 
 type CreatorNavItem = { href: string; label: string; asset: CreatorIconName }
@@ -32,7 +33,6 @@ const creatorNav: ReadonlyArray<CreatorNavItem> = [
   { href: '/creator/money', label: 'Money', asset: 'payouts' },
   { href: '/creator/conversions', label: 'Conversions', asset: 'conversions' },
   { href: '/creator/cta-generator', label: 'CTA Studio', asset: 'cta' },
-  { href: '/creator/support', label: 'Mogging Support', asset: 'guide' },
 ]
 
 export function CreatorShell({ children, allowUnauthenticated = false }: { children: ReactNode; allowUnauthenticated?: boolean }) {
@@ -81,8 +81,10 @@ export function CreatorShell({ children, allowUnauthenticated = false }: { child
         <SidebarInset className="creator-page creator-enter min-w-0 bg-white" key={router.pathname}>{children}</SidebarInset>
       </div>
       <CreatorWelcomeDialog open={welcome.open} onOpenChange={welcome.onOpenChange} />
-      <CreatorSetupChecklist />
-      {router.pathname !== '/creator/support' && !router.pathname.includes('__') ? <CreatorSupportLauncher /> : null}
+      <div className={floatingStyles.root}>
+        <CreatorSetupChecklist />
+        {router.pathname !== '/creator/support' && !router.pathname.includes('__') ? <CreatorSupportLauncher /> : null}
+      </div>
       <TikTokAnchorOnboarding enabled={!welcome.open && !moreOpen && router.pathname === '/creator'} />
     </div>
   )

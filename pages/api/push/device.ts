@@ -6,14 +6,13 @@ import { db, schema } from '@/lib/db'
 import { ApiError, handleApiError, json, methodNotAllowed } from '@/lib/api/http'
 import { enforceRateLimit } from '@/lib/api/rateLimit'
 import { isPushTokenValid } from '@/lib/push/fcm'
+import { normalizePushTimezone } from '@/lib/push/schedule'
 
 const identity = z.object({ installId: z.string().min(16).max(100) })
 const registration = identity.extend({
   token: z.string().min(32).max(4096),
   environment: z.enum(['sandbox', 'production', 'fcm']),
-  timezone: z.string().max(100).refine(value => {
-    try { new Intl.DateTimeFormat('en', { timeZone: value }); return true } catch { return false }
-  }),
+  timezone: z.string().max(100).transform(normalizePushTimezone).pipe(z.string()),
   protocolDays: z.array(z.object({
     date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
     tasks: z.array(z.object({ id: z.string().min(1).max(200), title: z.string().trim().min(1).max(180), completed: z.boolean() })).max(10),

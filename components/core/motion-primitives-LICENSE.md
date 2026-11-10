@@ -1,5 +1,7 @@
 MIT License
 
+Local adaptations: AnimatedGroup and Disclosure from https://github.com/ibelick/motion-primitives.
+
 Copyright (c) 2024 ibelick
 
 Permission is hereby granted, free of charge, to any person obtaining a copy

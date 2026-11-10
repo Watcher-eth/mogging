@@ -50,3 +50,12 @@ describe('billing facts', () => {
     expect(normalizeRevenueCat({ id: 'test', type: 'TEST', environment: 'PRODUCTION' }).environment).toBe('sandbox')
   })
 })
+
+
+test('original provider USD prices survive local-currency normalization for reconciliation', () => {
+  const event = { id: 'foreign', type: 'INITIAL_PURCHASE', price: 5.49, price_in_purchased_currency: 7700, currency: 'KRW' }
+  expect(normalizeRevenueCat(event)).toMatchObject({ amount: '7700', currency: 'KRW', properties: { usd_amount: 5.49 } })
+  expect(normalizeRevenueCat({ ...event, type: 'CANCELLATION', cancel_reason: 'CUSTOMER_SUPPORT' }).properties.usd_amount).toBe(-5.49)
+  expect(normalizeRevenueCat({ ...event, type: 'CANCELLATION', cancel_reason: 'UNSUBSCRIBE' }).properties.usd_amount).toBe(0)
+  expect(normalizeRevenueCat({ id: 'legacy', type: 'RENEWAL' }).properties.usd_amount).toBeNull()
+})

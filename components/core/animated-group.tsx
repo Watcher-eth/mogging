@@ -7,11 +7,15 @@ import { motion, useReducedMotion, type Variants } from 'motion/react'
 const container: Variants = {
   visible: { transition: { staggerChildren: 0.045 } },
 }
-const presets: Record<'fade' | 'scale', Variants> = {
+const presets: Record<'fade' | 'scale' | 'slide', Variants> = {
   fade: { hidden: { opacity: 0 }, visible: { opacity: 1 } },
   scale: {
     hidden: { opacity: 0, transform: 'scale(0.96)' },
     visible: { opacity: 1, transform: 'scale(1)' },
+  },
+  slide: {
+    hidden: { opacity: 0, y: 10 },
+    visible: { opacity: 1, y: 0 },
   },
 }
 
@@ -36,7 +40,7 @@ export function AnimatedGroup({
         <motion.div
           className="min-w-0"
           variants={reducedMotion ? undefined : presets[preset]}
-          transition={{ duration: 0.22, ease: [0.22, 1, 0.36, 1] }}
+          transition={preset === 'slide' ? { type: 'spring', stiffness: 170, damping: 25, mass: .8 } : { duration: 0.22, ease: [0.22, 1, 0.36, 1] }}
         >
           {child}
         </motion.div>

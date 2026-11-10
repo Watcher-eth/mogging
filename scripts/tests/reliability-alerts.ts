@@ -6,7 +6,7 @@ mock.module('@upstash/redis',()=>({Redis:class {
   async set(key:string,value:string) {if(claims.has(key)) return null;claims.set(key,value);return 'OK'}
   async eval(_script:string,keys:string[],args:string[]) {if(claims.get(keys[0])===args[0]) claims.delete(keys[0])}
 }}))
-mock.module('../../lib/env',()=>({env:{UPSTASH_REDIS_REST_URL:'https://test.invalid',UPSTASH_REDIS_REST_TOKEN:'test-only',RESEND_API_KEY:'test-only',PAYMENTS_EMAIL_FROM:'Mogging <support@mogging.com>'}}))
+mock.module('../../lib/env',()=>({env:{UPSTASH_REDIS_REST_URL:'https://test.invalid',UPSTASH_REDIS_REST_TOKEN:'test-only',RESEND_API_KEY:'test-only',PAYMENTS_EMAIL_FROM:'Mogging <gabe@mogging.com>'}}))
 process.env.RELIABILITY_ALERT_EMAIL='recipient@example.invalid'
 const original=globalThis.fetch
 let sends=0

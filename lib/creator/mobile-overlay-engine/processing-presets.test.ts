@@ -1,27 +1,19 @@
 import { expect, test } from 'bun:test'
-import type { FaceLandmarksPayload } from './landmarks'
-import { processingOverlayPresets } from './processing-presets'
+import { processingOverlaySteps } from './processing-presets'
+import { getReportOverlayPreset } from './report-presets'
 import { resolveOverlayPreset } from './resolve'
 
-const landmarks: FaceLandmarksPayload = {
-  version: 1, source: 'mediapipe-face-landmarker', confidence: 1,
-  image: { width: 360, height: 640 },
-  anchors: { noseTip: { x: .61, y: .52 } },
-}
-
-test('paywall nose marker follows the uploaded face through the wide cover crop', () => {
-  const preset = processingOverlayPresets.find(preset => preset.id === 'processing-nose')!
-  const overlay = resolveOverlayPreset({ preset, landmarks, viewport: { width: 500, height: 340 } })
-  const dot = overlay.primitives.find(primitive => primitive.id === 'nose-dot')
-  expect(dot?.kind).toBe('point')
-  if (dot?.kind !== 'point') throw new Error('Missing nose marker')
-  expect(dot.point.x).toBeCloseTo(305)
-  expect(dot.point.y).toBeCloseTo(187.7777778)
+test('loading loops cover distinct report categories without result claims or blank phases', () => {
+  expect(processingOverlaySteps.map(step => step.categoryId)).toEqual(['eyes', 'symmetry', 'jaw', 'nose', 'proportions', 'overall'])
+  expect(new Set(processingOverlaySteps.map(step => step.label)).size).toBe(processingOverlaySteps.length)
+  expect(processingOverlaySteps.every(step => !/balanced|ideal|score|rated/i.test(step.label))).toBe(true)
 })
 
-test('scan presets never place demo overlays on a real face with missing measurements', () => {
-  for (const preset of processingOverlayPresets) {
-    const overlay = resolveOverlayPreset({ preset, landmarks: { ...landmarks, anchors: {} }, viewport: { width: 360, height: 450 } })
-    expect(overlay.primitives).toEqual([])
+test('loading categories never draw demo coordinates when a real face has no anchors', () => {
+  for (const step of processingOverlaySteps) {
+    const preset = getReportOverlayPreset(step.categoryId)
+    if (!preset) continue
+    const resolved = resolveOverlayPreset({ preset, landmarks: { version: 1, source: 'mediapipe-face-landmarker', confidence: 1, image: { width: 360, height: 640 }, anchors: {} }, viewport: { width: 360, height: 640 }, fit: 'contain' })
+    expect(resolved.primitives).toEqual([])
   }
 })

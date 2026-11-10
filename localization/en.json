@@ -19,7 +19,7 @@
   "landing.planTitle": "Your potential. A daily plan to reach it.",
   "landing.evaluation": "01 / Your evaluation",
   "landing.scoreTitle": "See more than a score.",
-  "landing.scoreDescription": "Your jawline, eyes, proportions, and symmetry. Understand your features across 10 categories and 40+ feature metrics, then keep every report to follow your progress.",
+  "landing.scoreDescription": "Your jawline, eyes, proportions, and symmetry. Understand your features across 13 categories and 110+ feature metrics, then keep every report to follow your progress.",
   "landing.protocol": "02 / Your Protocol",
   "landing.directionTitle": "Less guesswork. More direction.",
   "landing.finalTitle": "Find your starting point.",
@@ -29,8 +29,8 @@
   "faq.free.answer": "Yes. Downloading the app is free. Evaluations and Pro features require a purchase; you can review the available plans in the app.",
   "faq.evaluation.question": "What does my evaluation include?",
   "faq.evaluation.answer": "10 detailed categories with 40+ feature metrics covering your eyes, jawline, proportions, symmetry, and more. You also get a personalized Protocol and saved evaluations to follow your progress.",
-  "faq.public.question": "Will my photos appear on the leaderboard?",
-  "faq.public.answer": "Joining the leaderboard is optional. You choose whether to make your profile public, and can change that choice in Settings.",
+  "faq.public.question": "Are my photos and reports public?",
+  "faq.public.answer": "No. Your photos and reports are private. You can export an image of your own report when you choose.",
   "faq.devices.question": "Can I use Mogging without an iPhone?",
   "faq.devices.answer": "You can start a paid facial analysis in your browser. The mobile app is available for iPhone, with an Android app coming soon.",
   "stats.categories": "Detailed categories",
@@ -307,5 +307,9 @@
   "paywall.goalCheekbones": "more defined cheekbones",
   "paywall.benefits.scanTitle": "1x Face Scan per week",
   "paywall.benefits.protocolTitle": "Custom-tailored protocol to Ascend",
-  "paywall.benefits.trackingTitle": "Progress tracking & reminders"
+  "paywall.benefits.trackingTitle": "Progress tracking & reminders",
+  "landing.progress": "03 / Your progress",
+  "landing.progressTitle": "See your progress. Find your next step.",
+  "landing.progressDescription": "Compare your evaluations over time. Follow changes across your features and keep your daily Protocol focused.",
+  "landing.progressPrivacy": "Your evaluations stay private."
 }

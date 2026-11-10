@@ -1,7 +1,7 @@
 import { Disclosure, DisclosureSummary, AccordionContent } from '@/components/ui/accordion'
 import { useEffect, useRef, useState } from 'react'
 import Image from 'next/image'
-import { Download, Film, Loader2 } from 'lucide-react'
+import { BookOpen, ChartNoAxesCombined, Download, Film, Loader2 } from 'lucide-react'
 import { toast } from 'sonner'
 import { Button } from '@/components/ui/button'
 import { Field, fieldClass } from './creator-shell'
@@ -149,6 +149,8 @@ export function MockProtocolGenerator() {
 }
 
 function Symbol({ name, size }: { name: string; size: number }) {
+  if (name === 'book.closed') return <BookOpen size={size} strokeWidth={1.6} aria-hidden="true" />
+  if (name === 'chart.xyaxis.line') return <ChartNoAxesCombined size={size} strokeWidth={1.6} aria-hidden="true" />
   return <Image unoptimized src={`/creator-icons/protocol/${name}.png`} alt="" width={size} height={size} style={{ width: size, height: size, objectFit: 'contain', flexShrink: 0 }} />
 }
 
@@ -192,7 +194,7 @@ function ProtocolScreen({ days, selectedDay, completed, scroll, openedTask, disa
       </div>
     </div>
     <nav aria-label="Mobile app navigation" style={{ position: 'absolute', left: 8, right: 8, bottom: 20, height: 66, borderRadius: 34, background: 'rgba(247,247,249,.96)', border: '1px solid rgba(210,210,216,.5)', display: 'flex', alignItems: 'center', justifyContent: 'space-around', boxShadow: '0 4px 20px rgba(0,0,0,.08)' }}>
-      {[['bolt', 'Battle'], ['trophy', 'Leaderboard'], ['circle.grid.2x2.topleft.checkmark.filled', 'Protocol'], ['doc.text', 'Evaluation']].map(([icon, label]) => <span key={label} style={{ width: 78, height: 54, borderRadius: 28, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 3, background: label === 'Protocol' ? '#e6e6e9' : undefined }}><Symbol name={icon} size={23} /><span style={{ fontSize: 10, lineHeight: '12px', fontWeight: 600, color: label === 'Protocol' ? '#111111' : '#8a8a93' }}>{label}</span></span>)}
+      {[['book.closed', 'Courses'], ['chart.xyaxis.line', 'Progress'], ['circle.grid.2x2.topleft.checkmark.filled', 'Protocol'], ['doc.text', 'Evaluation']].map(([icon, label]) => <span key={label} style={{ width: 78, height: 54, borderRadius: 28, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 3, background: label === 'Protocol' ? '#e6e6e9' : undefined }}><Symbol name={icon} size={23} /><span style={{ fontSize: 10, lineHeight: '12px', fontWeight: 600, color: label === 'Protocol' ? '#111111' : '#8a8a93' }}>{label}</span></span>)}
     </nav>
     <span style={{ position: 'absolute', bottom: 8, left: 128, width: 134, height: 5, borderRadius: 3, background: '#070709' }} />
     {openedTask ? <div style={{ position: 'absolute', inset: 0, background: 'rgba(0,0,0,.2)', display: 'flex', alignItems: 'flex-end', padding: '0 12px 32px' }}><section aria-label="Protocol task details" style={{ width: '100%', background: '#fff', borderRadius: 32, padding: 20, display: 'grid', gap: 16, maxHeight: 720, overflowY: 'auto' }}><div style={{ display: 'flex', gap: 10, alignItems: 'center' }}><Symbol name={openedTask.icon.ios} size={24} /><h4 style={{ fontSize: 25, lineHeight: '28px', letterSpacing: -.8, fontWeight: 700, flex: 1 }}>{openedTask.title}</h4><button disabled={disabled} aria-label="Close task details" onClick={() => onOpen(null)} style={{ width: 34, height: 34, fontSize: 24 }}>×</button></div><p style={{ fontSize: 15, lineHeight: '21px', color: 'rgba(7,7,9,.68)' }}>{openedTask.detail}</p>{openedTask.reason ? <p style={{ padding: 12, borderRadius: 16, background: '#eef8ff', color: '#1576a8', fontSize: 13, lineHeight: '18px' }}>{openedTask.reason}<br />{openedTask.minutes ?? 2} min{openedTask.evidence ? ` · ${openedTask.evidence}` : ''}</p> : null}<span style={{ fontSize: 10, fontFamily: 'monospace', color: 'rgba(7,7,9,.52)', fontWeight: 700 }}>TIPS</span>{openedTask.tips?.map((tip, index) => <p key={tip} style={{ border: '1px dashed #d8d8de', borderRadius: 16, padding: '9px 12px', fontSize: 13, lineHeight: '18px', color: 'rgba(7,7,9,.72)' }}><strong style={{ marginRight: 9 }}>{index + 1}</strong>{tip}</p>)}<button disabled={disabled} onClick={() => { onToggle(openedTask); onOpen(null) }} style={{ background: '#111113', color: '#fff', borderRadius: 22, padding: 14, fontSize: 15, fontWeight: 600 }}>{completed.has(openedTask.id) ? 'Mark incomplete' : 'Complete task'}</button><div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>{protocolFeedbackOptions.filter(option => option.id !== 'done').map(option => <button key={option.id} disabled={disabled} onClick={() => onFeedback(openedTask, option.id)} style={{ minHeight: 44, padding: 10, borderRadius: 12, background: '#f3f3f7', fontSize: 12 }}>{option.label}</button>)}</div></section></div> : null}

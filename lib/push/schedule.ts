@@ -2,9 +2,18 @@ export type ProtocolDay = { date: string; tasks: { id: string; title: string; co
 export const PUSH_HOUR = 18
 export const PUSH_WEEKDAYS = { protocol: 1, invite: 6 } as const
 
+export function normalizePushTimezone(value: string): string | null {
+  const aliases: Record<string, string> = { 'Asia/Saigon': 'Asia/Ho_Chi_Minh', 'Europe/Kiev': 'Europe/Kyiv' }
+  const timezone = aliases[value] ?? value
+  try { new Intl.DateTimeFormat('en', { timeZone: timezone }); return timezone }
+  catch { return null }
+}
+
 export function reminderFor(now: Date, timezone: string, days: ProtocolDay[]) {
+  const zone = normalizePushTimezone(timezone)
+  if (!zone) return null
   const parts = Object.fromEntries(new Intl.DateTimeFormat('en-US', {
-    timeZone: timezone, year: 'numeric', month: '2-digit', day: '2-digit',
+    timeZone: zone, year: 'numeric', month: '2-digit', day: '2-digit',
     hour: '2-digit', hourCycle: 'h23',
   }).formatToParts(now).map(({ type, value }) => [type, value]))
   // One-hour local delivery window; a frequent cron accommodates half-hour/quarter-hour zones.

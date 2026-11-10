@@ -5,7 +5,7 @@ import dynamic from 'next/dynamic'
 import { useRouter } from 'next/router'
 import { useSession } from 'next-auth/react'
 import { useEffect, useRef, useState } from 'react'
-import { ArrowUp, ArrowUpRight, Check, Copy, Share2, ChartNoAxesCombined, Files,  Megaphone, RotateCcw, X, ArrowDown, Wallet, Link2, BookOpen, ClipboardList, Video, Lightbulb, Users, CreditCard, CirclePlus } from 'lucide-react'
+import { ArrowUp, ArrowUpRight, Check, Copy, Share2, ChartNoAxesCombined, Files,  Megaphone, SquarePen, ChevronLeft, ChevronRight, X, ArrowDown, Wallet, Link2, BookOpen, ClipboardList, Video, Lightbulb, Users, CreditCard, CirclePlus } from 'lucide-react'
 import useSWR from 'swr'
 import { SUPPORT_DAILY_MESSAGES, type SupportAllowance } from '@/lib/creator/support/allowance'
 import { apiGet, apiPost, ApiClientError } from '@/lib/api/client'
@@ -23,7 +23,7 @@ import { PromptSuggestion } from '@/components/prompt-kit/prompt-suggestion'
 import { useReducedMotion } from 'motion/react'
 import { AnimatedGroup } from '@/components/core/animated-group'
 import { TextShimmer } from '@/components/core/text-shimmer'
-import { SUPPORT_NAME, SUPPORT_DESCRIPTION } from '@/lib/creator/support/identity'
+import { SUPPORT_NAME } from '@/lib/creator/support/identity'
 import { SupportContentRequirements } from './content-requirements'
 import { SubmissionViewsChart } from './submission-views-chart'
 import { SupportResponseText } from './response-text'
@@ -37,10 +37,10 @@ const AnalyticsCard = dynamic(() => import('./analytics-card').then(m => m.Suppo
 const SubmissionDialog = dynamic(() => import('@/components/creator/submission-dialog').then(m => m.SubmissionDialog))
 type ChatMessage = { id: string; role: 'user'; text: string; requestText: string } | ({ id: string; role: 'assistant' } & SupportResponse)
 const prompts = [
-  { icon: Files, label: 'My submissions', detail: 'Reviews, decisions & earnings', message: 'Show my submissions' },
-  { icon: ChartNoAxesCombined, label: 'My analytics', detail: 'See how your content is doing', message: 'Show my analytics for the last 30 days' },
-  { icon: Megaphone, label: 'Create a CTA', detail: 'Find the words for your next post', message: 'Help me create a CTA' },
-  { icon: Wallet, label: 'Bonuses & rewards', detail: 'Keep track of what you’ve earned', message: 'Show my bonuses' },
+  { image: 'submissions', label: 'My submissions', detail: 'Reviews, decisions & earnings', message: 'Show my submissions' },
+  { image: 'analytics', label: 'My analytics', detail: 'See how your content is doing', message: 'Show my analytics for the last 30 days' },
+  { image: 'cta', label: 'Create a CTA', detail: 'Find the words for your next post', message: 'Help me create a CTA' },
+  { image: 'rewards', label: 'Bonuses & rewards', detail: 'Keep track of what you’ve earned', message: 'Show my bonuses' },
 ]
 export function CreatorSupportChat(props: { demo?: boolean; compact?: boolean; onClose?: () => void }) {
   const { data: session } = useSession()
@@ -64,7 +64,6 @@ function SupportChatSession({ demo = false, compact = false, onClose, ownerKey }
   const content = useRef<HTMLDivElement>(null)
   const followBottom = useRef(false)
   const inputRef = useRef<HTMLTextAreaElement>(null)
-  useEffect(() => { if (compact) inputRef.current?.focus({ preventScroll: true }) }, [compact])
   useEffect(() => () => abort.current?.abort(), [])
   useEffect(() => {
     const observer = new ResizeObserver(() => { if (followBottom.current && scroll.current) scroll.current.scrollTop = scroll.current.scrollHeight })
@@ -89,22 +88,22 @@ function SupportChatSession({ demo = false, compact = false, onClose, ownerKey }
   function openSubmission(submission: CreatorSubmission | string) { void router.push(`/creator/submissions?submission=${encodeURIComponent(typeof submission === 'string' ? submission : submission.id)}`) }
   return <div className={`${styles.chat} ${compact ? styles.compact : ''}`}>
     <header className={styles.header}>
-      <div className={styles.identity}><span className={styles.avatar}><Image src="/favicon.png" alt="" width={28} height={28} /></span><div><h2>{SUPPORT_NAME}</h2><p>{SUPPORT_DESCRIPTION}</p></div></div>
-      <div className={styles.headerActions}><button type="button" onClick={reset} className={styles.iconButton} aria-label="Start a new chat" title="New chat"><RotateCcw size={15} /><span>New chat</span></button>{onClose ? <button type="button" onClick={onClose} className={styles.iconButton} aria-label="Close Mogging Support"><X size={16} /></button> : null}</div>
+      <div className={styles.headerLeading}>{onClose ? <button type="button" onClick={onClose} className={styles.iconButton} aria-label="Close Mogging Support"><ChevronLeft size={22} /></button> : <Link href="/creator" className={styles.iconButton} aria-label="Back to Creator Studio"><ChevronLeft size={22} /></Link>}</div>
+      <div className={styles.identity}><span className={styles.avatar}><Image src="/creator/support/avatar.png" alt="" width={48} height={48} priority /></span><h2>{SUPPORT_NAME}<ChevronRight size={10} aria-hidden="true" /></h2><p>Creator assistant</p></div>
+      <div className={styles.headerActions}><button type="button" onClick={reset} className={styles.iconButton} aria-label="Start a new chat" title="New chat"><SquarePen size={19} /></button></div>
     </header>
     {demo ? <div className={styles.demoNote}><span>LOCAL DEMO</span>Sample creator data</div> : null}
     <div className={styles.conversationFrame}><div className={styles.messages} ref={scroll} onScroll={e => { const el = e.currentTarget; setAwayFromBottom(el.scrollHeight - el.scrollTop - el.clientHeight > 120) }} onWheel={event => { if (event.deltaY < 0) followBottom.current = false; else if (scroll.current && scroll.current.scrollHeight - scroll.current.scrollTop - scroll.current.clientHeight < 100) followBottom.current = true }} onTouchMove={() => { followBottom.current = false }} role="log" aria-label="Mogging Support conversation" aria-live="polite" aria-relevant="additions">
       <div ref={content} className={styles.conversationContent}>
       {!messages.length ? <div className={styles.welcome}>
         <AnimatedGroup className={styles.welcomeIntro}>
-          <div className={styles.welcomeMark}><Image src="/favicon.png" width={48} height={48} alt="" /></div>
-          <p className={styles.eyebrow}>MOGGING SUPPORT</p>
+          <div className={styles.welcomeMark}><Image src="/creator/support/avatar.png" width={64} height={64} alt="" /></div>
           <h1>A little help.<br /><span>For what’s next.</span></h1>
           <p className={styles.intro}>Clear answers about your posts, campaigns, and earnings.</p>
         </AnimatedGroup>
-        <AnimatedGroup className={styles.prompts}>{prompts.map(item => <PromptSuggestion className="creator-surface" data-creator-card key={item.label} type="button" onClick={() => void send(item.message)}><span className={styles.promptIcon}><item.icon size={18} strokeWidth={1.5} /></span><span><strong>{item.label}</strong><small>{item.detail}</small></span><ArrowUpRight size={14} /></PromptSuggestion>)}</AnimatedGroup>
+        <AnimatedGroup className={styles.prompts}>{prompts.map(item => <PromptSuggestion className="creator-surface" data-creator-card key={item.label} type="button" onClick={() => void send(item.message)}><span className={styles.promptIcon}><Image src={`/creator/support/${item.image}.png`} alt="" width={48} height={48} /></span><span><strong>{item.label}</strong><small>{item.detail}</small></span><ArrowUpRight size={14} /></PromptSuggestion>)}</AnimatedGroup>
       </div> : messages.map(message => message.role === 'user' ? <Message className={styles.user} key={message.id}><MessageContent className={styles.userBubble}>{message.text}</MessageContent></Message> : <AnimatedGroup key={message.id} className={styles.responseEntry}><Message className={styles.assistant}>
-        <span className={styles.messageAvatar}><Image src="/favicon.png" alt="" width={23} height={23} /></span>
+        <span className={styles.messageAvatar}><Image src="/creator/support/avatar.png" alt="" width={28} height={28} /></span>
         <div className={styles.answer}>
           <div className={styles.answerLabel}>{SUPPORT_NAME}</div>
           <MessageContent className={styles.answerProse}>{message.text.split(/\n\s*\n/).map((paragraph, i) => <p key={i} className={styles.answerText}><SupportResponseText text={paragraph} /></p>)}</MessageContent>
@@ -113,7 +112,7 @@ function SupportChatSession({ demo = false, compact = false, onClose, ownerKey }
 
         </div>
       </Message></AnimatedGroup>)}
-      {pending ? <div className={styles.pending} role="status"><span className={styles.pendingMark}><Image src="/favicon.png" width={22} height={22} alt="" /></span><span className={styles.pendingText}>{reducedMotion ? 'Looking into that for you…' : <TextShimmer as="span" duration={1.6}>Looking into that for you…</TextShimmer>}</span></div> : null}
+      {pending ? <div className={styles.pending} role="status"><span className={styles.pendingMark}><Image src="/creator/support/avatar.png" width={28} height={28} alt="" /></span><span className={styles.pendingText}>{reducedMotion ? 'Looking into that for you…' : <TextShimmer as="span" duration={1.6}>Looking into that for you…</TextShimmer>}</span></div> : null}
       </div>
     </div>
       {awayFromBottom ? <button type="button" className={styles.scrollLatest} aria-label="Scroll to latest message" onClick={() => { followBottom.current = true; scroll.current?.scrollTo({ top: scroll.current.scrollHeight, behavior: 'instant' as ScrollBehavior }) }}><ArrowDown size={15} /></button> : null}
@@ -122,7 +121,7 @@ function SupportChatSession({ demo = false, compact = false, onClose, ownerKey }
       {error ? <p className={styles.error} role="alert">{error}{!dailyLimitReached ? <button type="button" onClick={() => { const last = [...messages].reverse().find(m => m.role === 'user'); if (last) void send(last.requestText) }}>Try again</button> : null}</p> : null}
 
       <PromptInput className={styles.composer} value={draft} onValueChange={setDraft} onSubmit={() => void send(draft)} isLoading={pending} maxHeight={140}>
-        <PromptInputTextarea ref={inputRef} maxLength={1500} disabled={dailyLimitReached} placeholder={compact ? 'Ask…' : 'Ask about your creator account…'} aria-label="Message Mogging Support" />
+        <PromptInputTextarea ref={inputRef} maxLength={1500} disabled={dailyLimitReached} placeholder={compact ? 'Message…' : 'Message Mogging Support…'} aria-label="Message Mogging Support" />
         <PromptInputActions className={styles.composerToolbar}>
           <span className={styles.allowance} role="status">{dailyLimitReached ? 'Daily limit reached · resets at 00:00 UTC' : allowance ? `${allowance.remaining} of ${SUPPORT_DAILY_MESSAGES} messages left today` : `${SUPPORT_DAILY_MESSAGES} messages per day`}</span>
           <PromptInputAction tooltip={pending ? 'Stop response' : 'Send message'}>

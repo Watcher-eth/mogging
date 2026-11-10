@@ -1,29 +1,10 @@
 import { SeoHead } from '@/components/app/seo-head'
 import { appStoreUrl, siteUrl } from '@/lib/seo'
-import Image from 'next/image'
+import { EvaluationPreview, ProtocolPreview, ProgressPreview } from './mobile-preview'
 import { useEffect, useRef } from 'react'
 import type { LandingAssignment } from '@/lib/analytics/landing'
 import { WebCheckout } from './web-checkout'
 import { useLandingTracking } from './use-landing-tracking'
-
-const appScreenshots = [
-  {
-    src: '/app-screenshots/report-potential.png',
-    alt: 'Mogging facial report showing overall and potential scores',
-  },
-  {
-    src: '/app-screenshots/protocol-ascend.png',
-    alt: 'Mogging personalized protocol timeline with daily improvement tasks',
-  },
-  {
-    src: '/app-screenshots/tracking-baseline.png',
-    alt: 'Mogging evaluation history showing symmetry progress over time',
-  },
-  {
-    src: '/app-screenshots/leaderboard-global.png',
-    alt: 'Mogging global leaderboard with rankings and a top-three podium',
-  },
-]
 
 const reviewCards = [
   { author: 'ryan.k', title: 'Finally knew where to start', rating: 5, body: 'I had about 20 things I thought I needed to fix. The report helped me narrow it down, and the protocol is simple enough that I actually use it.' },
@@ -82,19 +63,9 @@ export default function LegacyHomepage({assignment, preview}: {assignment: Landi
           <div data-landing-section="screenshots"
             className="mx-auto mt-16 w-full max-w-6xl sm:mt-20"
           >
-            <div className="flex snap-x snap-mandatory gap-5 overflow-x-auto pb-4 sm:gap-6 lg:grid lg:grid-cols-4 lg:overflow-visible">
-              {appScreenshots.map((screenshot, index) => (
-                <div key={screenshot.src} className="w-[74vw] min-w-[260px] max-w-[340px] shrink-0 snap-start overflow-hidden rounded-[2rem] border border-zinc-200 bg-white sm:w-[280px] sm:rounded-[2.25rem] lg:w-auto lg:min-w-0 lg:max-w-none">
-                  <Image
-                    src={screenshot.src}
-                    alt={screenshot.alt}
-                    width={1242}
-                    height={2688}
-                    sizes="(max-width: 639px) 74vw, (max-width: 1023px) 280px, (max-width: 1279px) 23vw, 270px"
-                    className="block h-auto w-full"
-                    priority={index === 0}
-                  />
-                </div>
+            <div className="flex snap-x snap-mandatory gap-5 overflow-x-auto pb-4 sm:gap-6 lg:grid lg:grid-cols-3 lg:overflow-visible">
+              {[EvaluationPreview, ProtocolPreview, ProgressPreview].map((Preview, index) => (
+                <div key={index} className="w-[74vw] min-w-[260px] max-w-[340px] shrink-0 snap-start sm:w-[280px] lg:w-auto lg:min-w-0 lg:max-w-none"><Preview /></div>
               ))}
             </div>
 

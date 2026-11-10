@@ -103,7 +103,8 @@ async function verifyAppleIdentity(identityToken: string, nonce: string): Promis
 
   return {
     subject: payload.sub,
-    email: typeof payload.email === 'string' ? payload.email.trim().toLowerCase() : null,
+    email: (payload.email_verified === true || payload.email_verified === 'true') && typeof payload.email === 'string'
+      ? payload.email.trim().toLowerCase() : null,
   }
 }
 
@@ -114,10 +115,10 @@ async function findOrCreateAppleUser(identity: AppleIdentity, name?: string | nu
   })
   if (existingAccount) return existingAccount.userId
 
-  if (!identity.email && existingOnly) throw new ApiError(404, 'No existing Mogging account was found. Start onboarding to create one.')
+  if (!identity.email && existingOnly) throw new ApiError(404, 'No existing Mogging account was found. Start onboarding to create one.', 'account_not_found')
 
   if (!identity.email) {
-    throw new ApiError(409, 'Apple did not provide an email for this new account. Revoke Mogging in Apple ID settings and sign in again.')
+    throw new ApiError(409, 'Apple did not provide a verified email for this new account. Try Google, or stop using Sign in with Apple for Mogging in Apple ID settings and try again.', 'apple_email_required')
   }
 
   let user = await db.query.users.findFirst({
@@ -125,7 +126,7 @@ async function findOrCreateAppleUser(identity: AppleIdentity, name?: string | nu
     columns: { id: true },
   })
 
-  if (!user && existingOnly) throw new ApiError(404, 'No existing Mogging account was found. Start onboarding to create one.')
+  if (!user && existingOnly) throw new ApiError(404, 'No existing Mogging account was found. Start onboarding to create one.', 'account_not_found')
 
   if (!user) {
     await db.insert(schema.users).values({

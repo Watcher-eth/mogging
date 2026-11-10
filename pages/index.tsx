@@ -11,7 +11,7 @@ import {
   ScanReportPreview,
   EvaluationPreview,
   ProtocolPreview,
-  LeaderboardPreview,
+  ProgressPreview,
 } from "@/components/landing/mobile-preview";
 import { LazyMotion, domAnimation, useReducedMotion } from "motion/react";
 import * as m from "motion/react-m";
@@ -178,20 +178,20 @@ function NewHomepage({ assignment, preview }: Props) {
             </div>
           </m.section>
 
-          <m.section {...entrance} data-landing-section="leaderboard" aria-labelledby="leaderboard-title" className="mx-auto grid max-w-6xl items-center gap-10 px-6 py-14 sm:px-10 sm:py-20 lg:grid-cols-2 lg:gap-24">
-            <div className="flex justify-center lg:justify-start"><LeaderboardPreview /></div>
+          <m.section {...entrance} data-landing-section="progress" aria-labelledby="progress-title" className="mx-auto grid max-w-6xl items-center gap-10 px-6 py-14 sm:px-10 sm:py-20 lg:grid-cols-2 lg:gap-24">
+            <div className="flex justify-center lg:justify-start"><ProgressPreview /></div>
             <div className="text-center lg:text-left">
               <p className="text-xs font-medium uppercase tracking-widest text-zinc-400">
-              {t("landing.leaderboard")}
+              {t("landing.progress")}
             </p>
-              <h2 id="leaderboard-title" className="mt-4 text-4xl font-semibold leading-[1.1] tracking-[-.045em] sm:text-5xl">{t("landing.friendsTitle")}</h2>
+              <h2 id="progress-title" className="mt-4 text-4xl font-semibold leading-[1.1] tracking-[-.045em] sm:text-5xl">{t("landing.progressTitle")}</h2>
               <p className="mt-5 text-lg leading-8 text-zinc-500">
-              {t("landing.friendsDescription")}
+              {t("landing.progressDescription")}
             </p>
               <p className="mt-4 text-sm leading-6 text-zinc-400">
-              {t("landing.publicChoice")}
+              {t("landing.progressPrivacy")}
             </p>
-              <div className="mt-7">{downloadButton("leaderboard")}</div>
+              <div className="mt-7">{downloadButton("progress")}</div>
             </div>
           </m.section>
           <m.section {...entrance} data-landing-section="web_analysis" aria-labelledby="web-title" className="border-y border-zinc-100 bg-[#f7f7f8] py-14 sm:py-20">

@@ -5,6 +5,7 @@ import { toast } from 'sonner'
 import { AppHeader } from '@/components/app/app-header'
 import { AnalysisReport, ReportActions, type DesktopReportCategory } from '@/components/analysis/analysis-report'
 import { V2ReportDetail } from '@/components/analysis/v2/report-detail'
+import reportStyles from '@/components/analysis/v2/rubrics.module.css'
 import type { WebRubric } from '@/lib/analysis-v2/web-report'
 import { Button } from '@/components/ui/button'
 import { downloadBlob } from '@/lib/creator/export-slides'
@@ -60,9 +61,9 @@ export function DesktopMockReport({ report, open, onClose }: {
               <ArrowLeft className="size-4" /><span className="hidden sm:inline">Back to editor</span><span className="sm:hidden">Edit</span>
             </Button>
           </AppHeader>
-          <AnalysisReport naturalImage categories={report.categories} initialCategoryId={report.initialCategoryId} imageSrc={report.image.dataUrl} landmarks={report.image.landmarks} score={report.overallScore} pslScore={report.overallScore * .8} renderDetails={category => <V2ReportDetail category={category} groups={[{ id: category.id, title: category.title, rubrics: category.features.map((feature, index) => ({ id: `${category.id}.${index}`, visual: 'Text', positions: [], grade: null, ...feature } as WebRubric)) }]} />}>
+          <div className={reportStyles.reportShell}><AnalysisReport naturalImage categories={report.categories} initialCategoryId={report.initialCategoryId} imageSrc={report.image.dataUrl} landmarks={report.image.landmarks} score={report.overallScore} pslScore={report.overallScore * .8} renderDetails={category => <V2ReportDetail category={category} groups={[{ id: category.id, title: category.title, rubrics: category.features.map((feature, index) => ({ id: `${category.id}.${index}`, visual: 'Text', positions: [], grade: null, ...feature } as WebRubric)) }]} />}>
             <ReportActions score={report.overallScore} onOpenShare={() => void downloadScreenshot()} onReset={onClose} />
-          </AnalysisReport>
+          </AnalysisReport></div>
         </div>
         <span className="sr-only" role="status">{exporting ? 'Exporting desktop report' : ''}</span>
       </Dialog.Content>

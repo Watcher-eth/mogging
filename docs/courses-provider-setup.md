@@ -49,7 +49,7 @@ PAYMENTS_EMAIL_FROM="Mogging Courses <courses@notify.mogging.com>"
 PAYMENTS_EMAIL_REPLY_TO=gabe@mogging.com
 ```
 
-Use `w@mogging.com` for reply-to if preferred. A future `support@mogging.com` forwarding alias is optional; no new inbox is required. [Resend domain verification](https://resend.com/docs/dashboard/domains/introduction).
+Use `gabe@mogging.com` for support replies. [Resend domain verification](https://resend.com/docs/dashboard/domains/introduction).
 
 Restart `bun run dev:courses` after changing environment variables. Domain verification and real email delivery still need to be tested before launch.
 

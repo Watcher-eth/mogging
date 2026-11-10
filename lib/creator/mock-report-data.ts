@@ -1,6 +1,6 @@
 import registry from '@/lib/analysis-v2/rubric-registry.json'
 import { designValues } from '@/lib/analysis-v2/preview-fixtures'
-import { buildWebRubricGroups } from '@/lib/analysis-v2/web-report'
+import { overallScoreFields, buildWebRubricGroups } from '@/lib/analysis-v2/web-report'
 import { reportCategories as legacyCategories, type ReportCategory } from './mobile-overlay-engine/report-data'
 
 // Editable creator fixtures, never model results or saved customer reports.
@@ -16,18 +16,20 @@ export const reportCategories: ReportCategory[] = registry.categories.map(catego
     recommendation: previous?.recommendation ?? 'Keep your daily routine consistent and compare photos in similar lighting.' }
 })
 const overall = legacyCategories.find(category => category.id === 'overall')!
-reportCategories.push({ ...overall, scoreLabel: 'Overall Score', features: overall.features.map(feature => ({ ...feature,
-  visual: ['PSL score', 'Symmetry'].includes(feature.label) ? 'Orbit' : 'Text',
-  positions: [Number.parseFloat(feature.value) / (feature.label.includes('PSL') ? 8 : 10)], scale: 'quality' })) })
-
+reportCategories.push({ ...overall, scoreLabel: 'Overall Score', features: overallScoreFields.map(([id, label, max]) => {
+  const score = id === 'psl' ? 5.8 : id === 'eyes' ? 7.8 : 7.2
+  return { label, value: `${score.toFixed(1)} / ${max}`, visual: 'Orbit', positions: [score / max], scale: 'quality' }
+}) })
 
 export function buildMockOverallCategory(currentScore: string, scores: Record<string, string>): ReportCategory {
-  const score = Number(currentScore) || 7
-  const scoreIds: Record<string, string> = { 'PSL score': 'psl', Symmetry: 'symmetry', 'Eye area': 'eyes', 'Jaw & chin': 'jaw', 'Cheekbone structure': 'cheekbones' }
+  const parsed = Number(currentScore)
+  const score = currentScore.trim() && Number.isFinite(parsed) ? Math.max(0, Math.min(10, parsed)) : 7
+  const aliases: Record<string, string> = { cheeks: 'cheekbones', skin: 'skin-quality' }
   const category = reportCategories.find(item => item.id === 'overall')!
-  return { ...category, score, features: category.features.map(feature => {
-    const max = feature.label === 'PSL score' ? 8 : 10
-    const value = Math.min(max, Math.max(0, Number(scores[scoreIds[feature.label]]) || score * max / 10))
-    return { ...feature, value: `${value.toFixed(1)} / ${max}`, positions: [value / max] }
+  return { ...category, score, features: overallScoreFields.map(([id, label, max]) => {
+    const raw = scores[id] ?? scores[aliases[id]]
+    const parsed = raw?.trim() ? Number(raw) : Number.NaN
+    const value = Math.max(0, Math.min(max, Number.isFinite(parsed) ? parsed : score * max / 10))
+    return { label, value: `${value.toFixed(1)} / ${max}`, visual: 'Orbit', scale: 'quality', positions: [value / max] }
   }) }
 }

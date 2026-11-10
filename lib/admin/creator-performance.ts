@@ -6,6 +6,7 @@ export const PERFORMANCE_TIME_ZONE = 'America/Los_Angeles'
 export const PERFORMANCE_EXCLUDED_CREATOR_IDS = [
   'd6073111-cfa8-48bb-b9db-98fc0de28381', // matheo.psl
   '106184ef-136c-4768-ad5e-fd8a01b3d571', // bejapsl
+  '9dad60a6-f37e-48fa-9167-26aab7d4ffac', // Jeff / youcalb
   '4e0596a2-39b3-41ee-9734-077eff30899d', // Valerie
 ] as const
 const excludedCreators = new Set<string>(PERFORMANCE_EXCLUDED_CREATOR_IDS)
