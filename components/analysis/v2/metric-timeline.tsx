@@ -6,7 +6,7 @@ import styles from './metric-timeline.module.css'
 const svgNumber = (value: number) => Number(value.toFixed(3))
 export type TimelineAxis = { minimum: number; maximum: number; unit: string; digits: number }
 
-export function MetricTimeline({ kind, positions, grade, scale = 'range', label = '', value = '', axis, denseTicks, onPositionChange }: { kind: string; positions: number[]; grade: number | null; scale?: 'range' | 'quality'; label?: string; value?: string; axis?: TimelineAxis; denseTicks?: boolean; onPositionChange?: (position: number) => void }) {
+export function MetricTimeline({ kind, positions, grade, scale = 'range', label = '', value = '', axis, denseTicks, onPositionChange, concealed = false }: { kind: string; positions: number[]; grade: number | null; scale?: 'range' | 'quality'; label?: string; value?: string; axis?: TimelineAxis; denseTicks?: boolean; onPositionChange?: (position: number) => void; concealed?: boolean }) {
   const root = useRef<HTMLDivElement>(null)
   const entered = useInView(root, { once: true, amount: .25 })
   const reduced = useReducedMotion()
@@ -15,16 +15,16 @@ export function MetricTimeline({ kind, positions, grade, scale = 'range', label 
     if (reduced) progress.jump(1)
     else if (entered) progress.set(1)
   }, [entered, reduced, progress])
-  const active = (kind === 'Rail' ? grade === null ? [] : [grade / 10] : positions).filter(Number.isFinite)
-  if (!active.length) return null
-  const numericScore = scale === 'quality' && /^\d.*\/\s*\d/.test(value)
+  const active = concealed ? [] : (kind === 'Rail' ? grade === null ? [] : [grade / 10] : positions).filter(Number.isFinite)
+  if (!active.length && !concealed) return null
+  const numericScore = scale === 'quality' && (concealed || /^\d.*\/\s*\d/.test(value))
   const reportAxis = axis && !onPositionChange
   const variant = reportAxis ? 2 : metricTimelineVariant(label, label), maximum = Number(value.match(/\/\s*(\d+)/)?.[1] ?? 10)
   const curved = [1, 4, 7].includes(variant), height = curved ? 340 : 260
   const geometry = metricTimelineGeometry({ width: 876, height, positions: active, variant, progress: 1, labels: numericScore, maximum, denseTicks })
   const { ink, muted } = metricTimelinePalette
   const accent = geometry.sparse ? metricTimelinePalette.warm : metricTimelinePalette.accent
-  const cursorLabel = numericScore || reportAxis || value.length > 38 ? '' : value
+  const cursorLabel = concealed || numericScore || reportAxis || value.length > 38 ? '' : value
   const axisDivisions = axis?.unit === '' && axis.minimum === 0 && axis.maximum === 4 ? 4 : 5
   const labelSize = Math.min(64, 760 / Math.max(1, cursorLabel.length * .55)), labelHalf = cursorLabel.length * labelSize * .28
   const labelY = geometry.bottom + labelSize + 42
@@ -37,7 +37,7 @@ export function MetricTimeline({ kind, positions, grade, scale = 'range', label 
     }
     onPositionChange?.(closest)
   }
-  return <div ref={root} className={styles.instrument} data-chart-state={entered || reduced ? 'entered' : 'waiting'}><svg aria-hidden="true" viewBox={`-12 -12 900 ${svgNumber(Math.max(height, cursorLabel ? labelY + 24 : geometry.bottom + 70))}`}>
+  return <div ref={concealed ? undefined : root} className={styles.instrument} data-chart-state={concealed || entered || reduced ? 'entered' : 'waiting'}><svg aria-hidden="true" viewBox={`-12 -12 900 ${svgNumber(Math.max(height, cursorLabel ? labelY + 24 : geometry.bottom + 70))}`}>
     <g stroke={muted} strokeLinecap="round">{geometry.ticks.map(tick => <g key={tick.value} transform={`translate(${svgNumber(tick.x)} ${svgNumber(tick.y)}) rotate(${svgNumber(tick.rotation * 180 / Math.PI)})`}>
       <path d={`M0 ${geometry.balanced ? -tick.length / 2 : 0} V${geometry.balanced ? tick.length / 2 : tick.length}`} strokeWidth={tick.weight} opacity={svgNumber(tick.opacity)} />
     </g>)}</g>

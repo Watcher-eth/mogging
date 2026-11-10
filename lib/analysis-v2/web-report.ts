@@ -16,6 +16,22 @@ export const overallScoreFields = [
   ['symmetry', 'Symmetry', 10], ['skin', 'Skin quality', 10],
 ] as const
 
+const reportTitles: Record<string, string> = {
+  eyes: 'Eyes', mouth: 'Mouth', jaw: 'Jaw', cheeks: 'Cheeks', face: 'Face shape', proportions: 'Proportions', skin: 'Skin', hair: 'Hair',
+}
+export const webReportCategories = registry.categories.map(definition => ({
+  ...definition,
+  displayId: definition.id === 'face' ? 'face-shape' : definition.id,
+  displayTitle: reportTitles[definition.id] ?? definition.title,
+}))
+
+export function buildOverallRubricGroups(scoreFor?: (id: string) => number): WebRubricGroup[] {
+  return [{ id: 'overall', title: 'Overall', rubrics: overallScoreFields.map(([id, label, max]) => {
+    const score = scoreFor?.(id)
+    return { id: `overall.${id}`, label, value: `${score?.toFixed(1) ?? '—'} / ${max}`, visual: 'Orbit', scale: 'quality', positions: score == null ? [] : [score / max], grade: null }
+  }) }]
+}
+
 export function buildLegacyRubricGroups(category: { id: string; title: string; features: { label: string; value: string; measurement?: string }[] }): WebRubricGroup[] {
   return [{ id: category.id, title: category.title, rubrics: category.features.map((feature, index) => {
     const score = feature.value.match(/^\s*(\d+(?:\.\d+)?)\s*\/\s*(8|10)\s*$/)

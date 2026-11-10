@@ -9,7 +9,8 @@ const point = (position: number) => timelinePoint(Math.max(0, Math.min(1, positi
 
 export function RubricVisual(props: ComponentProps<typeof MetricTimeline>) {
   if (props.kind !== 'Dial') return <MetricTimeline {...props} />
-  const { positions, value = '', scale, axis } = props
+  const { positions: markers, value = '', scale, axis, concealed } = props
+  const positions = concealed ? [] : markers
   const limits = axis ? [axis.minimum, axis.maximum].map(number => `${number}${axis.unit}`)
     : scale === 'quality' ? ['0', value.match(/\/\s*(\d+)/)?.[1] ?? '10'] : []
   return <svg className={styles.dial} viewBox={`0 0 ${dialWidth} ${dial.height}`} aria-hidden="true">
@@ -21,7 +22,7 @@ export function RubricVisual(props: ComponentProps<typeof MetricTimeline>) {
         <line y1="-3" y2={dial.majorLength + 3} stroke={index ? timelinePalette.ink : timelinePalette.warm} strokeWidth="4.5" strokeLinecap="round" />
       </g>
     })}
-    {value && <text x={dialWidth / 2} y={dialWidth * .54} textAnchor="middle" className={styles.dialValue}
+    {!concealed && value && <text x={dialWidth / 2} y={dialWidth * .54} textAnchor="middle" className={styles.dialValue}
       fontSize={Math.min(34, 195 / Math.max(5, value.length) * 1.45)}>{value}</text>}
     {limits.map((label, index) => {
       const { x, y } = point(index)

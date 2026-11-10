@@ -12,7 +12,7 @@ import { drawReportOverlay, type ReportOverlay } from '@/lib/creator/report-over
 
 export type LoadedImage = { src: string; width: number; height: number }
 
-export function FaceOverlay({ preset, landmarks, image, value, appearance = 'report', faceMapPointCount, categoryId, fadeDurations, fit = 'cover' }: {
+export function FaceOverlay({ preset, landmarks, image, value, appearance = 'report', faceMapPointCount, categoryId, fadeDurations, fit = 'cover', drawBeforeMask = false }: {
   preset: OverlayPreset | null
   landmarks: FaceLandmarksPayload | null
   image: LoadedImage
@@ -22,6 +22,7 @@ export function FaceOverlay({ preset, landmarks, image, value, appearance = 'rep
   categoryId?: string
   fadeDurations?: { enter: number; exit: number }
   fit?: ImageFit
+  drawBeforeMask?: boolean
 }) {
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const reduceMotion = useReducedMotion()
@@ -32,7 +33,7 @@ export function FaceOverlay({ preset, landmarks, image, value, appearance = 'rep
     const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)')
     const needsMask = appearance === 'report' && Boolean(landmarks && categoryId) && categoryId !== 'hair' && categoryId !== 'ears'
     const portrait = new window.Image()
-    let mask: HTMLCanvasElement | null | undefined = needsMask ? undefined : null
+    let mask: HTMLCanvasElement | null | undefined = needsMask && !drawBeforeMask ? undefined : null
     let displayLandmarks = landmarks
     let disposed = false
     let start: number | null = null
@@ -135,6 +136,7 @@ export function FaceOverlay({ preset, landmarks, image, value, appearance = 'rep
     const observer = new ResizeObserver(resize)
     observer.observe(canvas)
     reducedMotion.addEventListener('change', resize)
+    if (drawBeforeMask) canvas.dataset.faceVisibility = 'outline'
     if (needsMask && landmarks) {
       portrait.onload = () => {
         void getReportFaceVisibility(portrait).then(result => {
@@ -153,7 +155,7 @@ export function FaceOverlay({ preset, landmarks, image, value, appearance = 'rep
     }
     resize()
     return () => { disposed = true; portrait.onload = null; portrait.onerror = null; cancelAnimationFrame(frame); observer.disconnect(); visibility.disconnect(); document.removeEventListener('visibilitychange', resume); reducedMotion.removeEventListener('change', resize) }
-  }, [preset, landmarks, image, value, appearance, faceMapPointCount, categoryId, fit])
+  }, [preset, landmarks, image, value, appearance, faceMapPointCount, categoryId, fit, drawBeforeMask])
   return (
     <motion.div className="pointer-events-none absolute inset-0" initial={{ opacity: 0 }} animate={{ opacity: 1, transition: { duration: reduceMotion ? 0 : fadeDurations?.enter ?? (appearance === 'scan' ? .52 : .18) } }} exit={{ opacity: 0, transition: { duration: reduceMotion ? 0 : fadeDurations?.exit ?? (appearance === 'scan' ? .76 : .18) } }} aria-hidden="true">
       <canvas ref={canvasRef} className="absolute inset-0 size-full" />

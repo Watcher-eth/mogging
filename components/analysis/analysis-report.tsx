@@ -2,6 +2,7 @@ import { AnimatePresence, MotionConfig, motion, useReducedMotion } from 'motion/
 import { ArrowRight, ChevronLeft, ChevronRight, ScanFace, Share, Share2 } from '@/components/ui/mogging-glyphs'
 import { useEffect, useRef, useState, type CSSProperties, type ReactNode } from 'react'
 import { TextMorph } from 'torph/react'
+import { SkeletonBox } from 'skullet/react'
 import type { FaceLandmarksPayload } from '@/lib/analysis/landmarks'
 import type { OverlayPreset } from '@/lib/creator/mobile-overlay-engine/schema'
 import { ReportImagePanel } from './report-image-panel'
@@ -29,7 +30,7 @@ export type ReportPortrait = { src: string; landmarks: FaceLandmarksPayload | nu
 const reportDateFormat = new Intl.DateTimeFormat('en-US', { dateStyle: 'medium', timeZone: 'UTC' })
 const portraitEase = [.22, 1, .36, 1] as const
 
-export function AnalysisReport({ categories, initialCategoryId, imageSrc, landmarks, score, pslScore, potentialScore, mobileScan = false, children, renderDetails, naturalImage = false, embedded = false, portraits = [], portraitLayoutId, heading }:  {
+export function AnalysisReport({ categories, initialCategoryId, imageSrc, landmarks, score, pslScore, potentialScore, mobileScan = false, lockedPreview = false, children, renderDetails, naturalImage = false, embedded = false, portraits = [], portraitLayoutId, heading }:  {
   categories: DesktopReportCategory[]
   initialCategoryId?: string
   imageSrc: string
@@ -38,6 +39,7 @@ export function AnalysisReport({ categories, initialCategoryId, imageSrc, landma
   pslScore?: number | null
   potentialScore?: number | null
   mobileScan?: boolean
+  lockedPreview?: boolean
   children: ReactNode
   naturalImage?: boolean
   embedded?: boolean
@@ -71,7 +73,7 @@ export function AnalysisReport({ categories, initialCategoryId, imageSrc, landma
     : `${activeCategory.score.toFixed(1)} / 10`
 
   return (
-    <MotionConfig reducedMotion="user"><div className={embedded ? `${styles.layout} ${styles.embedded}` : styles.layout}
+    <MotionConfig reducedMotion="user"><div className={embedded ? `${styles.layout} ${styles.embedded}` : styles.layout} data-locked-report-preview={lockedPreview || undefined}
       data-completed-desktop-report={desktop || undefined} style={desktop ? { '--report-portrait-ratio': Math.min(.9, primaryRatio) } as CSSProperties : undefined}>
       {!embedded && <aside className={styles.sidebar}>
         <div>
@@ -103,7 +105,7 @@ export function AnalysisReport({ categories, initialCategoryId, imageSrc, landma
                 exit={reducedMotion ? { opacity: 0 } : { opacity: 0, filter: 'blur(5px)', x: -8 }}
                 transition={{ duration: reducedMotion ? 0 : .24, ease: portraitEase }}>
                 <ReportImagePanel category={activeCategory} imageSrc={photo.src} landmarks={photo.landmarks}
-                  value={photo.side ? undefined : overlayValue} side={photo.side} mobileScan={mobileScan} naturalImage={naturalImage} clearPortrait={embedded}
+                  value={photo.side ? undefined : overlayValue} side={photo.side} mobileScan={mobileScan} naturalImage={naturalImage} clearPortrait={embedded} immediateOverlay={lockedPreview && mobileScan}
                   onAspectRatio={photo === photos[0] ? onPrimaryRatio : undefined} />
               </motion.div>
             </AnimatePresence>}
@@ -124,16 +126,16 @@ export function AnalysisReport({ categories, initialCategoryId, imageSrc, landma
             </div>}
           </motion.div>
           {mobileScan && <motion.div className={styles.scanScores} layout="position"
-            initial={reducedMotion ? false : { opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}
+            initial={lockedPreview || reducedMotion ? false : { opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}
             transition={{ duration: .32, delay: .14 }}>
-            <div><small>Mogging Score</small><strong data-locked={score === null || undefined}>{score === null ? '—.—' : score.toFixed(1)}</strong><span>/ 10</span></div>
-            {(potentialScore != null || score === null) && <div><small>Potential</small><strong data-locked={score === null || undefined}>{potentialScore?.toFixed(1) ?? '—.—'}</strong><span>/ 10</span></div>}
+            <div><small>Mogging Score</small><strong data-locked={score === null || undefined}>{score === null ? <LockedScore /> : score.toFixed(1)}</strong><span>/ 10</span></div>
+            {(potentialScore != null || score === null) && <div><small>Potential</small><strong data-locked={score === null || undefined}>{potentialScore?.toFixed(1) ?? <LockedScore />}</strong><span>/ 10</span></div>}
           </motion.div>}
-          <AnimatePresence initial={false} mode={mobileScan ? 'wait' : 'sync'}>
+          <AnimatePresence initial={false} mode={mobileScan && !lockedPreview ? 'wait' : 'sync'}>
             <motion.div ref={detailsRef} key={continuousDetails ? 'report-details' : activeCategory.id} className={styles.details} role="region" aria-label={`${activeCategory.title} report details`} tabIndex={0}
-              initial={mobileScan && !reducedMotion ? { opacity: 0, y: 10, filter: 'blur(4px)' } : false}
+              initial={mobileScan && !lockedPreview && !reducedMotion ? { opacity: 0, y: 10, filter: 'blur(4px)' } : false}
               animate={{ opacity: 1, y: 0, filter: 'blur(0px)' }}
-              exit={mobileScan && !reducedMotion ? { opacity: 0, y: -5 } : undefined}
+              exit={mobileScan && !reducedMotion && !lockedPreview ? { opacity: 0, y: -5 } : undefined}
               transition={{ duration: reducedMotion ? 0 : .2, ease: [.23, 1, .32, 1] }}>
               {renderDetails ? renderDetails(activeCategory) : <ReportDetailPanel category={activeCategory} />}
             </motion.div>
@@ -144,6 +146,10 @@ export function AnalysisReport({ categories, initialCategoryId, imageSrc, landma
       <div className={styles.footerActions}>{children}</div>
     </div></MotionConfig>
   )
+}
+
+function LockedScore() {
+  return <><span className="sr-only">Locked score</span><SkeletonBox width="1.6em" height=".67em" radius=".14em" /></>
 }
 
 export function ReportActions({
@@ -273,11 +279,12 @@ const hairPalette = [
   { name: 'gray', hex: '#a6a5a2' }, { name: 'other', hex: '#b4a6b3' },
 ] as const
 
-export function ReportColorPalette({ color, kind = 'eye', ribbon = false }: { color: string; kind?: 'eye' | 'hair'; ribbon?: boolean }) {
+export function ReportColorPalette({ color, kind = 'eye', ribbon = false, locked = false }: { color?: string; kind?: 'eye' | 'hair'; ribbon?: boolean; locked?: boolean }) {
   const palette = kind === 'eye' ? eyePalette : hairPalette
-  const selected = palette.find((shade) => shade.name === color.toLowerCase())
-  if (!selected) return null
-  const shades = [...palette.filter((shade) => shade !== selected).slice(0, 3), selected, ...palette.filter((shade) => shade !== selected).slice(3)]
+  const selected = locked ? undefined : palette.find(shade => shade.name === color?.toLowerCase())
+  if (!selected && !locked) return null
+  const unselected = palette.filter(shade => shade !== selected)
+  const shades = selected ? [...unselected.slice(0, 3), selected, ...unselected.slice(3)] : palette
 
   const ribbonStops = kind === 'eye' ? [
     { name: 'blue', hex: '#467eb5' }, { hex: '#80b4cc' }, { name: 'gray', hex: '#94a7ab' },
@@ -290,29 +297,30 @@ export function ReportColorPalette({ color, kind = 'eye', ribbon = false }: { co
     { hex: '#c68a58' }, { hex: '#cba36b' }, { name: 'blond', hex: '#d4b980' },
     { hex: '#e2d0a8' }, { hex: '#d2cabe' }, { name: 'gray', hex: '#aaa9a5' }, { name: 'other', hex: '#c4b3c8' },
   ]
-  const selectedPosition = ribbonStops.findIndex(shade => shade.name === selected.name) / (ribbonStops.length - 1) * 100
+  const selectedPosition = ribbonStops.findIndex(shade => shade.name === selected?.name) / (ribbonStops.length - 1) * 100
   const gradient = `linear-gradient(90deg,${ribbonStops.map((shade, index) => `${shade.hex} ${index / (ribbonStops.length - 1) * 100}%`).join(',')})`
+  const label = kind === 'eye' ? 'Eye color' : 'Hair color'
 
-  return <div className="rounded-[24px] bg-zinc-50/60 p-5" aria-label={`${kind === 'eye' ? 'Eye' : 'Hair'} color: ${selected.name}`}>
+  return <div className="rounded-[24px] bg-zinc-50/60 p-5" aria-label={`${label}: ${locked ? 'locked' : selected?.name}`}>
     <div className="flex items-center justify-between gap-3">
-      <p className="font-mono text-[10px] uppercase tracking-wide text-muted-foreground">{kind === 'eye' ? 'Eye color' : 'Hair color'}</p>
-      <p className="text-sm font-semibold capitalize">{selected.name}</p>
+      <p className="font-mono text-[10px] uppercase tracking-wide text-muted-foreground">{label}</p>
+      <p className="text-sm font-semibold capitalize">{locked ? <span className={styles.lockedScore}><SkeletonBox width={48} height={10} /></span> : selected?.name}</p>
     </div>
     {ribbon ? <div className="relative mt-6 h-[29px] overflow-hidden rounded-lg border border-black/5" style={{ background: gradient }} aria-hidden="true">
       <span className="absolute inset-0" style={{ background: 'linear-gradient(180deg,#ffffff50,transparent 65%,#ffffff20)' }} />
-      <span className="absolute inset-y-[3px] w-[5px] -translate-x-1/2 rounded-full bg-white/90 shadow-[0_0_0_1px_#ffffff30,0_1px_3px_#00000024]" style={{ left: `clamp(6px,${selectedPosition}%,calc(100% - 6px))` }} />
+      {!locked && <span className="absolute inset-y-[3px] w-[5px] -translate-x-1/2 rounded-full bg-white/90 shadow-[0_0_0_1px_#ffffff30,0_1px_3px_#00000024]" style={{ left: `clamp(6px,${selectedPosition}%,calc(100% - 6px))` }} />}
     </div> : <div className="mt-4 flex h-16 items-center justify-center gap-1.5" aria-hidden="true">
-      {shades.map((shade) => <span key={shade.name} className="min-w-0 flex-1 rounded-sm" style={{ height: shade === selected ? 64 : 46, backgroundColor: shade.hex }} />)}
+      {shades.map(shade => <span key={shade.name} className="min-w-0 flex-1 rounded-sm" style={{ height: shade === selected ? 64 : 46, backgroundColor: shade.hex }} />)}
     </div>}
   </div>
 }
 
-export function ReportCategoryHeader({ category, simplified = false, hideScore = false, morph = false }: { category: DesktopReportCategory; simplified?: boolean; hideScore?: boolean; morph?: boolean }) {
+export function ReportCategoryHeader({ category, simplified = false, hideScore = false, lockScore = false, morph = false }: { category: DesktopReportCategory; simplified?: boolean; hideScore?: boolean; lockScore?: boolean; morph?: boolean }) {
   const { title, subtitle, scoreLabel, score } = category
   if (simplified) {
     const label = !hideScore && category.id === 'overall' ? scoreLabel : title
     const value = score.toFixed(1)
-    return <div className="rounded-[24px] bg-zinc-50/60 p-5"><div className="flex items-baseline justify-between gap-4"><h3 className="text-4xl font-semibold leading-none tracking-[-0.055em]">{morph ? <TextMorph>{label}</TextMorph> : label}</h3>{!hideScore && <span className="whitespace-nowrap text-4xl font-semibold leading-none tabular-nums tracking-[-0.055em]">{morph ? <TextMorph>{value}</TextMorph> : value} <span className="text-sm font-normal text-muted-foreground">/ 10</span></span>}</div></div>
+    return <div className="rounded-[24px] bg-zinc-50/60 p-5"><div className="flex items-baseline justify-between gap-4"><h3 className="text-4xl font-semibold leading-none tracking-[-0.055em]">{morph ? <TextMorph>{label}</TextMorph> : label}</h3>{!hideScore && <span className="whitespace-nowrap text-4xl font-semibold leading-none tabular-nums tracking-[-0.055em]">{lockScore ? <span className={styles.lockedScore}><LockedScore /></span> : morph ? <TextMorph>{value}</TextMorph> : value} <span className="text-sm font-normal text-muted-foreground">/ 10</span></span>}</div></div>
   }
   return (
       <div className="rounded-[24px] bg-zinc-50/60 p-5">

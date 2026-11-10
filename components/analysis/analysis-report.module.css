@@ -151,9 +151,11 @@
 
 @media (prefers-reduced-motion: no-preference) {
   :global(.scan-flow[data-mobile-scan]) :is(.scanScores,.details) { transition: visibility 0s; }
-  :global(.scan-flow[data-mobile-scan]) .content:has(:global([data-portrait-entering])) :is(.scanScores,.details) { visibility: hidden; }
-  :global(.scan-flow[data-mobile-scan]) .content:has(:global([data-portrait-entering])) { --portrait-detail-opacity: 0; }
-  :global(.scan-flow[data-mobile-scan]) .content :is(.scanScores,.details) > * { opacity: var(--portrait-detail-opacity,1); transition: opacity 340ms ease-out; }
+  :global(.scan-flow[data-mobile-scan]) .layout:not([data-locked-report-preview]) .content:has(:global([data-portrait-entering])) :is(.scanScores,.details) { visibility: hidden; }
+  :global(.scan-flow[data-mobile-scan]) .layout:not([data-locked-report-preview]) .content:has(:global([data-portrait-entering])) { --portrait-detail-opacity: 0; }
+  :global(.scan-flow[data-mobile-scan]) .layout:not([data-locked-report-preview]) .content :is(.scanScores,.details) > * { opacity: var(--portrait-detail-opacity,1); transition: opacity 340ms ease-out; }
+  :global(.scan-flow[data-mobile-scan]) .layout[data-locked-report-preview] :is(.scanScores,.details,.sidebar) { animation: preview-appear 240ms ease-out both; }
 }
 
-.scanScores strong[data-locked] { filter: blur(5px); user-select: none; }
+@keyframes preview-appear { from { opacity: .55; } to { opacity: 1; } }
+.scanScores strong[data-locked], .lockedScore { filter: blur(3px); user-select: none; }

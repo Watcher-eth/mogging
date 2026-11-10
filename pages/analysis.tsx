@@ -73,9 +73,9 @@ import { desktopCaptureViewport } from '@/components/analysis/face-guide'
 import { DesktopSetup, desktopSetupSteps, desktopShortSetupSteps, desktopFullSetupSteps, desktopCaptureSteps, getDesktopReportFocus, type AnalysisGender, type DesktopCaptureStep, type DesktopAnalysisPreferences } from '@/components/analysis/desktop-onboarding'
 import { DesktopCapture } from '@/components/analysis/desktop-capture'
 import { AnalysisProgress } from '@/components/analysis/analysis-progress'
+import { LockedReportPreview } from '@/components/payments/locked-report-preview'
 
 const BasicReport = dynamic(() => import('@/components/analysis/basic-report').then(module => module.BasicReport))
-const LockedReportPreview = dynamic(() => import('@/components/payments/locked-report-preview').then(module => module.LockedReportPreview))
 const DesktopPortraitScan = dynamic(() => import('@/components/analysis/desktop-portrait-scan').then(module => module.DesktopPortraitScan))
 const DesktopAssessmentPreview = dynamic(() => import('@/components/analysis/desktop-assessment-preview').then(module => module.DesktopAssessmentPreview))
 const AnalysisUnlockDialog = dynamic(() => import('@/components/payments/analysis-unlock-dialog').then(module => module.AnalysisUnlockDialog))

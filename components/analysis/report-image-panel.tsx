@@ -15,7 +15,7 @@ import { ProgressiveBlur } from '@/components/courses/progressive-blur'
 import styles from './report-image-panel.module.css'
 
 
-export function ReportImagePanel({ category, imageSrc, landmarks, value, naturalImage = false, mobileScan = false, clearPortrait = false, side = false, authoredOverlay = false, active = true, onAspectRatio }: {
+export function ReportImagePanel({ category, imageSrc, landmarks, value, naturalImage = false, mobileScan = false, clearPortrait = false, side = false, authoredOverlay = false, active = true, immediateOverlay = false, onAspectRatio }: {
   category: { id: string; title: string; overlayPreset?: OverlayPreset | null; faceMapPointCount?: number }
   imageSrc: string
   landmarks: FaceLandmarksPayload | null
@@ -25,6 +25,7 @@ export function ReportImagePanel({ category, imageSrc, landmarks, value, natural
   side?: boolean
   authoredOverlay?: boolean
   active?: boolean
+  immediateOverlay?: boolean
   value?: string
   onAspectRatio?: (ratio: number) => void
 }) {
@@ -79,7 +80,7 @@ export function ReportImagePanel({ category, imageSrc, landmarks, value, natural
         <AnimatePresence>
           {active && image && canDraw ? <FaceOverlay key={category.id} categoryId={authoredOverlay ? undefined : category.id}
             appearance={side ? 'profile-report' : 'report'} fit={mobileScan ? "cover" : "contain"} preset={preset}
-            faceMapPointCount={category.faceMapPointCount} landmarks={enriched} image={image} value={value} /> : null}
+            faceMapPointCount={category.faceMapPointCount} landmarks={enriched} image={image} value={value} drawBeforeMask={immediateOverlay} /> : null}
         </AnimatePresence>
         {!clearPortrait && <ProgressiveBlur className={styles.bottomBlur} blurLayers={8} intensity={16} />}
         {clearPortrait && image && <div className={styles.featheredBlur} style={{ backgroundImage: `url(${JSON.stringify(image.src)})` }} aria-hidden="true" />}
