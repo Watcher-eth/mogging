@@ -1,4 +1,6 @@
 import { payoutChains, payoutNetworks } from '@/lib/admin/crypto-payouts/shared'
+import { defaultSubmissionFilters, filterSubmissions, groupSubmissions, submissionCampaignKey, submissionCampaignLabel, submissionStatuses, submissionViews, type SubmissionFilters } from '@/lib/admin/submission-browser'
+import { submissionReviewQueueLabels } from '@/lib/admin/creator-overview'
 import { CreatorFixedRateNotice } from './creator-fixed-rate-notice'
 import { getSubmissionPayoutEstimate, type AdminPayoutSelection } from '@/lib/admin/submission-payout'
 import { SubmissionHistory } from './submission-history'
@@ -33,6 +35,7 @@ import {
   CircleDollarSign,
   Camera,
   Copy,
+  Search,
   Loader2,
   ShieldCheck,
   UserRound,
@@ -291,15 +294,84 @@ function ResourceSection({ title, children }: { title: string; children: React.R
   return <section aria-label={title}>{children}</section>
 }
 
-function SubmissionList({ items, payments, onSelect }: { items: AdminSubmission[]; payments: AdminPayment[]; onSelect: (target: ReviewTarget) => void }) {
+export function SubmissionList({ items, payments, onSelect }: { items: AdminSubmission[]; payments: AdminPayment[]; onSelect: (target: ReviewTarget) => void }) {
+  const [filters, setFilters] = useState<SubmissionFilters>(defaultSubmissionFilters)
+  const [limit, setLimit] = useState(50)
   const paymentIds = new Set(payments.map((payment) => payment.submissionId))
+  const results = useMemo(() => filterSubmissions(items, filters), [items, filters])
+  const groups = groupSubmissions(results.slice(0, limit), filters.group)
+  const groupCounts = new Map(groupSubmissions(results, filters.group).map(group => [group.id, group.items.length]))
+  const campaigns = [...new Map(items.map(item => [submissionCampaignKey(item), submissionCampaignLabel(item)])).entries()].sort((a, b) => a[1].localeCompare(b[1]))
+  const platforms = [...new Set(items.map(item => item.platform))].sort()
+  const hasFilters = (Object.keys(defaultSubmissionFilters) as (keyof SubmissionFilters)[]).some(key => filters[key] !== defaultSubmissionFilters[key])
+  const extraCount = Number(filters.attention !== 'all') + Number(Boolean(filters.from)) + Number(Boolean(filters.to))
+  function update<K extends keyof SubmissionFilters>(key: K, value: SubmissionFilters[K]) {
+    setFilters(current => ({ ...current, [key]: value }))
+    setLimit(50)
+  }
+  function reset() { setFilters(defaultSubmissionFilters); setLimit(50) }
   if (!items.length) return <EmptyState title="No video submissions" description="Creator uploads will appear here." />
-  return <div className="admin-list">{items.map((item) => <ResourceRow key={item.id} leading={
-    <SkeletonAvatar src={item.creatorAvatarUrl} alt={`${item.creatorName} profile photo`} size={44} className="size-11 rounded-full bg-zinc-100" fallback={<span className="grid size-full place-items-center text-zinc-500"><Camera className="size-5" /></span>} />
-  } title={item.creatorName} subtitle={`${item.title} · ${formatDate(item.createdAt)}`} status={item.status} unreadMessages={item.unreadMessages} meta={[
-    item.reviewRequestedAt ? 'Rereview requested' : paymentIds.has(item.id) ? 'Payment created' : '',
-    item.audienceCheck?.status === 'needs_review' && !item.audienceCheck.review ? 'Audience needs manual review' : item.audienceCheck?.status === 'verified' ? 'Audience checked' : '',
-  ].filter(Boolean).join(' · ')} onClick={() => onSelect({ resource: 'submission', item })} />)}</div>
+  return <>
+    <div className="mb-5 space-y-4 rounded-2xl border border-zinc-200 bg-zinc-50/40 p-4 sm:p-5">
+      <div className="flex flex-wrap items-center gap-3">
+        <div className="relative min-w-0 flex-1 basis-72"><Search aria-hidden className="pointer-events-none absolute left-3.5 top-1/2 size-4 -translate-y-1/2 text-zinc-400" /><input type="search" aria-label="Search video submissions" placeholder="Search creator, @handle, video, campaign, or post link…" value={filters.query} onChange={event => update('query', event.target.value)} className="creator-field !h-11 !pl-10 !text-sm" /></div>
+        {hasFilters ? <Button variant="ghost" size="sm" onClick={reset}>Reset filters</Button> : null}
+      </div>
+      <div className="flex flex-wrap gap-2" role="group" aria-label="Submission status">
+        {submissionStatuses.map(status => <button key={status.value} type="button" aria-pressed={filters.status === status.value} onClick={() => update('status', status.value)} className={cn('inline-flex min-h-9 items-center gap-2 rounded-full border px-3 text-xs font-medium transition-colors', filters.status === status.value ? 'border-zinc-900 bg-zinc-900 text-white' : 'border-zinc-200 bg-white text-zinc-600 hover:border-zinc-400')}>
+          {status.label}<span className={cn('tabular-nums', filters.status === status.value ? 'text-white/60' : 'text-zinc-400')}>{status.value === 'all' ? items.length : items.filter(item => item.status === status.value).length}</span>
+        </button>)}
+      </div>
+      <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-5">
+        <SubmissionFilterField label="Campaign"><select value={filters.campaign} onChange={event => update('campaign', event.target.value)} className="creator-field !h-10 !text-xs"><option value="all">All campaigns</option>{campaigns.map(([id, name]) => <option key={id} value={id}>{name}</option>)}</select></SubmissionFilterField>
+        <SubmissionFilterField label="Video type"><select value={filters.category} onChange={event => update('category', event.target.value)} className="creator-field !h-10 !text-xs"><option value="all">All video types</option>{Object.entries(submissionReviewQueueLabels).map(([id, name]) => <option key={id} value={id}>{name}</option>)}</select></SubmissionFilterField>
+        <SubmissionFilterField label="Platform"><select value={filters.platform} onChange={event => update('platform', event.target.value)} className="creator-field !h-10 !text-xs"><option value="all">All platforms</option>{platforms.map(platform => <option key={platform} value={platform}>{capitalize(platform)}</option>)}</select></SubmissionFilterField>
+        <SubmissionFilterField label="Sort by"><select value={filters.sort} onChange={event => update('sort', event.target.value as SubmissionFilters['sort'])} className="creator-field !h-10 !text-xs"><option value="newest">Newest first</option><option value="oldest">Oldest first</option><option value="views">Most views</option><option value="creator">Creator A–Z</option></select></SubmissionFilterField>
+        <SubmissionFilterField label="Group by"><select value={filters.group} onChange={event => update('group', event.target.value as SubmissionFilters['group'])} className="creator-field !h-10 !text-xs"><option value="none">No grouping</option><option value="campaign">Campaign</option><option value="category">Video type</option><option value="status">Status</option><option value="creator">Creator</option></select></SubmissionFilterField>
+      </div>
+      <details className="border-t border-zinc-200/70 pt-3">
+        <summary className="w-fit cursor-pointer text-xs font-medium text-zinc-500">More filters{extraCount ? ` · ${extraCount} active` : ''}</summary>
+        <div className="mt-4 grid gap-3 sm:grid-cols-3">
+          <SubmissionFilterField label="Review flags"><select value={filters.attention} onChange={event => update('attention', event.target.value as SubmissionFilters['attention'])} className="creator-field !h-10 !text-xs"><option value="all">All submissions</option><option value="rereviews">Rereview requested</option><option value="unread">Unread messages</option><option value="audience">Audience needs review</option></select></SubmissionFilterField>
+          <SubmissionFilterField label="Submitted from"><input type="date" value={filters.from} max={filters.to || undefined} onChange={event => update('from', event.target.value)} className="creator-field !h-10 !text-xs" /></SubmissionFilterField>
+          <SubmissionFilterField label="Submitted through"><input type="date" value={filters.to} min={filters.from || undefined} onChange={event => update('to', event.target.value)} className="creator-field !h-10 !text-xs" /></SubmissionFilterField>
+        </div>
+        {filters.from && filters.to && filters.from > filters.to ? <p role="alert" className="mt-2 text-xs text-red-600">Choose an end date on or after the start date.</p> : null}
+      </details>
+    </div>
+    <div className="mb-3 flex flex-wrap items-center justify-between gap-2 text-xs text-zinc-500"><p role="status" aria-live="polite"><span className="font-medium tabular-nums text-zinc-800">{results.length.toLocaleString()}</span> of {items.length.toLocaleString()} submissions{results.length > limit ? ` · showing ${limit}` : ''}</p><span>Search matches all words, in any order.</span></div>
+    {results.length ? <div className="space-y-5">{groups.map(group => <section key={group.id} aria-label={group.label}>
+      {filters.group !== 'none' ? <div className="mb-2 flex items-center gap-2"><h2 className="text-sm font-semibold">{group.label}</h2><span className="rounded-full bg-zinc-100 px-2 py-0.5 text-xs tabular-nums text-zinc-500">{groupCounts.get(group.id)}</span></div> : null}
+      <div className="admin-list">{group.items.map(item => <SubmissionResultRow key={item.id} item={item} hasPayment={paymentIds.has(item.id)} onClick={() => onSelect({ resource: 'submission', item })} />)}</div>
+    </section>)}</div> : <div className="rounded-2xl border border-dashed border-zinc-200 py-12 text-center"><Search aria-hidden className="mx-auto mb-3 size-5 text-zinc-400" /><h2 className="text-sm font-semibold">No matching submissions</h2><p className="mt-1 text-xs text-zinc-500">Try another search or broaden your filters.</p><Button className="mt-4" variant="outline" size="sm" onClick={reset}>Reset filters</Button></div>}
+    {results.length > limit ? <div className="mt-5 flex justify-center"><Button variant="outline" onClick={() => setLimit(current => current + 50)}>Show {Math.min(50, results.length - limit)} more submissions</Button></div> : null}
+  </>
+}
+
+function SubmissionFilterField({ label, children }: { label: string; children: React.ReactNode }) {
+  return <label className="grid min-w-0 gap-1.5 text-xs font-medium text-zinc-500"><span>{label}</span>{children}</label>
+}
+
+function SubmissionResultRow({ item, hasPayment, onClick }: { item: AdminSubmission; hasPayment: boolean; onClick: () => void }) {
+  const views = submissionViews(item)
+  const needsAudience = item.audienceCheck?.status === 'needs_review' && !item.audienceCheck.review
+  return <button type="button" onClick={onClick} className="admin-resource-row group flex w-full min-w-0 items-start gap-3 text-left sm:gap-4">
+    <SkeletonAvatar src={item.creatorAvatarUrl} alt={`${item.creatorName} profile photo`} size={44} className="size-11 shrink-0 rounded-full bg-zinc-100" fallback={<span className="grid size-full place-items-center text-zinc-500"><Camera className="size-5" /></span>} />
+    <span className="min-w-0 flex-1">
+      <span title={item.title} className="block truncate text-sm font-semibold tracking-[-0.02em]">{item.title}</span>
+      <span className="mt-1 block truncate text-xs text-zinc-500">{item.creatorName}{item.socialHandle ? ` · @${item.socialHandle.replace(/^@/, '')}` : ''} · {capitalize(item.platform)} · {formatDate(item.createdAt)}</span>
+      <span className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1.5 text-[11px] text-zinc-500">
+        <span className="max-w-full truncate rounded-md bg-zinc-100 px-2 py-1 text-zinc-600">{submissionCampaignLabel(item)}</span>
+        {views != null ? <span className="tabular-nums">{views.toLocaleString()} {item.adminViewCountThreshold != null ? 'verified' : 'submitted'} views</span> : null}
+        {item.reviewRequestedAt ? <span className="text-sky-700">Rereview requested</span> : hasPayment ? <span>Payment created</span> : null}
+        {needsAudience ? <span className="text-amber-700">Audience needs review</span> : null}
+      </span>
+    </span>
+    <span className="flex shrink-0 flex-col items-end gap-2 sm:flex-row sm:items-center">
+      {item.unreadMessages ? <span className="rounded-full bg-[#007aff] px-2 py-1 text-[11px] text-white">{item.unreadMessages} new</span> : null}
+      <StatusPill status={item.status} /><ArrowUpRight aria-hidden className="hidden size-4 text-zinc-300 group-hover:text-black sm:block" />
+    </span>
+  </button>
 }
 
 function AccountAvatar({ account }: { account: AdminAccount }) {
