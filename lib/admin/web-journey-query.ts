@@ -4,6 +4,7 @@ import { audienceCTEs, customerEvent } from './audience'
 import { reportingBucket } from './reporting-bucket'
 import { WEB_ANALYSIS_VARIANTS, WEB_FLOW_VERSION, webJourneyDimensions } from '@/lib/analytics/web-context'
 import { WEB_ANALYSIS_CREATOR_COUPON } from '@/lib/payments/web-analysis-plans'
+import { webMemberActivity } from './analytics-reporting-facts'
 import { webChannel } from './analytics-channel'
 import type { MetricRow } from './analytics'
 
@@ -293,12 +294,10 @@ export function webJourneyCTEs(start: string, end: string, days: number, version
       count(*) filter(where p.paid_at<=${end}::timestamp-interval '8 days') as d7_eligible,
       count(*) filter(where p.paid_at<=${end}::timestamp-interval '2 days' and exists(select 1 from e a
         where a.platform='web' and a.account_id=p.account_id and a.occurred_at>=p.paid_at+interval '1 day' and a.occurred_at<p.paid_at+interval '2 days'
-          and ((a.event_name='page_viewed' and a.properties->>'path' ~ '^/(app/home|analysis|progress|protocol|r/[^/]+)$')
-            or a.event_name in ('report_viewed','protocol_viewed','progress_viewed','course_viewed') or (a.event_name='screen_viewed' and a.properties->>'surface'='scan_app')))) as d1_returned,
+          and ${webMemberActivity})) as d1_returned,
       count(*) filter(where p.paid_at<=${end}::timestamp-interval '8 days' and exists(select 1 from e a
         where a.platform='web' and a.account_id=p.account_id and a.occurred_at>=p.paid_at+interval '7 days' and a.occurred_at<p.paid_at+interval '8 days'
-          and ((a.event_name='page_viewed' and a.properties->>'path' ~ '^/(app/home|analysis|progress|protocol|r/[^/]+)$')
-            or a.event_name in ('report_viewed','protocol_viewed','progress_viewed','course_viewed') or (a.event_name='screen_viewed' and a.properties->>'surface'='scan_app')))) as d7_returned
+          and ${webMemberActivity})) as d7_returned
     from wj_paid_accounts p
   ), wj_coverage as (
     select count(*) as web_analysis_events,count(*) filter(where nullif(properties->>'flow_id','') is null) as missing_flow,

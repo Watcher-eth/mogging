@@ -97,27 +97,28 @@ export function AppShell({ children }: AppShellProps) {
   const [analysisLoading, setAnalysisLoading] = useState(false)
   const dismissedProfileSetupRef = useRef(false)
   const accountRef = useRef<HTMLDivElement | null>(null)
+  const showHeader = !creatorRoute && !creatorReferral && !pwaHome
   const { data: dashboard, mutate: mutateDashboard } = useSWR<CurrentUserDashboard>(
-    status === 'authenticated' && !creatorRoute ? '/api/user/me' : null,
-    apiGet,
+    status === 'authenticated' && session?.user?.id && showHeader ? ['/api/user/me?view=shell', session.user.id] : null,
+    ([url]: [string, string]) => apiGet(url),
     {
       revalidateOnFocus: true,
       shouldRetryOnError: false,
     }
   )
   const { data: memberAccess } = useSWR<{ entitlements: { subscription: { active: boolean; tier?: 'basic' | 'pro' } } }>(
-    status === 'authenticated' && session?.user?.id && !creatorRoute && !creatorReferral
+    status === 'authenticated' && session?.user?.id && showHeader
       ? ['/api/payments/entitlements', session.user.id] : null,
     ([url]: [string, string]) => apiGet(url),
     { shouldRetryOnError: false },
   )
   const membership = memberAccess?.entitlements.subscription
-  const { data: appConfig } = useSWRImmutable<AppConfig>('/api/app-config', apiGet, {
+  const { data: appConfig } = useSWRImmutable<AppConfig>(showHeader ? '/api/app-config' : null, apiGet, {
     shouldRetryOnError: false,
   })
   const authRequired = appConfig?.features.authRequired ?? false
   const { data: anonymousProfileData, mutate: mutateAnonymousProfile } = useSWR<{ profile: AnonymousProfile | null }>(
-    status === 'unauthenticated' && !authRequired ? '/api/auth/anonymous-profile' : null,
+    showHeader && status === 'unauthenticated' && appConfig && !authRequired ? '/api/auth/anonymous-profile' : null,
     apiGet,
     {
       shouldRetryOnError: false,
@@ -183,7 +184,7 @@ export function AppShell({ children }: AppShellProps) {
 
   return (
     <div data-analysis-shell={router.pathname === '/analysis' || undefined} className={creatorRoute ? 'creator-app flex min-h-dvh flex-col' : immersive ? 'min-h-screen bg-white' : 'min-h-screen bg-background'}>
-      {!creatorRoute && !creatorReferral && !pwaHome ? <AppHeader member={memberPreview || membership?.active === true} newMemberFeatures={memberPreview || membership?.tier === 'pro'}>
+      {showHeader ? <AppHeader member={memberPreview || membership?.active === true} newMemberFeatures={memberPreview || membership?.tier === 'pro'}>
             {status === 'loading' ? (
               <div className="h-8 w-14 animate-pulse rounded-lg border border-zinc-200 bg-white sm:h-10 sm:w-24" />
             ) : session?.user ? (

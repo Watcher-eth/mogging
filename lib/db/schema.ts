@@ -633,6 +633,35 @@ export const analyticsEvents = pgTable(
   })
 )
 
+export const analyticsReportingHours = pgTable('analytics_reporting_hours', {
+  hour: timestamp('hour', { mode: 'string' }).primaryKey(),
+  revision: integer('revision').notNull(),
+})
+
+export const analyticsReportingChanges = pgTable('analytics_reporting_changes', {
+  hour: timestamp('hour', { mode: 'string' }).notNull(),
+}, table => ({
+  hourIdx: index('analytics_reporting_changes_hour_idx').on(table.hour),
+}))
+
+export const analyticsReportingFacts = pgTable('analytics_reporting_facts', {
+  hour: timestamp('hour', { mode: 'string' }).notNull(),
+  model: text('model').notNull(),
+  eventName: text('event_name').notNull(),
+  occurredAt: timestamp('occurred_at', { mode: 'string' }).notNull(),
+  platform: text('platform').notNull(),
+  environment: text('environment').notNull(),
+  source: text('source'),
+  accountId: text('account_id'),
+  mobileInstallId: text('mobile_install_id'),
+  anonymousId: text('anonymous_id'),
+  sessionId: text('session_id'),
+  properties: jsonb('properties').notNull(),
+  eventCount: bigint('event_count', { mode: 'number' }).notNull(),
+}, table => ({
+  hourModelIdx: index('analytics_reporting_facts_hour_model_idx').on(table.hour, table.model),
+}))
+
 export const creatorProfiles = pgTable(
   'creator_profiles',
   {

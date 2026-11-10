@@ -6,6 +6,7 @@ import { getAuthSession } from '@/lib/auth/session'
 import {
   deleteAnonymousProfile,
   getCurrentUserDashboard,
+  getCurrentUserShell,
   deleteUserProfile,
   updateUserProfile,
   updateUserProfileSchema,
@@ -36,12 +37,15 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
   }
 
   if (req.method === 'GET') {
+    res.setHeader('Cache-Control', 'private, no-store')
     if (!session?.user?.id) {
       return handleApiError(new ApiError(401, 'Authentication required'), res)
     }
 
     try {
-      const dashboard = await getCurrentUserDashboard(session.user.id)
+      const dashboard = req.query.view === 'shell'
+        ? await getCurrentUserShell(session.user.id)
+        : await getCurrentUserDashboard(session.user.id)
       return json(res, 200, dashboard)
     } catch (error) {
       return handleUserError(error, res)

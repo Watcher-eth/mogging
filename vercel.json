@@ -21,6 +21,10 @@
       "schedule": "* * * * *"
     },
     {
+      "path": "/api/cron/analytics-reporting",
+      "schedule": "*/5 * * * *"
+    },
+    {
       "path": "/api/cron/analytics-export",
       "schedule": "* * * * *"
     },

@@ -21,6 +21,16 @@ This change implements the week 1–3 data foundation and core semantic instrume
 5. Deploy the creator-code exchange API first; build and release the mobile handler/code UI before enabling `/r/*` Universal Links and store redirects. `app.config.js` is the single Expo dynamic configuration. The existing iOS entitlements include both Mogging domains. See the mobile `docs/creator-attribution.md` for staged rollout and device checks.
 6. Check production health after the first real transaction and after one export interval. Inspect a consenting test account from anonymous session through authentication, onboarding, purchase, evaluation, and cancellation.
 
+## Incremental admin reporting
+
+Overview compacts repeated events into hourly facts while keeping exact actor and event counts. Web Journey stores only the browser and server observations needed for its ordered funnel. Stripe receipts, entitlements, audience exclusions, and report delivery remain live. Partial, uncovered, and changed hours use the raw ledger.
+
+1. Run [analytics-reporting-indexes.sql](../scripts/setup/analytics-reporting-indexes.sql) in autocommit mode to build indexes concurrently. Confirm every returned index is valid. Use a direct database connection with the schema owner's role.
+2. Apply just this release's migration with `bun run db:migrate --only 0077_analytics_reporting_facts`. It installs additive tables and change tracking. A short lock timeout makes a busy table abort the migration instead of holding up ingestion.
+3. Deploy with `ANALYTICS_REPORTING_REFRESH=1` and `ANALYTICS_REPORTING_FACTS=0`. The existing scheduler secret authorizes the new cron. Each invocation rebuilds only missing or changed closed hours, in up to four UTC dates.
+4. Compare the raw and fact-backed results at the same cutoff using a repeatable-read transaction. Cover a rolling day, the default 7- and 14-day ranges, audience exclusions, and the Stripe receipt outcomes. Measure query time and temporary disk use with a warmed model before switching reads.
+5. Set `ANALYTICS_REPORTING_FACTS=Overview` or `WebJourney` for a single report, or `1` for both. Set it back to `0` to restore the legacy report queries while refresh continues. Neither flag is required for event collection or PostHog export.
+
 ## Configuration required
 
 Server:

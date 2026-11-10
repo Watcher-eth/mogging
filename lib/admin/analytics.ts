@@ -24,6 +24,7 @@ import { trackingDefinitions, trackingDimensions } from './tracking'
 import { scanProducts } from '@/lib/payments/revenuecat'
 import { onboardingAnalyticsSteps, supportedOnboardingVersions } from '@/lib/analytics/onboarding'
 import { reportingBucket, reportingCalendar } from './reporting-bucket'
+import { analyticsActor, analyticsClientEvent, analyticsFactsCTEs, customerClientEvent, webServerEvent } from './analytics-reporting-facts'
 import { ADMIN_REPORTING_TIME_ZONE } from './reporting-time'
 
 export const analyticsFilters = z.object({
@@ -149,10 +150,12 @@ const sectionReports: Record<NonNullable<AnalyticsFilters['section']>, readonly 
 }
 const eventReportSections = new Set(['Acquisition'])
 
-export function analyticsQuery(filters: AnalyticsFilters, now: Date) {
+export function analyticsQuery(filters: AnalyticsFilters, now: Date, useFacts = false) {
   if (filters.section === 'Purchases' && filters.platform === 'web') filters = { ...filters, platform: 'all' }
   const start = new Date(now.getTime() - Number(filters.days) * 86400_000).toISOString()
   const end = now.toISOString()
+  const overviewFacts = useFacts && filters.section === 'Overview'
+  const webFacts = useFacts && filters.section === 'WebJourney'
   const webOnly = ['WebJourney', 'Experiments'].includes(filters.section ?? '') || filters.section === 'Onboarding' && filters.platform === 'web'
   const platform = webOnly ? sql`platform = 'web'` : filters.section === 'Onboarding' && filters.platform === 'all' ? sql`platform in ('ios','android')` : ['Scans','Referrals','Notifications','AttributionLedger','Quality','Reliability'].includes(filters.section ?? '') || filters.platform === 'all' ? sql`true` : sql`platform = ${filters.platform}`
   const supportedOnboarding = sql`e.properties->>'onboarding_version' in (${sql.join(supportedOnboardingVersions.map(version => sql`${version}`), sql`,`)})`
@@ -191,29 +194,43 @@ export function analyticsQuery(filters: AnalyticsFilters, now: Date) {
   const acquisitionSource = sql`coalesce(nullif(properties->>'creator_first_tracking_link_id',''),
     nullif(properties->>'first_utm_source',''), nullif(properties->>'utm_source',''),
     case when ${referrer} !~* ${excludedAcquisitionHost} then ${referrer} end)`
-  // Split the final JSON payload to stay below PostgreSQL's 100-argument function limit.
-  return sql`with ${audienceCTEs()}, scoped_events as materialized (
-      select a.event_name, a.occurred_at, a.account_id, a.platform, a.app_version, a.properties,
+  const customerOverviewFilter = sql`audience = 'customer' and ${customerClientEvent} and ${platform}`
+  const deliveryEvents = sql`event_name in ('purchase_activated','evaluation_completed','report_viewed','protocol_task_completed')`
+  const eventWeight = overviewFacts ? sql`coalesce(sum(event_count), 0)::bigint` : sql`count(*)`
+  const dailyCount = (predicate: SQL) => overviewFacts
+    ? sql`coalesce(sum(event_count) filter(where ${predicate}),0)::bigint`
+    : sql`count(*) filter(where ${predicate})`
+  const scopedSource = webFacts
+    ? sql`select a.event_name, a.occurred_at, a.account_id, a.platform, null::text as app_version, a.properties,
+        a.session_id, a.source, null::integer as schema_version, null::timestamp as received_at, ${eventAudience('a')} as audience,
+        ${analyticsActor} as actor
+      from reporting_facts a where a.platform = 'web'`
+    : sql`select a.event_name, a.occurred_at, a.account_id, a.platform, a.app_version, a.properties,
         a.session_id, a.source, a.schema_version, a.received_at, ${eventAudience('a')} as audience,
-        coalesce('install:' || mobile_install_id, 'anonymous:' || anonymous_id, 'account:' || account_id) as actor
-      from analytics_events a where a.platform in ('web','ios','android') and ${allAudiences ? sql`true` : platform}
+        ${analyticsActor} as actor
+      from analytics_events a where ${analyticsClientEvent} and ${allAudiences ? sql`true` : platform}
         and ${allAudiences ? sql`true` : sql`a.environment='production'`} and ${eventScope}
-        and a.event_name !~ '^(battle|leaderboard)_'
-        and coalesce(a.properties->>'screen','') !~* '(^|/)(battle|leaderboard)(/|[?#]|$)'
-        and coalesce(a.properties->>'path','') !~* '^/(battle|leaderboard)(/|[?#]|$)'
-        and a.occurred_at >= ${start}::timestamp and a.occurred_at < ${end}::timestamp
+        and ${overviewFacts ? deliveryEvents : sql`true`}
+        and a.occurred_at >= ${start}::timestamp and a.occurred_at < ${end}::timestamp`
+  // Split the final JSON payload to stay below PostgreSQL's 100-argument function limit.
+  return sql`with ${audienceCTEs()}, ${overviewFacts || webFacts ? sql`${analyticsFactsCTEs(overviewFacts ? 'overview' : 'web', start, end)},` : sql``}
+    ${overviewFacts ? sql`overview_events as materialized (
+      select a.*, ${eventAudience('a')} as audience, ${analyticsActor} as actor
+      from reporting_facts a
+    ),` : sql``}
+    scoped_events as materialized (
+      ${scopedSource}
     ), audience_breakdown as (
-      select audience, count(*) as events, count(distinct actor) as devices,
-        count(*) filter(where platform in ('ios','android') and coalesce(properties->>'runtime_environment','unknown') = 'unknown') as runtime_unconfirmed_events
-      from scoped_events group by audience order by audience
+      select audience, ${eventWeight} as events, count(distinct actor) as devices,
+        ${dailyCount(sql`platform in ('ios','android') and coalesce(properties->>'runtime_environment','unknown') = 'unknown'`)} as runtime_unconfirmed_events
+      from ${sql.identifier(overviewFacts ? 'overview_events' : 'scoped_events')} group by audience order by audience
     ), e as materialized (
       select event_name, occurred_at, account_id, platform, app_version, properties, session_id, source, schema_version, received_at,
         actor
-      from scoped_events where audience = 'customer'
-        and event_name <> 'referral_invite_redeemed'
-        and platform in ('web','ios','android')
-        and coalesce(properties->>'path', '') not like '/admin%'
-        and occurred_at >= ${start}::timestamp and occurred_at < ${end}::timestamp and ${platform}
+      from scoped_events where ${customerOverviewFilter}
+    ), referral_redemptions as (
+      select created_at at time zone 'UTC' as occurred_at, referred_user_id as account_id
+      from referral_signups where ${!webOnly} and ${customerAccount(sql`referred_user_id`)} and ${customerAccount(sql`inviter_user_id`)} and created_at >= ${start}::timestamptz and created_at < ${end}::timestamptz
     ), user_reports as materialized (
       select a.status, a.created_at from analyses a join photos p on p.id = a.photo_id
       where p.source = 'user' and ${customerAccount(sql`p.user_id`)} and a.id not in (select id from excluded_reports) and a.created_at >= ${start}::timestamp and a.created_at < ${end}::timestamp
@@ -235,18 +252,19 @@ export function analyticsQuery(filters: AnalyticsFilters, now: Date) {
       from scan_ledger group by 1 order by 1
     ), reported_events as materialized (
       select * from e union all
-      select event_name, occurred_at, account_id, platform, app_version, properties, session_id, source, schema_version, received_at, null::text as actor
-      from analytics_events server_event where ${customerEvent('server_event')} and platform = 'server' and source is distinct from 'backend'
-        and event_name <> 'referral_invite_redeemed'
-        and ${webOnly ? sql`event_name in ('checkout_started','checkout_completed','evaluation_request_completed','evaluation_request_failed')` : sql`true`}
-        and occurred_at >= ${start}::timestamp and occurred_at < ${end}::timestamp
+      ${webFacts
+        ? sql`select event_name, occurred_at, account_id, platform, null::text, properties, session_id, source, null::integer, null::timestamp, null::text as actor
+          from reporting_facts server_event where platform = 'server' and ${customerEvent('server_event')}`
+        : sql`select event_name, occurred_at, account_id, platform, app_version, properties, session_id, source, schema_version, received_at, null::text as actor
+          from analytics_events server_event where ${customerEvent('server_event')}
+          and ${webOnly ? webServerEvent : sql`platform = 'server' and source is distinct from 'backend' and event_name <> 'referral_invite_redeemed'`}
+          and occurred_at >= ${start}::timestamp and occurred_at < ${end}::timestamp`}
       union all
-      -- Qualification is committed with the reward transaction. The ledger is
-      -- authoritative, including older signups that never emitted a client event.
-      select 'referral_invite_redeemed', created_at at time zone 'UTC', referred_user_id,
+      -- Qualification is committed with the reward transaction.
+      select 'referral_invite_redeemed', occurred_at, account_id,
         'server', null::text, '{}'::jsonb, null::text, 'referral_ledger', 1,
-        created_at at time zone 'UTC', null::text
-      from referral_signups where ${!webOnly} and ${customerAccount(sql`referred_user_id`)} and ${customerAccount(sql`inviter_user_id`)} and created_at >= ${start}::timestamptz and created_at < ${end}::timestamptz
+        occurred_at, null::text
+      from referral_redemptions
     ), ${paywallExperimentCTEs(end)}, event_definitions(section, event) as (values ${sql.join(trackingDefinitions.map(({section, event}) => sql`(${section}::text, ${event}::text)`), sql`,`)}),
     event_metrics as (
       select event_name as event, count(*) as events, count(distinct actor) as actors,
@@ -310,36 +328,43 @@ export function analyticsQuery(filters: AnalyticsFilters, now: Date) {
     ), ${!filters.section || ['Purchases','Revenue'].includes(filters.section) ? purchaseBehaviorCTEs(start,end,Number(filters.days)) : sql`purchase_behavior as (select null::json as report)`}, b as materialized (
       select * from billing_history where occurred_at >= ${start}::timestamp
     ), ${webJourneySection ? webJourneyCTEs(start,end,Number(filters.days),filters.webVersion,filters.webDimension,webJourneySection) : sql`web_journey as (select null::json as report)`}, ${revenueReportingCTEs(start)}, ${['CreatorAttribution', 'CreatorEconomics', 'AttributionLedger'].includes(filters.section ?? '') ? creatorAttributionCTEs(filters.section === 'CreatorEconomics' ? '1970-01-01T00:00:00Z' : start, end, Number(filters.days)) : sql`creator_attribution as (select null::json as report)`}, ${filters.section === 'CreatorEconomics' ? creatorEconomicsCTEs(start, end, Number(filters.days)) : sql`creator_economics as (select null::json as report)`}, ${filters.section === 'Authentication' ? authenticationCTEs(start, end, filters.platform) : sql`authentication as (select null::json as report)`}, ${filters.section === 'Purchases' ? purchaseFlowCTEs(start, end, Number(filters.days)) : sql`purchase_flow as (select null::json as report)`}, ${filters.section === 'Scans' ? scansCTEs(start, end, Number(filters.days)) : sql`scans as (select null::json as report)`}, ${filters.section === 'Engagement' ? engagementCTEs(Number(filters.days)) : sql`engagement as (select null::json as report)`}, ${filters.section === 'Referrals' ? referralsCTEs(start, end, Number(filters.days)) : sql`referrals as (select null::json as report)`}, ${filters.section === 'Notifications' ? notificationsCTEs(start,end,Number(filters.days)) : sql`notifications as (select null::json as report)`}, ${filters.section === 'AttributionLedger' ? ledgerCTEs(Number(filters.days)) : sql`attribution_ledger as (select null::json as report)`}, ${filters.section === 'Quality' ? dataHealthCTEs(start,end,Number(filters.days)) : sql`data_health as (select null::json as report)`}, ${sql.join([...onboarding.ctes, ...paywall.ctes, ...web.ctes], sql`,`)},
+    ${overviewFacts ? sql`overview_daily_events as (
+      select event_name, platform, occurred_at, actor, properties, event_count
+      from overview_events where ${customerOverviewFilter}
+      union all
+      select 'referral_invite_redeemed', 'server', occurred_at, null, '{}'::jsonb, 1
+      from referral_redemptions
+    ),` : sql``}
     daily as (
       select ${reportingBucket(sql`occurred_at`, Number(filters.days))} as day, count(distinct actor) as actors,
         count(distinct actor) filter (where platform = 'web' and event_name = 'page_viewed'
           and properties->>'path' like '/%'
           and properties->>'path' !~ '^/(creator|admin|auth|app)(/|$|[?#])') as website_visitors,
         count(distinct actor) filter (where event_name = 'app_store_redirected') as store_clickers,
-        count(*) filter (where event_name = 'evaluation_completed') as evaluations,
-        count(*) filter (where event_name = 'evaluation_started') as scan_starts,
-        count(*) filter (where event_name = 'onboarding_started') as onboarding_starts,
-        count(*) filter (where event_name = 'onboarding_completed') as onboarding_completions,
-        count(*) filter (where event_name = 'account_auth_started') as auth_starts,
-        count(*) filter (where event_name = 'account_authenticated') as auth_successes,
-        count(*) filter (where event_name = 'account_auth_failed') as auth_failures,
-        count(*) filter (where event_name = 'account_auth_cancelled') as auth_cancellations,
-        count(*) filter (where event_name = 'account_post_login_failed') as post_login_failures,
-        count(*) filter (where event_name = 'referral_invite_created') as referral_invites,
-        count(*) filter (where event_name = 'referral_invite_redeemed') as referral_redemptions,
-        count(*) filter (where event_name = 'push_opened') as push_opens,
-        count(*) filter (where event_name = 'purchase_completed') as purchase_completions,
+        ${dailyCount(sql`event_name = 'evaluation_completed'`)} as evaluations,
+        ${dailyCount(sql`event_name = 'evaluation_started'`)} as scan_starts,
+        ${dailyCount(sql`event_name = 'onboarding_started'`)} as onboarding_starts,
+        ${dailyCount(sql`event_name = 'onboarding_completed'`)} as onboarding_completions,
+        ${dailyCount(sql`event_name = 'account_auth_started'`)} as auth_starts,
+        ${dailyCount(sql`event_name = 'account_authenticated'`)} as auth_successes,
+        ${dailyCount(sql`event_name = 'account_auth_failed'`)} as auth_failures,
+        ${dailyCount(sql`event_name = 'account_auth_cancelled'`)} as auth_cancellations,
+        ${dailyCount(sql`event_name = 'account_post_login_failed'`)} as post_login_failures,
+        ${dailyCount(sql`event_name = 'referral_invite_created'`)} as referral_invites,
+        ${dailyCount(sql`event_name = 'referral_invite_redeemed'`)} as referral_redemptions,
+        ${dailyCount(sql`event_name = 'push_opened'`)} as push_opens,
+        ${dailyCount(sql`event_name = 'purchase_completed'`)} as purchase_completions,
         count(distinct actor) filter (where event_name = 'app_first_open') as first_opens,
-        count(*) filter (where event_name = 'app_store_redirected') as store_redirects,
-        count(*) filter (where event_name = 'paywall_viewed') as paywall_views,
-        count(*) filter (where event_name = 'purchase_started') as purchase_starts,
-        count(*) filter (where event_name = 'evaluation_failed') as failures,
-        count(*) filter (where event_name = 'report_viewed') as report_views,
-        count(*) filter (where event_name = 'protocol_task_completed') as protocol_tasks,
+        ${dailyCount(sql`event_name = 'app_store_redirected'`)} as store_redirects,
+        ${dailyCount(sql`event_name = 'paywall_viewed'`)} as paywall_views,
+        ${dailyCount(sql`event_name = 'purchase_started'`)} as purchase_starts,
+        ${dailyCount(sql`event_name = 'evaluation_failed'`)} as failures,
+        ${dailyCount(sql`event_name = 'report_viewed'`)} as report_views,
+        ${dailyCount(sql`event_name = 'protocol_task_completed'`)} as protocol_tasks,
         count(distinct actor) filter (where event_name = 'course_lesson_viewed') as course_learners,
-        count(*) filter (where event_name = 'course_lesson_completed') as lessons_completed,
+        ${dailyCount(sql`event_name = 'course_lesson_completed'`)} as lessons_completed,
         count(distinct actor) filter (where event_name = 'progress_viewed') as progress_users
-      from reported_events where platform in ('web','ios','android') or event_name = 'referral_invite_redeemed'
+      from ${overviewFacts ? sql`overview_daily_events` : sql`reported_events where platform in ('web','ios','android') or event_name = 'referral_invite_redeemed'`}
       group by 1 order by 1
     ), creator_source_labels as (
       select l.id as source, 'Creator · ' || coalesce(nullif(a.handle,''),nullif(a.display_name,''),l.slug)
@@ -932,10 +957,11 @@ export function analyticsQuery(filters: AnalyticsFilters, now: Date) {
         'reports', count(distinct analysis_id) filter(where status = 'complete')) from scan_ledger),
         'daily', coalesce((select json_agg(r) from scan_ledger_daily r), '[]'::json))`)}
     )::jsonb || jsonb_build_object(
-      'summary', ${include('event_summary', sql`(select json_build_object('events', count(*), 'actors', count(distinct actor),
+      'summary', ${include('event_summary', sql`(select json_build_object('events', ${eventWeight}, 'actors', count(distinct actor),
         'first_opens', count(distinct actor) filter (where event_name = 'app_first_open'),
-        'evaluations', count(*) filter (where event_name = 'evaluation_completed'),
-        'failures', count(*) filter (where event_name = 'evaluation_failed'), 'latest_event', max(occurred_at)) from e)`, sql`'{}'::json`)},
+        'evaluations', ${dailyCount(sql`event_name = 'evaluation_completed'`)},
+        'failures', ${dailyCount(sql`event_name = 'evaluation_failed'`)}, 'latest_event', max(occurred_at))
+        from ${overviewFacts ? sql`overview_events where ${customerOverviewFilter}` : sql`e`})`, sql`'{}'::json`)},
       'audienceBreakdown', ${rows('audience_breakdown')}, 'onboarding', ${include('onboarding', onboarding.result)}, 'paywall', ${include('paywall', paywall.result)}, 'web', ${include('web', web.result)},
       'landingHandoffs', ${rows('landing_handoffs')}, 'webAudience', ${rows('web_audience')}, 'landingExperiments', ${rows('landing_experiments')},
       'paywallExperiments', ${rows('paywall_experiments')}, 'onboardingExperimentDaily', ${rows('onboarding_experiment_daily')}, 'landingExperimentDaily', ${rows('landing_experiment_daily')}, 'landingSources', ${rows('landing_sources')},
@@ -981,7 +1007,11 @@ export function getAnalyticsDashboard(filters: AnalyticsFilters) {
       // Flow-to-event joins otherwise choose repeated scans of materialized CTEs.
       await tx.execute(sql`set local enable_nestloop = off`)
     }
-    const [row] = await tx.execute(analyticsQuery(filters, now))
+    const factsMode = process.env.ANALYTICS_REPORTING_FACTS
+    const factsRequested = ['Overview','WebJourney'].includes(filters.section ?? '') &&
+      (factsMode === '1' || factsMode === filters.section)
+    const [availability] = factsRequested ? await tx.execute(sql`select to_regclass('analytics_reporting_hours') is not null as ready`) : []
+    const [row] = await tx.execute(analyticsQuery(filters, now, Boolean(availability?.ready)))
     const payload = row.data as AnalyticsDashboard
     if (filters.section === 'Quality' && payload.dataHealth) payload.dataHealth.settings = { runtime: process.env.VERCEL_ENV || process.env.NODE_ENV || 'unknown', exportEnabled: Boolean(process.env.POSTHOG_PROJECT_KEY), scheduler: Boolean(process.env.CRON_SECRET) }
     return { ...(row.data as Omit<AnalyticsDashboard, 'generatedAt' | 'queryMs' | 'filters'>),

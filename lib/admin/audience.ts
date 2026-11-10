@@ -12,7 +12,7 @@ export function audienceCTEs() {
     ), sandbox_sessions as materialized (
       select distinct session_id from analytics_events where session_id is not null
         and (properties->>'runtime_environment' = 'sandbox' or properties->>'store_environment' = 'sandbox'
-          or properties->>'transaction_id' in (select transaction_id from sandbox_transactions))
+          or properties->>'transaction_id' = any(array(select transaction_id from sandbox_transactions)))
     ), excluded_entitlements as materialized (
       select id from payment_entitlements p where p.user_id in (select id from internal_accounts)
         or p.mobile_install_id in (select mobile_install_id from internal_identities where mobile_install_id is not null)

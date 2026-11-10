@@ -9,7 +9,7 @@ import { enforceRateLimit } from '@/lib/api/rateLimit'
 
 // Shared across function instances; stale snapshots refresh in the background.
 // Authentication still runs on every request before any cached data is read.
-const getReport = unstable_cache(getAnalyticsDashboard, ['admin-analytics-workspace-v13'], { revalidate: 60 })
+const getReport = unstable_cache(getAnalyticsDashboard, ['admin-analytics-workspace-v14', process.env.ANALYTICS_REPORTING_FACTS ?? '0'], { revalidate: 60 })
 
 // Provider credentials can change on redeploy while Next's data cache persists.
 const providerCacheScope = process.env.VERCEL_DEPLOYMENT_ID ?? 'local'

@@ -111,6 +111,15 @@ export async function getCurrentUserDashboard(userId: string) {
   }
 }
 
+export async function getCurrentUserShell(userId: string) {
+  const [user, recentAnalyses] = await Promise.all([
+    db.query.users.findFirst({ where: eq(schema.users.id, userId), columns: publicUserQueryColumns }),
+    getRecentAnalyses(userId, 10, true),
+  ])
+  if (!user) throw new UserServiceError(404, 'User not found')
+  return { user, recentAnalyses }
+}
+
 export async function updateUserProfile(userId: string, input: UpdateUserProfileInput) {
   const data = updateUserProfileSchema.parse(input)
   const storedAvatar = data.imageData ? await storeImageDataUrl(data.imageData) : null
@@ -378,16 +387,17 @@ async function getRecentPublicPhotos(userId: string, limit: number) {
   return rows.map(normalizePublicPhoto)
 }
 
-async function getRecentAnalyses(userId: string, limit: number) {
-  return db
-    .select({
-      id: schema.analyses.id,
+function getRecentAnalyses(userId: string, limit: number, compact = false) {
+  return db.select({
+    id: schema.analyses.id,
+    status: schema.analyses.status,
+    ...(!compact && {
       photoId: schema.photos.id,
       imageUrl: schema.photos.imageUrl,
       pslScore: schema.analyses.pslScore,
-      status: schema.analyses.status,
       createdAt: schema.analyses.createdAt,
-    })
+    }),
+  })
     .from(schema.analyses)
     .innerJoin(schema.photos, eq(schema.photos.id, schema.analyses.photoId))
     .where(eq(schema.photos.userId, userId))
