@@ -303,5 +303,5 @@ test('a grace-period campaign video earns its normal rate despite missing the ne
   const reviewChecklist = sprintReviewItems(terms, 'custom-video-v1', true).map(item => ({ id: item.id, met: ![CAMPAIGN_ANCHOR_REQUIREMENT, CAMPAIGN_BIO_LINK_REQUIREMENT].includes(item.label), note: null }))
   const saved = await reviewCreatorResource({ ...approval(null, null), adminUsAudiencePercent: 40, reviewChecklist })
   expect(saved).toHaveProperty('approvedAmountCents', sprintPayoutCents(terms, 40000, 40))
-  expect(saved).toHaveProperty('reviewChecklist', sprintReviewItems(terms, 'custom-video-v1', false, submission.createdAt).map(item => ({ id: item.id, met: true, note: null })))
+  expect(saved).toHaveProperty('reviewChecklist', sprintReviewItems(terms, 'custom-video-v1', false, submission.createdAt).map(item => ({ id: item.id, met: ![CAMPAIGN_ANCHOR_REQUIREMENT, CAMPAIGN_BIO_LINK_REQUIREMENT].includes(item.label), note: null })))
 })

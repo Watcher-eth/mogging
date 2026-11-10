@@ -1,3 +1,4 @@
+import { campaignPublishingChecklistRules } from '@/lib/creator/campaign-publishing-policy'
 import { AccordionTrigger, AccordionChevron, Disclosure, DisclosureSummary, AccordionContent } from '@/components/ui/accordion'
 import { ContentRestrictions } from '@/components/creator/content-restrictions'
 import { CreatorEssentials } from '@/components/creator/creator-essentials'
@@ -172,8 +173,8 @@ function VideoGuide() {
           </ol>
 
           <div className="mt-5 grid gap-2">
-            <GuideDisclosure title="Full requirements" meta={`${creatorCampaignRules(format.requirements).length} items`}>
-              <Checklist items={creatorCampaignRules(format.requirements)} />
+            <GuideDisclosure title="Full requirements" meta={`${campaignPublishingChecklistRules(creatorCampaignRules(format.requirements)).length} items`}>
+              <Checklist items={campaignPublishingChecklistRules(creatorCampaignRules(format.requirements))} />
             </GuideDisclosure>
             <GuideDisclosure title="Restrictions & payout rules" meta="Read before posting" icon={<TriangleAlert className="size-4 shrink-0 text-[#9a5b12]" aria-hidden="true" />}><ContentRestrictions rules={format.notAllowed} /></GuideDisclosure>
           </div>

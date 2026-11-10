@@ -23,6 +23,7 @@ import { getCreatorAttributionReport } from '@/lib/creator/attribution'
 import {
   creatorSubmissionReviewResultsSchema,
   validateCreatorSubmissionReviewResults,
+  getCreatorSubmissionReviewItems,
 } from '@/lib/creator/submission-review'
 import {
   calculateCreatorPayout,
@@ -529,6 +530,9 @@ export async function reviewCreatorResource(input: CreatorAdminReviewInput, revi
       if (!validateCreatorSubmissionReviewResults(submission.formatId, reviewChecklist)) {
         throw new ApiError(400, 'Complete every creator-guide review item before saving')
       }
+      const publishingPolicyItems = getCreatorSubmissionReviewItems(submission.formatId, submission.createdAt)
+      const publishingReviewError = submissionReviewError(input.status, reviewChecklist.map(item => ({ ...item, waived: publishingPolicyItems.find(rule => rule.id === item.id)?.waived })))
+      if (publishingReviewError) throw new ApiError(400, publishingReviewError)
       const payments = await tx.query.creatorPayments.findMany({ where: eq(schema.creatorPayments.submissionId, submission.id) })
       if (payments.some(payment => payment.cryptoBatchId && payment.status === 'processing')) throw new ApiError(409, 'Wait for on-chain payout confirmation before changing the review')
       const calculated = Math.round(calculateCreatorPayout(input.adminViewCountThreshold, true, input.adminUsAudiencePercent).payout * 100)
@@ -696,7 +700,7 @@ async function reviewSprintSubmission(input: Extract<CreatorAdminReviewInput, { 
     const reviewChecklist = input.reviewChecklist.filter(item => !retiredIds.has(item.id))
     const ids = new Set(reviewChecklist.map(item => item.id))
     if (!expected.length || ids.size !== expected.length || reviewChecklist.length !== expected.length || expected.some(item => !ids.has(item.id))) throw new ApiError(400, 'The review requirements changed. Refresh the page and reopen the submission. Unmet requirements can stay unchecked.')
-    const reviewError = submissionReviewError(input.status, reviewChecklist)
+    const reviewError = submissionReviewError(input.status, reviewChecklist.map(item => ({ ...item, waived: expected.find(rule => rule.id === item.id)?.waived })))
     if (reviewError) throw new ApiError(400, reviewError)
     const calculated = sprintPayoutCents(submission.sprintTerms, input.adminViewCountThreshold, input.adminUsAudiencePercent)
     const preservedCents = submission.campaignPayoutCorrected || submission.reviewRequestedAt || payments.some(payment => payment.status === 'paid') ? submission.approvedAmountCents || 0 : 0

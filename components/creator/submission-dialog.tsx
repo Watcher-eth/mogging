@@ -546,7 +546,7 @@ export function SubmissionDialog({
                         ))}
                       </dl>
                       <div className="flex items-center justify-between gap-3">
-                        <p className="text-xs font-semibold uppercase tracking-widest text-zinc-400">Confirm before submitting</p>
+                        <p className="text-xs font-semibold uppercase tracking-widest text-zinc-400">Creator-guide requirements</p>
                         {canCheckAll ? <button type="button" disabled={!checklist.length || confirmed.length === checklist.length} onClick={() => setConfirmed(checklist.map((_, i) => String(i)))} className="min-h-9 shrink-0 rounded-full px-3 text-xs font-semibold text-zinc-950 transition-colors hover:bg-zinc-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-black disabled:cursor-default disabled:text-zinc-400 disabled:hover:bg-transparent">Check all</button> : null}
                       </div>
                       {checklist.map((rule, i) => (

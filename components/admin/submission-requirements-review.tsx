@@ -14,7 +14,7 @@ export function SubmissionRequirementsReview({ items, status, onChange, campaign
   onChange: (items: ReviewItem[]) => void
 }) {
   const rejecting = status === 'rejected'
-  const selectedCount = items.filter(item => rejecting ? !item.met : item.met).length
+  const selectedCount = items.filter(item => rejecting ? !item.met && !item.waived : item.met).length
   const allRequirementsMet = !rejecting && selectedCount === items.length
   const indexed = items.map((item, index) => ({ item, index }))
   const campaignItems = campaignName ? indexed.filter(({ item }) => item.id.startsWith('element-')) : []
@@ -41,12 +41,13 @@ export function SubmissionRequirementsReview({ items, status, onChange, campaign
       {group.title ? <h4 className="mb-2 text-xs font-semibold text-zinc-900">{group.title}</h4> : null}
       <div className="grid gap-2">
       {group.items.map(({ item, index }) => {
-        const selected = rejecting ? !item.met : item.met
+        const selected = rejecting ? !item.met && !item.waived : item.met
         return <div key={item.id} className={cn('rounded-2xl border p-3.5 transition-colors duration-150', rejecting && selected ? 'border-red-200 bg-red-50/60' : 'border-zinc-200 bg-white')}>
           <label className="flex min-h-6 cursor-pointer items-start gap-3">
-            <input type="checkbox" className={cn('mt-0.5 size-4 shrink-0 rounded border-zinc-300', rejecting ? 'accent-red-600' : 'accent-emerald-600')} checked={selected} onChange={event => update(index, { met: rejecting ? !event.target.checked : event.target.checked, note: null })} />
-            <span className={cn('text-sm font-medium leading-5', rejecting && selected ? 'text-red-950' : 'text-zinc-800')}>{rejecting ? submissionRejectionLabel(item) : item.label}</span>
+            <input type="checkbox" className={cn('mt-0.5 size-4 shrink-0 rounded border-zinc-300', rejecting ? 'accent-red-600' : 'accent-emerald-600')} checked={selected} disabled={rejecting && item.waived} onChange={event => update(index, { met: rejecting ? !event.target.checked : event.target.checked, note: null })} />
+            <span className={cn('text-sm font-medium leading-5', rejecting && selected ? 'text-red-950' : 'text-zinc-800')}>{rejecting && !item.waived ? submissionRejectionLabel(item) : item.label}</span>
           </label>
+          {item.waived ? <p className="ml-7 mt-2 text-xs font-medium leading-5 text-amber-700">Grace period applies · check if met; missing this requirement does not affect this submission’s payout.</p> : null}
           {rejecting && selected ? <div className="ml-7 mt-3">
             <p className="flex items-center gap-1.5 text-[11px] font-medium text-red-700"><XCircle aria-hidden="true" className="size-3.5" />Shown to the creator</p>
             <textarea aria-label={`Feedback for ${item.label}`} value={item.note || ''} maxLength={500} onChange={event => update(index, { note: event.target.value })} className="mt-2 min-h-20 w-full resize-y rounded-xl border border-red-200 bg-white p-3 text-sm leading-5 outline-none focus:border-red-400 focus:ring-2 focus:ring-red-100" placeholder="Add a specific example or explain how to fix this (optional)" />

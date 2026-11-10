@@ -5,7 +5,7 @@ import { z } from 'zod'
 import { creatorRetainerSchema } from './retainer'
 import { creatorCampaignRule, creatorFormatElement } from './post-guidance'
 import type { CreatorSubmissionFormat } from './formats'
-import { CAMPAIGN_PUBLISHING_GRACE_RULE, publishingRequirementWaived } from './campaign-publishing-policy'
+import { CAMPAIGN_PUBLISHING_GRACE_RULE, publishingReviewItems } from './campaign-publishing-policy'
 
 const paragraph = z.string().trim().min(1).max(2000)
 export const sprintTermsSchema = z
@@ -254,7 +254,7 @@ const campaignReviewLabels: Record<string, readonly string[]> = {
 export function sprintReviewItems(terms: SprintTerms, id: string, includeRetired = false, submittedAt?: Date | string | null) {
   const format = sprintFormat(terms, id)
   if (!format) return []
-  return [
+  return publishingReviewItems([
     ...format.elements.map((item, i) => {
       const element = creatorFormatElement(item)
       return { id: `element-${i + 1}`, label: (terms.submitOnPublish ? undefined : campaignReviewLabels[id]?.[i]) ?? element.title, detail: element.detail }
@@ -276,10 +276,10 @@ export function sprintReviewItems(terms: SprintTerms, id: string, includeRetired
     })),
   ].flatMap((item) => {
     if (includeRetired) return [item]
-    if (item.label === CAMPAIGN_PUBLISHING_GRACE_RULE || publishingRequirementWaived(item.label, submittedAt, terms.publishingGraceEndsAt)) return []
+    if (item.label === CAMPAIGN_PUBLISHING_GRACE_RULE) return []
     const label = creatorCampaignRule(item.label)
     return label === null ? [] : [{ ...item, label }]
-  })
+  }), submittedAt, terms.publishingGraceEndsAt)
 }
 export function referralCode(
   link: { slug: string; publicUrl: string } | null | undefined,

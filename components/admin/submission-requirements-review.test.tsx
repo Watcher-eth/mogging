@@ -1,3 +1,4 @@
+import { CAMPAIGN_ANCHOR_REQUIREMENT, CAMPAIGN_BIO_LINK_REQUIREMENT } from '@/lib/creator/campaign-publishing-policy'
 import { expect, test } from 'bun:test'
 import { renderToStaticMarkup } from 'react-dom/server'
 import { SubmissionRequirementsReview } from './submission-requirements-review'
@@ -31,4 +32,21 @@ test('specialist criteria appear first without duplicating or resetting checklis
   expect(html).toContain('Not met: A Mogging mock report is shown')
   expect(html).toContain('Report missing')
   expect(html.match(/Not met: A Mogging mock report is shown/g)?.length).toBe(1)
+})
+
+
+test('publishing rules remain visible and checkable during the grace period, without becoming rejection reasons', () => {
+  const publishingItems = [
+    { id: 'publishing-anchor', label: CAMPAIGN_ANCHOR_REQUIREMENT, detail: 'Anchor requirement', met: false, note: null, waived: true },
+    { id: 'publishing-bio-link', label: CAMPAIGN_BIO_LINK_REQUIREMENT, detail: 'Bio-link requirement', met: true, note: null, waived: true },
+  ]
+  const approved = renderToStaticMarkup(<SubmissionRequirementsReview items={publishingItems} status="approved" onChange={() => {}} />)
+  expect(approved).toContain(CAMPAIGN_ANCHOR_REQUIREMENT)
+  expect(approved).toContain(CAMPAIGN_BIO_LINK_REQUIREMENT)
+  expect(approved).toContain('Grace period applies')
+  expect(approved).not.toContain('disabled=""')
+  const rejected = renderToStaticMarkup(<SubmissionRequirementsReview items={publishingItems} status="rejected" onChange={() => {}} />)
+  expect(rejected).toContain('>0 selected</span>')
+  expect(rejected.match(/disabled=""/g)).toHaveLength(2)
+  expect(rejected).not.toContain('Not met:')
 })

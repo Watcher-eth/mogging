@@ -39,10 +39,11 @@ test('a video submitted during grace cannot be rejected for missing either new l
   const format = terms.formats[0].id
   const before = sprintReviewItems(terms, format, false, new Date(deadline - 1))
   const after = sprintReviewItems(terms, format, false, new Date(deadline))
-  expect(before.some(item => item.label === CAMPAIGN_ANCHOR_REQUIREMENT)).toBe(false)
-  expect(before.some(item => item.label === CAMPAIGN_BIO_LINK_REQUIREMENT)).toBe(false)
+  expect(before.find(item => item.label === CAMPAIGN_ANCHOR_REQUIREMENT)?.waived).toBe(true)
+  expect(before.find(item => item.label === CAMPAIGN_BIO_LINK_REQUIREMENT)?.waived).toBe(true)
   expect(after.some(item => item.label === CAMPAIGN_ANCHOR_REQUIREMENT)).toBe(true)
   expect(after.some(item => item.label === CAMPAIGN_BIO_LINK_REQUIREMENT)).toBe(true)
+  expect(after.find(item => item.label === CAMPAIGN_BIO_LINK_REQUIREMENT)?.waived).toBe(false)
   // Retired items remain known so an already-open admin dialog can be safely normalized.
   expect(sprintReviewItems(terms, format, true, new Date(deadline - 1)).some(item => item.label === CAMPAIGN_ANCHOR_REQUIREMENT)).toBe(true)
   expect(before.filter(item => item.id.startsWith('element-'))).toEqual(after.filter(item => item.id.startsWith('element-')))

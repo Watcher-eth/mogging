@@ -149,6 +149,8 @@ test('permanent codes retain the existing attribution identity and reviews use s
     'requirement-1',
     'restriction-1',
     'sprint-rule-1',
+    'publishing-anchor',
+    'publishing-bio-link',
   ])
 })
 test('Money retains prior approved earnings through rejected rereviews and deducts paid cashouts', () => {

@@ -58,3 +58,18 @@ export function withCampaignPublishingRules(terms: SprintTerms): SprintTerms {
     ],
   }
 }
+
+/** Keep publishing requirements visible and recordable even when payment enforcement is waived. */
+export function publishingReviewItems<T extends { id: string; label: string; detail: string }>(items: T[], submittedAt?: Date | string | null, endsAt = CAMPAIGN_PUBLISHING_GRACE_ENDS_AT) {
+  const result: { id: string; label: string; detail: string; waived?: boolean }[] = items.map(item => ({ ...item, label: campaignPublishingRuleLabel(item.label) }))
+  for (const [id, label] of [['publishing-anchor', CAMPAIGN_ANCHOR_REQUIREMENT], ['publishing-bio-link', CAMPAIGN_BIO_LINK_REQUIREMENT]]) {
+    if (!result.some(item => item.label === label)) result.push({ id, label, detail: 'Required for all creator campaigns.' })
+  }
+  return result.map(item => {
+    if (!isCampaignPublishingRequirement(item.label)) return item
+    const waived = publishingRequirementWaived(item.label, submittedAt, endsAt)
+    return { ...item, waived, detail: waived
+      ? `Grace period applies. Record whether this requirement is met; a missing link cannot reduce or deny payment for this submission. Deadline: ${CAMPAIGN_PUBLISHING_DEADLINE}. ${CAMPAIGN_LINKS_EXEMPTION}`
+      : `${item.detail} ${CAMPAIGN_LINKS_EXEMPTION}` }
+  })
+}

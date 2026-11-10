@@ -1,3 +1,4 @@
+import { CAMPAIGN_ANCHOR_REQUIREMENT, CAMPAIGN_BIO_LINK_REQUIREMENT } from './campaign-publishing-policy'
 import { getCreatorSubmissionFormat } from './formats'
 import { creatorRestrictionGroups } from './content-policy'
 import { describe, expect, test } from 'bun:test'
@@ -143,4 +144,12 @@ test('reopening a rejection restores only saved reasons; new checklist items sta
   const drafts = createSubmissionReviewDrafts(items, 'rejected', [{ id: items[0].id, met: false, note: 'Saved reason' }])
   expect(drafts.rejection.filter(item => !item.met)).toEqual([{ ...items[0], note: 'Saved reason' }])
   expect(drafts.approval.every(item => !item.met && item.note === null)).toBe(true)
+})
+
+
+test('the creator-guide checklist includes both publishing requirements for legacy submissions', () => {
+  const items = getCreatorSubmissionReviewItems('custom-video-v1', '2026-11-10T00:00:00Z')
+  expect(items.find(item => item.label === CAMPAIGN_ANCHOR_REQUIREMENT)).toMatchObject({ id: 'publishing-anchor', waived: true })
+  expect(items.find(item => item.label === CAMPAIGN_BIO_LINK_REQUIREMENT)).toMatchObject({ id: 'publishing-bio-link', waived: true })
+  expect(submissionReviewError('rejected', items.map(item => ({ ...item, met: !item.waived })))).not.toBeNull()
 })

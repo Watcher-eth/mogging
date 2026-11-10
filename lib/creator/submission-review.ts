@@ -1,11 +1,13 @@
 import { creatorContentRestriction } from '@/lib/creator/content-policy'
 import { z } from 'zod'
 import { ACTIVE_CREATOR_SUBMISSION_FORMATS, getCreatorSubmissionFormat } from '@/lib/creator/formats'
+import { publishingReviewItems } from './campaign-publishing-policy'
 
 export type CreatorSubmissionReviewItem = {
   id: string
   label: string
   detail: string
+  waived?: boolean
 }
 
 export type CreatorSubmissionReviewResult = {
@@ -38,11 +40,11 @@ export const creatorSubmissionReviewResultsSchema = z.array(z.object({
   note: z.string().trim().max(500).optional().nullable(),
 })).max(64)
 
-export function getCreatorSubmissionReviewItems(formatId: string | null) {
+export function getCreatorSubmissionReviewItems(formatId: string | null, submittedAt?: Date | string | null) {
   const format = formatId ? getCreatorSubmissionFormat(formatId) : ACTIVE_CREATOR_SUBMISSION_FORMATS[0]
   if (!format) return []
 
-  return [
+  return publishingReviewItems([
     ...format.elements.map((item, index) => ({
       id: `element-${index + 1}`,
       label: item.title,
@@ -58,15 +60,16 @@ export function getCreatorSubmissionReviewItems(formatId: string | null) {
       label: `Avoided: ${creatorContentRestriction(restriction)}`,
       detail: 'The submitted video does not contain this disallowed element.',
     })),
-  ] satisfies CreatorSubmissionReviewItem[]
+  ] satisfies CreatorSubmissionReviewItem[], submittedAt)
 }
 
 export function mergeCreatorSubmissionReviewResults(
   formatId: string | null,
-  stored: CreatorSubmissionReviewResult[] | null | undefined
+  stored: CreatorSubmissionReviewResult[] | null | undefined,
+  submittedAt?: Date | string | null
 ) {
   const storedById = new Map((stored || []).map((item) => [item.id, item]))
-  return getCreatorSubmissionReviewItems(formatId).map((item) => ({
+  return getCreatorSubmissionReviewItems(formatId, submittedAt).map((item) => ({
     ...item,
     met: storedById.get(item.id)?.met ?? false,
     note: storedById.get(item.id)?.note ?? null,
@@ -98,8 +101,8 @@ export function submissionRejectionLabel(item: CreatorSubmissionReviewItem) {
     : `Not met: ${item.label}`
 }
 
-export function submissionReviewError(status: string, items: ReadonlyArray<Pick<CreatorSubmissionReviewResult, 'met'>>) {
-  if (status === 'rejected' && !items.some(item => !item.met))
+export function submissionReviewError(status: string, items: ReadonlyArray<Pick<CreatorSubmissionReviewResult, 'met'> & { waived?: boolean }>) {
+  if (status === 'rejected' && !items.some(item => !item.met && !item.waived))
     return 'Select at least one rejection reason so the creator knows what to fix.'
   return null
 }
