@@ -1,0 +1,22 @@
+{
+  "subject": "johnson",
+  "source": "AI-generated editorial portraits using image_gen",
+  "resolution": "Upscaled from 941 \u00d7 1672 originals",
+  "assets": [
+    {
+      "file": "johnson-profile-4k.jpg",
+      "width": 2160,
+      "height": 3840
+    },
+    {
+      "file": "johnson-three-quarter-4k.jpg",
+      "width": 2160,
+      "height": 3840
+    },
+    {
+      "file": "johnson-front-4k.jpg",
+      "width": 2160,
+      "height": 3840
+    }
+  ]
+}

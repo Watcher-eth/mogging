@@ -1,0 +1,62 @@
+[
+  {
+    "subject": "marlon",
+    "edit": "freckles",
+    "prompt": "Edit this exact supplied studio portrait. Identity-preserve, one vertical photo, original composition and pose. Change ONLY add a natural fine-to-medium scattering of realistic brown freckles over the bridge of the nose and upper cheeks, varied sizes and density, embedded in skin texture; no freckles in eyes, eyebrows, lips or clothes. Keep every facial proportion, eyes, brows, nose, lips, head shape, expression, camera angle, crop, hair, ears, lighting, background AND black/navy shirt exactly unchanged. This is a controlled before/after for an educational editorial video: no beautification, no skin smoothing, no other edits. No text, no graphics. Highest detail available. Output one image, no collage.",
+    "file": "marlon-freckles.png",
+    "nativeWidth": 941,
+    "nativeHeight": 1672,
+    "tool": "image_gen",
+    "disclosure": "AI-edited illustration; not a real change or prediction"
+  },
+  {
+    "subject": "marlon",
+    "edit": "facial-hair",
+    "prompt": "Edit this exact supplied studio portrait. Identity-preserve, one vertical photo, original composition and pose. Change ONLY add a realistic well-groomed short boxed beard and natural moustache in the person's own facial-hair color, individual hairs and natural density, no artificial painted silhouette. Keep every facial proportion, eyes, brows, nose, lips, head shape, expression, camera angle, crop, hair, ears, lighting, background AND black/navy shirt exactly unchanged. This is a controlled before/after for an educational editorial video: no beautification, no skin smoothing, no other edits. No text, no graphics. Highest detail available. Output one image, no collage.",
+    "file": "marlon-facial-hair.png",
+    "nativeWidth": 941,
+    "nativeHeight": 1672,
+    "tool": "image_gen",
+    "disclosure": "AI-edited illustration; not a real change or prediction"
+  },
+  {
+    "subject": "johnson",
+    "edit": "freckles",
+    "prompt": "Edit this exact supplied studio portrait. Identity-preserve, one vertical photo, original composition and pose. Change ONLY add a natural fine-to-medium scattering of realistic brown freckles over the bridge of the nose and upper cheeks, varied sizes and density, embedded in skin texture; no freckles in eyes, eyebrows, lips or clothes. Keep every facial proportion, eyes, brows, nose, lips, head shape, expression, camera angle, crop, hair, ears, lighting, background AND black/navy shirt exactly unchanged. This is a controlled before/after for an educational editorial video: no beautification, no skin smoothing, no other edits. No text, no graphics. Highest detail available. Output one image, no collage.",
+    "file": "johnson-freckles.png",
+    "nativeWidth": 941,
+    "nativeHeight": 1672,
+    "tool": "image_gen",
+    "disclosure": "AI-edited illustration; not a real change or prediction"
+  },
+  {
+    "subject": "johnson",
+    "edit": "facial-hair",
+    "prompt": "Edit this exact supplied studio portrait. Identity-preserve, one vertical photo, original composition and pose. Change ONLY add a realistic well-groomed short boxed beard and natural moustache in the person's own facial-hair color, individual hairs and natural density, no artificial painted silhouette. Keep every facial proportion, eyes, brows, nose, lips, head shape, expression, camera angle, crop, hair, ears, lighting, background AND black/navy shirt exactly unchanged. This is a controlled before/after for an educational editorial video: no beautification, no skin smoothing, no other edits. No text, no graphics. Highest detail available. Output one image, no collage.",
+    "file": "johnson-facial-hair.png",
+    "nativeWidth": 941,
+    "nativeHeight": 1672,
+    "tool": "image_gen",
+    "disclosure": "AI-edited illustration; not a real change or prediction"
+  },
+  {
+    "subject": "clavicular",
+    "edit": "freckles",
+    "prompt": "Edit this exact supplied studio portrait. Identity-preserve, one vertical photo, original composition and pose. Change ONLY add a natural fine-to-medium scattering of realistic brown freckles over the bridge of the nose and upper cheeks, varied sizes and density, embedded in skin texture; no freckles in eyes, eyebrows, lips or clothes. Keep every facial proportion, eyes, brows, nose, lips, head shape, expression, camera angle, crop, hair, ears, lighting, background AND black/navy shirt exactly unchanged. This is a controlled before/after for an educational editorial video: no beautification, no skin smoothing, no other edits. No text, no graphics. Highest detail available. Output one image, no collage.",
+    "file": "clavicular-freckles.png",
+    "nativeWidth": 941,
+    "nativeHeight": 1672,
+    "tool": "image_gen",
+    "disclosure": "AI-edited illustration; not a real change or prediction"
+  },
+  {
+    "subject": "clavicular",
+    "edit": "facial-hair",
+    "prompt": "Edit this exact supplied studio portrait. Identity-preserve, one vertical photo, original composition and pose. Change ONLY add a realistic well-groomed short boxed beard and natural moustache in the person's own facial-hair color, individual hairs and natural density, no artificial painted silhouette. Keep every facial proportion, eyes, brows, nose, lips, head shape, expression, camera angle, crop, hair, ears, lighting, background AND black/navy shirt exactly unchanged. This is a controlled before/after for an educational editorial video: no beautification, no skin smoothing, no other edits. No text, no graphics. Highest detail available. Output one image, no collage.",
+    "file": "clavicular-facial-hair.png",
+    "nativeWidth": 941,
+    "nativeHeight": 1672,
+    "tool": "image_gen",
+    "disclosure": "AI-edited illustration; not a real change or prediction"
+  }
+]

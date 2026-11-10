@@ -1,3 +1,5 @@
+import { drawFaceTreatment } from './face-treatment'
+import { defaultGlassOverlay } from './glass-overlay'
 import { drawBrandLockup, type CreatorBrand } from './brand'
 import { loadPosterAssets } from './editorial-posters'
 import type { ContentSlide } from './content-generator'
@@ -65,7 +67,7 @@ function renderEmbeddedReport(ctx: CanvasRenderingContext2D, slide: ContentSlide
   const resolution = Math.ceil(Math.max(1560, screenWidth * 3))
   if (report.width !== resolution) { report.width = resolution; report.height = Math.ceil(resolution * 844 / 390) }
   const reportCtx = report.getContext('2d')!
-  drawMockReport(reportCtx, slide, photo, overlay, report.width, report.height, time)
+  drawMockReport(reportCtx, slide, photo, overlay, report.width, report.height, time, (ctx,face,width,elapsed) => drawFaceTreatment(ctx,face,width,elapsed,false,1,{appearance:{...defaultGlassOverlay,opacity:.68}}), {deviceChrome:true})
   return report
 }
 

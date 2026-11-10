@@ -67,6 +67,20 @@ test('paired angular rubrics occupy the same row', () => {
   expect(paired.every(item => item.rubric.visual === 'Orbit')).toBe(true)
 })
 
+test('graphics are distributed through observations without shuffling either content sequence', () => {
+  const graphics = Array.from({ length: 3 }, (_, index) => ({ id: `chart-${index}`, label: 'Measurement', value: '0.5×', visual: 'Capsule', positions: [.5], grade: null }))
+  const observations = Array.from({ length: 6 }, (_, index) => ({ id: `note-${index}`, label: 'Observation', value: 'Observed', visual: 'Text', positions: [], grade: null }))
+  const layout = layoutWebRubrics([...graphics, ...observations])
+  expect(layout.filter(item => item.rubric.visual !== 'Text').map(item => item.rubric.id)).toEqual(graphics.map(item => item.id))
+  expect(layout.filter(item => item.rubric.visual === 'Text').map(item => item.rubric.id)).toEqual(observations.map(item => item.id))
+  expect(layout.map(item => item.rubric.id)).toEqual(['note-0', 'note-1', 'chart-0', 'note-2', 'note-3', 'chart-1', 'note-4', 'note-5', 'chart-2'])
+  expect(layoutWebRubrics([...graphics, ...observations])).toEqual(layout)
+  const rails = graphics.slice(0, 2).map(rubric => ({ ...rubric, visual: 'Rail' }))
+  const railLayout = layoutWebRubrics([...rails, ...observations])
+  const railIndexes = railLayout.flatMap((item, index) => item.rubric.visual === 'Rail' ? [index] : [])
+  expect(railIndexes[1] - railIndexes[0]).toBeGreaterThan(1)
+})
+
 test('directional dials use quality grades while range dials retain measured positions', () => {
   const rubrics = buildWebRubricGroups('proportions', [
     { id: 'proportions.convexity', value: 168 },
@@ -79,4 +93,15 @@ test('directional dials use quality grades while range dials retain measured pos
   expect(rubrics[0].positions).toEqual([.51])
   expect(rubrics[1].scale).toBe('quality')
   expect(rubrics[1].positions).toEqual([.86])
+})
+
+test('Overall alternates instruments and score-only cards without reordering or changing scores', () => {
+  const rubrics = Array.from({ length: 7 }, (_, index) => ({ id: `overall.${index}`, label: `Category ${index}`, value: `${index} / 10`, visual: 'Orbit', positions: [index / 10], grade: null, scale: 'quality' as const }))
+  const layout = layoutWebRubrics(rubrics, 'summary')
+  expect(layout.map(item => item.rubric.id)).toEqual(rubrics.map(rubric => rubric.id))
+  expect(layout.map(item => item.rubric.visual)).toEqual(['Orbit', 'Text', 'Orbit', 'Text', 'Orbit', 'Text', 'Orbit'])
+  expect(layout.map(item => item.rubric.value)).toEqual(rubrics.map(rubric => rubric.value))
+  expect(layout.filter(item => !item.full)).toHaveLength(6)
+  expect(rubrics.every(rubric => rubric.visual === 'Orbit')).toBe(true)
+  expect(layoutWebRubrics([], 'summary')).toEqual([])
 })

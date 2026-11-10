@@ -1,4 +1,5 @@
 export type CreatorProfile = {
+  videoStudioAccess?: boolean
   bundledPayouts?: boolean
   id: string
   displayName: string
@@ -12,6 +13,7 @@ export type CreatorProfile = {
 }
 
 export type CreatorSubmission = {
+  studioGenerationId?: string | null
   updatedAt?: string | null
   unreadMessages?: number
   sprintId?: string | null

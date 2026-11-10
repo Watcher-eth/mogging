@@ -1,0 +1,19 @@
+.layout { display: grid; gap: 32px; padding: 24px 20px; }
+.sidebar { display: flex; flex-direction: column; justify-content: space-between; color: #0a0a0d; background: white; min-width: 0; }
+.title { margin-top: 12px; font-size: 48px; font-weight: 600; line-height: 1; letter-spacing: -.06em; }
+.categories { display: grid; gap: 6px; margin-top: 24px; }
+.stage, .content { display: grid; gap: 16px; min-width: 0; }
+.details { min-width: 0; outline-offset: 4px; }
+@media (min-width: 640px) { .layout { padding: 32px 40px; } }
+@media (min-width: 1024px) {
+  .layout { flex: 1; height: 100%; min-height: 0; grid-template-columns: 200px minmax(0,1fr); gap: 32px; padding: 24px 40px; overflow: hidden; }
+  .sidebar { min-height: 0; gap: 16px; }
+  .sidebar > div:first-child { display: flex; flex: 1; min-height: 0; flex-direction: column; }
+  .sidebar > div:last-child { flex-shrink: 0; }
+  .title { font-size: 36px; }
+  .categories { min-height: 0; overflow-y: auto; overscroll-behavior: contain; scrollbar-width: thin; }
+  .stage, .content { height: 100%; min-height: 0; }
+  .content { grid-template-columns: minmax(0,1.12fr) minmax(0,1fr); align-items: stretch; }
+  .details { height: 100%; min-height: 0; overflow-y: auto; overscroll-behavior: contain; scrollbar-width: thin; scrollbar-color: #d6d9dd transparent; padding: 4px 8px 24px 4px; }
+  .details:focus-visible { outline: 1px solid #a7afb8; outline-offset: -1px; border-radius: 24px; }
+}

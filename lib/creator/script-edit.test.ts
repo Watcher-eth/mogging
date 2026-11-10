@@ -1,12 +1,14 @@
+import { videoSize, videoContent } from './video-layout'
 import { expect, test } from 'bun:test'
 import { scriptToPlan, planScriptShots } from './script-edit'
 import { compileAnalysisVideo, inferScriptCategory, parseComposition } from './video-composition'
 import { reportCategories } from './mock-report-data'
 import type { AnalysisPostInput } from './analysis-post'
+import { reportUi } from './mobile-report-ui'
 import { mockReportRegions, drawMockReport } from './mock-report'
-import { reportMotion, sectionScroll, expandInPlace, componentFrame } from './report-choreography'
+import { reportMotion, sectionScroll, expandInPlace } from './report-choreography'
 import type { ContentSlide } from './content-generator'
-import { appReportFrame, sceneFrame, featureStageLayout, featureHandoff, elementEntrance } from './video-layout'
+import { appReportFrame, sceneFrame, featureStageLayout, elementEntrance } from './video-layout'
 import { animateMetricText } from './mock-report'
 import { reportEntryTimes } from './report-choreography'
 
@@ -65,13 +67,13 @@ test('highlight bounds follow the actual report card layout for every category a
       for (const feature of category.features) {
         const region = regions.find(item => item.label === feature.label)!
         const label = drawn.find(item => item.text === feature.label.toUpperCase())!
-        expect(label.x).toBe(region.x + 14)
-        expect(label.y).toBe(region.y + 14)
+        expect(label.x).toBe(region.x + reportUi.padding)
+        expect(label.y).toBe(region.y + reportUi.padding)
       }
       const potential = regions.find(item => item.id === 'potential')!
-      expect(drawn.find(item => item.text === 'Potential Score')!.y).toBe(potential.y + 22)
+      expect(drawn.find(item => item.text === 'Your potential')!.y).toBe(potential.y)
       const action = regions.find(item => item.id === 'action-plan')!
-      expect(drawn.find(item => item.text === (category.id === 'overall' ? 'Your priorities' : 'Action Plan'))!.y).toBe(action.y + 22)
+      expect(drawn.find(item => item.text === (category.id === 'overall' ? 'Your priorities' : 'Action Plan'))!.y).toBe(action.y)
     }
   }
 })
@@ -86,21 +88,22 @@ test('section scroll settles on the actual target and supports arbitrary-time sc
   expect(end.scroll).toBeGreaterThan(start.scroll)
   expect(reportMotion(scene, asset, 500)).toEqual(reportMotion(scene, asset, 500))
   expect(sectionScroll({ id: 'hero', label: 'Face', x: 0, y: 0, width: 390, height: 465 }, 620, 1800)).toBe(0)
+  expect(sectionScroll({ id: 'scores', label: 'Overall', x: 12, y: 385, width: 366, height: 110 }, 620, 1800)).toBe(0)
 })
 
 test('report framing stays edge-to-edge even with legacy scale tracks and imported framing', () => {
   const composition = compileAnalysisVideo(scriptToPlan('Open the eye evaluation. Scroll to your growth potential. Get your report with Mogging.'), input, ['face'], 'brand', reportCategories)
-  expect(composition.width).toBe(1080)
-  expect(composition.height).toBe(1920)
+  expect(composition.width).toBe(videoSize.width)
+  expect(composition.height).toBe(2340)
   const full = appReportFrame('full'), caption = appReportFrame('captioned')
-  expect(full).toEqual({ x: 0, y: 0, width: 1080, height: 1920 })
+  expect(full).toEqual({ x: 0, y: 0, ...videoSize })
   expect(caption).toEqual(full)
   for (const framing of ['full', 'captioned', 'detail', 'device'] as const) {
     const scene = { ...composition.scenes[0], framing }
     const previous = { x: 162, y: 510, width: 756, height: 1344 }, duration = scene.durationMs
     for (const t of [0, .01, .25, .5, .75, .99, 1]) {
       const frame = sceneFrame(scene, duration * t, previous)
-      expect(frame.width / frame.height).toBeCloseTo(9 / 16, 8)
+      expect(frame.width / frame.height).toBeCloseTo(9 / 19.5, 8)
       expect(frame).toEqual(full)
       expect(sceneFrame(scene, duration * t, previous)).toEqual(frame)
     }
@@ -110,7 +113,8 @@ test('report framing stays edge-to-edge even with legacy scale tracks and import
 })
 
 test('feature portrait cues use the subject image and category geometry; app cues keep the report', () => {
-  const composition = compileAnalysisVideo(scriptToPlan('Highlight the eye spacing on the user image with overlays. Open the eye evaluation score. Show the jaw contour on the portrait without the report. Scroll to the action plan.'), input, ['subject'], 'brand', reportCategories)
+  // Keep this cue-mapping clip below ten seconds; longer videos reserve early app proof separately.
+  const composition = compileAnalysisVideo(scriptToPlan('Start here. Highlight eye spacing on the image with overlays. Open the eye evaluation score. Show jaw contour on the portrait without the report. Scroll to the action plan.', 230), input, ['subject'], 'brand', reportCategories)
   const eyes = composition.scenes.find(scene => scene.source.kind === 'portrait' && scene.source.categoryId === 'eyes')!
   const jaw = composition.scenes.find(scene => scene.source.kind === 'portrait' && scene.source.categoryId === 'jaw')!
   expect(eyes.source.imageId).toBe('subject')
@@ -118,7 +122,7 @@ test('feature portrait cues use the subject image and category geometry; app cue
   expect(jaw.source.overlay).toBe('category')
   expect(eyes.tracks.some(track => track.primitive === 'contour-trace')).toBe(true)
   expect(eyes.framing).toBe('captioned')
-  expect(jaw.tracks.some(track => track.primitive === 'type-on')).toBe(true)
+  expect(jaw.tracks.some(track => track.primitive === 'caption-swish')).toBe(true)
   expect(composition.scenes.some(scene => scene.source.kind === 'report' && scene.focus === 'category-score')).toBe(true)
   expect(composition.scenes.some(scene => scene.source.kind === 'report' && scene.focus === 'action-plan')).toBe(true)
 })
@@ -144,10 +148,10 @@ test('native expansion keeps its original center and returns exactly; focused co
   expect(expanded.width).toBeGreaterThan(rect.width)
   expect(expanded.x + expanded.width / 2).toBe(rect.x + rect.width / 2)
   expect(expanded.y + expanded.height / 2).toBe(rect.y + rect.height / 2)
-  const focused = componentFrame({ id: 'slider', label: 'Slider', ...rect })
+  const focused = featureStageLayout(rect).metric
   expect(focused.x + focused.width / 2).toBe(540)
   expect(focused.y).toBeGreaterThan(400)
-  expect(focused.y + focused.height).toBeLessThan(1920)
+  expect(focused.y + focused.height).toBeLessThan(videoSize.height - 100)
 })
 
 test('report exports omit operating-system chrome while retaining actual app controls', () => {
@@ -172,9 +176,10 @@ test('a feature explanation holds one scene with the face, category geometry and
   expect(stages[0].tracks.some(track => track.primitive === 'cinematic-flow')).toBe(true)
   const layout = featureStageLayout({ width: 354, height: 145 })
   expect(layout.face.width).toBeGreaterThanOrEqual(880)
-  expect(layout.metric.width).toBe(992)
-  expect(layout.face.y + layout.face.height).toBeLessThan(layout.metric.y)
-  expect(layout.metric.y + layout.metric.height).toBeLessThan(1920)
+  expect(layout.metric.width).toBeCloseTo(videoContent.width)
+  expect(layout.face.y + layout.face.height - layout.metric.y).toBeGreaterThan(150)
+  expect(layout.face.y + layout.face.height - layout.metric.y).toBeLessThanOrEqual(400)
+  expect(layout.metric.y + layout.metric.height).toBeLessThan(videoSize.height - 100)
 })
 
 test('meter entrances build from zero and retain exact final values', () => {
@@ -188,16 +193,6 @@ test('meter entrances build from zero and retain exact final values', () => {
   const asset = { image: null, overlay: null, slide: {} as ContentSlide, regions: mockReportRegions(context(), scene.source.report!), scrollMax: 1800, initialScroll: 0 }
   const entries = reportEntryTimes(scene, asset)
   expect(entries).toEqual(reportEntryTimes(scene, asset))
-  expect(entries['feature:eyes.spacing']).toBeGreaterThan(0)
+  expect(entries['feature:eyes.spacing']).toBeGreaterThanOrEqual(0)
   expect(elementEntrance(entries['feature:eyes.spacing'] - 1, entries['feature:eyes.spacing'], 650)).toBe(0)
-})
-
-test('feature handoffs never mix old metrics with new headings or overlays', () => {
-  expect(featureHandoff(0)).toEqual({ outgoing: 1, incoming: 0 })
-  expect(featureHandoff(.5)).toEqual({ outgoing: 0, incoming: 0 })
-  expect(featureHandoff(1)).toEqual({ outgoing: 0, incoming: 1 })
-  for (let frame = 0; frame <= 120; frame++) {
-    const sample = featureHandoff(frame / 120)
-    expect(sample.incoming * sample.outgoing).toBe(0)
-  }
 })

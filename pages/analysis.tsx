@@ -1081,7 +1081,7 @@ function ActualAnalysisScreen({
         </div>
 
         <div className="grid place-items-center lg:justify-items-end">
-          <ScanImagePanel imageSrc={imageSrc} landmarks={landmarks} paused={paymentDialogOpen} />
+          <ScanImagePanel key={imageSrc} imageSrc={imageSrc} landmarks={landmarks} paused={paymentDialogOpen} />
         </div>
       </div>
 
@@ -1222,7 +1222,7 @@ function AnalysisPaymentDialog({
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-h-[calc(100svh-2rem)] overflow-y-auto rounded-[28px] border-0 bg-white p-0 shadow-[0_28px_90px_rgba(15,23,42,0.2)] sm:max-w-[500px]">
-        <ScanImagePanel imageSrc={imageSrc} landmarks={landmarks} variant="paywall" />
+        <ScanImagePanel key={imageSrc} imageSrc={imageSrc} landmarks={landmarks} variant="paywall" />
 
         <div className="px-6 pb-6 pt-5">
           <DialogHeader>

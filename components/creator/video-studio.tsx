@@ -1,224 +1,378 @@
+import { creatorAnalysisInput, creatorAnalysisReports, creatorStoryDirections, creatorStoryOptions, loadCreatorStoryCatalog, loadCreatorStory, type CreatorStory, type CreatorStoryOption, type CreatorSubjectAnalysis } from '@/lib/creator/creator-stories'
+import { featureTopics, featureTopicLabels, type FeatureTopic } from '@/lib/creator/feature-study'
+import { createFeatureStudyDraft } from '@/lib/creator/feature-study-script'
+import { featureVariantPhotos } from '@/lib/creator/feature-study-assets'
+import useSWR from 'swr'
+import { apiGet, apiPost } from '@/lib/api/client'
+import { StudioPostDialog, type StudioExport } from './studio-post-dialog'
 import { useEffect, useMemo, useRef, useState } from 'react'
-import { ArrowLeft, ArrowRight, Copy, Download, Film, Layers3, Loader2, Plus, Trash2, Upload } from 'lucide-react'
+import { BookOpen, Check, Clapperboard, Download, Focus, Loader2, Moon, PanelsTopLeft, Plus, RotateCcw, Ruler, ScanFace } from 'lucide-react'
 import { toast } from 'sonner'
-import { Button } from '@/components/ui/button'
-import { Field, fieldClass } from './creator-shell'
+import { Dialog, DialogContent, DialogTitle, DialogDescription } from '@/components/ui/dialog'
+import { customClipPreviewTime } from '@/lib/creator/custom-video'
+import { CustomVideoEditor } from './custom-video-editor'
 import { VideoCompositionPlayer } from './video-composition-player'
-import { activeScene, allowedPrimitives, arrangeVideoScenes, compileAnalysisVideo, createMotionTrack, parseComposition, retimeVideoScene, videoStyles, type MotionTrack, type TrackTarget, type VideoScene, type VideoStyleId } from '@/lib/creator/video-composition'
-import { motionPrimitives, primitiveDefinition, type MotionPrimitiveCategory, type MotionPrimitiveId } from '@/lib/creator/motion-primitives'
-import { drawVideoFrame, exportCompositionMp4, prepareVideo, type PreparedVideo } from '@/lib/creator/video-renderer'
-import { downloadBlob } from '@/lib/creator/export-slides'
-import { packVideoProject, unpackVideoProject } from '@/lib/creator/video-project'
+import { compileAnalysisVideo, videoImageIds, type VideoRecipe, type VideoComposition } from '@/lib/creator/video-composition'
+import { prepareVideo, exportCompositionMp4, type PreparedVideo } from '@/lib/creator/video-renderer'
+import { videoSize } from '@/lib/creator/video-layout'
+import { creatorSubjects, creatorSubjectPhotos, creatorVideoStyles, validateCreatorPhotos, type CreatorSubjectId } from '@/lib/creator/creator-catalog'
 import { reportCategories } from '@/lib/creator/mock-report-data'
+import { downloadBlob } from '@/lib/creator/export-slides'
 import type { AnalysisPostInput, AnalysisPostPlan } from '@/lib/creator/analysis-post'
 import type { GeneratorImage } from '@/lib/creator/content-generator'
-import { cn } from '@/lib/utils'
-import { scriptToPlan } from '@/lib/creator/script-edit'
+import { ProductionScriptEditor } from './production-script-editor'
+import { createProductionDraft } from '@/lib/creator/production-drafts'
+import { packProductionRecording, restoreProductionRecording, compileProductionVideo, productionVisualPlan, productionCut, productionTimingIssues, sectionAudioKey, assembleProductionAudio, type ProductionLength, type SectionAudio } from '@/lib/creator/video-production'
+import type { VideoScript } from '@/lib/creator/video-script'
+import { decodeVoiceover, type VideoVoiceover } from '@/lib/creator/video-voiceover'
+import { voiceDirection } from '@/lib/creator/video-speech'
+import styles from './video-studio.module.css'
 
-type Props = { input: AnalysisPostInput; plan: AnalysisPostPlan; images: GeneratorImage[]; onBack: () => void }
-const categoryTarget: Record<MotionPrimitiveCategory, TrackTarget> = { transition: 'content', camera: 'camera', entry: 'content', exit: 'content', text: 'text', cursor: 'decoration', cinematic: 'decoration', overlay: 'overlay', report: 'report' }
+type Props = { input: AnalysisPostInput; plan: AnalysisPostPlan; images: GeneratorImage[]; trackExports?: boolean; previewSubmission?: boolean }
+type Selection = { id: CreatorSubjectId; name: string; images: GeneratorImage[]; darkImages?: GeneratorImage[]; story?: CreatorStory; stories?: CreatorStoryOption[]; analysis?: CreatorSubjectAnalysis }
 
-export default function VideoStudio({ input, plan, images, onBack }: Props) {
-  const [editPlan, setEditPlan] = useState(plan)
-  const [script, setScript] = useState(() => plan.scenes.map(scene => scene.narration).join('\n\n'))
-  const [readingPace, setReadingPace] = useState(165)
-  const [composition, setComposition] = useState(() => compileAnalysisVideo(plan, input, images.map(image => image.id), 'brand', reportCategories))
-  const [selectedId, setSelectedId] = useState(composition.scenes[0].id)
-  const [prepared, setPrepared] = useState<PreparedVideo | null>(null)
-  const [error, setError] = useState<string | null>(null)
+const styleIcons = { 'portrait-audit': ScanFace, 'report-led': PanelsTopLeft, 'measurement-explainer': Ruler, 'feature-study': Focus, 'hybrid-story': Clapperboard }
+
+export default function VideoStudio({ input, plan, images, trackExports = false, previewSubmission = false }: Props) {
+  const { data: exports, mutate: refreshExports } = useSWR<{ generations: StudioExport[] }>(trackExports ? '/api/creator/studio' : null, apiGet)
+  const [postExport, setPostExport] = useState<StudioExport | null>(() => previewSubmission ? { id: 'preview', title: 'Tom Holland · Detailed analysis', campaignName: 'Mogging Detailed Analysis MGC', minimumViews: 5000 } : null)
+  const [master, setMaster] = useState<VideoScript | null>(null)
+  const [length, setLength] = useState<ProductionLength>(75)
+  const [sectionIds, setSectionIds] = useState<string[] | undefined>()
+  const [voice, setVoice] = useState(() => voiceDirection('editorial'))
+  const [featureAmount, setFeatureAmount] = useState(1)
+  const [retouchOperation, setRetouchOperation] = useState<'add' | 'remove' | 'replace' | 'shorten' | 'lengthen' | 'align'>('add')
+  const [featureTopic, setFeatureTopic] = useState<FeatureTopic>('philtrum')
+  const [variation, setVariation] = useState(0)
+  const [clips, setClips] = useState<ReadonlyMap<string, SectionAudio>>(new Map())
+  const [generating, setGenerating] = useState<string | null>(null)
+  const [audioStatus, setAudioStatus] = useState('')
+  const [audioCut, setAudioCut] = useState<{ source: VideoComposition; composition: VideoComposition; audio: VideoVoiceover } | null>(null)
+  const [storyCounts, setStoryCounts] = useState<Partial<Record<CreatorSubjectId, number>>>({})
+  const [selection, setSelection] = useState<Selection | null>(null)
+  const [theme, setTheme] = useState<VideoComposition['theme']>('light')
+  const [mode, setMode] = useState<'format' | 'clips' | 'script'>('format')
+  const editing = mode === 'clips', writing = mode === 'script'
+  const [customComposition, setCustomComposition] = useState<VideoComposition | null>(null)
   const [seekMs, setSeekMs] = useState(0)
-  const [timeMs, setTimeMs] = useState(0)
+  const [playhead, setPlayhead] = useState(0)
+  const previewPositionRef = useRef(0)
+  const [recipe, setRecipe] = useState<VideoRecipe>('portrait-audit')
+  const [customTarget, setCustomTarget] = useState<CreatorSubjectId | null>(null)
+  const [customName, setCustomName] = useState('')
+  const [frontPhotos, setFrontPhotos] = useState<File[]>([])
+  const [sidePhoto, setSidePhoto] = useState<File | null>(null)
+  const [loading, setLoading] = useState(false)
+  const [photoError, setPhotoError] = useState('')
+  const [error, setError] = useState('')
   const [progress, setProgress] = useState<number | null>(null)
-  const [search, setSearch] = useState('')
-  const [category, setCategory] = useState('all')
-  const [screens, setScreens] = useState<GeneratorImage[]>([])
-  const [panel, setPanel] = useState<'scene' | 'library' | 'json'>('scene')
-  const [json, setJson] = useState('')
-  const abortRef = useRef<AbortController | null>(null)
-  const screenInputRef = useRef<HTMLInputElement>(null)
-  const jsonInputRef = useRef<HTMLInputElement>(null)
-  const projectInputRef = useRef<HTMLInputElement>(null)
+  const photoTriggerRef = useRef<HTMLElement | null>(null)
   const urlsRef = useRef(new Set<string>())
-  const allImages = useMemo(() => [...images.filter(image => !screens.some(screen => screen.id === image.id)), ...screens], [images, screens])
-  const scene = composition.scenes.find(item => item.id === selectedId) ?? composition.scenes[0]
-  const nowScene = activeScene(composition, timeMs)
-  const regions = prepared?.scenes.get(scene.id)?.regions ?? []
-  const exporting = progress !== null
-  const catalog = motionPrimitives.filter(item => item.id !== 'layout-scale' && (category === 'all' || category === item.category) && `${item.label} ${item.description}`.toLowerCase().includes(search.toLowerCase()))
+  const photoCacheRef = useRef(new Map<string, GeneratorImage>())
+  const abortRef = useRef<AbortController | null>(null)
+  const sourceImages = selection?.images ?? images
+  const studioInput = useMemo(() => selection ? creatorAnalysisInput(input, selection.name, selection.analysis) : input, [input, selection])
+  const studioReports = useMemo(() => selection?.analysis ? creatorAnalysisReports(selection.analysis) : reportCategories, [selection])
+  const cut = useMemo(() => master ? productionCut(master, length, sectionIds) : null, [master, length, sectionIds])
+  const baseComposition = useMemo(() => {
+    if (cut) {
+      const directions = selection?.story ? creatorStoryDirections(selection.story, cut, studioInput, sourceImages, studioReports, recipe, variation) : undefined
+      return { ...compileProductionVideo(cut, studioInput, sourceImages, studioReports, recipe, voice, variation, featureTopic, featureAmount, directions), title: selection?.story?.title ?? `${selection?.name ?? input.subject} · Modular editorial`, disclosure: selection?.analysis ? 'Editorial photo study · Saved front-photo assessment · No endorsement implied' : 'Editorial photo study · No measured subject scores supplied' }
+    }
+    return compileAnalysisVideo(plan, input, sourceImages.map(image => image.id), 'brand', reportCategories, { recipe })
+  }, [selection, recipe, input, studioInput, studioReports, plan, sourceImages, cut, voice, variation, featureTopic, featureAmount])
+  const visualPlan = useMemo(() => {
+    if (!writing || !cut) return []
+    const directions = selection?.story ? creatorStoryDirections(selection.story, cut, studioInput, sourceImages, studioReports, recipe, variation) : {}
+    return productionVisualPlan(cut, studioInput, sourceImages, studioReports, recipe, variation, featureTopic, featureAmount).map(shot => ({ ...shot.decision,
+      ...(directions[shot.id]?.kind === 'report' ? { primitive: 'report' as const, reason: `Open the saved ${directions[shot.id].categoryId} report for this narrated category.` }
+        : directions[shot.id]?.featureStudy ? { primitive: directions[shot.id].featureStudy!.layout === 'detail' ? 'detail' as const : directions[shot.id].featureStudy!.edit ? 'edit' as const : 'portrait' as const, reason: 'A single registered portrait keeps the same crop and original texture while the named feature changes locally.' } : {}), sourceId: shot.cue.sourceId }))
+  }, [writing, cut, selection, studioInput, studioReports, sourceImages, recipe, variation, featureTopic, featureAmount])
+  const draft = customComposition ?? baseComposition
+  const renderImages = useMemo(() => {
+    if (theme !== 'dark' || !selection?.darkImages) return sourceImages
+    const registered = videoImageIds(draft.scenes.filter(scene => scene.featureStudy))
+    return sourceImages.map(image => registered.has(image.id) ? image : selection.darkImages!.find(dark => dark.id === image.id) ?? image)
+  }, [theme, selection, sourceImages, draft])
+  const activeAudio = audioCut?.source === draft ? audioCut : null
+  const composition = useMemo(() => ({ ...(activeAudio?.composition ?? draft), theme }), [draft, theme, activeAudio])
+  const timingIssues = activeAudio ? productionTimingIssues(composition, length) : []
+  const [preparation, setPreparation] = useState<{ source: typeof composition; video: PreparedVideo } | null>(null)
+  const prepared = preparation?.source === composition ? preparation.video : null
+  const busy = loading || progress !== null || generating !== null
 
   useEffect(() => {
     let disposed = false
-    setPrepared(null); setError(null)
-    void prepareVideo(composition, allImages).then(value => { if (!disposed) setPrepared(value) }).catch(reason => { if (!disposed) setError(reason instanceof Error ? reason.message : 'Could not prepare the video') })
+    void Promise.allSettled(creatorSubjects.map(async subject => [subject.id, creatorStoryOptions(await loadCreatorStoryCatalog(subject.id)).length] as const)).then(results => {
+      if (!disposed) setStoryCounts(Object.fromEntries(results.flatMap(result => result.status === 'fulfilled' ? [result.value] : [])))
+    })
     return () => { disposed = true }
-  }, [composition, allImages])
+  }, [])
+
+  // Hot updates must also discover new scripts for a person already open in the studio.
+  useEffect(() => {
+    if (!selection || selection.id === 'custom' || selection.stories) return
+    let disposed = false
+    const subjectId = selection.id
+    void loadCreatorStoryCatalog(subjectId).then(catalog => {
+      if (!disposed) setSelection(current => current?.id === subjectId && !current.stories ? { ...current, stories: creatorStoryOptions(catalog) } : current)
+    }).catch(reason => { if (!disposed) toast.error(reason instanceof Error ? reason.message : 'Could not refresh the story choices') })
+    return () => { disposed = true }
+  }, [selection])
+
+  useEffect(() => {
+    if (!selection) return
+    let disposed = false
+    setError('')
+    void prepareVideo(composition, renderImages).then(video => { if (!disposed) setPreparation({ source: composition, video }) }).catch(reason => { if (!disposed) setError(reason instanceof Error ? reason.message : 'Could not prepare the preview') })
+    return () => { disposed = true }
+  }, [selection, composition, renderImages])
   useEffect(() => {
     const urls = urlsRef.current
     return () => { abortRef.current?.abort(); urls.forEach(url => URL.revokeObjectURL(url)) }
   }, [])
 
-  function editScene(patch: Partial<VideoScene>) {
-    setComposition(current => parseComposition({ ...current, scenes: current.scenes.map(item => item.id === scene.id ? { ...item, ...patch } : item) }))
-  }
-  function editTrack(id: string, patch: Partial<MotionTrack>) {
-    editScene({ tracks: scene.tracks.map(track => track.id === id ? { ...track, ...patch } : track) })
-  }
-  function changeSceneSource(kind: VideoScene['source']['kind']) {
-    const tracks = kind === 'component' && !scene.tracks.some(track => track.primitive === 'component-focus') ? [...scene.tracks, { ...createMotionTrack('component-focus', 'report', scene.durationMs), section: scene.focus, durationMs: Math.min(900, scene.durationMs * .5) }] : scene.tracks
-    editScene({ source: { ...scene.source, kind, overlay: ['portrait', 'component', 'title'].includes(kind) ? 'category' : 'none' }, tracks })
-  }
-  function addPrimitive(id: MotionPrimitiveId) {
-    if (scene.tracks.length >= 30) return toast.error('Use up to 30 tracks per scene')
-    const definition = primitiveDefinition(id)
-    const target = id === 'line-draw' ? 'overlay' : categoryTarget[definition.category]
-    const track = { ...createMotionTrack(id, target, scene.durationMs), id: crypto.randomUUID(), ...(target === 'report' ? { section: scene.focus, durationMs: id === 'scroll-to-section' ? Math.min(900, scene.durationMs * .4) : scene.durationMs } : {}) }
-    const previousTracks = definition.category === 'transition' ? scene.tracks.filter(item => !(item.target === 'content' && primitiveDefinition(item.primitive).category === 'transition')) : scene.tracks
-    const geometry = ['line-draw', 'landmark-stagger', 'contour-trace'].includes(id)
-    const emphasis = target === 'report' && id !== 'scroll-to-section'
-    editScene({ tracks: [...previousTracks, track], ...(geometry || id === 'report-scroll' || target === 'report' ? { source: { ...scene.source, ...(id === 'report-scroll' || target === 'report' ? { kind: emphasis ? 'component' as const : 'report' as const } : {}), ...(geometry || emphasis ? { overlay: id === 'landmark-stagger' ? 'face-map' as const : 'category' as const } : {}) } } : {}) })
-    setSeekMs(scene.startMs); setTimeMs(scene.startMs)
-    toast.success(`${definition.label} added to ${scene.label}`)
-  }
-  function selectScene(id: string) {
-    const next = composition.scenes.find(item => item.id === id)!
-    setSelectedId(id); setSeekMs(next.startMs); setTimeMs(next.startMs)
-  }
-  function setStyle(style: VideoStyleId) {
-    const next = compileAnalysisVideo(editPlan, input, images.map(image => image.id), style, reportCategories)
-    setComposition(next); setSelectedId(next.scenes[0].id); setSeekMs(0); setTimeMs(0)
-  }
-  function recutScript() {
+  useEffect(() => {
+    if (!clips.size || !draft.script) { setAudioStatus('No voiceover recorded. Preview and export are silent.'); return }
+    let disposed = false
+    let url: string | undefined
     try {
-      const nextPlan = scriptToPlan(script, readingPace)
-      const next = compileAnalysisVideo(nextPlan, input, images.map(image => image.id), composition.style, reportCategories)
-      setEditPlan(nextPlan); setComposition(next); setSelectedId(next.scenes[0].id); setSeekMs(0); setTimeMs(0)
-      toast.success(`Recut into ${next.scenes.length} app-led shots · ${(next.durationMs / 1000).toFixed(1)}s`)
-    } catch (reason) { toast.error(reason instanceof Error ? reason.message : 'Could not recut script') }
+      const result = assembleProductionAudio(draft, clips)
+      void decodeVoiceover(result.file, 'mogging-voiceover.wav').then(audio => {
+        url = audio.url
+        if (disposed) { URL.revokeObjectURL(url); return }
+        setAudioCut({ source: draft, composition: result.composition, audio })
+        setAudioStatus(result.alignmentError ? `Audio ready; word timing is estimated. ${result.alignmentError}` : result.composition.timing === 'words' ? 'Voiceover ready · measured word timing' : 'Voiceover ready · section timing measured, word timing estimated')
+      }).catch(reason => { if (!disposed) setAudioStatus(reason instanceof Error ? reason.message : 'Could not decode the voiceover.') })
+    } catch (reason) { setAudioStatus(reason instanceof Error ? reason.message : 'Record the selected sections.') }
+    return () => { disposed = true; if (url) URL.revokeObjectURL(url) }
+  }, [draft, clips])
+
+  function startScript(name: string, topic = featureTopic) {
+    setMaster(recipe === 'feature-study' ? createFeatureStudyDraft(name, topic) : createProductionDraft(name)); setLength(75); setSectionIds(undefined); setVariation(0); setClips(new Map()); setAudioCut(null); setMode('format')
   }
-  function arrange(scenes: VideoScene[], focusId: string) {
+  function approveScript(script: VideoScript) {
+    // Validate the requested cut before committing a new master; no stale audio is attached to edited wording.
+    productionCut(script, length)
+    setMaster(script); setSectionIds(undefined); setCustomComposition(null); setSeekMs(0)
+  }
+  async function recordVoiceover() {
+    if (!master || busy) return
+    const controller = new AbortController(); abortRef.current = controller
+    const next = new Map(clips)
+    setGenerating('Checking speech configuration')
     try {
-      const next = arrangeVideoScenes(composition, scenes)
-      const focus = next.scenes.find(item => item.id === focusId) ?? next.scenes[0]
-      setComposition(next); setSelectedId(focus.id); setSeekMs(focus.startMs); setTimeMs(focus.startMs)
-    } catch (reason) { toast.error(reason instanceof Error ? reason.message.slice(0, 160) : 'Could not update timeline') }
+      const readiness = await fetch('/api/creator/voiceover', { signal: controller.signal }).then(response => response.json())
+      const configured = readiness.data ?? readiness
+      if (!configured.configured) throw new Error('Speech is not configured. Set GEMINI_API_KEY on the server, then generate the approved sections.')
+      for (const cue of master.cues) {
+        const key = sectionAudioKey(cue, voice)
+        if (next.has(key)) continue
+        setGenerating(cue.section!.title)
+        const response = await fetch('/api/creator/voiceover', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ text: cue.text, voice, delivery: cue.delivery }), signal: controller.signal })
+        const payload = await response.json()
+        const value = payload.data ?? payload
+        if (!response.ok) throw new Error(typeof value.error === 'string' ? value.error : value.error?.message ?? value.message ?? 'Speech generation failed.')
+        if (controller.signal.aborted) break
+        const pcm = Uint8Array.from(atob(value.audio), character => character.charCodeAt(0))
+        next.set(key, { key, cueId: cue.id, pcm, words: value.words }); setClips(new Map(next))
+      }
+    } catch (reason) { if (!controller.signal.aborted) { const message = reason instanceof Error ? reason.message : 'Could not generate the voiceover.'; setAudioStatus(message); toast.error(message) } }
+    finally { abortRef.current = null; setGenerating(null) }
   }
-  function moveScene(direction: -1 | 1) {
-    const index = composition.scenes.indexOf(scene), nextIndex = index + direction
-    if (nextIndex < 0 || nextIndex >= composition.scenes.length) return
-    const scenes = [...composition.scenes]; [scenes[index], scenes[nextIndex]] = [scenes[nextIndex], scenes[index]]
-    arrange(scenes, scene.id)
+
+  async function detectPhotos(photos: GeneratorImage[]) {
+    const { detectFaceLandmarksFromDataUrl } = await import('@/lib/client/faceLandmarks')
+    const result: GeneratorImage[] = []
+    for (const photo of photos) {
+      const cached = photoCacheRef.current.get(photo.dataUrl)
+      if (cached) { result.push(cached); continue }
+      if (photo.landmarks) { result.push(photo); continue }
+      const detected = await detectFaceLandmarksFromDataUrl(photo.dataUrl)
+      if (detected.status !== 'detected') throw new Error(`${photo.name}: ${detected.message}`)
+      const image = { ...photo, landmarks: detected.landmarks }
+      photoCacheRef.current.set(photo.dataUrl, image); result.push(image)
+    }
+    return result
   }
-  function importJson(value: string) {
+  function openPhotoDialog(target: CreatorSubjectId) {
+    photoTriggerRef.current = document.activeElement as HTMLElement | null
+    setCustomTarget(target); setPhotoError(''); setFrontPhotos([]); setSidePhoto(null)
+  }
+  async function selectPerson(subject: (typeof creatorSubjects)[number]) {
+    if (busy) return
+    if (!creatorSubjectPhotos(subject)?.length) { openPhotoDialog(subject.id); return }
+    setLoading(true); setPhotoError('')
     try {
-      const next = parseComposition(JSON.parse(value))
-      setComposition(next); setSelectedId(next.scenes[0].id); setSeekMs(0); setTimeMs(0)
-      toast.success('Composition loaded')
-    } catch (reason) { toast.error(reason instanceof Error ? reason.message.slice(0, 220) : 'Invalid composition JSON') }
+      const saved = await loadCreatorStory(subject.id)
+      const [photos, darkImages] = await Promise.all([
+        detectPhotos(saved.story.images),
+        'darkImages' in subject ? detectPhotos(creatorSubjectPhotos(subject, 'dark')!.map((photo, index) => ({ ...photo, id: index === 0 ? saved.story.images[0].id : photo.id }))) : undefined,
+      ])
+      setMaster(saved.script); setVoice(saved.voice); setClips(saved.clips); setLength(75); setSectionIds(undefined); setVariation(0); setAudioCut(null); setMode('format')
+      const extras = featureVariantPhotos(subject.id, photos[0].id).filter(photo => !photos.some(existing => existing.id === photo.id || existing.retouch && photo.retouch && existing.retouch.feature === photo.retouch.feature && existing.retouch.operation === photo.retouch.operation))
+      setCustomComposition(null); setSeekMs(0); setSelection({ id: subject.id, name: subject.name, images: [...photos, ...extras], darkImages, story: saved.story, stories: saved.stories, analysis: saved.analysis }); setCustomTarget(null)
+    } catch (reason) { toast.error(reason instanceof Error ? reason.message : 'Could not load this person') }
+    finally { setLoading(false) }
   }
-  async function addScreen(file: File | undefined) {
-    if (!file) return
-    if (!['image/png', 'image/jpeg', 'image/webp'].includes(file.type) || file.size > 20 * 1024 * 1024) return toast.error('Choose a PNG, JPG or WebP under 20 MB')
-    const url = URL.createObjectURL(file); urlsRef.current.add(url)
-    const image = new Image()
+  async function selectStory(storyId: string) {
+    if (!selection || busy || selection.story?.id === storyId) return
+    setLoading(true)
     try {
-      await new Promise<void>((resolve, reject) => { image.onload = () => resolve(); image.onerror = () => reject(new Error('Could not read app screen')); image.src = url })
-      const id = crypto.randomUUID()
-      setScreens(current => [...current, { id, name: file.name, dataUrl: url, width: image.width, height: image.height, status: 'ready', landmarks: null }])
-      editScene({ source: { ...scene.source, kind: 'screen', imageId: id, overlay: 'none' } })
-      toast.success('App screen added to this scene')
-    } catch (reason) { URL.revokeObjectURL(url); urlsRef.current.delete(url); toast.error(reason instanceof Error ? reason.message : 'Could not load screen') }
+      const saved = await loadCreatorStory(selection.id, storyId)
+      setMaster(saved.script); setVoice(saved.voice); setClips(saved.clips); setAudioCut(null)
+      setLength(75); setSectionIds(undefined); setVariation(0); setCustomComposition(null); setSeekMs(0)
+      setSelection({ ...selection, story: saved.story, stories: saved.stories, analysis: saved.analysis })
+      if (saved.story.kind === 'score-walkthrough') setRecipe('report-led')
+    } catch (reason) { toast.error(reason instanceof Error ? reason.message : 'Could not load this story') }
+    finally { setLoading(false) }
   }
-  async function exportMp4() {
-    if (!prepared || exporting) return
+  async function uploadPhotos(files: File[]) {
+    if (!files?.length || busy || !customTarget) return
+    setLoading(true); setPhotoError('')
+    const urls: string[] = []
+    try {
+      if (frontPhotos.length !== 2 || files.length > 3) throw new Error('Choose two front-facing portraits and, optionally, one side profile.')
+      const photos: GeneratorImage[] = []
+      for (const [index, file] of files.entries()) {
+        if (!['image/jpeg', 'image/png', 'image/webp'].includes(file.type) || file.size > 20 * 1024 * 1024) throw new Error('Use JPG, PNG or WebP originals, up to 20 MB each.')
+        const url = URL.createObjectURL(file); urls.push(url)
+        const image = new Image(); image.src = url; await image.decode()
+        photos.push({ id: `custom-${index === 2 ? 'profile' : 'front'}-${crypto.randomUUID()}`, name: `${index === 2 ? 'Side profile' : 'Front portrait'} · ${file.name}`, dataUrl: url, width: image.naturalWidth, height: image.naturalHeight, status: 'ready', landmarks: null })
+      }
+      validateCreatorPhotos(photos)
+      const detected = await detectPhotos(photos)
+      const subject = creatorSubjects.find(subject => subject.id === customTarget)
+      const name = subject?.name ?? (customName.trim() || 'Your person')
+      setFeatureTopic('philtrum'); startScript(name, 'philtrum'); setCustomComposition(null); setSeekMs(0); setSelection({ id: customTarget, name, images: detected })
+      urls.forEach(url => urlsRef.current.add(url)); setCustomTarget(null)
+    } catch (reason) { urls.forEach(url => { URL.revokeObjectURL(url); photoCacheRef.current.delete(url) }); setPhotoError(reason instanceof Error ? reason.message : 'Could not load the photos') }
+    finally { setLoading(false) }
+  }
+  async function uploadFeatureEdit(file: File | undefined) {
+    if (!file || !selection || busy) return
+    setLoading(true)
+    const url = URL.createObjectURL(file)
+    try {
+      if (!['image/jpeg', 'image/png', 'image/webp'].includes(file.type) || file.size > 20 * 1024 * 1024) throw new Error('Use JPG, PNG or WebP, up to 20 MB.')
+      const image = new Image(); image.src = url; await image.decode()
+      validateCreatorPhotos([{ width: image.naturalWidth, height: image.naturalHeight }])
+      const id = `${selection.id}-study-${featureTopic}-${retouchOperation}`
+      const baseline = selection.images.find(photo => /front/.test(photo.id) && !photo.retouch) ?? selection.images[0]
+      const [edited] = await detectPhotos([{ id, name: `Edited illustration · ${file.name}`, dataUrl: url, width: image.naturalWidth, height: image.naturalHeight, status: 'ready', landmarks: null, retouch: { feature: featureTopic, operation: retouchOperation, baselineImageId: baseline.id } }])
+      urlsRef.current.add(url)
+      setSelection({ ...selection, images: [...selection.images.filter(photo => photo.id !== id), edited] })
+      setCustomComposition(null); setSeekMs(0)
+    } catch (reason) { URL.revokeObjectURL(url); toast.error(reason instanceof Error ? reason.message : 'Could not register the edited photo.') }
+    finally { setLoading(false) }
+  }
+  async function downloadVideo() {
+    if (!prepared || busy || timingIssues.length) return
     const controller = new AbortController(); abortRef.current = controller; setProgress(0)
     try {
-      const blob = await exportCompositionMp4(prepared, setProgress, controller.signal)
-      downloadBlob(blob, 'mogging-analysis-video.mp4'); toast.success('Visual video exported')
-    } catch (reason) { if (!controller.signal.aborted) toast.error(reason instanceof Error ? reason.message : 'Could not export video') }
-    finally { if (abortRef.current === controller) { abortRef.current = null; setProgress(null) } }
-  }
-  async function exportFrame() {
-    if (!prepared) return
-    const canvas = document.createElement('canvas'); canvas.width = 1080; canvas.height = 1920
-    drawVideoFrame(canvas.getContext('2d')!, prepared, timeMs, 1080, 1920)
-    const blob = await new Promise<Blob | null>(resolve => canvas.toBlob(resolve, 'image/png'))
-    if (blob) downloadBlob(blob, `mogging-frame-${Math.round(timeMs)}.png`)
-  }
-  async function exportBundle() {
-    try {
-      downloadBlob(await packVideoProject(composition, allImages), 'mogging-video-project.zip')
-    } catch (reason) { toast.error(reason instanceof Error ? reason.message : 'Could not package project') }
-  }
-  async function importBundle(file: File | undefined) {
-    if (!file) return
-    try {
-      const project = await unpackVideoProject(file)
-      project.objectUrls.forEach(url => urlsRef.current.add(url))
-      setScreens(project.images); setComposition(project.composition); setSelectedId(project.composition.scenes[0].id); setSeekMs(0); setTimeMs(0)
-      toast.success('Video project and face geometry restored')
-    } catch (reason) { toast.error(reason instanceof Error ? reason.message.slice(0, 220) : 'Could not import project') }
+      const video = await exportCompositionMp4(prepared, setProgress, controller.signal, activeAudio?.audio.buffer)
+      if (controller.signal.aborted) return
+      if (trackExports) {
+        const bytes = await video.arrayBuffer()
+        const contentHash = Array.from(new Uint8Array(await crypto.subtle.digest('SHA-256', bytes)), byte => byte.toString(16).padStart(2, '0')).join('')
+        const { generation } = await apiPost<{ generation: StudioExport }>('/api/creator/studio', { id: crypto.randomUUID(), personId: selection?.id ?? 'custom', storyId: selection?.story?.id ?? composition.script?.revision ?? 'custom', contentHash, composition }, { signal: controller.signal })
+        setPostExport(generation)
+        void refreshExports()
+      }
+      downloadBlob(video, `${selection?.name.toLowerCase().replace(/[^a-z0-9]+/g, '-') ?? 'mogging'}-${customComposition ? 'custom' : recipe}.mp4`)
+    } catch (reason) { if (!controller.signal.aborted) toast.error(reason instanceof Error ? reason.message : 'Could not download the video') }
+    finally { abortRef.current = null; setProgress(null) }
   }
 
-  return <div className="grid gap-5">
-    <div className="flex flex-wrap items-center justify-between gap-3"><div className="flex items-center gap-3"><Button variant="outline" className="rounded-full" disabled={exporting} onClick={onBack}><ArrowLeft className="size-4" />Post plan</Button><div><h2 className="text-xl font-semibold tracking-tight">Visual engine</h2><p className="text-xs text-zinc-500">{motionPrimitives.length} primitives · real face geometry · 1080 × 1920 · 30 fps</p></div></div><div className="flex flex-wrap gap-2"><input ref={projectInputRef} className="sr-only" type="file" accept="application/zip,.zip" onChange={event => { void importBundle(event.target.files?.[0]); event.target.value = '' }} /><Button variant="outline" disabled={exporting} onClick={() => projectInputRef.current?.click()}><Upload className="size-4" />Open project</Button><Button variant="outline" disabled={exporting} onClick={() => void exportBundle()}><Download className="size-4" />Project ZIP</Button><Button disabled={!prepared || exporting} onClick={() => void exportMp4()}>{exporting ? <Loader2 className="size-4 animate-spin" /> : <Film className="size-4" />}{exporting ? `Exporting ${Math.round(progress * 100)}%` : 'Export MP4'}</Button>{exporting ? <Button variant="outline" onClick={() => abortRef.current?.abort()}>Cancel export</Button> : null}</div></div>
+  const storyPicker = selection?.stories?.length ? <fieldset disabled={busy} className="grid gap-3">
+    <legend className="mb-2 text-sm font-medium">Choose a script</legend>
+    <div className={styles.storyChoices}>{selection.stories.map(story => <button key={story.id} type="button" aria-pressed={selection.story?.id === story.id} className={styles.storyChoice} onClick={() => void selectStory(story.id)}>
+      <span className={styles.storyHeading}><span className={styles.storyLabel}>{story.kind === 'score-walkthrough' ? <Focus size={18} strokeWidth={1.5} aria-hidden="true" /> : <BookOpen size={18} strokeWidth={1.5} aria-hidden="true" />}{story.kind === 'score-walkthrough' ? 'Detailed analysis' : 'Story'}</span><span className={styles.selectionBox} aria-hidden="true"><Check size={12} strokeWidth={2.5} /></span></span>
+      <span className={styles.storyTitle}>{story.title}</span>
+    </button>)}</div>
+  </fieldset> : null
 
-    <div className="grid items-start gap-5 lg:grid-cols-[minmax(300px,.95fr)_minmax(0,1.05fr)]">
-      <section className="grid gap-4 rounded-[28px] border border-zinc-200 bg-[#eef2f5] p-4 text-zinc-900 sm:p-5 lg:sticky lg:top-20">
-        <div className="flex items-center justify-between gap-3"><span className="text-xs font-semibold text-zinc-600">{nowScene.label}</span><span className="rounded-full bg-white px-2 py-1 text-[10px] font-medium text-sky-700">{videoStyles[composition.style].label}</span></div>
-        {error ? <p role="alert" className="rounded-xl bg-red-400/10 p-4 text-sm text-red-200">{error}</p> : null}
-        {!prepared && !error ? <p role="status" className="flex items-center justify-center gap-2 text-xs text-zinc-500"><Loader2 className="size-3 animate-spin" />Preparing report and face layers…</p> : null}
-        <VideoCompositionPlayer prepared={prepared} composition={composition} seekMs={seekMs} onTime={setTimeMs} />
-        <div className="flex justify-between gap-2"><p className="text-[10px] leading-4 text-zinc-500">Visual track only. Voice is added in the audio stage.</p><button type="button" disabled={!prepared || exporting} onClick={() => void exportFrame()} className="shrink-0 text-xs font-semibold text-sky-700 active:scale-[.98]">Save frame</button></div>
+  return <div className={styles.studio}>
+    <StudioPostDialog key={postExport?.id ?? 'closed'} generation={postExport} preview={previewSubmission} onClose={() => setPostExport(null)} onSubmitted={() => { setPostExport(null); void refreshExports() }} />
+    {exports?.generations.length ? <div className="mb-5 flex flex-wrap items-center gap-2 text-xs text-neutral-500"><span>Ready to post</span>{exports.generations.map(generation => <button type="button" className="max-w-64 truncate rounded-full border border-neutral-200 px-3 py-2 text-neutral-800" key={generation.id} onClick={() => setPostExport(generation)}>{generation.title} · Submit link</button>)}</div> : null}
+    <Dialog open={customTarget !== null} onOpenChange={open => { if (!open && !loading) setCustomTarget(null) }}>
+      {customTarget ? <DialogContent onCloseAutoFocus={event => { event.preventDefault(); photoTriggerRef.current?.focus() }} className="max-h-[calc(100dvh-2rem)] max-w-md overflow-y-auto border-0 p-7 sm:p-8">
+        <DialogTitle>{customTarget === 'custom' ? 'Add your person' : `Add ${creatorSubjects.find(subject => subject.id === customTarget)?.name ?? ''} photos`}</DialogTitle>
+        <DialogDescription>Two high-quality front-facing portraits, plus an optional side profile. Same person, even lighting, face unobstructed.</DialogDescription>
+        <form className="grid gap-5" onSubmit={event => { event.preventDefault(); void uploadPhotos([...frontPhotos, ...(sidePhoto ? [sidePhoto] : [])]) }}>
+          <fieldset disabled={busy} className="grid gap-5">
+            {customTarget === 'custom' ? <label className={styles.photoField}><span>Name</span><input aria-label="Person’s name" value={customName} maxLength={80} onChange={event => setCustomName(event.target.value)} placeholder="Person’s name" className="min-h-11 rounded-xl bg-neutral-50 px-3 text-sm" /></label> : null}
+            <label className={styles.photoField}><span>Front portraits <small>2 required</small></span><input aria-label="Two front-facing portraits" type="file" accept="image/jpeg,image/png,image/webp" multiple required onChange={event => { setFrontPhotos(Array.from(event.target.files ?? [])); setPhotoError('') }} /><small>{frontPhotos.length ? `${frontPhotos.length} of 2 selected` : 'Choose two clear, front-facing photos.'}</small></label>
+            <label className={styles.photoField}><span>Side profile <small>Optional</small></span><input aria-label="Optional side profile" type="file" accept="image/jpeg,image/png,image/webp" onChange={event => { setSidePhoto(event.target.files?.[0] ?? null); setPhotoError('') }} /></label>
+            <p className="text-xs leading-5 text-neutral-500">Minimum Full HD: 1080 × 1920 portrait or 1920 × 1080 landscape. Bigger is better. JPG, PNG or WebP, up to 20 MB each.</p>
+            {photoError ? <p role="alert" className="text-xs text-red-700">{photoError}</p> : null}
+            {frontPhotos.length > 2 ? <p role="alert" className="text-xs text-red-700">Choose exactly two front-facing photos.</p> : null}
+            <button type="submit" disabled={busy || frontPhotos.length !== 2} className={styles.photoSubmit}>{loading ? <><Loader2 size={16} className="animate-spin" /> Loading story & photos…</> : 'Use photos'}</button>
+          </fieldset>
+        </form>
+      </DialogContent> : null}
+    </Dialog>
+
+    <div className={styles.studioLayout}>
+      <h1 className={styles.studioTitle}>Creator video studio</h1>
+      <div className={styles.studioToolbar}><nav className={styles.editorModes} aria-label="Studio navigation"><button type="button" aria-pressed={!editing && !writing} onClick={() => { setMode('format') }}>Format</button><button type="button" disabled={!selection || busy} aria-pressed={editing} onClick={() => { if (!customComposition) { setCustomComposition(baseComposition); setSeekMs(customClipPreviewTime(baseComposition.scenes[0])) } setMode('clips') }}>Edit clips</button><button type="button" disabled={!selection || busy} aria-pressed={writing} onClick={() => { setMode('script') }}>Script & voice</button></nav><button type="button" role="switch" aria-checked={theme === 'dark'} aria-label="Dark mode" disabled={busy} className={styles.themeToggle} onClick={() => setTheme(current => current === 'light' ? 'dark' : 'light')}><Moon size={16} aria-hidden="true" /><span>Dark mode</span><span aria-hidden="true" className={styles.themeTrack} /></button></div>
+      <section className={styles.studioPreview}>
+        {selection && !prepared && !error ? <span role="status" className="sr-only">Preparing selected style…</span> : null}
+        {error ? <p role="alert" className="text-sm text-red-700">{error}</p> : null}
+        <VideoCompositionPlayer prepared={prepared} composition={composition} seekMs={seekMs} audioUrl={activeAudio?.audio.url} onTime={time => { previewPositionRef.current = time; if (customComposition) setPlayhead(time) }} />
       </section>
+      <div className={styles.studioEditor}>
 
-      <section className="grid min-w-0 gap-4">
-        <fieldset disabled={exporting} className="creator-surface grid gap-4 p-4 sm:p-5"><legend className="sr-only">Composition settings</legend>
-          <Field label="Narration script" hint="Every recut follows these words"><textarea aria-label="Narration script" className={`${fieldClass} min-h-36 py-3 text-sm leading-6`} maxLength={12000} value={script} onChange={event => setScript(event.target.value)} /></Field>
-          <div className="grid grid-cols-[1fr_auto] items-end gap-3"><Field label="Reading pace"><select className={fieldClass} value={readingPace} onChange={event => setReadingPace(Number(event.target.value))}><option value={145}>Measured · 145 words/min</option><option value={165}>Natural · 165 words/min</option><option value={190}>Fast · 190 words/min</option></select></Field><Button className="h-11 rounded-full" onClick={recutScript}>Recut from script</Button></div>
-          <Field label="Style recipe" hint="Rebuilds the timeline"><select className={fieldClass} value={composition.style} onChange={event => setStyle(event.target.value as VideoStyleId)}>{Object.entries(videoStyles).map(([id, style]) => <option key={id} value={id}>{style.label}</option>)}</select></Field>
-          <p className="text-xs leading-5 text-zinc-500">{videoStyles[composition.style].description} Script cues select the app category, scroll destination and card to emphasize.</p>
-          <div className="grid grid-cols-3 gap-2 border-t pt-4">{(['scene', 'library', 'json'] as const).map(tab => <button key={tab} type="button" aria-pressed={panel === tab} onClick={() => { setPanel(tab); if (tab === 'json') setJson(JSON.stringify(composition, null, 2)) }} className={cn('min-h-11 rounded-xl px-2 text-xs font-semibold capitalize active:scale-[.98]', panel === tab ? 'bg-zinc-950 text-white' : 'bg-zinc-100 text-zinc-500')}>{tab === 'library' ? `${motionPrimitives.length} primitives` : tab === 'json' ? 'Composition JSON' : 'Scene editor'}</button>)}</div>
+        {writing || editing ? storyPicker : null}
+        {writing && master && cut ? <ProductionScriptEditor recordedComposition={activeAudio?.composition} subjectAnalysis={selection?.analysis} visualPlan={visualPlan} key={master.revision} script={master} cut={cut} length={length} voice={voice} generating={generating} audioStatus={audioStatus} onApprove={approveScript} onLength={seconds => { if (master) productionCut(master, seconds); setLength(seconds); setSectionIds(undefined); setCustomComposition(null); setSeekMs(0) }} onSections={ids => { productionCut(master, length, ids); setSectionIds(ids); setCustomComposition(null); setSeekMs(0) }} onVoice={next => { setVoice(next); setCustomComposition(null) }} onRecord={() => void recordVoiceover()} onCancel={() => abortRef.current?.abort()} onSaveRecording={() => downloadBlob(new Blob([JSON.stringify(packProductionRecording(master, voice, clips))], { type: 'application/json' }), 'mogging-script-recording.json')} onRestoreRecording={value => { const restored = restoreProductionRecording(value); productionCut(restored.script, length); setMaster(restored.script); setVoice(restored.voice); setClips(restored.clips); setSectionIds(undefined); setCustomComposition(null); setSeekMs(0) }} /> : null}
+        {!editing && !writing ? <><fieldset disabled={busy} className="grid gap-5"><legend className="sr-only">Choose a person</legend>
+          <div><p className={styles.eyebrow}>01 · The person</p><h2 className="mt-2 text-lg font-semibold tracking-tight">Who’s the video about?</h2></div>
+          <div className={styles.personGrid}>{creatorSubjects.map(subject => <button key={subject.id} type="button" aria-pressed={selection?.id === subject.id} className={styles.person} onClick={() => void selectPerson(subject)}>
+            {creatorSubjectPhotos(subject)?.[0] ? <img src={creatorSubjectPhotos(subject)![0].dataUrl} alt="" className={styles.personAvatar} /> : <span className={styles.personAvatar}>{subject.initials}</span>}
+            <span className={styles.personText}><strong>{subject.name}</strong><span>{storyCounts[subject.id] === undefined ? 'Scripts' : `${storyCounts[subject.id]} ${storyCounts[subject.id] === 1 ? 'Script' : 'Scripts'}`}</span></span>
+          </button>)}<button type="button" aria-pressed={selection?.id === 'custom'} className={styles.person} onClick={() => openPhotoDialog('custom')}><span className={styles.personAvatar}><Plus size={25} aria-hidden="true" /></span><span className={styles.personText}><strong>Your own person</strong><span>Upload photos</span></span></button></div>
+
+          {loading ? <p role="status" className="text-xs text-zinc-500">Loading story & photos…</p> : null}
         </fieldset>
+        {storyPicker}
+        <fieldset disabled={busy || !selection} className="grid gap-4"><legend className="sr-only">Choose a starting style</legend>
+          <div className={styles.styleHeading}><h2>Choose a style</h2><button type="button" className={styles.refreshStyle} aria-label="Try another style variation" title="Try another style variation" onClick={() => { setVariation(value => value + 1); setCustomComposition(null); setSeekMs(0) }}><RotateCcw size={18} strokeWidth={1.6} aria-hidden="true" /></button></div>
+          <div className="grid gap-2" role="group" aria-label="Starting style">{creatorVideoStyles.map(style => {
+            const Icon = styleIcons[style.id]
+            return <button key={style.id} type="button" aria-pressed={recipe === style.id} className={styles.styleOption} onClick={() => { setRecipe(style.id); setCustomComposition(null); setSeekMs(previewPositionRef.current) }}>
+              <Icon size={20} strokeWidth={1.5} className={styles.styleIcon} aria-hidden="true" /><span className="flex-1"><span className="block text-sm font-medium">{style.label}</span><span className="mt-1 block text-[11px] leading-4 text-zinc-500">{style.detail}</span></span><span className={styles.selectionBox} aria-hidden="true"><Check size={12} strokeWidth={2.5} /></span>
+            </button>
+          })}</div>
+          {recipe === 'feature-study' ? <div className="grid gap-3">
+            <label className="text-xs font-medium" htmlFor="feature-topic">Study topic</label>
+            <select id="feature-topic" className="min-h-11 rounded-xl bg-neutral-100 px-3 text-sm" value={featureTopic} onChange={event => { setFeatureTopic(event.target.value as FeatureTopic); setFeatureAmount(1); setCustomComposition(null); setSeekMs(0) }}>{featureTopics.map(topic => <option key={topic} value={topic}>{featureTopicLabels[topic]}</option>)}</select>{['freckles', 'facial-hair'].includes(featureTopic) && !sourceImages.some(image => image.retouch?.feature === featureTopic) ? <p role="status" className="text-xs leading-5 text-neutral-500">Upload an edited copy below to show this change. The preview keeps the original unchanged until then.</p> : null}<label className="grid gap-2 text-xs" htmlFor="feature-amount">
+            <span className="flex justify-between">
+            <span>Edit amount</span>
+            <span>{Math.round(featureAmount * 100)}%</span>
+            </span>
+            <input id="feature-amount" className="w-full accent-neutral-900" type="range" min={['freckles', 'facial-hair', 'symmetry'].includes(featureTopic) ? 0 : -100} max={100} step={5} value={featureAmount * 100} onChange={event => { setSeekMs(previewPositionRef.current); setFeatureAmount(Number(event.target.value) / 100); setCustomComposition(null) }} />
+            <span className="text-neutral-500">{['freckles', 'facial-hair'].includes(featureTopic) ? 'Original → edited photograph' : featureTopic === 'symmetry' ? 'Original → aligned paired features' : 'Negative and positive values show opposite shape changes.'}</span>
+            </label>
+            <button type="button" className="justify-self-start rounded-full bg-neutral-900 px-4 py-3 text-xs text-white" onClick={() => { setMaster(createFeatureStudyDraft(selection!.name, featureTopic)); setClips(new Map()); setAudioCut(null); setCustomComposition(null); setSectionIds(undefined); setSeekMs(0) }}>Use a focused {featureTopicLabels[featureTopic].toLowerCase()} script</button>
+            <label className="grid gap-2 text-xs font-medium">What does your edited portrait change?<select aria-label="Edited portrait operation" className="min-h-11 rounded-xl bg-neutral-100 px-3 text-sm" value={retouchOperation} onChange={event => setRetouchOperation(event.target.value as typeof retouchOperation)}><option value="add">Add the feature</option><option value="remove">Remove the feature</option><option value="replace">Replace or restyle it</option><option value="shorten">Shorten it</option><option value="lengthen">Lengthen it</option><option value="align">Align it</option></select></label>
+            <label className="grid gap-2 text-xs font-medium">Edited portrait <span className="font-normal text-neutral-500">Optional: upload an edited copy of the same front photo for freckles, hair, ear swaps or other retouching. Keep pose, crop and lighting unchanged. Minimum Full HD.</span>
+            <input className="text-xs file:mr-3 file:rounded-full file:border-0 file:bg-neutral-100 file:px-4 file:py-2 file:text-neutral-900" aria-label="Edited comparison portrait" type="file" accept="image/jpeg,image/png,image/webp" disabled={busy} onChange={event => { void uploadFeatureEdit(event.target.files?.[0]); event.target.value = '' }} />
+            </label>
+            <p className="text-xs leading-5 text-neutral-500">Preview the visual treatment with your current script, or start a focused topic script. Starting a new script clears its previous voice recording.</p>
+            </div> : null}
 
-        <fieldset disabled={exporting} className="creator-surface min-w-0 p-4 sm:p-5"><legend className="sr-only">Timeline and scene controls</legend>
-          <div className="mb-3 flex items-center justify-between"><h3 className="text-sm font-semibold">Timeline</h3><span className="text-xs text-zinc-400">{composition.scenes.length} scenes · {composition.durationMs / 1000}s</span></div>
-          <div className="mb-4 flex h-8 overflow-hidden rounded-lg bg-zinc-100" aria-label="Scene timeline">{composition.scenes.map(item => <button key={item.id} type="button" style={{ flex: item.durationMs }} aria-label={`Seek to ${item.label}`} onClick={() => selectScene(item.id)} className={cn('min-w-[3px] border-r border-white/30 transition-colors', item.id === scene.id ? 'bg-[#00a8ef]' : item.id === nowScene.id ? 'bg-cyan-300' : 'bg-zinc-300 hover:bg-zinc-400')} />)}</div>
-          <Field label="Selected scene"><select className={fieldClass} value={scene.id} onChange={event => selectScene(event.target.value)}>{composition.scenes.map(item => <option key={item.id} value={item.id}>{(item.startMs / 1000).toFixed(1)}s · {item.label}</option>)}</select></Field>
-
-          {panel === 'scene' ? <div className="mt-4 grid gap-4">
-            <p className="rounded-xl bg-sky-50 p-3 text-xs leading-5 text-sky-900"><span className="mb-1 block text-[10px] font-semibold uppercase tracking-wide">Script cue</span>{scene.narration || 'Add narration or recut the full script to generate app actions.'}</p>
-            <div className="flex flex-wrap items-end gap-2"><div className="w-32"><Field label="Scene length (s)"><input className={fieldClass} type="number" min={.1} max={60} step={.1} value={scene.durationMs / 1000} onChange={event => { const duration = Math.max(100, Math.min(60000, Number(event.target.value) * 1000)); arrange(composition.scenes.map(item => item.id === scene.id ? retimeVideoScene(item, duration) : item), scene.id) }} /></Field></div><Button variant="outline" size="icon" aria-label="Move scene earlier" disabled={composition.scenes[0].id === scene.id} onClick={() => moveScene(-1)}><ArrowLeft className="size-4" /></Button><Button variant="outline" size="icon" aria-label="Move scene later" disabled={composition.scenes.at(-1)?.id === scene.id} onClick={() => moveScene(1)}><ArrowRight className="size-4" /></Button><Button variant="outline" size="icon" aria-label="Duplicate scene" onClick={() => { const id = crypto.randomUUID(); const next = composition.scenes.flatMap(item => item.id === scene.id ? [item, { ...item, id, label: `${item.label} copy` }] : [item]); arrange(next, id) }}><Copy className="size-4" /></Button><Button variant="outline" size="icon" aria-label="Remove scene" disabled={composition.scenes.length <= 1} onClick={() => arrange(composition.scenes.filter(item => item.id !== scene.id), composition.scenes[0].id)}><Trash2 className="size-4" /></Button></div>
-            <Field label="On-screen headline"><textarea className={`${fieldClass} min-h-20 py-3`} maxLength={240} value={scene.text} onChange={event => editScene({ text: event.target.value })} /></Field>
-            <div className="grid grid-cols-2 gap-3"><Field label="Scene source"><select className={fieldClass} value={scene.source.kind} onChange={event => changeSceneSource(event.target.value as VideoScene['source']['kind'])}><option value="portrait">Cutout portrait + overlays</option><option value="report">Editable mobile report</option><option value="component" disabled={scene.id === composition.scenes[0].id}>Centered app component</option><option value="title" disabled={scene.id === composition.scenes[0].id}>Brand title card</option><option value="screen">Captured app screen</option></select></Field><Field label="Photo / app screen"><select className={fieldClass} value={scene.source.imageId ?? ''} onChange={event => editScene({ source: { ...scene.source, imageId: event.target.value || null } })}><option value="">No image</option>{allImages.map(image => <option key={image.id} value={image.id}>{image.name}</option>)}</select></Field></div>
-            {scene.tracks.some(track => track.primitive === 'split-screen') ? <Field label="Comparison photo"><select className={fieldClass} value={scene.source.secondaryImageId ?? ''} onChange={event => editScene({ source: { ...scene.source, secondaryImageId: event.target.value || null } })}><option value="">Use primary photo</option>{allImages.map(image => <option key={image.id} value={image.id}>{image.name}</option>)}</select></Field> : null}
-            <div className="grid grid-cols-2 gap-3"><Field label="Report / overlay category"><select className={fieldClass} value={scene.source.categoryId} onChange={event => { const focus = scene.focus.startsWith('feature:') ? 'features' : scene.focus; editScene({ source: { ...scene.source, categoryId: event.target.value, report: reportCategories.find(item => item.id === event.target.value) }, focus, tracks: scene.tracks.map(track => track.target === 'report' && track.section?.startsWith('feature:') ? { ...track, section: 'features' } : track) }) }}>{reportCategories.map(item => <option key={item.id} value={item.id}>{item.title}</option>)}</select></Field><Field label="Overlay"><select className={fieldClass} value={scene.source.overlay} onChange={event => editScene({ source: { ...scene.source, overlay: event.target.value as VideoScene['source']['overlay'] } })}><option value="none">None</option><option value="category">Real category geometry</option><option value="face-map">Full face map</option></select></Field></div>
-            <div className="grid grid-cols-2 gap-3"><Field label="App section to emphasize"><select className={fieldClass} value={scene.focus} onChange={event => editScene({ focus: event.target.value, tracks: scene.tracks.map(track => track.target === 'report' ? { ...track, section: event.target.value } : track) })}>{regions.map(region => <option key={region.id} value={region.id}>{region.label}</option>)}</select></Field><Field label="Canvas layout"><div className={`${fieldClass} flex items-center text-xs`}>{['report', 'screen'].includes(scene.source.kind) ? 'Full app · 1080 × 1920' : 'Face + native metric · 1080 × 1920'}</div></Field></div>
-            <p className="text-[11px] leading-5 text-zinc-500">Reports always fill the canvas at their native proportions. Feature stages pair a large portrait and white geometry with the selected native metric. Card entrances, meter builds and whole-scene transitions stay independently editable.</p>
-            {scene.source.kind === 'screen' ? <div className="grid grid-cols-2 gap-3">{(['top', 'bottom'] as const).map(edge => <Field key={edge} label={`Remove ${edge} system UI (%)`}><input className={fieldClass} type="number" min={0} max={20} step={.5} value={Math.round((scene.source.captureInsets?.[edge] ?? (edge === 'top' ? .06 : .03)) * 1000) / 10} onChange={event => editScene({ source: { ...scene.source, captureInsets: { ...(scene.source.captureInsets ?? { top: .06, bottom: .03 }), [edge]: Math.max(0, Math.min(.2, Number(event.target.value) / 100)) } } })} /></Field>)}</div> : null}
-            <div className="grid grid-cols-3 gap-2">{(['currentScore', 'potentialScore', 'metricScore'] as const).map((key, index) => <Field key={key} label={['Overall', 'Potential', 'Feature score'][index]}><input className={fieldClass} type="number" min={0} max={10} step={.1} value={scene.source[key]} onChange={event => editScene({ source: { ...scene.source, [key]: Math.max(0, Math.min(10, Number(event.target.value))) } })} /></Field>)}</div>
-            {scene.source.report ? <details className="rounded-2xl border border-zinc-200 p-3"><summary className="min-h-8 cursor-pointer text-xs font-semibold">Edit the app’s report content</summary><div className="mt-3 grid max-h-96 gap-3 overflow-y-auto">{scene.source.report.features.map((feature, index) => <Field key={feature.id ?? index} label={feature.label}><input className={fieldClass} maxLength={300} value={feature.value} onChange={event => { const report = scene.source.report!; editScene({ source: { ...scene.source, report: { ...report, features: report.features.map((item, i) => i === index ? { ...item, value: event.target.value } : item) } } }) }} /></Field>)}<Field label="Action plan"><textarea className={`${fieldClass} min-h-24 py-3`} maxLength={2500} value={scene.source.report.recommendation} onChange={event => editScene({ source: { ...scene.source, report: { ...scene.source.report!, recommendation: event.target.value } } })} /></Field></div></details> : null}
-            <input ref={screenInputRef} type="file" accept="image/png,image/jpeg,image/webp" className="sr-only" onChange={event => { void addScreen(event.target.files?.[0]); event.target.value = '' }} />
-            <Button variant="outline" className="justify-self-start rounded-full" onClick={() => screenInputRef.current?.click()}><Upload className="size-4" />Add real app screenshot</Button>
-            <div className="flex items-center justify-between border-t pt-4"><h3 className="text-sm font-semibold">Animation tracks</h3><Button variant="ghost" size="sm" onClick={() => setPanel('library')}><Plus className="size-3" />Add primitive</Button></div>
-            {scene.tracks.map(track => <TrackEditor key={track.id} track={track} regions={regions} durationMs={scene.durationMs} onChange={patch => editTrack(track.id, patch)} onRemove={() => editScene({ tracks: scene.tracks.filter(item => item.id !== track.id) })} />)}
-          </div> : panel === 'library' ? <div className="mt-4 grid gap-3">
-            <Field label="Find a primitive"><input className={fieldClass} placeholder="Try zoom, scan, cursor, type…" value={search} onChange={event => setSearch(event.target.value)} /></Field>
-            <Field label="Primitive category"><select className={fieldClass} value={category} onChange={event => setCategory(event.target.value)}><option value="all">All categories</option>{['report', 'transition', 'camera', 'entry', 'exit', 'text', 'cursor', 'cinematic', 'overlay'].map(item => <option key={item} value={item}>{item}</option>)}</select></Field>
-            <div className="grid max-h-[660px] gap-2 overflow-y-auto sm:grid-cols-2">{catalog.map(item => <button key={item.id} type="button" onClick={() => addPrimitive(item.id as MotionPrimitiveId)} className="rounded-2xl border border-zinc-200 p-3 text-left transition-[background-color,transform] duration-150 hover:bg-zinc-50 active:scale-[.98]"><span className="flex items-center justify-between gap-2"><span className="text-xs font-semibold">{item.label}</span><Plus className="size-3 text-[#00a8ef]" /></span><span className="mt-1 block text-[10px] uppercase tracking-wide text-[#00a8ef]">{item.category} · {item.durationMs}ms</span><span className="mt-2 block text-[11px] leading-4 text-zinc-500">{item.description}</span></button>)}</div>
-          </div> : <div className="mt-4 grid gap-3"><p className="text-xs leading-5 text-zinc-500">The composition is a portable, validated timeline. Project ZIP includes source images and landmark metadata; JSON keeps asset IDs so you can swap subjects without rewriting motion.</p><textarea aria-label="Composition JSON" spellCheck={false} className={`${fieldClass} min-h-[440px] py-3 font-mono text-[11px]`} value={json} onChange={event => setJson(event.target.value)} /><div className="flex flex-wrap gap-2"><Button onClick={() => importJson(json)}>Apply JSON</Button><Button variant="outline" onClick={() => downloadBlob(new Blob([JSON.stringify(composition, null, 2)], { type: 'application/json' }), 'mogging-composition.json')}><Download className="size-4" />JSON</Button><Button variant="outline" onClick={() => jsonInputRef.current?.click()}><Upload className="size-4" />Import JSON</Button></div><input ref={jsonInputRef} className="sr-only" type="file" accept="application/json,.json" onChange={event => { const file = event.target.files?.[0]; if (file && file.size < 2 * 1024 * 1024) void file.text().then(importJson).catch(() => toast.error('Could not read JSON')); event.target.value = '' }} /></div>}
-        </fieldset>
-      </section>
+        </fieldset></> : null}
+        {customComposition ? <fieldset id="custom-video-editor" hidden={!editing} disabled={busy} className="min-w-0"><legend className="sr-only">Clip editor</legend>
+          <p className={styles.editingContext}>{selection?.name} · Based on {creatorVideoStyles.find(style => style.id === recipe)?.label}</p>
+          <CustomVideoEditor composition={composition} prepared={prepared} images={renderImages} input={studioInput} reports={studioReports} playhead={playhead} onChange={setCustomComposition} onSeek={setSeekMs} />
+        </fieldset> : null}
+        <div className="grid gap-3 pb-8 pt-3">
+          <button type="button" disabled={!prepared || busy || timingIssues.length > 0} onClick={() => void downloadVideo()} className={styles.download}>{progress !== null ? <Loader2 className="size-5 animate-spin" /> : <Download size={20} />}{progress !== null ? `Downloading ${Math.round(progress * 100)}%` : 'Download video'}</button>
+          <p className="text-center text-[10px] leading-4 text-zinc-400">{videoSize.width} × {videoSize.height} · MP4 · {activeAudio ? 'Voiceover included' : 'Silent preview'}</p>
+          {timingIssues.map(issue => <p key={issue} role="alert" className="text-xs leading-5 text-red-700">{issue}</p>)}
+          {progress !== null ? <button type="button" className="text-xs text-zinc-500" onClick={() => abortRef.current?.abort()}>Cancel</button> : null}
+        </div>
+      </div>
     </div>
-    <div className="creator-surface flex items-start gap-3 p-4 text-xs leading-5 text-zinc-500"><Layers3 className="mt-1 size-4 shrink-0 text-[#00a8ef]" /><p>App sections, camera, cuts, typography, face geometry and gestures stay independently editable. Section highlights and expansions use the report’s own layout. Preview, frame capture and MP4 export evaluate the same timeline.</p></div>
-  </div>
-}
-
-function TrackEditor({ track, regions, durationMs, onChange, onRemove }: { track: MotionTrack; regions: Array<{ id: string; label: string }>; durationMs: number; onChange: (patch: Partial<MotionTrack>) => void; onRemove: () => void }) {
-  return <div className="grid gap-3 rounded-2xl border border-zinc-200 bg-zinc-50/60 p-3">
-    <div className="flex items-center justify-between"><span className="text-[10px] font-semibold uppercase tracking-wide text-[#00a8ef]">{track.target}</span><button type="button" aria-label={`Remove ${primitiveDefinition(track.primitive).label}`} onClick={onRemove} className="grid size-9 place-items-center rounded-lg text-zinc-400 hover:bg-zinc-100 active:scale-[.98]"><Trash2 className="size-3.5" /></button></div>
-    <Field label="Primitive"><select className={fieldClass} value={track.primitive} onChange={event => onChange({ primitive: event.target.value as MotionPrimitiveId })}>{allowedPrimitives(track.target).map(item => <option key={item.id} value={item.id}>{item.label}</option>)}</select></Field>
-    {track.target === 'report' ? <Field label="Target app section"><select className={fieldClass} value={track.section ?? 'scores'} onChange={event => onChange({ section: event.target.value })}>{regions.map(region => <option key={region.id} value={region.id}>{region.label}</option>)}</select></Field> : null}
-    <div className="grid grid-cols-3 gap-2"><Field label="Start (ms)"><input className={fieldClass} type="number" step={10} min={0} max={durationMs - 1} value={track.startMs} onChange={event => { const startMs = Math.max(0, Math.min(durationMs - 1, Number(event.target.value))); onChange({ startMs, durationMs: Math.min(track.durationMs, durationMs - startMs) }) }} /></Field><Field label="Length (ms)"><input className={fieldClass} type="number" step={10} min={1} max={durationMs - track.startMs} value={track.durationMs} onChange={event => onChange({ durationMs: Math.max(1, Math.min(durationMs - track.startMs, Number(event.target.value))) })} /></Field><Field label="Intensity"><input className={fieldClass} type="number" min={0} max={3} step={.1} value={track.intensity} onChange={event => onChange({ intensity: Math.max(0, Math.min(3, Number(event.target.value))) })} /></Field></div>
-    <div className="grid grid-cols-2 gap-3"><Field label="Anchor X"><input className="w-full accent-cyan-600" type="range" min={0} max={1} step={.01} value={track.anchor.x} onChange={event => onChange({ anchor: { ...track.anchor, x: Number(event.target.value) } })} /></Field><Field label="Anchor Y"><input className="w-full accent-cyan-600" type="range" min={0} max={1} step={.01} value={track.anchor.y} onChange={event => onChange({ anchor: { ...track.anchor, y: Number(event.target.value) } })} /></Field></div>
   </div>
 }

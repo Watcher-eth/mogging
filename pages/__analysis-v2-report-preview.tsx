@@ -49,7 +49,7 @@ categories.push({ id: 'overall', title: 'Overall', subtitle: 'Facial harmony, st
 const overallGroups: WebRubricGroup[] = [{
   id: 'overall', title: 'Overall', rubrics: [
     { id: 'overall.psl', label: 'PSL score', value: '5.9 / 8', visual: 'Orbit', scale: 'quality', positions: [5.9 / 8], grade: null },
-    ...overallFeatures.map(feature => ({ id: `overall.${feature.label}`, label: feature.label, value: feature.value, visual: feature.label === 'Symmetry' ? 'Orbit' : 'Text', scale: 'quality' as const, positions: feature.label === 'Symmetry' ? [.74] : [], grade: null })),
+    ...overallFeatures.map(feature => ({ id: `overall.${feature.label}`, label: feature.label, value: feature.value, visual: 'Orbit', scale: 'quality' as const, positions: [.74], grade: null })),
   ],
 }]
 

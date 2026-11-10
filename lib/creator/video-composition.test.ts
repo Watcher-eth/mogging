@@ -8,6 +8,19 @@ const input: AnalysisPostInput = { formatId: 'score-reveal', subject: 'Test subj
 const build = (style: VideoStyleId = 'creator') => compileAnalysisVideo(buildAnalysisPost(input), input, ['face-1', 'face-2'], style, reportCategories)
 
 describe('video motion system', () => {
+  test('editorial cuts resolve to sharp resting frames and hide the chapter exchange', () => {
+    for (const primitive of ['focus-cut', 'luma-cut'] as const) {
+      for (const time of [0, 1]) {
+        const sample = sampleMotionPrimitive(primitive, time)
+        expect(sample.scale).toBeCloseTo(1)
+        expect(sample.blur).toBeCloseTo(0)
+        expect(sample.brightness).toBeCloseTo(1)
+      }
+    }
+    expect(sampleMotionPrimitive('focus-cut', .5).blur).toBe(7)
+    expect(sampleMotionPrimitive('luma-cut', .5).brightness).toBe(0)
+    expect(build('brand').scenes.at(-1)!.tracks[0].primitive).toBe('crossfade')
+  })
   test('all registered primitives are unique and deterministic at arbitrary frame times', () => {
     expect(motionPrimitives.length).toBeGreaterThanOrEqual(70)
     expect(new Set(motionPrimitives.map(item => item.id)).size).toBe(motionPrimitives.length)
@@ -28,8 +41,8 @@ describe('video motion system', () => {
       expect(composition.theme).toBe('light')
       expect(composition.scenes.every(scene => scene.source.report)).toBe(true)
       expect(composition.scenes[0].framing).toBe('full')
-      expect(composition.scenes.filter(scene => scene.source.kind === 'report').every(scene => scene.durationMs <= 3100 && scene.framing === 'full')).toBe(true)
-      expect(composition.scenes.some(scene => scene.tracks.some(track => ['fade-in','fade-out','crossfade','blur-in'].includes(track.primitive)))).toBe(false)
+      expect(composition.scenes.filter(scene => scene.source.kind === 'report').every(scene => (scene.durationMs <= 3100 || scene.label === 'Report · Early app proof') && scene.framing === 'full')).toBe(true)
+      expect(composition.scenes.some(scene => scene.tracks.some(track => ['fade-in','fade-out','blur-in'].includes(track.primitive)))).toBe(false)
       expect(composition.scenes.some(scene => scene.source.kind === 'report')).toBe(true)
       expect(composition.scenes[0].source.currentScore).toBe(0)
       expect(composition.scenes.at(-1)?.source.kind).toBe('title')
@@ -73,4 +86,54 @@ describe('video motion system', () => {
     expect(next.durationMs).toBe(composition.durationMs + first.durationMs)
     expect(retimed.tracks[1].durationMs).toBe(first.tracks[1].durationMs * 2)
   })
+})
+
+
+test('ripples accent occasional report entrances with quick dissolves on exits', () => {
+  const composition = build('brand')
+  let lastRippleMs = -Infinity, count = 0
+  for (const [index, scene] of composition.scenes.entries()) {
+    const previous = composition.scenes[index - 1]
+    if (!previous) continue
+    const transition = scene.tracks.find(track => track.target === 'content')!
+    if (transition.primitive === 'liquid-ripple') {
+      expect(scene.source.kind).toBe('report')
+      expect(previous.source.kind).not.toBe('report')
+      expect(scene.startMs - lastRippleMs).toBeGreaterThanOrEqual(12000)
+      expect(transition.durationMs).toBeLessThanOrEqual(260)
+      lastRippleMs = scene.startMs; count++
+    } else if ((previous.source.kind === 'report') !== (scene.source.kind === 'report')) {
+      expect(transition.primitive).toBe('crossfade')
+      expect(transition.durationMs).toBeLessThanOrEqual(180)
+    }
+  }
+  expect(count).toBeGreaterThan(0)
+  expect(count).toBeLessThanOrEqual(2)
+})
+
+
+test('consecutive native report views keep one viewport instead of dissolving duplicate grids', async () => {
+  const { choreographVideoTransitions, createMotionTrack } = await import('./video-composition')
+  const { sharesReport } = await import('./video-layout')
+  const source = { kind: 'report' as const, imageId: 'face', categoryId: 'jaw', overlay: 'none' as const, currentScore: 7.1, potentialScore: 8.2, metricScore: 7.4 }
+  const first = { id: 'a', startMs: 0, durationMs: 3000, source, tracks: [createMotionTrack('layout-morph', 'content', 3000)] } as import('./video-composition').VideoScene
+  const same = { ...first, id: 'b', startMs: 3000 }
+  const changed = { ...first, id: 'c', startMs: 6000, source: { ...source, categoryId: 'eyes' } }
+  const result = choreographVideoTransitions({ scenes: [first, same, changed] } as import('./video-composition').VideoComposition)
+  expect(sharesReport(first, same)).toBe(true)
+  expect(result.scenes[1].tracks[0].primitive).toBe('hard-cut')
+  expect(result.scenes[2].tracks[0].primitive).toBe('crossfade')
+  expect(result.scenes[2].tracks[0].durationMs).toBeLessThanOrEqual(180)
+  expect(sharesReport(first, { ...same, source: { ...source, metricScore: 8 } })).toBe(false)
+})
+
+
+test('templates spend at least 75 percent of portrait time in context framing', () => {
+  for (const recipe of ['portrait-audit', 'report-led', 'measurement-explainer', 'hybrid-story', 'feature-study'] as const) {
+    const composition = compileAnalysisVideo(buildAnalysisPost(input), input, ['face-1', 'face-2'], 'brand', reportCategories, { recipe })
+    const portraits = composition.scenes.filter(scene => scene.source.kind === 'portrait')
+    const duration = portraits.reduce((total, scene) => total + scene.durationMs, 0)
+    const closeups = portraits.filter(scene => scene.editorial === 'detail').reduce((total, scene) => total + scene.durationMs, 0)
+    expect(closeups).toBeLessThanOrEqual(duration * .25)
+  }
 })

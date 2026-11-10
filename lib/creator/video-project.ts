@@ -1,8 +1,9 @@
 import { z } from 'zod'
+import { audioFingerprint } from './video-script'
 import { faceLandmarksPayloadSchema } from '@/lib/analysis/landmarks'
 import { buildZip } from './export-slides'
 import type { GeneratorImage } from './content-generator'
-import { parseComposition, type VideoComposition } from './video-composition'
+import { parseComposition, videoImageIds, type VideoComposition } from './video-composition'
 
 const MAX_PROJECT_BYTES = 80 * 1024 * 1024
 const manifestSchema = z.array(z.object({
@@ -11,9 +12,10 @@ const manifestSchema = z.array(z.object({
   landmarks: faceLandmarksPayloadSchema.extend({ source: z.enum(['mediapipe-face-landmarker', 'apple-vision', 'google-mlkit', 'kimi-vision-estimate', 'demo-static']) }).nullable(),
 })).max(100)
 
-export async function packVideoProject(composition: VideoComposition, images: GeneratorImage[]) {
+export async function packVideoProject(composition: VideoComposition, images: GeneratorImage[], voiceover?: { file: Blob; name: string }) {
   parseComposition(composition)
-  const ids = new Set(composition.scenes.flatMap(scene => [scene.source.imageId, scene.source.secondaryImageId]).filter(Boolean))
+  if (composition.recording?.audioSha256 && (!voiceover || await audioFingerprint(voiceover.file) !== composition.recording.audioSha256)) throw new Error('The recording clock belongs to a different or missing audio file')
+  const ids = videoImageIds(composition.scenes)
   const assets = images.filter(image => ids.has(image.id))
   if (assets.length !== ids.size) throw new Error('Some project assets are missing')
   const entries = await Promise.all(assets.map(async (image, index) => {
@@ -27,6 +29,10 @@ export async function packVideoProject(composition: VideoComposition, images: Ge
   const files = entries.map(entry => entry.file)
   files.push({ name: 'composition.json', data: encoder.encode(JSON.stringify(composition, null, 2)) })
   files.push({ name: 'assets.json', data: encoder.encode(JSON.stringify(entries.map(entry => entry.metadata))) })
+  if (voiceover) {
+    files.push({ name: 'voiceover.audio', data: new Uint8Array(await voiceover.file.arrayBuffer()) })
+    files.push({ name: 'voiceover.json', data: encoder.encode(JSON.stringify({ name: voiceover.name, type: voiceover.file.type })) })
+  }
   if (files.reduce((sum, file) => sum + file.data.length, 0) > MAX_PROJECT_BYTES) throw new Error('Keep project assets below 80 MB')
   return buildZip(files)
 }
@@ -43,7 +49,7 @@ export async function unpackVideoProject(blob: Blob) {
     const flags = view.getUint16(offset + 6, true), method = view.getUint16(offset + 8, true), size = view.getUint32(offset + 18, true)
     const nameLength = view.getUint16(offset + 26, true), extraLength = view.getUint16(offset + 28, true)
     const start = offset + 30 + nameLength + extraLength, end = start + size
-    if (flags !== 0 || method !== 0 || end > bytes.length || files.size >= 102) throw new Error('Use an unmodified project ZIP exported by Mogging')
+    if (flags !== 0 || method !== 0 || end > bytes.length || files.size >= 104) throw new Error('Use an unmodified project ZIP exported by Mogging')
     const name = decoder.decode(bytes.subarray(offset + 30, offset + 30 + nameLength))
     if (files.has(name)) throw new Error('Duplicate project ZIP entry')
     files.set(name, bytes.slice(start, end)); offset = end
@@ -62,9 +68,18 @@ export async function unpackVideoProject(blob: Blob) {
       objectUrls.push(dataUrl)
       images.push({ id: entry.id, name: entry.name, width: entry.width, height: entry.height, landmarks: entry.landmarks as GeneratorImage['landmarks'], dataUrl, status: 'ready' })
     }
-    const required = new Set(composition.scenes.flatMap(scene => [scene.source.imageId, scene.source.secondaryImageId]).filter(Boolean))
+    const required = videoImageIds(composition.scenes)
     if (required.size !== manifest.length || [...required].some(id => !manifest.some(entry => entry.id === id))) throw new Error('Project asset IDs do not match its timeline')
-    return { composition, images, objectUrls }
+    const audio = files.get('voiceover.audio'), audioMetadata = files.get('voiceover.json')
+    if (Boolean(audio) !== Boolean(audioMetadata)) throw new Error('Project voiceover is incomplete')
+    let voiceover: { file: Blob; name: string } | undefined
+    if (audio && audioMetadata) {
+      if (audio.length > 20 * 1024 * 1024 || audioMetadata.length > 2048) throw new Error('Project voiceover is too large')
+      const metadata = z.object({ name: z.string().max(300), type: z.string().max(100) }).strict().parse(JSON.parse(decoder.decode(audioMetadata)))
+      voiceover = { file: new Blob([new Uint8Array(audio)], { type: metadata.type }), name: metadata.name }
+    }
+    if (composition.recording?.audioSha256 && (!voiceover || await audioFingerprint(voiceover.file) !== composition.recording.audioSha256)) throw new Error('Project audio does not match its recorded word clock')
+    return { composition, images, objectUrls, voiceover }
   } catch (error) { objectUrls.forEach(url => URL.revokeObjectURL(url)); throw error }
 }
 

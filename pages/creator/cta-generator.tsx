@@ -1,15 +1,16 @@
 import { Disclosure, DisclosureSummary, AccordionContent } from '@/components/ui/accordion'
 import { MockProtocolGenerator } from '@/components/creator/mock-protocol-generator'
 import { MockReportGenerator } from '@/components/creator/mock-report-generator'
-import { AnalysisPostGenerator } from '@/components/creator/analysis-post-generator'
 import { RandomScoreControl } from '@/components/creator/random-score-control'
 import { randomScore, randomScorePair } from '@/lib/creator/random-scores'
 import { FaceAlignmentEditor } from '@/components/creator/face-alignment-editor'
 import { CreatorStepper } from '@/components/creator/creator-stepper'
 import Image from 'next/image'
+import Link from 'next/link'
+import { useRouter } from 'next/router'
 import { LayoutGroup, MotionConfig, motion, useReducedMotion } from 'motion/react'
 import { useEffect, useRef, useState } from 'react'
-import { BookOpen, CalendarCheck2, Clapperboard, FileChartColumn, Megaphone, Check, CheckCircle2, Download, FileArchive, Film, ImagePlus, Loader2, RefreshCw, Send, Trash2, UploadCloud, type LucideIcon } from 'lucide-react'
+import { ArrowLeft, BookOpen, CalendarCheck2, FileChartColumn, Megaphone, Check, CheckCircle2, Download, FileArchive, Film, ImagePlus, Loader2, RefreshCw, Send, Trash2, UploadCloud, type LucideIcon } from 'lucide-react'
 import useSWR from 'swr'
 import { toast } from 'sonner'
 import { Button } from '@/components/ui/button'
@@ -26,14 +27,11 @@ import { buildMockOverallCategory } from '@/lib/creator/mock-report-data'
 import { cn } from '@/lib/utils'
 import { CreatorIcon, type CreatorIconName } from '@/components/creator/creator-icon'
 
-const developmentStudio = process.env.NODE_ENV === 'development'
 const generatorTabs = [
-  { id: 'post', label: 'Post builder', icon: Clapperboard },
-  { id: 'cta', label: developmentStudio ? 'CTA assets' : 'CTA generator', icon: Megaphone },
+  { id: 'cta', label: 'CTA assets', icon: Megaphone },
   { id: 'mock', label: 'Mock reports', icon: FileChartColumn },
-  { id: 'protocol', label: developmentStudio ? 'Protocol' : 'Mock Protocol', icon: CalendarCheck2 },
+  { id: 'protocol', label: 'Protocol', icon: CalendarCheck2 },
 ] as const
-const visibleGeneratorTabs = generatorTabs.filter(tab => developmentStudio || tab.id !== 'post')
 
 const generatorTransition = { duration: 0.24, ease: [0.22, 1, 0.36, 1] as const }
 
@@ -58,9 +56,14 @@ function RatioSelector({ value, onChange, disabled }: { value: OutputFormatId; o
 }
 
 export default function CtaGeneratorPage() {
+  const { query } = useRouter()
   const reducedMotion = useReducedMotion()
   const transition = reducedMotion ? { duration: 0 } : generatorTransition
-  const [mode, setMode] = useState<(typeof generatorTabs)[number]['id']>(developmentStudio ? 'post' : 'cta')
+  const [mode, setMode] = useState<(typeof generatorTabs)[number]['id']>('cta')
+  useEffect(() => {
+    const requestedMode = generatorTabs.find(tab => tab.id === query.mode)?.id
+    if (requestedMode) setMode(requestedMode)
+  }, [query.mode])
   const [step, setStep] = useState<1 | 2 | 3>(1)
   const fileInputRef = useRef<HTMLInputElement>(null)
   const photoUrls = useRef(new Set<string>())
@@ -264,16 +267,17 @@ export default function CtaGeneratorPage() {
 
   return (
     <CreatorShell>
+      <Link href="/creator/studio" className="mb-4 inline-flex min-h-11 items-center gap-2 text-xs text-zinc-500 hover:text-zinc-950"><ArrowLeft className="size-3.5" />Studio</Link>
       <MotionConfig reducedMotion="user" transition={transition}>
       <LayoutGroup id="creator-studio">
       <CreatorHeader
         eyebrow="Creator Tools"
-        title="CTA Studio"
-        description={developmentStudio ? 'Plan face-analysis posts, build report scenes, and export Mogging CTA assets.' : 'Create a CTA with your photos and report scores.'}
+        title={mode === 'mock' ? 'Create a mock scan' : mode === 'protocol' ? 'Create a protocol' : 'Create a CTA'}
+        description={mode === 'mock' ? 'Build an editable report with your photos and scores.' : 'Create a CTA with your photos and report scores.'}
         action={
           <div className="creator-generator-actions flex flex-col gap-3">
-            <div className={cn('grid gap-1 rounded-[16px] bg-black/[0.045] p-1', developmentStudio ? 'grid-cols-2 sm:grid-cols-4' : 'grid-cols-3')} role="tablist" aria-label="Generator">
-              {visibleGeneratorTabs.map(tab => {
+            <div className={cn('grid gap-1 rounded-[16px] bg-black/[0.045] p-1', 'grid-cols-3')} role="tablist" aria-label="Generator">
+              {generatorTabs.map(tab => {
                 const active = mode === tab.id
                 return (
                   <button
@@ -309,9 +313,6 @@ export default function CtaGeneratorPage() {
       <motion.div layout={!reducedMotion} layoutDependency={`${mode}:${step}`}>
       <motion.div layout="position" layoutDependency={`${mode}:${step}`}>
       {mode === 'cta' ? <CreatorStepper step={step} labels={['Photos', 'Details & Scores', 'Preview & Export']} /> : null}
-      {developmentStudio ? <motion.div id="generator-panel-post" role="tabpanel" aria-labelledby="generator-tab-post" hidden={mode !== 'post' || step === 1} initial={false} animate={{ opacity: mode === 'post' ? 1 : 0 }}>
-        <AnalysisPostGenerator images={usableImages} onOpenAssets={() => { setMode('cta'); setStep(2) }} onOpenMockReport={() => { setMode('mock'); setStep(2) }} />
-      </motion.div> : null}
       <motion.div id="generator-panel-mock" role="tabpanel" aria-labelledby="generator-tab-mock" hidden={mode !== 'mock' || step === 1} initial={false} animate={{ opacity: mode === 'mock' ? 1 : 0 }}>
         <MockReportGenerator images={usableImages} active={mode === 'mock' && step !== 1} onBack={() => setStep(1)} />
       </motion.div>
@@ -327,7 +328,7 @@ export default function CtaGeneratorPage() {
             <button data-creator-card={!images.length || undefined} type="button" onClick={() => fileInputRef.current?.click()} className={cn("grid w-full place-items-center rounded-xl p-4 text-center transition-colors hover:bg-white", images.length ? "mt-3 min-h-11" : "min-h-36")}><span><ImagePlus className="mx-auto size-5 text-[#00A8EF]" /><span className="mt-2 block text-sm font-semibold">{images.length ? 'Add more photos' : 'Upload Photos'}</span>{!images.length ? <span className="mt-1 block text-xs leading-5 text-[#858a91]">One clear face · JPG, PNG, WebP</span> : null}</span></button>
           </div>
 
-        <div className="mt-6 flex justify-end"><Button className="h-11 rounded-full px-6" disabled={!usableImages.length || images.some((image) => image.status === 'loading' || image.status === 'detecting')} onClick={() => setStep(2)}>{mode === 'mock' ? 'Continue to Mock Reports' : mode === 'post' ? 'Build Analysis Post' : 'Continue to Details'}</Button></div>
+        <div className="mt-6 flex justify-end"><Button className="h-11 rounded-full px-6" disabled={!usableImages.length || images.some((image) => image.status === 'loading' || image.status === 'detecting')} onClick={() => setStep(2)}>{mode === 'mock' ? 'Continue to Mock Reports' : 'Continue to Details'}</Button></div>
       </motion.section> : null}
       <motion.div id="generator-panel-cta" role="tabpanel" aria-labelledby="generator-tab-cta" hidden={mode !== 'cta'} initial={false} animate={{ opacity: mode === 'cta' ? 1 : 0 }}>
       {step === 2 ? <section className="creator-surface p-5 sm:p-6">

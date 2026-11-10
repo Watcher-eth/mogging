@@ -55,6 +55,9 @@ test('missing restored photo produces actionable error before encoding',async()=
 test('editorial covers preserve the distinction between total, feature, and potential scores', () => {
   const texts: string[] = []
   const ctx = new Proxy({}, { get: (_target, key) => key === 'fillText' ? (text: string) => texts.push(text) : key === 'measureText' ? (text: string) => ({ width: text.length * 80 }) : () => {} }) as CanvasRenderingContext2D
+  drawSlideFrame(ctx, { ...slide, templateId: 'score-potential' }, null, null, 1080, 1620, 4000, null)
+  expect(texts).toContain('CURRENT'); expect(texts).toContain('POTENTIAL'); expect(texts).toContain('7'); expect(texts).toContain('8')
+  texts.length = 0
   drawSlideFrame(ctx, { ...slide, templateId: 'performance' }, null, null, 1080, 1620, 4000, null)
   expect(texts).toContain('7'); expect(texts).not.toContain('MOGGING SCORE')
   texts.length = 0
@@ -86,6 +89,30 @@ test('cancelled composition exports release the encoder and frame resources', as
   await expect(encodeCanvasMp4({ width: 1080, height: 1920 } as HTMLCanvasElement, () => controller.abort(), 1000, undefined, controller.signal)).rejects.toThrow()
   expect(encoderClosed).toBe(true)
   expect(frameClosed).toBe(true)
+})
+
+test('voiceover export reports AAC failures and closes both encoders', async () => {
+  let videoClosed = false, audioClosed = false
+  replace('VideoEncoder', class {
+    static async isConfigSupported(config: VideoEncoderConfig) { return { supported: true, config } }
+    state = 'configured'; encodeQueueSize = 0
+    configure() {} encode() {} async flush() {}
+    close() { videoClosed = true; this.state = 'closed' }
+  })
+  replace('VideoFrame', class { close() {} })
+  replace('AudioData', class { close() {} })
+  replace('AudioEncoder', class {
+    static async isConfigSupported() { return { supported: true } }
+    state = 'configured'; encodeQueueSize = 0
+    constructor(private callbacks: AudioEncoderInit) {}
+    addEventListener() {}
+    configure() { this.callbacks.error(new DOMException('AAC failed')) }
+    close() { audioClosed = true; this.state = 'closed' }
+  })
+  const audio = { duration: 1, sampleRate: 48000, numberOfChannels: 1, length: 48000 } as AudioBuffer
+  await expect(encodeCanvasMp4({ width: 1080, height: 1920 } as HTMLCanvasElement, () => {}, 1000, undefined, undefined, audio)).rejects.toThrow('AAC failed')
+  expect(videoClosed).toBe(true)
+  expect(audioClosed).toBe(true)
 })
 
 

@@ -37,15 +37,20 @@ export function buildWebRubricGroups(categoryId: string, entries: (Pick<RubricEs
   }))
 }
 
-// Pair applicable dials together and promote odd cards to avoid empty half rows.
-export function layoutWebRubrics(rubrics: WebRubric[]) {
-  const full = rubrics.filter(rubric => rubric.visual === 'Capsule')
-  const orbits = rubrics.filter(rubric => rubric.visual === 'Orbit')
-  const remaining = rubrics.filter(rubric => !['Capsule', 'Orbit'].includes(rubric.visual))
-  if (orbits.length % 2) full.push(orbits.pop()!)
-  if (remaining.length % 2) {
-    const index = remaining.findIndex(rubric => rubric.visual === 'Rail')
-    full.push(remaining.splice(index < 0 ? remaining.length - 1 : index, 1)[0])
+export function layoutWebRubrics(rubrics: WebRubric[], presentation: 'detail' | 'summary' = 'detail') {
+  if (presentation === 'summary') return rubrics.map((rubric, index) => ({ rubric: index % 2 ? { ...rubric, visual: 'Text' } : rubric, full: rubrics.length % 2 === 1 && index === rubrics.length - 1 }))
+  const rows = (items: WebRubric[]) => {
+    const result: Array<Array<{ rubric: WebRubric; full: boolean }>> = []
+    for (let index = 0; index < items.length; index++) {
+      const rubric = items[index], next = items[index + 1]
+      if (['Capsule', 'Rail'].includes(rubric.visual) || !next || ['Capsule', 'Rail'].includes(next.visual)) result.push([{ rubric, full: true }])
+      else { result.push([{ rubric, full: false }, { rubric: next, full: false }]); index++ }
+    }
+    return result
   }
-  return [...full.filter(rubric => rubric.visual !== 'Text').map(rubric => ({ rubric, full: true })), ...[...orbits, ...remaining].map(rubric => ({ rubric, full: false })), ...full.filter(rubric => rubric.visual === 'Text').map(rubric => ({ rubric, full: true }))]
+  const graphics = rows(rubrics.filter(rubric => rubric.visual !== 'Text'))
+  const observations = rows(rubrics.filter(rubric => rubric.visual === 'Text'))
+  const total = graphics.length + observations.length
+  let graphicIndex = 0, observationIndex = 0
+  return Array.from({ length: total }, (_, index) => graphicIndex < graphics.length && index === Math.floor((graphicIndex + .5) * total / graphics.length) ? graphics[graphicIndex++] : observations[observationIndex++]).flat()
 }

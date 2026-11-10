@@ -20,7 +20,10 @@ export function enrichFaceLandmarks(landmarks: FaceLandmarksPayload | null): Fac
     const points = landmarks.contours?.[key];
     // A partial/broken contour should disappear, not connect across missing data.
     if (!points || points.length < 2 || !points.every(validPoint)) continue;
-    contours[key] = resampleContour(points, CONTOUR_SAMPLES[key], CLOSED_CONTOURS.has(key), landmarks.image);
+    // Brow loops contain separate measured upper/lower edges. Resampling the
+    // whole loop into an arch mixes both edges and moves guides off the brow.
+    contours[key] = key === "leftBrow" || key === "rightBrow" ? points
+      : resampleContour(points, CONTOUR_SAMPLES[key], CLOSED_CONTOURS.has(key), landmarks.image);
   }
   return { ...landmarks, anchors, contours };
 }

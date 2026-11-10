@@ -2,7 +2,7 @@ import { useEffect, useState, useMemo } from 'react'
 import { ContentSlidePreview } from '@/components/creator/content-slide'
 import { generateSlides, type GeneratorImage, type ContentSlide } from '@/lib/creator/content-generator'
 import { reportCategories } from '@/lib/creator/mock-report-data'
-import { previewLandmarks } from '@/components/landing/overlay'
+import { extractFaceLandmarksFromDataUrl } from '@/lib/client/faceLandmarks'
 import { renderSlidePng } from '@/lib/creator/export-slides'
 
 export default function CreatorTemplatePreview() {
@@ -13,7 +13,10 @@ export default function CreatorTemplatePreview() {
   const [scroll, setScroll] = useState(0)
   const [category, setCategory] = useState('eyes')
   useEffect(() => { void fetch('/model2.png').then(response => response.blob()).then(blob => {
-    const reader = new FileReader(); reader.onload = () => setImages([{ id: 'demo', name: 'Bundled example', dataUrl: String(reader.result), width: 1024, height: 1536, landmarks: previewLandmarks as GeneratorImage['landmarks'], status: 'ready' }]); reader.readAsDataURL(blob)
+    const reader = new FileReader(); reader.onload = async () => {
+      const dataUrl=String(reader.result), landmarks=await extractFaceLandmarksFromDataUrl(dataUrl)
+      setImages([{ id: 'demo', name: 'Bundled example', dataUrl, width: landmarks?.image.width ?? 1024, height: landmarks?.image.height ?? 1536, landmarks, status: 'ready' }])
+    }; reader.readAsDataURL(blob)
   }) }, [])
   const format = { width: 1080, height: 1620 }
   const slides = useMemo(() => generateSlides({ campaignGoal: 'traffic', tone: 'direct', selectedCategories: ['jaw', 'eyes', 'psl', 'overall'], primaryCategory: 'jaw', images, offer: '', seed: 0, currentScore: '7.4', potentialScore: '8.2', scoreValues: { jaw: '8.1', eyes: '7.6', psl: '5.9', overall: '7.4' } }), [images])

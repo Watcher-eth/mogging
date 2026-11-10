@@ -1,3 +1,5 @@
+import { sampleAppearance } from './motion-presets'
+
 export type MotionPrimitiveCategory = 'transition' | 'camera' | 'entry' | 'exit' | 'text' | 'cursor' | 'cinematic' | 'overlay' | 'report'
 
 export type MotionPrimitiveDefinition = {
@@ -12,6 +14,21 @@ const define = <const T extends ReadonlyArray<readonly [string, string, string]>
   items.map(([id, label, description]) => ({ id: id as T[number][0], label, category, durationMs, description }))
 
 export const motionPrimitives = [
+  ...define('transition', 480, [
+    ['transition-panel', 'Transition panel', 'Stagger outgoing content before incoming content settles inside the same continuously resized surface.'],
+  ]),
+  ...define('transition', 720, [
+    ['layout-morph', 'Graphic layout morph', 'Keep graphic objects persistent while their position and size change with the next script beat.'],
+  ]),
+  ...define('transition', 360, [
+    ['focus-cut', 'Focus cut', 'A single-frame editorial exchange at peak defocus, with a restrained push and clean settle.'],
+  ]),
+  ...define('transition', 280, [
+    ['luma-cut', 'Luma cut', 'A brief dark shutter between unrelated chapters, resolving into a subtle reframe.'],
+  ]),
+  ...define('transition', 260, [
+    ['liquid-ripple', 'Liquid ripple', 'A brief refractive accent for occasional report entrances.'],
+  ]),
   ...define('transition', 420, [
     ['cinematic-flow', 'Cinematic flow', 'Shared-element layouts with one moving app component, a persistent subject and continuous facial measurements.'],
     ['screen-push', 'Screen push', 'Move both app screens along one continuous editorial axis.'],
@@ -19,6 +36,9 @@ export const motionPrimitives = [
     ['card-reveal', 'Card reveal', 'Reveal the next scene from a rounded UI card mask.'],
   ]),
   ...define('report', 1100, [
+    ['border-beam', 'Blue border beam', 'A light-blue measuring beam travels around the actual selected tile.'],
+    ['section-lift', 'Lift tile to center', 'Bring the selected report tile forward and to the viewport center, then return it.'],
+    ['todo-check', 'Spoken checklist check', 'Check a specific editorial action when its spoken cue completes.'],
     ['component-focus', 'Feature metric entrance', 'Fade and settle the native metric beneath its portrait, building the meter from zero.'],
     ['scroll-to-section', 'Scroll to section', 'Scroll precisely to a named report section and settle.'],
     ['section-expand', 'Expand native card', 'Lift and enlarge the actual app card, then return it.'],
@@ -54,6 +74,8 @@ export const motionPrimitives = [
     ['report-scroll', 'Report scroll', 'Scroll through the mobile evaluation with fixed app chrome.'],
   ]),
   ...define('entry', 420, [
+    ['in-view', 'In-view blur grow', 'A restrained blur, opacity and scale reveal on the actual image or component.'],
+    ['group-reveal', 'Animated section', 'A soft blur-and-rise entrance for a native component group.'],
     ['fade-in', 'Fade in', 'Simple opacity entrance.'],
     ['rise-in', 'Rise in', 'Enter upward with a soft fade.'],
     ['drop-in', 'Drop in', 'Enter downward with a soft fade.'],
@@ -73,6 +95,11 @@ export const motionPrimitives = [
     ['blur-out', 'Blur out', 'Lose focus while exiting.'],
   ]),
   ...define('text', 700, [
+    ['text-scale', 'Text Effect · scale', 'Reveal spoken words with restrained scale and defocus, keeping their measured positions.'],
+    ['caption-swish', 'Spoken shimmer captions', 'Reveal each word with a slow masked swish and light-blue shimmer, following speech timestamps.'],
+    ['line-reveal', 'Masked line reveal', 'Lift each complete headline line through its own mask.'],
+    ['word-reveal', 'Soft word reveal', 'Resolve words with a restrained blur and stagger, without changing line breaks.'],
+    ['spoken-highlight', 'Spoken emphasis', 'Highlight headline words as they are spoken in the aligned voiceover.'],
     ['type-on', 'Type on', 'Reveal characters with a visible cursor.'],
     ['word-build', 'Word build', 'Add one hook word or phrase per beat.'],
     ['kinetic-pop', 'Kinetic pop', 'Bounce a verdict or score into view.'],
@@ -88,6 +115,7 @@ export const motionPrimitives = [
     ['cursor-swipe', 'Cursor swipe', 'Touch gesture used to scroll mobile UI.'],
   ]),
   ...define('cinematic', 900, [
+    ['graphic-regroup', 'Regroup feature points', 'Reorganize the same code-native feature dots into two groups without replacing them.'],
     ['letterbox', 'Letterbox', 'Introduce cinematic top and bottom bars.'],
     ['cyan-glow', 'Cyan glow', 'Mogging aqua bloom around type and UI.'],
     ['scanline', 'Scan line', 'Luminous scan traveling down the face.'],
@@ -97,6 +125,8 @@ export const motionPrimitives = [
     ['parallax-separate', 'Parallax separate', 'Offset foreground and background planes.'],
   ]),
   ...define('overlay', 600, [
+    ['measurement-sweep', 'Feature light isolation', 'Lead with photo-pixel exposure emphasis on supported features, then trace the contour within 2.4 seconds.'],
+    ['landmark-halo', 'Contour anchors', 'Lead with sparse anchors on measured feature outlines, then transition within 2.4 seconds.'],
     ['landmark-stagger', 'Landmark stagger', 'Pop mapped face points in small groups.'],
     ['contour-trace', 'Contour trace', 'Draw jaw, cheek, or face contours progressively.'],
     ['metric-bar-fill', 'Metric bar fill', 'Fill a report measurement bar to its score.'],
@@ -134,16 +164,24 @@ export function sampleMotionPrimitive(id: MotionPrimitiveId, rawProgress: number
   const ease = out(progress)
   const wave = Math.sin(progress * Math.PI)
   switch (id) {
-    case 'cinematic-flow': return { ...rest, reveal: inOut(progress), y: (1 - inOut(progress)) * 5, scale: .985 + inOut(progress) * .015, phase: progress }
+    case 'in-view': case 'group-reveal': case 'text-scale': {
+      const sample = sampleAppearance(id, progress)
+      return { ...rest, ...sample, y: sample.y * intensity, scale: 1 + (sample.scale - 1) * intensity, blur: sample.blur * intensity, phase: progress }
+    }
+    case 'focus-cut': return { ...rest, scale: 1 + wave * .045 * intensity, blur: Math.pow(wave, 4) * 7 * intensity, phase: progress }
+    case 'luma-cut': return { ...rest, scale: 1 + wave * .025 * intensity, brightness: 1 - Math.pow(wave, 4), phase: progress }
+    case 'liquid-ripple': case 'transition-panel': case 'layout-morph': case 'cinematic-flow': return { ...rest, reveal: inOut(progress), y: (1 - inOut(progress)) * 5, scale: .985 + inOut(progress) * .015, phase: progress }
     case 'screen-push': return { ...rest, x: (1 - inOut(progress)) * 100 * intensity, phase: progress }
     case 'match-reframe': return { ...rest, scale: 1.065 - ease * .065, x: (1 - ease) * 2 * intensity, phase: progress }
     case 'card-reveal': return { ...rest, reveal: inOut(progress), phase: progress }
     case 'component-focus': case 'scroll-to-section': return { ...rest, reveal: inOut(progress), phase: progress }
-    case 'section-expand': case 'gradient-outline': case 'section-spotlight': {
+    case 'section-lift': case 'border-beam': case 'section-expand': case 'gradient-outline': case 'section-spotlight': {
       const smooth = (x: number) => { const t = Math.max(0, Math.min(1, x)); return t * t * (3 - 2 * t) }
       const envelope = Math.min(smooth(progress / .28), smooth((1 - progress) / .28))
       return { ...rest, reveal: envelope, scale: 1 + envelope * .18 * intensity, glow: envelope, phase: progress }
     }
+    case 'graphic-regroup': return { ...rest, reveal: inOut(progress), phase: progress }
+    case 'todo-check': case 'caption-swish': case 'measurement-sweep': case 'landmark-halo': return { ...rest, reveal: ease, phase: progress }
     case 'hard-cut': return { ...rest, phase: progress }
     case 'crossfade': case 'fade-in': return { ...rest, opacity: ease, phase: progress }
     case 'fade-out': return { ...rest, opacity: 1 - ease, phase: progress }
@@ -173,8 +211,8 @@ export function sampleMotionPrimitive(id: MotionPrimitiveId, rawProgress: number
     case 'slide-in-left': return { ...rest, opacity: ease, x: -(1 - ease) * 18 * intensity, phase: progress }
     case 'slide-in-right': return { ...rest, opacity: ease, x: (1 - ease) * 18 * intensity, phase: progress }
     case 'scale-pop': case 'kinetic-pop': return { ...rest, opacity: ease, scale: .65 + overshoot(progress) * .35, phase: progress }
-    case 'blur-in': return { ...rest, opacity: ease, blur: (1 - ease) * 12, y: (1 - ease) * 3, phase: progress }
-    case 'mask-reveal': case 'line-draw': case 'type-on': case 'word-build': case 'underline-draw': case 'contour-trace': case 'metric-bar-fill': return { ...rest, reveal: ease, phase: progress }
+    case 'blur-in': return { ...rest, ...sampleAppearance('in-view', progress), phase: progress }
+    case 'line-reveal': case 'word-reveal': case 'spoken-highlight': case 'mask-reveal': case 'line-draw': case 'type-on': case 'word-build': case 'underline-draw': case 'contour-trace': case 'metric-bar-fill': return { ...rest, reveal: ease, phase: progress }
     case 'sink-out': return { ...rest, opacity: 1 - ease, y: ease * 8, phase: progress }
     case 'slide-out-left': return { ...rest, opacity: 1 - ease, x: -ease * 20, phase: progress }
     case 'slide-out-right': return { ...rest, opacity: 1 - ease, x: ease * 20, phase: progress }

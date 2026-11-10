@@ -6,6 +6,7 @@ import type { CreatorSubmissionFormat } from './formats'
 const paragraph = z.string().trim().min(1).max(2000)
 export const sprintTermsSchema = z
   .object({
+    mgcSourceCampaignId: z.string().uuid().optional(),
     bonusBudgetCents: z.number().int().nonnegative().max(100_000_000).optional(),
     milestones: z
       .array(

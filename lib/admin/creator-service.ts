@@ -30,6 +30,7 @@ export const creatorAdminReviewSchema = z.discriminatedUnion('resource', [
     resource: z.literal('creator'),
     id: z.string().min(1),
     status: z.enum(['pending', 'verified', 'suspended']),
+    videoStudioAccess: z.boolean().optional(),
   }),
   z.object({
     resource: z.literal('account'),
@@ -86,6 +87,7 @@ export async function getCreatorAdminDashboard() {
         userId: schema.creatorProfiles.userId,
         displayName: schema.creatorProfiles.displayName,
         bundledPayouts: schema.creatorProfiles.bundledPayouts,
+        videoStudioAccess: schema.creatorProfiles.videoStudioAccess,
         email: schema.users.email,
         image: schema.users.image,
         primaryContact: schema.creatorProfiles.socialHandle,
@@ -133,6 +135,7 @@ export async function getCreatorAdminDashboard() {
       .select({
         id: schema.creatorSubmissions.id,
         unreadMessages: submissionUnreadCount('team'),
+        studioGenerationId: schema.creatorSubmissions.studioGenerationId,
         creatorProfileId: schema.creatorSubmissions.creatorProfileId,
         creatorName: schema.creatorProfiles.displayName,
         creatorEmail: schema.users.email,
@@ -330,7 +333,7 @@ export async function reviewCreatorResource(input: CreatorAdminReviewInput, revi
   }
 
   if (input.resource === 'creator') {
-    const [record] = await db.update(schema.creatorProfiles).set({ authStatus: input.status, updatedAt: now }).where(eq(schema.creatorProfiles.id, input.id)).returning()
+    const [record] = await db.update(schema.creatorProfiles).set({ authStatus: input.status, ...(input.videoStudioAccess === undefined ? {} : { videoStudioAccess: input.videoStudioAccess }), updatedAt: now }).where(eq(schema.creatorProfiles.id, input.id)).returning()
     if (!record) throw new ApiError(404, 'Creator registration not found')
     return record
   }
@@ -346,6 +349,7 @@ export async function reviewCreatorResource(input: CreatorAdminReviewInput, revi
     const reviewError = submissionReviewError(input.status, input.reviewChecklist)
     if (reviewError) throw new ApiError(400, reviewError)
     const current = await db.query.creatorSubmissions.findFirst({ where: eq(schema.creatorSubmissions.id, input.id) })
+    if (current?.studioGenerationId && !current.analyticsScreenshotUrl) throw new ApiError(409, 'The creator must request their first review with milestone analytics')
     if (current?.sprintId && current.sprintTerms) return reviewSprintSubmission(input, reviewerId).then(async record => { if (record.sprintTerms?.bonusBudgetCents) await refreshCreatorBonuses(record.creatorProfileId); return record }).catch(rethrowCreatorPostConflict)
     return db.transaction(async tx => {
       const [submission] = await tx.select().from(schema.creatorSubmissions).where(eq(schema.creatorSubmissions.id, input.id)).for('update')

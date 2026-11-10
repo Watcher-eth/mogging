@@ -34,7 +34,7 @@ export function approvalSubmittedAt(target: ApprovalTarget) {
 
 export function getApprovalQueue(data: AdminDashboard): ApprovalTarget[] {
   return [
-    ...data.submissions.filter((item) => item.status === 'pending' || item.status === 'in_review').map((item) => ({ resource: 'submission' as const, item })),
+    ...data.submissions.filter((item) => (item.status === 'pending' || item.status === 'in_review') && !(item.studioGenerationId && !item.analyticsScreenshotUrl)).map((item) => ({ resource: 'submission' as const, item })),
   ].sort((a, b) => {
     const aTime = Date.parse(approvalSubmittedAt(a))
     const bTime = Date.parse(approvalSubmittedAt(b))

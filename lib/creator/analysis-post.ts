@@ -6,6 +6,8 @@ export type AnalysisPostInput = {
   hook: string
   overallScore: string
   potentialScore: string
+  potentialScale?: 8 | 10
+  potentialCurrentScore?: number
   strongestFeature: string
   strongestScore: string
   opportunityFeature: string

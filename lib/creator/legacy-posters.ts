@@ -2,28 +2,17 @@ import { drawBrandLockup } from './brand'
 import type { ContentSlide } from './content-generator'
 import { drawReportOverlay, type ReportOverlay } from './report-overlay'
 import type { RevealBrand } from './score-reveal'
-import { drawShareOverallOverlay } from '@/lib/sharing/overall-overlay'
 import { shareCardLayout } from '@/lib/sharing/share-card'
 
 export function drawLegacyPoster(ctx: CanvasRenderingContext2D, slide: ContentSlide, image: HTMLImageElement | null, overlay: ReportOverlay | null, width: number, height: number, timeMs: number, brand: RevealBrand | null) {
   ctx.save(); ctx.textBaseline = 'top'; ctx.textAlign = 'left'
   ctx.fillStyle = '#09090b'; ctx.fillRect(0,0,width,height)
   if (image) drawCover(ctx,image,0,0,width,height)
-  if (slide.templateId === 'score-potential') {
-    drawMobileShare(ctx,slide,overlay,width,height,timeMs)
-    const square = height / width < 1.2
-    const brandWidth = width * (square ? .30 : .36)
-    const scoreHeight = shareCardLayout.scoreSize * width / shareCardLayout.width * (square ? .86 : 1)
-    const scoreCenterY = height * .945 - scoreHeight / 2
-    drawBrandLockup(ctx, brand, (width - brandWidth) / 2, scoreCenterY - brandWidth * .125 / 2, brandWidth)
-  }
-  else {
-    const gradient=ctx.createLinearGradient(0,0,0,height)
-    gradient.addColorStop(0,'rgba(0,0,0,.45)'); gradient.addColorStop(.5,'rgba(0,0,0,.05)'); gradient.addColorStop(1,'rgba(0,0,0,.95)')
-    ctx.fillStyle=gradient; ctx.fillRect(0,0,width,height)
-    if (overlay) drawReportOverlay(ctx,overlay,width,timeMs,false)
-    drawEditorial(ctx,slide,width,height,timeMs,brand)
-  }
+  const gradient=ctx.createLinearGradient(0,0,0,height)
+  gradient.addColorStop(0,'rgba(0,0,0,.45)'); gradient.addColorStop(.5,'rgba(0,0,0,.05)'); gradient.addColorStop(1,'rgba(0,0,0,.95)')
+  ctx.fillStyle=gradient; ctx.fillRect(0,0,width,height)
+  if (overlay) drawReportOverlay(ctx,overlay,width,timeMs,false)
+  drawEditorial(ctx,slide,width,height,timeMs,brand)
   ctx.restore()
 }
 
@@ -71,36 +60,6 @@ let shareFont: Promise<void> | undefined
 export function loadShareFont() {
   if (!shareFont) shareFont = new FontFace('Mogging Share', 'url(/fonts/Geist-Regular.ttf)').load().then(font => { document.fonts.add(font) }).catch(error => { shareFont = undefined; throw error })
   return shareFont
-}
-
-function drawMobileShare(ctx: CanvasRenderingContext2D, slide: ContentSlide, overlay: ReportOverlay | null, width: number, height: number, timeMs: number) {
-  const scale = width / shareCardLayout.width
-  for (const css of shareCardLayout.gradients) {
-    const angle = Number(css.match(/(\d+)deg/)?.[1] ?? 180) * Math.PI / 180
-    const dx = Math.sin(angle), dy = -Math.cos(angle), length = Math.abs(width * dx) + Math.abs(height * dy)
-    const gradient = ctx.createLinearGradient(width / 2 - dx * length / 2, height / 2 - dy * length / 2, width / 2 + dx * length / 2, height / 2 + dy * length / 2)
-    for (const match of css.matchAll(/(rgba\([^)]+\)) (\d+)%/g)) gradient.addColorStop(Number(match[2]) / 100, match[1])
-    ctx.fillStyle = gradient; ctx.fillRect(0, 0, width, height)
-  }
-  if (overlay) drawShareOverallOverlay(ctx, overlay.primitives, width, timeMs)
-  const square = height / width < 1.2
-  const top = square ? height * .035 : shareCardLayout.headerTop * scale, inset = shareCardLayout.inset * scale
-  const text = (value: string, x: number, y: number, size: number, align: CanvasTextAlign = 'left', alpha = 1) => {
-    ctx.textAlign = align; ctx.font = `800 ${size * scale}px "Mogging Share", Arial`; ctx.fillStyle = `rgba(255,255,255,${alpha})`; ctx.fillText(value, x, y)
-  }
-  withEnter(ctx, enter(timeMs, 300, 480), () => {
-    text('MOGGING.COM', inset, top, shareCardLayout.headingSize)
-    text('FACIAL AESTHETIC', inset, top + 46 * scale, shareCardLayout.subheadingSize, 'left', .76)
-
-  })
-  const scoreSize = shareCardLayout.scoreSize * (height / width < 1.2 ? .86 : 1)
-  const valueTop = height - height * .055 - scoreSize * scale
-  withEnter(ctx, enter(timeMs, 1050, 520), () => {
-    text('TOTAL SCORE', inset, valueTop - 43 * scale, shareCardLayout.scoreLabelSize)
-    text(formatShareScore(slide.currentScore), inset - 8 * scale, valueTop, scoreSize)
-    text('POTENTIAL', width - inset, valueTop - 43 * scale, shareCardLayout.scoreLabelSize, 'right')
-    text(formatShareScore(slide.potentialScore), width - inset + 20 * scale, valueTop, scoreSize, 'right', .8)
-  })
 }
 
 function formatShareScore(value: string) { return value.trim() && Number.isFinite(Number(value)) ? Number(value).toFixed(1) : '--' }

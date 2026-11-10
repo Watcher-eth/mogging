@@ -34,7 +34,7 @@ export function WebAnalysisReport({ report, imageSrc, landmarks, pslScore, child
   categories.push({ id: 'overall', title: 'Overall', subtitle: 'Facial harmony, structure and balance', scoreLabel: 'Mogging Score', score: report.overallScore, features: [], explanation: report.summary })
   const overallGroups: WebRubricGroup[] = [{ id: 'overall', title: 'Overall', rubrics: [
     { id: 'overall.psl', label: 'PSL score', value: `${pslScore.toFixed(1)} / 8`, visual: 'Orbit', scale: 'quality', positions: [pslScore / 8], grade: null },
-    ...overallFeatures.map(([label, score]) => ({ id: `overall.${label}`, label, value: `${score.toFixed(1)} / 10`, visual: label === 'Symmetry' ? 'Orbit' : 'Text', scale: 'quality' as const, positions: label === 'Symmetry' ? [score / 10] : [], grade: null })),
+    ...overallFeatures.map(([label, score]) => ({ id: `overall.${label}`, label, value: `${score.toFixed(1)} / 10`, visual: 'Orbit', scale: 'quality' as const, positions: [score / 10], grade: null })),
   ] }]
   return <div className={styles.reportShell}><AnalysisReport naturalImage categories={categories} imageSrc={imageSrc} landmarks={landmarks} score={report.overallScore} pslScore={pslScore} renderDetails={category => <V2ReportDetail category={category} groups={category.id === 'overall' ? overallGroups : buildWebRubricGroups(category.id, report.entries)} />}>{children}</AnalysisReport></div>
 }

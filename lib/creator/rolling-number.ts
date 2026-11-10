@@ -1,5 +1,3 @@
-export type NumberPort = { id: string; value: number; current: number; decimals: number; progress: number; duration: number; x: number; y: number; width: number; height: number; fontSize: number; color: string; opacity: number }
-export type NumberSink = (port: NumberPort) => boolean
 export function rollingNumberWidth(ctx: CanvasRenderingContext2D, text: string) {
   const digit = Math.max(...Array.from({ length: 10 }, (_, value) => ctx.measureText(String(value)).width))
   return Array.from(text).reduce((sum, character) => sum + (/\d/.test(character) ? digit : ctx.measureText(character).width), 0)
@@ -13,13 +11,8 @@ export function digitColumns(value: number, decimals: number, progress: number) 
   })
 }
 
-export function drawRollingNumber(ctx: CanvasRenderingContext2D, id: string, value: number, decimals: number, x: number, baseline: number, size: number, progress: number, sink?: NumberSink) {
+export function drawRollingNumber(ctx: CanvasRenderingContext2D, value: number, decimals: number, x: number, baseline: number, size: number, progress: number) {
   const text = value.toFixed(decimals), width = rollingNumberWidth(ctx, text)
-  const matrix = ctx.getTransform?.()
-  if (sink && matrix && Number.isFinite(matrix.a) && matrix.a > 0 && matrix.d > 0 && Math.abs(matrix.b) < .0001 && Math.abs(matrix.c) < .0001) {
-    const point = { x: matrix.a * x + matrix.c * baseline + matrix.e, y: matrix.b * x + matrix.d * baseline + matrix.f }
-    if (sink({ id, value, current: value * progress, decimals, progress, duration: 1050, x: point.x, y: point.y - size * matrix.d * .92, width: width * matrix.a, height: size * matrix.d * 1.25, fontSize: size * matrix.a, color: String(ctx.fillStyle), opacity: ctx.globalAlpha })) return width
-  }
   ctx.save(); ctx.textBaseline = 'alphabetic'; ctx.textAlign = 'left'
   let left = x
   for (const column of digitColumns(value, decimals, progress)) {

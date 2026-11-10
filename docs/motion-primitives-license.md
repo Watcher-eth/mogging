@@ -19,4 +19,9 @@ AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
 LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
-app/page.tsx
+
+## Integration scope
+
+Motion Primitives by ibelick: https://github.com/ibelick/motion-primitives
+
+The creator studio adapts In View, Transition Panel, Text Effect and Animated Group appearance patterns through `components/creator/motion-primitives.tsx` and `lib/creator/motion-presets.ts`. The [Progressive Blur component](https://github.com/ibelick/motion-primitives/blob/main/components/core/progressive-blur.tsx) supplies the layered, gradient-masked blur approach adapted in `lib/creator/video-progressive-blur.ts`. The canvas version processes only a downsampled caption strip, reuses three surfaces, and samples its entrance on the caption clock instead of mounting DOM backdrop filters. Canvas equivalents use explicit timestamps rather than a DOM animation clock. Existing native shimmer, rolling numbers, border beams and highlights retain their single canvas owners. See `creator-animation-adapters.md` for the component mapping and intentional differences.

@@ -32,6 +32,7 @@ export type AdminAttributionReport = {
 }
 
 export type AdminCreator = {
+  videoStudioAccess?: boolean
   bundledPayouts?: boolean
   id: string
   displayName: string
@@ -75,6 +76,7 @@ export type AdminAccount = {
 }
 
 export type AdminSubmission = {
+  studioGenerationId?: string | null
   exclusivityConfirmed?: boolean
   updatedAt?: string
   creatorAvatarUrl?: string | null

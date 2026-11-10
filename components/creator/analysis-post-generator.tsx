@@ -34,7 +34,7 @@ const initialInput: AnalysisPostInput = {
   cta: 'Get your Mogging score—link in bio.',
 }
 
-const VideoStudio = dynamic(() => import('./video-studio'), { ssr: false, loading: () => <p role="status" className="p-6 text-sm text-zinc-500">Opening visual engine…</p> })
+const VideoStudio = dynamic(() => import('./video-studio'), { ssr: false, loading: () => <p role="status" className="p-6 text-sm text-zinc-500">Opening video studio…</p> })
 
 export function AnalysisPostGenerator({ images, onOpenAssets, onOpenMockReport }: { images: GeneratorImage[]; onOpenAssets: () => void; onOpenMockReport: () => void }) {
   const [input, setInput] = useState<AnalysisPostInput>(initialInput)
@@ -61,10 +61,10 @@ export function AnalysisPostGenerator({ images, onOpenAssets, onOpenMockReport }
     }
   }
 
-  if (videoOpen) return <VideoStudio input={input} plan={buildAnalysisPost(input)} images={images} onBack={() => setVideoOpen(false)} />
+  if (videoOpen) return <VideoStudio input={input} plan={buildAnalysisPost(input)} images={images} />
 
   return <div className="grid gap-5">
-    <div className="creator-surface flex flex-wrap items-center justify-between gap-4 p-4 sm:p-5"><div><h2 className="text-sm font-semibold">Build the visual video</h2><p className="mt-1 text-xs leading-5 text-zinc-500">Script-directed app scenes, expanded native report cards, cinematic cuts and editable motion primitives.</p></div><Button className="h-11 rounded-full" onClick={() => setVideoOpen(true)}><Film className="size-4" />Open visual engine</Button></div>
+    <div className="creator-surface flex flex-wrap items-center justify-between gap-4 p-4 sm:p-5"><div><h2 className="text-sm font-semibold">Create a video</h2><p className="mt-1 text-xs leading-5 text-zinc-500">Choose a person, compare five visual styles, and preview a vertical video in the phone simulator.</p></div><Button className="h-11 rounded-full" onClick={() => setVideoOpen(true)}><Film className="size-4" />Open video studio</Button></div>
     <div className="grid items-start gap-6 xl:grid-cols-[minmax(0,0.9fr)_minmax(420px,1.1fr)]">
     <section className="creator-surface grid gap-5 p-5 sm:p-6">
       <div className="flex items-start justify-between gap-4">
