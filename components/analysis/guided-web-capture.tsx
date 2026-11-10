@@ -19,7 +19,7 @@ const guideStyle = {
   '--face-guide-bottom': `${(guide.centerY + guide.height / 2) * 100}%`,
 } as CSSProperties
 
-export function GuidedWebCapture({ videoRef, cameraReady, error, onUpload, onClose, takeFrontPhoto, onComplete, analyticsEnabled = false }: {
+export function GuidedWebCapture({ videoRef, cameraReady, error, onUpload, onClose, takeFrontPhoto, onFrontPhoto, onComplete, analyticsEnabled = false }: {
   analyticsEnabled?: boolean
   videoRef: RefObject<HTMLVideoElement | null>
   cameraReady: boolean
@@ -27,6 +27,7 @@ export function GuidedWebCapture({ videoRef, cameraReady, error, onUpload, onClo
   onUpload: () => void
   onClose: () => void
   takeFrontPhoto: (zoom: number) => string | undefined
+  onFrontPhoto?: (dataUrl: string | null) => void
   onComplete: (dataUrl: string) => void
 }) {
   const reduced = useReducedMotion()
@@ -79,6 +80,7 @@ export function GuidedWebCapture({ videoRef, cameraReady, error, onUpload, onClo
       return
     }
     setFrontPhoto(image)
+    onFrontPhoto?.(image)
     playShutter()
     if (analyticsEnabled) trackWebEvent('face_capture_result', {
       surface: 'web_analysis', step: 'capture.front', result: 'front_saved',
@@ -174,6 +176,7 @@ export function GuidedWebCapture({ videoRef, cameraReady, error, onUpload, onClo
   function restart() {
     track('restarted')
     setFrontPhoto(null)
+    onFrontPhoto?.(null)
     frontPose.current = null
     setCountdown(3)
     setCovered(emptyRing)

@@ -1,6 +1,13 @@
 // Web port of the mobile onboarding sequence and copy.
 export type OnboardingProfileStepId = "dating" | "motivation" | "relevance" | "agency" | "transformation" | "goals" | "obstacle" | "experience" | "methods" | "evidence" | "age" | "gender" | "time" | "commit";
 
+export type MobileOnboardingProgress = {
+  step: OnboardingProfileStepId
+  answers: Partial<Record<OnboardingProfileStepId, string[]>>
+}
+
+export const initialMobileOnboarding: MobileOnboardingProgress = { step: 'dating', answers: {} }
+
 export function getOnboardingProfileSteps(experience: unknown, variant: "full" | "short" = "full"): OnboardingProfileStepId[] {
   const hasExperience = experience === "tried" || experience === "active";
   const steps: OnboardingProfileStepId[] = ["dating", "motivation", "relevance", "agency", "transformation", "goals", "obstacle", "experience", ...(hasExperience ? ["methods" as const] : []), "evidence", "age", "gender", "time", "commit"];

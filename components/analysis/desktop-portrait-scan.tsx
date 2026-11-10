@@ -45,21 +45,24 @@ const focusAnchors: Partial<Record<typeof frontPasses[number]['category'], (keyo
   symmetry: ['noseBridge', 'chin'],
 }
 
-export function DesktopPortraitScan({ front, side, onComplete, processing }: {
+export function DesktopPortraitScan({ front, side, startedAt, onComplete, processing }: {
   front?: AnalysisDraftImage
   side?: AnalysisDraftImage
+  startedAt?: number
   onComplete?: () => void
   processing?: { stage: number; label: string }
 }) {
   const reduce = useReducedMotion()
-  const [cut, setCut] = useState(0)
+  const [initialElapsed] = useState(() => startedAt ? Math.min(duration, Math.max(0, Date.now() - startedAt)) : 0)
+  const [cut, setCut] = useState(() => passes.findLastIndex(pass => pass.at <= initialElapsed))
   const showFront = !side || cut >= profilePasses.length
 
   useEffect(() => {
-    const cues = passes.slice(1).map(({ at }, index) => window.setTimeout(() => setCut(index + 1), at))
-    if (onComplete) cues.push(window.setTimeout(onComplete, duration))
+    const cues = passes.flatMap(({ at }, index) => at > initialElapsed
+      ? [window.setTimeout(() => setCut(index), at - initialElapsed)] : [])
+    if (onComplete) cues.push(window.setTimeout(onComplete, duration - initialElapsed))
     return () => cues.forEach(window.clearTimeout)
-  }, [onComplete])
+  }, [initialElapsed, onComplete])
 
   return <div className="desktop-portrait-scan">
     <motion.div layoutId="analysis-portrait" transition={{ layout: { duration: reduce ? 0 : .7, ease } }} className="desktop-scan-stage">
@@ -70,7 +73,7 @@ export function DesktopPortraitScan({ front, side, onComplete, processing }: {
     </motion.div>
     <div className="desktop-scan-status">
       <span>{processing ? `${Math.min(processing.stage + 1, 3)} of 3 · Private analysis` : showFront ? '2 of 2 · Front photo' : '1 of 2 · Side photo'}</span>
-      {processing ? <AnalysisProgress {...processing} /> : <AnalysisProgress label={passes[cut].label} durationMs={duration} />}
+      {processing ? <AnalysisProgress {...processing} /> : <AnalysisProgress label={passes[cut].label} durationMs={duration - initialElapsed} initialProgress={initialElapsed / duration} />}
     </div>
   </div>
 }

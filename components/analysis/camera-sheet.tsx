@@ -16,11 +16,12 @@ type CameraSheetProps = {
   side?: boolean
   open: boolean
   onCapture: (image: { dataUrl: string; name: string }) => void
+  onFrontPhoto?: (dataUrl: string | null) => void
   onClose: () => void
   onUpload: () => void
 }
 
-export function CameraSheet({ analyticsEnabled = false, fullscreen, desktop, side, open, onCapture, onClose, onUpload }: CameraSheetProps) {
+export function CameraSheet({ analyticsEnabled = false, fullscreen, desktop, side, open, onCapture, onFrontPhoto, onClose, onUpload }: CameraSheetProps) {
   const videoRef = useRef<HTMLVideoElement | null>(null)
   const [capturedFrame, setCapturedFrame] = useState<string | null>(null)
   const [cameraReady, setCameraReady] = useState(false)
@@ -145,7 +146,7 @@ export function CameraSheet({ analyticsEnabled = false, fullscreen, desktop, sid
           {fullscreen ? <div className="absolute inset-0">
             {capturedFrame && <div className="scan-camera-still" style={{ backgroundImage: `url(${capturedFrame})` }} />}
             <GuidedWebCapture analyticsEnabled={analyticsEnabled} videoRef={videoRef} cameraReady={cameraReady} error={error}
-              onUpload={onUpload} onClose={onClose} takeFrontPhoto={takeFrontPhoto} onComplete={finishCapture} />
+              onUpload={onUpload} onClose={onClose} takeFrontPhoto={takeFrontPhoto} onFrontPhoto={onFrontPhoto} onComplete={finishCapture} />
           </div>
           : desktop ? <div className="desktop-live-capture">
             <button type="button" className="desktop-live-close" aria-label="Close camera" onClick={onClose}><X size={22} /></button>

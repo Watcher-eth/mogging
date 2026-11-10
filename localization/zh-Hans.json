@@ -109,6 +109,7 @@
   "paywall.web": "在网页付款",
   "paywall.back": "返回订阅方案",
   "paywall.creator": "创作者代码",
+  "paywall.haveCreatorCode": "有创作者代码吗？",
   "paywall.invite": "邀请 3 位好友 · 获得一次免费分析",
   "paywall.failed": "购买失败 - 请重试",
   "paywall.confirmed": "购买已确认",

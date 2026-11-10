@@ -1,6 +1,6 @@
 import { useScanFeedback } from '@/hooks/use-scan-feedback'
 import { ProgressiveBlur } from '@/components/courses/progressive-blur'
-import { useEffect, useEffectEvent, useRef, useState, type CSSProperties } from 'react'
+import { useEffect, useEffectEvent, useId, useRef, useState, type CSSProperties } from 'react'
 import { useTranslation } from 'react-i18next'
 import Image from 'next/image'
 import Link from 'next/link'
@@ -8,7 +8,7 @@ import useSWR from 'swr'
 import { paywallExperimentProperties, type PaywallExposure } from '@/lib/payments/paywall-experiment'
 import { useSession } from 'next-auth/react'
 import { AnimatePresence, motion, useReducedMotion } from 'motion/react'
-import { ArrowRight, FileText, Loader2, LockKeyhole, ScanFace, ShieldCheck, Tag, Timer } from '@/components/ui/mogging-glyphs'
+import { ArrowRight, FileText, Loader2, LockKeyhole, LockKeyholeOpen, ScanFace, ShieldCheck, Tag, Timer } from '@/components/ui/mogging-glyphs'
 import { TextMorph } from 'torph/react'
 import { ensureAnalysisWebInstallId } from '@/lib/client/analysis-install'
 import { apiGet, apiPost } from '@/lib/api/client'
@@ -24,6 +24,7 @@ import dynamic from 'next/dynamic'
 const ScanImagePanel = dynamic(() => import('@/components/analysis/scan-image-panel').then(module => module.ScanImagePanel))
 import styles from './analysis-unlock-dialog.module.css'
 import planStyles from './membership-offer.module.css'
+import type { PaywallIntroCheckpoint } from '@/lib/client/analysisDraft'
 
 const walkthroughPrices: SubscriptionPrices = {
   currency: 'usd', availableCurrencies: ['usd'],
@@ -68,12 +69,15 @@ function StarterIntroTimer({ deadline }: { deadline: number }) {
 }
 
 export type AnalysisPurchase = ReportPrice['product'] | SubscriptionProduct | WebAnalysisProduct
-export function AnalysisUnlockDialog({ fullscreen, desktopAnalysis, webCatalog, onboardingExperiment, walkthrough, imageSrc, landmarks, imageCount, open, onOpenChange, onCheckout, loading, loadingLabel, error, returnOfferSessionId, initialProduct }: {
+export function AnalysisUnlockDialog({ fullscreen, desktopAnalysis, webCatalog, onboardingExperiment, walkthrough, imageSrc, landmarks, imageCount, open, onOpenChange, onCheckout, loading, loadingLabel, error, returnOfferSessionId, initialProduct, onWebPlanSelect, savedIntro, onIntroStarted }: {
   fullscreen?: boolean; walkthrough?: boolean; imageSrc: string | null; landmarks: FaceLandmarksPayload | null; imageCount: number; open: boolean; onOpenChange: (open: boolean) => void;
   desktopAnalysis?: boolean;
   webCatalog?: boolean;
   onboardingExperiment?: PaywallExposure | null;
   initialProduct?: string;
+  onWebPlanSelect?: (plan: WebAnalysisProduct) => void;
+  savedIntro?: PaywallIntroCheckpoint;
+  onIntroStarted?: (offer: PaywallIntroCheckpoint) => void;
   onCheckout: (product: AnalysisPurchase, quote: CheckoutQuote) => void; loading: boolean; error: string | null; returnOfferSessionId?: string | null
   loadingLabel?: string
 }) {
@@ -87,11 +91,12 @@ export function AnalysisUnlockDialog({ fullscreen, desktopAnalysis, webCatalog, 
   const [selected, setSelected] = useState<SubscriptionProduct>(() => subscriptionProducts.find(plan => plan === initialProduct) ?? 'mobile_subscription_monthly')
   const [selectedWeb, setSelectedWeb] = useState<WebAnalysisProduct>(() => isWebAnalysisProduct(initialProduct) ? initialProduct : 'web_basic_monthly')
   const [creatorOpen, setCreatorOpen] = useState(false)
+  const creatorFormId = useId()
   const [creatorCode, setCreatorCode] = useState('')
   const [creatorStatus, setCreatorStatus] = useState<'idle' | 'applying' | 'applied' | 'failed'>('idle')
   const [dismissedOffer, setDismissedOffer] = useState<string | null>(null)
   const [panel, setPanel] = useState<'plans' | 'starter-intro' | 'intro-reveal'>('plans')
-  const [introWindow, setIntroWindow] = useState<{ flowId: string; deadline: number } | null>(null)
+  const [introWindow, setIntroWindow] = useState<PaywallIntroCheckpoint | null>(null)
   const [startingIntro, setStartingIntro] = useState(false)
   const titleRef = useRef<HTMLHeadingElement>(null)
   const scrollRef = useRef<HTMLDivElement>(null)
@@ -160,6 +165,7 @@ export function AnalysisUnlockDialog({ fullscreen, desktopAnalysis, webCatalog, 
     const flowId = webJourneyContext().flow_id
     if (!flowId) return
     let deadline = introWindow?.flowId === flowId ? introWindow.deadline : 0
+    if (!deadline && savedIntro?.flowId === flowId) deadline = savedIntro.deadline
     if (!deadline) {
       try { deadline = Number(sessionStorage.getItem(offerStorageKey(flowId))) || 0 } catch { /* Storage is optional. */ }
     }
@@ -300,7 +306,9 @@ export function AnalysisUnlockDialog({ fullscreen, desktopAnalysis, webCatalog, 
           const offer = walkthrough ? { deadline: serverNow + webStarterIntro.durationMs, serverNow }
             : await apiPost<{ deadline: number; serverNow: number }>('/api/payments/starter-intro', { flowId }, { signal: AbortSignal.timeout(4000) })
           const deadline = Date.now() + offer.deadline - offer.serverNow
-          setIntroWindow({ flowId, deadline })
+          const offerWindow = { flowId, deadline }
+          setIntroWindow(offerWindow)
+          onIntroStarted?.(offerWindow)
           try { sessionStorage.setItem(offerStorageKey(flowId), String(deadline)) } catch { /* Storage is optional. */ }
           if (offer.deadline > offer.serverNow) {
             setPanel('intro-reveal')
@@ -319,9 +327,27 @@ export function AnalysisUnlockDialog({ fullscreen, desktopAnalysis, webCatalog, 
     onOpenChange(false)
   }
   const morph = (value: string) => reduce ? value : <TextMorph>{value}</TextMorph>
+  const mobileWeb = fullscreen && webCatalog
+  const creatorToggle = (overPortrait = false) => <button type="button"
+    className={overPortrait ? styles.creatorPill : styles.creatorToggle}
+    aria-expanded={creatorOpen} aria-controls={creatorOpen ? creatorFormId : undefined}
+    onClick={() => {
+      if (!creatorOpen) track('attribution_diagnostic', { action: 'creator_code_opened' })
+      setCreatorOpen(!creatorOpen)
+    }}>
+    <Tag size={14} aria-hidden="true" />
+    {t(overPortrait ? 'paywall.haveCreatorCode' : 'paywall.creator')}
+  </button>
+  const creatorForm = creatorOpen && <div id={creatorFormId} className={styles.creatorForm}>
+    <label><span className="sr-only">Creator code</span><input value={creatorCode} placeholder="Enter creator code" autoCapitalize="none" maxLength={200} disabled={creatorStatus === 'applying' || loading} onChange={event => { setCreatorCode(event.target.value); setCreatorStatus('idle') }} onKeyDown={event => { if (event.key === 'Enter') { event.preventDefault(); void applyCreatorCode() } }} /></label>
+    <button type="button" disabled={!creatorCode.trim() || creatorStatus === 'applying' || loading} onClick={() => void applyCreatorCode()} aria-live="polite"><TextMorph>{creatorStatus === 'applying' ? 'Applying…' : 'Apply'}</TextMorph></button>
+    {creatorStatus === 'applied' && <p role="status">Creator code applied.{webCatalog ? ' Eligible first-time subscribers get 10% off their first payment.' : !guestCheckout && ' Eligible first-time Pro subscribers receive 10% off their first month on the monthly plan.'}</p>}
+    {creatorStatus === 'failed' && <p role="alert">Couldn’t apply that code. Check it and try again.</p>}
+  </div>
   const portrait = <>
     <ScanImagePanel imageSrc={imageSrc} landmarks={landmarks} fit="cover" showLabel={false} focusCategory={webCatalog && pro ? planOverlay : undefined} />
     <ProgressiveBlur className={styles.artBlur} blurLayers={6} intensity={10} />
+    {mobileWeb && creatorToggle(true)}
     {creatorOffer && <div className={styles.creatorBadge}>
       <SkeletonAvatar src={creatorOffer.avatarUrl} size={26} className={styles.creatorAvatar}
         alt="" referrerPolicy="no-referrer" fallback={<span aria-hidden="true">{Array.from(creatorOffer.name)[0]?.toUpperCase()}</span>} />
@@ -343,6 +369,7 @@ export function AnalysisUnlockDialog({ fullscreen, desktopAnalysis, webCatalog, 
       {desktopAnalysis && imageSrc && <div className={`${styles.art} ${styles.desktopArt}`} style={{ '--paywall-photo': `url(${JSON.stringify(imageSrc)})` } as CSSProperties}>
         {portrait}
       </div>}
+      {mobileWeb && creatorForm}
       {fullscreen && modes}
       <header><DialogTitle ref={titleRef} tabIndex={-1} className={styles.title}>{morph(title)}</DialogTitle>
         {(desktopAnalysis || fullscreen) && <p className={styles.subtitle}>{webCatalog && pro ? planHook : t('paywall.description')}</p>}
@@ -370,7 +397,7 @@ export function AnalysisUnlockDialog({ fullscreen, desktopAnalysis, webCatalog, 
           <p>Then {formatStripePrice(intro.renewal, intro.currency, i18n.language)}/month from month two.</p>
           <WebAnalysisPlanBenefits product={webStarterIntro.product} />
         </section> : pro ? webCatalog ? <WebAnalysisPlanOptions compact={shortPaywall} prices={webPrices} selected={webPlan} imageCount={imageCount} disabled={loading || startingIntro}
-          onSelect={plan => { if (fullscreen && webPlan !== plan) feedback('selection'); setSelectedWeb(plan); track('plan_selected', { plan }) }} /> : <>{shortPaywall ? <details className={planStyles.planDetails}><summary>What’s included</summary><MembershipValue scan={fullscreen} /></details> : <MembershipValue scan={fullscreen} />}{!fullscreen && <AppAccessNote />}<MembershipPlans prices={subscriptions} selected={selectedPlan} onSelect={selectPlan} minimumCredits={imageCount} disabled={loading} /></> : <><div className={styles.reportOffer}><span>{imageCount > 1 ? t('membership.threeReports') : t('membership.oneReport')}</span><strong>{report ? formatStripePrice(report.amount, report.currency, i18n.language) : '—'}<small>{t('membership.once')}</small></strong><p>{t('membership.reportDetail')}</p></div><p className={styles.reportNote}>{imageCount > 2 ? t('membership.batch') : t('membership.proDifference')}</p></>}
+          onSelect={plan => { if (fullscreen && webPlan !== plan) feedback('selection'); setSelectedWeb(plan); onWebPlanSelect?.(plan); track('plan_selected', { plan }) }} /> : <>{shortPaywall ? <details className={planStyles.planDetails}><summary>What’s included</summary><MembershipValue scan={fullscreen} /></details> : <MembershipValue scan={fullscreen} />}{!fullscreen && <AppAccessNote />}<MembershipPlans prices={subscriptions} selected={selectedPlan} onSelect={selectPlan} minimumCredits={imageCount} disabled={loading} /></> : <><div className={styles.reportOffer}><span>{imageCount > 1 ? t('membership.threeReports') : t('membership.oneReport')}</span><strong>{report ? formatStripePrice(report.amount, report.currency, i18n.language) : '—'}<small>{t('membership.once')}</small></strong><p>{t('membership.reportDetail')}</p></div><p className={styles.reportNote}>{imageCount > 2 ? t('membership.batch') : t('membership.proDifference')}</p></>}
       </motion.div></AnimatePresence>
       {priceError && !pricePending ? <p role="alert" className={styles.error}>{t('plan.unavailable')} <button type="button" onClick={retry}>{t('plan.retry')}</button></p> : null}
       {error ? <p role="alert" className={styles.error}>{error}{!loading ? <button type="button" onClick={retry}>{t('plan.retry')}</button> : null}</p> : null}
@@ -392,8 +419,9 @@ export function AnalysisUnlockDialog({ fullscreen, desktopAnalysis, webCatalog, 
         }}>
         {checkoutPending && <Loader2 size={17} className="motion-safe:animate-spin" aria-hidden="true" />}
         {!checkoutPending && desktopAnalysis && <ScanFace size={17} aria-hidden="true" />}
+        {!checkoutPending && mobileWeb && <LockKeyholeOpen size={17} aria-hidden="true" />}
         <span aria-live="polite"><TextMorph>{actionLabel}</TextMorph></span>
-        {!checkoutPending && <>
+        {!checkoutPending && !mobileWeb && <>
           {shownPrice?.unitAmount != null && <span className={styles.ctaPrice}>{morph(formatStripePrice(shownPrice.unitAmount, shownPrice.currency, i18n.language))}</span>}
           {!desktopAnalysis && <ArrowRight size={17} aria-hidden="true" />}
         </>}
@@ -401,26 +429,18 @@ export function AnalysisUnlockDialog({ fullscreen, desktopAnalysis, webCatalog, 
       {showIntro ? <div className={styles.offerActions}>
         <button type="button" disabled={loading} onClick={() => setPanel('plans')}>Back to plans</button>
         <button type="button" disabled={loading} onClick={close}>No thanks</button>
-      </div> : <><div className={styles.checkoutLinks}>
-        <button type="button" className={styles.creatorToggle} aria-expanded={creatorOpen} onClick={() => {
-          if (!creatorOpen) track('attribution_diagnostic', { action: 'creator_code_opened' })
-          setCreatorOpen(!creatorOpen)
-        }}><Tag size={14} aria-hidden="true" /> {t('paywall.creator')}</button>
+      </div> : !mobileWeb && <><div className={styles.checkoutLinks}>
+        {creatorToggle()}
         {desktopAnalysis && <>
           <Link className={styles.creatorToggle} href="/tos"><FileText size={14} aria-hidden="true" />{t('footer.terms', { defaultValue: 'Terms' })}</Link>
           <Link className={styles.creatorToggle} href="/privacy"><LockKeyhole size={14} aria-hidden="true" />{t('footer.privacy', { defaultValue: 'Privacy' })}</Link>
         </>}
       </div>
-      {creatorOpen && <div className={styles.creatorForm}>
-        <label><span className="sr-only">Creator code</span><input value={creatorCode} placeholder="Enter creator code" autoCapitalize="none" maxLength={200} disabled={creatorStatus === 'applying' || loading} onChange={event => { setCreatorCode(event.target.value); setCreatorStatus('idle') }} onKeyDown={event => { if (event.key === 'Enter') { event.preventDefault(); void applyCreatorCode() } }} /></label>
-        <button type="button" disabled={!creatorCode.trim() || creatorStatus === 'applying' || loading} onClick={() => void applyCreatorCode()} aria-live="polite"><TextMorph>{creatorStatus === 'applying' ? 'Applying…' : 'Apply'}</TextMorph></button>
-        {creatorStatus === 'applied' && <p role="status">Creator code applied.{webCatalog ? ' Eligible first-time subscribers get 10% off their first payment.' : !guestCheckout && ' Eligible first-time Pro subscribers receive 10% off their first month on the monthly plan.'}</p>}
-        {creatorStatus === 'failed' && <p role="alert">Couldn’t apply that code. Check it and try again.</p>}
-      </div>}</>}
-      {!desktopAnalysis && <CheckoutLegal />}</footer>
+      {creatorForm}</>}
+      {!desktopAnalysis && !mobileWeb && <CheckoutLegal />}</footer>
     </div>
   </>
-  return <Dialog open={open} onOpenChange={next => next ? onOpenChange(true) : void close()}><DialogContent aria-describedby={undefined} className={styles.dialog} overlayClassName={desktopAnalysis ? 'bg-black/25 backdrop-blur-md' : undefined} data-desktop-analysis={desktopAnalysis || undefined} data-scan-fullscreen={fullscreen || undefined} data-paywall-length={shortPaywall && pro && !showIntro && !showReturnOffer ? 'short' : undefined} data-offer={showIntro ? 'starter-intro' : pro ? 'pro' : 'report'}>
+  return <Dialog open={open} onOpenChange={next => next ? onOpenChange(true) : void close()}><DialogContent aria-describedby={undefined} className={styles.dialog} overlayClassName={desktopAnalysis ? 'bg-black/25 backdrop-blur-md' : undefined} data-desktop-analysis={desktopAnalysis || undefined} data-scan-fullscreen={fullscreen || undefined} data-mobile-web={mobileWeb || undefined} data-paywall-length={shortPaywall && pro && !showIntro && !showReturnOffer ? 'short' : undefined} data-offer={showIntro ? 'starter-intro' : pro ? 'pro' : 'report'}>
     {content}
     {desktopAnalysis && <div className={styles.stripeBadge}>
       <ShieldCheck size={13} aria-hidden="true" /> Secure checkout with <Image src="/courses/stripe-wordmark-white.svg" alt="Stripe" width={39} height={16} />

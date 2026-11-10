@@ -109,6 +109,7 @@
   "paywall.web": "Im Web bezahlen",
   "paywall.back": "Zurück zu den Plänen",
   "paywall.creator": "Creator-Code",
+  "paywall.haveCreatorCode": "Hast du einen Creator-Code?",
   "paywall.invite": "Lade 3 Freunde ein · Erhalte einen Scan",
   "paywall.failed": "Kauf fehlgeschlagen - erneut versuchen",
   "paywall.confirmed": "Kauf bestätigt",

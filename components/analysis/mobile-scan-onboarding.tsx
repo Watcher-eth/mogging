@@ -7,7 +7,7 @@ import { AnimatePresence, motion, useReducedMotion } from 'motion/react'
 import { Activity, ArrowUpRight, Camera, Check, Clock3, Droplet, Dumbbell, Eye, FlaskConical, Focus, Heart, ListChecks, MessageCircle, Repeat2, ScanFace, Sparkles, Syringe, Users, Utensils, TriangleAlert } from '@/components/ui/mogging-glyphs'
 import { useLayoutEffect, useRef, useState } from 'react'
 import { ScanButton, scanPart, scanSequence } from './mobile-scan-pwa'
-import { getOnboardingProfileSteps, motivations, obstacles, onboardingChoices, relevanceCopy, storyHeadings, type OnboardingProfileStepId } from '@/lib/client/scan-onboarding'
+import { getOnboardingProfileSteps, motivations, obstacles, onboardingChoices, relevanceCopy, storyHeadings, type MobileOnboardingProgress, type OnboardingProfileStepId } from '@/lib/client/scan-onboarding'
 import styles from './mobile-scan-pwa.module.css'
 
 const inputs = ['goals', 'experience', 'methods', 'age', 'gender', 'time']
@@ -27,7 +27,9 @@ const choiceIcons: Partial<Record<OnboardingProfileStepId, Record<string, typeof
     'bone-smashing': TriangleAlert, diets: Utensils, peptides: FlaskConical, other: Sparkles },
 }
 
-export function MobileScanOnboarding({ onComplete, analyticsEnabled = false, experiment }: {
+export function MobileScanOnboarding({ profile, onProgress, onComplete, analyticsEnabled = false, experiment }: {
+  profile: MobileOnboardingProgress
+  onProgress: (progress: MobileOnboardingProgress) => void
   experiment?: PaywallExposure | null
   analyticsEnabled?: boolean
   onComplete: (gender: 'male' | 'female' | 'other') => void
@@ -36,10 +38,14 @@ export function MobileScanOnboarding({ onComplete, analyticsEnabled = false, exp
   const feedback = useScanFeedback()
   const lastAdvancedStep = useRef<OnboardingProfileStepId | null>(null)
   const [comparison, setComparison] = useState(50)
-  const [index, setIndex] = useState(0)
-  const [answers, setAnswers] = useState<Partial<Record<OnboardingProfileStepId, string[]>>>({})
-  const steps = getOnboardingProfileSteps(answers.experience?.[0], experiment?.arm === 'treatment' ? 'short' : 'full')
-  const step = steps[index] ?? 'commit'
+  const { answers } = profile
+  const variant = experiment?.arm === 'treatment' ? 'short' : 'full'
+  const steps = getOnboardingProfileSteps(answers.experience?.[0], variant)
+  const fullSteps = getOnboardingProfileSteps(answers.experience?.[0])
+  const resumedStep = steps.includes(profile.step) ? profile.step
+    : fullSteps.slice(fullSteps.indexOf(profile.step) + 1).find(step => steps.includes(step)) ?? steps[0]
+  const index = steps.indexOf(resumedStep)
+  const step = steps[index]
   const heading: { eyebrow?: string; title: string; body: string } | undefined = step === 'relevance' ? relevanceCopy[answers.motivation?.[0] ?? 'confidence']
     : step === 'dating' ? { title: 'Dating starts\nwith a first look.', body: 'More couples meet online. Your photos are your first introduction.' }
     : storyHeadings[step]
@@ -56,9 +62,9 @@ export function MobileScanOnboarding({ onComplete, analyticsEnabled = false, exp
 
   function choose(id: string) {
     if (analyticsEnabled) trackWebEvent('onboarding_interaction', { surface: 'web_analysis', step: `profile.${step}`, action: 'selection_changed' })
-    setAnswers(current => ({ ...current, [step]: multiple
+    onProgress({ step, answers: { ...answers, [step]: multiple
       ? selected.includes(id) ? selected.filter(value => value !== id) : [...selected, id]
-      : [id] }))
+      : [id] } })
   }
 
   function next() {
@@ -75,8 +81,9 @@ export function MobileScanOnboarding({ onComplete, analyticsEnabled = false, exp
       onComplete(gender === 'male' || gender === 'female' ? gender : 'other')
       return
     }
-    if (wheel && !selected.length && fallback) choose(fallback)
-    setIndex(index + 1)
+    const nextAnswers = wheel && !selected.length && fallback ? { ...answers, [step]: [fallback] } : answers
+    const nextSteps = getOnboardingProfileSteps(nextAnswers.experience?.[0], variant)
+    onProgress({ step: nextSteps[nextSteps.indexOf(step) + 1] ?? 'commit', answers: nextAnswers })
   }
 
   return <AnimatePresence mode="wait" propagate>

@@ -6,7 +6,8 @@ import { webJourneyContext, restoreWebJourney } from '@/lib/analytics/web-journe
 import { rememberStripeAttempt, takeStripeAttempt, readStripeAttempt, clearStripeAttempt, stripeAttemptProperties } from '@/lib/client/stripe-attempt'
 import { usePortraitHandoff } from '@/components/analysis/use-portrait-handoff'
 import { ensureAnalysisWebInstallId } from '@/lib/client/analysis-install'
-import { isWebAnalysisProduct } from '@/lib/payments/web-analysis-plans'
+import { isWebAnalysisProduct, type WebAnalysisProduct } from '@/lib/payments/web-analysis-plans'
+import { initialMobileOnboarding } from '@/lib/client/scan-onboarding'
 import { ScanInstallGuide } from '@/components/analysis/scan-install-guide'
 import { TextMorph } from 'torph/react'
 import sampleLandmarks from '@/components/analysis/scan-welcome-landmarks.json'
@@ -47,7 +48,7 @@ import { useSession } from 'next-auth/react'
 import { SkeletonImage } from '@/components/ui/skeleton-image'
 import dynamic from 'next/dynamic'
 import { useRouter } from 'next/router'
-import { forwardRef, useCallback, useEffect, useMemo, useRef, useState, type ChangeEvent, type ReactNode } from 'react'
+import { forwardRef, useCallback, useEffect, useEffectEvent, useMemo, useRef, useState, type ChangeEvent, type ReactNode } from 'react'
 import { toast } from 'sonner'
 import { useSound } from '@web-kits/audio/react'
 import useSWR, { useSWRConfig } from 'swr'
@@ -60,6 +61,11 @@ import {
   saveCheckoutAnalysisDraft,
   loadAnalysisDraft,
   saveAnalysisDraft,
+  loadAnalysisCheckpoint,
+  saveAnalysisCheckpoint,
+  clearAnalysisCheckpoint,
+  type AnalysisCheckpoint,
+  type PaywallIntroCheckpoint,
   type AnalysisDraftImage,
   loadAnalysisSidePhoto,
   saveAnalysisSidePhoto,
@@ -269,6 +275,7 @@ export default function AnalysisPage({ startWithPhoto, phoneEntry, uploadFirst, 
   const [gender, setGender] = useState<'male' | 'female' | 'other'>('other')
   const [setupIndex, setSetupIndex] = useState(0)
   const [captureStep, setCaptureStep] = useState<DesktopCaptureStep>('front')
+  const [mobileProfile, setMobileProfile] = useState(initialMobileOnboarding)
   const [desktopDirection, setDesktopDirection] = useState<1 | -1>(1)
   const [chosenProfile, setChosenProfile] = useState<AnalysisGender | null>(null)
   const [preferences, setPreferences] = useState<DesktopAnalysisPreferences>({})
@@ -302,25 +309,34 @@ export default function AnalysisPage({ startWithPhoto, phoneEntry, uploadFirst, 
   const [offerInstall, setOfferInstall] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [cameraOpen, setCameraOpen] = useState(false)
+  const [cameraFront, setCameraFront] = useState<AnalysisDraftImage | null>(null)
   const [analysisUnlocked, setAnalysisUnlocked] = useState(false)
   const [returnOfferSessionId, setReturnOfferSessionId] = useState<string | null>(null)
   const [returnProduct, setReturnProduct] = useState<string>()
   const preferredPlan = isWebAnalysisProduct(router.query.plan) ? router.query.plan : undefined
   const [paymentDialogOpen, setPaymentDialogOpen] = useState(false)
+  const [paywallPlan, setPaywallPlan] = useState<WebAnalysisProduct>()
+  const [paywallIntro, setPaywallIntro] = useState<PaywallIntroCheckpoint>()
   const [autoPaywall, setAutoPaywall] = useState(false)
   const afterDesktopScan = useRef<(() => void) | null>(null)
   const [basicReport, setBasicReport] = useState<BasicReportData | null>(null)
   const basicResume = useRef(false)
+  const checkpointScope = `${mobileScan ? 'mobile' : 'desktop'}:${session?.user?.id ?? 'guest'}`
+  const checkpointEnabled = !previewDevice && !walkthrough && !sampleReport
+  const specialEntry = Boolean(router.query.checkout || router.query.analysisId || router.query.resumePhoto || router.query.basic)
+  const [loadedCheckpointScope, setLoadedCheckpointScope] = useState<string>()
+  const restoredCheckpoint = useRef(false)
+  const checkpointReady = !checkpointEnabled || specialEntry || loadedCheckpointScope === checkpointScope
   const desktopPreview = !mobileScan && step === 'actual-analysis' && !analysisUnlocked
   const desktopReport = desktopPreview || (!mobileScan && step === 'results' && !offerInstall)
   const desktopStep = step === 'desktop-setup' ? `profile.${setupStep}` : step === 'upload' ? `capture.${captureStep}` : step
-  const completeStep = useWebStep(desktopPreview ? 'report-preview' : mobileScan ? step : desktopStep, !walkthrough, mobileScan ? WEB_ANALYSIS_VARIANTS.mobile : WEB_ANALYSIS_VARIANTS.desktop, onboardingExperiment)
+  const completeStep = useWebStep(desktopPreview ? 'report-preview' : mobileScan ? step : desktopStep, !walkthrough && checkpointReady, mobileScan ? WEB_ANALYSIS_VARIANTS.mobile : WEB_ANALYSIS_VARIANTS.desktop, onboardingExperiment)
   const enteredExperiment = useRef<string | undefined>(undefined)
   useEffect(() => {
-    if (!onboardingExperiment || enteredExperiment.current === onboardingExperiment.unit || (step !== 'intro' && step !== 'desktop-setup')) return
+    if (!checkpointReady || !onboardingExperiment || enteredExperiment.current === onboardingExperiment.unit || (step !== 'intro' && step !== 'desktop-setup')) return
     enteredExperiment.current = onboardingExperiment.unit
     trackWebEvent('onboarding_interaction', { surface: 'web_analysis', action: 'experiment_entered', ...paywallExperimentProperties(onboardingExperiment) })
-  }, [onboardingExperiment, step])
+  }, [checkpointReady, onboardingExperiment, step])
   const desktopConsentNotice = <div className="max-w-sm space-y-2 text-sm">
     {!inlineConsent && <label className="flex cursor-pointer items-center gap-2">
       <input type="checkbox" className="size-4 shrink-0 accent-black" checked={privacyAccepted} onChange={event => setPrivacyAccepted(event.target.checked)} />
@@ -357,6 +373,80 @@ export default function AnalysisPage({ startWithPhoto, phoneEntry, uploadFirst, 
   const [desktopPhotoStatus, setDesktopPhotoStatus] = useState<string | null>(null)
   const [landmarkPendingIds, setLandmarkPendingIds] = useState<Record<string, boolean>>({})
   const [imageFramePositions, setImageFramePositions] = useState<ImageFramePositions>({})
+  const [previewDeadline, setPreviewDeadline] = useState<number | null>(null)
+  const [desktopScanStartedAt, setDesktopScanStartedAt] = useState<number>()
+
+  const restoreCheckpoint = useEffectEvent((checkpoint: AnalysisCheckpoint | null) => {
+    if (!checkpoint && !loadedCheckpointScope) return
+    setCameraOpen(false)
+    setCameraFront(null)
+    setError(null)
+    const {
+      images: savedImages = [], gender: savedGender = 'other', captureStep: savedCaptureStep = 'front',
+      preferences: savedPreferences = {}, imageFramePositions: savedFrames = {},
+    } = checkpoint ?? {}
+    if (checkpoint?.flowId && Date.now() - checkpoint.savedAt < 86_400_000) restoreWebJourney(checkpoint.flowId)
+    const resumedPhoto = mobileScan && checkpoint?.step === 'upload' ? checkpoint.cameraFront : undefined
+    setImages(resumedPhoto ? [...savedImages.slice(0, 2), resumedPhoto] : savedImages)
+    setSelectedImageId(resumedPhoto?.id ?? checkpoint?.selectedImageId ?? null)
+    setImageFramePositions(savedFrames)
+    setGender(savedGender)
+    setMobileProfile(checkpoint?.mobileProfile ?? initialMobileOnboarding)
+    setChosenProfile(checkpoint?.chosenProfile ?? null)
+    setPreferences(savedPreferences)
+    setBackground(checkpoint?.background ?? skipEthnicity)
+    setPrivacyAccepted(Boolean(checkpoint?.desktopConsent))
+    const setupIndex = setupSteps.findIndex(step => step === checkpoint?.desktopSetup)
+    setSetupIndex(setupIndex >= 0 ? setupIndex : checkpoint?.desktopSetup === 'privacy' ? setupSteps.length - 1 : 0)
+    const front = savedImages.some(image => image.view !== 'side')
+    const side = savedImages.some(image => image.view === 'side')
+    const canPreview = front && (mobileScan || side)
+    setCaptureStep(!front ? 'front' : !side && savedCaptureStep === 'review' ? 'side' : savedCaptureStep)
+    setPaywallPlan(checkpoint?.paywallPlan)
+    setPaywallIntro(checkpoint?.paywallIntro)
+    setAnalysisUnlocked(false)
+    setPaymentDialogOpen(canPreview && Boolean(checkpoint?.paywallOpen))
+    setAutoPaywall(canPreview && Boolean(checkpoint?.autoPaywall))
+    const savedStep = checkpoint?.step ?? entryStep
+    setPreviewDeadline(savedStep === 'preview-analysis' ? checkpoint?.previewDeadline ?? Date.now() + 10_000 : null)
+    setDesktopScanStartedAt(savedStep === 'desktop-scan' ? checkpoint?.desktopScanStartedAt ?? Date.now() : undefined)
+    const scanStep = savedStep === 'desktop-scan' || savedStep === 'preview-analysis' || savedStep === 'actual-analysis'
+    setStep(scanStep && !canPreview ? 'upload' : savedStep)
+  })
+
+  useEffect(() => {
+    if (!checkpointEnabled || !router.isReady || status === 'loading' || loadedCheckpointScope === checkpointScope) return
+    if (specialEntry) {
+      setLoadedCheckpointScope(checkpointScope)
+      return
+    }
+    let active = true
+    void loadAnalysisCheckpoint(checkpointScope).catch(() => null).then(checkpoint => {
+      if (!active) return
+      restoredCheckpoint.current = Boolean(checkpoint)
+      restoreCheckpoint(checkpoint)
+      setLoadedCheckpointScope(checkpointScope)
+    })
+    return () => { active = false }
+  }, [checkpointEnabled, checkpointScope, loadedCheckpointScope, router.isReady, specialEntry, status])
+
+  useEffect(() => {
+    if (!checkpointEnabled || !router.isReady || specialEntry || loadedCheckpointScope !== checkpointScope) return
+    if (step === 'results' || step === 'basic-report' || step === 'payment' || step === 'intro') return
+    // Paid processing is recovered by the existing Stripe return handler.
+    // Without a return URL, reopen the submitted photos for another access check.
+    const safeStep = analysisUnlocked && step === 'actual-analysis' ? 'upload' : step
+    void saveAnalysisCheckpoint(checkpointScope, {
+      step: safeStep,
+      savedAt: Date.now(),
+      flowId: webJourneyContext().flow_id,
+      images, gender, mobileProfile, desktopSetup: setupStep, captureStep, chosenProfile, background,
+      preferences, desktopConsent: privacyAccepted, selectedImageId, cameraFront: cameraFront ?? undefined, imageFramePositions, previewDeadline,
+      desktopScanStartedAt, autoPaywall, paywallOpen: paymentDialogOpen && !analysisUnlocked, paywallPlan, paywallIntro,
+    }).catch(() => {})
+  }, [analysisUnlocked, autoPaywall, background, cameraFront, captureStep, checkpointEnabled, checkpointScope, chosenProfile, desktopScanStartedAt,
+    gender, imageFramePositions, images, loadedCheckpointScope, mobileProfile, paymentDialogOpen, paywallIntro, paywallPlan,
+    preferences, previewDeadline, privacyAccepted, router.isReady, selectedImageId, setupStep, specialEntry, step])
 
   const primaryResult = results[0]
   const primaryScore = primaryResult?.analysis.pslScore ?? null
@@ -425,8 +515,6 @@ export default function AnalysisPage({ startWithPhoto, phoneEntry, uploadFirst, 
       void enrichImageLandmarks(image)
     })
   }
-
-  const [previewDeadline, setPreviewDeadline] = useState<number | null>(null)
 
   async function startPseudoAnalysis(cameraPhoto?: AnalysisDraftImage) {
     if ((!canStart && !cameraPhoto) || (!mobileScan && !privacyAccepted && !inlineConsent && !walkthrough)) return
@@ -621,6 +709,7 @@ export default function AnalysisPage({ startWithPhoto, phoneEntry, uploadFirst, 
     setPaymentDialogOpen(false)
     setAnalysisUnlocked(Boolean(runWithCredits))
     setProgress(1)
+    setDesktopScanStartedAt(Date.now())
     afterDesktopScan.current = runWithCredits ?? null
     setSidePortrait(photos.find(photo => photo.view === 'side') ?? null)
     setStep('desktop-scan')
@@ -629,6 +718,7 @@ export default function AnalysisPage({ startWithPhoto, phoneEntry, uploadFirst, 
   const finishDesktopScan = useCallback(() => {
     const runWithCredits = afterDesktopScan.current
     afterDesktopScan.current = null
+    setDesktopScanStartedAt(undefined)
     setStep('actual-analysis')
     if (runWithCredits) runWithCredits()
     else setAutoPaywall(true)
@@ -722,7 +812,7 @@ export default function AnalysisPage({ startWithPhoto, phoneEntry, uploadFirst, 
       setResults(analysisResults)
       trackWebEvent('evaluation_completed', { ...analytics, report_id: analysisResults[0]?.analysis.id, duration_ms: Date.now() - analyticsStarted })
       setStep('results')
-      await clearAnalysisDraft().catch(() => {})
+      await Promise.all([clearAnalysisDraft(), clearAnalysisCheckpoint(checkpointScope, frontImages[0].id)]).catch(() => {})
       return analysisResults[0]?.analysis.id
     } catch (analysisError) {
       trackWebEvent('evaluation_failed', { ...analytics, duration_ms: Date.now() - analyticsStarted, reason_code: analysisError instanceof ApiClientError ? analysisError.code : failedScanRequest.current ? 'evaluation_failed' : 'request_failed', http_status: analysisError instanceof ApiClientError ? analysisError.status : undefined })
@@ -732,7 +822,7 @@ export default function AnalysisPage({ startWithPhoto, phoneEntry, uploadFirst, 
       setScanRequest(null)
       analysisRunningRef.current = false
     }
-  }, [])
+  }, [checkpointScope])
 
   const startCheckout = useCallback(async (product: AnalysisPurchase, quote: CheckoutQuote) => {
     if (walkthrough) {
@@ -858,6 +948,8 @@ export default function AnalysisPage({ startWithPhoto, phoneEntry, uploadFirst, 
       }
       const reportId = await runActualAnalysis(draft.images, installId, draft.gender, requestIds)
       if (!reportId) return
+      const frontPhotoId = draft.images.find(image => image.view !== 'side')?.id
+      if (guestReturn && frontPhotoId) await clearAnalysisCheckpoint(`${mobileScan ? 'mobile' : 'desktop'}:guest`, frontPhotoId).catch(() => {})
       loadedAnalysisIdRef.current = reportId
       await router.replace({ pathname: '/analysis', query: { analysisId: reportId } }, undefined, { shallow: true, scroll: false })
       if (purchase) clearStripeAttempt('web_analysis')
@@ -867,7 +959,7 @@ export default function AnalysisPage({ startWithPhoto, phoneEntry, uploadFirst, 
       const message = caught instanceof Error ? caught.message : 'Unable to restore your purchase. Please try again.'
       setError(message)
     }
-  }, [guestReturn, mutate, router, runActualAnalysis, session?.user?.id])
+  }, [guestReturn, mobileScan, mutate, router, runActualAnalysis, session?.user?.id])
 
   function retryAnalysis() {
     if (checkoutSessionId) void resumeAfterPayment(checkoutSessionId, failedScanRequest.current)
@@ -929,7 +1021,7 @@ export default function AnalysisPage({ startWithPhoto, phoneEntry, uploadFirst, 
 
   useEffect(() => {
     const resumeOnEntry = step === 'intro' || (!mobileScan && (step === 'desktop-setup' || step === 'upload') && images.length === 0 && !startWithPhoto)
-    if (!router.isReady || walkthrough || status !== 'authenticated' || router.query.checkout || router.query.analysisId || router.query.resumePhoto || router.query.basic || !resumeOnEntry) return
+    if (!checkpointReady || restoredCheckpoint.current || !router.isReady || walkthrough || status !== 'authenticated' || specialEntry || !resumeOnEntry) return
     let cancelled = false
     const installId = ensureAnalysisWebInstallId()
     void Promise.all([
@@ -951,7 +1043,7 @@ export default function AnalysisPage({ startWithPhoto, phoneEntry, uploadFirst, 
       toast.info('Your paid scan is ready. Review your photo and continue.')
     }).catch(() => { /* The upload action checks access again before offering payment. */ })
     return () => { cancelled = true }
-  }, [images.length, mobileScan, router, startWithPhoto, status, step, walkthrough])
+  }, [checkpointReady, images.length, mobileScan, router, specialEntry, startWithPhoto, status, step, walkthrough])
 
   useEffect(() => {
     if (!router.isReady || router.query.checkout !== 'cancelled') return
@@ -1143,7 +1235,7 @@ export default function AnalysisPage({ startWithPhoto, phoneEntry, uploadFirst, 
       {!mobileScan && <input ref={sideInputRef} className="hidden" type="file" accept="image/*" onChange={event => void handleFiles(event, true)} />}
       <MotionConfig reducedMotion="user"><LayoutGroup id="desktop-analysis">
       <section ref={scanFrame} className="public-frame relative min-h-[calc(100svh-5rem)] overflow-hidden bg-white">
-        {walkthroughCheckout ? (
+        {!checkpointReady ? <ProcessScreen><p className="text-center text-sm text-zinc-500" role="status">Restoring your progress…</p></ProcessScreen> : walkthroughCheckout ? (
           <div className="assessment-columns public-gutters">
             <div className="assessment-copy">
               <p className="assessment-kicker">Walkthrough preview</p>
@@ -1192,7 +1284,7 @@ export default function AnalysisPage({ startWithPhoto, phoneEntry, uploadFirst, 
 
           {step === 'story' ? (
             <ScreenMotion key="story" managedMotion>
-              <MobileScanOnboarding experiment={onboardingExperiment} analyticsEnabled={!walkthrough} onComplete={profile => {
+              <MobileScanOnboarding profile={mobileProfile} onProgress={setMobileProfile} experiment={onboardingExperiment} analyticsEnabled={!walkthrough} onComplete={profile => {
                 setGender(profile)
                 beginAssessment()
               }} />
@@ -1249,7 +1341,7 @@ export default function AnalysisPage({ startWithPhoto, phoneEntry, uploadFirst, 
           ) : null}
 
           {!mobileScan && step === 'desktop-scan' && <ScreenMotion key="desktop-scan" managedMotion>
-            <DesktopPortraitScan front={images.find(image => image.view !== 'side')} side={images.find(image => image.view === 'side')} onComplete={finishDesktopScan} />
+            <DesktopPortraitScan front={images.find(image => image.view !== 'side')} side={images.find(image => image.view === 'side')} startedAt={desktopScanStartedAt} onComplete={finishDesktopScan} />
           </ScreenMotion>}
 
           {step === 'preview-analysis' ? (
@@ -1315,7 +1407,10 @@ export default function AnalysisPage({ startWithPhoto, phoneEntry, uploadFirst, 
                 isUnlocked={analysisUnlocked}
                 landmarks={images.find(image => image.view !== 'side')?.landmarks ?? null}
                 returnOfferSessionId={returnOfferSessionId}
-                returnProduct={returnProduct ?? preferredPlan}
+                returnProduct={returnProduct ?? paywallPlan ?? preferredPlan}
+                onPlanSelect={setPaywallPlan}
+                paywallIntro={paywallIntro}
+                onPaywallIntro={setPaywallIntro}
                 frontPhoto={images.find(image => image.view !== 'side')}
                 sidePhoto={images.find(image => image.view === 'side')}
                 basicValues={basicReport?.values}
@@ -1387,9 +1482,11 @@ export default function AnalysisPage({ startWithPhoto, phoneEntry, uploadFirst, 
           side={!mobileScan && captureStep === 'side'}
           open={cameraOpen}
           onCapture={addCameraImage}
-          onClose={() => setCameraOpen(false)}
+          onFrontPhoto={dataUrl => setCameraFront(dataUrl ? { id: crypto.randomUUID(), name: 'Camera photo', dataUrl } : null)}
+          onClose={() => { setCameraFront(null); setCameraOpen(false) }}
           onUpload={() => {
             if (!walkthrough) trackWebEvent('photo_source_selected', { surface: 'web_analysis', source: 'picker', placement: 'camera' })
+            setCameraFront(null)
             setCameraOpen(false)
             const input = !mobileScan && captureStep === 'side' ? sideInputRef : uploadInputRef
             input.current?.click()
@@ -1509,6 +1606,9 @@ function ActualAnalysisScreen({
   onCheckout,
   onPaymentDialogChange,
   onPaymentRequired,
+  onPlanSelect,
+  paywallIntro,
+  onPaywallIntro,
   paymentDialogOpen,
   returnOfferSessionId,
   returnProduct,
@@ -1532,6 +1632,9 @@ function ActualAnalysisScreen({
   onCheckout: (product: AnalysisPurchase, quote: CheckoutQuote) => void
   onPaymentDialogChange: (open: boolean) => void
   onPaymentRequired: () => void
+  onPlanSelect?: (plan: WebAnalysisProduct) => void
+  paywallIntro?: PaywallIntroCheckpoint
+  onPaywallIntro?: (offer: PaywallIntroCheckpoint) => void
   paymentDialogOpen: boolean
   returnOfferSessionId: string | null
   returnProduct?: string
@@ -1580,6 +1683,9 @@ function ActualAnalysisScreen({
         webCatalog
         onboardingExperiment={onboardingExperiment}
         initialProduct={returnProduct}
+        onWebPlanSelect={onPlanSelect}
+        savedIntro={paywallIntro}
+        onIntroStarted={onPaywallIntro}
         imageCount={imageCount}
         imageSrc={imageSrc}
         landmarks={landmarks}

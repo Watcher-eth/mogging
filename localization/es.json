@@ -109,6 +109,7 @@
   "paywall.web": "Pagar en la web",
   "paywall.back": "Volver a las suscripciones",
   "paywall.creator": "Código de creador",
+  "paywall.haveCreatorCode": "¿Tienes un código de creador?",
   "paywall.invite": "Invita a 3 amigos · Consigue un análisis gratis",
   "paywall.failed": "La compra ha fallado - vuelve a intentarlo",
   "paywall.confirmed": "Compra confirmada",

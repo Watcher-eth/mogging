@@ -102,3 +102,10 @@ button.plan:active { transform: scale(.98); }
 .planDetails { color: #575760; font-size: 13px; }
 .planDetails summary { cursor: pointer; width: fit-content; padding-block: 4px; }
 .planDetails[open] summary { margin-bottom: 8px; }
+
+@media (max-width: 360px) and (max-height: 640px) {
+  :global([data-mobile-web]) .webBenefits { gap: 6px 8px; }
+  :global([data-mobile-web]) .webBenefits li { gap: 6px; font-size: 11px; line-height: 15px; }
+  :global([data-mobile-web]) .webBenefits li svg { width: 13px; height: 13px; }
+  :global([data-mobile-web]) .webPlans .planPrice { margin-top: 8px; }
+}
