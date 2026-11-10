@@ -5,7 +5,7 @@ export const CAMPAIGN_ANCHOR_REQUIREMENT = 'I published this video using the Mog
 export const CAMPAIGN_BIO_LINK_REQUIREMENT = 'My posting account has a Mogging link in its bio, or has fewer than 1,000 followers and is exempt from the bio-link requirement.'
 export const CAMPAIGN_PUBLISHING_GRACE_ENDS_AT = '2026-11-17T03:00:00.000Z'
 export const CAMPAIGN_PUBLISHING_DEADLINE = 'November 16, 2026 at 7:00 p.m. Pacific'
-export const CAMPAIGN_PUBLISHING_GRACE_RULE = `One-week grace period: videos posted or submitted before ${CAMPAIGN_PUBLISHING_DEADLINE} remain eligible for normal payment without the anchor or bio link. Do not deny or reduce an otherwise eligible payout for either missing link during this grace period. All other campaign requirements still apply.`
+export const CAMPAIGN_PUBLISHING_GRACE_RULE = `One-week grace period: videos submitted before ${CAMPAIGN_PUBLISHING_DEADLINE} remain eligible for normal payment without the anchor or bio link. Do not deny or reduce an otherwise eligible payout for either missing link during this grace period. All other campaign requirements still apply.`
 export const ANCHOR_GRACE_ACKNOWLEDGEMENT = `I understand that every campaign requires the Mogging TikTok anchor and I have until ${CAMPAIGN_PUBLISHING_DEADLINE} to implement it. Missing it during the grace period will not affect an otherwise eligible payout.`
 export const BIO_LINK_GRACE_ACKNOWLEDGEMENT = `I understand that posting accounts with 1,000 or more followers must have a Mogging link in their bio by ${CAMPAIGN_PUBLISHING_DEADLINE}. Accounts below 1,000 followers are exempt. Missing it during the grace period will not affect an otherwise eligible payout.`
 

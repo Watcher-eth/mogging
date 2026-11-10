@@ -298,10 +298,10 @@ test('grace-period publishing failures cannot be used as the sole reason to reje
 
 test('a grace-period campaign video earns its normal rate despite missing the new links', async () => {
   const terms = withCampaignPublishingRules(defaultCreatorSprintTerms())
-  submission = { ...submission, sprintId: 'campaign', sprintTerms: terms, createdAt: new Date('2026-11-18T00:00:00Z'), postedAt: new Date('2026-11-10T00:00:00Z'), analyticsScreenshotUrl: 'https://example.com/evidence.mp4' }
+  submission = { ...submission, sprintId: 'campaign', sprintTerms: terms, createdAt: new Date('2026-11-10T00:00:00Z'), analyticsScreenshotUrl: 'https://example.com/evidence.mp4' }
   priorPayments.length = 0
   const reviewChecklist = sprintReviewItems(terms, 'custom-video-v1', true).map(item => ({ id: item.id, met: ![CAMPAIGN_ANCHOR_REQUIREMENT, CAMPAIGN_BIO_LINK_REQUIREMENT].includes(item.label), note: null }))
   const saved = await reviewCreatorResource({ ...approval(null, null), adminUsAudiencePercent: 40, reviewChecklist })
-  expect(saved.approvedAmountCents).toBe(sprintPayoutCents(terms, 40000, 40))
-  expect(saved.reviewChecklist.some((item: { id: string }) => reviewChecklist.filter(item => !item.met).some(failed => failed.id === item.id))).toBe(false)
+  expect(saved).toHaveProperty('approvedAmountCents', sprintPayoutCents(terms, 40000, 40))
+  expect(saved).toHaveProperty('reviewChecklist', sprintReviewItems(terms, 'custom-video-v1', false, submission.createdAt).map(item => ({ id: item.id, met: true, note: null })))
 })

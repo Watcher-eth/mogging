@@ -7,8 +7,8 @@ These publishing rules apply to **all Mogging campaigns**:
 
 ### Grace period: until November 16 at 7:00 p.m. Pacific
 
-You have one week to implement these changes. **Missing either link during this grace period will not reduce or deny an otherwise eligible payout.** Eligible videos posted or submitted before the deadline remain protected if reviewed later.
+You have one week to implement these changes. **Missing either link during this grace period will not reduce or deny an otherwise eligible payout.** Eligible videos submitted before the deadline remain protected if reviewed later.
 
-After the deadline, both rules apply to new campaign posts, with the under-1,000-follower bio-link exemption.
+After the deadline, campaign submissions must meet both rules, with the under-1,000-follower bio-link exemption.
 
 Find your Mogging bio link in [Accounts](https://www.mogging.com/creator/accounts). All other campaign rules, view thresholds and analytics requirements still apply.

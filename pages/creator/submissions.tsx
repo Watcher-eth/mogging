@@ -164,7 +164,7 @@ function SubmissionDialog({ submission, payment, payments, linkedToApprovedAccou
 
 function CreatorReviewChecklist({ submission }: { submission: CreatorSubmission }) {
   const items = submission.sprintTerms
-    ? sprintReviewItems(submission.sprintTerms, submission.formatId || '', false, submission.postedAt || submission.createdAt).map(item => ({ ...item, met: submission.reviewChecklist?.find(result => result.id === item.id)?.met || false, note: submission.reviewChecklist?.find(result => result.id === item.id)?.note || null }))
+    ? sprintReviewItems(submission.sprintTerms, submission.formatId || '', false, submission.createdAt).map(item => ({ ...item, met: submission.reviewChecklist?.find(result => result.id === item.id)?.met || false, note: submission.reviewChecklist?.find(result => result.id === item.id)?.note || null }))
     : mergeCreatorSubmissionReviewResults(submission.formatId, submission.reviewChecklist)
   // Missing entries in historical checklists were never reviewed; do not invent failures.
   const storedIds = new Set(submission.reviewChecklist?.map(item => item.id) || [])

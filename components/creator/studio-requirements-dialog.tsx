@@ -53,7 +53,7 @@ export function StudioRequirementsDialog({ open, onOpenChange }: { open: boolean
         <RequirementGraphic key={step} step={step} />
         <DialogTitle className="creator-dialog-title mt-5 text-[26px] font-semibold leading-tight tracking-[-0.04em]">{requirement.title}</DialogTitle>
         <DialogDescription className="mt-3 text-sm leading-6 text-zinc-500">{requirement.description}</DialogDescription>
-        {step > 0 ? <p className="mt-3 rounded-xl bg-amber-50 p-3 text-xs leading-5 text-amber-900">Grace period through {CAMPAIGN_PUBLISHING_DEADLINE}. Missing links will not reduce or deny an otherwise eligible payout on videos posted or submitted before this deadline.</p> : null}
+        {step > 0 ? <p className="mt-3 rounded-xl bg-amber-50 p-3 text-xs leading-5 text-amber-900">Grace period through {CAMPAIGN_PUBLISHING_DEADLINE}. Missing links will not reduce or deny an otherwise eligible payout on videos submitted before this deadline.</p> : null}
         {step === 1 ? <p className="mt-3 text-xs leading-5 text-zinc-600">Implement these publishing rules by the grace-period deadline. Other campaign rules and analytics requirements still apply.</p> : null}
         {step === 1 ? <Link href="/creator/accounts" onClick={() => onOpenChange(false)} className="mt-2 inline-flex min-h-11 items-center gap-1.5 text-xs text-[#00A8EF]"><Link2 className="size-3.5" />Your bio links<ArrowRight className="size-3.5" /></Link> : step === 2 ? <a href={TIKTOK_ANCHOR_INVITE} target="_blank" rel="noreferrer" className="mt-2 inline-flex min-h-11 items-center gap-1.5 text-xs text-[#00A8EF]">Get the Mogging anchor<ArrowRight className="size-3.5" /></a> : null}
       </AnimatedDialogPanel>
