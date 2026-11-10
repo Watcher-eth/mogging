@@ -3,6 +3,7 @@ import { ComputeBudgetProgram, Keypair, Transaction, TransactionInstruction } fr
 import { encodeEventTopics, erc20Abi, toHex, type Address } from 'viem'
 import { eq } from 'drizzle-orm'
 import bs58 from 'bs58'
+import { signedSolanaProof } from './chains'
 import { payoutNetworks, usdcUnits, type PayoutChain } from './shared'
 
 const testUrl = process.env.TEST_CREATOR_CRYPTO_DATABASE_URL
@@ -101,6 +102,30 @@ async function prepare(chain: PayoutChain) {
   const network = (await queue.payoutQueue()).find(item => item.chain === chain)!
   return queue.prepareCryptoBatch(chain, network.preview!, 'fixture-admin')
 }
+
+test('Solana accepts wallet fee adjustments and rejects altered payout messages or signatures', () => {
+  const payment = new TransactionInstruction({ programId: Keypair.generate().publicKey, keys: [], data: Buffer.from('reviewed payment') })
+  const original = new Transaction({ feePayer: signer.publicKey, recentBlockhash: blockhash })
+    .add(ComputeBudgetProgram.setComputeUnitPrice({ microLamports: 0 }), payment)
+  const unsigned = original.serialize({ requireAllSignatures: false }).toString('base64')
+  const proof = { chain: 'solana' as const, transfers: [{ unsigned, lastValidBlockHeight: 200, outputIndexes: [0] }] }
+  original.sign(signer)
+  expect(signedSolanaProof(proof, [original.serialize().toString('base64')]).chain).toBe('solana')
+  const adjusted = new Transaction({ feePayer: signer.publicKey, recentBlockhash: blockhash })
+    .add(ComputeBudgetProgram.setComputeUnitLimit({ units: 200_000 }), ComputeBudgetProgram.setComputeUnitPrice({ microLamports: 1_000 }), payment)
+  adjusted.sign(signer)
+  const encode = (tx: Transaction) => [tx.serialize({ verifySignatures: false }).toString('base64')]
+  expect(signedSolanaProof(proof, encode(adjusted)).chain).toBe('solana')
+  for (const change of ['payment', 'blockhash', 'extra instruction', 'signature']) {
+    const changed = Transaction.from(adjusted.serialize())
+    if (change === 'payment') changed.instructions[2].data = Buffer.from('different payment')
+    if (change === 'blockhash') changed.recentBlockhash = Keypair.generate().publicKey.toBase58()
+    if (change === 'extra instruction') changed.add(payment)
+    changed.sign(signer)
+    if (change === 'signature') changed.signatures[0].signature![0] ^= 1
+    expect(() => signedSolanaProof(proof, encode(changed))).toThrow('did not match the reviewed batch')
+  }
+})
 
 test.skipIf(!testUrl)('Solana reserves approved earnings and requested bundles, verifies signed bytes, and settles only finalized transfers', async () => {
   const { db, schema } = database

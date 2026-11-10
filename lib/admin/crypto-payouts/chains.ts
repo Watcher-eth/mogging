@@ -1,4 +1,4 @@
-import { ComputeBudgetProgram, Connection, PublicKey, Transaction, TransactionInstruction } from '@solana/web3.js'
+import { ComputeBudgetInstruction, ComputeBudgetProgram, Connection, PublicKey, Transaction, TransactionInstruction } from '@solana/web3.js'
 import { createAssociatedTokenAccountIdempotentInstruction, createTransferCheckedInstruction, getAssociatedTokenAddressSync } from '@solana/spl-token'
 import bs58 from 'bs58'
 import { createPublicClient, getAddress, http, isAddress, parseAbiItem, parseEventLogs, erc20Abi, type Hash } from 'viem'
@@ -80,7 +80,7 @@ export async function prepareChainProof(chain: PayoutChain, id: string, sender: 
   const transfers = []
   for (let offset = 0; offset < outputs.length;) {
     const tx = new Transaction({ feePayer: payer, blockhash, lastValidBlockHeight })
-    // Pin the priority fee so the wallet signs the exact message we reviewed.
+    // Provide an explicit default priority fee for wallet approval.
     tx.add(ComputeBudgetProgram.setComputeUnitPrice({ microLamports: 0 }))
     tx.add(new TransactionInstruction({ programId: memoProgram, keys: [], data: Buffer.from(`mogging:${id}:${offset}`) }))
     const outputIndexes = []
@@ -111,7 +111,22 @@ export function signedSolanaProof(proof: Extract<CryptoBatchProof, { chain: 'sol
       const raw = Buffer.from(signed[index], 'base64')
       const tx = Transaction.from(raw)
       const original = Transaction.from(Buffer.from(transfer.unsigned, 'base64'))
-      if (!tx.signature || !tx.serializeMessage().equals(original.serializeMessage()) || !tx.verifySignatures()) throw Error()
+      if (!tx.signature || !tx.verifySignatures()) throw Error()
+      // Phantom may set its approved network fee while signing. All payout instructions stay exact.
+      const reviewed = new Transaction({ feePayer: original.feePayer, recentBlockhash: original.recentBlockhash })
+      const payouts = original.instructions.filter(instruction => !instruction.programId.equals(ComputeBudgetProgram.programId))
+      let payoutIndex = 0
+      for (const instruction of tx.instructions) {
+        if (instruction.programId.equals(ComputeBudgetProgram.programId)) {
+          const kind = ComputeBudgetInstruction.decodeInstructionType(instruction)
+          if (instruction.keys.length || !['SetComputeUnitPrice', 'SetComputeUnitLimit'].includes(kind)) throw Error()
+          reviewed.add(instruction)
+        } else {
+          if (!payouts[payoutIndex]) throw Error()
+          reviewed.add(payouts[payoutIndex++])
+        }
+      }
+      if (payoutIndex !== payouts.length || !tx.serializeMessage().equals(reviewed.serializeMessage())) throw Error()
       return { ...transfer, raw: tx.serialize().toString('base64'), hash: bs58.encode(tx.signature) }
     } catch { throw new ApiError(400, 'A signed Solana transaction did not match the reviewed batch') }
   }) }
