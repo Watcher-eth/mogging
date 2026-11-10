@@ -148,7 +148,7 @@ function AccountsContent() {
               {account.platform === 'tiktok' ? <div className="mt-4 flex flex-wrap items-center gap-x-4 gap-y-1 border-t border-zinc-100 pt-3 text-xs">
                 <span className="inline-flex items-center gap-1.5 text-zinc-500"><Users className="size-3.5" />{followerLabel(account.followers)}</span>
                 <button className="min-h-11 font-medium text-[#008bc6]" onClick={() => setEditing({ id: account.id, mode: 'followers' })}>Update followers</button>
-                {tiktokAnchorEligible(account) ? <button className="min-h-11 font-medium text-[#008bc6]" onClick={() => setEditing({ id: account.id, mode: 'anchor' })}>{account.tiktokAnchorJoinedAt ? 'View TikTok anchor setup' : 'Set up optional TikTok anchor'}</button> : null}
+                {tiktokAnchorEligible(account) ? <button className="min-h-11 font-medium text-[#008bc6]" onClick={() => setEditing({ id: account.id, mode: 'anchor' })}>{account.tiktokAnchorJoinedAt ? 'View TikTok anchor setup' : 'Set up TikTok anchor'}</button> : null}
               </div> : null}
               {account.reviewNote && account.reviewNote !== 'Account ownership and audience analytics verified with our team on Discord.' ? (
                 <p className="mt-3 text-sm text-zinc-500">

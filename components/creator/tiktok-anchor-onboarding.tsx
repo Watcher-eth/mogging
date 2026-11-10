@@ -135,7 +135,7 @@ export function TikTokAccountDialog({
             <p className="text-[10px] font-semibold uppercase tracking-[0.12em] text-zinc-400">
               {followers
                 ? 'One quick account update'
-                : 'Optional for TikTok · 1K+ followers'}
+                : 'TikTok anchor setup · 1K+ followers'}
             </p>
           </div>
           <DialogTitle className="creator-dialog-title pr-5 text-[27px] font-semibold leading-tight tracking-[-0.04em]">
@@ -150,12 +150,12 @@ export function TikTokAccountDialog({
                 <strong className="font-medium text-zinc-700">
                   {creatorAccountLabel(account)}
                 </strong>
-                . This helps us show optional app anchors for eligible TikTok accounts.
+                . This helps us show app anchor setup for eligible TikTok accounts.
               </>
             ) : (
               <>
                 Give viewers a direct link to Mogging to help improve conversions.
-                This is optional and never required to post, submit, or earn.
+                Publishing with the Mogging anchor through the campaign link is required for campaign submissions.
               </>
             )}
           </DialogDescription>
@@ -184,7 +184,7 @@ export function TikTokAccountDialog({
                 </h3>
                 <p className="mt-2 text-sm leading-6 text-zinc-500">
                   Open the invitation using {creatorAccountLabel(account)} in
-                  TikTok and accept the project if you want to use app anchors.
+                  TikTok and accept the project to set up app anchors.
                 </p>
                 <div className="mx-auto mt-5 w-[252px] max-w-full rounded-[20px] bg-white p-3 shadow-[0_2px_14px_rgba(0,0,0,0.035)]">
                   <Image
@@ -252,7 +252,7 @@ export function TikTokAccountDialog({
                   ))}
                 </ol>
                 <p className="mt-3 text-xs leading-5 text-zinc-400">
-                  Select the project only for videos you want to publish with an anchor.
+                  Use the Mogging project and the required campaign link when publishing campaign videos.
                   App anchors are available to eligible TikTok accounts with 1,000+
                   followers, not Instagram. TikTok may also apply region, age,
                   and account eligibility checks.{' '}
@@ -269,7 +269,7 @@ export function TikTokAccountDialog({
               <section className="rounded-xl border border-zinc-100 p-4">
                 <h3 className="text-sm font-semibold">Review before publishing</h3>
                 <p className="mt-2 text-sm leading-6 text-zinc-500">TikTok checks your video before it can go live. After TikTok’s review, we approve videos within 24 hours. Posting through this project is not instant; TikTok’s review time is separate from ours.</p>
-                <p className="mt-2 text-xs leading-5 text-zinc-500">Prefer to post directly? Skip the anchor. Your participation and payout eligibility stay the same.</p>
+                <p className="mt-2 text-xs leading-5 text-zinc-500">Every campaign requires publishing with the Mogging anchor. Find the required publishing link in Submissions.</p>
               </section>
               <label className="flex items-start gap-3 rounded-xl bg-zinc-50 p-3 text-sm leading-5 text-zinc-600">
                 <input

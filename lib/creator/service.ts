@@ -1,3 +1,4 @@
+import { withAnchorRequirement } from './facial-campaign-update'
 import { unstable_cache } from 'next/cache'
 import { queuedAudienceCheck } from './audience-check'
 import { creatorRetainerTerms } from './retainer'
@@ -446,14 +447,16 @@ export async function createCreatorSubmission(userId: string, input: CreatorSubm
   const sprint = await db.query.creatorSprints.findFirst({ where: eq(schema.creatorSprints.id, input.sprintId) })
   if (!sprint || sprintPhase({ ...sprint, startsAt: sprint.startsAt.toISOString(), endsAt: sprint.endsAt.toISOString() }) !== 'active') throw new CreatorServiceError(409, 'Choose an active campaign')
   if (!canSeeCampaign(sprint.audience, profile.id)) throw new CreatorServiceError(404, 'Campaign not found')
+  if (input.earlySubmission && !sprint.terms.submitOnPublish) throw new CreatorServiceError(400, 'This campaign requires analytics at its first milestone')
+  const analytics = input.earlySubmission ? null : input
   const terms = creatorRetainerTerms(sprint.terms, profile.retainerTerms)
-  if (input.viewCountThreshold < minimumSubmissionViews(terms)) throw new CreatorServiceError(400, `This campaign requires at least ${minimumSubmissionViews(terms).toLocaleString('en-US')} views`)
+  if (analytics && analytics.viewCountThreshold < minimumSubmissionViews(terms)) throw new CreatorServiceError(400, `This campaign requires at least ${minimumSubmissionViews(terms).toLocaleString('en-US')} views`)
   const format = sprintFormat(sprint.terms, input.formatId)
   if (!format) throw new CreatorServiceError(400, 'Choose a format offered by this campaign')
   if (!sprint.terms.platforms.includes(creatorPostPlatform(input.postUrl)!)) throw new CreatorServiceError(400, 'This platform is not accepted by the campaign')
   const { socialAccount, postLink } = await verifyCreatorPublishedPost(profile.id, input)
   const postKey = postLink.key
-  await verifySubmissionAnalytics(userId, input)
+  if (analytics) await verifySubmissionAnalytics(userId, analytics)
   return db.transaction(async tx => {
     await tx.execute(sql`select pg_advisory_xact_lock(hashtextextended(${postKey}, 0))`)
     const previousPost = await tx.query.creatorSubmissions.findFirst({ where: or(eq(schema.creatorSubmissions.postKey, postKey), eq(schema.creatorSubmissions.postUrl, input.postUrl)) })
@@ -469,9 +472,9 @@ export async function createCreatorSubmission(userId: string, input: CreatorSubm
       if (!input.postedAt && !draft.postedAt) throw new CreatorServiceError(400, 'Add this post’s publication time')
       if (!code || !captionContainsCreatorCode(input.caption || draft.caption || '', code.slug)) throw new CreatorServiceError(400, 'Include the prepared post’s exact creator code in its published caption')
     }
-    const submissionTerms = creatorRetainerTerms(draft?.sprintTerms || sprint.terms, profile.retainerTerms)
-    if (input.viewCountThreshold < minimumSubmissionViews(submissionTerms)) throw new CreatorServiceError(400, 'The submission minimum changed. Refresh the campaign before submitting.')
-    await requireSubmissionBudget(tx, sprint.id, sprintPayoutCents(submissionTerms, input.viewCountThreshold, input.usAudiencePercent))
+    const submissionTerms = withAnchorRequirement(creatorRetainerTerms(draft?.sprintTerms || sprint.terms, profile.retainerTerms))
+    if (analytics && analytics.viewCountThreshold < minimumSubmissionViews(submissionTerms)) throw new CreatorServiceError(400, 'The submission minimum changed. Refresh the campaign before submitting.')
+    await requireSubmissionBudget(tx, sprint.id, sprintPayoutCents(submissionTerms, analytics?.viewCountThreshold ?? 0, analytics?.usAudiencePercent ?? null))
     const values = {
       creatorProfileId: profile.id,
       socialAccountId: socialAccount?.id || null,
@@ -491,13 +494,13 @@ export async function createCreatorSubmission(userId: string, input: CreatorSubm
       videoContentType: null,
       videoSizeBytes: null,
       // Retain the existing evidence column so historical screenshots stay viewable.
-      analyticsScreenshotUrl: creatorAssetPublicUrl(input.analyticsStorageKey),
-      analyticsStorageKey: input.analyticsStorageKey,
-      analyticsContentType: input.analyticsContentType,
-      analyticsSizeBytes: input.analyticsSizeBytes,
-      audienceCheck: queuedAudienceCheck(input.analyticsStorageKey),
-      viewCountThreshold: input.viewCountThreshold,
-      usAudiencePercent: input.usAudiencePercent ?? null,
+      analyticsScreenshotUrl: analytics ? creatorAssetPublicUrl(analytics.analyticsStorageKey) : null,
+      analyticsStorageKey: analytics?.analyticsStorageKey ?? null,
+      analyticsContentType: analytics?.analyticsContentType ?? null,
+      analyticsSizeBytes: analytics?.analyticsSizeBytes ?? null,
+      audienceCheck: analytics ? queuedAudienceCheck(analytics.analyticsStorageKey) : null,
+      viewCountThreshold: analytics?.viewCountThreshold ?? 0,
+      usAudiencePercent: analytics?.usAudiencePercent ?? null,
     }
     const [submission] = draft
       ? await tx.update(schema.creatorSubmissions).set(values).where(and(eq(schema.creatorSubmissions.id, draft.id), eq(schema.creatorSubmissions.isDraft, true))).returning()

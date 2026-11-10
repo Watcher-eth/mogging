@@ -2,7 +2,7 @@ import * as Dialog from '@radix-ui/react-dialog'
 import { AnimatePresence, LayoutGroup, motion, useReducedMotion } from 'motion/react'
 import { Info, X } from '@/components/ui/mogging-glyphs'
 import { useId, useState, type CSSProperties } from 'react'
-import { campaignAudienceBands } from '@/lib/creator/sprint-defaults'
+import { campaignAudienceBands, campaignHasAudienceBands } from '@/lib/creator/sprint-defaults'
 import { CREATOR_TIER_ONE_COUNTRIES } from '@/lib/creator/audience'
 
 import type { SprintTerms } from '@/lib/creator/sprints'
@@ -52,7 +52,7 @@ export function CampaignRegionHelp({ monochrome = false, terms }: { monochrome?:
                       {[...campaignAudienceBands(terms)].reverse().map((band) => (
                         <div key={band.tier}>
                           <div className="mb-2 flex items-center justify-between gap-3 text-xs">
-                            <span className="font-semibold">Tier {band.tier} <span className="font-normal text-zinc-500">· {band.payoutPercent}% payout</span></span>
+                            <span className="font-semibold">Tier {band.tier} <span className="font-normal text-zinc-500">· {terms && !campaignHasAudienceBands(terms) ? 'campaign rate' : `${band.payoutPercent}% payout`}</span></span>
                             <span className="tabular-nums text-zinc-500">{band.tier === 'D' ? '10–<15%' : `${band.minimumPercent}%+`} Tier 1</span>
                           </div>
                           <div aria-hidden="true" className="h-1.5 overflow-hidden rounded-full bg-zinc-100">

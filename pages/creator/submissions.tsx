@@ -1,4 +1,5 @@
 import { MissingPaymentData } from '@/components/creator/missing-payment-data'
+import { CampaignAnchorLink } from '@/components/creator/campaign-publishing-requirements'
 import { SubmissionCard, StatusStamp } from '@/components/creator/submission-card'
 import { SubmissionBonusBreakdown, CampaignBonusAwards } from '@/components/creator/submission-bonuses'
 import { submissionBonusPayments, campaignBonusPayments, bonusPaymentTotal, type BonusPayment } from '@/lib/creator/bonus-payments'
@@ -86,6 +87,7 @@ function SubmissionsContent() {
         </span>
       } title="Submissions" description="Follow every video from review through approval and payout." action={<Button asChild className="h-11 rounded-full px-5"><Link href="/creator/submissions?new=1">New Submission</Link></Button>} />
       <MissingPaymentData data={data} />
+      <div className="mb-5"><CampaignAnchorLink /></div>
       <CampaignBonusAwards bonuses={campaignBonusPayments(data?.payments || [])} />
       <TooltipProvider delayDuration={150}>
         {isLoading ? <div className="grid min-h-64 place-items-center"><Loader2 className="size-5 animate-spin text-zinc-400" /></div> : days.length ? <div className="grid gap-4">{days.map(day => <section key={day.key} aria-label={day.label}>

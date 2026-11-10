@@ -1,4 +1,6 @@
 import { defaultCreatorSprintTerms } from './sprint-defaults'
+import { LAUNCH_CAMPAIGNS, launchCampaignTerms } from './campaign-launch'
+import { replacementFacialTerms } from './facial-campaign-update'
 import { beforeEach, expect, mock, test } from 'bun:test'
 import * as schema from '@/lib/db/schema'
 let submission: any
@@ -41,6 +43,15 @@ test('fresh analytics reopen the same submission and preserve prior approved ear
 test('a pending submission with cleared evidence can update views directly', async () => {
   submission = {...submission,status:'pending',analyticsScreenshotUrl:null,analyticsStorageKey:null,approvedAmountCents:null}; payments=[]
   expect(await requestSubmissionReview('user','submission',input)).toHaveProperty('viewCountThreshold',40000)
+})
+test('an immediately submitted facial video can add its first milestone evidence, but cannot claim below the threshold', async () => {
+  submission = { ...submission, status: 'pending', sprintTerms: replacementFacialTerms(launchCampaignTerms(LAUNCH_CAMPAIGNS[0])), analyticsScreenshotUrl: null, analyticsStorageKey: null, viewCountThreshold: 0, approvedAmountCents: null, usAudiencePercent: null }
+  payments = []
+  await expect(requestSubmissionReview('user', 'submission', { ...input, viewCountThreshold: 4999 })).rejects.toThrow('5,000')
+  expect(writes).toBe(0)
+  const updated = await requestSubmissionReview('user', 'submission', { ...input, viewCountThreshold: 5000, usAudiencePercent: 32 })
+  expect(updated).toMatchObject({ status: 'in_review', viewCountThreshold: 5000, usAudiencePercent: 32 })
+  expect(updated.analyticsScreenshotUrl).toBe(`https://media.example/${input.analyticsStorageKey}`)
 })
 test('another creator cannot reopen the submission', async () => {
   submission.creatorProfileId='other'

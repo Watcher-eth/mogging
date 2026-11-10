@@ -1,3 +1,4 @@
+import { withAnchorRequirement } from './facial-campaign-update'
 import { creatorRetainerTerms } from './retainer'
 import { isDeepStrictEqual } from 'node:util'
 import { and, desc, eq, isNull, lte, ne, or, sql } from 'drizzle-orm'
@@ -7,7 +8,7 @@ import { ApiError } from '@/lib/api/http'
 import { compositionSchema, type VideoRecipe } from './video-composition'
 import { creatorPostPlatform, creatorPostUrlSchema } from './validation'
 import { launchCampaign } from './campaign-launch'
-import { sprintPhase, sprintFormat } from './sprints'
+import { sprintPhase, sprintFormat, type SprintTerms } from './sprints'
 import { requireSubmissionBudget } from './campaign-budget-service'
 import { canSeeCampaign } from './campaign-access'
 import { getCreatorProfile, verifyCreatorPublishedPost } from './service'
@@ -21,6 +22,10 @@ export const studioGenerationSchema = z.object({
 export const studioPostSchema = z.object({ generationId: z.string().uuid(), postUrl: creatorPostUrlSchema, socialAccountId: z.string().uuid(), requirementsConfirmed: z.literal(true) }).strict()
 export const studioCampaignAllows = canSeeCampaign
 export function studioCampaignKey(recipe: VideoRecipe) { return recipe === 'measurement-explainer' ? 'feature-comparison' : 'detailed-analysis' }
+export function studioCampaignMatches(terms: SprintTerms, recipe: VideoRecipe) {
+  const key = studioCampaignKey(recipe)
+  return launchCampaign(terms)?.key === key && (key !== 'detailed-analysis' || Boolean(terms.mgcSourceCampaignId || terms.submitOnPublish))
+}
 
 export async function requireVideoStudioAccess(userId: string) {
   const profile = await getCreatorProfile(userId)
@@ -46,21 +51,21 @@ export async function listStudioGenerations(userId: string) {
   const profile = await requireVideoStudioAccess(userId)
   const generations = await db.query.creatorStudioGenerations.findMany({ where: eq(schema.creatorStudioGenerations.creatorProfileId, profile.id), orderBy: [desc(schema.creatorStudioGenerations.createdAt)], limit: 20 })
   const submissions = await db.select({ id: schema.creatorSubmissions.id, generationId: schema.creatorSubmissions.studioGenerationId }).from(schema.creatorSubmissions).where(eq(schema.creatorSubmissions.creatorProfileId, profile.id))
-  return generations.filter(generation => !submissions.some(post => post.generationId === generation.id)).map(generation => ({ id: generation.id, title: generation.composition.title, campaignName: generation.sprintTerms.mgcSourceCampaignId ? 'Mogging Detailed Analysis MGC' : launchCampaign(generation.sprintTerms)?.name ?? 'Campaign', minimumViews: Math.min(...creatorRetainerTerms(generation.sprintTerms, profile.retainerTerms).milestones.map(item => item.views)) }))
+  return generations.filter(generation => !submissions.some(post => post.generationId === generation.id)).map(generation => ({ id: generation.id, title: generation.composition.title, submitOnPublish: Boolean(generation.sprintTerms.submitOnPublish), campaignName: generation.sprintTerms.submitOnPublish ? 'Detailed Facial Analysis' : generation.sprintTerms.mgcSourceCampaignId ? 'Mogging Detailed Analysis MGC' : launchCampaign(generation.sprintTerms)?.name ?? 'Campaign', minimumViews: Math.min(...creatorRetainerTerms(generation.sprintTerms, profile.retainerTerms).milestones.map(item => item.views)) }))
 }
 
 export async function registerStudioGeneration(userId: string, value: unknown) {
   const input = studioGenerationSchema.parse(value)
   const profile = await requireVideoStudioAccess(userId)
   const campaigns = await db.query.creatorSprints.findMany({ orderBy: [desc(schema.creatorSprints.createdAt)] })
-  const campaign = campaigns.find(item => launchCampaign(item.terms)?.key === studioCampaignKey(input.composition.recipe) && (studioCampaignKey(input.composition.recipe) !== 'detailed-analysis' || Boolean(item.terms.mgcSourceCampaignId)) && studioCampaignAllows(item.audience, profile.id) && sprintPhase({ ...item, startsAt: item.startsAt.toISOString(), endsAt: item.endsAt.toISOString() }) === 'active')
+  const campaign = campaigns.find(item => studioCampaignMatches(item.terms, input.composition.recipe) && studioCampaignAllows(item.audience, profile.id) && sprintPhase({ ...item, startsAt: item.startsAt.toISOString(), endsAt: item.endsAt.toISOString() }) === 'active')
   if (!campaign) throw new ApiError(409, 'The assigned campaign is not currently accepting studio posts')
   const format = campaign.terms.formats.find(format => format.active)
   if (!format) throw new ApiError(409, 'The assigned campaign has no available format')
   await db.insert(schema.creatorStudioGenerations).values({ ...input, creatorProfileId: profile.id, sprintId: campaign.id, sprintTerms: campaign.terms, formatId: format.id }).onConflictDoNothing({ target: schema.creatorStudioGenerations.id })
   const saved = await db.query.creatorStudioGenerations.findFirst({ where: eq(schema.creatorStudioGenerations.id, input.id) })
   if (!saved || saved.creatorProfileId !== profile.id || saved.contentHash !== input.contentHash || saved.personId !== input.personId || saved.storyId !== input.storyId || !isDeepStrictEqual(saved.composition, JSON.parse(JSON.stringify(input.composition)))) throw new ApiError(409, 'This export identity has already been used')
-  return { id: saved.id, title: saved.composition.title, campaignName: saved.sprintTerms.mgcSourceCampaignId ? 'Mogging Detailed Analysis MGC' : launchCampaign(saved.sprintTerms)?.name ?? campaign.name, minimumViews: Math.min(...creatorRetainerTerms(saved.sprintTerms, profile.retainerTerms).milestones.map(item => item.views)) }
+  return { id: saved.id, title: saved.composition.title, submitOnPublish: Boolean(saved.sprintTerms.submitOnPublish), campaignName: saved.sprintTerms.submitOnPublish ? 'Detailed Facial Analysis' : saved.sprintTerms.mgcSourceCampaignId ? 'Mogging Detailed Analysis MGC' : launchCampaign(saved.sprintTerms)?.name ?? campaign.name, minimumViews: Math.min(...creatorRetainerTerms(saved.sprintTerms, profile.retainerTerms).milestones.map(item => item.views)) }
 }
 
 export async function submitStudioPost(userId: string, value: unknown) {
@@ -84,7 +89,7 @@ export async function submitStudioPost(userId: string, value: unknown) {
     await requireSubmissionBudget(tx, campaign.id, 0)
     const format = sprintFormat(generation.sprintTerms, generation.formatId)
     if (!format) throw new ApiError(409, 'The saved campaign format is unavailable')
-    const submissionTerms = creatorRetainerTerms(generation.sprintTerms, profile.retainerTerms)
+    const submissionTerms = withAnchorRequirement(creatorRetainerTerms(generation.sprintTerms, profile.retainerTerms))
     const [submission] = await tx.insert(schema.creatorSubmissions).values({ creatorProfileId: profile.id, socialAccountId: socialAccount?.id, studioGenerationId: generation.id, sprintId: generation.sprintId, sprintTerms: submissionTerms, formatId: generation.formatId, title: generation.composition.title, platform: platform === 'tiktok' ? 'TikTok' : 'Instagram Reels', postUrl: postLink.url, postKey: postLink.key, requirementsConfirmedAt: new Date(), isDraft: false, status: 'pending' }).returning()
     await recordSubmissionUpdate(tx, submission.id, 'submitted', submissionTerms.retainer ? 'Posted under the per-video retainer. Add analytics to verify the minimum audience; no view minimum applies.' : 'Posted from Creator Video Studio. Analytics can be added at the first campaign milestone.')
     return submission

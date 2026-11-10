@@ -66,7 +66,8 @@ export function minimumSubmissionViews(terms?: SprintTerms | null) {
   return terms && launchCampaign(terms) ? Math.min(...terms.milestones.map(item => item.views)) : MINIMUM_SUBMISSION_VIEWS
 }
 
-export const creatorSubmissionSchema = z.object({
+const standardCreatorSubmissionSchema = z.object({
+  earlySubmission: z.literal(false).optional(),
   registeredPostId: z.string().uuid().optional(),
   caption: z.string().trim().min(1).max(2200).optional(),
   postedAt: z.iso.datetime().refine(value => Date.parse(value) <= Date.now() + 300_000, 'Posting time cannot be in the future').optional(),
@@ -86,7 +87,16 @@ export const creatorSubmissionSchema = z.object({
   usAudiencePercent: z.number().min(0).max(100),
 })
 
-export const creatorSubmissionAnalyticsSchema = creatorSubmissionSchema.pick({
+export const creatorSubmissionSchema = z.union([
+  standardCreatorSubmissionSchema,
+  standardCreatorSubmissionSchema.omit({
+    earlySubmission: true, analyticsVideoUrl: true, analyticsPhysicalRecordingConfirmed: true,
+    analyticsStorageKey: true, analyticsContentType: true, analyticsSizeBytes: true,
+    viewCountThreshold: true, usAudiencePercent: true,
+  }).extend({ earlySubmission: z.literal(true) }),
+])
+
+export const creatorSubmissionAnalyticsSchema = standardCreatorSubmissionSchema.pick({
   analyticsVideoUrl: true, analyticsPhysicalRecordingConfirmed: true,
   analyticsStorageKey: true, analyticsContentType: true, analyticsSizeBytes: true,
   viewCountThreshold: true, usAudiencePercent: true,

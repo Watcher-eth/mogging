@@ -5,16 +5,16 @@ import { motion, useReducedMotion } from 'motion/react'
 import { ArrowLeft, ArrowRight, Check, Heart, Link2, MessageCircle, Music2, Share2, Upload } from '@/components/ui/mogging-glyphs'
 import { apiPost } from '@/lib/api/client'
 import { motionEase } from '@/lib/creator/motion-presets'
-import { TIKTOK_ANCHOR_INVITE } from '@/lib/creator/tiktok-anchor'
+import { TIKTOK_ANCHOR_URL as TIKTOK_ANCHOR_INVITE } from '@/lib/creator/facial-campaign-update'
 import { Button } from '@/components/ui/button'
 import { Dialog, DialogContent, DialogDescription, DialogTitle } from '@/components/ui/dialog'
 import { AnimatedDialogPanel } from '@/components/ui/animated-dialog-panel'
 import styles from './studio-requirements.module.css'
 
 const requirements = [
-  { title: 'Submit immediately after posting', description: 'Submit your published post link right away so we can start tracking its data. Add analytics later, at your first campaign milestone.' },
+  { title: 'Submit immediately after posting', description: 'Submit your published post link right away so we can start tracking its data. Upload fresh analytics at each campaign milestone.' },
   { title: 'Keep your bio Mogging-only', description: 'Post Mogging Generated Content (MGC) only from accounts with a Mogging link or Mogging CTA in the bio. No links, CTAs, or referral codes for other apps are allowed.' },
-  { title: 'Add the Mogging anchor', description: 'If you have 1,000+ TikTok followers, use our anchor whenever it is available in your region.' },
+  { title: 'Add the Mogging anchor', description: 'Every campaign requires publishing with the Mogging TikTok anchor through the campaign link below.' },
 ] as const
 
 export function StudioRequirementsReminder() {

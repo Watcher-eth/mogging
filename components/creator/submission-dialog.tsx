@@ -1,5 +1,7 @@
 import { useRouter } from 'next/router'
 import { successCue, useQuietCue } from '@/lib/audio/sounds'
+import { CampaignAnchorLink, ImmediateSubmissionNotice } from './campaign-publishing-requirements'
+import { ANCHOR_REQUIREMENT, TIKTOK_ANCHOR_URL } from '@/lib/creator/facial-campaign-update'
 import { campaignBudgetState, requestedIncrementCents, canReserveSubmission } from '@/lib/creator/campaign-budget-state'
 import { CampaignSubmissionBudget } from './campaign-submission-budget'
 import { campaignVersionGroups } from '@/lib/creator/campaign-versions'
@@ -80,12 +82,14 @@ export function SubmissionDialog({
   initialSprintId,
   existingSubmission,
   onSubmitted,
+  previewOnly = false,
 }: {
   open: boolean
   onOpenChange: (value: boolean) => void
   initialSprintId?: string
   existingSubmission?: CreatorSubmission
   onSubmitted: () => Promise<void>
+  previewOnly?: boolean
 }) {
   const { data: campaigns, error: sprintError, mutate: refreshCampaigns } = useSWR<{
     sprints: CreatorSprint[]
@@ -119,8 +123,6 @@ export function SubmissionDialog({
   const headingRef = useRef<HTMLHeadingElement>(null)
   const contentRef = useRef<HTMLDivElement>(null)
   const previousStep = useRef(step)
-  const stepLabels = existingSubmission ? labels.slice(2) : labels
-  const visibleStep = existingSubmission ? step - 2 : step
   useEffect(() => {
     if (previousStep.current === step) return
     previousStep.current = step
@@ -129,6 +131,9 @@ export function SubmissionDialog({
   }, [step])
   const campaign = campaigns?.sprints.find((item) => item.id === sprintId && (existingSubmission || sprintPhase(item) === 'active'))
   const sprint = campaign && { ...campaign, terms: existingSubmission?.sprintTerms || campaign.terms }
+  const earlySubmission = Boolean(sprint?.terms.submitOnPublish && !existingSubmission)
+  const stepLabels = existingSubmission ? labels.slice(2) : earlySubmission ? ['Campaign', 'Link', 'Review'] : labels
+  const visibleStep = existingSubmission ? step - 2 : earlySubmission && step === 4 ? 3 : step
   const expectedCents = sprint ? sprintPayoutCents(sprint.terms, Number(views), Number(audience)) : 0
   const budgetRequestBlocked = sprint && !canReserveSubmission(campaignBudgetState(sprint).availableCents,
     existingSubmission ? requestedIncrementCents(expectedCents, existingSubmission.approvedAmountCents ?? 0) : expectedCents, Boolean(existingSubmission))
@@ -155,12 +160,14 @@ export function SubmissionDialog({
       ? [
           ...creatorCampaignRules(format.requirements),
           ...creatorCampaignRules(sprint.terms.rules),
+          ...(!sprint.terms.rules.includes(ANCHOR_REQUIREMENT) ? [ANCHOR_REQUIREMENT] : []),
           ...format.notAllowed.map((item) => `My post avoids: ${creatorContentRestriction(item)}`),
         ]
       : []
   const accountRequired =
     platform === 'tiktok' || data?.featureFlags.creatorAccountRequiredForSubmission || false
   function checkMinimumViews() {
+    if (earlySubmission) return true
     const count = Number(views)
     if (
       views.trim() &&
@@ -207,7 +214,7 @@ export function SubmissionDialog({
       return toast.error(
         'Add your recording and analytics, and confirm it was filmed with a second device',
       )
-    changeStep(step + 1)
+    changeStep(step === 2 && earlySubmission ? 4 : step + 1)
   }
   const playSuccess = useQuietCue(successCue)
 
@@ -216,45 +223,48 @@ export function SubmissionDialog({
     if (!checkMinimumViews()) return
     if (sprint && !existingSubmission && (campaignBudgetState(sprint).locked || sprintPayoutCents(sprint.terms, Number(views), Number(audience)) > campaignBudgetState(sprint).availableCents)) return toast.error('Not enough campaign budget remains for this request. Refresh the campaign to see availability.')
     if (
-      !recording ||
-      !physicalConfirmed ||
+      (!earlySubmission && (!recording || !physicalConfirmed)) ||
       !sprint ||
       !format ||
       confirmed.length !== checklist.length
     )
       return
-    const contentType = creatorVideoContentType(recording)
-    if (!contentType) return toast.error('Choose a supported recording')
+    if (previewOnly) {
+      toast.success('Preview complete. No video was submitted.')
+      await onSubmitted()
+      onOpenChange(false)
+      return
+    }
+    const contentType = recording ? creatorVideoContentType(recording) : null
+    if (!earlySubmission && !contentType) return toast.error('Choose a supported recording')
     setBusy(true)
     try {
-      const intent = await apiPost<{
-        key: string
-        publicUrl: string
-        uploadUrl: string
-        method: 'PUT' | 'POST'
-      }>('/api/creator/submission-analytics-upload-intent', {
-        contentType,
-        sizeBytes: recording.size,
-      })
-      await uploadAnalyticsRecording(
-        intent,
-        recording,
-        contentType,
-        setProgress,
-      )
+      let evidence = {}
+      if (!earlySubmission && recording && contentType) {
+        const intent = await apiPost<{
+          key: string
+          publicUrl: string
+          uploadUrl: string
+          method: 'PUT' | 'POST'
+        }>('/api/creator/submission-analytics-upload-intent', {
+          contentType,
+          sizeBytes: recording.size,
+        })
+        await uploadAnalyticsRecording(
+          intent,
+          recording,
+          contentType,
+          setProgress,
+        )
+        evidence = { analyticsVideoUrl: intent.publicUrl, analyticsPhysicalRecordingConfirmed: true, analyticsStorageKey: intent.key, analyticsContentType: contentType, analyticsSizeBytes: recording.size, viewCountThreshold: Number(views), usAudiencePercent: Number(audience) }
+      }
       await apiPost(existingSubmission ? `/api/creator/submissions/${encodeURIComponent(existingSubmission.id)}/rereview` : '/api/creator/submissions', {
         sprintId,
         formatId,
         requirementsConfirmed: true,
         socialAccountId: accountId || null,
         postUrl,
-        analyticsVideoUrl: intent.publicUrl,
-        analyticsPhysicalRecordingConfirmed: true,
-        analyticsStorageKey: intent.key,
-        analyticsContentType: contentType,
-        analyticsSizeBytes: recording.size,
-        viewCountThreshold: Number(views),
-        usAudiencePercent: Number(audience),
+        ...(earlySubmission ? { earlySubmission: true } : evidence),
       })
       playSuccess()
       toast.success(existingSubmission ? 'Updated analytics submitted for review' : 'Video submitted for review')
@@ -290,7 +300,7 @@ export function SubmissionDialog({
             {existingSubmission ? 'Update analytics' : 'Submit a post'}
           </p>
           <DialogTitle ref={headingRef} tabIndex={-1} className="creator-dialog-title pr-7 text-xl outline-none">{titles[step - 1]}</DialogTitle>
-          <DialogDescription>{existingSubmission ? CREATOR_REREVIEW_GUIDANCE : descriptions[step - 1]}</DialogDescription>
+          <DialogDescription>{existingSubmission ? CREATOR_REREVIEW_GUIDANCE : earlySubmission ? 'Submit immediately after upload. Add fresh analytics at each view milestone.' : step === 1 ? 'Choose an active campaign below. Follow the selected campaign’s publishing and analytics requirements.' : descriptions[step - 1]}</DialogDescription>
         </DialogHeader>
         {!data || !campaigns ? (
           <div className="min-h-48 p-8 text-center">
@@ -309,6 +319,8 @@ export function SubmissionDialog({
           >
             <div ref={contentRef} className="min-h-0 flex-1 overflow-y-auto px-5 pb-6 sm:px-7">
               <AnimatedDialogPanel contentKey={step} motionStyle="swish" direction={stepDirection} contentClassName="grid gap-4">
+                  <CampaignAnchorLink />
+                  {earlySubmission ? <ImmediateSubmissionNotice /> : null}
                   {sprint && step !== 1 ? <CampaignSubmissionBudget sprint={sprint} /> : null}
                   {step === 1 ? (
                     <>
@@ -409,11 +421,11 @@ export function SubmissionDialog({
                       <span>Did you use a ref code <span className="text-zinc-400">(optional)</span></span>
                     </label>
                       </div>
-                      {anchorAvailable ? (
+                      {anchorAvailable && publishingAccount ? (
                         <div className="rounded-xl bg-zinc-100 p-4 text-sm leading-6">
-                          <strong>TikTok app anchor · Optional</strong>
-                          <p className="mt-1 text-zinc-600">A direct link to Mogging can help more viewers convert. TikTok reviews videos before publishing; we approve videos within 24 hours after TikTok’s review. You can submit and earn without an anchor.</p>
-                          <button type="button" onClick={() => setAnchorSetupOpen(true)} className="mt-2 min-h-11 font-medium text-zinc-950 underline underline-offset-4">View optional anchor setup →</button>
+                          <strong>TikTok app anchor · Required</strong>
+                          <p className="mt-1 text-zinc-600">Publish through the required Mogging anchor link above. TikTok reviews videos before publishing; we approve videos within 24 hours after TikTok’s review.</p>
+                          <button type="button" onClick={() => setAnchorSetupOpen(true)} className="mt-2 min-h-11 font-medium text-zinc-950 underline underline-offset-4">View anchor setup →</button>
                         </div>
                       ) : null}
 
@@ -556,7 +568,7 @@ export function SubmissionDialog({
                               )
                             }
                           />
-                          {rule}
+                          <span>{rule}{rule === ANCHOR_REQUIREMENT ? <> <a href={TIKTOK_ANCHOR_URL} target="_blank" rel="noopener noreferrer" className="font-semibold underline underline-offset-4">Open anchor link ↗</a></> : null}</span>
                         </label>
                       ))}
                       <p className="text-xs text-zinc-500">
@@ -576,7 +588,7 @@ export function SubmissionDialog({
                 onClick={() =>
                   step === (existingSubmission ? 3 : 1)
                     ? onOpenChange(false)
-                    : changeStep(step - 1)
+                    : changeStep(step === 4 && earlySubmission ? 2 : step - 1)
                 }
               >
                 {step === (existingSubmission ? 3 : 1) ? (

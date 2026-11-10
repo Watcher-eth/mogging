@@ -10,6 +10,7 @@ const paragraph = z.string().trim().min(1).max(2000)
 export const sprintTermsSchema = z
   .object({
     retainer: creatorRetainerSchema.optional(),
+    submitOnPublish: z.boolean().optional(),
     mgcSourceCampaignId: z.string().uuid().optional(),
     bonusBudgetCents: z.number().int().nonnegative().max(100_000_000).optional(),
     milestones: z
@@ -254,7 +255,7 @@ export function sprintReviewItems(terms: SprintTerms, id: string, includeRetired
   return [
     ...format.elements.map((item, i) => {
       const element = creatorFormatElement(item)
-      return { id: `element-${i + 1}`, label: campaignReviewLabels[id]?.[i] ?? element.title, detail: element.detail }
+      return { id: `element-${i + 1}`, label: (terms.submitOnPublish ? undefined : campaignReviewLabels[id]?.[i]) ?? element.title, detail: element.detail }
     }),
     ...format.requirements.map((label, i) => ({
       id: `requirement-${i + 1}`,

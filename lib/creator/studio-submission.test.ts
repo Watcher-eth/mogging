@@ -2,6 +2,7 @@ import { afterAll, beforeAll, expect, mock, test } from 'bun:test'
 import postgres from 'postgres'
 import { drizzle } from 'drizzle-orm/postgres-js'
 import * as schema from '@/lib/db/schema'
+import { replacementFacialTerms } from './facial-campaign-update'
 import { LAUNCH_CAMPAIGNS, launchCampaignTerms } from './campaign-launch'
 import { sprintPayoutCents, sprintReviewItems } from './sprints'
 import { compileAnalysisVideo } from './video-composition'
@@ -18,7 +19,7 @@ const client = postgres(url ?? 'postgres://test@127.0.0.1:1/unused', { max: 3, p
 mock.module('@/lib/db', () => ({ db: drizzle(client, { schema }), schema }))
 mock.module('@/lib/env', () => ({ env: { CREATOR_ACCOUNT_REQUIRED_FOR_SUBMISSION: true } }))
 mock.module('@/lib/storage/videos', () => ({ creatorAssetPublicUrl: (key: string) => `https://media.example/${key}`, verifyCreatorRecordingUpload: async () => {} }))
-const { claimStudioRequirementsReminder, registerStudioGeneration, submitStudioPost } = await import('./studio-submission')
+const { studioCampaignMatches, claimStudioRequirementsReminder, registerStudioGeneration, submitStudioPost } = await import('./studio-submission')
 const { requestSubmissionReview, createCreatorSubmission } = await import('./service')
 const { reviewCreatorResource } = await import('@/lib/admin/creator-service')
 const { listCreatorSprints } = await import('./sprint-service')
@@ -142,4 +143,13 @@ integration('retainer snapshots govern Studio and regular submissions, budget re
     const [extras] = await client`select count(*)::int count from creator_payments where submission_id=${submission.id} and bonus_key is not null`
     expect(extras.count).toBe(0)
   } finally {await client`update creator_profiles set retainer_terms=null where id=${creatorId}`}
+})
+
+test('the replacement detailed campaign remains available to Video Studio without the retired version pairing', () => {
+  const replacement = replacementFacialTerms(terms)
+  expect(replacement.mgcSourceCampaignId).toBeUndefined()
+  expect(studioCampaignMatches(replacement, 'portrait-audit')).toBe(true)
+  expect(studioCampaignMatches(terms, 'portrait-audit')).toBe(true)
+  expect(studioCampaignMatches({ ...terms, mgcSourceCampaignId: undefined }, 'portrait-audit')).toBe(false)
+  expect(studioCampaignMatches(replacement, 'measurement-explainer')).toBe(false)
 })

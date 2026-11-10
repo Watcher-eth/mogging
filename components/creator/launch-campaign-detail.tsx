@@ -1,3 +1,5 @@
+import { CampaignAnchorLink, ImmediateSubmissionNotice } from './campaign-publishing-requirements'
+import { FACIAL_CAMPAIGN_EXAMPLES } from '@/lib/creator/facial-campaign-update'
 import { campaignBudgetState } from '@/lib/creator/campaign-budget-state'
 import { CampaignSubmissionBudget } from './campaign-submission-budget'
 import { CampaignRequirementList } from './campaign-requirement-list'
@@ -56,7 +58,7 @@ export function LaunchCampaignDetail({
   const faqs = [
     [
       "When can I submit?",
-      `Submit once your post reaches ${minimum.toLocaleString("en-US")} views while this campaign is active. Include a continuous analytics recording filmed with a second device so we can verify your post, views and audience.`,
+      sprint.terms.submitOnPublish ? "Submit immediately after you upload the video to the social media platform. Do not wait for a view milestone or analytics. Add a fresh physical analytics recording at each milestone to claim earnings." : `Submit once your post reaches ${minimum.toLocaleString("en-US")} views while this campaign is active. Include a continuous analytics recording filmed with a second device so we can verify your post, views and audience.`,
     ],
     [
       "How are payouts calculated?",
@@ -68,11 +70,11 @@ export function LaunchCampaignDetail({
     ],
     [
       "Are videos and slideshows accepted?",
-      "Yes. Use the format that works for your audience, follow this campaign’s brief, and keep the post public and original. The examples are inspiration; do not repost someone else’s content.",
+      sprint.terms.submitOnPublish ? "This campaign requires a detailed facial analysis video generated in the new Creator Studio. Select a format and model, generate your video, then upload it using the required anchor." : "Yes. Use the format that works for your audience, follow this campaign’s brief, and keep the post public and original. The examples are inspiration; do not repost someone else’s content.",
     ],
     [
       "What happens after I submit?",
-      "Your post and analytics are reviewed against the campaign requirements. Follow its progress in Submissions and look for review feedback in Updates. Approved earnings appear in Money.",
+      sprint.terms.submitOnPublish ? "Your video is saved immediately so we can start tracking it. At each view milestone, add fresh analytics from Submissions for verification and payout. Follow review feedback in Updates and approved earnings in Money." : "Your post and analytics are reviewed against the campaign requirements. Follow its progress in Submissions and look for review feedback in Updates. Approved earnings appear in Money.",
     ],
   ];
   return (
@@ -97,7 +99,7 @@ export function LaunchCampaignDetail({
                 platform="instagram"
                 className="size-3.5"
               />{" "}
-              Videos & slideshows
+              {sprint.terms.submitOnPublish ? "Generated videos" : "Videos & slideshows"}
             </span>
           </div>
         </div>
@@ -119,6 +121,7 @@ export function LaunchCampaignDetail({
           </div>
         </div>
       </header>
+      <div className="mb-6 grid gap-4">{sprint.terms.submitOnPublish ? <ImmediateSubmissionNotice /> : null}<CampaignAnchorLink /></div>
       <section className={styles.payments} aria-labelledby="payout-heading">
         <div className={styles.paymentHeading}>
           <h2 id="payout-heading">Your views, rewarded.</h2>
@@ -173,7 +176,7 @@ export function LaunchCampaignDetail({
                 ) : null}
               </li>
               {[
-                "A continuous analytics recording filmed with a second device is required.",
+                sprint.terms.submitOnPublish ? "At each view milestone, upload a fresh continuous analytics recording filmed with a second device. Analytics are not required for the initial submission." : "A continuous analytics recording filmed with a second device is required.",
                 ...creatorCampaignRules(sprint.terms.rules),
               ].map((rule) => (
                 <li key={rule}>{rule}</li>
@@ -206,7 +209,7 @@ export function LaunchCampaignDetail({
         progress={bonusProgress}
         conversionsHref={conversionsHref}
       />
-      <ExampleCarousel key={campaign.key} campaign={campaign} />
+      {!sprint.terms.submitOnPublish ? <ExampleCarousel key={campaign.key} campaign={campaign} /> : null}
       <section className={styles.faq} aria-labelledby="faq-heading">
         <div>
           <span className={styles.eyebrow}>Good to know</span>
@@ -230,6 +233,7 @@ export function LaunchCampaignDetail({
         </div>
       </section>
       <CampaignBudget sprint={sprint} />
+      {sprint.terms.submitOnPublish ? <ExampleCarousel key={campaign.key} campaign={{ ...campaign, name: sprint.name, description: sprint.description, examples: FACIAL_CAMPAIGN_EXAMPLES }} /> : null}
       <footer className={styles.footer}>
         <span>
           <ShieldCheck size={16} />
