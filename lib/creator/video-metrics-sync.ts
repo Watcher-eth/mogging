@@ -3,6 +3,13 @@ import { db, schema } from '@/lib/db'
 import { env } from '@/lib/env'
 import { hasVideoScope, queryTikTokVideos, refreshTikTokVideoToken, TikTokVideoError } from './tiktok-video-api'
 
+// Prepared posts can predate their actual submission. Use the first submission event,
+// with the row creation time as a fallback for older records without history.
+const trackableSubmission = sql`not s.is_draft and s.post_key ~ '^tiktok:[0-9]+$'
+  and coalesce((select min(u.created_at) from creator_submission_updates u
+    where u.submission_id=s.id and u.type='submitted'), s.created_at)
+    > (now() at time zone 'UTC') - interval '10 days'`
+
 // Collection is independent of payout approvals. Never rewrite reviewed earnings or view thresholds.
 export async function syncCreatorVideoMetrics(timeBudgetMs = 40_000) {
   const deadline = Date.now() + timeBudgetMs
@@ -32,8 +39,9 @@ export async function syncCreatorVideoMetrics(timeBudgetMs = 40_000) {
       from creator_social_accounts a join creator_profiles p on p.id=a.creator_profile_id
       left join creator_video_sync_state state on state.account_id=a.id
       where a.platform='tiktok' and p.auth_status<>'suspended'
-        and exists(select 1 from creator_submissions s where s.social_account_id=a.id and not s.is_draft)
-        and (state.next_attempt_at is null or state.next_attempt_at<=now() at time zone 'UTC')
+        and exists(select 1 from creator_submissions s where s.social_account_id=a.id and ${trackableSubmission})
+        and (state.next_attempt_at is null or state.next_attempt_at<=now() at time zone 'UTC'
+          or a.oauth_verified_at>state.checked_at)
       order by state.next_attempt_at asc nulls first,a.id limit 10`)
     let observations = 0, checked = 0
     for (const account of accounts) {
@@ -57,10 +65,10 @@ export async function syncCreatorVideoMetrics(timeBudgetMs = 40_000) {
               .where(and(eq(schema.accounts.provider, 'tiktok-creator'), eq(schema.accounts.providerAccountId, tokens.providerAccountId)))
             access = refreshed.access_token
           }
-          // Rotate through every canonical post, including private/missing videos.
+          // Rotate through in-window posts, including private/missing videos.
           // A missing response must not starve the rest of an account's catalog.
           const batch = await tx.execute(sql`select distinct on(s.post_key) s.id,s.post_key from creator_submissions s
-            where s.social_account_id=${String(account.id)} and not s.is_draft and s.post_key ~ '^tiktok:[0-9]+$'
+            where s.social_account_id=${String(account.id)} and ${trackableSubmission}
             order by s.post_key,s.created_at offset ${cursor} limit 20`)
           const videos = await queryTikTokVideos(access, batch.map(post => String(post.post_key).slice(7)))
           const observed = new Date(); observed.setUTCMinutes(0,0,0)
