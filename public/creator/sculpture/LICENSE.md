@@ -17,3 +17,14 @@ Stone textures are generated for this project. Relative controls remain illustra
 ## Reference-sheet busts
 
 Classical curls, Textured crop, and Swept-back waves were reconstructed locally from supplied four-view sheets using TripoSR and fitted against the source silhouettes. The source sheets and reconstructed busts are separate from the museum CC0 assets. The corresponding bone models are illustrative fits of the same project skull.
+
+## Contemporary studio busts
+
+Short swept crop and Swept-back braid are adapted from the CC0 Blender Studio
+[Human Base Meshes bundle](https://www.blender.org/download/demo-files/#asset-bundles).
+The braid is adapted from MakeHuman's CC0
+[system hair assets](https://www.makehumancommunity.org/assets/assetpacks/makehuman_system_assets.html).
+The swept scalp meshes, directional strand relief, and brow fibres were authored for
+Creator Studio. Skin and eye geometry were normalized and cropped to busts.
+The bone windows use the same fitted, illustrative project anatomy as the other
+Cephra sculptures.

@@ -44,6 +44,7 @@ import {
   sculptureFrameCenter,
   sculpturePrimitiveVariation,
   sculptureFeatures,
+  sculptureModels,
   sculptureTreatments,
   sculptureInsetFrame,
   sculptureSample,
@@ -441,7 +442,7 @@ test("primitive variations explore all registered features and compositions", ()
     sculptureTreatments.length,
   );
   for (const [key, count] of [
-    ["model", 5],
+    ["model", sculptureModels.length],
     ["material", 3],
     ["view", 3],
     ["camera", 6],
@@ -951,7 +952,7 @@ describe("continuous sculptural demonstration", () => {
 });
 
 /** Check the actual shipping binary, not a manifest that could conceal a broken export. */
-for (const model of ["male", "female", "classical", "textured", "swept"] as const)
+for (const model of sculptureModels)
   test(`${model} asset has a neutral baseline and bounded, finite fixed-topology morphs`, () => {
     const bytes = readFileSync(`public/creator/sculpture/${model}.glb`),
       jsonLength = bytes.readUInt32LE(12),
@@ -996,11 +997,20 @@ for (const model of ["male", "female", "classical", "textured", "swept"] as cons
     // A frontal cheek ray formerly placed this jaw-angle point too high.
     const jawBelowLip = registrations[model].anchors.lip[1] - registrations[model].anchors.jaw[1];
     expect(jawBelowLip).toBeGreaterThan(0);
-    if (model === "male" || model === "female") expect(jawBelowLip).toBeGreaterThan(0.012);
+    if (model === "male" || model === "female" || model.startsWith("editorial-")) expect(jawBelowLip).toBeGreaterThan(0.012);
     let targets = 0;
     for (const mesh of gltf.meshes) {
       expect((mesh.weights ?? []).every((v: number) => v === 0)).toBe(true);
       for (const primitive of mesh.primitives) {
+        if (mesh.name.startsWith("Cephra groom")) {
+          if (mesh.name.includes("brow")) {
+            expect(mesh.extras.targetNames).toContain("brow-height-high");
+          } else {
+            expect(primitive.attributes.TEXCOORD_0).toBeDefined();
+            expect(gltf.materials[primitive.material].normalTexture.index).toBeGreaterThanOrEqual(0);
+          }
+          continue;
+        }
         if (!mesh.extras?.targetNames?.length) {
           expect(mesh.name.toLowerCase()).toContain("ponytail");
           expect(primitive.attributes.TEXCOORD_0).toBeDefined();

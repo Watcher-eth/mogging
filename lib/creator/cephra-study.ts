@@ -62,10 +62,16 @@ export const sculptureTreatments = [
   "reference-ratio",
   "layer-peel",
 ] as const;
-export const sculptureModels = ["female", "male", "classical", "textured", "swept"] as const;
+export const sculptureModels = [
+  "female", "male", "classical", "textured", "swept", "editorial-female", "editorial-male",
+] as const;
 export const sculptureMaterials = ["matte", "reflective", "chrome"] as const;
 export type SculptureModel = (typeof sculptureModels)[number];
 export type SculptureMaterial = (typeof sculptureMaterials)[number];
+
+export const studioSculptureModels = [
+  "female", "male", "editorial-female", "editorial-male",
+] as const satisfies readonly SculptureModel[];
 
 export const sculptureModelLabels: Record<SculptureModel, string> = {
   female: "Female sculpture",
@@ -73,6 +79,8 @@ export const sculptureModelLabels: Record<SculptureModel, string> = {
   classical: "Classical curls",
   textured: "Textured crop",
   swept: "Swept-back waves",
+  "editorial-female": "Swept-back braid",
+  "editorial-male": "Short swept crop",
 };
 
 export const sculptureMaterialLabels: Record<SculptureMaterial, string> = {

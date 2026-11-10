@@ -11,6 +11,7 @@ import {
   sculptureLayerMotion,
   sculptureLayerEdge,
   sculptureAssetVersion,
+  studioSculptureModels,
   sculptureCutawaySurface,
   sculptureAnglePoints,
   sculptureRegion,
@@ -384,7 +385,7 @@ export async function prepareSculptureRenderer(
       void pending.catch(() => loaded.delete(model));
     }
     root = (await pending).clone(true);
-    if ((model === "female" || model === "male") && !bakedLighting.has(model)) {
+    if (studioSculptureModels.some(studioModel => studioModel === model) && !bakedLighting.has(model)) {
       const texture = await new T.TextureLoader().loadAsync(
         `/creator/sculpture/${model}-studio-ao.png?v=${sculptureAssetVersion}`,
       );
@@ -403,17 +404,18 @@ export async function prepareSculptureRenderer(
         if (!tree) { tree = new MeshBVH(mesh.geometry, { indirect: true }); surfaceTrees.set(mesh.geometry, tree); }
         mesh.geometry.boundsTree = tree;
         mesh.raycast = acceleratedRaycast;
-        if (/ponytail/i.test(mesh.name)) {
+        const authoredGroom = /^cephra[\s_-]*groom/i.test(mesh.name);
+        if (authoredGroom || /ponytail/i.test(mesh.name)) {
           const original = mesh.material as THREE.MeshStandardMaterial;
           const hair = new T.MeshPhysicalMaterial({
             map: original.map,
-            normalMap: hairNormal,
-            normalScale: new T.Vector2(0.4, 0.4),
-            color: "#f8f8f5",
+            normalMap: authoredGroom ? original.normalMap : hairNormal,
+            normalScale: authoredGroom ? original.normalScale : new T.Vector2(0.4, 0.4),
+            color: authoredGroom ? original.color : "#f8f8f5",
             roughness: 0.8,
             metalness: 0,
             specularIntensity: 0.5,
-            alphaTest: 0.22,
+            alphaTest: authoredGroom ? original.alphaTest : 0.22,
             side: T.DoubleSide,
           });
           if (hair.map)
@@ -444,7 +446,7 @@ export async function prepareSculptureRenderer(
     modelBounds.min.y = Math.max(modelBounds.min.y, anchors(model).chin[1] - 0.16);
     sex = model;
     brows = new T.Group();
-    const eye = model === "female" ? 0.463 : 0.445,
+    const eye = (anchors(model).eyeLeft[1] + anchors(model).eyeRight[1]) / 2,
       cast = new T.Raycaster();
     for (const side of [-1, 1])
       for (let i = 0; i < 32; i++) {

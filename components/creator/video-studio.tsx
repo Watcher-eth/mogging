@@ -19,7 +19,7 @@ import { compileAnalysisVideo, type VideoRecipe, type VideoComposition } from '@
 import type { PreparedVideo } from '@/lib/creator/video-renderer'
 import { compileProductionVideo, productionCut, productionTimingIssues, assembleProductionAudio, restoreProductionRecording, sectionAudioKey, type SectionAudio } from '@/lib/creator/video-production'
 import { sculptureScripts } from '@/lib/creator/cephra-scripts'
-import { sculptureModels, sculptureModelLabels, sculptureMaterialLabels, sculptureFinishes, type SculptureModel, type SculptureMaterial } from '@/lib/creator/cephra-study'
+import { studioSculptureModels, sculptureModelLabels, sculptureMaterialLabels, sculptureFinishes, type SculptureModel, type SculptureMaterial } from '@/lib/creator/cephra-study'
 import { reportCategories } from '@/lib/creator/mock-report-data'
 import { decodeVoiceover, type VideoVoiceover } from '@/lib/creator/video-voiceover'
 import { voiceDirection } from '@/lib/creator/video-speech'
@@ -164,7 +164,8 @@ export default function VideoStudio({ input, plan, images, trackExports = false,
     requestRef.current=true;setLoading(true);setError('')
     try{
       const previous=previousTake('sculptures','cephra')
-      const compatible=sculptureScripts.filter(script=>script.model===(model==='female'?'female':'male'))
+      const scriptModel=model==='female' || model==='editorial-female' ? 'female' : 'male'
+      const compatible=sculptureScripts.filter(script=>script.model===scriptModel)
       const candidates=compatible.filter(script=>script.id!==previous?.storyId)
       const chosen=candidates[Math.floor(Math.random()*candidates.length)]??compatible[0]
       const saved=await loadSculptureStory(chosen.id,material,model)
@@ -246,7 +247,7 @@ export default function VideoStudio({ input, plan, images, trackExports = false,
         {step==='style'?<div className={styles.styleStep}><ContentStylePicker value={undefined} disabled={busy} previewId={stylePreview} onPreviewChange={setStylePreview} onChange={id=>{if(id==='cephra'){setRecipe('sculpture-study');goTo('sculpture');return}setRecipe(creatorContentStyles.find(style=>style.id===id)!.defaultRecipe);goTo('person')}}/></div>:null}
         {step==='style' && loading?<p className={styles.flowStatus} role="status"><Loader2 size={15} className="animate-spin"/>Lighting the sculpture and bringing your story together…</p>:null}
         {step==='sculpture'?<div className={styles.peopleStep} aria-busy={loading}>
-          <div className={styles.sculptureCards}>{sculptureModels.filter(model=>model==='female' || model==='male').flatMap(model=>sculptureFinishes(model).map(material=><button key={`${model}-${material}`} type="button" disabled={busy} className={styles.personCard} onClick={()=>void selectSculpture(model,material)}>
+          <div className={styles.sculptureCards}>{studioSculptureModels.flatMap(model=>sculptureFinishes(model).map(material=><button key={`${model}-${material}`} type="button" disabled={busy} className={styles.personCard} onClick={()=>void selectSculpture(model,material)}>
             <span className={`${styles.personPhoto} ${styles.sculpturePhoto}`}><img src={`/creator/sculpture/${model}-${material}.webp`} alt={`${sculptureModelLabels[model]} in ${sculptureMaterialLabels[material].toLowerCase()}`} width={720} height={720} loading="lazy" decoding="async"/></span>
             <strong>{sculptureModelLabels[model]}</strong><span>{sculptureMaterialLabels[material]}</span>
           </button>))}</div>
