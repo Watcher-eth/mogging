@@ -1,4 +1,5 @@
 import Head from 'next/head'
+import Image from 'next/image'
 import { useRouter } from 'next/router'
 import { motion } from 'motion/react'
 import { ClipboardList, Loader2, ScanFace, ShieldCheck, Sparkles } from 'lucide-react'
@@ -66,16 +67,16 @@ const tiers: Array<{
 
 const appScreenshots = [
   {
-    src: '/app-screenshots/appstore-mogging-4.png',
-    alt: 'Mogging soft tissue report screen with face analysis overlays',
+    src: '/app-screenshots/protocol-ascend.png',
+    alt: 'Mogging personalized protocol timeline with daily improvement tasks',
   },
   {
-    src: '/app-screenshots/export-mogging-3.png',
-    alt: 'Mogging personalized protocol calendar screen',
+    src: '/app-screenshots/tracking-baseline.png',
+    alt: 'Mogging evaluation history showing symmetry progress over time',
   },
   {
-    src: '/app-screenshots/appstore-mogging-2.png',
-    alt: 'Mogging evaluation tracking chart screen',
+    src: '/app-screenshots/potential-report.png',
+    alt: 'Mogging facial report showing overall and potential scores',
   },
 ]
 
@@ -284,16 +285,19 @@ export default function AppFunnelPage() {
             initial={{ opacity: 0, y: 20, scale: 0.985 }}
             animate={{ opacity: 1, y: 0, scale: 1 }}
             transition={{ duration: 0.5, delay: 0.08, ease: [0.16, 1, 0.3, 1] }}
-            className="mt-12 w-full"
+            className="mt-16 w-full sm:mt-20"
           >
-            <div className="flex gap-4 overflow-x-auto px-[max(0px,calc((100vw-80rem)/2))] pb-4 sm:justify-center sm:overflow-visible sm:px-0">
+            <div className="flex gap-5 overflow-x-auto px-[max(0px,calc((100vw-80rem)/2))] pb-4 sm:justify-center sm:gap-6 sm:overflow-visible sm:px-0">
               {appScreenshots.map((screenshot) => (
-                <div key={screenshot.src} className="w-[74vw] min-w-[260px] max-w-[340px] shrink-0 overflow-hidden rounded-[2.25rem] sm:w-[30%]">
-                  <img
+                <div key={screenshot.src} className="w-[74vw] min-w-[260px] max-w-[340px] shrink-0 overflow-hidden rounded-[2rem] border border-zinc-200 bg-white sm:w-[30%] sm:rounded-[2.25rem]">
+                  <Image
                     src={screenshot.src}
                     alt={screenshot.alt}
+                    width={1242}
+                    height={2688}
+                    sizes="(max-width: 639px) 74vw, 30vw"
                     className="block h-auto w-full"
-                    loading="eager"
+                    priority
                   />
                 </div>
               ))}
@@ -301,7 +305,7 @@ export default function AppFunnelPage() {
 
             <ReviewsSection />
 
-            <div className="mx-auto mt-10 w-full max-w-5xl">
+            <div className="mx-auto mt-16 w-full max-w-5xl sm:mt-20">
               <div className="grid gap-3 md:grid-cols-3">
                 {tiers.map((tier) => {
                   const active = selectedProduct === tier.id
@@ -392,7 +396,7 @@ export default function AppFunnelPage() {
 
 function ReviewsSection() {
   return (
-    <section className="mx-auto mt-10 w-full max-w-7xl rounded-[2rem] bg-white px-0 py-2 text-zinc-950">
+    <section className="mx-auto mt-16 w-full max-w-7xl rounded-[2rem] bg-white px-0 py-2 text-zinc-950 sm:mt-20">
       <div className="mb-7 flex items-start justify-between gap-6 px-1">
         <h2 className="text-[1.7rem] font-semibold leading-none tracking-[-0.04em] text-zinc-900 sm:text-[2rem]">
           Ratings &amp; Reviews
