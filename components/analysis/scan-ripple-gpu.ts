@@ -162,13 +162,13 @@ export async function runScanRipple(
 
   try {
     const format = navigator.gpu.getPreferredCanvasFormat()
-    const module = device.createShaderModule({ code: shader })
+    const waveModule = device.createShaderModule({ code: shader })
     const dots = device.createShaderModule({ code: glintShader })
     const [pipeline, glints] = await Promise.all([
       device.createRenderPipelineAsync({
         layout: 'auto',
-        vertex: { module, entryPoint: 'vertex' },
-        fragment: { module, entryPoint: 'fragment', targets: [{ format }] },
+        vertex: { module: waveModule, entryPoint: 'vertex' },
+        fragment: { module: waveModule, entryPoint: 'fragment', targets: [{ format }] },
       }),
       device.createRenderPipelineAsync({
         layout: 'auto', primitive: { topology: 'triangle-strip' },
