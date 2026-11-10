@@ -1,11 +1,17 @@
-export const HOMEPAGE_DESTINATION_COOKIE = 'mogging.homepage.destination'
+import type { ParsedUrlQuery } from 'node:querystring'
 
-export function shouldRouteHomepageToStore(userAgent: string, preference?: string, preview = false) {
-  return !preview && preference !== 'web' &&
-    /iPhone|iPod/i.test(userAgent) &&
-    !/bot\b|crawler|spider|preview|headlesschrome|lighthouse/i.test(userAgent)
+export function phonePwaEntryPath(query: ParsedUrlQuery) {
+  if (query.checkout === 'success' && typeof query.session_id === 'string') {
+    return `/app/handoff?session_id=${encodeURIComponent(query.session_id)}`
+  }
+  if (query.login === '1') {
+    const params = new URLSearchParams({ login: '1' })
+    if (typeof query.next === 'string') params.set('next', query.next)
+    return `/analysis?${params}`
+  }
+  return '/analysis'
 }
 
 export function homepageDestinationCookie(destination: 'web' | 'store', secure: boolean) {
-  return `${HOMEPAGE_DESTINATION_COOKIE}=${destination === 'web' ? 'web' : ''}; Path=/; SameSite=Lax; Max-Age=${destination === 'web' ? 7776000 : 0}${secure ? '; Secure' : ''}`
+  return `mogging.homepage.destination=${destination === 'web' ? 'web' : ''}; Path=/; SameSite=Lax; Max-Age=${destination === 'web' ? 7776000 : 0}${secure ? '; Secure' : ''}`
 }

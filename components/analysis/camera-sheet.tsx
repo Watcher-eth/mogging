@@ -1,22 +1,26 @@
+import { DesktopCaptureExample, DesktopCaptureOval } from './desktop-capture-oval'
 import { GuidedWebCapture } from './guided-web-capture'
 import { trackWebEvent } from '@/lib/analytics/client'
 import { AnimatePresence, motion } from 'motion/react'
-import { Camera, ImagePlus, X } from 'lucide-react'
+import { Camera, ImagePlus, Images, X } from '@/components/ui/mogging-glyphs'
 import { useEffect, useRef, useState } from 'react'
 import { flushSync } from 'react-dom'
 import { CaptureFrame } from '@/components/analysis/capture-frame'
 import { Button } from '@/components/ui/button'
+import { guidedCameraFrame } from '@/lib/client/guided-camera-frame'
 
 type CameraSheetProps = {
   analyticsEnabled?: boolean
   fullscreen?: boolean
+  desktop?: boolean
+  side?: boolean
   open: boolean
   onCapture: (image: { dataUrl: string; name: string }) => void
   onClose: () => void
   onUpload: () => void
 }
 
-export function CameraSheet({ analyticsEnabled = false, fullscreen, open, onCapture, onClose, onUpload }: CameraSheetProps) {
+export function CameraSheet({ analyticsEnabled = false, fullscreen, desktop, side, open, onCapture, onClose, onUpload }: CameraSheetProps) {
   const videoRef = useRef<HTMLVideoElement | null>(null)
   const [capturedFrame, setCapturedFrame] = useState<string | null>(null)
   const [cameraReady, setCameraReady] = useState(false)
@@ -29,7 +33,19 @@ export function CameraSheet({ analyticsEnabled = false, fullscreen, open, onCapt
     let stream: MediaStream | undefined
     const video = videoRef.current
     if (!video) return
-    const ready = () => { if (!cancelled) setCameraReady(true) }
+    const started = performance.now()
+    let firstFrame = false
+    let frameTimeout: number | undefined
+    const track = (result: string, reason_code?: string) => {
+      if (analyticsEnabled) trackWebEvent('face_capture_result', { surface: 'web_analysis', step: 'capture.camera', result, reason_code, duration_ms: Math.round(performance.now() - started) })
+    }
+    const ready = () => {
+      if (cancelled || firstFrame || !video.videoWidth) return
+      firstFrame = true
+      window.clearTimeout(frameTimeout)
+      track('first_frame')
+      setCameraReady(true)
+    }
     video.addEventListener('playing', ready)
 
     async function startCamera(video: HTMLVideoElement) {
@@ -40,7 +56,7 @@ export function CameraSheet({ analyticsEnabled = false, fullscreen, open, onCapt
         setCapturedFrame(null)
         stream = await navigator.mediaDevices.getUserMedia({
           audio: false,
-          video: {
+          video: fullscreen ? { facingMode: 'user' } : {
             facingMode: 'user',
             width: { ideal: 1080 },
             height: { ideal: 1920 },
@@ -54,11 +70,22 @@ export function CameraSheet({ analyticsEnabled = false, fullscreen, open, onCapt
 
         if (analyticsEnabled) trackWebEvent('permission_result', { surface: 'web_analysis', permission: 'camera', result: 'granted' })
         video.srcObject = stream
+        frameTimeout = window.setTimeout(() => {
+          if (cancelled || firstFrame) return
+          track('failed', 'camera_no_frames')
+          stream?.getTracks().forEach(track => track.stop())
+          setError('The camera didn’t start')
+        }, 8000)
         await video.play()
+        if (video.readyState >= HTMLMediaElement.HAVE_CURRENT_DATA) ready()
       } catch (caught) {
-        if (analyticsEnabled) trackWebEvent('permission_result', { surface: 'web_analysis', permission: 'camera', result: 'failed', reason_code: caught instanceof DOMException && caught.name === 'NotAllowedError' ? 'permission_denied' : 'camera_unavailable' })
+        if (cancelled) return
+        window.clearTimeout(frameTimeout)
+        const denied = caught instanceof DOMException && caught.name === 'NotAllowedError'
+        if (stream) track('failed', 'camera_playback_failed')
+        else if (analyticsEnabled) trackWebEvent('permission_result', { surface: 'web_analysis', permission: 'camera', result: 'failed', reason_code: denied ? 'permission_denied' : 'camera_unavailable' })
         stream?.getTracks().forEach(track => track.stop())
-        if (!cancelled) setError('Camera access is unavailable. Upload a photo instead.')
+        setError(denied && !stream ? 'Camera access is off' : 'Camera unavailable')
       }
     }
 
@@ -66,23 +93,25 @@ export function CameraSheet({ analyticsEnabled = false, fullscreen, open, onCapt
 
     return () => {
       cancelled = true
+      window.clearTimeout(frameTimeout)
       video.removeEventListener('playing', ready)
       stream?.getTracks().forEach(track => track.stop())
       video.srcObject = null
     }
-  }, [open, fullscreen])
+  }, [analyticsEnabled, open, fullscreen, desktop])
 
-  function takeFrontPhoto() {
+  function takeFrontPhoto(zoom = 1) {
     const video = videoRef.current
     if (!video || video.videoWidth === 0 || video.videoHeight === 0) return
 
     const canvas = document.createElement('canvas')
-    // Match the centered cover crop so the captured photo lines up with the guide.
-    const scale = fullscreen && video.clientWidth && video.clientHeight
+    // Match the visible preview, including any crop the user applied by pinching.
+    const scale = desktop && video.clientWidth && video.clientHeight
       ? Math.max(video.clientWidth / video.videoWidth, video.clientHeight / video.videoHeight)
       : null
-    canvas.width = scale ? Math.round(video.clientWidth / scale) : video.videoWidth
-    canvas.height = scale ? Math.round(video.clientHeight / scale) : video.videoHeight
+    const frame = fullscreen && video.clientWidth && video.clientHeight ? guidedCameraFrame(video, zoom) : null
+    canvas.width = frame ? Math.round(video.videoWidth / Math.max(1, frame.width)) : scale ? Math.round(video.clientWidth / scale) : video.videoWidth
+    canvas.height = frame ? Math.round(video.videoHeight / Math.max(1, frame.height)) : scale ? Math.round(video.clientHeight / scale) : video.videoHeight
 
     const context = canvas.getContext('2d')
     if (!context) return
@@ -97,7 +126,7 @@ export function CameraSheet({ analyticsEnabled = false, fullscreen, open, onCapt
   }
 
   function finishCapture(dataUrl: string) {
-    if (analyticsEnabled) trackWebEvent('face_capture_result', { surface: 'web_analysis', result: 'captured' })
+    if (analyticsEnabled) trackWebEvent('face_capture_result', { surface: 'web_analysis', result: 'captured', step: 'capture.done', source: 'camera' })
     if (fullscreen) flushSync(() => setCapturedFrame(dataUrl))
     onCapture({ dataUrl, name: `camera-${Date.now()}.jpg` })
     onClose()
@@ -107,15 +136,31 @@ export function CameraSheet({ analyticsEnabled = false, fullscreen, open, onCapt
     <AnimatePresence onExitComplete={() => setCapturedFrame(null)}>
       {open ? (
         <motion.div
-          className={fullscreen ? "scan-camera fixed inset-0 z-50 overflow-hidden bg-black" : "fixed inset-0 z-50 grid place-items-center overflow-y-auto bg-black px-4 py-6 sm:px-6"}
+          className={fullscreen ? "absolute inset-0 z-50 overflow-hidden bg-black" : "fixed inset-0 z-50 grid place-items-center overflow-y-auto bg-black px-4 py-6 sm:px-6"}
           initial={fullscreen ? false : { opacity: 0 }}
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
           transition={{ duration: 0.18, ease: [0.23, 1, 0.32, 1] }}
         >
-          {fullscreen && capturedFrame && <div className="scan-camera-still" style={{ backgroundImage: `url(${capturedFrame})` }} />}
-          {fullscreen ? <GuidedWebCapture analyticsEnabled={analyticsEnabled} videoRef={videoRef} cameraReady={cameraReady} error={error}
-            onClose={onClose} onUpload={onUpload} takeFrontPhoto={() => takeFrontPhoto() ?? null} onComplete={finishCapture} />
+          {fullscreen ? <div className="absolute inset-0">
+            {capturedFrame && <div className="scan-camera-still" style={{ backgroundImage: `url(${capturedFrame})` }} />}
+            <GuidedWebCapture analyticsEnabled={analyticsEnabled} videoRef={videoRef} cameraReady={cameraReady} error={error}
+              onUpload={onUpload} onClose={onClose} takeFrontPhoto={takeFrontPhoto} onComplete={finishCapture} />
+          </div>
+          : desktop ? <div className="desktop-live-capture">
+            <button type="button" className="desktop-live-close" aria-label="Close camera" onClick={onClose}><X size={22} /></button>
+            <video ref={videoRef} className="absolute inset-0 h-full w-full scale-x-[-1] object-cover" playsInline muted autoPlay />
+            {!cameraReady && <DesktopCaptureExample side={side} />}
+            <DesktopCaptureOval side={side} light />
+            <div className="desktop-live-actions">
+              <p role="status">{error || (!cameraReady ? 'Preparing your camera…' : side ? 'Turn fully to one side' : 'Look straight ahead')}</p>
+              <div>
+                <button type="button" className="desktop-capture-gallery" onClick={onUpload} aria-label="Open photo gallery"><Images size={21} /></button>
+                <button type="button" className="desktop-capture-shutter" disabled={!cameraReady} aria-label="Take photo"
+                  onClick={() => { const photo = takeFrontPhoto(); if (photo) finishCapture(photo) }}><span /></button>
+              </div>
+            </div>
+          </div>
           : <div className="relative w-full max-w-[430px]">
             <Button className="absolute right-5 top-5 z-20 size-12 rounded-full bg-white/16 text-white backdrop-blur-md hover:bg-white/24" size="icon" variant="ghost" onClick={onClose}>
               <X className="size-6" aria-hidden="true" />
@@ -124,9 +169,9 @@ export function CameraSheet({ analyticsEnabled = false, fullscreen, open, onCapt
 
             <CaptureFrame
               videoRef={videoRef}
-              stepLabel="Step 1 of 3"
-              title="Look straight ahead"
-              subtitle={error || 'Center your face in the frame'}
+              showStepIndicator={false}
+              title={side ? 'Turn to the side' : 'Look straight ahead'}
+              subtitle={error || (side ? 'Keep your full profile in frame' : 'Center your face in the frame')}
               action={
                 <div className="grid grid-cols-[56px_1fr_56px] items-center gap-5">
                   <Button className="size-14 rounded-2xl bg-white/14 text-white backdrop-blur-md hover:bg-white/22" size="icon" variant="ghost" onClick={onUpload}>

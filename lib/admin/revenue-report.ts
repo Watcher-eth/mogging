@@ -1,4 +1,5 @@
 import { sql } from 'drizzle-orm'
+import { webChannel } from './analytics-channel'
 import { reportingBucket } from './reporting-bucket'
 
 // The requested App Store Small Business scenario. Provider estimates remain
@@ -28,7 +29,38 @@ export function revenueReportingCTEs(start: string) {
 }
 
 export function revenueReportCTEs(days: number, start: string, end: string) {
-  return sql`revenue_stream_events as materialized (
+  const factChannel = webChannel(sql`h.properties`)
+  const browserChannel = webChannel(sql`a.properties`, true)
+  const channel = sql`case when h.provider='stripe' then coalesce(${factChannel}, subscription.channel, payment.channel, 'unknown_web')
+    when h.properties->>'store'='APP_STORE' then 'ios'
+    when h.properties->>'store' in ('PLAY_STORE','GOOGLE_PLAY') then 'android'
+    else 'unclassified' end`
+  return sql`revenue_browser_channels as (
+    select a.properties->>'flow_id' as flow_id, min(${browserChannel}) as channel
+    from e a where a.platform='web' and nullif(a.properties->>'flow_id','') is not null
+    group by 1 having count(distinct ${browserChannel})=1
+  ), revenue_channel_facts as materialized (
+    select h.subscription_id,h.transaction_id,
+      coalesce(${factChannel}, browser.channel) as channel
+    from billing_history h left join revenue_browser_channels browser on browser.flow_id=h.properties->>'flow_id'
+    where h.provider='stripe'
+  ), revenue_subscription_channels as (
+    select subscription_id,min(channel) as channel from revenue_channel_facts
+    where subscription_id is not null group by 1 having count(distinct channel)=1
+  ), revenue_payment_channels as (
+    select transaction_id,min(channel) as channel from revenue_channel_facts
+    where transaction_id is not null group by 1 having count(distinct channel)=1
+  ), revenue_channels as (
+    select ${channel} as channel,coalesce(h.currency,'UNKNOWN') as currency,
+      count(*) filter(where h.amount>0 and h.event_name<>'refund_reversed') as paid_transactions,
+      coalesce(sum(h.amount) filter(where h.amount>0),0) as gross,
+      coalesce(-sum(h.amount) filter(where h.amount<0),0) as refunds,
+      sum(h.amount) as after_refunds
+    from revenue_reporting_period h
+    left join revenue_subscription_channels subscription using(subscription_id)
+    left join revenue_payment_channels payment using(transaction_id)
+    where h.amount<>0 group by 1,2 order by 1,2
+  ), revenue_stream_events as materialized (
     select ${billingSource} as source, coalesce(currency,'UNKNOWN') as currency, occurred_at, amount
     from revenue_reporting_history where amount<>0
       and occurred_at >= ${start}::timestamp - ${days}::integer * interval '1 day'
@@ -116,6 +148,10 @@ export function revenueReportCTEs(days: number, start: string, end: string) {
         when latest.properties->>'store'='APP_STORE' then 'Apple App Store'
         when latest.properties->>'store' in ('PLAY_STORE','GOOGLE_PLAY') then 'Google Play'
         else current.provider end as source,
+      case when current.provider='stripe' then coalesce(web.channel,'unknown_web')
+        when latest.properties->>'store'='APP_STORE' then 'ios'
+        when latest.properties->>'store' in ('PLAY_STORE','GOOGLE_PLAY') then 'android'
+        else 'unclassified' end as channel,
       current.at,current.ends_at,current.canceled,current.ended,
       coalesce((select max(f.occurred_at) from subscription_facts f where f.provider=current.provider and f.subscription_id=current.subscription_id and f.event_name in ('subscription_expired','subscription_refunded')),current.ends_at) as ended_at,
       current.ends_at>current.at and not current.ended as has_access,
@@ -133,12 +169,16 @@ export function revenueReportCTEs(days: number, start: string, end: string) {
     left join lateral(select product_id,properties from subscription_facts f
       where f.provider=current.provider and f.subscription_id=current.subscription_id
       order by (product_id is not null) desc,occurred_at desc,received_at desc,id desc limit 1) latest on true
+    left join revenue_subscription_channels web on current.provider='stripe' and web.subscription_id=current.subscription_id
     where current.snapshot=0
   ), revenue_subscription_prices as (
-    select s.*,coalesce(p.currency,'UNKNOWN') as currency,
-      case when p.amount>0 then p.amount * cadence.factor end as monthly_amount,
+    select s.*,coalesce(p.properties->>'recurring_currency',p.currency,'UNKNOWN') as currency,
+      (case when jsonb_typeof(p.properties->'recurring_unit_amount')='number' then (p.properties->>'recurring_unit_amount')::numeric / 100
+        when p.amount>0 then p.amount end) * cadence.factor as monthly_amount,
       (case when s.provider='revenuecat' and jsonb_typeof(p.properties->'usd_amount')='number'
-        then nullif((p.properties->>'usd_amount')::numeric,0) when upper(p.currency)='USD' and p.amount>0 then p.amount end) * cadence.factor as monthly_usd
+        then nullif((p.properties->>'usd_amount')::numeric,0)
+        when p.properties->>'recurring_currency'='USD' and jsonb_typeof(p.properties->'recurring_unit_amount')='number' then (p.properties->>'recurring_unit_amount')::numeric / 100
+        when upper(p.currency)='USD' and p.amount>0 then p.amount end) * cadence.factor as monthly_usd
     from revenue_subscription_states s
     left join lateral (
       select amount,currency,properties from subscription_facts f where f.provider=s.provider and f.subscription_id=s.subscription_id
@@ -146,12 +186,14 @@ export function revenueReportCTEs(days: number, start: string, end: string) {
         order by (amount>0) desc nulls last,occurred_at desc,received_at desc,id desc limit 1
     ) p on true
     cross join lateral (select case s.product
+      when 'web_basic_weekly' then 52::numeric/12
+      when 'web_basic_monthly' then 1::numeric when 'web_pro_monthly' then 1::numeric
       when 'mogging.pro.weekly' then 4::numeric when 'mobile_subscription_weekly' then 4::numeric
       when 'mogging.pro.monthly' then 1::numeric when 'mobile_subscription_monthly' then 1::numeric
       when 'mogging.pro.yearly' then 1::numeric/12 when 'mobile_subscription_yearly' then 1::numeric/12
     end as factor) cadence
   ), revenue_subscription_mrr as (
-    select source,currency,
+    select source,channel,currency,
       count(*) filter(where not canceled and not billing_retry) as renewing_subscriptions,
       count(*) filter(where canceled and not billing_retry) as cancelling_subscriptions,
       count(*) filter(where billing_retry) as billing_retry_subscriptions,
@@ -164,7 +206,7 @@ export function revenueReportCTEs(days: number, start: string, end: string) {
       count(*) filter(where monthly_amount is null) as missing_price_subscriptions,
       sum(monthly_usd) as active_mrr_usd,
       count(*) filter(where monthly_usd is null) as missing_mrr_usd_subscriptions
-    from revenue_subscription_prices where has_access and not trial group by 1,2 order by 1,2
+    from revenue_subscription_prices where has_access and not trial group by 1,2,3 order by 1,2,3
   ), revenue_subscription_overview as (
     select count(*) filter(where has_access and not canceled and not trial and not billing_retry) as auto_renewing,
       count(*) filter(where has_access and canceled and not trial) as cancelling,
@@ -179,12 +221,12 @@ export function revenueReportCTEs(days: number, start: string, end: string) {
       count(*) filter(where active_at_start and (ended or ends_at<=at)) as churned_starting_subscriptions
     from revenue_subscription_states
   ), revenue_subscription_products as (
-    select source,product,count(*) filter(where has_access and not canceled and not trial and not billing_retry) as auto_renewing,
+    select source,channel,product,count(*) filter(where has_access and not canceled and not trial and not billing_retry) as auto_renewing,
       count(*) filter(where has_access and canceled and not trial) as cancelling,
       count(*) filter(where has_access and trial) as trials,
       count(*) filter(where not ended and billing_retry) as billing_retry,
       count(*) filter(where ended or ends_at<=at) as ended,
       count(*) filter(where not ended and ends_at is null) as unknown_expiry
-    from revenue_subscription_states group by 1,2 order by 1,2
+    from revenue_subscription_states group by 1,2,3 order by 1,2,3
   )`
 }

@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Download, Film, Loader2 } from 'lucide-react'
+import { Download, Film, Loader2 } from '@/components/ui/mogging-glyphs'
 import { toast } from 'sonner'
 import { Button } from '@/components/ui/button'
 import { Field, fieldClass } from './creator-shell'

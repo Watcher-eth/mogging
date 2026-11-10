@@ -1,6 +1,6 @@
 import dynamic from 'next/dynamic'
 import Link from 'next/link'
-import { ArrowLeft } from 'lucide-react'
+import { ArrowLeft } from '@/components/ui/mogging-glyphs'
 import { useMemo } from 'react'
 import { previewLandmarks } from '@/components/landing/overlay'
 import { buildAnalysisPost, type AnalysisPostInput } from '@/lib/creator/analysis-post'

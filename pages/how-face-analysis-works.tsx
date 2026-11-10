@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import Link from 'next/link'
-import { Sun, Camera, ScanFace, ImageIcon, Check } from 'lucide-react'
+import { Sun, Camera, ScanFace, ImageIcon, Check } from '@/components/ui/mogging-glyphs'
 import { GuidePage, GuideSection, GuideQuestions } from '@/components/app/guide-page'
 import { EvaluationPreview } from '@/components/landing/mobile-preview'
 import { ReportMetricDemo, ReportPortraitDemo } from '@/components/landing/analysis-story'

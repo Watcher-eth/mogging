@@ -1,5 +1,5 @@
 import Link from 'next/link'
-import { ArrowUpRight, LockKeyhole } from 'lucide-react'
+import { ArrowUpRight, LockKeyhole } from '@/components/ui/mogging-glyphs'
 import { SkeletonImage } from '@/components/ui/skeleton-image'
 import { toast } from 'sonner'
 import useSWRImmutable from 'swr/immutable'

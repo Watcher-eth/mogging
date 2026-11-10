@@ -13,6 +13,9 @@ test('delayed checkout and refund notifications have transaction-level dedupe ke
   const first = normalizeStripeLifecycle(event('checkout.session.completed', purchase))!
   const repeated = normalizeStripeLifecycle(event('checkout.session.async_payment_succeeded', purchase))!
   expect(first.providerEventId).toBe(repeated.providerEventId)
+  const pending = normalizeStripeLifecycle(event('checkout.session.completed', { ...purchase, payment_status: 'unpaid' }))
+  expect(pending).toMatchObject({ eventName: 'checkout_payment_pending', amount: null })
+  expect(pending?.providerEventId).not.toBe(first.providerEventId)
   expect(first.amount).toBe('500')
   expect(normalizeStripeLifecycle(event('invoice.paid', { amount_paid: 500, currency: 'ugx' }))?.amount).toBe('5')
   expect(normalizeStripeLifecycle(event('refund.updated', { id: 're', status: 'pending', amount: 100 }))).toBeNull()

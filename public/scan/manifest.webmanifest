@@ -1,7 +1,7 @@
 {
   "id": "/analysis",
-  "name": "Mogging Face Scan",
-  "short_name": "Mogging",
+  "name": "Mogging.com",
+  "short_name": "Mogging.com",
   "start_url": "/app/home",
   "scope": "/",
   "display": "standalone",

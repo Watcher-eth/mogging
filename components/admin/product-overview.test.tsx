@@ -27,7 +27,7 @@ test('overview uses confirmed scans and mature payers while preserving drilldown
   expect(html).not.toContain('999')
   expect(html).not.toContain('failed scans with credit returned')
   expect(html).toContain('restore credit only when the entitlement is eligible')
-  expect(html).toContain('/admin/analytics/scans?days=7&amp;platform=ios')
+  expect(html).toContain('/admin/analytics/reliability?days=7&amp;platform=ios')
   expect(html).not.toContain('Mobile activation')
   expect(html).not.toContain('Stored user reports')
   expect(html).not.toContain('Paywall conversion')

@@ -8,10 +8,14 @@ import { createMobileSessionForUser } from './mobile-session'
 export const guestRecoveryHash = (key: string) => createHash('sha256').update(`mobile-guest:${key}`).digest('hex')
 
 export async function createGuestSession(recoveryKey: string, recoverOnly = false) {
+  return guestSession(await getOrCreateGuestAccount(recoveryKey, recoverOnly))
+}
+
+export async function getOrCreateGuestAccount(recoveryKey: string, recoverOnly = false) {
   // The client persists this high-entropy key before calling, so a lost response
   // cannot strand a purchase or create another identity on retry.
   const hash = guestRecoveryHash(recoveryKey)
-  const userId = await db.transaction(async tx => {
+  return db.transaction(async tx => {
     await tx.execute(sql`select pg_advisory_xact_lock(hashtextextended(${hash}, 0))`)
     const key = await tx.query.mobileGuestKeys.findFirst({ where: eq(schema.mobileGuestKeys.keyHash, hash) })
     const guest = key ? await tx.query.mobileGuests.findFirst({ where: eq(schema.mobileGuests.userId, key.userId) }) : undefined
@@ -24,7 +28,6 @@ export async function createGuestSession(recoveryKey: string, recoverOnly = fals
     await tx.insert(schema.mobileGuestKeys).values({ userId: id, keyHash: hash })
     return id
   })
-  return guestSession(userId)
 }
 
 export async function guestSession(userId: string) {

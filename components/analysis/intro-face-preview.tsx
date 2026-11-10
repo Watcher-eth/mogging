@@ -228,7 +228,7 @@ export function IntroFacePreview() {
   const transition = { duration: reduceMotion ? 0 : morphDuration, ease: morphEase }
 
   return (
-    <div ref={containerRef} className="relative min-h-[420px] overflow-hidden bg-zinc-200 sm:min-h-[560px] lg:min-h-0">
+    <div ref={containerRef} className="absolute inset-0 overflow-hidden bg-zinc-200">
       <Image className="object-cover object-top" src="/model.png" alt="Preview of facial analysis measurements" fill priority sizes="(min-width: 1024px) 46vw, 100vw" />
       <div className="pointer-events-none absolute inset-0 text-white" aria-hidden="true">
         <svg className="absolute inset-0 size-full" viewBox={`0 0 ${size.width} ${size.height}`} preserveAspectRatio="xMidYMin slice" fill="none">

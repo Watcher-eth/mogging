@@ -27,7 +27,7 @@ import {
   Trash2,
   Upload,
   X,
-} from 'lucide-react'
+} from '@/components/ui/mogging-glyphs'
 import { toast } from 'sonner'
 import {
   CourseImage,

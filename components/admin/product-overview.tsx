@@ -42,7 +42,7 @@ export function ProductOverview({ data, days }: { data: AnalyticsDashboard; days
       <DataDetails><Table rows={data.daily} columns={['day', 'actors', 'first_opens']} /></DataDetails>
     </Panel>
 
-    <Panel title="Scan outcomes" description={`${bucket} server-confirmed scans · all platforms · includes free credits`} action={<Link href={detailHref('scans')} className={linkClass}>Scan details →</Link>}
+    <Panel title="Scan outcomes" description={`${bucket} server-confirmed scans · all platforms · includes free credits`} action={<Link href={detailHref('reliability')} className={linkClass}>Scan details →</Link>}
       note="Source: backend scan-credit reservations, grouped by reservation start time in Pacific time. Completed means the reservation finished successfully; failed reservations restore credit only when the entitlement is eligible. Pending reservations can change later. These are scan attempts, not distinct reports or client completion events. Known internal and sandbox checks are excluded. The platform filter does not apply. Empty buckets are omitted and boundary buckets are partial.">
       <AnalyticsChart rows={scans.daily} metrics={scanMetrics} days={days} title="Scan outcomes" />
       <p className="mt-4 text-sm leading-6 text-zinc-500">{count(scans.summary.failed)} failed requests recorded · {count(scans.summary.pending)} still processing</p>

@@ -35,7 +35,7 @@ test.skipIf(!integrationAddress)('MRR separates renewal intent, currency and mis
   const { default: postgres } = await import('postgres')
   const client = postgres(integrationAddress!, { max: 1 })
   const fixtures: Array<{ id: string; product: string; amount: number | null; cancelled?: boolean;
-    trial?: boolean; ended?: boolean; retry?: boolean; currency?: string; provider?: string; usd?: number }> = [
+    trial?: boolean; ended?: boolean; retry?: boolean; currency?: string; provider?: string; usd?: number; surface?: string; recurring?: number }> = [
     { id: 'weekly', product: 'mogging.pro.weekly', amount: 5 },
     { id: 'cancelled', product: 'mogging.pro.weekly', amount: 5, cancelled: true },
     { id: 'yearly', product: 'mogging.pro.yearly', amount: 120 },
@@ -44,25 +44,34 @@ test.skipIf(!integrationAddress)('MRR separates renewal intent, currency and mis
     { id: 'retry', product: 'mogging.pro.weekly', amount: 5, retry: true },
     { id: 'foreign', product: 'mogging.pro.monthly', amount: 10, currency: 'EUR', usd: 11 },
     { id: 'stripe', product: 'mobile_subscription_monthly', amount: 10, provider: 'stripe' },
+    { id: 'mobile-web', product: 'web_basic_monthly', amount: 13.49, recurring: 1499, surface: 'mobile_web', provider: 'stripe' },
   ]
-  const run = async (input: typeof fixtures) => {
+  const run = async (input: typeof fixtures, report = sql`select * from revenue_subscription_mrr`) => {
     const compiled = dialect.sqlToQuery(sql`with fixtures as (
       select * from jsonb_to_recordset(${JSON.stringify(input)}::text::jsonb)
-        as x(id text,product text,amount numeric,cancelled boolean,trial boolean,ended boolean,retry boolean,currency text,provider text,usd numeric)
+        as x(id text,product text,amount numeric,cancelled boolean,trial boolean,ended boolean,retry boolean,currency text,provider text,usd numeric,surface text,recurring numeric)
     ), subscription_facts as (
       select id,coalesce(provider,'revenuecat') as provider,id as subscription_id,product as product_id,
-        amount,coalesce(currency,'USD') as currency,jsonb_build_object('store','APP_STORE','usd_amount',usd) as properties,
+        amount,coalesce(currency,'USD') as currency,jsonb_strip_nulls(jsonb_build_object('store','APP_STORE','usd_amount',usd,'web_surface',surface,'recurring_unit_amount',recurring,'recurring_currency',case when recurring is not null then 'USD' end)) as properties,
         case when trial then 'trial_started' else 'subscription_started' end as event_name,
         '2026-10-20'::timestamp as occurred_at,'2026-10-20'::timestamp as received_at from fixtures
       union all
       select id || '-retry',coalesce(provider,'revenuecat'),id,product,0,coalesce(currency,'USD'),jsonb_build_object('store','APP_STORE'),
         'billing_issue_started','2026-10-21'::timestamp,'2026-10-21'::timestamp from fixtures where retry
-    ), b as (select * from subscription_facts), revenue_reporting_history as (select * from b), revenue_reporting_period as (select * from b), subscription_snapshots as (
+    ), e as (select 'web'::text as platform, '{"flow_id":"legacy-desktop","device_platform":"desktop"}'::jsonb as properties),
+    billing_history as (
+      select *,null::text as transaction_id from subscription_facts
+      union all select 'legacy-purchase','stripe',null,'evaluation',10,'USD','{"flow_id":"legacy-desktop"}'::jsonb,
+        'one_time_purchase','2026-10-20'::timestamp,'2026-10-20'::timestamp,'pi_legacy'
+      union all select 'legacy-refund','stripe',null,'evaluation',-5,'USD','{}'::jsonb,
+        'subscription_refunded','2026-10-21'::timestamp,'2026-10-21'::timestamp,'pi_legacy'
+    ),
+    b as (select * from billing_history), revenue_reporting_history as (select * from b), revenue_reporting_period as (select * from b), subscription_snapshots as (
       select 0 as snapshot,'2026-10-31'::timestamp as at,coalesce(provider,'revenuecat') as provider,id as subscription_id,
         case when ended then '2026-10-25'::timestamp else '2026-11-20'::timestamp end as ends_at,
         coalesce(cancelled,false) as canceled,coalesce(ended,false) as ended from fixtures
     ), ${revenueReportCTEs(30,'2026-10-01T00:00:00Z','2026-10-31T00:00:00Z')}
-    select * from revenue_subscription_mrr`)
+    ${report}`)
     return client.unsafe(compiled.sql, compiled.params as Parameters<typeof client.unsafe>[1])
   }
   try {
@@ -75,7 +84,12 @@ test.skipIf(!integrationAddress)('MRR separates renewal intent, currency and mis
     expect(Number(usd.billing_retry_subscriptions)).toBe(1)
     expect(Number(rows.find(r => r.currency === 'EUR')!.renewing_mrr)).toBe(10)
     expect(Number(rows.find(r => r.currency === 'EUR')!.active_mrr_usd)).toBe(11)
-    expect(Number(rows.find(r => r.source === 'Stripe')!.renewing_mrr)).toBe(10)
+    expect(Number(rows.find(r => r.channel === 'unknown_web')!.renewing_mrr)).toBe(10)
+    expect(Number(rows.find(r => r.channel === 'mobile_web')!.renewing_mrr)).toBe(14.99)
+    const channels = await run(fixtures, sql`select * from revenue_channels where currency='USD'`)
+    expect(channels.find(row => row.channel === 'desktop_web')).toMatchObject({ gross: '10', refunds: '5', after_refunds: '5' })
+    expect(channels.find(row => row.channel === 'unknown_web')).toMatchObject({ gross: '10' })
+    expect(channels.find(row => row.channel === 'mobile_web')).toMatchObject({ gross: '13.49' })
     const incomplete = await run([...fixtures,{id:'unknown',product:'mogging.pro.monthly',amount:null}])
     const missing = incomplete.find(r => r.source === 'Apple App Store' && r.currency === 'USD')!
     expect(missing.renewing_mrr).toBeNull()

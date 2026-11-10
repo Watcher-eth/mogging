@@ -62,7 +62,9 @@ export function creatorAnalysisReports(analysis: CreatorSubjectAnalysis): Report
     const id = category.id === 'face' ? 'face-shape' : category.id
     const group = buildWebRubricGroups(id, web.entries)[0]
     return { assessmentId: analysis.source.sha256, assessmentImageId: analysis.source.imageId, id, title: group?.title ?? id, subtitle: group?.title ?? id, scoreLabel: group?.title ?? id, score: category.score,
-      features: (group?.rubrics ?? []).map(feature => ({ ...feature, triangulation: reportTriangulation(feature.id,entries) })), explanation: category.explanation, recommendation: category.recommendation ?? '', ...(id === 'eyes' && web.eyeColor ? { eyeColor: web.eyeColor } : {}) }
+      features: (group?.rubrics ?? []).map(({ id, label, value, measurement, visual, positions, grade, scale }) => ({
+        id, label, value, measurement, visual, positions, grade, scale, triangulation: reportTriangulation(id, entries),
+      })), explanation: category.explanation, recommendation: category.recommendation ?? '', ...(id === 'eyes' && web.eyeColor ? { eyeColor: web.eyeColor } : {}) }
   })
   const result = analysis.result
   const metrics = [

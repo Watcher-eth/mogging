@@ -19,6 +19,23 @@ export function visibleFaceSides(face:FaceLandmarksPayload):Array<'left'|'right'
   const ratio=face.image.height/face.image.width,distance=(p:Point)=>Math.hypot(p.x-noseTip.x,(p.y-noseTip.y)*ratio)
   return [distance(leftCheek)>distance(rightCheek)?'left':'right']
 }
+
+export function visibleProfileSide(face: FaceLandmarksPayload, facing?: 'left' | 'right') {
+  const { noseTip, noseBridge, leftCheek, rightCheek } = face.anchors
+  const noseOffset = noseTip && noseBridge ? noseBridge.x - noseTip.x : 0
+  const direction = Math.abs(noseOffset) > .012 ? Math.sign(noseOffset)
+    : facing === 'left' ? 1 : facing === 'right' ? -1 : 0
+  if (noseTip && leftCheek && rightCheek) {
+    const depth = (p: Point) => direction ? (p.x - noseTip.x) * direction : Math.abs(p.x - noseTip.x)
+    const left = depth(leftCheek), right = depth(rightCheek)
+    if (Math.abs(left - right) > Math.max(.008, Math.max(left, right) * .12)) return left > right ? 'left' : 'right'
+  }
+  const eyeWidth = (key: 'leftEye' | 'rightEye') => {
+    const path = face.contours?.[key]
+    return path?.length ? Math.max(...path.map(p => p.x)) - Math.min(...path.map(p => p.x)) : 0
+  }
+  return eyeWidth('leftEye') > eyeWidth('rightEye') ? 'left' : 'right'
+}
 export function jawOutline(face:FaceLandmarksPayload):Path[] {
   const sides=visibleFaceSides(face)
   if(sides.length===2)return face.contours?.jawline?.length?[face.contours.jawline]:[]
@@ -101,8 +118,8 @@ function cheekPath(face: FaceLandmarksPayload, side: 'left' | 'right', under: bo
   return path.length >= 3 && path.every(p => Number.isFinite(p.x) && Number.isFinite(p.y)) ? path : []
 }
 
-export function cheekArches(face: FaceLandmarksPayload, under = false): Path[] {
-  return visibleFaceSides(face).map(side => cheekPath(face, side, under)).filter(path => path.length)
+export function cheekArches(face: FaceLandmarksPayload, under = false, sides = visibleFaceSides(face)): Path[] {
+  return sides.map(side => cheekPath(face, side, under)).filter(path => path.length)
 }
 
 export function cheekboneRegions(face: FaceLandmarksPayload) {

@@ -250,7 +250,7 @@ export function glassMarker(ctx: CanvasRenderingContext2D, point: PixelPoint, la
   ctx.fillText(label, point.x, y + side / 2); ctx.restore()
 }
 
-export function drawFaceTreatment(ctx: CanvasRenderingContext2D, overlay: ReportOverlay, width: number, timeMs: number, reduced = false, reveal = 1, options: { appearance?: GlassOverlay; durationMs?: number; hold?: boolean; inkScale?: number } = {}) {
+export function drawFaceTreatment(ctx: CanvasRenderingContext2D, overlay: ReportOverlay, width: number, timeMs: number, reduced = false, reveal = 1, options: { appearance?: GlassOverlay; durationMs?: number; hold?: boolean; inkScale?: number; usePrimitiveStyles?: boolean } = {}) {
   const dark = isDarkVideoContext(ctx)
   ctx = originalVideoContext(ctx)
   const appearance = { ...(options.appearance ?? defaultGlassOverlay), ...(dark ? {color:'#fff'} : {}) }
@@ -264,18 +264,30 @@ export function drawFaceTreatment(ctx: CanvasRenderingContext2D, overlay: Report
   if (overlay.skinNetwork && overlay.dots.length) {
     ctx.save()
     ctx.globalAlpha *= reveal * exit
+    if (options.usePrimitiveStyles && overlay.faceBoundary?.length) {
+      trace(ctx, overlay.faceBoundary, true)
+      ctx.clip()
+    }
     drawSkinNetwork(ctx, overlay.dots, timeMs, reduced)
     ctx.restore()
   }
   if (overlay.measurement) drawMeasurement(ctx, overlay.measurement, timeMs, reduced, reveal * exit, appearance, unit)
-  const primitives = overlay.primitives.filter(primitive => primitive.kind === 'polyline' || primitive.kind === 'point')
+  const primitives = overlay.primitives.filter(primitive =>
+    primitive.kind === 'polyline' || primitive.kind === 'point' || (options.usePrimitiveStyles && primitive.kind === 'region'))
+  const profileMarkers: PixelPoint[] = []
   let marker = 0
   primitives.forEach((primitive, index) => {
-    const amount = (reduced ? 1 : smoothMotion((timeMs - Math.min(index * 48, 144)) / 420)) * Math.min(1, Math.max(0, reveal))
+    const profilePoint = options.usePrimitiveStyles && primitive.kind === 'point'
+    const delay = profilePoint ? primitive.animation?.delay ?? 0 : Math.min(index * 48, 144)
+    const duration = profilePoint ? primitive.animation?.duration ?? 420 : 420
+    const amount = (reduced ? 1 : smoothMotion((timeMs - delay) / duration)) * Math.min(1, Math.max(0, reveal))
     if (amount <= 0) return
     ctx.save()
     ctx.globalAlpha *= exit
-    ctx.setLineDash(appearance.pattern === 'dotted' ? [.5 * unit, 4.5 * unit] : appearance.pattern === 'dashed' ? [7 * unit, 5 * unit] : [])
+    const pattern = options.usePrimitiveStyles && primitive.kind === 'polyline'
+      ? primitive.dashed ? 'dashed' : primitive.dotted ? 'dotted' : 'solid'
+      : appearance.pattern
+    ctx.setLineDash(pattern === 'dotted' ? [.5 * unit, 4.5 * unit] : pattern === 'dashed' ? [7 * unit, 5 * unit] : [])
     if (primitive.kind === 'polyline') {
       const points = primitive.pixelPoints
       if (points.length < 2) { ctx.restore(); return }
@@ -298,11 +310,26 @@ export function drawFaceTreatment(ctx: CanvasRenderingContext2D, overlay: Report
       if (appearance.markers && amount > .55) {
         const candidates = primitive.closed || primitive.id.startsWith('region-') ? [points[0]] : /brow/i.test(primitive.id) ? [points.reduce((best, point) => point.x < best.x ? point : best), points.reduce((best, point) => point.y < best.y ? point : best), points.reduce((best, point) => point.x > best.x ? point : best)] : [points[0], points.at(-1)!]
         const locations = candidates.reduce<PixelPoint[]>((selected, point) => selected.some(previous => Math.hypot(point.x - previous.x, point.y - previous.y) < 42 * unit) ? selected : [...selected, point], [])
-        locations.forEach(point => { if (marker >= 6) return; ctx.save(); ctx.globalAlpha *= smoothMotion((amount - .55) / .45); glassMarker(ctx, point, String(++marker).padStart(2, '0'), unit, appearance); ctx.restore() })
+        for (const point of locations) {
+          if (marker >= 6) break
+          if (options.usePrimitiveStyles) {
+            if (profileMarkers.some(previous => Math.hypot(point.x - previous.x, point.y - previous.y) < 18 * unit)) continue
+            profileMarkers.push(point)
+          }
+          ctx.save()
+          ctx.globalAlpha *= smoothMotion((amount - .55) / .45)
+          glassMarker(ctx, point, String(++marker).padStart(2, '0'), unit, appearance)
+          ctx.restore()
+        }
       }
+    } else if (primitive.kind === 'region') {
+      ctx.globalAlpha *= .08 * amount
+      trace(ctx, primitive.pixelPoints, true)
+      ctx.fill()
     } else if (primitive.kind === 'point') {
       ctx.globalAlpha *= amount; ctx.setLineDash([])
-      ctx.beginPath(); ctx.arc(primitive.point.x, primitive.point.y, 2 * unit, 0, Math.PI * 2); ctx.fill()
+      const radius = profilePoint ? (primitive.radius ?? 2) * (.85 + .15 * amount) : 2
+      ctx.beginPath(); ctx.arc(primitive.point.x, primitive.point.y, radius * unit, 0, Math.PI * 2); ctx.fill()
       if (appearance.markers) glassMarker(ctx, primitive.point, String(++marker).padStart(2, '0'), unit, appearance)
     }
     ctx.restore()

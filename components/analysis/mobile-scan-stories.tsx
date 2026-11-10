@@ -1,5 +1,5 @@
 import { motion, useReducedMotion } from 'motion/react'
-import { ArrowUpRight, Activity, Heart, MessageCircle, ScanFace, X } from 'lucide-react'
+import { ArrowUpRight, Activity, Heart, MessageCircle, ScanFace, X } from '@/components/ui/mogging-glyphs'
 import { useState } from 'react'
 import { Dialog, DialogContent, DialogDescription, DialogTitle } from '@/components/ui/dialog'
 import { protocolTasks } from '@/lib/creator/protocol-tasks'

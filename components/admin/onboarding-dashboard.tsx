@@ -7,8 +7,7 @@ import { onboardingStepProperties, supportedOnboardingVersions } from '@/lib/ana
 import { formatReportingTime } from '@/lib/admin/reporting-time'
 import { AnalyticsChart, chartColors, type ChartMetric } from './analytics-chart'
 import { AnalyticsSelect } from './analytics-select'
-import { EventReport } from './tracking-report'
-import { Bars, ComparisonBars, DataDetails, Notice, Panel, Stat, Table, count, label, percent } from './analytics-ui'
+import { Bars, ComparisonBars, DataDetails, Notice, Panel, Stat, Table, count, label, percent, analyticsChannelLabel } from './analytics-ui'
 
 const metrics: ChartMetric[] = [
   { key: 'started', label: 'Onboarding starts', color: chartColors.blue },
@@ -42,6 +41,11 @@ export function OnboardingDashboard({ data, days }: { data: AnalyticsDashboard; 
   const detailHref = (page: string) => ({ pathname: `/admin/analytics/${page}`, query: { days: String(days), platform: data.filters.platform } })
 
   return <>
+    <Panel title="App onboarding by platform" description="Tracked starts and completions for each native app">
+      <Table rows={(data.onboardingChannels ?? []).map(row => ({ ...row, channel: analyticsChannelLabel(row.channel),
+        seven_day_completion: percent(Number(row.eligible_completed), Number(row.eligible)),
+      }))} columns={['channel', 'started', 'completed', 'eligible', 'seven_day_completion']} />
+    </Panel>
     <p className="mb-5 text-xs leading-5 text-zinc-500">{days === 1 ? 'Last 24 hours' : `Last ${days} days`} · {platform} · Pacific time · Mobile onboarding flows</p>
     {data.filters.platform === 'web' ? <Notice>These onboarding cohorts cover the mobile app. Select iOS, Android or All platforms to review mobile onboarding performance.</Notice> : null}
     <div className="admin-stats-grid">
@@ -86,15 +90,46 @@ export function OnboardingDashboard({ data, days }: { data: AnalyticsDashboard; 
         <h3 className="mb-3 mt-6 text-sm font-medium">Recorded interruptions</h3>
         <p className="mb-3 text-xs leading-5 text-zinc-500">Permission declines, cancellations and safe error codes are supporting signals; they do not establish the cause of drop-off.</p>
         <Table rows={(data.onboardingFriction ?? []).map(row => ({ ...row, event: label(String(row.event)), reason: label(String(row.reason)) }))} columns={['screen', 'event', 'reason', 'affected_devices', 'events']} />
-        <h3 className="mb-3 mt-6 text-sm font-medium">Activation milestones</h3>
-        <p className="mb-3 text-xs leading-5 text-zinc-500">Separate ordered mobile-device journey across all tracking versions. Each milestone follows the previous within seven days, with all events inside this period. Client purchase completion is not verified revenue.</p>
-        <Bars rows={(data.onboarding ?? []).map((row, index) => ({ label: ['Onboarding started', 'Paywall reached', 'Purchase observed', 'Scan completed', 'Report viewed'][index] ?? label(row.name), value: row.actors }))} />
-        <h3 className="mb-3 mt-6 text-sm font-medium">Additional screen activity</h3>
-        <Table rows={data.steps ?? []} columns={['step', 'viewed', 'completed', 'skipped', 'back_actions']} />
-        <Table rows={data.screens ?? []} columns={['screen', 'exits', 'median_ms', 'p90_ms']} />
-        <EventReport data={data} section="Onboarding" />
       </AccordionContent></Disclosure>
-      <div className="mt-5 flex flex-wrap gap-x-6 gap-y-3"><Link href={detailHref('scans')} className={linkClass}>Scan performance →</Link><Link href={detailHref('quality')} className={linkClass}>Data health →</Link></div>
+      <div className="mt-5 flex flex-wrap gap-x-6 gap-y-3"><Link href={detailHref('reliability')} className={linkClass}>Scan performance →</Link><Link href={detailHref('quality')} className={linkClass}>Data health →</Link></div>
     </Panel>
+  </>
+}
+
+const webStages = [
+  ['analysis_opened', 'Opened analysis'], ['capture_opened', 'Reached capture'],
+  ['photo_ready', 'Photo ready'], ['analysis_paywalls', 'Reached paywall'],
+  ['evaluations_completed', 'Evaluation completed'], ['report_viewed', 'Report viewed'],
+] as const
+const webOnboardingMetrics = [
+  { key: 'analysis_opened', label: 'Opened analysis', color: chartColors.blue },
+  { key: 'photo_ready', label: 'Photo ready', color: chartColors.violet },
+  { key: 'analysis_paywalls', label: 'Reached paywall', color: chartColors.orange },
+  { key: 'evaluations_completed', label: 'Evaluation completed', color: chartColors.green },
+]
+
+export function WebOnboardingDashboard({ data, days }: { data: AnalyticsDashboard; days: number }) {
+  const web = data.webJourney
+  if (!web) return <Notice>Web onboarding is unavailable.</Notice>
+  return <>
+    <Panel title="Web onboarding by device" description="Journeys entering the current web flow. Each stage is counted independently, including evaluations made with existing access.">
+      <Table rows={web.channels.map(row => ({ ...row, channel: analyticsChannelLabel(row.channel),
+        analysis_to_photo: percent(Number(row.photo_ready), Number(row.analysis_opened)),
+      }))} columns={['channel', ...webStages.map(([key]) => key), 'analysis_to_photo']} />
+    </Panel>
+    {['mobile_web', 'desktop_web'].map(channel => {
+      const stats = web.channels.find(row => row.channel === channel)
+      const daily = (web.onboardingDaily ?? []).filter(row => row.channel === channel)
+      const steps = web.steps.filter(row => row.channel === channel && Number(row.viewed) > 0)
+      return <Panel key={channel} title={analyticsChannelLabel(channel)} description="Stage reach, activity by entry date, and screen-level continuation.">
+        <Bars animated rows={webStages.map(([key, title]) => ({ label: title, value: Number(stats?.[key] ?? 0) }))} />
+        <AnalyticsChart rows={daily} title={analyticsChannelLabel(channel) + ' onboarding over time'} metrics={webOnboardingMetrics} days={days} />
+        <DataDetails><Table rows={steps.map(row => ({ ...row, completion_rate: percent(Number(row.completed), Number(row.viewed)) }))}
+          columns={['step', 'viewed', 'completed', 'completion_rate', 'median_ms']} />
+          <h3 className="mb-2 mt-6 text-sm">Recorded friction</h3>
+          <Table rows={(web.onboardingIssues ?? []).filter(row => row.channel === channel)} columns={['event_name','stage','reason','journeys','events']} />
+        </DataDetails>
+      </Panel>
+    })}
   </>
 }

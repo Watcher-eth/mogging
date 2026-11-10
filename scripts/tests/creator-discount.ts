@@ -21,10 +21,10 @@ mock.module('../../lib/db', () => ({ schema, db: {
   transaction: (fn: any) => { const result = queue.then(() => fn({ execute: async () => {} })); queue = result.catch(() => null); return result },
 } }))
 mock.module('../../lib/api/rateLimit', () => ({ enforceRateLimit: async () => {} }))
-mock.module('../../lib/auth/mobile-session', () => ({ getRequestUserId: async () => account }))
+mock.module('../../lib/auth/mobile-session', () => ({ getRequestUserId: async () => account, createMobileSessionForUser: async () => { throw new Error('Unexpected guest session') } }))
 mock.module('../../lib/analytics/events', () => ({ recordServerEvent: async () => {} }))
 mock.module('../../lib/creator/attribution', () => ({
-  resolveCreatorAttribution: async () => context, getStoredMobileCreatorAttribution: async () => null,
+  resolveCreatorAttribution: async () => context, getStoredMobileCreatorAttribution: async () => null, getAccountCreatorAttribution: async () => null,
   stripeAttributionMetadata: () => context ? { creatorTrackingLinkId: context.trackingLinkId, creatorClickId: context.clickId } : {},
   recordCreatorCheckout: async () => {},
 }))
@@ -35,7 +35,7 @@ mock.module('../../lib/payments/revenuecat', () => ({ readRevenueCatPro: () => n
 mock.module('../../lib/payments/stripe', () => ({ getStripe: () => ({
   customers: { search: async () => ({ data: [{ id: 'cus_test' }] }) },
   subscriptions: { list: async () => ({ data: stripeHistory ? [{ id: 'sub_old', status: 'canceled' }] : [] }) },
-  prices: { retrieve: async () => ({ active: true, currency: 'usd', unit_amount: 999, currency_options: { eur: { unit_amount: 1099 }, chf: { unit_amount: 1199 } }, recurring: { interval: 'month' } }) },
+  prices: { retrieve: async () => ({ active: true, billing_scheme: 'per_unit', currency: 'usd', unit_amount: 999, currency_options: { eur: { unit_amount: 1099 }, chf: { unit_amount: 1199 } }, recurring: { interval: 'month', interval_count: 1 } }) },
   coupons: { retrieve: async () => ({ valid: true, duration: 'once', percent_off: 10 }) },
   checkout: { sessions: {
     list: async () => ({ data: pending }),

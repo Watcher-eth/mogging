@@ -10,7 +10,7 @@ import {
   ChevronRight,
   Play,
   Sparkles,
-} from 'lucide-react'
+} from '@/components/ui/mogging-glyphs'
 import { MotionConfig } from 'motion/react'
 import { MoggingWordmark } from '@/components/brand/mogging-wordmark'
 import {

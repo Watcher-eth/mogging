@@ -37,6 +37,10 @@
       "schedule": "*/5 * * * *"
     },
     {
+      "path": "/api/cron/creator-crypto-payouts",
+      "schedule": "* * * * *"
+    },
+    {
       "path": "/api/cron/creator-video-metrics",
       "schedule": "*/15 * * * *"
     }

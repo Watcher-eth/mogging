@@ -2,7 +2,7 @@ import { SkeletonImage } from '@/components/ui/skeleton-image'
 import { useState, type FormEvent } from 'react'
 import useSWR from 'swr'
 import { toast } from 'sonner'
-import { Loader2 } from 'lucide-react'
+import { Loader2 } from '@/components/ui/mogging-glyphs'
 import { Button } from '@/components/ui/button'
 import { apiGet, apiPost, apiRequest } from '@/lib/api/client'
 

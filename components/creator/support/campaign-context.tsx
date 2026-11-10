@@ -1,6 +1,6 @@
 import { CampaignRequirementList } from '@/components/creator/campaign-requirement-list'
 import { useState } from 'react'
-import { ArrowUpRight, CheckCircle2, CircleAlert } from 'lucide-react'
+import { ArrowUpRight, CheckCircle2, CircleAlert } from '@/components/ui/mogging-glyphs'
 import { Button } from '@/components/ui/button'
 import { CampaignMilestoneStrip } from '@/components/creator/campaign-milestones'
 import { campaignAudienceBands } from '@/lib/creator/sprint-defaults'

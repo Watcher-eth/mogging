@@ -533,6 +533,27 @@
       "when": 1794010925478,
       "tag": "0073_creator_bank_transfer",
       "breakpoints": true
+    },
+    {
+      "idx": 76,
+      "version": "7",
+      "when": 1794108000000,
+      "tag": "0074_creator_crypto_payouts",
+      "breakpoints": true
+    },
+    {
+      "idx": 77,
+      "version": "7",
+      "when": 1794108000001,
+      "tag": "0075_member_public_profiles",
+      "breakpoints": true
+    },
+    {
+      "idx": 78,
+      "version": "7",
+      "when": 1794108000002,
+      "tag": "0076_creator_campaign_payout_corrections",
+      "breakpoints": true
     }
   ]
 }

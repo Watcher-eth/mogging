@@ -5,7 +5,7 @@ import { useState, type ReactNode } from 'react'
 import { SessionProvider } from 'next-auth/react'
 import { SWRConfig } from 'swr'
 import { Toaster } from 'sonner'
-import { CircleCheck, CircleAlert } from 'lucide-react'
+import { CircleCheck, CircleAlert } from '@/components/ui/mogging-glyphs'
 import { AppShell } from '@/components/app/app-shell'
 import { SeoHead } from '@/components/app/seo-head'
 import { swrConfig } from '@/lib/swr'
@@ -23,7 +23,7 @@ function PageSound({ silent, children, ...props }: { silent: boolean; children: 
 const AdminShell = dynamic(() => import('@/components/admin/admin-shell').then(module => module.AdminShell))
 const Analytics = dynamic(() => import('@/components/app/analytics').then(module => module.Analytics), { ssr: false })
 
-export default function App({ Component, pageProps: { session, ...pageProps } }: AppProps) {
+export default function App({ Component, pageProps: { session, adminUnlocked, ...pageProps } }: AppProps) {
   const router = useRouter()
   const soundRoute = soundRoutes.has(router.pathname) || router.pathname === '/creator' || router.pathname.startsWith('/creator/')
   const courseRoute = router.pathname === '/courses'
@@ -39,7 +39,9 @@ export default function App({ Component, pageProps: { session, ...pageProps } }:
     <LocalizationProvider locale={router.locale ?? 'en'}>
     <SessionProvider session={session} refetchInterval={router.pathname === '/app/home' || router.pathname === '/analysis' ? 300 : 0} refetchWhenOffline={false}>
       {process.env.NODE_ENV !== 'production' && router.pathname === '/creator/__support-demo' ? null : <Analytics />}
-      <SWRConfig value={swrConfig}>
+      <SWRConfig value={typeof adminUnlocked === 'boolean' ? { ...swrConfig,
+        fallback: { '/api/admin/creator/session': { unlocked: adminUnlocked } },
+      } : swrConfig}>
         <PageSound
           silent={!soundRoute}
           enabled={soundEnabled}

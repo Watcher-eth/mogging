@@ -5,7 +5,7 @@ import { useEffect, useState } from 'react'
 import { SkeletonAvatar } from '@/components/ui/skeleton-avatar'
 import { AnimatedGroup } from '@/components/core/animated-group'
 import useSWR from 'swr'
-import { ArrowUpRight, Check, Loader2, Plus, Trash2, Users } from 'lucide-react'
+import { ArrowUpRight, Check, Loader2, Plus, Trash2, Users } from '@/components/ui/mogging-glyphs'
 import { toast } from 'sonner'
 import { Button } from '@/components/ui/button'
 import {

@@ -7,44 +7,78 @@ import { flushWebAnalytics, setLandingAnalytics, trackWebEvent } from '@/lib/ana
 import { landingProperties, type LandingAssignment } from '@/lib/analytics/landing'
 import { homepageDestinationCookie } from '@/lib/homepage-routing'
 import { appStoreUrl } from '@/lib/seo'
+import { useLandingTracking } from './use-landing-tracking'
 import styles from './app-store-handoff.module.css'
 
 const ScanReportPreview = dynamic(() => import('./mobile-preview').then(module => module.ScanReportPreview))
 
-export function AppStoreHandoff({ assignment, autoRedirect = true }: { assignment: LandingAssignment; autoRedirect?: boolean }) {
+const analysisEntry = '/analysis?start=1'
+const storeAttemptKey = 'mogging.handoff.store-attempted'
+
+export function AppStoreHandoff({ assignment, autoRedirect = true, destination = 'store' }: { assignment: LandingAssignment; autoRedirect?: boolean; destination?: 'web' | 'store' }) {
   const router = useRouter()
-  const finished = useRef(false)
-  const choose = useCallback((destination: 'web' | 'store', automatic = false) => {
-    if (finished.current) return
-    finished.current = true
-    document.cookie = homepageDestinationCookie(destination, location.protocol === 'https:')
+  const leavingForWeb = useRef(false)
+  const storeAttempted = useRef(false)
+  useLandingTracking(assignment, !autoRedirect)
+  const choose = useCallback((target: 'web' | 'store', placement = 'iphone_handoff'): void => {
+    if (leavingForWeb.current) return
+    const automatic = placement !== 'iphone_handoff'
     setLandingAnalytics(assignment)
-    const properties = { ...landingProperties(assignment), path: '/', surface: 'landing' }
-    const eventProperties = { ...properties, destination: destination === 'store' ? 'app_store' : 'web_analysis', placement: automatic ? 'automatic_iphone' : 'iphone_handoff' }
-    trackWebEvent('destination_selected', eventProperties)
-    if (!automatic) trackWebEvent('landing_cta_clicked', eventProperties)
-    if (destination === 'store') {
-      trackWebEvent('app_store_redirected', eventProperties)
+    const properties = { ...landingProperties(assignment), path: '/', surface: 'landing', destination: target === 'store' ? 'app_store' : 'web_analysis', placement }
+    trackWebEvent('destination_selected', properties)
+    if (!automatic) trackWebEvent('landing_cta_clicked', properties)
+    if (target === 'store') {
+      storeAttempted.current = true
+      try { sessionStorage.setItem(storeAttemptKey, '1') } catch {}
+      trackWebEvent('app_store_redirected', properties)
       void flushWebAnalytics()
-      location.assign(appStoreUrl)
-    } else {
-      void flushWebAnalytics()
-      void router.push('/analysis')
+      try { location.assign(appStoreUrl) } catch { choose('web', 'store_fallback') }
+      return
     }
+    if (!automatic) document.cookie = homepageDestinationCookie('web', location.protocol === 'https:')
+    leavingForWeb.current = true
+    if (storeAttempted.current) window.stop()
+    void flushWebAnalytics()
+    void router.push(analysisEntry).then(navigated => {
+      if (!navigated) location.assign(analysisEntry)
+    }).catch(() => location.assign(analysisEntry))
   }, [assignment, router])
 
-  // Only count time while the page is visible; cancel when the visitor leaves.
   useEffect(() => {
     if (!autoRedirect) return
+    if (destination === 'web') {
+      choose('web', 'automatic_mobile_web')
+      return
+    }
+    let attempted = false
+    try { attempted = sessionStorage.getItem(storeAttemptKey) === '1' } catch {}
+    if (attempted) {
+      choose('web', 'store_return')
+      return
+    }
     let timer: ReturnType<typeof setTimeout> | undefined
+    let fallback: ReturnType<typeof setTimeout> | undefined
     const schedule = () => {
       clearTimeout(timer)
-      if (document.visibilityState === 'visible') timer = setTimeout(() => choose('store', true), 4000)
+      clearTimeout(fallback)
+      if (attempted || storeAttempted.current || document.visibilityState !== 'visible') return
+      timer = setTimeout(() => {
+        if (storeAttempted.current) return
+        attempted = true
+        choose('store', 'automatic_iphone')
+        fallback = setTimeout(() => {
+          if (document.visibilityState === 'visible') choose('web', 'store_fallback')
+        }, 2400)
+      }, 4000)
     }
     schedule()
     document.addEventListener('visibilitychange', schedule)
-    return () => { clearTimeout(timer); document.removeEventListener('visibilitychange', schedule) }
-  }, [autoRedirect, choose])
+    return () => {
+      clearTimeout(timer)
+      clearTimeout(fallback)
+      document.removeEventListener('visibilitychange', schedule)
+    }
+  }, [autoRedirect, choose, destination])
 
   return <>
     <SeoHead title="Mogging" path="/" />

@@ -1,15 +1,13 @@
 import { expect, test } from 'bun:test'
-import { homepageDestinationCookie, shouldRouteHomepageToStore } from './homepage-routing'
+import { homepageDestinationCookie, phonePwaEntryPath } from './homepage-routing'
 
-const iphone = 'Mozilla/5.0 (iPhone; CPU iPhone OS 18_0 like Mac OS X) AppleWebKit/605.1.15 Mobile/15E148 Safari/604.1'
-test('iPhone homepage visitors see the handoff unless they chose the website', () => {
-  expect(shouldRouteHomepageToStore(iphone)).toBe(true)
-  for (const agent of ['Mozilla/5.0 (Macintosh; Intel Mac OS X)', 'Mozilla/5.0 (Linux; Android 15)', 'Mozilla/5.0 (iPad; CPU OS 18_0)', `${iphone} Googlebot`, `${iphone} HeadlessChrome`]) expect(shouldRouteHomepageToStore(agent)).toBe(false)
-  expect(shouldRouteHomepageToStore(iphone, 'web')).toBe(false)
-  expect(shouldRouteHomepageToStore(iphone, 'store')).toBe(true)
-  expect(shouldRouteHomepageToStore(`${iphone} musical_ly_38.0.0 BytedanceWebview/d8a21c6`, 'store')).toBe(true)
-  expect(shouldRouteHomepageToStore(iphone, undefined, true)).toBe(false)
+test('phone entry starts PWA onboarding and preserves sign-in and checkout returns', () => {
+  expect(phonePwaEntryPath({})).toBe('/analysis')
+  expect(phonePwaEntryPath({ plan: 'web_basic_monthly' })).toBe('/analysis')
+  expect(phonePwaEntryPath({ login: '1', next: '/app/home?tab=progress' })).toBe('/analysis?login=1&next=%2Fapp%2Fhome%3Ftab%3Dprogress')
+  expect(phonePwaEntryPath({ checkout: 'success', session_id: 'cs_test_123' })).toBe('/app/handoff?session_id=cs_test_123')
 })
+
 test('website choice persists; a store attempt clears the old destination cookie', () => {
   expect(homepageDestinationCookie('web', true)).toContain('Max-Age=7776000')
   expect(homepageDestinationCookie('store', true)).toContain('mogging.homepage.destination=;')

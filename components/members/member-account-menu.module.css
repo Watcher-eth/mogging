@@ -1,0 +1,49 @@
+.anchor { position: relative; justify-self: end; }
+.trigger { display: flex; align-items: center; gap: 6px; min-height: 44px; padding: 2px; color: #b89c5e; border-radius: 999px; }
+.trigger > svg { flex: none; width: 15px; height: 29px; }
+.trigger > svg:last-child { transform: scaleX(-1); }
+.trigger strong { color: #191c21; font-size: 18px; font-weight: 650; font-variant-numeric: tabular-nums; letter-spacing: -.04em; }
+.avatar { display: grid; place-items: center; overflow: hidden; width: 36px; height: 36px; border: 1px solid #191c2110; border-radius: 50%; background: #f1f2f4; color: #777d85; }
+.avatar img { width: 100%; height: 100%; object-fit: cover; object-position: center 40%; }
+.dropdownBridge { position: absolute; top: 100%; right: 0; width: 218px; padding-top: 6px; transform-origin: top right; }
+.glass { padding: 6px; border: 1px solid #ffffffd9; border-radius: 26px; background: linear-gradient(138deg,#ffffff9e,#fafaff44 52%,#ffffff80),#f1f3f5b8; backdrop-filter: blur(24px) saturate(155%); box-shadow: inset 0 1px 1px #fff, inset 0 -1px 1px #ffffff95, 0 1px 4px #141b2621, 0 12px 34px #141b261c; }
+.actions { display: grid; gap: 1px; }
+.actions button { display: flex; justify-content: space-between; align-items: center; gap: 15px; min-height: 42px; padding: 8px 12px; border-radius: 18px; color: #17181b; font-size: 14px; text-align: left; }
+.actions button:hover, .actions button:focus-visible { background: #1618270c; }
+.actions button[data-destructive] { color: #b12930; }
+.dialog { width: min(410px, calc(100vw - 32px)); max-height: calc(100dvh - 32px); overflow: auto; border: 1px solid #ebedf0; border-radius: 28px; background: #fff; color: #18191d; box-shadow: 0 24px 86px #0f172a2b; }
+.overlay { background: #171b263d; backdrop-filter: blur(5px); }
+.panel { display: grid; gap: 12px; padding: 22px; }
+.heading { display: grid; gap: 5px; padding-right: 44px; margin-bottom: 4px; }
+.title { font-size: 24px; line-height: 1.15; font-weight: 630; letter-spacing: -.045em; }
+.description, .privacyCopy { color: #606570; font-size: 13px; line-height: 1.55; }
+.back { display: flex; align-items: center; gap: 5px; width: fit-content; min-height: 25px; margin-bottom: 4px; color: #5f6671; font-size: 12px; font-weight: 550; }
+.settingRow { display: flex; align-items: center; justify-content: space-between; gap: 14px; padding: 12px; border: 1px solid #eceef1; border-radius: 16px; background: #f7f8f9; }
+.settingRow b { display: block; margin-bottom: 3px; font-size: 13px; font-weight: 650; }
+.settingRow p { color: #606570; font-size: 12px; line-height: 1.4; }
+.switch { flex: none; display: flex; align-items: center; width: 42px; height: 25px; padding: 3px; border-radius: 999px; background: #d8dbe0; }
+.switch span { display: block; width: 19px; height: 19px; border-radius: 50%; background: white; box-shadow: 0 1px 3px #13172524; }
+.switch[aria-checked=true] { background: #19834d; }
+.switch[aria-checked=true] span { transform: translateX(17px); }
+.secondary, .primary, .danger { display: flex; align-items: center; gap: 8px; min-height: 42px; padding: 8px 12px; border-radius: 13px; font-size: 13px; font-weight: 570; text-align: left; }
+.secondary { background: #f3f4f6; color: #24272d; }
+.secondary:hover { background: #ebedf0; }
+.secondary svg:last-child:not(:first-child) { margin-left: auto; }
+.primary, .danger { justify-content: center; background: #17181b; color: white; }
+.danger { background: #b12930; }
+.footer { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.footer button { justify-content: center; }
+.inviteLink { display: flex; align-items: center; gap: 8px; padding: 10px 12px; border: 1px solid #eceef1; border-radius: 13px; color: #606570; font-size: 12px; overflow-wrap: anywhere; user-select: all; }
+.inviteLink svg { flex: none; }
+.error { color: #b12930; font-size: 12px; line-height: 1.45; }
+.error button { text-decoration: underline; }
+.panel button:disabled { opacity: .55; cursor: default; }
+@media (prefers-reduced-motion: no-preference) {
+  .switch { transition: background 200ms ease; }
+  .switch span { transition: transform 240ms cubic-bezier(.22,1,.36,1); }
+  .trigger, .actions button, .panel button { transition: background 170ms ease, scale 170ms cubic-bezier(.22,1,.36,1); }
+  .trigger:active, .actions button:active, .panel button:active { scale: .97; }
+}
+@media (prefers-reduced-transparency: reduce) {
+  .glass { background: #f9fafb; backdrop-filter: none; }
+}

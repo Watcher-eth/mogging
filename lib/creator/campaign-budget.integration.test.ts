@@ -26,7 +26,7 @@ beforeAll(async () => {
   await client.unsafe('drop table if exists creator_submissions, creator_campaign_transfers, creator_payments, creator_sprints cascade; drop function if exists creator_campaign_expected_payout(jsonb,integer,real); drop function if exists guard_creator_bonus_budget();')
   await client.unsafe(`
     create table creator_sprints (id text primary key, name text, budget_cents int not null, terms jsonb not null, updated_at timestamp default now());
-    create table creator_submissions (id text primary key, sprint_id text, sprint_terms jsonb, view_count_threshold int, us_audience_percent real, approved_amount_cents int, status text, is_draft boolean default false);
+    create table creator_submissions (id text primary key, sprint_id text, sprint_terms jsonb, view_count_threshold int, us_audience_percent real, approved_amount_cents int, status text, is_draft boolean default false, campaign_payout_corrected boolean not null default false);
     create table creator_campaign_transfers (submission_id text primary key, from_sprint_id text, to_sprint_id text, amount_cents int);
     create table creator_payments (id text primary key, submission_id text, creator_profile_id text, bonus_sprint_id text, bonus_key text, bonus_note text, amount_cents int, currency text default 'USD', status text);
   `)

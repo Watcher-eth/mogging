@@ -1,6 +1,5 @@
 import { landingProperties, readLandingCookie, type LandingAssignment } from './landing'
 import { sanitizeProperties, isRetiredAnalyticsSurface, type AnalyticsEventName } from './contract'
-import { webFlowContext } from './web-context'
 import { acquisitionReferrer } from './acquisition'
 import { webJourneyContext, resetWebJourney } from './web-journey'
 type Event = { eventId: string; occurredAt: string; [key: string]: unknown }
@@ -32,8 +31,7 @@ function init() {
   } catch { browserId ||= crypto.randomUUID() }
   const params = new URLSearchParams(location.search)
   // The cookie owns assignment lifetime; persisted acquisition cannot extend it.
-  for (const field of ['landing_id', 'landing_version', 'experiment_id', 'variant']) delete context[field]
-  Object.assign(context, landingProperties(readLandingCookie(document.cookie)))
+  applyLandingAssignment(readLandingCookie(document.cookie))
   context.locale = navigator.language
   context.timezone = Intl.DateTimeFormat().resolvedOptions().timeZone
   for (const name of ['utm_source', 'utm_medium', 'utm_campaign', 'utm_content', 'utm_term']) {
@@ -55,23 +53,27 @@ function init() {
 function persist() {
   try { sessionStorage.setItem(key, JSON.stringify({ queue, context, sessionId, lastActive })) } catch {}
 }
-function schedule() { if (!timer) timer = setTimeout(() => { timer = undefined; void flushWebAnalytics() }, retry) }
-export function setLandingAnalytics(assignment: LandingAssignment) {
-  init()
+function schedule(delay = retry) { if (!timer) timer = setTimeout(() => { timer = undefined; void flushWebAnalytics() }, delay) }
+function applyLandingAssignment(assignment: LandingAssignment | null) {
+  for (const field of ['landing_id', 'landing_version', 'experiment_id', 'variant']) delete context[field]
   Object.assign(context, landingProperties(assignment))
+}
+export function setLandingAnalytics(assignment: LandingAssignment | null) {
+  init()
+  applyLandingAssignment(assignment)
 }
 export function identifyWebAnalytics(id?: string) {
   init()
   try {
     const previous = localStorage.getItem(`${key}.account`)
-    if (previous && previous !== id) {
+    if (previous && id && previous !== id) {
       browserId = crypto.randomUUID()
       sessionId = ''
       resetWebJourney()
       localStorage.setItem('mogging.analytics.anonymous-id', browserId)
     }
     if (id) localStorage.setItem(`${key}.account`, id)
-    else localStorage.removeItem(`${key}.account`)
+    // Keep the last known owner across sign-out and transient unauthenticated loads.
   } catch {}
   if (accountId === id) return
   accountId = id
@@ -86,7 +88,7 @@ export function trackWebEvent(eventName: AnalyticsEventName, properties: Record<
   queue.push({ eventId: crypto.randomUUID(), eventName, anonymousId: browserId, accountId, sessionId,
     platform: 'web', source: 'mogging.com', schemaVersion: 1,
     environment: process.env.NODE_ENV === 'production' ? 'production' : 'development',
-    properties: sanitizeProperties({ ...context, ...webFlowContext(location.pathname, location.search), ...webJourneyContext(), path, ...properties }), occurredAt: new Date(now).toISOString() })
+    properties: sanitizeProperties({ ...context, ...webJourneyContext(), path, ...properties }), occurredAt: new Date(now).toISOString() })
   queue = queue.slice(-100)
   persist()
   schedule()
@@ -113,7 +115,7 @@ export async function flushWebAnalytics() {
   if (timer) clearTimeout(timer)
   timer = undefined
   // Keepalive has a 64KB browser quota. Each allowlisted event is small; cap this batch.
-  const batch = queue.slice(0, 10)
+  const batch = queue.slice(0, 20)
   const controller = new AbortController()
   const timeout = setTimeout(() => controller.abort(), 8000)
   try {
@@ -125,5 +127,5 @@ export async function flushWebAnalytics() {
     queue = queue.filter(event => !sent.has(event.eventId))
     retry = 5000
   } catch { retry = Math.min(retry * 2, 300_000) }
-  finally { clearTimeout(timeout); flushing = false; persist(); if (queue.length) schedule() }
+  finally { clearTimeout(timeout); flushing = false; persist(); if (queue.length) schedule(retry === 5000 ? 150 : retry) }
 }

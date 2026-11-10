@@ -1,6 +1,6 @@
-import { ArrowRight, Check, ChevronLeft, ChevronRight, Play, X } from 'lucide-react'
+import { MoggingIcon } from '@/components/ui/mogging-icon'
 import { AnimatePresence, motion } from 'motion/react'
-import { useEffect, useId, useState } from 'react'
+import { useEffect, useId, useRef, useState } from 'react'
 import { courses, courseProgress, coursePublicationAge } from '@/lib/courses/originals'
 import { ProgressiveBlur } from '@/components/courses/progressive-blur'
 
@@ -21,13 +21,14 @@ function OriginalsMark() {
   </span>
 }
 
-export default function ScanCourses({ userId }: { userId: string }) {
+export default function ScanCourses({ userId, desktop = false }: { userId: string; desktop?: boolean }) {
   const key = `mogging:originals:${userId}`
   const [completed, setCompleted] = useState<string[]>([])
   const [active, setActive] = useState(0)
   const [view, setView] = useState<'collection' | 'course' | number>('collection')
   const [choice, setChoice] = useState<number | null>(null)
   const [guide, setGuide] = useState(0)
+  const root = useRef<HTMLElement>(null)
   useEffect(() => {
     try {
       const saved: unknown = JSON.parse(localStorage.getItem(key) ?? '[]')
@@ -43,7 +44,7 @@ export default function ScanCourses({ userId }: { userId: string }) {
     setChoice(null)
     setGuide(0)
     setView(target)
-    window.scrollTo(0, 0)
+    root.current?.closest('.scan-home-screen')?.scrollTo({ top: 0 })
   }
 
   function finish() {
@@ -55,31 +56,91 @@ export default function ScanCourses({ userId }: { userId: string }) {
   }
 
   const lessonRows = course.lessons.map((item, index) => <button key={item.id} type="button" className="scan-course-lesson" onClick={() => open(active, index)}>
-              <img src={artwork(item.id)} alt="" /><span><b>{item.title}</b><small>{item.intro}</small><small>{item.minutes} min</small></span>{completed.includes(item.id) ? <Check size={18} /> : <ChevronRight size={18} />}
-            </button>)
+      <img src={artwork(item.id)} alt="" /><span><b>{item.title}</b><small>{item.intro}</small><small>{item.minutes} min</small></span>{completed.includes(item.id) ? <MoggingIcon name="check" size={18} /> : <MoggingIcon name="chevron-right" size={18} />}
+  </button>)
+
+  const lessonContent = lesson && <>
+    {lesson.sections.map((section, index) => <div key={section.title} className="scan-lesson-section">
+      <h2>{section.title}</h2><p>{section.body}</p>
+      {index === lesson.guide.afterSection && <div className="scan-lesson-guide">
+        <h3>{lesson.guide.title}</h3>
+        <motion.div className="scan-lesson-art" initial={false} animate={{ filter: lesson.guide.kind === 'light' ? `brightness(${[.72, 1, 1.2][guide]})` : 'none' }}>
+          <motion.img src={artwork(lesson.id)} alt="" initial={false} animate={{ scale: lesson.guide.kind === 'focus' ? [1, 1.12, 1.24][guide] : 1, x: lesson.guide.kind === 'position' ? [0, -10, 10][guide] : 0 }} />
+          <div aria-hidden="true" className="scan-lesson-art-index">0{guide + 1} / 03</div>
+        </motion.div>
+        <div role="group" aria-label={lesson.guide.title}>{lesson.controls.map((label, i) => <button key={label} type="button" aria-pressed={i === guide} onClick={() => setGuide(i)}>{label}</button>)}</div>
+        <p aria-live="polite">{lesson.captions[guide]}</p>
+      </div>}
+    </div>)}
+    <div className="scan-lesson-guide"><h2>{lesson.question}</h2>
+      {lesson.answers.map((answer, i) => <button key={answer} type="button" aria-pressed={choice === i} onClick={() => setChoice(i)}>{answer}</button>)}
+      {choice !== null && <p role="status">{choice === lesson.correct ? lesson.explanation : 'Try another answer.'}</p>}
+    </div>
+    {lesson.source && <a href={lesson.source.url} target="_blank" rel="noreferrer">{lesson.source.title}</a>}
+    <button type="button" className="scan-home-primary" onClick={finish}>{completed.includes(lesson.id) ? 'Continue' : 'Complete lesson'} <MoggingIcon name="forward" size={17} /></button>
+  </>
+
+  if (desktop && view !== 'collection') {
+    return <section ref={root} className="desktop-guides">
+      <header className="desktop-guides-nav">
+        <OriginalsMark />
+        <nav aria-label="Guide breadcrumb">
+          <button type="button" onClick={() => open(active, 'collection')}>Library</button>
+          <MoggingIcon name="chevron-right" size={13} />
+          {lesson ? <button type="button" onClick={() => open(active, 'course')}>{names[active]}</button> : <span aria-current="page">{names[active]}</span>}
+          {lesson && <><MoggingIcon name="chevron-right" size={13} /><span aria-current="page">Lesson {(view as number) + 1}</span></>}
+        </nav>
+        <button className="desktop-guide-back" type="button" onClick={() => open(active, lesson ? 'course' : 'collection')}><MoggingIcon name="chevron-left" size={16} /> Back</button>
+      </header>
+      <AnimatePresence mode="wait" initial={false}>
+        <motion.article key={`${course.id}:${view}`} className="desktop-guide-article" initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -4 }} transition={{ duration: .18 }}>
+          <div className="desktop-guide-heading">
+            <p className="desktop-guide-kicker">{lesson ? `${names[active]} · ${lesson.minutes} min read` : `${names[active]} · ${course.lessons.length} lessons`}</p>
+            <h1>{lesson?.title ?? course.title}</h1><p>{lesson?.intro ?? course.subtitle}</p>
+          </div>
+          {!lesson && <img className="desktop-guide-cover" src={artwork(`cover-${course.id}`)} alt="" />}
+          <div className="scan-course-detail desktop-guide-body">
+            {lesson ? lessonContent : <>
+              <div className="desktop-guide-progress"><span>Course progress</span><b>{progress.count} / {progress.total}</b></div>
+              <progress aria-label="Course progress" value={progress.count} max={progress.total} />
+              <h2>Lessons</h2>
+              <div className="desktop-guide-lessons">{lessonRows}</div>
+              <button type="button" className="scan-home-primary" onClick={() => open(active, Math.max(0, progress.next))}>{progress.count ? 'Continue course' : 'Start course'} <MoggingIcon name="forward" size={17} /></button>
+            </>}
+          </div>
+        </motion.article>
+      </AnimatePresence>
+    </section>
+  }
 
   return <AnimatePresence mode="wait" initial={false}>
-    <motion.section key={`${view}:${view === 'collection' ? '' : course.id}`} initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -8 }} transition={{ duration: .24 }} className="scan-originals">
+    <motion.section ref={root} key={`${view}:${view === 'collection' ? '' : course.id}`} initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -8 }} transition={{ duration: .24 }} className="scan-originals" data-course-desktop={desktop || undefined}>
       {view === 'collection' ? <>
         <header><h1>Courses</h1><OriginalsMark /></header>
         <div className="scan-course-resume">
           {courses.map((item, index) => {
             const saved = courseProgress(item, completed)
             return <button key={item.id} type="button" onClick={() => open(index, Math.max(0, saved.next))}>
-              <img src={artwork(`cover-${item.id}`)} alt="" /><span><b>{names[index]}</b><small>{saved.count ? `${saved.count} / ${saved.total} lessons` : 'Start learning'}</small></span><ArrowRight size={14} />
+              <img src={artwork(`cover-${item.id}`)} alt="" /><span><b>{names[index]}</b><small>{saved.count ? `${saved.count} / ${saved.total} lessons` : 'Start learning'}</small></span><MoggingIcon name="forward" size={14} />
             </button>
           })}
         </div>
-        <header><h2>Explore the collection</h2><small>0{active + 1} / 0{courses.length}</small></header>
+        <header><h2>Explore the collection</h2>
+          <div className="scan-course-shelf-control">
+            {desktop && <button type="button" aria-label="Previous course" disabled={active === 0} onClick={() => setActive(index => index - 1)}><MoggingIcon name="chevron-left" size={17} /></button>}
+            <small>0{active + 1} / 0{courses.length}</small>
+            {desktop && <button type="button" aria-label="Next course" disabled={active === courses.length - 1} onClick={() => setActive(index => index + 1)}><MoggingIcon name="chevron-right" size={17} /></button>}
+          </div>
+        </header>
         <div className="scan-course-carousel" onScroll={event => {
-          if (view !== 'collection') return
+          if (desktop || view !== 'collection') return
           const shelf = event.currentTarget
           const first = shelf.firstElementChild
           if (first) setActive(Math.min(courses.length - 1, Math.round(shelf.scrollLeft / (first.clientWidth + 14))))
         }}>
-          {courses.map((item, index) => <button key={item.id} type="button" className="scan-course-card" style={{ backgroundImage: `url(${artwork(`cover-${item.id}`)})` }} onClick={() => open(index, 'course')}>
+          {courses.map((item, index) => <button key={item.id} type="button" className="scan-course-card" data-featured={desktop && index === active || undefined} style={{ backgroundImage: `url(${artwork(`cover-${item.id}`)})` }} onClick={() => open(index, 'course')}>
             <span className="scan-course-tags"><span><OriginalsMark /></span><span>{coursePublicationAge(item.publishedAt)}</span></span>
-            <span className="scan-course-copy"><b>{item.title}</b><span>{item.subtitle}</span><small><Play size={14} /> {item.lessons.length} lessons · {item.lessons.reduce((sum, entry) => sum + entry.minutes, 0)} min</small></span>
+            <span className="scan-course-copy"><b>{item.title}</b><span>{item.subtitle}</span><small><MoggingIcon name="play" size={14} /> {item.lessons.length} lessons · {item.lessons.reduce((sum, entry) => sum + entry.minutes, 0)} min</small></span>
           </button>)}
         </div>
         <div className="scan-course-collection-lessons">
@@ -92,9 +153,9 @@ export default function ScanCourses({ userId }: { userId: string }) {
         </div>
       </> : <>
         <div className="scan-course-toolbar">
-          <button type="button" aria-label="Back" onClick={() => open(active, lesson ? 'course' : 'collection')}><ChevronLeft size={22} /></button>
+          <button type="button" aria-label="Back" onClick={() => open(active, lesson ? 'course' : 'collection')}><MoggingIcon name="chevron-left" size={22} /></button>
           <b>{lesson ? lesson.title : course.title}</b>
-          <button type="button" aria-label="Close course" onClick={() => open(active, 'collection')}><X size={20} /></button>
+          <button type="button" aria-label="Close course" onClick={() => open(active, 'collection')}><MoggingIcon name="close" size={20} /></button>
         </div>
         <div className="scan-course-detail-hero" style={{ backgroundImage: `url(${artwork(lesson?.id ?? `cover-${course.id}`)})` }}>
           <ProgressiveBlur className="absolute inset-x-0 bottom-0 h-1/3" blurLayers={5} intensity={6} />
@@ -103,31 +164,12 @@ export default function ScanCourses({ userId }: { userId: string }) {
           <OriginalsMark />
           <h1>{lesson?.title ?? course.title}</h1>
           <p>{lesson?.intro ?? course.subtitle}</p>
-          {lesson ? <>
-            {lesson.sections.map((section, index) => <div key={section.title} className="scan-lesson-section">
-              <h2>{section.title}</h2><p>{section.body}</p>
-              {index === lesson.guide.afterSection && <div className="scan-lesson-guide">
-                <h3>{lesson.guide.title}</h3>
-                <motion.div className="scan-lesson-art" initial={false} animate={{ filter: lesson.guide.kind === 'light' ? `brightness(${[.72, 1, 1.2][guide]})` : 'none' }}>
-                  <motion.img src={artwork(lesson.id)} alt="" initial={false} animate={{ scale: lesson.guide.kind === 'focus' ? [1, 1.12, 1.24][guide] : 1, x: lesson.guide.kind === 'position' ? [0, -10, 10][guide] : 0 }} />
-                  <div aria-hidden="true" className="scan-lesson-art-index">0{guide + 1} / 03</div>
-                </motion.div>
-                <div role="group" aria-label={lesson.guide.title}>{lesson.controls.map((label, i) => <button key={label} type="button" aria-pressed={i === guide} onClick={() => setGuide(i)}>{label}</button>)}</div>
-                <p aria-live="polite">{lesson.captions[guide]}</p>
-              </div>}
-            </div>)}
-            <div className="scan-lesson-guide"><h2>{lesson.question}</h2>
-              {lesson.answers.map((answer, i) => <button key={answer} type="button" aria-pressed={choice === i} onClick={() => setChoice(i)}>{answer}</button>)}
-              {choice !== null && <p role="status">{choice === lesson.correct ? lesson.explanation : 'Try another answer.'}</p>}
-            </div>
-            {lesson.source && <a href={lesson.source.url} target="_blank" rel="noreferrer">{lesson.source.title}</a>}
-            <button type="button" className="scan-home-primary" onClick={finish}>{completed.includes(lesson.id) ? 'Continue' : 'Complete lesson'} <ArrowRight size={17} /></button>
-          </> : <>
+          {lesson ? lessonContent : <>
             <p>Your progress <b>{progress.count} of {progress.total}</b></p>
             <progress value={progress.count} max={progress.total} />
             <h2>Lessons</h2>
             {lessonRows}
-            <button type="button" className="scan-home-primary" onClick={() => open(active, Math.max(0, progress.next))}>{progress.count ? 'Continue course' : 'Start course'} <ArrowRight size={17} /></button>
+            <button type="button" className="scan-home-primary" onClick={() => open(active, Math.max(0, progress.next))}>{progress.count ? 'Continue course' : 'Start course'} <MoggingIcon name="forward" size={17} /></button>
           </>}
         </div>
       </>}

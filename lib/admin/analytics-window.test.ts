@@ -150,7 +150,7 @@ describe('admin reporting windows', () => {
     expect(selected).not.toContain('from "daily"')
     expect(selected).not.toContain('from scan_ledger')
     const outcomes = query.sql.split('onboarding_flow_outcomes as materialized (')[1].split('), onboarding_summary as (')[0]
-    expect(outcomes).toContain('o.actor = f.actor and o.flow_id = f.flow_id')
+    expect(outcomes).toContain('o.actor = f.actor and o.platform = f.platform and o.flow_id = f.flow_id')
     expect(outcomes).toContain('o.occurred_at >= f.at')
     expect(outcomes).toContain("o.occurred_at <= f.at + interval '7 days'")
     expect(query.sql).toContain('as eligible_completed')

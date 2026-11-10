@@ -1,5 +1,6 @@
 import dynamic from 'next/dynamic'
 import { useDesktop } from './use-desktop'
+import { usePhoneLayout } from '@/hooks/use-phone-layout'
 import { EvaluationChoices } from './evaluation-choices'
 import { LazyMotion, domAnimation } from 'motion/react'
 import * as m from 'motion/react-m'
@@ -34,6 +35,7 @@ export default function LegacyHomepage({assignment, preview}: {assignment: Landi
   const {sections, trackDestination} = useLandingTracking(assignment, preview)
   const entrance = useHomepageEntrance()
   const desktop = useDesktop()
+  const phone = usePhoneLayout(true)
   return <LazyMotion features={domAnimation}>
       <SeoHead
         title="Mogging App | Face Analysis & Personalized Routines"
@@ -82,7 +84,7 @@ export default function LegacyHomepage({assignment, preview}: {assignment: Landi
 
             <ReviewsSection />
 
-            <m.div {...entrance} data-landing-section="web_checkout" className="mx-auto mt-16 w-full max-w-5xl min-[1440px]:max-w-[var(--page-max)] sm:mt-20"><WebCheckout embedded showReport preview={preview} /></m.div>
+            {!phone && <m.div {...entrance} data-landing-section="web_checkout" className="mx-auto mt-16 w-full max-w-5xl min-[1440px]:max-w-[var(--page-max)] sm:mt-20"><WebCheckout embedded showReport preview={preview} /></m.div>}
           </div>
         </section>
       </main>

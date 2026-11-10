@@ -3,7 +3,7 @@ import {TimeBars} from './time-bars'
 import type { AnalyticsDashboard } from '@/lib/admin/analytics'
 import { formatReportingTime } from '@/lib/admin/reporting-time'
 import { chartColors, type ChartMetric } from './analytics-chart'
-import { Bars, DataDetails, Notice, Panel, Stat, Table, count, label, percent } from './analytics-ui'
+import { Bars, DataDetails, Notice, Panel, Stat, Table, count, label, percent, analyticsChannelLabel } from './analytics-ui'
 
 const metrics: ChartMetric[] = [
   { key: 'attempts', label: 'Purchase attempts', color: chartColors.blue },
@@ -37,11 +37,29 @@ export function PurchaseFlowDashboard({ data, days }: { data: AnalyticsDashboard
   const coverage = report.coverage[0]
   const unverified = Math.max(0, Number(summary?.purchased ?? 0) - Number(summary?.verified ?? 0))
   const chartMetrics = metrics
+  const web = data.webJourney
+  const appAttempts = ['ios', 'android'].flatMap(platform => {
+    const rows = report.surfaces.filter(row => row.platform === platform)
+    if (!rows.length) return []
+    const total = (metric: string) => rows.reduce((sum, row) => sum + Number(row[metric] ?? 0), 0)
+    return [{ channel: analyticsChannelLabel(platform), attempts: total('attempts'),
+      billing_confirmed: total('verified'), access_activated: total('activated'), cancellations: total('cancellations') }]
+  })
   return <>
-    <p className="mb-5 text-xs leading-5 text-zinc-500">{days === 1 ? 'Last 24 hours' : `Last ${days} days`} · {data.filters.platform === 'all' ? 'iOS and Android' : name(data.filters.platform)} · Mobile diagnostics filter · Billing purchases below include every source</p>
-    <nav aria-label="Purchase report sections" className="mb-6 flex flex-wrap gap-x-5 gap-y-2 text-sm text-zinc-600"><a className="underline underline-offset-4" href="#paid-purchases">Paid sales &amp; channels</a><a className="underline underline-offset-4" href="#mobile-purchases">Mobile checkout issues</a><a className="underline underline-offset-4" href="#stripe-purchases">Stripe payment signals</a></nav>
+    <p className="mb-5 text-xs leading-5 text-zinc-500">{days === 1 ? 'Last 24 hours' : `Last ${days} days`} · {data.filters.platform === 'all' ? 'iOS and Android' : name(data.filters.platform)} · App diagnostics filter · Billing purchases below include every source</p>
+    <nav aria-label="Purchase report sections" className="mb-6 flex flex-wrap gap-x-5 gap-y-2 text-sm text-zinc-600"><a className="underline underline-offset-4" href="#paid-purchases">Paid sales &amp; channels</a><a className="underline underline-offset-4" href="#mobile-purchases">App checkout issues</a><a className="underline underline-offset-4" href="#stripe-purchases">Stripe payment signals</a></nav>
     <div id="paid-purchases"><PurchaseBehaviorDashboard report={data.purchaseBehavior} days={days}/></div>
-    <h2 id="mobile-purchases" className="mb-5 mt-10 text-lg font-medium">Mobile purchase attempt diagnostics</h2>
+    {web && <Panel title="Web checkout by device" description="Current tracking · journey counts and verified Stripe payments">
+      <Table rows={web.channels.map(row => ({ ...row, channel: analyticsChannelLabel(row.channel),
+        paywall_to_paid: percent(Number(row.paid_from_paywall), Number(row.paywall_journeys)),
+      }))} columns={['channel', 'paywall_journeys', 'checkout_journeys', 'paid_journeys', 'subscription_journeys', 'creator_discount_purchases', 'paywall_to_paid', 'access_granted']} />
+      <DataDetails><Table rows={web.outcomes.map(row => ({ ...row, channel: analyticsChannelLabel(row.channel) }))}
+        columns={['channel', 'outcome', 'attempts']} /></DataDetails>
+    </Panel>}
+    <h2 id="mobile-purchases" className="mb-5 mt-10 text-lg font-medium">App purchase attempt diagnostics</h2>
+    <Panel title="App checkout by platform" description="Tracked iOS and Android attempts. Provider-confirmed outcomes can include trial starts.">
+      <Table rows={appAttempts} columns={['channel', 'attempts', 'billing_confirmed', 'access_activated', 'cancellations']} />
+    </Panel>
     <div className="admin-stats-grid">
       <Stat title="Tracked purchase attempts" value={count(summary?.attempts)} note={`${count(summary?.devices)} distinct devices · retries remain separate attempts`} />
       <Stat title="Observed purchases" value={count(summary?.purchased)} note={Number(summary?.attempts) > 0 ? `${percent(Number(summary?.purchased),Number(summary?.attempts))} of tracked attempts · observed to date` : "Purchase rate unavailable · no tracked attempts"} />
@@ -74,7 +92,7 @@ export function PurchaseFlowDashboard({ data, days }: { data: AnalyticsDashboard
     </Panel>
     <Panel title="Purchase performance by paywall" description="Compare subscriptions and scan purchases across mobile purchase surfaces."
       note="Unknown purchase types remain unclassified. Purchase type and paywall come from the first recorded start event; older releases may omit them. Rates use each row’s tracked attempts, and all starts share the selected period rather than a fixed follow-up window. Device identities can appear on several paywalls or attempts. No ranking here establishes a causal paywall effect.">
-      <Table rows={report.surfaces.map(row => ({ paywall: name(row.surface), purchase_type: name(row.purchase_type), platform: name(row.platform), attempts: row.attempts, observed_purchases: row.purchased, purchase_rate: percent(Number(row.purchased),Number(row.attempts)), billing_confirmed: row.verified, access_activated: row.activated, cancellations: row.cancellations }))} columns={['paywall','purchase_type','platform','attempts','observed_purchases','purchase_rate','billing_confirmed','access_activated','cancellations']} />
+      <Table rows={report.surfaces.map(row => ({ paywall: name(row.surface), purchase_type: name(row.purchase_type), platform: analyticsChannelLabel(row.platform), attempts: row.attempts, observed_purchases: row.purchased, purchase_rate: percent(Number(row.purchased),Number(row.attempts)), billing_confirmed: row.verified, access_activated: row.activated, cancellations: row.cancellations }))} columns={['paywall','purchase_type','platform','attempts','observed_purchases','purchase_rate','billing_confirmed','access_activated','cancellations']} />
     </Panel>
     <Panel title="Purchase issues and recovery" description="Errors that still affect the latest attempt outcome, plus supporting recovery activity.">
       <Table rows={report.failures.map(row => ({ outcome: name(row.outcome), stage: name(row.stage), reason: name(row.reason), error_code: name(row.error_code), attempts: row.attempts, affected_devices: row.affected_devices }))} columns={['outcome','stage','reason','error_code','attempts','affected_devices']} />

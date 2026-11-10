@@ -1,3 +1,4 @@
+import type { DesktopAnalysisPreferences } from '@/components/analysis/desktop-onboarding'
 import type { LandmarkInput } from '@/lib/analysis-v2/measurements'
 import type { FaceLandmarksPayload } from '@/lib/analysis/landmarks'
 import type { HairColor, SkinColor } from '@/lib/appearance/types'
@@ -21,9 +22,16 @@ export type AnalysisDraft = {
   images: AnalysisDraftImage[]
   gender: 'male' | 'female' | 'other'
   savedAt: number
+  preferences?: DesktopAnalysisPreferences
+  desktopConsent?: boolean
+  requestIds?: string[]
 }
 
 export const saveAnalysisDraft = (draft: AnalysisDraft) => updateDraft(draft)
+
+export const saveCheckoutAnalysisDraft = (sessionId: string, draft: AnalysisDraft) => updateDraft(draft, `checkout:${sessionId}`)
+export const loadCheckoutAnalysisDraft = (sessionId: string) => readDraft<AnalysisDraft>(`checkout:${sessionId}`)
+export const clearCheckoutAnalysisDraft = (sessionId: string) => updateDraft(undefined, `checkout:${sessionId}`)
 
 export const saveAnalysisSidePhoto = (reportId: string, image: AnalysisDraftImage) =>
   updateDraft(image, `side:${reportId}`)

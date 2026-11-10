@@ -68,8 +68,10 @@ recordings with matching storage keys and authenticated TikTok API counts supply
 measured growth. Growth requires an opening observation from the same source;
 missing history stays unavailable. Collection does not rewrite payout amounts or
 reviewed view thresholds. Hourly API snapshots are idempotent. The 15-minute cron
-rotates through accounts and canonical post IDs; unavailable/private videos are
-not represented as zero and cannot starve later posts.
+rotates through canonical TikTok post IDs for the first ten days after submission.
+It uses the first submission event when a post was prepared as a draft. Historical
+snapshots remain available. Private or unavailable posts stay missing, and a creator
+who reconnects with the required permission can sync on the next cron run.
 
 Before deploying, apply only the additive migration:
 `bun run db:migrate --only 0072_creator_video_observations`.

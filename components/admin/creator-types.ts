@@ -100,6 +100,7 @@ export type AdminSubmission = {
   sprintTerms?: import('@/lib/creator/sprints').SprintTerms | null
   reviewRequestedAt?: string | null
   approvedAmountCents?: number | null
+  campaignPayoutCorrected?: boolean
   id: string
   creatorProfileId: string
   creatorName: string
@@ -132,6 +133,7 @@ export type AdminSubmission = {
 }
 
 export type AdminPayment = {
+  cryptoChain?: import('@/lib/admin/crypto-payouts/shared').PayoutChain | null
   bonusSprintId?: string | null
   bonusKey?: string | null
   bonusNote?: string | null

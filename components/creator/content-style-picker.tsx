@@ -1,7 +1,7 @@
 import { useRef, useSyncExternalStore } from 'react'
 import * as DialogPrimitive from '@radix-ui/react-dialog'
 import { AnimatePresence, motion } from 'motion/react'
-import { Check, Info, X } from 'lucide-react'
+import { Check, Info, X } from '@/components/ui/mogging-glyphs'
 import { creatorContentStyles, type CreatorContentStyleId } from '@/lib/creator/creator-catalog'
 import { ExampleCarousel } from './campaign-examples'
 import styles from './content-style-picker.module.css'

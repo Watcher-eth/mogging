@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { useSWRConfig } from 'swr'
 import useSWRInfinite from 'swr/infinite'
-import { ArrowUp, Loader2, MessageCircle } from 'lucide-react'
+import { ArrowUp, Loader2, MessageCircle } from '@/components/ui/mogging-glyphs'
 import { apiGet, apiPatch, apiPost } from '@/lib/api/client'
 import { cn } from '@/lib/utils'
 

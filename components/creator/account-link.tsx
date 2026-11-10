@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { SkeletonAvatar } from '@/components/ui/skeleton-avatar'
-import { ArrowUpRight, Check, Copy } from 'lucide-react'
+import { ArrowUpRight, Check, Copy } from '@/components/ui/mogging-glyphs'
 import { toast } from 'sonner'
 import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'

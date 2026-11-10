@@ -2,15 +2,19 @@ import dynamic from 'next/dynamic'
 import Link from 'next/link'
 import { useId } from 'react'
 import { AnimatePresence, motion, useReducedMotion } from 'motion/react'
+import { TextMorph } from 'torph/react'
 import { useTranslation } from 'react-i18next'
-import { ArrowUpRight, Bell, Check, ChartNoAxesCombined, ScanFace, ListChecks, ShieldCheck } from 'lucide-react'
+import { ArrowUpRight, Bell, BookOpen, Check, ChartNoAxesCombined, ScanFace, ListChecks, ShieldCheck, ScanLine, View } from '@/components/ui/mogging-glyphs'
 import { formatStripePrice, type SubscriptionPrices, type SubscriptionProduct } from '@/lib/payments/subscription-prices'
 import { cn } from '@/lib/utils'
+import { webAnalysisCheckoutLimit, webAnalysisPlans, webAnalysisProducts, type WebAnalysisProduct } from '@/lib/payments/web-analysis-plans'
+import type { PaywallExposure } from '@/lib/payments/paywall-experiment'
 import styles from './membership-offer.module.css'
 const EvaluationPreview = dynamic(() => import('@/components/landing/mobile-preview').then(module => module.EvaluationPreview), { ssr: false })
 
 export type ReportPrice = { product: 'evaluation' | 'evaluation_pack_3'; currency: string; amount: number }
-export type CheckoutQuote = { currency: string; unitAmount: number; returnOfferSessionId?: string }
+export type CheckoutQuote = { currency: string; unitAmount: number; returnOfferSessionId?: string; starterIntro?: true; creatorDiscount?: true; experiment?: PaywallExposure }
+export type WebAnalysisPrices = { currency: string; amounts: Record<WebAnalysisProduct, number>; starterIntro?: number; experiment?: PaywallExposure }
 export const membershipPlans = [
   { id: 'mobile_subscription_weekly', label: 'plan.weekly', cadence: 'plan.weekCadence', credits: 1 },
   { id: 'mobile_subscription_monthly', label: 'plan.monthly', cadence: 'plan.monthCadence', credits: 2 },
@@ -67,6 +71,69 @@ export function MembershipTerms({ prices, selected, compactOnMobile, showRenewal
       {showRenewal && <span>{prices ? `${formatStripePrice(prices.amounts[selected], prices.currency, i18n.language)} ${t(plan.cadence)}. ` : ''}{t('membership.renewal')}</span>}
     </motion.div></AnimatePresence>
   </div>
+}
+
+const webPlanNames: Record<WebAnalysisProduct, string> = {
+  web_basic_weekly: 'Basic', web_basic_monthly: 'Starter', web_pro_monthly: 'Pro',
+}
+
+export function WebAnalysisPlanOptions({ prices, selected, onSelect, imageCount, disabled, compact }: {
+  compact?: boolean
+  prices?: WebAnalysisPrices; selected: WebAnalysisProduct; onSelect: (plan: WebAnalysisProduct) => void; imageCount: number; disabled: boolean
+}) {
+  const { i18n } = useTranslation()
+  const id = useId()
+  const reduce = useReducedMotion()
+  return <>
+    {compact ? <details className={styles.planDetails}><summary>What’s included</summary><WebAnalysisPlanBenefits product={selected} /></details> : <WebAnalysisPlanBenefits product={selected} />}
+    <div className={cn(styles.plans, styles.webPlans)} role="group" aria-label="Analysis plans">
+      {webAnalysisProducts.map(product => {
+        const plan = webAnalysisPlans[product]
+        const active = product === selected
+        const weekly = plan.interval === 'week'
+        const starter = product === 'web_basic_monthly'
+        const baseline = starter && prices ? prices.amounts.web_basic_weekly * plan.scans : 0
+        const savings = prices && baseline > 0 ? Math.round(100 * (1 - prices.amounts[product] / baseline)) : 0
+        const badge = weekly ? 'Flexible' : starter ? savings > 0 ? `Save ${savings}%` : null : 'Popular'
+        const scanCount = weekly ? '1 scan per week' : `${plan.scans} scans per month`
+        return <button key={product} type="button" aria-pressed={active} disabled={disabled || webAnalysisCheckoutLimit(product) < imageCount}
+          onClick={() => onSelect(product)} className={cn(styles.plan, active && styles.selected)}>
+          {active && <motion.span className={styles.selection} layoutId={`${id}-web-plan`} transition={reduce ? { duration: 0 } : { type: 'spring', stiffness: 420, damping: 36 }} />}
+          {badge && <span className={styles.planBadge} data-tone={starter ? 'savings' : weekly ? 'flexible' : 'popular'}>{badge}</span>}
+          <span className={styles.planTop}><strong>{webPlanNames[product]}</strong></span>
+          <span className={styles.planFoot}>{scanCount}</span>
+          <span className={styles.planPrice}>{prices ? formatStripePrice(prices.amounts[product], prices.currency, i18n.language) : <span className={styles.priceSkeleton} />}</span>
+          <span className={styles.cadence}>/{plan.interval}</span>
+          {prices && savings > 0 && <span className={styles.planComparison}>
+            vs {formatStripePrice(baseline, prices.currency, i18n.language)} for {plan.scans} Basic weeks
+          </span>}
+        </button>
+      })}
+    </div>
+  </>
+}
+
+export function WebAnalysisPlanBenefits({ product }: { product: WebAnalysisProduct }) {
+  const reduce = useReducedMotion()
+  const plan = webAnalysisPlans[product]
+  const benefits = [
+    { Icon: ScanFace, title: plan.interval === 'week' ? '1 face scan per week' : `${plan.scans} face scans per month` },
+    { Icon: ScanLine, title: 'More than 120 facial landmarks anchored' },
+    { Icon: View, title: 'Comprehensive front and side face map' },
+    { Icon: BookOpen, title: 'Original Looksmaxxing Courses' },
+    ...(plan.tier === 'pro' ? [
+      { Icon: ListChecks, title: 'Personalized Protocol' },
+      { Icon: ChartNoAxesCombined, title: 'Progress Tracking' },
+    ] : [{ Icon: ShieldCheck, title: 'Private analysis' }]),
+  ]
+  return <motion.ul layout="position" className={styles.webBenefits} aria-live="polite">
+    <AnimatePresence initial={false}>
+      {benefits.map(({ Icon, title }, index) => <motion.li key={index} layout="position"
+        initial={{ opacity: 0, y: reduce ? 0 : 4 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} transition={{ duration: reduce ? 0 : .18 }}>
+        <Icon size={17} strokeWidth={1.65} aria-hidden="true" /><span>{reduce || index !== 0 ? title : <TextMorph>{title}</TextMorph>}</span>
+      </motion.li>)}
+    </AnimatePresence>
+  </motion.ul>
 }
 
 export function CheckoutLegal() {

@@ -48,8 +48,8 @@ export async function requireCreatorAdmin(
   return { email, session: session as Session }
 }
 
-export function hasCreatorAdminUnlock(req: NextApiRequest, email: string) {
-  return verifyAdminToken(req.cookies[COOKIE_NAME], email)
+export function hasCreatorAdminUnlock(req: Pick<NextApiRequest, 'cookies'>, email: string) {
+  return isCreatorAdminConfigured() && verifyAdminToken(req.cookies[COOKIE_NAME], email.trim().toLowerCase())
 }
 
 export function setCreatorAdminUnlock(res: NextApiResponse, email: string) {

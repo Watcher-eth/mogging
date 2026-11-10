@@ -1,11 +1,11 @@
-import type { NextApiRequest } from 'next'
+import type { IncomingMessage } from 'node:http'
 
 export type RequestLocation = {
   country: string | null
   state: string | null
 }
 
-export function getRequestLocation(req: NextApiRequest): RequestLocation {
+export function getRequestLocation(req: Pick<IncomingMessage, 'headers'>): RequestLocation {
   const country = normalizeCode(firstHeader(req, [
     'x-vercel-ip-country',
     'cf-ipcountry',
@@ -23,7 +23,7 @@ export function getRequestLocation(req: NextApiRequest): RequestLocation {
   }
 }
 
-function firstHeader(req: NextApiRequest, names: string[]) {
+function firstHeader(req: Pick<IncomingMessage, 'headers'>, names: string[]) {
   for (const name of names) {
     const value = req.headers[name]
     const firstValue = Array.isArray(value) ? value[0] : value

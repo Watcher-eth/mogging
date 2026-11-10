@@ -12,8 +12,8 @@ test('property budget bounds batch payload size even for multibyte input', () =>
 })
 test('required fields and scan correlation survive verbose attribution context without exporting unknown data', () => {
   const context = Object.fromEntries(['first_utm_source','first_utm_medium','first_utm_campaign','first_utm_content','first_utm_term','source','surface'].map(key => [key, 'x'.repeat(160)]))
-  const props = sanitizeProperties({ ...context, evaluation_id: 'scan-one', request_id: 'mobile-v2:scan-one', report_id: 'report-one', step: 'upload', password: 'private', invalid: undefined })
-  expect(props).toMatchObject({ evaluation_id: 'scan-one', request_id: 'mobile-v2:scan-one', report_id: 'report-one', step: 'upload' })
+  const props = sanitizeProperties({ ...context, evaluation_id: 'scan-one', request_id: 'mobile-v2:scan-one', report_id: 'report-one', step: 'upload', landing_id: 'landing-one', landing_version: '3', experiment_id: 'landing_homepage_v3', variant: 'a', analysis_variant: 'desktop_guided_v3', password: 'private', invalid: undefined })
+  expect(props).toMatchObject({ evaluation_id: 'scan-one', request_id: 'mobile-v2:scan-one', report_id: 'report-one', step: 'upload', landing_id: 'landing-one', landing_version: '3', experiment_id: 'landing_homepage_v3', variant: 'a', analysis_variant: 'desktop_guided_v3' })
   expect(props).not.toHaveProperty('password')
 })
 

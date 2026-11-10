@@ -31,8 +31,8 @@ let locks: unknown[] = []
 let messages: any[] = []
 let receipt: any
 const query = {
-  creatorSubmissions: { findFirst: async () => submission },
-  creatorPayments: { findFirst: async () => payment, findMany: async () => [...pastPayments, ...(payment ? [payment] : [])] },
+  creatorSubmissions: { findFirst: async () => submission, findMany: async () => [submission] },
+  creatorPayments: { findFirst: async () => payment, findMany: async () => [...pastPayments.map(item => ({ submissionId: submission.id, ...item })), ...(payment ? [payment] : [])] },
   creatorProfiles: {
     findFirst: async () => ({
       id: 'creator',
@@ -58,7 +58,7 @@ const tx = {
             ? [{ id: 'sprint', budgetCents: budget }]
             : table === schema.creatorPayments
               ? [payment]
-              : [submission]
+              : table === schema.creatorProfiles ? [await query.creatorProfiles.findFirst()] : [submission]
         },
         then: (resolve: any) => resolve([{ cents: used }]),
       }),
@@ -137,7 +137,7 @@ beforeEach(() => {
 test('approval reserves saved sprint rates and locks the budget and submission', async () => {
   const result = await reviewCreatorResource(review)
   expect(result).toHaveProperty('approvedAmountCents', 1000)
-  expect(locks).toEqual([schema.creatorSubmissions, schema.creatorSprints])
+  expect(locks).toEqual([schema.creatorProfiles, schema.creatorSubmissions, schema.creatorSprints])
 })
 test('approval cannot exceed remaining budget but permits unmet campaign requirements', async () => {
   used = 1

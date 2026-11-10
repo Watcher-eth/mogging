@@ -1,4 +1,9 @@
-import { stripeJourneyProperties } from '@/lib/analytics/web-context'
+import { assignPaywallExperiment, checkoutPaywallExperiment, parsePaywallExperiment, paywallPriceProduct, validatePaywallTreatmentPrice } from './paywall-experiment-server'
+import { paywallExperimentProperties } from './paywall-experiment'
+import type Stripe from 'stripe'
+import { stripeJourneyProperties, webRequestContext } from '@/lib/analytics/web-context'
+import { getWebAnalysisPrice, getWebStarterIntro, isWebAnalysisProduct, WEB_ANALYSIS_CREATOR_COUPON, webAnalysisCheckoutLimit, webAnalysisProductForLookupKey, webAnalysisProducts, webStarterIntro } from './web-analysis-plans'
+import { issueStarterIntro, readStarterIntro, requireActiveStarterIntro, starterIntroCookie } from './web-starter-intro'
 import { createHash } from 'node:crypto'
 import { expect, test } from 'bun:test'
 import { readFileSync } from 'node:fs'
@@ -6,27 +11,33 @@ import { runInNewContext } from 'node:vm'
 import { z } from 'zod'
 
 class ApiError extends Error { constructor(public status: number, message: string) { super(message) } }
+const introSecret = 'fixture-starter-intro'
 const compile = (source: string, scope: Record<string, unknown>) => runInNewContext(new Bun.Transpiler({ loader: 'ts' }).transformSync(source), scope)
 function route(file: string, overrides: Record<string, unknown> = {}) {
   const calls: any[] = []
+  const headers: Record<string, unknown> = {}
   const scope: any = {
-    z, ApiError, stripeJourneyProperties, createHash, env: { STRIPE_SECRET_KEY: 'fixture' },
+    z, ApiError, paywallExperimentProperties, paywallPriceProduct, checkoutPaywallExperiment, stripeJourneyProperties, webRequestContext, createHash, env: { STRIPE_SECRET_KEY: 'fixture', NEXTAUTH_SECRET: introSecret },
     parseBody: (schema: any, body: unknown) => schema.parse(body),
     json: (_res: unknown, status: number, data: unknown) => ({ status, data }),
     methodNotAllowed: () => ({ status: 405 }),
     handleApiError: (error: any) => ({ status: error.status || 400, error: error.message }),
     getRequestUserId: async () => 'buyer',
-    getEntitlementSummary: async () => ({ evaluationCredits: 0 }),
+    getEntitlementSummary: async () => ({ evaluationCredits: 0, subscription: { active: false } }),
+    isWebAnalysisProduct, WEB_ANALYSIS_CREATOR_COUPON, webAnalysisCheckoutLimit, webStarterIntro, verifyWebCheckoutGuest: async () => false,
+    issueStarterIntro, readStarterIntro, requireActiveStarterIntro, starterIntroCookie, enforceRateLimit: async () => {},
     confirmCheckoutForAccount: async () => ({ mobileInstallId: 'fixture-install', source: 'web_analysis' }),
     createPaymentHandoff: async () => ({ token: 'mobile-token' }),
-    getProductConfig: (id: string) => ({ mode: id.startsWith('mobile_subscription_') ? 'subscription' : 'payment', unitAmount: 499 }),
+    getProductConfig: (id: string) => ({ mode: isWebAnalysisProduct(id) || id.startsWith('mobile_subscription_') ? 'subscription' : 'payment', unitAmount: 499 }),
     validateCheckoutProduct: async () => ({ unit_amount: 499, currency: 'usd' }),
     readLandingCookie: () => null, serializeLandingAssignment: () => '',
-    paymentProductSchemaValues: ['evaluation','evaluation_pack_3','mobile_subscription_weekly','mobile_subscription_monthly','mobile_subscription_yearly'],
+    paymentProductSchemaValues: ['evaluation','evaluation_pack_3','mobile_subscription_weekly','mobile_subscription_monthly','mobile_subscription_yearly','extra_potential_image', ...webAnalysisProducts],
+    subscriptionProducts: ['mobile_subscription_weekly', 'mobile_subscription_monthly', 'mobile_subscription_yearly'],
+    CREATOR_MONTHLY_COUPON: 'first-month',
     locales: ['en','de','es','fr','zh'], generatePaymentActivationCode: () => 'fixture-code',
     getStoredMobileCreatorAttribution: async () => null, getCreatorStripeCustomer: async () => 'cus_fixture',
     db: { transaction: async (fn: any) => fn({ execute: async () => {} }) }, sql: () => '', getCheckoutLineItem: () => ({}),
-    resolveCreatorAttribution: async () => null, getAccountCreatorAttribution: async () => null, stripeAttributionMetadata: () => ({}),
+    resolveCreatorAttribution: async () => null, resolveCheckoutCreator: async () => null, getWebCreatorCoupon: async () => null, getAccountCreatorAttribution: async () => null, stripeAttributionMetadata: () => ({}),
     parseLandingAssignment: () => null, landingProperties: () => ({}), LANDING_COOKIE: 'landing',
     recordCreatorCheckout: async () => {}, recordServerEvent: async () => {},
     getStripe: () => ({ checkout: { sessions: { create: async (input: any) => { calls.push(input); return { id: 'cs_live_fixture', url: 'https://checkout.stripe.com/fixture' } } } } }),
@@ -35,7 +46,9 @@ function route(file: string, overrides: Record<string, unknown> = {}) {
   const source = readFileSync(new URL(`../../pages/api/payments/${file}.ts`, import.meta.url), 'utf8')
     .replace(/^import .*\n/gm, '').replace(/^export default .*$/gm, '')
   compile(source + '\nglobalThis.handler=handler', scope)
-  return { calls, run: (body = { sessionId: 'cs_live_fixture' }) => scope.handler({ method: 'POST', body, headers: { host: 'www.mogging.com', 'x-forwarded-proto': 'https' }, cookies: {} }, {}) }
+  return { calls, headers, run: (body = { sessionId: 'cs_live_fixture' }, cookies: Record<string, string> = {}) =>
+    scope.handler({ method: 'POST', body, headers: { host: 'www.mogging.com', 'x-forwarded-proto': 'https' }, cookies },
+      { setHeader: (name: string, value: unknown) => { headers[name] = value } }) }
 }
 
 test('website checkout returns to analysis, not mobile handoff', async () => {
@@ -69,23 +82,149 @@ test('paid return restores the saved photo and gender, confirms ownership and ru
   const start = source.indexOf('  const resumeAfterPayment = ')
   const end = source.indexOf('\n  useEffect(', start)
   const calls: any[] = [], steps: string[] = []
-  const draft = { gender: 'male', images: [{ id: 'photo', dataUrl: 'fixture-photo' }] }
-  const scope: any = { useCallback: (fn: unknown) => fn, encodeURIComponent, mobileScan: false,
-    setOfferInstall() {}, readStripeAttempt: () => null, clearStripeAttempt() {}, restoreWebJourney() {}, analyticsFlow: { current: "flow" }, takeStripeAttempt: () => null, stripeAttemptProperties: () => ({}),
-    trackWebEvent() {}, toast: { error() {} },
-    router: { replace: async () => {} }, setError() {}, setAnalysisUnlocked() {}, setPaymentDialogOpen() {}, setProgress() {}, setImages() {}, setSelectedImageId() {}, setGender() {},
+  const preferences = { focus: 'eyes' }
+  const draft = { gender: 'male', images: [{ id: 'photo', dataUrl: 'fixture-photo' }], preferences, desktopConsent: true, requestIds: ['saved-scan-id'] }
+  const restored: unknown[] = []
+  const restoredConsent: boolean[] = []
+  const scope: any = { useCallback: (fn: unknown) => fn, guestReturn: false, session: null, mutate() {},
+    readStripeAttempt: () => null, clearStripeAttempt() {}, restoreWebJourney() {}, stripeAttemptProperties: () => ({}),
+    trackWebEvent() {}, activatedCheckout: { current: null }, loadedAnalysisIdRef: { current: null },
+    router: { replace: async (target: unknown) => { calls.push(['navigate', target]) } }, setLoginOpen() {}, setAutoPaywall() {}, setError() {}, setAnalysisUnlocked() {}, setPaymentDialogOpen() {}, setProgress() {}, setImages() {}, setSelectedImageId() {}, setGender() {},
+    setPreferences: (value: unknown) => restored.push(value), setPrivacyAccepted: (value: boolean) => restoredConsent.push(value), setCaptureStep() {},
     setStep: (step: string) => steps.push(step),
-    apiPost: async (path: string, body: unknown) => { calls.push([path, body]); return { entitlements: { mobileInstallId: 'paid-install', evaluationCredits: 1 } } },
-    loadAnalysisDraft: async () => draft, ensureAnalysisWebInstallId: (id: string) => id,
-    runActualAnalysis: async (...args: unknown[]) => calls.push(args),
+    apiPost: async (path: string, body: unknown) => { calls.push([path, body]); return { entitlements: { mobileInstallId: 'paid-install', evaluationCredits: 0 } } },
+    loadCheckoutAnalysisDraft: async () => draft, loadAnalysisDraft: async () => null, ensureAnalysisWebInstallId: (id: string) => id,
+    runActualAnalysis: async (...args: unknown[]) => { calls.push(args); return 'report-id' },
+    clearCheckoutAnalysisDraft: async () => {},
   }
   compile(source.slice(start, end) + '\nglobalThis.resume=resumeAfterPayment', scope)
   await scope.resume('cs_live_fixture')
-  expect(calls).toEqual([['/api/payments/confirm', { sessionId: 'cs_live_fixture' }], [draft.images, 'paid-install', 'male']])
-  scope.loadAnalysisDraft = async () => null
+  expect(calls).toEqual([['/api/payments/confirm', { sessionId: 'cs_live_fixture' }], [draft.images, 'paid-install', 'male', ['saved-scan-id']], ['navigate', { pathname: '/analysis', query: { analysisId: 'report-id' } }]])
+  expect(restored).toEqual([preferences])
+  expect(restoredConsent).toEqual([true])
+  scope.loadCheckoutAnalysisDraft = async () => null
   await scope.resume('cs_live_fixture')
   expect(steps.at(-1)).toBe('upload')
   expect(calls.filter(call => call[0] === draft.images)).toHaveLength(1)
+})
+
+test('web checkout rejects the retired potential image add-on before contacting Stripe', async () => {
+  const fixture = route('web-checkout', { getStripe: () => { throw new Error('must not contact Stripe') } })
+  const result = await fixture.run({ product: 'extra_potential_image', mobileInstallId: 'fixture-install' } as any)
+  expect(result.status).toBe(400)
+  expect(fixture.calls).toHaveLength(0)
+})
+
+test('guest web checkout uses the web Stripe prices and applies the creator discount across web plans', async () => {
+  const inputs: any[] = []
+  const price = { id: 'price_fixture', unit_amount: 2999, currency: 'usd', product: 'mogging_web_pro_v1' }
+  const basic = { id: 'price_basic_v2', unit_amount: 899, currency: 'usd', product: 'mogging_web_basic_v1' }
+  let couponAvailable = true
+  const f = route('web-checkout', {
+    getRequestUserId: async () => null,
+    validateCheckoutProduct: async (product: string) => product === 'web_basic_weekly' ? basic : price,
+    priceAmounts: (quoted: typeof basic) => ({ usd: quoted.unit_amount }),
+    createWebCheckoutGuest: async () => ({ accountId: 'guest', recoveryKey: 'fixture' }),
+    rememberWebCheckoutGuest: () => {},
+    resolveCheckoutCreator: async () => ({ clickId: 'creator-click' }),
+    getWebCreatorCoupon: async () => couponAvailable ? { valid: true, duration: 'once', percent_off: 10, applies_to: { products: [price.product, basic.product] } } : null,
+    getStripe: () => ({
+      checkout: { sessions: { create: async (input: unknown) => { inputs.push(input); return { id: 'cs_test_fixture', url: 'https://checkout.stripe.com/fixture' } } } },
+    }),
+  })
+  const body = { mobileInstallId: 'fixture-install', source: 'web_analysis', returnTo: 'analysis', guestCheckout: true }
+  expect((await f.run({ ...body, product: 'web_pro_monthly' } as any)).status).toBe(200)
+  expect(inputs[0].line_items).toEqual([{ price: price.id, quantity: 1 }])
+  expect(inputs[0].discounts).toEqual([{ coupon: WEB_ANALYSIS_CREATOR_COUPON }])
+  expect(inputs[0].success_url).toContain('guest=1')
+  const weekly = { ...body, product: 'web_basic_weekly', currency: 'usd', unitAmount: 899 }
+  expect((await f.run({ ...weekly, unitAmount: 999 } as any)).status).toBe(409)
+  expect((await f.run({ ...weekly, imageCount: 2 } as any)).status).toBe(400)
+  expect((await f.run({ ...weekly, creatorDiscount: true } as any)).status).toBe(200)
+  expect(inputs[1].line_items).toEqual([{ price: basic.id, quantity: 1 }])
+  expect(inputs[1].discounts).toEqual([{ coupon: WEB_ANALYSIS_CREATOR_COUPON }])
+  couponAvailable = false
+  expect((await f.run(weekly as any)).status).toBe(503)
+  expect(inputs).toHaveLength(2)
+  expect((await f.run({ ...body, product: 'web_pro_monthly', source: 'mobile' } as any)).status).toBe(400)
+})
+
+test('mobile web checkout selects its matching Stripe price and rejects a desktop quote', async () => {
+  const f = route('web-checkout', {
+    validateCheckoutProduct: async (product: typeof webAnalysisProducts[number], _config: unknown, mobile: boolean) => {
+      const plan = getWebAnalysisPrice(product, mobile)
+      return { id: plan.lookupKey, unit_amount: plan.unitAmount, currency: 'usd' }
+    },
+    priceAmounts: (price: { unit_amount: number }) => ({ usd: price.unit_amount }),
+  })
+  const base = { mobileInstallId: 'fixture-install', source: 'web_analysis', returnTo: 'analysis', currency: 'usd' }
+  const mobile = { ...base, webPriceVariant: 'mobile' }
+  for (const [product, unitAmount] of [['web_basic_weekly', 699], ['web_basic_monthly', 1499], ['web_pro_monthly', 1999]] as const) {
+    expect((await f.run({ ...mobile, product, unitAmount } as any)).status).toBe(200)
+    const key = f.calls.at(-1).line_items[0].price
+    expect(key).toStartWith('mogging_mobile_web_')
+    expect(webAnalysisProductForLookupKey(key)).toBe(product)
+    expect((await f.run({ ...base, product, unitAmount } as any)).status).toBe(409)
+  }
+  expect(f.calls).toHaveLength(3)
+})
+
+test('Starter intro applies one coupon to the existing monthly price, including for guests', async () => {
+  const price = (mobile: boolean) => {
+    const plan = getWebAnalysisPrice(webStarterIntro.product, mobile)
+    return { id: plan.lookupKey, unit_amount: plan.unitAmount, currency: 'usd' }
+  }
+  const fixture = route('web-checkout', {
+    getRequestUserId: async () => null,
+    createWebCheckoutGuest: async () => ({ accountId: 'guest', recoveryKey: 'fixture' }),
+    rememberWebCheckoutGuest: () => {},
+    validateCheckoutProduct: async (_product: string, _config: unknown, mobile: boolean) => price(mobile),
+    getWebStarterIntroCoupon: async (quotedPrice: { id: string }, mobile: boolean) => quotedPrice.id === price(mobile).id ? getWebStarterIntro(mobile).coupon : null,
+    priceAmounts: (quotedPrice: { unit_amount: number }) => ({ usd: quotedPrice.unit_amount }),
+  })
+  const flowId = crypto.randomUUID()
+  const issued = issueStarterIntro(flowId, introSecret)
+  const cookies = { [starterIntroCookie(flowId)]: issued.value }
+  const request = { flowId, source: 'web_analysis', returnTo: 'analysis', mobileInstallId: 'fixture-install', guestCheckout: true, starterIntro: true, currency: 'usd', unitAmount: 1799 }
+  expect((await fixture.run({ ...request, product: 'web_basic_weekly' } as any)).status).toBe(400)
+  expect((await fixture.run({ ...request, product: 'web_pro_monthly' } as any)).status).toBe(400)
+  expect((await fixture.run({ ...request, product: webStarterIntro.product, unitAmount: 999 } as any, cookies)).status).toBe(409)
+  expect((await fixture.run({ ...request, product: webStarterIntro.product } as any, cookies)).status).toBe(200)
+  expect(fixture.calls).toHaveLength(1)
+  expect(fixture.calls[0]).toMatchObject({
+    line_items: [{ price: price(false).id, quantity: 1 }],
+    discounts: [{ coupon: webStarterIntro.coupon }],
+    subscription_data: { metadata: { starterIntro: webStarterIntro.coupon } },
+  })
+  expect((await fixture.run({ ...request, product: webStarterIntro.product, webPriceVariant: 'mobile', unitAmount: 1499 } as any, cookies)).status).toBe(200)
+  expect(fixture.calls[1]).toMatchObject({
+    line_items: [{ price: price(true).id, quantity: 1 }],
+    discounts: [{ coupon: getWebStarterIntro(true).coupon }],
+  })
+  const unavailable = route('web-checkout', { getWebStarterIntroCoupon: async () => null })
+  expect((await unavailable.run({ ...request, product: webStarterIntro.product } as any, cookies)).status).toBe(503)
+  expect(unavailable.calls).toHaveLength(0)
+})
+
+test('Starter intro keeps one five-minute deadline and checkout rejects an expired or altered cookie', async () => {
+  const offer = route('starter-intro')
+  const checkout = route('web-checkout')
+  const flowId = crypto.randomUUID()
+  const opened = await offer.run({ flowId } as any)
+  expect(opened.status).toBe(200)
+  expect(opened.data.deadline - opened.data.serverNow).toBeGreaterThan(webStarterIntro.durationMs - 1000)
+  const name = starterIntroCookie(flowId)
+  const cookie = String(offer.headers['Set-Cookie']).split(';')[0].slice(name.length + 1)
+  expect((await offer.run({ flowId } as any, { [name]: cookie })).data.deadline).toBe(opened.data.deadline)
+
+  const expired = issueStarterIntro(flowId, introSecret, Date.now() - webStarterIntro.durationMs)
+  expect((await offer.run({ flowId } as any, { [name]: expired.value })).data.deadline).toBe(expired.deadline)
+  const request = { flowId, product: webStarterIntro.product, source: 'web_analysis', returnTo: 'analysis', mobileInstallId: 'fixture-install', starterIntro: true }
+  for (const value of [expired.value, cookie.replace(/^\d+/, String(opened.data.deadline + 1)), issueStarterIntro(crypto.randomUUID(), introSecret).value]) {
+    const response = await checkout.run(request as any, { [name]: value })
+    expect(response.error).toBe('This first-month offer has expired.')
+  }
+  expect(checkout.calls).toHaveLength(0)
 })
 
 test('real confirmation checks Stripe ownership/payment and never grants a paid credit twice', async () => {
@@ -211,4 +350,54 @@ test('verified access returns original journey context and deduplicates activati
   expect(events).toHaveLength(2)
   expect(events[0].eventId).toBe(events[1].eventId)
   expect(events[0]).toMatchObject({ eventName: 'purchase_activated', accountId: 'buyer', source: 'stripe_access_verified' })
+})
+
+test('experimental checkout charges only the assigned monthly Stripe price and rejects mismatched quotes', async () => {
+  const previous = process.env.WEB_PAYWALL_EXPERIMENT
+  const now = Date.now()
+  const day = 86_400_000
+  const raw = JSON.stringify({
+    id: 'desktop_price_fixture', kind: 'price', surface: 'desktop',
+    startsAt: new Date(now - day).toISOString(), endsAt: new Date(now + 3 * day).toISOString(),
+    stripePriceId: 'price_treatment', unitAmount: 1599,
+  })
+  const config = parsePaywallExperiment(raw)!
+  const standard = {
+    id: 'price_standard', active: true, livemode: false, currency: 'usd', unit_amount: 1799,
+    product: 'prod_starter', type: 'recurring', billing_scheme: 'per_unit', tax_behavior: 'exclusive',
+    recurring: { interval: 'month', interval_count: 1, usage_type: 'licensed' },
+  } as Stripe.Price
+  const treatment = { ...standard, id: 'price_treatment', unit_amount: 1599 }
+  const f = route('web-checkout', {
+    validateCheckoutProduct: async () => standard,
+    getPaywallTreatmentPrice: async (priceConfig: Parameters<typeof validatePaywallTreatmentPrice>[0], control: Stripe.Price) =>
+      validatePaywallTreatmentPrice(priceConfig, control, treatment),
+    priceAmounts: (price: Stripe.Price) => ({ usd: price.unit_amount }),
+    getCheckoutLineItem: (_product: unknown, price: Stripe.Price) => ({ price: price.id, quantity: 1 }),
+  })
+  const body = { product: 'web_basic_monthly', source: 'web_analysis', returnTo: 'analysis', mobileInstallId: 'fixture-install', currency: 'usd' }
+  const visitors = Array.from({ length: 60 }, () => {
+    const visitor = crypto.randomUUID()
+    return { visitor, exposure: assignPaywallExperiment(config, visitor, 'desktop', introSecret) }
+  })
+  process.env.WEB_PAYWALL_EXPERIMENT = raw
+  try {
+    for (const arm of ['control', 'treatment'] as const) {
+      const { visitor, exposure } = visitors.find(item => item.exposure.arm === arm)!
+      expect(assignPaywallExperiment(config, visitor, 'desktop', introSecret)).toEqual(exposure)
+      const unitAmount = arm === 'control' ? 1799 : 1599
+      const request = { ...body, paywallExperimentId: exposure.id, paywallExperimentUnit: exposure.unit, unitAmount }
+      const cookies = { mogging_paywall_visitor: visitor }
+      expect((await f.run(request as any, cookies)).status).toBe(200)
+      expect(f.calls.at(-1).line_items).toEqual([{ price: arm === 'control' ? standard.id : treatment.id, quantity: 1 }])
+      expect(f.calls.at(-1).metadata.paywallExperimentUnit).toBe(exposure.unit)
+      expect((await f.run({ ...request, unitAmount: unitAmount + 100 } as any, cookies)).status).toBe(409)
+      expect((await f.run({ ...request, paywallExperimentUnit: 'f'.repeat(32) } as any, cookies)).status).toBe(409)
+      expect((await f.run(request as any)).status).toBe(409)
+    }
+    expect(f.calls).toHaveLength(2)
+  } finally {
+    if (previous === undefined) delete process.env.WEB_PAYWALL_EXPERIMENT
+    else process.env.WEB_PAYWALL_EXPERIMENT = previous
+  }
 })

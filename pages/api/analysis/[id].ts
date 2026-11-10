@@ -1,6 +1,6 @@
 import { monitorBackend } from '@/lib/reliability/monitor'
 import type { NextApiRequest, NextApiResponse } from 'next'
-import { eq } from 'drizzle-orm'
+import { and, count, eq, isNull, lte, sql } from 'drizzle-orm'
 import { ApiError, handleApiError, json, methodNotAllowed } from '@/lib/api/http'
 import { getRequestUserId } from '@/lib/auth/mobile-session'
 import { getAnonymousActorId } from '@/lib/auth/anonymous'
@@ -29,6 +29,23 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
       throw new ApiError(404, 'Analysis not found')
     }
 
+    if (req.query.view === 'heading') {
+      const { analyses, photos } = schema
+      const scoredReport = sql`coalesce(${analyses.metrics}->>'presentation', '') NOT IN ('face-study', 'face-model')`
+      const presentation = analysis.metrics.presentation
+      const owner = analysis.photo.userId
+        ? eq(photos.userId, analysis.photo.userId)
+        : and(isNull(photos.userId), eq(photos.anonymousActorId, actor.anonymousActorId!))
+      const position = db.select({ createdAt: analyses.createdAt, id: analyses.id }).from(analyses).where(eq(analyses.id, id))
+      const [row] = analysis.status === 'complete' && analysis.photo.photoType === 'face' && presentation !== 'face-study' && presentation !== 'face-model'
+        ? await db.select({ number: count() }).from(analyses)
+          .innerJoin(photos, eq(photos.id, analyses.photoId))
+          .where(and(owner, eq(photos.photoType, 'face'), eq(analyses.status, 'complete'), scoredReport,
+            lte(sql`(${analyses.createdAt}, ${analyses.id})`, sql`(${position})`)))
+        : []
+      return json(res, 200, { number: row?.number ?? null })
+    }
+
     return json(res, 200, {
       canManage: ownsPhoto(analysis.photo, actor),
       photo: {
@@ -39,6 +56,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
       },
       analysis: {
         id: analysis.id,
+        createdAt: analysis.createdAt,
         status: analysis.status,
         pslScore: analysis.pslScore,
         harmonyScore: analysis.harmonyScore,

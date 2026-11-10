@@ -68,6 +68,9 @@ export const creatorAttributionEventTypeEnum = pgEnum('creator_attribution_event
 export type PaymentProduct =
   | 'evaluation'
   | 'evaluation_pack_3'
+  | 'web_basic_weekly'
+  | 'web_basic_monthly'
+  | 'web_pro_monthly'
   | 'mobile_subscription_weekly'
   | 'mobile_subscription_monthly'
   | 'mobile_subscription_yearly'
@@ -112,6 +115,10 @@ export const users = pgTable(
     emailIdx: uniqueIndex('users_email_unique').on(table.email),
   })
 )
+
+export const memberPublicProfiles = pgTable('member_public_profiles', {
+  userId: text('user_id').primaryKey().references(() => users.id, { onDelete: 'cascade' }),
+})
 
 export const accounts = pgTable(
   'accounts',
@@ -758,6 +765,7 @@ export const creatorSubmissions = pgTable(
     sprintId: text('sprint_id').references(() => creatorSprints.id),
     sprintTerms: jsonb('sprint_terms').$type<import('../creator/sprints').SprintTerms>(),
     approvedAmountCents: integer('approved_amount_cents'),
+    campaignPayoutCorrected: boolean('campaign_payout_corrected').notNull().default(false),
     exclusivityConfirmed: boolean('exclusivity_confirmed').notNull().default(false),
     bonusPlacement: jsonb('bonus_placement').$type<{ bioLinkVerified: boolean; captionCodeVerified: boolean; checkedAt: string; linkId: string; publicUrl: string; revision: string }>(),
     reviewRequestedAt: timestamp('review_requested_at', { mode: 'date' }),
@@ -1071,7 +1079,7 @@ export const creatorPayoutRequests = pgTable('creator_payout_requests', {
   id: text('id').primaryKey().$defaultFn(() => crypto.randomUUID()),
   creatorProfileId: text('creator_profile_id').notNull().references(() => creatorProfiles.id, { onDelete: 'cascade' }),
   amountCents: integer('amount_cents').notNull(),
-  status: text('status').$type<'pending' | 'paid'>().notNull().default('pending'),
+  status: text('status').$type<'pending' | 'paid' | 'cancelled'>().notNull().default('pending'),
   paymentOption: creatorPaymentOptionEnum('payment_option').notNull(),
   destination: text('destination').notNull(),
   network: text('network'),
@@ -1080,6 +1088,24 @@ export const creatorPayoutRequests = pgTable('creator_payout_requests', {
 }, table => ({
   openRequest: uniqueIndex('creator_payout_requests_one_pending').on(table.creatorProfileId).where(sql`${table.status} = 'pending'`),
 }))
+
+export const creatorCryptoPayoutBatches = pgTable('creator_crypto_payout_batches', {
+  id: text('id').primaryKey(),
+  chain: text('chain').$type<import('../admin/crypto-payouts/shared').PayoutChain>().notNull(),
+  sender: text('sender').notNull(),
+  adminUserId: text('admin_user_id').notNull(),
+  status: text('status').$type<import('../admin/crypto-payouts/shared').CryptoBatchStatus>().notNull(),
+  outputs: jsonb('outputs').$type<import('../admin/crypto-payouts/shared').PayoutOutput[]>().notNull(),
+  proof: jsonb('proof').$type<import('../admin/crypto-payouts/shared').CryptoBatchProof>().notNull(),
+  createdAt: timestamp('created_at', { mode: 'date' }).notNull().defaultNow(),
+  updatedAt: timestamp('updated_at', { mode: 'date' }).notNull().defaultNow(),
+}, table => [uniqueIndex('creator_crypto_payout_one_active_chain').on(table.chain).where(sql`status in ('prepared', 'submitted')`)])
+
+export const creatorCryptoPayoutHashes = pgTable('creator_crypto_payout_hashes', {
+  chain: text('chain').notNull(),
+  hash: text('hash').notNull(),
+  batchId: text('batch_id').notNull().references(() => creatorCryptoPayoutBatches.id),
+}, table => [primaryKey({ columns: [table.chain, table.hash] })])
 
 export const creatorPayments = pgTable(
   'creator_payments',
@@ -1096,6 +1122,7 @@ export const creatorPayments = pgTable(
     bonusKey: text('bonus_key'),
     bonusNote: text('bonus_note'),
     payoutRequestId: text('payout_request_id').references(() => creatorPayoutRequests.id),
+    cryptoBatchId: text('crypto_batch_id').references(() => creatorCryptoPayoutBatches.id),
     amountCents: integer('amount_cents').notNull(),
     currency: varchar('currency', { length: 3 }).notNull().default('USD'),
     status: creatorPaymentStatusEnum('status').notNull().default('pending'),
@@ -1109,6 +1136,7 @@ export const creatorPayments = pgTable(
     bonusIdentityIdx: uniqueIndex('creator_payments_bonus_identity_unique').on(table.creatorProfileId, table.bonusSprintId, table.bonusKey),
     bonusShapeCheck: check('creator_payments_bonus_shape', sql`(bonus_sprint_id is null and bonus_key is null and bonus_note is null and creator_referral_award_id is null) or (creator_referral_award_id is not null and bonus_sprint_id is null and bonus_key is null and bonus_note is not null and submission_id is null and currency = 'USD' and amount_cents > 0) or (creator_referral_award_id is null and bonus_sprint_id is not null and bonus_key is not null and bonus_note is not null and submission_id is null and currency = 'USD' and amount_cents > 0)`),
     referralAwardIdx: index('creator_payments_referral_award_idx').on(table.creatorReferralAwardId),
+    cryptoBatchIdx: index('creator_payments_crypto_batch_idx').on(table.cryptoBatchId).where(sql`crypto_batch_id is not null`),
     creatorIdx: index('creator_payments_creator_profile_id_idx').on(table.creatorProfileId),
     submissionIdx: index('creator_payments_submission_id_idx').on(table.submissionId),
     statusIdx: index('creator_payments_status_idx').on(table.status),

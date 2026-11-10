@@ -1,4 +1,4 @@
-import { ArrowLeft, BatteryFull, BookOpen, ChevronLeft, ChevronRight, Clipboard, Ellipsis, PlusSquare, RefreshCw, Search, Signal, SquareStack, Upload, Wifi, X } from 'lucide-react'
+import { ArrowLeft, BatteryFull, BookOpen, ChevronLeft, ChevronRight, Clipboard, Ellipsis, PlusSquare, RefreshCw, Search, Signal, SquareStack, Upload, Wifi, X } from '@/components/ui/mogging-glyphs'
 import { AnimatePresence, motion, useReducedMotion } from 'motion/react'
 import { useEffect, useState } from 'react'
 import { TextMorph } from 'torph/react'

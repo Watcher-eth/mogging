@@ -1,5 +1,5 @@
 import Link from 'next/link'
-import { CircleAlert, ArrowUpRight } from 'lucide-react'
+import { CircleAlert, ArrowUpRight } from '@/components/ui/mogging-glyphs'
 import { creatorMissingPaymentData } from '@/lib/creator/money'
 import type { CreatorDashboard } from './types'
 

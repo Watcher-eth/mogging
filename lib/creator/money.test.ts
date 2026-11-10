@@ -1,5 +1,5 @@
 import { expect, test } from 'bun:test'
-import { canReceiveCreatorPayout, canUseCreatorBankTransfer, creatorMissingPaymentData, creatorBundlePlan, creatorMoneySummary, remainingCreatorPaymentCents } from './money'
+import { canReceiveCreatorPayout, canUseCreatorBankTransfer, creatorMissingPaymentData, creatorBundlePlan, creatorContentBalances, creatorMoneySummary, remainingCreatorPaymentCents } from './money'
 import type { CreatorPayment, CreatorSubmission } from '@/components/creator/types'
 
 test('bank transfer is restricted to reviewed unpaid earnings with missing selected payment details', () => {
@@ -55,4 +55,15 @@ test('saved payout details are ready without manual approval, while suspension a
   expect(canReceiveCreatorPayout({ ...crypto, cryptoNetwork: null })).toBe(false)
   expect(canReceiveCreatorPayout({ ...crypto, cryptoWalletAddress: null })).toBe(false)
   expect(canReceiveCreatorPayout(null)).toBe(false)
+})
+
+test('settled overpayment reduces future content cash without rewriting earlier transfers or bonus earnings', () => {
+  const corrected = { id: 'corrected', sprintId: 'campaign', status: 'paid', approvedAmountCents: 1000, campaignPayoutCorrected: true } as CreatorSubmission
+  const newPost = { ...corrected, id: 'new', status: 'approved' as const, campaignPayoutCorrected: false, approvedAmountCents: 600 }
+  const payments = [{ id: 'paid', submissionId: corrected.id, amountCents: 1500, currency: 'USD', status: 'paid' }] as CreatorPayment[]
+  expect(creatorMoneySummary([corrected], payments)).toMatchObject({ balanceCents: -500, debtCents: 500, totalPaidCents: 1500 })
+  expect(creatorBundlePlan([corrected, newPost], payments).amountCents).toBe(100)
+  expect(creatorContentBalances([{ ...corrected, approvedAmountCents: 1300 }, newPost], payments).unpaid.get(newPost.id)).toBe(400)
+  const afterPayout = [...payments, { ...payments[0], id: 'later-paid', submissionId: newPost.id, amountCents: 100 }]
+  expect(creatorMoneySummary([corrected, newPost], afterPayout)).toMatchObject({ balanceCents: 0, debtCents: 0, totalPaidCents: 1600 })
 })

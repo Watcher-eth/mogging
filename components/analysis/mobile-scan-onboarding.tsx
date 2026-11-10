@@ -1,9 +1,10 @@
 import { useScanFeedback } from '@/hooks/use-scan-feedback'
 import { useWebStep } from '@/hooks/use-web-step'
+import { paywallExperimentProperties, type PaywallExposure } from '@/lib/payments/paywall-experiment'
 import { trackWebEvent } from '@/lib/analytics/client'
 import { DatingProfileLikes, EvidenceCards, ProtocolStoryPreview } from './mobile-scan-stories'
 import { AnimatePresence, motion, useReducedMotion } from 'motion/react'
-import { Activity, ArrowUpRight, Camera, Check, Clock3, Droplet, Dumbbell, Eye, FlaskConical, Focus, Heart, ListChecks, MessageCircle, Repeat2, ScanFace, Sparkles, Syringe, Users, Utensils, TriangleAlert } from 'lucide-react'
+import { Activity, ArrowUpRight, Camera, Check, Clock3, Droplet, Dumbbell, Eye, FlaskConical, Focus, Heart, ListChecks, MessageCircle, Repeat2, ScanFace, Sparkles, Syringe, Users, Utensils, TriangleAlert } from '@/components/ui/mogging-glyphs'
 import { useLayoutEffect, useRef, useState } from 'react'
 import { MobileScanStory, ScanButton, scanPart, scanSequence } from './mobile-scan-pwa'
 import { getOnboardingProfileSteps, motivations, obstacles, onboardingChoices, relevanceCopy, storyHeadings, type OnboardingProfileStepId } from '@/lib/client/scan-onboarding'
@@ -26,7 +27,8 @@ const choiceIcons: Partial<Record<OnboardingProfileStepId, Record<string, typeof
     'bone-smashing': TriangleAlert, diets: Utensils, peptides: FlaskConical, other: Sparkles },
 }
 
-export function MobileScanOnboarding({ onComplete, analyticsEnabled = false }: {
+export function MobileScanOnboarding({ onComplete, analyticsEnabled = false, experiment }: {
+  experiment?: PaywallExposure | null
   analyticsEnabled?: boolean
   onComplete: (gender: 'male' | 'female' | 'other') => void
 }) {
@@ -36,7 +38,7 @@ export function MobileScanOnboarding({ onComplete, analyticsEnabled = false }: {
   const [comparison, setComparison] = useState(50)
   const [index, setIndex] = useState(0)
   const [answers, setAnswers] = useState<Partial<Record<OnboardingProfileStepId, string[]>>>({})
-  const steps = getOnboardingProfileSteps(answers.experience?.[0])
+  const steps = getOnboardingProfileSteps(answers.experience?.[0], experiment?.arm === 'treatment' ? 'short' : 'full')
   const step = steps[index] ?? 'commit'
   const heading: { eyebrow?: string; title: string; body: string } | undefined = step === 'relevance' ? relevanceCopy[answers.motivation?.[0] ?? 'confidence']
     : step === 'dating' ? { title: 'Dating starts\nwith a first look.', body: 'More couples meet online. Your photos are your first introduction.' }
@@ -50,7 +52,7 @@ export function MobileScanOnboarding({ onComplete, analyticsEnabled = false }: {
   const required = step === 'motivation' || step === 'obstacle' || step === 'goals'
   const fallback = step === 'age' ? '18' : step === 'gender' ? 'male' : options?.[0]?.id
   const dark = step === 'commit'
-  const completeStep = useWebStep(`profile.${step}`, analyticsEnabled)
+  const completeStep = useWebStep(`profile.${step}`, analyticsEnabled, undefined, experiment)
 
   function choose(id: string) {
     if (analyticsEnabled) trackWebEvent('onboarding_interaction', { surface: 'web_analysis', step: `profile.${step}`, action: 'selection_changed' })
@@ -63,6 +65,11 @@ export function MobileScanOnboarding({ onComplete, analyticsEnabled = false }: {
     if (lastAdvancedStep.current === step) return
     lastAdvancedStep.current = step
     completeStep()
+    if (analyticsEnabled && options) trackWebEvent('onboarding_interaction', {
+      surface: 'web_analysis', step: `profile.${step}`, action: 'profile_answered',
+      result: selected.length ? 'selected' : wheel ? 'defaulted' : 'skipped',
+      ...paywallExperimentProperties(experiment),
+    })
     if (step === 'commit') {
       const gender = answers.gender?.[0] ?? 'male'
       onComplete(gender === 'male' || gender === 'female' ? gender : 'other')
@@ -73,7 +80,7 @@ export function MobileScanOnboarding({ onComplete, analyticsEnabled = false }: {
   }
 
   return <AnimatePresence mode="wait" propagate>
-    <motion.div key={step} variants={scanSequence} initial="enter" animate="visible" exit="leave">
+    <motion.div key={step} data-mobile-onboarding-step={step} variants={scanSequence} initial="enter" animate="visible" exit="leave">
       {step === 'impressions' ? <MobileScanStory onContinue={next} />
         : step === 'transformation' ? <div className={styles.transformation}>
           <motion.div className={styles.comparison} variants={scanPart} custom={0}>
@@ -106,13 +113,13 @@ export function MobileScanOnboarding({ onComplete, analyticsEnabled = false }: {
           {wheel && options ? <motion.div variants={scanPart}>
             <ScanWheel options={options} value={selected[0] ?? fallback} label={heading?.title ?? 'Select an option'}
               age={step === 'age'} onChange={choose} />
-          </motion.div> : options ? <motion.div className={styles.onboardingOptions} variants={scanSequence}>
+          </motion.div> : options ? <motion.div className="onboarding-choice-grid" data-mobile="" variants={scanSequence} role="group" aria-label={heading?.title?.replace('\n', ' ')}>
             {options.map(option => {
               const Icon = choiceIcons[step]?.[option.id]
               return <motion.button key={option.id} type="button" variants={scanPart} aria-pressed={selected.includes(option.id)}
               whileTap={reduced ? undefined : { scale: .97 }} onClick={() => { feedback('selection'); choose(option.id) }}>
-              {Icon && <Icon size={18} aria-hidden="true" />}
-              {option.label}{multiple && selected.includes(option.id) && <Check size={15} />}
+              {Icon && <Icon size={20} strokeWidth={1.65} aria-hidden="true" />}
+              <span>{option.label}</span>
             </motion.button>
             })}
           </motion.div> : <motion.div variants={scanPart}><StoryArtwork step={step} motivation={answers.motivation?.[0]} goals={answers.goals} commitment={answers.time?.[0]} /></motion.div>}

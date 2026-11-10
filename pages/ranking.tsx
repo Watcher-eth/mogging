@@ -1,4 +1,4 @@
-import { Trophy } from 'lucide-react'
+import { Trophy } from '@/components/ui/mogging-glyphs'
 import { Badge } from '@/components/ui/badge'
 
 export default function RankingPage() {

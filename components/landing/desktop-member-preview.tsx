@@ -11,6 +11,18 @@ const samples = [
   { overall: 6.5, symmetry: 6.3, face: 6.9, proportions: 7.2, eyes: 7.5, brows: 6.9, nose: 7, mouth: 6.7, jaw: 6.8, cheeks: 7.2, skin: 6.6, hair: 7.1, ears: 7 },
   { overall: 6.3, symmetry: 6.1, face: 6.8, proportions: 6.9, eyes: 7.1, brows: 6.8, nose: 7.1, mouth: 6.6, jaw: 6.5, cheeks: 7, skin: 6.2, hair: 7.1, ears: 7.1 },
 ]
+const sampleMeasurements = [
+  { 'skin.texture': 1, 'jaw.height': .55, 'eyes.spacing': .42, 'cheeks.width': 1.15, 'face.frame': 1.38, 'symmetry.eyes-height': 1.5 },
+  { 'skin.texture': 2, 'jaw.height': .54, 'eyes.spacing': .42, 'cheeks.width': 1.14, 'face.frame': 1.36, 'symmetry.eyes-height': 1.9 },
+  { 'skin.texture': 2, 'jaw.height': .54, 'eyes.spacing': .41, 'cheeks.width': 1.12, 'face.frame': 1.39, 'symmetry.eyes-height': 2.1 },
+  { 'skin.texture': 3, 'jaw.height': .53, 'eyes.spacing': .41, 'cheeks.width': 1.13, 'face.frame': 1.37, 'symmetry.eyes-height': 2.4 },
+]
+
+export const sampleMemberEvaluations = (date: number, daysSinceLatest = 2) => samples.map((scores, index) => ({
+  id: `sample-${index}`, date: new Date(date - (daysSinceLatest + [0, 8, 22, 54][index]) * 86_400_000).toISOString(), scores, measurements: sampleMeasurements[index], potential: 8.3,
+}))
+export const sampleMemberProfile = { imageUrl: '/scan/welcome.jpg', score: samples[0].overall }
+
 const profile = deriveProtocolProfile({ report: {
   categories: Object.entries(samples[0]).map(([id, score]) => ({ id, score })),
   protocolContext: { faceShape: 'oval', visibleConcerns: ['dryness'] },
@@ -24,11 +36,9 @@ const protocolPreviewSlots = [
   [16, protocolTasks.find(task => task.key === 'skin-touch-habit')],
 ] as const
 
-export function DesktopMemberPreview({ view, now, compact = false, mobile = false, onNewScan }: { view: 'protocol' | 'progress'; now?: number; compact?: boolean; mobile?: boolean; onNewScan?: () => void }) {
+export function DesktopMemberPreview({ view, now, compact = false, desktop = true, onNewScan }: { view: 'protocol' | 'progress'; now?: number; compact?: boolean; desktop?: boolean; onNewScan?: () => void }) {
   const [date] = useState(() => now ?? Date.now())
-  const evaluations = samples.map((scores, index) => ({
-    id: `sample-${index}`, date: new Date(date - [2, 10, 24, 56][index] * 86_400_000).toISOString(), scores,
-  }))
+  const evaluations = sampleMemberEvaluations(date)
   if (view === 'protocol' && compact) {
     return <ol aria-label="Sample Protocol timeline" className="flex h-full flex-col justify-center border-b border-zinc-100">
       {protocolPreviewSlots.map(([hour, task]) => <li key={hour} className="grid min-h-8 grid-cols-[3rem_minmax(0,1fr)] items-start gap-2 border-t border-zinc-100 py-2 sm:grid-cols-[4rem_minmax(0,1fr)] sm:gap-4">
@@ -38,6 +48,6 @@ export function DesktopMemberPreview({ view, now, compact = false, mobile = fals
     </ol>
   }
   return view === 'protocol' 
-    ? <ProtocolPage userId="desktop-preview" profile={profile} gender="other" hasEvaluation preview mobile={mobile} />
-    : <ProgressPage gridOnly={compact} mobile={mobile} onNewScan={onNewScan} evaluations={evaluations} focusIds={['skin', 'jaw']} skinPortrait={{ src: '/model.png', landmarks: sampleLandmarks as SkinPortrait['landmarks'] }} preview />
+    ? <ProtocolPage userId="desktop-preview" profile={profile} gender="other" hasEvaluation preview desktop={desktop} />
+    : <ProgressPage gridOnly={compact} desktop={desktop} onNewScan={onNewScan} evaluations={evaluations} focusIds={['skin', 'jaw']} skinPortrait={{ src: '/model.png', landmarks: sampleLandmarks as SkinPortrait['landmarks'] }} preview />
 }

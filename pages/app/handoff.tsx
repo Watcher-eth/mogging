@@ -4,7 +4,7 @@ import Link from 'next/link'
 import { useRouter } from 'next/router'
 import { useSession } from 'next-auth/react'
 import { useEffect, useMemo, useState } from 'react'
-import { ArrowUpRight, Check, Download, Loader2 } from 'lucide-react'
+import { ArrowUpRight, Check, Download, Loader2 } from '@/components/ui/mogging-glyphs'
 import { apiPost, ApiClientError } from '@/lib/api/client'
 import { trackWebEvent } from '@/lib/analytics/client'
 

@@ -1,30 +1,33 @@
-.portrait { --side-wash: linear-gradient(90deg,#fff,#ffffffdb 2%,#ffffff66 7%,#ffffff10 14%,#fff0 21%,#fff0 86%,#ffffff10 91%,#ffffff66 96%,#ffffffdb 99%,#fff); position: relative; display: grid; place-items: center; min-height: 520px; overflow: hidden; isolation: isolate; background: #fff; }
+.portrait { position: relative; display: grid; place-items: center; min-height: 520px; overflow: hidden; isolation: isolate; background: #fff; }
 .natural { min-height: 0; aspect-ratio: var(--portrait-ratio); }
-.media { position: relative; width: 100%; aspect-ratio: var(--portrait-ratio); overflow: hidden; mask-image: linear-gradient(90deg,transparent,#000 2px,#000 calc(100% - 2px),transparent),linear-gradient(180deg,transparent,#000 2px,#000 calc(100% - 2px),transparent); mask-composite: intersect; }
-.leftBlur { inset: 0 80% 0 0; }
-.rightBlur { inset: 0 0 0 86%; }
+.media { position: relative; width: 100%; aspect-ratio: var(--portrait-ratio); overflow: hidden; }
 .bottomBlur { inset: 64% 0 0; }
 .wash {
   position: absolute;
   inset: -1px;
   pointer-events: none;
-  background:
-    var(--side-wash),
-    linear-gradient(180deg,#fff0 62%,#ffffff08 69%,#ffffff29 78%,#ffffff80 88%,#ffffffd9 96%,#fff),
-    linear-gradient(180deg,#fff,#ffffff80 1%,#ffffff10 3%,#fff0 5%);
+  background: linear-gradient(180deg,#fff0 62%,#ffffff08 69%,#ffffff29 78%,#ffffff80 88%,#ffffffd9 96%,#fff);
 }
-@media (max-width: 1023px) {
-  .portrait { --side-wash: linear-gradient(90deg,#fff,#ffffffb3 1%,#ffffff4d 3%,#ffffff0d 5%,#fff0 8%,#fff0 94%,#ffffff0d 96%,#ffffff4d 98%,#fff); }
-  .leftBlur { inset: 0 92% 0 0; }
-  .rightBlur { inset: 0 0 0 94%; }
+@media (744px <= width < 1024px) {
+  :global(.scan-flow:not([data-mobile-scan])) .portrait { min-height: 0; }
 }
 @media (min-width: 1024px) {
   .portrait { container-type: size; width: 100%; height: 100%; min-height: 0; aspect-ratio: auto; align-items: start; }
   .media { width: min(100cqw,calc(100cqh * var(--portrait-ratio))); }
 }
 
+:global([data-desktop-report]) .portrait:not(.clearPortrait) .bottomBlur { inset-block-start: 69%; }
+:global([data-desktop-report]) .portrait:not(.clearPortrait) .wash {
+  --edge-falloff: #fff, #fffffff0 16%, #ffffffc8 32%, #ffffff80 50%, #ffffff38 68%, #ffffff10 84%, #fff0;
+  background:
+    linear-gradient(to right, var(--edge-falloff)) left / 8% 100% no-repeat,
+    linear-gradient(to left, var(--edge-falloff)) right / 8% 100% no-repeat,
+    linear-gradient(to bottom, var(--edge-falloff)) top / 100% 7% no-repeat,
+    linear-gradient(to top, var(--edge-falloff)) bottom / 100% 31% no-repeat;
+}
+
 .clearPortrait { container-type: normal; height: auto; aspect-ratio: var(--portrait-ratio); border-radius: 10px 10px 0 0; background: transparent; }
-.clearPortrait .media { width: 100%; mask-image: none; }
+.clearPortrait .media { width: 100%; }
 .featheredBlur {
   position: absolute;
   inset: 0;
@@ -40,8 +43,7 @@
   background: linear-gradient(to bottom, #fff0, #ffffff05 20%, #ffffff24 45%, #ffffff80 72%, #fff);
 }
 
-:global(.scan-flow[data-mobile-scan]) .portrait { --side-wash: none; min-height: 0; height: auto; aspect-ratio: auto; container-type: normal; }
-:global(.scan-flow[data-mobile-scan]) .media { width: 100%; height: clamp(350px,55svh,560px); aspect-ratio: auto; mask-image: none; }
-:global(.scan-flow[data-mobile-scan]) :is(.leftBlur,.rightBlur) { display: none; }
+:global(.scan-flow[data-mobile-scan]) .portrait { min-height: 0; height: auto; aspect-ratio: auto; container-type: normal; }
+:global(.scan-flow[data-mobile-scan]) .media { width: 100%; height: clamp(350px,55svh,560px); aspect-ratio: auto; }
 :global(.scan-flow[data-mobile-scan]) .bottomBlur { inset: 51% 0 0; }
 :global(.scan-flow[data-mobile-scan]) .wash { background: linear-gradient(180deg,transparent 51%,#ffffff10 61%,#ffffff44 72%,#ffffff9c 85%,#ffffffe8 96%,white); }

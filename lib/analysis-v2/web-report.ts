@@ -1,11 +1,14 @@
 import registry from './rubric-registry.json'
 import type { RubricEstimate } from './evaluator'
+import { timelineStyle } from '../creator/mobile-report-geometry'
 
-export type WebRubric = { id: string; label: string; value: string; measurement?: string; visual: string; positions: number[]; grade: number | null; scale?: 'range' | 'quality' }
+export type MetricAxis = { minimum: number; maximum: number; unit: string; digits: number }
+export type WebRubric = { id: string; label: string; value: string; measurement?: string; visual: string; positions: number[]; grade: number | null; scale?: 'range' | 'quality'; chartAxis?: MetricAxis; measurementPlot?: { axis: MetricAxis; positions: number[] } }
 export type WebRubricGroup = { id: string; title: string; rubrics: WebRubric[] }
 const qualityDials = new Set(['proportions.angle-coordination', 'ears.protrusion'])
 const domainAliases: Record<string, string> = { 'face-shape': 'face' }
 const percentageShares = new Set(['proportions.upper-third', 'proportions.middle-third', 'proportions.lower-third', 'proportions.lower-partition'])
+const wideAngles = new Set(['brows.arch', 'jaw.angle', 'nose.alar-angle', 'proportions.convexity'])
 
 export const overallScoreFields = [
   ['psl', 'PSL score', 8], ['eyes', 'Eye area', 10], ['jaw', 'Jaw & chin', 10],
@@ -36,6 +39,22 @@ export function formatRubricValue(id: string, output: string, value: RubricEstim
   return Array.isArray(value) ? value.map((number, index) => `${value.length === 2 ? index === 0 ? 'L ' : 'R ' : ''}${format(number)}`).join(' · ') : format(value)
 }
 
+function measurementPlot(id: string, output: string, value: RubricEstimate['value']): WebRubric['measurementPlot'] {
+  const values = Array.isArray(value) ? value : typeof value === 'number' ? [value] : []
+  if (!values.length || !values.every(Number.isFinite)) return
+  const share = percentageShares.has(id)
+  const numbers = share ? values.map(number => number * 100) : values
+  const angle = output === 'A' || id === 'brows.tail'
+  const largest = Math.max(...numbers.map(Math.abs))
+  const maximum = angle ? wideAngles.has(id) ? 180 : ([15, 30, 45, 90, 180].find(limit => limit >= largest) ?? 180)
+    : share ? 100 : output === 'B' ? ([5, 10, 25, 50, 100].find(limit => limit >= largest) ?? 100)
+      : output === 'O' ? 4 : output === 'R' ? Math.max(1, Math.ceil(largest * 2) / 2) : 0
+  if (!maximum || largest > maximum) return
+  const minimum = (angle && !wideAngles.has(id)) || Math.min(...numbers) < 0 ? -maximum : 0
+  const unit = angle ? '°' : share || output === 'B' ? '%' : output === 'R' ? '×' : ''
+  return { axis: { minimum, maximum, unit, digits: output === 'R' && !share ? 1 : 0 }, positions: numbers.map(number => (number - minimum) / (maximum - minimum)) }
+}
+
 export function buildWebRubricGroups(categoryId: string, entries: (Pick<RubricEstimate, 'id' | 'value'> & Partial<Pick<RubricEstimate, 'grade' | 'positions'>>)[], illustrations: Record<string, { positions: number[]; grade?: number }> = {}): WebRubricGroup[] {
   const byId = new Map(entries.map(entry => [entry.id, entry]))
   return registry.categories.filter(category => category.id === (domainAliases[categoryId] ?? categoryId)).map(category => ({
@@ -45,11 +64,61 @@ export function buildWebRubricGroups(categoryId: string, entries: (Pick<RubricEs
       const entry = byId.get(rubric.id)
       const value = entry?.value ?? null
       const illustration = illustrations[rubric.id] ?? (entry ? { positions: entry.positions ?? [], grade: entry.grade ?? undefined } : undefined)
-      return { scale: qualityDials.has(rubric.id) ? 'quality' as const : 'range' as const, id: rubric.id, label: rubric.name, value: formatRubricValue(rubric.id, rubric.output, value),
-        visual: (rubric.visual === 'Rail' ? illustration?.grade != null : illustration?.positions.length) ? rubric.visual : 'Text', positions: qualityDials.has(rubric.id) && illustration ? [(illustration.grade ?? 7.4) / 10] : illustration?.positions ?? [], grade: illustration?.grade ?? null,
+      const grade = illustration?.grade ?? null
+      const quality = qualityDials.has(rubric.id) && grade !== null
+      const positions = quality ? [grade / 10] : illustration?.positions ?? []
+      return { scale: quality ? 'quality' as const : 'range' as const, id: rubric.id, label: rubric.name, value: formatRubricValue(rubric.id, rubric.output, value),
+        visual: (rubric.visual === 'Rail' ? grade !== null : positions.length) ? rubric.visual : 'Text', positions, grade,
+        measurementPlot: measurementPlot(rubric.id, rubric.output, value),
       }
     }),
   }))
+}
+
+export function layoutDesktopRubrics(entries: WebRubric[], summary: boolean) {
+  if (summary) return entries.map((rubric, index) => {
+    const chartSide = Math.floor(index / 2) % 2
+    const paired = entries[index + (index % 2 === 0 ? 1 : -1)]
+    const full = !paired || (rubric.visual === 'Text' && paired.visual === 'Text')
+    const visual = full || index % 2 === chartSide || paired?.visual === 'Text'
+      ? ['overall.jaw', 'overall.cheeks', 'overall.symmetry'].includes(rubric.id) && rubric.positions.length ? 'Dial' : rubric.visual
+      : 'Text'
+    return { rubric: { ...rubric, visual }, full }
+  })
+
+  const charts: WebRubric[] = []
+  const notes: WebRubric[] = []
+  for (const entry of entries) {
+    const plot = entry.visual === 'Text' ? entry.measurementPlot : undefined
+    const rubric: WebRubric = plot ? { ...entry, chartAxis: plot.axis, positions: plot.positions, visual: 'Capsule' } : entry
+    if (rubric.visual === 'Text') notes.push(rubric)
+    else charts.push(timelineStyle(rubric.id, rubric.label) === 'dial' && rubric.visual !== 'Rail' ? { ...rubric, visual: 'Dial' } : rubric)
+  }
+  const featured = charts.length >= 4 ? charts.find(rubric => rubric.visual === 'Dial' || rubric.visual === 'Rail') : undefined
+  const fullWidth = (rubric: WebRubric) => rubric === featured || rubric.positions.length > 2
+  const layout: Array<{ rubric: WebRubric; full: boolean }> = []
+  let chart = 0, note = 0, pairedRow = 0
+  while (chart < charts.length) {
+    const rubric = charts[chart++]
+    const other = fullWidth(rubric) ? undefined : notes[note] ?? (charts[chart] && !fullWidth(charts[chart]) ? charts[chart] : undefined)
+    if (!other) {
+      layout.push({ rubric, full: true })
+      continue
+    }
+    if (other === notes[note]) note++
+    else chart++
+    const row = pairedRow++ % 2 === 0 ? [rubric, other] : [other, rubric]
+    layout.push(...row.map(rubric => ({ rubric, full: false })))
+  }
+  return [...layout, ...notes.slice(note).map(rubric => ({ rubric, full: true }))]
+}
+
+export function scoreHistogram(scores: Array<number | null>) {
+  const values = scores.filter((score): score is number => score !== null && Number.isFinite(score) && score >= 0 && score <= 10)
+  if (values.length < 5) return null
+  const bins = Array<number>(10).fill(0)
+  for (const score of values) bins[Math.min(9, Math.floor(score))]++
+  return { bins, count: values.length }
 }
 
 export function layoutWebRubrics(rubrics: WebRubric[], presentation: 'detail' | 'summary' = 'detail') {

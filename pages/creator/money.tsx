@@ -3,7 +3,7 @@ import Link from 'next/link'
 import styles from './money.module.css'
 import { useRouter } from 'next/router'
 import { useSession } from 'next-auth/react'
-import { ArrowRight, Loader2, Wallet } from 'lucide-react'
+import { ArrowRight, Loader2, Wallet } from '@/components/ui/mogging-glyphs'
 import useSWR from 'swr'
 import { CreatorHeader, CreatorShell } from '@/components/creator/creator-shell'
 import { StudioTabs, StudioTabContent } from '@/components/creator/studio-tabs'
@@ -17,7 +17,6 @@ import {
   creatorMoneySummary,
   creatorMissingPaymentData,
   creatorPaymentLabel,
-  creatorUnpaidCents,
   hasCreatorPayoutMethod,
 } from '@/lib/creator/money'
 import { sprintMoney, sprintViews } from '@/lib/creator/sprints'
@@ -65,12 +64,12 @@ function MoneyContent() {
         </button>
       </p>
     )
-  const { cashouts, earnings, bonusEarnings, balanceCents, totalPaidCents, pendingReview } =
+  const { cashouts, earnings, bonusEarnings, balanceCents, totalPaidCents, pendingReview, debtCents, overpaymentCents, unpaid } =
     creatorMoneySummary(data.submissions, data.payments)
   const ready = hasCreatorPayoutMethod(data.profile)
   const request = data.payoutRequests?.find(item => item.status === 'pending')
   const bundled = Boolean(data.profile?.bundledPayouts)
-  const displayedBalance = request?.amountCents ?? (bundled ? creatorBundlePlan(data.submissions, data.payments).amountCents : balanceCents)
+  const displayedBalance = debtCents ? -debtCents : request?.amountCents ?? (bundled ? creatorBundlePlan(data.submissions, data.payments).amountCents : balanceCents)
   return (
     <>
       <div className={styles.header}>
@@ -80,7 +79,7 @@ function MoneyContent() {
         description="Your creator earnings and payouts."
         action={
           <div className="text-right">
-            {request ? <p className="mb-1 text-xs text-zinc-500">Payout requested</p> : null}
+            {request ? <p className="mb-1 text-xs text-zinc-500">Payout requested{debtCents ? ` · ${sprintMoney(request.amountCents)}` : ''}</p> : null}
             <p
               aria-label={
                 ready
@@ -95,6 +94,7 @@ function MoneyContent() {
             >
               {sprintMoney(displayedBalance)}
             </p>
+            {overpaymentCents > 0 ? <p className="mt-2 max-w-xs text-xs text-zinc-500">Campaign correction · {sprintMoney(debtCents)} left to offset against submission earnings</p> : null}
             {!ready ? (
               <button
                 onClick={() => change('methods')}
@@ -192,7 +192,7 @@ function MoneyContent() {
                         </p>
                       </div>
                       <strong className="text-lg tabular-nums">
-                        {sprintMoney(creatorUnpaidCents(submission, data.payments))}
+                        {sprintMoney((unpaid.get(submission.id) ?? 0))}
                       </strong>
                     </div>
                     <div className="mt-4 flex justify-between border-t border-zinc-100 pt-4 text-xs">

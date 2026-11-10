@@ -1,7 +1,7 @@
 import { Accordion, AccordionItem, AccordionTrigger, AccordionContent, AccordionChevron } from '@/components/ui/accordion'
 import Link from 'next/link'
 import { useEffect, useState } from 'react'
-import { ArrowUpRight, MessageCircle } from 'lucide-react'
+import { ArrowUpRight, MessageCircle } from '@/components/ui/mogging-glyphs'
 import { LazyMotion, domAnimation, useReducedMotion } from 'motion/react'
 import * as m from 'motion/react-m'
 import { SeoHead } from '@/components/app/seo-head'

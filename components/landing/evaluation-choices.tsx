@@ -1,25 +1,25 @@
-import { useDesktop } from './use-desktop'
+import { usePhoneLayout } from '@/hooks/use-phone-layout'
 import Link from 'next/link'
-import { ScanFace } from 'lucide-react'
+import { ScanFace } from '@/components/ui/mogging-glyphs'
 import { useTranslation } from 'react-i18next'
 import { appStoreUrl } from '@/lib/seo'
 
 const pill = 'inline-flex min-h-12 items-center justify-center gap-2 rounded-full px-3 py-2 text-center text-xs font-semibold transition-[background-color,transform] active:scale-[0.98] motion-reduce:transform-none sm:px-5 sm:text-sm'
 
-export function EvaluationChoices({ track, webHref = '/analysis?start=1', storeHref = appStoreUrl, showDesktopDownload = false }: {
+export function EvaluationChoices({ track, webHref, storeHref = appStoreUrl, showDesktopDownload = false }: {
   track?: (destination: 'app_store' | 'web_analysis') => void
   webHref?: string
   storeHref?: string
   showDesktopDownload?: boolean
 }) {
   const { t } = useTranslation()
-  const desktop = useDesktop()
+  const desktop = !usePhoneLayout(true)
   return <div className="inline-flex max-w-full flex-wrap items-center justify-center gap-2 sm:gap-3">
     <a href={storeHref} onClick={() => track?.('app_store')} className={`${pill} ${desktop ? showDesktopDownload ? 'order-2 text-zinc-600 hover:bg-zinc-100' : 'hidden' : 'bg-zinc-950 text-white hover:bg-zinc-800'}`}>
       <AppleMark />{t('landing.download')}
     </a>
     {!desktop && <span className="text-xs text-zinc-500">or</span>}
-    <Link href={webHref} prefetch={false} onClick={() => track?.('web_analysis')} className={`${pill} ${desktop ? 'min-w-36 bg-zinc-950 text-white hover:bg-zinc-800' : 'border border-zinc-200 bg-zinc-100 text-zinc-950 hover:bg-zinc-200'}`}>
+    <Link href={webHref ?? '/analysis'} prefetch={false} onClick={() => track?.('web_analysis')} className={`${pill} ${desktop ? 'min-w-36 bg-zinc-950 text-white hover:bg-zinc-800' : 'border border-zinc-200 bg-zinc-100 text-zinc-950 hover:bg-zinc-200'}`}>
       <ScanFace className="size-4 shrink-0" aria-hidden="true" />Start now
     </Link>
   </div>

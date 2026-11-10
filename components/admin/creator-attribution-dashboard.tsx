@@ -1,7 +1,7 @@
 import { creatorAccountLabel } from '@/components/creator/types'
 import { DataDetails, Table, label } from './analytics-ui'
 import Link from 'next/link'
-import { ArrowUpRight, Bot, CircleDollarSign, CreditCard, Download, MousePointerClick, RefreshCcw, ShoppingCart, UserPlus, UsersRound } from 'lucide-react'
+import { ArrowUpRight, Bot, CircleDollarSign, CreditCard, Download, MousePointerClick, RefreshCcw, ShoppingCart, UserPlus, UsersRound } from '@/components/ui/mogging-glyphs'
 import type { AdminAccount, AdminAttributionReport, AdminCreator, AdminDashboard } from '@/components/admin/creator-types'
 
 export function CreatorAttributionDashboard({ data, onSelectCreator, onSelectAccount }: { data: AdminDashboard; onSelectCreator: (creator: AdminCreator) => void; onSelectAccount: (account: AdminAccount) => void }) {
@@ -17,7 +17,7 @@ export function CreatorAttributionDashboard({ data, onSelectCreator, onSelectAcc
 
   return (
     <section>
-      <p className="mb-5 text-xs leading-5 text-[#73777d]">Browser requests, explicit claims and deferred delivery are different paths; this is not a sequential conversion funnel. Revenue summaries show USD only; customer counts include all currencies. <Link href="/admin/analytics/attribution" className="text-[#008ac5] underline">Open currency-separated attribution ledger</Link>.</p>
+      <p className="mb-5 text-xs leading-5 text-[#73777d]">Browser requests, explicit claims and deferred delivery are different paths; this is not a sequential conversion funnel. Revenue summaries show USD only; customer counts include all currencies. <Link href="/admin/attribution?view=attribution" className="text-[#008ac5] underline">Open attribution by currency</Link>.</p>
       <DataDetails><Table rows={Object.entries(overall).map(([metric,value])=>({metric:label(metric.replace(/([A-Z])/g,' $1')),value:metric.endsWith('Cents')?formatMoney(value):formatNumber(value)}))} columns={['metric','value']} /></DataDetails>
       <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
         <SummaryMetric label="Link Clicks" value={formatNumber(overall.clicks)} detail={`${formatNumber(overall.recentClicks)} in the last 30 days`} icon={MousePointerClick} />

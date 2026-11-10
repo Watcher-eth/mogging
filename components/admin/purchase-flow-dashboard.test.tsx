@@ -81,7 +81,7 @@ test('all-source paid purchases lead the page and immature timing is not a zero 
   firstPurchase:[{bucket:1,buyers:2}],signupWindows:[{window_days:14,accounts:3,eligible:0,pending:3,buyers:0}],repeatWindows:[]}
  data.purchaseBehavior!.sources=[{payment_source:'app_store',purchases:4,buyers:2,first_buyers:2,renewals:1,single_scans:1,bundles:1,subscription_payments:2},{payment_source:'stripe',purchases:2,buyers:1,first_buyers:1,renewals:0,single_scans:1,bundles:1,subscription_payments:0}]
  const html=renderToStaticMarkup(<PurchaseFlowDashboard data={data} days={30}/>)
- expect(html.indexOf('Paid purchases')).toBeLessThan(html.indexOf('Mobile purchase attempt diagnostics'))
+ expect(html.indexOf('Paid purchases')).toBeLessThan(html.indexOf('App purchase attempt diagnostics'))
  expect(html).toContain('Apple App Store')
  expect(html).toContain('Stripe / web')
  expect(html).toContain('Google Play')

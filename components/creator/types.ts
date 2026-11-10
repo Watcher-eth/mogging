@@ -22,6 +22,7 @@ export type CreatorSubmission = {
   sprintTerms?: import('@/lib/creator/sprints').SprintTerms | null
   reviewRequestedAt?: string | null
   approvedAmountCents?: number | null
+  campaignPayoutCorrected?: boolean
   postedAt?: string | null
   id: string
   socialAccountId: string | null
@@ -114,7 +115,7 @@ export type CreatorPayoutRequest = {
   id: string
   creatorProfileId: string
   amountCents: number
-  status: 'pending' | 'paid'
+  status: 'pending' | 'paid' | 'cancelled'
   paymentOption: 'paypal' | 'crypto' | 'bank_transfer'
   destination: string
   network: string | null

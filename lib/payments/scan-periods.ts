@@ -21,11 +21,26 @@ export function scanPeriod(plan: ScanPlan, start: Date, end: Date, now = new Dat
   // Weekly/monthly allowances follow the verified billing period. Annual billing
   // contains monthly allowances anchored to the start of that paid year.
   if (plan !== 'yearly') return { start, end, credits: plan === 'weekly' ? 1 : 2 }
+  const period = monthlyScanPeriod(start, now, 2)
+  return { ...period, end: new Date(Math.min(period.end.getTime(), end.getTime())) }
+}
+
+export function monthlyScanPeriod(start: Date, now: Date, credits: number) {
   let month = (now.getUTCFullYear() - start.getUTCFullYear()) * 12 + now.getUTCMonth() - start.getUTCMonth()
   if (addCalendarMonths(start, month) > now) month--
   return {
     start: addCalendarMonths(start, month),
-    end: new Date(Math.min(addCalendarMonths(start, month + 1).getTime(), end.getTime())),
-    credits: 2,
+    end: addCalendarMonths(start, month + 1),
+    credits,
   }
+}
+
+// Four release windows per anchored billing month. The fourth scan remains available
+// through the month boundary, including months longer than four weeks.
+export function starterScanPeriod(anchor: Date, now: Date) {
+  const month = monthlyScanPeriod(anchor, now, 4)
+  const weekMs = 7 * 24 * 60 * 60 * 1000
+  const week = Math.min(3, Math.floor((now.getTime() - month.start.getTime()) / weekMs))
+  return { start: new Date(month.start.getTime() + week * weekMs),
+    end: week === 3 ? month.end : new Date(month.start.getTime() + (week + 1) * weekMs), credits: 1 }
 }

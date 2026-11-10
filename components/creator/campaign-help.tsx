@@ -1,6 +1,6 @@
 import * as Dialog from '@radix-ui/react-dialog'
 import { AnimatePresence, LayoutGroup, motion, useReducedMotion } from 'motion/react'
-import { HelpCircle, MessageCircle, X } from 'lucide-react'
+import { HelpCircle, MessageCircle, X } from '@/components/ui/mogging-glyphs'
 import Image from 'next/image'
 import { useId, useState } from 'react'
 import { Button } from '@/components/ui/button'

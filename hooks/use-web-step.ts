@@ -1,7 +1,8 @@
 import { useEffect, useRef } from 'react'
+import { paywallExperimentProperties, type PaywallExposure } from '@/lib/payments/paywall-experiment'
 import { trackWebEvent } from '@/lib/analytics/client'
 
-export function useWebStep(step: string, enabled: boolean) {
+export function useWebStep(step: string, enabled: boolean, analysisVariant?: string, experiment?: PaywallExposure | null) {
   const clock = useRef({ elapsed: 0, visibleAt: null as number | null })
   const duration = () => Math.min(1800000, clock.current.elapsed + (clock.current.visibleAt === null ? 0 : Date.now() - clock.current.visibleAt))
   useEffect(() => {
@@ -12,13 +13,13 @@ export function useWebStep(step: string, enabled: boolean) {
       clock.current.visibleAt = document.hidden ? null : Date.now()
     }
     document.addEventListener('visibilitychange', visibility)
-    trackWebEvent('onboarding_step_viewed', { surface: 'web_analysis', step })
+    trackWebEvent('onboarding_step_viewed', { surface: 'web_analysis', step, analysis_variant: analysisVariant, ...paywallExperimentProperties(experiment) })
     return () => {
       document.removeEventListener('visibilitychange', visibility)
-      trackWebEvent('onboarding_step_exited', { surface: 'web_analysis', step, duration_ms: duration() })
+      trackWebEvent('onboarding_step_exited', { surface: 'web_analysis', step, duration_ms: duration(), ...paywallExperimentProperties(experiment) })
     }
-  }, [enabled, step])
+  }, [analysisVariant, enabled, experiment, step])
   return () => {
-    if (enabled) trackWebEvent('onboarding_step_completed', { surface: 'web_analysis', step, duration_ms: duration() })
+    if (enabled) trackWebEvent('onboarding_step_completed', { surface: 'web_analysis', step, duration_ms: duration(), ...paywallExperimentProperties(experiment) })
   }
 }

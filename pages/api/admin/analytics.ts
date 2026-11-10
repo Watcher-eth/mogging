@@ -9,7 +9,7 @@ import { enforceRateLimit } from '@/lib/api/rateLimit'
 
 // Shared across function instances; stale snapshots refresh in the background.
 // Authentication still runs on every request before any cached data is read.
-const getReport = unstable_cache(getAnalyticsDashboard, ['admin-analytics-reconciled-journeys-purchases-v11'], { revalidate: 60 })
+const getReport = unstable_cache(getAnalyticsDashboard, ['admin-analytics-workspace-v13'], { revalidate: 60 })
 
 const getProviderMetrics = unstable_cache(getRevenueCatMetrics, ['admin-revenuecat-provider-metrics-v1'], { revalidate: 60 })
 
@@ -25,8 +25,10 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     await enforceRateLimit(req, res, { key: 'admin_analytics', limit: 30, windowMs: 60_000 })
     const filters = analyticsFilters.safeParse(req.query)
     if (!filters.success) throw new ApiError(400, 'Choose a supported time range and platform')
-    if (filters.data.section !== 'Revenue') return json(res, 200, await getReport(filters.data))
-    const [report, revenueCatMetrics, appStoreSales] = await Promise.all([getReport(filters.data), getProviderMetrics(), getAppleSales()])
-    return json(res, 200, { ...report, revenueCatMetrics, appStoreSales })
+    if (filters.data.section === 'Revenue' && req.query.view === 'providers') {
+      const [revenueCatMetrics, appStoreSales] = await Promise.all([getProviderMetrics(), getAppleSales()])
+      return json(res, 200, { revenueCatMetrics, appStoreSales })
+    }
+    return json(res, 200, await getReport(filters.data))
   } catch (error) { return handleApiError(error, res) }
 }

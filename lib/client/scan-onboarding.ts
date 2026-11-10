@@ -1,9 +1,10 @@
 // Web port of the mobile onboarding sequence and copy.
 export type OnboardingProfileStepId = "impressions" | "dating" | "motivation" | "relevance" | "agency" | "transformation" | "mechanism" | "goals" | "obstacle" | "experience" | "methods" | "evidence" | "age" | "gender" | "time" | "commit";
 
-export function getOnboardingProfileSteps(experience: unknown): OnboardingProfileStepId[] {
+export function getOnboardingProfileSteps(experience: unknown, variant: "full" | "short" = "full"): OnboardingProfileStepId[] {
   const hasExperience = experience === "tried" || experience === "active";
-  return ["impressions", "dating", "motivation", "relevance", "agency", "transformation", "mechanism", "goals", "obstacle", "experience", ...(hasExperience ? ["methods" as const] : []), "evidence", "age", "gender", "time", "commit"];
+  const steps: OnboardingProfileStepId[] = ["impressions", "dating", "motivation", "relevance", "agency", "transformation", "mechanism", "goals", "obstacle", "experience", ...(hasExperience ? ["methods" as const] : []), "evidence", "age", "gender", "time", "commit"];
+  return variant === "short" ? steps.filter(step => !["obstacle", "experience", "methods", "time"].includes(step)) : steps;
 }
 
 export const motivations = [

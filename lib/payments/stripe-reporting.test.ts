@@ -67,17 +67,22 @@ test('webhook inspection failure does not prevent durable billing recovery', asy
 })
 
 test('checkout repair verifies Stripe, preserves invoice identity and uses its paid time', async () => {
-  const recorded: any[] = [], checkouts: any[] = []
+  const recorded: any[] = [], checkouts: any[] = [], statuses: string[] = []
   const invoice = { id: 'in_existing', status: 'paid', created: 900, status_transitions: { paid_at: 1000 } }
-  const scope: any = { Date, sql: () => null, and: () => null, eq: () => null,
+  const scope: any = { Date, sql: (parts: TemplateStringsArray) => parts.join('?'), and: () => null, eq: () => null,
     schema: { subscriptionEvents: {} },
-    db: { execute: async () => [{ id: 'cs_paid' },{ id: 'cs_unpaid' }], query: { subscriptionEvents: { findFirst: async () => ({ providerEventId: 'evt_original_invoice' }) } } },
+    db: { execute: async (query: string) => query.includes('select p.stripe_checkout_session_id')
+      ? [{ id: 'cs_paid' }, { id: 'cs_unpaid' }] : [], query: { subscriptionEvents: { findFirst: async () => ({ providerEventId: 'evt_original_invoice' }) } } },
+    recordStripeCheckoutStatus: async (session: { id: string }) => { statuses.push(session.id) },
     recordVerifiedStripeCheckout: async (s: any) => { checkouts.push(s.id) },
     recordStripeLifecycle: async (e: any) => { recorded.push(e) },
   }
   const api = transpile('./stripe-reconciliation.ts', 'repairRecordedCheckouts', scope)
-  const result = await api.repairRecordedCheckouts({ checkout: { sessions: { retrieve: async (id: string) => ({ id, livemode: true, status: id==='cs_paid' ? 'complete' : 'open', invoice }) } } })
-  expect(result).toMatchObject({ repaired: 1, deferred: 1 })
+  const result = await api.repairRecordedCheckouts({ checkout: { sessions: { retrieve: async (id: string) => id === 'cs_paid'
+    ? { id, livemode: true, status: 'complete', payment_status: 'paid', invoice }
+    : { id, livemode: true, status: 'open', payment_status: 'unpaid' } } } })
+  expect(result).toMatchObject({ repaired: 1, deferred: 0 })
+  expect(statuses).toEqual(['cs_paid', 'cs_unpaid'])
   expect(checkouts).toEqual(['cs_paid'])
   expect(recorded).toHaveLength(1)
   expect(recorded[0]).toMatchObject({ id: 'evt_original_invoice', created: 1000, type: 'invoice.paid' })

@@ -1,4 +1,4 @@
-import { WEB_FLOW_VERSION } from './web-context'
+import { WEB_FLOW_VERSION, webFlowContext } from './web-context'
 
 const key = 'mogging.web-journey.v3'
 const uuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i
@@ -16,7 +16,7 @@ export function webJourneyContext(): { flow_id?: string; flow_version?: string; 
     } catch { /* Storage is optional. */ }
     current ??= { id: crypto.randomUUID(), started: Date.now() }
   }
-  if (location.pathname === '/analysis' && !current.entry) current.entry = new URLSearchParams(location.search).get('start') === '1' ? 'photo_first' : 'onboarding_first'
+  current.entry ??= webFlowContext(location.pathname, location.search).entry_mode
   save()
   return { flow_id: current.id, flow_version: WEB_FLOW_VERSION, ...(current.entry ? { entry_mode: current.entry } : {}) }
 }

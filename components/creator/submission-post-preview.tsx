@@ -1,6 +1,6 @@
 import { SkeletonImage } from '@/components/ui/skeleton-image'
 import { useEffect, useRef, useState, type CSSProperties } from 'react'
-import { Film } from 'lucide-react'
+import { Film } from '@/components/ui/mogging-glyphs'
 import useSWR from 'swr'
 import { apiGet } from '@/lib/api/client'
 import { cn } from '@/lib/utils'

@@ -39,12 +39,12 @@ export function SeoHead({
       )}
       <title key="title">{title}</title>
       <meta key="description" name="description" content={description} />
-      {router.pathname !== '/analysis' && <meta key="apple-itunes-app" name="apple-itunes-app" content={`app-id=${iosAppStoreId}, app-argument=${canonicalUrl}`} />}
+      {router.pathname !== '/analysis' && router.pathname !== '/app/home' && <meta key="apple-itunes-app" name="apple-itunes-app" content={`app-id=${iosAppStoreId}, app-argument=${canonicalUrl}`} />}
       {router.pathname === '/' && locales.map(locale => <link key={`alternate-${locale}`} rel="alternate" hrefLang={locale} href={`${siteUrl}${locale === 'en' ? '/' : `/${locale}`}`} />)}
       {router.pathname === '/' && <link key="alternate-default" rel="alternate" hrefLang="x-default" href={`${siteUrl}/`} />}
       <link key="canonical" rel="canonical" href={canonicalUrl} />
       <link key="favicon" rel="icon" type="image/png" href="/favicon.png" />
-      <link key="apple-touch-icon" rel="apple-touch-icon" href="/favicon.png" />
+      <link key="apple-touch-icon" rel="apple-touch-icon" sizes="180x180" href="/scan/apple-touch-icon.png" />
 
       <meta key="og:type" property="og:type" content="website" />
       <meta key="og:site_name" property="og:site_name" content="Mogging" />

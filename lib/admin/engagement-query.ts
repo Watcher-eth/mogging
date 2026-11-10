@@ -8,8 +8,8 @@ export type EngagementReport = {
 }
 
 export function engagementCTEs(days: number) {
-  return sql`engagement_scope as materialized (
-    select e.*,case
+  return sql`engagement_scope as (
+    select event_name, actor, platform, occurred_at, received_at, properties,case
       when event_name in ('report_viewed','category_viewed','repeat_evaluation_started') then 'reports'
       when event_name in ('protocol_viewed','protocol_task_completed') then 'protocols'
       when event_name in ('course_viewed','course_lesson_viewed','course_lesson_exited','course_lesson_completed','course_completed') then 'courses'
@@ -22,7 +22,9 @@ export function engagementCTEs(days: number) {
       'course_viewed','course_lesson_viewed','course_lesson_exited','course_lesson_completed','course_completed',
       'progress_viewed','progress_exited','progress_area_viewed','progress_action_selected','share_started','share_completed','share_failed')
   ), engagement_activity as materialized (
-    select *,event_name in ('report_viewed','protocol_viewed','protocol_task_completed','course_lesson_completed','course_completed','progress_area_viewed','share_completed')
+    select event_name, actor, platform, occurred_at, received_at, feature, duration_ms,
+      case when feature is not null then properties end as properties,
+      event_name in ('report_viewed','protocol_viewed','protocol_task_completed','course_lesson_completed','course_completed','progress_area_viewed','share_completed')
       or (event_name in ('course_lesson_exited','progress_exited') and coalesce(duration_ms >= 10000,false)) as meaningful
     from engagement_scope
   ), engagement_devices as (

@@ -11,7 +11,7 @@ import { SubmissionPostPreview } from '@/components/creator/submission-post-prev
 import Link from 'next/link'
 import { useRouter } from 'next/router'
 import { useMemo, useState } from 'react'
-import { ArrowUpRight, ChevronDown, SlidersHorizontal, CircleAlert, Clock3, Loader2, RotateCcw, XCircle } from 'lucide-react'
+import { ArrowUpRight, ChevronDown, SlidersHorizontal, CircleAlert, Clock3, Loader2, RotateCcw, XCircle } from '@/components/ui/mogging-glyphs'
 import useSWR from 'swr'
 import { Button } from '@/components/ui/button'
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog'

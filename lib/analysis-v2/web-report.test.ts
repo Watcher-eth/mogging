@@ -1,5 +1,5 @@
 import { expect, test } from 'bun:test'
-import { buildCheekContextGroups, buildLegacyRubricGroups, buildWebRubricGroups, formatRubricValue, layoutWebRubrics } from './web-report'
+import { buildCheekContextGroups, buildLegacyRubricGroups, buildWebRubricGroups, formatRubricValue, layoutDesktopRubrics, layoutWebRubrics, scoreHistogram } from './web-report'
 import { designValues } from './preview-fixtures'
 import sampleEntries from './sample-entries.json'
 import registry from './rubric-registry.json'
@@ -137,4 +137,27 @@ test('Overall alternates instruments and score-only cards without reordering or 
   expect(layout.filter(item => !item.full)).toHaveLength(6)
   expect(rubrics.every(rubric => rubric.visual === 'Orbit')).toBe(true)
   expect(layoutWebRubrics([], 'summary')).toEqual([])
+  const desktop = layoutDesktopRubrics(rubrics, true)
+  expect(desktop.map(item => item.rubric.visual)).toEqual(['Orbit', 'Text', 'Text', 'Orbit', 'Orbit', 'Text', 'Orbit'])
+  expect(desktop.at(-1)?.full).toBe(true)
+})
+
+test('desktop category charts alternate with observations and use saved measurements when positions are missing', () => {
+  const [group] = buildWebRubricGroups('eyes', [
+    { id: 'eyes.spacing', value: .42 }, { id: 'eyes.shape', value: 'almond' },
+    { id: 'eyes.aspect', value: [1.25, 1.5] }, { id: 'eyes.crease', value: 'visible' },
+    { id: 'eyes.canthal-tilt', value: [-3, 6] }, { id: 'eyes.lashes', value: 'moderate' },
+  ])
+  const desktop = layoutDesktopRubrics(group.rubrics, false)
+  expect(desktop.map(item => item.rubric.visual)).toEqual(['Capsule', 'Text', 'Text', 'Capsule', 'Capsule', 'Text'])
+  expect(desktop[3].rubric).toMatchObject({ chartAxis: { minimum: 0, maximum: 1.5, unit: '×' }, positions: [1.25 / 1.5, 1] })
+  expect(desktop[4].rubric).toMatchObject({ chartAxis: { minimum: -15, maximum: 15, unit: '°' }, positions: [.4, .7] })
+  expect(group.rubrics.every(rubric => rubric.grade === null && rubric.visual === 'Text')).toBe(true)
+})
+
+test('distribution only counts available scores on the same 0 to 10 scale', () => {
+  expect(scoreHistogram([2, 7, 7.8, 8, 10, null, 12, NaN])).toEqual({
+    count: 5, bins: [0, 0, 1, 0, 0, 0, 0, 2, 1, 1],
+  })
+  expect(scoreHistogram([2, 7, 10, null])).toBeNull()
 })

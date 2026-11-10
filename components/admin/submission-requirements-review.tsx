@@ -1,6 +1,6 @@
 import { Disclosure, DisclosureSummary, AccordionContent } from '@/components/ui/accordion'
 import Link from 'next/link'
-import { ArrowUpRight, XCircle } from 'lucide-react'
+import { ArrowUpRight, XCircle } from '@/components/ui/mogging-glyphs'
 import { cn } from '@/lib/utils'
 import { submissionRejectionLabel, type CreatorSubmissionReviewItem, type CreatorSubmissionReviewResult } from '@/lib/creator/submission-review'
 

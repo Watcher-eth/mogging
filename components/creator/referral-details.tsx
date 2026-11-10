@@ -1,4 +1,4 @@
-import { Copy } from 'lucide-react'
+import { Copy } from '@/components/ui/mogging-glyphs'
 import { toast } from 'sonner'
 import { referralCode } from '@/lib/creator/sprints'
 import type { CreatorSocialAccount } from './types'

@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState, type CSSProperties } from 'react'
-import { BatteryFull, Bookmark, Heart, Home, MessageCircle, Music2, Pause, Play, Plus, RotateCcw, RotateCw, Search, Share2, Signal, UserRound, Users, Wifi } from 'lucide-react'
+import { BatteryFull, Bookmark, Heart, Home, MessageCircle, Music2, Pause, Play, Plus, RotateCcw, RotateCw, Search, Share2, Signal, UserRound, Users, Wifi } from '@/components/ui/mogging-glyphs'
 import { drawVideoFrame, type PreparedVideo } from '@/lib/creator/video-renderer'
 import { videoExportSize } from '@/lib/creator/video-layout'
 import { createPreviewRipple } from '@/lib/creator/preview-ripple'

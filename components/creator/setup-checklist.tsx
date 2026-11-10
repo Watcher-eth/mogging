@@ -8,7 +8,7 @@ import {
   motion,
   useReducedMotion,
 } from 'motion/react'
-import { Check, ChevronRight, ChevronUp, Plus, X } from 'lucide-react'
+import { Check, ChevronRight, ChevronUp, Plus, X } from '@/components/ui/mogging-glyphs'
 import useSWR from 'swr'
 import { apiGet } from '@/lib/api/client'
 import { cn } from '@/lib/utils'

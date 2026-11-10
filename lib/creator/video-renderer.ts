@@ -24,7 +24,7 @@ import { drawPortraitEffects, preparePortraitEffects, portraitLightingSchema, po
 import { drawPhotoStudy, photoStudyRegions, photoStudyGesture, photoStudyClock } from './video-photo-study'
 import { registerProfileStudy, drawProfileStudy, profileGeometry, type ProfileGeometry } from './video-profile'
 import type { FaceLandmarksPayload } from '@/lib/analysis/landmarks'
-import { loadMockReportSymbols, mockReportHeroHeight, mockReportScrollMax, mockReportSize, mockReportRegions } from './mock-report'
+import { mockReportHeroHeight, mockReportScrollMax, mockReportSize, mockReportRegions } from './mock-report'
 import { createReportOverlay, type ReportOverlay } from './report-overlay'
 import { buildMockOverallCategory } from './mock-report-data'
 import { loadShareFont } from './legacy-posters'
@@ -70,7 +70,7 @@ const featureLandmarks = new Map<string, Promise<FaceLandmarksPayload>>()
 
 export async function prepareVideo(compositionValue: VideoComposition, images: GeneratorImage[], purpose: 'video' | 'selection' = 'video', options: { keepPortraitBackground?: boolean } = {}): Promise<PreparedVideo> {
   const composition = parseComposition(compositionValue)
-  const [brand, anatomy] = await Promise.all([loadCreatorBrand(), composition.scenes.some(scene => scene.source.kind === 'explainer' && (scene.graphic?.layout === 'story')) ? import('./video-anatomy').then(module => module.prepareAnatomyRenderer()) : undefined, document.fonts.ready, loadShareFont().then(() => document.fonts.load('400 64px "Mogging Share"')), loadMockReportSymbols()])
+  const [brand, anatomy] = await Promise.all([loadCreatorBrand(), composition.scenes.some(scene => scene.source.kind === 'explainer' && (scene.graphic?.layout === 'story')) ? import('./video-anatomy').then(module => module.prepareAnatomyRenderer()) : undefined, document.fonts.ready, loadShareFont().then(() => document.fonts.load('400 64px "Mogging Share"'))])
   const requiredIds = videoImageIds(composition.scenes)
   // Upgrade older upper-edge-only brow registrations once per immutable image.
   // Detection runs locally; a failed refresh retains the original usable contours.

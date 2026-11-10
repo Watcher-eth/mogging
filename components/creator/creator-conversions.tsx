@@ -5,7 +5,7 @@ import { CreatorConversionVideoCard } from "./conversion-video-card";
 import {
   Search,
   TrendingUp,
-} from "lucide-react";
+} from "@/components/ui/mogging-glyphs";
 import { AnalyticsChart, chartColors } from "@/components/admin/analytics-chart";
 import { CreatorHeader } from "./creator-shell";
 import { sprintMoney } from "@/lib/creator/sprints";

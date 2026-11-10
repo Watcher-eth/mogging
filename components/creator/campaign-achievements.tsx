@@ -1,7 +1,7 @@
 import Image from "next/image";
 import Link from "next/link";
 import { useRef } from "react";
-import { ArrowUpRight } from "lucide-react";
+import { ArrowUpRight } from "@/components/ui/mogging-glyphs";
 import { motion, useInView, useReducedMotion } from "motion/react";
 import {
   EMPTY_CAMPAIGN_BONUS_PROGRESS,

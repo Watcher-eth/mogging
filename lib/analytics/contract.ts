@@ -10,7 +10,7 @@ export const analyticsEventNames = [
   'onboarding_interaction', 'onboarding_step_exited', 'onboarding_step_skipped', 'onboarding_completed', 'permission_prompted', 'permission_result',
   'photo_source_selected', 'photo_selected', 'face_capture_started', 'face_capture_result', 'photo_preparation_started', 'photo_preparation_stage', 'photo_picker_result', 'photo_preparation_completed', 'photo_validation_failed', 'consent_result',
   'paywall_offer_unlocked', 'paywall_offer_unavailable', 'paywall_offer_dismissed', 'referral_reward_notification_sent',
-  'paywall_viewed', 'paywall_dismissed', 'paywall_products_loaded', 'plan_selected',
+  'paywall_viewed', 'paywall_dismissed', 'paywall_products_loaded', 'paywall_plan_viewed', 'plan_selected',
   'checkout_started', 'checkout_completed', 'handoff_created', 'handoff_opened', 'handoff_consumed',
   'purchase_started', 'purchase_completed', 'purchase_failed', 'purchase_cancelled', 'purchase_activation_failed',
   'purchase_stage_changed', 'purchase_pending', 'purchase_activated', 'purchase_account_required',
@@ -29,20 +29,25 @@ export type AnalyticsProperties = Record<string, string | number | boolean | nul
 
 // Allowlist protects both ingestion and transport. No URLs, tokens, free-form errors, images,
 // demographics, coordinates, user input, or report scores leave the product.
+const paywallExperimentKeys = [
+  'paywall_experiment_id', 'paywall_experiment_unit', 'paywall_experiment_arm', 'paywall_experiment_surface',
+  'paywall_experiment_kind', 'paywall_experiment_ends_at', 'paywall_experiment_minimum',
+]
 const propertyKeys = new Set([
   'course_id', 'lesson_id', 'lesson_index', 'lesson_count', 'completed_count', 'revisit', 'history_state', 'profile_type',
-  'account_type', 'runtime_environment', 'screen', 'previous_screen', 'flow_version', 'entry_mode', 'browser_family', 'device_platform', 'step', 'step_index', 'step_count', 'onboarding_version', 'flow_id', 'attempt_id', 'request_id',
+  'account_type', 'runtime_environment', 'screen', 'previous_screen', 'flow_version', 'entry_mode', 'browser_family', 'web_surface', 'device_platform', 'step', 'step_index', 'step_count', 'onboarding_version', 'flow_id', 'attempt_id', 'request_id',
   'stage_duration_ms', 'previous_stage_duration_ms', 'previous_stage', 'purchase_tracking_version', 'purchase_kind', 'transaction_id', 'os_version', 'store_environment', 'app_state', 'feedback_reason',
   'action', 'duration_ms', 'surface', 'plan', 'product', 'productId', 'product_id', 'offering',
-  'paywall_id', 'paywall_version', 'default_plan', 'product_count', 'products_loaded',
+  ...paywallExperimentKeys,
+  'paywall_id', 'paywall_version', 'analysis_variant', 'default_plan', 'product_count', 'products_loaded',
   'http_status', 'native_domain', 'native_code', 'native_underlying_domain', 'native_underlying_code',
   'channel', 'provider', 'auth_stage', 'purchase_stage', 'status', 'reason_code', 'error_code', 'active', 'launch', 'launchState',
   'delivery', 'paidMedia', 'subscriptionActive', 'mode', 'permission', 'result', 'source',
   'destination', 'placement', 'path', 'referrer_host', 'first_referrer_host', 'category', 'task_id', 'tab',
   'report_id', 'evaluation_id', 'success', 'count', 'push_id', 'campaign_id', 'creative_id',
-  'creator_tracking_link_id', 'creator_first_tracking_link_id', 'creator_click_id',
-  'locale', 'timezone', 'country', 'device_platform', 'browser_family', 'flow_version', 'entry_mode',
-  'appsflyer_id', 'experiment_id', 'variant', 'landing_id', 'landing_version', 'price', 'currency', 'retry', 'first_evaluation',
+  'creator_discount', 'creator_tracking_link_id', 'creator_first_tracking_link_id', 'creator_click_id',
+  'locale', 'timezone', 'country', 'device_platform', 'browser_family', 'web_surface', 'flow_version', 'entry_mode',
+  'appsflyer_id', 'experiment_id', 'variant', 'landing_id', 'landing_version', 'price', 'first_payment_price', 'currency', 'retry', 'first_evaluation',
   'utm_source', 'utm_medium', 'utm_campaign', 'utm_content', 'utm_term',
   'first_utm_source', 'first_utm_medium', 'first_utm_campaign', 'first_utm_content', 'first_utm_term',
   'last_utm_source', 'last_utm_medium', 'last_utm_campaign', 'last_utm_content', 'last_utm_term',
@@ -51,7 +56,7 @@ export function sanitizeProperties(input: Record<string, unknown>): AnalyticsPro
   const output: AnalyticsProperties = {}
   let budget = 2000
   // Correlation and required event fields survive long attribution context.
-  const keys = new Set(['flow_version', 'entry_mode', 'browser_family', 'device_platform', 'step', 'step_index', 'step_count', 'onboarding_version', 'flow_id', 'action', 'screen', 'course_id', 'lesson_id', 'duration_ms', 'permission', 'attempt_id', 'evaluation_id', 'request_id', 'report_id', 'transaction_id', 'reason_code', 'error_code', ...Object.keys(input).slice(0, 80)])
+  const keys = new Set([...paywallExperimentKeys, 'flow_version', 'entry_mode', 'browser_family', 'web_surface', 'device_platform', 'step', 'step_index', 'step_count', 'onboarding_version', 'flow_id', 'landing_id', 'landing_version', 'experiment_id', 'variant', 'analysis_variant', 'action', 'path', 'surface', 'result', 'destination', 'placement', 'purchase_stage', 'product', 'provider', 'http_status', 'screen', 'course_id', 'lesson_id', 'duration_ms', 'permission', 'attempt_id', 'evaluation_id', 'request_id', 'report_id', 'transaction_id', 'reason_code', 'error_code', 'price', 'first_payment_price', 'currency', 'default_plan', 'creator_discount', 'offering', 'status', ...Object.keys(input).slice(0, 80)])
   for (const key of keys) {
     if (!propertyKeys.has(key)) continue
     const value = input[key]

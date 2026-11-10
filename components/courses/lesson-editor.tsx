@@ -27,7 +27,7 @@ import {
   Quote,
   Code,
   Minus,
-} from 'lucide-react'
+} from '@/components/ui/mogging-glyphs'
 import { documentExtensions } from '@/lib/courses/editor-extensions'
 import {
   Dialog,

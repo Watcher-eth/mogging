@@ -18,6 +18,7 @@ describe.skipIf(!enabled)('guest accounts and scan ledger (isolated PostgreSQL)'
     databaseUrl.searchParams.set('options', '-c timezone=UTC')
     process.env.DATABASE_URL = databaseUrl.toString()
     process.env.REVENUECAT_SECRET_API_KEY = 'guest-integration-test-only'
+    process.env.STRIPE_SECRET_KEY = 'sk_test_guest_fixture'
     const database = await import('@/lib/db'); db = database.db; schema = database.schema
     eq = (await import('drizzle-orm')).eq
     guests = await import('./mobile-guest')
@@ -109,6 +110,45 @@ describe.skipIf(!enabled)('guest accounts and scan ledger (isolated PostgreSQL)'
     expect(await requestUser({ headers: { authorization: `Bearer ${guest.token}` } } as any, {} as any)).toBeNull()
     await expect(credits.reserveEvaluation({ userId: guest.userId }, 'post-claim', 'photo')).rejects.toMatchObject({ status: 401 })
     await expect(guests.claimGuestAccount(randomUUID(), secret)).rejects.toMatchObject({ status: 409 })
+  })
+
+  test('web checkout requires both its browser proof and a paid receipt before it can be claimed', async () => {
+    const { rememberWebCheckoutGuest, verifyWebCheckoutGuest } = await import('@/lib/payments/guest-checkout')
+    const { getStripe } = await import('@/lib/payments/stripe')
+    const stripe = getStripe()
+    const retrieve = stripe.checkout.sessions.retrieve
+    const recoveryKey = key()
+    const guestId = await guests.getOrCreateGuestAccount(recoveryKey)
+    const buyerId = randomUUID(), otherId = randomUUID()
+    await db.insert(schema.users).values([buyerId, otherId].map(id => ({ id, email: `${id}@test.invalid` })))
+    const sessionId = `cs_test_${randomBytes(12).toString('hex')}`
+    let cookie = ''
+    rememberWebCheckoutGuest({ getHeader() {}, setHeader(_name: string, values: string[]) { cookie = values[0] } } as any, sessionId, recoveryKey)
+    expect(cookie).toContain('HttpOnly; SameSite=Lax')
+    const [name, value] = cookie.split(';')[0].split('=')
+    const req = { cookies: { [name]: value } } as any
+    let paid = false
+    stripe.checkout.sessions.retrieve = (async (id: string) => ({
+      id, object: 'checkout.session', mode: 'payment', status: paid ? 'complete' : 'open',
+      payment_status: paid ? 'paid' : 'unpaid', created: Math.floor(Date.now() / 1000),
+      amount_total: 599, currency: 'usd', livemode: false, client_reference_id: guestId,
+      metadata: { accountId: guestId, product: 'evaluation', source: 'web_analysis' },
+    })) as unknown as typeof retrieve
+    try {
+      expect(await verifyWebCheckoutGuest({ cookies: {} } as any, sessionId, buyerId)).toBe(false)
+      await expect(verifyWebCheckoutGuest(req, sessionId, buyerId)).rejects.toMatchObject({ status: 409 })
+      paid = true
+      expect(await verifyWebCheckoutGuest(req, sessionId, null)).toBe(true)
+      expect(await verifyWebCheckoutGuest(req, sessionId, buyerId)).toBe(true)
+      expect(await verifyWebCheckoutGuest(req, sessionId, buyerId)).toBe(true)
+      await expect(verifyWebCheckoutGuest(req, sessionId, otherId)).rejects.toMatchObject({ status: 403 })
+      const entitlement = await credits.confirmCheckoutForAccount(sessionId, buyerId)
+      expect(entitlement.userId).toBe(buyerId)
+      expect(entitlement.creditBalance).toBe(1)
+      expect(await db.query.paymentEntitlements.findMany({ where: eq(schema.paymentEntitlements.stripeCheckoutSessionId, sessionId) })).toHaveLength(1)
+    } finally {
+      stripe.checkout.sessions.retrieve = retrieve
+    }
   })
 
   test('RevenueCat guest billing continues after saving to an existing account without replenishing spent scans', async () => {
