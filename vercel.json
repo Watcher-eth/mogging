@@ -1,6 +1,10 @@
 {
   "crons": [
     {
+      "path": "/api/cron/creator-audience",
+      "schedule": "* * * * *"
+    },
+    {
       "path": "/api/cron/discord-gateway",
       "schedule": "*/5 * * * *"
     },

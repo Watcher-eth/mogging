@@ -33,7 +33,7 @@ const input = () => {
   if (parsed.resource !== 'submission') throw new Error('Expected submission input')
   return parsed
 }
-beforeEach(() => { priorPayments.splice(0, priorPayments.length, { status: 'paid', amountCents: 1300 }); submission = { id: 'submission', formatId: 'custom-video-v1', status: 'pending', reviewNote: null }; writes = 0; otherPendingCents = 0; poolBudgetCents = 100000 })
+beforeEach(() => { priorPayments.splice(0, priorPayments.length, { status: 'paid', amountCents: 1300 }); submission = { id: 'submission', analyticsStorageKey: 'current-evidence', formatId: 'custom-video-v1', status: 'pending', reviewNote: null }; writes = 0; otherPendingCents = 0; poolBudgetCents = 100000 })
 
 test('rejection persists only selected failures and their creator-visible feedback', async () => {
   const saved = await reviewCreatorResource(input())
@@ -58,6 +58,7 @@ test('rejecting a campaign rereview preserves prior approved earnings and paid r
 
 const approval = (amount: number | null = 2000, note: string | null = 'Reduced payout: the CTA did not follow the campaign rules.') => ({
   ...input(), status: 'approved' as const, approvedAmountCents: amount, reviewNote: note,
+  manualAudienceConfirmed: true, audienceEvidenceKey: 'current-evidence',
   reviewChecklist: results().map(item => ({ ...item, met: true, note: null })),
 })
 
@@ -79,6 +80,32 @@ test('campaign penalties can reduce unpaid approved earnings without changing pa
   const saved = await reviewCreatorResource({ ...approval(), reviewChecklist })
   expect(saved).toMatchObject({ approvedAmountCents: 2000 })
   expect(priorPayments).toEqual([{ status: 'paid', amountCents: 1300 }])
+})
+
+test('campaign approval cannot bypass an unreadable audience without manual confirmation', async () => {
+  const terms = defaultCreatorSprintTerms()
+  submission = { ...submission, sprintId: 'campaign', sprintTerms: terms, analyticsScreenshotUrl: 'https://example.com/evidence.mp4' }
+  const reviewChecklist = sprintReviewItems(terms, 'custom-video-v1').map(({ id }) => ({ id, met: true, note: null }))
+  await expect(reviewCreatorResource({ ...approval(), manualAudienceConfirmed: false, reviewChecklist })).rejects.toThrow('Audience needs manual review')
+  expect(writes).toBe(0)
+})
+
+test('automatic campaign approval uses the checked audience and records its source', async () => {
+  const terms = defaultCreatorSprintTerms()
+  submission = { ...submission, sprintId: 'campaign', sprintTerms: terms, analyticsScreenshotUrl: 'https://example.com/evidence.mp4',
+    audienceCheck: { version: 1, status: 'verified', storageKey: 'current-evidence', percent: 60, minimumPercent: 59.95, maximumPercent: 90 } }
+  const reviewChecklist = sprintReviewItems(terms, 'custom-video-v1').map(({ id }) => ({ id, met: true, note: null }))
+  const saved = await reviewCreatorResource({ ...approval(), adminUsAudiencePercent: 60, manualAudienceConfirmed: false, reviewChecklist }, 'reviewer')
+  expect(saved.audienceCheck.review).toMatchObject({ source: 'automatic', percent: 60, reviewerId: 'reviewer' })
+  expect(saved.adminUsAudiencePercent).toBe(60)
+})
+
+test('even an explicit manual override cannot approve a replaced recording', async () => {
+  const terms = defaultCreatorSprintTerms()
+  submission = { ...submission, sprintId: 'campaign', sprintTerms: terms, analyticsScreenshotUrl: 'https://example.com/evidence.mp4' }
+  const reviewChecklist = sprintReviewItems(terms, 'custom-video-v1').map(({ id }) => ({ id, met: true, note: null }))
+  await expect(reviewCreatorResource({ ...approval(), audienceEvidenceKey: 'old-evidence', reviewChecklist })).rejects.toThrow('recording changed')
+  expect(writes).toBe(0)
 })
 
 test('payout schema rejects negative or fractional cents', () => {

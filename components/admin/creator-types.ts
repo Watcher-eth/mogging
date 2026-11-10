@@ -112,6 +112,8 @@ export type AdminSubmission = {
   videoContentType: string | null
   videoSizeBytes: number | null
   analyticsScreenshotUrl: string | null
+  analyticsStorageKey?: string | null
+  audienceCheck?: import('@/lib/creator/audience-check').AudienceCheck | null
   analyticsContentType: string | null
   analyticsSizeBytes: number | null
   viewCountThreshold: number | null

@@ -11,6 +11,7 @@ export async function recordSubmissionUpdate(tx: Transaction, submissionId: stri
     historySnapshot: sql`(select jsonb_build_object(
       'submittedViews', s.view_count_threshold, 'submittedAudiencePercent', s.us_audience_percent,
       'verifiedViews', s.admin_view_count_threshold, 'verifiedAudiencePercent', s.admin_us_audience_percent,
+      'audienceReview', s.audience_check->'review',
       'approvedAmountCents', s.approved_amount_cents, 'campaignId', s.sprint_id, 'campaignName', c.name
     ) from creator_submissions s left join creator_sprints c on c.id = s.sprint_id where s.id = ${submissionId})`,
   })

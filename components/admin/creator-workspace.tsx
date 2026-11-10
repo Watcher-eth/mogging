@@ -54,7 +54,8 @@ import { CREATOR_TIER1_AUDIENCE_TIERS, CREATOR_VIEW_THRESHOLDS } from '@/lib/cre
 import { mergeCreatorSubmissionReviewResults, submissionReviewError, createSubmissionReviewDrafts } from '@/lib/creator/submission-review'
 import { SubmissionRequirementsReview } from '@/components/admin/submission-requirements-review'
 import { CreatorIcon, type CreatorIconName } from '@/components/creator/creator-icon'
-import { CREATOR_TIER_ONE_COUNTRIES } from '@/lib/creator/audience'
+import { audienceReviewError, type AudienceCheck } from '@/lib/creator/audience-check'
+import { SubmissionAudienceCheck } from './submission-audience-check'
 import { approvedUnpaidSubmissions, creatorOutstandingPaymentGroups, approvalKind, approvalSubmittedAt, approvalTypes, getSubmissionReviewQueues, hasPayoutDestination, isNewInLastDay, publishedVideoEmbedUrl, walletExplorerUrl } from '@/lib/admin/creator-overview'
 import type {
   AdminAccount,
@@ -372,9 +373,28 @@ export function ReviewDialog({ target, creator, payments, metrics, open, onOpenC
   const [adminViewCountThreshold, setAdminViewCountThreshold] = useState(() => target.resource === 'submission'
     ? String((target.item.reviewRequestedAt ? target.item.viewCountThreshold : target.item.adminViewCountThreshold) ?? target.item.viewCountThreshold ?? '')
     : '')
-  const [adminUsAudiencePercent, setAdminUsAudiencePercent] = useState(() => target.resource === 'submission'
+  const [manualAudiencePercent, setAdminUsAudiencePercent] = useState(() => target.resource === 'submission'
     ? String((target.item.reviewRequestedAt ? target.item.usAudiencePercent : target.item.adminUsAudiencePercent) ?? target.item.usAudiencePercent ?? (target.item.sprintTerms ? '' : 'base'))
     : 'base')
+  const [manualAudience, setManualAudience] = useState(false)
+  const [manualAudienceConfirmed, setManualAudienceConfirmed] = useState(false)
+  const { data: audienceData } = useSWR<{ check: AudienceCheck | null; storageKey: string | null }>(
+    target.resource === 'submission' && target.item.sprintTerms ? `/api/admin/creator/submissions/${target.item.id}/audience` : null,
+    apiGet, { fallbackData: target.resource === 'submission' ? { check: target.item.audienceCheck ?? null, storageKey: target.item.analyticsStorageKey ?? null } : undefined,
+      refreshInterval: data => !data?.check || ['queued', 'processing'].includes(data.check.status) ? 5000 : 0 })
+  const audienceCheck = audienceData?.check
+  const automaticAudience = audienceCheck?.status === 'verified' && typeof audienceCheck.percent === 'number'
+    && audienceCheck.storageKey === audienceData?.storageKey && target.resource === 'submission' && audienceData.storageKey === target.item.analyticsStorageKey
+  const adminUsAudiencePercent = target.resource === 'submission' && target.item.sprintTerms && !manualAudience && automaticAudience
+    ? String(audienceCheck.percent) : manualAudiencePercent
+  function changeAudienceMode(manual: boolean) {
+    if (manual) setAdminUsAudiencePercent(adminUsAudiencePercent)
+    setManualAudience(manual)
+    setManualAudienceConfirmed(false)
+    setAmount(null)
+  }
+  const audiencePanel = <SubmissionAudienceCheck check={audienceCheck} manual={manualAudience} confirmed={manualAudienceConfirmed}
+    onManualChange={changeAudienceMode} onConfirmedChange={setManualAudienceConfirmed} />
   const [approveWithoutPayment, setApproveWithoutPayment] = useState(false)
   const [tab, setTab] = useState('video')
   const [saving, setSaving] = useState(false)
@@ -430,6 +450,7 @@ export function ReviewDialog({ target, creator, payments, metrics, open, onOpenC
 
   function changeAdminAudience(value: string) {
     setAdminUsAudiencePercent(value)
+    setManualAudienceConfirmed(false)
     setAmount(null)
   }
 
@@ -439,7 +460,10 @@ export function ReviewDialog({ target, creator, payments, metrics, open, onOpenC
     : adminUsAudiencePercent !== 'base' && (!adminUsAudiencePercent.trim() || !Number.isFinite(Number(adminUsAudiencePercent)) || Number(adminUsAudiencePercent) < 0 || Number(adminUsAudiencePercent) > 100)
       ? 'Enter a verified Tier 1 audience percentage between 0 and 100 in Earnings.'
       : null
-  const reviewError = target.resource === 'submission' ? submissionReviewError(status, reviewChecklist) || metricsError || adjustmentError : null
+  const audienceError = target.resource === 'submission' && target.item.sprintTerms && status === 'approved'
+    ? audienceReviewError(audienceCheck, audienceData?.storageKey, target.item.analyticsStorageKey, adminPayoutSelection.usAudiencePercent,
+      manualAudience && manualAudienceConfirmed, target.item.sprintTerms) : null
+  const reviewError = target.resource === 'submission' ? submissionReviewError(status, reviewChecklist) || audienceError || metricsError || adjustmentError : null
 
   const projectedBonuses = target.resource === 'submission' && status !== 'rejected' && !metricsError ? reviewAudienceBonuses({ ...target.item, status, approvedAmountCents: payoutTotalCents, adminViewCountThreshold: adminPayoutSelection.viewCountThreshold, adminUsAudiencePercent: adminPayoutSelection.usAudiencePercent }, payments) : []
 
@@ -459,6 +483,8 @@ export function ReviewDialog({ target, creator, payments, metrics, open, onOpenC
           reviewChecklist: reviewChecklist.map(({ id, met, note }) => ({ id, met, note: note || null })),
           adminViewCountThreshold: adminPayoutSelection.viewCountThreshold,
           adminUsAudiencePercent: adminPayoutSelection.usAudiencePercent,
+          audienceEvidenceKey: target.item.analyticsStorageKey,
+          manualAudienceConfirmed: manualAudience && manualAudienceConfirmed,
         } : null),
         ...(target.resource === 'payment' ? { amountCents: Math.round(Number(amount) * 100), providerReference: providerReference || null } : null),
       })
@@ -491,7 +517,7 @@ export function ReviewDialog({ target, creator, payments, metrics, open, onOpenC
                     <ReviewDetails target={target} />
                     {target.item.caption ? <p className="mt-5 whitespace-pre-wrap text-sm leading-6 text-zinc-600">{target.item.caption}</p> : null}
                   </div>
-                  <TierOneAudienceChecklist />
+                  {target.item.sprintTerms ? audiencePanel : null}
                 </div>
               </Tabs.Content>
               <Tabs.Content value="review" className="outline-none">
@@ -505,7 +531,8 @@ export function ReviewDialog({ target, creator, payments, metrics, open, onOpenC
               <Tabs.Content value="earnings" className="outline-none">
                 <div className="mt-5 rounded-xl bg-sky-50 p-4 text-sm"><p className="font-semibold">{creator?.bundledPayouts ? 'Bundled payouts · creator chooses when to cash out' : 'Separate payouts · paid after approval'}</p><p className="mt-1 text-xs leading-5 text-zinc-500">{creator?.bundledPayouts ? 'Hold these earnings until the creator requests a bundle. Requests appear in the review queue and Payments with the full amount to send.' : 'This creator has not opted into bundled payouts.'}</p></div>
                 {creator ? <PayoutAccountDetails creator={creator} /> : <p className="mt-5 text-sm text-zinc-500">Creator payout details unavailable.</p>}
-                <AdminPayoutDecision submission={target.item} selection={{ viewCountThreshold: adminViewCountThreshold, usAudiencePercent: adminUsAudiencePercent }} onViewCountChange={changeAdminViewCount} onAudienceChange={changeAdminAudience} />
+                {target.item.sprintTerms ? audiencePanel : null}
+                <AdminPayoutDecision submission={target.item} audienceReadOnly={Boolean(target.item.sprintTerms) && !manualAudience} selection={{ viewCountThreshold: adminViewCountThreshold, usAudiencePercent: adminUsAudiencePercent }} onViewCountChange={changeAdminViewCount} onAudienceChange={changeAdminAudience} />
                 {status !== 'rejected' && canApproveWithoutPayment ? <label className="mt-5 flex cursor-pointer items-start gap-3 rounded-2xl border border-amber-200 bg-amber-50/70 p-4">
                   <input type="checkbox" checked={approveWithoutPayment} onChange={event => { setApproveWithoutPayment(event.target.checked); if (event.target.checked) { setStatus('approved'); setAmount(null) } }} className="mt-0.5 size-4 shrink-0 accent-amber-600" />
                   <span><span className="block text-sm font-semibold text-amber-950">Approve this rereview with no additional payment</span><span className="mt-1 block text-xs leading-5 text-amber-900/75">Use this when the verified audience tier does not increase earnings beyond what was already paid. Prior earnings stay unchanged, and the creator can request another rereview at this or a future threshold.</span></span>
@@ -542,20 +569,6 @@ export function ReviewDialog({ target, creator, payments, metrics, open, onOpenC
       </DialogContent>
     </Dialog>
   )
-}
-
-function TierOneAudienceChecklist() {
-  return <aside className="mt-5 self-start rounded-2xl border border-zinc-200 bg-zinc-50/70 p-4 lg:sticky lg:top-0 lg:mt-6" aria-label="Accepted Tier 1 audiences">
-    <h3 className="text-sm font-semibold">Accepted Tier 1 audiences</h3>
-    <p className="mt-1 text-xs leading-5 text-zinc-500">Check each accepted country as it appears in the analytics recording.</p>
-    <div className="mt-4 grid grid-cols-2 gap-2 lg:grid-cols-1">
-      {CREATOR_TIER_ONE_COUNTRIES.map(country => <label key={country} className="flex min-h-9 cursor-pointer items-center gap-2 rounded-lg bg-white px-2.5 py-2 text-xs font-medium shadow-sm ring-1 ring-zinc-200 transition-[background-color,transform] duration-150 ease-out active:scale-[0.98] has-[:checked]:bg-emerald-50 has-[:checked]:text-emerald-800 has-[:checked]:ring-emerald-200">
-        <input type="checkbox" className="peer sr-only" />
-        <span className="grid size-4 shrink-0 place-items-center rounded border border-zinc-300 bg-white text-transparent peer-checked:border-emerald-600 peer-checked:bg-emerald-600 peer-checked:text-white"><Check className="size-3" aria-hidden="true" /></span>
-        <span>{country}</span>
-      </label>)}
-    </div>
-  </aside>
 }
 
 function AdminSubmissionEvidence({ submission }: { submission: AdminSubmission }) {
@@ -600,11 +613,13 @@ export function AdminPayoutDecision({
   selection,
   onViewCountChange,
   onAudienceChange,
+  audienceReadOnly = false,
 }: {
   submission: AdminSubmission
   selection: { viewCountThreshold: string; usAudiencePercent: string }
   onViewCountChange: (value: string) => void
   onAudienceChange: (value: string) => void
+  audienceReadOnly?: boolean
 }) {
   const estimate = getSubmissionPayoutEstimate({
     viewCountThreshold: Number(selection.viewCountThreshold),
@@ -615,7 +630,7 @@ export function AdminPayoutDecision({
     <div className="mt-4 rounded-xl bg-zinc-50 p-3"><p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-zinc-400">Creator submitted</p><div className="mt-2 flex flex-wrap gap-x-5 gap-y-1 text-xs text-zinc-600"><span><strong className="font-semibold text-zinc-900">{submission.viewCountThreshold ? formatViewCount(submission.viewCountThreshold) : 'Not recorded'}</strong> views</span><span><strong className="font-semibold text-zinc-900">{submission.usAudiencePercent != null ? `${submission.usAudiencePercent}% Tier 1` : '20%+ combined Tier-1'}</strong> audience</span></div></div>
     <div className="mt-4 grid gap-3 sm:grid-cols-2">
       <label className="grid gap-2 text-xs font-semibold text-zinc-700">Admin-approved views{submission.sprintTerms ? <input type="number" min="0" max="2000000000" className="creator-field" value={selection.viewCountThreshold} onChange={event => onViewCountChange(event.target.value)} /> : <Select value={selection.viewCountThreshold ? String(selection.viewCountThreshold) : undefined} onValueChange={onViewCountChange}><SelectTrigger aria-label="Admin-approved view count"><SelectValue placeholder="Choose final views" /></SelectTrigger><SelectContent>{CREATOR_VIEW_THRESHOLDS.map((threshold) => <SelectItem key={threshold.views} value={String(threshold.views)}>{threshold.label} views</SelectItem>)}</SelectContent></Select>}</label>
-      <label className="grid gap-2 text-xs font-semibold text-zinc-700">Admin-approved audience{submission.sprintTerms ? <input type="number" min="0" max="100" step="0.1" className="creator-field" value={selection.usAudiencePercent} onChange={event => onAudienceChange(event.target.value)} /> : <Select value={selection.usAudiencePercent} onValueChange={onAudienceChange}><SelectTrigger aria-label="Admin-approved audience"><SelectValue /></SelectTrigger><SelectContent><SelectItem value="base">20%+ combined Tier-1 · base</SelectItem>{CREATOR_TIER1_AUDIENCE_TIERS.map((percentage) => <SelectItem key={percentage} value={String(percentage)}>{percentage === 40 ? '40%+ Tier 1' : `${percentage}% Tier 1`}</SelectItem>)}</SelectContent></Select>}</label>
+      <label className="grid gap-2 text-xs font-semibold text-zinc-700">Admin-approved audience{submission.sprintTerms ? <input type="number" min="0" max="100" step="0.1" className="creator-field" value={selection.usAudiencePercent} readOnly={audienceReadOnly} aria-readonly={audienceReadOnly} onChange={event => onAudienceChange(event.target.value)} /> : <Select value={selection.usAudiencePercent} onValueChange={onAudienceChange}><SelectTrigger aria-label="Admin-approved audience"><SelectValue /></SelectTrigger><SelectContent><SelectItem value="base">20%+ combined Tier-1 · base</SelectItem>{CREATOR_TIER1_AUDIENCE_TIERS.map((percentage) => <SelectItem key={percentage} value={String(percentage)}>{percentage === 40 ? '40%+ Tier 1' : `${percentage}% Tier 1`}</SelectItem>)}</SelectContent></Select>}</label>
     </div>
     {submission.sprintTerms ? <p className="mt-3 text-xs leading-5 text-zinc-500">Automatic payout uses the saved rates for <strong className="font-semibold text-zinc-700">{submission.sprintName || (submission.sprintTerms.mgcSourceCampaignId ? 'Mogging Detailed Analysis MGC' : 'this submission’s campaign')}</strong>.</p> : null}
     <p className="mt-3 text-[11px] leading-5 text-zinc-500">These admin-approved values override the creator’s selection for payment.{estimate?.isCapped ? ' The $325 payout cap is applied.' : ''}</p>

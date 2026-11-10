@@ -21,6 +21,8 @@ const immutableAssetPaths = [
 ]
 
 const nextConfig: NextConfig = {
+  serverExternalPackages: ['ffmpeg-static'],
+  outputFileTracingIncludes: { '/api/cron/creator-audience': ['./node_modules/ffmpeg-static/ffmpeg'] },
   distDir: process.env.NEXT_DIST_DIR || '.next',
   reactStrictMode: true,
   i18n: {
