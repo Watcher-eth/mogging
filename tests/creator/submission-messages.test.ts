@@ -9,14 +9,14 @@ if (testUrl && !['127.0.0.1', 'localhost'].includes(new URL(testUrl).hostname)) 
 const sql = postgres(testUrl || 'postgres://watcher@127.0.0.1:55432/analytics_test', { max: 1 })
 const db = drizzle(sql, { schema })
 if (testUrl) mock.module('@/lib/db', () => ({ db, schema }))
-const { getSubmissionMessages, markSubmissionMessagesRead, sendSubmissionMessage, submissionMessageSchema } = await import('@/lib/creator/submission-messages')
+const { getCreatorSubmissionNotifications, getSubmissionMessages, markSubmissionMessagesRead, sendSubmissionMessage, submissionMessageSchema } = await import('@/lib/creator/submission-messages')
 const creator = { userId: 'creator', role: 'creator' as const }
 const team = { userId: 'admin', role: 'team' as const }
 
 describe.skipIf(!testUrl)('submission chat PostgreSQL integration', () => {
 beforeAll(async () => {
   await sql.unsafe(`CREATE TEMP TABLE creator_profiles (id text PRIMARY KEY, user_id text);
-    CREATE TEMP TABLE creator_submissions (id text PRIMARY KEY, creator_profile_id text, status text, creator_messages_read_at timestamp, team_messages_read_at timestamp);
+    CREATE TEMP TABLE creator_submissions (id text PRIMARY KEY, creator_profile_id text, status text, is_draft boolean NOT NULL DEFAULT false, creator_messages_read_at timestamp, team_messages_read_at timestamp);
     CREATE TEMP TABLE creator_submission_messages (id text PRIMARY KEY, submission_id text REFERENCES creator_submissions(id) ON DELETE CASCADE, author_user_id text, author_role text, body text, created_at timestamp DEFAULT now());
     INSERT INTO creator_profiles VALUES ('profile', 'creator'), ('other-profile', 'other');
     INSERT INTO creator_submissions (id, creator_profile_id, status) VALUES ('submission', 'profile', 'in_review'), ('other-submission', 'other-profile', 'pending');`)
@@ -72,6 +72,28 @@ test('unread counts exclude outgoing messages and read positions cannot move bac
   expect((await getSubmissionMessages('submission', team)).submission.unreadMessages).toBe(56)
   await expect(markSubmissionMessagesRead('other-submission', creator, latest.id)).rejects.toMatchObject({ status: 404 })
   await expect(markSubmissionMessagesRead('other-submission', team, latest.id)).rejects.toMatchObject({ status: 404 })
+})
+
+test('creator notifications include each incoming message once and follow the conversation read status', async () => {
+  await sql.unsafe("INSERT INTO creator_submissions (id, creator_profile_id, status, is_draft) VALUES ('notification-thread', 'profile', 'pending', false), ('draft-thread', 'profile', 'pending', true)")
+  const first = { id: crypto.randomUUID(), body: 'First message' }
+  const second = { id: crypto.randomUUID(), body: 'Second message' }
+  await sendSubmissionMessage('notification-thread', team, first)
+  await sendSubmissionMessage('notification-thread', team, first)
+  await sendSubmissionMessage('notification-thread', team, second)
+  await sendSubmissionMessage('notification-thread', creator, { id: crypto.randomUUID(), body: 'My reply' })
+  await sendSubmissionMessage('other-submission', team, { id: crypto.randomUUID(), body: 'Another creator’s message' })
+  await sendSubmissionMessage('draft-thread', team, { id: crypto.randomUUID(), body: 'A draft message' })
+
+  const notifications = await getCreatorSubmissionNotifications('profile')
+  const thread = notifications.filter(item => item.href === '/creator/submissions?submission=notification-thread')
+  expect(thread.map(item => item.description)).toEqual(['Second message', 'First message'])
+  expect(thread.every(item => item.unread)).toBe(true)
+  expect(notifications.some(item => item.href.endsWith('other-submission') || item.href.endsWith('draft-thread'))).toBe(false)
+
+  await markSubmissionMessagesRead('notification-thread', creator, second.id)
+  const afterRead = await getCreatorSubmissionNotifications('profile')
+  expect(afterRead.filter(item => item.href === thread[0].href).map(item => item.unread)).toEqual([false, false])
 })
 
 })

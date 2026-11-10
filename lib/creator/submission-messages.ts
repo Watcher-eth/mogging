@@ -2,6 +2,7 @@ import { and, desc, eq, lt, or, sql } from 'drizzle-orm'
 import { z } from 'zod'
 import { db, schema } from '@/lib/db'
 import { ApiError } from '@/lib/api/http'
+import type { CreatorSubmissionNotification } from '@/lib/creator/announcements'
 
 export const submissionReadSchema = z.object({ messageId: z.string().min(1).max(100) })
 export const submissionMessageSchema = z.object({ id: z.string().uuid(), body: z.string().trim().min(1).max(2000) })
@@ -13,6 +14,31 @@ export function submissionUnreadCount(role: SubmissionMessageActor['role']) {
   const table = schema.creatorSubmissionMessages
   const readAt = role === 'creator' ? schema.creatorSubmissions.creatorMessagesReadAt : schema.creatorSubmissions.teamMessagesReadAt
   return sql<number>`(select count(*)::integer from ${table} where ${table.submissionId} = ${schema.creatorSubmissions.id} and ${table.authorRole} = ${role === 'creator' ? 'team' : 'creator'} and ${table.createdAt} > coalesce(${readAt}, '-infinity'::timestamp))`
+}
+
+export async function getCreatorSubmissionNotifications(profileId: string): Promise<CreatorSubmissionNotification[]> {
+  const message = schema.creatorSubmissionMessages
+  const submission = schema.creatorSubmissions
+  const rows = await db.select({
+    id: message.id,
+    submissionId: message.submissionId,
+    preview: sql<string>`left(${message.body}, 160)`,
+    createdAt: message.createdAt,
+    unread: sql<boolean>`${message.createdAt} > coalesce(${submission.creatorMessagesReadAt}, '-infinity'::timestamp)`,
+  }).from(message)
+    .innerJoin(submission, eq(message.submissionId, submission.id))
+    .where(and(eq(submission.creatorProfileId, profileId), eq(submission.isDraft, false), eq(message.authorRole, 'team')))
+    .orderBy(desc(message.createdAt), desc(message.id))
+    .limit(50)
+
+  return rows.map(row => ({
+    id: `submission-message:${row.id}`,
+    title: 'New submission message',
+    description: row.preview,
+    publishedAt: row.createdAt.toISOString(),
+    href: `/creator/submissions?submission=${encodeURIComponent(row.submissionId)}`,
+    unread: row.unread,
+  }))
 }
 
 export async function markSubmissionMessagesRead(id: string, actor: SubmissionMessageActor, messageId: string) {

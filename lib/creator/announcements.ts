@@ -1,9 +1,18 @@
+export const creatorNotificationsPath = '/api/creator/announcements'
+
 export type CreatorAnnouncement = {
   id: string
   title: string
   description: string
   publishedAt: string
   href: string
+}
+
+export type CreatorSubmissionNotification = CreatorAnnouncement & { unread: boolean }
+
+export type CreatorNotificationsFeed = {
+  announcements: CreatorAnnouncement[]
+  messages: CreatorSubmissionNotification[]
 }
 
 export const creatorProgramLaunch: CreatorAnnouncement = {

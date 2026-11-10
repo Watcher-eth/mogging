@@ -3,6 +3,7 @@ import { useSWRConfig } from 'swr'
 import useSWRInfinite from 'swr/infinite'
 import { ArrowUp, Loader2, MessageCircle } from '@/components/ui/mogging-glyphs'
 import { apiGet, apiPatch, apiPost } from '@/lib/api/client'
+import { creatorNotificationsPath } from '@/lib/creator/announcements'
 import { cn } from '@/lib/utils'
 
 type Message = { id: string; authorRole: 'creator' | 'team'; body: string; createdAt: string }
@@ -49,11 +50,13 @@ export function SubmissionConversation({ submissionId, viewerRole, className, ac
     readInFlight.current = true
     void apiPatch(endpoint, { messageId: latest.id }).then(async () => {
       await Promise.all([
-        refreshDashboard(key => typeof key === 'string' && ['/api/creator', '/api/admin/creator'].some(path => key === path || key.startsWith(path + '?'))),
+        refreshDashboard(key => Array.isArray(key)
+          ? viewerRole === 'creator' && key[0] === creatorNotificationsPath
+          : typeof key === 'string' && ['/api/creator', '/api/admin/creator'].some(path => key === path || key.startsWith(path + '?'))),
         mutate(),
       ])
     }).catch(() => { /* Keep unread counts; the next poll retries the read receipt. */ }).finally(() => { readInFlight.current = false })
-  }, [active, atBottom, data, endpoint, refreshDashboard, mutate])
+  }, [active, atBottom, data, endpoint, refreshDashboard, mutate, viewerRole])
 
   async function send() {
     const body = draft.trim()

@@ -3,14 +3,14 @@ import { useEffect, useState, type CSSProperties } from 'react'
 import useSWR from 'swr'
 import { TextMorph } from 'torph/react'
 import { Dialog, DialogClose, DialogContent, DialogDescription, DialogTitle, DialogTrigger } from '@/components/ui/dialog'
+import { MessageCircle } from '@/components/ui/mogging-glyphs'
 import { MoggingIcon } from '@/components/ui/mogging-icon'
 import { useSystemReducedMotion } from '@/hooks/use-system-reduced-motion'
 import { apiGet } from '@/lib/api/client'
-import type { CreatorAnnouncement } from '@/lib/creator/announcements'
+import { creatorNotificationsPath, type CreatorNotificationsFeed } from '@/lib/creator/announcements'
 import styles from './creator-notifications.module.css'
 
-const endpoint = '/api/creator/announcements'
-const noAnnouncements: CreatorAnnouncement[] = []
+const emptyFeed: CreatorNotificationsFeed = { announcements: [], messages: [] }
 const dateFormat = new Intl.DateTimeFormat('en-US', { month: 'short', day: 'numeric', timeZone: 'UTC' })
 
 function readSeen(key: string): string[] {
@@ -27,14 +27,16 @@ export function CreatorNotifications({ userId }: { userId: string }) {
   const storageKey = `creator-announcements:seen:${userId}`
   const [seen, setSeen] = useState(() => readSeen(storageKey))
   const reduced = useSystemReducedMotion()
-  const { data, error, mutate } = useSWR<{ announcements: CreatorAnnouncement[] }>(
-    [endpoint, userId],
+  const { data, error, mutate } = useSWR<CreatorNotificationsFeed>(
+    [creatorNotificationsPath, userId],
     ([path]: [string, string]) => apiGet(path),
-    { revalidateOnFocus: true, dedupingInterval: 30_000 },
+    { refreshInterval: 15_000, revalidateOnFocus: true, dedupingInterval: 5_000 },
   )
-  const announcements = data?.announcements ?? noAnnouncements
-  const unread = announcements.filter(item => !seen.includes(item.id))
-  const count = unread.length
+  const { announcements, messages = emptyFeed.messages } = data ?? emptyFeed
+  const unreadAnnouncements = announcements.filter(item => !seen.includes(item.id))
+  const unreadMessages = messages.filter(item => item.unread && !seen.includes(item.id))
+  const count = unreadAnnouncements.length + unreadMessages.length
+  const notifications = [...messages, ...announcements].sort((a, b) => Date.parse(b.publishedAt) - Date.parse(a.publishedAt))
   const badge = count > 9 ? '9+' : String(count)
 
   useEffect(() => {
@@ -47,14 +49,14 @@ export function CreatorNotifications({ userId }: { userId: string }) {
 
   useEffect(() => {
     if (!open || count === 0) return
-    const ids = announcements.map(item => item.id)
+    const ids = [...announcements, ...messages].map(item => item.id)
     const next = [...new Set([...ids, ...readSeen(storageKey), ...seen])].slice(0, 120)
     try { localStorage.setItem(storageKey, JSON.stringify(next)) } catch { /* Keep read state in memory. */ }
     setSeen(next)
-  }, [announcements, count, open, seen, storageKey])
+  }, [announcements, count, messages, open, seen, storageKey])
 
   return (
-    <Dialog open={open} onOpenChange={setOpen}>
+    <Dialog open={open} onOpenChange={nextOpen => { setOpen(nextOpen); if (nextOpen) void mutate() }}>
       <DialogTrigger type="button" aria-label={count ? `Notifications, ${count} unread` : 'Notifications'} className={styles.trigger}>
         <MoggingIcon name="reminder" size={21} />
         {count > 0 && <span aria-hidden="true" className={styles.badge}>{reduced ? badge : <TextMorph>{badge}</TextMorph>}</span>}
@@ -62,15 +64,15 @@ export function CreatorNotifications({ userId }: { userId: string }) {
       <DialogContent className={`creator-dialog ${styles.dialog}`} overlayClassName="bg-black/10 backdrop-blur-[2px]" data-creator-notifications="">
         <header className={styles.header}>
           <DialogTitle>Notifications</DialogTitle>
-          <DialogDescription className="text-xs leading-5">Announcements from Mogging</DialogDescription>
+          <DialogDescription className="text-xs leading-5">Campaign updates and submission messages</DialogDescription>
         </header>
-        {announcements.length > 0 ? (
+        {notifications.length > 0 ? (
           <ul className={styles.list}>
-            {announcements.map((item, index) => (
+            {notifications.map((item, index) => (
               <li key={item.id} style={{ '--announcement-delay': `${Math.min(index, 4) * 26}ms` } as CSSProperties}>
                 <DialogClose asChild>
                   <Link href={item.href} prefetch={false} className={styles.row}>
-                    <span className={styles.symbol}><MoggingIcon name="campaign" size={17} /></span>
+                    <span className={styles.symbol}>{'unread' in item ? <MessageCircle size={17} aria-hidden="true" /> : <MoggingIcon name="campaign" size={17} />}</span>
                     <span className={styles.copy}>
                       <span className={styles.title}>{item.title}</span>
                       <span>{item.description}</span>
@@ -82,9 +84,9 @@ export function CreatorNotifications({ userId }: { userId: string }) {
             ))}
           </ul>
         ) : error ? (
-          <p className={styles.status} role="status">Couldn’t load announcements. <button type="button" onClick={() => void mutate()}>Try again</button></p>
+          <p className={styles.status} role="status">Couldn’t load notifications. <button type="button" onClick={() => void mutate()}>Try again</button></p>
         ) : (
-          <p className={styles.status} role="status">{data ? 'You’re all caught up.' : 'Loading announcements…'}</p>
+          <p className={styles.status} role="status">{data ? 'You’re all caught up.' : 'Loading notifications…'}</p>
         )}
       </DialogContent>
     </Dialog>
