@@ -1,4 +1,5 @@
 import { creatorRetainerTerms } from './retainer'
+import { campaignPublishingCopy } from './campaign-publishing-policy'
 import { lockCampaignBudget } from './campaign-budget-service'
 import { campaignAccessSql } from './campaign-access-sql'
 import { canSeeCampaign, DEFAULT_CAMPAIGN_AUDIENCE } from './campaign-access'
@@ -32,7 +33,7 @@ export async function getCampaignPreview(id: string): Promise<CampaignPreview | 
   )).limit(1)
   if (!row) return null
   const { terms, ...preview } = row
-  return { ...preview, budgetCents: row.budgetCents + (launchCampaign(terms) ? terms.bonusBudgetCents ?? 0 : 0), startsAt: row.startsAt.toISOString(), endsAt: row.endsAt.toISOString() }
+  return { ...preview, description: campaignPublishingCopy(preview.description), budgetCents: row.budgetCents + (launchCampaign(terms) ? terms.bonusBudgetCents ?? 0 : 0), startsAt: row.startsAt.toISOString(), endsAt: row.endsAt.toISOString() }
 }
 
 export async function listCreatorSprints(
@@ -102,6 +103,7 @@ export async function listCreatorSprints(
       }
     return {
       ...row,
+      description: campaignPublishingCopy(row.description),
       audience: admin ? row.audience : undefined,
       budgetCents: spendingById.get(row.id)?.budgetCents ?? row.budgetCents,
       terms: creatorRetainerTerms({ ...row.terms, bonusBudgetCents: spendingById.get(row.id)?.bonusBudgetCents ?? row.terms.bonusBudgetCents }, row.status === 'published' && row.startsAt <= now && row.endsAt > now ? profile?.retainerTerms : undefined, now),

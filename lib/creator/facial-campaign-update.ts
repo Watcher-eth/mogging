@@ -8,7 +8,7 @@ export const TIKTOK_ANCHOR_URL = TIKTOK_CAMPAIGN_ANCHOR_URL
 export const ANCHOR_REQUIREMENT = CAMPAIGN_ANCHOR_REQUIREMENT
 export const IMMEDIATE_SUBMISSION_REQUIREMENT = 'I am submitting this video as soon as it is uploaded to the social media platform. I will upload fresh video analytics at every view milestone.'
 export const IMMEDIATE_SUBMISSION_GUIDANCE = 'Submit this video as soon as you upload it to the social media platform. Do not wait for views or analytics. This lets us start tracking your video immediately. Upload a fresh analytics recording at each view milestone to claim earnings.'
-export const FACIAL_CAMPAIGN_DESCRIPTION = 'Open the new Creator Studio, select a format and model, and generate a detailed facial analysis video. Download the generated video, upload it to your social media platform using the required TikTok anchor, then submit the published video link to this campaign immediately. Upload fresh video analytics at each view milestone.'
+export const FACIAL_CAMPAIGN_DESCRIPTION = 'Open the new Creator Studio, select a format and model, and generate a detailed facial analysis video. Download the generated video, upload it to your social media platform using the Mogging TikTok anchor if your TikTok posting account has 1,000 or more followers, then submit the published video link to this campaign immediately. Upload fresh video analytics at each view milestone.'
 export const FACIAL_TIER_A_OVERRIDES: Record<number, number> = { 50_000: 2000, 500_000: 10_500, 1_000_000: 20_000 }
 export const FACIAL_CAMPAIGN_EXAMPLES = [
   { url: 'https://www.tiktok.com/@moggingcom/video/7706306978384989471', label: '@moggingcom · 1' },
@@ -42,7 +42,7 @@ export function replacementFacialTerms(original: SprintTerms): SprintTerms {
     shortDescription: FACIAL_CAMPAIGN_DESCRIPTION,
     elements: [
       { title: 'Open the new Creator Studio', detail: 'Go to the new Creator Studio and choose a format and model for your detailed facial analysis.' },
-      { title: 'Generate and upload your video', detail: 'Generate the detailed facial analysis video, download it, and upload it to your social media platform using the required Mogging TikTok anchor link.' },
+      { title: 'Generate and upload your video', detail: 'Generate the detailed facial analysis video, download it, and upload it to your social media platform using the Mogging TikTok anchor if your TikTok posting account has 1,000 or more followers.' },
       { title: 'Submit immediately, then add analytics', detail: IMMEDIATE_SUBMISSION_GUIDANCE },
     ],
     requirements: [...format.requirements.map(rule => rule.startsWith('Provide one continuous physical recording') ? 'At every view milestone, provide one continuous physical recording of this post’s analytics filmed with a second device; show the username, post, views, traffic sources and audience locations without cuts or edits.' : rule), IMMEDIATE_SUBMISSION_REQUIREMENT],

@@ -1,3 +1,5 @@
+import { campaignPublishingCopy, campaignPublishingRuleLabel } from './campaign-publishing-policy'
+
 // Retained to hide mandatory-anchor wording in historical campaign snapshots.
 export const TIKTOK_ANCHOR_REQUIREMENT =
   'For this TikTok account with 1,000+ followers: accept the Mogging TikTok One project before posting, then use Content disclosure → Disclose post content → Branded content → Link project to link this video to Mogging with its anchor.'
@@ -8,7 +10,7 @@ export const CREATOR_REREVIEW_GUIDANCE = 'Yes—you can earn more when the same 
 export function creatorFormatElement(element: { title: string; detail: string }) {
   return element.title === 'Closing CTA'
     ? { title: 'Early CTA · 2–3 seconds', detail: CREATOR_CTA_GUIDANCE }
-    : element
+    : { ...element, detail: campaignPublishingCopy(element.detail) }
 }
 
 export function creatorCampaignRule(rule: string): string | null {
@@ -17,7 +19,7 @@ export function creatorCampaignRule(rule: string): string | null {
   if (rule === 'Tag @moggingcom in the post or caption') return 'Tag @moggingcom in the post caption'
   return rule === 'Include your Mogging referral code in your bio and caption.'
     ? 'Include your Mogging referral code in your caption.'
-    : rule
+    : campaignPublishingRuleLabel(rule)
 }
 
 export function creatorCampaignRules(rules: readonly string[]) {

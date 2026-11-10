@@ -1,4 +1,4 @@
-import { CAMPAIGN_PUBLISHING_DEADLINE } from '@/lib/creator/campaign-publishing-policy'
+import { CAMPAIGN_ANCHOR_GUIDANCE, CAMPAIGN_LINKS_EXEMPTION, CAMPAIGN_PUBLISHING_DEADLINE } from '@/lib/creator/campaign-publishing-policy'
 import { useEffect, useRef, useState } from 'react'
 import Link from 'next/link'
 import Image from 'next/image'
@@ -14,8 +14,8 @@ import styles from './studio-requirements.module.css'
 
 const requirements = [
   { title: 'Submit immediately after posting', description: 'Submit your published post link right away so we can start tracking its data. Upload fresh analytics at each campaign milestone.' },
-  { title: 'Keep your Mogging link in bio', description: 'Posting accounts with 1,000 or more followers must have a Mogging link in their bio. Accounts below 1,000 followers are exempt from the bio-link requirement only.' },
-  { title: 'Add the Mogging anchor', description: 'Every campaign requires publishing with the Mogging TikTok anchor through the campaign link below.' },
+  { title: 'Keep your Mogging link in bio', description: `Posting accounts with 1,000 or more followers must have a Mogging link in their bio. ${CAMPAIGN_LINKS_EXEMPTION}` },
+  { title: 'Add the Mogging anchor', description: `${CAMPAIGN_ANCHOR_GUIDANCE} ${CAMPAIGN_LINKS_EXEMPTION}` },
 ] as const
 
 export function StudioRequirementsReminder() {

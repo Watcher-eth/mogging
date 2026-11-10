@@ -1,3 +1,4 @@
+import { campaignPublishingCopy } from '@/lib/creator/campaign-publishing-policy'
 import { campaignBudgetState } from '@/lib/creator/campaign-budget-state'
 import { CampaignSubmissionBudget } from '@/components/creator/campaign-submission-budget'
 import { campaignVersionGroups } from '@/lib/creator/campaign-versions'
@@ -356,7 +357,7 @@ function SprintDetail({ sprint }: { sprint: CreatorSprint }) {
                               {format.name}
                             </span>
                             <span className="mt-1 block text-xs leading-5 text-zinc-500">
-                              {format.shortDescription}
+                              {campaignPublishingCopy(format.shortDescription)}
                             </span>
                           </span>
                           <span className="flex shrink-0 items-center gap-1 text-xs font-medium text-[#00A8EF]">
@@ -372,7 +373,7 @@ function SprintDetail({ sprint }: { sprint: CreatorSprint }) {
                           </p>
                           <DialogTitle className="creator-dialog-title">{format.name}</DialogTitle>
                           <DialogDescription>
-                            {format.shortDescription}
+                            {campaignPublishingCopy(format.shortDescription)}
                           </DialogDescription>
                         </DialogHeader>
                         <Link href="/creator/cta-generator" target="_blank" className="text-xs font-medium text-[#00A8EF] underline underline-offset-4">

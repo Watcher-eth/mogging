@@ -1,3 +1,4 @@
+import { creatorFormatElement } from '@/lib/creator/post-guidance'
 import { CampaignAnchorLink, ImmediateSubmissionNotice } from './campaign-publishing-requirements'
 import { FACIAL_CAMPAIGN_EXAMPLES } from '@/lib/creator/facial-campaign-update'
 import { campaignBudgetState } from '@/lib/creator/campaign-budget-state'
@@ -70,7 +71,7 @@ export function LaunchCampaignDetail({
     ],
     [
       "Are videos and slideshows accepted?",
-      sprint.terms.submitOnPublish ? "This campaign requires a detailed facial analysis video generated in the new Creator Studio. Select a format and model, generate your video, then upload it using the required anchor." : "Yes. Use the format that works for your audience, follow this campaign’s brief, and keep the post public and original. The examples are inspiration; do not repost someone else’s content.",
+      sprint.terms.submitOnPublish ? "This campaign requires a detailed facial analysis video generated in the new Creator Studio. Select a format and model, generate your video, then use the Mogging anchor if your TikTok posting account has 1,000 or more followers." : "Yes. Use the format that works for your audience, follow this campaign’s brief, and keep the post public and original. The examples are inspiration; do not repost someone else’s content.",
     ],
     [
       "What happens after I submit?",
@@ -161,7 +162,7 @@ export function LaunchCampaignDetail({
               <ShieldCheck size={17} />
               <h3>Content Requirements</h3>
             </div>
-            <CampaignRequirementList items={format.elements.map(item => ({ id: item.title, ...item }))} />
+            <CampaignRequirementList items={format.elements.map(creatorFormatElement).map(item => ({ id: item.title, ...item }))} />
           </div>
           <div className={styles.termsCard}>
             <div className={styles.cardTitle}>

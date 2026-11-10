@@ -47,3 +47,14 @@ test('a video submitted during grace cannot be rejected for missing either new l
   expect(sprintReviewItems(terms, format, true, new Date(deadline - 1)).some(item => item.label === CAMPAIGN_ANCHOR_REQUIREMENT)).toBe(true)
   expect(before.filter(item => item.id.startsWith('element-'))).toEqual(after.filter(item => item.id.startsWith('element-')))
 })
+
+test('saved campaign anchor rules show the follower exemption and retain their review ID', () => {
+  const legacyRule = 'I published this video using the Mogging TikTok anchor through the required campaign link.'
+  const terms = withCampaignPublishingRules(defaultCreatorSprintTerms())
+  const stored = { ...terms, rules: terms.rules.map(rule => rule === CAMPAIGN_ANCHOR_REQUIREMENT ? legacyRule : rule) }
+  const format = terms.formats[0].id
+  expect(sprintReviewItems(stored, format, false, new Date(deadline))).toEqual(sprintReviewItems(terms, format, false, new Date(deadline)))
+  expect(sprintReviewItems(stored, format, false, new Date(deadline - 1))).toEqual(sprintReviewItems(terms, format, false, new Date(deadline - 1)))
+  expect(CAMPAIGN_ANCHOR_REQUIREMENT).toContain('1,000 or more followers')
+  expect(ANCHOR_GRACE_ACKNOWLEDGEMENT).toContain('Accounts below 1,000 followers are exempt')
+})
