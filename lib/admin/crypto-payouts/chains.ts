@@ -8,6 +8,9 @@ import { ApiError } from '@/lib/api/http'
 import { payoutNetworks, usdcUnits, type CryptoBatchProof, type EvmBatchProof, type PayoutChain, type PayoutOutput } from './shared'
 
 const solanaMainnet = '5eykt4UsFv8P8NJdTREpY1vzqKqZKvdpKuc147dw2N9d'
+const lighthouseProgram = new PublicKey('L2TExMFKdjpN9kozasaurPirfHy9P8sbXoAN1qA3S95')
+// Lighthouse account-info and token-account assertions (single and multi).
+const lighthousePayoutAssertions = new Set([5, 6, 9, 10])
 const memoProgram = new PublicKey('MemoSq4gqABAXKb96qnH8TysNcWxMyWCqXgDLGmfcHr')
 const transferEvent = parseAbiItem('event Transfer(address indexed from, address indexed to, uint256 value)')
 const publicPayoutRpc = {
@@ -137,6 +140,7 @@ export function signedSolanaProof(proof: Extract<CryptoBatchProof, { chain: 'sol
       reason = 'The wallet changed an instruction or account in the reviewed payout.'
       // Phantom may set its approved network fee while signing. All payout instructions stay exact.
       const reviewed = new Transaction({ feePayer: original.feePayer, recentBlockhash: original.recentBlockhash })
+      const originalAccounts = new Set(original.compileMessage().accountKeys.map(key => key.toBase58()))
       const payouts = original.instructions.filter(instruction => !instruction.programId.equals(ComputeBudgetProgram.programId))
       let payoutIndex = 0
       for (const instruction of tx.instructions) {
@@ -144,6 +148,15 @@ export function signedSolanaProof(proof: Extract<CryptoBatchProof, { chain: 'sol
           const kind = ComputeBudgetInstruction.decodeInstructionType(instruction)
           if (instruction.keys.length || !['SetComputeUnitPrice', 'SetComputeUnitLimit'].includes(kind)) throw Error()
           reviewed.add(instruction)
+        } else if (instruction.programId.equals(lighthouseProgram)) {
+          const [target] = instruction.keys
+          if (instruction.keys.length !== 1 || !originalAccounts.has(target.pubkey.toBase58())
+            || !lighthousePayoutAssertions.has(instruction.data[0])) throw Error()
+          reviewed.add(new TransactionInstruction({
+            programId: lighthouseProgram,
+            keys: [{ pubkey: target.pubkey, isSigner: false, isWritable: false }],
+            data: instruction.data,
+          }))
         } else {
           if (!payouts[payoutIndex]) throw Error()
           reviewed.add(payouts[payoutIndex++])

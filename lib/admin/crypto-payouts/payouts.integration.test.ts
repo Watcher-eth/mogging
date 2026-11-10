@@ -1,5 +1,5 @@
 import { afterAll, beforeAll, expect, test } from 'bun:test'
-import { ComputeBudgetProgram, Keypair, Message, Transaction, TransactionInstruction, VersionedTransaction } from '@solana/web3.js'
+import { ComputeBudgetProgram, Keypair, Message, PublicKey, Transaction, TransactionInstruction, VersionedTransaction } from '@solana/web3.js'
 import { encodeEventTopics, erc20Abi, toHex, type Address } from 'viem'
 import { eq } from 'drizzle-orm'
 import bs58 from 'bs58'
@@ -133,6 +133,20 @@ test('Solana accepts wallet fee adjustments and rejects altered payout messages 
   const reorderedRaw = Buffer.from(reordered.serialize()).toString('base64')
   expect(signedSolanaProof(proof, [reorderedRaw])).toMatchObject({ transfers: [{ raw: reorderedRaw }] })
 
+  const lighthouse = new PublicKey('L2TExMFKdjpN9kozasaurPirfHy9P8sbXoAN1qA3S95')
+  const withAssertion = (discriminator: number, target = signer.publicKey) => {
+    const tx = Transaction.from(adjusted.serialize()).add(new TransactionInstruction({
+      programId: lighthouse,
+      keys: [{ pubkey: target, isSigner: false, isWritable: false }],
+      data: Buffer.from([discriminator, 0, 0]),
+    }))
+    tx.sign(signer)
+    return encode(tx)
+  }
+  const guarded = withAssertion(6)
+  expect(signedSolanaProof(proof, guarded)).toMatchObject({ transfers: [{ raw: guarded[0] }] })
+  expect(() => signedSolanaProof(proof, withAssertion(0))).toThrow('did not match the reviewed batch')
+  expect(() => signedSolanaProof(proof, withAssertion(6, Keypair.generate().publicKey))).toThrow('did not match the reviewed batch')
   for (const change of ['payment', 'blockhash', 'extra instruction', 'signature']) {
     const changed = Transaction.from(adjusted.serialize())
     if (change === 'payment') changed.instructions[2].data = Buffer.from('different payment')
