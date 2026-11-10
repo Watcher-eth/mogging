@@ -1,3 +1,4 @@
+import { isDeepStrictEqual } from 'node:util'
 import { ComputeBudgetInstruction, ComputeBudgetProgram, Connection, PublicKey, Transaction, TransactionInstruction } from '@solana/web3.js'
 import { createAssociatedTokenAccountIdempotentInstruction, createTransferCheckedInstruction, getAssociatedTokenAddressSync } from '@solana/spl-token'
 import bs58 from 'bs58'
@@ -104,14 +105,36 @@ export async function prepareChainProof(chain: PayoutChain, id: string, sender: 
   return { chain, transfers }
 }
 
+function solanaMessageContents(transaction: Transaction) {
+  const message = transaction.compileMessage()
+  return {
+    blockhash: message.recentBlockhash,
+    payer: message.accountKeys[0]?.toBase58(),
+    accountCount: message.accountKeys.length,
+    accounts: new Map(message.accountKeys.map((key, index) => [
+      key.toBase58(), [message.isAccountSigner(index), message.isAccountWritable(index)],
+    ])),
+    instructions: message.instructions.map(instruction => ({
+      program: message.accountKeys[instruction.programIdIndex].toBase58(),
+      accounts: instruction.accounts.map(index => message.accountKeys[index].toBase58()),
+      data: instruction.data,
+    })),
+  }
+}
+
 export function signedSolanaProof(proof: Extract<CryptoBatchProof, { chain: 'solana' }>, signed: string[]): CryptoBatchProof {
   if (signed.length !== proof.transfers.length) throw new ApiError(400, 'The wallet did not sign every transaction')
   return { chain: 'solana', transfers: proof.transfers.map((transfer, index) => {
+    let reason = 'The wallet returned an unreadable transaction.'
     try {
       const raw = Buffer.from(signed[index], 'base64')
       const tx = Transaction.from(raw)
       const original = Transaction.from(Buffer.from(transfer.unsigned, 'base64'))
-      if (!tx.signature || !tx.verifySignatures()) throw Error()
+      reason = 'The treasury signature could not be verified.'
+      if (!tx.signature || !tx.serialize().equals(raw)) throw Error()
+      reason = 'The wallet changed the blockhash or fee payer. Review a fresh batch.'
+      if (tx.recentBlockhash !== original.recentBlockhash || !tx.feePayer?.equals(original.feePayer!)) throw Error()
+      reason = 'The wallet changed an instruction or account in the reviewed payout.'
       // Phantom may set its approved network fee while signing. All payout instructions stay exact.
       const reviewed = new Transaction({ feePayer: original.feePayer, recentBlockhash: original.recentBlockhash })
       const payouts = original.instructions.filter(instruction => !instruction.programId.equals(ComputeBudgetProgram.programId))
@@ -126,9 +149,9 @@ export function signedSolanaProof(proof: Extract<CryptoBatchProof, { chain: 'sol
           reviewed.add(payouts[payoutIndex++])
         }
       }
-      if (payoutIndex !== payouts.length || !tx.serializeMessage().equals(reviewed.serializeMessage())) throw Error()
-      return { ...transfer, raw: tx.serialize().toString('base64'), hash: bs58.encode(tx.signature) }
-    } catch { throw new ApiError(400, 'A signed Solana transaction did not match the reviewed batch') }
+      if (payoutIndex !== payouts.length || !isDeepStrictEqual(solanaMessageContents(tx), solanaMessageContents(reviewed))) throw Error()
+      return { ...transfer, raw: raw.toString('base64'), hash: bs58.encode(tx.signature) }
+    } catch { throw new ApiError(400, `A signed Solana transaction did not match the reviewed batch. ${reason}`) }
   }) }
 }
 

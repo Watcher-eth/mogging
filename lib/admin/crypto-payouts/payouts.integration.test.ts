@@ -1,5 +1,5 @@
 import { afterAll, beforeAll, expect, test } from 'bun:test'
-import { ComputeBudgetProgram, Keypair, Transaction, TransactionInstruction } from '@solana/web3.js'
+import { ComputeBudgetProgram, Keypair, Message, Transaction, TransactionInstruction, VersionedTransaction } from '@solana/web3.js'
 import { encodeEventTopics, erc20Abi, toHex, type Address } from 'viem'
 import { eq } from 'drizzle-orm'
 import bs58 from 'bs58'
@@ -116,6 +116,23 @@ test('Solana accepts wallet fee adjustments and rejects altered payout messages 
   adjusted.sign(signer)
   const encode = (tx: Transaction) => [tx.serialize({ verifySignatures: false }).toString('base64')]
   expect(signedSolanaProof(proof, encode(adjusted)).chain).toBe('solana')
+  const message = adjusted.compileMessage()
+  // The payer is the only signer and all other keys are read-only.
+  const indexes = [0, 2, 1]
+  const reordered = new VersionedTransaction(new Message({
+    header: message.header,
+    accountKeys: indexes.map(index => message.accountKeys[index]),
+    recentBlockhash: message.recentBlockhash,
+    instructions: message.instructions.map(instruction => ({
+      ...instruction,
+      programIdIndex: indexes.indexOf(instruction.programIdIndex),
+      accounts: instruction.accounts.map(index => indexes.indexOf(index)),
+    })),
+  }))
+  reordered.sign([signer])
+  const reorderedRaw = Buffer.from(reordered.serialize()).toString('base64')
+  expect(signedSolanaProof(proof, [reorderedRaw])).toMatchObject({ transfers: [{ raw: reorderedRaw }] })
+
   for (const change of ['payment', 'blockhash', 'extra instruction', 'signature']) {
     const changed = Transaction.from(adjusted.serialize())
     if (change === 'payment') changed.instructions[2].data = Buffer.from('different payment')
