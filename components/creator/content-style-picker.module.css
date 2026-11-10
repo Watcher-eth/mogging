@@ -10,7 +10,7 @@
 .card[data-selected=true] .image { box-shadow:0 0 0 2px #232326,0 7px 22px #0000000a; }
 .selected { position:absolute;top:9px;left:9px;display:grid;place-items:center;width:20px;height:20px;border-radius:50%;background:#232326;color:white;opacity:0;transform:scale(.8);transition:opacity 180ms ease,transform 220ms cubic-bezier(.22,1,.36,1); }
 .card[data-selected=true] .selected { opacity:1;transform:scale(1); }
-.label { margin-top:9px;padding-right:32px;font-size:17px;line-height:1.35;font-weight:550;letter-spacing:-.02em; }
+.label { display:flex;align-items:center;gap:6px;margin-top:9px;padding-right:32px;font-size:17px;line-height:1.35;font-weight:550;letter-spacing:-.02em; }
 .detail { max-width:260px;font-size:12px;color:#85858a;line-height:1.6; }
 .info { position:absolute;right:-9px;top:0;margin-top:calc(133.33% + 8px);width:44px;height:44px;display:grid;place-items:center;background:transparent;border:0;color:#85858b;cursor:pointer; }
 .choice:disabled { opacity:.45;cursor:default; }

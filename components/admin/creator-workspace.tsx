@@ -230,7 +230,7 @@ function Overview({ data, onSelectSubmission, onRefresh, historyVersion = 0 }: {
     <CampaignSubmissionMoves campaigns={campaigns?.sprints ?? []} onMoved={() => Promise.all([onRefresh(), refreshCampaigns(), ...(reviewed && compact ? [refreshHistory()] : [])])}>
 
       <div className="grid gap-3 sm:grid-cols-3">
-        <Metric label="Videos" newValue={counts.newVideos} value={counts.videoCount} detail={`${counts.pendingCount} awaiting review`} asset="submissions" />
+        <Metric label="Videos" newValue={counts.newVideos} value={counts.videoCount} detail={`${counts.pendingCount} awaiting review`} asset="video-submissions" />
         <Metric label="Accounts" newValue={counts.newAccounts} value={counts.accountCount} detail="Connected publishing profiles" icon={BadgeCheck} />
         <Metric label="Outstanding" newValue={formatMoney(counts.newOutstandingCents, 'USD')} value={formatMoney(counts.outstandingCents, 'USD')} detail={`${counts.paymentCount} payments`} icon={CircleDollarSign} />
       </div>

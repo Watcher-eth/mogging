@@ -2,8 +2,8 @@ import type { CreatorIconName } from '@/components/creator/creator-icon'
 
 export const creatorGuideTopics = [
   { id: 'start', label: 'Start here', icon: 'guide' },
-  { id: 'video', label: 'Create content', icon: 'video-submissions' },
-  { id: 'improve', label: 'Improve your content', icon: 'cta' },
+  { id: 'video', label: 'Create content', icon: 'create-content' },
+  { id: 'improve', label: 'Improve your content', icon: 'improve-content' },
   { id: 'rules', label: 'Content rules', icon: 'lock' },
   { id: 'referrals', label: 'Referral links & codes', icon: 'link' },
 ] as const satisfies ReadonlyArray<{ id: string; label: string; icon: CreatorIconName }>

@@ -11,7 +11,8 @@ import Link from 'next/link'
 import { useRouter } from 'next/router'
 import { LayoutGroup, MotionConfig, motion, useReducedMotion } from 'motion/react'
 import { useEffect, useRef, useState } from 'react'
-import { ArrowLeft, BookOpen, CalendarCheck2, ChartNoAxesCombined, FileChartColumn, Megaphone, Check, CheckCircle2, Download, FileArchive, Film, ImagePlus, Loader2, RefreshCw, Send, Trash2, UploadCloud, type MoggingGlyphComponent } from '@/components/ui/mogging-glyphs'
+import { MoggingIcon } from '@/components/ui/mogging-icon'
+import { ArrowLeft, BookOpen, Check, CheckCircle2, Download, FileArchive, Film, ImagePlus, Loader2, RefreshCw, Send, Trash2, UploadCloud, type MoggingGlyphComponent } from '@/components/ui/mogging-glyphs'
 import useSWR from 'swr'
 import { toast } from 'sonner'
 import { Button } from '@/components/ui/button'
@@ -31,10 +32,10 @@ import { CreatorIcon, type CreatorIconName } from '@/components/creator/creator-
 const MockProgressGenerator = dynamic(() => import('@/components/creator/mock-progress-generator').then(module => module.MockProgressGenerator), { ssr: false })
 
 const generatorTabs = [
-  { id: 'cta', label: 'CTA assets', icon: Megaphone },
-  { id: 'mock', label: 'Mock reports', icon: FileChartColumn },
-  { id: 'progress', label: 'Mock Progress', icon: ChartNoAxesCombined },
-  { id: 'protocol', label: 'Mock Protocol', icon: CalendarCheck2 },
+  { id: 'cta', label: 'CTA assets', icon: 'cta-card' },
+  { id: 'mock', label: 'Mock reports', icon: 'mock-scan' },
+  { id: 'progress', label: 'Mock Progress', icon: 'progress' },
+  { id: 'protocol', label: 'Mock Protocol', icon: 'protocol' },
 ] as const
 
 const generatorTransition = { duration: 0.24, ease: [0.22, 1, 0.36, 1] as const }
@@ -305,7 +306,7 @@ export default function CtaGeneratorPage() {
                     className={cn('relative inline-flex min-h-11 items-center justify-center gap-2 rounded-[12px] px-3 text-xs font-semibold focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#00A8EF] focus-visible:ring-offset-2', active ? 'text-zinc-950' : 'text-zinc-500')}
                   >
                     {active ? <motion.span layoutId="generator-selection" className="absolute inset-0 rounded-[12px] bg-white shadow-sm" aria-hidden="true" /> : null}
-                    <tab.icon aria-hidden="true" className="relative size-4 shrink-0 text-[#00A8EF]" strokeWidth={2} />
+                    <MoggingIcon name={tab.icon} aria-hidden="true" className="relative size-4 shrink-0 text-[#00A8EF]" strokeWidth={2} />
                     <span className="relative whitespace-nowrap">{tab.label}</span>
                   </button>
                 )

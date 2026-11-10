@@ -1,7 +1,8 @@
 import { useEffect, useRef, useState } from 'react'
 import dynamic from 'next/dynamic'
 import type { DesktopMockReportData } from './desktop-mock-report'
-import { Download, Film, Loader2, Monitor, Smartphone, Maximize2 } from '@/components/ui/mogging-glyphs'
+import { MoggingIcon } from '@/components/ui/mogging-icon'
+import { Download, Film, Loader2, Monitor, Maximize2 } from '@/components/ui/mogging-glyphs'
 import { toast } from 'sonner'
 import { Button } from '@/components/ui/button'
 import { Field, fieldClass } from './creator-shell'
@@ -103,8 +104,8 @@ export function MockReportGenerator({ images, active, onBack }: { images: Genera
       <div><h2 className="text-lg font-semibold">Mock report details</h2><p className="mt-0.5 text-sm text-zinc-500">Choose an iPhone or desktop report and edit its values before generating.</p></div>
       <Button variant="outline" className="justify-self-start rounded-full" onClick={onBack}>Back to photos</Button>
       <fieldset><legend className="mb-2 text-sm font-medium">Report format</legend><div className="grid grid-cols-2 gap-2">
-        {([{ id: 'iphone', label: 'iPhone', icon: Smartphone }, { id: 'phone', label: 'Phone CTA', icon: Smartphone }, { id: 'desktop', label: 'Desktop', icon: Monitor }] as const).map(option => <label key={option.id} className={`flex min-h-12 cursor-pointer items-center justify-center gap-2 rounded-xl border px-3 text-sm font-semibold transition-colors ${layout === option.id ? 'border-black bg-black text-white' : 'border-zinc-200 bg-white text-zinc-600 hover:bg-zinc-50'} has-[:focus-visible]:ring-2 has-[:focus-visible]:ring-blue-500 has-[:focus-visible]:ring-offset-2`}>
-          <input type="radio" name="mock-report-format" value={option.id} checked={layout === option.id} onChange={() => setLayout(option.id)} className="sr-only" /><option.icon className="size-4" />{option.label}
+        {([{ id: 'iphone', label: 'iPhone', icon: 'phone' }, { id: 'phone', label: 'Phone CTA', icon: 'cta-card' }, { id: 'desktop', label: 'Desktop', icon: 'monitor' }] as const).map(option => <label key={option.id} className={`flex min-h-12 cursor-pointer items-center justify-center gap-2 rounded-xl border px-3 text-sm font-semibold transition-colors ${layout === option.id ? 'border-black bg-black text-white' : 'border-zinc-200 bg-white text-zinc-600 hover:bg-zinc-50'} has-[:focus-visible]:ring-2 has-[:focus-visible]:ring-blue-500 has-[:focus-visible]:ring-offset-2`}>
+          <input type="radio" name="mock-report-format" value={option.id} checked={layout === option.id} onChange={() => setLayout(option.id)} className="sr-only" /><MoggingIcon name={option.icon} className="size-4 shrink-0" />{option.label}
         </label>)}
       </div></fieldset>
       <Field label="Report category"><select aria-label="Report category" className={fieldClass} value={categoryId} onChange={event => setCategoryId(event.target.value)}>{reportCategories.map(item => <option key={item.id} value={item.id}>{item.title}</option>)}</select></Field>

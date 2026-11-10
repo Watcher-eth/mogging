@@ -2,6 +2,8 @@ import { AnimatedGroup } from '@/components/core/animated-group'
 import { useEffect, useRef, useState, useSyncExternalStore } from 'react'
 import * as DialogPrimitive from '@radix-ui/react-dialog'
 import { AnimatePresence, motion } from 'motion/react'
+import { MoggingIcon } from '@/components/ui/mogging-icon'
+import type { MoggingWebIconName } from '@/lib/design/mogging-web-glyphs'
 import { Check, ChevronLeft, ChevronRight, Info, X } from '@/components/ui/mogging-glyphs'
 import { creatorContentStyles, type CreatorContentStyleId } from '@/lib/creator/creator-catalog'
 import { ExampleCarousel } from './campaign-examples'
@@ -15,6 +17,13 @@ function subscribeToMotion(change: () => void) {
   return () => query.removeEventListener('change',change)
 }
 const ease = [0.22, 1, 0.36, 1] as const
+const contentStyleIcons = {
+  'mogging-editorial': 'editorial-portrait',
+  qoves: 'feature-annotation',
+  cephra: 'sculpture-study',
+  fern: 'documentary-lens',
+} as const satisfies Record<CreatorContentStyleId, MoggingWebIconName>
+
 const exampleLabels = {
   'mogging-editorial': ['Feature breakdown · lighting and measurements', 'App walkthrough · scores and report detail'],
   qoves: ['A controlled comparison · V', 'A hidden-expression reveal · Tom Holland'],
@@ -56,7 +65,7 @@ export function ContentStylePicker({ value, disabled, onChange, previewId, onPre
           onMouseEnter={event => { if (!reduced) void event.currentTarget.querySelector('video')?.play().catch(() => {}) }}
           onMouseLeave={event => event.currentTarget.querySelector('video')?.pause()}>
           <span className={styles.image}><video muted playsInline loop preload="none" poster={asset(style.id,style.id==='mogging-editorial'?2:1,'jpg')} src={asset(style.id,style.id==='mogging-editorial'?2:1,'mp4')} aria-hidden="true" /><span className={styles.selected}><Check size={12} /></span></span>
-          <span className={styles.label}>{style.name}</span><span className={styles.detail}>{style.description}</span>
+          <span className={styles.label}><MoggingIcon name={contentStyleIcons[style.id]} className="size-4 shrink-0" />{style.name}</span><span className={styles.detail}>{style.description}</span>
         </button>
         <button type="button" className={styles.info} aria-label={`Preview ${style.name} examples`} onClick={event => { trigger.current = event.currentTarget; setPreviewId(style.id) }}><Info size={17} strokeWidth={1.6} /></button>
       </div>)}

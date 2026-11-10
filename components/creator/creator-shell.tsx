@@ -35,7 +35,7 @@ const creatorNav: ReadonlyArray<CreatorNavItem> = [
   { href: '/creator/accounts', label: 'Accounts', asset: 'accounts' },
   { href: '/creator/money', label: 'Money', asset: 'payouts' },
   { href: '/creator/conversions', label: 'Conversions', asset: 'conversions' },
-  { href: '/creator/studio', label: 'Studio', asset: 'cta' },
+  { href: '/creator/studio', label: 'Studio', asset: 'studio' },
 ]
 
 export function CreatorShell({ children, allowUnauthenticated = false }: { children: ReactNode; allowUnauthenticated?: boolean }) {

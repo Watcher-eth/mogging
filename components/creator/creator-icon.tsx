@@ -1,21 +1,24 @@
 import { MoggingIcon } from '@/components/ui/mogging-icon'
-import type { MoggingIconName } from '@/lib/design/mogging-icons'
+import type { MoggingWebIconName } from '@/lib/design/mogging-web-glyphs'
 import { cn } from '@/lib/utils'
 
 const creatorIcons = {
-  accounts: 'people',
+  accounts: 'social-accounts',
   campaign: 'campaign',
   conversions: 'progress',
-  cta: 'scan',
+  cta: 'cta-card',
+  studio: 'creator-studio',
+  'create-content': 'post-compose',
+  'improve-content': 'creative-polish',
   formats: 'layers',
-  guide: 'courses',
+  guide: 'field-guide',
   link: 'link',
   lock: 'privacy',
   overview: 'overview',
   payouts: 'wallet',
   submissions: 'submissions',
-  'video-submissions': 'video',
-} as const satisfies Record<string, MoggingIconName>
+  'video-submissions': 'submitted-video',
+} as const satisfies Record<string, MoggingWebIconName>
 
 export type CreatorIconName = keyof typeof creatorIcons
 

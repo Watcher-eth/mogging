@@ -7,7 +7,7 @@ import { useState, type ReactNode } from 'react'
 import useSWR, { useSWRConfig } from 'swr'
 import { ArrowUpRight, LockKeyhole, Loader2, X } from '@/components/ui/mogging-glyphs'
 import { toast } from 'sonner'
-import { CreatorIcon } from '@/components/creator/creator-icon'
+import { MoggingIcon } from '@/components/ui/mogging-icon'
 import { adminNavigation, adminPage } from '@/lib/admin/navigation'
 import { apiGet, apiRequest } from '@/lib/api/client'
 import { SidebarProvider, Sidebar, SidebarContent, SidebarHeader, SidebarFooter, SidebarGroup, SidebarGroupLabel, SidebarGroupContent, SidebarMenu, SidebarMenuItem, SidebarMenuButton, SidebarInset, SidebarTrigger, useSidebar } from '@/components/ui/sidebar'
@@ -50,7 +50,7 @@ function AdminNavigation() {
     : href
   return <Sidebar collapsible="icon" className="creator-navigation admin-navigation">
     <SidebarHeader className="flex-row items-center justify-between border-b border-[#eceef0] p-3 md:hidden"><span className="text-sm font-semibold">Mogging Admin</span><button aria-label="Close navigation" onClick={() => setOpenMobile(false)} className="grid size-11 place-items-center"><X className="size-5" /></button></SidebarHeader>
-    <SidebarContent className="py-4"><nav aria-label="Admin navigation">{adminNavigation.map(group => <SidebarGroup key={group.label}><SidebarGroupLabel>{group.label}</SidebarGroupLabel><SidebarGroupContent><SidebarMenu>{group.items.map(item => <SidebarMenuItem key={item.href}><SidebarMenuButton asChild tooltip={item.title} isActive={currentPath === item.href} className="creator-nav-link"><Link href={destination(item.href)} prefetch={false} onFocus={() => { if (!preview) void router.prefetch(item.href).catch(() => {}) }} onClick={() => setOpenMobile(false)} aria-label={item.title} aria-current={currentPath === item.href ? 'page' : undefined}><CreatorIcon name={item.icon} className="size-5" /><span>{item.title}</span></Link></SidebarMenuButton></SidebarMenuItem>)}</SidebarMenu></SidebarGroupContent></SidebarGroup>)}</nav></SidebarContent>
+    <SidebarContent className="py-4"><nav aria-label="Admin navigation">{adminNavigation.map(group => <SidebarGroup key={group.label}><SidebarGroupLabel>{group.label}</SidebarGroupLabel><SidebarGroupContent><SidebarMenu>{group.items.map(item => <SidebarMenuItem key={item.href}><SidebarMenuButton asChild tooltip={item.title} isActive={currentPath === item.href} className="creator-nav-link"><Link href={destination(item.href)} prefetch={false} onFocus={() => { if (!preview) void router.prefetch(item.href).catch(() => {}) }} onClick={() => setOpenMobile(false)} aria-label={item.title} aria-current={currentPath === item.href ? 'page' : undefined}><MoggingIcon name={item.icon} className="size-5 shrink-0" /><span>{item.title}</span></Link></SidebarMenuButton></SidebarMenuItem>)}</SidebarMenu></SidebarGroupContent></SidebarGroup>)}</nav></SidebarContent>
     <SidebarFooter><SidebarMenu><SidebarMenuItem><SidebarMenuButton asChild tooltip="Creator portal" className="creator-guide-nav-link"><Link href="/creator"><ArrowUpRight className="size-4" /><span>Creator portal</span></Link></SidebarMenuButton></SidebarMenuItem></SidebarMenu></SidebarFooter>
   </Sidebar>
 }

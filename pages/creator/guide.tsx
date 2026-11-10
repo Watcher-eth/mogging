@@ -50,8 +50,8 @@ export default function CreatorProgramGuidePage() {
 }
 
 const startingQuestions = [
-  { topic: 'video', icon: 'video-submissions', title: 'What kind of content should I make?', answer: 'Make an original looksmaxxing or ascension-focused video or slideshow. Choose what historically works best for your audience, show Mogging, and invite viewers to try it.', link: 'Find your format' },
-  { topic: 'improve', icon: 'cta', title: 'How can I improve my content?', answer: 'Start with a clear hook, make the product easy to understand, and check who your content attracts. Use your audience’s feedback to improve your next edit.', link: 'Improve your content' },
+  { topic: 'video', icon: 'create-content', title: 'What kind of content should I make?', answer: 'Make an original looksmaxxing or ascension-focused video or slideshow. Choose what historically works best for your audience, show Mogging, and invite viewers to try it.', link: 'Find your format' },
+  { topic: 'improve', icon: 'improve-content', title: 'How can I improve my content?', answer: 'Start with a clear hook, make the product easy to understand, and check who your content attracts. Use your audience’s feedback to improve your next edit.', link: 'Improve your content' },
 ] as const
 
 function GuideHome() {

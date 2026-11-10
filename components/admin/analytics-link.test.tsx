@@ -2,6 +2,7 @@ import {expect,test} from 'bun:test'
 import {renderToStaticMarkup} from 'react-dom/server'
 import {AnalyticsLink,AnalyticsPreviewLinks,analyticsPreviewHref} from './analytics-link'
 import {adminNavigation,analyticsPreviewPages} from '@/lib/admin/navigation'
+import {getMoggingWebGlyph} from '@/lib/design/mogging-web-glyphs'
 test('every analytics page has a local-only navigation counterpart',()=>{
  for(const item of adminNavigation.find(group=>group.label==='Analytics')!.items)expect(analyticsPreviewPages[item.href]).toBeTruthy()
  expect(Object.keys(analyticsPreviewPages)).toHaveLength(19)
@@ -16,4 +17,10 @@ test('authenticated analytics links preserve their protected production routes',
  const html=renderToStaticMarkup(<AnalyticsLink href="/admin/analytics/quality">Data health</AnalyticsLink>)
  expect(html).toContain('href="/admin/analytics/quality"')
  expect(html).not.toContain('__product-overview-preview')
+})
+
+test('each Admin destination has a distinct glyph silhouette', () => {
+  const items = adminNavigation.flatMap(group => [...group.items])
+  const paths = items.map(item => getMoggingWebGlyph(item.icon).ink)
+  expect(new Set(paths).size).toBe(items.length)
 })

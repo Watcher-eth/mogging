@@ -1,4 +1,5 @@
 import Link from 'next/link'
+import { MoggingIcon } from '@/components/ui/mogging-icon'
 import { ArrowUpRight, LockKeyhole } from '@/components/ui/mogging-glyphs'
 import { SkeletonImage } from '@/components/ui/skeleton-image'
 import { toast } from 'sonner'
@@ -9,12 +10,12 @@ import type { CreatorDashboard } from './types'
 import styles from './creator-studio.module.css'
 
 type PostAccess = 'loading' | 'locked' | 'allowed'
-type Creation = 'cta' | 'post' | 'scan'
-const tools: Array<{ id: Creation; name: string; description: string; action: string; href: string }> = [
-  { id: 'cta', name: 'CTA', description: 'Create an end card, overlay, or app preview.', action: 'Create a CTA', href: '/creator/cta-generator' },
-  { id: 'post', name: 'Post', description: 'Turn a script into a video with voice and visuals.', action: 'Create a post', href: '/creator/video-studio' },
-  { id: 'scan', name: 'Mock scan', description: 'Create a realistic face report with editable scores.', action: 'Create a mock scan', href: '/creator/cta-generator?mode=mock' },
-]
+const tools = [
+  { id: 'cta', icon: 'cta-card', name: 'CTA', description: 'Create an end card, overlay, or app preview.', action: 'Create a CTA', href: '/creator/cta-generator' },
+  { id: 'post', icon: 'post-compose', name: 'Post', description: 'Turn a script into a video with voice and visuals.', action: 'Create a post', href: '/creator/video-studio' },
+  { id: 'scan', icon: 'mock-scan', name: 'Mock scan', description: 'Create a realistic face report with editable scores.', action: 'Create a mock scan', href: '/creator/cta-generator?mode=mock' },
+] as const
+type Creation = (typeof tools)[number]['id']
 
 function StudioPreviewStack({ kind }: { kind: Creation }) {
   return <div className={styles.illustration} aria-hidden="true">
@@ -34,7 +35,7 @@ export function CreatorStudioChooser({ postAccess }: { postAccess: PostAccess })
         const locked = tool.id === 'post' && postAccess !== 'allowed'
         const content = <>
           <StudioPreviewStack kind={tool.id} />
-          <div className={styles.body}><div className={styles.name}><h2>{tool.name}</h2>{tool.id === 'post' ? <span className={styles.new}>New</span> : null}</div><p>{tool.description}</p></div>
+          <div className={styles.body}><div className={styles.name}><MoggingIcon name={tool.icon} className="size-[19px] shrink-0" /><h2>{tool.name}</h2>{tool.id === 'post' ? <span className={styles.new}>New</span> : null}</div><p>{tool.description}</p></div>
           <div className={styles.action}>{locked ? <><span>{postAccess === 'loading' ? 'Checking access…' : 'Selected creators only'}</span><LockKeyhole size={15} strokeWidth={1.6} /></> : <><span>{tool.action}</span><ArrowUpRight size={17} strokeWidth={1.6} /></>}</div>
         </>
         return locked ? <button key={tool.id} type="button" disabled={postAccess === 'loading'} onClick={() => toast('Coming soon', { id: 'creator-post-coming-soon', description: 'Post is currently available to early access creators.', icon: <LockKeyhole size={18} strokeWidth={1.6} /> })} className={`${styles.card} ${styles.locked}`} aria-label={`${tool.name} — ${postAccess === 'loading' ? 'checking access' : 'locked, available to selected creators'}`}>{content}</button> : <Link key={tool.id} href={tool.href} className={styles.card}>{content}</Link>
