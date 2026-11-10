@@ -1,3 +1,4 @@
+import { ANCHOR_GRACE_ACKNOWLEDGEMENT, campaignPublishingChecklistRules } from '@/lib/creator/campaign-publishing-policy'
 import { useRouter } from 'next/router'
 import { successCue, useQuietCue } from '@/lib/audio/sounds'
 import { CampaignAnchorLink, ImmediateSubmissionNotice } from './campaign-publishing-requirements'
@@ -158,9 +159,7 @@ export function SubmissionDialog({
   const checklist =
     format && sprint
       ? [
-          ...creatorCampaignRules(format.requirements),
-          ...creatorCampaignRules(sprint.terms.rules),
-          ...(!sprint.terms.rules.includes(ANCHOR_REQUIREMENT) ? [ANCHOR_REQUIREMENT] : []),
+          ...campaignPublishingChecklistRules([...creatorCampaignRules(format.requirements), ...creatorCampaignRules(sprint.terms.rules)]),
           ...format.notAllowed.map((item) => `My post avoids: ${creatorContentRestriction(item)}`),
         ]
       : []
@@ -568,7 +567,7 @@ export function SubmissionDialog({
                               )
                             }
                           />
-                          <span>{rule}{rule === ANCHOR_REQUIREMENT ? <> <a href={TIKTOK_ANCHOR_URL} target="_blank" rel="noopener noreferrer" className="font-semibold underline underline-offset-4">Open anchor link ↗</a></> : null}</span>
+                          <span>{rule}{(rule === ANCHOR_REQUIREMENT || rule === ANCHOR_GRACE_ACKNOWLEDGEMENT) ? <> <a href={TIKTOK_ANCHOR_URL} target="_blank" rel="noopener noreferrer" className="font-semibold underline underline-offset-4">Open anchor link ↗</a></> : null}</span>
                         </label>
                       ))}
                       <p className="text-xs text-zinc-500">

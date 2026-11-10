@@ -5,12 +5,14 @@ import { z } from 'zod'
 import { creatorRetainerSchema } from './retainer'
 import { creatorCampaignRule, creatorFormatElement } from './post-guidance'
 import type { CreatorSubmissionFormat } from './formats'
+import { CAMPAIGN_PUBLISHING_GRACE_RULE, publishingRequirementWaived } from './campaign-publishing-policy'
 
 const paragraph = z.string().trim().min(1).max(2000)
 export const sprintTermsSchema = z
   .object({
     retainer: creatorRetainerSchema.optional(),
     submitOnPublish: z.boolean().optional(),
+    publishingGraceEndsAt: z.iso.datetime().optional(),
     mgcSourceCampaignId: z.string().uuid().optional(),
     bonusBudgetCents: z.number().int().nonnegative().max(100_000_000).optional(),
     milestones: z
@@ -249,7 +251,7 @@ const campaignReviewLabels: Record<string, readonly string[]> = {
   ],
 }
 
-export function sprintReviewItems(terms: SprintTerms, id: string, includeRetired = false) {
+export function sprintReviewItems(terms: SprintTerms, id: string, includeRetired = false, submittedAt?: Date | string | null) {
   const format = sprintFormat(terms, id)
   if (!format) return []
   return [
@@ -274,6 +276,7 @@ export function sprintReviewItems(terms: SprintTerms, id: string, includeRetired
     })),
   ].flatMap((item) => {
     if (includeRetired) return [item]
+    if (item.label === CAMPAIGN_PUBLISHING_GRACE_RULE || publishingRequirementWaived(item.label, submittedAt, terms.publishingGraceEndsAt)) return []
     const label = creatorCampaignRule(item.label)
     return label === null ? [] : [{ ...item, label }]
   })

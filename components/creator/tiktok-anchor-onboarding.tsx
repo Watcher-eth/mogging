@@ -269,7 +269,7 @@ export function TikTokAccountDialog({
               <section className="rounded-xl border border-zinc-100 p-4">
                 <h3 className="text-sm font-semibold">Review before publishing</h3>
                 <p className="mt-2 text-sm leading-6 text-zinc-500">TikTok checks your video before it can go live. After TikTok’s review, we approve videos within 24 hours. Posting through this project is not instant; TikTok’s review time is separate from ours.</p>
-                <p className="mt-2 text-xs leading-5 text-zinc-500">Every campaign requires publishing with the Mogging anchor. Find the required publishing link in Submissions.</p>
+                <p className="mt-2 text-xs leading-5 text-zinc-500">Every campaign requires the Mogging anchor and a Mogging bio link, with a one-week grace period. Accounts below 1,000 followers are exempt from the bio-link rule only. See Submissions for the deadline and publishing link.</p>
               </section>
               <label className="flex items-start gap-3 rounded-xl bg-zinc-50 p-3 text-sm leading-5 text-zinc-600">
                 <input

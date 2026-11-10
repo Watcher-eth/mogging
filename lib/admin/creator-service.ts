@@ -129,6 +129,7 @@ function getAdminSubmissions(scope?: SQL, reviewId?: string) {
     exclusivityConfirmed: schema.creatorSubmissions.exclusivityConfirmed,
     reviewNote: schema.creatorSubmissions.reviewNote,
     reviewChecklist: reviewId ? sql<(typeof schema.creatorSubmissions.$inferSelect)['reviewChecklist'] | null>`case when ${schema.creatorSubmissions.id} = ${reviewId} then ${schema.creatorSubmissions.reviewChecklist} end` : schema.creatorSubmissions.reviewChecklist,
+    postedAt: schema.creatorSubmissions.postedAt,
     createdAt: schema.creatorSubmissions.createdAt,
     updatedAt: schema.creatorSubmissions.updatedAt,
   })
@@ -687,7 +688,7 @@ async function reviewSprintSubmission(input: Extract<CreatorAdminReviewInput, { 
         viewsSource: verifiedRecordingViews(submission.audienceCheck, submission.analyticsStorageKey) === input.adminViewCountThreshold ? 'automatic' : 'manual',
         reviewerId: reviewerId || 'admin', reviewedAt: new Date().toISOString() },
     } : submission.audienceCheck
-    const expected = sprintReviewItems(submission.sprintTerms, submission.formatId || '')
+    const expected = sprintReviewItems(submission.sprintTerms, submission.formatId || '', false, submission.postedAt || submission.createdAt)
     if (expected.length && input.reviewChecklist.some(item => item.id === AUDIENCE_MINIMUM_REJECTION.id)) expected.push(AUDIENCE_MINIMUM_REJECTION)
     // An open admin tab may still send rules retired since the modal was loaded.
     // Discard only known retired rules; preserve every current result, including unmet ones.

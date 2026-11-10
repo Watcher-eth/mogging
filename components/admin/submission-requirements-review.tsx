@@ -1,3 +1,4 @@
+import { CAMPAIGN_PUBLISHING_DEADLINE } from '@/lib/creator/campaign-publishing-policy'
 import { Disclosure, DisclosureSummary, AccordionContent } from '@/components/ui/accordion'
 import Link from 'next/link'
 import { ArrowUpRight, XCircle } from '@/components/ui/mogging-glyphs'
@@ -34,6 +35,7 @@ export function SubmissionRequirementsReview({ items, status, onChange, campaign
         <span aria-live="polite" className={cn('rounded-full px-2.5 py-1 text-[11px] font-semibold tabular-nums', rejecting ? 'bg-red-50 text-red-700' : 'bg-zinc-100 text-zinc-600')}>{rejecting ? `${selectedCount} selected` : `${selectedCount}/${items.length}`}</span>
       </div>
     </div>
+    <p className="mt-3 rounded-xl border border-amber-200 bg-amber-50 p-3 text-xs leading-5 text-amber-900">Publishing grace period: do not deny or reduce an otherwise eligible payout for a missing Mogging anchor or bio link on a video posted or submitted before {CAMPAIGN_PUBLISHING_DEADLINE}. Accounts below 1,000 followers are exempt from the bio-link rule. Other review requirements still apply.</p>
     <Link href="/creator/guide#video-requirements" target="_blank" className="mt-3 inline-flex min-h-9 items-center gap-1 text-xs font-semibold text-zinc-600 underline decoration-zinc-300 underline-offset-4 hover:text-black">Open video requirements <ArrowUpRight className="size-3.5" /></Link>
     {groups.map(group => <div key={group.title || 'requirements'} className="mt-4">
       {group.title ? <h4 className="mb-2 text-xs font-semibold text-zinc-900">{group.title}</h4> : null}

@@ -1,3 +1,4 @@
+import { CAMPAIGN_PUBLISHING_DEADLINE } from '@/lib/creator/campaign-publishing-policy'
 import { useEffect, useRef, useState } from 'react'
 import Link from 'next/link'
 import Image from 'next/image'
@@ -13,7 +14,7 @@ import styles from './studio-requirements.module.css'
 
 const requirements = [
   { title: 'Submit immediately after posting', description: 'Submit your published post link right away so we can start tracking its data. Upload fresh analytics at each campaign milestone.' },
-  { title: 'Keep your bio Mogging-only', description: 'Post Mogging Generated Content (MGC) only from accounts with a Mogging link or Mogging CTA in the bio. No links, CTAs, or referral codes for other apps are allowed.' },
+  { title: 'Keep your Mogging link in bio', description: 'Posting accounts with 1,000 or more followers must have a Mogging link in their bio. Accounts below 1,000 followers are exempt from the bio-link requirement only.' },
   { title: 'Add the Mogging anchor', description: 'Every campaign requires publishing with the Mogging TikTok anchor through the campaign link below.' },
 ] as const
 
@@ -52,7 +53,8 @@ export function StudioRequirementsDialog({ open, onOpenChange }: { open: boolean
         <RequirementGraphic key={step} step={step} />
         <DialogTitle className="creator-dialog-title mt-5 text-[26px] font-semibold leading-tight tracking-[-0.04em]">{requirement.title}</DialogTitle>
         <DialogDescription className="mt-3 text-sm leading-6 text-zinc-500">{requirement.description}</DialogDescription>
-        {step === 1 ? <p className="mt-3 text-xs leading-5 text-zinc-600">Not following these requirements will result in losing access to MGC.</p> : null}
+        {step > 0 ? <p className="mt-3 rounded-xl bg-amber-50 p-3 text-xs leading-5 text-amber-900">Grace period through {CAMPAIGN_PUBLISHING_DEADLINE}. Missing links will not reduce or deny an otherwise eligible payout on videos posted or submitted before this deadline.</p> : null}
+        {step === 1 ? <p className="mt-3 text-xs leading-5 text-zinc-600">Implement these publishing rules by the grace-period deadline. Other campaign rules and analytics requirements still apply.</p> : null}
         {step === 1 ? <Link href="/creator/accounts" onClick={() => onOpenChange(false)} className="mt-2 inline-flex min-h-11 items-center gap-1.5 text-xs text-[#00A8EF]"><Link2 className="size-3.5" />Your bio links<ArrowRight className="size-3.5" /></Link> : step === 2 ? <a href={TIKTOK_ANCHOR_INVITE} target="_blank" rel="noreferrer" className="mt-2 inline-flex min-h-11 items-center gap-1.5 text-xs text-[#00A8EF]">Get the Mogging anchor<ArrowRight className="size-3.5" /></a> : null}
       </AnimatedDialogPanel>
       <div className="flex items-center justify-between px-6 pb-4 sm:px-8">

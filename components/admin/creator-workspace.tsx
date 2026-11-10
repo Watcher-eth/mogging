@@ -579,7 +579,7 @@ export function ReviewDialog({ target, creator, payments, metrics, contentBalanc
   const [selectedStatus, setStatus] = useState<string | null>(null)
   const status = selectedStatus ?? (audienceBelowMinimum ? 'rejected' : initialStatus)
   const [reviewDrafts, setReviewDrafts] = useState(() => target.resource === 'submission'
-    ? createSubmissionReviewDrafts(target.item.sprintTerms ? sprintReviewItems(target.item.sprintTerms, target.item.formatId || '').map(item => ({ ...item, met: target.item.reviewChecklist?.find(row => row.id === item.id)?.met || false, note: target.item.reviewChecklist?.find(row => row.id === item.id)?.note || null })) : mergeCreatorSubmissionReviewResults(target.item.formatId, target.item.reviewChecklist), initialStatus, target.item.reviewChecklist)
+    ? createSubmissionReviewDrafts(target.item.sprintTerms ? sprintReviewItems(target.item.sprintTerms, target.item.formatId || '', false, target.item.postedAt || target.item.createdAt).map(item => ({ ...item, met: target.item.reviewChecklist?.find(row => row.id === item.id)?.met || false, note: target.item.reviewChecklist?.find(row => row.id === item.id)?.note || null })) : mergeCreatorSubmissionReviewResults(target.item.formatId, target.item.reviewChecklist), initialStatus, target.item.reviewChecklist)
     : { approval: [], rejection: [] })
   const [audienceReasonEdited, setAudienceReasonEdited] = useState(false)
   const reviewMode = status === 'rejected' ? 'rejection' : 'approval'

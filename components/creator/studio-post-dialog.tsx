@@ -1,5 +1,6 @@
 import { CampaignAnchorLink, ImmediateSubmissionNotice } from './campaign-publishing-requirements'
 import { ANCHOR_REQUIREMENT } from '@/lib/creator/facial-campaign-update'
+import { ANCHOR_GRACE_ACKNOWLEDGEMENT, BIO_LINK_GRACE_ACKNOWLEDGEMENT, CAMPAIGN_BIO_LINK_REQUIREMENT, campaignPublishingGraceActive } from '@/lib/creator/campaign-publishing-policy'
 import { useState, type FormEvent } from 'react'
 import Link from 'next/link'
 import useSWR from 'swr'
@@ -17,6 +18,8 @@ export function StudioPostDialog({ generation, preview = false, onClose, onSubmi
   const [accountId, setAccountId] = useState('')
   const [confirmed, setConfirmed] = useState(false)
   const [anchorConfirmed, setAnchorConfirmed] = useState(false)
+  const [bioConfirmed, setBioConfirmed] = useState(false)
+  const graceActive = campaignPublishingGraceActive()
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState('')
   const platform = creatorPostPlatform(postUrl)
@@ -24,10 +27,10 @@ export function StudioPostDialog({ generation, preview = false, onClose, onSubmi
   const selectedAccount = accounts.find(account => account.id === accountId)?.id ?? (accounts.length === 1 ? accounts[0].id : '')
   async function submit(event: FormEvent) {
     event.preventDefault()
-    if (!generation || preview || saving || !confirmed || !anchorConfirmed) return
+    if (!generation || preview || saving || !confirmed || !anchorConfirmed || !bioConfirmed) return
     setSaving(true); setError('')
     try {
-      await apiPatch('/api/creator/studio', { generationId: generation.id, postUrl, socialAccountId: selectedAccount, requirementsConfirmed: confirmed && anchorConfirmed })
+      await apiPatch('/api/creator/studio', { generationId: generation.id, postUrl, socialAccountId: selectedAccount, requirementsConfirmed: confirmed && anchorConfirmed && bioConfirmed })
       toast.success('Post submitted. Add analytics when you reach your first milestone.')
       onSubmitted()
     } catch (reason) { setError(reason instanceof Error ? reason.message : 'Could not submit your post') }
@@ -46,9 +49,10 @@ export function StudioPostDialog({ generation, preview = false, onClose, onSubmi
         <label className="grid gap-2 text-sm font-medium">Posting account<select required value={selectedAccount} onChange={event => setAccountId(event.target.value)} className="h-11 rounded-xl border border-neutral-200 bg-white px-3 text-sm font-normal"><option value="">Choose your account</option>{accounts.map(account => <option value={account.id} key={account.id}>{account.handle ?? account.displayName ?? account.platform}</option>)}</select></label>
         {!preview && data && !accounts.length ? <p className="text-xs text-neutral-500"><Link className="underline" href="/creator/accounts" target="_blank">Connect your posting account</Link>, then return here.</p> : null}
         <label className="flex items-start gap-2.5 text-xs leading-5 text-neutral-600"><input type="checkbox" required checked={confirmed} onChange={event => setConfirmed(event.target.checked)} className="mt-1 size-4 shrink-0 rounded" /><span>I’ve posted this video and followed the <Link target="_blank" className="underline" href="/creator/sprints">campaign requirements</Link>.</span></label>
-        <label className="flex items-start gap-2.5 text-xs leading-5 text-neutral-600"><input type="checkbox" required checked={anchorConfirmed} onChange={event => setAnchorConfirmed(event.target.checked)} className="mt-1 size-4 shrink-0 rounded" /><span>{ANCHOR_REQUIREMENT}</span></label>
+        <label className="flex items-start gap-2.5 text-xs leading-5 text-neutral-600"><input type="checkbox" required checked={anchorConfirmed} onChange={event => setAnchorConfirmed(event.target.checked)} className="mt-1 size-4 shrink-0 rounded" /><span>{graceActive ? ANCHOR_GRACE_ACKNOWLEDGEMENT : ANCHOR_REQUIREMENT}</span></label>
+        <label className="flex items-start gap-2.5 text-xs leading-5 text-neutral-600"><input type="checkbox" required checked={bioConfirmed} onChange={event => setBioConfirmed(event.target.checked)} className="mt-1 size-4 shrink-0 rounded" /><span>{graceActive ? BIO_LINK_GRACE_ACKNOWLEDGEMENT : CAMPAIGN_BIO_LINK_REQUIREMENT}</span></label>
         {error ? <p role="alert" className="text-sm text-red-700">{error}</p> : null}
-        <button type="submit" disabled={preview || saving || !platform || !selectedAccount || !confirmed || !anchorConfirmed} className="flex h-11 items-center justify-center gap-2 rounded-full bg-neutral-900 text-sm font-medium text-white disabled:opacity-40">{saving ? <Loader2 className="size-4 animate-spin" /> : null}{saving ? 'Submitting…' : 'Submit post'}</button>
+        <button type="submit" disabled={preview || saving || !platform || !selectedAccount || !confirmed || !anchorConfirmed || !bioConfirmed} className="flex h-11 items-center justify-center gap-2 rounded-full bg-neutral-900 text-sm font-medium text-white disabled:opacity-40">{saving ? <Loader2 className="size-4 animate-spin" /> : null}{saving ? 'Submitting…' : 'Submit post'}</button>
         <div className="flex items-center justify-between text-xs text-neutral-500"><button type="button" disabled={saving} onClick={onClose}>I’ll post it first</button><Link className="underline" href="/creator/submissions">My submissions</Link></div>
       </form>
     </DialogContent>
