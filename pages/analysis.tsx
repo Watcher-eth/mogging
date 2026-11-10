@@ -48,7 +48,7 @@ import { useSession } from 'next-auth/react'
 import { SkeletonImage } from '@/components/ui/skeleton-image'
 import dynamic from 'next/dynamic'
 import { useRouter } from 'next/router'
-import { forwardRef, useCallback, useEffect, useEffectEvent, useMemo, useRef, useState, type ChangeEvent, type ReactNode } from 'react'
+import { forwardRef, useCallback, useEffect, useEffectEvent, useLayoutEffect, useMemo, useRef, useState, type ChangeEvent, type ReactNode } from 'react'
 import { toast } from 'sonner'
 import { useSound } from '@web-kits/audio/react'
 import useSWR, { useSWRConfig } from 'swr'
@@ -92,6 +92,7 @@ const WebAnalysisReport = dynamic(() => import('@/components/analysis/v2/web-ana
 const LegacyAnalysisReport = dynamic(() => import('@/components/analysis/v2/web-analysis-report').then(module => module.LegacyAnalysisReport))
 const ReportActions = dynamic(() => import('@/components/analysis/analysis-report').then((module) => module.ReportActions))
 const CameraSheet = dynamic(() => import('@/components/analysis/camera-sheet').then((module) => module.CameraSheet))
+const useCheckpointEffect = typeof window === 'undefined' ? useEffect : useLayoutEffect
 
 type FlowStep = 'desktop-setup' | 'intro' | 'story' | 'upload' | 'preview-analysis' | 'desktop-scan' | 'payment' | 'actual-analysis' | 'basic-report' | 'results'
 
@@ -430,7 +431,7 @@ export default function AnalysisPage({ startWithPhoto, phoneEntry, uploadFirst, 
     return () => { active = false }
   }, [checkpointEnabled, checkpointScope, loadedCheckpointScope, router.isReady, specialEntry, status])
 
-  useEffect(() => {
+  useCheckpointEffect(() => {
     if (!checkpointEnabled || !router.isReady || specialEntry || loadedCheckpointScope !== checkpointScope) return
     if (step === 'results' || step === 'basic-report' || step === 'payment' || step === 'intro') return
     // Paid processing is recovered by the existing Stripe return handler.

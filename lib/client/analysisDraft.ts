@@ -53,17 +53,45 @@ export type AnalysisCheckpoint = AnalysisDraft & {
 
 const checkpointMaxAge = 7 * 24 * 60 * 60 * 1000
 const checkpointKey = (scope: string) => `checkpoint:v1:${scope}`
+let checkpointDb: IDBDatabase | undefined
+let openingCheckpointDb: Promise<IDBDatabase> | undefined
+
+function openCheckpointDb() {
+  openingCheckpointDb ??= openDraftDb().then(db => {
+    checkpointDb = db
+    const reset = () => {
+      db.close()
+      checkpointDb = undefined
+      openingCheckpointDb = undefined
+    }
+    db.onversionchange = reset
+    db.onclose = reset
+    return db
+  }).catch(error => {
+    openingCheckpointDb = undefined
+    throw error
+  })
+  return openingCheckpointDb
+}
 
 export async function loadAnalysisCheckpoint(scope: string) {
-  const checkpoint = await readDraft<AnalysisCheckpoint>(checkpointKey(scope))
+  const db = await openCheckpointDb()
+  const checkpoint = await requestToPromise<AnalysisCheckpoint | undefined>(
+    db.transaction(STORE_NAME, 'readonly').objectStore(STORE_NAME).get(checkpointKey(scope)),
+  )
   if (checkpoint && Date.now() - checkpoint.savedAt > checkpointMaxAge) {
     await updateDraft(undefined, checkpointKey(scope), saved => saved.savedAt === checkpoint.savedAt)
     return null
   }
-  return checkpoint
+  return checkpoint ?? null
 }
 
-export const saveAnalysisCheckpoint = (scope: string, checkpoint: AnalysisCheckpoint) => updateDraft(checkpoint, checkpointKey(scope))
+export async function saveAnalysisCheckpoint(scope: string, checkpoint: AnalysisCheckpoint) {
+  // Start the write in the same turn as the UI update. An explicit commit can
+  // finish without waiting for callbacks on a page that's closing.
+  const db = checkpointDb ?? await openCheckpointDb()
+  await writeDraft(db, checkpoint, checkpointKey(scope), undefined, true)
+}
 export const clearAnalysisCheckpoint = (scope: string, photoId?: string) => updateDraft(
   undefined, checkpointKey(scope), photoId ? saved => saved.images.some(image => image.id === photoId) : undefined,
 )
@@ -96,21 +124,25 @@ export const clearAnalysisDraft = () => updateDraft()
 
 async function updateDraft(draft?: AnalysisDraft | AnalysisDraftImage, key = DRAFT_KEY, deleteIf?: (saved: AnalysisCheckpoint) => boolean) {
   const db = await openDraftDb()
-  try {
-    await new Promise<void>((resolve, reject) => {
-      const transaction = db.transaction(STORE_NAME, 'readwrite')
-      transaction.oncomplete = () => resolve()
-      transaction.onabort = () => reject(transaction.error ?? new Error('Unable to save checkout photos'))
-      transaction.onerror = () => reject(transaction.error ?? new Error('Unable to save checkout photos'))
-      const store = transaction.objectStore(STORE_NAME)
-      if (draft) store.put(draft, key)
-      else if (deleteIf) {
-        const request = store.get(key)
-        request.onsuccess = () => { if (request.result && deleteIf(request.result)) store.delete(key) }
-      }
-      else store.delete(key)
-    })
-  } finally { db.close() }
+  try { await writeDraft(db, draft, key, deleteIf) }
+  finally { db.close() }
+}
+
+function writeDraft(db: IDBDatabase, draft: AnalysisDraft | AnalysisDraftImage | undefined, key: string, deleteIf?: (saved: AnalysisCheckpoint) => boolean, commitImmediately = false) {
+  return new Promise<void>((resolve, reject) => {
+    const transaction = db.transaction(STORE_NAME, 'readwrite')
+    transaction.oncomplete = () => resolve()
+    transaction.onabort = () => reject(transaction.error ?? new Error('Unable to save checkout photos'))
+    transaction.onerror = () => reject(transaction.error ?? new Error('Unable to save checkout photos'))
+    const store = transaction.objectStore(STORE_NAME)
+    if (draft) {
+      store.put(draft, key)
+      if (commitImmediately) transaction.commit?.()
+    } else if (deleteIf) {
+      const request = store.get(key)
+      request.onsuccess = () => { if (request.result && deleteIf(request.result)) store.delete(key) }
+    } else store.delete(key)
+  })
 }
 
 function openDraftDb() {
