@@ -3,7 +3,7 @@ import { useRouter } from 'next/router'
 import Image from 'next/image'
 import { createContext, useContext, useEffect, useRef, useState, type ReactNode } from 'react'
 import useSWR from 'swr'
-import { ArrowUpRight, Check, Copy, Link2, Loader2, Users } from 'lucide-react'
+import { ArrowUpRight, Check, Copy, Link2, Loader2, Users } from '@/components/ui/mogging-glyphs'
 import { toast } from 'sonner'
 import {
   Dialog,

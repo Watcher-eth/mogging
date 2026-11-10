@@ -1,4 +1,4 @@
-import { LockKeyholeOpen } from 'lucide-react'
+import { LockKeyholeOpen } from '@/components/ui/mogging-glyphs'
 import { motion, useReducedMotion } from 'motion/react'
 import { useEffect, useState } from 'react'
 import { AnalysisReport, type DesktopReportCategory } from './analysis-report'

@@ -1,4 +1,4 @@
-import { ArrowUpRight, Plus } from 'lucide-react'
+import { MoggingIcon } from '@/components/ui/mogging-icon'
 import { motion, useReducedMotion } from 'motion/react'
 import Link from 'next/link'
 import { useEffect, useRef, useState } from 'react'
@@ -73,7 +73,7 @@ export function DesktopEvaluations({ reports, evaluations, focusIds, observation
   return <section className="member-evaluations">
     <header className="member-evaluations-header">
       <div><h1>Progress</h1><p>Your latest findings and how they’ve changed over time.</p></div>
-      <button type="button" className="scan-home-primary" onClick={onNewScan}><Plus size={17} /> New evaluation</button>
+      <button type="button" className="scan-home-primary" onClick={onNewScan}><MoggingIcon name="plus" size={17} /> New evaluation</button>
     </header>
     {processing && <p className="member-evaluations-status" role="status">Your new evaluation is being prepared.</p>}
     <div className="member-evaluations-grid">
@@ -83,7 +83,7 @@ export function DesktopEvaluations({ reports, evaluations, focusIds, observation
         </div>
         <div className="member-eval-latest-copy"><small>Latest evaluation</small>
           <time dateTime={latest.analysis.createdAt}>{latestDate.date}<span>{latestDate.year}</span></time>
-          <span>Open report <ArrowUpRight size={15} /></span>
+          <span>Open report <MoggingIcon name="external" size={15} /></span>
         </div>
       </Link>}
       {current && <div className="member-eval-tile member-eval-overall" data-single={!latest || undefined}>
@@ -100,7 +100,7 @@ export function DesktopEvaluations({ reports, evaluations, focusIds, observation
         const wide = index % 6 === 0 || index % 6 === 5 || cards.length % 3 === 1 && index === cards.length - 1
         const graph = measured.length ? measured : readings
         const usesMeasurement = graph === measured
-        const body = <><div className="member-eval-card-head"><h2>{area[1]}</h2><ArrowUpRight size={14} /></div>
+        const body = <><div className="member-eval-card-head"><h2>{area[1]}</h2><MoggingIcon name="external" size={14} /></div>
           {last && <div className="member-eval-score"><strong>{last.score.toFixed(1)}</strong><small>{delta == null ? 'Baseline' : `${delta >= 0 ? '+' : ''}${delta.toFixed(1)} pts`}</small></div>}
           {observation?.value && <p className="member-eval-observation"><span>{observation.label}</span><b>{observation.value}</b></p>}
           {graph.length > 0 && <FeatureInstrument area={area[0]} readings={graph} measured={usesMeasurement}
@@ -120,7 +120,7 @@ export function DesktopEvaluations({ reports, evaluations, focusIds, observation
       <div className="member-eval-tile member-eval-reports" data-with-activity={showActivity || undefined}>
         <div className="member-eval-card-head"><h2>Saved evaluations</h2><small>{reports.length} loaded</small></div>
         {reports.map(({ photo, analysis }) => <Link key={analysis.id} href={reportHref(analysis.id)}>
-          <img src={photo.imageUrl} alt="" loading="lazy" /><span>Face evaluation</span><time>{shortDate.format(new Date(analysis.createdAt))}</time><ArrowUpRight size={15} />
+          <img src={photo.imageUrl} alt="" loading="lazy" /><span>Face evaluation</span><time>{shortDate.format(new Date(analysis.createdAt))}</time><MoggingIcon name="external" size={15} />
         </Link>)}
         {(loading || error || !reports.length) && <p className="member-evaluations-status" role={error ? 'alert' : 'status'}>{error ? 'Couldn’t load your evaluations.' : loading ? 'Loading saved evaluations…' : 'Your saved reports will appear here after your first evaluation.'}</p>}
         {more && <button type="button" className="member-eval-expand" disabled={more.loading} onClick={more.load}>{more.loading ? 'Loading…' : 'Load more evaluations'}</button>}

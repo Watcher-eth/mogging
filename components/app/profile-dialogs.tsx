@@ -1,7 +1,7 @@
 import { SkeletonImage } from '@/components/ui/skeleton-image'
 import dynamic from 'next/dynamic'
 import { useEffect, useRef, useState, type ChangeEvent } from 'react'
-import { Loader2 } from 'lucide-react'
+import { Loader2 } from '@/components/ui/mogging-glyphs'
 import { toast } from 'sonner'
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { apiPatch, ApiClientError } from '@/lib/api/client'

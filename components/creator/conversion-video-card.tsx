@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { SkeletonImage } from '@/components/ui/skeleton-image'
-import { ArrowUpRight, Film } from 'lucide-react'
+import { ArrowUpRight, Film } from '@/components/ui/mogging-glyphs'
 import { useSubmissionPostPreview } from './submission-post-preview'
 import { sprintMoney } from '@/lib/creator/sprints'
 import type { CreatorConversionVideo } from '@/lib/creator/conversion-report'

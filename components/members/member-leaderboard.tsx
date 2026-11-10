@@ -1,4 +1,4 @@
-import { BadgeCheck, ChevronRight, ListFilter, Trophy, UserPlus, UsersRound } from 'lucide-react'
+import { MoggingIcon } from '@/components/ui/mogging-icon'
 import { AnimatePresence, LayoutGroup, motion, useReducedMotion } from 'motion/react'
 import { useState } from 'react'
 import useSWR from 'swr'
@@ -40,11 +40,11 @@ export function MemberLeaderboard({ preview, profile, onInvite, onSettings, mobi
       <h1>Leaderboard</h1>
       <div>
         <label className={styles.filter} data-filtered={gender !== 'female' || undefined} title="Leaderboard gender filter">
-          <ListFilter size={20} /><select aria-label="Leaderboard gender filter" value={gender} onChange={event => { setGender(event.target.value as Gender); setPage(1) }}>
+          <MoggingIcon name="filter" size={20} /><select aria-label="Leaderboard gender filter" value={gender} onChange={event => { setGender(event.target.value as Gender); setPage(1) }}>
             <option value="female">Female</option><option value="male">Male</option><option value="all">All</option>
           </select>
         </label>
-        <button type="button" className={styles.round} aria-label="Invite friends" onClick={onInvite}><UserPlus size={20} /></button>
+        <button type="button" className={styles.round} aria-label="Invite friends" onClick={onInvite}><MoggingIcon name="invite" size={20} /></button>
       </div>
     </header>
     <LayoutGroup id="member-leaderboard-scope"><div className={styles.segment} role="group" aria-label="Leaderboard scope">
@@ -58,7 +58,7 @@ export function MemberLeaderboard({ preview, profile, onInvite, onSettings, mobi
         {showInvite ? <motion.div className={styles.friends}
           initial={!mobile || reduced ? false : { opacity: 0, y: 14 }} animate={{ opacity: 1, y: 0 }}
           transition={{ duration: reduced ? 0 : .65, ease: 'easeOut' }}>
-          <Trophy size={33} color="#e0a128" /><h2>Better with your friends.</h2>
+          <MoggingIcon name="leaderboard" size={33} style={{ color: '#e0a128' }} /><h2>Better with your friends.</h2>
           <p>Invite your friends to Mogging. Once they join with a public profile, you can compare rankings together.</p>
           <div className={styles.friendAvatars}>
             {[['Your friend', '6.8', '/scan/leaderboard/friend-man.jpg'], ['You', profile?.score?.toFixed(1) ?? '—', profile?.imageUrl], ['Your friend', '7.4', '/scan/leaderboard/friend-woman.jpg']].map(([name, score, image], index) =>
@@ -82,10 +82,10 @@ export function MemberLeaderboard({ preview, profile, onInvite, onSettings, mobi
             })}
           </div>}
           <button type="button" className={styles.join} onClick={onSettings}>
-            {settings?.isPublic ? <BadgeCheck size={23} color="#32a878" /> : <Trophy size={23} />}
+            {settings?.isPublic ? <MoggingIcon name="verified" size={23} style={{ color: '#32a878' }} /> : <MoggingIcon name="leaderboard" size={23} />}
             <span><b>{settings?.isPublic ? 'You’re on the leaderboard' : 'Your place is waiting'}</b>
               <small>{settings?.isPublic ? 'Manage your listing in Settings' : 'Make your profile public to join'}</small></span>
-            <ChevronRight size={16} />
+            <MoggingIcon name="chevron-right" size={16} />
           </button>
           {rows.length > 0 && <div className={styles.rankings}>
             <div className={styles.rankingsHead}><span>Rankings</span><span>{ratingLabel}</span></div>
@@ -97,7 +97,7 @@ export function MemberLeaderboard({ preview, profile, onInvite, onSettings, mobi
           </div>}
           {(!board || !board.items.length) && <div className={styles.empty} role={error ? 'alert' : 'status'}>
             {error ? <button type="button" onClick={() => void mutate()}>Couldn’t load rankings. Retry</button>
-              : board ? <><UsersRound size={30} /><b>Be one of the first</b><span>Public profiles will appear here as people join.</span></> : 'Loading rankings…'}
+              : board ? <><MoggingIcon name="people" size={30} /><b>Be one of the first</b><span>Public profiles will appear here as people join.</span></> : 'Loading rankings…'}
           </div>}
           {(page > 1 || board?.hasMore) && <nav className={styles.pages} aria-label="Leaderboard pages">
             <button type="button" disabled={page === 1} onClick={() => setPage(page - 1)}>Previous</button>

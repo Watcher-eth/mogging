@@ -1,4 +1,4 @@
-import { BadgeCheck, TriangleAlert, Loader2 } from 'lucide-react'
+import { BadgeCheck, TriangleAlert, Loader2 } from '@/components/ui/mogging-glyphs'
 import { CREATOR_TIER_ONE_COUNTRIES } from '@/lib/creator/audience'
 import { formatReportingTime } from '@/lib/admin/reporting-time'
 import type { AudienceCheck, AudienceMetric } from '@/lib/creator/audience-check'

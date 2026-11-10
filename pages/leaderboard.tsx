@@ -1,7 +1,7 @@
 import { clampPslScore } from '@/lib/analysis/score-scale'
 import * as DialogPrimitive from '@radix-ui/react-dialog'
 import { AnimatePresence, LayoutGroup, motion } from 'motion/react'
-import { Calendar, LinkIcon, MapPin, Palette, SlidersHorizontal, Trophy, VenusAndMars, X } from 'lucide-react'
+import { Calendar, LinkIcon, MapPin, Palette, SlidersHorizontal, Trophy, VenusAndMars, X } from '@/components/ui/mogging-glyphs'
 import { useSession } from 'next-auth/react'
 import Image from 'next/image'
 import { ImageSkeleton, SkeletonImage } from '@/components/ui/skeleton-image'

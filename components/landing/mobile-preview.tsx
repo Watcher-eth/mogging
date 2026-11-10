@@ -1,3 +1,5 @@
+import { MoggingIcon } from '@/components/ui/mogging-icon'
+import type { MoggingIconName } from '@/lib/design/mogging-icons'
 import { SkinNetworkSvg } from "@/components/analysis/skin-network-svg";
 import dynamic from "next/dynamic";
 import { useTranslation } from "react-i18next";
@@ -23,7 +25,7 @@ import {
   Signal,
   Wifi,
   BatteryFull,
-} from "lucide-react";
+} from "@/components/ui/mogging-glyphs";
 import type { ResolvedPrimitive } from "@/lib/creator/mobile-overlay-engine/resolve";
 import { previewPortrait, resolvePreviewOverlay } from "./overlay";
 import { processingOverlayPresets } from "./scan-presets";
@@ -506,14 +508,14 @@ export const ProgressPreview = memo(function ProgressPreview() {
   return <Frame dark chrome={false} label="Progress dashboard example">{active => <ProgressContent active={active} />}</Frame>;
 });
 
-type PreviewTask = { title: keyof typeof resources.en.translation; detail: keyof typeof resources.en.translation; color: string; icon: string; hour: number };
+type PreviewTask = { title: keyof typeof resources.en.translation; detail: keyof typeof resources.en.translation; color: string; icon: MoggingIconName; hour: number };
 const protocolTasks: PreviewTask[] = [
-  { title: "demo.chinTask", detail: "demo.chinDetail", color: "#32c48d", icon: "figure.stand", hour: 7 },
-  { title: "demo.mewingTask", detail: "demo.mewingDetail", color: "#ff6f9f", icon: "mouth.fill", hour: 12 },
-  { title: "demo.cleanseTask", detail: "demo.cleanseDetail", color: "#58bdff", icon: "drop.fill", hour: 8 },
-  { title: "demo.spfTask", detail: "demo.spfDetail", color: "#ffc45e", icon: "sun.max.fill", hour: 10 },
-  { title: "demo.hairTask", detail: "demo.hairDetail", color: "#c09aff", icon: "scissors", hour: 16 },
-  { title: "demo.eveningTask", detail: "demo.eveningDetail", color: "#58bdff", icon: "sparkles", hour: 18 },
+  { title: "demo.chinTask", detail: "demo.chinDetail", color: "#32c48d", icon: "posture", hour: 7 },
+  { title: "demo.mewingTask", detail: "demo.mewingDetail", color: "#ff6f9f", icon: "mouth", hour: 12 },
+  { title: "demo.cleanseTask", detail: "demo.cleanseDetail", color: "#58bdff", icon: "skin", hour: 8 },
+  { title: "demo.spfTask", detail: "demo.spfDetail", color: "#ffc45e", icon: "sun", hour: 10 },
+  { title: "demo.hairTask", detail: "demo.hairDetail", color: "#c09aff", icon: "grooming", hour: 16 },
+  { title: "demo.eveningTask", detail: "demo.eveningDetail", color: "#58bdff", icon: "recovery", hour: 18 },
 ];
 const protocolDays = [[2, 3, 4], [0, 1, 5], [2, 1, 4], [0, 3, 5], [2, 1, 5], [0, 3, 4], [2, 3, 5], [0, 1, 4]].map(indices => indices.map(index => protocolTasks[index]));
 
@@ -549,25 +551,10 @@ function ProtocolContent({ active }: { active: boolean }) {
         <h3>{t("demo.protocol")}</h3>
         <div className={styles.protocolActions}>
           <span key={completed} className={styles.protocolScore}>
-            <i
-              className={styles.nativeSymbol}
-              style={
-                {
-                  "--symbol":
-                    'url("/creator-icons/protocol/checkmark.seal.fill.png")',
-                } as CSSProperties
-              }
-            />
+            <MoggingIcon name="verified" size={17} />
             {protocolDays[selectedDay].reduce((score, _, index) => score + (completed & (1 << index) ? 5 : 0), 0)}
           </span>
-          <i
-            className={styles.nativeSymbol}
-            style={
-              {
-                "--symbol": 'url("/creator-icons/protocol/gearshape.png")',
-              } as CSSProperties
-            }
-          />
+          <MoggingIcon name="settings" size={18} />
         </div>
       </header>
       <div className={styles.calendar}>
@@ -617,14 +604,7 @@ function ProtocolContent({ active }: { active: boolean }) {
                 <div className={styles.task}>
                   <div className={styles.taskTop}>
                     <span className={styles.taskIcon}>
-                      <i
-                        className={styles.nativeSymbol}
-                        style={
-                          {
-                            "--symbol": `url("/creator-icons/protocol/${icon}.png")`,
-                          } as CSSProperties
-                        }
-                      />
+                      <MoggingIcon name={icon} size={22} variant="accent" />
                     </span>
                     <strong>{t(title)}</strong>
                     <button

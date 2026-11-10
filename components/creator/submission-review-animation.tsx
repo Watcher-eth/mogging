@@ -1,6 +1,6 @@
 import { useRef } from 'react'
 import { useInView } from 'motion/react'
-import { Check, Play, X } from 'lucide-react'
+import { Check, Play, X } from '@/components/ui/mogging-glyphs'
 import styles from './submission-review-animation.module.css'
 
 export function SubmissionReviewAnimation() {

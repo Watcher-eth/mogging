@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { ArrowRight } from 'lucide-react'
+import { ArrowRight } from '@/components/ui/mogging-glyphs'
 import { LoginDialog } from '@/components/app/login-dialog'
 import { Button } from '@/components/ui/button'
 import { CreatorAuthSurface } from './creator-auth-surface'

@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import dynamic from 'next/dynamic'
 import type { DesktopMockReportData } from './desktop-mock-report'
-import { Download, Film, Loader2, Monitor, Smartphone, Maximize2 } from 'lucide-react'
+import { Download, Film, Loader2, Monitor, Smartphone, Maximize2 } from '@/components/ui/mogging-glyphs'
 import { toast } from 'sonner'
 import { Button } from '@/components/ui/button'
 import { Field, fieldClass } from './creator-shell'

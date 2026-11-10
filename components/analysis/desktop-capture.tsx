@@ -1,4 +1,4 @@
-import { Images, RotateCcw, ScanFace } from 'lucide-react'
+import { Images, RotateCcw, ScanFace } from '@/components/ui/mogging-glyphs'
 import { AnimatePresence, motion, useIsPresent, useReducedMotion } from 'motion/react'
 import type { AnalysisDraftImage } from '@/lib/client/analysisDraft'
 import { CaptureFrame, type CaptureFrameImagePosition } from './capture-frame'

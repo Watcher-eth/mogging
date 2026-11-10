@@ -16,7 +16,7 @@ import {
   Ticket,
   Trash2,
   UserPlus,
-} from 'lucide-react'
+} from '@/components/ui/mogging-glyphs'
 import { Button } from '@/components/ui/button'
 import { apiGet, apiPatch, apiPost, apiRequest, ApiClientError } from '@/lib/api/client'
 import type { InviteCodeDashboardItem } from '@/lib/payments/invite-codes'

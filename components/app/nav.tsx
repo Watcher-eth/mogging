@@ -1,4 +1,4 @@
-import { ChartNoAxesCombined, ListChecks, ScanFace, Swords, Trophy } from 'lucide-react'
+import { MoggingIcon } from '@/components/ui/mogging-icon'
 import { trackWebEvent, flushWebAnalytics } from '@/lib/analytics/client'
 import { useTranslation } from 'react-i18next'
 import Link from 'next/link'
@@ -9,14 +9,14 @@ import { useRouter } from 'next/router'
 import { cn } from '@/lib/utils'
 
 const navItems = [
-  { href: '/analysis', label: 'nav.analysis', icon: ScanFace },
-  { href: '/leaderboard', label: 'nav.leaderboard', icon: Trophy },
-  { href: '/battle', label: 'nav.battle', icon: Swords },
+  { href: '/analysis', label: 'nav.analysis', icon: 'scan' },
+  { href: '/leaderboard', label: 'nav.leaderboard', icon: 'leaderboard' },
+  { href: '/battle', label: 'nav.battle', icon: 'battle' },
 ] as const
 
 const memberItems = [
-  { href: '/protocol', label: 'Protocol', icon: ListChecks },
-  { href: '/progress', label: 'Progress', icon: ChartNoAxesCombined },
+  { href: '/protocol', label: 'Protocol', icon: 'protocol' },
+  { href: '/progress', label: 'Progress', icon: 'progress' },
 ] as const
 
 export function AppNav({ activePath, member, newMemberFeatures }: { activePath?: string; member?: boolean; newMemberFeatures?: boolean }) {
@@ -51,7 +51,7 @@ export function AppNav({ activePath, member, newMemberFeatures }: { activePath?:
               active && 'text-black'
             )}
           >
-            <item.icon className="size-[18px] md:hidden" aria-hidden="true" />
+            <MoggingIcon name={item.icon} size={18} className="md:hidden" variant={active ? "accent" : "quiet"} />
             <span className="hidden items-center gap-1.5 md:flex">{label}{isMemberItem && newMemberFeatures && <NewMemberPill />}</span>
             {active ? (
               <LazyMotion features={loadNavMotion}><m.span

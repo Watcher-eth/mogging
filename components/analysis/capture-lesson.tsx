@@ -1,5 +1,5 @@
 import { Dialog, DialogContent, DialogTitle, DialogTrigger } from '@/components/ui/dialog'
-import { Info } from 'lucide-react'
+import { Info } from '@/components/ui/mogging-glyphs'
 import { StudioGuide } from './studio-guide'
 
 export function CaptureLesson({ side }: { side: boolean }) {

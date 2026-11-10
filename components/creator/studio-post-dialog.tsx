@@ -1,7 +1,7 @@
 import { useState, type FormEvent } from 'react'
 import Link from 'next/link'
 import useSWR from 'swr'
-import { Loader2 } from 'lucide-react'
+import { Loader2 } from '@/components/ui/mogging-glyphs'
 import { toast } from 'sonner'
 import { apiGet, apiPatch } from '@/lib/api/client'
 import { creatorPostPlatform } from '@/lib/creator/validation'

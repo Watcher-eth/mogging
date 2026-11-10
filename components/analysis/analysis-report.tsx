@@ -1,5 +1,5 @@
 import { AnimatePresence, MotionConfig, motion, useReducedMotion } from 'motion/react'
-import { ArrowRight, ChevronLeft, ChevronRight, ScanFace, Share, Share2 } from 'lucide-react'
+import { ArrowRight, ChevronLeft, ChevronRight, ScanFace, Share, Share2 } from '@/components/ui/mogging-glyphs'
 import { useEffect, useRef, useState, type CSSProperties, type ReactNode } from 'react'
 import { TextMorph } from 'torph/react'
 import type { FaceLandmarksPayload } from '@/lib/analysis/landmarks'

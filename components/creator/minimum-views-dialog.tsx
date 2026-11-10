@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import NumberFlow from '@number-flow/react'
 import { useReducedMotion } from 'motion/react'
-import { Eye } from 'lucide-react'
+import { Eye } from '@/components/ui/mogging-glyphs'
 import { Button } from '@/components/ui/button'
 import {
   Dialog,

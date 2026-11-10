@@ -1,5 +1,5 @@
 import useSWR from "swr";
-import { Loader2 } from "lucide-react";
+import { Loader2 } from "@/components/ui/mogging-glyphs";
 import { CreatorShell } from "@/components/creator/creator-shell";
 import { CreatorConversions } from "@/components/creator/creator-conversions";
 import { apiGet } from "@/lib/api/client";

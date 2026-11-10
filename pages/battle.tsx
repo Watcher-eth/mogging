@@ -1,5 +1,5 @@
 import { clampPslScore } from '@/lib/analysis/score-scale'
-import { Loader2, RefreshCw, SlidersHorizontal, X } from 'lucide-react'
+import { Loader2, RefreshCw, SlidersHorizontal, X } from '@/components/ui/mogging-glyphs'
 import { SkeletonImage } from '@/components/ui/skeleton-image'
 import { motion } from 'motion/react'
 import NumberFlow from '@number-flow/react'

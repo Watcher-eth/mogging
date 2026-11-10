@@ -1,5 +1,5 @@
 import Link from 'next/link'
-import { Anchor } from 'lucide-react'
+import { Anchor } from '@/components/ui/mogging-glyphs'
 import { useReducedMotion } from 'motion/react'
 import { SocialPlatformLogo } from '@/components/brand/social-platform-logo'
 import { BorderBeam } from '@/components/ui/border-beam'

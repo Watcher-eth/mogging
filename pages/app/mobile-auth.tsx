@@ -4,7 +4,7 @@ import Head from 'next/head'
 import { useRouter } from 'next/router'
 import { signIn, useSession } from 'next-auth/react'
 import { useEffect, useRef, useState } from 'react'
-import { Loader2 } from 'lucide-react'
+import { Loader2 } from '@/components/ui/mogging-glyphs'
 import { apiPost } from '@/lib/api/client'
 
 const mobileRedirectUri = 'mogging://auth/google'

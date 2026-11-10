@@ -1,5 +1,5 @@
 import { V2ReportDetail } from '@/components/analysis/v2/report-detail'
-import { LockKeyhole, ArrowRight, RotateCcw } from 'lucide-react'
+import { LockKeyhole, ArrowRight, RotateCcw } from '@/components/ui/mogging-glyphs'
 import { useTranslation } from 'react-i18next'
 import { AnalysisReport } from '@/components/analysis/analysis-report'
 import { reportCategoryDefaults } from '@/components/analysis/report-category-defaults'

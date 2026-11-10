@@ -14,7 +14,7 @@ import {
   useSortable,
 } from '@dnd-kit/sortable'
 import { CSS } from '@dnd-kit/utilities'
-import { GripVertical } from 'lucide-react'
+import { GripVertical } from '@/components/ui/mogging-glyphs'
 import type { OutlineRowProps } from './course-outline'
 
 export function EmptyChapterDrop({ sectionId }: { sectionId: string }) {

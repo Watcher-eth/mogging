@@ -1,5 +1,5 @@
 import { useEffect, useId, useRef, useState, type CSSProperties } from 'react'
-import { ArrowRight, ChevronLeft, ChevronRight } from 'lucide-react'
+import { ArrowRight, ChevronLeft, ChevronRight } from '@/components/ui/mogging-glyphs'
 import type { LaunchCampaign } from '@/lib/creator/campaign-launch'
 import styles from './launch-campaign-detail.module.css'
 

@@ -1,6 +1,6 @@
 import * as Dialog from '@radix-ui/react-dialog'
 import { AnimatePresence, LayoutGroup, motion, useReducedMotion } from 'motion/react'
-import { Info, X } from 'lucide-react'
+import { Info, X } from '@/components/ui/mogging-glyphs'
 import { useId, useState, type CSSProperties } from 'react'
 import { campaignAudienceBands } from '@/lib/creator/sprint-defaults'
 import { CREATOR_TIER_ONE_COUNTRIES } from '@/lib/creator/audience'

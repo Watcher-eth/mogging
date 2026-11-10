@@ -4,7 +4,7 @@ import { paywallExperimentProperties, type PaywallExposure } from '@/lib/payment
 import { trackWebEvent } from '@/lib/analytics/client'
 import { DatingProfileLikes, EvidenceCards, ProtocolStoryPreview } from './mobile-scan-stories'
 import { AnimatePresence, motion, useReducedMotion } from 'motion/react'
-import { Activity, ArrowUpRight, Camera, Check, Clock3, Droplet, Dumbbell, Eye, FlaskConical, Focus, Heart, ListChecks, MessageCircle, Repeat2, ScanFace, Sparkles, Syringe, Users, Utensils, TriangleAlert } from 'lucide-react'
+import { Activity, ArrowUpRight, Camera, Check, Clock3, Droplet, Dumbbell, Eye, FlaskConical, Focus, Heart, ListChecks, MessageCircle, Repeat2, ScanFace, Sparkles, Syringe, Users, Utensils, TriangleAlert } from '@/components/ui/mogging-glyphs'
 import { useLayoutEffect, useRef, useState } from 'react'
 import { MobileScanStory, ScanButton, scanPart, scanSequence } from './mobile-scan-pwa'
 import { getOnboardingProfileSteps, motivations, obstacles, onboardingChoices, relevanceCopy, storyHeadings, type OnboardingProfileStepId } from '@/lib/client/scan-onboarding'

@@ -1,6 +1,6 @@
 import { creatorPaymentLabel } from '@/lib/creator/money'
 import { useState } from 'react'
-import { Loader2, Wallet } from 'lucide-react'
+import { Loader2, Wallet } from '@/components/ui/mogging-glyphs'
 import { toast } from 'sonner'
 import type { AdminBundleData, AdminPayment } from './creator-types'
 import type { CreatorPayoutRequest } from '@/components/creator/types'

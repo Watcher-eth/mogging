@@ -1,5 +1,6 @@
-import { ArrowLeft, ArrowUpRight, ChevronRight, Download, ScanFace, Link2, LogOut, Settings, Shield, UserPlus, UserRound } from 'lucide-react'
-import { AnimatePresence, motion, useReducedMotion } from 'motion/react'
+import { useSystemReducedMotion } from '@/hooks/use-system-reduced-motion'
+import { MoggingIcon } from '@/components/ui/mogging-icon'
+import { AnimatePresence, motion } from 'motion/react'
 import { signOut } from 'next-auth/react'
 import Link from 'next/link'
 import { useEffect, useId, useRef, useState } from 'react'
@@ -13,11 +14,11 @@ import type { MemberProfile } from '@/lib/users/member-pages'
 import styles from './member-account-menu.module.css'
 
 const actions = [
-  { id: 'settings', label: 'Settings', Icon: Settings, description: 'Manage your visibility and download your data.' },
-  { id: 'scans', label: 'Get more Scans', Icon: ScanFace },
-  { id: 'invite', label: 'Invite', Icon: UserPlus, description: 'Share your personal invite link with friends.' },
-  { id: 'privacy', label: 'Privacy', Icon: Shield, description: 'See what’s shared and what stays private.' },
-  { id: 'logout', label: 'Log out', Icon: LogOut, description: 'Log out of Mogging on this browser?' },
+  { id: 'settings', label: 'Settings', icon: 'settings', description: 'Manage your visibility and download your data.' },
+  { id: 'scans', label: 'Get more Scans', icon: 'scan' },
+  { id: 'invite', label: 'Invite', icon: 'invite', description: 'Share your personal invite link with friends.' },
+  { id: 'privacy', label: 'Privacy', icon: 'privacy', description: 'See what’s shared and what stays private.' },
+  { id: 'logout', label: 'Log out', icon: 'logout', description: 'Log out of Mogging on this browser?' },
 ] as const
 type Action = typeof actions[number]['id']
 export type AccountPanel = Exclude<Action, 'scans'> | 'account' | 'scan-invite'
@@ -31,7 +32,7 @@ export function MemberAccountMenu({ profile, preview, panel, onPanel, onScans, m
   const trigger = useRef<HTMLButtonElement>(null)
   const avatar = useRef<HTMLImageElement>(null)
   const menuId = useId()
-  const reduced = useReducedMotion()
+  const reduced = useSystemReducedMotion()
   const src = profile?.imageUrl
   const score = profile?.score?.toFixed(1) ?? '—'
 
@@ -73,7 +74,7 @@ export function MemberAccountMenu({ profile, preview, panel, onPanel, onScans, m
         <GoalBranch />
         <strong aria-hidden="true"><Morph>{score}</Morph></strong>
         <span className={styles.avatar}>
-          {src && src !== failedImage ? <img ref={avatar} src={src} width={36} height={36} alt="" onError={() => setFailedImage(src)} /> : <UserRound size={17} aria-hidden="true" />}
+          {src && src !== failedImage ? <img ref={avatar} src={src} width={36} height={36} alt="" onError={() => setFailedImage(src)} /> : <MoggingIcon name="person" size={17} />}
         </span>
         <GoalBranch />
       </button>
@@ -91,13 +92,13 @@ export function MemberAccountMenu({ profile, preview, panel, onPanel, onScans, m
 }
 
 function Morph({ children }: { children: string }) {
-  return useReducedMotion() ? children : <TextMorph duration={240}>{children}</TextMorph>
+  return useSystemReducedMotion() ? children : <TextMorph duration={240}>{children}</TextMorph>
 }
 
 function ActionList({ onSelect }: { onSelect: (action: Action) => void }) {
-  return <div className={styles.actions}>{actions.map(({ id, label, Icon }) =>
+  return <div className={styles.actions}>{actions.map(({ id, label, icon }) =>
     <button key={id} type="button" data-destructive={id === 'logout' || undefined} onClick={() => onSelect(id)}>
-      <span>{label}</span><Icon size={17} strokeWidth={1.7} aria-hidden="true" />
+      <span>{label}</span><MoggingIcon name={icon} size={18} />
     </button>
   )}</div>
 }
@@ -113,7 +114,7 @@ function AccountDialog({ panel, onPanel, preview, onCloseFocus, onScans, restore
       <AnimatedDialogPanel contentKey={panel ?? 'account'} className={styles.panelFrame}>
         <div className={styles.panel}>
           <div className={styles.heading}>
-            {meta && <button type="button" className={styles.back} onClick={() => onPanel('account')}><ArrowLeft size={14} /> Account</button>}
+            {meta && <button type="button" className={styles.back} onClick={() => onPanel('account')}><MoggingIcon name="back" size={14} /> Account</button>}
             <DialogTitle className={styles.title}>{title}</DialogTitle>
             <DialogDescription className={styles.description}>{scanInvite ? 'Share your invite link. Earn a scan when three friends join.' : meta && 'description' in meta ? meta.description : 'Choose what you’d like to manage.'}</DialogDescription>
           </div>
@@ -179,7 +180,7 @@ function SettingsPanel({ preview }: { preview: boolean }) {
         disabled={saving || (!preview && (!data || isLoading))} onClick={() => void toggle()}><span /></button>
     </div>
     {error && <p className={styles.error} role="alert">Couldn’t load visibility. <button type="button" onClick={() => void mutate()}>Retry</button></p>}
-    <button type="button" className={styles.secondary} disabled={exporting} onClick={() => void download()}><Download size={16} /><Morph>{exporting ? 'Preparing export…' : exported ? 'Export again' : 'Export my data'}</Morph></button>
+    <button type="button" className={styles.secondary} disabled={exporting} onClick={() => void download()}><MoggingIcon name="download" size={16} /><Morph>{exporting ? 'Preparing export…' : exported ? 'Export again' : 'Export my data'}</Morph></button>
     {message && <p className={styles.error} role="alert">{message}</p>}
   </>
 }
@@ -194,7 +195,7 @@ function InvitePanel({ preview, scan }: { preview: boolean; scan: boolean }) {
     catch { setStatus('failed') }
   }
   return <>
-    <div className={styles.inviteLink}><Link2 size={17} /><span>{url ?? (error ? 'Invite link unavailable' : 'Getting your invite link…')}</span></div>
+    <div className={styles.inviteLink}><MoggingIcon name="link" size={17} /><span>{url ?? (error ? 'Invite link unavailable' : 'Getting your invite link…')}</span></div>
     <button type="button" className={styles.primary} disabled={!url && !error} onClick={() => { if (error) void mutate(); else void copy() }}><Morph>{error ? 'Try again' : status === 'copied' ? 'Link copied' : 'Copy invite link'}</Morph></button>
     {scan && data?.reward && <p className={styles.privacyCopy}>{data.reward.available ? 'Your free scan is ready.' : data.reward.granted ? 'You’ve already used your free scan.' : `${data.reward.completed} of ${data.reward.required} friends joined`}</p>}
     {status === 'failed' && <p className={styles.error} role="alert">Copy the link directly from the field above.</p>}
@@ -204,8 +205,8 @@ function InvitePanel({ preview, scan }: { preview: boolean; scan: boolean }) {
 function PrivacyPanel({ onSettings }: { onSettings: () => void }) {
   return <>
     <p className={styles.privacyCopy}>Your evaluation photos, reports, and face landmarks stay private. If you enable a public listing, anyone can see your display name and score on the leaderboard.</p>
-    <button type="button" className={styles.secondary} onClick={onSettings}><Settings size={16} /> Visibility settings <ChevronRight size={15} /></button>
-    <Link href="/privacy" target="_blank" rel="noopener noreferrer" className={styles.secondary}><Shield size={16} /> Privacy policy <ArrowUpRight size={15} /></Link>
+    <button type="button" className={styles.secondary} onClick={onSettings}><MoggingIcon name="settings" size={16} /> Visibility settings <MoggingIcon name="chevron-right" size={15} /></button>
+    <Link href="/privacy" target="_blank" rel="noopener noreferrer" className={styles.secondary}><MoggingIcon name="privacy" size={16} /> Privacy policy <MoggingIcon name="external" size={15} /></Link>
   </>
 }
 

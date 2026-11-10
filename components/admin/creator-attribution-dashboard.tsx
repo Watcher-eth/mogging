@@ -1,7 +1,7 @@
 import { creatorAccountLabel } from '@/components/creator/types'
 import { DataDetails, Table, label } from './analytics-ui'
 import Link from 'next/link'
-import { ArrowUpRight, Bot, CircleDollarSign, CreditCard, Download, MousePointerClick, RefreshCcw, ShoppingCart, UserPlus, UsersRound } from 'lucide-react'
+import { ArrowUpRight, Bot, CircleDollarSign, CreditCard, Download, MousePointerClick, RefreshCcw, ShoppingCart, UserPlus, UsersRound } from '@/components/ui/mogging-glyphs'
 import type { AdminAccount, AdminAttributionReport, AdminCreator, AdminDashboard } from '@/components/admin/creator-types'
 
 export function CreatorAttributionDashboard({ data, onSelectCreator, onSelectAccount }: { data: AdminDashboard; onSelectCreator: (creator: AdminCreator) => void; onSelectAccount: (account: AdminAccount) => void }) {

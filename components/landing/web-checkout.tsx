@@ -1,7 +1,7 @@
 import dynamic from 'next/dynamic'
 import Link from 'next/link'
 import { useRouter } from 'next/router'
-import { ArrowRight } from 'lucide-react'
+import { ArrowRight } from '@/components/ui/mogging-glyphs'
 import { useEffect, useRef, useState, type ReactNode } from 'react'
 import { useTranslation } from 'react-i18next'
 import useSWR from 'swr'

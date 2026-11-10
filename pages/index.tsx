@@ -9,7 +9,7 @@ import { useLandingTracking } from "@/components/landing/use-landing-tracking";
 import type { GetServerSideProps, NextApiRequest, NextApiResponse } from "next";
 import type { ReactNode } from "react";
 import Link from "next/link";
-import { ArrowRight } from "lucide-react";
+import { ArrowRight } from "@/components/ui/mogging-glyphs";
 import {
   EvaluationPreview,
   ProtocolPreview,

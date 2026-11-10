@@ -41,7 +41,7 @@ import {
   Loader2,
   Share2,
   X,
-} from 'lucide-react'
+} from '@/components/ui/mogging-glyphs'
 import { useSession } from 'next-auth/react'
 import { SkeletonImage } from '@/components/ui/skeleton-image'
 import dynamic from 'next/dynamic'

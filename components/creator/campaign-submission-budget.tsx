@@ -1,4 +1,4 @@
-import { Info, LockKeyhole } from 'lucide-react'
+import { Info, LockKeyhole } from '@/components/ui/mogging-glyphs'
 import { Disclosure, DisclosureSummary, AccordionContent } from '@/components/ui/accordion'
 import { campaignBudgetState } from '@/lib/creator/campaign-budget-state'
 import { sprintMoney, type CreatorSprint } from '@/lib/creator/sprints'

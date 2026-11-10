@@ -45,7 +45,7 @@ import {
   ZoomOut,
   Video,
   Wallet,
-} from 'lucide-react'
+} from '@/components/ui/mogging-glyphs'
 import useSWR from 'swr'
 import useSWRInfinite from 'swr/infinite'
 import { toast } from 'sonner'

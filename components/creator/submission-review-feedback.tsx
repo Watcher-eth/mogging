@@ -1,5 +1,5 @@
 import { Disclosure, DisclosureSummary, AccordionContent } from '@/components/ui/accordion'
-import { CheckCircle2, XCircle } from 'lucide-react'
+import { CheckCircle2, XCircle } from '@/components/ui/mogging-glyphs'
 import { cn } from '@/lib/utils'
 import { submissionRejectionLabel, type CreatorSubmissionReviewItem, type CreatorSubmissionReviewResult } from '@/lib/creator/submission-review'
 

@@ -1,7 +1,7 @@
 import { AnimatePresence, motion } from 'motion/react'
 import { SkeletonBox } from 'skullet/react'
 import { useEffect, useRef, useState } from 'react'
-import { BatteryFull, Bookmark, Heart, Home, MessageCircle, Music2, Pause, Play, Plus, RotateCcw, RotateCw, Search, Share2, Signal, UserRound, Users, Wifi } from 'lucide-react'
+import { BatteryFull, Bookmark, Heart, Home, MessageCircle, Music2, Pause, Play, Plus, RotateCcw, RotateCw, Search, Share2, Signal, UserRound, Users, Wifi } from '@/components/ui/mogging-glyphs'
 import { drawVideoFrame, seekPreparedMedia, type PreparedVideo } from '@/lib/creator/video-renderer'
 import { videoExportSize } from '@/lib/creator/video-layout'
 import { createPreviewRipple } from '@/lib/creator/preview-ripple'

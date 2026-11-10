@@ -1,4 +1,4 @@
-import { ArrowRight, LockKeyhole } from 'lucide-react'
+import { ArrowRight, LockKeyhole } from '@/components/ui/mogging-glyphs'
 import { basicCategories, type BasicReport as Report } from '@/lib/analysis-v2/basic-preview'
 
 export function BasicReport({ report, onUpgrade, canUpgrade }: { report: Report; onUpgrade: () => void; canUpgrade: boolean }) {

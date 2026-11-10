@@ -1,6 +1,6 @@
 import * as Dialog from '@radix-ui/react-dialog'
 import { AnimatePresence, LayoutGroup, motion, useReducedMotion } from 'motion/react'
-import { Check, Info, Loader2, X } from 'lucide-react'
+import { Check, Info, Loader2, X } from '@/components/ui/mogging-glyphs'
 import { useId, useState } from 'react'
 import { toast } from 'sonner'
 import { Button } from '@/components/ui/button'

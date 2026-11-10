@@ -21,7 +21,7 @@ import {
   Loader2,
   Plus,
   Trash2,
-} from 'lucide-react'
+} from '@/components/ui/mogging-glyphs'
 import { toast } from 'sonner'
 import { Button } from '@/components/ui/button'
 import {

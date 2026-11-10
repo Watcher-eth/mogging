@@ -6,7 +6,7 @@ import { SkeletonAvatar } from '@/components/ui/skeleton-avatar'
 import { AnimatedGroup } from '@/components/core/animated-group'
 import useSWR, { useSWRConfig } from 'swr'
 import { useRouter } from 'next/router'
-import { ArrowUpRight, Check, Loader2, Plus, Trash2, Users } from 'lucide-react'
+import { ArrowUpRight, Check, Loader2, Plus, Trash2, Users } from '@/components/ui/mogging-glyphs'
 import { toast } from 'sonner'
 import { Button } from '@/components/ui/button'
 import {

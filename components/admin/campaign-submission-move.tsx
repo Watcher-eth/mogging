@@ -1,5 +1,5 @@
 import { createContext, useContext, useState, type DragEvent, type FormEvent, type ReactNode } from 'react'
-import { GripVertical, Loader2 } from 'lucide-react'
+import { GripVertical, Loader2 } from '@/components/ui/mogging-glyphs'
 import { toast } from 'sonner'
 import { Button } from '@/components/ui/button'
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog'

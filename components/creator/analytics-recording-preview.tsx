@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { Check, FileVideo } from 'lucide-react'
+import { Check, FileVideo } from '@/components/ui/mogging-glyphs'
 
 export function AnalyticsRecordingPreview({ file, onChoose }: { file: File; onChoose: () => void }) {
   const [source, setSource] = useState<string | null>(null)

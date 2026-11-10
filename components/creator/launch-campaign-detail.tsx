@@ -15,7 +15,7 @@ import {
   ChevronDown,
   Clock3,
   ShieldCheck,
-} from "lucide-react";
+} from "@/components/ui/mogging-glyphs";
 import { CampaignAchievements } from "./campaign-achievements";
 import type { CampaignBonusProgress } from "@/lib/creator/campaign-bonuses";
 import { SocialPlatformLogo } from "@/components/brand/social-platform-logo";

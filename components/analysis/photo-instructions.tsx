@@ -1,4 +1,4 @@
-import { Info, MoveHorizontal, MoveVertical } from 'lucide-react'
+import { Info, MoveHorizontal, MoveVertical } from '@/components/ui/mogging-glyphs'
 import { motion, useReducedMotion } from 'motion/react'
 import { useId, useState } from 'react'
 import { TextMorph } from 'torph/react'

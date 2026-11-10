@@ -2,7 +2,6 @@ import { videoThemeContext } from "./video-theme";
 import {
   drawReportComponent,
   mockFeatureLayout,
-  loadMockReportSymbols,
 } from "./mock-report";
 import { createCanvasPainter } from "./canvas-layout";
 import { loadCreatorBrand, drawBrandLockup, type CreatorBrand } from "./brand";
@@ -28,7 +27,6 @@ export async function prepareSculptureReport(
   )!;
   const [brand] = await Promise.all([
     loadCreatorBrand(),
-    loadMockReportSymbols(),
     loadShareFont(),
   ]);
   const slide: ContentSlide = {

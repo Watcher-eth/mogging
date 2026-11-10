@@ -643,27 +643,7 @@
   font-size: 13px;
   font-weight: 800;
 }
-.nativeSymbol {
-  display: block;
-  width: 18px;
-  height: 18px;
-  background: currentColor;
-  mask-image: var(--symbol);
-  mask-size: contain;
-  mask-position: center;
-  mask-repeat: no-repeat;
-}
-.protocolScore .nativeSymbol {
-  width: 17px;
-  height: 17px;
-}
-.protocolActions > .nativeSymbol {
-  margin: 0 8px;
-}
-.taskIcon .nativeSymbol {
-  width: 22px;
-  height: 22px;
-}
+.protocolActions > svg { margin: 0 8px; }
 .calendar [data-selected="true"]:not([data-today="true"]) {
   color: #111113;
 }

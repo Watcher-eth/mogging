@@ -6,7 +6,7 @@ import { RubricVisual } from './rubric-visual'
 import { AnimatedGroup } from '@/components/core/animated-group'
 import { motion, useReducedMotion } from 'motion/react'
 import { TextMorph } from 'torph/react'
-import { LockKeyhole } from 'lucide-react'
+import { LockKeyhole } from '@/components/ui/mogging-glyphs'
 import styles from './rubrics.module.css'
 
 export function V2ReportDetail({ category, groups, embedded = false, hero = false, locked = false, mobile = false, animateValues = false, preview, categoryScores }: { category: DesktopReportCategory; groups: WebRubricGroup[]; embedded?: boolean; hero?: boolean; locked?: boolean; mobile?: boolean; animateValues?: boolean; preview?: { visibleId: string; onUnlock: () => void }; categoryScores?: number[] }) {

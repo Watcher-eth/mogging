@@ -1,7 +1,7 @@
 import { Accordion, AccordionItem, AccordionTrigger, AccordionContent, AccordionChevron } from '@/components/ui/accordion'
 import { useState, type ReactNode, type ComponentType } from 'react'
 import { SkeletonImage } from '@/components/ui/skeleton-image'
-import { Check, FileText, Play } from 'lucide-react'
+import { Check, FileText, Play } from '@/components/ui/mogging-glyphs'
 import { AnimatePresence, motion } from 'motion/react'
 import type { CourseContent, CourseLesson } from '@/lib/courses/validation'
 

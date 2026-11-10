@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import useSWR from 'swr'
-import { ArrowUpRight, Check, CircleAlert, Loader2, ShieldCheck } from 'lucide-react'
+import { ArrowUpRight, Check, CircleAlert, Loader2, ShieldCheck } from '@/components/ui/mogging-glyphs'
 import { AnimatePresence, motion, useReducedMotion } from 'motion/react'
 import { TextMorph } from 'torph/react'
 import { apiGet, apiPost } from '@/lib/api/client'

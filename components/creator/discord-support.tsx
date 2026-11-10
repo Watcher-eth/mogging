@@ -1,6 +1,6 @@
 import * as Dialog from '@radix-ui/react-dialog'
 import { AnimatePresence, LayoutGroup, motion, useReducedMotion } from 'motion/react'
-import { MessageCircle, X } from 'lucide-react'
+import { MessageCircle, X } from '@/components/ui/mogging-glyphs'
 import { useId, useState } from 'react'
 import { SidebarMenuButton } from '@/components/ui/sidebar'
 

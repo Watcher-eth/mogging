@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { ArrowUpRight, Check, Link2 } from 'lucide-react'
+import { ArrowUpRight, Check, Link2 } from '@/components/ui/mogging-glyphs'
 import { SkeletonAvatar } from '@/components/ui/skeleton-avatar'
 import { BioLinkTracker } from './bio-link-tracker'
 import type { AdminAccount, AdminDashboard, AdminSubmission } from './creator-types'

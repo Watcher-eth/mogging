@@ -20,7 +20,7 @@ import {
   type Variant,
 } from 'motion/react'
 import * as m from 'motion/react-m'
-import { ChevronRight } from 'lucide-react'
+import { ChevronRight } from '@/components/ui/mogging-glyphs'
 import { cn } from '@/lib/utils'
 
 type Value = Key | Key[] | null
