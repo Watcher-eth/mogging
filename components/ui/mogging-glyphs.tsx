@@ -5,7 +5,9 @@ import type { MoggingWebIconName } from '@/lib/design/mogging-web-glyphs'
 export type MoggingGlyphComponent = (props: MoggingGlyphProps) => JSX.Element
 
 function icon(name: MoggingWebIconName): MoggingGlyphComponent {
-  return props => <MoggingIcon size={24} {...props} name={name} />
+  return function Glyph(props) {
+    return <MoggingIcon size={24} {...props} name={name} />
+  }
 }
 
 // Named icons for call sites that pass an icon component through a menu or configuration.
