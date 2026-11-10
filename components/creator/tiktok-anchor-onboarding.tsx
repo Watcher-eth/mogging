@@ -1,3 +1,5 @@
+import { creatorOverviewPath } from './types'
+import { useRouter } from 'next/router'
 import Image from 'next/image'
 import { createContext, useContext, useEffect, useRef, useState, type ReactNode } from 'react'
 import useSWR from 'swr'
@@ -325,7 +327,8 @@ export function useTikTokAnchorSetup() {
 }
 
 export function TikTokAnchorSetup({ children, autoOpen = false }: { children: ReactNode; autoOpen?: boolean }) {
-  const { data, mutate } = useSWR<CreatorDashboard>('/api/creator', apiGet)
+  const { pathname } = useRouter()
+  const { data, mutate } = useSWR<CreatorDashboard>(pathname === '/creator' ? creatorOverviewPath : pathname === '/creator/conversions' ? '/api/creator?view=accounts' : '/api/creator', apiGet)
   const [selectedId, setSelectedId] = useState<string | null>(null)
   const opened = useRef(false)
   const reminder = useRef<Promise<{ accountId: string | null }> | null>(null)

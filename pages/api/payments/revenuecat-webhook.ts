@@ -1,5 +1,6 @@
 import { monitorBackend } from '@/lib/reliability/monitor'
 import { timingSafeEqual } from 'crypto'
+import { invalidateNavigationMembership } from '@/lib/payments/navigation-membership'
 import type { NextApiRequest, NextApiResponse } from 'next'
 import { z } from 'zod'
 import { ApiError, handleApiError, json, methodNotAllowed } from '@/lib/api/http'
@@ -32,7 +33,11 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
     const event = payload.event
     const processed = await processBillingWebhook('revenuecat', event.id, async () => {
       await recordRevenueCatLifecycle(event)
-      if (!event.app_user_id || event.type === 'TEST') return
+      if (event.type === 'TEST') return
+      await invalidateNavigationMembership([event.app_user_id, event.original_app_user_id, ...(event.aliases ?? []),
+        ...(event.transferred_to ?? []), ...(event.transferred_from ?? [])])
+        .catch(() => console.error('Navigation membership invalidation failed'))
+      if (!event.app_user_id) return
       if (event.environment === 'PRODUCTION') await recordRevenueCatCreatorEvent({
         id: event.id,
         type: event.type,

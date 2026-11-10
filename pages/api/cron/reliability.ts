@@ -1,6 +1,7 @@
 import type { NextApiRequest,NextApiResponse } from 'next'
 import { timingSafeEqual } from 'node:crypto'
 import { unfinishedEvaluationsQuery } from '@/lib/admin/reliability'
+import { readSeparateBackendTelemetry } from '@/lib/reliability/event-source'
 import { recordBackendRequest } from '@/lib/reliability/monitor'
 import { backendHealth } from '@/lib/reliability/health'
 import { db } from '@/lib/db'
@@ -16,7 +17,7 @@ export default async function handler(req:NextApiRequest,res:NextApiResponse) {
   const [health,unfinished]=await Promise.all([backendHealth(),db.transaction(async tx=>{
     await tx.execute(sql`set transaction read only`)
     await tx.execute(sql`set local statement_timeout = '3s'`)
-    return tx.execute(unfinishedEvaluationsQuery(new Date()))
+    return tx.execute(unfinishedEvaluationsQuery(new Date(),readSeparateBackendTelemetry()))
   }).catch(()=>null)])
   const healthy=health.ok && unfinished!==null
   await recordBackendRequest('availability',{outcome:healthy?'ok':'failed',code:healthy?'ok':!health.database?'database_unavailable':!health.configured?'runtime_configuration':'telemetry_unavailable',alert:!healthy},health.duration_ms)

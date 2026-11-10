@@ -1,11 +1,7 @@
-import { reconcileCreatorReferrals } from '@/lib/creator/creator-referrals'
-import { reconcileCreatorBonuses } from '@/lib/creator/bonus-service'
+import { creatorReconciliationJobs } from '@/lib/creator/reconciliation-jobs'
 import { timingSafeEqual } from 'node:crypto'
 import type { NextApiRequest, NextApiResponse } from 'next'
-import { sql } from 'drizzle-orm'
-import { db, schema } from '@/lib/db'
 import { monitorBackend } from '@/lib/reliability/monitor'
-import { reconcileCreatorBilling } from '@/lib/creator/billing-attribution'
 export const config = { maxDuration: 60 }
 
 async function handler(req: NextApiRequest, res: NextApiResponse) {
@@ -14,10 +10,9 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
   const expected = Buffer.from(`Bearer ${process.env.CRON_SECRET || ''}`), actual = Buffer.from(req.headers.authorization || '')
   if (!process.env.CRON_SECRET || expected.length !== actual.length || !timingSafeEqual(expected, actual)) return res.status(401).end()
   try {
-    const result = await reconcileCreatorBilling(100, 25_000)
-    await db.delete(schema.creatorReferralHandoffs).where(sql`${schema.creatorReferralHandoffs.expiresAt} < now() - interval '1 day'`)
-    const bonuses = await reconcileCreatorBonuses(100, 20_000)
-    const creatorReferrals = await reconcileCreatorReferrals()
+    const result = await creatorReconciliationJobs.billing()
+    const bonuses = await creatorReconciliationJobs.bonuses()
+    const creatorReferrals = await creatorReconciliationJobs.referrals()
     return res.status(200).json({ result, bonuses, creatorReferrals })
   } catch { return res.status(503).json({ error: 'creator_reconciliation_pending' }) }
 }

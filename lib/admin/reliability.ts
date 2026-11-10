@@ -4,6 +4,7 @@ import { db } from '@/lib/db'
 import type { MetricRow } from './analytics'
 import { backendHealth } from '@/lib/reliability/health'
 import { reliabilityAlertStatus } from '@/lib/reliability/alerts'
+import { backendEventSource, readSeparateBackendTelemetry } from '@/lib/reliability/event-source'
 import { reportingBucket } from './reporting-bucket'
 
 export type ReliabilityData = {
@@ -25,18 +26,20 @@ export type ReliabilityData = {
   stalled:MetricRow[]
   unresolved_count:number
 }
-export function unfinishedEvaluationsQuery(now:Date) {
+export function unfinishedEvaluationsQuery(now:Date, separate = false) {
+  const backend = backendEventSource(separate)
   const end=now.toISOString()
-  return sql`select s.properties->>'trace_id' as trace,s.occurred_at as started_at from analytics_events s
+  return sql`select s.properties->>'trace_id' as trace,s.occurred_at as started_at from ${backend} s
     where s.event_name='backend_evaluation_started' and s.environment='production' and s.source='backend' and s.occurred_at>=${end}::timestamp-interval '24 hours' and s.occurred_at<${end}::timestamp-interval '5 minutes'
-    and not exists(select 1 from analytics_events r where r.event_name='backend_request' and r.environment='production' and r.source='backend' and r.occurred_at>=s.occurred_at and r.properties->>'trace_id'=s.properties->>'trace_id') order by s.occurred_at desc limit 50`
+    and not exists(select 1 from ${backend} r where r.event_name='backend_request' and r.environment='production' and r.source='backend' and r.occurred_at>=s.occurred_at and r.properties->>'trace_id'=s.properties->>'trace_id') order by s.occurred_at desc limit 50`
 }
-export function reliabilityQuery(days:number,now:Date) {
+export function reliabilityQuery(days:number,now:Date, separate = false) {
+  const backend = backendEventSource(separate)
   const start=new Date(now.getTime()-days*86400_000).toISOString()
   const end=now.toISOString()
   const rows=(name:string)=>sql`coalesce((select json_agg(r) from ${sql.identifier(name)} r),'[]'::json)`
   return sql`with ${audienceCTEs()}, events as materialized (
-    select occurred_at,properties from analytics_events where event_name='backend_request' and environment='production' and platform='server' and source='backend' and occurred_at>=${start}::timestamp and occurred_at<${end}::timestamp
+    select occurred_at,properties from ${backend} b where event_name='backend_request' and environment='production' and platform='server' and source='backend' and occurred_at>=${start}::timestamp and occurred_at<${end}::timestamp
   ), requests as (
     select occurred_at,properties->>'feature' as feature,properties->>'outcome' as outcome,properties->>'code' as code,properties->>'trace_id' as trace,
     coalesce(properties->>'feature'='availability' or properties->>'code'='evaluation_unfinished',false) as signal,
@@ -84,18 +87,18 @@ export function reliabilityQuery(days:number,now:Date) {
   ), clients as (
     select event_name as event,platform,app_version as release,coalesce(properties->>'reason_code','unspecified') as code,count(*) as events,max(occurred_at) as latest_event from analytics_events client where ${customerEvent('client')} and platform in ('web','ios','android') and event_name in ('evaluation_failed','evaluation_request_failed','photo_validation_failed','purchase_failed','restore_failed','account_auth_failed','account_post_login_failed','share_failed') and occurred_at>=${start}::timestamp and occurred_at<${end}::timestamp group by 1,2,3,4 order by events desc limit 100
   ), notifications as (
-    select properties->>'feature' as feature,properties->>'code' as code,properties->>'status' as status,count(*) as events,max(occurred_at) as latest_event from analytics_events where event_name='backend_alert' and environment='production' and source='backend' and occurred_at>=${start}::timestamp and occurred_at<${end}::timestamp group by 1,2,3 order by latest_event desc limit 50
+    select properties->>'feature' as feature,properties->>'code' as code,properties->>'status' as status,count(*) as events,max(occurred_at) as latest_event from ${backend} b where event_name='backend_alert' and environment='production' and source='backend' and occurred_at>=${start}::timestamp and occurred_at<${end}::timestamp group by 1,2,3 order by latest_event desc limit 50
   ), unresolved as materialized (
-    select s.properties->>'trace_id' as trace,min(s.occurred_at) as started_at from analytics_events s
+    select s.properties->>'trace_id' as trace,min(s.occurred_at) as started_at from ${backend} s
     where s.event_name='backend_evaluation_started' and s.environment='production' and s.source='backend'
       and s.occurred_at>=${end}::timestamp-interval '24 hours' and s.occurred_at<${end}::timestamp-interval '5 minutes'
       and nullif(s.properties->>'trace_id','') is not null and s.properties->>'trace_id' not in ('undefined','null')
-      and not exists(select 1 from analytics_events r where r.event_name='backend_request' and r.environment='production' and r.source='backend'
+      and not exists(select 1 from ${backend} r where r.event_name='backend_request' and r.environment='production' and r.source='backend'
         and r.occurred_at>=s.occurred_at and r.occurred_at<${end}::timestamp and r.properties->>'trace_id'=s.properties->>'trace_id')
     group by s.properties->>'trace_id'
   ), stalled as (select * from unresolved order by started_at desc limit 50),
   alert_summary as (select properties->>'status' as status,count(*) as records,max(occurred_at) as latest_event
-    from analytics_events where event_name='backend_alert' and environment='production' and source='backend'
+    from ${backend} b where event_name='backend_alert' and environment='production' and source='backend'
       and occurred_at>=${start}::timestamp and occurred_at<${end}::timestamp group by 1)
   select json_build_object('unresolved_count',(select count(*) from unresolved),'alertSummary',${rows('alert_summary')},'summary',(select row_to_json(s) from summary s),'features',${rows('features')},'daily',${rows('daily')},'failures',${rows('failures')},'recent',${rows('recent')},'clients',${rows('clients')},'auth',${rows('auth')},'evaluations',${rows('evaluations')},'notifications',${rows('notifications')},'stalled',${rows('stalled')}) as data`
 }
@@ -106,7 +109,7 @@ export async function getReliabilityData(days:number):Promise<ReliabilityData> {
       await tx.execute(sql`set transaction read only`)
       await tx.execute(sql`set local statement_timeout = '8s'`)
       await tx.execute(sql`set local jit=off`)
-      const [row]=await tx.execute(reliabilityQuery(days,new Date()))
+      const [row]=await tx.execute(reliabilityQuery(days,new Date(),readSeparateBackendTelemetry()))
       return row.data as Omit<ReliabilityData,'health'|'alerts'|'generatedAt'|'available'|'runtime'>
     }).catch(()=>null),
   ])

@@ -14,7 +14,7 @@ import { submissionUnreadCount } from '@/lib/creator/submission-messages'
 import { sprintPayoutCents, sprintPhase, sprintFormat } from './sprints'
 import type { TikTokUserInfo } from '@/lib/auth/tiktok-api'
 import { creatorAssetPublicUrl, verifyCreatorRecordingUpload } from '@/lib/storage/videos'
-import { and, desc, eq, getTableColumns, isNotNull, isNull, or, sql } from 'drizzle-orm'
+import { and, desc, eq, getTableColumns, inArray, isNotNull, isNull, or, sql } from 'drizzle-orm'
 import { db, schema } from '@/lib/db'
 import { env } from '@/lib/env'
 import { creatorReferralHandle, ensureCreatorTrackingLink } from '@/lib/creator/attribution'
@@ -35,7 +35,7 @@ export type CreatorTikTokOAuthInput = {
   profile: TikTokUserInfo
 }
 
-export const creatorDashboardViews = ['accounts', 'submissions', 'money', 'setup'] as const
+export const creatorDashboardViews = ['accounts', 'submissions', 'money', 'setup', 'submit', 'profile', 'overview'] as const
 type CreatorDashboardView = Exclude<typeof creatorDashboardViews[number], 'money' | 'setup'>
 
 export async function getCreatorMoneyDashboard(userId: string) {
@@ -80,8 +80,9 @@ export async function getCreatorSetupStatus(userId: string) {
 const readCreatorCommunityMetrics = unstable_cache(getCreatorCommunityMetrics, ['creator-community-metrics-v1'], { revalidate: 60 })
 
 export async function getCreatorDashboard(userId: string, view?: CreatorDashboardView | 'ledger') {
-  const useLedger = view !== 'accounts'
-  const useAccounts = view !== 'ledger'
+  const overview = view === 'overview'
+  const useLedger = !view || view === 'submissions' || view === 'ledger' || overview
+  const useAccounts = view !== 'ledger' && view !== 'profile'
   const communityMetricsPromise = view ? undefined : readCreatorCommunityMetrics()
   const profile = await getCreatorProfile(userId)
   const featureFlags = {
@@ -89,10 +90,26 @@ export async function getCreatorDashboard(userId: string, view?: CreatorDashboar
   }
   if (!profile) return { profile: null, submissions: [], payments: [], payoutRequests: [], updates: [], socialAccounts: [], communityMetrics: await communityMetricsPromise, featureFlags }
 
-  const [submissions, payments, socialAccounts, communityMetrics, payoutRequests, updates] = await Promise.all([
-    useLedger ? db.select({ ...getTableColumns(schema.creatorSubmissions), unreadMessages: submissionUnreadCount('creator') })
-      .from(schema.creatorSubmissions).where(and(eq(schema.creatorSubmissions.creatorProfileId, profile.id), eq(schema.creatorSubmissions.isDraft, false))).orderBy(desc(schema.creatorSubmissions.createdAt)) : [],
-    useLedger ? db.query.creatorPayments.findMany({
+  const post = schema.creatorSubmissions
+  const payment = schema.creatorPayments
+  const submissionFilter = and(eq(post.creatorProfileId, profile.id), eq(post.isDraft, false))
+  const overviewSubmissions = {
+    id: post.id, title: post.title, caption: post.caption, platform: post.platform,
+    postUrl: post.postUrl, videoUrl: post.videoUrl, status: post.status, reviewNote: post.reviewNote,
+    createdAt: post.createdAt, updatedAt: post.updatedAt, reviewRequestedAt: post.reviewRequestedAt,
+    adminViewCountThreshold: post.adminViewCountThreshold, viewCountThreshold: post.viewCountThreshold,
+  }
+  const overviewPayments = {
+    id: payment.id, submissionId: payment.submissionId, status: payment.status, paidAt: payment.paidAt,
+    payoutRequestId: payment.payoutRequestId, currency: payment.currency, amountCents: payment.amountCents,
+    creatorReferralAwardId: payment.creatorReferralAwardId, bonusSprintId: payment.bonusSprintId, bonusKey: payment.bonusKey,
+  }
+  const [submissions, payments, socialAccounts, communityMetrics, payoutRequests, updates, approvedCount] = await Promise.all([
+    overview ? db.select(overviewSubmissions).from(post).where(submissionFilter).orderBy(desc(post.createdAt))
+      : useLedger ? db.select({ ...getTableColumns(post), unreadMessages: submissionUnreadCount('creator') })
+        .from(post).where(submissionFilter).orderBy(desc(post.createdAt)) : [],
+    overview ? db.select(overviewPayments).from(payment).where(eq(payment.creatorProfileId, profile.id)).orderBy(desc(payment.createdAt))
+      : useLedger ? db.query.creatorPayments.findMany({
       where: eq(schema.creatorPayments.creatorProfileId, profile.id),
       orderBy: [desc(schema.creatorPayments.createdAt)],
     }) : [],
@@ -103,7 +120,9 @@ export async function getCreatorDashboard(userId: string, view?: CreatorDashboar
     }) : [],
     communityMetricsPromise,
     !view ? db.query.creatorPayoutRequests.findMany({ where: eq(schema.creatorPayoutRequests.creatorProfileId, profile.id), orderBy: [desc(schema.creatorPayoutRequests.requestedAt)], limit: 100 }) : [],
-    view ? [] : getCreatorSubmissionUpdates(profile.id),
+    !view || overview ? getCreatorSubmissionUpdates(profile.id) : [],
+    view === 'submit' ? db.select({ id: schema.creatorSubmissions.id }).from(schema.creatorSubmissions)
+      .where(and(submissionFilter, inArray(post.status, ['approved', 'paid']))).limit(5).then(rows => rows.length) : undefined,
   ])
 
   const socialAccountsWithLinks = await Promise.all(socialAccounts.map(async (account) => {
@@ -114,7 +133,7 @@ export async function getCreatorDashboard(userId: string, view?: CreatorDashboar
     return { ...account, trackingLink: await ensureCreatorTrackingLink(account.id) }
   }))
 
-  return { profile, submissions, payments, payoutRequests, updates, socialAccounts: socialAccountsWithLinks, communityMetrics, featureFlags }
+  return { profile, submissions, payments, payoutRequests, updates, socialAccounts: socialAccountsWithLinks, communityMetrics, featureFlags, approvedCount }
 }
 
 async function getCreatorCommunityMetrics() {

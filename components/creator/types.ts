@@ -92,6 +92,7 @@ export type CreatorSocialAccount = {
   } | null
 }
 
+export const creatorOverviewPath = '/api/creator?view=overview'
 export const creatorSetupStatusPath = '/api/creator?view=setup'
 export type CreatorSetupStatus = { setup: { accountConnected: boolean; firstPostSubmitted: boolean; payoutConfigured: boolean } }
 
@@ -102,6 +103,7 @@ export type CreatorMoneySubmission = Pick<CreatorSubmission,
 export type CreatorMoneyData = Pick<CreatorDashboard, 'profile' | 'payments' | 'payoutRequests'> & { submissions: CreatorMoneySubmission[] }
 
 export type CreatorDashboard = {
+  approvedCount?: number
   updates?: import('@/lib/creator/updates').CreatorUpdate[]
   payoutRequests?: CreatorPayoutRequest[]
   profile: CreatorProfile | null

@@ -44,7 +44,7 @@ export function CreatorStudioChooser({ postAccess }: { postAccess: PostAccess })
 }
 
 export default function CreatorStudio() {
-  const { data, isLoading } = useSWRImmutable<CreatorDashboard>('/api/creator', apiGet)
+  const { data, isLoading } = useSWRImmutable<CreatorDashboard>('/api/creator?view=profile', apiGet)
   const postAccess: PostAccess = isLoading ? 'loading' : data?.profile?.videoStudioAccess && data.profile.authStatus !== 'suspended' ? 'allowed' : 'locked'
   return <CreatorShell><CreatorStudioChooser postAccess={postAccess} /></CreatorShell>
 }

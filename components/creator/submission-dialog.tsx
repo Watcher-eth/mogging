@@ -1,3 +1,4 @@
+import { useRouter } from 'next/router'
 import { successCue, useQuietCue } from '@/lib/audio/sounds'
 import { campaignBudgetState, requestedIncrementCents, canReserveSubmission } from '@/lib/creator/campaign-budget-state'
 import { CampaignSubmissionBudget } from './campaign-submission-budget'
@@ -89,8 +90,9 @@ export function SubmissionDialog({
   const { data: campaigns, error: sprintError, mutate: refreshCampaigns } = useSWR<{
     sprints: CreatorSprint[]
   }>(open ? '/api/creator/sprints' : null, apiGet)
+  const { pathname } = useRouter()
   const { data, error: dashboardError, mutate: refreshDashboard } = useSWR<CreatorDashboard>(
-    open ? '/api/creator' : null,
+    open ? pathname.includes('__') ? '/api/creator' : '/api/creator?view=submit' : null,
     apiGet,
   )
   const [step, setStep] = useState(existingSubmission ? 3 : 1)
@@ -110,7 +112,7 @@ export function SubmissionDialog({
   const [rejectedViews, setRejectedViews] = useState<number | null>(null)
   const [audience, setAudience] = useState(existingSubmission?.usAudiencePercent?.toString() || '')
   const [confirmed, setConfirmed] = useState<string[]>([])
-  const canCheckAll = (data?.submissions.filter(item => item.status === 'approved' || item.status === 'paid').length ?? 0) >= 5
+  const canCheckAll = (data?.approvedCount ?? data?.submissions.filter(item => item.status === 'approved' || item.status === 'paid').length ?? 0) >= 5
   const [busy, setBusy] = useState(false)
   const [progress, setProgress] = useState(0)
   const fileRef = useRef<HTMLInputElement>(null)

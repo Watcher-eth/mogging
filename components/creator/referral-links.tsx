@@ -1,3 +1,4 @@
+import { useRouter } from 'next/router'
 import Link from 'next/link'
 import useSWR from 'swr'
 import { ArrowRight, Link2, Ticket, Send } from 'lucide-react'
@@ -8,7 +9,8 @@ import { creatorAccountLabel, type CreatorDashboard } from './types'
 import { CreatorReferralCode, CreatorReferralDetails } from './referral-details'
 
 export function CreatorReferralLinks() {
-  const { data, error, isLoading, mutate } = useSWR<CreatorDashboard>('/api/creator', apiGet)
+  const { pathname } = useRouter()
+  const { data, error, isLoading, mutate } = useSWR<CreatorDashboard>(pathname === '/creator/guide' ? '/api/creator?view=accounts' : '/api/creator', apiGet)
   const accounts = data?.socialAccounts ?? []
 
   return (

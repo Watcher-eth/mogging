@@ -1,10 +1,11 @@
+import { useRouter } from 'next/router'
 import { InviteCreators } from '@/components/creator/creator-referrals'
 import { CreatorUpdates } from '@/components/creator/creator-updates'
 import { Loader2 } from 'lucide-react'
 import useSWR from 'swr'
 import { CreatorHeader, CreatorShell } from '@/components/creator/creator-shell'
 import { OverviewBento } from '@/components/creator/overview-bento'
-import type { CreatorDashboard } from '@/components/creator/types'
+import { creatorOverviewPath, type CreatorDashboard } from '@/components/creator/types'
 import { apiGet } from '@/lib/api/client'
 
 export default function CreatorOverviewPage() {
@@ -16,7 +17,8 @@ export default function CreatorOverviewPage() {
 }
 
 function OverviewContent() {
-  const { data, isLoading } = useSWR<CreatorDashboard>('/api/creator', apiGet, {
+  const { pathname } = useRouter()
+  const { data, isLoading } = useSWR<CreatorDashboard>(pathname === '/creator' ? creatorOverviewPath : '/api/creator', apiGet, {
     refreshInterval: 30_000,
   })
 

@@ -10,7 +10,7 @@ import type { CreatorDashboard } from './types'
 
 export type StudioExport = { id: string; title: string; campaignName: string; minimumViews: number }
 export function StudioPostDialog({ generation, preview = false, onClose, onSubmitted }: { generation: StudioExport | null; preview?: boolean; onClose: () => void; onSubmitted: () => void }) {
-  const { data } = useSWR<CreatorDashboard>(generation && !preview ? '/api/creator' : null, apiGet)
+  const { data } = useSWR<CreatorDashboard>(generation && !preview ? '/api/creator?view=accounts' : null, apiGet)
   const [postUrl, setPostUrl] = useState('')
   const [accountId, setAccountId] = useState('')
   const [confirmed, setConfirmed] = useState(false)

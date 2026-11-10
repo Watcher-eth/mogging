@@ -39,17 +39,19 @@ export const creatorUpdateLabels: Record<CreatorUpdateType, string> = {
 // Review dates come from durable events. For older posts, show their known
 // submission date; do not invent past approval or rejection timestamps.
 export function creatorActivity(updates: CreatorUpdate[], submissions: CreatorSubmission[], payments: CreatorPayment[]) {
+  const updatedPosts = new Set(updates.map(item => item.submissionId))
+  const postsById = new Map(submissions.map(post => [post.id, post]))
   const submitted = new Set(updates.filter(item => item.type === 'submitted').map(item => item.submissionId))
   const existingRequests = new Set(updates.filter(item => item.type === 'rereview_requested').map(item => `${item.submissionId}:${item.createdAt}`))
   const activity: CreatorUpdate[] = [...updates]
   for (const post of submissions) {
     if (!submitted.has(post.id)) activity.push({ id: `submitted:${post.id}`, submissionId: post.id, type: 'submitted', note: null, createdAt: post.createdAt, title: post.caption || post.title })
-    if (['in_review', 'approved', 'rejected'].includes(post.status) && !post.reviewRequestedAt && !updates.some(item => item.submissionId === post.id)) activity.push({ id: `status:${post.id}`, submissionId: post.id, type: post.status, note: post.reviewNote, createdAt: post.updatedAt || post.createdAt, title: post.caption || post.title, snapshot: true })
+    if (['in_review', 'approved', 'rejected'].includes(post.status) && !post.reviewRequestedAt && !updatedPosts.has(post.id)) activity.push({ id: `status:${post.id}`, submissionId: post.id, type: post.status, note: post.reviewNote, createdAt: post.updatedAt || post.createdAt, title: post.caption || post.title, snapshot: true })
     if (post.reviewRequestedAt && !existingRequests.has(`${post.id}:${post.reviewRequestedAt}`)) activity.push({ id: `rereview:${post.id}`, submissionId: post.id, type: 'rereview_requested', note: null, createdAt: post.reviewRequestedAt, title: post.caption || post.title })
   }
   const payouts = new Map<string, CreatorUpdate & { submissionIds: string[] }>()
   for (const payment of payments) {
-    const post = submissions.find(item => item.id === payment.submissionId)
+    const post = payment.submissionId ? postsById.get(payment.submissionId) : undefined
     if (!post || payment.status !== 'paid' || !payment.paidAt) continue
     const id = payment.payoutRequestId ? `payout:${payment.payoutRequestId}` : `payment:${payment.id}`
     const payout = payouts.get(id)

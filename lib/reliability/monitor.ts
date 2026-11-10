@@ -4,6 +4,7 @@ import { waitUntil } from '@vercel/functions'
 import { sql } from 'drizzle-orm'
 import { db, schema } from '@/lib/db'
 import { backendOutcome, type BackendOutcome } from './outcome'
+import { separateBackendTelemetry } from './event-source'
 import { sendReliabilityAlert } from './alerts'
 
 const requestOutcomes = new WeakMap<NextApiResponse, BackendOutcome>()
@@ -17,10 +18,11 @@ function backendEnvironment() {
   return process.env.VERCEL_ENV || (process.env.NODE_ENV === 'production' ? 'production' : 'development')
 }
 async function saveBackendEvent(eventName:string,properties:Record<string,unknown>,trace:string) {
-  const now=new Date()
-  return db.transaction(async tx=>{
+  const event = { eventName, environment: backendEnvironment(), occurredAt: new Date(), properties: { ...properties, trace_id: trace } }
+  if (separateBackendTelemetry()) return db.insert(schema.backendEvents).values(event)
+  return db.transaction(async tx => {
     await tx.execute(sql`set local statement_timeout = '3s'`)
-    await tx.insert(schema.analyticsEvents).values({eventId:randomUUID(),eventName,environment:backendEnvironment(),platform:'server',source:'backend',occurredAt:now,exportedAt:now,properties:{...properties,trace_id:trace}})
+    await tx.insert(schema.analyticsEvents).values({ ...event, eventId: randomUUID(), platform: 'server', source: 'backend', exportedAt: event.occurredAt })
   })
 }
 

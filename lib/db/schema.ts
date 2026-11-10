@@ -14,6 +14,7 @@ import {
   real,
   text,
   timestamp,
+  uuid,
   uniqueIndex,
   varchar,
 } from 'drizzle-orm/pg-core'
@@ -632,6 +633,25 @@ export const analyticsEvents = pgTable(
     reportingIdx: index('analytics_events_environment_time_idx').on(table.environment, table.occurredAt),
   })
 )
+
+export const backendEvents = pgTable('backend_events', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  eventName: text('event_name').notNull(),
+  environment: text('environment').notNull(),
+  occurredAt: timestamp('occurred_at', { mode: 'date' }).notNull(),
+  properties: jsonb('properties').notNull(),
+}, table => ({
+  reportingIdx: index('backend_events_reporting_idx').on(table.environment, table.eventName, table.occurredAt),
+  traceIdx: index('backend_events_trace_idx').on(sql`(${table.properties}->>'trace_id')`, table.occurredAt)
+    .where(sql`${table.environment} = 'production' and ${table.eventName} = 'backend_request'`),
+}))
+
+export const navigationMemberships = pgTable('navigation_memberships', {
+  userId: text('user_id').primaryKey().references(() => users.id, { onDelete: 'cascade' }),
+  checkedAt: timestamp('checked_at', { mode: 'date' }).notNull(),
+  active: boolean('active'),
+  expiresAt: timestamp('expires_at', { mode: 'date' }),
+})
 
 export const analyticsReportingHours = pgTable('analytics_reporting_hours', {
   hour: timestamp('hour', { mode: 'string' }).primaryKey(),

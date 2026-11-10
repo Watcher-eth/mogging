@@ -100,7 +100,10 @@ export async function refreshCreatorReferralBonuses(inviteeId: string) {
 
 export async function reconcileCreatorReferrals(limit = 100, timeBudgetMs = 8000) {
   const deadline = Date.now() + timeBudgetMs
-  const referrals = await db.select({ id: schema.creatorReferrals.inviteeId }).from(schema.creatorReferrals).orderBy(sql`checked_at asc nulls first`, asc(schema.creatorReferrals.inviteeId)).limit(limit)
+  const referrals = await db.select({ id: schema.creatorReferrals.inviteeId }).from(schema.creatorReferrals)
+    .where(sql`${schema.creatorReferrals.blockedReason} is null
+      and (${schema.creatorReferrals.checkedAt} is null or ${schema.creatorReferrals.checkedAt} < now() - interval '10 minutes')`)
+    .orderBy(sql`checked_at asc nulls first`, asc(schema.creatorReferrals.inviteeId)).limit(limit)
   let checked = 0, created = 0
   for (const referral of referrals) {
     if (Date.now() >= deadline) break

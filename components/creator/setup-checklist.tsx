@@ -13,7 +13,7 @@ import { Check, ChevronRight, ChevronUp, Plus, X } from 'lucide-react'
 import useSWR from 'swr'
 import { apiGet } from '@/lib/api/client'
 import { cn } from '@/lib/utils'
-import { creatorSetupStatusPath, type CreatorDashboard, type CreatorSetupStatus } from './types'
+import { creatorOverviewPath, creatorSetupStatusPath, type CreatorDashboard, type CreatorSetupStatus } from './types'
 import floatingStyles from './floating-actions.module.css'
 
 const floatingPosition = 'relative shrink-0'
@@ -35,8 +35,8 @@ export function CreatorSetupChecklist() {
   const transition = reduceMotion
     ? { duration: 0 }
     : { type: 'spring' as const, stiffness: 340, damping: 32 }
-  const dashboardAlreadyLoaded = pathname === '/creator' || pathname.includes('__')
-  const { data } = useSWR<CreatorDashboard | CreatorSetupStatus>(dashboardAlreadyLoaded ? '/api/creator' : creatorSetupStatusPath, apiGet, {
+  const path = pathname === '/creator' ? creatorOverviewPath : pathname.includes('__') ? '/api/creator' : creatorSetupStatusPath
+  const { data } = useSWR<CreatorDashboard | CreatorSetupStatus>(path, apiGet, {
     refreshInterval: 30_000,
   })
   if (!data) return null

@@ -24,8 +24,11 @@ before generation. A start with no final request signal after five minutes appea
 as unfinished for 24 hours. Interruption or telemetry loss can produce this signal;
 monitoring never refunds credits or retries generation automatically.
 
-Events reuse `analytics_events` with `source=backend`, `platform=server` and
-dedicated `backend_request`, `backend_evaluation_started`, `backend_alert` names.
+Request, evaluation-start, and alert events write to `backend_events` when
+`BACKEND_TELEMETRY_STORAGE=separate`. Reliability reads the legacy events and
+the new table together, including traces that started before the cutover.
+Set the flag to `read-both` to resume legacy writes while retaining both stores
+in the dashboard. Install `0078_operational_read_models` before enabling it.
 They stay outside behavioral device counts and PostHog user exports. No new
 database migration or app release is required. Vercel `waitUntil` lets recording
 finish after the response. Telemetry is best effort and cannot block a purchase

@@ -12,14 +12,16 @@ try {
   const dialect=new PgDialect()
   await connection.begin(async tx=>{
     await tx`create temporary table analytics_events(event_name text,environment text,platform text,source text,occurred_at timestamp,app_version text,properties jsonb)`
+    await tx`alter table analytics_events add column account_id text, add column mobile_install_id text, add column anonymous_id text, add column session_id text`
+    await tx`create temporary table backend_events(event_name text,environment text,occurred_at timestamp,properties jsonb)`
     const now=new Date('2040-01-31T00:00:00Z')
     async function report() {
-      const q=dialect.sqlToQuery(reliabilityQuery(7,now))
+      const q=dialect.sqlToQuery(reliabilityQuery(7,now,true))
       const [row]=await tx.unsafe(q.sql,q.params as Parameters<typeof tx.unsafe>[1])
       return row.data as import('../../lib/admin/reliability').ReliabilityData
     }
     assert.equal(Number((await report()).summary.requests),0)
-    await tx`insert into analytics_events values
+    await tx`insert into analytics_events(event_name,environment,platform,source,occurred_at,app_version,properties) values
       ('backend_request','production','server','backend','2040-01-30 23:59',null,'{"feature":"analyze","outcome":"failed","code":"provider_unavailable","duration_ms":23000,"trace_id":"failed"}'),
       ('backend_request','production','server','backend','2040-01-30 23:58',null,'{"feature":"analyze","outcome":"failed","code":"input_no_face","duration_ms":1000,"trace_id":"invalid"}'),
       ('backend_request','production','server','backend','2040-01-30 23:57',null,'{"feature":"analyze","outcome":"degraded","code":"analysis_persistence_failed","duration_ms":13000,"trace_id":"degraded"}'),
@@ -41,8 +43,13 @@ try {
     assert.equal(data.clients[0].release,'1.2')
     assert.equal(data.notifications[0].status,'sent')
     assert.equal(Number(data.daily[0].evaluation_failures),2)
+    await tx`insert into backend_events values ('backend_request','production','2040-01-30 23:59',
+      '{"feature":"analyze","outcome":"ok","duration_ms":340,"trace_id":"stalled"}')`
+    const afterCutover = await report()
+    assert.equal(afterCutover.stalled.length, 0)
+    assert.equal(Number(afterCutover.summary.requests), 5)
     // Malformed telemetry cannot break report queries or fabricate latency.
-    await tx`insert into analytics_events values('backend_request','production','server','backend','2040-01-30 23:59',null,'{"feature":"malformed","outcome":"ok","duration_ms":"NaN"}')`
+    await tx`insert into analytics_events(event_name,environment,platform,source,occurred_at,app_version,properties) values('backend_request','production','server','backend','2040-01-30 23:59',null,'{"feature":"malformed","outcome":"ok","duration_ms":"NaN"}')`
     assert.equal((await report()).features.find(row=>row.feature==='malformed')?.p95_ms,null)
   })
   console.log('PASS: reliability environment/source boundaries, technical vs expected failures, unfinished scans, client versions, alert records, malformed durations, and empty data')

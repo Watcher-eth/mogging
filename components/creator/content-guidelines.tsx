@@ -1,3 +1,4 @@
+import { useRouter } from 'next/router'
 import { Disclosure, DisclosureSummary, AccordionContent } from '@/components/ui/accordion'
 import useSWR from 'swr'
 import { apiGet } from '@/lib/api/client'
@@ -18,7 +19,8 @@ export function AnalyticsVerificationHelp() {
 }
 
 export function TikTokAnchorGuidelines() {
-  const { data } = useSWR<CreatorDashboard>('/api/creator', apiGet)
+  const { pathname } = useRouter()
+  const { data } = useSWR<CreatorDashboard>(pathname === '/creator/guide' ? '/api/creator?view=accounts' : '/api/creator', apiGet)
   const accounts = (data?.socialAccounts || []).filter(account => tiktokAnchorEligible(account) === true)
   if (!accounts.length) return null
   return <aside className="creator-notice my-5 rounded-2xl p-5" aria-label="Optional TikTok app anchor">

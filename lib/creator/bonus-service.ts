@@ -99,7 +99,10 @@ export async function refreshCreatorBonuses(creatorProfileId: string) {
 
 export async function reconcileCreatorBonuses(limit = 100, timeBudgetMs = 20_000) {
   const deadline = Date.now() + timeBudgetMs
-  const rows = await db.select({ id: schema.creatorProfiles.id }).from(schema.creatorProfiles).where(sql`exists (
+  const rows = await db.select({ id: schema.creatorProfiles.id }).from(schema.creatorProfiles).where(sql`
+    ${schema.creatorProfiles.authStatus} <> 'suspended'
+    and (${schema.creatorProfiles.bonusCheckedAt} is null or ${schema.creatorProfiles.bonusCheckedAt} < now() - interval '10 minutes')
+    and exists (
     select 1 from creator_submissions s join creator_sprints c on c.id = s.sprint_id
     where s.creator_profile_id = ${schema.creatorProfiles.id} and not s.is_draft and coalesce((c.terms->>'bonusBudgetCents')::int, 0) > 0
   )`).orderBy(sql`${schema.creatorProfiles.bonusCheckedAt} asc nulls first`, schema.creatorProfiles.id).limit(limit)

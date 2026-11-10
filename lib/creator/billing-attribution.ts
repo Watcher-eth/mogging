@@ -119,12 +119,17 @@ export async function reconcileCreatorBilling(limit = 100, timeBudgetMs = 45_000
     sql`${schema.subscriptionEvents.creatorAttributionStatus} not in ('allocated', 'not_applicable', 'internal')`,
     sql`(${schema.subscriptionEvents.creatorAttributionCheckedAt} is null or ${schema.subscriptionEvents.creatorAttributionCheckedAt} < now() - interval '15 minutes')`,
   )).orderBy(sql`${schema.subscriptionEvents.creatorAttributionCheckedAt} asc nulls first`, asc(schema.subscriptionEvents.occurredAt)).limit(Math.min(200, Math.max(1, limit)))
-  const result: Record<string, number> = {}
-  for (const [index, row] of rows.entries()) {
+  const ignored = rows.filter(row => !creatorBillingType(row.eventName)).map(row => row.id)
+  if (ignored.length) await db.update(schema.subscriptionEvents)
+    .set({ creatorAttributionStatus: 'not_applicable', creatorAttributionCheckedAt: new Date() })
+    .where(and(inArray(schema.subscriptionEvents.id, ignored),
+      sql`${schema.subscriptionEvents.creatorAttributionStatus} not in ('allocated','internal','not_applicable')`))
+  const result: Record<string, number> = ignored.length ? { not_applicable: ignored.length } : {}
+  const eligible = rows.filter(row => creatorBillingType(row.eventName))
+  for (const [index, row] of eligible.entries()) {
     // Leave time for cleanup and response; remaining durable facts resume on the next run.
-    if (Date.now() >= deadline) { result.deferred = rows.length - index; break }
-    const status = creatorBillingType(row.eventName) ? await allocateCreatorBillingEvent(row) : 'not_applicable'
-    if (status === 'not_applicable') await db.update(schema.subscriptionEvents).set({ creatorAttributionStatus: status, creatorAttributionCheckedAt: new Date() }).where(eq(schema.subscriptionEvents.id, row.id))
+    if (Date.now() >= deadline) { result.deferred = eligible.length - index; break }
+    const status = await allocateCreatorBillingEvent(row)
     result[status] = (result[status] || 0) + 1
   }
   return result

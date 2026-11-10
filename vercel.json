@@ -37,8 +37,16 @@
       "schedule": "*/5 * * * *"
     },
     {
-      "path": "/api/cron/creator-attribution",
+      "path": "/api/cron/creator-attribution/billing",
       "schedule": "*/5 * * * *"
+    },
+    {
+      "path": "/api/cron/creator-attribution/bonuses",
+      "schedule": "1-59/5 * * * *"
+    },
+    {
+      "path": "/api/cron/creator-attribution/referrals",
+      "schedule": "3-59/5 * * * *"
     },
     {
       "path": "/api/cron/creator-crypto-payouts",

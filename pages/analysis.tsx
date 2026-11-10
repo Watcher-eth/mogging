@@ -820,7 +820,7 @@ export default function AnalysisPage({ startWithPhoto, phoneEntry, previewDevice
         if (guestReturn) trackWebEvent('account_authenticated', { ...activation, auth_stage: 'post_payment' })
         trackWebEvent('purchase_activated', activation)
       }
-      if (session?.user?.id) void mutate(['/api/payments/entitlements', session.user.id])
+      if (session?.user?.id) void mutate(['/api/payments/navigation-membership', session.user.id])
       const installId = ensureAnalysisWebInstallId(confirmation.entitlements.mobileInstallId)
       if (!draft?.images.length) {
         await router.replace('/analysis?start=1&resumePhoto=1', undefined, { shallow: true })

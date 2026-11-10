@@ -108,7 +108,7 @@ export function AppShell({ children }: AppShellProps) {
   )
   const { data: memberAccess } = useSWR<{ entitlements: { subscription: { active: boolean; tier?: 'basic' | 'pro' } } }>(
     status === 'authenticated' && session?.user?.id && showHeader
-      ? ['/api/payments/entitlements', session.user.id] : null,
+      ? ['/api/payments/navigation-membership', session.user.id] : null,
     ([url]: [string, string]) => apiGet(url),
     { shouldRetryOnError: false },
   )
