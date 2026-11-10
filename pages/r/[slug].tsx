@@ -13,6 +13,7 @@ import { getOrSetAnonymousActorId } from '@/lib/auth/anonymous'
 import { createCreatorAttributionClick, setCreatorAttributionCookie } from '@/lib/creator/attribution'
 import { EvaluationChoices } from '@/components/landing/evaluation-choices'
 import { creatorLinkPlatform } from '@/lib/creator/link-routing'
+import { isPhoneUserAgent } from '@/lib/analysis/phone-layout'
 import { appStoreUrl, siteUrl } from '@/lib/seo'
 
 type CreatorLinkPageProps = {
@@ -146,6 +147,12 @@ export const getServerSideProps: GetServerSideProps<CreatorLinkPageProps> = asyn
   webUrl.searchParams.set('utm_medium', attribution.click.isBot ? 'preview' : 'creator')
   webUrl.searchParams.set('utm_campaign', attribution.link.slug)
   webUrl.searchParams.set('utm_content', account.handle || attribution.link.socialAccountId)
+
+  if (!attribution.isBot && !query.fallback && !query.login && !query.next
+    && isPhoneUserAgent(userAgent, req.headers['sec-ch-ua-mobile']?.toString())) {
+    webUrl.searchParams.set('creator_entry', 'direct')
+    return { redirect: { destination: webUrl.pathname + webUrl.search, permanent: false } }
+  }
 
   return {
     props: {

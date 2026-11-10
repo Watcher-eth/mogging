@@ -2,11 +2,11 @@ import { useScanFeedback } from '@/hooks/use-scan-feedback'
 import { useWebStep } from '@/hooks/use-web-step'
 import { paywallExperimentProperties, type PaywallExposure } from '@/lib/payments/paywall-experiment'
 import { trackWebEvent } from '@/lib/analytics/client'
-import { DatingProfileLikes, EvidenceCards, ProtocolStoryPreview } from './mobile-scan-stories'
+import { DatingProfileLikes, EvidenceCards } from './mobile-scan-stories'
 import { AnimatePresence, motion, useReducedMotion } from 'motion/react'
 import { Activity, ArrowUpRight, Camera, Check, Clock3, Droplet, Dumbbell, Eye, FlaskConical, Focus, Heart, ListChecks, MessageCircle, Repeat2, ScanFace, Sparkles, Syringe, Users, Utensils, TriangleAlert } from '@/components/ui/mogging-glyphs'
 import { useLayoutEffect, useRef, useState } from 'react'
-import { MobileScanStory, ScanButton, scanPart, scanSequence } from './mobile-scan-pwa'
+import { ScanButton, scanPart, scanSequence } from './mobile-scan-pwa'
 import { getOnboardingProfileSteps, motivations, obstacles, onboardingChoices, relevanceCopy, storyHeadings, type OnboardingProfileStepId } from '@/lib/client/scan-onboarding'
 import styles from './mobile-scan-pwa.module.css'
 
@@ -81,8 +81,7 @@ export function MobileScanOnboarding({ onComplete, analyticsEnabled = false, exp
 
   return <AnimatePresence mode="wait" propagate>
     <motion.div key={step} data-mobile-onboarding-step={step} variants={scanSequence} initial="enter" animate="visible" exit="leave">
-      {step === 'impressions' ? <MobileScanStory onContinue={next} />
-        : step === 'transformation' ? <div className={styles.transformation}>
+      {step === 'transformation' ? <div className={styles.transformation}>
           <motion.div className={styles.comparison} variants={scanPart} custom={0}>
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img src="/scan/model2.jpg" alt="" />
@@ -126,7 +125,7 @@ export function MobileScanOnboarding({ onComplete, analyticsEnabled = false, exp
           </motion.div>
           <motion.div className={styles.onboardingDock} variants={scanPart} custom={20}>
             <ScanButton disabled={required && !selected.length} onClick={next}>
-              {dark ? 'I’m ready to invest in myself' : step === 'mechanism' ? 'Personalize my plan' : 'Continue'}
+              {dark ? 'I’m ready to invest in myself' : 'Continue'}
             </ScanButton>
             {step === 'methods' && <button type="button" className={styles.returning} onClick={() => { feedback(); next() }}>Skip this question</button>}
           </motion.div>
@@ -256,7 +255,6 @@ function StoryArtwork({ step, motivation, goals, commitment }: {
     <motion.p variants={scanPart}>{onboardingChoices.goals.filter(option => goals?.includes(option.id)).map(option => option.label).join(' · ') || 'Your personal starting point'}</motion.p>
     <motion.small variants={scanPart}>{onboardingChoices.commitment.find(option => option.id === commitment && option.id !== 'flexible')?.label ?? 'A routine that fits your day'}</motion.small>
   </motion.div>
-  if (step === 'mechanism') return <ProtocolStoryPreview />
   if (step === 'evidence') return <EvidenceCards />
   return null
 }

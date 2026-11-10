@@ -19,7 +19,7 @@ export function webJourneyCTEs(start: string, end: string, days: number, version
   const segment = sql.identifier(dimension)
   const channel = webChannel(sql`properties`, true)
   const fromLanding = sql`((event_name in ('landing_viewed','page_viewed') and properties->>'path'='/')
-    or (event_name='attribution_diagnostic' and properties->>'action'='creator_landing_viewed'
+    or (event_name='attribution_diagnostic' and properties->>'action' in ('creator_landing_viewed','creator_analysis_redirected')
       and properties->>'surface'='creator_landing'))`
   return sql`wj_events as materialized (
     select event_name,platform,source,properties,session_id,account_id,occurred_at,actor,properties->>'flow_id' as flow_id

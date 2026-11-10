@@ -1,7 +1,7 @@
 import dynamic from 'next/dynamic'
 import { useDesktop } from './use-desktop'
 import { usePhoneLayout } from '@/hooks/use-phone-layout'
-import { EvaluationChoices } from './evaluation-choices'
+import { EvaluationChoices, StickyMobileScan } from './evaluation-choices'
 import { LazyMotion, domAnimation } from 'motion/react'
 import * as m from 'motion/react-m'
 import { useHomepageEntrance } from './use-homepage-entrance'
@@ -31,11 +31,12 @@ const reviewCards = [
 const averageRating = (reviewCards.reduce((sum, review) => sum + review.rating, 0) / reviewCards.length).toFixed(1)
 
 
-export default function LegacyHomepage({assignment, preview}: {assignment: LandingAssignment; preview: boolean}) {
+export default function LegacyHomepage({assignment, preview, ios}: {assignment: LandingAssignment; preview: boolean; ios: boolean}) {
   const {sections, trackDestination} = useLandingTracking(assignment, preview)
   const entrance = useHomepageEntrance()
   const desktop = useDesktop()
   const phone = usePhoneLayout(true)
+  const hero = useRef<HTMLDivElement>(null)
   return <LazyMotion features={domAnimation}>
       <SeoHead
         title="Mogging App | Face Analysis & Personalized Routines"
@@ -53,6 +54,7 @@ export default function LegacyHomepage({assignment, preview}: {assignment: Landi
       <main ref={sections} className="min-h-[calc(100vh-5rem)] overflow-hidden bg-white text-black">
         <section className="public-frame public-gutters flex min-h-[calc(100vh-5rem)] flex-col items-center py-8 sm:py-12">
           <div
+            ref={hero}
             className={desktop ? "grid w-full grid-cols-2 items-center gap-12" : "flex w-full flex-col items-center"}
           >
             <div className={desktop ? '' : 'contents'}>
@@ -64,7 +66,7 @@ export default function LegacyHomepage({assignment, preview}: {assignment: Landi
               Explore your facial features with a comprehensive report, a detailed face map, and a personalized routine. Keep track of your photos and progress in the Mogging app.
             </p>
             <div className="mt-8">
-              <EvaluationChoices showDesktopDownload track={destination => trackDestination(destination, 'hero')} />
+              <EvaluationChoices showPhoneDownload={ios} showDesktopDownload track={destination => trackDestination(destination, 'hero')} />
             </div>
             </div>
             {desktop && <div className="min-h-0 self-stretch [contain:size]"><DesktopScanPreview /></div>}
@@ -88,6 +90,7 @@ export default function LegacyHomepage({assignment, preview}: {assignment: Landi
           </div>
         </section>
       </main>
+      <StickyMobileScan hero={hero} onStart={() => trackDestination('web_analysis', 'sticky_scan')} />
   </LazyMotion>
 }
 

@@ -1,6 +1,6 @@
 import { countryFromTimeZone, skipEthnicity } from '@/components/analysis/population-distribution'
 import type { BasicReport as BasicReportData } from '@/lib/analysis-v2/basic-preview'
-import { WEB_ANALYSIS_VARIANTS } from '@/lib/analytics/web-context'
+import { WEB_ANALYSIS_VARIANTS, webRequestContext } from '@/lib/analytics/web-context'
 import { useWebStep } from '@/hooks/use-web-step'
 import { webJourneyContext, restoreWebJourney } from '@/lib/analytics/web-journey'
 import { rememberStripeAttempt, takeStripeAttempt, readStripeAttempt, clearStripeAttempt, stripeAttemptProperties } from '@/lib/client/stripe-attempt'
@@ -17,6 +17,7 @@ import { useScanFeedback } from '@/hooks/use-scan-feedback'
 import { MobileScanOnboarding } from '@/components/analysis/mobile-scan-onboarding'
 import { ScanPwaHead } from '@/components/app/scan-pwa-head'
 import { MobileScanWelcome, scanPart, scanSequence } from '@/components/analysis/mobile-scan-pwa'
+import Image from 'next/image'
 import type { GetServerSideProps } from 'next'
 import type { AnalysisPurchase } from '@/components/payments/analysis-unlock-dialog'
 import { quotePaywallExperiment } from '@/lib/payments/paywall-experiment-server'
@@ -216,20 +217,26 @@ type ImageFramePositions = Record<string, CaptureFrameImagePosition>
 const defaultFramePosition: CaptureFrameImagePosition = { x: 50, y: 50, scale: 1 }
 
 const previewPhotoUrl = '/model.png'
-type AnalysisEntryProps = { country: string | null; startWithPhoto: boolean; phoneEntry: boolean; previewDevice: 'mobile' | 'desktop' | null; walkthrough: boolean; sampleReport: boolean; assignedOnboarding: PaywallExposure | null }
+type AnalysisEntryProps = { country: string | null; startWithPhoto: boolean; phoneEntry: boolean; uploadFirst: boolean; creatorEntry: { clickId: string; trackingLinkId: string } | null; previewDevice: 'mobile' | 'desktop' | null; walkthrough: boolean; sampleReport: boolean; assignedOnboarding: PaywallExposure | null }
 
 export const getServerSideProps: GetServerSideProps<AnalysisEntryProps> = async ({ query, req, res }) => {
-  const phoneEntry = isPhoneUserAgent(req.headers['user-agent'] ?? '', req.headers['sec-ch-ua-mobile']?.toString())
+  const userAgent = req.headers['user-agent'] ?? ''
+  const phoneEntry = isPhoneUserAgent(userAgent, req.headers['sec-ch-ua-mobile']?.toString())
+  const attribution = query.creator_entry === 'direct'
+    ? await import('@/lib/creator/attribution').then(({ resolveCreatorAttribution }) => resolveCreatorAttribution({ req }))
+    : null
   const secret = process.env.NEXTAUTH_SECRET
   const eligible = !query.from && !query.checkout && !query.analysisId && !query.preview && !query.resumePhoto && !query.basic
   const assignedOnboarding = eligible && secret
     ? quotePaywallExperiment(req, res, phoneEntry ? 'mobile' : 'desktop', secret, 'onboarding')?.exposure ?? null
     : null
-  if (assignedOnboarding) res.setHeader('Cache-Control', 'private, no-store')
+  if (assignedOnboarding || query.creator_entry === 'direct') res.setHeader('Cache-Control', 'private, no-store')
   return { props: {
     assignedOnboarding,
     country: getRequestLocation(req).country,
     phoneEntry,
+    uploadFirst: webRequestContext(userAgent).browser_family === 'tiktok',
+    creatorEntry: attribution ? { clickId: attribution.clickId, trackingLinkId: attribution.trackingLinkId } : null,
     startWithPhoto: query.start === '1' && !assignedOnboarding,
     sampleReport: process.env.NODE_ENV === 'development' && (query.preview === 'mobile' || query.preview === 'desktop') && query.walkthrough === '1' && query.report === 'sample',
     previewDevice: process.env.NODE_ENV === 'development' && (query.preview === 'mobile' || query.preview === 'desktop') ? query.preview : null,
@@ -237,8 +244,15 @@ export const getServerSideProps: GetServerSideProps<AnalysisEntryProps> = async 
   } }
 }
 
-export default function AnalysisPage({ startWithPhoto, phoneEntry, previewDevice, walkthrough, sampleReport, assignedOnboarding, country: requestCountry }: AnalysisEntryProps) {
+export default function AnalysisPage({ startWithPhoto, phoneEntry, uploadFirst, creatorEntry, previewDevice, walkthrough, sampleReport, assignedOnboarding, country: requestCountry }: AnalysisEntryProps) {
   const router = useRouter()
+  const creatorEntryTracked = useRef<string | null>(null)
+  useEffect(() => {
+    if (!creatorEntry || walkthrough || creatorEntryTracked.current === creatorEntry.clickId) return
+    creatorEntryTracked.current = creatorEntry.clickId
+    trackWebEvent('attribution_diagnostic', { surface: 'creator_landing', action: 'creator_analysis_redirected', placement: 'creator_direct',
+      provider: 'mogging', creator_click_id: creatorEntry.clickId, creator_tracking_link_id: creatorEntry.trackingLinkId })
+  }, [creatorEntry, walkthrough])
   const phoneLayout = usePhoneLayout(phoneEntry)
   const previewMobile = previewDevice === 'mobile'
   const mobileScan = previewDevice ? previewMobile : phoneLayout
@@ -414,8 +428,8 @@ export default function AnalysisPage({ startWithPhoto, phoneEntry, previewDevice
 
   const [previewDeadline, setPreviewDeadline] = useState<number | null>(null)
 
-  async function startPseudoAnalysis() {
-    if (!canStart || (!mobileScan && !privacyAccepted && !inlineConsent && !walkthrough)) return
+  async function startPseudoAnalysis(cameraPhoto?: AnalysisDraftImage) {
+    if ((!canStart && !cameraPhoto) || (!mobileScan && !privacyAccepted && !inlineConsent && !walkthrough)) return
     if (walkthrough) {
       if (!mobileScan) {
         beginDesktopScan(images)
@@ -434,7 +448,7 @@ export default function AnalysisPage({ startWithPhoto, phoneEntry, previewDevice
     setPreparingScan('Preparing your photos…')
     let preparedImages: AnalysisDraftImage[]
     try {
-      preparedImages = await prepareImagesForAnalysis(images, imageFramePositions, mobileScan)
+      preparedImages = await prepareImagesForAnalysis(cameraPhoto ? [cameraPhoto] : images, imageFramePositions, mobileScan)
       if (!mobileScan) {
         const installId = status === 'authenticated' ? ensureAnalysisWebInstallId() : null
         if (installId) setPreparingScan('Checking scan access…')
@@ -1070,6 +1084,7 @@ export default function AnalysisPage({ startWithPhoto, phoneEntry, previewDevice
     setImageFramePositions((current) => ({ ...current, [imageId]: defaultFramePosition }))
     setLandmarkPendingIds((current) => ({ ...current, [imageId]: true }))
     void enrichImageLandmarks(nextImage)
+    if (mobileScan && status !== 'loading') void startPseudoAnalysis(nextImage)
   }
 
   async function enrichImageLandmarks(image: AnalysisDraftImage) {
@@ -1219,13 +1234,14 @@ export default function AnalysisPage({ startWithPhoto, phoneEntry, previewDevice
           {step === 'upload' && mobileScan ? (
             <ScreenMotion key="upload" managedMotion>
               <MobileUploadScreen isPreparingUploads={isPreparingUploads}
+                uploadFirst={uploadFirst}
                 previewImage={previewImage} imagePosition={selectedImage ? imageFramePositions[selectedImage.id] ?? defaultFramePosition : defaultFramePosition}
                 selectedImageId={selectedImage?.id ?? null} canStart={canStart}
                 onCamera={() => setCameraOpen(true)} onUseSample={walkthrough ? () => selectSamplePhoto() : undefined}
                 onImagePositionChange={position => {
                   if (selectedImage) setImageFramePositions(current => ({ ...current, [selectedImage.id]: position }))
                 }}
-                onRemove={removeImage} onStart={startPseudoAnalysis} onUpload={() => {
+                onRemove={removeImage} onStart={() => void startPseudoAnalysis()} onUpload={() => {
                   if (!walkthrough) trackWebEvent('photo_source_selected', { surface: 'web_analysis', source: 'picker', placement: 'upload' })
                   uploadInputRef.current?.click()
                 }} />
@@ -1408,7 +1424,7 @@ const ScreenMotion = forwardRef<HTMLDivElement, { children: ReactNode; managedMo
   )
 })
 
-function MobileUploadScreen({ canStart, imagePosition, isPreparingUploads, onCamera, onImagePositionChange, onRemove, onStart, onUpload, onUseSample, previewImage, selectedImageId }: {
+function MobileUploadScreen({ canStart, imagePosition, isPreparingUploads, onCamera, onImagePositionChange, onRemove, onStart, onUpload, onUseSample, previewImage, selectedImageId, uploadFirst }: {
   canStart: boolean
   imagePosition: CaptureFrameImagePosition
   isPreparingUploads: boolean
@@ -1420,6 +1436,7 @@ function MobileUploadScreen({ canStart, imagePosition, isPreparingUploads, onCam
   onUseSample?: () => void
   previewImage: string | null
   selectedImageId: string | null
+  uploadFirst: boolean
 }) {
   const feedback = useScanFeedback()
   return (
@@ -1431,15 +1448,21 @@ function MobileUploadScreen({ canStart, imagePosition, isPreparingUploads, onCam
       </div>}
       <div className="guided-scan-shade" aria-hidden="true" />
       <motion.div variants={scanPart} custom={0}><MobileCaptureChrome /></motion.div>
-      {!previewImage && <motion.div className="mobile-capture-permission" variants={scanPart}>
+      {!previewImage && <motion.div className="mobile-capture-permission" data-library-first={uploadFirst || undefined} variants={scanPart}>
+        {uploadFirst && <div className="mobile-library-art" aria-hidden="true">
+          <div className="mobile-library-art-photo">
+            <Image src="/scan/welcome.jpg" alt="" fill sizes="116px" />
+          </div>
+          <span className="mobile-library-art-icon"><ImagePlus size={23} /></span>
+        </div>}
         <h2>Add a front-facing photo</h2>
-        <p>Take a photo or choose one from your library.</p>
+        <p>{uploadFirst ? 'Choose a clear photo where you’re looking at the camera.' : 'Take a photo or choose one from your library.'}</p>
         {onUseSample && <button type="button" className="mt-4 rounded-full bg-white/15 px-4 py-2 text-sm" onClick={onUseSample}>Use sample photo</button>}
       </motion.div>}
       <AnimatePresence mode="wait">
-        <motion.div key={previewImage ? 'review-actions' : 'capture-actions'} className="mobile-capture-dock" variants={scanPart} custom={20}>
-          <motion.button type="button" className="mobile-capture-icon" aria-label="Choose a photo from your library"
-            whileTap={{ scale: .94 }} onClick={() => { feedback(); onUpload() }}><ImagePlus size={24} /></motion.button>
+        <motion.div key={previewImage ? 'review-actions' : 'capture-actions'} className={`mobile-capture-dock${uploadFirst && !previewImage ? ' mobile-capture-library-first' : ''}`} variants={scanPart} custom={20}>
+          {(previewImage || !uploadFirst) && <motion.button type="button" className="mobile-capture-icon" aria-label="Choose a photo from your library"
+            whileTap={{ scale: .94 }} onClick={() => { feedback(); onUpload() }}><ImagePlus size={24} /></motion.button>}
           {previewImage ? <>
             <motion.button type="button" className="mobile-capture-primary" disabled={!canStart}
               whileTap={{ scale: .95 }} onClick={() => { feedback('action'); onStart() }}>
@@ -1447,6 +1470,10 @@ function MobileUploadScreen({ canStart, imagePosition, isPreparingUploads, onCam
             </motion.button>
             <motion.button type="button" className="mobile-capture-icon" aria-label="Retake photo" whileTap={{ scale: .94 }}
               onClick={() => { feedback(); if (selectedImageId) onRemove(selectedImageId) }}><RotateCcw size={22} /></motion.button>
+          </> : uploadFirst ? <>
+            <motion.button type="button" className="mobile-capture-primary" whileTap={{ scale: .95 }}
+              onClick={() => { feedback('action'); onUpload() }}><ImagePlus size={19} /> Choose from library</motion.button>
+            <button type="button" className="guided-scan-secondary" onClick={() => { feedback(); onCamera() }}>Open camera</button>
           </> : <motion.button type="button" className="mobile-capture-primary" whileTap={{ scale: .95 }}
             onClick={() => { feedback('action'); onCamera() }}><Camera size={17} /> Open camera</motion.button>}
         </motion.div>

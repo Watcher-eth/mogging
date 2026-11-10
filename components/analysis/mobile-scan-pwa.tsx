@@ -75,26 +75,3 @@ export function ScanButton({ children, onClick, disabled }: { children: ReactNod
     whileTap={disabled || reduced ? undefined : { scale: .95 }}
     onClick={() => { feedback('action'); onClick() }}>{children}</motion.button>
 }
-
-export function MobileScanStory({ onContinue }: { onContinue: () => void }) {
-  return <div className={styles.story}>
-    <motion.header variants={scanPart}>
-      <h1>Your first impression.<br />Before a single word.</h1>
-      <p>People form impressions of your face in just</p>
-    </motion.header>
-    <motion.div className={styles.orbit} variants={scanPart}>
-      {/* eslint-disable-next-line @next/next/no-img-element */}
-      <img src="/scan/welcome.jpg" alt="" />
-      <svg viewBox="0 0 300 300" aria-hidden="true">
-        <circle cx="150" cy="150" r="140" fill="none" stroke="#e5e5e9" strokeWidth="4" />
-        <motion.circle cx="150" cy="150" r="140" fill="none" stroke="#2eabdd" strokeWidth="5" strokeLinecap="round" initial={{ pathLength: 0 }} animate={{ pathLength: 1 }} transition={{ duration: .9, delay: .15, ease: [.23, 1, .32, 1] }} />
-      </svg>
-      <strong>0.1<small>s</small></strong>
-    </motion.div>
-    <motion.div className={styles.storyClosing} variants={scanPart}>
-      <p>Make that moment count.</p>
-      <small>First impressions research · Willis &amp; Todorov</small>
-    </motion.div>
-    <motion.div className={styles.onboardingDock} variants={scanPart}><ScanButton onClick={onContinue}>Continue</ScanButton></motion.div>
-  </div>
-}

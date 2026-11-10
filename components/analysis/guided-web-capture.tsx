@@ -4,7 +4,7 @@ import { trackWebEvent } from '@/lib/analytics/client'
 import { useScanFeedback } from '@/hooks/use-scan-feedback'
 import { useWebStep } from '@/hooks/use-web-step'
 import { AnimatePresence, motion, useReducedMotion } from 'motion/react'
-import { ImagePlus, X } from '@/components/ui/mogging-glyphs'
+import { ImagePlus, ScanFace, X } from '@/components/ui/mogging-glyphs'
 import { useEffect, useEffectEvent, useRef, useState, type CSSProperties, type RefObject, type TouchEvent } from 'react'
 import { guidedCameraFrame, guidedFaceAlignment, mobileFaceGuide as guide } from '@/lib/client/guided-camera-frame'
 import { markScanCoverage, scanRingSize } from '@/lib/client/scan-coverage'
@@ -46,12 +46,12 @@ export function GuidedWebCapture({ videoRef, cameraReady, error, onUpload, onClo
   const [zoom, setZoom] = useState(1)
   const zoomRef = useRef(1)
   const pinch = useRef<{ distance: number; zoom: number } | null>(null)
-  const front = useRef<string | null>(null)
+  const [frontPhoto, setFrontPhoto] = useState<string | null>(null)
   const frontPose = useRef<{ yaw: number; pitch: number } | null>(null)
   const [showFrameError, setShowFrameError] = useState(false)
 
   useEffect(() => {
-    if (!cameraReady) return
+    if (!cameraReady || phase !== 'scan' || reader) return
     let active = true
     const started = performance.now()
     const recordModel = (result: string, reason_code?: string) => {
@@ -67,7 +67,7 @@ export function GuidedWebCapture({ videoRef, cameraReady, error, onUpload, onClo
       if (active) { setReader(() => read); setModelError(false); recordModel('ready') }
     }).catch(() => fail('model_load_failed')).finally(() => window.clearTimeout(timeout))
     return () => { active = false; window.clearTimeout(timeout) }
-  }, [cameraReady, analyticsEnabled])
+  }, [cameraReady, analyticsEnabled, phase, reader])
 
   const takeTimedPhoto = useEffectEvent(() => {
     const image = takeFrontPhoto(zoomRef.current)
@@ -78,7 +78,7 @@ export function GuidedWebCapture({ videoRef, cameraReady, error, onUpload, onClo
       setPhase('ready')
       return
     }
-    front.current = image
+    setFrontPhoto(image)
     playShutter()
     if (analyticsEnabled) trackWebEvent('face_capture_result', {
       surface: 'web_analysis', step: 'capture.front', result: 'front_saved',
@@ -101,12 +101,6 @@ export function GuidedWebCapture({ videoRef, cameraReady, error, onUpload, onClo
     }, 1000)
     return () => window.clearTimeout(timer)
   }, [countdown, phase])
-
-  useEffect(() => {
-    if (phase !== 'front') return
-    const timer = window.setTimeout(() => setPhase('scan'), reduced ? 0 : 220)
-    return () => window.clearTimeout(timer)
-  }, [phase, reduced])
 
   useEffect(() => {
     if (!reader || phase !== 'scan') return
@@ -154,7 +148,7 @@ export function GuidedWebCapture({ videoRef, cameraReady, error, onUpload, onClo
   }, [analyticsEnabled, phase, reader, videoRef])
 
   const completeCapture = useEffectEvent(() => {
-    if (front.current) onComplete(front.current)
+    if (frontPhoto) onComplete(frontPhoto)
   })
 
   useEffect(() => {
@@ -177,24 +171,40 @@ export function GuidedWebCapture({ videoRef, cameraReady, error, onUpload, onClo
     setZoom(next)
   }
 
+  function restart() {
+    track('restarted')
+    setFrontPhoto(null)
+    frontPose.current = null
+    setCountdown(3)
+    setCovered(emptyRing)
+    setDirection(null)
+    setGuidance('')
+    setModelError(false)
+    setPhase('ready')
+  }
+
   const percent = Math.round(covered.filter(Boolean).length / covered.length * 100)
   const message = !cameraReady ? 'Preparing your camera…'
     : phase === 'ready' ? showFrameError ? 'Couldn’t take the photo. Try again.' : 'Look straight at the camera'
     : phase === 'countdown' ? 'Hold still for the photo'
-    : phase === 'front' ? 'Photo taken'
+    : phase === 'front' ? 'Your front photo is ready'
     : phase === 'done' ? percent === 100 ? 'Scan complete' : 'Photo ready'
     : modelError ? 'Your front photo is ready to use.'
     : !reader ? 'Photo taken. Preparing the optional scan…'
     : `${guidance || 'Gently tilt your head in a small circle'} · ${percent}%`
 
+  const reviewing = phase === 'front' || phase === 'scan' || phase === 'done'
   const rotating = phase === 'scan' && Boolean(reader) && !modelError
   const aligned = rotating && !guidance
   return <div className="guided-scan" style={guideStyle} data-aligned={aligned || undefined}>
     <video ref={videoRef} autoPlay muted playsInline className={cameraReady ? "is-ready" : undefined}
       style={{ transform: `scale(${-zoom}, ${zoom})` }}
       onTouchStart={updatePinch} onTouchMove={updatePinch} onTouchEnd={updatePinch} onTouchCancel={() => { pinch.current = null }} />
+    {frontPhoto && (phase === 'front' || (phase === 'done' && percent < 100)) &&
+      // eslint-disable-next-line @next/next/no-img-element
+      <img className="guided-scan-front" src={frontPhoto} alt="Your captured front photo" />}
     <div className="guided-scan-shade" aria-hidden="true" />
-    <MobileCaptureChrome />
+    <MobileCaptureChrome label={reviewing && !rotating ? 'Front photo' : undefined} />
     <AnimatePresence>
       {(rotating || (phase === 'done' && percent === 100)) && <motion.div className="pointer-events-none absolute inset-0" initial={{ opacity: 0 }}
         animate={{ opacity: 1 }} exit={{ opacity: 0 }} transition={{ duration: reduced ? 0 : .18 }}>
@@ -213,19 +223,36 @@ export function GuidedWebCapture({ videoRef, cameraReady, error, onUpload, onClo
     {error ? <div className="mobile-capture-permission">
       <h2 role="status">{error}</h2>
       <p>You can continue with a photo from your library.</p>
-      <button type="button" className="mobile-capture-primary mx-auto mt-4" onClick={onUpload}><ImagePlus size={18} /> Choose a photo</button>
+      <button type="button" className="mobile-capture-primary mx-auto mt-4" onClick={() => { track('library_selected'); onUpload() }}><ImagePlus size={18} /> Choose from library</button>
       <button type="button" className="mt-3 min-h-11 px-3 text-sm text-white/80" onClick={onClose}>Back</button>
     </div> : <>
-      <div className="guided-scan-copy">
+      <div className="guided-scan-copy" data-reviewing={reviewing || undefined}>
         <p role="status">{message}</p>
         {(phase === 'ready' || phase === 'countdown') && cameraReady && <small>The camera takes your photo when the timer ends.</small>}
         {phase === 'scan' && <small>You can continue with the photo you’ve taken.</small>}
       </div>
-      <div className="guided-scan-dock">
+      {reviewing ? <div className="guided-scan-review-actions">
+        <motion.button type="button" className="mobile-capture-primary" disabled={phase === 'done'}
+          whileTap={reduced ? undefined : { scale: .96 }} onClick={() => {
+            feedback('action')
+            track('front_photo_used')
+            completeStep()
+            setPhase('done')
+          }}><ScanFace size={19} /> Use this photo</motion.button>
+        <div className="guided-scan-review-secondary">
+          {phase === 'front' && <button type="button" className="guided-scan-secondary" onClick={() => {
+            feedback()
+            track('rotation_started')
+            completeStep()
+            setPhase('scan')
+          }}>Add guided rotation</button>}
+          <button type="button" className="guided-scan-secondary" disabled={phase === 'done'} onClick={restart}>Retake photo</button>
+        </div>
+      </div> : <div className="guided-scan-dock">
         <motion.button type="button" whileTap={reduced ? undefined : { scale: .94 }} className="guided-scan-library" onClick={() => { track('library_selected'); feedback(); onUpload() }} aria-label="Choose from library"><ImagePlus size={22} /></motion.button>
         <button type="button" className="guided-scan-shutter"
           aria-label={phase === 'ready' ? 'Take photo' : 'Restart capture'}
-          disabled={!cameraReady || phase === 'front' || phase === 'done'} onClick={() => {
+          disabled={!cameraReady} onClick={() => {
           if (phase === 'ready') {
             void ensureReady().catch(() => {})
             if (analyticsEnabled) trackWebEvent('face_capture_started', { surface: 'web_analysis', step: 'capture.countdown', source: 'camera' })
@@ -234,21 +261,9 @@ export function GuidedWebCapture({ videoRef, cameraReady, error, onUpload, onClo
             setPhase('countdown')
             return
           }
-          track('restarted')
-          front.current = null
-          frontPose.current = null
-          setCountdown(3)
-          setCovered(emptyRing)
-          setDirection(null)
-          setGuidance('')
-          setPhase('ready')
+          restart()
         }}><span>{phase !== 'ready' && <X size={22} />}</span></button>
-        {phase === 'scan' && <button type="button" className="guided-scan-use-photo" onClick={() => {
-          track('front_photo_used')
-          completeStep()
-          setPhase('done')
-        }}>Use photo</button>}
-      </div>
+      </div>}
     </> }
   </div>
 }
@@ -262,8 +277,8 @@ function alignmentHint(face: ReturnType<typeof guidedFaceAlignment>) {
   return y > 0 ? 'Raise your face slightly' : 'Lower your face slightly'
 }
 
-export function MobileCaptureChrome() {
-  return <header className="mobile-capture-chrome"><h1>Capture</h1><span>Align face</span></header>
+export function MobileCaptureChrome({ label = 'Align face' }: { label?: string }) {
+  return <header className="mobile-capture-chrome"><h1>Capture</h1><span>{label}</span></header>
 }
 
 export function MobileCaptureRing({ covered = emptyRing }: { covered?: boolean[] }) {

@@ -129,7 +129,7 @@ export function AnalysisUnlockDialog({ fullscreen, desktopAnalysis, webCatalog, 
   const webPlan = webAnalysisCheckoutLimit(selectedWeb) >= imageCount ? selectedWeb : 'web_pro_monthly'
   const selectedProduct = webCatalog ? webPlan : selectedPlan
   const reportProduct = imageCount > 1 ? 'evaluation_pack_3' : 'evaluation'
-  const reportChoice = !desktopAnalysis && (fullscreen || !webCatalog)
+  const reportChoice = !desktopAnalysis && !webCatalog
   const { data: fetchedSubscriptions, error: subscriptionError, isValidating: loadingSubscriptions, mutate: retrySubscriptions } = useSWR<SubscriptionPrices & { experiment?: PaywallExposure }>(loadPrices && !webCatalog ? `/api/payments/subscription-prices${fullscreen ? '?experiment=mobile' : ''}` : null, apiGet, { revalidateOnFocus: false, shouldRetryOnError: false, keepPreviousData: true })
   const webCatalogUrl = fullscreen
     ? '/api/payments/subscription-prices?catalog=web-analysis-mobile&experiment=mobile'

@@ -1,9 +1,9 @@
 // Web port of the mobile onboarding sequence and copy.
-export type OnboardingProfileStepId = "impressions" | "dating" | "motivation" | "relevance" | "agency" | "transformation" | "mechanism" | "goals" | "obstacle" | "experience" | "methods" | "evidence" | "age" | "gender" | "time" | "commit";
+export type OnboardingProfileStepId = "dating" | "motivation" | "relevance" | "agency" | "transformation" | "goals" | "obstacle" | "experience" | "methods" | "evidence" | "age" | "gender" | "time" | "commit";
 
 export function getOnboardingProfileSteps(experience: unknown, variant: "full" | "short" = "full"): OnboardingProfileStepId[] {
   const hasExperience = experience === "tried" || experience === "active";
-  const steps: OnboardingProfileStepId[] = ["impressions", "dating", "motivation", "relevance", "agency", "transformation", "mechanism", "goals", "obstacle", "experience", ...(hasExperience ? ["methods" as const] : []), "evidence", "age", "gender", "time", "commit"];
+  const steps: OnboardingProfileStepId[] = ["dating", "motivation", "relevance", "agency", "transformation", "goals", "obstacle", "experience", ...(hasExperience ? ["methods" as const] : []), "evidence", "age", "gender", "time", "commit"];
   return variant === "short" ? steps.filter(step => !["obstacle", "experience", "methods", "time"].includes(step)) : steps;
 }
 
@@ -38,7 +38,6 @@ export const storyHeadings: Partial<Record<string, { eyebrow?: string; title: st
   obstacle: { title: 'What usually\ngets in the way?', body: 'No wrong answers. Pick the one that fits.' },
   agency: { title: 'You didn’t choose\nyour genetics.', body: 'Your habits are a different story.' },
   transformation: { title: 'Your starting point\nisn’t your limit.', body: 'Skin care. Grooming. Better habits. Build on what’s yours.' },
-  mechanism: { title: 'A starting point.\nA plan. A way forward.', body: 'Bring your evaluation, daily routine, and progress into one place.' },
   evidence: { title: 'Backed by experts.\nDesigned for you.', body: '' },
   commit: { title: 'Your next chapter\nstarts with day one.', body: 'Your goals. Your routine. Ascend in the next 60 days and achieve your true potential.' },
   goals: { eyebrow: 'YOUR FOCUS', title: 'What do you want\nto work on?', body: 'Choose everything that matters to you.' },

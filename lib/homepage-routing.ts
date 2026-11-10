@@ -9,6 +9,14 @@ export function phonePwaEntryPath(query: ParsedUrlQuery) {
     if (typeof query.next === 'string') params.set('next', query.next)
     return `/analysis?${params}`
   }
+  if (query.start === '1') {
+    const params = new URLSearchParams({ start: '1' })
+    for (const key of ['utm_source', 'utm_medium', 'utm_campaign', 'utm_content', 'utm_term']) {
+      const value = query[key]
+      if (typeof value === 'string') params.set(key, value)
+    }
+    return `/analysis?${params}`
+  }
   return '/analysis'
 }
 

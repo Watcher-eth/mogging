@@ -1,5 +1,5 @@
 import { useDesktop } from '@/components/landing/use-desktop'
-import { EvaluationChoices } from "@/components/landing/evaluation-choices";
+import { EvaluationChoices, StickyMobileScan } from "@/components/landing/evaluation-choices";
 import { useHomepageEntrance } from '@/components/landing/use-homepage-entrance'
 import { Accordion, AccordionItem, AccordionTrigger, AccordionContent, AccordionChevron } from '@/components/ui/accordion'
 import { useTranslation } from 'react-i18next';
@@ -7,7 +7,7 @@ import { useRouter } from 'next/router';
 import dynamic from "next/dynamic";
 import { useLandingTracking } from "@/components/landing/use-landing-tracking";
 import type { GetServerSideProps, NextApiRequest, NextApiResponse } from "next";
-import type { ReactNode } from "react";
+import { useRef, type ReactNode } from "react";
 import Link from "next/link";
 import { ArrowRight } from "@/components/ui/mogging-glyphs";
 import {
@@ -41,25 +41,28 @@ import {
 const DesktopMemberPreview = dynamic(() => import('@/components/landing/desktop-member-preview').then(module => module.DesktopMemberPreview))
 const LegacyHomepage = dynamic(() => import("@/components/landing/legacy-homepage"));
 
-type Props = { assignment: LandingAssignment | null; preview: boolean; phoneEntry: boolean };
+type Props = { assignment: LandingAssignment | null; preview: boolean; phoneEntry: boolean; ios: boolean };
 
 export default function HomePage(props: Props) {
-  if (props.assignment?.arm === landingArms[0]) {
-    return <><LegacyHomepage assignment={props.assignment} preview={props.preview} /><PublicFooter /></>;
-  }
-  return <NewHomepage {...props} />;
+  return <>
+    {props.assignment?.arm === landingArms[0]
+      ? <><LegacyHomepage assignment={props.assignment} preview={props.preview} ios={props.ios} /><PublicFooter /></>
+      : <NewHomepage {...props} />}
+    <div aria-hidden="true" className="h-[calc(72px+env(safe-area-inset-bottom))] min-[768px]:hidden" />
+  </>;
 }
 
-function NewHomepage({ assignment, preview, phoneEntry }: Props) {
+function NewHomepage({ assignment, preview, phoneEntry, ios }: Props) {
   const { locale } = useRouter();
   const { t } = useTranslation();
   const entrance = useHomepageEntrance();
   const desktop = useDesktop();
   const phone = usePhoneLayout(phoneEntry);
   const { sections, trackDestination } = useLandingTracking(assignment, preview);
+  const hero = useRef<HTMLElement>(null);
 
   function downloadButton(placement: string) {
-    return <EvaluationChoices showDesktopDownload={placement === "hero" || placement === "footer"} track={destination => trackDestination(destination, placement)} />;
+    return <EvaluationChoices showPhoneDownload={ios} showDesktopDownload={placement === "hero" || placement === "footer"} track={destination => trackDestination(destination, placement)} />;
   }
 
   return (
@@ -92,7 +95,7 @@ function NewHomepage({ assignment, preview, phoneEntry }: Props) {
         <main
           className="overflow-hidden bg-white text-zinc-950"
         >
-          <m.section {...entrance} initial={false} className="mx-auto grid max-w-[var(--page-max)] content-center items-center px-6 pb-14 pt-6 sm:px-10 lg:min-h-[730px] lg:grid-cols-2 lg:gap-12 lg:py-12">
+          <m.section ref={hero} {...entrance} initial={false} className="mx-auto grid max-w-[var(--page-max)] content-center items-center px-6 pb-14 pt-6 sm:px-10 lg:min-h-[730px] lg:grid-cols-2 lg:gap-12 lg:py-12">
             <div className="text-center lg:text-left">
               <p className="mb-4 hidden text-xs font-medium uppercase tracking-[0.16em] text-zinc-400 lg:block">
                 {t("landing.tagline")}
@@ -104,7 +107,7 @@ function NewHomepage({ assignment, preview, phoneEntry }: Props) {
                 {t("landing.description")}
               </p>
               <div className="mt-7">{downloadButton("hero")}</div>
-              {!desktop && <p className="mt-3 text-xs text-zinc-400">{t("landing.availability")}</p>}
+              {!desktop && ios && <p className="mt-3 text-xs text-zinc-400">{t("landing.availability")}</p>}
             </div>
             <div className="mt-10 flex justify-center lg:mt-0">
               <div className="w-full max-w-[320px] lg:max-w-[clamp(270px,25vw,330px)]">
@@ -197,6 +200,7 @@ function NewHomepage({ assignment, preview, phoneEntry }: Props) {
         </main>
         <LandingFooter actions={downloadButton("footer")} />
       </div>
+      <StickyMobileScan hero={hero} onStart={() => trackDestination('web_analysis', 'sticky_scan')} />
     </LazyMotion>
   );
 }
@@ -326,5 +330,5 @@ export const getServerSideProps: GetServerSideProps<Props> = async ({
     }
   }
   if (redirect) return { redirect: { destination: handoff, permanent: false } };
-  return { props: { assignment, preview: Boolean(previewArm) || automated, phoneEntry } };
+  return { props: { assignment, preview: Boolean(previewArm) || automated, phoneEntry, ios: /iPhone|iPod/i.test(req.headers['user-agent'] ?? '') } };
 };
