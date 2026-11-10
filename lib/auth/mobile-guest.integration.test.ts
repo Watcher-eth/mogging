@@ -11,6 +11,23 @@ const subscribers = new Map<string, unknown>()
 const originalFetch = globalThis.fetch
 const key = () => randomBytes(32).toString('hex')
 
+async function seedLegacyReferralLink(userId: string) {
+  const code = randomBytes(9).toString('hex')
+  await db.insert(schema.referralLinks).values({ userId, code })
+  return code
+}
+
+async function seedLegacyReferralReward(userId: string) {
+  await db.insert(schema.paymentEntitlements).values({
+    userId,
+    mobileInstallId: userId,
+    stripeCheckoutSessionId: `referral_reward:${userId}`,
+    product: 'evaluation',
+    creditBalance: 1,
+    source: 'referral_reward',
+  })
+}
+
 // Explicit local-only opt-in; these tests must never touch the production database.
 describe.skipIf(!enabled)('guest accounts and scan ledger (isolated PostgreSQL)', () => {
   beforeAll(async () => {
@@ -224,13 +241,14 @@ describe.skipIf(!enabled)('guest accounts and scan ledger (isolated PostgreSQL)'
   test('referral links, progress and spent rewards survive claiming without granting another reward', async () => {
     const referral = await import('@/lib/referrals/service')
     const secret = key(), guest = await guests.createGuestSession(secret)
-    const invite = await referral.getReferralLink(guest.userId)
-    const ticket = await referral.createReferralTicket(invite.code)
+    const code = await seedLegacyReferralLink(guest.userId)
+    const ticket = await referral.createReferralTicket(code)
     for (let i = 0; i < 3; i++) {
       const id = randomUUID()
       await db.insert(schema.users).values({ id, email: `${id}@test.invalid` })
       await referral.creditReferralSignup(id, ticket)
     }
+    await seedLegacyReferralReward(guest.userId)
     expect((await credits.getEntitlementSummary({ userId: guest.userId })).evaluationCredits).toBe(1)
     const spent = await credits.reserveEvaluation({ userId: guest.userId }, 'reward', 'photo')
     await credits.finishEvaluation(spent.id, { analysis: { status: 'complete' } }, true)
@@ -238,7 +256,7 @@ describe.skipIf(!enabled)('guest accounts and scan ledger (isolated PostgreSQL)'
     await db.insert(schema.users).values({ id: targetId, email: `${targetId}@test.invalid` })
     await guests.claimGuestAccount(targetId, secret)
     const after = await referral.getReferralLink(targetId)
-    expect(after.code).toBe(invite.code)
+    expect(after.code).toBe(code)
     expect(after.reward).toEqual({ completed: 3, required: 3, granted: true, available: false })
     const id = randomUUID()
     await db.insert(schema.users).values({ id, email: `${id}@test.invalid` })
@@ -260,18 +278,20 @@ describe.skipIf(!enabled)('guest accounts and scan ledger (isolated PostgreSQL)'
 
   test('saving a guest cannot count the owner as their third invited friend', async () => {
     const referral = await import('@/lib/referrals/service'), secret = key(), guest = await guests.createGuestSession(secret)
-    const invite = await referral.getReferralLink(guest.userId), ticket = await referral.createReferralTicket(invite.code)
+    const ticket = await referral.createReferralTicket(await seedLegacyReferralLink(guest.userId))
     for (let i = 0; i < 2; i++) {
       const id = randomUUID(); await db.insert(schema.users).values({ id, email: `${id}@test.invalid` }); await referral.creditReferralSignup(id, ticket)
     }
     const targetId = randomUUID(); await db.insert(schema.users).values({ id: targetId, email: `${targetId}@test.invalid` })
     await referral.creditReferralSignup(targetId, ticket)
+    await seedLegacyReferralReward(guest.userId)
     await guests.claimGuestAccount(targetId, secret)
     expect((await credits.getEntitlementSummary({ userId: targetId })).evaluationCredits).toBe(0)
     expect((await referral.getReferralLink(targetId)).reward.completed).toBe(2)
     const friend = randomUUID(); await db.insert(schema.users).values({ id: friend, email: `${friend}@test.invalid` })
     await referral.creditReferralSignup(friend, ticket)
-    expect((await credits.getEntitlementSummary({ userId: targetId })).evaluationCredits).toBe(1)
+    expect((await referral.getReferralLink(targetId)).reward.completed).toBe(3)
+    expect((await credits.getEntitlementSummary({ userId: targetId })).evaluationCredits).toBe(0)
   })
 
   test('forged, unsigned, or wrong-key Apple recovery proofs are rejected', async () => {
