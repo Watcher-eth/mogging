@@ -6,6 +6,7 @@ import type { CreatorDashboard, CreatorSubmission } from './types'
 import { SubmissionPostPreview, useSubmissionPostPreview } from './submission-post-preview'
 import { creatorActivity, creatorUpdateAge, creatorUpdateLabels, type CreatorUpdateType } from '@/lib/creator/updates'
 
+import { creatorProgramLaunch } from '@/lib/creator/announcements'
 import styles from './creator-updates.module.css'
 
 const currentLabels: Partial<Record<CreatorUpdateType, string>> = { in_review: 'Post in review', approved: 'Post approved', rejected: 'Post needs changes' }
@@ -59,15 +60,16 @@ function UpdateStatus({ type }: { type: CreatorUpdateType }) {
 
 
 function CampaignAnnouncement() {
-  return <Link href="/creator/sprints" className={`${styles.row} ${styles.announcement}`}>
+  const { title, description, publishedAt, href } = creatorProgramLaunch
+  return <Link href={href} className={`${styles.row} ${styles.announcement}`}>
     <span className={styles.art} aria-hidden="true">
       <Image src="/creator-guide/live-activity-portrait.png" alt="" width={48} height={64} />
       {[0, 1, 2].map(index => <span key={index} className={styles.coin}>$</span>)}
     </span>
     <span className="min-w-0 flex-1">
-      <span className="block text-[13px] font-semibold leading-5 text-zinc-900">3 new campaigns and bonuses are live</span>
-      <span className="mt-1 block text-xs leading-5 text-zinc-500">Find your format. Create your next post. Earn more.</span>
+      <span className="block text-[13px] font-semibold leading-5 text-zinc-900">{title}</span>
+      <span className="mt-1 block text-xs leading-5 text-zinc-500">{description}</span>
     </span>
-    <time dateTime="2026-10-23T19:00:00Z" title="October 23, 2026" className="shrink-0 text-right text-[11px] leading-5 text-zinc-400">{creatorUpdateAge('2026-10-23T19:00:00Z')}</time>
+    <time dateTime={publishedAt} className="shrink-0 text-right text-[11px] leading-5 text-zinc-400">{creatorUpdateAge(publishedAt)}</time>
   </Link>
 }

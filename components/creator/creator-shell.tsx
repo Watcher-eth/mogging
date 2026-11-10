@@ -19,6 +19,7 @@ import { MoreHorizontal, LogOut, X } from '@/components/ui/mogging-glyphs'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog'
 import { cn } from '@/lib/utils'
 import { CreatorAuthPrompt } from './creator-auth-prompt'
+import { CreatorNotifications } from './creator-notifications'
 import { CreatorIcon, type CreatorIconName } from './creator-icon'
 import { CreatorSetupChecklist } from './setup-checklist'
 import floatingStyles from './floating-actions.module.css'
@@ -80,7 +81,10 @@ export function CreatorShell({ children, allowUnauthenticated = false }: { child
 
         </div></div>
 
-        <button type="button" onClick={() => setMoreOpen(true)} aria-label="Creator menu" className="grid size-11 place-items-center rounded-full hover:bg-zinc-100"><MoreHorizontal className="size-5" /></button>
+        <div className="flex shrink-0 items-center gap-1">
+          {session?.user?.id && <CreatorNotifications key={session.user.id} userId={session.user.id} />}
+          <button type="button" onClick={() => setMoreOpen(true)} aria-label="Creator menu" className="grid size-11 place-items-center rounded-full hover:bg-zinc-100"><MoreHorizontal className="size-5" /></button>
+        </div>
       </header>
 
       <Dialog open={moreOpen} onOpenChange={setMoreOpen}><DialogContent className="creator-dialog p-5"><DialogHeader className="creator-dialog-header text-left"><DialogTitle className="creator-dialog-title">Creator Studio</DialogTitle><DialogDescription>Account and support.</DialogDescription></DialogHeader><button type="button" onClick={() => { setMoreOpen(false); welcome.onOpenChange(true) }} className="min-h-11 text-left text-sm font-medium text-[#00A8EF]">Creator quick guide</button><div className="flex items-center justify-between border-t pt-3 text-sm"><Link href="/support" onClick={() => setMoreOpen(false)} className="creator-button p-3">Support</Link><button className="flex min-h-11 items-center gap-2 px-3" onClick={() => void signOut({ callbackUrl: '/' })}><LogOut className="size-4" />Sign out</button></div></DialogContent></Dialog>
