@@ -22,14 +22,13 @@ export type CreatorTikTokOAuthInput = {
 }
 
 export async function getCreatorDashboard(userId: string) {
-  const communityMetricsPromise = getCreatorCommunityMetrics()
   const profile = await getCreatorProfile(userId)
   const featureFlags = {
     creatorAccountRequiredForSubmission: env.CREATOR_ACCOUNT_REQUIRED_FOR_SUBMISSION,
   }
-  if (!profile) return { profile: null, submissions: [], payments: [], payoutRequests: [], socialAccounts: [], communityMetrics: await communityMetricsPromise, featureFlags }
+  if (!profile) return { profile: null, submissions: [], payments: [], payoutRequests: [], socialAccounts: [], featureFlags }
 
-  const [submissions, payments, socialAccounts, communityMetrics, payoutRequests] = await Promise.all([
+  const [submissions, payments, socialAccounts, payoutRequests] = await Promise.all([
     db.select({ ...getTableColumns(schema.creatorSubmissions), unreadMessages: submissionUnreadCount('creator') })
       .from(schema.creatorSubmissions).where(eq(schema.creatorSubmissions.creatorProfileId, profile.id)).orderBy(desc(schema.creatorSubmissions.createdAt)),
     db.query.creatorPayments.findMany({
@@ -41,7 +40,6 @@ export async function getCreatorDashboard(userId: string) {
       orderBy: [desc(schema.creatorSocialAccounts.createdAt)],
       with: { trackingLink: true },
     }),
-    communityMetricsPromise,
     db.query.creatorPayoutRequests.findMany({ where: eq(schema.creatorPayoutRequests.creatorProfileId, profile.id), orderBy: [desc(schema.creatorPayoutRequests.requestedAt)], limit: 100 }),
   ])
 
@@ -52,37 +50,7 @@ export async function getCreatorDashboard(userId: string) {
     return { ...account, trackingLink: await ensureCreatorTrackingLink(account.id) }
   }))
 
-  return { profile, submissions, payments, payoutRequests, socialAccounts: socialAccountsWithLinks, communityMetrics, featureFlags }
-}
-
-async function getCreatorCommunityMetrics() {
-  const [viewMetrics, paymentMetrics, submissionMetrics] = await Promise.all([
-    db
-      .select({
-        totalQualifiedViews: sql<number>`coalesce(sum(${schema.creatorAttributionMetrics.qualifiedViews}), 0)::float8`,
-        totalFirstTimePaidCustomers: sql<number>`coalesce(sum(${schema.creatorAttributionMetrics.firstTimePaidCustomers}), 0)::float8`,
-      })
-      .from(schema.creatorAttributionMetrics),
-    db
-      .select({
-        totalPaidCents: sql<number>`coalesce(sum(${schema.creatorPayments.amountCents}), 0)::float8`,
-        paidCreators: sql<number>`count(distinct ${schema.creatorPayments.creatorProfileId})::int`,
-      })
-      .from(schema.creatorPayments)
-      .where(eq(schema.creatorPayments.status, 'paid')),
-    db
-      .select({ approvedSubmissions: sql<number>`count(*)::int` })
-      .from(schema.creatorSubmissions)
-      .where(or(eq(schema.creatorSubmissions.status, 'approved'), eq(schema.creatorSubmissions.status, 'paid'))),
-  ])
-
-  return {
-    totalQualifiedViews: viewMetrics[0]?.totalQualifiedViews || 0,
-    totalFirstTimePaidCustomers: viewMetrics[0]?.totalFirstTimePaidCustomers || 0,
-    totalPaidCents: paymentMetrics[0]?.totalPaidCents || 0,
-    paidCreators: paymentMetrics[0]?.paidCreators || 0,
-    approvedSubmissions: submissionMetrics[0]?.approvedSubmissions || 0,
-  }
+  return { profile, submissions, payments, payoutRequests, socialAccounts: socialAccountsWithLinks, featureFlags }
 }
 
 export function getCreatorProfile(userId: string) {

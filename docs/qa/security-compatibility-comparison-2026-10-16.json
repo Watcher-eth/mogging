@@ -1,0 +1,1642 @@
+{
+  "checkedAt": "2026-10-17T00:18:19.625Z",
+  "scope": "Each test file in a separate process, identical synthetic environment, local fixture databases only; no production credentials.",
+  "baseline": {
+    "files": 101,
+    "passed": 525,
+    "failed": 0,
+    "skipped": 0,
+    "failingFiles": []
+  },
+  "candidate": {
+    "files": 101,
+    "passed": 525,
+    "failed": 0,
+    "skipped": 0,
+    "failingFiles": []
+  },
+  "regressions": [],
+  "unchangedFailures": [],
+  "results": {
+    "baseline": [
+      {
+        "file": "components/admin/submission-payout-summary.test.tsx",
+        "code": 0,
+        "passed": 3,
+        "failed": 0,
+        "skipped": 0,
+        "timedOut": false
+      },
+      {
+        "file": "components/analysis/face-guide.test.ts",
+        "code": 0,
+        "passed": 3,
+        "failed": 0,
+        "skipped": 0,
+        "timedOut": false
+      },
+      {
+        "file": "components/landing/mobile-preview.test.ts",
+        "code": 0,
+        "passed": 3,
+        "failed": 0,
+        "skipped": 0,
+        "timedOut": false
+      },
+      {
+        "file": "lib/admin/analytics-window.test.ts",
+        "code": 0,
+        "passed": 4,
+        "failed": 0,
+        "skipped": 0,
+        "timedOut": false
+      },
+      {
+        "file": "lib/admin/chart-data.test.ts",
+        "code": 0,
+        "passed": 7,
+        "failed": 0,
+        "skipped": 0,
+        "timedOut": false
+      },
+      {
+        "file": "lib/admin/creator-economics.test.ts",
+        "code": 0,
+        "passed": 2,
+        "failed": 0,
+        "skipped": 0,
+        "timedOut": false
+      },
+      {
+        "file": "lib/admin/creator-overview.test.ts",
+        "code": 0,
+        "passed": 5,
+        "failed": 0,
+        "skipped": 0,
+        "timedOut": false
+      },
+      {
+        "file": "lib/admin/creator-payment.test.ts",
+        "code": 0,
+        "passed": 4,
+        "failed": 0,
+        "skipped": 0,
+        "timedOut": false
+      },
+      {
+        "file": "lib/admin/creator-sprint-payments.test.ts",
+        "code": 0,
+        "passed": 14,
+        "failed": 0,
+        "skipped": 0,
+        "timedOut": false
+      },
+      {
+        "file": "lib/admin/customer-audience.integration.test.ts",
+        "code": 0,
+        "passed": 1,
+        "failed": 0,
+        "skipped": 0,
+        "timedOut": false
+      },
+      {
+        "file": "lib/admin/landing.integration.test.ts",
+        "code": 0,
+        "passed": 1,
+        "failed": 0,
+        "skipped": 0,
+        "timedOut": false
+      },
+      {
+        "file": "lib/admin/payment-receipt.test.ts",
+        "code": 0,
+        "passed": 2,
+        "failed": 0,
+        "skipped": 0,
+        "timedOut": false
+      },
+      {
+        "file": "lib/admin/purchase-attempts.test.ts",
+        "code": 0,
+        "passed": 7,
+        "failed": 0,
+        "skipped": 0,
+        "timedOut": false
+      },
+      {
+        "file": "lib/admin/tracking.test.ts",
+        "code": 0,
+        "passed": 3,
+        "failed": 0,
+        "skipped": 0,
+        "timedOut": false
+      },
+      {
+        "file": "lib/analysis-v2/contours.test.ts",
+        "code": 0,
+        "passed": 2,
+        "failed": 0,
+        "skipped": 0,
+        "timedOut": false
+      },
+      {
+        "file": "lib/analysis-v2/evaluator.test.ts",
+        "code": 0,
+        "passed": 11,
+        "failed": 0,
+        "skipped": 0,
+        "timedOut": false
+      },
+      {
+        "file": "lib/analysis-v2/isolation.test.ts",
+        "code": 0,
+        "passed": 1,
+        "failed": 0,
+        "skipped": 0,
+        "timedOut": false
+      },
+      {
+        "file": "lib/analysis-v2/measurements.test.ts",
+        "code": 0,
+        "passed": 5,
+        "failed": 0,
+        "skipped": 0,
+        "timedOut": false
+      },
+      {
+        "file": "lib/analysis-v2/production.test.ts",
+        "code": 0,
+        "passed": 6,
+        "failed": 0,
+        "skipped": 0,
+        "timedOut": false
+      },
+      {
+        "file": "lib/analysis-v2/report-schema.test.ts",
+        "code": 0,
+        "passed": 4,
+        "failed": 0,
+        "skipped": 0,
+        "timedOut": false
+      },
+      {
+        "file": "lib/analysis-v2/web-report.test.ts",
+        "code": 0,
+        "passed": 7,
+        "failed": 0,
+        "skipped": 0,
+        "timedOut": false
+      },
+      {
+        "file": "lib/analysis/analyze.test.ts",
+        "code": 0,
+        "passed": 3,
+        "failed": 0,
+        "skipped": 0,
+        "timedOut": false
+      },
+      {
+        "file": "lib/analysis/prompt.test.ts",
+        "code": 0,
+        "passed": 4,
+        "failed": 0,
+        "skipped": 0,
+        "timedOut": false
+      },
+      {
+        "file": "lib/analysis/providers/kimi.test.ts",
+        "code": 0,
+        "passed": 16,
+        "failed": 0,
+        "skipped": 0,
+        "timedOut": false
+      },
+      {
+        "file": "lib/analysis/providers/moonshot.test.ts",
+        "code": 0,
+        "passed": 10,
+        "failed": 0,
+        "skipped": 0,
+        "timedOut": false
+      },
+      {
+        "file": "lib/analysis/report.test.ts",
+        "code": 0,
+        "passed": 3,
+        "failed": 0,
+        "skipped": 0,
+        "timedOut": false
+      },
+      {
+        "file": "lib/analysis/score-scale.test.ts",
+        "code": 0,
+        "passed": 3,
+        "failed": 0,
+        "skipped": 0,
+        "timedOut": false
+      },
+      {
+        "file": "lib/analysis/scoring.test.ts",
+        "code": 0,
+        "passed": 4,
+        "failed": 0,
+        "skipped": 0,
+        "timedOut": false
+      },
+      {
+        "file": "lib/analytics/acquisition.test.ts",
+        "code": 0,
+        "passed": 3,
+        "failed": 0,
+        "skipped": 0,
+        "timedOut": false
+      },
+      {
+        "file": "lib/analytics/contract.test.ts",
+        "code": 0,
+        "passed": 3,
+        "failed": 0,
+        "skipped": 0,
+        "timedOut": false
+      },
+      {
+        "file": "lib/analytics/landing.test.ts",
+        "code": 0,
+        "passed": 10,
+        "failed": 0,
+        "skipped": 0,
+        "timedOut": false
+      },
+      {
+        "file": "lib/analytics/posthog.test.ts",
+        "code": 0,
+        "passed": 2,
+        "failed": 0,
+        "skipped": 0,
+        "timedOut": false
+      },
+      {
+        "file": "lib/api/rateLimit.test.ts",
+        "code": 0,
+        "passed": 2,
+        "failed": 0,
+        "skipped": 0,
+        "timedOut": false
+      },
+      {
+        "file": "lib/auth/diagnostics.test.ts",
+        "code": 0,
+        "passed": 1,
+        "failed": 0,
+        "skipped": 0,
+        "timedOut": false
+      },
+      {
+        "file": "lib/auth/mobile-access.test.ts",
+        "code": 0,
+        "passed": 4,
+        "failed": 0,
+        "skipped": 0,
+        "timedOut": false
+      },
+      {
+        "file": "lib/client/faceLandmarks.test.ts",
+        "code": 0,
+        "passed": 3,
+        "failed": 0,
+        "skipped": 0,
+        "timedOut": false
+      },
+      {
+        "file": "lib/courses/draft-writer.test.ts",
+        "code": 0,
+        "passed": 3,
+        "failed": 0,
+        "skipped": 0,
+        "timedOut": false
+      },
+      {
+        "file": "lib/courses/editor.test.tsx",
+        "code": 0,
+        "passed": 6,
+        "failed": 0,
+        "skipped": 0,
+        "timedOut": false
+      },
+      {
+        "file": "lib/courses/pages.test.ts",
+        "code": 0,
+        "passed": 3,
+        "failed": 0,
+        "skipped": 0,
+        "timedOut": false
+      },
+      {
+        "file": "lib/courses/validation.test.ts",
+        "code": 0,
+        "passed": 4,
+        "failed": 0,
+        "skipped": 0,
+        "timedOut": false
+      },
+      {
+        "file": "lib/courses/watch-progress.test.ts",
+        "code": 0,
+        "passed": 4,
+        "failed": 0,
+        "skipped": 0,
+        "timedOut": false
+      },
+      {
+        "file": "lib/creator/adjust-face-alignment.test.ts",
+        "code": 0,
+        "passed": 3,
+        "failed": 0,
+        "skipped": 0,
+        "timedOut": false
+      },
+      {
+        "file": "lib/creator/analytics-upload.test.ts",
+        "code": 0,
+        "passed": 6,
+        "failed": 0,
+        "skipped": 0,
+        "timedOut": false
+      },
+      {
+        "file": "lib/creator/attribution-link-collision.test.ts",
+        "code": 0,
+        "passed": 4,
+        "failed": 0,
+        "skipped": 0,
+        "timedOut": false
+      },
+      {
+        "file": "lib/creator/bundled-payouts.integration.test.ts",
+        "code": 0,
+        "passed": 13,
+        "failed": 0,
+        "skipped": 0,
+        "timedOut": false
+      },
+      {
+        "file": "lib/creator/campaign-preview.test.ts",
+        "code": 0,
+        "passed": 3,
+        "failed": 0,
+        "skipped": 0,
+        "timedOut": false
+      },
+      {
+        "file": "lib/creator/claim-invite-api.test.ts",
+        "code": 0,
+        "passed": 4,
+        "failed": 0,
+        "skipped": 0,
+        "timedOut": false
+      },
+      {
+        "file": "lib/creator/content-generator.test.ts",
+        "code": 0,
+        "passed": 24,
+        "failed": 0,
+        "skipped": 0,
+        "timedOut": false
+      },
+      {
+        "file": "lib/creator/cta-library.test.ts",
+        "code": 0,
+        "passed": 4,
+        "failed": 0,
+        "skipped": 0,
+        "timedOut": false
+      },
+      {
+        "file": "lib/creator/export-slides.test.ts",
+        "code": 0,
+        "passed": 6,
+        "failed": 0,
+        "skipped": 0,
+        "timedOut": false
+      },
+      {
+        "file": "lib/creator/guide-navigation.test.ts",
+        "code": 0,
+        "passed": 2,
+        "failed": 0,
+        "skipped": 0,
+        "timedOut": false
+      },
+      {
+        "file": "lib/creator/invite-validation.test.ts",
+        "code": 0,
+        "passed": 5,
+        "failed": 0,
+        "skipped": 0,
+        "timedOut": false
+      },
+      {
+        "file": "lib/creator/invites.integration.test.ts",
+        "code": 0,
+        "passed": 7,
+        "failed": 0,
+        "skipped": 0,
+        "timedOut": false
+      },
+      {
+        "file": "lib/creator/link-routing.test.ts",
+        "code": 0,
+        "passed": 3,
+        "failed": 0,
+        "skipped": 0,
+        "timedOut": false
+      },
+      {
+        "file": "lib/creator/manual-account-api.test.ts",
+        "code": 0,
+        "passed": 5,
+        "failed": 0,
+        "skipped": 0,
+        "timedOut": false
+      },
+      {
+        "file": "lib/creator/mobile-overlay-engine/processing-presets.test.ts",
+        "code": 0,
+        "passed": 2,
+        "failed": 0,
+        "skipped": 0,
+        "timedOut": false
+      },
+      {
+        "file": "lib/creator/mock-protocol.test.ts",
+        "code": 0,
+        "passed": 9,
+        "failed": 0,
+        "skipped": 0,
+        "timedOut": false
+      },
+      {
+        "file": "lib/creator/mock-report.test.ts",
+        "code": 0,
+        "passed": 4,
+        "failed": 0,
+        "skipped": 0,
+        "timedOut": false
+      },
+      {
+        "file": "lib/creator/money.test.ts",
+        "code": 0,
+        "passed": 3,
+        "failed": 0,
+        "skipped": 0,
+        "timedOut": false
+      },
+      {
+        "file": "lib/creator/payouts.test.ts",
+        "code": 0,
+        "passed": 26,
+        "failed": 0,
+        "skipped": 0,
+        "timedOut": false
+      },
+      {
+        "file": "lib/creator/phone-report.test.ts",
+        "code": 0,
+        "passed": 3,
+        "failed": 0,
+        "skipped": 0,
+        "timedOut": false
+      },
+      {
+        "file": "lib/creator/registration-api.test.ts",
+        "code": 0,
+        "passed": 4,
+        "failed": 0,
+        "skipped": 0,
+        "timedOut": false
+      },
+      {
+        "file": "lib/creator/registration.test.ts",
+        "code": 0,
+        "passed": 5,
+        "failed": 0,
+        "skipped": 0,
+        "timedOut": false
+      },
+      {
+        "file": "lib/creator/report-overlay.test.ts",
+        "code": 0,
+        "passed": 2,
+        "failed": 0,
+        "skipped": 0,
+        "timedOut": false
+      },
+      {
+        "file": "lib/creator/revenuecat-attribution.test.ts",
+        "code": 0,
+        "passed": 11,
+        "failed": 0,
+        "skipped": 0,
+        "timedOut": false
+      },
+      {
+        "file": "lib/creator/score-reveal.test.ts",
+        "code": 0,
+        "passed": 2,
+        "failed": 0,
+        "skipped": 0,
+        "timedOut": false
+      },
+      {
+        "file": "lib/creator/sprints.test.ts",
+        "code": 0,
+        "passed": 13,
+        "failed": 0,
+        "skipped": 0,
+        "timedOut": false
+      },
+      {
+        "file": "lib/creator/submission-evidence.test.ts",
+        "code": 0,
+        "passed": 11,
+        "failed": 0,
+        "skipped": 0,
+        "timedOut": false
+      },
+      {
+        "file": "lib/creator/submission-rereview.test.ts",
+        "code": 0,
+        "passed": 7,
+        "failed": 0,
+        "skipped": 0,
+        "timedOut": false
+      },
+      {
+        "file": "lib/creator/submission-review.test.ts",
+        "code": 0,
+        "passed": 5,
+        "failed": 0,
+        "skipped": 0,
+        "timedOut": false
+      },
+      {
+        "file": "lib/creator/tiktok-account.test.ts",
+        "code": 0,
+        "passed": 16,
+        "failed": 0,
+        "skipped": 0,
+        "timedOut": false
+      },
+      {
+        "file": "lib/creator/tiktok-oauth.test.ts",
+        "code": 0,
+        "passed": 3,
+        "failed": 0,
+        "skipped": 0,
+        "timedOut": false
+      },
+      {
+        "file": "lib/creator/tiktok-permissions.test.ts",
+        "code": 0,
+        "passed": 3,
+        "failed": 0,
+        "skipped": 0,
+        "timedOut": false
+      },
+      {
+        "file": "lib/creator/validation.test.ts",
+        "code": 0,
+        "passed": 8,
+        "failed": 0,
+        "skipped": 0,
+        "timedOut": false
+      },
+      {
+        "file": "lib/env.test.ts",
+        "code": 0,
+        "passed": 1,
+        "failed": 0,
+        "skipped": 0,
+        "timedOut": false
+      },
+      {
+        "file": "lib/geo/regions.test.ts",
+        "code": 0,
+        "passed": 2,
+        "failed": 0,
+        "skipped": 0,
+        "timedOut": false
+      },
+      {
+        "file": "lib/homepage-routing.test.ts",
+        "code": 0,
+        "passed": 2,
+        "failed": 0,
+        "skipped": 0,
+        "timedOut": false
+      },
+      {
+        "file": "lib/i18n/locales.test.ts",
+        "code": 0,
+        "passed": 21,
+        "failed": 0,
+        "skipped": 0,
+        "timedOut": false
+      },
+      {
+        "file": "lib/leaderboards/friends.test.ts",
+        "code": 0,
+        "passed": 2,
+        "failed": 0,
+        "skipped": 0,
+        "timedOut": false
+      },
+      {
+        "file": "lib/payments/redeem-code.test.ts",
+        "code": 0,
+        "passed": 1,
+        "failed": 0,
+        "skipped": 0,
+        "timedOut": false
+      },
+      {
+        "file": "lib/payments/scan-periods.test.ts",
+        "code": 0,
+        "passed": 3,
+        "failed": 0,
+        "skipped": 0,
+        "timedOut": false
+      },
+      {
+        "file": "lib/payments/stripe-lifecycle.test.ts",
+        "code": 0,
+        "passed": 4,
+        "failed": 0,
+        "skipped": 0,
+        "timedOut": false
+      },
+      {
+        "file": "lib/payments/stripe-reporting.test.ts",
+        "code": 0,
+        "passed": 2,
+        "failed": 0,
+        "skipped": 0,
+        "timedOut": false
+      },
+      {
+        "file": "lib/payments/subscription-events.test.ts",
+        "code": 0,
+        "passed": 18,
+        "failed": 0,
+        "skipped": 0,
+        "timedOut": false
+      },
+      {
+        "file": "lib/payments/subscription-prices.test.ts",
+        "code": 0,
+        "passed": 4,
+        "failed": 0,
+        "skipped": 0,
+        "timedOut": false
+      },
+      {
+        "file": "lib/payments/web-analysis-recovery.test.ts",
+        "code": 0,
+        "passed": 7,
+        "failed": 0,
+        "skipped": 0,
+        "timedOut": false
+      },
+      {
+        "file": "lib/photos/access.test.ts",
+        "code": 0,
+        "passed": 3,
+        "failed": 0,
+        "skipped": 0,
+        "timedOut": false
+      },
+      {
+        "file": "lib/photos/routes.test.ts",
+        "code": 0,
+        "passed": 1,
+        "failed": 0,
+        "skipped": 0,
+        "timedOut": false
+      },
+      {
+        "file": "lib/photos/service.test.ts",
+        "code": 0,
+        "passed": 3,
+        "failed": 0,
+        "skipped": 0,
+        "timedOut": false
+      },
+      {
+        "file": "lib/push/delivery.integration.test.ts",
+        "code": 0,
+        "passed": 1,
+        "failed": 0,
+        "skipped": 0,
+        "timedOut": false
+      },
+      {
+        "file": "lib/push/fcm.test.ts",
+        "code": 0,
+        "passed": 1,
+        "failed": 0,
+        "skipped": 0,
+        "timedOut": false
+      },
+      {
+        "file": "lib/push/schedule.test.ts",
+        "code": 0,
+        "passed": 6,
+        "failed": 0,
+        "skipped": 0,
+        "timedOut": false
+      },
+      {
+        "file": "lib/referrals/landing.test.ts",
+        "code": 0,
+        "passed": 4,
+        "failed": 0,
+        "skipped": 0,
+        "timedOut": false
+      },
+      {
+        "file": "lib/reliability/monitor.test.ts",
+        "code": 0,
+        "passed": 1,
+        "failed": 0,
+        "skipped": 0,
+        "timedOut": false
+      },
+      {
+        "file": "lib/reliability/outcome.test.ts",
+        "code": 0,
+        "passed": 8,
+        "failed": 0,
+        "skipped": 0,
+        "timedOut": false
+      },
+      {
+        "file": "lib/seo.test.ts",
+        "code": 0,
+        "passed": 5,
+        "failed": 0,
+        "skipped": 0,
+        "timedOut": false
+      },
+      {
+        "file": "lib/sharing/mobile-share.test.ts",
+        "code": 0,
+        "passed": 1,
+        "failed": 0,
+        "skipped": 0,
+        "timedOut": false
+      },
+      {
+        "file": "lib/sharing/overall-overlay.test.ts",
+        "code": 0,
+        "passed": 5,
+        "failed": 0,
+        "skipped": 0,
+        "timedOut": false
+      },
+      {
+        "file": "lib/sharing/population-percentile.test.ts",
+        "code": 0,
+        "passed": 2,
+        "failed": 0,
+        "skipped": 0,
+        "timedOut": false
+      },
+      {
+        "file": "lib/sharing/story-design.test.tsx",
+        "code": 0,
+        "passed": 3,
+        "failed": 0,
+        "skipped": 0,
+        "timedOut": false
+      },
+      {
+        "file": "lib/storage/images.test.ts",
+        "code": 0,
+        "passed": 2,
+        "failed": 0,
+        "skipped": 0,
+        "timedOut": false
+      }
+    ],
+    "candidate": [
+      {
+        "file": "components/admin/submission-payout-summary.test.tsx",
+        "code": 0,
+        "passed": 3,
+        "failed": 0,
+        "skipped": 0,
+        "timedOut": false
+      },
+      {
+        "file": "components/analysis/face-guide.test.ts",
+        "code": 0,
+        "passed": 3,
+        "failed": 0,
+        "skipped": 0,
+        "timedOut": false
+      },
+      {
+        "file": "components/landing/mobile-preview.test.ts",
+        "code": 0,
+        "passed": 3,
+        "failed": 0,
+        "skipped": 0,
+        "timedOut": false
+      },
+      {
+        "file": "lib/admin/analytics-window.test.ts",
+        "code": 0,
+        "passed": 4,
+        "failed": 0,
+        "skipped": 0,
+        "timedOut": false
+      },
+      {
+        "file": "lib/admin/chart-data.test.ts",
+        "code": 0,
+        "passed": 7,
+        "failed": 0,
+        "skipped": 0,
+        "timedOut": false
+      },
+      {
+        "file": "lib/admin/creator-economics.test.ts",
+        "code": 0,
+        "passed": 2,
+        "failed": 0,
+        "skipped": 0,
+        "timedOut": false
+      },
+      {
+        "file": "lib/admin/creator-overview.test.ts",
+        "code": 0,
+        "passed": 5,
+        "failed": 0,
+        "skipped": 0,
+        "timedOut": false
+      },
+      {
+        "file": "lib/admin/creator-payment.test.ts",
+        "code": 0,
+        "passed": 4,
+        "failed": 0,
+        "skipped": 0,
+        "timedOut": false
+      },
+      {
+        "file": "lib/admin/creator-sprint-payments.test.ts",
+        "code": 0,
+        "passed": 14,
+        "failed": 0,
+        "skipped": 0,
+        "timedOut": false
+      },
+      {
+        "file": "lib/admin/customer-audience.integration.test.ts",
+        "code": 0,
+        "passed": 1,
+        "failed": 0,
+        "skipped": 0,
+        "timedOut": false
+      },
+      {
+        "file": "lib/admin/landing.integration.test.ts",
+        "code": 0,
+        "passed": 1,
+        "failed": 0,
+        "skipped": 0,
+        "timedOut": false
+      },
+      {
+        "file": "lib/admin/payment-receipt.test.ts",
+        "code": 0,
+        "passed": 2,
+        "failed": 0,
+        "skipped": 0,
+        "timedOut": false
+      },
+      {
+        "file": "lib/admin/purchase-attempts.test.ts",
+        "code": 0,
+        "passed": 7,
+        "failed": 0,
+        "skipped": 0,
+        "timedOut": false
+      },
+      {
+        "file": "lib/admin/tracking.test.ts",
+        "code": 0,
+        "passed": 3,
+        "failed": 0,
+        "skipped": 0,
+        "timedOut": false
+      },
+      {
+        "file": "lib/analysis-v2/contours.test.ts",
+        "code": 0,
+        "passed": 2,
+        "failed": 0,
+        "skipped": 0,
+        "timedOut": false
+      },
+      {
+        "file": "lib/analysis-v2/evaluator.test.ts",
+        "code": 0,
+        "passed": 11,
+        "failed": 0,
+        "skipped": 0,
+        "timedOut": false
+      },
+      {
+        "file": "lib/analysis-v2/isolation.test.ts",
+        "code": 0,
+        "passed": 1,
+        "failed": 0,
+        "skipped": 0,
+        "timedOut": false
+      },
+      {
+        "file": "lib/analysis-v2/measurements.test.ts",
+        "code": 0,
+        "passed": 5,
+        "failed": 0,
+        "skipped": 0,
+        "timedOut": false
+      },
+      {
+        "file": "lib/analysis-v2/production.test.ts",
+        "code": 0,
+        "passed": 6,
+        "failed": 0,
+        "skipped": 0,
+        "timedOut": false
+      },
+      {
+        "file": "lib/analysis-v2/report-schema.test.ts",
+        "code": 0,
+        "passed": 4,
+        "failed": 0,
+        "skipped": 0,
+        "timedOut": false
+      },
+      {
+        "file": "lib/analysis-v2/web-report.test.ts",
+        "code": 0,
+        "passed": 7,
+        "failed": 0,
+        "skipped": 0,
+        "timedOut": false
+      },
+      {
+        "file": "lib/analysis/analyze.test.ts",
+        "code": 0,
+        "passed": 3,
+        "failed": 0,
+        "skipped": 0,
+        "timedOut": false
+      },
+      {
+        "file": "lib/analysis/prompt.test.ts",
+        "code": 0,
+        "passed": 4,
+        "failed": 0,
+        "skipped": 0,
+        "timedOut": false
+      },
+      {
+        "file": "lib/analysis/providers/kimi.test.ts",
+        "code": 0,
+        "passed": 16,
+        "failed": 0,
+        "skipped": 0,
+        "timedOut": false
+      },
+      {
+        "file": "lib/analysis/providers/moonshot.test.ts",
+        "code": 0,
+        "passed": 10,
+        "failed": 0,
+        "skipped": 0,
+        "timedOut": false
+      },
+      {
+        "file": "lib/analysis/report.test.ts",
+        "code": 0,
+        "passed": 3,
+        "failed": 0,
+        "skipped": 0,
+        "timedOut": false
+      },
+      {
+        "file": "lib/analysis/score-scale.test.ts",
+        "code": 0,
+        "passed": 3,
+        "failed": 0,
+        "skipped": 0,
+        "timedOut": false
+      },
+      {
+        "file": "lib/analysis/scoring.test.ts",
+        "code": 0,
+        "passed": 4,
+        "failed": 0,
+        "skipped": 0,
+        "timedOut": false
+      },
+      {
+        "file": "lib/analytics/acquisition.test.ts",
+        "code": 0,
+        "passed": 3,
+        "failed": 0,
+        "skipped": 0,
+        "timedOut": false
+      },
+      {
+        "file": "lib/analytics/contract.test.ts",
+        "code": 0,
+        "passed": 3,
+        "failed": 0,
+        "skipped": 0,
+        "timedOut": false
+      },
+      {
+        "file": "lib/analytics/landing.test.ts",
+        "code": 0,
+        "passed": 10,
+        "failed": 0,
+        "skipped": 0,
+        "timedOut": false
+      },
+      {
+        "file": "lib/analytics/posthog.test.ts",
+        "code": 0,
+        "passed": 2,
+        "failed": 0,
+        "skipped": 0,
+        "timedOut": false
+      },
+      {
+        "file": "lib/api/rateLimit.test.ts",
+        "code": 0,
+        "passed": 2,
+        "failed": 0,
+        "skipped": 0,
+        "timedOut": false
+      },
+      {
+        "file": "lib/auth/diagnostics.test.ts",
+        "code": 0,
+        "passed": 1,
+        "failed": 0,
+        "skipped": 0,
+        "timedOut": false
+      },
+      {
+        "file": "lib/auth/mobile-access.test.ts",
+        "code": 0,
+        "passed": 4,
+        "failed": 0,
+        "skipped": 0,
+        "timedOut": false
+      },
+      {
+        "file": "lib/client/faceLandmarks.test.ts",
+        "code": 0,
+        "passed": 3,
+        "failed": 0,
+        "skipped": 0,
+        "timedOut": false
+      },
+      {
+        "file": "lib/courses/draft-writer.test.ts",
+        "code": 0,
+        "passed": 3,
+        "failed": 0,
+        "skipped": 0,
+        "timedOut": false
+      },
+      {
+        "file": "lib/courses/editor.test.tsx",
+        "code": 0,
+        "passed": 6,
+        "failed": 0,
+        "skipped": 0,
+        "timedOut": false
+      },
+      {
+        "file": "lib/courses/pages.test.ts",
+        "code": 0,
+        "passed": 3,
+        "failed": 0,
+        "skipped": 0,
+        "timedOut": false
+      },
+      {
+        "file": "lib/courses/validation.test.ts",
+        "code": 0,
+        "passed": 4,
+        "failed": 0,
+        "skipped": 0,
+        "timedOut": false
+      },
+      {
+        "file": "lib/courses/watch-progress.test.ts",
+        "code": 0,
+        "passed": 4,
+        "failed": 0,
+        "skipped": 0,
+        "timedOut": false
+      },
+      {
+        "file": "lib/creator/adjust-face-alignment.test.ts",
+        "code": 0,
+        "passed": 3,
+        "failed": 0,
+        "skipped": 0,
+        "timedOut": false
+      },
+      {
+        "file": "lib/creator/analytics-upload.test.ts",
+        "code": 0,
+        "passed": 6,
+        "failed": 0,
+        "skipped": 0,
+        "timedOut": false
+      },
+      {
+        "file": "lib/creator/attribution-link-collision.test.ts",
+        "code": 0,
+        "passed": 4,
+        "failed": 0,
+        "skipped": 0,
+        "timedOut": false
+      },
+      {
+        "file": "lib/creator/bundled-payouts.integration.test.ts",
+        "code": 0,
+        "passed": 13,
+        "failed": 0,
+        "skipped": 0,
+        "timedOut": false
+      },
+      {
+        "file": "lib/creator/campaign-preview.test.ts",
+        "code": 0,
+        "passed": 3,
+        "failed": 0,
+        "skipped": 0,
+        "timedOut": false
+      },
+      {
+        "file": "lib/creator/claim-invite-api.test.ts",
+        "code": 0,
+        "passed": 4,
+        "failed": 0,
+        "skipped": 0,
+        "timedOut": false
+      },
+      {
+        "file": "lib/creator/content-generator.test.ts",
+        "code": 0,
+        "passed": 24,
+        "failed": 0,
+        "skipped": 0,
+        "timedOut": false
+      },
+      {
+        "file": "lib/creator/cta-library.test.ts",
+        "code": 0,
+        "passed": 4,
+        "failed": 0,
+        "skipped": 0,
+        "timedOut": false
+      },
+      {
+        "file": "lib/creator/export-slides.test.ts",
+        "code": 0,
+        "passed": 6,
+        "failed": 0,
+        "skipped": 0,
+        "timedOut": false
+      },
+      {
+        "file": "lib/creator/guide-navigation.test.ts",
+        "code": 0,
+        "passed": 2,
+        "failed": 0,
+        "skipped": 0,
+        "timedOut": false
+      },
+      {
+        "file": "lib/creator/invite-validation.test.ts",
+        "code": 0,
+        "passed": 5,
+        "failed": 0,
+        "skipped": 0,
+        "timedOut": false
+      },
+      {
+        "file": "lib/creator/invites.integration.test.ts",
+        "code": 0,
+        "passed": 7,
+        "failed": 0,
+        "skipped": 0,
+        "timedOut": false
+      },
+      {
+        "file": "lib/creator/link-routing.test.ts",
+        "code": 0,
+        "passed": 3,
+        "failed": 0,
+        "skipped": 0,
+        "timedOut": false
+      },
+      {
+        "file": "lib/creator/manual-account-api.test.ts",
+        "code": 0,
+        "passed": 5,
+        "failed": 0,
+        "skipped": 0,
+        "timedOut": false
+      },
+      {
+        "file": "lib/creator/mobile-overlay-engine/processing-presets.test.ts",
+        "code": 0,
+        "passed": 2,
+        "failed": 0,
+        "skipped": 0,
+        "timedOut": false
+      },
+      {
+        "file": "lib/creator/mock-protocol.test.ts",
+        "code": 0,
+        "passed": 9,
+        "failed": 0,
+        "skipped": 0,
+        "timedOut": false
+      },
+      {
+        "file": "lib/creator/mock-report.test.ts",
+        "code": 0,
+        "passed": 4,
+        "failed": 0,
+        "skipped": 0,
+        "timedOut": false
+      },
+      {
+        "file": "lib/creator/money.test.ts",
+        "code": 0,
+        "passed": 3,
+        "failed": 0,
+        "skipped": 0,
+        "timedOut": false
+      },
+      {
+        "file": "lib/creator/payouts.test.ts",
+        "code": 0,
+        "passed": 26,
+        "failed": 0,
+        "skipped": 0,
+        "timedOut": false
+      },
+      {
+        "file": "lib/creator/phone-report.test.ts",
+        "code": 0,
+        "passed": 3,
+        "failed": 0,
+        "skipped": 0,
+        "timedOut": false
+      },
+      {
+        "file": "lib/creator/registration-api.test.ts",
+        "code": 0,
+        "passed": 4,
+        "failed": 0,
+        "skipped": 0,
+        "timedOut": false
+      },
+      {
+        "file": "lib/creator/registration.test.ts",
+        "code": 0,
+        "passed": 5,
+        "failed": 0,
+        "skipped": 0,
+        "timedOut": false
+      },
+      {
+        "file": "lib/creator/report-overlay.test.ts",
+        "code": 0,
+        "passed": 2,
+        "failed": 0,
+        "skipped": 0,
+        "timedOut": false
+      },
+      {
+        "file": "lib/creator/revenuecat-attribution.test.ts",
+        "code": 0,
+        "passed": 11,
+        "failed": 0,
+        "skipped": 0,
+        "timedOut": false
+      },
+      {
+        "file": "lib/creator/score-reveal.test.ts",
+        "code": 0,
+        "passed": 2,
+        "failed": 0,
+        "skipped": 0,
+        "timedOut": false
+      },
+      {
+        "file": "lib/creator/sprints.test.ts",
+        "code": 0,
+        "passed": 13,
+        "failed": 0,
+        "skipped": 0,
+        "timedOut": false
+      },
+      {
+        "file": "lib/creator/submission-evidence.test.ts",
+        "code": 0,
+        "passed": 11,
+        "failed": 0,
+        "skipped": 0,
+        "timedOut": false
+      },
+      {
+        "file": "lib/creator/submission-rereview.test.ts",
+        "code": 0,
+        "passed": 7,
+        "failed": 0,
+        "skipped": 0,
+        "timedOut": false
+      },
+      {
+        "file": "lib/creator/submission-review.test.ts",
+        "code": 0,
+        "passed": 5,
+        "failed": 0,
+        "skipped": 0,
+        "timedOut": false
+      },
+      {
+        "file": "lib/creator/tiktok-account.test.ts",
+        "code": 0,
+        "passed": 16,
+        "failed": 0,
+        "skipped": 0,
+        "timedOut": false
+      },
+      {
+        "file": "lib/creator/tiktok-oauth.test.ts",
+        "code": 0,
+        "passed": 3,
+        "failed": 0,
+        "skipped": 0,
+        "timedOut": false
+      },
+      {
+        "file": "lib/creator/tiktok-permissions.test.ts",
+        "code": 0,
+        "passed": 3,
+        "failed": 0,
+        "skipped": 0,
+        "timedOut": false
+      },
+      {
+        "file": "lib/creator/validation.test.ts",
+        "code": 0,
+        "passed": 8,
+        "failed": 0,
+        "skipped": 0,
+        "timedOut": false
+      },
+      {
+        "file": "lib/env.test.ts",
+        "code": 0,
+        "passed": 1,
+        "failed": 0,
+        "skipped": 0,
+        "timedOut": false
+      },
+      {
+        "file": "lib/geo/regions.test.ts",
+        "code": 0,
+        "passed": 2,
+        "failed": 0,
+        "skipped": 0,
+        "timedOut": false
+      },
+      {
+        "file": "lib/homepage-routing.test.ts",
+        "code": 0,
+        "passed": 2,
+        "failed": 0,
+        "skipped": 0,
+        "timedOut": false
+      },
+      {
+        "file": "lib/i18n/locales.test.ts",
+        "code": 0,
+        "passed": 21,
+        "failed": 0,
+        "skipped": 0,
+        "timedOut": false
+      },
+      {
+        "file": "lib/leaderboards/friends.test.ts",
+        "code": 0,
+        "passed": 2,
+        "failed": 0,
+        "skipped": 0,
+        "timedOut": false
+      },
+      {
+        "file": "lib/payments/redeem-code.test.ts",
+        "code": 0,
+        "passed": 1,
+        "failed": 0,
+        "skipped": 0,
+        "timedOut": false
+      },
+      {
+        "file": "lib/payments/scan-periods.test.ts",
+        "code": 0,
+        "passed": 3,
+        "failed": 0,
+        "skipped": 0,
+        "timedOut": false
+      },
+      {
+        "file": "lib/payments/stripe-lifecycle.test.ts",
+        "code": 0,
+        "passed": 4,
+        "failed": 0,
+        "skipped": 0,
+        "timedOut": false
+      },
+      {
+        "file": "lib/payments/stripe-reporting.test.ts",
+        "code": 0,
+        "passed": 2,
+        "failed": 0,
+        "skipped": 0,
+        "timedOut": false
+      },
+      {
+        "file": "lib/payments/subscription-events.test.ts",
+        "code": 0,
+        "passed": 18,
+        "failed": 0,
+        "skipped": 0,
+        "timedOut": false
+      },
+      {
+        "file": "lib/payments/subscription-prices.test.ts",
+        "code": 0,
+        "passed": 4,
+        "failed": 0,
+        "skipped": 0,
+        "timedOut": false
+      },
+      {
+        "file": "lib/payments/web-analysis-recovery.test.ts",
+        "code": 0,
+        "passed": 7,
+        "failed": 0,
+        "skipped": 0,
+        "timedOut": false
+      },
+      {
+        "file": "lib/photos/access.test.ts",
+        "code": 0,
+        "passed": 3,
+        "failed": 0,
+        "skipped": 0,
+        "timedOut": false
+      },
+      {
+        "file": "lib/photos/routes.test.ts",
+        "code": 0,
+        "passed": 1,
+        "failed": 0,
+        "skipped": 0,
+        "timedOut": false
+      },
+      {
+        "file": "lib/photos/service.test.ts",
+        "code": 0,
+        "passed": 3,
+        "failed": 0,
+        "skipped": 0,
+        "timedOut": false
+      },
+      {
+        "file": "lib/push/delivery.integration.test.ts",
+        "code": 0,
+        "passed": 1,
+        "failed": 0,
+        "skipped": 0,
+        "timedOut": false
+      },
+      {
+        "file": "lib/push/fcm.test.ts",
+        "code": 0,
+        "passed": 1,
+        "failed": 0,
+        "skipped": 0,
+        "timedOut": false
+      },
+      {
+        "file": "lib/push/schedule.test.ts",
+        "code": 0,
+        "passed": 6,
+        "failed": 0,
+        "skipped": 0,
+        "timedOut": false
+      },
+      {
+        "file": "lib/referrals/landing.test.ts",
+        "code": 0,
+        "passed": 4,
+        "failed": 0,
+        "skipped": 0,
+        "timedOut": false
+      },
+      {
+        "file": "lib/reliability/monitor.test.ts",
+        "code": 0,
+        "passed": 1,
+        "failed": 0,
+        "skipped": 0,
+        "timedOut": false
+      },
+      {
+        "file": "lib/reliability/outcome.test.ts",
+        "code": 0,
+        "passed": 8,
+        "failed": 0,
+        "skipped": 0,
+        "timedOut": false
+      },
+      {
+        "file": "lib/seo.test.ts",
+        "code": 0,
+        "passed": 5,
+        "failed": 0,
+        "skipped": 0,
+        "timedOut": false
+      },
+      {
+        "file": "lib/sharing/mobile-share.test.ts",
+        "code": 0,
+        "passed": 1,
+        "failed": 0,
+        "skipped": 0,
+        "timedOut": false
+      },
+      {
+        "file": "lib/sharing/overall-overlay.test.ts",
+        "code": 0,
+        "passed": 5,
+        "failed": 0,
+        "skipped": 0,
+        "timedOut": false
+      },
+      {
+        "file": "lib/sharing/population-percentile.test.ts",
+        "code": 0,
+        "passed": 2,
+        "failed": 0,
+        "skipped": 0,
+        "timedOut": false
+      },
+      {
+        "file": "lib/sharing/story-design.test.tsx",
+        "code": 0,
+        "passed": 3,
+        "failed": 0,
+        "skipped": 0,
+        "timedOut": false
+      },
+      {
+        "file": "lib/storage/images.test.ts",
+        "code": 0,
+        "passed": 2,
+        "failed": 0,
+        "skipped": 0,
+        "timedOut": false
+      }
+    ]
+  }
+}

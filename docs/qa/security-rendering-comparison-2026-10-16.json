@@ -1,0 +1,30 @@
+{
+  "checkedAt": "2026-10-17T00:18:12.634Z",
+  "scope": "Real report/share handlers, original renderer, public portrait fixture; only sharing database lookup mocked.",
+  "results": [
+    {
+      "design": "report",
+      "width": 1200,
+      "height": 630,
+      "identicalPixels": true
+    },
+    {
+      "design": "original",
+      "width": 1080,
+      "height": 1920,
+      "identicalPixels": true
+    },
+    {
+      "design": "precision",
+      "width": 1080,
+      "height": 1920,
+      "identicalPixels": true
+    },
+    {
+      "design": "afterimage",
+      "width": 1080,
+      "height": 1920,
+      "identicalPixels": true
+    }
+  ]
+}

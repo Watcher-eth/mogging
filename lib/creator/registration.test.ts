@@ -27,7 +27,7 @@ mock.module('@/lib/db', () => ({ schema, db: {
     },
   }) }),
 } }))
-mock.module('@/lib/creator/attribution', () => ({ ensureCreatorTrackingLink: async () => null }))
+mock.module('@/lib/creator/attribution', () => ({ ensureCreatorTrackingLink: async () => null, creatorReferralHandle: () => null }))
 const { getOrCreateCreatorProfile } = await import('./service')
 
 beforeEach(() => {

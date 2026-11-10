@@ -4,6 +4,8 @@ import type { Session } from 'next-auth'
 import { ApiError } from '@/lib/api/http'
 import { getAuthSession } from '@/lib/auth/session'
 import { env } from '@/lib/env'
+import { db, schema } from '@/lib/db'
+import { eq } from 'drizzle-orm'
 
 const COOKIE_NAME = 'mogging_creator_admin'
 const ADMIN_SESSION_MS = 8 * 60 * 60 * 1000
@@ -37,6 +39,8 @@ export async function requireCreatorAdmin(
   const email = session?.user?.email?.trim().toLowerCase()
   if (!email) throw new ApiError(401, 'Authentication required')
   if (!isCreatorAdminEmail(email)) throw new ApiError(403, 'Admin access required')
+  const user = session?.user?.id ? await db.query.users.findFirst({ where: eq(schema.users.id, session.user.id), columns: { email: true } }) : null
+  if (!user || user.email?.trim().toLowerCase() !== email) throw new ApiError(403, 'Admin identity does not match this account')
   if (!isCreatorAdminConfigured()) {
     throw new ApiError(503, 'Creator admin access is not configured')
   }

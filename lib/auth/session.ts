@@ -7,6 +7,8 @@ export function getAuthSession(
     | [GetServerSidePropsContext['req'], GetServerSidePropsContext['res']]
     | [NextApiRequest, NextApiResponse]
 ) {
+  if (/^\/api\/(?:admin|creator)(?:[/?]|$)/.test(args[0].url || '')) {
+    args[1].setHeader('Cache-Control', 'private, no-store')
+  }
   return getServerSession(...args, authOptions)
 }
-

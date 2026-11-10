@@ -1,0 +1,1364 @@
+{
+  "checkedAt": "2026-10-16T22:31:30.348Z",
+  "origin": "https://www.mogging.com",
+  "scope": "Unauthenticated GET and empty-body POST/PATCH rejection checks; no valid mutation, account creation, payment, upload, bulk collection, or private-network probing.",
+  "routeModuleCount": 109,
+  "inventory": [
+    {
+      "file": "pages/api/admin/analytics-health.ts",
+      "route": "/api/admin/analytics-health",
+      "authReferences": [
+        "requireCreatorAdmin",
+        "CRON_SECRET"
+      ]
+    },
+    {
+      "file": "pages/api/admin/analytics-operations.ts",
+      "route": "/api/admin/analytics-operations",
+      "authReferences": [
+        "requireCreatorAdmin"
+      ]
+    },
+    {
+      "file": "pages/api/admin/analytics.ts",
+      "route": "/api/admin/analytics",
+      "authReferences": [
+        "requireCreatorAdmin"
+      ]
+    },
+    {
+      "file": "pages/api/admin/courses/[[...path]].ts",
+      "route": "/api/admin/courses/[[...path]]",
+      "authReferences": [
+        "requireCreatorAdmin",
+        "courseApi"
+      ]
+    },
+    {
+      "file": "pages/api/admin/creator/cta-library.ts",
+      "route": "/api/admin/creator/cta-library",
+      "authReferences": [
+        "requireCreatorAdmin"
+      ]
+    },
+    {
+      "file": "pages/api/admin/creator/index.ts",
+      "route": "/api/admin/creator",
+      "authReferences": [
+        "requireCreatorAdmin"
+      ]
+    },
+    {
+      "file": "pages/api/admin/creator/invites.ts",
+      "route": "/api/admin/creator/invites",
+      "authReferences": [
+        "requireCreatorAdmin"
+      ]
+    },
+    {
+      "file": "pages/api/admin/creator/metrics.ts",
+      "route": "/api/admin/creator/metrics",
+      "authReferences": [
+        "requireCreatorAdmin"
+      ]
+    },
+    {
+      "file": "pages/api/admin/creator/payments.ts",
+      "route": "/api/admin/creator/payments",
+      "authReferences": [
+        "requireCreatorAdmin"
+      ]
+    },
+    {
+      "file": "pages/api/admin/creator/payments/[id]/receipt.ts",
+      "route": "/api/admin/creator/payments/[id]/receipt",
+      "authReferences": [
+        "requireCreatorAdmin"
+      ]
+    },
+    {
+      "file": "pages/api/admin/creator/payout-requests.ts",
+      "route": "/api/admin/creator/payout-requests",
+      "authReferences": [
+        "requireCreatorAdmin"
+      ]
+    },
+    {
+      "file": "pages/api/admin/creator/review.ts",
+      "route": "/api/admin/creator/review",
+      "authReferences": [
+        "requireCreatorAdmin"
+      ]
+    },
+    {
+      "file": "pages/api/admin/creator/session.ts",
+      "route": "/api/admin/creator/session",
+      "authReferences": [
+        "requireCreatorAdmin"
+      ]
+    },
+    {
+      "file": "pages/api/admin/creator/settings.ts",
+      "route": "/api/admin/creator/settings",
+      "authReferences": [
+        "requireCreatorAdmin"
+      ]
+    },
+    {
+      "file": "pages/api/admin/creator/sprints.ts",
+      "route": "/api/admin/creator/sprints",
+      "authReferences": [
+        "requireCreatorAdmin"
+      ]
+    },
+    {
+      "file": "pages/api/admin/creator/submissions/[id]/messages.ts",
+      "route": "/api/admin/creator/submissions/[id]/messages",
+      "authReferences": [
+        "requireCreatorAdmin"
+      ]
+    },
+    {
+      "file": "pages/api/admin/invites/[id].ts",
+      "route": "/api/admin/invites/[id]",
+      "authReferences": [
+        "requireInviteAdmin"
+      ]
+    },
+    {
+      "file": "pages/api/admin/invites/index.ts",
+      "route": "/api/admin/invites",
+      "authReferences": [
+        "requireInviteAdmin"
+      ]
+    },
+    {
+      "file": "pages/api/admin/invites/session.ts",
+      "route": "/api/admin/invites/session",
+      "authReferences": []
+    },
+    {
+      "file": "pages/api/admin/purchase-attempts.ts",
+      "route": "/api/admin/purchase-attempts",
+      "authReferences": [
+        "requireCreatorAdmin"
+      ]
+    },
+    {
+      "file": "pages/api/admin/reliability.ts",
+      "route": "/api/admin/reliability",
+      "authReferences": [
+        "requireCreatorAdmin"
+      ]
+    },
+    {
+      "file": "pages/api/analysis/[id].ts",
+      "route": "/api/analysis/[id]",
+      "authReferences": [
+        "getRequestUserId"
+      ]
+    },
+    {
+      "file": "pages/api/analysis/potential-image.ts",
+      "route": "/api/analysis/potential-image",
+      "authReferences": []
+    },
+    {
+      "file": "pages/api/analytics/events.ts",
+      "route": "/api/analytics/events",
+      "authReferences": [
+        "getRequestUserId"
+      ]
+    },
+    {
+      "file": "pages/api/analyze.ts",
+      "route": "/api/analyze",
+      "authReferences": [
+        "createAnalyzeHandler"
+      ]
+    },
+    {
+      "file": "pages/api/app-config.ts",
+      "route": "/api/app-config",
+      "authReferences": []
+    },
+    {
+      "file": "pages/api/attribution/claim.ts",
+      "route": "/api/attribution/claim",
+      "authReferences": [
+        "getRequestUserId",
+        "getAuthSession"
+      ]
+    },
+    {
+      "file": "pages/api/attribution/install.ts",
+      "route": "/api/attribution/install",
+      "authReferences": [
+        "getRequestUserId"
+      ]
+    },
+    {
+      "file": "pages/api/attribution/link.ts",
+      "route": "/api/attribution/link",
+      "authReferences": []
+    },
+    {
+      "file": "pages/api/attribution/paywall.ts",
+      "route": "/api/attribution/paywall",
+      "authReferences": [
+        "getRequestUserId"
+      ]
+    },
+    {
+      "file": "pages/api/attribution/resolve.ts",
+      "route": "/api/attribution/resolve",
+      "authReferences": [
+        "getRequestUserId"
+      ]
+    },
+    {
+      "file": "pages/api/auth/[...nextauth].ts",
+      "route": "/api/auth/[...nextauth]",
+      "authReferences": []
+    },
+    {
+      "file": "pages/api/auth/anonymous-profile.ts",
+      "route": "/api/auth/anonymous-profile",
+      "authReferences": []
+    },
+    {
+      "file": "pages/api/auth/apple-mobile.ts",
+      "route": "/api/auth/apple-mobile",
+      "authReferences": []
+    },
+    {
+      "file": "pages/api/auth/credentials-mobile.ts",
+      "route": "/api/auth/credentials-mobile",
+      "authReferences": []
+    },
+    {
+      "file": "pages/api/auth/mobile-access.ts",
+      "route": "/api/auth/mobile-access",
+      "authReferences": [
+        "getRequestUserId"
+      ]
+    },
+    {
+      "file": "pages/api/auth/mobile-session.ts",
+      "route": "/api/auth/mobile-session",
+      "authReferences": [
+        "getRequestUserId"
+      ]
+    },
+    {
+      "file": "pages/api/auth/register.ts",
+      "route": "/api/auth/register",
+      "authReferences": []
+    },
+    {
+      "file": "pages/api/compare.ts",
+      "route": "/api/compare",
+      "authReferences": [
+        "getAuthSession"
+      ]
+    },
+    {
+      "file": "pages/api/courses/[[...path]].ts",
+      "route": "/api/courses/[[...path]]",
+      "authReferences": [
+        "getAuthSession",
+        "courseApi",
+        "courseUser"
+      ]
+    },
+    {
+      "file": "pages/api/courses/bunny-webhook.ts",
+      "route": "/api/courses/bunny-webhook",
+      "authReferences": []
+    },
+    {
+      "file": "pages/api/creator/accounts.ts",
+      "route": "/api/creator/accounts",
+      "authReferences": [
+        "getAuthSession"
+      ]
+    },
+    {
+      "file": "pages/api/creator/accounts/analytics-upload-intent.ts",
+      "route": "/api/creator/accounts/analytics-upload-intent",
+      "authReferences": [
+        "getAuthSession"
+      ]
+    },
+    {
+      "file": "pages/api/creator/claim-invite.ts",
+      "route": "/api/creator/claim-invite",
+      "authReferences": [
+        "getAuthSession"
+      ]
+    },
+    {
+      "file": "pages/api/creator/courses/[[...path]].ts",
+      "route": "/api/creator/courses/[[...path]]",
+      "authReferences": [
+        "courseApi",
+        "courseUser"
+      ]
+    },
+    {
+      "file": "pages/api/creator/cta-library/asset.ts",
+      "route": "/api/creator/cta-library/asset",
+      "authReferences": [
+        "getAuthSession"
+      ]
+    },
+    {
+      "file": "pages/api/creator/cta-library/index.ts",
+      "route": "/api/creator/cta-library",
+      "authReferences": [
+        "getAuthSession"
+      ]
+    },
+    {
+      "file": "pages/api/creator/cta-library/upload-intent.ts",
+      "route": "/api/creator/cta-library/upload-intent",
+      "authReferences": [
+        "getAuthSession"
+      ]
+    },
+    {
+      "file": "pages/api/creator/index.ts",
+      "route": "/api/creator",
+      "authReferences": [
+        "getAuthSession"
+      ]
+    },
+    {
+      "file": "pages/api/creator/oauth/tiktok/callback.ts",
+      "route": "/api/creator/oauth/tiktok/callback",
+      "authReferences": [
+        "getAuthSession"
+      ]
+    },
+    {
+      "file": "pages/api/creator/oauth/tiktok/start.ts",
+      "route": "/api/creator/oauth/tiktok/start",
+      "authReferences": [
+        "getAuthSession"
+      ]
+    },
+    {
+      "file": "pages/api/creator/payouts.ts",
+      "route": "/api/creator/payouts",
+      "authReferences": [
+        "getAuthSession"
+      ]
+    },
+    {
+      "file": "pages/api/creator/sprints/[id].ts",
+      "route": "/api/creator/sprints/[id]",
+      "authReferences": [
+        "getAuthSession"
+      ]
+    },
+    {
+      "file": "pages/api/creator/sprints/index.ts",
+      "route": "/api/creator/sprints",
+      "authReferences": [
+        "getAuthSession"
+      ]
+    },
+    {
+      "file": "pages/api/creator/submission-analytics-upload-intent.ts",
+      "route": "/api/creator/submission-analytics-upload-intent",
+      "authReferences": [
+        "getAuthSession"
+      ]
+    },
+    {
+      "file": "pages/api/creator/submission-analytics.ts",
+      "route": "/api/creator/submission-analytics",
+      "authReferences": [
+        "getAuthSession"
+      ]
+    },
+    {
+      "file": "pages/api/creator/submissions.ts",
+      "route": "/api/creator/submissions",
+      "authReferences": [
+        "getAuthSession"
+      ]
+    },
+    {
+      "file": "pages/api/creator/submissions/[id]/messages.ts",
+      "route": "/api/creator/submissions/[id]/messages",
+      "authReferences": [
+        "getAuthSession"
+      ]
+    },
+    {
+      "file": "pages/api/creator/submissions/[id]/rereview.ts",
+      "route": "/api/creator/submissions/[id]/rereview",
+      "authReferences": [
+        "getAuthSession"
+      ]
+    },
+    {
+      "file": "pages/api/creator/upload-intent.ts",
+      "route": "/api/creator/upload-intent",
+      "authReferences": [
+        "getAuthSession"
+      ]
+    },
+    {
+      "file": "pages/api/creator/video.ts",
+      "route": "/api/creator/video",
+      "authReferences": [
+        "getAuthSession"
+      ]
+    },
+    {
+      "file": "pages/api/cron/analytics-export.ts",
+      "route": "/api/cron/analytics-export",
+      "authReferences": [
+        "CRON_SECRET"
+      ]
+    },
+    {
+      "file": "pages/api/cron/courses.ts",
+      "route": "/api/cron/courses",
+      "authReferences": [
+        "CRON_SECRET"
+      ]
+    },
+    {
+      "file": "pages/api/cron/push-reminders.ts",
+      "route": "/api/cron/push-reminders",
+      "authReferences": [
+        "CRON_SECRET"
+      ]
+    },
+    {
+      "file": "pages/api/cron/reliability.ts",
+      "route": "/api/cron/reliability",
+      "authReferences": [
+        "CRON_SECRET"
+      ]
+    },
+    {
+      "file": "pages/api/cron/stripe-reconciliation.ts",
+      "route": "/api/cron/stripe-reconciliation",
+      "authReferences": [
+        "CRON_SECRET"
+      ]
+    },
+    {
+      "file": "pages/api/experimental/analysis-v2/landmarks.ts",
+      "route": "/api/experimental/analysis-v2/landmarks",
+      "authReferences": []
+    },
+    {
+      "file": "pages/api/experimental/analysis-v2/sample-report.ts",
+      "route": "/api/experimental/analysis-v2/sample-report",
+      "authReferences": []
+    },
+    {
+      "file": "pages/api/health.ts",
+      "route": "/api/health",
+      "authReferences": []
+    },
+    {
+      "file": "pages/api/leaderboard/friends.ts",
+      "route": "/api/leaderboard/friends",
+      "authReferences": [
+        "getRequestUserId"
+      ]
+    },
+    {
+      "file": "pages/api/leaderboard/me.ts",
+      "route": "/api/leaderboard/me",
+      "authReferences": [
+        "getAuthSession"
+      ]
+    },
+    {
+      "file": "pages/api/leaderboard/photos.ts",
+      "route": "/api/leaderboard/photos",
+      "authReferences": []
+    },
+    {
+      "file": "pages/api/leaderboard/profile.ts",
+      "route": "/api/leaderboard/profile",
+      "authReferences": []
+    },
+    {
+      "file": "pages/api/leaderboard/psl.ts",
+      "route": "/api/leaderboard/psl",
+      "authReferences": []
+    },
+    {
+      "file": "pages/api/leaderboard/users.ts",
+      "route": "/api/leaderboard/users",
+      "authReferences": []
+    },
+    {
+      "file": "pages/api/mobile/v2/analyze.ts",
+      "route": "/api/mobile/v2/analyze",
+      "authReferences": [
+        "createAnalyzeHandler"
+      ]
+    },
+    {
+      "file": "pages/api/og/campaign.tsx",
+      "route": "/api/og/campaign",
+      "authReferences": []
+    },
+    {
+      "file": "pages/api/og/creator-invite.tsx",
+      "route": "/api/og/creator-invite",
+      "authReferences": []
+    },
+    {
+      "file": "pages/api/og/creator-referral.tsx",
+      "route": "/api/og/creator-referral",
+      "authReferences": []
+    },
+    {
+      "file": "pages/api/og/report.tsx",
+      "route": "/api/og/report",
+      "authReferences": []
+    },
+    {
+      "file": "pages/api/og/share.tsx",
+      "route": "/api/og/share",
+      "authReferences": []
+    },
+    {
+      "file": "pages/api/payments/activation-code.ts",
+      "route": "/api/payments/activation-code",
+      "authReferences": []
+    },
+    {
+      "file": "pages/api/payments/checkout.ts",
+      "route": "/api/payments/checkout",
+      "authReferences": [
+        "getRequestUserId"
+      ]
+    },
+    {
+      "file": "pages/api/payments/claim.ts",
+      "route": "/api/payments/claim",
+      "authReferences": []
+    },
+    {
+      "file": "pages/api/payments/confirm.ts",
+      "route": "/api/payments/confirm",
+      "authReferences": [
+        "getRequestUserId"
+      ]
+    },
+    {
+      "file": "pages/api/payments/creator-discount.ts",
+      "route": "/api/payments/creator-discount",
+      "authReferences": [
+        "getRequestUserId"
+      ]
+    },
+    {
+      "file": "pages/api/payments/entitlements.ts",
+      "route": "/api/payments/entitlements",
+      "authReferences": [
+        "getRequestUserId"
+      ]
+    },
+    {
+      "file": "pages/api/payments/handoff/consume.ts",
+      "route": "/api/payments/handoff/consume",
+      "authReferences": []
+    },
+    {
+      "file": "pages/api/payments/handoff/create.ts",
+      "route": "/api/payments/handoff/create",
+      "authReferences": [
+        "getRequestUserId"
+      ]
+    },
+    {
+      "file": "pages/api/payments/mobile-subscription.ts",
+      "route": "/api/payments/mobile-subscription",
+      "authReferences": []
+    },
+    {
+      "file": "pages/api/payments/redeem-code.ts",
+      "route": "/api/payments/redeem-code",
+      "authReferences": [
+        "getRequestUserId"
+      ]
+    },
+    {
+      "file": "pages/api/payments/revenuecat-webhook.ts",
+      "route": "/api/payments/revenuecat-webhook",
+      "authReferences": [
+        "verifyAuthorization"
+      ]
+    },
+    {
+      "file": "pages/api/payments/stripe-connect-account-webhook.ts",
+      "route": "/api/payments/stripe-connect-account-webhook",
+      "authReferences": []
+    },
+    {
+      "file": "pages/api/payments/stripe-connect-webhook.ts",
+      "route": "/api/payments/stripe-connect-webhook",
+      "authReferences": []
+    },
+    {
+      "file": "pages/api/payments/stripe-webhook.ts",
+      "route": "/api/payments/stripe-webhook",
+      "authReferences": []
+    },
+    {
+      "file": "pages/api/payments/subscription-prices.ts",
+      "route": "/api/payments/subscription-prices",
+      "authReferences": []
+    },
+    {
+      "file": "pages/api/payments/upgrades.ts",
+      "route": "/api/payments/upgrades",
+      "authReferences": [
+        "getRequestUserId"
+      ]
+    },
+    {
+      "file": "pages/api/payments/verify.ts",
+      "route": "/api/payments/verify",
+      "authReferences": []
+    },
+    {
+      "file": "pages/api/payments/web-checkout.ts",
+      "route": "/api/payments/web-checkout",
+      "authReferences": [
+        "getRequestUserId"
+      ]
+    },
+    {
+      "file": "pages/api/photos/privacy.ts",
+      "route": "/api/photos/privacy",
+      "authReferences": [
+        "getRequestUserId"
+      ]
+    },
+    {
+      "file": "pages/api/push/device.ts",
+      "route": "/api/push/device",
+      "authReferences": []
+    },
+    {
+      "file": "pages/api/referrals/index.ts",
+      "route": "/api/referrals",
+      "authReferences": [
+        "getRequestUserId"
+      ]
+    },
+    {
+      "file": "pages/api/search/users.ts",
+      "route": "/api/search/users",
+      "authReferences": []
+    },
+    {
+      "file": "pages/api/share/[token].ts",
+      "route": "/api/share/[token]",
+      "authReferences": []
+    },
+    {
+      "file": "pages/api/share/analysis.ts",
+      "route": "/api/share/analysis",
+      "authReferences": [
+        "getRequestUserId"
+      ]
+    },
+    {
+      "file": "pages/api/share/image-proxy.ts",
+      "route": "/api/share/image-proxy",
+      "authReferences": []
+    },
+    {
+      "file": "pages/api/user/[id].ts",
+      "route": "/api/user/[id]",
+      "authReferences": []
+    },
+    {
+      "file": "pages/api/user/me.ts",
+      "route": "/api/user/me",
+      "authReferences": [
+        "getAuthSession"
+      ]
+    },
+    {
+      "file": "pages/api/web/analyze.ts",
+      "route": "/api/web/analyze",
+      "authReferences": [
+        "createAnalyzeHandler"
+      ]
+    }
+  ],
+  "protectedResults": [
+    {
+      "path": "/api/admin/analytics-health",
+      "method": "GET",
+      "status": 401,
+      "cache": "no-store",
+      "dataKeys": [],
+      "errorCode": "unauthorized"
+    },
+    {
+      "path": "/api/admin/analytics-operations",
+      "method": "GET",
+      "status": 401,
+      "cache": "private, no-store",
+      "dataKeys": [],
+      "errorCode": "unauthorized"
+    },
+    {
+      "path": "/api/admin/analytics",
+      "method": "GET",
+      "status": 401,
+      "cache": "private, no-store",
+      "dataKeys": [],
+      "errorCode": "unauthorized"
+    },
+    {
+      "path": "/api/admin/creator/cta-library",
+      "method": "GET",
+      "status": 401,
+      "cache": "public, max-age=0, must-revalidate",
+      "dataKeys": [],
+      "errorCode": "unauthorized"
+    },
+    {
+      "path": "/api/admin/creator",
+      "method": "GET",
+      "status": 401,
+      "cache": "public, max-age=0, must-revalidate",
+      "dataKeys": [],
+      "errorCode": "unauthorized"
+    },
+    {
+      "path": "/api/admin/creator/invites",
+      "method": "GET",
+      "status": 401,
+      "cache": "no-store",
+      "dataKeys": [],
+      "errorCode": "unauthorized"
+    },
+    {
+      "path": "/api/admin/creator/metrics",
+      "method": "GET",
+      "status": 405,
+      "cache": "public, max-age=0, must-revalidate",
+      "dataKeys": [],
+      "errorCode": "method_not_allowed"
+    },
+    {
+      "path": "/api/admin/creator/payments",
+      "method": "GET",
+      "status": 405,
+      "cache": "public, max-age=0, must-revalidate",
+      "dataKeys": [],
+      "errorCode": "method_not_allowed"
+    },
+    {
+      "path": "/api/admin/creator/payout-requests",
+      "method": "GET",
+      "status": 405,
+      "cache": "public, max-age=0, must-revalidate",
+      "dataKeys": [],
+      "errorCode": "method_not_allowed"
+    },
+    {
+      "path": "/api/admin/creator/review",
+      "method": "GET",
+      "status": 405,
+      "cache": "public, max-age=0, must-revalidate",
+      "dataKeys": [],
+      "errorCode": "method_not_allowed"
+    },
+    {
+      "path": "/api/admin/creator/session",
+      "method": "GET",
+      "status": 401,
+      "cache": "public, max-age=0, must-revalidate",
+      "dataKeys": [],
+      "errorCode": "unauthorized"
+    },
+    {
+      "path": "/api/admin/creator/settings",
+      "method": "GET",
+      "status": 405,
+      "cache": "public, max-age=0, must-revalidate",
+      "dataKeys": [],
+      "errorCode": "method_not_allowed"
+    },
+    {
+      "path": "/api/admin/creator/sprints",
+      "method": "GET",
+      "status": 401,
+      "cache": "public, max-age=0, must-revalidate",
+      "dataKeys": [],
+      "errorCode": "unauthorized"
+    },
+    {
+      "path": "/api/admin/invites",
+      "method": "GET",
+      "status": 401,
+      "cache": "public, max-age=0, must-revalidate",
+      "dataKeys": [],
+      "errorCode": "unauthorized"
+    },
+    {
+      "path": "/api/admin/invites/session",
+      "method": "GET",
+      "status": 200,
+      "cache": "public, max-age=0, must-revalidate",
+      "dataKeys": [
+        "configured",
+        "unlocked"
+      ]
+    },
+    {
+      "path": "/api/admin/purchase-attempts",
+      "method": "GET",
+      "status": 401,
+      "cache": "private, no-store",
+      "dataKeys": [],
+      "errorCode": "unauthorized"
+    },
+    {
+      "path": "/api/admin/reliability",
+      "method": "GET",
+      "status": 401,
+      "cache": "private, no-store",
+      "dataKeys": [],
+      "errorCode": "unauthorized"
+    },
+    {
+      "path": "/api/creator/accounts",
+      "method": "GET",
+      "status": 401,
+      "cache": "public, max-age=0, must-revalidate",
+      "dataKeys": [],
+      "errorCode": "unauthorized"
+    },
+    {
+      "path": "/api/creator/accounts/analytics-upload-intent",
+      "method": "GET",
+      "status": 405,
+      "cache": "public, max-age=0, must-revalidate",
+      "dataKeys": [],
+      "errorCode": "method_not_allowed"
+    },
+    {
+      "path": "/api/creator/claim-invite",
+      "method": "GET",
+      "status": 405,
+      "cache": "no-store",
+      "dataKeys": [],
+      "errorCode": "method_not_allowed"
+    },
+    {
+      "path": "/api/creator/cta-library/asset",
+      "method": "GET",
+      "status": 405,
+      "cache": "public, max-age=0, must-revalidate",
+      "dataKeys": [],
+      "errorCode": "method_not_allowed"
+    },
+    {
+      "path": "/api/creator/cta-library",
+      "method": "GET",
+      "status": 401,
+      "cache": "public, max-age=0, must-revalidate",
+      "dataKeys": [],
+      "errorCode": "unauthorized"
+    },
+    {
+      "path": "/api/creator/cta-library/upload-intent",
+      "method": "GET",
+      "status": 405,
+      "cache": "public, max-age=0, must-revalidate",
+      "dataKeys": [],
+      "errorCode": "method_not_allowed"
+    },
+    {
+      "path": "/api/creator",
+      "method": "GET",
+      "status": 401,
+      "cache": "public, max-age=0, must-revalidate",
+      "dataKeys": [],
+      "errorCode": "unauthorized"
+    },
+    {
+      "path": "/api/creator/payouts",
+      "method": "GET",
+      "status": 405,
+      "cache": "private, no-store",
+      "dataKeys": [],
+      "errorCode": "method_not_allowed"
+    },
+    {
+      "path": "/api/creator/sprints",
+      "method": "GET",
+      "status": 401,
+      "cache": "public, max-age=0, must-revalidate",
+      "dataKeys": [],
+      "errorCode": "unauthorized"
+    },
+    {
+      "path": "/api/creator/submission-analytics-upload-intent",
+      "method": "GET",
+      "status": 405,
+      "cache": "public, max-age=0, must-revalidate",
+      "dataKeys": [],
+      "errorCode": "method_not_allowed"
+    },
+    {
+      "path": "/api/creator/submission-analytics",
+      "method": "GET",
+      "status": 405,
+      "cache": "public, max-age=0, must-revalidate",
+      "dataKeys": [],
+      "errorCode": "method_not_allowed"
+    },
+    {
+      "path": "/api/creator/submissions",
+      "method": "GET",
+      "status": 401,
+      "cache": "public, max-age=0, must-revalidate",
+      "dataKeys": [],
+      "errorCode": "unauthorized"
+    },
+    {
+      "path": "/api/creator/upload-intent",
+      "method": "GET",
+      "status": 405,
+      "cache": "public, max-age=0, must-revalidate",
+      "dataKeys": [],
+      "errorCode": "method_not_allowed"
+    },
+    {
+      "path": "/api/creator/video",
+      "method": "GET",
+      "status": 405,
+      "cache": "public, max-age=0, must-revalidate",
+      "dataKeys": [],
+      "errorCode": "method_not_allowed"
+    },
+    {
+      "path": "/api/cron/analytics-export",
+      "method": "GET",
+      "status": 401,
+      "cache": "no-store",
+      "dataKeys": []
+    },
+    {
+      "path": "/api/cron/courses",
+      "method": "GET",
+      "status": 200,
+      "cache": "no-store",
+      "dataKeys": [
+        "enabled"
+      ]
+    },
+    {
+      "path": "/api/cron/push-reminders",
+      "method": "GET",
+      "status": 401,
+      "cache": "no-store",
+      "dataKeys": [],
+      "errorCode": "unauthorized"
+    },
+    {
+      "path": "/api/cron/reliability",
+      "method": "GET",
+      "status": 401,
+      "cache": "no-store",
+      "dataKeys": []
+    },
+    {
+      "path": "/api/cron/stripe-reconciliation",
+      "method": "GET",
+      "status": 401,
+      "cache": "no-store",
+      "dataKeys": []
+    },
+    {
+      "path": "/api/admin/courses",
+      "method": "GET",
+      "status": 404,
+      "cache": "private, no-store",
+      "dataKeys": [],
+      "errorCode": "not_found"
+    },
+    {
+      "path": "/api/creator/courses",
+      "method": "GET",
+      "status": 404,
+      "cache": "private, no-store",
+      "dataKeys": [],
+      "errorCode": "not_found"
+    },
+    {
+      "path": "/api/user/me",
+      "method": "GET",
+      "status": 401,
+      "cache": "public, max-age=0, must-revalidate",
+      "dataKeys": [],
+      "errorCode": "unauthorized"
+    },
+    {
+      "path": "/api/creator/sprints/00000000-0000-4000-8000-000000000000",
+      "method": "GET",
+      "status": 401,
+      "cache": "public, max-age=0, must-revalidate",
+      "dataKeys": [],
+      "errorCode": "unauthorized"
+    },
+    {
+      "path": "/api/creator/submissions/00000000-0000-4000-8000-000000000000/messages",
+      "method": "GET",
+      "status": 401,
+      "cache": "public, max-age=0, must-revalidate",
+      "dataKeys": [],
+      "errorCode": "unauthorized"
+    },
+    {
+      "path": "/api/admin/creator/submissions/00000000-0000-4000-8000-000000000000/messages",
+      "method": "GET",
+      "status": 401,
+      "cache": "public, max-age=0, must-revalidate",
+      "dataKeys": [],
+      "errorCode": "unauthorized"
+    },
+    {
+      "path": "/api/admin/creator/payments/00000000-0000-4000-8000-000000000000/receipt",
+      "method": "GET",
+      "status": 401,
+      "cache": "public, max-age=0, must-revalidate",
+      "dataKeys": [],
+      "errorCode": "unauthorized"
+    },
+    {
+      "path": "/api/payments/entitlements?mobileInstallId=security-audit-install",
+      "method": "GET",
+      "status": 401,
+      "cache": "public, max-age=0, must-revalidate",
+      "dataKeys": [],
+      "errorCode": "unauthorized"
+    },
+    {
+      "path": "/api/admin/creator/payments",
+      "method": "POST",
+      "status": 401,
+      "cache": "public, max-age=0, must-revalidate",
+      "dataKeys": [],
+      "errorCode": "unauthorized"
+    },
+    {
+      "path": "/api/creator/accounts/analytics-upload-intent",
+      "method": "POST",
+      "status": 401,
+      "cache": "public, max-age=0, must-revalidate",
+      "dataKeys": [],
+      "errorCode": "unauthorized"
+    },
+    {
+      "path": "/api/creator/claim-invite",
+      "method": "POST",
+      "status": 403,
+      "cache": "no-store",
+      "dataKeys": [],
+      "errorCode": "forbidden"
+    },
+    {
+      "path": "/api/creator/cta-library/asset",
+      "method": "POST",
+      "status": 401,
+      "cache": "public, max-age=0, must-revalidate",
+      "dataKeys": [],
+      "errorCode": "unauthorized"
+    },
+    {
+      "path": "/api/creator/cta-library/upload-intent",
+      "method": "POST",
+      "status": 401,
+      "cache": "public, max-age=0, must-revalidate",
+      "dataKeys": [],
+      "errorCode": "unauthorized"
+    },
+    {
+      "path": "/api/creator/payouts",
+      "method": "POST",
+      "status": 401,
+      "cache": "private, no-store",
+      "dataKeys": [],
+      "errorCode": "unauthorized"
+    },
+    {
+      "path": "/api/creator/submission-analytics-upload-intent",
+      "method": "POST",
+      "status": 401,
+      "cache": "public, max-age=0, must-revalidate",
+      "dataKeys": [],
+      "errorCode": "unauthorized"
+    },
+    {
+      "path": "/api/creator/submission-analytics",
+      "method": "POST",
+      "status": 404,
+      "cache": "public, max-age=0, must-revalidate",
+      "dataKeys": [],
+      "errorCode": "not_found"
+    },
+    {
+      "path": "/api/creator/upload-intent",
+      "method": "POST",
+      "status": 401,
+      "cache": "public, max-age=0, must-revalidate",
+      "dataKeys": [],
+      "errorCode": "unauthorized"
+    },
+    {
+      "path": "/api/creator/video",
+      "method": "POST",
+      "status": 404,
+      "cache": "public, max-age=0, must-revalidate",
+      "dataKeys": [],
+      "errorCode": "not_found"
+    },
+    {
+      "path": "/api/admin/creator/metrics",
+      "method": "PATCH",
+      "status": 401,
+      "cache": "public, max-age=0, must-revalidate",
+      "dataKeys": [],
+      "errorCode": "unauthorized"
+    },
+    {
+      "path": "/api/admin/creator/payout-requests",
+      "method": "PATCH",
+      "status": 401,
+      "cache": "public, max-age=0, must-revalidate",
+      "dataKeys": [],
+      "errorCode": "unauthorized"
+    },
+    {
+      "path": "/api/admin/creator/review",
+      "method": "PATCH",
+      "status": 401,
+      "cache": "public, max-age=0, must-revalidate",
+      "dataKeys": [],
+      "errorCode": "unauthorized"
+    },
+    {
+      "path": "/api/admin/creator/settings",
+      "method": "PATCH",
+      "status": 401,
+      "cache": "public, max-age=0, must-revalidate",
+      "dataKeys": [],
+      "errorCode": "unauthorized"
+    }
+  ],
+  "publicResults": [
+    {
+      "path": "/api/health",
+      "method": "GET",
+      "status": 200,
+      "cache": "public, max-age=0, must-revalidate",
+      "dataKeys": [
+        "ok",
+        "service",
+        "environment",
+        "latencyMs",
+        "database",
+        "rateLimit",
+        "config"
+      ]
+    },
+    {
+      "path": "/api/app-config",
+      "method": "GET",
+      "status": 200,
+      "cache": "public",
+      "dataKeys": [
+        "features",
+        "app"
+      ]
+    },
+    {
+      "path": "/api/auth/providers",
+      "method": "GET",
+      "status": 200,
+      "cache": "public, max-age=0, must-revalidate",
+      "dataKeys": []
+    },
+    {
+      "path": "/api/leaderboard/photos?limit=1",
+      "method": "GET",
+      "status": 200,
+      "cache": "no-store",
+      "dataKeys": [
+        "page",
+        "limit",
+        "total",
+        "items"
+      ],
+      "total": 103,
+      "itemFields": [
+        "rank",
+        "id",
+        "imageUrl",
+        "name",
+        "gender",
+        "age",
+        "hairColor",
+        "skinColor",
+        "photoType",
+        "userId",
+        "createdAt",
+        "displayRating",
+        "conservativeScore",
+        "winCount",
+        "lossCount",
+        "comparisonCount",
+        "pslScore",
+        "social"
+      ]
+    },
+    {
+      "path": "/api/leaderboard/psl?limit=1",
+      "method": "GET",
+      "status": 200,
+      "cache": "public, max-age=0, must-revalidate",
+      "dataKeys": [
+        "page",
+        "limit",
+        "total",
+        "items"
+      ],
+      "total": 103,
+      "itemFields": [
+        "rank",
+        "analysisId",
+        "photoId",
+        "imageUrl",
+        "name",
+        "gender",
+        "userId",
+        "pslScore",
+        "harmonyScore",
+        "dimorphismScore",
+        "angularityScore",
+        "percentile",
+        "tier",
+        "createdAt"
+      ]
+    },
+    {
+      "path": "/api/leaderboard/users?limit=1",
+      "method": "GET",
+      "status": 200,
+      "cache": "no-store",
+      "dataKeys": [
+        "page",
+        "limit",
+        "total",
+        "items"
+      ],
+      "total": 2,
+      "itemFields": [
+        "rank",
+        "userId",
+        "name",
+        "image",
+        "verified",
+        "photoCount",
+        "bestConservativeScore",
+        "averageConservativeScore",
+        "leaderboardScore",
+        "bestDisplayRating"
+      ]
+    },
+    {
+      "path": "/api/search/users?q=a&limit=1",
+      "method": "GET",
+      "status": 200,
+      "cache": "public, max-age=0, must-revalidate",
+      "dataKeys": [
+        "items"
+      ],
+      "itemFields": [
+        "id",
+        "name",
+        "image",
+        "verified",
+        "publicPhotoCount",
+        "bestDisplayRating"
+      ]
+    },
+    {
+      "path": "/api/courses",
+      "method": "GET",
+      "status": 404,
+      "cache": "private, no-store",
+      "dataKeys": [],
+      "errorCode": "not_found"
+    },
+    {
+      "path": "/api/experimental/analysis-v2/landmarks",
+      "method": "GET",
+      "status": 404,
+      "cache": "public, max-age=0, must-revalidate",
+      "dataKeys": []
+    },
+    {
+      "path": "/api/analysis/00000000-0000-4000-8000-000000000000",
+      "method": "GET",
+      "status": 404,
+      "cache": "private, no-store",
+      "dataKeys": [],
+      "errorCode": "not_found"
+    },
+    {
+      "path": "/.env",
+      "method": "GET",
+      "status": 404,
+      "cache": "private, no-cache, no-store, max-age=0, must-revalidate",
+      "dataKeys": []
+    },
+    {
+      "path": "/.git/HEAD",
+      "method": "GET",
+      "status": 404,
+      "cache": "public, max-age=0, must-revalidate",
+      "dataKeys": []
+    },
+    {
+      "path": "/api/leaderboard/profile?photoId=<sample>",
+      "method": "GET",
+      "status": 200,
+      "cache": "public, max-age=0, must-revalidate",
+      "dataKeys": [
+        "profile",
+        "photos"
+      ]
+    }
+  ],
+  "identityChecks": {
+    "publicProfileExposesAnonymousActor": false,
+    "forgedAdminCookie": 401,
+    "forgedNextAuthCookie": 401,
+    "forgedMobileBearer": 401
+  },
+  "unexpectedProtectedResponses": [],
+  "note": "405 only verifies method rejection. 404 may mean feature disabled. Inventory auth references are navigation hints, not proof of authorization. Invite session GET intentionally returns configuration/unlock booleans; disabled course cron returns enabled:false."
+}

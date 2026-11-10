@@ -224,7 +224,7 @@ function SprintDetail({ sprint }: { sprint: CreatorSprint }) {
         onChange={setTab}
         items={[
           { value: 'overview', label: 'Overview' },
-          { value: 'submissions', label: 'Approved submissions' },
+          { value: 'submissions', label: 'Your approved submissions' },
         ]}
       >
         <StudioTabContent value="overview">
@@ -460,7 +460,7 @@ function SprintDetail({ sprint }: { sprint: CreatorSprint }) {
             </div>
           ) : (
             <div className="creator-surface p-10 text-center text-sm text-zinc-500">
-              Approved videos will appear here.
+              Your approved videos will appear here.
             </div>
           )}
         </StudioTabContent>

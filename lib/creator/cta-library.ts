@@ -23,7 +23,7 @@ export const creatorCtaLibraryReviewSchema = z.object({
 export type CreatorCtaLibraryStatus = 'pending' | 'approved' | 'rejected'
 export type CreatorCtaLibraryItem = {
   id: string
-  creatorProfileId: string
+  creatorProfileId?: string
   creatorName: string
   title: string
   templateId: string
@@ -32,7 +32,7 @@ export type CreatorCtaLibraryItem = {
   assetContentType: string
   assetSizeBytes: number
   status: CreatorCtaLibraryStatus
-  reviewNote: string | null
+  reviewNote?: string | null
   reviewedAt: string | Date | null
   createdAt: string | Date
 }
@@ -43,7 +43,7 @@ export async function getCreatorCtaLibrary(userId: string) {
     selectLibraryItems(eq(schema.creatorCtaLibraryItems.status, 'approved')),
     profile ? selectLibraryItems(eq(schema.creatorCtaLibraryItems.creatorProfileId, profile.id)) : Promise.resolve([]),
   ])
-  return { approved, mine }
+  return { approved: approved.map(({ creatorProfileId: _owner, reviewNote: _privateNote, ...item }) => ({ ...item, creatorName: 'Community template' })), mine }
 }
 
 export async function createCreatorCtaLibraryItem(userId: string, input: z.infer<typeof creatorCtaLibrarySubmissionSchema>) {

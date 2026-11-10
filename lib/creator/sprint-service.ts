@@ -81,7 +81,10 @@ export async function listCreatorSprints(
 }
 export async function sprintApprovedSubmissions(
   sprintId: string,
+  userId: string,
 ): Promise<SprintProof[]> {
+  const profile = await db.query.creatorProfiles.findFirst({ where: eq(schema.creatorProfiles.userId, userId), columns: { id: true } })
+  if (!profile) return []
   const sprint = await db.query.creatorSprints.findFirst({
     where: eq(schema.creatorSprints.id, sprintId),
   })
@@ -116,6 +119,7 @@ export async function sprintApprovedSubmissions(
     .where(
       and(
         eq(schema.creatorSubmissions.sprintId, sprintId),
+        eq(schema.creatorSubmissions.creatorProfileId, profile.id),
         inArray(schema.creatorSubmissions.status, ['approved', 'paid']),
       ),
     )

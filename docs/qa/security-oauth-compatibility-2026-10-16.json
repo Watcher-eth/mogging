@@ -1,0 +1,18 @@
+{
+  "checkedAt": "2026-10-17T00:18:07.292Z",
+  "scope": "Actual NextAuth OAuth-check functions and encrypted legacy cookies; synthetic secret, no provider requests.",
+  "results": [
+    {
+      "type": "state",
+      "legacyCookieAccepted": true
+    },
+    {
+      "type": "pkce",
+      "legacyCookieAccepted": true
+    },
+    {
+      "type": "nonce",
+      "legacyCookieAccepted": true
+    }
+  ]
+}

@@ -1,0 +1,21 @@
+{
+  "checkedAt": "2026-10-17T00:15:39.109Z",
+  "scope": "Actual NextAuth OAuth-check functions and encrypted legacy cookies; synthetic secret, no provider requests.",
+  "results": [
+    {
+      "type": "state",
+      "legacyCookieAccepted": false,
+      "reason": "next-auth.state cookie was created for a different provider than the one handling the callback."
+    },
+    {
+      "type": "pkce",
+      "legacyCookieAccepted": false,
+      "reason": "next-auth.pkce.code_verifier cookie was created for a different provider than the one handling the callback."
+    },
+    {
+      "type": "nonce",
+      "legacyCookieAccepted": false,
+      "reason": "next-auth.nonce cookie was created for a different provider than the one handling the callback."
+    }
+  ]
+}

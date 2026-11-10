@@ -1,0 +1,86 @@
+{
+  "checkedAt": "2026-10-16T23:43:01.731Z",
+  "origin": "https://mogging-hzdtxvvey-glimpseback.vercel.app",
+  "scope": "Real credentials login as temporary creator A; attempts against temporary creator B and user B only. No provider generation or real customer writes.",
+  "strictMobileChecked": false,
+  "passed": 19,
+  "cleanupComplete": true,
+  "checks": [
+    {
+      "check": "creator login succeeds and supplied user ID does not select another account",
+      "status": 200
+    },
+    {
+      "check": "creator can still obtain a private recording upload",
+      "status": 200
+    },
+    {
+      "check": "browser-origin private recording upload succeeds with its existing content-type contract",
+      "status": 200
+    },
+    {
+      "check": "recording owner receives a temporary download URL",
+      "status": 307
+    },
+    {
+      "check": "authorized private recording download succeeds",
+      "status": 200
+    },
+    {
+      "check": "recording URL without an owner session is rejected",
+      "status": 404
+    },
+    {
+      "check": "other creator messages cannot be read",
+      "status": 404
+    },
+    {
+      "check": "forged team role cannot write another creator message",
+      "status": 404
+    },
+    {
+      "check": "another user private analysis cannot be read",
+      "status": 404
+    },
+    {
+      "check": "another user private photo cannot be published",
+      "status": 404
+    },
+    {
+      "check": "own private report remains accessible",
+      "status": 200
+    },
+    {
+      "check": "authorized report response issues a working temporary image capability",
+      "status": 307
+    },
+    {
+      "check": "other user private image rejects copied storage key",
+      "status": 404
+    },
+    {
+      "check": "other creator evidence rejects copied storage key",
+      "status": 404
+    },
+    {
+      "check": "creator cannot access admin directory",
+      "status": 403
+    },
+    {
+      "check": "creator cannot access access-code administration without its existing admin unlock",
+      "status": 401
+    },
+    {
+      "check": "creator cannot change admin review state",
+      "status": 403
+    },
+    {
+      "check": "removed unrestricted image proxy stays unavailable",
+      "status": 404
+    },
+    {
+      "check": "intentional public leaderboard remains accessible",
+      "status": 200
+    }
+  ]
+}

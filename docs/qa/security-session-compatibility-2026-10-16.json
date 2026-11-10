@@ -1,0 +1,12 @@
+{
+  "checkedAt": "2026-10-17T00:18:52.898Z",
+  "scope": "Built local Next.js server, real credentials/JWT/session cookies, synthetic local PostgreSQL accounts, no providers.",
+  "passed": 5,
+  "checks": [
+    "credentials login rejects a wrong password and accepts the existing password",
+    "newly issued session token decodes with the original NextAuth version",
+    "old encrypted session cookies retain user identity and creator access",
+    "legacy admin identity and original unlock cookies remain valid",
+    "sign out clears the authenticated session"
+  ]
+}

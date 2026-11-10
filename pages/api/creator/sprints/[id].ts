@@ -19,7 +19,7 @@ async function handler(
     if (typeof req.query.id !== 'string')
       throw new ApiError(400, 'Choose a sprint')
     return json(res, 200, {
-      submissions: await sprintApprovedSubmissions(req.query.id),
+      submissions: await sprintApprovedSubmissions(req.query.id, session.user.id),
     })
   } catch (error) {
     return handleApiError(error, res)
