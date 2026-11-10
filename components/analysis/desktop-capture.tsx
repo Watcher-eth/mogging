@@ -16,11 +16,12 @@ import { getReportOverlayPreset } from '@/lib/creator/mobile-overlay-engine/repo
 import { isFaceLandmarksUsable, type FaceLandmarksPayload } from '@/lib/creator/mobile-overlay-engine/landmarks'
 import { FaceOverlay, type LoadedImage } from './face-overlay'
 import { AnalysisProgress } from './analysis-progress'
+import { ScanRipple } from './scan-ripple'
 import { TextMorph } from 'torph/react'
 
 const captureEase = [.22, 1, .36, 1] as const
 const frontScanMs = 4000
-const frontSweepMs = 2000
+const frontSweepMs = 2500
 const overallOverlay = getReportOverlayPreset('overall')
 
 const copy = {
@@ -101,8 +102,7 @@ export function DesktopCapture({ step, direction, images, selected, position, ph
               viewport={desktopCaptureViewport} landmarks={portrait.landmarks} imageSrc={portrait.dataUrl}
               imageAlt={portrait.view === 'side' ? 'Your side profile' : 'Your front photo'}
               imagePosition={isReview ? position : undefined} onImagePositionChange={isReview ? onPosition : undefined}
-              showStepIndicator={false} />
-            {!isReview && !reduce && <span className="desktop-capture-wave" aria-hidden="true" />}
+              showStepIndicator={false} scanOnLoad={!isReview} />
             <PhotoEdgeFade />
             <span className="desktop-capture-corners" aria-hidden="true" />
           </motion.div> : null}
@@ -177,13 +177,10 @@ function FrontPhotoPreview({ portrait, scanning, landmarksPending, unreadable, o
           <img src={portrait.dataUrl} alt="Your front photo" draggable={false} onLoad={({ currentTarget: photo }) => {
             setImage({ src: photo.currentSrc, width: photo.naturalWidth, height: photo.naturalHeight })
           }} onError={onImageError} />
+          {image && scanning && !sweepDone && <ScanRipple imageSrc={image.src} durationMs={frontSweepMs} imageRatio={image.width / image.height} />}
           {image && landmarks && (sweepDone || !scanning) && <FaceOverlay image={image} landmarks={landmarks} preset={overallOverlay}
             categoryId="overall" appearance="scan-detail" fit="contain" fadeDurations={{ enter: .4, exit: .2 }} />}
         </motion.div>
-        {image && scanning && !sweepDone && !reduce && <div className="desktop-scan-sweep" aria-hidden="true">
-          <motion.span initial={{ top: '5%', opacity: 0 }} animate={{ top: ['5%', '94%', '7%'], opacity: [0, 1, 1, 0] }}
-            transition={{ duration: frontSweepMs / 1000, ease: 'easeInOut' }} />
-        </div>}
         <PhotoEdgeFade />
       </div>
       <span className="desktop-capture-corners" aria-hidden="true" />
@@ -212,12 +209,11 @@ function frontPhotoFraming(image: LoadedImage, landmarks: FaceLandmarksPayload) 
 }
 
 function CaptureSkull() {
-  return <svg viewBox="0 0 150 172" className="desktop-capture-skull" fill="none" aria-hidden="true">
+  return <div className="desktop-capture-skull" aria-hidden="true"><svg viewBox="0 0 150 172" fill="none">
     <g stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
       <path d="M75 16c-31 0-54 21-54 51 0 23 9 32 19 38l4 22 12 7 4 17h30l4-17 12-7 4-22c10-6 19-15 19-38 0-30-23-51-54-51Z" />
       <path d="M37 88c0-13 8-20 19-16l9 5c5 5 2 17-7 20-11 5-21 1-21-9Zm76 0c0-13-8-20-19-16l-9 5c-5 5-2 17 7 20 11 5 21 1 21-9ZM75 90l-8 19 8 5 8-5-8-19ZM51 122l11 5h26l11-5m-42 16h36m-28-10v17m10-17v17m10-17v17" />
       <path d="M27 66h96M75 27v26M30 104l19 7m71-7-19 7" strokeDasharray="2 5" opacity=".55" />
     </g>
-    <path className="desktop-skull-scanline" d="M13 28h124" stroke="currentColor" strokeWidth="1.6" />
-  </svg>
+  </svg></div>
 }

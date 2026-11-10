@@ -715,12 +715,9 @@ body:has(.scan-flow[data-scan-preview]) nextjs-portal { display: none; }
 .scan-processing-treatment:not([data-mapping]) {
   background: linear-gradient(#fff2,#fff2) 30% 0 / 1px 100% no-repeat, linear-gradient(#fff2,#fff2) 70% 0 / 1px 100% no-repeat, linear-gradient(#fff2,#fff2) 0 46% / 100% 1px no-repeat, #0003;
 }
-.scan-processing-treatment:not([data-mapping]) span { position: absolute; inset: 0; background: linear-gradient(#fffe,#fffe) 0 0 / 100% 3px no-repeat; animation: scan-sweep 2.1s ease-in-out infinite alternate; }
-@keyframes scan-sweep { to { transform: translateY(calc(100% - 3px)); } }
 .mobile-scan-shimmer { color: #a1a1aa; font-size: 19px; font-weight: 600; }
 @media (prefers-reduced-motion: no-preference) { .mobile-scan-shimmer { animation: scan-status-glow 2.7s ease-in-out infinite; } }
 @keyframes scan-status-glow { 50% { color: #fff; } }
-@media (prefers-reduced-motion: reduce) { .scan-processing-treatment span { animation: none; } }
 
 .mobile-report-share-dock { position: fixed; z-index: 15; inset: auto 0 0; padding: 28px 18px calc(12px + env(safe-area-inset-bottom)); background: linear-gradient(transparent, white 32%); pointer-events: none; }
 .mobile-report-share-button { display: flex; align-items: center; justify-content: center; gap: 10px; width: 100%; min-height: 56px; border-radius: 999px; background: #111215; color: #fff; font-size: 15px; font-weight: 600; text-transform: uppercase; pointer-events: auto; }
@@ -1250,10 +1247,6 @@ html:has(.scan-flow[data-desktop-report])::-webkit-scrollbar,
   position: absolute; translate: -50% -50%; width: 14px; height: 14px; pointer-events: none;
   border: 1px solid #fff; border-radius: 50%; box-shadow: 0 0 8px #ffffff80;
 }
-.desktop-scan-sweep { position: absolute; z-index: 1; inset: 0 10%; pointer-events: none; }
-.desktop-scan-sweep > span { position: absolute; inset: 0 0 auto; height: 1px; background: linear-gradient(90deg, transparent 2%, #ffffffc9 27%, white 50%, #ffffffc9 73%, transparent 98%); box-shadow: 0 0 10px 1px #ffffff61; }
-.desktop-scan-sweep > span::before { content: ''; position: absolute; inset: -25px 0 1px; background: linear-gradient(to bottom, transparent, #ffffff2e); mask-image: linear-gradient(90deg, transparent, black 27%, black 73%, transparent); }
-.desktop-scan-sweep > span::after { content: ''; position: absolute; inset: -11px 8% auto; height: 17px; border-top: 1px solid #ffffff75; border-bottom: 1px solid #ffffff33; mask-image: linear-gradient(90deg, black 9%, transparent 35%, transparent 65%, black 91%); }
 .desktop-scan-status { display: grid; gap: .4rem; width: min(100%, 19rem); text-align: center; color: #565d67; }
 .desktop-scan-status > span { font: 600 11px/1.3 var(--font-mono, monospace); letter-spacing: .08em; text-transform: uppercase; }
 .desktop-scan-status .analysis-progress { color: #171b22; font-size: 1rem; font-weight: 600; gap: .7rem; }
@@ -1270,11 +1263,7 @@ html:has(.scan-flow[data-desktop-report])::-webkit-scrollbar,
 .desktop-locked-report { min-height: calc(100svh - 5rem); }
 @media (min-width: 1024px) { .desktop-locked-report { height: calc(100svh - 5rem); } }
 .desktop-capture-loading { z-index: 1; display: grid; align-content: center; justify-items: center; gap: .85rem; color: #605b53; font-size: .8rem; }
-.desktop-capture-skull { width: 29%; max-width: 134px; }
-.desktop-skull-scanline { animation: desktop-skull-scan 1.45s ease-in-out infinite alternate; }
-.desktop-capture-wave { position: absolute; inset: 0; pointer-events: none; background: radial-gradient(ellipse 48% 42% at 50% 44%, transparent 69%, #fff9 74%, #fff3 78%, transparent 84%); animation: desktop-capture-ripple .9s cubic-bezier(.18,.65,.27,1) both; }
-@keyframes desktop-skull-scan { from { transform: translateY(0); opacity: .3; } to { transform: translateY(108px); opacity: 1; } }
-@keyframes desktop-capture-ripple { from { opacity: .9; transform: scale(.44); } to { opacity: 0; transform: scale(2.12); } }
+.desktop-capture-skull { position: relative; width: 29%; max-width: 134px; }
 .desktop-capture-empty { position: absolute; inset: auto 0 4%; display: grid; justify-items: center; gap: 1.05rem; color: #232220; }
 .desktop-capture-empty { padding-inline: 1rem; }
 .desktop-capture-empty > span { text-align: center; font-size: .85rem; }
@@ -1286,7 +1275,6 @@ html:has(.scan-flow[data-desktop-report])::-webkit-scrollbar,
 .desktop-live-actions > div { position: absolute; bottom: 4%; inset-inline: 0; }
 .desktop-live-actions > div, .desktop-capture-buttons { display: grid; width: 100%; grid-template-columns: 1fr 64px 1fr; gap: 1rem; align-items: center; }
 .desktop-capture-gallery, .desktop-live-close { justify-self: end; width: 44px; height: 44px; display: grid; place-items: center; border-radius: 50%; background: #ededec; color: #211f1c; }
-@media (prefers-reduced-motion: reduce) { .desktop-skull-scanline { animation: none; } }
 .desktop-capture-shutter { width: 64px; height: 64px; padding: 5px; border: 2px solid currentColor; border-radius: 50%; transition: transform .14s ease; }
 .desktop-capture-shutter > span { display: block; width: 100%; height: 100%; border-radius: 50%; background: currentColor; }
 .desktop-capture-shutter:active { transform: scale(.92); }

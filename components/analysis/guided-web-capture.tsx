@@ -1,3 +1,4 @@
+import { ScanRipple } from './scan-ripple'
 import { ensureReady } from '@web-kits/audio'
 import { cameraShutterCue, useQuietCue } from '@/lib/audio/sounds'
 import { trackWebEvent } from '@/lib/analytics/client'
@@ -197,15 +198,21 @@ export function GuidedWebCapture({ videoRef, cameraReady, error, onUpload, onClo
     : `${guidance || 'Gently tilt your head in a small circle'} · ${percent}%`
 
   const reviewing = phase === 'front' || phase === 'scan' || phase === 'done'
+  const [loadedFrontPhoto, setLoadedFrontPhoto] = useState<{ src: string; ratio: number }>()
+  const showFrontPhoto = frontPhoto && (phase === 'front' || (phase === 'done' && percent < 100))
   const rotating = phase === 'scan' && Boolean(reader) && !modelError
   const aligned = rotating && !guidance
   return <div className="guided-scan" style={guideStyle} data-aligned={aligned || undefined}>
     <video ref={videoRef} autoPlay muted playsInline className={cameraReady ? "is-ready" : undefined}
       style={{ transform: `scale(${-zoom}, ${zoom})` }}
       onTouchStart={updatePinch} onTouchMove={updatePinch} onTouchEnd={updatePinch} onTouchCancel={() => { pinch.current = null }} />
-    {frontPhoto && (phase === 'front' || (phase === 'done' && percent < 100)) &&
+    {showFrontPhoto &&
       // eslint-disable-next-line @next/next/no-img-element
-      <img className="guided-scan-front" src={frontPhoto} alt="Your captured front photo" />}
+      <img className="guided-scan-front" src={frontPhoto} alt="Your captured front photo" onLoad={({ currentTarget: photo }) => {
+        if (frontPhoto && photo.naturalWidth && photo.naturalHeight) setLoadedFrontPhoto({ src: frontPhoto, ratio: photo.naturalWidth / photo.naturalHeight })
+      }} />}
+    {showFrontPhoto && loadedFrontPhoto && loadedFrontPhoto.src === frontPhoto &&
+      <ScanRipple key={frontPhoto} imageSrc={loadedFrontPhoto.src} imageRatio={loadedFrontPhoto.ratio} />}
     <div className="guided-scan-shade" aria-hidden="true" />
     <MobileCaptureChrome label={reviewing && !rotating ? 'Front photo' : undefined} />
     <AnimatePresence>

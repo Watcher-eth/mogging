@@ -8,6 +8,7 @@ import { isFaceLandmarksUsable } from '@/lib/creator/mobile-overlay-engine/landm
 import { processingOverlaySteps } from '@/lib/creator/mobile-overlay-engine/processing-presets'
 import { getReportOverlayPreset } from '@/lib/creator/mobile-overlay-engine/report-presets'
 import { FaceOverlay, type LoadedImage } from './face-overlay'
+import { ScanRipple } from './scan-ripple'
 
 const scannerSteps = ['skin', 'eyes', 'brows', 'nose', 'jaw', 'cheeks', 'symmetry', 'mouth'].map(categoryId => ({ categoryId, label: '' }))
 
@@ -67,7 +68,7 @@ export function ScanImagePanel({ imageSrc, landmarks, variant = 'analysis', paus
         const photo = event.currentTarget
         setImage(previous => previous?.src === photo.currentSrc ? previous : { src: photo.currentSrc, width: photo.naturalWidth, height: photo.naturalHeight })
       }} /> : null}
-      {variant === 'scanner' && <div className="scan-processing-treatment" data-mapping={faceMap || undefined} aria-hidden="true"><span /></div>}
+      {variant === 'scanner' && <div className="scan-processing-treatment" data-mapping={faceMap || undefined} aria-hidden="true">{image && !paused && <ScanRipple key={image.src} imageSrc={image.src} fit={fit} imageRatio={fit === 'contain' ? image.width / image.height : undefined} mode="processing" />}</div>}
       <AnimatePresence>
         {!paused && usable && image && enriched ? <FaceOverlay key={`${image.src}:${categoryId}`} categoryId={faceMap ? undefined : categoryId} preset={faceMap ? null : getReportOverlayPreset(categoryId)} appearance={variant === 'scanner' ? 'scan' : 'report'} landmarks={enriched} image={image} fit={fit} faceMapPointCount={faceMap ? 70 : undefined} /> : null}
       </AnimatePresence>

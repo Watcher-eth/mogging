@@ -3,7 +3,9 @@ import Image from 'next/image'
 import { motion, useReducedMotion } from 'motion/react'
 import type { FaceLandmarksPayload } from '@/lib/analysis/landmarks'
 import { captureViewport, getFaceGuide } from './face-guide'
-import { useRef, type KeyboardEvent, type PointerEvent, type RefObject, type ReactNode, type WheelEvent } from 'react'
+import { useRef, useState, type KeyboardEvent, type PointerEvent, type RefObject, type ReactNode, type WheelEvent } from 'react'
+
+import { ScanRipple } from './scan-ripple'
 
 export type CaptureFrameImagePosition = {
   x: number
@@ -21,6 +23,7 @@ type CaptureFrameProps = {
   imageSrc?: string | null
   landmarks?: FaceLandmarksPayload | null
   muted?: boolean
+  scanOnLoad?: boolean
   onEmptyClick?: () => void
   onImagePositionChange?: (position: CaptureFrameImagePosition) => void
   onMediaClick?: () => void
@@ -42,6 +45,7 @@ export function CaptureFrame({
   imageSrc,
   landmarks,
   muted = false,
+  scanOnLoad = false,
   onEmptyClick,
   onImagePositionChange,
   onMediaClick,
@@ -53,6 +57,7 @@ export function CaptureFrame({
   viewport = captureViewport,
 }: CaptureFrameProps) {
   const reduceMotion = useReducedMotion()
+  const [loadedScanImage, setLoadedScanImage] = useState<{ src: string; ratio: number }>()
   const guide = getFaceGuide(imageSrc ? landmarks : null, imagePosition, viewport)
   const hasMedia = Boolean(imageSrc || videoRef)
   const clickSuppressedRef = useRef(false)
@@ -158,6 +163,9 @@ export function CaptureFrame({
             transformOrigin: `${imagePosition.x}% ${imagePosition.y}%`,
           }}
           draggable={false}
+          onLoad={scanOnLoad ? ({ currentTarget: photo }) => {
+            if (photo.naturalWidth && photo.naturalHeight) setLoadedScanImage({ src: imageSrc, ratio: photo.naturalWidth / photo.naturalHeight })
+          } : undefined}
         />
       ) : videoRef ? (
         <video ref={videoRef} className="absolute inset-0 h-full w-full scale-x-[-1] object-cover" playsInline muted autoPlay />
@@ -166,6 +174,9 @@ export function CaptureFrame({
           <ImagePlus className="absolute left-1/2 top-[45%] size-9 -translate-x-1/2 -translate-y-1/2 text-white/65" aria-hidden="true" />
         </div>
       )}
+
+      {scanOnLoad && loadedScanImage && imageSrc === loadedScanImage.src &&
+        <ScanRipple key={imageSrc} imageSrc={imageSrc} fit={imageFit} imageRatio={imageFit === 'contain' ? loadedScanImage.ratio : undefined} />}
 
       {!bare && <>
       <div className={`absolute inset-0 ${muted ? 'opacity-80' : ''}`}>

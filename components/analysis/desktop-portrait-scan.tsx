@@ -10,6 +10,7 @@ import type { FaceLandmarksPayload, NormalizedPoint } from '@/lib/analysis/landm
 import { FaceOverlay, type LoadedImage } from './face-overlay'
 import { AnalysisProgress } from './analysis-progress'
 import { PhotoEdgeFade } from './photo-edge-fade'
+import { ScanRipple } from './scan-ripple'
 
 const profilePasses = [
   { at: 0, label: 'Profile contour', feature: 'jaw' },
@@ -140,11 +141,7 @@ function ScanPortrait({ portrait, visible, phase, side = false }: {
       })}
     </motion.div>
     <PhotoEdgeFade />
-    {visible && !reduce && <motion.div className="desktop-scan-sweep" aria-hidden="true" initial={{ y: '12%', opacity: 0 }}
-      animate={{ y: ['12%', '82%', '27%', '91%'], opacity: [0, .92, .62, 0] }}
-      transition={{ duration: seconds, ease: sweepEase, times: [0, .4, .65, 1] }}>
-      <span />
-    </motion.div>}
+    {visible && image && <ScanRipple key={src} imageSrc={image.src} mode="processing" />}
   </motion.div>
 }
 

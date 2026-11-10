@@ -1,3 +1,4 @@
+import { ScanRipple } from '@/components/analysis/scan-ripple'
 import { MoggingIcon } from '@/components/ui/mogging-icon'
 import type { MoggingIconName } from '@/lib/design/mogging-icons'
 import { SkinNetworkSvg } from "@/components/analysis/skin-network-svg";
@@ -346,9 +347,7 @@ function ScanContent({ active, priority }: { active: boolean; priority: boolean 
             )}
           </m.div>
         </AnimatePresence>
-        <div className={styles.scanTrack}>
-          <div className={styles.scanLine} />
-        </div>
+        {active && <ScanRipple imageSrc={previewPortrait.src} fit="cover" mode="processing" />}
       </m.div>
       <div className={styles.scanStatusSlot}>
         <AnimatePresence mode="wait" initial={false}>

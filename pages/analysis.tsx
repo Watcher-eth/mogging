@@ -1541,7 +1541,7 @@ function MobileUploadScreen({ canStart, imagePosition, isPreparingUploads, onCam
     <motion.div className="mobile-capture-screen" variants={scanSequence} initial="enter" animate="visible" exit="leave">
       {previewImage && <div data-scan-portrait="review" className="mobile-capture-photo">
         <CaptureFrame bare className="!absolute !inset-0 !h-full !max-w-none !rounded-none !shadow-none"
-          imageSrc={previewImage} imageAlt="Your selected photo" imagePosition={imagePosition}
+          imageSrc={previewImage} imageAlt="Your selected photo" imagePosition={imagePosition} scanOnLoad
           onImagePositionChange={onImagePositionChange} />
       </div>}
       <div className="guided-scan-shade" aria-hidden="true" />
