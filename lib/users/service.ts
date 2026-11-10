@@ -1,5 +1,6 @@
 import { and, count, desc, eq, ilike, inArray, isNull, or, sql } from 'drizzle-orm'
 import { z } from 'zod'
+import { deleteFaceModelCaptures } from '@/lib/analysis/face-model-runtime'
 import { hairColorSchema, normalizeApparentAge, skinColorSchema } from '@/lib/appearance/types'
 import { db, schema } from '@/lib/db'
 import { conservativeScore, displayRating, initialSkillRating } from '@/lib/ratings/trueskill'
@@ -170,6 +171,12 @@ export async function deleteUserProfile(userId: string) {
       .where(eq(schema.users.id, userId))
       .for('update')
     if (!user) throw new UserServiceError(404, 'User not found')
+    const faceModels = await tx
+      .select({ id: schema.analyses.id })
+      .from(schema.analyses)
+      .innerJoin(schema.photos, eq(schema.analyses.photoId, schema.photos.id))
+      .where(and(eq(schema.photos.userId, userId), sql`${schema.analyses.metrics}->>'presentation' = 'face-model'`))
+    await deleteFaceModelCaptures(faceModels.map(model => model.id))
     const images = await tx
       .select({ imageUrl: schema.photos.imageUrl, imageStorageKey: schema.photos.imageStorageKey })
       .from(schema.photos)

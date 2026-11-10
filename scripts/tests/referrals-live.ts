@@ -11,6 +11,8 @@ const token = randomBytes(32).toString('hex')
 try {
   await sql`INSERT INTO users (id, email) VALUES (${inviter}, ${`referral-test-${inviter}@example.invalid`})`
   await sql`INSERT INTO sessions (session_token, user_id, expires) VALUES (${token}, ${inviter}, ${new Date(Date.now() + 600_000)})`
+  const code = randomBytes(9).toString('hex')
+  await sql`INSERT INTO referral_links (user_id, code) VALUES (${inviter}, ${code})`
   const response = await fetch(`${base}/api/referrals`, { headers: { Authorization: `Bearer ${token}` } })
   assert.equal(response.status, 200, 'referral link endpoint')
   const { data } = await response.json() as { data: { url: string } }
@@ -37,10 +39,8 @@ try {
     const [referral] = await sql`SELECT inviter_user_id FROM referral_signups WHERE referred_user_id = ${mobile.userId}`
     assert.equal(referral?.inviter_user_id, inviter, 'account referral survives browser-to-mobile handoff')
   }
-  const rewards = await sql`SELECT credit_balance FROM payment_entitlements WHERE user_id = ${inviter}`
-  assert.equal(rewards.length, 1)
-  assert.equal(rewards[0].credit_balance, 1)
-  console.log('PASS: invite page → signed cookie → three new accounts → mobile login without cookie → one scan credited')
+  assert.equal((await sql`SELECT id FROM payment_entitlements WHERE user_id = ${inviter}`).length, 0)
+  console.log('PASS: legacy invite attribution works without issuing a new reward')
 } finally {
   await sql`DELETE FROM users WHERE id = ${inviter} OR email IN ${sql(emails)}`
   await sql.end()

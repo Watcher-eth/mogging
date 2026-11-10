@@ -1,11 +1,11 @@
-import { createHmac, randomBytes, timingSafeEqual } from 'crypto'
+import { createHmac, timingSafeEqual } from 'crypto'
 import { count, eq, inArray, sql } from 'drizzle-orm'
 import { db, schema } from '@/lib/db'
 import { env } from '@/lib/env'
 
 export const REFERRAL_COOKIE = 'mogging_referral'
 const TTL = 30 * 24 * 60 * 60 * 1000
-const REQUIRED_SIGNUPS = 3
+const REQUIRED_REFERRALS = 3
 const rewardKey = (userId: string) => `referral_reward:${userId}`
 
 function signature(payload: string) {
@@ -16,21 +16,18 @@ function signature(payload: string) {
 export async function getReferralLink(userId: string) {
   const aliases = await db.query.mobileGuests.findMany({ where: eq(schema.mobileGuests.claimedByUserId, userId), columns: { userId: true } })
   const ownerIds = [userId, ...aliases.map(alias => alias.userId)]
-  let link = await db.query.referralLinks.findFirst({ where: inArray(schema.referralLinks.userId, ownerIds), orderBy: [sql`case when ${schema.referralLinks.userId} = ${userId} then 0 else 1 end`, schema.referralLinks.userId] })
-  if (!link) {
-    await db.insert(schema.referralLinks).values({ userId, code: randomBytes(9).toString('hex') }).onConflictDoNothing({ target: schema.referralLinks.userId })
-    link = (await db.query.referralLinks.findFirst({ where: eq(schema.referralLinks.userId, userId) }))!
-  }
+  const link = await db.query.referralLinks.findFirst({ where: inArray(schema.referralLinks.userId, ownerIds), orderBy: [sql`case when ${schema.referralLinks.userId} = ${userId} then 0 else 1 end`, schema.referralLinks.userId] })
   const [[progress], [reward]] = await Promise.all([
-    db.select({ completed: count() }).from(schema.referralSignups).where(inArray(schema.referralSignups.inviterUserId, ownerIds)),
+    db.select({ signups: count() }).from(schema.referralSignups).where(inArray(schema.referralSignups.inviterUserId, ownerIds)),
     db.select({ balance: schema.paymentEntitlements.creditBalance }).from(schema.paymentEntitlements)
       .where(inArray(schema.paymentEntitlements.stripeCheckoutSessionId, ownerIds.map(rewardKey))),
   ])
   return {
-    code: link.code, url: `https://www.mogging.com/${link.code}`,
+    code: link?.code ?? null, url: link ? `https://www.mogging.com/${link.code}` : 'https://www.mogging.com/app',
+    signups: progress.signups,
     reward: {
-      completed: reward ? REQUIRED_SIGNUPS : Math.min(progress.completed, REQUIRED_SIGNUPS),
-      required: REQUIRED_SIGNUPS,
+      completed: reward ? REQUIRED_REFERRALS : Math.min(progress.signups, REQUIRED_REFERRALS),
+      required: REQUIRED_REFERRALS,
       granted: Boolean(reward),
       available: Boolean(reward && reward.balance > 0),
     },
@@ -54,8 +51,7 @@ export function readReferralTicket(ticket: unknown, now = Date.now()) {
   return { code, issuedAt }
 }
 
-// One new account can qualify once. Serialize on the inviter so simultaneous
-// signups cannot miss the threshold; grant the one-time reward in the same transaction.
+// Existing links still attribute signups for historical reporting.
 export async function creditReferralSignup(userId: string, ticket: unknown) {
   const referral = readReferralTicket(ticket)
   if (!referral) return
@@ -68,29 +64,12 @@ export async function creditReferralSignup(userId: string, ticket: unknown) {
     const guest = await tx.query.mobileGuests.findFirst({ where: eq(schema.mobileGuests.userId, link.userId), columns: { claimedByUserId: true } })
     const inviterId = guest?.claimedByUserId ?? link.userId
     if (inviterId === userId) return
-    await tx.execute(sql`select pg_advisory_xact_lock(hashtextextended(${`referral:${inviterId}`}, 0))`)
-    const aliases = await tx.query.mobileGuests.findMany({ where: eq(schema.mobileGuests.claimedByUserId, inviterId), columns: { userId: true } })
-    const ownerIds = [inviterId, ...aliases.map(alias => alias.userId)]
     // Previous per-signup rewards remain valid, but cannot count a second time.
     const [legacy] = await tx.select({ id: schema.paymentEntitlements.id }).from(schema.paymentEntitlements)
       .where(eq(schema.paymentEntitlements.stripeCheckoutSessionId, `referral_signup:${userId}`))
     if (legacy) return
     await tx.insert(schema.referralSignups).values({ referredUserId: userId, inviterUserId: inviterId })
       .onConflictDoNothing({ target: schema.referralSignups.referredUserId })
-    const [progress] = await tx.select({ completed: count() }).from(schema.referralSignups)
-      .where(inArray(schema.referralSignups.inviterUserId, ownerIds))
-    if (progress.completed < REQUIRED_SIGNUPS) return
-    const previousReward = await tx.query.paymentEntitlements.findFirst({ where: inArray(schema.paymentEntitlements.stripeCheckoutSessionId, ownerIds.map(rewardKey)), columns: { id: true } })
-    if (previousReward) return
-    await tx.insert(schema.paymentEntitlements).values({
-      userId: inviterId,
-      mobileInstallId: `account_${inviterId}`,
-      stripeCheckoutSessionId: rewardKey(inviterId),
-      product: 'evaluation',
-      creditBalance: 1,
-      source: 'referral_reward',
-      metadata: { requiredSignups: REQUIRED_SIGNUPS },
-    }).onConflictDoNothing({ target: schema.paymentEntitlements.stripeCheckoutSessionId })
   })
 }
 

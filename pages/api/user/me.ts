@@ -2,6 +2,7 @@ import { monitorBackend } from '@/lib/reliability/monitor'
 import type { NextApiRequest, NextApiResponse } from 'next'
 import { ApiError, handleApiError, json, methodNotAllowed, parseBody } from '@/lib/api/http'
 import { clearAnonymousActorCookie, getAnonymousActorId } from '@/lib/auth/anonymous'
+import { getRequestUserId } from '@/lib/auth/mobile-session'
 import { getAuthSession } from '@/lib/auth/session'
 import {
   deleteAnonymousProfile,
@@ -15,14 +16,15 @@ import {
 import { getRequestLocation } from '@/lib/geo/request'
 
 async function handler(req: NextApiRequest, res: NextApiResponse) {
-  const session = await getAuthSession(req, res)
-
   if (req.method === 'DELETE') {
     try {
-      if (session?.user?.id) {
-        await deleteUserProfile(session.user.id)
+      const userId = await getRequestUserId(req, res)
+      if (userId) {
+        await deleteUserProfile(userId)
         return json(res, 200, { deleted: true, scope: 'user' })
       }
+
+      if (req.headers.authorization) throw new ApiError(401, 'Authentication required')
 
       const anonymousActorId = getAnonymousActorId(req)
       if (anonymousActorId) {
@@ -35,6 +37,8 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
       return handleUserError(error, res)
     }
   }
+
+  const session = await getAuthSession(req, res)
 
   if (req.method === 'GET') {
     res.setHeader('Cache-Control', 'private, no-store')

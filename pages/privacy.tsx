@@ -24,9 +24,9 @@ const sections: LegalSection[] = [
     label: 'Face Data',
     title: 'Face Data We Collect and How We Collect It',
     body: [
-      'Mogging does not collect Face ID data, TrueDepth sensor data, biometric faceprints, or persistent biometric templates. Mogging does collect face-related data when you choose to capture or upload a face image for a report.',
+      'When you choose the 3D Face Model and start a guided capture on a supported iPhone or iPad, Mogging collects selected color frames, TrueDepth distance maps, camera calibration, face position and orientation, timestamps, and an ARKit surface mesh. This data describes the shape of your face. Mogging does not access Face ID enrollment data.',
       { items: ['Face photos: the front-facing image you capture or select from your photo library.', 'Local landmark data: approximate points such as eyes, nose, mouth, jaw, face outline, and related geometry generated on device to align overlays and improve report consistency.', 'Report data: cosmetic analysis outputs such as PSL score, feature scores, visible age cues, visible UV-context cues, report text, generated overlays, and share-card images.', 'Technical context: request IDs, account or anonymous session identifiers, timestamps, and basic device/network logs needed to process the request, prevent abuse, and troubleshoot errors.'] },
-      'Face data is collected only after you take an action to upload, capture, analyze, save, or share a report. The app asks for camera, photo library, location, and third-party report-processing permission where those permissions are needed for the feature you choose.',
+      'We collect face data only when you choose to capture a 3D model, or capture, upload, analyze, save, or share a report. The app asks for camera, photo library, location, and third-party report-processing permission where those permissions are needed for the feature you choose.',
     ],
   },
   {
@@ -54,6 +54,7 @@ const sections: LegalSection[] = [
     title: 'How We Use Face Data',
     body: [
       'We use face photos and landmark data to prepare the image, confirm that a face is present, generate a cosmetic appearance report, place visual overlays, calculate report scores, save report history, create share-card images when you request sharing, and maintain abuse-prevention and support records.',
+      'We use TrueDepth capture data solely to align frames and reconstruct, texture, display, and reprocess the 3D Face Model you requested. We do not use this data for identification, authentication, advertising, or model training.',
       'Mogging reports are cosmetic and entertainment-oriented appearance estimates. They are not medical, dermatology, health, employment, identity, or biometric identification advice, and they should not be used for high-stakes decisions.',
       'Some controls may let you decide whether a photo participates in battle, leaderboard, profile, or share-link features. Public or shared pages can be viewed by anyone with access to the link.',
     ],
@@ -63,6 +64,7 @@ const sections: LegalSection[] = [
     label: 'Third-Party Processing',
     title: 'Third-Party Report Processing',
     body: [
+      'When you request surface reconstruction, selected color frames, depth maps, and calibration and pose data are sent over HTTPS to a private Mogging-operated worker hosted by Hetzner Cloud in Ashburn, Virginia, United States. The worker creates a surface mesh, color texture, and normal map for your device to download. We do not send the TrueDepth capture to Moonshot/Kimi or Google. Separate portrait report and narration requests are described below.',
       'For a private mobile portrait study, Mogging processes your selected photo and face landmarks on its servers. Google receives the narration script and generated audio for voice synthesis and timing. The script can contain photo-relative measurements, selected goals, and check-in details. The voiceover request excludes your photo and raw landmarks.',
       'When you consent to generate a face report, Mogging sends the selected face photo, any local face landmark points, the analysis prompt, and account or anonymous session identifiers to Mogging servers. Mogging then sends the face photo and prompt data to Moonshot/Kimi, our third-party analysis provider, which applies advanced learning and mathematical algorithms to generate the report response.',
       'We share this face data with Moonshot/Kimi only to provide the report feature you requested, improve request reliability, classify provider errors, and return the resulting cosmetic analysis to you. We do not ask the provider to identify you, verify your identity, infer sensitive traits, create a biometric template, or make medical diagnoses.',
@@ -85,6 +87,7 @@ const sections: LegalSection[] = [
     label: 'Sharing',
     title: 'When Information Is Shared',
     body: [
+      'We do not make TrueDepth captures or 3D models public. If you explicitly export a capture from the app, the export can include its color frames, depth maps, calibration data, and mesh. You choose where the export goes and control those copies.',
       'Face data may be shared with service providers only as needed to operate Mogging: Moonshot/Kimi for report generation, Vercel for hosting and request processing, Cloudflare R2-compatible storage for uploaded photos and generated image assets, our Postgres database provider for saved report records, and authentication, payment, security, analytics, and support providers when those services are involved in your account or request.',
       'Payment and subscription information may be shared with Apple, RevenueCat, Stripe, fraud-prevention, accounting, tax, analytics, and support providers as needed to process purchases, grant access, restore purchases, resolve disputes, and comply with legal obligations.',
       'The reasons for sharing face data are limited to generating the requested report, storing your saved report history, creating share cards, serving share links, preventing abuse, securing the service, troubleshooting support issues, processing deletion requests, and complying with law.',
@@ -96,7 +99,9 @@ const sections: LegalSection[] = [
     label: 'Retention',
     title: 'Face Data Retention and Deletion',
     body: [
-      'Explicit face-data retention statement: Mogging does not retain Face ID data, TrueDepth data, biometric faceprints, or persistent biometric templates because the app does not collect those categories of face data. Mogging does retain report-related face data when you create, save, or share a report: uploaded face photos, local landmark points, report outputs, overlay data, share-card images, and share links.',
+      'TrueDepth captures and 3D model files are saved in the app’s private storage on your device so you can reopen or reprocess the model. They remain there until you use Delete Profile in the app or delete the app from the device. Deleting your account elsewhere does not erase offline copies on a device or copies you exported.',
+      'The reconstruction worker deletes its capture files, generated assets, and processing logs within 24 hours after a job finishes or fails. Account deletion blocks new uploads and downloads for that account’s saved models and removes associated worker files. If a capture is uploading or processing when you delete your account, its files are removed when that work stops. Older jobs that lack an account association are removed by the same automatic expiry.',
+      'Mogging retains separate report-related face data when you create, save, or share a report, including uploaded face photos, local landmark points, report outputs, overlay data, share-card images, and share links.',
       'Reasons for storing report-related face data: Mogging stores this data so you can view prior reports, compare changes over time, regenerate overlays, create and serve share cards, receive support, delete your profile, troubleshoot errors, secure the service, prevent abuse, resolve disputes, and comply with legal obligations.',
       'Length of retention in Mogging systems: uploaded face photos, landmark points, report outputs, overlay data, and share links are retained while your profile or report remains active, and in any event no longer than 12 months after your last account activity unless a longer period is required for security, legal compliance, dispute resolution, or fraud prevention. We use this finite period because reports and share links are account-history features, while stale inactive data is not needed indefinitely.',
       'Temporary processing files and generated share-image caches are kept only as long as needed to complete the request, improve performance, or support a current share action. Server or CDN caches for generated share images are normally short-lived and may persist for up to 24 hours before automatic expiry or replacement.',
@@ -138,7 +143,7 @@ export default function PrivacyPage() {
       eyebrow="Privacy"
       title="Privacy Policy"
       description="How Mogging handles account details, photos, analysis data, rankings, payments, device information, and support requests."
-      updated="July 6, 2026"
+      updated="November 10, 2026"
       path="/privacy"
       sections={sections}
     />
