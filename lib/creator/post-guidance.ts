@@ -1,4 +1,4 @@
-import { campaignPublishingCopy, campaignPublishingRuleLabel } from './campaign-publishing-policy'
+import { CAMPAIGN_PUBLISHING_GRACE_RULE, campaignPublishingCopy, campaignPublishingRuleLabel } from './campaign-publishing-policy'
 
 // Retained to hide mandatory-anchor wording in historical campaign snapshots.
 export const TIKTOK_ANCHOR_REQUIREMENT =
@@ -15,7 +15,7 @@ export function creatorFormatElement(element: { title: string; detail: string })
 
 export function creatorCampaignRule(rule: string): string | null {
   if (rule.startsWith('Submit within')) return null
-  if (rule === TIKTOK_ANCHOR_REQUIREMENT) return null
+  if (rule === TIKTOK_ANCHOR_REQUIREMENT || rule === CAMPAIGN_PUBLISHING_GRACE_RULE) return null
   if (rule === 'Tag @moggingcom in the post or caption') return 'Tag @moggingcom in the post caption'
   return rule === 'Include your Mogging referral code in your bio and caption.'
     ? 'Include your Mogging referral code in your caption.'

@@ -1,3 +1,4 @@
+import { campaignSubmissionPlatforms } from './facial-campaign-update'
 import { creatorRetainerTerms } from './retainer'
 import { campaignPublishingCopy } from './campaign-publishing-policy'
 import { lockCampaignBudget } from './campaign-budget-service'
@@ -106,7 +107,7 @@ export async function listCreatorSprints(
       description: campaignPublishingCopy(row.description),
       audience: admin ? row.audience : undefined,
       budgetCents: spendingById.get(row.id)?.budgetCents ?? row.budgetCents,
-      terms: creatorRetainerTerms({ ...row.terms, bonusBudgetCents: spendingById.get(row.id)?.bonusBudgetCents ?? row.terms.bonusBudgetCents }, row.status === 'published' && row.startsAt <= now && row.endsAt > now ? profile?.retainerTerms : undefined, now),
+      terms: creatorRetainerTerms({ ...row.terms, platforms: campaignSubmissionPlatforms(row), bonusBudgetCents: spendingById.get(row.id)?.bonusBudgetCents ?? row.terms.bonusBudgetCents }, row.status === 'published' && row.startsAt <= now && row.endsAt > now ? profile?.retainerTerms : undefined, now),
       pendingCents: spendingById.get(row.id)?.pendingCents ?? 0,
       budgetPoolId: spendingById.get(row.id)?.poolId,
       budgetPoolName: spendingById.get(row.id)?.poolName,

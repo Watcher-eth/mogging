@@ -3,6 +3,11 @@ import { CAMPAIGN_ANCHOR_REQUIREMENT, TIKTOK_CAMPAIGN_ANCHOR_URL, withCampaignPu
 
 export const LEGACY_FACIAL_CAMPAIGN_ID = 'bd0d7a74-3c39-44dd-98ec-21bf6667a714'
 export const GENERATED_FACIAL_CAMPAIGN_ID = 'd4c7c3af-9ba7-43ba-bf14-c66c7d9d4d11'
+export function campaignSubmissionPlatforms(campaign: { id: string; terms: Pick<SprintTerms, 'platforms'> }): SprintTerms['platforms'] {
+  const platforms = campaign.terms.platforms.filter(platform => platform !== 'youtube')
+  return campaign.id === GENERATED_FACIAL_CAMPAIGN_ID ? [...platforms, 'youtube'] : platforms
+}
+
 export const CREATOR_VIDEO_STUDIO_URL = 'https://www.mogging.com/creator/video-studio'
 export const TIKTOK_ANCHOR_URL = TIKTOK_CAMPAIGN_ANCHOR_URL
 export const ANCHOR_REQUIREMENT = CAMPAIGN_ANCHOR_REQUIREMENT

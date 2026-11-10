@@ -1,4 +1,4 @@
-import { withAnchorRequirement } from './facial-campaign-update'
+import { campaignSubmissionPlatforms, withAnchorRequirement } from './facial-campaign-update'
 import { unstable_cache } from 'next/cache'
 import { queuedAudienceCheck } from './audience-check'
 import { creatorRetainerTerms } from './retainer'
@@ -24,7 +24,7 @@ import { minimumSubmissionViews } from './validation'
 import { canUseCreatorBankTransfer, hasCreatorPayoutMethod } from './money'
 
 export { creatorProfileSchema, creatorSubmissionSchema, creatorSocialAccountSchema } from './validation'
-import { creatorSubmissionAnalyticsSchema, type CreatorSubmissionAnalyticsInput, creatorSubmissionSchema, creatorPostPlatform, type CreatorProfileInput, type CreatorSubmissionInput, type CreatorSocialAccountInput } from './validation'
+import { creatorSubmissionAnalyticsSchema, type CreatorSubmissionAnalyticsInput, creatorSubmissionSchema, creatorPostPlatform, creatorPostPlatformLabels, type CreatorProfileInput, type CreatorSubmissionInput, type CreatorSocialAccountInput } from './validation'
 
 export type CreatorTikTokOAuthInput = {
   accessToken: string
@@ -409,6 +409,11 @@ export async function getOrCreateCreatorProfile(userId: string, referralCode?: s
 }
 
 export async function verifyCreatorPublishedPost(creatorProfileId: string, input: { postUrl: string; socialAccountId?: string | null }) {
+  const platform = creatorPostPlatform(input.postUrl)
+  if (platform === 'youtube') {
+    if (input.socialAccountId) throw new CreatorServiceError(400, 'A YouTube post cannot use a TikTok or Instagram account')
+    return { socialAccount: null, postLink: await resolveCreatorPostLink(input.postUrl) }
+  }
   let socialAccount = input.socialAccountId ? await db.query.creatorSocialAccounts.findFirst({
     where: and(
       eq(schema.creatorSocialAccounts.id, input.socialAccountId),
@@ -422,14 +427,14 @@ export async function verifyCreatorPublishedPost(creatorProfileId: string, input
     throw new CreatorServiceError(409, 'Connect a TikTok or Instagram account before submitting')
   }
 
-  if (socialAccount && creatorPostPlatform(input.postUrl) !== socialAccount.platform) {
+  if (socialAccount && platform !== socialAccount.platform) {
     throw new CreatorServiceError(400, 'The post link must match the selected account’s platform')
   }
 
   let postLink: { key: string; url: string }
   try { postLink = await resolveCreatorPostLink(input.postUrl) }
   catch { throw new CreatorServiceError(400, 'Could not verify this shared link. Open the video and paste its full TikTok or Instagram post URL instead.') }
-  if (creatorPostPlatform(input.postUrl) === 'tiktok') {
+  if (platform === 'tiktok') {
     const handle = publishingTikTokHandle(postLink.url)
     const accounts = await db.query.creatorSocialAccounts.findMany({ where: and(eq(schema.creatorSocialAccounts.creatorProfileId, creatorProfileId), eq(schema.creatorSocialAccounts.platform, 'tiktok')) })
     const publishingAccount = accounts.find(account => account.handle?.toLowerCase() === handle)
@@ -453,7 +458,8 @@ export async function createCreatorSubmission(userId: string, input: CreatorSubm
   if (analytics && analytics.viewCountThreshold < minimumSubmissionViews(terms)) throw new CreatorServiceError(400, `This campaign requires at least ${minimumSubmissionViews(terms).toLocaleString('en-US')} views`)
   const format = sprintFormat(sprint.terms, input.formatId)
   if (!format) throw new CreatorServiceError(400, 'Choose a format offered by this campaign')
-  if (!sprint.terms.platforms.includes(creatorPostPlatform(input.postUrl)!)) throw new CreatorServiceError(400, 'This platform is not accepted by the campaign')
+  const platform = creatorPostPlatform(input.postUrl)!
+  if (!campaignSubmissionPlatforms(sprint).includes(platform)) throw new CreatorServiceError(400, 'This platform is not accepted by the campaign')
   const { socialAccount, postLink } = await verifyCreatorPublishedPost(profile.id, input)
   const postKey = postLink.key
   if (analytics) await verifySubmissionAnalytics(userId, analytics)
@@ -466,13 +472,14 @@ export async function createCreatorSubmission(userId: string, input: CreatorSubm
     if (currentSprint && !canSeeCampaign(currentSprint.audience, profile.id)) throw new CreatorServiceError(404, 'Campaign not found')
     if (!currentSprint || currentSprint.updatedAt.getTime() !== sprint.updatedAt.getTime() || sprintPhase({ ...currentSprint, startsAt: currentSprint.startsAt.toISOString(), endsAt: currentSprint.endsAt.toISOString() }) !== 'active') throw new CreatorServiceError(409, 'Campaign changed. Refresh its terms before submitting')
     const draft = input.registeredPostId ? await tx.query.creatorSubmissions.findFirst({ where: and(eq(schema.creatorSubmissions.id, input.registeredPostId), eq(schema.creatorSubmissions.creatorProfileId, profile.id)) }) : null
-    if (input.registeredPostId && (!draft?.isDraft || draft.sprintId !== sprint.id || draft.formatId !== format.id || draft.socialAccountId !== socialAccount?.id)) throw new CreatorServiceError(409, 'Choose the registered post matching this campaign, format and account')
+    if (input.registeredPostId && (!draft?.isDraft || draft.sprintId !== sprint.id || draft.formatId !== format.id || draft.socialAccountId !== (socialAccount?.id ?? null))) throw new CreatorServiceError(409, 'Choose the registered post matching this campaign, format and account')
     if (draft) {
       const code = await tx.query.creatorTrackingLinkAliases.findFirst({ where: eq(schema.creatorTrackingLinkAliases.submissionId, draft.id) })
       if (!input.postedAt && !draft.postedAt) throw new CreatorServiceError(400, 'Add this post’s publication time')
       if (!code || !captionContainsCreatorCode(input.caption || draft.caption || '', code.slug)) throw new CreatorServiceError(400, 'Include the prepared post’s exact creator code in its published caption')
     }
-    const submissionTerms = withAnchorRequirement(creatorRetainerTerms(draft?.sprintTerms || sprint.terms, profile.retainerTerms))
+    const savedTerms = draft?.sprintTerms || sprint.terms
+    const submissionTerms = withAnchorRequirement(creatorRetainerTerms({ ...savedTerms, platforms: campaignSubmissionPlatforms({ id: sprint.id, terms: savedTerms }) }, profile.retainerTerms))
     if (analytics && analytics.viewCountThreshold < minimumSubmissionViews(submissionTerms)) throw new CreatorServiceError(400, 'The submission minimum changed. Refresh the campaign before submitting.')
     await requireSubmissionBudget(tx, sprint.id, sprintPayoutCents(submissionTerms, analytics?.viewCountThreshold ?? 0, analytics?.usAudiencePercent ?? null))
     const values = {
@@ -483,11 +490,11 @@ export async function createCreatorSubmission(userId: string, input: CreatorSubm
       formatId: format.id,
       requirementsConfirmedAt: new Date(),
       title: format.name,
-      platform: creatorPostPlatform(input.postUrl) === 'tiktok' ? 'TikTok' : 'Instagram Reels',
+      platform: creatorPostPlatformLabels[platform],
       caption: input.caption || draft?.caption || null,
       postedAt: input.postedAt ? new Date(input.postedAt) : draft?.postedAt || null,
       isDraft: false,
-      postUrl: input.postUrl,
+      postUrl: platform === 'youtube' ? postLink.url : input.postUrl,
       postKey,
       videoUrl: null,
       videoStorageKey: null,

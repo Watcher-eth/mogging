@@ -26,7 +26,7 @@ export function SubmissionPostPreview({ preview, videoUrl, platform, className, 
   const [failedSource, setFailedSource] = useState<string | null>(null)
   const source = preview?.thumbnailUrl
   const platformName = platform.toLowerCase()
-  const socialPlatform = platformName.startsWith('instagram') ? 'instagram' : platformName === 'tiktok' ? 'tiktok' : null
+  const socialPlatform = platformName.startsWith('instagram') ? 'instagram' : platformName === 'tiktok' || platformName === 'youtube' ? platformName : null
   return (
     <span className={cn("relative block aspect-[9/16] w-20 shrink-0 overflow-hidden rounded-xl bg-zinc-950 sm:w-24", className)} style={style} aria-hidden="true">
       {source && failedSource !== source ? (

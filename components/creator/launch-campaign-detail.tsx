@@ -1,5 +1,5 @@
 import { creatorFormatElement } from '@/lib/creator/post-guidance'
-import { CampaignAnchorLink, ImmediateSubmissionNotice } from './campaign-publishing-requirements'
+import { CampaignAnchorLink } from './campaign-publishing-requirements'
 import { FACIAL_CAMPAIGN_EXAMPLES } from '@/lib/creator/facial-campaign-update'
 import { campaignBudgetState } from '@/lib/creator/campaign-budget-state'
 import { CampaignSubmissionBudget } from './campaign-submission-budget'
@@ -95,11 +95,7 @@ export function LaunchCampaignDetail({
             </span>
             <span className={styles.separator} />
             <span>
-              <SocialPlatformLogo platform="tiktok" className="size-3.5" />
-              <SocialPlatformLogo
-                platform="instagram"
-                className="size-3.5"
-              />{" "}
+              {sprint.terms.platforms.map(platform => <SocialPlatformLogo key={platform} platform={platform} className="size-3.5" />)}
               {sprint.terms.submitOnPublish ? "Generated videos" : "Videos & slideshows"}
             </span>
           </div>
@@ -119,10 +115,10 @@ export function LaunchCampaignDetail({
           ) : null}
           <div className={styles.headerMessages}>
             <CampaignSubmissionBudget sprint={sprint} />
+            <CampaignAnchorLink />
           </div>
         </div>
       </header>
-      <div className="mb-6 grid gap-4">{sprint.terms.submitOnPublish ? <ImmediateSubmissionNotice /> : null}<CampaignAnchorLink /></div>
       <section className={styles.payments} aria-labelledby="payout-heading">
         <div className={styles.paymentHeading}>
           <h2 id="payout-heading">Your views, rewarded.</h2>
@@ -162,7 +158,14 @@ export function LaunchCampaignDetail({
               <ShieldCheck size={17} />
               <h3>Content Requirements</h3>
             </div>
-            <CampaignRequirementList items={format.elements.map(creatorFormatElement).map(item => ({ id: item.title, ...item }))} />
+            <CampaignRequirementList items={format.elements.map((element, index) => {
+              const item = creatorFormatElement(element)
+              return {
+                id: item.title,
+                ...item,
+                action: index === 0 && sprint.terms.submitOnPublish ? <Link href="/creator/video-studio" className="mt-2 inline-flex min-h-9 items-center gap-1.5 rounded-full bg-zinc-100 px-3 text-xs font-semibold text-zinc-900 hover:bg-zinc-200">Creator Studio <ArrowRight size={13} /></Link> : undefined,
+              }
+            })} />
           </div>
           <div className={styles.termsCard}>
             <div className={styles.cardTitle}>

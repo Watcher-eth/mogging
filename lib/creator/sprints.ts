@@ -55,9 +55,9 @@ export const sprintTermsSchema = z
       .min(1)
       .max(8),
     platforms: z
-      .array(z.enum(['tiktok', 'instagram']))
+      .array(z.enum(['tiktok', 'instagram', 'youtube']))
       .min(1)
-      .max(2),
+      .max(3),
   })
   .superRefine((value, ctx) => {
     if (value.retainer) {

@@ -47,6 +47,7 @@ import { creatorAccountLabel, type CreatorDashboard, type CreatorSubmission } fr
 import { apiGet, apiPost, ApiClientError } from '@/lib/api/client'
 import {
   minimumSubmissionViews,
+  creatorPostPlatformLabels,
   creatorPostUrlSchema,
 } from '@/lib/creator/validation'
 import {
@@ -73,7 +74,7 @@ const titles = [
 ]
 const descriptions = [
   'Choose an active campaign below. Submit as soon as your post reaches its first milestone.',
-  'Paste your published TikTok or Instagram URL to preview it.',
+  'Paste a published post URL from an accepted platform.',
   'Upload one continuous recording filmed with a second device.',
   'Confirm the campaign requirements before sending your post for review.',
 ]
@@ -164,7 +165,7 @@ export function SubmissionDialog({
         ]
       : []
   const accountRequired =
-    platform === 'tiktok' || data?.featureFlags.creatorAccountRequiredForSubmission || false
+    platform !== 'youtube' && (platform === 'tiktok' || Boolean(data?.featureFlags.creatorAccountRequiredForSubmission))
   function checkMinimumViews() {
     if (earlySubmission) return true
     const count = Number(views)
@@ -406,8 +407,8 @@ export function SubmissionDialog({
                       </div>
                       <PublishedPostPlayer postUrl={postUrl} />
                       <div className="grid gap-2">
-                      <Field label="Video URL"><input className={fieldClass} type="url" value={postUrl} onChange={event => { setPostUrl(event.target.value); setAccountId(''); setConfirmed([]) }} placeholder="Paste your TikTok or Instagram link" required /></Field>
-                      {((detected.handle && !publishingAccount) || (platform && !detected.candidates.length)) ? <div aria-live="polite">
+                      <Field label="Video URL"><input className={fieldClass} type="url" value={postUrl} onChange={event => { setPostUrl(event.target.value); setAccountId(''); setConfirmed([]) }} placeholder={sprint?.terms.platforms.includes('youtube') ? "Paste your TikTok, Instagram or YouTube link" : "Paste your TikTok or Instagram link"} required /></Field>
+                      {((detected.handle && !publishingAccount) || (platform && platform !== 'youtube' && !detected.candidates.length)) ? <div aria-live="polite">
                         {detected.handle && !publishingAccount ? <p className="text-xs leading-5 text-amber-700">This post is from @{detected.handle}. <Link href="/creator/accounts" className="font-semibold underline">Connect this account</Link> before submitting.</p> : platform && !detected.candidates.length ? <p className="text-xs text-amber-700"><Link href="/creator/accounts" className="underline">Connect a {platform} account</Link> before submitting.</p> : null}
                       </div> : null}
                       {!detected.handle && detected.candidates.length > 1 ? <div className="mt-4"><Field label="Published from" hint="This link doesn’t include a username. Choose the posting account."><select className={fieldClass} value={accountId} onChange={event => { setAccountId(event.target.value); setConfirmed([]) }} required={accountRequired}><option value="">Choose account</option>{detected.candidates.map(item => <option key={item.id} value={item.id}>{creatorAccountLabel(item)}</option>)}</select></Field></div> : null}
@@ -540,7 +541,7 @@ export function SubmissionDialog({
                             key={name}
                           >
                             <dt className="shrink-0 text-zinc-500">{name}</dt>
-                            <dd className="break-all text-right">{name === 'Platform' && platform ? <span className="inline-flex items-center gap-2"><span>{platform === 'tiktok' ? 'TikTok' : 'Instagram'}</span><span className="grid size-6 shrink-0 place-items-center rounded-full bg-white"><SocialPlatformLogo platform={platform} className="size-3.5" /></span></span> : value}</dd>
+                            <dd className="break-all text-right">{name === 'Platform' && platform ? <span className="inline-flex items-center gap-2"><span>{creatorPostPlatformLabels[platform]}</span><span className="grid size-6 shrink-0 place-items-center rounded-full bg-white"><SocialPlatformLogo platform={platform} className="size-3.5" /></span></span> : value}</dd>
                           </div>
                         ))}
                       </dl>

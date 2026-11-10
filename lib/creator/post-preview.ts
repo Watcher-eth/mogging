@@ -91,6 +91,7 @@ export async function getCreatorPostPreview(postUrl: string | null): Promise<Cre
   try { identity = creatorPostIdentity(postUrl) } catch { return emptyPostPreview }
   if (!identity) return emptyPostPreview
   const [platform, id] = identity.split(':')
+  if (platform === 'youtube') return { ...emptyPostPreview, thumbnailUrl: `https://i.ytimg.com/vi/${id}/hqdefault.jpg` }
   if (platform === 'instagram') {
     return parsePublicPostPreview(await publicHtml(`https://www.instagram.com/p/${id}/embed/`), platform, id)
   }

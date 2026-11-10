@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import { AnimatePresence, motion, useReducedMotion } from 'motion/react'
 import useSWR from 'swr'
 import { apiGet } from '@/lib/api/client'
-import { creatorPostPlatform } from '@/lib/creator/validation'
+import { creatorPostPlatform, creatorPostPlatformLabels } from '@/lib/creator/validation'
 import { publishedVideoEmbedUrl } from '@/lib/creator/post-embed'
 import { cn } from '@/lib/utils'
 
@@ -41,7 +41,7 @@ export function PublishedPostPlayer({ postUrl }: { postUrl: string }) {
   const pending = currentUrl !== url || isLoading
   const embed = direct || data?.embedUrl
   return <div className="grid justify-items-center gap-3">
-    {pending ? <div className={frameClass} aria-busy="true"><PlayerSkeleton /></div> : embed ? <NativePlayer key={embed} src={embed} title={`${platform === 'tiktok' ? 'TikTok' : 'Instagram'} post preview`} /> : <p className="text-center text-xs leading-5 text-zinc-500">Preview unavailable for this link. Paste its full post URL or open it below.</p>}
+    {pending ? <div className={frameClass} aria-busy="true"><PlayerSkeleton /></div> : embed ? <NativePlayer key={embed} src={embed} title={`${creatorPostPlatformLabels[platform]} post preview`} /> : <p className="text-center text-xs leading-5 text-zinc-500">Preview unavailable for this link. Paste its full post URL or open it below.</p>}
     <a href={currentUrl === url ? data?.canonicalUrl || currentUrl : currentUrl} target="_blank" rel="noreferrer" className="text-xs text-zinc-500 underline underline-offset-4">Open original post ↗</a>
   </div>
 }

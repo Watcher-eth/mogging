@@ -4,7 +4,21 @@ import { z } from 'zod'
 import { launchCampaign } from './campaign-launch'
 import type { SprintTerms } from './sprints'
 
-export function creatorPostPlatform(value: string): 'tiktok' | 'instagram' | null {
+export type CreatorPostPlatform = 'tiktok' | 'instagram' | 'youtube'
+export const creatorPostPlatformLabels: Record<CreatorPostPlatform, string> = { tiktok: 'TikTok', instagram: 'Instagram Reels', youtube: 'YouTube' }
+
+export function creatorYouTubeVideoId(url: URL): string | null {
+  if (url.protocol !== 'https:' || url.username || url.password || url.port) return null
+  const youtube = ['youtube.com', 'www.youtube.com', 'm.youtube.com'].includes(url.hostname)
+  const id = url.hostname === 'youtu.be'
+    ? url.pathname.match(/^\/([\w-]+)\/?$/)?.[1]
+    : youtube && (url.pathname === '/watch' || url.pathname === '/watch/')
+      ? url.searchParams.get('v')
+      : youtube && url.pathname.match(/^\/shorts\/([\w-]+)\/?$/)?.[1]
+  return typeof id === 'string' && /^[A-Za-z0-9_-]{11}$/.test(id) ? id : null
+}
+
+export function creatorPostPlatform(value: string): CreatorPostPlatform | null {
   try {
     const url = new URL(value)
     if (url.protocol !== 'https:' || url.username || url.password || url.port) return null
@@ -12,13 +26,13 @@ export function creatorPostPlatform(value: string): 'tiktok' | 'instagram' | nul
     if (['vm.tiktok.com', 'vt.tiktok.com'].includes(url.hostname) && /^\/[a-zA-Z0-9]+\/?$/.test(url.pathname)) return 'tiktok'
     if (['www.tiktok.com', 'tiktok.com'].includes(url.hostname) && /^\/t\/[a-zA-Z0-9]+\/?$/.test(url.pathname)) return 'tiktok'
     if (['www.instagram.com', 'instagram.com'].includes(url.hostname) && /^\/(?:(?:share|[a-zA-Z0-9._]+)\/)?(reel|reels|p)\/[a-zA-Z0-9_-]+\/?$/.test(url.pathname)) return 'instagram'
-    return null
+    return creatorYouTubeVideoId(url) ? 'youtube' : null
   } catch { return null }
 }
 
 export const creatorPostUrlSchema = z.string().trim().max(2048).refine(
   (value) => creatorPostPlatform(value) !== null,
-  'Enter a published TikTok or Instagram post link beginning with https://'
+  'Enter a published TikTok, Instagram or YouTube post link beginning with https://'
 )
 
 export const creatorProfileSchema = z

@@ -44,3 +44,11 @@ test('database duplicate conflicts return 409 without exposing query details', (
   const unrelated = new Error('unrelated')
   try { rethrowCreatorPostConflict(unrelated) } catch (error) { expect(error).toBe(unrelated) }
 })
+
+test('YouTube Shorts, watch and share links use the same case-sensitive identity', async () => {
+  for (const url of ['https://youtu.be/AbCdEf123_4?si=share', 'https://m.youtube.com/watch?v=AbCdEf123_4&t=5', 'https://www.youtube.com/shorts/AbCdEf123_4']) {
+    expect(await resolveCreatorPostIdentity(url)).toBe('youtube:AbCdEf123_4')
+  }
+  expect(creatorPostIdentity('https://youtube.com.evil.test/watch?v=AbCdEf123_4')).toBeNull()
+  expect(creatorPostIdentity('https://youtube.com/watch?v=too-short')).toBeNull()
+})

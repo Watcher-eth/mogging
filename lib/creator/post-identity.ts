@@ -1,11 +1,13 @@
 import { ApiError } from '@/lib/api/http'
-import { creatorPostPlatform } from './validation'
+import { creatorPostPlatform, creatorYouTubeVideoId } from './validation'
 
 // IDs survive tracking parameters, username changes and alternate platform URL shapes.
 export function creatorPostIdentity(value: string): string | null {
   const platform = creatorPostPlatform(value)
   if (!platform) return null
-  const path = new URL(value).pathname
+  const url = new URL(value)
+  if (platform === 'youtube') return `youtube:${creatorYouTubeVideoId(url)}`
+  const path = url.pathname
   const id = platform === 'tiktok'
     ? path.match(/^\/@[\w.]+\/(?:video|photo)\/(\d+)\/?$/)?.[1]
     : !path.startsWith('/share/') && path.match(/\/(?:reel|reels|p)\/([a-zA-Z0-9_-]+)\/?$/)?.[1]
@@ -15,7 +17,11 @@ export function creatorPostIdentity(value: string): string | null {
 export async function resolveCreatorPostLink(value: string): Promise<{ key: string; url: string }> {
   let url = new URL(value)
   const platform = creatorPostPlatform(value)
-  if (!platform) throw new Error('Enter a published TikTok or Instagram post link')
+  if (!platform) throw new Error('Enter a published TikTok, Instagram or YouTube post link')
+  if (platform === 'youtube') {
+    const id = creatorYouTubeVideoId(url)
+    return { key: `youtube:${id}`, url: `https://www.youtube.com/watch?v=${id}` }
+  }
   const signal = AbortSignal.timeout(8_000)
   for (let redirect = 0; redirect < 6; redirect++) {
     const identity = creatorPostIdentity(url.href)
