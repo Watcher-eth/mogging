@@ -1,3 +1,4 @@
+import { PortraitHero } from './portrait-hero'
 import dynamic from 'next/dynamic'
 import { useDesktop } from './use-desktop'
 import { usePhoneLayout } from '@/hooks/use-phone-layout'
@@ -13,7 +14,6 @@ import type { LandingAssignment } from '@/lib/analytics/landing'
 import { WebCheckout } from './web-checkout'
 import { useLandingTracking } from './use-landing-tracking'
 
-const DesktopScanPreview = dynamic(() => import('./desktop-scan-preview').then(module => module.DesktopScanPreview))
 const DesktopMemberPreview = dynamic(() => import('./desktop-member-preview').then(module => module.DesktopMemberPreview))
 
 const reviewCards = [
@@ -52,25 +52,32 @@ export default function LegacyHomepage({assignment, preview, ios}: {assignment: 
       />
 
       <main ref={sections} className="min-h-[calc(100vh-5rem)] overflow-hidden bg-white text-black">
-        <section className="public-frame public-gutters flex min-h-[calc(100vh-5rem)] flex-col items-center py-8 sm:py-12">
-          <div
-            ref={hero}
-            className={desktop ? "grid w-full grid-cols-2 items-center gap-12" : "flex w-full flex-col items-center"}
-          >
-            <div className={desktop ? '' : 'contents'}>
-            <p className="font-mono text-sm font-bold uppercase tracking-normal text-zinc-500 sm:text-base">Ascend now with</p>
-            <h1 className="mt-5 max-w-6xl text-center text-[3.6rem] font-semibold leading-[0.9] tracking-[-0.075em] text-black sm:text-[7rem] lg:text-[clamp(4rem,6vw,7rem)] lg:text-left">
-              Mogging. Your face, in focus.
-            </h1>
-            <p className="mt-7 max-w-3xl text-center text-xl leading-8 text-zinc-500 sm:text-2xl sm:leading-9 lg:text-left">
-              Explore your facial features with a comprehensive report, a detailed face map, and a personalized routine. Keep track of your photos and progress in the Mogging app.
-            </p>
-            <div className="mt-8">
-              <EvaluationChoices showPhoneDownload={ios} showDesktopDownload track={destination => trackDestination(destination, 'hero')} />
+        <section className={desktop ? "public-frame public-gutters flex min-h-[calc(100vh-5rem)] flex-col items-center pb-8 sm:pb-12" : "public-frame public-gutters flex min-h-[calc(100vh-5rem)] flex-col items-center py-8 sm:py-12"}>
+          {desktop ? (
+            <div ref={hero} className="w-full">
+              <PortraitHero title="Mogging. Your face, in focus.">
+                <EvaluationChoices showPhoneDownload={ios} showDesktopDownload track={destination => trackDestination(destination, 'hero')} />
+              </PortraitHero>
             </div>
+          ) : (
+            <div
+              ref={hero}
+              className={"flex w-full flex-col items-center"}
+            >
+              <div className="contents">
+              <p className="font-mono text-sm font-bold uppercase tracking-normal text-zinc-500 sm:text-base">Ascend now with</p>
+              <h1 className="mt-5 max-w-6xl text-center text-[3.6rem] font-semibold leading-[0.9] tracking-[-0.075em] text-black sm:text-[7rem] lg:text-[clamp(4rem,6vw,7rem)] lg:text-left">
+                Mogging. Your face, in focus.
+              </h1>
+              <p className="mt-7 max-w-3xl text-center text-xl leading-8 text-zinc-500 sm:text-2xl sm:leading-9 lg:text-left">
+                Explore your facial features with a comprehensive report, a detailed face map, and a personalized routine. Keep track of your photos and progress in the Mogging app.
+              </p>
+              <div className="mt-8">
+                <EvaluationChoices showPhoneDownload={ios} showDesktopDownload track={destination => trackDestination(destination, 'hero')} />
+              </div>
+              </div>
             </div>
-            {desktop && <div className="min-h-0 self-stretch [contain:size]"><DesktopScanPreview /></div>}
-          </div>
+          )}
 
           <div data-landing-section="screenshots"
             className="mx-auto mt-16 w-full max-w-[var(--page-max)] sm:mt-20"

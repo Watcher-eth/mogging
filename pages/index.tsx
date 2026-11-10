@@ -1,3 +1,4 @@
+import { PortraitHero } from '@/components/landing/portrait-hero'
 import { useDesktop } from '@/components/landing/use-desktop'
 import { EvaluationChoices, StickyMobileScan } from "@/components/landing/evaluation-choices";
 import { useHomepageEntrance } from '@/components/landing/use-homepage-entrance'
@@ -95,26 +96,34 @@ function NewHomepage({ assignment, preview, phoneEntry, ios }: Props) {
         <main
           className="overflow-hidden bg-white text-zinc-950"
         >
-          <m.section ref={hero} {...entrance} initial={false} className="mx-auto grid max-w-[var(--page-max)] content-center items-center px-6 pb-14 pt-6 sm:px-10 lg:min-h-[730px] lg:grid-cols-2 lg:gap-12 lg:py-12">
-            <div className="text-center lg:text-left">
-              <p className="mb-4 hidden text-xs font-medium uppercase tracking-[0.16em] text-zinc-400 lg:block">
-                {t("landing.tagline")}
-              </p>
-              <h1 className="mx-auto max-w-[650px] text-balance text-[clamp(2.5rem,5.5vw,4.75rem)] font-semibold leading-[1.04] tracking-[-0.055em] lg:mx-0">
-                {t("landing.title")}
-              </h1>
-              <p className="mx-auto mt-5 max-w-lg text-base leading-7 text-zinc-500 sm:text-lg lg:mx-0">
-                {t("landing.description")}
-              </p>
-              <div className="mt-7">{downloadButton("hero")}</div>
-              {!desktop && ios && <p className="mt-3 text-xs text-zinc-400">{t("landing.availability")}</p>}
-            </div>
-            <div className="mt-10 flex justify-center lg:mt-0">
-              <div className="w-full max-w-[320px] lg:max-w-[clamp(270px,25vw,330px)]">
-                <EvaluationPreview playback="still" />
+          {desktop ? (
+            <section ref={hero}>
+              <PortraitHero title={t("landing.title")}>
+                {downloadButton("hero")}
+              </PortraitHero>
+            </section>
+          ) : (
+            <m.section ref={hero} {...entrance} initial={false} className="mx-auto grid max-w-[var(--page-max)] content-center items-center px-6 pb-14 pt-6 sm:px-10 lg:min-h-[730px] lg:grid-cols-2 lg:gap-12 lg:py-12">
+              <div className="text-center lg:text-left">
+                <p className="mb-4 hidden text-xs font-medium uppercase tracking-[0.16em] text-zinc-400 lg:block">
+                  {t("landing.tagline")}
+                </p>
+                <h1 className="mx-auto max-w-[650px] text-balance text-[clamp(2.5rem,5.5vw,4.75rem)] font-semibold leading-[1.04] tracking-[-0.055em] lg:mx-0">
+                  {t("landing.title")}
+                </h1>
+                <p className="mx-auto mt-5 max-w-lg text-base leading-7 text-zinc-500 sm:text-lg lg:mx-0">
+                  {t("landing.description")}
+                </p>
+                <div className="mt-7">{downloadButton("hero")}</div>
+                {!desktop && ios && <p className="mt-3 text-xs text-zinc-400">{t("landing.availability")}</p>}
               </div>
-            </div>
-          </m.section>
+              <div className="mt-10 flex justify-center lg:mt-0">
+                <div className="w-full max-w-[320px] lg:max-w-[clamp(270px,25vw,330px)]">
+                  <EvaluationPreview playback="still" />
+                </div>
+              </div>
+            </m.section>
+          )}
 
           <AnalysisStory />
           <m.section {...entrance}
@@ -185,7 +194,7 @@ function NewHomepage({ assignment, preview, phoneEntry, ios }: Props) {
               <div className="mt-7">{downloadButton("progress")}</div>
             </div>
           </m.section>
-          {!phone && <m.section {...entrance} data-landing-section="web_analysis" aria-labelledby="web-title" className="bg-[#f7f7f8] py-[var(--feature-spacing)]">
+          {!phone && <m.section {...entrance} data-landing-section="web_analysis" aria-labelledby="web-title" data-desktop-offer={desktop ? "" : undefined} className={desktop ? "py-[var(--feature-spacing)]" : "bg-[#f7f7f8] py-[var(--feature-spacing)]"}>
             <div className="mx-auto max-w-[var(--page-max)] px-6 sm:px-10">
               <WebCheckout embedded preview={preview} intro={
                 <div className="text-center">

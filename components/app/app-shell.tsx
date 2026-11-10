@@ -9,6 +9,7 @@ import { useRouter } from 'next/router'
 import { ChevronDown, FileText, Loader2, LogOut, Pencil, Plus } from '@/components/ui/mogging-glyphs'
 import useSWR from 'swr'
 import useSWRImmutable from 'swr/immutable'
+import { useDesktop } from '@/components/landing/use-desktop'
 import { AppHeader } from '@/components/app/app-header'
 import { LoginDialog } from '@/components/app/login-dialog'
 import dynamic from 'next/dynamic'
@@ -71,6 +72,8 @@ export function AppShell({ children }: AppShellProps) {
   const { t } = useTranslation()
   const { data: session, status } = useSession()
   const router = useRouter()
+  const desktop = useDesktop()
+  const desktopLanding = router.pathname === "/" && desktop
   const homepage = router.pathname === '/'
   const Content = homepage ? 'div' : 'main'
   const pendingAuthRedirect = getSafeAuthRedirect(router.query.next)
@@ -184,7 +187,7 @@ export function AppShell({ children }: AppShellProps) {
 
   return (
     <div data-analysis-shell={router.pathname === '/analysis' || undefined} className={creatorRoute ? 'creator-app flex min-h-dvh flex-col' : immersive ? 'min-h-screen bg-white' : 'min-h-screen bg-background'}>
-      {showHeader ? <AppHeader member={memberPreview || membership?.active === true} newMemberFeatures={memberPreview || membership?.tier === 'pro'}>
+      {showHeader ? <AppHeader desktopLanding={desktopLanding} member={memberPreview || membership?.active === true} newMemberFeatures={memberPreview || membership?.tier === 'pro'}>
             {status === 'loading' ? (
               <div className="h-8 w-14 animate-pulse rounded-lg border border-zinc-200 bg-white sm:h-10 sm:w-24" />
             ) : session?.user ? (
@@ -248,7 +251,7 @@ export function AppShell({ children }: AppShellProps) {
                   </Button>
                 ) : null}
                 <Button
-                  className="h-8 rounded-lg border border-zinc-300 bg-white px-3 text-xs font-medium text-black shadow-none hover:bg-zinc-50 sm:h-10 sm:rounded-xl sm:px-5 sm:text-sm"
+                  className={`h-8 border px-3 text-xs font-medium sm:h-10 sm:px-5 sm:text-sm ${desktopLanding ? "rounded-full border-white/80 bg-white/55 text-slate-900 shadow-[inset_0_1px_0_#ffffffb0,0_2px_12px_#18263a0d] backdrop-blur-md hover:bg-white/80 hover:text-slate-950" : "rounded-lg border-zinc-300 sm:rounded-xl bg-white text-black shadow-none hover:bg-zinc-50"}`}
                   variant="outline"
                   size="sm"
                   onClick={() => setLoginOpen(true)}

@@ -19,7 +19,7 @@ const memberItems = [
   { href: '/progress', label: 'Progress', icon: 'progress' },
 ] as const
 
-export function AppNav({ activePath, member, newMemberFeatures }: { activePath?: string; member?: boolean; newMemberFeatures?: boolean }) {
+export function AppNav({ activePath, member, newMemberFeatures, desktopLanding, light }: { activePath?: string; member?: boolean; newMemberFeatures?: boolean; desktopLanding?: boolean; light?: boolean }) {
   const router = useRouter()
   const { t } = useTranslation()
 
@@ -48,15 +48,17 @@ export function AppNav({ activePath, member, newMemberFeatures }: { activePath?:
             }}
             className={cn(
               'group relative flex h-10 w-7 shrink-0 items-center justify-center md:h-auto md:w-auto md:py-2 text-[11px] font-medium text-black/45 transition-[color,transform] duration-200 ease-out hover:-translate-y-0.5 hover:text-black active:scale-[0.98] sm:text-sm',
-              active && 'text-black'
+              active && 'text-black',
+              desktopLanding && 'md:h-9 md:px-3.5',
+              light && 'md:text-white md:hover:text-white [text-shadow:0_1px_4px_#202b39b0]'
             )}
           >
             <MoggingIcon name={item.icon} size={18} className="md:hidden" variant={active ? "accent" : "quiet"} />
-            <span className="hidden items-center gap-1.5 md:flex">{label}{isMemberItem && newMemberFeatures && <NewMemberPill />}</span>
+            <span className="relative z-10 hidden items-center gap-1.5 md:flex">{label}{isMemberItem && newMemberFeatures && <NewMemberPill />}</span>
             {active ? (
               <LazyMotion features={loadNavMotion}><m.span
                 layoutId="app-nav-active-pill"
-                className="absolute inset-x-0 bottom-0.5 mx-auto h-0.5 w-5 rounded-full border border-zinc-300 bg-zinc-200 shadow-[inset_0_1px_0_rgba(255,255,255,0.85)] sm:h-1 sm:w-7"
+                className={cn("absolute inset-x-0 bottom-0.5 mx-auto h-0.5 w-5 rounded-full border border-zinc-300 bg-zinc-200 shadow-[inset_0_1px_0_rgba(255,255,255,0.85)] sm:h-1 sm:w-7", desktopLanding && "md:inset-0 md:h-auto md:w-auto md:border-zinc-200 md:bg-white/20 md:shadow-none")}
                 transition={{ type: 'spring', stiffness: 420, damping: 34, mass: 0.7 }}
                 aria-hidden="true"
               /></LazyMotion>
