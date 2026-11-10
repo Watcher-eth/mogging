@@ -1,4 +1,5 @@
 import { useTranslation } from 'react-i18next'
+import { isEmbeddedBrowser } from '@/lib/auth/browser-flow'
 import { SidebarProvider } from '@/components/ui/sidebar'
 import Link from 'next/link'
 import Image from 'next/image'
@@ -691,6 +692,8 @@ export function LoginDialog({
   children?: ReactNode
 }) {
   const [availableProviders, setAvailableProviders] = useState<Set<string> | null>(null)
+  const [embeddedAuth, setEmbeddedAuth] = useState(false)
+  const authPending = useRef(false)
   const modelImages = [
     '/model.png',
     '/model2.png',
@@ -710,7 +713,8 @@ export function LoginDialog({
 
   useEffect(() => {
     if (!open) return
-
+    authPending.current = false
+    setEmbeddedAuth(isEmbeddedBrowser(navigator.userAgent))
     let cancelled = false
 
     getProviders().then((providers) => {
@@ -723,10 +727,10 @@ export function LoginDialog({
     }
   }, [open])
 
-  const authPending = useRef(false)
   function continueWithProvider(provider: string) {
     if (authPending.current) return
     authPending.current = true
+    document.cookie = `mogging_auth_provider=${encodeURIComponent(provider)}; Path=/; Max-Age=900; SameSite=Lax${location.protocol === 'https:' ? '; Secure' : ''}`
     void signIn(provider, { callbackUrl }).catch(() => {
       authPending.current = false
       toast.error('Unable to open sign-in. Please try again.')
@@ -832,6 +836,7 @@ export function LoginDialog({
             ))}
           </div>
           {audience === 'creator' && availableProviders !== null && authButtons.some((button) => !availableProviders.has(button.id)) ? <p className="text-center text-xs text-zinc-500">Some sign-in options are currently unavailable.</p> : null}
+          {audience === 'creator' && embeddedAuth ? <p className="text-sm leading-5 text-zinc-600">For reliable sign-in, open this page in Safari or Chrome from the browser menu, then continue there.</p> : null}
           {children}
         </div>
       </DialogContent>

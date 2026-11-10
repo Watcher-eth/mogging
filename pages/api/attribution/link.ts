@@ -1,16 +1,9 @@
-import { monitorBackend } from '@/lib/reliability/monitor'
+import { monitorBackend, setBackendOutcome } from '@/lib/reliability/monitor'
 import type { NextApiRequest, NextApiResponse } from 'next'
-import { z } from 'zod'
 import { ApiError, handleApiError, json, methodNotAllowed, parseBody } from '@/lib/api/http'
 import { enforceRateLimit } from '@/lib/api/rateLimit'
 import { createCreatorAttributionClick } from '@/lib/creator/attribution'
-import { creatorPostUrlSchema } from '@/lib/creator/validation'
-
-const source = z.enum(['native_link', 'creator_code']).default('creator_code')
-const inputSchema = z.union([
-  z.object({ source, slug: z.string().trim().toLowerCase().min(1).max(200).regex(/^[a-z0-9._-]+$/) }),
-  z.object({ source, postUrl: creatorPostUrlSchema }),
-])
+import { creatorLinkInputSchema } from '@/lib/creator/link-input'
 
 // Public creator codes are not credentials. Only the server can mint signed click tokens.
 // This records an explicit referral touch, never an inferred or deferred install.
@@ -19,10 +12,14 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
   if (req.method !== 'POST') return methodNotAllowed(res, ['POST'])
   try {
     await enforceRateLimit(req, res, { key: 'creator_link', limit: 20, windowMs: 60_000 })
-    const target = parseBody(inputSchema, req.body)
+    const target = parseBody(creatorLinkInputSchema, req.body)
     const attribution = await createCreatorAttributionClick({ ...target, anonymousActorId: null,
       userAgent: req.headers['user-agent'] || null })
-    if (!attribution || attribution.isBot) throw new ApiError(404, 'Creator or submitted post not found. Ask the creator for their account code.')
+    if (!attribution || attribution.isBot) {
+      setBackendOutcome(res, { outcome: 'rejected', code: attribution?.isBot ? 'creator_link_bot' : 'postUrl' in target ? 'creator_post_not_found' : 'creator_code_not_found', alert: false })
+      throw new ApiError(404, 'Creator or submitted post not found. Ask the creator for their account code.')
+    }
+    setBackendOutcome(res, { outcome: 'ok', code: 'postUrl' in target ? 'creator_post_resolved' : 'creator_code_resolved', alert: false })
     return json(res, 200, { url: attribution.deepLinkUrl })
   } catch (error) { return handleApiError(error, res) }
 }

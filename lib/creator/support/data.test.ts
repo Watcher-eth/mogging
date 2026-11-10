@@ -59,7 +59,7 @@ describe('database ownership boundary', () => {
   test('campaign access always excludes drafts', async () => {
     const source = await createSupportDataSource('signed-in-user'); queries.length = 0
     await source.campaigns('draft-id')
-    expect(queries[0].params).toEqual(['published', 'ended', 'draft-id'])
+    expect(queries[0].params).toEqual(['published', 'ended', 'owner-profile', 'owner-profile', 'draft-id'])
   })
   test('suspended creators cannot acquire a data source', async () => {
     suspended = true

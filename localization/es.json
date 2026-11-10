@@ -19,7 +19,7 @@
   "landing.planTitle": "Tu potencial. Un protocolo diario para alcanzarlo.",
   "landing.evaluation": "01 / Tu análisis",
   "landing.scoreTitle": "Mucho más que una puntuación.",
-  "landing.scoreDescription": "Línea mandibular, ojos, proporciones y simetría. Conoce tus rasgos a través de 10 categorías y más de 40 métricas. Conserva todos tus informes para seguir tu progreso.",
+  "landing.scoreDescription": "Línea mandibular, ojos, proporciones y simetría. Conoce tus rasgos a través de 13 categorías y más de 110 métricas. Conserva todos tus informes para seguir tu progreso.",
   "landing.protocol": "02 / Tu protocolo",
   "landing.directionTitle": "Menos suposiciones. Un protocolo centrado en tus objetivos.",
   "landing.finalTitle": "Encuentra tu punto de partida.",
@@ -29,8 +29,8 @@
   "faq.free.answer": "Sí. Descargar la app es gratis. Los análisis y las funciones Pro son de pago; puedes consultar los planes disponibles en la app.",
   "faq.evaluation.question": "¿Qué incluye mi análisis?",
   "faq.evaluation.answer": "10 categorías detalladas con más de 40 métricas sobre tus ojos, línea mandibular, proporciones, simetría y otros rasgos. También recibirás un protocolo personalizado y podrás consultar tus análisis guardados para seguir tu progreso.",
-  "faq.public.question": "¿Mis fotos aparecerán en la clasificación?",
-  "faq.public.answer": "Participar en la clasificación es opcional. Tú decides si tu perfil es público y puedes cambiarlo en Ajustes.",
+  "faq.public.question": "¿Mis fotos e informes son públicos?",
+  "faq.public.answer": "No. Tus fotos e informes son privados. Puedes exportar una imagen de tu propio informe cuando quieras.",
   "faq.devices.question": "¿Puedo usar Mogging sin un iPhone?",
   "faq.devices.answer": "Puedes iniciar un análisis facial de pago en el navegador. La app está disponible para iPhone y próximamente llegará a Android.",
   "stats.categories": "Categorías detalladas",
@@ -307,5 +307,9 @@
   "paywall.goalCheekbones": "unos pómulos más definidos",
   "paywall.benefits.scanTitle": "1 análisis facial por semana",
   "paywall.benefits.protocolTitle": "Protocolo a tu medida para ascender",
-  "paywall.benefits.trackingTitle": "Progreso y recordatorios"
+  "paywall.benefits.trackingTitle": "Progreso y recordatorios",
+  "landing.progress": "03 / Tu progreso",
+  "landing.progressTitle": "Mira tu progreso. Encuentra tu siguiente paso.",
+  "landing.progressDescription": "Compara tus evaluaciones a lo largo del tiempo. Sigue los cambios de tus rasgos y enfoca tu Protocol diario.",
+  "landing.progressPrivacy": "Tus evaluaciones son privadas."
 }

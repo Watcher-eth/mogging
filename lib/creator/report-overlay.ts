@@ -1,3 +1,4 @@
+import { preciseFaceOverlay } from './face-treatment'
 import { categoryScoreMax, getOverlayPreset, type ContentSlide, type GeneratorImage } from './content-generator'
 import { buildFaceMapPoints } from './mobile-overlay-engine/face-map-points'
 import { getImageTransform, projectImagePoint } from './mobile-overlay-engine/layout'
@@ -10,7 +11,7 @@ type Drawing = Exclude<ResolvedPrimitive, { kind: 'label' | 'point' }>
 
 // Mobile report styles use logical points. One reference viewport keeps the
 // preview and high-resolution exports identical, including stroke weights.
-export function createReportOverlay(slide: ContentSlide, image: GeneratorImage, viewport: Size, referenceWidth = 360) {
+export function createReportOverlay(slide: ContentSlide, image: GeneratorImage, viewport: Size, referenceWidth = 360): ReportOverlay {
   const size = { width: referenceWidth, height: viewport.height / viewport.width * referenceWidth }
   const landmarks = enrichFaceLandmarks(image.landmarks)
   const usable = isFaceLandmarksUsable(landmarks, 0.58)
@@ -23,10 +24,12 @@ export function createReportOverlay(slide: ContentSlide, image: GeneratorImage, 
   const top = Math.min(...samples.map((point) => point.y))
   const bottom = Math.max(...samples.map((point) => point.y))
   const dots = samples.map((point) => ({ ...projectImagePoint(point, image, transform), band: Math.min(17, Math.floor((point.y - top) / Math.max(.001, bottom - top) * 18)) }))
-  return { size, primitives, dots, value: `${score.trim() || '—'} / ${categoryScoreMax(slide.categoryId)}` }
+  const overlay = { size, primitives, dots, value: `${score.trim() || '—'} / ${categoryScoreMax(slide.categoryId)}` }
+  return slide.mockReport ? preciseFaceOverlay(overlay, { ...image, landmarks }, slide.categoryId, '', ['skin', 'cheeks'].includes(slide.categoryId)) : overlay
 }
 
-export type ReportOverlay = Omit<ReturnType<typeof createReportOverlay>, 'value'> & { value?: string; labelLayout?: 'mobile'; labelAppearance?: 'scan'; labelScale?: number; ink?: string; pointAppearance?: 'minimal' }
+export type FaceMeasurement = { kind: 'symmetry' | 'thirds' | 'spacing' | 'inner-spacing' | 'tilt' | 'width'; anchors: Partial<Record<string, PixelPoint>> }
+export type ReportOverlay = { size: Size; primitives: ResolvedPrimitive[]; dots: Array<PixelPoint & { band: number }>; measurement?: FaceMeasurement; faceBoundary?: PixelPoint[]; value?: string; labelLayout?: 'mobile'; labelAppearance?: 'scan'; labelScale?: number; ink?: string; pointAppearance?: 'minimal' }
 
 export function drawReportOverlay(ctx: CanvasRenderingContext2D, overlay: ReportOverlay, width: number, timeMs: number, labels = true) {
   const ink = overlay.ink ?? '255,255,255'

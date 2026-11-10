@@ -7,6 +7,7 @@ import { AnalysisReport, type DesktopReportCategory } from '@/components/analysi
 import registry from '@/lib/analysis-v2/rubric-registry.json'
 import styles from '@/components/analysis/v2/rubrics.module.css'
 import { V2ReportDetail } from '@/components/analysis/v2/report-detail'
+import { ScanImagePanel } from '@/components/analysis/scan-image-panel'
 import { buildWebRubricGroups } from '@/lib/analysis-v2/web-report'
 import sampleEntries from '@/lib/analysis-v2/sample-entries.json'
 import { designValues } from '@/lib/analysis-v2/preview-fixtures'
@@ -49,13 +50,13 @@ categories.push({ id: 'overall', title: 'Overall', subtitle: 'Facial harmony, st
 const overallGroups: WebRubricGroup[] = [{
   id: 'overall', title: 'Overall', rubrics: [
     { id: 'overall.psl', label: 'PSL score', value: '5.9 / 8', visual: 'Orbit', scale: 'quality', positions: [5.9 / 8], grade: null },
-    ...overallFeatures.map(feature => ({ id: `overall.${feature.label}`, label: feature.label, value: feature.value, visual: feature.label === 'Symmetry' ? 'Orbit' : 'Text', scale: 'quality' as const, positions: feature.label === 'Symmetry' ? [.74] : [], grade: null })),
+    ...overallFeatures.map(feature => ({ id: `overall.${feature.label}`, label: feature.label, value: feature.value, visual: 'Orbit', scale: 'quality' as const, positions: [.74], grade: null })),
   ],
 }]
 
 
 export default function ReportPreview() {
-  const [mode, setMode] = useState<'design' | 'sample' | 'limited'>('design')
+  const [mode, setMode] = useState<'design' | 'sample' | 'limited' | 'loading'>('design')
   const designEntries = entries.map(entry => ({ id: entry.id, value: designValues[entry.id] ?? entry.value }))
   const visibleEntries = mode === 'design' ? designEntries : mode === 'limited' ? entries.map(entry => entry.id.startsWith('skin.') || entry.id.startsWith('eyes.') ? { ...entry, value: null, evidence: 'Insufficient capture detail; retake in even light.' } : entry) : entries
   return <>
@@ -63,12 +64,12 @@ export default function ReportPreview() {
     <div className="flex flex-wrap items-center justify-between gap-3 border-b bg-white px-5 py-3 sm:px-10">
       <div><p className="text-sm font-medium">Web report v2 · Local preview</p><p className="mt-1 text-xs text-zinc-500">{mode === 'design' ? 'Illustrative scales and header scores. These are design fixtures, not calibrated analysis.' : 'Ungraded sample observations. Header scores are layout fixtures.'}</p></div>
       <div className="flex rounded-full bg-zinc-100 p-1" aria-label="Preview data">
-        {([['design', 'Design'], ['sample', 'Sample results'], ['limited', 'Limited capture']] as const).map(([value, label]) => <button key={value} type="button" aria-pressed={mode === value} onClick={() => setMode(value)} className={`rounded-full px-3 py-2 text-xs focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#00A8EF] ${mode === value ? 'bg-white text-black shadow-sm' : 'text-zinc-500'}`}>{label}</button>)}
+        {([['design', 'Design'], ['sample', 'Sample results'], ['limited', 'Limited capture'], ['loading', 'Loading overlays']] as const).map(([value, label]) => <button key={value} type="button" aria-pressed={mode === value} onClick={() => setMode(value)} className={`rounded-full px-3 py-2 text-xs focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#00A8EF] ${mode === value ? 'bg-white text-black shadow-sm' : 'text-zinc-500'}`}>{label}</button>)}
       </div>
     </div>
-    <div className={styles.previewShell}><AnalysisReport categories={categories} imageSrc="/model.png" landmarks={null} score={7.4} pslScore={5.9} renderDetails={category => <V2ReportDetail key={`${category.id}-${mode}`} category={category} groups={category.id === 'overall' ? overallGroups : buildWebRubricGroups(category.id, visibleEntries, mode === 'design' ? designIllustrations : {})} />}>
+    <div className={styles.previewShell}>{mode === 'loading' ? <div className="mx-auto w-full max-w-[360px] p-5"><ScanImagePanel imageSrc="/model.png" landmarks={null} /></div> : <AnalysisReport categories={categories} imageSrc="/model.png" landmarks={null} score={7.4} pslScore={5.9} renderDetails={category => <V2ReportDetail key={`${category.id}-${mode}`} category={category} groups={category.id === 'overall' ? overallGroups : buildWebRubricGroups(category.id, visibleEntries, mode === 'design' ? designIllustrations : {})} />}>
       <div className="mt-8 border border-dashed p-4 text-xs leading-5 text-zinc-500">Development preview only.<br />No report saved or customer credits used.</div>
-    </AnalysisReport></div>
+    </AnalysisReport>}</div>
   </>
 }
 

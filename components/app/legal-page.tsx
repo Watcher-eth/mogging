@@ -22,7 +22,7 @@ type LegalPageProps = {
   contactLabel?: string
 }
 
-const supportHref = 'mailto:support@mogging.app'
+const supportHref = 'mailto:gabe@mogging.com'
 
 export function LegalPage({
   eyebrow,
@@ -32,7 +32,7 @@ export function LegalPage({
   path,
   sections,
   contactHref = supportHref,
-  contactLabel = 'support@mogging.app',
+  contactLabel = 'gabe@mogging.com',
 }: LegalPageProps) {
   return (
     <>

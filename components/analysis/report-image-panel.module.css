@@ -1,0 +1,24 @@
+.portrait { --side-wash: linear-gradient(90deg,#fff,#ffffffdb 2%,#ffffff66 7%,#ffffff10 14%,#fff0 21%,#fff0 86%,#ffffff10 91%,#ffffff66 96%,#ffffffdb 99%,#fff); position: relative; display: grid; place-items: center; min-height: 520px; overflow: hidden; isolation: isolate; background: #fff; }
+.natural { min-height: 0; aspect-ratio: var(--portrait-ratio); }
+.media { position: relative; width: 100%; aspect-ratio: var(--portrait-ratio); overflow: hidden; mask-image: linear-gradient(90deg,transparent,#000 2px,#000 calc(100% - 2px),transparent),linear-gradient(180deg,transparent,#000 2px,#000 calc(100% - 2px),transparent); mask-composite: intersect; }
+.leftBlur { inset: 0 80% 0 0; }
+.rightBlur { inset: 0 0 0 86%; }
+.bottomBlur { inset: 64% 0 0; }
+.wash {
+  position: absolute;
+  inset: -1px;
+  pointer-events: none;
+  background:
+    var(--side-wash),
+    linear-gradient(180deg,#fff0 62%,#ffffff08 69%,#ffffff29 78%,#ffffff80 88%,#ffffffd9 96%,#fff),
+    linear-gradient(180deg,#fff,#ffffff80 1%,#ffffff10 3%,#fff0 5%);
+}
+@media (max-width: 1023px) {
+  .portrait { --side-wash: linear-gradient(90deg,#fff,#ffffffb3 1%,#ffffff4d 3%,#ffffff0d 5%,#fff0 8%,#fff0 94%,#ffffff0d 96%,#ffffff4d 98%,#fff); }
+  .leftBlur { inset: 0 92% 0 0; }
+  .rightBlur { inset: 0 0 0 94%; }
+}
+@media (min-width: 1024px) {
+  .portrait { container-type: size; width: 100%; height: 100%; min-height: 0; aspect-ratio: auto; align-items: start; }
+  .media { width: min(100cqw,calc(100cqh * var(--portrait-ratio))); }
+}

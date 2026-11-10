@@ -58,3 +58,14 @@ test('every mobile report category draws its complete feature grid and growth se
     expect(saves).toBe(0)
   }
 })
+
+test('mock summaries use the real report fields and keep zero scores and category aliases', async () => {
+  const { buildMockOverallCategory } = await import('./mock-report-data')
+  const report = buildMockOverallCategory('0', { psl: '0', cheekbones: '6.5', 'skin-quality': '8.1' })
+  expect(report.score).toBe(0)
+  expect(report.features.find(item => item.label === 'PSL score')?.value).toBe('0.0 / 8')
+  expect(report.features.find(item => item.label === 'Cheekbone structure')?.positions).toEqual([.65])
+  expect(report.features.find(item => item.label === 'Skin quality')?.value).toBe('8.1 / 10')
+  expect(report.features.find(item => item.label === 'Facial thirds')).toBeDefined()
+  expect(report.features.every(item => item.visual === 'Orbit')).toBe(true)
+})

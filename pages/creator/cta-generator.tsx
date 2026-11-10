@@ -1,3 +1,4 @@
+import dynamic from 'next/dynamic'
 import { Disclosure, DisclosureSummary, AccordionContent } from '@/components/ui/accordion'
 import { MockProtocolGenerator } from '@/components/creator/mock-protocol-generator'
 import { MockReportGenerator } from '@/components/creator/mock-report-generator'
@@ -8,7 +9,7 @@ import { CreatorStepper } from '@/components/creator/creator-stepper'
 import Image from 'next/image'
 import { LayoutGroup, MotionConfig, motion, useReducedMotion } from 'motion/react'
 import { useEffect, useRef, useState } from 'react'
-import { BookOpen, CalendarCheck2, FileChartColumn, Megaphone, Check, CheckCircle2, Download, FileArchive, Film, ImagePlus, Loader2, RefreshCw, Send, Trash2, UploadCloud, type LucideIcon } from 'lucide-react'
+import { BookOpen, CalendarCheck2, ChartNoAxesCombined, FileChartColumn, Megaphone, Check, CheckCircle2, Download, FileArchive, Film, ImagePlus, Loader2, RefreshCw, Send, Trash2, UploadCloud, type LucideIcon } from 'lucide-react'
 import useSWR from 'swr'
 import { toast } from 'sonner'
 import { Button } from '@/components/ui/button'
@@ -25,9 +26,12 @@ import { buildMockOverallCategory } from '@/lib/creator/mock-report-data'
 import { cn } from '@/lib/utils'
 import { CreatorIcon, type CreatorIconName } from '@/components/creator/creator-icon'
 
+const MockProgressGenerator = dynamic(() => import('@/components/creator/mock-progress-generator').then(module => module.MockProgressGenerator), { ssr: false })
+
 const generatorTabs = [
   { id: 'cta', label: 'CTA generator', icon: Megaphone },
   { id: 'mock', label: 'Mock reports', icon: FileChartColumn },
+  { id: 'progress', label: 'Mock Progress', icon: ChartNoAxesCombined },
   { id: 'protocol', label: 'Mock Protocol', icon: CalendarCheck2 },
 ] as const
 
@@ -309,7 +313,8 @@ export default function CtaGeneratorPage() {
         <MockReportGenerator images={usableImages} active={mode === 'mock' && step !== 1} onBack={() => setStep(1)} />
       </motion.div>
       <motion.div id="generator-panel-protocol" role="tabpanel" aria-labelledby="generator-tab-protocol" hidden={mode !== 'protocol'} initial={false} animate={{ opacity: mode === 'protocol' ? 1 : 0 }}><MockProtocolGenerator /></motion.div>
-      {step === 1 && mode !== 'protocol' ? <motion.section layout="position" layoutDependency={mode} className="creator-surface p-5 sm:p-6">
+      {mode === 'progress' ? <div id="generator-panel-progress" role="tabpanel" aria-labelledby="generator-tab-progress"><MockProgressGenerator /></div> : null}
+      {step === 1 && (mode === 'cta' || mode === 'mock') ? <motion.section layout="position" layoutDependency={mode} className="creator-surface p-5 sm:p-6">
         <SectionTitle icon={UploadCloud} title="Add creator photos" detail="Upload a clear, front-facing photo. Face mapping stays in your browser." />
           <input ref={fileInputRef} className="sr-only" type="file" accept="image/*" multiple onChange={(event) => void handleFiles(event.target.files)} />
           <div className={cn("mt-5", !images.length && "rounded-[18px] border border-dashed border-black/15 bg-[#f7f8f9]/70 p-3 sm:p-4")}>

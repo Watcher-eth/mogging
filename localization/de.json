@@ -19,7 +19,7 @@
   "landing.planTitle": "Dein Potenzial. Dein personalisiertes Protokoll, um es zu erreichen.",
   "landing.evaluation": "01 / Deine Analyse",
   "landing.scoreTitle": "Mehr als nur ein Score.",
-  "landing.scoreDescription": "Kieferlinie, Augen, Proportionen und Symmetrie: Lerne deine Gesichtszüge anhand von 10 Kategorien und über 40 Merkmalen kennen. Deine Berichte bleiben gespeichert, damit du deine Fortschritte verfolgen kannst.",
+  "landing.scoreDescription": "Kieferlinie, Augen, Proportionen und Symmetrie: Lerne deine Gesichtszüge anhand von 13 Kategorien und über 110 Merkmalen kennen. Deine Berichte bleiben gespeichert, damit du deine Fortschritte verfolgen kannst.",
   "landing.protocol": "02 / Dein Protokoll",
   "landing.directionTitle": "Weniger raten - mehr zielorientiertes Protokoll",
   "landing.finalTitle": "Finde deinen Ausgangspunkt.",
@@ -29,8 +29,8 @@
   "faq.free.answer": "Ja, der Download ist kostenlos. Analysen und Pro-Funktionen sind kostenpflichtig. Die verfügbaren Angebote findest du in der App.",
   "faq.evaluation.question": "Was beinhaltet meine Analyse?",
   "faq.evaluation.answer": "10 detaillierte Kategorien mit über 40 Merkmalen zu Augen, Kieferlinie, Proportionen, Symmetrie und mehr. Dazu erhältst du ein persönliches Protokoll und gespeicherte Analysen, mit denen du deine Fortschritte verfolgen kannst.",
-  "faq.public.question": "Werden meine Fotos in der Rangliste angezeigt?",
-  "faq.public.answer": "Die Teilnahme an der Rangliste ist freiwillig. Du entscheidest, ob dein Profil öffentlich ist, und kannst diese Einstellung jederzeit ändern.",
+  "faq.public.question": "Sind meine Fotos und Berichte öffentlich?",
+  "faq.public.answer": "Nein. Deine Fotos und Berichte sind privat. Du kannst auf Wunsch ein Bild deines eigenen Berichts exportieren.",
   "faq.devices.question": "Kann ich Mogging auch ohne iPhone nutzen?",
   "faq.devices.answer": "Du kannst eine kostenpflichtige Gesichtsanalyse im Browser starten. Die App ist für iPhone verfügbar; eine Android-Version folgt.",
   "stats.categories": "Detaillierte Kategorien",
@@ -307,5 +307,9 @@
   "paywall.goalCheekbones": "definiertere Wangenknochen",
   "paywall.benefits.scanTitle": "1 Gesichtsscan pro Woche",
   "paywall.benefits.protocolTitle": "Maßgeschneidertes Protokoll für deinen Aufstieg",
-  "paywall.benefits.trackingTitle": "Fortschritt & Erinnerungen"
+  "paywall.benefits.trackingTitle": "Fortschritt & Erinnerungen",
+  "landing.progress": "03 / Dein Fortschritt",
+  "landing.progressTitle": "Sieh deinen Fortschritt. Finde deinen nächsten Schritt.",
+  "landing.progressDescription": "Vergleiche deine Auswertungen im Laufe der Zeit. Verfolge Veränderungen deiner Merkmale und richte dein tägliches Protocol gezielt aus.",
+  "landing.progressPrivacy": "Deine Auswertungen bleiben privat."
 }

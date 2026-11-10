@@ -37,7 +37,7 @@ test('performance separates submission-period costs, payment-date cash and curre
 test('source times, exclusions and the preview attribution destination stay explicit', () => {
   const html = renderToStaticMarkup(<CreatorPerformanceDashboard data={snapshot()} attributionHref="/admin/__product-overview-preview?page=creator-attribution" />)
   expect(html).toContain('11:30 AM PDT')
-  expect(html).toContain('matheo.psl, bejapsl and Valerie')
+  expect(html).toContain('matheo.psl, bejapsl, Jeff / youcalb and Valerie')
   expect(html).toContain('Drafts are excluded')
   expect(html).toContain('/admin/__product-overview-preview?page=creator-attribution')
   expect(html).toContain('before social-platform and experiment exclusions')

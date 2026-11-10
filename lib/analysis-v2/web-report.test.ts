@@ -1,11 +1,44 @@
 import { expect, test } from 'bun:test'
-import { buildWebRubricGroups, formatRubricValue, layoutWebRubrics } from './web-report'
+import { buildCheekContextGroups, buildLegacyRubricGroups, buildWebRubricGroups, formatRubricValue, layoutWebRubrics } from './web-report'
 import { designValues } from './preview-fixtures'
 import sampleEntries from './sample-entries.json'
 import registry from './rubric-registry.json'
 import type { RubricEstimate } from './evaluator'
 
 const entries: RubricEstimate[] = registry.categories.flatMap(category => category.rubrics.map(rubric => ({ id: rubric.id, value: 'Observed', evidence: 'Visible in capture', source: 'llm-estimate', grade: null })))
+
+test('Cheeks includes existing related measurements without fabricating or regrading observations', () => {
+  const saved = [
+    { id: 'jaw.width', value: .8, positions: [.4], grade: 6 },
+    { id: 'face.frame', value: .72, positions: [.5], grade: 7 },
+    { id: 'face.temple-width', value: .93, positions: [.6], grade: 7 },
+    { id: 'symmetry.cheek-outline', value: 'Similar' },
+    { id: 'face.forehead-width', value: null },
+  ]
+  const original = JSON.stringify(saved)
+  const context = buildCheekContextGroups(saved)[0].rubrics
+  expect(context).toHaveLength(4)
+  expect(context.find(rubric => rubric.id === 'jaw.width')).toMatchObject({ value: '0.80×', positions: [.4], grade: 6 })
+  expect(context.every(rubric => rubric.measurement?.startsWith('Related measurement'))).toBe(true)
+  expect(buildCheekContextGroups([])).toEqual([])
+  expect(JSON.stringify(saved)).toBe(original)
+})
+
+test('legacy reports preserve saved values and only calibrate explicit supported scores', () => {
+  const category = { id: 'overall', title: 'Overall', features: [
+    { label: 'PSL', value: '5.6 / 8' }, { label: 'Eyes', value: '8.1 / 10' },
+    { label: 'Shape', value: 'Almond' }, { label: 'Angle', value: 'Obtuse', measurement: '137.2°' },
+    { label: 'Missing', value: 'Unavailable' }, { label: 'Invalid', value: '12 / 10' },
+  ] }
+  const original = JSON.stringify(category)
+  const rubrics = buildLegacyRubricGroups(category)[0].rubrics
+  expect(rubrics.map(rubric => rubric.value)).toEqual(category.features.map(feature => feature.value))
+  expect(rubrics[0].positions[0]).toBeCloseTo(.7)
+  expect(rubrics[1].positions[0]).toBeCloseTo(.81)
+  expect(rubrics[3].measurement).toBe('137.2°')
+  expect(rubrics.slice(2).every(rubric => rubric.visual === 'Text' && rubric.positions.length === 0)).toBe(true)
+  expect(JSON.stringify(category)).toBe(original)
+})
 
 test('separate categories present supported primary rubrics exactly once', () => {
   const rendered = registry.categories.flatMap(category => buildWebRubricGroups(category.id === 'face' ? 'face-shape' : category.id, entries).flatMap(group => group.rubrics.map(rubric => rubric.id)))
@@ -67,6 +100,20 @@ test('paired angular rubrics occupy the same row', () => {
   expect(paired.every(item => item.rubric.visual === 'Orbit')).toBe(true)
 })
 
+test('graphics are distributed through observations without shuffling either content sequence', () => {
+  const graphics = Array.from({ length: 3 }, (_, index) => ({ id: `chart-${index}`, label: 'Measurement', value: '0.5×', visual: 'Capsule', positions: [.5], grade: null }))
+  const observations = Array.from({ length: 6 }, (_, index) => ({ id: `note-${index}`, label: 'Observation', value: 'Observed', visual: 'Text', positions: [], grade: null }))
+  const layout = layoutWebRubrics([...graphics, ...observations])
+  expect(layout.filter(item => item.rubric.visual !== 'Text').map(item => item.rubric.id)).toEqual(graphics.map(item => item.id))
+  expect(layout.filter(item => item.rubric.visual === 'Text').map(item => item.rubric.id)).toEqual(observations.map(item => item.id))
+  expect(layout.map(item => item.rubric.id)).toEqual(['note-0', 'note-1', 'chart-0', 'note-2', 'note-3', 'chart-1', 'note-4', 'note-5', 'chart-2'])
+  expect(layoutWebRubrics([...graphics, ...observations])).toEqual(layout)
+  const rails = graphics.slice(0, 2).map(rubric => ({ ...rubric, visual: 'Rail' }))
+  const railLayout = layoutWebRubrics([...rails, ...observations])
+  const railIndexes = railLayout.flatMap((item, index) => item.rubric.visual === 'Rail' ? [index] : [])
+  expect(railIndexes[1] - railIndexes[0]).toBeGreaterThan(1)
+})
+
 test('directional dials use quality grades while range dials retain measured positions', () => {
   const rubrics = buildWebRubricGroups('proportions', [
     { id: 'proportions.convexity', value: 168 },
@@ -79,4 +126,15 @@ test('directional dials use quality grades while range dials retain measured pos
   expect(rubrics[0].positions).toEqual([.51])
   expect(rubrics[1].scale).toBe('quality')
   expect(rubrics[1].positions).toEqual([.86])
+})
+
+test('Overall alternates instruments and score-only cards without reordering or changing scores', () => {
+  const rubrics = Array.from({ length: 7 }, (_, index) => ({ id: `overall.${index}`, label: `Category ${index}`, value: `${index} / 10`, visual: 'Orbit', positions: [index / 10], grade: null, scale: 'quality' as const }))
+  const layout = layoutWebRubrics(rubrics, 'summary')
+  expect(layout.map(item => item.rubric.id)).toEqual(rubrics.map(rubric => rubric.id))
+  expect(layout.map(item => item.rubric.visual)).toEqual(['Orbit', 'Text', 'Orbit', 'Text', 'Orbit', 'Text', 'Orbit'])
+  expect(layout.map(item => item.rubric.value)).toEqual(rubrics.map(rubric => rubric.value))
+  expect(layout.filter(item => !item.full)).toHaveLength(6)
+  expect(rubrics.every(rubric => rubric.visual === 'Orbit')).toBe(true)
+  expect(layoutWebRubrics([], 'summary')).toEqual([])
 })

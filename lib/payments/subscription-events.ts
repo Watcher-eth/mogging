@@ -58,6 +58,7 @@ export function normalizeRevenueCat(event: RevenueCatEvent, receivedAt = new Dat
     amount: signedAmount == null ? null : String(signedAmount),
     occurredAt: event.event_timestamp_ms != null ? new Date(event.event_timestamp_ms) : receivedAt,
     properties: {
+      usd_amount: event.price == null ? null : (charged ? 1 : refunded ? -1 : 0) * Math.abs(event.price),
       period_type: event.period_type ?? null, trial_conversion: event.is_trial_conversion ?? false,
       store: event.store ?? null, country: event.country_code ?? null,
       purchased_at_ms: event.purchased_at_ms ?? null, expiration_at_ms: event.expiration_at_ms ?? null,

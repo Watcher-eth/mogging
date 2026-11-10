@@ -2,6 +2,7 @@ import { expect, test } from 'bun:test'
 import { readFileSync } from 'node:fs'
 import { runInNewContext } from 'node:vm'
 import { createHash } from 'node:crypto'
+import { runStripeRecovery } from './stripe-recovery'
 
 const transpile = (file: string, exports: string, scope: any) => {
   const source = readFileSync(new URL(file, import.meta.url), 'utf8').replace(/^import .*\n/gm, '').replace(/^export /gm, '')
@@ -40,21 +41,25 @@ test('webhook, delayed success and verified return share one financial row and o
   expect([...events.values()][0].properties.price).toBe(999)
 })
 
-test('recovery still processes billing if webhook configuration cannot be inspected; repeat lease does no work', async () => {
-  let claimed = false, processed = 0
-  const warnings: string[] = [], records: any[] = []
-  const scope: any = { Date, URL, crypto,
-    process: { env: { VERCEL_ENV: 'production' } }, schema: { analyticsEvents: {} },
-    and: (...v: unknown[]) => v, eq: (...v: unknown[]) => v, lt: (...v: unknown[]) => v, desc: (v: unknown) => v, sql: () => ({}),
-    db: { query: { analyticsEvents: { findFirst: async () => null } }, insert: () => ({ values: async (record: any) => { records.push(record) } }) },
-    processBillingWebhook: async (_provider: unknown, _id: unknown, work: () => Promise<void>) => { if (claimed) return false; claimed = true; await work(); return true },
+test('webhook inspection failure does not prevent durable billing recovery', async () => {
+  let processed = 0
+  const done = new Set<string>(), warnings: string[] = [], records: any[] = []
+  const chain = { from: () => ({ where: async () => [...done].map(id => ({ id: `stripe:${id}` })) }) }
+  const scope: any = { Date, URL, crypto, runStripeRecovery,
+    process: { env: { VERCEL_ENV: 'production' } }, schema: { analyticsEvents: {}, billingWebhookReceipts: {} },
+    and: (...v: unknown[]) => v, eq: (...v: unknown[]) => v, lt: (...v: unknown[]) => v, desc: (v: unknown) => v,
+    inArray: (...v: unknown[]) => v, isNotNull: (v: unknown) => v, sql: (parts: string[]) => ({ text: parts.join('?') }),
+    db: { execute: async (query: any) => query.text.includes('insert into billing_reconciliation_state') ? [{ state: null }]
+      : query.text.includes('set state=') ? [{ provider: 'stripe' }] : [],
+      select: () => chain, query: { analyticsEvents: { findFirst: async () => null } },
+      insert: () => ({ values: async (record: any) => { records.push(record) } }) },
     recordBackendRequest: async (_feature: unknown, result: any) => { warnings.push(result.code) },
-    processStripeEvent: async () => { processed++ },
-    getStripe: () => ({ webhookEndpoints: { list: async () => { throw new Error('Read permission unavailable') } }, events: { list: async function* () { yield { id: 'verified-provider-event' } } } }),
+    processStripeEvent: async (event: any) => { processed++; done.add(event.id) },
+    getStripe: () => ({ webhookEndpoints: { list: async () => { throw new Error('Read permission unavailable') } },
+      events: { list: async () => ({ data: [{ id: 'verified-provider-event' }], has_more: false }) } }),
   }
   const api = transpile('./stripe-reconciliation.ts', 'reconcileStripeBilling', scope)
-  expect(await api.reconcileStripeBilling()).toEqual({ ran: true, eventsChecked: 1 })
-  expect(await api.reconcileStripeBilling()).toEqual({ ran: false, eventsChecked: 0 })
+  expect(await api.reconcileStripeBilling()).toMatchObject({ ran: true, eventsChecked: 2, recovered: 1, partial: false })
   expect(processed).toBe(1)
   expect(warnings).toEqual(['billing_webhook_check_failed'])
   expect(records[0].properties.webhook_ready).toBeNull()

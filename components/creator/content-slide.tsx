@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import type { ContentSlide, GeneratorImage } from '@/lib/creator/content-generator'
 import { prepareCanvas, drawSlideFrame } from '@/lib/creator/export-slides'
 
-export function ContentSlidePreview({ slide, images, format }: { slide: ContentSlide; images: GeneratorImage[]; format: { width: number; height: number } }) {
+export function ContentSlidePreview({ slide, images, format, active = true }: { active?: boolean; slide: ContentSlide; images: GeneratorImage[]; format: { width: number; height: number } }) {
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const [replay, setReplay] = useState(0)
   const [error, setError] = useState<string | null>(null)
@@ -24,9 +24,9 @@ export function ContentSlidePreview({ slide, images, format }: { slide: ContentS
       const start = performance.now()
       draw = () => {
         cancelAnimationFrame(frame)
-        const time = reduced.matches ? 4000 : slide.templateId === 'mock-report' ? performance.now() - start : Math.min(4000, performance.now() - start)
+        const time = reduced.matches || !active ? 4000 : slide.templateId === 'mock-report' ? performance.now() - start : Math.min(4000, performance.now() - start)
         drawSlideFrame(ctx, slide, prepared.image, prepared.overlay, width, height, time, prepared.brand)
-        if (!document.hidden && !reduced.matches && (slide.templateId === 'mock-report' || time < 4000)) frame = requestAnimationFrame(draw!)
+        if (active && !document.hidden && !reduced.matches && (slide.templateId === 'mock-report' || time < 4000)) frame = requestAnimationFrame(draw!)
       }
       reduced.addEventListener('change', draw)
       document.addEventListener('visibilitychange', draw)
@@ -42,7 +42,7 @@ export function ContentSlidePreview({ slide, images, format }: { slide: ContentS
         document.removeEventListener('visibilitychange', draw)
       }
     }
-  }, [slide, images, format.width, format.height, replay])
+  }, [slide, images, format.width, format.height, replay, active])
   return <div>
     <div className="relative overflow-hidden bg-black" style={{ aspectRatio: `${format.width} / ${format.height}` }}>
       <canvas ref={canvasRef} className="block size-full" role="img" aria-label={`Mogging ${slide.metricLabel}. Current ${slide.currentScore}, potential ${slide.potentialScore}.`} />

@@ -1,5 +1,7 @@
+import { drawReportMetricTimeline } from './metric-timeline'
+import { drawFaceTreatment } from './face-treatment'
 import type { ContentSlide } from './content-generator'
-import { drawReportOverlay, type ReportOverlay } from './report-overlay'
+import { type ReportOverlay } from './report-overlay'
 import type { ReportCategory } from './mobile-overlay-engine/report-data'
 import { buildCategoryActionPlan } from './mobile-overlay-engine/category-action-plan'
 
@@ -39,7 +41,7 @@ export function drawMockReport(ctx: CanvasRenderingContext2D, slide: ContentSlid
     ctx.globalAlpha = Math.max(.58, 1 - report.scroll / (mockReportHeroHeight * .7) * .42)
     const scale = Math.max(w / image.width, mockReportHeroHeight / image.height)
     ctx.drawImage(image, (w - image.width * scale) / 2, (mockReportHeroHeight - image.height * scale) / 2, image.width * scale, image.height * scale)
-    if (overlay) drawReportOverlay(ctx, overlay, w, time)
+    if (overlay) drawFaceTreatment(ctx, overlay, w, time)
     ctx.restore()
   }
   fade(ctx, mockReportHeroHeight - 120, 120)
@@ -104,11 +106,7 @@ export function drawMockReport(ctx: CanvasRenderingContext2D, slide: ContentSlid
   symbol(ctx, 12, 42.5, y + 24.5, 17, true)
   text(ctx, 'Potential Score', 80, y + 22, 19, 700)
   text(ctx, `${Number(slide.potentialScore).toFixed(1)}/10`, w - 34, y + 22, 18, 600, muted, true)
-  box(ctx, 34, y + 64, w - 68, 7, 4, 'rgba(7,7,9,.08)')
-  const potentialGradient = ctx.createLinearGradient(34, 0, w - 34, 0)
-  potentialGradient.addColorStop(0, '#53A553'); potentialGradient.addColorStop(1, '#00A8EF')
-  box(ctx, 34, y + 64, (w - 68) * Math.max(.08, Number(slide.potentialScore) / 10), 7, 4, potentialGradient)
-  for (const score of [slide.currentScore, slide.potentialScore]) box(ctx, 34 + (w - 68) * Number(score) / 10 - 4, y + 59, 8, 17, 4, '#ffffffcc')
+  drawReportMetricTimeline(ctx, { label: 'Progress potential', value: `${slide.potentialScore} / 10`, visual: 'Orbit', scale: 'quality', positions: [Number(slide.currentScore) / 10, Number(slide.potentialScore) / 10] }, 34, y + 58, w - 68, 32)
   y += 115
   const blocks = growthBlocks(category)
   const blockHeights = blocks.map(block => wrap(ctx, block.value, w - 68, block.size, block.weight).length * block.lineHeight + (block.heading ? 27 : 0))
@@ -234,7 +232,7 @@ function box(ctx: CanvasRenderingContext2D, x: number, y: number, width: number,
   ctx.beginPath(); ctx.roundRect(x, y, width, height, radius); ctx.fillStyle = fill; ctx.fill()
 }
 function card(ctx: CanvasRenderingContext2D, x: number, y: number, width: number, height: number, radius: number) {
-  box(ctx, x, y, width, height, radius, '#fff'); ctx.strokeStyle = '#e4e4e7'; ctx.lineWidth = 1; ctx.stroke()
+  box(ctx, x, y, width, height, radius, '#fcfcfd')
 }
 function text(ctx: CanvasRenderingContext2D, value: string, x: number, y: number, size: number, weight = 500, color = ink, right = false, maxWidth?: number, font = sans, align?: CanvasTextAlign) {
   ctx.font = `${weight} ${size}px ${font}`; ctx.fillStyle = color; ctx.textAlign = align ?? (right ? 'right' : 'left'); ctx.fillText(value, x, y, maxWidth); ctx.textAlign = 'left'
@@ -288,31 +286,5 @@ function mockFeatureLayout(category: ReportCategory) {
   }
   return { tiles, height: top }
 }
-function drawMetricVisual(ctx: CanvasRenderingContext2D, feature: ReportCategory['features'][number], x: number, y: number, width: number, height: number) {
-  const quality = feature.visual === 'Rail' || feature.scale === 'quality'
-  const stops: Array<[number, string]> = quality ? [[0,'#F33232'],[.32,'#FF6800'],[.64,'#53A553'],[1,'#00A8EF']] : [[0,'#F33232'],[.18,'#FF6800'],[.35,'#53A553'],[.5,'#00A8EF'],[.65,'#53A553'],[.82,'#FF6800'],[1,'#F33232']]
-  const gradient = ctx.createLinearGradient(x, y, x + width, y); stops.forEach(([position,color]) => gradient.addColorStop(position,color))
-  const positions = feature.visual === 'Rail' ? [(feature.grade ?? 7.4) / 10] : feature.positions ?? [.5]
-  ctx.save()
-  if (feature.visual === 'Orbit') {
-    const radius = Math.min(width * .43, height - 14), cx = x + width / 2, cy = y + (height + radius) / 2
-    ctx.beginPath(); ctx.arc(cx, cy, radius, Math.PI, Math.PI * 2)
-    ctx.strokeStyle = gradient; ctx.lineWidth = 14; ctx.lineCap = 'round'; ctx.shadowColor = '#00A8EF55'; ctx.shadowBlur = 10; ctx.globalAlpha = .25; ctx.stroke()
-    ctx.shadowBlur = 0; ctx.globalAlpha = .55; ctx.lineWidth = 9; ctx.stroke()
-    ctx.shadowBlur = 0; ctx.globalAlpha = .75; ctx.lineWidth = 1.3; ctx.strokeStyle = 'white'; ctx.stroke()
-    ctx.beginPath(); ctx.arc(cx, cy, 2, 0, Math.PI * 2); ctx.fillStyle = '#71717a'; ctx.fill()
-    for (const position of positions) {
-      const angle = Math.PI * (1 + Math.max(0,Math.min(1,position))), px = cx + radius * Math.cos(angle), py = cy + radius * Math.sin(angle)
-      ctx.beginPath(); ctx.moveTo(cx,cy); ctx.lineTo(px,py); ctx.lineWidth = 1; ctx.strokeStyle = '#71717a55'; ctx.stroke()
-      ctx.beginPath(); ctx.arc(px,py,7,0,Math.PI*2); ctx.fillStyle = '#ffffffcc'; ctx.fill(); ctx.strokeStyle = 'white'; ctx.stroke()
-    }
-  } else {
-    const cy = y + height / 2
-    box(ctx, x, cy - 4, width, 8, 4, '#e4e4e7')
-    ctx.globalAlpha = .65; ctx.shadowColor = '#00A8EF66'; ctx.shadowBlur = 5
-    box(ctx, x, cy - 4, feature.visual === 'Rail' ? width * positions[0] : width, 8, 4, gradient)
-    ctx.globalAlpha = 1; ctx.shadowBlur = 0
-    positions.forEach(position => box(ctx, x + width * Math.max(0,Math.min(1,position)) - 4, cy - 8, 8, 16, 4, '#ffffffdd'))
-  }
-  ctx.restore()
-}
+
+export const drawMetricVisual = drawReportMetricTimeline

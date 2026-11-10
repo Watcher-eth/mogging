@@ -1,12 +1,16 @@
 {
   "nav.leaderboard": "Ranking",
-  "faq.public.question": "¿Mis fotos aparecerán en el ranking?",
-  "faq.public.answer": "Participar en el ranking es opcional. Tú decides si tu perfil es público y puedes cambiarlo en Configuración.",
+  "faq.public.question": "¿Mis fotos e informes son públicos?",
+  "faq.public.answer": "No. Tus fotos e informes son privados. Puedes exportar una imagen de tu propio informe cuando quieras.",
   "settings.title": "Configuración",
   "settings.name": "Escribe tu nombre",
   "settings.contact": "Contactar a soporte",
   "settings.publicationDescription": "Publica tu último análisis en Battle y en el ranking.",
   "landing.leaderboard": "03 / Tu ranking",
   "landing.friendsDescription": "Explora el ranking mundial o compárate con tus amigos. Consulten análisis públicos, sigan su progreso y avancen juntos.",
-  "landing.publicChoice": "Tú decides si participas. Haz público tu perfil para aparecer y cambia esta opción cuando quieras en Configuración."
+  "landing.publicChoice": "Tú decides si participas. Haz público tu perfil para aparecer y cambia esta opción cuando quieras en Configuración.",
+  "landing.progress": "03 / Tu progreso",
+  "landing.progressTitle": "Mira tu progreso. Encuentra tu siguiente paso.",
+  "landing.progressDescription": "Compara tus evaluaciones a lo largo del tiempo. Sigue los cambios de tus rasgos y enfoca tu Protocol diario.",
+  "landing.progressPrivacy": "Tus evaluaciones son privadas."
 }

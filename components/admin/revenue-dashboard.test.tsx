@@ -10,6 +10,10 @@ function snapshot(): AnalyticsDashboard {
       { currency: 'USD', net: '90', gross: '100', refunds: '10', paying_customers: 2, missing_amount_events: 0 }],
     revenueTotals: [{ currency: 'EUR', net: '9000' }, { currency: 'USD', net: '500' }],
     revenueComparison: [{ currency: 'USD', current_net: '90', previous_net: '60', missing_amount_events: 0 }],
+    revenueFinancials: [{ currency: 'USD', gross: 100, refunds: 10, after_refunds: 90, taxes: 0, fees: 13.5, proceeds: 76.5, known_proceeds: 76.5, unknown_fee_events: 0, commission_mismatches: 1 }],
+    revenueSubscriptionOverview: [{ auto_renewing: 8, cancelling: 2, trials: 0, billing_retry: 0, access_total: 10, ended: 3, starting_subscriptions: 10, churned_starting_subscriptions: 2, ended_in_period: 3, cancellation_requests: 4 }],
+    revenueSources: [{ source: 'Apple App Store', currency: 'USD', purchases: 3, refund_transactions: 1, gross: 100, refunds: 10, after_refunds: 90, proceeds: 76.5, provider_estimated_proceeds: 63 }],
+    revenueCountries: [{ country: 'US', currency: 'USD', purchases: 3, refund_transactions: 1, gross: 100, refunds: 10, after_refunds: 90, proceeds: 76.5 }],
     revenueDaily: [], billingProducts: [], billingDimensions: [], billing: [],
     billingReporting: [{ missing_amount_events: 0, all_time_missing_amount_events: 0, unrecorded_stripe_purchases: 0,
       latest_event: '2026-10-27T21:30:00', latest_receipt: '2026-10-27T21:31:00', webhook_ready: 'true' }],
@@ -27,13 +31,13 @@ test('period revenue, lifetime totals and currencies remain distinct', () => {
   const html = renderToStaticMarkup(<RevenueDashboard data={snapshot()} days={30} />)
   expect(html).toContain('>$90.00</p>')
   expect(html).toContain('>$100.00</p>')
-  expect(html).toContain('All-time net: $500.00')
+  expect(html).toContain('all-time after refunds: $500.00')
   expect(html).toContain('50.0% vs previous period')
-  expect(html).toContain('Previous net: $60.00')
+  expect(html).toContain('Previous after refunds: $60.00')
   expect(html).not.toContain('$790.00')
   expect(html).toContain('>7</p>')
   expect(html).toContain('100 all time')
-  expect(html).toContain('Scheduled cancellations')
+  expect(html).toContain('Cancelled · access remains')
   expect(html).toContain('>2</p>')
   expect(html).not.toContain('Canceled / discontinued')
   expect(html).toContain('2:31 PM PDT')
@@ -60,7 +64,7 @@ test('a lifetime currency with no period entries has recorded zero activity, not
   const html = renderToStaticMarkup(<RevenueDashboard data={data} days={30} />)
   expect(html).toContain('No billing events were recorded in USD')
   expect(html).toContain('>$0.00</p>')
-  expect(html).toContain('All-time net: $500.00')
+  expect(html).toContain('all-time after refunds: $500.00')
 })
 
 test('zero and negative comparison baselines use finite, meaningful changes', () => {
@@ -85,5 +89,32 @@ test('subscription access with unknown expiry is qualified and empty money is no
   expect(html).toContain('4 expiries unconfirmed')
   expect(html).toContain('confirmed minimum')
   expect(html).not.toContain('>$0.00</p>')
+  expect(html).not.toContain('NaN')
+})
+
+
+test('proceeds, renewal intent, churn and country totals have explicit independent definitions', () => {
+  const html = renderToStaticMarkup(<RevenueDashboard data={snapshot()} days={30} />)
+  expect(html).toContain('>$76.50</p>')
+  expect(html).toContain('Active · set to renew')
+  expect(html).toContain('>8</p>')
+  expect(html).toContain('>20.0%</p>')
+  expect(html).toContain('2 lost from 10 subscriptions')
+  expect(html).toContain('United States')
+  expect(html).toContain('Apple App Store')
+  expect(html).toContain('15% App Store commission')
+  expect(html).toContain('provider commission estimates that differ')
+  expect(html).toContain('Proceeds are not business profit')
+})
+
+test('unknown processing fees cannot turn gross collections into profit', () => {
+  const data = snapshot()
+  Object.assign(data.revenueFinancials![0], { proceeds: null, unknown_fee_events: 2, known_proceeds: 50 })
+  data.revenueSubscriptionOverview![0].starting_subscriptions = 0
+  data.revenueSubscriptionOverview![0].churned_starting_subscriptions = 0
+  const html = renderToStaticMarkup(<RevenueDashboard data={data} days={30} />)
+  expect(html).toContain('Full proceeds are unavailable')
+  expect(html).toContain('covered transactions contribute $50.00')
+  expect(html).not.toContain('>$76.50</p>')
   expect(html).not.toContain('NaN')
 })

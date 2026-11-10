@@ -140,6 +140,8 @@ export const getServerSideProps: GetServerSideProps<PreviewProps> = async ({ req
       ...(section === 'Retention' ? { retention: data.retention, retentionWeekly: data.retentionWeekly ?? [], retentionCoverage: data.retentionCoverage ?? [], featureRetention: data.featureRetention ?? [], membershipActivation: data.membershipActivation ?? [] } : {}),
       ...(section === 'Revenue' ? {
         revenue: data.revenue, revenueTotals: data.revenueTotals ?? [], revenueDaily: data.revenueDaily,
+        revenueFinancials: data.revenueFinancials ?? [], revenueSources: data.revenueSources ?? [], revenueCountries: data.revenueCountries ?? [],
+        revenueProceedsDaily: data.revenueProceedsDaily ?? [], revenueSubscriptionOverview: data.revenueSubscriptionOverview ?? [], revenueSubscriptionProducts: data.revenueSubscriptionProducts ?? [],
         revenueActivity: data.revenueActivity ?? [], revenueComparison: data.revenueComparison ?? [],
         billingReporting: data.billingReporting ?? [], billingProducts: data.billingProducts,
         billingDimensions: data.billingDimensions, billing: data.billing,
